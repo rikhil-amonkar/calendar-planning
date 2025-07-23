@@ -1,0 +1,74 @@
+from z3 import *
+
+# Define the cities and their respective stay durations
+cities = {
+    "Brussels": 3,
+    "Helsinki": 3,
+    "Split": 4,
+    "Dubrovnik": 2,
+    "Istanbul": 5,
+    "Milan": 4,
+    "Vilnius": 5,
+    "Frankfurt": 3
+}
+
+# Define the direct flight connections
+flights = {
+    ("Milan", "Frankfurt"), ("Split", "Frankfurt"), ("Milan", "Split"),
+    ("Brussels", "Vilnius"), ("Brussels", "Helsinki"), ("Istanbul", "Brussels"),
+    ("Milan", "Vilnius"), ("Brussels", "Milan"), ("Istanbul", "Helsinki"),
+    ("Helsinki", "Vilnius"), ("Helsinki", "Dubrovnik"), ("Split", "Vilnius"),
+    ("Dubrovnik", "Istanbul"), ("Istanbul", "Milan"), ("Helsinki", "Frankfurt"),
+    ("Istanbul", "Vilnius"), ("Split", "Helsinki"), ("Milan", "Helsinki"),
+    ("Istanbul", "Frankfurt"), ("Brussels", "Frankfurt"), ("Dubrovnik", "Frankfurt"),
+    ("Frankfurt", "Vilnius")
+}
+
+# Create a solver instance
+solver = Solver()
+
+# Define the start day for each city as a Z3 integer variable
+start_days = {city: Int(f"start_{city}") for city in cities}
+
+# Add constraints for each city
+for city, duration in cities.items():
+    start = start_days[city]
+    end = start + duration - 1
+    solver.add(start >= 1)
+    solver.add(end <= 22)
+
+# Add constraints for specific events
+# Annual show in Istanbul from day 1 to day 5
+solver.add(start_days["Istanbul"] <= 1)
+solver.add(start_days["Istanbul"] + cities["Istanbul"] - 1 >= 5)
+
+# Workshop in Vilnius between day 18 and day 22
+solver.add(start_days["Vilnius"] <= 18)
+solver.add(start_days["Vilnius"] + cities["Vilnius"] - 1 >= 18)
+
+# Wedding in Frankfurt between day 16 and day 18
+solver.add(start_days["Frankfurt"] <= 16)
+solver.add(start_days["Frankfurt"] + cities["Frankfurt"] - 1 >= 16)
+
+# Add constraints for direct flights
+for city1, city2 in flights:
+    start1 = start_days[city1]
+    end1 = start1 + cities[city1] - 1
+    start2 = start_days[city2]
+    end2 = start2 + cities[city2] - 1
+    # Ensure that if you are in city1 and city2, they overlap by at least one day
+    solver.add(Or(end1 < start2, end2 < start1))
+
+# Check if the constraints are satisfiable
+if solver.check() == sat:
+    model = solver.model()
+    itinerary = []
+    for city in cities:
+        start_day = model[start_days[city]].as_long()
+        end_day = start_day + cities[city] - 1
+        for day in range(start_day, end_day + 1):
+            itinerary.append({"day": day, "place": city})
+    itinerary.sort(key=lambda x: x["day"])
+    print(json.dumps({"itinerary": itinerary}, indent=2))
+else:
+    print("No solution found")

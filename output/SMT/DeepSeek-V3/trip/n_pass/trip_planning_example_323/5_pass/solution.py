@@ -1,100 +1,114 @@
 from z3 import *
+import json
 
 def solve_itinerary():
-    # Cities: London, Oslo, Split, Porto
+    # Cities
     cities = ['London', 'Oslo', 'Split', 'Porto']
-    London, Oslo, Split, Porto = 0, 1, 2, 3  # indices for easier reference
+    n_days = 16
+    days = range(1, n_days + 1)
     
-    # Create a solver instance
+    # Create Z3 variables: for each day, which city are we in?
+    # We'll represent the city as an integer (0: London, 1: Oslo, 2: Split, 3: Porto)
+    city_vars = [Int(f'day_{day}') for day in days]
+    
     s = Solver()
     
-    # Create variables for each day (1 to 16)
-    days = [Int(f'day_{i}') for i in range(1, 17)]
-    
-    # Each day must be one of the cities (0 to 3)
+    # Each day must be between 0 and 3 (representing the 4 cities)
     for day in days:
-        s.add(day >= 0, day <= 3)
+        s.add(city_vars[day - 1] >= 0, city_vars[day - 1] <= 3)
     
-    # Split constraints: 5 days total, days 7-11 must be Split
-    for i in range(7, 12):
-        s.add(days[i-1] == Split)
-    split_days = Sum([If(days[i] == Split, 1, 0) for i in range(16)])
-    s.add(split_days == 5)
+    # Constraints for stays in each city
+    # London: 7 days, between day 1 and 7 (relatives)
+    # Split: 5 days, including days 7-11 (annual show)
+    # Oslo: 2 days
+    # Porto: 5 days
     
-    # London: 7 days total, with some days between 1 and 7
-    # Assuming all 7 London days are within days 1-7, including day 7 as a flight day
-    london_days = Sum([If(days[i] == London, 1, 0) for i in range(7)])  # days 1-7 (0-based 0-6)
+    # Count days in each city
+    london_days = Sum([If(city_vars[day - 1] == 0, 1, 0) for day in days])
+    oslo_days = Sum([If(city_vars[day - 1] == 1, 1, 0) for day in days])
+    split_days = Sum([If(city_vars[day - 1] == 2, 1, 0) for day in days])
+    porto_days = Sum([If(city_vars[day - 1] == 3, 1, 0) for day in days])
+    
     s.add(london_days == 7)
-    
-    # Oslo: 2 days total
-    oslo_days = Sum([If(days[i] == Oslo, 1, 0) for i in range(16)])
     s.add(oslo_days == 2)
-    
-    # Porto: 5 days total
-    porto_days = Sum([If(days[i] == Porto, 1, 0) for i in range(16)])
+    s.add(split_days == 5)
     s.add(porto_days == 5)
     
-    # Flight transitions: track flight days and ensure direct flights
-    flight_days = []
-    for i in range(15):
-        current = days[i]
-        next_day = days[i+1]
-        is_flight = If(current != next_day, 1, 0)
-        flight_days.append(is_flight)
-        # Direct flight constraints
-        s.add(Implies(current != next_day,
-                     Or(
-                         And(current == London, next_day == Oslo),
-                         And(current == Oslo, next_day == London),
-                         And(current == Split, next_day == Oslo),
-                         And(current == Oslo, next_day == Split),
-                         And(current == Oslo, next_day == Porto),
-                         And(current == Porto, next_day == Oslo),
-                         And(current == London, next_day == Split),
-                         And(current == Split, next_day == London)
-                     )))
-    total_flights = Sum(flight_days)
+    # Split must include days 7-11 (indices 6-10)
+    for day in range(7, 12):
+        s.add(city_vars[day - 1] == 2)  # Split is city 2
     
-    # The sum of all city days is 16 + total_flights
-    # Sum of city days is 7 (London) + 2 (Oslo) + 5 (Split) + 5 (Porto) = 19
-    s.add(total_flights == 3)  # because 19 = 16 + 3
+    # London relatives between day 1 and 7: at least some days in London in days 1-7
+    # So in days 1-7, there must be London days. But no strict constraints except that.
+    # But the total London days is 7, and the sum over all days is 7.
+    # So perhaps the 7 London days must be within days 1-7.
+    # Alternatively, perhaps the relatives are visited during days 1-7, implying that London days must be within 1-7.
+    # So all London days are in days 1-7.
+    for day in range(8, 17):
+        s.add(city_vars[day - 1] != 0)  # No London after day 7
     
-    # Additional constraints:
-    # Day 7 is Split, so day 6 must be London or Oslo (since they can fly to Split)
-    s.add(Or(days[6] == London, days[6] == Oslo))  # day6 is 1-based
+    # Flight constraints: transitions between cities must be via direct flights
+    # We'll define the allowed transitions as a list of tuples
+    direct_flights = [
+        (0, 1), (0, 2),  # London can fly to Oslo or Split
+        (1, 0), (1, 2), (1, 3),  # Oslo can fly to London, Split, or Porto
+        (2, 0), (2, 1),  # Split can fly to London or Oslo
+        (3, 1)  # Porto can fly only to Oslo
+    ]
     
-    # Ensure day 1 is London (since relatives are visited between day 1 and 7)
-    s.add(days[0] == London)
+    for day in range(1, n_days):
+        current_city = city_vars[day - 1]
+        next_city = city_vars[day]
+        # Either stay in the same city or fly to a directly connected city
+        s.add(Or(
+            current_city == next_city,
+            Or([And(current_city == src, next_city == dst) for (src, dst) in direct_flights])
+        ))
     
-    # Ensure day 16 is not a flight day (no city after day 16)
-    s.add(days[15] == days[14])
-    
+    # Check if the solver can find a solution
     if s.check() == sat:
         m = s.model()
         itinerary = []
-        for i in range(1, 17):
-            city_idx = m.evaluate(days[i-1]).as_long()
-            itinerary.append({'day': i, 'place': cities[city_idx]})
+        city_names = ['London', 'Oslo', 'Split', 'Porto']
+        for day in days:
+            city_idx = m.evaluate(city_vars[day - 1]).as_long()
+            itinerary.append({'day': day, 'place': city_names[city_idx]})
         
-        # Verify counts
+        # Verify the counts
         counts = {city: 0 for city in cities}
         for entry in itinerary:
             counts[entry['place']] += 1
         
-        # Verify show days
-        show_days_valid = all(entry['place'] == 'Split' for entry in itinerary if 7 <= entry['day'] <= 11)
+        # Check if all constraints are met
+        assert counts['London'] == 7
+        assert counts['Oslo'] == 2
+        assert counts['Split'] == 5
+        assert counts['Porto'] == 5
+        assert all(itinerary[day - 1]['place'] == 'Split' for day in range(7, 12))
+        assert all(entry['place'] != 'London' for entry in itinerary if entry['day'] >= 8)
         
-        if (counts['London'] == 7 and counts['Oslo'] == 2 and counts['Split'] == 5 and counts['Porto'] == 5 and show_days_valid):
-            return {'itinerary': itinerary}
-        else:
-            print("Error: Generated itinerary does not meet all constraints.")
-            print(f"Counts: London={counts['London']}, Oslo={counts['Oslo']}, Split={counts['Split']}, Porto={counts['Porto']}")
-            print(f"Show days valid: {show_days_valid}")
-            return None
+        # Verify flight constraints
+        for day in range(1, 16):
+            current_place = itinerary[day - 1]['place']
+            next_place = itinerary[day]['place']
+            if current_place != next_place:
+                valid_transition = False
+                if current_place == 'London' and next_place in ['Oslo', 'Split']:
+                    valid_transition = True
+                elif current_place == 'Oslo' and next_place in ['London', 'Split', 'Porto']:
+                    valid_transition = True
+                elif current_place == 'Split' and next_place in ['London', 'Oslo']:
+                    valid_transition = True
+                elif current_place == 'Porto' and next_place == 'Oslo':
+                    valid_transition = True
+                assert valid_transition, f"Invalid flight from {current_place} to {next_place} on day {day}"
+        
+        return {'itinerary': itinerary}
     else:
-        print("No solution found")
         return None
 
-itinerary = solve_itinerary()
-if itinerary:
-    print(itinerary)
+result = solve_itinerary()
+if result:
+    print(json.dumps(result, indent=2))
+else:
+    print("No solution found")

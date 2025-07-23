@@ -35,7 +35,7 @@ ruth_busy_times = [
 # Tyler's preference: avoid meetings on Monday before 16:00
 tyler_preference = Or(day != 0, start_time >= 420)  # 16:00 - 9:00 = 7 hours = 420 minutes
 
-# Define the solver
+# Create the solver
 solver = Solver()
 
 # Add constraints for the day

@@ -45,7 +45,7 @@ solver.add(Or(start_time < 14 * 60 + 30, end_time > 16 * 60 + 30))
 solver.add(Or(start_time < 9 * 60 + 30, end_time > 10 * 0))
 solver.add(Or(start_time < 10 * 60, end_time > 10 * 60 + 30))
 solver.add(Or(start_time < 11 * 60 + 30, end_time > 13 * 0))
-solver.add(Or(start_time < 13 * 30, end_time > 14 * 0))
+solver.add(Or(start_time < 13 * 60, end_time > 13 * 60 + 30))
 solver.add(Or(start_time < 14 * 60 + 30, end_time > 16 * 60 + 30))
 
 # Bobby's constraints

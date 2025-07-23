@@ -4,68 +4,84 @@ def solve_itinerary():
     # Create a solver instance
     s = Solver()
 
-    # Days are 1 to 12 inclusive
-    days = 12
-    cities = ['Vilnius', 'Munich', 'Mykonos']
-    
-    # Variables to represent the city on each day
-    day_city = [Int(f'day_{i}_city') for i in range(1, days + 1)]
-    
-    # Encoding cities as integers
-    city_encoding = {'Vilnius': 0, 'Munich': 1, 'Mykonos': 2}
-    
-    # Constraints: each day's city must be 0, 1, or 2
-    for i in range(days):
-        s.add(And(day_city[i] >= 0, day_city[i] <= 2))
-    
-    # Constraints for transitions (direct flights)
-    for i in range(days - 1):
-        current = day_city[i]
-        next_day = day_city[i + 1]
-        # Allowed transitions:
-        # Vilnius <-> Munich (0 <-> 1)
-        # Munich <-> Mykonos (1 <-> 2)
-        # No direct flight between Vilnius and Mykonos
-        s.add(Or(
-            current == next_day,  # stay in the same city
-            And(current == 0, next_day == 1),  # Vilnius -> Munich
-            And(current == 1, next_day == 0),  # Munich -> Vilnius
-            And(current == 1, next_day == 2),  # Munich -> Mykonos
-            And(current == 2, next_day == 1)   # Mykonos -> Munich
-        ))
-    
-    # Count days per city
-    vilnius_days = Sum([If(day_city[i] == 0, 1, 0) for i in range(days)])
-    munich_days = Sum([If(day_city[i] == 1, 1, 0) for i in range(days)])
-    mykonos_days = Sum([If(day_city[i] == 2, 1, 0) for i in range(days)])
-    
-    s.add(vilnius_days == 4)
-    s.add(munich_days == 3)
-    s.add(mykonos_days == 7)
-    
-    # Additional constraints to ensure the itinerary starts in Vilnius or Munich
-    s.add(Or(day_city[0] == 0, day_city[0] == 1))
-    
-    # Check for a solution
+    # Variables for start and end days in each city
+    # Vilnius
+    v_start = Int('v_start')
+    v_end = Int('v_end')
+    # Munich
+    m_start = Int('m_start')
+    m_end = Int('m_end')
+    # Mykonos
+    k_start = Int('k_start')
+    k_end = Int('k_end')
+
+    # Constraints for start and end days
+    # Days are between 1 and 12 inclusive
+    s.add(v_start >= 1, v_start <= 12)
+    s.add(v_end >= 1, v_end <= 12)
+    s.add(m_start >= 1, m_start <= 12)
+    s.add(m_end >= 1, m_end <= 12)
+    s.add(k_start >= 1, k_start <= 12)
+    s.add(k_end >= 1, k_end <= 12)
+
+    # Vilnius stay is 4 days: v_end - v_start + 1 == 4
+    s.add(v_end - v_start + 1 == 4)
+    # Munich stay is 3 days: m_end - m_start + 1 == 3
+    s.add(m_end - m_start + 1 == 3)
+    # Mykonos stay is 7 days: k_end - k_start + 1 == 7
+    s.add(k_end - k_start + 1 == 7)
+
+    # Sequence constraints: Vilnius must be before Munich or overlap in a flight day
+    # The cities are visited in an order that allows flights:
+    # Possible sequences:
+    # Option 1: Vilnius -> Munich -> Mykonos -> (possibly back to Munich)
+    # Option 2: Mykonos can only be reached via Munich, so Munich must be before or same day as Mykonos start.
+
+    # Ensure no overlaps except for flight days
+    # Flight days are when one city's end is another's start.
+
+    # Possible transitions:
+    # From Vilnius to Munich: v_end == m_start
+    s.add(v_end == m_start)
+    # From Munich to Mykonos: m_end == k_start
+    s.add(m_end == k_start)
+
+    # All days must be covered without gaps
+    # The first city is Vilnius starting at day 1
+    s.add(v_start == 1)
+    # The last city is Mykonos ending at day 12
+    s.add(k_end == 12)
+
+    # Check if the solver can find a solution
     if s.check() == sat:
-        m = s.model()
+        model = s.model()
+        # Extract values
+        v_s = model[v_start].as_long()
+        v_e = model[v_end].as_long()
+        m_s = model[m_start].as_long()
+        m_e = model[m_end].as_long()
+        k_s = model[k_start].as_long()
+        k_e = model[k_end].as_long()
+
+        # Generate itinerary
         itinerary = []
-        for i in range(days):
-            city_val = m.evaluate(day_city[i]).as_long()
-            city_name = cities[city_val]
-            itinerary.append({"day": i + 1, "place": city_name})
-        
-        # Verify the counts
-        vilnius_count = sum(1 for entry in itinerary if entry['place'] == 'Vilnius')
-        munich_count = sum(1 for entry in itinerary if entry['place'] == 'Munich')
-        mykonos_count = sum(1 for entry in itinerary if entry['place'] == 'Mykonos')
-        assert vilnius_count == 4 and munich_count == 3 and mykonos_count == 7
-        
-        return {'itinerary': itinerary}
+        for day in range(1, 13):
+            places = []
+            if v_s <= day <= v_e:
+                places.append("Vilnius")
+            if m_s <= day <= m_e:
+                places.append("Munich")
+            if k_s <= day <= k_e:
+                places.append("Mykonos")
+            itinerary.append({"day": day, "place": places})
+
+        # Prepare the output
+        output = {"itinerary": itinerary}
+        return output
     else:
         return {"error": "No valid itinerary found"}
 
 # Execute and print the result
-result = solve_itinerary()
 import json
+result = solve_itinerary()
 print(json.dumps(result, indent=2))

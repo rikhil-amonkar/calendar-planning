@@ -14,51 +14,110 @@ meeting_duration = 30
 work_start = 0
 work_end = 480  # 17:00 - 9:00 = 8 hours = 480 minutes
 
-# Define the blocked times for Nancy on Wednesday
-nancy_blocked_times_wednesday = [
-    (60, 150),  # 10:00 to 11:30
-    (270, 420)  # 13:30 to 16:00
+# Define the blocked times for Nancy
+nancy_blocked_times = [
+    (60, 90),  # 10:00 to 10:30
+    (150, 210),  # 11:30 to 12:30
+    (270, 300),  # 13:30 to 14:00
+    (330, 390),  # 14:30 to 15:30
+    (420, 480)  # 16:00 to 17:00
 ]
 
-# Define the blocked times for Jose on Wednesday
-jose_blocked_times_wednesday = [
-    (0, 30),  # 9:00 to 9:30
-    (60, 150),  # 10:00 to 12:30
-    (270, 290),  # 13:30 to 14:30
-    (360, 480)  # 15:00 to 17:00
+# Define the blocked times for Jose
+jose_blocked_times = [
+    (0, 480),  # 9:00 to 17:00 on Monday
+    (0, 480),  # 9:00 to 17:00 on Tuesday
+    (0, 30),  # 9:00 to 9:30 on Wednesday
+    (60, 150),  # 10:00 to 12:30 on Wednesday
+    (270, 290),  # 13:30 to 14:30 on Wednesday
+    (360, 480)  # 15:00 to 17:00 on Wednesday
 ]
 
-# Constraints for the day (only Wednesday)
-constraints.append(day == 2)
+# Constraints for the day
+constraints.append(day >= 0)
+constraints.append(day <= 2)
 
 # Constraints for the start time
 constraints.append(start_time >= work_start)
 constraints.append(start_time + meeting_duration <= work_end)
 
-# Constraints for Nancy's availability on Wednesday
-for blocked_start, blocked_end in nancy_blocked_times_wednesday:
+# Function to create available slots
+def create_available_slots(blocked_times, work_start, work_end, meeting_duration):
+    available_slots = []
+    current_start = work_start
+    for blocked_start, blocked_end in blocked_times:
+        if current_start < blocked_start:
+            available_slots.append((current_start, blocked_start))
+        current_start = max(current_start, blocked_end)
+    if current_start < work_end:
+        available_slots.append((current_start, work_end))
+    return available_slots
+
+# Create available slots for Nancy and Jose
+nancy_available_slots = create_available_slots(nancy_blocked_times, work_start, work_end, meeting_duration)
+jose_available_slots = create_available_slots(jose_blocked_times, work_start, work_end, meeting_duration)
+
+# Constraints for Nancy's availability
+for blocked_start, blocked_end in nancy_blocked_times:
     constraints.append(Or(start_time + meeting_duration <= blocked_start, start_time >= blocked_end))
 
-# Constraints for Jose's availability on Wednesday
-for blocked_start, blocked_end in jose_blocked_times_wednesday:
+# Constraints for Jose's availability
+for blocked_start, blocked_end in jose_blocked_times:
     constraints.append(Or(start_time + meeting_duration <= blocked_start, start_time >= blocked_end))
 
-# Create the solver and add the constraints
+# Add constraints for the specific days
+# Monday
+constraints.append(Or(day != 0, And(
+    Or(start_time + meeting_duration <= 60, start_time >= 90),  # 10:00 to 10:30
+    Or(start_time + meeting_duration <= 150, start_time >= 210),  # 11:30 to 12:30
+    Or(start_time + meeting_duration <= 270, start_time >= 300),  # 13:30 to 14:00
+    Or(start_time + meeting_duration <= 330, start_time >= 390),  # 14:30 to 15:30
+    Or(start_time + meeting_duration <= 420, start_time >= 480)  # 16:00 to 17:00
+)))
+
+# Tuesday
+constraints.append(Or(day != 1, And(
+    Or(start_time + meeting_duration <= 60, start_time >= 90),  # 9:30 to 10:30
+    Or(start_time + meeting_duration <= 150, start_time >= 180),  # 11:00 to 11:30
+    Or(start_time + meeting_duration <= 240, start_time >= 270),  # 12:00 to 12:30
+    Or(start_time + meeting_duration <= 330, start_time >= 360),  # 13:00 to 13:30
+    Or(start_time + meeting_duration <= 480, start_time >= 540)  # 15:30 to 16:00
+)))
+
+# Wednesday
+constraints.append(Or(day != 2, And(
+    Or(start_time + meeting_duration <= 30, start_time >= 60),  # 9:00 to 9:30
+    Or(start_time + meeting_duration <= 150, start_time >= 210),  # 10:00 to 12:30
+    Or(start_time + meeting_duration <= 270, start_time >= 290),  # 13:30 to 14:30
+    Or(start_time + meeting_duration <= 360, start_time >= 480)  # 15:00 to 17:00
+)))
+
+# Check for available slots on each day
+for d in range(3):
+    constraints.append(Or(day != d, Or(
+        [And(start_time >= slot[0], start_time + meeting_duration <= slot[1]) for slot in nancy_available_slots if d == 0] +
+        [And(start_time >= slot[0], start_time + meeting_duration <= slot[1]) for slot in jose_available_slots if d == 0] +
+        [And(start_time >= slot[0], start_time + meeting_duration <= slot[1]) for slot in nancy_available_slots if d == 1] +
+        [And(start_time >= slot[0], start_time + meeting_duration <= slot[1]) for slot in jose_available_slots if d == 1] +
+        [And(start_time >= slot[0], start_time + meeting_duration <= slot[1]) for slot in nancy_available_slots if d == 2] +
+        [And(start_time >= slot[0], start_time + meeting_duration <= slot[1]) for slot in jose_available_slots if d == 2]
+    )))
+
+# Solve the constraints
 solver = Solver()
 solver.add(constraints)
 
-# Check if there is a solution
 if solver.check() == sat:
     model = solver.model()
-    meeting_day = model[day].as_long()
-    meeting_start_time = model[start_time].as_long()
-    meeting_end_time = meeting_start_time + meeting_duration
+    day_value = model[day].as_long()
+    start_time_value = model[start_time].as_long()
+    end_time_value = start_time_value + meeting_duration
 
-    # Convert the day and time to the required format
+    # Convert day and time to human-readable format
     days = ["Monday", "Tuesday", "Wednesday"]
-    start_time_str = f"{9 + meeting_start_time // 60:02}:{meeting_start_time % 60:02}"
-    end_time_str = f"{9 + meeting_end_time // 60:02}:{meeting_end_time % 60:02}"
+    start_time_str = f"{9 + start_time_value // 60}:{start_time_value % 60:02}"
+    end_time_str = f"{9 + end_time_value // 60}:{end_time_value % 60:02}"
 
-    print(f"SOLUTION:\nDay: {days[meeting_day]}\nStart Time: {start_time_str}\nEnd Time: {end_time_str}")
+    print(f"SOLUTION:\nDay: {days[day_value]}\nStart Time: {start_time_str}\nEnd Time: {end_time_str}")
 else:
     print("No solution found")

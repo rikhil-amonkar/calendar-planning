@@ -1,6 +1,7 @@
 from z3 import *
 
 # Define the time variables
+day = Int('day')
 start_hour = Int('start_hour')
 start_minute = Int('start_minute')
 end_hour = Int('end_hour')
@@ -11,36 +12,37 @@ meeting_duration = 30  # in minutes
 
 # Define the constraints
 constraints = [
-    # Work hours constraint: 9:00 to 17:00
+    # Day constraint (Monday is represented as 1)
+    day == 1,
+    
+    # Work hours constraint
     start_hour >= 9,
-    start_hour < 17,
-    Or(start_hour < 16, And(start_hour == 16, start_minute == 0)),
+    Or(And(start_hour == 16, start_minute <= 30), start_hour < 16),
     
-    # Juan's availability: 10:30 to 15:30 and 16:00 to 16:00
+    # Juan's availability
     Or(And(start_hour == 10, start_minute >= 30), start_hour > 10),
-    Or(And(start_hour == 15, start_minute <= 30), start_hour < 15),
-    Or(And(start_hour == 16, start_minute >= 0), start_hour > 16),
+    Or(And(end_hour == 15, end_minute <= 30), end_hour < 15),
+    Or(And(end_hour == 16, end_minute <= 0), end_hour < 16),
     
-    # Marilyn's availability: 9:00 to 11:00, 11:30 to 12:30, 13:00 to 17:00
-    Or(And(start_hour == 9, start_minute >= 0), start_hour > 9),
-    Or(And(start_hour == 11, start_minute <= 0), start_hour < 11),
+    # Marilyn's availability
     Or(And(start_hour == 11, start_minute >= 30), start_hour > 11),
-    Or(And(start_hour == 12, start_minute <= 30), start_hour < 12),
-    Or(And(start_hour == 13, start_minute >= 0), start_hour > 13),
+    Or(And(end_hour == 12, end_minute <= 30), end_hour < 12),
+    Or(And(end_hour == 13, end_minute <= 0), end_hour < 13),
     
-    # Ronald's availability: 10:30 to 12:00, 12:30 to 13:00, 13:30 to 14:00, 16:30 to 17:00
+    # Ronald's availability
     Or(And(start_hour == 10, start_minute >= 30), start_hour > 10),
-    Or(And(start_hour == 12, start_minute <= 0), start_hour < 12),
-    Or(And(start_hour == 12, start_minute >= 30), start_hour > 12),
-    Or(And(start_hour == 13, start_minute <= 0), start_hour < 13),
-    Or(And(start_hour == 13, start_minute >= 30), start_hour > 13),
-    Or(And(start_hour == 14, start_minute <= 0), start_hour < 14),
-    Or(And(start_hour == 16, start_minute >= 30), start_hour > 16),
+    Or(And(end_hour == 12, end_minute <= 0), end_hour < 12),
+    Or(And(end_hour == 13, end_minute <= 0), end_hour < 13),
+    Or(And(end_hour == 14, end_minute <= 0), end_hour < 14),
+    Or(And(end_hour == 16, end_minute <= 30), end_hour < 16),
     
     # Meeting duration constraint
-    end_hour * 60 + end_minute == start_hour * 60 + start_minute + meeting_duration,
+    end_hour == If(start_minute + meeting_duration >= 60, start_hour + 1, start_hour),
+    end_minute == If(start_minute + meeting_duration >= 60, (start_minute + meeting_duration) % 60, start_minute + meeting_duration),
+    
+    # Ensure end time is within work hours
     end_hour < 17,
-    Or(end_hour > start_hour, And(end_hour == start_hour, end_minute > start_minute))
+    Or(end_hour < 16, And(end_hour == 16, end_minute <= 0))
 ]
 
 # Create the solver and add constraints

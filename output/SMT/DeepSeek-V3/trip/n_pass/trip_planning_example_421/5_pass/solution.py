@@ -1,97 +1,101 @@
 from z3 import *
 
 def solve_itinerary():
-    # Define cities with numeric codes
-    cities = {
-        'Nice': 0,
-        'Dublin': 1,
-        'Frankfurt': 2,
-        'Krakow': 3,
-        'Lyon': 4
-    }
-    inv_cities = {v: k for k, v in cities.items()}
+    # Cities and their indices
+    cities = ['Nice', 'Krakow', 'Dublin', 'Lyon', 'Frankfurt']
+    city_to_idx = {city: idx for idx, city in enumerate(cities)}
     
-    # Corrected direct flights (fixed typos)
-    direct_flights = {
-        (cities['Nice'], cities['Dublin']),
-        (cities['Dublin'], cities['Frankfurt']),
-        (cities['Dublin'], cities['Krakow']),
-        (cities['Krakow'], cities['Frankfurt']),
-        (cities['Lyon'], cities['Frankfurt']),
-        (cities['Nice'], cities['Frankfurt']),
-        (cities['Lyon'], cities['Dublin']),
-        (cities['Nice'], cities['Lyon'])
-    }
-    # Add reverse flights
-    all_flights = set()
-    for (a, b) in direct_flights:
-        all_flights.add((a, b))
-        all_flights.add((b, a))
-    
-    # Create Z3 variables for each day (1..20)
+    # Total days
     days = 20
-    day_vars = [Int(f'day_{i}') for i in range(1, days + 1)]
+    
+    # Create Z3 variables: assignments[day][city] is True if visited that city on that day
+    assignments = [[Bool(f"day_{day+1}_city_{city}") for city in cities] for day in range(days)]
     
     s = Solver()
     
-    # Each day must be one of the city codes
-    for day in day_vars:
-        s.add(Or([day == code for code in cities.values()]))
+    # Each day must be assigned to at least one city
+    for day in range(days):
+        s.add(Or([assignments[day][i] for i in range(len(cities))]))
     
-    # Nice from day 1 to day 5
-    for i in range(5):
-        s.add(day_vars[i] == cities['Nice'])
+    # Define direct flight connections (bidirectional)
+    direct_flights = {
+        ('Nice', 'Dublin'),
+        ('Dublin', 'Frankfurt'),
+        ('Dublin', 'Krakow'),
+        ('Krakow', 'Frankfurt'),
+        ('Lyon', 'Frankfurt'),
+        ('Nice', 'Frankfurt'),
+        ('Lyon', 'Dublin'),
+        ('Nice', 'Lyon')
+    }
+    bidirectional_flights = set()
+    for a, b in direct_flights:
+        bidirectional_flights.add((a, b))
+        bidirectional_flights.add((b, a))
     
-    # Frankfurt must be on both day 19 and 20
-    s.add(day_vars[18] == cities['Frankfurt'])
-    s.add(day_vars[19] == cities['Frankfurt'])
+    # If two cities are visited on same day, must have direct flight
+    for day in range(days):
+        for i in range(len(cities)):
+            for j in range(i + 1, len(cities)):
+                city_i = cities[i]
+                city_j = cities[j]
+                both_visited = And(assignments[day][i], assignments[day][j])
+                has_flight = (city_i, city_j) in bidirectional_flights
+                s.add(Implies(both_visited, has_flight))
     
-    # Transitions must be via direct flights or stay
-    for i in range(days - 1):
-        current = day_vars[i]
-        next_day = day_vars[i + 1]
-        s.add(Or(current == next_day, *[(current == a) & (next_day == b) for (a, b) in all_flights]))
+    # City day constraints
+    nice_idx = city_to_idx['Nice']
+    krakow_idx = city_to_idx['Krakow']
+    dublin_idx = city_to_idx['Dublin']
+    lyon_idx = city_to_idx['Lyon']
+    frankfurt_idx = city_to_idx['Frankfurt']
     
-    # Count days per city (including overlaps)
-    counts = {city: 0 for city in cities.values()}
-    for city in cities.values():
-        counts[city] = Sum([If(day_vars[i] == city, 1, 0) for i in range(days)])
+    # Nice: exactly 5 days between day 1-5
+    s.add(Sum([If(assignments[day][nice_idx], 1, 0) for day in range(5)]) == 5)
     
-    # Add constraints for required days
-    s.add(counts[cities['Nice']] == 5)      # Nice: 5 days (days 1-5)
-    s.add(counts[cities['Dublin']] == 7)    # Dublin: 7 days
-    s.add(counts[cities['Krakow']] == 6)    # Krakow: 6 days
-    s.add(counts[cities['Lyon']] == 4)      # Lyon: 4 days
-    s.add(counts[cities['Frankfurt']] == 2) # Frankfurt: 2 days (19-20)
+    # Krakow: exactly 6 days total
+    s.add(Sum([If(assignments[day][krakow_idx], 1, 0) for day in range(days)]) == 6)
     
-    # Additional constraints to prevent invalid sequences
-    # Ensure we don't leave Frankfurt once we arrive (since we need to be there days 19-20)
-    for i in range(18):
-        s.add(day_vars[i] != cities['Frankfurt'])
+    # Dublin: exactly 7 days total
+    s.add(Sum([If(assignments[day][dublin_idx], 1, 0) for day in range(days)]) == 7)
     
-    # Check if solution exists
+    # Lyon: exactly 4 days total
+    s.add(Sum([If(assignments[day][lyon_idx], 1, 0) for day in range(days)]) == 4)
+    
+    # Frankfurt: exactly 2 days (days 19-20)
+    s.add(assignments[18][frankfurt_idx] == True)  # Day 19
+    s.add(assignments[19][frankfurt_idx] == True)  # Day 20
+    s.add(Sum([If(assignments[day][frankfurt_idx], 1, 0) for day in range(days)]) == 2)
+    
+    # Start in Nice on day 1
+    s.add(assignments[0][nice_idx] == True)
+    
+    # Valid transitions between days
+    for day in range(days - 1):
+        transition_constraints = []
+        # Case 1: Common city between days
+        for city_i in range(len(cities)):
+            common_city = And(assignments[day][city_i], assignments[day+1][city_i])
+            transition_constraints.append(common_city)
+        # Case 2: Direct flight between cities
+        for city_i in range(len(cities)):
+            for city_j in range(len(cities)):
+                if city_i != city_j and (cities[city_i], cities[city_j]) in bidirectional_flights:
+                    flight = And(assignments[day][city_i], assignments[day+1][city_j])
+                    transition_constraints.append(flight)
+        s.add(Or(transition_constraints))
+    
+    # Solve and return itinerary
     if s.check() == sat:
-        model = s.model()
+        m = s.model()
         itinerary = []
-        for i in range(days):
-            day_num = i + 1
-            city_code = model.evaluate(day_vars[i]).as_long()
-            city_name = inv_cities[city_code]
-            itinerary.append({'day': day_num, 'place': city_name})
-        
-        # Verify counts
-        city_days = {city: 0 for city in cities.keys()}
-        for entry in itinerary:
-            city_days[entry['place']] += 1
-        
-        return {'itinerary': itinerary}
+        for day in range(days):
+            places = [cities[i] for i in range(len(cities)) if is_true(m.evaluate(assignments[day][i]))]
+            itinerary.append({"day": day+1, "place": places})
+        return {"itinerary": itinerary}
     else:
-        return None
+        return {"error": "No valid itinerary found"}
 
-# Generate itinerary
-itinerary = solve_itinerary()
-if itinerary:
-    import json
-    print(json.dumps(itinerary, indent=2))
-else:
-    print("No valid itinerary found.")
+result = solve_itinerary()
+import json
+print(json.dumps(result, indent=2))

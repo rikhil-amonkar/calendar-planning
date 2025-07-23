@@ -40,39 +40,45 @@ for name, details in friends.items():
     # Meeting must last at least the minimum duration
     solver.add(meeting_end[name] - meeting_start[name] >= details["min_duration"])
 
-# Define integer variables for the order of meetings
-order = {name: Int(name + "_order") for name in friends}
-
-# Ensure each friend is met exactly once
-solver.add(Distinct([order[name] for name in friends]))
-
-# Ensure the order is sequential
-for i in range(len(friends) - 1):
-    name1 = list(friends.keys())[i]
-    name2 = list(friends.keys())[i + 1]
-    solver.add(order[name1] < order[name2])
-
 # Define the travel constraints
 current_location = "The Castro"
 current_time = 9.0  # 9:00 AM
 
-# Add constraints for the sequence of meetings
-for i in range(len(friends)):
-    name = list(friends.keys())[i]
-    details = friends[name]
-    # Travel time to the friend's location
-    travel_time = travel_times[(current_location, details["location"])]
-    # Meeting must start after arriving at the location
-    solver.add(meeting_start[name] >= current_time + travel_time/60)
-    # Update the current location and time after the meeting
-    current_location = details["location"]
-    current_time = meeting_end[name]
+# Define binary variables to indicate the order of meetings
+order_vars = {}
+for i, name1 in enumerate(friends):
+    for j, name2 in enumerate(friends):
+        if i != j:
+            order_vars[(name1, name2)] = Bool(f"{name1}_before_{name2}")
+
+# Add constraints to ensure that each pair of meetings has a defined order
+for name1 in friends:
+    for name2 in friends:
+        if name1 != name2:
+            solver.add(Or(order_vars[(name1, name2)], order_vars[(name2, name1)]))
+            solver.add(Not(And(order_vars[(name1, name2)], order_vars[(name2, name1)])))
+
+# Add constraints to ensure that the order is consistent
+for name1 in friends:
+    for name2 in friends:
+        for name3 in friends:
+            if name1 != name2 and name2 != name3 and name1 != name3:
+                solver.add(Implies(And(order_vars[(name1, name2)], order_vars[(name2, name3)]), order_vars[(name1, name3)]))
+
+# Add travel constraints based on the order
+for name1 in friends:
+    for name2 in friends:
+        if name1 != name2:
+            details1 = friends[name1]
+            details2 = friends[name2]
+            travel_time = travel_times[(details1["location"], details2["location"])]
+            solver.add(Implies(order_vars[(name1, name2)], meeting_start[name2] >= meeting_end[name1] + travel_time/60))
 
 # Solve the problem
 if solver.check() == sat:
     model = solver.model()
     itinerary = []
-    for name in sorted(friends.keys(), key=lambda name: model[order[name]].as_long()):
+    for name in friends:
         start = model[meeting_start[name]].as_decimal(2)
         end = model[meeting_end[name]].as_decimal(2)
         itinerary.append({
@@ -81,6 +87,8 @@ if solver.check() == sat:
             "start_time": f"{int(start):02}:{int((start % 1) * 60):02}",
             "end_time": f"{int(end):02}:{int((end % 1) * 60):02}"
         })
+    # Sort the itinerary based on start time
+    itinerary.sort(key=lambda x: x["start_time"])
     print({"itinerary": itinerary})
 else:
     print("No solution found")

@@ -59,20 +59,20 @@ for d, s, e in michael_meetings:
 # Solve the problem
 if solver.check() == sat:
     model = solver.model()
-    day_value = model[day].as_long()
-    start_time_value = model[start_time].as_long()
-    end_time_value = start_time_value + meeting_duration
+    meeting_day = model[day].as_long()
+    meeting_start = model[start_time].as_long()
+    meeting_end = meeting_start + meeting_duration
 
-    # Convert day and time to human-readable format
+    # Convert day number to string
     days = ["Monday", "Tuesday", "Wednesday"]
-    start_hour = start_time_value // 60
-    start_minute = start_time_value % 60
-    end_hour = end_time_value // 60
-    end_minute = end_time_value % 60
+    meeting_day_str = days[meeting_day]
 
-    print(f"SOLUTION:")
-    print(f"Day: {days[day_value]}")
-    print(f"Start Time: {start_hour:02}:{start_minute:02}")
-    print(f"End Time: {end_hour:02}:{end_minute:02}")
+    # Convert start and end times to HH:MM format
+    start_hour = meeting_start // 60
+    start_minute = meeting_start % 60
+    end_hour = meeting_end // 60
+    end_minute = meeting_end % 60
+
+    print(f"SOLUTION:\nDay: {meeting_day_str}\nStart Time: {start_hour:02}:{start_minute:02}\nEnd Time: {end_hour:02}:{end_minute:02}")
 else:
     print("No solution found")

@@ -45,30 +45,33 @@ solver.add(Or(start_istanbul >= start_venice + duration_venice - 1,
 # Istanbul to Krakow
 solver.add(start_krakow >= start_istanbul + duration_istanbul - 1)
 
-# Venice to Lyon
-# This is already covered by the Venice to Istanbul or Lyon constraint
-
-# Lyon to Istanbul
-# This is already covered by the Istanbul to Krakow constraint
-
 # Manchester to Krakow
 solver.add(start_krakow >= start_manchester + duration_manchester - 1)
 
 # Ensure no overlap in visits (except for the flight day)
+# Adjust constraints to allow for overlapping days due to flights
+solver.add(start_venice + duration_venice <= start_istanbul + 1)
+solver.add(start_venice + duration_venice <= start_krakow + 1)
+solver.add(start_venice + duration_venice <= start_lyon + 1)
+solver.add(start_istanbul + duration_istanbul <= start_krakow + 1)
+solver.add(start_istanbul + duration_istanbul <= start_lyon + 1)
+solver.add(start_krakow + duration_krakow <= start_lyon + 1)
+
+# Ensure the total duration is exactly 21 days
+# The last city's end day should be 21
+solver.add(start_manchester + duration_manchester <= start_venice)
 solver.add(start_venice + duration_venice <= start_istanbul)
-solver.add(start_venice + duration_venice <= start_krakow)
-solver.add(start_venice + duration_venice <= start_lyon)
 solver.add(start_istanbul + duration_istanbul <= start_krakow)
-solver.add(start_istanbul + duration_istanbul <= start_lyon)
 solver.add(start_krakow + duration_krakow <= start_lyon)
+solver.add(start_lyon + duration_lyon == 21)
 
 # Check if the constraints are satisfiable
 if solver.check() == sat:
     model = solver.model()
     itinerary = []
     for city, start_var, duration in [('Manchester', start_manchester, duration_manchester),
-                                     ('Istanbul', start_istanbul, duration_istanbul),
                                      ('Venice', start_venice, duration_venice),
+                                     ('Istanbul', start_istanbul, duration_istanbul),
                                      ('Krakow', start_krakow, duration_krakow),
                                      ('Lyon', start_lyon, duration_lyon)]:
         start_day = model[start_var].as_long()

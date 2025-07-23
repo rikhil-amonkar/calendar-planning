@@ -58,22 +58,23 @@ solver.add(kenneth_end_meeting + travel_kenneth_to_jason <= jason_start_meeting)
 # Check if the constraints are satisfiable
 if solver.check() == sat:
     model = solver.model()
-    jason_start_meeting_value = model[jason_start_meeting].as_long()
-    jason_end_meeting_value = model[jason_end_meeting].as_long()
-    kenneth_start_meeting_value = model[kenneth_start_meeting].as_long()
-    kenneth_end_meeting_value = model[kenneth_end_meeting].as_long()
-
-    # Convert the times back to HH:MM format
+    jason_start_meeting_time = model[jason_start_meeting].as_long()
+    jason_end_meeting_time = model[jason_end_meeting].as_long()
+    kenneth_start_meeting_time = model[kenneth_start_meeting].as_long()
+    kenneth_end_meeting_time = model[kenneth_end_meeting].as_long()
+    
     def format_time(minutes):
         hours = 9 + minutes // 60
         minutes = minutes % 60
         return f"{hours:02}:{minutes:02}"
-
+    
     itinerary = [
-        {"action": "meet", "person": "Jason", "start_time": format_time(jason_start_meeting_value), "end_time": format_time(jason_end_meeting_value)},
-        {"action": "meet", "person": "Kenneth", "start_time": format_time(kenneth_start_meeting_value), "end_time": format_time(kenneth_end_meeting_value)}
+        {"action": "meet", "person": "Jason", "start_time": format_time(jason_start_meeting_time), "end_time": format_time(jason_end_meeting_time)},
+        {"action": "meet", "person": "Kenneth", "start_time": format_time(kenneth_start_meeting_time), "end_time": format_time(kenneth_end_meeting_time)}
     ]
-
-    print({"itinerary": itinerary})
+    
+    SOLUTION = {"itinerary": itinerary}
 else:
-    print("No solution found")
+    SOLUTION = {"itinerary": []}
+
+print(SOLUTION)

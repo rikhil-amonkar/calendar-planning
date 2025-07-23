@@ -20,24 +20,25 @@ constraints = [
     start_hour < 17,
     Or(start_hour < 16, And(start_hour == 16, start_minute == 0)),
     
-    # The meeting must be half an hour long
-    end_hour == If(start_minute + meeting_duration >= 60, start_hour + 1, start_hour),
+    # The meeting must be 30 minutes long
+    end_hour == start_hour + (start_minute + meeting_duration) // 60,
     end_minute == (start_minute + meeting_duration) % 60,
     
     # Jack's busy times
-    Or(start_hour * 60 + start_minute >= 10 * 60 + 30, start_hour * 60 + start_minute + meeting_duration <= 10 * 60 + 30),
-    Or(start_hour * 60 + start_minute >= 11 * 60, start_hour * 60 + start_minute + meeting_duration <= 11 * 60),
-    Or(start_hour * 60 + start_minute >= 12 * 60 + 30, start_hour * 60 + start_minute + meeting_duration <= 12 * 60 + 30),
-    Or(start_hour * 60 + start_minute >= 14 * 60, start_hour * 60 + start_minute + meeting_duration <= 14 * 60),
-    Or(start_hour * 60 + start_minute >= 16 * 60, start_hour * 60 + start_minute + meeting_duration <= 16 * 60),
+    Or(start_hour * 60 + start_minute >= 1030, end_hour * 60 + end_minute <= 930),
+    Or(start_hour * 60 + start_minute >= 1130, end_hour * 60 + end_minute <= 1100),
+    Or(start_hour * 60 + start_minute >= 1300, end_hour * 60 + end_minute <= 1230),
+    Or(start_hour * 60 + start_minute >= 1430, end_hour * 60 + end_minute <= 1400),
+    Or(start_hour * 60 + start_minute >= 1630, end_hour * 60 + end_minute <= 1600),
     
     # Charlotte's busy times
-    Or(start_hour * 60 + start_minute >= 10 * 60 + 30, start_hour * 60 + start_minute + meeting_duration <= 10 * 60 + 30),
-    Or(start_hour * 60 + start_minute >= 12 * 60 + 30, start_hour * 60 + start_minute + meeting_duration <= 12 * 60 + 30),
-    Or(start_hour * 60 + start_minute >= 14 * 60, start_hour * 60 + start_minute + meeting_duration <= 14 * 60),
+    Or(start_hour * 60 + start_minute >= 1000, end_hour * 60 + end_minute <= 930),
+    Or(start_hour * 60 + start_minute >= 1200, end_hour * 60 + end_minute <= 1030),
+    Or(start_hour * 60 + start_minute >= 1330, end_hour * 60 + end_minute <= 1230),
+    Or(start_hour * 60 + start_minute >= 1600, end_hour * 60 + end_minute <= 1400),
     
     # Jack's preference to avoid meetings after 12:30
-    Or(start_hour * 60 + start_minute <= 12 * 60 + 30, start_hour * 60 + start_minute + meeting_duration <= 12 * 60 + 30)
+    Or(start_hour * 60 + start_minute <= 1230, end_hour * 60 + end_minute <= 1230)
 ]
 
 # Create the solver and add the constraints

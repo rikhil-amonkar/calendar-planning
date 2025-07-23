@@ -44,56 +44,55 @@ friends = {
     "Robert": {"location": "Union Square", "start": 10*60+15, "end": 21*60+45, "min_duration": 15},
 }
 
-# Convert times to minutes from 00:00
-start_time = 9*60  # 9:00 AM
-end_time = 21*60+45  # 9:45 PM
+# Convert travel times to minutes
+travel_times_minutes = {(a, b): t for (a, b), t in travel_times.items()}
 
-# Create a solver
+# Create a solver instance
 solver = Solver()
 
-# Define variables for each friend's meeting start and end times
+# Define the start time for the day
+start_time = 9*60  # 9:00 AM
+
+# Define variables for the start and end times of each meeting
 meeting_vars = {}
 for friend, details in friends.items():
-    start = Int(f"{friend}_start")
-    end = Int(f"{friend}_end")
-    meeting_vars[friend] = (start, end)
-    solver.add(start >= details["start"])
-    solver.add(end <= details["end"])
-    solver.add(end - start >= details["min_duration"])
+    meeting_vars[friend] = (Int(f"{friend}_start"), Int(f"{friend}_end"))
 
-# Define variables for the current location and time
-current_location = String("current_location")
-current_time = Int("current_time")
-solver.add(current_location == "Golden Gate Park")
-solver.add(current_time == start_time)
+# Define the current location and time
+current_location = "Golden Gate Park"
+current_time = start_time
 
-# Define constraints for traveling between locations
+# Add constraints for each friend
 for friend, (start, end) in meeting_vars.items():
-    location = friends[friend]["location"]
-    travel_time = travel_times[(current_location.as_string(), location)]
-    solver.add(current_time + travel_time <= start)
+    details = friends[friend]
+    # Meeting must start after the current time and before the friend's availability ends
+    solver.add(start >= current_time)
+    solver.add(start + details["min_duration"] <= details["end"])
+    # Meeting must end after the minimum duration and before the friend's availability ends
+    solver.add(end >= start + details["min_duration"])
+    solver.add(end <= details["end"])
+    # Travel time to the friend's location
+    travel_time = travel_times_minutes[(current_location, details["location"])]
+    solver.add(start >= current_time + travel_time)
+    # Update the current location and time
+    current_location = details["location"]
     current_time = end
-    current_location = location
 
-# Define a function to convert minutes to HH:MM format
-def minutes_to_hhmm(minutes):
-    hours = minutes // 60
-    minutes = minutes % 60
-    return f"{hours:02}:{minutes:02}"
+# Define the objective to maximize the number of meetings
+objective = Optimize()
+objective.add(solver.assertions())
+objective.maximize(Sum([If(start <= end, 1, 0) for start, end in meeting_vars.values()]))
 
 # Check if the problem is solvable
-if solver.check() == sat:
-    model = solver.model()
+if objective.check() == sat:
+    model = objective.model()
     itinerary = []
     for friend, (start, end) in meeting_vars.items():
-        start_time_minutes = model[start].as_long()
-        end_time_minutes = model[end].as_long()
-        itinerary.append({
-            "action": "meet",
-            "person": friend,
-            "start_time": minutes_to_hhmm(start_time_minutes),
-            "end_time": minutes_to_hhmm(end_time_minutes)
-        })
+        start_time_minutes = model.evaluate(start).as_long()
+        end_time_minutes = model.evaluate(end).as_long()
+        start_time_str = f"{start_time_minutes // 60:02}:{start_time_minutes % 60:02}"
+        end_time_str = f"{end_time_minutes // 60:02}:{end_time_minutes % 60:02}"
+        itinerary.append({"action": "meet", "person": friend, "start_time": start_time_str, "end_time": end_time_str})
     print({"itinerary": itinerary})
 else:
     print("No solution found")

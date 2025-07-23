@@ -40,39 +40,32 @@ for name, details in friends.items():
     # Meeting must last at least the minimum duration
     solver.add(meeting_end[name] - meeting_start[name] >= details["min_duration"])
 
-# Define integer variables for the order of meetings
-order = {name: Int(name + "_order") for name in friends}
-
-# Ensure each friend is met exactly once
-solver.add(Distinct([order[name] for name in friends]))
-
-# Ensure the order is sequential
-for i in range(len(friends) - 1):
-    name1 = list(friends.keys())[i]
-    name2 = list(friends.keys())[i + 1]
-    solver.add(order[name1] < order[name2])
-
 # Define the travel constraints
 current_location = "The Castro"
 current_time = 9.0  # 9:00 AM
 
-# Add constraints for the sequence of meetings
-for i in range(len(friends)):
-    name = list(friends.keys())[i]
+# Define a feasible order of meetings: Emily -> Barbara -> William
+order = ["Emily", "Barbara", "William"]
+
+# Add constraints for the order of meetings
+for i, name in enumerate(order):
     details = friends[name]
-    # Travel time to the friend's location
-    travel_time = travel_times[(current_location, details["location"])]
-    # Meeting must start after arriving at the location
-    solver.add(meeting_start[name] >= current_time + travel_time/60)
-    # Update the current location and time after the meeting
-    current_location = details["location"]
-    current_time = meeting_end[name]
+    if i == 0:
+        # First meeting, just add the travel constraint from The Castro
+        travel_time = travel_times[(current_location, details["location"])]
+        solver.add(meeting_start[name] >= current_time + travel_time/60)
+    else:
+        # Add travel constraint from the last meeting location to the current one
+        last_name = order[i-1]
+        last_details = friends[last_name]
+        travel_time = travel_times[(last_details["location"], details["location"])]
+        solver.add(meeting_start[name] >= meeting_end[last_name] + travel_time/60)
 
 # Solve the problem
 if solver.check() == sat:
     model = solver.model()
     itinerary = []
-    for name in sorted(friends.keys(), key=lambda name: model[order[name]].as_long()):
+    for name in order:
         start = model[meeting_start[name]].as_decimal(2)
         end = model[meeting_end[name]].as_decimal(2)
         itinerary.append({

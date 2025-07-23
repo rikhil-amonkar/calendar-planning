@@ -1,104 +1,125 @@
 from z3 import *
 
 def solve_itinerary():
-    # Define the cities
-    cities = ['Zurich', 'Hamburg', 'Helsinki', 'Bucharest', 'Split']
-    city_vars = {city: Int(city) for city in cities}
-    
-    # Days are from 1 to 12
-    days = 12
-    # Create a solver instance
-    s = Solver()
-    
-    # For each day, which city are we in?
-    day_to_city = [Int(f'day_{i}') for i in range(1, days + 1)]
-    
-    # Map cities to integers for the solver
-    city_map = {city: idx for idx, city in enumerate(cities)}
-    city_inv_map = {idx: city for idx, city in enumerate(cities)}
-    
-    # Constraints for each day's variable to be a valid city index
-    for day_var in day_to_city:
-        s.add(day_var >= 0, day_var < len(cities))
-    
-    # Direct flights: adjacency list
+    # Cities and their required days
+    cities = {
+        'Zurich': 3,
+        'Helsinki': 2,
+        'Hamburg': 2,
+        'Bucharest': 2,
+        'Split': 7
+    }
+    city_list = list(cities.keys())
+    num_days = 12
+
+    # Direct flights adjacency list
     direct_flights = {
         'Zurich': ['Helsinki', 'Hamburg', 'Bucharest', 'Split'],
-        'Hamburg': ['Zurich', 'Bucharest', 'Helsinki', 'Split'],
         'Helsinki': ['Zurich', 'Hamburg', 'Split'],
-        'Bucharest': ['Zurich', 'Hamburg'],
+        'Hamburg': ['Helsinki', 'Bucharest', 'Zurich', 'Split'],
+        'Bucharest': ['Hamburg', 'Zurich'],
         'Split': ['Zurich', 'Helsinki', 'Hamburg']
     }
+
+    # Correcting the adjacency list for typos (Helsinki vs Helsinki, etc.)
+    corrected_flights = {
+        'Zurich': ['Helsinki', 'Hamburg', 'Bucharest', 'Split'],
+        'Helsinki': ['Zurich', 'Hamburg', 'Split'],
+        'Hamburg': ['Helsinki', 'Bucharest', 'Zurich', 'Split'],
+        'Bucharest': ['Hamburg', 'Zurich'],
+        'Split': ['Zurich', 'Helsinki', 'Hamburg']
+    }
+
+    # Create a Z3 solver instance
+    s = Solver()
+
+    # Create variables: day[i] is the city visited on day i+1 (days are 1-based)
+    day = [Int(f'day_{i}') for i in range(num_days)]
     
-    # Ensure transitions between cities are via direct flights
-    for i in range(days - 1):
-        current_day_var = day_to_city[i]
-        next_day_var = day_to_city[i + 1]
-        # Either stay in the same city or move to a directly connected city
+    # Map each city to an integer
+    city_to_int = {city: idx for idx, city in enumerate(city_list)}
+    int_to_city = {idx: city for idx, city in enumerate(city_list)}
+
+    # Add constraints: each day's variable must be one of the city indices
+    for d in day:
+        s.add(Or([d == city_to_int[city] for city in city_list]))
+
+    # Constraint: Zurich must be visited for 3 days, including at least one day between 1 and 3 (0-based: days 0, 1, or 2)
+    zurich_days = [If(day[i] == city_to_int['Zurich'], 1, 0) for i in range(3)]
+    s.add(Sum(zurich_days) >= 1)  # At least one of the first three days is Zurich
+
+    total_zurich = Sum([If(day[i] == city_to_int['Zurich'], 1, 0) for i in range(num_days)])
+    s.add(total_zurich == 3)
+
+    # Split must be visited for 7 days, including days 4 and 10 (1-based: days 3 and 9 in 0-based)
+    s.add(day[3] == city_to_int['Split'])  # Day 4 (0-based 3)
+    s.add(day[9] == city_to_int['Split'])  # Day 10 (0-based 9)
+
+    total_split = Sum([If(day[i] == city_to_int['Split'], 1, 0) for i in range(num_days)])
+    s.add(total_split == 7)
+
+    # Other cities' day counts
+    total_helsinki = Sum([If(day[i] == city_to_int['Helsinki'], 1, 0) for i in range(num_days)])
+    s.add(total_helsinki == 2)
+
+    total_hamburg = Sum([If(day[i] == city_to_int['Hamburg'], 1, 0) for i in range(num_days)])
+    s.add(total_hamburg == 2)
+
+    total_bucharest = Sum([If(day[i] == city_to_int['Bucharest'], 1, 0) for i in range(num_days)])
+    s.add(total_bucharest == 2)
+
+    # Flight constraints: consecutive days must be either the same city or connected by a direct flight
+    for i in range(num_days - 1):
+        current_city = day[i]
+        next_city = day[i+1]
+        # Either same city or connected
         s.add(Or(
-            current_day_var == next_day_var,
+            current_city == next_city,
             *[
-                And(current_day_var == city_map[city1], next_day_var == city_map[city2])
-                for city1 in direct_flights
-                for city2 in direct_flights[city1]
+                And(current_city == city_to_int[city_a], next_city == city_to_int[city_b])
+                for city_a in corrected_flights
+                for city_b in corrected_flights[city_a]
             ]
         ))
-    
-    # Count the days per city
-    counts = {city: 0 for city in cities}
-    for city in cities:
-        counts[city] = Sum([If(day_to_city[i] == city_map[city], 1, 0) for i in range(days)])
-    
-    # Add constraints for the required days per city
-    s.add(counts['Hamburg'] == 2)
-    s.add(counts['Zurich'] == 3)
-    s.add(counts['Helsinki'] == 2)
-    s.add(counts['Bucharest'] == 2)
-    s.add(counts['Split'] == 7)
-    
-    # Wedding in Zurich between day 1 and day 3 (1-based)
-    s.add(Or(day_to_city[0] == city_map['Zurich'], day_to_city[1] == city_map['Zurich'], day_to_city[2] == city_map['Zurich']))
-    
-    # Conference in Split on day 4 and day 10 (1-based, so index 3 and 9)
-    s.add(day_to_city[3] == city_map['Split'])
-    s.add(day_to_city[9] == city_map['Split'])
-    
-    # Check if the problem is satisfiable
+
+    # Check if the solver can find a solution
     if s.check() == sat:
         model = s.model()
         itinerary = []
-        for i in range(days):
-            city_idx = model.evaluate(day_to_city[i]).as_long()
-            city = city_inv_map[city_idx]
-            itinerary.append({"day": i + 1, "place": city})
+        for i in range(num_days):
+            city_idx = model.evaluate(day[i]).as_long()
+            itinerary.append({"day": i+1, "place": int_to_city[city_idx]})
         
-        # Verify transitions are via direct flights
-        for i in range(days - 1):
-            current_city = itinerary[i]['place']
-            next_city = itinerary[i + 1]['place']
-            if current_city != next_city:
-                assert next_city in direct_flights[current_city], f"No direct flight from {current_city} to {next_city}"
-        
-        # Verify day counts
-        day_counts = {city: 0 for city in cities}
+        # Verify the counts
+        counts = {city: 0 for city in city_list}
         for entry in itinerary:
-            day_counts[entry['place']] += 1
-        assert day_counts['Hamburg'] == 2
-        assert day_counts['Zurich'] == 3
-        assert day_counts['Helsinki'] == 2
-        assert day_counts['Bucharest'] == 2
-        assert day_counts['Split'] == 7
+            counts[entry['place']] += 1
+        assert counts['Zurich'] == 3
+        assert counts['Split'] == 7
+        assert counts['Helsinki'] == 2
+        assert counts['Hamburg'] == 2
+        assert counts['Bucharest'] == 2
         
-        # Verify wedding and conference days
-        zurich_days = [entry['day'] for entry in itinerary if entry['place'] == 'Zurich']
-        assert any(1 <= day <= 3 for day in zurich_days), "Wedding in Zurich not between day 1-3"
-        split_days = [entry['day'] for entry in itinerary if entry['place'] == 'Split']
-        assert 4 in split_days and 10 in split_days, "Conference days in Split not met"
+        # Verify the Zurich wedding days (at least one day between 1-3)
+        zurich_in_first_three = sum(1 for entry in itinerary[:3] if entry['place'] == 'Zurich')
+        assert zurich_in_first_three >= 1
+        
+        # Verify Split conference days (days 4 and 10)
+        assert itinerary[3]['place'] == 'Split'
+        assert itinerary[9]['place'] == 'Split'
+        
+        # Verify flight connections
+        for i in range(num_days - 1):
+            current = itinerary[i]['place']
+            next_place = itinerary[i+1]['place']
+            if current != next_place:
+                assert next_place in corrected_flights[current], f"No flight from {current} to {next_place} on day {i+1}"
         
         return {"itinerary": itinerary}
     else:
         return {"error": "No valid itinerary found"}
 
-# Solve and print the itinerary
+# Execute the function and print the result
 result = solve_itinerary()
-print(result)
+import json
+print(json.dumps(result, indent=2))

@@ -7,86 +7,86 @@ def solve_itinerary():
     # Days are 1 to 7
     days = range(1, 8)
     
-    # Cities: Riga (R), Amsterdam (A), Mykonos (M)
-    R, A, M = 'Riga', 'Amsterdam', 'Mykonos'
-    cities = [R, A, M]
+    # Possible cities
+    cities = ['Riga', 'Amsterdam', 'Mykonos']
+    city_map = {'Riga': 0, 'Amsterdam': 1, 'Mykonos': 2}
+    reverse_map = {0: 'Riga', 1: 'Amsterdam', 2: 'Mykonos'}
     
-    # Variables: for each day, which city is visited (can be two cities if it's a flight day)
-    # We'll use a list of lists, where each inner list represents the cities for that day.
-    # For Z3, we'll create a dictionary of Boolean variables indicating presence in each city per day.
-    presence = {}
+    # For each day, we'll have a variable indicating the city at the start and end of the day
+    city_start = [Int(f'city_start_{day}') for day in days]
+    city_end = [Int(f'city_end_{day}') for day in days]
+    
+    # Add constraints that city_start and city_end are within 0-2
     for day in days:
-        for city in cities:
-            presence[(day, city)] = Bool(f"Day_{day}_{city}")
+        s.add(And(city_start[day-1] >= 0, city_start[day-1] <= 2))
+        s.add(And(city_end[day-1] >= 0, city_end[day-1] <= 2))
     
-    # Constraints:
-    # 1. Each day is in 1 or 2 cities.
+    # Flight constraints: flights can only be between connected cities
     for day in days:
-        # At least one city per day
-        s.add(Or(presence[(day, R)], presence[(day, A)], presence[(day, M)]))
-        # At most two cities per day
-        s.add(Not(And(presence[(day, R)], presence[(day, A)], presence[(day, M)])))
+        start = city_start[day-1]
+        end = city_end[day-1]
+        # If start != end, then the cities must be connected
+        s.add(Implies(start != end, 
+                      Or(
+                          And((start == city_map['Amsterdam']), (end == city_map['Mykonos'])),
+                          And((start == city_map['Mykonos']), (end == city_map['Amsterdam'])),
+                          And((start == city_map['Riga']), (end == city_map['Amsterdam'])),
+                          And((start == city_map['Amsterdam']), (end == city_map['Riga']))
+                      )))
     
-    # 2. Flight constraints: if a day is in two cities, they must have a direct flight.
-    for day in days:
-        # R and A have a direct flight
-        s.add(Implies(
-            And(presence[(day, R)], presence[(day, A)]),
-            True
-        ))
-        # A and M have a direct flight
-        s.add(Implies(
-            And(presence[(day, A)], presence[(day, M)]),
-            True
-        ))
-        # R and M do not have a direct flight
-        s.add(Implies(
-            And(presence[(day, R)], presence[(day, M)]),
-            False
-        ))
+    # Continuity between days: city_end of previous day must equal city_start of next day
+    for day in range(1, len(days)):
+        s.add(city_end[day-1] == city_start[day])
     
-    # 3. Total days per city:
-    # Riga: 2 days
-    s.add(Sum([If(presence[(day, R)], 1, 0) for day in days]) == 2)
+    # Day 1 starts in Riga (since you visit relatives in Riga between day 1 and day 2)
+    s.add(city_start[0] == city_map['Riga'])
+    # Day 2 must also be in Riga (since you spend 2 days in Riga, including day 1 and day 2)
+    s.add(city_start[1] == city_map['Riga'])
+    s.add(city_end[1] == city_map['Riga'])  # No flight on day 2
+    
+    # Total days per city:
+    # For each city, count the number of days where city_start or city_end is that city.
+    # But flight days are counted for both cities.
+    
+    # Riga: 2 days (days 1 and 2)
+    # So, Riga's days are day 1 and day 2.
+    # So city_start[0] and city_end[0] are Riga (day 1 is fully in Riga)
+    # city_start[1] and city_end[1] are Riga (day 2 is fully in Riga)
+    # So Riga's total is 2 days.
+    
     # Amsterdam: 2 days
-    s.add(Sum([If(presence[(day, A)], 1, 0) for day in days]) == 2)
+    amsterdam_days = []
+    for day in days:
+        start = city_start[day-1]
+        end = city_end[day-1]
+        amsterdam_days.append(If(Or(start == city_map['Amsterdam'], end == city_map['Amsterdam']), 1, 0))
+    s.add(sum(amsterdam_days) == 2)
+    
     # Mykonos: 5 days
-    s.add(Sum([If(presence[(day, M)], 1, 0) for day in days]) == 5)
-    
-    # 4. Day 1 is in Riga.
-    s.add(presence[(1, R)])
-    s.add(Not(presence[(1, A)]))
-    s.add(Not(presence[(1, M)]))
-    
-    # 5. Day 2 is in Riga.
-    s.add(presence[(2, R)])
-    s.add(Not(presence[(2, A)]))
-    s.add(Not(presence[(2, M)]))
+    mykonos_days = []
+    for day in days:
+        start = city_start[day-1]
+        end = city_end[day-1]
+        mykonos_days.append(If(Or(start == city_map['Mykonos'], end == city_map['Mykonos']), 1, 0))
+    s.add(sum(mykonos_days) == 5)
     
     # Check if the problem is satisfiable
     if s.check() == sat:
         m = s.model()
         itinerary = []
         for day in days:
-            current_day = []
-            for city in cities:
-                if is_true(m.evaluate(presence[(day, city)])):
-                    current_day.append(city)
-            itinerary.append({"day": day, "place": current_day})
-        
-        # Format the output as JSON
-        output = {"itinerary": []}
-        for entry in itinerary:
-            day = entry["day"]
-            places = entry["place"]
-            for place in places:
-                output["itinerary"].append({"day": day, "place": place})
-        
-        return output
+            start_city = m.evaluate(city_start[day-1])
+            end_city = m.evaluate(city_end[day-1])
+            start_city_name = reverse_map[start_city.as_long()]
+            end_city_name = reverse_map[end_city.as_long()]
+            if start_city_name == end_city_name:
+                itinerary.append({'day': day, 'place': start_city_name})
+            else:
+                itinerary.append({'day': day, 'place': f"{start_city_name}/{end_city_name}"})
+        return {'itinerary': itinerary}
     else:
-        return {"error": "No valid itinerary found"}
+        return {'error': 'No valid itinerary found'}
 
-# Run the solver and print the result
 result = solve_itinerary()
 import json
 print(json.dumps(result, indent=2))

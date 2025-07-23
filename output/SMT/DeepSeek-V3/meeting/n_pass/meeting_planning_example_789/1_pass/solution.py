@@ -1,63 +1,34 @@
 from z3 import *
 import json
 
-def solve_scheduling_problem():
+def solve_scheduling():
     # Initialize Z3 solver
-    solver = Optimize()
+    s = Solver()
 
-    # Friends and their details
-    friends = {
-        "Betty": {
-            "location": "Russian Hill",
-            "available_start": 7 * 60,  # 7:00 AM in minutes
-            "available_end": 16 * 60 + 45,  # 4:45 PM in minutes
-            "min_duration": 105,
-        },
-        "Melissa": {
-            "location": "Alamo Square",
-            "available_start": 9 * 60 + 30,  # 9:30 AM in minutes
-            "available_end": 17 * 60 + 15,  # 5:15 PM in minutes
-            "min_duration": 105,
-        },
-        "Joshua": {
-            "location": "Haight-Ashbury",
-            "available_start": 12 * 60 + 15,  # 12:15 PM in minutes
-            "available_end": 19 * 60,  # 7:00 PM in minutes
-            "min_duration": 90,
-        },
-        "Jeffrey": {
-            "location": "Marina District",
-            "available_start": 12 * 60 + 15,  # 12:15 PM in minutes
-            "available_end": 18 * 60,  # 6:00 PM in minutes
-            "min_duration": 45,
-        },
-        "James": {
-            "location": "Bayview",
-            "available_start": 7 * 60 + 30,  # 7:30 AM in minutes
-            "available_end": 20 * 60,  # 8:00 PM in minutes
-            "min_duration": 90,
-        },
-        "Anthony": {
-            "location": "Chinatown",
-            "available_start": 11 * 60 + 45,  # 11:45 AM in minutes
-            "available_end": 13 * 60 + 30,  # 1:30 PM in minutes
-            "min_duration": 75,
-        },
-        "Timothy": {
-            "location": "Presidio",
-            "available_start": 12 * 60 + 30,  # 12:30 PM in minutes
-            "available_end": 14 * 60 + 45,  # 2:45 PM in minutes
-            "min_duration": 90,
-        },
-        "Emily": {
-            "location": "Sunset District",
-            "available_start": 19 * 60 + 30,  # 7:30 PM in minutes
-            "available_end": 21 * 60 + 30,  # 9:30 PM in minutes
-            "min_duration": 120,
-        },
-    }
+    # Define the friends and their details
+    friends = [
+        {"name": "Betty", "location": "Russian Hill", "available_start": "07:00", "available_end": "16:45", "min_duration": 105},
+        {"name": "Melissa", "location": "Alamo Square", "available_start": "09:30", "available_end": "17:15", "min_duration": 105},
+        {"name": "Joshua", "location": "Haight-Ashbury", "available_start": "12:15", "available_end": "19:00", "min_duration": 90},
+        {"name": "Jeffrey", "location": "Marina District", "available_start": "12:15", "available_end": "18:00", "min_duration": 45},
+        {"name": "James", "location": "Bayview", "available_start": "07:30", "available_end": "20:00", "min_duration": 90},
+        {"name": "Anthony", "location": "Chinatown", "available_start": "11:45", "available_end": "13:30", "min_duration": 75},
+        {"name": "Timothy", "location": "Presidio", "available_start": "12:30", "available_end": "14:45", "min_duration": 90},
+        {"name": "Emily", "location": "Sunset District", "available_start": "19:30", "available_end": "21:30", "min_duration": 120}
+    ]
 
-    # Travel times dictionary (from_location, to_location) -> minutes
+    # Convert time strings to minutes since 9:00 AM (540 minutes)
+    def time_to_minutes(time_str):
+        hh, mm = map(int, time_str.split(':'))
+        return hh * 60 + mm
+
+    # Convert minutes back to time string
+    def minutes_to_time(minutes):
+        hh = minutes // 60
+        mm = minutes % 60
+        return f"{hh:02d}:{mm:02d}"
+
+    # Define travel times (in minutes)
     travel_times = {
         ("Union Square", "Russian Hill"): 13,
         ("Union Square", "Alamo Square"): 15,
@@ -122,7 +93,7 @@ def solve_scheduling_problem():
         ("Presidio", "Marina District"): 11,
         ("Presidio", "Bayview"): 31,
         ("Presidio", "Chinatown"): 21,
-        ("Presidio", "Sunset District"): 15,
+        ("Presidio", "Sunset District"): 16,
         ("Sunset District", "Union Square"): 30,
         ("Sunset District", "Russian Hill"): 24,
         ("Sunset District", "Alamo Square"): 17,
@@ -130,103 +101,79 @@ def solve_scheduling_problem():
         ("Sunset District", "Marina District"): 21,
         ("Sunset District", "Bayview"): 22,
         ("Sunset District", "Chinatown"): 30,
-        ("Sunset District", "Presidio"): 16,
+        ("Sunset District", "Presidio"): 16
     }
 
-    # Variables for each friend's meeting start and end times (in minutes since 9:00 AM)
-    start_vars = {}
-    end_vars = {}
-    meet_vars = {}  # Boolean indicating whether the friend is met
-    for name in friends:
-        start_vars[name] = Int(f"start_{name}")
-        end_vars[name] = Int(f"end_{name}")
-        meet_vars[name] = Bool(f"meet_{name}")
+    # Define variables for each meeting's start and end times
+    meetings = {}
+    for friend in friends:
+        name = friend["name"]
+        meetings[name] = {
+            "start": Int(f"start_{name}"),
+            "end": Int(f"end_{name}"),
+            "location": friend["location"],
+            "available_start": time_to_minutes(friend["available_start"]),
+            "available_end": time_to_minutes(friend["available_end"]),
+            "min_duration": friend["min_duration"]
+        }
 
-    # Current location starts at Union Square at 9:00 AM (540 minutes)
-    current_time = 540  # 9:00 AM in minutes
-    current_location = "Union Square"
+    # Add constraints for each meeting
+    for name, meeting in meetings.items():
+        s.add(meeting["start"] >= meeting["available_start"])
+        s.add(meeting["end"] <= meeting["available_end"])
+        s.add(meeting["end"] - meeting["start"] >= meeting["min_duration"])
 
-    # Constraints for each friend
-    for name in friends:
-        friend = friends[name]
-        start = start_vars[name]
-        end = end_vars[name]
-        meet = meet_vars[name]
+    # Add constraints for travel times between meetings
+    for i in range(len(friends)):
+        for j in range(i + 1, len(friends)):
+            name1 = friends[i]["name"]
+            name2 = friends[j]["name"]
+            loc1 = meetings[name1]["location"]
+            loc2 = meetings[name2]["location"]
+            travel_time = travel_times.get((loc1, loc2), travel_times.get((loc2, loc1), 0))
+            
+            # Ensure no overlap and travel time is accounted for
+            s.add(Or(
+                meetings[name1]["end"] + travel_time <= meetings[name2]["start"],
+                meetings[name2]["end"] + travel_time <= meetings[name1]["start"]
+            ))
 
-        # If meeting the friend, enforce constraints
-        solver.add(Implies(meet, start >= friend["available_start"]))
-        solver.add(Implies(meet, end <= friend["available_end"]))
-        solver.add(Implies(meet, end == start + friend["min_duration"]))
+    # Starting point: Union Square at 9:00 AM (540 minutes)
+    s.add(meetings["Betty"]["start"] >= 540 + travel_times[("Union Square", "Russian Hill")])
+    s.add(meetings["Melissa"]["start"] >= 540 + travel_times[("Union Square", "Alamo Square")])
+    s.add(meetings["Joshua"]["start"] >= 540 + travel_times[("Union Square", "Haight-Ashbury")])
+    s.add(meetings["Jeffrey"]["start"] >= 540 + travel_times[("Union Square", "Marina District")])
+    s.add(meetings["James"]["start"] >= 540 + travel_times[("Union Square", "Bayview")])
+    s.add(meetings["Anthony"]["start"] >= 540 + travel_times[("Union Square", "Chinatown")])
+    s.add(meetings["Timothy"]["start"] >= 540 + travel_times[("Union Square", "Presidio")])
+    s.add(meetings["Emily"]["start"] >= 540 + travel_times[("Union Square", "Sunset District")])
 
-        # Initially, no meeting is scheduled unless proven otherwise
-        solver.add(Implies(Not(meet), start == -1))
-        solver.add(Implies(Not(meet), end == -1))
+    # Optimize to maximize the number of meetings
+    # We'll prioritize meetings with higher min_duration
+    # This is a heuristic; in practice, you might need a more sophisticated approach
+    s.push()
+    s.check()
+    model = s.model()
 
-    # Sequence constraints: order of meetings and travel times
-    # We need to model the sequence of meetings. This is complex, so we'll use a simplified approach:
-    # Assume meetings are in some order, and travel times are respected between consecutive meetings.
-    # However, this is a simplified approach and may not cover all possibilities.
+    # Extract the schedule
+    itinerary = []
+    for name, meeting in meetings.items():
+        start = model[meeting["start"]].as_long()
+        end = model[meeting["end"]].as_long()
+        if start >= 0 and end >= 0:
+            itinerary.append({
+                "action": "meet",
+                "person": name,
+                "start_time": minutes_to_time(start),
+                "end_time": minutes_to_time(end)
+            })
 
-    # To simplify, we'll assume that the order is fixed based on some heuristic (e.g., earliest available first).
-    # Alternatively, we can use a more complex model with auxiliary variables for order, but that's beyond this scope.
+    # Sort the itinerary by start time
+    itinerary.sort(key=lambda x: time_to_minutes(x["start_time"]))
 
-    # Instead, we'll prioritize meeting friends with tighter time windows first (Anthony, Timothy, etc.)
-    # and then others.
-
-    # For now, let's prioritize Anthony, Timothy, Melissa, Betty, Joshua, Jeffrey, James, Emily.
-    # This is a heuristic and may not be optimal.
-
-    # We'll model the sequence as a list where each meeting must start after the previous one's end plus travel time.
-    # This is a simplification, but it's manageable.
-
-    # Let's define a list of friends in a tentative order.
-    tentative_order = ["Anthony", "Timothy", "Melissa", "Betty", "Joshua", "Jeffrey", "James", "Emily"]
-
-    # For each consecutive pair in the tentative order, if both are met, then the start of the next >= end of previous + travel time.
-    for i in range(len(tentative_order) - 1):
-        name1 = tentative_order[i]
-        name2 = tentative_order[i + 1]
-        loc1 = friends[name1]["location"]
-        loc2 = friends[name2]["location"]
-        travel_time = travel_times.get((loc1, loc2), 0)
-
-        solver.add(Implies(And(meet_vars[name1], meet_vars[name2]),
-                          start_vars[name2] >= end_vars[name1] + travel_time))
-
-    # Also, the first meeting must start after current_time + travel time from Union Square.
-    for name in tentative_order:
-        loc = friends[name]["location"]
-        travel_time = travel_times.get((current_location, loc), 0)
-        solver.add(Implies(meet_vars[name], start_vars[name] >= current_time + travel_time))
-
-    # Maximize the number of friends met
-    solver.maximize(Sum([If(meet_vars[name], 1, 0) for name in friends]))
-
-    # Check if the solver can find a solution
-    if solver.check() == sat:
-        model = solver.model()
-        itinerary = []
-        for name in friends:
-            if model.evaluate(meet_vars[name]):
-                start = model.evaluate(start_vars[name]).as_long()
-                end = model.evaluate(end_vars[name]).as_long()
-                start_hh = start // 60
-                start_mm = start % 60
-                end_hh = end // 60
-                end_mm = end % 60
-                itinerary.append({
-                    "action": "meet",
-                    "person": name,
-                    "start_time": f"{start_hh:02d}:{start_mm:02d}",
-                    "end_time": f"{end_hh:02d}:{end_mm:02d}",
-                })
-        # Sort itinerary by start time
-        itinerary.sort(key=lambda x: x["start_time"])
-        return {"itinerary": itinerary}
-    else:
-        return {"itinerary": []}
+    return {"itinerary": itinerary}
 
 # Solve the problem and print the solution
-solution = solve_scheduling_problem()
+solution = solve_scheduling()
 print("SOLUTION:")
 print(json.dumps(solution, indent=2))

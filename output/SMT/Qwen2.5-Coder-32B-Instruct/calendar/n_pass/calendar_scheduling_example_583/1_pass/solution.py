@@ -32,7 +32,8 @@ anthony_busy_times = [
     (16 * 60 + 30, 17 * 60)  # 16:30 to 17:00
 ]
 
-# Add constraints for the meeting to be within work hours
+# Constraints for the meeting
+solver.add(day == 1)  # Monday
 solver.add(start_time >= work_start)
 solver.add(end_time <= work_end)
 solver.add(end_time == start_time + meeting_duration)

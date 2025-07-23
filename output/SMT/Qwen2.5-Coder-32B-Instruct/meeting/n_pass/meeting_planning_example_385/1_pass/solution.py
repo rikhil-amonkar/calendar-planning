@@ -8,7 +8,7 @@ travel_times = {
     ("Nob Hill", "Fisherman's Wharf"): 11,
     ("Nob Hill", "Pacific Heights"): 8,
     ("Presidio", "Nob Hill"): 18,
-    ("Presidio", "North Beach"): 18,
+    ("Presidio", "North Beach"): 17,
     ("Presidio", "Fisherman's Wharf"): 19,
     ("Presidio", "Pacific Heights"): 11,
     ("North Beach", "Nob Hill"): 7,
@@ -37,8 +37,8 @@ friends = {
 solver = Solver()
 
 # Define the variables
-current_location = String("current_location")
-current_time = Int("current_time")
+current_location = String('current_location')
+current_time = Int('current_time')
 meetings = {name: Bool(name) for name in friends}
 
 # Initial conditions
@@ -62,35 +62,32 @@ for name, details in friends.items():
     for prev_location in locations:
         if prev_location != location:
             travel_time = travel_times[(prev_location, location)]
-            solver.add(Implies(meet, current_time >= travel_time + 9*60))
+            solver.add(Implies(meet, current_time - travel_time >= 9*60))
+            solver.add(Implies(meet, current_time + min_duration + travel_time <= 24*60))
 
-# Define the constraints for travel times
-for i, (name1, details1) in enumerate(friends.items()):
-    for name2, details2 in list(friends.items())[i+1:]:
-        meet1 = meetings[name1]
-        meet2 = meetings[name2]
-        location1 = details1["location"]
-        location2 = details2["location"]
-        travel_time = travel_times[(location1, location2)]
-        
-        # If we meet both friends, we must have enough time to travel between them
-        solver.add(Implies(And(meet1, meet2), current_time + details1["min_duration"] + travel_time <= details2["end"]))
+# Define the objective: maximize the number of meetings
+objective = Sum([If(meetings[name], 1, 0) for name in friends])
 
 # Solve the problem
+solver.maximize(objective)
 if solver.check() == sat:
     model = solver.model()
     itinerary = []
     for name, meet in meetings.items():
         if model.evaluate(meet):
             details = friends[name]
-            start_time = model.evaluate(current_time).as_long() + travel_times[(model.evaluate(current_location).as_string(), details["location"])]
-            end_time = start_time + details["min_duration"]
-            itinerary.append({
-                "action": "meet",
-                "person": name,
-                "start_time": f"{start_time//60:02}:{start_time%60:02}",
-                "end_time": f"{end_time//60:02}:{end_time%60:02}"
-            })
+            location = details["location"]
+            start = details["start"]
+            min_duration = details["min_duration"]
+            # Calculate the actual start time considering travel time
+            for prev_location in locations:
+                if prev_location != location:
+                    travel_time = travel_times[(prev_location, location)]
+                    if model.evaluate(current_location == prev_location):
+                        start_time = start - travel_time
+                        break
+            end_time = start_time + min_duration
+            itinerary.append({"action": "meet", "person": name, "start_time": f"{start_time//60:02}:{start_time%60:02}", "end_time": f"{end_time//60:02}:{end_time%60:02}"})
     itinerary.sort(key=lambda x: x["start_time"])
     print({"itinerary": itinerary})
 else:

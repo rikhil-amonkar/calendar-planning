@@ -3,48 +3,49 @@ from z3 import *
 # Define the time slots in 30-minute increments from 9:00 to 17:00
 time_slots = [900, 930, 1000, 1030, 1100, 1130, 1200, 1230, 1300, 1330, 1400, 1430, 1500, 1530, 1600, 1630]
 
-# Define the participants
-participants = ['Tyler', 'Kelly', 'Stephanie', 'Hannah', 'Joe', 'Diana', 'Deborah']
-
-# Define the constraints for each participant
-constraints = {
-    'Stephanie': [(1100, 1130), (1430, 1500)],
-    'Joe': [(900, 930), (1000, 1200), (1230, 1300), (1400, 1700)],
-    'Diana': [(900, 1030), (1130, 1200), (1300, 1400), (1430, 1530), (1600, 1700)],
-    'Deborah': [(900, 1000), (1030, 1200), (1230, 1300), (1330, 1400), (1430, 1530), (1600, 1630)]
-}
-
-# Create a Z3 solver
+# Create a Z3 solver instance
 solver = Solver()
 
-# Define a variable for the start time of the meeting
-start_time = Int('start_time')
+# Define a variable for the meeting start time
+meeting_start = Int('meeting_start')
 
-# Add constraints for the meeting duration (30 minutes) and the work hours (9:00 to 17:00)
-solver.add(start_time >= 900)
-solver.add(start_time <= 1630)  # 1630 to allow for a 30-minute meeting ending at 17:00
+# Define the constraints for each participant
+constraints = [
+    # Tyler is free the entire day
+    # Kelly has no meetings the whole day
+    # Stephanie has blocked their calendar on Monday during 11:00 to 11:30, 14:30 to 15:00
+    And(meeting_start != 1100, meeting_start != 1430),
+    # Hannah has no meetings the whole day
+    # Joe has blocked their calendar on Monday during 9:00 to 9:30, 10:00 to 12:00, 12:30 to 13:00, 14:00 to 17:00
+    And(meeting_start != 900, meeting_start != 1000, meeting_start != 1200, meeting_start != 1400),
+    # Diana has meetings on Monday during 9:00 to 10:30, 11:30 to 12:00, 13:00 to 14:00, 14:30 to 15:30, 16:00 to 17:00
+    And(meeting_start != 900, meeting_start != 1000, meeting_start != 1130, meeting_start != 1300, meeting_start != 1430, meeting_start != 1600),
+    # Deborah is busy on Monday during 9:00 to 10:00, 10:30 to 12:00, 12:30 to 13:00, 13:30 to 14:00, 14:30 to 15:30, 16:00 to 16:30
+    And(meeting_start != 900, meeting_start != 1000, meeting_start != 1100, meeting_start != 1200, meeting_start != 1300, meeting_start != 1330, meeting_start != 1400, meeting_start != 1430, meeting_start != 1500, meeting_start != 1600)
+]
 
-# Add constraints for each participant's availability
-for participant in participants:
-    if participant in constraints:
-        for busy_start, busy_end in constraints[participant]:
-            solver.add(Or(start_time < busy_start, start_time + 30 > busy_end))
+# Add constraints to the solver
+for constraint in constraints:
+    solver.add(constraint)
+
+# Define the meeting duration (30 minutes)
+meeting_duration = 30
+
+# Add constraint that the meeting must start and end within the work hours and be 30 minutes long
+solver.add(And(meeting_start >= 900, meeting_start <= 1630))
+
+# Ensure the end time is within the work hours
+solver.add(meeting_start + meeting_duration <= 1700)
+
+# Ensure the meeting start time is one of the valid time slots
+valid_time_slots = Or([meeting_start == slot for slot in time_slots])
+solver.add(valid_time_slots)
 
 # Check if there is a solution
 if solver.check() == sat:
     model = solver.model()
-    start = model[start_time].as_long()
-    end = start + 30
-    start_hour = start // 100
-    start_minute = start % 100
-    end_hour = end // 100
-    end_minute = end % 100
-    # Ensure minutes are within 0-59
-    if end_minute >= 60:
-        end_hour += 1
-        end_minute -= 60
-    start_time_str = f"{start_hour:02}:{start_minute:02}"
-    end_time_str = f"{end_hour:02}:{end_minute:02}"
-    print(f"SOLUTION:\nDay: Monday\nStart Time: {start_time_str}\nEnd Time: {end_time_str}")
+    start_time = model[meeting_start].as_long()
+    end_time = start_time + meeting_duration
+    print(f"SOLUTION:\nDay: Monday\nStart Time: {start_time // 100:02}:{start_time % 100:02}\nEnd Time: {end_time // 100:02}:{end_time % 100:02}")
 else:
     print("No solution found")

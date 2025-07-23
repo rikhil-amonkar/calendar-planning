@@ -29,49 +29,49 @@ friends = {
 # Create a solver
 solver = Solver()
 
-# Define the start time of the day in minutes (9:00 AM)
-start_time = 9 * 60
+# Define the start time for each friend meeting
+start_times = {name: Int(f"start_{name}") for name in friends}
 
-# Define the variables for the start and end times of each meeting
-meeting_start = {name: Int(f"start_{name}") for name in friends}
-meeting_end = {name: Int(f"end_{name}") for name in friends}
+# Define the end time for each friend meeting
+end_times = {name: Int(f"end_{name}") for name in friends}
+
+# Define the current location
+current_location = "Golden Gate Park"
+current_time = 9*60  # 9:00 AM in minutes
 
 # Add constraints for each friend
 for name, details in friends.items():
-    # Meeting must start after the person is available
-    solver.add(meeting_start[name] >= details["start"])
-    # Meeting must end before the person is unavailable
-    solver.add(meeting_end[name] <= details["end"])
+    # Meeting must start after the current time and before the friend's availability ends
+    solver.add(start_times[name] >= current_time)
+    solver.add(start_times[name] >= details["start"])
+    solver.add(end_times[name] <= details["end"])
+    
     # Meeting must last at least the minimum duration
-    solver.add(meeting_end[name] - meeting_start[name] >= details["min_duration"])
-
-# Define the current location and time
-current_location = "Golden Gate Park"
-current_time = start_time
-
-# Add constraints for travel times
-for name, details in friends.items():
-    # Travel time from current location to friend's location
+    solver.add(end_times[name] - start_times[name] >= details["min_duration"])
+    
+    # Travel time to the friend's location
     travel_time = travel_times[(current_location, details["location"])]
-    # Meeting must start after arriving at the location
-    solver.add(meeting_start[name] >= current_time + travel_time)
-    # Update current location and time after meeting
+    solver.add(start_times[name] >= current_time + travel_time)
+    
+    # Update current time and location
+    current_time = end_times[name]
     current_location = details["location"]
-    current_time = meeting_end[name]
 
-# Check if the constraints are satisfiable
+# Define the objective: maximize the number of meetings
+# Since we have constraints on meeting durations, we just need to find a feasible schedule
 if solver.check() == sat:
     model = solver.model()
     itinerary = []
-    for name, details in friends.items():
-        start = model[meeting_start[name]].as_long()
-        end = model[meeting_end[name]].as_long()
+    for name in friends:
+        start = model[start_times[name]].as_long()
+        end = model[end_times[name]].as_long()
         itinerary.append({
             "action": "meet",
             "person": name,
-            "start_time": f"{start // 60:02}:{start % 60:02}",
-            "end_time": f"{end // 60:02}:{end % 60:02}"
+            "start_time": f"{start//60:02}:{start%60:02}",
+            "end_time": f"{end//60:02}:{end%60:02}"
         })
+    itinerary.sort(key=lambda x: x["start_time"])
     print({"itinerary": itinerary})
 else:
-    print("No solution found")
+    print("No feasible schedule found")

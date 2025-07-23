@@ -1,4 +1,5 @@
 from z3 import *
+import json
 
 # Define the cities and their respective stay durations
 cities = {
@@ -46,42 +47,42 @@ solver.add(start_days["Paris"] + 4 >= 11)     # Paris: day 11-15
 solver.add(start_days["Paris"] <= 11)
 
 # Add constraints for transitions between cities
-# Ensure that if you transition from city1 to city2, the start day of city2 is the end day of city1
 for (city1, city2) in flights:
-    solver.add(Or(start_days[city2] == start_days[city1] + cities[city1],
-                  start_days[city1] == start_days[city2] + cities[city2]))
+    # If you start in city1 and end in city2, the start day of city2 must be the end day of city1
+    # This means the start day of city2 must be the start day of city1 plus the duration of city1
+    solver.add(Or(start_days[city2] >= start_days[city1] + cities[city1],
+                  start_days[city1] >= start_days[city2] + cities[city2]))
 
-# Ensure that the days in each city are unique and do not overlap incorrectly
-# We need to ensure that the transitions are valid and that the days are contiguous
-for i, (city1, duration1) in enumerate(cities.items()):
-    for j, (city2, duration2) in enumerate(cities.items()):
-        if i < j:
-            # Ensure that the days in city1 and city2 do not overlap
-            solver.add(Or(start_days[city1] + duration1 <= start_days[city2],
-                          start_days[city2] + duration2 <= start_days[city1]))
+# Ensure that the total duration of the stay in all cities is exactly 30 days
+# This means that the last day of the last city must be 30
+last_day = Int("last_day")
+solver.add(last_day == 30)
 
-# Ensure that the total duration is exactly 30 days
-# We need to ensure that the itinerary covers all 30 days without any gaps or overlaps
-# We will use a list of boolean variables to represent each day
-days = [Bool(f"day_{d}") for d in range(1, 31)]
+# Add constraints to ensure that the last day of the last city is covered
+for city, duration in cities.items():
+    solver.add(last_day >= start_days[city] + duration - 1)
 
-# Add constraints to ensure that each day is covered by exactly one city
-for d in range(1, 31):
-    city_clauses = []
-    for city, duration in cities.items():
-        city_clauses.append(And(start_days[city] <= d, start_days[city] + duration > d))
-    solver.add(Or(city_clauses))
+# Ensure that the itinerary covers exactly 30 days
+# We need to ensure that there are no gaps and the total duration is exactly 30 days
+# We will use a list of boolean variables to track which days are covered
+covered_days = [Bool(f"day_{day}") for day in range(1, 31)]
+
+# Add constraints to ensure each day is covered by exactly one city
+for day in range(1, 31):
+    day_covered = Or([And(start_days[city] <= day, start_days[city] + cities[city] > day) for city in cities])
+    solver.add(day_covered)
 
 # Check if the constraints are satisfiable
 if solver.check() == sat:
     model = solver.model()
     itinerary = []
-    for city in cities:
-        start_day = model[start_days[city]].as_long()
-        for day in range(start_day, start_day + cities[city]):
-            itinerary.append((day, city))
-    itinerary.sort(key=lambda x: x[0])
-    itinerary_dict = {"itinerary": [{"day": day, "place": place} for day, place in itinerary]}
-    print(itinerary_dict)
+    for day in range(1, 31):
+        for city in cities:
+            start_day = model[start_days[city]].as_long()
+            end_day = start_day + cities[city] - 1
+            if start_day <= day <= end_day:
+                itinerary.append({"day": day, "place": city})
+                break
+    print(json.dumps({"itinerary": itinerary}, indent=2))
 else:
     print("No solution found")

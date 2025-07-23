@@ -1,7 +1,9 @@
 from z3 import *
 
-# Define the locations and their travel times
+# Define the locations
 locations = ["The Castro", "Bayview", "Pacific Heights", "Alamo Square", "Fisherman's Wharf", "Golden Gate Park"]
+
+# Define the travel times in minutes
 travel_times = {
     ("The Castro", "Bayview"): 19,
     ("The Castro", "Pacific Heights"): 16,
@@ -37,61 +39,56 @@ travel_times = {
 
 # Define the friends and their availability
 friends = {
-    "Rebecca": {"location": "Bayview", "start": 9*60, "end": 12*60 + 45},
-    "Amanda": {"location": "Pacific Heights", "start": 18*60 + 30, "end": 21*60 + 45},
-    "James": {"location": "Alamo Square", "start": 9*60 + 45, "end": 21*60 + 15},
-    "Sarah": {"location": "Fisherman's Wharf", "start": 8*60, "end": 21*60 + 30},
-    "Melissa": {"location": "Golden Gate Park", "start": 9*60, "end": 18*60 + 45},
+    "Rebecca": {"location": "Bayview", "start": 9*60, "end": 12*60 + 45, "min_duration": 90},
+    "Amanda": {"location": "Pacific Heights", "start": 18*60 + 30, "end": 21*60 + 45, "min_duration": 90},
+    "James": {"location": "Alamo Square", "start": 9*60 + 45, "end": 21*60 + 15, "min_duration": 90},
+    "Sarah": {"location": "Fisherman's Wharf", "start": 8*60, "end": 21*30, "min_duration": 90},
+    "Melissa": {"location": "Golden Gate Park", "start": 9*60, "end": 18*45, "min_duration": 90},
 }
 
-# Create a solver instance
+# Create a solver
 solver = Solver()
 
-# Define variables for the start and end times of each meeting
-meeting_times = {name: (Int(f"{name}_start"), Int(f"{name}_end")) for name in friends}
+# Define the start time for each friend meeting
+meeting_starts = {name: Int(f"start_{name}") for name in friends}
+
+# Define the location at each time step
+current_location = Int("current_location")
+
+# Initial location is The Castro at 9:00 AM
+solver.add(current_location == locations.index("The Castro"))
+solver.add(meeting_starts["Rebecca"] >= 9*60)
 
 # Add constraints for each friend
 for name, details in friends.items():
-    start, end = meeting_times[name]
+    start = meeting_starts[name]
+    end = start + details["min_duration"]
     solver.add(start >= details["start"])
     solver.add(end <= details["end"])
-    solver.add(end - start >= 90)  # Minimum 90 minutes meeting time
+    solver.add(current_location == locations.index(details["location"]))
 
-# Add constraints for travel times
-current_location = "The Castro"
-current_time = 9*60  # Start at 9:00 AM
+# Add travel time constraints
+for i in range(len(friends) - 1):
+    name1, name2 = list(friends.keys())[i], list(friends.keys())[i + 1]
+    start1, end1 = meeting_starts[name1], meeting_starts[name1] + friends[name1]["min_duration"]
+    start2, end2 = meeting_starts[name2], meeting_starts[name2] + friends[name2]["min_duration"]
+    travel_time = travel_times[(friends[name1]["location"], friends[name2]["location"])]
+    solver.add(end1 + travel_time <= start2)
 
-# Sort friends by their start time to try to meet them in order
-sorted_friends = sorted(friends.items(), key=lambda x: x[1]["start"])
-
-for i, (name, details) in enumerate(sorted_friends):
-    start, end = meeting_times[name]
-    if i == 0:
-        # First meeting, just need to travel from The Castro
-        solver.add(start >= current_time + travel_times[(current_location, details["location"])])
-    else:
-        # Subsequent meetings, need to travel from the previous meeting location
-        prev_name, prev_details = sorted_friends[i-1]
-        prev_start, prev_end = meeting_times[prev_name]
-        solver.add(start >= prev_end + travel_times[(prev_details["location"], details["location"])])
-
-    # Update current location and time
-    current_location = details["location"]
-    current_time = end
-
-# Check if the problem is solvable
+# Solve the problem
 if solver.check() == sat:
     model = solver.model()
     itinerary = []
-    for name, details in sorted_friends:
-        start = model[meeting_times[name][0]].as_long()
-        end = model[meeting_times[name][1]].as_long()
+    for name in friends.keys():
+        start_time = model[meeting_starts[name]].as_long()
+        end_time = start_time + friends[name]["min_duration"]
         itinerary.append({
             "action": "meet",
             "person": name,
-            "start_time": f"{start//60:02}:{start%60:02}",
-            "end_time": f"{end//60:02}:{end%60:02}"
+            "start_time": f"{start_time // 60:02}:{start_time % 60:02}",
+            "end_time": f"{end_time // 60:02}:{end_time % 60:02}"
         })
+    itinerary.sort(key=lambda x: x["start_time"])
     print({"itinerary": itinerary})
 else:
     print("No solution found")

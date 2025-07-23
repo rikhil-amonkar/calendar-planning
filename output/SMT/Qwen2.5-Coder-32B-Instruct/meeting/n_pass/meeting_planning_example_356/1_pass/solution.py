@@ -33,43 +33,63 @@ people = {
     "Kimberly": {"location": "Union Square", "start": 7.75, "end": 16.75, "min_duration": 0.5},
 }
 
-# Define the start time
-start_time = 9.0
+# Convert times to minutes for easier calculations
+def time_to_minutes(time):
+    hours, minutes = divmod(int(time * 100), 100)
+    return hours * 60 + minutes
 
-# Create a solver
+# Create a Z3 solver
 solver = Solver()
 
-# Define variables for the start time of each meeting
-meeting_times = {person: Real(f"start_{person}") for person in people}
+# Define variables for the start and end times of each meeting
+meeting_start = {person: Real(f"start_{person}") for person in people}
+meeting_end = {person: Real(f"end_{person}") for person in people}
 
-# Define the constraints
+# Define variables for the location at each meeting
+meeting_location = {person: String(f"location_{person}") for person in people}
+
+# Add constraints for each person
 for person, details in people.items():
     # Meeting must start after the person is available
-    solver.add(meeting_times[person] >= details["start"])
+    solver.add(meeting_start[person] >= time_to_minutes(details["start"]))
     # Meeting must end before the person is unavailable
-    solver.add(meeting_times[person] + details["min_duration"] <= details["end"])
+    solver.add(meeting_end[person] <= time_to_minutes(details["end"]))
+    # Meeting must last at least the minimum duration
+    solver.add(meeting_end[person] - meeting_start[person] >= time_to_minutes(details["min_duration"]))
+    # Meeting must be at the person's location
+    solver.add(meeting_location[person] == details["location"])
 
-# Define the travel constraints
-current_location = "Bayview"
-current_time = start_time
+# Define the start time at Bayview
+start_time = time_to_minutes(9.0)
 
-for person, details in people.items():
-    # Travel time to the person's location
-    travel_time = travel_times[(current_location, details["location"])]
-    # Meeting must start after arriving at the location
-    solver.add(meeting_times[person] >= current_time + travel_time / 60.0)
-    # Update the current location and time
-    current_location = details["location"]
-    current_time = meeting_times[person] + details["min_duration"]
+# Define variables for the current location and time
+current_location = String("current_location")
+current_time = Real("current_time")
+
+# Initialize the current location and time
+solver.add(current_location == "Bayview")
+solver.add(current_time == start_time)
+
+# Add constraints for traveling between meetings
+for i, person1 in enumerate(people):
+    for person2 in list(people.keys())[i+1:]:
+        # If meeting with person1 ends before meeting with person2 starts
+        solver.add(Or(meeting_end[person1] + travel_times[(meeting_location[person1], meeting_location[person2])] <= meeting_start[person2],
+                      meeting_end[person2] + travel_times[(meeting_location[person2], meeting_location[person1])] <= meeting_start[person1]))
 
 # Solve the problem
 if solver.check() == sat:
     model = solver.model()
     itinerary = []
-    for person, details in people.items():
-        start = model[meeting_times[person]].as_decimal(2)
-        end = start + details["min_duration"]
-        itinerary.append({"action": "meet", "person": person, "start_time": f"{int(start):02}:{int((start % 1) * 60):02}", "end_time": f"{int(end):02}:{int((end % 1) * 60):02}"})
+    for person in people:
+        start = model[meeting_start[person]].as_long() / 60.0
+        end = model[meeting_end[person]].as_long() / 60.0
+        itinerary.append({
+            "action": "meet",
+            "person": person,
+            "start_time": f"{int(start):02}:{int((start % 1) * 60):02}",
+            "end_time": f"{int(end):02}:{int((end % 1) * 60):02}"
+        })
     itinerary.sort(key=lambda x: x["start_time"])
     print({"itinerary": itinerary})
 else:

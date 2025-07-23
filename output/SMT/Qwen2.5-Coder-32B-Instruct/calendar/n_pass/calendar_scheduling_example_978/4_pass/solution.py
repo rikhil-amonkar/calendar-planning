@@ -3,8 +3,11 @@ from z3 import *
 # Define the days of the week
 days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
 
-# Create a Z3 optimizer
-opt = Optimize()
+# Define the time slots in 30-minute increments from 9:00 to 17:00
+time_slots = [(h, m) for h in range(9, 17) for m in [0, 30]]
+
+# Create a Z3 solver
+solver = Solver()
 
 # Define the meeting day and time
 meeting_day = Int('meeting_day')
@@ -12,13 +15,13 @@ meeting_start_hour = Int('meeting_start_hour')
 meeting_start_minute = Int('meeting_start_minute')
 
 # Constraints for the meeting day
-opt.add(meeting_day >= 0)
-opt.add(meeting_day < len(days))
+solver.add(meeting_day >= 0)
+solver.add(meeting_day < len(days))
 
 # Constraints for the meeting start time
-opt.add(meeting_start_hour >= 9)
-opt.add(meeting_start_hour < 17)
-opt.add(Or(meeting_start_minute == 0, meeting_start_minute == 30))
+solver.add(meeting_start_hour >= 9)
+solver.add(meeting_start_hour < 17)
+solver.add(Or(meeting_start_minute == 0, meeting_start_minute == 30))
 
 # Define the meeting duration (1 hour)
 meeting_end_hour = meeting_start_hour + 1
@@ -56,7 +59,7 @@ julia_busy_times = [
     ("Thursday", 9, 0, 10, 30),
     ("Thursday", 11, 0, 17, 0),
     ("Friday", 9, 0, 10, 0),
-    ("Friday", 10, 30, 11, 30),
+    ("Friday", 10, 30, 11, 0),
     ("Friday", 12, 30, 14, 0),
     ("Friday", 14, 30, 15, 0),
     ("Friday", 15, 30, 16, 0),
@@ -64,25 +67,25 @@ julia_busy_times = [
 
 # Add constraints to avoid busy times
 for day, start_h, start_m, end_h, end_m in brian_busy_times:
-    opt.add(Or(meeting_day != days.index(day),
-              meeting_start_hour > end_h,
-              meeting_start_hour == end_h and meeting_start_minute >= end_m,
-              meeting_end_hour < start_h,
-              meeting_end_hour == start_h and meeting_end_minute <= start_m))
+    solver.add(Or(meeting_day != days.index(day),
+                  meeting_start_hour > end_h,
+                  meeting_start_hour == end_h and meeting_start_minute >= end_m,
+                  meeting_end_hour < start_h,
+                  meeting_end_hour == start_h and meeting_end_minute <= start_m))
 
 for day, start_h, start_m, end_h, end_m in julia_busy_times:
-    opt.add(Or(meeting_day != days.index(day),
-              meeting_start_hour > end_h,
-              meeting_start_hour == end_h and meeting_start_minute >= end_m,
-              meeting_end_hour < start_h,
-              meeting_end_hour == start_h and meeting_end_minute <= start_m))
+    solver.add(Or(meeting_day != days.index(day),
+                  meeting_start_hour > end_h,
+                  meeting_start_hour == end_h and meeting_start_minute >= end_m,
+                  meeting_end_hour < start_h,
+                  meeting_end_hour == start_h and meeting_end_minute <= start_m))
 
 # Preference: Avoid Monday if possible
-opt.minimize(If(meeting_day == 0, 1, 0))
+solver.add(Soft(meeting_day != 0))
 
 # Solve the problem
-if opt.check() == sat:
-    model = opt.model()
+if solver.check() == sat:
+    model = solver.model()
     day_index = model[meeting_day].as_long()
     start_h = model[meeting_start_hour].as_long()
     start_m = model[meeting_start_minute].as_long()

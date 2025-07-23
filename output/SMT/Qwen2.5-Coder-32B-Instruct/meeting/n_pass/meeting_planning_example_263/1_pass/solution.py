@@ -70,7 +70,7 @@ solver.add(betty_start >= anthony_end + travel_times[('Financial District', 'Emb
 objective = [betty_start, karen_start, anthony_start]
 solver.maximize(Sum([If(start >= 0, 1, 0) for start in objective]))
 
-# Check if the problem is solvable
+# Solve the problem
 if solver.check() == sat:
     model = solver.model()
     betty_start_time = model[betty_start].as_long()

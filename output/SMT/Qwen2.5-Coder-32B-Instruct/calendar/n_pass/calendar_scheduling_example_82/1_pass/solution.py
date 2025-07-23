@@ -12,24 +12,22 @@ meeting_start = Int('meeting_start')
 solver = Solver()
 
 # Add constraints for Michael's schedule
-solver.add(meeting_start < start_of_day + 30 * 60)  # Before 12:30
-solver.add(meeting_start + meeting_duration > start_of_day + 60 * 60)  # After 10:30
-solver.add(meeting_start < start_of_day + 90 * 60)  # Before 13:30
-solver.add(meeting_start + meeting_duration > start_of_day + 120 * 60)  # After 15:00
-solver.add(meeting_start < start_of_day + 120 * 60)  # Before 16:00
-solver.add(meeting_start + meeting_duration > start_of_day + 150 * 60)  # After 16:30
-
-# Eric's calendar is wide open, so no constraints for Eric
+solver.add(meeting_start < start_of_day + 9 * 60)  # Before 9:30
+solver.add(meeting_start + meeting_duration > start_of_day + 10 * 60)  # After 10:30
+solver.add(meeting_start < start_of_day + 15 * 60)  # Before 15:00
+solver.add(meeting_start + meeting_duration > start_of_day + 15.5 * 60)  # After 15:30
+solver.add(meeting_start < start_of_day + 16 * 60)  # Before 16:00
+solver.add(meeting_start + meeting_duration > start_of_day + 16.5 * 60)  # After 16:30
 
 # Add constraints for Arthur's schedule
-solver.add(meeting_start < start_of_day + 30 * 60)  # Before 11:30
-solver.add(meeting_start + meeting_duration > start_of_day + 120 * 60)  # After 12:00
-solver.add(meeting_start < start_of_day + 90 * 60)  # Before 14:30
-solver.add(meeting_start + meeting_duration > start_of_day + 150 * 60)  # After 15:00
-solver.add(meeting_start < start_of_day + 120 * 60)  # Before 16:00
-solver.add(meeting_start + meeting_duration > start_of_day + 180 * 60)  # After 16:30
+solver.add(meeting_start < start_of_day + 12 * 60)  # Before 12:00
+solver.add(meeting_start + meeting_duration > start_of_day + 13 * 60)  # After 13:00
+solver.add(meeting_start < start_of_day + 15 * 60)  # Before 15:00
+solver.add(meeting_start + meeting_duration > start_of_day + 15.5 * 60)  # After 15:30
+solver.add(meeting_start < start_of_day + 16 * 60)  # Before 16:00
+solver.add(meeting_start + meeting_duration > start_of_day + 16.5 * 60)  # After 16:30
 
-# Ensure the meeting is within work hours
+# Add constraints for the meeting to be within work hours
 solver.add(meeting_start >= start_of_day)
 solver.add(meeting_start + meeting_duration <= end_of_day)
 

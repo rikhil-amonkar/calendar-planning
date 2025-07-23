@@ -68,7 +68,7 @@ if solver.check() == sat:
 
     # Convert the times back to HH:MM format
     def minutes_to_time(minutes):
-        hours = 9 + minutes // 60
+        hours = minutes // 60 + 9
         minutes = minutes % 60
         return f"{hours:02}:{minutes:02}"
 

@@ -21,11 +21,14 @@ solver.add(end_hour * 60 + end_minute <= 17 * 60)
 # Judy is free the entire day, so no additional constraints for her
 
 # Nicole's busy times: 9:00 to 10:00, 10:30 to 16:30
-# Nicole would rather not meet before 16:00, so we add a preference for times after 16:00
+# Nicole would rather not meet before 16:00, so we add a soft constraint to prefer times after 16:00
 solver.add(Or(
-    Or(start_hour * 60 + start_minute >= 10 * 60, start_hour * 60 + start_minute < 9 * 60),
-    Or(start_hour * 60 + start_minute >= 16 * 60 + 30, start_hour * 60 + start_minute < 10 * 60 + 30)
+    Or(start_hour * 60 + start_minute >= 10 * 60, end_hour * 60 + end_minute <= 10 * 60),
+    Or(start_hour * 60 + start_minute >= 16 * 60 + 30, end_hour * 60 + end_minute <= 10 * 60 + 30)
 ))
+
+# Prefer times after 16:00 for Nicole
+solver.add(Soft(Or(start_hour * 60 + start_minute >= 16 * 60, end_hour * 60 + end_minute >= 16 * 60)))
 
 # Solve the problem
 if solver.check() == sat:

@@ -27,44 +27,61 @@ friends = {
 # Create a solver instance
 solver = Solver()
 
-# Define the start time for each friend meeting
-start_times = {friend: Real(f"start_{friend}") for friend in friends}
+# Define the start time variable for each friend
+start_times = {name: Real(name + "_start") for name in friends}
 
-# Define the end time for each friend meeting
-end_times = {friend: Real(f"end_{friend}") for friend in friends}
+# Define the end time variable for each friend
+end_times = {name: Real(name + "_end") for name in friends}
 
-# Define the current location
-current_location = "Fisherman's Wharf"
-current_time = 9.00
+# Define the location variable for each friend
+locations_vars = {name: Int(name + "_location") for name in friends}
+
+# Define the location mapping
+location_map = {loc: i for i, loc in enumerate(locations)}
 
 # Add constraints for each friend
-for friend, details in friends.items():
-    # Friend must be met within their availability
-    solver.add(start_times[friend] >= details["start"])
-    solver.add(end_times[friend] <= details["end"])
-    # Meeting duration must be at least the minimum required
-    solver.add(end_times[friend] - start_times[friend] >= details["min_duration"])
-    # Travel time to the friend's location
-    travel_time = travel_times[(current_location, details["location"])]
-    solver.add(start_times[friend] >= current_time + travel_time/60)
-    # Update current time and location after meeting
-    current_time = end_times[friend]
-    current_location = details["location"]
+for name, details in friends.items():
+    # Start time must be within the friend's availability
+    solver.add(start_times[name] >= details["start"])
+    solver.add(start_times[name] <= details["end"] - details["min_duration"])
+    
+    # End time must be within the friend's availability
+    solver.add(end_times[name] >= start_times[name] + details["min_duration"])
+    solver.add(end_times[name] <= details["end"])
+    
+    # Location constraint
+    solver.add(locations_vars[name] == location_map[details["location"]])
 
-# Function to convert time in hours to HH:MM format
-def time_to_str(time):
-    hours = int(time)
-    minutes = int((time - hours) * 60)
-    return f"{hours:02}:{minutes:02}"
+# Define the current location and time
+current_location = location_map["Fisherman's Wharf"]
+current_time = 9.0
+
+# Add constraints for travel times
+for name, details in friends.items():
+    # Travel time from current location to friend's location
+    travel_time = travel_times[(locations[current_location], details["location"])]
+    solver.add(start_times[name] >= current_time + travel_time / 60)
+
+# Define the objective: maximize the number of meetings
+objective = Sum([If(start_times[name] < end_times[name], 1, 0) for name in friends])
+
+# Optimize the solver
+solver.maximize(objective)
 
 # Check if the problem is solvable
 if solver.check() == sat:
     model = solver.model()
     itinerary = []
-    for friend in friends:
-        start = model[start_times[friend]].as_real().numerator() / model[start_times[friend]].as_real().denominator()
-        end = model[end_times[friend]].as_real().numerator() / model[end_times[friend]].as_real().denominator()
-        itinerary.append({"action": "meet", "person": friend, "start_time": time_to_str(start), "end_time": time_to_str(end)})
+    for name, details in friends.items():
+        start = model[start_times[name]].as_decimal(2)
+        end = model[end_times[name]].as_decimal(2)
+        if start < end:
+            itinerary.append({
+                "action": "meet",
+                "person": name,
+                "start_time": f"{int(start):02}:{int((start % 1) * 60):02}",
+                "end_time": f"{int(end):02}:{int((end % 1) * 60):02}"
+            })
     print({"itinerary": itinerary})
 else:
     print("No solution found")

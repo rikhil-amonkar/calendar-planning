@@ -65,16 +65,16 @@ travel_times = {
 
 # Define the people and their availability
 people = {
-    "Karen": {"location": "Russian Hill", "start": 2045, "end": 2145, "duration": 60},
-    "Jessica": {"location": "The Castro", "start": 1545, "end": 1930, "duration": 60},
-    "Matthew": {"location": "Richmond District", "start": 730, "end": 1515, "duration": 15},
-    "Michelle": {"location": "Marina District", "start": 1030, "end": 1845, "duration": 75},
-    "Carol": {"location": "North Beach", "start": 1200, "end": 1700, "duration": 90},
-    "Stephanie": {"location": "Union Square", "start": 1045, "end": 1415, "duration": 30},
-    "Linda": {"location": "Golden Gate Park", "start": 1045, "end": 2200, "duration": 90},
+    "Karen": {"location": "Russian Hill", "start": 2045, "end": 2145, "min_duration": 60},
+    "Jessica": {"location": "The Castro", "start": 1545, "end": 1930, "min_duration": 60},
+    "Matthew": {"location": "Richmond District", "start": 730, "end": 1515, "min_duration": 15},
+    "Michelle": {"location": "Marina District", "start": 1030, "end": 1845, "min_duration": 75},
+    "Carol": {"location": "North Beach", "start": 1200, "end": 1700, "min_duration": 90},
+    "Stephanie": {"location": "Union Square", "start": 1045, "end": 1415, "min_duration": 30},
+    "Linda": {"location": "Golden Gate Park", "start": 1045, "end": 2200, "min_duration": 90},
 }
 
-# Convert times to minutes since start of the day
+# Convert times to minutes from 00:00
 def time_to_minutes(time):
     hours, minutes = divmod(time, 100)
     return hours * 60 + minutes
@@ -82,48 +82,50 @@ def time_to_minutes(time):
 # Create a solver
 solver = Solver()
 
-# Define variables for the start time of each meeting
-meeting_times = {person: Int(f"start_{person}") for person in people}
+# Define variables for start and end times of meetings
+meeting_times = {person: (Int(f"{person}_start"), Int(f"{person}_end")) for person in people}
+
+# Define the start time at Sunset District
+start_time = time_to_minutes(900)
 
 # Add constraints for each person
 for person, details in people.items():
-    start = meeting_times[person]
-    duration = details["duration"]
-    end = start + duration
-    solver.add(start >= time_to_minutes(details["start"]))
-    solver.add(end <= time_to_minutes(details["end"]))
-
-# Add constraints for travel times
-current_location = "Sunset District"
-current_time = time_to_minutes(900)  # 9:00 AM
-
-for person, details in people.items():
+    start, end = meeting_times[person]
     location = details["location"]
-    start = meeting_times[person]
-    travel_time = travel_times[(current_location, location)]
-    solver.add(start >= current_time + travel_time)
-    current_time = start + details["duration"]
-    current_location = location
+    start_time_minutes = time_to_minutes(details["start"])
+    end_time_minutes = time_to_minutes(details["end"])
+    min_duration = details["min_duration"]
+    
+    # Meeting must be within the person's availability
+    solver.add(start >= start_time_minutes)
+    solver.add(end <= end_time_minutes)
+    
+    # Meeting must last at least the minimum duration
+    solver.add(end - start >= min_duration)
+    
+    # Meeting must be after the previous meeting and travel time
+    if person != "Matthew":  # Matthew is the first person we can meet
+        prev_person = list(people.keys())[list(people.keys()).index(person) - 1]
+        prev_end = meeting_times[prev_person][1]
+        travel_time = travel_times[(people[prev_person]["location"], location)]
+        solver.add(start >= prev_end + travel_time)
 
-# Add constraint for Karen's meeting
-karen_start = meeting_times["Karen"]
-solver.add(karen_start >= time_to_minutes(2045))
-solver.add(karen_start + people["Karen"]["duration"] <= time_to_minutes(2145))
+# Add constraint for the start time at Sunset District
+solver.add(meeting_times["Matthew"][0] == start_time)
 
-# Check if the problem is solvable
+# Solve the problem
 if solver.check() == sat:
     model = solver.model()
     itinerary = []
     for person, details in people.items():
-        start_time = model[meeting_times[person]].as_long()
-        end_time = start_time + details["duration"]
+        start = model[meeting_times[person][0]].as_long()
+        end = model[meeting_times[person][1]].as_long()
         itinerary.append({
             "action": "meet",
             "person": person,
-            "start_time": f"{start_time // 60:02}:{start_time % 60:02}",
-            "end_time": f"{end_time // 60:02}:{end_time % 60:02}"
+            "start_time": f"{start // 60:02}:{start % 60:02}",
+            "end_time": f"{end // 60:02}:{end % 60:02}"
         })
-    itinerary.sort(key=lambda x: x["start_time"])
     print({"itinerary": itinerary})
 else:
     print("No solution found")

@@ -135,3 +135,60 @@ friends = {
 
 # Create a solver instance
 solver = Solver()
+
+# Define the variables
+current_location = String('current_location')
+current_time = Real('current_time')
+meetings = []
+
+# Add initial constraints
+solver.add(current_location == "Russian Hill")
+solver.add(current_time == 9.00)
+
+# Define the meeting variables and constraints
+for friend, (location, start, end, duration) in friends.items():
+    meet_start = Real(f'meet_start_{friend}')
+    meet_end = Real(f'meet_end_{friend}')
+    meet = Bool(f'meet_{friend}')
+    meetings.append((friend, meet_start, meet_end, meet, location))
+    
+    # Constraints for meeting
+    solver.add(meet_start >= start)
+    solver.add(meet_end <= end)
+    solver.add(meet_end - meet_start >= duration / 60)
+    
+    # Calculate travel time conditionally
+    travel_time = Real(f'travel_time_{friend}')
+    travel_time_expr = 0
+    for loc1, loc2 in travel_times:
+        travel_time_expr = If(And(current_location == loc1, location == loc2), travel_times[(loc1, loc2)] / 60, travel_time_expr)
+    solver.add(travel_time == travel_time_expr)
+    solver.add(meet_start >= current_time + travel_time)
+    solver.add(meet_end <= 24.00)
+    
+    # Update current location and time if meeting
+    solver.add(Implies(meet, current_location == location))
+    solver.add(Implies(meet, current_time == meet_end))
+    
+    # Ensure no overlapping meetings
+    for other_friend, other_meet_start, other_meet_end, other_meet, other_location in meetings[:-1]:
+        solver.add(Or(meet_start >= other_meet_end, other_meet_start >= meet_end))
+
+# Solve the problem
+if solver.check() == sat:
+    model = solver.model()
+    result = []
+    for friend, meet_start, meet_end, meet, location in meetings:
+        if model[meet]:
+            start_time = model[meet_start].as_decimal(2)
+            end_time = model[meet_end].as_decimal(2)
+            result.append({
+                "action": "meet",
+                "person": friend,
+                "start_time": f"{int(start_time):02}:{int((start_time % 1) * 60):02}",
+                "end_time": f"{int(end_time):02}:{int((end_time % 1) * 60):02}"
+            })
+    result = sorted(result, key=lambda x: x["start_time"])
+    print(f'SOLUTION: {{"itinerary": {result}}}')
+else:
+    print("No solution found")

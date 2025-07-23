@@ -1,94 +1,92 @@
 from z3 import *
 from itertools import permutations
 
-# Define the solver
-solver = Solver()
-
-# Define the time variables for each meeting
-sarah_start = Int('sarah_start')
-sarah_end = Int('sarah_end')
-jeffrey_start = Int('jeffrey_start')
-jeffrey_end = Int('jeffrey_end')
-brian_start = Int('brian_start')
-brian_end = Int('brian_end')
-
-# Define the constraints for each meeting
-# Sarah: 4:00PM to 6:15PM, at least 60 minutes
-solver.add(sarah_start >= 16 * 60)  # 4:00PM in minutes
-solver.add(sarah_end <= 18 * 60 + 15)  # 6:15PM in minutes
-solver.add(sarah_end - sarah_start >= 60)  # at least 60 minutes
-
-# Jeffrey: 3:00PM to 10:00PM, at least 75 minutes
-solver.add(jeffrey_start >= 15 * 60)  # 3:00PM in minutes
-solver.add(jeffrey_end <= 22 * 60)  # 10:00PM in minutes
-solver.add(jeffrey_end - jeffrey_start >= 75)  # at least 75 minutes
-
-# Brian: 4:00PM to 5:30PM, at least 75 minutes
-solver.add(brian_start >= 16 * 60)  # 4:00PM in minutes
-solver.add(brian_end <= 17 * 60 + 30)  # 5:30PM in minutes
-solver.add(brian_end - brian_start >= 75)  # at least 75 minutes
-
-# Define the travel times in minutes
+# Define the locations and their travel times in minutes
+locations = ["Sunset District", "North Beach", "Union Square", "Alamo Square"]
 travel_times = {
-    ('Sunset District', 'North Beach'): 29,
-    ('Sunset District', 'Union Square'): 30,
-    ('Sunset District', 'Alamo Square'): 17,
-    ('North Beach', 'Sunset District'): 27,
-    ('North Beach', 'Union Square'): 7,
-    ('North Beach', 'Alamo Square'): 16,
-    ('Union Square', 'Sunset District'): 26,
-    ('Union Square', 'North Beach'): 10,
-    ('Union Square', 'Alamo Square'): 15,
-    ('Alamo Square', 'Sunset District'): 16,
-    ('Alamo Square', 'North Beach'): 15,
-    ('Alamo Square', 'Union Square'): 14,
+    ("Sunset District", "North Beach"): 29,
+    ("Sunset District", "Union Square"): 30,
+    ("Sunset District", "Alamo Square"): 17,
+    ("North Beach", "Sunset District"): 27,
+    ("North Beach", "Union Square"): 7,
+    ("North Beach", "Alamo Square"): 16,
+    ("Union Square", "Sunset District"): 26,
+    ("Union Square", "North Beach"): 10,
+    ("Union Square", "Alamo Square"): 15,
+    ("Alamo Square", "Sunset District"): 16,
+    ("Alamo Square", "North Beach"): 15,
+    ("Alamo Square", "Union Square"): 14,
 }
 
-# Define the starting location and time
-start_location = 'Sunset District'
-start_time = 9 * 60  # 9:00AM in minutes
-
-# Define the locations and their corresponding meeting times
-locations = {
-    'North Beach': (sarah_start, sarah_end),
-    'Union Square': (jeffrey_start, jeffrey_end),
-    'Alamo Square': (brian_start, brian_end)
+# Define the friends and their availability in minutes since 9:00 AM
+friends = {
+    "Sarah": {"location": "North Beach", "start": 420, "end": 555, "min_duration": 60},
+    "Jeffrey": {"location": "Union Square", "start": 360, "end": 720, "min_duration": 75},
+    "Brian": {"location": "Alamo Square", "start": 420, "end": 450, "min_duration": 75},
 }
 
-# Define all possible orders of visits
-possible_orders = list(permutations(locations.keys()))
+# Define the start time in minutes since 9:00 AM
+start_time = 0  # 9:00 AM
 
-# Function to add constraints for a given order
-def add_constraints_for_order(order):
-    solver.push()
+# Define a function to convert minutes since start of the day to HH:MM format
+def minutes_to_time(minutes):
+    hours = 9 + minutes // 60
+    minutes = minutes % 60
+    return f"{int(hours):02}:{int(minutes):02}"
+
+# Function to check if a given sequence of meetings is feasible
+def check_sequence(sequence):
+    solver = Solver()
+    
+    # Define the variables for the start and end times of each meeting in minutes
+    meeting_start = {name: Int(name + "_start") for name in sequence}
+    meeting_end = {name: Int(name + "_end") for name in sequence}
+    
+    # Add constraints for each friend
+    for name in sequence:
+        details = friends[name]
+        # Meeting must start after the friend is available
+        solver.add(meeting_start[name] >= details["start"])
+        # Meeting must end before the friend is unavailable
+        solver.add(meeting_end[name] <= details["end"])
+        # Meeting must last at least the minimum duration
+        solver.add(meeting_end[name] - meeting_start[name] >= details["min_duration"])
+    
+    # Define the current location and time
+    current_location = "Sunset District"
     current_time = start_time
-    current_location = start_location
-    for location in order:
-        start, end = locations[location]
-        travel_time = travel_times[(current_location, location)]
-        solver.add(start >= current_time + travel_time)
-        if location == 'North Beach':
-            solver.add(end <= 18 * 60 + 15)  # Sarah's end time
-        elif location == 'Union Square':
-            solver.add(end <= 22 * 60)  # Jeffrey's end time
-        elif location == 'Alamo Square':
-            solver.add(end <= 17 * 60 + 30)  # Brian's end time
-        current_time = end
-        current_location = location
-    return solver.check() == sat, solver.model()
-
-# Try each order
-for order in possible_orders:
-    solver.reset()
-    is_feasible, model = add_constraints_for_order(order)
-    if is_feasible:
+    
+    # Add constraints for travel times
+    for name in sequence:
+        details = friends[name]
+        # Travel time from current location to friend's location
+        travel_time = travel_times[(current_location, details["location"])]
+        # Meeting must start after arriving at the friend's location
+        solver.add(meeting_start[name] >= current_time + travel_time)
+        # Update current location and time
+        current_location = details["location"]
+        current_time = meeting_start[name] + details["min_duration"]
+    
+    # Check if the constraints are satisfiable
+    if solver.check() == sat:
+        model = solver.model()
         itinerary = []
-        for person, (start_var, end_var) in zip(['Sarah', 'Jeffrey', 'Brian'], [locations[location] for location in order]):
-            start_time_minutes = model[start_var].as_long()
-            end_time_minutes = model[end_var].as_long()
-            start_time_str = f"{start_time_minutes // 60:02}:{start_time_minutes % 60:02}"
-            end_time_str = f"{end_time_minutes // 60:02}:{end_time_minutes % 60:02}"
-            itinerary.append({"action": "meet", "person": person, "start_time": start_time_str, "end_time": end_time_str})
+        for name in sequence:
+            start = model[meeting_start[name]].as_long()
+            end = model[meeting_end[name]].as_long()
+            itinerary.append({
+                "action": "meet",
+                "person": name,
+                "start_time": minutes_to_time(start),
+                "end_time": minutes_to_time(end)
+            })
+        return itinerary
+    return None
+
+# Try all permutations of the friends
+for sequence in permutations(friends.keys()):
+    itinerary = check_sequence(sequence)
+    if itinerary:
         print({"itinerary": itinerary})
         break
 else:

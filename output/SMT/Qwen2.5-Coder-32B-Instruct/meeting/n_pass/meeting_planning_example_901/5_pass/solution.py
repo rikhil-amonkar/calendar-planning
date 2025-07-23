@@ -126,4 +126,56 @@ meetings = {
     "Helen": {"location": "North Beach", "start": 13*60 + 45, "end": 18*60 + 45, "duration": 30},
     "Kimberly": {"location": "Golden Gate Park", "start": 18*60 + 45, "end": 21*60 + 15, "duration": 75},
     "James": {"location": "Embarcadero", "start": 10*60 + 30, "end": 11*60 + 30, "duration": 30},
-    "Linda": {"location": "Haight-Ashbury", "start": 7*60 + 30, "end": 19*60 +
+    "Linda": {"location": "Haight-Ashbury", "start": 7*60 + 30, "end": 19*60 + 15, "duration": 15},
+    "Paul": {"location": "Fisherman's Wharf", "start": 14*60 + 45, "end": 18*60 + 45, "duration": 90},
+    "Anthony": {"location": "Mission District", "start": 8*60, "end": 14*60 + 45, "duration": 105},
+    "Nancy": {"location": "Alamo Square", "start": 8*60 + 30, "end": 13*60 + 45, "duration": 120},
+    "William": {"location": "Bayview", "start": 17*60 + 30, "end": 20*60 + 30, "duration": 120},
+    "Margaret": {"location": "Richmond District", "start": 15*60 + 15, "end": 18*60 + 15, "duration": 45},
+}
+
+# Create a solver instance
+solver = Solver()
+
+# Define the variables
+visited = {name: Bool(name) for name in meetings}
+start_times = {name: Int(name + '_start') for name in meetings}
+end_times = {name: Int(name + '_end') for name in meetings}
+current_location = String('current_location')
+current_time = Int('current_time')
+
+# Initial conditions
+solver.add(current_location == "Russian Hill")
+solver.add(current_time == 9*60)
+
+# Add constraints for each meeting
+for name, meeting in meetings.items():
+    solver.add(start_times[name] >= current_time + travel_times[("Russian Hill", meeting["location"])])
+    solver.add(end_times[name] == start_times[name] + meeting["duration"])
+    solver.add(end_times[name] <= meeting["end"])
+    solver.add(start_times[name] >= meeting["start"])
+    solver.add(visited[name] == And(start_times[name] >= meeting["start"], end_times[name] <= meeting["end"]))
+
+# Add constraints to ensure no overlapping meetings
+for i, (name1, meeting1) in enumerate(meetings.items()):
+    for name2, meeting2 in list(meetings.items())[i+1:]:
+        solver.add(Or(end_times[name1] <= start_times[name2], end_times[name2] <= start_times[name1]))
+
+# Check if the problem is solvable
+if solver.check() == sat:
+    model = solver.model()
+    itinerary = []
+    for name, meeting in meetings.items():
+        if model.evaluate(visited[name]):
+            start = model.evaluate(start_times[name]).as_long()
+            end = model.evaluate(end_times[name]).as_long()
+            itinerary.append({
+                "action": "meet",
+                "person": name,
+                "start_time": f"{start//60:02}:{start%60:02}",
+                "end_time": f"{end//60:02}:{end%60:02}"
+            })
+    itinerary.sort(key=lambda x: x["start_time"])
+    print({"itinerary": itinerary})
+else:
+    print("No solution found")

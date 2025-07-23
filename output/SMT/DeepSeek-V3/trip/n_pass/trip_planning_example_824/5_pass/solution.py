@@ -1,28 +1,9 @@
-import json
 from z3 import *
+import json
 
 def solve_itinerary():
-    # Cities with their indices
+    # Cities and their required days
     cities = ['Berlin', 'Split', 'Bucharest', 'Riga', 'Lisbon', 'Tallinn', 'Lyon']
-    city_map = {city: idx for idx, city in enumerate(cities)}
-    
-    # Direct flights (bidirectional)
-    direct_flights = [
-        ('Lisbon', 'Bucharest'), ('Berlin', 'Lisbon'),
-        ('Bucharest', 'Riga'), ('Berlin', 'Riga'),
-        ('Split', 'Lyon'), ('Lisbon', 'Riga'),
-        ('Riga', 'Tallinn'), ('Berlin', 'Split'),
-        ('Lyon', 'Lisbon'), ('Berlin', 'Tallinn'),
-        ('Lyon', 'Bucharest')
-    ]
-    
-    # Make flights bidirectional and convert to indices
-    flight_pairs = []
-    for fr, to in direct_flights:
-        flight_pairs.append((city_map[fr], city_map[to]))
-        flight_pairs.append((city_map[to], city_map[fr]))
-    
-    # Duration requirements
     required_days = {
         'Berlin': 5,
         'Split': 3,
@@ -33,81 +14,81 @@ def solve_itinerary():
         'Lyon': 5
     }
     
-    # Fixed events
-    fixed_events = [
-        (1, 5, 'Berlin'),
-        (7, 11, 'Lyon'),
-        (13, 15, 'Bucharest')
+    # Direct flights as a set of tuples (bidirectional)
+    direct_flights = [
+        ('Lisbon', 'Bucharest'),
+        ('Berlin', 'Lisbon'),
+        ('Bucharest', 'Riga'),
+        ('Berlin', 'Riga'),
+        ('Split', 'Lyon'),
+        ('Lisbon', 'Riga'),
+        ('Riga', 'Tallinn'),
+        ('Berlin', 'Split'),
+        ('Lyon', 'Lisbon'),
+        ('Berlin', 'Tallinn'),
+        ('Lyon', 'Bucharest')
     ]
     
-    # Create solver with timeout
-    s = Solver()
-    s.set("timeout", 30000)  # 30 second timeout
+    # Create a Z3 solver
+    solver = Solver()
     
-    # Day variables (1-22)
-    days = [Int(f'day_{i+1}') for i in range(22)]
+    # Variables: day_1 to day_22, each can be one of the cities
+    days = [Int(f'day_{i}') for i in range(1, 23)]
     
-    # Each day must be a valid city index
+    # Each day's variable must be between 0 and 6 (representing the cities)
+    city_to_num = {city: idx for idx, city in enumerate(cities)}
+    num_to_city = {idx: city for idx, city in enumerate(cities)}
+    
     for day in days:
-        s.add(day >= 0, day < 7)
+        solver.add(day >= 0, day < len(cities))
     
-    # Apply fixed events
-    for start, end, city in fixed_events:
-        city_idx = city_map[city]
-        for day in range(start-1, end):  # 0-based indexing
-            s.add(days[day] == city_idx)
+    # Fixed constraints:
+    # Berlin from day 1 to 5
+    for i in range(1, 6):
+        solver.add(days[i-1] == city_to_num['Berlin'])
     
-    # Count days per city
-    for city, req in required_days.items():
-        city_idx = city_map[city]
-        s.add(Sum([If(d == city_idx, 1, 0) for d in days]) == req)
+    # Bucharest between day 13 and 15 (3 days)
+    solver.add(And(
+        days[12] == city_to_num['Bucharest'],
+        days[13] == city_to_num['Bucharest'],
+        days[14] == city_to_num['Bucharest']
+    ))
     
-    # Flight transitions
-    for i in range(21):
-        current = days[i]
-        next_day = days[i+1]
-        # Either stay in same city or take a direct flight
-        s.add(Or(current == next_day, 
-               Or([And(current == fr, next_day == to) for fr, to in flight_pairs])))
+    # Lyon between day 7 and 11 (5 days)
+    for i in range(7, 12):
+        solver.add(days[i-1] == city_to_num['Lyon'])
     
-    # Additional constraints to help guide the solver
-    # 1. Prefer longer stays in cities
-    for i in range(20):
-        s.add(Implies(days[i] != days[i+1], days[i+1] != days[i+2]))
+    # Flight constraints: consecutive days must be same city or have a direct flight
+    for i in range(1, 22):
+        current_day = days[i-1]
+        next_day = days[i]
+        flight_options = [current_day == next_day]
+        for (a, b) in direct_flights:
+            flight_options.append(And(current_day == city_to_num[a], next_day == city_to_num[b]))
+            flight_options.append(And(current_day == city_to_num[b], next_day == city_to_num[a]))
+        solver.add(Or(flight_options))
     
-    # 2. Avoid single-day visits unless necessary
-    for i in range(1, 21):
-        s.add(Implies(days[i-1] != days[i], days[i] != days[i+1])))
+    # Duration constraints: each city must be visited for the required number of days
+    for city in cities:
+        count = 0
+        for day in days:
+            count += If(day == city_to_num[city], 1, 0)
+        solver.add(count == required_days[city])
     
-    # Try to find a solution
-    if s.check() == sat:
-        model = s.model()
+    # Check if the solver can find a solution
+    if solver.check() == sat:
+        model = solver.model()
         itinerary = []
-        for i in range(22):
-            day_num = i + 1
-            city_idx = model.evaluate(days[i]).as_long()
-            city = cities[city_idx]
-            itinerary.append({'day': day_num, 'place': city})
+        for i in range(1, 23):
+            city_num = model.evaluate(days[i-1]).as_long()
+            city = num_to_city[city_num]
+            itinerary.append({"day": i, "place": city})
         
-        # Verify the solution meets all requirements
-        city_counts = {city: 0 for city in cities}
-        for entry in itinerary:
-            city_counts[entry['place']] += 1
-        
-        valid = True
-        for city, req in required_days.items():
-            if city_counts[city] != req:
-                valid = False
-                break
-        
-        if valid:
-            return {'itinerary': itinerary}
-    
-    return None
+        # Convert to the required JSON format
+        result = {"itinerary": itinerary}
+        return json.dumps(result, indent=2)
+    else:
+        return json.dumps({"error": "No valid itinerary found"}, indent=2)
 
-# Solve and print the itinerary
-itinerary = solve_itinerary()
-if itinerary:
-    print(json.dumps(itinerary, indent=2))
-else:
-    print("No valid itinerary found.")
+# Run the solver and print the result
+print(solve_itinerary())

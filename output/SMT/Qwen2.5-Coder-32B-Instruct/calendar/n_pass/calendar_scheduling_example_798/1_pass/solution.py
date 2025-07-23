@@ -17,7 +17,7 @@ work_end = 480  # 17:00 - 9:00 = 8 hours = 480 minutes
 # Define the blocked times for Nancy
 nancy_blocked_times = [
     (60, 90),  # 10:00 to 10:30
-    (150, 180),  # 11:30 to 12:30
+    (150, 210),  # 11:30 to 12:30
     (270, 300),  # 13:30 to 14:00
     (330, 390),  # 14:30 to 15:30
     (420, 480)  # 16:00 to 17:00
@@ -51,27 +51,32 @@ for blocked_start, blocked_end in jose_blocked_times:
 
 # Add constraints for the specific days
 constraints.append(Or(
-    And(day == 0, start_time + meeting_duration <= 60),  # Monday, before 10:00
-    And(day == 1, start_time + meeting_duration <= 90),  # Tuesday, before 10:30
-    And(day == 2, start_time + meeting_duration <= 60)   # Wednesday, before 10:00
+    And(day == 0, Or([Or(start_time + meeting_duration <= blocked_start, start_time >= blocked_end) for blocked_start, blocked_end in nancy_blocked_times[0:5]])),
+    And(day == 1, Or([Or(start_time + meeting_duration <= blocked_start, start_time >= blocked_end) for blocked_start, blocked_end in nancy_blocked_times[5:10]])),
+    And(day == 2, Or([Or(start_time + meeting_duration <= blocked_start, start_time >= blocked_end) for blocked_start, blocked_end in nancy_blocked_times[10:15]]))
 ))
 
-# Create the solver and add the constraints
+constraints.append(Or(
+    And(day == 0, Or([Or(start_time + meeting_duration <= blocked_start, start_time >= blocked_end) for blocked_start, blocked_end in jose_blocked_times[0:5]])),
+    And(day == 1, Or([Or(start_time + meeting_duration <= blocked_start, start_time >= blocked_end) for blocked_start, blocked_end in jose_blocked_times[5:10]])),
+    And(day == 2, Or([Or(start_time + meeting_duration <= blocked_start, start_time >= blocked_end) for blocked_start, blocked_end in jose_blocked_times[10:15]]))
+))
+
+# Solve the constraints
 solver = Solver()
 solver.add(constraints)
 
-# Check if there is a solution
 if solver.check() == sat:
     model = solver.model()
-    meeting_day = model[day].as_long()
-    meeting_start_time = model[start_time].as_long()
-    meeting_end_time = meeting_start_time + meeting_duration
+    day_value = model[day].as_long()
+    start_time_value = model[start_time].as_long()
+    end_time_value = start_time_value + meeting_duration
 
-    # Convert the day and time to the required format
+    # Convert day and time to human-readable format
     days = ["Monday", "Tuesday", "Wednesday"]
-    start_time_str = f"{9 + meeting_start_time // 60:02}:{meeting_start_time % 60:02}"
-    end_time_str = f"{9 + meeting_end_time // 60:02}:{meeting_end_time % 60:02}"
+    start_time_str = f"{9 + start_time_value // 60}:{start_time_value % 60:02}"
+    end_time_str = f"{9 + end_time_value // 60}:{end_time_value % 60:02}"
 
-    print(f"SOLUTION:\nDay: {days[meeting_day]}\nStart Time: {start_time_str}\nEnd Time: {end_time_str}")
+    print(f"SOLUTION:\nDay: {days[day_value]}\nStart Time: {start_time_str}\nEnd Time: {end_time_str}")
 else:
     print("No solution found")

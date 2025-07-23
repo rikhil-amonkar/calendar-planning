@@ -397,11 +397,6 @@ async def process_single_example(
                 conversation_history.append({"role": "user", "content": current_prompt})
                 conversation_history.append({"role": "assistant", "content": response_txt})
                 
-                # Save conversation
-                save_start = time.time()
-                with open(f"{pass_output_dir}/conversation.json", "w") as f:
-                    json.dump(conversation_history, f, indent=4)
-                
                 # Extract and save code
                 code_extract_start = time.time()
                 generated_code = extract_code(response_txt)
@@ -423,6 +418,11 @@ async def process_single_example(
                         json.dump(error_eval_result, f, indent=4)
                     # Prepare feedback for next iteration instead of returning
                     current_prompt = f"Code extraction from the previous response failed. Please provide a complete Python solution using the Z3 solver. Make sure to surround your final code with ```python\nYOUR_CODE\n```.\n\nOriginal problem:\n{example['prompt_0shot']}"
+                    
+                    # Add feedback to conversation history and save conversation
+                    conversation_history.append({"role": "user", "content": current_prompt})
+                    with open(f"{pass_output_dir}/conversation.json", "w") as f:
+                        json.dump(conversation_history, f, indent=4)
                     continue
                     
                 code_path = f"{pass_output_dir}/solution.py"
@@ -498,6 +498,11 @@ async def process_single_example(
                     
                     # Prepare feedback for next iteration
                     current_prompt = f"The previous Z3 solution returned an error: {error_message}\n\nPlease revise your Z3 program to find a valid solution. The error suggests that the constraints may be too restrictive or there may be an issue with the Z3 formulation.\n\nOriginal problem:\n{example['prompt_0shot']}\n\nMake sure to surround your final code with ```python\nYOUR_CODE\n```."
+                    
+                    # Add feedback to conversation history and save conversation
+                    conversation_history.append({"role": "user", "content": current_prompt})
+                    with open(f"{pass_output_dir}/conversation.json", "w") as f:
+                        json.dump(conversation_history, f, indent=4)
                     continue
                 
                 # Get gold answer
@@ -557,39 +562,52 @@ async def process_single_example(
                 
                 if constraints_satisfied:
                     logging.info(f"[{example_id}] SUCCESS! Solved in pass {pass_num}")
+                    # Save conversation as is since we're done
+                    with open(f"{pass_output_dir}/conversation.json", "w") as f:
+                        json.dump(conversation_history, f, indent=4)
                     return
                 else:
                     logging.info(f"[{example_id}] Pass {pass_num} failed constraints, preparing feedback")
                     # Prepare feedback for next iteration
                     constraint_feedback = format_constraint_feedback(violated_constraints, task)
                     current_prompt = f"The previous solution produced the following output:\n{execution_output}\n{constraint_feedback}\n\nPlease revise your solution to satisfy these constraints. Make sure to surround your final code with ```python\nYOUR_CODE\n```."
+                    
+                    # Add feedback to conversation history and save conversation
+                    conversation_history.append({"role": "user", "content": current_prompt})
+                    with open(f"{pass_output_dir}/conversation.json", "w") as f:
+                        json.dump(conversation_history, f, indent=4)
             
             logging.warning(f"[{example_id}] FAILED to solve within {max_passes} passes")
             
             # Save final evaluation result even if we failed to solve
-            if 'pred_formatted' in locals() and 'gold_formatted' in locals():
+            # Check if we have any evaluation results to save
+            if 'pass_num' in locals():
                 # Determine the correct status based on what happened in the last pass
-                if execution_output == "No code found in model response":
+                if 'execution_output' in locals() and execution_output == "No code found in model response":
                     final_status = "No code extracted"
-                elif not constraints_satisfied:
+                elif 'constraints_satisfied' in locals() and not constraints_satisfied:
                     final_status = "Wrong plan"
                 else:
                     final_status = "Failed to solve within max passes"
                 
                 final_eval_result = {
                     "has_execution_error": False,
-                    "execution_output": execution_output,
-                    "pred": pred_formatted,
-                    "gold": gold_formatted,
+                    "execution_output": execution_output if 'execution_output' in locals() else "No execution output",
+                    "pred": pred_formatted if 'pred_formatted' in locals() else {},
+                    "gold": gold_formatted if 'gold_formatted' in locals() else {},
                     "status": final_status,
-                    "violated_constraint": violated_constraints,
-                    "is_exact_match": is_exact_match,
-                    "constraints_satisfied": constraints_satisfied,
+                    "violated_constraint": violated_constraints if 'violated_constraints' in locals() else {},
+                    "is_exact_match": is_exact_match if 'is_exact_match' in locals() else False,
+                    "constraints_satisfied": constraints_satisfied if 'constraints_satisfied' in locals() else False,
                     "pass_number": pass_num
                 }
                 with open(f"{pass_output_dir}/evaluation.json", "w") as f:
                     json.dump(final_eval_result, f, indent=4)
                 logging.info(f"[{example_id}] Saved final evaluation result from pass {pass_num} with status: {final_status}")
+                
+                # Save conversation even on final failure
+                with open(f"{pass_output_dir}/conversation.json", "w") as f:
+                    json.dump(conversation_history, f, indent=4)
             
             return
             

@@ -56,7 +56,7 @@ julia_busy_times = [
     ("Thursday", 9, 0, 10, 30),
     ("Thursday", 11, 0, 17, 0),
     ("Friday", 9, 0, 10, 0),
-    ("Friday", 10, 30, 11, 30),
+    ("Friday", 10, 30, 11, 0),
     ("Friday", 12, 30, 14, 0),
     ("Friday", 14, 30, 15, 0),
     ("Friday", 15, 30, 16, 0),
@@ -79,6 +79,15 @@ for day, start_h, start_m, end_h, end_m in julia_busy_times:
 
 # Preference: Avoid Monday if possible
 opt.minimize(If(meeting_day == 0, 1, 0))
+
+# Minimize the day index to find the earliest available day
+opt.minimize(meeting_day)
+
+# Minimize the start hour to find the earliest available time
+opt.minimize(meeting_start_hour)
+
+# Minimize the start minute to find the earliest available time
+opt.minimize(meeting_start_minute)
 
 # Solve the problem
 if opt.check() == sat:

@@ -124,4 +124,64 @@ meetings = {
     "Ashley": {"location": "Haight-Ashbury", "start": 15*60, "end": 20*30, "duration": 90},
     "Elizabeth": {"location": "Nob Hill", "start": 11*45, "end": 18*30, "duration": 75},
     "Jessica": {"location": "Golden Gate Park", "start": 20*0, "end": 21*45, "duration": 105},
-    "Deborah": {"location": "Union Square", "start": 17*30, "end":
+    "Deborah": {"location": "Union Square", "start": 17*30, "end": 22*0, "duration": 60},
+    "Kimberly": {"location": "Alamo Square", "start": 17*30, "end": 21*15, "duration": 45},
+    "Matthew": {"location": "Presidio", "start": 8*15, "end": 9*0, "duration": 15},
+    "Kenneth": {"location": "Chinatown", "start": 13*45, "end": 19*30, "duration": 105},
+    "Anthony": {"location": "Pacific Heights", "start": 14*15, "end": 16*0, "duration": 30},
+}
+
+# Create a solver instance
+solver = Solver()
+
+# Define variables
+current_location = String('current_location')
+current_time = Int('current_time')
+meetings_vars = {name: Bool(name) for name in meetings}
+
+# Initial conditions
+solver.add(current_location == "Bayview")
+solver.add(current_time == 9*60)  # 9:00 AM
+
+# Create a dictionary for travel times
+travel_times_dict = {loc1 + "->" + loc2: time for (loc1, loc2), time in travel_times.items()}
+
+# Constraints for each meeting
+for name, details in meetings.items():
+    loc = details["location"]
+    start = details["start"]
+    end = details["end"]
+    duration = details["duration"]
+    meet_var = meetings_vars[name]
+    
+    # If we meet this person, we must be in the right location at the right time
+    solver.add(Implies(meet_var, current_location == loc))
+    solver.add(Implies(meet_var, current_time + travel_times_dict[current_location + "->" + loc] <= start))
+    solver.add(Implies(meet_var, current_time + travel_times_dict[current_location + "->" + loc] + duration <= end))
+    
+    # Update current location and time after meeting
+    solver.add(Implies(meet_var, current_location == loc))
+    solver.add(Implies(meet_var, current_time == current_time + travel_times_dict[current_location + "->" + loc] + duration))
+
+# Objective: maximize the number of meetings
+objective = Sum([If(meetings_vars[name], 1, 0) for name in meetings_vars])
+
+# Solve the problem
+if solver.check() == sat:
+    model = solver.model()
+    result = []
+    for name, var in meetings_vars.items():
+        if model.evaluate(var):
+            details = meetings[name]
+            start_time = model.evaluate(current_time + travel_times_dict[current_location + "->" + details["location"]]).as_long()
+            end_time = start_time + details["duration"]
+            result.append({
+                "action": "meet",
+                "person": name,
+                "start_time": f"{start_time//60:02}:{start_time%60:02}",
+                "end_time": f"{end_time//60:02}:{end_time%60:02}"
+            })
+    result = sorted(result, key=lambda x: x["start_time"])
+    print({"itinerary": result})
+else:
+    print("No solution found")

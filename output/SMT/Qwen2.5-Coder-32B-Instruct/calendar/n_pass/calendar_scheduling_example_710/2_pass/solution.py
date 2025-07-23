@@ -1,7 +1,7 @@
 from z3 import *
 
 # Define the variables
-day = Int('day')  # 0 = Monday, 1 = Tuesday, 2 = Wednesday
+day = Int('day')  # 0 for Monday, 1 for Tuesday, 2 for Wednesday
 start_time = Int('start_time')  # in minutes from 9:00
 
 # Define the constraints
@@ -17,7 +17,7 @@ work_end = 480  # 17:00
 # Cheryl's busy times
 cheryl_busy_times = [
     (0, 0, 30),  # Monday 9:00 to 9:30
-    (0, 150, 240),  # Monday 11:30 to 13:00
+    (0, 120, 180),  # Monday 11:30 to 13:00
     (0, 390, 420),  # Monday 15:30 to 16:00
     (1, 900, 930)  # Tuesday 15:00 to 15:30
 ]
@@ -28,8 +28,8 @@ kyle_busy_times = [
     (1, 570, 1020),  # Tuesday 9:30 to 17:00
     (2, 0, 30),  # Wednesday 9:00 to 9:30
     (2, 60, 240),  # Wednesday 10:00 to 13:00
-    (2, 810, 840),  # Wednesday 13:30 to 14:00
-    (2, 870, 1020)  # Wednesday 14:30 to 17:00
+    (2, 300, 330),  # Wednesday 13:30 to 14:00
+    (2, 420, 480)  # Wednesday 14:30 to 17:00
 ]
 
 # Cheryl can't meet on Wednesday
@@ -55,14 +55,19 @@ solver.add(constraints)
 if solver.check() == sat:
     model = solver.model()
     meeting_day = model[day].as_long()
-    meeting_start_time = model[start_time].as_long()
-    meeting_end_time = meeting_start_time + meeting_duration
+    meeting_start = model[start_time].as_long()
+    meeting_end = meeting_start + meeting_duration
 
-    # Convert day and times to human-readable format
+    # Convert day and time to human-readable format
     days = ["Monday", "Tuesday", "Wednesday"]
-    start_time_str = f"{9 + meeting_start_time // 60}:{meeting_start_time % 60:02}"
-    end_time_str = f"{9 + meeting_end_time // 60}:{meeting_end_time % 60:02}"
+    start_hour = 9 + meeting_start // 60
+    start_minute = meeting_start % 60
+    end_hour = 9 + meeting_end // 60
+    end_minute = meeting_end % 60
 
-    print(f"SOLUTION:\nDay: {days[meeting_day]}\nStart Time: {start_time_str}\nEnd Time: {end_time_str}")
+    print(f"SOLUTION:")
+    print(f"Day: {days[meeting_day]}")
+    print(f"Start Time: {start_hour:02}:{start_minute:02}")
+    print(f"End Time: {end_hour:02}:{end_minute:02}")
 else:
     print("No solution found")

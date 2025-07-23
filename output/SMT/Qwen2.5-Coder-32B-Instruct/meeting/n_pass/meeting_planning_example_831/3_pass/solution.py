@@ -102,13 +102,13 @@ travel_times = {
 people = {
     "Jeffrey": ("Fisherman's Wharf", 10*60 + 15, 1*60 + 0, 90),
     "Ronald": ("Alamo Square", 7*60 + 45, 2*60 + 45, 120),
-    "Jason": ("Financial District", 10*60 + 45, 16*60 + 0, 105),
+    "Jason": ("Financial District", 10*60 + 45, 16*60, 105),
     "Melissa": ("Union Square", 17*60 + 45, 18*60 + 15, 15),
     "Elizabeth": ("Sunset District", 14*60 + 45, 17*60 + 30, 105),
-    "Margaret": ("Embarcadero", 13*60 + 15, 19*60 + 0, 90),
-    "George": ("Golden Gate Park", 19*60 + 0, 22*60 + 0, 75),
-    "Richard": ("Chinatown", 9*60 + 30, 21*60 + 0, 15),
-    "Laura": ("Richmond District", 9*60 + 45, 18*60 + 0, 60),
+    "Margaret": ("Embarcadero", 13*60 + 15, 19*60, 90),
+    "George": ("Golden Gate Park", 19*60, 22*60, 75),
+    "Richard": ("Chinatown", 9*60 + 30, 21*60, 15),
+    "Laura": ("Richmond District", 9*60 + 45, 18*60, 60),
 }
 
 # Create a solver instance
@@ -117,16 +117,42 @@ solver = Solver()
 # Define the variables
 start_times = {person: Int(f"start_{person}") for person in people}
 end_times = {person: Int(f"end_{person}") for person in people}
-locations_vars = {person: String(f"location_{person}") for person in people}
+current_location = String("current_location")
+next_location = String("next_location")
 
 # Add constraints for each person
 for person, (location, start, end, duration) in people.items():
     solver.add(start_times[person] >= start)
     solver.add(end_times[person] <= end)
     solver.add(end_times[person] - start_times[person] >= duration)
-    solver.add(locations_vars[person] == location)
 
 # Add constraints for travel times
-current_time = 9*60  # Starting at 9:00 AM
-current_loc = "Presidio"
-for i, person in enumerate
+for i in range(len(people) - 1):
+    person1 = list(people.keys())[i]
+    person2 = list(people.keys())[i + 1]
+    loc1 = people[person1][0]
+    loc2 = people[person2][0]
+    solver.add(end_times[person1] + travel_times[(loc1, loc2)] <= start_times[person2])
+
+# Add initial location constraint
+solver.add(start_times[list(people.keys())[0]] >= 9*60)
+
+# Add constraint for the day limit (9:00AM to 10:00PM)
+solver.add(end_times[list(people.keys())[-1]] <= 22*60)
+
+# Solve the problem
+if solver.check() == sat:
+    model = solver.model()
+    itinerary = []
+    for person in people:
+        start = model[start_times[person]].as_long()
+        end = model[end_times[person]].as_long()
+        itinerary.append({
+            "action": "meet",
+            "person": person,
+            "start_time": f"{start//60:02}:{start%60:02}",
+            "end_time": f"{end//60:02}:{end%60:02}"
+        })
+    print({"itinerary": itinerary})
+else:
+    print("No solution found")

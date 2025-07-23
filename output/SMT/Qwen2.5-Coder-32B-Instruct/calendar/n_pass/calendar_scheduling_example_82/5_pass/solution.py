@@ -12,28 +12,22 @@ meeting_start = Int('meeting_start')
 solver = Solver()
 
 # Add constraints for Michael's schedule
-# Michael has meetings on Monday during 9:30 to 10:30, 15:00 to 15:30, 16:00 to 16:30
-solver.add(Or(meeting_start + meeting_duration <= start_of_day + 30,  # Before 9:30
-              meeting_start >= start_of_day + 60))  # After 10:30
-solver.add(Or(meeting_start + meeting_duration <= start_of_day + 90,  # Before 15:00
-              meeting_start >= start_of_day + 120))  # After 15:30
-solver.add(Or(meeting_start + meeting_duration <= start_of_day + 120,  # Before 16:00
-              meeting_start >= start_of_day + 150))  # After 16:30
-
-# Eric's calendar is wide open, so no constraints for Eric
+solver.add(Or(meeting_start < start_of_day + 9 * 60,  # Before 9:30
+              meeting_start >= start_of_day + 10 * 60))  # After 10:30
+solver.add(Or(meeting_start < start_of_day + 15 * 60,  # Before 15:00
+              meeting_start >= start_of_day + 15.5 * 60))  # After 15:30
+solver.add(Or(meeting_start < start_of_day + 16 * 60,  # Before 16:00
+              meeting_start >= start_of_day + 16.5 * 60))  # After 16:30
 
 # Add constraints for Arthur's schedule
-# Arthur has blocked their calendar on Monday during 9:00 to 12:00, 13:00 to 15:00, 15:30 to 16:00, 16:30 to 17:00
-solver.add(Or(meeting_start + meeting_duration <= start_of_day + 60,  # Before 9:00
-              meeting_start >= start_of_day + 120))  # After 12:00
-solver.add(Or(meeting_start + meeting_duration <= start_of_day + 90,  # Before 13:00
-              meeting_start >= start_of_day + 150))  # After 15:00
-solver.add(Or(meeting_start + meeting_duration <= start_of_day + 120,  # Before 15:30
-              meeting_start >= start_of_day + 150))  # After 16:00
-solver.add(Or(meeting_start + meeting_duration <= start_of_day + 150,  # Before 16:30
-              meeting_start >= start_of_day + 180))  # After 17:00
+solver.add(Or(meeting_start < start_of_day + 12 * 60,  # Before 12:00
+              meeting_start >= start_of_day + 13 * 60))  # After 13:00
+solver.add(Or(meeting_start < start_of_day + 15 * 60,  # Before 15:00
+              meeting_start >= start_of_day + 15.5 * 60))  # After 15:30
+solver.add(Or(meeting_start < start_of_day + 16 * 60,  # Before 16:00
+              meeting_start >= start_of_day + 16.5 * 60))  # After 16:30
 
-# Ensure the meeting is within work hours
+# Add constraints for the meeting to be within work hours
 solver.add(meeting_start >= start_of_day)
 solver.add(meeting_start + meeting_duration <= end_of_day)
 

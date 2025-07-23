@@ -54,42 +54,40 @@ start_times = {person: Int(f"start_{person}") for person in people_availability}
 end_times = {person: Int(f"end_{person}") for person in people_availability}
 current_location = Int("current_location")
 
+# Define binary variables to indicate if a meeting is scheduled
+scheduled = {person: Bool(f"scheduled_{person}") for person in people_availability}
+
 # Define the constraints
 solver.add(current_location == locations.index("Nob Hill"))
 
-# Add constraints for each person's meeting
 for person, (location, start, end, duration) in people_availability.items():
-    solver.add(start_times[person] >= start)
-    solver.add(end_times[person] <= end)
-    solver.add(end_times[person] - start_times[person] >= duration)
+    solver.add(Implies(scheduled[person], start_times[person] >= start))
+    solver.add(Implies(scheduled[person], end_times[person] <= end))
+    solver.add(Implies(scheduled[person], end_times[person] - start_times[person] >= duration))
+    solver.add(Implies(scheduled[person], current_location == locations.index(location)))
 
 # Add travel time constraints
 for i in range(len(people_availability) - 1):
     person1, person2 = list(people_availability.keys())[i], list(people_availability.keys())[i+1]
     loc1, loc2 = people_availability[person1][0], people_availability[person2][0]
     travel_time = travel_times[(loc1, loc2)]
-    solver.add(start_times[person2] - end_times[person1] >= travel_time)
+    solver.add(Implies(And(scheduled[person1], scheduled[person2]), start_times[person2] - end_times[person1] >= travel_time))
 
-# Add constraints to ensure the schedule is feasible
-# We need to ensure that the meetings are in a feasible order
-# Let's assume a fixed order for simplicity: Jeffrey -> Deborah -> Ronald -> Margaret -> Emily
-order = ["Jeffrey", "Deborah", "Ronald", "Margaret", "Emily"]
-
-# Add constraints for the order and travel times
-for i in range(len(order) - 1):
-    person1, person2 = order[i], order[i+1]
-    loc1, loc2 = people_availability[person1][0], people_availability[person2][0]
-    travel_time = travel_times[(loc1, loc2)]
-    solver.add(start_times[person2] - end_times[person1] >= travel_time)
+# Ensure that meetings do not overlap
+for i in range(len(people_availability)):
+    for j in range(i + 1, len(people_availability)):
+        person1, person2 = list(people_availability.keys())[i], list(people_availability.keys())[j]
+        solver.add(Or(end_times[person1] <= start_times[person2], end_times[person2] <= start_times[person1]))
 
 # Solve the problem
 if solver.check() == sat:
     model = solver.model()
     itinerary = []
-    for person in order:
-        start = model[start_times[person]].as_long() // 60
-        end = model[end_times[person]].as_long() // 60
-        itinerary.append({"action": "meet", "person": person, "start_time": f"{start:02}:{model[start_times[person]].as_long() % 60:02}", "end_time": f"{end:02}:{model[end_times[person]].as_long() % 60:02}"})
+    for person in people_availability:
+        if model.evaluate(scheduled[person]):
+            start = model[start_times[person]].as_long() // 60
+            end = model[end_times[person]].as_long() // 60
+            itinerary.append({"action": "meet", "person": person, "start_time": f"{start:02}:{(model[start_times[person]].as_long() % 60):02}", "end_time": f"{end:02}:{(model[end_times[person]].as_long() % 60):02}"})
     print({"itinerary": itinerary})
 else:
     print("No solution found")

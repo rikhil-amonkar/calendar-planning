@@ -89,7 +89,7 @@ people = {
     "Joseph": {"location": "Golden Gate Park", "start": 830, "end": 2115, "min_duration": 105},
 }
 
-# Convert times to minutes from start of the day
+# Convert times to minutes since start of the day
 def time_to_minutes(time):
     hours, minutes = divmod(time, 100)
     return hours * 60 + minutes
@@ -144,7 +144,10 @@ if solver.check() == sat:
             itinerary.append({
                 "action": "meet",
                 "person": person,
-                "start_time": meeting_start,
-                "end_time": meeting_end,
-                "location": people[person]["location"]
+                "start_time": f"{meeting_start // 60:02}:{meeting_start % 60:02}",
+                "end_time": f"{meeting_end // 60:02}:{meeting_end % 60:02}"
             })
+    itinerary.sort(key=lambda x: x["start_time"])
+    print({"itinerary": itinerary})
+else:
+    print("No solution found")

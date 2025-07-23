@@ -4,151 +4,116 @@ import json
 def solve_itinerary():
     # Cities and their required days
     cities = {
-        'Porto': 2,
-        'Geneva': 3,
-        'Mykonos': 3,
-        'Manchester': 4,
-        'Hamburg': 5,
-        'Naples': 5,
-        'Frankfurt': 2
+        "Porto": 2,
+        "Geneva": 3,
+        "Mykonos": 3,
+        "Manchester": 4,
+        "Hamburg": 5,
+        "Naples": 5,
+        "Frankfurt": 2
     }
     
-    # Direct flights as adjacency list
-    direct_flights = {
-        'Hamburg': ['Frankfurt', 'Porto', 'Geneva', 'Manchester'],
-        'Frankfurt': ['Hamburg', 'Geneva', 'Porto', 'Naples', 'Manchester'],
-        'Porto': ['Hamburg', 'Frankfurt', 'Geneva', 'Manchester'],
-        'Geneva': ['Hamburg', 'Mykonos', 'Frankfurt', 'Porto', 'Manchester', 'Naples'],
-        'Mykonos': ['Naples', 'Geneva'],
-        'Naples': ['Mykonos', 'Manchester', 'Frankfurt', 'Geneva'],
-        'Manchester': ['Geneva', 'Naples', 'Frankfurt', 'Porto', 'Hamburg']
-    }
+    # Direct flight connections (undirected)
+    direct_flights = [
+        ("Hamburg", "Frankfurt"),
+        ("Naples", "Mykonos"),
+        ("Hamburg", "Porto"),
+        ("Hamburg", "Geneva"),
+        ("Mykonos", "Geneva"),
+        ("Frankfurt", "Geneva"),
+        ("Frankfurt", "Porto"),
+        ("Geneva", "Porto"),
+        ("Geneva", "Manchester"),
+        ("Naples", "Manchester"),
+        ("Frankfurt", "Naples"),
+        ("Frankfurt", "Manchester"),
+        ("Naples", "Geneva"),
+        ("Porto", "Manchester"),
+        ("Hamburg", "Manchester")
+    ]
     
-    # Create Z3 variables for each city's start and end days
-    city_vars = {}
-    for city in cities:
-        start = Int(f'start_{city}')
-        end = Int(f'end_{city}')
-        city_vars[city] = (start, end)
+    # Create a bidirectional flight map
+    flight_map = {city: [] for city in cities}
+    for a, b in direct_flights:
+        flight_map[a].append(b)
+        flight_map[b].append(a)
+    
+    # Days are 1..18
+    days = 18
+    
+    # Create Z3 variables: itinerary[d] is the city on day d (1-based)
+    itinerary = [Int(f"day_{d}") for d in range(1, days + 1)]
     
     s = Solver()
     
-    # Constraints for each city's duration
-    for city in cities:
-        start, end = city_vars[city]
-        s.add(start >= 1)
-        s.add(end <= 18)
-        s.add(end == start + cities[city] - 1)
+    # Each day must be one of the cities
+    city_ids = {city: idx for idx, city in enumerate(cities)}
+    for d in range(days):
+        s.add(Or([itinerary[d] == city_ids[city] for city in cities]))
     
-    # Specific constraints:
-    # Mykonos: meet friend between day 10-12
-    mykonos_start, mykonos_end = city_vars['Mykonos']
-    s.add(Or(
-        And(mykonos_start <= 10, mykonos_end >= 10),
-        And(mykonos_start <= 11, mykonos_end >= 11),
-        And(mykonos_start <= 12, mykonos_end >= 12)
-    ))
+    # Constraints for days in each city
+    for city in cities:
+        count = Sum([If(itinerary[d] == city_ids[city], 1, 0) for d in range(days)])
+        s.add(count == cities[city])
+    
+    # Constraints for specific events:
+    # Mykonos: must be there between day 10-12 (inclusive)
+    s.add(Or([itinerary[d] == city_ids["Mykonos"] for d in range(9, 12)]))  # days 10-12 (1-based: indices 9-11)
     
     # Manchester: wedding between day 15-18
-    manchester_start, manchester_end = city_vars['Manchester']
-    s.add(manchester_end >= 15)
-    s.add(manchester_start <= 18)
+    s.add(Or([itinerary[d] == city_ids["Manchester"] for d in range(14, 18)]))  # days 15-18 (indices 14-17)
     
-    # Frankfurt: show between day 5-6
-    frankfurt_start, frankfurt_end = city_vars['Frankfurt']
-    s.add(Or(
-        And(frankfurt_start <= 5, frankfurt_end >= 5),
-        And(frankfurt_start <= 6, frankfurt_end >= 6)
-    ))
+    # Frankfurt: show on day 5-6
+    s.add(Or(itinerary[4] == city_ids["Frankfurt"], itinerary[5] == city_ids["Frankfurt"]))  # days 5 and 6 (indices 4,5)
     
-    # Ensure all cities are visited exactly once
-    # We'll model the sequence of visits with possible overlaps on flight days
-    # Create a list to represent the order of visits
-    visit_order = [Int(f'visit_{i}') for i in range(len(cities))]
-    for i in range(len(cities)):
-        s.add(visit_order[i] >= 0)
-        s.add(visit_order[i] < len(cities))
-    
-    # Each city must appear exactly once in the visit order
-    s.add(Distinct(visit_order))
-    
-    # Flight connections between consecutive cities in the visit order
-    for i in range(len(cities) - 1):
-        current_city = visit_order[i]
-        next_city = visit_order[i + 1]
+    # Flight constraints: consecutive days in different cities must have a direct flight
+    for d in range(days - 1):
+        current_city = itinerary[d]
+        next_city = itinerary[d + 1]
         for city1 in cities:
             for city2 in cities:
-                if city1 == city2:
-                    continue
-                s.add(Implies(
-                    And(current_city == list(cities.keys()).index(city1),
-                        next_city == list(cities.keys()).index(city2)),
-                    Or([city2 in direct_flights[city1]])
-                ))
-    
-    # Ensure the first city starts on day 1
-    first_city = visit_order[0]
-    for city in cities:
-        s.add(Implies(
-            first_city == list(cities.keys()).index(city),
-            city_vars[city][0] == 1
-        ))
-    
-    # Ensure the last city ends on day 18
-    last_city = visit_order[-1]
-    for city in cities:
-        s.add(Implies(
-            last_city == list(cities.keys()).index(city),
-            city_vars[city][1] == 18
-        ))
-    
-    # Ensure no overlaps except for flight days
-    for i in range(len(cities) - 1):
-        current_city = visit_order[i]
-        next_city = visit_order[i + 1]
-        for city1 in cities:
-            for city2 in cities:
-                if city1 == city2:
-                    continue
-                s.add(Implies(
-                    And(current_city == list(cities.keys()).index(city1),
-                        next_city == list(cities.keys()).index(city2)),
-                    city_vars[city2][0] <= city_vars[city1][1]
-                ))
+                if city1 != city2 and (city1, city2) not in direct_flights and (city2, city1) not in direct_flights:
+                    s.add(Not(And(current_city == city_ids[city1], next_city == city_ids[city2])))
     
     # Check if the problem is satisfiable
     if s.check() == sat:
         m = s.model()
-        # Extract the start and end days for each city
-        city_days = {}
+        # Decode the itinerary
+        itinerary_result = []
+        city_list = list(cities.keys())
+        for d in range(days):
+            city_idx = m.evaluate(itinerary[d]).as_long()
+            itinerary_result.append({"day": d + 1, "place": city_list[city_idx]})
+        
+        # Verify the counts
+        counts = {city: 0 for city in cities}
+        for entry in itinerary_result:
+            counts[entry["place"]] += 1
         for city in cities:
-            start = m[city_vars[city][0]].as_long()
-            end = m[city_vars[city][1]].as_long()
-            city_days[city] = (start, end)
+            assert counts[city] == cities[city], f"City {city} has {counts[city]} days instead of {cities[city]}"
         
-        # Generate the itinerary day by day
-        day_place = {}
-        for day in range(1, 19):
-            places = []
-            for city in cities:
-                start, end = city_days[city]
-                if start <= day <= end:
-                    places.append(city)
-            day_place[day] = places
+        # Verify Mykonos between days 10-12
+        mykonos_days = [entry["day"] for entry in itinerary_result if entry["place"] == "Mykonos"]
+        assert any(10 <= day <= 12 for day in mykonos_days), "Mykonos not visited between days 10-12"
         
-        # Convert to the required JSON format
-        json_itinerary = []
-        for day in range(1, 19):
-            places = day_place[day]
-            for place in places:
-                json_itinerary.append({'day': day, 'place': place})
+        # Verify Manchester between days 15-18
+        manchester_days = [entry["day"] for entry in itinerary_result if entry["place"] == "Manchester"]
+        assert any(15 <= day <= 18 for day in manchester_days), "Manchester not visited between days 15-18"
         
-        # Sort the itinerary by day
-        json_itinerary.sort(key=lambda x: x['day'])
+        # Verify Frankfurt on day 5 or 6
+        frankfurt_days = [entry["day"] for entry in itinerary_result if entry["place"] == "Frankfurt"]
+        assert any(day == 5 or day == 6 for day in frankfurt_days), "Frankfurt not visited on day 5 or 6"
         
-        # Prepare the output
-        output = {'itinerary': json_itinerary}
-        return output
+        # Verify flight connections
+        for d in range(days - 1):
+            current_place = itinerary_result[d]["place"]
+            next_place = itinerary_result[d + 1]["place"]
+            if current_place != next_place:
+                assert (current_place, next_place) in direct_flights or (next_place, current_place) in direct_flights, f"No direct flight between {current_place} and {next_place} on day {d + 1}"
+        
+        # Prepare JSON output
+        json_output = {"itinerary": [{"day": entry["day"], "place": entry["place"]} for entry in itinerary_result]}
+        return json_output
     else:
         return {"error": "No valid itinerary found"}
 

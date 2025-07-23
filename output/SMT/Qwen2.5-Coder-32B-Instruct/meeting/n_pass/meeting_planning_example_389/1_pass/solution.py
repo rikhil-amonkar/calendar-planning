@@ -1,9 +1,7 @@
 from z3 import *
 
-# Define the locations
+# Define the locations and their travel times
 locations = ["Haight-Ashbury", "Fisherman's Wharf", "Richmond District", "Mission District", "Bayview"]
-
-# Define the travel times in minutes
 travel_times = {
     ("Haight-Ashbury", "Fisherman's Wharf"): 23,
     ("Haight-Ashbury", "Richmond District"): 10,
@@ -29,13 +27,13 @@ travel_times = {
 
 # Define the friends and their availability
 friends = {
-    "Sarah": {"location": "Fisherman's Wharf", "start": 1445, "end": 1730, "min_duration": 105},
-    "Mary": {"location": "Richmond District", "start": 1300, "end": 1915, "min_duration": 75},
-    "Helen": {"location": "Mission District", "start": 2145, "end": 2230, "min_duration": 30},
-    "Thomas": {"location": "Bayview", "start": 1515, "end": 1845, "min_duration": 120},
+    "Sarah": {"location": "Fisherman's Wharf", "start": 1445, "end": 1730, "min_meeting": 105},
+    "Mary": {"location": "Richmond District", "start": 1300, "end": 1915, "min_meeting": 75},
+    "Helen": {"location": "Mission District", "start": 2145, "end": 2230, "min_meeting": 30},
+    "Thomas": {"location": "Bayview", "start": 1515, "end": 1845, "min_meeting": 120},
 }
 
-# Convert times to minutes since 00:00
+# Convert times to minutes since start of the day
 def time_to_minutes(time_str):
     hours, minutes = map(int, time_str.split(':'))
     return hours * 60 + minutes
@@ -47,40 +45,39 @@ start_time = time_to_minutes("09:00")
 solver = Solver()
 
 # Define variables for the start and end times of each meeting
-meeting_start = {name: Int(f"start_{name}") for name in friends}
-meeting_end = {name: Int(f"end_{name}") for name in friends}
+meeting_starts = {name: Int(f"start_{name}") for name in friends}
+meeting_ends = {name: Int(f"end_{name}") for name in friends}
 
 # Define variables for the location at each meeting
-meeting_location = {name: String(f"location_{name}") for name in friends}
+meeting_locations = {name: String(f"location_{name}") for name in friends}
 
 # Add constraints for each friend
 for name, details in friends.items():
-    # Meeting must start after the person is available
-    solver.add(meeting_start[name] >= details["start"])
-    # Meeting must end before the person is unavailable
-    solver.add(meeting_end[name] <= details["end"])
-    # Meeting must last at least the minimum duration
-    solver.add(meeting_end[name] - meeting_start[name] >= details["min_duration"])
+    # Meeting must start after the person is available and end before they leave
+    solver.add(meeting_starts[name] >= details["start"])
+    solver.add(meeting_ends[name] <= details["end"])
+    # Meeting must last at least the minimum required time
+    solver.add(meeting_ends[name] - meeting_starts[name] >= details["min_meeting"])
     # Meeting must be at the correct location
-    solver.add(meeting_location[name] == details["location"])
+    solver.add(meeting_locations[name] == details["location"])
 
 # Add constraints for travel times
 for i, name1 in enumerate(friends):
     for name2 in list(friends.keys())[i+1:]:
         # If meeting with name1 ends before meeting with name2 starts, travel time must be considered
-        solver.add(Or(meeting_end[name1] + travel_times[(friends[name1]["location"], friends[name2]["location"])] <= meeting_start[name2],
-                      meeting_end[name2] + travel_times[(friends[name2]["location"], friends[name1]["location"])] <= meeting_start[name1]))
+        solver.add(Or(meeting_ends[name1] + travel_times[(friends[name1]["location"], friends[name2]["location"])] <= meeting_starts[name2],
+                      meeting_ends[name2] + travel_times[(friends[name2]["location"], friends[name1]["location"])] <= meeting_starts[name1]))
 
-# Add constraint for starting at Haight-Ashbury at 9:00AM
-solver.add(meeting_start[list(friends.keys())[0]] >= start_time + travel_times[("Haight-Ashbury", friends[list(friends.keys())[0]]["location"])])
+# Add constraint to start at Haight-Ashbury at 9:00AM
+solver.add(meeting_starts[list(friends.keys())[0]] >= start_time + travel_times[("Haight-Ashbury", friends[list(friends.keys())[0]]["location"])])
 
 # Check if the problem is solvable
 if solver.check() == sat:
     model = solver.model()
     itinerary = []
     for name in friends:
-        start = model[meeting_start[name]].as_long()
-        end = model[meeting_end[name]].as_long()
+        start = model[meeting_starts[name]].as_long()
+        end = model[meeting_ends[name]].as_long()
         itinerary.append({
             "action": "meet",
             "person": name,

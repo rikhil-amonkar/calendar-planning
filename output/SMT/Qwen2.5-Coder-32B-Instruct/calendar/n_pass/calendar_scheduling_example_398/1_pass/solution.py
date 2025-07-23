@@ -36,18 +36,9 @@ for participant, slots in blocked_slots.items():
 # Check if there is a solution
 if solver.check() == sat:
     model = solver.model()
-    meeting_start_time = model[meeting_start].as_long()
-    meeting_end_time = meeting_start_time + meeting_duration
-    
-    # Convert times back to HH:MM format
-    start_hour = meeting_start_time // 60
-    start_minute = meeting_start_time % 60
-    end_hour = meeting_end_time // 60
-    end_minute = meeting_end_time % 60
-    
-    print("SOLUTION:")
-    print(f"Day: Monday")
-    print(f"Start Time: {start_hour:02}:{start_minute:02}")
-    print(f"End Time: {end_hour:02}:{end_minute:02}")
+    meeting_start_minutes = model[meeting_start].as_long()
+    meeting_start_time = f"{meeting_start_minutes // 60:02}:{meeting_start_minutes % 60:02}"
+    meeting_end_time = f"{(meeting_start_minutes + meeting_duration) // 60:02}:{(meeting_start_minutes + meeting_duration) % 60:02}"
+    print(f"SOLUTION:\nDay: Monday\nStart Time: {meeting_start_time}\nEnd Time: {meeting_end_time}")
 else:
     print("No solution found")

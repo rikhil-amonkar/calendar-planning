@@ -66,11 +66,11 @@ if solver.check() == sat:
     meeting_start_time = model[start_time].as_long()
     meeting_end_time = meeting_start_time + MEETING_DURATION
 
-    # Convert day to string
+    # Convert day number to string
     days = ["Monday", "Tuesday", "Wednesday", "Thursday"]
     meeting_day_str = days[meeting_day]
 
-    # Convert time to HH:MM format
+    # Convert time in minutes to HH:MM format
     meeting_start_time_str = f"{meeting_start_time // 60:02}:{meeting_start_time % 60:02}"
     meeting_end_time_str = f"{meeting_end_time // 60:02}:{meeting_end_time % 60:02}"
 

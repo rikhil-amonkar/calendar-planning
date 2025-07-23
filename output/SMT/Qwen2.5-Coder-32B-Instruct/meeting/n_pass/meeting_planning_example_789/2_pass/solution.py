@@ -112,7 +112,7 @@ solver.add(current_location == 'Union Square')
 solver.add(current_time == time_to_minutes('09:00'))
 
 # Constraints for each person
-for i, (person, details) in enumerate(people.items()):
+for person, details in people.items():
     location = details['location']
     start = details['start']
     end = details['end']
@@ -124,28 +124,29 @@ for i, (person, details) in enumerate(people.items()):
     solver.add(end_times[person] - start_times[person] >= min_duration)
     
     # Travel time constraints
-    if i > 0:
-        prev_person = list(people.keys())[i - 1]
-        prev_location = people[prev_person]['location']
-        solver.add(end_times[prev_person] + travel_times[(prev_location, location)] <= start_times[person])
+    if person != 'Emily':  # Emily is the last person to meet
+        next_person = list(people.keys())[list(people.keys()).index(person) + 1]
+        next_location = people[next_person]['location']
+        solver.add(end_times[person] + travel_times[(location, next_location)] <= start_times[next_person])
     
     # Update current location and time after meeting
     solver.add(If(start_times[person] == current_time, current_location == location, True))
     solver.add(If(start_times[person] == current_time, current_time == start_times[person], True))
+    solver.add(If(end_times[person] == current_time, current_location == location, True))
+    solver.add(If(end_times[person] == current_time, current_time == end_times[person], True))
 
 # Emily's meeting should be the last
 solver.add(end_times['Emily'] <= time_to_minutes('21:30'))
 
-# Objective: Maximize the number of meetings
-objective = Sum([If(end_times[person] - start_times[person] >= people[person]['min_duration'], 1, 0) for person in people])
-solver.maximize(objective)
-
-# Check for a solution
+# Solve the problem
 if solver.check() == sat:
     model = solver.model()
+    itinerary = []
     for person in people:
-        start_time = model[start_times[person]].as_long()
-        end_time = model[end_times[person]].as_long()
-        print(f"{person}: {minutes_to_time(start_time)} to {minutes_to_time(end_time)}")
+        start = model.evaluate(start_times[person]).as_long()
+        end = model.evaluate(end_times[person]).as_long()
+        itinerary.append({"action": "meet", "person": person, "start_time": minutes_to_time(start), "end_time": minutes_to_time(end)})
+    itinerary.sort(key=lambda x: time_to_minutes(x['start_time']))
+    print({"itinerary": itinerary})
 else:
     print("No solution found")

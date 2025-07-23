@@ -54,6 +54,12 @@ constraints.append(end_time == start_time + meeting_duration)  # Meeting duratio
 constraints.append(start_time % 100 < 60)
 constraints.append(end_time % 100 < 60)
 
+# Ensure that start_time and end_time are in the correct format (HHMM)
+constraints.append(start_time >= 900)
+constraints.append(start_time < 1700)
+constraints.append(end_time >= 900)
+constraints.append(end_time < 1700)
+
 # Create the solver and add the constraints
 solver = Solver()
 solver.add(constraints)

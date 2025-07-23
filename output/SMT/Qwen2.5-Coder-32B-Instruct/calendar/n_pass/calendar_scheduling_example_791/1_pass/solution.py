@@ -7,81 +7,82 @@ start_time = Int('start_time')  # in minutes from 9:00
 # Define the constraints
 constraints = []
 
-# Define the meeting duration in minutes (30 minutes)
-meeting_duration = 30
+# Define the meeting duration
+meeting_duration = 30  # 30 minutes
 
-# Define the work hours in minutes from 9:00
-work_start = 0
-work_end = 480  # 17:00 - 9:00 = 8 hours = 480 minutes
+# Define the work hours
+work_start = 9 * 60  # 9:00 in minutes
+work_end = 17 * 60  # 17:00 in minutes
 
 # Define the days
 days = 3  # Monday, Tuesday, Wednesday
 
 # Nicole's busy times
 nicole_busy_times = [
-    (0, 0, 30),  # Monday 9:00 - 9:30
-    (0, 240, 270),  # Monday 13:00 - 13:30
-    (0, 330, 360),  # Monday 14:30 - 15:30
-    (1, 0, 30),  # Tuesday 9:00 - 9:30
-    (1, 150, 300),  # Tuesday 11:30 - 13:30
-    (1, 330, 360),  # Tuesday 14:30 - 15:30
-    (2, 60, 120),  # Wednesday 10:00 - 11:00
-    (2, 210, 360),  # Wednesday 12:30 - 15:00
-    (2, 420, 480)  # Wednesday 16:00 - 17:00
+    (0, 9 * 60, 9 * 60 + 30),  # Monday 9:00 to 9:30
+    (0, 13 * 60, 13 * 60 + 30),  # Monday 13:00 to 13:30
+    (0, 14 * 60 + 30, 15 * 60 + 30),  # Monday 14:30 to 15:30
+    (1, 9 * 60, 9 * 60 + 30),  # Tuesday 9:00 to 9:30
+    (1, 11 * 60 + 30, 13 * 60 + 30),  # Tuesday 11:30 to 13:30
+    (1, 14 * 60 + 30, 15 * 60 + 30),  # Tuesday 14:30 to 15:30
+    (2, 10 * 60, 11 * 60),  # Wednesday 10:00 to 11:00
+    (2, 12 * 60 + 30, 15 * 60),  # Wednesday 12:30 to 15:00
+    (2, 16 * 60, 17 * 60)  # Wednesday 16:00 to 17:00
 ]
 
 # Ruth's busy times
 ruth_busy_times = [
-    (0, 0, 480),  # Monday 9:00 - 17:00
-    (1, 0, 480),  # Tuesday 9:00 - 17:00
-    (2, 0, 60),  # Wednesday 9:00 - 10:30
-    (2, 60, 90),  # Wednesday 11:00 - 11:30
-    (2, 120, 150),  # Wednesday 12:00 - 12:30
-    (2, 210, 300),  # Wednesday 13:30 - 15:30
-    (2, 390, 420)  # Wednesday 16:00 - 16:30
+    (0, 9 * 60, 17 * 60),  # Monday 9:00 to 17:00
+    (1, 9 * 60, 17 * 60),  # Tuesday 9:00 to 17:00
+    (2, 9 * 60, 10 * 60 + 30),  # Wednesday 9:00 to 10:30
+    (2, 11 * 60, 11 * 60 + 30),  # Wednesday 11:00 to 11:30
+    (2, 12 * 60, 12 * 60 + 30),  # Wednesday 12:00 to 12:30
+    (2, 13 * 60 + 30, 15 * 60 + 30),  # Wednesday 13:30 to 15:30
+    (2, 16 * 60, 16 * 60 + 30)  # Wednesday 16:00 to 16:30
 ]
 
 # Ruth's preference: do not meet on Wednesday after 13:30
-ruth_preference = (2, 210, 480)
+ruth_preference = (2, 13 * 60 + 30, 17 * 60)
 
-# Add constraints for days
+# Constraints for the day
 constraints.append(day >= 0)
 constraints.append(day < days)
 
-# Add constraints for start time
+# Constraints for the start time
 constraints.append(start_time >= work_start)
 constraints.append(start_time + meeting_duration <= work_end)
 
-# Add constraints for Nicole's busy times
+# Constraints for Nicole's busy times
 for d, s, e in nicole_busy_times:
-    constraints.append(Or(day != d, Or(start_time + meeting_duration <= s, start_time >= e)))
+    constraints.append(Or(start_time + meeting_duration <= s, start_time >= e))
 
-# Add constraints for Ruth's busy times
+# Constraints for Ruth's busy times
 for d, s, e in ruth_busy_times:
-    constraints.append(Or(day != d, Or(start_time + meeting_duration <= s, start_time >= e)))
+    constraints.append(Or(start_time + meeting_duration <= s, start_time >= e))
 
-# Add Ruth's preference
-constraints.append(Or(day != 2, start_time + meeting_duration <= 210))
+# Constraint for Ruth's preference
+constraints.append(Or(day != 2, start_time + meeting_duration <= ruth_preference[1]))
 
-# Create the solver and add constraints
+# Solve the constraints
 solver = Solver()
 solver.add(constraints)
 
-# Check if there is a solution
 if solver.check() == sat:
     model = solver.model()
-    day_value = model[day].as_long()
-    start_time_value = model[start_time].as_long()
-    end_time_value = start_time_value + meeting_duration
+    meeting_day = model[day].as_long()
+    meeting_start_time = model[start_time].as_long()
+    meeting_end_time = meeting_start_time + meeting_duration
 
-    # Convert day number to string
-    day_str = ["Monday", "Tuesday", "Wednesday"][day_value]
+    # Convert times back to HH:MM format
+    def format_time(minutes):
+        hours = minutes // 60
+        minutes = minutes % 60
+        return f"{hours:02}:{minutes:02}"
 
-    # Convert time from minutes to HH:MM format
-    start_time_str = f"{9 + start_time_value // 60:02}:{start_time_value % 60:02}"
-    end_time_str = f"{9 + end_time_value // 60:02}:{end_time_value % 60:02}"
+    day_str = ["Monday", "Tuesday", "Wednesday"][meeting_day]
+    start_time_str = format_time(meeting_start_time)
+    end_time_str = format_time(meeting_end_time)
 
-    # Print the solution
     print(f"SOLUTION:\nDay: {day_str}\nStart Time: {start_time_str}\nEnd Time: {end_time_str}")
 else:
     print("No solution found")

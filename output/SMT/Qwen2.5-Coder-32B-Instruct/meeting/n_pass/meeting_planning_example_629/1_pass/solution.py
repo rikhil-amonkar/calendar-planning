@@ -1,7 +1,9 @@
 from z3 import *
 
-# Define the locations and their travel times
+# Define the locations
 locations = ["Russian Hill", "Presidio", "Chinatown", "Pacific Heights", "Richmond District", "Fisherman's Wharf", "Golden Gate Park", "Bayview"]
+
+# Define the travel times in minutes
 travel_times = {
     ("Russian Hill", "Presidio"): 14,
     ("Russian Hill", "Chinatown"): 9,
@@ -61,57 +63,67 @@ travel_times = {
     ("Bayview", "Golden Gate Park"): 22,
 }
 
-# Define the people and their availability
-people = {
-    "Matthew": {"location": "Presidio", "start": 11*60, "end": 21*60, "min_duration": 90},
-    "Margaret": {"location": "Chinatown", "start": 9*60 + 15, "end": 18*60 + 45, "min_duration": 90},
-    "Nancy": {"location": "Pacific Heights", "start": 14*60 + 15, "end": 17*60, "min_duration": 15},
-    "Helen": {"location": "Richmond District", "start": 19*60 + 45, "end": 22*60, "min_duration": 60},
-    "Rebecca": {"location": "Fisherman's Wharf", "start": 21*60 + 15, "end": 22*60 + 15, "min_duration": 60},
-    "Kimberly": {"location": "Golden Gate Park", "start": 13*60, "end": 16*60 + 30, "min_duration": 120},
-    "Kenneth": {"location": "Bayview", "start": 14*60 + 30, "end": 18*60, "min_duration": 60},
+# Define the meetings
+meetings = {
+    "Matthew": {"location": "Presidio", "start": 11*60, "end": 21*60, "duration": 90},
+    "Margaret": {"location": "Chinatown", "start": 9*60 + 15, "end": 18*60 + 45, "duration": 90},
+    "Nancy": {"location": "Pacific Heights", "start": 14*60 + 15, "end": 17*60, "duration": 15},
+    "Helen": {"location": "Richmond District", "start": 19*60 + 45, "end": 22*60, "duration": 60},
+    "Rebecca": {"location": "Fisherman's Wharf", "start": 21*60 + 15, "end": 22*60 + 15, "duration": 60},
+    "Kimberly": {"location": "Golden Gate Park", "start": 13*60, "end": 16*60 + 30, "duration": 120},
+    "Kenneth": {"location": "Bayview", "start": 14*60 + 30, "end": 18*60, "duration": 60},
 }
 
-# Create a solver instance
+# Create a solver
 solver = Solver()
 
-# Define variables for the start time of each meeting
-meeting_starts = {person: Int(f"start_{person}") for person in people}
+# Define the variables
+current_location = String("current_location")
+current_time = Int("current_time")
+meetings_vars = {name: Bool(name) for name in meetings}
 
-# Define the start time at Russian Hill
-start_time = 9*60  # 9:00 AM
+# Initial conditions
+solver.add(current_location == "Russian Hill")
+solver.add(current_time == 9*60)
 
-# Add constraints for each person
-for person, details in people.items():
-    start = meeting_starts[person]
-    duration = details["min_duration"]
-    end = start + duration
-    location = details["location"]
-    availability_start = details["start"]
-    availability_end = details["end"]
+# Define the constraints for each meeting
+for name, meeting in meetings.items():
+    location = meeting["location"]
+    start = meeting["start"]
+    end = meeting["end"]
+    duration = meeting["duration"]
+    meet_var = meetings_vars[name]
     
-    # Meeting must start after the person is available
-    solver.add(start >= availability_start)
-    # Meeting must end before the person is no longer available
-    solver.add(end <= availability_end)
-    # Meeting must start after the previous meeting ends plus travel time
-    if person != "Matthew":  # Matthew is the first person we consider
-        prev_person = list(people.keys())[list(people.keys()).index(person) - 1]
-        prev_end = meeting_starts[prev_person] + people[prev_person]["min_duration"]
-        travel_time = travel_times[(people[prev_person]["location"], location)]
-        solver.add(start >= prev_end + travel_time)
+    # If we meet this person, we must be at the correct location and time
+    solver.add(Implies(meet_var, current_location == location))
+    solver.add(Implies(meet_var, current_time + duration <= end))
+    solver.add(Implies(meet_var, current_time >= start))
+    
+    # If we meet this person, we must travel to the location before the meeting
+    for prev_location in locations:
+        if prev_location != location:
+            travel_time = travel_times[(prev_location, location)]
+            solver.add(Implies(meet_var, current_time - travel_time >= 9*60))
+            solver.add(Implies(meet_var, current_time - travel_time + duration <= end))
+    
+    # Update the current location and time after the meeting
+    solver.add(Implies(meet_var, current_location == location))
+    solver.add(Implies(meet_var, current_time == current_time + duration))
 
-# Define the objective: maximize the number of meetings
-# Since we are only considering feasible schedules, we just need to find a feasible solution
+# Maximize the number of meetings
+solver.maximize(Sum([If(meetings_vars[name], 1, 0) for name in meetings]))
+
+# Solve the problem
 if solver.check() == sat:
     model = solver.model()
     itinerary = []
-    for person, details in people.items():
-        start_time_minutes = model[meeting_starts[person]].as_long()
-        start_time_str = f"{start_time_minutes // 60:02}:{start_time_minutes % 60:02}"
-        end_time_minutes = start_time_minutes + details["min_duration"]
-        end_time_str = f"{end_time_minutes // 60:02}:{end_time_minutes % 60:02}"
-        itinerary.append({"action": "meet", "person": person, "start_time": start_time_str, "end_time": end_time_str})
+    for name, meeting in meetings.items():
+        if model.evaluate(meetings_vars[name]):
+            location = meeting["location"]
+            start = meeting["start"]
+            duration = meeting["duration"]
+            itinerary.append({"action": "meet", "person": name, "start_time": f"{start//60:02}:{start%60:02}", "end_time": f"{(start+duration)//60:02}:{(start+duration)%60:02}"})
+    itinerary.sort(key=lambda x: x["start_time"])
     print({"itinerary": itinerary})
 else:
-    print("No feasible schedule found")
+    print("No solution found")

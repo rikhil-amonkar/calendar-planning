@@ -110,19 +110,60 @@ people = {
     "Rebecca": {"location": "Mission District", "start": 17*60, "end": 21*60 + 45, "min_duration": 45},
 }
 
-# Create a solver instance
-solver = Solver()
+# Create an optimizer instance
+optimizer = Optimize()
 
-# Define the variables
-start_times = {person: Int(f"start_{person}") for person in people}
-end_times = {person: Int(f"end_{person}") for person in people}
-current_location = String("current_location")
-current_time = Int("current_time")
+# Define variables
+start_time = Int('start_time')
+current_location = String('current_location')
+meetings = {person: Bool(person) for person in people}
+meeting_start_times = {person: Int(f"{person}_start_time") for person in people}
+meeting_end_times = {person: Int(f"{person}_end_time") for person in people}
 
 # Initial conditions
-solver.add(current_location == "Marina District")
-solver.add(current_time == 9*60)
+optimizer.add(start_time == 9*60)
+optimizer.add(current_location == "Marina District")
 
 # Constraints for each person
 for person, details in people.items():
-    start, end, min_duration, location = details["start"], details["end"], details["min_duration"], details["location"]
+    loc = details["location"]
+    start = details["start"]
+    end = details["end"]
+    min_duration = details["min_duration"]
+    
+    # If meeting with person, then start and end times must be within their availability
+    optimizer.add(Implies(meetings[person], meeting_start_times[person] >= start))
+    optimizer.add(Implies(meetings[person], meeting_end_times[person] <= end))
+    optimizer.add(Implies(meetings[person], meeting_end_times[person] - meeting_start_times[person] >= min_duration))
+    
+    # Travel time constraints
+    for prev_loc in locations:
+        travel_time = travel_times.get((prev_loc, loc), float('inf'))
+        if travel_time != float('inf'):
+            optimizer.add(Implies(And(meetings[person], current_location == prev_loc), meeting_start_times[person] >= start_time + travel_time))
+    
+    # Update current location and start time after meeting
+    optimizer.add(Implies(meetings[person], current_location == loc))
+    optimizer.add(Implies(meetings[person], start_time == meeting_end_times[person]))
+
+# Objective: Maximize the number of meetings
+objective = Sum([If(meetings[person], 1, 0) for person in people])
+optimizer.maximize(objective)
+
+# Solve the problem
+if optimizer.check() == sat:
+    model = optimizer.model()
+    itinerary = []
+    for person in people:
+        if model.evaluate(meetings[person]):
+            start = model.evaluate(meeting_start_times[person]).as_long()
+            end = model.evaluate(meeting_end_times[person]).as_long()
+            itinerary.append({
+                "action": "meet",
+                "person": person,
+                "start_time": f"{start//60:02}:{start%60:02}",
+                "end_time": f"{end//60:02}:{end%60:02}"
+            })
+    print({"itinerary": itinerary})
+else:
+    print("No solution found")

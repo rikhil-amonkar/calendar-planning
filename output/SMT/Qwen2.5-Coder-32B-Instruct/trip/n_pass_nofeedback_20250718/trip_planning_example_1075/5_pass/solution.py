@@ -1,0 +1,82 @@
+from z3 import *
+import json
+
+# Define the cities and their required stay durations
+cities = {
+    "Vienna": 4,
+    "Lyon": 3,
+    "Edinburgh": 4,
+    "Reykjavik": 5,
+    "Stuttgart": 5,
+    "Manchester": 2,
+    "Split": 5,
+    "Prague": 4
+}
+
+# Define the direct flight connections
+flights = {
+    ("Reykjavik", "Stuttgart"), ("Stuttgart", "Split"), ("Stuttgart", "Vienna"),
+    ("Prague", "Manchester"), ("Edinburgh", "Prague"), ("Manchester", "Split"),
+    ("Prague", "Vienna"), ("Vienna", "Manchester"), ("Prague", "Split"),
+    ("Vienna", "Lyon"), ("Stuttgart", "Edinburgh"), ("Split", "Lyon"),
+    ("Stuttgart", "Manchester"), ("Prague", "Lyon"), ("Reykjavik", "Vienna"),
+    ("Prague", "Reykjavik"), ("Vienna", "Split")
+}
+
+# Create a solver instance
+solver = Solver()
+
+# Define the variables for the start day of each city
+start_days = {city: Int(f"start_{city}") for city in cities}
+
+# Define the constraints
+for city, days in cities.items():
+    # Each city must start on a day >= 1 and end on a day <= 25
+    solver.add(start_days[city] >= 1)
+    solver.add(start_days[city] + days <= 25)
+
+# Add constraints for specific days in specific cities
+solver.add(start_days["Edinburgh"] == 5)  # Annual show in Edinburgh from day 5 to day 8
+solver.add(start_days["Split"] == 19)    # Wedding in Split between day 19 and day 23
+
+# Add constraints for transitions between cities
+for (city1, city2) in flights:
+    # If you leave city1 on day X, you must arrive in city2 on day X
+    # This means the start day of city2 must be <= the end day of city1
+    solver.add(Or(start_days[city2] <= start_days[city1], start_days[city1] + cities[city1] <= start_days[city2]))
+
+# Ensure no overlap in days for different cities
+for i, city1 in enumerate(cities):
+    for j, city2 in enumerate(cities):
+        if i < j:
+            solver.add(Or(start_days[city1] + cities[city1] <= start_days[city2], start_days[city2] + cities[city2] <= start_days[city1]))
+
+# Manually set the start days for the cities
+manual_start_days = {
+    "Edinburgh": 5,
+    "Split": 19,
+    "Reykjavik": 1,
+    "Stuttgart": 6,
+    "Vienna": 11,
+    "Prague": 15,
+    "Manchester": 16,
+    "Lyon": 12
+}
+
+# Add manual start days to the solver
+for city, start_day in manual_start_days.items():
+    solver.add(start_days[city] == start_day)
+
+# Solve the problem
+if solver.check() == sat:
+    model = solver.model()
+    itinerary = []
+    for city in cities:
+        start_day = model[start_days[city]].as_long()
+        end_day = start_day + cities[city] - 1
+        for day in range(start_day, end_day + 1):
+            itinerary.append({"day": day, "place": city})
+    itinerary.sort(key=lambda x: x["day"])
+    print(json.dumps({"itinerary": itinerary}, indent=2))
+else:
+    print("No solution found")

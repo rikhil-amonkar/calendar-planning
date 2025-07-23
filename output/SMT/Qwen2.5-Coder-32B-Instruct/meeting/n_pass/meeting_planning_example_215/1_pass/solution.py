@@ -38,42 +38,47 @@ start_time = time_to_minutes(900)
 solver = Solver()
 
 # Define the variables for the start and end times of each meeting
-meeting_times = {}
-for friend in friends:
-    meeting_times[friend] = (Int(f"{friend}_start"), Int(f"{friend}_end"))
+meeting_start = {name: Int(f"start_{name}") for name in friends}
+meeting_end = {name: Int(f"end_{name}") for name in friends}
+
+# Define the location variables
+location = {name: String(f"location_{name}") for name in friends}
 
 # Add constraints for each friend
-for friend, details in friends.items():
-    start, end = meeting_times[friend]
-    solver.add(start >= time_to_minutes(details["start"]))
-    solver.add(end <= time_to_minutes(details["end"]))
-    solver.add(end - start >= details["min_duration"])
+for name, details in friends.items():
+    # Meeting must start after the person is available
+    solver.add(meeting_start[name] >= time_to_minutes(details["start"]))
+    # Meeting must end before the person is unavailable
+    solver.add(meeting_end[name] <= time_to_minutes(details["end"]))
+    # Meeting must last at least the minimum duration
+    solver.add(meeting_end[name] - meeting_start[name] >= details["min_duration"])
+    # Meeting must be at the correct location
+    solver.add(location[name] == details["location"])
 
 # Add constraints for travel times
-current_location = "Bayview"
-current_time = start_time
+for i, name1 in enumerate(friends):
+    for name2 in list(friends.keys())[i+1:]:
+        # If meeting with name1 ends before meeting with name2 starts, travel from name1's location to name2's location
+        solver.add(Or(meeting_end[name1] + travel_times[(friends[name1]["location"], friends[name2]["location"])] <= meeting_start[name2],
+                      meeting_end[name2] + travel_times[(friends[name2]["location"], friends[name1]["location"])] <= meeting_start[name1]))
 
-for friend, details in friends.items():
-    friend_location = details["location"]
-    travel_time = travel_times[(current_location, friend_location)]
-    start, end = meeting_times[friend]
-    solver.add(start >= current_time + travel_time)
-    current_time = end
-    current_location = friend_location
+# Add constraint to start at Bayview at 9:00AM
+solver.add(meeting_start[list(friends.keys())[0]] >= start_time + travel_times[("Bayview", friends[list(friends.keys())[0]]["location"])])
 
 # Check if the problem is solvable
 if solver.check() == sat:
     model = solver.model()
     itinerary = []
-    for friend, details in friends.items():
-        start = model[meeting_times[friend][0]].as_long()
-        end = model[meeting_times[friend][1]].as_long()
+    for name in friends:
+        start = model[meeting_start[name]].as_long()
+        end = model[meeting_end[name]].as_long()
         itinerary.append({
             "action": "meet",
-            "person": friend,
+            "person": name,
             "start_time": f"{start // 60:02}:{start % 60:02}",
             "end_time": f"{end // 60:02}:{end % 60:02}"
         })
+    itinerary.sort(key=lambda x: time_to_minutes(int(x["start_time"].replace(":", ""))))
     print({"itinerary": itinerary})
 else:
     print("No solution found")

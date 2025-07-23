@@ -1,99 +1,114 @@
 from z3 import *
+import json
 
 def solve_itinerary():
-    # Cities and their indices
-    cities = ['Rome', 'Mykonos', 'Riga', 'Munich', 'Bucharest', 'Nice', 'Krakow']
-    city_idx = {city: i for i, city in enumerate(cities)}
+    # Cities
+    cities = ['Rome', 'Nice', 'Riga', 'Bucharest', 'Munich', 'Mykonos', 'Krakow']
+    city_indices = {city: idx for idx, city in enumerate(cities)}
     
-    # Direct flight connections (bidirectional)
-    flights = {
-        'Nice': ['Riga', 'Rome', 'Mykonos', 'Munich'],
-        'Riga': ['Nice', 'Bucharest', 'Munich', 'Rome'],
-        'Bucharest': ['Riga', 'Munich', 'Rome'],
-        'Munich': ['Bucharest', 'Mykonos', 'Rome', 'Nice', 'Krakow', 'Riga'],
-        'Mykonos': ['Munich', 'Nice', 'Rome'],
-        'Rome': ['Nice', 'Munich', 'Mykonos', 'Bucharest', 'Riga'],
-        'Krakow': ['Munich']
-    }
+    # Direct flights: each pair is bidirectional except Riga to Munich is one way
+    direct_flights = [
+        ('Nice', 'Riga'),
+        ('Bucharest', 'Munich'),
+        ('Mykonos', 'Munich'),
+        ('Riga', 'Bucharest'),
+        ('Rome', 'Nice'),
+        ('Rome', 'Munich'),
+        ('Mykonos', 'Nice'),
+        ('Rome', 'Mykonos'),
+        ('Munich', 'Krakow'),
+        ('Rome', 'Bucharest'),
+        ('Nice', 'Munich'),
+        ('Riga', 'Munich'),  # Riga to Munich is one way
+        ('Rome', 'Riga')
+    ]
     
-    # Required days per city
-    req_days = {
-        'Rome': 4,
-        'Mykonos': 3,
-        'Riga': 3,
-        'Munich': 4,
-        'Bucharest': 4,
-        'Nice': 3,
-        'Krakow': 2
-    }
+    # Create an adjacency list for flights
+    adjacency = {city: set() for city in cities}
+    for a, b in direct_flights:
+        adjacency[a].add(b)
+        adjacency[b].add(a)  # assuming most are bidirectional
     
-    # Fixed events
-    # Rome days 1-4 (indices 0-3)
-    # Mykonos wedding between days 4-6 (indices 3-5)
-    # Krakow days 16-17 (indices 15-16)
+    # Adjust for one-way flight from Riga to Munich
+    if 'Riga' in adjacency['Munich']:
+        adjacency['Munich'].remove('Riga')
     
+    # Z3 variables: assign each day to a city (0..6)
     s = Solver()
+    days = 17
+    day_assignments = [Int(f'day_{i}') for i in range(days)]
+    for day in day_assignments:
+        s.add(day >= 0, day < len(cities))
     
-    # Create variables for each day's city
-    day_city = [Int(f'day_{i}') for i in range(17)]
-    for dc in day_city:
-        s.add(dc >= 0, dc < len(cities))
+    # Constraints for each city's total days
+    city_days = [
+        ('Rome', 4),
+        ('Nice', 3),
+        ('Riga', 3),
+        ('Bucharest', 4),
+        ('Munich', 4),
+        ('Mykonos', 3),
+        ('Krakow', 2)
+    ]
     
-    # Rome must be days 1-4 (indices 0-3)
+    # Fixed constraints:
+    # Rome must be days 1-4 (0-based: 0-3)
     for i in range(4):
-        s.add(day_city[i] == city_idx['Rome'])
+        s.add(day_assignments[i] == city_indices['Rome'])
     
-    # Mykonos wedding between days 4-6 (indices 3-5)
-    s.add(Or([day_city[i] == city_idx['Mykonos'] for i in range(3, 6)]))
+    # Krakow must be days 16-17 (0-based: 15-16)
+    s.add(day_assignments[15] == city_indices['Krakow'])
+    s.add(day_assignments[16] == city_indices['Krakow'])
     
-    # Krakow must be days 16-17 (indices 15-16)
-    s.add(day_city[15] == city_idx['Krakow'])
-    s.add(day_city[16] == city_idx['Krakow'])
+    # Mykonos wedding between day 4 and 6 (1-based: days 4-6 are 3-5 in 0-based)
+    # At least one of days 3,4,5 must be Mykonos
+    s.add(Or(day_assignments[3] == city_indices['Mykonos'],
+             day_assignments[4] == city_indices['Mykonos'],
+             day_assignments[5] == city_indices['Mykonos']))
     
-    # Flight transitions - consecutive days must be connected
-    for i in range(16):
-        current = day_city[i]
-        next_c = day_city[i+1]
-        # Create a disjunction of all possible valid transitions
-        transitions = []
-        for city in cities:
-            for neighbor in flights[city]:
-                transitions.append(And(current == city_idx[city], next_c == city_idx[neighbor]))
-        s.add(Or(transitions))
+    # Flight transitions: consecutive days must be same city or connected by direct flight
+    for i in range(days - 1):
+        current_city = day_assignments[i]
+        next_city = day_assignments[i + 1]
+        same_city = current_city == next_city
+        flight_possible = Or([And(current_city == city_indices[a], next_city == city_indices[b]) 
+                            for a in adjacency for b in adjacency[a]])
+        s.add(Or(same_city, flight_possible))
     
-    # Count days in each city (including flight days)
-    city_counts = [Sum([If(day_city[i] == idx, 1, 0) for i in range(17)]) for idx in range(len(cities))]
+    # Total days per city
+    for city, total in city_days:
+        city_idx = city_indices[city]
+        s.add(Sum([If(day_assignments[i] == city_idx, 1, 0) for i in range(days)]) == total)
     
-    # Add constraints for required days
-    for city, days in req_days.items():
-        s.add(city_counts[city_idx[city]] == days)
-    
-    # Try to find a solution
+    # Check if the problem is satisfiable
     if s.check() == sat:
         m = s.model()
         itinerary = []
-        for i in range(17):
-            city = cities[m.evaluate(day_city[i]).as_long()]
-            itinerary.append({'day': i+1, 'place': city})
+        for i in range(days):
+            city_idx = m.evaluate(day_assignments[i]).as_long()
+            itinerary.append({'day': i + 1, 'place': cities[city_idx]})
         
-        # Verify the solution
-        counts = {city: 0 for city in cities}
-        for entry in itinerary:
-            counts[entry['place']] += 1
+        # Verify the solution meets all constraints
+        mykonos_days = [d['day'] for d in itinerary if d['place'] == 'Mykonos']
+        assert len(mykonos_days) == 3
+        assert any(4 <= day <= 6 for day in mykonos_days)
         
-        for city, days in req_days.items():
-            assert counts[city] == days, f"{city} has {counts[city]} days, expected {days}"
+        rome_days = [d['day'] for d in itinerary if d['place'] == 'Rome']
+        assert all(1 <= day <= 4 for day in rome_days)
+        assert len(rome_days) == 4
         
-        for i in range(16):
-            current = itinerary[i]['place']
-            next_p = itinerary[i+1]['place']
-            assert next_p in flights[current], f"No flight from {current} to {next_p} on day {i+1}"
+        krakow_days = [d['day'] for d in itinerary if d['place'] == 'Krakow']
+        assert krakow_days == [16, 17]
+        
+        for i in range(days - 1):
+            current_place = itinerary[i]['place']
+            next_place = itinerary[i + 1]['place']
+            if current_place != next_place:
+                assert next_place in adjacency[current_place]
         
         return {'itinerary': itinerary}
     else:
-        return {"error": "No valid itinerary found"}
+        return None
 
-# Execute and print the result
 result = solve_itinerary()
-import json
 print(json.dumps(result, indent=2))

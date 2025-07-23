@@ -35,68 +35,61 @@ travel_times = {
     ("Union Square", "Bayview"): 15,
 }
 
-# Define the people and their availability
-people = {
-    "Kimberly": {"district": "Marina District", "start": 13.25, "end": 16.75, "min_meeting": 0.25},
-    "Robert": {"district": "Chinatown", "start": 12.25, "end": 20.25, "min_meeting": 0.25},
-    "Rebecca": {"district": "Financial District", "start": 13.25, "end": 16.75, "min_meeting": 1.25},
-    "Margaret": {"district": "Bayview", "start": 9.5, "end": 13.5, "min_meeting": 0.5},
-    "Kenneth": {"district": "Union Square", "start": 19.5, "end": 21.25, "min_meeting": 1.25},
+# Define the friends and their availability
+friends = {
+    "Kimberly": {"district": "Marina District", "start": 13.25, "end": 16.75, "min_duration": 0.25},
+    "Robert": {"district": "Chinatown", "start": 12.25, "end": 20.25, "min_duration": 0.25},
+    "Rebecca": {"district": "Financial District", "start": 13.25, "end": 16.75, "min_duration": 1.25},
+    "Margaret": {"district": "Bayview", "start": 9.5, "end": 13.5, "min_duration": 0.5},
+    "Kenneth": {"district": "Union Square", "start": 19.5, "end": 21.25, "min_duration": 1.25},
 }
 
-# Create a solver
+# Convert times to minutes for easier calculations
+def time_to_minutes(time):
+    hours, minutes = divmod(time * 60, 60)
+    return int(hours * 60 + minutes)
+
+# Create a solver instance
 solver = Solver()
 
-# Define the variables
-current_district = String('current_district')
-current_time = Real('current_time')
-meetings = []
+# Define variables for the start and end times of each meeting
+meeting_vars = {}
+for friend, details in friends.items():
+    start = Real(f"{friend}_start")
+    end = Real(f"{friend}_end")
+    meeting_vars[friend] = (start, end)
+    solver.add(start >= time_to_minutes(details["start"]))
+    solver.add(end <= time_to_minutes(details["end"]))
+    solver.add(end - start >= time_to_minutes(details["min_duration"]))
 
-# Initial conditions
+# Define variables for the current district and time
+current_district = String("current_district")
+current_time = Real("current_time")
 solver.add(current_district == "Richmond District")
-solver.add(current_time == 9.0)
+solver.add(current_time == time_to_minutes(9.0))
 
-# Define the meeting variables and constraints
-for person, details in people.items():
-    meet_start = Real(f'meet_start_{person}')
-    meet_end = Real(f'meet_end_{person}')
-    meet_district = String(f'meet_district_{person}')
-    
-    # Add constraints for meeting times
-    solver.add(meet_start >= details["start"])
-    solver.add(meet_end <= details["end"])
-    solver.add(meet_end - meet_start >= details["min_meeting"])
-    solver.add(meet_district == details["district"])
-    
-    # Add constraints for travel time
-    solver.add(current_time + travel_times[(current_district, meet_district)] / 60.0 <= meet_start)
-    
-    # Update current district and time after meeting
-    current_district = meet_district
-    current_time = meet_end
-    
-    # Add meeting to the list
-    meetings.append({"action": "meet", "person": person, "start_time": meet_start, "end_time": meet_end})
+# Define constraints for traveling between districts
+for friend, (start, end) in meeting_vars.items():
+    district = friends[friend]["district"]
+    travel_time = travel_times[(current_district.as_string(), district)]
+    solver.add(current_time + travel_time <= start)
+    current_time = end
+    current_district = district
 
-# Function to convert time in hours to HH:MM format
-def time_to_str(time):
-    hours = int(time)
-    minutes = int((time - hours) * 60)
-    return f"{hours:02}:{minutes:02}"
-
-# Solve the problem
+# Check if the problem is solvable
 if solver.check() == sat:
     model = solver.model()
     itinerary = []
-    for meeting in meetings:
-        start_time = model.evaluate(meeting["start_time"]).as_decimal(2)
-        end_time = model.evaluate(meeting["end_time"]).as_decimal(2)
+    for friend, (start, end) in meeting_vars.items():
+        start_time = model[start].as_long() / 60
+        end_time = model[end].as_long() / 60
         itinerary.append({
-            "action": meeting["action"],
-            "person": meeting["person"],
-            "start_time": time_to_str(float(start_time)),
-            "end_time": time_to_str(float(end_time))
+            "action": "meet",
+            "person": friend,
+            "start_time": f"{int(start_time):02}:{int((start_time % 1) * 60):02}",
+            "end_time": f"{int(end_time):02}:{int((end_time % 1) * 60):02}"
         })
+    itinerary.sort(key=lambda x: x["start_time"])
     print({"itinerary": itinerary})
 else:
     print("No solution found")

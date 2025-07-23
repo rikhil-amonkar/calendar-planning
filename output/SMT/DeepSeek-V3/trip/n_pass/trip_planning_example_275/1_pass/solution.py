@@ -1,93 +1,101 @@
 from z3 import *
+import json
 
 def solve_itinerary():
     # Cities
-    Split, Vilnius, Santorini, Madrid = 0, 1, 2, 3
-    cities = {0: 'Split', 1: 'Vilnius', 2: 'Santorini', 3: 'Madrid'}
+    cities = ['Split', 'Vilnius', 'Santorini', 'Madrid']
+    city_to_int = {city: idx for idx, city in enumerate(cities)}
     
-    # Direct flights: adjacency list
-    direct_flights = {
-        Split: [Vilnius, Madrid],
-        Vilnius: [Split],
-        Madrid: [Split, Santorini],
-        Santorini: [Madrid]
+    # Direct flight connections (undirected)
+    connections = {
+        ('Vilnius', 'Split'),
+        ('Split', 'Madrid'),
+        ('Madrid', 'Santorini')
     }
     
-    # Total days
-    total_days = 14
+    # Convert connections to indices for easier checking
+    connection_indices = set()
+    for a, b in connections:
+        connection_indices.add((city_to_int[a], city_to_int[b]))
+        connection_indices.add((city_to_int[b], city_to_int[a]))
     
-    # Create Z3 variables: each day is assigned a city
-    day_city = [Int(f'day_{i}_city') for i in range(1, total_days + 1)]
+    # Days: 1 to 14
+    num_days = 14
     
+    # Create Z3 variables for each day's city
+    day_vars = [Int(f'day_{i}') for i in range(1, num_days + 1)]
+    
+    # Solver
     s = Solver()
     
-    # Each day's city must be one of the four cities
-    for day in range(total_days):
+    # Each day's variable must be one of the city indices (0 to 3)
+    for day_var in day_vars:
+        s.add(Or([day_var == idx for idx in range(len(cities))]))
+    
+    # Conference days 13 and 14 must be Santorini (index 2)
+    s.add(day_vars[12] == city_to_int['Santorini'])  # day 13 is index 12 (0-based)
+    s.add(day_vars[13] == city_to_int['Santorini'])  # day 14
+    
+    # Transition constraints: consecutive days must be the same city or connected by direct flight
+    for i in range(num_days - 1):
+        current_city = day_vars[i]
+        next_city = day_vars[i + 1]
         s.add(Or(
-            day_city[day] == Split,
-            day_city[day] == Vilnius,
-            day_city[day] == Santorini,
-            day_city[day] == Madrid
+            current_city == next_city,
+            And(current_city != next_city, (current_city, next_city) in connection_indices)
         ))
     
-    # Constraint: days 13 and 14 (index 12 and 13) must be Santorini
-    s.add(day_city[12] == Santorini)
-    s.add(day_city[13] == Santorini)
+    # Duration constraints
+    split_days = sum([If(day_var == city_to_int['Split'], 1, 0) for day_var in day_vars])
+    vilnius_days = sum([If(day_var == city_to_int['Vilnius'], 1, 0) for day_var in day_vars])
+    santorini_days = sum([If(day_var == city_to_int['Santorini'], 1, 0) for day_var in day_vars])
+    madrid_days = sum([If(day_var == city_to_int['Madrid'], 1, 0) for day_var in day_vars])
     
-    # Constraints for city visits:
-    # Split: 5 days
-    split_days = Sum([If(day_city[i] == Split, 1, 0) for i in range(total_days)])
     s.add(split_days == 5)
-    
-    # Vilnius: 4 days
-    vilnius_days = Sum([If(day_city[i] == Vilnius, 1, 0) for i in range(total_days)])
     s.add(vilnius_days == 4)
-    
-    # Santorini: 2 days (already fixed days 13 and 14)
-    # So no additional constraint needed
-    
-    # Madrid: 6 days
-    madrid_days = Sum([If(day_city[i] == Madrid, 1, 0) for i in range(total_days)])
+    s.add(santorini_days == 2)  # days 13 and 14 are already forced
     s.add(madrid_days == 6)
     
-    # Flight constraints: consecutive days in different cities must have a direct flight
-    for i in range(total_days - 1):
-        current_city = day_city[i]
-        next_city = day_city[i + 1]
-        # If cities are different, then there must be a direct flight
-        s.add(Implies(
-            current_city != next_city,
-            Or([next_city == dst for dst in direct_flights[current_city]])
-        ))
-    
-    # Check if the problem is satisfiable
+    # Solve
     if s.check() == sat:
-        model = s.model()
+        m = s.model()
         itinerary = []
-        for day in range(total_days):
-            city_code = model.evaluate(day_city[day]).as_long()
-            itinerary.append({
-                'day': day + 1,
-                'place': cities[city_code]
-            })
+        int_to_city = {idx: city for city, idx in city_to_int.items()}
+        for day in range(1, num_days + 1):
+            day_var = day_vars[day - 1]
+            city_idx = m.evaluate(day_var).as_long()
+            city = int_to_city[city_idx]
+            itinerary.append({'day': day, 'place': city})
         
-        # Verify the counts
-        counts = {city: 0 for city in cities.values()}
-        for entry in itinerary:
-            counts[entry['place']] += 1
+        # Verify the solution meets all constraints
+        # (split, vilnius, santorini, madrid days)
+        split_count = sum(1 for entry in itinerary if entry['place'] == 'Split')
+        vilnius_count = sum(1 for entry in itinerary if entry['place'] == 'Vilnius')
+        santorini_count = sum(1 for entry in itinerary if entry['place'] == 'Santorini')
+        madrid_count = sum(1 for entry in itinerary if entry['place'] == 'Madrid')
+        
+        assert split_count == 5
+        assert vilnius_count == 4
+        assert santorini_count == 2
+        assert madrid_count == 6
+        
+        # Verify conference days
+        assert itinerary[12]['place'] == 'Santorini'  # day 13
+        assert itinerary[13]['place'] == 'Santorini'  # day 14
+        
+        # Verify transitions are valid
+        for i in range(len(itinerary) - 1):
+            current = itinerary[i]['place']
+            next_ = itinerary[i + 1]['place']
+            if current != next_:
+                assert (current, next_) in connections or (next_, current) in connections
         
         # Prepare the output
-        output = {
-            'itinerary': itinerary
-        }
+        output = {'itinerary': itinerary}
         return output
     else:
-        return None
+        return {"error": "No valid itinerary found"}
 
-# Execute the solver
+# Generate and print the itinerary
 result = solve_itinerary()
-if result:
-    import json
-    print(json.dumps(result, indent=2))
-else:
-    print("No valid itinerary found.")
+print(json.dumps(result, indent=2))

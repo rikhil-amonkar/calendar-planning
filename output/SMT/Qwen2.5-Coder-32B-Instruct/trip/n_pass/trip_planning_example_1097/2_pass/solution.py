@@ -1,5 +1,10 @@
 from z3 import *
-import json
+
+# Define the solver
+solver = Solver()
+
+# Define the number of days
+total_days = 18
 
 # Define the cities and their required stay durations
 cities = {
@@ -13,63 +18,70 @@ cities = {
     "London": 3
 }
 
-# Define the flight connections
-flights = {
-    ("Warsaw", "Reykjavik"), ("Oslo", "Madrid"), ("Warsaw", "Riga"),
-    ("Lyon", "London"), ("Madrid", "London"), ("Warsaw", "London"),
-    ("Reykjavik", "Madrid"), ("Warsaw", "Oslo"), ("Oslo", "Dubrovnik"),
-    ("Oslo", "Reykjavik"), ("Riga", "Oslo"), ("Oslo", "Lyon"),
-    ("Oslo", "London"), ("London", "Reykjavik"), ("Warsaw", "Madrid"),
-    ("Madrid", "Lyon"), ("Dubrovnik", "Madrid")
+# Define the constraints for specific days
+constraints = {
+    "Riga": (4, 5),  # Meet a friend in Riga between day 4 and day 5
+    "Dubrovnik": (7, 8)  # Attend a wedding in Dubrovnik between day 7 and day 8
 }
 
-# Create a solver instance
-solver = Solver()
+# Define the direct flight connections
+flights = {
+    ("Warsaw", "Reykjavik"),
+    ("Oslo", "Madrid"),
+    ("Warsaw", "Riga"),
+    ("Lyon", "London"),
+    ("Madrid", "London"),
+    ("Warsaw", "London"),
+    ("Reykjavik", "Madrid"),
+    ("Warsaw", "Oslo"),
+    ("Oslo", "Dubrovnik"),
+    ("Oslo", "Reykjavik"),
+    ("Riga", "Oslo"),
+    ("Oslo", "Lyon"),
+    ("Oslo", "London"),
+    ("London", "Reykjavik"),
+    ("Warsaw", "Madrid"),
+    ("Madrid", "Lyon"),
+    ("Dubrovnik", "Madrid")
+}
 
-# Define the start day for each city as a Z3 integer variable
+# Create variables for the start day of each city
 start_days = {city: Int(f"start_{city}") for city in cities}
 
 # Add constraints for the start days
 for city, duration in cities.items():
     solver.add(start_days[city] >= 1)
-    solver.add(start_days[city] + duration <= 18)
+    solver.add(start_days[city] + duration - 1 <= total_days)
 
-# Add constraints for the friend meeting in Riga between day 4 and day 5
-solver.add(start_days["Riga"] + 1 >= 4)
-solver.add(start_days["Riga"] <= 5)
+# Add constraints for specific days
+for city, (start, end) in constraints.items():
+    solver.add(start_days[city] <= start)
+    solver.add(start_days[city] + cities[city] - 1 >= end)
 
-# Add constraints for the wedding in Dubrovnik between day 7 and day 8
-solver.add(start_days["Dubrovnik"] + 1 >= 7)
-solver.add(start_days["Dubrovnik"] <= 8)
-
-# Add constraints for the flight connections
+# Add constraints for direct flights
 for (city1, city2) in flights:
-    # If you start in city1 and end in city2, the start of city2 must be the end of city1
-    solver.add(Or(start_days[city2] != start_days[city1] + cities[city1],
-                 start_days[city2] == start_days[city1] + cities[city1]))
+    # If you start city1 on day X, you can only start city2 on day X + duration of city1 or later
+    solver.add(Or(start_days[city1] + cities[city1] <= start_days[city2], start_days[city2] + cities[city2] <= start_days[city1]))
 
-# Add constraints to ensure no overlap in stays
+# Add constraints to ensure no overlap in days
 for i, (city1, duration1) in enumerate(cities.items()):
     for j, (city2, duration2) in enumerate(cities.items()):
         if i < j:
-            # Ensure that the stays do not overlap
-            solver.add(Or(start_days[city1] + duration1 <= start_days[city2],
-                          start_days[city2] + duration2 <= start_days[city1]))
+            solver.add(Or(start_days[city1] + duration1 <= start_days[city2], start_days[city2] + duration2 <= start_days[city1]))
 
-# Check if the constraints are satisfiable
+# Check if the problem is solvable
 if solver.check() == sat:
     model = solver.model()
     itinerary = []
     for city, start in start_days.items():
-        start_day = model.evaluate(start).as_long()
-        itinerary.append((start_day, city))
+        start_day = model[start].as_long()
+        end_day = start_day + cities[city] - 1
+        itinerary.append((start_day, end_day, city))
     itinerary.sort()
-    day_place_mapping = []
-    for i in range(1, 19):
-        for start_day, city in itinerary:
-            if start_day <= i < start_day + cities[city]:
-                day_place_mapping.append({"day": i, "place": city})
-                break
-    print(json.dumps({"itinerary": day_place_mapping}, indent=2))
+    result = {"itinerary": []}
+    for start_day, end_day, city in itinerary:
+        for day in range(start_day, end_day + 1):
+            result["itinerary"].append({"day": day, "city": city})
+    print(result)
 else:
     print("No solution found")

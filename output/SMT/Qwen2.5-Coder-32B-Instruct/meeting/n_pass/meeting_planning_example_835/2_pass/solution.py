@@ -121,6 +121,10 @@ itinerary = []
 # Define the meeting variables
 meeting_vars = {name: Bool(name) for name in meetings}
 
+# Define the meeting start and end times
+meeting_start = {name: Real(name + "_start") for name in meetings}
+meeting_end = {name: Real(name + "_end") for name in meetings}
+
 # Add constraints for each meeting
 for name, details in meetings.items():
     start = details["start"]
@@ -128,20 +132,51 @@ for name, details in meetings.items():
     min_duration = details["min_duration"]
     location = details["location"]
     
-    # Define the meeting start and end times
-    meeting_start = Real(name + "_start")
-    meeting_end = Real(name + "_end")
-    
     # Add constraints for meeting times
-    solver.add(meeting_start >= start)
-    solver.add(meeting_end <= end)
-    solver.add(meeting_end - meeting_start >= min_duration)
+    solver.add(meeting_start[name] >= start)
+    solver.add(meeting_end[name] <= end)
+    solver.add(meeting_end[name] - meeting_start[name] >= min_duration)
     
     # Add constraints for travel time
     travel_time = travel_times[(current_location, location)]
-    solver.add(meeting_start >= current_time + travel_time / 60.0)
+    solver.add(meeting_start[name] >= current_time + travel_time / 60.0)
     
     # Add constraints for meeting variable
-    solver.add(Implies(meeting_vars[name], meeting_start >= start))
-    solver.add(Implies(meeting_vars[name], meeting_end <= end))
-    solver.add(Implies(meeting_vars[name], meeting_end - meeting_start >= min_duration))
+    solver.add(Implies(meeting_vars[name], meeting_start[name] >= start))
+    solver.add(Implies(meeting_vars[name], meeting_end[name] <= end))
+    solver.add(Implies(meeting_vars[name], meeting_end[name] - meeting_start[name] >= min_duration))
+    
+    # Update current location and time
+    current_location = location
+    current_time = meeting_end[name]
+    
+    # Add to itinerary
+    itinerary.append({"action": "meet", "person": name, "start_time": meeting_start[name], "end_time": meeting_end[name]})
+
+# Maximize the number of meetings using a loop
+num_meetings = 0
+while True:
+    if solver.check() == sat:
+        model = solver.model()
+        result_itinerary = []
+        for entry in itinerary:
+            person = entry["person"]
+            start_time = model.evaluate(entry["start_time"]).as_decimal(2)
+            end_time = model.evaluate(entry["end_time"]).as_decimal(2)
+            result_itinerary.append({
+                "action": "meet",
+                "person": person,
+                "start_time": f"{int(start_time):02}:{int((start_time % 1) * 60):02}",
+                "end_time": f"{int(end_time):02}:{int((end_time % 1) * 60):02}"
+            })
+        num_meetings += 1
+        # Add a constraint to exclude the current solution
+        solver.add(Or([Not(meeting_vars[name]) for name in meetings if model.evaluate(meeting_vars[name])]))
+    else:
+        break
+
+# Print the best itinerary found
+if num_meetings > 0:
+    print({"itinerary": result_itinerary})
+else:
+    print("No solution found")

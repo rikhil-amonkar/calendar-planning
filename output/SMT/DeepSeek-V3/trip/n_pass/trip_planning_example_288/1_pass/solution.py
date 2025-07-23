@@ -3,87 +3,92 @@ from z3 import *
 def solve_itinerary():
     # Cities
     cities = ['Manchester', 'Stuttgart', 'Madrid', 'Vienna']
-    man, stut, mad, vie = cities
+    city_to_idx = {city: idx for idx, city in enumerate(cities)}
+    idx_to_city = {idx: city for idx, city in enumerate(cities)}
     
-    # Direct flight connections
+    # Direct flights: adjacency list
     direct_flights = {
-        man: [stut, mad, vie],
-        stut: [man, vie],
-        mad: [man, vie],
-        vie: [man, stut, mad]
+        'Vienna': ['Stuttgart', 'Manchester', 'Madrid'],
+        'Stuttgart': ['Vienna', 'Manchester'],
+        'Manchester': ['Vienna', 'Stuttgart', 'Madrid'],
+        'Madrid': ['Vienna', 'Manchester']
     }
     
-    # Create Z3 variables for each day (1-15)
+    # Total days
+    total_days = 15
+    
+    # Create Z3 variables for each day: day 1 to day 15
+    day_vars = [Int(f'day_{i}') for i in range(1, total_days + 1)]
+    
     s = Solver()
-    day_to_city = [Int(f'day_{i}') for i in range(1, 16)]  # 1-15
     
-    # Assign each day's city to a number (0: Manchester, 1: Stuttgart, 2: Madrid, 3: Vienna)
-    city_map = {man: 0, stut: 1, mad: 2, vie: 3}
-    inv_city_map = {v: k for k, v in city_map.items()}
+    # Each day variable must be between 0 and 3 (city indices)
+    for day in day_vars:
+        s.add(day >= 0, day < len(cities))
     
-    for day in day_to_city:
-        s.add(day >= 0, day <= 3)
+    # Manchester must be from day 1 to day 7 (wedding)
+    for i in range(1, 8):  # days 1-7 (1-based)
+        s.add(day_vars[i-1] == city_to_idx['Manchester'])
     
-    # Constraints for transitions: consecutive days must be same city or connected by direct flight
-    for i in range(14):  # days 1-14, check transition to next day
-        current_day = day_to_city[i]
-        next_day = day_to_city[i+1]
-        # Either same city or connected by direct flight
-        s.add(Or(
-            current_day == next_day,
-            And(current_day == city_map[man], next_day == city_map[stut]),
-            And(current_day == city_map[man], next_day == city_map[mad]),
-            And(current_day == city_map[man], next_day == city_map[vie]),
-            And(current_day == city_map[stut], next_day == city_map[man]),
-            And(current_day == city_map[stut], next_day == city_map[vie]),
-            And(current_day == city_map[mad], next_day == city_map[man]),
-            And(current_day == city_map[mad], next_day == city_map[vie]),
-            And(current_day == city_map[vie], next_day == city_map[man]),
-            And(current_day == city_map[vie], next_day == city_map[stut]),
-            And(current_day == city_map[vie], next_day == city_map[mad])
-        ))
-    
-    # Manchester: 7 days, wedding between day 1-7 (so must be in Manchester days 1-7)
-    for day in range(7):  # days 1-7 (0-based index 0-6)
-        s.add(day_to_city[day] == city_map[man])
-    
-    # Stuttgart: 5 days, workshop between day 11-15 (must be in Stuttgart during some of these days)
-    # Total Stuttgart days is 5, and at least one day between 11-15 is in Stuttgart.
-    stuttgart_days = [If(day_to_city[i] == city_map[stut], 1, 0) for i in range(10, 15)]  # days 11-15 (indices 10-14)
-    s.add(Sum(stuttgart_days) >= 1)
+    # Stuttgart must be visited between day 11-15 (workshop)
+    # At least one day in Stuttgart in days 11-15
+    stuttgart_in_workshop_days = Or([day_vars[i-1] == city_to_idx['Stuttgart'] for i in range(11, 16)])
+    s.add(stuttgart_in_workshop_days)
     
     # Total days per city
-    man_days = Sum([If(day_to_city[i] == city_map[man], 1, 0) for i in range(15)])
-    stut_days = Sum([If(day_to_city[i] == city_map[stut], 1, 0) for i in range(15)])
-    mad_days = Sum([If(day_to_city[i] == city_map[mad], 1, 0) for i in range(15)])
-    vie_days = Sum([If(day_to_city[i] == city_map[vie], 1, 0) for i in range(15)])
+    # Manchester: 7 days (already days 1-7)
+    # So additional Manchester days can be 0
+    # But total Manchester days must be 7. So no additional days beyond 1-7.
+    # So sum of Manchester days is 7.
+    manchester_days = Sum([If(day_vars[i] == city_to_idx['Manchester'], 1, 0) for i in range(total_days)])
+    s.add(manchester_days == 7)
     
-    s.add(man_days == 7)
-    s.add(stut_days == 5)
-    s.add(mad_days == 4)
-    s.add(vie_days == 2)
+    # Stuttgart: 5 days
+    stuttgart_days = Sum([If(day_vars[i] == city_to_idx['Stuttgart'], 1, 0) for i in range(total_days)])
+    s.add(stuttgart_days == 5)
     
-    # Check and get model
+    # Madrid: 4 days
+    madrid_days = Sum([If(day_vars[i] == city_to_idx['Madrid'], 1, 0) for i in range(total_days)])
+    s.add(madrid_days == 4)
+    
+    # Vienna: 2 days
+    vienna_days = Sum([If(day_vars[i] == city_to_idx['Vienna'], 1, 0) for i in range(total_days)])
+    s.add(vienna_days == 2)
+    
+    # Flight constraints: consecutive days can only be the same city or connected by direct flight
+    for i in range(total_days - 1):
+        current_city_idx = day_vars[i]
+        next_city_idx = day_vars[i+1]
+        current_city = idx_to_city[current_city_idx.as_long() if is_const(current_city_idx) else current_city_idx]
+        next_city = idx_to_city[next_city_idx.as_long() if is_const(next_city_idx) else next_city_idx]
+        
+        # Either same city or direct flight
+        s.add(Or(
+            current_city_idx == next_city_idx,
+            And(
+                current_city_idx != next_city_idx,
+                Or([next_city in direct_flights[current_city] for current_city in cities for next_city in cities if current_city != next_city])
+            )
+        ))
+    
+    # Check if the solver can find a solution
     if s.check() == sat:
         model = s.model()
         itinerary = []
-        for day in range(1, 16):
-            city_num = model.evaluate(day_to_city[day-1]).as_long()
-            city_name = inv_city_map[city_num]
-            itinerary.append({'day': day, 'place': city_name})
+        for i in range(1, total_days + 1):
+            day_var = day_vars[i-1]
+            city_idx = model[day_var].as_long()
+            city = idx_to_city[city_idx]
+            itinerary.append({'day': i, 'place': city})
         
-        # Prepare the output
-        output = {
-            'itinerary': itinerary
-        }
-        return output
+        # Verify the solution meets all constraints
+        # (This is a sanity check; Z3 should ensure it)
+        return {'itinerary': itinerary}
     else:
         return None
 
-# Execute and print the result
 result = solve_itinerary()
 if result:
-    import json
-    print(json.dumps(result, indent=2))
+    print(result)
 else:
-    print("No solution found.")
+    print("No valid itinerary found.")

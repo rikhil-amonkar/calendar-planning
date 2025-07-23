@@ -1,73 +1,76 @@
 from z3 import *
 
 def solve_itinerary():
-    # Cities
+    # Cities and their indices
     cities = ['Manchester', 'Stuttgart', 'Madrid', 'Vienna']
-    man, stut, mad, vie = cities
+    city_idx = {city: i for i, city in enumerate(cities)}
     
-    # Create Z3 variables for each day (1-15)
+    # Direct flight connections
+    connections = {
+        'Manchester': ['Stuttgart', 'Madrid', 'Vienna'],
+        'Stuttgart': ['Manchester', 'Vienna'],
+        'Madrid': ['Manchester', 'Vienna'],
+        'Vienna': ['Manchester', 'Stuttgart', 'Madrid']
+    }
+    
+    # Total days
+    total_days = 15
+    
+    # Create Z3 variables for each day
+    day_vars = [Int(f'day_{i}') for i in range(total_days)]
+    
     s = Solver()
-    day_to_city = [Int(f'day_{i}') for i in range(1, 16)]
     
-    # City mapping
-    city_map = {man: 0, stut: 1, mad: 2, vie: 3}
-    inv_city_map = {v: k for k, v in city_map.items()}
+    # Each day must be assigned to a valid city
+    for day in day_vars:
+        s.add(day >= 0, day < len(cities))
     
-    # Ensure each day is assigned a valid city
-    for day in day_to_city:
-        s.add(day >= 0, day <= 3)
+    # Manchester must be days 1-7 (indexes 0-6)
+    for i in range(7):
+        s.add(day_vars[i] == city_idx['Manchester'])
     
-    # Manchester must be days 1-7 (wedding)
-    for day in range(7):
-        s.add(day_to_city[day] == city_map[man])
+    # Stuttgart must include at least one day between 11-15 (indexes 10-14)
+    s.add(Or([day_vars[i] == city_idx['Stuttgart'] for i in range(10, 15)]))
     
-    # Stuttgart must have at least one day between 11-15 (workshop)
-    s.add(Or([day_to_city[i] == city_map[stut] for i in range(10, 15)]))
-    
-    # Transition constraints (direct flights)
-    direct_connections = [
-        (city_map[man], city_map[stut]),
-        (city_map[man], city_map[mad]),
-        (city_map[man], city_map[vie]),
-        (city_map[stut], city_map[man]),
-        (city_map[stut], city_map[vie]),
-        (city_map[mad], city_map[man]),
-        (city_map[mad], city_map[vie]),
-        (city_map[vie], city_map[man]),
-        (city_map[vie], city_map[stut]),
-        (city_map[vie], city_map[mad])
+    # Total days per city
+    city_days = [
+        ('Manchester', 7),
+        ('Stuttgart', 5),
+        ('Madrid', 4),
+        ('Vienna', 2)
     ]
     
-    for i in range(14):
-        current = day_to_city[i]
-        next_day = day_to_city[i+1]
-        s.add(Or(current == next_day, *[And(current == a, next_day == b) for (a,b) in direct_connections]))
+    for city, days in city_days:
+        s.add(Sum([If(day_vars[i] == city_idx[city], 1, 0) for i in range(total_days)]) == days)
     
-    # Count days in each city
-    man_days = Sum([If(day_to_city[i] == city_map[man], 1, 0) for i in range(15)])
-    stut_days = Sum([If(day_to_city[i] == city_map[stut], 1, 0) for i in range(15)])
-    mad_days = Sum([If(day_to_city[i] == city_map[mad], 1, 0) for i in range(15)])
-    vie_days = Sum([If(day_to_city[i] == city_map[vie], 1, 0) for i in range(15)])
+    # Flight constraints
+    for i in range(total_days - 1):
+        current = day_vars[i]
+        next_day = day_vars[i + 1]
+        # Either stay in same city or take direct flight
+        s.add(Or(
+            current == next_day,
+            And(
+                current != next_day,
+                Or([And(current == city_idx[city], next_day == city_idx[adj]) 
+                    for city in cities 
+                    for adj in connections[city]])
+            )
+        ))
     
-    s.add(man_days == 7)
-    s.add(stut_days == 5)
-    s.add(mad_days == 4)
-    s.add(vie_days == 2)
-    
-    # Check for solution
+    # Try to find a solution
     if s.check() == sat:
         model = s.model()
         itinerary = []
-        for day in range(1, 16):
-            city_num = model.evaluate(day_to_city[day-1]).as_long()
-            itinerary.append({'day': day, 'place': inv_city_map[city_num]})
+        for i in range(total_days):
+            city = cities[model.eval(day_vars[i]).as_long()]
+            itinerary.append({'day': i + 1, 'place': city})
         return {'itinerary': itinerary}
     else:
         return None
 
 result = solve_itinerary()
 if result:
-    import json
-    print(json.dumps(result, indent=2))
+    print(result)
 else:
-    print("No solution found.")
+    print("No valid itinerary found.")

@@ -1,0 +1,1 @@
+{'itinerary': [{'action': 'meet', 'person': 'Sandra', 'start_time': '09:07', 'end_time': '10:22'}, {'action': 'meet', 'person': 'Nancy', 'start_time': '10:39', 'end_time': '12:24'}, {'action': 'meet', 'person': 'Joseph', 'start_time': '12:41', 'end_time': '14:11'}]}

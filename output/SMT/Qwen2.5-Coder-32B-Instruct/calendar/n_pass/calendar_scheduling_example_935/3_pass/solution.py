@@ -63,27 +63,40 @@ for day in days:
         elif day == "Friday":
             solver.add(Not(meeting_time[time_index(day, h, m)]))
 
-# Ensure that the meeting time is within the work hours and does not overlap
+# Frances would like to avoid more meetings on Tuesday
+# We will give preference to other days by adding a soft constraint
+# We will use a penalty for Tuesday and minimize it
+penalty = Int('penalty')
+solver.add(penalty >= 0)
+
+for (h, m) in time_slots:
+    solver.add(Implies(meeting_time[time_index("Tuesday", h, m)], penalty >= 1))
+
+# Ensure that the meeting time is continuous for 30 minutes
 for day in days:
     for i in range(len(time_slots) - meeting_duration + 1):
         solver.add(Implies(meeting_time[time_index(day, time_slots[i][0], time_slots[i][1])],
-                           And([Not(meeting_time[time_index(day, time_slots[i + j][0], time_slots[i + j][1])])
-                                for j in range(1, meeting_duration)])))
+                           meeting_time[time_index(day, time_slots[i + meeting_duration - 1][0], time_slots[i + meeting_duration - 1][1])]))
 
-# Find the earliest available time
-for day in days:
-    for (h, m) in time_slots:
-        if solver.check() == sat:
-            model = solver.model()
-            if model.evaluate(meeting_time[time_index(day, h, m)]):
-                end_h = h + (m + 30) // 60
-                end_m = (m + 30) % 60
-                print(f"SOLUTION:\nDay: {day}\nStart Time: {h:02}:{m:02}\nEnd Time: {end_h:02}:{end_m:02}")
-                break
-    else:
-        continue
-    break
+# Ensure that only one meeting time is selected
+solver.add(AtMost(*meeting_time, 1))
+solver.add(AtLeast(*meeting_time, 1))
 
-# If no solution is found, print an error message
-if solver.check() != sat:
+# Minimize the penalty for Tuesday
+solver.minimize(penalty)
+
+# Solve the problem
+if solver.check() == sat:
+    model = solver.model()
+    for i in range(len(meeting_time)):
+        if model.evaluate(meeting_time[i]):
+            day_index = i // len(time_slots)
+            time_index = i % len(time_slots)
+            start_hour, start_minute = time_slots[time_index]
+            end_hour, end_minute = time_slots[time_index + meeting_duration - 1]
+            if end_minute == 60:
+                end_hour += 1
+                end_minute = 0
+            print(f"SOLUTION:\nDay: {days[day_index]}\nStart Time: {start_hour:02}:{start_minute:02}\nEnd Time: {end_hour:02}:{end_minute:02}")
+else:
     print("No solution found")

@@ -25,11 +25,11 @@ daniel_busy_times = [
 
 # Bradley's busy times
 bradley_busy_times = [
-    (30, 120), (70, 120), (90, 180), (150, 240),  # Monday
-    (60, 120), (90, 180), (150, 180), (240, 360),  # Tuesday
-    (0, 60), (60, 180), (150, 180), (240, 480),  # Wednesday
-    (0, 180), (90, 180), (150, 180), (240, 360),  # Thursday
-    (0, 30), (0, 180), (180, 210), (240, 270), (330, 360)  # Friday
+    (30, 120), (70, 120), (90, 180), (240, 300),  # Monday
+    (60, 120), (90, 180), (150, 210), (330, 390),  # Tuesday
+    (0, 60), (60, 180), (150, 210), (270, 480),  # Wednesday
+    (0, 180), (150, 210), (270, 300), (330, 390),  # Thursday
+    (0, 30), (0, 180), (180, 210), (240, 270), (330, 390)  # Friday
 ]
 
 # Add constraints for work hours
@@ -37,45 +37,41 @@ solver.add(start_time >= work_start)
 solver.add(start_time + meeting_duration <= work_end)
 
 # Add constraints for Daniel's busy times
-for d, (s, e) in enumerate(daniel_busy_times):
-    day_index = d // 6
-    solver.add(Or(day != day_index, Or(start_time + meeting_duration <= s, start_time >= e)))
+for busy_start, busy_end in daniel_busy_times:
+    solver.add(Or(start_time + meeting_duration <= busy_start, start_time >= busy_end))
 
 # Add constraints for Bradley's busy times
-for d, (s, e) in enumerate(bradley_busy_times):
-    day_index = d // 6
-    solver.add(Or(day != day_index, Or(start_time + meeting_duration <= s, start_time >= e)))
+for busy_start, busy_end in bradley_busy_times:
+    solver.add(Or(start_time + meeting_duration <= busy_start, start_time >= busy_end))
 
 # Add constraints for preferences
-# Daniel would rather not meet on Wednesday or Thursday
+# Daniel would rather not meet on Wednesday (2) or Thursday (3)
 solver.add(day != 2)
 solver.add(day != 3)
 
-# Bradley do not want to meet on Monday, Tuesday before 12:00, Friday
+# Bradley do not want to meet on Monday (0), Tuesday (1) before 12:00 (30 minutes), or Friday (4)
 solver.add(day != 0)
-solver.add(Or(day != 1, start_time >= 180))  # 12:00 in minutes from 9:00
+solver.add(Or(day != 1, start_time >= 30))
 solver.add(day != 4)
+
+# Define the days of the week
+days_of_week = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
 
 # Solve the problem
 if solver.check() == sat:
     model = solver.model()
-    day_value = model[day].as_long()
-    start_time_value = model[start_time].as_long()
-    end_time_value = start_time_value + meeting_duration
+    meeting_day = days_of_week[model[day].as_long()]
+    meeting_start_time = 9 + model[start_time].as_long() // 60
+    meeting_start_minute = model[start_time].as_long() % 60
+    meeting_end_time = meeting_start_time + meeting_duration // 60
+    meeting_end_minute = meeting_start_minute + meeting_duration % 60
+    if meeting_end_minute >= 60:
+        meeting_end_minute -= 60
+        meeting_end_time += 1
 
-    # Convert day number to string
-    days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
-    if 0 <= day_value < len(days):
-        day_str = days[day_value]
-    else:
-        raise ValueError("Invalid day value")
-
-    # Convert time from minutes to HH:MM format
-    start_time_str = f"{(start_time_value // 60) + 9:02}:{start_time_value % 60:02}"
-    end_time_str = f"{(end_time_value // 60) + 9:02}:{end_time_value % 60:02}"
-
-    print(f"SOLUTION:\nDay: {day_str}\nStart Time: {start_time_str}\nEnd Time: {end_time_str}")
+    print(f"SOLUTION:")
+    print(f"Day: {meeting_day}")
+    print(f"Start Time: {meeting_start_time:02}:{meeting_start_minute:02}")
+    print(f"End Time: {meeting_end_time:02}:{meeting_end_minute:02}")
 else:
     print("No solution found")
-    print("Constraints:")
-    print(solver.assertions())

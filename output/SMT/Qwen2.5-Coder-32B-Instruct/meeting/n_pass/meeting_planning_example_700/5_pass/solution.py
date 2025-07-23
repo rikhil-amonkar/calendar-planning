@@ -94,17 +94,17 @@ meetings = {
 # Convert travel times to minutes
 travel_times_minutes = {(a, b): t * 60 for (a, b), t in travel_times.items()}
 
-# Create an optimizer
-optimizer = Optimize()
+# Create a solver
+solver = Solver()
 
 # Define variables
 current_location = String('current_location')
 current_time = Real('current_time')
-visited = {name: Bool(name) for name in meetings}
+meetings_vars = {name: Bool(name) for name in meetings}
 
 # Initial conditions
-optimizer.add(current_location == "Presidio")
-optimizer.add(current_time == 9 * 60)  # 9:00 AM in minutes
+solver.add(current_location == "Presidio")
+solver.add(current_time == 9 * 60)  # 9:00 AM in minutes
 
 # Define constraints for each meeting
 for name, details in meetings.items():
@@ -113,35 +113,36 @@ for name, details in meetings.items():
     end = details["end"] * 60  # Convert to minutes
     duration = details["duration"] * 60  # Convert to minutes
 
-    # Define variables for meeting
-    meet_start = Real(f'{name}_start')
-    meet_end = Real(f'{name}_end')
+    # Define the meeting variables
+    meet_var = meetings_vars[name]
 
     # Constraints for meeting
-    optimizer.add(meet_start >= start)
-    optimizer.add(meet_end <= end)
-    optimizer.add(meet_end - meet_start >= duration)
-    optimizer.add(meet_start >= current_time + travel_times_minutes[("Presidio", location)])
-    optimizer.add(meet_end <= 21.25 * 60)  # End of day is 9:15 PM
+    solver.add(Implies(meet_var, current_location == location))
+    solver.add(Implies(meet_var, current_time + travel_times_minutes[(current_location, location)] >= start))
+    solver.add(Implies(meet_var, current_time + travel_times_minutes[(current_location, location)] + duration <= end))
+    solver.add(Implies(meet_var, current_time + travel_times_minutes[(current_location, location)] + duration <= 21.25 * 60))  # End before 9:15 PM
 
     # Update current location and time after meeting
-    optimizer.add(Implies(visited[name], And(current_location == location, current_time == meet_end)))
+    solver.add(Implies(meet_var, current_location == location))
+    solver.add(Implies(meet_var, current_time == current_time + travel_times_minutes[(current_location, location)] + duration))
 
 # Maximize the number of meetings
-optimizer.maximize(Sum([If(visited[name], 1, 0) for name in meetings]))
+solver.maximize(Sum([If(meetings_vars[name], 1, 0) for name in meetings]))
 
 # Check if the problem is solvable
-if optimizer.check() == sat:
-    model = optimizer.model()
+if solver.check() == sat:
+    model = solver.model()
     itinerary = []
     for name, details in meetings.items():
-        if model.evaluate(visited[name]):
-            start = model.evaluate(Real(f'{name}_start')).as_long() / 60
-            end = model.evaluate(Real(f'{name}_end')).as_long() / 60
+        if model.evaluate(meetings_vars[name]):
+            start_time = model.evaluate(current_time + travel_times_minutes[(current_location, details["location"])])
+            end_time = model.evaluate(start_time + details["duration"] * 60)
             itinerary.append({
                 "action": "meet",
                 "person": name,
-                "start": start,
-                "end": end,
-                "location": details["location"]
+                "start_time": f"{int(start_time) // 60:02}:{int(start_time) % 60:02}",
+                "end_time": f"{int(end_time) // 60:02}:{int(end_time) % 60:02}"
             })
+    print({"itinerary": itinerary})
+else:
+    print("No solution found")

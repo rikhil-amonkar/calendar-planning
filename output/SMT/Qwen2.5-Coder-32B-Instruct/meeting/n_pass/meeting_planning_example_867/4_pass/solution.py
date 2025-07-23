@@ -120,26 +120,40 @@ solver = Solver()
 start_times = {name: Real(name + "_start") for name in friends}
 
 # Define the location for each friend meeting
-location_vars = {name: Int(name + "_location") for name in friends}
-
-# Define the current location variable
-current_location = Int("current_location")
+location_vars = {name: String(name + "_location") for name in friends}
 
 # Add constraints for each friend
 for name, (location, start, end, duration) in friends.items():
-    # Convert start and end times to minutes since 9:00 AM
-    start_minutes = int((start - 9) * 60)
-    end_minutes = int((end - 9) * 60)
-    duration_minutes = int(duration * 60)
-    
-    # Constraint: Meeting must start after the friend is available
-    solver.add(start_times[name] >= start_minutes)
-    
-    # Constraint: Meeting must end before the friend is unavailable
-    solver.add(start_times[name] + duration_minutes <= end_minutes)
-    
-    # Constraint: Meeting must be at the correct location
-    solver.add(location_vars[name] == locations.index(location))
+    solver.add(start_times[name] >= start)
+    solver.add(start_times[name] + duration <= end)
+    solver.add(location_vars[name] == location)
 
-# Constraint: Start at Haight-Ashbury at 9:00 AM
-solver.add(current_location == locations.index("Haight-Ashbury"))
+# Add constraints for travel times
+for i, (name1, (location1, start1, end1, duration1)) in enumerate(friends.items()):
+    for j, (name2, (location2, start2, end2, duration2)) in enumerate(friends.items()):
+        if i < j:
+            travel_time = travel_times.get((location1, location2), float('inf'))
+            solver.add(Or(start_times[name2] >= start_times[name1] + duration1 + travel_time / 60.0,
+                         start_times[name1] >= start_times[name2] + duration2 + travel_time / 60.0))
+
+# Add constraint for starting at Haight-Ashbury at 9:00AM
+solver.add(start_times["Elizabeth"] >= 9.0 + travel_times[("Haight-Ashbury", "Mission District")] / 60.0)
+
+# Solve the problem
+if solver.check() == sat:
+    model = solver.model()
+    itinerary = []
+    for name, (location, start, end, duration) in friends.items():
+        start_time = model[start_times[name]].as_decimal(2)
+        start_time_float = float(start_time)
+        end_time = start_time_float + duration
+        itinerary.append({
+            "action": "meet",
+            "person": name,
+            "start_time": f"{int(start_time_float):02}:{int((start_time_float % 1) * 60):02}",
+            "end_time": f"{int(end_time):02}:{int((end_time % 1) * 60):02}"
+        })
+    itinerary.sort(key=lambda x: x["start_time"])
+    print({"itinerary": itinerary})
+else:
+    print("No solution found")

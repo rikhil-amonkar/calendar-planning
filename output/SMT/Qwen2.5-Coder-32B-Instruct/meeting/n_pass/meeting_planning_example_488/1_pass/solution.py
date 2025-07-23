@@ -1,9 +1,7 @@
 from z3 import *
 
-# Define the locations
+# Define the locations and their travel times
 locations = ["Pacific Heights", "Nob Hill", "Russian Hill", "The Castro", "Sunset District", "Haight-Ashbury"]
-
-# Define the travel times in minutes
 travel_times = {
     ("Pacific Heights", "Nob Hill"): 8,
     ("Pacific Heights", "Russian Hill"): 7,
@@ -39,26 +37,31 @@ travel_times = {
 
 # Define the people and their availability
 people = {
-    "Ronald": {"location": "Nob Hill", "start": 10*60, "end": 17*60, "min_duration": 105},
-    "Sarah": {"location": "Russian Hill", "start": 7*60 + 15, "end": 9*60 + 30, "min_duration": 45},
-    "Helen": {"location": "The Castro", "start": 13*60 + 30, "end": 17*60, "min_duration": 120},
-    "Joshua": {"location": "Sunset District", "start": 14*60 + 15, "end": 19*60 + 30, "min_duration": 90},
-    "Margaret": {"location": "Haight-Ashbury", "start": 10*60 + 15, "end": 22*60, "min_duration": 60},
+    "Ronald": {"location": "Nob Hill", "start": 600, "end": 300, "min_duration": 105},
+    "Sarah": {"location": "Russian Hill", "start": 435, "end": 570, "min_duration": 45},
+    "Helen": {"location": "The Castro", "start": 810, "end": 300, "min_duration": 120},
+    "Joshua": {"location": "Sunset District", "start": 735, "end": 450, "min_duration": 90},
+    "Margaret": {"location": "Haight-Ashbury", "start": 615, "end": 600, "min_duration": 60},
 }
 
-# Create a solver
+# Convert times to minutes from 00:00
+def time_to_minutes(time_str):
+    hours, minutes = map(int, time_str.split(':'))
+    return hours * 60 + minutes
+
+# Define the solver
 solver = Solver()
 
 # Define the variables
 current_location = String('current_location')
 current_time = Int('current_time')
-meetings = {person: Bool(person) for person in people}
-meeting_start_times = {person: Int(f"{person}_start_time") for person in people}
-meeting_end_times = {person: Int(f"{person}_end_time") for person in people}
+meetings = {person: Bool(f'meeting_{person}') for person in people}
+meeting_start_times = {person: Int(f'start_{person}') for person in people}
+meeting_end_times = {person: Int(f'end_{person}') for person in people}
 
 # Initial location and time
 solver.add(current_location == "Pacific Heights")
-solver.add(current_time == 9*60)
+solver.add(current_time == time_to_minutes("09:00"))
 
 # Constraints for each person
 for person, details in people.items():
@@ -73,22 +76,31 @@ for person, details in people.items():
     # Meeting duration must be at least the minimum duration
     solver.add(Implies(meetings[person], meeting_end_times[person] - meeting_start_times[person] >= min_duration))
     
-    # Travel time to the person's location
-    travel_time = travel_times[(current_location, location)]
-    solver.add(Implies(meetings[person], meeting_start_times[person] >= current_time + travel_time))
+    # If meeting with this person, we must travel to their location
+    solver.add(Implies(meetings[person], current_location == location))
     
-    # Update current location and time after meeting
-    solver.add(Implies(meetings[person], And(current_location == location, current_time == meeting_end_times[person])))
+    # If meeting with this person, the meeting must start after the current time and end before the end of the day
+    solver.add(Implies(meetings[person], meeting_start_times[person] >= current_time))
+    solver.add(Implies(meetings[person], meeting_end_times[person] <= time_to_minutes("23:59")))
 
-# Objective: maximize the number of meetings
-objective = Sum([If(meetings[person], 1, 0) for person in people])
-solver.maximize(objective)
+# Travel constraints
+for person, details in people.items():
+    location = details["location"]
+    for other_person, other_details in people.items():
+        other_location = other_details["location"]
+        if person != other_person:
+            # If meeting with person and then other_person, we must travel between locations
+            solver.add(Implies(And(meetings[person], meetings[other_person]), 
+                               meeting_start_times[other_person] - meeting_end_times[person] >= travel_times[(location, other_location)]))
+
+# Maximize the number of meetings
+solver.maximize(Sum([If(meetings[person], 1, 0) for person in people]))
 
 # Check if the problem is solvable
 if solver.check() == sat:
     model = solver.model()
     itinerary = []
-    for person in people:
+    for person, details in people.items():
         if model.evaluate(meetings[person]):
             start_time = model.evaluate(meeting_start_times[person]).as_long()
             end_time = model.evaluate(meeting_end_times[person]).as_long()
@@ -98,6 +110,7 @@ if solver.check() == sat:
                 "start_time": f"{start_time // 60:02}:{start_time % 60:02}",
                 "end_time": f"{end_time // 60:02}:{end_time % 60:02}"
             })
+    itinerary.sort(key=lambda x: x["start_time"])
     print({"itinerary": itinerary})
 else:
     print("No solution found")
