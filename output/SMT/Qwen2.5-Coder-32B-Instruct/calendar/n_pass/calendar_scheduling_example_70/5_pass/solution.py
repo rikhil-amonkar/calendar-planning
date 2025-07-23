@@ -1,44 +1,41 @@
 from z3 import *
 
 # Define the time variables
-day = String('day')
-start_hour = Int('start_hour')
-start_minute = Int('start_minute')
-end_hour = Int('end_hour')
-end_minute = Int('end_minute')
+start_time = Int('start_time')
+end_time = Int('end_time')
+
+# Define the meeting duration
+meeting_duration = 30  # in minutes
 
 # Define the constraints
 solver = Solver()
 
-# Meeting duration is 30 minutes
-solver.add(end_hour == start_hour)
-solver.add(end_minute == start_minute + 30)
+# Meeting must be between 9:00 and 17:00
+solver.add(start_time >= 9 * 60)  # 9:00 in minutes
+solver.add(end_time <= 17 * 60)   # 17:00 in minutes
 
-# Meeting should be within work hours (9:00 to 17:00)
-solver.add(start_hour >= 9)
-solver.add(start_hour < 17)
-solver.add(start_minute >= 0)
-solver.add(start_minute < 60)
+# Meeting duration is 30 minutes
+solver.add(end_time == start_time + meeting_duration)
 
 # Denise's availability
-solver.add(Or(start_hour < 12, start_hour > 12, (start_hour == 12 and start_minute < 30)))
-solver.add(Or(end_hour < 15, end_hour > 16, (end_hour == 15 and end_minute < 30)))
+solver.add(Or(start_time < 12 * 60, end_time > 12 * 60 + 30))  # Not between 12:00 and 12:30
+solver.add(Or(start_time < 15 * 60 + 30, end_time > 16 * 60))  # Not between 15:30 and 16:00
 
 # Angela is available all day, so no additional constraints for her
 
 # Natalie's availability
-solver.add(Or(start_hour < 11, start_hour > 13, (start_hour == 11 and start_minute < 30)))
-solver.add(Or(end_hour < 14, end_hour > 14, (end_hour == 14 and end_minute < 30)))
-solver.add(Or(start_hour < 15, start_hour > 17, (start_hour == 15 and start_minute < 0)))
+solver.add(Or(start_time < 9 * 60 + 30, end_time > 11 * 60 + 30))  # Not between 9:00 and 11:30
+solver.add(Or(start_time < 12 * 60, end_time > 13 * 60))          # Not between 12:00 and 13:00
+solver.add(Or(start_time < 14 * 60, end_time > 14 * 60 + 30))      # Not between 14:00 and 14:30
+solver.add(Or(start_time < 15 * 60, end_time > 17 * 60))          # Not between 15:00 and 17:00
 
-# Day is Monday
-solver.add(day == "Monday")
-
-# Solve the problem
+# Check if there is a solution
 if solver.check() == sat:
     model = solver.model()
-    start_time = f"{model[start_hour].as_long()}:{model[start_minute].as_long():02}"
-    end_time = f"{model[end_hour].as_long()}:{model[end_minute].as_long():02}"
-    print(f"Day: {model[day]}\nStart Time: {start_time}\nEnd Time: {end_time}")
+    start_hour = model[start_time].as_long() // 60
+    start_minute = model[start_time].as_long() % 60
+    end_hour = model[end_time].as_long() // 60
+    end_minute = model[end_time].as_long() % 60
+    print(f"SOLUTION:\nDay: Monday\nStart Time: {start_hour:02}:{start_minute:02}\nEnd Time: {end_hour:02}:{end_minute:02}")
 else:
     print("No solution found")

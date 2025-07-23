@@ -120,11 +120,112 @@ travel_times = {
 
 # Define the people and their availability
 people = {
-    "Mary": {"location": "Embarcadero", "start": 2000, "end": 2115, "min_duration": 75},
-    "Kenneth": {"location": "The Castro", "start": 1115, "end": 1915, "min_duration": 30},
-    "Joseph": {"location": "Haight-Ashbury", "start": 2000, "end": 2200, "min_duration": 120},
-    "Sarah": {"location": "Union Square", "start": 1145, "end": 1430, "min_duration": 90},
-    "Thomas": {"location": "North Beach", "start": 1915, "end": 1945, "min_duration": 15},
-    "Daniel": {"location": "Pacific Heights", "start": 1345, "end": 2030, "min_duration": 15},
-    "Richard": {"location": "Chinatown", "start": 800, "end": 1845, "min_duration": 30},
-    "Mark": {"location": "Golden Gate Park", "start": 1730, "end": 2130, "min
+    "Mary": {"location": "Embarcadero", "start": 20*60, "end": 21*60+15, "min_duration": 75},
+    "Kenneth": {"location": "The Castro", "start": 11*60+15, "end": 19*60+15, "min_duration": 30},
+    "Joseph": {"location": "Haight-Ashbury", "start": 20*60, "end": 22*60, "min_duration": 120},
+    "Sarah": {"location": "Union Square", "start": 11*60+45, "end": 14*60+30, "min_duration": 90},
+    "Thomas": {"location": "North Beach", "start": 19*60+15, "end": 19*60+45, "min_duration": 15},
+    "Daniel": {"location": "Pacific Heights", "start": 13*60+45, "end": 20*60+30, "min_duration": 15},
+    "Richard": {"location": "Chinatown", "start": 8*60, "end": 18*60+45, "min_duration": 30},
+    "Mark": {"location": "Golden Gate Park", "start": 17*60+30, "end": 21*60+30, "min_duration": 120},
+    "David": {"location": "Marina District", "start": 20*60, "end": 21*60, "min_duration": 60},
+    "Karen": {"location": "Russian Hill", "start": 13*60+15, "end": 18*60+30, "min_duration": 120},
+}
+
+# Function to check if a given number of meetings is feasible
+def check_feasibility(num_meetings):
+    solver = Solver()
+    start_times = {person: Int(f"start_{person}") for person in people}
+    end_times = {person: Int(f"end_{person}") for person in people}
+    visited = {person: Bool(f"visited_{person}") for person in people}
+    current_location = String("current_location")
+    
+    # Initial location and time
+    solver.add(current_location == "Nob Hill")
+    solver.add(start_times["Richard"] == 9*60)  # Start at Nob Hill at 9:00 AM
+
+    # Constraints for each person
+    for person, details in people.items():
+        start, end, min_duration = details["start"], details["end"], details["min_duration"]
+        solver.add(start_times[person] >= start)
+        solver.add(end_times[person] <= end)
+        solver.add(end_times[person] - start_times[person] >= min_duration)
+        solver.add(visited[person] == And(start_times[person] >= start, end_times[person] <= end))
+
+    # Constraints for travel times
+    for i, person in enumerate(people):
+        if i == 0:
+            prev_location = "Nob Hill"
+            prev_end_time = start_times["Richard"]
+        else:
+            prev_person = list(people.keys())[i-1]
+            prev_location = people[prev_person]["location"]
+            prev_end_time = end_times[prev_person]
+        
+        current_location = people[person]["location"]
+        travel_time = travel_times[(prev_location, current_location)]
+        solver.add(start_times[person] >= prev_end_time + travel_time)
+
+    # Limit the number of meetings
+    solver.add(Sum([If(visited[person], 1, 0) for person in people]) >= num_meetings)
+
+    return solver.check() == sat
+
+# Binary search to find the maximum number of meetings
+low, high = 0, len(people)
+while low < high:
+    mid = (low + high + 1) // 2
+    if check_feasibility(mid):
+        low = mid
+    else:
+        high = mid - 1
+
+# Find the optimal schedule with the maximum number of meetings
+solver = Solver()
+start_times = {person: Int(f"start_{person}") for person in people}
+end_times = {person: Int(f"end_{person}") for person in people}
+visited = {person: Bool(f"visited_{person}") for person in people}
+current_location = String("current_location")
+
+# Initial location and time
+solver.add(current_location == "Nob Hill")
+solver.add(start_times["Richard"] == 9*60)  # Start at Nob Hill at 9:00 AM
+
+# Constraints for each person
+for person, details in people.items():
+    start, end, min_duration = details["start"], details["end"], details["min_duration"]
+    solver.add(start_times[person] >= start)
+    solver.add(end_times[person] <= end)
+    solver.add(end_times[person] - start_times[person] >= min_duration)
+    solver.add(visited[person] == And(start_times[person] >= start, end_times[person] <= end))
+
+# Constraints for travel times
+for i, person in enumerate(people):
+    if i == 0:
+        prev_location = "Nob Hill"
+        prev_end_time = start_times["Richard"]
+    else:
+        prev_person = list(people.keys())[i-1]
+        prev_location = people[prev_person]["location"]
+        prev_end_time = end_times[prev_person]
+    
+    current_location = people[person]["location"]
+    travel_time = travel_times[(prev_location, current_location)]
+    solver.add(start_times[person] >= prev_end_time + travel_time)
+
+# Limit the number of meetings to the maximum found
+solver.add(Sum([If(visited[person], 1, 0) for person in people]) == low)
+
+# Check if the problem is solvable
+if solver.check() == sat:
+    model = solver.model()
+    itinerary = []
+    for person in people:
+        if model[visited[person]]:
+            start = model[start_times[person]].as_long()
+            end = model[end_times[person]].as_long()
+            itinerary.append({"action": "meet", "person": person, "start_time": f"{start//60:02}:{start%60:02}", "end_time": f"{end//60:02}:{end%60:02}"})
+    itinerary.sort(key=lambda x: x["start_time"])
+    print({"itinerary": itinerary})
+else:
+    print("No solution found")

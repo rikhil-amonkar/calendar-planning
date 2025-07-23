@@ -46,21 +46,6 @@ current_location = 'The Castro'
 current_time = 0  # 9:00AM
 
 # Define the travel constraints
-# Check if we can meet Anthony first
-if current_time + travel_times[current_location, 'Financial District'] <= anthony_start_value:
-    solver.add(anthony_start >= current_time + travel_times[current_location, 'Financial District'])
-    # Check if we can meet Laura after Anthony
-    if anthony_end_value + travel_times['Financial District', 'Mission District'] <= laura_start_value:
-        solver.add(laura_start >= anthony_end_value + travel_times['Financial District', 'Mission District'])
-
-# Check if we can meet Laura first
-if current_time + travel_times[current_location, 'Mission District'] <= laura_start_value:
-    solver.add(laura_start >= current_time + travel_times[current_location, 'Mission District'])
-    # Check if we can meet Anthony after Laura
-    if laura_end_value + travel_times['Mission District', 'Financial District'] <= anthony_start_value:
-        solver.add(anthony_start >= laura_end_value + travel_times['Mission District', 'Financial District'])
-
-# Solve the problem
 if solver.check() == sat:
     model = solver.model()
     laura_start_value = model[laura_start].as_long()
@@ -77,15 +62,8 @@ if solver.check() == sat:
     # Create the itinerary
     itinerary = []
 
-    # Add travel and meeting with Anthony if possible
+    # Add meeting with Anthony if possible
     if current_time + travel_times[current_location, 'Financial District'] <= anthony_start_value:
-        itinerary.append({
-            "action": "travel",
-            "from": current_location,
-            "to": "Financial District",
-            "start_time": format_time(current_time),
-            "end_time": format_time(current_time + travel_times[current_location, 'Financial District'])
-        })
         current_time += travel_times[current_location, 'Financial District']
         current_location = 'Financial District'
         itinerary.append({
@@ -96,15 +74,8 @@ if solver.check() == sat:
         })
         current_time = anthony_end_value
 
-    # Add travel and meeting with Laura if possible
+    # Add meeting with Laura if possible
     if current_time + travel_times[current_location, 'Mission District'] <= laura_start_value:
-        itinerary.append({
-            "action": "travel",
-            "from": current_location,
-            "to": "Mission District",
-            "start_time": format_time(current_time),
-            "end_time": format_time(current_time + travel_times[current_location, 'Mission District'])
-        })
         current_time += travel_times[current_location, 'Mission District']
         current_location = 'Mission District'
         itinerary.append({

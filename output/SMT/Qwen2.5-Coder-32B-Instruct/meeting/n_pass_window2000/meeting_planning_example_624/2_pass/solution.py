@@ -1,0 +1,143 @@
+from z3 import *
+
+# Define the locations and their travel times
+locations = ["Golden Gate Park", "Haight-Ashbury", "Fisherman's Wharf", "The Castro", "Chinatown", "Alamo Square", "North Beach", "Russian Hill"]
+travel_times = {
+    ("Golden Gate Park", "Haight-Ashbury"): 7,
+    ("Golden Gate Park", "Fisherman's Wharf"): 24,
+    ("Golden Gate Park", "The Castro"): 13,
+    ("Golden Gate Park", "Chinatown"): 23,
+    ("Golden Gate Park", "Alamo Square"): 10,
+    ("Golden Gate Park", "North Beach"): 24,
+    ("Golden Gate Park", "Russian Hill"): 19,
+    ("Haight-Ashbury", "Golden Gate Park"): 7,
+    ("Haight-Ashbury", "Fisherman's Wharf"): 23,
+    ("Haight-Ashbury", "The Castro"): 6,
+    ("Haight-Ashbury", "Chinatown"): 19,
+    ("Haight-Ashbury", "Alamo Square"): 5,
+    ("Haight-Ashbury", "North Beach"): 19,
+    ("Haight-Ashbury", "Russian Hill"): 17,
+    ("Fisherman's Wharf", "Golden Gate Park"): 25,
+    ("Fisherman's Wharf", "Haight-Ashbury"): 22,
+    ("Fisherman's Wharf", "The Castro"): 26,
+    ("Fisherman's Wharf", "Chinatown"): 12,
+    ("Fisherman's Wharf", "Alamo Square"): 20,
+    ("Fisherman's Wharf", "North Beach"): 6,
+    ("Fisherman's Wharf", "Russian Hill"): 7,
+    ("The Castro", "Golden Gate Park"): 11,
+    ("The Castro", "Haight-Ashbury"): 6,
+    ("The Castro", "Fisherman's Wharf"): 24,
+    ("The Castro", "Chinatown"): 20,
+    ("The Castro", "Alamo Square"): 8,
+    ("The Castro", "North Beach"): 20,
+    ("The Castro", "Russian Hill"): 18,
+    ("Chinatown", "Golden Gate Park"): 23,
+    ("Chinatown", "Haight-Ashbury"): 19,
+    ("Chinatown", "Fisherman's Wharf"): 8,
+    ("Chinatown", "The Castro"): 22,
+    ("Chinatown", "Alamo Square"): 17,
+    ("Chinatown", "North Beach"): 3,
+    ("Chinatown", "Russian Hill"): 7,
+    ("Alamo Square", "Golden Gate Park"): 9,
+    ("Alamo Square", "Haight-Ashbury"): 5,
+    ("Alamo Square", "Fisherman's Wharf"): 19,
+    ("Alamo Square", "The Castro"): 8,
+    ("Alamo Square", "Chinatown"): 16,
+    ("Alamo Square", "North Beach"): 15,
+    ("Alamo Square", "Russian Hill"): 13,
+    ("North Beach", "Golden Gate Park"): 22,
+    ("North Beach", "Haight-Ashbury"): 18,
+    ("North Beach", "Fisherman's Wharf"): 5,
+    ("North Beach", "The Castro"): 22,
+    ("North Beach", "Chinatown"): 6,
+    ("North Beach", "Alamo Square"): 16,
+    ("North Beach", "Russian Hill"): 4,
+    ("Russian Hill", "Golden Gate Park"): 21,
+    ("Russian Hill", "Haight-Ashbury"): 17,
+    ("Russian Hill", "Fisherman's Wharf"): 7,
+    ("Russian Hill", "The Castro"): 21,
+    ("Russian Hill", "Chinatown"): 9,
+    ("Russian Hill", "Alamo Square"): 15,
+    ("Russian Hill", "North Beach"): 5,
+}
+
+# Define the people and their availability
+people = {
+    "Carol": {"location": "Haight-Ashbury", "start": 2130, "end": 2230, "duration": 60},
+    "Laura": {"location": "Fisherman's Wharf", "start": 1145, "end": 2130, "duration": 60},
+    "Karen": {"location": "The Castro", "start": 715, "end": 1400, "duration": 75},
+    "Elizabeth": {"location": "Chinatown", "start": 1215, "end": 2130, "duration": 75},
+    "Deborah": {"location": "Alamo Square", "start": 1200, "end": 1500, "duration": 105},
+    "Jason": {"location": "North Beach", "start": 1445, "end": 1900, "duration": 90},
+    "Steven": {"location": "Russian Hill", "start": 1445, "end": 1830, "duration": 120},
+}
+
+# Convert times to minutes since start of the day
+def time_to_minutes(time):
+    return time // 100 * 60 + time % 100
+
+# Create a solver instance
+solver = Solver()
+
+# Define variables
+start_time = Int('start_time')
+current_location = String('current_location')
+meetings = {person: Bool(f'meet_{person}') for person in people}
+
+# Initial conditions
+solver.add(start_time == time_to_minutes(900))  # Start at 9:00 AM
+solver.add(current_location == "Golden Gate Park")
+
+# Define constraints for each person
+for person, details in people.items():
+    person_start = time_to_minutes(details["start"])
+    person_end = time_to_minutes(details["end"])
+    person_duration = details["duration"]
+    person_location = details["location"]
+    
+    # Define the meeting time
+    meeting_start = Int(f'meeting_start_{person}')
+    meeting_end = Int(f'meeting_end_{person}')
+    
+    # Constraints for meeting
+    solver.add(meeting_start >= person_start)
+    solver.add(meeting_end <= person_end)
+    solver.add(meeting_end - meeting_start >= person_duration)
+    
+    # Define travel time using If expressions
+    travel_time = Int(f'travel_time_{person}')
+    solver.add(travel_time == If(current_location == "Golden Gate Park", travel_times[("Golden Gate Park", person_location)],
+                                If(current_location == "Haight-Ashbury", travel_times[("Haight-Ashbury", person_location)],
+                                   If(current_location == "Fisherman's Wharf", travel_times[("Fisherman's Wharf", person_location)],
+                                      If(current_location == "The Castro", travel_times[("The Castro", person_location)],
+                                         If(current_location == "Chinatown", travel_times[("Chinatown", person_location)],
+                                            If(current_location == "Alamo Square", travel_times[("Alamo Square", person_location)],
+                                               If(current_location == "North Beach", travel_times[("North Beach", person_location)],
+                                                  travel_times[("Russian Hill", person_location)]))))))))
+    
+    # Constraints for travel and meeting
+    solver.add(meeting_start >= start_time + travel_time)
+    
+    # If meeting with person, update start_time and current_location
+    solver.add(Implies(meetings[person], And(start_time == meeting_end, current_location == person_location)))
+    
+    # If not meeting with person, keep start_time and current_location the same
+    solver.add(Implies(Not(meetings[person]), And(start_time == start_time, current_location == current_location)))
+
+# Maximize the number of meetings
+solver.maximize(Sum([If(meetings[person], 1, 0) for person in people]))
+
+# Check if the problem is solvable
+if solver.check() == sat:
+    model = solver.model()
+    itinerary = []
+    for person in people:
+        if model.evaluate(meetings[person]):
+            meeting_start = model.evaluate(Int(f'meeting_start_{person}')).as_long()
+            meeting_end = model.evaluate(Int(f'meeting_end_{person}')).as_long()
+            itinerary.append({
+                "action": "meet",
+                "person": person,
+                "start_time": f"{meeting_start // 60:02}:{meeting_start % 60:02}",
+                "end_time": f"{meeting_end // 60:02}:{meeting_end % 60:02}",
+            })

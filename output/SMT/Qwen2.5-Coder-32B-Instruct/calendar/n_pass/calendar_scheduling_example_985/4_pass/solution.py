@@ -53,7 +53,7 @@ for d, s, e in matthew_busy_times:
 # Matthew's preference: not before 12:30 on Wednesday
 solver.add(Or(day != 2, start_time >= 180))  # 180 minutes is 12:30
 
-# Check if the problem is solvable
+# Check if there is a solution
 if solver.check() == sat:
     model = solver.model()
     day_value = model[day].as_long()

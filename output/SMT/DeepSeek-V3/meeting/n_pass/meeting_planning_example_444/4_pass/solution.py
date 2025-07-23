@@ -2,119 +2,231 @@ from z3 import *
 import json
 
 def solve_scheduling():
-    # Initialize solver with better configuration
+    # Initialize solver
     s = Solver()
-    s.set("timeout", 30000)  # Give more time to find solution
 
-    # Define locations and travel times (in minutes)
-    locations = {
-        'Financial District': 0,
-        'Russian Hill': 1,
-        'Sunset District': 2,
-        'North Beach': 3,
-        'The Castro': 4,
-        'Golden Gate Park': 5
+    # Define the friends and their constraints
+    friends = {
+        "Ronald": {
+            "location": "Russian Hill",
+            "available_start": (13, 45),  # 1:45 PM
+            "available_end": (17, 15),    # 5:15 PM
+            "min_duration": 105           # minutes
+        },
+        "Patricia": {
+            "location": "Sunset District",
+            "available_start": (9, 15),    # 9:15 AM
+            "available_end": (22, 0),      # 10:00 PM
+            "min_duration": 60             # minutes
+        },
+        "Laura": {
+            "location": "North Beach",
+            "available_start": (12, 30),   # 12:30 PM
+            "available_end": (12, 45),     # 12:45 PM
+            "min_duration": 15             # minutes
+        },
+        "Emily": {
+            "location": "The Castro",
+            "available_start": (16, 15),   # 4:15 PM
+            "available_end": (18, 30),     # 6:30 PM
+            "min_duration": 60             # minutes
+        },
+        "Mary": {
+            "location": "Golden Gate Park",
+            "available_start": (15, 0),    # 3:00 PM
+            "available_end": (16, 30),     # 4:30 PM
+            "min_duration": 60             # minutes
+        }
     }
 
-    # Travel times matrix
-    travel_times = [
-        [0, 10, 31, 7, 23, 23],
-        [11, 0, 23, 5, 21, 21],
-        [30, 24, 0, 29, 17, 11],
-        [8, 4, 27, 0, 22, 22],
-        [20, 18, 17, 20, 0, 11],
-        [26, 19, 10, 24, 13, 0]
-    ]
+    # Travel times dictionary (from -> to -> minutes)
+    travel_times = {
+        "Financial District": {
+            "Russian Hill": 10,
+            "Sunset District": 31,
+            "North Beach": 7,
+            "The Castro": 23,
+            "Golden Gate Park": 23
+        },
+        "Russian Hill": {
+            "Financial District": 11,
+            "Sunset District": 23,
+            "North Beach": 5,
+            "The Castro": 21,
+            "Golden Gate Park": 21
+        },
+        "Sunset District": {
+            "Financial District": 30,
+            "Russian Hill": 24,
+            "North Beach": 29,
+            "The Castro": 17,
+            "Golden Gate Park": 11
+        },
+        "North Beach": {
+            "Financial District": 8,
+            "Russian Hill": 4,
+            "Sunset District": 27,
+            "The Castro": 22,
+            "Golden Gate Park": 22
+        },
+        "The Castro": {
+            "Financial District": 20,
+            "Russian Hill": 18,
+            "Sunset District": 17,
+            "North Beach": 20,
+            "Golden Gate Park": 11
+        },
+        "Golden Gate Park": {
+            "Financial District": 26,
+            "Russian Hill": 19,
+            "Sunset District": 10,
+            "North Beach": 24,
+            "The Castro": 13
+        }
+    }
 
-    # Friends' data with adjusted constraints
-    friends = [
-        {'name': 'Ronald', 'location': 'Russian Hill', 'start': (13, 45), 'end': (17, 15), 'min_duration': 105},
-        {'name': 'Patricia', 'location': 'Sunset District', 'start': (9, 15), 'end': (22, 0), 'min_duration': 60},
-        {'name': 'Laura', 'location': 'North Beach', 'start': (12, 30), 'end': (12, 45), 'min_duration': 15},
-        {'name': 'Emily', 'location': 'The Castro', 'start': (16, 15), 'end': (18, 30), 'min_duration': 60},
-        {'name': 'Mary', 'location': 'Golden Gate Park', 'start': (15, 0), 'end': (16, 30), 'min_duration': 60}
-    ]
+    # Create Z3 variables for each friend's start and end times (in minutes since 9:00 AM)
+    start_vars = {}
+    end_vars = {}
+    for name in friends:
+        start_vars[name] = Int(f'start_{name}')
+        end_vars[name] = Int(f'end_{name}')
 
-    # Time conversion functions
-    def time_to_minutes(hour, minute):
-        return hour * 60 + minute - 540  # 9:00 AM is 540 minutes
+    # Define the order of meetings as a permutation of friends
+    order = [Int(f'order_{i}') for i in range(len(friends))]
+    # Each order variable should be between 0 and len(friends)-1
+    for o in order:
+        s.add(o >= 0, o < len(friends))
+    # All order variables should be distinct
+    s.add(Distinct(order))
 
-    def minutes_to_time(m):
-        total_minutes = 540 + m
-        h = total_minutes // 60
-        mi = total_minutes % 60
-        return f"{h:02d}:{mi:02d}"
+    # Current location starts at Financial District at 9:00 AM (time = 0)
+    current_time = 0
+    current_location = "Financial District"
 
-    # Create variables and basic constraints
-    friend_vars = []
-    for friend in friends:
-        start_min = time_to_minutes(friend['start'][0], friend['start'][1])
-        end_min = time_to_minutes(friend['end'][0], friend['end'][1])
-        start = Int(f"start_{friend['name']}")
-        end = Int(f"end_{friend['name']}")
-        s.add(start >= start_min)
-        s.add(end <= end_min)
-        s.add(end - start >= friend['min_duration'])
-        friend_vars.append({
-            'name': friend['name'],
-            'location': friend['location'],
-            'start': start,
-            'end': end
-        })
+    # Constraints for each position in the order
+    prev_end = 0  # starting at 9:00 AM (0 minutes)
+    prev_loc = "Financial District"
+    for i in range(len(friends)):
+        # Get the friend at position i in the order
+        name = If(order[i] == 0, "Ronald",
+                 If(order[i] == 1, "Patricia",
+                  If(order[i] == 2, "Laura",
+                   If(order[i] == 3, "Emily",
+                    If(order[i] == 4, "Mary", "unknown")))))
+        # Get the friend's constraints
+        loc = If(order[i] == 0, "Russian Hill",
+               If(order[i] == 1, "Sunset District",
+                If(order[i] == 2, "North Beach",
+                 If(order[i] == 3, "The Castro",
+                  If(order[i] == 4, "Golden Gate Park", "unknown")))))
+        available_start = If(order[i] == 0, 13 * 60 + 45,
+                           If(order[i] == 1, 9 * 60 + 15,
+                            If(order[i] == 2, 12 * 60 + 30,
+                             If(order[i] == 3, 16 * 60 + 15,
+                              If(order[i] == 4, 15 * 60 + 0, 0))))) - (9 * 60)
+        available_end = If(order[i] == 0, 17 * 60 + 15,
+                         If(order[i] == 1, 22 * 60 + 0,
+                          If(order[i] == 2, 12 * 60 + 45,
+                           If(order[i] == 3, 18 * 60 + 30,
+                            If(order[i] == 4, 16 * 60 + 30, 0))))) - (9 * 60)
+        min_duration = If(order[i] == 0, 105,
+                         If(order[i] == 1, 60,
+                          If(order[i] == 2, 15,
+                           If(order[i] == 3, 60,
+                            If(order[i] == 4, 60, 0)))))
 
-    # Additional constraints for travel time and ordering
-    # Try different meeting orders to find a feasible solution
-    orders = [
-        ['Laura', 'Mary', 'Ronald', 'Emily', 'Patricia'],
-        ['Laura', 'Patricia', 'Mary', 'Ronald', 'Emily'],
-        ['Laura', 'Mary', 'Patricia', 'Ronald', 'Emily'],
-        ['Laura', 'Ronald', 'Mary', 'Emily', 'Patricia']
-    ]
+        # Travel time from previous location
+        travel_time = If(prev_loc == "Financial District",
+                        If(loc == "Russian Hill", 10,
+                         If(loc == "Sunset District", 31,
+                          If(loc == "North Beach", 7,
+                           If(loc == "The Castro", 23,
+                            If(loc == "Golden Gate Park", 23, 0))))),
+                       If(prev_loc == "Russian Hill",
+                        If(loc == "Financial District", 11,
+                         If(loc == "Sunset District", 23,
+                          If(loc == "North Beach", 5,
+                           If(loc == "The Castro", 21,
+                            If(loc == "Golden Gate Park", 21, 0))))),
+                       If(prev_loc == "Sunset District",
+                        If(loc == "Financial District", 30,
+                         If(loc == "Russian Hill", 24,
+                          If(loc == "North Beach", 29,
+                           If(loc == "The Castro", 17,
+                            If(loc == "Golden Gate Park", 11, 0))))),
+                       If(prev_loc == "North Beach",
+                        If(loc == "Financial District", 8,
+                         If(loc == "Russian Hill", 4,
+                          If(loc == "Sunset District", 27,
+                           If(loc == "The Castro", 22,
+                            If(loc == "Golden Gate Park", 22, 0))))),
+                       If(prev_loc == "The Castro",
+                        If(loc == "Financial District", 20,
+                         If(loc == "Russian Hill", 18,
+                          If(loc == "Sunset District", 17,
+                           If(loc == "North Beach", 20,
+                            If(loc == "Golden Gate Park", 11, 0))))),
+                       If(prev_loc == "Golden Gate Park",
+                        If(loc == "Financial District", 26,
+                         If(loc == "Russian Hill", 19,
+                          If(loc == "Sunset District", 10,
+                           If(loc == "North Beach", 24,
+                            If(loc == "The Castro", 13, 0))))), 0))))))
 
-    # Try different meeting orders until we find a solution
-    for order in orders:
-        temp_solver = Solver()
-        temp_solver.set("timeout", 30000)
-        
-        # Add all basic constraints
-        for f in friend_vars:
-            temp_solver.add(f['start'] >= time_to_minutes(
-                next(fr['start'] for fr in friends if fr['name'] == f['name'])[0],
-                next(fr['start'] for fr in friends if fr['name'] == f['name'])[1]
-            ))
-            temp_solver.add(f['end'] <= time_to_minutes(
-                next(fr['end'] for fr in friends if fr['name'] == f['name'])[0],
-                next(fr['end'] for fr in friends if fr['name'] == f['name'])[1]
-            ))
-            temp_solver.add(f['end'] - f['start'] >= next(
-                fr['min_duration'] for fr in friends if fr['name'] == f['name']
-            ))
+        # Start time must be >= previous end time + travel time
+        s.add(If(order[i] == 0, start_vars["Ronald"] >= prev_end + travel_time,
+              If(order[i] == 1, start_vars["Patricia"] >= prev_end + travel_time,
+               If(order[i] == 2, start_vars["Laura"] >= prev_end + travel_time,
+                If(order[i] == 3, start_vars["Emily"] >= prev_end + travel_time,
+                 If(order[i] == 4, start_vars["Mary"] >= prev_end + travel_time, True))))))
+        # End time is start time + duration
+        s.add(If(order[i] == 0, end_vars["Ronald"] == start_vars["Ronald"] + min_duration,
+              If(order[i] == 1, end_vars["Patricia"] == start_vars["Patricia"] + min_duration,
+               If(order[i] == 2, end_vars["Laura"] == start_vars["Laura"] + min_duration,
+                If(order[i] == 3, end_vars["Emily"] == start_vars["Emily"] + min_duration,
+                 If(order[i] == 4, end_vars["Mary"] == start_vars["Mary"] + min_duration, True))))))
+        # Meeting must be within availability window
+        s.add(If(order[i] == 0, And(start_vars["Ronald"] >= available_start, end_vars["Ronald"] <= available_end),
+              If(order[i] == 1, And(start_vars["Patricia"] >= available_start, end_vars["Patricia"] <= available_end),
+               If(order[i] == 2, And(start_vars["Laura"] >= available_start, end_vars["Laura"] <= available_end),
+                If(order[i] == 3, And(start_vars["Emily"] >= available_start, end_vars["Emily"] <= available_end),
+                 If(order[i] == 4, And(start_vars["Mary"] >= available_start, end_vars["Mary"] <= available_end), True))))))
 
-        # Add ordering constraints
-        for i in range(len(order)-1):
-            f1 = next(f for f in friend_vars if f['name'] == order[i])
-            f2 = next(f for f in friend_vars if f['name'] == order[i+1])
-            loc1 = locations[f1['location']]
-            loc2 = locations[f2['location']]
-            travel = travel_times[loc1][loc2]
-            temp_solver.add(f1['end'] + travel <= f2['start'])
+        # Update previous end and location for next iteration
+        prev_end = If(order[i] == 0, end_vars["Ronald"],
+                    If(order[i] == 1, end_vars["Patricia"],
+                     If(order[i] == 2, end_vars["Laura"],
+                      If(order[i] == 3, end_vars["Emily"],
+                       If(order[i] == 4, end_vars["Mary"], 0)))))
+        prev_loc = loc
 
-        if temp_solver.check() == sat:
-            model = temp_solver.model()
-            itinerary = []
-            for friend in friend_vars:
-                start_val = model[friend['start']].as_long()
-                end_val = model[friend['end']].as_long()
-                itinerary.append({
-                    "action": "meet",
-                    "person": friend['name'],
-                    "start_time": minutes_to_time(start_val),
-                    "end_time": minutes_to_time(end_val)
-                })
-            itinerary.sort(key=lambda x: x['start_time'])
-            return {"itinerary": itinerary}
-
-    return {"itinerary": []}
+    # Check if the constraints are satisfiable
+    if s.check() == sat:
+        model = s.model()
+        # Extract the order of meetings
+        order_values = [model.evaluate(o).as_long() for o in order]
+        # Map order values to friend names
+        friend_names = ["Ronald", "Patricia", "Laura", "Emily", "Mary"]
+        ordered_friends = [friend_names[i] for i in order_values]
+        itinerary = []
+        for name in ordered_friends:
+            start = model.evaluate(start_vars[name]).as_long()
+            end = model.evaluate(end_vars[name]).as_long()
+            # Convert minutes since 9:00 AM to HH:MM
+            start_hour = 9 + start // 60
+            start_minute = start % 60
+            end_hour = 9 + end // 60
+            end_minute = end % 60
+            itinerary.append({
+                "action": "meet",
+                "person": name,
+                "start_time": f"{start_hour:02d}:{start_minute:02d}",
+                "end_time": f"{end_hour:02d}:{end_minute:02d}"
+            })
+        return {"itinerary": itinerary}
+    else:
+        return {"itinerary": []}  # No feasible schedule found
 
 # Solve and print the result
 result = solve_scheduling()

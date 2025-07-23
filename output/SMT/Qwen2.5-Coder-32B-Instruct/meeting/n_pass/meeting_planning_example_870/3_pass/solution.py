@@ -102,12 +102,12 @@ travel_times = {
 # Define the meetings
 meetings = {
     "Linda": ("Marina District", 1800, 2200, 30),
-    "Kenneth": ("The Castro", 1445, 1615, 30),
-    "Kimberly": ("Richmond District", 1415, 2200, 30),
+    "Kenneth": ("The Castro", 1485, 1635, 30),
+    "Kimberly": ("Richmond District", 1335, 2200, 30),
     "Paul": ("Alamo Square", 2100, 2130, 15),
     "Carol": ("Financial District", 1015, 1200, 60),
     "Brian": ("Presidio", 1000, 2130, 75),
-    "Laura": ("Mission District", 1615, 2030, 30),
+    "Laura": ("Mission District", 1635, 2030, 30),
     "Sandra": ("Nob Hill", 915, 1830, 60),
     "Karen": ("Russian Hill", 1830, 2200, 75),
 }
@@ -124,7 +124,7 @@ location_vars = {name: String(f"location_{name}") for name in meetings}
 for name, (location, start, end, duration) in meetings.items():
     solver.add(start_times[name] >= start)
     solver.add(end_times[name] <= end)
-    solver.add(end_times[name] - start_times[name] >= duration)
+    solver.add(end_times[name] - start_times[name] == duration)
     solver.add(location_vars[name] == location)
 
 # Add constraints for travel times
@@ -135,13 +135,18 @@ for i, (name1, (location1, start1, end1, duration1)) in enumerate(meetings.items
                       end_times[name2] + travel_time <= start_times[name1]))
 
 # Add initial location constraint
-solver.add(start_times["Carol"] == 900)  # Start time is 9:00 AM
+solver.add(start_times["Carol"] == 1015)  # Start with Carol at 10:15 AM
+solver.add(location_vars["Carol"] == "Financial District")
 
-# Solve the problem
+# Check if the problem is solvable
 if solver.check() == sat:
     model = solver.model()
     itinerary = []
-    for name, (location, start, end, duration) in meetings.items():
-        start_time = model[start_times[name]].as_long()
-        end_time = model[end_times[name]].as_long()
-        itinerary.append({"action": "meet", "person": name, "start_time": f"{start_time // 100:02}:{start_time % 100:02}", "end
+    for name in meetings:
+        start = model[start_times[name]].as_long()
+        end = model[end_times[name]].as_long()
+        itinerary.append({"action": "meet", "person": name, "start_time": f"{start//100:02}:{start%100:02}", "end_time": f"{end//100:02}:{end%100:02}"})
+    itinerary = sorted(itinerary, key=lambda x: x["start_time"])
+    print({"itinerary": itinerary})
+else:
+    print("No solution found")

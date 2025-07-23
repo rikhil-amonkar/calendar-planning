@@ -2,223 +2,86 @@ from z3 import *
 
 def solve_itinerary():
     # Cities
-    cities = ['Prague', 'Frankfurt', 'Naples', 'Helsinki', 'Lyon']
-    city_indices = {city: idx for idx, city in enumerate(cities)}
+    Prague, Lyon, Frankfurt, Helsinki, Naples = 0, 1, 2, 3, 4
+    city_names = {
+        Prague: "Prague",
+        Lyon: "Lyon",
+        Frankfurt: "Frankfurt",
+        Helsinki: "Helsinki",
+        Naples: "Naples"
+    }
     
-    # Direct flights (undirected)
-    direct_flights = [
-        ('Prague', 'Lyon'),
-        ('Prague', 'Frankfurt'),
-        ('Frankfurt', 'Lyon'),
-        ('Helsinki', 'Naples'),
-        ('Helsinki', 'Frankfurt'),
-        ('Naples', 'Frankfurt'),
-        ('Prague', 'Helsinki')  # Note: There's a typo in the original problem's flight list (Helsinki is spelled Helsinki)
-    ]
-    # Correcting the typo in the original flight list
-    direct_flights = [
-        (a, b) if b != 'Helsinki' else (a, 'Helsinki') for a, b in direct_flights
-    ]
-    # Create a set of possible direct flights
-    flight_pairs = set()
-    for a, b in direct_flights:
-        flight_pairs.add((a, b))
-        flight_pairs.add((b, a))
+    # Direct flights: adjacency list
+    direct_flights = {
+        Prague: [Lyon, Frankfurt, Helsinki],
+        Lyon: [Prague, Frankfurt],
+        Frankfurt: [Prague, Lyon, Helsinki, Naples],
+        Helsinki: [Prague, Frankfurt, Naples],
+        Naples: [Helsinki, Frankfurt]
+    }
     
     # Total days
     total_days = 12
     
-    # Create Z3 variables for each day: which city is visited on that day
-    day_city = [Int(f'day_{day}_city') for day in range(1, total_days + 1)]
-    
+    # Create solver
     s = Solver()
     
-    # Each day_city variable must be between 0 and 4 (indices of cities)
-    for day in range(total_days):
-        s.add(day_city[day] >= 0, day_city[day] < len(cities))
+    # Variables: for each day, city1 and city2 (city2 is -1 if no flight)
+    city1 = [Int(f'day_{i+1}_city1') for i in range(total_days)]
+    city2 = [Int(f'day_{i+1}_city2') for i in range(total_days)]
     
-    # Constraints for transitions: consecutive days must be either same city or connected by a direct flight
-    for day in range(total_days - 1):
-        current_city = day_city[day]
-        next_city = day_city[day + 1]
-        # Either stay in the same city or move to a directly connected city
+    # Constraints:
+    for i in range(total_days):
+        s.add(city1[i] >= 0, city1[i] <= 4)
+        s.add(Or(city2[i] == -1, And(city2[i] >= 0, city2[i] <= 4)))
+        s.add(Or(city2[i] == -1, city2[i] != city1[i]))  # cannot fly to the same city
+        # if city2[i] is not -1, then city1[i] and city2[i] must be connected by a direct flight
+        s.add(Or(city2[i] == -1, 
+                 Or([And(city1[i] == a, city2[i] == b) for a in direct_flights for b in direct_flights[a]])))
+    
+    # Days in each city
+    def days_in_city(c):
+        return Sum([If(Or(city1[i] == c, city2[i] == c), 1, 0) for i in range(total_days)])
+    
+    s.add(days_in_city(Frankfurt) == 3)
+    s.add(days_in_city(Naples) == 4)
+    s.add(days_in_city(Helsinki) == 4)
+    s.add(days_in_city(Lyon) == 3)
+    s.add(days_in_city(Prague) == 2)
+    
+    # Helsinki show from day 2 to day 5 (1-based days 2-5 are 0-based indices 1-4)
+    for i in range(1, 5):
+        s.add(Or(city1[i] == Helsinki, city2[i] == Helsinki))
+    
+    # Prague workshop between day 1 and day 2 (0-based days 0 and 1)
+    s.add(Or(city1[0] == Prague, city2[0] == Prague, city1[1] == Prague, city2[1] == Prague))
+    
+    # Continuity: between day i and i+1, at least one city in day i is in day i+1
+    for i in range(total_days - 1):
         s.add(Or(
-            current_city == next_city,
-            *[
-                And(current_city == city_indices[a], next_city == city_indices[b])
-                for a, b in flight_pairs
-            ]
+            city1[i] == city1[i+1],
+            city1[i] == city2[i+1],
+            city2[i] == city1[i+1],
+            city2[i] == city2[i+1]
         ))
-    
-    # Count days per city
-    city_days = [0] * len(cities)
-    for city_idx in range(len(cities)):
-        city_days[city_idx] = Sum([If(day_city[day] == city_idx, 1, 0) for day in range(total_days)])
-    
-    # Required days per city
-    s.add(city_days[city_indices['Frankfurt']] == 3)
-    s.add(city_days[city_indices['Naples']] == 4)
-    s.add(city_days[city_indices['Helsinki']] == 4)
-    s.add(city_days[city_indices['Lyon']] == 3)
-    s.add(city_days[city_indices['Prague']] == 2)
-    
-    # Helsinki must be visited from day 2 to day 5 (days 2,3,4,5 in 1-based)
-    for day in [1, 2, 3, 4]:  # 0-based days 1 to 4 (2-5 in 1-based)
-        s.add(day_city[day] == city_indices['Helsinki'])
-    
-    # Workshop in Prague between day 1 and day 2: so must be in Prague on day 0 (1-based day 1) or day 1 (1-based day 2)
-    # Wait, the original problem says "between day 1 and day 2". Assuming this means that on day 1 (1-based), the traveler is in Prague.
-    s.add(day_city[0] == city_indices['Prague'])  # 1-based day 1 is index 0
     
     # Check if the solver can find a solution
     if s.check() == sat:
         m = s.model()
         itinerary = []
-        for day in range(total_days):
-            city_idx = m.evaluate(day_city[day]).as_long()
-            itinerary.append({'day': day + 1, 'place': cities[city_idx]})
+        for day in range(1, total_days + 1):
+            day_index = day - 1
+            c1 = m.evaluate(city1[day_index]).as_long()
+            c2 = m.evaluate(city2[day_index]).as_long()
+            places = [city_names[c1]]
+            if c2 != -1:
+                places.append(city_names[c2])
+            itinerary.append({"day": day, "place": ",".join(places)})
         
-        # Verify the solution meets all constraints
-        # Check city days
-        city_counts = {city: 0 for city in cities}
-        for entry in itinerary:
-            city_counts[entry['place']] += 1
-        
-        assert city_counts['Frankfurt'] == 3
-        assert city_counts['Naples'] == 4
-        assert city_counts['Helsinki'] == 4  # Wait, original problem has Helsinki spelled as Helsinki in the flight list but 'Helsinki' in the requirements.
-        # Oh, the city list uses 'Helsinki', so the counts should match.
-        assert city_counts['Helsinki'] == 4  # No, the city is 'Helsinki' in the list.
-        # Wait, in the cities list, it's 'Helsinki'. So the above line would fail.
-        # So correcting:
-        assert city_counts['Helsinki'] == 4
-        assert city_counts['Lyon'] == 3
-        assert city_counts['Prague'] == 2
-        
-        # Check Helsinki days 2-5 (1-based) are Helsinki
-        for day in [1, 2, 3, 4]:  # 0-based days for 2-5 in 1-based
-            assert itinerary[day]['place'] == 'Helsinki'
-        
-        # Check Prague on day 1 (1-based is index 0)
-        assert itinerary[0]['place'] == 'Prague'
-        
-        # Check flight transitions are valid
-        for day in range(total_days - 1):
-            current_place = itinerary[day]['place']
-            next_place = itinerary[day + 1]['place']
-            if current_place != next_place:
-                assert (current_place, next_place) in flight_pairs
-        
-        # Generate the JSON output
-        output = {
-            'itinerary': [
-                {'day': entry['day'], 'place': entry['place']}
-                for entry in itinerary
-            ]
-        }
-        return output
+        return {'itinerary': itinerary}
     else:
         return {"error": "No valid itinerary found"}
 
-# Correcting the flight pairs and re-solving
-def solve_itinerary_corrected():
-    cities = ['Prague', 'Frankfurt', 'Naples', 'Helsinki', 'Lyon']
-    city_indices = {city: idx for idx, city in enumerate(cities)}
-    
-    # Corrected direct flights (undirected)
-    direct_flights = [
-        ('Prague', 'Lyon'),
-        ('Prague', 'Frankfurt'),
-        ('Frankfurt', 'Lyon'),
-        ('Helsinki', 'Naples'),
-        ('Helsinki', 'Frankfurt'),
-        ('Naples', 'Frankfurt'),
-        ('Prague', 'Helsinki')  # Corrected the typo from 'Helsinki' to 'Helsinki'
-    ]
-    flight_pairs = set()
-    for a, b in direct_flights:
-        flight_pairs.add((a, b))
-        flight_pairs.add((b, a))
-    
-    total_days = 12
-    
-    day_city = [Int(f'day_{day}_city') for day in range(1, total_days + 1)]
-    
-    s = Solver()
-    
-    for day in range(total_days):
-        s.add(day_city[day] >= 0, day_city[day] < len(cities))
-    
-    for day in range(total_days - 1):
-        current_city = day_city[day]
-        next_city = day_city[day + 1]
-        s.add(Or(
-            current_city == next_city,
-            *[
-                And(current_city == city_indices[a], next_city == city_indices[b])
-                for a, b in flight_pairs
-            ]
-        ))
-    
-    city_days = [0] * len(cities)
-    for city_idx in range(len(cities)):
-        city_days[city_idx] = Sum([If(day_city[day] == city_idx, 1, 0) for day in range(total_days)])
-    
-    s.add(city_days[city_indices['Frankfurt']] == 3)
-    s.add(city_days[city_indices['Naples']] == 4)
-    s.add(city_days[city_indices['Helsinki']] == 4)
-    s.add(city_days[city_indices['Lyon']] == 3)
-    s.add(city_days[city_indices['Prague']] == 2)
-    
-    # Helsinki from day 2 to day 5 (1-based days 2-5 are 0-based indices 1-4)
-    for day in [1, 2, 3, 4]:
-        s.add(day_city[day] == city_indices['Helsinki'])
-    
-    # Workshop in Prague between day 1 and day 2: so must be in Prague on day 0 (1-based day 1)
-    s.add(day_city[0] == city_indices['Prague'])
-    
-    if s.check() == sat:
-        m = s.model()
-        itinerary = []
-        for day in range(total_days):
-            city_idx = m.evaluate(day_city[day]).as_long()
-            itinerary.append({'day': day + 1, 'place': cities[city_idx]})
-        
-        # Verify counts
-        city_counts = {city: 0 for city in cities}
-        for entry in itinerary:
-            city_counts[entry['place']] += 1
-        
-        assert city_counts['Frankfurt'] == 3
-        assert city_counts['Naples'] == 4
-        assert city_counts['Helsinki'] == 4
-        assert city_counts['Lyon'] == 3
-        assert city_counts['Prague'] == 2
-        
-        # Verify Helsinki days
-        for day in [1, 2, 3, 4]:
-            assert itinerary[day]['place'] == 'Helsinki'
-        
-        assert itinerary[0]['place'] == 'Prague'
-        
-        # Verify flights
-        for day in range(total_days - 1):
-            current = itinerary[day]['place']
-            next_p = itinerary[day + 1]['place']
-            if current != next_p:
-                assert (current, next_p) in flight_pairs
-        
-        output = {
-            'itinerary': [
-                {'day': entry['day'], 'place': entry['place']}
-                for entry in itinerary
-            ]
-        }
-        return output
-    else:
-        return {"error": "No valid itinerary found"}
-
-# Call the function and print the result
 import json
-result = solve_itinerary_corrected()
+result = solve_itinerary()
 print(json.dumps(result, indent=2))

@@ -113,6 +113,7 @@ if solver.check() == sat:
             "start_time": f"{start_time // 60:02}:{start_time % 60:02}",
             "end_time": f"{end_time // 60:02}:{end_time % 60:02}"
         })
+    itinerary.sort(key=lambda x: x["start_time"])
     print({"itinerary": itinerary})
 else:
     print("No solution found")

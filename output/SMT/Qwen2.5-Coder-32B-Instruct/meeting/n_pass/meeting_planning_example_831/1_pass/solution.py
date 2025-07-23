@@ -135,3 +135,24 @@ for i, person in enumerate(people):
 
 # Add initial location constraint
 solver.add(current_location == "Presidio")
+
+# Add constraint for the day limit (9:00AM to 10:00PM)
+solver.add(start_times[list(people.keys())[0]] >= 9*60)
+solver.add(end_times[list(people.keys())[-1]] <= 22*60)
+
+# Solve the problem
+if solver.check() == sat:
+    model = solver.model()
+    itinerary = []
+    for person in people:
+        start = model[start_times[person]].as_long()
+        end = model[end_times[person]].as_long()
+        itinerary.append({
+            "action": "meet",
+            "person": person,
+            "start_time": f"{start//60:02}:{start%60:02}",
+            "end_time": f"{end//60:02}:{end%60:02}"
+        })
+    print({"itinerary": itinerary})
+else:
+    print("No solution found")

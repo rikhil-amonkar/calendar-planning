@@ -40,20 +40,22 @@ constraints.append(Or(day != 2, Or(start_time + meeting_duration <= 960, start_t
 # Joyce's preference: not before 12:00 on Monday
 constraints.append(Or(day != 0, start_time >= 720))
 
-# Solve the problem
+# Create the solver and add the constraints
 solver = Solver()
 solver.add(constraints)
 
+# Check if there's a solution
 if solver.check() == sat:
     model = solver.model()
     day_value = model[day].as_long()
     start_time_value = model[start_time].as_long()
     end_time_value = start_time_value + meeting_duration
 
-    day_str = ["Monday", "Tuesday", "Wednesday"][day_value]
+    # Convert day and time to human-readable format
+    days = ["Monday", "Tuesday", "Wednesday"]
     start_time_str = f"{start_time_value // 60:02}:{start_time_value % 60:02}"
     end_time_str = f"{end_time_value // 60:02}:{end_time_value % 60:02}"
 
-    print(f"SOLUTION:\nDay: {day_str}\nStart Time: {start_time_str}\nEnd Time: {end_time_str}")
+    print(f"SOLUTION:\nDay: {days[day_value]}\nStart Time: {start_time_str}\nEnd Time: {end_time_str}")
 else:
     print("No solution found")

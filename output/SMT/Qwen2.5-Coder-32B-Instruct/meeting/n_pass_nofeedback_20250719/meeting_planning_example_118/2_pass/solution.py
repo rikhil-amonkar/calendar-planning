@@ -1,0 +1,57 @@
+from z3 import *
+
+# Define the time in minutes from 9:00AM
+def time_in_minutes(hour, minute):
+    return (hour - 9) * 60 + minute
+
+# Define the constraints
+Richard_start = time_in_minutes(8, 45)
+Richard_end = time_in_minutes(13, 0)
+Charles_start = time_in_minutes(9, 45)
+Charles_end = time_in_minutes(13, 0)
+
+# Create the solver
+solver = Solver()
+
+# Define the variables for the start and end times of meetings
+Richard_start_meeting = Int('Richard_start_meeting')
+Richard_end_meeting = Int('Richard_end_meeting')
+Charles_start_meeting = Int('Charles_start_meeting')
+Charles_end_meeting = Int('Charles_end_meeting')
+
+# Add constraints for meeting Richard
+solver.add(Richard_start_meeting >= Richard_start)
+solver.add(Richard_end_meeting <= Richard_end)
+solver.add(Richard_end_meeting - Richard_start_meeting >= 120)
+
+# Add constraints for meeting Charles
+solver.add(Charles_start_meeting >= Charles_start)
+solver.add(Charles_end_meeting <= Charles_end)
+solver.add(Charles_end_meeting - Charles_start_meeting >= 120)
+
+# Define the objective to maximize the time spent meeting
+objective = Optimize()
+objective.add(solver.assertions())
+objective.maximize(Richard_end_meeting - Richard_start_meeting + Charles_end_meeting - Charles_start_meeting)
+
+# Check if the problem is solvable
+if objective.check() == sat:
+    model = objective.model()
+    Richard_start_meeting_time = model[Richard_start_meeting].as_long()
+    Richard_end_meeting_time = model[Richard_end_meeting].as_long()
+    Charles_start_meeting_time = model[Charles_start_meeting].as_long()
+    Charles_end_meeting_time = model[Charles_end_meeting].as_long()
+
+    def format_time(minutes):
+        hours = 9 + minutes // 60
+        minutes = minutes % 60
+        return f"{hours:02}:{minutes:02}"
+
+    itinerary = [
+        {"action": "meet", "person": "Richard", "start_time": format_time(Richard_start_meeting_time), "end_time": format_time(Richard_end_meeting_time)},
+        {"action": "meet", "person": "Charles", "start_time": format_time(Charles_start_meeting_time), "end_time": format_time(Charles_end_meeting_time)}
+    ]
+
+    print({"itinerary": itinerary})
+else:
+    print("No solution found")

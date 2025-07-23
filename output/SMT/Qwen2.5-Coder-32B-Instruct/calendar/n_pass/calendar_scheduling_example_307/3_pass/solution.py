@@ -4,16 +4,16 @@ from z3 import *
 time_slots = [900, 930, 1000, 1030, 1100, 1130, 1200, 1230, 1300, 1330, 1400, 1430, 1500, 1530, 1600, 1630]
 
 # Define the participants
-participants = ['Ronald', 'Stephen', 'Brittany', 'Dorothy', 'Rebecca', 'Jordan']
+participants = ["Ronald", "Stephen", "Brittany", "Dorothy", "Rebecca", "Jordan"]
 
 # Define the blocked time slots for each participant
 blocked_slots = {
-    'Ronald': [],
-    'Stephen': [1000, 1030, 1200, 1230],
-    'Brittany': [1100, 1130, 1330, 1400, 1530, 1600, 1630],
-    'Dorothy': [900, 930, 1000, 1030, 1100, 1200, 1230, 1300, 1330, 1400, 1500, 1530, 1600, 1630],
-    'Rebecca': [930, 1000, 1030, 1100, 1130, 1200, 1230, 1300, 1330, 1400, 1430, 1500, 1530, 1600, 1630],
-    'Jordan': [900, 930, 1000, 1030, 1100, 1130, 1200, 1300, 1330, 1400, 1430, 1500, 1530, 1600, 1630]
+    "Ronald": [],
+    "Stephen": [1000, 1030, 1200, 1230],
+    "Brittany": [1100, 1130, 1330, 1400, 1530, 1600, 1630],
+    "Dorothy": [900, 930, 1000, 1030, 1100, 1200, 1230, 1300, 1330, 1400, 1500, 1530, 1600],
+    "Rebecca": [930, 1000, 1030, 1100, 1130, 1200, 1230, 1300, 1330, 1400, 1430, 1500, 1530, 1600],
+    "Jordan": [900, 930, 1000, 1030, 1100, 1130, 1200, 1300, 1330, 1400, 1430, 1500, 1530, 1600]
 }
 
 # Create a Z3 solver instance
@@ -34,7 +34,7 @@ meeting_duration = 30
 for participant in participants:
     for blocked_time in blocked_slots[participant]:
         solver.add(meeting_start != blocked_time)
-        solver.add(meeting_start + meeting_duration <= blocked_time + 30)
+        solver.add(meeting_start + meeting_duration <= blocked_time or meeting_start >= blocked_time + 30)
 
 # Check if there is a solution
 if solver.check() == sat:

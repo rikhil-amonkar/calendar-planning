@@ -1,88 +1,75 @@
 from z3 import *
 
-# Define the days of the week
-days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
+# Define the variables
+day = Int('day')  # 0 = Monday, 1 = Tuesday, 2 = Wednesday, 3 = Thursday, 4 = Friday
+start_time = Int('start_time')  # in minutes from 00:00
 
-# Define the time slots in 30-minute increments from 9:00 to 17:00
-time_slots = [(h, m) for h in range(9, 17) for m in [0, 30]]
+# Define the constraints
+constraints = []
 
-# Create a Z3 solver
-solver = Solver()
+# Work hours are from 9:00 to 17:00 (540 to 1020 minutes from 00:00)
+constraints.append(start_time >= 540)
+constraints.append(start_time + 60 <= 1020)  # Meeting duration is 1 hour
 
-# Define the variables for the meeting day and time
-meeting_day = Int('meeting_day')
-meeting_start_hour = Int('meeting_start_hour')
-meeting_start_minute = Int('meeting_start_minute')
+# Day constraints
+constraints.append(day >= 0)
+constraints.append(day <= 4)
 
-# Constraints for the meeting day
-solver.add(meeting_day >= 0)
-solver.add(meeting_day < len(days))
+# Bryan's schedule
+# Thursday: 9:30 to 10:00, 12:30 to 13:00
+constraints.append(Or(day != 3, Or(start_time >= 600, start_time + 60 <= 570)))
+constraints.append(Or(day != 3, Or(start_time >= 780, start_time + 60 <= 750)))
+# Friday: 10:30 to 11:00, 14:00 to 14:30
+constraints.append(Or(day != 4, Or(start_time >= 600, start_time + 60 <= 630)))
+constraints.append(Or(day != 4, Or(start_time >= 870, start_time + 60 <= 840)))
 
-# Constraints for the meeting start time
-solver.add(meeting_start_hour >= 9)
-solver.add(meeting_start_hour < 17)
-solver.add(Or(meeting_start_minute == 0, meeting_start_minute == 30))
-
-# Bryan's busy times
-bryan_busy_times = {
-    "Thursday": [(9, 30, 10, 0), (12, 30, 13, 0)],
-    "Friday": [(10, 30, 11, 0), (14, 0, 14, 30)]
-}
-
-# Nicholas's busy times
-nicholas_busy_times = {
-    "Monday": [(11, 30, 12, 0), (13, 0, 15, 30)],
-    "Tuesday": [(9, 0, 9, 30), (11, 0, 13, 30), (14, 0, 16, 30)],
-    "Wednesday": [(9, 0, 9, 30), (10, 0, 11, 0), (11, 30, 13, 30), (14, 0, 14, 30), (15, 0, 16, 30)],
-    "Thursday": [(10, 30, 11, 30), (12, 0, 12, 30), (15, 0, 15, 30), (16, 30, 17, 0)],
-    "Friday": [(9, 0, 10, 0), (11, 0, 12, 0), (12, 30, 14, 30), (15, 30, 16, 0), (16, 30, 17, 0)]
-}
-
-# Add constraints to avoid Bryan's busy times
-for day, times in bryan_busy_times.items():
-    day_index = days.index(day)
-    for start_hour, start_minute, end_hour, end_minute in times:
-        solver.add(Or(meeting_day != day_index,
-                      meeting_start_hour > end_hour,
-                      meeting_start_hour < start_hour,
-                      And(meeting_start_hour == start_hour, meeting_start_minute >= end_minute),
-                      And(meeting_start_hour == end_hour, meeting_start_minute < start_minute)))
-
-# Add constraints to avoid Nicholas's busy times
-for day, times in nicholas_busy_times.items():
-    day_index = days.index(day)
-    for start_hour, start_minute, end_hour, end_minute in times:
-        solver.add(Or(meeting_day != day_index,
-                      meeting_start_hour > end_hour,
-                      meeting_start_hour < start_hour,
-                      And(meeting_start_hour == start_hour, meeting_start_minute >= end_minute),
-                      And(meeting_start_hour == end_hour, meeting_start_minute < start_minute)))
+# Nicholas's schedule
+# Monday: 11:30 to 12:00, 13:00 to 15:30
+constraints.append(Or(day != 0, Or(start_time >= 720, start_time + 60 <= 690)))
+constraints.append(Or(day != 0, Or(start_time >= 930, start_time + 60 <= 780)))
+# Tuesday: 9:00 to 9:30, 11:00 to 13:30, 14:00 to 16:30
+constraints.append(Or(day != 1, Or(start_time >= 540, start_time + 60 <= 570)))
+constraints.append(Or(day != 1, Or(start_time >= 810, start_time + 60 <= 660)))
+constraints.append(Or(day != 1, Or(start_time >= 990, start_time + 60 <= 840)))
+# Wednesday: 9:00 to 9:30, 10:00 to 11:00, 11:30 to 13:30, 14:00 to 14:30, 15:00 to 16:30
+constraints.append(Or(day != 2, Or(start_time >= 540, start_time + 60 <= 570)))
+constraints.append(Or(day != 2, Or(start_time >= 660, start_time + 60 <= 600)))
+constraints.append(Or(day != 2, Or(start_time >= 810, start_time + 60 <= 690)))
+constraints.append(Or(day != 2, Or(start_time >= 870, start_time + 60 <= 840)))
+constraints.append(Or(day != 2, Or(start_time >= 990, start_time + 60 <= 900)))
+# Thursday: 10:30 to 11:30, 12:00 to 12:30, 15:00 to 15:30, 16:30 to 17:00
+constraints.append(Or(day != 3, Or(start_time >= 630, start_time + 60 <= 690)))
+constraints.append(Or(day != 3, Or(start_time >= 750, start_time + 60 <= 720)))
+constraints.append(Or(day != 3, Or(start_time >= 930, start_time + 60 <= 900)))
+constraints.append(Or(day != 3, Or(start_time >= 990, start_time + 60 <= 960)))
+# Friday: 9:00 to 10:30, 11:00 to 12:00, 12:30 to 14:30, 15:30 to 16:00, 16:30 to 17:00
+constraints.append(Or(day != 4, Or(start_time >= 630, start_time + 60 <= 570)))
+constraints.append(Or(day != 4, Or(start_time >= 720, start_time + 60 <= 660)))
+constraints.append(Or(day != 4, Or(start_time >= 870, start_time + 60 <= 750)))
+constraints.append(Or(day != 4, Or(start_time >= 990, start_time + 60 <= 930)))
+constraints.append(Or(day != 4, Or(start_time >= 1020, start_time + 60 <= 990)))
 
 # Bryan would like to avoid more meetings on Tuesday
-solver.add(meeting_day != days.index("Tuesday"))
+constraints.append(day != 1)
 
 # Nicholas would rather not meet on Monday or Thursday
-solver.add(meeting_day != days.index("Monday"))
-solver.add(meeting_day != days.index("Thursday"))
+constraints.append(day != 0)
+constraints.append(day != 3)
 
-# Check if there is a solution
+# Solve the problem
+solver = Solver()
+solver.add(constraints)
+
 if solver.check() == sat:
     model = solver.model()
-    meeting_day_value = model[meeting_day].as_long()
-    meeting_start_hour_value = model[meeting_start_hour].as_long()
-    meeting_start_minute_value = model[meeting_start_minute].as_long()
-    
-    # Calculate the end time
-    if meeting_start_minute_value == 0:
-        meeting_end_hour_value = meeting_start_hour_value + 1
-        meeting_end_minute_value = 0
-    else:
-        meeting_end_hour_value = meeting_start_hour_value
-        meeting_end_minute_value = 30
+    day_value = model[day].as_long()
+    start_time_value = model[start_time].as_long()
+    end_time_value = start_time_value + 60
 
-    print(f"SOLUTION:")
-    print(f"Day: {days[meeting_day_value]}")
-    print(f"Start Time: {meeting_start_hour_value:02}:{meeting_start_minute_value:02}")
-    print(f"End Time: {meeting_end_hour_value:02}:{meeting_end_minute_value:02}")
+    days_of_week = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
+    start_time_str = f"{start_time_value // 60:02}:{start_time_value % 60:02}"
+    end_time_str = f"{end_time_value // 60:02}:{end_time_value % 60:02}"
+
+    print(f"SOLUTION:\nDay: {days_of_week[day_value]}\nStart Time: {start_time_str}\nEnd Time: {end_time_str}")
 else:
     print("No solution found")

@@ -1,11 +1,10 @@
 from z3 import *
+import json
 
 # Define the locations and their travel times
-locations = [
-    "The Castro", "Alamo Square", "Richmond District", "Financial District",
-    "Union Square", "Fisherman's Wharf", "Marina District", "Haight-Ashbury",
-    "Mission District", "Pacific Heights", "Golden Gate Park"
-]
+locations = ["The Castro", "Alamo Square", "Richmond District", "Financial District", 
+             "Union Square", "Fisherman's Wharf", "Marina District", "Haight-Ashbury", 
+             "Mission District", "Pacific Heights", "Golden Gate Park"]
 
 travel_times = {
     ("The Castro", "Alamo Square"): 8,
@@ -85,7 +84,7 @@ travel_times = {
     ("Haight-Ashbury", "Union Square"): 19,
     ("Haight-Ashbury", "Fisherman's Wharf"): 23,
     ("Haight-Ashbury", "Marina District"): 17,
-    ("Haight-Ashbury", "Mission District"): 11,
+    ("Haight-Ashbury", "Mission District"): 12,
     ("Haight-Ashbury", "Pacific Heights"): 12,
     ("Haight-Ashbury", "Golden Gate Park"): 7,
     ("Mission District", "The Castro"): 7,
@@ -128,4 +127,73 @@ friends = {
     "David": {"location": "Union Square", "start": 1645, "end": 1915, "duration": 45},
     "Brian": {"location": "Fisherman's Wharf", "start": 1345, "end": 2045, "duration": 105},
     "Karen": {"location": "Marina District", "start": 1130, "end": 1830, "duration": 15},
-    "Anthony": {"location": "Haight-Ashbury", "start": 715, "end": 1030,
+    "Anthony": {"location": "Haight-Ashbury", "start": 715, "end": 1030, "duration": 30},
+    "Matthew": {"location": "Mission District", "start": 1715, "end": 1915, "duration": 120},
+    "Helen": {"location": "Pacific Heights", "start": 800, "end": 1200, "duration": 75},
+    "Jeffrey": {"location": "Golden Gate Park", "start": 1900, "end": 2130, "duration": 60},
+}
+
+# Convert times to minutes from start of the day
+def time_to_minutes(time_str):
+    hours, minutes = map(int, time_str.split(':'))
+    return hours * 60 + minutes
+
+# Create a solver instance
+solver = Solver()
+
+# Define the variables
+current_location = String('current_location')
+current_time = Int('current_time')
+meetings = {name: Bool(name) for name in friends}
+
+# Initial conditions
+solver.add(current_location == "The Castro")
+solver.add(current_time == time_to_minutes("09:00"))
+
+# Define the constraints
+for name, details in friends.items():
+    location = details["location"]
+    start = details["start"]
+    end = details["end"]
+    duration = details["duration"]
+    
+    # Define the meeting time variables
+    meeting_start = Int(f"{name}_start")
+    meeting_end = Int(f"{name}_end")
+    
+    # Constraints for meeting
+    solver.add(meeting_start >= start)
+    solver.add(meeting_end <= end)
+    solver.add(meeting_end - meeting_start >= duration)
+    
+    # Constraints for travel and meeting
+    travel_time = Int(f"{name}_travel_time")
+    solver.add(travel_time == travel_times[(current_location, location)])
+    solver.add(Implies(meetings[name], current_time + travel_time <= meeting_start))
+    solver.add(Implies(meetings[name], meeting_end + travel_time <= current_time + travel_time + duration))
+    
+    # Update current location and time after meeting
+    solver.add(Implies(meetings[name], current_location == location))
+    solver.add(Implies(meetings[name], current_time == meeting_end + travel_time))
+
+# Objective: maximize the number of meetings
+solver.maximize(Sum([If(meetings[name], 1, 0) for name in friends]))
+
+# Solve the problem
+if solver.check() == sat:
+    model = solver.model()
+    itinerary = []
+    for name, details in friends.items():
+        if model.evaluate(meetings[name]):
+            start = model.evaluate(Int(f"{name}_start")).as_long()
+            end = model.evaluate(Int(f"{name}_end")).as_long()
+            itinerary.append({
+                "action": "meet",
+                "person": name,
+                "start_time": f"{start // 60:02}:{start % 60:02}",
+                "end_time": f"{end // 60:02}:{end % 60:02}"
+            })
+    itinerary.sort(key=lambda x: time_to_minutes(x["start_time"]))
+    print(f"SOLUTION: {json.dumps({'itinerary': itinerary})}")
+else:
+    print("No solution found")

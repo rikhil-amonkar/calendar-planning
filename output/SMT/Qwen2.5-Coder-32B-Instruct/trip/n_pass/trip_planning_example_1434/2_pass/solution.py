@@ -38,7 +38,7 @@ flights = {
 # Create a solver instance
 solver = Solver()
 
-# Define the variables for the start day of each city
+# Define the start day for each city as a Z3 integer variable
 start_days = {city: Int(f"start_{city}") for city in cities}
 
 # Add constraints for the start days
@@ -47,17 +47,20 @@ for city, duration in cities.items():
     solver.add(start_days[city] + duration <= 23)
 
 # Add constraints for specific days
-solver.add(start_days["Mykonos"] + 1 >= 10)  # Mykonos: day 10-11
+solver.add(start_days["Mykonos"] + 1 >= 10)
 solver.add(start_days["Mykonos"] <= 11)
-solver.add(start_days["Frankfurt"] + 1 >= 1)  # Frankfurt: day 1-5
+solver.add(start_days["Frankfurt"] + 1 >= 1)
 solver.add(start_days["Frankfurt"] <= 5)
-solver.add(start_days["Seville"] + 1 >= 13)  # Seville: day 13-17
+solver.add(start_days["Seville"] + 1 >= 13)
 solver.add(start_days["Seville"] <= 17)
 
 # Add constraints for direct flights
 for city1, city2 in flights:
+    # Ensure that if you are in city1, you can fly to city2 on the last day of city1
     solver.add(Or(start_days[city1] + cities[city1] < start_days[city2],
-                  start_days[city2] + cities[city2] < start_days[city1]))
+                 start_days[city2] + cities[city2] < start_days[city1],
+                 And(start_days[city1] + cities[city1] == start_days[city2],
+                     (city1, city2) in flights or (city2, city1) in flights)))
 
 # Check if the constraints are satisfiable
 if solver.check() == sat:
@@ -68,6 +71,6 @@ if solver.check() == sat:
         itinerary.extend([(day, city) for day in range(start_day, start_day + cities[city])])
     itinerary.sort(key=lambda x: x[0])
     itinerary_dict = {"itinerary": [{"day": day, "place": place} for day, place in itinerary]}
-    print(itinerary_dict)
+    print(json.dumps(itinerary_dict, indent=2))
 else:
     print("No solution found")

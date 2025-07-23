@@ -58,8 +58,8 @@ solver = Solver()
 meeting_start = {name: Int(f"{name}_start") for name in friends}
 meeting_end = {name: Int(f"{name}_end") for name in friends}
 
-# Define variables for the current location at each meeting
-current_location = {name: String(f"{name}_location") for name in friends}
+# Define variables for the current location
+current_location = Int("current_location")
 
 # Add constraints for each friend
 for name, details in friends.items():
@@ -76,14 +76,18 @@ for name, details in friends.items():
     solver.add(meeting_end[name] - meeting_start[name] >= min_duration)
     
     # Meeting must be at the friend's location
-    solver.add(current_location[name] == location)
+    solver.add(current_location == locations.index(location))
 
 # Add constraints for travel times
-for i, name1 in enumerate(friends):
-    for name2 in list(friends.keys())[i+1:]:
-        # If meeting with name1 ends before meeting with name2 starts, travel time must be considered
-        solver.add(Or(meeting_end[name1] + travel_times[(friends[name1]["location"], friends[name2]["location"])] <= meeting_start[name2],
-                      meeting_end[name2] + travel_times[(friends[name2]["location"], friends[name1]["location"])] <= meeting_start[name1]))
+for i in range(len(friends) - 1):
+    name1 = list(friends.keys())[i]
+    name2 = list(friends.keys())[i + 1]
+    loc1 = friends[name1]["location"]
+    loc2 = friends[name2]["location"]
+    travel_time = travel_times[(loc1, loc2)]
+    
+    # Ensure there is enough time to travel between meetings
+    solver.add(meeting_start[name2] - meeting_end[name1] >= travel_time)
 
 # Add constraint for starting at Fisherman's Wharf at 9:00AM
 solver.add(meeting_start[list(friends.keys())[0]] >= time_to_minutes(900))
@@ -98,10 +102,9 @@ if solver.check() == sat:
         itinerary.append({
             "action": "meet",
             "person": name,
-            "start_time": f"{start//60:02}:{start%60:02}",
-            "end_time": f"{end//60:02}:{end%60:02}"
+            "start_time": f"{start // 60:02}:{start % 60:02}",
+            "end_time": f"{end // 60:02}:{end % 60:02}"
         })
-    itinerary.sort(key=lambda x: x["start_time"])
     print({"itinerary": itinerary})
 else:
     print("No solution found")

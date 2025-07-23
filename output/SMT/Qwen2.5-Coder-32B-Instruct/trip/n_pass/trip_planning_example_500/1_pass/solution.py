@@ -3,67 +3,79 @@ from z3 import *
 # Define the solver
 solver = Solver()
 
-# Define the number of days
+# Define the variables for the start day of each city
+start_hamburg = Int('start_hamburg')
+start_munich = Int('start_munich')
+start_manchester = Int('start_manchester')
+start_lyon = Int('start_lyon')
+start_split = Int('start_split')
+
+# Define the duration of stay in each city
+duration_hamburg = 7
+duration_munich = 6
+duration_manchester = 2
+duration_lyon = 2
+duration_split = 7
+
+# Define the total number of days
 total_days = 20
 
-# Define the cities and their required stay durations
-cities = {
-    "Hamburg": 7,
-    "Munich": 6,
-    "Manchester": 2,
-    "Lyon": 2,
-    "Split": 7
-}
+# Constraints for the start days
+solver.add(start_hamburg >= 1)
+solver.add(start_munich >= 1)
+solver.add(start_manchester >= 1)
+solver.add(start_lyon >= 1)
+solver.add(start_split >= 1)
 
-# Define the constraints for specific days
-specific_days = {
-    "Manchester": (19, 20),  # Visit relatives
-    "Lyon": (13, 14)        # Annual show
-}
+# Constraints for the end days
+solver.add(start_hamburg + duration_hamburg <= total_days)
+solver.add(start_munich + duration_munich <= total_days)
+solver.add(start_manchester + duration_manchester <= total_days)
+solver.add(start_lyon + duration_lyon <= total_days)
+solver.add(start_split + duration_split <= total_days)
 
-# Define the direct flights between cities
-flights = {
-    ("Split", "Munich"),
-    ("Munich", "Manchester"),
-    ("Hamburg", "Manchester"),
-    ("Hamburg", "Munich"),
-    ("Split", "Lyon"),
-    ("Lyon", "Munich"),
-    ("Hamburg", "Split"),
-    ("Manchester", "Split")
-}
+# Constraints for the specific days in Manchester and Lyon
+solver.add(start_manchester + duration_manchester - 1 >= 19)
+solver.add(start_lyon <= 13)
+solver.add(start_lyon + duration_lyon - 1 >= 14)
 
-# Create variables for the start day of each city
-start_days = {city: Int(f"start_{city}") for city in cities}
+# Constraints for direct flights between cities
+# We need to ensure that the transition days are valid
+# For example, if we fly from Hamburg to Munich on day X, then start_munich <= start_hamburg + duration_hamburg
+# and start_hamburg + duration_hamburg <= start_munich + 1
 
-# Add constraints for the start days
-for city, days in cities.items():
-    solver.add(start_days[city] >= 1)
-    solver.add(start_days[city] + days <= total_days)
+# Possible transitions:
+# Hamburg -> Munich, Hamburg -> Manchester, Hamburg -> Split
+# Munich -> Manchester, Munich -> Lyon
+# Manchester -> Split
+# Split -> Lyon
 
-# Add constraints for specific days
-solver.add(start_days["Manchester"] + cities["Manchester"] - 1 >= specific_days["Manchester"][0])
-solver.add(start_days["Manchester"] <= specific_days["Manchester"][1])
-solver.add(start_days["Lyon"] + cities["Lyon"] - 1 >= specific_days["Lyon"][0])
-solver.add(start_days["Lyon"] <= specific_days["Lyon"][1])
+# Add constraints for each possible transition
+solver.add(Or(start_munich <= start_hamburg + duration_hamburg, start_hamburg <= start_munich + duration_munich))
+solver.add(Or(start_manchester <= start_hamburg + duration_hamburg, start_hamburg <= start_manchester + duration_manchester))
+solver.add(Or(start_split <= start_hamburg + duration_hamburg, start_hamburg <= start_split + duration_split))
+solver.add(Or(start_manchester <= start_munich + duration_munich, start_munich <= start_manchester + duration_manchester))
+solver.add(Or(start_lyon <= start_munich + duration_munich, start_munich <= start_lyon + duration_lyon))
+solver.add(Or(start_split <= start_manchester + duration_manchester, start_manchester <= start_split + duration_split))
+solver.add(Or(start_lyon <= start_split + duration_split, start_split <= start_lyon + duration_lyon))
 
-# Add constraints for direct flights
-for i in range(total_days):
-    possible_cities = [city for city, start in start_days.items() if And(start <= i + 1, start + cities[city] >= i + 1)]
-    for city1 in possible_cities:
-        for city2 in possible_cities:
-            if city1 != city2 and (city1, city2) not in flights and (city2, city1) not in flights:
-                solver.add(Or(start_days[city1] + cities[city1] <= i + 1, start_days[city2] >= i + 2))
-
-# Check if the problem is solvable
+# Check if the constraints are satisfiable
 if solver.check() == sat:
     model = solver.model()
     itinerary = []
     for day in range(1, total_days + 1):
-        for city, start in start_days.items():
-            if model.evaluate(start) <= day and model.evaluate(start) + cities[city] >= day:
-                itinerary.append({"day": day, "place": city})
-                break
-    print(json.dumps({"itinerary": itinerary}, indent=2))
+        city = None
+        if model.evaluate(start_hamburg <= day) and model.evaluate(start_hamburg + duration_hamburg > day):
+            city = 'Hamburg'
+        elif model.evaluate(start_munich <= day) and model.evaluate(start_munich + duration_munich > day):
+            city = 'Munich'
+        elif model.evaluate(start_manchester <= day) and model.evaluate(start_manchester + duration_manchester > day):
+            city = 'Manchester'
+        elif model.evaluate(start_lyon <= day) and model.evaluate(start_lyon + duration_lyon > day):
+            city = 'Lyon'
+        elif model.evaluate(start_split <= day) and model.evaluate(start_split + duration_split > day):
+            city = 'Split'
+        itinerary.append({'day': day, 'city': city})
+    print(json.dumps({'itinerary': itinerary}, indent=2))
 else:
     print("No solution found")

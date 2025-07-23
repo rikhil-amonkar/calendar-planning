@@ -77,16 +77,16 @@ travel_times = {
     ("Russian Hill", "Haight-Ashbury"): 17,
 }
 
-# Define the meetings and their constraints
-meetings = {
-    "Karen": {"location": "Mission District", "start": 14.25, "end": 22.00, "duration": 0.5},
-    "Richard": {"location": "Fisherman's Wharf", "start": 14.50, "end": 17.50, "duration": 0.5},
-    "Robert": {"location": "Presidio", "start": 21.75, "end": 22.75, "duration": 1},
-    "Joseph": {"location": "Union Square", "start": 11.75, "end": 14.75, "duration": 2},
-    "Helen": {"location": "Sunset District", "start": 14.75, "end": 20.75, "duration": 1.75},
-    "Elizabeth": {"location": "Financial District", "start": 10.00, "end": 12.75, "duration": 1.25},
-    "Kimberly": {"location": "Haight-Ashbury", "start": 14.25, "end": 17.50, "duration": 1.75},
-    "Ashley": {"location": "Russian Hill", "start": 11.50, "end": 21.50, "duration": 0.75},
+# Define the people and their availability
+people = {
+    "Karen": ("Mission District", 1415, 2200, 30),
+    "Richard": ("Fisherman's Wharf", 1430, 1730, 30),
+    "Robert": ("Presidio", 2145, 2245, 60),
+    "Joseph": ("Union Square", 1145, 1445, 120),
+    "Helen": ("Sunset District", 1445, 2045, 105),
+    "Elizabeth": ("Financial District", 1000, 1245, 75),
+    "Kimberly": ("Haight-Ashbury", 1415, 1730, 105),
+    "Ashley": ("Russian Hill", 1130, 2130, 45),
 }
 
 # Create a solver instance
@@ -94,45 +94,46 @@ solver = Solver()
 
 # Define the variables
 current_location = String("current_location")
-current_time = Real("current_time")
-meet_vars = {name: Bool(name) for name in meetings}
-meet_times = {name: (Real(f"{name}_start"), Real(f"{name}_end")) for name in meetings}
+current_time = Int("current_time")
+meetings = {person: Bool(person) for person in people}
+meet_times = {person: Int(f"meet_time_{person}") for person in people}
+
+# Define a function to get travel time
+travel_time_func = Function('travel_time_func', StringSort(), StringSort(), IntSort())
+for (loc1, loc2), time in travel_times.items():
+    solver.add(travel_time_func(StringVal(loc1), StringVal(loc2)) == time)
 
 # Initial conditions
-solver.add(current_location == "Marina District")
-solver.add(current_time == 9.0)
+solver.add(current_location == StringVal("Marina District"))
+solver.add(current_time == 900)
 
-# Define the constraints for each meeting
-for name, details in meetings.items():
-    location = details["location"]
-    start = details["start"]
-    end = details["end"]
-    duration = details["duration"]
-    meet_var = meet_vars[name]
-    meet_start, meet_end = meet_times[name]
-    
-    # If we meet this person, we must be in the right location at the right time
-    solver.add(Implies(meet_var, current_location == location))
-    solver.add(Implies(meet_var, meet_start >= start))
-    solver.add(Implies(meet_var, meet_end <= end))
-    solver.add(Implies(meet_var, meet_end - meet_start == duration))
-    
-    # If we meet this person, we must travel to the location before the meeting
-    for prev_location in locations:
-        if prev_location != location:
-            travel_time = travel_times[(prev_location, location)]
-            solver.add(Implies(meet_var, current_time + travel_time / 60 <= meet_start))
-    
-    # If we meet this person, we must not meet anyone else at the same time
-    for other_name in meetings:
-        if other_name != name:
-            other_meet_var = meet_vars[other_name]
-            other_meet_start, other_meet_end = meet_times[other_name]
-            solver.add(Implies(And(meet_var, other_meet_var), meet_end <= other_meet_start))
-            solver.add(Implies(And(meet_var, other_meet_var), other_meet_end <= meet_start))
+# Define the constraints for each person
+for person, (location, start, end, duration) in people.items():
+    meet_time = meet_times[person]
+    solver.add(meet_time >= start)
+    solver.add(meet_time + duration <= end)
+    solver.add(Implies(meetings[person], current_location == StringVal(location)))
+    solver.add(Implies(meetings[person], current_time + travel_time_func(current_location, StringVal(location)) <= meet_time))
+    solver.add(Implies(meetings[person], current_time + travel_time_func(current_location, StringVal(location)) + duration <= 2359))
+    solver.add(Implies(meetings[person], current_time + travel_time_func(current_location, StringVal(location)) + duration <= current_time + travel_time_func(current_location, StringVal(location)) + duration + 10))  # Ensure time moves forward
 
-# Add constraints to ensure the sequence of meetings is valid
-meeting_names = list(meetings.keys())
-for i in range(len(meeting_names)):
-    for j in range(i + 1, len(meeting_names)):
-        name_i
+# Maximize the number of meetings
+solver.maximize(Sum([If(meetings[person], 1, 0) for person in people]))
+
+# Check if the problem is solvable
+if solver.check() == sat:
+    model = solver.model()
+    itinerary = []
+    for person, (location, start, end, duration) in people.items():
+        if model.evaluate(meetings[person]):
+            meet_time = model.evaluate(meet_times[person]).as_long()
+            itinerary.append({
+                "action": "meet",
+                "person": person,
+                "start_time": f"{meet_time // 100:02}:{meet_time % 100:02}",
+                "end_time": f"{(meet_time + duration) // 100:02}:{(meet_time + duration) % 100:02}"
+            })
+    itinerary.sort(key=lambda x: x["start_time"])
+    print({"itinerary": itinerary})
+else:
+    print("No solution found")

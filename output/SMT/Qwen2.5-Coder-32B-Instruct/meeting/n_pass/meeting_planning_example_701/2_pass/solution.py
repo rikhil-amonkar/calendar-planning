@@ -91,54 +91,45 @@ people = {
     "Betty": {"location": "Richmond District", "start": 13.25, "end": 15.75, "min_duration": 0.5},
 }
 
-# Create a solver instance
+# Create a solver
 solver = Solver()
 
 # Define the variables
-current_location = String('current_location')
 current_time = Real('current_time')
-meetings = {person: Bool(person) for person in people}
+meetings = {}
 
-# Initial conditions
-solver.add(current_location == "Mission District")
+# Initialize the current time
 solver.add(current_time == 9)
 
-# Define the constraints for each person
+# Define the meeting variables and constraints
 for person, details in people.items():
-    location = details["location"]
-    start = details["start"]
-    end = details["end"]
-    min_duration = details["min_duration"]
+    meet_start = Real(f'meet_start_{person}')
+    meet_end = Real(f'meet_end_{person}')
+    meetings[person] = (meet_start, meet_end)
     
-    # If we meet this person, we must be in their location within their availability
-    meet_condition = And(current_location == location, current_time + min_duration <= end, current_time >= start)
-    solver.add(Implies(meetings[person], meet_condition))
+    # Constraints for meeting start and end times
+    solver.add(meet_start >= details["start"])
+    solver.add(meet_end <= details["end"])
+    solver.add(meet_end - meet_start >= details["min_duration"])
     
-    # If we meet this person, we must travel to their location before the meeting starts
-    travel_time = travel_times[(current_location.as_string(), location)]
-    solver.add(Implies(meetings[person], current_time + travel_time / 60.0 <= start))
+    # Constraints for travel time
+    travel_time = travel_times[("Mission District", details["location"])]
+    solver.add(meet_start >= current_time + travel_time / 60.0)
     
-    # Update the current location and time after the meeting
-    new_time = current_time + travel_time / 60.0 + min_duration
-    solver.add(Implies(meetings[person], current_time == new_time))
-    solver.add(Implies(meetings[person], current_location == location))
+    # Update the current time after the meeting
+    current_time = meet_end
 
-# Objective: maximize the number of meetings
-objective = Sum([If(meetings[person], 1, 0) for person in people])
-solver.maximize(objective)
-
-# Check if the problem is solvable
+# Solve the problem
 if solver.check() == sat:
     model = solver.model()
-    result = []
-    for person, var in meetings.items():
-        if model.evaluate(var):
-            details = people[person]
-            start = details["start"]
-            end = start + details["min_duration"]
-            result.append({
-                "action": "meet",
-                "person": person,
-                "start_time": f"{int(start):02}:{int((start % 1) * 60):02}",
-                "end_time": f"{int(end):02}:{int((end % 1) * 60):02}"
-            })
+    itinerary = []
+    for person, (meet_start, meet_end) in meetings.items():
+        start_time = model[meet_start].as_decimal(2)
+        end_time = model[meet_end].as_decimal(2)
+        start_time_str = f"{int(start_time):02}:{int((start_time % 1) * 60):02}"
+        end_time_str = f"{int(end_time):02}:{int((end_time % 1) * 60):02}"
+        itinerary.append({"action": "meet", "person": person, "start_time": start_time_str, "end_time": end_time_str})
+    itinerary.sort(key=lambda x: x["start_time"])
+    print({"itinerary": itinerary})
+else:
+    print("No solution found")

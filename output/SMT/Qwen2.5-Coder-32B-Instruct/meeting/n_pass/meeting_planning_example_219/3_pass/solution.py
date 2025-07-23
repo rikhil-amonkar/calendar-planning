@@ -44,26 +44,36 @@ for name, details in friends.items():
 current_location = "The Castro"
 current_time = 9.0  # 9:00 AM
 
-# Define a list to hold the sequence of meetings
-meeting_sequence = ["Emily", "Barbara", "William"]
+# List to store the order of meetings
+meeting_order = []
 
-# Add constraints for the sequence of meetings
-for i in range(len(meeting_sequence)):
-    name = meeting_sequence[i]
+# Function to add travel constraints
+def add_travel_constraints(current_time, current_location, next_location, next_start):
+    travel_time = travel_times[(current_location, next_location)]
+    solver.add(next_start >= current_time + travel_time/60)
+
+# Try to find a valid sequence of meetings
+# We need to ensure that the meetings are scheduled in a feasible order
+# Let's try a specific order: Emily -> Barbara -> William
+order = ["Emily", "Barbara", "William"]
+
+for i, name in enumerate(order):
     details = friends[name]
-    # Travel time to the friend's location
-    travel_time = travel_times[(current_location, details["location"])]
-    # Meeting must start after arriving at the location
-    solver.add(meeting_start[name] >= current_time + travel_time/60)
-    # Update the current location and time after the meeting
-    current_location = details["location"]
-    current_time = meeting_end[name]
+    if i == 0:
+        # First meeting, just add the travel constraint from The Castro
+        add_travel_constraints(current_time, current_location, details["location"], meeting_start[name])
+    else:
+        # Add travel constraint from the last meeting location to the current one
+        last_name = order[i-1]
+        last_details = friends[last_name]
+        add_travel_constraints(meeting_end[last_name], last_details["location"], details["location"], meeting_start[name])
+    meeting_order.append(name)
 
 # Solve the problem
 if solver.check() == sat:
     model = solver.model()
     itinerary = []
-    for name in meeting_sequence:
+    for name in meeting_order:
         start = model[meeting_start[name]].as_decimal(2)
         end = model[meeting_end[name]].as_decimal(2)
         itinerary.append({

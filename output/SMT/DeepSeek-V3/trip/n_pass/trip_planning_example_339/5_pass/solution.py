@@ -1,63 +1,91 @@
-from z3 import *
 import json
+from z3 import *
 
 def solve_itinerary():
-    # Cities
-    cities = ['Riga', 'Budapest', 'Paris', 'Warsaw']
-    
+    # Cities encoding
+    cities = {
+        'Warsaw': 0,
+        'Budapest': 1,
+        'Paris': 2,
+        'Riga': 3
+    }
+    inv_cities = {v: k for k, v in cities.items()}
+
+    # Direct flights: adjacency list
+    direct_flights = {
+        0: [1, 2, 3],  # Warsaw -> Budapest, Paris, Riga
+        1: [0, 2],      # Budapest -> Warsaw, Paris
+        2: [0, 1, 3],   # Paris -> Warsaw, Budapest, Riga
+        3: [0, 2]       # Riga -> Warsaw, Paris
+    }
+
     # Create solver
     s = Solver()
-    
-    # Day variables (1-17)
-    days = [Int(f'day_{i}') for i in range(1, 18)]
-    
-    # Each day must be one of the cities (0-3)
-    for day in days:
-        s.add(day >= 0, day <= 3)
-    
-    # Direct flight connections (undirected)
-    connections = {
-        0: [2, 3],  # Riga connects to Paris and Warsaw
-        1: [2, 3],   # Budapest connects to Paris and Warsaw
-        2: [0, 1, 3], # Paris connects to Riga, Budapest, Warsaw
-        3: [0, 1, 2]  # Warsaw connects to Riga, Budapest, Paris
-    }
-    
-    # Flight constraints between consecutive days
-    for i in range(len(days)-1):
-        current = days[i]
-        next_day = days[i+1]
-        # Either stay in same city or move to connected city
-        s.add(Or(
-            current == next_day,
-            And(current == 0, Or(next_day == 2, next_day == 3)),
-            And(current == 1, Or(next_day == 2, next_day == 3)),
-            And(current == 2, Or(next_day == 0, next_day == 1, next_day == 3)),
-            And(current == 3, Or(next_day == 0, next_day == 1, next_day == 2))
-        ))
-    
-    # Fixed events
-    s.add(days[0] == 3)  # Day 1 in Warsaw
-    s.add(days[1] == 3)  # Day 2 in Warsaw
-    
-    # Days 11-17 in Riga
-    for i in range(10, 17):
-        s.add(days[i] == 0)
-    
-    # Total days per city
-    s.add(Sum([If(d == 0, 1, 0) for d in days]) == 7)  # Riga
-    s.add(Sum([If(d == 1, 1, 0) for d in days]) == 7)  # Budapest
-    s.add(Sum([If(d == 2, 1, 0) for d in days]) == 4)  # Paris
-    s.add(Sum([If(d == 3, 1, 0) for d in days]) == 2)  # Warsaw
-    
-    # Solve
+
+    # Variables: day[i] is the city visited on day i+1 (days are 1-based)
+    day = [Int(f'day_{i}') for i in range(17)]
+
+    # Constraint: each day's city must be 0, 1, 2, or 3
+    for d in day:
+        s.add(Or([d == c for c in cities.values()]))
+
+    # Constraint: days 1 and 2 are Warsaw (0)
+    s.add(day[0] == cities['Warsaw'])
+    s.add(day[1] == cities['Warsaw'])
+
+    # Constraint: Riga must be visited between days 11-17 (inclusive)
+    s.add(Or([day[i] == cities['Riga'] for i in range(10, 17)]))
+
+    # Constraint: transitions between cities must be via direct flights
+    for i in range(16):
+        current_city = day[i]
+        next_city = day[i + 1]
+        # Create a list of possible next cities including staying in the same city
+        possible_next = [current_city == next_city]
+        for city_num in cities.values():
+            if city_num in direct_flights.get(cities['Warsaw'], []):
+                possible_next.append(next_city == city_num)
+        s.add(Or(*possible_next))
+
+    # Count days per city
+    def count_city(city_num):
+        return Sum([If(day[i] == city_num, 1, 0) for i in range(17)])
+
+    s.add(count_city(cities['Warsaw']) == 2)
+    s.add(count_city(cities['Budapest']) == 7)
+    s.add(count_city(cities['Paris']) == 4)
+    s.add(count_city(cities['Riga']) == 7)
+
+    # Check and get model
     if s.check() == sat:
-        m = s.model()
+        model = s.model()
         itinerary = []
         for i in range(17):
-            day = i+1
-            city = cities[m.evaluate(days[i]).as_long()]
-            itinerary.append({'day': day, 'place': city})
+            city_num = model.evaluate(day[i]).as_long()
+            itinerary.append({'day': i + 1, 'place': inv_cities[city_num]})
+        
+        # Verify the counts
+        counts = {city: 0 for city in cities}
+        for entry in itinerary:
+            counts[entry['place']] += 1
+        
+        # Check if counts meet the requirements
+        assert counts['Warsaw'] == 2
+        assert counts['Budapest'] == 7
+        assert counts['Paris'] == 4
+        assert counts['Riga'] == 7
+
+        # Verify Riga is between days 11-17
+        riga_days = [entry['day'] for entry in itinerary if entry['place'] == 'Riga']
+        assert any(11 <= day <= 17 for day in riga_days)
+
+        # Verify transitions are via direct flights
+        for i in range(16):
+            current_place = itinerary[i]['place']
+            next_place = itinerary[i+1]['place']
+            if current_place != next_place:
+                assert cities[next_place] in direct_flights[cities[current_place]]
+
         return {'itinerary': itinerary}
     else:
         return None

@@ -51,34 +51,41 @@ meeting_start = {name: Int(f"start_{name}") for name in friends}
 meeting_end = {name: Int(f"end_{name}") for name in friends}
 
 # Define variables for the current location
-current_location = Int("current_location")
+current_location = String("current_location")
 
 # Add constraints for each friend
-for i, (name, details) in enumerate(friends.items()):
+for name, details in friends.items():
     # Meeting must start after the person is available and end before they leave
     solver.add(meeting_start[name] >= details["start"])
     solver.add(meeting_end[name] <= details["end"])
     # Meeting must last at least the minimum duration
     solver.add(meeting_end[name] - meeting_start[name] >= details["min_duration"])
-    # Meeting must start after the previous meeting ends and after travel time
-    if i > 0:
-        prev_name = list(friends.keys())[i - 1]
-        prev_location = friends[prev_name]["location"]
-        current_location = friends[name]["location"]
-        travel_time = travel_times[(prev_location, current_location)]
-        solver.add(meeting_start[name] >= meeting_end[prev_name] + travel_time)
-    else:
-        # First meeting must start after the initial travel time from Sunset District
-        initial_location = "Sunset District"
-        current_location = friends[name]["location"]
-        travel_time = travel_times[(initial_location, current_location)]
-        solver.add(meeting_start[name] >= start_time + travel_time)
+
+# Define the order of meetings and travel times
+# We need to ensure that each meeting starts after the previous one ends plus travel time
+# We will use a list to store the order of meetings
+meeting_order = ["Margaret", "Daniel", "Charles", "Stephanie"]
+
+# Add constraints for the order of meetings
+for i in range(len(meeting_order) - 1):
+    current_friend = meeting_order[i]
+    next_friend = meeting_order[i + 1]
+    current_location = friends[current_friend]["location"]
+    next_location = friends[next_friend]["location"]
+    travel_time = travel_times[(current_location, next_location)]
+    solver.add(meeting_start[next_friend] >= meeting_end[current_friend] + travel_time)
+
+# Add the constraint for the first meeting to start after the initial travel time from Sunset District
+first_friend = meeting_order[0]
+first_location = friends[first_friend]["location"]
+first_travel_time = travel_times[("Sunset District", first_location)]
+solver.add(meeting_start[first_friend] >= start_time + first_travel_time)
 
 # Check if the problem is solvable
 if solver.check() == sat:
     model = solver.model()
     itinerary = []
-    for name in friends:
+    for name in meeting_order:
         start = model[meeting_start[name]].as_long()
         end = model[meeting_end[name]].as_long()
         itinerary.append({

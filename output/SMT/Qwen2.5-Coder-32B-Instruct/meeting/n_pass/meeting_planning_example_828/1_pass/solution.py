@@ -1,8 +1,11 @@
 from z3 import *
 
 # Define the locations and their travel times
-locations = ["Marina District", "Richmond District", "Union Square", "Nob Hill", "Fisherman's Wharf", 
-             "Golden Gate Park", "Embarcadero", "Financial District", "North Beach", "Presidio"]
+locations = [
+    "Marina District", "Richmond District", "Union Square", "Nob Hill",
+    "Fisherman's Wharf", "Golden Gate Park", "Embarcadero", "Financial District",
+    "North Beach", "Presidio"
+]
 
 travel_times = {
     ("Marina District", "Richmond District"): 11,
@@ -65,7 +68,7 @@ travel_times = {
     ("Embarcadero", "Nob Hill"): 10,
     ("Embarcadero", "Fisherman's Wharf"): 6,
     ("Embarcadero", "Golden Gate Park"): 25,
-    ("Embarcadero", "Financial District"): 4,
+    ("Embarcadero", "Financial District"): 5,
     ("Embarcadero", "North Beach"): 5,
     ("Embarcadero", "Presidio"): 20,
     ("Financial District", "Marina District"): 15,
@@ -105,45 +108,66 @@ people = {
     "Joseph": ("Fisherman's Wharf", 1245, 1400, 75),
     "Anthony": ("Golden Gate Park", 1300, 2030, 75),
     "Barbara": ("Embarcadero", 1915, 2030, 75),
-    "Carol": ("Financial District", 1145, 1615, 60),
+    "Carol": ("Financial District", 1145, 1630, 60),
     "Sandra": ("North Beach", 1000, 1230, 15),
     "Kenneth": ("Presidio", 2115, 2215, 45),
 }
 
+# Convert times to minutes since start of the day
+def time_to_minutes(time):
+    hours, minutes = divmod(time, 100)
+    return hours * 60 + minutes
+
 # Create a solver instance
 solver = Solver()
 
-# Define the start time for each person
-start_times = {person: Int(f"start_{person}") for person in people}
+# Define variables
+current_location = String('current_location')
+current_time = Int('current_time')
+meetings = {}
 
-# Define the location for each person
-location_vars = {person: String(f"location_{person}") for person in people}
+# Initial conditions
+solver.add(current_location == "Marina District")
+solver.add(current_time == time_to_minutes(900))
 
-# Define the constraints
+# Define meeting variables and constraints
 for person, (location, start, end, duration) in people.items():
-    solver.add(start_times[person] >= start)
-    solver.add(start_times[person] + duration <= end)
-    solver.add(location_vars[person] == location)
+    meet_start = Int(f'meet_start_{person}')
+    meet_end = Int(f'meet_end_{person}')
+    meetings[person] = (meet_start, meet_end)
+    
+    # Constraints for meeting times
+    solver.add(meet_start >= time_to_minutes(start))
+    solver.add(meet_end <= time_to_minutes(end))
+    solver.add(meet_end - meet_start >= duration)
+    
+    # Constraints for travel time
+    travel_time = Int(f'travel_time_{person}')
+    solver.add(travel_time == travel_times[(current_location, location)])
+    solver.add(meet_start == current_time + travel_time)
+    
+    # Update current location and time
+    current_location = location
+    current_time = meet_end
 
-# Define the current location and time
-current_location = "Marina District"
-current_time = 540  # 9:00 AM in minutes
-
-# Define the constraints for traveling and meeting
-for person, (location, start, end, duration) in people.items():
-    travel_time = travel_times[(current_location, location)]
-    solver.add(start_times[person] >= current_time + travel_time)
+# Objective: Maximize the number of meetings
+objective = Optimize()
+objective.add(solver.assertions())
+objective.maximize(Sum([If(meetings[person][1] - meetings[person][0] >= people[person][3], 1, 0) for person in people]))
 
 # Solve the problem
-if solver.check() == sat:
-    model = solver.model()
+if objective.check() == sat:
+    model = objective.model()
     itinerary = []
-    for person, (location, start, end, duration) in people.items():
-        start_time = model[start_times[person]].as_long()
-        end_time = start_time + duration
+    for person, (meet_start, meet_end) in meetings.items():
+        start_time = model[meet_start].as_long()
+        end_time = model[meet_end].as_long()
         itinerary.append({
             "action": "meet",
             "person": person,
             "start_time": f"{start_time // 60:02}:{start_time % 60:02}",
-            "end_time": f"{end_time // 60:02}:{end_time % 60:02}",
+            "end_time": f"{end_time // 60:02}:{end_time % 60:02}"
         })
+    print({"itinerary": itinerary})
+else:
+    print("No solution found")

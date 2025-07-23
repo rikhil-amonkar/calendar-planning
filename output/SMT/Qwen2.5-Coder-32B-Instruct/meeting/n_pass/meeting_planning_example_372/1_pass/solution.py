@@ -60,22 +60,24 @@ for name, details in friends.items():
     solver.add(meeting_end[name] <= details["end"])
     # Meeting must last at least the minimum duration
     solver.add(meeting_end[name] - meeting_start[name] >= details["min_duration"])
-    # Meeting must start after the previous meeting ends and after travel time
-    if name != "Charles":  # Charles is the last person to meet
-        prev_name = list(friends.keys())[list(friends.keys()).index(name) - 1]
-        solver.add(meeting_start[name] >= meeting_end[prev_name] + travel_times[(friends[prev_name]["location"], details["location"])])
+    # Meeting must start after the previous meeting ends plus travel time
+    if name == "Margaret":
+        solver.add(meeting_start[name] >= start_time + travel_times[("Sunset District", details["location"])])
     else:
-        solver.add(meeting_start[name] >= meeting_end[list(friends.keys())[-2]] + travel_times[(friends[list(friends.keys())[-2]]["location"], details["location"])])
+        previous_name = list(friends.keys())[list(friends.values()).index(next(item for item in friends.values() if item["location"] == locations[locations.index(details["location"]) - 1]))]
+        solver.add(meeting_start[name] >= meeting_end[previous_name] + travel_times[(friends[previous_name]["location"], details["location"])])
 
-# Add constraint for starting location and time
-solver.add(current_location == locations.index("Sunset District"))
-solver.add(meeting_start[list(friends.keys())[0]] >= start_time + travel_times[(locations[current_location], friends[list(friends.keys())[0]]["location"])])
+# Define the objective to maximize the number of meetings
+objective = Sum([If(meeting_start[name] < meeting_end[name], 1, 0) for name in friends])
+
+# Add the objective to the solver
+solver.maximize(objective)
 
 # Check if the problem is solvable
 if solver.check() == sat:
     model = solver.model()
     itinerary = []
-    for name in friends:
+    for name, details in friends.items():
         start = model[meeting_start[name]].as_long()
         end = model[meeting_end[name]].as_long()
         itinerary.append({
@@ -84,6 +86,7 @@ if solver.check() == sat:
             "start_time": f"{start // 60:02}:{start % 60:02}",
             "end_time": f"{end // 60:02}:{end % 60:02}"
         })
+    itinerary = sorted(itinerary, key=lambda x: x["start_time"])
     print({"itinerary": itinerary})
 else:
     print("No solution found")

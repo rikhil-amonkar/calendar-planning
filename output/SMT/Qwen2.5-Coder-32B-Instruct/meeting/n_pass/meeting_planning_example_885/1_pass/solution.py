@@ -111,34 +111,57 @@ people = {
     "Andrew": ("Nob Hill", 1145, 1645, 105),
 }
 
-# Convert times to minutes since start of the day
-def time_to_minutes(time):
-    hours, minutes = divmod(time, 100)
-    return hours * 60 + minutes
-
 # Create a solver instance
 solver = Solver()
 
-# Define variables for the start time of each meeting
-meeting_starts = {person: Int(f"start_{person}") for person in people}
+# Define the variables
+current_location = String('current_location')
+current_time = Int('current_time')
+meetings = {}
 
-# Define constraints for each meeting
+# Initialize the starting location and time
+solver.add(current_location == "Russian Hill")
+solver.add(current_time == 900)
+
+# Define the meeting variables and constraints
 for person, (location, start, end, duration) in people.items():
-    start_minutes = time_to_minutes(start)
-    end_minutes = time_to_minutes(end)
-    solver.add(meeting_starts[person] >= start_minutes)
-    solver.add(meeting_starts[person] + duration <= end_minutes)
+    meet_start = Int(f'meet_start_{person}')
+    meet_end = Int(f'meet_end_{person}')
+    meetings[person] = (meet_start, meet_end)
+    
+    # Constraints for meeting with person
+    solver.add(meet_start >= start)
+    solver.add(meet_end <= end)
+    solver.add(meet_end - meet_start >= duration)
+    
+    # Constraints for traveling to the meeting location
+    travel_time = Int(f'travel_time_{person}')
+    solver.add(travel_time == travel_times[(current_location, location)])
+    solver.add(meet_start == current_time + travel_time)
+    
+    # Update the current location and time after the meeting
+    current_location = location
+    current_time = meet_end
 
-# Define variables for the location at each meeting
-location_vars = {person: String(f"location_{person}") for person in people}
+# Define the objective: maximize the number of meetings
+objective = Optimize()
+objective.add(solver.assertions())
+objective.maximize(Sum([If(meetings[person][1] - meetings[person][0] > 0, 1, 0) for person in people]))
 
-# Define constraints for the location of each meeting
-for person, (location, _, _, _) in people.items():
-    solver.add(location_vars[person] == location)
-
-# Define variables for the travel times
-travel_vars = {(person1, person2): Int(f"travel_{person1}_{person2}") for person1 in people for person2 in people if person1 != person2}
-
-# Define constraints for the travel times
-for (person1, loc1), (person2, loc2) in [(people[p1], people[p2]) for p1 in people for p2 in people if p1 != p2]:
-    solver.add(travel_vars[(person1, person2)] == travel_times[(loc1, loc2)])
+# Solve the problem
+if objective.check() == sat:
+    model = objective.model()
+    itinerary = []
+    for person, (meet_start, meet_end) in meetings.items():
+        start_time = model[meet_start].as_long()
+        end_time = model[meet_end].as_long()
+        if end_time - start_time > 0:
+            itinerary.append({
+                "action": "meet",
+                "person": person,
+                "start_time": f"{start_time // 100:02}:{start_time % 100:02}",
+                "end_time": f"{end_time // 100:02}:{end_time % 100:02}"
+            })
+    print({"itinerary": itinerary})
+else:
+    print("No solution found")

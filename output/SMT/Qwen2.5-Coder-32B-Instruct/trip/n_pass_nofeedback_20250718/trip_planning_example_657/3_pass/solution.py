@@ -1,0 +1,103 @@
+from z3 import *
+import json
+
+# Define the solver
+solver = Solver()
+
+# Define the number of days
+total_days = 16
+
+# Define the cities and their required stay durations
+cities = {
+    "Frankfurt": 4,
+    "Manchester": 4,
+    "Valencia": 4,
+    "Naples": 4,
+    "Oslo": 3,
+    "Vilnius": 2
+}
+
+# Define the special events
+special_events = {
+    "Frankfurt": (13, 16),  # Annual show
+    "Vilnius": (12, 13)    # Wedding
+}
+
+# Define the direct flights
+direct_flights = {
+    ("Valencia", "Frankfurt"),
+    ("Manchester", "Frankfurt"),
+    ("Naples", "Manchester"),
+    ("Naples", "Frankfurt"),
+    ("Naples", "Oslo"),
+    ("Oslo", "Frankfurt"),
+    ("Vilnius", "Frankfurt"),
+    ("Oslo", "Vilnius"),
+    ("Manchester", "Oslo"),
+    ("Valencia", "Naples")
+}
+
+# Create variables for the start day of each city
+start_days = {city: Int(f"start_{city}") for city in cities}
+
+# Add constraints for the start days
+for city, duration in cities.items():
+    solver.add(start_days[city] >= 1)
+    solver.add(start_days[city] + duration <= total_days)
+
+# Add constraints for the special events
+solver.add(start_days["Frankfurt"] <= 13)
+solver.add(start_days["Frankfurt"] + cities["Frankfurt"] >= 16)
+solver.add(start_days["Vilnius"] <= 12)
+solver.add(start_days["Vilnius"] + cities["Vilnius"] >= 13)
+
+# Add constraints for direct flights
+for city1, duration1 in cities.items():
+    for city2, duration2 in cities.items():
+        if city1 != city2 and (city1, city2) in direct_flights:
+            # If you leave city1 on the last day of your stay, you must arrive in city2 on the same day
+            solver.add(Or(start_days[city1] + duration1 < start_days[city2],
+                         start_days[city2] + duration2 < start_days[city1],
+                         start_days[city1] + duration1 == start_days[city2]))
+
+# Check if the constraints are satisfiable
+if solver.check() == sat:
+    model = solver.model()
+    itinerary = []
+    for city, start_day in start_days.items():
+        start = model[start_day].as_long()
+        end = start + cities[city] - 1
+        for day in range(start, end + 1):
+            itinerary.append({"day": day, "place": city})
+    itinerary.sort(key=lambda x: x["day"])
+    
+    # Verify the solution
+    valid = True
+    for city, duration in cities.items():
+        start = model[start_day].as_long()
+        end = start + duration - 1
+        if not (1 <= start <= total_days and 1 <= end <= total_days):
+            valid = False
+            break
+        if city == "Frankfurt" and not (start <= 13 and end >= 16):
+            valid = False
+            break
+        if city == "Vilnius" and not (start <= 12 and end >= 13):
+            valid = False
+            break
+        for other_city, other_duration in cities.items():
+            if city != other_city and (city, other_city) in direct_flights:
+                other_start = model[start_days[other_city]].as_long()
+                other_end = other_start + other_duration - 1
+                if not (start + duration < other_start or other_start + other_duration < start or start + duration == other_start):
+                    valid = False
+                    break
+        if not valid:
+            break
+    
+    if valid:
+        print(json.dumps({"itinerary": itinerary}, indent=2))
+    else:
+        print("No valid solution found")
+else:
+    print("No solution found")

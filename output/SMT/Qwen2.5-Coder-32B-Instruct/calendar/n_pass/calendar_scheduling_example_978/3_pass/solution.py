@@ -83,6 +83,15 @@ for day, start_h, start_m, end_h, end_m in julia_busy_times:
 # Preference: Avoid Monday if possible
 opt.minimize(If(meeting_day == 0, 1, 0))
 
+# Minimize the day index to find the earliest available day
+opt.minimize(meeting_day)
+
+# Minimize the start hour to find the earliest available time
+opt.minimize(meeting_start_hour)
+
+# Minimize the start minute to find the earliest available time
+opt.minimize(meeting_start_minute)
+
 # Solve the problem
 if opt.check() == sat:
     model = opt.model()

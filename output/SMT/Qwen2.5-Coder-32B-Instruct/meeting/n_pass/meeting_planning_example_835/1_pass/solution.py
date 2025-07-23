@@ -145,3 +145,31 @@ for name, details in meetings.items():
     solver.add(Implies(meeting_vars[name], meeting_start >= start))
     solver.add(Implies(meeting_vars[name], meeting_end <= end))
     solver.add(Implies(meeting_vars[name], meeting_end - meeting_start >= min_duration))
+    
+    # Update current location and time
+    current_location = location
+    current_time = meeting_end
+    
+    # Add to itinerary
+    itinerary.append({"action": "meet", "person": name, "start_time": meeting_start, "end_time": meeting_end})
+
+# Maximize the number of meetings
+solver.maximize(Sum([If(meeting_vars[name], 1, 0) for name in meetings]))
+
+# Check if the problem is solvable
+if solver.check() == sat:
+    model = solver.model()
+    result_itinerary = []
+    for entry in itinerary:
+        person = entry["person"]
+        start_time = model.evaluate(entry["start_time"]).as_decimal(2)
+        end_time = model.evaluate(entry["end_time"]).as_decimal(2)
+        result_itinerary.append({
+            "action": "meet",
+            "person": person,
+            "start_time": f"{int(start_time):02}:{int((start_time % 1) * 60):02}",
+            "end_time": f"{int(end_time):02}:{int((end_time % 1) * 60):02}"
+        })
+    print({"itinerary": result_itinerary})
+else:
+    print("No solution found")

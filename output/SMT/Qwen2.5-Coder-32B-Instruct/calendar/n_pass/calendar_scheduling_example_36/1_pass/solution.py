@@ -28,12 +28,13 @@ solver.add(Or(end_hour < 12, end_hour == 12 and end_minute <= 30))
 # Ruth is free all day, so no additional constraints for Ruth
 
 # Denise's busy times: 9:30 to 10:30, 12:00 to 13:00, 14:30 to 16:30
-# Denise does not want to meet after 12:30
 solver.add(Or(start_hour > 10, start_hour == 10 and start_minute >= 30))
 solver.add(Or(end_hour < 12, end_hour == 12 and end_minute <= 0))
 solver.add(Or(start_hour > 13, start_hour == 13 and start_minute >= 0))
 solver.add(Or(end_hour < 14, end_hour == 14 and end_minute <= 30))
-solver.add(Or(start_hour < 12, start_hour == 12 and start_minute <= 30))
+
+# Denise does not want to meet after 12:30
+solver.add(end_hour < 12)
 
 # Check if there is a solution
 if solver.check() == sat:

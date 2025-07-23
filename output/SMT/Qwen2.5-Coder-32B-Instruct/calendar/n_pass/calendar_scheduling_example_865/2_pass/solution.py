@@ -19,7 +19,7 @@ meeting_duration = 60  # 1 hour
 # Megan's schedule
 megan_busy = Or(
     And(day == 0, start_time >= 240, start_time < 330),  # 13:00 to 13:30
-    And(day == 0, start_time >= 300, start_time < 930),  # 14:00 to 15:30
+    And(day == 0, start_time >= 240, start_time < 930),  # 14:00 to 15:30
     And(day == 1, start_time >= 0, start_time < 30),     # 9:00 to 9:30
     And(day == 1, start_time >= 720, start_time < 750),  # 12:00 to 12:30
     And(day == 1, start_time >= 960, start_time < 1020), # 16:00 to 17:00

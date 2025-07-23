@@ -1,7 +1,7 @@
 from z3 import *
 
 # Define the locations
-locations = ["Chinatown", "Embarcadero", "Pacific Heights", "Russian Hill", "Haight-Ashbury", 
+locations = ["Chinatown", "Embarcadero", "Pacific Heights", "Russian Hill", "Haight-Ashbury",
              "Golden Gate Park", "Fisherman's Wharf", "Sunset District", "The Castro"]
 
 # Define the travel times in minutes
@@ -92,55 +92,126 @@ meetings = {
     "George": {"location": "The Castro", "start": 1400, "end": 1615, "duration": 75},
 }
 
-# Create a solver
+# Function to check if a given number of meetings is feasible
+def check_feasibility(num_meetings):
+    solver = Solver()
+    
+    # Define the variables
+    current_location = String('current_location')
+    current_time = Int('current_time')
+    meetings_vars = {name: Bool(name) for name in meetings}
+    
+    # Initial conditions
+    solver.add(current_location == "Chinatown")
+    solver.add(current_time == 900)
+    
+    # Define the constraints for each meeting
+    for name, details in meetings.items():
+        location = details["location"]
+        start = details["start"]
+        end = details["end"]
+        duration = details["duration"]
+        
+        # Define the meeting variables
+        meet_start = Int(f'{name}_start')
+        meet_end = Int(f'{name}_end')
+        
+        # Constraints for meeting
+        solver.add(meet_start >= start)
+        solver.add(meet_end <= end)
+        solver.add(meet_end - meet_start >= duration)
+        
+        # Constraints for travel and meeting
+        solver.add(Implies(meetings_vars[name], current_location == location))
+        solver.add(Implies(meetings_vars[name], current_time <= meet_start))
+        solver.add(Implies(meetings_vars[name], meet_end <= 2100))  # End of day is 9:00PM
+        
+        # Update current location and time after meeting
+        solver.add(Implies(meetings_vars[name], current_location == location))
+        solver.add(Implies(meetings_vars[name], current_time == meet_end))
+        
+        # Travel time constraints
+        for prev_location in locations:
+            if prev_location != location:
+                travel_time = travel_times[(prev_location, location)]
+                prev_meet_end = Int(f'{prev_location}_end')
+                solver.add(Implies(And(meetings_vars[name], current_location == prev_location), current_time + travel_time <= meet_start))
+                solver.add(Implies(And(meetings_vars[name], current_location == prev_location), current_time + travel_time <= meet_end))
+    
+    # Add constraint to limit the number of meetings
+    solver.add(Sum([If(meetings_vars[name], 1, 0) for name in meetings]) >= num_meetings)
+    
+    # Check if the problem is solvable
+    return solver.check() == sat
+
+# Binary search to find the maximum number of meetings
+low, high = 0, len(meetings)
+while low < high:
+    mid = (low + high + 1) // 2
+    if check_feasibility(mid):
+        low = mid
+    else:
+        high = mid - 1
+
+# Find a feasible schedule with the maximum number of meetings
+max_meetings = low
 solver = Solver()
 
 # Define the variables
 current_location = String('current_location')
 current_time = Int('current_time')
-visited = {name: Bool(name) for name in meetings}
+meetings_vars = {name: Bool(name) for name in meetings}
 
 # Initial conditions
 solver.add(current_location == "Chinatown")
-solver.add(current_time == 540)  # 9:00 AM in minutes
+solver.add(current_time == 900)
 
 # Define the constraints for each meeting
 for name, details in meetings.items():
-    start_time = Int(name + '_start_time')
-    end_time = Int(name + '_end_time')
-    travel_time = Int(name + '_travel_time')
+    location = details["location"]
+    start = details["start"]
+    end = details["end"]
+    duration = details["duration"]
     
-    # Calculate travel time
-    solver.add(travel_time == travel_times[(current_location, details["location"])])
+    # Define the meeting variables
+    meet_start = Int(f'{name}_start')
+    meet_end = Int(f'{name}_end')
     
-    # Calculate start and end time
-    solver.add(start_time == current_time + travel_time)
-    solver.add(end_time == start_time + details["duration"])
+    # Constraints for meeting
+    solver.add(meet_start >= start)
+    solver.add(meet_end <= end)
+    solver.add(meet_end - meet_start >= duration)
     
-    # Meeting time constraints
-    solver.add(start_time >= details["start"])
-    solver.add(end_time <= details["end"])
+    # Constraints for travel and meeting
+    solver.add(Implies(meetings_vars[name], current_location == location))
+    solver.add(Implies(meetings_vars[name], current_time <= meet_start))
+    solver.add(Implies(meetings_vars[name], meet_end <= 2100))  # End of day is 9:00PM
     
-    # Ensure we visit each person only once
-    solver.add(visited[name] == And(start_time >= details["start"], end_time <= details["end"]))
+    # Update current location and time after meeting
+    solver.add(Implies(meetings_vars[name], current_location == location))
+    solver.add(Implies(meetings_vars[name], current_time == meet_end))
+    
+    # Travel time constraints
+    for prev_location in locations:
+        if prev_location != location:
+            travel_time = travel_times[(prev_location, location)]
+            prev_meet_end = Int(f'{prev_location}_end')
+            solver.add(Implies(And(meetings_vars[name], current_location == prev_location), current_time + travel_time <= meet_start))
+            solver.add(Implies(And(meetings_vars[name], current_location == prev_location), current_time + travel_time <= meet_end))
 
-# Maximize the number of meetings
-solver.maximize(Sum([If(visited[name], 1, 0) for name in meetings]))
+# Add constraint to limit the number of meetings
+solver.add(Sum([If(meetings_vars[name], 1, 0) for name in meetings]) == max_meetings)
 
 # Check if the problem is solvable
 if solver.check() == sat:
     model = solver.model()
     itinerary = []
     for name, details in meetings.items():
-        if model.evaluate(visited[name]):
-            start_time = model.evaluate(Int(name + '_start_time')).as_long()
-            end_time = model.evaluate(Int(name + '_end_time')).as_long()
-            itinerary.append({
-                "action": "meet",
-                "person": name,
-                "start_time": f"{start_time // 60:02}:{start_time % 60:02}",
-                "end_time": f"{end_time // 60:02}:{end_time % 60:02}"
-            })
+        if model.evaluate(meetings_vars[name]):
+            start = model.evaluate(Int(f'{name}_start')).as_long()
+            end = model.evaluate(Int(f'{name}_end')).as_long()
+            itinerary.append({"action": "meet", "person": name, "start_time": f"{start//100:02}:{start%100:02}", "end_time": f"{end//100:02}:{end%100:02}"})
+    itinerary.sort(key=lambda x: x["start_time"])
     print({"itinerary": itinerary})
 else:
     print("No solution found")

@@ -1,0 +1,219 @@
+from z3 import *
+
+# Define the time in minutes from 00:00 to 23:59
+def time_to_minutes(time_str):
+    hours, minutes = map(int, time_str.split(':'))
+    return hours * 60 + minutes
+
+def minutes_to_time(minutes):
+    hours = minutes // 60
+    minutes = minutes % 60
+    return f"{hours:02}:{minutes:02}"
+
+# Define the travel times
+travel_times = {
+    ('Richmond District', 'Chinatown'): 20,
+    ('Richmond District', 'Sunset District'): 11,
+    ('Richmond District', 'Alamo Square'): 13,
+    ('Richmond District', 'Financial District'): 22,
+    ('Richmond District', 'North Beach'): 17,
+    ('Richmond District', 'Embarcadero'): 19,
+    ('Richmond District', 'Presidio'): 7,
+    ('Richmond District', 'Golden Gate Park'): 9,
+    ('Richmond District', 'Bayview'): 27,
+    ('Chinatown', 'Richmond District'): 20,
+    ('Chinatown', 'Sunset District'): 29,
+    ('Chinatown', 'Alamo Square'): 17,
+    ('Chinatown', 'Financial District'): 5,
+    ('Chinatown', 'North Beach'): 3,
+    ('Chinatown', 'Embarcadero'): 5,
+    ('Chinatown', 'Presidio'): 19,
+    ('Chinatown', 'Golden Gate Park'): 23,
+    ('Chinatown', 'Bayview'): 20,
+    ('Sunset District', 'Richmond District'): 12,
+    ('Sunset District', 'Chinatown'): 30,
+    ('Sunset District', 'Alamo Square'): 17,
+    ('Sunset District', 'Financial District'): 30,
+    ('Sunset District', 'North Beach'): 28,
+    ('Sunset District', 'Embarcadero'): 30,
+    ('Sunset District', 'Presidio'): 16,
+    ('Sunset District', 'Golden Gate Park'): 11,
+    ('Sunset District', 'Bayview'): 22,
+    ('Alamo Square', 'Richmond District'): 11,
+    ('Alamo Square', 'Chinatown'): 15,
+    ('Alamo Square', 'Sunset District'): 16,
+    ('Alamo Square', 'Financial District'): 17,
+    ('Alamo Square', 'North Beach'): 15,
+    ('Alamo Square', 'Embarcadero'): 16,
+    ('Alamo Square', 'Presidio'): 17,
+    ('Alamo Square', 'Golden Gate Park'): 9,
+    ('Alamo Square', 'Bayview'): 16,
+    ('Financial District', 'Richmond District'): 21,
+    ('Financial District', 'Chinatown'): 5,
+    ('Financial District', 'Sunset District'): 30,
+    ('Financial District', 'Alamo Square'): 17,
+    ('Financial District', 'North Beach'): 7,
+    ('Financial District', 'Embarcadero'): 4,
+    ('Financial District', 'Presidio'): 22,
+    ('Financial District', 'Golden Gate Park'): 23,
+    ('Financial District', 'Bayview'): 19,
+    ('North Beach', 'Richmond District'): 18,
+    ('North Beach', 'Chinatown'): 6,
+    ('North Beach', 'Sunset District'): 27,
+    ('North Beach', 'Alamo Square'): 16,
+    ('North Beach', 'Financial District'): 8,
+    ('North Beach', 'Embarcadero'): 6,
+    ('North Beach', 'Presidio'): 17,
+    ('North Beach', 'Golden Gate Park'): 22,
+    ('North Beach', 'Bayview'): 25,
+    ('Embarcadero', 'Richmond District'): 21,
+    ('Embarcadero', 'Chinatown'): 7,
+    ('Embarcadero', 'Sunset District'): 30,
+    ('Embarcadero', 'Alamo Square'): 19,
+    ('Embarcadero', 'Financial District'): 5,
+    ('Embarcadero', 'North Beach'): 5,
+    ('Embarcadero', 'Presidio'): 20,
+    ('Embarcadero', 'Golden Gate Park'): 25,
+    ('Embarcadero', 'Bayview'): 21,
+    ('Presidio', 'Richmond District'): 7,
+    ('Presidio', 'Chinatown'): 21,
+    ('Presidio', 'Sunset District'): 15,
+    ('Presidio', 'Alamo Square'): 19,
+    ('Presidio', 'Financial District'): 23,
+    ('Presidio', 'North Beach'): 18,
+    ('Presidio', 'Embarcadero'): 20,
+    ('Presidio', 'Golden Gate Park'): 12,
+    ('Presidio', 'Bayview'): 31,
+    ('Golden Gate Park', 'Richmond District'): 7,
+    ('Golden Gate Park', 'Chinatown'): 23,
+    ('Golden Gate Park', 'Sunset District'): 10,
+    ('Golden Gate Park', 'Alamo Square'): 9,
+    ('Golden Gate Park', 'Financial District'): 26,
+    ('Golden Gate Park', 'North Beach'): 23,
+    ('Golden Gate Park', 'Embarcadero'): 25,
+    ('Golden Gate Park', 'Presidio'): 11,
+    ('Golden Gate Park', 'Bayview'): 23,
+    ('Bayview', 'Richmond District'): 25,
+    ('Bayview', 'Chinatown'): 19,
+    ('Bayview', 'Sunset District'): 23,
+    ('Bayview', 'Alamo Square'): 16,
+    ('Bayview', 'Financial District'): 19,
+    ('Bayview', 'North Beach'): 22,
+    ('Bayview', 'Embarcadero'): 19,
+    ('Bayview', 'Presidio'): 32,
+    ('Bayview', 'Golden Gate Park'): 22,
+}
+
+# Define the friends' availability
+friends_availability = {
+    'Robert': (time_to_minutes('07:45'), time_to_minutes('17:30')),
+    'David': (time_to_minutes('12:30'), time_to_minutes('19:45')),
+    'Matthew': (time_to_minutes('08:45'), time_to_minutes('13:45')),
+    'Jessica': (time_to_minutes('09:30'), time_to_minutes('18:45')),
+    'Melissa': (time_to_minutes('07:15'), time_to_minutes('16:45')),
+    'Mark': (time_to_minutes('15:15'), time_to_minutes('17:00')),
+    'Deborah': (time_to_minutes('19:00'), time_to_minutes('19:45')),
+    'Karen': (time_to_minutes('19:30'), time_to_minutes('22:00')),
+    'Laura': (time_to_minutes('21:15'), time_to_minutes('22:15')),
+}
+
+# Define the minimum meeting durations
+min_meeting_durations = {
+    'Robert': 120,
+    'David': 45,
+    'Matthew': 90,
+    'Jessica': 45,
+    'Melissa': 45,
+    'Mark': 45,
+    'Deborah': 45,
+    'Karen': 120,
+    'Laura': 15,
+}
+
+# Define the locations
+locations = ['Richmond District', 'Chinatown', 'Sunset District', 'Alamo Square', 'Financial District', 'North Beach', 'Embarcadero', 'Presidio', 'Golden Gate Park', 'Bayview']
+
+# Define the solver
+solver = Solver()
+
+# Define the variables
+start_times = {friend: Int(f'start_time_{friend}') for friend in friends_availability}
+end_times = {friend: Int(f'end_time_{friend}') for friend in friends_availability}
+locations_vars = {friend: String(f'location_{friend}') for friend in friends_availability}
+
+# Initial location and time
+solver.add(locations_vars['Robert'] == 'Richmond District')
+solver.add(start_times['Robert'] >= time_to_minutes('09:00'))
+
+# Constraints for each friend
+for friend, (start, end) in friends_availability.items():
+    solver.add(start_times[friend] >= start)
+    solver.add(end_times[friend] <= end)
+    solver.add(end_times[friend] - start_times[friend] >= min_meeting_durations[friend])
+
+# Travel constraints
+friends_list = list(friends_availability)
+for i in range(len(friends_list)):
+    for j in range(i + 1, len(friends_list)):
+        friend1 = friends_list[i]
+        friend2 = friends_list[j]
+        travel_time = Int(f'travel_time_{friend1}_{friend2}')
+        solver.add(Or(
+            And(locations_vars[friend1] == 'Richmond District', locations_vars[friend2] == 'Chinatown', travel_time == 20),
+            And(locations_vars[friend1] == 'Richmond District', locations_vars[friend2] == 'Sunset District', travel_time == 11),
+            And(locations_vars[friend1] == 'Richmond District', locations_vars[friend2] == 'Alamo Square', travel_time == 13),
+            And(locations_vars[friend1] == 'Richmond District', locations_vars[friend2] == 'Financial District', travel_time == 22),
+            And(locations_vars[friend1] == 'Richmond District', locations_vars[friend2] == 'North Beach', travel_time == 17),
+            And(locations_vars[friend1] == 'Richmond District', locations_vars[friend2] == 'Embarcadero', travel_time == 19),
+            And(locations_vars[friend1] == 'Richmond District', locations_vars[friend2] == 'Presidio', travel_time == 7),
+            And(locations_vars[friend1] == 'Richmond District', locations_vars[friend2] == 'Golden Gate Park', travel_time == 9),
+            And(locations_vars[friend1] == 'Richmond District', locations_vars[friend2] == 'Bayview', travel_time == 27),
+            And(locations_vars[friend1] == 'Chinatown', locations_vars[friend2] == 'Richmond District', travel_time == 20),
+            And(locations_vars[friend1] == 'Chinatown', locations_vars[friend2] == 'Sunset District', travel_time == 29),
+            And(locations_vars[friend1] == 'Chinatown', locations_vars[friend2] == 'Alamo Square', travel_time == 17),
+            And(locations_vars[friend1] == 'Chinatown', locations_vars[friend2] == 'Financial District', travel_time == 5),
+            And(locations_vars[friend1] == 'Chinatown', locations_vars[friend2] == 'North Beach', travel_time == 3),
+            And(locations_vars[friend1] == 'Chinatown', locations_vars[friend2] == 'Embarcadero', travel_time == 5),
+            And(locations_vars[friend1] == 'Chinatown', locations_vars[friend2] == 'Presidio', travel_time == 19),
+            And(locations_vars[friend1] == 'Chinatown', locations_vars[friend2] == 'Golden Gate Park', travel_time == 23),
+            And(locations_vars[friend1] == 'Chinatown', locations_vars[friend2] == 'Bayview', travel_time == 20),
+            And(locations_vars[friend1] == 'Sunset District', locations_vars[friend2] == 'Richmond District', travel_time == 12),
+            And(locations_vars[friend1] == 'Sunset District', locations_vars[friend2] == 'Chinatown', travel_time == 30),
+            And(locations_vars[friend1] == 'Sunset District', locations_vars[friend2] == 'Alamo Square', travel_time == 17),
+            And(locations_vars[friend1] == 'Sunset District', locations_vars[friend2] == 'Financial District', travel_time == 30),
+            And(locations_vars[friend1] == 'Sunset District', locations_vars[friend2] == 'North Beach', travel_time == 28),
+            And(locations_vars[friend1] == 'Sunset District', locations_vars[friend2] == 'Embarcadero', travel_time == 30),
+            And(locations_vars[friend1] == 'Sunset District', locations_vars[friend2] == 'Presidio', travel_time == 16),
+            And(locations_vars[friend1] == 'Sunset District', locations_vars[friend2] == 'Golden Gate Park', travel_time == 11),
+            And(locations_vars[friend1] == 'Sunset District', locations_vars[friend2] == 'Bayview', travel_time == 22),
+            And(locations_vars[friend1] == 'Alamo Square', locations_vars[friend2] == 'Richmond District', travel_time == 11),
+            And(locations_vars[friend1] == 'Alamo Square', locations_vars[friend2] == 'Chinatown', travel_time == 15),
+            And(locations_vars[friend1] == 'Alamo Square', locations_vars[friend2] == 'Sunset District', travel_time == 16),
+            And(locations_vars[friend1] == 'Alamo Square', locations_vars[friend2] == 'Financial District', travel_time == 17),
+            And(locations_vars[friend1] == 'Alamo Square', locations_vars[friend2] == 'North Beach', travel_time == 15),
+            And(locations_vars[friend1] == 'Alamo Square', locations_vars[friend2] == 'Embarcadero', travel_time == 16),
+            And(locations_vars[friend1] == 'Alamo Square', locations_vars[friend2] == 'Presidio', travel_time == 17),
+            And(locations_vars[friend1] == 'Alamo Square', locations_vars[friend2] == 'Golden Gate Park', travel_time == 9),
+            And(locations_vars[friend1] == 'Alamo Square', locations_vars[friend2] == 'Bayview', travel_time == 16),
+            And(locations_vars[friend1] == 'Financial District', locations_vars[friend2] == 'Richmond District', travel_time == 21),
+            And(locations_vars[friend1] == 'Financial District', locations_vars[friend2] == 'Chinatown', travel_time == 5),
+            And(locations_vars[friend1] == 'Financial District', locations_vars[friend2] == 'Sunset District', travel_time == 30),
+            And(locations_vars[friend1] == 'Financial District', locations_vars[friend2] == 'Alamo Square', travel_time == 17),
+            And(locations_vars[friend1] == 'Financial District', locations_vars[friend2] == 'North Beach', travel_time == 7),
+            And(locations_vars[friend1] == 'Financial District', locations_vars[friend2] == 'Embarcadero', travel_time == 4),
+            And(locations_vars[friend1] == 'Financial District', locations_vars[friend2] == 'Presidio', travel_time == 22),
+            And(locations_vars[friend1] == 'Financial District', locations_vars[friend2] == 'Golden Gate Park', travel_time == 23),
+            And(locations_vars[friend1] == 'Financial District', locations_vars[friend2] == 'Bayview', travel_time == 19),
+            And(locations_vars[friend1] == 'North Beach', locations_vars[friend2] == 'Richmond District', travel_time == 18),
+            And(locations_vars[friend1] == 'North Beach', locations_vars[friend2] == 'Chinatown', travel_time == 6),
+            And(locations_vars[friend1] == 'North Beach', locations_vars[friend2] == 'Sunset District', travel_time == 27),
+            And(locations_vars[friend1] == 'North Beach', locations_vars[friend2] == 'Alamo Square', travel_time == 16),
+            And(locations_vars[friend1] == 'North Beach', locations_vars[friend2] == 'Financial District', travel_time == 8),
+            And(locations_vars[friend1] == 'North Beach', locations_vars[friend2] == 'Embarcadero', travel_time == 6),
+            And(locations_vars[friend1] == 'North Beach', locations_vars[friend2] == 'Presidio', travel_time == 17),
+            And(locations_vars[friend1] == 'North Beach', locations_vars[friend2] == 'Golden Gate Park', travel_time == 22),
+            And(locations_vars[friend1] == 'North Beach', locations_vars[friend2] == 'Bayview', travel_time == 25),
+            And(locations_vars[friend1] == 'Embarcadero', locations_vars[friend2] == 'Richmond District', travel_time == 21),
+            And(locations_vars[friend1] == 'Embarcadero', locations_vars[friend2] == 'Chinatown', travel_time == 7),
+            And(locations_vars[friend1] == 'Embarcadero', locations_vars[friend2] == 'Sunset District', travel_time == 30),
+            And(locations_vars[friend1] == 'Embarcadero', locations_vars[friend2] == 'Alamo Square', travel_time

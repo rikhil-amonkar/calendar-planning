@@ -1,83 +1,90 @@
 from z3 import *
 
 def solve_itinerary():
-    # Create a solver instance
-    s = Solver()
-
-    # Cities and their indices
+    # Cities
     cities = ['Paris', 'Madrid', 'Bucharest', 'Seville']
-    city_idx = {city: i for i, city in enumerate(cities)}
+    city_to_idx = {city: idx for idx, city in enumerate(cities)}
     
-    # Days are 1 to 15
-    days = 15
-    # Assign each day to a city (0: Paris, 1: Madrid, 2: Bucharest, 3: Seville)
-    day_assignments = [Int(f'day_{i}') for i in range(1, days + 1)]
-    
-    # Constraints for each day: must be 0, 1, 2, or 3
-    for day in day_assignments:
-        s.add(And(day >= 0, day <= 3))
-    
-    # Direct flights between cities
+    # Direct flights: adjacency list
     direct_flights = {
-        0: [1, 2, 3],  # Paris can fly to Madrid, Bucharest, Seville
-        1: [0, 2, 3],  # Madrid can fly to Paris, Bucharest, Seville
-        2: [0, 1],     # Bucharest can fly to Paris, Madrid
-        3: [0, 1]      # Seville can fly to Paris, Madrid
+        'Paris': ['Bucharest', 'Seville', 'Madrid'],
+        'Madrid': ['Paris', 'Bucharest', 'Seville'],
+        'Bucharest': ['Paris', 'Madrid'],
+        'Seville': ['Paris', 'Madrid']
     }
     
-    # Constraint: transitions must be via direct flights
-    for i in range(days - 1):
-        current = day_assignments[i]
-        next_day = day_assignments[i + 1]
-        # Either stay in same city or fly to connected city
-        s.add(Or(
-            current == next_day,
-            *[next_day == dest for dest in direct_flights[current.as_long() if isinstance(current, int) else 0]]
-        ))
+    # Create Z3 variables for each day (1..15)
+    days = 15
+    day_vars = [Int(f'day_{i}') for i in range(1, days + 1)]
+    
+    s = Solver()
+    
+    # Each day variable must be between 0 and 3 (city indices)
+    for day in day_vars:
+        s.add(day >= 0, day <= 3)
     
     # Constraint: Days 1-7 must be Madrid (index 1)
     for i in range(7):
-        s.add(day_assignments[i] == city_idx['Madrid'])
+        s.add(day_vars[i] == city_to_idx['Madrid'])
     
-    # Constraint: Days 14 and 15 must be Bucharest (index 2)
-    s.add(day_assignments[13] == city_idx['Bucharest'])  # Day 14
-    s.add(day_assignments[14] == city_idx['Bucharest'])  # Day 15
+    # Constraint: Days 14-15 must be Bucharest (index 2)
+    s.add(day_vars[13] == city_to_idx['Bucharest'])
+    s.add(day_vars[14] == city_to_idx['Bucharest'])
     
-    # Total days per city
-    def count_days(city):
-        return Sum([If(day == city_idx[city], 1, 0) for day in day_assignments])
+    # Constraints for city visits
+    # Paris: 6 days
+    paris_days = Sum([If(day == city_to_idx['Paris'], 1, 0) for day in day_vars])
+    s.add(paris_days == 6)
     
-    s.add(count_days('Paris') == 6)
-    s.add(count_days('Madrid') == 7)
-    s.add(count_days('Seville') == 3)
+    # Madrid: 7 days (already 7 days from 1-7)
+    # So no additional constraints needed
+    
+    # Bucharest: 2 days (14-15)
+    # So no additional constraints needed
+    
+    # Seville: 3 days
+    seville_days = Sum([If(day == city_to_idx['Seville'], 1, 0) for day in day_vars])
+    s.add(seville_days == 3)
+    
+    # Flight constraints: consecutive days must be either same city or connected by direct flight
+    for i in range(days - 1):
+        current_city = day_vars[i]
+        next_city = day_vars[i + 1]
+        # Either same city or connected by direct flight
+        same_city = (current_city == next_city)
+        flight_possible = Or([And(current_city == city_to_idx[a], next_city == city_to_idx[b]) 
+                            for a in direct_flights 
+                            for b in direct_flights[a]])
+        s.add(Or(same_city, flight_possible))
     
     # Check if the problem is satisfiable
     if s.check() == sat:
         model = s.model()
         itinerary = []
+        idx_to_city = {v: k for k, v in city_to_idx.items()}
         for i in range(days):
             day_num = i + 1
-            city_idx_val = model.evaluate(day_assignments[i]).as_long()
-            city = cities[city_idx_val]
+            city_idx = model.evaluate(day_vars[i]).as_long()
+            city = idx_to_city[city_idx]
             itinerary.append({'day': day_num, 'place': city})
         
         # Verify the counts
-        counts = {city: 0 for city in cities}
+        counts = {'Paris': 0, 'Madrid': 0, 'Bucharest': 0, 'Seville': 0}
         for entry in itinerary:
             counts[entry['place']] += 1
         
-        # Ensure counts meet constraints
+        # Ensure the counts meet the requirements
         assert counts['Paris'] == 6
         assert counts['Madrid'] == 7
         assert counts['Bucharest'] == 2
         assert counts['Seville'] == 3
         
-        # Verify transitions are via direct flights
+        # Verify the flight constraints
         for i in range(days - 1):
             current = itinerary[i]['place']
-            next_city = itinerary[i + 1]['place']
-            if current != next_city:
-                assert city_idx[next_city] in direct_flights[city_idx[current]]
+            next_place = itinerary[i + 1]['place']
+            if current != next_place:
+                assert next_place in direct_flights[current]
         
         return {'itinerary': itinerary}
     else:
@@ -85,7 +92,6 @@ def solve_itinerary():
 
 result = solve_itinerary()
 if result:
-    import json
-    print(json.dumps(result, indent=2))
+    print(result)
 else:
-    print("No solution found")
+    print("No valid itinerary found.")

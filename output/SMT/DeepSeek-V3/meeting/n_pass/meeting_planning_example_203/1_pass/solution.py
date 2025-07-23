@@ -1,113 +1,102 @@
 from z3 import *
 import datetime
-import json
 
-def time_to_minutes(time_str):
-    hh, mm = map(int, time_str.split(':'))
-    return hh * 60 + mm
+def solve_scheduling_problem():
+    # Initialize Z3 solver
+    s = Solver()
 
-def minutes_to_time(minutes):
-    hh = minutes // 60
-    mm = minutes % 60
-    return f"{hh:02d}:{mm:02d}"
+    # Define time variables for each meeting
+    # Meeting with Timothy (Pacific Heights)
+    timothy_start = Int('timothy_start')
+    timothy_end = Int('timothy_end')
 
-# Travel times in minutes (from -> to)
-travel_times = {
-    ('Financial District', 'Fisherman\'s Wharf'): 10,
-    ('Financial District', 'Pacific Heights'): 13,
-    ('Financial District', 'Mission District'): 17,
-    ('Fisherman\'s Wharf', 'Financial District'): 11,
-    ('Fisherman\'s Wharf', 'Pacific Heights'): 12,
-    ('Fisherman\'s Wharf', 'Mission District'): 22,
-    ('Pacific Heights', 'Financial District'): 13,
-    ('Pacific Heights', 'Fisherman\'s Wharf'): 13,
-    ('Pacific Heights', 'Mission District'): 15,
-    ('Mission District', 'Financial District'): 17,
-    ('Mission District', 'Fisherman\'s Wharf'): 22,
-    ('Mission District', 'Pacific Heights'): 16,
-}
+    # Meeting with David (Fisherman's Wharf)
+    david_start = Int('david_start')
+    david_end = Int('david_end')
 
-# Friends' availability and constraints
-friends = {
-    'David': {
-        'location': 'Fisherman\'s Wharf',
-        'available_start': '10:45',
-        'available_end': '15:30',
-        'min_duration': 15,
-    },
-    'Timothy': {
-        'location': 'Pacific Heights',
-        'available_start': '09:00',
-        'available_end': '15:30',
-        'min_duration': 75,
-    },
-    'Robert': {
-        'location': 'Mission District',
-        'available_start': '12:15',
-        'available_end': '19:45',
-        'min_duration': 90,
-    }
-}
+    # Meeting with Robert (Mission District)
+    robert_start = Int('robert_start')
+    robert_end = Int('robert_end')
 
-# Initialize Z3 solver
-s = Solver()
+    # Convert all times to minutes since 9:00 AM (540 minutes since midnight)
+    arrival_time = 540  # 9:00 AM in minutes
 
-# Create variables for each meeting's start and end times (in minutes since 9:00)
-start_vars = {}
-end_vars = {}
-for name in friends:
-    start_vars[name] = Int(f'start_{name}')
-    end_vars[name] = Int(f'end_{name}')
+    # Friends' availability windows in minutes since midnight
+    david_available_start = 645  # 10:45 AM
+    david_available_end = 930    # 3:30 PM
+    timothy_available_start = 540 # 9:00 AM
+    timothy_available_end = 930   # 3:30 PM
+    robert_available_start = 735  # 12:15 PM
+    robert_available_end = 1185   # 7:45 PM
 
-# Current location starts at Financial District at 9:00 (0 minutes)
-current_location = 'Financial District'
+    # Minimum meeting durations in minutes
+    david_min_duration = 15
+    timothy_min_duration = 75
+    robert_min_duration = 90
 
-# Constraints for each friend
-for name in friends:
-    friend = friends[name]
-    available_start = time_to_minutes(friend['available_start']) - time_to_minutes('09:00')
-    available_end = time_to_minutes(friend['available_end']) - time_to_minutes('09:00')
-    min_duration = friend['min_duration']
-    
-    # Meeting must start within availability window
-    s.add(start_vars[name] >= available_start)
-    s.add(end_vars[name] <= available_end)
-    # Meeting duration must be at least min_duration
-    s.add(end_vars[name] - start_vars[name] >= min_duration)
-    # Start time must be before end time
-    s.add(start_vars[name] < end_vars[name])
+    # Travel times from Financial District to other locations
+    fd_to_fw = 10  # Financial District to Fisherman's Wharf
+    fd_to_ph = 13  # Financial District to Pacific Heights
+    fd_to_md = 17  # Financial District to Mission District
 
-# Constraints for traveling between meetings
-# Order: Timothy (Pacific Heights) -> David (Fisherman's Wharf) -> Robert (Mission District)
-s.add(start_vars['Timothy'] >= travel_times[(current_location, friends['Timothy']['location'])])
-s.add(start_vars['David'] >= end_vars['Timothy'] + travel_times[(friends['Timothy']['location'], friends['David']['location'])])
-s.add(start_vars['Robert'] >= end_vars['David'] + travel_times[(friends['David']['location'], friends['Robert']['location'])])
+    # Travel times between other locations
+    fw_to_ph = 12  # Fisherman's Wharf to Pacific Heights
+    fw_to_md = 22  # Fisherman's Wharf to Mission District
+    ph_to_fw = 13  # Pacific Heights to Fisherman's Wharf
+    ph_to_md = 15  # Pacific Heights to Mission District
+    md_to_fw = 22  # Mission District to Fisherman's Wharf
+    md_to_ph = 16  # Mission District to Pacific Heights
 
-# Check if the constraints are satisfiable
-if s.check() == sat:
-    model = s.model()
-    itinerary = []
-    
-    # Collect all meetings
-    for name in friends:
-        start_min = model.evaluate(start_vars[name]).as_long()
-        end_min = model.evaluate(end_vars[name]).as_long()
-        
-        # Convert minutes since 9:00 to HH:MM
-        start_time = (datetime.datetime(2023, 1, 1, 9, 0) + datetime.timedelta(minutes=start_min)).strftime('%H:%M')
-        end_time = (datetime.datetime(2023, 1, 1, 9, 0) + datetime.timedelta(minutes=end_min)).strftime('%H:%M')
-        
-        itinerary.append({
-            "action": "meet",
-            "person": name,
-            "start_time": start_time,
-            "end_time": end_time
-        })
-    
-    # Sort itinerary by start time
-    itinerary.sort(key=lambda x: x['start_time'])
-    
-    print('SOLUTION:')
-    print(json.dumps({"itinerary": itinerary}, indent=2))
-else:
-    print("No feasible schedule found.")
+    # Constraints for each meeting
+    # Timothy meeting constraints
+    s.add(timothy_start >= timothy_available_start)
+    s.add(timothy_end <= timothy_available_end)
+    s.add(timothy_end - timothy_start >= timothy_min_duration)
+
+    # David meeting constraints
+    s.add(david_start >= david_available_start)
+    s.add(david_end <= david_available_end)
+    s.add(david_end - david_start >= david_min_duration)
+
+    # Robert meeting constraints
+    s.add(robert_start >= robert_available_start)
+    s.add(robert_end <= robert_available_end)
+    s.add(robert_end - robert_start >= robert_min_duration)
+
+    # Sequence constraints (order of meetings and travel times)
+    # Assume the order is Timothy -> David -> Robert
+    s.add(timothy_start >= arrival_time + fd_to_ph)  # Start after arriving at Pacific Heights
+    s.add(david_start >= timothy_end + ph_to_fw)     # Travel from Pacific Heights to Fisherman's Wharf
+    s.add(robert_start >= david_end + fw_to_md)      # Travel from Fisherman's Wharf to Mission District
+
+    # Alternatively, try other orders if this one doesn't work
+    # For simplicity, we'll stick with this order and check if it's satisfiable
+
+    # Check if the solver can find a solution
+    if s.check() == sat:
+        model = s.model()
+        # Convert times back to HH:MM format
+        def minutes_to_time(minutes):
+            hours = minutes // 60
+            mins = minutes % 60
+            return f"{hours:02d}:{mins:02d}"
+
+        timothy_start_time = model.evaluate(timothy_start).as_long()
+        timothy_end_time = model.evaluate(timothy_end).as_long()
+        david_start_time = model.evaluate(david_start).as_long()
+        david_end_time = model.evaluate(david_end).as_long()
+        robert_start_time = model.evaluate(robert_start).as_long()
+        robert_end_time = model.evaluate(robert_end).as_long()
+
+        itinerary = [
+            {"action": "meet", "person": "Timothy", "start_time": minutes_to_time(timothy_start_time), "end_time": minutes_to_time(timothy_end_time)},
+            {"action": "meet", "person": "David", "start_time": minutes_to_time(david_start_time), "end_time": minutes_to_time(david_end_time)},
+            {"action": "meet", "person": "Robert", "start_time": minutes_to_time(robert_start_time), "end_time": minutes_to_time(robert_end_time)}
+        ]
+        return {"itinerary": itinerary}
+    else:
+        return {"itinerary": []}
+
+# Solve the problem and print the result
+result = solve_scheduling_problem()
+print(result)

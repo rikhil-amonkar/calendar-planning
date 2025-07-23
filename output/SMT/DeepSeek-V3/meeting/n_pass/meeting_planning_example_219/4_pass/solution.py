@@ -1,117 +1,290 @@
 from z3 import *
-import json
 
 def solve_scheduling():
+    # Initialize solver
     s = Solver()
 
-    # Convert times to minutes since midnight for easier arithmetic
+    # Meeting durations in minutes
+    emily_min_duration = 105
+    barbara_min_duration = 60
+    william_min_duration = 105
+
+    # Convert all times to minutes since 9:00 AM (540 minutes)
     def time_to_minutes(time_str):
         hh, mm = map(int, time_str.split(':'))
         return hh * 60 + mm
 
+    # Convert minutes back to time string
     def minutes_to_time(minutes):
         hh = minutes // 60
         mm = minutes % 60
         return f"{hh:02d}:{mm:02d}"
 
-    # Define time variables (in minutes since midnight)
-    emily_start = Int('emily_start')
-    emily_end = Int('emily_end')
-    barbara_start = Int('barbara_start')
-    barbara_end = Int('barbara_end')
-    william_start = Int('william_start')
-    william_end = Int('william_end')
+    # Available time windows (in minutes since midnight)
+    emily_start = time_to_minutes("11:45")
+    emily_end = time_to_minutes("15:15")
+    barbara_start = time_to_minutes("16:45")
+    barbara_end = time_to_minutes("18:15")
+    william_start = time_to_minutes("17:15")
+    william_end = time_to_minutes("19:00")
 
-    # Meeting durations in minutes
-    emily_duration = 105
-    barbara_duration = 60
-    william_duration = 105
-
-    # Availability windows (in minutes since midnight)
-    emily_window_start = time_to_minutes("11:45")
-    emily_window_end = time_to_minutes("15:15")
-    barbara_window_start = time_to_minutes("16:45")
-    barbara_window_end = time_to_minutes("18:15")
-    william_window_start = time_to_minutes("17:15")
-    william_window_end = time_to_minutes("19:00")
-
-    # Travel times between locations (in minutes)
+    # Travel times (in minutes)
     travel = {
-        ('Castro', 'Alamo Square'): 8,
-        ('Alamo Square', 'Union Square'): 14,
-        ('Alamo Square', 'Chinatown'): 16,
-        ('Union Square', 'Chinatown'): 7,
-        ('Union Square', 'Alamo Square'): 15,
-        ('Chinatown', 'Union Square'): 7
+        ("The Castro", "Alamo Square"): 8,
+        ("The Castro", "Union Square"): 19,
+        ("The Castro", "Chinatown"): 20,
+        ("Alamo Square", "The Castro"): 8,
+        ("Alamo Square", "Union Square"): 14,
+        ("Alamo Square", "Chinatown"): 16,
+        ("Union Square", "The Castro"): 19,
+        ("Union Square", "Alamo Square"): 15,
+        ("Union Square", "Chinatown"): 7,
+        ("Chinatown", "The Castro"): 22,
+        ("Chinatown", "Alamo Square"): 17,
+        ("Chinatown", "Union Square"): 7,
     }
 
-    # Meeting constraints
-    s.add(emily_start >= emily_window_start)
-    s.add(emily_end <= emily_window_end)
-    s.add(emily_end == emily_start + emily_duration)
+    # Variables for meeting start and end times (in minutes since 9:00 AM)
+    emily_meet_start = Int('emily_meet_start')
+    emily_meet_end = Int('emily_meet_end')
+    barbara_meet_start = Int('barbara_meet_start')
+    barbara_meet_end = Int('barbara_meet_end')
+    william_meet_start = Int('william_meet_start')
+    william_meet_end = Int('william_meet_end')
 
-    s.add(barbara_start >= barbara_window_start)
-    s.add(barbara_end <= barbara_window_end)
-    s.add(barbara_end == barbara_start + barbara_duration)
+    # Current location starts at The Castro at time 0 (9:00 AM)
+    # We need to model the sequence of meetings and travel.
 
-    s.add(william_start >= william_window_start)
-    s.add(william_end <= william_window_end)
-    s.add(william_end == william_start + william_duration)
+    # Option 1: Emily -> Barbara -> William
+    # 1. Travel to Alamo Square (8 minutes), meet Emily.
+    # 2. Travel to Union Square (14 minutes), meet Barbara.
+    # 3. Travel to Chinatown (7 minutes), meet William.
 
-    # Define possible meeting orders
-    order1 = And(
-        barbara_start >= emily_end + travel[('Alamo Square', 'Union Square')],
-        william_start >= barbara_end + travel[('Union Square', 'Chinatown')]
-    )
-    
-    order2 = And(
-        william_start >= emily_end + travel[('Alamo Square', 'Chinatown')],
-        barbara_start >= william_end + travel[('Chinatown', 'Union Square')]
-    )
+    # Constraints for Option 1:
+    # Emily's meeting:
+    s.add(emily_meet_start >= 8)  # travel to Alamo Square takes 8 minutes
+    s.add(emily_meet_start >= emily_start - 540)  # Emily's window starts at 11:45 (705 minutes since midnight, 165 since 9:00)
+    s.add(emily_meet_end <= emily_end - 540)
+    s.add(emily_meet_end - emily_meet_start >= emily_min_duration)
 
-    # Try both possible orders
-    s.add(Or(order1, order2))
+    # Travel from Alamo Square to Union Square takes 14 minutes.
+    barbara_arrival = emily_meet_end + 14
+    s.add(barbara_meet_start >= barbara_arrival)
+    s.add(barbara_meet_start >= barbara_start - 540)
+    s.add(barbara_meet_end <= barbara_end - 540)
+    s.add(barbara_meet_end - barbara_meet_start >= barbara_min_duration)
 
-    # Starting at Castro at 9:00 (540 minutes)
-    s.add(emily_start >= 540 + travel[('Castro', 'Alamo Square')])
+    # Travel from Union Square to Chinatown takes 7 minutes.
+    william_arrival = barbara_meet_end + 7
+    s.add(william_meet_start >= william_arrival)
+    s.add(william_meet_start >= william_start - 540)
+    s.add(william_meet_end <= william_end - 540)
+    s.add(william_meet_end - william_meet_start >= william_min_duration)
 
+    # Check if this model is satisfiable
     if s.check() == sat:
-        model = s.model()
+        m = s.model()
+        # Convert back to time strings
         itinerary = []
-
-        # Determine which order was chosen
-        if is_true(model.eval(order1)):
-            # Emily → Barbara → William
-            emily_s = model[emily_start].as_long()
-            emily_e = model[emily_end].as_long()
-            barbara_s = model[barbara_start].as_long()
-            barbara_e = model[barbara_end].as_long()
-            william_s = model[william_start].as_long()
-            william_e = model[william_end].as_long()
-            
-            itinerary = [
-                {"action": "meet", "person": "Emily", "start_time": minutes_to_time(emily_s), "end_time": minutes_to_time(emily_e)},
-                {"action": "meet", "person": "Barbara", "start_time": minutes_to_time(barbara_s), "end_time": minutes_to_time(barbara_e)},
-                {"action": "meet", "person": "William", "start_time": minutes_to_time(william_s), "end_time": minutes_to_time(william_e)}
-            ]
-        else:
-            # Emily → William → Barbara
-            emily_s = model[emily_start].as_long()
-            emily_e = model[emily_end].as_long()
-            william_s = model[william_start].as_long()
-            william_e = model[william_end].as_long()
-            barbara_s = model[barbara_start].as_long()
-            barbara_e = model[barbara_end].as_long()
-            
-            itinerary = [
-                {"action": "meet", "person": "Emily", "start_time": minutes_to_time(emily_s), "end_time": minutes_to_time(emily_e)},
-                {"action": "meet", "person": "William", "start_time": minutes_to_time(william_s), "end_time": minutes_to_time(william_e)},
-                {"action": "meet", "person": "Barbara", "start_time": minutes_to_time(barbara_s), "end_time": minutes_to_time(barbara_e)}
-            ]
-
+        # Emily's meeting
+        em_start = m[emily_meet_start].as_long() + 540
+        em_end = m[emily_meet_end].as_long() + 540
+        itinerary.append({
+            "action": "meet",
+            "person": "Emily",
+            "start_time": minutes_to_time(em_start),
+            "end_time": minutes_to_time(em_end)
+        })
+        # Barbara's meeting
+        ba_start = m[barbara_meet_start].as_long() + 540
+        ba_end = m[barbara_meet_end].as_long() + 540
+        itinerary.append({
+            "action": "meet",
+            "person": "Barbara",
+            "start_time": minutes_to_time(ba_start),
+            "end_time": minutes_to_time(ba_end)
+        })
+        # William's meeting
+        wi_start = m[william_meet_start].as_long() + 540
+        wi_end = m[william_meet_end].as_long() + 540
+        itinerary.append({
+            "action": "meet",
+            "person": "William",
+            "start_time": minutes_to_time(wi_start),
+            "end_time": minutes_to_time(wi_end)
+        })
         return {"itinerary": itinerary}
     else:
-        return {"error": "No feasible schedule found."}
+        # Option 2: Emily -> William -> Barbara
+        s = Solver()
+        # Emily's meeting
+        s.add(emily_meet_start >= 8)  # travel to Alamo Square
+        s.add(emily_meet_start >= emily_start - 540)
+        s.add(emily_meet_end <= emily_end - 540)
+        s.add(emily_meet_end - emily_meet_start >= emily_min_duration)
+
+        # Travel from Alamo Square to Chinatown takes 16 minutes.
+        william_arrival = emily_meet_end + 16
+        s.add(william_meet_start >= william_arrival)
+        s.add(william_meet_start >= william_start - 540)
+        s.add(william_meet_end <= william_end - 540)
+        s.add(william_meet_end - william_meet_start >= william_min_duration)
+
+        # Travel from Chinatown to Union Square takes 7 minutes.
+        barbara_arrival = william_meet_end + 7
+        s.add(barbara_meet_start >= barbara_arrival)
+        s.add(barbara_meet_start >= barbara_start - 540)
+        s.add(barbara_meet_end <= barbara_end - 540)
+        s.add(barbara_meet_end - barbara_meet_start >= barbara_min_duration)
+
+        if s.check() == sat:
+            m = s.model()
+            itinerary = []
+            # Emily's meeting
+            em_start = m[emily_meet_start].as_long() + 540
+            em_end = m[emily_meet_end].as_long() + 540
+            itinerary.append({
+                "action": "meet",
+                "person": "Emily",
+                "start_time": minutes_to_time(em_start),
+                "end_time": minutes_to_time(em_end)
+            })
+            # William's meeting
+            wi_start = m[william_meet_start].as_long() + 540
+            wi_end = m[william_meet_end].as_long() + 540
+            itinerary.append({
+                "action": "meet",
+                "person": "William",
+                "start_time": minutes_to_time(wi_start),
+                "end_time": minutes_to_time(wi_end)
+            })
+            # Barbara's meeting
+            ba_start = m[barbara_meet_start].as_long() + 540
+            ba_end = m[barbara_meet_end].as_long() + 540
+            itinerary.append({
+                "action": "meet",
+                "person": "Barbara",
+                "start_time": minutes_to_time(ba_start),
+                "end_time": minutes_to_time(ba_end)
+            })
+            return {"itinerary": itinerary}
+        else:
+            # Option 3: Barbara -> William (skip Emily)
+            s = Solver()
+            # Barbara's meeting
+            s.add(barbara_meet_start >= 19)  # travel to Union Square
+            s.add(barbara_meet_start >= barbara_start - 540)
+            s.add(barbara_meet_end <= barbara_end - 540)
+            s.add(barbara_meet_end - barbara_meet_start >= barbara_min_duration)
+
+            # Travel from Union Square to Chinatown takes 7 minutes.
+            william_arrival = barbara_meet_end + 7
+            s.add(william_meet_start >= william_arrival)
+            s.add(william_meet_start >= william_start - 540)
+            s.add(william_meet_end <= william_end - 540)
+            s.add(william_meet_end - william_meet_start >= william_min_duration)
+
+            if s.check() == sat:
+                m = s.model()
+                itinerary = []
+                # Barbara's meeting
+                ba_start = m[barbara_meet_start].as_long() + 540
+                ba_end = m[barbara_meet_end].as_long() + 540
+                itinerary.append({
+                    "action": "meet",
+                    "person": "Barbara",
+                    "start_time": minutes_to_time(ba_start),
+                    "end_time": minutes_to_time(ba_end)
+                })
+                # William's meeting
+                wi_start = m[william_meet_start].as_long() + 540
+                wi_end = m[william_meet_end].as_long() + 540
+                itinerary.append({
+                    "action": "meet",
+                    "person": "William",
+                    "start_time": minutes_to_time(wi_start),
+                    "end_time": minutes_to_time(wi_end)
+                })
+                return {"itinerary": itinerary}
+            else:
+                # Option 4: Emily -> William (skip Barbara)
+                s = Solver()
+                # Emily's meeting
+                s.add(emily_meet_start >= 8)  # travel to Alamo Square
+                s.add(emily_meet_start >= emily_start - 540)
+                s.add(emily_meet_end <= emily_end - 540)
+                s.add(emily_meet_end - emily_meet_start >= emily_min_duration)
+
+                # Travel from Alamo Square to Chinatown takes 16 minutes.
+                william_arrival = emily_meet_end + 16
+                s.add(william_meet_start >= william_arrival)
+                s.add(william_meet_start >= william_start - 540)
+                s.add(william_meet_end <= william_end - 540)
+                s.add(william_meet_end - william_meet_start >= william_min_duration)
+
+                if s.check() == sat:
+                    m = s.model()
+                    itinerary = []
+                    # Emily's meeting
+                    em_start = m[emily_meet_start].as_long() + 540
+                    em_end = m[emily_meet_end].as_long() + 540
+                    itinerary.append({
+                        "action": "meet",
+                        "person": "Emily",
+                        "start_time": minutes_to_time(em_start),
+                        "end_time": minutes_to_time(em_end)
+                    })
+                    # William's meeting
+                    wi_start = m[william_meet_start].as_long() + 540
+                    wi_end = m[william_meet_end].as_long() + 540
+                    itinerary.append({
+                        "action": "meet",
+                        "person": "William",
+                        "start_time": minutes_to_time(wi_start),
+                        "end_time": minutes_to_time(wi_end)
+                    })
+                    return {"itinerary": itinerary}
+                else:
+                    # Option 5: William -> Barbara (skip Emily)
+                    s = Solver()
+                    # William's meeting
+                    s.add(william_meet_start >= 20)  # travel to Chinatown
+                    s.add(william_meet_start >= william_start - 540)
+                    s.add(william_meet_end <= william_end - 540)
+                    s.add(william_meet_end - william_meet_start >= william_min_duration)
+
+                    # Travel from Chinatown to Union Square takes 7 minutes.
+                    barbara_arrival = william_meet_end + 7
+                    s.add(barbara_meet_start >= barbara_arrival)
+                    s.add(barbara_meet_start >= barbara_start - 540)
+                    s.add(barbara_meet_end <= barbara_end - 540)
+                    s.add(barbara_meet_end - barbara_meet_start >= barbara_min_duration)
+
+                    if s.check() == sat:
+                        m = s.model()
+                        itinerary = []
+                        # William's meeting
+                        wi_start = m[william_meet_start].as_long() + 540
+                        wi_end = m[william_meet_end].as_long() + 540
+                        itinerary.append({
+                            "action": "meet",
+                            "person": "William",
+                            "start_time": minutes_to_time(wi_start),
+                            "end_time": minutes_to_time(wi_end)
+                        })
+                        # Barbara's meeting
+                        ba_start = m[barbara_meet_start].as_long() + 540
+                        ba_end = m[barbara_meet_end].as_long() + 540
+                        itinerary.append({
+                            "action": "meet",
+                            "person": "Barbara",
+                            "start_time": minutes_to_time(ba_start),
+                            "end_time": minutes_to_time(ba_end)
+                        })
+                        return {"itinerary": itinerary}
+                    else:
+                        # No feasible schedule found
+                        return {"itinerary": []}
 
 result = solve_scheduling()
-print(json.dumps(result, indent=2))
+print(result)

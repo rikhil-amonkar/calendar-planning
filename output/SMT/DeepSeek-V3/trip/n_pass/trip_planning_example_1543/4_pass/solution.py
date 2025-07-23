@@ -1,119 +1,140 @@
 from z3 import *
 
 def solve_itinerary():
-    # Cities and their required days
-    cities = {
-        "Prague": 3,
-        "Warsaw": 4,
-        "Dublin": 3,
-        "Athens": 3,
-        "Vilnius": 4,
-        "Porto": 5,
-        "London": 3,
-        "Seville": 2,
-        "Lisbon": 5,
-        "Dubrovnik": 3
-    }
+    # Cities with their required visit durations
+    cities = [
+        ('Prague', 3),
+        ('Warsaw', 4),
+        ('Dublin', 3),
+        ('Athens', 3),
+        ('Vilnius', 4),
+        ('Porto', 5),
+        ('London', 3),
+        ('Seville', 2),
+        ('Lisbon', 5),
+        ('Dubrovnik', 3)
+    ]
+    city_names = [city[0] for city in cities]
+    city_to_idx = {name: idx for idx, name in enumerate(city_names)}
     
-    # Fixed intervals
-    fixed_intervals = {
-        "Prague": (1, 3),
-        "Warsaw": (20, 23),
-        "Porto": (16, 20),
-        "London": (3, 5),
-        "Lisbon": (5, 9)
-    }
+    # Direct flights (undirected)
+    direct_flights = [
+        ('Warsaw', 'Vilnius'),
+        ('Prague', 'Athens'),
+        ('London', 'Lisbon'),
+        ('Lisbon', 'Porto'),
+        ('Prague', 'Lisbon'),
+        ('London', 'Dublin'),
+        ('Athens', 'Vilnius'),
+        ('Athens', 'Dublin'),
+        ('Prague', 'London'),
+        ('London', 'Warsaw'),
+        ('Dublin', 'Seville'),
+        ('Seville', 'Porto'),
+        ('Lisbon', 'Athens'),
+        ('Dublin', 'Porto'),
+        ('Athens', 'Warsaw'),
+        ('Lisbon', 'Warsaw'),
+        ('Porto', 'Warsaw'),
+        ('Prague', 'Warsaw'),
+        ('Prague', 'Dublin'),
+        ('Athens', 'Dubrovnik'),
+        ('Lisbon', 'Dublin'),
+        ('Dubrovnik', 'Dublin'),
+        ('Lisbon', 'Seville'),
+        ('London', 'Athens')
+    ]
     
-    # Direct flights
-    direct_flights = {
-        "Warsaw": ["Vilnius", "London", "Athens", "Lisbon", "Porto", "Prague", "Dublin"],
-        "Vilnius": ["Warsaw", "Athens"],
-        "Prague": ["Athens", "Lisbon", "London", "Warsaw", "Dublin"],
-        "Athens": ["Prague", "Vilnius", "Dublin", "Warsaw", "Dubrovnik", "London", "Lisbon"],
-        "London": ["Lisbon", "Dublin", "Athens", "Warsaw", "Prague"],
-        "Lisbon": ["London", "Porto", "Prague", "Athens", "Warsaw", "Dublin", "Seville"],
-        "Porto": ["Lisbon", "Warsaw", "Seville", "Dublin"],
-        "Dublin": ["London", "Athens", "Seville", "Porto", "Prague", "Lisbon", "Dubrovnik"],
-        "Seville": ["Dublin", "Porto", "Lisbon"],
-        "Dubrovnik": ["Athens", "Dublin"]
-    }
+    # Create allowed transitions (both directions)
+    allowed_transitions = set()
+    for a, b in direct_flights:
+        allowed_transitions.add((city_to_idx[a], city_to_idx[b]))
+        allowed_transitions.add((city_to_idx[b], city_to_idx[a]))
     
-    # Create Z3 variables for start and end days of each city
-    starts = {city: Int(f'start_{city}') for city in cities}
-    ends = {city: Int(f'end_{city}') for city in cities}
-    
+    # Create solver with timeout
     s = Solver()
+    s.set("timeout", 60000)  # 60 second timeout
     
-    # Add constraints for each city
-    for city in cities:
-        duration = cities[city]
-        s.add(ends[city] - starts[city] + 1 == duration)
-        s.add(starts[city] >= 1)
-        s.add(ends[city] <= 26)
+    # Day variables: day[i] is the city on day i+1 (days are 1-based)
+    days = [Int(f'day_{i}') for i in range(26)]
     
-    # Add fixed intervals constraints
-    for city, (fixed_start, fixed_end) in fixed_intervals.items():
-        s.add(starts[city] <= fixed_start)
-        s.add(ends[city] >= fixed_end)
+    # Each day's value is an index into the cities list (0 to 9)
+    for d in days:
+        s.add(d >= 0, d < len(cities))
     
-    # Model the sequence of visits
-    num_cities = len(cities)
-    city_list = list(cities.keys())
+    # Fixed intervals:
+    # Prague: days 1-3 (workshop)
+    for i in range(3):
+        s.add(days[i] == city_to_idx['Prague'])
     
-    # We need to model the order in which cities are visited.
-    # Let's use an array where position i represents the ith city visited.
-    visit_order = [Int(f'visit_{i}') for i in range(num_cities)]
+    # London: days 3-5 (wedding)
+    for i in range(2, 5):
+        s.add(days[i] == city_to_idx['London'])
     
-    # Each visit_order[i] is an index (0..num_cities-1) representing the city.
-    for i in range(num_cities):
-        s.add(visit_order[i] >= 0)
-        s.add(visit_order[i] < num_cities)
+    # Lisbon: days 5-9 (relatives)
+    for i in range(4, 9):
+        s.add(days[i] == city_to_idx['Lisbon'])
     
-    # All visits are distinct
-    s.add(Distinct(visit_order))
+    # Porto: days 16-20 (conference)
+    for i in range(15, 20):
+        s.add(days[i] == city_to_idx['Porto'])
     
-    # The first city starts on day 1
-    first_city = city_list[0]
-    s.add(starts[first_city] == 1)
+    # Warsaw: days 20-23 (friends)
+    for i in range(19, 23):
+        s.add(days[i] == city_to_idx['Warsaw'])
     
-    # The last city ends on day 26
-    last_city = city_list[-1]
-    s.add(ends[last_city] == 26)
+    # Duration constraints for other cities
+    for city, duration in cities:
+        if city in ['Prague', 'London', 'Lisbon', 'Porto', 'Warsaw']:
+            continue  # already handled
+        s.add(Sum([If(days[i] == city_to_idx[city], 1, 0) for i in range(26)]) == duration)
     
-    # Consecutive cities must have starts[next] == ends[current]
-    for i in range(num_cities - 1):
-        current_city = city_list[i]
-        next_city = city_list[i + 1]
-        s.add(starts[next_city] == ends[current_city])
-        # Ensure there's a direct flight from current to next
-        s.add(Or(*[next_city == fc for fc in direct_flights[current_city]]))
+    # Flight constraints: consecutive days must be same city or have a direct flight
+    for i in range(25):
+        current = days[i]
+        next_day = days[i+1]
+        # Either stay in same city or take a direct flight
+        s.add(Or(
+            current == next_day,
+            *[And(current == a, next_day == b) for a, b in allowed_transitions]
+        ))
+    
+    # Additional constraints to help the solver:
+    # 1. No immediate returns (stay at least 1 day in a city)
+    for i in range(24):
+        s.add(Implies(days[i] != days[i+1], days[i+1] != days[i+2]))
+    
+    # 2. Prefer longer stays when possible
+    for i in range(23):
+        s.add(Implies(
+            And(days[i] != days[i+1], days[i+1] != days[i+2]),
+            days[i+2] == days[i+3]
+        ))
     
     # Check if the problem is satisfiable
     if s.check() == sat:
-        model = s.model()
-        # Extract the order of cities
-        order = []
-        for i in range(num_cities):
-            val = model[visit_order[i]].as_long()
-            order.append(city_list[val])
-        
-        # Build the itinerary
+        m = s.model()
         itinerary = []
-        for city in order:
-            start = model[starts[city]].as_long()
-            end = model[ends[city]].as_long()
-            for day in range(start, end + 1):
-                itinerary.append({"day": day, "place": city})
+        for i in range(26):
+            day = i + 1
+            city_idx = m.evaluate(days[i]).as_long()
+            city = city_names[city_idx]
+            itinerary.append({"day": day, "place": city})
         
-        # Sort itinerary by day
-        itinerary.sort(key=lambda x: x["day"])
+        # Verify counts
+        counts = {city: 0 for city in city_names}
+        for entry in itinerary:
+            counts[entry['place']] += 1
         
-        # Prepare the output
-        output = {"itinerary": itinerary}
-        return output
+        print("City visit counts:")
+        for city, count in counts.items():
+            print(f"{city}: {count} days")
+        
+        return {'itinerary': itinerary}
     else:
+        print("Failed to find a valid itinerary")
         return {"error": "No valid itinerary found"}
 
-# Execute the solver and print the result
-result = solve_itinerary()
-print(result)
+# Generate and print the itinerary
+itinerary = solve_itinerary()
+print(itinerary)

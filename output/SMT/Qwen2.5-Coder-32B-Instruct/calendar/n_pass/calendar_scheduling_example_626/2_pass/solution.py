@@ -1,6 +1,6 @@
 from z3 import *
 
-# Define the variables for the meeting day and time
+# Define the variables
 day = Int('day')  # 0 for Monday, 1 for Tuesday
 start_time = Int('start_time')  # in minutes from 9:00
 
@@ -10,74 +10,29 @@ solver = Solver()
 # Meeting duration is 1 hour (60 minutes)
 meeting_duration = 60
 
-# Define the work hours in minutes from 9:00
-work_start = 0  # 9:00
-work_end = 480  # 17:00
-
-# Patricia's schedule in minutes from 9:00 on Monday
-patricia_busy_monday = [
-    (60, 90),  # 10:00 to 10:30
-    (150, 180),  # 11:30 to 12:00
-    (240, 270),  # 13:00 to 13:30
-    (330, 390),  # 14:30 to 15:30
-    (420, 450)  # 16:00 to 16:30
-]
-
-# Patricia's schedule in minutes from 9:00 on Tuesday
-patricia_busy_tuesday = [
-    (60, 90),  # 10:00 to 10:30
-    (60, 180),  # 11:00 to 12:00
-    (240, 360),  # 14:00 to 16:00
-    (390, 480)  # 16:30 to 17:00
-]
-
-# Jesse's schedule in minutes from 9:00 on Monday
-jesse_busy_monday = [
-    (0, 480)  # 9:00 to 17:00
-]
-
-# Jesse's schedule in minutes from 9:00 on Tuesday
-jesse_busy_tuesday = [
-    (120, 150),  # 11:00 to 11:30
-    (180, 210),  # 12:00 to 12:30
-    (240, 270),  # 13:00 to 14:00
-    (330, 390),  # 14:30 to 15:00
-    (390, 480)  # 15:30 to 17:00
-]
-
-# Constraints for the day
+# Work hours are from 9:00 to 17:00 (0 to 480 minutes from 9:00)
 solver.add(Or(day == 0, day == 1))
+solver.add(start_time >= 0)
+solver.add(start_time + meeting_duration <= 480)  # 480 minutes is 17:00 from 9:00
 
-# Constraints for the start time
-solver.add(start_time >= work_start)
-solver.add(start_time + meeting_duration <= work_end)
+# Patricia's schedule
+# Monday: 10:00 to 10:30, 11:30 to 12:00, 13:00 to 13:30, 14:30 to 15:30, 16:00 to 16:30
+# Tuesday: 10:00 to 10:30, 11:00 to 12:00, 14:00 to 16:00, 16:30 to 17:00
+solver.add(Or(day == 1, Or(start_time + meeting_duration <= 60, start_time >= 90, start_time + meeting_duration <= 150, start_time >= 180, start_time + meeting_duration <= 270, start_time >= 360, start_time + meeting_duration <= 390)))
 
-# Constraints for Patricia's availability on Monday
-for busy_start, busy_end in patricia_busy_monday:
-    solver.add(Or(day != 0, start_time + meeting_duration <= busy_start, start_time >= busy_end))
-
-# Constraints for Patricia's availability on Tuesday
-for busy_start, busy_end in patricia_busy_tuesday:
-    solver.add(Or(day != 1, start_time + meeting_duration <= busy_start, start_time >= busy_end))
-
-# Constraints for Jesse's availability on Monday
-for busy_start, busy_end in jesse_busy_monday:
-    solver.add(Or(day != 0, start_time + meeting_duration <= busy_start, start_time >= busy_end))
-
-# Constraints for Jesse's availability on Tuesday
-for busy_start, busy_end in jesse_busy_tuesday:
-    solver.add(Or(day != 1, start_time + meeting_duration <= busy_start, start_time >= busy_end))
+# Jesse's schedule
+# Monday: 9:00 to 17:00 (all day)
+# Tuesday: 11:00 to 11:30, 12:00 to 12:30, 13:00 to 14:00, 14:30 to 15:00, 15:30 to 17:00
+solver.add(Or(day == 0, Or(start_time + meeting_duration <= 60, start_time >= 90, start_time + meeting_duration <= 120, start_time >= 150, start_time + meeting_duration <= 180, start_time >= 210, start_time + meeting_duration <= 240, start_time >= 330, start_time + meeting_duration <= 390)))
 
 # Check if there is a solution
 if solver.check() == sat:
     model = solver.model()
-    meeting_day = "Monday" if model[day].as_long() == 0 else "Tuesday"
-    meeting_start_time = model[start_time].as_long()
-    meeting_start_hour = meeting_start_time // 60 + 9
-    meeting_start_minute = meeting_start_time % 60
-    meeting_end_time = meeting_start_time + meeting_duration
-    meeting_end_hour = meeting_end_time // 60 + 9
-    meeting_end_minute = meeting_end_time % 60
-    print(f"SOLUTION:\nDay: {meeting_day}\nStart Time: {meeting_start_hour:02}:{meeting_start_minute:02}\nEnd Time: {meeting_end_hour:02}:{meeting_end_minute:02}")
+    day_value = model[day].as_long()
+    start_time_value = model[start_time].as_long()
+    day_str = "Monday" if day_value == 0 else "Tuesday"
+    start_time_str = f"{9 + start_time_value // 60}:{start_time_value % 60:02}"
+    end_time_str = f"{9 + (start_time_value + meeting_duration) // 60}:{(start_time_value + meeting_duration) % 60:02}"
+    print(f"SOLUTION:\nDay: {day_str}\nStart Time: {start_time_str}\nEnd Time: {end_time_str}")
 else:
     print("No solution found")

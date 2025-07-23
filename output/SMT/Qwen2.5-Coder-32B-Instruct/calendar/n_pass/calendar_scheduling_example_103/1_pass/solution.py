@@ -41,7 +41,7 @@ constraints = [
     Or(start_time >= 16 * 60 + 30, end_time <= 15 * 60),  # 16:30 in minutes
 ]
 
-# Create the solver and add the constraints
+# Create a solver and add the constraints
 solver = Solver()
 solver.add(constraints)
 

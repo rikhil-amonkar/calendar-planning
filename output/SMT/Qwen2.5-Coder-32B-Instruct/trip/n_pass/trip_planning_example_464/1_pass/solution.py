@@ -32,19 +32,19 @@ connections = {
 start_days = {city: Int(f"start_{city}") for city in cities}
 
 # Add constraints for the start days
-for city, duration in cities.items():
+for city, days in cities.items():
     solver.add(start_days[city] >= 1)
-    solver.add(start_days[city] + duration <= total_days)
+    solver.add(start_days[city] + days <= total_days)
 
 # Add constraints for the required days in Oslo and Dubrovnik
 solver.add(Or([And(start_days["Oslo"] + i <= oslo_relative_days[1], start_days["Oslo"] + i >= oslo_relative_days[0]) for i in range(cities["Oslo"])]))
 solver.add(Or([And(start_days["Dubrovnik"] + i <= dubrovnik_friends_days[1], start_days["Dubrovnik"] + i >= dubrovnik_friends_days[0]) for i in range(cities["Dubrovnik"])]))
 
 # Add constraints for the transitions between cities
-for city, duration in cities.items():
+for city, days in cities.items():
     for other_city in connections[city]:
         if other_city != city:
-            solver.add(Or(start_days[city] + duration < start_days[other_city], start_days[other_city] + cities[other_city] < start_days[city]))
+            solver.add(Or(start_days[city] + days < start_days[other_city], start_days[other_city] + cities[other_city] < start_days[city]))
 
 # Add constraints to ensure no overlap in days between cities
 for i, city1 in enumerate(cities):
@@ -57,8 +57,7 @@ if solver.check() == sat:
     itinerary = []
     for day in range(1, total_days + 1):
         for city in cities:
-            start_day = model[start_days[city]].as_long()
-            if start_day <= day <= start_day + cities[city]:
+            if model.evaluate(start_days[city] <= day) and model.evaluate(start_days[city] + cities[city] > day):
                 itinerary.append({"day": day, "place": city})
                 break
     print(json.dumps({"itinerary": itinerary}, indent=2))

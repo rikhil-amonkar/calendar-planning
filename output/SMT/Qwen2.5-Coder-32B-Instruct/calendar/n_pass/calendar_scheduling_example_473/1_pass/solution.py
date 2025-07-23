@@ -20,25 +20,33 @@ constraints = {
 # Create a Z3 solver
 solver = Solver()
 
-# Define a variable for the start time of the meeting
-start_time = Int('start_time')
+# Define a variable for the meeting start time
+meeting_start = Int('meeting_start')
 
-# Add constraints to ensure the meeting is within work hours and is 30 minutes long
-solver.add(start_time >= 900)
-solver.add(start_time <= 1630)  # 16:30 is the latest start time for a 30-minute meeting to end by 17:00
+# Define the meeting duration (30 minutes)
+meeting_duration = 30
+
+# Define the meeting end time
+meeting_end = meeting_start + meeting_duration
+
+# Add constraints for the meeting to be within work hours
+solver.add(meeting_start >= 900)
+solver.add(meeting_end <= 1700)
 
 # Add constraints for each participant's availability
 for participant, busy_slots in constraints.items():
     for start, end in busy_slots:
-        solver.add(Or(start_time < start, start_time + 30 > end))
+        # The meeting should not overlap with any busy slot
+        solver.add(Or(meeting_end <= start, meeting_start >= end))
 
 # Check if there is a solution
 if solver.check() == sat:
     model = solver.model()
-    start = model[start_time].as_long()
-    end = start + 30
-    start_time_str = f"{start // 100:02}:{start % 100:02}"
-    end_time_str = f"{end // 100:02}:{end % 100:02}"
-    print(f"SOLUTION:\nDay: Monday\nStart Time: {start_time_str}\nEnd Time: {end_time_str}")
+    start_time = model[meeting_start].as_long()
+    end_time = start_time + meeting_duration
+    print("SOLUTION:")
+    print(f"Day: Monday")
+    print(f"Start Time: {start_time // 100:02}:{start_time % 100:02}")
+    print(f"End Time: {end_time // 100:02}:{end_time % 100:02}")
 else:
     print("No solution found")

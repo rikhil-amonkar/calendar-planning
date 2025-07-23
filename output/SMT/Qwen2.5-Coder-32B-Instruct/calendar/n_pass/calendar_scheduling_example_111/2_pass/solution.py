@@ -29,35 +29,33 @@ solver.add(Or(end_minute == 0, end_minute == 30))
 # The meeting must be 30 minutes long
 solver.add(end_hour * 60 + end_minute == start_hour * 60 + start_minute + meeting_duration)
 
-# Gregory's availability
+# Gregory's constraints
 solver.add(Or(start_hour * 60 + start_minute >= 10 * 60,
               start_hour * 60 + start_minute < 9 * 60,
               And(start_hour * 60 + start_minute >= 11 * 60 + 30,
                   start_hour * 60 + start_minute < 12 * 60 + 30),
-              And(start_hour * 60 + start_minute >= 13 * 60 + 30,
-                  start_hour * 60 + start_minute < 14 * 60),
-              And(start_hour * 60 + start_minute >= 14 * 60 + 30,
-                  start_hour * 60 + start_minute < 15 * 60)))
+              And(start_hour * 60 + start_minute >= 14 * 60,
+                  start_hour * 60 + start_minute < 13 * 60),
+              And(start_hour * 60 + start_minute >= 15 * 60,
+                  start_hour * 60 + start_minute < 14 * 60)))
 
-# Christine's availability
+# Christine's constraints
 solver.add(Or(start_hour * 60 + start_minute >= 11 * 60 + 30,
               start_hour * 60 + start_minute < 9 * 60,
-              And(start_hour * 60 + start_minute >= 13 * 60 + 30,
-                  start_hour * 60 + start_minute < 17 * 60)))
+              And(start_hour * 60 + start_minute >= 17 * 60,
+                  start_hour * 60 + start_minute < 13 * 60 + 30)))
 
-# Vincent's availability
+# Vincent's constraints
 solver.add(Or(start_hour * 60 + start_minute >= 9 * 60 + 30,
               start_hour * 60 + start_minute < 9 * 60,
               And(start_hour * 60 + start_minute >= 12 * 60,
                   start_hour * 60 + start_minute < 10 * 60 + 30),
-              And(start_hour * 60 + start_minute >= 14 * 60,
+              And(start_hour * 60 + start_minute >= 14 * 60 + 30,
                   start_hour * 60 + start_minute < 12 * 60 + 30),
               And(start_hour * 60 + start_minute >= 17 * 60,
                   start_hour * 60 + start_minute < 14 * 60 + 30)))
 
-# Natalie is available the entire day, so no additional constraints for her
-
-# Solve the constraints
+# Solve the problem
 if solver.check() == sat:
     model = solver.model()
     start_time = f"{model[start_hour].as_long()}:{model[start_minute].as_long():02}"

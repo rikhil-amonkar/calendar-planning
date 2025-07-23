@@ -41,7 +41,7 @@ meeting_times = {person: Int(f"start_{person}") for person in people}
 # Define the start time at Union Square
 start_time = 9 * 60  # 9:00 AM
 
-# Add constraints for each meeting
+# Add constraints for each person
 for person, details in people.items():
     location = details["location"]
     start = time_to_minutes(details["start"])
@@ -51,23 +51,16 @@ for person, details in people.items():
     # Meeting must start after the person is available and before they leave
     solver.add(meeting_times[person] >= start)
     solver.add(meeting_times[person] + duration <= end)
-
-# Define the order of meetings and travel constraints
-# We need to ensure that the travel time between meetings is respected
-# We will use a list to define the order of meetings
-order = ["Kimberly", "Brian", "Kenneth", "Joshua", "Joseph", "Steven", "Betty", "Melissa", "Barbara"]
-
-# Add constraints for the order of meetings
-for i in range(len(order) - 1):
-    current_person = order[i]
-    next_person = order[i + 1]
-    current_location = people[current_person]["location"]
-    next_location = people[next_person]["location"]
-    current_duration = people[current_person]["duration"]
-    travel_time = travel_times[current_location][next_location]
     
-    # The next meeting must start after the current meeting ends, including travel time
-    solver.add(meeting_times[next_person] >= meeting_times[current_person] + current_duration + travel_time)
+    # Meeting must start after the previous meeting ends, including travel time
+    if person != "Kimberly":  # Kimberly is the first person we can meet
+        previous_person = None
+        for p in people:
+            if p != person and meeting_times[p] in solver.assertions():
+                if previous_person is None or meeting_times[p] < meeting_times[previous_person]:
+                    previous_person = p
+        if previous_person:
+            solver.add(meeting_times[person] >= meeting_times[previous_person] + travel_times[people[previous_person]["location"]][location])
 
 # Solve the problem
 if solver.check() == sat:

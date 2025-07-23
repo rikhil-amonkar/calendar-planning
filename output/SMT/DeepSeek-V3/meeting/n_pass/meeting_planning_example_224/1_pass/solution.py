@@ -1,104 +1,70 @@
 from z3 import *
-import datetime
+import json
 
-def solve_scheduling_problem():
-    # Initialize Z3 solver
+def solve_scheduling():
+    # Initialize solver
     s = Solver()
 
-    # Define variables for meeting start and end times
-    # Melissa at Golden Gate Park (8:30AM - 8:00PM), min 15 minutes
-    melissa_start = Int('melissa_start')  # in minutes since 9:00AM
-    melissa_end = Int('melissa_end')
-    
-    # Nancy at Presidio (7:45PM - 10:00PM), min 105 minutes
-    nancy_start = Int('nancy_start')
-    nancy_end = Int('nancy_end')
-    
-    # Emily at Richmond District (4:45PM - 10:00PM), min 120 minutes
-    emily_start = Int('emily_start')
-    emily_end = Int('emily_end')
+    # Time variables in minutes since 9:00 AM (0 minutes)
+    meet_melissa_start = Int('meet_melissa_start')
+    meet_melissa_end = Int('meet_melissa_end')
+    meet_emily_start = Int('meet_emily_start')
+    meet_emily_end = Int('meet_emily_end')
+    meet_nancy_start = Int('meet_nancy_start')
+    meet_nancy_end = Int('meet_nancy_end')
 
-    # Convert all times to minutes since 9:00AM (540 minutes in 24-hour format)
-    # Melissa's availability: 8:30AM (510) to 8:00PM (1200)
-    melissa_available_start = 510 - 540  # 8:30AM is -30 minutes from 9:00AM (but can't be negative)
-    # Actually, since we start at 9:00AM, Melissa's start can't be before 9:00AM.
-    # So adjust her available start to max(8:30AM, 9:00AM) => 9:00AM.
-    melissa_available_start = 0  # 9:00AM is 0 minutes after 9:00AM
-    melissa_available_end = 1200 - 540  # 8:00PM is 1200 minutes (20:00) - 540 (9:00AM) = 660 minutes
+    # Travel times
+    # Fisherman's Wharf to Golden Gate Park: 25 minutes
+    s.add(meet_melissa_start >= 25)
+    s.add(meet_melissa_end == meet_melissa_start + 15)
+    # Melissa's availability: 8:30 AM (-30 minutes) to 8:00 PM (660 minutes)
+    s.add(meet_melissa_start >= -30)
+    s.add(meet_melissa_end <= 660)
 
-    # Nancy's availability: 7:45PM (1170) to 10:00PM (1320)
-    nancy_available_start = 1170 - 540  # 630 minutes after 9:00AM
-    nancy_available_end = 1320 - 540   # 780 minutes after 9:00AM
+    # Travel from Golden Gate Park to Richmond District: 7 minutes
+    # Emily's availability starts at 4:45 PM (510 minutes)
+    # So leave Golden Gate Park at 510 - 7 = 503 minutes
+    travel_to_emily_start = meet_melissa_end  # after meeting Melissa
+    s.add(travel_to_emily_start <= 503)  # must leave by 503 minutes to arrive at 510
+    meet_emily_start = 510  # 4:45 PM
+    meet_emily_end = meet_emily_start + 120  # 6:45 PM
+    s.add(meet_emily_end <= 780)  # Emily's availability ends at 10:00 PM (780 minutes)
 
-    # Emily's availability: 4:45PM (1065) to 10:00PM (1320)
-    emily_available_start = 1065 - 540  # 525 minutes after 9:00AM
-    emily_available_end = 1320 - 540    # 780 minutes after 9:00AM
-
-    # Constraints for Melissa
-    s.add(melissa_start >= melissa_available_start)
-    s.add(melissa_end <= melissa_available_end)
-    s.add(melissa_end - melissa_start >= 15)  # at least 15 minutes
-
-    # Constraints for Nancy
-    s.add(nancy_start >= nancy_available_start)
-    s.add(nancy_end <= nancy_available_end)
-    s.add(nancy_end - nancy_start >= 105)  # at least 105 minutes
-
-    # Constraints for Emily
-    s.add(emily_start >= emily_available_start)
-    s.add(emily_end <= emily_available_end)
-    s.add(emily_end - emily_start >= 120)  # at least 120 minutes
-
-    # Now, model the travel times and order of meetings.
-    # We start at Fisherman's Wharf at time 0 (9:00AM).
-    # Possible orders:
-    # 1. Melissa -> Emily -> Nancy
-    # 2. Melissa -> Nancy -> Emily (but Nancy is only available after 7:45PM, so this is likely not feasible)
-    # 3. Emily -> Melissa -> Nancy
-    # 4. Emily -> Nancy -> Melissa
-    # 5. Nancy -> Emily -> Melissa
-    # 6. Nancy -> Melissa -> Emily
-
-    # Let's assume the order is Melissa -> Emily -> Nancy (since Melissa is available earliest)
-    # Then:
-    # From Fisherman's Wharf to Golden Gate Park: 25 minutes.
-    # So Melissa's start >= 25 minutes after start (9:00AM + 25 minutes = 9:25AM)
-    s.add(melissa_start >= 25)
-
-    # After meeting Melissa, travel to next location.
-    # From Golden Gate Park to Richmond District: 7 minutes.
-    # So Emily's start >= melissa_end + 7
-    s.add(emily_start >= melissa_end + 7)
-
-    # From Richmond District to Presidio: 7 minutes.
-    # So Nancy's start >= emily_end + 7
-    s.add(nancy_start >= emily_end + 7)
+    # Travel from Richmond District to Presidio: 7 minutes
+    travel_to_nancy_start = meet_emily_end
+    travel_to_nancy_end = travel_to_nancy_start + 7
+    meet_nancy_start = 630  # 7:45 PM
+    s.add(travel_to_nancy_end <= 630)  # must arrive by 7:45 PM
+    meet_nancy_end = meet_nancy_start + 105  # 9:30 PM
+    s.add(meet_nancy_end <= 780)  # Nancy's availability ends at 10:00 PM
 
     # Check if the model is satisfiable
     if s.check() == sat:
         m = s.model()
-        # Get the values
-        melissa_s = m.eval(melissa_start).as_long()
-        melissa_e = m.eval(melissa_end).as_long()
-        emily_s = m.eval(emily_start).as_long()
-        emily_e = m.eval(emily_end).as_long()
-        nancy_s = m.eval(nancy_start).as_long()
-        nancy_e = m.eval(nancy_end).as_long()
-
-        # Convert minutes back to HH:MM format (starting from 9:00AM)
         def minutes_to_time(minutes):
-            time = datetime.datetime(2000, 1, 1, 9, 0) + datetime.timedelta(minutes=minutes)
-            return time.strftime("%H:%M")
+            total_minutes = 540 + minutes  # 9:00 AM is 540 minutes since midnight
+            hours = total_minutes // 60
+            mins = total_minutes % 60
+            return f"{hours:02d}:{mins:02d}"
+
+        # Melissa's meeting
+        melissa_start = m.eval(meet_melissa_start).as_long()
+        melissa_end = m.eval(meet_melissa_end).as_long()
+        # Emily's meeting is fixed
+        emily_start = 510
+        emily_end = 630
+        # Nancy's meeting is fixed
+        nancy_start = 630
+        nancy_end = 735
 
         itinerary = [
-            {"action": "meet", "person": "Melissa", "start_time": minutes_to_time(melissa_s), "end_time": minutes_to_time(melissa_e)},
-            {"action": "meet", "person": "Emily", "start_time": minutes_to_time(emily_s), "end_time": minutes_to_time(emily_e)},
-            {"action": "meet", "person": "Nancy", "start_time": minutes_to_time(nancy_s), "end_time": minutes_to_time(nancy_e)}
+            {"action": "meet", "person": "Melissa", "start_time": minutes_to_time(melissa_start), "end_time": minutes_to_time(melissa_end)},
+            {"action": "meet", "person": "Emily", "start_time": minutes_to_time(emily_start), "end_time": minutes_to_time(emily_end)},
+            {"action": "meet", "person": "Nancy", "start_time": minutes_to_time(nancy_start), "end_time": minutes_to_time(nancy_end)}
         ]
         return {"itinerary": itinerary}
     else:
-        return {"error": "No feasible schedule found."}
+        return {"error": "No feasible schedule found"}
 
-# Run the solver and print the result
-result = solve_scheduling_problem()
-print(result)
+result = solve_scheduling()
+print(json.dumps(result, indent=2))

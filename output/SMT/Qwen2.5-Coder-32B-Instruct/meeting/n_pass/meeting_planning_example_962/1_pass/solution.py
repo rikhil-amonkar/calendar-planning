@@ -131,3 +131,61 @@ friends = {
     "Ronald": ("Richmond District", 800, 930, 90),
     "Stephanie": ("Alamo Square", 1530, 1630, 30),
     "Helen": ("Financial District", 1730, 1830, 45),
+    "Laura": ("Sunset District", 1745, 2115, 90),
+}
+
+# Create a solver instance
+solver = Solver()
+
+# Define the variables
+current_location = String('current_location')
+current_time = Int('current_time')
+meetings = []
+
+# Initial location and time
+solver.add(current_location == "The Castro")
+solver.add(current_time == 900)
+
+# Define the meeting variables
+for friend, (location, start, end, duration) in friends.items():
+    meet_start = Int(f'meet_start_{friend}')
+    meet_end = Int(f'meet_end_{friend}')
+    meet = Bool(f'meet_{friend}')
+    meetings.append((friend, meet_start, meet_end, meet))
+    
+    # Constraints for meeting
+    solver.add(meet_start >= start)
+    solver.add(meet_end <= end)
+    solver.add(meet_end - meet_start >= duration)
+    solver.add(meet_start >= current_time + travel_times[(current_location, location)])
+    solver.add(meet_end <= 2359)
+    
+    # Update current location and time if meeting
+    solver.add(Implies(meet, current_location == location))
+    solver.add(Implies(meet, current_time == meet_end))
+    
+    # Ensure no overlapping meetings
+    for other_friend, other_meet_start, other_meet_end, other_meet in meetings[:-1]:
+        solver.add(Or(meet_start >= other_meet_end, other_meet_start >= meet_end))
+
+# Maximize the number of meetings
+objective = Sum([If(meet, 1, 0) for _, _, _, meet in meetings])
+solver.maximize(objective)
+
+# Check if the problem is solvable
+if solver.check() == sat:
+    model = solver.model()
+    result = []
+    for friend, meet_start, meet_end, meet in meetings:
+        if model.evaluate(meet):
+            start_time = model.evaluate(meet_start).as_long()
+            end_time = model.evaluate(meet_end).as_long()
+            result.append({
+                "action": "meet",
+                "person": friend,
+                "start_time": f"{start_time // 100:02}:{start_time % 100:02}",
+                "end_time": f"{end_time // 100:02}:{end_time % 100:02}"
+            })
+    print({"itinerary": result})
+else:
+    print("No solution found")

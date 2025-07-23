@@ -1,55 +1,83 @@
 from z3 import *
 
-# Define the variables for the day and time
+# Define the variables
 day = Int('day')  # 0 = Monday, 1 = Tuesday, 2 = Wednesday
 start_time = Int('start_time')  # in minutes from 00:00
 
 # Define the constraints
-solver = Solver()
+meeting_duration = 30  # 30 minutes
 
-# Meeting duration is 30 minutes
-meeting_duration = 30
+# Define the work hours
+work_start = 9 * 60  # 9:00 in minutes
+work_end = 17 * 60  # 17:00 in minutes
 
-# Work hours are from 9:00 to 17:00 (540 to 1020 minutes from 00:00)
-solver.add(start_time >= 540)
-solver.add(start_time + meeting_duration <= 1020)
+# Define the days
+monday = 0
+tuesday = 1
+wednesday = 2
 
-# John's constraints: No meetings on Monday after 14:30 (870 minutes)
-solver.add(Or(day != 0, start_time + meeting_duration <= 870))
+# John's constraints
+john_availability = And(
+    Or(day == monday, day == tuesday, day == wednesday),
+    Or(
+        And(day == monday, start_time >= work_start, start_time + meeting_duration <= 14 * 60),  # Monday before 14:30
+        And(day == tuesday, start_time >= work_start, start_time + meeting_duration <= work_end),  # Tuesday all day
+        And(day == wednesday, start_time >= work_start, start_time + meeting_duration <= work_end)  # Wednesday all day
+    )
+)
 
 # Jennifer's constraints
-# Monday: 9:00 to 11:00, 11:30 to 13:00, 13:30 to 14:30, 15:00 to 17:00
-solver.add(Or(day != 0, Or(start_time + meeting_duration <= 540, start_time >= 660)))
-solver.add(Or(day != 0, Or(start_time + meeting_duration <= 690, start_time >= 780)))
-solver.add(Or(day != 0, Or(start_time + meeting_duration <= 810, start_time >= 870)))
-solver.add(Or(day != 0, Or(start_time + meeting_duration <= 900, start_time >= 1020)))
+jennifer_availability = And(
+    Or(day == monday, day == tuesday, day == wednesday),
+    Or(
+        And(day == monday, Or(
+            And(start_time >= 11 * 60 + 30, start_time + meeting_duration <= 13 * 60),  # Monday 11:30 - 13:00
+            And(start_time >= 14 * 60 + 30, start_time + meeting_duration <= 15 * 60)   # Monday 14:30 - 15:00
+        )),
+        And(day == tuesday, Or(
+            And(start_time >= 11 * 60 + 30, start_time + meeting_duration <= 12 * 00)  # Tuesday 11:30 - 12:00
+        )),
+        And(day == wednesday, Or(
+            And(start_time >= 11 * 60 + 30, start_time + meeting_duration <= 12 * 00),  # Wednesday 11:30 - 12:00
+            And(start_time >= 12 * 60 + 30, start_time + meeting_duration <= 13 * 00),  # Wednesday 12:30 - 13:00
+            And(start_time >= 14 * 60, start_time + meeting_duration <= 14 * 60 + 30),  # Wednesday 14:00 - 14:30
+            And(start_time >= 16 * 60 + 30, start_time + meeting_duration <= 17 * 00)   # Wednesday 16:30 - 17:00
+        ))
+    )
+)
 
-# Tuesday: 9:00 to 11:30, 12:00 to 17:00
-solver.add(Or(day != 1, Or(start_time + meeting_duration <= 540, start_time >= 690)))
-solver.add(Or(day != 1, Or(start_time + meeting_duration <= 720, start_time >= 1020)))
+# Combine all constraints
+constraints = And(
+    john_availability,
+    jennifer_availability,
+    start_time >= work_start,
+    start_time + meeting_duration <= work_end
+)
 
-# Wednesday: 9:00 to 11:30, 12:00 to 12:30, 13:00 to 14:00, 14:30 to 16:00, 16:30 to 17:00
-solver.add(Or(day != 2, Or(start_time + meeting_duration <= 540, start_time >= 690)))
-solver.add(Or(day != 2, Or(start_time + meeting_duration <= 720, start_time >= 750)))
-solver.add(Or(day != 2, Or(start_time + meeting_duration <= 780, start_time >= 840)))
-solver.add(Or(day != 2, Or(start_time + meeting_duration <= 870, start_time >= 900)))
-solver.add(Or(day != 2, Or(start_time + meeting_duration <= 990, start_time >= 1020)))
+# Create a solver and add the constraints
+solver = Solver()
+solver.add(constraints)
 
-# Solve the constraints
+# Check if the constraints are satisfiable
 if solver.check() == sat:
     model = solver.model()
-    day_value = model[day].as_long()
-    start_time_value = model[start_time].as_long()
-    end_time_value = start_time_value + meeting_duration
+    meeting_day = model[day].as_long()
+    meeting_start_time = model[start_time].as_long()
+    meeting_end_time = meeting_start_time + meeting_duration
 
-    # Convert day and time to human-readable format
-    days = ["Monday", "Tuesday", "Wednesday"]
-    start_time_str = f"{start_time_value // 60:02}:{start_time_value % 60:02}"
-    end_time_str = f"{end_time_value // 60:02}:{end_time_value % 60:02}"
+    # Convert times to HH:MM format
+    def format_time(minutes):
+        hours = minutes // 60
+        minutes = minutes % 60
+        return f"{hours:02}:{minutes:02}"
 
+    # Determine the day name
+    day_name = ["Monday", "Tuesday", "Wednesday"][meeting_day]
+
+    # Print the solution
     print(f"SOLUTION:")
-    print(f"Day: {days[day_value]}")
-    print(f"Start Time: {start_time_str}")
-    print(f"End Time: {end_time_str}")
+    print(f"Day: {day_name}")
+    print(f"Start Time: {format_time(meeting_start_time)}")
+    print(f"End Time: {format_time(meeting_end_time)}")
 else:
     print("No solution found")

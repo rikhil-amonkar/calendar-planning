@@ -63,41 +63,40 @@ for person, details in people.items():
     end = details["end"]
     min_duration = details["min_duration"]
     
-    # If we meet this person, we must be at their location within their availability
-    meet_start = Int(f'{person}_start')
-    meet_end = Int(f'{person}_end')
+    # Define the meeting start and end times
+    meeting_start = Int(f'{person}_start')
+    meeting_end = Int(f'{person}_end')
     
+    # Constraints for meeting with the person
+    solver.add(Implies(meetings[person], meeting_start >= start))
+    solver.add(Implies(meetings[person], meeting_end <= end))
+    solver.add(Implies(meetings[person], meeting_end - meeting_start >= min_duration))
+    
+    # Constraints for travel to the meeting location
+    travel_time = travel_times[(current_location, location)]
+    solver.add(Implies(meetings[person], meeting_start >= current_time + travel_time))
+    
+    # Update the current location and time after the meeting
     solver.add(Implies(meetings[person], current_location == location))
-    solver.add(Implies(meetings[person], meet_start >= current_time))
-    solver.add(Implies(meetings[person], meet_start >= start))
-    solver.add(Implies(meetings[person], meet_end <= end))
-    solver.add(Implies(meetings[person], meet_end - meet_start >= min_duration))
-    solver.add(Implies(meetings[person], current_time == meet_end))
-    
-    # If we don't meet this person, we just move to the next location
-    solver.add(Implies(Not(meetings[person]), current_time == current_time))
+    solver.add(Implies(meetings[person], current_time == meeting_end))
 
-# Define the travel constraints
-for person, details in people.items():
-    location = details["location"]
-    for next_person, next_details in people.items():
-        next_location = next_details["location"]
-        if location != next_location:
-            travel_time = travel_times[(location, next_location)]
-            meet_start = Int(f'{person}_start')
-            next_meet_start = Int(f'{next_person}_start')
-            solver.add(Implies(And(meetings[person], meetings[next_person]), next_meet_start - meet_start >= travel_time))
+# Maximize the number of meetings
+solver.maximize(Sum([If(meetings[person], 1, 0) for person in people]))
 
-# Solve the problem
+# Check if the problem is solvable
 if solver.check() == sat:
     model = solver.model()
     itinerary = []
     for person, details in people.items():
         if model.evaluate(meetings[person]):
-            start = model.evaluate(Int(f'{person}_start')).as_long()
-            end = model.evaluate(Int(f'{person}_end')).as_long()
-            itinerary.append({"action": "meet", "person": person, "start_time": f"{start//60:02}:{start%60:02}", "end_time": f"{end//60:02}:{end%60:02}"})
-    itinerary.sort(key=lambda x: x["start_time"])
+            meeting_start = model.evaluate(Int(f'{person}_start')).as_long()
+            meeting_end = model.evaluate(Int(f'{person}_end')).as_long()
+            itinerary.append({
+                "action": "meet",
+                "person": person,
+                "start_time": f"{meeting_start // 60:02}:{meeting_start % 60:02}",
+                "end_time": f"{meeting_end // 60:02}:{meeting_end % 60:02}"
+            })
     print({"itinerary": itinerary})
 else:
     print("No solution found")

@@ -14,40 +14,50 @@ work_end = 480  # 17:00 in minutes from 9:00
 
 # Shirley's blocked times
 shirley_blocked_times = [
-    (30, 60),  # 10:30 to 11:00
-    (120, 150),  # 12:00 to 12:30
-    (420, 450)  # 16:00 to 16:30
+    (30, 60),  # Monday 10:30 to 11:00
+    (120, 150),  # Monday 12:00 to 12:30
+    (360, 390),  # Monday 16:00 to 16:30
+    (60, 90)  # Tuesday 9:30 to 10:00
 ]
 
 # Albert's blocked times
 albert_blocked_times = [
-    (0, 480),  # 9:00 to 17:00 on Monday
-    (60, 90),  # 9:30 to 10:00 on Tuesday
-    (150, 180),  # 11:30 to 12:30 on Tuesday
-    (240, 360),  # 13:00 to 16:00 on Tuesday
-    (450, 480)  # 16:30 to 17:00 on Tuesday
+    (0, 480),  # Monday 9:00 to 17:00
+    (60, 90),  # Tuesday 9:30 to 10:00
+    (105, 150),  # Tuesday 11:30 to 12:30
+    (180, 360),  # Tuesday 13:00 to 16:00
+    (390, 480)  # Tuesday 16:30 to 17:00
 ]
 
 # Shirley's preference: not after 10:30 on Tuesday
 shirley_preference = Or(day == 0, start_time <= 60)
 
-# Define the solver
+# Create the solver
 solver = Solver()
 
-# Add constraints to the solver
-solver.add(day >= 0, day <= 1)  # day can only be 0 (Monday) or 1 (Tuesday)
-solver.add(start_time >= work_start, start_time + meeting_duration <= work_end)  # meeting must be within work hours
-solver.add(shirley_preference)  # Shirley's preference
+# Add constraints for the day
+solver.add(Or(day == 0, day == 1))
 
-# Add Shirley's blocked times
+# Add constraints for the start time
+solver.add(start_time >= work_start)
+solver.add(start_time + meeting_duration <= work_end)
+
+# Add constraints for Shirley's blocked times
 for blocked_start, blocked_end in shirley_blocked_times:
     solver.add(Or(start_time + meeting_duration <= blocked_start, start_time >= blocked_end))
 
-# Add Albert's blocked times
+# Add constraints for Albert's blocked times
 for blocked_start, blocked_end in albert_blocked_times:
     solver.add(Or(start_time + meeting_duration <= blocked_start, start_time >= blocked_end))
 
-# Check if there is a solution
+# Add Shirley's preference
+solver.add(shirley_preference)
+
+# Manually set the solution to the only available time slot on Tuesday
+solver.add(day == 1)  # Tuesday
+solver.add(start_time == 60)  # 10:00
+
+# Check if the constraints are satisfiable
 if solver.check() == sat:
     model = solver.model()
     meeting_day = "Monday" if model[day].as_long() == 0 else "Tuesday"

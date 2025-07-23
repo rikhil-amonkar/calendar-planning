@@ -11,7 +11,7 @@ solver = Solver()
 solver.add(start_time >= 540)
 solver.add(start_time + 60 <= 1020)  # Meeting duration is 1 hour
 
-# Days are Monday, Tuesday, Wednesday (0, 1, 2)
+# Days are Monday (0), Tuesday (1), Wednesday (2)
 solver.add(day >= 0)
 solver.add(day <= 2)
 
@@ -51,7 +51,7 @@ solver.add(Or(day != 2, Or(start_time < 870, start_time >= 1020)))
 solver.add(day != 0)
 
 # Betty can not meet on Tuesday after 12:30
-solver.add(Or(day != 1, start_time + 60 <= 750))
+solver.add(Or(day != 1, start_time <= 750))
 
 # Solve the problem
 if solver.check() == sat:

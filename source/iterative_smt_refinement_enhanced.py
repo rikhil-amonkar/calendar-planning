@@ -145,7 +145,7 @@ Return only the Python code:"""
             model="gpt-4o-mini",
             messages=[{"role": "user", "content": prompt}],
             temperature=0,
-            max_tokens=20000
+            max_tokens=2000
         )
         
         extracted_code = response.choices[0].message.content.strip()
@@ -272,7 +272,9 @@ def extract_answer_basic(answer_str, task):
             patterns = [
                 r"Meet\s+(\w+)\s+(?:at\s+)?(?:[^(]+)?(?:\([^)]+\))?\s+from\s+(\d{1,2}:\d{2})\s+(?:AM|PM)?\s+to\s+(\d{1,2}:\d{2})\s+(?:AM|PM)?",
                 r"Meet\s+(\w+)\s+(?:at\s+)?(?:[^(]+)?(?:\([^)]+\))?\s+(\d{1,2}:\d{2})\s+(?:AM|PM)?\s+to\s+(\d{1,2}:\d{2})\s+(?:AM|PM)?",
-                r"(\w+):\s+from\s+(\d{1,2}:\d{2})\s+(?:AM|PM)?\s+to\s+(\d{1,2}:\d{2})\s+(?:AM|PM)?"
+                r"(\w+):\s+from\s+(\d{1,2}:\d{2})\s+(?:AM|PM)?\s+to\s+(\d{1,2}:\d{2})\s+(?:AM|PM)?",
+                r"You meet (\w+) for \d+ minutes from (\d{1,2}:\d{2})(?:AM|PM)? to (\d{1,2}:\d{2})(?:AM|PM)?",
+                r"meet (\w+) for \d+ minutes from (\d{1,2}:\d{2})(?:AM|PM)? to (\d{1,2}:\d{2})(?:AM|PM)?"
             ]
             
             for pattern in patterns:
@@ -326,32 +328,14 @@ def extract_answer_basic(answer_str, task):
     }
     
     try:
-        response = client.responses.create(
-            model="gpt-4.1-nano",
-            input=[
-                {
-                "role": "user",
-                "content": [
-                    {
-                        "type": "input_text",
-                        "text": prompt[task]
-                    }
-                ]
-                }
-            ],
-            text={
-                "format": {
-                "type": "json_object"
-                }
-            },
-            reasoning={},
-            tools=[],
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": prompt[task]}],
+            response_format={"type": "json_object"},
             temperature=0,
-            max_output_tokens=2000,
-            top_p=1,
-            store=True
+            max_tokens=2000
         )
-        output_json = response.output[0].content[0].text
+        output_json = response.choices[0].message.content
         return json.loads(output_json)
     except Exception as e:
         print(f"Error in answer extraction: {e}")
@@ -394,6 +378,10 @@ def format_constraint_feedback(violated_constraints):
     return feedback
 
 def evaluate_calendar(constraints, pred_dict):
+    # Check for no_plan cases first
+    if isinstance(pred_dict, dict) and ("no_plan" in pred_dict or "error" in pred_dict):
+        return False, {"no_plan": pred_dict.get("no_plan", pred_dict.get("error", "unknown"))}
+    
     # Check for missing day, start_time, or end_time
     if not pred_dict or "day" not in pred_dict or "start_time" not in pred_dict or "end_time" not in pred_dict:
         return False, {"missing_fields": True}
@@ -433,6 +421,10 @@ def evaluate_calendar(constraints, pred_dict):
     return True, {}
 
 def evaluate_trip(constraints, pred_dict):
+    # Check for no_plan cases first
+    if isinstance(pred_dict, dict) and ("no_plan" in pred_dict or "error" in pred_dict):
+        return False, {"no_plan": pred_dict.get("no_plan", pred_dict.get("error", "unknown"))}
+    
     # parse the predicted itinerary segments
     segments = []
     for seg in pred_dict["itinerary"]:
@@ -461,13 +453,23 @@ def evaluate_trip(constraints, pred_dict):
     for a, b in zip(segments, segments[1:]):
         if a["end"] != b["start"]:
             return False, {"gap/overlap": (a, b)}
+    
     # 2) check each place's stay duration
+    # Handle both 'stay_days' (dict) and 'city_length' (array) formats
+    stay_days_dict = {}
+    if "stay_days" in constraints:
+        stay_days_dict = constraints["stay_days"]
+    elif "city_length" in constraints:
+        for city_info in constraints["city_length"]:
+            stay_days_dict[city_info["city"]] = city_info["days"]
+    
     for seg in segments:
-        required = constraints.get("stay_days", {}).get(seg["place"])
+        required = stay_days_dict.get(seg["place"])
         if required is not None:
             actual = seg["end"] - seg["start"] + 1
             if actual != required:
                 return False, {"stay_days": {seg["place"]: required}}
+    
     # 3) check event_ranges (must fall entirely within the visit segment)
     for ev in constraints.get("city_day_ranges", []):
         place = ev["city"]
@@ -476,42 +478,56 @@ def evaluate_trip(constraints, pred_dict):
             return False, {"missing_place": place}
         if container["start"] > ev["start"] or container["end"] < ev["end"]:
             return False, {"event_range": ev}
+    
     # 4) check flight connectivity between consecutive places
     allowed = [(d["from"], d["to"]) for d in constraints.get("direct_flights", [])]
     for a, b in zip(segments, segments[1:]):
         pair = (a["place"], b["place"])
         if pair not in allowed:
             return False, {"flight": {"from": a["place"], "to": b["place"]}}
+    
     return True, {}
 
 def evaluate_meeting(constraints, pred_dict):
     from datetime import datetime
+
     def parse_time(s):
+        # Return None for invalid time formats instead of raising exception
         try:
+            # handles "H:MM" or "H:MMAM"/"H:MMPM"
             if s.endswith(("AM", "PM")):
                 return datetime.strptime(s, "%I:%M%p")
             return datetime.strptime(s, "%H:%M")
         except ValueError:
             return None
+
+    # Check for no_plan cases first
+    if isinstance(pred_dict, dict) and ("no_plan" in pred_dict or "error" in pred_dict):
+        return False, {"no_plan": pred_dict.get("no_plan", pred_dict.get("error", "unknown"))}
+
+    # build map person→availability & location
     people = {p["name"]: p for p in constraints.get("people_to_meet", [])}
     start_location = constraints.get("start", {}).get("location")
     start_time = constraints.get("start", {}).get("time_of_day")
-    
-    # Calculate num_people_to_meet from people_to_meet array length
-    num_people_to_meet = constraints.get("num_people_to_meet", len(constraints.get("people_to_meet", [])))
-    
+    num_people_to_meet = constraints.get("num_people_to_meet", 0)
+
+    # parse predicted meetings
     meetings = []
     for m in pred_dict.get("itinerary", []):
         name = m["person"]
         start = parse_time(m["start_time"])
         end = parse_time(m["end_time"])
-        if start is None or end is None:
+        if start is None or end is None:  # Invalid time format
             return False, {"invalid_time_format": {"start": m["start_time"], "end": m["end_time"]}}
         loc = people.get(name, {}).get("location")
         meetings.append({"person": name, "start": start, "end": end, "location": loc})
+
     if len(meetings) < num_people_to_meet:
         return False, {"num_people_to_meet": num_people_to_meet}
+    # sort chronologically
     meetings.sort(key=lambda x: x["start"])
+
+    # 1) each meeting must lie within that person's available window
     for m in meetings:
         p = people.get(m["person"])
         if not p:
@@ -521,17 +537,24 @@ def evaluate_meeting(constraints, pred_dict):
         av_to = parse_time(avail["to"])
         if m["start"] < av_from or m["end"] > av_to:
             return False, {"person": m["person"], "time_of_day": avail}
+
+    # 2) build travel‐time lookup
     travel = {}
     for d in constraints.get("travel_distances", []):
         pl = d["place"]
         frm = pl.get("from", constraints.get("start", {}).get("location"))
         to = pl["to"]
         travel[(frm, to)] = d["walking_time"]
-    if start_time:
+
+    # 3) check start‐to‐first meeting
+    # parse start time
+    if start_time and meetings:
         st = parse_time(start_time)
         first = meetings[0]
+        # 0a) meeting must not start before you arrive
         if first["start"] < st:
             return False, {"start_time": start_time}
+        # 0b) travel from start_location
         walk0 = travel.get((start_location, first["location"]))
         gap0 = (first["start"] - st).total_seconds() / 60
         if walk0 is not None and walk0 > gap0:
@@ -542,6 +565,8 @@ def evaluate_meeting(constraints, pred_dict):
                     "travel_time": walk0
                 }
             }
+
+    # 3) check following meetings
     for a, b in zip(meetings, meetings[1:]):
         gap_mins = (b["start"] - a["end"]).total_seconds() / 60
         walk = travel.get((a["location"], b["location"]))
@@ -555,6 +580,7 @@ def evaluate_meeting(constraints, pred_dict):
                     "travel_time": walk
                 }
             }
+
     return True, {}
 
 eval_functions = {
@@ -694,6 +720,21 @@ async def process_single_example(
             prompt_prep_time = time.time() - prompt_prep_start
             logging.info(f"[{example_id}] Prompt prepared - {prompt_prep_time:.2f}s")
             
+            # Extract gold answer for evaluation
+            gold_extract_start = time.time()
+            gold = example.get("golden_plan", "")
+            if isinstance(gold, list):
+                gold = "\n".join(gold)
+            logging.info(f"[{example_id}] Raw gold answer: {gold}")
+            try:
+                gold_formatted = extract_answer_basic(gold, task)
+                logging.info(f"[{example_id}] Extracted gold: {gold_formatted}")
+            except Exception as e:
+                logging.error(f"[{example_id}] Failed to extract gold: {e}")
+                gold_formatted = {}
+            gold_extract_time = time.time() - gold_extract_start
+            logging.info(f"[{example_id}] Gold extraction completed - {gold_extract_time:.2f}s")
+            
             for pass_num in range(1, max_passes + 1):
                 pass_start_time = time.time()
                 logging.info(f"[{example_id}] Starting pass {pass_num}")
@@ -816,80 +857,43 @@ async def process_single_example(
                     pred_formatted = {}
                 
                 # Enhanced error handling for different execution scenarios
+                # Compute is_exact_match
                 execution_error = None
                 no_plan_found = False
-                
-                # Check for execution errors
                 if isinstance(pred_formatted, dict):
                     if "error" in pred_formatted:
-                        execution_error = pred_formatted["error"]
-                        logging.warning(f"[{example_id}] Pass {pass_num} execution error: {execution_error}")
+                        # Check if it's actually a no-plan case (empty output or malformed_output)
+                        if pred_formatted["error"] == "malformed_output" and (not execution_output or execution_output.strip() == ""):
+                            no_plan_found = True
+                        else:
+                            execution_error = pred_formatted["error"]
                     elif "no_plan" in pred_formatted:
                         no_plan_found = True
-                        logging.warning(f"[{example_id}] Pass {pass_num} no plan found: {pred_formatted['no_plan']}")
-                
-                # Get gold answer
-                gold = example["golden_plan"]
-                if isinstance(gold, list):
-                    gold = "\n".join(gold)
-                try:
-                    gold_formatted = extract_answer_basic(gold, task)
-                    logging.info(f"[{example_id}] Pass {pass_num} extracted gold: {gold_formatted}")
-                except Exception as e:
-                    logging.error(f"[{example_id}] Pass {pass_num} failed to extract gold: {str(e)}")
-                    gold_formatted = {}
-                
-                # Evaluate constraints (only if we have a valid prediction)
-                constraint_eval_start = time.time()
-                eval_func = eval_functions[task]
-                
-                # Special handling for meeting task
-                # Note: num_people_to_meet is calculated dynamically from people_to_meet array length
-                # No need to add it to constraints
-                
-                if execution_error or no_plan_found:
-                    # Skip constraint evaluation for errors
-                    constraints_satisfied = False
-                    violated_constraints = {}
-                else:
-                    constraints_satisfied, violated_constraints = eval_func(constraints, pred_formatted)
-                
-                constraint_eval_time = time.time() - constraint_eval_start
-                logging.info(f"[{example_id}] Pass {pass_num} constraint evaluation - {constraint_eval_time:.2f}s")
-                logging.info(f"[{example_id}] Pass {pass_num} constraints satisfied: {constraints_satisfied}")
-                if violated_constraints:
-                    logging.info(f"[{example_id}] Pass {pass_num} violated constraints: {violated_constraints}")
-                
-                # Check exact match (only if we have valid prediction)
+                # Also check for empty execution output directly
+                if not execution_output or execution_output.strip() == "":
+                    no_plan_found = True
+                    execution_error = None
+
+                is_exact_match = False
                 if not execution_error and not no_plan_found:
                     if task == "trip":
-                        # For trip tasks, normalize both prediction and gold before comparison
                         normalized_pred = normalize_trip_itinerary(pred_formatted)
                         normalized_gold = normalize_trip_itinerary(gold_formatted)
                         is_exact_match = normalized_pred == normalized_gold
                     else:
                         is_exact_match = pred_formatted == gold_formatted
-                else:
-                    is_exact_match = False
-                logging.info(f"[{example_id}] Pass {pass_num} exact match: {is_exact_match}")
-                
-                # Determine status and prepare feedback
-                if execution_error:
-                    status = f"Execution error: {execution_error}"
-                elif no_plan_found:
-                    status = f"No plan found: {pred_formatted.get('no_plan', 'Unknown reason')}"
-                elif constraints_satisfied:
-                    status = "Correct"
-                else:
-                    status = "Wrong plan"
-                
+                    
+                    # Evaluate constraints
+                    eval_func = eval_functions[task]
+                    constraints_satisfied, violated_constraints = eval_func(constraints, pred_formatted)
+
                 # Save evaluation result
                 eval_result = {
                     "has_execution_error": bool(execution_error),
                     "execution_output": execution_output,
                     "pred": pred_formatted,
                     "gold": gold_formatted,
-                    "status": status,
+                    "status": ("Correct" if constraints_satisfied else ("No plan found" if no_plan_found else "Wrong plan")),
                     "violated_constraint": violated_constraints,
                     "is_exact_match": is_exact_match,
                     "constraints_satisfied": constraints_satisfied,
@@ -916,10 +920,11 @@ async def process_single_example(
                     current_prompt = f"The previous Z3 solution failed to find a plan.\n\nPlease adjust your Z3 program to find a solution.\n\nMake sure to surround your final code with ```python\nYOUR_CODE\n```."
                 
                 else:
-                    # Scenario 5: Plan found but violates constraints - provide plan details without constraint violations
+                    # Scenario 5: Plan found but violates constraints - provide plan details with constraint violations
                     logging.info(f"[{example_id}] Pass {pass_num} plan found but violates constraints, preparing constraint feedback")
                     plan_summary = f"Plan found: {pred_formatted}"
-                    current_prompt = f"The previous solution produced the following plan:\n{plan_summary}\n\nHowever, this plan is incorrect and violates some constraints. Please revise your Z3 program to find a valid solution that satisfies all constraints.\n\nMake sure to surround your final code with ```python\nYOUR_CODE\n```."
+                    constraint_feedback = format_constraint_feedback(violated_constraints)
+                    current_prompt = f"The previous solution produced the following plan:\n{plan_summary}\n\nHowever, this plan violates the following constraints:\n{constraint_feedback}\n\nPlease revise your Z3 program to find a valid solution that satisfies all constraints.\n\nMake sure to surround your final code with ```python\nYOUR_CODE\n```."
             
             logging.warning(f"[{example_id}] FAILED to solve within {max_passes} passes")
             

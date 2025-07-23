@@ -65,18 +65,18 @@ solver.add(day != 2)
 # Check if there is a solution
 if solver.check() == sat:
     model = solver.model()
-    day_value = model[day].as_long()
-    start_time_value = model[start_time].as_long()
-    end_time_value = start_time_value + meeting_duration
+    meeting_day = model[day].as_long()
+    meeting_start = model[start_time].as_long()
+    meeting_end = meeting_start + meeting_duration
 
     # Convert day number to string
     days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
-    day_str = days[day_value]
+    meeting_day_str = days[meeting_day]
 
-    # Convert time from minutes to HH:MM format
-    start_time_str = f"{start_time_value // 60:02}:{start_time_value % 60:02}"
-    end_time_str = f"{end_time_value // 60:02}:{end_time_value % 60:02}"
+    # Convert start and end times to HH:MM format
+    meeting_start_str = f"{meeting_start // 60:02}:{meeting_start % 60:02}"
+    meeting_end_str = f"{meeting_end // 60:02}:{meeting_end % 60:02}"
 
-    print(f"SOLUTION:\nDay: {day_str}\nStart Time: {start_time_str}\nEnd Time: {end_time_str}")
+    print(f"SOLUTION:\nDay: {meeting_day_str}\nStart Time: {meeting_start_str}\nEnd Time: {meeting_end_str}")
 else:
     print("No solution found")

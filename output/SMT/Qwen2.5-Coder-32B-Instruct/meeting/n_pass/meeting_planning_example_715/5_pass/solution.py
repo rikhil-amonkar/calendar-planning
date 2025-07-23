@@ -2,7 +2,6 @@ from z3 import *
 
 # Define the locations and their travel times
 locations = ["Presidio", "Marina District", "The Castro", "Fisherman's Wharf", "Bayview", "Pacific Heights", "Mission District", "Alamo Square", "Golden Gate Park"]
-location_indices = {loc: i for i, loc in enumerate(locations)}
 travel_times = {
     ("Presidio", "Marina District"): 11,
     ("Presidio", "The Castro"): 21,
@@ -78,9 +77,9 @@ travel_times = {
     ("Golden Gate Park", "Alamo Square"): 9,
 }
 
-# Add travel times from a location to itself
-for loc in locations:
-    travel_times[(loc, loc)] = 0
+# Add self-travel times
+for location in locations:
+    travel_times[(location, location)] = 0
 
 # Define the people and their availability
 people = {
@@ -94,29 +93,29 @@ people = {
     "Joseph": {"location": "Golden Gate Park", "start": 830, "end": 2115, "min_duration": 105},
 }
 
-# Convert times to minutes from start of the day
+# Convert times to minutes since start of the day
 def time_to_minutes(time):
     hours, minutes = divmod(time, 100)
     return hours * 60 + minutes
 
-# Create a solver instance
-solver = Solver()
+# Create an optimizer instance
+optimizer = Optimize()
 
 # Define variables
 start_time = Int('start_time')
 end_time = Int('end_time')
-current_location = Int('current_location')
+current_location = String('current_location')
 meetings = {person: Bool(person) for person in people}
 
 # Initial conditions
-solver.add(start_time == time_to_minutes(900))
-solver.add(current_location == location_indices["Presidio"])
+optimizer.add(start_time == time_to_minutes(900))
+optimizer.add(current_location == "Presidio")
 
 # Define the constraints for each person
 for person, details in people.items():
     person_start = time_to_minutes(details["start"])
     person_end = time_to_minutes(details["end"])
-    person_location = location_indices[details["location"]]
+    person_location = details["location"]
     person_min_duration = details["min_duration"]
     
     # Define the meeting start and end times
@@ -124,16 +123,46 @@ for person, details in people.items():
     meeting_end = Int(f'{person}_end')
     
     # Constraints for meeting with the person
-    travel_time = If(current_location == location_indices["Presidio"], travel_times[("Presidio", locations[person_location])],
-                     If(current_location == location_indices["Marina District"], travel_times[("Marina District", locations[person_location])],
-                        If(current_location == location_indices["The Castro"], travel_times[("The Castro", locations[person_location])],
-                           If(current_location == location_indices["Fisherman's Wharf"], travel_times[("Fisherman's Wharf", locations[person_location])],
-                              If(current_location == location_indices["Bayview"], travel_times[("Bayview", locations[person_location])],
-                                 If(current_location == location_indices["Pacific Heights"], travel_times[("Pacific Heights", locations[person_location])],
-                                    If(current_location == location_indices["Mission District"], travel_times[("Mission District", locations[person_location])],
-                                       If(current_location == location_indices["Alamo Square"], travel_times[("Alamo Square", locations[person_location])],
-                                          travel_times[("Golden Gate Park", locations[person_location])]))))))))
+    travel_time = Int(f'{person}_travel_time')
+    optimizer.add(travel_time == If(current_location == "Presidio", travel_times[("Presidio", person_location)],
+                                    If(current_location == "Marina District", travel_times[("Marina District", person_location)],
+                                       If(current_location == "The Castro", travel_times[("The Castro", person_location)],
+                                          If(current_location == "Fisherman's Wharf", travel_times[("Fisherman's Wharf", person_location)],
+                                             If(current_location == "Bayview", travel_times[("Bayview", person_location)],
+                                                If(current_location == "Pacific Heights", travel_times[("Pacific Heights", person_location)],
+                                                   If(current_location == "Mission District", travel_times[("Mission District", person_location)],
+                                                      If(current_location == "Alamo Square", travel_times[("Alamo Square", person_location)],
+                                                         travel_times[("Golden Gate Park", person_location)])))))))))
     
-    solver.add(Implies(meetings[person], meeting_start >= start_time + travel_time))
-    solver.add(Implies(meetings[person], meeting_end <= person_end))
-    solver.add(Implies(meetings[person], meeting_end - meeting_start >= person_min_duration))
+    optimizer.add(Implies(meetings[person], meeting_start >= start_time + travel_time))
+    optimizer.add(Implies(meetings[person], meeting_end <= person_end))
+    optimizer.add(Implies(meetings[person], meeting_start >= person_start))
+    optimizer.add(Implies(meetings[person], meeting_end - meeting_start >= person_min_duration))
+    optimizer.add(Implies(meetings[person], end_time >= meeting_end + travel_times[(person_location, "Presidio")]))
+    
+    # Update the current location and start time if meeting with the person
+    optimizer.add(Implies(meetings[person], current_location == person_location))
+    optimizer.add(Implies(meetings[person], start_time == meeting_end + travel_times[(person_location, "Presidio")]))
+
+# Objective: maximize the number of meetings
+objective = Sum([If(meetings[person], 1, 0) for person in people])
+optimizer.maximize(objective)
+
+# Solve the problem
+if optimizer.check() == sat:
+    model = optimizer.model()
+    itinerary = []
+    for person in people:
+        if model.evaluate(meetings[person]):
+            meeting_start = model.evaluate(Int(f'{person}_start')).as_long()
+            meeting_end = model.evaluate(Int(f'{person}_end')).as_long()
+            itinerary.append({
+                "action": "meet",
+                "person": person,
+                "start_time": f"{meeting_start // 60:02}:{meeting_start % 60:02}",
+                "end_time": f"{meeting_end // 60:02}:{meeting_end % 60:02}"
+            })
+    itinerary.sort(key=lambda x: x["start_time"])
+    print({"itinerary": itinerary})
+else:
+    print("No solution found")

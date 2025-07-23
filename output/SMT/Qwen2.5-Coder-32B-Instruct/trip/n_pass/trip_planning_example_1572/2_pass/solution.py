@@ -1,4 +1,5 @@
 from z3 import *
+import json
 
 # Define the solver
 solver = Solver()
@@ -17,93 +18,47 @@ cities = {
     "Naples": 4
 }
 
-# Define the start day variables for each city
+# Define the direct flight connections
+flights = {
+    ("Paris", "Stockholm"), ("Seville", "Paris"), ("Naples", "Zurich"), ("Nice", "Riga"),
+    ("Berlin", "Milan"), ("Paris", "Zurich"), ("Paris", "Nice"), ("Milan", "Paris"),
+    ("Milan", "Riga"), ("Paris", "Lyon"), ("Milan", "Naples"), ("Paris", "Riga"),
+    ("Berlin", "Stockholm"), ("Stockholm", "Riga"), ("Nice", "Zurich"), ("Milan", "Zurich"),
+    ("Zurich", "Stockholm"), ("Zurich", "Riga"), ("Berlin", "Naples"), ("Milan", "Stockholm"),
+    ("Berlin", "Zurich"), ("Milan", "Seville"), ("Paris", "Naples"), ("Berlin", "Riga"),
+    ("Nice", "Stockholm"), ("Berlin", "Paris"), ("Nice", "Naples"), ("Berlin", "Nice")
+}
+
+# Define the variables for the start day of each city visit
 start_days = {city: Int(f"start_{city}") for city in cities}
 
-# Define the constraints
-# Each city must be visited within the 23-day period
+# Add constraints for the start days
 for city, duration in cities.items():
     solver.add(start_days[city] >= 1)
     solver.add(start_days[city] + duration <= 23)
 
-# Specific constraints for cities and events
-# Berlin: attend a wedding between day 1 and day 2
-solver.add(start_days["Berlin"] <= 2)
-solver.add(start_days["Berlin"] + cities["Berlin"] >= 2)
+# Add constraints for the specific events
+solver.add(start_days["Berlin"] + 1 <= 2)  # Wedding in Berlin between day 1 and day 2
+solver.add(start_days["Stockholm"] + 2 <= 22)  # Annual show in Stockholm from day 20 to day 22
+solver.add(start_days["Nice"] + 1 <= 13)  # Workshop in Nice between day 12 and day 13
 
-# Stockholm: attend a show from day 20 to day 22
-solver.add(start_days["Stockholm"] <= 20)
-solver.add(start_days["Stockholm"] + cities["Stockholm"] >= 22)
+# Add constraints for the transitions between cities
+for i, city1 in enumerate(cities):
+    for city2 in cities:
+        if city1 != city2 and (city1, city2) not in flights and (city2, city1) not in flights:
+            # If there is no direct flight between city1 and city2, ensure no overlap
+            solver.add(Or(start_days[city1] + cities[city1] <= start_days[city2],
+                           start_days[city2] + cities[city2] <= start_days[city1]))
 
-# Nice: attend a workshop between day 12 and day 13
-solver.add(start_days["Nice"] <= 12)
-solver.add(start_days["Nice"] + cities["Nice"] >= 13)
-
-# Direct flight constraints
-# If flying from city A to city B on day X, then X is counted for both cities
-# We need to ensure that the transition days are valid and within the direct flight constraints
-flight_constraints = [
-    ("Paris", "Stockholm"),
-    ("Seville", "Paris"),
-    ("Naples", "Zurich"),
-    ("Nice", "Riga"),
-    ("Berlin", "Milan"),
-    ("Paris", "Zurich"),
-    ("Paris", "Nice"),
-    ("Milan", "Paris"),
-    ("Milan", "Riga"),
-    ("Paris", "Lyon"),
-    ("Milan", "Naples"),
-    ("Paris", "Riga"),
-    ("Berlin", "Stockholm"),
-    ("Stockholm", "Riga"),
-    ("Nice", "Zurich"),
-    ("Milan", "Zurich"),
-    ("Lyon", "Nice"),
-    ("Zurich", "Stockholm"),
-    ("Zurich", "Riga"),
-    ("Berlin", "Naples"),
-    ("Milan", "Stockholm"),
-    ("Berlin", "Zurich"),
-    ("Milan", "Seville"),
-    ("Paris", "Naples"),
-    ("Berlin", "Riga"),
-    ("Nice", "Stockholm"),
-    ("Berlin", "Paris"),
-    ("Nice", "Naples"),
-    ("Berlin", "Nice")
-]
-
-# Add constraints for direct flights
-for (city1, city2) in flight_constraints:
-    # If city1 is visited before city2, the end day of city1 must be less than or equal to the start day of city2
-    # And vice versa
-    solver.add(Or(start_days[city1] + cities[city1] <= start_days[city2], start_days[city2] + cities[city2] <= start_days[city1]))
-
-# Ensure no overlap between cities unless allowed by direct flight constraints
-for (city1, city2) in flight_constraints:
-    # If city1 is visited before city2, the end day of city1 must be less than or equal to the start day of city2
-    # And vice versa
-    solver.add(Or(start_days[city1] + cities[city1] <= start_days[city2], start_days[city2] + cities[city2] <= start_days[city1]))
-
-# Check if the constraints are satisfiable
+# Check if the problem is solvable
 if solver.check() == sat:
     model = solver.model()
     itinerary = []
-    for city, start_day in start_days.items():
-        start = model[start_day].as_long()
-        end = start + cities[city] - 1
-        for day in range(start, end + 1):
-            itinerary.append({"day": day, "city": city})
-    # Sort the itinerary by day
-    itinerary.sort(key=lambda x: x["day"])
-    # Remove duplicate entries (days counted for both cities)
-    final_itinerary = []
-    for i in range(len(itinerary)):
-        if i == 0 or itinerary[i] != itinerary[i-1]:
-            final_itinerary.append(itinerary[i])
-    # Convert to the required JSON format
-    result = {"itinerary": final_itinerary}
-    print(result)
+    for city, duration in cities.items():
+        start_day = model[start_days[city]].as_long()
+        itinerary.append((start_day, city, start_day + duration - 1))
+    itinerary.sort()
+    itinerary_dict = {f"Day {day}": city for day in range(1, 24) for city, start, end in itinerary if start <= day <= end}
+    print(json.dumps({"itinerary": itinerary_dict}, indent=2))
 else:
     print("No solution found")

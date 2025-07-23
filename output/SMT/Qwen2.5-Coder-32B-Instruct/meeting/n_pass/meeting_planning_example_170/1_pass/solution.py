@@ -14,16 +14,17 @@ travel_times = {
     ('Russian Hill', 'Union Square'): 11
 }
 
-# Define the constraints for Emily and Margaret
+# Define the availability of Emily and Margaret
 emily_start = time_in_minutes(16, 0)  # 4:00PM
 emily_end = time_in_minutes(17, 15)   # 5:15PM
-emily_min_meeting = 45
-
 margaret_start = time_in_minutes(19, 0)  # 7:00PM
-margaret_end = time_in_minutes(21, 0)    # 9:00PM
-margaret_min_meeting = 120
+margaret_end = time_in_minutes(21, 0)   # 9:00PM
 
-# Create a solver instance
+# Define the minimum meeting durations
+emily_min_duration = 45
+margaret_min_duration = 120
+
+# Define the solver
 solver = Solver()
 
 # Define the variables for the start and end times of meetings
@@ -32,34 +33,27 @@ emily_end_time = Int('emily_end_time')
 margaret_start_time = Int('margaret_start_time')
 margaret_end_time = Int('margaret_end_time')
 
-# Add constraints for Emily
+# Define the constraints
 solver.add(emily_start_time >= emily_start)
 solver.add(emily_end_time <= emily_end)
-solver.add(emily_end_time - emily_start_time >= emily_min_meeting)
+solver.add(emily_end_time - emily_start_time >= emily_min_duration)
 
-# Add constraints for Margaret
 solver.add(margaret_start_time >= margaret_start)
 solver.add(margaret_end_time <= margaret_end)
-solver.add(margaret_end_time - margaret_start_time >= margaret_min_meeting)
+solver.add(margaret_end_time - margaret_start_time >= margaret_min_duration)
 
-# Define the current location and time
-current_location = 'North Beach'
-current_time = 0  # 9:00AM
+# Define the travel constraints
+# Emily meeting after Union Square or Russian Hill
+union_square_to_emily = emily_start_time >= time_in_minutes(12, 0) + travel_times[('Union Square', 'North Beach')] + travel_times[('North Beach', 'Union Square')]
+russian_hill_to_emily = emily_start_time >= time_in_minutes(12, 0) + travel_times[('Russian Hill', 'North Beach')] + travel_times[('North Beach', 'Union Square')]
+solver.add(Or(union_square_to_emily, russian_hill_to_emily))
 
-# Function to add travel constraints
-def add_travel_constraints(start_location, end_location, start_time, end_time):
-    travel_time = travel_times[(start_location, end_location)]
-    solver.add(end_time == start_time + travel_time)
+# Margaret meeting after Union Square or Russian Hill
+union_square_to_margaret = margaret_start_time >= time_in_minutes(18, 0) + travel_times[('Union Square', 'North Beach')] + travel_times[('North Beach', 'Russian Hill')]
+russian_hill_to_margaret = margaret_start_time >= time_in_minutes(18, 0) + travel_times[('Russian Hill', 'North Beach')] + travel_times[('North Beach', 'Russian Hill')]
+solver.add(Or(union_square_to_margaret, russian_hill_to_margaret))
 
-# Add travel constraints for Emily
-emily_travel_time = travel_times[(current_location, 'Union Square')]
-solver.add(emily_start_time == current_time + emily_travel_time)
-
-# Add travel constraints for Margaret
-margaret_travel_time = travel_times[('Union Square', 'Russian Hill')]
-solver.add(margaret_start_time == emily_end_time + margaret_travel_time)
-
-# Check if the constraints are satisfiable
+# Solve the problem
 if solver.check() == sat:
     model = solver.model()
     emily_start_time_value = model[emily_start_time].as_long()
@@ -67,17 +61,16 @@ if solver.check() == sat:
     margaret_start_time_value = model[margaret_start_time].as_long()
     margaret_end_time_value = model[margaret_end_time].as_long()
 
-    # Convert times back to HH:MM format
-    def time_to_string(minutes):
-        hours = minutes // 60 + 9
+    def format_time(minutes):
+        hours = 9 + minutes // 60
         minutes = minutes % 60
         return f"{hours:02}:{minutes:02}"
 
     itinerary = [
-        {"action": "meet", "person": "Emily", "start_time": time_to_string(emily_start_time_value), "end_time": time_to_string(emily_end_time_value)},
-        {"action": "meet", "person": "Margaret", "start_time": time_to_string(margaret_start_time_value), "end_time": time_to_string(margaret_end_time_value)}
+        {"action": "meet", "person": "Emily", "start_time": format_time(emily_start_time_value), "end_time": format_time(emily_end_time_value)},
+        {"action": "meet", "person": "Margaret", "start_time": format_time(margaret_start_time_value), "end_time": format_time(margaret_end_time_value)}
     ]
 
     print({"itinerary": itinerary})
 else:
-    print("No feasible schedule found")
+    print("No solution found")

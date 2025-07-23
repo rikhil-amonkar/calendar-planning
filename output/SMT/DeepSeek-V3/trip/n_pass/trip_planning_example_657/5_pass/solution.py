@@ -1,87 +1,97 @@
-import json
 from z3 import *
 
-def solve_itinerary():
-    # Cities and their required days
-    cities = ['Frankfurt', 'Manchester', 'Valencia', 'Naples', 'Oslo', 'Vilnius']
-    required_days = {
-        'Frankfurt': 4,
-        'Manchester': 4,
-        'Valencia': 4,
-        'Naples': 4,
-        'Oslo': 3,
-        'Vilnius': 2
+def solve_scheduling():
+    # Cities
+    cities = {
+        'Frankfurt': 0,
+        'Manchester': 1,
+        'Valencia': 2,
+        'Naples': 3,
+        'Oslo': 4,
+        'Vilnius': 5
     }
-    city_map = {city: idx for idx, city in enumerate(cities)}
-    n_cities = len(cities)
-    n_days = 16
-
-    # Direct flight connections
-    direct_flights = [
-        [False] * n_cities for _ in range(n_cities)
-    ]
-    connections = [
-        ('Valencia', 'Frankfurt'),
-        ('Manchester', 'Frankfurt'),
-        ('Naples', 'Manchester'),
-        ('Naples', 'Frankfurt'),
-        ('Naples', 'Oslo'),
-        ('Oslo', 'Frankfurt'),
-        ('Vilnius', 'Frankfurt'),
-        ('Oslo', 'Vilnius'),
-        ('Manchester', 'Oslo'),
-        ('Valencia', 'Naples')
-    ]
-    for c1, c2 in connections:
-        i, j = city_map[c1], city_map[c2]
-        direct_flights[i][j] = True
-        direct_flights[j][i] = True
-
-    # Create Z3 solver
+    city_names = {v: k for k, v in cities.items()}
+    
+    # Direct flights: adjacency list
+    direct_flights = {
+        0: [1, 2, 3, 4, 5],  # Frankfurt
+        1: [0, 3, 4],        # Manchester
+        2: [0, 3],           # Valencia
+        3: [0, 1, 2, 4],     # Naples
+        4: [0, 3, 5, 1],     # Oslo
+        5: [0, 4]            # Vilnius
+    }
+    
+    # Create Z3 variables for each day (1..16)
+    days = [Int(f'day_{i}') for i in range(1, 17)]
+    
     s = Solver()
-
-    # Decision variables: for each day, which city are we in
-    assignments = [Int(f'day_{i}') for i in range(n_days)]
-    for a in assignments:
-        s.add(a >= 0, a < n_cities)
-
-    # Each city must be visited for exactly the required number of days
-    for city, days in required_days.items():
-        c = city_map[city]
-        s.add(Sum([If(assignments[i] == c, 1, 0) for i in range(n_days)]) == days)
-
-    # Flight transition constraints
-    for i in range(n_days - 1):
-        current = assignments[i]
-        next_day = assignments[i + 1]
-        # Either stay in same city or take direct flight
+    
+    # Each day must be one of the cities
+    for day in days:
+        s.add(Or([day == c for c in cities.values()]))
+    
+    # Transition constraints: consecutive days must be same city or connected by direct flight
+    for i in range(len(days) - 1):
+        current_day = days[i]
+        next_day = days[i + 1]
         s.add(Or(
-            current == next_day,
-            *[And(current == c1, next_day == c2) 
-              for c1 in range(n_cities) 
-              for c2 in range(n_cities) 
-              if direct_flights[c1][c2]
+            current_day == next_day,
+            *[And(current_day == c, next_day == n) for c in cities.values() for n in direct_flights[c]]
         ))
-
-    # Special constraints:
-    # Frankfurt from day 13 to 16 (indices 12 to 15)
+    
+    # Fixed constraints:
+    # Days 13-16 in Frankfurt
     for i in range(12, 16):
-        s.add(assignments[i] == city_map['Frankfurt'])
-
-    # Vilnius wedding on days 12 and 13 (indices 11 and 12)
-    s.add(assignments[11] == city_map['Vilnius'])
-    s.add(assignments[12] == city_map['Vilnius'])
-
-    # Find solution
+        s.add(days[i] == cities['Frankfurt'])
+    
+    # Wedding in Vilnius between day 12 and 13. So day 12 must be Vilnius (since day 13 is Frankfurt)
+    s.add(days[11] == cities['Vilnius'])
+    
+    # Duration constraints:
+    # Frankfurt: 4 days total (including the days 13-16)
+    # So other days in Frankfurt must be 0 (since 13-16 is 4 days)
+    s.add(Sum([If(days[i] == cities['Frankfurt'], 1, 0) for i in range(16)]) == 4)
+    
+    # Manchester: 4 days
+    s.add(Sum([If(days[i] == cities['Manchester'], 1, 0) for i in range(16)]) == 4)
+    
+    # Valencia: 4 days
+    s.add(Sum([If(days[i] == cities['Valencia'], 1, 0) for i in range(16)]) == 4)
+    
+    # Naples: 4 days
+    s.add(Sum([If(days[i] == cities['Naples'], 1, 0) for i in range(16)]) == 4)
+    
+    # Oslo: 3 days
+    s.add(Sum([If(days[i] == cities['Oslo'], 1, 0) for i in range(16)]) == 3)
+    
+    # Vilnius: 2 days (day 12 is one, so one more day)
+    s.add(Sum([If(days[i] == cities['Vilnius'], 1, 0) for i in range(16)]) == 2)
+    
+    # Additional constraints to ensure the schedule is feasible
+    # For example, ensure that the days before the fixed days are properly connected
+    # Day 11 must be connected to Vilnius (day 12)
+    s.add(Or(
+        days[10] == cities['Vilnius'],
+        *[And(days[10] == c, cities['Vilnius'] in direct_flights[c]) for c in cities.values() if c != cities['Vilnius']]
+    ))
+    
+    # Check and get model
     if s.check() == sat:
-        model = s.model()
+        m = s.model()
         itinerary = []
-        for i in range(n_days):
-            city_idx = model[assignments[i]].as_long()
-            itinerary.append({"day": i+1, "place": cities[city_idx]})
-        return {"itinerary": itinerary}
+        for i in range(16):
+            day_num = i + 1
+            city_code = m.evaluate(days[i]).as_long()
+            city = city_names[city_code]
+            itinerary.append({'day': day_num, 'place': city})
+        return {'itinerary': itinerary}
     else:
-        return {"error": "No valid itinerary found"}
+        return None
 
-result = solve_itinerary()
-print(json.dumps(result, indent=2))
+result = solve_scheduling()
+if result:
+    import json
+    print(json.dumps(result, indent=2))
+else:
+    print("No solution found")

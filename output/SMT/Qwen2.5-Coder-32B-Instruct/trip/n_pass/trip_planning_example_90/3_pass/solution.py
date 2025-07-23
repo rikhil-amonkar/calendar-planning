@@ -29,7 +29,7 @@ solver.add(start_vienna + duration_vienna <= total_days)
 
 # 3. Stay in Naples between day 1 and day 5
 solver.add(start_naples >= 0)
-solver.add(start_naples <= 1)  # Since we need to be in Naples between day 1 and day 5
+solver.add(start_naples <= 1)  # Since you must be in Naples between day 1 and day 5, start_naples must be 0 or 1
 
 # 4. Direct flights between cities
 # If flying from Naples to Vienna, the start day of Vienna must be the start day of Naples + duration in Naples - 1
@@ -50,6 +50,22 @@ case2 = And(
 
 # Add the OR condition for the two cases
 solver.add(Or(case1, case2))
+
+# Ensure no gaps or overlaps
+# Case 1: Naples -> Vienna -> Vilnius
+gap_or_overlap_case1 = And(
+    start_naples + duration_naples == start_vienna,
+    start_vienna + duration_vienna == start_vilnius
+)
+
+# Case 2: Vienna -> Vilnius -> Naples
+gap_or_overlap_case2 = And(
+    start_vienna + duration_vienna == start_vilnius,
+    start_vilnius + duration_vilnius == start_naples
+)
+
+# Add the gap or overlap constraints for both cases
+solver.add(Or(gap_or_overlap_case1, gap_or_overlap_case2))
 
 # Check if the constraints are satisfiable
 if solver.check() == sat:

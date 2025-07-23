@@ -1,0 +1,141 @@
+from z3 import *
+import datetime
+
+def main():
+    # Define the travel_time matrix (11x11): rows 0..10, columns 0..10
+    # Index: 0: Financial District, 1: Fisherman's Wharf, 2: Presidio, 3: Bayview, 4: Haight-Ashbury, 
+    #         5: Russian Hill, 6: The Castro, 7: Marina District, 8: Richmond District, 9: Union Square, 10: Sunset District
+    travel_time = [
+        [0, 10, 22, 19, 19, 11, 20, 15, 21, 9, 30],
+        [11, 0, 17, 26, 22, 7, 27, 9, 18, 13, 27],
+        [23, 19, 0, 31, 15, 14, 21, 11, 7, 22, 15],
+        [19, 25, 32, 0, 19, 23, 19, 27, 25, 18, 23],
+        [21, 23, 15, 18, 0, 17, 6, 17, 10, 19, 15],
+        [11, 7, 14, 23, 17, 0, 21, 7, 14, 10, 23],
+        [21, 24, 20, 19, 6, 18, 0, 21, 16, 19, 17],
+        [17, 10, 10, 27, 16, 8, 22, 0, 11, 16, 19],
+        [22, 18, 7, 27, 10, 13, 16, 9, 0, 21, 11],
+        [9, 15, 24, 15, 18, 13, 17, 18, 20, 0, 27],
+        [30, 29, 16, 22, 15, 24, 17, 21, 12, 30, 0]
+    ]
+    
+    # Define meeting details: index 0 for meeting 1 (Mark), 1 for meeting 2 (Stephanie), ... 9 for meeting 10 (Karen)
+    window_start_minutes = [0, 195, 0, 390, 585, 15, 45, 45, 450, 450]  # from 9:00 AM in minutes
+    window_end_minutes = [60, 360, 690, 570, 660, 255, 315, 135, 660, 780]  # from 9:00 AM in minutes
+    min_durations = [30, 75, 15, 45, 60, 30, 45, 45, 120, 105]  # in minutes
+    friend_names = {
+        1: "Mark",
+        2: "Stephanie",
+        3: "Betty",
+        4: "Lisa",
+        5: "William",
+        6: "Brian",
+        7: "Joseph",
+        8: "Ashley",
+        9: "Patricia",
+        10: "Karen"
+    }
+    
+    # Mapping meeting number to district index
+    districts = [1, 2, 3, 4, 5, 6, 7, 9, 8, 10]  # index 0: meeting1 -> district1, index1: meeting2->district2, ... 
+    
+    # Precompute travel time from node i (0..10) to meeting j (1..10) -> stored in tt[i][j_index] where j_index = j-1
+    tt = [[0]*10 for _ in range(11)]
+    for i in range(11):
+        for j in range(10):
+            if i == 0:
+                tt[i][j] = travel_time[0][districts[j]]
+            else:
+                tt[i][j] = travel_time[districts[i-1]][districts[j]]
+    
+    n_nodes = 11  # nodes 0..10 (start and meetings)
+    end_node = 11  # end node index
+    n_meetings = 10  # meetings 1..10
+
+    # Create solver
+    s = Optimize()
+    
+    # Define next variables for nodes 0..10
+    next_vars = [Int(f'next_{i}') for i in range(n_nodes)]
+    
+    # Define visited for meetings 1..10: visited[0] for meeting1, ... visited[9] for meeting10
+    visited = [Bool(f'visited_{i}') for i in range(1, 11)]
+    
+    # Define start_time and end_time for meetings 1..10: start_time[i] for meeting i+1
+    start_time = [Int(f'start_{i}') for i in range(1, 11)]
+    end_time = [Int(f'end_{i}') for i in range(1, 11)]
+    
+    # Constraints for next_vars: each next[i] is in [1,11] and for i>=1, next[i] != i
+    for i in range(n_nodes):
+        s.add(And(next_vars[i] >= 1, next_vars[i] <= 11))
+        if i >= 1:  # meetings 1..10 cannot point to themselves
+            s.add(next_vars[i] != i+1)
+    
+    # Constraint: for each meeting j (1..10), visited[j-1] is true iff there exists i in [0,10] such that next_vars[i] == j
+    for j in range(1, 11):
+        idx = j - 1
+        s.add(visited[idx] == Or([next_vars[i] == j for i in range(n_nodes)]))
+        s.add(Sum([If(next_vars[i] == j, 1, 0) for i in range(n_nodes)]) <= 1)
+    
+    # Time constraints for each meeting j (1..10)
+    for j in range(1, 11):
+        idx = j - 1  # index in the lists for this meeting
+        base = Int(f'base_{j}')
+        j_tt_index = j - 1  # index in the tt matrix (0..9)
+        s.add(base == Sum([If(next_vars[i] == j, 
+                           (0 if i == 0 else end_time[i-1]) + tt[i][j_tt_index], 
+                           0) for i in range(n_nodes)]))
+        
+        s.add(If(visited[idx],
+                 And(
+                     start_time[idx] >= base,
+                     start_time[idx] >= window_start_minutes[idx],
+                     end_time[idx] == start_time[idx] + min_durations[idx],
+                     end_time[idx] <= window_end_minutes[idx]
+                 ),
+                 True
+        ))
+    
+    # Maximize the number of visited meetings
+    total_visited = Sum([If(v, 1, 0) for v in visited])
+    s.maximize(total_visited)
+    
+    # Solve
+    if s.check() == sat:
+        model = s.model()
+        total_visited_val = model.eval(total_visited).as_long()
+        print(f"Total meetings visited: {total_visited_val}")
+        
+        # Reconstruct the itinerary
+        itinerary = []
+        current = model.eval(next_vars[0]).as_long()  # next after start
+        while current != end_node and current is not None:
+            meeting_index = current  # 1..10
+            idx = meeting_index - 1  # index in lists
+            if not model.eval(visited[idx]):
+                break
+            start_min = model.eval(start_time[idx]).as_long()
+            end_min = model.eval(end_time[idx]).as_long()
+            
+            # Convert minutes to time strings
+            start_time_str = (datetime.datetime(2023,1,1,9,0) + datetime.timedelta(minutes=start_min)).strftime("%H:%M")
+            end_time_str = (datetime.datetime(2023,1,1,9,0) + datetime.timedelta(minutes=end_min)).strftime("%H:%M")
+            
+            itinerary.append({
+                "action": "meet",
+                "person": friend_names[meeting_index],
+                "start_time": start_time_str,
+                "end_time": end_time_str
+            })
+            
+            # Next node: from the current meeting node
+            current = model.eval(next_vars[meeting_index]).as_long()
+        
+        # Output as JSON
+        print("SOLUTION:")
+        print(f'{{"itinerary": {itinerary}}}')
+    else:
+        print("No solution found")
+
+if __name__ == "__main__":
+    main()

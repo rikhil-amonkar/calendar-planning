@@ -1,65 +1,85 @@
 from z3 import *
-import json
 
 def solve_itinerary():
-    # Cities
-    cities = ['London', 'Santorini', 'Istanbul']
-    city_to_int = {city: idx for idx, city in enumerate(cities)}
-    int_to_city = {idx: city for idx, city in enumerate(cities)}
-    
-    # Days are 1..10
+    # Create a solver instance
+    s = Solver()
+
+    # Days are 1 to 10
     days = 10
-    day_numbers = range(1, days + 1)
+    cities = {'London': 'L', 'Santorini': 'S', 'Istanbul': 'I'}
+    city_codes = {'L', 'S', 'I'}
     
-    # Create Z3 variables for each day's city
-    assignments = [Int(f'day_{i}') for i in day_numbers]
+    # Create variables for each day: 1..10, each can be L, S, or I
+    day_vars = [Int(f"day_{i}") for i in range(1, days + 1)]
     
-    # Create solver
-    solver = Solver()
+    # Each day variable must be one of the city codes
+    for day in day_vars:
+        s.add(Or([day == ord(c) for c in city_codes]))
     
-    # Each day's assignment must be 0, 1, or 2 (representing the cities)
-    for day in assignments:
-        solver.add(day >= 0, day <= 2)
+    # Encode city codes as integers (using their ASCII values)
+    L, S, I = ord('L'), ord('S'), ord('I')
     
-    # Direct flight connections: Istanbul <-> London, London <-> Santorini
-    # So transitions between non-London cities are not allowed directly.
-    for i in range(len(day_numbers) - 1):
-        current_day = assignments[i]
-        next_day = assignments[i + 1]
-        # Constraint: if current and next day cities are different, they must have a direct flight
-        solver.add(Implies(current_day != next_day, 
-                          Or(
-                              And(current_day == city_to_int['London'], next_day == city_to_int['Istanbul']),
-                              And(current_day == city_to_int['Istanbul'], next_day == city_to_int['London']),
-                              And(current_day == city_to_int['London'], next_day == city_to_int['Santorini']),
-                              And(current_day == city_to_int['Santorini'], next_day == city_to_int['London'])
-                          )))
-    
-    # Total days constraints
+    # Constraints for the counts of each city
     # London: 3 days
-    solver.add(Sum([If(assignments[i] == city_to_int['London'], 1, 0) for i in range(days)]) == 3)
-    # Santorini: 6 days, including day 5 and 10 (1-based)
-    solver.add(Sum([If(assignments[i] == city_to_int['Santorini'], 1, 0) for i in range(days)]) == 6)
-    solver.add(assignments[4] == city_to_int['Santorini'])  # Day 5 (0-based index 4)
-    solver.add(assignments[9] == city_to_int['Santorini'])  # Day 10 (0-based index 9)
+    s.add(Sum([If(day == L, 1, 0) for day in day_vars]) == 3)
+    # Santorini: 6 days (including days 5 and 10)
+    s.add(Sum([If(day == S, 1, 0) for day in day_vars]) == 6)
     # Istanbul: 3 days
-    solver.add(Sum([If(assignments[i] == city_to_int['Istanbul'], 1, 0) for i in range(days)]) == 3)
+    s.add(Sum([If(day == I, 1, 0) for day in day_vars]) == 3)
     
-    # Check and get model
-    if solver.check() == sat:
-        model = solver.model()
+    # Conference days: day 5 and day 10 must be S
+    s.add(day_vars[4] == S)  # day 5 is index 4 (0-based)
+    s.add(day_vars[9] == S)   # day 10 is index 9
+    
+    # Flight constraints: transitions between cities are only possible if there's a direct flight.
+    # Direct flights: L <-> S, L <-> I. So S and I can't directly transition between each other.
+    for i in range(days - 1):
+        current = day_vars[i]
+        next_day = day_vars[i + 1]
+        # Possible transitions:
+        # L <-> S, L <-> I, S <-> L, I <-> L, or stay in the same city.
+        s.add(Or(
+            current == next_day,  # stay
+            And(current == L, next_day == S),  # L to S
+            And(current == S, next_day == L),  # S to L
+            And(current == L, next_day == I),  # L to I
+            And(current == I, next_day == L)   # I to L
+        ))
+    
+    # Check if the problem is satisfiable
+    if s.check() == sat:
+        model = s.model()
         itinerary = []
+        city_map = {L: 'London', S: 'Santorini', I: 'Istanbul'}
         for i in range(days):
             day_num = i + 1
-            city_idx = model.evaluate(assignments[i]).as_long()
-            city = int_to_city[city_idx]
-            itinerary.append({'day': day_num, 'place': city})
+            city_code = model[day_vars[i]].as_long()
+            city_name = city_map[city_code]
+            itinerary.append({"day": day_num, "place": city_name})
         
-        # Convert to the required JSON format
-        result = {'itinerary': itinerary}
-        return json.dumps(result, indent=2)
+        # Verify the counts
+        london_days = sum(1 for entry in itinerary if entry['place'] == 'London')
+        santorini_days = sum(1 for entry in itinerary if entry['place'] == 'Santorini')
+        istanbul_days = sum(1 for entry in itinerary if entry['place'] == 'Istanbul')
+        
+        assert london_days == 3
+        assert santorini_days == 6
+        assert istanbul_days == 3
+        assert itinerary[4]['place'] == 'Santorini'  # day 5
+        assert itinerary[9]['place'] == 'Santorini'  # day 10
+        
+        # Verify transitions
+        for i in range(days - 1):
+            current = itinerary[i]['place']
+            next_place = itinerary[i + 1]['place']
+            if current != next_place:
+                assert {current, next_place} in [{'London', 'Santorini'}, {'London', 'Istanbul'}]
+        
+        return {"itinerary": itinerary}
     else:
-        return json.dumps({'error': 'No valid itinerary found'}, indent=2)
+        return {"error": "No valid itinerary found"}
 
-# Execute and print the result
-print(solve_itinerary())
+# Solve and print the itinerary
+result = solve_itinerary()
+import json
+print(json.dumps(result, indent=2))

@@ -117,12 +117,82 @@ travel_times = {
     ("Financial District", "Union Square"): 9,
 }
 
-# Define the meetings and their constraints
-meetings = {
-    "Steven": {"location": "North Beach", "start": 17.5, "end": 20.5, "duration": 0.25},
-    "Sarah": {"location": "Golden Gate Park", "start": 17.0, "end": 19.25, "duration": 1.25},
-    "Brian": {"location": "Embarcadero", "start": 14.25, "end": 16.0, "duration": 1.75},
-    "Stephanie": {"location": "Haight-Ashbury", "start": 10.25, "end": 12.25, "duration": 1.25},
-    "Melissa": {"location": "Richmond District", "start": 14.0, "end": 19.5, "duration": 0.5},
-    "Nancy": {"location": "Nob Hill", "start": 8.25, "end": 12.75, "duration": 1.5},
-    "David": {"location": "
+# Define the friends and their availability
+friends = {
+    "Steven": {"location": "North Beach", "start": 17.5, "end": 20.5, "min_duration": 0.25},
+    "Sarah": {"location": "Golden Gate Park", "start": 17.0, "end": 19.25, "min_duration": 1.25},
+    "Brian": {"location": "Embarcadero", "start": 14.25, "end": 16.0, "min_duration": 1.75},
+    "Stephanie": {"location": "Haight-Ashbury", "start": 10.25, "end": 12.25, "min_duration": 1.25},
+    "Melissa": {"location": "Richmond District", "start": 14.0, "end": 19.5, "min_duration": 0.5},
+    "Nancy": {"location": "Nob Hill", "start": 8.25, "end": 12.75, "min_duration": 1.5},
+    "David": {"location": "Marina District", "start": 11.25, "end": 13.25, "min_duration": 2.0},
+    "James": {"location": "Presidio", "start": 15.0, "end": 18.25, "min_duration": 2.0},
+    "Elizabeth": {"location": "Union Square", "start": 11.5, "end": 21.0, "min_duration": 1.0},
+    "Robert": {"location": "Financial District", "start": 13.25, "end": 15.25, "min_duration": 0.75},
+}
+
+# Create a solver instance
+solver = Solver()
+
+# Define the variables
+current_location = String('current_location')
+current_time = Real('current_time')
+meetings = {name: Bool(name) for name in friends}
+
+# Initial location and time
+solver.add(current_location == "The Castro")
+solver.add(current_time == 9.0)
+
+# Define the constraints for each friend
+for name, details in friends.items():
+    location = details["location"]
+    start = details["start"]
+    end = details["end"]
+    min_duration = details["min_duration"]
+    
+    # Define the meeting start and end times
+    meeting_start = Real(f'{name}_start')
+    meeting_end = Real(f'{name}_end')
+    
+    # Constraints for meeting
+    solver.add(meeting_start >= start)
+    solver.add(meeting_end <= end)
+    solver.add(meeting_end - meeting_start >= min_duration)
+    
+    # Constraints for travel and meeting
+    travel_time = If(current_location == "The Castro", travel_times[("The Castro", location)],
+                     If(current_location == "North Beach", travel_times[("North Beach", location)],
+                        If(current_location == "Golden Gate Park", travel_times[("Golden Gate Park", location)],
+                           If(current_location == "Embarcadero", travel_times[("Embarcadero", location)],
+                              If(current_location == "Haight-Ashbury", travel_times[("Haight-Ashbury", location)],
+                                 If(current_location == "Richmond District", travel_times[("Richmond District", location)],
+                                    If(current_location == "Nob Hill", travel_times[("Nob Hill", location)],
+                                       If(current_location == "Marina District", travel_times[("Marina District", location)],
+                                          If(current_location == "Presidio", travel_times[("Presidio", location)],
+                                             If(current_location == "Union Square", travel_times[("Union Square", location)],
+                                                travel_times[("Financial District", location)])))))))))
+    
+    solver.add(Implies(meetings[name], current_time + travel_time / 60.0 <= meeting_start))
+    solver.add(Implies(meetings[name], current_time == meeting_end))
+    solver.add(Implies(meetings[name], current_location == location))
+    
+    # Update current location and time after meeting
+    solver.add(Implies(meetings[name], current_time == meeting_end))
+    solver.add(Implies(meetings[name], current_location == location))
+
+# Maximize the number of meetings
+solver.maximize(Sum([If(meetings[name], 1, 0) for name in friends]))
+
+# Check if the problem is solvable
+if solver.check() == sat:
+    model = solver.model()
+    itinerary = []
+    for name, details in friends.items():
+        if model.evaluate(meetings[name]):
+            start = model.evaluate(Real(f'{name}_start')).as_decimal(2)
+            end = model.evaluate(Real(f'{name}_end')).as_decimal(2)
+            itinerary.append({"action": "meet", "person": name, "start_time": f"{int(start):02}:{int((start % 1) * 60):02}", "end_time": f"{int(end):02}:{int((end % 1) * 60):02}"})
+    itinerary.sort(key=lambda x: x["start_time"])
+    print({"itinerary": itinerary})
+else:
+    print("No solution found")

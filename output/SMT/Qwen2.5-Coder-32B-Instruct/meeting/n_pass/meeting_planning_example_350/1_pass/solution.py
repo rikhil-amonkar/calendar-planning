@@ -69,13 +69,11 @@ for i, person1 in enumerate(people):
 initial_location = "Bayview"
 initial_time = 9*60
 
-# Add the initial location constraint
-solver.add(location_at_meeting_start[list(people.keys())[0]] == initial_location)
+# Ensure the first meeting starts after the initial time and at the initial location
+first_person = min(people.keys(), key=lambda x: people[x]["start"])
+solver.add(meeting_starts[first_person] >= initial_time + travel_times[(initial_location, people[first_person]["location"])])
 
-# Add the initial time constraint
-solver.add(meeting_starts[list(people.keys())[0]] >= initial_time)
-
-# Check if the problem is solvable
+# Check if the constraints are satisfiable
 if solver.check() == sat:
     model = solver.model()
     itinerary = []
@@ -88,7 +86,7 @@ if solver.check() == sat:
             "start_time": f"{start_time // 60:02}:{start_time % 60:02}",
             "end_time": f"{end_time // 60:02}:{end_time % 60:02}"
         })
-    itinerary = sorted(itinerary, key=lambda x: x["start_time"])
+    itinerary.sort(key=lambda x: x["start_time"])
     print({"itinerary": itinerary})
 else:
-    print("No solution found")
+    print("No feasible schedule found")

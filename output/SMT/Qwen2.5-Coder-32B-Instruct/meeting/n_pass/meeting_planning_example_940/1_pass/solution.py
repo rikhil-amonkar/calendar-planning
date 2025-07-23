@@ -39,7 +39,7 @@ meetings = {
     "Rebecca": {"location": "Sunset District", "start": 845, "end": 1500, "duration": 75},
 }
 
-# Convert times to minutes since 00:00
+# Convert times to minutes since start of the day
 def time_to_minutes(time):
     hours, minutes = divmod(time, 100)
     return hours * 60 + minutes
@@ -47,7 +47,7 @@ def time_to_minutes(time):
 # Create a Z3 solver
 solver = Solver()
 
-# Define variables for meeting start times
+# Define variables for the start time of each meeting
 meeting_vars = {name: Int(name) for name in meetings}
 
 # Add constraints for each meeting
@@ -62,28 +62,22 @@ for name, details in meetings.items():
 current_location = "Union Square"
 current_time = time_to_minutes(900)  # 9:00 AM
 
-# Sort meetings by their start times
+# Sort meetings by their start time to try to respect the order
 sorted_meetings = sorted(meetings.items(), key=lambda x: x[1]["start"])
 
-# Add constraints for travel and meeting times
-for i in range(len(sorted_meetings)):
-    name, details = sorted_meetings[i]
+for name, details in sorted_meetings:
     location = details["location"]
     duration = details["duration"]
-    
-    # Travel time from current location to meeting location
     travel_time = travel_times[(current_location, location)]
     solver.add(meeting_vars[name] >= current_time + travel_time)
-    
-    # Update current location and time
-    current_location = location
     current_time = meeting_vars[name] + duration
+    current_location = location
 
-# Check if the constraints are satisfiable
+# Check if the problem is solvable
 if solver.check() == sat:
     model = solver.model()
     itinerary = []
-    for name, details in meetings.items():
+    for name, details in sorted_meetings:
         start_time = model[meeting_vars[name]].as_long()
         end_time = start_time + details["duration"]
         itinerary.append({
@@ -92,7 +86,6 @@ if solver.check() == sat:
             "start_time": f"{start_time // 60:02}:{start_time % 60:02}",
             "end_time": f"{end_time // 60:02}:{end_time % 60:02}"
         })
-    itinerary.sort(key=lambda x: x["start_time"])
     print({"itinerary": itinerary})
 else:
-    print("No feasible schedule found.")
+    print("No solution found")

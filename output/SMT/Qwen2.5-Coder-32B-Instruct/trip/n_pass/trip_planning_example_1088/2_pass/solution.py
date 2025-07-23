@@ -45,29 +45,34 @@ solver.add(start_days["Stockholm"] <= 3)  # Meet friend in Stockholm between day
 # Add constraints for the transitions between cities
 for city, duration in cities.items():
     for next_city in flights[city]:
-        if next_city in start_days:
-            # If we start in city and fly to next_city, the start day of next_city must be
-            # the start day of city plus the duration of stay in city
-            solver.add(Or(start_days[next_city] != start_days[city] + duration,
-                         start_days[next_city] == start_days[city] + duration))
+        # If we start in city and fly to next_city, we must be in next_city on the day we leave city
+        solver.add(Or(start_days[next_city] != start_days[city] + duration,
+                     start_days[next_city] <= start_days[city] + duration))
 
-# Add constraints to ensure no overlap in stays (except for the flight day)
+# Add constraints to ensure no overlap in stays except for the transition day
 for city1 in cities:
     for city2 in cities:
         if city1 != city2:
             solver.add(Or(start_days[city1] + cities[city1] <= start_days[city2],
-                         start_days[city2] + cities[city2] <= start_days[city1]))
+                          start_days[city2] + cities[city2] <= start_days[city1]))
+
+# Ensure that the total number of days is exactly 21
+total_days = Int('total_days')
+solver.add(total_days == 21)
+
+# Ensure that the last day of the last city is within the 21-day limit
+last_day = max([start_days[city] + cities[city] for city in cities])
+solver.add(last_day <= total_days)
 
 # Check if the constraints are satisfiable
 if solver.check() == sat:
     model = solver.model()
     itinerary = []
-    for city, start_day in start_days.items():
-        start = model[start_day].as_long()
-        end = start + cities[city] - 1
-        itinerary.append((start, end, city))
-    itinerary.sort()
-    itinerary_dict = {"itinerary": [{"day": day, "place": city} for day, _, city in itinerary for _ in range(day, day + cities[city])]}
-    print(itinerary_dict)
+    for city in cities:
+        start_day = model[start_days[city]].as_long()
+        itinerary.extend([(day, city) for day in range(start_day, start_day + cities[city])])
+    itinerary.sort(key=lambda x: x[0])
+    itinerary_dict = {f"Day {day}": city for day, city in itinerary}
+    print(json.dumps({"itinerary": itinerary_dict}, indent=4))
 else:
     print("No solution found")

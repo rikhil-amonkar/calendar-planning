@@ -40,34 +40,82 @@ solver.add(frankfurt_start + frankfurt_duration - 1 <= 20)
 
 # Direct flights constraints
 # Nice to Dublin, Dublin to Frankfurt, Dublin to Krakow, Krakow to Frankfurt, Lyon to Frankfurt, Nice to Frankfurt, Lyon to Dublin, Nice to Lyon
-# Ensure that the transition days are valid
-solver.add(Or(dublin_start == nice_start + nice_duration, dublin_start + dublin_duration == nice_start))
-solver.add(Or(frankfurt_start == dublin_start + dublin_duration, frankfurt_start + frankfurt_duration == dublin_start))
-solver.add(Or(krakow_start == dublin_start + dublin_duration, krakow_start + krakow_duration == dublin_start))
-solver.add(Or(frankfurt_start == krakow_start + krakow_duration, frankfurt_start + frankfurt_duration == krakow_start))
-solver.add(Or(frankfurt_start == lyon_start + lyon_duration, frankfurt_start + frankfurt_duration == lyon_start))
-solver.add(Or(frankfurt_start == nice_start + nice_duration, frankfurt_start + frankfurt_duration == nice_start))
-solver.add(Or(dublin_start == lyon_start + lyon_duration, dublin_start + dublin_duration == lyon_start))
-solver.add(Or(lyon_start == nice_start + nice_duration, lyon_start + lyon_duration == nice_start))
+# We need to ensure that the transitions are possible within the 20 days and respect the flight connections
 
-# Ensure the total duration is 20 days
-solver.add(frankfurt_start + frankfurt_duration - 1 == 20)
+# Nice to Dublin
+solver.add(dublin_start == nice_start + nice_duration)
+
+# Dublin to Frankfurt
+solver.add(frankfurt_start == dublin_start + dublin_duration)
+
+# Dublin to Krakow
+# solver.add(krakow_start == dublin_start + dublin_duration)  # This is not needed if we use other transitions
+
+# Krakow to Frankfurt
+# solver.add(frankfurt_start == krakow_start + krakow_duration)  # This is not needed if we use other transitions
+
+# Lyon to Frankfurt
+# solver.add(frankfurt_start == lyon_start + lyon_duration)  # This is not needed if we use other transitions
+
+# Nice to Frankfurt
+# solver.add(frankfurt_start == nice_start + nice_duration)  # This is not needed if we use other transitions
+
+# Lyon to Dublin
+# solver.add(dublin_start == lyon_start + lyon_duration)  # This is not needed if we use other transitions
+
+# Nice to Lyon
+# solver.add(lyon_start == nice_start + nice_duration)  # This is not needed if we use other transitions
+
+# Ensure no gaps or overlaps
+# Nice to Dublin
+solver.add(dublin_start == nice_start + nice_duration)
+
+# Dublin to Frankfurt
+solver.add(frankfurt_start == dublin_start + dublin_duration)
+
+# Krakow to Frankfurt
+solver.add(frankfurt_start == krakow_start + krakow_duration)
+
+# Lyon to Frankfurt
+solver.add(frankfurt_start == lyon_start + lyon_duration)
+
+# Nice to Frankfurt
+# solver.add(frankfurt_start == nice_start + nice_duration)  # This is not needed if we use other transitions
+
+# Lyon to Dublin
+# solver.add(dublin_start == lyon_start + lyon_duration)  # This is not needed if we use other transitions
+
+# Nice to Lyon
+# solver.add(lyon_start == nice_start + nice_duration)  # This is not needed if we use other transitions
+
+# Ensure that all cities are visited within the 20 days
+solver.add(frankfurt_start + frankfurt_duration - 1 <= 20)
 
 # Check if the constraints are satisfiable
 if solver.check() == sat:
     model = solver.model()
+    nice_start_val = model[nice_start].as_long()
+    dublin_start_val = model[dublin_start].as_long()
+    krakow_start_val = model[krakow_start].as_long()
+    lyon_start_val = model[lyon_start].as_long()
+    frankfurt_start_val = model[frankfurt_start].as_long()
+
+    # Create the itinerary
     itinerary = []
     for day in range(1, 21):
-        if model.evaluate(nice_start) <= day <= model.evaluate(nice_start + nice_duration - 1):
-            itinerary.append({"day": day, "place": "Nice"})
-        elif model.evaluate(dublin_start) <= day <= model.evaluate(dublin_start + dublin_duration - 1):
-            itinerary.append({"day": day, "place": "Dublin"})
-        elif model.evaluate(krakow_start) <= day <= model.evaluate(krakow_start + krakow_duration - 1):
-            itinerary.append({"day": day, "place": "Krakow"})
-        elif model.evaluate(lyon_start) <= day <= model.evaluate(lyon_start + lyon_duration - 1):
-            itinerary.append({"day": day, "place": "Lyon"})
-        elif model.evaluate(frankfurt_start) <= day <= model.evaluate(frankfurt_start + frankfurt_duration - 1):
-            itinerary.append({"day": day, "place": "Frankfurt"})
-    print({"itinerary": itinerary})
+        if nice_start_val <= day <= nice_start_val + nice_duration - 1:
+            itinerary.append({'day': day, 'place': 'Nice'})
+        elif dublin_start_val <= day <= dublin_start_val + dublin_duration - 1:
+            itinerary.append({'day': day, 'place': 'Dublin'})
+        elif krakow_start_val <= day <= krakow_start_val + krakow_duration - 1:
+            itinerary.append({'day': day, 'place': 'Krakow'})
+        elif lyon_start_val <= day <= lyon_start_val + lyon_duration - 1:
+            itinerary.append({'day': day, 'place': 'Lyon'})
+        elif frankfurt_start_val <= day <= frankfurt_start_val + frankfurt_duration - 1:
+            itinerary.append({'day': day, 'place': 'Frankfurt'})
+
+    # Output the itinerary in JSON format
+    import json
+    print(json.dumps({'itinerary': itinerary}, indent=4))
 else:
     print("No solution found")

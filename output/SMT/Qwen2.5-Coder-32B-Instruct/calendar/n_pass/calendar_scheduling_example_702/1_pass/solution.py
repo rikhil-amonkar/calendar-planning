@@ -5,14 +5,14 @@ day = Int('day')  # 0 = Monday, 1 = Tuesday, 2 = Wednesday
 start_time = Int('start_time')  # in minutes from 9:00
 
 # Define the constraints
-solver = Solver()
+constraints = []
+
+# Work hours are from 9:00 to 17:00, so start_time should be between 0 and 480 (17:00 - 9:00 = 8 hours = 480 minutes)
+constraints.append(start_time >= 0)
+constraints.append(start_time <= 480)
 
 # Meeting duration is 30 minutes
 meeting_duration = 30
-
-# Work hours are from 9:00 to 17:00, so start_time should be between 0 and 480 (9:00 to 17:00 in minutes)
-solver.add(start_time >= 0)
-solver.add(start_time <= 480 - meeting_duration)
 
 # Robert's busy times
 robert_busy_times = [
@@ -48,26 +48,39 @@ ralph_busy_times = [
 
 # Add constraints to avoid busy times
 for d, s, e in robert_busy_times:
-    solver.add(Or(day != d, Or(start_time + meeting_duration <= s, start_time >= e)))
+    constraints.append(Or(day != d, Or(start_time + meeting_duration <= s, start_time >= e)))
 
 for d, s, e in ralph_busy_times:
-    solver.add(Or(day != d, Or(start_time + meeting_duration <= s, start_time >= e)))
+    constraints.append(Or(day != d, Or(start_time + meeting_duration <= s, start_time >= e)))
 
-# Robert would like to avoid more meetings on Monday
-solver.add(day != 0)
+# Robert prefers not to have meetings on Monday, so we add a soft constraint to minimize the day
+# We can do this by adding a penalty for choosing Monday
+penalty = If(day == 0, 1, 0)
 
-# Solve the problem
+# Create the solver
+solver = Optimize()
+
+# Add the constraints
+solver.add(constraints)
+
+# Minimize the penalty (i.e., prefer not Monday)
+solver.minimize(penalty)
+
+# Check if the problem is solvable
 if solver.check() == sat:
     model = solver.model()
-    day_value = model[day].as_long()
-    start_time_value = model[start_time].as_long()
-    end_time_value = start_time_value + meeting_duration
+    meeting_day = model[day].as_long()
+    meeting_start_time = model[start_time].as_long()
+    meeting_end_time = meeting_start_time + meeting_duration
 
-    # Convert day and time to human-readable format
+    # Convert day number to string
     days = ["Monday", "Tuesday", "Wednesday"]
-    start_time_str = f"{9 + start_time_value // 60:02}:{start_time_value % 60:02}"
-    end_time_str = f"{9 + end_time_value // 60:02}:{end_time_value % 60:02}"
+    meeting_day_str = days[meeting_day]
 
-    print(f"SOLUTION:\nDay: {days[day_value]}\nStart Time: {start_time_str}\nEnd Time: {end_time_str}")
+    # Convert start and end times to HH:MM format
+    meeting_start_time_str = f"{9 + meeting_start_time // 60:02}:{meeting_start_time % 60:02}"
+    meeting_end_time_str = f"{9 + meeting_end_time // 60:02}:{meeting_end_time % 60:02}"
+
+    print(f"SOLUTION:\nDay: {meeting_day_str}\nStart Time: {meeting_start_time_str}\nEnd Time: {meeting_end_time_str}")
 else:
     print("No solution found")

@@ -1,93 +1,85 @@
 from z3 import *
 
-def solve_trip_planning():
-    # Cities
-    amsterdam = 'Amsterdam'
-    vienna = 'Vienna'
-    santorini = 'Santorini'
-    lyon = 'Lyon'
-    cities = [amsterdam, vienna, santorini, lyon]
+def solve_itinerary():
+    # Cities: Amsterdam (A), Vienna (V), Santorini (S), Lyon (L)
+    cities = ['A', 'V', 'S', 'L']
+    city_map = {'A': 'Amsterdam', 'V': 'Vienna', 'S': 'Santorini', 'L': 'Lyon'}
+    n_days = 14
     
-    # Direct flights
+    # Direct flights: adjacency list
     direct_flights = {
-        (vienna, lyon),
-        (vienna, santorini),
-        (vienna, amsterdam),
-        (amsterdam, santorini),
-        (lyon, amsterdam)
+        'V': ['L', 'S', 'A'],
+        'A': ['V', 'S', 'L'],
+        'S': ['V', 'A'],
+        'L': ['V', 'A']
     }
-    # Make sure flights are bidirectional
-    all_flights = set()
-    for (a, b) in direct_flights:
-        all_flights.add((a, b))
-        all_flights.add((b, a))
-    direct_flights = all_flights
     
-    # Total days
-    total_days = 14
+    # Create Z3 variables for each day: 1..14
+    day_vars = [Int(f"day_{i}") for i in range(1, n_days + 1)]
     
-    # Create a Z3 solver
-    solver = Solver()
+    s = Solver()
     
-    # Variables: city assignments for each day (1-based)
-    day_city = [Int(f'day_{i}_city') for i in range(1, total_days + 1)]
+    # Each day variable must be 0 (A), 1 (V), 2 (S), or 3 (L)
+    for day in day_vars:
+        s.add(Or([day == 0, day == 1, day == 2, day == 3]))
     
-    # Map cities to integers
-    city_to_int = {city: idx for idx, city in enumerate(cities, 1)}
-    int_to_city = {idx: city for city, idx in city_to_int.items()}
+    # Total days per city constraints
+    # A: 3 days, V: 7, S:4, L:3
+    total_A = Sum([If(day == 0, 1, 0) for day in day_vars])
+    total_V = Sum([If(day == 1, 1, 0) for day in day_vars])
+    total_S = Sum([If(day == 2, 1, 0) for day in day_vars])
+    total_L = Sum([If(day == 3, 1, 0) for day in day_vars])
     
-    # Add constraints: each day's assignment must be a valid city
-    for day in day_city:
-        solver.add(day >= 1, day <= len(cities))
+    s.add(total_A == 3)
+    s.add(total_V == 7)
+    s.add(total_S == 4)
+    s.add(total_L == 3)
     
-    # Constraints for transitions: consecutive days must be same city or connected by direct flight
-    for i in range(total_days - 1):
-        current_city = day_city[i]
-        next_city = day_city[i + 1]
+    # Workshop in Amsterdam between day 9 and 11 (inclusive)
+    workshop_days = [If(day_vars[i] == 0, 1, 0) for i in range(8, 11)]  # days 9-11 (1-based)
+    s.add(Sum(workshop_days) >= 1)
+    
+    # Wedding in Lyon between day 7 and 9 (inclusive)
+    wedding_days = [If(day_vars[i] == 3, 1, 0) for i in range(6, 9)]  # days 7-9 (1-based)
+    s.add(Sum(wedding_days) >= 1)
+    
+    # Flight constraints: consecutive days must be either same city or connected by direct flight
+    for i in range(n_days - 1):
+        current_city = day_vars[i]
+        next_city = day_vars[i + 1]
         # Either same city or flight exists
         same_city = (current_city == next_city)
-        flight_exists = Or([And(current_city == city_to_int[a], next_city == city_to_int[b]) 
-                          for (a, b) in direct_flights])
-        solver.add(Or(same_city, flight_exists))
+        flight_possible = Or([And(current_city == ci, next_city == cj) 
+                            for ci, city in enumerate(cities) 
+                            for cj, target in enumerate(cities) 
+                            if city != target and target in direct_flights[city]])
+        s.add(Or(same_city, flight_possible))
     
-    # Duration constraints
-    # Amsterdam: 3 days
-    amsterdam_days = Sum([If(day == city_to_int[amsterdam], 1, 0) for day in day_city])
-    solver.add(amsterdam_days == 3)
-    # Amsterdam workshop between day 9-11 (inclusive)
-    solver.add(Or([day_city[i] == city_to_int[amsterdam] for i in range(8, 11)))  # days 9-11 are indices 8-10 (0-based)
-    
-    # Vienna: 7 days
-    vienna_days = Sum([If(day == city_to_int[vienna], 1, 0) for day in day_city])
-    solver.add(vienna_days == 7)
-    
-    # Santorini: 4 days
-    santorini_days = Sum([If(day == city_to_int[santorini], 1, 0) for day in day_city])
-    solver.add(santorini_days == 4)
-    
-    # Lyon: 3 days
-    lyon_days = Sum([If(day == city_to_int[lyon], 1, 0) for day in day_city])
-    solver.add(lyon_days == 3)
-    # Lyon wedding between day 7-9 (inclusive)
-    solver.add(Or([day_city[i] == city_to_int[lyon] for i in range(6, 9)))  # days 7-9 are indices 6-8 (0-based)
-    
-    # Check if the problem is satisfiable
-    if solver.check() == sat:
-        model = solver.model()
+    # Check and get model
+    if s.check() == sat:
+        m = s.model()
         itinerary = []
-        for i in range(total_days):
-            day_num = i + 1
-            city_int = model.evaluate(day_city[i]).as_long()
-            city = int_to_city[city_int]
-            itinerary.append({'day': day_num, 'place': city})
+        for i in range(n_days):
+            city_code = cities[m.evaluate(day_vars[i]).as_long()]
+            itinerary.append({"day": i + 1, "place": city_map[city_code]})
         
-        # Verify the solution meets all constraints
-        # (This is a sanity check; Z3 should ensure it)
-        return {'itinerary': itinerary}
+        # Verify the counts
+        counts = {'A': 0, 'V': 0, 'S': 0, 'L': 0}
+        for entry in itinerary:
+            place = entry['place'][0]  # first letter
+            counts[place] += 1
+        assert counts['A'] == 3 and counts['V'] ==7 and counts['S'] ==4 and counts['L'] ==3, "Counts do not match"
+        
+        # Verify workshop and wedding days
+        workshop_ok = any(9 <= entry['day'] <=11 and entry['place'] == 'Amsterdam' for entry in itinerary)
+        wedding_ok = any(7 <= entry['day'] <=9 and entry['place'] == 'Lyon' for entry in itinerary)
+        assert workshop_ok and wedding_ok, "Event constraints not met"
+        
+        return {"itinerary": itinerary}
     else:
-        return {'error': 'No valid itinerary found'}
+        return {"error": "No valid itinerary found"}
 
-# Execute the solver and print the result
-result = solve_trip_planning()
+# Execute and print the result
+result = solve_itinerary()
 import json
 print(json.dumps(result, indent=2))

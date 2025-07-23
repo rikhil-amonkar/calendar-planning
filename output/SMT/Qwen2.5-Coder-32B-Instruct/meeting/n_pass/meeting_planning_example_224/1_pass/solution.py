@@ -38,54 +38,40 @@ start_time = time_to_minutes(9.0)
 meeting_start = {friend: Int(f"{friend}_start") for friend in friends}
 meeting_end = {friend: Int(f"{friend}_end") for friend in friends}
 
+# Define the location of each friend
+location = {friend: friends[friend]["location"] for friend in friends}
+
 # Add constraints for each friend
-for friend, details in friends.items():
-    loc = details["location"]
-    start = time_to_minutes(details["start"])
-    end = time_to_minutes(details["end"])
-    min_duration = time_to_minutes(details["min_duration"])
-    
-    # Meeting must start after arrival and end before leaving
-    solver.add(meeting_start[friend] >= start_time)
-    solver.add(meeting_end[friend] <= time_to_minutes(22.0))
-    
-    # Meeting must be within the friend's availability
-    solver.add(meeting_start[friend] >= start)
-    solver.add(meeting_end[friend] <= end)
-    
+for friend in friends:
+    # Meeting must start after the friend is available
+    solver.add(meeting_start[friend] >= time_to_minutes(friends[friend]["start"]))
+    # Meeting must end before the friend is unavailable
+    solver.add(meeting_end[friend] <= time_to_minutes(friends[friend]["end"]))
     # Meeting must last at least the minimum duration
-    solver.add(meeting_end[friend] - meeting_start[friend] >= min_duration)
-    
-    # Meeting must be at the correct location
-    # We will handle travel times separately
+    solver.add(meeting_end[friend] - meeting_start[friend] >= time_to_minutes(friends[friend]["min_duration"]))
 
-# Define variables for travel times
-travel_start = {loc: Int(f"{loc}_travel_start") for loc in locations}
-travel_end = {loc: Int(f"{loc}_travel_end") for loc in locations}
+# Add constraints for travel times between meetings
+# We assume we can only meet one friend at a time and we start at Fisherman's Wharf
+current_location = "Fisherman's Wharf"
+current_time = start_time
 
-# Initial location is Fisherman's Wharf
-solver.add(travel_start["Fisherman's Wharf"] == start_time)
-solver.add(travel_end["Fisherman's Wharf"] == start_time)
+# Sort friends by their start time to try to meet them in order
+sorted_friends = sorted(friends.keys(), key=lambda x: friends[x]["start"])
 
-# Add constraints for travel times
-for friend, details in friends.items():
-    loc = details["location"]
-    solver.add(travel_start[loc] == meeting_start[friend])
-    solver.add(travel_end[loc] == meeting_start[friend])
-    
-    for prev_loc in locations:
-        if prev_loc != loc:
-            travel_time = travel_times[(prev_loc, loc)]
-            solver.add(Implies(travel_end[prev_loc] + travel_time <= meeting_start[friend],
-                                travel_start[loc] == travel_end[prev_loc] + travel_time))
-            solver.add(Implies(travel_end[prev_loc] + travel_time > meeting_start[friend],
-                                travel_start[loc] == meeting_start[friend]))
+for friend in sorted_friends:
+    # Travel time to the friend's location
+    travel_time = travel_times[(current_location, location[friend])]
+    # Meeting can only start after we arrive at the location
+    solver.add(meeting_start[friend] >= current_time + travel_time)
+    # Update current location and time
+    current_location = location[friend]
+    current_time = meeting_end[friend]
 
-# Solve the problem
+# Check if the constraints are satisfiable
 if solver.check() == sat:
     model = solver.model()
     itinerary = []
-    for friend, details in friends.items():
+    for friend in sorted_friends:
         start = model[meeting_start[friend]].as_long() / 60
         end = model[meeting_end[friend]].as_long() / 60
         itinerary.append({
@@ -94,7 +80,6 @@ if solver.check() == sat:
             "start_time": f"{int(start):02}:{int((start % 1) * 60):02}",
             "end_time": f"{int(end):02}:{int((end % 1) * 60):02}"
         })
-    itinerary.sort(key=lambda x: x["start_time"])
     print({"itinerary": itinerary})
 else:
     print("No solution found")

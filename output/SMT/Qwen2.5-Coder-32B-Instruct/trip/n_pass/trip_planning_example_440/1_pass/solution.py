@@ -1,0 +1,84 @@
+from z3 import *
+
+# Define the cities
+cities = ["Split", "Helsinki", "Reykjavik", "Vilnius", "Geneva"]
+
+# Define the number of days to stay in each city
+days_in_city = {
+    "Split": 2,
+    "Helsinki": 2,
+    "Reykjavik": 3,
+    "Vilnius": 3,
+    "Geneva": 6
+}
+
+# Define the special constraints
+wedding_days = (10, 12)  # Days 10-12 in Reykjavik
+relatives_days = (7, 9)  # Days 7-9 in Vilnius
+
+# Define the direct flights
+direct_flights = {
+    ("Split", "Helsinki"),
+    ("Geneva", "Split"),
+    ("Geneva", "Helsinki"),
+    ("Helsinki", "Reykjavik"),
+    ("Vilnius", "Helsinki"),
+    ("Split", "Vilnius")
+}
+
+# Create a solver
+solver = Solver()
+
+# Define the start day for each city
+start_days = {city: Int(f"start_{city}") for city in cities}
+
+# Add constraints for the number of days in each city
+for city, days in days_in_city.items():
+    solver.add(start_days[city] >= 1)
+    solver.add(start_days[city] + days <= 12)
+
+# Add constraints for the special events
+# Wedding in Reykjavik between day 10 and day 12
+solver.add(Or(
+    And(start_days["Reykjavik"] <= 10, start_days["Reykjavik"] + days_in_city["Reykjavik"] >= 10),
+    And(start_days["Reykjavik"] <= 11, start_days["Reykjavik"] + days_in_city["Reykjavik"] >= 11),
+    And(start_days["Reykjavik"] <= 12, start_days["Reykjavik"] + days_in_city["Reykjavik"] >= 12)
+))
+
+# Visit relatives in Vilnius between day 7 and day 9
+solver.add(Or(
+    And(start_days["Vilnius"] <= 7, start_days["Vilnius"] + days_in_city["Vilnius"] >= 7),
+    And(start_days["Vilnius"] <= 8, start_days["Vilnius"] + days_in_city["Vilnius"] >= 8),
+    And(start_days["Vilnius"] <= 9, start_days["Vilnius"] + days_in_city["Vilnius"] >= 9)
+))
+
+# Add constraints for direct flights
+for i in range(len(cities)):
+    for j in range(i + 1, len(cities)):
+        city1, city2 = cities[i], cities[j]
+        if (city1, city2) in direct_flights or (city2, city1) in direct_flights:
+            # If you leave city1 on day X, you must arrive in city2 on day X
+            # Or if you leave city2 on day X, you must arrive in city1 on day X
+            solver.add(Or(
+                start_days[city2] >= start_days[city1] + days_in_city[city1],
+                start_days[city1] >= start_days[city2] + days_in_city[city2]
+            ))
+        else:
+            # If there is no direct flight, you cannot be in both cities on the same day
+            solver.add(Not(
+                And(start_days[city1] <= start_days[city2] + days_in_city[city2] - 1,
+                    start_days[city2] <= start_days[city1] + days_in_city[city1] - 1)
+            ))
+
+# Solve the problem
+if solver.check() == sat:
+    model = solver.model()
+    itinerary = []
+    for city in cities:
+        start_day = model[start_days[city]].as_long()
+        itinerary.extend([(day, city) for day in range(start_day, start_day + days_in_city[city])])
+    itinerary.sort(key=lambda x: x[0])
+    itinerary_dict = {"itinerary": [{"day": day, "place": place} for day, place in itinerary]}
+    print(itinerary_dict)
+else:
+    print("No solution found")

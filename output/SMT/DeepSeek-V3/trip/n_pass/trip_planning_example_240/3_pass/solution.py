@@ -1,67 +1,76 @@
 from z3 import *
+import json
 
 def solve_itinerary():
     # Cities
-    Prague, Berlin, Tallinn, Stockholm = Ints('Prague Berlin Tallinn Stockholm')
-    cities = [Prague, Berlin, Tallinn, Stockholm]
-    city_names = {Prague: 'Prague', Berlin: 'Berlin', Tallinn: 'Tallinn', Stockholm: 'Stockholm'}
+    cities = ['Prague', 'Berlin', 'Tallinn', 'Stockholm']
+    city_map = {city: idx for idx, city in enumerate(cities)}
     
-    # Days are 1..12
-    days = 12
-    # For each day, which city are we in?
-    day_city = [Int(f'day_{i+1}_city') for i in range(days)]
+    # Direct flight connections
+    direct_flights = [
+        ('Berlin', 'Tallinn'),
+        ('Prague', 'Tallinn'),
+        ('Stockholm', 'Tallinn'),
+        ('Prague', 'Stockholm'),
+        ('Stockholm', 'Berlin'),
+        ('Tallinn', 'Berlin'),
+        ('Tallinn', 'Prague'),
+        ('Tallinn', 'Stockholm'),
+        ('Stockholm', 'Prague'),
+        ('Berlin', 'Stockholm')
+    ]
     
+    # Create a solver instance
     s = Solver()
     
-    # Each day_city must be one of the four cities
-    for day in day_city:
-        s.add(Or([day == city for city in cities]))
+    # Day variables: day[i] represents the city on day i+1 (since days are 1-based)
+    days = [Int(f'day_{i}') for i in range(1, 13)]
     
-    # Direct flights: possible transitions between cities
-    direct_flights = {
-        Prague: [Tallinn, Stockholm],
-        Berlin: [Tallinn, Stockholm],
-        Tallinn: [Prague, Berlin, Stockholm],
-        Stockholm: [Prague, Berlin, Tallinn]
-    }
+    # Constraint: each day variable must correspond to a city (0: Prague, 1: Berlin, 2: Tallinn, 3: Stockholm)
+    for day in days:
+        s.add(Or([day == city_map[city] for city in cities]))
     
-    # Constraint: transitions between days must be via direct flights or staying in the same city
-    for i in range(days - 1):
-        current_city = day_city[i]
-        next_city = day_city[i + 1]
-        s.add(Or(next_city == current_city, Or([next_city == dest for dest in direct_flights[current_city]])))
-    
-    # Total days in each city
-    def count_days(city):
-        return Sum([If(day_city[i] == city, 1, 0) for i in range(days)])
-    
-    s.add(count_days(Prague) == 2)
-    s.add(count_days(Berlin) == 3)
-    s.add(count_days(Tallinn) == 5)
-    s.add(count_days(Stockholm) == 5)
+    # Total days constraints
+    s.add(Sum([If(day == city_map['Prague'], 1, 0) for day in days]) == 2)
+    s.add(Sum([If(day == city_map['Berlin'], 1, 0) for day in days]) == 3)
+    s.add(Sum([If(day == city_map['Tallinn'], 1, 0) for day in days]) == 5)
+    s.add(Sum([If(day == city_map['Stockholm'], 1, 0) for day in days]) == 5)
     
     # Specific day constraints
-    # Day 6 and 8 must be Berlin (1-based)
-    s.add(day_city[5] == Berlin)  # day 6
-    s.add(day_city[7] == Berlin)  # day 8
+    # Day 6 must be Berlin
+    s.add(days[5] == city_map['Berlin'])
+    # Day 8 must be Berlin
+    s.add(days[7] == city_map['Berlin'])
     
-    # Days 9-12 must be Tallinn (1-based)
-    for i in range(8, 12):
-        s.add(day_city[i] == Tallinn)
+    # Between day 8 and day 12 (inclusive), must be in Tallinn
+    for i in range(7, 12):  # days 8 to 12 (indices 7 to 11)
+        s.add(days[i] == city_map['Tallinn'])
     
-    # Check and get model
+    # Flight constraints: transitions between days must be via direct flights
+    for i in range(11):  # days 1-11 to days 2-12
+        current_day = days[i]
+        next_day = days[i+1]
+        # Either stay in the same city or move to a directly connected city
+        s.add(Or(
+            current_day == next_day,
+            Or([And(current_day == city_map[a], next_day == city_map[b]) for (a, b) in direct_flights])
+        ))
+    
+    # Check if the problem is satisfiable
     if s.check() == sat:
-        m = s.model()
+        model = s.model()
         itinerary = []
-        for i in range(days):
+        for i in range(12):
             day_num = i + 1
-            city_val = m.evaluate(day_city[i]).as_long()
-            city_name = city_names[city_val]
-            itinerary.append({'day': day_num, 'place': city_name})
-        return {'itinerary': itinerary}
+            city_idx = model.evaluate(days[i]).as_long()
+            city = cities[city_idx]
+            itinerary.append({'day': day_num, 'place': city})
+        
+        # Convert to the required JSON format
+        result = {'itinerary': itinerary}
+        return json.dumps(result, indent=2)
     else:
-        return None
+        return json.dumps({"error": "No valid itinerary found."}, indent=2)
 
-result = solve_itinerary()
-import json
-print(json.dumps(result, indent=2))
+# Execute the function and print the result
+print(solve_itinerary())

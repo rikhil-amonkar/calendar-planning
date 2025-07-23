@@ -1,149 +1,138 @@
 from z3 import *
 import json
+from itertools import permutations
 
-def solve_scheduling():
-    # Initialize solver
-    s = Solver()
-
-    # Travel times dictionary (from -> to -> minutes)
+def solve_scheduling_problem():
+    # Define travel times between locations (in minutes)
     travel_times = {
-        'Haight-Ashbury': {
-            'Fisherman\'s Wharf': 23,
-            'Richmond District': 10,
-            'Mission District': 11,
-            'Bayview': 18
-        },
-        'Fisherman\'s Wharf': {
-            'Haight-Ashbury': 22,
-            'Richmond District': 18,
-            'Mission District': 22,
-            'Bayview': 26
-        },
-        'Richmond District': {
-            'Haight-Ashbury': 10,
-            'Fisherman\'s Wharf': 18,
-            'Mission District': 20,
-            'Bayview': 26
-        },
-        'Mission District': {
-            'Haight-Ashbury': 12,
-            'Fisherman\'s Wharf': 22,
-            'Richmond District': 20,
-            'Bayview': 15
-        },
-        'Bayview': {
-            'Haight-Ashbury': 19,
-            'Fisherman\'s Wharf': 25,
-            'Richmond District': 25,
-            'Mission District': 13
-        }
+        ('Haight-Ashbury', 'Fisherman\'s Wharf'): 23,
+        ('Haight-Ashbury', 'Richmond District'): 10,
+        ('Haight-Ashbury', 'Mission District'): 11,
+        ('Haight-Ashbury', 'Bayview'): 18,
+        ('Fisherman\'s Wharf', 'Haight-Ashbury'): 22,
+        ('Fisherman\'s Wharf', 'Richmond District'): 18,
+        ('Fisherman\'s Wharf', 'Mission District'): 22,
+        ('Fisherman\'s Wharf', 'Bayview'): 26,
+        ('Richmond District', 'Haight-Ashbury'): 10,
+        ('Richmond District', 'Fisherman\'s Wharf'): 18,
+        ('Richmond District', 'Mission District'): 20,
+        ('Richmond District', 'Bayview'): 26,
+        ('Mission District', 'Haight-Ashbury'): 12,
+        ('Mission District', 'Fisherman\'s Wharf'): 22,
+        ('Mission District', 'Richmond District'): 20,
+        ('Mission District', 'Bayview'): 15,
+        ('Bayview', 'Haight-Ashbury'): 19,
+        ('Bayview', 'Fisherman\'s Wharf'): 25,
+        ('Bayview', 'Richmond District'): 25,
+        ('Bayview', 'Mission District'): 13,
     }
 
-    # Friends' availability and constraints
-    friends = {
-        'Sarah': {
+    # Define friends and their constraints
+    friends = [
+        {
+            'name': 'Sarah',
             'location': 'Fisherman\'s Wharf',
-            'start': (14, 45),  # 2:45 PM
-            'end': (17, 30),    # 5:30 PM
-            'duration': 105    # minutes
+            'available_start': (14, 45),  # 2:45 PM
+            'available_end': (17, 30),    # 5:30 PM
+            'min_duration': 105,
         },
-        'Mary': {
+        {
+            'name': 'Mary',
             'location': 'Richmond District',
-            'start': (13, 0),   # 1:00 PM
-            'end': (19, 15),    # 7:15 PM
-            'duration': 75
+            'available_start': (13, 0),   # 1:00 PM
+            'available_end': (19, 15),    # 7:15 PM
+            'min_duration': 75,
         },
-        'Helen': {
+        {
+            'name': 'Helen',
             'location': 'Mission District',
-            'start': (21, 45),  # 9:45 PM
-            'end': (22, 30),    # 10:30 PM
-            'duration': 30
+            'available_start': (21, 45),  # 9:45 PM
+            'available_end': (22, 30),    # 10:30 PM
+            'min_duration': 30,
         },
-        'Thomas': {
+        {
+            'name': 'Thomas',
             'location': 'Bayview',
-            'start': (15, 15),  # 3:15 PM
-            'end': (18, 45),    # 6:45 PM
-            'duration': 120
+            'available_start': (15, 15),  # 3:15 PM
+            'available_end': (18, 45),    # 6:45 PM
+            'min_duration': 120,
         }
-    }
+    ]
 
-    # Current location and start time
-    current_location = 'Haight-Ashbury'
-    current_time = (9, 0)  # 9:00 AM
+    # Convert times to minutes since 9:00 AM (540 minutes)
+    def time_to_minutes(hour, minute):
+        return hour * 60 + minute - 540
 
-    # Convert all times to minutes since midnight for easier arithmetic
-    def time_to_minutes(h, m):
-        return h * 60 + m
+    # Convert minutes back to time string
+    def minutes_to_time(minutes):
+        total_minutes = 540 + minutes
+        hour = total_minutes // 60
+        minute = total_minutes % 60
+        return f"{hour:02d}:{minute:02d}"
 
-    # Convert minutes back to (h, m)
-    def minutes_to_time(t):
-        return (t // 60, t % 60)
+    # Try all possible meeting orders (permutations)
+    for order in permutations(friends):
+        s = Solver()
 
-    # Initialize variables for each meeting's start and end times
-    meeting_vars = {}
-    for name in friends:
-        start_var = Int(f'start_{name}')
-        end_var = Int(f'end_{name}')
-        meeting_vars[name] = {
-            'start': start_var,
-            'end': end_var,
-            'location': friends[name]['location'],
-            'duration': friends[name]['duration'],
-            'window_start': time_to_minutes(*friends[name]['start']),
-            'window_end': time_to_minutes(*friends[name]['end'])
-        }
-        # Constrain meeting within friend's window
-        s.add(start_var >= meeting_vars[name]['window_start'])
-        s.add(end_var <= meeting_vars[name]['window_end'])
-        s.add(end_var == start_var + meeting_vars[name]['duration'])
+        # Create variables for each meeting's start and end times
+        meeting_vars = {}
+        for friend in order:
+            name = friend['name']
+            start = Int(f'start_{name}')
+            end = Int(f'end_{name}')
+            meeting_vars[name] = (start, end, friend['location'])
 
-    # Generate all possible permutations of meeting orders
-    from itertools import permutations
-    friend_names = list(friends.keys())
-    possible_orders = list(permutations(friend_names))
+            # Meeting must be within friend's availability
+            s.add(start >= time_to_minutes(*friend['available_start']))
+            s.add(end <= time_to_minutes(*friend['available_end']))
+            s.add(end - start >= friend['min_duration'])
 
-    # Try each possible order until we find a feasible schedule
-    for order in possible_orders:
-        temp_solver = Solver()
-        
-        # Copy all meeting constraints
-        for name in meeting_vars:
-            temp_solver.add(meeting_vars[name]['start'] >= meeting_vars[name]['window_start'])
-            temp_solver.add(meeting_vars[name]['end'] <= meeting_vars[name]['window_end'])
-            temp_solver.add(meeting_vars[name]['end'] == meeting_vars[name]['start'] + meeting_vars[name]['duration'])
+        # Starting point
+        current_location = 'Haight-Ashbury'
+        current_time = 0
 
-        # Add travel time constraints for this specific order
-        prev_location = current_location
-        prev_end = time_to_minutes(*current_time)
-        
-        for i, name in enumerate(order):
-            # Travel time from previous location to current meeting
-            travel_time = travel_times[prev_location][friends[name]['location']]
-            temp_solver.add(meeting_vars[name]['start'] >= prev_end + travel_time)
+        # Schedule meetings in the current order
+        prev_end = 0
+        for i, friend in enumerate(order):
+            name = friend['name']
+            start, end, location = meeting_vars[name]
             
-            # Update for next iteration
-            prev_location = friends[name]['location']
-            prev_end = meeting_vars[name]['end']
+            # Travel time from previous location to current meeting
+            if i == 0:
+                travel_time = travel_times.get((current_location, location), 0)
+            else:
+                prev_location = order[i-1]['location']
+                travel_time = travel_times.get((prev_location, location), 0)
+            
+            # Meeting must start after previous meeting ends plus travel time
+            if i == 0:
+                s.add(start >= current_time + travel_time)
+            else:
+                prev_name = order[i-1]['name']
+                s.add(start >= meeting_vars[prev_name][1] + travel_time)
 
         # Check if this order works
-        if temp_solver.check() == sat:
-            m = temp_solver.model()
-            # Build itinerary
+        if s.check() == sat:
+            model = s.model()
             itinerary = []
-            for name in order:
-                start = m.evaluate(meeting_vars[name]['start']).as_long()
-                end = m.evaluate(meeting_vars[name]['end']).as_long()
-                start_h, start_m = minutes_to_time(start)
-                end_h, end_m = minutes_to_time(end)
+            for friend in order:
+                name = friend['name']
+                start = model.eval(meeting_vars[name][0]).as_long()
+                end = model.eval(meeting_vars[name][1]).as_long()
                 itinerary.append({
                     "action": "meet",
                     "person": name,
-                    "start_time": f"{start_h:02d}:{start_m:02d}",
-                    "end_time": f"{end_h:02d}:{end_m:02d}"
+                    "start_time": minutes_to_time(start),
+                    "end_time": minutes_to_time(end)
                 })
+            # Sort by start time
+            itinerary.sort(key=lambda x: x['start_time'])
             return {"itinerary": itinerary}
 
-    return {"error": "No feasible schedule found"}
+    # If no solution found
+    return {"itinerary": []}
 
-result = solve_scheduling()
-print(json.dumps(result, indent=2))
+# Solve and print solution
+solution = solve_scheduling_problem()
+print("SOLUTION:")
+print(json.dumps(solution, indent=2))

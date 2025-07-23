@@ -57,72 +57,42 @@ timothy_meeting_start = Int('timothy_meeting_start')
 solver.add(current_location == 'Russian Hill')
 solver.add(current_time == arrival_time)
 
-# Constraints for meeting Patricia
+# Define the meeting constraints
 solver.add(patricia_meeting_start >= patricia_start)
 solver.add(patricia_meeting_start + patricia_duration <= patricia_end)
-
-# Constraints for meeting Ashley
 solver.add(ashley_meeting_start >= ashley_start)
 solver.add(ashley_meeting_start + ashley_duration <= ashley_end)
-
-# Constraints for meeting Timothy
 solver.add(timothy_meeting_start >= timothy_start)
 solver.add(timothy_meeting_start + timothy_duration <= timothy_end)
 
-# Define the transitions
-transitions = [
-    (current_location == 'Russian Hill', current_time + travel_times[('Russian Hill', 'Nob Hill')], 'Nob Hill'),
-    (current_location == 'Russian Hill', current_time + travel_times[('Russian Hill', 'Mission District')], 'Mission District'),
-    (current_location == 'Russian Hill', current_time + travel_times[('Russian Hill', 'Embarcadero')], 'Embarcadero'),
-    (current_location == 'Nob Hill', current_time + travel_times[('Nob Hill', 'Russian Hill')], 'Russian Hill'),
-    (current_location == 'Nob Hill', current_time + travel_times[('Nob Hill', 'Mission District')], 'Mission District'),
-    (current_location == 'Nob Hill', current_time + travel_times[('Nob Hill', 'Embarcadero')], 'Embarcadero'),
-    (current_location == 'Mission District', current_time + travel_times[('Mission District', 'Russian Hill')], 'Russian Hill'),
-    (current_location == 'Mission District', current_time + travel_times[('Mission District', 'Nob Hill')], 'Nob Hill'),
-    (current_location == 'Mission District', current_time + travel_times[('Mission District', 'Embarcadero')], 'Embarcadero'),
-    (current_location == 'Embarcadero', current_time + travel_times[('Embarcadero', 'Russian Hill')], 'Russian Hill'),
-    (current_location == 'Embarcadero', current_time + travel_times[('Embarcadero', 'Nob Hill')], 'Nob Hill'),
-    (current_location == 'Embarcadero', current_time + travel_times[('Embarcadero', 'Mission District')], 'Mission District'),
-]
+# Define the travel constraints
+# We need to ensure that we can reach the meeting locations in time
+# This is a simplified version and assumes we can only meet one person at a time
+# and we travel directly to the next meeting location
 
-# Add transitions to the solver
-for condition, new_time, new_location in transitions:
-    solver.add(Implies(condition, And(current_time == new_time, current_location == new_location)))
+# Travel to Timothy
+solver.add(timothy_meeting_start >= current_time + travel_times[(current_location, 'Embarcadero')])
+solver.add(current_location == 'Embarcadero')
+solver.add(current_time == timothy_meeting_start + timothy_duration)
+
+# Travel to Patricia
+solver.add(patricia_meeting_start >= current_time + travel_times[(current_location, 'Nob Hill')])
+solver.add(current_location == 'Nob Hill')
+solver.add(current_time == patricia_meeting_start + patricia_duration)
+
+# Travel to Ashley
+solver.add(ashley_meeting_start >= current_time + travel_times[(current_location, 'Mission District')])
+solver.add(current_location == 'Mission District')
+solver.add(current_time == ashley_meeting_start + ashley_duration)
 
 # Check if the problem is solvable
 if solver.check() == sat:
     model = solver.model()
-    itinerary = []
-
-    # Add meetings to the itinerary
-    if model.evaluate(patricia_meeting_start).as_long() >= patricia_start:
-        itinerary.append({
-            "action": "meet",
-            "person": "Patricia",
-            "start_time": minutes_to_time(model.evaluate(patricia_meeting_start).as_long()),
-            "end_time": minutes_to_time(model.evaluate(patricia_meeting_start).as_long() + patricia_duration)
-        })
-
-    if model.evaluate(ashley_meeting_start).as_long() >= ashley_start:
-        itinerary.append({
-            "action": "meet",
-            "person": "Ashley",
-            "start_time": minutes_to_time(model.evaluate(ashley_meeting_start).as_long()),
-            "end_time": minutes_to_time(model.evaluate(ashley_meeting_start).as_long() + ashley_duration)
-        })
-
-    if model.evaluate(timothy_meeting_start).as_long() >= timothy_start:
-        itinerary.append({
-            "action": "meet",
-            "person": "Timothy",
-            "start_time": minutes_to_time(model.evaluate(timothy_meeting_start).as_long()),
-            "end_time": minutes_to_time(model.evaluate(timothy_meeting_start).as_long() + timothy_duration)
-        })
-
-    # Sort the itinerary by start time
-    itinerary.sort(key=lambda x: time_to_minutes(x['start_time']))
-
-    # Print the solution
+    itinerary = [
+        {"action": "meet", "person": "Timothy", "start_time": minutes_to_time(model[timothy_meeting_start].as_long()), "end_time": minutes_to_time(model[timothy_meeting_start].as_long() + timothy_duration)},
+        {"action": "meet", "person": "Patricia", "start_time": minutes_to_time(model[patricia_meeting_start].as_long()), "end_time": minutes_to_time(model[patricia_meeting_start].as_long() + patricia_duration)},
+        {"action": "meet", "person": "Ashley", "start_time": minutes_to_time(model[ashley_meeting_start].as_long()), "end_time": minutes_to_time(model[ashley_meeting_start].as_long() + ashley_duration)},
+    ]
     print(f"SOLUTION: {json.dumps({'itinerary': itinerary})}")
 else:
     print("No solution found")

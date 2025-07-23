@@ -1,11 +1,10 @@
 from z3 import *
+import json
 
 # Define the locations and their travel times
-locations = [
-    "The Castro", "Alamo Square", "Richmond District", "Financial District",
-    "Union Square", "Fisherman's Wharf", "Marina District", "Haight-Ashbury",
-    "Mission District", "Pacific Heights", "Golden Gate Park"
-]
+locations = ["The Castro", "Alamo Square", "Richmond District", "Financial District", 
+             "Union Square", "Fisherman's Wharf", "Marina District", "Haight-Ashbury", 
+             "Mission District", "Pacific Heights", "Golden Gate Park"]
 
 travel_times = {
     ("The Castro", "Alamo Square"): 8,
@@ -85,7 +84,7 @@ travel_times = {
     ("Haight-Ashbury", "Union Square"): 19,
     ("Haight-Ashbury", "Fisherman's Wharf"): 23,
     ("Haight-Ashbury", "Marina District"): 17,
-    ("Haight-Ashbury", "Mission District"): 11,
+    ("Haight-Ashbury", "Mission District"): 12,
     ("Haight-Ashbury", "Pacific Heights"): 12,
     ("Haight-Ashbury", "Golden Gate Park"): 7,
     ("Mission District", "The Castro"): 7,
@@ -128,4 +127,114 @@ friends = {
     "David": {"location": "Union Square", "start": 1645, "end": 1915, "duration": 45},
     "Brian": {"location": "Fisherman's Wharf", "start": 1345, "end": 2045, "duration": 105},
     "Karen": {"location": "Marina District", "start": 1130, "end": 1830, "duration": 15},
-    "Anthony": {"location": "Haight-Ashbury", "start": 715, "end": 1030,
+    "Anthony": {"location": "Haight-Ashbury", "start": 715, "end": 1030, "duration": 30},
+    "Matthew": {"location": "Mission District", "start": 1715, "end": 1915, "duration": 120},
+    "Helen": {"location": "Pacific Heights", "start": 800, "end": 1200, "duration": 75},
+    "Jeffrey": {"location": "Golden Gate Park", "start": 1900, "end": 2130, "duration": 60},
+}
+
+# Convert times to minutes from start of the day
+def time_to_minutes(time_str):
+    hours, minutes = map(int, time_str.split(':'))
+    return hours * 60 + minutes
+
+# Create a solver instance
+solver = Solver()
+
+# Define the variables
+current_location = String('current_location')
+current_time = Int('current_time')
+meetings = {name: Bool(name) for name in friends}
+
+# Initial conditions
+solver.add(current_location == "The Castro")
+solver.add(current_time == time_to_minutes("09:00"))
+
+# Define the constraints
+for name, details in friends.items():
+    location = details["location"]
+    start = details["start"]
+    end = details["end"]
+    duration = details["duration"]
+    
+    # Define the meeting time variables
+    meeting_start = Int(f"{name}_start")
+    meeting_end = Int(f"{name}_end")
+    
+    # Constraints for meeting
+    solver.add(meeting_start >= start)
+    solver.add(meeting_end <= end)
+    solver.add(meeting_end - meeting_start >= duration)
+    
+    # Constraints for travel and meeting
+    travel_time = Int(f"{name}_travel_time")
+    solver.add(travel_time == If(current_location == "The Castro" and location == "Alamo Square", 8,
+                                 If(current_location == "The Castro" and location == "Richmond District", 16,
+                                    If(current_location == "The Castro" and location == "Financial District", 21,
+                                       If(current_location == "The Castro" and location == "Union Square", 19,
+                                          If(current_location == "The Castro" and location == "Fisherman's Wharf", 24,
+                                             If(current_location == "The Castro" and location == "Marina District", 21,
+                                                If(current_location == "The Castro" and location == "Haight-Ashbury", 6,
+                                                   If(current_location == "The Castro" and location == "Mission District", 7,
+                                                      If(current_location == "The Castro" and location == "Pacific Heights", 16,
+                                                         If(current_location == "The Castro" and location == "Golden Gate Park", 11,
+                                                            If(current_location == "Alamo Square" and location == "The Castro", 8,
+                                                               If(current_location == "Alamo Square" and location == "Richmond District", 11,
+                                                                  If(current_location == "Alamo Square" and location == "Financial District", 17,
+                                                                     If(current_location == "Alamo Square" and location == "Union Square", 14,
+                                                                        If(current_location == "Alamo Square" and location == "Fisherman's Wharf", 19,
+                                                                           If(current_location == "Alamo Square" and location == "Marina District", 15,
+                                                                              If(current_location == "Alamo Square" and location == "Haight-Ashbury", 5,
+                                                                                 If(current_location == "Alamo Square" and location == "Mission District", 10,
+                                                                                    If(current_location == "Alamo Square" and location == "Pacific Heights", 10,
+                                                                                       If(current_location == "Alamo Square" and location == "Golden Gate Park", 9,
+                                                                                          If(current_location == "Richmond District" and location == "The Castro", 16,
+                                                                                             If(current_location == "Richmond District" and location == "Alamo Square", 11,
+                                                                                                If(current_location == "Richmond District" and location == "Financial District", 22,
+                                                                                                   If(current_location == "Richmond District" and location == "Union Square", 21,
+                                                                                                      If(current_location == "Richmond District" and location == "Fisherman's Wharf", 18,
+                                                                                                         If(current_location == "Richmond District" and location == "Marina District", 9,
+                                                                                                            If(current_location == "Richmond District" and location == "Haight-Ashbury", 10,
+                                                                                                               If(current_location == "Richmond District" and location == "Mission District", 20,
+                                                                                                                  If(current_location == "Richmond District" and location == "Pacific Heights", 10,
+                                                                                                                     If(current_location == "Richmond District" and location == "Golden Gate Park", 9,
+                                                                                                                        If(current_location == "Financial District" and location == "The Castro", 20,
+                                                                                                                           If(current_location == "Financial District" and location == "Alamo Square", 17,
+                                                                                                                              If(current_location == "Financial District" and location == "Richmond District", 21,
+                                                                                                                                 If(current_location == "Financial District" and location == "Union Square", 9,
+                                                                                                                                    If(current_location == "Financial District" and location == "Fisherman's Wharf", 10,
+                                                                                                                                       If(current_location == "Financial District" and location == "Marina District", 15,
+                                                                                                                                          If(current_location == "Financial District" and location == "Haight-Ashbury", 19,
+                                                                                                                                             If(current_location == "Financial District" and location == "Mission District", 17,
+                                                                                                                                                If(current_location == "Financial District" and location == "Pacific Heights", 13,
+                                                                                                                                                   If(current_location == "Financial District" and location == "Golden Gate Park", 23,
+                                                                                                                                                      If(current_location == "Union Square" and location == "The Castro", 17,
+                                                                                                                                                         If(current_location == "Union Square" and location == "Alamo Square", 15,
+                                                                                                                                                            If(current_location == "Union Square" and location == "Richmond District", 20,
+                                                                                                                                                               If(current_location == "Union Square" and location == "Financial District", 9,
+                                                                                                                                                                  If(current_location == "Union Square" and location == "Fisherman's Wharf", 15,
+                                                                                                                                                                     If(current_location == "Union Square" and location == "Marina District", 18,
+                                                                                                                                                                        If(current_location == "Union Square" and location == "Haight-Ashbury", 18,
+                                                                                                                                                                           If(current_location == "Union Square" and location == "Mission District", 14,
+                                                                                                                                                                              If(current_location == "Union Square" and location == "Pacific Heights", 15,
+                                                                                                                                                                                 If(current_location == "Union Square" and location == "Golden Gate Park", 22,
+                                                                                                                                                                                    If(current_location == "Fisherman's Wharf" and location == "The Castro", 27,
+                                                                                                                                                                                       If(current_location == "Fisherman's Wharf" and location == "Alamo Square", 21,
+                                                                                                                                                                                          If(current_location == "Fisherman's Wharf" and location == "Richmond District", 18,
+                                                                                                                                                                                             If(current_location == "Fisherman's Wharf" and location == "Financial District", 11,
+                                                                                                                                                                                                If(current_location == "Fisherman's Wharf" and location == "Union Square", 13,
+                                                                                                                                                                                                   If(current_location == "Fisherman's Wharf" and location == "Marina District", 9,
+                                                                                                                                                                                                      If(current_location == "Fisherman's Wharf" and location == "Haight-Ashbury", 22,
+                                                                                                                                                                                                         If(current_location == "Fisherman's Wharf" and location == "Mission District", 22,
+                                                                                                                                                                                                            If(current_location == "Fisherman's Wharf" and location == "Pacific Heights", 12,
+                                                                                                                                                                                                               If(current_location == "Fisherman's Wharf" and location == "Golden Gate Park", 25,
+                                                                                                                                                                                                                  If(current_location == "Marina District" and location == "The Castro", 22,
+                                                                                                                                                                                                                     If(current_location == "Marina District" and location == "Alamo Square", 15,
+                                                                                                                                                                                                                        If(current_location == "Marina District" and location == "Richmond District", 11,
+                                                                                                                                                                                                                           If(current_location == "Marina District" and location == "Financial District", 17,
+                                                                                                                                                                                                                              If(current_location == "Marina District" and location == "Union Square", 16,
+                                                                                                                                                                                                                                 If(current_location == "Marina District" and location == "Fisherman's Wharf", 10,
+                                                                                                                                                                                                                                    If(current_location == "Marina District" and location == "Haight-Ashbury", 16,
+                                                                                                                                                                                                                                       If(current_location == "Marina District" and location == "Mission District", 20,
+                                                                                                                                                                                                                                          If(current_location == "Marina District" and location == "Pacific Heights", 7,
+                                                                                                                                                                                                                                             If(current_location == "Marina District" and location

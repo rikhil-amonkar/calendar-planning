@@ -1,43 +1,59 @@
 from z3 import *
 
-# Define the time variables for the meeting with Robert
-start_meeting = Int('start_meeting')
-end_meeting = Int('end_meeting')
+# Define the time in minutes from 9:00AM
+def time_in_minutes(hour, minute):
+    return hour * 60 + minute
 
-# Define the constraints
-constraints = [
-    # Robert's availability
-    start_meeting >= 11 * 60 + 15,  # 11:15AM in minutes
-    end_meeting <= 17 * 60 + 45,    # 5:45PM in minutes
-    
-    # Meeting duration
-    end_meeting - start_meeting >= 120,  # At least 120 minutes
-    
-    # Travel time from Nob Hill to Presidio
-    start_meeting >= 9 * 60 + 17,  # 9:00AM + 17 minutes travel time
-]
+# Define the start and end times in minutes
+start_time = time_in_minutes(9, 0)  # 9:00AM
+robert_start = time_in_minutes(11, 15)  # 11:15AM
+robert_end = time_in_minutes(17, 45)  # 5:45PM
+travel_time_nob_to_presidio = 17  # in minutes
+travel_time_presidio_to_nob = 18  # in minutes
 
-# Create the solver
+# Create a solver instance
 solver = Solver()
-solver.add(constraints)
 
-# Check if the constraints are satisfiable
+# Define the variables for the meeting start and end times
+robert_meeting_start = Int('robert_meeting_start')
+robert_meeting_end = Int('robert_meeting_end')
+
+# Add constraints
+# Robert meeting must be within his availability
+solver.add(robert_meeting_start >= robert_start)
+solver.add(robert_meeting_end <= robert_end)
+
+# Meeting duration must be at least 120 minutes
+solver.add(robert_meeting_end - robert_meeting_start >= 120)
+
+# Travel time constraints
+# You must arrive at Presidio before the meeting starts
+solver.add(robert_meeting_start >= start_time + travel_time_nob_to_presidio)
+
+# You must be back at Nob Hill by the end of the day (assuming 21:00 as the end of the day)
+solver.add(robert_meeting_end + travel_time_presidio_to_nob <= time_in_minutes(21, 0))
+
+# Solve the problem
 if solver.check() == sat:
     model = solver.model()
-    start_time_minutes = model[start_meeting].as_long()
-    end_time_minutes = model[end_meeting].as_long()
-    
-    # Convert minutes to HH:MM format
-    start_time = f"{start_time_minutes // 60:02}:{start_time_minutes % 60:02}"
-    end_time = f"{end_time_minutes // 60:02}:{end_time_minutes % 60:02}"
-    
-    # Create the itinerary
+    robert_meeting_start_value = model[robert_meeting_start].as_long()
+    robert_meeting_end_value = model[robert_meeting_end].as_long()
+
+    # Convert the meeting times back to HH:MM format
+    def format_time(minutes):
+        hours = minutes // 60
+        minutes = minutes % 60
+        return f"{hours:02}:{minutes:02}"
+
     itinerary = [
-        {"action": "meet", "person": "Robert", "start_time": start_time, "end_time": end_time}
+        {
+            "action": "meet",
+            "person": "Robert",
+            "start_time": format_time(robert_meeting_start_value),
+            "end_time": format_time(robert_meeting_end_value)
+        }
     ]
-    
-    # Output the result as JSON
-    result = {"itinerary": itinerary}
-    print(result)
+
+    print({"itinerary": itinerary})
 else:
     print("No solution found")

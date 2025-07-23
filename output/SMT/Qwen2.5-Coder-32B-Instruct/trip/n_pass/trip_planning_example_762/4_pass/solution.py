@@ -1,4 +1,5 @@
 from z3 import *
+import json
 
 # Define the cities and their respective stay durations
 cities = {
@@ -10,15 +11,32 @@ cities = {
     "Berlin": 5
 }
 
-# Define the constraints for specific days in specific cities
-constraints = {
-    "Dublin": (7, 9),  # Meet friends between day 7 and day 9
-    "Madrid": (2, 3),  # Visit relatives between day 2 and day 3
-    "Berlin": (3, 7)   # Attend wedding between day 3 and day 7
-}
+# Define the days you want to be in specific cities
+friends_in_dublin = (7, 9)
+relatives_in_madrid = (2, 3)
+wedding_in_berlin = (3, 7)
+
+# Define the total number of days
+total_days = 13
+
+# Create a solver instance
+solver = Solver()
+
+# Define variables for the start day of each city
+start_days = {city: Int(f"start_{city}") for city in cities}
+
+# Add constraints for the start days
+for city, duration in cities.items():
+    solver.add(start_days[city] >= 1)
+    solver.add(start_days[city] + duration <= total_days)
+
+# Add constraints for specific days in specific cities
+solver.add(Or([And(start_days["Dublin"] + i == day) for i, day in enumerate(range(friends_in_dublin[0], friends_in_dublin[1] + 1))]))
+solver.add(Or([And(start_days["Madrid"] + i == day) for i, day in enumerate(range(relatives_in_madrid[0], relatives_in_madrid[1] + 1))]))
+solver.add(Or([And(start_days["Berlin"] + i == day) for i, day in enumerate(range(wedding_in_berlin[0], wedding_in_berlin[1] + 1))]))
 
 # Define the direct flight connections
-flights = {
+connections = {
     ("London", "Madrid"),
     ("Oslo", "Vilnius"),
     ("Berlin", "Vilnius"),
@@ -33,49 +51,28 @@ flights = {
     ("Berlin", "Dublin")
 }
 
-# Create a solver instance
-solver = Solver()
+# Add constraints for transitions between cities
+for i in range(len(cities) - 1):
+    city1, city2 = list(cities.keys())[i], list(cities.keys())[i + 1]
+    if (city1, city2) not in connections and (city2, city1) not in connections:
+        solver.add(start_days[city1] + cities[city1] < start_days[city2])
+    else:
+        # Ensure the transition day is counted for both cities
+        solver.add(start_days[city1] + cities[city1] == start_days[city2])
 
-# Define the start day for each city as a Z3 integer variable
-start_days = {city: Int(f"start_{city}") for city in cities}
+# Ensure the total duration is exactly 13 days
+solver.add(start_days[list(cities.keys())[-1]] + cities[list(cities.keys())[-1]] == total_days + 1)
 
-# Add constraints for the start days
-for city, duration in cities.items():
-    solver.add(start_days[city] >= 1)
-    solver.add(start_days[city] + duration <= 13)
-
-# Add constraints for specific days in specific cities
-for city, (start, end) in constraints.items():
-    solver.add(start_days[city] <= start)
-    solver.add(start_days[city] + cities[city] - 1 >= end)
-
-# Add constraints for direct flights
-for (city1, city2) in flights:
-    # If you are in city1 on day X, you can only be in city2 on day X or later
-    solver.add(Or(start_days[city1] + cities[city1] <= start_days[city2],
-                  start_days[city2] + cities[city2] <= start_days[city1]))
-
-# Check if the constraints are satisfiable
+# Solve the problem
 if solver.check() == sat:
     model = solver.model()
     itinerary = []
-    for city, start_day in start_days.items():
-        start = model[start_day].as_long()
-        end = start + cities[city] - 1
-        itinerary.append((start, end, city))
-    
-    # Sort the itinerary by start day
+    for city, duration in cities.items():
+        start_day = model[start_days[city]].as_long()
+        for day in range(start_day, start_day + duration):
+            itinerary.append((day, city))
     itinerary.sort()
-    
-    # Convert the itinerary to the required JSON format
-    day_place_mapping = []
-    current_day = 1
-    for start, end, city in itinerary:
-        while current_day <= end:
-            day_place_mapping.append({"day": current_day, "place": city})
-            current_day += 1
-    
-    result = {"itinerary": day_place_mapping}
-    print(result)
+    itinerary_dict = {f"Day {day}": city for day, city in itinerary}
+    print(json.dumps({"itinerary": itinerary_dict}, indent=4))
 else:
     print("No solution found")

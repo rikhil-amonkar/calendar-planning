@@ -15,64 +15,77 @@ days_athens = 6
 days_naples = 5
 days_zurich = 6
 
-# Define the total number of days
-total_days = 20
-
-# Constraints for the start days
+# Define the constraints
+# Total trip duration is 20 days
 solver.add(start_valencia >= 1)
+solver.add(start_valencia + days_valencia <= 20)
 solver.add(start_athens >= 1)
+solver.add(start_athens + days_athens <= 20)
 solver.add(start_naples >= 1)
-solver.add(start_zurich >= 1)
-
-# Constraints for the end days
-solver.add(start_valencia + days_valencia <= total_days)
-solver.add(start_athens + days_athens <= total_days)
-solver.add(start_naples + days_naples <= total_days)
-solver.add(start_zurich + days_zurich <= total_days)
-
-# Constraints for the relatives visit in Athens
-solver.add(start_athens <= 1)
-solver.add(start_athens + days_athens >= 6)
-
-# Constraints for the wedding in Naples
-solver.add(start_naples + days_naples >= 16)
 solver.add(start_naples + days_naples <= 20)
+solver.add(start_zurich >= 1)
+solver.add(start_zurich + days_zurich <= 20)
 
-# Constraints for direct flights between cities
-# If you leave a city on day X, you must be in the next city on day X
-# We need to ensure that the transitions are valid and do not overlap
+# Visit relatives in Athens between day 1 and day 6
+solver.add(start_athens >= 1)
+solver.add(start_athens <= 6)
 
+# Attend wedding in Naples between day 16 and day 20
+solver.add(start_naples + days_naples - 1 >= 16)
+solver.add(start_naples + days_naples - 1 <= 20)
+
+# Define the end days for each city
+end_valencia = start_valencia + days_valencia - 1
+end_athens = start_athens + days_athens - 1
+end_naples = start_naples + days_naples - 1
+end_zurich = start_zurich + days_zurich - 1
+
+# Direct flights constraints
+# If flying from Valencia to Athens, the start day of Athens must be the end day of Valencia
+# If flying from Athens to Naples, the start day of Naples must be the end day of Athens
+# If flying from Naples to Zurich, the start day of Zurich must be the end day of Naples
+# If flying from Zurich to Naples, the start day of Naples must be the end day of Zurich
+# If flying from Athens to Zurich, the start day of Zurich must be the end day of Athens
+# If flying from Zurich to Valencia, the start day of Valencia must be the end day of Zurich
+
+# Add constraints for direct flights
 # Valencia to Athens
-solver.add(Or(start_athens >= start_valencia + days_valencia, start_valencia >= start_athens + days_athens))
-
-# Valencia to Naples
-solver.add(Or(start_naples >= start_valencia + days_valencia, start_valencia >= start_naples + days_naples))
-
+solver.add(Or(end_valencia < start_athens, end_athens < start_valencia, end_valencia == start_athens))
 # Athens to Naples
-solver.add(Or(start_naples >= start_athens + days_athens, start_athens >= start_naples + days_naples))
-
-# Athens to Zurich
-solver.add(Or(start_zurich >= start_athens + days_athens, start_athens >= start_zurich + days_zurich))
-
+solver.add(Or(end_athens < start_naples, end_naples < start_athens, end_athens == start_naples))
 # Naples to Zurich
-solver.add(Or(start_zurich >= start_naples + days_naples, start_naples >= start_zurich + days_zurich))
-
+solver.add(Or(end_naples < start_zurich, end_zurich < start_naples, end_naples == start_zurich))
+# Zurich to Naples
+solver.add(Or(end_zurich < start_naples, end_naples < start_zurich, end_zurich == start_naples))
+# Athens to Zurich
+solver.add(Or(end_athens < start_zurich, end_zurich < start_athens, end_athens == start_zurich))
 # Zurich to Valencia
-solver.add(Or(start_valencia >= start_zurich + days_zurich, start_zurich >= start_valencia + days_valencia))
+solver.add(Or(end_zurich < start_valencia, end_valencia < start_zurich, end_zurich == start_valencia))
 
-# Ensure no overlap and correct transitions
-# For example, if you are in Valencia on day X, you can't be in another city on the same day
-for day in range(1, total_days + 1):
-    solver.add(Or(
-        And(day >= start_valencia, day < start_valencia + days_valencia),
-        And(day >= start_athens, day < start_athens + days_athens),
-        And(day >= start_naples, day < start_naples + days_naples),
-        And(day >= start_zurich, day < start_zurich + days_zurich)
-    ))
+# Ensure no overlap in days spent in different cities
+solver.add(Or(end_valencia < start_athens, end_athens < start_valencia))
+solver.add(Or(end_valencia < start_naples, end_naples < start_valencia))
+solver.add(Or(end_valencia < start_zurich, end_zurich < start_valencia))
+solver.add(Or(end_athens < start_naples, end_naples < start_athens))
+solver.add(Or(end_athens < start_zurich, end_zurich < start_athens))
+solver.add(Or(end_naples < start_zurich, end_zurich < start_naples))
 
-# Ensure that flight days are counted for both cities
-# For example, if you fly from Valencia to Athens on day X, day X should be counted for both cities
-# This is already handled by the constraints above, but we can add explicit checks
+# Ensure the total duration is exactly 20 days
+solver.add(end_zurich == 20)
+
+# Ensure that the transitions are valid and no gaps are left
+# We need to ensure that the sequence of cities is valid and covers all 20 days
+# Let's define a sequence of transitions
+transitions = [
+    (end_valencia, start_athens),
+    (end_athens, start_naples),
+    (end_naples, start_zurich),
+    (end_zurich, 20)
+]
+
+# Add constraints for valid transitions
+for i in range(len(transitions) - 1):
+    solver.add(transitions[i][0] < transitions[i + 1][1])
 
 # Check if the constraints are satisfiable
 if solver.check() == sat:
@@ -84,19 +97,18 @@ if solver.check() == sat:
 
     # Create the itinerary
     itinerary = []
-    for day in range(1, total_days + 1):
-        if start_valencia_val <= day <= start_valencia_val + days_valencia:
+    for day in range(1, 21):
+        if start_valencia_val <= day <= start_valencia_val + days_valencia - 1:
             itinerary.append({'day': day, 'place': 'Valencia'})
-        elif start_athens_val <= day <= start_athens_val + days_athens:
+        elif start_athens_val <= day <= start_athens_val + days_athens - 1:
             itinerary.append({'day': day, 'place': 'Athens'})
-        elif start_naples_val <= day <= start_naples_val + days_naples:
+        elif start_naples_val <= day <= start_naples_val + days_naples - 1:
             itinerary.append({'day': day, 'place': 'Naples'})
-        elif start_zurich_val <= day <= start_zurich_val + days_zurich:
+        elif start_zurich_val <= day <= start_zurich_val + days_zurich - 1:
             itinerary.append({'day': day, 'place': 'Zurich'})
 
-    # Output the result as JSON
+    # Output the itinerary in JSON format
     import json
-    result = {'itinerary': itinerary}
-    print(json.dumps(result, indent=2))
+    print(json.dumps({'itinerary': itinerary}, indent=2))
 else:
     print("No solution found")

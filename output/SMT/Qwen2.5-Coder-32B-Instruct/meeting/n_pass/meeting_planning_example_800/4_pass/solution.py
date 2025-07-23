@@ -9,7 +9,7 @@ travel_times = {
     "Embarcadero": {"Union Square": 10, "The Castro": 25, "North Beach": 5, "Alamo Square": 19, "Nob Hill": 10, "Presidio": 20, "Fisherman's Wharf": 6, "Mission District": 20, "Haight-Ashbury": 21},
     "Alamo Square": {"Union Square": 14, "The Castro": 8, "North Beach": 15, "Embarcadero": 16, "Nob Hill": 11, "Presidio": 17, "Fisherman's Wharf": 19, "Mission District": 10, "Haight-Ashbury": 5},
     "Nob Hill": {"Union Square": 7, "The Castro": 17, "North Beach": 8, "Embarcadero": 9, "Alamo Square": 11, "Presidio": 17, "Fisherman's Wharf": 10, "Mission District": 13, "Haight-Ashbury": 13},
-    "Presidio": {"Union Square": 22, "The Castro": 21, "North Beach": 18, "Embarcadero": 20, "Alamo Square": 19, "Nob Hill": 18, "Fisherman's Wharf": 19, "Mission District": 26, "Haight-Ashbury": 15},
+    "Presidio": {"Union Square": 22, "The Castro": 21, "North Beach": 18, "Embarcadero": 20, "Alamo Square": 19, "Nob Hill": 18, "Fisherman's Wharf": 17, "Mission District": 26, "Haight-Ashbury": 15},
     "Fisherman's Wharf": {"Union Square": 13, "The Castro": 27, "North Beach": 6, "Embarcadero": 8, "Alamo Square": 21, "Nob Hill": 11, "Presidio": 17, "Mission District": 22, "Haight-Ashbury": 22},
     "Mission District": {"Union Square": 15, "The Castro": 7, "North Beach": 17, "Embarcadero": 19, "Alamo Square": 11, "Nob Hill": 12, "Presidio": 25, "Fisherman's Wharf": 22, "Haight-Ashbury": 12},
     "Haight-Ashbury": {"Union Square": 19, "The Castro": 6, "North Beach": 19, "Embarcadero": 20, "Alamo Square": 5, "Nob Hill": 15, "Presidio": 15, "Fisherman's Wharf": 23, "Mission District": 11}
@@ -41,7 +41,7 @@ meeting_times = {person: Int(f"start_{person}") for person in people}
 # Define the start time at Union Square
 start_time = 9 * 60  # 9:00 AM
 
-# Add constraints for each meeting
+# Add constraints for each person
 for person, details in people.items():
     location = details["location"]
     start = time_to_minutes(details["start"])
@@ -51,37 +51,35 @@ for person, details in people.items():
     # Meeting must start after the person is available and before they leave
     solver.add(meeting_times[person] >= start)
     solver.add(meeting_times[person] + duration <= end)
-
-# Define the order of meetings and travel constraints
-# We need to ensure that the travel time between meetings is respected
-# We will use a list to define the order of meetings
-order = ["Kimberly", "Brian", "Kenneth", "Joshua", "Joseph", "Steven", "Betty", "Melissa", "Barbara"]
-
-# Add constraints for the order of meetings
-for i in range(len(order) - 1):
-    current_person = order[i]
-    next_person = order[i + 1]
-    current_location = people[current_person]["location"]
-    next_location = people[next_person]["location"]
-    current_duration = people[current_person]["duration"]
-    travel_time = travel_times[current_location][next_location]
     
-    # The next meeting must start after the current meeting ends, including travel time
-    solver.add(meeting_times[next_person] >= meeting_times[current_person] + current_duration + travel_time)
+    # Meeting must start after the previous meeting ends, including travel time
+    if person != "Kimberly":  # Kimberly is the first person we can meet
+        previous_person = None
+        for p in people:
+            if p != person and meeting_times[p] in solver.assertions():
+                if previous_person is None or meeting_times[p] < meeting_times[previous_person]:
+                    previous_person = p
+        if previous_person:
+            solver.add(meeting_times[person] >= meeting_times[previous_person] + travel_times[people[previous_person]["location"]][location])
 
-# Ensure the first meeting starts at or after 9:00 AM
-solver.add(meeting_times["Kimberly"] >= start_time)
+# Manually order the meetings based on the availability and travel times
+ordered_people = ["Kimberly", "Brian", "Joseph", "Kenneth", "Joshua", "Steven", "Betty", "Melissa"]
+
+# Add constraints for the ordered meetings
+for i in range(1, len(ordered_people)):
+    previous_person = ordered_people[i-1]
+    current_person = ordered_people[i]
+    solver.add(meeting_times[current_person] >= meeting_times[previous_person] + travel_times[people[previous_person]["location"]][people[current_person]["location"]])
 
 # Solve the problem
 if solver.check() == sat:
     model = solver.model()
     itinerary = []
-    for person, details in people.items():
+    for person in ordered_people:
         start_time_minutes = model[meeting_times[person]].as_long()
         start_time_str = f"{start_time_minutes // 60:02}:{start_time_minutes % 60:02}"
-        end_time_str = f"{(start_time_minutes + details['duration']) // 60:02}:{(start_time_minutes + details['duration']) % 60:02}"
+        end_time_str = f"{(start_time_minutes + people[person]['duration']) // 60:02}:{(start_time_minutes + people[person]['duration']) % 60:02}"
         itinerary.append({"action": "meet", "person": person, "start_time": start_time_str, "end_time": end_time_str})
-    itinerary.sort(key=lambda x: x["start_time"])
     print({"itinerary": itinerary})
 else:
     print("No solution found")

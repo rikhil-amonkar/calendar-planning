@@ -1,97 +1,76 @@
 from z3 import *
 
 def solve_itinerary():
-    # Create a solver instance
     s = Solver()
-
+    
     # Days are 1 to 7
     days = range(1, 8)
     
-    # Cities: Riga (R), Amsterdam (A), Mykonos (M)
-    R, A, M = 'Riga', 'Amsterdam', 'Mykonos'
-    cities = [R, A, M]
+    # Cities mapping
+    cities = {'Riga': 0, 'Amsterdam': 1, 'Mykonos': 2}
+    reverse_map = {0: 'Riga', 1: 'Amsterdam', 2: 'Mykonos'}
     
-    # Variables: for each day, which city is visited (can be two cities if it's a flight day)
-    # We'll use a list of lists, where each inner list represents the cities for that day.
-    # For Z3, we'll create a dictionary of Boolean variables indicating presence in each city per day.
-    presence = {}
-    for day in days:
-        for city in cities:
-            presence[(day, city)] = Bool(f"Day_{day}_{city}")
+    # Variables: city for each day
+    city_day = [Int(f'city_{d}') for d in days]
     
-    # Constraints:
-    # 1. Each day is in 1 or 2 cities.
-    for day in days:
-        # At least one city per day
-        s.add(Or(presence[(day, R)], presence[(day, A)], presence[(day, M)]))
-        # At most two cities per day
-        s.add(Not(And(presence[(day, R)], presence[(day, A)], presence[(day, M)])))
+    # Flight variables: is there a flight on this day?
+    flight_day = [Bool(f'flight_{d}') for d in days]
     
-    # 2. Flight constraints: if a day is in two cities, they must have a direct flight.
-    for day in days:
-        # R and A have a direct flight
-        s.add(Implies(
-            And(presence[(day, R)], presence[(day, A)]),
-            True
-        ))
-        # A and M have a direct flight
-        s.add(Implies(
-            And(presence[(day, A)], presence[(day, M)]),
-            True
-        ))
-        # R and M do not have a direct flight
-        s.add(Implies(
-            And(presence[(day, R)], presence[(day, M)]),
-            False
-        ))
+    # City constraints (0-2)
+    for d in days:
+        s.add(And(city_day[d-1] >= 0, city_day[d-1] <= 2))
     
-    # 3. Total days per city:
-    # Riga: 2 days
-    s.add(Sum([If(presence[(day, R)], 1, 0) for day in days]) == 2)
-    # Amsterdam: 2 days
-    s.add(Sum([If(presence[(day, A)], 1, 0) for day in days]) == 2)
-    # Mykonos: 5 days
-    s.add(Sum([If(presence[(day, M)], 1, 0) for day in days]) == 5)
+    # Flight constraints
+    for d in days:
+        # If flight day, next day must be connected
+        if d < 7:
+            s.add(Implies(flight_day[d-1],
+                         Or(And(city_day[d-1] == cities['Amsterdam'], city_day[d] == cities['Mykonos']),
+                            And(city_day[d-1] == cities['Mykonos'], city_day[d] == cities['Amsterdam']),
+                            And(city_day[d-1] == cities['Riga'], city_day[d] == cities['Amsterdam']),
+                            And(city_day[d-1] == cities['Amsterdam'], city_day[d] == cities['Riga']))))
+        
+        # Flight day counts for both cities
+        if d < 7:
+            s.add(Implies(flight_day[d-1],
+                         Not(city_day[d-1] == city_day[d])))
     
-    # 4. Day 1 is in Riga.
-    s.add(presence[(1, R)])
-    s.add(Not(presence[(1, A)]))
-    s.add(Not(presence[(1, M)]))
+    # Initial conditions (days 1-2 in Riga)
+    s.add(city_day[0] == cities['Riga'])
+    s.add(city_day[1] == cities['Riga'])
+    s.add(Not(flight_day[0]))  # No flight on day 1
+    s.add(Not(flight_day[1]))  # No flight on day 2
     
-    # 5. Day 2 is in Riga.
-    s.add(presence[(2, R)])
-    s.add(Not(presence[(2, A)]))
-    s.add(Not(presence[(2, M)]))
+    # Count days in each city
+    def count_days(city_var):
+        total = 0
+        for d in days:
+            # Current day counts
+            total += If(city_day[d-1] == city_var, 1, 0)
+            # If flight day, next city also counts
+            if d < 7:
+                total += If(And(flight_day[d-1], city_day[d] == city_var), 1, 0)
+        return total
     
-    # 6. Continuity constraints: ensure that the sequence of cities makes sense.
-    # For example, if you're in Riga on day 2, you can't be in Mykonos on day 3 without going through Amsterdam.
-    # This is already handled by the flight constraints, but we can add additional constraints to ensure smooth transitions.
-    # For simplicity, we'll assume that the solver can find a valid sequence based on the above constraints.
-
-    # Check if the problem is satisfiable
+    s.add(count_days(cities['Riga']) == 2)
+    s.add(count_days(cities['Amsterdam']) == 2)
+    s.add(count_days(cities['Mykonos']) == 5)
+    
+    # Solve
     if s.check() == sat:
         m = s.model()
         itinerary = []
-        for day in days:
-            current_day = []
-            for city in cities:
-                if is_true(m.evaluate(presence[(day, city)])):
-                    current_day.append(city)
-            itinerary.append({"day": day, "place": current_day})
-        
-        # Format the output as JSON
-        output = {"itinerary": []}
-        for entry in itinerary:
-            day = entry["day"]
-            places = entry["place"]
-            for place in places:
-                output["itinerary"].append({"day": day, "place": place})
-        
-        return output
+        for d in days:
+            current_city = m.evaluate(city_day[d-1]).as_long()
+            place = reverse_map[current_city]
+            if d < 7 and m.evaluate(flight_day[d-1]):
+                next_city = m.evaluate(city_day[d]).as_long()
+                place += f"/{reverse_map[next_city]}"
+            itinerary.append({'day': d, 'place': place})
+        return {'itinerary': itinerary}
     else:
-        return {"error": "No valid itinerary found"}
+        return {'error': 'No valid itinerary found'}
 
-# Run the solver and print the result
 result = solve_itinerary()
 import json
 print(json.dumps(result, indent=2))

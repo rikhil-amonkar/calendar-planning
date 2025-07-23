@@ -1,4 +1,5 @@
 from z3 import *
+import json
 
 # Define the cities and their required stay durations
 cities = {
@@ -33,34 +34,61 @@ solver = Solver()
 # Define the start day for each city as a Z3 integer variable
 start_days = {city: Int(f"start_{city}") for city in cities}
 
-# Add constraints for the required stay durations
-for city, duration in cities.items():
+# Define the constraints
+for city, days in cities.items():
+    # Each city must start on a day between 1 and 20 - days + 1
     solver.add(start_days[city] >= 1)
-    solver.add(start_days[city] + duration <= 20)
+    solver.add(start_days[city] <= 20 - days + 1)
 
-# Add constraints for specific days in specific cities
-solver.add(start_days["Prague"] <= 6)  # To attend the show from day 5 to day 9
-solver.add(start_days["Prague"] + cities["Prague"] >= 10)  # To attend the show from day 5 to day 9
-solver.add(start_days["Riga"] == 15)  # To meet friends in Riga between day 15 and day 16
-solver.add(start_days["Stockholm"] == 16)  # To attend the conference in Stockholm on day 16 and day 17
-solver.add(start_days["Vienna"] <= 5)  # To meet a friend in Vienna between day 1 and day 5
-solver.add(start_days["Split"] == 11)  # To visit relatives in Split between day 11 and day 13
+# Specific constraints for each city
+solver.add(start_days["Prague"] == 1)  # Want to meet a friend in Vienna between day 1 and day 5
+solver.add(start_days["Prague"] + 4 == 5)  # Annual show in Prague from day 5 to day 9
 
-# Add constraints for transitions between cities
-for city1, city2 in flights:
-    # If you start in city1 and end in city2, the start day of city2 must be the end day of city1
-    solver.add(Or(start_days[city2] >= start_days[city1] + cities[city1] - 1,
-                 start_days[city1] >= start_days[city2] + cities[city2] - 1))
+solver.add(start_days["Brussels"] >= 1)  # No specific day constraints for Brussels
+solver.add(start_days["Brussels"] <= 18)  # Ensure enough days left for other cities
 
-# Check if the constraints are satisfiable
+solver.add(start_days["Riga"] == 15)  # Meet friends in Riga between day 15 and day 16
+
+solver.add(start_days["Munich"] >= 1)  # No specific day constraints for Munich
+solver.add(start_days["Munich"] <= 16)  # Ensure enough days left for other cities
+
+solver.add(start_days["Seville"] >= 1)  # No specific day constraints for Seville
+solver.add(start_days["Seville"] <= 15)  # Ensure enough days left for other cities
+
+solver.add(start_days["Stockholm"] == 16)  # Conference in Stockholm on day 16 and 17
+
+solver.add(start_days["Istanbul"] >= 1)  # No specific day constraints for Istanbul
+solver.add(start_days["Istanbul"] <= 16)  # Ensure enough days left for other cities
+
+solver.add(start_days["Amsterdam"] >= 1)  # No specific day constraints for Amsterdam
+solver.add(start_days["Amsterdam"] <= 15)  # Ensure enough days left for other cities
+
+solver.add(start_days["Vienna"] == 1)  # Meet a friend in Vienna between day 1 and day 5
+solver.add(start_days["Vienna"] + 4 == 5)  # Want to spend 5 days in Vienna
+
+solver.add(start_days["Split"] == 11)  # Visit relatives in Split between day 11 and day 13
+
+# Ensure that transitions between cities are valid and use direct flights
+for city1 in cities:
+    for city2 in cities:
+        if city1 != city2:
+            # If city1 ends on day X, city2 must start on day X or later
+            # And there must be a direct flight between city1 and city2
+            end_day_city1 = start_days[city1] + cities[city1] - 1
+            start_day_city2 = start_days[city2]
+            transition_constraint = Or(end_day_city1 < start_day_city2, Not((city1, city2) in flights))
+            solver.add(transition_constraint)
+
+# Solve the problem
 if solver.check() == sat:
     model = solver.model()
     itinerary = []
     for city in cities:
         start_day = model[start_days[city]].as_long()
-        itinerary.extend([(day, city) for day in range(start_day, start_day + cities[city])])
-    itinerary.sort(key=lambda x: x[0])
-    itinerary_dict = {"itinerary": [{"day": day, "place": place} for day, place in itinerary]}
-    print(itinerary_dict)
+        end_day = start_day + cities[city] - 1
+        for day in range(start_day, end_day + 1):
+            itinerary.append({"day": day, "place": city})
+    itinerary.sort(key=lambda x: x["day"])
+    print(json.dumps({"itinerary": itinerary}, indent=2))
 else:
     print("No solution found")

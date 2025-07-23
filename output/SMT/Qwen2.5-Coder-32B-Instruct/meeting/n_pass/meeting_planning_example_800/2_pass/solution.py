@@ -41,7 +41,7 @@ meeting_times = {person: Int(f"start_{person}") for person in people}
 # Define the start time at Union Square
 start_time = 9 * 60  # 9:00 AM
 
-# Add constraints for each meeting
+# Add constraints for each person
 for person, details in people.items():
     location = details["location"]
     start = time_to_minutes(details["start"])
@@ -53,7 +53,7 @@ for person, details in people.items():
     solver.add(meeting_times[person] + duration <= end)
     
     # Meeting must start after the previous meeting ends, including travel time
-    if person != "Kimberly":  # Kimberly is the first meeting
+    if person != "Kimberly":  # Kimberly is the first person we can meet
         previous_person = None
         for p in people:
             if p != person and meeting_times[p] in solver.assertions():

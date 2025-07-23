@@ -18,25 +18,25 @@ amanda_busy_times = [
     (750, 780),  # 12:30 to 13:00
     (810, 840),  # 13:30 to 14:00
     (870, 900),  # 14:30 to 15:00
-    (540, 570),  # 9:00 to 9:30 on Tuesday
-    (600, 630),  # 10:00 to 10:30 on Tuesday
-    (690, 720),  # 11:30 to 12:00 on Tuesday
-    (810, 870),  # 13:30 to 14:30 on Tuesday
-    (930, 990),  # 15:30 to 16:00 on Tuesday
-    (990, 1020)  # 16:30 to 17:00 on Tuesday
+    (1080, 1110),  # 9:00 to 9:30 on Tuesday
+    (1140, 1170),  # 10:00 to 10:30 on Tuesday
+    (1290, 1320),  # 11:30 to 12:00 on Tuesday
+    (1620, 1710),  # 13:30 to 14:30 on Tuesday
+    (1830, 1920),  # 15:30 to 16:00 on Tuesday
+    (1980, 2070)  # 16:30 to 17:00 on Tuesday
 ]
 
 # Nathan's busy times
 nathan_busy_times = [
     (600, 630),  # 10:00 to 10:30
     (660, 690),  # 11:00 to 11:30
-    (810, 870),  # 13:30 to 14:30
-    (960, 990),  # 16:00 to 16:30
-    (540, 630),  # 9:00 to 10:30 on Tuesday
-    (660, 780),  # 11:00 to 13:00 on Tuesday
-    (810, 840),  # 13:30 to 14:00 on Tuesday
-    (870, 930),  # 14:30 to 15:30 on Tuesday
-    (960, 990)   # 16:00 to 16:30 on Tuesday
+    (1620, 1710),  # 13:30 to 14:30
+    (1920, 1950),  # 16:00 to 16:30
+    (1080, 1110),  # 9:00 to 10:30 on Tuesday
+    (1140, 780),  # 11:00 to 13:00 on Tuesday
+    (1620, 1680),  # 13:30 to 14:00 on Tuesday
+    (1680, 1740),  # 14:30 to 15:30 on Tuesday
+    (1920, 1950)  # 16:00 to 16:30 on Tuesday
 ]
 
 # Amanda's preference: no meeting on Tuesday after 11:00

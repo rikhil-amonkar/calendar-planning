@@ -48,11 +48,14 @@ if solver.check() == sat:
     model = solver.model()
     start_time_value = model[start_time].as_long()
     end_time_value = start_time_value + 30
-    # Format the times correctly
     start_hour = start_time_value // 100
     start_minute = start_time_value % 100
     end_hour = end_time_value // 100
     end_minute = end_time_value % 100
+    # Ensure the end time is correctly formatted
+    if end_minute >= 60:
+        end_hour += 1
+        end_minute -= 60
     print(f"SOLUTION:\nDay: {day}\nStart Time: {start_hour:02}:{start_minute:02}\nEnd Time: {end_hour:02}:{end_minute:02}")
 else:
     print("No solution found")

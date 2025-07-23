@@ -1,0 +1,120 @@
+from z3 import *
+
+# Define the solver
+solver = Solver()
+
+# Define the cities and their respective stay durations
+cities = {
+    "Prague": 3,
+    "Warsaw": 4,
+    "Dublin": 3,
+    "Athens": 3,
+    "Vilnius": 4,
+    "Porto": 5,
+    "London": 3,
+    "Seville": 2,
+    "Lisbon": 5,
+    "Dubrovnik": 3
+}
+
+# Define the variables for the start day of each city visit
+start_days = {city: Int(f"start_{city}") for city in cities}
+
+# Define the constraints
+# Each city must be visited within the 26-day period
+for city, duration in cities.items():
+    solver.add(start_days[city] >= 1)
+    solver.add(start_days[city] + duration - 1 <= 26)
+
+# Specific constraints for each city
+# Prague: 3 days, workshop between day 1 and day 3
+solver.add(start_days["Prague"] <= 1)
+solver.add(start_days["Prague"] + cities["Prague"] - 1 >= 3)
+
+# Warsaw: 4 days, meet friends between day 20 and day 23
+solver.add(start_days["Warsaw"] <= 20)
+solver.add(start_days["Warsaw"] + cities["Warsaw"] - 1 >= 23)
+
+# Dublin: 3 days
+# No specific constraints for Dublin
+
+# Athens: 3 days
+# No specific constraints for Athens
+
+# Vilnius: 4 days
+# No specific constraints for Vilnius
+
+# Porto: 5 days, conference on day 16 and day 20
+solver.add(start_days["Porto"] <= 16)
+solver.add(start_days["Porto"] + cities["Porto"] - 1 >= 20)
+
+# London: 3 days, wedding between day 3 and day 5
+solver.add(start_days["London"] <= 3)
+solver.add(start_days["London"] + cities["London"] - 1 >= 5)
+
+# Seville: 2 days
+# No specific constraints for Seville
+
+# Lisbon: 5 days, visit relatives between day 5 and day 9
+solver.add(start_days["Lisbon"] <= 5)
+solver.add(start_days["Lisbon"] + cities["Lisbon"] - 1 >= 9)
+
+# Dubrovnik: 3 days
+# No specific constraints for Dubrovnik
+
+# Direct flight constraints
+# We need to ensure that the transition between cities is possible via direct flights
+# This is a bit more complex and requires checking the flight availability
+# For simplicity, we will assume that the solver will find a valid sequence of cities
+# that respects the direct flight constraints
+
+# Add constraints for direct flights
+# This is a simplified approach and assumes that the solver will find a valid sequence
+# We will use a helper function to check if a transition is possible
+def is_direct_flight(city1, city2):
+    direct_flights = [
+        ("Warsaw", "Vilnius"), ("Prague", "Athens"), ("London", "Lisbon"),
+        ("Lisbon", "Porto"), ("Prague", "Lisbon"), ("London", "Dublin"),
+        ("Athens", "Vilnius"), ("Athens", "Dublin"), ("Prague", "London"),
+        ("London", "Warsaw"), ("Dublin", "Seville"), ("Seville", "Porto"),
+        ("Lisbon", "Athens"), ("Dublin", "Porto"), ("Athens", "Warsaw"),
+        ("Lisbon", "Warsaw"), ("Porto", "Warsaw"), ("Prague", "Warsaw"),
+        ("Prague", "Dublin"), ("Athens", "Dubrovnik"), ("Lisbon", "Dublin"),
+        ("Dubrovnik", "Dublin"), ("Lisbon", "Seville"), ("London", "Athens")
+    ]
+    return (city1, city2) in direct_flights or (city2, city1) in direct_flights
+
+# Add constraints to ensure that transitions are possible via direct flights
+# We will use a list to store the order of cities and ensure transitions are valid
+city_list = list(cities.keys())
+for i in range(len(city_list) - 1):
+    city1 = city_list[i]
+    city2 = city_list[i + 1]
+    solver.add(is_direct_flight(city1, city2))
+    solver.add(start_days[city1] + cities[city1] <= start_days[city2])
+
+# Ensure that the total number of days is exactly 26
+# We need to ensure that the last city ends on or before day 26
+last_city = city_list[-1]
+solver.add(start_days[last_city] + cities[last_city] - 1 == 26)
+
+# Ensure no overlap or gap between city visits
+for i in range(len(city_list) - 1):
+    city1 = city_list[i]
+    city2 = city_list[i + 1]
+    solver.add(start_days[city1] + cities[city1] <= start_days[city2])
+
+# Check if the constraints are satisfiable
+if solver.check() == sat:
+    model = solver.model()
+    itinerary = []
+    for city, start_day in start_days.items():
+        start = model[start_day].as_long()
+        end = start + cities[city] - 1
+        for day in range(start, end + 1):
+            itinerary.append({"day": day, "place": city})
+    itinerary.sort(key=lambda x: x["day"])
+    itinerary_dict = {"itinerary": itinerary}
+    print(itinerary_dict)
+else:
+    print("No solution found")

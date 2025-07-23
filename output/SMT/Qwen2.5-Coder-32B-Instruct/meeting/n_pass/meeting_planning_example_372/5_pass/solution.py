@@ -29,8 +29,9 @@ travel_times = {
 
 # Define the friends and their availability
 friends = {
-    "Daniel": {"location": "Golden Gate Park", "start": 800, "end": 1330, "min_duration": 15},
+    "Charles": {"location": "Alamo Square", "start": 1800, "end": 2025, "min_duration": 90},
     "Margaret": {"location": "Russian Hill", "start": 900, "end": 1600, "min_duration": 30},
+    "Daniel": {"location": "Golden Gate Park", "start": 800, "end": 1330, "min_duration": 15},
     "Stephanie": {"location": "Mission District", "start": 2030, "end": 2200, "min_duration": 90},
 }
 
@@ -49,34 +50,42 @@ solver = Solver()
 meeting_start = {name: Int(f"start_{name}") for name in friends}
 meeting_end = {name: Int(f"end_{name}") for name in friends}
 
-# Define the initial location
-initial_location = "Sunset District"
+# Define the order of meetings
+meeting_order = ["Margaret", "Daniel", "Charles", "Stephanie"]
 
 # Add constraints for each friend
-for i, (name, details) in enumerate(friends.items()):
+for name, details in friends.items():
     # Meeting must start after the person is available and end before they leave
     solver.add(meeting_start[name] >= details["start"])
     solver.add(meeting_end[name] <= details["end"])
     # Meeting must last at least the minimum duration
     solver.add(meeting_end[name] - meeting_start[name] >= details["min_duration"])
-    # Meeting must start after the previous meeting ends and after travel time
-    if i > 0:
-        prev_name = list(friends.keys())[i - 1]
-        prev_location = friends[prev_name]["location"]
-        current_location = friends[name]["location"]
-        travel_time = travel_times[(prev_location, current_location)]
-        solver.add(meeting_start[name] >= meeting_end[prev_name] + travel_time)
-    else:
-        # First meeting must start after the initial travel time from Sunset District
-        current_location = friends[name]["location"]
-        travel_time = travel_times[(initial_location, current_location)]
-        solver.add(meeting_start[name] >= start_time + travel_time)
+    # Meeting times must be within a valid 24-hour format
+    solver.add(meeting_start[name] >= 0)
+    solver.add(meeting_start[name] < 1440)
+    solver.add(meeting_end[name] >= 0)
+    solver.add(meeting_end[name] < 1440)
+
+# Add constraints for the order of meetings and travel times
+for i in range(len(meeting_order) - 1):
+    current_friend = meeting_order[i]
+    next_friend = meeting_order[i + 1]
+    current_location = friends[current_friend]["location"]
+    next_location = friends[next_friend]["location"]
+    travel_time = travel_times[(current_location, next_location)]
+    solver.add(meeting_start[next_friend] >= meeting_end[current_friend] + travel_time)
+
+# Add the constraint for the first meeting to start after the initial travel time from Sunset District
+first_friend = meeting_order[0]
+first_location = friends[first_friend]["location"]
+first_travel_time = travel_times[("Sunset District", first_location)]
+solver.add(meeting_start[first_friend] >= start_time + first_travel_time)
 
 # Check if the problem is solvable
 if solver.check() == sat:
     model = solver.model()
     itinerary = []
-    for name in friends:
+    for name in meeting_order:
         start = model[meeting_start[name]].as_long()
         end = model[meeting_end[name]].as_long()
         itinerary.append({

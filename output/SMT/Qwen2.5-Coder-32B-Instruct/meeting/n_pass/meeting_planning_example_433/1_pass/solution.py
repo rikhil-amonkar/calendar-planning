@@ -77,8 +77,7 @@ if solver.check() == sat:
     for person in people_availability:
         start = model[start_times[person]].as_long() // 60
         end = model[end_times[person]].as_long() // 60
-        itinerary.append({"action": "meet", "person": person, "start_time": f"{start:02}:{model[start_times[person]].as_long() % 60:02}", "end_time": f"{end:02}:{model[end_times[person]].as_long() % 60:02}"})
-    itinerary.sort(key=lambda x: x["start_time"])
+        itinerary.append({"action": "meet", "person": person, "start_time": f"{start:02}:{(model[start_times[person]].as_long() % 60):02}", "end_time": f"{end:02}:{(model[end_times[person]].as_long() % 60):02}"})
     print({"itinerary": itinerary})
 else:
     print("No solution found")

@@ -62,10 +62,10 @@ for person, details in people.items():
     # Meeting must be in the person's district
     solver.add(current_districts[person] == details["district"])
 
-# Add constraints for travel times between meetings
+# Add constraints for travel times
 for i, person1 in enumerate(people):
     for person2 in list(people.keys())[i+1:]:
-        # If meeting with person1 ends before meeting with person2 starts, add travel time constraint
+        # If person1's meeting ends before person2's meeting starts, they can travel
         solver.add(Or(meeting_ends[person1] + travel_times[(current_districts[person1], current_districts[person2])] <= meeting_starts[person2],
                       meeting_ends[person2] + travel_times[(current_districts[person2], current_districts[person1])] <= meeting_starts[person1]))
 

@@ -44,27 +44,33 @@ flights = {
 start_days = {city: Int(f"start_{city}") for city in cities}
 
 # Add constraints for the start days
+for city, duration in cities.items():
+    solver.add(start_days[city] >= 1)
+    solver.add(start_days[city] + duration <= total_days)
+
+# Add constraints for specific days
 for city, (start, end) in constraints.items():
     solver.add(start_days[city] + cities[city] - 1 >= start)
     solver.add(start_days[city] <= end)
 
-# Add constraints for the total number of days
-for city, days in cities.items():
-    solver.add(start_days[city] >= 1)
-    solver.add(start_days[city] + days - 1 <= total_days)
+# Add constraints for direct flights
+for (city1, city2) in flights:
+    # If you start city1 on day X, you can only start city2 on day X or later
+    solver.add(Or(start_days[city1] + cities[city1] <= start_days[city2],
+                 start_days[city2] + cities[city2] <= start_days[city1]))
 
-# Add constraints for the flight connections
-for i, city1 in enumerate(cities):
-    for city2 in cities:
-        if city1 != city2 and (city1, city2) not in flights and (city2, city1) not in flights:
-            # If there is no direct flight between city1 and city2, then they cannot overlap
-            solver.add(Or(start_days[city1] + cities[city1] - 1 < start_days[city2],
-                           start_days[city2] + cities[city2] - 1 < start_days[city1]))
+# Ensure that the total number of days is exactly 23
+# We need to ensure that the last day of the last city is within 23 days
+last_day = Int("last_day")
+# Initialize last_day to a small value
+solver.add(last_day == 1)
 
-# Add constraints to ensure that the total number of days is exactly 23
-# This is done by ensuring that the last day of the last city is within the total days
-last_day = max([start_days[city] + cities[city] - 1 for city in cities])
-solver.add(last_day <= total_days)
+# Use Z3's If expressions to determine the maximum value
+for city in cities:
+    solver.add(last_day >= start_days[city] + cities[city])
+
+# Ensure the last day is exactly 23
+solver.add(last_day == total_days)
 
 # Check if the constraints are satisfiable
 if solver.check() == sat:
@@ -72,10 +78,9 @@ if solver.check() == sat:
     itinerary = []
     for city in cities:
         start_day = model[start_days[city]].as_long()
-        end_day = start_day + cities[city] - 1
-        for day in range(start_day, end_day + 1):
-            itinerary.append({"day": day, "place": city})
-    itinerary.sort(key=lambda x: x["day"])
-    print(json.dumps({"itinerary": itinerary}, indent=2))
+        itinerary.extend([(day, city) for day in range(start_day, start_day + cities[city])])
+    itinerary.sort(key=lambda x: x[0])
+    itinerary_dict = {"itinerary": [{"day": day, "place": place} for day, place in itinerary]}
+    print(json.dumps(itinerary_dict, indent=2))
 else:
     print("No solution found")
