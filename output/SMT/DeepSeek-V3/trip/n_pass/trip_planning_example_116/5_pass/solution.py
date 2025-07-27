@@ -1,68 +1,67 @@
 from z3 import *
 
 def solve_itinerary():
-    # Create a solver instance
+    # Cities and their IDs
+    city_ids = {'Split': 0, 'Santorini': 1, 'London': 2}
+    id_to_city = {0: 'Split', 1: 'Santorini', 2: 'London'}
+    
+    # Total days
+    days = 18
+    day_city = [Int(f'day_{i}') for i in range(1, days+1)]
+    
     s = Solver()
-
-    # Cities: Split (0), Santorini (1), London (2)
-    cities = {'Split': 0, 'Santorini': 1, 'London': 2}
-    num_days = 18
-
-    # Decision variables: for each day, which city are we in?
-    # day_place[d] is the city on day d (1-based)
-    day_place = [Int(f'day_{i}_place') for i in range(1, num_days + 1)]
-
-    # Constraints: each day_place must be 0, 1, or 2
-    for day in day_place:
-        s.add(Or(day == cities['Split'], day == cities['Santorini'], day == cities['London']))
-
-    # Flight constraints: transitions between cities must be via direct flights
-    for i in range(num_days - 1):
-        current = day_place[i]
-        next_day = day_place[i + 1]
-        # Possible transitions:
-        # Split <-> London (0 <-> 2)
-        # London <-> Santorini (2 <-> 1)
+    
+    # Each day must be one of the three cities
+    for day in day_city:
+        s.add(Or([day == city_ids[city] for city in city_ids]))
+    
+    # Flight constraints - only direct flights allowed
+    for i in range(days-1):
+        current = day_city[i]
+        next_day = day_city[i+1]
         s.add(Or(
-            current == next_day,  # stay in the same city
-            And(current == cities['Split'], next_day == cities['London']),
-            And(current == cities['London'], next_day == cities['Split']),
-            And(current == cities['London'], next_day == cities['Santorini']),
-            And(current == cities['Santorini'], next_day == cities['London'])
+            current == next_day,  # Stay in same city
+            And(current == city_ids['Split'], next_day == city_ids['London']),
+            And(current == city_ids['London'], next_day == city_ids['Split']),
+            And(current == city_ids['London'], next_day == city_ids['Santorini']),
+            And(current == city_ids['Santorini'], next_day == city_ids['London'])
         ))
-
-    # Total days in each city
-    split_days = sum([If(day == cities['Split'], 1, 0) for day in day_place])
-    santorini_days = sum([If(day == cities['Santorini'], 1, 0) for day in day_place])
-    london_days = sum([If(day == cities['London'], 1, 0) for day in day_place])
-
+    
+    # Count days in each city (including flight days)
+    split_days = Sum([If(day == city_ids['Split'], 1, 0) for day in day_city])
+    santorini_days = Sum([If(day == city_ids['Santorini'], 1, 0) for day in day_city])
+    london_days = Sum([If(day == city_ids['London'], 1, 0) for day in day_city])
+    
     s.add(split_days == 6)
     s.add(santorini_days == 7)
     s.add(london_days == 7)
-
-    # Days 12 and 18 must be in Santorini (1-based)
-    s.add(day_place[11] == cities['Santorini'])  # day 12
-    s.add(day_place[17] == cities['Santorini'])  # day 18
-
-    # Additional constraints to ensure the itinerary starts and ends in valid cities
-    # For example, starting in Split and ending in Santorini
-    s.add(day_place[0] == cities['Split'])
-    s.add(day_place[-1] == cities['Santorini'])
-
-    # Check if the problem is satisfiable
+    
+    # Must be in Santorini on days 12 and 18
+    s.add(day_city[11] == city_ids['Santorini'])  # Day 12
+    s.add(day_city[17] == city_ids['Santorini'])  # Day 18
+    
+    # Additional constraints to guide the solver
+    # Start in Split (arbitrary choice to reduce search space)
+    s.add(day_city[0] == city_ids['Split'])
+    
+    # Must have at least one transition between cities
+    s.add(Or([day_city[i] != day_city[i+1] for i in range(days-1)]))
+    
+    # Ensure we don't have impossible sequences like Split->Santorini
+    for i in range(days-1):
+        s.add(Not(And(day_city[i] == city_ids['Split'], day_city[i+1] == city_ids['Santorini'])))
+        s.add(Not(And(day_city[i] == city_ids['Santorini'], day_city[i+1] == city_ids['Split'])))
+    
     if s.check() == sat:
-        model = s.model()
+        m = s.model()
         itinerary = []
-        city_names = {0: 'Split', 1: 'Santorini', 2: 'London'}
-        for i in range(num_days):
-            day = i + 1
-            city_code = model.evaluate(day_place[i]).as_long()
-            city = city_names[city_code]
-            itinerary.append({'day': day, 'place': city})
+        for i in range(days):
+            city_id = m.evaluate(day_city[i]).as_long()
+            itinerary.append({'day': i+1, 'place': id_to_city[city_id]})
         return {'itinerary': itinerary}
     else:
         return {'error': 'No valid itinerary found'}
 
-# Generate the itinerary
-itinerary = solve_itinerary()
-print(itinerary)
+result = solve_itinerary()
+import json
+print(json.dumps(result, indent=2))

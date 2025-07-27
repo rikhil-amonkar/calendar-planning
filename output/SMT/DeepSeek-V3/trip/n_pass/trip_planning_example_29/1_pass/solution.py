@@ -1,61 +1,61 @@
 from z3 import *
 
 def solve_itinerary():
-    # Cities: 1 = Frankfurt, 2 = Krakow, 3 = Dubrovnik
+    # Create a solver instance
     s = Solver()
-    
-    # Create variables for each day (1..10), each can be 1, 2, or 3
-    days = [Int(f"day_{i}") for i in range(1, 11)]
-    for day in days:
-        s.add(Or(day == 1, day == 2, day == 3))
-    
-    # Constraint: Days 9 and 10 must be in Krakow (wedding)
-    s.add(days[8] == 2)  # day 9
-    s.add(days[9] == 2)  # day 10
-    
-    # Calculate days spent in each city
-    frankfurt_days = Sum([If(day == 1, 1, 0) for day in days])
-    krakow_days = Sum([If(day == 2, 1, 0) for day in days])
-    dubrovnik_days = Sum([If(day == 3, 1, 0) for day in days])
-    
-    s.add(frankfurt_days == 3)
-    s.add(krakow_days == 2)
-    s.add(dubrovnik_days == 7)
-    
-    # Flight constraints: transitions must be between connected cities
-    for i in range(9):  # days 1..9 transitioning to next day
-        current = days[i]
-        next_day = days[i+1]
-        # Allowed transitions:
-        # Frankfurt <-> Krakow
-        # Frankfurt <-> Dubrovnik
-        s.add(
-            Or(
-                current == next_day,  # stay in the same city
-                And(current == 1, next_day == 2),  # F -> K
-                And(current == 2, next_day == 1),  # K -> F
-                And(current == 1, next_day == 3),  # F -> D
-                And(current == 3, next_day == 1),  # D -> F
-            )
-        )
-    
-    if s.check() == sat:
-        model = s.model()
-        itinerary = []
-        for i in range(10):
-            day_num = i + 1
-            city_val = model.eval(days[i]).as_long()
-            if city_val == 1:
-                city = "Frankfurt"
-            elif city_val == 2:
-                city = "Krakow"
-            else:
-                city = "Dubrovnik"
-            itinerary.append({"day": day_num, "place": city})
-        return {"itinerary": itinerary}
-    else:
-        return {"error": "No valid itinerary found"}
 
+    # Cities
+    cities = ['Dubrovnik', 'Frankfurt', 'Krakow']
+    Dubrovnik, Frankfurt, Krakow = cities
+    city_map = {c: i for i, c in enumerate(cities)}
+
+    # Variables for each day (1..10) indicating the city (0, 1, 2)
+    day_city = [Int(f'day_{i}_city') for i in range(1, 11)]
+
+    # Each day_city must be 0, 1, or 2
+    for day in day_city:
+        s.add(Or([day == city_map[c] for c in cities]))
+
+    # Flight constraints: transitions are only between connected cities
+    for i in range(1, 10):  # Check between day i and i+1 (0-based 0..8 vs 1..9)
+        current_day = day_city[i-1]
+        next_day = day_city[i]
+        # Allowed transitions:
+        # Same city, or Frankfurt<->Krakow, or Dubrovnik<->Frankfurt
+        s.add(Or(
+            current_day == next_day,
+            And(Or(current_day == city_map[Frankfurt], current_day == city_map[Krakow]),
+            And(Or(next_day == city_map[Frankfurt], next_day == city_map[Krakow])),
+            And(Or(current_day == city_map[Dubrovnik], current_day == city_map[Frankfurt]),
+            And(Or(next_day == city_map[Dubrovnik], next_day == city_map[Frankfurt]))
+        ))
+
+    # Constraints for each city's total days
+    # For each city, count the number of days it appears in day_city
+    total_dubrovnik = sum([If(day == city_map[Dubrovnik], 1, 0) for day in day_city])
+    total_frankfurt = sum([If(day == city_map[Frankfurt], 1, 0) for day in day_city])
+    total_krakow = sum([If(day == city_map[Krakow], 1, 0) for day in day_city])
+
+    s.add(total_dubrovnik == 7)
+    s.add(total_frankfurt == 3)
+    s.add(total_krakow == 2)
+
+    # Wedding in Krakow between day 9 and 10: so day 9 or 10 must be Krakow.
+    s.add(Or(day_city[8] == city_map[Krakow], day_city[9] == city_map[Krakow]))
+
+    # Check if the model is satisfiable
+    if s.check() == sat:
+        m = s.model()
+        itinerary = []
+        for i in range(1, 11):
+            city_val = m.evaluate(day_city[i-1]).as_long()
+            city = cities[city_val]
+            itinerary.append({'day': i, 'place': city})
+        return {'itinerary': itinerary}
+    else:
+        return {'error': 'No valid itinerary found'}
+
+# Execute and print the result
 result = solve_itinerary()
 import json
 print(json.dumps(result, indent=2))

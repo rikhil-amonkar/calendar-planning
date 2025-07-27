@@ -1,80 +1,66 @@
 from z3 import *
+import json
 
 def solve_itinerary():
     s = Solver()
 
-    # Days are 1 to 10
-    days = 10
-    city_codes = {'L': 'London', 'S': 'Santorini', 'I': 'Istanbul'}
-    
-    # Create variables for each day
-    day_vars = [Int(f"day_{i}") for i in range(1, days + 1)]
-    
-    # Each day must be one of the city codes (L, S, I)
-    for day in day_vars:
-        s.add(Or(day == ord('L'), day == ord('S'), day == ord('I')))
-    
-    # Encode city codes
-    L, S, I = ord('L'), ord('S'), ord('I')
-    
-    # Count days in each city
-    london_days = Sum([If(day == L, 1, 0) for day in day_vars])
-    santorini_days = Sum([If(day == S, 1, 0) for day in day_vars])
-    istanbul_days = Sum([If(day == I, 1, 0) for day in day_vars])
-    
-    # Add count constraints
-    s.add(london_days == 3)
-    s.add(santorini_days == 6)
-    s.add(istanbul_days == 3)
-    
-    # Conference days must be in Santorini
-    s.add(day_vars[4] == S)  # Day 5
-    s.add(day_vars[9] == S)   # Day 10
-    
-    # Flight constraints - only allowed transitions
-    for i in range(days - 1):
-        current = day_vars[i]
-        next_day = day_vars[i + 1]
-        s.add(Or(
-            current == next_day,  # Stay in same city
-            And(current == L, next_day == S),  # London to Santorini
-            And(current == S, next_day == L),  # Santorini to London
-            And(current == L, next_day == I),  # London to Istanbul
-            And(current == I, next_day == L)   # Istanbul to London
-        ))
-    
-    # Check for solution
+    # Days 1-10
+    days = range(1, 11)
+    cities = {'London': 0, 'Santorini': 1, 'Istanbul': 2}
+    city_vars = [Int(f'day_{day}') for day in days]
+
+    # Each day must be one of the cities
+    for day in days:
+        s.add(Or([city_vars[day-1] == val for val in cities.values()]))
+
+    # Total days constraints
+    s.add(Sum([If(city_vars[i] == cities['London'], 1, 0) for i in range(10)]) == 3)
+    s.add(Sum([If(city_vars[i] == cities['Santorini'], 1, 0) for i in range(10)]) == 6)
+    s.add(Sum([If(city_vars[i] == cities['Istanbul'], 1, 0) for i in range(10)]) == 3)
+
+    # Conference days in Santorini
+    s.add(city_vars[4] == cities['Santorini'])  # Day 5
+    s.add(city_vars[9] == cities['Santorini'])  # Day 10
+
+    # Flight constraints - only direct connections
+    for i in range(9):
+        current = city_vars[i]
+        next_day = city_vars[i+1]
+        s.add(Implies(current != next_day,
+                      Or(
+                          And(current == cities['London'], next_day == cities['Santorini']),
+                          And(current == cities['Santorini'], next_day == cities['London']),
+                          And(current == cities['London'], next_day == cities['Istanbul']),
+                          And(current == cities['Istanbul'], next_day == cities['London'])
+                      )))
+
+    # Additional constraints to help the solver
+    # Must start or end in Santorini (since days 5 and 10 are there)
+    s.add(Or(city_vars[0] == cities['Santorini'], city_vars[-1] == cities['Santorini']))
+
+    # Must have at least one transition through London
+    s.add(Or([And(city_vars[i] == cities['London'], city_vars[i+1] != cities['London']) for i in range(9)]))
+
     if s.check() == sat:
         model = s.model()
         itinerary = []
-        for i in range(days):
-            day_num = i + 1
-            city_code = chr(model[day_vars[i]].as_long())
-            itinerary.append({"day": day_num, "place": city_codes[city_code]})
-        
+        city_names = {v: k for k, v in cities.items()}
+        for day in days:
+            city_index = model.evaluate(city_vars[day-1]).as_long()
+            itinerary.append({'day': day, 'place': city_names[city_index]})
+
         # Verify counts
-        counts = {'London': 0, 'Santorini': 0, 'Istanbul': 0}
+        counts = {city: 0 for city in cities}
         for entry in itinerary:
             counts[entry['place']] += 1
-        
-        assert counts['London'] == 3
-        assert counts['Santorini'] == 6
-        assert counts['Istanbul'] == 3
-        assert itinerary[4]['place'] == 'Santorini'  # Day 5
-        assert itinerary[9]['place'] == 'Santorini'  # Day 10
-        
-        # Verify transitions
-        for i in range(days - 1):
-            current = itinerary[i]['place']
-            next_place = itinerary[i + 1]['place']
-            if current != next_place:
-                assert {current, next_place} in [{'London', 'Santorini'}, {'London', 'Istanbul'}]
-        
-        return {"itinerary": itinerary}
-    else:
-        return {"error": "No valid itinerary found"}
 
-# Solve and print
-result = solve_itinerary()
-import json
-print(json.dumps(result, indent=2))
+        if (counts['London'] == 3 and counts['Santorini'] == 6 and 
+            counts['Istanbul'] == 3 and itinerary[4]['place'] == 'Santorini' and 
+            itinerary[9]['place'] == 'Santorini'):
+            return json.dumps({'itinerary': itinerary}, indent=2)
+        else:
+            return json.dumps({'error': 'Invalid solution found'}, indent=2)
+    else:
+        return json.dumps({'error': 'No valid itinerary found'}, indent=2)
+
+print(solve_itinerary())

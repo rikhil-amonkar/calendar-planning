@@ -1,113 +1,93 @@
 from z3 import *
 
-def solve_scheduling_problem():
+def solve_itinerary():
     # Cities
-    cities = ["Oslo", "Krakow", "Vilnius", "Helsinki", "Dubrovnik", "Madrid", "Mykonos", "Paris"]
-    city_ints = {city: idx for idx, city in enumerate(cities)}
-    int_cities = {idx: city for idx, city in enumerate(cities)}
+    cities = ['Mykonos', 'Krakow', 'Vilnius', 'Helsinki', 'Dubrovnik', 'Oslo', 'Madrid', 'Paris']
+    city_to_idx = {city: idx for idx, city in enumerate(cities)}
     
-    # Direct flights (undirected)
+    # Direct flights as tuples of city indices
     direct_flights = [
-        ("Oslo", "Krakow"),
-        ("Oslo", "Paris"),
-        ("Paris", "Madrid"),
-        ("Helsinki", "Vilnius"),
-        ("Oslo", "Madrid"),
-        ("Oslo", "Helsinki"),
-        ("Helsinki", "Krakow"),
-        ("Dubrovnik", "Helsinki"),
-        ("Dubrovnik", "Madrid"),
-        ("Oslo", "Dubrovnik"),
-        ("Krakow", "Paris"),
-        ("Madrid", "Mykonos"),
-        ("Oslo", "Vilnius"),
-        ("Krakow", "Vilnius"),
-        ("Helsinki", "Paris"),
-        ("Vilnius", "Paris"),
-        ("Helsinki", "Madrid")
+        (city_to_idx['Oslo'], city_to_idx['Krakow']),
+        (city_to_idx['Oslo'], city_to_idx['Paris']),
+        (city_to_idx['Paris'], city_to_idx['Madrid']),
+        (city_to_idx['Helsinki'], city_to_idx['Vilnius']),
+        (city_to_idx['Oslo'], city_to_idx['Madrid']),
+        (city_to_idx['Oslo'], city_to_idx['Helsinki']),
+        (city_to_idx['Helsinki'], city_to_idx['Krakow']),
+        (city_to_idx['Dubrovnik'], city_to_idx['Helsinki']),
+        (city_to_idx['Dubrovnik'], city_to_idx['Madrid']),
+        (city_to_idx['Oslo'], city_to_idx['Dubrovnik']),
+        (city_to_idx['Krakow'], city_to_idx['Paris']),
+        (city_to_idx['Madrid'], city_to_idx['Mykonos']),
+        (city_to_idx['Oslo'], city_to_idx['Vilnius']),
+        (city_to_idx['Krakow'], city_to_idx['Vilnius']),
+        (city_to_idx['Helsinki'], city_to_idx['Paris']),
+        (city_to_idx['Vilnius'], city_to_idx['Paris']),
+        (city_to_idx['Helsinki'], city_to_idx['Madrid']),
     ]
-    
-    # Create a set of direct flight pairs for easy lookup
-    flight_pairs = set()
+    # Make flights bidirectional
+    bidirectional_flights = set()
     for a, b in direct_flights:
-        flight_pairs.add((a, b))
-        flight_pairs.add((b, a))
+        bidirectional_flights.add((a, b))
+        bidirectional_flights.add((b, a))
+    direct_flights = bidirectional_flights
     
-    # Initialize Z3 solver
+    # Create solver
     s = Solver()
     
-    # Create variables for each day (1..18)
-    days = [Int(f"day_{i}") for i in range(1, 19)]
-    
-    # Each day variable must be assigned a city (represented as an integer)
+    # Variables: day_1 to day_18, each can be one of the cities (0-7)
+    days = [Int(f'day_{i}') for i in range(1, 19)]
     for day in days:
-        s.add(day >= 0, day < len(cities))
+        s.add(day >= 0, day < 8)
     
-    # Duration constraints
-    # Mykonos: 4 days between day 15-18
-    mykonos_days = [If(days[i] == city_ints["Mykonos"], 1, 0) for i in range(14, 18)]  # days 15-18 are indices 14-17
-    s.add(sum(mykonos_days) == 4)
+    # Constraints for fixed days
+    # Oslo between day 1 and day 2 (i.e., day 1 is Oslo, day 2 could be Oslo or another city)
+    s.add(days[0] == city_to_idx['Oslo'])  # day 1 is Oslo
+    # Dubrovnik from day 2 to day 4 (days 2, 3, 4)
+    s.add(days[1] == city_to_idx['Dubrovnik'])  # day 2
+    s.add(days[2] == city_to_idx['Dubrovnik'])  # day 3
+    s.add(days[3] == city_to_idx['Dubrovnik'])  # day 4
+    # Mykonos between day 15 and 18 (must be there for 4 days, so days 15-18)
+    s.add(days[14] == city_to_idx['Mykonos'])  # day 15
+    s.add(days[15] == city_to_idx['Mykonos'])  # day 16
+    s.add(days[16] == city_to_idx['Mykonos'])  # day 17
+    s.add(days[17] == city_to_idx['Mykonos'])  # day 18
     
-    # Krakow: 5 days total
-    krakow_days = [If(days[i] == city_ints["Krakow"], 1, 0) for i in range(18)]
-    s.add(sum(krakow_days) == 5)
+    # Flight transitions: consecutive days must be same city or connected by direct flight
+    for i in range(17):  # days 1..18, so pairs (1,2), ..., (17,18)
+        current = days[i]
+        next_day = days[i+1]
+        # Either stay in the same city or move via direct flight
+        s.add(Or(current == next_day, 
+                 *[And(current == a, next_day == b) for a, b in direct_flights]))
     
-    # Vilnius: 2 days
-    vilnius_days = [If(days[i] == city_ints["Vilnius"], 1, 0) for i in range(18)]
-    s.add(sum(vilnius_days) == 2)
+    # Duration constraints for each city
+    def count_days(city_idx):
+        return Sum([If(days[i] == city_idx, 1, 0) for i in range(18)])
     
-    # Helsinki: 2 days
-    helsinki_days = [If(days[i] == city_ints["Helsinki"], 1, 0) for i in range(18)]
-    s.add(sum(helsinki_days) == 2)
+    s.add(count_days(city_to_idx['Mykonos']) == 4)
+    s.add(count_days(city_to_idx['Krakow']) == 5)
+    s.add(count_days(city_to_idx['Vilnius']) == 2)
+    s.add(count_days(city_to_idx['Helsinki']) == 2)
+    s.add(count_days(city_to_idx['Dubrovnik']) == 3)  # days 2-4 (3 days)
+    s.add(count_days(city_to_idx['Oslo']) == 2)  # day 1 and possibly day 2
+    s.add(count_days(city_to_idx['Madrid']) == 5)
+    s.add(count_days(city_to_idx['Paris']) == 2)
     
-    # Dubrovnik: 3 days, with days 2-4 (indices 1-3) including the show
-    dubrovnik_days = [If(days[i] == city_ints["Dubrovnik"], 1, 0) for i in range(18)]
-    s.add(sum(dubrovnik_days) == 3)
-    # The show is from day 2-4, so likely all three days are Dubrovnik
-    s.add(And([days[i] == city_ints["Dubrovnik"] for i in range(1, 4)]))  # days 2-4 are Dubrovnik
-    
-    # Oslo: 2 days, meet friends between day 1-2 (indices 0-1)
-    oslo_days = [If(days[i] == city_ints["Oslo"], 1, 0) for i in range(18)]
-    s.add(sum(oslo_days) == 2)
-    s.add(Or(days[0] == city_ints["Oslo"], days[1] == city_ints["Oslo"]))
-    
-    # Madrid: 5 days
-    madrid_days = [If(days[i] == city_ints["Madrid"], 1, 0) for i in range(18)]
-    s.add(sum(madrid_days) == 5)
-    
-    # Paris: 2 days
-    paris_days = [If(days[i] == city_ints["Paris"], 1, 0) for i in range(18)]
-    s.add(sum(paris_days) == 2)
-    
-    # Flight constraints: consecutive days must be same city or have a direct flight
-    for i in range(17):
-        current_city = days[i]
-        next_city = days[i+1]
-        # Either same city or a direct flight exists
-        same_city = current_city == next_city
-        flight_exists = Or([And(current_city == city_ints[a], next_city == city_ints[b]) for a, b in flight_pairs])
-        s.add(Or(same_city, flight_exists))
-    
-    # Check if the problem is satisfiable
+    # Check and get model
     if s.check() == sat:
         model = s.model()
         itinerary = []
         for i in range(18):
             day_num = i + 1
             city_idx = model.evaluate(days[i]).as_long()
-            city = int_cities[city_idx]
-            itinerary.append({"day": day_num, "place": city})
-        
-        # Verify the itinerary meets all constraints
-        # (This step is implicit in the model's satisfaction)
-        
-        # Output as JSON-formatted dictionary
-        result = {"itinerary": itinerary}
-        return result
+            city = cities[city_idx]
+            itinerary.append({'day': day_num, 'place': city})
+        return {'itinerary': itinerary}
     else:
-        return {"error": "No valid itinerary found"}
+        return {'error': 'No valid itinerary found'}
 
-# Execute the solver and print the result
+# Generate and print the itinerary
 import json
-result = solve_scheduling_problem()
+result = solve_itinerary()
 print(json.dumps(result, indent=2))

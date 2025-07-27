@@ -1,79 +1,73 @@
 from z3 import *
 
 def solve_itinerary():
-    # Create a solver instance
     s = Solver()
 
-    # Cities: Milan, Naples, Seville
-    cities = ['Milan', 'Naples', 'Seville']
-    milan, naples, seville = 0, 1, 2
-    n_days = 12
+    # City codes
+    Milan, Naples, Seville = 0, 1, 2
+    cities = {Milan: "Milan", Naples: "Naples", Seville: "Seville"}
 
-    # For each day, we have a variable indicating the city (or cities) we are in.
-    # We'll represent each day as a list of possible cities (since a travel day can be in two cities).
-    # So for each day, we have three Booleans indicating presence in each city.
-    day_in_city = [[Bool(f"day_{day}_in_{city}") for city in cities] for day in range(n_days)]
+    # Variables for each day's location (days 1 to 12)
+    day_location = [Int(f"day_{i}") for i in range(1, 13)]
 
-    # Constraints:
-    # 1. Each day must be in at least one city (no gaps in the itinerary).
-    for day in range(n_days):
-        s.add(Or(day_in_city[day][milan], day_in_city[day][naples], day_in_city[day][seville]))
+    # Each day must be one of the three cities
+    for day in day_location:
+        s.add(Or(day == Milan, day == Naples, day == Seville))
 
-    # 2. Total days per city:
-    # Milan: 7 days
-    milan_days = Sum([If(day_in_city[day][milan], 1, 0) for day in range(n_days)])
+    # Flight constraints - only direct flights allowed
+    # Milan <-> Seville and Milan <-> Naples
+    for i in range(11):
+        current = day_location[i]
+        next_day = day_location[i+1]
+        s.add(Or(
+            current == next_day,  # Stay in same city
+            And(current == Milan, next_day == Seville),  # Milan -> Seville
+            And(current == Seville, next_day == Milan),  # Seville -> Milan
+            And(current == Naples, next_day == Milan),   # Naples -> Milan
+            And(current == Milan, next_day == Naples)    # Milan -> Naples
+        ))
+
+    # Total days in each city
+    milan_days = Sum([If(day == Milan, 1, 0) for day in day_location])
+    naples_days = Sum([If(day == Naples, 1, 0) for day in day_location])
+    seville_days = Sum([If(day == Seville, 1, 0) for day in day_location])
+
     s.add(milan_days == 7)
-
-    # Naples: 3 days
-    naples_days = Sum([If(day_in_city[day][naples], 1, 0) for day in range(n_days)])
     s.add(naples_days == 3)
-
-    # Seville: 4 days
-    seville_days = Sum([If(day_in_city[day][seville], 1, 0) for day in range(n_days)])
     s.add(seville_days == 4)
 
-    # 3. Seville must be visited from day 9 to day 12 (inclusive).
-    for day in range(8, 12):  # days 9-12 (0-based: 8,9,10,11)
-        s.add(day_in_city[day][seville])
+    # Days 9-12 must be in Seville (show days)
+    for i in range(8, 12):  # days 9-12 (0-based index 8-11)
+        s.add(day_location[i] == Seville)
 
-    # 4. Travel constraints: transitions between cities are only via direct flights.
-    # Direct flights: Milan-Seville, Naples-Milan.
-    # So, transitions between cities must follow these connections.
-    for day in range(1, n_days):
-        prev_day = day - 1
-        # Possible transitions:
-        # From Milan to Seville or Naples, or vice versa, or stay.
-        # But no direct Naples-Seville.
-        for prev_city in cities:
-            for curr_city in cities:
-                prev_index = cities.index(prev_city)
-                curr_index = cities.index(curr_city)
-                # If the previous day was in prev_city and current day is in curr_city, then the transition must be allowed.
-                # The allowed transitions:
-                # - Same city
-                # - Milan <-> Seville
-                # - Milan <-> Naples
-                # So the forbidden transitions are Naples <-> Seville directly.
-                if (prev_city == 'Naples' and curr_city == 'Seville') or (prev_city == 'Seville' and curr_city == 'Naples'):
-                    # Add constraint that this transition is not possible.
-                    s.add(Not(And(day_in_city[prev_day][prev_index], day_in_city[day][curr_index])))
+    # Must visit Naples before the Seville show
+    # At least one day in Naples before day 9
+    s.add(Or([day_location[i] == Naples for i in range(8)]))
 
-    # Solve the problem
+    # Try to find a solution
     if s.check() == sat:
         model = s.model()
         itinerary = []
-        for day in range(n_days):
-            current_day = day + 1  # converting to 1-based
-            places = []
-            for city_idx in range(len(cities)):
-                if model.evaluate(day_in_city[day][city_idx]):
-                    places.append(cities[city_idx])
-            itinerary.append({"day": current_day, "place": places})
-        return {"itinerary": itinerary}
+        for i in range(12):
+            day_num = i + 1
+            city_code = model.evaluate(day_location[i]).as_long()
+            city_name = cities[city_code]
+            itinerary.append({"day": day_num, "place": city_name})
+        
+        # Verify the solution meets all requirements
+        milan_count = sum(1 for day in itinerary if day["place"] == "Milan")
+        naples_count = sum(1 for day in itinerary if day["place"] == "Naples")
+        seville_count = sum(1 for day in itinerary if day["place"] == "Seville")
+        show_days = all(day["place"] == "Seville" for day in itinerary[8:12])
+        
+        if (milan_count == 7 and naples_count == 3 and 
+            seville_count == 4 and show_days):
+            return {"itinerary": itinerary}
+        else:
+            return {"error": "Found invalid solution"}
     else:
-        return {"error": "No valid itinerary found."}
+        return {"error": "No valid itinerary found"}
 
-# Execute and print the result
-result = solve_itinerary()
-import json
-print(json.dumps(result, indent=2))
+# Generate and print the itinerary
+itinerary = solve_itinerary()
+print(itinerary)

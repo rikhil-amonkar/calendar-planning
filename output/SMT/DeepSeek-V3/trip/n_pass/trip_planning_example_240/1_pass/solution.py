@@ -1,82 +1,67 @@
 from z3 import *
-import json
 
 def solve_itinerary():
-    # Cities
-    Prague, Berlin, Tallinn, Stockholm = Ints('Prague Berlin Tallinn Stockholm')
-    cities = {
-        'Prague': Prague,
-        'Berlin': Berlin,
-        'Tallinn': Tallinn,
-        'Stockholm': Stockholm
-    }
-    city_list = ['Prague', 'Berlin', 'Tallinn', 'Stockholm']
-    
-    # Direct flight connections
-    direct_flights = {
-        ('Berlin', 'Tallinn'),
-        ('Prague', 'Tallinn'),
-        ('Stockholm', 'Tallinn'),
-        ('Prague', 'Stockholm'),
-        ('Stockholm', 'Berlin'),
-        ('Tallinn', 'Berlin'),
-        ('Tallinn', 'Prague'),
-        ('Tallinn', 'Stockholm'),
-        ('Stockholm', 'Prague'),
-        ('Berlin', 'Stockholm')
-    }
-    
     # Create a solver instance
     s = Solver()
-    
-    # Day variables: day[i] represents the city on day i+1 (since days are 1-based)
-    days = [Int(f'day_{i}') for i in range(1, 13)]
-    
-    # Constraint: each day variable must correspond to a city (0: Prague, 1: Berlin, 2: Tallinn, 3: Stockholm)
+
+    # Cities: Prague, Berlin, Tallinn, Stockholm
+    cities = ['Prague', 'Berlin', 'Tallinn', 'Stockholm']
+    city_to_int = {city: idx for idx, city in enumerate(cities)}
+    int_to_city = {idx: city for idx, city in enumerate(cities)}
+
+    # Define variables for each day (1..12), representing the city on that day
+    days = [Int(f"day_{i}") for i in range(1, 13)]
     for day in days:
-        s.add(Or([day == idx for idx, city in enumerate(city_list)]))
-    
-    # Total days constraints
-    s.add(Sum([If(day == city_list.index('Prague'), 1, 0) for day in days]) == 2)
-    s.add(Sum([If(day == city_list.index('Berlin'), 1, 0) for day in days]) == 3)
-    s.add(Sum([If(day == city_list.index('Tallinn'), 1, 0) for day in days]) == 5)
-    s.add(Sum([If(day == city_list.index('Stockholm'), 1, 0) for day in days]) == 5)
-    
-    # Specific day constraints
-    # Day 6 must be Berlin
-    s.add(days[5] == city_list.index('Berlin'))
-    # Day 8 must be Berlin
-    s.add(days[7] == city_list.index('Berlin'))
-    
-    # Between day 8 and day 12 (inclusive), must be in Tallinn
-    for i in range(7, 12):  # days 8 to 12 (indices 7 to 11)
-        s.add(days[i] == city_list.index('Tallinn'))
-    
-    # Flight constraints: transitions between days must be via direct flights
-    for i in range(11):  # days 1-11 to days 2-12
-        current_day = days[i]
-        next_day = days[i+1]
-        # Either stay in the same city or move to a directly connected city
+        s.add(day >= 0, day < len(cities))
+
+    # Direct flights: adjacency list
+    adjacency = {
+        'Berlin': ['Tallinn', 'Stockholm'],
+        'Prague': ['Tallinn', 'Stockholm'],
+        'Tallinn': ['Berlin', 'Prague', 'Stockholm'],
+        'Stockholm': ['Berlin', 'Prague', 'Tallinn']
+    }
+
+    # Flight constraints: consecutive days must be either same city or connected by a direct flight
+    for i in range(11):
+        day_current = days[i]
+        day_next = days[i+1]
+        # Either stay in the same city or move to a connected city
         s.add(Or(
-            current_day == next_day,
-            Or([And(current_day == city_list.index(a), next_day == city_list.index(b)) for (a, b) in direct_flights if a != b])
+            day_current == day_next,
+            Or([And(day_current == city_to_int[a], day_next == city_to_int[b]) 
+                for a in adjacency for b in adjacency[a] if city_to_int[b] > city_to_int[a]] +
+               [And(day_current == city_to_int[b], day_next == city_to_int[a]) 
+                for a in adjacency for b in adjacency[a] if city_to_int[b] > city_to_int[a]])
         ))
-    
-    # Check if the problem is satisfiable
+
+    # Total days per city constraints
+    # Prague: 2 days
+    s.add(Sum([If(d == city_to_int['Prague'], 1, 0) for d in days]) == 2)
+    # Berlin: 3 days, including day 6 and 8
+    s.add(Sum([If(d == city_to_int['Berlin'], 1, 0) for d in days]) == 3)
+    s.add(days[5] == city_to_int['Berlin'])  # day 6 is index 5
+    s.add(days[7] == city_to_int['Berlin'])  # day 8 is index 7
+    # Tallinn: 5 days, between day 8 and 12 (inclusive)
+    # So from day 8 (index 7) to day 12 (index 11), at least some days must be Tallinn, totaling 5
+    s.add(Sum([If(days[i] == city_to_int['Tallinn'], 1, 0) for i in range(7, 12)]) >= 1)  # At least one day between 8-12 is Tallinn
+    s.add(Sum([If(d == city_to_int['Tallinn'], 1, 0) for d in days]) == 5)
+    # Stockholm: 5 days
+    s.add(Sum([If(d == city_to_int['Stockholm'], 1, 0) for d in days]) == 5)
+
+    # Check if the solver can find a solution
     if s.check() == sat:
         model = s.model()
         itinerary = []
         for i in range(12):
             day_num = i + 1
             city_idx = model.evaluate(days[i]).as_long()
-            city = city_list[city_idx]
-            itinerary.append({'day': day_num, 'place': city})
-        
-        # Convert to the required JSON format
-        result = {'itinerary': itinerary}
-        return json.dumps(result, indent=2)
+            city = int_to_city[city_idx]
+            itinerary.append({"day": day_num, "place": city})
+        return {'itinerary': itinerary}
     else:
-        return json.dumps({"error": "No valid itinerary found."}, indent=2)
+        return {"error": "No valid itinerary found"}
 
-# Execute the function and print the result
-print(solve_itinerary())
+# Generate the solution
+solution = solve_itinerary()
+print(solution)

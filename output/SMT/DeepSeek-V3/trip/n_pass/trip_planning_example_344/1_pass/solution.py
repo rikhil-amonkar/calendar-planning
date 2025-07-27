@@ -3,8 +3,7 @@ from z3 import *
 def solve_itinerary():
     # Cities
     Valencia, Athens, Naples, Zurich = 0, 1, 2, 3
-    cities = [Valencia, Athens, Naples, Zurich]
-    city_names = {Valencia: 'Valencia', Athens: 'Athens', Naples: 'Naples', Zurich: 'Zurich'}
+    cities = ['Valencia', 'Athens', 'Naples', 'Zurich']
     
     # Direct flights: adjacency list
     direct_flights = {
@@ -14,85 +13,86 @@ def solve_itinerary():
         Zurich: [Naples, Athens, Valencia]
     }
     
-    # Create Z3 variables: for each day, which city is visited (could be two if it's a transition day)
-    days = 20
-    day_city = [[Bool(f"day_{day}_city_{city}") for city in cities] for day in range(1, days + 1)]
+    # Create Z3 variables for each day: represents the city on that day
+    day_city = [Int(f'day_{i}_city') for i in range(1, 21)]
     
     s = Solver()
     
-    # Constraint: first day starts in Athens (since relatives are visited between day 1 and 6)
-    s.add(day_city[0][Athens] == True)
+    # Constraint: each day_city must be 0, 1, 2, or 3
+    for day in day_city:
+        s.add(Or([day == c for c in [Valencia, Athens, Naples, Zurich]]))
     
-    # Constraint: days 1-6 must include Athens (since relatives are visited between day 1 and 6)
-    for day in range(0, 6):  # days 1-6 (0-based)
-        s.add(day_city[day][Athens] == True)
+    # Athens from day 1 to 6 (inclusive)
+    for i in range(6):  # days 1-6 (0-based in list, days 1-6 in 1-based)
+        s.add(day_city[i] == Athens)
     
-    # Constraint: wedding in Naples between days 16-20 (1-based: 15-19 0-based)
-    wedding_days = []
-    for day in range(15, 20):
-        wedding_days.append(day_city[day][Naples])
-    s.add(Or(*wedding_days))
-    
-    # Constraint: total days per city
-    total_days_per_city = {
-        Valencia: 6,
-        Athens: 6,
-        Naples: 5,
-        Zurich: 6
-    }
-    for city in cities:
-        total = 0
-        for day in range(days):
-            total += If(day_city[day][city], 1, 0)
-        s.add(total == total_days_per_city[city])
-    
-    # Transition constraints: consecutive days must be in the same city or adjacent cities
-    for day in range(days - 1):
-        current_day = day
-        next_day = day + 1
-        pass
-    
-    city_seq = [Int(f"city_day_{day}") for day in range(1, days + 1)]
-    
-    s = Solver()
-    
-    # Each city_seq[day] must be one of the city indices
-    for day in range(days):
-        s.add(Or([city_seq[day] == city for city in cities]))
-    
-    # Transition constraints: if city changes between day and day+1, they must be connected
-    for day in range(days - 1):
-        current_city = city_seq[day]
-        next_city = city_seq[day + 1]
-        s.add(Or(
-            current_city == next_city,
-            And([Or(current_city == c1, next_city == c2) for c1 in cities for c2 in direct_flights[c1] if c2 in direct_flights[c1]])
-        ))
-    
-    # Constraint: first day is Athens
-    s.add(city_seq[0] == Athens)
-    
-    # Constraint: days 1-6 (1-based, 0-based 0-5) must include Athens
-    for day in range(6):
-        s.add(city_seq[day] == Athens)
-    
-    # Constraint: wedding in Naples between days 16-20 (1-based: 15-19 0-based)
-    s.add(Or([city_seq[day] == Naples for day in range(15, 20)]))
+    # Naples wedding between day 16 and 20: at least some days in Naples in this interval
+    # We need at least one day in Naples in 16-20, but the total Naples days is 5.
+    # So, model that within 16-20, the person is in Naples for some contiguous days.
+    # But for simplicity, ensure that some days in 16-20 are Naples.
+    s.add(Or([day_city[i] == Naples for i in range(15, 20)]))  # days 16-20 (indices 15-19)
     
     # Total days per city
-    for city in cities:
-        total = 0
-        for day in range(days):
-            total += If(city_seq[day] == city, 1, 0)
-        s.add(total == total_days_per_city[city])
+    total_valencia = sum([If(day_city[i] == Valencia, 1, 0) for i in range(20)])
+    total_athens = sum([If(day_city[i] == Athens, 1, 0) for i in range(20)])
+    total_naples = sum([If(day_city[i] == Naples, 1, 0) for i in range(20)])
+    total_zurich = sum([If(day_city[i] == Zurich, 1, 0) for i in range(20)])
     
-    # Check if the solution is satisfiable
+    s.add(total_valencia == 6)
+    s.add(total_athens == 6)
+    s.add(total_naples == 5)
+    s.add(total_zurich == 6)
+    
+    # Flight transitions: if consecutive days are in different cities, there must be a direct flight
+    for i in range(19):  # days 1..19 and 2..20
+        city_today = day_city[i]
+        city_tomorrow = day_city[i+1]
+        s.add(Implies(city_today != city_tomorrow, 
+                      Or([And(city_today == a, city_tomorrow == b) 
+                          for a in direct_flights 
+                          for b in direct_flights[a] if a != b])))
+    
+    # Check and get model
     if s.check() == sat:
-        model = s.model()
+        m = s.model()
         itinerary = []
-        for day in range(days):
-            city_index = model[city_seq[day]].as_long()
-            itinerary.append(city_names[city_index])
-        return itinerary
+        current_city = None
+        start_day = 1
+        for day in range(1, 21):
+            city_idx = m.evaluate(day_city[day-1]).as_long()
+            city = cities[city_idx]
+            itinerary.append({"day": day, "place": city})
+        
+        # Verify transitions
+        for i in range(19):
+            from_city = itinerary[i]['place']
+            to_city = itinerary[i+1]['place']
+            if from_city != to_city:
+                from_idx = cities.index(from_city)
+                to_idx = cities.index(to_city)
+                assert to_idx in direct_flights[from_idx], f"No direct flight from {from_city} to {to_city}"
+        
+        # Verify totals
+        counts = {city: 0 for city in cities}
+        for entry in itinerary:
+            counts[entry['place']] += 1
+        assert counts['Valencia'] == 6
+        assert counts['Athens'] == 6
+        assert counts['Naples'] == 5
+        assert counts['Zurich'] == 6
+        
+        # Verify Athens days 1-6
+        for day in range(1, 7):
+            assert itinerary[day-1]['place'] == 'Athens'
+        
+        # Verify Naples days 16-20: at least one day in Naples
+        naples_in_16_20 = any(itinerary[i]['place'] == 'Naples' for i in range(15, 20))
+        assert naples_in_16_20
+        
+        return {'itinerary': itinerary}
     else:
         return None
+
+result = solve_itinerary()
+import json
+print(json.dumps(result, indent=2))

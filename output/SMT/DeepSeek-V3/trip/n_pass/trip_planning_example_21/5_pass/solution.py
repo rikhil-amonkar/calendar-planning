@@ -1,66 +1,88 @@
 from z3 import *
 
-def solve_trip_planning():
+def solve_itinerary():
     s = Solver()
 
-    # Days and cities
+    # Define cities and days
+    City = Datatype('City')
+    City.declare('Venice')
+    City.declare('Mykonos')
+    City.declare('Vienna')
+    City = City.create()
+    
     days = 10
-    Day = [i + 1 for i in range(days)]
-    Mykonos, Vienna, Venice = 0, 1, 2
-    cities = {0: 'Mykonos', 1: 'Vienna', 2: 'Venice'}
+    day_city = [Const(f'day_{i}_city', City) for i in range(days)]
+    
+    # Track days in each city including transitions
+    venice_days = Int('venice_days')
+    mykonos_days = Int('mykonos_days')
+    vienna_days = Int('vienna_days')
+    
+    # Count days in each city, including transition days
+    s.add(venice_days == Sum([If(day_city[i] == City.Venice, 1, 0) for i in range(days)]))
+    s.add(mykonos_days == Sum([If(day_city[i] == City.Mykonos, 1, 0) for i in range(days)]))
+    s.add(vienna_days == Sum([If(day_city[i] == City.Vienna, 1, 0) for i in range(days)]))
+    
+    # Add transition days to counts
+    for i in range(days - 1):
+        s.add(If(day_city[i] != day_city[i+1],
+                 And(venice_days == venice_days + If(Or(day_city[i] == City.Venice, day_city[i+1] == City.Venice), 1, 0),
+                 True))
+        s.add(If(day_city[i] != day_city[i+1],
+                 And(mykonos_days == mykonos_days + If(Or(day_city[i] == City.Mykonos, day_city[i+1] == City.Mykonos), 1, 0),
+                 True))
+        s.add(If(day_city[i] != day_city[i+1],
+                 And(vienna_days == vienna_days + If(Or(day_city[i] == City.Vienna, day_city[i+1] == City.Vienna), 1, 0),
+                 True))
 
-    # Decision variables
-    city_vars = [Int(f'day_{day}_city') for day in Day]
-    for day in Day:
-        s.add(And(city_vars[day - 1] >= 0, city_vars[day - 1] <= 2))
-
-    # Count days in each city
-    venice_days = Sum([If(city_vars[day - 1] == Venice, 1, 0) for day in Day])
-    mykonos_days = Sum([If(city_vars[day - 1] == Mykonos, 1, 0) for day in Day])
-    vienna_days = Sum([If(city_vars[day - 1] == Vienna, 1, 0) for day in Day])
-
+    # Required days
     s.add(venice_days == 6)
     s.add(mykonos_days == 2)
     s.add(vienna_days == 4)
-
-    # Workshop constraint (Venice between days 5-10)
-    s.add(Or([city_vars[day - 1] == Venice for day in range(5, 11)]))
-
-    # Flight transition constraints
-    for i in range(len(Day) - 1):
-        current = city_vars[i]
-        next_c = city_vars[i + 1]
+    
+    # Workshop constraint
+    s.add(Or([day_city[i] == City.Venice for i in range(4, 10)]))  # Days 5-10
+    
+    # Flight constraints
+    for i in range(days - 1):
         s.add(Or(
-            current == next_c,  # Stay in same city
-            And(current == Mykonos, next_c == Vienna),
-            And(current == Vienna, next_c == Mykonos),
-            And(current == Vienna, next_c == Venice),
-            And(current == Venice, next_c == Vienna)
+            day_city[i] == day_city[i+1],  # Stay in same city
+            And(day_city[i] == City.Mykonos, day_city[i+1] == City.Vienna),
+            And(day_city[i] == City.Vienna, day_city[i+1] == City.Mykonos),
+            And(day_city[i] == City.Vienna, day_city[i+1] == City.Venice),
+            And(day_city[i] == City.Venice, day_city[i+1] == City.Vienna)
         ))
-
-    # Additional constraint: Must start in one city and end in another
-    # This helps break symmetry in the solution space
-    s.add(Or(
-        city_vars[0] == Mykonos,
-        city_vars[0] == Vienna,
-        city_vars[0] == Venice
-    ))
-    s.add(Or(
-        city_vars[-1] == Mykonos,
-        city_vars[-1] == Vienna,
-        city_vars[-1] == Venice
-    ))
-
+    
+    # Start in any city
+    s.add(Or(day_city[0] == City.Venice, day_city[0] == City.Mykonos, day_city[0] == City.Vienna))
+    
     if s.check() == sat:
-        model = s.model()
+        m = s.model()
         itinerary = []
-        for day in Day:
-            city_val = model.evaluate(city_vars[day - 1])
-            itinerary.append({'day': day, 'place': cities[int(str(city_val))]})
+        current_city = None
+        start_day = 1
+        
+        for i in range(days):
+            city = m[day_city[i]]
+            if city != current_city:
+                if current_city is not None:
+                    itinerary.append({
+                        'day_range': f'Day {start_day}-{i}',
+                        'place': str(current_city)
+                    })
+                current_city = city
+                start_day = i + 1
+        
+        # Add last stay
+        itinerary.append({
+            'day_range': f'Day {start_day}-{days}',
+            'place': str(current_city)
+        })
+        
         return {'itinerary': itinerary}
     else:
         return {"error": "No valid itinerary found"}
 
-result = solve_trip_planning()
+result = solve_itinerary()
 import json
 print(json.dumps(result, indent=2))

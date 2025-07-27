@@ -1,77 +1,98 @@
 from z3 import *
 
 def solve_itinerary():
-    # Cities mapping
-    BRUSSELS = 1
-    BARCELONA = 2
-    SPLIT = 3
-
-    # Initialize Z3 solver
+    # Create a solver instance
     s = Solver()
 
-    # Create variables for each day (1..12)
-    days = [Int(f"day_{i}") for i in range(1, 13)]
+    # Days are 1 to 12
+    days = range(1, 13)
+    cities = ['Brussels', 'Barcelona', 'Split']
+    city_codes = {city: idx for idx, city in enumerate(cities)}
 
-    # Each day must be one of the cities
+    # Create variables for each day: which city the traveler is in
+    # Each day can be in one or two cities (if it's a flight day)
+    # We'll model each day as a list of cities (length 1 or 2)
+    # But since Z3 doesn't handle lists directly, we'll use two variables per day:
+    # - primary city (must be set)
+    # - secondary city (optional, -1 if not set)
+    primary = {day: Int(f'primary_{day}') for day in days}
+    secondary = {day: Int(f'secondary_{day}') for day in days}
+
+    # City encodings: 0: Brussels, 1: Barcelona, 2: Split, -1: invalid/not used
     for day in days:
-        s.add(Or(day == BRUSSELS, day == BARCELONA, day == SPLIT))
+        s.add(primary[day] >= 0, primary[day] <= 2)
+        s.add(secondary[day] >= -1, secondary[day] <= 2)
+        # If secondary is not -1, then it must be a different city from primary
+        s.add(If(secondary[day] != -1, primary[day] != secondary[day], True))
 
-    # Constraint: Days 1 and 2 must be Brussels (conference)
-    s.add(days[0] == BRUSSELS)
-    s.add(days[1] == BRUSSELS)
+    # Flight constraints: secondary city can only be set if there's a direct flight between primary and secondary
+    for day in days:
+        # Possible flights:
+        # Brussels (0) <-> Barcelona (1)
+        # Barcelona (1) <-> Split (2)
+        s.add(If(secondary[day] != -1,
+                 Or(
+                     And(primary[day] == 0, secondary[day] == 1),
+                     And(primary[day] == 1, secondary[day] == 0),
+                     And(primary[day] == 1, secondary[day] == 2),
+                     And(primary[day] == 2, secondary[day] == 1)
+                 ),
+                 True))
 
-    # Flight transitions: only allowed between connected cities
-    for i in range(len(days) - 1):
-        current = days[i]
-        next_day = days[i + 1]
-        # Possible transitions:
-        # Brussels <-> Barcelona
-        # Barcelona <-> Split
-        s.add(
-            Or(
-                current == next_day,  # stay in the same city
-                And(current == BRUSSELS, next_day == BARCELONA),
-                And(current == BARCELONA, next_day == BRUSSELS),
-                And(current == BARCELONA, next_day == SPLIT),
-                And(current == SPLIT, next_day == BARCELONA),
-            )
-        )
+    # Constraints for days 1 and 2: must be in Brussels (no flights on these days)
+    s.add(primary[1] == 0)
+    s.add(secondary[1] == -1)
+    s.add(primary[2] == 0)
+    s.add(secondary[2] == -1)
 
-    # Function to count days in a city, accounting for flight days
-    def count_days(city):
-        total = 0
-        for i in range(len(days)):
-            # If the day is the city, or if it's a flight day involving the city
-            condition = Or(
-                days[i] == city,
-                And(i > 0, days[i] != days[i - 1], Or(days[i] == city, days[i - 1] == city))
-            )
-            total += If(condition, 1, 0)
-        return total
+    # Continuity constraints: primary of day d+1 must be either primary or secondary of day d
+    for d in range(1, 12):
+        s.add(Or(
+            primary[d+1] == primary[d],
+            And(secondary[d] != -1, primary[d+1] == secondary[d])
+        ))
 
-    # Total days constraints
-    total_brussels = count_days(BRUSSELS)
-    total_barcelona = count_days(BARCELONA)
-    total_split = count_days(SPLIT)
+    # Count days in each city
+    brussels_days = Int('brussels_days')
+    barcelona_days = Int('barcelona_days')
+    split_days = Int('split_days')
 
-    s.add(total_brussels == 2)
-    s.add(total_barcelona == 7)
-    s.add(total_split == 5)
+    # Initialize counts
+    s.add(brussels_days == Sum([If(Or(primary[day] == 0, secondary[day] == 0), 1, 0) for day in days]))
+    s.add(barcelona_days == Sum([If(Or(primary[day] == 1, secondary[day] == 1), 1, 0) for day in days]))
+    s.add(split_days == Sum([If(Or(primary[day] == 2, secondary[day] == 2), 1, 0) for day in days]))
 
-    # Check if the solver can find a solution
+    # Add required days
+    s.add(brussels_days == 2)
+    s.add(barcelona_days == 7)
+    s.add(split_days == 5)
+
+    # Check if the problem is satisfiable
     if s.check() == sat:
-        model = s.model()
+        m = s.model()
         itinerary = []
-        city_names = {BRUSSELS: "Brussels", BARCELONA: "Barcelona", SPLIT: "Split"}
-        for i in range(1, 13):
-            day_var = days[i - 1]
-            city_num = model[day_var].as_long()
-            itinerary.append({"day": i, "place": city_names[city_num]})
-        return {"itinerary": itinerary}
+
+        for day in days:
+            primary_city = m.evaluate(primary[day]).as_long()
+            secondary_city_val = m.evaluate(secondary[day])
+            if secondary_city_val.as_long() != -1:
+                secondary_city = secondary_city_val.as_long()
+                cities_on_day = [cities[primary_city], cities[secondary_city]]
+                # Sort to make the output consistent (optional)
+                cities_on_day.sort()
+                itinerary.append({"day": day, "cities": cities_on_day})
+            else:
+                itinerary.append({"day": day, "cities": [cities[primary_city]]})
+
+        # Convert to the required JSON format
+        result = {
+            "itinerary": itinerary
+        }
+        return result
     else:
         return {"error": "No valid itinerary found"}
 
-# Execute and print the result
+# Solve and print the result
 result = solve_itinerary()
 import json
 print(json.dumps(result, indent=2))

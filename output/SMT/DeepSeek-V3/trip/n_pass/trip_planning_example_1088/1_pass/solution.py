@@ -4,9 +4,9 @@ from z3 import *
 def solve_itinerary():
     # Cities
     cities = ['Oslo', 'Stuttgart', 'Reykjavik', 'Split', 'Geneva', 'Porto', 'Tallinn', 'Stockholm']
-    city_map = {city: idx for idx, city in enumerate(cities)}
+    city_vars = {city: city for city in cities}  # symbolic reference
     
-    # Direct flights (bidirectional)
+    # Direct flights: each pair is bidirectional
     direct_flights = [
         ('Reykjavik', 'Stuttgart'),
         ('Reykjavik', 'Stockholm'),
@@ -27,115 +27,89 @@ def solve_itinerary():
         ('Geneva', 'Split')
     ]
     
-    # Create a flight adjacency list
-    flight_graph = {city: set() for city in cities}
+    # Make flight connections bidirectional and ensure no duplicates
+    flight_pairs = set()
     for a, b in direct_flights:
-        flight_graph[a].add(b)
-        flight_graph[b].add(a)
+        flight_pairs.add((a, b))
+        flight_pairs.add((b, a))
+    flight_connections = {city: set() for city in cities}
+    for a, b in flight_pairs:
+        flight_connections[a].add(b)
+        flight_connections[b].add(a)
     
-    # Required days per city
-    required_days = {
-        'Oslo': 5,
-        'Stuttgart': 5,
-        'Reykjavik': 2,
-        'Split': 3,
-        'Geneva': 2,
-        'Porto': 3,
-        'Tallinn': 5,
-        'Stockholm': 3
-    }
-    
-    # Fixed events
-    fixed_events = {
-        1: 'Reykjavik',
-        2: 'Reykjavik',
-        19: 'Porto',
-        20: 'Porto',
-        21: 'Porto'
-    }
-    
-    # Meeting in Stockholm between day 2 and day 4 (i.e., days 3 or 4)
-    # So Stockholm must be visited on at least one of these days
-    
-    # Create Z3 variables: itinerary[day] = city index
-    itinerary = [Int(f'day_{day}') for day in range(1, 22)]
+    # Create Z3 variables for each day (1..21)
+    days = 21
+    day_city = [Int(f'day_{i}_city') for i in range(1, days + 1)]
+    city_to_num = {city: idx for idx, city in enumerate(cities)}
+    num_to_city = {idx: city for idx, city in enumerate(cities)}
     
     s = Solver()
     
-    # Each day's assignment must be a valid city index (0 to 7)
-    for day in range(1, 22):
-        s.add(And(itinerary[day - 1] >= 0, itinerary[day - 1] < 8))
+    # Each day variable must be between 0 and 7 (representing the 8 cities)
+    for day in day_city:
+        s.add(day >= 0, day < len(cities))
     
-    # Fixed events
-    for day, city in fixed_events.items():
-        s.add(itinerary[day - 1] == city_map[city])
+    # Fixed constraints:
+    # Days 1 and 2 in Reykjavik (index 2)
+    s.add(day_city[0] == city_to_num['Reykjavik'])
+    s.add(day_city[1] == city_to_num['Reykjavik'])
     
-    # Stockholm must be visited between day 2 and day 4 (days 3 or 4)
-    s.add(Or(
-        itinerary[2] == city_map['Stockholm'],  # day 3
-        itinerary[3] == city_map['Stockholm']   # day 4
-    ))
+    # Porto between days 19-21 (indices 18..20)
+    porto_num = city_to_num['Porto']
+    s.add(day_city[18] == porto_num)
+    s.add(day_city[19] == porto_num)
+    s.add(day_city[20] == porto_num)
     
-    # Flight constraints: consecutive days must be the same city or connected by a direct flight
-    for day in range(1, 21):
-        current_city_idx = itinerary[day - 1]
-        next_city_idx = itinerary[day]
-        current_city = cities[current_city_idx]
-        next_city = cities[next_city_idx]
-        # Either stay in the same city or move to a connected city
-        s.add(Or(
-            current_city_idx == next_city_idx,
-            And(current_city_idx != next_city_idx, next_city in flight_graph[current_city])
-        ))
+    # Friend in Stockholm between day 2 and day 4 (indices 1..3, at least one day)
+    stockholm_num = city_to_num['Stockholm']
+    s.add(Or(day_city[1] == stockholm_num, day_city[2] == stockholm_num, day_city[3] == stockholm_num))
     
-    # Count the number of days spent in each city
-    city_days = {}
+    # Flight transitions: adjacent days must be same city or connected by direct flight
+    for i in range(days - 1):
+        current_city = day_city[i]
+        next_city = day_city[i + 1]
+        # Either same city or connected
+        same_city = current_city == next_city
+        connected_cities = []
+        for a in flight_connections:
+            for b in flight_connections[a]:
+                connected_cities.append(And(current_city == city_to_num[a], next_city == city_to_num[b]))
+        s.add(Or(same_city, Or(connected_cities)))
+    
+    # Duration constraints:
+    # Count days per city
+    counts = {city: 0 for city in cities}
     for city in cities:
-        city_idx = city_map[city]
-        # Sum over all days where itinerary[day] == city_idx
-        city_days[city] = Sum([If(itinerary[day] == city_idx, 1, 0) for day in range(21)])
+        count = 0
+        for day in day_city:
+            count += If(day == city_to_num[city], 1, 0)
+        counts[city] = count
     
-    # Add constraints for required days per city
-    for city, days in required_days.items():
-        s.add(city_days[city] == days)
+    s.add(counts['Oslo'] == 5)
+    s.add(counts['Stuttgart'] == 5)
+    s.add(counts['Reykjavik'] == 2)  # days 1-2
+    s.add(counts['Split'] == 3)
+    s.add(counts['Geneva'] == 2)
+    s.add(counts['Porto'] == 3)
+    s.add(counts['Tallinn'] == 5)
+    s.add(counts['Stockholm'] == 3)
     
-    # Check if the problem is satisfiable
+    # Check and get model
     if s.check() == sat:
         model = s.model()
-        # Extract the itinerary
-        itinerary_result = []
-        for day in range(1, 22):
-            city_idx = model.evaluate(itinerary[day - 1]).as_long()
-            itinerary_result.append({'day': day, 'place': cities[city_idx]})
+        itinerary = []
+        for i in range(days):
+            day_num = i + 1
+            city_num = model.evaluate(day_city[i]).as_long()
+            city = num_to_city[city_num]
+            itinerary.append({"day": day_num, "place": city})
         
-        # Verify the counts
-        city_counts = {city: 0 for city in cities}
-        for entry in itinerary_result:
-            city_counts[entry['place']] += 1
-        for city, req in required_days.items():
-            assert city_counts[city] == req, f"City {city} has {city_counts[city]} days, expected {req}"
-        
-        # Verify flights
-        for day in range(1, 21):
-            current_place = itinerary_result[day - 1]['place']
-            next_place = itinerary_result[day]['place']
-            if current_place != next_place:
-                assert next_place in flight_graph[current_place], f"No flight from {current_place} to {next_place} on day {day}"
-        
-        # Verify fixed events
-        for day, city in fixed_events.items():
-            assert itinerary_result[day - 1]['place'] == city, f"Day {day} should be in {city}"
-        
-        # Verify Stockholm meeting
-        stockholm_days = [entry['day'] for entry in itinerary_result if entry['place'] == 'Stockholm']
-        assert any(2 < day <=4 for day in stockholm_days), "Stockholm not visited between day 2 and 4"
-        
-        return {'itinerary': itinerary_result}
+        # Prepare output
+        output = {'itinerary': itinerary}
+        return output
     else:
-        return None
+        return {"error": "No valid itinerary found"}
 
-result = solve_itinerary()
-if result:
-    print(json.dumps(result, indent=2))
-else:
-    print("No solution found")
+# Generate the itinerary
+itinerary = solve_itinerary()
+print(json.dumps(itinerary, indent=2))

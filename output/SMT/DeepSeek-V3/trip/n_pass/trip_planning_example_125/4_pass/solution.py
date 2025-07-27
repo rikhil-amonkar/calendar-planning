@@ -1,99 +1,101 @@
 from z3 import *
 
 def solve_itinerary():
+    # Create the solver
     s = Solver()
-    
-    # Days are 1 to 15
-    days = 15
-    
-    # Cities encoding
-    cities = {'Stuttgart': 0, 'Seville': 1, 'Manchester': 2}
-    city_names = {v: k for k, v in cities.items()}
-    
-    # Decision variables: city for each day
-    city_day = [Int(f'day_{d}_city') for d in range(days)]
-    
-    # Each day must be assigned to a valid city
-    for d in range(days):
-        s.add(Or([city_day[d] == c for c in cities.values()]))
-    
-    # Flight constraints - only allowed transitions
-    for d in range(days - 1):
-        current = city_day[d]
-        next_day = city_day[d + 1]
-        
-        # Can stay in same city
-        same_city = current == next_day
-        
-        # Or take allowed flights
-        man_to_sev = And(current == cities['Manchester'], next_day == cities['Seville'])
-        sev_to_man = And(current == cities['Seville'], next_day == cities['Manchester'])
-        man_to_stu = And(current == cities['Manchester'], next_day == cities['Stuttgart'])
-        stu_to_man = And(current == cities['Stuttgart'], next_day == cities['Manchester'])
-        
-        s.add(Or(same_city, man_to_sev, sev_to_man, man_to_stu, stu_to_man))
-    
-    # Total days in each city (including overlaps)
-    stuttgart_days = Sum([If(city_day[d] == cities['Stuttgart'], 1, 0) for d in range(days)])
-    seville_days = Sum([If(city_day[d] == cities['Seville'], 1, 0) for d in range(days)])
-    manchester_days = Sum([If(city_day[d] == cities['Manchester'], 1, 0) for d in range(days)])
-    
-    s.add(stuttgart_days == 6)
-    s.add(seville_days == 7)
-    s.add(manchester_days == 4)
-    
-    # Must visit Stuttgart between day 1-6 (0-based days 0-5)
-    s.add(Or([city_day[d] == cities['Stuttgart'] for d in range(6)]))
-    
-    # Try to find a solution
+
+    # Variables for start and end days of each city's visit
+    # Stuttgart
+    stuttgart_start = Int('stuttgart_start')
+    stuttgart_end = Int('stuttgart_end')
+    # Seville
+    seville_start = Int('seville_start')
+    seville_end = Int('seville_end')
+    # Manchester
+    manchester_start = Int('manchester_start')
+    manchester_end = Int('manchester_end')
+
+    # Constraints for each city's duration
+    s.add(stuttgart_end - stuttgart_start + 1 == 6)
+    s.add(seville_end - seville_start + 1 == 7)
+    s.add(manchester_end - manchester_start + 1 == 4)
+
+    # All start and end days must be within 1 to 15
+    s.add(stuttgart_start >= 1, stuttgart_end <= 15)
+    s.add(seville_start >= 1, seville_end <= 15)
+    s.add(manchester_start >= 1, manchester_end <= 15)
+
+    # Meeting friend in Stuttgart between day 1 and 6
+    s.add(Or(
+        And(stuttgart_start <= 6, stuttgart_end >= 1),
+        And(stuttgart_start >= 1, stuttgart_start <= 6),
+        And(stuttgart_end >= 1, stuttgart_end <= 6)
+    ))
+
+    # Possible transitions based on direct flights
+    # Sequence 1: Stuttgart -> Manchester -> Seville
+    seq1 = And(
+        stuttgart_end == manchester_start,
+        manchester_end == seville_start
+    )
+
+    # Sequence 2: Seville -> Manchester -> Stuttgart
+    seq2 = And(
+        seville_end == manchester_start,
+        manchester_end == stuttgart_start
+    )
+
+    s.add(Or(seq1, seq2))
+
+    # Check if the solver can find a solution
     if s.check() == sat:
-        model = s.model()
+        m = s.model()
+        # Extract the values
+        stuttgart_s = m.eval(stuttgart_start).as_long()
+        stuttgart_e = m.eval(stuttgart_end).as_long()
+        seville_s = m.eval(seville_start).as_long()
+        seville_e = m.eval(seville_end).as_long()
+        manchester_s = m.eval(manchester_start).as_long()
+        manchester_e = m.eval(manchester_end).as_long()
+
+        # Generate the itinerary
         itinerary = []
-        
-        # Build the itinerary
-        for d in range(days):
-            city_code = model.evaluate(city_day[d]).as_long()
-            itinerary.append({
-                'day': d + 1,
-                'place': city_names[city_code]
-            })
-        
-        # Verify all constraints are satisfied
-        # Count days in each city
-        counts = {
-            'Stuttgart': 0,
-            'Seville': 0,
-            'Manchester': 0
-        }
-        
-        for day in itinerary:
-            counts[day['place']] += 1
-        
-        assert counts['Stuttgart'] == 6
-        assert counts['Seville'] == 7
-        assert counts['Manchester'] == 4
-        
-        # Check flight constraints
-        for d in range(days - 1):
-            current = itinerary[d]['place']
-            next_place = itinerary[d + 1]['place']
-            
-            if current != next_place:
-                valid = (
-                    (current == 'Manchester' and next_place in ['Seville', 'Stuttgart']) or
-                    (next_place == 'Manchester' and current in ['Seville', 'Stuttgart'])
-                )
-                assert valid, f"Invalid flight from {current} to {next_place} on day {d + 1}"
-        
-        # Check Stuttgart visit in first 6 days
-        stuttgart_in_first_6 = any(day['place'] == 'Stuttgart' for day in itinerary[:6])
-        assert stuttgart_in_first_6, "Stuttgart not visited in first 6 days"
-        
-        return {'itinerary': itinerary}
+        for day in range(1, 16):
+            locations = []
+            if stuttgart_s <= day <= stuttgart_e:
+                locations.append("Stuttgart")
+            if seville_s <= day <= seville_e:
+                locations.append("Seville")
+            if manchester_s <= day <= manchester_e:
+                locations.append("Manchester")
+            # On flight days, the day is counted for both cities
+            # So we need to decide which city to prioritize
+            # Here, we prioritize the destination city
+            if len(locations) > 1:
+                if day == manchester_s and "Manchester" in locations and "Stuttgart" in locations:
+                    locations.remove("Stuttgart")
+                elif day == manchester_s and "Manchester" in locations and "Seville" in locations:
+                    locations.remove("Seville")
+                elif day == seville_s and "Seville" in locations and "Manchester" in locations:
+                    locations.remove("Manchester")
+                elif day == stuttgart_s and "Stuttgart" in locations and "Manchester" in locations:
+                    locations.remove("Manchester")
+            itinerary.append({"day": day, "place": locations[0] if len(locations) > 0 else "None"})
+
+        # Verify the total days per city
+        stuttgart_days = sum(1 for entry in itinerary if entry["place"] == "Stuttgart")
+        seville_days = sum(1 for entry in itinerary if entry["place"] == "Seville")
+        manchester_days = sum(1 for entry in itinerary if entry["place"] == "Manchester")
+
+        # Ensure the total days match the requirements
+        if stuttgart_days != 6 or seville_days != 7 or manchester_days != 4 or len(itinerary) != 15:
+            return {"error": "No valid itinerary found"}
+
+        return {"itinerary": itinerary}
     else:
         return {"error": "No valid itinerary found"}
 
-# Execute and print result
+# Solve and print the itinerary
 result = solve_itinerary()
 import json
 print(json.dumps(result, indent=2))

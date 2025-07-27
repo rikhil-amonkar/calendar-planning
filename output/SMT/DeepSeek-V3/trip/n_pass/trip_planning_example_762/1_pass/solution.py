@@ -3,10 +3,9 @@ from z3 import *
 def solve_itinerary():
     # Cities
     cities = ['Dublin', 'Madrid', 'Oslo', 'London', 'Vilnius', 'Berlin']
-    city_map = {city: idx for idx, city in enumerate(cities)}
-    n_days = 13
-
-    # Direct flights: list of tuples (city1, city2)
+    city_to_idx = {city: idx for idx, city in enumerate(cities)}
+    
+    # Direct flights (undirected)
     direct_flights = [
         ('London', 'Madrid'),
         ('Oslo', 'Vilnius'),
@@ -21,79 +20,99 @@ def solve_itinerary():
         ('London', 'Berlin'),
         ('Berlin', 'Dublin')
     ]
-    # Correcting the typo in 'Madrid' in the direct_flights list
-    corrected_flights = []
-    for c1, c2 in direct_flights:
-        if c1 == 'Madrid' or c2 == 'Madrid':
-            corrected_flights.append((c1.replace('Madrid', 'Madrid'), c2.replace('Madrid', 'Madrid')))
-        else:
-            corrected_flights.append((c1, c2))
-    direct_flights = corrected_flights
-
-    # Create adjacency list for flight connections
-    adjacency = {city: set() for city in cities}
-    for c1, c2 in direct_flights:
-        adjacency[c1].add(c2)
-        adjacency[c2].add(c1)
-
-    # Z3 variables: day[i] is the city visited on day i+1 (days 1..13)
-    day = [Int(f"day_{i}") for i in range(n_days)]
-    solver = Solver()
-
-    # Each day's city must be one of the 6 cities
-    for d in day:
-        solver.add(Or([d == city_map[city] for city in cities]))
-
-    # Constraints for days in each city
-    # Dublin: 3 days, including days with friends between 7-9 (days 7-9 are indices 6-8)
-    dublin_days = [If(day[i] == city_map['Dublin'], 1, 0) for i in range(n_days)]
-    solver.add(sum(dublin_days) == 3)
-    solver.add(Or([day[i] == city_map['Dublin'] for i in [6,7,8]]))
-
-    # Madrid: 2 days, relatives between day 2-3 (indices 1-2)
-    madrid_days = [If(day[i] == city_map['Madrid'], 1, 0) for i in range(n_days)]
-    solver.add(sum(madrid_days) == 2)
-    solver.add(Or(day[1] == city_map['Madrid'], day[2] == city_map['Madrid']))
-
-    # Oslo: 3 days
-    oslo_days = [If(day[i] == city_map['Oslo'], 1, 0) for i in range(n_days)]
-    solver.add(sum(oslo_days) == 3)
-
-    # London: 2 days
-    london_days = [If(day[i] == city_map['London'], 1, 0) for i in range(n_days)]
-    solver.add(sum(london_days) == 2)
-
-    # Vilnius: 3 days
-    vilnius_days = [If(day[i] == city_map['Vilnius'], 1, 0) for i in range(n_days)]
-    solver.add(sum(vilnius_days) == 3)
-
-    # Berlin: 5 days, wedding between day 3-7 (indices 2-6)
-    berlin_days = [If(day[i] == city_map['Berlin'], 1, 0) for i in range(n_days)]
-    solver.add(sum(berlin_days) == 5)
-    solver.add(Or([day[i] == city_map['Berlin'] for i in range(2, 7)]))
-
-    # Flight constraints: consecutive days in different cities must have a direct flight
-    for i in range(n_days - 1):
-        current_city = day[i]
-        next_city = day[i+1]
-        # If cities are different, check flight connection
-        solver.add(Implies(current_city != next_city,
-                          Or([And(current_city == city_map[c1], next_city == city_map[c2]) for c1, c2 in direct_flights] +
-                             [And(current_city == city_map[c2], next_city == city_map[c1]) for c1, c2 in direct_flights])))
-
-    # Check if the problem is satisfiable
-    if solver.check() == sat:
-        model = solver.model()
+    # Create a set of allowed city pairs (both directions)
+    allowed_transitions = set()
+    for a, b in direct_flights:
+        allowed_transitions.add((city_to_idx[a], city_to_idx[b]))
+        allowed_transitions.add((city_to_idx[b], city_to_idx[a]))
+    # Add staying in the same city
+    for i in range(len(cities)):
+        allowed_transitions.add((i, i))
+    
+    # Create Z3 variables: for each day, which city (index) are we in?
+    day_city = [Int(f'day_{day}_city') for day in range(1, 14)]  # days 1..13
+    
+    s = Solver()
+    
+    # Each day's city must be 0..5
+    for day in range(13):
+        s.add(And(day_city[day] >= 0, day_city[day] < len(cities)))
+    
+    # Transition constraints: day to next day must be allowed
+    for day in range(12):  # days 1..12 to 2..13
+        current = day_city[day]
+        next_ = day_city[day + 1]
+        # (current, next) must be in allowed_transitions
+        # Encode as: Or over all allowed transitions where current is a and next is b
+        transition_constraints = []
+        for a, b in allowed_transitions:
+            transition_constraints.append(And(current == a, next_ == b))
+        s.add(Or(transition_constraints))
+    
+    # Total days per city
+    total_days = [0]*len(cities)
+    for city_idx in range(len(cities)):
+        total_days[city_idx] = Sum([If(day_city[day] == city_idx, 1, 0) for day in range(13)])
+    
+    s.add(total_days[city_to_idx['Dublin']] == 3)
+    s.add(total_days[city_to_idx['Madrid']] == 2)
+    s.add(total_days[city_to_idx['Oslo']] == 3)
+    s.add(total_days[city_to_idx['London']] == 2)
+    s.add(total_days[city_to_idx['Vilnius']] == 3)
+    s.add(total_days[city_to_idx['Berlin']] == 5)
+    
+    # Dublin between day 7 and 9 (days are 1-based; indices 6..8 in 0-based)
+    # At least one of days 7,8,9 must be Dublin
+    s.add(Or([day_city[day] == city_to_idx['Dublin'] for day in [6, 7, 8]]))  # days 7,8,9
+    
+    # Madrid between day 2 and 3 (days 2 and 3 in 1-based are indices 1 and 2)
+    s.add(Or(day_city[1] == city_to_idx['Madrid'], day_city[2] == city_to_idx['Madrid']))
+    
+    # Berlin between day 3 and 7 (days 3..7: indices 2..6)
+    s.add(Or([day_city[day] == city_to_idx['Berlin'] for day in range(2, 7)]))
+    
+    # Check and get model
+    if s.check() == sat:
+        m = s.model()
         itinerary = []
-        city_names = {idx: city for city, idx in city_map.items()}
-        for i in range(n_days):
-            city_idx = model.eval(day[i]).as_long()
-            itinerary.append({"day": i+1, "place": city_names[city_idx]})
-        return {"itinerary": itinerary}
+        for day in range(13):
+            city_idx = m.evaluate(day_city[day]).as_long()
+            itinerary.append({'day': day + 1, 'place': cities[city_idx]})
+        
+        # Verify the solution meets all constraints
+        # (This is a sanity check; Z3 should have ensured it)
+        # For example, check that transitions are allowed
+        for day in range(12):
+            current = m.evaluate(day_city[day]).as_long()
+            next_ = m.evaluate(day_city[day + 1]).as_long()
+            assert (current, next_) in allowed_transitions, f"Invalid transition from {cities[current]} to {cities[next_]} on day {day + 1}"
+        
+        # Check day counts
+        day_counts = {city: 0 for city in cities}
+        for entry in itinerary:
+            day_counts[entry['place']] += 1
+        assert day_counts['Dublin'] == 3
+        assert day_counts['Madrid'] == 2
+        assert day_counts['Oslo'] == 3
+        assert day_counts['London'] == 2
+        assert day_counts['Vilnius'] == 3
+        assert day_counts['Berlin'] == 5
+        
+        # Check specific day constraints
+        dublin_days = [entry['day'] for entry in itinerary if entry['place'] == 'Dublin']
+        assert any(7 <= day <= 9 for day in dublin_days), "Dublin not visited between days 7-9"
+        
+        madrid_days = [entry['day'] for entry in itinerary if entry['place'] == 'Madrid']
+        assert any(2 <= day <= 3 for day in madrid_days), "Madrid not visited between days 2-3"
+        
+        berlin_days = [entry['day'] for entry in itinerary if entry['place'] == 'Berlin']
+        assert any(3 <= day <= 7 for day in berlin_days), "Berlin not visited between days 3-7"
+        
+        return {'itinerary': itinerary}
     else:
         return {"error": "No valid itinerary found"}
 
 # Execute and print the result
-import json
 result = solve_itinerary()
+import json
 print(json.dumps(result, indent=2))

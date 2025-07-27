@@ -1,76 +1,88 @@
 from z3 import *
 
 def solve_itinerary():
-    # Cities encoding
+    # Cities
+    Split, Helsinki, Reykjavik, Vilnius, Geneva = Ints('Split Helsinki Reykjavik Vilnius Geneva')
     cities = {
-        'Split': 0,
-        'Helsinki': 1,
-        'Reykjavik': 2,
-        'Vilnius': 3,
-        'Geneva': 4
+        'Split': Split,
+        'Helsinki': Helsinki,
+        'Reykjavik': Reykjavik,
+        'Vilnius': Vilnius,
+        'Geneva': Geneva
     }
-    num_cities = len(cities)
-    num_days = 12
+    city_ids = {name: idx for idx, name in enumerate(cities.keys())}
+    n_cities = len(cities)
+    n_days = 12
 
     # Direct flights: adjacency list
     direct_flights = {
-        0: [1, 3, 4],  # Split: Helsinki, Vilnius, Geneva
-        1: [0, 2, 3, 4],  # Helsinki: Split, Reykjavik, Vilnius, Geneva
-        2: [1],          # Reykjavik: Helsinki
-        3: [0, 1],       # Vilnius: Split, Helsinki
-        4: [0, 1]        # Geneva: Split, Helsinki
+        'Split': ['Helsinki', 'Geneva', 'Vilnius'],
+        'Helsinki': ['Split', 'Geneva', 'Reykjavik', 'Vilnius'],
+        'Reykjavik': ['Helsinki'],
+        'Vilnius': ['Helsinki', 'Split'],
+        'Geneva': ['Split', 'Helsinki']
     }
 
-    # Create Z3 variables: day[i] is the city visited on day i+1 (days are 1-based)
-    day = [Int(f'day_{i}') for i in range(num_days)]
-
+    # Create a Z3 solver
     s = Solver()
 
-    # Each day must be a valid city (0 to 4)
+    # Variables: day[i] is the city visited on day i+1 (days 1..12)
+    day = [Int(f'day_{i}') for i in range(n_days)]
+
+    # Each day must be one of the cities (0 to 4)
     for d in day:
-        s.add(And(d >= 0, d < num_cities))
+        s.add(And(d >= 0, d < n_cities))
 
-    # Transition constraints: consecutive days must be the same city or connected by a direct flight
-    for i in range(num_days - 1):
+    # Constraints for days in each city
+    # Total days per city:
+    # Split: 2, Helsinki: 2, Reykjavik:3 (days 10-12), Vilnius:3 (days7-9), Geneva:6
+    # Count occurrences of each city in the day array
+    counts = [Int(f'count_{city}') for city in cities]
+    for idx, city in enumerate(cities.keys()):
+        s.add(counts[idx] == Sum([If(day[i] == idx, 1, 0) for i in range(n_days)]))
+
+    s.add(counts[city_ids['Split']] == 2)
+    s.add(counts[city_ids['Helsinki']] == 2)
+    s.add(counts[city_ids['Reykjavik']] == 3)
+    s.add(counts[city_ids['Vilnius']] == 3)
+    s.add(counts[city_ids['Geneva']] == 6)
+
+    # Reykjavik must be on days 10,11,12 (indices 9,10,11)
+    for i in [9, 10, 11]:
+        s.add(day[i] == city_ids['Reykjavik'])
+
+    # Vilnius must be on days 7,8,9 (indices 6,7,8)
+    for i in [6, 7, 8]:
+        s.add(day[i] == city_ids['Vilnius'])
+
+    # Flight transitions: consecutive days must be the same city or connected by direct flight
+    for i in range(n_days - 1):
         current_city = day[i]
-        next_city = day[i + 1]
-        # Either stay in the same city or move to a connected city
-        s.add(Or(
-            current_city == next_city,
-            Or([next_city == j for j in direct_flights[current_city]])
-        ))
+        next_city = day[i+1]
+        # Either same city or connected
+        same_city = current_city == next_city
+        # Possible connections
+        connections = []
+        for city in cities.keys():
+            for neighbor in direct_flights.get(city, []):
+                c1 = city_ids[city]
+                c2 = city_ids[neighbor]
+                connections.append(And(current_city == c1, next_city == c2))
+                connections.append(And(current_city == c2, next_city == c1))
+        s.add(Or(same_city, *connections))
 
-    # Count days per city
-    counts = [Int(f'count_{city}') for city in range(num_cities)]
-    for city in range(num_cities):
-        s.add(counts[city] == Sum([If(day[i] == city, 1, 0) for i in range(num_days)]))
-
-    # Days per city constraints
-    s.add(counts[cities['Split']] == 2)
-    s.add(counts[cities['Helsinki']] == 2)
-    s.add(counts[cities['Reykjavik']] == 3)
-    s.add(counts[cities['Vilnius']] == 3)
-    s.add(counts[cities['Geneva']] == 6)
-
-    # Reykjavik between day 10 and 12 (1-based, so indices 9-11 in 0-based)
-    s.add(Or([day[i] == cities['Reykjavik'] for i in [9, 10, 11]]))
-
-    # Vilnius between day 7 and 9 (indices 6-8 in 0-based)
-    s.add(Or([day[i] == cities['Vilnius'] for i in [6, 7, 8]]))
-
-    # Check for a solution
+    # Check and get the model
     if s.check() == sat:
         m = s.model()
         itinerary = []
-        city_names = {v: k for k, v in cities.items()}
-        for i in range(num_days):
-            city_code = m.evaluate(day[i]).as_long()
-            itinerary.append({'day': i + 1, 'place': city_names[city_code]})
+        city_names = list(cities.keys())
+        for i in range(n_days):
+            city_idx = m.evaluate(day[i]).as_long()
+            itinerary.append({'day': i+1, 'city': city_names[city_idx]})
         return {'itinerary': itinerary}
     else:
         return {'error': 'No valid itinerary found'}
 
-# Generate and print the itinerary
-result = solve_itinerary()
-import json
-print(json.dumps(result, indent=2))
+# Generate the solution
+solution = solve_itinerary()
+print(solution)

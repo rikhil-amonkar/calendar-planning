@@ -1,87 +1,61 @@
 from z3 import *
 
 def solve_itinerary():
-    # Cities encoding
-    Krakow, Paris, Seville = 0, 1, 2
-    city_names = {Krakow: 'Krakow', Paris: 'Paris', Seville: 'Seville'}
-    
-    # Initialize Z3 solver
+    # Create a solver instance
     s = Solver()
-    
-    # Create variables for each day (1-based)
+
+    # Days are 1 to 11
     days = 11
-    city = [Int(f'city_{i}') for i in range(days)]  # 0-based for days 1-11
-    
-    # Each day must be one of the three cities
-    for i in range(days):
-        s.add(Or(city[i] == Krakow, city[i] == Paris, city[i] == Seville))
-    
-    # Function to count days in a city, including transition days
-    def count_days(city_list, c):
-        # Days where the city is c
-        in_city = Sum([If(city_list[i] == c, 1, 0) for i in range(days)])
-        # Days where the city is c and the next day is not c (transition out)
-        transitions_out = Sum([If(And(i < days - 1, city_list[i] == c, city_list[i+1] != c), 1, 0) for i in range(days - 1)])
-        return in_city + transitions_out
-    
-    # Add constraints for total days in each city
-    s.add(count_days(city, Seville) == 6)
-    s.add(count_days(city, Paris) == 2)
-    s.add(count_days(city, Krakow) == 5)
-    
-    # Constraint: at least one day in Krakow between day 1 and day 5 (days 0-4 in 0-based)
-    s.add(Or([city[i] == Krakow for i in range(5)]))
-    
-    # Constraints for transitions: only allowed between connected cities
+    City = Datatype('City')
+    City.declare('Seville')
+    City.declare('Paris')
+    City.declare('Krakow')
+    City = City.create()
+    Seville = City.Seville
+    Paris = City.Paris
+    Krakow = City.Krakow
+
+    # Create a list of variables for each day's city
+    cities = [Const(f'city_{i}', City) for i in range(1, days + 1)]
+
+    # Constraints for each day's possible transitions
     for i in range(days - 1):
-        current = city[i]
-        next_c = city[i + 1]
-        # Allowed transitions:
-        # same city, or connected cities
+        prev_city = cities[i]
+        curr_city = cities[i + 1]
+        # Possible transitions:
+        # Krakow <-> Paris <-> Seville
         s.add(Or(
-            current == next_c,
-            And(current == Krakow, next_c == Paris),
-            And(current == Paris, next_c == Krakow),
-            And(current == Paris, next_c == Seville),
-            And(current == Seville, next_c == Paris)
+            prev_city == curr_city,  # stay in the same city
+            And(prev_city == Krakow, curr_city == Paris),
+            And(prev_city == Paris, curr_city == Krakow),
+            And(prev_city == Paris, curr_city == Seville),
+            And(prev_city == Seville, curr_city == Paris)
         ))
-    
+
+    # Constraint: Krakow must be visited between day 1 and day 5 (inclusive)
+    s.add(Or([cities[i] == Krakow for i in range(5)]))
+
+    # Count days in each city
+    seville_days = Sum([If(cities[i] == Seville, 1, 0) for i in range(days)])
+    paris_days = Sum([If(cities[i] == Paris, 1, 0) for i in range(days)])
+    krakow_days = Sum([If(cities[i] == Krakow, 1, 0) for i in range(days)])
+
+    s.add(seville_days == 6)
+    s.add(paris_days == 2)
+    s.add(krakow_days == 5)
+
     # Check if the solver can find a solution
     if s.check() == sat:
         model = s.model()
         itinerary = []
-        city_list = [model.evaluate(city[i]).as_long() for i in range(days)]
         for i in range(days):
-            day_num = i + 1
-            c = city_list[i]
-            itinerary.append({'day': day_num, 'place': city_names[c]})
-        
-        # Verify the counts
-        def verify_count(city_list, c):
-            count = 0
-            for i in range(len(city_list)):
-                if city_list[i] == c:
-                    count += 1
-                if i < len(city_list) - 1 and city_list[i] == c and city_list[i+1] != c:
-                    count += 1
-            return count
-        
-        assert verify_count(city_list, Krakow) == 5, f"Krakow days incorrect: {verify_count(city_list, Krakow)}"
-        assert verify_count(city_list, Paris) == 2, f"Paris days incorrect: {verify_count(city_list, Paris)}"
-        assert verify_count(city_list, Seville) == 6, f"Seville days incorrect: {verify_count(city_list, Seville)}"
-        
-        # Check workshop constraint: at least one Krakow day in days 1-5
-        workshop_days = [i for i in range(5) if city_list[i] == Krakow]
-        assert len(workshop_days) >= 1, "Workshop constraint not met"
-        
-        # Prepare the output
-        output = {
-            'itinerary': itinerary
-        }
-        return output
+            day = i + 1
+            city = model.evaluate(cities[i])
+            itinerary.append({'day': day, 'place': str(city)})
+        return {'itinerary': itinerary}
     else:
-        return {"error": "No valid itinerary found"}
+        return {'error': 'No valid itinerary found'}
 
-solution = solve_itinerary()
-import json
-print(json.dumps(solution, indent=2))
+# Generate the itinerary
+itinerary = solve_itinerary()
+print(itinerary)

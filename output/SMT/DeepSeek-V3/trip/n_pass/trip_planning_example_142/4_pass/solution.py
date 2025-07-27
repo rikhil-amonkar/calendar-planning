@@ -3,109 +3,58 @@ from z3 import *
 def solve_itinerary():
     s = Solver()
 
-    # Days and cities
-    days = range(1, 8)  # Days 1-7
-    cities = ['Madrid', 'Dublin', 'Tallinn']
-    city_idx = {city: i for i, city in enumerate(cities)}
+    # City mapping
+    cities = {'Madrid': 0, 'Dublin': 1, 'Tallinn': 2}
+    inv_cities = {v: k for k, v in cities.items()}
 
-    # Decision variables: which city we're in each day
-    location = [Int(f'loc_{day}') for day in days]
+    # Day variables (1-7)
+    days = [Int(f'day_{i}') for i in range(1, 8)]
+
+    # Each day must be a valid city
     for day in days:
-        s.add(location[day-1] >= 0, location[day-1] < len(cities))
+        s.add(Or(day == 0, day == 1, day == 2))
 
-    # Variables to track transitions (flights)
-    transition = [Bool(f'trans_{day}') for day in days[1:]]  # Days 2-7
+    # Flight transition constraints
+    for i in range(6):
+        current = days[i]
+        next_day = days[i+1]
+        s.add(Or(
+            current == next_day,  # Stay in same city
+            And(current == 0, next_day == 1),  # Madrid -> Dublin
+            And(current == 1, next_day == 0),  # Dublin -> Madrid
+            And(current == 1, next_day == 2),  # Dublin -> Tallinn
+            And(current == 2, next_day == 1)   # Tallinn -> Dublin
+        ))
 
-    # Flight connections
-    connected = [
-        [0, 1, 0],  # Madrid connects to Dublin
-        [1, 0, 1],  # Dublin connects to Madrid and Tallinn
-        [0, 1, 0]   # Tallinn connects to Dublin
-    ]
+    # Total days in each city
+    s.add(Sum([If(d == 0, 1, 0) for d in days]) == 4)  # Madrid
+    s.add(Sum([If(d == 1, 1, 0) for d in days]) == 3)  # Dublin
+    s.add(Sum([If(d == 2, 1, 0) for d in days]) == 2)  # Tallinn
 
-    # Constraints
-    for day in days[1:]:
-        prev_day = day-2
-        curr_day = day-1
-        
-        # If transitioning, must be connected cities
-        s.add(Implies(transition[curr_day-1],
-                     connected[location[prev_day]][location[curr_day]] == 1))
-        
-        # If not transitioning, stay in same city
-        s.add(Implies(Not(transition[curr_day-1]),
-                     location[curr_day] == location[prev_day]))
+    # Workshop constraint (Tallinn on day 6 or 7)
+    s.add(Or(days[5] == 2, days[6] == 2))
 
-    # Count days in each city (including flight days)
-    madrid_days = Sum([If(location[day-1] == city_idx['Madrid'], 1, 0) for day in days])
-    dublin_days = Sum([If(location[day-1] == city_idx['Dublin'], 1, 0) for day in days])
-    tallinn_days = Sum([If(location[day-1] == city_idx['Tallinn'], 1, 0) for day in days])
+    # Additional constraints to guide the solver
+    # Start in Madrid (most flexible starting point)
+    s.add(days[0] == 0)
+    # Ensure we don't have consecutive Tallinn days (since we only have 2 days)
+    for i in range(5):
+        s.add(Not(And(days[i] == 2, days[i+1] == 2)))
 
-    s.add(madrid_days == 4)
-    s.add(dublin_days == 3)
-    s.add(tallinn_days == 2)
-
-    # Workshop in Tallinn on day 6 or 7
-    s.add(Or(location[5] == city_idx['Tallinn'],
-             location[6] == city_idx['Tallinn']))
-
-    # Solve
+    # Solve and return the itinerary
     if s.check() == sat:
-        m = s.model()
+        model = s.model()
         itinerary = []
-        current_stay = {'city': cities[m.evaluate(location[0]).as_long()], 'start': 1}
-        
-        for day in days[1:]:
-            curr_city = cities[m.evaluate(location[day-1]).as_long()]
-            is_transition = m.evaluate(transition[day-2])
-            
-            if is_transition:
-                # Add previous stay
-                if current_stay['start'] == day-1:
-                    itinerary.append({'day': day-1, 'place': current_stay['city']})
-                else:
-                    itinerary.append({'day': f"{current_stay['start']}-{day-1}", 'place': current_stay['city']})
-                
-                # Add transition
-                itinerary.append({'day': day, 'place': f"Fly from {current_stay['city']} to {curr_city}"})
-                current_stay = {'city': curr_city, 'start': day+1}
-            elif day == 7:
-                # Last day
-                if current_stay['start'] <= day:
-                    if current_stay['start'] == day:
-                        itinerary.append({'day': day, 'place': curr_city})
-                    else:
-                        itinerary.append({'day': f"{current_stay['start']}-{day}", 'place': curr_city})
-        
-        # Verify constraints
-        counts = {'Madrid': 0, 'Dublin': 0, 'Tallinn': 0}
-        workshop_ok = False
-        
-        for entry in itinerary:
-            if 'Fly' not in entry['place']:
-                for city in cities:
-                    if city in entry['place']:
-                        if '-' in str(entry['day']):
-                            start, end = map(int, str(entry['day']).split('-'))
-                            counts[city] += end - start + 1
-                        else:
-                            counts[city] += 1
-                
-                if ('Tallinn' in entry['place'] and 
-                    ((isinstance(entry['day'], int) and entry['day'] in [6,7]) or
-                     (isinstance(entry['day'], str) and 
-                      (int(entry['day'].split('-')[0]) <= 6 <= int(entry['day'].split('-')[1]) or
-                      (int(entry['day'].split('-')[0]) <= 7 <= int(entry['day'].split('-')[1]))))):
-                    workshop_ok = True
-        
-        if (counts['Madrid'] == 4 and counts['Dublin'] == 3 and 
-            counts['Tallinn'] == 2 and workshop_ok):
-            return {'itinerary': itinerary}
-        else:
-            return {"error": "Solution violates constraints", "counts": counts, "workshop": workshop_ok}
+        for i in range(7):
+            day_num = i + 1
+            city_code = model.evaluate(days[i]).as_long()
+            city_name = inv_cities[city_code]
+            itinerary.append({'day': day_num, 'place': city_name})
+        return {'itinerary': itinerary}
     else:
-        return {"error": "No valid itinerary found"}
+        return {'error': 'No valid itinerary found'}
 
-# Generate itinerary
-itinerary = solve_itinerary()
-print(itinerary)
+# Output the solution
+import json
+solution = solve_itinerary()
+print(json.dumps(solution, indent=2))

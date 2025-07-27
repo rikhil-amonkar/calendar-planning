@@ -1,128 +1,106 @@
 import json
 from z3 import *
 
-def solve_scheduling_problem():
-    # Cities and their codes
-    cities = {
-        'Paris': 0,
-        'Warsaw': 1,
-        'Krakow': 2,
-        'Tallinn': 3,
-        'Riga': 4,
-        'Copenhagen': 5,
-        'Helsinki': 6,
-        'Oslo': 7,
-        'Santorini': 8,
-        'Lyon': 9
+def solve_itinerary():
+    # Cities involved
+    cities = ['Paris', 'Warsaw', 'Krakow', 'Tallinn', 'Riga', 'Copenhagen', 
+              'Helsinki', 'Oslo', 'Santorini', 'Lyon']
+    
+    # Direct flights as a set of tuples (from, to)
+    direct_flights = {
+        ('Warsaw', 'Riga'), ('Warsaw', 'Tallinn'), ('Copenhagen', 'Helsinki'),
+        ('Lyon', 'Paris'), ('Copenhagen', 'Warsaw'), ('Lyon', 'Oslo'),
+        ('Paris', 'Oslo'), ('Paris', 'Riga'), ('Krakow', 'Helsinki'),
+        ('Paris', 'Tallinn'), ('Copenhagen', 'Krakow'), ('Oslo', 'Riga'),
+        ('Krakow', 'Warsaw'), ('Paris', 'Helsinki'), ('Copenhagen', 'Santorini'),
+        ('Helsinki', 'Warsaw'), ('Helsinki', 'Riga'), ('Copenhagen', 'Riga'),
+        ('Paris', 'Krakow'), ('Copenhagen', 'Oslo'), ('Oslo', 'Tallinn'),
+        ('Oslo', 'Helsinki'), ('Copenhagen', 'Tallinn'), ('Riga', 'Tallinn'),
+        ('Helsinki', 'Tallinn'), ('Paris', 'Copenhagen'), ('Paris', 'Warsaw'),
+        ('Santorini', 'Oslo'), ('Oslo', 'Warsaw')
     }
     
-    # Reverse mapping for city names
-    city_names = {v: k for k, v in cities.items()}
+    # Make flights bidirectional
+    all_flights = set()
+    for (a, b) in direct_flights:
+        all_flights.add((a, b))
+        all_flights.add((b, a))
     
-    # Direct flights (undirected)
-    direct_flights = [
-        (0, 1), (0, 4), (0, 3), (0, 5), (0, 6), (0, 7), (0, 2), (0, 9),
-        (1, 4), (1, 3), (1, 5), (1, 6), (1, 7), (1, 2),
-        (2, 5), (2, 6), (2, 7),
-        (3, 4), (3, 5), (3, 6), (3, 7),
-        (4, 5), (4, 6), (4, 7),
-        (5, 6), (5, 7), (5, 8),
-        (6, 7),
-        (7, 8), (7, 9),
-        (9, 0)
-    ]
+    # Create Z3 variables for each day's location
+    days = 25
+    day_vars = [Int(f'day_{i}') for i in range(1, days + 1)]
     
-    # Create flight adjacency list for faster lookups
-    flight_graph = {city: set() for city in cities.values()}
-    for a, b in direct_flights:
-        flight_graph[a].add(b)
-        flight_graph[b].add(a)
+    # City to integer mapping
+    city_to_int = {city: idx for idx, city in enumerate(cities)}
+    int_to_city = {idx: city for idx, city in enumerate(cities)}
     
-    # Total days
-    total_days = 25
-    
-    # Create Z3 variables for each day
-    day_vars = [Int(f'day_{i}') for i in range(total_days)]
-    
-    # Solver with optimized parameters
     s = Solver()
-    s.set("timeout", 120000)  # 2 minute timeout
     
-    # Each day must be a valid city
-    for day in day_vars:
-        s.add(day >= 0, day <= 9)
+    # Each day variable must be a valid city index
+    for day_var in day_vars:
+        s.add(day_var >= 0, day_var < len(cities))
     
     # Duration constraints
-    duration_constraints = [
-        ('Paris', 5),
-        ('Warsaw', 2),
-        ('Krakow', 2),
-        ('Tallinn', 2),
-        ('Riga', 2),
-        ('Copenhagen', 5),
-        ('Helsinki', 5),
-        ('Oslo', 5),
-        ('Santorini', 2),
-        ('Lyon', 4)
-    ]
+    # Paris: 5 days total
+    s.add(Sum([If(day_var == city_to_int['Paris'], 1, 0) for day_var in day_vars]) == 5)
+    # Warsaw: 2 days
+    s.add(Sum([If(day_var == city_to_int['Warsaw'], 1, 0) for day_var in day_vars]) == 2)
+    # Krakow: 2 days
+    s.add(Sum([If(day_var == city_to_int['Krakow'], 1, 0) for day_var in day_vars]) == 2)
+    # Tallinn: 2 days
+    s.add(Sum([If(day_var == city_to_int['Tallinn'], 1, 0) for day_var in day_vars]) == 2)
+    # Riga: 2 days
+    s.add(Sum([If(day_var == city_to_int['Riga'], 1, 0) for day_var in day_vars]) == 2)
+    # Copenhagen: 5 days
+    s.add(Sum([If(day_var == city_to_int['Copenhagen'], 1, 0) for day_var in day_vars]) == 5)
+    # Helsinki: 5 days
+    s.add(Sum([If(day_var == city_to_int['Helsinki'], 1, 0) for day_var in day_vars]) == 5)
+    # Oslo: 5 days
+    s.add(Sum([If(day_var == city_to_int['Oslo'], 1, 0) for day_var in day_vars]) == 5)
+    # Santorini: 2 days
+    s.add(Sum([If(day_var == city_to_int['Santorini'], 1, 0) for day_var in day_vars]) == 2)
+    # Lyon: 4 days
+    s.add(Sum([If(day_var == city_to_int['Lyon'], 1, 0) for day_var in day_vars]) == 4)
     
-    for city, days in duration_constraints:
-        s.add(Sum([If(day == cities[city], 1, 0) for day in day_vars]) == days)
+    # Specific day constraints
+    # Paris friends between day 4 and 8 (inclusive)
+    s.add(Or([day_vars[i] == city_to_int['Paris'] for i in range(3, 8)]))  # days 4-8 (1-based is 3-7 in 0-based)
     
-    # Event constraints
-    event_constraints = [
-        ('Paris', 3, 7),    # Days 4-8 (0-based: 3-7)
-        ('Krakow', 16, 17), # Days 17-18 (0-based: 16-17)
-        ('Riga', 22, 23),   # Days 23-24 (0-based: 22-23)
-        ('Helsinki', 17, 21), # Days 18-22 (0-based: 17-21)
-        ('Santorini', 11, 12) # Days 12-13 (0-based: 11-12)
-    ]
+    # Workshop in Krakow between day 17 and 18
+    s.add(Or(day_vars[16] == city_to_int['Krakow'], day_vars[17] == city_to_int['Krakow']))
     
-    for city, start, end in event_constraints:
-        s.add(Or([day_vars[i] == cities[city] for i in range(start, end + 1)]))
+    # Wedding in Riga between day 23 and 24
+    s.add(Or(day_vars[22] == city_to_int['Riga'], day_vars[23] == city_to_int['Riga']))
     
-    # Flight constraints with adjacency list optimization
-    for i in range(total_days - 1):
-        current = day_vars[i]
+    # Friend in Helsinki between day 18 and 22
+    s.add(Or([day_vars[i] == city_to_int['Helsinki'] for i in range(17, 22)]))  # days 18-22 (0-based 17-21)
+    
+    # Relatives in Santorini between day 12 and 13
+    s.add(Or(day_vars[11] == city_to_int['Santorini'], day_vars[12] == city_to_int['Santorini']))
+    
+    # Flight constraints: consecutive days in different cities must have a direct flight
+    for i in range(days - 1):
+        current_day = day_vars[i]
         next_day = day_vars[i + 1]
-        # Create Or clause for all possible flights from current city
-        flight_options = []
-        for city in cities.values():
-            flight_options.append(And(current == city, Or([next_day == neighbor for neighbor in flight_graph[city]])))
-        s.add(Or(current == next_day, Or(flight_options)))
+        # Either stay in the same city or take a direct flight
+        s.add(Or(
+            current_day == next_day,
+            *[And(current_day == city_to_int[a], next_day == city_to_int[b]) 
+              for (a, b) in all_flights if a in city_to_int and b in city_to_int]
+        ))
     
-    # Try to find a solution
-    result = s.check()
-    if result == sat:
-        m = s.model()
+    # Check if the problem is satisfiable
+    if s.check() == sat:
+        model = s.model()
         itinerary = []
-        for i in range(total_days):
-            day = i + 1
-            city_code = m.evaluate(day_vars[i]).as_long()
-            city = city_names[city_code]
-            itinerary.append({'day': day, 'place': city})
+        for i in range(days):
+            city_idx = model.evaluate(day_vars[i]).as_long()
+            itinerary.append({"day": i + 1, "place": int_to_city[city_idx]})
         
-        # Verify the solution
-        city_days = {city: 0 for city in cities}
-        for entry in itinerary:
-            city_days[entry['place']] += 1
-        
-        for city, days in duration_constraints:
-            assert city_days[city] == days
-        
-        for city, start, end in event_constraints:
-            assert any(day_vars[i].as_long() == cities[city] for i in range(start, end + 1))
-        
-        for i in range(total_days - 1):
-            current = itinerary[i]['place']
-            next_place = itinerary[i + 1]['place']
-            if current != next_place:
-                assert (cities[current], cities[next_place]) in direct_flights
-        
-        return {'itinerary': itinerary}
+        return {"itinerary": itinerary}
     else:
-        return {'error': 'No solution found', 'reason': str(result)}
+        return {"error": "No valid itinerary found"}
 
-# Solve and print the result
-result = solve_scheduling_problem()
+# Generate the itinerary
+result = solve_itinerary()
 print(json.dumps(result, indent=2))

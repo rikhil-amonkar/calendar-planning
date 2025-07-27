@@ -1,0 +1,121 @@
+{
+    "has_execution_error": false,
+    "execution_output": "After re-evaluating all constraints with accurate travel times and optimized sequencing, the optimal schedule allows meeting 9 friends: Joshua, Barbara, Kenneth, Betty, Kimberly, Steven (split into two parts), Daniel, Elizabeth, and Sandra. The itinerary minimizes waiting time while respecting all minimum meeting durations and availability windows.\n\n**Detailed Schedule:**\n- **9:42 AM - 10:00 AM:** Travel from Union Square to Marina District (18 min)\n- **10:00 AM - 10:45 AM:** Meet Joshua at Marina District (45 min)\n- **10:45 AM - 11:03 AM:** Travel to Union Square (18 min)\n- **11:03 AM - 12:03 PM:** Meet Barbara at Union Square (60 min)\n- **12:03 PM - 12:15 PM:** Travel to Nob Hill (12 min)\n- **12:15 PM - 12:45 PM:** Meet Kenneth at Nob Hill (30 min)\n- **12:45 PM - 1:05 PM:** Travel to Sunset District (20 min)\n- **2:00 PM - 3:00 PM:** Meet Betty at Sunset District (60 min, wait from 1:05 PM)\n- **3:00 PM - 3:15 PM:** Travel to Presidio (15 min)\n- **3:15 PM - 3:30 PM:** Meet Kimberly at Presidio (15 min)\n- **3:30 PM - 3:50 PM:** Travel to North Beach (20 min)\n- **5:00 PM - 6:11 PM:** Meet Steven (first part) at North Beach (71 min, wait from 3:50 PM)\n- **6:11 PM - 6:30 PM:** Travel to Haight-Ashbury (19 min)\n- **6:30 PM - 6:45 PM:** Meet Daniel at Haight-Ashbury (15 min)\n- **6:45 PM - 7:04 PM:** Travel to North Beach (19 min)\n- **7:04 PM - 7:23 PM:** Meet Steven (second part) at North Beach (19 min, total Steven: 90 min)\n- **7:23 PM - 7:39 PM:** Travel to Alamo Square (16 min)\n- **7:39 PM - 7:54 PM:** Meet Elizabeth at Alamo Square (15 min)\n- **7:54 PM - 8:14 PM:** Travel to Financial District (20 min)\n- **8:14 PM - 8:59 PM:** Meet Sandra at Financial District (45 min)\n\n**Key Validation:**\n- **Joshua:** 45 min (min 45) within 10:00-11:00 AM\n- **Barbara:** 60 min (min 60) within 10:00 AM-1:00 PM\n- **Kenneth:** 30 min (min 30) within 12:00-2:00 PM\n- **Betty:** 60 min (min 60) within 2:00-4:00 PM\n- **Kimberly:** 15 min (min 15) within 3:00-4:00 PM\n- **Steven:** 71 min + 19 min = 90 min (min 90) within 5:00-8:00 PM\n- **Daniel:** 15 min (min 15) at fixed window 6:30-6:45 PM\n- **Elizabeth:** 15 min (min 15) within 7:15-8:15 PM\n- **Sandra:** 45 min (min 45) within 8:00-9:00 PM\n\n**Travel Time Validation:**\n- Union Square \u2192 Marina: 18 min\n- Marina \u2192 Union Square: 18 min\n- Union Square \u2192 Nob Hill: 12 min\n- Nob Hill \u2192 Sunset: 20 min\n- Sunset \u2192 Presidio: 15 min\n- Presidio \u2192 North Beach: 20 min\n- North Beach \u2192 Haight-Ashbury: 19 min\n- Haight-Ashbury \u2192 North Beach: 19 min\n- North Beach \u2192 Alamo Square: 16 min\n- Alamo Square \u2192 Financial District: 20 min\n\n**Exclusion:**\n- **Deborah:** Could not be accommodated without violating her 5:00-6:00 PM window or minimum meeting time after accounting for required travel constraints.\n\n**JSON Itinerary:**\n```json\n{\n  \"itinerary\": [\n    {\n      \"action\": \"travel\",\n      \"from\": \"Union Square\",\n      \"to\": \"Marina District\",\n      \"start_time\": \"09:42\",\n      \"end_time\": \"10:00\"\n    },\n    {\n      \"action\": \"meet\",\n      \"person\": \"Joshua\",\n      \"start_time\": \"10:00\",\n      \"end_time\": \"10:45\"\n    },\n    {\n      \"action\": \"travel\",\n      \"from\": \"Marina District\",\n      \"to\": \"Union Square\",\n      \"start_time\": \"10:45\",\n      \"end_time\": \"11:03\"\n    },\n    {\n      \"action\": \"meet\",\n      \"person\": \"Barbara\",\n      \"start_time\": \"11:03\",\n      \"end_time\": \"12:03\"\n    },\n    {\n      \"action\": \"travel\",\n      \"from\": \"Union Square\",\n      \"to\": \"Nob Hill\",\n      \"start_time\": \"12:03\",\n      \"end_time\": \"12:15\"\n    },\n    {\n      \"action\": \"meet\",\n      \"person\": \"Kenneth\",\n      \"start_time\": \"12:15\",\n      \"end_time\": \"12:45\"\n    },\n    {\n      \"action\": \"travel\",\n      \"from\": \"Nob Hill\",\n      \"to\": \"Sunset District\",\n      \"start_time\": \"12:45\",\n      \"end_time\": \"13:05\"\n    },\n    {\n      \"action\": \"meet\",\n      \"person\": \"Betty\",\n      \"start_time\": \"14:00\",\n      \"end_time\": \"15:00\"\n    },\n    {\n      \"action\": \"travel\",\n      \"from\": \"Sunset District\",\n      \"to\": \"Presidio\",\n      \"start_time\": \"15:00\",\n      \"end_time\": \"15:15\"\n    },\n    {\n      \"action\": \"meet\",\n      \"person\": \"Kimberly\",\n      \"start_time\": \"15:15\",\n      \"end_time\": \"15:30\"\n    },\n    {\n      \"action\": \"travel\",\n      \"from\": \"Presidio\",\n      \"to\": \"North Beach\",\n      \"start_time\": \"15:30\",\n      \"end_time\": \"15:50\"\n    },\n    {\n      \"action\": \"meet\",\n      \"person\": \"Steven\",\n      \"start_time\": \"17:00\",\n      \"end_time\": \"18:11\"\n    },\n    {\n      \"action\": \"travel\",\n      \"from\": \"North Beach\",\n      \"to\": \"Haight-Ashbury\",\n      \"start_time\": \"18:11\",\n      \"end_time\": \"18:30\"\n    },\n    {\n      \"action\": \"meet\",\n      \"person\": \"Daniel\",\n      \"start_time\": \"18:30\",\n      \"end_time\": \"18:45\"\n    },\n    {\n      \"action\": \"travel\",\n      \"from\": \"Haight-Ashbury\",\n      \"to\": \"North Beach\",\n      \"start_time\": \"18:45\",\n      \"end_time\": \"19:04\"\n    },\n    {\n      \"action\": \"meet\",\n      \"person\": \"Steven\",\n      \"start_time\": \"19:04\",\n      \"end_time\": \"19:23\"\n    },\n    {\n      \"action\": \"travel\",\n      \"from\": \"North Beach\",\n      \"to\": \"Alamo Square\",\n      \"start_time\": \"19:23\",\n      \"end_time\": \"19:39\"\n    },\n    {\n      \"action\": \"meet\",\n      \"person\": \"Elizabeth\",\n      \"start_time\": \"19:39\",\n      \"end_time\": \"19:54\"\n    },\n    {\n      \"action\": \"travel\",\n      \"from\": \"Alamo Square\",\n      \"to\": \"Financial District\",\n      \"start_time\": \"19:54\",\n      \"end_time\": \"20:14\"\n    },\n    {\n      \"action\": \"meet\",\n      \"person\": \"Sandra\",\n      \"start_time\": \"20:14\",\n      \"end_time\": \"20:59\"\n    }\n  ]\n}\n```",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "person": "Joshua",
+                "start_time": "10:00",
+                "end_time": "10:45"
+            },
+            {
+                "action": "meet",
+                "person": "Barbara",
+                "start_time": "11:03",
+                "end_time": "12:03"
+            },
+            {
+                "action": "meet",
+                "person": "Kenneth",
+                "start_time": "12:15",
+                "end_time": "12:45"
+            },
+            {
+                "action": "meet",
+                "person": "Betty",
+                "start_time": "14:00",
+                "end_time": "15:00"
+            },
+            {
+                "action": "meet",
+                "person": "Kimberly",
+                "start_time": "15:15",
+                "end_time": "15:30"
+            },
+            {
+                "action": "meet",
+                "person": "Steven",
+                "start_time": "17:00",
+                "end_time": "18:11"
+            },
+            {
+                "action": "meet",
+                "person": "Daniel",
+                "start_time": "18:30",
+                "end_time": "18:45"
+            },
+            {
+                "action": "meet",
+                "person": "Steven",
+                "start_time": "19:04",
+                "end_time": "19:23"
+            },
+            {
+                "action": "meet",
+                "person": "Elizabeth",
+                "start_time": "19:39",
+                "end_time": "19:54"
+            },
+            {
+                "action": "meet",
+                "person": "Sandra",
+                "start_time": "20:14",
+                "end_time": "20:59"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "person": "Joshua",
+                "start_time": "10:30",
+                "end_time": "11:15"
+            },
+            {
+                "action": "meet",
+                "person": "Kimberly",
+                "start_time": "15:30",
+                "end_time": "15:45"
+            },
+            {
+                "action": "meet",
+                "person": "Kenneth",
+                "start_time": "16:03",
+                "end_time": "16:33"
+            },
+            {
+                "action": "meet",
+                "person": "Betty",
+                "start_time": "16:57",
+                "end_time": "17:57"
+            },
+            {
+                "action": "meet",
+                "person": "Daniel",
+                "start_time": "18:30",
+                "end_time": "18:45"
+            },
+            {
+                "action": "meet",
+                "person": "Elizabeth",
+                "start_time": "19:15",
+                "end_time": "19:30"
+            },
+            {
+                "action": "meet",
+                "person": "Deborah",
+                "start_time": "19:45",
+                "end_time": "20:00"
+            }
+        ]
+    },
+    "status": "Failed to solve within max passes",
+    "violated_constraint": {
+        "num_people_to_meet": 10
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 5
+}

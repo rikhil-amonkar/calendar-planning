@@ -1,67 +1,57 @@
 from z3 import *
 
 def solve_itinerary():
-    # Define the cities and their codes for easier reference
-    cities = {
-        'Vienna': 0,
-        'Milan': 1,
-        'Rome': 2,
-        'Riga': 3,
-        'Lisbon': 4,
-        'Vilnius': 5,
-        'Oslo': 6
-    }
-    city_names = {v: k for k, v in cities.items()}
+    # Cities
+    cities = ['Vienna', 'Milan', 'Rome', 'Riga', 'Lisbon', 'Vilnius', 'Oslo']
+    city_to_int = {city: idx for idx, city in enumerate(cities)}
+    int_to_city = {idx: city for idx, city in enumerate(cities)}
     
-    # Direct flights: adjacency list
-    direct_flights = {
-        0: [1, 5, 4, 3, 2, 6],  # Vienna
-        1: [0, 3, 6, 4, 5],      # Milan
-        2: [6, 3, 4, 0],          # Rome
-        3: [6, 0, 1, 5, 4, 2],    # Riga
-        4: [0, 6, 2, 1, 3],       # Lisbon
-        5: [0, 6, 3, 1],          # Vilnius
-        6: [3, 2, 4, 1, 0, 5]     # Oslo
-    }
+    # Direct flights (bidirectional)
+    direct_flights = [
+        ('Riga', 'Oslo'), ('Rome', 'Oslo'), ('Vienna', 'Milan'), ('Vienna', 'Vilnius'),
+        ('Vienna', 'Lisbon'), ('Riga', 'Milan'), ('Lisbon', 'Oslo'), ('Rome', 'Riga'),
+        ('Rome', 'Lisbon'), ('Vienna', 'Riga'), ('Vienna', 'Rome'), ('Milan', 'Oslo'),
+        ('Vienna', 'Oslo'), ('Vilnius', 'Oslo'), ('Riga', 'Vilnius'), ('Vilnius', 'Milan'),
+        ('Riga', 'Lisbon'), ('Milan', 'Lisbon')
+    ]
+    # Create flight pairs (including staying in same city)
+    flight_pairs = set()
+    for a, b in direct_flights:
+        flight_pairs.add((city_to_int[a], city_to_int[b]))
+        flight_pairs.add((city_to_int[b], city_to_int[a]))
+    for city in cities:
+        flight_pairs.add((city_to_int[city], city_to_int[city]))
     
-    # Create Z3 solver instance
+    # Create solver
     s = Solver()
     
-    # Variables: for each day, which city is the person in?
-    # day_city[d] represents the city on day d (1-based)
-    day_city = [Int(f"day_{day+1}_city") for day in range(15)]
+    # Variables: day 1 to 15
+    days = [Int(f'day_{i}') for i in range(1, 16)]
     
-    # Constraints:
+    # Each day must be a valid city
+    for day in days:
+        s.add(day >= 0, day < len(cities))
     
-    # 1. Each day's city must be one of the valid cities (0-6)
-    for day in range(15):
-        s.add(day_city[day] >= 0, day_city[day] <= 6)
+    # Fixed constraints
+    s.add(days[0] == city_to_int['Vienna'])  # Day 1 in Vienna
+    s.add(days[3] == city_to_int['Vienna'])  # Day 4 in Vienna
     
-    # 2. Fixed days:
-    # Day 1 and 4 must be in Vienna (conference)
-    s.add(day_city[0] == cities['Vienna'])
-    s.add(day_city[3] == cities['Vienna'])
+    # Lisbon between day 11-13 (at least 1 day)
+    s.add(Or(days[10] == city_to_int['Lisbon'],  # Day 11
+             days[11] == city_to_int['Lisbon'],  # Day 12
+             days[12] == city_to_int['Lisbon'])) # Day 13
     
-    # Relatives in Lisbon between day 11-13 (days 11,12,13)
-    s.add(day_city[10] == cities['Lisbon'])
-    s.add(day_city[11] == cities['Lisbon'])
-    s.add(day_city[12] == cities['Lisbon'])
+    # Oslo between day 13-15 (at least 1 day)
+    s.add(Or(days[12] == city_to_int['Oslo'],   # Day 13
+             days[13] == city_to_int['Oslo'],   # Day 14
+             days[14] == city_to_int['Oslo']))  # Day 15
     
-    # Friend in Oslo between day 13-15 (days 13,14,15)
-    s.add(day_city[12] == cities['Oslo'])
-    s.add(day_city[13] == cities['Oslo'])
-    s.add(day_city[14] == cities['Oslo'])
+    # Flight constraints between consecutive days
+    for i in range(14):
+        s.add(Or([And(days[i] == a, days[i+1] == b) for (a, b) in flight_pairs]))
     
-    # 3. Flight constraints: if the city changes between day d and d+1, there must be a direct flight
-    for day in range(14):
-        current_city = day_city[day]
-        next_city = day_city[day + 1]
-        # Create a list of possible direct flights from current_city
-        possible_flights = [next_city == city for city in direct_flights[current_city.as_long()]]
-        s.add(Or(current_city == next_city, And(current_city != next_city, Or(possible_flights)))
-    
-    # 4. Total days per city:
-    city_days = {
+    # Duration constraints
+    duration = {
         'Vienna': 4,
         'Milan': 2,
         'Rome': 3,
@@ -70,21 +60,41 @@ def solve_itinerary():
         'Vilnius': 4,
         'Oslo': 3
     }
+    for city, count in duration.items():
+        s.add(Sum([If(d == city_to_int[city], 1, 0) for d in days]) == count)
     
-    for city, total in city_days.items():
-        city_code = cities[city]
-        # Sum the days where the city is visited.
-        total_days = Sum([If(day_city[day] == city_code, 1, 0) for day in range(15)])
-        s.add(total_days == total)
-    
-    # Solve the problem
+    # Solve
     if s.check() == sat:
-        m = s.model()
+        model = s.model()
         itinerary = []
-        for day in range(15):
-            current_day = day + 1
-            city_code = m.evaluate(day_city[day]).as_long()
-            itinerary.append({'day': current_day, 'place': city_names[city_code]})
+        for i in range(15):
+            day_num = i + 1
+            city_idx = model.evaluate(days[i]).as_long()
+            city = int_to_city[city_idx]
+            itinerary.append({'day': day_num, 'place': city})
+        
+        # Verify counts
+        counts = {city: 0 for city in cities}
+        for entry in itinerary:
+            counts[entry['place']] += 1
+        for city, count in duration.items():
+            assert counts[city] == count, f"{city} count mismatch"
+        
+        # Verify fixed days
+        assert itinerary[0]['place'] == 'Vienna'
+        assert itinerary[3]['place'] == 'Vienna'
+        
+        # Verify Lisbon and Oslo constraints
+        lisbon_days = [e['day'] for e in itinerary if e['place'] == 'Lisbon']
+        oslo_days = [e['day'] for e in itinerary if e['place'] == 'Oslo']
+        assert any(11 <= d <= 13 for d in lisbon_days)
+        assert any(13 <= d <= 15 for d in oslo_days)
+        
+        # Verify flights
+        for i in range(14):
+            current = itinerary[i]['place']
+            next_c = itinerary[i+1]['place']
+            assert (current == next_c) or ((city_to_int[current], city_to_int[next_c]) in flight_pairs)
         
         return {'itinerary': itinerary}
     else:

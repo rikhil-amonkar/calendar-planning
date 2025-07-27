@@ -1,0 +1,264 @@
+from z3 import *
+import json
+
+def solve_scheduling():
+    # Initialize Z3 optimizer
+    opt = Optimize()
+
+    # Define the friends and their constraints
+    friends = {
+        "Stephanie": {
+            "location": "Richmond District",
+            "available_start": "16:15",
+            "available_end": "21:30",
+            "min_duration": 75
+        },
+        "William": {
+            "location": "Union Square",
+            "available_start": "10:45",
+            "available_end": "17:30",
+            "min_duration": 45
+        },
+        "Elizabeth": {
+            "location": "Nob Hill",
+            "available_start": "12:15",
+            "available_end": "15:00",
+            "min_duration": 105
+        },
+        "Joseph": {
+            "location": "Fisherman's Wharf",
+            "available_start": "12:45",
+            "available_end": "14:00",
+            "min_duration": 75
+        },
+        "Anthony": {
+            "location": "Golden Gate Park",
+            "available_start": "13:00",
+            "available_end": "20:30",
+            "min_duration": 75
+        },
+        "Barbara": {
+            "location": "Embarcadero",
+            "available_start": "19:15",
+            "available_end": "20:30",
+            "min_duration": 75
+        },
+        "Carol": {
+            "location": "Financial District",
+            "available_start": "11:45",
+            "available_end": "16:15",
+            "min_duration": 60
+        },
+        "Sandra": {
+            "location": "North Beach",
+            "available_start": "10:00",
+            "available_end": "12:30",
+            "min_duration": 15
+        },
+        "Kenneth": {
+            "location": "Presidio",
+            "available_start": "21:15",
+            "available_end": "22:15",
+            "min_duration": 45
+        }
+    }
+
+    # Convert time strings to minutes since 9:00 AM (540 minutes)
+    def time_to_minutes(time_str):
+        hh, mm = map(int, time_str.split(':'))
+        return hh * 60 + mm - 540  # 9:00 AM is 540 minutes
+
+    # Convert minutes back to time string
+    def minutes_to_time(minutes):
+        total_minutes = 540 + minutes
+        hh = total_minutes // 60
+        mm = total_minutes % 60
+        return f"{hh:02d}:{mm:02d}"
+
+    # Create Z3 variables for each friend's meeting start and end times
+    meeting_vars = {}
+    for name in friends:
+        start = Int(f'start_{name}')
+        end = Int(f'end_{name}')
+        meeting_vars[name] = {'start': start, 'end': end}
+
+        # Constraints: meeting must be within friend's availability
+        available_start = time_to_minutes(friends[name]["available_start"])
+        available_end = time_to_minutes(friends[name]["available_end"])
+        opt.add(start >= available_start)
+        opt.add(end <= available_end)
+        opt.add(end - start >= friends[name]["min_duration"])
+
+    # Define travel times between locations
+    travel_times = {
+        ("Marina District", "Richmond District"): 11,
+        ("Marina District", "Union Square"): 16,
+        ("Marina District", "Nob Hill"): 12,
+        ("Marina District", "Fisherman's Wharf"): 10,
+        ("Marina District", "Golden Gate Park"): 18,
+        ("Marina District", "Embarcadero"): 14,
+        ("Marina District", "Financial District"): 17,
+        ("Marina District", "North Beach"): 11,
+        ("Marina District", "Presidio"): 10,
+        ("Richmond District", "Marina District"): 9,
+        ("Richmond District", "Union Square"): 21,
+        ("Richmond District", "Nob Hill"): 17,
+        ("Richmond District", "Fisherman's Wharf"): 18,
+        ("Richmond District", "Golden Gate Park"): 9,
+        ("Richmond District", "Embarcadero"): 19,
+        ("Richmond District", "Financial District"): 22,
+        ("Richmond District", "North Beach"): 17,
+        ("Richmond District", "Presidio"): 7,
+        ("Union Square", "Marina District"): 18,
+        ("Union Square", "Richmond District"): 20,
+        ("Union Square", "Nob Hill"): 9,
+        ("Union Square", "Fisherman's Wharf"): 15,
+        ("Union Square", "Golden Gate Park"): 22,
+        ("Union Square", "Embarcadero"): 11,
+        ("Union Square", "Financial District"): 9,
+        ("Union Square", "North Beach"): 10,
+        ("Union Square", "Presidio"): 24,
+        ("Nob Hill", "Marina District"): 11,
+        ("Nob Hill", "Richmond District"): 14,
+        ("Nob Hill", "Union Square"): 7,
+        ("Nob Hill", "Fisherman's Wharf"): 10,
+        ("Nob Hill", "Golden Gate Park"): 17,
+        ("Nob Hill", "Embarcadero"): 9,
+        ("Nob Hill", "Financial District"): 9,
+        ("Nob Hill", "North Beach"): 8,
+        ("Nob Hill", "Presidio"): 17,
+        ("Fisherman's Wharf", "Marina District"): 9,
+        ("Fisherman's Wharf", "Richmond District"): 18,
+        ("Fisherman's Wharf", "Union Square"): 13,
+        ("Fisherman's Wharf", "Nob Hill"): 11,
+        ("Fisherman's Wharf", "Golden Gate Park"): 25,
+        ("Fisherman's Wharf", "Embarcadero"): 8,
+        ("Fisherman's Wharf", "Financial District"): 11,
+        ("Fisherman's Wharf", "North Beach"): 6,
+        ("Fisherman's Wharf", "Presidio"): 17,
+        ("Golden Gate Park", "Marina District"): 16,
+        ("Golden Gate Park", "Richmond District"): 7,
+        ("Golden Gate Park", "Union Square"): 22,
+        ("Golden Gate Park", "Nob Hill"): 20,
+        ("Golden Gate Park", "Fisherman's Wharf"): 24,
+        ("Golden Gate Park", "Embarcadero"): 25,
+        ("Golden Gate Park", "Financial District"): 26,
+        ("Golden Gate Park", "North Beach"): 23,
+        ("Golden Gate Park", "Presidio"): 11,
+        ("Embarcadero", "Marina District"): 12,
+        ("Embarcadero", "Richmond District"): 21,
+        ("Embarcadero", "Union Square"): 10,
+        ("Embarcadero", "Nob Hill"): 10,
+        ("Embarcadero", "Fisherman's Wharf"): 6,
+        ("Embarcadero", "Golden Gate Park"): 25,
+        ("Embarcadero", "Financial District"): 5,
+        ("Embarcadero", "North Beach"): 5,
+        ("Embarcadero", "Presidio"): 20,
+        ("Financial District", "Marina District"): 15,
+        ("Financial District", "Richmond District"): 21,
+        ("Financial District", "Union Square"): 9,
+        ("Financial District", "Nob Hill"): 8,
+        ("Financial District", "Fisherman's Wharf"): 10,
+        ("Financial District", "Golden Gate Park"): 23,
+        ("Financial District", "Embarcadero"): 4,
+        ("Financial District", "North Beach"): 7,
+        ("Financial District", "Presidio"): 22,
+        ("North Beach", "Marina District"): 9,
+        ("North Beach", "Richmond District"): 18,
+        ("North Beach", "Union Square"): 7,
+        ("North Beach", "Nob Hill"): 7,
+        ("North Beach", "Fisherman's Wharf"): 5,
+        ("North Beach", "Golden Gate Park"): 22,
+        ("North Beach", "Embarcadero"): 6,
+        ("North Beach", "Financial District"): 8,
+        ("North Beach", "Presidio"): 17,
+        ("Presidio", "Marina District"): 11,
+        ("Presidio", "Richmond District"): 7,
+        ("Presidio", "Union Square"): 22,
+        ("Presidio", "Nob Hill"): 18,
+        ("Presidio", "Fisherman's Wharf"): 19,
+        ("Presidio", "Golden Gate Park"): 12,
+        ("Presidio", "Embarcadero"): 20,
+        ("Presidio", "Financial District"): 23,
+        ("Presidio", "North Beach"): 18,
+    }
+
+    # Create a list of friend names
+    friend_names = list(friends.keys())
+    num_friends = len(friend_names)
+
+    # Create variables to represent the meeting order
+    # Each position in the sequence is assigned to a friend (0 to num_friends-1)
+    sequence = [Int(f'seq_{i}') for i in range(num_friends)]
+    opt.add(Distinct(sequence))
+    for i in range(num_friends):
+        opt.add(sequence[i] >= 0)
+        opt.add(sequence[i] < num_friends)
+
+    # Create a list to track which friends are met
+    met = [Bool(f'met_{name}') for name in friend_names]
+
+    # Add constraints for travel times between consecutive meetings
+    for i in range(num_friends - 1):
+        # Get the current and next friend in sequence
+        current_idx = sequence[i]
+        next_idx = sequence[i+1]
+        
+        # Create constraints for each possible pair
+        for name1 in friend_names:
+            for name2 in friend_names:
+                if name1 != name2:
+                    loc1 = friends[name1]["location"]
+                    loc2 = friends[name2]["location"]
+                    travel_time = travel_times.get((loc1, loc2), 0)
+                    
+                    # If current is name1 and next is name2, add travel constraint
+                    opt.add(Implies(
+                        And(current_idx == friend_names.index(name1),
+                            next_idx == friend_names.index(name2)),
+                        meeting_vars[name2]['start'] >= meeting_vars[name1]['end'] + travel_time
+                    ))
+
+    # Ensure first meeting starts after arrival (9:00 AM)
+    first_idx = sequence[0]
+    for name in friend_names:
+        opt.add(Implies(first_idx == friend_names.index(name),
+                       meeting_vars[name]['start'] >= 0))
+
+    # A friend is met if their start time is within their availability
+    for name in friend_names:
+        opt.add(met[friend_names.index(name)] == (meeting_vars[name]['start'] >= 0))
+
+    # First maximize number of friends met
+    opt.maximize(Sum([If(m, 1, 0) for m in met]))
+
+    # Then maximize total meeting time
+    total_meeting_time = Sum([If(met[i], 
+                                meeting_vars[friend_names[i]]['end'] - meeting_vars[friend_names[i]]['start'], 
+                                0) 
+                            for i in range(num_friends)])
+    opt.maximize(total_meeting_time)
+
+    # Check if a solution exists
+    if opt.check() == sat:
+        m = opt.model()
+        itinerary = []
+        for name in friend_names:
+            start = m.evaluate(meeting_vars[name]['start'])
+            if m.evaluate(met[friend_names.index(name)]):
+                end = m.evaluate(meeting_vars[name]['end']).as_long()
+                itinerary.append({
+                    "action": "meet",
+                    "person": name,
+                    "start_time": minutes_to_time(start.as_long()),
+                    "end_time": minutes_to_time(end)
+                })
+        # Sort itinerary by start time
+        itinerary.sort(key=lambda x: time_to_minutes(x["start_time"]))
+        return {"itinerary": itinerary}
+    else:
+        return {"itinerary": []}
+
+# Solve the problem and print the solution
+solution = solve_scheduling()
+print(json.dumps(solution, indent=2))

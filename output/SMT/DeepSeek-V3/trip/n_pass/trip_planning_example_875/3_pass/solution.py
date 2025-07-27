@@ -1,116 +1,82 @@
+import json
 from z3 import *
 
-def solve_itinerary():
-    # Cities
-    cities = ['Stuttgart', 'Edinburgh', 'Athens', 'Split', 'Krakow', 'Venice', 'Mykonos']
-    city_map = {city: idx for idx, city in enumerate(cities)}
-    
-    # Direct flights: each pair is bidirectional
-    direct_flights = [
-        ('Krakow', 'Split'),
-        ('Split', 'Athens'),
-        ('Edinburgh', 'Krakow'),
-        ('Venice', 'Stuttgart'),
-        ('Krakow', 'Stuttgart'),
-        ('Edinburgh', 'Stuttgart'),
-        ('Stuttgart', 'Athens'),
-        ('Venice', 'Edinburgh'),
-        ('Athens', 'Mykonos'),
-        ('Venice', 'Athens'),
-        ('Stuttgart', 'Split'),
-        ('Edinburgh', 'Athens')
-    ]
-    
-    # Create a set of allowed transitions (bidirectional)
-    allowed_transitions = set()
-    for a, b in direct_flights:
-        allowed_transitions.add((city_map[a], city_map[b]))
-        allowed_transitions.add((city_map[b], city_map[a]))
-    
-    # Days: 1 to 20
-    days = 20
-    s = Solver()
-    
-    # Variables: each day is assigned a city (0-6)
-    day_city = [Int(f'day_{i}_city') for i in range(1, days + 1)]
-    for dc in day_city:
-        s.add(And(dc >= 0, dc <= 6))
-    
-    # Constraints for city stays
-    # Stuttgart: 3 days (including workshop days 11-13)
-    s.add(Sum([If(day_city[i] == city_map['Stuttgart'], 1, 0) for i in range(days)]) == 3)
-    # Workshop in Stuttgart between day 11 and 13 (1-based: days 10-12 in 0-based)
-    s.add(Or([day_city[i] == city_map['Stuttgart'] for i in range(10, 13)]))
-    
-    # Edinburgh: 4 days
-    s.add(Sum([If(day_city[i] == city_map['Edinburgh'], 1, 0) for i in range(days)]) == 4)
-    
-    # Athens: 4 days
-    s.add(Sum([If(day_city[i] == city_map['Athens'], 1, 0) for i in range(days)]) == 4)
-    
-    # Split: 2 days, and meet friends between day 13-14 (0-based 12-13)
-    s.add(Sum([If(day_city[i] == city_map['Split'], 1, 0) for i in range(days)]) == 2)
-    s.add(Or([day_city[i] == city_map['Split'] for i in range(12, 14)]))
-    
-    # Krakow: 4 days, meet friend between day 8-11 (0-based 7-10)
-    s.add(Sum([If(day_city[i] == city_map['Krakow'], 1, 0) for i in range(days)]) == 4)
-    s.add(Or([day_city[i] == city_map['Krakow'] for i in range(7, 10)]))
-    
-    # Venice: 5 days
-    s.add(Sum([If(day_city[i] == city_map['Venice'], 1, 0) for i in range(days)]) == 5)
-    
-    # Mykonos: 4 days
-    s.add(Sum([If(day_city[i] == city_map['Mykonos'], 1, 0) for i in range(days)]) == 4)
-    
-    # Flight constraints: consecutive days must be same city or connected by direct flight
-    for i in range(days - 1):
-        current_city = day_city[i]
-        next_city = day_city[i + 1]
-        # Either stay in the same city or move to a connected city
-        s.add(Or(
-            current_city == next_city,
-            And(current_city != next_city,
-                Or([And(current_city == a, next_city == b) for (a, b) in allowed_transitions]))
-        ))
-    
-    # Check and get model
-    if s.check() == sat:
-        m = s.model()
-        itinerary = []
-        for i in range(days):
-            city_idx = m.evaluate(day_city[i]).as_long()
-            itinerary.append({'day': i + 1, 'city': cities[city_idx]})
-        
-        # Verify the counts
-        counts = {city: 0 for city in cities}
-        for entry in itinerary:
-            counts[entry['city']] += 1
-        
-        # Check counts meet requirements
-        assert counts['Stuttgart'] == 3
-        assert counts['Edinburgh'] == 4
-        assert counts['Athens'] == 4
-        assert counts['Split'] == 2
-        assert counts['Krakow'] == 4
-        assert counts['Venice'] == 5
-        assert counts['Mykonos'] == 4
-        
-        # Check specific day constraints
-        stuttgart_days = [entry['day'] for entry in itinerary if entry['city'] == 'Stuttgart']
-        assert any(11 <= day <= 13 for day in stuttgart_days)
-        
-        split_days = [entry['day'] for entry in itinerary if entry['city'] == 'Split']
-        assert any(13 <= day <= 14 for day in split_days)
-        
-        krakow_days = [entry['day'] for entry in itinerary if entry['city'] == 'Krakow']
-        assert any(8 <= day <= 11 for day in krakow_days)
-        
-        return {'itinerary': itinerary}
-    else:
-        return None
+# Define the cities and their codes
+cities = {
+    'Stuttgart': 0,
+    'Edinburgh': 1,
+    'Athens': 2,
+    'Split': 3,
+    'Krakow': 4,
+    'Venice': 5,
+    'Mykonos': 6
+}
+city_names = {v: k for k, v in cities.items()}
 
-result = solve_itinerary()
-if result:
-    print(result)
+# Direct flights as tuples
+direct_flights = [
+    (0, 3), (0, 4), (0, 1), (0, 2), (0, 5),  # Stuttgart
+    (1, 4), (1, 0), (1, 2), (1, 5),          # Edinburgh
+    (2, 3), (2, 0), (2, 1), (2, 5), (2, 6),  # Athens
+    (3, 4), (3, 2), (3, 0),                  # Split
+    (4, 3), (4, 1), (4, 0),                  # Krakow
+    (5, 0), (5, 1), (5, 2),                  # Venice
+    (6, 2)                                   # Mykonos
+]
+
+# Create a Z3 solver
+s = Solver()
+
+# Variables: day[i] is the city visited on day i+1 (days are 1-based)
+days = [Int(f'day_{i}') for i in range(20)]
+
+# Constraint: each day must be a valid city (0 to 6)
+for d in days:
+    s.add(And(d >= 0, d <= 6))
+
+# Constraint: flights are only between connected cities or staying in the same city
+for i in range(19):
+    current_city = days[i]
+    next_city = days[i+1]
+    # Allow staying in the same city or moving to a connected city
+    flight_options = []
+    for (c1, c2) in direct_flights:
+        flight_options.append(And(current_city == c1, next_city == c2))
+    s.add(Or(current_city == next_city, Or(flight_options)))
+
+# Total days per city constraints
+city_days = {
+    0: 3,  # Stuttgart
+    1: 4,  # Edinburgh
+    2: 4,  # Athens
+    3: 2,  # Split
+    4: 4,  # Krakow
+    5: 5,  # Venice
+    6: 4   # Mykonos
+}
+
+for city, total in city_days.items():
+    s.add(Sum([If(d == city, 1, 0) for d in days]) == total)
+
+# Workshop in Stuttgart between day 11 and 13 (1-based, days 10-12 in 0-based)
+s.add(Or(days[10] == 0, days[11] == 0, days[12] == 0))
+
+# Meet friends in Split between day 13 and 14 (0-based: 12 and 13)
+s.add(Or(days[12] == 3, days[13] == 3))
+
+# Meet friend in Krakow between day 8 and 11 (0-based: 7-10)
+s.add(Or([days[i] == 4 for i in range(7, 11)]))
+
+# Check if the solver can find a solution
+if s.check() == sat:
+    model = s.model()
+    itinerary = []
+    for i in range(20):
+        city_code = model.eval(days[i]).as_long()
+        itinerary.append({"day": i+1, "place": city_names[city_code]})
+    
+    # Prepare the output
+    output = {'itinerary': itinerary}
+    print(json.dumps(output, indent=2))
 else:
-    print("No valid itinerary found.")
+    print("No solution found")

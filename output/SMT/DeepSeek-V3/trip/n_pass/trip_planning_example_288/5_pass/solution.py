@@ -3,74 +3,70 @@ from z3 import *
 def solve_itinerary():
     # Cities and their indices
     cities = ['Manchester', 'Stuttgart', 'Madrid', 'Vienna']
-    city_idx = {city: i for i, city in enumerate(cities)}
+    city_to_idx = {city: idx for idx, city in enumerate(cities)}
     
-    # Direct flight connections
-    connections = {
-        'Manchester': ['Stuttgart', 'Madrid', 'Vienna'],
-        'Stuttgart': ['Manchester', 'Vienna'],
-        'Madrid': ['Manchester', 'Vienna'],
-        'Vienna': ['Manchester', 'Stuttgart', 'Madrid']
+    # Direct flights (bidirectional)
+    direct_flights = {
+        0: [1, 2, 3],  # Manchester
+        1: [0, 3],      # Stuttgart
+        2: [0, 3],       # Madrid
+        3: [0, 1, 2]     # Vienna
     }
     
-    # Total days
-    total_days = 15
-    
-    # Create Z3 variables for each day
-    day_vars = [Int(f'day_{i}') for i in range(total_days)]
-    
+    # Create solver and day variables
     s = Solver()
+    days = [Int(f'day_{i}') for i in range(1, 16)]
     
-    # Each day must be assigned to a valid city
-    for day in day_vars:
-        s.add(day >= 0, day < len(cities))
+    # Each day must be one of the cities (0-3)
+    for day in days:
+        s.add(And(day >= 0, day <= 3))
     
-    # Manchester must be days 1-7 (indexes 0-6)
+    # Manchester: Days 1-7 (indices 0-6)
     for i in range(7):
-        s.add(day_vars[i] == city_idx['Manchester'])
+        s.add(days[i] == city_to_idx['Manchester'])
     
-    # Stuttgart must include at least one day between 11-15 (indexes 10-14)
-    s.add(Or([day_vars[i] == city_idx['Stuttgart'] for i in range(10, 15)]))
+    # Stuttgart: At least one day between 11-15 (indices 10-14)
+    s.add(Or([days[i] == city_to_idx['Stuttgart'] for i in range(10, 15)]))
     
-    # Total days per city
-    city_days = [
-        ('Manchester', 7),
-        ('Stuttgart', 5),
-        ('Madrid', 4),
-        ('Vienna', 2)
-    ]
+    # Total days constraints
+    def count_days(city_idx):
+        return Sum([If(days[i] == city_idx, 1, 0) for i in range(15)])
     
-    for city, days in city_days:
-        s.add(Sum([If(day_vars[i] == city_idx[city], 1, 0) for i in range(total_days)]) == days)
+    s.add(count_days(city_to_idx['Manchester']) == 7)
+    s.add(count_days(city_to_idx['Stuttgart']) == 5)
+    s.add(count_days(city_to_idx['Madrid']) == 4)
+    s.add(count_days(city_to_idx['Vienna']) == 2)
     
-    # Flight constraints
-    for i in range(total_days - 1):
-        current = day_vars[i]
-        next_day = day_vars[i + 1]
-        # Either stay in same city or take direct flight
+    # Flight transitions
+    for i in range(14):
+        current = days[i]
+        next_day = days[i+1]
         s.add(Or(
-            current == next_day,
-            And(
-                current != next_day,
-                Or([And(current == city_idx[city], next_day == city_idx[adj]) 
-                    for city in cities 
-                    for adj in connections[city]])
-            )
+            current == next_day,  # Stay in same city
+            *[And(current == a, next_day == b) 
+              for a in range(4) 
+              for b in direct_flights[a]]
         ))
     
-    # Try to find a solution
+    # Solve and format output
     if s.check() == sat:
-        model = s.model()
+        m = s.model()
         itinerary = []
-        for i in range(total_days):
-            city = cities[model.eval(day_vars[i]).as_long()]
-            itinerary.append({'day': i + 1, 'place': city})
-        return {'itinerary': itinerary}
+        for i in range(15):
+            day_num = i + 1
+            city_idx = m.evaluate(days[i]).as_long()
+            itinerary.append({'day': day_num, 'place': cities[city_idx]})
+        
+        # Verify counts
+        counts = {city: 0 for city in cities}
+        for entry in itinerary:
+            counts[entry['place']] += 1
+        
+        # Output JSON
+        import json
+        result = {'itinerary': itinerary}
+        print(json.dumps(result, indent=2))
     else:
-        return None
+        print("No valid itinerary found.")
 
-result = solve_itinerary()
-if result:
-    print(result)
-else:
-    print("No valid itinerary found.")
+solve_itinerary()
