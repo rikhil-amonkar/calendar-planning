@@ -1,91 +1,91 @@
 from z3 import *
 
 def solve_itinerary():
-    # Cities and their codes
-    cities = {
-        'Dubrovnik': 0,
-        'Warsaw': 1,
-        'Stuttgart': 2,
-        'Bucharest': 3,
-        'Copenhagen': 4
-    }
-    city_names = {v: k for k, v in cities.items()}
+    # Define the cities and their indices
+    cities = ['Dubrovnik', 'Warsaw', 'Stuttgart', 'Bucharest', 'Copenhagen']
+    city_indices = {city: idx for idx, city in enumerate(cities)}
+    num_cities = len(cities)
     
-    # Direct flights adjacency list
-    adjacency = {
-        0: [4],    # Dubrovnik connected to Copenhagen
-        1: [2, 3, 4],  # Warsaw connected to Stuttgart, Bucharest, Copenhagen
-        2: [1, 4],  # Stuttgart connected to Warsaw, Copenhagen
-        3: [1, 4],  # Bucharest connected to Warsaw, Copenhagen
-        4: [0, 1, 2, 3]  # Copenhagen connected to Dubrovnik, Warsaw, Stuttgart, Bucharest
+    # Direct flights: adjacency list
+    direct_flights = {
+        0: [0, 4],  # Dubrovnik can stay or fly to Copenhagen
+        1: [1, 2, 3, 4],  # Warsaw can stay or fly to Stuttgart, Bucharest, Copenhagen
+        2: [2, 1, 4],  # Stuttgart can stay or fly to Warsaw, Copenhagen
+        3: [3, 1, 4],  # Bucharest can stay or fly to Warsaw, Copenhagen
+        4: [4, 0, 1, 2, 3]  # Copenhagen can stay or fly to Dubrovnik, Warsaw, Stuttgart, Bucharest
     }
     
-    # Create Z3 variables for each day's city
+    num_days = 19
     s = Solver()
-    days = 19
-    day_vars = [Int(f'day_{i}') for i in range(1, days + 1)]
     
-    # Each day variable must be one of the city codes
-    for d in day_vars:
-        s.add(Or([d == code for code in cities.values()]))
+    # day[i] represents the city index (0-4) for day i+1 (1-based)
+    day = [Int(f'day_{i}') for i in range(num_days)]
     
-    # Constraints for transitions: consecutive days must be the same city or connected by a direct flight
-    for i in range(days - 1):
-        current_city = day_vars[i]
-        next_city = day_vars[i + 1]
-        # Create a list of allowed transitions
-        allowed_transitions = []
-        for city_code in cities.values():
-            if city_code in adjacency:
-                for neighbor in adjacency[city_code]:
-                    allowed_transitions.append(And(current_city == city_code, next_city == neighbor))
-        # Add the possibility of staying in the same city
-        allowed_transitions.append(current_city == next_city)
-        # Add the disjunction of all allowed transitions
-        s.add(Or(allowed_transitions))
+    # Each day must be one of the city indices
+    for d in day:
+        s.add(And(d >= 0, d < num_cities))
     
-    # Count the days per city
-    counts = {city: 0 for city in cities.values()}
-    for city in cities.values():
-        counts[city] = Sum([If(day_vars[i] == city, 1, 0) for i in range(days)])
+    # Flight constraints: consecutive days must be same city or connected by direct flight
+    for i in range(num_days - 1):
+        current = day[i]
+        next_city = day[i + 1]
+        # Create a disjunction for each possible current city and its possible next cities
+        constraints = []
+        for city_idx in range(num_cities):
+            allowed_next = direct_flights[city_idx]
+            constraints.append(And(current == city_idx, Or([next_city == allowed for allowed in allowed_next])))
+        s.add(Or(constraints))
     
-    # Add constraints for required days per city
-    s.add(counts[cities['Dubrovnik']] == 5)
-    s.add(counts[cities['Warsaw']] == 2)
-    s.add(counts[cities['Stuttgart']] == 7)
-    s.add(counts[cities['Bucharest']] == 6)
-    s.add(counts[cities['Copenhagen']] == 3)
+    # Duration constraints
+    s.add(Sum([If(day[i] == city_indices['Dubrovnik'], 1, 0) for i in range(num_days)]) == 5)
+    s.add(Sum([If(day[i] == city_indices['Warsaw'], 1, 0) for i in range(num_days)]) == 2)
+    s.add(Sum([If(day[i] == city_indices['Stuttgart'], 1, 0) for i in range(num_days)]) == 7)
+    s.add(Sum([If(day[i] == city_indices['Bucharest'], 1, 0) for i in range(num_days)]) == 6)
+    s.add(Sum([If(day[i] == city_indices['Copenhagen'], 1, 0) for i in range(num_days)]) == 3)
     
-    # Special constraints: conference in Stuttgart on days 7 and 13 (1-based)
-    s.add(day_vars[6] == cities['Stuttgart'])  # day 7 is index 6
-    s.add(day_vars[12] == cities['Stuttgart'])  # day 13 is index 12
+    # Event constraints
+    # Conference in Stuttgart on day 7 and day 13 (1-based)
+    s.add(day[6] == city_indices['Stuttgart'])  # day 7 is index 6
+    s.add(day[12] == city_indices['Stuttgart'])  # day 13 is index 12
     
-    # Wedding in Bucharest between day 1 and day 6 (inclusive)
-    wedding_days = [day_vars[i] for i in range(6)]  # days 1-6 are indices 0-5
-    # At least one of days 1-6 must be in Bucharest
-    s.add(Or([wedding_day == cities['Bucharest'] for wedding_day in wedding_days]))
+    # Wedding in Bucharest between day 1 and day 6 (1-based, days 0-5 in 0-based)
+    s.add(Or([day[i] == city_indices['Bucharest'] for i in range(6)]))
     
-    # Check and get the model
+    # Additional constraints to ensure the wedding is within the first 6 days
+    # and the conference days are in Stuttgart
+    # Also, ensure that the transitions between cities are valid
+    
+    # Check for a solution
     if s.check() == sat:
         model = s.model()
         itinerary = []
-        for i in range(days):
-            day_num = i + 1
-            city_code = model.evaluate(day_vars[i]).as_long()
-            city_name = city_names[city_code]
-            itinerary.append({'day': day_num, 'place': city_name})
+        for i in range(num_days):
+            city_idx = model.evaluate(day[i]).as_long()
+            city_name = cities[city_idx]
+            itinerary.append({'day': i + 1, 'place': city_name})
         
-        # Verify day counts
-        day_counts = {city: 0 for city in cities.keys()}
+        # Verify the counts
+        counts = {city: 0 for city in cities}
         for entry in itinerary:
-            day_counts[entry['place']] += 1
-        
-        print("Day counts per city:", day_counts)
+            counts[entry['place']] += 1
+        assert counts['Dubrovnik'] == 5
+        assert counts['Warsaw'] == 2
+        assert counts['Stuttgart'] == 7
+        assert counts['Bucharest'] == 6
+        assert counts['Copenhagen'] == 3
+        assert itinerary[6]['place'] == 'Stuttgart'
+        assert itinerary[12]['place'] == 'Stuttgart'
+        # Check wedding constraint: at least one day in Bucharest in days 1-6
+        wedding_days = [entry for entry in itinerary if entry['day'] <= 6 and entry['place'] == 'Bucharest']
+        assert len(wedding_days) >= 1
         
         return {'itinerary': itinerary}
     else:
-        return "No valid itinerary found."
+        return None
 
-# Generate and print the itinerary
-itinerary = solve_itinerary()
-print(itinerary)
+result = solve_itinerary()
+if result:
+    import json
+    print(json.dumps(result, indent=2))
+else:
+    print("No valid itinerary found.")

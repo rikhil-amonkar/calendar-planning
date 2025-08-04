@@ -924,7 +924,7 @@ async def process_single_example(
                     logging.info(f"[{example_id}] Pass {pass_num} plan found but violates constraints, preparing constraint feedback")
                     plan_summary = f"Plan found: {pred_formatted}"
                     constraint_feedback = format_constraint_feedback(violated_constraints)
-                    current_prompt = f"The previous solution produced the following plan:\n{plan_summary}\n\nHowever, this plan violates the following constraints:\n{constraint_feedback}\n\nPlease revise your Z3 program to find a valid solution that satisfies all constraints.\n\nMake sure to surround your final code with ```python\nYOUR_CODE\n```."
+                    current_prompt = f"The previous solution produced the following plan:\n{plan_summary}\n\nHowever,this plan is incorrect and violates some constraints.\n\nPlease revise your Z3 program to find a valid solution that satisfies all constraints.\n\nMake sure to surround your final code with ```python\nYOUR_CODE\n```."
             
             logging.warning(f"[{example_id}] FAILED to solve within {max_passes} passes")
             

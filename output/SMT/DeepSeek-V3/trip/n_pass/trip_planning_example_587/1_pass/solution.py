@@ -1,88 +1,135 @@
 from z3 import *
+import json
 
-def solve_scheduling():
+def solve_itinerary():
     # Cities
     cities = ['Manchester', 'Istanbul', 'Venice', 'Krakow', 'Lyon']
-    city_to_idx = {city: idx for idx, city in enumerate(cities)}
+    city_map = {city: idx for idx, city in enumerate(cities)}
+    manchester = city_map['Manchester']
+    istanbul = city_map['Istanbul']
+    venice = city_map['Venice']
+    krakow = city_map['Krakow']
+    lyon = city_map['Lyon']
     
     # Direct flights: adjacency list
     direct_flights = {
-        'Manchester': ['Venice', 'Istanbul', 'Krakow'],
-        'Istanbul': ['Manchester', 'Venice', 'Krakow', 'Lyon'],
-        'Venice': ['Manchester', 'Istanbul', 'Lyon'],
-        'Krakow': ['Istanbul', 'Manchester'],
-        'Lyon': ['Venice', 'Istanbul']
-    }
-    # Correcting the typo 'Venice' vs 'Venice'
-    direct_flights = {
-        'Manchester': ['Venice', 'Istanbul', 'Krakow'],
-        'Istanbul': ['Manchester', 'Venice', 'Krakow', 'Lyon'],
-        'Venice': ['Manchester', 'Istanbul', 'Lyon'],
-        'Krakow': ['Istanbul', 'Manchester'],
-        'Lyon': ['Venice', 'Istanbul']
+        manchester: [venice, istanbul, krakow],
+        istanbul: [manchester, venice, krakow, lyon],
+        venice: [manchester, istanbul, lyon],
+        krakow: [manchester, istanbul],
+        lyon: [venice, istanbul]
     }
     
-    # Required days in each city
-    required_days = {
-        'Manchester': 3,
-        'Istanbul': 7,
-        'Venice': 7,
-        'Krakow': 6,
-        'Lyon': 2
-    }
+    # Days: 1..21
+    days = 21
+    day_range = range(1, days + 1)
     
-    total_days = 21
+    # Create a solver instance
+    s = Solver()
     
-    # Create a Z3 solver
-    solver = Solver()
+    # Variables: for each day, which cities are we in?
+    # presence[d][c] is True if we are in city c on day d
+    presence = [[Bool(f"presence_day{day}_city{city}") for city in range(len(cities))] for day in day_range]
     
-    # Variables: for each day, which city are we in?
-    # day_city[d] is the city index for day d+1 (since days are 1-based)
-    day_city = [Int(f"day_{d}_city") for d in range(total_days)]
+    # Variables: flight transitions. flight_from_to[d][from_city][to_city] is True if we fly from from_city to to_city on day d.
+    flight_from_to = [[[Bool(f"flight_day{day}_from{from_city}_to{to_city}") 
+                        for to_city in range(len(cities))] 
+                        for from_city in range(len(cities))] 
+                        for day in day_range]
     
-    # Constraints: each day_city must be between 0 and 4 (indices of cities)
-    for d in range(total_days):
-        solver.add(day_city[d] >= 0, day_city[d] < len(cities))
+    # Constraints
     
-    # Constraints on transitions: consecutive days must be either same city or connected by direct flight
-    for d in range(total_days - 1):
-        current_city = day_city[d]
-        next_city = day_city[d + 1]
-        # Either same city or a direct flight
-        solver.add(Or(
-            current_city == next_city,
-            Or([And(current_city == city_to_idx[c], next_city == city_to_idx[n])
-                for c in direct_flights for n in direct_flights[c]])
-        ))
+    # 1. On each day, we are in at least one city. (But can be in two cities if it's a flight day)
+    for day in day_range:
+        s.add(Or([presence[day-1][city] for city in range(len(cities))]))
     
-    # Required days per city: count occurrences of each city index in day_city
-    for city in cities:
-        count = Sum([If(day_city[d] == city_to_idx[city], 1, 0) for d in range(total_days)])
-        solver.add(count == required_days[city])
+    # 2. Flight transitions: if flight_from_to[d][from][to], then:
+    #    - presence[d][from] and presence[d][to] must be true.
+    #    - from and to must have a direct flight.
+    for day in day_range:
+        for from_city in range(len(cities)):
+            for to_city in range(len(cities)):
+                if to_city == from_city:
+                    continue
+                # If flight from from_city to to_city on day, then:
+                implies_flight = Implies(
+                    flight_from_to[day-1][from_city][to_city],
+                    And(
+                        presence[day-1][from_city],
+                        presence[day-1][to_city],
+                        Or([to_city in direct_flights[from_city]])
+                    )
+                )
+                s.add(implies_flight)
     
-    # Manchester must be visited on at least one of days 1-3 (indices 0-2)
-    solver.add(Or([day_city[d] == city_to_idx['Manchester'] for d in range(3)]))
+    # 3. Flight uniqueness: on any day, at most one flight can occur (or none).
+    for day in day_range:
+        flight_possibilities = []
+        for from_city in range(len(cities)):
+            for to_city in range(len(cities)):
+                if from_city != to_city and to_city in direct_flights[from_city]:
+                    flight_possibilities.append(flight_from_to[day-1][from_city][to_city])
+        s.add(AtMost(*flight_possibilities, 1))
     
-    # Workshop in Venice between day 3 and day 9 (indices 2-8)
-    solver.add(Sum([If(And(day_city[d] == city_to_idx['Venice'], d >= 2, d <= 8), 1, 0) for d in range(total_days)]) >= 1
+    # 4. Continuity between days: 
+    #    If we are in city c on day d, then either:
+    #    - we were in c on day d-1, or
+    #    - there's a flight to c on day d (from any city), or
+    #    - it's day 1.
+    for day in day_range:
+        for city in range(len(cities)):
+            if day == 1:
+                continue  # no previous day
+            prev_day_in_city = presence[day-2][city]
+            flight_to_city = Or([flight_from_to[day-2][from_city][city] for from_city in range(len(cities)) if city != from_city and city in direct_flights.get(from_city, [])])
+            s.add(Implies(presence[day-1][city], Or(prev_day_in_city, flight_to_city)))
     
-    # Check if the problem is satisfiable
-    if solver.check() == sat:
-        model = solver.model()
+    # 5. Total days per city constraints.
+    total_days = [0]*len(cities)
+    for city in range(len(cities)):
+        total_days[city] = Sum([If(presence[day-1][city], 1, 0) for day in day_range])
+    
+    s.add(total_days[manchester] == 3)
+    s.add(total_days[istanbul] == 7)
+    s.add(total_days[venice] == 7)
+    s.add(total_days[krakow] == 6)
+    s.add(total_days[lyon] == 2)
+    
+    # 6. Manchester must include days 1-3.
+    for day in [1, 2, 3]:
+        s.add(presence[day-1][manchester])
+    
+    # 7. Venice must include days 3-9.
+    for day in range(3, 10):
+        s.add(presence[day-1][venice])
+    
+    # Solve the problem
+    if s.check() == sat:
+        m = s.model()
         itinerary = []
-        for d in range(total_days):
-            city_idx = model.evaluate(day_city[d]).as_long()
-            city = cities[city_idx]
-            itinerary.append({"day": d+1, "place": city})
+        for day in day_range:
+            current_day = {'day': day, 'cities': []}
+            for city in range(len(cities)):
+                if m.evaluate(presence[day-1][city]):
+                    current_day['cities'].append(cities[city])
+            itinerary.append(current_day)
         
-        # Format the output as required
-        output = {
-            "itinerary": itinerary
-        }
-        return output
+        # Now, construct the JSON output.
+        # The itinerary should list each day and the cities visited that day.
+        # But according to the problem's note, the flight day is counted for both cities.
+        # So the JSON should have each day mapped to the cities present that day.
+        json_output = {'itinerary': []}
+        for entry in itinerary:
+            day_num = entry['day']
+            cities_present = entry['cities']
+            for city in cities_present:
+                json_output['itinerary'].append({'day': day_num, 'place': city})
+        
+        # The JSON output should be a dictionary with 'itinerary' key.
+        return json_output
     else:
         return {"error": "No valid itinerary found"}
 
-# Execute the solver
-result = solve_scheduling()
-print(result)
+# Generate the solution
+solution = solve_itinerary()
+print(json.dumps(solution, indent=2))

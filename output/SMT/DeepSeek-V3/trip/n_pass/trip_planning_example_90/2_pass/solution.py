@@ -1,50 +1,67 @@
 from z3 import *
+import json
 
 def solve_itinerary():
     s = Solver()
 
-    days = 17
-    cities = ['Naples', 'Vienna', 'Vilnius']
-    city_map = {'Naples': 0, 'Vienna': 1, 'Vilnius': 2}
-    day_city = [Int(f'day_{i}_city') for i in range(1, days + 1)]
+    # Variables for each city's start and end days
+    naples_start = Int('naples_start')
+    naples_end = Int('naples_end')
+    vienna_start = Int('vienna_start')
+    vienna_end = Int('vienna_end')
+    vilnius_start = Int('vilnius_start')
+    vilnius_end = Int('vilnius_end')
 
-    for day in range(days):
-        s.add(day_city[day] >= 0, day_city[day] <= 2)
+    # Constraints
+    # Naples must be between day 1 and day 5, and duration is 5 days
+    s.add(naples_start == 1)
+    s.add(naples_end == 5)
 
-    for day in range(5):
-        s.add(day_city[day] == 0)
+    # Vienna duration is 7 days
+    s.add(vienna_end - vienna_start + 1 == 7)
+    # Vilnius duration is 7 days
+    s.add(vilnius_end - vilnius_start + 1 == 7)
 
-    for day in range(5, days):
-        s.add(day_city[day] != 0)
+    # Total trip duration is 17 days
+    s.add(vilnius_end == 17)
 
-    vilnius_days = Sum([If(day_city[i] == 2, 1, 0) for i in range(days)])
-    vienna_days = Sum([If(day_city[i] == 1, 1, 0) for i in range(days)])
+    # Flight constraints: only direct flights between Naples-Vienna and Vienna-Vilnius
+    # Sequence must be Naples -> Vienna -> Vilnius
+    s.add(vienna_start == naples_end)  # Fly from Naples to Vienna on day 5
+    s.add(vilnius_start == vienna_end)  # Fly from Vienna to Vilnius on vienna_end
 
-    s.add(vilnius_days == 7)
-    s.add(vienna_days == 7)
-
-    for i in range(days - 1):
-        current_city = day_city[i]
-        next_city = day_city[i + 1]
-        s.add(Or(
-            And(current_city == 0, next_city == 1),
-            And(current_city == 1, next_city == 0),
-            And(current_city == 1, next_city == 2),
-            And(current_city == 2, next_city == 1),
-            current_city == next_city
-        ))
-
+    # Check if the problem is satisfiable
     if s.check() == sat:
         m = s.model()
+        n_start = m.evaluate(naples_start).as_long()
+        n_end = m.evaluate(naples_end).as_long()
+        v_start = m.evaluate(vienna_start).as_long()
+        v_end = m.evaluate(vienna_end).as_long()
+        vl_start = m.evaluate(vilnius_start).as_long()
+        vl_end = m.evaluate(vilnius_end).as_long()
+
+        # Generate the itinerary
         itinerary = []
-        for day in range(1, days + 1):
-            city_code = m.evaluate(day_city[day - 1]).as_long()
-            city = cities[city_code]
-            itinerary.append({"day": day, "place": city})
-        return {'itinerary': itinerary}
+
+        # Naples days 1-5
+        for day in range(n_start, n_end + 1):
+            itinerary.append({"day": day, "place": "Naples"})
+
+        # Vienna days 5-11 (including flight day 5)
+        for day in range(v_start, v_end + 1):
+            itinerary.append({"day": day, "place": "Vienna"})
+
+        # Vilnius days 11-17 (including flight day 11)
+        for day in range(vl_start, vl_end + 1):
+            itinerary.append({"day": day, "place": "Vilnius"})
+
+        # Sort the itinerary by day
+        itinerary.sort(key=lambda x: x["day"])
+
+        result = {"itinerary": itinerary}
+        return result
     else:
         return {"error": "No valid itinerary found"}
 
 result = solve_itinerary()
-import json
 print(json.dumps(result, indent=2))

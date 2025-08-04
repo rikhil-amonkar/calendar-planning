@@ -1,23 +1,26 @@
+import json
 from z3 import *
 
 def solve_itinerary():
-    # Cities with their required visit durations
-    cities = [
-        ('Prague', 3),
-        ('Warsaw', 4),
-        ('Dublin', 3),
-        ('Athens', 3),
-        ('Vilnius', 4),
-        ('Porto', 5),
-        ('London', 3),
-        ('Seville', 2),
-        ('Lisbon', 5),
-        ('Dubrovnik', 3)
-    ]
-    city_names = [city[0] for city in cities]
-    city_to_idx = {name: idx for idx, name in enumerate(city_names)}
+    # Cities and their required days
+    cities = {
+        'Prague': 3,
+        'Warsaw': 4,
+        'Dublin': 3,
+        'Athens': 3,
+        'Vilnius': 4,
+        'Porto': 5,
+        'London': 3,
+        'Seville': 2,
+        'Lisbon': 5,
+        'Dubrovnik': 3
+    }
     
-    # Direct flights (undirected)
+    city_list = sorted(cities.keys())
+    city_to_int = {city: idx for idx, city in enumerate(city_list)}
+    int_to_city = {idx: city for idx, city in enumerate(city_list)}
+    
+    # Direct flights: list of tuples
     direct_flights = [
         ('Warsaw', 'Vilnius'),
         ('Prague', 'Athens'),
@@ -45,103 +48,91 @@ def solve_itinerary():
         ('London', 'Athens')
     ]
     
-    # Create allowed transitions (both directions)
+    # Create a set of allowed transitions (both directions)
     allowed_transitions = set()
     for a, b in direct_flights:
-        allowed_transitions.add((city_to_idx[a], city_to_idx[b]))
-        allowed_transitions.add((city_to_idx[b], city_to_idx[a]))
+        allowed_transitions.add((city_to_int[a], city_to_int[b]))
+        allowed_transitions.add((city_to_int[b], city_to_int[a]))
     
-    # Create solver with optimization
+    # Create Z3 variables for each day
     s = Solver()
-    s.set("timeout", 120000)  # 2 minute timeout
+    day_vars = [Int(f'day_{i}') for i in range(1, 27)]
     
-    # Day variables: day[i] is the city on day i+1 (days are 1-based)
-    days = [Int(f'day_{i}') for i in range(26)]
+    # Each day variable must be a valid city index
+    for day in day_vars:
+        s.add(And(day >= 0, day < len(city_list)))
     
-    # Each day's value is an index into the cities list (0 to 9)
-    for d in days:
-        s.add(d >= 0, d < len(cities))
+    # Duration constraints for all cities
+    for city, days in cities.items():
+        s.add(Sum([If(day_vars[i] == city_to_int[city], 1, 0) for i in range(26)]) == days)
     
-    # Fixed intervals:
-    # Prague: days 1-3 (workshop)
-    for i in range(3):
-        s.add(days[i] == city_to_idx['Prague'])
+    # Fixed constraints with flexibility
+    # Prague: must be visited for 3 days including at least one day between 1-3
+    s.add(Or([day_vars[i] == city_to_int['Prague'] for i in range(0, 3)]))
     
-    # London: days 3-5 (wedding)
-    for i in range(2, 5):
-        s.add(days[i] == city_to_idx['London'])
+    # London: must be visited for 3 days including at least one day between 3-5
+    s.add(Or([day_vars[i] == city_to_int['London'] for i in range(2, 5)]))
     
-    # Lisbon: days 5-9 (relatives)
-    for i in range(4, 9):
-        s.add(days[i] == city_to_idx['Lisbon'])
+    # Lisbon: must be visited for 5 days including at least one day between 5-9
+    s.add(Or([day_vars[i] == city_to_int['Lisbon'] for i in range(4, 9)]))
     
-    # Porto: days 16-20 (conference)
-    for i in range(15, 20):
-        s.add(days[i] == city_to_idx['Porto'])
+    # Porto: must be visited for 5 days including at least one day between 16-20
+    s.add(Or([day_vars[i] == city_to_int['Porto'] for i in range(15, 20)]))
     
-    # Warsaw: days 20-23 (friends)
-    for i in range(19, 23):
-        s.add(days[i] == city_to_idx['Warsaw'])
+    # Warsaw: must be visited for 4 days including at least one day between 20-23
+    s.add(Or([day_vars[i] == city_to_int['Warsaw'] for i in range(19, 23)]))
     
-    # Duration constraints for other cities
-    for city, duration in cities:
-        if city in ['Prague', 'London', 'Lisbon', 'Porto', 'Warsaw']:
-            continue  # already handled
-        s.add(Sum([If(days[i] == city_to_idx[city], 1, 0) for i in range(26)]) == duration)
-    
-    # Flight constraints: consecutive days must be same city or have a direct flight
+    # Flight transitions
     for i in range(25):
-        current = days[i]
-        next_day = days[i+1]
-        # Either stay in same city or take a direct flight
+        current = day_vars[i]
+        next_ = day_vars[i+1]
         s.add(Or(
-            current == next_day,
-            *[And(current == a, next_day == b) for a, b in allowed_transitions]
+            current == next_,
+            And(current != next_, (current, next_) in allowed_transitions)
         ))
     
-    # Additional constraints to help the solver:
-    # 1. No single-day visits (except when transitioning)
-    for i in range(1, 25):
-        s.add(Implies(
-            days[i-1] != days[i] and days[i] != days[i+1],
-            days[i-1] == days[i+1]  # Don't visit a city for just one day
-        ))
+    # Additional constraints to help guide the solver
+    # Ensure at least one transition day for overlapping constraints
+    s.add(Or(
+        day_vars[2] != day_vars[3],  # Day 3-4 transition
+        day_vars[4] != day_vars[5],  # Day 5-6 transition
+        day_vars[14] != day_vars[15], # Day 15-16 transition
+        day_vars[19] != day_vars[20]  # Day 20-21 transition
+    ))
     
-    # 2. Prefer longer stays when possible
-    for i in range(2, 24):
-        s.add(Implies(
-            days[i-1] == days[i],
-            Or(days[i] == days[i+1], days[i] == days[i-2])
-        ))
-    
-    # Check if the problem is satisfiable
+    # Check and get model
     if s.check() == sat:
-        m = s.model()
+        model = s.model()
         itinerary = []
-        for i in range(26):
-            day = i + 1
-            city_idx = m.evaluate(days[i]).as_long()
-            city = city_names[city_idx]
-            itinerary.append({"day": day, "place": city})
+        for day in range(1, 27):
+            city_idx = model.evaluate(day_vars[day-1]).as_long()
+            itinerary.append({"day": day, "place": int_to_city[city_idx]})
         
-        # Verify counts
-        counts = {city: 0 for city in city_names}
+        # Verification
+        day_counts = {city: 0 for city in city_list}
         for entry in itinerary:
-            counts[entry['place']] += 1
+            day_counts[entry['place']] += 1
         
-        print("City visit counts:")
-        for city, count in counts.items():
-            print(f"{city}: {count} days")
+        for city, days in cities.items():
+            assert day_counts[city] == days, f"{city} duration mismatch"
         
-        return {'itinerary': itinerary}
+        assert any(itinerary[i]['place'] == 'Prague' for i in range(0, 3)), "Prague workshop not met"
+        assert any(itinerary[i]['place'] == 'London' for i in range(2, 5)), "London wedding not met"
+        assert any(itinerary[i]['place'] == 'Lisbon' for i in range(4, 9)), "Lisbon relatives not met"
+        assert any(itinerary[i]['place'] == 'Porto' for i in range(15, 20)), "Porto conference not met"
+        assert any(itinerary[i]['place'] == 'Warsaw' for i in range(19, 23)), "Warsaw friends not met"
+        
+        for i in range(25):
+            current = itinerary[i]['place']
+            next_ = itinerary[i+1]['place']
+            if current != next_:
+                assert (city_to_int[current], city_to_int[next_]) in allowed_transitions, \
+                    f"No direct flight from {current} to {next_}"
+        
+        return {"itinerary": itinerary}
     else:
-        print("Failed to find a valid itinerary")
-        print("Possible issues:")
-        print("1. Conflicting fixed intervals")
-        print("2. Insufficient flight connections")
-        print("3. Impossible duration requirements")
         return {"error": "No valid itinerary found"}
 
-# Generate and print the itinerary
-itinerary = solve_itinerary()
-print(itinerary)
+# Solve and print the itinerary
+result = solve_itinerary()
+print(json.dumps(result, indent=2))

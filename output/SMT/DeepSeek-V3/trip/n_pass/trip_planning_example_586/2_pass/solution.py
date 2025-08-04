@@ -2,85 +2,84 @@ from z3 import *
 
 def solve_itinerary():
     # Cities
-    Prague, Lyon, Frankfurt, Helsinki, Naples = 0, 1, 2, 3, 4
-    city_names = {
-        Prague: "Prague",
-        Lyon: "Lyon",
-        Frankfurt: "Frankfurt",
-        Helsinki: "Helsinki",
-        Naples: "Naples"
-    }
-    
-    # Direct flights: adjacency list
-    direct_flights = {
-        Prague: [Lyon, Frankfurt, Helsinki],
-        Lyon: [Prague, Frankfurt],
-        Frankfurt: [Prague, Lyon, Helsinki, Naples],
-        Helsinki: [Prague, Frankfurt, Naples],
-        Naples: [Helsinki, Frankfurt]
-    }
-    
-    # Total days
-    total_days = 12
-    
-    # Create solver
+    cities = ['Frankfurt', 'Naples', 'Helsinki', 'Lyon', 'Prague']
+    city_map = {city: idx for idx, city in enumerate(cities)}
+    n_days = 12
+    n_cities = len(cities)
+
+    # Direct flights: adjacency matrix
+    direct_flights = [
+        [False, True, True, True, True],   # Frankfurt (0) connected to Naples(1), Helsinki(2), Lyon(3), Prague(4)
+        [True, False, True, False, False],  # Naples (1) connected to Frankfurt, Helsinki
+        [True, True, False, False, True],   # Helsinki (2) connected to Frankfurt, Naples, Prague
+        [True, False, False, False, True],  # Lyon (3) connected to Frankfurt, Prague
+        [True, False, True, True, False]    # Prague (4) connected to Frankfurt, Helsinki, Lyon
+    ]
+
+    # Z3 variables: day i is in city j
+    X = [[Bool(f"day_{i}_city_{j}") for j in range(n_cities)] for i in range(n_days)]
+
     s = Solver()
-    
-    # Variables: for each day, which city are we in?
-    city = [Int(f'day_{i+1}_city') for i in range(total_days)]
-    
-    # Constraints:
-    for i in range(total_days):
-        s.add(city[i] >= 0, city[i] <= 4)
-    
-    # Flight constraints: consecutive days must be the same city or connected by direct flight
-    for i in range(total_days - 1):
-        s.add(Or(
-            city[i] == city[i+1],
-            And(city[i] != city[i+1], 
-                Or([And(city[i] == a, city[i+1] == b) for a in direct_flights for b in direct_flights[a]]))
-        ))
-    
-    # Days in each city
-    def days_in_city(c):
-        return Sum([If(city[i] == c, 1, 0) for i in range(total_days)])
-    
-    s.add(days_in_city(Frankfurt) == 3)
-    s.add(days_in_city(Naples) == 4)
-    s.add(days_in_city(Helsinki) == 4)
-    s.add(days_in_city(Lyon) == 3)
-    s.add(days_in_city(Prague) == 2)
-    
-    # Helsinki show from day 2 to day 5 (1-based days 2-5 are 0-based indices 1-4)
-    for i in range(1, 5):
-        s.add(city[i] == Helsinki)
-    
-    # Prague workshop between day 1 and day 2 (0-based days 0 and 1)
-    s.add(Or(city[0] == Prague, city[1] == Prague))
-    
-    # Check if the solver can find a solution
+
+    # Each day is in exactly one city
+    for i in range(n_days):
+        s.add(Or([X[i][j] for j in range(n_cities)]))  # At least one city per day
+        # No two cities on the same day
+        for j1 in range(n_cities):
+            for j2 in range(j1 + 1, n_cities):
+                s.add(Or(Not(X[i][j1]), Not(X[i][j2])))
+
+    # City day constraints
+    # Frankfurt: 3 days
+    s.add(Sum([If(X[i][city_map['Frankfurt']], 1, 0) for i in range(n_days)]) == 3)
+    # Naples: 4 days
+    s.add(Sum([If(X[i][city_map['Naples']], 1, 0) for i in range(n_days)]) == 4)
+    # Helsinki: 4 days (must include days 2-5)
+    s.add(Sum([If(X[i][city_map['Helsinki']], 1, 0) for i in range(n_days)]) == 4)
+    for i in [1, 2, 3, 4]:  # days 2-5 (0-based day 1 is day 2 in problem)
+        s.add(X[i][city_map['Helsinki']])
+    # Lyon: 3 days
+    s.add(Sum([If(X[i][city_map['Lyon']], 1, 0) for i in range(n_days)]) == 3)
+    # Prague: 2 days, including day 0 or 1 (days 1 and 2 in problem description)
+    s.add(Sum([If(X[i][city_map['Prague']], 1, 0) for i in range(n_days)]) == 2)
+    s.add(Or(X[0][city_map['Prague']], X[1][city_map['Prague']]))
+
+    # Flight constraints: consecutive days in different cities must have a direct flight
+    for i in range(n_days - 1):
+        for j1 in range(n_cities):
+            for j2 in range(n_cities):
+                if j1 != j2:
+                    # If day i is city j1 and day i+1 is city j2, then there must be a direct flight
+                    s.add(Implies(And(X[i][j1], X[i+1][j2]), direct_flights[j1][j2]))
+
+    # Check and get model
     if s.check() == sat:
         m = s.model()
         itinerary = []
-        current_city = m.evaluate(city[0]).as_long()
-        start_day = 1
-        for day in range(1, total_days):
-            if m.evaluate(city[day]).as_long() != current_city:
-                itinerary.append({
-                    'day_range': f'Day {start_day}-{day}',
-                    'place': city_names[current_city]
-                })
-                current_city = m.evaluate(city[day]).as_long()
-                start_day = day + 1
-        itinerary.append({
-            'day_range': f'Day {start_day}-{total_days}',
-            'place': city_names[current_city]
-        })
-        
-        return {'itinerary': itinerary}
+        for i in range(n_days):
+            for j in range(n_cities):
+                if m.evaluate(X[i][j]):
+                    itinerary.append({"day": i+1, "place": cities[j]})
+        # Verify the counts
+        counts = {city: 0 for city in cities}
+        for entry in itinerary:
+            counts[entry["place"]] += 1
+        # Check if counts meet requirements
+        assert counts['Frankfurt'] == 3
+        assert counts['Naples'] == 4
+        assert counts['Helsinki'] == 4
+        assert counts['Lyon'] == 3
+        assert counts['Prague'] == 2
+        # Check Helsinki days 2-5
+        helsinki_days = [entry['day'] for entry in itinerary if entry['place'] == 'Helsinki']
+        assert all(day in helsinki_days for day in [2, 3, 4, 5])
+        # Check Prague day 1 or 2
+        prague_days = [entry['day'] for entry in itinerary if entry['place'] == 'Prague']
+        assert any(day in [1, 2] for day in prague_days)
+        return {"itinerary": itinerary}
     else:
         return {"error": "No valid itinerary found"}
 
-import json
 result = solve_itinerary()
+import json
 print(json.dumps(result, indent=2))

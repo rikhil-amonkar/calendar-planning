@@ -1,68 +1,82 @@
 from z3 import *
 
-def solve_trip_planning():
+def solve_itinerary():
     # Create a solver instance
     s = Solver()
 
-    # Days are 1 to 10
+    # Define the cities
+    City = Datatype('City')
+    City.declare('Venice')
+    City.declare('Mykonos')
+    City.declare('Vienna')
+    City = City.create()
+    
     days = 10
-    Day = [i + 1 for i in range(days)]  # Days 1..10
-
-    # Cities: Mykonos, Vienna, Venice
-    Mykonos, Vienna, Venice = 0, 1, 2
-    cities = {0: 'Mykonos', 1: 'Vienna', 2: 'Venice'}
-    num_cities = 3
-
-    # Variables: For each day, which city are you in?
-    city_vars = [Int(f'day_{day}_city') for day in Day]
-    # Each day's city must be 0, 1, or 2
-    for day in Day:
-        s.add(And(city_vars[day - 1] >= 0, city_vars[day - 1] <= 2))
-
-    # Constraints for the number of days in each city
-    # Count occurrences of each city in city_vars
-    venice_days = Sum([If(city_vars[day - 1] == Venice, 1, 0) for day in Day])
-    mykonos_days = Sum([If(city_vars[day - 1] == Mykonos, 1, 0) for day in Day])
-    vienna_days = Sum([If(city_vars[day - 1] == Vienna, 1, 0) for day in Day])
-
+    
+    # Variables for each day's city
+    day_city = [Const(f'day_{i}_city', City) for i in range(1, days + 1)]
+    
+    # Constraints for total days in each city
+    venice_days = Int('venice_days')
+    mykonos_days = Int('mykonos_days')
+    vienna_days = Int('vienna_days')
+    
+    # Counters for each city's days
+    # A day counts for both cities if it's a transition day
+    s.add(venice_days == Sum([If(Or(day_city[i] == City.Venice, 
+                                  And(i > 0, day_city[i-1] != City.Venice, day_city[i] == City.Venice)), 
+                               1, 0) for i in range(days)]))
+    s.add(mykonos_days == Sum([If(Or(day_city[i] == City.Mykonos, 
+                                   And(i > 0, day_city[i-1] != City.Mykonos, day_city[i] == City.Mykonos)), 
+                                1, 0) for i in range(days)]))
+    s.add(vienna_days == Sum([If(Or(day_city[i] == City.Vienna, 
+                                   And(i > 0, day_city[i-1] != City.Vienna, day_city[i] == City.Vienna)), 
+                                1, 0) for i in range(days)]))
+    
+    # Add the required day counts
     s.add(venice_days == 6)
     s.add(mykonos_days == 2)
     s.add(vienna_days == 4)
-
-    # Workshop in Venice between day 5 and day 10: at least one day in Venice in days 5-10
-    s.add(Or([city_vars[day - 1] == Venice for day in range(5, 11)]))
-
-    # Flight constraints: transitions must be via direct flights
-    for i in range(len(Day) - 1):
-        current_city = city_vars[i]
-        next_city = city_vars[i + 1]
-        # Possible transitions:
-        # Mykonos <-> Vienna, Vienna <-> Venice
-        # So, transitions between Mykonos and Venice are not allowed directly
+    
+    # Workshop in Venice between day 5 and 10 (inclusive)
+    # At least one day in Venice in days 5-10
+    s.add(Or([day_city[i] == City.Venice for i in range(4, 10)]))  # days 5-10 (0-based 4-9)
+    
+    # Flight constraints: transitions can only be between connected cities
+    for i in range(days - 1):
+        current = day_city[i]
+        next_c = day_city[i + 1]
+        # Allow staying in the same city
+        # Or transitioning between connected cities
         s.add(Or(
-            current_city == next_city,  # stay in the same city
-            And(current_city == Mykonos, next_city == Vienna),
-            And(current_city == Vienna, next_city == Mykonos),
-            And(current_city == Vienna, next_city == Venice),
-            And(current_city == Venice, next_city == Vienna)
+            current == next_c,
+            And(current == City.Mykonos, next_c == City.Vienna),
+            And(current == City.Vienna, next_c == City.Mykonos),
+            And(current == City.Vienna, next_c == City.Venice),
+            And(current == City.Venice, next_c == City.Vienna)
         ))
-
+    
+    # Ensure the first day is in one of the cities
+    s.add(Or(day_city[0] == City.Venice, day_city[0] == City.Mykonos, day_city[0] == City.Vienna))
+    
     # Check if the problem is satisfiable
     if s.check() == sat:
-        model = s.model()
+        m = s.model()
         itinerary = []
-        for day in Day:
-            city_val = model.evaluate(city_vars[day - 1])
-            city_name = cities[int(str(city_val))]
-            itinerary.append({'day': day, 'place': city_name})
-        
-        # Convert to the required JSON format
-        result = {'itinerary': itinerary}
-        return result
+        for i in range(days):
+            day_num = i + 1
+            city = m[day_city[i]]
+            if city == City.Venice:
+                itinerary.append({'day': day_num, 'place': 'Venice'})
+            elif city == City.Mykonos:
+                itinerary.append({'day': day_num, 'place': 'Mykonos'})
+            elif city == City.Vienna:
+                itinerary.append({'day': day_num, 'place': 'Vienna'})
+        return {'itinerary': itinerary}
     else:
         return {"error": "No valid itinerary found"}
 
-# Execute and print the result
-result = solve_trip_planning()
+# Generate and print the itinerary
+result = solve_itinerary()
 import json
 print(json.dumps(result, indent=2))

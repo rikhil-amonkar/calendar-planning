@@ -1,77 +1,90 @@
 from z3 import *
 
 def solve_itinerary():
-    # Cities and their indices
-    cities = ['Istanbul', 'Rome', 'Seville', 'Naples', 'Santorini']
-    city_map = {city: idx for idx, city in enumerate(cities)}
-    
-    # Direct flights: adjacency list (fixed 'Santorini' spelling)
-    adjacency = {
-        'Rome': ['Santorini', 'Seville', 'Naples', 'Istanbul'],
-        'Santorini': ['Rome', 'Naples'],
-        'Seville': ['Rome'],
-        'Naples': ['Istanbul', 'Santorini', 'Rome'],
-        'Istanbul': ['Naples', 'Rome']
+    # Cities and their codes
+    cities = {
+        'Istanbul': 0,
+        'Rome': 1,
+        'Seville': 2,
+        'Naples': 3,
+        'Santorini': 4
     }
-    
-    # Create Z3 variables for each day (1-based)
-    days = 16
-    day_vars = [Int(f'day_{i}') for i in range(1, days + 1)]
-    
+    city_names = {v: k for k, v in cities.items()}
+
+    # Direct flights: adjacency list
+    adjacency = {
+        cities['Rome']: [cities['Santorini'], cities['Seville'], cities['Naples'], cities['Istanbul']],
+        cities['Seville']: [cities['Rome']],
+        cities['Istanbul']: [cities['Naples'], cities['Rome']],
+        cities['Naples']: [cities['Istanbul'], cities['Santorini'], cities['Rome']],
+        cities['Santorini']: [cities['Rome'], cities['Naples']]
+    }
+
+    # Create solver
     s = Solver()
-    
-    # Each day must be one of the cities (0 to 4)
-    for day in day_vars:
-        s.add(And(day >= 0, day <= 4))
-    
-    # Specific constraints:
-    # Istanbul must include days 6 and 7 (0-based city index is 0)
-    s.add(day_vars[5] == city_map['Istanbul'])  # day 6 (1-based is 6, 0-based index is 5)
-    s.add(day_vars[6] == city_map['Istanbul'])  # day 7
-    
-    # Santorini must be days 13-16 (indices 12-15)
+
+    # Variables: day[i] is the city visited on day i+1 (days are 1-based)
+    days = [Int(f'day_{i}') for i in range(16)]
+    for day in days:
+        s.add(day >= 0, day <= 4)  # Each day is one of the 5 cities
+
+    # Constraints for transitions: consecutive days must be connected by direct flight
+    for i in range(15):
+        current_city = days[i]
+        next_city = days[i + 1]
+        # Create a disjunction of all possible valid transitions
+        valid_transitions = []
+        for city in adjacency:
+            for neighbor in adjacency[city]:
+                valid_transitions.append(And(current_city == city, next_city == neighbor))
+        s.add(Or(valid_transitions))
+
+    # Fixed days:
+    # Istanbul on days 6 and 7 (indices 5 and 6)
+    s.add(days[5] == cities['Istanbul'])
+    s.add(days[6] == cities['Istanbul'])
+
+    # Santorini on days 13-16 (indices 12-15)
     for i in range(12, 16):
-        s.add(day_vars[i] == city_map['Santorini'])
-    
-    # Count days per city (fixed count constraints)
-    def count_days(city_idx):
-        return Sum([If(day == city_idx, 1, 0) for day in day_vars])
-    
-    s.add(count_days(city_map['Istanbul']) == 2)
-    s.add(count_days(city_map['Rome']) == 3)
-    s.add(count_days(city_map['Seville']) == 4)
-    s.add(count_days(city_map['Naples']) == 7)
-    s.add(count_days(city_map['Santorini']) == 4)
-    
-    # Flight transitions: consecutive days in different cities must have a direct flight
-    for i in range(days - 1):
-        current_day = day_vars[i]
-        next_day = day_vars[i + 1]
-        # If the city changes, ensure there's a direct flight
-        s.add(Implies(current_day != next_day, 
-                      Or([And(current_day == city_map[city1], next_day == city_map[city2]) 
-                          for city1 in adjacency 
-                          for city2 in adjacency[city1]])))
-    
-    # Additional constraints to help the solver:
-    # 1. Must start somewhere (let's say Rome as it's well-connected)
-    s.add(day_vars[0] == city_map['Rome'])
-    # 2. Must end in Santorini (since days 13-16 are there)
-    s.add(day_vars[15] == city_map['Santorini'])
-    
+        s.add(days[i] == cities['Santorini'])
+
+    # Duration constraints:
+    # Rome: 3 days
+    rome_days = Sum([If(d == cities['Rome'], 1, 0) for d in days])
+    s.add(rome_days == 3)
+
+    # Seville: 4 days
+    seville_days = Sum([If(d == cities['Seville'], 1, 0) for d in days])
+    s.add(seville_days == 4)
+
+    # Naples: 7 days
+    naples_days = Sum([If(d == cities['Naples'], 1, 0) for d in days])
+    s.add(naples_days == 7)
+
+    # Istanbul: 2 days (already constrained by fixed days)
+    istanbul_days = Sum([If(d == cities['Istanbul'], 1, 0) for d in days])
+    s.add(istanbul_days == 2)
+
+    # Santorini: 4 days (already constrained by fixed days)
+    santorini_days = Sum([If(d == cities['Santorini'], 1, 0) for d in days])
+    s.add(santorini_days == 4)
+
+    # Additional constraints to help the solver
+    # Ensure we don't have impossible sequences
+    # For example, Seville can only be reached from Rome
+    for i in range(1, 16):
+        s.add(Implies(days[i] == cities['Seville'], days[i-1] == cities['Rome']))
+
     # Check and get model
     if s.check() == sat:
         m = s.model()
         itinerary = []
-        for i in range(1, days + 1):
-            day_var = day_vars[i-1]
-            city_idx = m[day_var].as_long()
-            city = cities[city_idx]
-            itinerary.append({'day': i, 'place': city})
+        for i in range(16):
+            city_code = m.evaluate(days[i]).as_long()
+            itinerary.append({"day": i + 1, "place": city_names[city_code]})
         return {'itinerary': itinerary}
     else:
-        print("No valid itinerary found")
-        return None
+        return {"error": "No valid itinerary found"}
 
 result = solve_itinerary()
 import json

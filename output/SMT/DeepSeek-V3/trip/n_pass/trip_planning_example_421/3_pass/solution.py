@@ -5,112 +5,81 @@ def solve_itinerary():
     cities = ['Nice', 'Krakow', 'Dublin', 'Lyon', 'Frankfurt']
     city_to_idx = {city: idx for idx, city in enumerate(cities)}
     
+    # Direct flights: adjacency list
+    direct_flights = {
+        'Nice': ['Dublin', 'Frankfurt', 'Lyon'],
+        'Dublin': ['Nice', 'Frankfurt', 'Krakow', 'Lyon'],
+        'Krakow': ['Dublin', 'Frankfurt'],
+        'Lyon': ['Frankfurt', 'Dublin', 'Nice'],
+        'Frankfurt': ['Dublin', 'Krakow', 'Lyon', 'Nice']
+    }
+    
     # Days
     days = 20
+    day_range = range(1, days + 1)
     
-    # Create Z3 variables: for each day, which city is visited (indicator variables)
-    # We'll use a 2D array: assignments[day][city] is True if the day is spent (partially or fully) in the city.
-    assignments = [[Bool(f"day_{day+1}_city_{city}") for city in cities] for day in range(days)]
+    # Create Z3 variables: for each day, which city are we in?
+    day_city = [[Bool(f"day_{day}_city_{city}") for city in cities] for day in day_range]
     
     s = Solver()
     
-    # Constraints for each day: at least one city is visited (since flights overlap, multiple can be true)
-    for day in range(days):
-        s.add(Or([assignments[day][i] for i in range(len(cities))]))
+    # Constraint: Nice must be from day 1 to day 5
+    for d in range(1, 6):
+        s.add(day_city[d-1][city_to_idx['Nice']])
+    for d in range(6, days + 1):
+        s.add(Not(day_city[d-1][city_to_idx['Nice']]))
     
-    # Flight constraints: if a day is in two cities, there must be a direct flight between them.
-    # Precompute direct flight connections as a set of tuples.
-    direct_flights = {
-        ('Nice', 'Dublin'),
-        ('Dublin', 'Frankfurt'),
-        ('Dublin', 'Krakow'),
-        ('Krakow', 'Frankfurt'),
-        ('Lyon', 'Frankfurt'),
-        ('Nice', 'Frankfurt'),
-        ('Lyon', 'Dublin'),
-        ('Nice', 'Lyon')
-    }
-    # Make it bidirectional
-    bidirectional_flights = set()
-    for a, b in direct_flights:
-        bidirectional_flights.add((a, b))
-        bidirectional_flights.add((b, a))
+    # Constraint: Frankfurt must be on day 19 and 20
+    s.add(day_city[18][city_to_idx['Frankfurt']])  # Day 19
+    s.add(day_city[19][city_to_idx['Frankfurt']])  # Day 20
     
-    # For each day, if two cities are both assigned, they must have a direct flight.
-    for day in range(days):
-        for i in range(len(cities)):
-            for j in range(i + 1, len(cities))):
-                city_i = cities[i]
-                city_j = cities[j]
-                # If both cities are visited on this day, there must be a flight between them.
-                both_visited = And(assignments[day][i], assignments[day][j])
-                has_flight = (city_i, city_j) in bidirectional_flights
-                s.add(Implies(both_visited, has_flight))
+    # Total days per city
+    s.add(Sum([If(day_city[d-1][city_to_idx['Nice']], 1, 0) for d in day_range]) == 5)
+    s.add(Sum([If(day_city[d-1][city_to_idx['Krakow']], 1, 0) for d in day_range]) == 6)
+    s.add(Sum([If(day_city[d-1][city_to_idx['Dublin']], 1, 0) for d in day_range]) == 7)
+    s.add(Sum([If(day_city[d-1][city_to_idx['Lyon']], 1, 0) for d in day_range]) == 4)
+    s.add(Sum([If(day_city[d-1][city_to_idx['Frankfurt']], 1, 0) for d in day_range]) == 2)
     
-    # Total days per city constraints.
-    # Nice: 5 days, between day 1-5 (inclusive)
-    nice_idx = city_to_idx['Nice']
-    s.add(Sum([If(assignments[day][nice_idx], 1, 0) for day in range(5)]) >= 5)  # Days 1-5 must include Nice.
+    # Constraint: transitions must be via direct flights
+    for d in range(2, days + 1):
+        for c_idx, c in enumerate(cities):
+            prev_day_same_city = day_city[d-2][c_idx]
+            other_possible_prev_cities = []
+            for c_prime_idx, c_prime in enumerate(cities):
+                if c_prime != c and c in direct_flights[c_prime]:
+                    other_possible_prev_cities.append(day_city[d-2][c_prime_idx])
+            s.add(Implies(day_city[d-1][c_idx], Or(prev_day_same_city, *other_possible_prev_cities)))
     
-    # Krakow: 6 days
-    krakow_idx = city_to_idx['Krakow']
-    s.add(Sum([If(assignments[day][krakow_idx], 1, 0) for day in range(days)]) == 6)
+    # Ensure that each day is assigned to at least one city
+    for d in day_range:
+        s.add(Or([day_city[d-1][i] for i in range(len(cities))]))
     
-    # Dublin: 7 days
-    dublin_idx = city_to_idx['Dublin']
-    s.add(Sum([If(assignments[day][dublin_idx], 1, 0) for day in range(days)]) == 7)
-    
-    # Lyon: 4 days
-    lyon_idx = city_to_idx['Lyon']
-    s.add(Sum([If(assignments[day][lyon_idx], 1, 0) for day in range(days)]) == 4)
-    
-    # Frankfurt: 2 days, days 19 and 20 (1-based: indices 18 and 19)
-    frankfurt_idx = city_to_idx['Frankfurt']
-    s.add(assignments[18][frankfurt_idx] == True)  # Day 19
-    s.add(assignments[19][frankfurt_idx] == True)  # Day 20
-    s.add(Sum([If(assignments[day][frankfurt_idx], 1, 0) for day in range(days)]) == 2)
-    
-    # Starting in Nice on day 1 (1-based: index 0)
-    s.add(assignments[0][nice_idx] == True)
-    
-    # Ensure that the transitions are possible: consecutive days must have overlapping cities or direct flights.
-    for day in range(days - 1):
-        current_day = day
-        next_day = day + 1
-        # Possible transitions: either one or more cities are common between the two days,
-        # or for each city in current day and each in next day, there's a direct flight.
-        transition_constraints = []
-        # Case 1: at least one city is common between current and next day.
-        for city_i in range(len(cities)):
-            common_city = And(assignments[current_day][city_i], assignments[next_day][city_i])
-            transition_constraints.append(common_city)
-        # Case 2: no common city, but there's a direct flight between a city in current day and a city in next day.
-        for city_i in range(len(cities)):
-            for city_j in range(len(cities)):
-                if city_i != city_j:
-                    city_a = cities[city_i]
-                    city_b = cities[city_j]
-                    if (city_a, city_b) in bidirectional_flights:
-                        flight_possible = And(assignments[current_day][city_i], assignments[next_day][city_j])
-                        transition_constraints.append(flight_possible)
-        s.add(Or(transition_constraints))
-    
-    # Solve the problem
     if s.check() == sat:
-        m = s.model()
+        model = s.model()
         itinerary = []
-        for day in range(days):
-            current_day = day + 1  # 1-based
-            places = []
-            for city_idx in range(len(cities)):
-                if is_true(m.evaluate(assignments[day][city_idx])):
-                    places.append(cities[city_idx])
-            itinerary.append({"day": current_day, "place": places})
+        current_city = None
+        start_day = 1
+        for d in day_range:
+            active_cities = [city for city_idx, city in enumerate(cities) if model.evaluate(day_city[d-1][city_idx])]
+            if len(active_cities) == 1:
+                city = active_cities[0]
+                if city != current_city:
+                    if current_city is not None:
+                        itinerary.append({'day_range': f'Day {start_day}-{d-1}', 'place': current_city})
+                    current_city = city
+                    start_day = d
+            else:
+                # Flight day: count for both cities
+                if current_city is not None:
+                    itinerary.append({'day_range': f'Day {start_day}-{d-1}', 'place': current_city})
+                current_city = None
+                start_day = d + 1
+        if current_city is not None:
+            itinerary.append({'day_range': f'Day {start_day}-{days}', 'place': current_city})
         return {"itinerary": itinerary}
     else:
         return {"error": "No valid itinerary found"}
 
-# Execute and print the result
 result = solve_itinerary()
 import json
 print(json.dumps(result, indent=2))

@@ -201,51 +201,59 @@ def add_json_formatting_instruction(prompt, task):
 def evaluate_calendar(constraints, pred_dict):
     """Evaluate calendar constraints comprehensively (flat dict, not nested)"""
     # Check for missing fields
-    if not pred_dict or "day" not in pred_dict or "time_range" not in pred_dict:
+    if not pred_dict or "day" not in pred_dict or "start_time" not in pred_dict or "end_time" not in pred_dict:
         return False, {"missing_fields": True}
 
     pred_day = pred_dict["day"]
-    time_range = pred_dict["time_range"]
+    pred_start = pred_dict["start_time"]
+    pred_end = pred_dict["end_time"]
     
-    # Check for None values
-    if pred_day is None or time_range is None:
+    # Check for None values in any of the fields
+    if pred_day is None or pred_start is None or pred_end is None:
         return False, {"null_fields": True}
     
-    # Parse time range
-    try:
-        time_range = time_range.replace("{", "").replace("}", "")
-        parts = time_range.split(":")
-        if len(parts) == 4:
-            # Format: HH:MM:HH:MM
-            start_time = float(parts[0]) + float(parts[1]) / 60
-            end_time = float(parts[2]) + float(parts[3]) / 60
-        else:
-            return False, {"invalid_time_range_format": time_range}
-    except Exception as e:
-        return False, {"unparsable_time_range": time_range}
-
-    # Check meeting duration
+    # Convert time strings to numerical values
+    if isinstance(pred_start, str):
+        pred_start_parts = pred_start.split(":")
+        try:
+            pred_start = float(pred_start_parts[0]) + float(pred_start_parts[1]) / 60
+        except ValueError:
+            return False, {"unparsable": True}
+    if isinstance(pred_end, str):
+        pred_end_parts = pred_end.split(":")
+        try:
+            pred_end = float(pred_end_parts[0]) + float(pred_end_parts[1]) / 60
+        except ValueError:
+            return False, {"unparsable": True}
+    
     meeting_duration = constraints.get("meeting_duration")
     if meeting_duration is None:
-        meeting_duration = 1.0  # Default fallback
-    actual_duration = end_time - start_time
-    if abs(actual_duration - meeting_duration) > 1e-3:
-        return False, {"meeting_duration": {"required": meeting_duration, "actual": actual_duration}}
-
-    # Check disallowed ranges
-    for rng in constraints.get("disallowed_ranges", []):
-        if rng["day"] == pred_day:
-            rng_start = rng["start"]
-            rng_end = rng["end"]
-            # If any overlap
-            if not (end_time <= rng_start or start_time >= rng_end):
-                return False, {"disallowed_range": rng}
-
+        return False, {"missing_meeting_duration": True}
+    if (pred_end - pred_start) != meeting_duration:
+        return False, {"meeting_duration": meeting_duration}
+    
+    for disallowed_range in constraints.get("disallowed_ranges", []):
+        if disallowed_range["day"] == pred_day:
+            if (pred_start >= disallowed_range["start"] and pred_start < disallowed_range["end"]) or \
+               (pred_end > disallowed_range["start"] and pred_end <= disallowed_range["end"]) or \
+               (pred_start <= disallowed_range["start"] and pred_end >= disallowed_range["end"]):
+                return False, disallowed_range
+    
     return True, {}
 
 def evaluate_meeting(constraints, pred_dict):
     """Evaluate meeting constraints comprehensively (flat dict, not nested)"""
     from datetime import datetime
+    
+    def parse_time(s):
+        # Return None for invalid time formats instead of raising exception
+        try:
+            # handles "H:MM" or "H:MMAM"/"H:MMPM"
+            if s.endswith(("AM", "PM")):
+                return datetime.strptime(s, "%I:%M%p")
+            return datetime.strptime(s, "%H:%M")
+        except ValueError:
+            return None
     
     # Check for missing itinerary
     if not pred_dict or "itinerary" not in pred_dict:
@@ -255,31 +263,99 @@ def evaluate_meeting(constraints, pred_dict):
     if not isinstance(itinerary, list):
         return False, {"invalid_itinerary": True}
     
-    # Check number of people to meet (use num_people_to_meet if available, otherwise check people_to_meet)
-    num_people_to_meet = constraints.get("num_people_to_meet", 0)
-    met_people = set()
+    # Build map person→availability & location
+    people = {p["name"]: p for p in constraints.get("people_to_meet", [])}
+    start_location = constraints.get("start", {}).get("location")
+    start_time = constraints.get("start", {}).get("time_of_day")
     
+    # Parse predicted meetings
+    meetings = []
     for m in itinerary:
         if "person" not in m or "start_time" not in m or "end_time" not in m:
             return False, {"missing_meeting_fields": m}
         
-        person = m["person"]
+        name = m["person"]
         # Require person name to be provided
-        if not person or person == "Unknown":
+        if not name or name == "Unknown":
             return False, {"missing_person_name": "Person name must be provided for each meeting"}
         
-        met_people.add(person)
+        start = parse_time(m["start_time"])
+        end = parse_time(m["end_time"])
+        if start is None or end is None:  # Invalid time format
+            return False, {"invalid_time_format": {"start": m["start_time"], "end": m["end_time"]}}
+        
+        loc = people.get(name, {}).get("location")
+        meetings.append({"person": name, "start": start, "end": end, "location": loc})
     
-    # Check if we meet enough people
-    if num_people_to_meet > 0 and len(met_people) < num_people_to_meet:
-        return False, {"num_people_to_meet": num_people_to_meet}
+    # Sort chronologically
+    meetings.sort(key=lambda x: x["start"])
     
-    # If no num_people_to_meet constraint, fall back to checking people_to_meet
-    if num_people_to_meet == 0:
-        people_to_meet = constraints.get("people_to_meet", [])
-        people_names = set(p["name"] for p in people_to_meet)
-        if people_names and not people_names.issubset(met_people):
-            return False, {"unmet_people": list(people_names - met_people)}
+    # 1) Each meeting must lie within that person's available window
+    for m in meetings:
+        p = people.get(m["person"])
+        if not p:
+            continue
+        avail = p["time_of_day"]
+        av_from = parse_time(avail["from"])
+        av_to = parse_time(avail["to"])
+        if m["start"] < av_from or m["end"] > av_to:
+            return False, {"person": m["person"], "time_of_day": avail}
+        
+        # Check meeting duration requirement
+        min_duration = p.get("min_meeting_duration", 0)
+        if min_duration > 0:
+            actual_duration = (m["end"] - m["start"]).total_seconds() / 60
+            if actual_duration < min_duration:
+                return False, {
+                    "meeting_duration": {
+                        "person": m["person"],
+                        "required": min_duration,
+                        "actual": actual_duration
+                    }
+                }
+    
+    # 2) Build travel‐time lookup
+    travel = {}
+    for d in constraints.get("travel_distances", []):
+        pl = d["place"]
+        frm = pl.get("from", constraints.get("start", {}).get("location"))
+        to = pl["to"]
+        travel[(frm, to)] = d["walking_time"]
+    
+    # 3) Check start‐to‐first meeting
+    # Parse start time
+    if start_time and meetings:
+        st = parse_time(start_time)
+        first = meetings[0]
+        # 0a) meeting must not start before you arrive
+        if first["start"] < st:
+            return False, {"start_time": start_time}
+        # 0b) travel from start_location
+        walk0 = travel.get((start_location, first["location"]))
+        gap0 = (first["start"] - st).total_seconds() / 60
+        if walk0 is not None and walk0 > gap0:
+            return False, {
+                "travel_start": {
+                    "to_person": first["person"],
+                    "to_location": first["location"],
+                    "travel_time": walk0
+                }
+            }
+    
+    # 4) Check following meetings
+    for a, b in zip(meetings, meetings[1:]):
+        gap_mins = (b["start"] - a["end"]).total_seconds() / 60
+        walk = travel.get((a["location"], b["location"]))
+        if walk is not None and walk > gap_mins:
+            return False, {
+                "travel": {
+                    "from_person": a["person"],
+                    "to_person": b["person"],
+                    "from_location": a["location"],
+                    "to_location": b["location"],
+                    "travel_time": walk
+                }
+            }
     
     return True, {}
 
@@ -348,6 +424,15 @@ def evaluate_trip(constraints, pred_dict):
         pair = (a["place"], b["place"])
         if pair not in allowed_flights:
             return False, {"flight": {"from": a["place"], "to": b["place"]}}
+    
+    # Check event_ranges (must fall entirely within the visit segment)
+    for ev in constraints.get("city_day_ranges", []):
+        place = ev["city"]
+        container = next((s for s in segments if s["place"] == place), None)
+        if not container:
+            return False, {"missing_place": place}
+        if container["start"] > ev["start"] or container["end"] < ev["end"]:
+            return False, {"event_range": ev}
     
     return True, {}
 

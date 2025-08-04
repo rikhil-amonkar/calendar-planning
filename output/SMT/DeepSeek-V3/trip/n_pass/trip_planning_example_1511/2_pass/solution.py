@@ -1,107 +1,95 @@
-import json
 from z3 import *
 
 def solve_itinerary():
-    # Cities
-    cities = [
-        "Venice",
-        "Reykjavik",
-        "Munich",
-        "Santorini",
-        "Manchester",
-        "Porto",
-        "Bucharest",
-        "Tallinn",
-        "Valencia",
-        "Vienna"
-    ]
-    
-    # Direct flights as per the problem description
-    direct_flights = {
-        "Bucharest": ["Manchester", "Valencia", "Vienna", "Munich", "Santorini"],
-        "Munich": ["Venice", "Porto", "Manchester", "Reykjavik", "Vienna", "Bucharest", "Tallinn", "Valencia"],
-        "Santorini": ["Manchester", "Venice", "Vienna", "Bucharest"],
-        "Vienna": ["Reykjavik", "Valencia", "Manchester", "Porto", "Venice", "Bucharest", "Santorini", "Munich"],
-        "Venice": ["Munich", "Santorini", "Manchester", "Vienna"],
-        "Porto": ["Munich", "Vienna", "Manchester", "Valencia"],
-        "Manchester": ["Bucharest", "Santorini", "Vienna", "Venice", "Porto", "Munich"],
-        "Valencia": ["Vienna", "Bucharest", "Porto", "Munich"],
-        "Reykjavik": ["Vienna", "Munich"],
-        "Tallinn": ["Munich"]
+    # Cities and their required days
+    cities = {
+        'Venice': 3,
+        'Reykjavik': 2,
+        'Munich': 3,  # Corrected typo from 'Munich' to 'Munich'
+        'Santorini': 3,
+        'Manchester': 3,
+        'Porto': 3,
+        'Bucharest': 5,
+        'Tallinn': 4,
+        'Valencia': 2,
+        'Vienna': 5
     }
     
-    # Required days per city
-    required_days = {
-        "Venice": 3,
-        "Reykjavik": 2,
-        "Munich": 3,
-        "Santorini": 3,
-        "Manchester": 3,
-        "Porto": 3,
-        "Bucharest": 5,
-        "Tallinn": 4,
-        "Valencia": 2,
-        "Vienna": 5
-    }
+    city_list = list(cities.keys())
+    n_days = 24
     
-    # Fixed events
-    fixed_events = [
-        ("Munich", 4, 6),  # Munich from day 4 to 6
-        ("Santorini", 8, 10),  # Santorini between day 8 and 10
-        ("Valencia", 14, 15)   # Valencia on day 14 and 15
-    ]
-    
-    # Create solver
+    # Create a Z3 solver instance
     s = Solver()
     
-    # Variables: day[i] is the city visited on day i (1-based)
-    days = [Int(f"day_{i}") for i in range(1, 25)]
+    # Create variables: day[i] is the city visited on day i+1 (since days are 1-based)
+    day = [Int(f'day_{i}') for i in range(n_days)]
     
-    # Each day variable must be between 0 and 9 (index of cities)
-    for d in days:
-        s.add(And(d >= 0, d <= 9))
+    # Each day variable must be an index corresponding to a city in city_list
+    for d in day:
+        s.add(And(d >= 0, d < len(city_list)))
     
-    # Helper function to get city index
-    def city_index(city):
-        return cities.index(city)
+    # Direct flights: adjacency list
+    direct_flights = {
+        'Bucharest': ['Manchester', 'Valencia', 'Vienna', 'Munich', 'Santorini'],
+        'Munich': ['Venice', 'Porto', 'Manchester', 'Reykjavik', 'Vienna', 'Bucharest', 'Tallinn', 'Valencia'],
+        'Santorini': ['Manchester', 'Venice', 'Vienna', 'Bucharest'],
+        'Vienna': ['Reykjavik', 'Valencia', 'Manchester', 'Porto', 'Venice', 'Bucharest', 'Santorini', 'Munich'],
+        'Venice': ['Munich', 'Santorini', 'Manchester', 'Vienna'],
+        'Manchester': ['Bucharest', 'Santorini', 'Vienna', 'Porto', 'Venice', 'Munich'],
+        'Porto': ['Munich', 'Vienna', 'Manchester', 'Valencia'],
+        'Valencia': ['Vienna', 'Bucharest', 'Porto', 'Munich'],
+        'Reykjavik': ['Vienna', 'Munich'],
+        'Tallinn': ['Munich']
+    }
     
-    # Fixed events constraints
-    for city, start, end in fixed_events:
-        idx = city_index(city)
-        for day in range(start, end + 1):
-            s.add(days[day - 1] == idx)
+    # Convert city names to indices for easier handling
+    city_to_idx = {city: idx for idx, city in enumerate(city_list)}
+    adjacency = {}
+    for city, neighbors in direct_flights.items():
+        adjacency[city_to_idx[city]] = [city_to_idx[n] for n in neighbors]
     
-    # Duration constraints: each city must appear required_days times
-    for city, req in required_days.items():
-        idx = city_index(city)
-        s.add(Sum([If(d == idx, 1, 0) for d in days]) == req)
-    
-    # Flight transitions: consecutive days must be same city or have a direct flight
-    for i in range(24 - 1):
-        current_city = days[i]
-        next_city = days[i + 1]
+    # Constraint: consecutive days must be the same city or adjacent
+    for i in range(n_days - 1):
+        current_city = day[i]
+        next_city = day[i+1]
         # Either stay in the same city or move to a directly connected city
         s.add(Or(
             current_city == next_city,
-            *[And(current_city == city_index(a), next_city == city_index(b))
-              for a in cities for b in direct_flights.get(a, [])]
+            Or([next_city == adj for adj in adjacency.get(current_city, [])])
         ))
     
-    # Check if the problem is satisfiable
+    # Fixed constraints:
+    # Munich from day 4 to 6 (indices 3,4,5 in 0-based)
+    for i in [3, 4, 5]:
+        s.add(day[i] == city_to_idx['Munich'])
+    
+    # Santorini between day 8 and 10 (indices 7,8,9)
+    s.add(Or(
+        And(day[7] == city_to_idx['Santorini'], day[8] == city_to_idx['Santorini'], day[9] == city_to_idx['Santorini']),
+        And(day[7] == city_to_idx['Santorini'], day[8] == city_to_idx['Santorini']),
+        And(day[8] == city_to_idx['Santorini'], day[9] == city_to_idx['Santorini'])
+    ))
+    
+    # Valencia workshop on day 14 and 15 (indices 13,14)
+    s.add(day[13] == city_to_idx['Valencia'])
+    s.add(day[14] == city_to_idx['Valencia'])
+    
+    # Duration constraints: each city must be visited for exactly the specified days
+    for city, duration in cities.items():
+        idx = city_to_idx[city]
+        s.add(Sum([If(day[i] == idx, 1, 0) for i in range(n_days)]) == duration)
+    
+    # Check if the solver can find a solution
     if s.check() == sat:
-        m = s.model()
+        model = s.model()
         itinerary = []
-        for i in range(1, 25):
-            city_idx = m.evaluate(days[i - 1]).as_long()
-            itinerary.append({"day": i, "place": cities[city_idx]})
-        
-        # Verify the solution meets all constraints
-        # (This is a sanity check; Z3 should have ensured this)
-        # Convert to JSON
-        result = {"itinerary": itinerary}
-        return json.dumps(result, indent=2)
+        for i in range(n_days):
+            city_idx = model[day[i]].as_long()
+            itinerary.append({'day': i+1, 'place': city_list[city_idx]})
+        return {'itinerary': itinerary}
     else:
-        return json.dumps({"error": "No valid itinerary found"}, indent=2)
+        return {'error': 'No valid itinerary found'}
 
-# Execute the solver and print the result
-print(solve_itinerary())
+# Generate the itinerary
+itinerary = solve_itinerary()
+print(itinerary)

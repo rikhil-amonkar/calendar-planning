@@ -1,100 +1,111 @@
 from z3 import *
+import json
 
 def solve_itinerary():
-    # Cities with their required days
-    cities = {
-        'Mykonos': 4,
-        'Nice': 3,
-        'London': 2,
-        'Copenhagen': 3,
-        'Oslo': 5,
-        'Tallinn': 4
-    }
-    city_list = list(cities.keys())
-    city_to_int = {city: i for i, city in enumerate(city_list)}
+    # Cities enumeration
+    City = Datatype('City')
+    City.declare('London')
+    City.declare('Copenhagen')
+    City.declare('Tallinn')
+    City.declare('Oslo')
+    City.declare('Nice')
+    City.declare('Mykonos')
+    City = City.create()
     
-    # Direct flights (bidirectional)
-    direct_flights = [
-        ('London', 'Copenhagen'),
-        ('Copenhagen', 'Tallinn'),
-        ('Tallinn', 'Oslo'),
-        ('Mykonos', 'London'),
-        ('Oslo', 'Nice'),
-        ('London', 'Nice'),
-        ('Mykonos', 'Nice'),
-        ('London', 'Oslo'),
-        ('Copenhagen', 'Nice'),
-        ('Copenhagen', 'Oslo')
-    ]
+    # Create variables for each day
+    days = 16
+    day_city = [Const(f'day_{i+1}', City) for i in range(days)]
     
-    # Create flight connections set
-    flight_connections = set()
-    for a, b in direct_flights:
-        flight_connections.add((city_to_int[a], city_to_int[b]))
-        flight_connections.add((city_to_int[b], city_to_int[a]))
-    
-    # Create solver
     s = Solver()
     
-    # Decision variables: city for each day (1-16)
-    day_city = [Int(f'day_{i}') for i in range(1, 17)]
-    
-    # Each day must be assigned to a valid city
-    for day in day_city:
-        s.add(day >= 0, day < len(city_list))
-    
-    # Count days in each city
-    city_days = [0] * len(city_list)
-    for i, city in enumerate(city_list):
-        city_days[i] = Sum([If(day_city[j] == i, 1, 0) for j in range(16)])
-        s.add(city_days[i] == cities[city])
-    
-    # Conference days in Nice (14 and 16)
-    s.add(day_city[13] == city_to_int['Nice'])  # Day 14
-    s.add(day_city[15] == city_to_int['Nice'])  # Day 16
-    
-    # Oslo meeting between days 10-14
-    s.add(Or([day_city[i] == city_to_int['Oslo'] for i in range(9, 14)]))
-    
     # Flight constraints between consecutive days
-    for i in range(15):
+    for i in range(days - 1):
         current = day_city[i]
-        next_day = day_city[i+1]
-        # Either stay in same city or have a direct flight
+        next_day = day_city[i + 1]
+        
+        # Define flight connections directly in the constraints
         s.add(Or(
-            current == next_day,
-            *[And(current == a, next_day == b) for (a, b) in flight_connections]
+            current == next_day,  # Stay in same city
+            
+            # London connections
+            And(current == City.London, Or(
+                next_day == City.Copenhagen,
+                next_day == City.Oslo,
+                next_day == City.Nice,
+                next_day == City.Mykonos
+            )),
+            
+            # Copenhagen connections
+            And(current == City.Copenhagen, Or(
+                next_day == City.London,
+                next_day == City.Tallinn,
+                next_day == City.Oslo,
+                next_day == City.Nice
+            )),
+            
+            # Tallinn connections
+            And(current == City.Tallinn, Or(
+                next_day == City.Copenhagen,
+                next_day == City.Oslo
+            )),
+            
+            # Oslo connections
+            And(current == City.Oslo, Or(
+                next_day == City.London,
+                next_day == City.Tallinn,
+                next_day == City.Copenhagen,
+                next_day == City.Nice
+            )),
+            
+            # Nice connections
+            And(current == City.Nice, Or(
+                next_day == City.London,
+                next_day == City.Oslo,
+                next_day == City.Mykonos,
+                next_day == City.Copenhagen
+            )),
+            
+            # Mykonos connections
+            And(current == City.Mykonos, Or(
+                next_day == City.London,
+                next_day == City.Nice
+            ))
         ))
     
-    # Try to find a solution
+    # Duration constraints
+    def count_days(city):
+        return Sum([If(day == city, 1, 0) for day in day_city])
+    
+    s.add(count_days(City.Mykonos) == 4)
+    s.add(count_days(City.Nice) == 3)
+    s.add(count_days(City.London) == 2)
+    s.add(count_days(City.Copenhagen) == 3)
+    s.add(count_days(City.Oslo) == 5)
+    s.add(count_days(City.Tallinn) == 4)
+    
+    # Special constraints
+    # Conference in Nice on days 14-16
+    s.add(day_city[13] == City.Nice)  # day 14
+    s.add(day_city[14] == City.Nice)  # day 15
+    s.add(day_city[15] == City.Nice)  # day 16
+    
+    # Meet friend in Oslo between days 10-14
+    s.add(Or([day_city[i] == City.Oslo for i in range(9, 14)]))  # days 10-14
+    
+    # Solve
     if s.check() == sat:
         model = s.model()
         itinerary = []
-        for day in range(1, 17):
-            city_idx = model.evaluate(day_city[day-1]).as_long()
-            itinerary.append({'day': day, 'place': city_list[city_idx]})
-        
-        # Verify solution
-        counts = {city: 0 for city in city_list}
-        for entry in itinerary:
-            counts[entry['place']] += 1
-        
-        # Check all constraints are satisfied
-        assert counts == cities, "Day counts don't match requirements"
-        assert itinerary[13]['place'] == 'Nice' and itinerary[15]['place'] == 'Nice'
-        assert any(10 <= entry['day'] <= 14 and entry['place'] == 'Oslo' for entry in itinerary)
-        
-        # Check flight connections
-        for i in range(15):
-            if itinerary[i]['place'] != itinerary[i+1]['place']:
-                a = city_to_int[itinerary[i]['place']]
-                b = city_to_int[itinerary[i+1]['place']]
-                assert (a, b) in flight_connections, f"Invalid flight from {itinerary[i]['place']} to {itinerary[i+1]['place']}"
+        for i in range(days):
+            city = model[day_city[i]]
+            itinerary.append({
+                'day': i + 1,
+                'place': str(city)
+            })
         
         return {'itinerary': itinerary}
     else:
-        return "No valid itinerary found."
+        return {"error": "No valid itinerary found"}
 
-result = solve_itinerary()
-import json
-print(json.dumps(result, indent=2))
+solution = solve_itinerary()
+print(json.dumps(solution, indent=2))

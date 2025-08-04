@@ -1,81 +1,62 @@
 from z3 import *
 
-def solve_trip_plan():
+def solve_itinerary():
+    # Create a solver instance
     s = Solver()
 
+    # Define the cities
+    Dublin, Riga, Vilnius = Ints('Dublin Riga Vilnius')
+    cities = {0: Dublin, 1: Riga, 2: Vilnius}
+    city_names = {0: "Dublin", 1: "Riga", 2: "Vilnius"}
+
+    # Days are from 1 to 12
     days = 12
-    City = Datatype('City')
-    City.declare('Dublin')
-    City.declare('Riga')
-    City.declare('Vilnius')
-    City = City.create()
+    # Create a list of variables for each day's city
+    itinerary = [Int(f'day_{i}') for i in range(1, days + 1)]
 
-    # Variables for each day's city
-    day_city = [Const(f'day_{i}_city', City) for i in range(days)]
+    # Constraints for each day: must be 0, 1, or 2 (Dublin, Riga, Vilnius)
+    for day in itinerary:
+        s.add(Or(day == 0, day == 1, day == 2))
 
+    # Flight constraints: transitions between cities must be via direct flights
     # Direct flights: Dublin <-> Riga, Riga <-> Vilnius
-    # No direct flights between Dublin and Vilnius
-    
-    # Transition constraints
     for i in range(days - 1):
-        current = day_city[i]
-        next_day = day_city[i + 1]
+        current = itinerary[i]
+        next_day = itinerary[i + 1]
+        # Possible transitions:
+        # Dublin <-> Riga, Riga <-> Vilnius, or same city
         s.add(Or(
-            current == next_day,  # Stay in same city
-            And(current == City.Dublin, next_day == City.Riga),
-            And(current == City.Riga, next_day == City.Dublin),
-            And(current == City.Riga, next_day == City.Vilnius),
-            And(current == City.Vilnius, next_day == City.Riga)
+            current == next_day,  # stay in the same city
+            And(current == 0, next_day == 1),  # Dublin -> Riga
+            And(current == 1, next_day == 0),  # Riga -> Dublin
+            And(current == 1, next_day == 2),  # Riga -> Vilnius
+            And(current == 2, next_day == 1)   # Vilnius -> Riga
         ))
 
-    # Total days constraints (including flight days)
-    total_riga = sum([If(day_city[i] == City.Riga, 1, 0) for i in range(days)])
-    total_vilnius = sum([If(day_city[i] == City.Vilnius, 1, 0) for i in range(days)])
-    total_dublin = sum([If(day_city[i] == City.Dublin, 1, 0) for i in range(days)])
+    # Count days in each city
+    dublin_days = Sum([If(itinerary[i] == 0, 1, 0) for i in range(days)])
+    riga_days = Sum([If(itinerary[i] == 1, 1, 0) for i in range(days)])
+    vilnius_days = Sum([If(itinerary[i] == 2, 1, 0) for i in range(days)])
 
-    s.add(total_riga == 5)
-    s.add(total_vilnius == 7)
-    s.add(total_dublin == 2)
+    # Add constraints for the required days in each city
+    s.add(dublin_days == 2)
+    s.add(riga_days == 5)
+    s.add(vilnius_days == 7)
 
-    # Try starting in each city to find a valid sequence
-    for start_city in [City.Dublin, City.Riga, City.Vilnius]:
-        s.push()
-        s.add(day_city[0] == start_city)
-        
-        if s.check() == sat:
-            m = s.model()
-            itinerary = []
-            for i in range(days):
-                city_val = m.eval(day_city[i])
-                city = "Dublin" if city_val == City.Dublin else \
-                       "Riga" if city_val == City.Riga else \
-                       "Vilnius"
-                itinerary.append({"day": i+1, "city": city})
-            
-            # Verify totals
-            riga_days = sum(1 for entry in itinerary if entry["city"] == "Riga")
-            vilnius_days = sum(1 for entry in itinerary if entry["city"] == "Vilnius")
-            dublin_days = sum(1 for entry in itinerary if entry["city"] == "Dublin")
-            
-            if riga_days == 5 and vilnius_days == 7 and dublin_days == 2:
-                # Verify transitions
-                valid = True
-                for i in range(len(itinerary) - 1):
-                    current = itinerary[i]["city"]
-                    next_city = itinerary[i+1]["city"]
-                    if current != next_city:
-                        if not ((current == "Dublin" and next_city == "Riga") or
-                               (current == "Riga" and next_city == "Dublin") or
-                               (current == "Riga" and next_city == "Vilnius") or
-                               (current == "Vilnius" and next_city == "Riga")):
-                            valid = False
-                            break
-                if valid:
-                    return {"itinerary": itinerary}
-        s.pop()
+    # Check if the problem is satisfiable
+    if s.check() == sat:
+        model = s.model()
+        # Extract the itinerary
+        result = []
+        for i in range(days):
+            day_num = i + 1
+            city_code = model.evaluate(itinerary[i]).as_long()
+            city_name = city_names[city_code]
+            result.append({"day": day_num, "place": city_name})
+        return {"itinerary": result}
+    else:
+        return {"error": "No valid itinerary found"}
 
-    return {"error": "No valid itinerary found"}
-
-result = solve_trip_plan()
-import json
-print(json.dumps(result, indent=2))
+# Generate the itinerary
+itinerary = solve_itinerary()
+print(itinerary)

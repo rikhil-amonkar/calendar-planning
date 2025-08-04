@@ -2,138 +2,95 @@ from z3 import *
 import json
 
 def solve_itinerary():
-    # Cities to visit with their required days
+    # Cities and their codes
     cities = {
-        'Dublin': 5,
-        'Krakow': 4,
-        'Istanbul': 3,
+        'Dublin': 0,
+        'Krakow': 1,
+        'Istanbul': 2,
         'Venice': 3,
         'Naples': 4,
-        'Brussels': 2,
-        'Mykonos': 4,
-        'Frankfurt': 3
+        'Brussels': 5,
+        'Mykonos': 6,
+        'Frankfurt': 7
     }
+    city_names = {v: k for k, v in cities.items()}
     
-    # Direct flights as a dictionary for quick lookup
+    # Direct flights as adjacency list
     direct_flights = {
-        'Dublin': ['Brussels', 'Naples', 'Krakow', 'Frankfurt', 'Istanbul', 'Venice'],
-        'Brussels': ['Dublin', 'Krakow', 'Naples', 'Istanbul', 'Frankfurt', 'Venice'],
-        'Mykonos': ['Naples'],
-        'Naples': ['Mykonos', 'Dublin', 'Istanbul', 'Brussels', 'Venice', 'Frankfurt'],
-        'Venice': ['Istanbul', 'Frankfurt', 'Brussels', 'Naples', 'Dublin'],
-        'Istanbul': ['Venice', 'Frankfurt', 'Krakow', 'Brussels', 'Naples', 'Dublin'],
-        'Frankfurt': ['Krakow', 'Brussels', 'Istanbul', 'Venice', 'Naples', 'Dublin'],
-        'Krakow': ['Frankfurt', 'Brussels', 'Istanbul', 'Dublin']
+        0: [5, 1, 7, 2, 3],  # Dublin
+        1: [7, 5, 0, 2],      # Krakow
+        2: [3, 4, 7, 5, 1, 0], # Istanbul
+        3: [2, 7, 5, 4, 0],    # Venice
+        4: [6, 0, 3, 5, 7, 2], # Naples
+        5: [0, 1, 3, 4, 2, 7], # Brussels
+        6: [4],               # Mykonos
+        7: [1, 2, 3, 4, 0, 5]  # Frankfurt
     }
     
-    # Create Z3 variables for each city's start and end days
-    city_vars = {}
-    for city in cities:
-        start = Int(f'start_{city}')
-        end = Int(f'end_{city}')
-        city_vars[city] = (start, end)
-    
+    # Create solver
     s = Solver()
     
-    # General constraints for each city
+    # Variables: day_1 to day_21, each can be 0-7 representing a city
+    days = [Int(f'day_{i}') for i in range(1, 22)]
+    
+    # Each day must be a valid city code (0-7)
+    for day in days:
+        s.add(day >= 0, day <= 7)
+    
+    # Fixed constraints:
+    # Mykonos between day 1 and 4 (inclusive)
+    for i in range(1, 5):
+        s.add(days[i-1] == cities['Mykonos'])
+    
+    # Dublin show from day 11 to 15 (inclusive)
+    for i in range(11, 16):
+        s.add(days[i-1] == cities['Dublin'])
+    
+    # Meet friend in Istanbul between day 9 and 11 (inclusive). So Istanbul must be on at least one of these days.
+    s.add(Or([days[i-1] == cities['Istanbul'] for i in range(9, 12)]))
+    
+    # Meet friends in Frankfurt between day 15 and 17 (inclusive)
+    s.add(Or([days[i-1] == cities['Frankfurt'] for i in range(15, 18)]))
+    
+    # Flight constraints: consecutive days must be same city or connected by direct flight
+    for i in range(20):  # days 1..20 and 2..21
+        current_city = days[i]
+        next_city = days[i+1]
+        # Create a condition that next_city is in the direct_flights of current_city
+        flight_condition = Or([next_city == city for city in direct_flights[current_city.as_long() if current_city.as_long() in direct_flights])
+        s.add(Or(current_city == next_city, flight_condition))
+    
+    # Duration constraints:
+    # Total days in each city must meet requirements.
+    city_days = {city: 0 for city in cities}
     for city in cities:
-        start, end = city_vars[city]
-        duration = cities[city]
-        s.add(start >= 1)
-        s.add(end <= 21)
-        s.add(end == start + duration - 1)
+        total_days = 0
+        for day in days:
+            total_days += If(day == cities[city], 1, 0)
+        city_days[city] = total_days
     
-    # Create position variables for the order of visits
-    positions = 8
-    pos_to_city = [Int(f'pos_{i}_city') for i in range(positions)]
-    city_ids = {city: idx for idx, city in enumerate(cities.keys())}
-    id_to_city = {idx: city for city, idx in city_ids.items()}
+    s.add(city_days['Dublin'] == 5)
+    s.add(city_days['Krakow'] == 4)
+    s.add(city_days['Istanbul'] == 3)
+    s.add(city_days['Venice'] == 3)
+    s.add(city_days['Naples'] == 4)
+    s.add(city_days['Brussels'] == 2)
+    s.add(city_days['Mykonos'] == 4)
+    s.add(city_days['Frankfurt'] == 3)
     
-    # Each position must be one of the city ids
-    for pos in pos_to_city:
-        s.add(Or([pos == city_ids[city] for city in cities]))
-    
-    # All cities are visited exactly once (distinct)
-    s.add(Distinct(pos_to_city))
-    
-    # Link start and end days based on the position order
-    for i in range(positions - 1):
-        current_city_var = pos_to_city[i]
-        next_city_var = pos_to_city[i+1]
-        for current_city in cities:
-            for next_city in cities:
-                if next_city in direct_flights[current_city]:
-                    current_start, current_end = city_vars[current_city]
-                    next_start, next_end = city_vars[next_city]
-                    s.add(Implies(
-                        And(current_city_var == city_ids[current_city], 
-                        next_city_var == city_ids[next_city]),
-                        current_end == next_start
-                    )
-    
-    # Specific constraints
-    mykonos_start, mykonos_end = city_vars['Mykonos']
-    s.add(mykonos_start == 1)
-    s.add(mykonos_end == 4)
-    
-    dublin_start, dublin_end = city_vars['Dublin']
-    s.add(dublin_start <= 11)
-    s.add(dublin_end >= 15)
-    
-    istanbul_start, istanbul_end = city_vars['Istanbul']
-    s.add(Or(
-        And(istanbul_start <= 9, istanbul_end >= 9),
-        And(istanbul_start <= 10, istanbul_end >= 10),
-        And(istanbul_start <= 11, istanbul_end >= 11)
-    ))
-    
-    frankfurt_start, frankfurt_end = city_vars['Frankfurt']
-    s.add(Or(
-        And(frankfurt_start <= 15, frankfurt_end >= 15),
-        And(frankfurt_start <= 16, frankfurt_end >= 16),
-        And(frankfurt_start <= 17, frankfurt_end >= 17)
-    ))
-    
-    # Solve the model
+    # Check if the problem is satisfiable
     if s.check() == sat:
-        m = s.model()
-        
-        # Get the order of cities
-        order = []
-        for i in range(positions):
-            city_id = m.evaluate(pos_to_city[i]).as_long()
-            order.append(id_to_city[city_id])
-        
-        # Get start and end days for each city
-        city_stays = {}
-        for city in cities:
-            start = m.evaluate(city_vars[city][0]).as_long()
-            end = m.evaluate(city_vars[city][1]).as_long()
-            city_stays[city] = (start, end)
-        
-        # Generate itinerary
+        model = s.model()
         itinerary = []
-        for day in range(1, 22):
-            places = []
-            for city in cities:
-                start, end = city_stays[city]
-                if start <= day <= end:
-                    places.append(city)
-            # On travel days, we might have multiple cities
-            # We'll take the last city in the order for that day
-            current_city = None
-            for city in order:
-                start, end = city_stays[city]
-                if start <= day <= end:
-                    current_city = city
-            itinerary.append({'day': day, 'place': current_city})
+        for i in range(21):
+            day_num = i + 1
+            city_code = model.evaluate(days[i]).as_long()
+            city_name = city_names[city_code]
+            itinerary.append({'day': day_num, 'place': city_name})
         
-        # Prepare output
-        output = {'itinerary': itinerary}
-        return output
+        result = {'itinerary': itinerary}
+        return json.dumps(result, indent=2)
     else:
-        return {"error": "No valid itinerary found"}
+        return json.dumps({'error': 'No valid itinerary found'}, indent=2)
 
-# Execute and print result
-result = solve_itinerary()
-print(json.dumps(result, indent=2))
+print(solve_itinerary())

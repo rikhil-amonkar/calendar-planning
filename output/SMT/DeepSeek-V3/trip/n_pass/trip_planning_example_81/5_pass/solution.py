@@ -3,70 +3,80 @@ from z3 import *
 def solve_itinerary():
     s = Solver()
 
-    # Days 1-9
+    # Days and cities
     days = range(1, 10)
-    n_days = len(days)
+    cities = ['Mykonos', 'Budapest', 'Hamburg']
+    Mykonos, Budapest, Hamburg = 0, 1, 2
 
-    # Cities: Mykonos (M), Budapest (B), Hamburg (H)
-    cities = ['M', 'B', 'H']
-    city_vars = [[Bool(f"day_{day}_city_{city}") for city in cities] for day in days]
+    # Variables: for each day, current city and whether traveling to another city
+    current_city = [Int(f'current_{day}') for day in days]
+    travel_city = [Int(f'travel_{day}') for day in days]
+    is_travel_day = [Bool(f'travel_day_{day}') for day in days]
 
-    # Constraints for each day
-    for day_idx in range(n_days):
-        # At least one city per day
-        s.add(Or(city_vars[day_idx][0], city_vars[day_idx][1], city_vars[day_idx][2]))
-        
-        # No three cities on same day
-        s.add(Not(And(city_vars[day_idx][0], city_vars[day_idx][1], city_vars[day_idx][2])))
-        
-        # If two cities, they must be connected
-        for i in range(3):
-            for j in range(i+1, 3):
-                ci = cities[i]
-                cj = cities[j]
-                connected = (ci == 'B' and cj == 'M') or (ci == 'B' and cj == 'H') or \
-                           (cj == 'B' and ci == 'M') or (cj == 'B' and ci == 'H')
-                if not connected:
-                    s.add(Not(And(city_vars[day_idx][i], city_vars[day_idx][j])))
+    # Each day must be in a valid city
+    for day in days:
+        s.add(Or(current_city[day-1] == Mykonos, 
+               current_city[day-1] == Budapest, 
+               current_city[day-1] == Hamburg))
+        s.add(Or(travel_city[day-1] == Mykonos, 
+               travel_city[day-1] == Budapest, 
+               travel_city[day-1] == Hamburg,
+               travel_city[day-1] == -1))  # -1 means no travel
 
-    # Total days per city (counting travel days for both cities)
-    total_M = sum([If(city_vars[day_idx][0], 1, 0) for day_idx in range(n_days)])
-    total_B = sum([If(city_vars[day_idx][1], 1, 0) for day_idx in range(n_days)])
-    total_H = sum([If(city_vars[day_idx][2], 1, 0) for day_idx in range(n_days)])
+    # Travel constraints
+    for day in days[:-1]:
+        # If traveling, next day must match travel city
+        s.add(Implies(is_travel_day[day-1], 
+                     current_city[day] == travel_city[day-1]))
+        # Only allowed transitions
+        s.add(Implies(is_travel_day[day-1],
+                     Or(
+                         And(current_city[day-1] == Budapest, travel_city[day-1] == Mykonos),
+                         And(current_city[day-1] == Mykonos, travel_city[day-1] == Budapest),
+                         And(current_city[day-1] == Hamburg, travel_city[day-1] == Budapest),
+                         And(current_city[day-1] == Budapest, travel_city[day-1] == Hamburg)
+                     )))
+        # No travel on last day
+        if day == 9:
+            s.add(Not(is_travel_day[day-1]))
 
-    s.add(total_M == 6)
-    s.add(total_B == 3)
-    s.add(total_H == 2)
+    # Fixed days in Mykonos
+    s.add(current_city[3] == Mykonos)  # Day 4
+    s.add(current_city[8] == Mykonos)  # Day 9
 
-    # Mandatory days in Mykonos (must be single-city days)
-    s.add(city_vars[3][0] == True)  # day 4 is M only
-    s.add(Not(Or(city_vars[3][1], city_vars[3][2])))
-    s.add(city_vars[8][0] == True)  # day 9 is M only
-    s.add(Not(Or(city_vars[8][1], city_vars[8][2])))
+    # Count days in each city
+    mykonos_days = 0
+    budapest_days = 0
+    hamburg_days = 0
 
-    # Transition constraints between days
-    for day_idx in range(n_days - 1):
-        current = city_vars[day_idx]
-        next_day = city_vars[day_idx + 1]
-        
-        # From M: can stay or go to B
-        s.add(Implies(current[0], Or(next_day[0], next_day[1])))
-        # From B: can stay or go to M or H
-        s.add(Implies(current[1], Or(next_day[1], next_day[0], next_day[2])))
-        # From H: can stay or go to B
-        s.add(Implies(current[2], Or(next_day[2], next_day[1])))
+    for day in days:
+        # Current city always counts
+        mykonos_days += If(current_city[day-1] == Mykonos, 1, 0)
+        budapest_days += If(current_city[day-1] == Budapest, 1, 0)
+        hamburg_days += If(current_city[day-1] == Hamburg, 1, 0)
 
-    # Solve
+        # Travel days count for both cities
+        if day < 9:
+            mykonos_days += If(And(is_travel_day[day-1], travel_city[day-1] == Mykonos), 1, 0)
+            budapest_days += If(And(is_travel_day[day-1], travel_city[day-1] == Budapest), 1, 0)
+            hamburg_days += If(And(is_travel_day[day-1], travel_city[day-1] == Hamburg), 1, 0)
+
+    s.add(mykonos_days == 6)
+    s.add(budapest_days == 3)
+    s.add(hamburg_days == 2)
+
+    # Check solution
     if s.check() == sat:
         model = s.model()
         itinerary = []
-        for day_idx in range(n_days):
-            day_num = day_idx + 1
-            places = []
-            for city_idx in range(3):
-                if is_true(model[city_vars[day_idx][city_idx]]):
-                    places.append(cities[city_idx])
-            itinerary.append({"day": day_num, "place": places})
+        for day in days:
+            current = model.evaluate(current_city[day-1]).as_long()
+            traveling = model.evaluate(is_travel_day[day-1])
+            if traveling:
+                to_city = model.evaluate(travel_city[day-1]).as_long()
+                itinerary.append({"day": day, "place": [cities[current], cities[to_city]]})
+            else:
+                itinerary.append({"day": day, "place": cities[current]})
         return {"itinerary": itinerary}
     else:
         return {"error": "No valid itinerary found"}

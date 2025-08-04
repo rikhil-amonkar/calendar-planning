@@ -1,117 +1,121 @@
-import json
 from z3 import *
 
 def solve_itinerary():
     # Cities
-    Prague, Stuttgart, Split, Krakow, Florence = 'Prague', 'Stuttgart', 'Split', 'Krakow', 'Florence'
-    cities = [Prague, Stuttgart, Split, Krakow, Florence]
-    
-    # Direct flights as adjacency list
-    direct_flights = {
-        Stuttgart: [Split, Krakow],
-        Split: [Stuttgart, Krakow, Prague],
-        Prague: [Split, Florence],
-        Krakow: [Stuttgart, Split, Prague],
-        Florence: [Prague]
+    Prague, Stuttgart, Split, Krakow, Florence = Ints('Prague Stuttgart Split Krakow Florence')
+    cities = {
+        'Prague': Prague,
+        'Stuttgart': Stuttgart,
+        'Split': Split,
+        'Krakow': Krakow,
+        'Florence': Florence
     }
     
-    # Create a Z3 solver instance
+    # Days are 1..8
+    days = 8
+    # For each day, which city are we in?
+    day_city = [Int(f'day_{i}_city') for i in range(1, days + 1)]
+    
+    # City encodings
+    city_ids = {
+        'Prague': 0,
+        'Stuttgart': 1,
+        'Split': 2,
+        'Krakow': 3,
+        'Florence': 4
+    }
+    id_to_city = {v: k for k, v in city_ids.items()}
+    
     s = Solver()
     
-    # Variables: for each day, which cities are visited (a list of sets)
-    # Each day can have up to 2 cities (if it's a travel day)
-    # We'll model this as a list of lists, where each inner list has 1 or 2 cities.
-    days = 8
-    itinerary = [[Int(f'day_{day}_city_{i}') for i in range(2)] for day in range(1, days + 1)]
+    # Each day's assignment is one of the cities
+    for day in day_city:
+        s.add(Or([day == city_ids[city] for city in city_ids.keys()]))
     
-    # City encodings (for the integers)
-    city_to_int = {city: idx for idx, city in enumerate(cities)}
-    int_to_city = {idx: city for idx, city in enumerate(cities)}
+    # Flight connections (direct flights)
+    direct_flights = {
+        'Stuttgart': ['Split', 'Krakow'],
+        'Prague': ['Florence', 'Split', 'Krakow'],
+        'Krakow': ['Stuttgart', 'Split', 'Prague'],
+        'Split': ['Stuttgart', 'Krakow', 'Prague'],
+        'Florence': ['Prague']
+    }
     
-    # Constraints for each day: first position is always a city; second can be -1 (no city) or another city
-    for day in range(days):
-        day_vars = itinerary[day]
-        # First city must be a valid city
-        s.add(Or([day_vars[0] == city_to_int[city] for city in cities]))
-        # Second city is either -1 (no travel) or a valid city different from the first
-        s.add(Or(day_vars[1] == -1, 
-                 And([day_vars[1] != day_vars[0],
-                      Or([day_vars[1] == city_to_int[city] for city in cities])])))
+    # Transition constraints: if day i and i+1 are different, there must be a direct flight
+    for i in range(days - 1):
+        current_day = day_city[i]
+        next_day = day_city[i + 1]
+        # If different cities, then must have a direct flight
+        s.add(Implies(current_day != next_day, 
+                      Or([And(current_day == city_ids[c1], next_day == city_ids[c2]) 
+                          for c1 in direct_flights 
+                          for c2 in direct_flights[c1]])))
     
-    # Constraint: consecutive cities must have direct flights
-    for day in range(days - 1):
-        current_day = itinerary[day]
-        next_day = itinerary[day + 1]
-        
-        # The last city of current day must connect to the first city of next day
-        # Case 1: current day ends in one city (current_day[1] is -1)
-        # Then current_day[0] must connect to next_day[0]
-        case1 = And(current_day[1] == -1, 
-                    Or([And(current_day[0] == city_to_int[a], next_day[0] == city_to_int[b]) 
-                        for a in cities for b in direct_flights.get(a, [])]))
-        # Case 2: current day is a travel day (current_day[1] is a city)
-        # Then current_day[1] must connect to next_day[0]
-        case2 = And(current_day[1] != -1,
-                    Or([And(current_day[1] == city_to_int[a], next_day[0] == city_to_int[b])
-                        for a in cities for b in direct_flights.get(a, [])]))
-        s.add(Or(case1, case2))
+    # Duration constraints
+    # Count days per city
+    for city, cid in city_ids.items():
+        count = Sum([If(day == cid, 1, 0) for day in day_city])
+        if city == 'Prague':
+            s.add(count == 4)
+        elif city == 'Stuttgart':
+            s.add(count == 2)
+        elif city == 'Split':
+            s.add(count == 2)
+        elif city == 'Krakow':
+            s.add(count == 2)
+        elif city == 'Florence':
+            s.add(count == 2)
     
-    # Constraint: total days per city
-    city_days = {city: 0 for city in cities}
-    for city in cities:
-        total = 0
-        for day in range(days):
-            day_vars = itinerary[day]
-            # City appears in day_vars[0] or day_vars[1]
-            total += If(Or(day_vars[0] == city_to_int[city], day_vars[1] == city_to_int[city]), 1, 0)
-        if city == Prague:
-            s.add(total == 4)
-        elif city == Stuttgart:
-            s.add(total == 2)
-        elif city == Split:
-            s.add(total == 2)
-        elif city == Krakow:
-            s.add(total == 2)
-        elif city == Florence:
-            s.add(total == 2)
+    # Event constraints
+    # Wedding in Stuttgart between day 2 and 3: so day 2 or day 3 must be Stuttgart
+    s.add(Or(day_city[1] == city_ids['Stuttgart'], day_city[2] == city_ids['Stuttgart']))
     
-    # Event constraints:
-    # Wedding in Stuttgart between day 2 and day 3: so Stuttgart must be on day 2 or 3
-    stuttgart_days = []
-    for day in [1, 2]:  # days are 1-based in problem, 0-based in code?
-        day_vars = itinerary[day]
-        stuttgart_days.append(Or(day_vars[0] == city_to_int[Stuttgart], day_vars[1] == city_to_int[Stuttgart]))
-    s.add(Or(stuttgart_days))
+    # Meet friends in Split between day 3 and 4: so day 3 or day 4 must be Split
+    s.add(Or(day_city[2] == city_ids['Split'], day_city[3] == city_ids['Split']))
     
-    # Meet friends in Split between day 3 and day 4: Split must be on day 3 or 4 (indices 2 or 3)
-    split_days = []
-    for day in [2, 3]:
-        day_vars = itinerary[day]
-        split_days.append(Or(day_vars[0] == city_to_int[Split], day_vars[1] == city_to_int[Split]))
-    s.add(Or(split_days))
-    
-    # Check if the solver can find a solution
+    # Solve the model
     if s.check() == sat:
         m = s.model()
-        # Decode the itinerary
-        result = {'itinerary': []}
-        for day in range(days):
-            day_vars = itinerary[day]
-            cities_day = []
-            city1 = day_vars[0]
-            val1 = m[city1].as_long()
-            cities_day.append(int_to_city[val1])
-            city2 = day_vars[1]
-            val2 = m[city2].as_long() if str(city2) in [str(k) for k in m.decls()] else -1
-            if val2 != -1:
-                cities_day.append(int_to_city[val2])
-            # For the JSON, each day is represented as the cities visited (one or two)
-            day_entry = {"day": day + 1, "cities": cities_day}
-            result['itinerary'].append(day_entry)
-        return result
+        itinerary = []
+        for i in range(days):
+            day_num = i + 1
+            city_id = m.evaluate(day_city[i]).as_long()
+            city_name = id_to_city[city_id]
+            itinerary.append({'day': day_num, 'place': city_name})
+        
+        # Verify the solution meets all constraints
+        # Check durations
+        city_days = {city: 0 for city in city_ids}
+        for entry in itinerary:
+            city_days[entry['place']] += 1
+        
+        assert city_days['Prague'] == 4
+        assert city_days['Stuttgart'] == 2
+        assert city_days['Split'] == 2
+        assert city_days['Krakow'] == 2
+        assert city_days['Florence'] == 2
+        
+        # Check transitions
+        for i in range(days - 1):
+            current_city = itinerary[i]['place']
+            next_city = itinerary[i+1]['place']
+            if current_city != next_city:
+                assert next_city in direct_flights[current_city]
+        
+        # Check events
+        stuttgart_days = [entry['day'] for entry in itinerary if entry['place'] == 'Stuttgart']
+        assert any(day in [2, 3] for day in stuttgart_days)
+        
+        split_days = [entry['day'] for entry in itinerary if entry['place'] == 'Split']
+        assert any(day in [3, 4] for day in split_days)
+        
+        return {'itinerary': itinerary}
     else:
-        return {"error": "No solution found"}
+        return None
 
-# Solve and print the itinerary
-solution = solve_itinerary()
-print(json.dumps(solution, indent=2))
+result = solve_itinerary()
+if result:
+    import json
+    print(json.dumps(result, indent=2))
+else:
+    print("No valid itinerary found.")

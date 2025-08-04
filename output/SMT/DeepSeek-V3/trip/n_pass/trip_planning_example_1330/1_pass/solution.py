@@ -6,116 +6,145 @@ def solve_itinerary():
     cities = ['Salzburg', 'Venice', 'Bucharest', 'Brussels', 'Hamburg', 'Copenhagen', 'Nice', 'Zurich', 'Naples']
     city_to_idx = {city: idx for idx, city in enumerate(cities)}
     
-    # Direct flights: list of tuples (city1, city2)
-    direct_flights = [
-        ('Zurich', 'Brussels'), ('Bucharest', 'Copenhagen'), ('Venice', 'Brussels'),
-        ('Nice', 'Zurich'), ('Hamburg', 'Nice'), ('Zurich', 'Naples'),
-        ('Hamburg', 'Bucharest'), ('Zurich', 'Copenhagen'), ('Bucharest', 'Brussels'),
-        ('Hamburg', 'Brussels'), ('Venice', 'Naples'), ('Venice', 'Copenhagen'),
-        ('Bucharest', 'Naples'), ('Hamburg', 'Copenhagen'), ('Venice', 'Zurich'),
-        ('Nice', 'Brussels'), ('Hamburg', 'Venice'), ('Copenhagen', 'Naples'),
-        ('Nice', 'Naples'), ('Hamburg', 'Zurich'), ('Salzburg', 'Hamburg'),
-        ('Zurich', 'Bucharest'), ('Brussels', 'Naples'), ('Copenhagen', 'Brussels'),
-        ('Venice', 'Nice'), ('Nice', 'Copenhagen')
-    ]
-    
-    # Correct any typos in the flight list (e.g., 'Zurich' vs 'Zurich')
-    corrected_flights = []
-    for a, b in direct_flights:
-        if a == 'Zurich' or b == 'Zurich':
-            pass  # assuming 'Zurich' is correct
-        corrected_flights.append((a, b))
-    direct_flights = corrected_flights
-    
-    # Create a set of direct flight pairs (undirected)
-    flight_pairs = set()
-    for a, b in direct_flights:
-        flight_pairs.add((a, b))
-        flight_pairs.add((b, a))
-    
-    # Z3 variables: for each day, which city are you in?
-    days = 25
-    X = [Int(f'X_{i}') for i in range(1, days + 1)]
-    
-    s = Solver()
-    
-    # Each X_i must be between 0 and 8 (city indices)
-    for x in X:
-        s.add(x >= 0, x < len(cities))
-    
-    # Constraints for each city's total days
-    city_days = {
-        'Salzburg': 2,
-        'Venice': 5,
-        'Bucharest': 4,
-        'Brussels': 2,
-        'Hamburg': 4,
-        'Copenhagen': 4,
-        'Nice': 3,
-        'Zurich': 5,
-        'Naples': 4
+    # Direct flights: adjacency list
+    direct_flights = {
+        'Zurich': ['Brussels', 'Nice', 'Naples', 'Copenhagen', 'Bucharest', 'Venice', 'Hamburg'],
+        'Brussels': ['Zurich', 'Venice', 'Bucharest', 'Hamburg', 'Nice', 'Copenhagen', 'Naples'],
+        'Bucharest': ['Copenhagen', 'Brussels', 'Hamburg', 'Naples', 'Zurich'],
+        'Venice': ['Brussels', 'Naples', 'Copenhagen', 'Zurich', 'Nice', 'Hamburg'],
+        'Nice': ['Zurich', 'Hamburg', 'Brussels', 'Venice', 'Naples', 'Copenhagen'],
+        'Hamburg': ['Nice', 'Bucharest', 'Brussels', 'Copenhagen', 'Zurich', 'Venice', 'Salzburg'],
+        'Copenhagen': ['Bucharest', 'Venice', 'Brussels', 'Zurich', 'Hamburg', 'Naples', 'Nice'],
+        'Naples': ['Zurich', 'Venice', 'Bucharest', 'Brussels', 'Copenhagen', 'Nice', 'Hamburg'],
+        'Salzburg': ['Hamburg']
     }
     
-    for city, required_days in city_days.items():
-        city_idx = city_to_idx[city]
-        s.add(Sum([If(X[i] == city_idx, 1, 0) for i in range(days)]) == required_days)
+    # Create Z3 variables: day[i] is the city visited on day i+1 (days are 1-based)
+    days = [Int(f'day_{i}') for i in range(25)]
     
-    # Fixed date constraints
-    # Brussels between day 21 and 22: means day 21 or 22 must be Brussels.
-    s.add(Or(X[20] == city_to_idx['Brussels'], X[21] == city_to_idx['Brussels']))
+    # Solver
+    s = Solver()
     
-    # Copenhagen wedding between day 18 and 21: at least one day in 18-21 is Copenhagen.
-    s.add(Or([X[i] == city_to_idx['Copenhagen'] for i in range(17, 21)]))
+    # Each day must be one of the cities (0 to 8)
+    for day in days:
+        s.add(And(day >= 0, day <= 8))
     
-    # Nice relatives between day 9 and 11: at least one day in 9-11 is Nice.
-    s.add(Or(X[8] == city_to_idx['Nice'], X[9] == city_to_idx['Nice'], X[10] == city_to_idx['Nice']))
+    # Duration constraints
+    # Salzburg: 2 days
+    s.add(Sum([If(days[i] == city_to_idx['Salzburg'], 1, 0) for i in range(25)]) == 2)
+    # Venice: 5 days
+    s.add(Sum([If(days[i] == city_to_idx['Venice'], 1, 0) for i in range(25)]) == 5)
+    # Bucharest: 4 days
+    s.add(Sum([If(days[i] == city_to_idx['Bucharest'], 1, 0) for i in range(25)]) == 4)
+    # Brussels: 2 days
+    s.add(Sum([If(days[i] == city_to_idx['Brussels'], 1, 0) for i in range(25)]) == 2)
+    # Hamburg: 4 days
+    s.add(Sum([If(days[i] == city_to_idx['Hamburg'], 1, 0) for i in range(25)]) == 4)
+    # Copenhagen: 4 days
+    s.add(Sum([If(days[i] == city_to_idx['Copenhagen'], 1, 0) for i in range(25)]) == 4)
+    # Nice: 3 days
+    s.add(Sum([If(days[i] == city_to_idx['Nice'], 1, 0) for i in range(25)]) == 3)
+    # Zurich: 5 days
+    s.add(Sum([If(days[i] == city_to_idx['Zurich'], 1, 0) for i in range(25)]) == 5)
+    # Naples: 4 days
+    s.add(Sum([If(days[i] == city_to_idx['Naples'], 1, 0) for i in range(25)]) == 4)
     
-    # Naples workshop between day 22 and 25: at least one day in 22-25 is Naples.
-    s.add(Or([X[i] == city_to_idx['Naples'] for i in range(21, 25)]))
+    # Specific constraints
+    # Brussels between day 21 and 22 (inclusive)
+    s.add(Or(
+        days[20] == city_to_idx['Brussels'],  # day 21
+        days[21] == city_to_idx['Brussels']   # day 22
+    ))
     
-    # Flight transitions: if day i and i+1 are different cities, there must be a flight.
-    for i in range(days - 1):
-        current_city = X[i]
-        next_city = X[i+1]
-        # If cities are different, check flight exists.
-        s.add(Implies(current_city != next_city, 
-                      Or([And(current_city == city_to_idx[a], next_city == city_to_idx[b]) 
-                          for a, b in flight_pairs])))
+    # Copenhagen between day 18 and 21 (inclusive)
+    s.add(Or(
+        days[17] == city_to_idx['Copenhagen'],  # day 18
+        days[18] == city_to_idx['Copenhagen'],  # day 19
+        days[19] == city_to_idx['Copenhagen'],  # day 20
+        days[20] == city_to_idx['Copenhagen']   # day 21
+    ))
     
-    # Check if the problem is satisfiable
+    # Nice between day 9 and 11 (inclusive)
+    s.add(Or(
+        days[8] == city_to_idx['Nice'],   # day 9
+        days[9] == city_to_idx['Nice'],   # day 10
+        days[10] == city_to_idx['Nice']   # day 11
+    ))
+    
+    # Naples between day 22 and 25 (inclusive)
+    s.add(Or(
+        days[21] == city_to_idx['Naples'],  # day 22
+        days[22] == city_to_idx['Naples'],  # day 23
+        days[23] == city_to_idx['Naples'],  # day 24
+        days[24] == city_to_idx['Naples']   # day 25
+    ))
+    
+    # Flight constraints: consecutive days must be the same city or connected by direct flight
+    for i in range(24):
+        current_city = days[i]
+        next_city = days[i + 1]
+        # Either stay in the same city or move to a directly connected city
+        s.add(Or(
+            current_city == next_city,
+            *[And(current_city == city_to_idx[a], next_city == city_to_idx[b]) 
+              for a in direct_flights for b in direct_flights[a]]
+        ))
+    
+    # Check if the solver can find a solution
     if s.check() == sat:
         model = s.model()
         itinerary = []
-        for i in range(1, days + 1):
-            city_idx = model.evaluate(X[i-1]).as_long()
-            itinerary.append({'day': i, 'place': cities[city_idx]})
+        for i in range(25):
+            city_idx = model.evaluate(days[i]).as_long()
+            itinerary.append({'day': i + 1, 'place': cities[city_idx]})
         
-        # Verify the solution meets all constraints
-        # (This step is optional but helps ensure correctness)
-        # For example, check city days:
-        city_counts = {city: 0 for city in cities}
+        # Verify all constraints are met (sanity check)
+        # (The solver should ensure this, but it's good to verify)
+        city_days = {city: 0 for city in cities}
         for entry in itinerary:
-            city_counts[entry['place']] += 1
-        for city, required in city_days.items():
-            assert city_counts[city] == required, f"City {city} has {city_counts[city]} days, expected {required}"
+            city_days[entry['place']] += 1
         
-        # Check fixed date constraints
-        assert any(entry['place'] == 'Brussels' for entry in itinerary if entry['day'] in [21, 22]), "Brussels constraint failed"
-        assert any(entry['place'] == 'Copenhagen' for entry in itinerary if 18 <= entry['day'] <= 21), "Copenhagen wedding constraint failed"
-        assert any(entry['place'] == 'Nice' for entry in itinerary if 9 <= entry['day'] <= 11), "Nice relatives constraint failed"
-        assert any(entry['place'] == 'Naples' for entry in itinerary if 22 <= entry['day'] <= 25), "Naples workshop constraint failed"
+        assert city_days['Salzburg'] == 2
+        assert city_days['Venice'] == 5
+        assert city_days['Bucharest'] == 4
+        assert city_days['Brussels'] == 2
+        assert city_days['Hamburg'] == 4
+        assert city_days['Copenhagen'] == 4
+        assert city_days['Nice'] == 3
+        assert city_days['Zurich'] == 5
+        assert city_days['Naples'] == 4
         
-        # Check flight transitions
-        for i in range(len(itinerary) - 1):
-            current = itinerary[i]['place']
-            next_p = itinerary[i+1]['place']
-            if current != next_p:
-                assert (current, next_p) in flight_pairs or (next_p, current) in flight_pairs, f"No flight between {current} and {next_p} on day {i+1}"
+        # Specific day checks
+        brussels_days = [entry['day'] for entry in itinerary if entry['place'] == 'Brussels']
+        assert any(21 <= day <= 22 for day in brussels_days)
         
-        return {'itinerary': itinerary}
+        copenhagen_days = [entry['day'] for entry in itinerary if entry['place'] == 'Copenhagen']
+        assert any(18 <= day <= 21 for day in copenhagen_days)
+        
+        nice_days = [entry['day'] for entry in itinerary if entry['place'] == 'Nice']
+        assert any(9 <= day <= 11 for day in nice_days)
+        
+        naples_days = [entry['day'] for entry in itinerary if entry['place'] == 'Naples']
+        assert any(22 <= day <= 25 for day in naples_days)
+        
+        # Flight constraints check
+        for i in range(24):
+            current_place = itinerary[i]['place']
+            next_place = itinerary[i + 1]['place']
+            if current_place != next_place:
+                assert next_place in direct_flights[current_place]
+        
+        # Prepare the output
+        output = {
+            'itinerary': itinerary
+        }
+        return output
     else:
-        return {"error": "No solution found"}
+        return None
 
-# Run the solver and print the result
-result = solve_itinerary()
-print(json.dumps(result, indent=2))
+# Solve and print the itinerary
+itinerary = solve_itinerary()
+if itinerary:
+    print(json.dumps(itinerary, indent=2))
+else:
+    print("No valid itinerary found.")

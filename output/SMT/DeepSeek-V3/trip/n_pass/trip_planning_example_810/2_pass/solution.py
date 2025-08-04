@@ -1,95 +1,86 @@
+import json
 from z3 import *
 
-def solve_itinerary():
-    # Cities and their codes
-    cities = {
-        'Berlin': 0,
-        'Nice': 1,
-        'Athens': 2,
-        'Stockholm': 3,
-        'Barcelona': 4,
-        'Vilnius': 5,
-        'Lyon': 6
-    }
-    city_names = {v: k for k, v in cities.items()}
-    
-    # Direct flights as adjacency list
-    direct_flights = {
-        0: [1, 2, 3, 4, 5],  # Berlin
-        1: [0, 2, 3, 4, 6],   # Nice
-        2: [0, 1, 3, 4, 5],   # Athens
-        3: [0, 1, 2, 4],       # Stockholm
-        4: [0, 1, 2, 3, 6],    # Barcelona
-        5: [0, 2],             # Vilnius
-        6: [1, 4]              # Lyon
-    }
-    
-    # Create solver
-    s = Solver()
-    
-    # Variables: day[i] is the city on day i+1 (since days are 1-based)
-    days = [Int(f'day_{i}') for i in range(20)]
-    
-    # Each day must be a valid city code (0 to 6)
-    for day in days:
-        s.add(day >= 0, day <= 6)
-    
-    # Constraint: must start in Berlin (day 1)
-    s.add(days[0] == cities['Berlin'])
-    
-    # Berlin constraints: conferences on day 1 and day 3
-    s.add(days[0] == cities['Berlin'])
-    s.add(days[2] == cities['Berlin'])
-    
-    # Barcelona workshop between day 3 and day 4 (i.e., must be in Barcelona on day 3 or 4)
-    s.add(Or(days[2] == cities['Barcelona'], days[3] == cities['Barcelona']))
-    
-    # Lyon wedding between day 4 and day 5 (must be in Lyon on day 4 or 5)
-    s.add(Or(days[3] == cities['Lyon'], days[4] == cities['Lyon']))
-    
-    # Flight transitions: consecutive days must be same city or connected by direct flight
-    for i in range(19):
-        current_city = days[i]
-        next_city = days[i+1]
-        # Create a disjunction of all possible direct flights from current_city
-        flight_constraints = []
-        for city_code in direct_flights:
-            flight_constraints.append(And(current_city == city_code, next_city in direct_flights[city_code]))
-        s.add(Or(current_city == next_city, Or(flight_constraints)))
-    
-    # Total days per city constraints
-    # Berlin: 3 days
-    s.add(Sum([If(days[i] == cities['Berlin'], 1, 0) for i in range(20)]) == 3)
-    # Nice: 5 days
-    s.add(Sum([If(days[i] == cities['Nice'], 1, 0) for i in range(20)]) == 5)
-    # Athens: 5 days
-    s.add(Sum([If(days[i] == cities['Athens'], 1, 0) for i in range(20)]) == 5)
-    # Stockholm: 5 days
-    s.add(Sum([If(days[i] == cities['Stockholm'], 1, 0) for i in range(20)]) == 5)
-    # Barcelona: 2 days
-    s.add(Sum([If(days[i] == cities['Barcelona'], 1, 0) for i in range(20)]) == 2)
-    # Vilnius: 4 days
-    s.add(Sum([If(days[i] == cities['Vilnius'], 1, 0) for i in range(20)]) == 4)
-    # Lyon: 2 days
-    s.add(Sum([If(days[i] == cities['Lyon'], 1, 0) for i in range(20)]) == 2)
-    
-    # Check if the problem is satisfiable
-    if s.check() == sat:
-        model = s.model()
-        itinerary = []
-        for i in range(20):
-            city_code = model.evaluate(days[i]).as_long()
-            itinerary.append({'day': i+1, 'place': city_names[city_code]})
-        
-        # Convert to the required JSON format
-        result = {'itinerary': itinerary}
-        return result
-    else:
-        return None
+# Define the cities and their required days
+cities = {
+    "Berlin": 3,
+    "Nice": 5,
+    "Athens": 5,
+    "Stockholm": 5,
+    "Barcelona": 2,
+    "Vilnius": 4,
+    "Lyon": 2
+}
 
-# Execute the solver and print the result
-result = solve_itinerary()
-if result:
-    print(result)
+# Direct flight connections
+direct_flights = {
+    "Lyon": ["Nice"],
+    "Nice": ["Lyon", "Athens", "Berlin", "Barcelona", "Stockholm"],
+    "Athens": ["Nice", "Stockholm", "Berlin", "Vilnius", "Barcelona"],
+    "Stockholm": ["Athens", "Berlin", "Nice", "Barcelona"],
+    "Berlin": ["Nice", "Athens", "Barcelona", "Vilnius", "Stockholm"],
+    "Barcelona": ["Berlin", "Nice", "Athens", "Stockholm", "Lyon"],
+    "Vilnius": ["Berlin", "Athens"],
+    "Lyon": ["Nice", "Barcelona"]
+}
+
+# Create a solver instance
+s = Solver()
+
+# Create variables for each day (1..20)
+days = 20
+day_city = [Int(f"day_{i}") for i in range(1, days + 1)]
+
+# Assign each day_city to a numerical representation of the cities
+city_ids = {city: idx for idx, city in enumerate(cities.keys())}
+id_to_city = {idx: city for city, idx in city_ids.items()}
+
+# Constraint: each day must be one of the cities
+for day in day_city:
+    s.add(Or([day == city_ids[city] for city in cities]))
+
+# Fixed constraints:
+# Berlin: day 1 and 3
+s.add(day_city[0] == city_ids["Berlin"])  # day 1
+s.add(day_city[2] == city_ids["Berlin"])  # day 3
+
+# Barcelona: workshop between day 3 and 4 (so day 3 or 4 must be Barcelona)
+# Since day 3 is Berlin, day 4 must be Barcelona
+s.add(day_city[3] == city_ids["Barcelona"])  # day 4
+
+# Lyon: wedding between day 4 and 5. So day 4 or 5 must be Lyon. But day 4 is Barcelona, so day 5 is Lyon
+s.add(day_city[4] == city_ids["Lyon"])  # day 5
+
+# Constraint for transitions: consecutive days must be the same city or connected by direct flight
+for i in range(days - 1):
+    current_city = day_city[i]
+    next_city = day_city[i + 1]
+    # Either stay in the same city or move to a connected city
+    s.add(Or(
+        current_city == next_city,
+        *[
+            And(current_city == city_ids[city1], next_city == city_ids[city2])
+            for city1 in cities
+            for city2 in direct_flights.get(city1, [])
+        ]
+    ))
+
+# Constraints for total days per city
+for city, total_days in cities.items():
+    s.add(Sum([If(day == city_ids[city], 1, 0) for day in day_city]) == total_days)
+
+# Check if the solver can find a solution
+if s.check() == sat:
+    model = s.model()
+    itinerary = []
+    for i in range(days):
+        day_num = i + 1
+        city_id = model.evaluate(day_city[i]).as_long()
+        city_name = id_to_city[city_id]
+        itinerary.append({"day": day_num, "place": city_name})
+    
+    # Prepare the output JSON
+    output = {"itinerary": itinerary}
+    print(json.dumps(output, indent=2))
 else:
-    print("No solution found.")
+    print("No solution found")
