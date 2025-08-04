@@ -1,0 +1,1 @@
+next_city = find_next_city(itinerary[-1]["place"], current_day)
