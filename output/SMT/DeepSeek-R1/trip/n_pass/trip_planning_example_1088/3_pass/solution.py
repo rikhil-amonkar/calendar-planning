@@ -1,104 +1,113 @@
+import z3
 import json
-from z3 import *
 
-def main():
-    cities = ["Reykjavik", "Stockholm", "Tallinn", "Oslo", "Split", "Geneva", "Porto", "Stuttgart"]
-    days_req = [2, 3, 5, 5, 3, 2, 3, 5]  # for cities in order of index
+# Define the City enum type
+City, (Reykjavik, Stockholm, Oslo, Tallinn, Stuttgart, Split, Geneva, Porto) = \
+    z3.EnumSort('City', ['Reykjavik', 'Stockholm', 'Oslo', 'Tallinn', 'Stuttgart', 'Split', 'Geneva', 'Porto'])
 
-    # Define direct flights as a set of tuples (both directions)
-    graph_edges = [
-        (0, 1), (0, 2), (0, 3), (0, 7),
-        (1, 0), (1, 3), (1, 4), (1, 5), (1, 7),
-        (2, 0), (2, 3),
-        (3, 0), (3, 1), (3, 2), (3, 4), (3, 5), (3, 6),
-        (4, 1), (4, 3), (4, 5), (4, 7),
-        (5, 1), (5, 3), (5, 4), (5, 6),
-        (6, 3), (6, 5), (6, 7),
-        (7, 0), (7, 1), (7, 4), (7, 6)
-    ]
-    allowed_edges = set(graph_edges)
+# Define the allowed direct flights (both directions)
+allowed_flights = [
+    (Reykjavik, Stuttgart),
+    (Reykjavik, Stockholm),
+    (Reykjavik, Tallinn),
+    (Stockholm, Oslo),
+    (Stuttgart, Porto),
+    (Oslo, Split),
+    (Stockholm, Stuttgart),
+    (Reykjavik, Oslo),
+    (Oslo, Geneva),
+    (Stockholm, Split),
+    (Split, Stuttgart),
+    (Tallinn, Oslo),
+    (Stockholm, Geneva),
+    (Oslo, Porto),
+    (Geneva, Porto),
+    (Geneva, Split)
+]
 
-    s = Solver()
+allowed_pairs = set()
+for a, b in allowed_flights:
+    allowed_pairs.add((a, b))
+    allowed_pairs.add((b, a))
 
-    # Order of cities: list of integers for positions 0 to 7
-    order = [Int('order_%d' % i) for i in range(8)]
+# Create variables for the end city of each day (21 days)
+c = [z3.Const(f'c_{i}', City) for i in range(21)]
+
+solver = z3.Solver()
+
+# Fixed constraints
+solver.add(c[0] == Reykjavik)  # Day 1 must end in Reykjavik
+solver.add(c[18] == Porto)      # Day 19 must end in Porto
+solver.add(c[19] == Porto)      # Day 20 must end in Porto
+solver.add(c[20] == Porto)      # Day 21 must end in Porto
+
+# Meeting in Stockholm between day 2 and day 4: must be present on at least one of these days
+# Presence on day i is defined as: either the start of the day (end of previous day) or the end of the day is Stockholm.
+# Day2: start = c[0] (end of day1), end = c[1]
+# Day3: start = c[1], end = c[2]
+# Day4: start = c[2], end = c[3]
+presence_day2 = z3.Or(c[0] == Stockholm, c[1] == Stockholm)
+presence_day3 = z3.Or(c[1] == Stockholm, c[2] == Stockholm)
+presence_day4 = z3.Or(c[2] == Stockholm, c[3] == Stockholm)
+solver.add(z3.Or(presence_day2, presence_day3, presence_day4))
+
+# Flight constraints: consecutive days must be either the same city or connected by a direct flight
+for i in range(20):
+    solver.add(z3.Or(
+        c[i] == c[i+1],
+        z3.Or([z3.And(c[i] == a, c[i+1] == b) for (a, b) in allowed_pairs])
+    ))
+
+# Total days per city: count a day for a city if the city is the start or end of the day.
+def total_days(city):
+    total = 0
+    # Day1: start is Reykjavik (fixed), end is c[0]
+    total += z3.If(z3.Or(Reykjavik == city, c[0] == city), 1, 0)
+    # Days 2 to 21: for day i (1-indexed), start = c[i-2] for i>=2, but we index by the segment between days
+    # For segment i (0-indexed segment index, which is between day i and day i+1): 
+    #   For day i+1, the start is c[i] and the end is c[i+1]
+    for i in range(0, 20):   # i from 0 to 19: representing segments between day1-day2 up to day20-day21
+        # This segment corresponds to day (i+2) if we think about the day that ends at c[i+1]? 
+        # Actually, the segment from day (i) to day (i+1) (0-indexed) is for the presence on day (i+1) in terms of start and end?
+        # But note: the presence on day (i+1) is determined by the start (c[i]) and end (c[i+1]).
+        total += z3.If(z3.Or(c[i] == city, c[i+1] == city), 1, 0)
+    return total
+
+solver.add(total_days(Reykjavik) == 2)
+solver.add(total_days(Oslo) == 5)
+solver.add(total_days(Stuttgart) == 5)
+solver.add(total_days(Split) == 3)
+solver.add(total_days(Geneva) == 2)
+solver.add(total_days(Porto) == 3)
+solver.add(total_days(Tallinn) == 5)
+solver.add(total_days(Stockholm) == 3)
+
+# Solve the problem
+if solver.check() == z3.sat:
+    model = solver.model()
+    c_vals = [model.eval(c_i) for c_i in c]
     
-    # Each order[i] must be between 0 and 7
-    for i in range(8):
-        s.add(order[i] >= 0, order[i] < 8)
-    
-    s.add(Distinct(order))
-    
-    # First city is Reykjavik (0), last is Porto (6)
-    s.add(order[0] == 0)
-    s.add(order[7] == 6)
-    
-    # Flight constraints: consecutive cities must have a direct flight
-    for i in range(7):
-        cons = []
-        for u, v in allowed_edges:
-            cons.append(And(order[i] == u, order[i+1] == v))
-        s.add(Or(cons))
-    
-    # Helper function to get required days for a city (symbolic variable)
-    def get_days(city_var):
-        return If(city_var == 0, days_req[0],
-               If(city_var == 1, days_req[1],
-               If(city_var == 2, days_req[2],
-               If(city_var == 3, days_req[3],
-               If(city_var == 4, days_req[4],
-               If(city_var == 5, days_req[5],
-               If(city_var == 6, days_req[6],
-               days_req[7])))))))
-    
-    # Timeline variables
-    s_arr = [Int('s_arr_%d' % i) for i in range(8)]
-    e_arr = [Int('e_arr_%d' % i) for i in range(8)]
-    
-    # Fixed timeline for Reykjavik (first city)
-    s.add(s_arr[0] == 1)
-    s.add(e_arr[0] == s_arr[0] + get_days(order[0]) - 1)
-    
-    # Chain the cities: each city starts when the previous ends
-    for p in range(1, 8):
-        s.add(s_arr[p] == e_arr[p-1])
-        s.add(e_arr[p] == s_arr[p] + get_days(order[p]) - 1)
-    
-    # The trip must end at day 21
-    s.add(e_arr[7] == 21)
-    
-    # Porto (city index 6) must start on day 19 (since it ends on day 21 and lasts 3 days)
-    s.add(s_arr[7] == 19)
-    
-    # Stockholm (city index 1) must have a start day between 2 and 4 inclusive
-    stockholm_constraints = []
-    for i in range(8):
-        # If the city at position i is Stockholm, then its start day must be between 2 and 4
-        stockholm_constraints.append(And(order[i] == 1, s_arr[i] >= 2, s_arr[i] <= 4))
-    s.add(Or(stockholm_constraints))
-    
-    # Check and get model
-    if s.check() == sat:
-        model = s.model()
-        order_vals = [model.evaluate(order[i]).as_long() for i in range(8)]
-        s_vals = [model.evaluate(s_arr[i]).as_long() for i in range(8)]
-        e_vals = [model.evaluate(e_arr[i]).as_long() for i in range(8)]
-        
-        itinerary = []
-        for day in range(1, 22):  # days 1 to 21
-            cities_on_day = []
-            for pos in range(8):
-                if s_vals[pos] <= day <= e_vals[pos]:
-                    cities_on_day.append((pos, cities[order_vals[pos]]))
-            # Sort by position in the itinerary
-            cities_on_day_sorted = sorted(cities_on_day, key=lambda x: x[0])
-            place_str = ", ".join(city for (_, city) in cities_on_day_sorted)
-            itinerary.append({"day": day, "place": place_str})
-        
-        result = {"itinerary": itinerary}
-        print(json.dumps(result))
+    itinerary = []
+    # Day 1: start in Reykjavik, end in c[0]
+    start1 = Reykjavik
+    end1 = c_vals[0]
+    if start1.eq(end1):
+        cities_list = [str(start1)]
     else:
-        print("No solution found")
-
-if __name__ == "__main__":
-    main()
+        cities_list = sorted([str(start1), str(end1)])
+    itinerary.append({"day": 1, "city": cities_list})
+    
+    # Days 2 to 21: for day i (1-indexed i>=2), start = c[i-2], end = c[i-1]
+    for i in range(1, 21):
+        start_city = c_vals[i-1]
+        end_city = c_vals[i]
+        if start_city.eq(end_city):
+            cities_list = [str(start_city)]
+        else:
+            cities_list = sorted([str(start_city), str(end_city)])
+        itinerary.append({"day": i+1, "city": cities_list})
+    
+    result = {"itinerary": itinerary}
+    print(json.dumps(result))
+else:
+    print(json.dumps({"error": "No solution found"}))

@@ -1,73 +1,98 @@
 from z3 import *
+import json
 
-def solve_trip_scheduling(n_activities, durations, min_gaps, total_days):
-    n = n_activities
-    s = Solver()
-    
-    # Position variables to determine activity order
-    pos = [Int(f'pos_{i}') for i in range(n)]
-    start = [Int(f'start_{i}') for i in range(n)]
-    end = [Int(f'end_{i}') for i in range(n)]
-    
-    # Position constraints: distinct integers from 0 to n-1
-    s.add(Distinct(pos))
-    for i in range(n):
-        s.add(pos[i] >= 0, pos[i] < n)
-    
-    # Duration constraints
-    for i in range(n):
-        s.add(end[i] == start[i] + durations[i] - 1)
-        s.add(start[i] >= 1)
-        s.add(end[i] <= total_days)
-    
-    # First activity starts at day 1
-    first_activity = [And(pos[i] == 0, start[i] == 1) for i in range(n)]
-    s.add(Or(*first_activity))
-    
-    # Last activity ends at total_days
-    last_activity = [And(pos[i] == n-1, end[i] == total_days) for i in range(n)]
-    s.add(Or(*last_activity))
-    
-    # Global gap constraints for all activity pairs
-    for i in range(n):
-        for j in range(n):
-            if i != j:
-                # If i comes before j, enforce gap after i and before j
-                s.add(Implies(pos[i] < pos[j], start[j] >= end[i] + min_gaps[i][j] + 1))
-    
-    # Solve the problem
-    if s.check() == sat:
-        m = s.model()
-        pos_val = [m.evaluate(pos[i]).as_long() for i in range(n)]
-        start_val = [m.evaluate(start[i]).as_long() for i in range(n)]
-        end_val = [m.evaluate(end[i]).as_long() for i in range(n)]
-        
-        # Reconstruct activity sequence from positions
-        seq_val = [0] * n
-        for idx in range(n):
-            for i in range(n):
-                if pos_val[i] == idx:
-                    seq_val[idx] = i
-        return seq_val, start_val, end_val
-    else:
-        return None, None, None
+# City mapping and durations
+city_to_index = {
+    "Venice": 0, "Reykjavik": 1, "Munich": 2, "Santorini": 3,
+    "Manchester": 4, "Porto": 5, "Bucharest": 6, "Tallinn": 7,
+    "Valencia": 8, "Vienna": 9
+}
+index_to_city = {v: k for k, v in city_to_index.items()}
+durations = [3, 2, 3, 3, 3, 3, 5, 4, 2, 5]
 
-# Example usage
-if __name__ == "__main__":
-    n_activities = 4
-    durations = [3, 2, 2, 3]
-    min_gaps = [
-        [0, 0, 0, 0],
-        [0, 0, 0, 0],
-        [0, 0, 0, 0],
-        [0, 0, 0, 0]
-    ]
-    total_days = 10
+# Flight connections
+connections = [
+    ("Bucharest", "Manchester"), ("Munich", "Venice"), 
+    ("Santorini", "Manchester"), ("Vienna", "Reykjavik"),
+    ("Venice", "Santorini"), ("Munich", "Porto"),
+    ("Valencia", "Vienna"), ("Manchester", "Vienna"),
+    ("Porto", "Vienna"), ("Venice", "Manchester"),
+    ("Santorini", "Vienna"), ("Munich", "Manchester"),
+    ("Munich", "Reykjavik"), ("Bucharest", "Valencia"),
+    ("Venice", "Vienna"), ("Bucharest", "Vienna"),
+    ("Porto", "Manchester"), ("Munich", "Vienna"),
+    ("Valencia", "Porto"), ("Munich", "Bucharest"),
+    ("Tallinn", "Munich"), ("Santorini", "Bucharest"),
+    ("Munich", "Valencia")
+]
 
-    seq, start, end = solve_trip_scheduling(n_activities, durations, min_gaps, total_days)
-    if seq is not None:
-        print("Activity Sequence:", seq)
-        print("Start Times:", start)
-        print("End Times:", end)
-    else:
-        print("No valid schedule found")
+# Create allowed flight pairs
+edge_set = set()
+for cityA, cityB in connections:
+    i, j = city_to_index[cityA], city_to_index[cityB]
+    edge_set.add((min(i, j), max(i, j)))
+allowed_pairs = list(edge_set)
+n = 10  # Number of cities
+
+# Initialize Z3 solver
+s = Solver()
+
+# Z3 arrays for start/end days
+start_arr = Array('start_arr', IntSort(), IntSort())
+end_arr = Array('end_arr', IntSort(), IntSort())
+
+# Create variables for each city's start day
+start_vars = [Int(f'start_{i}') for i in range(n)]
+end_vars = [Int(f'end_{i}') for i in range(n)]
+
+# Duration constraints
+for i in range(n):
+    s.add(end_arr[i] == start_arr[i] + durations[i] - 1)
+    s.add(start_arr[i] == start_vars[i])
+    s.add(end_arr[i] == end_vars[i])
+    s.add(start_vars[i] >= 1, end_vars[i] <= 24)
+
+# Fixed start dates
+s.add(start_arr[city_to_index["Munich"]] == 4)
+s.add(start_arr[city_to_index["Santorini"]] == 8)
+s.add(start_arr[city_to_index["Valencia"]] == 14)
+
+# Visit order variables
+order = [Int(f'order_{k}') for k in range(n)]
+
+# Order must be a permutation
+s.add(Distinct(order))
+for k in range(n):
+    s.add(order[k] >= 0, order[k] < n)
+
+# Chain constraints
+s.add(start_arr[order[0]] == 1)
+s.add(end_arr[order[n-1]] == 24)
+for k in range(n-1):
+    s.add(end_arr[order[k]] == start_arr[order[k+1]])
+
+# Flight connections
+for k in range(n-1):
+    i, j = order[k], order[k+1]
+    s.add(Or([And(i == a, j == b) for a, b in allowed_pairs] + 
+             [And(i == b, j == a) for a, b in allowed_pairs]))
+
+# Solve and output
+if s.check() == sat:
+    model = s.model()
+    # Extract order
+    order_vals = [model.evaluate(o).as_long() for o in order]
+    # Build day itinerary
+    itinerary = []
+    for day in range(1, 25):
+        active = []
+        for i in range(n):
+            start_day = model.evaluate(start_vars[i]).as_long()
+            end_day = model.evaluate(end_vars[i]).as_long()
+            if start_day <= day <= end_day:
+                active.append(index_to_city[i])
+        place = active[0] if len(active) == 1 else sorted(active)
+        itinerary.append({"day": day, "place": place})
+    print(json.dumps({"itinerary": itinerary}, indent=2))
+else:
+    print("No solution found")

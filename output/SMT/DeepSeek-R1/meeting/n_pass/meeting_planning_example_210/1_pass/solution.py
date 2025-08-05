@@ -1,170 +1,124 @@
 from z3 import *
-import itertools
 import json
 
-def minutes_to_time_str(minutes):
-    total_minutes = minutes
-    hour = 9 + total_minutes // 60
-    minute = total_minutes % 60
-    return f"{hour:02d}:{minute:02d}"
-
 def main():
-    friends = [
-        {'name': 'Emily', 'location': 'P', 'start_avail': 435, 'end_avail': 720, 'duration': 105},
-        {'name': 'Joseph', 'location': 'R', 'start_avail': 495, 'end_avail': 780, 'duration': 120},
-        {'name': 'Melissa', 'location': 'F', 'start_avail': 405, 'end_avail': 765, 'duration': 75}
-    ]
-    
+    # Travel times between locations (in minutes)
     travel_times = {
-        'FW': {'P': 17, 'R': 18, 'F': 11},
-        'P': {'FW': 19, 'R': 7, 'F': 23},
-        'R': {'FW': 18, 'P': 7, 'F': 22},
-        'F': {'FW': 10, 'P': 22, 'R': 21}
+        ('FW', 'P'): 17,   # Fisherman's Wharf to Presidio
+        ('FW', 'R'): 18,   # Fisherman's Wharf to Richmond District
+        ('FW', 'FD'): 11,  # Fisherman's Wharf to Financial District
+        ('P', 'R'): 7,     # Presidio to Richmond District
+        ('P', 'FD'): 23,   # Presidio to Financial District
+        ('R', 'P'): 7,     # Richmond District to Presidio
+        ('R', 'FD'): 22,   # Richmond District to Financial District
+        ('FD', 'P'): 22,   # Financial District to Presidio
+        ('FD', 'R'): 21,   # Financial District to Richmond District
     }
     
-    itinerary = []
-    found = False
+    # Friend details: location, duration, availability (in minutes from 9:00 AM)
+    friends = {
+        'Emily': {
+            'loc': 'P',
+            'dur': 105,
+            'avail_low': (16*60 + 15) - (9*60),  # 16:15 -> 435 minutes from 9:00
+            'avail_high': (21*60) - (9*60) - 105   # 21:00 - 105 minutes = 615 minutes from 9:00
+        },
+        'Joseph': {
+            'loc': 'R',
+            'dur': 120,
+            'avail_low': (17*60 + 15) - (9*60),    # 17:15 -> 495 minutes from 9:00
+            'avail_high': (22*60) - (9*60) - 120   # 22:00 - 120 minutes = 660 minutes from 9:00
+        },
+        'Melissa': {
+            'loc': 'FD',
+            'dur': 75,
+            'avail_low': (15*60 + 45) - (9*60),    # 15:45 -> 405 minutes from 9:00
+            'avail_high': (21*60 + 45) - (9*60) - 75 # 21:45 - 75 minutes = 690 minutes from 9:00
+        }
+    }
     
-    # Try to schedule three meetings
-    perms = list(itertools.permutations([0, 1, 2]))
-    for perm in perms:
-        i, j, k = perm
-        s0 = Int(f's0_{perm}')
-        s1 = Int(f's1_{perm}')
-        s2 = Int(f's2_{perm}')
-        solver = Solver()
+    # All permutations of meeting orders
+    orders = [
+        ['Emily', 'Joseph', 'Melissa'],
+        ['Emily', 'Melissa', 'Joseph'],
+        ['Joseph', 'Emily', 'Melissa'],
+        ['Joseph', 'Melissa', 'Emily'],
+        ['Melissa', 'Emily', 'Joseph'],
+        ['Melissa', 'Joseph', 'Emily']
+    ]
+    
+    solution_found = False
+    itinerary_entries = []
+    
+    for order in orders:
+        s = Solver()
+        s1 = Int('s1')
+        s2 = Int('s2')
+        s3 = Int('s3')
         
-        # Constraints for the first meeting (friend i)
-        travel0 = travel_times['FW'][friends[i]['location']]
-        solver.add(s0 >= travel0)
-        solver.add(s0 >= friends[i]['start_avail'])
-        e0 = s0 + friends[i]['duration']
-        solver.add(e0 <= friends[i]['end_avail'])
+        f1 = order[0]
+        f2 = order[1]
+        f3 = order[2]
         
-        # Constraints for the second meeting (friend j)
-        travel1 = travel_times[friends[i]['location']][friends[j]['location']]
-        solver.add(s1 >= e0 + travel1)
-        solver.add(s1 >= friends[j]['start_avail'])
-        e1 = s1 + friends[j]['duration']
-        solver.add(e1 <= friends[j]['end_avail'])
+        loc1 = friends[f1]['loc']
+        loc2 = friends[f2]['loc']
+        loc3 = friends[f3]['loc']
         
-        # Constraints for the third meeting (friend k)
-        travel2 = travel_times[friends[j]['location']][friends[k]['location']]
-        solver.add(s2 >= e1 + travel2)
-        solver.add(s2 >= friends[k]['start_avail'])
-        e2 = s2 + friends[k]['duration']
-        solver.add(e2 <= friends[k]['end_avail'])
+        # Travel from Fisherman's Wharf (FW) to first location
+        t0 = travel_times[('FW', loc1)]
+        # Travel from first to second location
+        t1 = travel_times[(loc1, loc2)]
+        # Travel from second to third location
+        t2 = travel_times[(loc2, loc3)]
         
-        if solver.check() == sat:
-            m = solver.model()
-            s0_val = m[s0].as_long()
-            s1_val = m[s1].as_long()
-            s2_val = m[s2].as_long()
+        # Constraints for first meeting
+        s.add(s1 >= t0)
+        s.add(s1 >= friends[f1]['avail_low'])
+        s.add(s1 <= friends[f1]['avail_high'])
+        e1 = s1 + friends[f1]['dur']
+        
+        # Constraints for second meeting
+        s.add(s2 >= e1 + t1)
+        s.add(s2 >= friends[f2]['avail_low'])
+        s.add(s2 <= friends[f2]['avail_high'])
+        e2 = s2 + friends[f2]['dur']
+        
+        # Constraints for third meeting
+        s.add(s3 >= e2 + t2)
+        s.add(s3 >= friends[f3]['avail_low'])
+        s.add(s3 <= friends[f3]['avail_high'])
+        
+        if s.check() == sat:
+            model = s.model()
+            start1 = model[s1].as_long()
+            end1 = start1 + friends[f1]['dur']
+            start2 = model[s2].as_long()
+            end2 = start2 + friends[f2]['dur']
+            start3 = model[s3].as_long()
+            end3 = start3 + friends[f3]['dur']
             
-            meeting0 = {
-                "action": "meet",
-                "person": friends[i]['name'],
-                "start_time": minutes_to_time_str(s0_val),
-                "end_time": minutes_to_time_str(s0_val + friends[i]['duration'])
-            }
-            meeting1 = {
-                "action": "meet",
-                "person": friends[j]['name'],
-                "start_time": minutes_to_time_str(s1_val),
-                "end_time": minutes_to_time_str(s1_val + friends[j]['duration'])
-            }
-            meeting2 = {
-                "action": "meet",
-                "person": friends[k]['name'],
-                "start_time": minutes_to_time_str(s2_val),
-                "end_time": minutes_to_time_str(s2_val + friends[k]['duration'])
-            }
-            itinerary = [meeting0, meeting1, meeting2]
-            found = True
+            # Convert minutes to HH:MM format
+            def min_to_time(mins):
+                total_mins = 9*60 + mins
+                h = total_mins // 60
+                m = total_mins % 60
+                return f"{h:02d}:{m:02d}"
+            
+            # Create meeting entries
+            entries = [
+                {"action": "meet", "person": f1, "start_time": min_to_time(start1), "end_time": min_to_time(end1)},
+                {"action": "meet", "person": f2, "start_time": min_to_time(start2), "end_time": min_to_time(end2)},
+                {"action": "meet", "person": f3, "start_time": min_to_time(start3), "end_time": min_to_time(end3)}
+            ]
+            itinerary_entries = entries
+            solution_found = True
             break
     
-    if found:
-        print(json.dumps({"itinerary": itinerary}))
-        return
-    
-    # Try to schedule two meetings
-    subsets = list(itertools.combinations([0,1,2], 2))
-    for skip in range(3):
-        indices = [idx for idx in [0,1,2] if idx != skip]
-        orders = list(itertools.permutations(indices))
-        for order in orders:
-            i, j = order
-            s0 = Int(f's0_{order}')
-            s1 = Int(f's1_{order}')
-            solver = Solver()
-            
-            # Constraints for the first meeting (friend i)
-            travel0 = travel_times['FW'][friends[i]['location']]
-            solver.add(s0 >= travel0)
-            solver.add(s0 >= friends[i]['start_avail'])
-            e0 = s0 + friends[i]['duration']
-            solver.add(e0 <= friends[i]['end_avail'])
-            
-            # Constraints for the second meeting (friend j)
-            travel1 = travel_times[friends[i]['location']][friends[j]['location']]
-            solver.add(s1 >= e0 + travel1)
-            solver.add(s1 >= friends[j]['start_avail'])
-            e1 = s1 + friends[j]['duration']
-            solver.add(e1 <= friends[j]['end_avail'])
-            
-            if solver.check() == sat:
-                m = solver.model()
-                s0_val = m[s0].as_long()
-                s1_val = m[s1].as_long()
-                
-                meeting0 = {
-                    "action": "meet",
-                    "person": friends[i]['name'],
-                    "start_time": minutes_to_time_str(s0_val),
-                    "end_time": minutes_to_time_str(s0_val + friends[i]['duration'])
-                }
-                meeting1 = {
-                    "action": "meet",
-                    "person": friends[j]['name'],
-                    "start_time": minutes_to_time_str(s1_val),
-                    "end_time": minutes_to_time_str(s1_val + friends[j]['duration'])
-                }
-                itinerary = [meeting0, meeting1]
-                found = True
-                break
-        if found:
-            break
-    if found:
-        print(json.dumps({"itinerary": itinerary}))
-        return
-    
-    # Try to schedule one meeting
-    for idx in range(3):
-        s = Int(f's_{idx}')
-        solver = Solver()
-        travel0 = travel_times['FW'][friends[idx]['location']]
-        solver.add(s >= travel0)
-        solver.add(s >= friends[idx]['start_avail'])
-        e = s + friends[idx]['duration']
-        solver.add(e <= friends[idx]['end_avail'])
-        
-        if solver.check() == sat:
-            m = solver.model()
-            s_val = m[s].as_long()
-            meeting = {
-                "action": "meet",
-                "person": friends[idx]['name'],
-                "start_time": minutes_to_time_str(s_val),
-                "end_time": minutes_to_time_str(s_val + friends[idx]['duration'])
-            }
-            itinerary = [meeting]
-            found = True
-            break
-    
-    if found:
-        print(json.dumps({"itinerary": itinerary}))
+    if solution_found:
+        result = {"itinerary": itinerary_entries}
+        print(json.dumps(result, indent=4))
     else:
-        print(json.dumps({"itinerary": []}))
+        print('{"itinerary": []}')
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

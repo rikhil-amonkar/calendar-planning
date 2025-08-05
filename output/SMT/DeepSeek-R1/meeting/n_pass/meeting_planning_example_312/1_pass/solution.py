@@ -1,125 +1,83 @@
 from z3 import *
 
 def main():
-    # Travel times dictionary
-    travel_dict = {
-        ("Richmond District", "Sunset District"): 11,
-        ("Richmond District", "Haight-Ashbury"): 10,
-        ("Richmond District", "Mission District"): 20,
-        ("Richmond District", "Golden Gate Park"): 9,
-        ("Sunset District", "Richmond District"): 12,
-        ("Sunset District", "Haight-Ashbury"): 15,
-        ("Sunset District", "Mission District"): 24,
-        ("Sunset District", "Golden Gate Park"): 11,
-        ("Haight-Ashbury", "Richmond District"): 10,
-        ("Haight-Ashbury", "Sunset District"): 15,
-        ("Haight-Ashbury", "Mission District"): 11,
-        ("Haight-Ashbury", "Golden Gate Park"): 7,
-        ("Mission District", "Richmond District"): 20,
-        ("Mission District", "Sunset District"): 24,
-        ("Mission District", "Haight-Ashbury"): 12,
-        ("Mission District", "Golden Gate Park"): 17,
-        ("Golden Gate Park", "Richmond District"): 7,
-        ("Golden Gate Park", "Sunset District"): 10,
-        ("Golden Gate Park", "Haight-Ashbury"): 7,
-        ("Golden Gate Park", "Mission District"): 17
-    }
-    
-    def get_travel_time(loc1, loc2):
-        key = (loc1, loc2)
-        if key in travel_dict:
-            return travel_dict[key]
-        key2 = (loc2, loc1)
-        if key2 in travel_dict:
-            return travel_dict[key2]
-        return 0  # Default if not found (should not happen)
-
-    meetings = [
-        {"name": "virtual", "loc": "Richmond District", "start": 0, "end": 0, "met": True},
-        {"name": "Sarah", "loc": "Sunset District", "min_start": 105, "max_end": 600, "duration": 30},
-        {"name": "Richard", "loc": "Haight-Ashbury", "min_start": 165, "max_end": 405, "duration": 90},
-        {"name": "Elizabeth", "loc": "Mission District", "min_start": 120, "max_end": 495, "duration": 120},
-        {"name": "Michelle", "loc": "Golden Gate Park", "min_start": 555, "max_end": 705, "duration": 90}
+    # Travel times between districts: [Richmond, Sunset, Haight-Ashbury, Mission, Golden Gate Park]
+    travel_matrix = [
+        [0, 11, 10, 20, 9],    # from Richmond
+        [12, 0, 15, 24, 11],    # from Sunset
+        [10, 15, 0, 11, 7],     # from Haight-Ashbury
+        [20, 24, 12, 0, 17],    # from Mission
+        [7, 10, 7, 17, 0]       # from Golden Gate Park
     ]
-
-    # Initialize Z3 variables for real meetings
-    for i in range(1, len(meetings)):
-        m = meetings[i]
-        m['met_var'] = Bool(f"met_{m['name']}")
-        m['start_var'] = Int(f"start_{m['name']}")
-        m['end_var'] = Int(f"end_{m['name']}")
-
+    
+    # Friend details: [Sarah, Richard, Elizabeth, Michelle]
+    friend_names = ['Sarah', 'Richard', 'Elizabeth', 'Michelle']
+    # Availability start times in minutes from midnight (9:00 AM is 540 minutes)
+    avail_start = [10*60 + 45, 11*60 + 45, 11*60 + 0, 18*60 + 15]  # 10:45, 11:45, 11:00, 18:15
+    avail_end = [19*60 + 0, 15*60 + 45, 17*60 + 15, 20*60 + 45]    # 19:00, 15:45, 17:15, 20:45
+    durations = [30, 90, 120, 90]  # in minutes
+    # Each friend's district: 1=Sunset, 2=Haight-Ashbury, 3=Mission, 4=Golden Gate Park
+    districts = [1, 2, 3, 4]  # Sarah in Sunset (1), Richard in Haight-Ashbury (2), etc.
+    
+    # Initialize Z3 variables
+    met = [Bool(f'met_{i}') for i in range(4)]
+    start_times = [Int(f'start_{i}') for i in range(4)]
+    positions = [Int(f'pos_{i}') for i in range(4)]
+    
+    # Create an optimizer
     opt = Optimize()
-
-    # Add constraints for each meeting
-    for i in range(1, len(meetings)):
-        m = meetings[i]
-        opt.add(Implies(m['met_var'], 
-                       And(
-                           m['start_var'] >= m['min_start'],
-                           m['end_var'] == m['start_var'] + m['duration'],
-                           m['end_var'] <= m['max_end']
-                       )))
-
-    # Add pairwise travel constraints
-    for i in range(len(meetings)):
-        for j in range(i+1, len(meetings)):
-            m1 = meetings[i]
-            m2 = meetings[j]
-            loc1 = m1['loc']
-            loc2 = m2['loc']
-            t12 = get_travel_time(loc1, loc2)
-            t21 = get_travel_time(loc2, loc1)
-            
-            if i == 0:  # Virtual meeting
-                # Only constraint: travel from virtual to real meeting
-                opt.add(Implies(m2['met_var'], m1['end'] + t12 <= m2['start_var']))
-            else:
-                # Both are real meetings
-                opt.add(Implies(And(m1['met_var'], m2['met_var']),
-                               Or(
-                                   m1['end_var'] + t12 <= m2['start_var'],
-                                   m2['end_var'] + t21 <= m1['start_var']
-                               )))
-
-    # Maximize the number of meetings
-    total_met = Sum([If(m['met_var'], 1, 0) for m in meetings[1:]])
+    
+    # Constraints for each friend
+    for i in range(4):
+        # If meeting is scheduled, start time must be within availability
+        opt.add(Implies(met[i], start_times[i] >= avail_start[i]))
+        opt.add(Implies(met[i], start_times[i] + durations[i] <= avail_end[i]))
+        # Start time must include travel from Richmond (district 0)
+        opt.add(Implies(met[i], start_times[i] >= 540 + travel_matrix[0][districts[i]]))
+        # Position must be between 0 and 3 if meeting is scheduled
+        opt.add(Implies(met[i], And(positions[i] >= 0, positions[i] < 4)))
+    
+    # Ensure distinct positions for scheduled meetings
+    for i in range(4):
+        for j in range(i + 1, 4):
+            opt.add(Implies(And(met[i], met[j]), positions[i] != positions[j]))
+    
+    # Travel time constraints between consecutive meetings
+    for i in range(4):
+        for j in range(4):
+            if i != j:
+                # If both meetings are scheduled and i comes before j, ensure travel time is accounted for
+                condition = And(met[i], met[j], positions[i] < positions[j])
+                travel_time = travel_matrix[districts[i]][districts[j]]
+                opt.add(Implies(condition, start_times[j] >= start_times[i] + durations[i] + travel_time))
+    
+    # Maximize the number of meetings scheduled
+    total_met = Sum([If(met[i], 1, 0) for i in range(4)])
     opt.maximize(total_met)
-
+    
+    # Solve the problem
     if opt.check() == sat:
         model = opt.model()
-        itinerary_list = []
-        for i in range(1, len(meetings)):
-            m = meetings[i]
-            if model.evaluate(m['met_var']):
-                start_val = model.evaluate(m['start_var'])
-                # Convert Z3 Int to Python int
-                start_minutes = start_val.as_long()
-                end_minutes = start_minutes + m['duration']
-                # Convert minutes to time string (since 9:00 AM)
-                total_minutes_start = start_minutes
-                hours_start = 9 + total_minutes_start // 60
-                minutes_start = total_minutes_start % 60
-                start_time_str = f"{hours_start:02d}:{minutes_start:02d}"
-                
-                total_minutes_end = end_minutes
-                hours_end = 9 + total_minutes_end // 60
-                minutes_end = total_minutes_end % 60
-                end_time_str = f"{hours_end:02d}:{minutes_end:02d}"
-                
-                itinerary_list.append({
-                    "action": "meet",
-                    "person": m['name'],
-                    "start_time": start_time_str,
-                    "end_time": end_time_str
+        itinerary = []
+        for i in range(4):
+            if model.eval(met[i]):
+                start_val = model.eval(start_times[i]).as_long()
+                end_val = start_val + durations[i]
+                # Format times as HH:MM
+                start_str = f"{start_val // 60:02d}:{start_val % 60:02d}"
+                end_str = f"{end_val // 60:02d}:{end_val % 60:02d}"
+                itinerary.append({
+                    'action': 'meet',
+                    'person': friend_names[i],
+                    'start_time': start_str,
+                    'end_time': end_str
                 })
-        
-        # Sort by start time
-        itinerary_list.sort(key=lambda x: x['start_time'])
-        result = {"itinerary": itinerary_list}
-        print(result)
+        # Sort itinerary by start time
+        itinerary.sort(key=lambda x: x['start_time'])
+        result = {'itinerary': itinerary}
+        print(f"SOLUTION: {result}")
     else:
-        print('{"itinerary": []}')
+        print('SOLUTION: {"itinerary": []}')
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

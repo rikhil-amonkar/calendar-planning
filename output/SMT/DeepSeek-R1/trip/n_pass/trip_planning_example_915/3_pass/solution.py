@@ -1,106 +1,122 @@
 from z3 import *
-import json
 
 def main():
-    cities_dict = {
-        "Bucharest": 0,
-        "Venice": 1,
-        "Prague": 2,
-        "Frankfurt": 3,
-        "Zurich": 4,
-        "Florence": 5,
-        "Tallinn": 6
-    }
-    city_names = {v: k for k, v in cities_dict.items()}
+    # City indices
+    Bucharest = 0
+    Venice = 1
+    Prague = 2
+    Frankfurt = 3
+    Zurich = 4
+    Florence = 5
+    Tallinn = 6
+
+    city_names = ["Bucharest", "Venice", "Prague", "Frankfurt", "Zurich", "Florence", "Tallinn"]
     
-    # Define direct flight connections (both directions)
-    edges = [
-        (2, 6), (6, 2),  # Prague <-> Tallinn
-        (2, 4), (4, 2),  # Prague <-> Zurich
-        (5, 2), (2, 5),  # Florence <-> Prague
-        (3, 0), (0, 3),  # Frankfurt <-> Bucharest
-        (3, 1), (1, 3),  # Frankfurt <-> Venice
-        (2, 0), (0, 2),  # Prague <-> Bucharest
-        (0, 4), (4, 0),  # Bucharest <-> Zurich
-        (6, 3), (3, 6),  # Tallinn <-> Frankfurt
-        (4, 5), (5, 4),  # Zurich <-> Florence (added missing return flight)
-        (3, 4), (4, 3),  # Frankfurt <-> Zurich
-        (4, 1), (1, 4),  # Zurich <-> Venice
-        (5, 3), (3, 5),  # Florence <-> Frankfurt
-        (2, 3), (3, 2),  # Prague <-> Frankfurt
-        (6, 4), (4, 6)   # Tallinn <-> Zurich
+    # Allowed flights (directed)
+    allowed_flights = [
+        (Bucharest, Frankfurt), (Frankfurt, Bucharest),
+        (Bucharest, Prague), (Prague, Bucharest),
+        (Bucharest, Zurich), (Zurich, Bucharest),
+        (Venice, Frankfurt), (Frankfurt, Venice),
+        (Venice, Zurich), (Zurich, Venice),
+        (Prague, Tallinn), (Tallinn, Prague),
+        (Prague, Zurich), (Zurich, Prague),
+        (Prague, Florence), (Florence, Prague),
+        (Frankfurt, Tallinn), (Tallinn, Frankfurt),
+        (Frankfurt, Zurich), (Zurich, Frankfurt),
+        (Frankfurt, Florence), (Florence, Frankfurt),
+        (Prague, Frankfurt), (Frankfurt, Prague),
+        (Zurich, Tallinn), (Tallinn, Zurich),
+        (Zurich, Florence)  # Only Zurich->Florence
     ]
+
+    # Create Z3 variables
+    s = [Int(f's_{i}') for i in range(26)]  # start city each day (0-25)
+    d_last = Int('d_last')  # end city on day 26
+
+    solver = Solver()
+
+    # City indices constraint
+    for i in range(26):
+        solver.add(s[i] >= 0, s[i] <= 6)
+    solver.add(d_last >= 0, d_last <= 6)
+
+    # Flight validity helper
+    def valid_flight(start, end):
+        return Or([And(start == a, end == b) for (a, b) in allowed_flights])
     
-    # Required days per city
-    required_days = [3, 5, 4, 5, 5, 5, 5]  # [Bucharest, Venice, Prague, Frankfurt, Zurich, Florence, Tallinn]
+    # Flight constraints for days 0-24
+    for i in range(25):
+        solver.add(Or(
+            s[i] == s[i+1],  # Stay
+            And(s[i] != s[i+1], valid_flight(s[i], s[i+1]))  # Fly
+        )
     
-    # Create Z3 variables for each day (0 = start of day1, 1-26 = end of each day)
-    cities = [Int(f'city_{i}') for i in range(27)]
-    s = Solver()
+    # Flight constraint for day 25 to day 26
+    solver.add(Or(
+        s[25] == d_last,  # Stay
+        And(s[25] != d_last, valid_flight(s[25], d_last))  # Fly
+    )
+
+    # Presence variables: presence[day][city] for days 1-26
+    presence = [[Bool(f'presence_{d}_{c}') for c in range(7)] for d in range(26)]
     
-    # Each city variable must be between 0-6
-    for c in cities:
-        s.add(c >= 0, c <= 6)
+    # Define presence constraints
+    for d in range(25):  # Days 1-25
+        for c in range(7):
+            # Presence if either start or end city matches
+            solver.add(presence[d][c] == Or(s[d] == c, s[d+1] == c))
     
-    # Flight constraints: consecutive days must be same city or have direct flight
-    for i in range(1, 27):
-        current_edges = []
-        for a, b in edges:
-            current_edges.append(And(cities[i-1] == a, cities[i] == b))
-        s.add(Or(cities[i-1] == cities[i], Or(current_edges)))
-    
-    # Constraint: total days per city must match requirements
+    # Day 26 presence
     for c in range(7):
-        total = 0
-        for i in range(1, 27):
-            # Count day if either start or end is in city c
-            total += If(Or(cities[i-1] == c, cities[i] == c), 1, 0)
-        s.add(total == required_days[c])
+        solver.add(presence[25][c] == Or(s[25] == c, d_last == c))
+
+    # Total days per city
+    total_days = [Int(f'total_{city_names[c]}') for c in range(7)]
+    for c in range(7):
+        solver.add(total_days[c] == Sum([If(presence[d][c], 1, 0) for d in range(26)]))
     
-    # Event constraints: must be in specific cities during certain periods
-    # Venice between days 22-26
-    venice_days = []
-    for day in range(22, 27):  # Days 22 to 26 inclusive
-        # Check if either start or end of day is in Venice
-        venice_days.append(Or(cities[day-1] == cities_dict["Venice"], cities[day] == cities_dict["Venice"]))
-    s.add(Or(venice_days))
-    
-    # Frankfurt between days 12-16
-    frankfurt_days = []
-    for day in range(12, 17):  # Days 12 to 16 inclusive
-        frankfurt_days.append(Or(cities[day-1] == cities_dict["Frankfurt"], cities[day] == cities_dict["Frankfurt"]))
-    s.add(Or(frankfurt_days))
-    
-    # Tallinn between days 8-12
-    tallinn_days = []
-    for day in range(8, 13):  # Days 8 to 12 inclusive
-        tallinn_days.append(Or(cities[day-1] == cities_dict["Tallinn"], cities[day] == cities_dict["Tallinn"]))
-    s.add(Or(tallinn_days))
-    
-    # Solve and output itinerary
-    if s.check() == sat:
-        model = s.model()
+    # Set total days constraints
+    solver.add(total_days[Bucharest] == 3)
+    solver.add(total_days[Venice] == 5)
+    solver.add(total_days[Prague] == 4)
+    solver.add(total_days[Frankfurt] == 5)
+    solver.add(total_days[Zurich] == 5)
+    solver.add(total_days[Florence] == 5)
+    solver.add(total_days[Tallinn] == 5)
+
+    # Event constraints
+    venice_event = Or([presence[d][Venice] for d in [21, 22, 23, 24, 25]])  # Days 22-26
+    frankfurt_event = Or([presence[d][Frankfurt] for d in [11, 12, 13, 14, 15]])  # Days 12-16
+    tallinn_event = Or([presence[d][Tallinn] for d in [7, 8, 9, 10, 11]])  # Days 8-12
+
+    solver.add(venice_event, frankfurt_event, tallinn_event)
+
+    # Solve and output
+    if solver.check() == sat:
+        model = solver.model()
+        s_val = [model.evaluate(s[i]).as_long() for i in range(26)]
+        d_last_val = model.evaluate(d_last).as_long()
+        
         itinerary = []
-        current_city = model[cities[0]].as_long()
-        start_day = 1
-        # Group consecutive days in the same city
-        for day in range(1, 27):
-            city_val = model[cities[day]].as_long()
-            if city_val != current_city:
-                itinerary.append({
-                    'day_range': f'Day {start_day}-{day}',
-                    'place': city_names[current_city]
-                })
-                current_city = city_val
-                start_day = day + 1
-        # Add last city
-        itinerary.append({
-            'day_range': f'Day {start_day}-26',
-            'place': city_names[current_city]
-        })
+        for day in range(1, 26):  # Days 1-25
+            start_city = s_val[day-1]
+            end_city = s_val[day]
+            if start_city == end_city:
+                itinerary.append({"day": day, "city": city_names[start_city]})
+            else:
+                itinerary.append({"day": day, "city": [city_names[start_city], city_names[end_city]]})
+        
+        # Day 26
+        if s_val[25] == d_last_val:
+            itinerary.append({"day": 26, "city": city_names[s_val[25]]})
+        else:
+            itinerary.append({"day": 26, "city": [city_names[s_val[25]], city_names[d_last_val]]})
+        
+        import json
         print(json.dumps({"itinerary": itinerary}, indent=2))
     else:
         print("No solution found")
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

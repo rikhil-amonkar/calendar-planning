@@ -1,115 +1,103 @@
 from z3 import *
-import json
 
-def main():
-    cities = ['Brussels', 'Bucharest', 'Stuttgart', 'Mykonos', 'Madrid', 'Helsinki', 'Split', 'London']
-    required_days = [4, 3, 4, 2, 2, 5, 3, 5]
-    madrid_index = cities.index('Madrid')
-    stuttgart_index = cities.index('Stuttgart')
-    
-    undirected_flights = [
-        ('Helsinki', 'London'),
-        ('Split', 'Madrid'),
-        ('Helsinki', 'Madrid'),
-        ('London', 'Madrid'),
-        ('Brussels', 'London'),
-        ('Bucharest', 'London'),
-        ('Brussels', 'Bucharest'),
-        ('Bucharest', 'Madrid'),
-        ('Split', 'Helsinki'),
-        ('Mykonos', 'Madrid'),
-        ('Stuttgart', 'London'),
-        ('Helsinki', 'Brussels'),
-        ('Brussels', 'Madrid'),
-        ('Split', 'London'),
-        ('Stuttgart', 'Split'),
-        ('London', 'Mykonos')
-    ]
-    city_to_index = {city: idx for idx, city in enumerate(cities)}
-    undirected_flights_int = []
-    for a, b in undirected_flights:
-        undirected_flights_int.append((city_to_index[a], city_to_index[b]))
-    
-    directed_flights = []
-    for (a, b) in undirected_flights_int:
-        directed_flights.append((a, b))
-        directed_flights.append((b, a))
-    
+def solve_itinerary():
     s = Solver()
-    num_days = 21
-    s_days = [Int(f's_{d}') for d in range(1, num_days+1)]
-    e_days = [Int(f'e_{d}') for d in range(1, num_days+1)]
     
-    for d in range(num_days):
-        s.add(s_days[d] >= 0, s_days[d] < 8)
-        s.add(e_days[d] >= 0, e_days[d] < 8)
+    cities = ["Stuttgart", "Split", "Helsinki", "Brussels", "Bucharest", "London", "Mykonos", "Madrid"]
+    n = len(cities)
+    total_days = 21
+    travel_days = [5, 10, 15, 20]
     
-    for d in range(num_days-1):
-        s.add(s_days[d+1] == e_days[d])
+    # Segment assignment for each city
+    segment = [Int(f"segment_{i}") for i in range(n)]
     
-    for d in range(num_days):
-        no_travel = (s_days[d] == e_days[d])
-        options = []
-        for (a, b) in directed_flights:
-            options.append(And(s_days[d] == a, e_days[d] == b))
-        travel_ok = Or(options)
-        s.add(Or(no_travel, travel_ok))
+    # Each city is assigned to a unique segment
+    s.add(Distinct(segment))
+    for i in range(n):
+        s.add(segment[i] >= 0, segment[i] < n)
     
-    total_per_city = [0] * 8
-    for c in range(8):
-        total = 0
-        for d in range(num_days):
-            in_city = Or(s_days[d] == c, And(s_days[d] != e_days[d], e_days[d] == c))
-            total += If(in_city, 1, 0)
-        total_per_city[c] = total
-        s.add(total == required_days[c])
+    # Start and end days for each segment
+    start = [Int(f"start_{i}") for i in range(n)]
+    end = [Int(f"end_{i}") for i in range(n)]
     
-    for d in range(19):
-        in_madrid = Or(s_days[d] == madrid_index, And(s_days[d] != e_days[d], e_days[d] == madrid_index))
-        s.add(Not(in_madrid))
-    in_madrid20 = Or(s_days[19] == madrid_index, And(s_days[19] != e_days[19], e_days[19] == madrid_index))
-    in_madrid21 = Or(s_days[20] == madrid_index, And(s_days[20] != e_days[20], e_days[20] == madrid_index))
-    s.add(in_madrid20, in_madrid21)
+    # Travel days between segments (end of segment i and start of segment i+1)
+    travel = [Int(f"travel_{i}") for i in range(n-1)]
     
-    stuttgart_early_days = []
-    for d in range(4):
-        in_stuttgart = Or(s_days[d] == stuttgart_index, And(s_days[d] != e_days[d], e_days[d] == stuttgart_index))
-        stuttgart_early_days.append(in_stuttgart)
-    s.add(Or(stuttgart_early_days))
+    # First city starts on day 1
+    s.add(start[0] == 1)
+    # Last city ends on day 21
+    s.add(end[n-1] == total_days)
+    
+    # Segment 0 must be Stuttgart
+    s.add(segment[0] == cities.index("Stuttgart"))
+    # Last segment must be Madrid
+    s.add(segment[n-1] == cities.index("Madrid"))
+    
+    # Ensure travel days are in {5,10,15,20}
+    for i in range(n-1):
+        s.add(Or([travel[i] == d for d in travel_days]))
+    
+    # Connectivity: end of segment i is the day before travel, and start of next is the travel day
+    for i in range(n-1):
+        s.add(end[i] == travel[i] - 1)
+        s.add(start[i+1] == travel[i])
+    
+    # Consecutive days within a segment
+    for i in range(n):
+        s.add(end[i] >= start[i])
+        duration = end[i] - start[i] + 1
+        if i == 0:
+            # First segment must have at least 4 days (since travel on day 5 is the earliest)
+            s.add(duration >= 4)
+        else:
+            s.add(duration >= 1)
+    
+    # For segments, ensure they are ordered by start day
+    for i in range(n-1):
+        s.add(start[i] < start[i+1])
+        s.add(end[i] < start[i+1])
+    
+    # Sum of durations must be 21
+    total_duration = Int("total_duration")
+    s.add(total_duration == total_days)
+    durations = [end[i] - start[i] + 1 for i in range(n)]
+    s.add(sum(durations) == total_days)
+    
+    # Exactly one city has a duration of 1, others >= 2
+    one_day_city = Int("one_day_city")
+    s.add(one_day_city >= 0, one_day_city < n)
+    for i in range(n):
+        duration = end[i] - start[i] + 1
+        if i == 0:
+            # First city cannot be 1 day
+            s.add(duration != 1)
+        else:
+            s.add(Implies(one_day_city == i, duration == 1))
+            s.add(Implies(one_day_city != i, duration >= 2))
     
     if s.check() == sat:
-        m = s.model()
-        counts = [0] * 8
-        for d in range(num_days):
-            s_val = m.eval(s_days[d]).as_long()
-            e_val = m.eval(e_days[d]).as_long()
-            for c in range(8):
-                if s_val == c:
-                    counts[c] += 1
-                elif e_val == c and s_val != e_val:
-                    counts[c] += 1
-        valid = True
-        for c in range(8):
-            if counts[c] != required_days[c]:
-                valid = False
-                break
-        if not valid:
-            print('{"error": "No solution found"}')
-            return
+        model = s.model()
+        seg_order = [model.evaluate(segment[i]).as_long() for i in range(n)]
+        start_days = [model.evaluate(start[i]).as_long() for i in range(n)]
+        end_days = [model.evaluate(end[i]).as_long() for i in range(n)]
         
-        itinerary_list = []
-        for d in range(num_days):
-            s_val = m.eval(s_days[d]).as_long()
-            e_val = m.eval(e_days[d]).as_long()
-            cities_today = {cities[s_val]}
-            if s_val != e_val:
-                cities_today.add(cities[e_val])
-            place_str = ", ".join(sorted(cities_today))
-            itinerary_list.append({"day": d+1, "place": place_str})
-        result = {'itinerary': itinerary_list}
-        print(json.dumps(result))
+        itinerary = []
+        for i in range(n):
+            city_index = seg_order[i]
+            s_day = start_days[i]
+            e_day = end_days[i]
+            if s_day == e_day:
+                day_range = f"Day {s_day}"
+            else:
+                day_range = f"Day {s_day}-{e_day}"
+            itinerary.append({'day_range': day_range, 'place': cities[city_index]})
+        
+        return {'itinerary': itinerary}
     else:
-        print('{"error": "No solution found"}')
+        return None
 
-if __name__ == '__main__':
-    main()
+result = solve_itinerary()
+if result is not None:
+    print(result)
+else:
+    print("No valid itinerary found.")

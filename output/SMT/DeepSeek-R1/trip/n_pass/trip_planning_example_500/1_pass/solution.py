@@ -1,97 +1,112 @@
 from z3 import *
+import json
 
 def main():
     # Define the City enumeration
-    City, (Hamburg, Munich, Manchester, Lyon, Split) = EnumSort('City', ['Hamburg', 'Munich', 'Manchester', 'Lyon', 'Split'])
-    city_names = {
-        Hamburg: "Hamburg",
-        Munich: "Munich",
-        Manchester: "Manchester",
-        Lyon: "Lyon",
-        Split: "Split"
+    City = Datatype('City')
+    City.declare('Hamburg')
+    City.declare('Munich')
+    City.declare('Manchester')
+    City.declare('Lyon')
+    City.declare('Split')
+    City = City.create()
+    
+    # Map city names to their Z3 constants
+    city_map_str = {
+        "Hamburg": City.Hamburg,
+        "Munich": City.Munich,
+        "Manchester": City.Manchester,
+        "Lyon": City.Lyon,
+        "Split": City.Split
     }
-
-    # Define the directed flights set
-    directed_flights = set()
-
-    undirected_edges = [
-        ('Split', 'Munich'),
-        ('Munich', 'Manchester'),
-        ('Hamburg', 'Manchester'),
-        ('Hamburg', 'Munich'),
-        ('Split', 'Lyon'),
-        ('Lyon', 'Munich'),
-        ('Hamburg', 'Split')
-    ]
-
-    # Add bidirectional edges for undirected flights
-    for a, b in undirected_edges:
-        c1 = City[a]
-        c2 = City[b]
-        directed_flights.add((c1, c2))
-        directed_flights.add((c2, c1))
-
-    # Add directed flight from Manchester to Split
-    directed_flights.add((City['Manchester'], City['Split']))
-
-    # Create start and end variables for 20 days
-    start = [Const('start_%d' % i, City) for i in range(1, 21)]
-    end = [Const('end_%d' % i, City) for i in range(1, 21)]
-
+    
+    # Create variables P0 to P20
+    P = [Const(f'P{i}', City) for i in range(0,21)]
+    
     s = Solver()
-
-    # Constraint 1: Chain constraint (end of day i must equal start of day i+1)
-    for i in range(0, 19):
-        s.add(end[i] == start[i+1])
-
-    # Constraint 2: Flight constraints
-    for i in range(0, 20):
-        # If start[i] != end[i], then (start[i], end[i]) must be in directed_flights
-        flight_taken = (start[i] != end[i])
-        valid_flight = Or([And(start[i] == c1, end[i] == c2) for (c1, c2) in directed_flights])
-        s.add(If(flight_taken, valid_flight, True))
-
-    # Constraint 3: Specific day constraints
-    s.add(end[12] == Lyon)   # End of day 13 (index 12) must be Lyon
-    s.add(end[18] == Manchester)  # End of day 19 (index 18) must be Manchester
-
-    # Constraint 4: Total days per city
-    required_days = {
-        Hamburg: 7,
-        Munich: 6,
-        Manchester: 2,
-        Lyon: 2,
-        Split: 7
-    }
-
-    for city in [Hamburg, Munich, Manchester, Lyon, Split]:
-        total = 0
-        for i in range(0, 20):
-            # Count day if: start[i] == city OR (end[i] == city and start[i] != city)
-            cond = Or(start[i] == city, And(end[i] == city, start[i] != city))
-            total += If(cond, 1, 0)
-        s.add(total == required_days[city])
-
-    # Solve the problem
+    
+    # Define the directed flights based on the problem's direct flights
+    directed_flights = set()
+    bidirectional_edges = [
+        ("Split", "Munich"),
+        ("Munich", "Manchester"),
+        ("Hamburg", "Manchester"),
+        ("Hamburg", "Munich"),
+        ("Split", "Lyon"),
+        ("Lyon", "Munich"),
+        ("Hamburg", "Split")
+    ]
+    unidirectional_edges = [("Manchester", "Split")]
+    
+    for u, v in bidirectional_edges:
+        u_const = city_map_str[u]
+        v_const = city_map_str[v]
+        directed_flights.add((u_const, v_const))
+        directed_flights.add((v_const, u_const))
+    
+    for u, v in unidirectional_edges:
+        u_const = city_map_str[u]
+        v_const = city_map_str[v]
+        directed_flights.add((u_const, v_const))
+    
+    # Flight constraints for each day transition
+    for i in range(1, 21):
+        prev_city = P[i-1]
+        curr_city = P[i]
+        # If moving cities, ensure a direct flight exists
+        flight_constraint = Or([And(prev_city == u, curr_city == v) for (u, v) in directed_flights])
+        s.add(If(prev_city != curr_city, flight_constraint, True))
+    
+    # Function to compute total days in a city
+    def total_days(city_const):
+        conditions = []
+        for i in range(1, 21):
+            conditions.append(If(Or(P[i-1] == city_const, P[i] == city_const), 1, 0))
+        return Sum(conditions)
+    
+    # Total days constraints for each city
+    s.add(total_days(City.Hamburg) == 7)
+    s.add(total_days(City.Munich) == 6)
+    s.add(total_days(City.Manchester) == 2)
+    s.add(total_days(City.Lyon) == 2)
+    s.add(total_days(City.Split) == 7)
+    
+    # Specific day constraints: Lyon on day 13 and Manchester on day 19
+    s.add(P[13] == City.Lyon)  # End of day 13 in Lyon
+    s.add(P[19] == City.Manchester)  # End of day 19 in Manchester
+    
+    # Constraints to ensure Lyon only on days 13 and 14
+    for i in range(1, 13):  # Days 1 to 12
+        s.add(And(P[i-1] != City.Lyon, P[i] != City.Lyon))
+    for i in range(15, 21):  # Days 15 to 20
+        s.add(And(P[i-1] != City.Lyon, P[i] != City.Lyon))
+    
+    # Constraints to ensure Manchester only on days 19 and 20
+    for i in range(1, 19):  # Days 1 to 18
+        s.add(And(P[i-1] != City.Manchester, P[i] != City.Manchester))
+    
+    # Check for a solution
     if s.check() == sat:
         model = s.model()
-        itinerary = []
-        for i in range(0, 20):
-            day = i + 1
-            s_val = model.eval(start[i])
-            e_val = model.eval(end[i])
-            s_name = city_names[s_val]
-            e_name = city_names[e_val]
-            if s_name == e_name:
-                cities_of_day = [s_name]
-            else:
-                cities_of_day = [s_name, e_name]
-            itinerary.append({"day": day, "city": cities_of_day})
+        # Map Z3 constants back to city names
+        rev_city_map = {
+            City.Hamburg: "Hamburg",
+            City.Munich: "Munich",
+            City.Manchester: "Manchester",
+            City.Lyon: "Lyon",
+            City.Split: "Split"
+        }
+        itinerary_list = []
+        # The itinerary for day i is the end city of that day (P_i for i in 1..20)
+        for day in range(1, 21):
+            city_val = model[P[day]]
+            city_name = rev_city_map[city_val]
+            itinerary_list.append({"day": day, "place": city_name})
         
-        result = {"itinerary": itinerary}
-        print(result)
+        result_dict = {"itinerary": itinerary_list}
+        print(json.dumps(result_dict))
     else:
         print("No solution found")
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

@@ -1,132 +1,84 @@
 from z3 import *
 
 def main():
-    City, cities = EnumSort('City', [
-        'Oslo',
-        'Helsinki',
-        'Edinburgh',
-        'Riga',
-        'Tallinn',
-        'Budapest',
-        'Vilnius',
-        'Porto',
-        'Geneva'
-    ])
-    Oslo, Helsinki, Edinburgh, Riga, Tallinn, Budapest, Vilnius, Porto, Geneva = cities
-    city_list = [Oslo, Helsinki, Edinburgh, Riga, Tallinn, Budapest, Vilnius, Porto, Geneva]
+    cities = ['Tallinn', 'Helsinki', 'Budapest', 'Geneva', 'Porto', 'Edinburgh', 'Riga', 'Vilnius', 'Oslo']
+    n = len(cities)
     
-    req_map = {
-        Oslo: 2,
-        Helsinki: 2,
-        Edinburgh: 3,
-        Riga: 2,
-        Tallinn: 5,
-        Budapest: 5,
-        Vilnius: 5,
-        Porto: 5,
-        Geneva: 4
-    }
-    
-    allowed_edges = []
-    bidirs = [
-        (Porto, Oslo),
-        (Edinburgh, Budapest),
-        (Edinburgh, Geneva),
-        (Edinburgh, Porto),
-        (Vilnius, Helsinki),
-        (Riga, Oslo),
-        (Geneva, Oslo),
-        (Edinburgh, Oslo),
-        (Edinburgh, Helsinki),
-        (Vilnius, Oslo),
-        (Riga, Helsinki),
-        (Budapest, Geneva),
-        (Helsinki, Budapest),
-        (Helsinki, Oslo),
-        (Edinburgh, Riga),
-        (Tallinn, Helsinki),
-        (Geneva, Porto),
-        (Tallinn, Oslo),
-        (Budapest, Oslo),
-        (Helsinki, Geneva)
+    # Travel time matrix
+    T = [
+        [0, 1, 3, 3, 4, 4, 1, 2, 3],
+        [1, 0, 3, 3, 4, 4, 1, 2, 3],
+        [3, 3, 0, 2, 4, 3, 3, 3, 3],
+        [3, 3, 2, 0, 2, 2, 3, 3, 2],
+        [4, 4, 4, 2, 0, 3, 4, 4, 3],
+        [4, 4, 3, 2, 3, 0, 4, 4, 2],
+        [1, 1, 3, 3, 4, 4, 0, 1, 2],
+        [2, 2, 3, 3, 4, 4, 1, 0, 2],
+        [3, 3, 3, 2, 3, 2, 2, 2, 0]
     ]
-    for (a, b) in bidirs:
-        allowed_edges.append((a, b))
-        allowed_edges.append((b, a))
     
-    directs = [
-        (Riga, Tallinn),
-        (Tallinn, Vilnius),
-        (Riga, Vilnius)
-    ]
-    for (a, b) in directs:
-        allowed_edges.append((a, b))
+    solver = Solver()
     
-    x = [Const('x' + str(i), City) for i in range(26)]
-    s = Solver()
+    # Decision variables
+    seq = [Int(f'seq_{i}') for i in range(n)]  # Visit sequence
+    s = [Int(f's_{i}') for i in range(n)]      # Start day for each city
+    d = [Int(f'd_{i}') for i in range(n)]      # Stay duration for each city
     
-    for d in range(1, 26):
-        a = x[d-1]
-        b = x[d]
-        or_conditions = [a == b]
-        for edge in allowed_edges:
-            a_edge, b_edge = edge
-            or_conditions.append(And(a == a_edge, b == b_edge))
-        s.add(Or(or_conditions))
+    # Fixed start and end cities
+    solver.add(seq[0] == 0)  # Start with Tallinn
+    solver.add(seq[n-1] == 8)  # End with Oslo
     
-    def appear(city, day_index):
-        return Or(x[day_index-1] == city, x[day_index] == city)
+    # Valid city indices and distinct sequence
+    for i in range(n):
+        solver.add(seq[i] >= 0, seq[i] < n)
+    solver.add(Distinct(seq))
     
-    for city in city_list:
-        total = 0
-        for d in range(1, 26):
-            total += If(appear(city, d), 1, 0)
-        s.add(total == req_map[city])
+    # Minimum stay of 2 days for all cities
+    for i in range(n):
+        solver.add(d[i] >= 2)
+        solver.add(s[i] >= 1)
     
-    for city in city_list:
-        for i in range(1, 25):
-            cond = And(appear(city, i), Not(appear(city, i+1)))
-            disappear_after = [Not(appear(city, j)) for j in range(i+2, 26)]
-            s.add(Implies(cond, And(disappear_after)))
+    # Start in Tallinn on day 1
+    solver.add(s[0] == 1)
     
-    s.add(Or(x[23] == Oslo, x[24] == Oslo, x[25] == Oslo))
+    # End in Oslo exactly on day 25
+    solver.add(s[n-1] + d[n-1] - 1 == 25)
     
-    full_day_in_Tallinn = []
-    for d in range(4, 9):
-        full_day_in_Tallinn.append(And(x[d-1] == Tallinn, x[d] == Tallinn))
-    s.add(Or(full_day_in_Tallinn))
+    # Travel time helper function
+    def travel_time(from_city, to_city):
+        expr = IntVal(T[0][0])
+        for i in range(n):
+            for j in range(n):
+                expr = If(And(from_city == i, to_city == j), T[i][j], expr)
+        return expr
     
-    if s.check() == sat:
-        m = s.model()
-        segments = []
-        day = 1
-        while day <= 25:
-            start_city = m.eval(x[day-1])
-            end_city = m.eval(x[day])
-            if start_city == end_city:
-                j = day
-                while j <= 25:
-                    sc = m.eval(x[j-1])
-                    ec = m.eval(x[j])
-                    if sc == ec and sc == start_city:
-                        j += 1
-                    else:
-                        break
-                end_day = j - 1
-                if day == end_day:
-                    day_str = f"Day {day}"
-                else:
-                    day_str = f"Day {day}-{end_day}"
-                segments.append({'day_range': day_str, 'place': str(start_city)})
-                day = end_day + 1
-            else:
-                segments.append({'day_range': f"Day {day}", 'place': f"{str(start_city)}, {str(end_city)}"})
-                day += 1
+    # Correct timeline chaining
+    for i in range(n-1):
+        from_city = seq[i]
+        to_city = seq[i+1]
+        tt = travel_time(from_city, to_city)
+        solver.add(s[i+1] == s[i] + d[i] - 1 + tt)
+    
+    # Solve and output results
+    if solver.check() == sat:
+        model = solver.model()
+        seq_val = [model.evaluate(seq[i]).as_long() for i in range(n)]
+        s_val = [model.evaluate(s[i]).as_long() for i in range(n)]
+        d_val = [model.evaluate(d[i]).as_long() for i in range(n)]
         
-        result = {"itinerary": segments}
-        print(f"Plan found: {result}")
+        itinerary = []
+        for i in range(n):
+            start = s_val[i]
+            end = start + d_val[i] - 1
+            day_range = f"Day {start}-{end}" if start != end else f"Day {start}"
+            itinerary.append({
+                'day_range': day_range,
+                'place': cities[seq_val[i]]
+            })
+        
+        print("Plan found:", {'itinerary': itinerary})
     else:
-        print("No solution found")
+        print("No valid plan found")
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

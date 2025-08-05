@@ -1,113 +1,101 @@
-import z3
-import json
+from z3 import Solver, Int, Distinct, Or, And, If, sat, Sum
+import sys
 
 def main():
-    CitySort, (DUB, SPL, MIL, POR, KRA, MUN) = z3.EnumSort('City', ['DUB', 'SPL', 'MIL', 'POR', 'KRA', 'MUN'])
+    s = Solver()
     
-    allowed_pairs = [
-        (MUN, POR), (POR, MUN),
-        (SPL, MIL), (MIL, SPL),
-        (MIL, POR), (POR, MIL),
-        (MUN, KRA), (KRA, MUN),
-        (MUN, MIL), (MIL, MUN),
-        (DUB, MUN), (MUN, DUB),
-        (KRA, SPL), (SPL, KRA),
-        (KRA, MIL), (MIL, KRA),
-        (MUN, SPL), (SPL, MUN)
-    ]
+    # Middle cities: 0: Krakow, 1: Lisbon, 2: Munich, 3: Porto, 4: Split
+    order = [Int(f'order_{i}') for i in range(5)]
+    for i in range(5):
+        s.add(order[i] >= 0, order[i] < 5)
+    s.add(Distinct(order))
     
-    solver = z3.Solver()
+    # Durations
+    dur_s1 = Int('dur_s1')  # First Amsterdam segment
+    dur_middle = [Int(f'dur_m{i}') for i in range(5)]  # Middle cities
+    dur_s7 = 1  # Last Amsterdam segment (fixed)
     
-    s = [z3.Const(f's_{i}', CitySort) for i in range(16)]
-    f = [z3.Bool(f'f_{i}') for i in range(15)]
+    # First Amsterdam must be at least 2 days
+    s.add(dur_s1 >= 2)
     
-    for i in range(15):
-        flight_possible = z3.Or([z3.And(s[i] == a, s[i+1] == b) for a, b in allowed_pairs])
-        solver.add(z3.Implies(f[i], z3.And(s[i] != s[i+1], flight_possible)))
-        solver.add(z3.Implies(z3.Not(f[i]), s[i] == s[i+1]))
+    # Middle cities constraints: exactly one has 1 day, others >=2
+    one_day_flags = []
+    for i in range(5):
+        flag = Int(f'flag_{i}')
+        s.add(flag == If(dur_middle[i] == 1, 1, 0))
+        s.add(Or(dur_middle[i] == 1, dur_middle[i] >= 2))
+        one_day_flags.append(flag)
+    s.add(Sum(one_day_flags) == 1)
     
-    required_days = {
-        DUB: 4,
-        SPL: 3,
-        MIL: 3,
-        POR: 4,
-        KRA: 2,
-        MUN: 5
+    # Total days = 16
+    s.add(dur_s1 + Sum(dur_middle) + dur_s7 == 16)
+    
+    # Flight connections from Amsterdam to first middle city
+    s.add(Or(order[0] == 0, order[0] == 2, order[0] == 4))
+    
+    # Flight connections between middle cities
+    connections = {
+        0: [1, 2, 3, 4],  # Krakow
+        1: [0, 2, 3],      # Lisbon
+        2: [0, 1, 3, 4],   # Munich
+        3: [0, 1, 2],      # Porto
+        4: [0, 2]          # Split
     }
+    for i in range(4):
+        c1 = order[i]
+        c2 = order[i+1]
+        s.add(Or(
+            And(c1 == 0, Or(c2 == 1, c2 == 2, c2 == 3, c2 == 4)),
+            And(c1 == 1, Or(c2 == 0, c2 == 2, c2 == 3)),
+            And(c1 == 2, Or(c2 == 0, c2 == 1, c2 == 3, c2 == 4)),
+            And(c1 == 3, Or(c2 == 0, c2 == 1, c2 == 2)),
+            And(c1 == 4, Or(c2 == 0, c2 == 2))
+        ))
     
-    for city, req in required_days.items():
-        total = 0
-        for i in range(16):
-            if i < 15:
-                cond = z3.Or(s[i] == city, z3.And(f[i], s[i+1] == city))
-            else:
-                cond = (s[i] == city)
-            total += z3.If(cond, 1, 0)
-        solver.add(total == req)
+    # Flight from last middle city to Amsterdam
+    s.add(Or(order[4] == 0, order[4] == 2, order[4] == 4))
     
-    wedding_constraints = []
-    for day in [11, 12, 13]:
-        i = day - 1
-        cond = z3.Or(s[i] == MIL, z3.And(f[i], s[i+1] == MIL)) if i < 15 else (s[i] == MIL)
-        wedding_constraints.append(cond)
-    solver.add(z3.Or(wedding_constraints))
-    
-    meeting_constraints = []
-    for day in [8, 9]:
-        i = day - 1
-        cond = z3.Or(s[i] == KRA, z3.And(f[i], s[i+1] == KRA)) if i < 15 else (s[i] == KRA)
-        meeting_constraints.append(cond)
-    solver.add(z3.Or(meeting_constraints))
-    
-    show_constraints = []
-    for day in range(4, 9):
-        i = day - 1
-        cond = z3.Or(s[i] == MUN, z3.And(f[i], s[i+1] == MUN)) if i < 15 else (s[i] == MUN)
-        show_constraints.append(cond)
-    solver.add(z3.Or(show_constraints))
-    
-    if solver.check() == z3.sat:
-        model = solver.model()
-        start_days = {}
-        end_days = {}
-        current_city = model.eval(s[0]).decl().name()
-        start_day = 1
+    # Solve
+    if s.check() == sat:
+        m = s.model()
+        # Get durations
+        dur_s1_val = m.evaluate(dur_s1).as_long()
+        dur_middle_vals = [m.evaluate(dur_middle[i]).as_long() for i in range(5)]
+        order_vals = [m.evaluate(order[i]).as_long() for i in range(5)]
+        
+        # Map to city names
+        city_map = {
+            0: 'Krakow',
+            1: 'Lisbon',
+            2: 'Munich',
+            3: 'Porto',
+            4: 'Split'
+        }
+        middle_cities = [city_map[idx] for idx in order_vals]
+        
+        # Build itinerary
         segments = []
+        current_day = 1
         
-        for i in range(1, 16):
-            city_name = model.eval(s[i]).decl().name()
-            flying = z3.is_true(model.eval(f[i-1]))
-            
-            if flying or city_name != current_city:
-                segments.append({
-                    'day_range': f'Day {start_day}-{i}',
-                    'place': current_city
-                })
-                if flying:
-                    segments.append({
-                        'day_range': f'Day {i}',
-                        'place': city_name
-                    })
-                    start_day = i + 1
-                else:
-                    start_day = i
-                current_city = city_name
-            elif i == 15:
-                segments.append({
-                    'day_range': f'Day {start_day}-16',
-                    'place': current_city
-                })
+        # First Amsterdam segment
+        end = current_day + dur_s1_val - 1
+        segments.append({'day_range': f'Day {current_day}-{end}', 'place': 'Amsterdam'})
+        current_day = end + 1
         
-        if len(segments) == 0 or segments[-1]['day_range'] != f'Day {start_day}-16':
-            segments.append({
-                'day_range': f'Day {start_day}-16',
-                'place': current_city
-            })
+        # Middle cities
+        for i in range(5):
+            end = current_day + dur_middle_vals[i] - 1
+            segments.append({'day_range': f'Day {current_day}-{end}', 'place': middle_cities[i]})
+            current_day = end + 1
         
-        result = {'itinerary': segments}
-        print(json.dumps(result, indent=2))
+        # Last Amsterdam segment (day 16)
+        segments.append({'day_range': f'Day 16', 'place': 'Amsterdam'})
+        
+        plan = {'itinerary': segments}
+        print(plan)
     else:
-        print("No solution found")
+        print('No valid plan found', file=sys.stderr)
+        exit(1)
 
 if __name__ == '__main__':
     main()

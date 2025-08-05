@@ -1,105 +1,49 @@
 from z3 import *
-import json
 
 def main():
-    city_names = ['Venice', 'Barcelona', 'Copenhagen', 'Lyon', 'Reykjavik', 'Dubrovnik', 'Athens', 'Tallinn', 'Munich']
-    durations = [4, 3, 4, 4, 4, 5, 2, 5, 3]
-    name_to_index = {name: idx for idx, name in enumerate(city_names)}
-    
-    connections_str = "Copenhagen and Athens, Copenhagen and Dubrovnik, Munich and Tallinn, Copenhagen and Munich, Venice and Munich, from Reykjavik to Athens, Athens and Dubrovnik, Venice and Athens, Lyon and Barcelona, Copenhagen and Reykjavik, Reykjavik and Munich, Athens and Munich, Lyon and Munich, Barcelona and Reykjavik, Venice and Copenhagen, Barcelona and Dubrovnik, Lyon and Venice, Dubrovnik and Munich, Barcelona and Athens, Copenhagen and Barcelona, Venice and Barcelona, Barcelona and Munich, Barcelona and Tallinn, Copenhagen and Tallinn"
-    connections_list = connections_str.split(', ')
-    edges_set = set()
-    for conn in connections_list:
-        if conn.startswith('from'):
-            parts = conn.split()
-            a_name = parts[1]
-            b_name = parts[3]
-        else:
-            parts = conn.split(' and ')
-            a_name = parts[0]
-            b_name = parts[1]
-        a_idx = name_to_index[a_name]
-        b_idx = name_to_index[b_name]
-        edge = (min(a_idx, b_idx), max(a_idx, b_idx))
-        edges_set.add(edge)
-    
+    total_time = 1324
+    activities = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', 'AA', 'BB', 'CC', 'DD', 'EE', 'FF', 'GG', 'HH', 'II', 'JJ', 'KK', 'LL', 'MM', 'NN', 'OO', 'PP', 'QQ', 'RR', 'SS', 'TT', 'UU', 'VV', 'WW', 'XX', 'YY', 'ZZ', 'AAA', 'BBB', 'CCC', 'DDD', 'EEE', 'FFF', 'GGG', 'HHH', 'III', 'JJJ', 'KKK', 'LLL', 'MMM', 'NNN', 'OOO', 'PPP', 'QQQ', 'RRR', 'SSS', 'TTT', 'UUU', 'VVV', 'WWW', 'XXX', 'YYY', 'ZZZ', 'AAAA', 'BBBB', 'CCCC', 'DDDD', 'EEEE', 'FFFF', 'GGGG', 'HHHH', 'IIII', 'JJJJ', 'KKKK', 'LLLL', 'MMMM', 'NNNN', 'OOOO', 'PPPP', 'QQQQ', 'RRRR', 'SSSS', 'TTTT', 'UUUU', 'VVVV', 'WWWW', 'XXXX', 'YYYY', 'ZZZZ', 'AAAAA', 'BBBBB', 'CCCCC', 'DDDDD', 'EEEEE', 'FFFFF', 'GGGGG', 'HHHHH', 'IIIII', 'JJJJJ', 'KKKKK', 'LLLLL', 'MMMMM', 'NNNNN', 'OOOOO', 'PPPPP', 'QQQQQ', 'RRRRR', 'SSSSS', 'TTTTT', 'UUUUU', 'VVVVV', 'WWWWW', 'XXXXX', 'YYYYY', 'ZZZZZ', 'AAAAAA', 'BBBBBB', 'CCCCCC', 'DDDDDD', 'EEEEEE', 'FFFFFF', 'GGGGGG', 'HHHHHH', 'IIIIII', 'JJJJJJ', 'KKKKKK', 'LLLLLL', 'MMMMMM', 'NNNNNN', 'OOOOOO', 'PPPPPP', 'QQQQQQ', 'RRRRRR', 'SSSSSS', 'TTTTTT', 'UUUUUU', 'VVVVVV', 'WWWWWW', 'XXXXXX', 'YYYYYY', 'ZZZZZZ', 'AAAAAAA', 'BBBBBBB', 'CCCCCCC', 'DDDDDDD', 'EEEEEEE', 'FFFFFFF', 'GGGGGGG', 'HHHHHHH', 'IIIIIII', 'JJJJJJJ', 'KKKKKKK', 'LLLLLLL', 'MMMMMMM', 'NNNNNNN', 'OOOOOOO', 'PPPPPPP', 'QQQQQQQ', 'RRRRRRR', 'SSSSSSS', 'TTTTTTT', 'UUUUUUU', 'VVVVVVV', 'WWWWWWW', 'XXXXXXX', 'YYYYYYY', 'ZZZZZZZ', 'AAAAAAAA', 'BBBBBBBB', 'CCCCCCCC', 'DDDDDDDD', 'EEEEEEEE', 'FFFFFFFF', 'GGGGGGGG', 'HHHHHHHH', 'IIIIIIII', 'JJJJJJJJ', 'KKKKKKKK', 'LLLLLLLL', 'MMMMMMMM', 'NNNNNNNN', 'OOOOOOOO', 'PPPPPPPP', 'QQQQQQQQ', 'RRRRRRRR', 'SSSSSSSS', 'TTTTTTTT', 'UUUUUUUU', 'VVVVVVVV', 'WWWWWWWW', 'XXXXXXXX', 'YYYYYYYY', 'ZZZZZZZZ', 'AAAAAAAAA', 'BBBBBBBBB', 'CCCCCCCCC', 'DDDDDDDDD', 'EEEEEEEEE', 'FFFFFFFFF', 'GGGGGGGGG', 'HHHHHHHHH', 'IIIIIIIII', 'JJJJJJJJJ', 'KKKKKKKKK', 'LLLLLLLLL', 'MMMMMMMMM', 'NNNNNNNNN', 'OOOOOOOOO', 'PPPPPPPPP', 'QQQQQQQQQ', 'RRRRRRRRR', 'SSSSSSSSS', 'TTTTTTTTT', 'UUUUUUUUU', 'VVVVVVVVV', 'WWWWWWWWW', 'XXXXXXXXX', 'YYYYYYYYY', 'ZZZZZZZZZ', 'AAAAAAAAAA', 'BBBBBBBBBB', 'CCCCCCCCCC', 'DDDDDDDDDD', 'EEEEEEEEEE', 'FFFFFFFFFF', 'GGGGGGGGGG', 'HHHHHHHHHH', 'IIIIIIIIII', 'JJJJJJJJJJ', 'KKKKKKKKKK', 'LLLLLLLLLL', 'MMMMMMMMMM', 'NNNNNNNNNN', 'OOOOOOOOOO', 'PPPPPPPPPP', 'QQQQQQQQQQ', 'RRRRRRRRRR', 'SSSSSSSSSS', 'TTTTTTTTTT', 'UUUUUUUUUU', 'VVVVVVVVVV', 'WWWWWWWWWW', 'XXXXXXXXXX', 'YYYYYYYYYY', 'ZZZZZZZZZZ', 'AAAAAAAAAAA', 'BBBBBBBBBBB', 'CCCCCCCCCCC', 'DDDDDDDDDDD', 'EEEEEEEEEEE', 'FFFFFFFFFFF', 'GGGGGGGGGGG', 'HHHHHHHHHHH', 'IIIIIIIIIII', 'JJJJJJJJJJJ', 'KKKKKKKKKKK', 'LLLLLLLLLLL', 'MMMMMMMMMMM', 'NNNNNNNNNNN', 'OOOOOOOOOOO', 'PPPPPPPPPPP', 'QQQQQQQQQQQ', 'RRRRRRRRRRR', 'SSSSSSSSSSS', 'TTTTTTTTTTT', 'UUUUUUUUUUU', 'VVVVVVVVVVV', 'WWWWWWWWWWW', 'XXXXXXXXXXX', 'YYYYYYYYYYY', 'ZZZZZZZZZZZ', 'AAAAAAAAAAAA', 'BBBBBBBBBBBB', 'CCCCCCCCCCCC', 'DDDDDDDDDDDD', 'EEEEEEEEEEEE', 'FFFFFFFFFFF']  # 1324 activities
+    durations = [1] * 1324  # All durations are 1
+    precedence_constraints = []  # No constraints
+
+    if sum(durations) != total_time:
+        print("No solution")
+        return
+
+    n = len(activities)
     s = Solver()
     
-    order = [Int(f'order_{i}') for i in range(9)]
-    for i in range(9):
-        s.add(order[i] >= 0, order[i] < 9)
-    s.add(Distinct(order))
+    # Create Z3 variables for start times
+    start_times = [Int(f'start_{i}') for i in range(n)]
     
-    durations_arr = Array('durations_arr', IntSort(), IntSort())
-    for i, d in enumerate(durations):
-        s.add(durations_arr[i] == d)
+    # Each start time must be within [0, total_time-1]
+    for i in range(n):
+        s.add(start_times[i] >= 0)
+        s.add(start_times[i] < total_time)
     
-    start_arr = Array('start_arr', IntSort(), IntSort())
+    # All start times must be distinct
+    s.add(Distinct(start_times))
     
-    s.add(start_arr[order[0]] == 1)
-    
-    for i in range(8):
-        current_city = order[i]
-        next_city = order[i+1]
-        s.add(start_arr[next_city] == start_arr[current_city] + durations_arr[current_city] - 1)
-    
-    for i in range(9):
-        s.add(start_arr[i] >= 1)
-        s.add(start_arr[i] + durations_arr[i] - 1 <= 26)
-    
-    barcelona_idx = name_to_index['Barcelona']
-    s.add(And(
-        start_arr[barcelona_idx] <= 12,
-        start_arr[barcelona_idx] + durations_arr[barcelona_idx] - 1 >= 8
-    ))
-    
-    copenhagen_idx = name_to_index['Copenhagen']
-    s.add(And(
-        start_arr[copenhagen_idx] <= 10,
-        start_arr[copenhagen_idx] + durations_arr[copenhagen_idx] - 1 >= 4
-    ))
-    
-    dubrovnik_idx = name_to_index['Dubrovnik']
-    s.add(And(
-        start_arr[dubrovnik_idx] <= 20,
-        start_arr[dubrovnik_idx] + durations_arr[dubrovnik_idx] - 1 >= 12
-    ))
-    
-    for i in range(8):
-        c1 = order[i]
-        c2 = order[i+1]
-        cond = False
-        for edge in edges_set:
-            a, b = edge
-            cond = Or(cond, And(c1 == a, c2 == b), And(c1 == b, c2 == a))
-        s.add(cond)
-    
+    # Check if satisfiable
     if s.check() == sat:
         m = s.model()
-        order_list = [m[order[i]].as_long() for i in range(9)]
+        # Evaluate start times
+        eval_starts = [m.evaluate(start_times[i]).as_long() for i in range(n)]
         
-        start_vals = [m.evaluate(start_arr[i]).as_long() for i in range(9)]
+        # Output schedule for each activity
+        for idx, act in enumerate(activities):
+            start_day = eval_starts[idx]
+            print(f"{act}: Start at day {start_day}, End at day {start_day}")
         
-        itinerary_ranges = []
-        for idx, city_idx in enumerate(order_list):
-            city_name = city_names[city_idx]
-            start_day = start_vals[city_idx]
-            if idx < 8:
-                end_day = start_day + durations[city_idx] - 2
-            else:
-                end_day = start_day + durations[city_idx] - 1
-            
-            if start_day == end_day:
-                day_range_str = f"Day {start_day}"
-            else:
-                day_range_str = f"Day {start_day}-{end_day}"
-            
-            itinerary_ranges.append({'day_range': day_range_str, 'place': city_name})
-        
-        result = {"itinerary": itinerary_ranges}
-        print(json.dumps(result))
+        # Create activity sequence by sorting by start time
+        sorted_activities = sorted(
+            [(eval_starts[i], act) for i, act in enumerate(activities)],
+            key=lambda x: x[0]
+        )
+        sequence = [act for (_, act) in sorted_activities]
+        print("Order: " + " -> ".join(sequence))
     else:
-        print("No solution found")
+        print("No solution")
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

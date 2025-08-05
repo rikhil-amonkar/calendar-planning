@@ -1,82 +1,151 @@
 from z3 import *
 import json
 
-def main():
-    cities = ['London', 'Milan', 'Zurich', 'Reykjavik', 'Bucharest', 'Hamburg', 'Barcelona', 'Stuttgart', 'Stockholm', 'Tallinn']
-    fixed_end_city = [0, 0, 1, 1, 1, 1, 2, 2, 3, 3, 3, 3, 3]  # Days 1 to 13 (indices 0 to 12)
+# Define the cities and their indices
+cities = ["London", "Zurich", "Milan", "Reykjavik", "Barcelona", "Bucharest", "Hamburg", "Stuttgart", "Stockholm", "Tallinn"]
+n_cities = len(cities)
+city_index = {city: idx for idx, city in enumerate(cities)}
 
-    end_city = [Int('end_city_%d' % i) for i in range(28)]
-    s = Solver()
-    
-    for i in range(13):
-        s.add(end_city[i] == fixed_end_city[i])
-    
-    for i in range(13, 28):
-        s.add(end_city[i] >= 4, end_city[i] <= 9)
-    
-    flights_str = [
-        (0,5), (0,3), (1,6), (3,6), (3,7), (8,3), (0,7), (1,2), (0,6), (8,5),
-        (2,6), (8,7), (1,5), (8,9), (5,4), (0,4), (1,8), (7,5), (0,2), (1,3),
-        (0,8), (1,7), (8,6), (0,1), (2,5), (4,6), (2,8), (6,9), (2,9), (5,6),
-        (7,6), (2,3), (2,4)
-    ]
-    directed_pairs = []
-    for (a, b) in flights_str:
-        directed_pairs.append((a, b))
-        directed_pairs.append((b, a))
-    
-    for i in range(1, 28):
-        from_city = end_city[i-1]
-        to_city = end_city[i]
-        flight_possible = Or([And(from_city == a, to_city == b) for (a, b) in directed_pairs])
-        s.add(If(from_city != to_city, flight_possible, True))
-    
-    total_days = [0] * 10
-    for c in range(10):
-        total = 0
-        for i in range(0, 28):
-            if i == 0:
-                in_city = Or(0 == c, end_city[0] == c)
-            else:
-                in_city = Or(end_city[i-1] == c, end_city[i] == c)
-            total += If(in_city, 1, 0)
-        total_days[c] = total
-    
-    s.add(total_days[0] == 3)  # London
-    s.add(total_days[1] == 5)  # Milan
-    s.add(total_days[2] == 2)  # Zurich
-    s.add(total_days[3] == 5)  # Reykjavik
-    s.add(total_days[4] == 2)  # Bucharest
-    s.add(total_days[5] == 5)  # Hamburg
-    s.add(total_days[6] == 4)  # Barcelona
-    s.add(total_days[7] == 5)  # Stuttgart
-    s.add(total_days[8] == 2)  # Stockholm
-    s.add(total_days[9] == 4)  # Tallinn
-    
-    travel_days_last15 = 0
-    for i in range(13, 28):
-        travel_day = end_city[i-1] != end_city[i]
-        travel_days_last15 += If(travel_day, 1, 0)
-    s.add(travel_days_last15 == 7)
-    
-    if s.check() == sat:
-        m = s.model()
-        res = [m.evaluate(end_city[i]).as_long() for i in range(28)]
-        itinerary = []
-        for i in range(28):
-            if i == 0:
-                start = 0
-            else:
-                start = res[i-1]
-            end = res[i]
-            if start == end:
-                itinerary.append([cities[start]])
-            else:
-                itinerary.append([cities[start], cities[end]])
-        result_dict = {'itinerary': itinerary}
-        print(json.dumps(result_dict))
+# Requirements for each city
+required_days = {
+    "London": 3,
+    "Zurich": 2,
+    "Milan": 5,
+    "Reykjavik": 5,
+    "Barcelona": 4,
+    "Bucharest": 2,
+    "Hamburg": 5,
+    "Stuttgart": 5,
+    "Stockholm": 2,
+    "Tallinn": 4
+}
+
+# Direct flights as an undirected graph
+flight_list = [
+    ("London", "Hamburg"),
+    ("London", "Reykjavik"),
+    ("Milan", "Barcelona"),
+    ("Reykjavik", "Barcelona"),
+    ("Reykjavik", "Stuttgart"),
+    ("Stockholm", "Reykjavik"),
+    ("London", "Stuttgart"),
+    ("Milan", "Zurich"),
+    ("London", "Barcelona"),
+    ("Stockholm", "Hamburg"),
+    ("Zurich", "Barcelona"),
+    ("Stockholm", "Stuttgart"),
+    ("Milan", "Hamburg"),
+    ("Stockholm", "Tallinn"),
+    ("Hamburg", "Bucharest"),
+    ("London", "Bucharest"),
+    ("Milan", "Stockholm"),
+    ("Stuttgart", "Hamburg"),
+    ("London", "Zurich"),
+    ("Milan", "Reykjavik"),
+    ("London", "Stockholm"),
+    ("Milan", "Stuttgart"),
+    ("Stockholm", "Barcelona"),
+    ("London", "Milan"),
+    ("Zurich", "Hamburg"),
+    ("Bucharest", "Barcelona"),
+    ("Zurich", "Stockholm"),
+    ("Barcelona", "Tallinn"),
+    ("Zurich", "Tallinn"),
+    ("Hamburg", "Barcelona"),
+    ("Stuttgart", "Barcelona"),
+    ("Zurich", "Reykjavik"),
+    ("Zurich", "Bucharest")
+]
+
+# Create a set of edges for the flight graph (undirected)
+flight_edges = set()
+for flight in flight_list:
+    if isinstance(flight, tuple):
+        u, v = flight
+        flight_edges.add((u, v))
+        flight_edges.add((v, u))
     else:
-        print(json.dumps({"error": "No solution found"}))
+        parts = flight.split(" and ")
+        if len(parts) == 2:
+            u, v = parts
+            flight_edges.add((u, v))
+            flight_edges.add((v, u))
+        else:
+            parts = flight.split(" to ")
+            if len(parts) == 2:
+                u, v = parts
+                flight_edges.add((u, v))
+                flight_edges.add((v, u))
 
-if __name__ == '__main__':
-    main()
+# Convert city names to indices in flight_edges_set
+flight_edges_set = set()
+for u, v in flight_edges:
+    if u in city_index and v in city_index:
+        flight_edges_set.add((city_index[u], city_index[v]))
+
+# Create Z3 solver
+s = Solver()
+
+# Night variables: 29 nights (from night0 to night28)
+nights = [Int('night_%d' % i) for i in range(29)]
+
+# Constraint: nights must be between 0 and n_cities-1
+for n in nights:
+    s.add(n >= 0, n < n_cities)
+
+# Constraint: Start in London (night0)
+s.add(nights[0] == city_index["London"])
+
+# Flight constraints: if night_i != night_{i-1}, then (night_{i-1}, night_i) must be in flight_edges_set
+for i in range(1, 29):
+    prev_night = nights[i-1]
+    curr_night = nights[i]
+    s.add(If(prev_night != curr_night,
+             Or([And(prev_night == u, curr_night == v) for (u, v) in flight_edges_set]),
+             True))
+
+# Total days per city: for each city, count the days d (from 1 to 28) such that 
+# the traveler is in the city on day d (i.e., night[d-1]==city or night[d]==city)
+total_days_per_city = [0] * n_cities
+for city in range(n_cities):
+    in_city_days = [Bool(f'in_{cities[city]}_day_{d}') for d in range(1, 29)]
+    for d in range(1, 29):
+        s.add(in_city_days[d-1] == Or(nights[d-1] == city, nights[d] == city))
+    total_days_per_city[city] = Sum([If(in_city_days[d], 1, 0) for d in range(28)])
+    s.add(total_days_per_city[city] == required_days[cities[city]])
+
+# Special constraints for fixed events
+
+# Must be in Zurich on day7 and day8
+s.add(Or(nights[6] == city_index["Zurich"], nights[7] == city_index["Zurich"]))  # day7: night6 or night7
+s.add(Or(nights[7] == city_index["Zurich"], nights[8] == city_index["Zurich"]))  # day8: night7 or night8
+
+# Must be in Reykjavik on day9,10,11,12,13
+for d in [9,10,11,12,13]:
+    # day d: night[d-1] or night[d] must be Reykjavik
+    s.add(Or(nights[d-1] == city_index["Reykjavik"], nights[d] == city_index["Reykjavik"]))
+
+# Must be in Milan on at least one day between 3 and 7 (inclusive)
+days_in_milan_range = []
+for d in range(3, 8):  # days 3 to 7
+    # Create condition for being in Milan on day d
+    in_milan = Or(nights[d-1] == city_index["Milan"], nights[d] == city_index["Milan"])
+    days_in_milan_range.append(in_milan)
+s.add(Or(days_in_milan_range))
+
+# Solve the problem
+if s.check() == sat:
+    m = s.model()
+    night_values = [m.evaluate(nights[i]).as_long() for i in range(29)]
+    
+    # Build the itinerary: for each day, the city at the end of the day (night_i)
+    itinerary = []
+    for d in range(1, 29):
+        city_idx = night_values[d]  # at the end of day d, we are in the city of night_d
+        itinerary.append({"day": d, "city": cities[city_idx]})
+    
+    # Create the JSON output
+    result = {"itinerary": itinerary}
+    print(json.dumps(result, indent=2))
+else:
+    print("No solution found")

@@ -1,83 +1,106 @@
 from z3 import *
-import json
 
-def main():
+def plan_trip(n, lengths, dependencies):
     s = Solver()
     
-    cities = 6
-    req_days = [5, 4, 5, 2, 3, 5]
-    city_names = ["Reykjavik", "Istanbul", "Edinburgh", "Oslo", "Stuttgart", "Bucharest"]
+    # Create order variables: order[0], order[1], ..., order[n-1]
+    order = [Int('order_%i' % i) for i in range(n)]
     
-    edges = [
-        (5, 3), (3, 5),  # Bucharest <-> Oslo
-        (5, 1), (1, 5),  # Bucharest <-> Istanbul
-        (1, 3), (3, 1),  # Istanbul <-> Oslo
-        (1, 2), (2, 1),  # Istanbul <-> Edinburgh
-        (1, 4), (4, 1),  # Istanbul <-> Stuttgart
-        (0, 4),          # Reykjavik -> Stuttgart
-        (3, 0), (0, 3),  # Oslo <-> Reykjavik
-        (3, 2), (2, 3),  # Oslo <-> Edinburgh
-        (4, 2), (2, 4)   # Stuttgart <-> Edinburgh
-    ]
+    # Constraint: the order must be a permutation of [0, n-1]
+    s.add(Distinct(order))
+    for i in range(n):
+        s.add(order[i] >= 0, order[i] < n)
     
-    start = [Int(f'start_{i}') for i in range(cities)]
-    end = [Int(f'end_{i}') for i in range(cities)]
-    pos = [Int(f'pos_{i}') for i in range(cities)]
+    # The trip must start with activity 0 and end with activity n-1
+    s.add(order[0] == 0)
+    s.add(order[n-1] == n-1)
     
-    for i in range(cities):
-        s.add(start[i] >= 1)
-        s.add(end[i] <= 19)
-        s.add(start[i] <= end[i])
-        s.add(end[i] - start[i] + 1 == req_days[i])
+    # Dependencies: for each (i, j) in dependencies, activity i must come before activity j
+    for (i, j) in dependencies:
+        # Find positions of activity i and activity j in the order
+        pos_i = Int('pos_%i' % i)
+        pos_j = Int('pos_%i' % j)
+        # Constraint: pos_i < pos_j
+        s.add(pos_i < pos_j)
+        # Now, link pos_i and pos_j to the order: forall k in [0, n-1], (order[k] == i) => (pos_i == k), similarly for j
+        s.add(Or([And(order[k] == i, pos_i == k) for k in range(n)]))
+        s.add(Or([And(order[k] == j, pos_j == k) for k in range(n)]))
     
-    s.add(Distinct(pos))
-    for i in range(cities):
-        s.add(pos[i] >= 0, pos[i] < cities)
+    # Create an array to store the lengths of activities
+    length_arr = Array('lengths', IntSort(), IntSort())
+    for idx, l in enumerate(lengths):
+        length_arr = Store(length_arr, idx, l)
     
-    s.add(Or([And(pos[i] == 0, start[i] == 1) for i in range(cities)]))
-    s.add(Or([And(pos[i] == cities-1, end[i] == 19) for i in range(cities)]))
+    # Prefix sum array: prefix_sum[0] = 0, prefix_sum[i] = prefix_sum[i-1] + length of activity at order[i-1]
+    prefix_sum = [0] * (n+1)
+    prefix_sum[0] = 0
+    for i in range(1, n+1):
+        # Get the activity index at position i-1 in the order
+        activity_index = order[i-1]
+        # Get the length of that activity from the Z3 array
+        activity_length = length_arr[activity_index]
+        prefix_sum[i] = prefix_sum[i-1] + activity_length
     
-    def edge_exists(i, j):
-        return Or([And(i == a, j == b) for (a, b) in edges])
+    # The total trip time is prefix_sum[n]
+    total_time = prefix_sum[n]
     
-    for i in range(cities):
-        for j in range(cities):
-            if i != j:
-                s.add(Implies(pos[j] == pos[i] + 1, end[i] == start[j]))
-                s.add(Implies(pos[j] == pos[i] + 1, edge_exists(i, j)))
+    # Start times: for activity at order[i], it starts at prefix_sum[i] and ends at prefix_sum[i+1]
+    start_times = [Int('start_%i' % i) for i in range(n)]
+    for i in range(n):
+        # The activity at order[i] is the i-th in the sequence, so it starts at prefix_sum[i] and ends at prefix_sum[i+1]
+        # But note: the activity index is order[i]. We have a start time for each activity index.
+        # So for activity j, we need to relate: when j appears at position k, then start_times[j] = prefix_sum[k]
+        # We can write: for each activity j, there exists a k such that order[k] == j and start_times[j] = prefix_sum[k]
+        # Instead, we can use:
+        #   s.add(Or([And(order[k] == j, start_times[j] == prefix_sum[k]) for k in range(n)]))
+        # But we already have the prefix_sum defined in terms of order. Alternatively, we can define the start time of an activity j as:
+        #   start_times[j] = prefix_sum[k] where k is the position of j in the order.
+        pass  # We don't use start_times in the objective, so we skip if not needed for objective.
     
-    s.add(start[1] <= 8, end[1] >= 5)
-    s.add(start[3] <= 9, end[3] >= 8)
+    # We might not need the start_times for minimization? The problem says to minimize total time.
+    # But the constraints above already link the start times implicitly? 
+    # Actually, the problem does not require outputting start times, only the order and total time.
+    # So we can skip creating start_times variables if not needed for output.
     
-    total_days = sum([end[i] - start[i] + 1 for i in range(cities)])
-    s.add(total_days - (cities - 1) == 19)
+    # Objective: minimize total_time
+    s.minimize(total_time)
     
     if s.check() == sat:
         m = s.model()
-        pos_val = [m.evaluate(pos[i]).as_long() for i in range(cities)]
-        start_val = [m.evaluate(start[i]).as_long() for i in range(cities)]
-        end_val = [m.evaluate(end[i]).as_long() for i in range(cities)]
-        
-        for i in range(cities):
-            actual_days = end_val[i] - start_val[i] + 1
-            assert actual_days == req_days[i], f"City {city_names[i]} has {actual_days} days, expected {req_days[i]}"
-        
-        order = [0] * cities
-        for i in range(cities):
-            order[pos_val[i]] = i
-        
-        itinerary = []
-        for idx in order:
-            city_idx = idx
-            s_day = start_val[city_idx]
-            e_day = end_val[city_idx]
-            for d in range(s_day, e_day + 1):
-                itinerary.append({"day": d, "place": city_names[city_idx]})
-        
-        result = {"itinerary": itinerary}
-        print(json.dumps(result, indent=2))
+        order_vals = [m.evaluate(order[i]).as_long() for i in range(n)]
+        total_time_val = m.evaluate(total_time).as_long()
+        return order_vals, total_time_val
     else:
-        print("No solution found")
+        return None, None
 
-if __name__ == "__main__":
+def main():
+    import json
+    import sys
+
+    # Read the input data from stdin
+    data = json.load(sys.stdin)
+    activities = data["activities"]
+    n = len(activities)
+    lengths = [act["length"] for act in activities]
+    dependencies = data["dependencies"]
+    
+    # Convert dependencies: from list of dicts to list of tuples (i, j)
+    dep_tuples = []
+    for dep in dependencies:
+        dep_tuples.append((dep["from"], dep["to"]))
+    
+    # Call the planning function
+    order, total_time = plan_trip(n, lengths, dep_tuples)
+    
+    # Output the result
+    if order is None:
+        print(json.dumps({"error": "No solution found"}))
+    else:
+        result = {
+            "order": order,
+            "total_time": total_time
+        }
+        print(json.dumps(result))
+
+if __name__ == '__main__':
     main()

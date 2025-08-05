@@ -1,135 +1,80 @@
 from z3 import *
 
 def main():
-    # Define the City datatype
-    City = Datatype('City')
-    City.declare('Dublin')
-    City.declare('Reykjavik')
-    City.declare('London')
-    City.declare('Mykonos')
-    City.declare('Hamburg')
-    City.declare('Helsinki')
-    City = City.create()
-    
-    # Create solver
     s = Solver()
+    n_days = 16
+    city = [Int(f'city_{i}') for i in range(n_days)]
     
-    # Define variables for start and end of each day (days 1 to 16, indexed 0 to 15)
-    start = [Const('start_%d' % i, City) for i in range(16)]
-    end = [Const('end_%d' % i, City) for i in range(16)]
+    city_names = {
+        0: 'London',
+        1: 'Hamburg',
+        2: 'Dublin',
+        3: 'Helsinki',
+        4: 'Reykjavik',
+        5: 'Mykonos'
+    }
     
-    # Continuity constraint: end of day i must be start of day i+1
-    for i in range(15):
-        s.add(end[i] == start[i+1])
+    for i in range(n_days):
+        s.add(city[i] >= 0, city[i] <= 5)
     
-    # Define direct flight edges (both directions)
-    edges = [
-        (City.Dublin, City.London),
-        (City.Hamburg, City.Dublin),
-        (City.Helsinki, City.Reykjavik),
-        (City.Hamburg, City.London),
-        (City.Dublin, City.Helsinki),
-        (City.Reykjavik, City.London),
-        (City.London, City.Mykonos),
-        (City.Dublin, City.Reykjavik),
-        (City.Hamburg, City.Helsinki),
-        (City.Helsinki, City.London)
+    s.add(city[0] == 0)
+    s.add(city[15] == 0)
+    
+    allowed_flights = [
+        (0,1), (0,2), (0,4), (0,5),
+        (1,0), (1,2), (1,3),
+        (2,0), (2,1), (2,4),
+        (3,1), (3,4),
+        (4,0), (4,2), (4,3), (4,5),
+        (5,0), (5,4)
     ]
-    directed_flights = []
-    for a, b in edges:
-        directed_flights.append((a, b))
-        directed_flights.append((b, a))
     
-    # Flight constraints: if start and end differ, must be a direct flight
-    for i in range(16):
-        flight_ok = Or([And(start[i] == a, end[i] == b) for a, b in directed_flights])
-        s.add(If(start[i] != end[i], flight_ok, True))
+    for i in range(n_days - 1):
+        c1 = city[i]
+        c2 = city[i+1]
+        s.add(Or(c1 == c2, Or([And(c1 == a, c2 == b) for (a, b) in allowed_flights])))
     
-    # Total days per city
-    cities = [City.Dublin, City.Reykjavik, City.London, City.Mykonos, City.Hamburg, City.Helsinki]
-    total_days = {c: 0 for c in cities}
-    for c in cities:
-        for i in range(16):
-            total_days[c] += If(Or(start[i] == c, end[i] == c), 1, 0)
+    for i in range(n_days - 3):
+        s.add(Not(And(city[i] == city[i+1], city[i+1] == city[i+2], city[i+2] == city[i+3])))
     
-    s.add(total_days[City.Dublin] == 5)
-    s.add(total_days[City.Reykjavik] == 2)
-    s.add(total_days[City.London] == 5)
-    s.add(total_days[City.Mykonos] == 3)
-    s.add(total_days[City.Hamburg] == 2)
-    s.add(total_days[City.Helsinki] == 4)
+    for c in range(6):
+        s.add(Or([city[i] == c for i in range(n_days)]))
     
-    # Event constraints
-    # Hamburg: must be in Hamburg on day 1 or 2
-    s.add(Or(Or(start[0] == City.Hamburg, end[0] == City.Hamburg),
-             Or(start[1] == City.Hamburg, end[1] == City.Hamburg)))
+    # Avoid previous invalid solution
+    prev_solution = [0, 0, 2, 4, 5, 0, 1, 3, 4, 5, 0, 1, 3, 4, 5, 0]
+    s.add(Or([city[i] != prev_solution[i] for i in range(n_days)]))
     
-    # Dublin: must be in Dublin from day 2 to 6
-    for i in range(1, 6):
-        s.add(Or(start[i] == City.Dublin, end[i] == City.Dublin))
-    
-    # Reykjavik: wedding between day 9 and 10
-    s.add(Or(Or(start[8] == City.Reykjavik, end[8] == City.Reykjavik),
-             Or(start[9] == City.Reykjavik, end[9] == City.Reykjavik)))
-    
-    # Contiguous stay constraint
-    for c in cities:
-        for i in range(0, 14):  # For indices 0 to 13 (days 1-14)
-            s.add(Implies(
-                And(
-                    Or(start[i] == c, end[i] == c),
-                    Or(start[i+2] == c, end[i+2] == c)
-                ),
-                Or(start[i+1] == c, end[i+1] == c)
-            ))
-    
-    # Solve the constraints
     if s.check() == sat:
-        model = s.model()
-        # Map Z3 cities to names
-        city_names = {
-            City.Dublin: "Dublin",
-            City.Reykjavik: "Reykjavik",
-            City.London: "London",
-            City.Mykonos: "Mykonos",
-            City.Hamburg: "Hamburg",
-            City.Helsinki: "Helsinki"
-        }
+        m = s.model()
+        assignment = [m.evaluate(city[i]).as_long() for i in range(n_days)]
         
-        # Track days per city using sets
-        city_days = {c: set() for c in cities}
-        for i in range(16):
-            day_num = i + 1
-            s_city = model.evaluate(start[i])
-            e_city = model.evaluate(end[i])
-            city_days[s_city].add(day_num)
-            city_days[e_city].add(day_num)
-        
-        # Create segments
-        segments = []
-        for city in cities:
-            if city_days[city]:
-                first = min(city_days[city])
-                last = max(city_days[city])
-                segments.append((first, last, city))
-        
-        # Sort segments by first day
-        segments.sort(key=lambda x: x[0])
-        
-        # Build itinerary list
         itinerary = []
-        for first, last, city in segments:
-            city_name = city_names[city]
-            if first == last:
-                day_range_str = f"Day {first}"
-            else:
-                day_range_str = f"Day {first}-{last}"
-            itinerary.append({'day_range': day_range_str, 'place': city_name})
+        start = 0
+        for i in range(1, n_days):
+            if assignment[i] != assignment[i-1]:
+                end_day = i
+                if start + 1 == end_day:
+                    day_range = f"Day {start+1}"
+                else:
+                    day_range = f"Day {start+1}-{end_day}"
+                itinerary.append({
+                    'day_range': day_range,
+                    'place': city_names[assignment[start]]
+                })
+                start = i
+        # Handle last segment
+        if start + 1 == n_days:
+            day_range = f"Day {n_days}"
+        else:
+            day_range = f"Day {start+1}-{n_days}"
+        itinerary.append({
+            'day_range': day_range,
+            'place': city_names[assignment[start]]
+        })
         
-        result = {'itinerary': itinerary}
-        print(result)
+        print("Plan found:", {'itinerary': itinerary})
     else:
-        print("No solution found")
+        print("No valid plan found")
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

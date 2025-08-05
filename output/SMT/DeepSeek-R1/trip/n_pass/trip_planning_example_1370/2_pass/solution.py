@@ -1,94 +1,139 @@
-from z3 import *
+import z3
 import json
 
 def main():
-    cities = ['Santorini', 'Krakow', 'Paris', 'Vilnius', 'Munich', 'Geneva', 'Amsterdam', 'Budapest', 'Split']
-    durations = {
-        'Santorini': 5,
-        'Krakow': 5,
-        'Paris': 5,
-        'Vilnius': 3,
-        'Munich': 5,
-        'Geneva': 2,
-        'Amsterdam': 4,
-        'Budapest': 5,
-        'Split': 4
-    }
+    # Define the City enum
+    City = z3.Datatype('City')
+    City.declare('Santorini')
+    City.declare('Krakow')
+    City.declare('Paris')
+    City.declare('Vilnius')
+    City.declare('Munich')
+    City.declare('Geneva')
+    City.declare('Amsterdam')
+    City.declare('Budapest')
+    City.declare('Split')
+    City = City.create()
     
-    graph = set()
-    bidirectional_edges = [
-        ('Paris', 'Krakow'), ('Paris', 'Amsterdam'), ('Paris', 'Split'),
-        ('Paris', 'Geneva'), ('Amsterdam', 'Geneva'), ('Munich', 'Split'),
-        ('Split', 'Krakow'), ('Munich', 'Amsterdam'), ('Budapest', 'Amsterdam'),
-        ('Split', 'Geneva'), ('Vilnius', 'Split'), ('Munich', 'Geneva'),
-        ('Munich', 'Krakow'), ('Vilnius', 'Amsterdam'), ('Budapest', 'Paris'),
-        ('Krakow', 'Amsterdam'), ('Vilnius', 'Paris'), ('Budapest', 'Geneva'),
-        ('Split', 'Amsterdam'), ('Santorini', 'Geneva'), ('Amsterdam', 'Santorini'),
-        ('Munich', 'Budapest'), ('Munich', 'Paris')
+    # City constants
+    Santorini = City.Santorini
+    Krakow = City.Krakow
+    Paris = City.Paris
+    Vilnius = City.Vilnius
+    Munich = City.Munich
+    Geneva = City.Geneva
+    Amsterdam = City.Amsterdam
+    Budapest = City.Budapest
+    Split = City.Split
+    
+    cities = [Santorini, Krakow, Paris, Vilnius, Munich, Geneva, Amsterdam, Budapest, Split]
+    
+    # Build the directed flight graph
+    directed_edges = set()
+    directed_edges.add((Vilnius, Munich))
+    directed_edges.add((Krakow, Vilnius))
+    
+    undirected_pairs = [
+        (Paris, Krakow),
+        (Paris, Amsterdam),
+        (Paris, Split),
+        (Paris, Geneva),
+        (Amsterdam, Geneva),
+        (Munich, Split),
+        (Split, Krakow),
+        (Munich, Amsterdam),
+        (Budapest, Amsterdam),
+        (Split, Geneva),
+        (Vilnius, Split),
+        (Munich, Geneva),
+        (Munich, Krakow),
+        (Vilnius, Amsterdam),
+        (Budapest, Paris),
+        (Krakow, Amsterdam),
+        (Vilnius, Paris),
+        (Budapest, Geneva),
+        (Split, Amsterdam),
+        (Santorini, Geneva),
+        (Amsterdam, Santorini),
+        (Munich, Budapest),
+        (Munich, Paris)
     ]
-    unidirectional_edges = [
-        ('Vilnius', 'Munich'),
-        ('Krakow', 'Vilnius')
-    ]
     
-    for a, b in bidirectional_edges:
-        a_fixed = 'Munich' if a == 'Munich' else a
-        b_fixed = 'Munich' if b == 'Munich' else b
-        a_fixed = 'Geneva' if a == 'Geneva' else a_fixed
-        b_fixed = 'Geneva' if b == 'Geneva' else b_fixed
-        graph.add((a_fixed, b_fixed))
-        graph.add((b_fixed, a_fixed))
+    for (a, b) in undirected_pairs:
+        directed_edges.add((a, b))
+        directed_edges.add((b, a))
     
-    for a, b in unidirectional_edges:
-        a_fixed = 'Munich' if a == 'Munich' else a
-        b_fixed = 'Munich' if b == 'Munich' else b
-        graph.add((a_fixed, b_fixed))
+    # Create variables: C0 (start of day1) and C1 to C30 (end of day1 to day30)
+    C = [z3.Const(f'C_{i}', City) for i in range(0, 31)]  # C0 to C30
     
-    s = Solver()
-    pos = {c: Int(f'pos_{c}') for c in cities}
-    s.add(Distinct([pos[c] for c in cities]))
+    s = z3.Solver()
+    
+    # Flight constraints for each day i (from 1 to 30): if the start city (C_{i-1}) != end city (C_i), then there must be a direct flight
+    for i in range(1, 31):
+        start_city = C[i-1]
+        end_city = C[i]
+        flight_possible = z3.Or([z3.And(start_city == a, end_city == b) for (a, b) in directed_edges])
+        s.add(z3.If(start_city != end_city, flight_possible, True))
+    
+    # Total days per city: for a city c, total_days = number of days i (from 1 to 30) such that either C_{i-1}==c or C_i==c
+    totals = {}
     for c in cities:
-        s.add(pos[c] >= 0, pos[c] < 9)
+        total_days = 0
+        for i in range(1, 31):
+            in_city = z3.Or(C[i-1] == c, C[i] == c)
+            total_days += z3.If(in_city, 1, 0)
+        totals[c] = total_days
     
-    start_vars = {}
-    for c in cities:
-        total = 1
-        for d in cities:
-            total = total + If(pos[d] < pos[c], durations[d] - 1, 0)
-        start_vars[c] = total
+    s.add(totals[Santorini] == 5)
+    s.add(totals[Krakow] == 5)
+    s.add(totals[Paris] == 5)
+    s.add(totals[Vilnius] == 3)
+    s.add(totals[Munich] == 5)
+    s.add(totals[Geneva] == 2)
+    s.add(totals[Amsterdam] == 4)
+    s.add(totals[Budapest] == 5)
+    s.add(totals[Split] == 4)
     
-    s.add(start_vars['Santorini'] <= 29)
-    s.add(start_vars['Santorini'] + durations['Santorini'] - 1 >= 25)
-    s.add(start_vars['Krakow'] <= 22)
-    s.add(start_vars['Krakow'] + durations['Krakow'] - 1 >= 18)
-    s.add(start_vars['Paris'] <= 15)
-    s.add(start_vars['Paris'] + durations['Paris'] - 1 >= 11)
+    # Event constraints: at least one day in the specified ranges
+    # Santorini between day 25 and 29 (inclusive) -> days 25,26,27,28,29
+    santorini_days = []
+    for day in range(25, 30):  # day from 25 to 29 inclusive
+        i = day  # the day index in our 1..30 system
+        # For day i, we use C[i-1] (morning) and C[i] (evening)
+        santorini_days.append(z3.Or(C[i-1] == Santorini, C[i] == Santorini))
+    s.add(z3.Or(santorini_days))
     
-    for a in cities:
-        for b in cities:
-            if a != b and (a, b) not in graph:
-                s.add(Not(pos[b] == pos[a] + 1))
+    # Krakow between day 18 and 22 (inclusive) -> days 18,19,20,21,22
+    krakow_days = []
+    for day in range(18, 23):  # 18 to 22 inclusive
+        i = day
+        krakow_days.append(z3.Or(C[i-1] == Krakow, C[i] == Krakow))
+    s.add(z3.Or(krakow_days))
     
-    if s.check() == sat:
-        m = s.model()
-        pos_val = {c: m.evaluate(pos[c]).as_long() for c in cities}
-        start_val = {c: m.evaluate(start_vars[c]).as_long() for c in cities}
-        end_val = {c: start_val[c] + durations[c] - 1 for c in cities}
-        
+    # Paris between day 11 and 15 (inclusive) -> days 11,12,13,14,15
+    paris_days = []
+    for day in range(11, 16):  # 11 to 15 inclusive
+        i = day
+        paris_days.append(z3.Or(C[i-1] == Paris, C[i] == Paris))
+    s.add(z3.Or(paris_days))
+    
+    # Solve the constraints
+    if s.check() == z3.sat:
+        model = s.model()
         itinerary_list = []
         for day in range(1, 31):
-            active_cities = []
-            for c in cities:
-                if start_val[c] <= day <= end_val[c]:
-                    active_cities.append(c)
-            active_cities_sorted = sorted(active_cities, key=lambda city: pos_val[city])
-            place_str = ", ".join(active_cities_sorted)
-            itinerary_list.append({"day": day, "place": place_str})
+            start_city = model[C[day-1]]
+            end_city = model[C[day]]
+            if start_city.as_long() == end_city.as_long():
+                cities_list = [str(start_city)]
+            else:
+                cities_list = [str(start_city), str(end_city)]
+            itinerary_list.append({"day": day, "cities": cities_list})
         
         result = {"itinerary": itinerary_list}
         print(json.dumps(result))
     else:
-        print("No solution found")
+        print(json.dumps({"itinerary": []}))
 
 if __name__ == "__main__":
     main()

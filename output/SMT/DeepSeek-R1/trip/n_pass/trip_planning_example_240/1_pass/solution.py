@@ -1,74 +1,58 @@
 from z3 import *
-import json
 
 def main():
     # Define the cities and days
-    cities = ['Prague', 'Berlin', 'Tallinn', 'Stockholm']
-    days = list(range(1, 13))
-    
-    # Create a dictionary of variables: In[city][day]
-    In = {}
-    for city in cities:
-        In[city] = {day: Bool(f"In_{city}_{day}") for day in days}
-    
-    # Initialize the solver
+    cities = ['P', 'B', 'T', 'S']  # P: Prague, B: Berlin, T: Tallinn, S: Stockholm
+    n_days = 12
+    days = list(range(n_days))
+
+    # Create Z3 variables: in_city[d][c] is True if we are in city c on day d
+    in_city = {}
+    for d in days:
+        for c in cities:
+            in_city[(d, c)] = Bool(f"day{d}_city{c}")
+
     s = Solver()
-    
-    # Fixed constraints for Tallinn: must be present on days 8-12
-    for day in [8, 9, 10, 11, 12]:
-        s.add(In['Tallinn'][day] == True)
-    
-    # Fixed constraints for Berlin: must be present on days 6 and 8
-    s.add(In['Berlin'][6] == True)
-    s.add(In['Berlin'][8] == True)
-    
-    # Total days constraints for each city
-    s.add(Sum([If(In['Prague'][day], 1, 0) for day in days]) == 2)
-    s.add(Sum([If(In['Berlin'][day], 1, 0) for day in days]) == 3)
-    s.add(Sum([If(In['Tallinn'][day], 1, 0) for day in days]) == 5)
-    s.add(Sum([If(In['Stockholm'][day], 1, 0) for day in days]) == 5)
-    
-    # Define allowed direct flight pairs (sorted to avoid ordering issues)
-    allowed_pairs = [
-        ('Berlin', 'Tallinn'),
-        ('Prague', 'Tallinn'),
-        ('Stockholm', 'Tallinn'),
-        ('Prague', 'Stockholm'),
-        ('Stockholm', 'Berlin')
-    ]
-    allowed_pairs = [tuple(sorted(pair)) for pair in allowed_pairs]
-    
-    # Generate all possible city pairs
-    all_pairs = []
-    for i in range(len(cities)):
-        for j in range(i+1, len(cities)):
-            pair = tuple(sorted([cities[i], cities[j]]))
-            all_pairs.append(pair)
-    
-    # Forbidden pairs: pairs not in allowed_pairs
-    forbidden_pairs = [pair for pair in all_pairs if pair not in allowed_pairs]
-    
-    # Add constraints for forbidden pairs: they cannot be together on the same day
-    for (A, B) in forbidden_pairs:
-        for day in days:
-            s.add(Not(And(In[A][day], In[B][day])))
-    
-    # Each day must have at least one city and at most two cities
-    for day in days:
-        cities_present = [In[city][day] for city in cities]
-        s.add(Sum([If(c, 1, 0) for c in cities_present]) >= 1)
-        s.add(Sum([If(c, 1, 0) for c in cities_present]) <= 2)
-    
-    # Check if the problem is satisfiable
+
+    # Constraint 1: Each day, we are in at least one city and at most two cities.
+    for d in days:
+        s.add(Or([in_city[(d, c)] for c in cities]))  # At least one city
+        # At most two cities: use AtMost over the four cities
+        s.add(AtMost(in_city[(d, 'P')], in_city[(d, 'B')], in_city[(d, 'T')], in_city[(d, 'S')], 2))
+        # Disallow (Prague and Berlin) on the same day since no direct flight
+        s.add(Not(And(in_city[(d, 'P')], in_city[(d, 'B')])))
+
+    # Constraint 2: Consecutive days must share at least one city.
+    for d in range(n_days - 1):
+        s.add(Or([And(in_city[(d, c)], in_city[(d+1, c)]) for c in cities]))
+
+    # Constraint 3: Total days per city
+    s.add(Sum([If(in_city[(d, 'P')], 1, 0) for d in days]) == 2)  # Prague: 2 days
+    s.add(Sum([If(in_city[(d, 'B')], 1, 0) for d in days]) == 3)  # Berlin: 3 days
+    s.add(Sum([If(in_city[(d, 'T')], 1, 0) for d in days]) == 5)  # Tallinn: 5 days
+    s.add(Sum([If(in_city[(d, 'S')], 1, 0) for d in days]) == 5)  # Stockholm: 5 days
+
+    # Constraint 4: Specific days
+    # Day 6 (index 5) must be in Berlin
+    s.add(in_city[(5, 'B')] == True)
+    # Day 8 (index 7) must be in Berlin
+    s.add(in_city[(7, 'B')] == True)
+    # Must be in Tallinn on at least one day from day 8 to day 12 (indices 7 to 11)
+    s.add(Or([in_city[(d, 'T')] for d in range(7, 12)]))
+
+    # Solve the problem
     if s.check() == sat:
         model = s.model()
         itinerary = []
-        for day in days:
-            for city in cities:
-                if is_true(model.eval(In[city][day])):
-                    itinerary.append({"day": day, "place": city})
-        result = {'itinerary': itinerary}
-        print(json.dumps(result, indent=2))
+        for d in range(n_days):
+            places = []
+            for c in cities:
+                if model.evaluate(in_city[(d, c)]):
+                    places.append(c)
+            itinerary.append({"day": d+1, "place": sorted(places)})
+        
+        result = {"itinerary": itinerary}
+        print(result)
     else:
         print("No solution found")
 

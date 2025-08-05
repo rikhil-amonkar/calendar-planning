@@ -2,97 +2,107 @@ from z3 import *
 import json
 
 def main():
-    # Create the city mapping
-    city_names = {
-        0: "Brussels",
-        1: "Barcelona",
-        2: "Split"
+    # Define symbolic constants for cities
+    CitySort = Datatype('CitySort')
+    CitySort.declare('Brussels')
+    CitySort.declare('Barcelona')
+    CitySort.declare('Split')
+    CitySort = CitySort.create()
+    brussels = CitySort.Brussels
+    barcelona = CitySort.Barcelona
+    split = CitySort.Split
+
+    # Map symbolic constants to string names
+    city_map = {
+        brussels: 'Brussels',
+        barcelona: 'Barcelona',
+        split: 'Split'
     }
     
-    # We have 12 days
-    n_days = 12
-    n_flights = n_days - 1  # flights from day1 to day11
-
-    # L[i] is the starting city at the beginning of day i (0-indexed, so day0 is day1)
-    L = [Int('L_%d' % i) for i in range(n_days)]
-    # F[i] is whether we fly on day i+1 (connecting day i+1 and day i+2). For i from 0 to 10 (day1 to day11)
-    F = [Bool('F_%d' % i) for i in range(n_flights)]
+    s_sym = [None] * 13
+    s_sym[0] = brussels  # Start at Brussels at the beginning of day 1
     
-    s = Solver()
+    # Create Z3 variables for s[1] to s[12] (sleeping cities at the end of each day)
+    for i in range(1, 13):
+        s_sym[i] = Const(f's{i}', CitySort)
     
-    # Constraint: L[0] must be Brussels (0)
-    s.add(L[0] == 0)
+    solver = Solver()
     
-    # Constraint: no flight on day1 (so that we start day2 in Brussels)
-    s.add(F[0] == False)
+    # Define direct flight pairs
+    direct_flights = [
+        (brussels, barcelona),
+        (barcelona, brussels),
+        (barcelona, split),
+        (split, barcelona)
+    ]
     
-    # Constraints for each flight day and the next day's city
-    for i in range(n_flights):
-        # If we fly on day i+1, then the next city must be reachable by a direct flight
-        s.add(If(F[i],
-                 Or(
-                     And(L[i] == 0, L[i+1] == 1),   # Brussels <-> Barcelona
-                     And(L[i] == 1, L[i+1] == 0),
-                     And(L[i] == 1, L[i+1] == 2),   # Barcelona <-> Split
-                     And(L[i] == 2, L[i+1] == 1)
-                 ),
-                 L[i+1] == L[i]   # if not flying, same city next day
-                ))
+    # Flight constraints: if moving between cities, ensure direct flight exists
+    for i in range(1, 13):
+        flight = (s_sym[i] != s_sym[i-1])
+        allowed_flight = Or([And(s_sym[i-1] == dep, s_sym[i] == arr) for dep, arr in direct_flights])
+        solver.add(Implies(flight, allowed_flight))
     
-    # Constraints for the domain of L: only 0,1,2
-    for i in range(n_days):
-        s.add(Or(L[i] == 0, L[i] == 1, L[i] == 2))
+    # Define presence in each city for each day
+    in_brussels = [None] * 12  # For days 1 to 12
+    in_barcelona = [None] * 12
+    in_split = [None] * 12
     
-    # Now, define the total days per city
-    days_B = 0
-    days_A = 0
-    days_S = 0
-    
-    # For each day j (0-indexed, representing day j+1)
-    for j in range(n_days):
-        if j < n_flights:  # j from 0 to 10 (days 1 to 11)
-            # On day j+1, we are in L[j] and if we fly (F[j]) then also in L[j+1]
-            in_B = Or(L[j] == 0, And(F[j], L[j+1] == 0))
-            in_A = Or(L[j] == 1, And(F[j], L[j+1] == 1))
-            in_S = Or(L[j] == 2, And(F[j], L[j+1] == 2))
-        else:  # j = 11 (day12)
-            in_B = (L[j] == 0)
-            in_A = (L[j] == 1)
-            in_S = (L[j] == 2)
+    for i in range(1, 13):  # Day i (1 to 12)
+        flight_day = (s_sym[i] != s_sym[i-1])
+        idx = i - 1  # Index in presence arrays (0 to 11)
         
-        days_B += If(in_B, 1, 0)
-        days_A += If(in_A, 1, 0)
-        days_S += If(in_S, 1, 0)
+        # Presence in Brussels on day i
+        in_brussels[idx] = Or(
+            And(Not(flight_day), s_sym[i] == brussels),
+            And(flight_day, Or(s_sym[i-1] == brussels, s_sym[i] == brussels))
+        )
+        # Presence in Barcelona on day i
+        in_barcelona[idx] = Or(
+            And(Not(flight_day), s_sym[i] == barcelona),
+            And(flight_day, Or(s_sym[i-1] == barcelona, s_sym[i] == barcelona))
+        )
+        # Presence in Split on day i
+        in_split[idx] = Or(
+            And(Not(flight_day), s_sym[i] == split),
+            And(flight_day, Or(s_sym[i-1] == split, s_sym[i] == split))
+        )
     
-    s.add(days_B == 2)
-    s.add(days_A == 7)
-    s.add(days_S == 5)
+    # Total days per city constraints
+    total_brussels = Sum([If(in_brussels[i], 1, 0) for i in range(12)])
+    total_barcelona = Sum([If(in_barcelona[i], 1, 0) for i in range(12)])
+    total_split = Sum([If(in_split[i], 1, 0) for i in range(12)])
     
-    # Solve the constraints
-    if s.check() == sat:
-        m = s.model()
-        # Extract the values for L and F
-        L_val = [m.evaluate(L[i]).as_long() for i in range(n_days)]
-        F_val = [is_true(m.evaluate(F[i])) for i in range(n_flights)]
+    solver.add(total_brussels == 2)
+    solver.add(total_barcelona == 7)
+    solver.add(total_split == 5)
+    
+    # Brussels must be present on days 1 and 2 (conference constraint)
+    solver.add(in_brussels[0] == True)  # Day 1
+    solver.add(in_brussels[1] == True)  # Day 2
+    
+    # Check for a solution
+    if solver.check() == sat:
+        m = solver.model()
+        # Get the sleeping city for each day
+        sleeping_cities = [None] * 13
+        sleeping_cities[0] = brussels
+        for i in range(1, 13):
+            sleeping_cities[i] = m.eval(s_sym[i])
         
-        # Build the itinerary
-        itinerary_list = []
-        for j in range(n_days):
-            day = j + 1
-            if j < n_flights and F_val[j]:
-                # Flight on day j+1: we are in both L[j] and L[j+1]
-                cities_set = { L_val[j], L_val[j+1] }
+        # Build itinerary: days 1 and 2 are Brussels, days 3-12 use the sleeping city
+        itinerary = []
+        for day in range(1, 13):
+            if day <= 2:
+                place = 'Brussels'
             else:
-                cities_set = { L_val[j] }
-            
-            # Convert to city names and sort alphabetically
-            cities_names = sorted([city_names[code] for code in cities_set])
-            itinerary_list.append({"day": day, "cities": cities_names})
+                sym_city = sleeping_cities[day]  # Sleeping city at end of day
+                place = city_map[sym_city]
+            itinerary.append({"day": day, "place": place})
         
-        result = {"itinerary": itinerary_list}
-        print(json.dumps(result, indent=2))
+        result = {"itinerary": itinerary}
+        print(json.dumps(result))
     else:
-        print("No solution found")
+        print('{"error": "No solution found"}')
 
 if __name__ == "__main__":
     main()

@@ -1,96 +1,134 @@
 from z3 import *
+import json
 
-# Define the city mappings
-cities = ['Dublin', 'Madrid', 'Oslo', 'London', 'Vilnius', 'Berlin']
-mapping = {city: idx for idx, city in enumerate(cities)}
-rev_mapping = {idx: city for idx, city in enumerate(cities)}
+def main():
+    # Define cities and their required days
+    cities = ['Dublin', 'Madrid', 'Oslo', 'London', 'Vilnius', 'Berlin']
+    required_days = {
+        'Dublin': 3,
+        'Madrid': 2,
+        'Oslo': 3,
+        'London': 2,
+        'Vilnius': 3,
+        'Berlin': 5
+    }
+    
+    # Event constraints: (city, [days])
+    events = {
+        'Dublin': [7, 8, 9],
+        'Madrid': [2, 3],
+        'Berlin': [3, 4, 5, 6, 7]
+    }
+    
+    # Direct flights list (as strings)
+    flight_list_str = [
+        "London and Madrid",
+        "Oslo and Vilnius",
+        "Berlin and Vilnius",
+        "Madrid and Oslo",
+        "Madrid and Dublin",
+        "London and Oslo",
+        "Madrid and Berlin",
+        "Berlin and Oslo",
+        "Dublin and Oslo",
+        "London and Dublin",
+        "London and Berlin",
+        "Berlin and Dublin"
+    ]
+    
+    # Create set of flight pairs (canonical order: (min, max))
+    flight_pairs = set()
+    for s in flight_list_str:
+        a, b = s.split(' and ')
+        flight_pairs.add((min(a, b), max(a, b)))
+    
+    # Days 1 to 13
+    days = list(range(1, 14))
+    
+    # Create Z3 variables: x[day][city] = Bool(f'x_{day}_{city}')
+    x = {}
+    for d in days:
+        x[d] = {}
+        for c in cities:
+            x[d][c] = Bool(f"x_{d}_{c}")
+    
+    s = Solver()
+    
+    # Constraint 1: Each day, at least one city and at most two cities
+    for d in days:
+        # At least one city
+        s.add(Or([x[d][c] for c in cities]))
+        # At most two cities: for any three distinct cities, not all true
+        for i in range(len(cities)):
+            for j in range(i+1, len(cities)):
+                for k in range(j+1, len(cities)):
+                    c1 = cities[i]
+                    c2 = cities[j]
+                    c3 = cities[k]
+                    s.add(Not(And(x[d][c1], x[d][c2], x[d][c3])))
+    
+    # Constraint 2: Total days per city
+    for c in cities:
+        total = Sum([If(x[d][c], 1, 0) for d in days])
+        s.add(total == required_days[c])
+    
+    # Constraint 3: If two cities on same day, they must be connected by direct flight
+    for d in days:
+        for i in range(len(cities)):
+            for j in range(i+1, len(cities)):
+                c1 = cities[i]
+                c2 = cities[j]
+                pair = (min(c1, c2), max(c1, c2))
+                # If both true, then pair must be in flight_pairs
+                s.add(Implies(And(x[d][c1], x[d][c2]), pair in flight_pairs))
+    
+    # Constraint 4: Travel constraints (leaving and arriving)
+    for c in cities:
+        for d in range(1, 13):  # d from 1 to 12
+            # If leaving c: in c on day d and not on day d+1
+            cond1 = And(x[d][c], Not(x[d+1][c]))
+            # Then there exists another city c2 connected to c and present on day d
+            options1 = []
+            for c2 in cities:
+                if c2 != c:
+                    pair = (min(c, c2), max(c, c2))
+                    if pair in flight_pairs:
+                        options1.append(And(x[d][c2]))
+            if options1:
+                s.add(Implies(cond1, Or(options1)))
+            else:
+                # If no options, then condition cannot hold
+                s.add(Not(cond1))
+                
+            # If arriving in c: not in c on day d and in c on day d+1
+            cond2 = And(Not(x[d][c]), x[d+1][c])
+            options2 = []
+            for c2 in cities:
+                if c2 != c:
+                    pair = (min(c, c2), max(c, c2))
+                    if pair in flight_pairs:
+                        options2.append(And(x[d][c2]))
+            if options2:
+                s.add(Implies(cond2, Or(options2)))
+            else:
+                s.add(Not(cond2))
+    
+    # Constraint 5: Event constraints
+    for city, event_days in events.items():
+        s.add(Or([x[d][city] for d in event_days]))
+    
+    # Solve the problem
+    if s.check() == sat:
+        model = s.model()
+        itinerary = []
+        for d in days:
+            for c in cities:
+                if is_true(model.eval(x[d][c])):
+                    itinerary.append({"day": d, "city": c})
+        result = {"itinerary": itinerary}
+        print(json.dumps(result, indent=2))
+    else:
+        print("No solution found")
 
-# Direct flights (both directions included)
-flights = [
-    ('London', 'Madrid'),
-    ('Oslo', 'Vilnius'),
-    ('Berlin', 'Vilnius'),
-    ('Madrid', 'Oslo'),
-    ('Madrid', 'Dublin'),
-    ('London', 'Oslo'),
-    ('Madrid', 'Berlin'),
-    ('Berlin', 'Oslo'),
-    ('Dublin', 'Oslo'),
-    ('London', 'Dublin'),
-    ('London', 'Berlin'),
-    ('Berlin', 'Dublin')
-]
-
-# Create set of allowed consecutive city pairs (including same city and direct flights)
-allowed_consecutive = set()
-for a, b in flights:
-    a_idx = mapping[a]
-    b_idx = mapping[b]
-    allowed_consecutive.add((a_idx, b_idx))
-    allowed_consecutive.add((b_idx, a_idx))
-for i in range(6):
-    allowed_consecutive.add((i, i))
-
-# Create Z3 variables for each day (c1 to c13)
-c = [Int('c_%d' % i) for i in range(1, 14)]
-solver = Solver()
-
-# Each day variable must be between 0 and 5 (inclusive)
-for i in range(13):
-    solver.add(And(c[i] >= 0, c[i] <= 5))
-
-# Flight constraints: consecutive days must be in allowed_consecutive
-for i in range(12):
-    conds = []
-    for (a, b) in allowed_consecutive:
-        conds.append(And(c[i] == a, c[i+1] == b))
-    solver.add(Or(conds))
-
-# Counting constraints for each city
-counts = [0] * 6
-for city in range(6):
-    term1 = Sum([If(c[i] == city, 1, 0) for i in range(13)])  # count as end city
-    term2 = Sum([If(And(c[i] == city, c[i] != c[i+1]), 1, 0) for i in range(12)])  # count as start city when leaving next day
-    counts[city] = term1 + term2
-
-# Set the required days for each city
-solver.add(counts[mapping['Dublin']] == 3)
-solver.add(counts[mapping['Madrid']] == 2)
-solver.add(counts[mapping['Oslo']] == 3)
-solver.add(counts[mapping['London']] == 2)
-solver.add(counts[mapping['Vilnius']] == 3)
-solver.add(counts[mapping['Berlin']] == 5)
-
-# Event constraints
-# Dublin: must be in Dublin on at least one day between 7 and 9 (inclusive)
-# This means: either at the beginning of day 7 (c6) or at the end of day7 (c7) or ... up to end of day9 (c9)
-solver.add(Or(c[5] == mapping['Dublin'],  # c6 (beginning of day7)
-             c[6] == mapping['Dublin'],   # c7 (end of day7)
-             c[7] == mapping['Dublin'],   # c8 (end of day8)
-             c[8] == mapping['Dublin']))  # c9 (end of day9)
-
-# Madrid: must be in Madrid on at least one day between 2 and 3 (inclusive)
-solver.add(Or(c[0] == mapping['Madrid'],  # c1 (beginning of day2 if leaving on day2, or end of day1 if staying)
-             c[1] == mapping['Madrid'],   # c2 (end of day2)
-             c[2] == mapping['Madrid']))  # c3 (end of day3)
-
-# Berlin: must be in Berlin on at least one day between 3 and 7 (inclusive)
-solver.add(Or(c[1] == mapping['Berlin'],   # c2 (beginning of day3)
-             c[2] == mapping['Berlin'],    # c3 (end of day3)
-             c[3] == mapping['Berlin'],    # c4 (end of day4)
-             c[4] == mapping['Berlin'],    # c5 (end of day5)
-             c[5] == mapping['Berlin'],    # c6 (end of day6)
-             c[6] == mapping['Berlin']))   # c7 (end of day7)
-
-# Check and get the model
-if solver.check() == sat:
-    model = solver.model()
-    itinerary = []
-    for i in range(13):
-        city_idx = model.evaluate(c[i]).as_long()
-        city_name = rev_mapping[city_idx]
-        itinerary.append({"day": i+1, "place": city_name})
-    result = {'itinerary': itinerary}
-    print(result)
-else:
-    print("No solution found")
+if __name__ == "__main__":
+    main()

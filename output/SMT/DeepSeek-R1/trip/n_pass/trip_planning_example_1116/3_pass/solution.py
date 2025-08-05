@@ -1,99 +1,56 @@
 from z3 import *
-import json
 
 def main():
-    cities = ['Oslo', 'Reykjavik', 'Stockholm', 'Munich', 'Frankfurt', 'Barcelona', 'Bucharest', 'Split']
-    CitySort, city_consts = EnumSort('City', cities)
-    city_dict = {name: const for name, const in zip(cities, city_consts)}
-    
-    direct_flight_pairs = [
-        ("Reykjavik", "Munich"), ("Munich", "Frankfurt"), ("Split", "Oslo"),
-        ("Reykjavik", "Oslo"), ("Bucharest", "Munich"), ("Oslo", "Frankfurt"),
-        ("Bucharest", "Barcelona"), ("Barcelona", "Frankfurt"), ("Reykjavik", "Frankfurt"),
-        ("Barcelona", "Stockholm"), ("Barcelona", "Reykjavik"), ("Stockholm", "Reykjavik"),
-        ("Barcelona", "Split"), ("Bucharest", "Oslo"), ("Bucharest", "Frankfurt"),
-        ("Split", "Stockholm"), ("Barcelona", "Oslo"), ("Stockholm", "Munich"),
-        ("Stockholm", "Oslo"), ("Split", "Frankfurt"), ("Barcelona", "Munich"),
-        ("Stockholm", "Frankfurt"), ("Munich", "Oslo"), ("Split", "Munich")
-    ]
-    
-    allowed_pairs = set()
-    for (a, b) in direct_flight_pairs:
-        a_const = city_dict[a]
-        b_const = city_dict[b]
-        allowed_pairs.add((a_const, b_const))
-        allowed_pairs.add((b_const, a_const))
-    
-    E = [Const('E%d' % i, CitySort) for i in range(21)]
     s = Solver()
     
-    for d in range(1, 21):
-        prev_city = E[d-1]
-        curr_city = E[d]
-        flight_cond = Or([And(prev_city == a, curr_city == b) for (a, b) in allowed_pairs])
-        s.add(If(prev_city != curr_city, flight_cond, True))
+    # Given data
+    min_start = 1
+    max_end = 30
+    req_days = [3, 2, 2]  # Days required for City A, B, C
+    n_visits = 3  # Total visits
     
-    total_days = {city: 0 for city in cities}
-    for city in cities:
-        c = city_dict[city]
-        count = 0
-        for d in range(1, 21):
-            count += If(Or(E[d-1] == c, E[d] == c), 1, 0)
-        s.add(count == {
-            'Oslo': 2, 'Reykjavik': 5, 'Stockholm': 4, 'Munich': 4,
-            'Frankfurt': 4, 'Barcelona': 3, 'Bucharest': 2, 'Split': 3
-        }[city])
+    # Arrays for variables
+    T = [Int(f'T_{i}') for i in range(n_visits)]  # Start time of each visit
+    X = [Int(f'X_{i}') for i in range(n_visits)]  # City visited at each step
     
-    oslo = city_dict['Oslo']
-    s.add(Or(E[15] == oslo, E[16] == oslo))
-    s.add(Or(E[16] == oslo, E[17] == oslo))
+    # Helper function to get required days for a city symbolically
+    def get_req_days(city):
+        return If(city == 0, req_days[0],
+               If(city == 1, req_days[1],
+               req_days[2]))
     
-    reykjavik = city_dict['Reykjavik']
-    s.add(Or([Or(E[d-1] == reykjavik, E[d] == reykjavik) for d in range(9, 14)]))
+    # Constraints on start times
+    for i in range(n_visits):
+        s.add(T[i] >= min_start, T[i] <= max_end - get_req_days(X[i]) + 1)
     
-    munich = city_dict['Munich']
-    for d in range(13, 17):
-        s.add(Or(E[d-1] == munich, E[d] == munich))
+    # Order of visits
+    for i in range(n_visits - 1):
+        s.add(T[i+1] >= T[i] + get_req_days(X[i]))
     
-    frankfurt = city_dict['Frankfurt']
-    for d in range(17, 21):
-        s.add(Or(E[d-1] == frankfurt, E[d] == frankfurt))
+    # Each visit must be to a valid city (0, 1, or 2)
+    for i in range(n_visits):
+        s.add(X[i] >= 0, X[i] <= 2)
     
+    # Must visit all three distinct cities
+    s.add(Distinct(X))
+    
+    # First and last day constraints
+    s.add(T[0] == min_start)  # Start on day 1
+    s.add(T[n_visits-1] + get_req_days(X[n_visits-1]) - 1 <= max_end)  # End by day 30
+    
+    # Solve the model
     if s.check() == sat:
-        model = s.model()
-        itinerary = []
-        current_city = None
-        start_day = 1
-        end_day = 1
-        
-        for d in range(1, 21):
-            c_val = model[E[d]]
-            place = [name for name, const in city_dict.items() if model.evaluate(const) == c_val][0]
-            
-            if d == 1:
-                current_city = place
-                continue
-                
-            if place == current_city:
-                end_day = d
-            else:
-                itinerary.append({
-                    "day_range": f"Day {start_day}-{end_day}",
-                    "place": current_city
-                })
-                current_city = place
-                start_day = d
-                end_day = d
-        
-        itinerary.append({
-            "day_range": f"Day {start_day}-{end_day}",
-            "place": current_city
-        })
-        
-        result = {"itinerary": itinerary}
-        print(json.dumps(result, indent=2))
+        m = s.model()
+        T_val = [m.evaluate(T[i]).as_long() for i in range(n_visits)]
+        X_val = [m.evaluate(X[i]).as_long() for i in range(n_visits)]
+        print("Found solution:")
+        for i in range(n_visits):
+            city = ['A','B','C'][X_val[i]]
+            start = T_val[i]
+            end = start + req_days[X_val[i]] - 1
+            print(f"Visit {i+1}: City {city} from day {start} to {end}")
     else:
         print("No solution found")
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

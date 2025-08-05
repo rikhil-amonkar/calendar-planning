@@ -1,114 +1,105 @@
 from z3 import *
-import json
 
 def main():
-    # Define city names and their indices
-    cities = ['Porto', 'Prague', 'Reykjavik', 'Santorini', 'Amsterdam', 'Munich']
-    n_cities = len(cities)
+    # Define the City enum
+    City, (Porto, Prague, Reykjavik, Santorini, Amsterdam, Munich) = EnumSort('City', 
+        ['Porto', 'Prague', 'Reykjavik', 'Santorini', 'Amsterdam', 'Munich'])
     
-    # Map city names to indices for clarity
-    Porto, Prague, Reykjavik, Santorini, Amsterdam, Munich = range(n_cities)
+    # Map city names to enum constants
+    city_dict = {
+        'Porto': Porto,
+        'Prague': Prague,
+        'Reykjavik': Reykjavik,
+        'Santorini': Santorini,
+        'Amsterdam': Amsterdam,
+        'Munich': Munich
+    }
     
-    # Direct flight pairs (undirected)
-    flight_pairs = [
-        (Amsterdam, Porto),
-        (Amsterdam, Munich),
-        (Amsterdam, Reykjavik),
-        (Munich, Porto),
-        (Prague, Reykjavik),
-        (Munich, Reykjavik),
-        (Amsterdam, Santorini),
-        (Amsterdam, Prague),
-        (Munich, Prague)
+    # Undirected flight edges
+    undirected_edges = [
+        ("Porto", "Amsterdam"),
+        ("Munich", "Amsterdam"),
+        ("Reykjavik", "Amsterdam"),
+        ("Munich", "Porto"),
+        ("Prague", "Reykjavik"),
+        ("Reykjavik", "Munich"),
+        ("Amsterdam", "Santorini"),
+        ("Prague", "Amsterdam"),
+        ("Prague", "Munich")
     ]
     
-    # Initialize Z3 variables
-    s0 = Int('s0')
-    end = [Int(f'end_{i}') for i in range(16)]  # end[0] is end of day1, ..., end[15] is end of day16
+    # Create directed edges for both directions
+    base_directed_edges = []
+    for a, b in undirected_edges:
+        a_const = city_dict[a]
+        b_const = city_dict[b]
+        base_directed_edges.append((a_const, b_const))
+        base_directed_edges.append((b_const, a_const))
     
+    # Required days per city
+    required_days = {
+        Porto: 5,
+        Prague: 4,
+        Reykjavik: 4,
+        Santorini: 2,
+        Amsterdam: 2,
+        Munich: 4
+    }
+    
+    # Initialize solver
     s = Solver()
     
-    # Domain constraints for s0 and end variables
-    s.add(s0 >= 0, s0 < n_cities)
-    for i in range(16):
-        s.add(end[i] >= 0, end[i] < n_cities)
+    # Create S and E for 16 days (index 0 to 15)
+    S = [Const(f'S_{d}', City) for d in range(16)]
+    E = [Const(f'E_{d}', City) for d in range(16)]
     
-    # Flight constraints for each day
-    for day_index in range(16):  # day_index from 0 to 15, representing day (day_index+1)
-        if day_index == 0:
-            start_i = s0
-        else:
-            start_i = end[day_index-1]
-        end_i = end[day_index]
-        
-        # If start_i and end_i are different, ensure there is a direct flight
-        if flight_pairs:
-            flight_cond = Or([Or(And(start_i == a, end_i == b), And(start_i == b, end_i == a)) for (a, b) in flight_pairs])
-            s.add(If(start_i != end_i, flight_cond, True))
+    # Constraint 1: E[d] == S[d+1] for d in 0 to 14
+    for d in range(15):
+        s.add(E[d] == S[d+1])
     
-    # Total days per city
-    total_days = [0] * n_cities
-    for c in range(n_cities):
-        count_start = 0
-        count_end_only = 0
-        for day_index in range(16):
-            if day_index == 0:
-                start_i = s0
-            else:
-                start_i = end[day_index-1]
-            end_i = end[day_index]
-            
-            count_start += If(start_i == c, 1, 0)
-            count_end_only += If(And(end_i == c, start_i != c), 1, 0)
-        total_days[c] = count_start + count_end_only
+    # Constraint 2: For each day, either S[d] == E[d] or a valid flight exists
+    for d in range(16):
+        same_city = (S[d] == E[d])
+        valid_flight = Or([And(S[d] == a, E[d] == b) for a, b in base_directed_edges])
+        s.add(Or(same_city, valid_flight))
     
-    # Set total days constraints
-    s.add(total_days[Porto] == 5)
-    s.add(total_days[Prague] == 4)
-    s.add(total_days[Reykjavik] == 4)
-    s.add(total_days[Santorini] == 2)
-    s.add(total_days[Amsterdam] == 2)
-    s.add(total_days[Munich] == 4)
+    # Constraint 3: Total days per city
+    city_list = [Porto, Prague, Reykjavik, Santorini, Amsterdam, Munich]
+    for c in city_list:
+        total = 0
+        for d in range(16):
+            total += If(Or(S[d] == c, E[d] == c), 1, 0)
+        s.add(total == required_days[c])
     
-    # Event constraints
-    # Wedding in Reykjavik between day4 and day7 (days 4,5,6,7)
-    wedding_days = [
-        Or(end[2] == Reykjavik, end[3] == Reykjavik),  # Day4: start=end[2], end=end[3]
-        Or(end[3] == Reykjavik, end[4] == Reykjavik),  # Day5: start=end[3], end=end[4]
-        Or(end[4] == Reykjavik, end[5] == Reykjavik),  # Day6: start=end[4], end=end[5]
-        Or(end[5] == Reykjavik, end[6] == Reykjavik)   # Day7: start=end[5], end=end[6]
-    ]
-    s.add(Or(wedding_days))
+    # Constraint 4: Events
+    # Amsterdam: must be present on day14 (index13) and day15 (index14)
+    s.add(Or(S[13] == Amsterdam, E[13] == Amsterdam))
+    s.add(Or(S[14] == Amsterdam, E[14] == Amsterdam))
+    # Reykjavik: at least one day in [4,7] (days: 4->index3, 5->4, 6->5, 7->6)
+    reykjavik_days = [Or(S[d] == Reykjavik, E[d] == Reykjavik) for d in [3,4,5,6]]
+    s.add(Or(reykjavik_days))
+    # Munich: at least one day in [7,10] (days: 7->index6, 8->7, 9->8, 10->9)
+    munich_days = [Or(S[d] == Munich, E[d] == Munich) for d in [6,7,8,9]]
+    s.add(Or(munich_days))
     
-    # Conference in Amsterdam: start of day14 must be Amsterdam, end of day15 must be Amsterdam
-    # Day14 start = end[12] (end of day13), Day15 end = end[14] (end of day15)
-    s.add(And(end[12] == Amsterdam, end[14] == Amsterdam))
-    
-    # Meeting in Munich between day7 and day10 (days 7,8,9,10)
-    meeting_days = [
-        Or(end[5] == Munich, end[6] == Munich),  # Day7: start=end[5], end=end[6]
-        Or(end[6] == Munich, end[7] == Munich),  # Day8: start=end[6], end=end[7]
-        Or(end[7] == Munich, end[8] == Munich),  # Day9: start=end[7], end=end[8]
-        Or(end[8] == Munich, end[9] == Munich)   # Day10: start=end[8], end=end[9]
-    ]
-    s.add(Or(meeting_days))
-    
-    # Solve the constraints
+    # Check and get model
     if s.check() == sat:
         m = s.model()
-        s0_val = m.eval(s0).as_long()
-        end_vals = [m.eval(end[i]).as_long() for i in range(16)]
-        
-        # Build itinerary: for each day, the end city is the city at the end of the day
         itinerary = []
+        # For each day d (1 to 16), index d-1
         for day in range(1, 17):
-            city_index = end_vals[day-1]
-            city_name = cities[city_index]
-            itinerary.append({"day": day, "city": city_name})
-        
-        # Output the itinerary as JSON
+            idx = day - 1
+            start_city = m[S[idx]]
+            start_city_name = start_city.decl().name()
+            itinerary.append({"day": day, "place": start_city_name})
+            end_city = m[E[idx]]
+            end_city_name = end_city.decl().name()
+            if start_city_name != end_city_name:
+                itinerary.append({"day": day, "place": end_city_name})
+        # Output as JSON
+        import json
         result = {"itinerary": itinerary}
-        print(json.dumps(result))
+        print(json.dumps(result, indent=2))
     else:
         print("No solution found")
 

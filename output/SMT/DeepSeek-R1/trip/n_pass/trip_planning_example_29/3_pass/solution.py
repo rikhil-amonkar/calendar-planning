@@ -2,103 +2,91 @@ from z3 import *
 import json
 
 def main():
-    City, (dub, frank, krak) = EnumSort('City', ['Dubrovnik', 'Frankfurt', 'Krakow'])
-    city_names = {
-        dub: "Dubrovnik",
-        frank: "Frankfurt",
-        krak: "Krakow"
-    }
+    # City encodings
+    D = 0  # Dubrovnik
+    F = 1  # Frankfurt
+    K = 2  # Krakow
+    city_names = {D: "Dubrovnik", F: "Frankfurt", K: "Krakow"}
     
-    allowed_transitions = [
-        (dub, dub), (dub, frank),
-        (frank, frank), (frank, dub), (frank, krak),
-        (krak, krak), (krak, frank)
-    ]
+    # State variables: s[0] to s[10] (start of day 1 to start of day 11)
+    s = [Int('s_%d' % i) for i in range(11)]
+    # Flight variables: flight[0] to flight[9] (for day 1 to day 10)
+    flight = [Bool('f_%d' % i) for i in range(10)]
     
-    s0 = Const('s0', City)
-    s = [Const(f's_{i}', City) for i in range(1, 11)]
-    
-    constraints = []
-    
-    # Flight constraints for day 1: from s0 to s[0]
-    constraints.append(Or([And(s0 == a, s[0] == b) for (a, b) in allowed_transitions]))
-    
-    # Flight constraints for days 2 to 10
-    for i in range(9):
-        constraints.append(Or([And(s[i] == a, s[i+1] == b) for (a, b) in allowed_transitions]))
-    
-    # Count days for each city
-    def count_city(start, end_list, C):
-        total = 0
-        # Day 1
-        start_day1 = start
-        end_day1 = end_list[0]
-        total += If(start_day1 == C, 1, 0)
-        total += If(And(start_day1 != end_day1, end_day1 == C), 1, 0)
-        # Days 2 to 10
-        for idx in range(1, 10):
-            start_day = end_list[idx-1]
-            end_day = end_list[idx]
-            total += If(start_day == C, 1, 0)
-            total += If(And(start_day != end_day, end_day == C), 1, 0)
-        return total
-    
-    total_dub = count_city(s0, s, dub)
-    total_frank = count_city(s0, s, frank)
-    total_krak = count_city(s0, s, krak)
-    
-    constraints.append(total_dub == 7)
-    constraints.append(total_frank == 3)
-    constraints.append(total_krak == 2)
-    
-    # Travel days constraint: exactly 2 travel days
-    travel_days = 0
-    travel_days += If(s0 != s[0], 1, 0)
-    for i in range(9):
-        travel_days += If(s[i] != s[i+1], 1, 0)
-    constraints.append(travel_days == 2)
-    
-    # Wedding constraint: must be in Krakow on at least one of day 9 or 10
-    in_krakow9 = Or(s[7] == krak, s[8] == krak)
-    in_krakow10 = Or(s[8] == krak, s[9] == krak)
-    constraints.append(Or(in_krakow9, in_krakow10))
-    
-    # Solve the constraints
     solver = Solver()
-    solver.add(constraints)
+    
+    # Each s[i] must be one of the cities
+    for i in range(11):
+        solver.add(Or(s[i] == D, s[i] == F, s[i] == K))
+    
+    # Start in Dubrovnik on day 1
+    solver.add(s[0] == D)
+    
+    # Allowed direct flights: (D,F), (F,D), (F,K), (K,F)
+    allowed_flights = [(D, F), (F, D), (F, K), (K, F)]
+    for i in range(10):
+        no_flight = (s[i+1] == s[i])
+        flight_taken = Or([And(s[i] == a, s[i+1] == b) for (a, b) in allowed_flights])
+        solver.add(If(flight[i], flight_taken, no_flight))
+    
+    # Presence in each city for each day
+    inD = [Or(s[i] == D, And(flight[i], s[i+1] == D)) for i in range(10)]
+    inF = [Or(s[i] == F, And(flight[i], s[i+1] == F)) for i in range(10)]
+    inK = [Or(s[i] == K, And(flight[i], s[i+1] == K)) for i in range(10)]
+    
+    # Total days in each city
+    totalD = Sum([If(inD[i], 1, 0) for i in range(10)])
+    totalF = Sum([If(inF[i], 1, 0) for i in range(10)])
+    totalK = Sum([If(inK[i], 1, 0) for i in range(10)])
+    solver.add(totalD == 7, totalF == 3, totalK == 2)
+    
+    # Days 9 and 10 must be entirely in Krakow
+    solver.add(s[8] == K)  # Start of day 9 in Krakow
+    solver.add(s[9] == K)  # Start of day 10 in Krakow
+    solver.add(flight[8] == False)  # No flight on day 9
+    solver.add(flight[9] == False)  # No flight on day 10
+    
+    # Total flights must be exactly 2
+    total_flights = Sum([If(flight[i], 1, 0) for i in range(10)])
+    solver.add(total_flights == 2)
+    
+    # Solve and output
     if solver.check() == sat:
-        model = solver.model()
-        s0_val = model[s0]
-        s_vals = [model[s_i] for s_i in s]
-        
-        # Build itinerary segments based on ending city
-        segments = []
-        start_day = 1
-        current_city = s_vals[0]
-        for day in range(2, 11):
-            if s_vals[day-1] == current_city:
-                continue
-            else:
-                segments.append((start_day, day-1, current_city))
-                start_day = day
-                current_city = s_vals[day-1]
-        segments.append((start_day, 10, current_city))
-        
-        # Format segments
+        m = solver.model()
         itinerary = []
-        for seg in segments:
-            start, end, city_sym = seg
-            city_name = city_names[city_sym]
-            if start == end:
-                day_range = f"Day {start}"
-            else:
-                day_range = f"Day {start}-{end}"
-            itinerary.append({'day_range': day_range, 'place': city_name})
+        for day in range(10):
+            cities = []
+            if is_true(m.eval(inD[day])):
+                cities.append("Dubrovnik")
+            if is_true(m.eval(inF[day])):
+                cities.append("Frankfurt")
+            if is_true(m.eval(inK[day])):
+                cities.append("Krakow")
+            cities.sort()  # Sort alphabetically
+            place_str = ", ".join(cities)
+            itinerary.append({"day": day+1, "place": place_str})
         
-        result = {"itinerary": itinerary}
+        # Group consecutive days with identical places
+        grouped_itinerary = []
+        i = 0
+        while i < len(itinerary):
+            j = i
+            while j < len(itinerary) and itinerary[j]['place'] == itinerary[i]['place']:
+                j += 1
+            if i == j-1:
+                day_range = f"Day {i+1}"
+            else:
+                day_range = f"Day {i+1}-{j}"
+            grouped_itinerary.append({
+                'day_range': day_range,
+                'place': itinerary[i]['place']
+            })
+            i = j
+        
+        result = {"itinerary": grouped_itinerary}
         print(json.dumps(result))
     else:
-        print('{"itinerary": []}')
+        print(json.dumps({"itinerary": []}))
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

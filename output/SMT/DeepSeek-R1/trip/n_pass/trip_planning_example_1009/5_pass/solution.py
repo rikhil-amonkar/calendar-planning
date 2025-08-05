@@ -1,95 +1,121 @@
 from z3 import *
+import json
 
-city_names = ['Reykjavik', 'Stuttgart', 'Manchester', 'Istanbul', 'Riga', 'Bucharest', 'Vienna', 'Florence']
-min_days = [2, 3, 2, 2, 2, 3, 2, 3]
-max_days = [4, 5, 3, 3, 3, 4, 3, 4]
+# Define the City datatype
+City = Datatype('City')
+city_list = ["Riga", "Manchester", "Bucharest", "Florence", "Vienna", "Istanbul", "Reykjavik", "Stuttgart"]
+for c in city_list:
+    City.declare(c)
+City = City.create()
 
-graph = {
-    'Reykjavik': ['Vienna', 'Stuttgart', 'Manchester', 'Florence', 'Istanbul', 'Riga', 'Bucharest'],
-    'Stuttgart': ['Reykjavik', 'Manchester', 'Florence', 'Istanbul', 'Riga', 'Bucharest'],
-    'Manchester': ['Reykjavik', 'Stuttgart', 'Florence', 'Istanbul', 'Riga', 'Bucharest'],
-    'Istanbul': ['Reykjavik', 'Stuttgart', 'Manchester', 'Florence', 'Riga', 'Bucharest'],
-    'Riga': ['Reykjavik', 'Stuttgart', 'Manchester', 'Florence', 'Istanbul', 'Bucharest'],
-    'Bucharest': ['Reykjavik', 'Stuttgart', 'Manchester', 'Florence', 'Istanbul', 'Riga'],
-    'Vienna': ['Reykjavik', 'Florence'],
-    'Florence': ['Reykjavik', 'Stuttgart', 'Manchester', 'Istanbul', 'Riga', 'Bucharest', 'Vienna']
-}
+# Define flight connections
+bidirectional_pairs = [
+    ("Bucharest", "Vienna"),
+    ("Reykjavik", "Vienna"),
+    ("Manchester", "Vienna"),
+    ("Manchester", "Riga"),
+    ("Riga", "Vienna"),
+    ("Istanbul", "Vienna"),
+    ("Vienna", "Florence"),
+    ("Stuttgart", "Vienna"),
+    ("Riga", "Bucharest"),
+    ("Istanbul", "Riga"),
+    ("Stuttgart", "Istanbul"),
+    ("Istanbul", "Bucharest"),
+    ("Manchester", "Istanbul"),
+    ("Manchester", "Bucharest"),
+    ("Stuttgart", "Manchester")
+]
 
-allowed_set = set()
-for idx, city in enumerate(city_names):
-    for neighbor in graph[city]:
-        j = city_names.index(neighbor)
-        allowed_set.add((idx, j))
+directed_edges = set()
+for (u, v) in bidirectional_pairs:
+    directed_edges.add((u, v))
+    directed_edges.add((v, u))
+directed_edges.add(("Reykjavik", "Stuttgart"))  # Directed flight
 
-s = Solver()
+# Convert to City datatype
+directed_edges_city = set()
+for (u_str, v_str) in directed_edges:
+    u_city = getattr(City, u_str)
+    v_city = getattr(City, v_str)
+    directed_edges_city.add((u_city, v_city))
 
-# Day assignment for each day (1 to 23)
-days = [Int(f"day_{d}") for d in range(1, 24)]
-for d in range(23):
-    s.add(days[d] >= 0, days[d] < 8)
+# Initialize solver
+solver = Solver()
 
-# Flight connectivity between consecutive days
-for d in range(22):
-    current_city = days[d]
-    next_city = days[d+1]
-    s.add(If(current_city != next_city, 
-             Or([And(current_city == i, next_city == j) for (i, j) in allowed_set]),
-             True))
+# Create variables: sequence of cities, start days, end days
+c = [Const(f'c_{i}', City) for i in range(8)]
+s = [Int(f's_{i}') for i in range(8)]
+e = [Int(f'e_{i}') for i in range(8)]
 
-# Contiguous blocks for each city
-for city_idx in range(8):
-    # Track start and end days for each city
-    start_day = Int(f"start_{city_idx}")
-    end_day = Int(f"end_{city_idx}")
-    s.add(start_day >= 1, start_day <= 23)
-    s.add(end_day >= 1, end_day <= 23)
-    s.add(start_day <= end_day)
+# Create duration function
+days_func = Function('days_func', City, IntSort())
+
+# Define durations for each city
+solver.add(days_func(City.Riga) == 4)
+solver.add(days_func(City.Manchester) == 5)
+solver.add(days_func(City.Bucharest) == 4)
+solver.add(days_func(City.Florence) == 4)
+solver.add(days_func(City.Vienna) == 2)
+solver.add(days_func(City.Istanbul) == 2)
+solver.add(days_func(City.Reykjavik) == 4)
+solver.add(days_func(City.Stuttgart) == 5)
+
+# Constraint: distinct cities
+solver.add(Distinct(c))
+
+# Constraints for start and end days
+solver.add(s[0] == 1)
+solver.add(e[7] == 23)
+
+for i in range(8):
+    # Duration constraint: e[i] = s[i] + days - 1
+    solver.add(e[i] == s[i] + days_func(c[i]) - 1)
     
-    # Duration must be within min/max
-    duration = end_day - start_day + 1
-    s.add(duration >= min_days[city_idx], duration <= max_days[city_idx])
+    # Chain the cities: end of current city is start of next
+    if i < 7:
+        solver.add(s[i+1] == e[i])
     
-    # All days in block must be this city
-    for d in range(23):
-        day_num = d + 1
-        s.add(If(And(day_num >= start_day, day_num <= end_day),
-                 days[d] == city_idx,
-                 days[d] != city_idx))
+    # Day bounds
+    solver.add(s[i] >= 1)
+    solver.add(s[i] <= 23)
+    solver.add(e[i] >= 1)
+    solver.add(e[i] <= 23)
 
-# All cities must appear exactly once
-for city_idx in range(8):
-    s.add(Or([days[d] == city_idx for d in range(23)]))
-    s.add(Not(Or(And(days[0] == city_idx, days[0] != days[1]),
-                 And(days[22] == city_idx, days[22] != days[21]),
-                 Or([And(days[d] == city_idx, 
-                         days[d-1] != city_idx, 
-                         days[d+1] != city_idx) 
-                     for d in range(1, 22)]))))
+# Flight constraints between consecutive cities
+for i in range(7):
+    u = c[i]
+    v = c[i+1]
+    solver.add(Or([And(u == u_val, v == v_val) for (u_val, v_val) in directed_edges_city]))
 
-# Solve and format output
-if s.check() == sat:
-    model = s.model()
-    day_assignments = [model.evaluate(days[d]).as_long() for d in range(23)]
+# Special constraints for Istanbul and Bucharest
+solver.add(Or([And(c[i] == City.Istanbul, s[i] == 12) for i in range(8)]))
+solver.add(Or([And(c[i] == City.Bucharest, s[i] == 16) for i in range(8)]))
+
+# Solve the problem
+if solver.check() == sat:
+    model = solver.model()
+    c_val = [model.evaluate(c[i]) for i in range(8)]
+    s_val = [model.evaluate(s[i]).as_long() for i in range(8)]
+    e_val = [model.evaluate(e[i]).as_long() for i in range(8)]
     
-    # Build itinerary blocks
-    current_city = day_assignments[0]
-    start = 1
-    plan = []
-    for d in range(1, 23):
-        if day_assignments[d] != current_city:
-            end = d
-            plan.append({
-                'day_range': f"Day {start}-{end}",
-                'place': city_names[current_city]
-            })
-            start = d + 1
-            current_city = day_assignments[d]
-    plan.append({
-        'day_range': f"Day {start}-23",
-        'place': city_names[current_city]
-    })
+    # Map city to its name
+    city_names = {getattr(City, name): name for name in city_list}
+    c_names = [city_names[c_val[i]] for i in range(8)]
     
-    result = {'itinerary': plan}
-    print(f"Plan found: {result}")
+    # Build itinerary
+    itinerary = []
+    for d in range(1, 24):  # days 1 to 23
+        current_cities = []
+        for i in range(8):
+            if s_val[i] <= d <= e_val[i]:
+                current_cities.append(c_names[i])
+        current_cities.sort()  # for consistent ordering
+        place_str = " and ".join(current_cities)
+        itinerary.append({"day": d, "place": place_str})
+    
+    # Output as JSON
+    result = {"itinerary": itinerary}
+    print(json.dumps(result, indent=2))
 else:
-    print("No valid plan found")
+    print("No solution found")

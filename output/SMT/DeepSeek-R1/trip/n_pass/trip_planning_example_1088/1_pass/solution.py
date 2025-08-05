@@ -1,97 +1,90 @@
+import z3
 import json
-from z3 import *
 
-def main():
-    cities = ["Reykjavik", "Stockholm", "Tallinn", "Oslo", "Split", "Geneva", "Porto", "Stuttgart"]
-    days_req = [2, 3, 5, 5, 3, 2, 3, 5]  # for cities in order of index
+# Define the City enum type
+City, (Reykjavik, Stockholm, Oslo, Tallinn, Stuttgart, Split, Geneva, Porto) = \
+    z3.EnumSort('City', ['Reykjavik', 'Stockholm', 'Oslo', 'Tallinn', 'Stuttgart', 'Split', 'Geneva', 'Porto'])
 
-    # Define direct flights as a set of tuples (both directions)
-    graph_edges = [
-        (0, 1), (0, 2), (0, 3), (0, 7),
-        (1, 0), (1, 3), (1, 4), (1, 5), (1, 7),
-        (2, 0), (2, 3),
-        (3, 0), (3, 1), (3, 2), (3, 4), (3, 5), (3, 6),
-        (4, 1), (4, 3), (4, 5), (4, 7),
-        (5, 1), (5, 3), (5, 4), (5, 6),
-        (6, 3), (6, 5), (6, 7),
-        (7, 0), (7, 1), (7, 4), (7, 6)
-    ]
-    allowed_edges = set(graph_edges)
+# Define the allowed direct flights (both directions)
+allowed_flights_set = [
+    (Reykjavik, Stuttgart),
+    (Reykjavik, Stockholm),
+    (Reykjavik, Tallinn),
+    (Stockholm, Oslo),
+    (Stuttgart, Porto),
+    (Oslo, Split),
+    (Stockholm, Stuttgart),
+    (Reykjavik, Oslo),
+    (Oslo, Geneva),
+    (Stockholm, Split),
+    (Split, Stuttgart),
+    (Tallinn, Oslo),
+    (Stockholm, Geneva),
+    (Oslo, Porto),
+    (Geneva, Porto),
+    (Geneva, Split)
+]
 
-    s = Solver()
+directed_flights = set()
+for (a, b) in allowed_flights_set:
+    directed_flights.add((a, b))
+    directed_flights.add((b, a))
 
-    # Order of cities: list of integers for positions 0 to 7
-    order = [Int('order_%d' % i) for i in range(8)]
-    
-    # Each order[i] must be between 0 and 7
-    for i in range(8):
-        s.add(order[i] >= 0, order[i] < 8)
-    
-    s.add(Distinct(order))
-    
-    # First city is Reykjavik (0), last is Porto (6)
-    s.add(order[0] == 0)
-    s.add(order[7] == 6)
-    
-    # Flight constraints: consecutive cities must have a direct flight
-    for i in range(7):
-        cons = []
-        for u, v in allowed_edges:
-            cons.append(And(order[i] == u, order[i+1] == v))
-        s.add(Or(cons))
-    
-    # Helper function to get required days for a city (symbolic variable)
-    def get_days(city_var):
-        return If(city_var == 0, days_req[0],
-               If(city_var == 1, days_req[1],
-               If(city_var == 2, days_req[2],
-               If(city_var == 3, days_req[3],
-               If(city_var == 4, days_req[4],
-               If(city_var == 5, days_req[5],
-               If(city_var == 6, days_req[6],
-               days_req[7])))))))
-    
-    # Timeline variables
-    s_arr = [Int('s_arr_%d' % i) for i in range(8)]
-    e_arr = [Int('e_arr_%d' % i) for i in range(8)]
-    
-    # Start and end for the first city
-    s.add(s_arr[0] == 1)
-    s.add(e_arr[0] == s_arr[0] + get_days(order[0]) - 1)
-    
-    # For the rest
-    for p in range(1, 8):
-        s.add(s_arr[p] == e_arr[p-1])
-        s.add(e_arr[p] == s_arr[p] + get_days(order[p]) - 1)
-    
-    # The trip must end at day 21
-    s.add(e_arr[7] == 21)
-    
-    # Meeting constraint for Stockholm (city index 1)
-    d1 = get_days(order[1])
-    s.add(Or(
-        order[1] == 1,  # Stockholm at position1
-        And(order[2] == 1, d1 <= 3)  # Stockholm at position2 and the city at position1 has <=3 days
-    ))
-    
-    # Check and get model
-    if s.check() == sat:
-        model = s.model()
-        order_vals = [model.evaluate(order[i]).as_long() for i in range(8)]
-        s_vals = [model.evaluate(s_arr[i]).as_long() for i in range(8)]
-        e_vals = [model.evaluate(e_arr[i]).as_long() for i in range(8)]
-        
-        itinerary = []
-        for day in range(1, 22):  # days 1 to 21
-            for p in range(8):
-                if s_vals[p] <= day <= e_vals[p]:
-                    city_name = cities[order_vals[p]]
-                    itinerary.append({"day": day, "place": city_name})
-        
-        result = {"itinerary": itinerary}
-        print(json.dumps(result))
-    else:
-        print("No solution found")
+# Create variables for the end city of each day
+y = [z3.Const(f'y{i}', City) for i in range(21)]
 
-if __name__ == "__main__":
-    main()
+solver = z3.Solver()
+
+# Fixed constraints
+solver.add(y[0] == Reykjavik)  # Day 1 in Reykjavik
+solver.add(y[18] == Porto)      # Day 19 in Porto
+solver.add(y[19] == Porto)      # Day 20 in Porto
+solver.add(y[20] == Porto)      # Day 21 in Porto
+solver.add(z3.Or(y[1] == Stockholm, y[2] == Stockholm, y[3] == Stockholm))  # Meeting in Stockholm
+
+# Flight constraints for transitions between days
+for i in range(20):
+    if_y_changed = y[i] != y[i+1]
+    allowed_flight_conditions = [z3.And(y[i] == a, y[i+1] == b) for (a, b) in directed_flights]
+    solver.add(z3.Implies(if_y_changed, z3.Or(allowed_flight_conditions)))
+
+# Total days per city
+def total_days(city):
+    total = z3.If(y[0] == city, 1, 0)
+    for i in range(1, 21):
+        total = total + z3.If(z3.Or(y[i-1] == city, y[i] == city), 1, 0)
+    return total
+
+solver.add(total_days(Reykjavik) == 2)
+solver.add(total_days(Oslo) == 5)
+solver.add(total_days(Stuttgart) == 5)
+solver.add(total_days(Split) == 3)
+solver.add(total_days(Geneva) == 2)
+solver.add(total_days(Porto) == 3)
+solver.add(total_days(Tallinn) == 5)
+solver.add(total_days(Stockholm) == 3)
+
+# Solve the problem
+if solver.check() == z3.sat:
+    model = solver.model()
+    y_vals = [model.eval(y_i) for y_i in y]
+    
+    itinerary = []
+    # Day 1: only the end city (Reykjavik)
+    day1_city = str(y_vals[0])
+    itinerary.append({"day": 1, "city": [day1_city]})
+    
+    # Days 2 to 21: consider start and end cities
+    for i in range(1, 21):
+        start_city = y_vals[i-1]
+        end_city = y_vals[i]
+        if start_city == end_city:
+            cities_list = [str(start_city)]
+        else:
+            cities_list = sorted([str(start_city), str(end_city)])
+        itinerary.append({"day": i+1, "city": cities_list})
+    
+    result = {"itinerary": itinerary}
+    print(json.dumps(result))
+else:
+    print(json.dumps({"error": "No solution found"}))

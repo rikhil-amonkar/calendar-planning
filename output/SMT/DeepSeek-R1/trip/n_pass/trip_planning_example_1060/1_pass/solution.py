@@ -1,130 +1,144 @@
 from z3 import *
+import json
 
 def main():
-    # Define cities
-    cities = ["Reykjavik", "Munich", "Stuttgart", "Istanbul", "Vilnius", "Seville", "Geneva", "Valencia"]
-    n_cities = len(cities)
-    n_days = 25
-    
-    # Map city names to indices
-    city_index = {name: idx for idx, name in enumerate(cities)}
-    
-    # Create Z3 variables for each day (0 to 25)
-    city = [Int(f'city_{d}') for d in range(0, n_days+1)]
-    
-    s = Solver()
-    
-    # Allowed directed flights: (from, to)
-    directed_flights = {
-        (city_index["Reykjavik"], city_index["Stuttgart"]),  # Reykjavik -> Stuttgart
-        (city_index["Vilnius"], city_index["Munich"])        # Vilnius -> Munich
+    cities = ["Reykjavik", "Stuttgart", "Istanbul", "Vilnius", "Seville", "Geneva", "Valencia", "Munich"]
+    durations = {
+        "Reykjavik": 4,
+        "Stuttgart": 4,
+        "Istanbul": 4,
+        "Vilnius": 4,
+        "Seville": 3,
+        "Geneva": 5,
+        "Valencia": 5,
+        "Munich": 3
     }
-    bidirectional_edges = [
-        (city_index["Geneva"], city_index["Istanbul"]), (city_index["Istanbul"], city_index["Geneva"]),
-        (city_index["Reykjavik"], city_index["Munich"]), (city_index["Munich"], city_index["Reykjavik"]),
-        (city_index["Stuttgart"], city_index["Valencia"]), (city_index["Valencia"], city_index["Stuttgart"]),
-        (city_index["Stuttgart"], city_index["Istanbul"]), (city_index["Istanbul"], city_index["Stuttgart"]),
-        (city_index["Munich"], city_index["Geneva"]), (city_index["Geneva"], city_index["Munich"]),
-        (city_index["Istanbul"], city_index["Vilnius"]), (city_index["Vilnius"], city_index["Istanbul"]),
-        (city_index["Valencia"], city_index["Seville"]), (city_index["Seville"], city_index["Valencia"]),
-        (city_index["Valencia"], city_index["Istanbul"]), (city_index["Istanbul"], city_index["Valencia"]),
-        (city_index["Seville"], city_index["Munich"]), (city_index["Munich"], city_index["Seville"]),
-        (city_index["Munich"], city_index["Istanbul"]), (city_index["Istanbul"], city_index["Munich"]),
-        (city_index["Valencia"], city_index["Geneva"]), (city_index["Geneva"], city_index["Valencia"]),
-        (city_index["Valencia"], city_index["Munich"]), (city_index["Munich"], city_index["Valencia"])
+    
+    bidirectional = [
+        ("Geneva", "Istanbul"),
+        ("Reykjavik", "Munich"),
+        ("Stuttgart", "Valencia"),
+        ("Stuttgart", "Istanbul"),
+        ("Munich", "Geneva"),
+        ("Istanbul", "Vilnius"),
+        ("Valencia", "Seville"),
+        ("Valencia", "Istanbul"),
+        ("Seville", "Munich"),
+        ("Munich", "Istanbul"),
+        ("Valencia", "Geneva"),
+        ("Valencia", "Munich")
     ]
-    allowed_directed = directed_flights | set(bidirectional_edges)
+    unidirectional = [
+        ("Reykjavik", "Stuttgart"),
+        ("Vilnius", "Munich")
+    ]
     
-    # Constraint: Start in Reykjavik (day0)
-    s.add(city[0] == city_index["Reykjavik"])
+    directed_flights = set()
+    for a, b in bidirectional:
+        directed_flights.add((a, b))
+        directed_flights.add((b, a))
+    for a, b in unidirectional:
+        directed_flights.add((a, b))
     
-    # Fixed stays for Reykjavik (days 1-4) and Stuttgart (day4)
-    s.add(city[1] == city_index["Reykjavik"])
-    s.add(city[2] == city_index["Reykjavik"])
-    s.add(city[3] == city_index["Reykjavik"])
-    s.add(city[4] == city_index["Stuttgart"])
+    solver = Solver()
+    num_days = 25
     
-    # Fixed stays for Munich (days 13-15) and Istanbul (days 19-22)
-    s.add(city[13] == city_index["Munich"])
-    s.add(city[14] == city_index["Munich"])
-    s.add(city[15] == city_index["Munich"])
-    s.add(city[19] == city_index["Istanbul"])
-    s.add(city[20] == city_index["Istanbul"])
-    s.add(city[21] == city_index["Istanbul"])
-    s.add(city[22] == city_index["Istanbul"])
+    start = {}
+    for d in range(1, num_days + 1):
+        for c in cities:
+            start[(d, c)] = Bool(f"start_{d}_{c}")
     
-    # Flight constraints for days 1 to 25
-    for d in range(1, n_days+1):
-        prev = city[d-1]
-        curr = city[d]
-        # If city changes, ensure the flight is allowed
-        s.add(If(prev != curr, Or([And(prev == i, curr == j) for (i, j) in allowed_directed]), True))
+    flight = {}
+    for d in range(1, num_days + 1):
+        for a, b in directed_flights:
+            flight[(d, a, b)] = Bool(f"flight_{d}_{a}_{b}")
     
-    # Function to check presence in a city on a day
-    def present(c, d):
-        # c: city index, d: day (1-25)
-        return Or(city[d] == c, And(city[d-1] == c, city[d] != c))
+    in_city = {}
+    for d in range(1, num_days + 1):
+        for c in cities:
+            base = start[(d, c)]
+            flight_arrivals = []
+            for a in cities:
+                if (a, c) in directed_flights:
+                    flight_arrivals.append(flight.get((d, a, c), False)
+            if flight_arrivals:
+                in_city[(d, c)] = Or(base, Or(flight_arrivals))
+            else:
+                in_city[(d, c)] = base
     
-    # Reykjavik constraints (days 1-4 present, else absent)
-    reykjavik_idx = city_index["Reykjavik"]
-    for d in range(1, 5):
-        s.add(present(reykjavik_idx, d))
-    for d in range(5, n_days+1):
-        s.add(Not(present(reykjavik_idx, d)))
+    for d in range(1, num_days + 1):
+        flight_vars = []
+        for (a, b) in directed_flights:
+            flight_vars.append(flight[(d, a, b)])
+        if flight_vars:
+            solver.add(AtMostOne(flight_vars))
     
-    # Munich constraints (only days 13-15 present)
-    munich_idx = city_index["Munich"]
-    for d in range(1, 13):
-        s.add(Not(present(munich_idx, d)))
-    for d in range(13, 16):
-        s.add(present(munich_idx, d))
-    for d in range(16, n_days+1):
-        s.add(Not(present(munich_idx, d)))
+    for d in range(1, num_days + 1):
+        for (a, b) in directed_flights:
+            solver.add(Implies(flight[(d, a, b)], start[(d, a)]))
     
-    # Istanbul constraints (only days 19-22 present)
-    istanbul_idx = city_index["Istanbul"]
-    for d in range(1, 19):
-        s.add(Not(present(istanbul_idx, d)))
-    for d in range(19, 23):
-        s.add(present(istanbul_idx, d))
-    for d in range(23, n_days+1):
-        s.add(Not(present(istanbul_idx, d)))
+    start_day1 = [start[(1, c)] for c in cities]
+    solver.add(AtLeastOne(*start_day1))
+    solver.add(AtMostOne(*start_day1))
     
-    # Stuttgart must be present on day 7
-    stuttgart_idx = city_index["Stuttgart"]
-    s.add(present(stuttgart_idx, 7))
+    for d in range(1, num_days):
+        for c in cities:
+            fly_from = []
+            for b in cities:
+                if (c, b) in directed_flights:
+                    fly_from.append(flight[(d, c, b)])
+            fly_from_city = Or(fly_from) if fly_from else False
+            flight_arrivals = []
+            for a in cities:
+                if (a, c) in directed_flights:
+                    flight_arrivals.append(flight[(d, a, c)])
+            part1 = And(start[(d, c)], Not(fly_from_city))
+            part2 = Or(flight_arrivals) if flight_arrivals else False
+            if part2 == False:
+                solver.add(start[(d + 1, c)] == part1)
+            else:
+                solver.add(start[(d + 1, c)] == Or(part1, part2))
     
-    # Total days for other cities
-    stuttgart_total = Sum([If(present(stuttgart_idx, d), 1, 0) for d in range(1, n_days+1)])
-    s.add(stuttgart_total == 4)
+    for d in [1, 2, 3, 4]:
+        solver.add(in_city[(d, "Reykjavik")])
+    solver.add(in_city[(4, "Stuttgart")])
+    solver.add(in_city[(7, "Stuttgart")])
+    for d in [13, 14, 15]:
+        solver.add(in_city[(d, "Munich")])
+    for d in [19, 20, 21, 22]:
+        solver.add(in_city[(d, "Istanbul")])
     
-    vilnius_idx = city_index["Vilnius"]
-    vilnius_total = Sum([If(present(vilnius_idx, d), 1, 0) for d in range(1, n_days+1)])
-    s.add(vilnius_total == 4)
+    for c in cities:
+        total_days = 0
+        for d in range(1, num_days + 1):
+            total_days += If(in_city[(d, c)], 1, 0)
+        solver.add(total_days == durations[c])
     
-    seville_idx = city_index["Seville"]
-    seville_total = Sum([If(present(seville_idx, d), 1, 0) for d in range(1, n_days+1)])
-    s.add(seville_total == 3)
+    for d in range(1, num_days + 1):
+        solver.add(Or([in_city[(d, c)] for c in cities]))
     
-    geneva_idx = city_index["Geneva"]
-    geneva_total = Sum([If(present(geneva_idx, d), 1, 0) for d in range(1, n_days+1)])
-    s.add(geneva_total == 5)
-    
-    valencia_idx = city_index["Valencia"]
-    valencia_total = Sum([If(present(valencia_idx, d), 1, 0) for d in range(1, n_days+1)])
-    s.add(valencia_total == 5)
-    
-    # Check and get model
-    if s.check() == sat:
-        m = s.model()
+    if solver.check() == sat:
+        model = solver.model()
         itinerary = []
-        for d in range(1, n_days+1):
-            c_idx = m.evaluate(city[d]).as_long()
-            itinerary.append({"day": d, "place": cities[c_idx]})
+        for d in range(1, num_days + 1):
+            flight_occurred = False
+            arrival_city = None
+            for (a, b) in directed_flights:
+                if model.evaluate(flight.get((d, a, b), False)):
+                    flight_occurred = True
+                    arrival_city = b
+                    break
+            if flight_occurred:
+                itinerary.append({"day": d, "place": arrival_city})
+            else:
+                for c in cities:
+                    if model.evaluate(start[(d, c)]):
+                        itinerary.append({"day": d, "place": c})
+                        break
         result = {"itinerary": itinerary}
-        print(result)
+        print(json.dumps(result, indent=2))
     else:
         print("No solution found")
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

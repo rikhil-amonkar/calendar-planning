@@ -1,108 +1,88 @@
 from z3 import *
+import json
 
-def main():
-    # Cities and their connections with distances
-    cities = ["Seattle", "Denver", "Chicago", "Boston", "New York", "San Francisco"]
-    distances = [
-        [0, 1300, 2000, 3000, 2800, 800],    # Seattle
-        [1300, 0, 1000, 1800, 1600, 1500],   # Denver
-        [2000, 1000, 0, 1000, 800, 2200],    # Chicago
-        [3000, 1800, 1000, 0, 400, 3100],    # Boston
-        [2800, 1600, 800, 400, 0, 2900],     # New York
-        [800, 1500, 2200, 3100, 2900, 0]     # San Francisco
-    ]
-    
-    # Trip parameters
-    start_city = "Seattle"  # Intentionally misspelled to test error handling
-    end_city = "New York"
-    pass_cities = ["Chicago", "Denver"]
-    max_total_distance = 6000
+cities = ['Warsaw', 'Porto', 'Naples', 'Brussels', 'Split', 'Reykjavik', 'Amsterdam', 'Lyon', 'Helsinki', 'Valencia']
+stays = {
+    'Warsaw': 3,
+    'Porto': 5,
+    'Naples': 4,
+    'Brussels': 3,
+    'Split': 3,
+    'Reykjavik': 5,
+    'Amsterdam': 4,
+    'Lyon': 3,
+    'Helsinki': 4,
+    'Valencia': 2
+}
 
-    # Find city indices with case-insensitive matching
-    start_city_idx = next((i for i, c in enumerate(cities) if c.lower() == start_city.lower()), None)
-    end_city_idx = next((i for i, c in enumerate(cities) if c.lower() == end_city.lower()), None)
-    
-    # Validate city names
-    if start_city_idx is None:
-        print(f"Error: Start city '{start_city}' not found in city list.")
-        print(f"Available cities: {', '.join(cities)}")
-        return
-    if end_city_idx is None:
-        print(f"Error: End city '{end_city}' not found in city list.")
-        print(f"Available cities: {', '.join(cities)}")
-        return
+events = {
+    'Porto': (1, 5),
+    'Amsterdam': (5, 8),
+    'Helsinki': (8, 11),
+    'Naples': (17, 20),
+    'Brussels': (20, 22)
+}
 
-    n = len(cities)
-    
-    # Create Z3 variables
-    next_city_var = [Int(f"next_{i}") for i in range(n)]
-    total_distance = Int("total_distance")
-    visited = [Bool(f"visited_{i}") for i in range(n)]
+flights_str = "Amsterdam and Warsaw, Helsinki and Brussels, Helsinki and Warsaw, Reykjavik and Brussels, Amsterdam and Lyon, Amsterdam and Naples, Amsterdam and Reykjavik, Naples and Valencia, Porto and Brussels, Amsterdam and Split, Lyon and Split, Warsaw and Split, Porto and Amsterdam, Helsinki and Split, Brussels and Lyon, Porto and Lyon, Reykjavik and Warsaw, Brussels and Valencia, Valencia and Lyon, Porto and Warsaw, Warsaw and Valencia, Amsterdam and Helsinki, Porto and Valencia, Warsaw and Brussels, Warsaw and Naples, Naples and Split, Helsinki and Naples, Helsinki and Reykjavik, Amsterdam and Valencia, Naples and Brussels"
+flights_list = [edge.strip() for edge in flights_str.split(',')]
+direct_set = set()
+for edge in flights_list:
+    parts = edge.split(' and ')
+    if len(parts) == 2:
+        c1, c2 = parts[0].strip(), parts[1].strip()
+        direct_set.add((c1, c2))
+        direct_set.add((c2, c1))
 
-    # Create solver
-    solver = Solver()
+s = Solver()
 
-    # Constraint: next_city_var must be valid city indices
-    for i in range(n):
-        solver.add(Or(*[next_city_var[i] == j for j in range(n)]))
+a = {c: Int(f'a_{c}') for c in cities}
+d = {c: Int(f'd_{c}') for c in cities}
+pos = {c: Int(f'pos_{c}') for c in cities}
 
-    # Constraint: no self-loops
-    for i in range(n):
-        solver.add(next_city_var[i] != i)
+for c in cities:
+    s.add(d[c] == a[c] + stays[c] - 1)
 
-    # Constraint: start city is first in path
-    solver.add(next_city_var[start_city_idx] != end_city_idx)
+s.add(a['Porto'] >= 1, a['Porto'] <= 5)
+s.add(a['Amsterdam'] >= 2, a['Amsterdam'] <= 8)
+s.add(a['Helsinki'] >= 5, a['Helsinki'] <= 11)
+s.add(a['Naples'] >= 14, a['Naples'] <= 20)
+s.add(a['Brussels'] >= 18, a['Brussels'] <= 22)
 
-    # Constraint: path must be contiguous
-    for i in range(n):
-        if i != end_city_idx:
-            solver.add(Or(*[next_city_var[j] == i for j in range(n) if j != i]))
+s.add([And(pos[c] >= 0, pos[c] < 10) for c in cities])
+s.add(Distinct([pos[c] for c in cities]))
 
-    # Constraint: total distance calculation
-    solver.add(total_distance == Sum([
-        If(And(i != end_city_idx, next_city_var[i] == j), 
-           distances[i][j], 0) 
-        for i in range(n) for j in range(n)
-    ]))
-    solver.add(total_distance <= max_total_distance)
+first_city = Or([And(pos[c] == 0, a[c] == 1) for c in cities])
+last_city = Or([And(pos[c] == 9, d[c] == 27) for c in cities])
+s.add(first_city, last_city)
 
-    # Constraint: must visit pass_cities
-    for city in pass_cities:
-        idx = cities.index(city)
-        solver.add(Or(*[next_city_var[i] == idx for i in range(n) if i != idx]))
+for i in range(len(cities)):
+    for j in range(len(cities)):
+        if i == j:
+            continue
+        A = cities[i]
+        B = cities[j]
+        cond = pos[A] < pos[B]
+        consecutive = pos[B] == pos[A] + 1
+        s.add(If(cond, 
+                 If(consecutive, 
+                    And(d[A] == a[B], (A, B) in direct_set), 
+                    d[A] < a[B]),
+                 True))
 
-    # Constraint: define visited cities
-    for i in range(n):
-        solver.add(visited[i] == Or(
-            next_city_var[i] != end_city_idx,  # Not last city
-            Or(*[next_city_var[j] == i for j in range(n)])  # Visited as next of some city
-        ))
+for c in cities:
+    s.add(a[c] >= 1)
+    s.add(d[c] <= 27)
 
-    # Try to solve
-    if solver.check() == sat:
-        model = solver.model()
-        # Extract route
-        route = []
-        current = start_city_idx
-        while current != end_city_idx:
-            route.append(current)
-            current = model.eval(next_city_var[current]).as_long()
-        route.append(end_city_idx)
-        
-        # Convert to city names
-        route_names = [cities[i] for i in route]
-        
-        # Verify required cities coverage
-        required_cities = set(pass_cities) | {cities[start_city_idx], cities[end_city_idx]}
-        covered_cities = set(route_names)
-        
-        # Print results
-        print(f"Route: {' -> '.join(route_names)}")
-        print(f"Total distance: {model.eval(total_distance).as_long()} miles")
-        print(f"Required places: {sorted(required_cities)}")
-        print(f"Covered required places: {covered_cities >= required_cities}")
-    else:
-        print("No valid route found")
-
-if __name__ == "__main__":
-    main()
+if s.check() == sat:
+    m = s.model()
+    itinerary_list = []
+    for day in range(1, 28):
+        for c in cities:
+            a_val = m.eval(a[c]).as_long()
+            d_val = m.eval(d[c]).as_long()
+            if a_val <= day <= d_val:
+                itinerary_list.append({"day": day, "place": c})
+    result = {'itinerary': itinerary_list}
+    print(json.dumps(result))
+else:
+    print("No solution found")

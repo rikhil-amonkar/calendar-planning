@@ -1,76 +1,56 @@
-import z3
-import json
+from z3 import *
 
 def main():
-    City = z3.Datatype('City')
-    City.declare('Prague')
-    City.declare('Stuttgart')
-    City.declare('Split')
-    City.declare('Krakow')
-    City.declare('Florence')
-    City = City.create()
+    s = Solver()
+    n_days = 7
+    city_names = {0: 'Krakow', 1: 'Stuttgart', 2: 'Split', 3: 'Prague', 4: 'Florence'}
+    n_cities = len(city_names)
     
-    flight_set = [
-        (City.Stuttgart, City.Split),
-        (City.Prague, City.Florence),
-        (City.Krakow, City.Stuttgart),
-        (City.Krakow, City.Split),
-        (City.Split, City.Prague),
-        (City.Krakow, City.Prague)
-    ]
+    # Create variables for each day
+    X = [Int('x_%d' % i) for i in range(n_days)]
     
-    c = [z3.Const('c%d' % i, City) for i in range(9)]
+    # Each X[i] must be between 0 and 4
+    for i in range(n_days):
+        s.add(X[i] >= 0, X[i] < n_cities)
     
-    s = z3.Solver()
+    # Start and end in Krakow (0)
+    s.add(X[0] == 0)
+    s.add(X[6] == 0)
     
-    for i in range(1, 9):
-        c_prev = c[i-1]
-        c_curr = c[i]
-        conds = []
-        for (a, b) in flight_set:
-            conds.append(z3.And(c_prev == a, c_curr == b))
-            conds.append(z3.And(c_prev == b, c_curr == a))
-        flight_ok = z3.Or(conds)
-        s.add(z3.If(c_prev == c_curr, True, flight_ok))
+    # Define allowed edges (undirected) including self-loops
+    allowed_pairs = []
+    # Add self-loops (staying in same city)
+    for c in range(n_cities):
+        allowed_pairs.append((c, c))
+    # Add travel moves
+    edges = [(0, 1), (0, 3), (0, 4), 
+             (1, 2), (1, 3), 
+             (2, 3), (2, 4),
+             (3, 4)]
+    for (u, v) in edges:
+        allowed_pairs.append((u, v))
+        allowed_pairs.append((v, u))
     
-    cities_list = [City.Prague, City.Stuttgart, City.Split, City.Krakow, City.Florence]
-    total_days = {}
-    for city in cities_list:
-        total = 0
-        for i in range(1, 9):
-            total += z3.If(z3.Or(c[i-1] == city, c[i] == city), 1, 0)
-        total_days[city] = total
+    # Add constraints for consecutive days
+    for i in range(n_days - 1):
+        s.add(Or([And(X[i] == u, X[i+1] == v) for (u, v) in allowed_pairs]))
     
-    s.add(total_days[City.Prague] == 4)
-    s.add(total_days[City.Stuttgart] == 2)
-    s.add(total_days[City.Split] == 2)
-    s.add(total_days[City.Krakow] == 2)
-    s.add(total_days[City.Florence] == 2)
+    # For each non-Krakow city, if it appears at all, it must have at least one consecutive stay
+    for city in range(1, n_cities):  # Only non-Krakow cities
+        appears = Or([X[i] == city for i in range(n_days)])
+        has_consec = Or([And(X[i] == city, X[i+1] == city) for i in range(n_days - 1)])
+        s.add(Implies(appears, has_consec))
     
-    s.add(z3.Or(c[1] == City.Stuttgart, c[2] == City.Stuttgart, c[3] == City.Stuttgart))
-    s.add(z3.Or(c[2] == City.Split, c[3] == City.Split, c[4] == City.Split))
-    
-    if s.check() == z3.sat:
+    # Check and get the model
+    if s.check() == sat:
         m = s.model()
+        res = [m.evaluate(X[i]).as_long() for i in range(n_days)]
         itinerary = []
-        for day in range(1, 9):
-            prev_city = m.evaluate(c[day-1])
-            curr_city = m.evaluate(c[day])
-            if prev_city.eq(curr_city):
-                itinerary.append({
-                    "day": day,
-                    "cities": [str(prev_city)]
-                })
-            else:
-                itinerary.append({
-                    "day": day,
-                    "cities": [str(prev_city), str(curr_city)]
-                })
-        
-        result = {"itinerary": itinerary}
-        print(json.dumps(result))
+        for i in range(n_days):
+            itinerary.append({'day_range': f'Day {i+1}-{i+1}', 'place': city_names[res[i]]})
+        print(f"Valid plan found: {itinerary}")
     else:
-        print("No solution found")
+        print("No valid plan found")
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

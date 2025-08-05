@@ -1,8 +1,12 @@
 from z3 import *
+import json
 
 def main():
+    # Define the cities
     cities = ['Frankfurt', 'Salzburg', 'Athens', 'Reykjavik', 'Bucharest', 'Valencia', 'Vienna', 'Amsterdam', 'Stockholm', 'Riga']
-    durations = {
+    
+    # Required days per city
+    days_required = {
         'Frankfurt': 4,
         'Salzburg': 5,
         'Athens': 5,
@@ -15,8 +19,8 @@ def main():
         'Riga': 3
     }
     
-    flight_pairs = []
-    undirected = [
+    # Define the direct flights
+    bidirectional_pairs = [
         ('Valencia', 'Frankfurt'),
         ('Vienna', 'Bucharest'),
         ('Athens', 'Bucharest'),
@@ -25,6 +29,7 @@ def main():
         ('Amsterdam', 'Bucharest'),
         ('Amsterdam', 'Frankfurt'),
         ('Stockholm', 'Vienna'),
+        ('Vienna', 'Riga'),
         ('Amsterdam', 'Reykjavik'),
         ('Reykjavik', 'Frankfurt'),
         ('Stockholm', 'Amsterdam'),
@@ -45,86 +50,112 @@ def main():
         ('Vienna', 'Athens'),
         ('Riga', 'Bucharest')
     ]
-    for (a, b) in undirected:
-        flight_pairs.append((a, b))
-        flight_pairs.append((b, a))
-    directed = [
+    
+    directed_pairs = [
         ('Valencia', 'Athens'),
         ('Athens', 'Riga'),
         ('Reykjavik', 'Athens')
     ]
-    flight_pairs.extend(directed)
     
-    CitySort, city_consts = EnumSort('City', cities)
-    city_dict = {name: const for name, const in zip(cities, city_consts)}
-    duration_arr = {city_dict[city]: durations[city] for city in cities}
+    # Create the list of allowed flights (both directions for bidirectional and one direction for directed)
+    allowed_list = []
+    for (a, b) in bidirectional_pairs:
+        allowed_list.append((a, b))
+        allowed_list.append((b, a))
+    for (a, b) in directed_pairs:
+        allowed_list.append((a, b))
     
+    # Create the Z3 solver
     s = Solver()
-    order = [Const('order{}'.format(i), CitySort) for i in range(10)]
-    s.add(Distinct(order))
     
-    C = [Int('C_{}'.format(i)) for i in range(10)]
-    for i in range(10):
-        if i == 0:
-            s.add(C[i] == duration_arr[order[i]])
-        else:
-            s.add(C[i] == C[i-1] + duration_arr[order[i]] - 1)
-    s.add(C[9] == 29)
+    # Define the city enum sort
+    CitySort, city_consts = EnumSort('City', cities)
+    city_const = {name: city_consts[i] for i, name in enumerate(cities)}
     
-    for i in range(10):
-        start_i = If(i == 0, 1, C[i-1])
-        end_i = C[i]
-        s.add(If(order[i] == city_dict['Valencia'], And(start_i == 5, end_i == 6), True))
-        s.add(If(order[i] == city_dict['Stockholm'], start_i <= 3, True))
-        s.add(If(order[i] == city_dict['Vienna'], And(start_i <= 10, end_i >= 6), True))
-        s.add(If(order[i] == city_dict['Athens'], And(start_i <= 18, end_i >= 14), True))
-        s.add(If(order[i] == city_dict['Riga'], And(start_i <= 20, end_i >= 18), True))
+    # Create arrival variables: 30 time points (start at day1 time0 to end of day29 time29)
+    arrival = [Const('arrival_%d' % i, CitySort) for i in range(30)]
     
-    for i in range(9):
-        or_conditions = []
-        for (a, b) in flight_pairs:
-            cond = And(order[i] == city_dict[a], order[i+1] == city_dict[b])
-            or_conditions.append(cond)
-        s.add(Or(or_conditions))
+    # Flight constraints for each transition (from time i-1 to time i, for i in 1..29)
+    for i in range(1, 30):
+        # Either stay in the same city or take an allowed flight
+        stay = (arrival[i-1] == arrival[i])
+        # Flight: one of the allowed_list flights
+        flight_options = []
+        for (a_str, b_str) in allowed_list:
+            a_const = city_const[a_str]
+            b_const = city_const[b_str]
+            flight_options.append(And(arrival[i-1] == a_const, arrival[i] == b_const))
+        s.add(Or(stay, Or(flight_options)))
     
+    # Total days per city constraint
+    for city_name in cities:
+        total_days = 0
+        for day in range(1, 30):  # day from 1 to 29
+            # The set for day 'day' is determined by arrival[day-1] and arrival[day]
+            in_city = Or(arrival[day-1] == city_const[city_name], arrival[day] == city_const[city_name])
+            total_days += If(in_city, 1, 0)
+        s.add(total_days == days_required[city_name])
+    
+    # Event constraints
+    # Valencia: must be in Valencia on day5 and day6
+    day5_valencia = Or(arrival[4] == city_const['Valencia'], arrival[5] == city_const['Valencia'])
+    day6_valencia = Or(arrival[5] == city_const['Valencia'], arrival[6] == city_const['Valencia'])
+    s.add(day5_valencia, day6_valencia)
+    
+    # Riga: must be in Riga on day18,19,20
+    for d in [18,19,20]:
+        in_riga = Or(arrival[d-1] == city_const['Riga'], arrival[d] == city_const['Riga'])
+        s.add(in_riga)
+    
+    # Athens: must be in Athens on at least one day between 14 and 18 (inclusive)
+    athens_days = []
+    for d in range(14,19):  # days 14 to 18 inclusive
+        in_athens = Or(arrival[d-1] == city_const['Athens'], arrival[d] == city_const['Athens'])
+        athens_days.append(in_athens)
+    s.add(Or(athens_days))
+    
+    # Vienna: must be in Vienna on at least one day between 6 and 10 (inclusive)
+    vienna_days = []
+    for d in range(6,11):  # days 6 to 10 inclusive
+        in_vienna = Or(arrival[d-1] == city_const['Vienna'], arrival[d] == city_const['Vienna'])
+        vienna_days.append(in_vienna)
+    s.add(Or(vienna_days))
+    
+    # Stockholm: must be in Stockholm on at least one day between 1 and 3 (inclusive)
+    stockholm_days = []
+    for d in range(1,4):  # days 1 to 3 inclusive
+        in_stockholm = Or(arrival[d-1] == city_const['Stockholm'], arrival[d] == city_const['Stockholm'])
+        stockholm_days.append(in_stockholm)
+    s.add(Or(stockholm_days))
+    
+    # Check for a solution
     if s.check() == sat:
         model = s.model()
-        order_val = [model[order[i]] for i in range(10)]
-        start_days = {}
-        end_days = {}
-        C_val = [0] * 10
-        for i in range(10):
-            if i == 0:
-                C_val[i] = model.evaluate(C[i]).as_long()
-            else:
-                C_val[i] = model.evaluate(C[i]).as_long()
-        for i in range(10):
-            city_name = None
-            for name, const in city_dict.items():
-                if model.evaluate(order[i]) == model.evaluate(const):
-                    city_name = name
+        # Map the model values to city names
+        arr_names = []
+        for i in range(30):
+            c_val = model.eval(arrival[i])
+            for name in cities:
+                if model.eval(city_const[name]) == c_val:
+                    arr_names.append(name)
                     break
-            if i == 0:
-                start_day = 1
-                end_day = C_val[0]
-            else:
-                start_day = C_val[i-1]
-                end_day = C_val[i]
-            start_days[city_name] = start_day
-            end_days[city_name] = end_day
         
+        # Build the itinerary for each day (day1 to day29)
         itinerary = []
         for day in range(1, 30):
-            cities_today = []
-            for city in cities:
-                if start_days[city] <= day <= end_days[city]:
-                    cities_today.append(city)
-            itinerary.append({'day': day, 'city': cities_today})
+            city0 = arr_names[day-1]   # at time (day-1)
+            city1 = arr_names[day]      # at time (day)
+            if city0 == city1:
+                places = [city0]
+            else:
+                places = sorted([city0, city1])
+            itinerary.append({"day": day, "place": places})
         
+        # Output as JSON
         result = {'itinerary': itinerary}
-        print(result)
+        print(json.dumps(result, indent=2))
     else:
         print("No solution found")
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

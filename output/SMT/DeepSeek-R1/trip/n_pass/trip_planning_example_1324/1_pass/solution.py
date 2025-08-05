@@ -1,91 +1,107 @@
-from z3 import *
 import json
+from z3 import *
 
 def main():
-    # City names and their durations
-    city_names = ['Venice', 'Barcelona', 'Copenhagen', 'Lyon', 'Reykjavik', 'Dubrovnik', 'Athens', 'Tallinn', 'Munich']
+    cities = ['Venice', 'Barcelona', 'Copenhagen', 'Lyon', 'Reykjavik', 'Dubrovnik', 'Athens', 'Tallinn', 'Munich']
     durations = [4, 3, 4, 4, 4, 5, 2, 5, 3]
     
-    # Map city names to indices
-    name_to_index = {name: idx for idx, name in enumerate(city_names)}
+    edges_str = [
+        "Copenhagen and Athens", 
+        "Copenhagen and Dubrovnik", 
+        "Munich and Tallinn", 
+        "Copenhagen and Munich", 
+        "Venice and Munich", 
+        "from Reykjavik to Athens", 
+        "Athens and Dubrovnik", 
+        "Venice and Athens", 
+        "Lyon and Barcelona", 
+        "Copenhagen and Reykjavik", 
+        "Reykjavik and Munich", 
+        "Athens and Munich", 
+        "Lyon and Munich", 
+        "Barcelona and Reykjavik", 
+        "Venice and Copenhagen", 
+        "Barcelona and Dubrovnik", 
+        "Lyon and Venice", 
+        "Dubrovnik and Munich", 
+        "Barcelona and Athens", 
+        "Copenhagen and Barcelona", 
+        "Venice and Barcelona", 
+        "Barcelona and Munich", 
+        "Barcelona and Tallinn", 
+        "Copenhagen and Tallinn"
+    ]
     
-    # Parse direct flights
-    connections_str = "Copenhagen and Athens, Copenhagen and Dubrovnik, Munich and Tallinn, Copenhagen and Munich, Venice and Munich, from Reykjavik to Athens, Athens and Dubrovnik, Venice and Athens, Lyon and Barcelona, Copenhagen and Reykjavik, Reykjavik and Munich, Athens and Munich, Lyon and Munich, Barcelona and Reykjavik, Venice and Copenhagen, Barcelona and Dubrovnik, Lyon and Venice, Dubrovnik and Munich, Barcelona and Athens, Copenhagen and Barcelona, Venice and Barcelona, Barcelona and Munich, Barcelona and Tallinn, Copenhagen and Tallinn"
-    connections_list = connections_str.split(', ')
-    edges_set = set()
-    for conn in connections_list:
-        if conn.startswith('from'):
-            parts = conn.split()
-            a_name = parts[1]
-            b_name = parts[3]
+    unordered_edges = set()
+    for s in edges_str:
+        clean_s = s.replace("from ", "").replace(" to ", " and ").strip()
+        parts = clean_s.split(' and ')
+        if len(parts) < 2:
+            continue
+        city1 = parts[0].strip()
+        city2 = parts[1].strip()
+        try:
+            idx1 = cities.index(city1)
+            idx2 = cities.index(city2)
+        except:
+            continue
+        if idx1 < idx2:
+            edge = (idx1, idx2)
         else:
-            parts = conn.split(' and ')
-            a_name = parts[0]
-            b_name = parts[1]
-        a_idx = name_to_index[a_name]
-        b_idx = name_to_index[b_name]
-        edge = (min(a_idx, b_idx), max(a_idx, b_idx))
-        edges_set.add(edge)
+            edge = (idx2, idx1)
+        unordered_edges.add(edge)
     
-    # Initialize Z3 solver
     s = Solver()
     
-    # Order of cities (0 to 8)
-    order = [Int(f'order_{i}') for i in range(9)]
+    order = [Int('order_%d' % i) for i in range(9)]
+    start = [Int('start_%d' % i) for i in range(9)]
+    
+    s.add(Distinct(order))
     for i in range(9):
         s.add(order[i] >= 0, order[i] < 9)
-    s.add(Distinct(order))
     
-    # Cumulative start days
-    cumulative = [Int(f'cumulative_{i}') for i in range(9)]
-    s.add(cumulative[0] == 1)
+    s.add(start[0] == 1)
     for i in range(1, 9):
-        s.add(cumulative[i] == cumulative[i-1] + (durations[order[i-1]] - 1))
+        s.add(start[i] == start[i-1] + durations[order[i-1]] - 1)
     
-    # Event constraints
-    # Barcelona (index 1) between day 8 and 12
-    s.add(Or([And(order[i] == 1, cumulative[i] >= 8, cumulative[i] <= 12) for i in range(9)]))
-    # Copenhagen (index 2) between day 4 and 10
-    s.add(Or([And(order[i] == 2, cumulative[i] >= 4, cumulative[i] <= 10) for i in range(9)]))
-    # Dubrovnik (index 5) between day 12 and 20
-    s.add(Or([And(order[i] == 5, cumulative[i] >= 12, cumulative[i] <= 20) for i in range(9)]))
+    for i in range(9):
+        s.add(If(order[i] == 1, And(start[i] >= 8, start[i] <= 12), True))
+        s.add(If(order[i] == 2, And(start[i] >= 4, start[i] <= 10), True))
+        s.add(If(order[i] == 5, And(start[i] >= 12, start[i] <= 20), True))
     
-    # Flight constraints
     for i in range(8):
-        c1 = order[i]
-        c2 = order[i+1]
-        cond = False
-        for edge in edges_set:
+        constraints = []
+        for edge in unordered_edges:
             a, b = edge
-            cond = Or(cond, And(c1 == a, c2 == b), And(c1 == b, c2 == a))
-        s.add(cond)
+            c1 = And(order[i] == a, order[i+1] == b)
+            c2 = And(order[i] == b, order[i+1] == a)
+            constraints.append(Or(c1, c2))
+        s.add(Or(constraints))
     
-    # Solve the problem
     if s.check() == sat:
         m = s.model()
-        order_list = [m[order[i]].as_long() for i in range(9)]
-        cumulative_list = [m[cumulative[i]].as_long() for i in range(9)]
+        order_val = [m.evaluate(order[i]).as_long() for i in range(9)]
+        start_val = [0] * 9
+        start_val[0] = 1
+        for i in range(1, 9):
+            prev_city_index = order_val[i-1]
+            start_val[i] = start_val[i-1] + durations[prev_city_index] - 1
         
-        # Determine start days for each city
-        start_days = [0] * 9
-        for pos in range(9):
-            city_idx = order_list[pos]
-            start_days[city_idx] = cumulative_list[pos]
-        
-        # Generate itinerary
         itinerary = []
-        for day in range(1, 27):
-            for city_idx in range(9):
-                start = start_days[city_idx]
-                end = start + durations[city_idx] - 1
-                if start <= day <= end:
-                    itinerary.append({"day": day, "place": city_names[city_idx]})
+        for d in range(1, 27):
+            places = []
+            for pos in range(9):
+                city_index = order_val[pos]
+                s_day = start_val[pos]
+                e_day = s_day + durations[city_index] - 1
+                if s_day <= d <= e_day:
+                    places.append(cities[city_index])
+            itinerary.append({"day": d, "place": places})
         
-        # Output result
         result = {"itinerary": itinerary}
         print(json.dumps(result))
     else:
         print("No solution found")
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

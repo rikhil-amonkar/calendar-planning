@@ -1,73 +1,78 @@
 from z3 import *
 
-# Define the cities
-cities = ['Salzburg', 'Hamburg', 'Venice', 'Nice', 'Zurich', 'Bucharest', 'Copenhagen', 'Brussels', 'Naples', 'Barcelona']
-City, city_consts = EnumSort('City', cities)
-salzburg, hamburg, venice, nice, zurich, bucharest, copenhagen, brussels, naples, barcelona = city_consts
-
-# Direct flights (both directions)
-direct_flights = [
-    (salzburg, hamburg), (salzburg, venice), (salzburg, nice), (salzburg, zurich),
-    (hamburg, salzburg), (hamburg, venice), (hamburg, nice), (hamburg, zurich), (hamburg, bucharest), (hamburg, copenhagen), (hamburg, brussels), (hamburg, naples), (hamburg, barcelona),
-    (venice, salzburg), (venice, hamburg), (venice, nice), (venice, zurich), (venice, bucharest), (venice, naples), (venice, barcelona),
-    (nice, salzburg), (nice, hamburg), (nice, venice), (nice, zurich), (nice, brussels), (nice, barcelona),
-    (zurich, salzburg), (zurich, hamburg), (zurich, venice), (zurich, nice), (zurich, bucharest), (zurich, copenhagen), (zurich, brussels), (zurich, naples), (zurich, barcelona),
-    (bucharest, hamburg), (bucharest, venice), (bucharest, zurich), (bucharest, copenhagen), (bucharest, brussels), (bucharest, naples), (bucharest, barcelona),
-    (copenhagen, hamburg), (copenhagen, zurich), (copenhagen, bucharest), (copenhagen, brussels), (copenhagen, naples), (copenhagen, barcelona),
-    (brussels, hamburg), (brussels, nice), (brussels, zurich), (brussels, bucharest), (brussels, copenhagen), (brussels, naples), (brussels, barcelona),
-    (naples, hamburg), (naples, venice), (naples, zurich), (naples, bucharest), (naples, copenhagen), (naples, brussels), (naples, barcelona),
-    (barcelona, hamburg), (barcelona, venice), (barcelona, nice), (barcelona, zurich), (barcelona, bucharest), (barcelona, copenhagen), (barcelona, brussels), (barcelona, naples)
-]
-
-# Create solver
-s = Solver()
-
-# City for each day (1 to 25)
-city_day = [ Const(f'city_day_{i}', City) for i in range(1, 26) ]
-
-# Constraint: Each day is one of the cities
-for i in range(25):
-    s.add(Or([city_day[i] == c for c in city_consts]))
-
-# Start and end constraints
-s.add(city_day[0] == salzburg)
-s.add(city_day[24] == naples)
-
-# Flight constraints
-for i in range(24):
-    current = city_day[i]
-    next_day = city_day[i+1]
-    same_city = (current == next_day)
-    flight_exists = Or([ And(current == src, next_day == dst) for (src, dst) in direct_flights ])
-    s.add(Or(same_city, flight_exists))
-
-# Each city must appear at least once
-for c in city_consts:
-    s.add(Or([city_day[i] == c for i in range(25)]))
-
-# Contiguous block constraints for each city
-for c in city_consts:
-    start_c = Int(f'start_{c}')
-    end_c = Int(f'end_{c}')
-    for i in range(1, 26):
-        s.add( (city_day[i-1] == c) == And(start_c <= i, i <= end_c) )
-
-# Check and get model
-if s.check() == sat:
-    m = s.model()
-    itinerary = []
-    # Get the string representation of the city for each day
-    city_strings = [str(m.evaluate(city_day[i], model_completion=True)) for i in range(25)]
+def main():
+    n_days = 25
+    cities = ['Salzburg', 'Hamburg', 'Zurich', 'Nice', 'Venice', 'Copenhagen', 'Bucharest', 'Brussels', 'Naples']
+    req = [2, 3, 4, 2, 4, 3, 3, 2, 2]
+    city_index = {city: idx for idx, city in enumerate(cities)}
     
-    current_city = city_strings[0]
-    start_day = 1
-    for i in range(1, 25):
-        if city_strings[i] != current_city:
-            end_day = i
-            itinerary.append({'day_range': f'Day {start_day}-{end_day}', 'place': current_city})
-            current_city = city_strings[i]
-            start_day = i+1
-    itinerary.append({'day_range': f'Day {start_day}-25', 'place': current_city})
-    print(f"Plan found: {{'itinerary': {itinerary}}}")
-else:
-    print("No valid plan found.")
+    # Updated graph with Venice-Hamburg connection
+    graph = {
+        'Salzburg': ['Zurich', 'Venice'],
+        'Hamburg': ['Brussels', 'Copenhagen', 'Venice'],  # Added Venice
+        'Zurich': ['Salzburg', 'Nice'],
+        'Nice': ['Zurich'],
+        'Venice': ['Salzburg', 'Naples', 'Bucharest', 'Hamburg'],  # Added Hamburg
+        'Copenhagen': ['Hamburg'],
+        'Bucharest': ['Venice'],
+        'Brussels': ['Hamburg'],
+        'Naples': ['Venice']
+    }
+    
+    allowed_pairs = set()
+    for city, neighbors in graph.items():
+        i = city_index[city]
+        for nb in neighbors:
+            j = city_index[nb]
+            allowed_pairs.add((i, j))
+            allowed_pairs.add((j, i))
+    for i in range(len(cities)):
+        allowed_pairs.add((i, i))
+    
+    s = Solver()
+    c = [Int('c_%d' % i) for i in range(n_days)]
+    
+    for i in range(n_days):
+        s.add(c[i] >= 0, c[i] < len(cities))
+    
+    s.add(c[0] == city_index['Salzburg'])
+    s.add(c[24] == city_index['Salzburg'])
+    
+    for k in range(len(cities)):
+        s.add(Sum([If(c[i] == k, 1, 0) for i in range(n_days)]) == req[k])
+    
+    for i in range(n_days - 1):
+        s.add(Or([And(c[i] == a, c[i+1] == b) for (a, b) in allowed_pairs]))
+    
+    if s.check() == sat:
+        m = s.model()
+        assignment = [m.evaluate(c[i]).as_long() for i in range(n_days)]
+        itinerary = []
+        start_idx = 0
+        current_city = assignment[0]
+        for i in range(1, n_days):
+            if assignment[i] != current_city:
+                end_idx = i - 1
+                start_day = start_idx + 1
+                end_day = end_idx + 1
+                if start_day == end_day:
+                    day_range = f"Day {start_day}"
+                else:
+                    day_range = f"Day {start_day}-{end_day}"
+                itinerary.append({'day_range': day_range, 'place': cities[current_city]})
+                start_idx = i
+                current_city = assignment[i]
+        start_day = start_idx + 1
+        end_day = n_days
+        if start_day == end_day:
+            day_range = f"Day {start_day}"
+        else:
+            day_range = f"Day {start_day}-{end_day}"
+        itinerary.append({'day_range': day_range, 'place': cities[current_city]})
+        
+        print('itinerary =', itinerary)
+    else:
+        print("No valid itinerary found.")
+
+if __name__ == '__main__':
+    main()

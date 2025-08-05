@@ -2,45 +2,50 @@ from z3 import *
 import json
 
 def main():
-    def time_to_minutes(time_str):
-        h, m = time_str.split(':')
-        return int(h) * 60 + int(m)
-    
-    def minutes_to_time(minutes):
-        h = minutes // 60
-        m = minutes % 60
-        return f"{h:02d}:{m:02d}"
-    
-    # Initial arrival at Russian Hill
-    arrival_time = time_to_minutes("09:00")
+    # Convert times to minutes from midnight
+    start_at_russian_hill = 9 * 60  # 9:00 AM
     travel_time = 7
-    min_meeting_duration = 60
-    barbara_start = time_to_minutes("07:15")
-    barbara_end = time_to_minutes("22:00")
+    arrival_at_pacific_heights = start_at_russian_hill + travel_time  # 9:07 AM (547 minutes)
+    barbara_available_start = 7 * 60 + 15  # 7:15 AM (435 minutes)
+    barbara_available_end = 22 * 60  # 10:00 PM (1320 minutes)
+    min_duration = 60  # 60 minutes
+
+    # Initialize Z3 solver
+    s = Optimize()
+    start = Int('start')
     
-    opt = Optimize()
-    meet_start = Int('meet_start')
-    meet_end = meet_start + min_meeting_duration
+    # Constraints
+    s.add(start >= barbara_available_start)  # Cannot start before Barbara is available
+    s.add(start >= arrival_at_pacific_heights)  # Cannot start before arriving at Pacific Heights
+    s.add(start + min_duration <= barbara_available_end)  # Meeting must end by 10:00 PM
     
-    opt.add(meet_start >= arrival_time + travel_time)
-    opt.add(meet_start >= barbara_start)
-    opt.add(meet_end <= barbara_end)
+    # Minimize the start time to meet as early as possible
+    s.minimize(start)
     
-    opt.minimize(meet_start)
-    
-    if opt.check() == sat:
-        m = opt.model()
-        start_min = m[meet_start].as_long()
-        end_min = start_min + min_meeting_duration
-        start_str = minutes_to_time(start_min)
-        end_str = minutes_to_time(end_min)
+    if s.check() == sat:
+        m = s.model()
+        start_minutes = m.eval(start).as_long()
+        end_minutes = start_minutes + min_duration
         
+        # Convert minutes back to HH:MM format
+        start_hour = start_minutes // 60
+        start_minute = start_minutes % 60
+        start_time = f"{start_hour:02d}:{start_minute:02d}"
+        
+        end_hour = end_minutes // 60
+        end_minute = end_minutes % 60
+        end_time = f"{end_hour:02d}:{end_minute:02d}"
+        
+        # Create the itinerary
         itinerary = [
-            {"action": "meet", "person": "Barbara", "start_time": start_str, "end_time": end_str}
+            {"action": "meet", "person": "Barbara", "start_time": start_time, "end_time": end_time}
         ]
-        print(json.dumps({"itinerary": itinerary}))
+        
+        # Output the result as JSON
+        result = {"itinerary": itinerary}
+        print(json.dumps(result))
     else:
-        print(json.dumps({"itinerary": []}))
+        print("No solution found")
 
 if __name__ == "__main__":
     main()

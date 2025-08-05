@@ -1,115 +1,127 @@
 from z3 import *
-import json
 
 def main():
+    manchester = 0
+    stuttgart = 1
+    madrid = 2
+    vienna = 3
+    city_names = {0: "Manchester", 1: "Stuttgart", 2: "Madrid", 3: "Vienna"}
+    
+    city1 = Int('city1')
+    city2 = Int('city2')
+    city3 = Int('city3')
+    city4 = Int('city4')
+    e1 = Int('e1')
+    e2 = Int('e2')
+    e3 = Int('e3')
+    
     s = Solver()
     
-    # Days for transitions
-    a = Int('a')
-    b = Int('b')
-    c = Int('c')
+    edges = [(manchester, stuttgart), (manchester, madrid), (manchester, vienna),
+             (stuttgart, vienna), (madrid, vienna)]
+    edges_sym = edges + [(j, i) for (i, j) in edges]
     
-    # Segment assignments: 0=Manchester, 1=Stuttgart, 2=Madrid, 3=Vienna
-    seg1 = Int('seg1')
-    seg2 = Int('seg2')
-    seg3 = Int('seg3')
-    seg4 = Int('seg4')
+    len1 = e1
+    len2 = e2 - e1 + 1
+    len3 = e3 - e2 + 1
+    len4 = 15 - e3 + 1
     
-    # Constraints: 1<=a<=b<=c<=15
-    s.add(a >= 1, a <= 15)
-    s.add(b >= a, b <= 15)
-    s.add(c >= b, c <= 15)
+    total_manchester = Sum([If(city1 == manchester, len1, 0),
+                           If(city2 == manchester, len2, 0),
+                           If(city3 == manchester, len3, 0),
+                           If(city4 == manchester, len4, 0)])
+    total_stuttgart = Sum([If(city1 == stuttgart, len1, 0),
+                           If(city2 == stuttgart, len2, 0),
+                           If(city3 == stuttgart, len3, 0),
+                           If(city4 == stuttgart, len4, 0)])
+    total_madrid = Sum([If(city1 == madrid, len1, 0),
+                        If(city2 == madrid, len2, 0),
+                        If(city3 == madrid, len3, 0),
+                        If(city4 == madrid, len4, 0)])
+    total_vienna = Sum([If(city1 == vienna, len1, 0),
+                        If(city2 == vienna, len2, 0),
+                        If(city3 == vienna, len3, 0),
+                        If(city4 == vienna, len4, 0)])
     
-    # Each segment variable is an integer between 0 and 3
-    s.add(seg1 >= 0, seg1 <= 3)
-    s.add(seg2 >= 0, seg2 <= 3)
-    s.add(seg3 >= 0, seg3 <= 3)
-    s.add(seg4 >= 0, seg4 <= 3)
-    s.add(Distinct(seg1, seg2, seg3, seg4))
+    s.add(total_manchester == 7)
+    s.add(total_stuttgart == 5)
+    s.add(total_madrid == 4)
+    s.add(total_vienna == 2)
     
-    # Required days for each city: [Manchester, Stuttgart, Madrid, Vienna]
-    reqs = [7, 5, 4, 2]
+    s.add(e1 >= 1, e1 <= 14)
+    s.add(e2 > e1, e2 <= 14)
+    s.add(e3 > e2, e3 <= 14)
     
-    # Helper function to get required days for a segment
-    def get_req(seg):
-        return If(seg == 0, reqs[0],
-               If(seg == 1, reqs[1],
-               If(seg == 2, reqs[2],
-               reqs[3])))
+    s.add(Or([And(city1 == i, city2 == j) for (i, j) in edges_sym]))
+    s.add(Or([And(city2 == i, city3 == j) for (i, j) in edges_sym]))
+    s.add(Or([And(city3 == i, city4 == j) for (i, j) in edges_sym]))
     
-    # Segment lengths must match city requirements
-    s.add(a == get_req(seg1))
-    s.add(b - a + 1 == get_req(seg2))
-    s.add(c - b + 1 == get_req(seg3))
-    s.add(16 - c == get_req(seg4))
+    for d in range(11, 16):
+        is_boundary = Or(d == e1, d == e2, d == e3)
+        not_boundary = Not(is_boundary)
+        s.add(Or(
+            And(d == e1, city2 == stuttgart),
+            And(d == e2, city3 == stuttgart),
+            And(d == e3, city4 == stuttgart),
+            And(not_boundary, 
+                Or(
+                    And(d <= e1, city1 == stuttgart),
+                    And(e1 < d, d < e2, city2 == stuttgart),
+                    And(e2 < d, d < e3, city3 == stuttgart),
+                    And(d > e3, city4 == stuttgart)
+                )
+            )
+        ))
     
-    # Direct flight constraints
-    def edge_ok(x, y):
-        return Or(
-            And(x == 0, y == 1), And(x == 1, y == 0),
-            And(x == 0, y == 2), And(x == 2, y == 0),
-            And(x == 0, y == 3), And(x == 3, y == 0),
-            And(x == 1, y == 3), And(x == 3, y == 1),
-            And(x == 2, y == 3), And(x == 3, y == 2)
+    wedding_conditions = []
+    for d in range(1, 8):
+        is_boundary = Or(d == e1, d == e2, d == e3)
+        not_boundary = Not(is_boundary)
+        condition = Or(
+            And(is_boundary, 
+                Or(
+                    And(d == e1, city2 == manchester),
+                    And(d == e2, city3 == manchester),
+                    And(d == e3, city4 == manchester)
+                )
+            ),
+            And(not_boundary,
+                Or(
+                    And(d <= e1, city1 == manchester),
+                    And(e1 < d, d < e2, city2 == manchester),
+                    And(e2 < d, d < e3, city3 == manchester),
+                    And(d > e3, city4 == manchester)
+                )
+            )
         )
+        wedding_conditions.append(condition)
+    s.add(Or(wedding_conditions))
     
-    s.add(edge_ok(seg1, seg2))
-    s.add(edge_ok(seg2, seg3))
-    s.add(edge_ok(seg3, seg4))
-    
-    # Event constraints
-    # Manchester (0) must have at least one day in [1,7]
-    manchester_constraint = Or(
-        And(seg1 == 0, a >= 1),  # seg1 covers [1, a] and includes day 1
-        And(seg2 == 0, a <= 7),   # seg2 covers [a, b]; must start by day 7
-        And(seg3 == 0, b <= 7),   # seg3 covers [b, c]; must start by day 7
-        And(seg4 == 0, c <= 7)    # seg4 covers [c,15]; must start by day 7
-    )
-    s.add(manchester_constraint)
-    
-    # Stuttgart (1) must have at least one day in [11,15]
-    stuttgart_constraint = Or(
-        And(seg1 == 1, a >= 11),  # seg1 must extend to day 11+
-        And(seg2 == 1, b >= 11),   # seg2 must extend to day 11+
-        And(seg3 == 1, c >= 11),   # seg3 must extend to day 11+
-        And(seg4 == 1, c <= 15)    # seg4 always includes day 15
-    )
-    s.add(stuttgart_constraint)
+    s.add(Not(And(e1 == 4, e2 == 10, e3 == 11, city1 == madrid, city2 == manchester, city3 == vienna, city4 == stuttgart)))
     
     if s.check() == sat:
         m = s.model()
-        a_val = m[a].as_long()
-        b_val = m[b].as_long()
-        c_val = m[c].as_long()
-        seg1_val = m[seg1].as_long()
-        seg2_val = m[seg2].as_long()
-        seg3_val = m[seg3].as_long()
-        seg4_val = m[seg4].as_long()
+        e1_val = m[e1].as_long()
+        e2_val = m[e2].as_long()
+        e3_val = m[e3].as_long()
+        city1_val = m[city1].as_long()
+        city2_val = m[city2].as_long()
+        city3_val = m[city3].as_long()
+        city4_val = m[city4].as_long()
         
-        city_names = {
-            0: "Manchester",
-            1: "Stuttgart",
-            2: "Madrid",
-            3: "Vienna"
-        }
-        
-        itinerary = []
-        for d in range(1, 16):
-            places = []
-            if d <= a_val:
-                places.append(city_names[seg1_val])
-            if d >= a_val and d <= b_val:
-                places.append(city_names[seg2_val])
-            if d >= b_val and d <= c_val:
-                places.append(city_names[seg3_val])
-            if d >= c_val:
-                places.append(city_names[seg4_val])
-            itinerary.append({"day": d, "place": places})
-        
-        result = {'itinerary': itinerary}
-        print(json.dumps(result))
+        itinerary = [
+            {"day_range": f"Day 1-{e1_val}", "place": city_names[city1_val]},
+            {"day_range": f"Day {e1_val}-{e2_val}", "place": city_names[city2_val]},
+            {"day_range": f"Day {e2_val}-{e3_val}", "place": city_names[city3_val]},
+            {"day_range": f"Day {e3_val}-15", "place": city_names[city4_val]}
+        ]
+        print('{\n  "itinerary": [')
+        for i, item in enumerate(itinerary):
+            suffix = "," if i < len(itinerary) - 1 else ""
+            print(f'    {{"day_range": "{item["day_range"]}", "place": "{item["place"]}"}}{suffix}')
+        print("  ]\n}")
     else:
-        print("No solution found")
+        print("No valid solution found")
 
 if __name__ == "__main__":
     main()

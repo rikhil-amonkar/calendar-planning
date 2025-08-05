@@ -2,103 +2,101 @@ from z3 import *
 import json
 
 def main():
+    # Define city mapping
+    city_names = {0: "Manchester", 1: "Stuttgart", 2: "Madrid", 3: "Vienna"}
+    
+    # Define direct flight edges
+    edges = [(0, 1), (0, 2), (0, 3), (1, 3), (2, 3)]
+    
+    # Initialize Z3 variables
+    c1, c2, c3, c4 = Ints('c1 c2 c3 c4')
+    e1, e2, e3 = Ints('e1 e2 e3')
+    
     s = Solver()
     
-    # Days for transitions
-    a = Int('a')
-    b = Int('b')
-    c = Int('c')
+    # City indices must be 0 to 3 and distinct
+    s.add([And(c >= 0, c <= 3) for c in [c1, c2, c3, c4]])
+    s.add(Distinct(c1, c2, c3, c4))
     
-    # Segment assignments: 0=Manchester, 1=Stuttgart, 2=Madrid, 3=Vienna
-    seg1 = Int('seg1')
-    seg2 = Int('seg2')
-    seg3 = Int('seg3')
-    seg4 = Int('seg4')
+    # End day constraints: 1 <= e1 < e2 < e3 <= 15
+    s.add(e1 >= 1, e1 <= 15)
+    s.add(e2 > e1, e2 <= 15)
+    s.add(e3 > e2, e3 <= 15)
     
-    # Constraints: 1<=a<=b<=c<=15
-    s.add(a >= 1, a <= 15)
-    s.add(b >= a, b <= 15)
-    s.add(c >= b, c <= 15)
+    # Flight constraints between consecutive segments
+    flight_constr = lambda a, b: Or([Or(And(a == i, b == j), And(a == j, b == i)) for (i, j) in edges])
+    s.add(flight_constr(c1, c2))
+    s.add(flight_constr(c2, c3))
+    s.add(flight_constr(c3, c4))
     
-    # Each segment variable is an integer between 0 and 3
-    s.add(seg1 >= 0, seg1 <= 3)
-    s.add(seg2 >= 0, seg2 <= 3)
-    s.add(seg3 >= 0, seg3 <= 3)
-    s.add(seg4 >= 0, seg4 <= 3)
-    s.add(Distinct(seg1, seg2, seg3, seg4))
-    
-    # Required days for each city: [Manchester, Stuttgart, Madrid, Vienna]
-    reqs = [7, 5, 4, 2]
-    
-    # Segment lengths
-    s.add(a == reqs[seg1])
-    s.add(b - a + 1 == reqs[seg2])
-    s.add(c - b + 1 == reqs[seg3])
-    s.add(16 - c == reqs[seg4])
-    
-    # Direct flight constraints
-    def edge_ok(x, y):
-        return Or(
-            And(x == 0, y == 1), And(x == 1, y == 0),
-            And(x == 0, y == 2), And(x == 2, y == 0),
-            And(x == 0, y == 3), And(x == 3, y == 0),
-            And(x == 1, y == 3), And(x == 3, y == 1),
-            And(x == 2, y == 3), And(x == 3, y == 2)
-        )
-    
-    s.add(edge_ok(seg1, seg2))
-    s.add(edge_ok(seg2, seg3))
-    s.add(edge_ok(seg3, seg4))
+    # Days in each city
+    days_city = lambda city: If(c1 == city, e1,
+                                If(c2 == city, e2 - e1 + 1,
+                                  If(c3 == city, e3 - e2 + 1,
+                                    If(c4 == city, 16 - e3, 0))))
+    s.add(days_city(0) == 7)  # Manchester
+    s.add(days_city(1) == 5)  # Stuttgart
+    s.add(days_city(2) == 4)  # Madrid
+    s.add(days_city(3) == 2)  # Vienna
     
     # Event constraints
     # Manchester must have at least one day in [1,7]
-    manchester_constraint = Or(
-        seg1 == 0,  # segment1: Manchester from day1 to day a (a=7, so includes [1,7])
-        And(seg2 == 0, a <= 7),  # segment2: Manchester from day a to day b, so a must be <=7 to include a day in [1,7]
-        And(seg3 == 0, b <= 7)   # segment3: Manchester from day b to day c, so b must be <=7 to include a day in [1,7]
-    )
-    s.add(manchester_constraint)
-    
+    s.add(Or(
+        c1 == 0,
+        And(c2 == 0, e1 <= 7),
+        And(c3 == 0, e2 <= 7),
+        And(c4 == 0, e3 <= 7)
+    ))
     # Stuttgart must have at least one day in [11,15]
-    stuttgart_constraint = Or(
-        And(seg2 == 1, b >= 11),  # segment2: Stuttgart from day a to day b, so b must be >=11 to include a day in [11,15]
-        And(seg3 == 1, c >= 11),   # segment3: Stuttgart from day b to day c, so c must be >=11 to include a day in [11,15]
-        seg4 == 1   # segment4: Stuttgart from day c to day15, and c=11 (because 16-c=5 -> c=11), so includes [11,15]
-    )
-    s.add(stuttgart_constraint)
+    s.add(Or(
+        And(c1 == 1, e1 >= 11),
+        And(c2 == 1, e2 >= 11),
+        And(c3 == 1, e3 >= 11),
+        c4 == 1
+    ))
+    # Additional constraint: Must be in Stuttgart on day 15
+    s.add(Or(
+        And(c1 == 1, e1 == 15),
+        And(c2 == 1, e2 == 15),
+        And(c3 == 1, e3 == 15),
+        c4 == 1
+    ))
     
+    # Solve the constraints
     if s.check() == sat:
         m = s.model()
-        a_val = m[a].as_long()
-        b_val = m[b].as_long()
-        c_val = m[c].as_long()
-        seg1_val = m[seg1].as_long()
-        seg2_val = m[seg2].as_long()
-        seg3_val = m[seg3].as_long()
-        seg4_val = m[seg4].as_long()
+        c1_val = m[c1].as_long()
+        c2_val = m[c2].as_long()
+        c3_val = m[c3].as_long()
+        c4_val = m[c4].as_long()
+        e1_val = m[e1].as_long()
+        e2_val = m[e2].as_long()
+        e3_val = m[e3].as_long()
         
-        city_names = {
-            0: "Manchester",
-            1: "Stuttgart",
-            2: "Madrid",
-            3: "Vienna"
-        }
-        
+        # Generate itinerary
         itinerary = []
         for d in range(1, 16):
-            places = []
-            if d <= a_val:
-                places.append(city_names[seg1_val])
-            if d >= a_val and d <= b_val:
-                places.append(city_names[seg2_val])
-            if d >= b_val and d <= c_val:
-                places.append(city_names[seg3_val])
-            if d >= c_val:
-                places.append(city_names[seg4_val])
-            itinerary.append({"day": d, "place": places})
+            if d < e1_val:
+                itinerary.append({"day": d, "place": city_names[c1_val]})
+            elif d == e1_val:
+                itinerary.append({"day": d, "place": city_names[c1_val]})
+                itinerary.append({"day": d, "place": city_names[c2_val]})
+            elif d < e2_val:
+                itinerary.append({"day": d, "place": city_names[c2_val]})
+            elif d == e2_val:
+                itinerary.append({"day": d, "place": city_names[c2_val]})
+                itinerary.append({"day": d, "place": city_names[c3_val]})
+            elif d < e3_val:
+                itinerary.append({"day": d, "place": city_names[c3_val]})
+            elif d == e3_val:
+                itinerary.append({"day": d, "place": city_names[c3_val]})
+                itinerary.append({"day": d, "place": city_names[c4_val]})
+            else:  # d > e3_val
+                itinerary.append({"day": d, "place": city_names[c4_val]})
         
-        result = {'itinerary': itinerary}
-        print(json.dumps(result))
+        # Output as JSON
+        result = {"itinerary": itinerary}
+        print(json.dumps(result, indent=2))
     else:
         print("No solution found")
 

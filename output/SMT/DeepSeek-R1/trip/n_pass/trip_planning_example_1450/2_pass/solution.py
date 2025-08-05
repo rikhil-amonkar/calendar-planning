@@ -1,91 +1,126 @@
+import z3
 import json
-from z3 import *
 
 def main():
-    cities = ["Krakow", "Stockholm", "Hamburg", "Florence", "Istanbul", "Oslo", "Vilnius", "Santorini", "Munich", "Frankfurt"]
-    durations = [5, 3, 5, 2, 5, 5, 5, 2, 5, 4]
+    cities = ["Stockholm", "Hamburg", "Florence", "Istanbul", "Oslo", "Vilnius", "Santorini", "Munich", "Frankfurt", "Krakow"]
     
-    allowed_flights = [
-        (5,1), (1,5),
-        (0,9), (9,0),
-        (0,4), (4,0),
-        (8,1), (1,8),
-        (2,1), (1,2),
-        (0,6),
-        (5,4), (4,5),
-        (4,1), (1,4),
-        (5,0), (0,5),
-        (6,4), (4,6),
-        (5,6), (6,5),
-        (9,4), (4,9),
-        (5,9), (9,5),
-        (8,2), (2,8),
-        (3,8),
-        (0,8), (8,0),
-        (2,4), (4,2),
-        (9,1), (1,9),
-        (1,7),
-        (9,8), (8,9),
-        (5,2), (2,5),
-        (7,5),
-        (0,1), (1,0),
-        (6,8),
-        (9,2), (2,9)
+    req_days = {
+        "Stockholm": 3,
+        "Hamburg": 5,
+        "Florence": 2,
+        "Istanbul": 5,
+        "Oslo": 5,
+        "Vilnius": 5,
+        "Santorini": 2,
+        "Munich": 5,
+        "Frankfurt": 4,
+        "Krakow": 5
+    }
+    
+    bidirectional = [
+        ("Oslo", "Stockholm"),
+        ("Krakow", "Frankfurt"),
+        ("Krakow", "Istanbul"),
+        ("Munich", "Stockholm"),
+        ("Hamburg", "Stockholm"),
+        ("Oslo", "Istanbul"),
+        ("Istanbul", "Stockholm"),
+        ("Oslo", "Krakow"),
+        ("Vilnius", "Istanbul"),
+        ("Frankfurt", "Istanbul"),
+        ("Oslo", "Frankfurt"),
+        ("Munich", "Hamburg"),
+        ("Munich", "Istanbul"),
+        ("Oslo", "Munich"),
+        ("Frankfurt", "Florence"),
+        ("Oslo", "Hamburg"),
+        ("Vilnius", "Frankfurt"),
+        ("Krakow", "Munich"),
+        ("Hamburg", "Istanbul"),
+        ("Frankfurt", "Stockholm"),
+        ("Frankfurt", "Munich"),
+        ("Frankfurt", "Hamburg")
     ]
     
-    s = Solver()
+    directed = [
+        ("Krakow", "Vilnius"),
+        ("Florence", "Munich"),
+        ("Stockholm", "Santorini"),
+        ("Santorini", "Oslo"),
+        ("Vilnius", "Munich")
+    ]
     
-    order = [Int('c_%d' % i) for i in range(10)]
-    starts = [Int('start_%d' % i) for i in range(10)]
-    ends = [Int('end_%d' % i) for i in range(10)]
+    allowed_flights = set()
+    for (a, b) in bidirectional:
+        allowed_flights.add((a, b))
+        allowed_flights.add((b, a))
+    for (a, b) in directed:
+        allowed_flights.add((a, b))
     
-    for i in range(10):
-        s.add(order[i] >= 0, order[i] < 10)
-    s.add(Distinct(order))
+    City, city_consts = z3.EnumSort('City', cities)
+    city_map = {name: const for name, const in zip(cities, city_consts)}
     
-    duration_arr = Array('durations', IntSort(), IntSort())
-    for i, d in enumerate(durations):
-        s.add(duration_arr[i] == d)
+    s = [None]
+    e = [None]
+    for i in range(1, 33):
+        s.append(z3.Const(f's_{i}', City))
+        e.append(z3.Const(f'e_{i}', City))
     
-    s.add(starts[0] == 1)
-    s.add(ends[0] == starts[0] + duration_arr[order[0]] - 1)
+    solver = z3.Solver()
     
-    for i in range(1, 10):
-        s.add(starts[i] == ends[i-1])
-        s.add(ends[i] == starts[i] + duration_arr[order[i]] - 1)
+    for i in range(1, 32):
+        solver.add(e[i] == s[i+1])
     
-    s.add(ends[9] == 32)
+    for i in range(1, 33):
+        start_city = s[i]
+        end_city = e[i]
+        if start_city is None or end_city is None:
+            continue
+        same_city = (start_city == end_city)
+        flight_conditions = []
+        for (a, b) in allowed_flights:
+            a_const = city_map[a]
+            b_const = city_map[b]
+            flight_conditions.append(z3.And(start_city == a_const, end_city == b_const))
+        solver.add(z3.Or(same_city, z3.Or(flight_conditions)))
     
-    for k in range(10):
-        city = order[k]
-        s.add(Implies(city == 0, And(starts[k] <= 5, ends[k] >= 9)))
-        s.add(Implies(city == 4, And(starts[k] <= 25, ends[k] >= 29)))
+    for i in range(5, 10):
+        solver.add(z3.Or(s[i] == city_map['Krakow'], e[i] == city_map['Krakow']))
+    for i in range(1, 5):
+        solver.add(s[i] != city_map['Krakow'], e[i] != city_map['Krakow'])
+    for i in range(10, 33):
+        solver.add(s[i] != city_map['Krakow'], e[i] != city_map['Krakow'])
     
-    for i in range(9):
-        current_city = order[i]
-        next_city = order[i+1]
-        allowed = Or([And(current_city == a, next_city == b) for (a, b) in allowed_flights])
-        s.add(allowed)
+    for i in range(25, 30):
+        solver.add(z3.Or(s[i] == city_map['Istanbul'], e[i] == city_map['Istanbul']))
+    for i in range(1, 25):
+        solver.add(s[i] != city_map['Istanbul'], e[i] != city_map['Istanbul'])
+    for i in range(30, 33):
+        solver.add(s[i] != city_map['Istanbul'], e[i] != city_map['Istanbul'])
     
-    if s.check() == sat:
-        m = s.model()
-        order_val = [m.evaluate(order[i]).as_long() for i in range(10)]
-        starts_val = [m.evaluate(starts[i]).as_long() for i in range(10)]
-        ends_val = [m.evaluate(ends[i]).as_long() for i in range(10)]
-        
+    for city_name in cities:
+        c = city_map[city_name]
+        total = 0
+        for i in range(1, 33):
+            in_city = z3.Or(s[i] == c, e[i] == c)
+            total += z3.If(in_city, 1, 0)
+        solver.add(total == req_days[city_name])
+    
+    if solver.check() == z3.sat:
+        model = solver.model()
         itinerary_list = []
-        for k in range(10):
-            city_idx = order_val[k]
-            city_name = cities[city_idx]
-            start_day = starts_val[k]
-            end_day = ends_val[k]
-            for d in range(start_day, end_day + 1):
-                itinerary_list.append({"day": d, "city": city_name})
-        
-        result = {"itinerary": itinerary_list}
-        print(json.dumps(result))
+        for day in range(1, 33):
+            s_val = model.eval(s[day])
+            e_val = model.eval(e[day])
+            s_str = str(s_val)
+            e_str = str(e_val)
+            itinerary_list.append({"day": day, "place": s_str})
+            if s_str != e_str:
+                itinerary_list.append({"day": day, "place": e_str})
+        result = {'itinerary': itinerary_list}
+        print(json.dumps(result, indent=2))
     else:
-        print('{"itinerary": []}')
+        print("No solution found")
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

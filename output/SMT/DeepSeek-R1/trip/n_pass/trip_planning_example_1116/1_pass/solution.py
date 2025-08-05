@@ -2,13 +2,12 @@ from z3 import *
 import json
 
 def main():
-    # Define the list of cities
-    cities_list = ['Oslo', 'Reykjavik', 'Stockholm', 'Munich', 'Frankfurt', 'Barcelona', 'Bucharest', 'Split']
-    City, city_enums = EnumSort('City', cities_list)
-    city_dict = {name: getattr(city_enums, name) for name in cities_list}
+    cities = ["Oslo", "Reykjavik", "Stockholm", "Munich", "Frankfurt", "Barcelona", "Bucharest", "Split"]
+    n = 8
+    req_days = [2, 5, 4, 4, 4, 3, 2, 3]
+    cidx = {city: idx for idx, city in enumerate(cities)}
     
-    # Define direct flight pairs as strings
-    direct_flight_pairs = [
+    edges_list = [
         ("Reykjavik", "Munich"),
         ("Munich", "Frankfurt"),
         ("Split", "Oslo"),
@@ -35,72 +34,59 @@ def main():
         ("Split", "Munich")
     ]
     
-    # Build the set of allowed flight pairs (as Z3 constants)
-    allowed_pairs = set()
-    for (a, b) in direct_flight_pairs:
-        a_const = city_dict[a]
-        b_const = city_dict[b]
-        allowed_pairs.add((a_const, b_const))
-        allowed_pairs.add((b_const, a_const))
-    
-    # Define variables: E0 to E20 (E0 is the starting city at day0, E1 is end of day1, ..., E20 end of day20)
-    E = [Const('E%d' % i, City) for i in range(21)]
+    edges = set()
+    for a, b in edges_list:
+        i1 = cidx[a]
+        i2 = cidx[b]
+        edges.add((i1, i2))
+        edges.add((i2, i1))
     
     s = Solver()
     
-    # Flight constraints for each day from 1 to 20
-    for d in range(1, 21):
-        prev_city = E[d-1]
-        curr_city = E[d]
-        # If the city changes, ensure the flight is allowed
-        flight_cond = Or([And(prev_city == a, curr_city == b) for (a, b) in allowed_pairs])
-        s.add(If(prev_city != curr_city, flight_cond, True))
+    T = [Int(f'T_{i}') for i in range(9)]
+    s.add(T[0] == 1)
+    s.add(T[8] == 20)
+    for i in range(1, 8):
+        s.add(T[i] >= 1, T[i] <= 20)
+    for i in range(8):
+        s.add(T[i] <= T[i+1])
     
-    # Total days per city
-    total_days = {name: 0 for name in cities_list}
-    for d in range(1, 21):
-        for name in cities_list:
-            c = city_dict[name]
-            total_days[name] += If(Or(E[d-1] == c, E[d] == c), 1, 0)
+    which_city = [Int(f'city_pos_{i}') for i in range(8)]
+    for i in range(8):
+        s.add(which_city[i] >= 0, which_city[i] < 8)
+    s.add(Distinct(which_city))
     
-    # Add constraints for total days
-    s.add(total_days['Oslo'] == 2)
-    s.add(total_days['Reykjavik'] == 5)
-    s.add(total_days['Stockholm'] == 4)
-    s.add(total_days['Munich'] == 4)
-    s.add(total_days['Frankfurt'] == 4)
-    s.add(total_days['Barcelona'] == 3)
-    s.add(total_days['Bucharest'] == 2)
-    s.add(total_days['Split'] == 3)
+    for i in range(8):
+        city_index = which_city[i]
+        s.add(T[i+1] - T[i] + 1 == req_days[city_index])
     
-    # Specific event constraints
-    oslo = city_dict['Oslo']
-    s.add(Or(E[15] == oslo, E[16] == oslo))  # Day 16: presence in Oslo
-    s.add(Or(E[16] == oslo, E[17] == oslo))  # Day 17: presence in Oslo
+    for i in range(8):
+        s.add(If(which_city[i] == cidx["Oslo"], And(T[i] <= 16, T[i+1] >= 17)))
+        s.add(If(which_city[i] == cidx["Reykjavik"], And(T[i] <= 13, T[i+1] >= 9)))
+        s.add(If(which_city[i] == cidx["Munich"], And(T[i] <= 16, T[i+1] >= 13)))
+        s.add(If(which_city[i] == cidx["Frankfurt"], T[i+1] >= 17))
     
-    reykjavik = city_dict['Reykjavik']
-    s.add(Or([Or(E[d-1] == reykjavik, E[d] == reykjavik) for d in range(9, 14)]))  # Days 9-13
+    for i in range(7):
+        c1 = which_city[i]
+        c2 = which_city[i+1]
+        edge_conds = []
+        for (a, b) in edges:
+            edge_conds.append(And(c1 == a, c2 == b))
+        s.add(Or(edge_conds))
     
-    munich = city_dict['Munich']
-    s.add(Or([Or(E[d-1] == munich, E[d] == munich) for d in range(13, 17)]))  # Days 13-16
-    
-    frankfurt = city_dict['Frankfurt']
-    s.add(Or([Or(E[d-1] == frankfurt, E[d] == frankfurt) for d in range(17, 21)]))  # Days 17-20
-    
-    # Solve the problem
     if s.check() == sat:
-        model = s.model()
+        m = s.model()
+        T_vals = [m.evaluate(T[i]).as_long() for i in range(9)]
+        city_vals = [m.evaluate(which_city[i]).as_long() for i in range(8)]
+        
         itinerary = []
-        for d in range(1, 21):
-            c_val = model[E[d]]
-            place = None
-            for name in cities_list:
-                if model.eval(city_dict[name]).eq(c_val):
-                    place = name
-                    break
-            if place is None:
-                place = "Unknown"
-            itinerary.append({"day": d, "place": place})
+        for i in range(8):
+            city_index = city_vals[i]
+            city_name = cities[city_index]
+            start = T_vals[i]
+            end = T_vals[i+1]
+            days_list = list(range(start, end + 1))
+            itinerary.append({"city": city_name, "days": days_list})
         
         result = {"itinerary": itinerary}
         print(json.dumps(result, indent=2))

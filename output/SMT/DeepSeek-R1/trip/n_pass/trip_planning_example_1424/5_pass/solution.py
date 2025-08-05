@@ -1,91 +1,120 @@
 from z3 import *
+import json
 
-def main():
-    # Cities and their connections with distances
-    cities = ["Seattle", "Denver", "Chicago", "Boston", "New York", "San Francisco"]
-    distances = [
-        [0, 1300, 2000, 3000, 2800, 800],    # Seattle
-        [1300, 0, 1000, 1800, 1600, 1500],   # Denver
-        [2000, 1000, 0, 1000, 800, 2200],    # Chicago
-        [3000, 1800, 1000, 0, 400, 3100],    # Boston
-        [2800, 1600, 800, 400, 0, 2900],     # New York
-        [800, 1500, 2200, 3100, 2900, 0]     # San Francisco
-    ]
-    
-    # Trip parameters
-    start_city = "Seattle"
-    end_city = "New York"
-    pass_cities = ["Chicago", "Denver"]
-    max_total_distance = 6000
+cities = ['Warsaw', 'Porto', 'Naples', 'Brussels', 'Split', 'Reykjavik', 'Amsterdam', 'Lyon', 'Helsinki', 'Valencia']
+stays = {
+    'Warsaw': 3,
+    'Porto': 5,
+    'Naples': 4,
+    'Brussels': 3,
+    'Split': 3,
+    'Reykjavik': 5,
+    'Amsterdam': 4,
+    'Lyon': 3,
+    'Helsinki': 4,
+    'Valencia': 2
+}
 
-    # Find city indices
-    start_city_idx = cities.index(start_city)
-    end_city_idx = cities.index(end_city)
-    pass_city_idxs = [cities.index(c) for c in pass_cities]
+events = {
+    'Porto': (1, 5),
+    'Amsterdam': (5, 8),
+    'Helsinki': (8, 11),
+    'Naples': (17, 20),
+    'Brussels': (18, 22)
+}
 
-    n = len(cities)
-    max_steps = n  # Maximum path length (number of cities visited)
-    
-    # Required city indices (start, end, and pass cities)
-    required_city_idxs = set([start_city_idx, end_city_idx] + pass_city_idxs)
-    min_length = len(required_city_idxs)
-    found_solution = False
-    
-    # Try different path lengths from min_length to max_steps
-    for path_length in range(min_length, max_steps + 1):
-        # Create Z3 variables for each step
-        step = [Int(f'step_{i}') for i in range(path_length)]
-        
-        # Create a new solver for this path length
-        solver_temp = Solver()
-        
-        # Define a new distance function for this solver
-        dist_func = Function(f'dist_{path_length}', IntSort(), IntSort(), IntSort())
-        for i in range(n):
-            for j in range(n):
-                solver_temp.add(dist_func(i, j) == distances[i][j])
-        
-        # Start and end constraints
-        solver_temp.add(step[0] == start_city_idx)
-        solver_temp.add(step[path_length - 1] == end_city_idx)
-        
-        # All steps must be valid city indices
-        for i in range(path_length):
-            solver_temp.add(step[i] >= 0, step[i] < n)
-        
-        # Cities in path must be distinct (no revisiting)
-        solver_temp.add(Distinct(step))
-        
-        # Must visit all pass cities
-        for c in pass_city_idxs:
-            solver_temp.add(Or([step[i] == c for i in range(path_length)]))
-        
-        # Calculate total distance
-        total_dist = 0
-        for i in range(path_length - 1):
-            total_dist += dist_func(step[i], step[i + 1])
-        solver_temp.add(total_dist <= max_total_distance)
-        
-        # Check for solution
-        if solver_temp.check() == sat:
-            model = solver_temp.model()
-            # Extract route
-            route_idxs = [model.eval(step[i]).as_long() for i in range(path_length)]
-            route_names = [cities[idx] for idx in route_idxs]
-            
-            # Calculate actual distance
-            actual_distance = 0
-            for i in range(path_length - 1):
-                actual_distance += distances[route_idxs[i]][route_idxs[i + 1]]
-            
-            # Print results
-            print(f"Route: {' -> '.join(route_names)}")
-            print(f"Total distance: {actual_distance} miles")
-            found_solution = True
-            break
-    
-    if not found_solution:
-        print("No valid route found")
+flights_str = "Amsterdam and Warsaw, Helsinki and Brussels, Helsinki and Warsaw, Reykjavik and Brussels, Amsterdam and Lyon, Amsterdam and Naples, Amsterdam and Reykjavik, Naples and Valencia, Porto and Brussels, Amsterdam and Split, Lyon and Split, Warsaw and Split, Porto and Amsterdam, Helsinki and Split, Brussels and Lyon, Porto and Lyon, Reykjavik and Warsaw, Brussels and Valencia, Valencia and Lyon, Porto and Warsaw, Warsaw and Valencia, Amsterdam and Helsinki, Porto and Valencia, Warsaw and Brussels, Warsaw and Naples, Naples and Split, Helsinki and Naples, Helsinki and Reykjavik, Amsterdam and Valencia, Naples and Brussels"
+flights_list = [edge.strip() for edge in flights_str.split(',')]
+direct_set = set()
+for edge in flights_list:
+    parts = edge.split(' and ')
+    if len(parts) == 2:
+        c1, c2 = parts[0].strip(), parts[1].strip()
+        direct_set.add((c1, c2))
+        direct_set.add((c2, c1))
 
-if __name__ == "__main__":
-    main()
+s = Solver()
+
+a = {c: Int(f'a_{c}') for c in cities}
+d = {c: Int(f'd_{c}') for c in cities}
+pos = {c: Int(f'pos_{c}') for c in cities}
+
+for c in cities:
+    s.add(d[c] == a[c] + stays[c] - 1)
+
+s.add(a['Porto'] <= 5, d['Porto'] >= 1)
+s.add(a['Amsterdam'] <= 8, d['Amsterdam'] >= 5)
+s.add(a['Helsinki'] <= 11, d['Helsinki'] >= 8)
+s.add(a['Naples'] <= 20, d['Naples'] >= 17)
+s.add(a['Brussels'] <= 22, d['Brussels'] >= 18)
+
+s.add([And(pos[c] >= 0, pos[c] < 10) for c in cities])
+s.add(Distinct([pos[c] for c in cities]))
+
+first_city = Or([And(pos[c] == 0, a[c] == 1) for c in cities])
+last_city = Or([And(pos[c] == 9, d[c] == 27) for c in cities])
+s.add(first_city, last_city)
+
+for i in range(len(cities)):
+    for j in range(len(cities)):
+        if i == j:
+            continue
+        A = cities[i]
+        B = cities[j]
+        cond = pos[A] < pos[B]
+        consecutive = pos[B] == pos[A] + 1
+        s.add(If(cond, 
+                 If(consecutive, 
+                    And(d[A] == a[B], (A, B) in direct_set), 
+                    d[A] < a[B]),
+                 True))
+
+for c in cities:
+    s.add(a[c] >= 1)
+    s.add(d[c] <= 27)
+
+blocking_clause = Or(
+    pos['Lyon'] != 0,
+    pos['Porto'] != 1,
+    pos['Amsterdam'] != 2,
+    pos['Helsinki'] != 3,
+    pos['Reykjavik'] != 4,
+    pos['Brussels'] != 5,
+    pos['Naples'] != 6,
+    pos['Split'] != 7,
+    pos['Warsaw'] != 8,
+    pos['Valencia'] != 9
+)
+s.add(blocking_clause)
+
+if s.check() == sat:
+    m = s.model()
+    a_vals = {c: m.eval(a[c]).as_long() for c in cities}
+    d_vals = {c: m.eval(d[c]).as_long() for c in cities}
+    pos_vals = {c: m.eval(pos[c]).as_long() for c in cities}
+    
+    sorted_cities = sorted(cities, key=lambda c: pos_vals[c])
+    itinerary = []
+    for c in sorted_cities:
+        itinerary.append({'day_range': f'Day {a_vals[c]}-{d_vals[c]}', 'place': c})
+    
+    result = {'itinerary': itinerary}
+    print(json.dumps(result))
+else:
+    s.pop()
+    s.add(Not(blocking_clause))
+    if s.check() == sat:
+        m = s.model()
+        a_vals = {c: m.eval(a[c]).as_long() for c in cities}
+        d_vals = {c: m.eval(d[c]).as_long() for c in cities}
+        pos_vals = {c: m.eval(pos[c]).as_long() for c in cities}
+        
+        sorted_cities = sorted(cities, key=lambda c: pos_vals[c])
+        itinerary = []
+        for c in sorted_cities:
+            itinerary.append({'day_range': f'Day {a_vals[c]}-{d_vals[c]}', 'place': c})
+        
+        result = {'itinerary': itinerary}
+        print(json.dumps(result))
+    else:
+        print("No solution found")

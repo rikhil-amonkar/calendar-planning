@@ -2,88 +2,85 @@ from z3 import *
 import json
 
 def main():
-    # Define city indices
-    M, P, B, S = 0, 1, 2, 3
-    city_names = {M: "Madrid", P: "Paris", B: "Bucharest", S: "Seville"}
+    # Define the cities and their enum sort
+    CitySort, cities_const = EnumSort('City', ['Paris', 'Madrid', 'Bucharest', 'Seville'])
+    paris, madrid, bucharest, seville = cities_const
+    cities_names = ['Paris', 'Madrid', 'Bucharest', 'Seville']
     
-    # Direct flight matrix: [from][to] 
-    direct = [
-        [0, 1, 1, 1],   # Madrid
-        [1, 0, 1, 1],   # Paris
-        [1, 1, 0, 0],   # Bucharest
-        [1, 1, 0, 0]    # Seville
+    # Create variables d0 to d15
+    d = [Const('d_%d' % i, CitySort) for i in range(0, 16)]
+    
+    s = Solver()
+    
+    # Define direct flight connections (undirected)
+    flights = [
+        (paris, bucharest),
+        (seville, paris),
+        (madrid, bucharest),
+        (madrid, paris),
+        (madrid, seville)
     ]
     
-    # Allowed flight pairs (without self-loop and direct flight exists)
-    allowed_pairs = []
-    for i in range(4):
-        for j in range(4):
-            if i != j and direct[i][j] == 1:
-                allowed_pairs.append((i, j))
+    # Helper function to check flight connection
+    def is_connected(c1, c2):
+        options = []
+        for (city1, city2) in flights:
+            options.append(And(c1 == city1, c2 == city2))
+            options.append(And(c1 == city2, c2 == city1))
+        return Or(options)
     
-    # Segment variables: 4 segments
-    n_seg = 4
-    s = [Int(f's_{i}') for i in range(n_seg)]
-    e = [Int(f'e_{i}') for i in range(n_seg)]
-    cities = [Int(f'c_{i}') for i in range(n_seg)]
+    # Flight constraints for days 1 to 15
+    for i in range(1, 16):
+        s.add(If(d[i-1] != d[i], is_connected(d[i-1], d[i]), True))
     
-    solver = Solver()
+    # Madrid must be present on days 1 to 7 and absent on days 8 to 15
+    for i in range(1, 8):  # days 1 to 7
+        s.add(Or(d[i-1] == madrid, d[i] == madrid))
+    for i in range(8, 16):  # days 8 to 15
+        s.add(Not(Or(d[i-1] == madrid, d[i] == madrid)))
     
-    # Segment constraints
-    solver.add(s[0] == 1)      # Start on day 1
-    solver.add(e[3] == 15)     # End on day 15
-    for i in range(n_seg - 1):
-        solver.add(e[i] == s[i+1])  # Consecutive segments
-    for i in range(n_seg):
-        solver.add(s[i] <= e[i])    # Non-empty segments
+    # Bucharest must not be present on days 1 to 13 and must be present on days 14 to 15
+    for i in range(1, 14):  # days 1 to 13
+        s.add(Not(Or(d[i-1] == bucharest, d[i] == bucharest)))
+    for i in range(14, 16):  # days 14 to 15
+        s.add(Or(d[i-1] == bucharest, d[i] == bucharest))
     
-    # City assignments
-    for i in range(n_seg):
-        solver.add(cities[i] >= 0, cities[i] <= 3)
+    # Define total days function for a city
+    def total_days(city):
+        return Sum([If(Or(d[i-1] == city, d[i] == city), 1, 0) for i in range(1, 16)])
     
-    # Total days per city
-    total_days = [7, 6, 2, 3]  # M, P, B, S
-    for c in range(4):
-        total = 0
-        for i in range(n_seg):
-            total += If(cities[i] == c, e[i] - s[i] + 1, 0)
-        solver.add(total == total_days[c])
+    # Add constraints for total days in Paris and Seville
+    s.add(total_days(paris) == 6)
+    s.add(total_days(seville) == 3)
     
-    # Madrid on days 1-7
-    for d in range(1, 8):
-        in_city = Or([And(s[i] <= d, d <= e[i], cities[i] == M) for i in range(n_seg)])
-        solver.add(in_city)
-    
-    # Bucharest on days 14-15
-    for d in [14, 15]:
-        in_city = Or([And(s[i] <= d, d <= e[i], cities[i] == B) for i in range(n_seg)])
-        solver.add(in_city)
-    
-    # Direct flight connections between consecutive segments
-    for i in range(n_seg - 1):
-        ci = cities[i]
-        cj = cities[i+1]
-        solver.add(Or([And(ci == a, cj == b) for (a, b) in allowed_pairs]))
-    
-    # Solve the problem
-    if solver.check() == sat:
-        model = solver.model()
-        s_val = [model.eval(s[i]).as_long() for i in range(n_seg)]
-        e_val = [model.eval(e[i]).as_long() for i in range(n_seg)]
-        cities_val = [model.eval(cities[i]).as_long() for i in range(n_seg)]
+    # Check for a solution
+    if s.check() == sat:
+        m = s.model()
         
-        # Build itinerary
+        # Helper function to map Z3 constant to city name
+        def get_city_name(c):
+            for idx, const in enumerate(cities_const):
+                if m.eval(const).eq(m.eval(c)):
+                    return cities_names[idx]
+            return "Unknown"
+        
         itinerary = []
         for day in range(1, 16):
-            for seg in range(n_seg):
-                if s_val[seg] <= day <= e_val[seg]:
-                    city_name = city_names[cities_val[seg]]
-                    itinerary.append({"day": day, "city": city_name})
+            city_prev = d[day-1]
+            city_curr = d[day]
+            name_prev = get_city_name(city_prev)
+            name_curr = get_city_name(city_curr)
+            if name_prev == name_curr:
+                cities_list = [name_prev]
+            else:
+                cities_list = [name_prev, name_curr]
+                cities_list.sort()
+            itinerary.append({"day": day, "cities": cities_list})
         
         result = {"itinerary": itinerary}
-        print(json.dumps(result))
+        print(json.dumps(result, indent=2))
     else:
-        print('{"itinerary": []}')
+        print("No solution found")
 
 if __name__ == "__main__":
     main()

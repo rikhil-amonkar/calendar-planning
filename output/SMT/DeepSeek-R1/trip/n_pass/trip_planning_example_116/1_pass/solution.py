@@ -1,74 +1,44 @@
+import z3
 import json
-from z3 import *
 
 def main():
-    n_days = 18
-    n_cities = 3
-    # Cities: 0: Split, 1: London, 2: Santorini
-    city_names = ["Split", "London", "Santorini"]
+    days = 18
+    c = [z3.Int('c_%d' % i) for i in range(1, days+1)]
+    solver = z3.Solver()
     
-    # Create the solver
-    s = Solver()
+    # Define city constants
+    Split = 0
+    Santorini = 1
+    London = 2
     
-    # present[d][c]: True if in city c on day d (0-indexed days: 0 to 17)
-    present = [[Bool('present_d%dc%d' % (d, c)) for c in range(n_cities)] for d in range(n_days)]
-    # flight[d]: True if flight on day d (0-indexed)
-    flight = [Bool('flight_d%d' % d) for d in range(n_days)]
+    # Conference constraints: day 12 and 18 must be Santorini
+    solver.add(c[11] == Santorini)   # day12 (index 11)
+    solver.add(c[17] == Santorini)   # day18 (index 17)
     
-    # Day 1 and Day 18 are non-flight days
-    s.add(flight[0] == False)   # Day 1
-    s.add(flight[n_days-1] == False)  # Day 18
+    # Fixed days for Split (days 1-5) and London (days 7-11) and Santorini (days 13-18)
+    for i in range(0, 5):   # days 1-5 (indices 0-4)
+        solver.add(c[i] == Split)
+    for i in range(6, 11):  # days 7-11 (indices 6-10)
+        solver.add(c[i] == London)
+    for i in range(12, 18): # days 13-18 (indices 12-17)
+        solver.add(c[i] == Santorini)
     
-    # Fixed constraints: Day 12 and Day 18 in Santorini
-    # Day 12 is index 11, Day 18 is index 17
-    s.add(present[11][2] == True)  # Santorini on day 12
-    s.add(present[17][2] == True)  # Santorini on day 18
+    # Day 6 (index 5) can be either Split or London
+    solver.add(z3.Or(c[5] == Split, c[5] == London))
     
-    # Direct flight pairs: (Split, London) and (London, Santorini)
-    for d in range(n_days):
-        # For non-flight days: exactly one city
-        s.add(Implies(Not(flight[d]), 
-                      Or(
-                         And(present[d][0], Not(present[d][1]), Not(present[d][2])),
-                         And(Not(present[d][0]), present[d][1], Not(present[d][2])),
-                         And(Not(present[d][0]), Not(present[d][1]), present[d][2])
-                      )))
-        # For flight days: exactly two cities that are connected
-        s.add(Implies(flight[d],
-                      Or(
-                         And(present[d][0], present[d][1], Not(present[d][2])),  # Split and London
-                         And(Not(present[d][0]), present[d][1], present[d][2])   # London and Santorini
-                      )))
-    
-    # Total flight days = 2
-    s.add(Sum([If(flight[d], 1, 0) for d in range(n_days)]) == 2)
-    
-    # Total days in each city
-    s.add(Sum([If(present[d][0], 1, 0) for d in range(n_days)]) == 6)  # Split
-    s.add(Sum([If(present[d][1], 1, 0) for d in range(n_days)]) == 7)  # London
-    s.add(Sum([If(present[d][2], 1, 0) for d in range(n_days)]) == 7)  # Santorini
-    
-    # Consecutive days must share at least one city
-    for d in range(n_days-1):
-        s.add(Or(
-            And(present[d][0], present[d+1][0]),
-            And(present[d][1], present[d+1][1]),
-            And(present[d][2], present[d+1][2])
-        ))
-    
-    # Solve the problem
-    if s.check() == sat:
-        m = s.model()
-        itinerary_list = []
-        for d in range(n_days):
-            day_number = d + 1
-            for c in range(n_cities):
-                if m.evaluate(present[d][c]):
-                    itinerary_list.append({"day": day_number, "place": city_names[c]})
-        result = {"itinerary": itinerary_list}
+    if solver.check() == z3.sat:
+        model = solver.model()
+        itinerary = []
+        city_names = {Split: "Split", Santorini: "Santorini", London: "London"}
+        for i in range(days):
+            day = i + 1
+            city_val = model[c[i]].as_long()
+            place = city_names.get(city_val, "Unknown")
+            itinerary.append({"day": day, "place": place})
+        result = {'itinerary': itinerary}
         print(json.dumps(result))
     else:
-        print(json.dumps({"itinerary": []}))
+        print("No solution found")
 
 if __name__ == "__main__":
     main()

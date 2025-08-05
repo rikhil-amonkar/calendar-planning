@@ -1,124 +1,91 @@
 from z3 import *
 import json
 
-def main():
-    cities = ['Brussels', 'Venice', 'London', 'Lisbon', 'Reykjavik', 'Santorini', 'Madrid']
-    edges = [
-        ('Venice', 'Madrid'), 
-        ('Lisbon', 'Reykjavik'), 
-        ('Brussels', 'Venice'), 
-        ('Venice', 'Santorini'), 
-        ('Lisbon', 'Venice'), 
-        ('Reykjavik', 'Madrid'), 
-        ('Brussels', 'London'), 
-        ('Madrid', 'London'), 
-        ('Santorini', 'London'), 
-        ('London', 'Reykjavik'), 
-        ('Brussels', 'Lisbon'), 
-        ('Lisbon', 'London'), 
-        ('Lisbon', 'Madrid'), 
-        ('Madrid', 'Santorini'), 
-        ('Brussels', 'Reykjavik'), 
-        ('Brussels', 'Madrid'), 
-        ('Venice', 'London')
-    ]
-    
-    flight_set = set()
-    for u, v in edges:
-        key = (min(u, v), max(u, v))
-        flight_set.add(key)
-    
-    days = list(range(1, 18))
-    p = {}
-    for d in days:
-        for c in cities:
-            p[(d, c)] = Bool(f"p_{d}_{c}")
-    
-    s = Solver()
-    
-    for d in days:
-        lst = [p[(d, c)] for c in cities]
-        s.add(Or(lst))
-        s.add(AtMost(*lst, 2))
-        
-        for i in range(len(cities)):
-            for j in range(i+1, len(cities)):
-                c1 = cities[i]
-                c2 = cities[j]
-                edge_key = (min(c1, c2), max(c1, c2))
-                if edge_key not in flight_set:
-                    s.add(Not(And(p[(d, c1)], p[(d, c2)])))
-    
-    for d in range(1, 17):
-        or_list = []
-        for c in cities:
-            or_list.append(And(p[(d, c)], p[(d+1, c)]))
-        s.add(Or(or_list))
-    
-    s.add(p[(1, 'Brussels')])
-    s.add(p[(2, 'Brussels')])
-    
-    total_days = {}
-    for c in cities:
-        total_days[c] = Sum([If(p[(d, c)], 1, 0) for d in days])
-    
-    s.add(total_days['Brussels'] == 2)
-    s.add(total_days['Venice'] == 3)
-    s.add(total_days['London'] == 3)
-    s.add(total_days['Lisbon'] == 4)
-    s.add(total_days['Reykjavik'] == 3)
-    s.add(total_days['Santorini'] == 3)
-    s.add(total_days['Madrid'] == 5)
-    
-    total_all = Sum([If(p[(d, c)], 1, 0) for d in days for c in cities])
-    s.add(total_all == 23)
-    
-    venice_or = []
-    for d in [5,6,7]:
-        venice_or.append(p[(d, 'Venice')])
-    s.add(Or(venice_or))
-    
-    madrid_or = []
-    for d in [7,8,9,10,11]:
-        madrid_or.append(p[(d, 'Madrid')])
-    s.add(Or(madrid_or))
-    
-    if s.check() == sat:
-        model = s.model()
-        daily_sets = []
-        for d in days:
-            cities_on_day = []
-            for c in cities:
-                if model.evaluate(p[(d, c)]):
-                    cities_on_day.append(c)
-            cities_on_day.sort()
-            daily_sets.append(tuple(cities_on_day))
-        
-        blocks = []
-        start_idx = 0
-        current_set = daily_sets[0]
-        for i in range(1, len(days)):
-            if daily_sets[i] == current_set:
-                continue
-            else:
-                start_day = days[start_idx]
-                end_day = days[i-1]
-                day_range_str = f"Day {start_day}-{end_day}"
-                place_str = ", ".join(current_set)
-                blocks.append({"day_range": day_range_str, "place": place_str})
-                start_idx = i
-                current_set = daily_sets[i]
-        
-        start_day = days[start_idx]
-        end_day = days[-1]
-        day_range_str = f"Day {start_day}-{end_day}"
-        place_str = ", ".join(current_set)
-        blocks.append({"day_range": day_range_str, "place": place_str})
-        
-        result = {'itinerary': blocks}
-        print(json.dumps(result, indent=2))
-    else:
-        print("No solution found")
+city_names = ['Brussels', 'Venice', 'London', 'Lisbon', 'Reykjavik', 'Santorini', 'Madrid']
+n_cities = len(city_names)
+n_days = 17
 
-if __name__ == "__main__":
-    main()
+city_index = {name: idx for idx, name in enumerate(city_names)}
+
+directed_flights = set()
+bidir = [
+    ('Venice', 'Madrid'),
+    ('Lisbon', 'Reykjavik'),
+    ('Brussels', 'Venice'),
+    ('Venice', 'Santorini'),
+    ('Lisbon', 'Venice'),
+    ('Brussels', 'London'),
+    ('Madrid', 'London'),
+    ('Santorini', 'London'),
+    ('London', 'Reykjavik'),
+    ('Brussels', 'Lisbon'),
+    ('Lisbon', 'London'),
+    ('Lisbon', 'Madrid'),
+    ('Madrid', 'Santorini'),
+    ('Brussels', 'Reykjavik'),
+    ('Brussels', 'Madrid'),
+    ('Venice', 'London')
+]
+for (a, b) in bidir:
+    directed_flights.add((a, b))
+    directed_flights.add((b, a))
+directed_flights.add(('Reykjavik', 'Madrid'))
+
+allowed_tuples = []
+for i in range(n_cities):
+    for j in range(n_cities):
+        if (city_names[i], city_names[j]) in directed_flights:
+            allowed_tuples.append((i, j))
+
+s = Solver()
+
+location = [Int(f'loc_{d}') for d in range(n_days)]
+for d in range(n_days):
+    s.add(location[d] >= 0, location[d] < n_cities)
+
+flight_taken = [Bool(f'fly_{d}') for d in range(1, n_days)]
+
+s.add(location[0] == city_index['Brussels'])
+s.add(location[1] == city_index['Brussels'])
+
+for d in range(1, n_days):
+    s.add(flight_taken[d-1] == (location[d-1] != location[d]))
+    disj = []
+    for (i, j) in allowed_tuples:
+        disj.append(And(location[d-1] == i, location[d] == j))
+    s.add(Implies(flight_taken[d-1], Or(disj)))
+
+madrid_idx = city_index['Madrid']
+for d in range(6, 11):  # Days 7-11 (indices 6-10)
+    s.add(location[d] == madrid_idx)
+
+venice_idx = city_index['Venice']
+s.add(Or(location[4] == venice_idx, location[5] == venice_idx, location[6] == venice_idx))
+
+totals = [0] * n_cities
+totals[city_index['Brussels']] = 2
+totals[city_index['Venice']] = 3
+totals[city_index['London']] = 3
+totals[city_index['Lisbon']] = 4
+totals[city_index['Reykjavik']] = 3
+totals[city_index['Santorini']] = 3
+totals[city_index['Madrid']] = 5
+
+for c in range(n_cities):
+    s.add(Sum([If(location[d] == c, 1, 0) for d in range(n_days)]) == totals[c])
+
+if s.check() == sat:
+    m = s.model()
+    itinerary = []
+    for d in range(n_days):
+        city_id = m[location[d]].as_long()
+        city_name = city_names[city_id]
+        places = [city_name]
+        if d > 0 and m[flight_taken[d-1]]:
+            prev_city_id = m[location[d-1]].as_long()
+            if prev_city_id != city_id:
+                places = [city_names[prev_city_id], city_name]
+        itinerary.append({"day": d+1, "place": places})
+    print(json.dumps({'itinerary': itinerary}))
+else:
+    print("No solution found")

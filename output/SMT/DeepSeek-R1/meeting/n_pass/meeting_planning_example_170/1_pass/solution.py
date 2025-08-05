@@ -1,54 +1,73 @@
-from z3 import *
 import json
+from z3 import *
 
 def main():
-    base_minutes = 9 * 60  # 9:00 AM in minutes from midnight
-    s = Optimize()
-    
-    start_emily = Int('start_emily')
-    start_margaret = 600  # 7:00 PM is 600 minutes from 9:00 AM
-    
-    s.add(start_emily >= 420)  # 4:00 PM
-    s.add(start_emily <= 450)  # 4:30 PM
-    s.add(0 + 7 <= start_emily)  # Travel from North Beach to Union Square (7 minutes)
-    s.add(start_emily + 45 + 13 <= start_margaret)  # Meeting with Emily and travel to Russian Hill
-    
-    s.maximize(start_emily)  # Minimize waiting time at Russian Hill
-    
-    if s.check() == sat:
-        m = s.model()
-        emily_start_val = m[start_emily].as_long()
-        
-        # Convert Emily's meeting start and end times
-        emily_start_abs = base_minutes + emily_start_val
-        emily_start_hour = emily_start_abs // 60
-        emily_start_minute = emily_start_abs % 60
-        emily_start_str = f"{emily_start_hour:02d}:{emily_start_minute:02d}"
-        
-        emily_end_abs = emily_start_abs + 45
-        emily_end_hour = emily_end_abs // 60
-        emily_end_minute = emily_end_abs % 60
-        emily_end_str = f"{emily_end_hour:02d}:{emily_end_minute:02d}"
-        
-        # Margaret's meeting is fixed
-        margaret_start_abs = base_minutes + start_margaret
-        margaret_end_abs = margaret_start_abs + 120
-        
-        margaret_start_hour = margaret_start_abs // 60
-        margaret_start_minute = margaret_start_abs % 60
-        margaret_start_str = f"{margaret_start_hour:02d}:{margaret_start_minute:02d}"
-        
-        margaret_end_hour = margaret_end_abs // 60
-        margaret_end_minute = margaret_end_abs % 60
-        margaret_end_str = f"{margaret_end_hour:02d}:{margaret_end_minute:02d}"
-        
+    # Define the variables
+    e_start = Int('e_start')  # Start time for meeting with Emily (minutes from midnight)
+    t_emily = Int('t_emily')  # Duration of meeting with Emily (minutes)
+    m_start = Int('m_start')  # Start time for meeting with Margaret (minutes from midnight)
+    t_margaret = Int('t_margaret')  # Duration of meeting with Margaret (minutes)
+
+    opt = Optimize()
+
+    # Absolute times in minutes from midnight
+    # Emily's window: 16:00 (960) to 17:15 (1035)
+    emily_window_start = 16 * 60
+    emily_window_end = 17 * 60 + 15
+
+    # Margaret's window: 19:00 (1140) to 21:00 (1260)
+    margaret_window_start = 19 * 60
+    margaret_window_end = 21 * 60
+
+    # Constraints for Emily
+    opt.add(e_start >= emily_window_start)
+    opt.add(e_start + t_emily <= emily_window_end)
+    opt.add(t_emily >= 45)
+
+    # Constraints for Margaret
+    opt.add(m_start >= margaret_window_start)
+    opt.add(m_start + t_margaret <= margaret_window_end)
+    opt.add(t_margaret >= 120)
+
+    # Travel constraints
+    # Start at North Beach at 9:00 (540 minutes from midnight)
+    # Travel to Union Square: 7 minutes -> arrive at 547
+    # Travel from Union Square to Russian Hill: 13 minutes
+    # Therefore, must arrive at Russian Hill by m_start
+    # The arrival time at Russian Hill is: e_start + t_emily + 13
+    opt.add(m_start >= e_start + t_emily + 13)
+
+    # Maximize the total meeting time
+    opt.maximize(t_emily + t_margaret)
+
+    if opt.check() == sat:
+        m = opt.model()
+        e_start_val = m[e_start].as_long()
+        t_emily_val = m[t_emily].as_long()
+        e_end_val = e_start_val + t_emily_val
+
+        m_start_val = m[m_start].as_long()
+        t_margaret_val = m[t_margaret].as_long()
+        m_end_val = m_start_val + t_margaret_val
+
+        # Convert minutes to HH:MM format
+        def format_time(total_minutes):
+            hours = total_minutes // 60
+            minutes = total_minutes % 60
+            return f"{hours:02d}:{minutes:02d}"
+
+        emily_start_str = format_time(e_start_val)
+        emily_end_str = format_time(e_end_val)
+        margaret_start_str = format_time(m_start_val)
+        margaret_end_str = format_time(m_end_val)
+
         itinerary = [
             {"action": "meet", "person": "Emily", "start_time": emily_start_str, "end_time": emily_end_str},
             {"action": "meet", "person": "Margaret", "start_time": margaret_start_str, "end_time": margaret_end_str}
         ]
-        
-        result = {"itinerary": itinerary}
-        print(json.dumps(result))
+
+        print("SOLUTION:")
+        print(json.dumps({"itinerary": itinerary}))
     else:
         print("No solution found")
 

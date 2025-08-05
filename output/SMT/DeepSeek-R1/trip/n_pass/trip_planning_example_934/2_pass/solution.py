@@ -1,164 +1,94 @@
 from z3 import *
 import json
 
-# Define the city enumeration
-City = Datatype('City')
-City.declare('Brussels')
-City.declare('Rome')
-City.declare('Dubrovnik')
-City.declare('Geneva')
-City.declare('Budapest')
-City.declare('Riga')
-City.declare('Valencia')
-City = City.create()
-
-# City names for output
-city_names = {
-    City.Brussels: "Brussels",
-    City.Rome: "Rome",
-    City.Dubrovnik: "Dubrovnik",
-    City.Geneva: "Geneva",
-    City.Budapest: "Budapest",
-    City.Riga: "Riga",
-    City.Valencia: "Valencia"
-}
-
-# Define the direct flight set (as unordered pairs)
-flight_set = {
-    (City.Brussels, City.Valencia),
-    (City.Rome, City.Valencia),
-    (City.Brussels, City.Geneva),
-    (City.Rome, City.Geneva),
-    (City.Dubrovnik, City.Geneva),
-    (City.Valencia, City.Geneva),
-    (City.Rome, City.Riga),
-    (City.Geneva, City.Budapest),
-    (City.Riga, City.Brussels),
-    (City.Rome, City.Budapest),
-    (City.Rome, City.Brussels),
-    (City.Brussels, City.Budapest),
-    (City.Dubrovnik, City.Rome)
-}
-
-# Create list of allowed ordered flight pairs (both directions)
-allowed_ordered = []
-for (c1, c2) in flight_set:
-    allowed_ordered.append((c1, c2))
-    allowed_ordered.append((c2, c1))
-
-# Create Z3 variables for each day (days 1 to 17)
-d = [Const(f'd_{i}', City) for i in range(17)]  # d[0] is day1, d[16] is day17
-
-# Create the start city variable
-s0 = Const('s0', City)
-
-s = Solver()
-
-# Constraint: s0 must be one of the cities
-s.add(Or(
-    s0 == City.Brussels,
-    s0 == City.Rome,
-    s0 == City.Dubrovnik,
-    s0 == City.Geneva,
-    s0 == City.Budapest,
-    s0 == City.Riga,
-    s0 == City.Valencia
-))
-
-# Constraint: Either the start city is the same as the end of day1, or there is a direct flight
-first_flight_constraints = [s0 == d[0]]  # staying in the same city
-for (a, b) in allowed_ordered:
-    first_flight_constraints.append(And(s0 == a, d[0] == b))
-s.add(Or(first_flight_constraints))
-
-# Constraint: Each day must be one of the cities
-for i in range(17):
-    s.add(Or(
-        d[i] == City.Brussels,
-        d[i] == City.Rome,
-        d[i] == City.Dubrovnik,
-        d[i] == City.Geneva,
-        d[i] == City.Budapest,
-        d[i] == City.Riga,
-        d[i] == City.Valencia
-    ))
-
-# Constraint: Consecutive days must either be the same city or connected by a direct flight
-for i in range(16):  # from day1 to day16 (d[0] to d[15]) and next day (d[1] to d[16])
-    same_city = d[i] == d[i+1]
-    flight_connection = Or([And(d[i] == a, d[i+1] == b) for (a, b) in allowed_ordered])
-    s.add(Or(same_city, flight_connection))
-
-# Required days per city
-req_days = {
-    City.Brussels: 5,
-    City.Rome: 2,
-    City.Dubrovnik: 3,
-    City.Geneva: 5,
-    City.Budapest: 2,
-    City.Riga: 4,
-    City.Valencia: 2
-}
-
-# Constraints for total days per city
-for city, total in req_days.items():
-    count1 = Sum([If(d[i] == city, 1, 0) for i in range(17)])
-    count2 = Sum([If(And(d[i] == city, i < 16, d[i+1] != city), 1, 0) for i in range(16)])
-    count3 = If(And(s0 == city, d[0] != city), 1, 0)
-    s.add(count1 + count2 + count3 == total)
-
-# Constraint: Brussels must have at least one day in [7, 11]
-brussels_constraints = []
-for day in [7, 8, 9, 10, 11]:
-    idx = day - 1  # day7 -> d[6], day11 -> d[10]
-    if day == 1:
-        cond = Or(d[0] == City.Brussels, 
-                 And(s0 == City.Brussels, d[0] != City.Brussels))
+def main():
+    cities = ['Brussels', 'Rome', 'Dubrovnik', 'Geneva', 'Budapest', 'Riga', 'Valencia']
+    req_days = [5, 2, 3, 5, 2, 4, 2]
+    
+    bidirectional_pairs = [
+        ('Brussels', 'Valencia'),
+        ('Rome', 'Valencia'),
+        ('Brussels', 'Geneva'),
+        ('Rome', 'Geneva'),
+        ('Dubrovnik', 'Geneva'),
+        ('Valencia', 'Geneva'),
+        ('Geneva', 'Budapest'),
+        ('Riga', 'Brussels'),
+        ('Rome', 'Budapest'),
+        ('Rome', 'Brussels'),
+        ('Brussels', 'Budapest'),
+        ('Dubrovnik', 'Rome')
+    ]
+    directed_edges = [('Rome', 'Riga')]
+    
+    edges = set()
+    for a, b in bidirectional_pairs:
+        i = cities.index(a)
+        j = cities.index(b)
+        edges.add((i, j))
+        edges.add((j, i))
+    for a, b in directed_edges:
+        i = cities.index(a)
+        j = cities.index(b)
+        edges.add((i, j))
+    
+    num_days = 17
+    s = Solver()
+    
+    start = [Int(f'start_{d}') for d in range(num_days)]
+    flight = [Int(f'flight_{d}') for d in range(num_days)]
+    
+    for d in range(num_days):
+        s.add(0 <= start[d], start[d] <= 6)
+        s.add(0 <= flight[d], flight[d] <= 7)
+        s.add(If(flight[d] != 7, flight[d] != start[d], True))
+    
+    for d in range(num_days):
+        cond = (flight[d] != 7)
+        allowed = []
+        for (i, j) in edges:
+            allowed.append(And(start[d] == i, flight[d] == j))
+        s.add(If(cond, Or(allowed), True))
+    
+    for d in range(num_days - 1):
+        s.add(If(flight[d] != 7, start[d+1] == flight[d], start[d+1] == start[d]))
+    
+    for c in range(7):
+        total = 0
+        for d in range(num_days):
+            in_city = Or(start[d] == c, And(flight[d] != 7, flight[d] == c))
+            total += If(in_city, 1, 0)
+        s.add(total == req_days[c])
+    
+    brussels_constraint = Or([Or(start[d] == 0, And(flight[d] != 7, flight[d] == 0)) for d in [6,7,8,9,10]])
+    s.add(brussels_constraint)
+    
+    riga_constraint = Or([Or(start[d] == 5, And(flight[d] != 7, flight[d] == 5)) for d in [3,4,5,6]])
+    s.add(riga_constraint)
+    
+    budapest_constraint = Or([Or(start[d] == 4, And(flight[d] != 7, flight[d] == 4)) for d in [15,16]])
+    s.add(budapest_constraint)
+    
+    flight_count = Sum([If(flight[d] != 7, 1, 0) for d in range(num_days)])
+    s.add(flight_count == 6)
+    
+    if s.check() == sat:
+        model = s.model()
+        itinerary = []
+        for d in range(num_days):
+            s_val = model.evaluate(start[d]).as_long()
+            f_val = model.evaluate(flight[d]).as_long()
+            start_city = cities[s_val]
+            if f_val == 7:
+                places = [start_city]
+            else:
+                flight_city = cities[f_val]
+                places = [start_city, flight_city]
+            itinerary.append({"day": d+1, "place": places})
+        result = {"itinerary": itinerary}
+        print(json.dumps(result, indent=2))
     else:
-        cond = Or(d[idx] == City.Brussels,
-                 And(d[idx-1] == City.Brussels, d[idx] != City.Brussels))
-    brussels_constraints.append(cond)
-s.add(Or(brussels_constraints))
+        print("No solution found")
 
-# Constraint: Budapest must have at least one day in [16, 17]
-budapest_constraints = []
-for day in [16, 17]:
-    idx = day - 1  # day16 -> d[15], day17 -> d[16]
-    if day == 1:
-        cond = Or(d[0] == City.Budapest,
-                 And(s0 == City.Budapest, d[0] != City.Budapest))
-    else:
-        if day == 17:
-            cond = Or(d[16] == City.Budapest,
-                     And(d[15] == City.Budapest, d[16] != City.Budapest))
-        else:
-            cond = Or(d[idx] == City.Budapest,
-                     And(d[idx-1] == City.Budapest, d[idx] != City.Budapest))
-    budapest_constraints.append(cond)
-s.add(Or(budapest_constraints))
-
-# Constraint: Riga must have at least one day in [4, 7]
-riga_constraints = []
-for day in [4, 5, 6, 7]:
-    idx = day - 1  # day4 -> d[3], day7 -> d[6]
-    if day == 1:
-        cond = Or(d[0] == City.Riga,
-                 And(s0 == City.Riga, d[0] != City.Riga))
-    else:
-        cond = Or(d[idx] == City.Riga,
-                 And(d[idx-1] == City.Riga, d[idx] != City.Riga))
-    riga_constraints.append(cond)
-s.add(Or(riga_constraints))
-
-# Solve the problem
-if s.check() == sat:
-    model = s.model()
-    itinerary = []
-    for day in range(1, 18):
-        city_val = model[d[day-1]]
-        city_name = city_names[city_val]
-        itinerary.append({"day": day, "city": city_name})
-    result = {'itinerary': itinerary}
-    print(json.dumps(result, indent=2))
-else:
-    print("No solution found")
+if __name__ == "__main__":
+    main()

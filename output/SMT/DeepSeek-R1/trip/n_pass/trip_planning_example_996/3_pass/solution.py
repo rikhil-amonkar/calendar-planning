@@ -1,94 +1,105 @@
 from z3 import *
-import json
 
 def main():
-    cities = ["Mykonos", "Prague", "Valencia", "Riga", "Zurich", "Bucharest", "Nice"]
-    durations = [3, 3, 5, 5, 5, 5, 2]
+    # Define city names and their required stay days
+    city_names = ["Mykonos", "Prague", "Nice", "Valencia", "Riga", "Zurich", "Bucharest"]
+    req_days = [3, 3, 2, 5, 5, 5, 5]
     
-    flight_list_str = [
-        ("Mykonos", "Nice"),
-        ("Mykonos", "Zurich"),
-        ("Prague", "Bucharest"),
-        ("Valencia", "Bucharest"),
-        ("Zurich", "Prague"),
-        ("Riga", "Nice"),
-        ("Zurich", "Riga"),
-        ("Zurich", "Bucharest"),
-        ("Zurich", "Valencia"),
-        ("Bucharest", "Riga"),
-        ("Prague", "Riga"),
-        ("Prague", "Valencia"),
-        ("Zurich", "Nice")
+    # Direct flights as a list of strings
+    edges_list = [
+        "Mykonos and Nice",
+        "Mykonos and Zurich",
+        "Prague and Bucharest",
+        "Valencia and Bucharest",
+        "Zurich and Prague",
+        "Riga and Nice",
+        "Zurich and Riga",
+        "Zurich and Bucharest",
+        "Zurich and Valencia",
+        "Bucharest and Riga",
+        "Prague and Riga",
+        "Prague and Valencia",
+        "Zurich and Nice"
     ]
     
-    flight_pairs_set = set()
-    for flight in flight_list_str:
-        city1, city2 = flight
-        idx1 = cities.index(city1)
-        idx2 = cities.index(city2)
-        flight_pairs_set.add((idx1, idx2))
-        flight_pairs_set.add((idx2, idx1))
+    # Build allowed flight pairs
+    allowed_pairs = set()
+    for edge_str in edges_list:
+        parts = edge_str.split(" and ")
+        a, b = parts
+        allowed_pairs.add((a, b))
+        allowed_pairs.add((b, a))
     
-    slot_city = [Int(f'slot_city_{i}') for i in range(7)]
-    start = [Int(f'start_{i}') for i in range(7)]
-    end = [Int(f'end_{i}') for i in range(7)]
-    
+    # Create Z3 solver and variables for city order
     s = Solver()
+    n = 7
+    order = [Int(f'order_{i}') for i in range(n)]
     
-    for i in range(7):
-        s.add(slot_city[i] >= 0, slot_city[i] < 7)
-    s.add(Distinct(slot_city))
+    # Each order variable must be between 0 and 6 and all distinct
+    s.add([And(order[i] >= 0, order[i] < n) for i in range(n)])
+    s.add(Distinct(order))
     
+    # Create start day variables for each city in the sequence
+    start = [Int(f'start_{i}') for i in range(n)]
+    
+    # First city starts on day 1
     s.add(start[0] == 1)
-    s.add(end[6] == 22)
     
-    for i in range(1, 7):
-        s.add(start[i] == end[i-1])
+    # Travel days are full days between city stays
+    for i in range(1, n):
+        # Start day of current city = 
+        #   start of previous city + stay days of previous city + 1 travel day
+        s.add(start[i] == start[i-1] + req_days[order[i-1]] + 1)
     
-    mykonos_idx = cities.index("Mykonos")
-    prague_idx = cities.index("Prague")
+    # End day for each city
+    end = [Int(f'end_{i}') for i in range(n)]
+    for i in range(n):
+        s.add(end[i] == start[i] + req_days[order[i]] - 1)
     
-    # Create a Z3 array to map city indices to durations
-    dur_arr = Array('durations', IntSort(), IntSort())
-    for idx, d in enumerate(durations):
-        s.add(dur_arr[idx] == d)
+    # Entire trip must fit within 22 days
+    s.add(end[n-1] <= 22)
     
-    for i in range(7):
-        # Look up duration using Z3 array
-        dur = dur_arr[slot_city[i]]
-        s.add(end[i] == start[i] + dur - 1)
+    # Event constraints:
+    # Mykonos must be visited during days 1-3
+    # Prague must be visited during days 5-9
+    for i in range(n):
+        city_idx = order[i]
+        # Mykonos constraint (starts by day 3)
+        s.add(If(city_idx == 0, And(start[i] >= 1, start[i] <= 3), True))
+        # Prague constraint (starts between days 5-9)
+        s.add(If(city_idx == 1, And(start[i] >= 5, start[i] <= 9), True))
     
-    for i in range(7):
-        s.add(If(slot_city[i] == mykonos_idx, And(start[i] == 1, end[i] == 3), True))
-        s.add(If(slot_city[i] == prague_idx, And(start[i] == 7, end[i] == 9), True))
+    # Flight constraints between consecutive cities
+    for i in range(n-1):
+        city1 = order[i]
+        city2 = order[i+1]
+        name1 = city_names[city1]
+        name2 = city_names[city2]
+        # Check if flight exists between these cities
+        s.add(Or([And(city1 == j, city2 == k) for j in range(n) for k in range(n) 
+                if (city_names[j], city_names[k]) in allowed_pairs]))
     
-    for i in range(6):
-        c1 = slot_city[i]
-        c2 = slot_city[i+1]
-        constraints = []
-        for pair in flight_pairs_set:
-            constraints.append(And(c1 == pair[0], c2 == pair[1]))
-        s.add(Or(constraints))
-    
+    # Check for a solution
     if s.check() == sat:
         m = s.model()
-        slot_city_vals = [m.evaluate(slot_city[i]).as_long() for i in range(7)]
-        start_vals = [m.evaluate(start[i]).as_long() for i in range(7)]
-        end_vals = [m.evaluate(end[i]).as_long() for i in range(7)]
+        order_vals = [m.evaluate(order[i]).as_long() for i in range(n)]
+        start_vals = [m.evaluate(start[i]).as_long() for i in range(n)]
+        end_vals = [m.evaluate(end[i]).as_long() for i in range(n)]
         
-        itinerary_list = []
-        for d in range(1, 23):
-            for i in range(7):
-                s_val = start_vals[i]
-                e_val = end_vals[i]
-                if s_val <= d <= e_val:
-                    city_name = cities[slot_city_vals[i]]
-                    itinerary_list.append({"day": d, "place": city_name})
+        # Build itinerary with day ranges
+        itinerary = []
+        for i in range(n):
+            city_idx = order_vals[i]
+            city_name = city_names[city_idx]
+            s_day = start_vals[i]
+            e_day = end_vals[i]
+            day_range = f"Day {s_day}-{e_day}" if s_day != e_day else f"Day {s_day}"
+            itinerary.append({"day_range": day_range, "place": city_name})
         
-        result = {'itinerary': itinerary_list}
-        print(json.dumps(result))
+        result = {"itinerary": itinerary}
+        print("Plan found:", result)
     else:
-        print('{"itinerary": []}')
+        print("No valid plan found")
 
 if __name__ == "__main__":
     main()

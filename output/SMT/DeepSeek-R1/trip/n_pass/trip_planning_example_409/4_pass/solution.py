@@ -1,116 +1,122 @@
-from z3 import *
+import z3
 import json
 
 def main():
-    cities = ['Hamburg', 'Zurich', 'Helsinki', 'Bucharest', 'Split']
-    required_days = {
-        'Hamburg': 2,
-        'Zurich': 3,
-        'Helsinki': 2,
-        'Bucharest': 2,
-        'Split': 7
+    cities = ["Hamburg", "Zurich", "Helsinki", "Bucharest", "Split"]
+    n_days = 12
+    n_cities = len(cities)
+    
+    # Graph of direct flights: each city index maps to list of neighbors
+    graph = {
+        0: [3, 2, 1, 4],   # Hamburg: Bucharest, Helsinki, Zurich, Split
+        1: [0, 2, 3, 4],    # Zurich: Hamburg, Helsinki, Bucharest, Split
+        2: [0, 1, 4],       # Helsinki: Hamburg, Zurich, Split
+        3: [0, 1],          # Bucharest: Hamburg, Zurich
+        4: [0, 1, 2]        # Split: Hamburg, Zurich, Helsinki
     }
     
-    flight_list = [
-        ('Zurich', 'Helsinki'),
-        ('Hamburg', 'Bucharest'),
-        ('Helsinki', 'Hamburg'),
-        ('Zurich', 'Hamburg'),
-        ('Zurich', 'Bucharest'),
-        ('Zurich', 'Split'),
-        ('Helsinki', 'Split'),
-        ('Split', 'Hamburg')
-    ]
+    # Precompute all directed edges from the graph
+    edges = []
+    for i in range(n_cities):
+        for j in graph[i]:
+            edges.append((i, j))
     
-    flight_set = {frozenset({c1, c2}) for (c1, c2) in flight_list}
+    # Required days per city: Hamburg(0), Zurich(1), Helsinki(2), Bucharest(3), Split(4)
+    required_days = [2, 3, 2, 2, 7]
     
-    disallowed_pairs = set()
-    for i in range(len(cities)):
-        for j in range(i+1, len(cities)):
-            c1 = cities[i]
-            c2 = cities[j]
-            pair = frozenset({c1, c2})
-            if pair not in flight_set:
-                disallowed_pairs.add((c1, c2))
+    # Z3 variables for each day: start city, whether we fly, and destination city
+    Start = [z3.Int('Start_%d' % d) for d in range(n_days)]
+    Fly = [z3.Bool('Fly_%d' % d) for d in range(n_days)]
+    Dest = [z3.Int('Dest_%d' % d) for d in range(n_days)]
     
-    days = list(range(1, 13))
-    s = Solver()
+    s = z3.Solver()
     
-    In = {}
-    for city in cities:
-        In[city] = {}
-        for d in days:
-            In[city][d] = Bool(f"In_{city}_{d}")
+    # City indices must be valid
+    for d in range(n_days):
+        s.add(Start[d] >= 0, Start[d] < n_cities)
+        s.add(Dest[d] >= 0, Dest[d] < n_cities)
+        # If flying, start and destination must be different
+        s.add(z3.Implies(Fly[d], Start[d] != Dest[d]))
     
-    for d in days:
-        s.add(Or([In[city][d] for city in cities]))
-        for i in range(len(cities)):
-            for j in range(i+1, len(cities)):
-                for k in range(j+1, len(cities)):
-                    c1, c2, c3 = cities[i], cities[j], cities[k]
-                    s.add(Not(And(In[c1][d], In[c2][d], In[c3][d])))
+    # Flight constraints: if flying, the (start, dest) must be in the edges list
+    for d in range(n_days):
+        edge_constraints = []
+        for (i, j) in edges:
+            edge_constraints.append(z3.And(Start[d] == i, Dest[d] == j))
+        s.add(z3.Implies(Fly[d], z3.Or(edge_constraints)))
     
-    for city in cities:
+    # Continuity: next day's start is current day's destination if flying, else same as current start
+    for d in range(n_days - 1):
+        s.add(Start[d+1] == z3.If(Fly[d], Dest[d], Start[d]))
+    
+    # Total days per city constraint
+    for c in range(n_cities):
         total = 0
-        for d in days:
-            total += If(In[city][d], 1, 0)
-        s.add(total == required_days[city])
+        for d in range(n_days):
+            in_city = z3.Or(Start[d] == c, z3.And(Fly[d], Dest[d] == c))
+            total += z3.If(in_city, 1, 0)
+        s.add(total == required_days[c])
     
-    for d in days:
-        for (c1, c2) in disallowed_pairs:
-            s.add(Not(And(In[c1][d], In[c2][d])))
+    # Wedding constraint: must be in Zurich on at least one of the first three days (days 1-3)
+    wedding_days = []
+    for d in [0, 1, 2]:  # Days 1, 2, 3 (0-indexed)
+        in_zurich = z3.Or(Start[d] == 1, z3.And(Fly[d], Dest[d] == 1))
+        wedding_days.append(in_zurich)
+    s.add(z3.Or(wedding_days))
     
-    for d in range(1, 12):
-        common_cities = []
-        for city in cities:
-            common_cities.append(And(In[city][d], In[city][d+1]))
-        s.add(Or(common_cities))
+    # Conference constraints: must be in Split on day 4 (index 3) and day 10 (index 9)
+    s.add(z3.Or(Start[3] == 4, z3.And(Fly[3], Dest[3] == 4)))  # Day 4
+    s.add(z3.Or(Start[9] == 4, z3.And(Fly[9], Dest[9] == 4)))  # Day 10
     
-    s.add(In['Split'][4] == True)
-    s.add(In['Split'][10] == True)
-    s.add(Or(In['Zurich'][1], In['Zurich'][2], In['Zurich'][3]))
+    # Total flights must be 4 (because 12 days + 4 flights = 16 city-days)
+    total_flights = z3.Sum([z3.If(Fly[d], 1, 0) for d in range(n_days)])
+    s.add(total_flights == 4)
     
-    if s.check() == sat:
+    # Solve the problem
+    if s.check() == z3.sat:
         m = s.model()
-        day_strings = []
-        for d in days:
-            cities_today = []
-            for city in cities:
-                if is_true(m.evaluate(In[city][d], model_completion=True)):
-                    cities_today.append(city)
-            cities_today_sorted = sorted(cities_today)
-            if len(cities_today_sorted) == 1:
-                city_str = cities_today_sorted[0]
-            else:
-                city_str = " and ".join(cities_today_sorted)
-            day_strings.append(city_str)
         
-        grouped_itinerary = []
-        current_str = day_strings[0]
-        start_day = 1
-        end_day = 1
-        for day_num in range(2, 13):
-            idx = day_num - 1
-            if day_strings[idx] == current_str:
-                end_day = day_num
-            else:
-                if start_day == end_day:
-                    day_range = f"Day {start_day}"
+        # Build presence matrix: for each city, list of days (0-indexed) present
+        presence = [[] for _ in range(n_cities)]
+        for d in range(n_days):
+            start_val = m.evaluate(Start[d]).as_long()
+            presence[start_val].append(d)
+            if m.evaluate(Fly[d]):
+                dest_val = m.evaluate(Dest[d]).as_long()
+                presence[dest_val].append(d)
+        
+        # Build contiguous segments for each city
+        segments = []
+        for c in range(n_cities):
+            days_list = presence[c]
+            if not days_list:
+                continue
+            days_list.sort()
+            start = days_list[0]
+            end = days_list[0]
+            for i in range(1, len(days_list)):
+                if days_list[i] == days_list[i-1] + 1:
+                    end = days_list[i]
                 else:
-                    day_range = f"Day {start_day}-{end_day}"
-                grouped_itinerary.append({'day_range': day_range, 'place': current_str})
-                current_str = day_strings[idx]
-                start_day = day_num
-                end_day = day_num
-        if start_day <= 12:
-            if start_day == end_day:
-                day_range = f"Day {start_day}"
-            else:
-                day_range = f"Day {start_day}-{end_day}"
-            grouped_itinerary.append({'day_range': day_range, 'place': current_str})
+                    segments.append((start, end, c))
+                    start = days_list[i]
+                    end = days_list[i]
+            segments.append((start, end, c))
         
-        result = {'itinerary': grouped_itinerary}
-        print(json.dumps(result))
+        # Convert segments to itinerary format
+        itinerary_segments = []
+        for (start, end, c) in segments:
+            day_start = start + 1
+            day_end = end + 1
+            day_range = f"Day {day_start}-{day_end}" if day_start != day_end else f"Day {day_start}"
+            itinerary_segments.append((start, day_range, cities[c]))
+        
+        # Sort segments by start day and city name
+        itinerary_segments.sort(key=lambda x: (x[0], x[2]))
+        itinerary = [{"day_range": dr, "place": city} for _, dr, city in itinerary_segments]
+        
+        result = {'itinerary': itinerary}
+        print(json.dumps(result, indent=2))
     else:
         print("No solution found")
 

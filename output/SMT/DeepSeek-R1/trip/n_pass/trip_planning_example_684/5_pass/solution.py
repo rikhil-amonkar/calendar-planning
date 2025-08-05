@@ -1,96 +1,109 @@
 from z3 import *
+import json
 
-# Define the Place datatype
-Place = Datatype('Place')
-Place.declare('EDI')
-Place.declare('LHR')
-Place.declare('JFK')
-Place.declare('NCE')
-Place = Place.create()
-
-# Function to return flight time between two places
-def flight_time_expr(p1, p2):
-    cond_EDI_LHR = Or(And(p1 == Place.EDI, p2 == Place.LHR), And(p1 == Place.LHR, p2 == Place.EDI))
-    cond_EDI_JFK = Or(And(p1 == Place.EDI, p2 == Place.JFK), And(p1 == Place.JFK, p2 == Place.EDI))
-    cond_EDI_NCE = Or(And(p1 == Place.EDI, p2 == Place.NCE), And(p1 == Place.NCE, p2 == Place.EDI))
-    cond_LHR_JFK = Or(And(p1 == Place.LHR, p2 == Place.JFK), And(p1 == Place.JFK, p2 == Place.LHR))
-    cond_LHR_NCE = Or(And(p1 == Place.LHR, p2 == Place.NCE), And(p1 == Place.NCE, p2 == Place.LHR))
-    cond_JFK_NCE = Or(And(p1 == Place.JFK, p2 == Place.NCE), And(p1 == Place.NCE, p2 == Place.JFK))
+def main():
+    # City mapping to integers
+    cities = ['Amsterdam', 'Edinburgh', 'Brussels', 'Vienna', 'Berlin', 'Reykjavik']
+    city_to_int = {city: idx for idx, city in enumerate(cities)}
+    int_to_city = {idx: city for city, idx in city_to_int.items()}
     
-    return If(cond_EDI_LHR, 60,
-           If(cond_EDI_JFK, 360,
-           If(cond_EDI_NCE, 120,
-           If(cond_LHR_JFK, 420,
-           If(cond_LHR_NCE, 120,
-           If(cond_JFK_NCE, 480, 0))))))
+    # Required days per city
+    required_days = {
+        'Amsterdam': 4,
+        'Edinburgh': 5,
+        'Brussels': 5,
+        'Vienna': 5,
+        'Berlin': 4,
+        'Reykjavik': 5
+    }
+    req_days_int = [required_days[city] for city in cities]
+    
+    # Direct flights matrix (symmetric)
+    flight_matrix = [
+        [0, 1, 1, 1, 1, 1],  # Amsterdam
+        [1, 0, 1, 0, 1, 0],  # Edinburgh
+        [1, 1, 0, 1, 1, 1],  # Brussels
+        [1, 0, 1, 0, 1, 1],  # Vienna
+        [1, 1, 1, 1, 0, 1],  # Berlin
+        [1, 0, 1, 1, 1, 0]   # Reykjavik
+    ]
+    
+    n_days = 23
+    s = Solver()
+    
+    # Day variables: 0-5 for each city
+    c = [Int(f'c_{i}') for i in range(n_days)]
+    
+    # Each day must be a valid city (0-5)
+    for i in range(n_days):
+        s.add(And(c[i] >= 0, c[i] < 6))
+    
+    # Flight constraints between consecutive days
+    for i in range(n_days - 1):
+        current = c[i]
+        next_ = c[i+1]
+        # Allow staying in same city or direct flight
+        s.add(Or(
+            current == next_,
+            flight_matrix[current][next_] == 1
+        ))
+    
+    # Total days per city constraint
+    for city_int in range(6):
+        count = Sum([If(c[i] == city_int, 1, 0) for i in range(n_days)])
+        s.add(count == req_days_int[city_int])
+    
+    # Amsterdam must be visited between days 5-8 (0-indexed days 4-7)
+    s.add(Or(
+        c[4] == city_to_int['Amsterdam'],  # Day 5
+        c[5] == city_to_int['Amsterdam'],  # Day 6
+        c[6] == city_to_int['Amsterdam'],  # Day 7
+        c[7] == city_to_int['Amsterdam']   # Day 8
+    ))
+    
+    # Berlin must be visited between days 16-19 (0-indexed days 15-18)
+    s.add(Or(
+        c[15] == city_to_int['Berlin'],  # Day 16
+        c[16] == city_to_int['Berlin'],  # Day 17
+        c[17] == city_to_int['Berlin'],  # Day 18
+        c[18] == city_to_int['Berlin']   # Day 19
+    ))
+    
+    # Reykjavik must be visited between days 12-16 (0-indexed days 11-15)
+    s.add(Or(
+        c[11] == city_to_int['Reykjavik'],  # Day 12
+        c[12] == city_to_int['Reykjavik'],  # Day 13
+        c[13] == city_to_int['Reykjavik'],  # Day 14
+        c[14] == city_to_int['Reykjavik'],  # Day 15
+        c[15] == city_to_int['Reykjavik']   # Day 16
+    ))
+    
+    # Solve and output itinerary
+    if s.check() == sat:
+        m = s.model()
+        day_assignments = [m.eval(c[i]).as_long() for i in range(n_days)]
+        itinerary = []
+        current_city = int_to_city[day_assignments[0]]
+        start_day = 1
+        
+        for day in range(1, n_days):
+            city = int_to_city[day_assignments[day]]
+            if city != current_city:
+                itinerary.append({
+                    "day_range": f"Day {start_day}-{day}",
+                    "place": current_city
+                })
+                current_city = city
+                start_day = day + 1
+        
+        itinerary.append({
+            "day_range": f"Day {start_day}-{n_days}",
+            "place": current_city
+        })
+        
+        print(json.dumps({"itinerary": itinerary}, indent=2))
+    else:
+        print("No solution found")
 
-# Create solver
-s = Solver()
-
-# Sequence variables
-s0, s1, s2, s3 = Consts('s0 s1 s2 s3', Place)
-
-# Arrival and departure functions
-base_arr = Function('base_arr', Place, IntSort())
-base_dep = Function('base_dep', Place, IntSort())
-
-# Constraints
-constraints = []
-
-# All airports are distinct
-constraints.append(Distinct(s0, s1, s2, s3))
-
-# Bounds and turnaround times for each airport
-airports = [Place.EDI, Place.LHR, Place.JFK, Place.NCE]
-for airport in airports:
-    constraints.append(base_arr(airport) >= 0)
-    constraints.append(base_arr(airport) <= 1440)
-    constraints.append(base_dep(airport) >= 0)
-    constraints.append(base_dep(airport) <= 1440)
-    constraints.append(base_dep(airport) >= base_arr(airport) + 30)
-
-# Sequence constraints
-constraints.append(base_arr(s1) == base_dep(s0) + flight_time_expr(s0, s1))
-constraints.append(base_arr(s2) == base_dep(s1) + flight_time_expr(s1, s2))
-constraints.append(base_arr(s3) == base_dep(s2) + flight_time_expr(s2, s3))
-
-# Passenger constraints
-# Passenger 1: EDI before LHR
-index_EDI = If(s0 == Place.EDI, 0, 
-              If(s1 == Place.EDI, 1, 
-               If(s2 == Place.EDI, 2, 3)))
-index_LHR = If(s0 == Place.LHR, 0, 
-              If(s1 == Place.LHR, 1, 
-               If(s2 == Place.LHR, 2, 3)))
-constraints.append(index_EDI < index_LHR)
-
-# Passenger 2: JFK before NCE
-index_JFK = If(s0 == Place.JFK, 0, 
-              If(s1 == Place.JFK, 1, 
-               If(s2 == Place.JFK, 2, 3)))
-index_NCE = If(s0 == Place.NCE, 0, 
-              If(s1 == Place.NCE, 1, 
-               If(s2 == Place.NCE, 2, 3)))
-constraints.append(index_JFK < index_NCE)
-
-# Add all constraints to the solver
-s.add(constraints)
-
-# Minimize base_arr[LHR]
-objective = base_arr(Place.LHR)
-min_obj = 1441  # Start with a value larger than max possible (1440)
-model = None
-
-while s.check() == sat:
-    m = s.model()
-    current_obj = m.eval(objective).as_long()
-    if current_obj < min_obj:
-        min_obj = current_obj
-        model = m
-    s.add(objective < current_obj)
-
-# Output only the numerical result
-if model is not None:
-    print(min_obj)
-else:
-    print(-1)
+if __name__ == "__main__":
+    main()

@@ -1,83 +1,62 @@
 from z3 import *
-import json
 
 def main():
-    s0, s1, s2 = Ints('s0 s1 s2')
-    a = Int('a')
-    b = Int('b')
+    # Create 15 integer variables for days 1 to 15
+    days = [Int('c_%d' % i) for i in range(15)]
     
-    solver = Solver()
+    s = Solver()
     
-    allowed_pairs = [(0,2), (2,0), (1,2), (2,1)]
+    # Each day must be 0 (Stuttgart), 1 (Seville), or 2 (Manchester)
+    for d in days:
+        s.add(Or(d == 0, d == 1, d == 2))
     
-    solver.add(s0 >= 0, s0 <= 2)
-    solver.add(s1 >= 0, s1 <= 2)
-    solver.add(s2 >= 0, s2 <= 2)
-    solver.add(Distinct(s0, s1, s2))
+    # Count constraints
+    count_stuttgart = Sum([If(d == 0, 1, 0) for d in days])
+    count_seville = Sum([If(d == 1, 1, 0) for d in days])
+    count_manchester = Sum([If(d == 2, 1, 0) for d in days])
     
-    solver.add(a >= 1, a <= 14)
-    solver.add(b >= a+1, b <= 14)
+    s.add(count_stuttgart == 6)
+    s.add(count_seville == 7)
+    s.add(count_manchester == 4)
     
-    solver.add(Or([And(s0 == x, s1 == y) for (x, y) in allowed_pairs]))
-    solver.add(Or([And(s1 == x, s2 == y) for (x, y) in allowed_pairs]))
+    # At least one day in Stuttgart between day1 and day6 (indices 0 to 5)
+    s.add(Or([days[i] == 0 for i in range(6)]))
     
-    stuttgart_days = If(s0 == 0, a, 
-                       If(s1 == 0, b - a + 1,
-                       If(s2 == 0, 15 - b + 1, 0)))
-    seville_days = If(s0 == 1, a,
-                     If(s1 == 1, b - a + 1,
-                     If(s2 == 1, 15 - b + 1, 0)))
-    manchester_days = If(s0 == 2, a,
-                        If(s1 == 2, b - a + 1,
-                        If(s2 == 2, 15 - b + 1, 0)))
+    # Flight connectivity constraints for consecutive days
+    for i in range(14):  # from day1 to day14 (0-indexed: 0 to 13)
+        # Current and next day's city
+        c1 = days[i]
+        c2 = days[i+1]
+        # Allowed transitions: same city, Stuttgart<->Manchester, Manchester<->Seville
+        s.add(Or(
+            c1 == c2,
+            And(c1 == 0, c2 == 2),
+            And(c1 == 2, c2 == 0),
+            And(c1 == 1, c2 == 2),
+            And(c1 == 2, c2 == 1)
+        ))
     
-    solver.add(stuttgart_days == 6)
-    solver.add(seville_days == 7)
-    solver.add(manchester_days == 4)
-    
-    solver.add(Or(
-        s0 == 0,
-        And(s1 == 0, a <= 6),
-        And(s2 == 0, b <= 6)
-    ))
-    
-    if solver.check() == sat:
-        model = solver.model()
-        a_val = model[a].as_long()
-        b_val = model[b].as_long()
-        s0_val = model[s0].as_long()
-        s1_val = model[s1].as_long()
-        s2_val = model[s2].as_long()
-        
+    # Check if constraints are satisfiable
+    if s.check() == sat:
+        model = s.model()
+        # Map integers to city names
         city_names = {
-            0: "Stuttgart",
-            1: "Seville",
-            2: "Manchester"
+            0: 'Stuttgart',
+            1: 'Seville',
+            2: 'Manchester'
         }
-        
         itinerary = []
-        for day in range(1, 16):
-            if day == a_val:
-                itinerary.append({"day": day, "city": city_names[s0_val]})
-                itinerary.append({"day": day, "city": city_names[s1_val]})
-            elif day == b_val:
-                itinerary.append({"day": day, "city": city_names[s1_val]})
-                itinerary.append({"day": day, "city": city_names[s2_val]})
-            else:
-                if day < a_val:
-                    c = s0_val
-                elif day < b_val:
-                    c = s1_val
-                else:
-                    c = s2_val
-                itinerary.append({"day": day, "city": city_names[c]})
+        for i in range(15):
+            day_index = i
+            city_value = model[days[i]].as_long()
+            city_name = city_names[city_value]
+            itinerary.append({"day": day_index+1, "place": city_name})
         
-        result = {
-            "itinerary": itinerary
-        }
-        print(json.dumps(result))
+        # Output as specified
+        result = {'itinerary': itinerary}
+        print(result)
     else:
-        print(json.dumps({"error": "No solution found"}))
+        print("No valid itinerary found.")
 
 if __name__ == '__main__':
     main()

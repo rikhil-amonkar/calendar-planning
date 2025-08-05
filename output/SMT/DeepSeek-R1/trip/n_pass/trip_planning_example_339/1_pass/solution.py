@@ -1,85 +1,87 @@
-import z3
+from z3 import *
+import json
 
-def main():
-    days = list(range(1, 18))
-    cities = ["Warsaw", "Budapest", "Paris", "Riga"]
-    
-    adjacent_pairs = {
-        frozenset(("Warsaw", "Budapest")),
-        frozenset(("Warsaw", "Riga")),
-        frozenset(("Warsaw", "Paris")),
-        frozenset(("Budapest", "Paris")),
-        frozenset(("Paris", "Riga"))
-    }
-    
-    neighbors = {
-        "Warsaw": ["Budapest", "Riga", "Paris"],
-        "Budapest": ["Warsaw", "Paris"],
-        "Paris": ["Warsaw", "Budapest", "Riga"],
-        "Riga": ["Warsaw", "Paris"]
-    }
-    
-    in_city = {}
-    for d in days:
-        for c in cities:
-            in_city[(d, c)] = z3.Bool(f"in_city_{d}_{c}")
-    
-    s = z3.Solver()
-    
-    for d in days:
-        s.add(z3.Or([in_city[(d, c)] for c in cities]))
-        city_bools = [in_city[(d, c)] for c in cities]
-        s.add(z3.AtMost(*city_bools, 2))
-        
-        for i in range(len(cities)):
-            for j in range(i+1, len(cities)):
-                c1 = cities[i]
-                c2 = cities[j]
-                if frozenset([c1, c2]) not in adjacent_pairs:
-                    s.add(z3.Not(z3.And(in_city[(d, c1)], in_city[(d, c2)])))
-    
-    s.add(in_city[(1, "Warsaw")])
-    for c in cities:
-        if c != "Warsaw":
-            s.add(z3.Not(in_city[(1, c)]))
-    
-    s.add(in_city[(2, "Warsaw")])
-    
-    for d in range(1, 11):
-        s.add(z3.Not(in_city[(d, "Riga")]))
-    for d in range(11, 18):
-        s.add(in_city[(d, "Riga")])
-    
-    for d in range(3, 18):
-        s.add(z3.Not(in_city[(d, "Warsaw")]))
-    
-    budapest_days = [z3.If(in_city[(d, "Budapest")], 1, 0) for d in days]
-    s.add(sum(budapest_days) == 7)
-    
-    paris_days = [z3.If(in_city[(d, "Paris")], 1, 0) for d in days]
-    s.add(sum(paris_days) == 4)
-    
-    for d in range(2, 18):
-        for c in cities:
-            current = in_city[(d, c)]
-            prev = in_city[(d-1, c)]
-            neighbor_conds = []
-            for c0 in neighbors[c]:
-                neighbor_conds.append(z3.And(in_city[(d-1, c0)], in_city[(d, c0)]))
-            if neighbor_conds:
-                s.add(z3.Implies(z3.And(current, z3.Not(prev)), z3.Or(neighbor_conds)))
-    
-    if s.check() == z3.sat:
-        m = s.model()
-        itinerary = []
-        for d in days:
-            for c in cities:
-                if m.evaluate(in_city[(d, c)]):
-                    itinerary.append({"day": d, "city": c})
-        result = {"itinerary": itinerary}
-        print(result)
-    else:
-        print("No solution found")
+# Define the city enumeration
+City, (warsaw, budapest, paris, riga) = EnumSort('City', ['Warsaw', 'Budapest', 'Paris', 'Riga'])
 
-if __name__ == "__main__":
-    main()
+# Create a mapping from Z3 constants to city names
+city_names = {
+    warsaw: "Warsaw",
+    budapest: "Budapest",
+    paris: "Paris",
+    riga: "Riga"
+}
+
+# Define direct flight edges
+edges = [
+    (warsaw, budapest),
+    (warsaw, riga),
+    (budapest, paris),
+    (warsaw, paris),
+    (paris, riga)
+]
+
+# Initialize the solver
+s = Solver()
+
+# Create arrays for start_city and end_city for days 1 to 17
+start_city = [None]  # index 0 unused
+end_city = [None]    # index 0 unused
+
+for i in range(1, 18):
+    start_city.append(Const(f'start_city_{i}', City))
+    end_city.append(Const(f'end_city_{i}', City))
+
+# Constraint: Start in Warsaw on day 1
+s.add(start_city[1] == warsaw)
+
+# Constraint: End city of day i is start city of day i+1 for i=1 to 16
+for i in range(1, 17):
+    s.add(end_city[i] == start_city[i+1])
+
+# Flight constraint: If start and end cities differ, there must be a direct flight
+for i in range(1, 18):
+    cond = (start_city[i] != end_city[i])
+    flight_ok = Or([Or(And(start_city[i] == a, end_city[i] == b), And(start_city[i] == b, end_city[i] == a)) for (a, b) in edges])
+    s.add(Implies(cond, flight_ok))
+
+# Function to check if a day i is in city c
+def in_city(i, c):
+    return If(Or(start_city[i] == c, end_city[i] == c), 1, 0)
+
+# Total days per city
+total_riga = Sum([in_city(i, riga) for i in range(1, 18)])
+total_budapest = Sum([in_city(i, budapest) for i in range(1, 18)])
+total_paris = Sum([in_city(i, paris) for i in range(1, 18)])
+total_warsaw = Sum([in_city(i, warsaw) for i in range(1, 18)])
+
+s.add(total_riga == 7)
+s.add(total_budapest == 7)
+s.add(total_paris == 4)
+s.add(total_warsaw == 2)
+
+# Constraint: Must be in Warsaw on day 2
+s.add(in_city(2, warsaw) == 1)
+
+# Constraint: At least one day in Riga between days 11 and 17
+s.add(Sum([in_city(i, riga) for i in range(11, 18)]) >= 1)
+
+# Check for a solution
+if s.check() == sat:
+    model = s.model()
+    itinerary = []
+    for i in range(1, 18):
+        start_val = model[start_city[i]]
+        end_val = model[end_city[i]]
+        start_str = city_names[start_val]
+        end_str = city_names[end_val]
+        if start_str == end_str:
+            cities = [start_str]
+        else:
+            cities = sorted([start_str, end_str])
+        itinerary.append({"day": i, "city": cities})
+    
+    result = {'itinerary': itinerary}
+    print(json.dumps(result, indent=2))
+else:
+    print("No solution found")

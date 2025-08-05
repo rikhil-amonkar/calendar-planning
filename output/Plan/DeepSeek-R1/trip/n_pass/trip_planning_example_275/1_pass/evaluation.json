@@ -1,0 +1,49 @@
+{
+    "has_execution_error": false,
+    "execution_output": "The trip plan has been determined based on the constraints and available direct flights. The itinerary must satisfy the following:\n\n- Total days: 14\n- Split: 5 days\n- Vilnius: 4 days\n- Santorini: 2 days, with days 13 and 14 fixed for a conference\n- Madrid: 6 days\n- Direct flights: Vilnius\u2013Split, Split\u2013Madrid, Madrid\u2013Santorini\n\nConsidering that flight days are shared between cities (e.g., flying from city A to city B on day X means day X is counted for both cities), the itinerary is structured as follows:\n\n- Start in Vilnius for 4 days (days 1\u20134).\n- Fly to Split on day 4; Split stay includes days 4\u20138 (5 days).\n- Fly to Madrid on day 8; Madrid stay includes days 8\u201313 (6 days).\n- Fly to Santorini on day 13; Santorini stay includes days 13\u201314 (2 days, covering the conference).\n\nThis uses the direct flight connections and ensures all day requirements are met. The flight days (day 4, day 8, and day 13) are included in the day ranges for both the departure and arrival cities, as per the rules.\n\nThe JSON output below represents the itinerary with day ranges for each city stay, without separate flight entries.\n\n```json\n{\n  \"itinerary\": [\n    {\n      \"day_range\": \"Day 1-4\",\n      \"place\": \"Vilnius\"\n    },\n    {\n      \"day_range\": \"Day 4-8\",\n      \"place\": \"Split\"\n    },\n    {\n      \"day_range\": \"Day 8-13\",\n      \"place\": \"Madrid\"\n    },\n    {\n      \"day_range\": \"Day 13-14\",\n      \"place\": \"Santorini\"\n    }\n  ]\n}\n```",
+    "pred": {
+        "itinerary": [
+            {
+                "day_range": "Day 1-4",
+                "place": "Vilnius"
+            },
+            {
+                "day_range": "Day 4-8",
+                "place": "Split"
+            },
+            {
+                "day_range": "Day 8-13",
+                "place": "Madrid"
+            },
+            {
+                "day_range": "Day 13-14",
+                "place": "Santorini"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "day_range": "Day 1-4",
+                "place": "Vilnius"
+            },
+            {
+                "day_range": "Day 4-8",
+                "place": "Split"
+            },
+            {
+                "day_range": "Day 8-13",
+                "place": "Madrid"
+            },
+            {
+                "day_range": "Day 13-14",
+                "place": "Santorini"
+            }
+        ]
+    },
+    "status": "Exact match",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1
+}

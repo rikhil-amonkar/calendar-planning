@@ -1,99 +1,91 @@
 from z3 import *
 import json
 
-# Define the cities and their required days
-cities = ['Split', 'Helsinki', 'Reykjavik', 'Vilnius', 'Geneva']
-City, (Split, Helsinki, Reykjavik, Vilnius, Geneva) = EnumSort('City', cities)
-
-# Flight connections (both directions)
-flight_pairs = [
-    (Split, Helsinki),
-    (Geneva, Split),
-    (Geneva, Helsinki),
-    (Helsinki, Reykjavik),
-    (Vilnius, Helsinki),
-    (Split, Vilnius)
-]
-all_pairs = []
-for (a, b) in flight_pairs:
-    all_pairs.append((a, b))
-    all_pairs.append((b, a))
-
-# Required days for each city
-req_days = {
-    Split: 2,
-    Helsinki: 2,
-    Reykjavik: 3,
-    Vilnius: 3,
-    Geneva: 6
-}
-
-# Create solver and variables
-s = Solver()
-L = [Const(f'L_{i}', City) for i in range(13)]  # L[0] to L[12]
-
-# Constraint: L[0] == L[1] (for day 1)
-s.add(L[0] == L[1])
-
-# Flight constraints for transitions
-for i in range(1, 13):
-    s.add(If(L[i-1] != L[i], Or([And(L[i-1] == a, L[i] == b) for (a, b) in all_pairs]), True))
-
-# Count constraints for each city
-for city in [Split, Helsinki, Reykjavik, Vilnius, Geneva]:
-    total = 0
-    for i in range(1, 13):
-        total += If(Or(L[i-1] == city, L[i] == city), 1, 0)
-    s.add(total == req_days[city])
-
-# Event constraints
-# Reykjavik between day 10 and 12 (days 10,11,12 in itinerary)
-s.add(Or(
-    Or(L[9] == Reykjavik, L[10] == Reykjavik),  # day 10: L9 and L10
-    Or(L[10] == Reykjavik, L[11] == Reykjavik),  # day 11: L10 and L11
-    Or(L[11] == Reykjavik, L[12] == Reykjavik)  # day 12: L11 and L12
-))
-
-# Vilnius between day 7 and 9 (days 7,8,9 in itinerary)
-s.add(Or(
-    Or(L[6] == Vilnius, L[7] == Vilnius),  # day 7: L6 and L7
-    Or(L[7] == Vilnius, L[8] == Vilnius),  # day 8: L7 and L8
-    Or(L[8] == Vilnius, L[9] == Vilnius)   # day 9: L8 and L9
-))
-
-# Solve the problem
-if s.check() == sat:
-    m = s.model()
-    # Map Z3 values to city names
-    L_vals = []
-    for i in range(13):
-        val = m[L[i]]
-        if val == Split:
-            L_vals.append('Split')
-        elif val == Helsinki:
-            L_vals.append('Helsinki')
-        elif val == Reykjavik:
-            L_vals.append('Reykjavik')
-        elif val == Vilnius:
-            L_vals.append('Vilnius')
-        elif val == Geneva:
-            L_vals.append('Geneva')
-        else:
-            L_vals.append('Unknown')
+def main():
+    cities = ['Split', 'Helsinki', 'Reykjavik', 'Vilnius', 'Geneva']
+    n_cities = len(cities)
+    n_days = 12
     
-    # Build itinerary
-    itinerary = []
-    for day in range(1, 13):
-        city_prev = L_vals[day-1]
-        city_curr = L_vals[day]
-        if city_prev == city_curr:
-            itinerary.append({"day": day, "place": city_prev})
-        else:
-            itinerary.append({"day": day, "place": city_prev})
-            itinerary.append({"day": day, "place": city_curr})
+    direct_flights = [
+        ('Split', 'Helsinki'),
+        ('Geneva', 'Split'),
+        ('Geneva', 'Helsinki'),
+        ('Helsinki', 'Reykjavik'),
+        ('Vilnius', 'Helsinki'),
+        ('Split', 'Vilnius')
+    ]
+    flight_set = set()
+    for a, b in direct_flights:
+        flight_set.add((a, b))
+        flight_set.add((b, a))
     
-    # Output as JSON
-    result = {"itinerary": itinerary}
-    print(json.dumps(result))
-else:
-    print('{"itinerary": []}')
+    s = Solver()
+    
+    in_city = [[Bool(f'in_{d}_{c}') for c in range(n_cities)] for d in range(n_days)]
+    
+    for d in range(n_days):
+        or_terms = [in_city[d][c] for c in range(n_cities)]
+        s.add(Or(or_terms))
+        
+        for c1 in range(n_cities):
+            for c2 in range(c1+1, n_cities):
+                for c3 in range(c2+1, n_cities):
+                    s.add(Not(And(in_city[d][c1], in_city[d][c2], in_city[d][c3])))
+                    
+    for d in range(n_days):
+        for c1 in range(n_cities):
+            for c2 in range(c1+1, n_cities):
+                city1 = cities[c1]
+                city2 = cities[c2]
+                if (city1, city2) not in flight_set:
+                    s.add(Not(And(in_city[d][c1], in_city[d][c2])))
+    
+    total_days = [0] * n_cities
+    for c in range(n_cities):
+        total = 0
+        for d in range(n_days):
+            total += If(in_city[d][c], 1, 0)
+        if cities[c] == 'Split':
+            s.add(total == 2)
+        elif cities[c] == 'Helsinki':
+            s.add(total == 2)
+        elif cities[c] == 'Reykjavik':
+            s.add(total == 3)
+        elif cities[c] == 'Vilnius':
+            s.add(total == 3)
+        elif cities[c] == 'Geneva':
+            s.add(total == 6)
+    
+    reyk_index = cities.index('Reykjavik')
+    s.add(in_city[9][reyk_index])
+    s.add(in_city[10][reyk_index])
+    s.add(in_city[11][reyk_index])
+    
+    vilnius_index = cities.index('Vilnius')
+    s.add(Or(in_city[6][vilnius_index], in_city[7][vilnius_index], in_city[8][vilnius_index]))
+    
+    for d in range(n_days - 1):
+        for a in range(n_cities):
+            for b in range(n_cities):
+                if a != b:
+                    s.add(Implies(And(in_city[d][a], in_city[d+1][b]), 
+                                Or(in_city[d][b], in_city[d+1][a])))
+    
+    if s.check() == sat:
+        model = s.model()
+        itinerary_list = []
+        for d in range(n_days):
+            current_cities = []
+            for c in range(n_cities):
+                if is_true(model.eval(in_city[d][c])):
+                    current_cities.append(cities[c])
+            day_entry = {"day": d+1, "place": ", ".join(current_cities)}
+            itinerary_list.append(day_entry)
+        
+        result = {"itinerary": itinerary_list}
+        print(json.dumps(result, indent=2))
+    else:
+        print("No solution found")
+
+if __name__ == "__main__":
+    main()

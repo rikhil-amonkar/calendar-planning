@@ -1,49 +1,51 @@
-from z3 import *
+import z3
+import json
 
 def main():
-    # Convert Barbara's availability to minutes since 9:00 AM
-    available_start = 4 * 60 + 15  # 1:15 PM is 4 hours 15 minutes after 9:00 AM -> 255 minutes
-    available_end = 9 * 60 + 15    # 6:15 PM is 9 hours 15 minutes after 9:00 AM -> 555 minutes
+    # Convert time strings to minutes since midnight
+    start_at_russian_hill = 9 * 60  # 9:00 AM in minutes (540)
+    barbara_available_start = 13 * 60 + 15  # 13:15 (795)
+    barbara_available_end = 18 * 60 + 15    # 18:15 (1095)
+    travel_to_richmond = 14  # minutes
 
-    # Define the start time variable (in minutes from 9:00 AM)
-    start = Int('start')
-    
-    # Create solver with objective to minimize start time
-    opt = Optimize()
-    opt.add(start >= available_start)
-    opt.add(start + 45 <= available_end)
-    opt.minimize(start)
-    
-    if opt.check() == sat:
-        model = opt.model()
-        start_minutes = model[start].as_long()
-        
-        # Convert start_minutes to HH:MM format
-        total_minutes = start_minutes
-        hours = 9 + total_minutes // 60
-        minutes = total_minutes % 60
-        start_time = f"{hours:02d}:{minutes:02d}"
-        
-        # Calculate end time
-        end_minutes = start_minutes + 45
-        end_hours = 9 + end_minutes // 60
-        end_minutes_remainder = end_minutes % 60
-        end_time = f"{end_hours:02d}:{end_minutes_remainder:02d}"
-        
-        # Create itinerary
+    # Create Z3 variables
+    s = z3.Optimize()
+    start = z3.Int('start')
+    end = z3.Int('end')
+    departure = z3.Int('departure')  # when we leave Russian Hill
+
+    # Constraints
+    s.add(departure >= start_at_russian_hill)
+    s.add(departure + travel_to_richmond <= start)
+    s.add(start >= barbara_available_start)
+    s.add(end <= barbara_available_end)
+    s.add(end == start + 45)  # exactly 45 minutes meeting
+
+    # Minimize the start time to meet as early as possible
+    s.minimize(start)
+
+    if s.check() == z3.sat:
+        m = s.model()
+        start_val = m[start].as_long()
+        end_val = m[end].as_long()
+
+        # Format the times to HH:MM
+        def format_time(minutes):
+            hours = minutes // 60
+            mins = minutes % 60
+            return f"{hours:02d}:{mins:02d}"
+
+        start_str = format_time(start_val)
+        end_str = format_time(end_val)
+
         itinerary = [
-            {
-                "action": "meet",
-                "person": "Barbara",
-                "start_time": start_time,
-                "end_time": end_time
-            }
+            {"action": "meet", "person": "Barbara", "start_time": start_str, "end_time": end_str}
         ]
-        
-        # Output as JSON-formatted dictionary
-        print({"itinerary": itinerary})
+        result = {"itinerary": itinerary}
+        # Output as JSON string
+        print(json.dumps(result))
     else:
-        print({"itinerary": []})
+        print('{"itinerary": []}')  # no solution found
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

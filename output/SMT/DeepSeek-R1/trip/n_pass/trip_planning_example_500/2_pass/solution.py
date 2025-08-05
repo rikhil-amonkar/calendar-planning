@@ -1,113 +1,97 @@
 from z3 import *
+import json
 
 def main():
-    # Define the City enumeration
-    City, cities = EnumSort('City', ['Hamburg', 'Munich', 'Manchester', 'Lyon', 'Split'])
-    Hamburg, Munich, Manchester, Lyon, Split = cities
-
-    # Create a mapping for city names for output
-    city_names = {
-        Hamburg: "Hamburg",
-        Munich: "Munich",
-        Manchester: "Manchester",
-        Lyon: "Lyon",
-        Split: "Split"
-    }
-
-    # Define the directed flights set
-    directed_flights = set()
-
-    # Define undirected edges as string pairs
-    undirected_edges = [
-        ('Split', 'Munich'),
-        ('Munich', 'Manchester'),
-        ('Hamburg', 'Manchester'),
-        ('Hamburg', 'Munich'),
-        ('Split', 'Lyon'),
-        ('Lyon', 'Munich'),
-        ('Hamburg', 'Split')
-    ]
+    City = Datatype('City')
+    City.declare('Hamburg')
+    City.declare('Munich')
+    City.declare('Manchester')
+    City.declare('Lyon')
+    City.declare('Split')
+    City = City.create()
     
-    # Map string names to Z3 constants
-    str_to_city = {
-        'Hamburg': Hamburg,
-        'Munich': Munich,
-        'Manchester': Manchester,
-        'Lyon': Lyon,
-        'Split': Split
+    city_map_str = {
+        "Hamburg": City.Hamburg,
+        "Munich": City.Munich,
+        "Manchester": City.Manchester,
+        "Lyon": City.Lyon,
+        "Split": City.Split
     }
-
-    # Add bidirectional edges for undirected flights
-    for a, b in undirected_edges:
-        c1 = str_to_city[a]
-        c2 = str_to_city[b]
-        directed_flights.add((c1, c2))
-        directed_flights.add((c2, c1))
     
-    # Add directed flight from Manchester to Split
-    directed_flights.add((Manchester, Split))
-
-    # Create start and end variables for 20 days (index 0 to 19 for days 1 to 20)
-    start = [Const('start_%d' % i, City) for i in range(1, 21)]
-    end = [Const('end_%d' % i, City) for i in range(1, 21)]
-
+    P = [Const(f'P{i}', City) for i in range(0, 21)]
+    
     s = Solver()
-
-    # Constraint 1: Chain constraint (end of day i must equal start of day i+1)
-    for i in range(0, 19):
-        s.add(end[i] == start[i+1])
-
-    # Constraint 2: Flight constraints
-    for i in range(0, 20):
-        # If a flight is taken on day i, the flight must be in the directed_flights set
-        flight_taken = (start[i] != end[i])
-        valid_flight = Or([And(start[i] == c1, end[i] == c2) for (c1, c2) in directed_flights])
-        s.add(If(flight_taken, valid_flight, True))
-
-    # Constraint 3: Specific day constraints
-    # Must be in Lyon at the end of day 13 (index 12) for the show
-    s.add(end[12] == Lyon)
-    # Must be in Manchester at the end of day 19 (index 18) for relatives
-    s.add(end[18] == Manchester)
-
-    # Constraint 4: Total days per city
-    required_days = {
-        Hamburg: 7,
-        Munich: 6,
-        Manchester: 2,
-        Lyon: 2,
-        Split: 7
-    }
-
-    for city, days_req in required_days.items():
-        total = 0
-        for i in range(0, 20):
-            # Count day if: start[i] is the city OR (end[i] is the city and start[i] is not the city)
-            cond = Or(start[i] == city, And(end[i] == city, start[i] != city))
-            total += If(cond, 1, 0)
-        s.add(total == days_req)
-
-    # Solve the problem
+    
+    directed_flights = set()
+    bidirectional_edges = [
+        ("Split", "Munich"),
+        ("Munich", "Manchester"),
+        ("Hamburg", "Manchester"),
+        ("Hamburg", "Munich"),
+        ("Split", "Lyon"),
+        ("Lyon", "Munich"),
+        ("Hamburg", "Split")
+    ]
+    unidirectional_edges = [("Manchester", "Split")]
+    
+    for u, v in bidirectional_edges:
+        u_const = city_map_str[u]
+        v_const = city_map_str[v]
+        directed_flights.add((u_const, v_const))
+        directed_flights.add((v_const, u_const))
+    
+    for u, v in unidirectional_edges:
+        u_const = city_map_str[u]
+        v_const = city_map_str[v]
+        directed_flights.add((u_const, v_const))
+    
+    for i in range(1, 21):
+        prev = P[i-1]
+        curr = P[i]
+        s.add(If(prev != curr, Or([And(prev == u, curr == v) for (u, v) in directed_flights]), True))
+    
+    def days_in_city(c):
+        return Sum([If(Or(P[i-1] == c, P[i] == c), 1, 0) for i in range(1, 21)])
+    
+    s.add(days_in_city(City.Hamburg) == 7)
+    s.add(days_in_city(City.Munich) == 6)
+    s.add(days_in_city(City.Manchester) == 2)
+    s.add(days_in_city(City.Lyon) == 2)
+    s.add(days_in_city(City.Split) == 7)
+    
+    s.add(P[13] == City.Lyon)
+    s.add(P[19] == City.Manchester)
+    s.add(P[20] == City.Manchester)
+    
+    for i in range(1, 13):
+        s.add(And(P[i-1] != City.Lyon, P[i] != City.Lyon))
+    for i in range(15, 21):
+        s.add(And(P[i-1] != City.Lyon, P[i] != City.Lyon))
+    
+    for i in range(1, 19):
+        s.add(And(P[i-1] != City.Manchester, P[i] != City.Manchester))
+    
+    s.add(P[0] != City.Lyon)
+    s.add(P[0] != City.Manchester)
+    
     if s.check() == sat:
         model = s.model()
+        rev_map = {
+            City.Hamburg: "Hamburg",
+            City.Munich: "Munich",
+            City.Manchester: "Manchester",
+            City.Lyon: "Lyon",
+            City.Split: "Split"
+        }
         itinerary = []
-        for i in range(0, 20):
-            day = i + 1
-            s_val = model.eval(start[i])
-            e_val = model.eval(end[i])
-            s_name = city_names[s_val]
-            e_name = city_names[e_val]
-            if s_name == e_name:
-                cities_of_day = [s_name]
-            else:
-                cities_of_day = [s_name, e_name]
-            itinerary.append({"day": day, "city": cities_of_day})
+        for day in range(1, 21):
+            city_val = model[P[day]]
+            city_name = rev_map[city_val]
+            itinerary.append({"day": day, "place": city_name})
         
-        # Output the itinerary in JSON format
-        import json
-        print(json.dumps({"itinerary": itinerary}, indent=2))
+        print(json.dumps({"itinerary": itinerary}))
     else:
         print("No solution found")
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

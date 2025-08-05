@@ -2,96 +2,122 @@ from z3 import *
 import json
 
 def main():
-    cities = ["Naples", "Valencia", "Stuttgart", "Split", "Venice", "Amsterdam", "Nice", "Barcelona", "Porto"]
-    city_index = {city: idx for idx, city in enumerate(cities)}
-    stays = [3, 5, 2, 5, 5, 4, 2, 2, 4]
+    cities = ['Naples', 'Valencia', 'Stuttgart', 'Split', 'Venice', 'Amsterdam', 'Nice', 'Barcelona', 'Porto']
+    required_days = {
+        'Naples': 3,
+        'Valencia': 5,
+        'Stuttgart': 2,
+        'Split': 5,
+        'Venice': 5,
+        'Amsterdam': 4,
+        'Nice': 2,
+        'Barcelona': 2,
+        'Porto': 4
+    }
+    city_to_index = {city: idx for idx, city in enumerate(cities)}
     
-    flight_str = "Venice and Nice, Naples and Amsterdam, Barcelona and Nice, Amsterdam and Nice, Stuttgart and Valencia, Stuttgart and Porto, Split and Stuttgart, Split and Naples, Valencia and Amsterdam, Barcelona and Porto, Valencia and Naples, Venice and Amsterdam, Barcelona and Naples, Barcelona and Valencia, Split and Amsterdam, Barcelona and Venice, Stuttgart and Amsterdam, Naples and Nice, Venice and Stuttgart, Split and Barcelona, Porto and Nice, Barcelona and Stuttgart, Venice and Naples, Porto and Amsterdam, Porto and Valencia, Stuttgart and Naples, Barcelona and Amsterdam"
-    flight_pairs = []
-    parts = flight_str.split(',')
-    for part in parts:
-        part = part.strip()
-        if part:
-            two_cities = part.split(' and ')
-            if len(two_cities) == 2:
-                city1 = two_cities[0].strip()
-                city2 = two_cities[1].strip()
-                flight_pairs.append((city1, city2))
+    flights_str = [
+        "Venice and Nice",
+        "Naples and Amsterdam",
+        "Barcelona and Nice",
+        "Amsterdam and Nice",
+        "Stuttgart and Valencia",
+        "Stuttgart and Porto",
+        "Split and Stuttgart",
+        "Split and Naples",
+        "Valencia and Amsterdam",
+        "Barcelona and Porto",
+        "Valencia and Naples",
+        "Venice and Amsterdam",
+        "Barcelona and Naples",
+        "Barcelona and Valencia",
+        "Split and Amsterdam",
+        "Barcelona and Venice",
+        "Stuttgart and Amsterdam",
+        "Naples and Nice",
+        "Venice and Stuttgart",
+        "Split and Barcelona",
+        "Porto and Nice",
+        "Barcelona and Stuttgart",
+        "Venice and Naples",
+        "Porto and Amsterdam",
+        "Porto and Valencia",
+        "Stuttgart and Naples",
+        "Barcelona and Amsterdam"
+    ]
     
-    allowed_adjacent = set()
-    for (c1, c2) in flight_pairs:
-        idx1 = city_index[c1]
-        idx2 = city_index[c2]
-        allowed_adjacent.add((idx1, idx2))
-        allowed_adjacent.add((idx2, idx1))
+    flight_edges_set = set()
+    for flight in flights_str:
+        parts = flight.split(' and ')
+        city1 = parts[0].strip()
+        city2 = parts[1].strip()
+        if city1 == "Venice" and city2 == "Naples":
+            city1 = "Venice"
+            city2 = "Naples"
+        idx1 = city_to_index[city1]
+        idx2 = city_to_index[city2]
+        flight_edges_set.add((min(idx1, idx2), max(idx1, idx2)))
     
-    seg_city = [Int(f'seg_city_{i}') for i in range(9)]
-    s = [Int(f's_{i}') for i in range(9)]
-    e = [Int(f'e_{i}') for i in range(9)]
+    s = Solver()
     
-    solver = Solver()
+    order = [Int(f'order_{i}') for i in range(9)]
+    start = [Int(f'start_{i}') for i in range(9)]
+    end = [Int(f'end_{i}') for i in range(9)]
     
+    s.add(Distinct(order))
     for i in range(9):
-        solver.add(seg_city[i] >= 0, seg_city[i] <= 8)
-    solver.add(Distinct(seg_city))
+        s.add(start[i] >= 1)
+        s.add(start[i] <= 24)
+        s.add(end[i] >= 1)
+        s.add(end[i] <= 24)
+        s.add(end[i] == start[i] + required_days[cities[i]] - 1)
     
-    solver.add(s[0] == 1)
-    solver.add(e[8] == 24)
+    s.add(start[order[0]] == 1)
+    s.add(end[order[8]] == 24)
     
-    for i in range(8):
-        solver.add(e[i] == s[i+1])
+    for k in range(8):
+        s.add(end[order[k]] == start[order[k+1]])
+    
+    for k in range(8):
+        a = order[k]
+        b = order[k+1]
+        cond = False
+        for edge in flight_edges_set:
+            i, j = edge
+            cond = Or(cond, Or(And(a == i, b == j), And(a == j, b == i)))
+        s.add(cond)
+    
+    naples_idx = city_to_index['Naples']
+    s.add(start[naples_idx] <= 20)
+    s.add(end[naples_idx] >= 18)
+    
+    venice_idx = city_to_index['Venice']
+    s.add(start[venice_idx] <= 10)
+    s.add(end[venice_idx] >= 6)
+    
+    barcelona_idx = city_to_index['Barcelona']
+    s.add(start[barcelona_idx] <= 6)
+    s.add(end[barcelona_idx] >= 5)
+    
+    nice_idx = city_to_index['Nice']
+    s.add(start[nice_idx] <= 24)
+    s.add(end[nice_idx] >= 23)
+    
+    if s.check() == sat:
+        m = s.model()
+        start_val = [m.evaluate(start[i]).as_long() for i in range(9)]
+        end_val = [m.evaluate(end[i]).as_long() for i in range(9)]
         
-    for i in range(9):
-        stay_i = Int(f'stay_{i}')
-        or_conditions = []
-        for idx in range(9):
-            or_conditions.append(And(seg_city[i] == idx, stay_i == stays[idx]))
-        solver.add(Or(or_conditions))
-        solver.add(e[i] == s[i] + (stay_i - 1))
+        itinerary_list = []
+        for d in range(1, 25):
+            for i in range(9):
+                if start_val[i] <= d <= end_val[i]:
+                    itinerary_list.append({"day": d, "place": cities[i]})
         
-    for i in range(8):
-        or_conditions = []
-        for (a, b) in allowed_adjacent:
-            or_conditions.append(And(seg_city[i] == a, seg_city[i+1] == b))
-        solver.add(Or(or_conditions))
-        
-    naples_constraint = []
-    for i in range(9):
-        naples_constraint.append(And(seg_city[i] == city_index["Naples"], s[i] <= 20, e[i] >= 18))
-    solver.add(Or(naples_constraint))
-    
-    venice_constraint = []
-    for i in range(9):
-        venice_constraint.append(And(seg_city[i] == city_index["Venice"], s[i] <= 10, e[i] >= 6))
-    solver.add(Or(venice_constraint))
-    
-    nice_constraint = []
-    for i in range(9):
-        nice_constraint.append(And(seg_city[i] == city_index["Nice"], s[i] <= 24, e[i] >= 23))
-    solver.add(Or(nice_constraint))
-    
-    barcelona_constraint = []
-    for i in range(9):
-        barcelona_constraint.append(And(seg_city[i] == city_index["Barcelona"], s[i] <= 6, e[i] >= 5))
-    solver.add(Or(barcelona_constraint))
-    
-    if solver.check() == sat:
-        model = solver.model()
-        seg_city_val = [model.evaluate(seg_city[i]).as_long() for i in range(9)]
-        s_val = [model.evaluate(s[i]).as_long() for i in range(9)]
-        e_val = [model.evaluate(e[i]).as_long() for i in range(9)]
-        city_names_val = [cities[idx] for idx in seg_city_val]
-        
-        itinerary = []
-        for day in range(1, 25):
-            for seg in range(9):
-                if s_val[seg] <= day <= e_val[seg]:
-                    itinerary.append({"day": day, "place": city_names_val[seg]})
-                    
-        result = {"itinerary": itinerary}
-        print(json.dumps(result, indent=2))
+        result = {'itinerary': itinerary_list}
+        print(json.dumps(result))
     else:
         print("No solution found")
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

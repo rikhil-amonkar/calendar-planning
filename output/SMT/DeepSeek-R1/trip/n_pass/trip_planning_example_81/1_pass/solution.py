@@ -1,88 +1,71 @@
-from z3 import *
-import json
+import z3
 
 def main():
-    # Cities mapping: 0=Mykonos, 1=Budapest, 2=Hamburg
-    cities = [0, 1, 2]
-    city_names = {0: 'Mykonos', 1: 'Budapest', 2: 'Hamburg'}
+    # Create solver
+    s = z3.Solver()
     
-    # Create Z3 variables for start_city for each day (days 1 to 9)
-    start_city = [Int('start_city_%d' % d) for d in range(1, 10)]
+    # Create 10 variables: city0 to city9
+    city = [z3.Int('city%d' % i) for i in range(10)]
     
-    s = Solver()
+    # Each city variable must be 0 (Mykonos), 1 (Budapest), or 2 (Hamburg)
+    for i in range(10):
+        s.add(z3.Or(city[i] == 0, city[i] == 1, city[i] == 2))
     
-    # Each day's start city must be one of the three cities
-    for i in range(9):
-        s.add(Or([start_city[i] == c for c in cities]))
+    # Flight constraints for transitions from day i-1 to day i (for i in 1..9)
+    allowed_pairs = [
+        (0, 1), (1, 0),  # Mykonos <-> Budapest
+        (1, 2), (2, 1)   # Budapest <-> Hamburg
+    ]
+    for i in range(1, 10):
+        prev = city[i-1]
+        curr = city[i]
+        # If moving to a different city, ensure direct flight exists
+        s.add(z3.Implies(prev != curr, z3.Or(
+            z3.And(prev == a, curr == b) for (a, b) in allowed_pairs
+        )))
     
-    # Flight constraints: if moving between cities, ensure a direct flight exists
-    for i in range(8):  # from day1 to day8
-        s.add(
-            If(
-                start_city[i] != start_city[i+1],
-                Or(
-                    And(start_city[i] == 0, start_city[i+1] == 1),
-                    And(start_city[i] == 1, start_city[i+1] == 0),
-                    And(start_city[i] == 1, start_city[i+1] == 2),
-                    And(start_city[i] == 2, start_city[i+1] == 1)
-                ),
-                True  # if staying, no constraint
-            )
-        )
+    # Conference constraints: must be in Mykonos on day 4 and day 9
+    s.add(z3.Or(city[3] == 0, city[4] == 0))  # For day 4
+    s.add(z3.Or(city[8] == 0, city[9] == 0))  # For day 9
     
-    # Constraints for day4: must be in Mykonos
-    s.add(Or(
-        start_city[3] == 0,  # start in Mykonos on day4
-        And(start_city[3] != start_city[4], start_city[4] == 0)  # or fly to Mykonos on day4
-    ))
+    # Total days per city: Mykonos (0) = 6, Budapest (1) = 3, Hamburg (2) = 2
+    total_myk = 0
+    total_bud = 0
+    total_ham = 0
     
-    # Constraint for day9: must start in Mykonos
-    s.add(start_city[8] == 0)
-    
-    # Helper function to define presence in a city on a given day
-    def in_city(day_index, city):
-        if day_index < 8:  # days 1 to 8
-            return Or(
-                start_city[day_index] == city,
-                And(start_city[day_index] != start_city[day_index+1], start_city[day_index+1] == city)
-            )
-        else:  # day9
-            return start_city[day_index] == city
-    
-    # Total days in Mykonos must be 6
-    total_mykonos = Sum([If(in_city(i, 0), 1, 0) for i in range(9)])
-    s.add(total_mykonos == 6)
-    
-    # Total days in Budapest must be 3
-    total_budapest = Sum([If(in_city(i, 1), 1, 0) for i in range(9)])
-    s.add(total_budapest == 3)
-    
-    # Total days in Hamburg must be 2
-    total_hamburg = Sum([If(in_city(i, 2), 1, 0) for i in range(9)])
-    s.add(total_hamburg == 2)
-    
-    # Solve the constraints
-    if s.check() == sat:
-        m = s.model()
-        start_vals = [m.evaluate(start_city[i]).as_long() for i in range(9)]
+    for i in range(1, 10):  # Days 1 to 9
+        # Count start of day (city[i-1])
+        start_myk = z3.If(city[i-1] == 0, 1, 0)
+        start_bud = z3.If(city[i-1] == 1, 1, 0)
+        start_ham = z3.If(city[i-1] == 2, 1, 0)
         
-        itinerary_list = []
+        # Count flight arrival (if flight and end city is the target)
+        flight_myk = z3.If(z3.And(city[i-1] != city[i], city[i] == 0), 1, 0)
+        flight_bud = z3.If(z3.And(city[i-1] != city[i], city[i] == 1), 1, 0)
+        flight_ham = z3.If(z3.And(city[i-1] != city[i], city[i] == 2), 1, 0)
+        
+        total_myk += (start_myk + flight_myk)
+        total_bud += (start_bud + flight_bud)
+        total_ham += (start_ham + flight_ham)
+    
+    s.add(total_myk == 6)
+    s.add(total_bud == 3)
+    s.add(total_ham == 2)
+    
+    # Check if a solution exists
+    if s.check() == z3.sat:
+        model = s.model()
+        # Map to city names
+        city_names = {0: "Mykonos", 1: "Budapest", 2: "Hamburg"}
+        itinerary = []
+        # For days 1 to 9, use end of day: city[1] to city[9]
         for day in range(1, 10):
-            idx = day - 1
-            if day < 9:
-                if start_vals[idx] != start_vals[idx+1]:
-                    cities_on_day = sorted({start_vals[idx], start_vals[idx+1]})
-                else:
-                    cities_on_day = [start_vals[idx]]
-            else:
-                cities_on_day = [start_vals[idx]]
-            
-            city_names_list = [city_names[c] for c in cities_on_day]
-            city_names_list_sorted = sorted(city_names_list)  # Sort alphabetically for consistency
-            itinerary_list.append({"day": day, "place": city_names_list_sorted})
+            city_index = model[city[day]].as_long()
+            itinerary.append({"day": day, "place": city_names[city_index]})
         
-        result = {'itinerary': itinerary_list}
-        print(json.dumps(result))
+        # Output as JSON-like dictionary
+        result = {'itinerary': itinerary}
+        print(result)
     else:
         print("No solution found")
 

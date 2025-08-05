@@ -2,54 +2,93 @@ from z3 import *
 import json
 
 def main():
-    # Directed flight connections
-    flights_set = [
-        (0, 4), (4, 0),   # Helsinki <-> Reykjavik
-        (5, 1), (1, 5),   # Budapest <-> Warsaw
-        (2, 3), (3, 2),   # Madrid <-> Split
-        (0, 3), (3, 0),   # Helsinki <-> Split
-        (0, 2), (2, 0),   # Helsinki <-> Madrid
-        (0, 5), (5, 0),   # Helsinki <-> Budapest
-        (4, 1), (1, 4),   # Reykjavik <-> Warsaw
-        (0, 1), (1, 0),   # Helsinki <-> Warsaw
-        (2, 5), (5, 2),   # Madrid <-> Budapest
-        (5, 4), (4, 5),   # Budapest <-> Reykjavik
-        (2, 1), (1, 2),   # Madrid <-> Warsaw
-        (1, 3), (3, 1),   # Warsaw <-> Split
-        (4, 2)            # Reykjavik -> Madrid
-    ]
-    
+    # Create solver and variables
+    c0, c1, c2, c3, c4, c5 = Ints('c0 c1 c2 c3 c4 c5')
     s = Solver()
     
-    # Define variables for the stays (city indices)
-    stay1 = Int('stay1')
-    stay2 = Int('stay2')
-    stay5 = Int('stay5')
+    # Each city variable must be between 0 and 5
+    s.add(c0 >= 0, c0 <= 5)
+    s.add(c1 >= 0, c1 <= 5)
+    s.add(c2 >= 0, c2 <= 5)
+    s.add(c3 >= 0, c3 <= 5)
+    s.add(c4 >= 0, c4 <= 5)
+    s.add(c5 >= 0, c5 <= 5)
     
-    # Possible cities for the stays: Madrid (2), Split (3), Budapest (5)
-    s.add(Or(stay1 == 2, stay1 == 3, stay1 == 5))
-    s.add(Or(stay2 == 2, stay2 == 3, stay2 == 5))
-    s.add(Or(stay5 == 2, stay5 == 3, stay5 == 5))
-    s.add(Distinct(stay1, stay2, stay5))
+    # All cities must be distinct
+    s.add(Distinct(c0, c1, c2, c3, c4, c5))
     
-    # Function to check flight existence
-    def flight_exists(a, b):
-        return Or([And(a == x, b == y) for (x, y) in flights_set])
+    # Function to get days for a city
+    def day_val(city):
+        return If(city == 0, 2,
+                If(city == 1, 3,
+                 If(city == 2, 4,
+                  If(city == 3, 4,
+                   If(city == 4, 2,
+                    4)))))  # city 5 (Budapest) has 4 days
     
-    # Flight constraints
-    s.add(flight_exists(0, stay1))           # Helsinki to stay1
-    s.add(flight_exists(stay1, stay2))        # stay1 to stay2
-    s.add(flight_exists(stay2, 4))            # stay2 to Reykjavik
-    s.add(flight_exists(1, stay5))            # Warsaw to stay5
+    d0 = day_val(c0)
+    d1 = day_val(c1)
+    d2 = day_val(c2)
+    d3 = day_val(c3)
+    d4 = day_val(c4)
+    d5 = day_val(c5)
     
+    # Start days for each position in the itinerary
+    s0 = 1
+    s1 = s0 + d0 - 1
+    s2 = s1 + d1 - 1
+    s3 = s2 + d2 - 1
+    s4 = s3 + d3 - 1
+    s5 = s4 + d4 - 1
+    
+    # Final day constraint: last city ends on day 14
+    s.add(s5 + d5 == 15)
+    
+    # Event constraints for each city based on position
+    cities = [c0, c1, c2, c3, c4, c5]
+    s_days = [s0, s1, s2, s3, s4, s5]
+    for i in range(6):
+        city = cities[i]
+        s_day = s_days[i]
+        # Helsinki must start on or before day 2
+        s.add(If(city == 0, s_day <= 2, True))
+        # Warsaw must start between days 7 and 11
+        s.add(If(city == 1, And(s_day >= 7, s_day <= 11), True))
+        # Reykjavik must start between days 7 and 9
+        s.add(If(city == 4, And(s_day >= 7, s_day <= 9), True))
+    
+    # Flight constraints: allowed direct flights
+    allowed_pairs = []
+    undirected_edges = [
+        (0,4), (5,1), (2,3), (0,3), (0,2), (0,5), (0,1),
+        (4,1), (4,5), (5,2), (1,2), (1,3)
+    ]
+    for a, b in undirected_edges:
+        allowed_pairs.append((a, b))
+        allowed_pairs.append((b, a))
+    allowed_pairs.append((4, 2))  # Directed flight: Reykjavik to Madrid
+    
+    # Apply flight constraints for consecutive cities
+    consecutive_pairs = [(c0, c1), (c1, c2), (c2, c3), (c3, c4), (c4, c5)]
+    for pair in consecutive_pairs:
+        a, b = pair
+        constraints = []
+        for (x, y) in allowed_pairs:
+            constraints.append(And(a == x, b == y))
+        s.add(Or(constraints))
+    
+    # Solve the constraints
     if s.check() == sat:
         m = s.model()
-        st1 = m[stay1].as_long()
-        st2 = m[stay2].as_long()
-        st5 = m[stay5].as_long()
+        c0_val = m.eval(c0).as_long()
+        c1_val = m.eval(c1).as_long()
+        c2_val = m.eval(c2).as_long()
+        c3_val = m.eval(c3).as_long()
+        c4_val = m.eval(c4).as_long()
+        c5_val = m.eval(c5).as_long()
         
-        # Map indices to city names
-        city_map = {
+        # Map city indices to names
+        city_names = {
             0: "Helsinki",
             1: "Warsaw",
             2: "Madrid",
@@ -57,28 +96,38 @@ def main():
             4: "Reykjavik",
             5: "Budapest"
         }
+        perm = [c0_val, c1_val, c2_val, c3_val, c4_val, c5_val]
+        days_arr = [2, 3, 4, 4, 2, 4]
+        d_vals = [days_arr[city] for city in perm]
         
-        # Construct itinerary
+        # Compute start days for each city
+        s_vals = [1]
+        for i in range(5):
+            next_s = s_vals[-1] + d_vals[i] - 1
+            s_vals.append(next_s)
+        
+        # Build itinerary
         itinerary = []
-        itinerary.append([city_map[0]])                      # Day 1
-        itinerary.append([city_map[0], city_map[st1]])       # Day 2
-        itinerary.append([city_map[st1]])                    # Day 3
-        itinerary.append([city_map[st1]])                    # Day 4
-        itinerary.append([city_map[st1], city_map[st2]])     # Day 5
-        itinerary.append([city_map[st2]])                    # Day 6
-        itinerary.append([city_map[st2]])                    # Day 7
-        itinerary.append([city_map[st2], city_map[4]])       # Day 8
-        itinerary.append([city_map[4], city_map[1]])         # Day 9
-        itinerary.append([city_map[1]])                      # Day 10
-        itinerary.append([city_map[1], city_map[st5]])       # Day 11
-        itinerary.append([city_map[st5]])                    # Day 12
-        itinerary.append([city_map[st5]])                    # Day 13
-        itinerary.append([city_map[st5]])                    # Day 14
+        for d in range(1, 15):
+            # Check each segment for occupancy
+            if d <= s_vals[1]:
+                itinerary.append({"day": d, "place": city_names[perm[0]]})
+            if s_vals[1] <= d <= s_vals[2]:
+                itinerary.append({"day": d, "place": city_names[perm[1]]})
+            if s_vals[2] <= d <= s_vals[3]:
+                itinerary.append({"day": d, "place": city_names[perm[2]]})
+            if s_vals[3] <= d <= s_vals[4]:
+                itinerary.append({"day": d, "place": city_names[perm[3]]})
+            if s_vals[4] <= d <= s_vals[5]:
+                itinerary.append({"day": d, "place": city_names[perm[4]]})
+            if d >= s_vals[5]:
+                itinerary.append({"day": d, "place": city_names[perm[5]]})
         
-        result = {'itinerary': itinerary}
+        # Output as JSON
+        result = {"itinerary": itinerary}
         print(json.dumps(result))
     else:
-        print(json.dumps({"error": "No solution found"}))
+        print("No solution found")
 
 if __name__ == "__main__":
     main()

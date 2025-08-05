@@ -1,79 +1,87 @@
-from z3 import *
+import z3
 import json
 
 def main():
-    # Define the City enum
-    City = Datatype('City')
-    City.declare('Split')
-    City.declare('Santorini')
-    City.declare('London')
-    City = City.create()
+    # Total days
+    n_days = 18
+    # Create variables for each day: c[0] is day1, c[17] is day18
+    c = [z3.Int('c_%d' % i) for i in range(n_days)]
+    solver = z3.Solver()
     
-    # Create arrays for start and end cities for each day (days 1 to 18)
-    days = range(1, 19)
-    start = [Const(f'start_{d}', City) for d in days]
-    end = [Const(f'end_{d}', City) for d in days]
+    # City constants
+    Split = 0
+    Santorini = 1
+    London = 2
+    city_names = {Split: 'Split', Santorini: 'Santorini', London: 'London'}
     
-    s = Solver()
+    # Each day must be one of the three cities
+    for i in range(n_days):
+        solver.add(z3.Or(c[i] == Split, c[i] == Santorini, c[i] == London))
     
-    # Define allowed direct flights
-    direct_flights = [
-        (City.Split, City.London),
-        (City.London, City.Split),
-        (City.London, City.Santorini),
-        (City.Santorini, City.London)
-    ]
+    # Conference constraints: must be in Santorini on day12 (index11) and day18 (index17)
+    solver.add(c[11] == Santorini)
+    solver.add(c[17] == Santorini)
     
-    # Flight constraints: if start != end, the pair must be in direct_flights
-    for d in range(18):
-        flight_condition = Or([And(start[d] == c1, end[d] == c2) for c1, c2 in direct_flights])
-        s.add(If(start[d] != end[d], flight_condition, True))
+    # Santorini block: days 12 to 18 (indices 11 to 17)
+    for i in range(11, n_days):
+        solver.add(c[i] == Santorini)
     
-    # Continuity between days: end of day d is start of day d+1
-    for i in range(17):
-        s.add(end[i] == start[i+1])
+    # No Santorini before day12 (indices 0 to 10)
+    for i in range(0, 11):
+        solver.add(c[i] != Santorini)
     
-    # Conference constraints: days 12 and 18 must have Santorini at start or end
-    s.add(Or(start[11] == City.Santorini, end[11] == City.Santorini))  # day 12
-    s.add(Or(start[17] == City.Santorini, end[17] == City.Santorini))  # day 18
+    # Start in Split
+    solver.add(c[0] == Split)
     
-    # Additional constraints to guide the solver
-    s.add(start[0] == City.Split)          # Start in Split on day 1
-    s.add(end[17] == City.Santorini)        # End in Santorini on day 18
+    # Flight constraints: only direct flights between Split-London and London-Santorini
+    for i in range(1, n_days):
+        # If the city changes from day i-1 to day i, ensure it's a direct flight
+        solver.add(z3.Implies(
+            c[i-1] != c[i],
+            z3.Or(
+                z3.And(c[i-1] == Split, c[i] == London),
+                z3.And(c[i-1] == London, c[i] == Split),
+                z3.And(c[i-1] == London, c[i] == Santorini),
+                z3.And(c[i-1] == Santorini, c[i] == London)
+            )
+        ))
     
-    # Count days in each city (a day counts if start or end is in the city)
-    inSplit = [Or(start[i] == City.Split, end[i] == City.Split) for i in range(18)]
-    inSantorini = [Or(start[i] == City.Santorini, end[i] == City.Santorini) for i in range(18)]
-    inLondon = [Or(start[i] == City.London, end[i] == City.London) for i in range(18)]
+    # Count end days for each city
+    count_end = [0] * 3
+    for city in [Split, Santorini, London]:
+        count_end[city] = z3.Sum([z3.If(c[i] == city, 1, 0) for i in range(n_days)])
     
-    s.add(Sum([If(cond, 1, 0) for cond in inSplit]) == 6)
-    s.add(Sum([If(cond, 1, 0) for cond in inSantorini]) == 7)
-    s.add(Sum([If(cond, 1, 0) for cond in inLondon]) == 7)
+    # Count leave events for each city: when a city is left (i.e., current city is A, next is not A)
+    count_leave = [0] * 3
+    for city in [Split, Santorini, London]:
+        # For each day from 1 to 17 (index1 to index17), check if leaving the city
+        count_leave[city] = z3.Sum([z3.If(z3.And(c[i-1] == city, c[i] != city), 1, 0) for i in range(1, n_days)])
     
-    # Exactly 2 flight days (days where start != end)
-    flight_days = [If(start[i] != end[i], 1, 0) for i in range(18)]
-    s.add(Sum(flight_days) == 2)
+    # Total days in each city = end days + leave events (since flight days count for both)
+    total_Split = count_end[Split] + count_leave[Split]
+    total_Santorini = count_end[Santorini] + count_leave[Santorini]
+    total_London = count_end[London] + count_leave[London]
     
-    # Solve the problem
-    if s.check() == sat:
-        m = s.model()
-        itinerary = []
-        # Map Z3 city values to strings
-        city_map = {
-            City.Split: "Split",
-            City.Santorini: "Santorini",
-            City.London: "London"
-        }
-        for i in range(18):
+    solver.add(total_Split == 6)
+    solver.add(total_Santorini == 7)
+    solver.add(total_London == 7)
+    
+    # We know we must be in London on day11 (index10) to fly to Santorini on day12
+    solver.add(c[10] == London)
+    
+    # Solve the constraints
+    if solver.check() == z3.sat:
+        model = solver.model()
+        itinerary_list = []
+        for i in range(n_days):
             day = i + 1
-            city_val = m.evaluate(end[i], model_completion=True)
-            place = city_map[city_val.as_long()]
-            itinerary.append({"day": day, "place": place})
-        
-        result = {"itinerary": itinerary}
+            city_val = model.evaluate(c[i]).as_long()
+            place = city_names[city_val]
+            itinerary_list.append({"day": day, "place": place})
+        result = {'itinerary': itinerary_list}
         print(json.dumps(result))
     else:
         print("No solution found")
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

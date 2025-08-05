@@ -1,91 +1,89 @@
-import z3
+from z3 import *
 import json
 
 def main():
-    solver = z3.Optimize()
+    s = Solver()
     
-    # Define variables (in minutes from midnight)
-    T = z3.Int('T')  # Departure time from Financial District
-    start_B = z3.Int('start_B')
-    end_B = z3.Int('end_B')
-    start_K = z3.Int('start_K')
-    end_K = z3.Int('end_K')
-    is_Barbara_first = z3.Bool('is_Barbara_first')
+    # Define variables
+    order = Bool('order')
+    B_start = Int('B_start')
+    B_end = Int('B_end')
+    K_start = Int('K_start')
+    K_end = Int('K_end')
     
-    # Constraints
-    solver.add(T >= 540)  # Must leave FD at or after 9:00 AM (540 minutes)
+    # Times in minutes since midnight
+    start = 540   # 9:00
+    k_start_avail = 720  # 12:00
+    k_end_avail = 900    # 15:00
+    b_start_avail = 495  # 8:15
+    b_end_avail = 1140   # 19:00
     
-    # Meeting durations
-    solver.add(end_B == start_B + 45)  # 45 minutes with Barbara
-    solver.add(end_K == start_K + 90)  # 90 minutes with Kenneth
+    # Travel times
+    FD_GGP = 23
+    FD_Chinatown = 5
+    GGP_Chinatown = 23
+    Chinatown_GGP = 23
     
-    # Availability constraints
-    solver.add(start_B >= 495)   # Barbara available from 8:15 AM (495 minutes)
-    solver.add(end_B <= 1140)    # Barbara available until 7:00 PM (1140 minutes)
-    solver.add(start_K >= 720)   # Kenneth available from 12:00 PM (720 minutes)
-    solver.add(end_K <= 900)     # Kenneth available until 3:00 PM (900 minutes)
+    # Common constraints for Barbara
+    s.add(B_start >= b_start_avail)
+    s.add(B_end <= b_end_avail)
+    s.add(B_end - B_start >= 45)
     
-    # Order and travel constraints
-    solver.add(z3.Or(
-        z3.And(is_Barbara_first, start_B >= T + 23, start_K >= end_B + 23),
-        z3.And(z3.Not(is_Barbara_first), start_K >= T + 5, start_B >= end_K + 23)
-    ))
+    # Common constraints for Kenneth
+    s.add(K_start >= k_start_avail)
+    s.add(K_end <= k_end_avail)
+    s.add(K_end - K_start >= 90)
+    s.add(K_start <= 810)  # Kenneth must start by 13:30 to have 90 minutes by 15:00
     
-    # Define the end time of the last meeting
-    last_end = z3.Int('last_end')
-    solver.add(last_end == z3.If(is_Barbara_first, end_K, end_B))
-    solver.minimize(last_end)
+    # Order constraints: Barbara first or Kenneth first
+    s.add(Implies(order, 
+                 And(
+                     B_start >= start + FD_GGP,          # Arrive at Barbara by 9:23
+                     K_start >= B_end + GGP_Chinatown    # Travel from Barbara to Kenneth takes 23 min
+                 )))
+    s.add(Implies(Not(order),
+                 And(
+                     K_start >= start + FD_Chinatown,    # Arrive at Kenneth by 9:05
+                     B_start >= K_end + Chinatown_GGP     # Travel from Kenneth to Barbara takes 23 min
+                 )))
     
-    # Solve the constraints
-    if solver.check() == z3.sat:
-        model = solver.model()
-        T_val = model[T].as_long()
-        start_B_val = model[start_B].as_long()
-        end_B_val = model[end_B].as_long()
-        start_K_val = model[start_K].as_long()
-        end_K_val = model[end_K].as_long()
-        is_Barbara_first_val = z3.is_true(model[is_Barbara_first])
+    if s.check() == sat:
+        m = s.model()
         
-        # Convert minutes to HH:MM format
-        def to_time_str(total_minutes):
-            hours = total_minutes // 60
-            minutes = total_minutes % 60
+        # Extract values
+        B_start_val = m[B_start].as_long()
+        B_end_val = m[B_end].as_long()
+        K_start_val = m[K_start].as_long()
+        K_end_val = m[K_end].as_long()
+        
+        # Helper function to convert minutes to HH:MM
+        def min_to_time(mins):
+            hours, minutes = divmod(mins, 60)
             return f"{hours:02d}:{minutes:02d}"
         
-        # Create itinerary in chronological order
-        itinerary = []
-        if is_Barbara_first_val:
-            itinerary.append({
-                "action": "meet",
-                "person": "Barbara",
-                "start_time": to_time_str(start_B_val),
-                "end_time": to_time_str(end_B_val)
-            })
-            itinerary.append({
-                "action": "meet",
-                "person": "Kenneth",
-                "start_time": to_time_str(start_K_val),
-                "end_time": to_time_str(end_K_val)
-            })
-        else:
-            itinerary.append({
-                "action": "meet",
-                "person": "Kenneth",
-                "start_time": to_time_str(start_K_val),
-                "end_time": to_time_str(end_K_val)
-            })
-            itinerary.append({
-                "action": "meet",
-                "person": "Barbara",
-                "start_time": to_time_str(start_B_val),
-                "end_time": to_time_str(end_B_val)
-            })
+        # Create meeting events
+        barbara_meeting = {
+            "action": "meet",
+            "person": "Barbara",
+            "start_time": min_to_time(B_start_val),
+            "end_time": min_to_time(B_end_val)
+        }
+        kenneth_meeting = {
+            "action": "meet",
+            "person": "Kenneth",
+            "start_time": min_to_time(K_start_val),
+            "end_time": min_to_time(K_end_val)
+        }
         
-        result = {"itinerary": itinerary}
-        print("SOLUTION:")
+        # Sort meetings by start time
+        itinerary = [barbara_meeting, kenneth_meeting]
+        sorted_itinerary = sorted(itinerary, key=lambda x: x['start_time'])
+        
+        # Output as JSON
+        result = {"itinerary": sorted_itinerary}
         print(json.dumps(result))
     else:
-        print("No solution found")
+        print('{"itinerary": []}')
 
 if __name__ == "__main__":
     main()

@@ -1,122 +1,126 @@
-import z3
+from z3 import *
 
-def main():
-    cities = ['Prague', 'Brussels', 'Riga', 'Munich', 'Seville', 'Stockholm', 'Istanbul', 'Amsterdam', 'Vienna', 'Split']
-    n_cities = len(cities)
-    city_to_int = {city: idx for idx, city in enumerate(cities)}
-    int_to_city = {idx: city for idx, city in enumerate(cities)}
-    
-    connections_str = "Riga and Stockholm, Stockholm and Brussels, Istanbul and Munich, Istanbul and Riga, Prague and Split, Vienna and Brussels, Vienna and Riga, Split and Stockholm, Munich and Amsterdam, Split and Amsterdam, Amsterdam and Stockholm, Amsterdam and Riga, Vienna and Stockholm, Vienna and Istanbul, Vienna and Seville, Istanbul and Amsterdam, Munich and Brussels, Prague and Munich, from Riga to Munich, Prague and Amsterdam, Prague and Brussels, Prague and Istanbul, Istanbul and Stockholm, Vienna and Prague, Munich and Split, Vienna and Amsterdam, Prague and Stockholm, Brussels and Seville, Munich and Stockholm, Istanbul and Brussels, Amsterdam and Seville, Vienna and Split, Munich and Seville, Riga and Brussels, Prague and Riga, Vienna and Munich"
-    
-    tokens = [t.strip() for t in connections_str.split(',')]
-    direct_flights_set = set()
-    for token in tokens:
-        if token.startswith('from'):
-            parts = token.split()
-            if len(parts) >= 4:
-                city1 = parts[1]
-                city2 = parts[3]
-                direct_flights_set.add(frozenset([city1, city2]))
-        else:
-            if ' and ' in token:
-                parts = token.split(' and ')
-                city1 = parts[0]
-                city2 = parts[1]
-                direct_flights_set.add(frozenset([city1, city2]))
-    
-    edge_matrix = [[False] * n_cities for _ in range(n_cities)]
-    for pair in direct_flights_set:
-        lst = list(pair)
-        if len(lst) < 2:
-            continue
-        c1 = lst[0]
-        c2 = lst[1]
-        if c1 in city_to_int and c2 in city_to_int:
-            i1 = city_to_int[c1]
-            i2 = city_to_int[c2]
-            edge_matrix[i1][i2] = True
-            edge_matrix[i2][i1] = True
-    
-    allowed_pairs = []
-    for i in range(n_cities):
-        for j in range(n_cities):
-            if edge_matrix[i][j]:
-                allowed_pairs.append((i, j))
-    
-    n_days = 20
-    end_city = [z3.Int(f'end_city_{i}') for i in range(0, n_days+1)]
-    fly = [z3.Bool(f'fly_{d}') for d in range(1, n_days+1)]
-    
-    s = z3.Solver()
-    
-    for i in range(0, n_days+1):
-        s.add(z3.And(end_city[i] >= 0, end_city[i] < n_cities))
-    
-    for d in range(1, n_days+1):
-        no_fly_cond = (end_city[d] == end_city[d-1])
-        if allowed_pairs:
-            fly_cond = z3.Or([z3.And(end_city[d-1] == i, end_city[d] == j) for (i, j) in allowed_pairs])
-        else:
-            fly_cond = z3.BoolVal(False)
-        s.add(z3.Implies(z3.Not(fly[d-1]), no_fly_cond))
-        s.add(z3.Implies(fly[d-1], fly_cond))
-    
-    in_city = [[z3.Bool(f'in_{d}_{c}') for c in range(n_cities)] for d in range(1, n_days+1)]
-    for d in range(1, n_days+1):
-        for c in range(n_cities):
-            not_flying_cond = z3.And(z3.Not(fly[d-1]), end_city[d] == c)
-            flying_cond = z3.And(fly[d-1], z3.Or(end_city[d-1] == c, end_city[d] == c))
-            s.add(in_city[d-1][c] == z3.Or(not_flying_cond, flying_cond))
-    
-    total_days = [z3.Int(f'total_{city}') for city in cities]
-    for c in range(n_cities):
-        s.add(total_days[c] == z3.Sum([z3.If(in_city[d][c], 1, 0) for d in range(0, n_days)]))
-    
-    s.add(total_days[city_to_int['Prague']] == 5)
-    s.add(total_days[city_to_int['Brussels']] == 2)
-    s.add(total_days[city_to_int['Riga']] == 2)
-    s.add(total_days[city_to_int['Munich']] == 2)
-    s.add(total_days[city_to_int['Seville']] == 3)
-    s.add(total_days[city_to_int['Stockholm']] == 2)
-    s.add(total_days[city_to_int['Istanbul']] == 2)
-    s.add(total_days[city_to_int['Amsterdam']] == 3)
-    s.add(total_days[city_to_int['Vienna']] == 5)
-    s.add(total_days[city_to_int['Split']] == 3)
-    
-    for d in [5,6,7,8,9]:
-        s.add(in_city[d-1][city_to_int['Prague']] == True)
-    
-    s.add(z3.Or(in_city[15-1][city_to_int['Riga']], in_city[16-1][city_to_int['Riga']]))
-    
-    vienna_days = [in_city[d-1][city_to_int['Vienna']] for d in [1,2,3,4,5]]
-    s.add(z3.Or(vienna_days))
-    
-    for d in [11,12,13]:
-        s.add(in_city[d-1][city_to_int['Split']] == True)
-    
-    s.add(in_city[16-1][city_to_int['Stockholm']] == True)
-    s.add(in_city[17-1][city_to_int['Stockholm']] == True)
-    
-    if s.check() == z3.sat:
-        m = s.model()
-        end_city_vals = [m.eval(end_city[i]).as_long() for i in range(0, n_days+1)]
-        fly_vals = [m.eval(fly[d]).as_bool() for d in range(0, n_days)]  # Fixed: using as_bool() instead of is_true()
-        
-        itinerary = []
-        for d in range(1, n_days+1):
-            if fly_vals[d-1]:
-                city1 = int_to_city[end_city_vals[d-1]]
-                city2 = int_to_city[end_city_vals[d]]
-                location_str = f"{city1} and {city2}"
+def solve_monkey_banana(T):
+    # Locations: A=0, B=1, C=2
+    n_locations = 3
+    n_actions = 16  # Total actions defined (4 Move + 4 Push + 3 ClimbUp + 3 ClimbDown + 1 Grasp + 1 Release)
+
+    # Action list: (type, params...)
+    action_list = [
+        (0, 0, 1),   # Move A->B
+        (0, 1, 0),   # Move B->A
+        (0, 1, 2),   # Move B->C
+        (0, 2, 1),   # Move C->B
+        (1, 0, 1),   # Push A->B (monkey to B)
+        (1, 1, 0),   # Push B->A (monkey to A)
+        (1, 1, 2),   # Push B->C (monkey to C)
+        (1, 2, 1),   # Push C->B (monkey to B)
+        (2, 0),      # ClimbUp at A
+        (2, 1),      # ClimbUp at B
+        (2, 2),      # ClimbUp at C
+        (3, 0),      # ClimbDown at A
+        (3, 1),      # ClimbDown at B
+        (3, 2),      # ClimbDown at C
+        (4, 2),      # Grasp at C
+        (5, 2)       # Release at C
+    ]
+
+    # Create state variables for T+1 steps
+    M = [Int(f'M_{i}') for i in range(T+1)]  # Monkey location
+    B = [Int(f'B_{i}') for i in range(T+1)]  # Box location
+    F = [Bool(f'F_{i}') for i in range(T+1)] # Monkey on floor
+    H = [Bool(f'H_{i}') for i in range(T+1)] # Has bananas
+
+    # Action variables for T steps
+    a = [Int(f'a_{i}') for i in range(T)]
+
+    s = Solver()
+
+    # Initial state constraints
+    s.add(M[0] == 0, B[0] == 1, F[0] == True, H[0] == False)
+
+    # Final goal
+    s.add(H[T] == True)
+
+    # State variables domain constraints
+    for i in range(T+1):
+        s.add(And(M[i] >= 0, M[i] < n_locations))
+        s.add(And(B[i] >= 0, B[i] < n_locations))
+
+    # Action variables domain constraints
+    for i in range(T):
+        s.add(And(a[i] >= 0, a[i] < n_actions))
+
+    # Constraints for each time step t
+    for t in range(T):
+        # Preconditions and effects for each possible action
+        constraints = []
+        for idx, act in enumerate(action_list):
+            if act[0] == 0:  # Move
+                from_loc = act[1]
+                to_loc = act[2]
+                prec = And(M[t] == from_loc, F[t] == True)
+                eff = And(M[t+1] == to_loc, B[t+1] == B[t], F[t+1] == True, H[t+1] == H[t])
+            elif act[0] == 1:  # Push
+                from_loc = act[1]
+                to_loc = act[2]
+                prec = And(M[t] == from_loc, B[t] == from_loc, F[t] == True)
+                eff = And(M[t+1] == to_loc, B[t+1] == to_loc, F[t+1] == True, H[t+1] == H[t])
+            elif act[0] == 2:  # ClimbUp
+                x = act[1]
+                prec = And(M[t] == x, B[t] == x, F[t] == True)
+                eff = And(M[t+1] == x, B[t+1] == x, F[t+1] == False, H[t+1] == H[t])
+            elif act[0] == 3:  # ClimbDown
+                x = act[1]
+                prec = And(M[t] == x, B[t] == x, F[t] == False)
+                eff = And(M[t+1] == x, B[t+1] == x, F[t+1] == True, H[t+1] == H[t])
+            elif act[0] == 4:  # Grasp
+                x = act[1]
+                prec = And(M[t] == x, F[t] == False, H[t] == False)
+                eff = And(M[t+1] == M[t], B[t+1] == B[t], F[t+1] == F[t], H[t+1] == True)
+            elif act[0] == 5:  # Release
+                x = act[1]
+                prec = And(M[t] == x, F[t] == False, H[t] == True)
+                eff = And(M[t+1] == M[t], B[t+1] == B[t], F[t+1] == F[t], H[t+1] == False)
             else:
-                location_str = int_to_city[end_city_vals[d]]
-            itinerary.append({"day": d, "location": location_str})
-        
-        import json
-        result = {'itinerary': itinerary}
-        print(json.dumps(result, indent=2))
-    else:
-        print("No solution found")
+                prec = BoolVal(False)
+                eff = BoolVal(False)
+            constraints.append(Implies(a[t] == idx, And(prec, eff)))
+        s.add(And(constraints))
 
-if __name__ == "__main__":
-    main()
+    if s.check() == sat:
+        m = s.model()
+        plan = []
+        loc_names = ['A', 'B', 'C']
+        for t in range(T):
+            idx = m.evaluate(a[t]).as_long()
+            act_desc = action_list[idx]
+            if act_desc[0] == 0:
+                plan.append(f"Move({loc_names[act_desc[1]]}, {loc_names[act_desc[2]]})")
+            elif act_desc[0] == 1:
+                plan.append(f"Push({loc_names[act_desc[1]]}, {loc_names[act_desc[2]]})")
+            elif act_desc[0] == 2:
+                plan.append(f"ClimbUp({loc_names[act_desc[1]]})")
+            elif act_desc[0] == 3:
+                plan.append(f"ClimbDown({loc_names[act_desc[1]]})")
+            elif act_desc[0] == 4:
+                plan.append(f"Grasp({loc_names[act_desc[1]]})")
+            elif act_desc[0] == 5:
+                plan.append(f"Release({loc_names[act_desc[1]]})")
+        return plan
+    else:
+        return None
+
+# Find minimal T with a solution
+T = 4
+plan = None
+while T <= 10:
+    plan = solve_monkey_banana(T)
+    if plan is not None:
+        print("Plan found with T =", T)
+        for i, action in enumerate(plan):
+            print(f"Step {i}: {action}")
+        break
+    T += 1
+if plan is None:
+    print("No solution found for T up to 10")

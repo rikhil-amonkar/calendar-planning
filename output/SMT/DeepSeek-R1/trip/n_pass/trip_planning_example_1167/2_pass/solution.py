@@ -1,105 +1,137 @@
 from z3 import *
-import math
+import json
 
 def main():
-    # City names and their indices
-    city_names = ['Mykonos', 'Naples', 'Istanbul', 'Venice', 'Dublin', 'Frankfurt', 'Brussels', 'Krakow']
-    city_index = {name: idx for idx, name in enumerate(city_names)}
-    
-    # Transportation data
-    transportation = {
-        'Mykonos': {'Naples': ['Tuesday', 'Saturday'], 'Istanbul': ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'], 'Venice': ['Monday', 'Wednesday', 'Friday'], 'Krakow': ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']},
-        'Naples': {'Mykonos': ['Tuesday', 'Saturday'], 'Istanbul': ['Monday', 'Wednesday', 'Friday'], 'Venice': ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'], 'Brussels': ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']},
-        'Istanbul': {'Mykonos': ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'], 'Naples': ['Monday', 'Wednesday', 'Friday'], 'Venice': ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'], 'Dublin': ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'], 'Krakow': ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']},
-        'Venice': {'Mykonos': ['Monday', 'Wednesday', 'Friday'], 'Naples': ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'], 'Istanbul': ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'], 'Brussels': ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']},
-        'Dublin': {'Istanbul': ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'], 'Frankfurt': ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'], 'Krakow': ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']},
-        'Frankfurt': {'Dublin': ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'], 'Brussels': ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'], 'Krakow': ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']},
-        'Brussels': {'Naples': ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'], 'Venice': ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'], 'Frankfurt': ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'], 'Krakow': ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']},
-        'Krakow': {'Mykonos': ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'], 'Istanbul': ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'], 'Dublin': ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'], 'Frankfurt': ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'], 'Brussels': ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']}
+    City, cities_enum = EnumSort('City', ['Dublin', 'Krakow', 'Istanbul', 'Venice', 'Naples', 'Brussels', 'Mykonos', 'Frankfurt'])
+    Dublin, Krakow, Istanbul, Venice, Naples, Brussels, Mykonos, Frankfurt = cities_enum
+
+    city_map = {
+        'Dublin': Dublin,
+        'Krakow': Krakow,
+        'Istanbul': Istanbul,
+        'Venice': Venice,
+        'Naples': Naples,
+        'Brussels': Brussels,
+        'Mykonos': Mykonos,
+        'Frankfurt': Frankfurt
     }
+
+    bidirectional_phrases = [
+        "Dublin and Brussels",
+        "Mykonos and Naples",
+        "Venice and Istanbul",
+        "Frankfurt and Krakow",
+        "Naples and Dublin",
+        "Krakow and Brussels",
+        "Naples and Istanbul",
+        "Naples and Brussels",
+        "Istanbul and Frankfurt",
+        "Istanbul and Krakow",
+        "Istanbul and Brussels",
+        "Venice and Frankfurt",
+        "Naples and Frankfurt",
+        "Dublin and Krakow",
+        "Venice and Brussels",
+        "Naples and Venice",
+        "Istanbul and Dublin",
+        "Venice and Dublin",
+        "Dublin and Frankfurt"
+    ]
+
+    directed_phrases = [
+        "from Brussels to Frankfurt"
+    ]
+
+    directed_edges = []
+    for phrase in bidirectional_phrases:
+        parts = phrase.split(' and ')
+        A_str = parts[0].strip()
+        B_str = parts[1].strip()
+        A = city_map[A_str]
+        B = city_map[B_str]
+        directed_edges.append((A, B))
+        directed_edges.append((B, A))
     
-    # Precompute directed_valid_pairs: (a, b, [list of allowed day indices])
-    day_names = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-    directed_valid_pairs = []
-    for cityA, connections in transportation.items():
-        for cityB, days in connections.items():
-            a_idx = city_index[cityA]
-            b_idx = city_index[cityB]
-            day_indices = [day_names.index(day) for day in days]
-            directed_valid_pairs.append((a_idx, b_idx, day_indices))
-    
-    # Total stays: 15 (8 non-travel, 7 travel)
-    n_non_travel = 8
-    total_stays = 15
-    s = [Int(f's_{i}') for i in range(total_stays)]
-    e = [Int(f'e_{i}') for i in range(total_stays)]
-    non_travel_city = [Int(f'nc_{i}') for i in range(n_non_travel)]
-    
-    solver = Solver()
-    
-    # Constraint: non_travel_city distinct and fixed first and last
-    solver.add(Distinct(non_travel_city))
-    solver.add(non_travel_city[0] == city_index['Mykonos'])
-    solver.add(non_travel_city[7] == city_index['Krakow'])
-    
-    # Constraints for start and end days
-    solver.add(s[0] == 1)
-    solver.add(e[14] == 21)
-    
-    # Continuity constraints
-    for i in range(total_stays - 1):
-        solver.add(e[i] + 1 == s[i+1])
-    
-    # Duration constraints
-    for i in range(total_stays):
-        if i % 2 == 0:  # non-travel stay
-            solver.add(e[i] - s[i] + 1 >= 2)
-        else:  # travel stay
-            solver.add(e[i] == s[i])
-    
-    # Transportation constraints for travel stays
-    for i in range(1, total_stays, 2):  # i = 1,3,...,13
-        k = (i-1)//2
-        a = non_travel_city[k]
-        b = non_travel_city[k+1]
-        travel_day = s[i]
-        day_idx = (travel_day - 1) % 7  # day index (0-6)
-        
-        conds = []
-        for (a0, b0, day_list) in directed_valid_pairs:
-            for d0 in day_list:
-                conds.append(And(a == a0, b == b0, day_idx == d0))
-        solver.add(Or(conds))
-    
-    # Solve
-    if solver.check() == sat:
-        model = solver.model()
-        itinerary = []
-        for i in range(total_stays):
-            s_val = model.eval(s[i]).as_long()
-            e_val = model.eval(e[i]).as_long()
-            if i % 2 == 0:  # non-travel
-                k = i // 2
-                city_val = model.eval(non_travel_city[k]).as_long()
-                place = city_names[city_val]
-            else:  # travel
-                k = (i-1) // 2
-                a_val = model.eval(non_travel_city[k]).as_long()
-                b_val = model.eval(non_travel_city[k+1]).as_long()
-                place = f"{city_names[a_val]}/{city_names[b_val]}"
-            
-            if s_val == e_val:
-                day_range = f"Day {s_val}"
-            else:
-                day_range = f"Day {s_val}-{e_val}"
-            itinerary.append({'day_range': day_range, 'place': place})
-        
-        # Format the output
-        print("{'itinerary': [")
-        for i, stay in enumerate(itinerary):
-            suffix = "," if i < len(itinerary)-1 else ""
-            print(f"    {{'day_range': '{stay['day_range']}', 'place': '{stay['place']}'}}{suffix}")
-        print("]}")
+    for phrase in directed_phrases:
+        parts = phrase.split()
+        A_str = parts[1].strip()
+        B_str = parts[3].strip()
+        A = city_map[A_str]
+        B = city_map[B_str]
+        directed_edges.append((A, B))
+
+    s0 = Const('s0', City)
+    x = [Const('x_%d' % i, City) for i in range(21)]
+    s = Solver()
+
+    if directed_edges:
+        flight_edges = [ And(A == a, B == b) for (a,b) in directed_edges ]
+        s.add(Implies(s0 != x[0], Or(flight_edges)))
+    else:
+        s.add(True)
+
+    for i in range(1, 21):
+        if directed_edges:
+            flight_edges = [ And(x[i-1] == a, x[i] == b) for (a,b) in directed_edges ]
+            s.add(Implies(x[i-1] != x[i], Or(flight_edges)))
+        else:
+            s.add(True)
+
+    def presence(c, d):
+        if d == 1:
+            return Or(s0 == c, x[0] == c)
+        else:
+            idx_start = d - 2
+            idx_end = d - 1
+            return Or(x[idx_start] == c, x[idx_end] == c)
+
+    total_days_dict = {
+        Dublin: 5,
+        Krakow: 4,
+        Istanbul: 3,
+        Venice: 3,
+        Naples: 4,
+        Brussels: 2,
+        Mykonos: 4,
+        Frankfurt: 3
+    }
+
+    for city, total_req in total_days_dict.items():
+        total = 0
+        for d in range(1, 22):
+            total += If(presence(city, d), 1, 0)
+        s.add(total == total_req)
+
+    for d in [11, 12, 13, 14, 15]:
+        s.add(presence(Dublin, d))
+
+    s.add(Or([presence(Istanbul, d) for d in [9,10,11]]))
+
+    s.add(Or([presence(Mykonos, d) for d in [1,2,3,4]]))
+
+    s.add(Or([presence(Frankfurt, d) for d in [15,16,17]]))
+
+    if s.check() == sat:
+        m = s.model()
+        s0_val = m[s0]
+        x_vals = [m[x_i] for i in range(21)]
+        city_names = {
+            Dublin: 'Dublin',
+            Krakow: 'Krakow',
+            Istanbul: 'Istanbul',
+            Venice: 'Venice',
+            Naples: 'Naples',
+            Brussels: 'Brussels',
+            Mykonos: 'Mykonos',
+            Frankfurt: 'Frankfurt'
+        }
+        itinerary_list = []
+        for day in range(1, 22):
+            city_val = x_vals[day-1]
+            city_name = city_names[city_val]
+            itinerary_list.append({"day": day, "place": city_name})
+        result = {"itinerary": itinerary_list}
+        print(json.dumps(result))
     else:
         print("No solution found")
 

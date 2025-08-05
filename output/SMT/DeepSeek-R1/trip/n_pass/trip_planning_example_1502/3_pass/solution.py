@@ -1,59 +1,151 @@
 from z3 import *
+import json
 
 def main():
-    s = Solver()
+    cities = [
+        'Santorini',
+        'Valencia',
+        'Madrid',
+        'Seville',
+        'Bucharest',
+        'Vienna',
+        'Riga',
+        'Tallinn',
+        'Krakow',
+        'Frankfurt'
+    ]
     
-    cities = ['Santorini', 'Vienna', 'Madrid', 'Seville', 'Valencia', 'Krakow', 'Frankfurt', 'Bucharest', 'Riga', 'Tallinn']
-    n = len(cities)
+    req_days = {
+        'Santorini': 3,
+        'Valencia': 4,
+        'Madrid': 2,
+        'Seville': 2,
+        'Bucharest': 3,
+        'Vienna': 4,
+        'Riga': 4,
+        'Tallinn': 5,
+        'Krakow': 5,
+        'Frankfurt': 4
+    }
     
-    # Start days for each trip
-    starts = [Int(f'start_{i}') for i in range(n)]
-    # Durations for each trip
-    durations = [Int(f'duration_{i}') for i in range(n)]
-    # City assignment for each trip (index into cities list)
-    city_assignments = [Int(f'city_{i}') for i in range(n)]
+    fixed_days = {
+        'Madrid': [6, 7],
+        'Krakow': [11, 12, 13, 14, 15],
+        'Riga': [20, 21, 22, 23],
+        'Tallinn': [23, 24, 25, 26, 27]
+    }
     
-    # Constraint: First trip starts on day 1
-    s.add(starts[0] == 1)
+    flight_edges = [
+        ('Vienna', 'Bucharest'),
+        ('Santorini', 'Madrid'),
+        ('Seville', 'Valencia'),
+        ('Vienna', 'Seville'),
+        ('Vienna', 'Valencia'),
+        ('Madrid', 'Valencia'),
+        ('Bucharest', 'Riga'),
+        ('Valencia', 'Bucharest'),
+        ('Santorini', 'Bucharest'),
+        ('Valencia', 'Krakow'),
+        ('Valencia', 'Frankfurt'),
+        ('Krakow', 'Frankfurt'),
+        ('Riga', 'Tallinn'),
+        ('Vienna', 'Krakow'),
+        ('Vienna', 'Frankfurt'),
+        ('Madrid', 'Seville'),
+        ('Santorini', 'Vienna'),
+        ('Vienna', 'Riga'),
+        ('Frankfurt', 'Tallinn'),
+        ('Frankfurt', 'Bucharest'),
+        ('Madrid', 'Bucharest'),
+        ('Frankfurt', 'Riga'),
+        ('Madrid', 'Frankfurt')
+    ]
     
-    # Constraints for subsequent start days: start[i] = start[i-1] + duration[i-1]
-    for i in range(1, n):
-        s.add(starts[i] == starts[i-1] + durations[i-1])
+    edges_set = set()
+    for edge in flight_edges:
+        u, v = edge
+        key = (min(u, v), max(u, v))
+        edges_set.add(key)
     
-    # Constraint: Last trip must end on day 27
-    s.add(starts[n-1] + durations[n-1] - 1 == 27)
+    in_city = {}
+    for city in cities:
+        in_city[city] = [Bool(f'in_{city}_{d}') for d in range(1, 28)]
     
-    # Constraints for durations: each between 2 and 5 inclusive
-    for i in range(n):
-        s.add(durations[i] >= 2, durations[i] <= 5)
+    solver = Solver()
     
-    # Constraints for city assignments: each must be between 0 and n-1
-    for i in range(n):
-        s.add(city_assignments[i] >= 0, city_assignments[i] < n)
+    for d in range(1, 28):
+        day_vars = [in_city[city][d-1] for city in cities]
+        solver.add(Or(day_vars))
+        solver.add(AtMost(*day_vars, 2))
     
-    # Constraint: All city assignments must be distinct (permutation)
-    s.add(Distinct(city_assignments))
+    for city in cities:
+        total = 0
+        for d in range(1, 28):
+            total += If(in_city[city][d-1], 1, 0)
+        solver.add(total == req_days[city])
     
-    if s.check() == sat:
-        model = s.model()
-        start_days = [model.evaluate(starts[i]).as_long() for i in range(n)]
-        duration_days = [model.evaluate(durations[i]).as_long() for i in range(n)]
-        city_indices = [model.evaluate(city_assignments[i]).as_long() for i in range(n)]
+    for city, days in fixed_days.items():
+        for d in days:
+            solver.add(in_city[city][d-1])
+    
+    vienna_days = in_city['Vienna']
+    blocks = []
+    for start in range(1, 7):
+        constraints = []
+        for d in range(1, 28):
+            if start <= d < start + 4:
+                constraints.append(vienna_days[d-1])
+            else:
+                constraints.append(Not(vienna_days[d-1]))
+        blocks.append(And(constraints))
+    solver.add(Or(blocks))
+    
+    for d in range(1, 28):
+        for i in range(len(cities)):
+            for j in range(i+1, len(cities)):
+                c1 = cities[i]
+                c2 = cities[j]
+                key = (min(c1, c2), max(c1, c2))
+                if key not in edges_set:
+                    solver.add(Not(And(in_city[c1][d-1], in_city[c2][d-1])))
+    
+    solver.add(Sum([If(in_city[city][0], 1, 0) for city in cities]) == 1)
+    solver.add(Sum([If(in_city[city][26], 1, 0) for city in cities]) == 1)
+    
+    if solver.check() == sat:
+        model = solver.model()
+        city_days = {city: [] for city in cities}
+        for d in range(1, 28):
+            for city in cities:
+                if is_true(model.eval(in_city[city][d-1])):
+                    city_days[city].append(d)
         
         itinerary = []
-        for i in range(n):
-            start = start_days[i]
-            duration = duration_days[i]
-            end = start + duration - 1
-            city = cities[city_indices[i]]
+        for city in cities:
+            days = sorted(city_days[city])
+            if not days:
+                continue
+            start = days[0]
+            end = days[0]
+            for i in range(1, len(days)):
+                if days[i] == end + 1:
+                    end = days[i]
+                else:
+                    itinerary.append({
+                        'day_range': f'Day {start}-{end}',
+                        'place': city
+                    })
+                    start = days[i]
+                    end = days[i]
             itinerary.append({
                 'day_range': f'Day {start}-{end}',
                 'place': city
             })
         
-        print(f"Plan found: {{'itinerary': {itinerary}}}")
+        itinerary.sort(key=lambda x: int(x['day_range'].split('-')[0].split()[1]))
+        print(json.dumps({"itinerary": itinerary}, indent=2))
     else:
-        print("No valid plan found.")
+        print("No solution found")
 
 if __name__ == '__main__':
     main()

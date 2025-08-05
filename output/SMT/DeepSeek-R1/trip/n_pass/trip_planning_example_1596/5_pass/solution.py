@@ -1,169 +1,106 @@
-from z3 import *
+from z3 import Solver, Bool, Or, And, Not, Sum, If, sat, is_true
 import json
 
 def main():
-    city_list = ['Edinburgh', 'Budapest', 'Stockholm', 'Warsaw', 'Bucharest', 'Krakow', 'Munich', 'Barcelona', 'Riga', 'Vienna']
-    CitySort, city_consts = EnumSort('City', city_list)
-    city_dict = {name: const for name, const in zip(city_list, city_consts)}
-    rev_city_dict = {const: name for name, const in city_dict.items()}
-    
-    # Required days for each city
-    req_days_map = {
-        city_dict['Edinburgh']: 5,
-        city_dict['Budapest']: 5,
-        city_dict['Stockholm']: 2,
-        city_dict['Warsaw']: 5,
-        city_dict['Bucharest']: 2,
-        city_dict['Krakow']: 4,
-        city_dict['Munich']: 3,
-        city_dict['Barcelona']: 5,
-        city_dict['Riga']: 5,
-        city_dict['Vienna']: 5
+    cities = ['Bucharest', 'Krakow', 'Munich', 'Barcelona', 'Warsaw', 'Budapest', 'Stockholm', 'Riga', 'Edinburgh', 'Vienna']
+    durations = {
+        'Bucharest': 2,
+        'Krakow': 4,
+        'Munich': 3,
+        'Barcelona': 5,
+        'Warsaw': 5,
+        'Budapest': 5,
+        'Stockholm': 2,
+        'Riga': 5,
+        'Edinburgh': 5,
+        'Vienna': 5
     }
     
-    # Fixed start days for specific cities
-    fixed_starts = {
-        city_dict['Edinburgh']: 1,
-        city_dict['Budapest']: 9,
-        city_dict['Stockholm']: 17,
-        city_dict['Warsaw']: 25
-    }
+    flight_str = "Budapest and Munich, Bucharest and Riga, Munich and Krakow, Munich and Warsaw, Munich and Bucharest, Edinburgh and Stockholm, Barcelona and Warsaw, Edinburgh and Krakow, Barcelona and Munich, Stockholm and Krakow, Budapest and Vienna, Barcelona and Stockholm, Stockholm and Munich, Edinburgh and Budapest, Barcelona and Riga, Edinburgh and Barcelona, Vienna and Riga, Barcelona and Budapest, Bucharest and Warsaw, Vienna and Krakow, Edinburgh and Munich, Barcelona and Bucharest, Edinburgh and Riga, Vienna and Stockholm, Warsaw and Krakow, Barcelona and Krakow, from Riga to Munich, Vienna and Bucharest, Budapest and Warsaw, Vienna and Warsaw, Barcelona and Vienna, Budapest and Bucharest, Vienna and Munich, Riga and Warsaw, Stockholm and Riga, Stockholm and Warsaw"
+    flight_str = flight_str.replace("from ", "").replace(" to ", " and ")
+    flights = flight_str.split(", ")
+    direct_flights = set()
+    for flight in flights:
+        parts = flight.split(" and ")
+        if len(parts) == 2:
+            A, B = parts
+            direct_flights.add((A, B))
+            direct_flights.add((B, A))
     
-    # Direct flight pairs
-    flight_pairs_str = [
-        "Budapest and Munich",
-        "Bucharest and Riga",
-        "Munich and Krakow",
-        "Munich and Warsaw",
-        "Munich and Bucharest",
-        "Edinburgh and Stockholm",
-        "Barcelona and Warsaw",
-        "Edinburgh and Krakow",
-        "Barcelona and Munich",
-        "Stockholm and Krakow",
-        "Budapest and Vienna",
-        "Barcelona and Stockholm",
-        "Stockholm and Munich",
-        "Edinburgh and Budapest",
-        "Barcelona and Riga",
-        "Edinburgh and Barcelona",
-        "Vienna and Riga",
-        "Barcelona and Budapest",
-        "Bucharest and Warsaw",
-        "Edinburgh and Riga",
-        "Vienna and Stockholm",
-        "Warsaw and Krakow",
-        "Barcelona and Krakow",
-        "from Riga to Munich",
-        "Vienna and Bucharest",
-        "Budapest and Warsaw",
-        "Vienna and Warsaw",
-        "Barcelona and Vienna",
-        "Budapest and Bucharest",
-        "Vienna and Munich",
-        "Riga and Warsaw",
-        "Stockholm and Riga",
-        "Stockholm and Warsaw"
-    ]
+    connected_pairs = set()
+    for A, B in direct_flights:
+        connected_pairs.add(tuple(sorted([A, B])))
     
-    # Normalize flight pairs
-    normalized_flight_str = [s.replace("from ", "").replace(" to ", " and ") for s in flight_pairs_str]
-    flight_pairs_clean = []
-    for s in normalized_flight_str:
-        parts = s.split(" and ")
-        if len(parts) >= 2:
-            city1 = parts[0].strip()
-            city2 = parts[1].strip()
-            flight_pairs_clean.append((city1, city2))
-    
-    # Create bidirectional flight pairs
-    flight_pairs = set()
-    for (a, b) in flight_pairs_clean:
-        a_const = city_dict.get(a)
-        b_const = city_dict.get(b)
-        if a_const is not None and b_const is not None:
-            flight_pairs.add((a_const, b_const))
-            flight_pairs.add((b_const, a_const))
-    
-    # Create Z3 solver
     s = Solver()
-    n = 10  # number of cities
+    in_city = {}
+    for city in cities:
+        in_city[city] = [Bool(f"in_{city}_{day}") for day in range(32)]
     
-    # Position variables: sequence of cities
-    positions = [Const('pos_%d' % i, CitySort) for i in range(n)]
-    
-    # Start and end days for each segment
-    starts = [Int('start_%d' % i) for i in range(n)]
-    ends = [Int('end_%d' % i) for i in range(n)]
-    
-    # Constraints
-    constraints = []
-    
-    # All positions are distinct
-    constraints.append(Distinct(positions))
-    
-    # First city is Edinburgh
-    constraints.append(positions[0] == city_dict['Edinburgh'])
-    
-    # Start and end days for each segment
-    for i in range(n):
-        c = positions[i]
-        # Calculate required days using Z3 Sum and If
-        req_days = Sum([If(c == city_const, days_val, 0) 
-                       for city_const, days_val in req_days_map.items()])
-        # End day = start day + required days - 1
-        constraints.append(ends[i] == starts[i] + req_days - 1)
+    for day in range(32):
+        day_vars = [in_city[city][day] for city in cities]
+        total_cities = Sum([If(v, 1, 0) for v in day_vars])
+        s.add(Or(total_cities == 1, total_cities == 2))
         
-        # Fixed start days using implications
-        for city_const, fixed_day in fixed_starts.items():
-            constraints.append(Implies(c == city_const, starts[i] == fixed_day))
+        # Flight constraint: if two cities, they must be connected
+        for i in range(len(cities)):
+            for j in range(i+1, len(cities)):
+                city1 = cities[i]
+                city2 = cities[j]
+                if (city1, city2) not in connected_pairs:
+                    s.add(Not(And(in_city[city1][day], in_city[city2][day])))
     
-    # Start of first segment is 1
-    constraints.append(starts[0] == 1)
+    for day in range(31):
+        common = Or([And(in_city[city][day], in_city[city][day+1]) for city in cities])
+        s.add(common)
     
-    # Consecutive segments share flight day
-    for i in range(1, n):
-        constraints.append(starts[i] == ends[i-1])
+    for city in cities:
+        total_days = Sum([If(in_city[city][d], 1, 0) for d in range(32)])
+        s.add(total_days == durations[city])
     
-    # Last segment ends at day 32
-    constraints.append(ends[n-1] == 32)
+    # Event constraints
+    for day in [8, 9, 10, 11, 12]:  # Days 9-13 (0-indexed days 8-12)
+        s.add(in_city['Budapest'][day])
+    for day in [24, 25, 26, 27, 28]:  # Days 25-29 (0-indexed days 24-28)
+        s.add(in_city['Warsaw'][day])
+    for day in [17, 18, 19]:  # Days 18-20 (0-indexed days 17-19)
+        s.add(in_city['Munich'][day])
+    s.add(Or(in_city['Stockholm'][16], in_city['Stockholm'][17]))  # Day 17 or 18
+    s.add(Or([in_city['Edinburgh'][d] for d in range(5)]))  # At least one of first 5 days
     
-    # Flight constraints between consecutive cities
-    for i in range(n-1):
-        c1 = positions[i]
-        c2 = positions[i+1]
-        constraints.append(Or([And(c1 == a, c2 == b) for (a, b) in flight_pairs]))
-    
-    # Munich must include days 18-20
-    munich_constraint = Or([
-        And(
-            positions[i] == city_dict['Munich'],
-            starts[i] <= 20,
-            ends[i] >= 18
-        ) for i in range(n)
-    ])
-    constraints.append(munich_constraint)
-    
-    # Add all constraints
-    s.add(constraints)
-    
-    # Solve and output itinerary
     if s.check() == sat:
-        model = s.model()
-        pos_vals = [model.evaluate(positions[i]) for i in range(n)]
-        start_vals = [model.evaluate(starts[i]).as_long() for i in range(n)]
-        end_vals = [model.evaluate(ends[i]).as_long() for i in range(n)]
-        
+        m = s.model()
         itinerary = []
-        for day in range(1, 33):
-            cities = []
-            for seg in range(n):
-                if start_vals[seg] <= day <= end_vals[seg]:
-                    city_name = rev_city_dict[pos_vals[seg]]
-                    cities.append(city_name)
-            # Sort for consistent output
-            cities.sort()
-            itinerary.append({"day": day, "place": ", ".join(cities)})
+        
+        # Validate durations
+        for city in cities:
+            count = sum(1 for day in range(32) if is_true(m[in_city[city][day]]))
+            assert count == durations[city], f"Duration failed: {city} has {count} days (expected {durations[city]})"
+        
+        # Validate event constraints
+        for day in [8, 9, 10, 11, 12]:
+            assert is_true(m[in_city['Budapest'][day]]), f"Budapest missing on day {day+1}"
+        for day in [24, 25, 26, 27, 28]:
+            assert is_true(m[in_city['Warsaw'][day]]), f"Warsaw missing on day {day+1}"
+        for day in [17, 18, 19]:
+            assert is_true(m[in_city['Munich'][day]]), f"Munich missing on day {day+1}"
+        assert is_true(m[Or(in_city['Stockholm'][16], in_city['Stockholm'][17])]), "Stockholm missing on day 17 or 18"
+        assert any(is_true(m[in_city['Edinburgh'][d]]) for d in range(5)), "Edinburgh missing in first 5 days"
+        
+        # Validate flight days
+        for day in range(32):
+            present_cities = [city for city in cities if is_true(m[in_city[city][day]])]
+            if len(present_cities) == 2:
+                city1, city2 = sorted(present_cities)
+                assert (city1, city2) in connected_pairs, f"Invalid flight: {city1} and {city2} on day {day+1}"
+        
+        # Build itinerary
+        for day in range(32):
+            present_cities = [city for city in cities if is_true(m[in_city[city][day]])]
+            if len(present_cities) == 1:
+                place = present_cities[0]
+            else:
+                place = sorted(present_cities)
+            itinerary.append({"day": day+1, "place": place})
         
         print(json.dumps({"itinerary": itinerary}, indent=2))
     else:

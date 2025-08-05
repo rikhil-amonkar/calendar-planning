@@ -1,86 +1,98 @@
 from z3 import *
+import json
 
-# Define the Place datatype
-Place = Datatype('Place')
-Place.declare('EDI')
-Place.declare('LHR')
-Place.declare('JFK')
-Place.declare('NCE')
-Place = Place.create()
-
-# Function to return flight time between two places
-def flight_time_expr(p1, p2):
-    cond_EDI_LHR = Or(And(p1 == Place.EDI, p2 == Place.LHR), And(p1 == Place.LHR, p2 == Place.EDI))
-    cond_EDI_JFK = Or(And(p1 == Place.EDI, p2 == Place.JFK), And(p1 == Place.JFK, p2 == Place.EDI))
-    cond_EDI_NCE = Or(And(p1 == Place.EDI, p2 == Place.NCE), And(p1 == Place.NCE, p2 == Place.EDI))
-    cond_LHR_JFK = Or(And(p1 == Place.LHR, p2 == Place.JFK), And(p1 == Place.JFK, p2 == Place.LHR))
-    cond_LHR_NCE = Or(And(p1 == Place.LHR, p2 == Place.NCE), And(p1 == Place.NCE, p2 == Place.LHR))
-    cond_JFK_NCE = Or(And(p1 == Place.JFK, p2 == Place.NCE), And(p1 == Place.NCE, p2 == Place.JFK))
+def main():
+    City, (Amsterdam, Edinburgh, Brussels, Vienna, Berlin, Reykjavik) = EnumSort('City', 
+        ['Amsterdam', 'Edinburgh', 'Brussels', 'Vienna', 'Berlin', 'Reykjavik'])
+    cities = [Amsterdam, Edinburgh, Brussels, Vienna, Berlin, Reykjavik]
+    city_names = {
+        Amsterdam: 'Amsterdam',
+        Edinburgh: 'Edinburgh',
+        Brussels: 'Brussels',
+        Vienna: 'Vienna',
+        Berlin: 'Berlin',
+        Reykjavik: 'Reykjavik'
+    }
     
-    return If(cond_EDI_LHR, 60,
-           If(cond_EDI_JFK, 360,
-           If(cond_EDI_NCE, 120,
-           If(cond_LHR_JFK, 420,
-           If(cond_LHR_NCE, 120,
-           If(cond_JFK_NCE, 480, 0))))))
+    required_days = {
+        Amsterdam: 4,
+        Edinburgh: 5,
+        Brussels: 5,
+        Vienna: 5,
+        Berlin: 4,
+        Reykjavik: 5
+    }
+    
+    direct_flights = [
+        ("Edinburgh", "Berlin"), ("Amsterdam", "Berlin"), ("Edinburgh", "Amsterdam"), 
+        ("Vienna", "Berlin"), ("Berlin", "Brussels"), ("Vienna", "Reykjavik"), 
+        ("Edinburgh", "Brussels"), ("Vienna", "Brussels"), ("Amsterdam", "Reykjavik"), 
+        ("Reykjavik", "Brussels"), ("Amsterdam", "Vienna"), ("Reykjavik", "Berlin")
+    ]
+    allowed_pairs = []
+    for a_str, b_str in direct_flights:
+        a_city = None
+        b_city = None
+        for c in cities:
+            if city_names[c] == a_str:
+                a_city = c
+            if city_names[c] == b_str:
+                b_city = c
+        if a_city is not None and b_city is not None:
+            allowed_pairs.append((a_city, b_city))
+            allowed_pairs.append((b_city, a_city))
+    
+    n_days = 23
+    c = [Const('c_%d' % i, City) for i in range(n_days)]
+    
+    s = Solver()
+    
+    # Flight constraints between consecutive days
+    for i in range(n_days - 1):
+        same_city = c[i] == c[i+1]
+        valid_flight = Or([And(c[i] == a, c[i+1] == b) for (a, b) in allowed_pairs])
+        s.add(Or(same_city, valid_flight))
+    
+    # Total days per city constraint
+    for city in cities:
+        total = Sum([If(c[i] == city, 1, 0) for i in range(n_days)])
+        s.add(total == required_days[city])
+    
+    # Amsterdam must be visited between days 5-8 (1-indexed days 5,6,7,8)
+    ams_constraint = Or([c[i] == Amsterdam for i in [4,5,6,7]])  # indices 4-7 = days 5-8
+    s.add(ams_constraint)
+    
+    # Berlin must be visited between days 16-19 (1-indexed days 16,17,18,19)
+    ber_constraint = Or([c[i] == Berlin for i in [15,16,17,18]])  # indices 15-18 = days 16-19
+    s.add(ber_constraint)
+    
+    # Reykjavik must be visited between days 12-16 (1-indexed days 12,13,14,15,16)
+    rek_constraint = Or([c[i] == Reykjavik for i in [11,12,13,14,15]])  # indices 11-15 = days 12-16
+    s.add(rek_constraint)
+    
+    if s.check() == sat:
+        m = s.model()
+        itinerary = []
+        current_city = None
+        start_day = 1
+        day_list = [city_names[m.eval(c[i])] for i in range(n_days)]
+        
+        for i in range(n_days):
+            if day_list[i] != current_city:
+                if current_city is not None:
+                    itinerary.append({
+                        "day_range": f"Day {start_day}-{i}",
+                        "place": current_city
+                    })
+                current_city = day_list[i]
+                start_day = i+1
+        itinerary.append({
+            "day_range": f"Day {start_day}-{n_days}",
+            "place": current_city
+        })
+        print(json.dumps({"itinerary": itinerary}, indent=2))
+    else:
+        print("No solution found")
 
-# Create solver
-s = Solver()
-
-# Sequence variables
-s0, s1, s2, s3 = Consts('s0 s1 s2 s3', Place)
-
-# Arrival and departure functions
-base_arr = Function('base_arr', Place, IntSort())
-base_dep = Function('base_dep', Place, IntSort())
-
-# Constraints
-constraints = []
-
-# All airports are distinct
-constraints.append(Distinct(s0, s1, s2, s3))
-
-# Bounds and turnaround times for each airport
-airports = [Place.EDI, Place.LHR, Place.JFK, Place.NCE]
-for airport in airports:
-    constraints.append(base_arr(airport) >= 0)
-    constraints.append(base_arr(airport) <= 1440)
-    constraints.append(base_dep(airport) >= 0)
-    constraints.append(base_dep(airport) <= 1440)
-    constraints.append(base_dep(airport) >= base_arr(airport) + 30)
-
-# Sequence constraints
-constraints.append(base_arr(s1) == base_dep(s0) + flight_time_expr(s0, s1))
-constraints.append(base_arr(s2) == base_dep(s1) + flight_time_expr(s1, s2))
-constraints.append(base_arr(s3) == base_dep(s2) + flight_time_expr(s2, s3))
-
-# EDI must be before LHR in the sequence
-index_EDI = If(s0 == Place.EDI, 0, 
-              If(s1 == Place.EDI, 1, 
-               If(s2 == Place.EDI, 2, 3)))
-index_LHR = If(s0 == Place.LHR, 0, 
-              If(s1 == Place.LHR, 1, 
-               If(s2 == Place.LHR, 2, 3)))
-constraints.append(index_EDI < index_LHR)
-
-# Add all constraints to the solver
-s.add(constraints)
-
-# Minimize base_arr[LHR]
-objective = base_arr(Place.LHR)
-min_obj = 1441  # Start with a value larger than max possible (1440)
-model = None
-
-while s.check() == sat:
-    m = s.model()
-    current_obj = m.eval(objective).as_long()
-    if current_obj < min_obj:
-        min_obj = current_obj
-        model = m
-    s.add(objective < current_obj)
-
-# Output only the numerical result
-if model is not None:
-    print(min_obj)
-else:
-    print(-1)
+if __name__ == "__main__":
+    main()

@@ -1,111 +1,76 @@
 from z3 import *
 
 def main():
-    City, cities = EnumSort('City', [
-        'Oslo',
-        'Helsinki',
-        'Edinburgh',
-        'Riga',
-        'Tallinn',
-        'Budapest',
-        'Vilnius',
-        'Porto',
-        'Geneva'
-    ])
-    Oslo, Helsinki, Edinburgh, Riga, Tallinn, Budapest, Vilnius, Porto, Geneva = cities
-    city_list = [Oslo, Helsinki, Edinburgh, Riga, Tallinn, Budapest, Vilnius, Porto, Geneva]
-    city_names = ['Oslo', 'Helsinki', 'Edinburgh', 'Riga', 'Tallinn', 'Budapest', 'Vilnius', 'Porto', 'Geneva']
+    cities = ['Tallinn', 'Helsinki', 'Budapest', 'Geneva', 'Porto', 'Edinburgh', 'Riga', 'Vilnius', 'Oslo']
+    n = len(cities)
     
-    req_map = {
-        Oslo: 2,
-        Helsinki: 2,
-        Edinburgh: 3,
-        Riga: 2,
-        Tallinn: 5,
-        Budapest: 5,
-        Vilnius: 5,
-        Porto: 5,
-        Geneva: 4
-    }
-    
-    allowed_edges = []
-    bidirs = [
-        (Porto, Oslo),
-        (Edinburgh, Budapest),
-        (Edinburgh, Geneva),
-        (Edinburgh, Porto),
-        (Vilnius, Helsinki),
-        (Riga, Oslo),
-        (Geneva, Oslo),
-        (Edinburgh, Oslo),
-        (Edinburgh, Helsinki),
-        (Vilnius, Oslo),
-        (Riga, Helsinki),
-        (Budapest, Geneva),
-        (Helsinki, Budapest),
-        (Helsinki, Oslo),
-        (Edinburgh, Riga),
-        (Tallinn, Helsinki),
-        (Geneva, Porto),
-        (Tallinn, Oslo),
-        (Budapest, Oslo),
-        (Helsinki, Geneva)
+    T = [
+        [0, 1, 3, 3, 4, 4, 1, 2, 3],
+        [1, 0, 3, 3, 4, 4, 1, 2, 3],
+        [3, 3, 0, 2, 4, 3, 3, 3, 3],
+        [3, 3, 2, 0, 2, 2, 3, 3, 2],
+        [4, 4, 4, 2, 0, 3, 4, 4, 3],
+        [4, 4, 3, 2, 3, 0, 4, 4, 2],
+        [1, 1, 3, 3, 4, 4, 0, 1, 2],
+        [2, 2, 3, 3, 4, 4, 1, 0, 2],
+        [3, 3, 3, 2, 3, 2, 2, 2, 0]
     ]
-    for (a, b) in bidirs:
-        allowed_edges.append((a, b))
-        allowed_edges.append((b, a))
     
-    directs = [
-        (Riga, Tallinn),
-        (Tallinn, Vilnius),
-        (Riga, Vilnius)
-    ]
-    for (a, b) in directs:
-        allowed_edges.append((a, b))
+    solver = Solver()
     
-    x = [Const('x' + str(i), City) for i in range(26)]
-    s = Solver()
+    seq = [Int(f'seq_{i}') for i in range(n)]
+    s = [Int(f's_{i}') for i in range(n)]
+    d = [Int(f'd_{i}') for i in range(n)]
     
-    for d in range(1, 26):
-        a = x[d-1]
-        b = x[d]
-        or_conditions = [a == b]
-        for edge in allowed_edges:
-            a_edge, b_edge = edge
-            or_conditions.append(And(a == a_edge, b == b_edge))
-        s.add(Or(or_conditions))
+    solver.add(seq[0] == 0)
+    solver.add(seq[n-1] == 8)
+    solver.add(Distinct(seq))
+    for i in range(n):
+        solver.add(seq[i] >= 0, seq[i] < n)
     
-    for city in city_list:
-        total = 0
-        for d in range(1, 26):
-            total += If(Or(x[d-1] == city, x[d] == city), 1, 0)
-        s.add(total == req_map[city])
+    solver.add(s[0] == 1)
+    for i in range(n-1):
+        solver.add(d[i] >= 2)
+    solver.add(d[n-1] == 26 - s[n-1])
+    solver.add(s[n-1] >= 1, s[n-1] <= 25)
+    solver.add(d[n-1] >= 1)
     
-    s.add(Or(x[23] == Oslo, x[24] == Oslo, x[25] == Oslo))
+    T_z3 = Array('T', IntSort(), ArraySort(IntSort(), IntSort()))
+    for i in range(n):
+        row = Array(f'row_{i}', IntSort(), IntSort())
+        for j in range(n):
+            row = Store(row, j, T[i][j])
+        T_z3 = Store(T_z3, i, row)
     
-    full_day_in_Tallinn = []
-    for d in range(4, 9):
-        full_day_in_Tallinn.append(And(x[d-1] == Tallinn, x[d] == Tallinn))
-    s.add(Or(full_day_in_Tallinn))
+    for i in range(n-1):
+        from_city = seq[i]
+        to_city = seq[i+1]
+        travel_time = Select(Select(T_z3, from_city), to_city)
+        solver.add(s[i+1] == s[i] + d[i] + travel_time)
     
-    if s.check() == sat:
-        m = s.model()
-        itinerary = []
-        for day in range(1, 26):
-            start_city = m.eval(x[day-1])
-            end_city = m.eval(x[day])
-            start_city_str = str(start_city)
-            end_city_str = str(end_city)
-            if start_city_str == end_city_str:
-                cities_on_day = [start_city_str]
-            else:
-                cities_on_day = [start_city_str, end_city_str]
-            itinerary.append({"day": day, "city": cities_on_day})
+    if solver.check() == sat:
+        model = solver.model()
+        seq_val = [model.evaluate(seq[i]).as_long() for i in range(n)]
+        s_val = [model.evaluate(s[i]).as_long() for i in range(n)]
+        d_val = [model.evaluate(d[i]).as_long() for i in range(n)]
         
-        result = {"itinerary": itinerary}
-        print(result)
+        itinerary = []
+        for i in range(n):
+            start = s_val[i]
+            end = start + d_val[i] - 1
+            if start == end:
+                day_range = f"Day {start}"
+            else:
+                day_range = f"Day {start}-{end}"
+            itinerary.append({
+                'day_range': day_range,
+                'place': cities[seq_val[i]]
+            })
+        
+        plan = {'itinerary': itinerary}
+        print("Plan found:", plan)
     else:
-        print("No solution found")
+        print("No valid plan found")
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

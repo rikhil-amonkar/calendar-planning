@@ -1,87 +1,120 @@
 from z3 import *
-import json
 
 def main():
-    # Define city mappings
-    cities = ["Frankfurt", "Manchester", "Valencia", "Naples", "Oslo", "Vilnius"]
-    F = 0; M = 1; V = 2; N = 3; O = 4; W = 5
-
-    # Direct flights (as tuples of city indices, including both directions)
-    direct_flights = [
-        (V, F), (F, V), 
-        (M, F), (F, M),
-        (N, M), (M, N),
-        (N, F), (F, N),
-        (N, O), (O, N),
-        (O, F), (F, O),
-        (W, F), (F, W),
-        (O, W), (W, O),
-        (M, O), (O, M),
-        (V, N), (N, V)
-    ]
-    # Allow staying in the same city: add (c, c) for each city
-    allowed_pairs_with_self = direct_flights + [(c, c) for c in [F, M, V, N, O, W]]
+    # Define the city enumeration
+    City = Datatype('City')
+    City.declare('Manchester')
+    City.declare('Valencia')
+    City.declare('Naples')
+    City.declare('Oslo')
+    City.declare('Vilnius')
+    City.declare('Frankfurt')
+    City = City.create()
     
-    # Create solver and variables
+    # Create city1 and city2 variables for each day (1 to 16)
+    city1 = []
+    city2 = []
+    for i in range(17):  # 0 index unused
+        if i == 0:
+            city1.append(None)
+            city2.append(None)
+        else:
+            city1.append(Const('city1_%d' % i, City))
+            city2.append(Const('city2_%d' % i, City))
+    
     s = Solver()
-    end_city = [Int(f'end_city_{i}') for i in range(16)]
-    for i in range(16):
-        s.add(And(end_city[i] >= 0, end_city[i] <= 5))
     
-    # Constraint: Last four days in Frankfurt (days 13 to 16: indices 12 to 15)
-    s.add(end_city[12] == F)
-    s.add(end_city[13] == F)
-    s.add(end_city[14] == F)
-    s.add(end_city[15] == F)
+    # Fixed constraints for days 12 to 16
+    s.add(city1[12] == City.Oslo)
+    s.add(city2[12] == City.Vilnius)
+    s.add(city1[13] == City.Vilnius)
+    s.add(city2[13] == City.Frankfurt)
+    for d in range(14, 17):
+        s.add(city1[d] == City.Frankfurt)
+        s.add(city2[d] == City.Frankfurt)
     
-    # Constraint: Vilnius wedding on day 12 or 13 (indices 11 or 12)
-    s.add(Or(end_city[10] == W, end_city[11] == W))
+    # Day 1: start with no flight (same city)
+    s.add(city1[1] == city2[1])
+    # Day 16: end with no flight (same city)
+    s.add(city1[16] == city2[16])
     
-    # Flight constraints: for consecutive days, either stay or fly directly
-    for i in range(1, 16):
-        constraints = []
-        for (a, b) in allowed_pairs_with_self:
-            constraints.append(And(end_city[i-1] == a, end_city[i] == b))
-        s.add(Or(constraints))
+    # Consecutive days: city2[d] must equal city1[d+1]
+    for d in range(1, 16):
+        s.add(city2[d] == city1[d+1])
     
-    # Total days constraints
-    def total_days(c):
-        # Day 1 (index0): only end_city[0] counts
-        day1 = If(end_city[0] == c, 1, 0)
-        # Days 2 to 16: if either the previous end city or current end city is c, count 1
-        other_days = [If(Or(end_city[i-1] == c, end_city[i] == c), 1, 0) for i in range(1, 16)]
-        return day1 + sum(other_days)
+    # Define the direct flight pairs (including both directions)
+    flight_list = [
+        (City.Valencia, City.Frankfurt),
+        (City.Manchester, City.Frankfurt),
+        (City.Naples, City.Manchester),
+        (City.Naples, City.Frankfurt),
+        (City.Naples, City.Oslo),
+        (City.Oslo, City.Frankfurt),
+        (City.Vilnius, City.Frankfurt),
+        (City.Oslo, City.Vilnius),
+        (City.Manchester, City.Oslo),
+        (City.Valencia, City.Naples)
+    ]
+    flight_set = set()
+    for a, b in flight_list:
+        flight_set.add((a, b))
+        flight_set.add((b, a))
     
-    s.add(total_days(F) == 4)
-    s.add(total_days(M) == 4)
-    s.add(total_days(V) == 4)
-    s.add(total_days(N) == 4)
-    s.add(total_days(O) == 3)
-    s.add(total_days(W) == 2)
+    # Flight constraints: if city1[d] != city2[d], then the pair must be in flight_set
+    for d in range(1, 17):
+        c1 = city1[d]
+        c2 = city2[d]
+        s.add(If(c1 != c2, Or([And(c1 == a, c2 == b) for (a, b) in flight_set]), True))
     
-    # Solve
+    # For days 1 to 11, restrict cities to Manchester, Valencia, Naples, Oslo
+    allowed_cities = [City.Manchester, City.Valencia, City.Naples, City.Oslo]
+    for d in range(1, 12):
+        s.add(Or([city1[d] == c for c in allowed_cities]))
+        s.add(Or([city2[d] == c for c in allowed_cities]))
+    
+    # Count days for each city in the first 11 days
+    manchester_count = 0
+    valencia_count = 0
+    naples_count = 0
+    oslo_count = 0
+    
+    for d in range(1, 12):
+        manchester_count += If(Or(city1[d] == City.Manchester, city2[d] == City.Manchester), 1, 0)
+        valencia_count += If(Or(city1[d] == City.Valencia, city2[d] == City.Valencia), 1, 0)
+        naples_count += If(Or(city1[d] == City.Naples, city2[d] == City.Naples), 1, 0)
+        oslo_count += If(Or(city1[d] == City.Oslo, city2[d] == City.Oslo), 1, 0)
+    
+    s.add(manchester_count == 4)
+    s.add(valencia_count == 4)
+    s.add(naples_count == 4)
+    s.add(oslo_count == 2)
+    
+    # Check for a solution
     if s.check() == sat:
         model = s.model()
-        # Build the itinerary
         itinerary = []
-        # Day 1
-        city_index0 = model.evaluate(end_city[0]).as_long()
-        itinerary.append({"day": 1, "city": cities[city_index0]})
-        # Days 2 to 16
-        for day in range(2, 17):
-            idx_prev = day - 2  # index for end_city of previous day (day-1)
-            idx_curr = day - 1  # index for end_city of current day (day)
-            start_city_val = model.evaluate(end_city[idx_prev]).as_long()
-            end_city_val = model.evaluate(end_city[idx_curr]).as_long()
-            if start_city_val != end_city_val:
-                itinerary.append({"day": day, "city": cities[start_city_val]})
-                itinerary.append({"day": day, "city": cities[end_city_val]})
-            else:
-                itinerary.append({"day": day, "city": cities[start_city_val]})
+        city_names = {
+            City.Manchester: "Manchester",
+            City.Valencia: "Valencia",
+            City.Naples: "Naples",
+            City.Oslo: "Oslo",
+            City.Vilnius: "Vilnius",
+            City.Frankfurt: "Frankfurt"
+        }
         
-        # Output as JSON
-        result = {"itinerary": itinerary}
-        print(json.dumps(result, indent=2))
+        for d in range(1, 17):
+            c1_val = model[city1[d]]
+            c2_val = model[city2[d]]
+            place1 = city_names[c1_val]
+            itinerary.append({"day": d, "place": place1})
+            if c1_val != c2_val:
+                place2 = city_names[c2_val]
+                itinerary.append({"day": d, "place": place2})
+        
+        # Sort itinerary by day and then by place (to group same days together)
+        itinerary_sorted = sorted(itinerary, key=lambda x: (x['day'], x['place']))
+        result = {"itinerary": itinerary_sorted}
+        print(result)
     else:
         print("No solution found")
 

@@ -2,114 +2,106 @@ from z3 import *
 import json
 
 def main():
-    CitySort, city_con = EnumSort('City', [
-        'Istanbul', 
-        'Brussels', 
-        'Helsinki', 
-        'Split', 
-        'Dubrovnik', 
-        'Milan', 
-        'Vilnius', 
-        'Frankfurt'
-    ])
-    Istanbul, Brussels, Helsinki, Split, Dubrovnik, Milan, Vilnius, Frankfurt = city_con
-    city_dict = {
-        'Istanbul': Istanbul,
-        'Brussels': Brussels,
-        'Helsinki': Helsinki,
-        'Split': Split,
-        'Dubrovnik': Dubrovnik,
-        'Milan': Milan,
-        'Vilnius': Vilnius,
-        'Frankfurt': Frankfurt
-    }
+    cities = ["Brussels", "Helsinki", "Split", "Dubrovnik", "Istanbul", "Milan", "Vilnius", "Frankfurt"]
     
-    start = [None]
-    end = [None]
-    for i in range(1, 23):
-        start.append(Const(f'start_{i}', CitySort))
-        end.append(Const(f'end_{i}', CitySort))
+    bidirectional_edges = [
+        ("Milan", "Frankfurt"),
+        ("Split", "Frankfurt"),
+        ("Milan", "Split"),
+        ("Brussels", "Vilnius"),
+        ("Brussels", "Helsinki"),
+        ("Istanbul", "Brussels"),
+        ("Milan", "Vilnius"),
+        ("Brussels", "Milan"),
+        ("Istanbul", "Helsinki"),
+        ("Helsinki", "Vilnius"),
+        ("Helsinki", "Dubrovnik"),
+        ("Split", "Vilnius"),
+        ("Istanbul", "Milan"),
+        ("Helsinki", "Frankfurt"),
+        ("Istanbul", "Vilnius"),
+        ("Split", "Helsinki"),
+        ("Milan", "Helsinki"),
+        ("Istanbul", "Frankfurt"),
+        ("Dubrovnik", "Frankfurt"),
+        ("Frankfurt", "Vilnius")
+    ]
+    
+    directed_edges = [
+        ("Dubrovnik", "Istanbul"),
+        ("Brussels", "Frankfurt")
+    ]
+    
+    directed_flights_set = set()
+    for (a, b) in bidirectional_edges:
+        i = cities.index(a)
+        j = cities.index(b)
+        directed_flights_set.add((i, j))
+        directed_flights_set.add((j, i))
+    for (a, b) in directed_edges:
+        i = cities.index(a)
+        j = cities.index(b)
+        directed_flights_set.add((i, j))
+    
+    n_days = 22
+    n_cities = len(cities)
     
     s = Solver()
     
-    for d in range(1, 22):
-        s.add(end[d] == start[d+1])
+    start_city = [Int(f'start_{d}') for d in range(n_days)]
+    end_city = [Int(f'end_{d}') for d in range(n_days)]
+    fly = [Bool(f'fly_{d}') for d in range(n_days)]
+    in_city = [[Bool(f'in_{i}_{d}') for d in range(n_days)] for i in range(n_cities)]
     
-    s.add(start[1] == Istanbul)
-    s.add(end[22] == Vilnius)
+    for d in range(n_days):
+        s.add(start_city[d] >= 0, start_city[d] < n_cities)
+        s.add(end_city[d] >= 0, end_city[d] < n_cities)
     
-    for d in range(1, 6):
-        s.add(Or(start[d] == Istanbul, end[d] == Istanbul))
+    s.add(start_city[0] == cities.index("Istanbul"))
     
-    for d in range(18, 23):
-        s.add(Or(start[d] == Vilnius, end[d] == Vilnius))
+    for d in range(1, n_days):
+        s.add(start_city[d] == end_city[d-1])
     
-    for d in [16, 17, 18]:
-        s.add(Or(start[d] == Frankfurt, end[d] == Frankfurt))
+    for d in range(n_days):
+        s.add(If(fly[d], start_city[d] != end_city[d], start_city[d] == end_city[d]))
+        allowed_flights = []
+        for (i, j) in directed_flights_set:
+            allowed_flights.append(And(start_city[d] == i, end_city[d] == j))
+        s.add(Implies(fly[d], Or(allowed_flights)))
+        
+        for i in range(n_cities):
+            s.add(in_city[i][d] == Or(start_city[d] == i, And(fly[d], end_city[d] == i)))
     
-    directed_edges = []
-    bidirectional_pairs = [
-        ('Milan', 'Frankfurt'),
-        ('Split', 'Frankfurt'),
-        ('Milan', 'Split'),
-        ('Brussels', 'Vilnius'),
-        ('Brussels', 'Helsinki'),
-        ('Istanbul', 'Brussels'),
-        ('Milan', 'Vilnius'),
-        ('Brussels', 'Milan'),
-        ('Istanbul', 'Helsinki'),
-        ('Helsinki', 'Vilnius'),
-        ('Helsinki', 'Dubrovnik'),
-        ('Split', 'Vilnius'),
-        ('Istanbul', 'Milan'),
-        ('Helsinki', 'Frankfurt'),
-        ('Istanbul', 'Vilnius'),
-        ('Split', 'Helsinki'),
-        ('Milan', 'Helsinki'),
-        ('Istanbul', 'Frankfurt'),
-        ('Dubrovnik', 'Frankfurt'),
-        ('Frankfurt', 'Vilnius')
-    ]
-    for a, b in bidirectional_pairs:
-        directed_edges.append((a, b))
-        directed_edges.append((b, a))
-    directed_edges.append(('Dubrovnik', 'Istanbul'))
-    directed_edges.append(('Brussels', 'Frankfurt'))
+    for d in range(0, 5):
+        s.add(in_city[cities.index("Istanbul")][d] == True)
     
-    for d in range(1, 23):
-        conds = []
-        for a, b in directed_edges:
-            conds.append(And(start[d] == city_dict[a], end[d] == city_dict[b]))
-        s.add(If(start[d] != end[d], Or(conds), True))
+    for d in [15, 16, 17]:
+        s.add(in_city[cities.index("Frankfurt")][d] == True)
     
-    req_days = {
-        'Istanbul': 5,
-        'Brussels': 3,
-        'Helsinki': 3,
-        'Split': 4,
-        'Dubrovnik': 2,
-        'Milan': 4,
-        'Vilnius': 5,
-        'Frankfurt': 3
-    }
-    for city_name, days_req in req_days.items():
-        total = 0
-        c = city_dict[city_name]
-        for d in range(1, 23):
-            total += If(Or(start[d] == c, end[d] == c), 1, 0)
-        s.add(total == days_req)
+    for d in range(17, 22):
+        s.add(in_city[cities.index("Vilnius")][d] == True)
+    
+    total_days = [0] * n_cities
+    for i in range(n_cities):
+        total_days[i] = Sum([If(in_city[i][d], 1, 0) for d in range(n_days)])
+    s.add(total_days[cities.index("Brussels")] == 3)
+    s.add(total_days[cities.index("Helsinki")] == 3)
+    s.add(total_days[cities.index("Split")] == 4)
+    s.add(total_days[cities.index("Dubrovnik")] == 2)
+    s.add(total_days[cities.index("Istanbul")] == 5)
+    s.add(total_days[cities.index("Milan")] == 4)
+    s.add(total_days[cities.index("Vilnius")] == 5)
+    s.add(total_days[cities.index("Frankfurt")] == 3)
+    
+    s.add(Sum([If(fly[d], 1, 0) for d in range(n_days)]) == 7)
     
     if s.check() == sat:
-        model = s.model()
+        m = s.model()
         itinerary = []
-        for d in range(1, 23):
-            s_val = model[start[d]]
-            s_name = s_val.decl().name()
-            itinerary.append({"day": d, "place": s_name})
-            e_val = model[end[d]]
-            e_name = e_val.decl().name()
-            if s_name != e_name:
-                itinerary.append({"day": d, "place": e_name})
+        for d in range(n_days):
+            for i in range(n_cities):
+                if m.evaluate(in_city[i][d]):
+                    itinerary.append({"day": d+1, "place": cities[i]})
         result = {"itinerary": itinerary}
         print(json.dumps(result))
     else:

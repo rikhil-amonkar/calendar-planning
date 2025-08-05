@@ -1,18 +1,22 @@
 {
     "has_execution_error": false,
-    "execution_output": "{\"itinerary\": [{\"day\": 1, \"place\": \"Madrid\"}, {\"day\": 2, \"place\": \"Madrid\"}, {\"day\": 3, \"place\": \"Madrid\"}, {\"day\": 4, \"place\": \"Madrid\"}, {\"day\": 4, \"place\": \"Dublin\"}, {\"day\": 5, \"place\": \"Dublin\"}, {\"day\": 6, \"place\": \"Dublin\"}, {\"day\": 6, \"place\": \"Tallinn\"}, {\"day\": 7, \"place\": \"Tallinn\"}]}\n",
+    "execution_output": "Plan found: {'itinerary': [{'day_range': 'Day 1', 'place': 'Madrid'}, {'day_range': 'Day 2', 'place': 'Dublin'}, {'day_range': 'Day 3-6', 'place': 'Madrid'}, {'day_range': 'Day 7', 'place': 'Tallinn'}]}\n",
     "pred": {
         "itinerary": [
             {
-                "day_range": "Day 1-4",
+                "day_range": "Day 1",
                 "place": "Madrid"
             },
             {
-                "day_range": "Day 4-6",
+                "day_range": "Day 2",
                 "place": "Dublin"
             },
             {
-                "day_range": "Day 6-7",
+                "day_range": "Day 3-6",
+                "place": "Madrid"
+            },
+            {
+                "day_range": "Day 7",
                 "place": "Tallinn"
             }
         ]
@@ -33,9 +37,22 @@
             }
         ]
     },
-    "status": "Correct",
-    "violated_constraint": {},
-    "is_exact_match": true,
-    "constraints_satisfied": true,
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "gap/overlap": [
+            {
+                "place": "Madrid",
+                "start": 1,
+                "end": 1
+            },
+            {
+                "place": "Dublin",
+                "start": 2,
+                "end": 2
+            }
+        ]
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
     "pass_number": 2
 }

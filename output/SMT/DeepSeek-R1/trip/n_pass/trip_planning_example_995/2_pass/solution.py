@@ -1,118 +1,78 @@
 from z3 import *
 
-def main():
-    cities = {
-        "Barcelona": 3,
-        "Stuttgart": 3,
-        "Venice": 4,
-        "Split": 4,
-        "Brussels": 3,
-        "Oslo": 2,
-        "Copenhagen": 3
-    }
+def solve_itinerary():
+    s = Solver()
+    n_days = 16
+    cities = ["Barcelona", "Oslo", "Brussels", "Stuttgart", "Split", "Copenhagen", "Venice"]
+    n_cities = len(cities)
+    city_to_int = {city: idx for idx, city in enumerate(cities)}
+    int_to_city = {idx: city for idx, city in enumerate(cities)}
     
-    flights_list = [
-        "Venice and Stuttgart",
-        "Oslo and Brussels",
-        "Split and Copenhagen",
-        "Barcelona and Copenhagen",
-        "Barcelona and Venice",
-        "Brussels and Venice",
-        "Barcelona and Stuttgart",
-        "Copenhagen and Brussels",
-        "Oslo and Split",
-        "Oslo and Venice",
-        "Barcelona and Split",
-        "Oslo and Copenhagen",
-        "Barcelona and Oslo",
-        "Copenhagen and Stuttgart",
-        "Split and Stuttgart",
-        "Copenhagen and Venice",
-        "Barcelona and Brussels"
-    ]
+    # City for each day
+    city_vars = [Int(f"city_{d}") for d in range(1, n_days+1)]
+    for d in range(n_days):
+        s.add(city_vars[d] >= 0, city_vars[d] < n_cities)
     
-    flight_connections = []
-    for s in flights_list:
-        parts = s.split(' and ')
-        flight_connections.append((parts[0], parts[1]))
+    # Start in Barcelona and end in Venice
+    s.add(city_vars[0] == city_to_int["Barcelona"])
+    s.add(city_vars[15] == city_to_int["Venice"])
     
-    directed_flights = set()
-    for u, v in flight_connections:
-        directed_flights.add((u, v))
-        directed_flights.add((v, u))
+    # Travel only on days 4, 8, 12 (index 3,7,11)
+    for d in range(1, n_days):
+        if d+1 not in [4,8,12]:
+            s.add(city_vars[d] == city_vars[d-1])
     
-    city_names = list(cities.keys())
-    CitySort, city_consts = EnumSort('City', city_names)
-    city_enum = {name: const for name, const in zip(city_names, city_consts)}
-    const_to_name = {const: name for name, const in city_enum.items()}
+    # Each city is visited
+    visited = [Int(f"visited_{i}") for i in range(n_cities)]
+    for i in range(n_cities):
+        s.add(visited[i] == If(Or([city_vars[d] == i for d in range(n_days)]), 1, 0))
+    s.add(Sum(visited) == n_cities)
     
-    c = [Const(f'c_{i}', CitySort) for i in range(7)]
-    s = [Int(f's_{i}') for i in range(7)]
-    
-    solver = Solver()
-    
-    solver.add(Distinct(c))
-    solver.add(c[0] == city_enum["Barcelona"])
-    solver.add(s[0] == 1)
-    
-    for i in range(6):
-        constraints = []
-        for name, days in cities.items():
-            constraints.append(And(c[i] == city_enum[name], s[i+1] == s[i] + days - 1))
-        solver.add(Or(constraints))
-    
-    last_constraints = []
-    for name, days in cities.items():
-        last_constraints.append(And(c[6] == city_enum[name], s[6] + days - 1 == 16))
-    solver.add(Or(last_constraints))
-    
-    for i in range(7):
-        solver.add(If(c[i] == city_enum["Oslo"], 
-                     Or(s[i] == 2, s[i] == 3, s[i] == 4), 
-                     True))
-    
-    for i in range(7):
-        solver.add(If(c[i] == city_enum["Brussels"], 
-                     And(s[i] >= 7, s[i] <= 11), 
-                     True))
-    
-    for i in range(6):
-        constraints = []
-        for u, v in directed_flights:
-            constraints.append(And(c[i] == city_enum[u], c[i+1] == city_enum[v]))
-        solver.add(Or(constraints))
-    
-    if solver.check() == sat:
-        model = solver.model()
-        city_sequence = []
-        start_days = []
-        for i in range(7):
-            city_val = model.eval(c[i])
-            city_name = const_to_name[city_val]
-            city_sequence.append(city_name)
-            start_days.append(model.eval(s[i]).as_long())
+    # Consecutive days per city and exactly one city has 1-day stay
+    min_days = [Int(f"min_days_{i}") for i in range(n_cities)]
+    one_day_stay = Int("one_day_stay")
+    one_day_stay_city = Int("one_day_stay_city")
+    for i in range(n_cities):
+        first_day = Int(f"first_day_{i}")
+        last_day = Int(f"last_day_{i}")
+        s.add(first_day >= 0, first_day < n_days)
+        s.add(last_day >= 0, last_day < n_days)
         
-        day_assignments = [[] for _ in range(17)]
-        for i in range(7):
-            city_name = city_sequence[i]
-            start_day = start_days[i]
-            length = cities[city_name]
-            end_day = start_day + length - 1
-            for d in range(start_day, end_day + 1):
-                if 1 <= d <= 16:
-                    day_assignments[d].append(city_name)
+        in_city_days = [If(city_vars[d] == i, 1, 0) for d in range(n_days)]
+        s.add(Or(Sum(in_city_days) == 0, Sum(in_city_days) >= 2), Or(Sum(in_city_days) == 0, Sum(in_city_days) == 1, Sum(in_city_days) >= 2))
         
+        s.add(Implies(Sum(in_city_days) > 0, first_day == Min([If(city_vars[d] == i, d, n_days) for d in range(n_days)]))
+        s.add(Implies(Sum(in_city_days) > 0, last_day == Max([If(city_vars[d] == i, d, -1) for d in range(n_days)]))
+        s.add(Implies(Sum(in_city_days) > 0, last_day - first_day + 1 == Sum(in_city_days)))
+        
+        min_days[i] = Sum(in_city_days)
+        s.add(Implies(min_days[i] > 0, min_days[i] >= 2))
+    
+    one_day_possible = [If(min_days[i] == 1, 1, 0) for i in range(n_cities)]
+    s.add(Sum(one_day_possible) == 1)
+    
+    if s.check() == sat:
+        model = s.model()
         itinerary = []
-        for day in range(1, 17):
-            for place in day_assignments[day]:
-                itinerary.append({"day": day, "place": place})
-        
-        result = {
-            "itinerary": itinerary
-        }
-        print(result)
+        current_city = model.eval(city_vars[0]).as_long()
+        start_day = 1
+        for d in range(1, n_days):
+            curr_city_val = model.eval(city_vars[d]).as_long()
+            prev_city_val = model.eval(city_vars[d-1]).as_long()
+            if curr_city_val != prev_city_val:
+                end_day = d
+                itinerary.append({
+                    'day_range': f"Day {start_day}-{end_day}",
+                    'place': int_to_city[prev_city_val]
+                })
+                start_day = d+1
+        itinerary.append({
+            'day_range': f"Day {start_day}-{n_days}",
+            'place': int_to_city[model.eval(city_vars[n_days-1]).as_long()]
+        })
+        return {'itinerary': itinerary}
     else:
-        print("No solution found")
+        return "No solution found"
 
-if __name__ == "__main__":
-    main()
+result = solve_itinerary()
+print(result)

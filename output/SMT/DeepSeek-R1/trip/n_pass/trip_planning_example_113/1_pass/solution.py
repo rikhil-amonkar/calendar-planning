@@ -1,55 +1,76 @@
 from z3 import *
+import json
 
-# Define the variables for each day: 12 days
-days = [Int('d_%d' % i) for i in range(1, 13)]
+def main():
+    s0 = Int('s0')
+    end = [Int('end_%d' % i) for i in range(1, 13)]
+    
+    solver = Solver()
+    
+    # Define possible cities: 0=Milan, 1=Seville, 2=Naples
+    solver.add(s0 >= 0, s0 <= 2)
+    for i in range(12):
+        solver.add(end[i] >= 0, end[i] <= 2)
+    
+    # Seville constraints: not in Seville on start or days 1-8, and in Seville on days 9-12
+    solver.add(s0 != 1)  # s0 not Seville
+    for i in range(8):    # days 1-8: end[0] to end[7]
+        solver.add(end[i] != 1)
+    for i in range(8, 12): # days 9-12: end[8] to end[11]
+        solver.add(end[i] == 1)
+    
+    # Flight constraints for day 1: if s0 != end[0], then must be a direct flight
+    flight1_cond = (s0 != end[0])
+    flight1_allowed = Or(
+        And(s0 == 0, end[0] == 1),
+        And(s0 == 1, end[0] == 0),
+        And(s0 == 2, end[0] == 0),
+        And(s0 == 0, end[0] == 2)
+    )
+    solver.add(Implies(flight1_cond, flight1_allowed))
+    
+    # Flight constraints for days 2 to 12
+    for idx in range(1, 12):  # idx from 1 to 11: representing flight on day idx+1
+        prev = end[idx-1]
+        curr = end[idx]
+        flight_cond = (prev != curr)
+        flight_allowed = Or(
+            And(prev == 0, curr == 1),
+            And(prev == 1, curr == 0),
+            And(prev == 2, curr == 0),
+            And(prev == 0, curr == 2)
+        )
+        solver.add(Implies(flight_cond, flight_allowed))
+    
+    # Total days in Milan (0)
+    total_milan = If(Or(s0 == 0, end[0] == 0), 1, 0)
+    for idx in range(0, 11):  # for gaps: 0 to 10, 11 gaps for 12 days
+        total_milan += If(Or(end[idx] == 0, end[idx+1] == 0), 1, 0)
+    solver.add(total_milan == 7)
+    
+    # Total days in Naples (2)
+    total_naples = If(Or(s0 == 2, end[0] == 2), 1, 0)
+    for idx in range(0, 11):
+        total_naples += If(Or(end[idx] == 2, end[idx+1] == 2), 1, 0)
+    solver.add(total_naples == 3)
+    
+    # Solve the problem
+    if solver.check() == sat:
+        model = solver.model()
+        s0_val = model[s0].as_long()
+        end_vals = [model[end[i]].as_long() for i in range(12)]
+        
+        cities = {0: "Milan", 1: "Seville", 2: "Naples"}
+        itinerary_list = []
+        for day in range(1, 13):
+            city_index = end_vals[day-1]
+            city_name = cities[city_index]
+            itinerary_list.append({"day": day, "city": city_name})
+        
+        result = {"itinerary": itinerary_list}
+        print(json.dumps(result))
+    else:
+        print("No solution found")
 
-s = Solver()
-
-# City encoding: 0 = Milan, 1 = Seville, 2 = Naples
-s.add([Or(d == 0, d == 1, d == 2) for d in days])
-
-# Constraint: From day 9 to 12, in Seville (which are indices 8 to 11 in zero-indexed list)
-for i in [8, 9, 10, 11]:
-    s.add(days[i] == 1)  # Seville is 1
-
-# Direct flights: between Milan (0) and Seville (1), and between Milan (0) and Naples (2)
-# So allowed transitions: (0,1), (1,0), (0,2), (2,0)
-for i in range(0, 11):  # from day1 to day2, up to day11 to day12: 11 transitions
-    current = days[i]
-    next_day = days[i+1]
-    s.add(If(current != next_day,
-             Or(
-                 And(current == 0, next_day == 1),
-                 And(current == 1, next_day == 0),
-                 And(current == 0, next_day == 2),
-                 And(current == 2, next_day == 0)
-             ),
-             True))  # if no change, no constraint
-
-# Function to count days for a city
-def count_days_for_city(city_code, days_list):
-    # First term: days where the city is assigned
-    term1 = Sum([If(d == city_code, 1, 0) for d in days_list])
-    # Second term: days i (from 0 to 10) where days_list[i] != city_code and days_list[i+1] == city_code
-    term2 = Sum([If(And(days_list[i] != city_code, days_list[i+1] == city_code), 1, 0) for i in range(0, 11)])
-    return term1 + term2
-
-count_naples = count_days_for_city(2, days)
-count_seville = count_days_for_city(1, days)
-count_milan = count_days_for_city(0, days)
-
-s.add(count_naples == 3)
-s.add(count_seville == 4)
-s.add(count_milan == 7)
-
-# Solve the problem
-if s.check() == sat:
-    model = s.model()
-    solution = [model[d].as_long() for d in days]
-    # Convert to city names
-    city_names = {0: "Milan", 1: "Seville", 2: "Naples"}
-    itinerary_list = [{"day": i+1, "place": city_names[solution[i]]} for i in range(0, 12)]
-    result = {'itinerary': itinerary_list}
-    print(result)
-else:
-    print("No solution found")
+if __name__ == "__main__":
+    main()

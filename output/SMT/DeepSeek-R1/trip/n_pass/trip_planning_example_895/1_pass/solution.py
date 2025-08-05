@@ -1,102 +1,130 @@
 from z3 import *
 import json
 
-def main():
-    cities = ['Brussels', 'Venice', 'London', 'Lisbon', 'Reykjavik', 'Santorini', 'Madrid']
-    edges = [
-        ('Venice', 'Madrid'), 
-        ('Lisbon', 'Reykjavik'), 
-        ('Brussels', 'Venice'), 
-        ('Venice', 'Santorini'), 
-        ('Lisbon', 'Venice'), 
-        ('Reykjavik', 'Madrid'), 
-        ('Brussels', 'London'), 
-        ('Madrid', 'London'), 
-        ('Santorini', 'London'), 
-        ('London', 'Reykjavik'), 
-        ('Brussels', 'Lisbon'), 
-        ('Lisbon', 'London'), 
-        ('Lisbon', 'Madrid'), 
-        ('Madrid', 'Santorini'), 
-        ('Brussels', 'Reykjavik'), 
-        ('Brussels', 'Madrid'), 
-        ('Venice', 'London')
-    ]
-    
-    flight_set = set()
-    for u, v in edges:
-        key = (min(u, v), max(u, v))
-        flight_set.add(key)
-    
-    days = list(range(1, 18))
-    p = {}
-    for d in days:
-        for c in cities:
-            p[(d, c)] = Bool(f"p_{d}_{c}")
-    
-    s = Solver()
-    
-    for d in days:
-        lst = [p[(d, c)] for c in cities]
-        s.add(Or(lst))
-        
-        for i in range(len(cities)):
-            for j in range(i+1, len(cities)):
-                c1 = cities[i]
-                c2 = cities[j]
-                edge_key = (min(c1, c2), max(c1, c2))
-                if edge_key not in flight_set:
-                    s.add(Not(And(p[(d, c1)], p[(d, c2)])))
-    
-    for d in range(1, 17):
-        or_list = []
-        for c in cities:
-            or_list.append(And(p[(d, c)], p[(d+1, c)]))
-        s.add(Or(or_list))
-    
-    s.add(p[(1, 'Brussels')] == True)
-    s.add(p[(2, 'Brussels')] == True)
-    
-    total_days = {}
-    for c in cities:
-        total_days[c] = Sum([If(p[(d, c)], 1, 0) for d in days])
-    
-    s.add(total_days['Brussels'] == 2)
-    s.add(total_days['Venice'] == 3)
-    s.add(total_days['London'] == 3)
-    s.add(total_days['Lisbon'] == 4)
-    s.add(total_days['Reykjavik'] == 3)
-    s.add(total_days['Santorini'] == 3)
-    s.add(total_days['Madrid'] == 5)
-    
-    total_all = Sum([If(p[(d, c)], 1, 0) for d in days for c in cities])
-    s.add(total_all == 23)
-    
-    venice_or = []
-    for d in [5,6,7]:
-        venice_or.append(p[(d, 'Venice')])
-    s.add(Or(venice_or))
-    
-    madrid_or = []
-    for d in [7,8,9,10,11]:
-        madrid_or.append(p[(d, 'Madrid')])
-    s.add(Or(madrid_or))
-    
-    if s.check() == sat:
-        model = s.model()
-        itinerary_list = []
-        for d in days:
-            cities_on_day = []
-            for c in cities:
-                if model.evaluate(p[(d, c)]):
-                    cities_on_day.append(c)
-            cities_on_day.sort()
-            itinerary_list.append({"day": d, "place": cities_on_day})
-        
-        result = {'itinerary': itinerary_list}
-        print(json.dumps(result, indent=2))
-    else:
-        print("No solution found")
+city_names = ['Brussels', 'Venice', 'London', 'Lisbon', 'Reykjavik', 'Santorini', 'Madrid']
+n_cities = len(city_names)
+n_days = 17
 
-if __name__ == "__main__":
-    main()
+# Map city names to indices
+city_index = {name: idx for idx, name in enumerate(city_names)}
+
+# Define directed flights
+directed_flights = set()
+
+# Bidirectional flights
+bidir = [
+    ('Venice', 'Madrid'),
+    ('Lisbon', 'Reykjavik'),
+    ('Brussels', 'Venice'),
+    ('Venice', 'Santorini'),
+    ('Lisbon', 'Venice'),
+    ('Brussels', 'London'),
+    ('Madrid', 'London'),
+    ('Santorini', 'London'),
+    ('London', 'Reykjavik'),
+    ('Brussels', 'Lisbon'),
+    ('Lisbon', 'London'),
+    ('Lisbon', 'Madrid'),
+    ('Madrid', 'Santorini'),
+    ('Brussels', 'Reykjavik'),
+    ('Brussels', 'Madrid'),
+    ('Venice', 'London')
+]
+
+for (a, b) in bidir:
+    directed_flights.add((a, b))
+    directed_flights.add((b, a))
+
+# Unidirectional flight
+directed_flights.add(('Reykjavik', 'Madrid'))
+
+# Create a flight_ok matrix: flight_ok[i][j] is True if there's a flight from city i to city j
+flight_ok_bool = [[False]*n_cities for _ in range(n_cities)]
+for i in range(n_cities):
+    for j in range(n_cities):
+        if i == j:
+            continue
+        if (city_names[i], city_names[j]) in directed_flights:
+            flight_ok_bool[i][j] = True
+
+# Total days required per city: [Brussels, Venice, London, Lisbon, Reykjavik, Santorini, Madrid]
+total_days = [2, 3, 3, 4, 3, 3, 5]
+
+# Create Z3 variables: in_city[day][city]
+in_city = [[Bool(f"in_city_d{d}_c{c}") for c in range(n_cities)] for d in range(n_days)]
+
+s = Solver()
+
+# Fixed constraints for Brussels: days 1 and 2 (index 0 and 1)
+brussels_idx = city_index['Brussels']
+s.add(in_city[0][brussels_idx] == True)
+s.add(in_city[1][brussels_idx] == True)
+
+# Fixed constraints for Madrid: days 7 to 11 (indices 6 to 10)
+madrid_idx = city_index['Madrid']
+for d in [6,7,8,9,10]:
+    s.add(in_city[d][madrid_idx] == True)
+
+# Day 0 (first day): only Brussels (since we start without any flight on day1)
+for c in range(n_cities):
+    if c != brussels_idx:
+        s.add(in_city[0][c] == False)
+
+# For each day: at least one and at most two cities
+for d in range(n_days):
+    # At least one city
+    s.add(Or(in_city[d]))
+    # At most two cities: use sum <= 2
+    count = Sum([If(in_city[d][c], 1, 0) for c in range(n_cities)])
+    s.add(count >= 1, count <= 2)
+
+# Total days per city
+for c in range(n_cities):
+    total = Sum([If(in_city[d][c], 1, 0) for d in range(n_days)])
+    s.add(total == total_days[c])
+
+# Flight constraints for consecutive days (d from 1 to 16, representing days 2 to 17)
+for d in range(1, n_days):
+    # Same set condition: all cities same as previous day
+    same_set = And([in_city[d-1][c] == in_city[d][c] for c in range(n_cities)])
+    # Count of removed and added cities
+    removed_count = Sum([If(And(in_city[d-1][c], Not(in_city[d][c])), 1, 0) for c in range(n_cities)])
+    added_count = Sum([If(And(Not(in_city[d-1][c]), in_city[d][c]), 1, 0) for c in range(n_cities)])
+    # Condition for flight: one removed and one added, with a direct flight from removed to added
+    flight_conditions = []
+    for A in range(n_cities):
+        for B in range(n_cities):
+            if A == B:
+                continue
+            if flight_ok_bool[A][B]:
+                cond = And(
+                    in_city[d-1][A], 
+                    Not(in_city[d][A]),
+                    Not(in_city[d-1][B]),
+                    in_city[d][B]
+                )
+                flight_conditions.append(cond)
+    # Add the constraint: either same_set or (one removed, one added, and a valid flight)
+    s.add(Or(
+        same_set,
+        And(removed_count == 1, added_count == 1, Or(flight_conditions))
+    ))
+
+# Venice constraint: at least one day in [5,7] (indices 4,5,6)
+venice_idx = city_index['Venice']
+s.add(Or(in_city[4][venice_idx], in_city[5][venice_idx], in_city[6][venice_idx]))
+
+# Solve
+if s.check() == sat:
+    m = s.model()
+    itinerary = []
+    for d in range(n_days):
+        places = []
+        for c in range(n_cities):
+            if is_true(m.evaluate(in_city[d][c])):
+                places.append(city_names[c])
+        itinerary.append({"day": d+1, "place": places})
+    result = {'itinerary': itinerary}
+    print(json.dumps(result))
+else:
+    print("No solution found")

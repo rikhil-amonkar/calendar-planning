@@ -1,105 +1,148 @@
+import itertools
 from z3 import *
 import json
 
-def minutes_to_time(offset_minutes, base_hour=9):
-    total_minutes = base_hour * 60 + offset_minutes
-    hours = total_minutes // 60
-    minutes = total_minutes % 60
+def min_to_time(total_minutes):
+    total_minutes_abs = 9 * 60 + total_minutes
+    hours = total_minutes_abs // 60
+    minutes = total_minutes_abs % 60
     return f"{hours:02d}:{minutes:02d}"
 
-travel_dict = {
-    ('FD', 'PH'): 13,
-    ('FD', 'FW'): 10,
-    ('FD', 'MD'): 17,
-    ('PH', 'FD'): 13,
-    ('PH', 'FW'): 13,
-    ('PH', 'MD'): 15,
-    ('FW', 'FD'): 11,
-    ('FW', 'PH'): 12,
-    ('FW', 'MD'): 22,
-    ('MD', 'FD'): 17,
-    ('MD', 'PH'): 16,
-    ('MD', 'FW'): 22
-}
-
-def get_travel_time(loc1, loc2):
-    return travel_dict.get((loc1, loc2), 1000000)
-
-def schedule_meetings(meetings, start_location, start_time_offset):
-    n = len(meetings)
-    if n == 0:
-        return []
-    t = [Int(f't_{i}') for i in range(n)]
-    p = [Int(f'p_{i}') for i in range(n)]
-    s = Solver()
-    
-    for i in range(n):
-        s.add(p[i] >= 0)
-        s.add(p[i] < n)
-    s.add(Distinct(p))
-    
-    for i in range(n):
-        name, loc, dur, avail_start, avail_end = meetings[i]
-        s.add(t[i] >= avail_start)
-        s.add(t[i] + dur <= avail_end)
-        s.add(t[i] >= 0)
-        
-    for i in range(n):
-        name_i, loc_i, dur_i, avail_start_i, avail_end_i = meetings[i]
-        s.add(If(p[i] == 0, t[i] >= start_time_offset + get_travel_time(start_location, loc_i), True))
-        for j in range(n):
-            if i == j:
-                continue
-            name_j, loc_j, dur_j, avail_start_j, avail_end_j = meetings[j]
-            s.add(If(p[i] == p[j] + 1, t[i] >= t[j] + dur_j + get_travel_time(loc_j, loc_i), True))
-            
-    if s.check() == sat:
-        model = s.model()
-        schedule = []
-        for i in range(n):
-            name, loc, dur, avail_start, avail_end = meetings[i]
-            start_val = model.evaluate(t[i]).as_long()
-            end_val = start_val + dur
-            start_str = minutes_to_time(start_val)
-            end_str = minutes_to_time(end_val)
-            schedule.append( (start_val, {"action": "meet", "person": name, "start_time": start_str, "end_time": end_str}) )
-        schedule.sort(key=lambda x: x[0])
-        itinerary = [item[1] for item in schedule]
-        return itinerary
-    else:
-        return None
-
 def main():
-    meetings_all = [
-        ('Timothy', 'PH', 75, 0, 390),
-        ('David', 'FW', 15, 105, 390),
-        ('Robert', 'MD', 90, 195, 645)
-    ]
-    start_loc = 'FD'
-    start_time_offset = 0
-    
-    cases = [
-        [0, 1, 2],
-        [0, 1],
-        [0, 2],
-        [1, 2],
-        [0],
-        [1],
-        [2]
+    friends_data = [
+        {"name": "David", "loc": "FW", "min_dur": 15, "avail_start": 105, "avail_end": 390},
+        {"name": "Timothy", "loc": "PH", "min_dur": 75, "avail_start": 0, "avail_end": 390},
+        {"name": "Robert", "loc": "MD", "min_dur": 90, "avail_start": 195, "avail_end": 645}
     ]
     
-    result = None
-    for case in cases:
-        meetings_subset = [meetings_all[i] for i in case]
-        result = schedule_meetings(meetings_subset, start_loc, start_time_offset)
-        if result is not None:
-            break
-            
-    if result is None:
-        result = []
+    travel_times = {
+        "FD": {"FW": 10, "PH": 13, "MD": 17},
+        "FW": {"FD": 11, "PH": 12, "MD": 22},
+        "PH": {"FD": 13, "FW": 13, "MD": 15},
+        "MD": {"FD": 17, "FW": 22, "PH": 16}
+    }
+    
+    solver = Solver()
+    schedule = None
+    found = False
+    
+    # Try all permutations for three meetings
+    perms = list(itertools.permutations([0, 1, 2]))
+    for perm in perms:
+        f0 = friends_data[perm[0]]
+        f1 = friends_data[perm[1]]
+        f2 = friends_data[perm[2]]
         
-    output = {"itinerary": result}
-    print(json.dumps(output, indent=2))
+        s0 = Int(f's0_{perm}')
+        s1 = Int(f's1_{perm}')
+        s2 = Int(f's2_{perm}')
+        
+        constraints = [
+            s0 >= travel_times["FD"][f0["loc"]],
+            s1 >= s0 + f0["min_dur"] + travel_times[f0["loc"]][f1["loc"]],
+            s2 >= s1 + f1["min_dur"] + travel_times[f1["loc"]][f2["loc"]],
+            s0 >= f0["avail_start"],
+            s0 + f0["min_dur"] <= f0["avail_end"],
+            s1 >= f1["avail_start"],
+            s1 + f1["min_dur"] <= f1["avail_end"],
+            s2 >= f2["avail_start"],
+            s2 + f2["min_dur"] <= f2["avail_end"],
+            s0 >= 0,
+            s1 >= 0,
+            s2 >= 0
+        ]
+        
+        solver.push()
+        solver.add(constraints)
+        if solver.check() == sat:
+            m = solver.model()
+            start0 = m.eval(s0).as_long()
+            start1 = m.eval(s1).as_long()
+            start2 = m.eval(s2).as_long()
+            
+            itinerary = [
+                {"action": "meet", "person": f0["name"], "start_time": min_to_time(start0), "end_time": min_to_time(start0 + f0["min_dur"])},
+                {"action": "meet", "person": f1["name"], "start_time": min_to_time(start1), "end_time": min_to_time(start1 + f1["min_dur"])},
+                {"action": "meet", "person": f2["name"], "start_time": min_to_time(start2), "end_time": min_to_time(start2 + f2["min_dur"])}
+            ]
+            schedule = itinerary
+            found = True
+            solver.pop()
+            break
+        else:
+            solver.pop()
+    
+    if not found:
+        pairs = list(itertools.combinations([0, 1, 2], 2))
+        for pair in pairs:
+            orders = list(itertools.permutations(pair, 2))
+            for ord in orders:
+                f0 = friends_data[ord[0]]
+                f1 = friends_data[ord[1]]
+                
+                s0 = Int(f's0_{ord}')
+                s1 = Int(f's1_{ord}')
+                
+                constraints = [
+                    s0 >= travel_times["FD"][f0["loc"]],
+                    s1 >= s0 + f0["min_dur"] + travel_times[f0["loc"]][f1["loc"]],
+                    s0 >= f0["avail_start"],
+                    s0 + f0["min_dur"] <= f0["avail_end"],
+                    s1 >= f1["avail_start"],
+                    s1 + f1["min_dur"] <= f1["avail_end"],
+                    s0 >= 0,
+                    s1 >= 0
+                ]
+                
+                solver.push()
+                solver.add(constraints)
+                if solver.check() == sat:
+                    m = solver.model()
+                    start0 = m.eval(s0).as_long()
+                    start1 = m.eval(s1).as_long()
+                    
+                    itinerary = [
+                        {"action": "meet", "person": f0["name"], "start_time": min_to_time(start0), "end_time": min_to_time(start0 + f0["min_dur"])},
+                        {"action": "meet", "person": f1["name"], "start_time": min_to_time(start1), "end_time": min_to_time(start1 + f1["min_dur"])}
+                    ]
+                    schedule = itinerary
+                    found = True
+                    solver.pop()
+                    break
+                else:
+                    solver.pop()
+            if found:
+                break
+    
+    if not found:
+        for i in range(3):
+            f = friends_data[i]
+            s_var = Int(f's_single_{i}')
+            constraints = [
+                s_var >= travel_times["FD"][f["loc"]],
+                s_var >= f["avail_start"],
+                s_var + f["min_dur"] <= f["avail_end"],
+                s_var >= 0
+            ]
+            solver.push()
+            solver.add(constraints)
+            if solver.check() == sat:
+                m = solver.model()
+                start_val = m.eval(s_var).as_long()
+                schedule = [
+                    {"action": "meet", "person": f["name"], "start_time": min_to_time(start_val), "end_time": min_to_time(start_val + f["min_dur"])}
+                ]
+                found = True
+                solver.pop()
+                break
+            else:
+                solver.pop()
+    
+    if schedule is None:
+        result = {"itinerary": []}
+    else:
+        result = {"itinerary": schedule}
+    print(json.dumps(result))
 
 if __name__ == "__main__":
     main()

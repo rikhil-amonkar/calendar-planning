@@ -1,62 +1,73 @@
 from z3 import *
+import json
 
 def main():
-    s = Solver()
+    CityNames = ["Nice", "Dublin", "Krakow", "Lyon", "Frankfurt"]
+    req_by_index = [5, 7, 6, 4, 2]
     
-    # Four stays: cities and start days
-    cities = [String(f"c{i}") for i in range(4)]
-    starts = [Int(f"s{i}") for i in range(4)]
-    ends = [Int(f"e{i}") for i in range(4)]
+    adj = [
+        [0, 1, 0, 1, 1],
+        [1, 0, 1, 1, 1],
+        [0, 1, 0, 0, 1],
+        [1, 1, 0, 0, 1],
+        [1, 1, 1, 1, 0]
+    ]
     
-    # Days array: maps city name to stay duration
-    days_arr = Array('days_arr', StringSort(), IntSort())
-    s.add(days_arr["City1"] == 3)
-    s.add(days_arr["City2"] == 4)
-    s.add(days_arr["City3"] == 2)
-    s.add(days_arr["City4"] == 5)
+    allowed_pairs = []
+    for i in range(5):
+        for j in range(5):
+            if adj[i][j] == 1:
+                allowed_pairs.append((i, j))
     
-    # Cities must be distinct and one of the four
-    s.add(Distinct(cities))
-    for i in range(4):
-        s.add(Or(cities[i] == "City1", cities[i] == "City2", cities[i] == "City3", cities[i] == "City4"))
+    segment_city = [Int(f'c{i}') for i in range(5)]
+    s = [Int(f's{i}') for i in range(5)]
+    solver = Solver()
     
-    # Start days are strictly increasing
-    s.add(starts[0] == 1)
-    s.add(starts[0] < starts[1])
-    s.add(starts[1] < starts[2])
-    s.add(starts[2] < starts[3])
+    for i in range(5):
+        solver.add(segment_city[i] >= 0, segment_city[i] <= 4)
+    solver.add(Distinct(segment_city))
     
-    # First stay is City1, last stay is City4
-    s.add(cities[0] == "City1")
-    s.add(cities[3] == "City4")
+    L_expr = []
+    for i in range(5):
+        L_i = If(segment_city[i] == 0, req_by_index[0],
+                If(segment_city[i] == 1, req_by_index[1],
+                If(segment_city[i] == 2, req_by_index[2],
+                If(segment_city[i] == 3, req_by_index[3],
+                req_by_index[4]))))
+        L_expr.append(L_i)
     
-    # End days for each stay
-    for i in range(4):
-        s.add(ends[i] == starts[i] + days_arr[cities[i]] - 1)
+    solver.add(s[0] == 1)
+    for i in range(1, 5):
+        solver.add(s[i] == s[i-1] + L_expr[i-1] - 1)
+    solver.add(s[4] + L_expr[4] - 1 == 20)
     
-    # Non-overlapping: end of stay i must be before start of stay i+1
-    for i in range(3):
-        s.add(ends[i] < starts[i+1])
+    for i in range(5):
+        solver.add(If(segment_city[i] == 0, And(s[i] >= 1, s[i] <= 5), True))
+        solver.add(If(segment_city[i] == 4, And(s[i] >= 18, s[i] <= 19), True))
     
-    # Entire trip ends by day 14
-    s.add(ends[3] <= 14)
+    for idx in range(4):
+        c1 = segment_city[idx]
+        c2 = segment_city[idx+1]
+        or_constraint = Or([And(c1 == p0, c2 == p1) for (p0, p1) in allowed_pairs])
+        solver.add(or_constraint)
     
-    # City2's stay must start on day 5
-    for i in range(4):
-        s.add(If(cities[i] == "City2", starts[i] == 5, True))
-    
-    # Check for a solution
-    if s.check() == sat:
-        m = s.model()
-        # Print the schedule
-        print("Found a solution:")
-        for i in range(4):
-            city = m[cities[i]]
-            start = m[starts[i]]
-            end = m[ends[i]]
-            print(f"Stay {i+1}: City {city}, from day {start} to day {end}")
+    if solver.check() == sat:
+        m = solver.model()
+        s_val = [m.eval(s_i).as_long() for s_i in s]
+        city_val = [m.eval(c).as_long() for c in segment_city]
+        itinerary = []
+        for day in range(1, 21):
+            for seg in range(5):
+                start = s_val[seg]
+                city_index = city_val[seg]
+                length = req_by_index[city_index]
+                end = start + length - 1
+                if day >= start and day <= end:
+                    itinerary.append({"day": day, "place": CityNames[city_index]})
+        result = {'itinerary': itinerary}
+        print(json.dumps(result))
     else:
-        print("unsat")
+        print('{"itinerary": []}')
 
 if __name__ == "__main__":
     main()

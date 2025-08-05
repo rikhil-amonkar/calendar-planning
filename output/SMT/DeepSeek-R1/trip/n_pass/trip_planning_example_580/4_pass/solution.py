@@ -1,55 +1,48 @@
 from z3 import *
 
-def main():
-    s = Solver()
-    
-    base_durations = [6, 6, 6, 6, 2]
-    reduced_durations = [3, 3, 3, 3, 1]
-    city_names = ['Geneva', 'Porto', 'Paris', 'Oslo', 'Reykjavik']
-    
-    reduced_flags = [Bool(f'reduced_{i}') for i in range(5)]
-    s.add(Sum([If(flag, 1, 0) for flag in reduced_flags]) == 1)
-    s.add(reduced_flags[2] == False)  # Do not reduce Paris (index 2)
-    
-    city_at_pos = [Int(f'city_at_pos_{k}') for k in range(5)]
-    for k in range(5):
-        s.add(city_at_pos[k] >= 0, city_at_pos[k] <= 4)
-    s.add(Distinct(city_at_pos))
-    
-    pos_start = [Int(f'pos_start_{k}') for k in range(5)]
-    pos_end = [Int(f'pos_end_{k}') for k in range(5)]
-    
-    s.add(pos_start[0] == 1)
-    
-    for k in range(5):
-        city_idx = city_at_pos[k]
-        dur_k = Int(f'dur_k_{k}')
-        
-        for i in range(5):
-            duration_val = If(reduced_flags[i], reduced_durations[i], base_durations[i])
-            s.add(If(city_idx == i, dur_k == duration_val, True))
-            
-        s.add(pos_end[k] == pos_start[k] + dur_k - 1)
-        
-        if k < 4:
-            s.add(pos_start[k+1] == pos_end[k] + 1)
-    
-    s.add(pos_end[4] == 23)
-    
-    if s.check() == sat:
-        model = s.model()
-        itinerary = []
-        for k in range(5):
-            city_index = model.evaluate(city_at_pos[k]).as_long()
-            start_val = model.evaluate(pos_start[k]).as_long()
-            end_val = model.evaluate(pos_end[k]).as_long()
-            itinerary.append({
-                'day_range': f'Day {start_val}-{end_val}',
-                'place': city_names[city_index]
-            })
-        print({'itinerary': itinerary})
-    else:
-        print("No solution found")
+# Define duration variables for each city in itinerary order
+d0, d1, d2, d3, d4 = Ints('d0 d1 d2 d3 d4')
+s = Solver()
 
-if __name__ == '__main__':
-    main()
+# Minimum stays (Oslo must be at least 4 days)
+s.add(d0 >= 3, d1 >= 3, d2 >= 3, d3 >= 3, d4 >= 4)
+
+# Maximum stay limit (prevent overly long stays)
+s.add(d0 <= 7, d1 <= 7, d2 <= 7, d3 <= 7, d4 <= 7)
+
+# Total trip days
+s.add(d0 + d1 + d2 + d3 + d4 == 23)
+
+# At least one non-Oslo city has >3 days
+s.add(Or(d0 > 3, d1 > 3, d2 > 3, d3 > 3))
+
+if s.check() == sat:
+    m = s.model()
+    durations = [
+        m.eval(d0).as_long(),
+        m.eval(d1).as_long(),
+        m.eval(d2).as_long(),
+        m.eval(d3).as_long(),
+        m.eval(d4).as_long()
+    ]
+    # Calculate day ranges
+    starts = [1]
+    ends = []
+    for i in range(5):
+        end = starts[i] + durations[i] - 1
+        ends.append(end)
+        if i < 4:
+            starts.append(end + 1)
+    # Verify solution
+    if ends[-1] != 23:
+        print("Invalid plan: Doesn't end on day 23")
+    else:
+        cities = ['Geneva', 'Paris', 'Porto', 'Reykjavik', 'Oslo']
+        itinerary = []
+        for i in range(5):
+            day_range = f"Day {starts[i]}-{ends[i]}"
+            itinerary.append({'day_range': day_range, 'place': cities[i]})
+        plan = {'itinerary': itinerary}
+        print("Plan found:", plan)
+else:
+    print("No valid plan found")

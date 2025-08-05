@@ -1,153 +1,75 @@
-from z3 import *
+import z3
 import json
 
 def main():
-    # City to integer mapping
-    city_int = {
-        "Rome": 0,
-        "Mykonos": 1,
-        "Riga": 2,
-        "Munich": 3,
-        "Bucharest": 4,
-        "Nice": 5,
-        "Krakow": 6
-    }
-    int_city = {v: k for k, v in city_int.items()}
+    cities = ["Rome", "Mykonos", "Nice", "Riga", "Bucharest", "Munich", "Krakow"]
+    n = len(cities)
+    idx_rome = cities.index("Rome")
+    idx_mykonos = cities.index("Mykonos")
+    idx_krakow = cities.index("Krakow")
     
-    # Length of stay for each city
-    len_dict = {
-        0: 4,  # Rome
-        1: 3,  # Mykonos
-        2: 3,  # Riga
-        3: 4,  # Munich
-        4: 4,  # Bucharest
-        5: 3,  # Nice
-        6: 2   # Krakow
-    }
+    days_list = [4, 3, 3, 3, 4, 4, 2]
     
-    # Define directed flight edges
-    bidirectional_pairs = [
-        ("Rome", "Nice"), ("Nice", "Rome"),
-        ("Rome", "Munich"), ("Munich", "Rome"),
-        ("Rome", "Mykonos"), ("Mykonos", "Rome"),
-        ("Rome", "Bucharest"), ("Bucharest", "Rome"),
-        ("Mykonos", "Nice"), ("Nice", "Mykonos"),
-        ("Mykonos", "Munich"), ("Munich", "Mykonos"),
-        ("Riga", "Nice"), ("Nice", "Riga"),
-        ("Riga", "Bucharest"), ("Bucharest", "Riga"),
-        ("Munich", "Bucharest"), ("Bucharest", "Munich"),
-        ("Munich", "Nice"), ("Nice", "Munich"),
-        ("Munich", "Krakow"), ("Krakow", "Munich")
-    ]
-    directed_edges = [
-        ("Rome", "Riga"),
-        ("Riga", "Munich")
+    edges = [
+        (0,2), (0,5), (0,1), (0,4), (0,3),
+        (1,0), (1,2), (1,5),
+        (2,0), (2,3), (2,1), (2,5),
+        (3,2), (3,4), (3,5),
+        (4,3), (4,5), (4,0),
+        (5,4), (5,1), (5,0), (5,2), (5,6),
+        (6,5)
     ]
     
-    # Create edge set
-    edge_set = set()
-    for A, B in bidirectional_pairs:
-        edge_set.add((city_int[A], city_int[B]))
-    for A, B in directed_edges:
-        edge_set.add((city_int[A], city_int[B]))
+    s = z3.Solver()
     
-    # Z3 variables for permutation indices
-    p0, p1, p2, p3, p4 = Ints('p0 p1 p2 p3 p4')
-    s = Solver()
+    order = [z3.Int('o%d' % i) for i in range(n)]
+    for i in range(n):
+        s.add(order[i] >= 0, order[i] < n)
     
-    # Ensure distinct permutation indices
-    s.add(Distinct(p0, p1, p2, p3, p4))
-    s.add(p0 >= 0, p0 < 5)
-    s.add(p1 >= 0, p1 < 5)
-    s.add(p2 >= 0, p2 < 5)
-    s.add(p3 >= 0, p3 < 5)
-    s.add(p4 >= 0, p4 < 5)
+    s.add(order[0] == idx_rome)
+    s.add(order[6] == idx_krakow)
+    s.add(z3.Distinct(order))
     
-    # Mid cities in integer form
-    mid_city_ints = [1, 2, 3, 4, 5]  # Mykonos, Riga, Munich, Bucharest, Nice
+    days_arr = z3.Array('days_arr', z3.IntSort(), z3.IntSort())
+    for i in range(n):
+        days_arr = z3.Store(days_arr, i, days_list[i])
     
-    # Define the city sequence
-    s0 = 0  # Rome
-    s6 = 6  # Krakow
+    start_days = [z3.Int('s%d' % i) for i in range(n)]
+    end_days = [z3.Int('e%d' % i) for i in range(n)]
     
-    s1 = If(p0 == 0, mid_city_ints[0],
-            If(p0 == 1, mid_city_ints[1],
-            If(p0 == 2, mid_city_ints[2],
-            If(p0 == 3, mid_city_ints[3],
-            mid_city_ints[4]))))
-    s2 = If(p1 == 0, mid_city_ints[0],
-            If(p1 == 1, mid_city_ints[1],
-            If(p1 == 2, mid_city_ints[2],
-            If(p1 == 3, mid_city_ints[3],
-            mid_city_ints[4]))))
-    s3 = If(p2 == 0, mid_city_ints[0],
-            If(p2 == 1, mid_city_ints[1],
-            If(p2 == 2, mid_city_ints[2],
-            If(p2 == 3, mid_city_ints[3],
-            mid_city_ints[4]))))
-    s4 = If(p3 == 0, mid_city_ints[0],
-            If(p3 == 1, mid_city_ints[1],
-            If(p3 == 2, mid_city_ints[2],
-            If(p3 == 3, mid_city_ints[3],
-            mid_city_ints[4]))))
-    s5 = If(p4 == 0, mid_city_ints[0],
-            If(p4 == 1, mid_city_ints[1],
-            If(p4 == 2, mid_city_ints[2],
-            If(p4 == 3, mid_city_ints[3],
-            mid_city_ints[4]))))
+    s.add(start_days[0] == 1)
+    s.add(end_days[0] == start_days[0] + days_arr[order[0]] - 1)
     
-    sequence = [s0, s1, s2, s3, s4, s5, s6]
+    for i in range(1, n):
+        s.add(start_days[i] == end_days[i-1])
+        s.add(end_days[i] == start_days[i] + days_arr[order[i]] - 1)
     
-    # Flight constraints
-    for i in range(6):
-        conds = []
-        for edge in edge_set:
-            conds.append(And(sequence[i] == edge[0], sequence[i+1] == edge[1]))
-        s.add(Or(conds))
+    s.add(end_days[6] == 17)
     
-    # Mykonos constraint: must be in Mykonos on at least one day between 4 and 6
-    for k in range(1, 6):  # Mykonos can be at positions 1 to 5 in the sequence
-        total = 4  # a0 = 1, and the length of Rome is 4, so cumulative without count of Rome is 4
-        for j in range(1, k):  # j from 1 to k-1 (city indices in the sequence from 1 to k-1)
-            total = total + If(sequence[j] == 1, 3,
-                              If(sequence[j] == 2, 3,
-                                 If(sequence[j] == 3, 4,
-                                    If(sequence[j] == 4, 4, 3))))
-        a_k = 1 + total - k
-        s.add(If(sequence[k] == 1, And(a_k >= 2, a_k <= 6), True))
+    mykonos_constraint = z3.Or([z3.And(order[i] == idx_mykonos, start_days[i] <= 6) for i in range(n)])
+    s.add(mykonos_constraint)
     
-    # Check and get model
-    if s.check() == sat:
-        model = s.model()
-        perm = []
-        for var in [p0, p1, p2, p3, p4]:
-            perm.append(model[var].as_long())
-        seq_cities = ["Rome"]
-        mid_cities = ["Mykonos", "Riga", "Munich", "Bucharest", "Nice"]
-        for idx in perm:
-            seq_cities.append(mid_cities[idx])
-        seq_cities.append("Krakow")
+    for k in range(n-1):
+        edge_constraint = z3.Or([z3.And(order[k] == u, order[k+1] == v) for (u, v) in edges])
+        s.add(edge_constraint)
+    
+    if s.check() == z3.sat:
+        m = s.model()
+        order_vals = [m.evaluate(order[i]).as_long() for i in range(n)]
+        s_vals = [m.evaluate(start_days[i]).as_long() for i in range(n)]
+        e_vals = [m.evaluate(end_days[i]).as_long() for i in range(n)]
         
-        # Compute arrival days
-        a = [1]
-        for i in range(1, 7):
-            prev_city = seq_cities[i-1]
-            a_i = a[i-1] + len_dict[city_int[prev_city]] - 1
-            a.append(a_i)
-        
-        # Generate itinerary: for day d, the city where we are at the end of the day
         itinerary = []
-        current_city_idx = 0
         for day in range(1, 18):
-            while day >= a[current_city_idx] + len_dict[city_int[seq_cities[current_city_idx]]]:
-                current_city_idx += 1
-            itinerary.append({"day": day, "place": seq_cities[current_city_idx]})
-        
-        # Output as JSON
+            for idx in range(n):
+                if s_vals[idx] <= day <= e_vals[idx]:
+                    city_name = cities[order_vals[idx]]
+                    itinerary.append({"day": day, "city": city_name})
+                    
         result = {"itinerary": itinerary}
         print(json.dumps(result))
     else:
-        print("No solution found")
+        print('{"itinerary": []}')
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

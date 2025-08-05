@@ -1,84 +1,79 @@
 from z3 import *
-import json
 
 def main():
-    s0, s1, s2 = Ints('s0 s1 s2')
-    a = Int('a')
-    b = Int('b')
+    stuttgart = 0
+    seville = 1
+    manchester = 2
+    city_names = {
+        stuttgart: 'Stuttgart',
+        seville: 'Seville',
+        manchester: 'Manchester'
+    }
     
-    solver = Solver()
+    # Create arrays for start and end cities for 15 days
+    start_city = [Int('start_%d' % i) for i in range(15)]
+    end_city = [Int('end_%d' % i) for i in range(15)]
     
-    allowed_pairs = [(0,2), (2,0), (1,2), (2,1)]
+    s = Solver()
     
-    solver.add(s0 >= 0, s0 <= 2)
-    solver.add(s1 >= 0, s1 <= 2)
-    solver.add(s2 >= 0, s2 <= 2)
-    solver.add(Distinct(s0, s1, s2))
+    # Each city variable must be 0, 1, or 2
+    for i in range(15):
+        s.add(Or(start_city[i] == stuttgart, start_city[i] == seville, start_city[i] == manchester))
+        s.add(Or(end_city[i] == stuttgart, end_city[i] == seville, end_city[i] == manchester))
     
-    solver.add(a >= 1, a <= 14)
-    solver.add(b >= a+1, b <= 15)
+    # Chain constraint: end city of day i must equal start city of day i+1
+    for i in range(14):
+        s.add(end_city[i] == start_city[i+1])
     
-    solver.add(Or([And(s0 == x, s1 == y) for (x, y) in allowed_pairs]))
-    solver.add(Or([And(s1 == x, s2 == y) for (x, y) in allowed_pairs]))
+    # Flight constraints: either stay in the same city or take a direct flight
+    for i in range(15):
+        same_city = (start_city[i] == end_city[i])
+        man_to_sev = And(start_city[i] == manchester, end_city[i] == seville)
+        sev_to_man = And(start_city[i] == seville, end_city[i] == manchester)
+        stut_to_man = And(start_city[i] == stuttgart, end_city[i] == manchester)
+        man_to_stut = And(start_city[i] == manchester, end_city[i] == stuttgart)
+        s.add(Or(same_city, man_to_sev, sev_to_man, stut_to_man, man_to_stut))
     
-    solver.add(Or(
-        And(s0 == 0, a == 6),
-        And(s0 == 1, a == 7),
-        And(s0 == 2, a == 4)
-    ))
+    # Start in Stuttgart to satisfy meeting constraint early
+    s.add(start_city[0] == stuttgart)
     
-    solver.add(Or(
-        And(s1 == 0, b - a + 1 == 6),
-        And(s1 == 1, b - a + 1 == 7),
-        And(s1 == 2, b - a + 1 == 4)
-    ))
+    # Count for Stuttgart
+    stuttgart_count = 0
+    for i in range(15):
+        stuttgart_count += If(start_city[i] == stuttgart, 1, 0)
+        stuttgart_count += If(And(end_city[i] == stuttgart, start_city[i] != stuttgart), 1, 0)
+    s.add(stuttgart_count == 6)
     
-    solver.add(Or(
-        And(s2 == 0, b == 10),
-        And(s2 == 1, b == 9),
-        And(s2 == 2, b == 12)
-    ))
+    # Count for Seville
+    seville_count = 0
+    for i in range(15):
+        seville_count += If(start_city[i] == seville, 1, 0)
+        seville_count += If(And(end_city[i] == seville, start_city[i] != seville), 1, 0)
+    s.add(seville_count == 7)
     
-    solver.add(Or(
-        s0 == 0,
-        And(s1 == 0, a <= 6)
-    ))
+    # Count for Manchester
+    manchester_count = 0
+    for i in range(15):
+        manchester_count += If(start_city[i] == manchester, 1, 0)
+        manchester_count += If(And(end_city[i] == manchester, start_city[i] != manchester), 1, 0)
+    s.add(manchester_count == 4)
     
-    if solver.check() == sat:
-        model = solver.model()
-        a_val = model[a].as_long()
-        b_val = model[b].as_long()
-        s0_val = model[s0].as_long()
-        s1_val = model[s1].as_long()
-        s2_val = model[s2].as_long()
-        
-        city_names = {
-            0: "Stuttgart",
-            1: "Seville",
-            2: "Manchester"
-        }
-        
+    # Meeting constraint: must be in Stuttgart on at least one of the first 6 days (days 1-6)
+    meeting_constraint = Or([Or(start_city[i] == stuttgart, end_city[i] == stuttgart) for i in range(6)])
+    s.add(meeting_constraint)
+    
+    if s.check() == sat:
+        model = s.model()
         itinerary = []
-        for day in range(1, 16):
-            if day < a_val:
-                itinerary.append({"day": day, "city": city_names[s0_val]})
-            elif day == a_val:
-                itinerary.append({"day": day, "city": city_names[s0_val]})
-                itinerary.append({"day": day, "city": city_names[s1_val]})
-            elif day < b_val:
-                itinerary.append({"day": day, "city": city_names[s1_val]})
-            elif day == b_val:
-                itinerary.append({"day": day, "city": city_names[s1_val]})
-                itinerary.append({"day": day, "city": city_names[s2_val]})
-            else:
-                itinerary.append({"day": day, "city": city_names[s2_val]})
+        for i in range(15):
+            end_val = model[end_city[i]].as_long()
+            city_name = city_names[end_val]
+            itinerary.append({"day": i+1, "place": city_name})
         
-        result = {
-            "itinerary": itinerary
-        }
-        print(json.dumps(result))
+        result = {'itinerary': itinerary}
+        print(result)
     else:
-        print(json.dumps({"error": "No solution found"}))
+        print("No valid itinerary found.")
 
 if __name__ == '__main__':
     main()

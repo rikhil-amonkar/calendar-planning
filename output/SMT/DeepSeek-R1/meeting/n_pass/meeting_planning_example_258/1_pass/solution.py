@@ -1,166 +1,162 @@
-from z3 import *
+from z3 import Int, Solver, sat
 import itertools
+import json
 
 def min_to_time(minutes):
-    total_minutes = minutes
-    hours = 9 + total_minutes // 60
+    total_minutes = 9 * 60 + minutes
+    hours = total_minutes // 60
     minutes_part = total_minutes % 60
     return f"{hours:02d}:{minutes_part:02d}"
 
-def schedule_k_friends(friends, travel_matrix, location_to_index):
-    k = len(friends)
-    if k == 0:
-        return []
-    
-    solver = Solver()
-    s = [Int(f's_{i}') for i in range(k)]
-    f = [Int(f'f_{i}') for i in range(k)]
-    
-    solver.add(Distinct(f))
-    for i in range(k):
-        solver.add(f[i] >= 0)
-        solver.add(f[i] < k)
-    
-    locs = [location_to_index[fr['location']] for fr in friends]
-    durations_list = [fr['duration'] for fr in friends]
-    avail_starts_list = [fr['avail_start'] for fr in friends]
-    avail_ends_list = [fr['avail_end'] for fr in friends]
-    
-    loc_exprs = []
-    duration_exprs = []
-    avail_start_exprs = []
-    avail_end_exprs = []
-    
-    for i in range(k):
-        loc_expr = locs[0]
-        for idx in range(1, k):
-            loc_expr = If(f[i] == idx, locs[idx], loc_expr)
-        loc_exprs.append(loc_expr)
-        
-        dur_expr = durations_list[0]
-        for idx in range(1, k):
-            dur_expr = If(f[i] == idx, durations_list[idx], dur_expr)
-        duration_exprs.append(dur_expr)
-        
-        avail_start_expr = avail_starts_list[0]
-        for idx in range(1, k):
-            avail_start_expr = If(f[i] == idx, avail_starts_list[idx], avail_start_expr)
-        avail_start_exprs.append(avail_start_expr)
-        
-        avail_end_expr = avail_ends_list[0]
-        for idx in range(1, k):
-            avail_end_expr = If(f[i] == idx, avail_ends_list[idx], avail_end_expr)
-        avail_end_exprs.append(avail_end_expr)
-    
-    # Constraints for the first meeting (position 0)
-    tt0 = travel_matrix[0][0]
-    for loc_val in [1, 2, 3]:
-        tt0 = If(loc_exprs[0] == loc_val, travel_matrix[0][loc_val], tt0)
-    solver.add(s[0] >= tt0)
-    solver.add(s[0] >= avail_start_exprs[0])
-    solver.add(s[0] + duration_exprs[0] <= avail_end_exprs[0])
-    
-    for i in range(1, k):
-        travel_time = travel_matrix[0][0]
-        for loc1 in range(4):
-            for loc2 in range(4):
-                travel_time = If(And(loc_exprs[i-1] == loc1, loc_exprs[i] == loc2), travel_matrix[loc1][loc2], travel_time)
-        solver.add(s[i] >= s[i-1] + duration_exprs[i-1] + travel_time)
-        solver.add(s[i] >= avail_start_exprs[i])
-        solver.add(s[i] + duration_exprs[i] <= avail_end_exprs[i])
-    
-    if solver.check() == sat:
-        model = solver.model()
-        f_val = [model.evaluate(f_i).as_long() for f_i in f]
-        s_val = [model.evaluate(s_i).as_long() for s_i in s]
-        itinerary = []
-        for i in range(k):
-            friend_idx = f_val[i]
-            friend = friends[friend_idx]
-            start = s_val[i]
-            end = start + friend['duration']
-            itinerary.append({
-                "action": "meet",
-                "person": friend['name'],
-                "start_time": min_to_time(start),
-                "end_time": min_to_time(end)
-            })
-        return itinerary
-    else:
-        return None
+travel_time = {
+    ('Embarcadero', 'Presidio'): 20,
+    ('Embarcadero', 'Richmond District'): 21,
+    ('Embarcadero', 'Fisherman\'s Wharf'): 6,
+    ('Presidio', 'Embarcadero'): 20,
+    ('Presidio', 'Richmond District'): 7,
+    ('Presidio', 'Fisherman\'s Wharf'): 19,
+    ('Richmond District', 'Embarcadero'): 19,
+    ('Richmond District', 'Presidio'): 7,
+    ('Richmond District', 'Fisherman\'s Wharf'): 18,
+    ('Fisherman\'s Wharf', 'Embarcadero'): 8,
+    ('Fisherman\'s Wharf', 'Presidio'): 17,
+    ('Fisherman\'s Wharf', 'Richmond District'): 18
+}
 
-def main():
-    location_to_index = {
-        'Embarcadero': 0,
-        'Fisherman\'s Wharf': 1,
-        'Presidio': 2,
-        'Richmond District': 3
-    }
-    travel_matrix = [
-        [0, 6, 20, 21],
-        [8, 0, 17, 18],
-        [20, 19, 0, 7],
-        [19, 18, 7, 0]
-    ]
-    barbara = {
-        'name': 'Barbara',
-        'location': 'Fisherman\'s Wharf',
-        'duration': 120,
-        'avail_start': 15,
-        'avail_end': 675
-    }
-    betty = {
-        'name': 'Betty',
+friends_data = {
+    'Betty': {
         'location': 'Presidio',
-        'duration': 45,
-        'avail_start': 75,
-        'avail_end': 750
-    }
-    david = {
-        'name': 'David',
+        'start_available': 75,   # 10:15 AM
+        'end_available': 750,    # 9:30 PM
+        'duration': 45
+    },
+    'David': {
         'location': 'Richmond District',
-        'duration': 90,
-        'avail_start': 240,
-        'avail_end': 675
+        'start_available': 240,  # 1:00 PM
+        'end_available': 675,    # 8:15 PM
+        'duration': 90
+    },
+    'Barbara': {
+        'location': 'Fisherman\'s Wharf',
+        'start_available': 15,   # 9:15 AM
+        'end_available': 675,    # 8:15 PM
+        'duration': 120
     }
-    friends_all = [barbara, betty, david]
-    
-    itinerary = None
-    # Try to meet all three friends
-    itinerary = schedule_k_friends(friends_all, travel_matrix, location_to_index)
-    if itinerary is not None:
-        print(f'{{"itinerary": {itinerary}}}')
-        return
-        
-    # Try all pairs of friends
-    for two_friends in itertools.combinations(friends_all, 2):
-        itinerary = schedule_k_friends(list(two_friends), travel_matrix, location_to_index)
-        if itinerary is not None:
-            print(f'{{"itinerary": {itinerary}}}')
-            return
-            
-    # Try individual friends and choose the one that finishes earliest
-    best_end_time = None
-    best_meeting = None
-    for friend in friends_all:
-        loc_index = location_to_index[friend['location']]
-        travel_time = travel_matrix[0][loc_index]
-        s0 = max(travel_time, friend['avail_start'])
-        end_time = s0 + friend['duration']
-        if end_time > friend['avail_end']:
-            continue
-        if best_end_time is None or end_time < best_end_time:
-            best_end_time = end_time
-            best_meeting = {
-                "action": "meet",
-                "person": friend['name'],
-                "start_time": min_to_time(s0),
-                "end_time": min_to_time(end_time)
-            }
-    if best_meeting is not None:
-        print(f'{{"itinerary": [{best_meeting}]}}')
-    else:
-        print('{"itinerary": []}')
+}
 
-if __name__ == '__main__':
-    main()
+friends_list = list(friends_data.keys())
+itinerary = []
+
+# Try to meet all three friends
+found_three = False
+for perm in itertools.permutations(friends_list, 3):
+    s = Solver()
+    s0 = Int(f's0_{perm[0]}')
+    s1 = Int(f's1_{perm[1]}')
+    s2 = Int(f's2_{perm[2]}')
+    
+    f0 = friends_data[perm[0]]
+    f1 = friends_data[perm[1]]
+    f2 = friends_data[perm[2]]
+    
+    travel0 = travel_time[('Embarcadero', f0['location'])]
+    s.add(s0 >= travel0)
+    s.add(s0 >= f0['start_available'])
+    s.add(s0 + f0['duration'] <= f0['end_available'])
+    
+    travel1 = travel_time[(f0['location'], f1['location'])]
+    s.add(s1 >= s0 + f0['duration'] + travel1)
+    s.add(s1 >= f1['start_available'])
+    s.add(s1 + f1['duration'] <= f1['end_available'])
+    
+    travel2 = travel_time[(f1['location'], f2['location'])]
+    s.add(s2 >= s1 + f1['duration'] + travel2)
+    s.add(s2 >= f2['start_available'])
+    s.add(s2 + f2['duration'] <= f2['end_available'])
+    
+    if s.check() == sat:
+        model = s.model()
+        s0_val = model[s0].as_long()
+        s1_val = model[s1].as_long()
+        s2_val = model[s2].as_long()
+        itinerary = [
+            {"action": "meet", "person": perm[0], 
+             "start_time": min_to_time(s0_val), 
+             "end_time": min_to_time(s0_val + f0['duration'])},
+            {"action": "meet", "person": perm[1], 
+             "start_time": min_to_time(s1_val), 
+             "end_time": min_to_time(s1_val + f1['duration'])},
+            {"action": "meet", "person": perm[2], 
+             "start_time": min_to_time(s2_val), 
+             "end_time": min_to_time(s2_val + f2['duration'])}
+        ]
+        found_three = True
+        break
+
+if found_three:
+    print(json.dumps({"itinerary": itinerary}))
+    exit(0)
+
+# Try to meet two friends
+found_two = False
+for subset in itertools.combinations(friends_list, 2):
+    for perm in itertools.permutations(subset, 2):
+        s = Solver()
+        s0 = Int(f's0_{perm[0]}')
+        s1 = Int(f's1_{perm[1]}')
+        
+        f0 = friends_data[perm[0]]
+        f1 = friends_data[perm[1]]
+        
+        travel0 = travel_time[('Embarcadero', f0['location'])]
+        s.add(s0 >= travel0)
+        s.add(s0 >= f0['start_available'])
+        s.add(s0 + f0['duration'] <= f0['end_available'])
+        
+        travel1 = travel_time[(f0['location'], f1['location'])]
+        s.add(s1 >= s0 + f0['duration'] + travel1)
+        s.add(s1 >= f1['start_available'])
+        s.add(s1 + f1['duration'] <= f1['end_available'])
+        
+        if s.check() == sat:
+            model = s.model()
+            s0_val = model[s0].as_long()
+            s1_val = model[s1].as_long()
+            itinerary = [
+                {"action": "meet", "person": perm[0], 
+                 "start_time": min_to_time(s0_val), 
+                 "end_time": min_to_time(s0_val + f0['duration'])},
+                {"action": "meet", "person": perm[1], 
+                 "start_time": min_to_time(s1_val), 
+                 "end_time": min_to_time(s1_val + f1['duration'])}
+            ]
+            found_two = True
+            break
+    if found_two:
+        break
+
+if found_two:
+    print(json.dumps({"itinerary": itinerary}))
+    exit(0)
+
+# Meet one friend
+for friend in friends_list:
+    s = Solver()
+    s0 = Int(f's0_{friend}')
+    f = friends_data[friend]
+    travel0 = travel_time[('Embarcadero', f['location'])]
+    s.add(s0 >= travel0)
+    s.add(s0 >= f['start_available'])
+    s.add(s0 + f['duration'] <= f['end_available'])
+    
+    if s.check() == sat:
+        model = s.model()
+        s0_val = model[s0].as_long()
+        itinerary = [
+            {"action": "meet", "person": friend, 
+             "start_time": min_to_time(s0_val), 
+             "end_time": min_to_time(s0_val + f['duration'])}
+        ]
+        break
+
+print(json.dumps({"itinerary": itinerary}))

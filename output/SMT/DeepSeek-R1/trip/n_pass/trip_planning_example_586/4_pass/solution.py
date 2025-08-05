@@ -1,96 +1,82 @@
 from z3 import *
 
 def main():
-    # Define the City enumeration
-    City = Datatype('City')
-    City.declare('Naples')
-    City.declare('Frankfurt')
-    City.declare('Prague')
-    City.declare('Lyon')
-    City.declare('Helsinki')
-    City = City.create()
-    
-    # Access city constants as attributes
-    naples = City.Naples
-    frankfurt = City.Frankfurt
-    prague = City.Prague
-    lyon = City.Lyon
-    helsinki = City.Helsinki
-    
-    # Direct flights as tuples of City constants - ADDED HELSINKI-FRANKFURT CONNECTIONS
-    direct_flights = [
-        (frankfurt, lyon),
-        (frankfurt, prague),
-        (frankfurt, helsinki),  # Added connection
-        (lyon, frankfurt),
-        (lyon, prague),
-        (naples, helsinki),
-        (prague, frankfurt),
-        (prague, lyon),
-        (helsinki, naples),
-        (helsinki, frankfurt)   # Added connection
-    ]
-    
-    # Allowed transitions: same city or direct flight
-    allowed_pairs = [(naples, naples), (frankfurt, frankfurt), (prague, prague), 
-                    (lyon, lyon), (helsinki, helsinki)] + direct_flights
-    
-    # Create city variables for 14 days
-    c = [Const(f'c_{i}', City) for i in range(14)]
-    
+    # Create the solver
     s = Solver()
     
-    # Constraints: first and last day in Naples
-    s.add(c[0] == naples)
-    s.add(c[13] == naples)
+    # Create 13 string variables: city0 to city12
+    cities = [String(f'city{i}') for i in range(13)]
     
-    # Transition constraints between consecutive days
-    for i in range(13):
-        s.add(Or([And(c[i] == f, c[i+1] == t) for (f, t) in allowed_pairs]))
+    # Allowed flight pairs (undirected, so include both directions)
+    allowed_pairs = [
+        ("Prague", "Lyon"),
+        ("Prague", "Frankfurt"),
+        ("Frankfurt", "Lyon"),
+        ("Helsinki", "Naples"),
+        ("Helsinki", "Frankfurt"),
+        ("Naples", "Frankfurt"),
+        ("Prague", "Helsinki")
+    ]
+    directed_allowed = []
+    for (a, b) in allowed_pairs:
+        directed_allowed.append((a, b))
+        directed_allowed.append((b, a))
     
-    # Count the days for each city
-    count_frankfurt = Sum([If(c[i] == frankfurt, 1, 0) for i in range(14)])
-    count_prague = Sum([If(c[i] == prague, 1, 0) for i in range(14)])
-    count_lyon = Sum([If(c[i] == lyon, 1, 0) for i in range(14)])
-    count_helsinki = Sum([If(c[i] == helsinki, 1, 0) for i in range(14)])
+    # Flight constraints for each day transition (from city_i to city_{i+1})
+    for i in range(12):
+        # Either stay in the same city or take a direct flight
+        stay = (cities[i] == cities[i+1])
+        flight_options = []
+        for (a, b) in directed_allowed:
+            flight_options.append(And(cities[i] == a, cities[i+1] == b))
+        flight = Or(flight_options)
+        s.add(Or(stay, flight))
     
-    s.add(count_frankfurt >= 3)
-    s.add(count_prague >= 3)
-    s.add(count_lyon >= 3)
-    s.add(count_helsinki >= 2)
+    # Function to count days in a city
+    def count_days(city_name):
+        count = 0
+        for i in range(12):  # for each day transition (day i+1)
+            # The day is spent in the city if the start or end of the day is in the city
+            count += If(Or(cities[i] == city_name, cities[i+1] == city_name), 1, 0)
+        return count
     
-    # Check for a solution
+    # Add constraints for the number of days in each city
+    s.add(count_days("Prague") == 2)
+    s.add(count_days("Naples") == 4)
+    s.add(count_days("Helsinki") == 4)
+    s.add(count_days("Frankfurt") == 3)
+    s.add(count_days("Lyon") == 3)
+    
+    # Fixed events: 
+    # Must be in Prague for entire day 1 (start and end)
+    s.add(cities[0] == "Prague")
+    s.add(cities[1] == "Prague")
+    
+    # Must be in Prague at start of day 2 and Helsinki at end of day 2
+    s.add(cities[1] == "Prague")
+    s.add(cities[2] == "Helsinki")
+    
+    # Must be in Helsinki for entire days 3 and 4
+    s.add(cities[2] == "Helsinki")
+    s.add(cities[3] == "Helsinki")
+    s.add(cities[4] == "Helsinki")
+    s.add(cities[3] == "Helsinki")
+    s.add(cities[4] == "Helsinki")
+    s.add(cities[5] == "Helsinki")
+    
+    # Check and get model
     if s.check() == sat:
         m = s.model()
-        # Extract the city for each day
-        city_names = {
-            naples: 'Naples',
-            frankfurt: 'Frankfurt',
-            prague: 'Prague',
-            lyon: 'Lyon',
-            helsinki: 'Helsinki'
-        }
-        day_cities = [city_names[m.evaluate(c[i])] for i in range(14)]
+        itinerary_list = []
+        # For each day from 1 to 12, the location is the end city of that day
+        for day in range(1, 13):
+            city_val = m.evaluate(cities[day])
+            itinerary_list.append({"day": day, "location": city_val.as_string()})
         
-        # Group consecutive days into stays
-        itinerary = []
-        start_idx = 0
-        for i in range(1, 14):
-            if day_cities[i] != day_cities[i-1]:
-                itinerary.append({
-                    'day_range': f'Day {start_idx+1}-{i}',
-                    'place': day_cities[i-1]
-                })
-                start_idx = i
-        itinerary.append({
-            'day_range': f'Day {start_idx+1}-14',
-            'place': day_cities[13]
-        })
-        
-        # Print the itinerary
-        print("Plan found:", {'itinerary': itinerary})
+        result = {"itinerary": itinerary_list}
+        print(result)
     else:
-        print("No valid plan found")
+        print("Unsatisfiable")
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

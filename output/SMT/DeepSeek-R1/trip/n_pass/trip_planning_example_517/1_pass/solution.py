@@ -2,67 +2,76 @@ from z3 import *
 import json
 
 def main():
-    cities = [0, 1, 2, 3, 4]
-    names = {
-        0: "Bucharest",
-        1: "Warsaw",
-        2: "Stuttgart",
-        3: "Copenhagen",
-        4: "Dubrovnik"
-    }
-    
-    x = [Int('x%d' % i) for i in range(20)]
-    s = Solver()
+    cities = ["Dubrovnik", "Warsaw", "Stuttgart", "Bucharest", "Copenhagen"]
+    s = [Int(f's_{i}') for i in range(20)]
+    solver = Solver()
     
     for i in range(20):
-        s.add(And(x[i] >= 0, x[i] <= 4))
+        solver.add(s[i] >= 0, s[i] < 5)
     
-    for day in range(1, 20):
-        a = x[day-1]
-        b = x[day]
-        s.add(Or(
-            a == b,
-            And(a == 0, Or(b == 1, b == 3)),
-            And(a == 1, Or(b == 0, b == 2, b == 3)),
-            And(a == 2, Or(b == 1, b == 3)),
-            And(a == 3, Or(b == 0, b == 1, b == 2, b == 4)),
-            And(a == 4, b == 3)
-        ))
+    direct_pairs = [("Warsaw", "Copenhagen"), 
+                   ("Stuttgart", "Copenhagen"), 
+                   ("Warsaw", "Stuttgart"), 
+                   ("Bucharest", "Copenhagen"), 
+                   ("Bucharest", "Warsaw"), 
+                   ("Copenhagen", "Dubrovnik")]
+    allowed_set = set()
+    for (c1, c2) in direct_pairs:
+        i1 = cities.index(c1)
+        i2 = cities.index(c2)
+        allowed_set.add((i1, i2))
+        allowed_set.add((i2, i1))
     
-    counts = [0] * 5
-    for c in cities:
-        total = 0
-        for day in range(1, 20):
-            total += If(Or(x[day-1] == c, x[day] == c), 1, 0)
-        counts[c] = total
+    for i in range(19):
+        a = s[i]
+        b = s[i+1]
+        constraints = []
+        for (x, y) in allowed_set:
+            constraints.append(And(a == x, b == y))
+        solver.add(If(a != b, Or(constraints), True)
     
-    s.add(counts[0] == 6)
-    s.add(counts[1] == 2)
-    s.add(counts[2] == 7)
-    s.add(counts[3] == 3)
-    s.add(counts[4] == 5)
+    total_days = [0] * 5
+    for c in range(5):
+        days_list = []
+        for d in range(1, 20):
+            cond = Or(s[d-1] == c, s[d] == c)
+            days_list.append(If(cond, 1, 0))
+        total_days[c] = Sum(days_list)
     
-    s.add(Or(x[6] == 2, x[7] == 2))
-    s.add(Or(x[12] == 2, x[13] == 2))
+    solver.add(total_days[0] == 5)
+    solver.add(total_days[1] == 2)
+    solver.add(total_days[2] == 7)
+    solver.add(total_days[3] == 6)
+    solver.add(total_days[4] == 3)
     
-    wedding_constraint = Or([Or(x[d-1] == 0, x[d] == 0) for d in range(1, 7)])
-    s.add(wedding_constraint)
+    solver.add(Or(s[6] == 2, s[7] == 2))
+    solver.add(Or(s[12] == 2, s[13] == 2))
     
-    if s.check() == sat:
-        m = s.model()
-        x_vals = [m.evaluate(x_i) for x_i in x]
+    wedding_constraints = []
+    for d in range(1, 7):
+        wedding_constraints.append(Or(s[d-1] == 3, s[d] == 3))
+    solver.add(Or(wedding_constraints))
+    
+    if solver.check() == sat:
+        m = solver.model()
+        s_vals = [m.evaluate(s[i]).as_long() for i in range(20)]
+        
         itinerary = []
-        for day in range(1, 20):
-            a_val = m.evaluate(x[day-1]).as_long()
-            b_val = m.evaluate(x[day]).as_long()
-            if a_val == b_val:
-                itinerary.append([names[a_val]])
+        for d in range(1, 20):
+            idx1 = s_vals[d-1]
+            idx2 = s_vals[d]
+            c1 = cities[idx1]
+            c2 = cities[idx2]
+            if c1 == c2:
+                places = [c1]
             else:
-                itinerary.append([names[a_val], names[b_val]])
-        result = {'itinerary': itinerary}
+                places = sorted([c1, c2])
+            itinerary.append({"day": d, "place": places})
+        
+        result = {"itinerary": itinerary}
         print(json.dumps(result))
     else:
-        print('{"itinerary": []}')
+        print(json.dumps({"error": "No solution found"}))
 
 if __name__ == "__main__":
     main()

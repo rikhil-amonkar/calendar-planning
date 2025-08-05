@@ -2,25 +2,11 @@ from z3 import *
 import json
 
 def main():
-    # Define cities and their stay durations
-    cities = {
-        'Reykjavik': 2,
-        'Stockholm': 2,
-        'Porto': 5,
-        'Nice': 3,
-        'Venice': 4,
-        'Vienna': 3,
-        'Split': 3,
-        'Copenhagen': 2
-    }
+    cities = ['Reykjavik', 'Stockholm', 'Porto', 'Nice', 'Venice', 'Vienna', 'Split', 'Copenhagen']
+    name_to_index = {city: idx for idx, city in enumerate(cities)}
+    days_req = [2, 2, 5, 3, 4, 3, 3, 2]
     
-    # List of cities for indexing
-    cities_list = ['Reykjavik', 'Stockholm', 'Porto', 'Nice', 'Venice', 'Vienna', 'Split', 'Copenhagen']
-    city_to_index = {city: idx for idx, city in enumerate(cities_list)}
-    index_to_city = {idx: city for idx, city in enumerate(cities_list)}
-    
-    # Define direct flights
-    flights = [
+    flight_pairs = [
         ('Copenhagen', 'Vienna'),
         ('Nice', 'Stockholm'),
         ('Split', 'Copenhagen'),
@@ -42,105 +28,92 @@ def main():
         ('Vienna', 'Porto')
     ]
     
-    # Initialize Z3 solver
+    edges_set = set()
+    for a, b in flight_pairs:
+        i1 = name_to_index[a]
+        i2 = name_to_index[b]
+        u, v = (i1, i2) if i1 < i2 else (i2, i1)
+        edges_set.add((u, v))
+    
     s = Solver()
     
-    # Order of cities: 8 integers representing the sequence
-    order = [Int(f'order_{i}') for i in range(8)]
-    for i in range(8):
-        s.add(order[i] >= 0, order[i] < 8)
-    s.add(Distinct(order))
+    position = [Int(f'pos_{i}') for i in range(8)]
+    for p in position:
+        s.add(p >= 0, p <= 7)
+    s.add(Distinct(position))
     
-    # Start and end days for each position in the order
-    starts = [Int(f'starts_{i}') for i in range(8)]
-    ends = [Int(f'ends_{i}') for i in range(8)]
+    pos_of_city = [Int(f'pos_city_{city}') for city in cities]
+    for pc in pos_of_city:
+        s.add(pc >= 0, pc <= 7)
     
-    # First city starts on day 1
-    s.add(starts[0] == 1)
-    s.add(ends[0] == starts[0] + cities[index_to_city[order[0]]] - 1)
+    for idx in range(8):
+        s.add(pos_of_city[position[idx]] == idx)
+        s.add(position[pos_of_city[idx]] == idx)
     
-    # Subsequent cities start where the previous ended
-    for i in range(1, 8):
-        s.add(starts[i] == ends[i-1])
-        s.add(ends[i] == starts[i] + cities[index_to_city[order[i]]] - 1)
-    
-    # Entire trip ends on day 17
-    s.add(ends[7] == 17)
-    
-    # City-specific start and end variables
-    city_start = [Int(f'city_start_{city}') for city in cities_list]
-    city_end = [Int(f'city_end_{city}') for city in cities_list]
-    
-    # Link city_start and city_end to the order positions
-    for c_idx in range(8):
-        for pos in range(8):
-            s.add(Implies(order[pos] == c_idx, 
-                          And(city_start[c_idx] == starts[pos], 
-                              city_end[c_idx] == ends[pos])))
-    
-    # Event constraints
-    # Reykjavik: must overlap day 3 or 4
-    idxR = city_to_index['Reykjavik']
-    s.add(city_start[idxR] <= 4)
-    s.add(city_end[idxR] >= 3)
-    
-    # Stockholm: must overlap day 4 or 5
-    idxS = city_to_index['Stockholm']
-    s.add(city_start[idxS] <= 5)
-    s.add(city_end[idxS] >= 4)
-    
-    # Porto: must include at least one day between 13 and 17
-    idxP = city_to_index['Porto']
-    s.add(city_end[idxP] >= 13)
-    
-    # Vienna: must overlap day 11 to 13
-    idxV = city_to_index['Vienna']
-    s.add(city_start[idxV] <= 13)
-    s.add(city_end[idxV] >= 11)
-    
-    # Flight constraints: consecutive cities must have a direct flight
     for i in range(7):
-        conds = []
-        for A, B in flights:
-            idxA = city_to_index[A]
-            idxB = city_to_index[B]
-            conds.append(And(order[i] == idxA, order[i+1] == idxB))
-            conds.append(And(order[i] == idxB, order[i+1] == idxA))
-        s.add(Or(conds))
+        a = position[i]
+        b = position[i+1]
+        edge_conds = []
+        for edge in edges_set:
+            u, v = edge
+            edge_conds.append(And(a == u, b == v))
+            edge_conds.append(And(a == v, b == u))
+        s.add(Or(edge_conds))
     
-    # Check for a solution
+    cum = [Int(f'cum_{i}') for i in range(9)]
+    s.add(cum[0] == 1)
+    for k in range(8):
+        d_k = Int(f'd_{k}')
+        s.add(d_k == Sum([If(position[k] == j, days_req[j], 0) for j in range(8)]))
+        s.add(cum[k+1] == cum[k] + (d_k - 1))
+    
+    def get_cum_at(idx, cum_list):
+        return If(idx == 0, cum_list[0],
+                If(idx == 1, cum_list[1],
+                If(idx == 2, cum_list[2],
+                If(idx == 3, cum_list[3],
+                If(idx == 4, cum_list[4],
+                If(idx == 5, cum_list[5],
+                If(idx == 6, cum_list[6],
+                If(idx == 7, cum_list[7],
+                0))))))))
+    
+    start0 = get_cum_at(pos_of_city[0], cum)
+    s.add(start0 <= 4, start0 >= 2)
+    
+    start1 = get_cum_at(pos_of_city[1], cum)
+    s.add(start1 <= 5, start1 >= 3)
+    
+    start2 = get_cum_at(pos_of_city[2], cum)
+    s.add(start2 + 4 >= 13, start2 <= 17)
+    
+    start5 = get_cum_at(pos_of_city[5], cum)
+    s.add(start5 + 2 >= 11, start5 <= 13)
+    
     if s.check() == sat:
-        m = s.model()
-        # Determine the order of cities
-        order_list = []
+        model = s.model()
+        seq = [model.eval(position[i]).as_long() for i in range(8)]
+        starts = [1]
+        ends = []
         for i in range(8):
-            idx_val = m.evaluate(order[i]).as_long()
-            order_list.append(index_to_city[idx_val])
+            dur = days_req[seq[i]]
+            end_day = starts[i] + dur - 1
+            ends.append(end_day)
+            if i < 7:
+                starts.append(end_day)
         
-        # Compute start and end days for each city in the order
-        starts_vals = [0] * 8
-        ends_vals = [0] * 8
-        starts_vals[0] = 1
-        ends_vals[0] = starts_vals[0] + cities[order_list[0]] - 1
-        for i in range(1, 8):
-            starts_vals[i] = ends_vals[i-1]
-            ends_vals[i] = starts_vals[i] + cities[order_list[i]] - 1
-        
-        # Build itinerary
-        itinerary = []
+        itinerary_list = []
         for day in range(1, 18):
-            locations = []
+            places = []
             for i in range(8):
-                if starts_vals[i] <= day <= ends_vals[i]:
-                    locations.append(order_list[i])
-            locations.sort()
-            itinerary.append({'day': day, 'location': ','.join(locations)})
+                if starts[i] <= day <= ends[i]:
+                    places.append(cities[seq[i]])
+            itinerary_list.append({"day": day, "place": ", ".join(places)})
         
-        # Output as JSON
-        result = {'itinerary': itinerary}
-        print(json.dumps(result, indent=2))
+        result = {'itinerary': itinerary_list}
+        print(json.dumps(result))
     else:
         print("No solution found")
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

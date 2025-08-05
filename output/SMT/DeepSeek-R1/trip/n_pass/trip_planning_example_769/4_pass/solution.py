@@ -1,111 +1,90 @@
 from z3 import *
 
-def solve_planning():
-    # Constants
-    horizon = 3  # Three actions: pass key, unlock, move
+def main():
+    blocks = ['A', 'B', 'C']
+    objects = ['A', 'B', 'C', 'Table']
+    num_steps = 4  # Number of actions allowed (time steps 0 to 4)
 
-    # State variables
-    robot = [Int(f'robot_{i}') for i in range(horizon + 1)]
-    key = [Int(f'key_{i}') for i in range(horizon + 1)]
-    door_locked = [Bool(f'door_locked_{i}') for i in range(horizon + 1)]
-    actions = [Int(f'action_{i}') for i in range(horizon)]  # Actions at steps 0,1,2
-
-    # Solver
+    # Create the solver
     s = Solver()
 
-    # Initial state constraints
-    s.add(robot[0] == 0)   # Robot starts in room0
-    s.add(key[0] == 1)      # Key starts in room1
-    s.add(door_locked[0] == True)  # Door initially locked
+    # Create on predicates: on[block, object, time]
+    on = {}
+    for b in blocks:
+        for o in objects:
+            for t in range(num_steps + 1):
+                on[(b, o, t)] = Bool('on_{}_{}_{}'.format(b, o, t))
 
-    # State variable domains
-    for t in range(horizon + 1):
-        s.add(Or(robot[t] == 0, robot[t] == 1))
-        s.add(Or(key[t] == 0, key[t] == 1))
+    # Action variables for each time step
+    move_b = [String('move_b_{}'.format(i)) for i in range(num_steps)]
+    move_to = [String('move_to_{}'.format(i)) for i in range(num_steps)]
 
-    # Goal constraint
-    s.add(robot[horizon] == 1)  # Robot must be in room1 at the end
+    # Uniqueness constraint: each block is on exactly one object at each time
+    for t in range(num_steps + 1):
+        for b in blocks:
+            s.add(Sum([If(on[(b, o, t)], 1, 0) for o in objects]) == 1)
 
-    # Action definitions: 
-    # 0=no-op, 1=unlock, 2=move(room0,room1), 3=move(room1,room0), 
-    # 4=pass_key(room1->room0), 5=pass_key(room0->room1)
-    for t in range(horizon):
-        action = actions[t]
+    # Action constraints for each time step
+    for t in range(num_steps):
+        # Move block must be "none" or a valid block
+        s.add(Or([move_b[t] == b for b in blocks] + [move_b[t] == "none"]))
         
-        # No-op
-        noop = And(action == 0,
-                   robot[t+1] == robot[t],
-                   key[t+1] == key[t],
-                   door_locked[t+1] == door_locked[t])
+        # If moving, destination must be a valid object and not the block itself
+        s.add(If(move_b[t] != "none",
+                 Or([move_to[t] == o for o in objects if o != move_b[t]]),
+                 True))
         
-        # Unlock door
-        unlock = And(action == 1,
-                     robot[t] == key[t],  # Robot and key in same room
-                     door_locked[t] == True,
-                     robot[t+1] == robot[t],
-                     key[t+1] == key[t],
-                     door_locked[t+1] == False)
+        # Precondition: cannot move to itself
+        s.add(If(move_b[t] != "none", move_to[t] != move_b[t], True))
         
-        # Move from room0 to room1
-        move01 = And(action == 2,
-                     robot[t] == 0,
-                     door_locked[t] == False,
-                     robot[t+1] == 1,
-                     key[t+1] == key[t],
-                     door_locked[t+1] == door_locked[t])
+        # Preconditions for move: clear moving block and clear destination (if not table)
+        for b_val in blocks:
+            for d_val in objects:
+                if b_val == d_val:
+                    continue
+                cond = And(move_b[t] == b_val, move_to[t] == d_val)
+                # Clear(b_val, t): no block on b_val
+                clear_b = And([Not(on[(c, b_val, t)]) for c in blocks])
+                # Clear(d_val, t) if destination is not table
+                clear_d = And([Not(on[(c, d_val, t)]) for c in blocks]) if d_val != "Table" else True
+                s.add(Implies(cond, And(clear_b, clear_d)))
         
-        # Move from room1 to room0
-        move10 = And(action == 3,
-                     robot[t] == 1,
-                     door_locked[t] == False,
-                     robot[t+1] == 0,
-                     key[t+1] == key[t],
-                     door_locked[t+1] == door_locked[t])
-        
-        # Pass key from room1 to room0
-        pass_to0 = And(action == 4,
-                       key[t] == 1,      # Key must be in room1 initially
-                       robot[t] == 0,     # Robot must be in room0
-                       key[t+1] == 0,     # Key moves to room0
-                       robot[t+1] == robot[t],
-                       door_locked[t+1] == door_locked[t])
-        
-        # Pass key from room0 to room1
-        pass_to1 = And(action == 5,
-                       key[t] == 0,      # Key must be in room0 initially
-                       robot[t] == 1,     # Robot must be in room1
-                       key[t+1] == 1,     # Key moves to room1
-                       robot[t+1] == robot[t],
-                       door_locked[t+1] == door_locked[t])
-        
-        # Action selection constraints
-        s.add(Or(noop, unlock, move01, move10, pass_to0, pass_to1))
-        
-        # Ensure action value is valid
-        s.add(action >= 0, action <= 5)
+        # Effect on state: update positions
+        for b in blocks:
+            for o in objects:
+                # If current block is moved, set its new position
+                moved = And(move_b[t] == b, on[(b, o, t+1)] == (o == move_to[t]))
+                # If not moved, keep position from previous time
+                not_moved = And(move_b[t] != b, on[(b, o, t+1)] == on[(b, o, t)])
+                s.add(If(move_b[t] == b, moved, not_moved))
 
-    # Solve and output the plan
+    # Initial state: A on B, B on C, C on table
+    s.add(on[('A', 'B', 0)])
+    s.add(on[('B', 'C', 0)])
+    s.add(on[('C', 'Table', 0)])
+    
+    # Goal state: A on B, B on table, C on A
+    s.add(on[('A', 'B', num_steps)])
+    s.add(on[('B', 'Table', num_steps)])
+    s.add(on[('C', 'A', num_steps)])
+
+    # Check for a solution
     if s.check() == sat:
         m = s.model()
         plan = []
-        for t in range(horizon):
-            a = m[actions[t]].as_long()
-            if a == 0:
-                plan.append("no-op")
-            elif a == 1:
-                plan.append("unlock_door")
-            elif a == 2:
-                plan.append("move(room0, room1)")
-            elif a == 3:
-                plan.append("move(room1, room0)")
-            elif a == 4:
-                plan.append("pass_key(room1->room0)")
-            elif a == 5:
-                plan.append("pass_key(room0->room1)")
+        for t in range(num_steps):
+            if m.eval(move_b[t]).as_string() != "none":
+                action = "Move({} from {} to {})".format(
+                    m.eval(move_b[t]),
+                    [o for o in objects if m.eval(on[(m.eval(move_b[t]), o, t)])],
+                    m.eval(move_to[t])
+                )
+                plan.append((t, action))
         print("Plan found:")
-        for step, action in enumerate(plan):
-            print(f"Step {step}: {action}")
+        for step, action in plan:
+            print("Step {}: {}".format(step, action))
     else:
         print("No plan found")
 
-solve_planning()
+if __name__ == '__main__':
+    main()

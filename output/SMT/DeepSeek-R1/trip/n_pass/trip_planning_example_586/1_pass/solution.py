@@ -1,11 +1,12 @@
-import z3
+from z3 import *
 
 def main():
-    cities = ["Prague", "Lyon", "Frankfurt", "Helsinki", "Naples"]
-    city_to_num = {c: idx for idx, c in enumerate(cities)}
-    num_to_city = {idx: c for idx, c in enumerate(cities)}
+    # Define the string sort and the 13 variables: city0 to city12
+    StringSort = StringSort()
+    cities_var = [Const(f'city{i}', StringSort) for i in range(13)]
     
-    direct_pairs = [
+    # Allowed directed flight pairs (both directions for undirected edges)
+    undirected_pairs = [
         ("Prague", "Lyon"),
         ("Prague", "Frankfurt"),
         ("Frankfurt", "Lyon"),
@@ -14,84 +15,76 @@ def main():
         ("Naples", "Frankfurt"),
         ("Prague", "Helsinki")
     ]
-    direct_flights_set = set()
-    for a, b in direct_pairs:
-        i = city_to_num[a]
-        j = city_to_num[b]
-        direct_flights_set.add((i, j))
-        direct_flights_set.add((j, i))
+    allowed_directed_pairs = []
+    for (a, b) in undirected_pairs:
+        allowed_directed_pairs.append((a, b))
+        allowed_directed_pairs.append((b, a))
     
-    required_days = {
-        "Prague": 2,
-        "Lyon": 3,
-        "Frankfurt": 3,
-        "Helsinki": 4,
-        "Naples": 4
-    }
-    req_days_list = [required_days[c] for c in cities]
+    s = Solver()
+    constraints = []
     
-    s = z3.Solver()
-    stay = [z3.Int(f"stay_{i}") for i in range(1, 13)]
-    for i in range(12):
-        s.add(stay[i] >= 0, stay[i] < 5)
+    # Flight constraints for i in range 1 to 12 (between city_{i-1} and city_i)
+    for i in range(1, 13):
+        prev = cities_var[i-1]
+        curr = cities_var[i]
+        stay = (prev == curr)
+        flight_options = [And(prev == StringVal(a), curr == StringVal(b)) for (a, b) in allowed_directed_pairs]
+        flight = Or(flight_options)
+        constraints.append(Or(stay, flight))
     
-    fly = [z3.Bool(f"fly_{i}") for i in range(1, 12)]
+    # Count constraints for each city
+    def count_days(city_name):
+        terms = []
+        city_val = StringVal(city_name)
+        for i in range(1, 13):
+            prev = cities_var[i-1]
+            curr = cities_var[i]
+            terms.append(If(Or(prev == city_val, curr == city_val), 1, 0))
+        return terms
     
-    for i in range(11):
-        flight_options = []
-        for (a, b) in direct_flights_set:
-            flight_options.append(z3.And(stay[i] == a, stay[i+1] == b))
-        s.add(z3.Implies(fly[i], z3.Or(flight_options)))
+    prague_days = count_days("Prague")
+    naples_days = count_days("Naples")
+    helsinki_days = count_days("Helsinki")
+    frankfurt_days = count_days("Frankfurt")
+    lyon_days = count_days("Lyon")
     
-    for d in [1, 2, 3, 4]:
-        s.add(z3.Or(
-            stay[d] == city_to_num["Helsinki"],
-            z3.And(fly[d], stay[d+1] == city_to_num["Helsinki"])
-        ))
+    constraints.append(Sum(prague_days) == 2)
+    constraints.append(Sum(naples_days) == 4)
+    constraints.append(Sum(helsinki_days) == 4)
+    constraints.append(Sum(frankfurt_days) == 3)
+    constraints.append(Sum(lyon_days) == 3)
     
-    in_prague_day1 = z3.Or(
-        stay[0] == city_to_num["Prague"],
-        z3.And(fly[0], stay[1] == city_to_num["Prague"])
-    )
-    in_prague_day2 = z3.Or(
-        stay[1] == city_to_num["Prague"],
-        z3.And(fly[1], stay[2] == city_to_num["Prague"])
-    )
-    s.add(z3.Or(in_prague_day1, in_prague_day2))
+    # Fixed events: Prague must be visited on day1 and day2
+    constraints.append(Or(cities_var[0] == StringVal("Prague"), cities_var[1] == StringVal("Prague")))
+    constraints.append(Or(cities_var[1] == StringVal("Prague"), cities_var[2] == StringVal("Prague")))
     
-    total_days_per_city = [0] * 5
-    for c in range(5):
-        total = 0
-        for d in range(12):
-            if d < 11:
-                in_city = z3.If(fly[d],
-                                z3.Or(stay[d] == c, stay[d+1] == c),
-                                stay[d] == c)
+    # Fixed events: Helsinki must be visited on days 2,3,4,5 and not on day1 or day6
+    constraints.append(And(cities_var[0] != StringVal("Helsinki"), cities_var[1] != StringVal("Helsinki")))
+    constraints.append(cities_var[2] == StringVal("Helsinki"))
+    constraints.append(Or(cities_var[4] == StringVal("Helsinki"), cities_var[5] == StringVal("Helsinki")))
+    constraints.append(And(cities_var[5] != StringVal("Helsinki"), cities_var[6] != StringVal("Helsinki")))
+    
+    # Add all constraints to the solver
+    s.add(constraints)
+    
+    if s.check() == sat:
+        m = s.model()
+        itinerary_list = []
+        for day in range(1, 13):  # days 1 to 12
+            loc = m[cities_var[day]]
+            if is_string_value(loc):
+                loc_str = loc.as_string()
             else:
-                in_city = (stay[d] == c)
-            total += z3.If(in_city, 1, 0)
-        s.add(total == req_days_list[c])
-    
-    flight_count = z3.Sum([z3.If(fly[i], 1, 0) for i in range(11)])
-    s.add(flight_count == 4)
-    
-    if s.check() == z3.sat:
-        model = s.model()
-        itinerary = []
-        for d in range(12):
-            if d < 11 and z3.is_true(model.eval(fly[d])):
-                city1_idx = model.eval(stay[d]).as_long()
-                city2_idx = model.eval(stay[d+1]).as_long()
-                places = [num_to_city[city1_idx], num_to_city[city2_idx]]
-            else:
-                city_idx = model.eval(stay[d]).as_long()
-                places = [num_to_city[city_idx]]
-            itinerary.append({"day": d+1, "place": places})
+                loc_str = str(loc)
+            itinerary_list.append({"day": day, "location": loc_str})
         
-        result = {"itinerary": itinerary}
+        result = {"itinerary": itinerary_list}
         print(result)
     else:
-        print("No solution found")
+        print("Unsatisfiable")
+
+def is_string_value(v):
+    return isinstance(v, StringVal)
 
 if __name__ == "__main__":
     main()

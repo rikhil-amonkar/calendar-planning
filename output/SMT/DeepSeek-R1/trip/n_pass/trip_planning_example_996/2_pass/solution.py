@@ -1,88 +1,98 @@
 from z3 import *
-import json
 
 def main():
-    cities = ["Mykonos", "Prague", "Valencia", "Riga", "Zurich", "Bucharest", "Nice"]
-    durations = [3, 3, 5, 5, 5, 5, 2]
+    # Define city names and their required days
+    city_names = ["Mykonos", "Prague", "Nice", "Valencia", "Riga", "Zurich", "Bucharest"]
+    req_days = [3, 3, 2, 5, 5, 5, 5]
     
-    flight_list_str = [
-        ("Mykonos", "Nice"),
-        ("Mykonos", "Zurich"),
-        ("Prague", "Bucharest"),
-        ("Valencia", "Bucharest"),
-        ("Zurich", "Prague"),
-        ("Riga", "Nice"),
-        ("Zurich", "Riga"),
-        ("Zurich", "Bucharest"),
-        ("Zurich", "Valencia"),
-        ("Bucharest", "Riga"),
-        ("Prague", "Riga"),
-        ("Prague", "Valencia"),
-        ("Zurich", "Nice")
+    # Direct flights as a list of strings
+    edges_list = [
+        "Mykonos and Nice",
+        "Mykonos and Zurich",
+        "Prague and Bucharest",
+        "Valencia and Bucharest",
+        "Zurich and Prague",
+        "Riga and Nice",
+        "Zurich and Riga",
+        "Zurich and Bucharest",
+        "Zurich and Valencia",
+        "Bucharest and Riga",
+        "Prague and Riga",
+        "Prague and Valencia",
+        "Zurich and Nice"
     ]
     
-    flight_pairs_set = set()
-    for flight in flight_list_str:
-        city1, city2 = flight
-        idx1 = cities.index(city1)
-        idx2 = cities.index(city2)
-        flight_pairs_set.add((idx1, idx2))
-        flight_pairs_set.add((idx2, idx1))
+    # Build allowed flight pairs
+    allowed_pairs = set()
+    for edge_str in edges_list:
+        parts = edge_str.split(" and ")
+        if len(parts) != 2:
+            continue
+        a, b = parts
+        try:
+            idxA = city_names.index(a)
+            idxB = city_names.index(b)
+            allowed_pairs.add((idxA, idxB))
+            allowed_pairs.add((idxB, idxA))
+        except:
+            continue  # Skip if city not found (shouldn't happen)
     
-    slot_city = [Int(f'slot_city_{i}') for i in range(7)]
-    start = [Int(f'start_{i}') for i in range(7)]
-    end = [Int(f'end_{i}') for i in range(7)]
-    
+    # Create Z3 solver and variables for the order of cities
     s = Solver()
+    order = [Int(f'order_{i}') for i in range(7)]
     
-    for i in range(7):
-        s.add(slot_city[i] >= 0, slot_city[i] < 7)
-    s.add(Distinct(slot_city))
+    # Each order variable must be between 0 and 6 and all distinct
+    s.add([And(order[i] >= 0, order[i] < 7) for i in range(7)])
+    s.add(Distinct(order))
     
-    s.add(start[0] == 1)
-    s.add(end[6] == 22)
-    
+    # Define start days for each city in the order
+    start = [1]  # start[0] = 1
     for i in range(1, 7):
-        s.add(start[i] == end[i-1])
+        # Compute required days for the previous city in the order
+        req_prev = Sum([If(order[i-1] == j, req_days[j], 0) for j in range(7)])
+        # start[i] = start[i-1] + (req_prev - 1)
+        start.append(start[i-1] + req_prev - 1)
     
-    mykonos_idx = cities.index("Mykonos")
-    prague_idx = cities.index("Prague")
-    
+    # Add constraints for Mykonos and Prague event dates
     for i in range(7):
-        dur = durations[slot_city[i]]
-        s.add(end[i] == start[i] + dur - 1)
+        # Mykonos (index 0) must start by day 3
+        s.add(If(order[i] == 0, start[i] <= 3, True))
+        # Prague (index 1) must start between days 5 and 9 inclusive
+        s.add(If(order[i] == 1, And(start[i] >= 5, start[i] <= 9), True))
     
-    for i in range(7):
-        s.add(If(slot_city[i] == mykonos_idx, And(start[i] == 1, end[i] == 3), True))
-        s.add(If(slot_city[i] == prague_idx, And(start[i] == 7, end[i] == 9), True))
-    
+    # Add constraints for direct flights between consecutive cities
     for i in range(6):
-        c1 = slot_city[i]
-        c2 = slot_city[i+1]
-        constraints = []
-        for pair in flight_pairs_set:
-            constraints.append(And(c1 == pair[0], c2 == pair[1]))
-        s.add(Or(constraints))
+        # Check if (order[i], order[i+1]) is in allowed_pairs
+        conds = []
+        for (a, b) in allowed_pairs:
+            conds.append(And(order[i] == a, order[i+1] == b))
+        s.add(Or(conds))
     
+    # Check for a solution
     if s.check() == sat:
         m = s.model()
-        slot_city_vals = [m.evaluate(slot_city[i]).as_long() for i in range(7)]
-        start_vals = [m.evaluate(start[i]).as_long() for i in range(7)]
-        end_vals = [m.evaluate(end[i]).as_long() for i in range(7)]
+        order_vals = [m.evaluate(order[i]).as_long() for i in range(7)]
         
-        itinerary_list = []
-        for d in range(1, 23):
-            for i in range(7):
-                s_val = start_vals[i]
-                e_val = end_vals[i]
-                if s_val <= d <= e_val:
-                    city_name = cities[slot_city_vals[i]]
-                    itinerary_list.append({"day": d, "place": city_name})
+        # Compute start days from the model
+        start_days = [1]
+        for i in range(1, 7):
+            prev_city = order_vals[i-1]
+            start_days.append(start_days[i-1] + req_days[prev_city] - 1)
         
-        result = {'itinerary': itinerary_list}
-        print(json.dumps(result))
+        # Build itinerary
+        itinerary = []
+        for i in range(7):
+            city_idx = order_vals[i]
+            city_name = city_names[city_idx]
+            s_day = start_days[i]
+            e_day = s_day + req_days[city_idx] - 1
+            day_range = f"Day {s_day}-{e_day}"
+            itinerary.append({"day_range": day_range, "place": city_name})
+        
+        result = {"itinerary": itinerary}
+        print(result)
     else:
-        print('{"itinerary": []}')
+        print("No solution found")
 
 if __name__ == "__main__":
     main()

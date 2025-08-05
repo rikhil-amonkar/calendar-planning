@@ -1,25 +1,13 @@
-from z3 import *
+import z3
 import json
 
 def main():
-    # Mapping cities to integer IDs
-    city2id = {
-        "Reykjavik": 0,
-        "Riga": 1,
-        "Oslo": 2,
-        "Lyon": 3,
-        "Dubrovnik": 4,
-        "Madrid": 5,
-        "Warsaw": 6,
-        "London": 7
-    }
-    id2city = {v: k for k, v in city2id.items()}
-    
-    # Days required for each city (by ID)
-    days_arr = [4, 2, 3, 5, 2, 2, 4, 3]
-    
-    # Build directed flight edges
-    bidirectional_city_pairs = [
+    cities = ["Reykjavik", "Riga", "Oslo", "Lyon", "Dubrovnik", "Madrid", "Warsaw", "London"]
+    n_days = 18
+    n_cities = 8
+    required_days = [4, 2, 3, 5, 2, 2, 4, 3]  # Corresponding to cities order
+
+    bidirectional_pairs = [
         ("Warsaw", "Reykjavik"),
         ("Oslo", "Madrid"),
         ("Warsaw", "Riga"),
@@ -37,90 +25,91 @@ def main():
         ("Madrid", "Lyon"),
         ("Dubrovnik", "Madrid")
     ]
-    
-    directed_edges_set = set()
-    for (a, b) in bidirectional_city_pairs:
-        id_a = city2id[a]
-        id_b = city2id[b]
-        directed_edges_set.add((id_a, id_b))
-        directed_edges_set.add((id_b, id_a))
-    
-    # Add unidirectional flight from Reykjavik to Madrid
-    directed_edges_set.add((city2id["Reykjavik"], city2id["Madrid"]))
-    
-    # Create Z3 solver and variables
-    s = Solver()
-    
-    # order[i] is the city ID at position i in the itinerary
-    order = [Int('order_%d' % i) for i in range(8)]
-    # Each order[i] must be between 0 and 7
-    for i in range(8):
-        s.add(order[i] >= 0, order[i] < 8)
-    s.add(Distinct(order))
-    
-    # Arrays for start and end days of each position
-    start = [Int('start_%d' % i) for i in range(8)]
-    end = [Int('end_%d' % i) for i in range(8)]
-    
-    # Constraints for the first city
-    s.add(start[0] == 1)
-    s.add(end[0] == start[0] + days_arr[order[0]] - 1)
-    
-    # Constraints for the remaining cities
-    for i in range(1, 8):
-        s.add(start[i] == end[i-1])
-        s.add(end[i] == start[i] + days_arr[order[i]] - 1)
-    
-    # The trip must end on day 18
-    s.add(end[7] == 18)
-    
-    # Flight constraints between consecutive cities
-    allowed_edges_ids = list(directed_edges_set)
-    for i in range(7):
-        conds = []
-        for (a, b) in allowed_edges_ids:
-            conds.append(And(order[i] == a, order[i+1] == b))
-        s.add(Or(conds))
-    
-    # Constraint for Riga (city ID 1): must include day 4 or 5
-    riga_conds = []
-    for k in range(8):
-        # If the city at position k is Riga (ID 1)
-        cond1 = And(order[k] == 1, start[k] <= 4, 4 <= end[k])
-        cond2 = And(order[k] == 1, start[k] <= 5, 5 <= end[k])
-        riga_conds.append(Or(cond1, cond2))
-    s.add(Or(riga_conds))
-    
-    # Constraint for Dubrovnik (city ID 4): must include day 7 or 8
-    dub_conds = []
-    for k in range(8):
-        cond1 = And(order[k] == 4, start[k] <= 7, 7 <= end[k])
-        cond2 = And(order[k] == 4, start[k] <= 8, 8 <= end[k])
-        dub_conds.append(Or(cond1, cond2))
-    s.add(Or(dub_conds))
-    
-    # Check and get the model
-    if s.check() == sat:
+    unidirectional = [("Reykjavik", "Madrid")]
+
+    allowed_flights = set()
+    for a, b in bidirectional_pairs:
+        idx_a = cities.index(a)
+        idx_b = cities.index(b)
+        allowed_flights.add((idx_a, idx_b))
+        allowed_flights.add((idx_b, idx_a))
+    for a, b in unidirectional:
+        idx_a = cities.index(a)
+        idx_b = cities.index(b)
+        allowed_flights.add((idx_a, idx_b))
+
+    s = z3.Solver()
+
+    start_city = [z3.Int(f"start_city_{d}") for d in range(1, n_days + 1)]
+    end_city = [z3.Int(f"end_city_{d}") for d in range(1, n_days + 1)]
+    flight = [z3.Bool(f"flight_{d}") for d in range(1, n_days + 1)]
+
+    for d in range(n_days):
+        s.add(start_city[d] >= 0, start_city[d] < n_cities)
+        s.add(end_city[d] >= 0, end_city[d] < n_cities)
+
+    for d in range(n_days):
+        s.add(flight[d] == (start_city[d] != end_city[d]))
+
+    for d in range(1, n_days):
+        s.add(start_city[d] == end_city[d - 1])
+
+    for d in range(n_days):
+        disj = []
+        for (i, j) in allowed_flights:
+            disj.append(z3.And(start_city[d] == i, end_city[d] == j))
+        if disj:
+            s.add(z3.Implies(flight[d], z3.Or(disj)))
+        else:
+            s.add(z3.Not(flight[d]))
+
+    for c in range(n_cities):
+        total = 0
+        for d in range(n_days):
+            cond = z3.Or(
+                start_city[d] == c,
+                z3.And(flight[d], end_city[d] == c)
+            )
+            total += z3.If(cond, 1, 0)
+        s.add(total == required_days[c])
+
+    day4_riga = z3.Or(
+        start_city[3] == 1,
+        z3.And(flight[3], end_city[3] == 1)
+    )
+    day5_riga = z3.Or(
+        start_city[4] == 1,
+        z3.And(flight[4], end_city[4] == 1)
+    )
+    s.add(z3.Or(day4_riga, day5_riga))
+
+    day7_dub = z3.Or(
+        start_city[6] == 4,
+        z3.And(flight[6], end_city[6] == 4)
+    )
+    day8_dub = z3.Or(
+        start_city[7] == 4,
+        z3.And(flight[7], end_city[7] == 4)
+    )
+    s.add(z3.Or(day7_dub, day8_dub))
+
+    if s.check() == z3.sat:
         m = s.model()
-        
-        # Build the itinerary
         itinerary = []
-        
-        # For each day from 1 to 18, check which cities are active
-        for day in range(1, 19):
-            for pos in range(8):
-                city_id = m.evaluate(order[pos]).as_long()
-                city_name = id2city[city_id]
-                start_day = m.evaluate(start[pos]).as_long()
-                end_day = m.evaluate(end[pos]).as_long()
-                if start_day <= day <= end_day:
-                    itinerary.append({"day": day, "city": city_name})
-        
-        # Output as JSON
+        for d in range(n_days):
+            day_index = d + 1
+            s_val = m.evaluate(start_city[d])
+            s_city = cities[int(str(s_val))]
+            itinerary.append({"day": day_index, "place": s_city})
+            f_val = m.evaluate(flight[d])
+            if z3.is_true(f_val):
+                e_val = m.evaluate(end_city[d])
+                e_city = cities[int(str(e_val))]
+                itinerary.append({"day": day_index, "place": e_city})
         result = {"itinerary": itinerary}
         print(json.dumps(result))
     else:
-        print("No solution found")
+        print('{"itinerary": []}')
 
 if __name__ == "__main__":
     main()

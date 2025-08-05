@@ -1,75 +1,106 @@
 from z3 import *
+import json
 
-def solve_planning():
-    # Constants
-    num_rooms = 2
-    horizon = 2  # Two actions: unlock and move
-
-    # State variables
-    robot = [Int(f'robot_{i}') for i in range(horizon + 1)]
-    key = [Int(f'key_{i}') for i in range(horizon + 1)]
-    door_locked = [Bool(f'door_locked_{i}') for i in range(horizon + 1)]
-    actions = [Int(f'action_{i}') for i in range(horizon)]  # Actions at step 0 and 1
-
-    # Solver
+def main():
+    # Define the cities
+    City, (Porto, Prague, Reykjavik, Santorini, Amsterdam, Munich) = EnumSort('City', 
+        ['Porto', 'Prague', 'Reykjavik', 'Santorini', 'Amsterdam', 'Munich'])
+    
+    # Map city names to enum constants
+    city_dict = {
+        'Porto': Porto,
+        'Prague': Prague,
+        'Reykjavik': Reykjavik,
+        'Santorini': Santorini,
+        'Amsterdam': Amsterdam,
+        'Munich': Munich
+    }
+    
+    # Base undirected flight edges
+    base_edges = [
+        ("Porto", "Amsterdam"),
+        ("Munich", "Amsterdam"),
+        ("Reykjavik", "Amsterdam"),
+        ("Munich", "Porto"),
+        ("Prague", "Reykjavik"),
+        ("Reykjavik", "Munich"),
+        ("Amsterdam", "Santorini"),
+        ("Prague", "Amsterdam"),
+        ("Prague", "Munich")
+    ]
+    
+    # Create directed edges for both directions
+    directed_edges = []
+    for a, b in base_edges:
+        a_const = city_dict[a]
+        b_const = city_dict[b]
+        directed_edges.append((a_const, b_const))
+        directed_edges.append((b_const, a_const))
+    
+    # Required days per city
+    required_days = {
+        Porto: 5,
+        Prague: 4,
+        Reykjavik: 4,
+        Santorini: 2,
+        Amsterdam: 2,
+        Munich: 4
+    }
+    
+    # Initialize solver
     s = Solver()
-
-    # Initial state constraints
-    s.add(robot[0] == 0)  # Robot starts in room0
-    s.add(key[0] == 0)    # Key starts in room0 (adjusted from room1)
-    s.add(door_locked[0] == True)  # Door initially locked
-
-    # Goal constraint
-    s.add(robot[horizon] == 1)  # Robot must be in room1 at the end
-
-    # Action definitions: 0=no-op, 1=unlock, 2=move01, 3=move10
-    for t in range(horizon):
-        action = actions[t]
-        # Preconditions and effects for each action
-        # Unlock action
-        unlock_pre = And(robot[t] == key[t], door_locked[t] == True)
-        unlock_eff = And(robot[t+1] == robot[t], key[t+1] == key[t], door_locked[t+1] == False)
-        
-        # Move from room0 to room1
-        move01_pre = And(robot[t] == 0, door_locked[t] == False)
-        move01_eff = And(robot[t+1] == 1, key[t+1] == If(key[t] == 0, 1, key[t]), door_locked[t+1] == door_locked[t])
-        
-        # Move from room1 to room0
-        move10_pre = And(robot[t] == 1, door_locked[t] == False)
-        move10_eff = And(robot[t+1] == 0, key[t+1] == If(key[t] == 1, 0, key[t]), door_locked[t+1] == door_locked[t])
-        
-        # No-op action
-        noop_eff = And(robot[t+1] == robot[t], key[t+1] == key[t], door_locked[t+1] == door_locked[t])
-        
-        # Action selection constraints
-        s.add(Or(
-            And(action == 0, noop_eff),  # No-op
-            And(action == 1, unlock_pre, unlock_eff),  # Unlock
-            And(action == 2, move01_pre, move01_eff),  # Move01
-            And(action == 3, move10_pre, move10_eff)   # Move10
-        ))
-        
-        # Ensure action value is valid
-        s.add(action >= 0, action <= 3)
-
-    # Solve and output the plan
+    
+    # Create S and E for 16 days (index 0 to 15)
+    S = [Const(f'S_{d}', City) for d in range(16)]
+    E = [Const(f'E_{d}', City) for d in range(16)]
+    
+    # Constraint 1: E[d] == S[d+1] for d in 0 to 14
+    for d in range(15):
+        s.add(E[d] == S[d+1])
+    
+    # Constraint 2: For each day, either stay in the same city or take a direct flight
+    for d in range(16):
+        same_city = (S[d] == E[d])
+        flight_exists = Or([And(S[d] == a, E[d] == b) for a, b in directed_edges])
+        s.add(Or(same_city, flight_exists))
+    
+    # Constraint 3: Total days per city
+    cities = [Porto, Prague, Reykjavik, Santorini, Amsterdam, Munich]
+    for c in cities:
+        total = 0
+        for d in range(16):
+            total += If(Or(S[d] == c, E[d] == c), 1, 0)
+        s.add(total == required_days[c])
+    
+    # Constraint 4: Events
+    # Amsterdam: must be present on day 14 and 15 (0-indexed: 13 and 14)
+    s.add(Or(S[13] == Amsterdam, E[13] == Amsterdam))
+    s.add(Or(S[14] == Amsterdam, E[14] == Amsterdam))
+    # Reykjavik: at least one day in [4,7] (0-indexed: 3 to 6)
+    reykjavik_days = [Or(S[d] == Reykjavik, E[d] == Reykjavik) for d in [3,4,5,6]]
+    s.add(Or(reykjavik_days))
+    # Munich: at least one day in [7,10] (0-indexed: 6 to 9)
+    munich_days = [Or(S[d] == Munich, E[d] == Munich) for d in [6,7,8,9]]
+    s.add(Or(munich_days))
+    
+    # Check and get model
     if s.check() == sat:
         m = s.model()
-        plan = []
-        for t in range(horizon):
-            a = m[actions[t]].as_long()
-            if a == 0:
-                plan.append("no-op")
-            elif a == 1:
-                plan.append("unlock_door(room0, room1)")
-            elif a == 2:
-                plan.append("move(room0, room1)")
-            elif a == 3:
-                plan.append("move(room1, room0)")
-        print("Plan found:")
-        for step, action in enumerate(plan):
-            print(f"Step {step}: {action}")
+        itinerary = []
+        for day in range(1, 17):
+            idx = day - 1
+            start_city = m[S[idx]]
+            start_city_name = start_city.decl().name()
+            itinerary.append({"day": day, "place": start_city_name})
+            end_city = m[E[idx]]
+            end_city_name = end_city.decl().name()
+            if start_city_name != end_city_name:
+                itinerary.append({"day": day, "place": end_city_name})
+        # Output as JSON
+        result = {"itinerary": itinerary}
+        print(json.dumps(result, indent=2))
     else:
-        print("No plan found")
+        print("No solution found")
 
-solve_planning()
+if __name__ == "__main__":
+    main()

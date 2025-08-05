@@ -1,75 +1,66 @@
 from z3 import *
-import json
 
 def main():
-    s0, s1, s2 = Ints('s0 s1 s2')
-    a = Int('a')
-    b = Int('b')
+    stuttgart = 0
+    seville = 1
+    manchester = 2
+    city_names = {
+        stuttgart: 'Stuttgart',
+        seville: 'Seville',
+        manchester: 'Manchester'
+    }
     
-    solver = Solver()
+    s = Solver()
     
-    allowed_pairs = [(0,2), (2,0), (1,2), (2,1)]
+    start_city = [Int('start_%d' % i) for i in range(15)]
+    end_city = [Int('end_%d' % i) for i in range(15)]
     
-    solver.add(s0 >= 0, s0 <= 2)
-    solver.add(s1 >= 0, s1 <= 2)
-    solver.add(s2 >= 0, s2 <= 2)
-    solver.add(Distinct(s0, s1, s2))
+    for i in range(15):
+        s.add(Or(start_city[i] == stuttgart, start_city[i] == seville, start_city[i] == manchester))
+        s.add(Or(end_city[i] == stuttgart, end_city[i] == seville, end_city[i] == manchester))
     
-    solver.add(a >= 1, a <= 14)
-    solver.add(b >= a+1, b <= 15)
+    for i in range(14):
+        s.add(end_city[i] == start_city[i+1])
     
-    solver.add(Or([And(s0 == x, s1 == y) for (x, y) in allowed_pairs]))
-    solver.add(Or([And(s1 == x, s2 == y) for (x, y) in allowed_pairs]))
+    for i in range(15):
+        same_city = (start_city[i] == end_city[i])
+        stut_to_man = And(start_city[i] == stuttgart, end_city[i] == manchester)
+        man_to_stut = And(start_city[i] == manchester, end_city[i] == stuttgart)
+        man_to_sev = And(start_city[i] == manchester, end_city[i] == seville)
+        sev_to_man = And(start_city[i] == seville, end_city[i] == manchester)
+        s.add(Or(same_city, stut_to_man, man_to_stut, man_to_sev, sev_to_man))
     
-    solver.add(Or(
-        And(s0 == 0, a == 6),
-        And(s0 == 1, a == 7),
-        And(s0 == 2, a == 4)
-    ))
+    stuttgart_count = 0
+    seville_count = 0
+    manchester_count = 0
     
-    solver.add(Or(
-        And(s1 == 0, b - a + 1 == 6),
-        And(s1 == 1, b - a + 1 == 7),
-        And(s1 == 2, b - a + 1 == 4)
-    ))
+    for i in range(15):
+        stuttgart_count += If(Or(start_city[i] == stuttgart, 
+                                 And(end_city[i] == stuttgart, start_city[i] != stuttgart)), 1, 0)
+        seville_count += If(Or(start_city[i] == seville, 
+                               And(end_city[i] == seville, start_city[i] != seville)), 1, 0)
+        manchester_count += If(Or(start_city[i] == manchester, 
+                                  And(end_city[i] == manchester, start_city[i] != manchester)), 1, 0)
     
-    solver.add(Or(
-        And(s2 == 0, 16 - b == 6),
-        And(s2 == 1, 16 - b == 7),
-        And(s2 == 2, 16 - b == 4)
-    ))
+    s.add(stuttgart_count == 6)
+    s.add(seville_count == 7)
+    s.add(manchester_count == 4)
     
-    solver.add(Or(
-        And(s0 == 0, a <= 6),
-        And(s1 == 0, a <= 6),
-        And(s2 == 0, b <= 6)
-    ))
+    meeting_constraint = Or([Or(start_city[i] == stuttgart, end_city[i] == stuttgart) for i in range(6)])
+    s.add(meeting_constraint)
     
-    if solver.check() == sat:
-        model = solver.model()
-        a_val = model[a].as_long()
-        b_val = model[b].as_long()
-        s0_val = model[s0].as_long()
-        s1_val = model[s1].as_long()
-        s2_val = model[s2].as_long()
+    if s.check() == sat:
+        model = s.model()
+        itinerary = []
+        for i in range(15):
+            end_val = model[end_city[i]].as_long()
+            city_name = city_names[end_val]
+            itinerary.append({"day": i+1, "place": city_name})
         
-        city_names = {
-            0: "Stuttgart",
-            1: "Seville",
-            2: "Manchester"
-        }
-        
-        segments = []
-        segments.append({"day_range": f"Day 1-{a_val}", "place": city_names[s0_val]})
-        segments.append({"day_range": f"Day {a_val}-{b_val}", "place": city_names[s1_val]})
-        segments.append({"day_range": f"Day {b_val}-15", "place": city_names[s2_val]})
-        
-        result = {
-            "itinerary": segments
-        }
-        print(json.dumps(result))
+        result = {'itinerary': itinerary}
+        print(result)
     else:
-        print(json.dumps({"error": "No solution found"}))
+        print("No valid itinerary found.")
 
 if __name__ == '__main__':
     main()

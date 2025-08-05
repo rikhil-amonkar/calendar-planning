@@ -1,69 +1,67 @@
 from z3 import *
-import json
 
-def main():
+def plan_trip(n, lengths, dependencies):
     s = Solver()
     
-    cities = 6
-    req_days = [5, 4, 5, 2, 3, 5]
-    city_names = ["Reykjavik", "Istanbul", "Edinburgh", "Oslo", "Stuttgart", "Bucharest"]
+    # Create position variables: position[i] = the index of activity i in the order
+    position = [Int('pos_%i' % i) for i in range(n)]
     
-    edges = [
-        (5, 3), (3, 5),  # Bucharest <-> Oslo
-        (5, 1), (1, 5),  # Bucharest <-> Istanbul
-        (1, 3), (3, 1),  # Istanbul <-> Oslo
-        (1, 2), (2, 1),  # Istanbul <-> Edinburgh
-        (1, 4), (4, 1),  # Istanbul <-> Stuttgart
-        (0, 4),          # Reykjavik -> Stuttgart
-        (3, 0), (0, 3),  # Oslo <-> Reykjavik
-        (3, 2), (2, 3),  # Oslo <-> Edinburgh
-        (4, 2), (2, 4)   # Stuttgart <-> Edinburgh
-    ]
+    # Each position must be between 0 and n-1
+    for i in range(n):
+        s.add(position[i] >= 0, position[i] < n)
     
-    seq = [Int(f'seq_{i}') for i in range(cities)]
-    start = [Int(f'start_{i}') for i in range(cities)]
-    end = [Int(f'end_{i}') for i in range(cities)]
+    # All positions must be distinct
+    s.add(Distinct(position))
     
-    s.add(Distinct(seq))
-    for i in range(cities):
-        s.add(seq[i] >= 0, seq[i] < cities)
+    # The trip must start with activity 0 and end with activity n-1
+    s.add(position[0] == 0)
+    s.add(position[n-1] == n-1)
     
-    s.add(start[seq[0]] == 1)
-    s.add(end[seq[0]] == 1 + req_days[seq[0]] - 1)
+    # Dependencies: for each (i, j) in dependencies, activity i must come before activity j
+    for (i, j) in dependencies:
+        s.add(position[i] < position[j])
     
-    for k in range(1, cities):
-        s.add(start[seq[k]] == end[seq[k-1]])
-        s.add(end[seq[k]] == start[seq[k]] + req_days[seq[k]] - 1)
-    
-    s.add(end[seq[cities-1]] == 19)
-    
-    for k in range(cities-1):
-        edge_exists = Or([And(seq[k] == a, seq[k+1] == b) for (a, b) in edges])
-        s.add(edge_exists)
-    
-    istanbul_index = city_names.index("Istanbul")
-    oslo_index = city_names.index("Oslo")
-    s.add(start[istanbul_index] <= 8, end[istanbul_index] >= 5)
-    s.add(start[oslo_index] <= 9, end[oslo_index] >= 8)
-    
+    # Check for a valid solution
     if s.check() == sat:
         m = s.model()
-        seq_val = [m.evaluate(seq[i]).as_long() for i in range(cities)]
-        start_val = [m.evaluate(start[i]).as_long() for i in range(cities)]
-        end_val = [m.evaluate(end[i]).as_long() for i in range(cities)]
-        
-        itinerary = []
-        for city_index in range(cities):
-            s_day = start_val[city_index]
-            e_day = end_val[city_index]
-            for day in range(s_day, e_day + 1):
-                itinerary.append({"day": day, "place": city_names[city_index]})
-        
-        itinerary_sorted = sorted(itinerary, key=lambda x: x['day'])
-        result = {"itinerary": itinerary_sorted}
-        print(json.dumps(result, indent=2))
+        # Build the order array: order[k] = activity at position k
+        order = [0] * n
+        for i in range(n):
+            pos_val = m.evaluate(position[i]).as_long()
+            order[pos_val] = i
+        total_time = sum(lengths)
+        return order, total_time
     else:
-        print("No solution found")
+        return None, None
 
-if __name__ == "__main__":
+def main():
+    import json
+    import sys
+
+    # Read the input data from stdin
+    data = json.load(sys.stdin)
+    activities = data["activities"]
+    n = len(activities)
+    lengths = [act["length"] for act in activities]
+    dependencies = data["dependencies"]
+    
+    # Convert dependencies: from list of dicts to list of tuples (i, j)
+    dep_tuples = []
+    for dep in dependencies:
+        dep_tuples.append((dep["from"], dep["to"]))
+    
+    # Call the planning function
+    order, total_time = plan_trip(n, lengths, dep_tuples)
+    
+    # Output the result
+    if order is None:
+        print(json.dumps({"error": "No solution found"}))
+    else:
+        result = {
+            "order": order,
+            "total_time": total_time
+        }
+        print(json.dumps(result))
+
+if __name__ == '__main__':
     main()

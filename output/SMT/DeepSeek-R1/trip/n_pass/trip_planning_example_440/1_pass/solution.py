@@ -1,91 +1,100 @@
 from z3 import *
-import json
 
-# Define the cities and their required days
-cities = ['Split', 'Helsinki', 'Reykjavik', 'Vilnius', 'Geneva']
-City, (Split, Helsinki, Reykjavik, Vilnius, Geneva) = EnumSort('City', cities)
-city_names = cities  # for mapping later
+def main():
+    # City indices for easier reference
+    cities = {
+        'Split': 0,
+        'Helsinki': 1,
+        'Reykjavik': 2,
+        'Vilnius': 3,
+        'Geneva': 4
+    }
+    city_names = ['Split', 'Helsinki', 'Reykjavik', 'Vilnius', 'Geneva']
+    n_cities = len(city_names)
+    n_days = 12
 
-# Flight connections (both directions)
-flight_pairs = [
-    (Split, Helsinki),
-    (Geneva, Split),
-    (Geneva, Helsinki),
-    (Helsinki, Reykjavik),
-    (Vilnius, Helsinki),
-    (Split, Vilnius)
-]
-all_pairs = []
-for (a, b) in flight_pairs:
-    all_pairs.append((a, b))
-    all_pairs.append((b, a))
+    # Direct flights as a set of tuples (unordered)
+    direct_flights = {
+        ('Split', 'Helsinki'),
+        ('Geneva', 'Split'),
+        ('Geneva', 'Helsinki'),
+        ('Helsinki', 'Reykjavik'),
+        ('Vilnius', 'Helsinki'),
+        ('Split', 'Vilnius')
+    }
 
-# Required days for each city
-req_days = {
-    Split: 2,
-    Helsinki: 2,
-    Reykjavik: 3,
-    Vilnius: 3,
-    Geneva: 6
-}
+    # Create a solver instance
+    s = Solver()
 
-# Create solver and variables
-s = Solver()
-L = [Const(f'L_{i}', City) for i in range(13)]  # L[0] to L[12]
+    # in_city[day][city]: True if we are in the city on that day
+    in_city = [[Bool(f'in_city_{d}_{c}') for c in range(n_cities)] for d in range(n_days)]
 
-# Constraint: L[0] == L[1] (for day 1)
-s.add(L[0] == L[1])
+    # Constraint: Each day, we are in at least one city and at most two cities.
+    for d in range(n_days):
+        # At least one city per day
+        s.add(Or([in_city[d][c] for c in range(n_cities)]))
+        # At most two cities: for any three distinct cities, not all can be true on the same day.
+        for c1 in range(n_cities):
+            for c2 in range(c1 + 1, n_cities):
+                for c3 in range(c2 + 1, n_cities):
+                    s.add(Not(And(in_city[d][c1], in_city[d][c2], in_city[d][c3])))
 
-# Flight constraints for transitions
-for i in range(1, 13):
-    cond = Or([And(L[i-1] == a, L[i] == b) for (a, b) in all_pairs])
-    s.add(If(L[i-1] != L[i], cond, True))
+    # Constraint: If two cities are occupied on the same day, they must be connected by a direct flight.
+    for d in range(n_days):
+        for c1 in range(n_cities):
+            for c2 in range(c1 + 1, n_cities):
+                city1 = city_names[c1]
+                city2 = city_names[c2]
+                if (city1, city2) not in direct_flights and (city2, city1) not in direct_flights:
+                    # If no direct flight, they cannot be together on the same day.
+                    s.add(Not(And(in_city[d][c1], in_city[d][c2])))
 
-# Count constraints for each city
-for city in [Split, Helsinki, Reykjavik, Vilnius, Geneva]:
-    total = 0
-    for i in range(1, 13):
-        total += If(Or(L[i-1] == city, L[i] == city), 1, 0)
-    s.add(total == req_days[city])
+    # Constraint: Total days per city must meet the requirements.
+    total_days = [0] * n_cities
+    for c in range(n_cities):
+        total = 0
+        for d in range(n_days):
+            total += If(in_city[d][c], 1, 0)
+        if city_names[c] == 'Split':
+            s.add(total == 2)
+        elif city_names[c] == 'Helsinki':
+            s.add(total == 2)
+        elif city_names[c] == 'Reykjavik':
+            s.add(total == 3)
+        elif city_names[c] == 'Vilnius':
+            s.add(total == 3)
+        elif city_names[c] == 'Geneva':
+            s.add(total == 6)
 
-# Event constraints
-# Reykjavik between day 10 and 12 (days 10,11,12 in itinerary)
-s.add(Or(
-    Or(L[9] == Reykjavik, L[10] == Reykjavik),  # day 10: L9 and L10
-    Or(L[10] == Reykjavik, L[11] == Reykjavik),  # day 11: L10 and L11
-    Or(L[11] == Reykjavik, L[12] == Reykjavik)  # day 12: L11 and L12
-))
+    # Reykjavik must be occupied on days 10, 11, 12 (which are indices 9,10,11)
+    s.add(in_city[9][cities['Reykjavik']])
+    s.add(in_city[10][cities['Reykjavik']])
+    s.add(in_city[11][cities['Reykjavik']])
 
-# Vilnius between day 7 and 9 (days 7,8,9 in itinerary)
-s.add(Or(
-    Or(L[6] == Vilnius, L[7] == Vilnius),  # day 7: L6 and L7
-    Or(L[7] == Vilnius, L[8] == Vilnius),  # day 8: L7 and L8
-    Or(L[8] == Vilnius, L[9] == Vilnius)   # day 9: L8 and L9
-))
+    # Vilnius must be occupied on at least one day between 7 and 9 (indices 6,7,8)
+    s.add(Or(
+        in_city[6][cities['Vilnius']],
+        in_city[7][cities['Vilnius']],
+        in_city[8][cities['Vilnius']]
+    ))
 
-# Solve the problem
-if s.check() == sat:
-    m = s.model()
-    # Map Z3 values to city names
-    L_vals = []
-    for i in range(13):
-        val = m[L[i]]
-        idx = val.as_long()
-        L_vals.append(city_names[idx])
-    
-    # Build itinerary
-    itinerary = []
-    for day in range(1, 13):
-        city_prev = L_vals[day-1]
-        city_curr = L_vals[day]
-        if city_prev == city_curr:
-            itinerary.append({"day": day, "place": city_prev})
-        else:
-            itinerary.append({"day": day, "place": city_prev})
-            itinerary.append({"day": day, "place": city_curr})
-    
-    # Output as JSON
-    result = {"itinerary": itinerary}
-    print(json.dumps(result))
-else:
-    print('{"itinerary": []}')
+    # Check and get the model
+    if s.check() == sat:
+        model = s.model()
+        itinerary = []
+        for d in range(n_days):
+            current_cities = []
+            for c in range(n_cities):
+                if model.evaluate(in_city[d][c]):
+                    current_cities.append(city_names[c])
+            itinerary.append({"day": d + 1, "place": ", ".join(current_cities)})
+        
+        # Output the itinerary in the required JSON format
+        import json
+        result = {"itinerary": itinerary}
+        print(json.dumps(result, indent=2))
+    else:
+        print("No solution found")
+
+if __name__ == '__main__':
+    main()

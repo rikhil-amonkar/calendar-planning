@@ -1,111 +1,115 @@
 from z3 import *
 
 def main():
-    City, cities = EnumSort('City', [
-        'Oslo',
-        'Helsinki',
-        'Edinburgh',
-        'Riga',
-        'Tallinn',
-        'Budapest',
-        'Vilnius',
-        'Porto',
-        'Geneva'
-    ])
-    Oslo, Helsinki, Edinburgh, Riga, Tallinn, Budapest, Vilnius, Porto, Geneva = cities
-    city_list = [Oslo, Helsinki, Edinburgh, Riga, Tallinn, Budapest, Vilnius, Porto, Geneva]
-    city_names = ['Oslo', 'Helsinki', 'Edinburgh', 'Riga', 'Tallinn', 'Budapest', 'Vilnius', 'Porto', 'Geneva']
-    
-    req_map = {
-        Oslo: 2,
-        Helsinki: 2,
-        Edinburgh: 3,
-        Riga: 2,
-        Tallinn: 5,
-        Budapest: 5,
-        Vilnius: 5,
-        Porto: 5,
-        Geneva: 4
-    }
-    
-    allowed_edges = []
-    bidirs = [
-        (Porto, Oslo),
-        (Edinburgh, Budapest),
-        (Edinburgh, Geneva),
-        (Edinburgh, Porto),
-        (Vilnius, Helsinki),
-        (Riga, Oslo),
-        (Geneva, Oslo),
-        (Edinburgh, Oslo),
-        (Edinburgh, Helsinki),
-        (Vilnius, Oslo),
-        (Riga, Helsinki),
-        (Budapest, Geneva),
-        (Helsinki, Budapest),
-        (Helsinki, Oslo),
-        (Edinburgh, Riga),
-        (Tallinn, Helsinki),
-        (Geneva, Porto),
-        (Tallinn, Oslo),
-        (Budapest, Oslo),
-        (Helsinki, Geneva)
+    cities = ["Oslo", "Helsinki", "Edinburgh", "Riga", "Tallinn", "Budapest", "Vilnius", "Porto", "Geneva"]
+    city_to_index = {name: idx for idx, name in enumerate(cities)}
+    days_required = [2, 2, 3, 2, 5, 5, 5, 5, 4]  # index aligned with cities
+
+    bidirectional = [
+        ("Porto", "Oslo"),
+        ("Edinburgh", "Budapest"),
+        ("Edinburgh", "Geneva"),
+        ("Edinburgh", "Porto"),
+        ("Vilnius", "Helsinki"),
+        ("Riga", "Oslo"),
+        ("Geneva", "Oslo"),
+        ("Edinburgh", "Oslo"),
+        ("Edinburgh", "Helsinki"),
+        ("Vilnius", "Oslo"),
+        ("Riga", "Helsinki"),
+        ("Budapest", "Geneva"),
+        ("Helsinki", "Budapest"),
+        ("Helsinki", "Oslo"),
+        ("Edinburgh", "Riga"),
+        ("Tallinn", "Helsinki"),
+        ("Geneva", "Porto"),
+        ("Budapest", "Oslo"),
+        ("Helsinki", "Geneva"),
+        ("Tallinn", "Oslo")
     ]
-    for (a, b) in bidirs:
-        allowed_edges.append((a, b))
-        allowed_edges.append((b, a))
     
-    directs = [
-        (Riga, Tallinn),
-        (Tallinn, Vilnius),
-        (Riga, Vilnius)
+    directed = [
+        ("Riga", "Tallinn"),
+        ("Tallinn", "Vilnius"),
+        ("Riga", "Vilnius")
     ]
-    for (a, b) in directs:
-        allowed_edges.append((a, b))
     
-    x = [Const('x' + str(i), City) for i in range(26)]
+    edges = set()
+    for a, b in bidirectional:
+        a_idx = city_to_index[a]
+        b_idx = city_to_index[b]
+        edges.add((a_idx, b_idx))
+        edges.add((b_idx, a_idx))
+    for a, b in directed:
+        a_idx = city_to_index[a]
+        b_idx = city_to_index[b]
+        edges.add((a_idx, b_idx))
+    
+    edges_list = list(edges)
+    
     s = Solver()
+    order = [Int(f'order_{i}') for i in range(9)]
     
-    for d in range(1, 26):
-        a = x[d-1]
-        b = x[d]
-        or_conditions = [a == b]
-        for edge in allowed_edges:
-            a_edge, b_edge = edge
-            or_conditions.append(And(a == a_edge, b == b_edge))
-        s.add(Or(or_conditions))
+    for i in range(9):
+        s.add(order[i] >= 0, order[i] < 9)
+    s.add(Distinct(order))
     
-    for city in city_list:
-        total = 0
-        for d in range(1, 26):
-            total += If(Or(x[d-1] == city, x[d] == city), 1, 0)
-        s.add(total == req_map[city])
+    def get_days_req(idx):
+        return If(idx == 0, 2,
+            If(idx == 1, 2,
+            If(idx == 2, 3,
+            If(idx == 3, 2,
+            If(idx == 4, 5,
+            If(idx == 5, 5,
+            If(idx == 6, 5,
+            If(idx == 7, 5,
+            4))))))))
     
-    s.add(Or(x[23] == Oslo, x[24] == Oslo, x[25] == Oslo))
+    oslo_conds = []
+    tallinn_conds = []
+    for i in range(9):
+        sum_expr = 0
+        for j in range(i):
+            d_req = get_days_req(order[j])
+            sum_expr += (d_req - 1)
+        start_day_i = 1 + sum_expr
+        oslo_conds.append(And(order[i] == 0, start_day_i >= 23))
+        tallinn_conds.append(And(order[i] == 4, start_day_i <= 8))
     
-    tallinn_constraints = []
-    for d in range(4, 9):
-        tallinn_constraints.append(Or(x[d-1] == Tallinn, x[d] == Tallinn))
-    s.add(Or(tallinn_constraints))
+    s.add(Or(oslo_conds))
+    s.add(Or(tallinn_conds))
+    
+    for i in range(8):
+        conds = []
+        for (a, b) in edges_list:
+            conds.append(And(order[i] == a, order[i+1] == b))
+        s.add(Or(conds))
     
     if s.check() == sat:
         m = s.model()
-        itinerary = []
-        for day in range(1, 26):
-            start_city = m.eval(x[day-1])
-            end_city = m.eval(x[day])
-            start_city_str = str(start_city)
-            end_city_str = str(end_city)
-            if start_city_str == end_city_str:
-                cities_on_day = [start_city_str]
-            else:
-                cities_on_day = [start_city_str, end_city_str]
-            itinerary.append({"day": day, "city": cities_on_day})
+        order_vals = [m[order[i]].as_long() for i in range(9)]
+        start_days = [1]
+        cum = 0
+        for i in range(8):
+            d_req = days_required[order_vals[i]]
+            cum += (d_req - 1)
+            start_days.append(1 + cum)
         
-        result = {"itinerary": itinerary}
+        itinerary = []
+        for d in range(1, 26):
+            for pos in range(9):
+                city_idx = order_vals[pos]
+                s0 = start_days[pos]
+                d_req_city = days_required[city_idx]
+                e0 = s0 + d_req_city - 1
+                if s0 <= d <= e0:
+                    city_name = cities[city_idx]
+                    itinerary.append({"day": d, "city": city_name})
+        
+        result = {'itinerary': itinerary}
         print(result)
     else:
         print("No solution found")
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

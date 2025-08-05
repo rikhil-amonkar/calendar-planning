@@ -1,78 +1,91 @@
-import json
 from z3 import *
 
 def main():
-    # Define city names and their indices
-    cities = ["Istanbul", "Rome", "Seville", "Naples", "Santorini"]
-    req_days = [2, 3, 4, 7, 4]  # Days required for each city
-    allowed_flights = [
-        (0, 3), (3, 0),  # Istanbul <-> Naples
-        (3, 4), (4, 3),  # Naples <-> Santorini
-        (1, 4), (4, 1),  # Rome <-> Santorini
-        (2, 1), (1, 2),  # Seville <-> Rome
-        (0, 1), (1, 0),  # Istanbul <-> Rome
-        (1, 3), (3, 1)   # Rome <-> Naples
-    ]
+    # Define days and cities
+    days = list(range(1, 17))  # Days 1 to 16
+    cities = ['I', 'R', 'S', 'N', 'T']  # Istanbul, Rome, Seville, Naples, Santorini
     
-    # Create solver and variables
-    s = Solver()
-    start = [Int('start_%d' % i) for i in range(5)]
-    end = [Int('end_%d' % i) for i in range(5)]
-    city = [Int('city_%d' % i) for i in range(5)]
+    # Define direct flight connections (as undirected edges)
+    allowed_pairs = [('R', 'T'), ('S', 'R'), ('I', 'N'), ('N', 'T'), ('R', 'N'), ('R', 'I')]
+    # Convert to canonical sorted tuples to avoid duplicates
+    allowed_pairs_canon = set()
+    for pair in allowed_pairs:
+        sorted_pair = tuple(sorted(pair))
+        allowed_pairs_canon.add(sorted_pair)
     
-    # Fixed constraints for the entire trip
-    s.add(start[0] == 1)
-    s.add(end[4] == 16)
+    # Create Z3 solver and variables
+    solver = Solver()
+    in_city = {}
+    for city in cities:
+        city_days = {}
+        for day in days:
+            city_days[day] = Bool(f"in_{city}_{day}")
+        in_city[city] = city_days
     
-    # Segments must be contiguous
-    for i in range(4):
-        s.add(end[i] == start[i+1])
+    # Constraint 1: Each day, at least one city is true.
+    for day in days:
+        solver.add(Or([in_city[city][day] for city in cities]))
     
-    # Fixed segments for Istanbul and Santorini
-    s.add(city[2] == 0)  # Istanbul
-    s.add(start[2] == 6, end[2] == 7)
-    s.add(city[4] == 4)  # Santorini
-    s.add(start[4] == 13, end[4] == 16)
+    # Constraint 2: Each day, at most two cities are true.
+    for day in days:
+        cities_day = [in_city[city][day] for city in cities]
+        solver.add(AtMost(*cities_day, 2))
     
-    # Other segments: Rome (1), Seville (2), Naples (3)
-    s.add(city[0] >= 1, city[0] <= 3)
-    s.add(city[1] >= 1, city[1] <= 3)
-    s.add(city[3] == 3)  # Segment 3 must be Naples (7 days)
-    s.add(Distinct(city[0], city[1], city[3]))
+    # Constraint 3: For any two distinct cities on the same day, if both are true, they must form an allowed pair.
+    for day in days:
+        for i in range(len(cities)):
+            for j in range(i + 1, len(cities)):
+                c1 = cities[i]
+                c2 = cities[j]
+                if (c1, c2) not in allowed_pairs_canon and (c2, c1) not in allowed_pairs_canon:
+                    # Since we use sorted tuples, one of these orders should be in the set, but we check both for safety.
+                    sorted_pair = tuple(sorted([c1, c2]))
+                    if sorted_pair not in allowed_pairs_canon:
+                        solver.add(Not(And(in_city[c1][day], in_city[c2][day])))
     
-    # Length of each segment
-    days_in_segment = [end[i] - start[i] + 1 for i in range(5)]
+    # Constraint 4: Total days per city and fixed days.
+    # Istanbul: 2 days, including days 6 and 7.
+    for d in [6, 7]:
+        solver.add(in_city['I'][d] == True)
+    total_I = Sum([If(in_city['I'][d], 1, 0) for d in days])
+    solver.add(total_I == 2)
     
-    # Total days per city must meet requirements
-    for c in range(5):
-        total = 0
-        for i in range(5):
-            total += If(city[i] == c, days_in_segment[i], 0)
-        s.add(total == req_days[c])
+    # Rome: 3 days
+    total_R = Sum([If(in_city['R'][d], 1, 0) for d in days])
+    solver.add(total_R == 3)
     
-    # Flight constraints between consecutive segments
-    for i in range(4):
-        s.add(Or([And(city[i] == a, city[i+1] == b) for (a, b) in allowed_flights]))
+    # Seville: 4 days
+    total_S = Sum([If(in_city['S'][d], 1, 0) for d in days])
+    solver.add(total_S == 4)
     
-    # Ensure segment starts are within bounds
-    s.add(start[1] >= 1, start[1] <= 6)
-    s.add(start[3] == 7)  # Since end[2] = 7 and end[2] = start[3]
+    # Naples: 7 days
+    total_N = Sum([If(in_city['N'][d], 1, 0) for d in days])
+    solver.add(total_N == 7)
     
-    # Check and get model
-    if s.check() == sat:
-        model = s.model()
-        # Build itinerary
+    # Santorini: 4 days, including days 13-16.
+    for d in [13, 14, 15, 16]:
+        solver.add(in_city['T'][d] == True)
+    total_T = Sum([If(in_city['T'][d], 1, 0) for d in days])
+    solver.add(total_T == 4)
+    
+    # Solve the problem
+    if solver.check() == sat:
+        model = solver.model()
         itinerary = []
-        for d in range(1, 17):  # Days 1 to 16
-            for i in range(5):  # Check each segment
-                start_val = model.evaluate(start[i]).as_long()
-                end_val = model.evaluate(end[i]).as_long()
-                if start_val <= d <= end_val:
-                    city_idx = model.evaluate(city[i]).as_long()
-                    itinerary.append({"day": d, "city": cities[city_idx]})
-        # Output as JSON
+        city_names = {
+            'I': 'Istanbul',
+            'R': 'Rome',
+            'S': 'Seville',
+            'N': 'Naples',
+            'T': 'Santorini'
+        }
+        for day in days:
+            for city in cities:
+                if model.evaluate(in_city[city][day]):
+                    itinerary.append({"day": day, "place": city_names[city]})
+        # Output as JSON dictionary
         result = {"itinerary": itinerary}
-        print(json.dumps(result, indent=2))
+        print(result)
     else:
         print("No solution found")
 

@@ -1,157 +1,181 @@
-from z3 import *
 import json
+from z3 import *
 
-def main():
-    # Define meetings and their details
-    meetings = ['Rebecca', 'Stephanie', 'Karen', 'Brian', 'Steven']
-    locations = {
-        'Rebecca': "Fisherman's Wharf",
-        'Stephanie': 'Golden Gate Park',
-        'Karen': 'Chinatown',
-        'Brian': 'Union Square',
-        'Steven': 'North Beach'
+def time_to_minutes(time_str):
+    parts = time_str.split(':')
+    hour = int(parts[0])
+    minute = int(parts[1])
+    return hour * 60 + minute
+
+def minutes_to_time(minutes):
+    hour = minutes // 60
+    minute = minutes % 60
+    return f"{hour:02d}:{minute:02d}"
+
+# Define travel times between locations
+travel_times = {
+    "Financial District": {
+        "Golden Gate Park": 23,
+        "Chinatown": 5,
+        "Union Square": 9,
+        "Fisherman's Wharf": 10,
+        "Pacific Heights": 13,
+        "North Beach": 7
+    },
+    "Golden Gate Park": {
+        "Financial District": 26,
+        "Chinatown": 23,
+        "Union Square": 22,
+        "Fisherman's Wharf": 24,
+        "Pacific Heights": 16,
+        "North Beach": 24
+    },
+    "Chinatown": {
+        "Financial District": 5,
+        "Golden Gate Park": 23,
+        "Union Square": 7,
+        "Fisherman's Wharf": 8,
+        "Pacific Heights": 10,
+        "North Beach": 3
+    },
+    "Union Square": {
+        "Financial District": 9,
+        "Golden Gate Park": 22,
+        "Chinatown": 7,
+        "Fisherman's Wharf": 15,
+        "Pacific Heights": 15,
+        "North Beach": 10
+    },
+    "Fisherman's Wharf": {
+        "Financial District": 11,
+        "Golden Gate Park": 25,
+        "Chinatown": 12,
+        "Union Square": 13,
+        "Pacific Heights": 12,
+        "North Beach": 6
+    },
+    "Pacific Heights": {
+        "Financial District": 13,
+        "Golden Gate Park": 15,
+        "Chinatown": 11,
+        "Union Square": 12,
+        "Fisherman's Wharf": 13,
+        "North Beach": 9
+    },
+    "North Beach": {
+        "Financial District": 8,
+        "Golden Gate Park": 22,
+        "Chinatown": 6,
+        "Union Square": 7,
+        "Fisherman's Wharf": 5,
+        "Pacific Heights": 8
     }
-    
-    # Available start and end times in minutes from 9:00 AM
-    available_start = {
-        'Rebecca': 10,    # 9:10 AM
-        'Stephanie': 120,  # 11:00 AM
-        'Karen': 285,      # 1:45 PM (13:45)
-        'Brian': 360,      # 3:00 PM (15:00)
-        'Steven': 330      # 2:30 PM (14:30)
+}
+
+friends = {
+    "Rebecca": {
+        "location": "Fisherman's Wharf",
+        "start_available": "8:00",
+        "end_available": "11:15",
+        "min_duration": 30
+    },
+    "Joseph": {
+        "location": "Pacific Heights",
+        "start_available": "8:15",
+        "end_available": "9:30",
+        "min_duration": 60
+    },
+    "Stephanie": {
+        "location": "Golden Gate Park",
+        "start_available": "11:00",
+        "end_available": "15:00",
+        "min_duration": 105
+    },
+    "Karen": {
+        "location": "Chinatown",
+        "start_available": "13:45",
+        "end_available": "16:30",
+        "min_duration": 15
+    },
+    "Brian": {
+        "location": "Union Square",
+        "start_available": "15:00",
+        "end_available": "17:15",
+        "min_duration": 30
+    },
+    "Steven": {
+        "location": "North Beach",
+        "start_available": "14:30",
+        "end_available": "20:45",
+        "min_duration": 120
     }
-    
-    available_end = {
-        'Rebecca': 135,    # 11:15 AM
-        'Stephanie': 360,  # 3:00 PM (15:00)
-        'Karen': 450,      # 4:30 PM (16:30)
-        'Brian': 495,      # 5:15 PM (17:15)
-        'Steven': 705      # 8:45 PM (20:45)
-    }
-    
-    min_duration = {
-        'Rebecca': 30,
-        'Stephanie': 105,
-        'Karen': 15,
-        'Brian': 30,
-        'Steven': 120
-    }
-    
-    # Travel times between locations (in minutes)
-    travel_dict = {
-        'Financial District': {
-            "Fisherman's Wharf": 10,
-            'Golden Gate Park': 23,
-            'Chinatown': 5,
-            'Union Square': 9,
-            'North Beach': 7
-        },
-        "Fisherman's Wharf": {
-            'Golden Gate Park': 25,
-            'Chinatown': 12,
-            'Union Square': 13,
-            'North Beach': 6,
-            'Financial District': 11
-        },
-        'Golden Gate Park': {
-            "Fisherman's Wharf": 24,
-            'Chinatown': 23,
-            'Union Square': 22,
-            'North Beach': 24,
-            'Financial District': 26
-        },
-        'Chinatown': {
-            "Fisherman's Wharf": 8,
-            'Golden Gate Park': 23,
-            'Union Square': 7,
-            'North Beach': 3,
-            'Financial District': 5
-        },
-        'Union Square': {
-            "Fisherman's Wharf": 15,
-            'Golden Gate Park': 22,
-            'Chinatown': 7,
-            'North Beach': 10,
-            'Financial District': 9
-        },
-        'North Beach': {
-            "Fisherman's Wharf": 5,
-            'Golden Gate Park': 22,
-            'Chinatown': 6,
-            'Union Square': 7,
-            'Financial District': 8
-        }
-    }
-    
-    # Create Z3 solver
-    s_solver = Solver()
-    
-    # Create variables for start and end times for each meeting
-    s_times = [Int(f's_{name}') for name in meetings]
-    e_times = [Int(f'e_{name}') for name in meetings]
-    
-    # Create order variables (positions in the sequence)
-    order = [Int(f'o{i}') for i in range(5)]
-    
-    # Constraints for order: distinct and within [0,4]
-    s_solver.add(Distinct(order))
-    for i in range(5):
-        s_solver.add(order[i] >= 0, order[i] < 5)
-    
-    # Constraints for each meeting: start time, end time, and duration
-    for i, name in enumerate(meetings):
-        s_solver.add(s_times[i] >= available_start[name])
-        s_solver.add(e_times[i] <= available_end[name])
-        s_solver.add(e_times[i] - s_times[i] >= min_duration[name])
-    
-    # Constraint for the first meeting: must account for travel from Financial District
-    for j in range(5):
-        meeting_name = meetings[j]
-        loc = locations[meeting_name]
-        travel_time = travel_dict['Financial District'][loc]
-        s_solver.add(Implies(order[0] == j, s_times[j] >= travel_time))
-    
-    # Constraints for consecutive meetings: travel time between locations
-    for k in range(4):  # k from 0 to 3 (for consecutive pairs)
-        for i in range(5):
-            for j in range(5):
-                if i == j:
-                    continue
-                loc_i = locations[meetings[i]]
-                loc_j = locations[meetings[j]]
-                travel_time = travel_dict[loc_i][loc_j]
-                s_solver.add(Implies(And(order[k] == i, order[k+1] == j),
-                              s_times[j] >= e_times[i] + travel_time))
-    
-    # Check for a solution
-    if s_solver.check() == sat:
-        model = s_solver.model()
-        # Extract start and end times
-        schedule = []
-        for i, name in enumerate(meetings):
-            s_val = model.eval(s_times[i]).as_long()
-            e_val = model.eval(e_times[i]).as_long()
-            # Convert minutes from 9:00 to time string
-            start_hour = 9 + s_val // 60
-            start_minute = s_val % 60
-            end_hour = 9 + e_val // 60
-            end_minute = e_val % 60
-            start_str = f"{start_hour:02d}:{start_minute:02d}"
-            end_str = f"{end_hour:02d}:{end_minute:02d}"
+}
+
+# Convert time strings to minutes
+for friend, data in friends.items():
+    data['start_min'] = time_to_minutes(data['start_available'])
+    data['end_min'] = time_to_minutes(data['end_available'])
+
+# Create Z3 variables
+meet = {}
+start = {}
+for friend in friends:
+    meet[friend] = Bool(f"meet_{friend}")
+    start[friend] = Int(f"start_{friend}")
+
+# Set up the solver with optimization
+opt = Optimize()
+
+# Constraints for each friend
+for friend, data in friends.items():
+    # If meeting, it must be within the available window
+    opt.add(Implies(meet[friend], start[friend] >= data['start_min']))
+    opt.add(Implies(meet[friend], start[friend] + data['min_duration'] <= data['end_min']))
+    # Travel from Financial District to the friend's location
+    travel_time = travel_times["Financial District"][data['location']]
+    opt.add(Implies(meet[friend], start[friend] >= 540 + travel_time))  # 540 minutes = 9:00 AM
+
+# Constraints for every pair of distinct friends
+friend_names = list(friends.keys())
+for i in range(len(friend_names)):
+    for j in range(i+1, len(friend_names)):
+        friend_i = friend_names[i]
+        friend_j = friend_names[j]
+        loc_i = friends[friend_i]['location']
+        loc_j = friends[friend_j]['location']
+        dur_i = friends[friend_i]['min_duration']
+        dur_j = friends[friend_j]['min_duration']
+        travel_ij = travel_times[loc_i][loc_j]
+        travel_ji = travel_times[loc_j][loc_i]
+        opt.add(Implies(And(meet[friend_i], meet[friend_j]),
+                         Or(
+                             start[friend_i] + dur_i + travel_ij <= start[friend_j],
+                             start[friend_j] + dur_j + travel_ji <= start[friend_i]
+                         )))
+
+# Objective: maximize the number of meetings
+objective = Sum([If(meet[friend], 1, 0) for friend in friends])
+opt.maximize(objective)
+
+# Solve and output
+if opt.check() == sat:
+    model = opt.model()
+    schedule = []
+    for friend in friends:
+        if is_true(model[meet[friend]]):
+            s_val = model[start[friend]].as_long()
+            dur = friends[friend]['min_duration']
+            start_time = minutes_to_time(s_val)
+            end_time = minutes_to_time(s_val + dur)
             schedule.append({
                 "action": "meet",
-                "person": name,
-                "start_time": start_str,
-                "end_time": end_str
+                "person": friend,
+                "start_time": start_time,
+                "end_time": end_time
             })
-        # Sort by start time
-        schedule.sort(key=lambda x: x['start_time'])
-        # Output as JSON
-        result = {"itinerary": schedule}
-        print("SOLUTION:")
-        print(json.dumps(result, indent=2))
-    else:
-        print("No feasible schedule found")
-
-if __name__ == '__main__':
-    main()
+    schedule.sort(key=lambda x: x['start_time'])
+    result = {"itinerary": schedule}
+    print("SOLUTION:")
+    print(json.dumps(result))
+else:
+    print("No solution found")

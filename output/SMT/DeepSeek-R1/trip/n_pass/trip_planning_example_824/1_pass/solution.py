@@ -1,99 +1,64 @@
-import json
 from z3 import *
+import json
 
 def main():
-    # Cities and their indices
-    cities = ["Berlin", "Split", "Bucharest", "Riga", "Lisbon", "Tallinn", "Lyon"]
-    n = 7
-
-    # Durations for each city (by index)
-    dur = [5, 3, 3, 5, 3, 4, 5]
-
-    # Allowed directed flights: list of tuples (u, v)
-    allowed_edges = [
-        (0, 1), (1, 0),  # Berlin-Split
-        (0, 3), (3, 0),  # Berlin-Riga
-        (0, 4), (4, 0),  # Berlin-Lisbon
-        (0, 5), (5, 0),  # Berlin-Tallinn
-        (1, 6), (6, 1),  # Split-Lyon
-        (2, 3), (3, 2),  # Bucharest-Riga
-        (2, 4), (4, 2),  # Bucharest-Lisbon
-        (3, 4), (4, 3),  # Riga-Lisbon
-        (6, 2), (2, 6),  # Lyon-Bucharest
-        (6, 4), (4, 6),  # Lyon-Lisbon
-        (3, 5)            # Riga->Tallinn
+    cities = ['Berlin', 'Split', 'Bucharest', 'Riga', 'Lisbon', 'Tallinn', 'Lyon']
+    reqs = [5, 3, 3, 5, 3, 4, 5]
+    n = len(cities)
+    
+    adj = [
+        [0, 1, 0, 1, 1, 1, 0],   # Berlin:0
+        [1, 0, 0, 0, 0, 0, 1],    # Split:1
+        [0, 0, 0, 1, 1, 0, 1],    # Bucharest:2
+        [1, 0, 1, 0, 1, 1, 0],    # Riga:3
+        [1, 0, 1, 1, 0, 0, 1],    # Lisbon:4
+        [1, 0, 0, 0, 0, 0, 0],    # Tallinn:5
+        [0, 1, 1, 0, 1, 0, 0]     # Lyon:6
     ]
-
-    # Create Z3 variables for the sequence: city0, city1, ... city6
-    city_vars = [Int(f'city_{i}') for i in range(n)]
-
+    
+    Order = IntVector('Order', n)
     s = Solver()
-
-    # Each city must be between 0 and 6
+    
     for i in range(n):
-        s.add(And(city_vars[i] >= 0, city_vars[i] < n))
-
-    # All cities distinct
-    s.add(Distinct(city_vars))
-
-    # First city must be Berlin (index 0)
-    s.add(city_vars[0] == 0)
-
-    # Flight constraints for consecutive cities
-    for i in range(n - 1):
-        constraints = []
-        for u, v in allowed_edges:
-            constraints.append(And(city_vars[i] == u, city_vars[i + 1] == v))
-        s.add(Or(constraints))
-
-    # Build start day expressions for each position in the sequence
-    # For a city at position i, start_day = 1 + sum_{j=0}^{i-1} (dur[city_vars[j]] - 1)
-    start_exprs = [None] * n
+        s.add(Order[i] >= 0, Order[i] < n)
+    
+    s.add(Distinct(Order))
+    
     for i in range(n):
-        if i == 0:
-            start_exprs[i] = 1
-        else:
-            terms = [dur[city_vars[j]] - 1 for j in range(i)]
-            start_exprs[i] = 1 + Sum(terms) if terms else 1
-
-    # Constraints for Lyon (index 6) and Bucharest (index 2)
-    for i in range(n):
-        s.add(Implies(city_vars[i] == 6, And(start_exprs[i] >= 3, start_exprs[i] <= 11)))
-        s.add(Implies(city_vars[i] == 2, And(start_exprs[i] >= 11, start_exprs[i] <= 15)))
-
-    # Solve the constraints
+        prefix_sum_i = Sum([If(j < i, reqs[Order[j]], 0) for j in range(n)])
+        s.add(If(Order[i] == 0, prefix_sum_i == i, True))
+        s.add(If(Order[i] == 6, prefix_sum_i == 6 + i, True))
+        s.add(If(Order[i] == 2, prefix_sum_i == 12 + i, True))
+    
+    for i in range(n-1):
+        s.add(adj[Order[i]][Order[i+1]] == 1)
+    
     if s.check() == sat:
-        model = s.model()
-        seq = [model[city_vars[i]].as_long() for i in range(n)]
+        m = s.model()
+        order_list = [m[Order[i]].as_long() for i in range(n)]
         
-        # Compute start and end days for each city in the sequence
-        start_days = []
-        end_days = []
-        cum = 0
+        prefix = 0
+        starts = [0] * n
+        ends = [0] * n
+        
         for i in range(n):
-            if i == 0:
-                start_day = 1
-            else:
-                start_day = 1 + cum
-            duration = dur[seq[i]]
-            end_day = start_day + duration - 1
-            start_days.append(start_day)
-            end_days.append(end_day)
-            cum += (duration - 1)
+            city_index = order_list[i]
+            start_i = 1 + prefix - i
+            end_i = start_i + reqs[city_index] - 1
+            starts[city_index] = start_i
+            ends[city_index] = end_i
+            prefix += reqs[city_index]
         
-        # Generate itinerary: for each day, list all cities visited
-        itinerary_list = []
-        for day in range(1, 23):  # Days 1 to 22
-            for i in range(n):
-                if start_days[i] <= day <= end_days[i]:
-                    city_name = cities[seq[i]]
-                    itinerary_list.append({"day": day, "city": city_name})
+        itinerary = []
+        for day in range(1, 23):
+            for idx in range(n):
+                if starts[idx] <= day <= ends[idx]:
+                    itinerary.append({"day": day, "place": cities[idx]})
         
-        # Output as JSON
-        result = {'itinerary': itinerary_list}
+        result = {'itinerary': itinerary}
         print(json.dumps(result))
     else:
         print("No solution found")
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

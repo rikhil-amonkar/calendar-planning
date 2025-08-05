@@ -1,95 +1,128 @@
 from z3 import *
 
-# Define the City datatype
-City = Datatype('City')
-City.declare('Dublin')
-City.declare('Reykjavik')
-City.declare('London')
-City.declare('Mykonos')
-City.declare('Hamburg')
-City.declare('Helsinki')
-City = City.create()
-
-# Create solver
-s = Solver()
-
-# Define variables for start and end of each day
-start = [Const('start_%d' % i, City) for i in range(1, 17)]
-end = [Const('end_%d' % i, City) for i in range(1, 17)]
-
-# Continuity constraint: end of day i must be start of day i+1
-for i in range(0, 15):
-    s.add(end[i] == start[i+1])
-
-# Define direct flight edges
-edges = [
-    (City.Dublin, City.London),
-    (City.Hamburg, City.Dublin),
-    (City.Helsinki, City.Reykjavik),
-    (City.Hamburg, City.London),
-    (City.Dublin, City.Helsinki),
-    (City.Reykjavik, City.London),
-    (City.London, City.Mykonos),
-    (City.Dublin, City.Reykjavik),
-    (City.Hamburg, City.Helsinki),
-    (City.Helsinki, City.London)
-]
-
-# Create directed flights (both directions)
-directed_flights = []
-for a, b in edges:
-    directed_flights.append((a, b))
-    directed_flights.append((b, a))
-
-# Flight constraints: if start and end differ, must be a direct flight
-for i in range(0, 16):
-    flight_ok = Or([And(start[i] == a, end[i] == b) for (a, b) in directed_flights])
-    s.add(If(start[i] != end[i], flight_ok, True))
-
-# Total days per city
-cities = [City.Dublin, City.Reykjavik, City.London, City.Mykonos, City.Hamburg, City.Helsinki]
-total_days = {c: 0 for c in cities}
-for c in cities:
-    for i in range(0, 16):
-        total_days[c] += If(Or(start[i] == c, end[i] == c), 1, 0)
-
-s.add(total_days[City.Dublin] == 5)
-s.add(total_days[City.Reykjavik] == 2)
-s.add(total_days[City.London] == 5)
-s.add(total_days[City.Mykonos] == 3)
-s.add(total_days[City.Hamburg] == 2)
-s.add(total_days[City.Helsinki] == 4)
-
-# Event constraints
-# Hamburg: day 1 or 2 (0-indexed: days 0 and 1)
-s.add(Or(Or(start[0] == City.Hamburg, end[0] == City.Hamburg),
-        Or(start[1] == City.Hamburg, end[1] == City.Hamburg)))
-
-# Dublin: days 2 to 6 (0-indexed: days 1 to 5)
-for i in range(1, 6):
-    s.add(Or(start[i] == City.Dublin, end[i] == City.Dublin))
-
-# Reykjavik: day 9 or 10 (0-indexed: days 8 and 9)
-s.add(Or(Or(start[8] == City.Reykjavik, end[8] == City.Reykjavik),
-        Or(start[9] == City.Reykjavik, end[9] == City.Reykjavik)))
-
-# Solve
-if s.check() == sat:
-    model = s.model()
-    itinerary = []
-    city_names = {
-        City.Dublin: "Dublin",
-        City.Reykjavik: "Reykjavik",
-        City.London: "London",
-        City.Mykonos: "Mykonos",
-        City.Hamburg: "Hamburg",
-        City.Helsinki: "Helsinki"
+def main():
+    cities = ['Mykonos', 'Reykjavik', 'Dublin', 'London', 'Helsinki', 'Hamburg']
+    req = {
+        'Mykonos': 3,
+        'Reykjavik': 2,
+        'Dublin': 5,
+        'London': 5,
+        'Helsinki': 4,
+        'Hamburg': 2
     }
-    for i in range(0, 16):
-        end_city = model[end[i]]
-        place = city_names[end_city]
-        itinerary.append({"day": i+1, "place": place})
-    result = {'itinerary': itinerary}
-    print(result)
-else:
-    print("No solution found")
+    
+    edges_str = [
+        ('Dublin', 'London'),
+        ('Hamburg', 'Dublin'),
+        ('Helsinki', 'Reykjavik'),
+        ('Hamburg', 'London'),
+        ('Dublin', 'Helsinki'),
+        ('Reykjavik', 'London'),
+        ('London', 'Mykonos'),
+        ('Dublin', 'Reykjavik'),
+        ('Hamburg', 'Helsinki'),
+        ('Helsinki', 'London')
+    ]
+    edges_int = []
+    for a, b in edges_str:
+        ia = cities.index(a)
+        ib = cities.index(b)
+        edges_int.append((ia, ib))
+    
+    s = Solver()
+    order = [Int('c0'), Int('c1'), Int('c2'), Int('c3'), Int('c4'), Int('c5')]
+    d1, d2, d3, d4, d5 = Ints('d1 d2 d3 d4 d5')
+    
+    s.add(Distinct(order))
+    for i in range(6):
+        s.add(And(order[i] >= 0, order[i] <= 5))
+    
+    s.add(And(1 <= d1, d1 < d2, d2 < d3, d3 < d4, d4 < d5, d5 <= 16))
+    
+    for i in range(5):
+        cons = []
+        for a, b in edges_int:
+            cons.append(Or(And(order[i] == a, order[i+1] == b), And(order[i] == b, order[i+1] == a)))
+        s.add(Or(cons))
+    
+    for idx, city in enumerate(cities):
+        c_val = cities.index(city)
+        if idx == 0:
+            s.add(If(order[0] == c_val, d1 == req[city], True))
+        elif idx == 1:
+            s.add(If(order[1] == c_val, d2 - d1 + 1 == req[city], True))
+        elif idx == 2:
+            s.add(If(order[2] == c_val, d3 - d2 + 1 == req[city], True))
+        elif idx == 3:
+            s.add(If(order[3] == c_val, d4 - d3 + 1 == req[city], True))
+        elif idx == 4:
+            s.add(If(order[4] == c_val, d5 - d4 + 1 == req[city], True))
+        elif idx == 5:
+            s.add(If(order[5] == c_val, 17 - d5 == req[city], True))
+    
+    for idx, city in enumerate(cities):
+        c_val = cities.index(city)
+        if city == 'Reykjavik':
+            if idx == 0:
+                s.add(If(order[0] == c_val, d1 >= 9, True))
+            elif idx == 1:
+                s.add(If(order[1] == c_val, And(d1 <= 10, d2 >= 9), True))
+            elif idx == 2:
+                s.add(If(order[2] == c_val, And(d2 <= 10, d3 >= 9), True))
+            elif idx == 3:
+                s.add(If(order[3] == c_val, And(d3 <= 10, d4 >= 9), True))
+            elif idx == 4:
+                s.add(If(order[4] == c_val, And(d4 <= 10, d5 >= 9), True))
+            elif idx == 5:
+                s.add(If(order[5] == c_val, d5 <= 10, True))
+        elif city == 'Dublin':
+            if idx == 0:
+                s.add(If(order[0] == c_val, d1 >= 2, True))
+            elif idx == 1:
+                s.add(If(order[1] == c_val, And(d1 <= 6, d2 >= 2), True))
+            elif idx == 2:
+                s.add(If(order[2] == c_val, And(d2 <= 6, d3 >= 2), True))
+            elif idx == 3:
+                s.add(If(order[3] == c_val, And(d3 <= 6, d4 >= 2), True))
+            elif idx == 4:
+                s.add(If(order[4] == c_val, And(d4 <= 6, d5 >= 2), True))
+            elif idx == 5:
+                s.add(If(order[5] == c_val, d5 <= 6, True))
+        elif city == 'Hamburg':
+            if idx == 1:
+                s.add(If(order[1] == c_val, d1 <= 2, True))
+            elif idx == 2:
+                s.add(If(order[2] == c_val, d2 <= 2, True))
+    
+    if s.check() == sat:
+        model = s.model()
+        order_val = [model.evaluate(order[i]).as_long() for i in range(6)]
+        d1_val = model.evaluate(d1).as_long()
+        d2_val = model.evaluate(d2).as_long()
+        d3_val = model.evaluate(d3).as_long()
+        d4_val = model.evaluate(d4).as_long()
+        d5_val = model.evaluate(d5).as_long()
+        
+        itinerary = []
+        for day in range(1, 17):
+            if day < d1_val:
+                city_idx = order_val[0]
+            elif day < d2_val:
+                city_idx = order_val[1]
+            elif day < d3_val:
+                city_idx = order_val[2]
+            elif day < d4_val:
+                city_idx = order_val[3]
+            elif day < d5_val:
+                city_idx = order_val[4]
+            else:
+                city_idx = order_val[5]
+            itinerary.append({"day": day, "place": cities[city_idx]})
+        
+        result = {'itinerary': itinerary}
+        print(result)
+    else:
+        print("No solution found")
+
+if __name__ == "__main__":
+    main()

@@ -1,64 +1,79 @@
-import z3
+from z3 import *
 
 def main():
-    n = 10
-    total_days = 25
+    cities = ["Paris", "Amsterdam", "Hamburg", "Warsaw", "Vilnius", "Tallinn", "Barcelona", "Florence", "Venice", "Salzburg"]
+    n_cities = len(cities)
+    n_stays = 11
+    total_days = 24
+    travel_days = 10
+    total_stay_days = total_days - travel_days  # 14 days
 
-    city_names = ["Paris", "Florence", "Barcelona", "Tallinn", "Amsterdam", "Vilnius", "Warsaw", "Venice", "Hamburg", "Salzburg"]
-    min_days = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
-    max_days = [5, 5, 5, 5, 5, 5, 5, 5, 5, 5]
+    # City sequence variables (11 stays)
+    c = [Int(f'c_{i}') for i in range(n_stays)]
+    # Stay duration variables (11 stays)
+    d = [Int(f'd_{i}') for i in range(n_stays)]
 
-    assign = [z3.Int(f"assign_{i}") for i in range(n)]
-    d = [z3.Int(f"d_{i}") for i in range(n)]
-    start = [z3.Int(f"start_{i}") for i in range(n)]
-    end = [z3.Int(f"end_{i}") for i in range(n)]
+    s = Solver()
 
-    s = z3.Solver()
+    # Start and end in Paris (city 0)
+    s.add(c[0] == 0)
+    s.add(c[10] == 0)
 
-    for i in range(n):
-        s.add(assign[i] >= 0, assign[i] < n)
-    s.add(z3.Distinct(assign))
-
-    s.add(start[0] == 1)
-    for i in range(n-1):
-        s.add(end[i] == start[i] + d[i] - 1)
-        s.add(start[i+1] == end[i] + 1)
-    s.add(end[n-1] == start[n-1] + d[n-1] - 1)
-    s.add(end[n-1] == total_days)
-
-    s.add(sum(d) == total_days)
-
-    for i in range(n):
-        or_constraints = []
-        for k in range(n):
-            or_constraints.append(z3.And(assign[i] == k, d[i] >= min_days[k], d[i] <= max_days[k]))
-        s.add(z3.Or(or_constraints))
-
-    for i in range(n):
+    # Durations between 1-5 days, sum to 14
+    for i in range(n_stays):
         s.add(d[i] >= 1, d[i] <= 5)
+    s.add(sum(d) == total_stay_days)
 
-    if s.check() == z3.sat:
+    # Middle 9 cities are distinct and cover cities 1-9
+    s.add(Distinct([c[i] for i in range(1, 10)]))
+    for i in range(1, 10):
+        s.add(c[i] >= 1, c[i] <= 9)
+
+    # Define bidirectional train connections
+    edges = [
+        (0, 1), (0, 6),  # Paris
+        (1, 2),           # Amsterdam-Hamburg
+        (2, 3),           # Hamburg-Warsaw
+        (3, 4), (3, 8),   # Warsaw
+        (4, 5),           # Vilnius-Tallinn
+        (7, 8),           # Florence-Venice
+        (8, 9),           # Venice-Salzburg
+        (6, 7)            # Barcelona-Florence (ADDED)
+    ]
+    # Make bidirectional
+    allowed_edges = []
+    for u, v in edges:
+        allowed_edges.append((u, v))
+        allowed_edges.append((v, u))
+
+    # Consecutive cities must be connected
+    for i in range(n_stays - 1):
+        s.add(Or([And(c[i] == u, c[i+1] == v) for u, v in allowed_edges]))
+
+    if s.check() == sat:
         model = s.model()
-        order = [model.eval(assign[i]).as_long() for i in range(n)]
-        starts = [model.eval(start[i]).as_long() for i in range(n)]
-        ends = [model.eval(end[i]).as_long() for i in range(n)]
-
+        city_seq = [model.evaluate(c[i]).as_long() for i in range(n_stays)]
+        dur_seq = [model.evaluate(d[i]).as_long() for i in range(n_stays)]
+        
+        # Build itinerary
         itinerary = []
-        for i in range(n):
-            city_index = order[i]
-            city = city_names[city_index]
-            s_day = starts[i]
-            e_day = ends[i]
-            if s_day == e_day:
-                day_range = f"Day {s_day}"
+        day = 1
+        for i in range(n_stays):
+            stay_days = dur_seq[i]
+            end_day = day + stay_days - 1
+            if stay_days == 1:
+                day_str = f"Day {day}"
             else:
-                day_range = f"Day {s_day}-{e_day}"
-            itinerary.append({'day_range': day_range, 'place': city})
-
-        result = {'itinerary': itinerary}
-        print(result)
+                day_str = f"Day {day}-{end_day}"
+            itinerary.append({
+                "day_range": day_str,
+                "place": cities[city_seq[i]]
+            })
+            day = end_day + 2  # Next stay after travel day
+        
+        print({"itinerary": itinerary})
     else:
-        print("No valid plan found.")
+        print("No valid plan found")
 
 if __name__ == "__main__":
     main()

@@ -1,106 +1,141 @@
-from z3 import *
+import z3
+import json
 
 def main():
-    city_to_index = {
-        "Riga": 0,
-        "Frankfurt": 1,
-        "Amsterdam": 2,
-        "Vilnius": 3,
-        "London": 4,
-        "Stockholm": 5,
-        "Bucharest": 6
+    # Define the City enum
+    City, (Riga, Frankfurt, Amsterdam, Vilnius, London, Stockholm, Bucharest) = z3.EnumSort('City', 
+        ['Riga', 'Frankfurt', 'Amsterdam', 'Vilnius', 'London', 'Stockholm', 'Bucharest'])
+    
+    # Map for city names to Z3 constants
+    city_dict = {
+        'Riga': Riga,
+        'Frankfurt': Frankfurt,
+        'Amsterdam': Amsterdam,
+        'Vilnius': Vilnius,
+        'London': London,
+        'Stockholm': Stockholm,
+        'Bucharest': Bucharest
     }
-    index_to_city = {v: k for k, v in city_to_index.items()}
-    req_array = [2, 3, 2, 5, 2, 3, 4]  # Days required for each city
-
-    edges_list = [
-        ("London", "Amsterdam"),
-        ("Vilnius", "Frankfurt"),
-        ("Riga", "Vilnius"),
-        ("Riga", "Stockholm"),
-        ("London", "Bucharest"),
-        ("Amsterdam", "Stockholm"),
-        ("Amsterdam", "Frankfurt"),
-        ("Frankfurt", "Stockholm"),
-        ("Bucharest", "Riga"),
-        ("Amsterdam", "Riga"),
-        ("Amsterdam", "Bucharest"),
-        ("Riga", "Frankfurt"),
-        ("Bucharest", "Frankfurt"),
-        ("London", "Frankfurt"),
-        ("London", "Stockholm"),
-        ("Amsterdam", "Vilnius")
+    
+    # Map for Z3 constants to city names (for output)
+    name_map = {
+        Riga: "Riga",
+        Frankfurt: "Frankfurt",
+        Amsterdam: "Amsterdam",
+        Vilnius: "Vilnius",
+        London: "London",
+        Stockholm: "Stockholm",
+        Bucharest: "Bucharest"
+    }
+    
+    # Required days per city
+    required_days = {
+        Riga: 2,
+        Frankfurt: 3,
+        Amsterdam: 2,
+        Vilnius: 5,
+        London: 2,
+        Stockholm: 3,
+        Bucharest: 4
+    }
+    
+    # Build the list of allowed flights (directed edges)
+    allowed_flights = []
+    bidirectional_edges = [
+        ('London', 'Amsterdam'),
+        ('Vilnius', 'Frankfurt'),
+        ('Riga', 'Stockholm'),
+        ('London', 'Bucharest'),
+        ('Amsterdam', 'Stockholm'),
+        ('Amsterdam', 'Frankfurt'),
+        ('Frankfurt', 'Stockholm'),
+        ('Bucharest', 'Riga'),
+        ('Amsterdam', 'Riga'),
+        ('Amsterdam', 'Bucharest'),
+        ('Riga', 'Frankfurt'),
+        ('Bucharest', 'Frankfurt'),
+        ('London', 'Frankfurt'),
+        ('London', 'Stockholm'),
+        ('Amsterdam', 'Vilnius')
     ]
-    directed_edges = []
-    for u, v in edges_list:
-        a, b = city_to_index[u], city_to_index[v]
-        directed_edges.append((a, b))
-        directed_edges.append((b, a))
-
-    s = Solver()
-
-    # City sequence variables
-    P = [Int('P%d' % i) for i in range(7)]
-    for i in range(7):
-        s.add(And(P[i] >= 0, P[i] <= 6))
-    s.add(Distinct(P))
-
-    # Start day variables for each city
-    S = [Int('S%d' % i) for i in range(7)]
-    s.add(S[0] == 1)  # First city starts on day 1
-
-    # Create Z3 array for requirements
-    Req = Array('Req', IntSort(), IntSort())
-    for i in range(7):
-        s.add(Req[i] == req_array[i])
-
-    # Constraints for start days
-    for i in range(1, 7):
-        s.add(S[i] == S[i-1] + Req[P[i-1]] - 1)
     
-    # Last city must end on day 15
-    s.add(S[6] + Req[P[6]] - 1 == 15)
-
+    # Add bidirectional flights (both directions)
+    for a, b in bidirectional_edges:
+        a_const = city_dict[a]
+        b_const = city_dict[b]
+        allowed_flights.append((a_const, b_const))
+        allowed_flights.append((b_const, a_const))
+    
+    # Add directed flight: Riga to Vilnius
+    allowed_flights.append((city_dict['Riga'], city_dict['Vilnius']))
+    
+    # Create Z3 variables for s and e arrays (15 days)
+    s = [z3.Const(f's_{i}', City) for i in range(15)]  # start city for each day
+    e = [z3.Const(f'e_{i}', City) for i in range(15)]  # end city for each day
+    
+    solver = z3.Solver()
+    
+    # Constraint: The end city of day i must be the start city of day i+1
+    for i in range(14):
+        solver.add(e[i] == s[i+1])
+    
+    # Constraint: For each day, if start and end cities differ, there must be a direct flight
+    for i in range(15):
+        same_city = s[i] == e[i]
+        flight_options = []
+        for (u, v) in allowed_flights:
+            flight_options.append(z3.And(s[i] == u, e[i] == v))
+        solver.add(z3.Or(same_city, z3.Or(flight_options)))
+    
+    # Total days per city constraint
+    for city in [Riga, Frankfurt, Amsterdam, Vilnius, London, Stockholm, Bucharest]:
+        total = 0
+        for i in range(15):
+            total += z3.If(z3.Or(s[i] == city, e[i] == city), 1, 0)
+        solver.add(total == required_days[city])
+    
     # Event constraints
-    # Amsterdam must start on day 2
-    ams_constraint = Or([And(P[i] == 2, S[i] == 2) for i in range(7)])
-    # Vilnius must start on day 7
-    vil_constraint = Or([And(P[i] == 3, S[i] == 7) for i in range(7)])
-    # Stockholm must start on or after day 12
-    stock_constraint = Or([And(P[i] == 5, S[i] >= 12) for i in range(7)])
+    # Amsterdam: must be present on day 2 or 3 (indices 1 or 2)
+    ams_day2 = z3.Or(s[1] == Amsterdam, e[1] == Amsterdam)
+    ams_day3 = z3.Or(s[2] == Amsterdam, e[2] == Amsterdam)
+    solver.add(z3.Or(ams_day2, ams_day3))
     
-    s.add(ams_constraint)
-    s.add(vil_constraint)
-    s.add(stock_constraint)
-
-    # Direct flight constraints
-    for i in range(6):
-        constraints = []
-        for a, b in directed_edges:
-            constraints.append(And(P[i] == a, P[i+1] == b))
-        s.add(Or(constraints))
-
-    if s.check() == sat:
-        model = s.model()
-        P_val = [model.evaluate(P[i]).as_long() for i in range(7)]
-        S_val = [model.evaluate(S[i]).as_long() for i in range(7)]
-        Req_val = [req_array[i] for i in range(7)]
+    # Vilnius: must be present between day7 (index6) and day11 (index10)
+    vilnius_days = []
+    for i in [6,7,8,9,10]:
+        vilnius_days.append(z3.Or(s[i] == Vilnius, e[i] == Vilnius))
+    solver.add(z3.Or(vilnius_days))
+    
+    # Stockholm: must be present between day13 (index12) and day15 (index14)
+    stockholm_days = []
+    for i in [12,13,14]:
+        stockholm_days.append(z3.Or(s[i] == Stockholm, e[i] == Stockholm))
+    solver.add(z3.Or(stockholm_days))
+    
+    # Constraint: Exactly 6 days with flights (to meet 21 city-day incidences)
+    total_flight_days = 0
+    for i in range(15):
+        total_flight_days += z3.If(s[i] != e[i], 1, 0)
+    solver.add(total_flight_days == 6)
+    
+    # Check for a solution
+    if solver.check() == z3.sat:
+        model = solver.model()
+        itinerary_list = []
+        for i in range(15):
+            day = i + 1
+            s_val = model.eval(s[i])
+            e_val = model.eval(e[i])
+            s_name = name_map[s_val]
+            e_name = name_map[e_val]
+            if s_val == e_val:
+                places = [s_name]
+            else:
+                places = [s_name, e_name]
+            itinerary_list.append({"day": day, "place": places})
         
-        city_sequence = [index_to_city[idx] for idx in P_val]
-        durations = [Req_val[P_val[i]] for i in range(7)]
-        ends = [S_val[i] + durations[i] - 1 for i in range(7)]
-        
-        itinerary = []
-        for d in range(1, 16):
-            cities_today = []
-            for i in range(7):
-                if S_val[i] <= d <= ends[i]:
-                    cities_today.append(city_sequence[i])
-            for city in cities_today:
-                itinerary.append({"day": d, "city": city})
-        
-        result = {"itinerary": itinerary}
-        print(result)
+        result = {"itinerary": itinerary_list}
+        print(json.dumps(result, indent=2))
     else:
         print("No solution found")
 

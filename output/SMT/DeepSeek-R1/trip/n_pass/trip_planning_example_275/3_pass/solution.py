@@ -1,89 +1,120 @@
-from z3 import *
 import json
+from z3 import *
 
 def main():
-    # Define the city enum
+    # Define cities as an enumerated data type
     City = Datatype('City')
     City.declare('Vilnius')
     City.declare('Split')
     City.declare('Madrid')
     City.declare('Santorini')
     City = City.create()
-    Vilnius, Split, Madrid, Santorini = City.Vilnius, City.Split, City.Madrid, City.Santorini
-
-    # Define the direct flight pairs
-    direct_pairs = [
-        (Vilnius, Split),
-        (Split, Vilnius),
-        (Split, Madrid),
-        (Madrid, Split),
-        (Madrid, Santorini),
-        (Santorini, Madrid)
-    ]
+    vilnius, split, madrid, santorini = City.Vilnius, City.Split, City.Madrid, City.Santorini
     
-    def is_direct(x, y):
-        options = []
-        for a, b in direct_pairs:
-            options.append(And(x == a, y == b))
-        return Or(options)
-
-    # Declare variables
-    start_city = Const('start_city', City)
-    flight = [Bool('flight_%d' % i) for i in range(14)]
-    c = [Const('c_%d' % i, City) for i in range(14)]
+    # Define direct flight connections (bidirectional)
+    def has_direct_flight(c1, c2):
+        return Or(
+            And(c1 == vilnius, c2 == split),
+            And(c1 == split, c2 == vilnius),
+            And(c1 == split, c2 == madrid),
+            And(c1 == madrid, c2 == split),
+            And(c1 == madrid, c2 == santorini),
+            And(c1 == santorini, c2 == madrid)
+        )
+    
+    # Segment boundaries (start/end days)
+    s1, e1 = Ints('s1 e1')
+    s2, e2 = Ints('s2 e2')
+    s3, e3 = Ints('s3 e3')
+    s4, e4 = Ints('s4 e4')
+    
+    # City assignments for each segment
+    c1, c2, c3, c4 = Consts('c1 c2 c3 c4', City)
     
     s = Solver()
     
-    # Constraints for conference days (day 13 and 14)
-    s.add(c[12] == Santorini)  # End of day 13
-    s.add(c[13] == Santorini)  # End of day 14
-    s.add(flight[13] == False)  # No flight on day 14
+    # Fixed constraints: trip starts day 1, ends day 14
+    s.add(s1 == 1)
+    s.add(e4 == 14)
     
-    # Movement constraints for day 1
-    s.add(Implies(flight[0], is_direct(start_city, c[0])))
-    s.add(Implies(Not(flight[0]), c[0] == start_city))
+    # Santorini must be on days 13-14 (last segment)
+    s.add(s4 == 13, c4 == santorini)
     
-    # Movement constraints for days 2 to 14
-    for i in range(1, 14):
-        s.add(Implies(flight[i], is_direct(c[i-1], c[i])))
-        s.add(Implies(Not(flight[i]), c[i] == c[i-1]))
+    # Segment continuity: next segment starts where previous ends (flight day)
+    s.add(s2 == e1)
+    s.add(s3 == e2)
+    s.add(s4 == e3)
     
-    # Function to count days for a city
-    def count_city(X):
-        part1 = If(start_city == X, 1, 0)
-        part2 = If(And(flight[0], c[0] == X), 1, 0)
-        part3 = Sum([If(c[i] == X, 1, 0) for i in range(0, 13)])
-        part4 = Sum([If(And(flight[i], c[i] == X), 1, 0) for i in range(1, 14)])
-        return part1 + part2 + part3 + part4
+    # Segment boundaries must be valid (1-14, non-empty, increasing)
+    s.add(s1 >= 1, e1 <= 14, s1 <= e1)
+    s.add(s2 >= 1, e2 <= 14, s2 <= e2)
+    s.add(s3 >= 1, e3 <= 14, s3 <= e3)
+    s.add(s4 >= 1, e4 <= 14, s4 <= e4)
     
-    # Add constraints for city days
-    s.add(count_city(Split) == 5)
-    s.add(count_city(Vilnius) == 4)
-    s.add(count_city(Madrid) == 6)
-    s.add(count_city(Santorini) == 2)
+    # Direct flights between consecutive segments
+    s.add(has_direct_flight(c1, c2))
+    s.add(has_direct_flight(c2, c3))
+    s.add(has_direct_flight(c3, c4))
     
-    # Check for a solution
+    # All cities must be visited (distinct)
+    s.add(Distinct(c1, c2, c3, c4))
+    
+    # Calculate durations for each segment
+    dur1 = e1 - s1 + 1
+    dur2 = e2 - s2 + 1
+    dur3 = e3 - s3 + 1
+    dur4 = e4 - s4 + 1
+    
+    # Total days per city (accounting for flight days)
+    total_vilnius = Sum([If(c1 == vilnius, dur1, 0), 
+                         If(c2 == vilnius, dur2, 0),
+                         If(c3 == vilnius, dur3, 0),
+                         If(c4 == vilnius, dur4, 0)])
+    
+    total_split = Sum([If(c1 == split, dur1, 0), 
+                      If(c2 == split, dur2, 0),
+                      If(c3 == split, dur3, 0),
+                      If(c4 == split, dur4, 0)])
+    
+    total_madrid = Sum([If(c1 == madrid, dur1, 0), 
+                        If(c2 == madrid, dur2, 0),
+                        If(c3 == madrid, dur3, 0),
+                        If(c4 == madrid, dur4, 0)])
+    
+    total_santorini = Sum([If(c1 == santorini, dur1, 0), 
+                           If(c2 == santorini, dur2, 0),
+                           If(c3 == santorini, dur3, 0),
+                           If(c4 == santorini, dur4, 0)])
+    
+    # Enforce stay duration constraints
+    s.add(total_vilnius == 4)
+    s.add(total_split == 5)
+    s.add(total_madrid == 6)
+    s.add(total_santorini == 2)
+    
+    # Find and output valid solution
     if s.check() == sat:
         m = s.model()
-        itinerary_list = []
-        for i in range(14):
-            c_val = m.evaluate(c[i])
-            if c_val.eq(Vilnius):
-                city_name = "Vilnius"
-            elif c_val.eq(Split):
-                city_name = "Split"
-            elif c_val.eq(Madrid):
-                city_name = "Madrid"
-            elif c_val.eq(Santorini):
-                city_name = "Santorini"
-            else:
-                city_name = "Unknown"
-            itinerary_list.append({"day": i+1, "place": city_name})
-        
-        result = {'itinerary': itinerary_list}
-        print(json.dumps(result))
+        itinerary = []
+        # Collect segment information
+        segments = [
+            (s1, e1, c1),
+            (s2, e2, c2),
+            (s3, e3, c3),
+            (s4, e4, c4)
+        ]
+        for seg in segments:
+            start = m.eval(seg[0]).as_long()
+            end = m.eval(seg[1]).as_long()
+            city = m.eval(seg[2])
+            city_name = str(city).split('=')[-1].strip(')')
+            itinerary.append({
+                "day_range": f"Day {start}-{end}",
+                "place": city_name
+            })
+        print(json.dumps({"itinerary": itinerary}))
     else:
-        print('{"itinerary": []}')
+        print(json.dumps({"error": "No valid itinerary found"}))
 
 if __name__ == "__main__":
     main()

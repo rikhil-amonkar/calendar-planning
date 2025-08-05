@@ -1,94 +1,53 @@
 from z3 import *
-import json
-from collections import defaultdict
 
 def main():
-    cities = ['Prague', 'Berlin', 'Tallinn', 'Stockholm']
-    days = list(range(1, 13))
+    cities = ['P', 'B', 'T', 'S']  # P: Prague, B: Berlin, T: Tallinn, S: Stockholm
+    n_days = 12
+    days = list(range(1, n_days+1))
     
-    In = {}
-    for city in cities:
-        In[city] = {day: Bool(f"In_{city}_{day}") for day in days}
+    # Create Z3 variables: in_city[d][c] is True if in city c on day d
+    in_city = {}
+    for d in days:
+        for c in cities:
+            in_city[(d, c)] = Bool(f"day{d}_city{c}")
     
     s = Solver()
     
-    for day in range(8, 13):
-        s.add(In['Tallinn'][day] == True)
+    # Constraint 1: Each day must be in at least one city, at most two cities
+    for d in days:
+        s.add(Or([in_city[(d, c)] for c in cities]))
+        s.add(AtMost(in_city[(d, 'P')], in_city[(d, 'B')], in_city[(d, 'T')], in_city[(d, 'S')], 2))
+        # Disallow Prague and Berlin together (no direct flight)
+        s.add(Not(And(in_city[(d, 'P')], in_city[(d, 'B')])))
     
-    s.add(In['Berlin'][6] == True)
-    s.add(In['Berlin'][8] == True)
+    # Constraint 2: Consecutive days must share at least one city
+    for i in range(1, n_days):
+        s.add(Or([And(in_city[(i, c)], in_city[(i+1, c)]) for c in cities]))
     
-    s.add(Sum([If(In['Prague'][day], 1, 0) for day in days]) == 2)
-    s.add(Sum([If(In['Berlin'][day], 1, 0) for day in days]) == 3)
-    s.add(Sum([If(In['Tallinn'][day], 1, 0) for day in days]) == 5)
-    s.add(Sum([If(In['Stockholm'][day], 1, 0) for day in days]) == 5)
+    # Constraint 3: Total days per city
+    s.add(Sum([If(in_city[(d, 'P')], 1, 0) for d in days]) == 2)  # Prague
+    s.add(Sum([If(in_city[(d, 'B')], 1, 0) for d in days]) == 3)  # Berlin
+    s.add(Sum([If(in_city[(d, 'T')], 1, 0) for d in days]) == 5)  # Tallinn
+    s.add(Sum([If(in_city[(d, 'S')], 1, 0) for d in days]) == 5)  # Stockholm
     
-    allowed_flights = [
-        "Berlin and Tallinn",
-        "Prague and Tallinn",
-        "Stockholm and Tallinn",
-        "Prague and Stockholm",
-        "Stockholm and Berlin"
-    ]
-    allowed_pairs = set()
-    for flight in allowed_flights:
-        parts = flight.split(' and ')
-        sorted_pair = tuple(sorted(parts))
-        allowed_pairs.add(sorted_pair)
+    # Constraint 4: Specific day requirements
+    s.add(in_city[(6, 'B')] == True)  # Must be in Berlin on day 6
+    s.add(in_city[(8, 'B')] == True)  # Must be in Berlin on day 8
+    # Must be in Tallinn every day from 8 to 12
+    for d in range(8, 13):
+        s.add(in_city[(d, 'T')] == True)
     
-    all_pairs = []
-    for i in range(len(cities)):
-        for j in range(i+1, len(cities)):
-            pair = tuple(sorted([cities[i], cities[j]]))
-            all_pairs.append(pair)
-    
-    forbidden_pairs = [pair for pair in all_pairs if pair not in allowed_pairs]
-    
-    for (A, B) in forbidden_pairs:
-        for day in days:
-            s.add(Not(And(In[A][day], In[B][day])))
-    
-    for day in days:
-        cities_present = [In[city][day] for city in cities]
-        s.add(Sum([If(c, 1, 0) for c in cities_present]) >= 1)
-        s.add(Sum([If(c, 1, 0) for c in cities_present]) <= 2)
-    
+    # Solve and output itinerary
     if s.check() == sat:
         model = s.model()
-        city_days = defaultdict(list)
-        for city in cities:
-            for day in days:
-                if is_true(model.eval(In[city][day])):
-                    city_days[city].append(day)
-        
-        blocks = []
-        for city, days_list in city_days.items():
-            if not days_list:
-                continue
-            days_list.sort()
-            start = days_list[0]
-            end = days_list[0]
-            for i in range(1, len(days_list)):
-                if days_list[i] == end + 1:
-                    end = days_list[i]
-                else:
-                    blocks.append((city, start, end))
-                    start = days_list[i]
-                    end = days_list[i]
-            blocks.append((city, start, end))
-        
-        blocks_sorted = sorted(blocks, key=lambda x: (x[1], x[0]))
-        
-        itinerary_list = []
-        for (city, start, end) in blocks_sorted:
-            if start == end:
-                day_range = f"Day {start}"
-            else:
-                day_range = f"Day {start}-{end}"
-            itinerary_list.append({'day_range': day_range, 'place': city})
-        
-        result = {'itinerary': itinerary_list}
-        print(json.dumps(result, indent=2))
+        itinerary = []
+        for d in days:
+            places = []
+            for c in cities:
+                if is_true(model[in_city[(d, c)]]):
+                    places.append(c)
+            itinerary.append({"day": d, "place": sorted(places)})
+        print({"itinerary": itinerary})
     else:
         print("No solution found")
 

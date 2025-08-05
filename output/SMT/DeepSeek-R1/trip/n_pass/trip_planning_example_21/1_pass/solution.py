@@ -1,51 +1,62 @@
-import z3
+from z3 import *
 import json
 
 def main():
-    M = [z3.Bool(f"M_{i}") for i in range(1, 11)]
-    V = [z3.Bool(f"V_{i}") for i in range(1, 11)]
-    C = [z3.Bool(f"C_{i}") for i in range(1, 11)]
+    d1 = Int('d1')
+    d2 = Int('d2')
+    s0 = Int('s0')
+    s1 = Int('s1')
+    s2 = Int('s2')
     
-    s = z3.Solver()
+    solver = Solver()
     
-    # Each day must be in at least one city
-    for i in range(10):
-        s.add(z3.Or(M[i], V[i], C[i]))
+    solver.add(d1 >= 1, d1 <= 10, d2 >= 1, d2 <= 10, d1 < d2)
     
-    # No day can be in both Mykonos and Venice
-    for i in range(10):
-        s.add(z3.Not(z3.And(M[i], C[i])))
+    solver.add(Or(
+        And(s0 == 0, s1 == 1, s2 == 2),
+        And(s0 == 2, s1 == 1, s2 == 0)
+    ))
     
-    # Total days in each city
-    s.add(z3.Sum([z3.If(M[i], 1, 0) for i in range(10)]) == 2)
-    s.add(z3.Sum([z3.If(V[i], 1, 0) for i in range(10)]) == 4)
-    s.add(z3.Sum([z3.If(C[i], 1, 0) for i in range(10)]) == 6)
+    solver.add(If(s0 == 0, d1 == 2,
+                 If(s0 == 1, d1 == 4,
+                    d1 == 6)))
     
-    # Venice must be visited at least once between day 5 and 10 (days 5 to 10 inclusive, indices 4 to 9)
-    s.add(z3.Or([C[i] for i in range(4, 10)]))
+    solver.add(If(s1 == 0, d2 - d1 + 1 == 2,
+                 If(s1 == 1, d2 - d1 + 1 == 4,
+                    d2 - d1 + 1 == 6)))
     
-    # Continuity: consecutive days must share at least one city
-    for i in range(9):
-        s.add(z3.Or(
-            z3.And(M[i], M[i+1]),
-            z3.And(V[i], V[i+1]),
-            z3.And(C[i], C[i+1])
-        ))
+    solver.add(If(s2 == 0, 10 - d2 + 1 == 2,
+                 If(s2 == 1, 10 - d2 + 1 == 4,
+                    10 - d2 + 1 == 6)))
     
-    if s.check() == z3.sat:
-        model = s.model()
+    if solver.check() == sat:
+        m = solver.model()
+        d1_val = m[d1].as_long()
+        d2_val = m[d2].as_long()
+        s0_val = m[s0].as_long()
+        s1_val = m[s1].as_long()
+        s2_val = m[s2].as_long()
+        
+        city_map = {0: "Mykonos", 1: "Vienna", 2: "Venice"}
+        
         itinerary_list = []
-        for i in range(10):
-            if z3.is_true(model.eval(M[i])):
-                itinerary_list.append({"day": i+1, "city": "Mykonos"})
-            if z3.is_true(model.eval(V[i])):
-                itinerary_list.append({"day": i+1, "city": "Vienna"})
-            if z3.is_true(model.eval(C[i])):
-                itinerary_list.append({"day": i+1, "city": "Venice"})
-        result = {'itinerary': itinerary_list}
+        for day in range(1, 11):
+            if day < d1_val:
+                place = city_map[s0_val]
+            elif day == d1_val:
+                place = city_map[s0_val] + " and " + city_map[s1_val]
+            elif day < d2_val:
+                place = city_map[s1_val]
+            elif day == d2_val:
+                place = city_map[s1_val] + " and " + city_map[s2_val]
+            else:
+                place = city_map[s2_val]
+            itinerary_list.append({"day": day, "place": place})
+        
+        result = {"itinerary": itinerary_list}
         print(json.dumps(result))
     else:
-        print('No solution found')
+        print(json.dumps({"itinerary": []}))
 
 if __name__ == "__main__":
     main()

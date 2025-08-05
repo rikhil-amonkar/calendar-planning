@@ -1,106 +1,73 @@
-from z3 import *
 import json
+from z3 import *
 
 def main():
     cities = ["Mykonos", "Nice", "London", "Copenhagen", "Oslo", "Tallinn"]
-    city_dict = {i: cities[i] for i in range(6)}
-    
-    edges_list = [
-        (2, 3),  # London - Copenhagen
-        (3, 5),  # Copenhagen - Tallinn
-        (5, 4),  # Tallinn - Oslo
-        (0, 2),  # Mykonos - London
-        (4, 1),  # Oslo - Nice
-        (2, 1),  # London - Nice
-        (0, 1),  # Mykonos - Nice
-        (2, 4),  # London - Oslo
-        (3, 1),  # Copenhagen - Nice
-        (3, 4)   # Copenhagen - Oslo
+    req_days = [4, 3, 2, 3, 5, 4]
+    allowed_edges = [
+        (2, 3),  # London and Copenhagen
+        (3, 5),  # Copenhagen and Tallinn
+        (5, 4),  # Tallinn and Oslo
+        (0, 2),  # Mykonos and London
+        (4, 1),  # Oslo and Nice
+        (2, 1),  # London and Nice
+        (0, 1),  # Mykonos and Nice
+        (2, 4),  # London and Oslo
+        (3, 1),  # Copenhagen and Nice
+        (3, 4)   # Copenhagen and Oslo
     ]
-    edges_sym = set()
-    for (a, b) in edges_list:
-        edges_sym.add((a, b))
-        edges_sym.add((b, a))
     
-    start = Int('start')
-    city = [Int('city_%d' % i) for i in range(16)]
+    s = [Int(f's_{i}') for i in range(17)]
+    solver = Solver()
     
-    s = Solver()
+    for i in range(17):
+        solver.add(s[i] >= 0, s[i] < 6)
     
-    s.add(start >= 0, start <= 5)
     for i in range(16):
-        s.add(city[i] >= 0, city[i] <= 5)
+        same_city = (s[i] == s[i+1])
+        flight_ok = Or([Or(And(s[i] == a, s[i+1] == b), And(s[i] == b, s[i+1] == a)) for (a, b) in allowed_edges])
+        solver.add(Or(same_city, flight_ok))
     
-    def valid_flight(x, y):
-        options = []
-        for (a, b) in edges_sym:
-            options.append(And(x == a, y == b))
-        return Or(options)
-    
-    s.add(Or(start == city[0], valid_flight(start, city[0])))
-    
-    for i in range(15):
-        s.add(Or(city[i] == city[i+1], valid_flight(city[i], city[i+1])))
-    
-    counts = [0] * 6
     for c in range(6):
         total = 0
-        for d in range(1, 17):
-            if d == 1:
-                cond = Or(start == c, city[0] == c)
+        for i in range(16):
+            total += If(Or(s[i] == c, s[i+1] == c), 1, 0)
+        solver.add(total == req_days[c])
+    
+    solver.add(Or(s[13] == 1, s[14] == 1))
+    solver.add(Or(s[15] == 1, s[16] == 1))
+    
+    oslo_constraint = Or([Or(s[i] == 4, s[i+1] == 4) for i in range(9, 14)])
+    solver.add(oslo_constraint)
+    
+    if solver.check() == sat:
+        model = solver.model()
+        s_val = [model.evaluate(s[i]).as_long() for i in range(17)]
+        
+        itinerary = []
+        i = 0
+        while i < 16:
+            if s_val[i] == s_val[i+1]:
+                start_day = i+1
+                current_city = s_val[i]
+                j = i
+                while j < 15 and s_val[j+1] == s_val[j+2] and s_val[j+1] == current_city:
+                    j += 1
+                end_day = j+1
+                if start_day == end_day:
+                    day_str = f"Day {start_day}"
+                else:
+                    day_str = f"Day {start_day}-{end_day}"
+                itinerary.append({"day_range": day_str, "place": cities[current_city]})
+                i = j+1
             else:
-                cond = Or(city[d-2] == c, city[d-1] == c)
-            total += If(cond, 1, 0)
-        counts[c] = total
-    
-    s.add(counts[0] == 4)  # Mykonos
-    s.add(counts[1] == 3)  # Nice
-    s.add(counts[2] == 2)  # London
-    s.add(counts[3] == 3)  # Copenhagen
-    s.add(counts[4] == 5)  # Oslo
-    s.add(counts[5] == 4)  # Tallinn
-    
-    s.add(Or(city[12] == 1, city[13] == 1))  # Day 14
-    s.add(Or(city[14] == 1, city[15] == 1))  # Day 16
-    
-    oslo_cond = Or(
-        Or(city[8] == 4, city[9] == 4),
-        Or(city[9] == 4, city[10] == 4),
-        Or(city[10] == 4, city[11] == 4),
-        Or(city[11] == 4, city[12] == 4),
-        Or(city[12] == 4, city[13] == 4)
-    )
-    s.add(oslo_cond)
-    
-    if s.check() == sat:
-        m = s.model()
-        start_val = m[start].as_long()
-        city_vals = [m[c].as_long() for c in city]
+                day_str = f"Day {i+1}"
+                place_str = cities[s_val[i]] + " and " + cities[s_val[i+1]]
+                itinerary.append({"day_range": day_str, "place": place_str})
+                i += 1
         
-        itinerary_list = []
-        day1_start = start_val
-        day1_end = city_vals[0]
-        itinerary_list.append({"day": 1, "city": cities[day1_start]})
-        if day1_start != day1_end:
-            itinerary_list.append({"day": 1, "city": cities[day1_end]})
-        
-        for day in range(2, 17):
-            idx = day - 2
-            begin_city = city_vals[idx] if day > 1 else start_val
-            end_city = city_vals[day-1]
-            begin_city_val = city_vals[idx]
-            if day == 2:
-                begin_city_val = city_vals[0]
-            else:
-                begin_city_val = city_vals[day-2]
-            end_city_val = city_vals[day-1]
-            
-            itinerary_list.append({"day": day, "city": cities[begin_city_val]})
-            if begin_city_val != end_city_val:
-                itinerary_list.append({"day": day, "city": cities[end_city_val]})
-        
-        result = {'itinerary': itinerary_list}
-        print(json.dumps(result))
+        result = {"itinerary": itinerary}
+        print(json.dumps(result, indent=2))
     else:
         print("No solution found")
 

@@ -1,134 +1,149 @@
 from z3 import *
+import json
 
 def main():
-    cities = ['Mykonos', 'Naples', 'Istanbul', 'Venice', 'Dublin', 'Frankfurt', 'Brussels', 'Krakow']
-    city_to_idx = {city: idx for idx, city in enumerate(cities)}
-    
-    transport = {
-        ('Mykonos', 'Naples'): ['Tuesday', 'Saturday'],
-        ('Mykonos', 'Istanbul'): ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
-        ('Mykonos', 'Venice'): ['Monday', 'Wednesday', 'Friday'],
-        ('Mykonos', 'Krakow'): ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
-        ('Naples', 'Mykonos'): ['Tuesday', 'Saturday'],
-        ('Naples', 'Istanbul'): ['Monday', 'Wednesday', 'Friday'],
-        ('Naples', 'Venice'): ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
-        ('Naples', 'Brussels'): ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
-        ('Istanbul', 'Mykonos'): ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
-        ('Istanbul', 'Naples'): ['Monday', 'Wednesday', 'Friday'],
-        ('Istanbul', 'Venice'): ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
-        ('Istanbul', 'Dublin'): ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
-        ('Istanbul', 'Krakow'): ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
-        ('Venice', 'Mykonos'): ['Monday', 'Wednesday', 'Friday'],
-        ('Venice', 'Naples'): ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
-        ('Venice', 'Istanbul'): ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
-        ('Venice', 'Brussels'): ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
-        ('Dublin', 'Istanbul'): ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
-        ('Dublin', 'Frankfurt'): ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
-        ('Dublin', 'Krakow'): ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
-        ('Frankfurt', 'Dublin'): ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
-        ('Frankfurt', 'Brussels'): ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
-        ('Frankfurt', 'Krakow'): ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
-        ('Brussels', 'Naples'): ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
-        ('Brussels', 'Venice'): ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
-        ('Brussels', 'Frankfurt'): ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
-        ('Brussels', 'Krakow'): ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
-        ('Krakow', 'Mykonos'): ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
-        ('Krakow', 'Istanbul'): ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
-        ('Krakow', 'Dublin'): ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
-        ('Krakow', 'Frankfurt'): ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
-        ('Krakow', 'Brussels'): ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+    City, cities_enum = EnumSort('City', ['Dublin', 'Krakow', 'Istanbul', 'Venice', 'Naples', 'Brussels', 'Mykonos', 'Frankfurt'])
+    Dublin, Krakow, Istanbul, Venice, Naples, Brussels, Mykonos, Frankfurt = cities_enum
+
+    city_map = {
+        'Dublin': Dublin,
+        'Krakow': Krakow,
+        'Istanbul': Istanbul,
+        'Venice': Venice,
+        'Naples': Naples,
+        'Brussels': Brussels,
+        'Mykonos': Mykonos,
+        'Frankfurt': Frankfurt
     }
+
+    bidirectional_phrases = [
+        "Dublin and Brussels",
+        "Mykonos and Naples",
+        "Venice and Istanbul",
+        "Frankfurt and Krakow",
+        "Naples and Dublin",
+        "Krakow and Brussels",
+        "Naples and Istanbul",
+        "Naples and Brussels",
+        "Istanbul and Frankfurt",
+        "Istanbul and Krakow",
+        "Istanbul and Brussels",
+        "Venice and Frankfurt",
+        "Naples and Frankfurt",
+        "Dublin and Krakow",
+        "Venice and Brussels",
+        "Naples and Venice",
+        "Istanbul and Dublin",
+        "Venice and Dublin",
+        "Dublin and Frankfurt"
+    ]
+
+    directed_phrases = [
+        "from Brussels to Frankfurt"
+    ]
+
+    directed_edges = []
+    for phrase in bidirectional_phrases:
+        parts = phrase.split(' and ')
+        A_str = parts[0].strip()
+        B_str = parts[1].strip()
+        A = city_map[A_str]
+        B = city_map[B_str]
+        directed_edges.append((A, B))
+        directed_edges.append((B, A))
     
-    days_of_week = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-    
-    n_cities = len(cities)
-    n_stays = n_cities
-    
+    for phrase in directed_phrases:
+        parts = phrase.split()
+        A_str = parts[1].strip()
+        B_str = parts[3].strip()
+        A = city_map[A_str]
+        B = city_map[B_str]
+        directed_edges.append((A, B))
+
+    s0 = Const('s0', City)
+    x = [Const('x_%d' % i, City) for i in range(21)]
     s = Solver()
-    
-    starts = [Int(f'start_{i}') for i in range(n_stays)]
-    ends = [Int(f'end_{i}') for i in range(n_stays)]
-    city_vars = [Int(f'city_{i}') for i in range(n_stays)]
-    
-    s.add(city_vars[0] == city_to_idx['Mykonos'])
-    s.add(city_vars[n_stays-1] == city_to_idx['Krakow'])
-    
-    # Minimum stay of 1 day instead of 2
-    for i in range(n_stays):
-        s.add(ends[i] >= starts[i])
-        s.add(ends[i] - starts[i] >= 0)  # At least 1 day
-    
-    s.add(starts[0] == 1)
-    s.add(ends[n_stays-1] == 21)
-    
-    # Maintain sequencing with travel days
-    for i in range(n_stays - 1):
-        s.add(starts[i+1] == ends[i] + 2)
-    
-    s.add(Distinct(city_vars))
-    
-    # Enhanced transportation constraints
-    for i in range(n_stays - 1):
-        travel_day = ends[i] + 1
-        day_of_week = (travel_day - 1) % 7
-        
-        from_city = city_vars[i]
-        to_city = city_vars[i+1]
-        
-        valid_days = []
-        for (c1, c2), days_list in transport.items():
-            day_indices = [days_of_week.index(d) for d in days_list]
-            for d_idx in day_indices:
-                valid_days.append(And(
-                    from_city == city_to_idx[c1],
-                    to_city == city_to_idx[c2],
-                    day_of_week == d_idx
-                ))
-        s.add(Or(valid_days))
-    
+
+    # Flight constraint for initial move (s0 to day1)
+    if directed_edges:
+        flight_edges = [ And(s0 == a, x[0] == b) for (a,b) in directed_edges ]
+        s.add(Implies(s0 != x[0], Or(flight_edges)))
+    else:
+        s.add(True)
+
+    # Flight constraints between consecutive days
+    for i in range(1, 21):
+        if directed_edges:
+            flight_edges = [ And(x[i-1] == a, x[i] == b) for (a,b) in directed_edges ]
+            s.add(Implies(x[i-1] != x[i], Or(flight_edges)))
+        else:
+            s.add(True)
+
+    # Calculate presence in city on given day
+    def presence(c, d):
+        if d == 1:
+            return Or(s0 == c, x[0] == c)
+        else:
+            idx_start = d - 2
+            idx_end = d - 1
+            return Or(x[idx_start] == c, x[idx_end] == c)
+
+    # Total days constraints
+    total_days_dict = {
+        Dublin: 5,
+        Krakow: 4,
+        Istanbul: 3,
+        Venice: 3,
+        Naples: 4,
+        Brussels: 2,
+        Mykonos: 4,
+        Frankfurt: 3
+    }
+
+    for city, total_req in total_days_dict.items():
+        total = 0
+        for d in range(1, 22):
+            total += If(presence(city, d), 1, 0)
+        s.add(total == total_req)
+
+    # Specific date constraints - REVISED for Dublin to ensure full presence
+    # Enforce being in Dublin at the end of days 11,12,13,14 (ensures full days 11-15)
+    s.add(x[10] == Dublin)  # End of day 11
+    s.add(x[11] == Dublin)  # End of day 12
+    s.add(x[12] == Dublin)  # End of day 13
+    s.add(x[13] == Dublin)  # End of day 14
+
+    # Other event constraints remain the same
+    s.add(Or([presence(Istanbul, d) for d in [9,10,11]]))
+    s.add(Or([presence(Mykonos, d) for d in [1,2,3,4]]))
+    s.add(Or([presence(Frankfurt, d) for d in [15,16,17]]))
+
     if s.check() == sat:
         m = s.model()
-        itinerary = []
-        
-        # First stay
-        start0 = m.eval(starts[0]).as_long()
-        end0 = m.eval(ends[0]).as_long()
-        city0 = cities[m.eval(city_vars[0]).as_long()]
-        itinerary.append({'day_range': f'Day {start0}-{end0}', 'place': city0})
-        
-        # Intermediate stays
-        for i in range(1, n_stays - 1):
-            travel_day = end0 + 1
-            start_i = m.eval(starts[i]).as_long()
-            end_i = m.eval(ends[i]).as_long()
-            city_i = cities[m.eval(city_vars[i]).as_long()]
-            
-            # Add travel day
-            from_city = cities[m.eval(city_vars[i-1]).as_long()]
-            to_city = city_i
-            itinerary.append({'day_range': f'Day {travel_day}', 'place': f'{from_city}/{to_city}'})
-            # Add stay
-            itinerary.append({'day_range': f'Day {start_i}-{end_i}', 'place': city_i})
-            end0 = end_i
-        
-        # Final travel and stay
-        last_travel = m.eval(ends[n_stays-2]).as_long() + 1
-        from_city_last = cities[m.eval(city_vars[n_stays-2]).as_long()]
-        to_city_last = cities[m.eval(city_vars[n_stays-1]).as_long()]
-        start_last = m.eval(starts[n_stays-1]).as_long()
-        end_last = m.eval(ends[n_stays-1]).as_long()
-        
-        itinerary.append({'day_range': f'Day {last_travel}', 'place': f'{from_city_last}/{to_city_last}'})
-        itinerary.append({'day_range': f'Day {start_last}-{end_last}', 'place': to_city_last})
-        
-        # Format output
-        print("{'itinerary': [")
-        for i, item in enumerate(itinerary):
-            suffix = "," if i < len(itinerary)-1 else ""
-            print(f"    {{'day_range': '{item['day_range']}', 'place': '{item['place']}'}}{suffix}")
-        print("]}")
+        s0_val = m[s0]
+        x_vals = [m[var] for var in x]
+        city_names = {
+            Dublin: 'Dublin',
+            Krakow: 'Krakow',
+            Istanbul: 'Istanbul',
+            Venice: 'Venice',
+            Naples: 'Naples',
+            Brussels: 'Brussels',
+            Mykonos: 'Mykonos',
+            Frankfurt: 'Frankfurt'
+        }
+        itinerary_list = []
+        for day in range(1, 22):
+            if day == 1:
+                city_val = x_vals[0]
+            else:
+                city_val = x_vals[day-1]
+            city_name = city_names[city_val]
+            itinerary_list.append({"day": day, "place": city_name})
+        result = {"itinerary": itinerary_list}
+        print(json.dumps(result))
     else:
         print("No solution found")
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

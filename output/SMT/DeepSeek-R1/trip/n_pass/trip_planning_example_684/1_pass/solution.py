@@ -1,145 +1,97 @@
 from z3 import *
+import json
 
 def main():
-    # Define the city indices
-    AMS, EDI, BRU, VIE, BER, REK = 0, 1, 2, 3, 4, 5
+    # Define the cities
+    City, (AMS, EDI, BRU, VIE, BER, REK) = EnumSort('City', ['AMS', 'EDI', 'BRU', 'VIE', 'BER', 'REK'])
+    cities = [AMS, EDI, BRU, VIE, BER, REK]
     city_names = {
-        AMS: "Amsterdam",
-        EDI: "Edinburgh",
-        BRU: "Brussels",
-        VIE: "Vienna",
-        BER: "Berlin",
-        REK: "Reykjavik"
+        AMS: 'Amsterdam',
+        EDI: 'Edinburgh',
+        BRU: 'Brussels',
+        VIE: 'Vienna',
+        BER: 'Berlin',
+        REK: 'Reykjavik'
     }
     
-    # Base array: duration - 1 for each city
-    base_arr = [3, 4, 4, 4, 3, 4]  # [AMS, EDI, BRU, VIE, BER, REK]
+    # Required days per city
+    required_days = {
+        AMS: 4,
+        EDI: 5,
+        BRU: 5,
+        VIE: 5,
+        BER: 4,
+        REK: 5
+    }
     
-    # Allowed direct flights as tuples (from, to)
-    allowed_edges = set([
-        (EDI, BER), (BER, EDI),
-        (AMS, BER), (BER, AMS),
-        (EDI, AMS), (AMS, EDI),
-        (VIE, BER), (BER, VIE),
-        (BER, BRU), (BRU, BER),
-        (VIE, REK), (REK, VIE),
-        (EDI, BRU), (BRU, EDI),
-        (VIE, BRU), (BRU, VIE),
-        (AMS, REK), (REK, AMS),
-        (REK, BRU), (BRU, REK),
-        (AMS, VIE), (VIE, AMS),
-        (REK, BER), (BER, REK)
-    ])
+    # Direct flights (both directions)
+    direct_flights = [
+        (EDI, BER), (AMS, BER), (EDI, AMS), (VIE, BER), (BER, BRU),
+        (VIE, REK), (EDI, BRU), (VIE, BRU), (AMS, REK), (REK, BRU),
+        (AMS, VIE), (REK, BER)
+    ]
+    allowed_pairs = []
+    for (a, b) in direct_flights:
+        allowed_pairs.append((a, b))
+        allowed_pairs.append((b, a))
     
-    # Z3 variables for the sequence of cities
-    s0, s1, s2, s3, s4, s5 = Ints('s0 s1 s2 s3 s4 s5')
-    s = [s0, s1, s2, s3, s4, s5]
+    n_days = 23
+    c = [Const('c_%d' % i, City) for i in range(n_days)]
+    s = Solver()
     
-    # Constraints list
-    constraints = []
+    # Flight constraints: consecutive days must be same city or direct flight
+    for i in range(n_days - 1):
+        same_city = c[i] == c[i + 1]
+        valid_flight = Or([And(c[i] == a, c[i + 1] == b) for (a, b) in allowed_pairs])
+        s.add(Or(same_city, valid_flight))
     
-    # Each s_i is between 0 and 5 and all are distinct
-    for si in s:
-        constraints.append(And(si >= 0, si <= 5))
-    constraints.append(Distinct(s))
+    # Total days per city (including flight days)
+    total_days = {}
+    for city in cities:
+        in_city_list = []
+        for j in range(n_days):
+            # Day j: either stayed in city or flew to city from another city
+            stayed = (c[j] == city)
+            flew_in = And(j < n_days - 1, c[j + 1] == city, c[j] != city)
+            in_city = Or(stayed, flew_in)
+            in_city_list.append(in_city)
+        total_days[city] = Sum([If(cond, 1, 0) for cond in in_city_list])
+        s.add(total_days[city] == required_days[city])
     
-    # Define base values for each position in the sequence
-    base0 = If(s0 == AMS, base_arr[AMS],
-            If(s0 == EDI, base_arr[EDI],
-            If(s0 == BRU, base_arr[BRU],
-            If(s0 == VIE, base_arr[VIE],
-            If(s0 == BER, base_arr[BER], base_arr[REK]))))
-    base1 = If(s1 == AMS, base_arr[AMS],
-            If(s1 == EDI, base_arr[EDI],
-            If(s1 == BRU, base_arr[BRU],
-            If(s1 == VIE, base_arr[VIE],
-            If(s1 == BER, base_arr[BER], base_arr[REK]))))
-    base2 = If(s2 == AMS, base_arr[AMS],
-            If(s2 == EDI, base_arr[EDI],
-            If(s2 == BRU, base_arr[BRU],
-            If(s2 == VIE, base_arr[VIE],
-            If(s2 == BER, base_arr[BER], base_arr[REK]))))
-    base3 = If(s3 == AMS, base_arr[AMS],
-            If(s3 == EDI, base_arr[EDI],
-            If(s3 == BRU, base_arr[BRU],
-            If(s3 == VIE, base_arr[VIE],
-            If(s3 == BER, base_arr[BER], base_arr[REK]))))
-    base4 = If(s4 == AMS, base_arr[AMS],
-            If(s4 == EDI, base_arr[EDI],
-            If(s4 == BRU, base_arr[BRU],
-            If(s4 == VIE, base_arr[VIE],
-            If(s4 == BER, base_arr[BER], base_arr[REK]))))
-    base5 = If(s5 == AMS, base_arr[AMS],
-            If(s5 == EDI, base_arr[EDI],
-            If(s5 == BRU, base_arr[BRU],
-            If(s5 == VIE, base_arr[VIE],
-            If(s5 == BER, base_arr[BER], base_arr[REK]))))
-    bases = [base0, base1, base2, base3, base4, base5]
+    # Specific date constraints
+    # Amsterdam between day 5 and 8 (days 5,6,7,8 -> indices 4,5,6,7)
+    ams_days = []
+    for idx in [4,5,6,7]:
+        stayed = (c[idx] == AMS)
+        flew_in = And(idx < n_days - 1, c[idx + 1] == AMS, c[idx] != AMS)
+        ams_days.append(Or(stayed, flew_in))
+    s.add(Or(ams_days))
     
-    # Prefix sums: prefix[i] = sum of bases[0..i-1]
-    prefix0 = 0
-    prefix1 = prefix0 + base0
-    prefix2 = prefix1 + base1
-    prefix3 = prefix2 + base2
-    prefix4 = prefix3 + base3
-    prefix5 = prefix4 + base4
-    prefix6 = prefix5 + base5
-    prefixes = [prefix0, prefix1, prefix2, prefix3, prefix4, prefix5, prefix6]
+    # Berlin between day 16 and 19 (days 16,17,18,19 -> indices 15,16,17,18)
+    ber_days = []
+    for idx in [15,16,17,18]:
+        stayed = (c[idx] == BER)
+        flew_in = And(idx < n_days - 1, c[idx + 1] == BER, c[idx] != BER)
+        ber_days.append(Or(stayed, flew_in))
+    s.add(Or(ber_days))
     
-    # Total days must be 23: prefix6 should be 22 because 1 + 22 = 23
-    constraints.append(prefix6 == 22)
+    # Reykjavik between day 12 and 16 (days 12,13,14,15,16 -> indices 11,12,13,14,15)
+    rek_days = []
+    for idx in [11,12,13,14,15]:
+        stayed = (c[idx] == REK)
+        flew_in = And(idx < n_days - 1, c[idx + 1] == REK, c[idx] != REK)
+        rek_days.append(Or(stayed, flew_in))
+    s.add(Or(rek_days))
     
-    # Fixed start constraints:
-    # AMS (index0) must have start day = 5 -> prefix_i = 4 for the position i where AMS is
-    for i, prefix_val in enumerate(prefixes[:6]):
-        constraints.append(If(s[i] == AMS, prefix_val == 4, True))
-    
-    # BER (index4) must have start day = 16 -> prefix_i = 15
-    for i, prefix_val in enumerate(prefixes[:6]):
-        constraints.append(If(s[i] == BER, prefix_val == 15, True))
-    
-    # REK (index5) must have start day in [8,16] -> prefix_i in [7,15]
-    for i, prefix_val in enumerate(prefixes[:6]):
-        constraints.append(If(s[i] == REK, And(prefix_val >= 7, prefix_val <= 15), True))
-    
-    # Flight constraints: consecutive cities must be connected by a direct flight
-    for i in range(5):
-        edge_constraint = Or([And(s[i] == a, s[i+1] == b) for (a, b) in allowed_edges])
-        constraints.append(edge_constraint)
-    
-    # Solve the constraints
-    solver = Solver()
-    solver.add(constraints)
-    if solver.check() == sat:
-        model = solver.model()
-        seq = [model.evaluate(si).as_long() for si in s]
-        
-        # Compute prefix values from the model
-        base_vals = [base_arr[city] for city in seq]
-        prefix_val = [0]
-        for i in range(6):
-            next_val = prefix_val[-1] + base_vals[i]
-            prefix_val.append(next_val)
-        
-        # Build the itinerary: for each day, list the cities we are in
-        days = [[] for _ in range(24)]  # 1..23
-        
-        for i in range(6):
-            city_idx = seq[i]
-            city_name = city_names[city_idx]
-            start_day = 1 + prefix_val[i]
-            end_day = 1 + prefix_val[i] + base_vals[i]  # last day of stay
-            for d in range(start_day, end_day + 1):
-                if d < 24:
-                    days[d].append(city_name)
-        
-        # Prepare the itinerary as a list of dictionaries
-        itinerary = []
-        for d in range(1, 24):
-            itinerary.append({"day": d, "place": days[d]})
-        
-        result = {'itinerary': itinerary}
-        print(result)
+    # Solve and output
+    if s.check() == sat:
+        m = s.model()
+        itinerary_list = []
+        for i in range(n_days):
+            city_val = m.eval(c[i])
+            itinerary_list.append({"day": i + 1, "place": city_names[city_val]})
+        result = {"itinerary": itinerary_list}
+        print(json.dumps(result))
     else:
         print("No solution found")
 

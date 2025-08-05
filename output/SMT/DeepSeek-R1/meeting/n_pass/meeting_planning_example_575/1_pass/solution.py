@@ -1,155 +1,87 @@
-from z3 import *
+import itertools
 import json
 
-def main():
-    friends = ['Rebecca', 'Linda', 'Elizabeth', 'William', 'Robert', 'Mark']
-    locations = {
-        'Rebecca': 'Presidio',
-        'Linda': 'Sunset District',
-        'Elizabeth': 'Haight-Ashbury',
-        'William': 'Mission District',
-        'Robert': 'Golden Gate Park',
-        'Mark': 'Russian Hill'
-    }
-    min_durations = {
-        'Rebecca': 60,
-        'Linda': 30,
-        'Elizabeth': 105,
-        'William': 30,
-        'Robert': 45,
-        'Mark': 75
-    }
-    available_start = {
-        'Rebecca': 555,   # 6:15 PM
-        'Linda': 390,      # 3:30 PM
-        'Elizabeth': 495,   # 5:15 PM
-        'William': 255,     # 1:15 PM
-        'Robert': 315,      # 2:15 PM
-        'Mark': 60          # 10:00 AM
-    }
-    available_end = {
-        'Rebecca': 705,    # 8:45 PM
-        'Linda': 645,       # 7:45 PM
-        'Elizabeth': 630,   # 7:30 PM
-        'William': 630,     # 7:30 PM
-        'Robert': 750,      # 9:30 PM
-        'Mark': 735         # 9:15 PM
-    }
+# Define travel times between locations (7x7 matrix: 0=Castro, 1=Presidio, 2=Sunset, 3=Haight-Ashbury, 4=Mission, 5=Golden Gate Park, 6=Russian Hill)
+travel_matrix = [
+    [0, 20, 17, 6, 7, 11, 18],   # From Castro
+    [21, 0, 15, 15, 26, 12, 14],  # From Presidio
+    [17, 16, 0, 15, 24, 11, 24],  # From Sunset
+    [6, 15, 15, 0, 11, 7, 17],    # From Haight-Ashbury
+    [7, 25, 24, 12, 0, 17, 15],   # From Mission
+    [13, 11, 10, 7, 17, 0, 19],   # From Golden Gate Park
+    [21, 14, 23, 17, 16, 21, 0]   # From Russian Hill
+]
 
-    travel_time_dict = {
-        'The Castro': {
-            'Presidio': 20,
-            'Sunset District': 17,
-            'Haight-Ashbury': 6,
-            'Mission District': 7,
-            'Golden Gate Park': 11,
-            'Russian Hill': 18
-        },
-        'Presidio': {
-            'The Castro': 21,
-            'Sunset District': 15,
-            'Haight-Ashbury': 15,
-            'Mission District': 26,
-            'Golden Gate Park': 12,
-            'Russian Hill': 14
-        },
-        'Sunset District': {
-            'The Castro': 17,
-            'Presidio': 16,
-            'Haight-Ashbury': 15,
-            'Mission District': 24,
-            'Golden Gate Park': 11,
-            'Russian Hill': 24
-        },
-        'Haight-Ashbury': {
-            'The Castro': 6,
-            'Presidio': 15,
-            'Sunset District': 15,
-            'Mission District': 11,
-            'Golden Gate Park': 7,
-            'Russian Hill': 17
-        },
-        'Mission District': {
-            'The Castro': 7,
-            'Presidio': 25,
-            'Sunset District': 24,
-            'Haight-Ashbury': 12,
-            'Golden Gate Park': 17,
-            'Russian Hill': 15
-        },
-        'Golden Gate Park': {
-            'The Castro': 13,
-            'Presidio': 11,
-            'Sunset District': 10,
-            'Haight-Ashbury': 7,
-            'Mission District': 17,
-            'Russian Hill': 19
-        },
-        'Russian Hill': {
-            'The Castro': 21,
-            'Presidio': 14,
-            'Sunset District': 23,
-            'Haight-Ashbury': 17,
-            'Mission District': 16,
-            'Golden Gate Park': 21
-        }
-    }
+# Define friends: (name, location_index, available_start, available_end, min_duration)
+friends = [
+    ("Rebecca", 1, 1095, 1245, 60),    # Presidio: 18:15 to 20:45 (1095 to 1245 min)
+    ("Linda", 2, 930, 1185, 30),       # Sunset: 15:30 to 19:45 (930 to 1185 min)
+    ("Elizabeth", 3, 1035, 1170, 105), # Haight-Ashbury: 17:15 to 19:30 (1035 to 1170 min)
+    ("William", 4, 795, 1170, 30),     # Mission: 13:15 to 19:30 (795 to 1170 min)
+    ("Robert", 5, 855, 1290, 45),      # Golden Gate Park: 14:15 to 21:30 (855 to 1290 min)
+    ("Mark", 6, 600, 1275, 75)         # Russian Hill: 10:00 to 21:15 (600 to 1275 min)
+]
 
-    s = Solver()
-    meet = [Bool(f"meet_{i}") for i in range(len(friends))]
-    start = [Int(f"start_{i}") for i in range(len(friends))]
-    end = [Int(f"end_{i}") for i in range(len(friends))]
+start_time_castro = 540  # 9:00 AM in minutes
 
-    for i in range(len(friends)):
-        s.add(Implies(meet[i], start[i] >= available_start[friends[i]]))
-        s.add(Implies(meet[i], end[i] == start[i] + min_durations[friends[i]]))
-        s.add(Implies(meet[i], end[i] <= available_end[friends[i]]))
-        from_loc = 'The Castro'
-        to_loc = locations[friends[i]]
-        travel_time = travel_time_dict[from_loc][to_loc]
-        s.add(Implies(meet[i], start[i] >= travel_time))
+# Try subsets from largest (size 6) to smallest (size 1)
+n = len(friends)
+found_schedule = None
 
-    for i in range(len(friends)):
-        for j in range(i+1, len(friends)):
-            loc_i = locations[friends[i]]
-            loc_j = locations[friends[j]]
-            travel_ij = travel_time_dict[loc_i][loc_j]
-            travel_ji = travel_time_dict[loc_j][loc_i]
-            s.add(Implies(And(meet[i], meet[j]),
-                          Or(start[j] >= end[i] + travel_ij, 
-                             start[i] >= end[j] + travel_ji)))
+for k in range(n, 0, -1):
+    for subset_indices in itertools.combinations(range(n), k):
+        for perm in itertools.permutations(subset_indices):
+            current_time = start_time_castro
+            prev_loc = 0  # Start at Castro (index 0)
+            schedule = []  # List of meetings in order
+            valid = True
+            
+            for idx in perm:
+                friend = friends[idx]
+                loc = friend[1]
+                # Travel from previous location to current friend's location
+                travel_time = travel_matrix[prev_loc][loc]
+                current_time += travel_time
+                # Arrival time at friend's location
+                arrival = current_time
+                # Start time is max of arrival and friend's available start time
+                start_meeting = max(arrival, friend[2])
+                end_meeting = start_meeting + friend[4]
+                # Check if meeting can be completed within friend's window
+                if end_meeting > friend[3]:
+                    valid = False
+                    break
+                # Record meeting details
+                schedule.append((friend[0], start_meeting, end_meeting))
+                current_time = end_meeting
+                prev_loc = loc  # Update previous location for next travel
+            
+            if valid:
+                found_schedule = schedule
+                break
+        if found_schedule:
+            break
+    if found_schedule:
+        break
 
-    opt = Optimize()
-    for c in s.assertions():
-        opt.add(c)
-    num_meetings = Sum([If(meet_i, 1, 0) for meet_i in meet])
-    h = opt.maximize(num_meetings)
-    if opt.check() == sat:
-        model = opt.model()
-        scheduled_meetings = []
-        for i in range(len(friends)):
-            if model.evaluate(meet[i]):
-                start_val = model.evaluate(start[i]).as_long()
-                end_val = model.evaluate(end[i]).as_long()
-                hours_start = start_val // 60
-                minutes_start = start_val % 60
-                hours_end = end_val // 60
-                minutes_end = end_val % 60
-                start_str = f"{hours_start:02d}:{minutes_start:02d}"
-                end_str = f"{hours_end:02d}:{minutes_end:02d}"
-                scheduled_meetings.append({
-                    "action": "meet",
-                    "person": friends[i],
-                    "start_time": start_str,
-                    "end_time": end_str
-                })
-        scheduled_meetings.sort(key=lambda x: x['start_time'])
-        result = {"itinerary": scheduled_meetings}
-        print("SOLUTION:")
-        print(json.dumps(result, indent=2))
-    else:
-        print("SOLUTION:")
-        print(json.dumps({"itinerary": []}, indent=2))
+# Format the result
+itinerary = []
+if found_schedule:
+    for meeting in found_schedule:
+        name, start_meeting, end_meeting = meeting
+        start_hour = start_meeting // 60
+        start_minute = start_meeting % 60
+        end_hour = end_meeting // 60
+        end_minute = end_meeting % 60
+        start_str = f"{start_hour:02d}:{start_minute:02d}"
+        end_str = f"{end_hour:02d}:{end_minute:02d}"
+        itinerary.append({
+            "action": "meet",
+            "person": name,
+            "start_time": start_str,
+            "end_time": end_str
+        })
 
-if __name__ == "__main__":
-    main()
+result = {"itinerary": itinerary}
+print("SOLUTION:")
+print(json.dumps(result, indent=2))

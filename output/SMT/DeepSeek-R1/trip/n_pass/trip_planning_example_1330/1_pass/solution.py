@@ -2,13 +2,24 @@ from z3 import *
 import json
 
 def main():
-    # Define the cities and their stay durations
-    city_names = ['Salzburg', 'Venice', 'Bucharest', 'Brussels', 'Hamburg', 'Copenhagen', 'Nice', 'Zurich', 'Naples']
-    days_arr = [2, 5, 4, 2, 4, 4, 3, 5, 4]
-    city_index = {name: idx for idx, name in enumerate(city_names)}
+    # Cities for the first 7 segments and their durations
+    cities = ['Salzburg', 'Venice', 'Bucharest', 'Hamburg', 'Copenhagen', 'Nice', 'Zurich']
+    durations = [2, 5, 4, 4, 4, 3, 5]
     
-    # Define direct flight connections
-    flight_connections = [
+    # Mapping of city names to integers
+    city_map = {
+        'Salzburg': 0,
+        'Venice': 1,
+        'Bucharest': 2,
+        'Hamburg': 3,
+        'Copenhagen': 4,
+        'Nice': 5,
+        'Zurich': 6,
+        'Brussels': 7
+    }
+    
+    # Flight connections (as a list of tuples)
+    flight_list = [
         ("Zurich", "Brussels"),
         ("Bucharest", "Copenhagen"),
         ("Venice", "Brussels"),
@@ -37,96 +48,105 @@ def main():
         ("Nice", "Copenhagen")
     ]
     
-    # Create directed edges for flight connections
-    allowed_directed_edges = []
-    for c1, c2 in flight_connections:
-        i1 = city_index[c1]
-        i2 = city_index[c2]
-        allowed_directed_edges.append((i1, i2))
-        allowed_directed_edges.append((i2, i1))
+    # Build a connection matrix (8x8 for cities 0-7)
+    n = 8  # cities 0 to 7
+    connected = [[False] * n for _ in range(n)]
+    for a, b in flight_list:
+        if a in city_map and b in city_map:
+            i = city_map[a]
+            j = city_map[b]
+            connected[i][j] = True
+            connected[j][i] = True
     
-    # Initialize Z3 solver
+    # Create the Z3 solver and variables
     s = Solver()
+    perm = [Int('perm%d' % i) for i in range(7)]
     
-    # Define order variables for the sequence of cities
-    order = [Int(f'order_{i}') for i in range(9)]
-    for i in range(9):
-        s.add(order[i] >= 0, order[i] < 9)
-    s.add(Distinct(order))
+    # Each perm[i] is between 0 and 6
+    for p in perm:
+        s.add(p >= 0, p <= 6)
+    s.add(Distinct(perm))
     
-    # Helper function to get stay duration for a city index
-    def get_day(city_var):
-        base = days_arr[0]
-        for i in range(1, 9):
-            base = If(city_var == i, days_arr[i], base)
-        return base
+    # Start days for segments 0 to 7 (segment0 to segment6, then segment7 starts at 21)
+    s_days = [1]  # s0 = 1
+    for i in range(7):
+        dur_i = Int('dur_%d' % i)
+        # dur_i equals the duration of the city at perm[i]
+        cases = []
+        for idx, d in enumerate(durations):
+            cases.append(And(perm[i] == idx, dur_i == d))
+        s.add(Or(cases))
+        next_s = s_days[i] + dur_i - 1
+        s_days.append(next_s)
     
-    # Compute cumulative days for each position in the sequence
-    cum_days_expr = [IntVal(0)]
-    for i in range(1, 9):
-        cum_days_expr.append(cum_days_expr[i-1] + get_day(order[i-1]))
+    # The start of segment8 (Brussels) must be 21
+    s.add(s_days[7] == 21)
     
-    # Compute start days for each position
-    start_expr_pos = [1 + cum_days_expr[i] - i for i in range(9)]
+    # Event constraints: Copenhagen and Nice
+    for i in range(7):
+        # For Copenhagen (index4): start day in [15,18]
+        s.add(If(perm[i] == 4, And(s_days[i] >= 15, s_days[i] <= 18), True))
+        # For Nice (index5): start day in [7,11]
+        s.add(If(perm[i] == 5, And(s_days[i] >= 7, s_days[i] <= 11), True))
     
-    # Define event city indices
-    brussels_index = city_index['Brussels']
-    copenhagen_index = city_index['Copenhagen']
-    naples_index = city_index['Naples']
-    nice_index = city_index['Nice']
+    # Flight constraints between consecutive segments (for the first 7 segments)
+    # Precompute allowed_pairs for flights between the 7 cities (0-6) and to Brussels (7)
+    allowed_pairs = []
+    for a in range(7):
+        for b in range(7):
+            if connected[a][b]:
+                allowed_pairs.append((a, b))
     
-    # Define start day variables for event cities
-    brussels_start = Int('brussels_start')
-    s.add(brussels_start == Sum([If(order[i] == brussels_index, start_expr_pos[i], 0) for i in range(9)]))
-    copenhagen_start = Int('copenhagen_start')
-    s.add(copenhagen_start == Sum([If(order[i] == copenhagen_index, start_expr_pos[i], 0) for i in range(9)]))
-    naples_start = Int('naples_start')
-    s.add(naples_start == Sum([If(order[i] == naples_index, start_expr_pos[i], 0) for i in range(9)]))
-    nice_start = Int('nice_start')
-    s.add(nice_start == Sum([If(order[i] == nice_index, start_expr_pos[i], 0) for i in range(9)]))
+    # For segments0 to 5: flight from segment i to i+1
+    for i in range(6):
+        conds = []
+        for a, b in allowed_pairs:
+            conds.append(And(perm[i] == a, perm[i+1] == b))
+        s.add(Or(conds))
     
-    # Add event constraints
-    s.add(brussels_start >= 20, brussels_start <= 21)
-    s.add(copenhagen_start >= 15, copenhagen_start <= 21)
-    s.add(naples_start >= 19, naples_start <= 22)
-    s.add(nice_start >= 7, nice_start <= 11)
+    # Flight from segment6 (last of the first 7) to Brussels (7)
+    conds_last = []
+    for a in range(7):
+        if connected[a][7]:
+            conds_last.append(perm[6] == a)
+    s.add(Or(conds_last))
     
-    # Add flight connection constraints
-    for i in range(8):
-        a, b = order[i], order[i+1]
-        s.add(Or([And(a == u, b == v) for u, v in allowed_directed_edges]))
-    
-    # Solve the model
+    # Check and get the model
     if s.check() == sat:
         model = s.model()
-        order_val = [model.eval(order[i]).as_long() for i in range(9)]
+        perm_val = [model.evaluate(perm[i]).as_long() for i in range(7)]
+        s_days_val = [1]
+        for i in range(7):
+            city_idx = perm_val[i]
+            dur = durations[city_idx]
+            next_day = s_days_val[-1] + dur - 1
+            s_days_val.append(next_day)
         
-        # Compute start days for each city
-        start_days = [0] * 9
-        for idx in range(9):
-            for pos in range(9):
-                if order_val[pos] == idx:
-                    cum = sum(days_arr[order_val[j]] for j in range(pos))
-                    start_days[idx] = 1 + cum - pos
-                    break
+        # Build the segments: first 7 segments
+        segments = []
+        for i in range(7):
+            start = s_days_val[i]
+            end = s_days_val[i+1]
+            city = cities[perm_val[i]]
+            segments.append((start, end, city))
+        # Add Brussels and Naples
+        segments.append((21, 22, 'Brussels'))
+        segments.append((22, 25, 'Naples'))
         
-        # Generate itinerary
+        # Build the itinerary for each day
         itinerary = []
         for day in range(1, 26):
-            cities_today = []
-            for idx in range(9):
-                start = start_days[idx]
-                end = start + days_arr[idx] - 1
-                if start <= day <= end:
-                    cities_today.append(city_names[idx])
-            cities_today.sort()
-            itinerary.append({"day": day, "place": ", ".join(cities_today)})
+            places = []
+            for seg in segments:
+                if day >= seg[0] and day <= seg[1]:
+                    places.append(seg[2])
+            itinerary.append({'day': day, 'place': places})
         
-        # Output result
+        # Output as JSON
         result = {'itinerary': itinerary}
         print(json.dumps(result))
     else:
-        print(json.dumps({"itinerary": []}))
+        print("No solution found")
 
 if __name__ == '__main__':
     main()

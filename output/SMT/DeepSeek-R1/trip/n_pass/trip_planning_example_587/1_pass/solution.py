@@ -1,86 +1,90 @@
-from z3 import *
 import json
+from z3 import *
 
 def main():
-    # Total days
-    days = list(range(1, 22))  # Days 1 to 21
-    cities = ['Manchester', 'Istanbul', 'Venice', 'Krakow', 'Lyon']
+    manchester = 0
+    istanbul = 1
+    venice = 2
+    krakow = 3
+    lyon = 4
+    cities = ["Manchester", "Istanbul", "Venice", "Krakow", "Lyon"]
+    required_days = [3, 7, 7, 6, 2]
     
-    required_days = {
-        'Manchester': 3,
-        'Istanbul': 7,
-        'Venice': 7,
-        'Krakow': 6,
-        'Lyon': 2
-    }
+    edge_set = set()
+    edges = [(0,1), (0,2), (0,3), (1,2), (1,3), (1,4), (2,4)]
+    for (a, b) in edges:
+        edge_set.add((min(a, b), max(a, b)))
     
-    flight_edges = [
-        ('Manchester', 'Venice'),
-        ('Manchester', 'Istanbul'),
-        ('Venice', 'Istanbul'),
-        ('Istanbul', 'Krakow'),
-        ('Venice', 'Lyon'),
-        ('Lyon', 'Istanbul'),
-        ('Manchester', 'Krakow')
-    ]
-    
-    flight_set = set()
-    for edge in flight_edges:
-        flight_set.add(frozenset(edge))
+    flights = []
+    for (a, b) in edge_set:
+        flights.append((a, b))
+        flights.append((b, a))
     
     s = Solver()
+    s1 = Int('s1')
+    e = [Int('e_%d' % i) for i in range(21)]
     
-    in_city = {}
-    for city in cities:
-        in_city[city] = {}
-        for day in days:
-            in_city[city][day] = Bool(f"in_{city}_{day}")
+    s.add(s1 >= 0, s1 <= 4)
+    for i in range(21):
+        s.add(e[i] >= 0, e[i] <= 4)
     
-    # Constraint 1: Each day has 1 or 2 cities
-    for day in days:
-        bool_list = [in_city[city][day] for city in cities]
-        s.add(Or(PbEq([(x, 1) for x in bool_list], 1), PbEq([(x, 1) for x in bool_list], 2)))
+    # Flight constraint for day1
+    options_day1 = []
+    for (a, b) in flights:
+        options_day1.append(And(s1 == a, e[0] == b))
+    s.add(If(s1 != e[0], Or(options_day1), True))
     
-    # Constraint 2: If two cities on the same day, they must be connected by a direct flight
-    for day in days:
-        for i in range(len(cities)):
-            for j in range(i+1, len(cities)):
-                c1 = cities[i]
-                c2 = cities[j]
-                if frozenset([c1, c2]) not in flight_set:
-                    s.add(Not(And(in_city[c1][day], in_city[c2][day])))
+    # Flight constraints for days 2 to 21
+    for i in range(20):
+        options = []
+        for (a, b) in flights:
+            options.append(And(e[i] == a, e[i+1] == b))
+        s.add(If(e[i] != e[i+1], Or(options), True))
     
-    # Constraint 3: Total days per city
-    for city in cities:
+    # Total days per city
+    for c in range(5):
+        conds = []
+        conds.append(Or(s1 == c, e[0] == c))
+        for i in range(20):
+            conds.append(Or(e[i] == c, e[i+1] == c))
         total = 0
-        for day in days:
-            total += If(in_city[city][day], 1, 0)
-        s.add(total == required_days[city])
+        for cond in conds:
+            total += If(cond, 1, 0)
+        s.add(total == required_days[c])
     
-    # Constraint 4: Event constraints
-    manchester_days = Or(in_city['Manchester'][1], in_city['Manchester'][2], in_city['Manchester'][3])
-    s.add(manchester_days)
+    # Event constraints
+    # Manchester: at least one of days 1,2,3
+    cond_manchester = []
+    cond_manchester.append(Or(s1 == manchester, e[0] == manchester))
+    cond_manchester.append(Or(e[0] == manchester, e[1] == manchester))
+    cond_manchester.append(Or(e[1] == manchester, e[2] == manchester))
+    s.add(Or(cond_manchester))
     
-    venice_days = [in_city['Venice'][d] for d in range(3, 10)]
-    s.add(Or(venice_days))
+    # Venice: at least one of days 3 to 9
+    cond_venice = []
+    for i in range(2, 9):
+        cond_venice.append(Or(e[i-1] == venice, e[i] == venice))
+    s.add(Or(cond_venice))
     
-    # Constraint 5: Continuity between consecutive days
-    for d in range(1, 21):
-        common_city = Or([And(in_city[city][d], in_city[city][d+1]) for city in cities])
-        s.add(common_city)
+    # Flight days must be 4
+    flight_days = If(s1 != e[0], 1, 0)
+    for i in range(20):
+        flight_days += If(e[i] != e[i+1], 1, 0)
+    s.add(flight_days == 4)
     
-    # Solve the problem
     if s.check() == sat:
         m = s.model()
+        s1_val = m[s1].as_long()
+        e_vals = [m[e_i].as_long() for e_i in e]
         itinerary_list = []
-        for day in days:
-            for city in cities:
-                if m.evaluate(in_city[city][day]):
-                    itinerary_list.append({"day": day, "place": city})
-        result = {'itinerary': itinerary_list}
+        for i in range(21):
+            day = i + 1
+            city_name = cities[e_vals[i]]
+            itinerary_list.append({"day": day, "place": city_name})
+        result = {"itinerary": itinerary_list}
         print(json.dumps(result))
     else:
-        print(json.dumps({'itinerary': []}))
+        print("No solution")
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

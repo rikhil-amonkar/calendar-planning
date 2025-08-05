@@ -1,146 +1,152 @@
-import z3
+from z3 import *
 import json
 
-def convert_time(minutes_since_900):
-    total_minutes = minutes_since_900
-    base_hour = 9
-    hour = base_hour + total_minutes // 60
-    minute = total_minutes % 60
-    return f"{int(hour):02d}:{int(minute):02d}"
-
-travel_time_dict = {
-    ('Pacific Heights', 'Nob Hill'): 8,
-    ('Pacific Heights', 'Russian Hill'): 7,
-    ('Pacific Heights', 'The Castro'): 16,
-    ('Pacific Heights', 'Sunset District'): 21,
-    ('Pacific Heights', 'Haight-Ashbury'): 11,
-    ('Nob Hill', 'Pacific Heights'): 8,
-    ('Nob Hill', 'Russian Hill'): 5,
-    ('Nob Hill', 'The Castro'): 17,
-    ('Nob Hill', 'Sunset District'): 25,
-    ('Nob Hill', 'Haight-Ashbury'): 13,
-    ('Russian Hill', 'Pacific Heights'): 7,
-    ('Russian Hill', 'Nob Hill'): 5,
-    ('Russian Hill', 'The Castro'): 21,
-    ('Russian Hill', 'Sunset District'): 23,
-    ('Russian Hill', 'Haight-Ashbury'): 17,
-    ('The Castro', 'Pacific Heights'): 16,
-    ('The Castro', 'Nob Hill'): 16,
-    ('The Castro', 'Russian Hill'): 18,
-    ('The Castro', 'Sunset District'): 17,
-    ('The Castro', 'Haight-Ashbury'): 6,
-    ('Sunset District', 'Pacific Heights'): 21,
-    ('Sunset District', 'Nob Hill'): 27,
-    ('Sunset District', 'Russian Hill'): 24,
-    ('Sunset District', 'The Castro'): 17,
-    ('Sunset District', 'Haight-Ashbury'): 15,
-    ('Haight-Ashbury', 'Pacific Heights'): 12,
-    ('Haight-Ashbury', 'Nob Hill'): 15,
-    ('Haight-Ashbury', 'Russian Hill'): 17,
-    ('Haight-Ashbury', 'The Castro'): 6,
-    ('Haight-Ashbury', 'Sunset District'): 15
-}
-
-meetings = [
-    {'name': 'Ronald', 'loc': 'Nob Hill', 'start_avail': 60, 'end_avail': 480, 'duration': 105},
-    {'name': 'Margaret', 'loc': 'Haight-Ashbury', 'start_avail': 75, 'end_avail': 780, 'duration': 60},
-    {'name': 'Helen', 'loc': 'The Castro', 'start_avail': 270, 'end_avail': 480, 'duration': 120},
-    {'name': 'Joshua', 'loc': 'Sunset District', 'start_avail': 315, 'end_avail': 630, 'duration': 90}
-]
-
-durations = [105, 60, 120, 90]
-locs = [m['loc'] for m in meetings]
-
-travel_P = []
-for i in range(4):
-    from_loc = 'Pacific Heights'
-    to_loc = locs[i]
-    travel_P.append(travel_time_dict[(from_loc, to_loc)])
-
-travel = [[0]*4 for _ in range(4)]
-for i in range(4):
-    for j in range(4):
-        if i != j:
-            from_loc = locs[i]
-            to_loc = locs[j]
-            travel[i][j] = travel_time_dict[(from_loc, to_loc)]
-
-s0, s1, s2, s3 = z3.Ints('s0 s1 s2 s3')
-p0, p1, p2, p3 = z3.Ints('p0 p1 p2 p3')
-s = z3.Solver()
-
-s.add(z3.Distinct(p0, p1, p2, p3))
-s.add(p0 >= 0, p0 <= 3)
-s.add(p1 >= 0, p1 <= 3)
-s.add(p2 >= 0, p2 <= 3)
-s.add(p3 >= 0, p3 <= 3)
-
-s.add(s0 >= meetings[0]['start_avail'])
-s.add(s0 + durations[0] <= meetings[0]['end_avail'])
-s.add(s1 >= meetings[1]['start_avail'])
-s.add(s1 + durations[1] <= meetings[1]['end_avail'])
-s.add(s2 >= meetings[2]['start_avail'])
-s.add(s2 + durations[2] <= meetings[2]['end_avail'])
-s.add(s3 >= meetings[3]['start_avail'])
-s.add(s3 + durations[3] <= meetings[3]['end_avail'])
-
-s.add(z3.Implies(p0 == 0, s0 >= travel_P[0]))
-s.add(z3.Implies(p1 == 0, s1 >= travel_P[1]))
-s.add(z3.Implies(p2 == 0, s2 >= travel_P[2]))
-s.add(z3.Implies(p3 == 0, s3 >= travel_P[3]))
-
-s_list = [s0, s1, s2, s3]
-p_list = [p0, p1, p2, p3]
-
-for i in range(4):
-    for j in range(4):
-        if i != j:
-            cond = (p_list[j] == p_list[i] + 1)
-            s.add(z3.Implies(cond, s_list[j] >= s_list[i] + durations[i] + travel[i][j]))
-
-if s.check() == z3.sat:
-    model = s.model()
-    s0_val = model.eval(s0).as_long()
-    s1_val = model.eval(s1).as_long()
-    s2_val = model.eval(s2).as_long()
-    s3_val = model.eval(s3).as_long()
+def main():
+    # Define the friends and their attributes
+    friends = ['Ronald', 'Helen', 'Joshua', 'Margaret']
     
-    schedule = []
-    schedule.append({
-        'person': 'Ronald',
-        'start_time': convert_time(s0_val),
-        'end_time': convert_time(s0_val + durations[0])
-    })
-    schedule.append({
-        'person': 'Margaret',
-        'start_time': convert_time(s1_val),
-        'end_time': convert_time(s1_val + durations[1])
-    })
-    schedule.append({
-        'person': 'Helen',
-        'start_time': convert_time(s2_val),
-        'end_time': convert_time(s2_val + durations[2])
-    })
-    schedule.append({
-        'person': 'Joshua',
-        'start_time': convert_time(s3_val),
-        'end_time': convert_time(s3_val + durations[3])
-    })
+    locations = {
+        'Ronald': 'Nob Hill',
+        'Helen': 'The Castro',
+        'Joshua': 'Sunset District',
+        'Margaret': 'Haight-Ashbury'
+    }
     
-    schedule.sort(key=lambda x: x['start_time'])
+    durations = {
+        'Ronald': 105,
+        'Helen': 120,
+        'Joshua': 90,
+        'Margaret': 60
+    }
     
-    itinerary = []
-    for entry in schedule:
-        itinerary.append({
-            "action": "meet",
-            "person": entry['person'],
-            "start_time": entry['start_time'],
-            "end_time": entry['end_time']
-        })
+    availability_start = {
+        'Ronald': 60,    # 10:00
+        'Helen': 270,    # 13:30
+        'Joshua': 315,   # 14:15
+        'Margaret': 75    # 10:15
+    }
     
-    result = {"itinerary": itinerary}
-    print("SOLUTION:")
-    print(json.dumps(result))
-else:
-    print("SOLUTION:")
-    print(json.dumps({"itinerary": []}))
+    availability_end = {
+        'Ronald': 480,   # 17:00
+        'Helen': 480,    # 17:00
+        'Joshua': 630,   # 19:30
+        'Margaret': 780   # 22:00
+    }
+    
+    # Travel times dictionary - as given
+    travel_times = {
+        "Pacific Heights": {
+            "Nob Hill": 8,
+            "Russian Hill": 7,
+            "The Castro": 16,
+            "Sunset District": 21,
+            "Haight-Ashbury": 11
+        },
+        "Nob Hill": {
+            "Pacific Heights": 8,
+            "Russian Hill": 5,
+            "The Castro": 17,
+            "Sunset District": 25,
+            "Haight-Ashbury": 13
+        },
+        "Russian Hill": {
+            "Pacific Heights": 7,
+            "Nob Hill": 5,
+            "The Castro": 21,
+            "Sunset District": 23,
+            "Haight-Ashbury": 17
+        },
+        "The Castro": {
+            "Pacific Heights": 16,
+            "Nob Hill": 16,
+            "Russian Hill": 18,
+            "Sunset District": 17,
+            "Haight-Ashbury": 6
+        },
+        "Sunset District": {
+            "Pacific Heights": 21,
+            "Nob Hill": 27,
+            "Russian Hill": 24,
+            "The Castro": 17,
+            "Haight-Ashbury": 15
+        },
+        "Haight-Ashbury": {
+            "Pacific Heights": 12,
+            "Nob Hill": 15,
+            "Russian Hill": 17,
+            "The Castro": 6,
+            "Sunset District": 15
+        }
+    }
+
+    # Create Z3 variables for start times: one for each friend
+    S = {}
+    for friend in friends:
+        S[friend] = Int(f'S_{friend}')
+
+    # Create booleans for every pair (i, j) with i < j in the index of the friends list
+    n = len(friends)
+    B = {}  # Key: (i,j) for i<j
+    pairs = []
+    for i in range(n):
+        for j in range(i+1, n):
+            key = (i, j)
+            B[key] = Bool(f'B_{i}_{j}')
+            pairs.append(key)
+
+    solver = Solver()
+
+    # Constraint 1: availability constraints and travel from start
+    for friend in friends:
+        loc = locations[friend]
+        # Travel time from Pacific Heights to this location
+        travel_from_start = travel_times['Pacific Heights'][loc]
+        solver.add(S[friend] >= availability_start[friend])
+        solver.add(S[friend] <= availability_end[friend] - durations[friend])
+        solver.add(S[friend] >= travel_from_start)
+
+    # Constraint 2: for every pair (i,j) with i<j
+    for (i, j) in pairs:
+        friend_i = friends[i]
+        friend_j = friends[j]
+        loc_i = locations[friend_i]
+        loc_j = locations[friend_j]
+        travel_ij = travel_times[loc_i][loc_j]
+        travel_ji = travel_times[loc_j][loc_i]
+        cond1 = (S[friend_j] >= S[friend_i] + durations[friend_i] + travel_ij)
+        cond2 = (S[friend_i] >= S[friend_j] + durations[friend_j] + travel_ji)
+        solver.add(If(B[(i, j)], cond1, cond2))
+
+    if solver.check() == sat:
+        model = solver.model()
+        meeting_list = []
+        for friend in friends:
+            start_val = model.evaluate(S[friend]).as_long()
+            end_val = start_val + durations[friend]
+            total_minutes_start = start_val
+            hours_start = 9 + total_minutes_start // 60
+            minutes_start = total_minutes_start % 60
+            start_str = f"{hours_start:02d}:{minutes_start:02d}"
+
+            total_minutes_end = end_val
+            hours_end = 9 + total_minutes_end // 60
+            minutes_end = total_minutes_end % 60
+            end_str = f"{hours_end:02d}:{minutes_end:02d}"
+
+            meeting_list.append({
+                "action": "meet",
+                "person": friend,
+                "start_time": start_str,
+                "end_time": end_str
+            })
+
+        meeting_list.sort(key=lambda x: x['start_time'])
+        result = {"itinerary": meeting_list}
+        print("SOLUTION:")
+        print(json.dumps(result))
+    else:
+        print("SOLUTION:")
+        print(json.dumps({"itinerary": []}))
+
+if __name__ == "__main__":
+    main()

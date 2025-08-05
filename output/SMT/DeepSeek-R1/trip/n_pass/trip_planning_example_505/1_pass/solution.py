@@ -1,83 +1,89 @@
-import z3
+from z3 import *
 import json
 
 def main():
-    # Define the City enum
-    City = z3.Datatype('City')
-    City.declare('Prague')
-    City.declare('Stuttgart')
-    City.declare('Split')
-    City.declare('Krakow')
-    City.declare('Florence')
-    City = City.create()
+    # Define the cities and their enum sort
+    cities_enum = ['Prague', 'Stuttgart', 'Split', 'Krakow', 'Florence']
+    City, (Prague, Stuttgart, Split, Krakow, Florence) = EnumSort('City', cities_enum)
+    city_dict_const = {name: const for name, const in zip(cities_enum, [Prague, Stuttgart, Split, Krakow, Florence])}
     
-    # Define direct flights (as tuples of City constants)
-    flight_set = [
-        (City.Stuttgart, City.Split),
-        (City.Prague, City.Florence),
-        (City.Krakow, City.Stuttgart),
-        (City.Krakow, City.Split),
-        (City.Split, City.Prague),
-        (City.Krakow, City.Prague)
+    # Define the direct flight connections (as undirected edges)
+    edges_by_name = [
+        ('Stuttgart', 'Split'),
+        ('Prague', 'Florence'),
+        ('Krakow', 'Stuttgart'),
+        ('Krakow', 'Split'),
+        ('Split', 'Prague'),
+        ('Krakow', 'Prague')
     ]
+    edge_consts = []
+    for a, b in edges_by_name:
+        edge_consts.append((city_dict_const[a], city_dict_const[b]))
     
-    # Create symmetric flight set (both directions)
-    sym_flight_set = set()
-    for (a, b) in flight_set:
-        sym_flight_set.add((a, b))
-        sym_flight_set.add((b, a))
+    allowed_pairs = []
+    for (a, b) in edge_consts:
+        allowed_pairs.append((a, b))
+        allowed_pairs.append((b, a))
     
-    # Create Z3 variables: current_city[0..8] and fly[1..8]
-    current_city = [z3.Const('current_city_%d' % i, City) for i in range(9)]
-    fly = [z3.Bool('fly_%d' % i) for i in range(1, 9)]
+    # Create variables for the sequence: s0 (start) to s8 (end of day 8)
+    s = [Const(f's{i}', City) for i in range(9)]
     
-    s = z3.Solver()
+    solver = Solver()
     
-    # Flight constraints for each day 1..8
+    # Flight constraints: if we change city, the pair must be in allowed_pairs
     for i in range(1, 9):
-        # If flying, the flight must be in sym_flight_set
-        flight_cond = z3.Or([z3.And(current_city[i-1] == a, current_city[i] == b) for (a, b) in sym_flight_set])
-        s.add(z3.If(fly[i-1], flight_cond, current_city[i] == current_city[i-1]))
+        x = s[i-1]
+        y = s[i]
+        flight_ok = Or([And(x == a, y == b) for (a, b) in allowed_pairs])
+        solver.add(Or(x == y, flight_ok))
     
-    # Total days per city
-    total_days = {}
-    cities_list = [City.Prague, City.Stuttgart, City.Split, City.Krakow, City.Florence]
-    for c in cities_list:
+    # Count the days per city
+    cities_list = [Prague, Stuttgart, Split, Krakow, Florence]
+    counts = [0]*5
+    for idx, city in enumerate(cities_list):
         total = 0
-        for i in range(1, 9):
-            in_city = z3.Or(current_city[i-1] == c, current_city[i] == c)
-            total += z3.If(in_city, 1, 0)
-        total_days[c] = total
+        for i in range(1, 9):  # for each day from 1 to 8
+            # Condition: start in the city OR (end in the city and start not in the city)
+            cond = Or(s[i-1] == city, And(s[i] == city, s[i-1] != city))
+            total += If(cond, 1, 0)
+        counts[idx] = total
     
-    s.add(total_days[City.Prague] == 4)
-    s.add(total_days[City.Stuttgart] == 2)
-    s.add(total_days[City.Split] == 2)
-    s.add(total_days[City.Krakow] == 2)
-    s.add(total_days[City.Florence] == 2)
+    # Add constraints for the required days per city
+    solver.add(counts[0] == 4)  # Prague: 4 days
+    solver.add(counts[1] == 2)  # Stuttgart: 2 days
+    solver.add(counts[2] == 2)  # Split: 2 days
+    solver.add(counts[3] == 2)  # Krakow: 2 days
+    solver.add(counts[4] == 2)  # Florence: 2 days
     
     # Event constraints
-    st_day2 = z3.Or(current_city[1] == City.Stuttgart, current_city[2] == City.Stuttgart)
-    st_day3 = z3.Or(current_city[2] == City.Stuttgart, current_city[3] == City.Stuttgart)
-    s.add(z3.Or(st_day2, st_day3))
+    # Stuttgart on day 2: s[1] OR s[2] must be Stuttgart
+    solver.add(Or(s[1] == Stuttgart, s[2] == Stuttgart))
+    # Stuttgart on day 3: s[2] OR s[3] must be Stuttgart
+    solver.add(Or(s[2] == Stuttgart, s[3] == Stuttgart))
+    # Split on day 3: s[2] OR s[3] must be Split
+    solver.add(Or(s[2] == Split, s[3] == Split))
+    # Split on day 4: s[3] OR s[4] must be Split
+    solver.add(Or(s[3] == Split, s[4] == Split))
     
-    sp_day3 = z3.Or(current_city[2] == City.Split, current_city[3] == City.Split)
-    sp_day4 = z3.Or(current_city[3] == City.Split, current_city[4] == City.Split)
-    s.add(z3.Or(sp_day3, sp_day4))
-    
-    # Check and get model
-    if s.check() == z3.sat:
-        m = s.model()
+    # Check for a solution
+    if solver.check() == sat:
+        m = solver.model()
+        s_val = [m.evaluate(s[i]) for i in range(9)]
+        
+        # Map Z3 constants back to city names
+        const_to_name = {const: name for name, const in city_dict_const.items()}
+        
         itinerary = []
-        for d in range(1, 9):
-            c0_val = m.evaluate(current_city[d-1])
-            c1_val = m.evaluate(current_city[d])
-            c0_str = str(c0_val)
-            c1_str = str(c1_val)
-            cities_on_day = set()
-            cities_on_day.add(c0_str)
-            cities_on_day.add(c1_str)
-            sorted_cities = sorted(list(cities_on_day))
-            itinerary.append({"day": d, "cities": sorted_cities})
+        for day in range(1, 9):  # days 1 to 8
+            start_city = s_val[day-1]
+            end_city = s_val[day]
+            start_city_name = const_to_name[start_city]
+            if start_city == end_city:
+                cities_of_day = [start_city_name]
+            else:
+                end_city_name = const_to_name[end_city]
+                cities_of_day = [start_city_name, end_city_name]
+            itinerary.append({"day": day, "cities": cities_of_day})
         
         result = {"itinerary": itinerary}
         print(json.dumps(result))

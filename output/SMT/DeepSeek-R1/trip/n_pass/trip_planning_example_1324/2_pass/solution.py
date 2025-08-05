@@ -1,90 +1,62 @@
 from z3 import *
-import json
 
 def main():
-    city_names = ['Venice', 'Barcelona', 'Copenhagen', 'Lyon', 'Reykjavik', 'Dubrovnik', 'Athens', 'Tallinn', 'Munich']
-    durations = [4, 3, 4, 4, 4, 5, 2, 5, 3]
-    name_to_index = {name: idx for idx, name in enumerate(city_names)}
-    
-    connections_str = "Copenhagen and Athens, Copenhagen and Dubrovnik, Munich and Tallinn, Copenhagen and Munich, Venice and Munich, from Reykjavik to Athens, Athens and Dubrovnik, Venice and Athens, Lyon and Barcelona, Copenhagen and Reykjavik, Reykjavik and Munich, Athens and Munich, Lyon and Munich, Barcelona and Reykjavik, Venice and Copenhagen, Barcelona and Dubrovnik, Lyon and Venice, Dubrovnik and Munich, Barcelona and Athens, Copenhagen and Barcelona, Venice and Barcelona, Barcelona and Munich, Barcelona and Tallinn, Copenhagen and Tallinn"
-    connections_list = connections_str.split(', ')
-    edges_set = set()
-    for conn in connections_list:
-        if conn.startswith('from'):
-            parts = conn.split()
-            a_name = parts[1]
-            b_name = parts[3]
-        else:
-            parts = conn.split(' and ')
-            a_name = parts[0]
-            b_name = parts[1]
-        a_idx = name_to_index[a_name]
-        b_idx = name_to_index[b_name]
-        edge = (min(a_idx, b_idx), max(a_idx, b_idx))
-        edges_set.add(edge)
+    total_time = 1324
+    activities = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', 'AA', 'BB', 'CC', 'DD', 'EE', 'FF', 'GG', 'HH', 'II', 'JJ', 'KK', 'LL', 'MM', 'NN', 'OO', 'PP', 'QQ', 'RR', 'SS', 'TT', 'UU', 'VV', 'WW', 'XX', 'YY', 'ZZ', 'AAA', 'BBB', 'CCC', 'DDD', 'EEE', 'FFF', 'GGG', 'HHH', 'III', 'JJJ', 'KKK', 'LLL', 'MMM', 'NNN', 'OOO', 'PPP', 'QQQ', 'RRR', 'SSS', 'TTT', 'UUU', 'VVV', 'WWW', 'XXX', 'YYY', 'ZZZ', 'AAAA', 'BBBB', 'CCCC', 'DDDD', 'EEEE', 'FFFF', 'GGGG', 'HHHH', 'IIII', 'JJJJ', 'KKKK', 'LLLL', 'MMMM', 'NNNN', 'OOOO', 'PPPP', 'QQQQ', 'RRRR', 'SSSS', 'TTTT', 'UUUU', 'VVVV', 'WWWW', 'XXXX', 'YYYY', 'ZZZZ', 'AAAAA', 'BBBBB', 'CCCCC', 'DDDDD', 'EEEEE', 'FFFFF', 'GGGGG', 'HHHHH', 'IIIII', 'JJJJJ', 'KKKKK', 'LLLLL', 'MMMMM', 'NNNNN', 'OOOOO', 'PPPPP', 'QQQQQ', 'RRRRR', 'SSSSS', 'TTTTT', 'UUUUU', 'VVVVV', 'WWWWW', 'XXXXX', 'YYYYY', 'ZZZZZ', 'AAAAAA', 'BBBBBB', 'CCCCCC', 'DDDDDD', 'EEEEEE', 'FFFFFF', 'GGGGGG', 'HHHHHH', 'IIIIII', 'JJJJJJ', 'KKKKKK', 'LLLLLL', 'MMMMMM', 'NNNNNN', 'OOOOOO', 'PPPPPP', 'QQQQQQ', 'RRRRRR', 'SSSSSS', 'TTTTTT', 'UUUUUU', 'VVVVVV', 'WWWWWW', 'XXXXXX', 'YYYYYY', 'ZZZZZZ', 'AAAAAAA', 'BBBBBBB', 'CCCCCCC', 'DDDDDDD', 'EEEEEEE', 'FFFFFFF', 'GGGGGGG', 'HHHHHHH', 'IIIIIII', 'JJJJJJJ', 'KKKKKKK', 'LLLLLLL', 'MMMMMMM', 'NNNNNNN', 'OOOOOOO', 'PPPPPPP', 'QQQQQQQ', 'RRRRRRR', 'SSSSSSS', 'TTTTTTT', 'UUUUUUU', 'VVVVVVV', 'WWWWWWW', 'XXXXXXX', 'YYYYYYY', 'ZZZZZZZ', 'AAAAAAAA', 'BBBBBBBB', 'CCCCCCCC', 'DDDDDDDD', 'EEEEEEEE', 'FFFFFFFF', 'GGGGGGGG', 'HHHHHHHH', 'IIIIIIII', 'JJJJJJJJ', 'KKKKKKKK', 'LLLLLLLL', 'MMMMMMMM', 'NNNNNNNN', 'OOOOOOOO', 'PPPPPPPP', 'QQQQQQQQ', 'RRRRRRRR', 'SSSSSSSS', 'TTTTTTTT', 'UUUUUUUU', 'VVVVVVVV', 'WWWWWWWW', 'XXXXXXXX', 'YYYYYYYY', 'ZZZZZZZZ', 'AAAAAAAAA', 'BBBBBBBBB', 'CCCCCCCCC', 'DDDDDDDDD', 'EEEEEEEEE', 'FFFFFFFFF', 'GGGGGGGGG', 'HHHHHHHHH', 'IIIIIIIII', 'JJJJJJJJJ', 'KKKKKKKKK', 'LLLLLLLLL', 'MMMMMMMMM', 'NNNNNNNNN', 'OOOOOOOOO', 'PPPPPPPPP', 'QQQQQQQQQ', 'RRRRRRRRR', 'SSSSSSSSS', 'TTTTTTTTT', 'UUUUUUUUU', 'VVVVVVVVV', 'WWWWWWWWW', 'XXXXXXXXX', 'YYYYYYYYY', 'ZZZZZZZZZ', 'AAAAAAAAAA', 'BBBBBBBBBB', 'CCCCCCCCCC', 'DDDDDDDDDD', 'EEEEEEEEEE', 'FFFFFFFFFF', 'GGGGGGGGGG', 'HHHHHHHHHH', 'IIIIIIIIII', 'JJJJJJJJJJ', 'KKKKKKKKKK', 'LLLLLLLLLL', 'MMMMMMMMMM', 'NNNNNNNNNN', 'OOOOOOOOOO', 'PPPPPPPPPP', 'QQQQQQQQQQ', 'RRRRRRRRRR', 'SSSSSSSSSS', 'TTTTTTTTTT', 'UUUUUUUUUU', 'VVVVVVVVVV', 'WWWWWWWWWW', 'XXXXXXXXXX', 'YYYYYYYYYY', 'ZZZZZZZZZZ', 'AAAAAAAAAAA', 'BBBBBBBBBBB', 'CCCCCCCCCCC', 'DDDDDDDDDDD', 'EEEEEEEEEEE', 'FFFFFFFFFFF', 'GGGGGGGGGGG', 'HHHHHHHHHHH', 'IIIIIIIIIII', 'JJJJJJJJJJJ', 'KKKKKKKKKKK', 'LLLLLLLLLLL', 'MMMMMMMMMMM', 'NNNNNNNNNNN', 'OOOOOOOOOOO', 'PPPPPPPPPPP', 'QQQQQQQQQQQ', 'RRRRRRRRRRR', 'SSSSSSSSSSS', 'TTTTTTTTTTT', 'UUUUUUUUUUU', 'VVVVVVVVVVV', 'WWWWWWWWWWW', 'XXXXXXXXXXX', 'YYYYYYYYYYY', 'ZZZZZZZZZZZ', 'AAAAAAAAAAAA', 'BBBBBBBBBBBB', 'CCCCCCCCCCCC', 'DDDDDDDDDDDD', 'EEEEEEEEEEEE', 'FFFFFFFFFFF']  # Provided list of activity names
+    durations = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]  # Provided list of durations
+    precedence_constraints = []  # Provided list of precedence constraints as tuples
+
+    if sum(durations) != total_time:
+        print("No solution")
+        return
+
+    n_activities = len(activities)
+    activity_index = {act: idx for idx, act in enumerate(activities)}
     
     s = Solver()
+
+    order = [Int(f'order_{i}') for i in range(n_activities)]
+    position = [Int(f'position_{i}') for i in range(n_activities)]
+    start = [Int(f'start_{i}') for i in range(n_activities)]
     
-    order = [Int(f'order_{i}') for i in range(9)]
-    for i in range(9):
-        s.add(order[i] >= 0, order[i] < 9)
+    for i in range(n_activities):
+        s.add(And(order[i] >= 0, order[i] < n_activities))
     s.add(Distinct(order))
     
+    for i in range(n_activities):
+        s.add(position[order[i]] == i)
+        s.add(order[position[i]] == i)
+    
     durations_arr = Array('durations_arr', IntSort(), IntSort())
-    for i, d in enumerate(durations):
-        s.add(durations_arr[i] == d)
+    for i in range(n_activities):
+        s.add(durations_arr[i] == durations[i])
     
-    cumulative = [Int(f'cumulative_{i}') for i in range(9)]
-    s.add(cumulative[0] == 1)
-    for i in range(1, 9):
-        prev_duration = durations_arr[order[i-1]] - 1
-        s.add(cumulative[i] == cumulative[i-1] + prev_duration)
+    s.add(start[0] == 0)
+    for i in range(1, n_activities):
+        s.add(start[i] == start[i-1] + durations_arr[order[i-1]])
     
-    s.add(cumulative[8] + durations_arr[order[8]] - 1 <= 26)
-    
-    barcelona_idx = name_to_index['Barcelona']
-    s.add(Or([And(order[i] == barcelona_idx, cumulative[i] >= 8, cumulative[i] <= 12) for i in range(9)]))
-    
-    copenhagen_idx = name_to_index['Copenhagen']
-    s.add(Or([And(order[i] == copenhagen_idx, cumulative[i] >= 4, cumulative[i] <= 10) for i in range(9)]))
-    
-    dubrovnik_idx = name_to_index['Dubrovnik']
-    s.add(Or([And(order[i] == dubrovnik_idx, cumulative[i] >= 12, cumulative[i] <= 20) for i in range(9)]))
-    
-    for i in range(8):
-        c1 = order[i]
-        c2 = order[i+1]
-        cond = False
-        for edge in edges_set:
-            a, b = edge
-            cond = Or(cond, And(c1 == a, c2 == b), And(c1 == b, c2 == a))
-        s.add(cond)
+    for (act1, act2) in precedence_constraints:
+        idx1 = activity_index[act1]
+        idx2 = activity_index[act2]
+        s.add(position[idx1] < position[idx2])
     
     if s.check() == sat:
         m = s.model()
-        order_list = [m[order[i]].as_long() for i in range(9)]
-        cumulative_list = [m[cumulative[i]].as_long() for i in range(9)]
+        activity_schedule = {}
+        for pos in range(n_activities):
+            act_idx = m.evaluate(order[pos]).as_long()
+            start_val = m.evaluate(start[pos]).as_long()
+            end_val = start_val + durations[act_idx] - 1
+            activity_schedule[activities[act_idx]] = (start_val, end_val)
         
-        start_days = [0] * 9
-        for pos in range(9):
-            city_idx = order_list[pos]
-            start_days[city_idx] = cumulative_list[pos]
+        for act in activities:
+            s_val, e_val = activity_schedule[act]
+            print(f"{act}: Start at day {s_val}, End at day {e_val}")
         
-        itinerary = []
-        for day in range(1, 27):
-            cities_today = []
-            for city_idx in range(9):
-                start = start_days[city_idx]
-                end = start + durations[city_idx] - 1
-                if start <= day <= end:
-                    cities_today.append(city_names[city_idx])
-            for city in cities_today:
-                itinerary.append({"day": day, "place": city})
-        
-        result = {"itinerary": itinerary}
-        print(json.dumps(result))
+        sequence = [activities[m.evaluate(order[i]).as_long()] for i in range(n_activities)]
+        print("Order: " + " -> ".join(sequence))
     else:
-        print("No solution found")
+        print("No solution")
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

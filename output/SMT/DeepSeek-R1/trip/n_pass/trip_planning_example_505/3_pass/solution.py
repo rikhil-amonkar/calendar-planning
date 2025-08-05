@@ -1,84 +1,71 @@
-import z3
-import json
+from z3 import *
 
 def main():
-    City = z3.Datatype('City')
-    City.declare('Prague')
-    City.declare('Stuttgart')
-    City.declare('Split')
-    City.declare('Krakow')
-    City.declare('Florence')
-    City = City.create()
+    s = Solver()
+    n_days = 7
+    city_names = {0: 'Krakow', 1: 'Stuttgart', 2: 'Split', 3: 'Prague', 4: 'Florence'}
+    n_cities = len(city_names)
     
-    flight_set = [
-        (City.Stuttgart, City.Split),
-        (City.Prague, City.Florence),
-        (City.Krakow, City.Stuttgart),
-        (City.Krakow, City.Split),
-        (City.Split, City.Prague),
-        (City.Krakow, City.Prague)
+    # Create variables for each day
+    X = [Int('x_%d' % i) for i in range(n_days)]
+    
+    # Each X[i] must be between 0 and 4
+    for i in range(n_days):
+        s.add(X[i] >= 0, X[i] < n_cities)
+    
+    # Start and end in Krakow (0)
+    s.add(X[0] == 0)
+    s.add(X[6] == 0)
+    
+    # Define allowed edges (undirected)
+    edges_list = [
+        (0, 1), (0, 3), 
+        (1, 2), (1, 3), 
+        (3, 4), (0, 4), 
+        (2, 3), (2, 4)
     ]
+    allowed_pairs = set()
+    # Add stay moves (same city)
+    for c in range(n_cities):
+        allowed_pairs.add((c, c))
+    # Add travel moves in both directions
+    for (u, v) in edges_list:
+        allowed_pairs.add((u, v))
+        allowed_pairs.add((v, u))
+    allowed_pairs = list(allowed_pairs)
     
-    c = [z3.Const('c%d' % i, City) for i in range(9)]
+    # Add constraints for consecutive days
+    for i in range(n_days - 1):
+        options = []
+        for (a, b) in allowed_pairs:
+            options.append(And(X[i] == a, X[i+1] == b))
+        s.add(Or(options))
     
-    s = z3.Solver()
-    
-    for i in range(1, 9):
-        c_prev = c[i-1]
-        c_curr = c[i]
-        conds = []
-        for (a, b) in flight_set:
-            conds.append(z3.And(c_prev == a, c_curr == b))
-            conds.append(z3.And(c_prev == b, c_curr == a))
-        flight_ok = z3.Or(conds)
-        s.add(z3.If(c_prev == c_curr, True, flight_ok))
-    
-    cities_list = [City.Prague, City.Stuttgart, City.Split, City.Krakow, City.Florence]
-    total_days = {}
-    for city in cities_list:
-        total = 0
-        for i in range(1, 9):
-            total += z3.If(z3.Or(c[i-1] == city, c[i] == city), 1, 0)
-        total_days[city] = total
-    
-    s.add(total_days[City.Prague] == 4)
-    s.add(total_days[City.Stuttgart] == 2)
-    s.add(total_days[City.Split] == 2)
-    s.add(total_days[City.Krakow] == 2)
-    s.add(total_days[City.Florence] == 2)
-    
-    s.add(z3.Or(c[1] == City.Stuttgart, c[2] == City.Stuttgart, c[3] == City.Stuttgart))
-    s.add(z3.Or(c[2] == City.Split, c[3] == City.Split, c[4] == City.Split))
-    
-    if s.check() == z3.sat:
-        m = s.model()
-        segments = []
-        segment_index = 1
-        for day in range(1, 9):
-            prev_city = m.evaluate(c[day-1])
-            curr_city = m.evaluate(c[day])
-            if prev_city.eq(curr_city):
-                segments.append({
-                    'day_range': f'Day {day}-{segment_index}',
-                    'place': str(prev_city)
-                })
-                segment_index += 1
-            else:
-                segments.append({
-                    'day_range': f'Day {day}-{segment_index}',
-                    'place': str(prev_city)
-                })
-                segment_index += 1
-                segments.append({
-                    'day_range': f'Day {day}-{segment_index}',
-                    'place': str(curr_city)
-                })
-                segment_index += 1
+    # Constraints for non-Krakow cities (1-4)
+    for city in range(1, n_cities):
+        # At least two consecutive days in the city
+        consecutive_days = []
+        for i in range(n_days - 1):
+            consecutive_days.append(And(X[i] == city, X[i+1] == city))
+        s.add(Or(consecutive_days))
         
-        result = {"itinerary": segments}
-        print(json.dumps(result))
+        # Contiguous block constraint
+        for i in range(n_days):
+            for j in range(i+2, n_days):
+                # If city appears on day i and day j, must appear on all days in between
+                s.add(Implies(And(X[i] == city, X[j] == city),
+                              And([X[k] == city for k in range(i+1, j)])))
+    
+    # Check and get the model
+    if s.check() == sat:
+        m = s.model()
+        res = [m.evaluate(X[i]).as_long() for i in range(n_days)]
+        itinerary = []
+        for i in range(n_days):
+            itinerary.append({'day_range': f'Day {i+1}-{i+1}', 'place': city_names[res[i]]})
+        print(f"Plan found: {itinerary}")
     else:
-        print("No solution found")
+        print("No valid plan found")
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

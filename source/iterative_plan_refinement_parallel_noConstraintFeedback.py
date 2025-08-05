@@ -200,13 +200,37 @@ def add_json_formatting_instruction(prompt, task):
 
 def evaluate_calendar(constraints, pred_dict):
     """Evaluate calendar constraints comprehensively (flat dict, not nested)"""
-    # Check for missing fields
-    if not pred_dict or "day" not in pred_dict or "start_time" not in pred_dict or "end_time" not in pred_dict:
+    # Check for missing fields - handle both time_range and start_time/end_time formats
+    if not pred_dict or "day" not in pred_dict:
         return False, {"missing_fields": True}
-
+    
     pred_day = pred_dict["day"]
-    pred_start = pred_dict["start_time"]
-    pred_end = pred_dict["end_time"]
+    
+    # Handle time_range format (e.g., "13:00:13:30" or "{13:00:13:30}")
+    if "time_range" in pred_dict:
+        time_range = pred_dict["time_range"]
+        # Remove curly braces if present
+        if time_range.startswith("{") and time_range.endswith("}"):
+            time_range = time_range[1:-1]
+        
+        # Parse time_range format "HH:MM:HH:MM"
+        try:
+            # Split by ":" and reconstruct start and end times
+            parts = time_range.split(":")
+            if len(parts) == 4:  # "HH:MM:HH:MM" format
+                pred_start = f"{parts[0]}:{parts[1]}"
+                pred_end = f"{parts[2]}:{parts[3]}"
+            else:
+                return False, {"invalid_time_range_format": time_range}
+        except ValueError:
+            return False, {"invalid_time_range_format": time_range}
+    
+    # Handle start_time/end_time format
+    elif "start_time" in pred_dict and "end_time" in pred_dict:
+        pred_start = pred_dict["start_time"]
+        pred_end = pred_dict["end_time"]
+    else:
+        return False, {"missing_fields": True}
     
     # Check for None values in any of the fields
     if pred_day is None or pred_start is None or pred_end is None:

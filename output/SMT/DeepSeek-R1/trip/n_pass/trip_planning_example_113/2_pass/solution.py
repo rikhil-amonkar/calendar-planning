@@ -1,60 +1,93 @@
 from z3 import *
+import json
 
-# Create solver
-s = Solver()
+def main():
+    # Define the city mappings
+    Milan = 0
+    Seville = 1
+    Naples = 2
+    
+    s0 = Int('s0')
+    e = [Int('e_%d' % i) for i in range(1, 13)]
+    
+    solver = Solver()
+    
+    # s0 must be either Milan or Naples (not Seville)
+    solver.add(Or(s0 == Milan, s0 == Naples))
+    for i in range(12):
+        solver.add(e[i] >= 0, e[i] <= 2)
+    
+    # For days 1 to 8: not in Seville
+    for i in range(1, 9):
+        # s_i: start of day i
+        if i == 1:
+            s_i = s0
+        else:
+            s_i = e[i-2]  # because e[0] is for day1, so for day2: s2 = e0 (index0 in e)
+        # Constraint: both start and end of day i not Seville
+        solver.add(s_i != Seville)
+        solver.add(e[i-1] != Seville)
+    
+    # For days 9 to 12: must be in Seville (either start or end)
+    for i in range(9, 13):
+        if i == 1:
+            s_i = s0
+        else:
+            s_i = e[i-2]
+        solver.add(Or(s_i == Seville, e[i-1] == Seville))
+    
+    # Flight constraints
+    for i in range(1, 13):
+        if i == 1:
+            s_i = s0
+        else:
+            s_i = e[i-2]
+        end_i = e[i-1]
+        # If there is a flight (s_i != end_i), then it must be an allowed flight
+        flight_cond = (s_i != end_i)
+        allowed_flights = Or(
+            And(s_i == Milan, end_i == Seville),
+            And(s_i == Seville, end_i == Milan),
+            And(s_i == Milan, end_i == Naples),
+            And(s_i == Naples, end_i == Milan)
+        )
+        solver.add(Implies(flight_cond, allowed_flights))
+    
+    # Total days for Naples and Milan
+    total_naples = 0
+    total_milan = 0
+    for i in range(1, 13):
+        if i == 1:
+            s_i = s0
+        else:
+            s_i = e[i-2]
+        end_i = e[i-1]
+        # For Naples: count if start or end is Naples
+        total_naples += If(Or(s_i == Naples, end_i == Naples), 1, 0)
+        # For Milan: count if start or end is Milan
+        total_milan += If(Or(s_i == Milan, end_i == Milan), 1, 0)
+    
+    solver.add(total_naples == 3)
+    solver.add(total_milan == 7)
+    
+    # Solve the problem
+    if solver.check() == sat:
+        model = solver.model()
+        s0_val = model[s0].as_long()
+        e_vals = [model[e_i].as_long() for e_i in e]
+        
+        # Map to city names
+        city_map = {Milan: "Milan", Seville: "Seville", Naples: "Naples"}
+        itinerary = []
+        for day in range(1, 13):
+            city_index = e_vals[day-1]
+            city_name = city_map[city_index]
+            itinerary.append({"day": day, "city": city_name})
+        
+        result = {"itinerary": itinerary}
+        print(json.dumps(result))
+    else:
+        print("No solution found")
 
-# Create 13 variables: c0 to c12
-c = [Int('c%d' % i) for i in range(0, 13)]
-
-# Each variable must be 0, 1, or 2 (Milan, Seville, Naples)
-for i in range(0, 13):
-    s.add(Or(c[i] == 0, c[i] == 1, c[i] == 2))
-
-# Direct flight constraints for i from 0 to 11: if c[i] != c[i+1], then the pair must be (0,1), (1,0), (0,2), (2,0)
-for i in range(0, 12):
-    s.add(If(
-        c[i] != c[i+1],
-        Or(
-            And(c[i] == 0, c[i+1] == 1),
-            And(c[i] == 1, c[i+1] == 0),
-            And(c[i] == 0, c[i+1] == 2),
-            And(c[i] == 2, c[i+1] == 0)
-        ),
-        True
-    ))
-
-# Constraints for Seville from day9 to day12: c9, c10, c11, c12 must be 1 (Seville)
-s.add(c[9] == 1)
-s.add(c[10] == 1)
-s.add(c[11] == 1)
-s.add(c[12] == 1)
-
-# Define counts for each city
-# For Milan (0)
-count0_milan = Sum([If(c[i] == 0, 1, 0) for i in range(0, 12)])  # start cities: c0 to c11
-count1_milan = Sum([If(And(c[i] == 0, c[i-1] != 0), 1, 0) for i in range(1, 13)])  # end cities: c1 to c12, with condition
-total_milan = count0_milan + count1_milan
-s.add(total_milan == 7)
-
-# For Seville (1)
-count0_seville = Sum([If(c[i] == 1, 1, 0) for i in range(0, 12)])
-count1_seville = Sum([If(And(c[i] == 1, c[i-1] != 1), 1, 0) for i in range(1, 13)])
-total_seville = count0_seville + count1_seville
-s.add(total_seville == 4)
-
-# For Naples (2)
-count0_naples = Sum([If(c[i] == 2, 1, 0) for i in range(0, 12)])
-count1_naples = Sum([If(And(c[i] == 2, c[i-1] != 2), 1, 0) for i in range(1, 13)])
-total_naples = count0_naples + count1_naples
-s.add(total_naples == 3)
-
-# Check and get the model
-if s.check() == sat:
-    model = s.model()
-    c_values = [model.evaluate(c[i]) for i in range(1, 13)]  # c1 to c12: itinerary for day1 to day12
-    city_names = {0: "Milan", 1: "Seville", 2: "Naples"}
-    itinerary = [{"day": i, "place": city_names[c_values[i-1].as_long()]} for i in range(1, 13)]
-    result = {'itinerary': itinerary}
-    print(result)
-else:
-    print("No solution found")
+if __name__ == "__main__":
+    main()

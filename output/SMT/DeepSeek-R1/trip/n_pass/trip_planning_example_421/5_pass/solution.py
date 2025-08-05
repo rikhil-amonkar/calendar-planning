@@ -1,72 +1,79 @@
 from z3 import *
 
 def main():
+    # Grid size and obstacles
+    n = 5
+    obstacles = [(1,1), (2,1), (3,1), (1,3), (2,3), (3,3)]
+    T = 7  # Total time steps (0 to 7 inclusive, so 8 steps)
+    
+    # Create Z3 variables for positions of R1 and R2 for each time step
+    R1x = [Int(f'R1x_{t}') for t in range(T+1)]
+    R1y = [Int(f'R1y_{t}') for t in range(T+1)]
+    R2x = [Int(f'R2x_{t}') for t in range(T+1)]
+    R2y = [Int(f'R2y_{t}') for t in range(T+1)]
+    
     s = Solver()
     
-    # Four stays: cities and start days
-    cities = [String(f"c{i}") for i in range(4)]
-    starts = [Int(f"s{i}") for i in range(4)]
-    ends = [Int(f"e{i}") for i in range(4)]
+    # Initial positions
+    s.add(R1x[0] == 0, R1y[0] == 0)
+    s.add(R2x[0] == 0, R2y[0] == 4)
     
-    # Days array: maps city name to stay duration
-    days_arr = Array('days_arr', StringSort(), IntSort())
-    s.add(days_arr[StringVal("City1")] == 3)
-    s.add(days_arr[StringVal("City2")] == 4)
-    s.add(days_arr[StringVal("City3")] == 2)
-    s.add(days_arr[StringVal("City4")] == 5)
+    # Goal positions at final time
+    s.add(R1x[T] == 4, R1y[T] == 4)
+    s.add(R2x[T] == 4, R2y[T] == 0)
     
-    # Cities must be distinct and one of the four
-    s.add(Distinct(cities))
-    for i in range(4):
-        s.add(Or(
-            cities[i] == StringVal("City1"), 
-            cities[i] == StringVal("City2"), 
-            cities[i] == StringVal("City3"), 
-            cities[i] == StringVal("City4")
-        ))
+    # Constraints for each time step
+    for t in range(T+1):
+        # Positions within grid boundaries
+        s.add(And(0 <= R1x[t], R1x[t] < n, 0 <= R1y[t], R1y[t] < n))
+        s.add(And(0 <= R2x[t], R2x[t] < n, 0 <= R2y[t], R2y[t] < n))
+        
+        # Obstacle avoidance
+        s.add(Not(Or(*[And(R1x[t] == ox, R1y[t] == oy) for ox, oy in obstacles])))
+        s.add(Not(Or(*[And(R2x[t] == ox, R2y[t] == oy) for ox, oy in obstacles])))
+        
+        # No collision at same time
+        s.add(Not(And(R1x[t] == R2x[t], R1y[t] == R2y[t])))
     
-    # Start days are strictly increasing
-    s.add(starts[0] == 1)
-    for i in range(3):
-        s.add(starts[i] < starts[i+1])
+    # Movement constraints and no swapping for consecutive times
+    for t in range(T):
+        # R1 movement: stay or move to adjacent cell
+        move_R1 = Or(
+            And(R1x[t+1] == R1x[t], R1y[t+1] == R1y[t]),  # stay
+            And(R1x[t+1] == R1x[t] + 1, R1y[t+1] == R1y[t]),  # right
+            And(R1x[t+1] == R1x[t] - 1, R1y[t+1] == R1y[t]),  # left
+            And(R1x[t+1] == R1x[t], R1y[t+1] == R1y[t] + 1),  # down
+            And(R1x[t+1] == R1x[t], R1y[t+1] == R1y[t] - 1)   # up
+        )
+        s.add(move_R1)
+        
+        # R2 movement: stay or move to adjacent cell
+        move_R2 = Or(
+            And(R2x[t+1] == R2x[t], R2y[t+1] == R2y[t]),  # stay
+            And(R2x[t+1] == R2x[t] + 1, R2y[t+1] == R2y[t]),  # right
+            And(R2x[t+1] == R2x[t] - 1, R2y[t+1] == R2y[t]),  # left
+            And(R2x[t+1] == R2x[t], R2y[t+1] == R2y[t] + 1),  # down
+            And(R2x[t+1] == R2x[t], R2y[t+1] == R2y[t] - 1)   # up
+        )
+        s.add(move_R2)
+        
+        # No swapping: not swapping positions in one time step
+        s.add(Not(And(
+            R1x[t] == R2x[t+1], R1y[t] == R2y[t+1],
+            R2x[t] == R1x[t+1], R2y[t] == R1y[t+1]
+        )))
     
-    # First stay is City1, last stay is City4
-    s.add(cities[0] == StringVal("City1"))
-    s.add(cities[3] == StringVal("City4"))
-    
-    # End days for each stay
-    for i in range(4):
-        s.add(ends[i] == starts[i] + days_arr[cities[i]] - 1)
-    
-    # Allow zero-day travel: next stay can start immediately after previous ends
-    for i in range(3):
-        s.add(ends[i] <= starts[i+1])
-        s.add(ends[i] < starts[i+1] + 1)  # Ensure no overlap
-    
-    # Entire trip ends by day 14
-    s.add(ends[3] <= 14)
-    
-    # City2's stay must start on day 5
-    for i in range(4):
-        s.add(If(cities[i] == StringVal("City2"), starts[i] == 5, True))
-    
-    # Check for a solution
+    # Solve and output
     if s.check() == sat:
         m = s.model()
-        # Print the schedule
-        print("Found a solution:")
-        for i in range(4):
-            city = m[cities[i]]
-            start = m[starts[i]].as_long()
-            end = m[ends[i]].as_long()
-            # Convert Z3 string to Python string
-            if is_string_value(city):
-                city_str = city.as_string()
-            else:
-                city_str = str(city)
-            print(f"Stay {i+1}: City {city_str}, from day {start} to day {end}")
+        for t in range(T+1):
+            r1x = m.eval(R1x[t]).as_long()
+            r1y = m.eval(R1y[t]).as_long()
+            r2x = m.eval(R2x[t]).as_long()
+            r2y = m.eval(R2y[t]).as_long()
+            print(f"Time {t}: R1 at ({r1x},{r1y}), R2 at ({r2x},{r2y})")
     else:
-        print("unsat")
+        print("No solution found")
 
 if __name__ == "__main__":
     main()

@@ -1,85 +1,55 @@
-import z3
-import json
+from z3 import *
 
 def main():
-    # Define the City type
-    City = z3.Datatype('City')
-    City.declare('Madrid')
-    City.declare('Dublin')
-    City.declare('Tallinn')
-    City = City.create()
-    Madrid, Dublin, Tallinn = City.Madrid, City.Dublin, City.Tallinn
+    # Define the cities
+    cities = ["Madrid", "Dublin", "Tallinn"]
+    n_days = 7
     
-    # Create variables for 7 days: s0 to s6, e0 to e6
-    s = [z3.Const('s_%d' % i, City) for i in range(7)]
-    e = [z3.Const('e_%d' % i, City) for i in range(7)]
+    # Create Z3 variables for each day
+    c = [Int('c_%d' % i) for i in range(n_days)]
     
-    solver = z3.Solver()
+    s = Solver()
     
-    # Continuity constraint: the end of day i is the start of day i+1
-    for i in range(6):
-        solver.add(e[i] == s[i+1])
+    # Each day must be 0, 1, or 2
+    for i in range(n_days):
+        s.add(And(c[i] >= 0, c[i] <= 2))
     
-    # Flight constraints: either no travel or a direct flight
-    for i in range(7):
-        no_travel = s[i] == e[i]
-        travel_MD = z3.And(s[i] == Madrid, e[i] == Dublin)
-        travel_DM = z3.And(s[i] == Dublin, e[i] == Madrid)
-        travel_DT = z3.And(s[i] == Dublin, e[i] == Tallinn)
-        travel_TD = z3.And(s[i] == Tallinn, e[i] == Dublin)
-        solver.add(z3.Or(no_travel, travel_MD, travel_DM, travel_DT, travel_TD))
+    # Constraints:
+    # Day 1 must be Madrid (0)
+    s.add(c[0] == 0)
+    # Day 7 must be Tallinn (2)
+    s.add(c[6] == 2)
+    # Must visit Dublin (1) at least once
+    s.add(Or([c[i] == 1 for i in range(n_days)]))
     
-    # Count constraints for each city
-    count_M = 0
-    count_D = 0
-    count_T = 0
-    for i in range(7):
-        in_M = z3.Or(s[i] == Madrid, e[i] == Madrid)
-        in_D = z3.Or(s[i] == Dublin, e[i] == Dublin)
-        in_T = z3.Or(s[i] == Tallinn, e[i] == Tallinn)
-        count_M += z3.If(in_M, 1, 0)
-        count_D += z3.If(in_D, 1, 0)
-        count_T += z3.If(in_T, 1, 0)
-    solver.add(count_M == 4, count_D == 3, count_T == 2)
-    
-    # Workshop constraints: must be in Tallinn on days 6 and 7
-    solver.add(z3.Or(s[5] == Tallinn, e[5] == Tallinn))
-    solver.add(z3.Or(s[6] == Tallinn, e[6] == Tallinn))
-    
-    # Solve the problem
-    if solver.check() == z3.sat:
-        m = solver.model()
-        itinerary_list = []
+    # Check for a solution
+    if s.check() == sat:
+        model = s.model()
+        # Extract the city for each day
+        city_list = [model.evaluate(c[i]).as_long() for i in range(n_days)]
+        city_names = [cities[idx] for idx in city_list]
         
-        for i in range(7):
-            s_val = m[s[i]]
-            e_val = m[e[i]]
-            if s_val.eq(Madrid):
-                s_name = "Madrid"
-            elif s_val.eq(Dublin):
-                s_name = "Dublin"
-            elif s_val.eq(Tallinn):
-                s_name = "Tallinn"
+        # Group consecutive days with the same city
+        itinerary = []
+        i = 0
+        while i < n_days:
+            j = i
+            current_city = city_names[i]
+            while j < n_days and city_names[j] == current_city:
+                j += 1
+            start_day = i + 1
+            end_day = j  # because the last day in the group is day j (since day index j-1 corresponds to day j)
+            if start_day == end_day:
+                day_range_str = f"Day {start_day}"
             else:
-                s_name = "Unknown"
-                
-            if e_val.eq(Madrid):
-                e_name = "Madrid"
-            elif e_val.eq(Dublin):
-                e_name = "Dublin"
-            elif e_val.eq(Tallinn):
-                e_name = "Tallinn"
-            else:
-                e_name = "Unknown"
-                
-            itinerary_list.append({"day": i+1, "place": s_name})
-            if s_name != e_name:
-                itinerary_list.append({"day": i+1, "place": e_name})
-                
-        result = {"itinerary": itinerary_list}
-        print(json.dumps(result))
+                day_range_str = f"Day {start_day}-{end_day}"
+            itinerary.append({'day_range': day_range_str, 'place': current_city})
+            i = j
+        
+        # Output the itinerary
+        print("Plan found:", {'itinerary': itinerary})
     else:
-        print(json.dumps({"itinerary": []}))
+        print("No valid plan found")
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

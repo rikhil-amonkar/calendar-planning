@@ -2,73 +2,100 @@ from z3 import *
 import json
 
 def main():
+    # Define the Z3 variables
+    order = [Int('o0'), Int('o1'), Int('o2'), Int('o3'), Int('o4')]
+    e0, e1, e2, e3 = Ints('e0 e1 e2 e3')
     s = Solver()
-    
-    # Define the days: 21 days (day1 to day21)
-    Start = [ Int('Start_%d' % d) for d in range(1, 22) ]
-    End   = [ Int('End_%d' % d) for d in range(1, 22) ]
-    
-    # City mapping
-    cities = {
-        0: 'Reykjavik',
-        1: 'Riga',
-        2: 'Warsaw',
-        3: 'Istanbul',
-        4: 'Krakow'
+
+    # City indices mapping
+    # 0: Reykjavik, 1: Riga, 2: Warsaw, 3: Istanbul, 4: Krakow
+    city_names = {
+        0: "Reykjavik",
+        1: "Riga",
+        2: "Warsaw",
+        3: "Istanbul",
+        4: "Krakow"
     }
-    required_days = [7, 2, 3, 6, 7]  # Reykjavik, Riga, Warsaw, Istanbul, Krakow
-    
-    # Allowed flight pairs: same city and direct flights (both directions)
-    allowed_pairs = set()
-    for c in range(5):
-        allowed_pairs.add((c, c))
-    edges = [(0,2), (2,0), (1,2), (2,1), (1,3), (3,1), (2,3), (3,2), (2,4), (4,2), (3,4), (4,3)]
-    for a, b in edges:
-        allowed_pairs.add((a, b))
-    
-    # Constraints for each day
-    for i in range(21):
-        s.add(Start[i] >= 0, Start[i] <= 4)
-        s.add(End[i] >= 0, End[i] <= 4)
-        s.add(Or([And(Start[i] == a, End[i] == b) for (a, b) in allowed_pairs]))
-    
-    # Chain constraints: Start of day i+1 equals End of day i
-    for i in range(1, 21):
-        s.add(Start[i] == End[i-1])
-    
-    # Total days per city
-    for c in range(5):
-        total = 0
-        for i in range(21):
-            total += If(Or(Start[i] == c, End[i] == c), 1, 0)
-        s.add(total == required_days[c])
-    
-    # Riga meeting constraint (day1 or day2)
-    s.add(Or(Or(Start[0] == 1, End[0] == 1), Or(Start[1] == 1, End[1] == 1)))
-    
-    # Istanbul wedding constraint (day2 to day7)
-    constraints = []
-    for i in range(1, 7):  # days 2 to 7 (indices 1 to 6)
-        constraints.append(Or(Start[i] == 3, End[i] == 3))
-    s.add(Or(constraints))
-    
-    # Solve the problem
+    dur_req = [7, 2, 3, 6, 7]  # durations for cities 0,1,2,3,4
+
+    # Constraints for order: distinct and within [0,4]
+    s.add(Distinct(order))
+    for i in range(5):
+        s.add(order[i] >= 0, order[i] <= 4)
+
+    # End days: 1 <= e0 <= e1 <= e2 <= e3 <= 21
+    s.add(e0 >= 1, e0 <= 21)
+    s.add(e1 >= e0, e1 <= 21)
+    s.add(e2 >= e1, e2 <= 21)
+    s.add(e3 >= e2, e3 <= 21)
+
+    # Flight constraints: consecutive cities must have a direct flight
+    edges_undir = [(0, 2), (1, 2), (1, 3), (2, 3), (2, 4), (3, 4)]
+    for i in range(4):
+        conds = []
+        for a, b in edges_undir:
+            conds.append(And(order[i] == a, order[i + 1] == b))
+            conds.append(And(order[i] == b, order[i + 1] == a))
+        s.add(Or(conds))
+
+    # Duration constraints for each city in the order
+    s.add(e0 == dur_req[order[0]])
+    s.add(e1 - e0 + 1 == dur_req[order[1]])
+    s.add(e2 - e1 + 1 == dur_req[order[2]])
+    s.add(e3 - e2 + 1 == dur_req[order[3]])
+    s.add(22 - e3 == dur_req[order[4]])  # 21 - e3 + 1 = 22 - e3
+
+    # Event constraints: Riga must start by day 2, Istanbul must start by day 7
+    for i in range(5):
+        start_day = None
+        if i == 0:
+            start_day = 1
+        elif i == 1:
+            start_day = e0
+        elif i == 2:
+            start_day = e1
+        elif i == 3:
+            start_day = e2
+        else:  # i == 4
+            start_day = e3
+
+        s.add(If(order[i] == 1, start_day <= 2, True))
+        s.add(If(order[i] == 3, start_day <= 7, True))
+
+    # Check if the problem is satisfiable
     if s.check() == sat:
         m = s.model()
-        itinerary = []
-        for i in range(21):
-            day = i + 1
-            start_city_val = m[Start[i]].as_long()
-            end_city_val = m[End[i]].as_long()
-            if start_city_val == end_city_val:
-                itinerary.append({"day": day, "place": cities[start_city_val]})
-            else:
-                itinerary.append({"day": day, "place": cities[start_city_val]})
-                itinerary.append({"day": day, "place": cities[end_city_val]})
-        result = {'itinerary': itinerary}
-        print(json.dumps(result))
-    else:
-        print('{"error": "No solution found"}')
+        o0_val = m[order[0]].as_long()
+        o1_val = m[order[1]].as_long()
+        o2_val = m[order[2]].as_long()
+        o3_val = m[order[3]].as_long()
+        o4_val = m[order[4]].as_long()
+        e0_val = m[e0].as_long()
+        e1_val = m[e1].as_long()
+        e2_val = m[e2].as_long()
+        e3_val = m[e3].as_long()
 
-if __name__ == "__main__":
+        order_vals = [o0_val, o1_val, o2_val, o3_val, o4_val]
+        itinerary_list = []
+
+        for day in range(1, 22):
+            cities = []
+            if day <= e0_val:
+                cities.append(city_names[order_vals[0]])
+            if e0_val <= day <= e1_val:
+                cities.append(city_names[order_vals[1]])
+            if e1_val <= day <= e2_val:
+                cities.append(city_names[order_vals[2]])
+            if e2_val <= day <= e3_val:
+                cities.append(city_names[order_vals[3]])
+            if e3_val <= day <= 21:
+                cities.append(city_names[order_vals[4]])
+            itinerary_list.append({"day": day, "place": cities})
+
+        result = {'itinerary': itinerary_list}
+        print(json.dumps(result, indent=2))
+    else:
+        print("No solution found")
+
+if __name__ == '__main__':
     main()

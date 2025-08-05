@@ -1,79 +1,66 @@
 from z3 import *
-import json
 
-def main():
+def plan_trip(n, lengths, dependencies):
+    if n == 0:
+        return [], 0
+    if n == 1:
+        return [0], lengths[0]
+    
     s = Solver()
+    # Use 32-bit BitVec for position variables
+    position = [BitVec('pos_%i' % i, 32) for i in range(n)]
     
-    cities = 6
-    req_days = [5, 4, 5, 2, 3, 5]
-    city_names = ["Reykjavik", "Istanbul", "Edinburgh", "Oslo", "Stuttgart", "Bucharest"]
+    # Each position must be between 0 and n-1
+    for i in range(n):
+        s.add(position[i] >= 0, position[i] < n)
     
-    edges = [
-        (5, 3), (3, 5),  # Bucharest <-> Oslo
-        (5, 1), (1, 5),  # Bucharest <-> Istanbul
-        (1, 3), (3, 1),  # Istanbul <-> Oslo
-        (1, 2), (2, 1),  # Istanbul <-> Edinburgh
-        (1, 4), (4, 1),  # Istanbul <-> Stuttgart
-        (0, 4),          # Reykjavik -> Stuttgart
-        (3, 0), (0, 3),  # Oslo <-> Reykjavik
-        (3, 2), (2, 3),  # Oslo <-> Edinburgh
-        (4, 2), (2, 4)   # Stuttgart <-> Edinburgh
-    ]
+    # All positions must be distinct
+    s.add(Distinct(position))
     
-    start = [Int(f'start_{i}') for i in range(cities)]
-    end = [Int(f'end_{i}') for i in range(cities)]
-    city_order = [Int(f'city_order_{i}') for i in range(cities)]
+    # Start with activity 0 and end with activity n-1
+    s.add(position[0] == 0)
+    s.add(position[n-1] == n-1)
     
-    for i in range(cities):
-        s.add(start[i] >= 1, start[i] <= 19)
-        s.add(end[i] >= 1, end[i] <= 19)
-        s.add(start[i] <= end[i])
-        s.add(end[i] == start[i] + req_days[i] - 1)
-    
-    s.add(Distinct(city_order))
-    for i in range(cities):
-        s.add(city_order[i] >= 0, city_order[i] < cities)
-    
-    first_city_constraint = Or([And(city_order[0] == i, start[i] == 1) for i in range(cities)])
-    s.add(first_city_constraint)
-    
-    last_city_constraint = Or([And(city_order[cities-1] == i, end[i] == 19) for i in range(cities)])
-    s.add(last_city_constraint)
-    
-    for pos in range(cities - 1):
-        cons = Or([And(city_order[pos] == i, city_order[pos+1] == j, end[i] == start[j]) 
-                  for i in range(cities) for j in range(cities) if i != j])
-        s.add(cons)
-    
-    for pos in range(cities - 1):
-        edge_cons = Or([And(city_order[pos] == a, city_order[pos+1] == b) for (a, b) in edges])
-        s.add(edge_cons)
-    
-    istanbul_index = city_names.index("Istanbul")
-    oslo_index = city_names.index("Oslo")
-    s.add(start[istanbul_index] <= 8, end[istanbul_index] >= 5)
-    s.add(start[oslo_index] <= 9, end[oslo_index] >= 8)
+    # Handle dependencies: activity i must come before j
+    for (i, j) in dependencies:
+        s.add(position[i] < position[j])
     
     if s.check() == sat:
         m = s.model()
-        seq_val = [m.evaluate(city_order[i]).as_long() for i in range(cities)]
-        start_val = [m.evaluate(start[i]).as_long() for i in range(cities)]
-        end_val = [m.evaluate(end[i]).as_long() for i in range(cities)]
-        
-        itinerary = []
-        for pos in range(cities):
-            city_idx = seq_val[pos]
-            s_day = start_val[city_idx]
-            e_day = end_val[city_idx]
-            itinerary.append({
-                'day_range': f"Day {s_day}-{e_day}",
-                'place': city_names[city_idx]
-            })
-        
-        result = {"itinerary": itinerary}
-        print(json.dumps(result, indent=2))
+        # Build the order array from position values
+        order = [-1] * n
+        for i in range(n):
+            pos_val = m.evaluate(position[i]).as_long()
+            order[pos_val] = i
+        total_time = sum(lengths)
+        return order, total_time
     else:
-        print("No solution found")
+        return None, None
 
-if __name__ == "__main__":
+def main():
+    import json
+    import sys
+
+    data = json.load(sys.stdin)
+    activities = data["activities"]
+    n = len(activities)
+    lengths = [act["length"] for act in activities]
+    dependencies = data["dependencies"]
+    
+    dep_tuples = []
+    for dep in dependencies:
+        dep_tuples.append((dep["from"], dep["to"]))
+    
+    order, total_time = plan_trip(n, lengths, dep_tuples)
+    
+    if order is None:
+        print(json.dumps({"error": "No solution found"}))
+    else:
+        result = {
+            "order": order,
+            "total_time": total_time
+        }
+        print(json.dumps(result))
+
+if __name__ == '__main__':
     main()

@@ -1,97 +1,69 @@
 from z3 import *
-import json
 
 def main():
-    cities = ['Brussels', 'Bucharest', 'Stuttgart', 'Mykonos', 'Madrid', 'Helsinki', 'Split', 'London']
-    required_days = [4, 3, 4, 2, 2, 5, 3, 5]
-    madrid_index = cities.index('Madrid')
-    stuttgart_index = cities.index('Stuttgart')
-    
-    undirected_flights = [
-        ('Helsinki', 'London'),
-        ('Split', 'Madrid'),
-        ('Helsinki', 'Madrid'),
-        ('London', 'Madrid'),
-        ('Brussels', 'London'),
-        ('Bucharest', 'London'),
-        ('Brussels', 'Bucharest'),
-        ('Bucharest', 'Madrid'),
-        ('Split', 'Helsinki'),
-        ('Mykonos', 'Madrid'),
-        ('Stuttgart', 'London'),
-        ('Helsinki', 'Brussels'),
-        ('Brussels', 'Madrid'),
-        ('Split', 'London'),
-        ('Stuttgart', 'Split'),
-        ('London', 'Mykonos')
+    cities = ["Brussels", "Bucharest", "Stuttgart", "Mykonos", "Madrid", "Helsinki", "Split", "London"]
+    days_req = [4, 3, 4, 2, 2, 5, 3, 5]  # Corresponding to the cities list
+
+    # Direct flights as tuples of indices
+    flights = [
+        (5, 7), (6, 4), (5, 4), (7, 4), (0, 7), (1, 7), (0, 1), (1, 4),
+        (6, 5), (3, 4), (2, 7), (5, 0), (0, 4), (6, 7), (2, 6), (7, 3)
     ]
-    city_to_index = {city: idx for idx, city in enumerate(cities)}
-    undirected_flights_int = []
-    for a, b in undirected_flights:
-        undirected_flights_int.append((city_to_index[a], city_to_index[b]))
-    
-    directed_flights = []
-    for (a, b) in undirected_flights_int:
-        directed_flights.append((a, b))
-        directed_flights.append((b, a))
+    direct_flights_set = set()
+    for (a, b) in flights:
+        direct_flights_set.add((a, b))
+        direct_flights_set.add((b, a))
     
     s = Solver()
-    num_days = 21
-    s_days = [Int(f's_{d}') for d in range(1, num_days+1)]
-    e_days = [Int(f'e_{d}') for d in range(1, num_days+1)]
+    c = [Int('c_%d' % i) for i in range(21)]
     
-    for d in range(num_days):
-        s.add(s_days[d] >= 0, s_days[d] < 8)
-        s.add(e_days[d] >= 0, e_days[d] < 8)
+    # Each day's city must be between 0 and 7
+    for i in range(21):
+        s.add(c[i] >= 0, c[i] < 8)
     
-    for d in range(num_days-1):
-        s.add(s_days[d+1] == e_days[d])
+    # Flight constraints: consecutive days must be the same or have a direct flight
+    for i in range(20):
+        current = c[i]
+        next_city = c[i+1]
+        s.add(If(current != next_city,
+                 Or([And(current == a, next_city == b) for (a, b) in direct_flights_set]),
+                 True))
     
-    for d in range(num_days):
-        no_travel = (s_days[d] == e_days[d])
-        options = []
-        for (a, b) in directed_flights:
-            options.append(And(s_days[d] == a, e_days[d] == b))
-        travel_ok = Or(options)
-        s.add(Or(no_travel, travel_ok))
-    
-    total_per_city = [0] * 8
-    for c in range(8):
+    # Count the days for each city
+    for city_idx in range(8):
         total = 0
-        for d in range(num_days):
-            in_city = Or(s_days[d] == c, And(s_days[d] != e_days[d], e_days[d] == c))
-            total += If(in_city, 1, 0)
-        total_per_city[c] = total
-        s.add(total == required_days[c])
+        # Day 0 (first day)
+        total += If(c[0] == city_idx, 1, 0)
+        for d in range(1, 21):
+            # Condition: either today's city is the target, or yesterday was the target and today is different
+            cond = Or(c[d] == city_idx, And(c[d-1] == city_idx, c[d] != city_idx))
+            total += If(cond, 1, 0)
+        s.add(total == days_req[city_idx])
     
-    for d in range(19):
-        in_madrid = Or(s_days[d] == madrid_index, And(s_days[d] != e_days[d], e_days[d] == madrid_index))
-        s.add(Not(in_madrid))
-    in_madrid20 = Or(s_days[19] == madrid_index, And(s_days[19] != e_days[19], e_days[19] == madrid_index))
-    in_madrid21 = Or(s_days[20] == madrid_index, And(s_days[20] != e_days[20], e_days[20] == madrid_index))
-    s.add(in_madrid20, in_madrid21)
+    # Madrid must be on day 20 and 21
+    s.add(c[19] == 4)  # Day 20
+    s.add(c[20] == 4)  # Day 21
     
-    stuttgart_early_days = []
-    for d in range(4):
-        in_stuttgart = Or(s_days[d] == stuttgart_index, And(s_days[d] != e_days[d], e_days[d] == stuttgart_index))
-        stuttgart_early_days.append(in_stuttgart)
-    s.add(Or(stuttgart_early_days))
+    # Stuttgart must be present between day 1 and day 4 (indices 0 to 3)
+    stuttgart_conds = []
+    for d in range(4):  # Days 1 to 4: indices 0,1,2,3
+        if d == 0:
+            cond = (c[0] == 2)
+        else:
+            cond = Or(c[d] == 2, And(c[d-1] == 2, c[d] != 2))
+        stuttgart_conds.append(cond)
+    s.add(Or(stuttgart_conds))
     
     if s.check() == sat:
-        m = s.model()
+        model = s.model()
         itinerary_list = []
-        for d in range(num_days):
-            s_val = m.eval(s_days[d]).as_long()
-            e_val = m.eval(e_days[d]).as_long()
-            cities_today = {cities[s_val]}
-            if s_val != e_val:
-                cities_today.add(cities[e_val])
-            place_str = ", ".join(sorted(cities_today))
-            itinerary_list.append({"day": d+1, "place": place_str})
-        result = {'itinerary': itinerary_list}
-        print(json.dumps(result))
+        for i in range(21):
+            city_index = model.eval(c[i]).as_long()
+            itinerary_list.append({"day": i+1, "place": cities[city_index]})
+        result = {"itinerary": itinerary_list}
+        print(result)
     else:
-        print('{"error": "No solution found"}')
+        print("No solution found")
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

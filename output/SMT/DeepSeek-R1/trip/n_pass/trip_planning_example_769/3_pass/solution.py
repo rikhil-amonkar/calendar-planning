@@ -1,112 +1,117 @@
 from z3 import *
+import json
 
-def solve_planning():
-    # Constants
-    num_rooms = 2
-    horizon = 3  # Three actions needed
-
-    # State variables
-    robot = [Int(f'robot_{i}') for i in range(horizon + 1)]
-    key = [Int(f'key_{i}') for i in range(horizon + 1)]
-    door_locked = [Bool(f'door_locked_{i}') for i in range(horizon + 1)]
-    actions = [Int(f'action_{i}') for i in range(horizon)]  # Actions at steps 0,1,2
-
-    # Solver
+def main():
+    # Define cities
+    City, (Porto, Prague, Reykjavik, Santorini, Amsterdam, Munich) = EnumSort('City', 
+        ['Porto', 'Prague', 'Reykjavik', 'Santorini', 'Amsterdam', 'Munich'])
+    
+    # City name mapping
+    city_dict = {
+        'Porto': Porto,
+        'Prague': Prague,
+        'Reykjavik': Reykjavik,
+        'Santorini': Santorini,
+        'Amsterdam': Amsterdam,
+        'Munich': Munich
+    }
+    
+    # Flight connections (undirected)
+    base_edges = [
+        ("Porto", "Amsterdam"),
+        ("Munich", "Amsterdam"),
+        ("Reykjavik", "Amsterdam"),
+        ("Munich", "Porto"),
+        ("Prague", "Reykjavik"),
+        ("Reykjavik", "Munich"),
+        ("Amsterdam", "Santorini"),
+        ("Prague", "Amsterdam"),
+        ("Prague", "Munich")
+    ]
+    
+    # Create directed flights (both directions)
+    directed_edges = []
+    for a, b in base_edges:
+        a_const = city_dict[a]
+        b_const = city_dict[b]
+        directed_edges.append((a_const, b_const))
+        directed_edges.append((b_const, a_const))
+    
+    # Required days per city
+    required_days = {
+        Porto: 5,
+        Prague: 4,
+        Reykjavik: 4,
+        Santorini: 2,
+        Amsterdam: 2,
+        Munich: 4
+    }
+    
     s = Solver()
-
-    # Initial state constraints (corrected to match problem)
-    s.add(robot[0] == 0)   # Robot starts in room0
-    s.add(key[0] == 1)      # Key starts in room1 (as specified)
-    s.add(door_locked[0] == True)  # Door initially locked
-
-    # Goal constraint
-    s.add(robot[horizon] == 1)  # Robot must be in room1 at the end
-
-    # State variable domains
-    for t in range(horizon + 1):
-        s.add(Or(robot[t] == 0, robot[t] == 1))
-        s.add(Or(key[t] == 0, key[t] == 1))
-
-    # Action definitions: 
-    # 0=no-op, 1=unlock, 2=move01, 3=move10, 
-    # 4=pass_key_to_room0, 5=pass_key_to_room1
-    for t in range(horizon):
-        action = actions[t]
-        
-        # No-op action
-        noop = And(action == 0,
-                   robot[t+1] == robot[t],
-                   key[t+1] == key[t],
-                   door_locked[t+1] == door_locked[t])
-        
-        # Unlock action
-        unlock = And(action == 1,
-                     robot[t] == key[t],  # Robot and key in same room
-                     door_locked[t] == True,
-                     robot[t+1] == robot[t],
-                     key[t+1] == key[t],
-                     door_locked[t+1] == False)
-        
-        # Move from room0 to room1
-        move01 = And(action == 2,
-                     robot[t] == 0,
-                     door_locked[t] == False,
-                     robot[t+1] == 1,
-                     key[t+1] == key[t],
-                     door_locked[t+1] == door_locked[t])
-        
-        # Move from room1 to room0
-        move10 = And(action == 3,
-                     robot[t] == 1,
-                     door_locked[t] == False,
-                     robot[t+1] == 0,
-                     key[t+1] == key[t],
-                     door_locked[t+1] == door_locked[t])
-        
-        # Pass key from room1 to room0
-        pass_to0 = And(action == 4,
-                       key[t] == 1,
-                       robot[t] == 0,
-                       key[t+1] == 0,
-                       robot[t+1] == robot[t],
-                       door_locked[t+1] == door_locked[t])
-        
-        # Pass key from room0 to room1
-        pass_to1 = And(action == 5,
-                       key[t] == 0,
-                       robot[t] == 1,
-                       key[t+1] == 1,
-                       robot[t+1] == robot[t],
-                       door_locked[t+1] == door_locked[t])
-        
-        # Action selection constraints
-        s.add(Or(noop, unlock, move01, move10, pass_to0, pass_to1))
-        
-        # Ensure action value is valid
-        s.add(action >= 0, action <= 5)
-
-    # Solve and output the plan
+    
+    # Day variables (0-indexed: day0=Day1)
+    S = [Const(f'S_{d}', City) for d in range(16)]  # Start city each day
+    E = [Const(f'E_{d}', City) for d in range(16)]  # End city each day
+    
+    # Constraint 1: Continuity between days
+    for d in range(15):
+        s.add(E[d] == S[d+1])
+    
+    # Constraint 2: Valid transitions (stay or direct flight)
+    for d in range(16):
+        stay = (S[d] == E[d])
+        flight = Or([And(S[d] == a, E[d] == b) for a, b in directed_edges])
+        s.add(Or(stay, flight))
+    
+    # Constraint 3: Total days per city
+    cities = [Porto, Prague, Reykjavik, Santorini, Amsterdam, Munich]
+    for c in cities:
+        total = 0
+        for d in range(16):
+            # Count if city appears at start or end of day
+            total += If(Or(S[d] == c, E[d] == c), 1, 0)
+        s.add(total == required_days[c])
+    
+    # Constraint 4: Event requirements
+    # Reykjavik wedding between days 4-7 (0-indexed days 3-6)
+    reykjavik_days = [Or(S[d] == Reykjavik, E[d] == Reykjavik) for d in [3,4,5,6]]
+    s.add(Or(reykjavik_days))
+    
+    # Munich meeting between days 7-10 (0-indexed days 6-9)
+    munich_days = [Or(S[d] == Munich, E[d] == Munich) for d in [6,7,8,9]]
+    s.add(Or(munich_days))
+    
+    # Amsterdam conference on days 14-15 (must be full days)
+    s.add(S[13] == Amsterdam)  # Day14 start
+    s.add(E[13] == Amsterdam)  # Day14 end
+    s.add(S[14] == Amsterdam)  # Day15 start
+    s.add(E[14] == Amsterdam)  # Day15 end
+    
+    # Solve and output
     if s.check() == sat:
         m = s.model()
-        plan = []
-        for t in range(horizon):
-            a = m[actions[t]].as_long()
-            if a == 0:
-                plan.append("no-op")
-            elif a == 1:
-                plan.append("unlock_door")
-            elif a == 2:
-                plan.append("move(room0, room1)")
-            elif a == 3:
-                plan.append("move(room1, room0)")
-            elif a == 4:
-                plan.append("pass_key(room1->room0)")
-            elif a == 5:
-                plan.append("pass_key(room0->room1)")
-        print("Plan found:")
-        for step, action in enumerate(plan):
-            print(f"Step {step}: {action}")
+        itinerary = []
+        # Helper to get city name from Z3 value
+        def get_city_name(val):
+            return val.decl().name()
+        
+        # Build detailed itinerary
+        for day in range(1, 17):  # Days 1-16
+            idx = day - 1
+            start_city = get_city_name(m[S[idx]])
+            end_city = get_city_name(m[E[idx]])
+            
+            # Always add start of day
+            itinerary.append({"day": day, "place": start_city})
+            
+            # If traveled, add end city separately
+            if start_city != end_city:
+                itinerary.append({"day": day, "place": end_city})
+        
+        # Output in required format
+        print(json.dumps({"itinerary": itinerary}, indent=2))
     else:
-        print("No plan found")
+        print("No solution found")
 
-solve_planning()
+if __name__ == "__main__":
+    main()

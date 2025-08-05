@@ -1,219 +1,110 @@
 from z3 import *
+import json
 
 def main():
-    for n_steps in range(4, 11):  # Try step counts from 4 to 10
-        states = list(range(n_steps + 1))
+    cities = ["Reykjavik", "Stuttgart", "Istanbul", "Vilnius", "Seville", "Geneva", "Valencia", "Munich"]
+    durations = {
+        "Reykjavik": 4,
+        "Stuttgart": 4,
+        "Istanbul": 4,
+        "Vilnius": 4,
+        "Seville": 3,
+        "Geneva": 5,
+        "Valencia": 5,
+        "Munich": 3
+    }
+    
+    bidirectional = [
+        ("Geneva", "Istanbul"),
+        ("Reykjavik", "Munich"),
+        ("Stuttgart", "Valencia"),
+        ("Stuttgart", "Istanbul"),
+        ("Munich", "Geneva"),
+        ("Istanbul", "Vilnius"),
+        ("Valencia", "Seville"),
+        ("Valencia", "Istanbul"),
+        ("Seville", "Munich"),
+        ("Munich", "Istanbul"),
+        ("Valencia", "Geneva"),
+        ("Valencia", "Munich")
+    ]
+    unidirectional = [
+        ("Reykjavik", "Stuttgart"),
+        ("Vilnius", "Munich")
+    ]
+    
+    directed_flights = set()
+    for a, b in bidirectional:
+        directed_flights.add((a, b))
+        directed_flights.add((b, a))
+    for a, b in unidirectional:
+        directed_flights.add((a, b))
+    
+    solver = Solver()
+    num_days = 25
+    
+    city_day = {}
+    for d in range(1, num_days + 1):
+        for c in cities:
+            city_day[(d, c)] = Bool(f"day_{d}_{c}")
+    
+    for d in range(1, num_days + 1):
+        solver.add(ExactlyOne([city_day[(d, c)] for c in cities]))
+    
+    for d in [1, 2, 3, 4]:
+        solver.add(city_day[(d, "Reykjavik")])
+    solver.add(city_day[(5, "Stuttgart")])
+    solver.add(city_day[(7, "Stuttgart")])
+    for d in [13, 14, 15]:
+        solver.add(city_day[(d, "Munich")])
+    for d in [19, 20, 21, 22]:
+        solver.add(city_day[(d, "Istanbul")])
+    
+    for d in range(2, num_days + 1):
+        for a in cities:
+            for b in cities:
+                if a == b:
+                    continue
+                if (a, b) not in directed_flights:
+                    solver.add(Implies(
+                        And(city_day[(d-1, a)], city_day[(d, b)]),
+                        False
+                    ))
+    
+    for c in cities:
+        total_days = Sum([If(city_day[(d, c)], 1, 0) for d in range(1, num_days + 1)])
+        solver.add(total_days == durations[c])
+    
+    if solver.check() == sat:
+        model = solver.model()
+        itinerary = []
+        daily_places = [None] * num_days
         
-        monkey_loc = [Int(f'monkey_loc_{i}') for i in states]
-        box_loc = [Int(f'box_loc_{i}') for i in states]
-        monkey_on_box = [Bool(f'monkey_on_box_{i}') for i in states]
-        monkey_has_banana = [Bool(f'monkey_has_banana_{i}') for i in states]
-        actions = [Int(f'action_{i}') for i in range(n_steps)]
+        for d in range(1, num_days + 1):
+            for c in cities:
+                if model.eval(city_day[(d, c)]):
+                    daily_places[d-1] = c
+                    break
         
-        solver = Solver()
+        current_city = daily_places[0]
+        start_day = 1
+        for day in range(1, num_days):
+            if daily_places[day] != daily_places[day-1]:
+                itinerary.append({
+                    "day_range": f"Day {start_day}-{day}",
+                    "place": daily_places[day-1]
+                })
+                start_day = day + 1
+                current_city = daily_places[day]
+        itinerary.append({
+            "day_range": f"Day {start_day}-{num_days}",
+            "place": daily_places[num_days-1]
+        })
         
-        # Initial state
-        solver.add(monkey_loc[0] == 0)  # A
-        solver.add(box_loc[0] == 1)     # B
-        solver.add(Not(monkey_on_box[0]))
-        solver.add(Not(monkey_has_banana[0]))
-        
-        # Goal state
-        solver.add(monkey_has_banana[n_steps])
-        
-        # Domain constraints for locations
-        for i in states:
-            solver.add(Or(monkey_loc[i] == 0, monkey_loc[i] == 1, monkey_loc[i] == 2))
-            solver.add(Or(box_loc[i] == 0, box_loc[i] == 1, box_loc[i] == 2))
-        
-        # Action constraints for each step
-        for i in range(n_steps):
-            # Constraint: Once box is at C, keep it there
-            solver.add(Implies(box_loc[i] == 2, box_loc[i+1] == 2))
-            
-            # Constraint: Monkey stays at C when box is there
-            solver.add(Implies(And(box_loc[i] == 2, monkey_loc[i] == 2), 
-                             monkey_loc[i+1] == 2))
-            
-            cases = []
-            
-            # Move from A to B
-            cases.append(And(
-                actions[i] == 0,
-                monkey_loc[i] == 0,
-                Not(monkey_on_box[i]),
-                monkey_loc[i+1] == 1,
-                box_loc[i+1] == box_loc[i],
-                monkey_on_box[i+1] == monkey_on_box[i],
-                monkey_has_banana[i+1] == monkey_has_banana[i]
-            ))
-            
-            # Move from B to A
-            cases.append(And(
-                actions[i] == 1,
-                monkey_loc[i] == 1,
-                Not(monkey_on_box[i]),
-                monkey_loc[i+1] == 0,
-                box_loc[i+1] == box_loc[i],
-                monkey_on_box[i+1] == monkey_on_box[i],
-                monkey_has_banana[i+1] == monkey_has_banana[i]
-            ))
-            
-            # Move from B to C
-            cases.append(And(
-                actions[i] == 2,
-                monkey_loc[i] == 1,
-                Not(monkey_on_box[i]),
-                monkey_loc[i+1] == 2,
-                box_loc[i+1] == box_loc[i],
-                monkey_on_box[i+1] == monkey_on_box[i],
-                monkey_has_banana[i+1] == monkey_has_banana[i]
-            ))
-            
-            # Move from C to B
-            cases.append(And(
-                actions[i] == 3,
-                monkey_loc[i] == 2,
-                Not(monkey_on_box[i]),
-                monkey_loc[i+1] == 1,
-                box_loc[i+1] == box_loc[i],
-                monkey_on_box[i+1] == monkey_on_box[i],
-                monkey_has_banana[i+1] == monkey_has_banana[i]
-            ))
-            
-            # Climb at A
-            cases.append(And(
-                actions[i] == 4,
-                monkey_loc[i] == 0,
-                box_loc[i] == 0,
-                Not(monkey_on_box[i]),
-                monkey_on_box[i+1],
-                monkey_loc[i+1] == 0,
-                box_loc[i+1] == 0,
-                monkey_has_banana[i+1] == monkey_has_banana[i]
-            ))
-            
-            # Climb at B
-            cases.append(And(
-                actions[i] == 5,
-                monkey_loc[i] == 1,
-                box_loc[i] == 1,
-                Not(monkey_on_box[i]),
-                monkey_on_box[i+1],
-                monkey_loc[i+1] == 1,
-                box_loc[i+1] == 1,
-                monkey_has_banana[i+1] == monkey_has_banana[i]
-            ))
-            
-            # Climb at C
-            cases.append(And(
-                actions[i] == 6,
-                monkey_loc[i] == 2,
-                box_loc[i] == 2,
-                Not(monkey_on_box[i]),
-                monkey_on_box[i+1],
-                monkey_loc[i+1] == 2,
-                box_loc[i+1] == 2,
-                monkey_has_banana[i+1] == monkey_has_banana[i]
-            ))
-            
-            # Push from A to B
-            cases.append(And(
-                actions[i] == 7,
-                monkey_loc[i] == 0,
-                box_loc[i] == 0,
-                Not(monkey_on_box[i]),
-                monkey_loc[i+1] == 1,
-                box_loc[i+1] == 1,
-                Not(monkey_on_box[i+1]),
-                monkey_has_banana[i+1] == monkey_has_banana[i]
-            ))
-            
-            # Push from B to A
-            cases.append(And(
-                actions[i] == 8,
-                monkey_loc[i] == 1,
-                box_loc[i] == 1,
-                Not(monkey_on_box[i]),
-                monkey_loc[i+1] == 0,
-                box_loc[i+1] == 0,
-                Not(monkey_on_box[i+1]),
-                monkey_has_banana[i+1] == monkey_has_banana[i]
-            ))
-            
-            # Push from B to C
-            cases.append(And(
-                actions[i] == 9,
-                monkey_loc[i] == 1,
-                box_loc[i] == 1,
-                Not(monkey_on_box[i]),
-                monkey_loc[i+1] == 2,
-                box_loc[i+1] == 2,
-                Not(monkey_on_box[i+1]),
-                monkey_has_banana[i+1] == monkey_has_banana[i]
-            ))
-            
-            # Push from C to B
-            cases.append(And(
-                actions[i] == 10,
-                monkey_loc[i] == 2,
-                box_loc[i] == 2,
-                Not(monkey_on_box[i]),
-                monkey_loc[i+1] == 1,
-                box_loc[i+1] == 1,
-                Not(monkey_on_box[i+1]),
-                monkey_has_banana[i+1] == monkey_has_banana[i]
-            ))
-            
-            # Grasp banana
-            cases.append(And(
-                actions[i] == 11,
-                monkey_on_box[i],
-                monkey_loc[i] == 2,
-                Not(monkey_has_banana[i]),
-                monkey_has_banana[i+1],
-                monkey_loc[i+1] == monkey_loc[i],
-                box_loc[i+1] == box_loc[i],
-                monkey_on_box[i+1] == monkey_on_box[i]
-            ))
-            
-            # No-op action
-            cases.append(And(
-                actions[i] == 12,
-                monkey_loc[i+1] == monkey_loc[i],
-                box_loc[i+1] == box_loc[i],
-                monkey_on_box[i+1] == monkey_on_box[i],
-                monkey_has_banana[i+1] == monkey_has_banana[i]
-            ))
-            
-            solver.add(Or(cases))
-        
-        if solver.check() == sat:
-            model = solver.model()
-            action_names = {
-                0: "move_A_B",
-                1: "move_B_A",
-                2: "move_B_C",
-                3: "move_C_B",
-                4: "climb_A",
-                5: "climb_B",
-                6: "climb_C",
-                7: "push_A_B",
-                8: "push_B_A",
-                9: "push_B_C",
-                10: "push_C_B",
-                11: "grasp",
-                12: "noop"
-            }
-            plan = []
-            for i in range(n_steps):
-                action_val = model[actions[i]].as_long()
-                plan.append(action_names[action_val])
-            print(f"Plan found in {n_steps} steps:")
-            for step, action in enumerate(plan):
-                print(f"Step {step}: {action}")
-            return
-    print("No plan found within 10 steps")
+        result = {"itinerary": itinerary}
+        print(json.dumps(result, indent=2))
+    else:
+        print("No solution found")
 
 if __name__ == "__main__":
     main()

@@ -1,184 +1,170 @@
 from z3 import *
+import json
 
 def main():
+    friends = [
+        {"name": "Betty", "location": "Russian Hill", "start_avail": 0, "end_avail": 870, "duration": 105},
+        {"name": "Melissa", "location": "Alamo Square", "start_avail": 30, "end_avail": 495, "duration": 105},
+        {"name": "Joshua", "location": "Haight-Ashbury", "start_avail": 195, "end_avail": 780, "duration": 90},
+        {"name": "Jeffrey", "location": "Marina District", "start_avail": 195, "end_avail": 720, "duration": 45},
+        {"name": "James", "location": "Bayview", "start_avail": 0, "end_avail": 660, "duration": 90},
+        {"name": "Anthony", "location": "Chinatown", "start_avail": 165, "end_avail": 270, "duration": 75},
+        {"name": "Timothy", "location": "Presidio", "start_avail": 210, "end_avail": 345, "duration": 90},
+        {"name": "Emily", "location": "Sunset District", "start_avail": 630, "end_avail": 750, "duration": 120}
+    ]
+    
     travel_times = {
-        "Union Square": {
-            "Russian Hill": 13,
-            "Alamo Square": 15,
-            "Haight-Ashbury": 18,
-            "Marina District": 18,
-            "Bayview": 15,
-            "Chinatown": 7,
-            "Presidio": 24,
-            "Sunset District": 27
-        },
-        "Russian Hill": {
-            "Union Square": 10,
-            "Alamo Square": 15,
-            "Haight-Ashbury": 17,
-            "Marina District": 7,
-            "Bayview": 23,
-            "Chinatown": 9,
-            "Presidio": 14,
-            "Sunset District": 23
-        },
-        "Alamo Square": {
-            "Union Square": 14,
-            "Russian Hill": 13,
-            "Haight-Ashbury": 5,
-            "Marina District": 15,
-            "Bayview": 16,
-            "Chinatown": 15,
-            "Presidio": 17,
-            "Sunset District": 16
-        },
-        "Haight-Ashbury": {
-            "Union Square": 19,
-            "Russian Hill": 17,
-            "Alamo Square": 5,
-            "Marina District": 17,
-            "Bayview": 18,
-            "Chinatown": 19,
-            "Presidio": 15,
-            "Sunset District": 15
-        },
-        "Marina District": {
-            "Union Square": 16,
-            "Russian Hill": 8,
-            "Alamo Square": 15,
-            "Haight-Ashbury": 16,
-            "Bayview": 27,
-            "Chinatown": 15,
-            "Presidio": 10,
-            "Sunset District": 19
-        },
-        "Bayview": {
-            "Union Square": 18,
-            "Russian Hill": 23,
-            "Alamo Square": 16,
-            "Haight-Ashbury": 19,
-            "Marina District": 27,
-            "Chinatown": 19,
-            "Presidio": 32,
-            "Sunset District": 23
-        },
-        "Chinatown": {
-            "Union Square": 7,
-            "Russian Hill": 7,
-            "Alamo Square": 17,
-            "Haight-Ashbury": 19,
-            "Marina District": 12,
-            "Bayview": 20,
-            "Presidio": 19,
-            "Sunset District": 29
-        },
-        "Presidio": {
-            "Union Square": 22,
-            "Russian Hill": 14,
-            "Alamo Square": 19,
-            "Haight-Ashbury": 15,
-            "Marina District": 11,
-            "Bayview": 31,
-            "Chinatown": 21,
-            "Sunset District": 15
-        },
-        "Sunset District": {
-            "Union Square": 30,
-            "Russian Hill": 24,
-            "Alamo Square": 17,
-            "Haight-Ashbury": 15,
-            "Marina District": 21,
-            "Bayview": 22,
-            "Chinatown": 30,
-            "Presidio": 16
-        }
+        ("Union Square", "Russian Hill"): 13,
+        ("Union Square", "Alamo Square"): 15,
+        ("Union Square", "Haight-Ashbury"): 18,
+        ("Union Square", "Marina District"): 18,
+        ("Union Square", "Bayview"): 15,
+        ("Union Square", "Chinatown"): 7,
+        ("Union Square", "Presidio"): 24,
+        ("Union Square", "Sunset District"): 27,
+        ("Russian Hill", "Union Square"): 10,
+        ("Russian Hill", "Alamo Square"): 15,
+        ("Russian Hill", "Haight-Ashbury"): 17,
+        ("Russian Hill", "Marina District"): 7,
+        ("Russian Hill", "Bayview"): 23,
+        ("Russian Hill", "Chinatown"): 9,
+        ("Russian Hill", "Presidio"): 14,
+        ("Russian Hill", "Sunset District"): 23,
+        ("Alamo Square", "Union Square"): 14,
+        ("Alamo Square", "Russian Hill"): 13,
+        ("Alamo Square", "Haight-Ashbury"): 5,
+        ("Alamo Square", "Marina District"): 15,
+        ("Alamo Square", "Bayview"): 16,
+        ("Alamo Square", "Chinatown"): 15,
+        ("Alamo Square", "Presidio"): 17,
+        ("Alamo Square", "Sunset District"): 16,
+        ("Haight-Ashbury", "Union Square"): 19,
+        ("Haight-Ashbury", "Russian Hill"): 17,
+        ("Haight-Ashbury", "Alamo Square"): 5,
+        ("Haight-Ashbury", "Marina District"): 17,
+        ("Haight-Ashbury", "Bayview"): 18,
+        ("Haight-Ashbury", "Chinatown"): 19,
+        ("Haight-Ashbury", "Presidio"): 15,
+        ("Haight-Ashbury", "Sunset District"): 15,
+        ("Marina District", "Union Square"): 16,
+        ("Marina District", "Russian Hill"): 8,
+        ("Marina District", "Alamo Square"): 15,
+        ("Marina District", "Haight-Ashbury"): 16,
+        ("Marina District", "Bayview"): 27,
+        ("Marina District", "Chinatown"): 15,
+        ("Marina District", "Presidio"): 10,
+        ("Marina District", "Sunset District"): 19,
+        ("Bayview", "Union Square"): 18,
+        ("Bayview", "Russian Hill"): 23,
+        ("Bayview", "Alamo Square"): 16,
+        ("Bayview", "Haight-Ashbury"): 19,
+        ("Bayview", "Marina District"): 27,
+        ("Bayview", "Chinatown"): 19,
+        ("Bayview", "Presidio"): 32,
+        ("Bayview", "Sunset District"): 23,
+        ("Chinatown", "Union Square"): 7,
+        ("Chinatown", "Russian Hill"): 7,
+        ("Chinatown", "Alamo Square"): 17,
+        ("Chinatown", "Haight-Ashbury"): 19,
+        ("Chinatown", "Marina District"): 12,
+        ("Chinatown", "Bayview"): 20,
+        ("Chinatown", "Presidio"): 19,
+        ("Chinatown", "Sunset District"): 29,
+        ("Presidio", "Union Square"): 22,
+        ("Presidio", "Russian Hill"): 14,
+        ("Presidio", "Alamo Square"): 19,
+        ("Presidio", "Haight-Ashbury"): 15,
+        ("Presidio", "Marina District"): 11,
+        ("Presidio", "Bayview"): 31,
+        ("Presidio", "Chinatown"): 21,
+        ("Presidio", "Sunset District"): 15,
+        ("Sunset District", "Union Square"): 30,
+        ("Sunset District", "Russian Hill"): 24,
+        ("Sunset District", "Alamo Square"): 17,
+        ("Sunset District", "Haight-Ashbury"): 15,
+        ("Sunset District", "Marina District"): 21,
+        ("Sunset District", "Bayview"): 22,
+        ("Sunset District", "Chinatown"): 30,
+        ("Sunset District", "Presidio"): 16
     }
 
-    friends = [
-        {"name": "Betty", "location": "Russian Hill", "min_duration": 105, "avail_start": -120, "avail_end": 465},
-        {"name": "Melissa", "location": "Alamo Square", "min_duration": 105, "avail_start": 30, "avail_end": 495},
-        {"name": "Joshua", "location": "Haight-Ashbury", "min_duration": 90, "avail_start": 195, "avail_end": 600},
-        {"name": "Jeffrey", "location": "Marina District", "min_duration": 45, "avail_start": 195, "avail_end": 540},
-        {"name": "James", "location": "Bayview", "min_duration": 90, "avail_start": -90, "avail_end": 660},
-        {"name": "Anthony", "location": "Chinatown", "min_duration": 75, "avail_start": 165, "avail_end": 270},
-        {"name": "Timothy", "location": "Presidio", "min_duration": 90, "avail_start": 210, "avail_end": 345},
-        {"name": "Emily", "location": "Sunset District", "min_duration": 120, "avail_start": 630, "avail_end": 750}
-    ]
-
     opt = Optimize()
-
-    meet = [Bool(f"meet_{i}") for i in range(8)]
-    start = [Int(f"start_{i}") for i in range(8)]
-    end = [Int(f"end_{i}") for i in range(8)]
-
-    opt.add(meet[7] == True)
-    opt.add(start[7] == 630)
-    opt.add(end[7] == 750)
-
-    for i in range(8):
-        opt.add(If(meet[i],
-                   And(
-                       start[i] >= friends[i]["avail_start"],
-                       end[i] == start[i] + friends[i]["min_duration"],
-                       end[i] <= friends[i]["avail_end"]
-                   ),
-                   True))
-
-    for i in range(8):
-        loc_i = friends[i]["location"]
-        from_union = travel_times["Union Square"][loc_i]
-        constraints = [start[i] >= from_union]
-        for j in range(8):
-            if j == i:
-                continue
-            loc_j = friends[j]["location"]
-            travel_time = travel_times[loc_j][loc_i]
-            constraints.append(And(meet[j], end[j] + travel_time <= start[i]))
-        opt.add(If(meet[i], Or(constraints), True))
-
-    for i in range(8):
-        for j in range(i+1, 8):
-            loc_i = friends[i]["location"]
-            loc_j = friends[j]["location"]
-            time_ij = travel_times[loc_i][loc_j]
-            time_ji = travel_times[loc_j][loc_i]
-            opt.add(If(And(meet[i], meet[j]),
-                     Or(
-                         end[i] + time_ij <= start[j],
-                         end[j] + time_ji <= start[i]
-                     ),
-                     True))
-
-    num_meetings = Sum([If(meet[i], 1, 0) for i in range(8)])
-    opt.maximize(num_meetings)
-
+    n = len(friends)
+    
+    meet_vars = [Bool(f"meet_{f['name']}") for f in friends]
+    start_vars = [Int(f"start_{f['name']}") for f in friends]
+    
+    for i, friend in enumerate(friends):
+        loc = friend['location']
+        travel_time_to_loc = travel_times[("Union Square", loc)]
+        opt.add(Implies(meet_vars[i], start_vars[i] >= travel_time_to_loc))
+    
+    for i, friend in enumerate(friends):
+        opt.add(Implies(meet_vars[i], start_vars[i] >= friend['start_avail']))
+        opt.add(Implies(meet_vars[i], start_vars[i] + friend['duration'] <= friend['end_avail']))
+    
+    before = [[Bool(f"before_{i}_{j}") if i != j else None for j in range(n)] for i in range(n)]
+    for i in range(n):
+        for j in range(n):
+            if i != j:
+                opt.add(Implies(And(meet_vars[i], meet_vars[j]), Or(before[i][j], before[j][i])))
+                opt.add(Implies(And(meet_vars[i], meet_vars[j]), Not(And(before[i][j], before[j][i]))))
+                loc_i = friends[i]['location']
+                loc_j = friends[j]['location']
+                travel_time_ij = travel_times[(loc_i, loc_j)]
+                opt.add(Implies(And(meet_vars[i], meet_vars[j], before[i][j]),
+                                  start_vars[j] >= start_vars[i] + friends[i]['duration'] + travel_time_ij))
+    
+    for i, friend in enumerate(friends):
+        loc = friend['location']
+        travel_back = travel_times.get((loc, "Union Square"))
+        if travel_back is not None:
+            opt.add(Implies(meet_vars[i], start_vars[i] + friend['duration'] + travel_back <= 870))
+    
+    total_meetings = Sum([If(meet_vars[i], 1, 0) for i in range(n)])
+    opt.maximize(total_meetings)
+    
     if opt.check() == sat:
         model = opt.model()
         scheduled_meetings = []
-        for i in range(8):
-            if is_true(model[meet[i]]):
-                start_val = model[start[i]].as_long()
-                hours = 9 + start_val // 60
-                minutes = start_val % 60
-                start_str = f"{hours:02d}:{minutes:02d}"
-
-                end_val = model[end[i]].as_long()
-                hours = 9 + end_val // 60
-                minutes = end_val % 60
-                end_str = f"{hours:02d}:{minutes:02d}"
-
+        for i, friend in enumerate(friends):
+            if model.eval(meet_vars[i]):
+                start_val = model.eval(start_vars[i])
+                start_minutes = start_val.as_long() if isinstance(start_val, IntNumRef) else int(str(start_val))
                 scheduled_meetings.append({
-                    "action": "meet",
-                    "person": friends[i]["name"],
-                    "start_time": start_str,
-                    "end_time": end_str
+                    'name': friend['name'],
+                    'start_minutes': start_minutes,
+                    'duration': friend['duration']
                 })
-        scheduled_meetings.sort(key=lambda x: x["start_time"])
-        result = {"itinerary": scheduled_meetings}
+        
+        scheduled_meetings.sort(key=lambda x: x['start_minutes'])
+        itinerary = []
+        for meet in scheduled_meetings:
+            total_minutes_start = meet['start_minutes']
+            hours_start = total_minutes_start // 60
+            minutes_start = total_minutes_start % 60
+            start_hour = 9 + hours_start
+            start_time_str = f"{start_hour:02d}:{minutes_start:02d}"
+            
+            end_minutes = total_minutes_start + meet['duration']
+            hours_end = end_minutes // 60
+            minutes_end = end_minutes % 60
+            end_hour = 9 + hours_end
+            end_time_str = f"{end_hour:02d}:{minutes_end:02d}"
+            
+            itinerary.append({
+                "action": "meet",
+                "person": meet['name'],
+                "start_time": start_time_str,
+                "end_time": end_time_str
+            })
+        
+        result = {"itinerary": itinerary}
         print("SOLUTION:")
-        print(result)
+        print(json.dumps(result))
     else:
-        print("No solution found")
+        print("SOLUTION:")
+        print(json.dumps({"itinerary": []}))
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

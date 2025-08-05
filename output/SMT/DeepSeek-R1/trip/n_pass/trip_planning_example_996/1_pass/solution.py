@@ -1,92 +1,104 @@
 from z3 import *
-import json
 
 def main():
-    cities = ["Mykonos", "Prague", "Valencia", "Riga", "Zurich", "Bucharest", "Nice"]
-    city_index = {c: i for i, c in enumerate(cities)}
-    days_list = [3, 3, 5, 5, 5, 5, 2]  # Corresponding to cities order
+    # Define the cities
+    cities = ["Valencia", "Riga", "Prague", "Mykonos", "Zurich", "Bucharest", "Nice"]
+    City = Datatype('City')
+    for c in cities:
+        City.declare(c)
+    City = City.create()
+    valencia, riga, prague, mykonos, zurich, bucharest, nice = [getattr(City, c) for c in cities]
 
-    flights_list = [
-        ("Mykonos", "Nice"),
-        ("Mykonos", "Zurich"),
-        ("Prague", "Bucharest"),
-        ("Valencia", "Bucharest"),
-        ("Zurich", "Prague"),
-        ("Riga", "Nice"),
-        ("Zurich", "Riga"),
-        ("Zurich", "Bucharest"),
-        ("Zurich", "Valencia"),
-        ("Bucharest", "Riga"),
-        ("Prague", "Riga"),
-        ("Prague", "Valencia"),
-        ("Zurich", "Nice")
+    # Required days per city
+    req_days = {
+        valencia: 5,
+        riga: 5,
+        prague: 3,
+        mykonos: 3,
+        zurich: 5,
+        bucharest: 5,
+        nice: 2
+    }
+
+    # Direct flights (undirected graph, stored as bidirectional edges)
+    edges_list = [
+        ('Mykonos', 'Nice'),
+        ('Mykonos', 'Zurich'),
+        ('Prague', 'Bucharest'),
+        ('Valencia', 'Bucharest'),
+        ('Zurich', 'Prague'),
+        ('Riga', 'Nice'),
+        ('Zurich', 'Riga'),
+        ('Zurich', 'Bucharest'),
+        ('Zurich', 'Valencia'),
+        ('Bucharest', 'Riga'),
+        ('Prague', 'Riga'),
+        ('Prague', 'Valencia'),
+        ('Zurich', 'Nice')
     ]
     
-    flight_pairs = []
-    for (c1, c2) in flights_list:
-        i1 = city_index[c1]
-        i2 = city_index[c2]
-        flight_pairs.append((i1, i2))
-        flight_pairs.append((i2, i1))
-    
-    slot_city = [Int(f'slot_city_{i}') for i in range(7)]
-    start = [Int(f'start_{i}') for i in range(7)]
-    end = [Int(f'end_{i}') for i in range(7)]
+    # Create a set of directed edges (both directions)
+    allowed_edges = set()
+    for a, b in edges_list:
+        a_const = getattr(City, a)
+        b_const = getattr(City, b)
+        allowed_edges.add((a_const, b_const))
+        allowed_edges.add((b_const, a_const))
+
+    # Create 23 variables: x0 (start of day1), x1 (end of day1), ..., x22 (end of day22)
+    x = [Const(f'x{i}', City) for i in range(23)]
     
     s = Solver()
     
-    for i in range(7):
-        s.add(slot_city[i] >= 0)
-        s.add(slot_city[i] < 7)
+    # Constraint 1: Flight connections for consecutive days
+    for i in range(1, 23):
+        s.add(If(
+            x[i-1] != x[i],
+            Or([And(x[i-1] == a, x[i] == b) for (a, b) in allowed_edges]),
+            True
+        ))
     
-    s.add(Distinct(slot_city))
+    # Constraint 2: Total days per city
+    for city in [valencia, riga, prague, mykonos, zurich, bucharest, nice]:
+        part1 = Sum([If(x[i] == city, 1, 0) for i in range(0, 22)])  # x0 to x21
+        part2_list = []
+        for i in range(1, 23):
+            cond = And(x[i] == city, x[i-1] != city)
+            part2_list.append(If(cond, 1, 0))
+        part2 = Sum(part2_list)
+        total_days = part1 + part2
+        s.add(total_days == req_days[city])
     
-    s.add(start[0] == 1)
-    s.add(end[6] == 22)
-    
-    for i in range(7):
-        dur_expr = Int(f'dur_{i}')
-        cond = (dur_expr == days_list[0])
-        for idx in range(1, 7):
-            cond = Or(cond, And(slot_city[i] == idx, dur_expr == days_list[idx]))
-        s.add(cond)
-        s.add(end[i] == start[i] + dur_expr - 1)
-    
-    for i in range(1, 7):
-        s.add(start[i] == end[i-1])
-    
-    for i in range(6):
-        constraints = []
-        for (a, b) in flight_pairs:
-            constraints.append(And(slot_city[i] == a, slot_city[i+1] == b))
-        s.add(Or(constraints))
-    
-    mykonos_idx = city_index["Mykonos"]
-    prague_idx = city_index["Prague"]
-    
-    for i in range(7):
-        s.add(If(slot_city[i] == mykonos_idx, start[i] <= 3, True))
-        s.add(If(slot_city[i] == prague_idx, And(start[i] <= 9, end[i] >= 7), True))
-    
+    # Constraint 3: Event constraints
+    # Mykonos must be visited on at least one day between 1 and 3 (inclusive)
+    s.add(Or([x[i] == mykonos for i in range(0, 4)]))  # x0, x1, x2, x3
+    # Prague must be visited on at least one day between 7 and 9 (inclusive)
+    s.add(Or([x[i] == prague for i in range(6, 10)]))  # x6, x7, x8, x9
+
+    # Check for a solution
     if s.check() == sat:
         m = s.model()
-        slot_city_vals = [m.evaluate(slot_city[i]).as_long() for i in range(7)]
-        start_vals = [m.evaluate(start[i]).as_long() for i in range(7)]
-        end_vals = [m.evaluate(end[i]).as_long() for i in range(7)]
-        
-        itinerary_list = []
-        for d in range(1, 23):
-            for i in range(7):
-                s_i = start_vals[i]
-                e_i = end_vals[i]
-                if s_i <= d <= e_i:
-                    city_name = cities[slot_city_vals[i]]
-                    itinerary_list.append({"day": d, "place": city_name})
-        
-        result = {'itinerary': itinerary_list}
-        print(json.dumps(result))
+        city_names = {
+            valencia: "Valencia",
+            riga: "Riga",
+            prague: "Prague",
+            mykonos: "Mykonos",
+            zurich: "Zurich",
+            bucharest: "Bucharest",
+            nice: "Nice"
+        }
+        itinerary = []
+        # For day 1 to 22, the place is the end-of-day city (x1 to x22)
+        for day in range(1, 23):
+            idx = day  # x[day] is the end of day `day`
+            city_val = m[x[idx]]
+            city_str = city_names[city_val]
+            itinerary.append({"day": day, "place": city_str})
+        result = {"itinerary": itinerary}
+        # Output the result in JSON format
+        print(result)
     else:
-        print('{"itinerary": []}')
+        print("No solution found")
 
 if __name__ == "__main__":
     main()

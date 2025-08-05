@@ -1,119 +1,127 @@
 from z3 import *
 import json
 
-# Define the City datatype
-City = Datatype('City')
-City.declare('Paris')
-City.declare('Florence')
-City.declare('Vienna')
-City.declare('Porto')
-City.declare('Munich')
-City.declare('Nice')
-City.declare('Warsaw')
-City = City.create()
+def main():
+    cities = ['Paris', 'Florence', 'Vienna', 'Porto', 'Munich', 'Nice', 'Warsaw']
+    days = list(range(1, 21))  # Days 1 to 20
 
-# List of all cities
-all_cities = [City.Paris, City.Florence, City.Vienna, City.Porto, City.Munich, City.Nice, City.Warsaw]
+    # Create a dictionary for the presence variables: In[city][day]
+    In = {}
+    for city in cities:
+        In[city] = {}
+        for day in days:
+            In[city][day] = Bool(f"In_{city}_{day}")
 
-# Direct flights as tuples (both directions included)
-pairs = [
-    (City.Florence, City.Vienna),
-    (City.Paris, City.Warsaw),
-    (City.Munich, City.Vienna),
-    (City.Porto, City.Vienna),
-    (City.Warsaw, City.Vienna),
-    (City.Florence, City.Munich),
-    (City.Munich, City.Warsaw),
-    (City.Munich, City.Nice),
-    (City.Paris, City.Florence),
-    (City.Warsaw, City.Nice),
-    (City.Porto, City.Munich),
-    (City.Porto, City.Nice),
-    (City.Paris, City.Vienna),
-    (City.Nice, City.Vienna),
-    (City.Porto, City.Paris),
-    (City.Paris, City.Nice),
-    (City.Paris, City.Munich),
-    (City.Porto, City.Warsaw)
-]
+    s = Solver()
 
-direct_flights_set = set()
-for (a, b) in pairs:
-    direct_flights_set.add((a, b))
-    direct_flights_set.add((b, a))
-
-# Create Z3 solver
-solver = Solver()
-
-# Create city_end variables for 20 days: index 1 to 20
-city_end = [None]  # index 0 unused
-for d in range(1, 21):
-    var_name = 'city_end_%d' % d
-    city_end.append(Const(var_name, City))
-
-# Constraint: Start in Porto on day 1
-solver.add(city_end[1] == City.Porto)
-
-# Define visited[d][c] for each day d and each city c
-visited = {}
-for d in range(1, 21):
-    for c in all_cities:
-        if d == 1:
-            # On day 1, only the end city is visited
-            visited[(d, c)] = (city_end[d] == c)
+    # Fixed constraints for Porto: only days 1,2,3
+    for day in days:
+        if day in [1, 2, 3]:
+            s.add(In['Porto'][day])
         else:
-            # On other days, the city is visited if it is the end city of that day or the end city of the previous day (and we flew out of it on this day)
-            visited[(d, c)] = Or(city_end[d] == c, And(city_end[d-1] == c, city_end[d] != city_end[d-1]))
+            s.add(Not(In['Porto'][day]))
 
-# Fixed constraints: Porto on days 1,2,3
-for d in [1,2,3]:
-    solver.add(visited[(d, City.Porto)] == True)
+    # Fixed constraints for Vienna: only days 19,20
+    for day in days:
+        if day in [19, 20]:
+            s.add(In['Vienna'][day])
+        else:
+            s.add(Not(In['Vienna'][day]))
 
-# Fixed constraints: Warsaw on days 13,14,15
-for d in [13,14,15]:
-    solver.add(visited[(d, City.Warsaw)] == True)
+    # Fixed constraints for Warsaw: only days 13,14,15
+    for day in days:
+        if day in [13, 14, 15]:
+            s.add(In['Warsaw'][day])
+        else:
+            s.add(Not(In['Warsaw'][day]))
 
-# Fixed constraints: Vienna on days 19,20
-for d in [19,20]:
-    solver.add(visited[(d, City.Vienna)] == True)
+    # Each day, we are in exactly 1 or 2 cities
+    for day in days:
+        exprs = [If(In[city][day], 1, 0) for city in cities]
+        total = Sum(exprs)
+        s.add(Or(total == 1, total == 2))
 
-# Total days per city
-total_days = {}
-for city in all_cities:
-    total_days[city] = 0
-    for d in range(1,21):
-        total_days[city] += If(visited[(d, city)], 1, 0)
+    # Define the flight edges (directed)
+    flight_edges = set()
+    bidirectional_pairs = [
+        ('Florence', 'Vienna'),
+        ('Paris', 'Warsaw'),
+        ('Munich', 'Vienna'),
+        ('Porto', 'Vienna'),
+        ('Warsaw', 'Vienna'),
+        ('Munich', 'Warsaw'),
+        ('Munich', 'Nice'),
+        ('Paris', 'Florence'),
+        ('Warsaw', 'Nice'),
+        ('Porto', 'Munich'),
+        ('Porto', 'Nice'),
+        ('Paris', 'Vienna'),
+        ('Nice', 'Vienna'),
+        ('Porto', 'Paris'),
+        ('Paris', 'Nice'),
+        ('Paris', 'Munich'),
+        ('Porto', 'Warsaw')
+    ]
+    for (a, b) in bidirectional_pairs:
+        flight_edges.add((a, b))
+        flight_edges.add((b, a))
+    flight_edges.add(('Florence', 'Munich'))  # Directed flight
 
-solver.add(total_days[City.Paris] == 5)
-solver.add(total_days[City.Florence] == 3)
-solver.add(total_days[City.Vienna] == 2)
-solver.add(total_days[City.Porto] == 3)
-solver.add(total_days[City.Munich] == 5)
-solver.add(total_days[City.Nice] == 5)
-solver.add(total_days[City.Warsaw] == 3)
+    # Constraints for consecutive days
+    for d in range(1, 20):  # d from 1 to 19
+        # Count the number of cities on day d and d+1
+        count_d = Sum([If(In[city][d], 1, 0) for city in cities])
+        count_next = Sum([If(In[city][d+1], 1, 0) for city in cities])
+        
+        # Case 1: we are in exactly one city on day d
+        same_set = And([In[city][d] == In[city][d+1] for city in cities])
+        case1 = And(count_d == 1, count_next == 1, same_set)
+        
+        # Case 2: we are in two cities on day d and one city on day d+1
+        # Exactly one city is left (i.e., in day d but not day d+1)
+        left_cities = [And(In[city][d], Not(In[city][d+1])) for city in cities]
+        exactly_one_left = (Sum([If(cond, 1, 0) for cond in left_cities]) == 1)
+        
+        # For the flight: there must be a pair (A,B) such that:
+        #   A is left, B is stayed, and (A->B) is in flight_edges.
+        flight_options = []
+        for A in cities:
+            for B in cities:
+                if A != B and (A, B) in flight_edges:
+                    cond = And(
+                        In[A][d],
+                        Not(In[A][d+1]),
+                        In[B][d],
+                        In[B][d+1]
+                    )
+                    flight_options.append(cond)
+        case2 = And(count_d == 2, count_next == 1, exactly_one_left, Or(flight_options))
+        
+        s.add(Or(case1, case2))
 
-# Flight constraints: for days 2 to 20, if city_end changes, the pair must be in direct_flights_set
-for d in range(2, 21):
-    c_prev = city_end[d-1]
-    c_curr = city_end[d]
-    # If the end city changes from previous day to current day, then the pair must be in the direct_flights_set
-    cond = (c_prev != c_curr)
-    allowed_pairs = []
-    for (c1, c2) in direct_flights_set:
-        allowed_pairs.append(And(c_prev == c1, c_curr == c2))
-    solver.add(Implies(cond, Or(allowed_pairs)))
+    # Total days for non-fixed cities
+    total_days = {
+        'Paris': 5,
+        'Florence': 3,
+        'Munich': 5,
+        'Nice': 5
+    }
+    for city, total in total_days.items():
+        exprs = [If(In[city][day], 1, 0) for day in days]
+        s.add(Sum(exprs) == total)
 
-# Check and get model
-if solver.check() == sat:
-    m = solver.model()
-    itinerary = []
-    for d in range(1, 21):
-        for city in all_cities:
-            if is_true(m.eval(visited[(d, city)]):
-                city_name = str(city)
-                itinerary.append({"day": d, "place": city_name})
-    # Output as JSON
-    result = {"itinerary": itinerary}
-    print(json.dumps(result, indent=2))
-else:
-    print("No solution found")
+    # Solve the problem
+    if s.check() == sat:
+        m = s.model()
+        itinerary = []
+        for day in days:
+            for city in cities:
+                if is_true(m.evaluate(In[city][day])):
+                    itinerary.append({"day": day, "city": city})
+        result = {'itinerary': itinerary}
+        print(json.dumps(result))
+    else:
+        print("No solution found")
+
+if __name__ == '__main__':
+    main()

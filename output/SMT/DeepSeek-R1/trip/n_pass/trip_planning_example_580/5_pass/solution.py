@@ -1,79 +1,45 @@
 from z3 import *
 
-def main():
-    s = Solver()
-    
-    base_durations = [6, 6, 6, 6, 2]
-    reduced_durations = [3, 3, 3, 3, 1]
-    city_names = ['Geneva', 'Porto', 'Paris', 'Oslo', 'Reykjavik']
-    
-    # Exactly one city must be reduced
-    reduced_flags = [Bool(f'reduced_{i}') for i in range(5)]
-    s.add(Sum([If(flag, 1, 0) for flag in reduced_flags]) == 1)
-    
-    # City assignment to positions 0-4
-    city_at_pos = [Int(f'city_at_pos_{k}') for k in range(5)]
-    for k in range(5):
-        s.add(city_at_pos[k] >= 0, city_at_pos[k] <= 4)
-    s.add(Distinct(city_at_pos))
-    
-    # Start and end days for each position
-    pos_start = [Int(f'pos_start_{k}') for k in range(5)]
-    pos_end = [Int(f'pos_end_{k}') for k in range(5)]
-    
-    # First position starts at day 1
-    s.add(pos_start[0] == 1)
-    
-    # Create contiguous schedule
-    for k in range(5):
-        city_idx = city_at_pos[k]
-        dur_k = Int(f'dur_k_{k}')
-        
-        # Set duration based on reduction status
-        for i in range(5):
-            duration_val = If(reduced_flags[i], reduced_durations[i], base_durations[i])
-            s.add(If(city_idx == i, dur_k == duration_val, True))
-            
-        # End day calculation (inclusive)
-        s.add(pos_end[k] == pos_start[k] + dur_k - 1)
-        
-        # Next position starts immediately after current ends
-        if k < 4:
-            s.add(pos_start[k+1] == pos_end[k] + 1)
-    
-    # Entire trip must end on day 23
-    s.add(pos_end[4] == 23)
-    
-    # Validate total duration is 23 days
-    total_days = Int('total_days')
-    s.add(total_days == pos_end[4] - pos_start[0] + 1)
-    s.add(total_days == 23)
-    
-    if s.check() == sat:
-        model = s.model()
-        itinerary = []
-        current_day = 1
-        for k in range(5):
-            city_index = model.evaluate(city_at_pos[k]).as_long()
-            start_val = model.evaluate(pos_start[k]).as_long()
-            end_val = model.evaluate(pos_end[k]).as_long()
-            duration = end_val - start_val + 1
-            
-            # Verify contiguous scheduling
-            assert start_val == current_day
-            current_day = end_val + 1
-            
-            itinerary.append({
-                'day_range': f'Day {start_val}-{end_val}',
-                'place': city_names[city_index],
-                'duration': duration
-            })
-        
-        # Final validation
-        assert current_day - 1 == 23
-        print({'itinerary': itinerary})
-    else:
-        print("No solution found")
+d0, d1, d2, d3, d4 = Ints('d0 d1 d2 d3 d4')  # Durations for each city
+s = Solver()
 
-if __name__ == '__main__':
-    main()
+# Minimum stays (Oslo must be at least 4 days)
+s.add(d0 >= 3, d1 >= 3, d2 >= 3, d3 >= 3, d4 >= 4)
+
+# Maximum stay limit (prevent overly long stays)
+s.add(d0 <= 6, d1 <= 6, d2 <= 6, d3 <= 6, d4 <= 6)
+
+# Total trip must be exactly 23 days
+s.add(d0 + d1 + d2 + d3 + d4 == 23)
+
+# At least one non-Oslo city must have >3 days
+s.add(Or(d0 > 3, d1 > 3, d2 > 3, d3 > 3))
+
+if s.check() == sat:
+    m = s.model()
+    durations = [
+        m.eval(d0).as_long(),
+        m.eval(d1).as_long(),
+        m.eval(d2).as_long(),
+        m.eval(d3).as_long(),
+        m.eval(d4).as_long()
+    ]
+    # Calculate day ranges
+    starts = [1]
+    ends = []
+    for i, days in enumerate(durations):
+        end = starts[i] + days - 1
+        ends.append(end)
+        if i < 4:  # Not last city
+            starts.append(end + 1)  # Next city starts the following day
+            
+    cities = ['Geneva', 'Paris', 'Porto', 'Reykjavik', 'Oslo']
+    itinerary = []
+    for i in range(5):
+        day_range = f"Day {starts[i]}-{ends[i]}"
+        itinerary.append({'day_range': day_range, 'place': cities[i]})
+    
+    plan = {'itinerary': itinerary}
+    print("Plan found:", plan)
+else:
+    print("No valid plan found")

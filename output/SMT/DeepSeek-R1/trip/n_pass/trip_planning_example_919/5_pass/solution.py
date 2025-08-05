@@ -1,98 +1,108 @@
 from z3 import *
+import json
 
 def main():
-    # City indices and their required stay durations
-    city_names = ["Vienna", "Milan", "Rome", "Riga", "Lisbon", "Vilnius", "Oslo"]
-    L_arr = [4, 2, 3, 2, 3, 4, 3]  # days per city
-
-    # Directed flight connections
-    directed_edges = set()
-    bidirectional_pairs = [
-        (3, 6), (2, 6), (0, 1), (0, 5), (0, 4), (3, 1), (4, 6), (2, 4),
-        (0, 3), (0, 2), (1, 6), (0, 6), (5, 6), (5, 1), (3, 4), (1, 4)
-    ]
-    for u, v in bidirectional_pairs:
-        directed_edges.add((u, v))
-        directed_edges.add((v, u))
-    oneway_edges = [(2, 3), (3, 5)]  # Rome to Riga, Riga to Vilnius
-    for u, v in oneway_edges:
-        directed_edges.add((u, v))
-
-    # Z3 variables for city permutation
-    c = [Int('c_%d' % i) for i in range(7)]
-    # Start and end days
-    S = [Int('S_%d' % i) for i in range(7)]
-    E = [Int('E_%d' % i) for i in range(7)]
+    cities = ["Vienna", "Milan", "Rome", "Riga", "Lisbon", "Vilnius", "Oslo"]
+    City, (Vienna, Milan, Rome, Riga, Lisbon, Vilnius, Oslo) = EnumSort('City', cities)
+    city_map = {name: const for name, const in zip(cities, [Vienna, Milan, Rome, Riga, Lisbon, Vilnius, Oslo])}
     
+    # Define flight connections (bidirectional and directed)
+    bidirectional_connections = [
+        ("Riga", "Oslo"), ("Vienna", "Milan"), ("Vienna", "Vilnius"), 
+        ("Vienna", "Lisbon"), ("Riga", "Milan"), ("Lisbon", "Oslo"),
+        ("Rome", "Lisbon"), ("Vienna", "Riga"), ("Vienna", "Rome"),
+        ("Milan", "Oslo"), ("Vienna", "Oslo"), ("Vilnius", "Oslo"),
+        ("Vilnius", "Milan"), ("Riga", "Lisbon"), ("Milan", "Lisbon")
+    ]
+    directed_connections = [("Rome", "Riga"), ("Riga", "Vilnius")]
+    
+    allowed_pairs = []
+    for a, b in bidirectional_connections:
+        allowed_pairs.append((city_map[a], city_map[b]))
+        allowed_pairs.append((city_map[b], city_map[a]))
+    for a, b in directed_connections:
+        allowed_pairs.append((city_map[a], city_map[b]))
+    
+    # Create solver and itinerary variables
+    n_days = 15
+    itinerary = [Const(f'day_{i}', City) for i in range(n_days)]
     s = Solver()
     
-    # Fixed positions: Vienna first, Lisbon fifth, Oslo sixth
-    s.add(c[0] == 0)  # Vienna
-    s.add(c[5] == 4)  # Lisbon
-    s.add(c[6] == 6)  # Oslo
+    # Define presence in city for each day
+    def in_city(city, day):
+        if day == 0:
+            # Day 1: start in Vienna, end in itinerary[0]
+            return Or(city == Vienna, itinerary[0] == city)
+        else:
+            # Start is end of previous day, end is current day
+            return Or(itinerary[day-1] == city, itinerary[day] == city)
     
-    # Middle cities: positions 1-4 are permutation of Milan(1), Rome(2), Riga(3), Vilnius(5)
-    middle_indices = [1, 2, 3, 5]
-    s.add(Distinct([c[1], c[2], c[3], c[4]]))
-    for i in range(1, 5):
-        s.add(Or([c[i] == idx for idx in middle_indices]))
+    # Flight constraints
+    # Day 1 flight: from Vienna to itinerary[0]
+    s.add(If(Vienna != itinerary[0], 
+             Or([And(Vienna == f, itinerary[0] == t) for (f, t) in allowed_pairs]), 
+             True))
     
-    # Last middle city must have flight to Lisbon (cannot be Vilnius)
-    s.add(Or(c[4] == 1, c[4] == 2, c[4] == 3))
+    # Flights for subsequent days
+    for i in range(1, n_days):
+        from_city = itinerary[i-1]
+        to_city = itinerary[i]
+        flight_ok = Or([And(from_city == f, to_city == t) for (f, t) in allowed_pairs])
+        s.add(If(from_city != to_city, flight_ok, True))
     
-    # Duration helper function
-    def get_duration(city_var):
-        return If(city_var == 0, 4,
-               If(city_var == 1, 2,
-               If(city_var == 2, 3,
-               If(city_var == 3, 2,
-               If(city_var == 4, 3,
-               If(city_var == 5, 4,
-               If(city_var == 6, 3, 0)))))))
+    # Total days per city
+    total_days = {}
+    for city in [Vienna, Milan, Rome, Riga, Lisbon, Vilnius, Oslo]:
+        total_days[city] = Sum([If(in_city(city, d), 1, 0) for d in range(n_days)])
     
-    # Start/end days with flight day overlaps
-    s.add(S[0] == 1)  # Vienna starts on day 1
-    s.add(E[0] == S[0] + get_duration(c[0]) - 1)  # Vienna ends on day 4
+    s.add(total_days[Vienna] == 4)
+    s.add(total_days[Milan] == 2)
+    s.add(total_days[Rome] == 3)
+    s.add(total_days[Riga] == 2)
+    s.add(total_days[Lisbon] == 3)
+    s.add(total_days[Vilnius] == 4)
+    s.add(total_days[Oslo] == 3)
     
-    # Chain for subsequent cities
-    for i in range(1, 7):
-        s.add(S[i] == E[i-1])  # Next city starts when previous ends (flight day overlap)
-        s.add(E[i] == S[i] + get_duration(c[i]) - 1)
+    # Fixed events
+    # Must be in Vienna on days 1 and 4 (presence-based)
+    s.add(in_city(Vienna, 0))  # Day 1
+    s.add(in_city(Vienna, 3))  # Day 4
     
-    # Explicit start days for Lisbon and Oslo
-    s.add(S[5] == 11)  # Lisbon starts on day 11
-    s.add(S[6] == 13)  # Oslo starts on day 13
+    # Must be in Lisbon for at least one day between 11-13
+    s.add(Or(in_city(Lisbon, 10), in_city(Lisbon, 11), in_city(Lisbon, 12)))
     
-    # Flight connections between consecutive cities
-    for i in range(6):
-        options = []
-        for edge in directed_edges:
-            options.append(And(c[i] == edge[0], c[i+1] == edge[1]))
-        s.add(Or(options))
+    # Must be in Oslo for at least one day between 13-15
+    s.add(Or(in_city(Oslo, 12), in_city(Oslo, 13), in_city(Oslo, 14)))
     
-    # Total trip must end on day 15
-    s.add(E[6] == 15)
-    
-    # Solve and generate itinerary
+    # Solve and format output
     if s.check() == sat:
-        model = s.model()
-        perm = [model.eval(c[i]).as_long() for i in range(7)]
-        start_days = [model.eval(S[i]).as_long() for i in range(7)]
-        end_days = [model.eval(E[i]).as_long() for i in range(7)]
+        m = s.model()
+        day_cities = []
+        for i in range(n_days):
+            city_val = m[itinerary[i]]
+            for name, const in city_map.items():
+                if const.eq(city_val):
+                    day_cities.append(name)
+                    break
         
-        # Create daily itinerary
-        itinerary = []
-        for day in range(1, 16):
-            cities_today = []
-            for idx in range(7):
-                if start_days[idx] <= day <= end_days[idx]:
-                    cities_today.append(city_names[perm[idx]])
-            itinerary.append({"day": day, "city": cities_today})
+        # Group consecutive days
+        grouped = []
+        start_day = 0
+        current_city = day_cities[0]
+        for i in range(1, n_days):
+            if day_cities[i] != current_city:
+                end_day = i - 1
+                day_range = f"Day {start_day+1}-{end_day+1}" if start_day != end_day else f"Day {start_day+1}"
+                grouped.append({"day_range": day_range, "place": current_city})
+                start_day = i
+                current_city = day_cities[i]
+        end_day = n_days - 1
+        day_range = f"Day {start_day+1}-{end_day+1}" if start_day != end_day else f"Day {start_day+1}"
+        grouped.append({"day_range": day_range, "place": current_city})
         
-        result = {'itinerary': itinerary}
-        print(result)
+        print(json.dumps({"itinerary": grouped}))
     else:
-        print("No solution found")
+        print('{"itinerary": []}')
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
