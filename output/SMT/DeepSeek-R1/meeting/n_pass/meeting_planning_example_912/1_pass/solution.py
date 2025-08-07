@@ -1,246 +1,107 @@
 from z3 import *
-import json
 
-def main():
-    friends = [
-        ("Kimberly", "Presidio", 930, 960, 15),
-        ("Elizabeth", "Alamo Square", 1155, 1215, 15),
-        ("Joshua", "Marina District", 630, 855, 45),
-        ("Sandra", "Financial District", 1170, 1215, 45),
-        ("Kenneth", "Nob Hill", 765, 1305, 30),
-        ("Betty", "Sunset District", 840, 1140, 60),
-        ("Deborah", "Chinatown", 1035, 1230, 15),
-        ("Barbara", "Russian Hill", 1050, 1275, 120),
-        ("Steven", "North Beach", 1065, 1245, 90),
-        ("Daniel", "Haight-Ashbury", 1110, 1125, 15)
-    ]
-    
-    locations = [
-        "Union Square",   #0
-        "Presidio",        #1
-        "Alamo Square",    #2
-        "Marina District", #3
-        "Financial District", #4
-        "Nob Hill",        #5
-        "Sunset District", #6
-        "Chinatown",       #7
-        "Russian Hill",    #8
-        "North Beach",     #9
-        "Haight-Ashbury"   #10
-    ]
-    
-    travel_time_dict = {
-        ("Union Square", "Presidio"): 24,
-        ("Union Square", "Alamo Square"): 15,
-        ("Union Square", "Marina District"): 18,
-        ("Union Square", "Financial District"): 9,
-        ("Union Square", "Nob Hill"): 9,
-        ("Union Square", "Sunset District"): 27,
-        ("Union Square", "Chinatown"): 7,
-        ("Union Square", "Russian Hill"): 13,
-        ("Union Square", "North Beach"): 10,
-        ("Union Square", "Haight-Ashbury"): 18,
-        ("Presidio", "Union Square"): 22,
-        ("Presidio", "Alamo Square"): 19,
-        ("Presidio", "Marina District"): 11,
-        ("Presidio", "Financial District"): 23,
-        ("Presidio", "Nob Hill"): 18,
-        ("Presidio", "Sunset District"): 15,
-        ("Presidio", "Chinatown"): 21,
-        ("Presidio", "Russian Hill"): 14,
-        ("Presidio", "North Beach"): 18,
-        ("Presidio", "Haight-Ashbury"): 15,
-        ("Alamo Square", "Union Square"): 14,
-        ("Alamo Square", "Presidio"): 17,
-        ("Alamo Square", "Marina District"): 15,
-        ("Alamo Square", "Financial District"): 17,
-        ("Alamo Square", "Nob Hill"): 11,
-        ("Alamo Square", "Sunset District"): 16,
-        ("Alamo Square", "Chinatown"): 15,
-        ("Alamo Square", "Russian Hill"): 13,
-        ("Alamo Square", "North Beach"): 15,
-        ("Alamo Square", "Haight-Ashbury"): 5,
-        ("Marina District", "Union Square"): 16,
-        ("Marina District", "Presidio"): 10,
-        ("Marina District", "Alamo Square"): 15,
-        ("Marina District", "Financial District"): 17,
-        ("Marina District", "Nob Hill"): 12,
-        ("Marina District", "Sunset District"): 19,
-        ("Marina District", "Chinatown"): 15,
-        ("Marina District", "Russian Hill"): 8,
-        ("Marina District", "North Beach"): 11,
-        ("Marina District", "Haight-Ashbury"): 16,
-        ("Financial District", "Union Square"): 9,
-        ("Financial District", "Presidio"): 22,
-        ("Financial District", "Alamo Square"): 17,
-        ("Financial District", "Marina District"): 15,
-        ("Financial District", "Nob Hill"): 8,
-        ("Financial District", "Sunset District"): 30,
-        ("Financial District", "Chinatown"): 5,
-        ("Financial District", "Russian Hill"): 11,
-        ("Financial District", "North Beach"): 7,
-        ("Financial District", "Haight-Ashbury"): 19,
-        ("Nob Hill", "Union Square"): 7,
-        ("Nob Hill", "Presidio"): 17,
-        ("Nob Hill", "Alamo Square"): 11,
-        ("Nob Hill", "Marina District"): 11,
-        ("Nob Hill", "Financial District"): 9,
-        ("Nob Hill", "Sunset District"): 24,
-        ("Nob Hill", "Chinatown"): 6,
-        ("Nob Hill", "Russian Hill"): 5,
-        ("Nob Hill", "North Beach"): 8,
-        ("Nob Hill", "Haight-Ashbury"): 13,
-        ("Sunset District", "Union Square"): 30,
-        ("Sunset District", "Presidio"): 16,
-        ("Sunset District", "Alamo Square"): 17,
-        ("Sunset District", "Marina District"): 21,
-        ("Sunset District", "Financial District"): 30,
-        ("Sunset District", "Nob Hill"): 27,
-        ("Sunset District", "Chinatown"): 30,
-        ("Sunset District", "Russian Hill"): 24,
-        ("Sunset District", "North Beach"): 28,
-        ("Sunset District", "Haight-Ashbury"): 15,
-        ("Chinatown", "Union Square"): 7,
-        ("Chinatown", "Presidio"): 19,
-        ("Chinatown", "Alamo Square"): 17,
-        ("Chinatown", "Marina District"): 12,
-        ("Chinatown", "Financial District"): 5,
-        ("Chinatown", "Nob Hill"): 9,
-        ("Chinatown", "Sunset District"): 29,
-        ("Chinatown", "Russian Hill"): 7,
-        ("Chinatown", "North Beach"): 3,
-        ("Chinatown", "Haight-Ashbury"): 19,
-        ("Russian Hill", "Union Square"): 10,
-        ("Russian Hill", "Presidio"): 14,
-        ("Russian Hill", "Alamo Square"): 15,
-        ("Russian Hill", "Marina District"): 7,
-        ("Russian Hill", "Financial District"): 11,
-        ("Russian Hill", "Nob Hill"): 5,
-        ("Russian Hill", "Sunset District"): 23,
-        ("Russian Hill", "Chinatown"): 9,
-        ("Russian Hill", "North Beach"): 5,
-        ("Russian Hill", "Haight-Ashbury"): 17,
-        ("North Beach", "Union Square"): 7,
-        ("North Beach", "Presidio"): 17,
-        ("North Beach", "Alamo Square"): 16,
-        ("North Beach", "Marina District"): 9,
-        ("North Beach", "Financial District"): 8,
-        ("North Beach", "Nob Hill"): 7,
-        ("North Beach", "Sunset District"): 27,
-        ("North Beach", "Chinatown"): 6,
-        ("North Beach", "Russian Hill"): 4,
-        ("North Beach", "Haight-Ashbury"): 18,
-        ("Haight-Ashbury", "Union Square"): 19,
-        ("Haight-Ashbury", "Presidio"): 15,
-        ("Haight-Ashbury", "Alamo Square"): 5,
-        ("Haight-Ashbury", "Marina District"): 17,
-        ("Haight-Ashbury", "Financial District"): 21,
-        ("Haight-Ashbury", "Nob Hill"): 15,
-        ("Haight-Ashbury", "Sunset District"): 15,
-        ("Haight-Ashbury", "Chinatown"): 19,
-        ("Haight-Ashbury", "Russian Hill"): 17,
-        ("Haight-Ashbury", "North Beach"): 19
-    }
-    
-    loc_to_index = {loc: idx for idx, loc in enumerate(locations)}
-    
-    travel_time = [[0]*11 for _ in range(11)]
-    for i in range(11):
-        for j in range(11):
-            if i == j:
-                travel_time[i][j] = 0
-            else:
-                from_loc = locations[i]
-                to_loc = locations[j]
-                key = (from_loc, to_loc)
-                travel_time[i][j] = travel_time_dict[key]
-    
-    s = Optimize()
-    
-    meet = [Bool(f"meet_{i}") for i in range(10)]
-    start = [Real(f"start_{i}") for i in range(10)]
-    end = [Real(f"end_{i}") for i in range(10)]
-    
-    u = [Int(f"u_{i}") for i in range(11)]
-    z = [[Bool(f"z_{i}_{j}") for j in range(10)] for i in range(11)]
-    
-    meet_count = Int("meet_count")
-    s.add(meet_count == Sum([If(meet_i, 1, 0) for meet_i in meet]))
-    
-    s.add(u[0] == 0)
-    
-    for i in range(10):
-        _, _, win_start, win_end, min_dur = friends[i]
-        s.add(If(meet[i],
-                 And(start[i] >= win_start,
-                     end[i] == start[i] + min_dur,
-                     end[i] <= win_end,
-                     u[i+1] >= 1,
-                     u[i+1] <= meet_count),
-                 True))
-    
-    s.add(If(meet_count >= 1, 
-             Sum([z[0][j] for j in range(10)]) == 1, 
-             Sum([z[0][j] for j in range(10)]) == 0))
-    
-    for j in range(10):
-        in_degree = Sum([z[i][j] for i in range(11)])
-        s.add(in_degree == If(meet[j], 1, 0))
-    
-    for i in range(1, 11):
-        fi = i - 1
-        out_degree = Sum([z[i][j] for j in range(10)])
-        s.add(If(meet[fi], out_degree <= 1, out_degree == 0))
-    
-    total_edges = Sum([z[i][j] for i in range(11) for j in range(10)])
-    s.add(total_edges == meet_count)
-    
-    for i in range(11):
-        for j in range(10):
-            s.add(If(z[i][j], u[j+1] >= u[i] + 1, True))
-    
-    for i in range(11):
-        for j in range(10):
-            if i == 0:
-                s.add(If(z[i][j], start[j] >= 540 + travel_time[0][j+1], True))
-            else:
-                fi = i - 1
-                s.add(If(z[i][j], start[j] >= end[fi] + travel_time[i][j+1], True))
-    
-    s.maximize(meet_count)
-    
-    if s.check() == sat:
-        m = s.model()
-        itinerary = []
-        for i in range(10):
-            if is_true(m[meet[i]]):
-                name = friends[i][0]
-                start_val = m[start[i]]
-                end_val = m[end[i]]
-                if is_int_value(start_val):
-                    start_min = start_val.as_long()
-                else:
-                    start_min = int(str(start_val))
-                if is_int_value(end_val):
-                    end_min = end_val.as_long()
-                else:
-                    end_min = int(str(end_val))
-                start_h = start_min // 60
-                start_m = start_min % 60
-                end_h = end_min // 60
-                end_m = end_min % 60
-                start_time = f"{start_h:02d}:{start_m:02d}"
-                end_time = f"{end_h:02d}:{end_m:02d}"
-                itinerary.append({
-                    "action": "meet",
-                    "person": name,
-                    "start_time": start_time,
-                    "end_time": end_time
-                })
-        itinerary.sort(key=lambda x: x['start_time'])
-        print(json.dumps({"itinerary": itinerary}))
-    else:
-        print('{"itinerary": []}')
+# Define travel time matrix (11x11)
+T = [
+    [0, 24, 15, 18, 9, 9, 27, 7, 13, 10, 18],
+    [22, 0, 19, 11, 23, 18, 15, 21, 14, 18, 15],
+    [14, 17, 0, 15, 17, 11, 16, 15, 13, 15, 5],
+    [16, 10, 15, 0, 17, 12, 19, 15, 8, 11, 16],
+    [9, 22, 17, 15, 0, 8, 30, 5, 11, 7, 19],
+    [7, 17, 11, 11, 9, 0, 24, 6, 5, 8, 13],
+    [30, 16, 17, 21, 30, 27, 0, 30, 24, 28, 15],
+    [7, 19, 17, 12, 5, 9, 29, 0, 7, 3, 19],
+    [10, 14, 15, 7, 11, 5, 23, 9, 0, 5, 17],
+    [7, 17, 16, 9, 8, 7, 27, 6, 4, 0, 18],
+    [19, 15, 5, 17, 21, 15, 15, 19, 17, 19, 0]
+]
 
-if __name__ == "__main__":
-    main()
+# Friend data: (name, location, available_start (min from 9:00), available_end (min from 9:00), min_duration)
+friends = [
+    ("Dummy", "Union Square", 0, 0, 0),  # Dummy meeting at start
+    ("Kimberly", "Presidio", 390, 420, 15),  # 3:30PM-4:00PM
+    ("Elizabeth", "Alamo Square", 615, 675, 15),  # 7:15PM-8:15PM
+    ("Joshua", "Marina District", 90, 315, 45),  # 10:30AM-2:15PM
+    ("Sandra", "Financial District", 630, 675, 45),  # 7:30PM-8:15PM
+    ("Kenneth", "Nob Hill", 225, 765, 30),  # 12:45PM-9:45PM
+    ("Betty", "Sunset District", 300, 600, 60),  # 2:00PM-7:00PM
+    ("Deborah", "Chinatown", 495, 690, 15),  # 5:15PM-8:30PM
+    ("Barbara", "Russian Hill", 510, 735, 120),  # 5:30PM-9:15PM
+    ("Steven", "North Beach", 525, 705, 90),  # 5:45PM-8:45PM
+    ("Daniel", "Haight-Ashbury", 570, 585, 15)   # 6:30PM-6:45PM
+]
+
+n = len(friends)  # 11 meetings including dummy
+
+# Initialize Z3 optimizer
+opt = Optimize()
+
+# Meet variables for friends 1 to 10 (index 1 to 10); dummy is always met
+meet = [None] * n
+for i in range(1, n):
+    meet[i] = Bool(f'meet_{i}')
+
+# Start time variables for all meetings (including dummy)
+start = [Int(f'start_{i}') for i in range(n)]
+
+# Fix dummy meeting at time 0
+opt.add(start[0] == 0)
+
+# Constraints for each friend (if met, within availability and min duration)
+for i in range(1, n):
+    # If meeting i is held, it must start within [available_start, available_end - min_duration]
+    opt.add(Implies(meet[i], start[i] >= friends[i][2]))
+    opt.add(Implies(meet[i], start[i] + friends[i][4] <= friends[i][3]))
+
+# Travel time from start (dummy at Union Square) to any meeting
+for i in range(1, n):
+    opt.add(Implies(meet[i], start[i] >= T[0][i]))
+
+# Pairwise constraints for every pair of meetings (including dummy)
+for i in range(n):
+    for j in range(i + 1, n):
+        if i == 0:  # Dummy is always met
+            cond = meet[j]
+        else:
+            cond = And(meet[i], meet[j])
+        # If both meetings are held, ensure travel time between them
+        disj1 = (start[j] >= start[i] + friends[i][4] + T[i][j])
+        disj2 = (start[i] >= start[j] + friends[j][4] + T[j][i])
+        opt.add(Implies(cond, Or(disj1, disj2)))
+
+# Objective: maximize number of meetings
+obj = Sum([If(meet[i], 1, 0) for i in range(1, n)])
+opt.maximize(obj)
+
+# Solve and extract solution
+if opt.check() == sat:
+    m = opt.model()
+    itinerary = []
+    for i in range(1, n):
+        if m.eval(meet[i]):
+            s_val = m.eval(start[i])
+            # Convert Z3 Int to Python int
+            s_min = s_val.as_long()
+            # Calculate start time in HH:MM
+            total_min = s_min
+            hours = 9 + total_min // 60
+            minutes = total_min % 60
+            start_time = f"{int(hours):02d}:{int(minutes):02d}"
+            # Calculate end time
+            end_min = s_min + friends[i][4]
+            end_hours = 9 + end_min // 60
+            end_minutes = end_min % 60
+            end_time = f"{int(end_hours):02d}:{int(end_minutes):02d}"
+            itinerary.append({
+                "action": "meet",
+                "person": friends[i][0],
+                "start_time": start_time,
+                "end_time": end_time
+            })
+    # Sort itinerary by start time
+    itinerary.sort(key=lambda x: x['start_time'])
+    # Output as JSON
+    print({
+        "itinerary": itinerary
+    })
+else:
+    print('{"itinerary": []}')

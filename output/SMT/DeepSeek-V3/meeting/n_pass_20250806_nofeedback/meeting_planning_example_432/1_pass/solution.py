@@ -1,0 +1,34 @@
+{
+  "itinerary": [
+    {
+      "action": "meet",
+      "person": "David",
+      "start_time": "08:15",
+      "end_time": "08:45"
+    },
+    {
+      "action": "meet",
+      "person": "Barbara",
+      "start_time": "10:30",
+      "end_time": "10:45"
+    },
+    {
+      "action": "meet",
+      "person": "Kevin",
+      "start_time": "11:15",
+      "end_time": "11:45"
+    },
+    {
+      "action": "meet",
+      "person": "Joseph",
+      "start_time": "12:07",
+      "end_time": "13:37"
+    },
+    {
+      "action": "meet",
+      "person": "Jeffrey",
+      "start_time": "17:30",
+      "end_time": "18:30"
+    }
+  ]
+}

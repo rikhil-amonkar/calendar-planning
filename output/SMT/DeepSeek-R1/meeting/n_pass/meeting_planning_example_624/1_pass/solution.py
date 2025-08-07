@@ -1,187 +1,104 @@
 from z3 import *
+import json
 
 def main():
-    # Define travel time matrix
-    travel = {
-        "Golden Gate Park": {
-            "Haight-Ashbury": 7,
-            "Fisherman's Wharf": 24,
-            "The Castro": 13,
-            "Chinatown": 23,
-            "Alamo Square": 10,
-            "North Beach": 24,
-            "Russian Hill": 19
-        },
-        "Haight-Ashbury": {
-            "Golden Gate Park": 7,
-            "Fisherman's Wharf": 23,
-            "The Castro": 6,
-            "Chinatown": 19,
-            "Alamo Square": 5,
-            "North Beach": 19,
-            "Russian Hill": 17
-        },
-        "Fisherman's Wharf": {
-            "Golden Gate Park": 25,
-            "Haight-Ashbury": 22,
-            "The Castro": 26,
-            "Chinatown": 12,
-            "Alamo Square": 20,
-            "North Beach": 6,
-            "Russian Hill": 7
-        },
-        "The Castro": {
-            "Golden Gate Park": 11,
-            "Haight-Ashbury": 6,
-            "Fisherman's Wharf": 24,
-            "Chinatown": 20,
-            "Alamo Square": 8,
-            "North Beach": 20,
-            "Russian Hill": 18
-        },
-        "Chinatown": {
-            "Golden Gate Park": 23,
-            "Haight-Ashbury": 19,
-            "Fisherman's Wharf": 8,
-            "The Castro": 22,
-            "Alamo Square": 17,
-            "North Beach": 3,
-            "Russian Hill": 7
-        },
-        "Alamo Square": {
-            "Golden Gate Park": 9,
-            "Haight-Ashbury": 5,
-            "Fisherman's Wharf": 19,
-            "The Castro": 8,
-            "Chinatown": 16,
-            "North Beach": 15,
-            "Russian Hill": 13
-        },
-        "North Beach": {
-            "Golden Gate Park": 22,
-            "Haight-Ashbury": 18,
-            "Fisherman's Wharf": 5,
-            "The Castro": 22,
-            "Chinatown": 6,
-            "Alamo Square": 16,
-            "Russian Hill": 4
-        },
-        "Russian Hill": {
-            "Golden Gate Park": 21,
-            "Haight-Ashbury": 17,
-            "Fisherman's Wharf": 7,
-            "The Castro": 21,
-            "Chinatown": 9,
-            "Alamo Square": 15,
-            "North Beach": 5
-        }
-    }
-    
-    # Define friends' data (times in minutes from 9:00 AM)
-    friends = [
-        {'name': 'Carol', 'location': 'Haight-Ashbury', 'start_avail': 750, 'end_avail': 810, 'min_dur': 60},
-        {'name': 'Laura', 'location': "Fisherman's Wharf", 'start_avail': 165, 'end_avail': 750, 'min_dur': 60},
-        {'name': 'Karen', 'location': "The Castro", 'start_avail': 0, 'end_avail': 300, 'min_dur': 75},
-        {'name': 'Elizabeth', 'location': "Chinatown", 'start_avail': 195, 'end_avail': 750, 'min_dur': 75},
-        {'name': 'Deborah', 'location': "Alamo Square", 'start_avail': 180, 'end_avail': 360, 'min_dur': 105},
-        {'name': 'Jason', 'location': "North Beach", 'start_avail': 345, 'end_avail': 600, 'min_dur': 90},
-        {'name': 'Steven', 'location': "Russian Hill", 'start_avail': 345, 'end_avail': 570, 'min_dur': 120}
+    # Travel time matrix: 8x8 (index 0 to 7)
+    # Locations: 
+    # 0: Golden Gate Park
+    # 1: Haight-Ashbury
+    # 2: Fisherman's Wharf
+    # 3: The Castro
+    # 4: Chinatown
+    # 5: Alamo Square
+    # 6: North Beach
+    # 7: Russian Hill
+    T = [
+        [0, 7, 24, 13, 23, 10, 24, 19],
+        [7, 0, 23, 6, 19, 5, 19, 17],
+        [25, 22, 0, 26, 12, 20, 6, 7],
+        [11, 6, 24, 0, 20, 8, 20, 18],
+        [23, 19, 8, 22, 0, 17, 3, 7],
+        [9, 5, 19, 8, 16, 0, 15, 13],
+        [22, 18, 5, 22, 6, 16, 0, 4],
+        [21, 17, 7, 21, 9, 15, 5, 0]
     ]
     
-    # Create Z3 variables
-    meet_vars = [Bool(f"meet_{f['name']}") for f in friends]
-    start_vars = [Int(f"start_{f['name']}") for f in friends]
-    end_vars = [Int(f"end_{f['name']}") for f in friends]
+    friends_data = [
+        {'name': 'Carol', 'loc': 1, 'start_avail': 1290, 'end_avail': 1350, 'duration': 60},
+        {'name': 'Laura', 'loc': 2, 'start_avail': 705, 'end_avail': 1290, 'duration': 60},
+        {'name': 'Karen', 'loc': 3, 'start_avail': 435, 'end_avail': 840, 'duration': 75},
+        {'name': 'Elizabeth', 'loc': 4, 'start_avail': 735, 'end_avail': 1290, 'duration': 75},
+        {'name': 'Deborah', 'loc': 5, 'start_avail': 720, 'end_avail': 900, 'duration': 105},
+        {'name': 'Jason', 'loc': 6, 'start_avail': 885, 'end_avail': 1140, 'duration': 90},
+        {'name': 'Steven', 'loc': 7, 'start_avail': 885, 'end_avail': 1110, 'duration': 120}
+    ]
     
-    # Initialize solver with optimization
-    opt = Optimize()
+    n = len(friends_data)
+    meet = [Bool(f'meet_{i}') for i in range(n)]
+    start = [Int(f'start_{i}') for i in range(n)]
     
-    # Add constraints for each friend
-    for i, friend in enumerate(friends):
-        meet = meet_vars[i]
-        start = start_vars[i]
-        end = end_vars[i]
-        
-        # If meeting, constrain within window and duration
-        opt.add(If(meet,
-                   And(start >= friend['start_avail'],
-                       start <= friend['end_avail'] - friend['min_dur'],
-                       end == start + friend['min_dur']),
-                   True))
+    s = Optimize()
     
-    # Travel constraints from start location (Golden Gate Park)
-    start_loc = "Golden Gate Park"
-    for i, friend in enumerate(friends):
-        loc = friend['location']
-        travel_time = travel[start_loc][loc]
-        opt.add(If(meet_vars[i], start_vars[i] >= travel_time, True))
+    # Constraints for each friend
+    for i in range(n):
+        loc_i = friends_data[i]['loc']
+        s.add(Implies(meet[i], 
+                      And(
+                          start[i] >= 540 + T[0][loc_i],
+                          start[i] >= friends_data[i]['start_avail'],
+                          start[i] + friends_data[i]['duration'] <= friends_data[i]['end_avail']
+                      )))
     
-    # Travel constraints between every pair of friends
-    n = len(friends)
+    # Constraints for pairs of friends
+    before = {}
     for i in range(n):
         for j in range(i+1, n):
-            meet_i = meet_vars[i]
-            meet_j = meet_vars[j]
-            start_i = start_vars[i]
-            end_i = end_vars[i]
-            loc_i = friends[i]['location']
-            start_j = start_vars[j]
-            end_j = end_vars[j]
-            loc_j = friends[j]['location']
-            
-            travel_ij = travel[loc_i][loc_j]
-            travel_ji = travel[loc_j][loc_i]
-            
-            opt.add(If(And(meet_i, meet_j),
-                       Or(start_j >= end_i + travel_ij,
-                          start_i >= end_j + travel_ji),
-                       True))
+            b = Bool(f'b_{i}_{j}')
+            before[(i, j)] = b
+            loc_i = friends_data[i]['loc']
+            loc_j = friends_data[j]['loc']
+            s.add(Implies(And(meet[i], meet[j]),
+                          Or(
+                              And(b, start[i] + friends_data[i]['duration'] + T[loc_i][loc_j] <= start[j]),
+                              And(Not(b), start[j] + friends_data[j]['duration'] + T[loc_j][loc_i] <= start[i])
+                          )))
     
     # Maximize the number of meetings
-    total_meetings = Sum([If(meet_vars[i], 1, 0) for i in range(n)])
-    opt.maximize(total_meetings)
+    total_meet = Sum([If(meet[i], 1, 0) for i in range(n)])
+    s.maximize(total_meet)
     
-    # Check and get the model
-    if opt.check() == sat:
-        m = opt.model()
-        scheduled_meetings = []
-        for i, friend in enumerate(friends):
-            if m.evaluate(meet_vars[i]):
-                start_val = m.evaluate(start_vars[i]).as_long()
-                end_val = m.evaluate(end_vars[i]).as_long()
-                
-                # Convert to absolute time (from minutes to HH:MM)
-                start_hour = 9 + start_val // 60
-                start_minute = start_val % 60
-                end_hour = 9 + end_val // 60
-                end_minute = end_val % 60
-                
+    if s.check() == sat:
+        m = s.model()
+        itinerary = []
+        for i in range(n):
+            if m.eval(meet[i]):
+                start_val = m.eval(start[i])
+                if isinstance(start_val, IntNumRef):
+                    start_min = start_val.as_long()
+                else:
+                    start_min = int(str(start_val))
+                end_min = start_min + friends_data[i]['duration']
+                # Convert minutes to HH:MM
+                start_hour = start_min // 60
+                start_minute = start_min % 60
+                end_hour = end_min // 60
+                end_minute = end_min % 60
                 start_str = f"{start_hour:02d}:{start_minute:02d}"
                 end_str = f"{end_hour:02d}:{end_minute:02d}"
-                
-                scheduled_meetings.append({
-                    'person': friend['name'],
-                    'start': start_val,
-                    'start_str': start_str,
-                    'end_str': end_str
+                itinerary.append({
+                    "action": "meet",
+                    "person": friends_data[i]['name'],
+                    "start_time": start_str,
+                    "end_time": end_str
                 })
-        
         # Sort by start time
-        scheduled_meetings.sort(key=lambda x: x['start'])
-        itinerary = [{
-            "action": "meet",
-            "person": mtg['person'],
-            "start_time": mtg['start_str'],
-            "end_time": mtg['end_str']
-        } for mtg in scheduled_meetings]
-        
-        # Output as JSON
-        import json
+        itinerary.sort(key=lambda x: x['start_time'])
         result = {"itinerary": itinerary}
         print("SOLUTION:")
         print(json.dumps(result, indent=2))
     else:
-        print("No solution found")
+        print("SOLUTION:")
+        print(json.dumps({"itinerary": []}))
 
 if __name__ == "__main__":
     main()

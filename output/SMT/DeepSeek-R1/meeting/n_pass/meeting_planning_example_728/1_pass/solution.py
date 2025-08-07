@@ -2,203 +2,143 @@ from z3 import *
 import json
 
 def main():
-    # Meeting data: index, friend, district, available_start, available_end, min_duration
-    meetings = [
-        (0, "Elizabeth", "Financial District", 60, 225, 75),
-        (1, "Joseph", "Union Square", 165, 345, 120),
-        (2, "Ashley", "Russian Hill", 150, 750, 45),
-        (3, "Karen", "Mission District", 315, 780, 30),
-        (4, "Richard", "Fisherman's Wharf", 330, 510, 30),
-        (5, "Kimberly", "Haight-Ashbury", 315, 510, 105),
-        (6, "Helen", "Sunset District", 345, 705, 105),
-        (7, "Robert", "Presidio", 765, 825, 60)
+    friends = [
+        ("Karen", "Mission District", 30, (14*60+15, 22*60)),
+        ("Richard", "Fisherman's Wharf", 30, (14*60+30, 17*60+30)),
+        ("Robert", "Presidio", 60, (21*60+45, 22*60+45)),
+        ("Joseph", "Union Square", 120, (11*60+45, 14*60+45)),
+        ("Helen", "Sunset District", 105, (14*60+45, 20*60+45)),
+        ("Elizabeth", "Financial District", 75, (10*60, 12*60+45)),
+        ("Kimberly", "Haight-Ashbury", 105, (14*60+15, 17*60+30)),
+        ("Ashley", "Russian Hill", 45, (11*60+30, 21*60+30))
     ]
     
-    districts = [meeting[2] for meeting in meetings]
-    
-    # Travel times dictionary
-    travel_times = {
-        "Marina District": {
-            "Mission District": 20,
-            "Fisherman's Wharf": 10,
-            "Presidio": 10,
-            "Union Square": 16,
-            "Sunset District": 19,
-            "Financial District": 17,
-            "Haight-Ashbury": 16,
-            "Russian Hill": 8
-        },
-        "Mission District": {
-            "Marina District": 19,
-            "Fisherman's Wharf": 22,
-            "Presidio": 25,
-            "Union Square": 15,
-            "Sunset District": 24,
-            "Financial District": 15,
-            "Haight-Ashbury": 12,
-            "Russian Hill": 15
-        },
-        "Fisherman's Wharf": {
-            "Marina District": 9,
-            "Mission District": 22,
-            "Presidio": 17,
-            "Union Square": 13,
-            "Sunset District": 27,
-            "Financial District": 11,
-            "Haight-Ashbury": 22,
-            "Russian Hill": 7
-        },
-        "Presidio": {
-            "Marina District": 11,
-            "Mission District": 26,
-            "Fisherman's Wharf": 19,
-            "Union Square": 22,
-            "Sunset District": 15,
-            "Financial District": 23,
-            "Haight-Ashbury": 15,
-            "Russian Hill": 14
-        },
-        "Union Square": {
-            "Marina District": 18,
-            "Mission District": 14,
-            "Fisherman's Wharf": 15,
-            "Presidio": 24,
-            "Sunset District": 27,
-            "Financial District": 9,
-            "Haight-Ashbury": 18,
-            "Russian Hill": 13
-        },
-        "Sunset District": {
-            "Marina District": 21,
-            "Mission District": 25,
-            "Fisherman's Wharf": 29,
-            "Presidio": 16,
-            "Union Square": 30,
-            "Financial District": 30,
-            "Haight-Ashbury": 15,
-            "Russian Hill": 24
-        },
-        "Financial District": {
-            "Marina District": 15,
-            "Mission District": 17,
-            "Fisherman's Wharf": 10,
-            "Presidio": 22,
-            "Union Square": 9,
-            "Sunset District": 30,
-            "Haight-Ashbury": 19,
-            "Russian Hill": 11
-        },
-        "Haight-Ashbury": {
-            "Marina District": 17,
-            "Mission District": 11,
-            "Fisherman's Wharf": 23,
-            "Presidio": 15,
-            "Union Square": 19,
-            "Sunset District": 15,
-            "Financial District": 21,
-            "Russian Hill": 17
-        },
-        "Russian Hill": {
-            "Marina District": 7,
-            "Mission District": 16,
-            "Fisherman's Wharf": 7,
-            "Presidio": 14,
-            "Union Square": 10,
-            "Sunset District": 23,
-            "Financial District": 11,
-            "Haight-Ashbury": 17
-        }
+    travel = {
+        ("Marina District", "Mission District"): 20,
+        ("Marina District", "Fisherman's Wharf"): 10,
+        ("Marina District", "Presidio"): 10,
+        ("Marina District", "Union Square"): 16,
+        ("Marina District", "Sunset District"): 19,
+        ("Marina District", "Financial District"): 17,
+        ("Marina District", "Haight-Ashbury"): 16,
+        ("Marina District", "Russian Hill"): 8,
+        ("Mission District", "Marina District"): 19,
+        ("Mission District", "Fisherman's Wharf"): 22,
+        ("Mission District", "Presidio"): 25,
+        ("Mission District", "Union Square"): 15,
+        ("Mission District", "Sunset District"): 24,
+        ("Mission District", "Financial District"): 15,
+        ("Mission District", "Haight-Ashbury"): 12,
+        ("Mission District", "Russian Hill"): 15,
+        ("Fisherman's Wharf", "Marina District"): 9,
+        ("Fisherman's Wharf", "Mission District"): 22,
+        ("Fisherman's Wharf", "Presidio"): 17,
+        ("Fisherman's Wharf", "Union Square"): 13,
+        ("Fisherman's Wharf", "Sunset District"): 27,
+        ("Fisherman's Wharf", "Financial District"): 11,
+        ("Fisherman's Wharf", "Haight-Ashbury"): 22,
+        ("Fisherman's Wharf", "Russian Hill"): 7,
+        ("Presidio", "Marina District"): 11,
+        ("Presidio", "Mission District"): 26,
+        ("Presidio", "Fisherman's Wharf"): 19,
+        ("Presidio", "Union Square"): 22,
+        ("Presidio", "Sunset District"): 15,
+        ("Presidio", "Financial District"): 23,
+        ("Presidio", "Haight-Ashbury"): 15,
+        ("Presidio", "Russian Hill"): 14,
+        ("Union Square", "Marina District"): 18,
+        ("Union Square", "Mission District"): 14,
+        ("Union Square", "Fisherman's Wharf"): 15,
+        ("Union Square", "Presidio"): 24,
+        ("Union Square", "Sunset District"): 27,
+        ("Union Square", "Financial District"): 9,
+        ("Union Square", "Haight-Ashbury"): 18,
+        ("Union Square", "Russian Hill"): 13,
+        ("Sunset District", "Marina District"): 21,
+        ("Sunset District", "Mission District"): 25,
+        ("Sunset District", "Fisherman's Wharf"): 29,
+        ("Sunset District", "Presidio"): 16,
+        ("Sunset District", "Union Square"): 30,
+        ("Sunset District", "Financial District"): 30,
+        ("Sunset District", "Haight-Ashbury"): 15,
+        ("Sunset District", "Russian Hill"): 24,
+        ("Financial District", "Marina District"): 15,
+        ("Financial District", "Mission District"): 17,
+        ("Financial District", "Fisherman's Wharf"): 10,
+        ("Financial District", "Presidio"): 22,
+        ("Financial District", "Union Square"): 9,
+        ("Financial District", "Sunset District"): 30,
+        ("Financial District", "Haight-Ashbury"): 19,
+        ("Financial District", "Russian Hill"): 11,
+        ("Haight-Ashbury", "Marina District"): 17,
+        ("Haight-Ashbury", "Mission District"): 11,
+        ("Haight-Ashbury", "Fisherman's Wharf"): 23,
+        ("Haight-Ashbury", "Presidio"): 15,
+        ("Haight-Ashbury", "Union Square"): 19,
+        ("Haight-Ashbury", "Sunset District"): 15,
+        ("Haight-Ashbury", "Financial District"): 21,
+        ("Haight-Ashbury", "Russian Hill"): 17,
+        ("Russian Hill", "Marina District"): 7,
+        ("Russian Hill", "Mission District"): 16,
+        ("Russian Hill", "Fisherman's Wharf"): 7,
+        ("Russian Hill", "Presidio"): 14,
+        ("Russian Hill", "Union Square"): 10,
+        ("Russian Hill", "Sunset District"): 23,
+        ("Russian Hill", "Financial District"): 11,
+        ("Russian Hill", "Haight-Ashbury"): 17
     }
     
-    # Precompute travel_matrix[i][j]: travel time from district of meeting i to district of meeting j
-    travel_matrix = [[0] * 8 for _ in range(8)]
-    for i in range(8):
-        for j in range(8):
-            from_dist = meetings[i][2]
-            to_dist = meetings[j][2]
-            travel_matrix[i][j] = travel_times[from_dist][to_dist]
-    
-    # Precompute marina_travel[i]: travel time from Marina to district of meeting i
-    marina_travel = [travel_times["Marina District"][meetings[i][2]] for i in range(8)]
-    
-    # Create Z3 solver
     s = Solver()
+    n = len(friends)
+    O = [Int(f'O_{i}') for i in range(n)]
+    S = [Int(f'S_{i}') for i in range(n)]
     
-    # Meeting start times (in minutes from 9:00 AM)
-    start_time = [Int(f'start_{i}') for i in range(8)]
-    # End times
-    end_time = [start_time[i] + meetings[i][5] for i in range(8)]
+    s.add([And(O[i] >= 1, O[i] <= n) for i in range(n)])
+    s.add(Distinct(O))
     
-    # Position variables: which meeting is at position k (0 to 7)
-    meeting_at_position = [Int(f'map_{k}') for k in range(8)]
+    for i in range(n):
+        name, district, dur, (start_min, end_min) = friends[i]
+        s.add(S[i] >= start_min)
+        s.add(S[i] <= end_min - dur)
     
-    # Each meeting_at_position[k] must be between 0 and 7
-    for k in range(8):
-        s.add(meeting_at_position[k] >= 0, meeting_at_position[k] < 8)
+    for i in range(n):
+        name, district, dur, window = friends[i]
+        s.add(Implies(O[i] == 1, S[i] >= 540 + travel[("Marina District", district)]))
     
-    # All meetings_at_position are distinct
-    s.add(Distinct(meeting_at_position))
+    for i in range(n):
+        name_i, district_i, dur_i, window_i = friends[i]
+        for j in range(n):
+            if i == j:
+                continue
+            name_j, district_j, dur_j, window_j = friends[j]
+            s.add(Implies(O[i] < O[j], S[i] + dur_i + travel[(district_i, district_j)] <= S[j]))
     
-    # Time window constraints for each meeting
-    for i, (_, _, _, avail_start, avail_end, dur) in enumerate(meetings):
-        s.add(start_time[i] >= avail_start)
-        s.add(end_time[i] <= avail_end)
-    
-    # Travel time constraints
-    # For the first meeting (at position 0)
-    first_meeting = meeting_at_position[0]
-    for i in range(8):
-        s.add(Implies(first_meeting == i, start_time[i] >= marina_travel[i]))
-    
-    # For consecutive positions
-    for pos in range(7):
-        i_var = meeting_at_position[pos]
-        j_var = meeting_at_position[pos+1]
-        for i in range(8):
-            for j in range(8):
-                # If i_var is i and j_var is j, then we require start_time[j] >= end_time[i] + travel_matrix[i][j]
-                s.add(Implies(And(i_var == i, j_var == j), start_time[j] >= end_time[i] + travel_matrix[i][j])
-    
-    # Check for satisfiability
     if s.check() == sat:
-        model = s.model()
-        # Extract start times
-        start_times_min = []
-        for i in range(8):
-            start_val = model[start_time[i]]
-            if isinstance(start_val, IntNumRef):
-                start_times_min.append(start_val.as_long())
-            else:
-                # In case the model returns an expression, we evaluate it
-                start_times_min.append(model.evaluate(start_time[i]).as_long())
+        m = s.model()
+        order_vals = [m.evaluate(O[i]).as_long() for i in range(n)]
+        start_vals = [m.evaluate(S[i]).as_long() for i in range(n)]
         
-        # Build the itinerary
-        itinerary = []
-        for i, (_, friend, _, _, _, dur) in enumerate(meetings):
-            start_min = start_times_min[i]
+        schedule = []
+        for i in range(n):
+            name, district, dur, window = friends[i]
+            start_min = start_vals[i]
             end_min = start_min + dur
-            # Convert to HH:MM
-            start_hour = start_min // 60
-            start_minute = start_min % 60
-            end_hour = end_min // 60
-            end_minute = end_min % 60
-            start_str = f"{start_hour:02d}:{start_minute:02d}"
-            end_str = f"{end_hour:02d}:{end_minute:02d}"
-            itinerary.append({
-                "action": "meet",
-                "person": friend,
-                "start_time": start_str,
-                "end_time": end_str
-            })
+            start_h = start_min // 60
+            start_m = start_min % 60
+            end_h = end_min // 60
+            end_m = end_min % 60
+            start_time = f"{start_h:02d}:{start_m:02d}"
+            end_time = f"{end_h:02d}:{end_m:02d}"
+            schedule.append((order_vals[i], name, start_time, end_time))
         
-        # Sort itinerary by start time
-        itinerary_sorted = sorted(itinerary, key=lambda x: x['start_time'])
+        schedule.sort(key=lambda x: x[0])
+        itinerary = [{"action": "meet", "person": name, "start_time": start, "end_time": end} 
+                     for (order, name, start, end) in schedule]
         
-        # Output as JSON
-        result = {"itinerary": itinerary_sorted}
-        print(json.dumps(result))
+        print("SOLUTION:")
+        print(json.dumps({"itinerary": itinerary}))
     else:
-        print('{"itinerary": []}')
+        print("No solution found")
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

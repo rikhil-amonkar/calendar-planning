@@ -1,120 +1,89 @@
 from z3 import *
-
-def min_to_time(m):
-    h = m // 60
-    mm = m % 60
-    return f"{h:02d}:{mm:02d}"
+import json
 
 def main():
-    travel_times = {
-        ('S', 'N'): 29,
-        ('S', 'U'): 30,
-        ('S', 'A'): 17,
-        ('N', 'S'): 27,
-        ('N', 'U'): 7,
-        ('N', 'A'): 16,
-        ('U', 'S'): 26,
-        ('U', 'N'): 10,
-        ('U', 'A'): 15,
-        ('A', 'S'): 16,
-        ('A', 'N'): 15,
-        ('A', 'U'): 14
-    }
-
-    s = Optimize()
-
-    meet_s = Bool('meet_s')
-    meet_j = Bool('meet_j')
-    meet_b = Bool('meet_b')
-
-    s_s = Int('s_s')
-    e_s = Int('e_s')
-    s_j = Int('s_j')
-    e_j = Int('e_j')
-    s_b = Int('s_b')
-    e_b = Int('e_b')
-
-    s.add(Implies(meet_s, s_s >= 960))
-    s.add(Implies(meet_s, e_s <= 1095))
-    s.add(Implies(meet_s, e_s - s_s >= 60))
-
-    s.add(Implies(meet_j, s_j >= 900))
-    s.add(Implies(meet_j, e_j <= 1320))
-    s.add(Implies(meet_j, e_j - s_j >= 75))
-
-    s.add(Implies(meet_b, s_b >= 960))
-    s.add(Implies(meet_b, s_b <= 975))
-    s.add(Implies(meet_b, e_b - s_b >= 75))
-
-    s.add(Implies(meet_s, 
-                Or(
-                    s_s >= 540 + travel_times[('S','N')],
-                    And(meet_j, s_s >= e_j + travel_times[('U','N')]),
-                    And(meet_b, s_s >= e_b + travel_times[('A','N')])
-                )))
-
-    s.add(Implies(meet_j,
-                Or(
-                    s_j >= 540 + travel_times[('S','U')],
-                    And(meet_s, s_j >= e_s + travel_times[('N','U')]),
-                    And(meet_b, s_j >= e_b + travel_times[('A','U')])
-                )))
-
-    s.add(Implies(meet_b,
-                Or(
-                    s_b >= 540 + travel_times[('S','A')],
-                    And(meet_s, s_b >= e_s + travel_times[('N','A')]),
-                    And(meet_j, s_b >= e_j + travel_times[('U','A')])
-                )))
-
-    s.add(Implies(And(meet_s, meet_j),
-                Or( s_j >= e_s + travel_times[('N','U')], 
-                    s_s >= e_j + travel_times[('U','N')] )))
-
-    s.add(Implies(And(meet_s, meet_b),
-                Or( s_b >= e_s + travel_times[('N','A')], 
-                    s_s >= e_b + travel_times[('A','N')] )))
-
-    s.add(Implies(And(meet_j, meet_b),
-                Or( s_b >= e_j + travel_times[('U','A')], 
-                    s_j >= e_b + travel_times[('A','U')] )))
-
-    s.maximize(If(meet_s, 1, 0) + If(meet_j, 1, 0) + If(meet_b, 1, 0))
-
-    if s.check() == sat:
-        model = s.model()
+    # Initialize variables
+    L = Int('L')
+    A0 = Int('A0')  # Sarah (North Beach)
+    A1 = Int('A1')  # Jeffrey (Union Square)
+    A2 = Int('A2')  # Brian (Alamo Square)
+    attend0 = Bool('attend0')
+    attend1 = Bool('attend1')
+    attend2 = Bool('attend2')
+    A = [A0, A1, A2]
+    attend = [attend0, attend1, attend2]
+    names = ["Sarah", "Jeffrey", "Brian"]
+    durations = [60, 75, 75]  # Minimum meeting durations in minutes
+    
+    # Travel times from Sunset to each location
+    T_start = [29, 30, 17]  # To Sarah, Jeffrey, Brian
+    
+    # Travel time matrix between locations: [Sarah, Jeffrey, Brian]
+    T = [
+        [0, 7, 16],  # From Sarah (North Beach) to others
+        [10, 0, 15], # From Jeffrey (Union Square) to others
+        [15, 14, 0]  # From Brian (Alamo Square) to others
+    ]
+    
+    # Initialize solver with optimization
+    solver = Optimize()
+    
+    # Constraint: Leave Sunset no earlier than 9:00 AM (540 minutes)
+    solver.add(L >= 540)
+    
+    # Constraints for each friend
+    for i in range(3):
+        # If attending, arrival time must account for travel from Sunset
+        solver.add(Implies(attend[i], A[i] >= L + T_start[i]))
+        # Time window constraints
+        if i == 0:  # Sarah: 4:00 PM to 6:15 PM (960 to 1095 minutes)
+            solver.add(Implies(attend[i], And(A[i] >= 960, A[i] + durations[i] <= 1095)))
+        elif i == 1:  # Jeffrey: 3:00 PM to 10:00 PM (900 to 1320 minutes)
+            solver.add(Implies(attend[i], And(A[i] >= 900, A[i] + durations[i] <= 1320)))
+        else:  # Brian: 4:00 PM to 5:30 PM (960 to 1050 minutes)
+            solver.add(Implies(attend[i], And(A[i] >= 960, A[i] + durations[i] <= 1050)))
+    
+    # Constraints for pairwise meetings
+    for i in range(3):
+        for j in range(3):
+            if i != j:
+                # If both meetings are attended, ensure travel time between them
+                solver.add(Implies(And(attend[i], attend[j]),
+                            Or(A[j] >= A[i] + durations[i] + T[i][j],
+                               A[i] >= A[j] + durations[j] + T[j][i])))
+    
+    # Maximize the number of friends met
+    count = Sum([If(attend[i], 1, 0) for i in range(3)])
+    solver.maximize(count)
+    
+    # Solve the constraints
+    if solver.check() == sat:
+        model = solver.model()
         itinerary = []
-        if is_true(model[meet_s]):
-            start_s = model[s_s].as_long()
-            end_s = model[e_s].as_long()
-            itinerary.append({
-                "action": "meet",
-                "person": "Sarah",
-                "start_time": min_to_time(start_s),
-                "end_time": min_to_time(end_s)
-            })
-        if is_true(model[meet_j]):
-            start_j = model[s_j].as_long()
-            end_j = model[e_j].as_long()
-            itinerary.append({
-                "action": "meet",
-                "person": "Jeffrey",
-                "start_time": min_to_time(start_j),
-                "end_time": min_to_time(end_j)
-            })
-        if is_true(model[meet_b]):
-            start_b = model[s_b].as_long()
-            end_b = model[e_b].as_long()
-            itinerary.append({
-                "action": "meet",
-                "person": "Brian",
-                "start_time": min_to_time(start_b),
-                "end_time": min_to_time(end_b)
-            })
+        for i in range(3):
+            if is_true(model[attend[i]]):
+                start_val = model[A[i]].as_long()
+                end_val = start_val + durations[i]
+                start_hour = start_val // 60
+                start_minute = start_val % 60
+                end_hour = end_val // 60
+                end_minute = end_val % 60
+                start_time = f"{start_hour:02d}:{start_minute:02d}"
+                end_time = f"{end_hour:02d}:{end_minute:02d}"
+                itinerary.append({
+                    "action": "meet",
+                    "person": names[i],
+                    "start_time": start_time,
+                    "end_time": end_time
+                })
+        # Sort itinerary by start time
         itinerary.sort(key=lambda x: x['start_time'])
-        print({"itinerary": itinerary})
+        result = {"itinerary": itinerary}
+        print("SOLUTION:")
+        print(json.dumps(result))
     else:
-        print({"itinerary": []})
+        print("SOLUTION:")
+        print(json.dumps({"itinerary": []}))
 
 if __name__ == "__main__":
     main()

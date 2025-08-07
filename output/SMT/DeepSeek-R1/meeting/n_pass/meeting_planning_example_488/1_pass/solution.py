@@ -1,152 +1,117 @@
+import itertools
 from z3 import *
+
+# Meetings data: name, location, start window (minutes from 9:00 AM), end window, minimum duration
+meetings_info = [
+    {"name": "Ronald", "start_win": 60, "end_win": 480, "min_dur": 105, "index": 0},
+    {"name": "Helen", "start_win": 270, "end_win": 480, "min_dur": 120, "index": 1},
+    {"name": "Joshua", "start_win": 315, "end_win": 630, "min_dur": 90, "index": 2},
+    {"name": "Margaret", "start_win": 75, "end_win": 780, "min_dur": 60, "index": 3}
+]
+
+# Travel time from Pacific Heights to each meeting location
+T_base = [8, 16, 21, 11]  # Ronald, Helen, Joshua, Margaret
+
+# Travel time matrix between meeting locations (indices: 0-Ronald, 1-Helen, 2-Joshua, 3-Margaret)
+T = [
+    [0, 17, 25, 13],
+    [17, 0, 17, 6],
+    [25, 17, 0, 15],
+    [13, 6, 15, 0]
+]
+
+# We are skipping Sarah because it's impossible to meet her for 45 minutes within her availability window.
+
+# Try to schedule subsets of meetings in descending order of size
+solution_found = False
+result_itinerary = []
+
+# Iterate over subset sizes from 4 down to 1
+for num_meetings in range(4, 0, -1):
+    if solution_found:
+        break
+    # Generate all combinations of meetings of size num_meetings
+    for chosen_indices in itertools.combinations(range(4), num_meetings):
+        s = Solver()
+        
+        # Create variables for start and end times for all meetings (even if not chosen, but we'll ignore those)
+        s0, s1, s2, s3 = Ints('s0 s1 s2 s3')
+        e0, e1, e2, e3 = Ints('e0 e1 e2 e3')
+        start_vars = [s0, s1, s2, s3]
+        end_vars = [e0, e1, e2, e3]
+        
+        # Define end times in terms of start times and minimum durations
+        s.add(e0 == s0 + 105)
+        s.add(e1 == s1 + 120)
+        s.add(e2 == s2 + 90)
+        s.add(e3 == s3 + 60)
+        
+        # Create arrays for start and end times for Z3
+        start_arr = Array('start_arr', IntSort(), IntSort())
+        end_arr = Array('end_arr', IntSort(), IntSort())
+        for i in range(4):
+            s.add(start_arr[i] == start_vars[i])
+            s.add(end_arr[i] == end_vars[i])
+        
+        # Create arrays for availability windows
+        win_start_arr = Array('win_start_arr', IntSort(), IntSort())
+        win_end_arr = Array('win_end_arr', IntSort(), IntSort())
+        for i in range(4):
+            s.add(win_start_arr[i] == meetings_info[i]['start_win'])
+            s.add(win_end_arr[i] == meetings_info[i]['end_win'])
+        
+        # Create travel time matrix for Z3
+        tt_arr = Array('tt_arr', IntSort(), IntSort(), IntSort())
+        for i in range(4):
+            for j in range(4):
+                s.add(tt_arr[i, j] == T[i][j])
+        
+        # Permutation variables for the chosen meetings
+        p = [Int('p_%d' % i) for i in range(num_meetings)]
+        # Each permutation variable must be one of the chosen indices
+        s.add(Distinct(p))
+        for i in range(num_meetings):
+            s.add(Or([p[i] == idx for idx in chosen_indices]))
+        
+        # Constraints for the first meeting in the permutation
+        s.add(start_arr[p[0]] >= T_base[p[0]])
+        s.add(start_arr[p[0]] >= win_start_arr[p[0]])
+        
+        # Constraints for the remaining meetings in the permutation
+        for k in range(1, num_meetings):
+            s.add(start_arr[p[k]] >= end_arr[p[k-1]] + tt_arr[p[k-1], p[k]])
+            s.add(start_arr[p[k]] >= win_start_arr[p[k]])
+        
+        # End time constraints for chosen meetings
+        for idx in chosen_indices:
+            s.add(end_arr[idx] <= win_end_arr[idx])
+            s.add(start_arr[idx] >= 0)  # Start time must be non-negative
+        
+        if s.check() == sat:
+            model = s.model()
+            schedule = []
+            for idx in chosen_indices:
+                start_val = model.evaluate(start_arr[idx]).as_long()
+                end_val = model.evaluate(end_arr[idx]).as_long()
+                total_minutes_start = start_val
+                start_hour = 9 + total_minutes_start // 60
+                start_minute = total_minutes_start % 60
+                total_minutes_end = end_val
+                end_hour = 9 + total_minutes_end // 60
+                end_minute = total_minutes_end % 60
+                start_str = f"{start_hour:02d}:{start_minute:02d}"
+                end_str = f"{end_hour:02d}:{end_minute:02d}"
+                schedule.append({
+                    "action": "meet",
+                    "person": meetings_info[idx]['name'],
+                    "start_time": start_str,
+                    "end_time": end_str
+                })
+            solution_found = True
+            result_itinerary = schedule
+            break
+
+# Output the result
 import json
-
-def main():
-    # Define the friends and their attributes
-    friends = ['Ronald', 'Helen', 'Joshua', 'Margaret']
-    
-    locations = {
-        'Ronald': 'Nob Hill',
-        'Helen': 'The Castro',
-        'Joshua': 'Sunset District',
-        'Margaret': 'Haight-Ashbury'
-    }
-    
-    durations = {
-        'Ronald': 105,
-        'Helen': 120,
-        'Joshua': 90,
-        'Margaret': 60
-    }
-    
-    availability_start = {
-        'Ronald': 60,    # 10:00
-        'Helen': 270,    # 13:30
-        'Joshua': 315,   # 14:15
-        'Margaret': 75    # 10:15
-    }
-    
-    availability_end = {
-        'Ronald': 480,   # 17:00
-        'Helen': 480,    # 17:00
-        'Joshua': 630,   # 19:30
-        'Margaret': 780   # 22:00
-    }
-    
-    # Travel times dictionary - as given
-    travel_times = {
-        "Pacific Heights": {
-            "Nob Hill": 8,
-            "Russian Hill": 7,
-            "The Castro": 16,
-            "Sunset District": 21,
-            "Haight-Ashbury": 11
-        },
-        "Nob Hill": {
-            "Pacific Heights": 8,
-            "Russian Hill": 5,
-            "The Castro": 17,
-            "Sunset District": 25,
-            "Haight-Ashbury": 13
-        },
-        "Russian Hill": {
-            "Pacific Heights": 7,
-            "Nob Hill": 5,
-            "The Castro": 21,
-            "Sunset District": 23,
-            "Haight-Ashbury": 17
-        },
-        "The Castro": {
-            "Pacific Heights": 16,
-            "Nob Hill": 16,
-            "Russian Hill": 18,
-            "Sunset District": 17,
-            "Haight-Ashbury": 6
-        },
-        "Sunset District": {
-            "Pacific Heights": 21,
-            "Nob Hill": 27,
-            "Russian Hill": 24,
-            "The Castro": 17,
-            "Haight-Ashbury": 15
-        },
-        "Haight-Ashbury": {
-            "Pacific Heights": 12,
-            "Nob Hill": 15,
-            "Russian Hill": 17,
-            "The Castro": 6,
-            "Sunset District": 15
-        }
-    }
-
-    # Create Z3 variables for start times: one for each friend
-    S = {}
-    for friend in friends:
-        S[friend] = Int(f'S_{friend}')
-
-    # Create booleans for every pair (i, j) with i < j in the index of the friends list
-    n = len(friends)
-    B = {}  # Key: (i,j) for i<j
-    pairs = []
-    for i in range(n):
-        for j in range(i+1, n):
-            key = (i, j)
-            B[key] = Bool(f'B_{i}_{j}')
-            pairs.append(key)
-
-    solver = Solver()
-
-    # Constraint 1: availability constraints and travel from start
-    for friend in friends:
-        loc = locations[friend]
-        # Travel time from Pacific Heights to this location
-        travel_from_start = travel_times['Pacific Heights'][loc]
-        solver.add(S[friend] >= availability_start[friend])
-        solver.add(S[friend] <= availability_end[friend] - durations[friend])
-        solver.add(S[friend] >= travel_from_start)
-
-    # Constraint 2: for every pair (i,j) with i<j
-    for (i, j) in pairs:
-        friend_i = friends[i]
-        friend_j = friends[j]
-        loc_i = locations[friend_i]
-        loc_j = locations[friend_j]
-        travel_ij = travel_times[loc_i][loc_j]
-        travel_ji = travel_times[loc_j][loc_i]
-        cond1 = (S[friend_j] >= S[friend_i] + durations[friend_i] + travel_ij)
-        cond2 = (S[friend_i] >= S[friend_j] + durations[friend_j] + travel_ji)
-        solver.add(If(B[(i, j)], cond1, cond2))
-
-    if solver.check() == sat:
-        model = solver.model()
-        meeting_list = []
-        for friend in friends:
-            start_val = model.evaluate(S[friend]).as_long()
-            end_val = start_val + durations[friend]
-            total_minutes_start = start_val
-            hours_start = 9 + total_minutes_start // 60
-            minutes_start = total_minutes_start % 60
-            start_str = f"{hours_start:02d}:{minutes_start:02d}"
-
-            total_minutes_end = end_val
-            hours_end = 9 + total_minutes_end // 60
-            minutes_end = total_minutes_end % 60
-            end_str = f"{hours_end:02d}:{minutes_end:02d}"
-
-            meeting_list.append({
-                "action": "meet",
-                "person": friend,
-                "start_time": start_str,
-                "end_time": end_str
-            })
-
-        meeting_list.sort(key=lambda x: x['start_time'])
-        result = {"itinerary": meeting_list}
-        print("SOLUTION:")
-        print(json.dumps(result))
-    else:
-        print("SOLUTION:")
-        print(json.dumps({"itinerary": []}))
-
-if __name__ == "__main__":
-    main()
+print("SOLUTION:")
+print(json.dumps({"itinerary": result_itinerary}))

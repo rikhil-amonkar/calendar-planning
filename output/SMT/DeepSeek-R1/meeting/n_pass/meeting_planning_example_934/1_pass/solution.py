@@ -1,208 +1,288 @@
 from z3 import *
-import json
+import re
 
 def main():
-    friends = [
-        ("Mary", "Embarcadero", 660, 735, 75),
-        ("Kenneth", "The Castro", 135, 615, 30),
-        ("Joseph", "Haight-Ashbury", 660, 780, 120),
-        ("Sarah", "Union Square", 165, 330, 90),
-        ("Thomas", "North Beach", 615, 645, 15),
-        ("Daniel", "Pacific Heights", 285, 690, 15),
-        ("Richard", "Chinatown", 0, 585, 30),
-        ("Mark", "Golden Gate Park", 510, 750, 120),
-        ("David", "Marina District", 660, 720, 60),
-        ("Karen", "Russian Hill", 255, 570, 120)
+    n_meetings = 10
+    start_node = 10
+    end_node = 11
+
+    locations = [
+        "Embarcadero",    #0 Mary
+        "The Castro",      #1 Kenneth
+        "Haight-Ashbury", #2 Joseph
+        "Union Square",    #3 Sarah
+        "North Beach",     #4 Thomas
+        "Pacific Heights", #5 Daniel
+        "Chinatown",       #6 Richard
+        "Golden Gate Park",#7 Mark
+        "Marina District", #8 David
+        "Russian Hill"     #9 Karen
     ]
-    virtual = ("Start", "Nob Hill", 0, 0, 0)
-    all_meetings = [virtual] + friends
+    names = ["Mary", "Kenneth", "Joseph", "Sarah", "Thomas", "Daniel", "Richard", "Mark", "David", "Karen"]
 
-    travel_dict = {
-        ("Nob Hill", "Embarcadero"): 9,
-        ("Nob Hill", "The Castro"): 17,
-        ("Nob Hill", "Haight-Ashbury"): 13,
-        ("Nob Hill", "Union Square"): 7,
-        ("Nob Hill", "North Beach"): 8,
-        ("Nob Hill", "Pacific Heights"): 8,
-        ("Nob Hill", "Chinatown"): 6,
-        ("Nob Hill", "Golden Gate Park"): 17,
-        ("Nob Hill", "Marina District"): 11,
-        ("Nob Hill", "Russian Hill"): 5,
-        ("Embarcadero", "Nob Hill"): 10,
-        ("Embarcadero", "The Castro"): 25,
-        ("Embarcadero", "Haight-Ashbury"): 21,
-        ("Embarcadero", "Union Square"): 10,
-        ("Embarcadero", "North Beach"): 5,
-        ("Embarcadero", "Pacific Heights"): 11,
-        ("Embarcadero", "Chinatown"): 7,
-        ("Embarcadero", "Golden Gate Park"): 25,
-        ("Embarcadero", "Marina District"): 12,
-        ("Embarcadero", "Russian Hill"): 8,
-        ("The Castro", "Nob Hill"): 16,
-        ("The Castro", "Embarcadero"): 22,
-        ("The Castro", "Haight-Ashbury"): 6,
-        ("The Castro", "Union Square"): 19,
-        ("The Castro", "North Beach"): 20,
-        ("The Castro", "Pacific Heights"): 16,
-        ("The Castro", "Chinatown"): 22,
-        ("The Castro", "Golden Gate Park"): 11,
-        ("The Castro", "Marina District"): 21,
-        ("The Castro", "Russian Hill"): 18,
-        ("Haight-Ashbury", "Nob Hill"): 15,
-        ("Haight-Ashbury", "Embarcadero"): 20,
-        ("Haight-Ashbury", "The Castro"): 6,
-        ("Haight-Ashbury", "Union Square"): 19,
-        ("Haight-Ashbury", "North Beach"): 19,
-        ("Haight-Ashbury", "Pacific Heights"): 12,
-        ("Haight-Ashbury", "Chinatown"): 19,
-        ("Haight-Ashbury", "Golden Gate Park"): 7,
-        ("Haight-Ashbury", "Marina District"): 17,
-        ("Haight-Ashbury", "Russian Hill"): 17,
-        ("Union Square", "Nob Hill"): 9,
-        ("Union Square", "Embarcadero"): 11,
-        ("Union Square", "The Castro"): 17,
-        ("Union Square", "Haight-Ashbury"): 18,
-        ("Union Square", "North Beach"): 10,
-        ("Union Square", "Pacific Heights"): 15,
-        ("Union Square", "Chinatown"): 7,
-        ("Union Square", "Golden Gate Park"): 22,
-        ("Union Square", "Marina District"): 18,
-        ("Union Square", "Russian Hill"): 13,
-        ("North Beach", "Nob Hill"): 7,
-        ("North Beach", "Embarcadero"): 6,
-        ("North Beach", "The Castro"): 23,
-        ("North Beach", "Haight-Ashbury"): 18,
-        ("North Beach", "Union Square"): 7,
-        ("North Beach", "Pacific Heights"): 8,
-        ("North Beach", "Chinatown"): 6,
-        ("North Beach", "Golden Gate Park"): 22,
-        ("North Beach", "Marina District"): 9,
-        ("North Beach", "Russian Hill"): 4,
-        ("Pacific Heights", "Nob Hill"): 8,
-        ("Pacific Heights", "Embarcadero"): 10,
-        ("Pacific Heights", "The Castro"): 16,
-        ("Pacific Heights", "Haight-Ashbury"): 11,
-        ("Pacific Heights", "Union Square"): 12,
-        ("Pacific Heights", "North Beach"): 9,
-        ("Pacific Heights", "Chinatown"): 11,
-        ("Pacific Heights", "Golden Gate Park"): 15,
-        ("Pacific Heights", "Marina District"): 6,
-        ("Pacific Heights", "Russian Hill"): 7,
-        ("Chinatown", "Nob Hill"): 9,
-        ("Chinatown", "Embarcadero"): 5,
-        ("Chinatown", "The Castro"): 22,
-        ("Chinatown", "Haight-Ashbury"): 19,
-        ("Chinatown", "Union Square"): 7,
-        ("Chinatown", "North Beach"): 3,
-        ("Chinatown", "Pacific Heights"): 10,
-        ("Chinatown", "Golden Gate Park"): 23,
-        ("Chinatown", "Marina District"): 12,
-        ("Chinatown", "Russian Hill"): 7,
-        ("Golden Gate Park", "Nob Hill"): 20,
-        ("Golden Gate Park", "Embarcadero"): 25,
-        ("Golden Gate Park", "The Castro"): 13,
-        ("Golden Gate Park", "Haight-Ashbury"): 7,
-        ("Golden Gate Park", "Union Square"): 22,
-        ("Golden Gate Park", "North Beach"): 23,
-        ("Golden Gate Park", "Pacific Heights"): 16,
-        ("Golden Gate Park", "Chinatown"): 23,
-        ("Golden Gate Park", "Marina District"): 16,
-        ("Golden Gate Park", "Russian Hill"): 19,
-        ("Marina District", "Nob Hill"): 12,
-        ("Marina District", "Embarcadero"): 14,
-        ("Marina District", "The Castro"): 22,
-        ("Marina District", "Haight-Ashbury"): 16,
-        ("Marina District", "Union Square"): 16,
-        ("Marina District", "North Beach"): 11,
-        ("Marina District", "Pacific Heights"): 7,
-        ("Marina District", "Chinatown"): 15,
-        ("Marina District", "Golden Gate Park"): 18,
-        ("Marina District", "Russian Hill"): 8,
-        ("Russian Hill", "Nob Hill"): 5,
-        ("Russian Hill", "Embarcadero"): 8,
-        ("Russian Hill", "The Castro"): 21,
-        ("Russian Hill", "Haight-Ashbury"): 17,
-        ("Russian Hill", "Union Square"): 10,
-        ("Russian Hill", "North Beach"): 5,
-        ("Russian Hill", "Pacific Heights"): 7,
-        ("Russian Hill", "Chinatown"): 9,
-        ("Russian Hill", "Golden Gate Park"): 21,
-        ("Russian Hill", "Marina District"): 7
-    }
+    min_durations = [75, 30, 120, 90, 15, 15, 30, 120, 60, 120]  # in minutes
 
-    n = len(all_meetings)
-    meet = [None] * n
-    T = [None] * n
+    # Available times in minutes from midnight
+    available_start = [
+        20 * 60,        # Mary: 20:00
+        11 * 60 + 15,   # Kenneth: 11:15
+        20 * 60,        # Joseph: 20:00
+        11 * 60 + 45,   # Sarah: 11:45
+        19 * 60 + 15,   # Thomas: 19:15
+        13 * 60 + 45,   # Daniel: 13:45
+        8 * 60,         # Richard: 8:00
+        17 * 60 + 30,   # Mark: 17:30
+        20 * 60,        # David: 20:00
+        13 * 60 + 15    # Karen: 13:15
+    ]
+    available_end = [
+        21 * 60 + 15,   # Mary: 21:15
+        19 * 60 + 15,   # Kenneth: 19:15
+        22 * 60,        # Joseph: 22:00
+        14 * 60 + 30,   # Sarah: 14:30
+        19 * 60 + 45,   # Thomas: 19:45
+        20 * 60 + 30,   # Daniel: 20:30
+        18 * 60 + 45,   # Richard: 18:45
+        21 * 60 + 30,   # Mark: 21:30
+        21 * 60,        # David: 21:00
+        18 * 60 + 30    # Karen: 18:30
+    ]
 
-    meet[0] = True
-    T[0] = 0
+    travel_text = """
+Nob Hill to Embarcadero: 9.
+Nob Hill to The Castro: 17.
+Nob Hill to Haight-Ashbury: 13.
+Nob Hill to Union Square: 7.
+Nob Hill to North Beach: 8.
+Nob Hill to Pacific Heights: 8.
+Nob Hill to Chinatown: 6.
+Nob Hill to Golden Gate Park: 17.
+Nob Hill to Marina District: 11.
+Nob Hill to Russian Hill: 5.
+Embarcadero to Nob Hill: 10.
+Embarcadero to The Castro: 25.
+Embarcadero to Haight-Ashbury: 21.
+Embarcadero to Union Square: 10.
+Embarcadero to North Beach: 5.
+Embarcadero to Pacific Heights: 11.
+Embarcadero to Chinatown: 7.
+Embarcadero to Golden Gate Park: 25.
+Embarcadero to Marina District: 12.
+Embarcadero to Russian Hill: 8.
+The Castro to Nob Hill: 16.
+The Castro to Embarcadero: 22.
+The Castro to Haight-Ashbury: 6.
+The Castro to Union Square: 19.
+The Castro to North Beach: 20.
+The Castro to Pacific Heights: 16.
+The Castro to Chinatown: 22.
+The Castro to Golden Gate Park: 11.
+The Castro to Marina District: 21.
+The Castro to Russian Hill: 18.
+Haight-Ashbury to Nob Hill: 15.
+Haight-Ashbury to Embarcadero: 20.
+Haight-Ashbury to The Castro: 6.
+Haight-Ashbury to Union Square: 19.
+Haight-Ashbury to North Beach: 19.
+Haight-Ashbury to Pacific Heights: 12.
+Haight-Ashbury to Chinatown: 19.
+Haight-Ashbury to Golden Gate Park: 7.
+Haight-Ashbury to Marina District: 17.
+Haight-Ashbury to Russian Hill: 17.
+Union Square to Nob Hill: 9.
+Union Square to Embarcadero: 11.
+Union Square to The Castro: 17.
+Union Square to Haight-Ashbury: 18.
+Union Square to North Beach: 10.
+Union Square to Pacific Heights: 15.
+Union Square to Chinatown: 7.
+Union Square to Golden Gate Park: 22.
+Union Square to Marina District: 18.
+Union Square to Russian Hill: 13.
+North Beach to Nob Hill: 7.
+North Beach to Embarcadero: 6.
+North Beach to The Castro: 23.
+North Beach to Haight-Ashbury: 18.
+North Beach to Union Square: 7.
+North Beach to Pacific Heights: 8.
+North Beach to Chinatown: 6.
+North Beach to Golden Gate Park: 22.
+North Beach to Marina District: 9.
+North Beach to Russian Hill: 4.
+Pacific Heights to Nob Hill: 8.
+Pacific Heights to Embarcadero: 10.
+Pacific Heights to The Castro: 16.
+Pacific Heights to Haight-Ashbury: 11.
+Pacific Heights to Union Square: 12.
+Pacific Heights to North Beach: 9.
+Pacific Heights to Chinatown: 11.
+Pacific Heights to Golden Gate Park: 15.
+Pacific Heights to Marina District: 6.
+Pacific Heights to Russian Hill: 7.
+Chinatown to Nob Hill: 9.
+Chinatown to Embarcadero: 5.
+Chinatown to The Castro: 22.
+Chinatown to Haight-Ashbury: 19.
+Chinatown to Union Square: 7.
+Chinatown to North Beach: 3.
+Chinatown to Pacific Heights: 10.
+Chinatown to Golden Gate Park: 23.
+Chinatown to Marina District: 12.
+Chinatown to Russian Hill: 7.
+Golden Gate Park to Nob Hill: 20.
+Golden Gate Park to Embarcadero: 25.
+Golden Gate Park to The Castro: 13.
+Golden Gate Park to Haight-Ashbury: 7.
+Golden Gate Park to Union Square: 22.
+Golden Gate Park to North Beach: 23.
+Golden Gate Park to Pacific Heights: 16.
+Golden Gate Park to Chinatown: 23.
+Golden Gate Park to Marina District: 16.
+Golden Gate Park to Russian Hill: 19.
+Marina District to Nob Hill: 12.
+Marina District to Embarcadero: 14.
+Marina District to The Castro: 22.
+Marina District to Haight-Ashbury: 16.
+Marina District to Union Square: 16.
+Marina District to North Beach: 11.
+Marina District to Pacific Heights: 7.
+Marina District to Chinatown: 15.
+Marina District to Golden Gate Park: 18.
+Marina District to Russian Hill: 8.
+Russian Hill to Nob Hill: 5.
+Russian Hill to Embarcadero: 8.
+Russian Hill to The Castro: 21.
+Russian Hill to Haight-Ashbury: 17.
+Russian Hill to Union Square: 10.
+Russian Hill to North Beach: 5.
+Russian Hill to Pacific Heights: 7.
+Russian Hill to Chinatown: 9.
+Russian Hill to Golden Gate Park: 21.
+Russian Hill to Marina District: 7.
+    """
 
-    for i in range(1, n):
-        meet[i] = Bool(f'meet_{i}')
-        T[i] = Int(f'T_{i}')
+    travel_dict = {}
+    lines = travel_text.strip().split('\n')
+    for line in lines:
+        line = line.strip()
+        if not line:
+            continue
+        parts = line.split(' to ')
+        if len(parts) < 2:
+            continue
+        from_loc = parts[0].strip()
+        rest = parts[1].strip()
+        if rest.find(':') == -1:
+            continue
+        to_loc_part, time_part = rest.split(':', 1)
+        to_loc = to_loc_part.strip()
+        time_str = time_part.replace('.', '').strip()
+        try:
+            time_val = int(time_str)
+            travel_dict[(from_loc, to_loc)] = time_val
+        except:
+            continue
+
+    # Add travel time for the same location as 0? Not needed, but for safety, but we avoid self-loop.
+    # Also, add travel time to end_node is 0, handled in get_travel_time.
+
+    def get_travel_time(i, j):
+        if j == end_node:
+            return 0
+        if i == start_node:
+            from_loc = "Nob Hill"
+            to_loc = locations[j]
+            return travel_dict.get((from_loc, to_loc), 10000)  # large number if not found
+        elif i in range(n_meetings):
+            from_loc = locations[i]
+            if j == end_node:
+                return 0
+            else:
+                to_loc = locations[j]
+                return travel_dict.get((from_loc, to_loc), 10000)
+        else:
+            return 0
 
     s = Solver()
-
-    for i in range(1, n):
-        _, _, avail_start, avail_end, dur = all_meetings[i]
-        s.add(Implies(meet[i], And(T[i] >= avail_start, T[i] + dur <= avail_end)))
-
-    for i in range(n):
-        for j in range(i+1, n):
-            loc_i = all_meetings[i][1]
-            loc_j = all_meetings[j][1]
-            dur_i = all_meetings[i][4]
-            dur_j = all_meetings[j][4]
-            travel_ij = travel_dict.get((loc_i, loc_j))
-            travel_ji = travel_dict.get((loc_j, loc_i))
-            if travel_ij is None or travel_ji is None:
-                continue
-
-            if i == 0:
-                cond = meet[j]
-            else:
-                cond = And(meet[i], meet[j])
-            option1 = (T[i] + dur_i + travel_ij <= T[j])
-            option2 = (T[j] + dur_j + travel_ji <= T[i])
-            s.add(Implies(cond, Or(option1, option2)))
-
     opt = Optimize()
+
+    m = [Bool('m_%d' % i) for i in range(n_meetings)]
+    b = [[Bool('b_%d_%d' % (i, j)) for j in range(12)] for i in range(12)]
+    t = [Int('t_%d' % i) for i in range(12)]
+
+    # Fix start time at 9:00 AM (540 minutes from midnight)
+    s.add(t[start_node] == 540)
+
+    total_meetings = Sum([If(m_i, 1, 0) for m_i in m])
+
+    # Start node out-degree constraint: one edge to either a meeting or the end node
+    s.add(Sum([If(b[start_node][j], 1, 0) for j in list(range(n_meetings)) + [end_node]]) == 1)
+    s.add(b[start_node][end_node] == (total_meetings == 0))
+
+    # End node in-degree constraint: one incoming edge from a meeting node if at least one meeting, else 0
+    s.add(Sum([If(b[i][end_node], 1, 0) for i in range(n_meetings)]) == If(total_meetings > 0, 1, 0))
+
+    # For each meeting node
+    for i in range(n_meetings):
+        # In-degree: from start_node or other meetings
+        in_edges = [b[j][i] for j in [start_node] + list(range(n_meetings))]
+        s.add(Sum([If(edge, 1, 0) for edge in in_edges]) == If(m[i], 1, 0))
+
+        # Out-degree: to other meetings or end_node
+        out_edges = [b[i][j] for j in list(range(n_meetings)) + [end_node]]
+        s.add(Sum([If(edge, 1, 0) for edge in out_edges]) == If(m[i], 1, 0))
+
+        # Availability constraints
+        s.add(Implies(m[i], t[i] >= available_start[i]))
+        s.add(Implies(m[i], t[i] + min_durations[i] <= available_end[i]))
+
+    # Edge time constraints
+    for i in [start_node] + list(range(n_meetings)):
+        for j in list(range(n_meetings)) + [end_node]:
+            if i == j:
+                s.add(b[i][j] == False)
+                continue
+            if j != end_node:
+                duration_i = 0 if i == start_node else min_durations[i]
+                tt = get_travel_time(i, j)
+                s.add(Implies(b[i][j], t[j] >= t[i] + duration_i + tt))
+
+    # No self edges and no edges from end_node
+    for i in range(12):
+        s.add(b[i][i] == False)
+    for j in range(12):
+        s.add(b[end_node][j] == False)
+
     opt.add(s.assertions())
-    objective = Sum([If(meet[i], 1, 0) for i in range(1, n)])
-    opt.maximize(objective)
+    opt.maximize(total_meetings)
 
     if opt.check() == sat:
-        m = opt.model()
-        schedule = []
-        for i in range(1, n):
-            if m.evaluate(meet[i]):
-                person = all_meetings[i][0]
-                start_val = m.evaluate(T[i])
-                if isinstance(start_val, IntNumRef):
-                    start_min = start_val.as_long()
-                else:
-                    start_min = int(str(start_val))
-                dur = all_meetings[i][4]
-                end_min = start_min + dur
-                start_hour = 9 + start_min // 60
-                start_minute = start_min % 60
-                end_hour = 9 + end_min // 60
-                end_minute = end_min % 60
-                start_time = f"{start_hour:02d}:{start_minute:02d}"
-                end_time = f"{end_hour:02d}:{end_minute:02d}"
-                schedule.append({
-                    "action": "meet",
-                    "person": person,
-                    "start_time": start_time,
-                    "end_time": end_time
+        model = opt.model()
+        # Extract the meetings that are scheduled
+        scheduled_meetings = []
+        for i in range(n_meetings):
+            if is_true(model.eval(m[i])):
+                start_val = model.eval(t[i]).as_long()
+                end_val = start_val + min_durations[i]
+                # Convert to HH:MM
+                start_hour = start_val // 60
+                start_minute = start_val % 60
+                end_hour = end_val // 60
+                end_minute = end_val % 60
+                start_str = f"{start_hour:02d}:{start_minute:02d}"
+                end_str = f"{end_hour:02d}:{end_minute:02d}"
+                scheduled_meetings.append({
+                    'person': names[i],
+                    'start_time': start_str,
+                    'end_time': end_str
                 })
-        schedule.sort(key=lambda x: x['start_time'])
-        result = {"itinerary": schedule}
-        print("SOLUTION:")
-        print(json.dumps(result))
+        # Sort by start time
+        scheduled_meetings.sort(key=lambda x: x['start_time'])
+        itinerary = [{"action": "meet", "person": meet['person'], "start_time": meet['start_time'], "end_time": meet['end_time']} for meet in scheduled_meetings]
+        result = {'itinerary': itinerary}
+        print(f"SOLUTION: {result}")
     else:
-        print("SOLUTION:")
-        print(json.dumps({"itinerary": []}))
+        print("No solution found")
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

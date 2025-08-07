@@ -1,73 +1,51 @@
-import json
 from z3 import *
+import json
 
 def main():
-    # Define the variables
-    e_start = Int('e_start')  # Start time for meeting with Emily (minutes from midnight)
-    t_emily = Int('t_emily')  # Duration of meeting with Emily (minutes)
-    m_start = Int('m_start')  # Start time for meeting with Margaret (minutes from midnight)
-    t_margaret = Int('t_margaret')  # Duration of meeting with Margaret (minutes)
-
-    opt = Optimize()
-
-    # Absolute times in minutes from midnight
-    # Emily's window: 16:00 (960) to 17:15 (1035)
-    emily_window_start = 16 * 60
-    emily_window_end = 17 * 60 + 15
-
-    # Margaret's window: 19:00 (1140) to 21:00 (1260)
-    margaret_window_start = 19 * 60
-    margaret_window_end = 21 * 60
-
-    # Constraints for Emily
-    opt.add(e_start >= emily_window_start)
-    opt.add(e_start + t_emily <= emily_window_end)
-    opt.add(t_emily >= 45)
-
-    # Constraints for Margaret
-    opt.add(m_start >= margaret_window_start)
-    opt.add(m_start + t_margaret <= margaret_window_end)
-    opt.add(t_margaret >= 120)
-
+    s = Solver()
+    
+    # Define the start time for Emily's meeting in minutes from 9:00 AM
+    emily_start = Int('emily_start')
+    emily_duration = 45
+    margaret_start = 600  # 19:00 (7:00 PM) in minutes from 9:00 AM
+    margaret_end = 720    # 21:00 (9:00 PM)
+    
+    # Emily must meet between 16:00 (420 minutes) and 17:15 (495 minutes)
+    s.add(emily_start >= 420)
+    s.add(emily_start + emily_duration <= 495)
+    
     # Travel constraints
-    # Start at North Beach at 9:00 (540 minutes from midnight)
-    # Travel to Union Square: 7 minutes -> arrive at 547
-    # Travel from Union Square to Russian Hill: 13 minutes
-    # Therefore, must arrive at Russian Hill by m_start
-    # The arrival time at Russian Hill is: e_start + t_emily + 13
-    opt.add(m_start >= e_start + t_emily + 13)
-
-    # Maximize the total meeting time
-    opt.maximize(t_emily + t_margaret)
-
-    if opt.check() == sat:
-        m = opt.model()
-        e_start_val = m[e_start].as_long()
-        t_emily_val = m[t_emily].as_long()
-        e_end_val = e_start_val + t_emily_val
-
-        m_start_val = m[m_start].as_long()
-        t_margaret_val = m[t_margaret].as_long()
-        m_end_val = m_start_val + t_margaret_val
-
-        # Convert minutes to HH:MM format
-        def format_time(total_minutes):
-            hours = total_minutes // 60
-            minutes = total_minutes % 60
-            return f"{hours:02d}:{minutes:02d}"
-
-        emily_start_str = format_time(e_start_val)
-        emily_end_str = format_time(e_end_val)
-        margaret_start_str = format_time(m_start_val)
-        margaret_end_str = format_time(m_end_val)
-
+    # Start at NB at 0 minutes (9:00 AM), travel to US for Emily: 7 minutes
+    s.add(emily_start - 7 >= 0)
+    # After Emily, travel from US to RH: 13 minutes, must arrive by 19:00 (600 minutes)
+    s.add(emily_start + emily_duration + 13 <= margaret_start)
+    
+    if s.check() == sat:
+        m = s.model()
+        emily_s = m[emily_start].as_long()
+        
+        # Convert Emily's meeting times to HH:MM format
+        emily_start_hour = 9 + emily_s // 60
+        emily_start_minute = emily_s % 60
+        emily_end_s = emily_s + emily_duration
+        emily_end_hour = 9 + emily_end_s // 60
+        emily_end_minute = emily_end_s % 60
+        
+        emily_start_time = f"{emily_start_hour:02d}:{emily_start_minute:02d}"
+        emily_end_time = f"{emily_end_hour:02d}:{emily_end_minute:02d}"
+        
+        # Margaret's meeting times are fixed
+        margaret_start_time = "19:00"
+        margaret_end_time = "21:00"
+        
+        # Construct itinerary
         itinerary = [
-            {"action": "meet", "person": "Emily", "start_time": emily_start_str, "end_time": emily_end_str},
-            {"action": "meet", "person": "Margaret", "start_time": margaret_start_str, "end_time": margaret_end_str}
+            {"action": "meet", "person": "Emily", "start_time": emily_start_time, "end_time": emily_end_time},
+            {"action": "meet", "person": "Margaret", "start_time": margaret_start_time, "end_time": margaret_end_time}
         ]
-
-        print("SOLUTION:")
-        print(json.dumps({"itinerary": itinerary}))
+        
+        result = {"itinerary": itinerary}
+        print(json.dumps(result))
     else:
         print("No solution found")
 

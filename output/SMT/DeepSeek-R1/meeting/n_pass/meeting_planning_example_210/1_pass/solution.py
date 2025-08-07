@@ -2,123 +2,139 @@ from z3 import *
 import json
 
 def main():
+    # Initialize the optimizer
+    opt = Optimize()
+    
+    # Boolean variables for whether we meet each friend
+    meetE = Bool('meetE')
+    meetJ = Bool('meetJ')
+    meetM = Bool('meetM')
+    
+    # Real variables for start and end times (in minutes from 9:00 AM)
+    sE, eE = Real('sE'), Real('eE')
+    sJ, eJ = Real('sJ'), Real('eJ')
+    sM, eM = Real('sM'), Real('eM')
+    
+    # Integer variables for the order of meetings (0,1,2 or -1 if not met)
+    orderE = Int('orderE')
+    orderJ = Int('orderJ')
+    orderM = Int('orderM')
+    
+    # Constraints: if a friend is met, their order is between 0 and 2; otherwise, it's -1
+    opt.add(If(meetE, And(orderE >= 0, orderE <= 2), orderE == -1)
+    opt.add(If(meetJ, And(orderJ >= 0, orderJ <= 2), orderJ == -1)
+    opt.add(If(meetM, And(orderM >= 0, orderM <= 2), orderM == -1)
+    
+    # If two friends are met, their orders must be distinct
+    opt.add(If(And(meetE, meetJ), orderE != orderJ, True)
+    opt.add(If(And(meetE, meetM), orderE != orderM, True)
+    opt.add(If(And(meetJ, meetM), orderJ != orderM, True)
+    
+    # Durations for each meeting (in minutes)
+    durE = 105
+    durJ = 120
+    durM = 75
+    
+    # Availability windows (in minutes from 9:00 AM)
+    avail_startE = 7*60 + 15   # 16:15
+    avail_endE = 12*60         # 21:00
+    avail_startJ = 8*60 + 15   # 17:15
+    avail_endJ = 13*60         # 22:00
+    avail_startM = 6*60 + 45   # 15:45
+    avail_endM = 12*60 + 45    # 21:45
+    
+    # Constraints for each friend if met
+    opt.add(If(meetE, And(sE >= avail_startE, eE == sE + durE, eE <= avail_endE), True)
+    opt.add(If(meetJ, And(sJ >= avail_startJ, eJ == sJ + durJ, eJ <= avail_endJ), True)
+    opt.add(If(meetM, And(sM >= avail_startM, eM == sM + durM, eM <= avail_endM), True))
+    
     # Travel times between locations (in minutes)
     travel_times = {
-        ('FW', 'P'): 17,   # Fisherman's Wharf to Presidio
-        ('FW', 'R'): 18,   # Fisherman's Wharf to Richmond District
-        ('FW', 'FD'): 11,  # Fisherman's Wharf to Financial District
-        ('P', 'R'): 7,     # Presidio to Richmond District
-        ('P', 'FD'): 23,   # Presidio to Financial District
-        ('R', 'P'): 7,     # Richmond District to Presidio
-        ('R', 'FD'): 22,   # Richmond District to Financial District
-        ('FD', 'P'): 22,   # Financial District to Presidio
-        ('FD', 'R'): 21,   # Financial District to Richmond District
+        ('Fisherman\'s Wharf', 'Presidio'): 17,
+        ('Fisherman\'s Wharf', 'Richmond District'): 18,
+        ('Fisherman\'s Wharf', 'Financial District'): 11,
+        ('Presidio', 'Richmond District'): 7,
+        ('Presidio', 'Financial District'): 23,
+        ('Richmond District', 'Presidio'): 7,
+        ('Richmond District', 'Financial District'): 22,
+        ('Financial District', 'Presidio'): 22,
+        ('Financial District', 'Richmond District'): 21
     }
     
-    # Friend details: location, duration, availability (in minutes from 9:00 AM)
-    friends = {
-        'Emily': {
-            'loc': 'P',
-            'dur': 105,
-            'avail_low': (16*60 + 15) - (9*60),  # 16:15 -> 435 minutes from 9:00
-            'avail_high': (21*60) - (9*60) - 105   # 21:00 - 105 minutes = 615 minutes from 9:00
-        },
-        'Joseph': {
-            'loc': 'R',
-            'dur': 120,
-            'avail_low': (17*60 + 15) - (9*60),    # 17:15 -> 495 minutes from 9:00
-            'avail_high': (22*60) - (9*60) - 120   # 22:00 - 120 minutes = 660 minutes from 9:00
-        },
-        'Melissa': {
-            'loc': 'FD',
-            'dur': 75,
-            'avail_low': (15*60 + 45) - (9*60),    # 15:45 -> 405 minutes from 9:00
-            'avail_high': (21*60 + 45) - (9*60) - 75 # 21:45 - 75 minutes = 690 minutes from 9:00
-        }
-    }
+    # Locations for each friend
+    locE = 'Presidio'
+    locJ = 'Richmond District'
+    locM = 'Financial District'
+    loc_start = 'Fisherman\'s Wharf'
     
-    # All permutations of meeting orders
-    orders = [
-        ['Emily', 'Joseph', 'Melissa'],
-        ['Emily', 'Melissa', 'Joseph'],
-        ['Joseph', 'Emily', 'Melissa'],
-        ['Joseph', 'Melissa', 'Emily'],
-        ['Melissa', 'Emily', 'Joseph'],
-        ['Melissa', 'Joseph', 'Emily']
+    # Meetings data structure
+    meetings = [
+        ('E', meetE, sE, eE, orderE, locE),
+        ('J', meetJ, sJ, eJ, orderJ, locJ),
+        ('M', meetM, sM, eM, orderM, locM)
     ]
     
-    solution_found = False
-    itinerary_entries = []
+    # Constraint: if a meeting is first, its start time must be at least travel time from start
+    for name, meet, s, e, order, loc in meetings:
+        travel_time = travel_times.get((loc_start, loc))
+        if travel_time is not None:
+            opt.add(If(And(meet, order == 0), s >= travel_time, True)
     
-    for order in orders:
-        s = Solver()
-        s1 = Int('s1')
-        s2 = Int('s2')
-        s3 = Int('s3')
-        
-        f1 = order[0]
-        f2 = order[1]
-        f3 = order[2]
-        
-        loc1 = friends[f1]['loc']
-        loc2 = friends[f2]['loc']
-        loc3 = friends[f3]['loc']
-        
-        # Travel from Fisherman's Wharf (FW) to first location
-        t0 = travel_times[('FW', loc1)]
-        # Travel from first to second location
-        t1 = travel_times[(loc1, loc2)]
-        # Travel from second to third location
-        t2 = travel_times[(loc2, loc3)]
-        
-        # Constraints for first meeting
-        s.add(s1 >= t0)
-        s.add(s1 >= friends[f1]['avail_low'])
-        s.add(s1 <= friends[f1]['avail_high'])
-        e1 = s1 + friends[f1]['dur']
-        
-        # Constraints for second meeting
-        s.add(s2 >= e1 + t1)
-        s.add(s2 >= friends[f2]['avail_low'])
-        s.add(s2 <= friends[f2]['avail_high'])
-        e2 = s2 + friends[f2]['dur']
-        
-        # Constraints for third meeting
-        s.add(s3 >= e2 + t2)
-        s.add(s3 >= friends[f3]['avail_low'])
-        s.add(s3 <= friends[f3]['avail_high'])
-        
-        if s.check() == sat:
-            model = s.model()
-            start1 = model[s1].as_long()
-            end1 = start1 + friends[f1]['dur']
-            start2 = model[s2].as_long()
-            end2 = start2 + friends[f2]['dur']
-            start3 = model[s3].as_long()
-            end3 = start3 + friends[f3]['dur']
-            
-            # Convert minutes to HH:MM format
-            def min_to_time(mins):
-                total_mins = 9*60 + mins
-                h = total_mins // 60
-                m = total_mins % 60
-                return f"{h:02d}:{m:02d}"
-            
-            # Create meeting entries
-            entries = [
-                {"action": "meet", "person": f1, "start_time": min_to_time(start1), "end_time": min_to_time(end1)},
-                {"action": "meet", "person": f2, "start_time": min_to_time(start2), "end_time": min_to_time(end2)},
-                {"action": "meet", "person": f3, "start_time": min_to_time(start3), "end_time": min_to_time(end3)}
-            ]
-            itinerary_entries = entries
-            solution_found = True
-            break
+    # Constraints for travel between consecutive meetings
+    for i in range(len(meetings)):
+        name_i, meet_i, s_i, e_i, order_i, loc_i = meetings[i]
+        for j in range(len(meetings)):
+            if i == j:
+                continue
+            name_j, meet_j, s_j, e_j, order_j, loc_j = meetings[j]
+            travel_time = travel_times.get((loc_i, loc_j))
+            if travel_time is not None:
+                opt.add(If(And(meet_i, meet_j, order_i < order_j), 
+                          s_j >= e_i + travel_time, 
+                          True))
     
-    if solution_found:
-        result = {"itinerary": itinerary_entries}
-        print(json.dumps(result, indent=4))
+    # Objective: maximize the number of meetings
+    num_meetings = If(meetE, 1, 0) + If(meetJ, 1, 0) + If(meetM, 1, 0)
+    opt.maximize(num_meetings)
+    
+    # Solve the problem
+    if opt.check() == sat:
+        m = opt.model()
+        itinerary = []
+        
+        # Helper function to convert minutes to HH:MM format
+        def min_to_time(total_min):
+            total_min = round(total_min)
+            hours = total_min // 60
+            minutes = total_min % 60
+            abs_hours = 9 + hours
+            return f"{abs_hours:02d}:{minutes:02d}"
+        
+        # Process each friend if met
+        for name, meet, s, e, order, loc in meetings:
+            if m.evaluate(meet) == True:
+                s_val = m.evaluate(s)
+                e_val = m.evaluate(e)
+                # Convert Z3 values to float
+                s_min = float(s_val.numerator_as_long()) / float(s_val.denominator_as_long())
+                e_min = float(e_val.numerator_as_long()) / float(e_val.denominator_as_long())
+                start_time = min_to_time(s_min)
+                end_time = min_to_time(e_min)
+                person = {'E': 'Emily', 'J': 'Joseph', 'M': 'Melissa'}[name]
+                itinerary.append({
+                    "action": "meet",
+                    "person": person,
+                    "start_time": start_time,
+                    "end_time": end_time
+                })
+        
+        # Sort itinerary by start time
+        itinerary.sort(key=lambda x: x['start_time'])
+        print("SOLUTION:")
+        print(json.dumps({"itinerary": itinerary}))
     else:
-        print('{"itinerary": []}')
+        print("SOLUTION:")
+        print(json.dumps({"itinerary": []}))
 
 if __name__ == "__main__":
     main()

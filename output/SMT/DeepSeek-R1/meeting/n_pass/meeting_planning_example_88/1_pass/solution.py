@@ -1,61 +1,56 @@
-import json
 from z3 import *
+import json
 
 def main():
-    # Convert time constraints to minutes since midnight
-    start_of_day = 9 * 60  # 9:00 AM
-    joshua_available_start = 20 * 60 + 45  # 20:45 (8:45 PM)
-    joshua_available_end = 21 * 60 + 45    # 21:45 (9:45 PM)
-    min_meeting_duration = 15
-    travel_time_to_park = 11
+    # Convert time to minutes since midnight
+    start_minutes = 9 * 60  # 9:00 AM
+    joshua_start_minutes = 20 * 60 + 45  # 20:45
+    joshua_end_minutes = 21 * 60 + 45    # 21:45
 
-    # Create Z3 integer variables
-    departure_from_sunset = Int('departure_from_sunset')  # Departure time from Sunset District (minutes)
-    meeting_start = Int('meeting_start')                  # Meeting start time (minutes)
+    # Declare Z3 variables
+    T = Int('T')  # Departure time from Sunset District (minutes from midnight)
+    S = Int('S')  # Meeting start time
+    E = Int('E')  # Meeting end time
 
-    # Initialize solver
-    solver = Solver()
-
-    # Constraints:
-    # 1. Departure must be after or at 9:00 AM
-    solver.add(departure_from_sunset >= start_of_day)
+    opt = Optimize()
     
-    # 2. Arrival at Golden Gate Park (departure + travel time) must be before or at meeting start
-    solver.add(departure_from_sunset + travel_time_to_park <= meeting_start)
-    
-    # 3. Meeting must start during Joshua's availability
-    solver.add(meeting_start >= joshua_available_start)
-    
-    # 4. Meeting must end by 9:45 PM (meeting start + 15 minutes <= 21:45)
-    solver.add(meeting_start + min_meeting_duration <= joshua_available_end)
+    # Constraints
+    opt.add(T >= start_minutes)  # Depart after 9:00 AM
+    arrival = T + 11             # Travel time to Golden Gate Park
+    opt.add(S >= arrival)        # Meeting starts after arrival
+    opt.add(S >= joshua_start_minutes)  # Meeting starts no earlier than 20:45
+    opt.add(E <= joshua_end_minutes)    # Meeting ends no later than 21:45
+    opt.add(E - S >= 15)         # Meeting lasts at least 15 minutes
 
-    # Check for a valid solution
-    if solver.check() == sat:
-        model = solver.model()
-        meeting_start_minutes = model.eval(meeting_start).as_long()
-        meeting_end_minutes = meeting_start_minutes + min_meeting_duration
-
-        # Format times to HH:MM
+    # Maximize the meeting duration
+    opt.maximize(E - S)
+    
+    if opt.check() == sat:
+        model = opt.model()
+        S_val = model[S].as_long()
+        E_val = model[E].as_long()
+        
+        # Format time to HH:MM
         def format_time(minutes):
             hours = minutes // 60
             mins = minutes % 60
             return f"{hours:02d}:{mins:02d}"
-
-        meeting_start_str = format_time(meeting_start_minutes)
-        meeting_end_str = format_time(meeting_end_minutes)
-
-        # Create itinerary entry
-        itinerary = [{
-            "action": "meet",
-            "person": "Joshua",
-            "start_time": meeting_start_str,
-            "end_time": meeting_end_str
-        }]
         
-        # Output as JSON
-        print(json.dumps({"itinerary": itinerary}))
+        start_str = format_time(S_val)
+        end_str = format_time(E_val)
+        
+        itinerary = {
+            "itinerary": [
+                {
+                    "action": "meet",
+                    "person": "Joshua",
+                    "start_time": start_str,
+                    "end_time": end_str
+                }
+            ]
+        }
+        print(json.dumps(itinerary))
     else:
-        # No solution found (though one should exist)
         print(json.dumps({"itinerary": []}))
 
 if __name__ == "__main__":

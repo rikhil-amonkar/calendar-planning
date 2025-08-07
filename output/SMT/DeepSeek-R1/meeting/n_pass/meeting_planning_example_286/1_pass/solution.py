@@ -1,95 +1,94 @@
+from itertools import permutations
 from z3 import *
-import json
+
+def min_to_time(total_minutes):
+    total_hours = total_minutes // 60
+    minutes = total_minutes % 60
+    hours = 9 + total_hours
+    return f"{hours:02d}:{minutes:02d}"
 
 def main():
-    # Initialize variables for start times and positions
-    C_start = Int('C_start')  # Carol's start time in minutes from midnight
-    K_start = Int('K_start')  # Karen's start time
-    R_start = Int('R_start')  # Rebecca's start time
-    pos_C = Int('pos_C')      # Position of Carol's meeting (0,1,2)
-    pos_K = Int('pos_K')      # Position of Karen's meeting
-    pos_R = Int('pos_R')      # Position of Rebecca's meeting
+    names = ['Carol', 'Karen', 'Rebecca']
+    locs = ['S', 'B', 'M']  # S: Sunset, B: Bayview, M: Mission
+    windows = [
+        (75, 165),   # Carol: 10:15 AM (75 min from 9:00) to 11:45 AM (165 min)
+        (225, 360),  # Karen: 12:45 PM (225 min) to 3:00 PM (360 min)
+        (150, 675)   # Rebecca: 11:30 AM (150 min) to 8:15 PM (675 min)
+    ]
+    durations = [30, 120, 120]
     
-    s = Solver()
+    travel_times = {
+        ('US', 'S'): 26,
+        ('US', 'B'): 15,
+        ('US', 'M'): 14,
+        ('S', 'US'): 30,
+        ('S', 'B'): 22,
+        ('S', 'M'): 24,
+        ('B', 'US'): 17,
+        ('B', 'S'): 23,
+        ('B', 'M'): 13,
+        ('M', 'US'): 15,
+        ('M', 'S'): 24,
+        ('M', 'B'): 15
+    }
     
-    # Define position constraints: each position is 0, 1, or 2 and all distinct
-    s.add(pos_C >= 0, pos_C <= 2)
-    s.add(pos_K >= 0, pos_K <= 2)
-    s.add(pos_R >= 0, pos_R <= 2)
-    s.add(Distinct(pos_C, pos_K, pos_R))
+    perms = list(permutations([0, 1, 2]))
+    found = False
+    result_meetings = None
     
-    # Time window constraints in minutes
-    # Carol: 10:15 AM (615 minutes) to 11:45 AM (705 minutes)
-    s.add(C_start >= 615, C_start + 30 <= 705)
-    # Karen: 12:45 PM (765 minutes) to 3:00 PM (900 minutes)
-    s.add(K_start >= 765, K_start + 120 <= 900)
-    # Rebecca: 11:30 AM (690 minutes) to 8:15 PM (1215 minutes)
-    s.add(R_start >= 690, R_start + 120 <= 1215)
-    
-    # First meeting must account for travel from Union Square (starting at 540 minutes = 9:00 AM)
-    s.add(Or(
-        And(pos_C == 0, C_start >= 540 + 26),  # Travel to Sunset: 26 minutes
-        And(pos_K == 0, K_start >= 540 + 15),  # Travel to Bayview: 15 minutes
-        And(pos_R == 0, R_start >= 540 + 14)   # Travel to Mission: 14 minutes
-    ))
-    
-    # Define travel times between locations
-    # Carol: Sunset (SD), Karen: Bayview (BV), Rebecca: Mission (MD)
-    # Constraints for consecutive meetings
-    # Carol -> Karen: SD to BV takes 22 minutes
-    s.add(If(pos_K == pos_C + 1, C_start + 30 + 22 <= K_start, True))
-    # Karen -> Carol: BV to SD takes 23 minutes
-    s.add(If(pos_C == pos_K + 1, K_start + 120 + 23 <= C_start, True))
-    
-    # Carol -> Rebecca: SD to MD takes 24 minutes
-    s.add(If(pos_R == pos_C + 1, C_start + 30 + 24 <= R_start, True))
-    # Rebecca -> Carol: MD to SD takes 24 minutes
-    s.add(If(pos_C == pos_R + 1, R_start + 120 + 24 <= C_start, True))
-    
-    # Karen -> Rebecca: BV to MD takes 13 minutes
-    s.add(If(pos_R == pos_K + 1, K_start + 120 + 13 <= R_start, True))
-    # Rebecca -> Karen: MD to BV takes 15 minutes
-    s.add(If(pos_K == pos_R + 1, R_start + 120 + 15 <= K_start, True))
-    
-    # Check for a solution
-    if s.check() == sat:
-        m = s.model()
-        # Extract start times
-        c_val = m.eval(C_start).as_long()
-        k_val = m.eval(K_start).as_long()
-        r_val = m.eval(R_start).as_long()
+    for perm in perms:
+        s = Solver()
+        start0 = Int(f'start0_{perm}')
+        start1 = Int(f'start1_{perm}')
+        start2 = Int(f'start2_{perm}')
+        starts = [start0, start1, start2]
         
-        # Create meeting entries
-        meetings = [
-            {"person": "Carol", "start": c_val, "end": c_val + 30},
-            {"person": "Karen", "start": k_val, "end": k_val + 120},
-            {"person": "Rebecca", "start": r_val, "end": r_val + 120}
-        ]
+        loc0 = locs[perm[0]]
+        loc1 = locs[perm[1]]
+        loc2 = locs[perm[2]]
         
-        # Sort meetings by start time
-        meetings.sort(key=lambda x: x["start"])
+        s.add(start0 >= travel_times[('US', loc0)])
+        s.add(start1 >= start0 + durations[perm[0]] + travel_times[(loc0, loc1)])
+        s.add(start2 >= start1 + durations[perm[1]] + travel_times[(loc1, loc2)])
         
-        # Format times to HH:MM
-        def format_time(minutes):
-            h = minutes // 60
-            m = minutes % 60
-            return f"{h:02d}:{m:02d}"
+        for i in range(3):
+            idx = perm[i]
+            s.add(starts[i] >= windows[idx][0])
+            s.add(starts[i] + durations[idx] <= windows[idx][1])
         
-        itinerary = []
-        for meet in meetings:
-            itinerary.append({
-                "action": "meet",
-                "person": meet["person"],
-                "start_time": format_time(meet["start"]),
-                "end_time": format_time(meet["end"])
-            })
-        
-        # Output the solution in JSON format
-        result = {"itinerary": itinerary}
-        print("SOLUTION:")
-        print(json.dumps(result))
-    else:
-        print("No solution found")
+        if s.check() == sat:
+            m = s.model()
+            start_vals = [m[starts[i]].as_long() for i in range(3)]
+            meetings = []
+            for i in range(3):
+                idx = perm[i]
+                start_min = start_vals[i]
+                end_min = start_min + durations[idx]
+                meetings.append((start_min, names[idx], start_min, end_min))
+            meetings_sorted = sorted(meetings, key=lambda x: x[0])
+            result_meetings = meetings_sorted
+            found = True
+            break
+    
+    if not found:
+        print("No valid schedule found.")
+        return
+    
+    itinerary = []
+    for meeting in result_meetings:
+        _, person, start_min, end_min = meeting
+        start_time = min_to_time(start_min)
+        end_time = min_to_time(end_min)
+        itinerary.append({
+            "action": "meet",
+            "person": person,
+            "start_time": start_time,
+            "end_time": end_time
+        })
+    
+    import json
+    output = {"itinerary": itinerary}
+    print(json.dumps(output, indent=2))
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
