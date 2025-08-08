@@ -1,0 +1,1 @@
+Converts a time string 'H:MM' into minutes since midnight.

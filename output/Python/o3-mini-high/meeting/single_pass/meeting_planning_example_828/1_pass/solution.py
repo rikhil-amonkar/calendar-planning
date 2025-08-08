@@ -1,0 +1,1 @@
+Convert minutes since midnight to 'H:MM' 24-hour format (no leading zero on hour).

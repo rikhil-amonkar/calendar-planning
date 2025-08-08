@@ -158,7 +158,7 @@ def main():
     os.makedirs(excel_dir, exist_ok=True)
     
     # Create Excel writer with approach in filename
-    output_file = os.path.join(excel_dir, f"task_analysis_results_nofeed_{approach}_{model_name}_{task_name}.xlsx")
+    output_file = os.path.join(excel_dir, f"task_analysis_results_singlepass_{approach}_{model_name}_{task_name}.xlsx")
     
     logging.info(f"Analyzing results for {task_name} from {args.task_dir}")
     

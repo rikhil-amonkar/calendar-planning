@@ -1,0 +1,1 @@
+Compute an individual meeting schedule for a given friend.

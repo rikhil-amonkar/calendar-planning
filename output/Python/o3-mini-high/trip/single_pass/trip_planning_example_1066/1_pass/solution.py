@@ -1,0 +1,1 @@
+Given an ordered list of cities, compute the starting day for each block.

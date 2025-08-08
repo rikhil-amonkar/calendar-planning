@@ -1,0 +1,1 @@
+Check if a direct flight from from_city to to_city is available.

@@ -1,0 +1,1 @@
+Format time in minutes since midnight to 'H:MM' string (24-hour format).
