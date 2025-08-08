@@ -153,7 +153,7 @@ Examples:
                           help="Maximum number of examples to process concurrently")
         parser.add_argument('--rate_limit', type=float, default=1.0,
                           help="Requests per second limit (to avoid API rate limits)")
-        parser.add_argument('--api_key_file', type=str, default='../../openai_research/deepseek_api_key.json',
+        parser.add_argument('--api_key_file', type=str, default='../../openai_research/ai2_openai_key.json',
                           help="Path to file containing API keys")
         parser.add_argument('--examples', type=str,
                           help="Comma-separated list of specific example numbers to run")
@@ -1056,7 +1056,7 @@ Examples:
 
     def save_output_files(self, task, example_id, pass_num, conversation, code, output, evaluation):
         """Save all output files for a given pass"""
-        output_dir = f"../output/Python/Qwen-Coder-32B-Instruct/{task}/n_pass/{example_id}/{pass_num}_pass"
+        output_dir = f"../output/Python/o3-mini-high/{task}/single_pass/{example_id}/{pass_num}_pass"
         os.makedirs(output_dir, exist_ok=True)
         
         # Save conversation
@@ -1089,7 +1089,8 @@ Examples:
             initial_prompt = config["prefix"] + example_data["prompt_0shot"] + config["suffix"]
             current_prompt = initial_prompt
             
-            for pass_num in range(1, self.args.max_passes + 1):
+            # for pass_num in range(1, self.args.max_passes + 1):
+            for pass_num in range(1, 2):
                 logging.info(f"Processing {task} example {example_id}, pass {pass_num} with {model_name}")
                 
                 # Get model response with timing
