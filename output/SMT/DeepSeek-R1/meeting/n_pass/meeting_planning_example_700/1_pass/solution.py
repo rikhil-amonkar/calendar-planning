@@ -1,166 +1,120 @@
-from z3 import *
 import json
+from z3 import *
 
-def main():
-    friends_data = [
-        {'name': 'Michelle', 'location': 'Golden Gate Park', 
-         'window_start': 660, 'window_end': 720, 'min_duration': 15},
-        {'name': 'Emily', 'location': 'Fisherman\'s Wharf', 
-         'window_start': 435, 'window_end': 600, 'min_duration': 30},
-        {'name': 'Mark', 'location': 'Marina District', 
-         'window_start': 555, 'window_end': 645, 'min_duration': 75},
-        {'name': 'Barbara', 'location': 'Alamo Square', 
-         'window_start': 480, 'window_end': 600, 'min_duration': 120},
-        {'name': 'Laura', 'location': 'Sunset District', 
-         'window_start': 600, 'window_end': 735, 'min_duration': 75},
-        {'name': 'Mary', 'location': 'Nob Hill', 
-         'window_start': 510, 'window_end': 600, 'min_duration': 45},
-        {'name': 'Helen', 'location': 'North Beach', 
-         'window_start': 120, 'window_end': 195, 'min_duration': 45}
-    ]
-    
-    travel_dict = {
-        ("Presidio", "Golden Gate Park"): 12,
-        ("Presidio", "Fisherman's Wharf"): 19,
-        ("Presidio", "Marina District"): 11,
-        ("Presidio", "Alamo Square"): 19,
-        ("Presidio", "Sunset District"): 15,
-        ("Presidio", "Nob Hill"): 18,
-        ("Presidio", "North Beach"): 18,
+# Convert time to minutes
+def time_to_minutes(time_str):
+    hours, minutes = map(int, time_str.split(':'))
+    return hours * 60 + minutes
 
-        ("Golden Gate Park", "Presidio"): 11,
-        ("Golden Gate Park", "Fisherman's Wharf"): 24,
-        ("Golden Gate Park", "Marina District"): 16,
-        ("Golden Gate Park", "Alamo Square"): 9,
-        ("Golden Gate Park", "Sunset District"): 10,
-        ("Golden Gate Park", "Nob Hill"): 20,
-        ("Golden Gate Park", "North Beach"): 23,
+# Convert minutes to time string
+def minutes_to_time(minutes):
+    hours = minutes // 60
+    minutes %= 60
+    return f"{hours:02d}:{minutes:02d}"
 
-        ("Fisherman's Wharf", "Presidio"): 17,
-        ("Fisherman's Wharf", "Golden Gate Park"): 25,
-        ("Fisherman's Wharf", "Marina District"): 9,
-        ("Fisherman's Wharf", "Alamo Square"): 21,
-        ("Fisherman's Wharf", "Sunset District"): 27,
-        ("Fisherman's Wharf", "Nob Hill"): 11,
-        ("Fisherman's Wharf", "North Beach"): 6,
+# Define locations
+locations = {
+    "Presidio": 0,
+    "Pacific Heights": 1,
+    "Golden Gate Park": 2,
+    "Fisherman's Wharf": 3,
+    "Marina District": 4,
+    "Alamo Square": 5,
+    "Sunset District": 6,
+    "Nob Hill": 7,
+    "North Beach": 8
+}
 
-        ("Marina District", "Presidio"): 10,
-        ("Marina District", "Golden Gate Park"): 18,
-        ("Marina District", "Fisherman's Wharf"): 10,
-        ("Marina District", "Alamo Square"): 15,
-        ("Marina District", "Sunset District"): 19,
-        ("Marina District", "Nob Hill"): 12,
-        ("Marina District", "North Beach"): 11,
+# Travel time matrix (9x9)
+travel_time = [
+    [0, 11, 12, 19, 11, 19, 15, 18, 18],   # Presidio to others
+    [11, 0, 15, 13, 6, 10, 21, 8, 9],       # Pacific Heights to others
+    [11, 16, 0, 24, 16, 9, 10, 20, 23],     # Golden Gate Park to others
+    [17, 12, 25, 0, 9, 21, 27, 11, 6],      # Fisherman's Wharf to others
+    [10, 7, 18, 10, 0, 15, 19, 12, 11],     # Marina District to others
+    [17, 10, 9, 19, 15, 0, 16, 11, 15],     # Alamo Square to others
+    [16, 21, 11, 29, 21, 17, 0, 27, 28],    # Sunset District to others
+    [17, 8, 17, 10, 11, 11, 24, 0, 8],      # Nob Hill to others
+    [17, 8, 22, 5, 9, 16, 27, 7, 0]         # North Beach to others
+]
 
-        ("Alamo Square", "Presidio"): 17,
-        ("Alamo Square", "Golden Gate Park"): 9,
-        ("Alamo Square", "Fisherman's Wharf"): 19,
-        ("Alamo Square", "Marina District"): 15,
-        ("Alamo Square", "Sunset District"): 16,
-        ("Alamo Square", "Nob Hill"): 11,
-        ("Alamo Square", "North Beach"): 15,
+# Friends data: name, location, start window, end window, min duration
+friends_data = [
+    {"name": "Michelle", "location": "Golden Gate Park", 
+     "start_win": "20:00", "end_win": "21:00", "min_dur": 15},
+    {"name": "Emily", "location": "Fisherman's Wharf", 
+     "start_win": "16:15", "end_win": "19:00", "min_dur": 30},
+    {"name": "Mark", "location": "Marina District", 
+     "start_win": "18:15", "end_win": "19:45", "min_dur": 75},
+    {"name": "Barbara", "location": "Alamo Square", 
+     "start_win": "17:00", "end_win": "19:00", "min_dur": 120},
+    {"name": "Laura", "location": "Sunset District", 
+     "start_win": "19:00", "end_win": "21:15", "min_dur": 75},
+    {"name": "Mary", "location": "Nob Hill", 
+     "start_win": "17:30", "end_win": "19:00", "min_dur": 45},
+    {"name": "Helen", "location": "North Beach", 
+     "start_win": "11:00", "end_win": "12:15", "min_dur": 45}
+]
 
-        ("Sunset District", "Presidio"): 16,
-        ("Sunset District", "Golden Gate Park"): 11,
-        ("Sunset District", "Fisherman's Wharf"): 29,
-        ("Sunset District", "Marina District"): 21,
-        ("Sunset District", "Alamo Square"): 17,
-        ("Sunset District", "Nob Hill"): 27,
-        ("Sunset District", "North Beach"): 28,
+# Convert friend data to minutes and location indices
+for friend in friends_data:
+    friend["start_win_min"] = time_to_minutes(friend["start_win"])
+    friend["end_win_min"] = time_to_minutes(friend["end_win"])
+    friend["loc_index"] = locations[friend["location"]]
 
-        ("Nob Hill", "Presidio"): 17,
-        ("Nob Hill", "Golden Gate Park"): 17,
-        ("Nob Hill", "Fisherman's Wharf"): 10,
-        ("Nob Hill", "Marina District"): 11,
-        ("Nob Hill", "Alamo Square"): 11,
-        ("Nob Hill", "Sunset District"): 24,
-        ("Nob Hill", "North Beach"): 8,
+# Start time at Presidio (9:00 AM in minutes)
+start_time = time_to_minutes("9:00")
 
-        ("North Beach", "Presidio"): 17,
-        ("North Beach", "Golden Gate Park"): 22,
-        ("North Beach", "Fisherman's Wharf"): 5,
-        ("North Beach", "Marina District"): 9,
-        ("North Beach", "Alamo Square"): 16,
-        ("North Beach", "Sunset District"): 27,
-        ("North Beach", "Nob Hill"): 7
-    }
+# Create Z3 solver
+opt = Optimize()
 
-    s = Solver()
-    n = len(friends_data)
-    met = [Bool(f'met_{i}') for i in range(n)]
-    start = [Int(f'start_{i}') for i in range(n)]
-    end = [Int(f'end_{i}') for i in range(n)]
-    order = [Int(f'order_{i}') for i in range(n)]
-    
-    for i in range(n):
-        f = friends_data[i]
-        s.add(Implies(met[i], start[i] >= f['window_start']))
-        s.add(Implies(met[i], end[i] <= f['window_end']))
-        s.add(Implies(met[i], end[i] - start[i] >= f['min_duration']))
-        s.add(Implies(met[i], And(order[i] >= 0, order[i] < n)))
-        
-    for i in range(n):
-        for j in range(i+1, n):
-            s.add(Implies(And(met[i], met[j]), order[i] != order[j]))
-            
-    for i in range(n):
-        from_loc = "Presidio"
-        to_loc = friends_data[i]['location']
-        tt = travel_dict.get((from_loc, to_loc))
-        if tt is None:
-            tt = 1000
-        s.add(Implies(met[i], start[i] >= tt))
-        
-    for i in range(n):
-        for j in range(n):
-            if i == j:
-                continue
-            loc_i = friends_data[i]['location']
-            loc_j = friends_data[j]['location']
-            tt = travel_dict.get((loc_i, loc_j))
-            if tt is None:
-                tt = 1000
-            s.add(Implies(And(met[i], met[j], order[i] < order[j]), 
-                          start[j] >= end[i] + tt))
-    
-    num_met = Sum([If(met[i], 1, 0) for i in range(n)])
-    s.maximize(num_met)
-    
-    if s.check() == sat:
-        model = s.model()
-        itinerary_unsorted = []
-        order_vals = []
-        for i in range(n):
-            if is_true(model[met[i]]):
-                start_val = model[start[i]].as_long()
-                end_val = model[end[i]].as_long()
-                order_val = model[order[i]].as_long()
-                total_minutes_start = start_val
-                total_minutes_end = end_val
-                hour_start = total_minutes_start // 60 + 9
-                min_start = total_minutes_start % 60
-                hour_end = total_minutes_end // 60 + 9
-                min_end = total_minutes_end % 60
-                start_str = f"{hour_start}:{min_start:02d}"
-                end_str = f"{hour_end}:{min_end:02d}"
-                itinerary_unsorted.append({
-                    'action': 'meet',
-                    'person': friends_data[i]['name'],
-                    'start_time': start_str,
-                    'end_time': end_str,
-                    'order': order_val
-                })
-                order_vals.append(order_val)
-        
-        itinerary_sorted = sorted(itinerary_unsorted, key=lambda x: x['order'])
-        itinerary_final = [{'action': x['action'], 'person': x['person'], 
-                           'start_time': x['start_time'], 'end_time': x['end_time']} 
-                          for x in itinerary_sorted]
-        print("SOLUTION:")
-        print(json.dumps({'itinerary': itinerary_final}))
-    else:
-        print("SOLUTION:")
-        print(json.dumps({'itinerary': []}))
+# Create variables for each friend
+n = len(friends_data)
+meet = [Bool(f"meet_{i}") for i in range(n)]
+t_start = [Int(f"t_start_{i}") for i in range(n)]
 
-if __name__ == '__main__':
-    main()
+# Add constraints for each friend
+for i, friend in enumerate(friends_data):
+    # If we meet the friend, the meeting must be within their window and duration
+    opt.add(Implies(meet[i], 
+                   And(t_start[i] >= friend["start_win_min"],
+                       t_start[i] + friend["min_dur"] <= friend["end_win_min"])))
+    # The meeting must start after traveling from Presidio to the friend's location
+    travel_from_start = travel_time[0][friend["loc_index"]]
+    opt.add(Implies(meet[i], t_start[i] >= start_time + travel_from_start))
+
+# Add disjunctive constraints for every pair of friends
+for i in range(n):
+    for j in range(i + 1, n):
+        if i != j:
+            # Travel time from friend i to j and j to i
+            travel_i_j = travel_time[friends_data[i]["loc_index"]][friends_data[j]["loc_index"]]
+            travel_j_i = travel_time[friends_data[j]["loc_index"]][friends_data[i]["loc_index"]]
+            # Constraint: if both are met, then either i before j or j before i
+            opt.add(Implies(And(meet[i], meet[j]),
+                           Or(t_start[j] >= t_start[i] + friends_data[i]["min_dur"] + travel_i_j,
+                              t_start[i] >= t_start[j] + friends_data[j]["min_dur"] + travel_j_i)))
+
+# Maximize the number of meetings
+num_meetings = Sum([If(meet[i], 1, 0) for i in range(n)])
+opt.maximize(num_meetings)
+
+# Solve the problem
+if opt.check() == sat:
+    m = opt.model()
+    itinerary = []
+    for i, friend in enumerate(friends_data):
+        if m.evaluate(meet[i]):
+            start_val = m.evaluate(t_start[i]).as_long()
+            start_time_str = minutes_to_time(start_val)
+            end_time_str = minutes_to_time(start_val + friend["min_dur"])
+            itinerary.append({
+                "action": "meet",
+                "person": friend["name"],
+                "start_time": start_time_str,
+                "end_time": end_time_str
+            })
+    # Output the itinerary in JSON format
+    print(json.dumps({"itinerary": itinerary}, indent=2))
+else:
+    print('{"itinerary": []}')

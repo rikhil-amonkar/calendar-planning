@@ -1,0 +1,56 @@
+from z3 import *
+
+def main():
+    s = Solver()
+    
+    # Given data
+    min_start = 1
+    max_end = 30
+    req_days = [3, 2, 2]  # Days required for City A, B, C
+    n_visits = 3  # Total visits
+    
+    # Arrays for variables
+    T = [Int(f'T_{i}') for i in range(n_visits)]  # Start time of each visit
+    X = [Int(f'X_{i}') for i in range(n_visits)]  # City visited at each step
+    
+    # Helper function to get required days for a city symbolically
+    def get_req_days(city):
+        return If(city == 0, req_days[0],
+               If(city == 1, req_days[1],
+               req_days[2]))
+    
+    # Constraints on start times
+    for i in range(n_visits):
+        s.add(T[i] >= min_start, T[i] <= max_end - get_req_days(X[i]) + 1)
+    
+    # Order of visits
+    for i in range(n_visits - 1):
+        s.add(T[i+1] >= T[i] + get_req_days(X[i]))
+    
+    # Each visit must be to a valid city (0, 1, or 2)
+    for i in range(n_visits):
+        s.add(Or(X[i] == 0, X[i] == 1, X[i] == 2))
+    
+    # Must visit City C (index 2) at least once
+    s.add(Or([X[i] == 2 for i in range(n_visits)]))
+    
+    # First and last day constraints
+    s.add(T[0] == min_start)  # Start on day 1
+    s.add(T[n_visits-1] + get_req_days(X[n_visits-1]) - 1 <= max_end)  # End by day 30
+    
+    # Solve the model
+    if s.check() == sat:
+        m = s.model()
+        T_val = [m.evaluate(T[i]).as_long() for i in range(n_visits)]
+        X_val = [m.evaluate(X[i]).as_long() for i in range(n_visits)]
+        print("Found solution:")
+        for i in range(n_visits):
+            city = ['A','B','C'][X_val[i]]
+            start = T_val[i]
+            end = start + req_days[X_val[i]] - 1
+            print(f"Visit {i+1}: City {city} from day {start} to {end}")
+    else:
+        print("No solution found")
+
+if __name__ == '__main__':
+    main()

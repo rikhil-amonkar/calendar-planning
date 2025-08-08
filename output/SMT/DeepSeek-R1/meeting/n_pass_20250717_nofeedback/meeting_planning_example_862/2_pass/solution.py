@@ -1,0 +1,119 @@
+from z3 import *
+import json
+
+def main():
+    friends = [
+        ("Laura", 1, 870, 975, 75),   # Alamo Square: 2:30PM to 4:15PM
+        ("Brian", 2, 615, 1020, 30),  # Presidio: 10:15AM to 5:00PM
+        ("Karen", 3, 1080, 1215, 90), # Russian Hill: 6:00PM to 8:15PM
+        ("Stephanie", 4, 615, 960, 75), # North Beach: 10:15AM to 4:00PM
+        ("Helen", 5, 690, 1305, 120), # Golden Gate Park: 11:30AM to 9:45PM
+        ("Sandra", 6, 480, 915, 30),  # Richmond District: 8:00AM to 3:15PM (corrected)
+        ("Mary", 7, 1005, 1125, 120), # Embarcadero: 4:45PM to 6:45PM
+        ("Deborah", 8, 1140, 1245, 105), # Financial District: 7:00PM to 8:45PM
+        ("Elizabeth", 9, 510, 795, 105)  # Marina District: 8:30AM to 1:15PM (corrected)
+    ]
+    
+    travel_matrix = [
+        [0, 11, 25, 15, 17, 17, 20, 19, 15, 19],
+        [10, 0, 17, 13, 15, 9, 11, 16, 17, 15],
+        [26, 19, 0, 14, 18, 12, 7, 20, 23, 11],
+        [16, 15, 14, 0, 5, 21, 14, 8, 11, 7],
+        [18, 16, 17, 4, 0, 22, 18, 6, 8, 9],
+        [17, 9, 11, 19, 23, 0, 7, 25, 26, 16],
+        [20, 13, 7, 13, 17, 9, 0, 19, 22, 9],
+        [20, 19, 20, 8, 5, 25, 21, 0, 5, 12],
+        [17, 17, 22, 11, 7, 23, 21, 4, 0, 15],
+        [20, 15, 10, 8, 11, 18, 11, 14, 17, 0]
+    ]
+    
+    n = len(friends)
+    s = Solver()
+    opt = Optimize()
+    
+    scheduled = [Bool(f'scheduled_{i}') for i in range(n)]
+    start_time = [Int(f'start_{i}') for i in range(n)]
+    end_time = [Int(f'end_{i}') for i in range(n)]
+    position = [Int(f'position_{i}') for i in range(n)]
+    
+    m = Int('m')
+    opt.add(m == Sum([If(scheduled[i], 1, 0) for i in range(n)]))
+    
+    for i in range(n):
+        name, loc_idx, avail_start, avail_end, min_dur = friends[i]
+        # If scheduled, then the position must be between 1 and n, and times must be within availability
+        opt.add(If(scheduled[i],
+                   And(position[i] >= 1, position[i] <= n,
+                       start_time[i] >= avail_start,
+                       end_time[i] == start_time[i] + min_dur,
+                       end_time[i] <= avail_end),
+                   And(position[i] == 0, start_time[i] == 0, end_time[i] == 0)))
+    
+    # Constraints for unique positions and contiguous sequence
+    for i in range(n):
+        for j in range(i+1, n):
+            opt.add(If(And(scheduled[i], scheduled[j]), position[i] != position[j], True))
+    
+    for k in range(1, n+1):
+        count = Sum([If(And(scheduled[i], position[i] == k), 1, 0) for i in range(n)])
+        opt.add(count == If(k <= m, 1, 0))
+    
+    # Arrival time constraints
+    for i in range(n):
+        name_i, loc_i, avail_start_i, avail_end_i, min_dur_i = friends[i]
+        arrival_i = Int(f'arrival_{i}')
+        # If the friend is scheduled and is first, arrival time is from Mission District
+        cond_first = (position[i] == 1)
+        travel_time_first = travel_matrix[0][loc_i]
+        first_arrival = 540 + travel_time_first  # 9:00 AM (540 minutes) plus travel time
+        
+        # If not first, then arrival time is from the previous meeting
+        prev_arrival = Int(f'prev_arrival_{i}')
+        # Sum over possible previous friends j
+        prev_arrival_expr = 0
+        for j in range(n):
+            if i == j:
+                continue
+            name_j, loc_j, _, _, _ = friends[j]
+            # If j is scheduled and at position[i]-1, then arrival_i = end_time[j] + travel from j to i
+            prev_arrival_expr = prev_arrival_expr + If(And(scheduled[j], position[j] == position[i] - 1),
+                                                      end_time[j] + travel_matrix[loc_j][loc_i], 0)
+        
+        opt.add(arrival_i == If(And(scheduled[i], cond_first), first_arrival,
+                               If(And(scheduled[i], Not(cond_first)), prev_arrival_expr, 0)))
+        
+        # If scheduled, start time must be at least the arrival time
+        opt.add(If(scheduled[i], start_time[i] >= arrival_i, True))
+    
+    # Maximize the number of scheduled friends
+    opt.maximize(m)
+    
+    if opt.check() == sat:
+        model = opt.model()
+        num_scheduled = model.eval(m).as_long()
+        itinerary = []
+        for i in range(n):
+            if model.eval(scheduled[i]):
+                start_val = model.eval(start_time[i]).as_long()
+                end_val = model.eval(end_time[i]).as_long()
+                start_hour = start_val // 60
+                start_minute = start_val % 60
+                end_hour = end_val // 60
+                end_minute = end_val % 60
+                start_str = f"{start_hour:02d}:{start_minute:02d}"
+                end_str = f"{end_hour:02d}:{end_minute:02d}"
+                itinerary.append({
+                    "action": "meet",
+                    "person": friends[i][0],
+                    "start_time": start_str,
+                    "end_time": end_str
+                })
+        itinerary_sorted = sorted(itinerary, key=lambda x: x['start_time'])
+        print('SOLUTION:')
+        print(json.dumps({"itinerary": itinerary_sorted}))
+    else:
+        print('SOLUTION:')
+        print(json.dumps({"itinerary": []}))
+
+if __name__ == '__main__':
+    main()

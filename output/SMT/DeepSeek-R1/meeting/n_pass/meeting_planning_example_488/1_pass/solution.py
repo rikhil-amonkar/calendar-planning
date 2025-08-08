@@ -1,146 +1,117 @@
-import z3
-import json
+import itertools
+from z3 import *
 
-def convert_time(minutes_since_900):
-    total_minutes = minutes_since_900
-    base_hour = 9
-    hour = base_hour + total_minutes // 60
-    minute = total_minutes % 60
-    return f"{int(hour):02d}:{int(minute):02d}"
-
-travel_time_dict = {
-    ('Pacific Heights', 'Nob Hill'): 8,
-    ('Pacific Heights', 'Russian Hill'): 7,
-    ('Pacific Heights', 'The Castro'): 16,
-    ('Pacific Heights', 'Sunset District'): 21,
-    ('Pacific Heights', 'Haight-Ashbury'): 11,
-    ('Nob Hill', 'Pacific Heights'): 8,
-    ('Nob Hill', 'Russian Hill'): 5,
-    ('Nob Hill', 'The Castro'): 17,
-    ('Nob Hill', 'Sunset District'): 25,
-    ('Nob Hill', 'Haight-Ashbury'): 13,
-    ('Russian Hill', 'Pacific Heights'): 7,
-    ('Russian Hill', 'Nob Hill'): 5,
-    ('Russian Hill', 'The Castro'): 21,
-    ('Russian Hill', 'Sunset District'): 23,
-    ('Russian Hill', 'Haight-Ashbury'): 17,
-    ('The Castro', 'Pacific Heights'): 16,
-    ('The Castro', 'Nob Hill'): 16,
-    ('The Castro', 'Russian Hill'): 18,
-    ('The Castro', 'Sunset District'): 17,
-    ('The Castro', 'Haight-Ashbury'): 6,
-    ('Sunset District', 'Pacific Heights'): 21,
-    ('Sunset District', 'Nob Hill'): 27,
-    ('Sunset District', 'Russian Hill'): 24,
-    ('Sunset District', 'The Castro'): 17,
-    ('Sunset District', 'Haight-Ashbury'): 15,
-    ('Haight-Ashbury', 'Pacific Heights'): 12,
-    ('Haight-Ashbury', 'Nob Hill'): 15,
-    ('Haight-Ashbury', 'Russian Hill'): 17,
-    ('Haight-Ashbury', 'The Castro'): 6,
-    ('Haight-Ashbury', 'Sunset District'): 15
-}
-
-meetings = [
-    {'name': 'Ronald', 'loc': 'Nob Hill', 'start_avail': 60, 'end_avail': 480, 'duration': 105},
-    {'name': 'Margaret', 'loc': 'Haight-Ashbury', 'start_avail': 75, 'end_avail': 780, 'duration': 60},
-    {'name': 'Helen', 'loc': 'The Castro', 'start_avail': 270, 'end_avail': 480, 'duration': 120},
-    {'name': 'Joshua', 'loc': 'Sunset District', 'start_avail': 315, 'end_avail': 630, 'duration': 90}
+# Meetings data: name, location, start window (minutes from 9:00 AM), end window, minimum duration
+meetings_info = [
+    {"name": "Ronald", "start_win": 60, "end_win": 480, "min_dur": 105, "index": 0},
+    {"name": "Helen", "start_win": 270, "end_win": 480, "min_dur": 120, "index": 1},
+    {"name": "Joshua", "start_win": 315, "end_win": 630, "min_dur": 90, "index": 2},
+    {"name": "Margaret", "start_win": 75, "end_win": 780, "min_dur": 60, "index": 3}
 ]
 
-durations = [105, 60, 120, 90]
-locs = [m['loc'] for m in meetings]
+# Travel time from Pacific Heights to each meeting location
+T_base = [8, 16, 21, 11]  # Ronald, Helen, Joshua, Margaret
 
-travel_P = []
-for i in range(4):
-    from_loc = 'Pacific Heights'
-    to_loc = locs[i]
-    travel_P.append(travel_time_dict[(from_loc, to_loc)])
+# Travel time matrix between meeting locations (indices: 0-Ronald, 1-Helen, 2-Joshua, 3-Margaret)
+T = [
+    [0, 17, 25, 13],
+    [17, 0, 17, 6],
+    [25, 17, 0, 15],
+    [13, 6, 15, 0]
+]
 
-travel = [[0]*4 for _ in range(4)]
-for i in range(4):
-    for j in range(4):
-        if i != j:
-            from_loc = locs[i]
-            to_loc = locs[j]
-            travel[i][j] = travel_time_dict[(from_loc, to_loc)]
+# We are skipping Sarah because it's impossible to meet her for 45 minutes within her availability window.
 
-s0, s1, s2, s3 = z3.Ints('s0 s1 s2 s3')
-p0, p1, p2, p3 = z3.Ints('p0 p1 p2 p3')
-s = z3.Solver()
+# Try to schedule subsets of meetings in descending order of size
+solution_found = False
+result_itinerary = []
 
-s.add(z3.Distinct(p0, p1, p2, p3))
-s.add(p0 >= 0, p0 <= 3)
-s.add(p1 >= 0, p1 <= 3)
-s.add(p2 >= 0, p2 <= 3)
-s.add(p3 >= 0, p3 <= 3)
+# Iterate over subset sizes from 4 down to 1
+for num_meetings in range(4, 0, -1):
+    if solution_found:
+        break
+    # Generate all combinations of meetings of size num_meetings
+    for chosen_indices in itertools.combinations(range(4), num_meetings):
+        s = Solver()
+        
+        # Create variables for start and end times for all meetings (even if not chosen, but we'll ignore those)
+        s0, s1, s2, s3 = Ints('s0 s1 s2 s3')
+        e0, e1, e2, e3 = Ints('e0 e1 e2 e3')
+        start_vars = [s0, s1, s2, s3]
+        end_vars = [e0, e1, e2, e3]
+        
+        # Define end times in terms of start times and minimum durations
+        s.add(e0 == s0 + 105)
+        s.add(e1 == s1 + 120)
+        s.add(e2 == s2 + 90)
+        s.add(e3 == s3 + 60)
+        
+        # Create arrays for start and end times for Z3
+        start_arr = Array('start_arr', IntSort(), IntSort())
+        end_arr = Array('end_arr', IntSort(), IntSort())
+        for i in range(4):
+            s.add(start_arr[i] == start_vars[i])
+            s.add(end_arr[i] == end_vars[i])
+        
+        # Create arrays for availability windows
+        win_start_arr = Array('win_start_arr', IntSort(), IntSort())
+        win_end_arr = Array('win_end_arr', IntSort(), IntSort())
+        for i in range(4):
+            s.add(win_start_arr[i] == meetings_info[i]['start_win'])
+            s.add(win_end_arr[i] == meetings_info[i]['end_win'])
+        
+        # Create travel time matrix for Z3
+        tt_arr = Array('tt_arr', IntSort(), IntSort(), IntSort())
+        for i in range(4):
+            for j in range(4):
+                s.add(tt_arr[i, j] == T[i][j])
+        
+        # Permutation variables for the chosen meetings
+        p = [Int('p_%d' % i) for i in range(num_meetings)]
+        # Each permutation variable must be one of the chosen indices
+        s.add(Distinct(p))
+        for i in range(num_meetings):
+            s.add(Or([p[i] == idx for idx in chosen_indices]))
+        
+        # Constraints for the first meeting in the permutation
+        s.add(start_arr[p[0]] >= T_base[p[0]])
+        s.add(start_arr[p[0]] >= win_start_arr[p[0]])
+        
+        # Constraints for the remaining meetings in the permutation
+        for k in range(1, num_meetings):
+            s.add(start_arr[p[k]] >= end_arr[p[k-1]] + tt_arr[p[k-1], p[k]])
+            s.add(start_arr[p[k]] >= win_start_arr[p[k]])
+        
+        # End time constraints for chosen meetings
+        for idx in chosen_indices:
+            s.add(end_arr[idx] <= win_end_arr[idx])
+            s.add(start_arr[idx] >= 0)  # Start time must be non-negative
+        
+        if s.check() == sat:
+            model = s.model()
+            schedule = []
+            for idx in chosen_indices:
+                start_val = model.evaluate(start_arr[idx]).as_long()
+                end_val = model.evaluate(end_arr[idx]).as_long()
+                total_minutes_start = start_val
+                start_hour = 9 + total_minutes_start // 60
+                start_minute = total_minutes_start % 60
+                total_minutes_end = end_val
+                end_hour = 9 + total_minutes_end // 60
+                end_minute = total_minutes_end % 60
+                start_str = f"{start_hour:02d}:{start_minute:02d}"
+                end_str = f"{end_hour:02d}:{end_minute:02d}"
+                schedule.append({
+                    "action": "meet",
+                    "person": meetings_info[idx]['name'],
+                    "start_time": start_str,
+                    "end_time": end_str
+                })
+            solution_found = True
+            result_itinerary = schedule
+            break
 
-s.add(s0 >= meetings[0]['start_avail'])
-s.add(s0 + durations[0] <= meetings[0]['end_avail'])
-s.add(s1 >= meetings[1]['start_avail'])
-s.add(s1 + durations[1] <= meetings[1]['end_avail'])
-s.add(s2 >= meetings[2]['start_avail'])
-s.add(s2 + durations[2] <= meetings[2]['end_avail'])
-s.add(s3 >= meetings[3]['start_avail'])
-s.add(s3 + durations[3] <= meetings[3]['end_avail'])
-
-s.add(z3.Implies(p0 == 0, s0 >= travel_P[0]))
-s.add(z3.Implies(p1 == 0, s1 >= travel_P[1]))
-s.add(z3.Implies(p2 == 0, s2 >= travel_P[2]))
-s.add(z3.Implies(p3 == 0, s3 >= travel_P[3]))
-
-s_list = [s0, s1, s2, s3]
-p_list = [p0, p1, p2, p3]
-
-for i in range(4):
-    for j in range(4):
-        if i != j:
-            cond = (p_list[j] == p_list[i] + 1)
-            s.add(z3.Implies(cond, s_list[j] >= s_list[i] + durations[i] + travel[i][j]))
-
-if s.check() == z3.sat:
-    model = s.model()
-    s0_val = model.eval(s0).as_long()
-    s1_val = model.eval(s1).as_long()
-    s2_val = model.eval(s2).as_long()
-    s3_val = model.eval(s3).as_long()
-    
-    schedule = []
-    schedule.append({
-        'person': 'Ronald',
-        'start_time': convert_time(s0_val),
-        'end_time': convert_time(s0_val + durations[0])
-    })
-    schedule.append({
-        'person': 'Margaret',
-        'start_time': convert_time(s1_val),
-        'end_time': convert_time(s1_val + durations[1])
-    })
-    schedule.append({
-        'person': 'Helen',
-        'start_time': convert_time(s2_val),
-        'end_time': convert_time(s2_val + durations[2])
-    })
-    schedule.append({
-        'person': 'Joshua',
-        'start_time': convert_time(s3_val),
-        'end_time': convert_time(s3_val + durations[3])
-    })
-    
-    schedule.sort(key=lambda x: x['start_time'])
-    
-    itinerary = []
-    for entry in schedule:
-        itinerary.append({
-            "action": "meet",
-            "person": entry['person'],
-            "start_time": entry['start_time'],
-            "end_time": entry['end_time']
-        })
-    
-    result = {"itinerary": itinerary}
-    print("SOLUTION:")
-    print(json.dumps(result))
-else:
-    print("SOLUTION:")
-    print(json.dumps({"itinerary": []}))
+# Output the result
+import json
+print("SOLUTION:")
+print(json.dumps({"itinerary": result_itinerary}))

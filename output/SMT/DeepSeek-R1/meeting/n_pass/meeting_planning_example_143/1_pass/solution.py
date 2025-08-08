@@ -1,54 +1,73 @@
 from z3 import *
-import json
+
+def min_to_time(minutes):
+    hours = minutes // 60
+    minutes_remain = minutes % 60
+    return f"{hours:02d}:{minutes_remain:02d}"
 
 def main():
-    # Convert times to minutes since midnight
-    # Start at North Beach: 9:00 AM -> 540 minutes
-    start_time_total = 9 * 60  # 9:00 AM in minutes
-
-    # Mark's availability: 1:00 PM to 5:45 PM -> 13:00 to 17:45
-    mark_start_min = 13 * 60  # 780 minutes
-    mark_end_min = 17 * 60 + 45  # 1065 minutes
-
-    # Karen's meeting: 6:45 PM to 8:15 PM -> 18:45 to 20:15
-    karen_start_min = 18 * 60 + 45  # 1125 minutes
-    karen_end_min = 20 * 60 + 15  # 1215 minutes
-
-    # Create Z3 variables for Mark's meeting
+    # Initialize the optimizer
+    opt = Optimize()
+    
+    # Convert times to minutes from midnight
+    start_time_nb = 9 * 60  # 9:00 AM
+    mark_start_min = 13 * 60  # 1:00 PM
+    mark_end_min = 17 * 60 + 45  # 5:45 PM
+    karen_start_min = 18 * 60 + 45  # 6:45 PM
+    karen_end_min = 20 * 60 + 15  # 8:15 PM
+    
+    # Travel times in minutes
+    travel_nb_to_emb = 6  # North Beach to Embarcadero
+    travel_emb_to_ph = 11  # Embarcadero to Pacific Heights
+    
+    # Meeting duration requirements
+    mark_min_duration = 120
+    karen_min_duration = 90
+    
+    # Variables for Mark's meeting start and end times (in minutes)
     m_start = Int('m_start')
     m_end = Int('m_end')
-
-    s = Solver()
-    # Constraints for Mark's meeting
-    s.add(m_start >= mark_start_min)
-    s.add(m_end <= mark_end_min)
-    s.add(m_end - m_start >= 120)  # 120 minutes minimum
-
-    if s.check() == sat:
-        model = s.model()
-        m_start_val = model[m_start].as_long()
-        m_end_val = model[m_end].as_long()
-
-        # Convert minutes to HH:MM string
-        def format_time(minutes):
-            h = minutes // 60
-            m = minutes % 60
-            return f"{h:02d}:{m:02d}"
-
-        mark_start = format_time(m_start_val)
-        mark_end = format_time(m_end_val)
-        karen_start = format_time(karen_start_min)
-        karen_end = format_time(karen_end_min)
-
+    
+    # Constraints for Mark
+    opt.add(m_start >= mark_start_min)
+    opt.add(m_end <= mark_end_min)
+    opt.add(m_end - m_start >= mark_min_duration)
+    
+    # Constraint: Leave North Beach at m_start - travel_nb_to_emb must be after 9:00 AM
+    opt.add(m_start - travel_nb_to_emb >= start_time_nb)
+    
+    # Karen's meeting is fixed to her availability window
+    k_start = karen_start_min
+    k_end = karen_end_min
+    
+    # Travel constraint: After meeting Mark, travel to Karen takes 11 minutes
+    opt.add(k_start >= m_end + travel_emb_to_ph)
+    
+    # Objective: Maximize Mark's start time to minimize waiting at Pacific Heights
+    opt.maximize(m_start)
+    
+    # Solve the constraints
+    if opt.check() == sat:
+        model = opt.model()
+        m_s = model[m_start].as_long()
+        m_e = model[m_end].as_long()
+        
+        # Convert to time strings
+        mark_start = min_to_time(m_s)
+        mark_end = min_to_time(m_e)
+        karen_start = min_to_time(k_start)
+        karen_end = min_to_time(k_end)
+        
         itinerary = [
             {"action": "meet", "person": "Mark", "start_time": mark_start, "end_time": mark_end},
             {"action": "meet", "person": "Karen", "start_time": karen_start, "end_time": karen_end}
         ]
-
+        
+        # Output as JSON-formatted dictionary
         result = {"itinerary": itinerary}
-        print(json.dumps(result))
+        print(result)
     else:
-        print('{"itinerary": []}')
+        print("No solution found")
 
 if __name__ == "__main__":
     main()

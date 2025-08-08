@@ -1,48 +1,45 @@
-from z3 import *
+from z3 import Solver, Int, Or, sat
 
-def time_to_minutes(time_str):
-    h, m = time_str.split(':')
-    total = int(h) * 60 + int(m)
-    return total - 9 * 60  # Subtract 9:00 in minutes (540)
-
-# Busy intervals for James and John
-intervals = [
-    (time_to_minutes("11:30"), time_to_minutes("12:00")),  # James
-    (time_to_minutes("14:30"), time_to_minutes("15:00")),  # James
-    (time_to_minutes("9:30"), time_to_minutes("11:00")),   # John
-    (time_to_minutes("11:30"), time_to_minutes("12:00")),  # John
-    (time_to_minutes("12:30"), time_to_minutes("13:30")),  # John
-    (time_to_minutes("14:30"), time_to_minutes("16:30"))   # John
-]
-
-s = Solver()
-start = Int('start')
-s.add(0 <= start, start <= 420)  # Meeting must start between 0 and 420 minutes (inclusive)
-
-for (b_start, b_end) in intervals:
-    s.add(Or(start + 60 <= b_start, start >= b_end))
-
-if s.check() == sat:
-    m = s.model()
-    start_val = m[start].as_long()
+def main():
+    s = Solver()
+    start = Int('start')
     
-    # Convert start_val back to HH:MM format
-    total_minutes_start = start_val
-    abs_start_minutes = 9 * 60 + total_minutes_start
-    start_hour = abs_start_minutes // 60
-    start_minute = abs_start_minutes % 60
-    start_time_str = f"{start_hour:02d}:{start_minute:02d}"
+    # Meeting must be within 9:00 to 17:00 and last 60 minutes
+    s.add(start >= 0)
+    s.add(start <= 420)  # 16:00 in minutes (since 17:00 - 60 minutes = 16:00)
     
-    # Calculate end time
-    end_val = start_val + 60
-    abs_end_minutes = 9 * 60 + end_val
-    end_hour = abs_end_minutes // 60
-    end_minute = abs_end_minutes % 60
-    end_time_str = f"{end_hour:02d}:{end_minute:02d}"
+    # James' busy intervals in minutes (from 9:00)
+    james_busy = [(150, 180), (330, 360)]
+    for b_start, b_end in james_busy:
+        s.add(Or(start + 60 <= b_start, start >= b_end))
     
-    print("SOLUTION:")
-    print(f"Day: Monday")
-    print(f"Start Time: {start_time_str}")
-    print(f"End Time: {end_time_str}")
-else:
-    print("No solution found")
+    # John's busy intervals in minutes (from 9:00)
+    john_busy = [(30, 120), (150, 180), (210, 270), (330, 450)]
+    for b_start, b_end in john_busy:
+        s.add(Or(start + 60 <= b_start, start >= b_end))
+    
+    if s.check() == sat:
+        m = s.model()
+        start_min = m[start].as_long()
+        
+        # Convert start_min to HH:MM
+        total_min = start_min
+        hours = 9 + total_min // 60
+        minutes = total_min % 60
+        start_time = f"{hours:02d}:{minutes:02d}"
+        
+        # Calculate end time (start_min + 60 minutes)
+        end_min = start_min + 60
+        hours_end = 9 + end_min // 60
+        minutes_end = end_min % 60
+        end_time = f"{hours_end:02d}:{minutes_end:02d}"
+        
+        print("SOLUTION:")
+        print(f"Day: Monday")
+        print(f"Start Time: {start_time}")
+        print(f"End Time: {end_time}")
+    else:
+        print("No solution found")
+
+if __name__ == "__main__":
+    main()

@@ -1,12 +1,8 @@
 from z3 import *
 
 def main():
-    # Locations: Presidio, Golden Gate Park, Bayview, Chinatown, North Beach, Mission District
-    locations = ["Presidio", "Golden Gate Park", "Bayview", "Chinatown", "North Beach", "Mission District"]
-    n_locations = len(locations)
-    
-    # Travel time matrix: travel[i][j] = time from location i to j
-    travel = [
+    # Travel time matrix: 0:Presidio, 1:Golden Gate Park, 2:Bayview, 3:Chinatown, 4:North Beach, 5:Mission District
+    T = [
         [0, 12, 31, 21, 18, 26],
         [11, 0, 23, 23, 24, 17],
         [31, 22, 0, 18, 21, 13],
@@ -15,115 +11,92 @@ def main():
         [25, 17, 15, 16, 17, 0]
     ]
     
-    # Event indices: 
-    # 0: start event (Presidio at 9:00)
-    # 1: Jessica (Golden Gate Park)
-    # 2: Ashley (Bayview)
-    # 3: Ronald (Chinatown)
-    # 4: William (North Beach)
-    # 5: Daniel (Mission District)
-    
-    # Windows in minutes (start, end) for events 0 to 5
-    windows = {
-        0: (540, 540),   # 9:00
-        1: (825, 900),   # Jessica: 1:45 PM to 3:00 PM
-        2: (1035, 1200), # Ashley: 5:15 PM to 8:00 PM
-        3: (540, 885),   # Ronald: 9:00 AM to 2:45 PM (adjusted for start time)
-        4: (795, 1215),  # William: 1:15 PM to 8:15 PM
-        5: (540, 675)    # Daniel: 9:00 AM to 11:15 AM (adjusted for start time)
-    }
-    
-    # Minimum durations for each meeting (in minutes) for events 0 to 5
-    min_durations = [0, 30, 105, 90, 15, 105]
-    
-    # Names for events 1 to 5
-    names = {
-        1: "Jessica",
-        2: "Ashley",
-        3: "Ronald",
-        4: "William",
-        5: "Daniel"
+    # Friends data: (name, location_index, min_duration, available_start (min), available_end (min))
+    friends = {
+        1: ("Jessica", 1, 30, 825, 900),      # Golden Gate Park
+        2: ("Ashley", 2, 105, 1035, 1200),     # Bayview
+        3: ("Ronald", 3, 90, 435, 885),        # Chinatown
+        4: ("William", 4, 15, 795, 1215),      # North Beach
+        5: ("Daniel", 5, 105, 420, 675)        # Mission District
     }
     
     # Create Z3 variables
-    meet_vars = [None]  # for event0, not used
-    start_vars = [Int(f'start_{i}') for i in range(6)]
-    end_vars = [Int(f'end_{i}') for i in range(6)]
+    meet_vars = []
+    s_vars = []
+    e_vars = []
     for i in range(1, 6):
-        meet_vars.append(Bool(f'meet_{i}'))
+        meet_vars.append(Bool(f'meet{i}'))
+        s_vars.append(Int(f's{i}'))
+        e_vars.append(Int(f'e{i}'))
     
-    # Create solver and add constraints
-    s = Optimize()
+    # Start at Presidio (dummy meeting0)
+    s0 = 540
+    e0 = 540
     
-    # Event0: fixed at Presidio at 9:00 AM (540 minutes)
-    s.add(start_vars[0] == 540)
-    s.add(end_vars[0] == 540)
+    # Use Optimize for maximization
+    opt = Optimize()
     
-    # Constraints for events 1 to 5
-    for i in range(1, 6):
-        # If meeting i is scheduled, then it must be within the window and meet the duration
-        s.add(Implies(meet_vars[i], start_vars[i] >= windows[i][0]))
-        s.add(Implies(meet_vars[i], end_vars[i] <= windows[i][1]))
-        s.add(Implies(meet_vars[i], end_vars[i] == start_vars[i] + min_durations[i]))
-        # Also, ensure the start and end times are non-negative and ordered
-        s.add(Implies(meet_vars[i], start_vars[i] >= 0))
-        s.add(Implies(meet_vars[i], end_vars[i] >= start_vars[i]))
+    # Add constraints for each friend
+    for idx, (name, loc, dur, avail_start, avail_end) in friends.items():
+        i = idx - 1  # index in meet_vars, s_vars, e_vars
+        # If meeting this friend, set end time and availability constraints
+        opt.add(Implies(meet_vars[i], e_vars[i] == s_vars[i] + dur))
+        opt.add(Implies(meet_vars[i], s_vars[i] >= avail_start))
+        opt.add(Implies(meet_vars[i], s_vars[i] <= avail_end - dur))
+        # Set bounds to help solver
+        opt.add(Implies(meet_vars[i], s_vars[i] >= 0))
+        opt.add(Implies(meet_vars[i], s_vars[i] <= 1440))  # 24*60
     
-    # Constraints for every pair of distinct events (i, j) with i < j
-    for i in range(6):
-        for j in range(i+1, 6):
-            # Condition: both events are active
-            if i == 0:
-                active_i = BoolVal(True)
-            else:
-                active_i = meet_vars[i]
-            if j == 0:
-                active_j = BoolVal(True)
-            else:
-                active_j = meet_vars[j]
-            condition = And(active_i, active_j)
-            
-            # Travel time from i to j and j to i
-            travel_ij = travel[i][j]
-            travel_ji = travel[j][i]
-            
-            # Disjunctive constraint: either i before j or j before i
-            c1 = (end_vars[i] + travel_ij <= start_vars[j])
-            c2 = (end_vars[j] + travel_ji <= start_vars[i])
-            s.add(Implies(condition, Or(c1, c2)))
+    # Create lists including the dummy meeting0
+    all_meet = [True] + meet_vars
+    all_s = [s0] + s_vars
+    all_e = [e0] + e_vars
     
-    # Maximize the number of meetings
-    total_meetings = Sum([If(meet_vars[i], 1, 0) for i in range(1, 6)])
-    s.maximize(total_meetings)
+    # Add disjunctive constraints for every pair of meetings (including dummy)
+    n = 6  # 0 to 5
+    for i in range(n):
+        for j in range(n):
+            if i == j:
+                continue
+            # Condition: either j starts after i ends plus travel, or vice versa
+            cond = Or(
+                all_s[j] >= all_e[i] + T[i][j],
+                all_s[i] >= all_e[j] + T[j][i]
+            )
+            # If both meetings are active, enforce the condition
+            opt.add(Implies(And(all_meet[i], all_meet[j]), cond))
     
-    # Solve
-    if s.check() == sat:
-        model = s.model()
-        meetings = []
-        for i in range(1, 6):
-            if is_true(model.eval(meet_vars[i])):
-                start_val = model.eval(start_vars[i]).as_long()
-                end_val = model.eval(end_vars[i]).as_long()
+    # Maximize the number of friends met
+    count = Sum([If(meet_vars[i], 1, 0) for i in range(5)])
+    opt.maximize(count)
+    
+    # Check and get model
+    if opt.check() == sat:
+        model = opt.model()
+        itinerary = []
+        for idx in range(1, 6):
+            if is_true(model.eval(meet_vars[idx-1])):
+                name, loc, dur, avail_start, avail_end = friends[idx]
+                s_val = model.eval(s_vars[idx-1]).as_long()
+                e_val = model.eval(e_vars[idx-1]).as_long()
                 # Convert minutes to HH:MM
-                start_hour = start_val // 60
-                start_minute = start_val % 60
-                end_hour = end_val // 60
-                end_minute = end_val % 60
-                start_str = f"{start_hour:02d}:{start_minute:02d}"
-                end_str = f"{end_hour:02d}:{end_minute:02d}"
-                meetings.append({
+                start_h = s_val // 60
+                start_m = s_val % 60
+                end_h = e_val // 60
+                end_m = e_val % 60
+                start_str = f"{start_h:02d}:{start_m:02d}"
+                end_str = f"{end_h:02d}:{end_m:02d}"
+                itinerary.append({
                     "action": "meet",
-                    "person": names[i],
+                    "person": name,
                     "start_time": start_str,
                     "end_time": end_str
                 })
-        # Sort meetings by start time
-        meetings.sort(key=lambda x: x['start_time'])
-        # Output as JSON
-        print('SOLUTION:')
-        print(f'{{"itinerary": {meetings}}}')
+        # Sort itinerary by start time
+        itinerary.sort(key=lambda x: x["start_time"])
+        print(f'{{"itinerary": {itinerary}}}')
     else:
-        print("No solution found")
+        print('{"itinerary": []}')
 
 if __name__ == '__main__':
     main()

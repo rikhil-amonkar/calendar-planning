@@ -1,93 +1,115 @@
 from z3 import *
-import json
 
-# Define meetings with their constraints
-meetings = [
-    {'name': 'Thomas', 'loc': 'BV', 'duration': 120, 'start_min': 930, 'end_min': 1110},
-    {'name': 'Stephanie', 'loc': 'GG', 'duration': 30, 'start_min': 1110, 'end_min': 1305},
-    {'name': 'Laura', 'loc': 'NH', 'duration': 30, 'start_min': 540, 'end_min': 975},
-    {'name': 'Betty', 'loc': 'MD', 'duration': 45, 'start_min': 1125, 'end_min': 1305},
-    {'name': 'Patricia', 'loc': 'EM', 'duration': 45, 'start_min': 1050, 'end_min': 1320}
-]
+def main():
+    # Meetings: 0: Thomas, 1: Stephanie, 2: Laura, 3: Betty, 4: Patricia
+    names = ["Thomas", "Stephanie", "Laura", "Betty", "Patricia"]
+    # Locations: Bayview, Golden Gate Park, Nob Hill, Marina District, Embarcadero
+    # Travel time from Fisherman's Wharf to each meeting location
+    travel_start = [26, 25, 11, 9, 8]  # in minutes
 
-# Travel time dictionary
-travel_time_dict = {
-    ('FW', 'BV'): 26, ('FW', 'GG'): 25, ('FW', 'NH'): 11, ('FW', 'MD'): 9, ('FW', 'EM'): 8,
-    ('BV', 'FW'): 25, ('BV', 'GG'): 22, ('BV', 'NH'): 20, ('BV', 'MD'): 25, ('BV', 'EM'): 19,
-    ('GG', 'FW'): 24, ('GG', 'BV'): 23, ('GG', 'NH'): 20, ('GG', 'MD'): 16, ('GG', 'EM'): 25,
-    ('NH', 'FW'): 11, ('NH', 'BV'): 19, ('NH', 'GG'): 17, ('NH', 'MD'): 11, ('NH', 'EM'): 9,
-    ('MD', 'FW'): 10, ('MD', 'BV'): 27, ('MD', 'GG'): 18, ('MD', 'NH'): 12, ('MD', 'EM'): 14,
-    ('EM', 'FW'): 6, ('EM', 'BV'): 21, ('EM', 'GG'): 25, ('EM', 'NH'): 10, ('EM', 'MD'): 12
-}
+    # Travel time between meeting locations: 5x5 matrix
+    travel = [
+        [0, 22, 20, 25, 19],  # from Thomas (0) to others
+        [23, 0, 20, 16, 25],   # from Stephanie (1) to others
+        [19, 17, 0, 11, 9],    # from Laura (2) to others
+        [27, 18, 12, 0, 14],   # from Betty (3) to others
+        [21, 25, 10, 12, 0]    # from Patricia (4) to others
+    ]
 
-# Create Z3 variables
-order = IntVector('order', 5)
-st = IntVector('st', 5)
+    # Time windows in minutes since midnight
+    windows_start = [930, 1110, 525, 1125, 1050]  # start of window
+    windows_end = [1110, 1305, 975, 1305, 1320]   # end of window
+    min_durations = [120, 30, 30, 45, 45]          # minimum duration per meeting
 
-s = Solver()
+    # Initialize Z3 solver with optimization
+    solver = Optimize()
 
-# Constraints for order: each element in [0,4] and distinct
-for i in range(5):
-    s.add(order[i] >= 0, order[i] < 5)
-s.add(Distinct(order))
+    # Decision variables
+    include = [Bool(f'include_{i}') for i in range(5)]
+    start = [Int(f'start_{i}') for i in range(5)]
+    end = [Int(f'end_{i}') for i in range(5)]
 
-# First meeting constraint: start time >= 540 + travel time from FW
-first_idx = order[0]
-s.add(st[first_idx] >= 540 + travel_time_dict[('FW', meetings[first_idx]['loc']])
-
-# Window constraints for each meeting
-for i in range(5):
-    mtg = meetings[i]
-    s.add(st[i] >= mtg['start_min'])
-    s.add(st[i] + mtg['duration'] <= mtg['end_min'])
-
-# Travel time constraints between consecutive meetings
-for k in range(4):
-    i1 = order[k]
-    i2 = order[k+1]
-    loc1 = meetings[i1]['loc']
-    loc2 = meetings[i2]['loc']
-    travel_dur = travel_time_dict.get((loc1, loc2))
-    if travel_dur is None:
-        travel_dur = 0  # Should not happen, but safe guard
-    s.add(st[i2] >= st[i1] + meetings[i1]['duration'] + travel_dur)
-
-# Check for a solution
-if s.check() == sat:
-    m = s.model()
-    start_times = [m[st[i]].as_long() for i in range(5)]
-    events = []
+    # Boolean variables for pairwise order (only for i < j)
+    b_pairs = {}
     for i in range(5):
-        start_val = start_times[i]
-        end_val = start_val + meetings[i]['duration']
-        events.append({
-            'name': meetings[i]['name'],
-            'start': start_val,
-            'end': end_val
-        })
-    # Sort events by start time
-    events_sorted = sorted(events, key=lambda x: x['start'])
-    itinerary = []
-    for event in events_sorted:
-        # Convert minutes to HH:MM
-        start_min = event['start']
-        start_hour = start_min // 60
-        start_minute = start_min % 60
-        end_min = event['end']
-        end_hour = end_min // 60
-        end_minute = end_min % 60
-        start_str = f"{start_hour:02d}:{start_minute:02d}"
-        end_str = f"{end_hour:02d}:{end_minute:02d}"
-        itinerary.append({
-            "action": "meet",
-            "person": event['name'],
-            "start_time": start_str,
-            "end_time": end_str
-        })
-    output = {"itinerary": itinerary}
-    print("SOLUTION:")
-    print(json.dumps(output))
-else:
-    # Fallback if no solution for 5 meetings (though one exists)
-    print("SOLUTION:")
-    print('{"itinerary": []}')
+        for j in range(i+1, 5):
+            b_pairs[(i, j)] = Bool(f"b_{i}_{j}")
+
+    # Helper function to get the 'before' relation
+    def before(i, j):
+        if i == j:
+            return None
+        if i < j:
+            return b_pairs[(i, j)]
+        else:
+            return Not(b_pairs[(j, i)])
+
+    # Constraints for each meeting
+    for i in range(5):
+        # If meeting is included, enforce time window and duration
+        solver.add(Implies(include[i], And(
+            start[i] >= windows_start[i],
+            end[i] == start[i] + min_durations[i],
+            end[i] <= windows_end[i]
+        )))
+        # Travel time from start location (Fisherman's Wharf at 540 minutes since midnight)
+        solver.add(Implies(include[i], start[i] >= 540 + travel_start[i]))
+
+    # Constraints for pairs of meetings (i < j)
+    for (i, j) in b_pairs.keys():
+        cond = And(include[i], include[j])
+        b_ij = b_pairs[(i, j)]
+        # If i before j, then end_i + travel[i][j] <= start_j
+        c1 = Implies(And(cond, b_ij), end[i] + travel[i][j] <= start[j])
+        # If j before i, then end_j + travel[j][i] <= start_i
+        c2 = Implies(And(cond, Not(b_ij)), end[j] + travel[j][i] <= start[i])
+        solver.add(c1)
+        solver.add(c2)
+
+    # Transitivity constraints for every distinct triple (i, j, k)
+    for i in range(5):
+        for j in range(5):
+            if i == j:
+                continue
+            for k in range(5):
+                if k == i or k == j:
+                    continue
+                cond = And(include[i], include[j], include[k])
+                b_ij = before(i, j)
+                b_jk = before(j, k)
+                b_ik = before(i, k)
+                # If (i before j and j before k) then i before k
+                solver.add(Implies(cond, Implies(And(b_ij, b_jk), b_ik)))
+
+    # Objective: maximize the number of included meetings
+    objective = Sum([If(include[i], 1, 0) for i in range(5)])
+    solver.maximize(objective)
+
+    # Solve the problem
+    if solver.check() == sat:
+        model = solver.model()
+        included_meetings = []
+        for i in range(5):
+            if model.evaluate(include[i]):
+                start_val = model.evaluate(start[i])
+                end_val = model.evaluate(end[i])
+                start_val = start_val.as_long()
+                end_val = end_val.as_long()
+                # Convert to HH:MM format
+                start_time = f"{start_val // 60:02d}:{start_val % 60:02d}"
+                end_time = f"{end_val // 60:02d}:{end_val % 60:02d}"
+                included_meetings.append((start_val, names[i], start_time, end_time))
+        
+        # Sort meetings by start time
+        included_meetings.sort(key=lambda x: x[0])
+        itinerary = [{"action": "meet", "person": name, "start_time": st, "end_time": et} 
+                    for (_, name, st, et) in included_meetings]
+        
+        # Output the result in JSON format
+        print('SOLUTION:')
+        print(f'{{"itinerary": {itinerary}}}')
+    else:
+        print("No solution found")
+
+if __name__ == "__main__":
+    main()

@@ -1,53 +1,81 @@
 from z3 import *
 
 def main():
+    s = Int('s')
     d = Int('d')
-    start_minutes = Int('start_minutes')
     
-    s = Optimize()
+    constraints = [
+        s >= 0,
+        s <= 450,
+        Or(d == 0, d == 1)
+    ]
     
-    s.add(Or(d == 0, d == 1))
-    s.add(start_minutes >= 540)  # 9:00 in minutes (9*60)
-    s.add(start_minutes <= 990)  # 16:30 in minutes (16*60 + 30)
+    monday_busy = [(0, 60), (90, 480)]
+    tuesday_busy = [(0, 30), (90, 150), (210, 270), (330, 390), (420, 480)]
     
-    # Monday constraint: only free from 10:00 to 10:30 (600 to 630 minutes)
-    monday_constraint = And(d == 0, start_minutes == 600)
-    
-    # Tuesday constraints: free slots between busy times
-    slot1 = And(start_minutes >= 570, start_minutes + 30 <= 630)  # 9:30-10:30
-    slot2 = And(start_minutes >= 690, start_minutes + 30 <= 750)  # 11:30-12:30
-    slot3 = And(start_minutes >= 810, start_minutes + 30 <= 870)  # 13:30-14:30
-    slot4 = And(start_minutes >= 930, start_minutes + 30 <= 960)  # 15:30-16:00
-    tuesday_constraint = And(d == 1, Or(slot1, slot2, slot3, slot4))
-    
-    s.add(If(d == 0, monday_constraint, tuesday_constraint))
-    
-    cost = If(d == 0, 1, 0)
-    cost = cost + If(And(d == 1, start_minutes < 870), 1, 0)
-    s.minimize(cost)
-    
-    if s.check() == sat:
-        m = s.model()
-        day_val = m[d].as_long()
-        start_val = m[start_minutes].as_long()
+    monday_avoid = []
+    for (b_start, b_end) in monday_busy:
+        monday_avoid.append(Or(s + 30 <= b_start, s >= b_end))
         
-        day_str = "Monday" if day_val == 0 else "Tuesday"
+    tuesday_avoid = []
+    for (b_start, b_end) in tuesday_busy:
+        tuesday_avoid.append(Or(s + 30 <= b_start, s >= b_end))
         
-        start_hour = start_val // 60
-        start_min = start_val % 60
-        start_time = f"{start_hour:02d}:{start_min:02d}"
-        
-        end_val = start_val + 30
-        end_hour = end_val // 60
-        end_min = end_val % 60
-        end_time = f"{end_hour:02d}:{end_min:02d}"
-        
-        print("SOLUTION:")
-        print(f"Day: {day_str}")
-        print(f"Start Time: {start_time}")
-        print(f"End Time: {end_time}")
+    constraints.append(If(d == 0, And(monday_avoid), If(d == 1, And(tuesday_avoid), True)))
+    
+    solver = Solver()
+    solver.add(constraints)
+    
+    solver.push()
+    solver.add(d == 1, s >= 330)
+    if solver.check() == sat:
+        model = solver.model()
+        d_val = model[d].as_long()
+        s_val = model[s].as_long()
+        solver.pop()
     else:
-        print("No solution found")
+        solver.pop()
+        solver.push()
+        solver.add(d == 1)
+        if solver.check() == sat:
+            model = solver.model()
+            d_val = model[d].as_long()
+            s_val = model[s].as_long()
+            solver.pop()
+        else:
+            solver.pop()
+            solver.push()
+            solver.add(d == 0)
+            if solver.check() == sat:
+                model = solver.model()
+                d_val = model[d].as_long()
+                s_val = model[s].as_long()
+                solver.pop()
+            else:
+                solver.pop()
+                solver.check()
+                model = solver.model()
+                d_val = model[d].as_long()
+                s_val = model[s].as_long()
+    
+    total_minutes = s_val
+    hours = total_minutes // 60
+    minutes = total_minutes % 60
+    start_hour = 9 + hours
+    start_time = f"{start_hour:02d}:{minutes:02d}"
+    
+    total_minutes_end = s_val + 30
+    hours_end = total_minutes_end // 60
+    minutes_end = total_minutes_end % 60
+    end_hour = 9 + hours_end
+    end_time = f"{end_hour:02d}:{minutes_end:02d}"
+    
+    day_str = "Monday" if d_val == 0 else "Tuesday"
+    
+    print("SOLUTION:")
+    print(f"Day: {day_str}")
+    print(f"Start Time: {start_time}")
+    print(f"End Time: {end_time}")
 
 if __name__ == '__main__':
     main()

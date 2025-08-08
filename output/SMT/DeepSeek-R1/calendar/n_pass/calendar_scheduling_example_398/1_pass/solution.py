@@ -1,62 +1,76 @@
 from z3 import *
 
 def main():
-    # Initialize Z3 solver
-    s = Int('start_time')
-    solver = Solver()
+    # Initialize the solver
+    s = Solver()
     
-    # Meeting duration is 30 minutes, and must be within 9:00 (0 min) to 17:00 (480 min)
-    solver.add(s >= 0, s <= 450)  # 450 because 450+30=480 (17:00)
+    # Define the start time variable (in minutes from 9:00)
+    start = Int('start')
     
-    # Blocked intervals for each participant in minutes (start inclusive, end exclusive)
-    doris = [(0, 120), (270, 300), (420, 450)]
-    theresa = [(60, 120)]
-    # Christian has no blocked intervals
-    terry = [(30, 60), (150, 180), (210, 240), (270, 300), (330, 360), (390, 480)]
-    carolyn = [(0, 90), (120, 150), (180, 240), (270, 330), (360, 480)]
-    kyle = [(0, 30), (150, 180), (210, 240), (330, 480)]
+    # Meeting duration in minutes
+    duration = 30
     
-    # Add constraints for Doris
-    for (start_block, end_block) in doris:
-        solver.add(Or(s + 30 <= start_block, s >= end_block))
+    # Total available time window: 9:00 (0 min) to 17:00 (480 min)
+    s.add(start >= 0)
+    s.add(start <= 480 - duration)  # Meeting must end by 17:00 (480 min)
     
-    # Add constraints for Theresa
-    for (start_block, end_block) in theresa:
-        solver.add(Or(s + 30 <= start_block, s >= end_block))
+    # Blocked intervals for each participant (in minutes from 9:00)
+    # Doris: [0, 120], [270, 300], [420, 450]
+    doris_intervals = [(0, 120), (270, 300), (420, 450)]
     
-    # Add constraints for Terry
-    for (start_block, end_block) in terry:
-        solver.add(Or(s + 30 <= start_block, s >= end_block))
+    # Theresa: [60, 180]
+    theresa_intervals = [(60, 180)]
     
-    # Add constraints for Carolyn
-    for (start_block, end_block) in carolyn:
-        solver.add(Or(s + 30 <= start_block, s >= end_block))
+    # Christian: no meetings
+    christian_intervals = []
     
-    # Add constraints for Kyle
-    for (start_block, end_block) in kyle:
-        solver.add(Or(s + 30 <= start_block, s >= end_block))
+    # Terry: [30, 60), [150, 180), [210, 240), [270, 300), [330, 360), [390, 480)
+    terry_intervals = [(30, 60), (150, 180), (210, 240), (270, 300), (330, 360), (390, 480)]
+    
+    # Carolyn: [0, 90), [120, 150), [180, 240), [270, 330), [360, 480)
+    carolyn_intervals = [(0, 90), (120, 150), (180, 240), (270, 330), (360, 480)]
+    
+    # Kyle: [0, 30), [150, 180), [210, 240), [330, 480)
+    kyle_intervals = [(0, 30), (150, 180), (210, 240), (330, 480)]
+    
+    # Combine all participants' intervals
+    all_intervals = {
+        'Doris': doris_intervals,
+        'Theresa': theresa_intervals,
+        'Christian': christian_intervals,
+        'Terry': terry_intervals,
+        'Carolyn': carolyn_intervals,
+        'Kyle': kyle_intervals
+    }
+    
+    # For each participant and each of their intervals, add constraints
+    for participant, intervals in all_intervals.items():
+        for interval in intervals:
+            a, b = interval
+            # The meeting must not overlap with [a, b]: either meeting ends before a or starts after b
+            s.add(Or(start + duration <= a, start >= b))
     
     # Check for a solution
-    if solver.check() == sat:
-        model = solver.model()
-        start_minutes = model[s].as_long()
+    if s.check() == sat:
+        m = s.model()
+        start_min = m[start].as_long()
         
-        # Convert start_minutes to time string
-        hours = start_minutes // 60
-        minutes = start_minutes % 60
-        start_time_str = f"{9 + hours:02d}:{minutes:02d}"
+        # Convert start_min back to time string
+        hours = 9 + start_min // 60
+        minutes = start_min % 60
+        start_time = f"{hours:02d}:{minutes:02d}"
         
         # Calculate end time
-        end_minutes = start_minutes + 30
-        end_hours = end_minutes // 60
-        end_minutes %= 60
-        end_time_str = f"{9 + end_hours:02d}:{end_minutes:02d}"
+        end_min = start_min + duration
+        hours_end = 9 + end_min // 60
+        minutes_end = end_min % 60
+        end_time = f"{hours_end:02d}:{minutes_end:02d}"
         
-        # Print the solution
+        # Output the solution
         print("SOLUTION:")
-        print(f"Day: Monday")
-        print(f"Start Time: {start_time_str}")
-        print(f"End Time: {end_time_str}")
+        print("Day: Monday")
+        print(f"Start Time: {start_time}")
+        print(f"End Time: {end_time}")
     else:
         print("No solution found")
 

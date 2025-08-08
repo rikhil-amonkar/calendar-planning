@@ -1,178 +1,231 @@
-import json
 from z3 import *
+import json
 
-def main():
-    friends = [
-        ("Stephanie", "Presidio", 450, 615, 60),    # 7:30 AM to 10:15 AM
-        ("Brian", "Marina District", 735, 1080, 60), # 12:15 PM to 6:00 PM
-        ("Thomas", "Fisherman's Wharf", 810, 1140, 30), # 1:30 PM to 7:00 PM
-        ("Nancy", "North Beach", 885, 1200, 15),    # 2:45 PM to 8:00 PM
-        ("Jessica", "Nob Hill", 990, 1125, 120),    # 4:30 PM to 6:45 PM
-        ("Mary", "Union Square", 1005, 1290, 60),    # 4:45 PM to 9:30 PM
-        ("Charles", "The Castro", 990, 1320, 105),  # 4:30 PM to 10:00 PM
-        ("Matthew", "Bayview", 1155, 1320, 120),    # 7:15 PM to 10:00 PM
-        ("Karen", "Chinatown", 1155, 1275, 90),     # 7:15 PM to 9:15 PM
-        ("Sarah", "Alamo Square", 1200, 1305, 105)  # 8:00 PM to 9:45 PM
-    ]
-    
-    travel_dict = {
-        ("Embarcadero", "Bayview"): 21,
-        ("Embarcadero", "Chinatown"): 7,
-        ("Embarcadero", "Alamo Square"): 19,
-        ("Embarcadero", "Nob Hill"): 10,
-        ("Embarcadero", "Presidio"): 20,
-        ("Embarcadero", "Union Square"): 10,
-        ("Embarcadero", "The Castro"): 25,
-        ("Embarcadero", "North Beach"): 5,
-        ("Embarcadero", "Fisherman's Wharf"): 6,
-        ("Embarcadero", "Marina District"): 12,
-        ("Bayview", "Embarcadero"): 19,
-        ("Bayview", "Chinatown"): 19,
-        ("Bayview", "Alamo Square"): 16,
-        ("Bayview", "Nob Hill"): 20,
-        ("Bayview", "Presidio"): 32,
-        ("Bayview", "Union Square"): 18,
-        ("Bayview", "The Castro"): 19,
-        ("Bayview", "North Beach"): 22,
-        ("Bayview", "Fisherman's Wharf"): 25,
-        ("Bayview", "Marina District"): 27,
-        ("Chinatown", "Embarcadero"): 5,
-        ("Chinatown", "Bayview"): 20,
-        ("Chinatown", "Alamo Square"): 17,
-        ("Chinatown", "Nob Hill"): 9,
-        ("Chinatown", "Presidio"): 19,
-        ("Chinatown", "Union Square"): 7,
-        ("Chinatown", "The Castro"): 22,
-        ("Chinatown", "North Beach"): 3,
-        ("Chinatown", "Fisherman's Wharf"): 8,
-        ("Chinatown", "Marina District"): 12,
-        ("Alamo Square", "Embarcadero"): 16,
-        ("Alamo Square", "Bayview"): 16,
-        ("Alamo Square", "Chinatown"): 15,
-        ("Alamo Square", "Nob Hill"): 11,
-        ("Alamo Square", "Presidio"): 17,
-        ("Alamo Square", "Union Square"): 14,
-        ("Alamo Square", "The Castro"): 8,
-        ("Alamo Square", "North Beach"): 15,
-        ("Alamo Square", "Fisherman's Wharf"): 19,
-        ("Alamo Square", "Marina District"): 15,
-        ("Nob Hill", "Embarcadero"): 9,
-        ("Nob Hill", "Bayview"): 19,
-        ("Nob Hill", "Chinatown"): 6,
-        ("Nob Hill", "Alamo Square"): 11,
-        ("Nob Hill", "Presidio"): 17,
-        ("Nob Hill", "Union Square"): 7,
-        ("Nob Hill", "The Castro"): 17,
-        ("Nob Hill", "North Beach"): 8,
-        ("Nob Hill", "Fisherman's Wharf"): 10,
-        ("Nob Hill", "Marina District"): 11,
-        ("Presidio", "Embarcadero"): 20,
-        ("Presidio", "Bayview"): 31,
-        ("Presidio", "Chinatown"): 21,
-        ("Presidio", "Alamo Square"): 19,
-        ("Presidio", "Nob Hill"): 18,
-        ("Presidio", "Union Square"): 22,
-        ("Presidio", "The Castro"): 21,
-        ("Presidio", "North Beach"): 18,
-        ("Presidio", "Fisherman's Wharf"): 19,
-        ("Presidio", "Marina District"): 11,
-        ("Union Square", "Embarcadero"): 11,
-        ("Union Square", "Bayview"): 15,
-        ("Union Square", "Chinatown"): 7,
-        ("Union Square", "Alamo Square"): 15,
-        ("Union Square", "Nob Hill"): 9,
-        ("Union Square", "Presidio"): 24,
-        ("Union Square", "The Castro"): 17,
-        ("Union Square", "North Beach"): 10,
-        ("Union Square", "Fisherman's Wharf"): 15,
-        ("Union Square", "Marina District"): 18,
-        ("The Castro", "Embarcadero"): 22,
-        ("The Castro", "Bayview"): 19,
-        ("The Castro", "Chinatown"): 22,
-        ("The Castro", "Alamo Square"): 8,
-        ("The Castro", "Nob Hill"): 16,
-        ("The Castro", "Presidio"): 20,
-        ("The Castro", "Union Square"): 19,
-        ("The Castro", "North Beach"): 20,
-        ("The Castro", "Fisherman's Wharf"): 24,
-        ("The Castro", "Marina District"): 21,
-        ("North Beach", "Embarcadero"): 6,
-        ("North Beach", "Bayview"): 25,
-        ("North Beach", "Chinatown"): 6,
-        ("North Beach", "Alamo Square"): 16,
-        ("North Beach", "Nob Hill"): 7,
-        ("North Beach", "Presidio"): 17,
-        ("North Beach", "Union Square"): 7,
-        ("North Beach", "The Castro"): 23,
-        ("North Beach", "Fisherman's Wharf"): 5,
-        ("North Beach", "Marina District"): 9,
-        ("Fisherman's Wharf", "Embarcadero"): 8,
-        ("Fisherman's Wharf", "Bayview"): 26,
-        ("Fisherman's Wharf", "Chinatown"): 12,
-        ("Fisherman's Wharf", "Alamo Square"): 21,
-        ("Fisherman's Wharf", "Nob Hill"): 11,
-        ("Fisherman's Wharf", "Presidio"): 17,
-        ("Fisherman's Wharf", "Union Square"): 13,
-        ("Fisherman's Wharf", "The Castro"): 27,
-        ("Fisherman's Wharf", "North Beach"): 6,
-        ("Fisherman's Wharf", "Marina District"): 9,
-        ("Marina District", "Embarcadero"): 14,
-        ("Marina District", "Bayview"): 27,
-        ("Marina District", "Chinatown"): 15,
-        ("Marina District", "Alamo Square"): 15,
-        ("Marina District", "Nob Hill"): 12,
-        ("Marina District", "Presidio"): 10,
-        ("Marina District", "Union Square"): 16,
-        ("Marina District", "The Castro"): 22,
-        ("Marina District", "North Beach"): 11,
-        ("Marina District", "Fisherman's Wharf"): 10
-    }
+# Convert time to minutes from midnight
+def time_to_minutes(time_str):
+    parts = time_str.split(':')
+    hour = int(parts[0])
+    minute = int(parts[1])
+    return hour * 60 + minute
 
-    n = len(friends)
-    meet = [Bool(f'meet_{i}') for i in range(n)]
-    start = [Int(f'start_{i}') for i in range(n)]
-    end = [Int(f'end_{i}') for i in range(n)]
+# Build travel_times dictionary from the provided text
+travel_text = """
+Embarcadero to Bayview: 21.
+Embarcadero to Chinatown: 7.
+Embarcadero to Alamo Square: 19.
+Embarcadero to Nob Hill: 10.
+Embarcadero to Presidio: 20.
+Embarcadero to Union Square: 10.
+Embarcadero to The Castro: 25.
+Embarcadero to North Beach: 5.
+Embarcadero to Fisherman's Wharf: 6.
+Embarcadero to Marina District: 12.
+Bayview to Embarcadero: 19.
+Bayview to Chinatown: 19.
+Bayview to Alamo Square: 16.
+Bayview to Nob Hill: 20.
+Bayview to Presidio: 32.
+Bayview to Union Square: 18.
+Bayview to The Castro: 19.
+Bayview to North Beach: 22.
+Bayview to Fisherman's Wharf: 25.
+Bayview to Marina District: 27.
+Chinatown to Embarcadero: 5.
+Chinatown to Bayview: 20.
+Chinatown to Alamo Square: 17.
+Chinatown to Nob Hill: 9.
+Chinatown to Presidio: 19.
+Chinatown to Union Square: 7.
+Chinatown to The Castro: 22.
+Chinatown to North Beach: 3.
+Chinatown to Fisherman's Wharf: 8.
+Chinatown to Marina District: 12.
+Alamo Square to Embarcadero: 16.
+Alamo Square to Bayview: 16.
+Alamo Square to Chinatown: 15.
+Alamo Square to Nob Hill: 11.
+Alamo Square to Presidio: 17.
+Alamo Square to Union Square: 14.
+Alamo Square to The Castro: 8.
+Alamo Square to North Beach: 15.
+Alamo Square to Fisherman's Wharf: 19.
+Alamo Square to Marina District: 15.
+Nob Hill to Embarcadero: 9.
+Nob Hill to Bayview: 19.
+Nob Hill to Chinatown: 6.
+Nob Hill to Alamo Square: 11.
+Nob Hill to Presidio: 17.
+Nob Hill to Union Square: 7.
+Nob Hill to The Castro: 17.
+Nob Hill to North Beach: 8.
+Nob Hill to Fisherman's Wharf: 10.
+Nob Hill to Marina District: 11.
+Presidio to Embarcadero: 20.
+Presidio to Bayview: 31.
+Presidio to Chinatown: 21.
+Presidio to Alamo Square: 19.
+Presidio to Nob Hill: 18.
+Presidio to Union Square: 22.
+Presidio to The Castro: 21.
+Presidio to North Beach: 18.
+Presidio to Fisherman's Wharf: 19.
+Presidio to Marina District: 11.
+Union Square to Embarcadero: 11.
+Union Square to Bayview: 15.
+Union Square to Chinatown: 7.
+Union Square to Alamo Square: 15.
+Union Square to Nob Hill: 9.
+Union Square to Presidio: 24.
+Union Square to The Castro: 17.
+Union Square to North Beach: 10.
+Union Square to Fisherman's Wharf: 15.
+Union Square to Marina District: 18.
+The Castro to Embarcadero: 22.
+The Castro to Bayview: 19.
+The Castro to Chinatown: 22.
+The Castro to Alamo Square: 8.
+The Castro to Nob Hill: 16.
+The Castro to Presidio: 20.
+The Castro to Union Square: 19.
+The Castro to North Beach: 20.
+The Castro to Fisherman's Wharf: 24.
+The Castro to Marina District: 21.
+North Beach to Embarcadero: 6.
+North Beach to Bayview: 25.
+North Beach to Chinatown: 6.
+North Beach to Alamo Square: 16.
+North Beach to Nob Hill: 7.
+North Beach to Presidio: 17.
+North Beach to Union Square: 7.
+North Beach to The Castro: 23.
+North Beach to Fisherman's Wharf: 5.
+North Beach to Marina District: 9.
+Fisherman's Wharf to Embarcadero: 8.
+Fisherman's Wharf to Bayview: 26.
+Fisherman's Wharf to Chinatown: 12.
+Fisherman's Wharf to Alamo Square: 21.
+Fisherman's Wharf to Nob Hill: 11.
+Fisherman's Wharf to Presidio: 17.
+Fisherman's Wharf to Union Square: 13.
+Fisherman's Wharf to The Castro: 27.
+Fisherman's Wharf to North Beach: 6.
+Fisherman's Wharf to Marina District: 9.
+Marina District to Embarcadero: 14.
+Marina District to Bayview: 27.
+Marina District to Chinatown: 15.
+Marina District to Alamo Square: 15.
+Marina District to Nob Hill: 12.
+Marina District to Presidio: 10.
+Marina District to Union Square: 16.
+Marina District to The Castro: 22.
+Marina District to North Beach: 11.
+Marina District to Fisherman's Wharf: 10.
+"""
 
-    opt = Optimize()
-    
-    for i in range(n):
-        name, loc, avail_start, avail_end, min_dur = friends[i]
-        opt.add(Implies(meet[i], And(start[i] >= avail_start, end[i] <= avail_end, end[i] - start[i] >= min_dur)))
-        tt_from_emb = travel_dict[("Embarcadero", loc)]
-        opt.add(Implies(meet[i], start[i] >= 540 + tt_from_emb))
+travel_times = {}
+lines = travel_text.strip().split('\n')
+for line in lines:
+    if not line.strip():
+        continue
+    parts = line.split(':')
+    time_str = parts[1].strip().rstrip('.')
+    time_val = int(time_str)
+    loc_str = parts[0].strip()
+    loc_parts = loc_str.split(' to ')
+    from_loc = loc_parts[0].strip()
+    to_loc = loc_parts[1].strip()
+    travel_times[(from_loc, to_loc)] = time_val
 
-    for i in range(n):
-        for j in range(i+1, n):
-            name_i, loc_i, _, _, _ = friends[i]
-            name_j, loc_j, _, _, _ = friends[j]
-            tt_ij = travel_dict.get((loc_i, loc_j), None)
-            tt_ji = travel_dict.get((loc_j, loc_i), None)
-            if tt_ij is None or tt_ji is None:
-                continue
-            opt.add(Implies(And(meet[i], meet[j]), Or(end[i] + tt_ij <= start[j], end[j] + tt_ji <= start[i])))
-    
-    num_meet = Sum([If(meet[i], 1, 0) for i in range(n)])
-    opt.maximize(num_meet)
-    
-    result = []
-    if opt.check() == sat:
-        m = opt.model()
-        for i in range(n):
-            if m.eval(meet[i]):
-                name, _, _, _, _ = friends[i]
-                start_val = m.eval(start[i]).as_long()
-                end_val = m.eval(end[i]).as_long()
-                start_h = start_val // 60
-                start_m = start_val % 60
-                end_h = end_val // 60
-                end_m = end_val % 60
-                start_str = f"{start_h:02d}:{start_m:02d}"
-                end_str = f"{end_h:02d}:{end_m:02d}"
-                result.append({"action": "meet", "person": name, "start_time": start_str, "end_time": end_str})
-        result.sort(key=lambda x: (int(x['start_time'][:2]) * 60 + int(x['start_time'][3:5])))
-    
+# Define friends and their constraints
+friends = [
+    ("Matthew", "Bayview", time_to_minutes("19:15"), time_to_minutes("22:00"), 120),
+    ("Karen", "Chinatown", time_to_minutes("19:15"), time_to_minutes("21:15"), 90),
+    ("Sarah", "Alamo Square", time_to_minutes("20:00"), time_to_minutes("21:45"), 105),
+    ("Jessica", "Nob Hill", time_to_minutes("16:30"), time_to_minutes("18:45"), 120),
+    ("Stephanie", "Presidio", time_to_minutes("07:30"), time_to_minutes("10:15"), 60),
+    ("Mary", "Union Square", time_to_minutes("16:45"), time_to_minutes("21:30"), 60),
+    ("Charles", "The Castro", time_to_minutes("16:30"), time_to_minutes("22:00"), 105),
+    ("Nancy", "North Beach", time_to_minutes("14:45"), time_to_minutes("20:00"), 15),
+    ("Thomas", "Fisherman's Wharf", time_to_minutes("13:30"), time_to_minutes("19:00"), 30),
+    ("Brian", "Marina District", time_to_minutes("12:15"), time_to_minutes("18:00"), 60)
+]
+
+# Start time at Embarcadero
+start_time = time_to_minutes("09:00")  # 540 minutes
+
+# Create Z3 solver and variables
+s = Solver()
+opt = Optimize()
+
+meet_vars = {}
+start_vars = {}
+end_vars = {}
+for (name, loc, avail_start, avail_end, min_time) in friends:
+    meet_vars[name] = Bool(f"meet_{name}")
+    start_vars[name] = Int(f"start_{name}")
+    end_vars[name] = Int(f"end_{name}")
+
+# Constraints for each friend
+for (name, loc, avail_start, avail_end, min_time) in friends:
+    opt.add(Implies(meet_vars[name], start_vars[name] >= avail_start))
+    opt.add(Implies(meet_vars[name], end_vars[name] <= avail_end))
+    opt.add(Implies(meet_vars[name], end_vars[name] - start_vars[name] >= min_time))
+    # Travel time from Embarcadero to friend's location
+    travel_from_start = travel_times[("Embarcadero", loc)]
+    opt.add(Implies(meet_vars[name], start_vars[name] >= start_time + travel_from_start))
+
+# Constraints for every pair of friends
+for i in range(len(friends)):
+    name_i = friends[i][0]
+    loc_i = friends[i][1]
+    for j in range(i+1, len(friends)):
+        name_j = friends[j][0]
+        loc_j = friends[j][1]
+        time_ij = travel_times.get((loc_i, loc_j), None)
+        time_ji = travel_times.get((loc_j, loc_i), None)
+        if time_ij is None or time_ji is None:
+            continue
+        opt.add(Implies(And(meet_vars[name_i], meet_vars[name_j]),
+                         Or(end_vars[name_i] + time_ij <= start_vars[name_j],
+                            end_vars[name_j] + time_ji <= start_vars[name_i])))
+
+# Objective: maximize the number of friends met
+objective = Sum([If(meet_vars[name], 1, 0) for (name, _, _, _, _) in friends])
+opt.maximize(objective)
+
+# Solve and get the model
+if opt.check() == sat:
+    m = opt.model()
+    itinerary = []
+    for (name, loc, avail_start, avail_end, min_time) in friends:
+        if is_true(m.evaluate(meet_vars[name])):
+            start_val = m.evaluate(start_vars[name])
+            end_val = m.evaluate(end_vars[name])
+            if isinstance(start_val, IntNumRef):
+                start_minutes = start_val.as_long()
+            else:
+                start_minutes = int(str(start_val))
+            if isinstance(end_val, IntNumRef):
+                end_minutes = end_val.as_long()
+            else:
+                end_minutes = int(str(end_val))
+            start_hour = start_minutes // 60
+            start_minute = start_minutes % 60
+            end_hour = end_minutes // 60
+            end_minute = end_minutes % 60
+            start_str = f"{start_hour:02d}:{start_minute:02d}"
+            end_str = f"{end_hour:02d}:{end_minute:02d}"
+            itinerary.append({
+                "action": "meet",
+                "person": name,
+                "start_time": start_str,
+                "end_time": end_str
+            })
+    # Sort itinerary by start_time
+    itinerary.sort(key=lambda x: (int(x['start_time'][:2]) * 60 + int(x['start_time'][3:5]))
+    result = {"itinerary": itinerary}
     print("SOLUTION:")
-    print(json.dumps({"itinerary": result}))
-
-if __name__ == "__main__":
-    main()
+    print(json.dumps(result, indent=2))
+else:
+    print("SOLUTION:")
+    print('{"itinerary": []}')

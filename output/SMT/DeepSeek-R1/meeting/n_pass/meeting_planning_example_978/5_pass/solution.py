@@ -1,98 +1,115 @@
 from z3 import *
-import json
 
 def main():
-    # Friend data: [name, location, start_minutes, end_minutes, duration_minutes, travel0]
-    friends_data = [
-        ("Stephanie", "Fisherman's Wharf", 15*60+30, 22*60, 30, 6),
-        ("Lisa", "Financial District", 10*60+45, 17*60+15, 15, 5),
-        ("Melissa", "Russian Hill", 17*60, 21*60+45, 120, 8),
-        ("Betty", "Marina District", 10*60+45, 14*60+15, 60, 12),
-        ("Sarah", "Richmond District", 16*60+15, 19*60+30, 105, 21),
-        ("Daniel", "Pacific Heights", 18*60+30, 21*60+45, 60, 11),
-        ("Joshua", "Haight-Ashbury", 9*60, 15*60+30, 15, 21),
-        ("Joseph", "Presidio", 7*60, 13*60, 45, 20),
-        ("Andrew", "Nob Hill", 19*60+45, 22*60, 105, 10),
-        ("John", "The Castro", 13*60+15, 19*60+45, 45, 25)
+    meetings = [
+        (0, "Lisa", 15, "A"),
+        (1, "Joshua", 15, "B"),
+        (2, "Joseph", 45, "C"),
+        (3, "Betty", 60, "D"),
+        (4, "John", 45, "E"),
+        (5, "Sarah", 105, "F"),
+        (6, "Daniel", 60, "G"),
+        (7, "Melissa", 120, "H"),
+        (8, "Andrew", 105, "I")
     ]
     
-    names = [fd[0] for fd in friends_data]
-    start_minutes = [fd[2] for fd in friends_data]
-    end_minutes = [fd[3] for fd in friends_data]
-    duration_minutes = [fd[4] for fd in friends_data]
-    travel0 = [fd[5] for fd in friends_data]
+    adjacencies = {
+        "A": ["B", "D"],
+        "B": ["A", "C"],
+        "C": ["B", "D"],
+        "D": ["A", "C", "E", "G"],
+        "E": ["D", "F"],
+        "F": ["E", "G"],
+        "G": ["D", "F", "H", "I"],
+        "H": ["G", "I"],
+        "I": ["G", "H"]
+    }
     
-    # Travel matrix between friends (10x10) - use as provided (asymmetric)
-    travel_matrix = [
-        [0, 11, 7, 9, 18, 12, 22, 17, 11, 27],   # Fisherman's Wharf (0)
-        [10, 0, 11, 15, 21, 13, 19, 22, 8, 20],   # Financial District (1)
-        [7, 11, 0, 7, 14, 7, 17, 14, 5, 21],      # Russian Hill (2)
-        [10, 17, 8, 0, 11, 7, 16, 10, 12, 22],    # Marina District (3)
-        [18, 22, 13, 9, 0, 10, 10, 7, 17, 16],    # Richmond District (4)
-        [13, 13, 7, 6, 12, 0, 11, 11, 8, 16],     # Pacific Heights (5)
-        [23, 21, 17, 17, 10, 12, 0, 15, 15, 6],   # Haight-Ashbury (6)
-        [19, 23, 14, 11, 7, 11, 15, 0, 18, 21],   # Presidio (7)
-        [10, 9, 5, 11, 14, 8, 13, 17, 0, 17],     # Nob Hill (8)
-        [24, 21, 18, 21, 16, 16, 6, 20, 16, 0]    # The Castro (9)
-    ]
+    names = [m[1] for m in meetings]
+    durations = [m[2] for m in meetings]
+    buildings = [m[3] for m in meetings]
     
-    s = Optimize()
-    s.set("timeout", 300000)  # 5 minutes timeout
-
-    n = len(names)
-    do_meet = [Bool(f"do_meet_{i}") for i in range(n)]
-    s_time = [Int(f"s_time_{i}") for i in range(n)]  # start time in minutes
-    e_time = [s_time[i] + duration_minutes[i] for i in range(n)]  # end time in minutes
-    
-    # Time window constraints
-    for i in range(n):
-        s.add(Implies(do_meet[i], 
-                     And(s_time[i] >= start_minutes[i],
-                         e_time[i] <= end_minutes[i])))
-    
-    # Joseph must start at or after 9:20 AM (560 minutes)
-    s.add(Implies(do_meet[7], s_time[7] >= 9*60+20))
-    
-    # First meeting constraint
-    for i in range(n):
-        s.add(Implies(do_meet[i], s_time[i] >= 9*60 + travel0[i]))
-    
-    # Travel time constraints between all pairs of meetings
+    n = len(meetings)
+    travel_matrix = [[0]*n for _ in range(n)]
     for i in range(n):
         for j in range(n):
             if i == j:
-                continue
-            # Either i is before j, or j is before i, or they don't overlap
-            before = And(do_meet[i], do_meet[j], e_time[i] + travel_matrix[i][j] <= s_time[j])
-            after = And(do_meet[i], do_meet[j], e_time[j] + travel_matrix[j][i] <= s_time[i])
-            s.add(Or(Not(do_meet[i]), Not(do_meet[j]), before, after))
+                travel_matrix[i][j] = 0
+            else:
+                b1 = buildings[i]
+                b2 = buildings[j]
+                if b1 == b2:
+                    travel_matrix[i][j] = 0
+                elif b2 in adjacencies[b1]:
+                    travel_matrix[i][j] = 15
+                else:
+                    travel_matrix[i][j] = 30
     
-    # Objective: maximize the number of meetings
-    num_meetings = Sum([If(do_meet[i], 1, 0) for i in range(n)])
-    s.maximize(num_meetings)
+    s = Solver()
+    s.set("timeout", 300000)
+    
+    # Create array mapping position to meeting index
+    pos_to_meeting = Array('pos_to_meeting', IntSort(), IntSort())
+    
+    # Create variables for start times
+    start = [Int(f'start_{i}') for i in range(n)]
+    
+    # Constraints for start times
+    for i in range(n):
+        s.add(start[i] >= 0, start[i] + durations[i] <= 720)
+    
+    # Specific time constraints
+    s.add(start[4] >= 180)   # John after 13:00
+    s.add(start[8] <= 585)   # Andrew by 19:45
+    
+    # Each position 0 to n-1 is assigned a meeting
+    for p in range(n):
+        meeting_idx = Int(f'mt_at_pos_{p}')
+        s.add(meeting_idx >= 0, meeting_idx < n)
+        s.add(pos_to_meeting[p] == meeting_idx)
+    s.add(Distinct([pos_to_meeting[p] for p in range(n)]))
+    
+    # Travel time constraints between consecutive meetings
+    for p in range(n-1):
+        i = pos_to_meeting[p]
+        j = pos_to_meeting[p+1]
+        travel_time = travel_matrix[i][j]
+        s.add(start[i] + durations[i] + travel_time <= start[j])
     
     if s.check() == sat:
-        m = s.model()
-        meeting_list = []
-        for i in range(n):
-            if is_true(m.eval(do_meet[i])):
-                start_val = m.eval(s_time[i]).as_long()
-                end_val = start_val + duration_minutes[i]
-                start_str = f"{start_val//60:02d}:{start_val%60:02d}"
-                end_str = f"{end_val//60:02d}:{end_val%60:02d}"
-                meeting_list.append({
-                    "action": "meet",
-                    "person": names[i],
-                    "start_time": start_str,
-                    "end_time": end_str
-                })
-        # Sort meetings by start time
-        meeting_list.sort(key=lambda x: x["start_time"])
-        result = {"itinerary": meeting_list}
-        print("SOLUTION:")
-        print(json.dumps(result, indent=2))
+        model = s.model()
+        itinerary = []
+        
+        # Extract meeting order from positions
+        meeting_order = []
+        for p in range(n):
+            idx = model.evaluate(pos_to_meeting[p]).as_long()
+            meeting_order.append(idx)
+        
+        # Create itinerary in chronological order
+        for idx in meeting_order:
+            s_time = model.evaluate(start[idx]).as_long()
+            e_time = s_time + durations[idx]
+            
+            # Convert to time string
+            hour = 10 + s_time // 60
+            minute = s_time % 60
+            start_time = f"{hour}:{minute:02d}"
+            
+            hour = 10 + e_time // 60
+            minute = e_time % 60
+            end_time = f"{hour}:{minute:02d}"
+            
+            itinerary.append({
+                'action': 'meet',
+                'person': names[idx],
+                'start_time': start_time,
+                'end_time': end_time
+            })
+        
+        print(f"Plan found: {{'itinerary': {itinerary}}}")
     else:
-        print("No solution found")
+        print("No valid plan found.")
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

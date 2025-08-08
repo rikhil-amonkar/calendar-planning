@@ -1,48 +1,43 @@
-import z3
+from z3 import *
 import json
 
 def main():
-    # Convert times to minutes from 9:00 AM
-    kenneth_start_min = (14 - 9) * 60 + 15   # 14:15 is 315 minutes from 9:00 AM
-    kenneth_end_min = (19 - 9) * 60 + 45     # 19:45 is 645 minutes from 9:00 AM
-
-    # Initialize the optimizer
-    opt = z3.Optimize()
-    T_leave = z3.Int('T_leave')
-    S = z3.Int('S')
-    E = z3.Int('E')
-
-    # Add constraints
-    opt.add(T_leave >= 0)
-    opt.add(S >= T_leave + 11)
-    opt.add(S >= kenneth_start_min)
-    opt.add(E == S + 90)
-    opt.add(E <= kenneth_end_min)
-    opt.minimize(S)
-
-    # Check for a solution
-    if opt.check() == z3.sat:
+    # Time in minutes since 9:00 AM
+    S = Int('S')  # Meeting start time
+    E = Int('E')  # Meeting end time
+    
+    opt = Optimize()
+    # Kenneth is available from 14:15 (315 minutes after 9:00 AM) to 19:45 (645 minutes after 9:00 AM)
+    opt.add(S >= 315)
+    opt.add(E <= 645)
+    opt.add(E - S >= 90)  # Minimum meeting duration
+    
+    # Maximize the meeting duration
+    opt.maximize(E - S)
+    
+    if opt.check() == sat:
         m = opt.model()
-        s_val = m.eval(S).as_long()
-        e_val = m.eval(E).as_long()
+        start_minutes = m[S].as_long()
+        end_minutes = m[E].as_long()
         
-        # Convert minutes back to HH:MM format
-        start_hour = 9 + s_val // 60
-        start_minute = s_val % 60
-        end_hour = 9 + e_val // 60
-        end_minute = e_val % 60
-        
+        # Convert minutes since 9:00 AM to 24-hour time
+        start_total_minutes = 9 * 60 + start_minutes
+        start_hour = start_total_minutes // 60
+        start_minute = start_total_minutes % 60
         start_time = f"{start_hour:02d}:{start_minute:02d}"
+        
+        end_total_minutes = 9 * 60 + end_minutes
+        end_hour = end_total_minutes // 60
+        end_minute = end_total_minutes % 60
         end_time = f"{end_hour:02d}:{end_minute:02d}"
         
-        itinerary = [{
+        meeting = {
             "action": "meet",
             "person": "Kenneth",
             "start_time": start_time,
             "end_time": end_time
-        }]
-        
-        result = {"itinerary": itinerary}
+        }
+        result = {"itinerary": [meeting]}
         print(json.dumps(result))
     else:
         print(json.dumps({"itinerary": []}))

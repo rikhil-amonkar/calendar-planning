@@ -1,0 +1,1 @@
+s.add(Or(in_city[(7, 'T')], in_city[(7, 'B')] == False))

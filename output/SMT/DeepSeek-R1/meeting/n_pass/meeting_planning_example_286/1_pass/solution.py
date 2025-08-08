@@ -1,90 +1,94 @@
+from itertools import permutations
 from z3 import *
-import json
+
+def min_to_time(total_minutes):
+    total_hours = total_minutes // 60
+    minutes = total_minutes % 60
+    hours = 9 + total_hours
+    return f"{hours:02d}:{minutes:02d}"
 
 def main():
-    sC = Int('sC')
-    sR = Int('sR')
-    sK = Int('sK')
-    
-    # Common constraints for each friend's availability and minimum meeting duration
-    constraints_common = [
-        sC >= 75, sC <= 135,  # Carol: 75 (10:15 AM) to 135 (11:15 AM) to end by 165 (11:45 AM)
-        sR >= 150, sR <= 555,  # Rebecca: 150 (11:30 AM) to 555 (5:15 PM) to end by 675 (8:15 PM)
-        sK >= 225, sK <= 240   # Karen: 225 (12:45 PM) to 240 (1:00 PM) to end by 360 (3:00 PM)
+    names = ['Carol', 'Karen', 'Rebecca']
+    locs = ['S', 'B', 'M']  # S: Sunset, B: Bayview, M: Mission
+    windows = [
+        (75, 165),   # Carol: 10:15 AM (75 min from 9:00) to 11:45 AM (165 min)
+        (225, 360),  # Karen: 12:45 PM (225 min) to 3:00 PM (360 min)
+        (150, 675)   # Rebecca: 11:30 AM (150 min) to 8:15 PM (675 min)
     ]
+    durations = [30, 120, 120]
     
-    # Define constraints for each possible meeting order
-    order1 = And(  # Carol -> Rebecca -> Karen
-        sC >= 26,  # Travel from Union Square to Sunset District: 26 min
-        sR >= sC + 30 + 24,  # Travel from Sunset District to Mission District: 24 min
-        sK >= sR + 120 + 15   # Travel from Mission District to Bayview: 15 min
-    )
+    travel_times = {
+        ('US', 'S'): 26,
+        ('US', 'B'): 15,
+        ('US', 'M'): 14,
+        ('S', 'US'): 30,
+        ('S', 'B'): 22,
+        ('S', 'M'): 24,
+        ('B', 'US'): 17,
+        ('B', 'S'): 23,
+        ('B', 'M'): 13,
+        ('M', 'US'): 15,
+        ('M', 'S'): 24,
+        ('M', 'B'): 15
+    }
     
-    order2 = And(  # Carol -> Karen -> Rebecca
-        sC >= 26,
-        sK >= sC + 30 + 22,  # Travel from Sunset District to Bayview: 22 min
-        sR >= sK + 120 + 13  # Travel from Bayview to Mission District: 13 min
-    )
+    perms = list(permutations([0, 1, 2]))
+    found = False
+    result_meetings = None
     
-    order3 = And(  # Rebecca -> Carol -> Karen
-        sR >= 14,  # Travel from Union Square to Mission District: 14 min
-        sC >= sR + 120 + 24,  # Travel from Mission District to Sunset District: 24 min
-        sK >= sC + 30 + 22    # Travel from Sunset District to Bayview: 22 min
-    )
-    
-    order4 = And(  # Rebecca -> Karen -> Carol
-        sR >= 14,
-        sK >= sR + 120 + 15,  # Travel from Mission District to Bayview: 15 min
-        sC >= sK + 120 + 23   # Travel from Bayview to Sunset District: 23 min
-    )
-    
-    order5 = And(  # Karen -> Carol -> Rebecca
-        sK >= 15,  # Travel from Union Square to Bayview: 15 min
-        sC >= sK + 120 + 23,  # Travel from Bayview to Sunset District: 23 min
-        sR >= sC + 30 + 24    # Travel from Sunset District to Mission District: 24 min
-    )
-    
-    order6 = And(  # Karen -> Rebecca -> Carol
-        sK >= 15,
-        sR >= sK + 120 + 13,  # Travel from Bayview to Mission District: 13 min
-        sC >= sR + 120 + 24   # Travel from Mission District to Sunset District: 24 min
-    )
-    
-    # Combine all constraints
-    s = Solver()
-    s.add(constraints_common)
-    s.add(Or(order1, order2, order3, order4, order5, order6))
-    
-    if s.check() == sat:
-        m = s.model()
-        sC_val = m[sC].as_long()
-        sR_val = m[sR].as_long()
-        sK_val = m[sK].as_long()
+    for perm in perms:
+        s = Solver()
+        start0 = Int(f'start0_{perm}')
+        start1 = Int(f'start1_{perm}')
+        start2 = Int(f'start2_{perm}')
+        starts = [start0, start1, start2]
         
-        # Convert minutes to time strings (in 24-hour format)
-        def minutes_to_time(minutes):
-            total_minutes = 9 * 60 + minutes
-            h = total_minutes // 60
-            m = total_minutes % 60
-            return f"{h:02d}:{m:02d}"
+        loc0 = locs[perm[0]]
+        loc1 = locs[perm[1]]
+        loc2 = locs[perm[2]]
         
-        # Create meeting entries
-        meetings = [
-            {"person": "Carol", "start": sC_val, "end": sC_val + 30, "start_time": minutes_to_time(sC_val), "end_time": minutes_to_time(sC_val + 30)},
-            {"person": "Rebecca", "start": sR_val, "end": sR_val + 120, "start_time": minutes_to_time(sR_val), "end_time": minutes_to_time(sR_val + 120)},
-            {"person": "Karen", "start": sK_val, "end": sK_val + 120, "start_time": minutes_to_time(sK_val), "end_time": minutes_to_time(sK_val + 120)}
-        ]
+        s.add(start0 >= travel_times[('US', loc0)])
+        s.add(start1 >= start0 + durations[perm[0]] + travel_times[(loc0, loc1)])
+        s.add(start2 >= start1 + durations[perm[1]] + travel_times[(loc1, loc2)])
         
-        # Sort meetings by start time
-        meetings_sorted = sorted(meetings, key=lambda x: x["start"])
-        itinerary = [{"action": "meet", "person": m["person"], "start_time": m["start_time"], "end_time": m["end_time"]} for m in meetings_sorted]
+        for i in range(3):
+            idx = perm[i]
+            s.add(starts[i] >= windows[idx][0])
+            s.add(starts[i] + durations[idx] <= windows[idx][1])
         
-        # Output the solution in JSON format
-        result = {"itinerary": itinerary}
-        print("SOLUTION:")
-        print(json.dumps(result))
-    else:
-        print("No solution found")
+        if s.check() == sat:
+            m = s.model()
+            start_vals = [m[starts[i]].as_long() for i in range(3)]
+            meetings = []
+            for i in range(3):
+                idx = perm[i]
+                start_min = start_vals[i]
+                end_min = start_min + durations[idx]
+                meetings.append((start_min, names[idx], start_min, end_min))
+            meetings_sorted = sorted(meetings, key=lambda x: x[0])
+            result_meetings = meetings_sorted
+            found = True
+            break
+    
+    if not found:
+        print("No valid schedule found.")
+        return
+    
+    itinerary = []
+    for meeting in result_meetings:
+        _, person, start_min, end_min = meeting
+        start_time = min_to_time(start_min)
+        end_time = min_to_time(end_min)
+        itinerary.append({
+            "action": "meet",
+            "person": person,
+            "start_time": start_time,
+            "end_time": end_time
+        })
+    
+    import json
+    output = {"itinerary": itinerary}
+    print(json.dumps(output, indent=2))
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

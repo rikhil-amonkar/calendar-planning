@@ -1,127 +1,106 @@
 from z3 import *
-import json
 
 def main():
-    travel_dict = {
-        'The Castro': {
-            'Bayview': 19,
-            'Pacific Heights': 16,
-            'Alamo Square': 8,
-            'Fisherman\'s Wharf': 24,
-            'Golden Gate Park': 11
-        },
-        'Bayview': {
-            'The Castro': 20,
-            'Pacific Heights': 23,
-            'Alamo Square': 16,
-            'Fisherman\'s Wharf': 25,
-            'Golden Gate Park': 22
-        },
-        'Pacific Heights': {
-            'The Castro': 16,
-            'Bayview': 22,
-            'Alamo Square': 10,
-            'Fisherman\'s Wharf': 13,
-            'Golden Gate Park': 15
-        },
-        'Alamo Square': {
-            'The Castro': 8,
-            'Bayview': 16,
-            'Pacific Heights': 10,
-            'Fisherman\'s Wharf': 19,
-            'Golden Gate Park': 9
-        },
-        'Fisherman\'s Wharf': {
-            'The Castro': 26,
-            'Bayview': 26,
-            'Pacific Heights': 12,
-            'Alamo Square': 20,
-            'Golden Gate Park': 25
-        },
-        'Golden Gate Park': {
-            'The Castro': 13,
-            'Bayview': 23,
-            'Pacific Heights': 16,
-            'Alamo Square': 10,
-            'Fisherman\'s Wharf': 24
-        }
+    friends = ['R', 'A', 'J', 'S', 'M']
+    name_map = {
+        'R': 'Rebecca',
+        'A': 'Amanda',
+        'J': 'James',
+        'S': 'Sarah',
+        'M': 'Melissa'
     }
-
-    friends = [
-        ('Rebecca', 'Bayview', 540, 765),      # 9:00AM to 12:45PM
-        ('Amanda', 'Pacific Heights', 1110, 1305), # 6:30PM to 9:45PM
-        ('James', 'Alamo Square', 585, 1275),   # 9:45AM to 9:15PM
-        ('Sarah', 'Fisherman\'s Wharf', 480, 1290), # 8:00AM to 9:30PM
-        ('Melissa', 'Golden Gate Park', 540, 1125)  # 9:00AM to 6:45PM
-    ]
-
-    n_meetings = 6  # 1 dummy + 5 friends
-    meet = [None] * n_meetings
-    start = [None] * n_meetings
-    end = [None] * n_meetings
-    loc = [None] * n_meetings
-
-    # Dummy meeting at The Castro
-    loc[0] = 'The Castro'
-    start[0] = 540  # 9:00AM in minutes from midnight
-    end[0] = 540
-
+    
+    travel_time = {
+        'C': {'B': 19, 'P': 16, 'A': 8, 'F': 24, 'G': 11},
+        'B': {'C': 20, 'P': 23, 'A': 16, 'F': 25, 'G': 22},
+        'P': {'C': 16, 'B': 22, 'A': 10, 'F': 13, 'G': 15},
+        'A': {'C': 8, 'B': 16, 'P': 10, 'F': 19, 'G': 9},
+        'F': {'C': 26, 'B': 26, 'P': 12, 'A': 20, 'G': 25},
+        'G': {'C': 13, 'B': 23, 'P': 16, 'A': 10, 'F': 24}
+    }
+    
+    loc_map = {
+        'R': 'B',
+        'A': 'P',
+        'J': 'A',
+        'S': 'F',
+        'M': 'G'
+    }
+    
+    safe_bound = {
+        'R': travel_time['C']['B'],
+        'A': travel_time['C']['P'],
+        'J': travel_time['C']['A'],
+        'S': travel_time['C']['F'],
+        'M': travel_time['C']['G']
+    }
+    
+    window_upper = {
+        'R': 225,
+        'A': 765,
+        'J': 735,
+        'S': 750,
+        'M': 585
+    }
+    
+    window_lower = {
+        'J': 45,
+        'A': 570
+    }
+    
     s = Optimize()
-
-    # Initialize variables for friends (indices 1 to 5)
-    for i in range(1, n_meetings):
-        name, location, avail_start, avail_end = friends[i-1]
-        meet[i] = Bool(f'meet_{name}')
-        start[i] = Int(f'start_{name}')
-        end[i] = start[i] + 90
-        loc[i] = location
-
-        # If meeting this friend, enforce availability constraints
-        s.add(Implies(meet[i], start[i] >= avail_start))
-        s.add(Implies(meet[i], end[i] <= avail_end))
-
-    # Disjunctive constraints for every pair of meetings (including dummy)
-    for i in range(n_meetings):
-        for j in range(i+1, n_meetings):
-            if i == 0:  # Dummy meeting
-                s.add(Implies(meet[j], Or(
-                    start[j] >= end[i] + travel_dict[loc[i]][loc[j]],
-                    start[i] >= end[j] + travel_dict[loc[j]][loc[i]]
-                )))
-            else:
-                s.add(Implies(And(meet[i], meet[j]), Or(
-                    start[j] >= end[i] + travel_dict[loc[i]][loc[j]],
-                    start[i] >= end[j] + travel_dict[loc[j]][loc[i]]
-                )))
-
-    # Maximize the number of friends met
-    s.maximize(Sum([If(meet[i], 1, 0) for i in range(1, n_meetings)]))
-
+    
+    meet = {f: Bool(f"meet_{f}") for f in friends}
+    start = {f: Int(f"start_{f}") for f in friends}
+    
+    for f in friends:
+        s.add(Implies(meet[f], start[f] >= safe_bound[f]))
+        s.add(Implies(meet[f], start[f] + 90 <= window_upper[f]))
+        if f in window_lower:
+            s.add(Implies(meet[f], start[f] >= window_lower[f]))
+    
+    for i in friends:
+        for j in friends:
+            if i == j:
+                continue
+            i_loc = loc_map[i]
+            j_loc = loc_map[j]
+            travel_ij = travel_time[i_loc][j_loc]
+            travel_ji = travel_time[j_loc][i_loc]
+            disj = Or(
+                start[i] + 90 + travel_ij <= start[j],
+                start[j] + 90 + travel_ji <= start[i]
+            )
+            s.add(Implies(And(meet[i], meet[j]), disj))
+    
+    total_meetings = Sum([If(meet[f], 1, 0) for f in friends])
+    s.maximize(total_meetings)
+    
     if s.check() == sat:
         m = s.model()
         itinerary = []
-        for i in range(1, n_meetings):
-            if is_true(m[meet[i]]):
-                name = friends[i-1][0]
-                start_val = m[start[i]].as_long()
-                end_val = start_val + 90
-                start_hour = start_val // 60
-                start_min = start_val % 60
-                end_hour = end_val // 60
-                end_min = end_val % 60
-                start_time = f"{start_hour:02d}:{start_min:02d}"
-                end_time = f"{end_hour:02d}:{end_min:02d}"
-                itinerary.append({
+        for f in friends:
+            if is_true(m.eval(meet[f])):
+                start_min = m.eval(start[f]).as_long()
+                total_min = start_min
+                hours = total_min // 60
+                minutes = total_min % 60
+                start_time_str = f"{9 + hours:02d}:{minutes:02d}"
+                end_min = start_min + 90
+                end_hours = 9 + end_min // 60
+                end_minutes = end_min % 60
+                end_time_str = f"{end_hours:02d}:{end_minutes:02d}"
+                itinerary.append((start_min, {
                     "action": "meet",
-                    "person": name,
-                    "start_time": start_time,
-                    "end_time": end_time
-                })
-        itinerary.sort(key=lambda x: x['start_time'])
-        result = {"itinerary": itinerary}
-        print(json.dumps(result))
+                    "person": name_map[f],
+                    "start_time": start_time_str,
+                    "end_time": end_time_str
+                }))
+        itinerary.sort(key=lambda x: x[0])
+        itinerary_dict = {"itinerary": [item[1] for item in itinerary]}
+        print(f"SOLUTION: {itinerary_dict}")
     else:
-        print(json.dumps({"itinerary": []}))
+        print("No solution found")
 
 if __name__ == "__main__":
     main()

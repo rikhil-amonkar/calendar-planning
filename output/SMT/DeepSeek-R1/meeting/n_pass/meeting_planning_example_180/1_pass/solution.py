@@ -1,72 +1,86 @@
 from z3 import *
 import json
 
-def min_to_time(minutes):
-    total_minutes = minutes
-    hours = 9 + total_minutes // 60
-    mins = total_minutes % 60
-    return f"{hours:02d}:{mins:02d}"
+# Travel times in minutes
+T_NB_MD = 18  # North Beach to Mission District
+T_NB_TC = 22  # North Beach to The Castro
+T_MD_TC = 7   # Mission District to The Castro
+T_TC_MD = 7   # The Castro to Mission District
 
-def main():
-    T0 = Int('T0')
-    J_start = Int('J_start')
-    R_start = Int('R_start')
-    order = Int('order')
+# Convert time to minutes from 9:00 AM
+james_avail_start = 225  # 12:45 PM
+james_avail_end = 300    # 2:00 PM
+robert_avail_start = 225 # 12:45 PM
+robert_avail_end = 375   # 3:15 PM
+
+# Create variables
+S1 = Int('S1')  # start time of first meeting
+E1 = Int('E1')  # end time of first meeting
+S2 = Int('S2')  # start time of second meeting
+E2 = Int('E2')  # end time of second meeting
+order = Int('order')  # 0: first James then Robert, 1: first Robert then James
+
+s = Solver()
+
+# order must be either 0 or 1
+s.add(Or(order == 0, order == 1))
+
+# Common constraints: times are nonnegative and meetings have positive duration
+s.add(S1 >= 0, E1 >= 0, S2 >= 0, E2 >= 0)
+s.add(E1 >= S1, E2 >= S2)
+
+# Constraints based on order
+s.add(If(order == 0,
+    And(
+        S1 >= T_NB_MD,  # travel time to first meeting (MD) from NB
+        S1 >= james_avail_start,
+        E1 <= james_avail_end,
+        E1 - S1 >= 75,   # meet James for at least 75 minutes
+        S2 >= E1 + T_MD_TC,  # travel from MD to TC after first meeting
+        S2 >= robert_avail_start,
+        E2 <= robert_avail_end,
+        E2 - S2 >= 30    # meet Robert for at least 30 minutes
+    ),
+    And(
+        S1 >= T_NB_TC,  # travel time to first meeting (TC) from NB
+        S1 >= robert_avail_start,
+        E1 <= robert_avail_end,
+        E1 - S1 >= 30,   # meet Robert for at least 30 minutes
+        S2 >= E1 + T_TC_MD,  # travel from TC to MD after first meeting
+        S2 >= james_avail_start,
+        E2 <= james_avail_end,
+        E2 - S2 >= 75    # meet James for at least 75 minutes
+    )
+))
+
+# Check for a solution
+if s.check() == sat:
+    m = s.model()
+    order_val = m[order].as_long()
+    S1_val = m[S1].as_long()
+    E1_val = m[E1].as_long()
+    S2_val = m[S2].as_long()
+    E2_val = m[E2].as_long()
     
-    s = Solver()
+    # Convert minutes to time string (24-hour format)
+    def min_to_time(t):
+        total_minutes = t
+        hours = total_minutes // 60
+        minutes = total_minutes % 60
+        hour = 9 + hours
+        return f"{hour:02d}:{minutes:02d}"
     
-    # James: available from 12:45 (225 minutes from 9:00) to 14:00 (300 minutes)
-    s.add(J_start >= 225)
-    s.add(J_start + 75 <= 300)  # Meeting duration 75 minutes
-    
-    # Robert: available from 12:45 (225 minutes) to 15:15 (375 minutes)
-    s.add(R_start >= 225)
-    s.add(R_start + 30 <= 375)  # Meeting duration 30 minutes
-    
-    # Order: 0 for James first, 1 for Robert first
-    s.add(Or(order == 0, order == 1))
-    
-    # Travel constraints based on order
-    s.add(If(order == 0,
-             And(T0 + 18 <= J_start,  # North Beach to Mission District: 18 min
-                 J_start + 75 + 7 <= R_start),  # Mission District to The Castro: 7 min
-             And(T0 + 22 <= R_start,  # North Beach to The Castro: 22 min
-                 R_start + 30 + 7 <= J_start)))  # The Castro to Mission District: 7 min
-    
-    s.add(T0 >= 0)  # Cannot leave before 9:00 AM
-    
-    if s.check() == sat:
-        m = s.model()
-        J_start_val = m[J_start].as_long()
-        R_start_val = m[R_start].as_long()
-        
-        # Format meeting times
-        meeting_james = {
-            "action": "meet",
-            "person": "James",
-            "start_time": min_to_time(J_start_val),
-            "end_time": min_to_time(J_start_val + 75)
-        }
-        meeting_robert = {
-            "action": "meet",
-            "person": "Robert",
-            "start_time": min_to_time(R_start_val),
-            "end_time": min_to_time(R_start_val + 30)
-        }
-        
-        # Sort meetings by start time
-        meetings = [
-            (J_start_val, meeting_james),
-            (R_start_val, meeting_robert)
-        ]
-        meetings_sorted = sorted(meetings, key=lambda x: x[0])
-        itinerary = [meeting[1] for meeting in meetings_sorted]
-        
-        result = {"itinerary": itinerary}
-        print(json.dumps(result))
+    if order_val == 0:
+        meeting1 = {"action": "meet", "person": "James", "start_time": min_to_time(S1_val), "end_time": min_to_time(E1_val)}
+        meeting2 = {"action": "meet", "person": "Robert", "start_time": min_to_time(S2_val), "end_time": min_to_time(E2_val)}
     else:
-        # Fallback if no solution found (though our constraints ensure a solution exists)
-        print(json.dumps({"itinerary": []}))
-
-if __name__ == "__main__":
-    main()
+        meeting1 = {"action": "meet", "person": "Robert", "start_time": min_to_time(S1_val), "end_time": min_to_time(E1_val)}
+        meeting2 = {"action": "meet", "person": "James", "start_time": min_to_time(S2_val), "end_time": min_to_time(E2_val)}
+    
+    itinerary = [meeting1, meeting2]
+    result = {"itinerary": itinerary}
+    print("SOLUTION:")
+    print(json.dumps(result))
+else:
+    print("SOLUTION:")
+    print(json.dumps({"itinerary": []}))

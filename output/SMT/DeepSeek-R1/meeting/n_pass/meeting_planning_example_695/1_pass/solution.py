@@ -1,148 +1,181 @@
-from z3 import *
 import json
+from z3 import *
 
-# Travel times dictionary
-travel_dict = {
-    ("Bayview", "Nob Hill"): 20,
-    ("Bayview", "Union Square"): 17,
-    ("Bayview", "Chinatown"): 18,
-    ("Bayview", "The Castro"): 20,
-    ("Bayview", "Presidio"): 31,
-    ("Bayview", "Pacific Heights"): 23,
-    ("Bayview", "Russian Hill"): 23,
-    ("Nob Hill", "Bayview"): 19,
-    ("Nob Hill", "Union Square"): 7,
-    ("Nob Hill", "Chinatown"): 6,
-    ("Nob Hill", "The Castro"): 17,
-    ("Nob Hill", "Presidio"): 17,
-    ("Nob Hill", "Pacific Heights"): 8,
-    ("Nob Hill", "Russian Hill"): 5,
-    ("Union Square", "Bayview"): 15,
-    ("Union Square", "Nob Hill"): 9,
-    ("Union Square", "Chinatown"): 7,
-    ("Union Square", "The Castro"): 19,
-    ("Union Square", "Presidio"): 24,
-    ("Union Square", "Pacific Heights"): 15,
-    ("Union Square", "Russian Hill"): 13,
-    ("Chinatown", "Bayview"): 22,
-    ("Chinatown", "Nob Hill"): 8,
-    ("Chinatown", "Union Square"): 7,
-    ("Chinatown", "The Castro"): 22,
-    ("Chinatown", "Presidio"): 19,
-    ("Chinatown", "Pacific Heights"): 10,
-    ("Chinatown", "Russian Hill"): 7,
-    ("The Castro", "Bayview"): 19,
-    ("The Castro", "Nob Hill"): 16,
-    ("The Castro", "Union Square"): 19,
-    ("The Castro", "Chinatown"): 20,
-    ("The Castro", "Presidio"): 20,
-    ("The Castro", "Pacific Heights"): 16,
-    ("The Castro", "Russian Hill"): 18,
-    ("Presidio", "Bayview"): 31,
-    ("Presidio", "Nob Hill"): 18,
-    ("Presidio", "Union Square"): 22,
-    ("Presidio", "Chinatown"): 21,
-    ("Presidio", "The Castro"): 21,
-    ("Presidio", "Pacific Heights"): 11,
-    ("Presidio", "Russian Hill"): 14,
-    ("Pacific Heights", "Bayview"): 22,
-    ("Pacific Heights", "Nob Hill"): 8,
-    ("Pacific Heights", "Union Square"): 12,
-    ("Pacific Heights", "Chinatown"): 11,
-    ("Pacific Heights", "The Castro"): 16,
-    ("Pacific Heights", "Presidio"): 11,
-    ("Pacific Heights", "Russian Hill"): 7,
-    ("Russian Hill", "Bayview"): 23,
-    ("Russian Hill", "Nob Hill"): 5,
-    ("Russian Hill", "Union Square"): 11,
-    ("Russian Hill", "Chinatown"): 9,
-    ("Russian Hill", "The Castro"): 21,
-    ("Russian Hill", "Presidio"): 14,
-    ("Russian Hill", "Pacific Heights"): 7
-}
+def format_time(minutes_from_9am):
+    total_minutes = minutes_from_9am
+    h = total_minutes // 60
+    m = total_minutes % 60
+    abs_hour = 9 + h
+    return f"{abs_hour:02d}:{m:02d}"
 
-# Friend data: name, location, availability start, availability end, minimum duration (all in minutes)
-friends = [
-    {"name": "Paul", "location": "Nob Hill", "start_avail": 16*60+15, "end_avail": 21*60+15, "min_duration": 60},
-    {"name": "Carol", "location": "Union Square", "start_avail": 18*60, "end_avail": 20*60+15, "min_duration": 120},
-    {"name": "Patricia", "location": "Chinatown", "start_avail": 20*60, "end_avail": 21*60+30, "min_duration": 75},
-    {"name": "Karen", "location": "The Castro", "start_avail": 17*60, "end_avail": 19*60, "min_duration": 45},
-    {"name": "Nancy", "location": "Presidio", "start_avail": 11*60+45, "end_avail": 22*60, "min_duration": 30},
-    {"name": "Jeffrey", "location": "Pacific Heights", "start_avail": 20*60, "end_avail": 20*60+45, "min_duration": 45},
-    {"name": "Matthew", "location": "Russian Hill", "start_avail": 15*60+45, "end_avail": 21*60+45, "min_duration": 75}
-]
+def main():
+    names = ["Dummy", "Paul", "Carol", "Patricia", "Karen", "Nancy", "Jeffrey", "Matthew"]
+    locations = [
+        "Bayview",          # Dummy
+        "Nob Hill",         # Paul
+        "Union Square",     # Carol
+        "Chinatown",        # Patricia
+        "The Castro",       # Karen
+        "Presidio",         # Nancy
+        "Pacific Heights",  # Jeffrey
+        "Russian Hill"      # Matthew
+    ]
+    min_times = [0, 60, 120, 75, 45, 30, 45, 75]
+    avail = [
+        (0, 0),             # Dummy
+        (435, 735),         # Paul: 4:15 PM to 9:15 PM
+        (540, 675),         # Carol: 6:00 PM to 8:15 PM
+        (660, 750),         # Patricia: 8:00 PM to 9:30 PM
+        (480, 600),         # Karen: 5:00 PM to 7:00 PM
+        (165, 780),         # Nancy: 11:45 AM to 10:00 PM
+        (660, 705),         # Jeffrey: 8:00 PM to 8:45 PM
+        (405, 765)          # Matthew: 3:45 PM to 9:45 PM
+    ]
+    
+    travel_dict = {
+        "Bayview": {
+            "Nob Hill": 20,
+            "Union Square": 17,
+            "Chinatown": 18,
+            "The Castro": 20,
+            "Presidio": 31,
+            "Pacific Heights": 23,
+            "Russian Hill": 23
+        },
+        "Nob Hill": {
+            "Bayview": 19,
+            "Union Square": 7,
+            "Chinatown": 6,
+            "The Castro": 17,
+            "Presidio": 17,
+            "Pacific Heights": 8,
+            "Russian Hill": 5
+        },
+        "Union Square": {
+            "Bayview": 15,
+            "Nob Hill": 9,
+            "Chinatown": 7,
+            "The Castro": 19,
+            "Presidio": 24,
+            "Pacific Heights": 15,
+            "Russian Hill": 13
+        },
+        "Chinatown": {
+            "Bayview": 22,
+            "Nob Hill": 8,
+            "Union Square": 7,
+            "The Castro": 22,
+            "Presidio": 19,
+            "Pacific Heights": 10,
+            "Russian Hill": 7
+        },
+        "The Castro": {
+            "Bayview": 19,
+            "Nob Hill": 16,
+            "Union Square": 19,
+            "Chinatown": 20,
+            "Presidio": 20,
+            "Pacific Heights": 16,
+            "Russian Hill": 18
+        },
+        "Presidio": {
+            "Bayview": 31,
+            "Nob Hill": 18,
+            "Union Square": 22,
+            "Chinatown": 21,
+            "The Castro": 21,
+            "Pacific Heights": 11,
+            "Russian Hill": 14
+        },
+        "Pacific Heights": {
+            "Bayview": 22,
+            "Nob Hill": 8,
+            "Union Square": 12,
+            "Chinatown": 11,
+            "The Castro": 16,
+            "Presidio": 11,
+            "Russian Hill": 7
+        },
+        "Russian Hill": {
+            "Bayview": 23,
+            "Nob Hill": 5,
+            "Union Square": 11,
+            "Chinatown": 9,
+            "The Castro": 21,
+            "Presidio": 14,
+            "Pacific Heights": 7
+        }
+    }
+    
+    n = len(names)
+    opt = Optimize()
+    
+    B = [Bool(f'B_{i}') for i in range(n)]
+    S = [Int(f'S_{i}') for i in range(n)]
+    E = [Int(f'E_{i}') for i in range(n)]
+    P = [Int(f'P_{i}') for i in range(n)]
+    
+    # Fix dummy meeting
+    opt.add(B[0] == True)
+    opt.add(S[0] == 0)
+    opt.add(E[0] == 0)
+    opt.add(P[0] == 0)
+    
+    # Constraints for meetings 1 to 7
+    for i in range(1, n):
+        opt.add(Implies(B[i], 
+                        And(S[i] >= avail[i][0],
+                            E[i] == S[i] + min_times[i],
+                            E[i] <= avail[i][1],
+                            P[i] >= 1,
+                            P[i] <= 7
+                        )))
+        opt.add(Implies(Not(B[i]), P[i] == -1))
+    
+    # Distinct positions for attended meetings
+    for i in range(n):
+        for j in range(i+1, n):
+            opt.add(Implies(And(B[i], B[j]), P[i] != P[j]))
+    
+    # Travel constraints
+    for i in range(n):
+        for j in range(n):
+            if i == j:
+                continue
+            loc_i = locations[i]
+            loc_j = locations[j]
+            travel_time = travel_dict[loc_i][loc_j]
+            opt.add(Implies(And(B[i], B[j], P[i] < P[j]),
+                           E[i] + travel_time <= S[j]))
+    
+    # Objective: maximize number of meetings
+    num_meetings = Sum([If(B[i], 1, 0) for i in range(1, n)])
+    opt.maximize(num_meetings)
+    
+    if opt.check() == sat:
+        m = opt.model()
+        meeting_list = []
+        for i in range(1, n):
+            if m.evaluate(B[i]):
+                start_val = m.evaluate(S[i])
+                if not isinstance(start_val, IntNumRef):
+                    continue
+                start_min = start_val.as_long()
+                end_min = start_min + min_times[i]
+                pos_val = m.evaluate(P[i]).as_long()
+                start_str = format_time(start_min)
+                end_str = format_time(end_min)
+                meeting_list.append((pos_val, {
+                    "action": "meet",
+                    "person": names[i],
+                    "start_time": start_str,
+                    "end_time": end_str
+                }))
+        meeting_list.sort(key=lambda x: x[0])
+        itinerary = [item[1] for item in meeting_list]
+        print(json.dumps({"itinerary": itinerary}))
+    else:
+        print('{"itinerary": []}')
 
-# Locations for the meetings: index 0 is dummy (Bayview), then the friends in order
-locations = ["Bayview"] + [friend["location"] for friend in friends]
-
-# Create Z3 variables and solver
-s = Optimize()
-num_meetings = len(locations)  # 8: dummy + 7 friends
-
-# meet[i]: whether we meet the i-th meeting (dummy is always met)
-meet = [Bool(f"meet_{i}") for i in range(num_meetings)]
-start = [Int(f"start_{i}") for i in range(num_meetings)]
-end = [Int(f"end_{i}") for i in range(num_meetings)]
-
-# Dummy meeting (index 0) is fixed: at Bayview, 9:00 AM (540 minutes)
-s.add(meet[0] == True)
-s.add(start[0] == 540)
-s.add(end[0] == 540)
-
-# Constraints for friend meetings (indices 1 to 7)
-for i in range(1, num_meetings):
-    friend = friends[i-1]
-    # If we meet this friend, then the meeting must be within their availability and have the minimum duration
-    s.add(Implies(meet[i], 
-                  And(start[i] >= friend["start_avail"],
-                      end[i] <= friend["end_avail"],
-                      end[i] == start[i] + friend["min_duration"])))
-    # Travel time from dummy (Bayview) to this friend's location
-    travel_time = travel_dict[("Bayview", locations[i])]
-    s.add(Implies(meet[i], start[i] >= end[0] + travel_time))
-
-# Disjunctive constraints for every pair of friend meetings (i, j) with i < j
-for i in range(1, num_meetings):
-    for j in range(i+1, num_meetings):
-        before_ij = Bool(f"before_{i}_{j}")
-        # If both meetings are scheduled, enforce travel time based on order
-        s.add(Implies(And(meet[i], meet[j]),
-                      If(before_ij,
-                         end[i] + travel_dict[(locations[i], locations[j])] <= start[j],
-                         end[j] + travel_dict[(locations[j], locations[i])] <= start[i])
-                     ))
-
-# Maximize the number of friends met (indices 1 to 7)
-s.maximize(Sum([If(meet[i], 1, 0) for i in range(1, num_meetings)]))
-
-# Check and get the model
-if s.check() == sat:
-    model = s.model()
-    scheduled_meetings = []
-    for i in range(1, num_meetings):
-        if model.evaluate(meet[i]):
-            start_val = model.evaluate(start[i])
-            end_val = model.evaluate(end[i])
-            # Convert to integers
-            start_min = start_val.as_long() if is_int_value(start_val) else int(str(start_val))
-            end_min = end_val.as_long() if is_int_value(end_val) else int(str(end_val))
-            # Convert to HH:MM
-            start_hour = start_min // 60
-            start_minute = start_min % 60
-            end_hour = end_min // 60
-            end_minute = end_min % 60
-            start_str = f"{start_hour:02d}:{start_minute:02d}"
-            end_str = f"{end_hour:02d}:{end_minute:02d}"
-            scheduled_meetings.append({
-                "action": "meet",
-                "person": friends[i-1]["name"],
-                "start_time": start_str,
-                "end_time": end_str
-            })
-    # Sort by start time
-    scheduled_meetings.sort(key=lambda x: x["start_time"])
-    # Output as JSON
-    result = {"itinerary": scheduled_meetings}
-    print(json.dumps(result))
-else:
-    print('{"itinerary": []}')
+if __name__ == '__main__':
+    main()

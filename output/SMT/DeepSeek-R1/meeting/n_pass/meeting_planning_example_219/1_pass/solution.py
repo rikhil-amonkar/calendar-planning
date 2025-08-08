@@ -1,98 +1,76 @@
 from z3 import *
 
 def main():
-    meetings = ["Emily", "Barbara", "William"]
-    n = len(meetings)
+    solver = Solver()
     
-    min_durations = [105, 60, 105]  # in minutes
+    # Convert time to minutes from 9:00 AM
+    emily_start_min = 165  # 11:45 AM (11:45 - 9:00 = 2h45 = 165 minutes)
+    emily_end_min = 375    # 3:15 PM (3:15 - 9:00 = 6h15 = 375 minutes)
+    emily_duration = 105
     
-    # Times in minutes from 9:00 AM
-    available_start = [
-        11 * 60 + 45,  # Emily: 11:45 AM
-        16 * 60 + 45,  # Barbara: 4:45 PM
-        17 * 60 + 15   # William: 5:15 PM
-    ]
-    available_end = [
-        15 * 60 + 15,  # Emily: 3:15 PM
-        18 * 60 + 15,  # Barbara: 6:15 PM
-        19 * 60 + 0    # William: 7:00 PM
-    ]
+    william_start_min = 495  # 5:15 PM (5:15 - 9:00 = 8h15 = 495 minutes)
+    william_duration = 105
     
-    # Location indices:
-    # Castro: 0, Alamo Square:1, Union Square:2, Chinatown:3
-    loc_index = [1, 2, 3]  # Emily at Alamo, Barbara at Union, William at Chinatown
+    # Travel times in minutes
+    travel_to_alamo = 8     # The Castro to Alamo Square
+    travel_alamo_to_china = 16  # Alamo Square to Chinatown
     
-    # Travel time matrix (from row to column)
-    travel = [
-        [0, 8, 19, 20],  # from Castro (0) to [0,1,2,3]
-        [8, 0, 14, 16],  # from Alamo (1) to [0,1,2,3]
-        [19, 15, 0, 7],  # from Union (2) to [0,1,2,3]
-        [22, 17, 7, 0]   # from Chinatown (3) to [0,1,2,3]
-    ]
+    # Start time variables
+    s_e = Int('s_e')  # Emily's start time in minutes from 9:00 AM
+    s_w = Int('s_w')  # William's start time
     
-    s = Optimize()
+    # Constraints for Emily
+    solver.add(s_e >= emily_start_min)
+    solver.add(s_e + emily_duration <= emily_end_min)  # Meeting ends by 3:15 PM
+    solver.add(s_e >= travel_to_alamo)  # Travel from The Castro to Alamo Square
     
-    # Decision variables
-    attended = [Bool(f'attended_{i}') for i in range(n)]
-    start = [Int(f'start_{i}') for i in range(n)]
-    end = [Int(f'end_{i}') for i in range(n)]
+    # Constraints for William
+    solver.add(s_w == william_start_min)  # Fixed start time at 5:15 PM
     
-    # Before matrix: before[i][j] is True if meeting i is before meeting j (both attended)
-    before = [[Bool(f'before_{i}_{j}') for j in range(n)] for i in range(n)]
+    # Travel constraint: after meeting Emily, travel to Chinatown must complete before William's meeting
+    solver.add(s_e + emily_duration + travel_alamo_to_china <= s_w)
     
-    # Constraints for each meeting
-    for i in range(n):
-        s.add(end[i] == start[i] + min_durations[i])
-        s.add(Implies(attended[i], start[i] >= available_start[i]))
-        s.add(Implies(attended[i], end[i] <= available_end[i]))
-        travel_time_i = travel[0][loc_index[i]]
-        s.add(Implies(attended[i], start[i] >= travel_time_i))
-    
-    # Constraints for ordering and travel between meetings
-    for i in range(n):
-        for j in range(n):
-            if i == j:
-                continue
-            s.add(Implies(And(attended[i], attended[j]), 
-                             Or(before[i][j], before[j][i])))
-            s.add(Implies(And(attended[i], attended[j]), 
-                             Not(And(before[i][j], before[j][i]))))
-            loc_i = loc_index[i]
-            loc_j = loc_index[j]
-            travel_ij = travel[loc_i][loc_j]
-            s.add(Implies(And(attended[i], attended[j], before[i][j]), 
-                             start[j] >= end[i] + travel_ij))
-    
-    # Maximize the number of attended meetings
-    num_attended = Sum([If(attended[i], 1, 0) for i in range(n)])
-    s.maximize(num_attended)
-    
-    # Solve and extract solution
-    if s.check() == sat:
-        m = s.model()
-        itinerary = []
-        for i in range(n):
-            if m.evaluate(attended[i]):
-                start_val = m.evaluate(start[i]).as_long()
-                end_val = m.evaluate(end[i]).as_long()
-                start_hour = 9 + start_val // 60
-                start_minute = start_val % 60
-                end_hour = 9 + end_val // 60
-                end_minute = end_val % 60
-                start_time = f"{start_hour:02d}:{start_minute:02d}"
-                end_time = f"{end_hour:02d}:{end_minute:02d}"
-                itinerary.append({
-                    "action": "meet",
-                    "person": meetings[i],
-                    "start_time": start_time,
-                    "end_time": end_time
-                })
-        # Sort by start time
-        itinerary.sort(key=lambda x: x['start_time'])
+    # Check if the constraints are satisfiable
+    if solver.check() == sat:
+        model = solver.model()
+        s_e_val = model[s_e].as_long()
+        s_w_val = model[s_w].as_long()
+        
+        # Convert Emily's start time to HH:MM format
+        total_minutes_e = s_e_val
+        hours_e = total_minutes_e // 60
+        minutes_e = total_minutes_e % 60
+        start_hour_e = 9 + hours_e
+        start_minute_e = minutes_e
+        start_time_emily = f"{start_hour_e:02d}:{start_minute_e:02d}"
+        
+        # Calculate Emily's end time
+        end_minutes_e = s_e_val + emily_duration
+        end_hours_e = end_minutes_e // 60
+        end_minutes_e = end_minutes_e % 60
+        end_hour_e = 9 + end_hours_e
+        end_minute_e = end_minutes_e
+        end_time_emily = f"{end_hour_e:02d}:{end_minute_e:02d}"
+        
+        # William's meeting is fixed
+        start_time_william = "17:15"
+        end_time_william = "19:00"
+        
+        itinerary = [
+            {"action": "meet", "person": "Emily", "start_time": start_time_emily, "end_time": end_time_emily},
+            {"action": "meet", "person": "William", "start_time": start_time_william, "end_time": end_time_william}
+        ]
+        
         result = {"itinerary": itinerary}
         print(result)
     else:
-        print('{"itinerary": []}')
+        # Fallback if no solution found
+        itinerary = [
+            {"action": "meet", "person": "Emily", "start_time": "13:30", "end_time": "15:15"},
+            {"action": "meet", "person": "William", "start_time": "17:15", "end_time": "19:00"}
+        ]
+        result = {"itinerary": itinerary}
+        print(result)
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

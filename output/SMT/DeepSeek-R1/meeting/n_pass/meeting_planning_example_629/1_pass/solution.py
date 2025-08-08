@@ -1,193 +1,147 @@
 from z3 import *
-import itertools
-from datetime import datetime, timedelta
 
 def main():
-    # Define travel times from the given data
-    travel_data = [
-        ("Russian Hill", "Presidio", 14),
-        ("Russian Hill", "Chinatown", 9),
-        ("Russian Hill", "Pacific Heights", 7),
-        ("Russian Hill", "Richmond District", 14),
-        ("Russian Hill", "Fisherman's Wharf", 7),
-        ("Russian Hill", "Golden Gate Park", 21),
-        ("Russian Hill", "Bayview", 23),
-        ("Presidio", "Russian Hill", 14),
-        ("Presidio", "Chinatown", 21),
-        ("Presidio", "Pacific Heights", 11),
-        ("Presidio", "Richmond District", 7),
-        ("Presidio", "Fisherman's Wharf", 19),
-        ("Presidio", "Golden Gate Park", 12),
-        ("Presidio", "Bayview", 31),
-        ("Chinatown", "Russian Hill", 7),
-        ("Chinatown", "Presidio", 19),
-        ("Chinatown", "Pacific Heights", 10),
-        ("Chinatown", "Richmond District", 20),
-        ("Chinatown", "Fisherman's Wharf", 8),
-        ("Chinatown", "Golden Gate Park", 23),
-        ("Chinatown", "Bayview", 22),
-        ("Pacific Heights", "Russian Hill", 7),
-        ("Pacific Heights", "Presidio", 11),
-        ("Pacific Heights", "Chinatown", 11),
-        ("Pacific Heights", "Richmond District", 12),
-        ("Pacific Heights", "Fisherman's Wharf", 13),
-        ("Pacific Heights", "Golden Gate Park", 15),
-        ("Pacific Heights", "Bayview", 22),
-        ("Richmond District", "Russian Hill", 13),
-        ("Richmond District", "Presidio", 7),
-        ("Richmond District", "Chinatown", 20),
-        ("Richmond District", "Pacific Heights", 10),
-        ("Richmond District", "Fisherman's Wharf", 18),
-        ("Richmond District", "Golden Gate Park", 9),
-        ("Richmond District", "Bayview", 26),
-        ("Fisherman's Wharf", "Russian Hill", 7),
-        ("Fisherman's Wharf", "Presidio", 17),
-        ("Fisherman's Wharf", "Chinatown", 12),
-        ("Fisherman's Wharf", "Pacific Heights", 12),
-        ("Fisherman's Wharf", "Richmond District", 18),
-        ("Fisherman's Wharf", "Golden Gate Park", 25),
-        ("Fisherman's Wharf", "Bayview", 26),
-        ("Golden Gate Park", "Russian Hill", 19),
-        ("Golden Gate Park", "Presidio", 11),
-        ("Golden Gate Park", "Chinatown", 23),
-        ("Golden Gate Park", "Pacific Heights", 16),
-        ("Golden Gate Park", "Richmond District", 7),
-        ("Golden Gate Park", "Fisherman's Wharf", 24),
-        ("Golden Gate Park", "Bayview", 23),
-        ("Bayview", "Russian Hill", 23),
-        ("Bayview", "Presidio", 31),
-        ("Bayview", "Chinatown", 18),
-        ("Bayview", "Pacific Heights", 23),
-        ("Bayview", "Richmond District", 25),
-        ("Bayview", "Fisherman's Wharf", 25),
-        ("Bayview", "Golden Gate Park", 22)
+    # Meetings by node: {node: (name, min_duration, available_start (minutes from 9:00), available_end)}
+    meetings_by_node = {
+        1: ("Matthew", 90, 120, 720),     # Presidio, 11:00-21:00
+        2: ("Margaret", 90, 15, 585),      # Chinatown, 9:15-18:45
+        3: ("Nancy", 15, 315, 480),        # Pacific Heights, 14:15-17:00
+        4: ("Helen", 60, 645, 780),        # Richmond District, 19:45-22:00
+        5: ("Rebecca", 60, 735, 795),      # Fisherman's Wharf, 21:15-22:15
+        6: ("Kimberly", 120, 240, 450),    # Golden Gate Park, 13:00-16:30
+        7: ("Kenneth", 60, 330, 540)       # Bayview, 14:30-18:00
+    }
+    
+    # Travel times: 8x8 matrix, indexed [start_node][end_node]
+    travel_matrix = [
+        [0, 14, 9, 7, 14, 7, 21, 23],    # 0: Russian Hill
+        [14, 0, 21, 11, 7, 19, 12, 31],  # 1: Presidio
+        [7, 19, 0, 10, 20, 8, 23, 22],    # 2: Chinatown
+        [7, 11, 11, 0, 12, 13, 15, 22],   # 3: Pacific Heights
+        [13, 7, 20, 10, 0, 18, 9, 26],    # 4: Richmond District
+        [7, 17, 12, 12, 18, 0, 25, 26],   # 5: Fisherman's Wharf
+        [19, 11, 23, 16, 7, 24, 0, 23],   # 6: Golden Gate Park
+        [23, 31, 18, 23, 25, 25, 22, 0]   # 7: Bayview
     ]
     
-    travel_times = {}
-    for from_loc, to_loc, time in travel_data:
-        if from_loc not in travel_times:
-            travel_times[from_loc] = {}
-        travel_times[from_loc][to_loc] = time
-
-    # Define friends and their constraints (name, location, start_min, end_min, duration)
-    friends = [
-        ("Matthew", "Presidio", 120, 720, 90),  # 11:00 AM to 9:00 PM (720)
-        ("Margaret", "Chinatown", 15, 585, 90),  # 9:15 AM to 6:45 PM (585)
-        ("Nancy", "Pacific Heights", 315, 480, 15),  # 2:15 PM (315) to 5:00 PM (480)
-        ("Helen", "Richmond District", 645, 780, 60),  # 7:45 PM (645) to 10:00 PM (780)
-        ("Rebecca", "Fisherman's Wharf", 735, 795, 60),  # 9:15 PM (735) to 10:15 PM (795)
-        ("Kimberly", "Golden Gate Park", 240, 450, 120),  # 1:00 PM (240) to 4:30 PM (450)
-        ("Kenneth", "Bayview", 330, 540, 60)  # 2:30 PM (330) to 6:00 PM (540)
-    ]
+    M = 1000  # big M constant for relaxation
+    nodes = [1, 2, 3, 4, 5, 6, 7]
     
-    def minutes_to_time(minutes):
-        base_time = datetime(2023, 1, 1, 9, 0)  # Start at 9:00 AM
-        new_time = base_time + timedelta(minutes=minutes)
-        return new_time.strftime("%H:%M")
+    # Create the solver
+    opt = Optimize()
     
-    # First, try to schedule all 7 friends
-    solver = Solver()
-    s = {}
-    p = {}
-    for name, loc, start_min, end_min, dur in friends:
-        s[name] = Real(f's_{name}')
-        p[name] = Int(f'p_{name}')
-        solver.add(s[name] >= start_min)
-        solver.add(s[name] + dur <= end_min)
-        solver.add(p[name] >= 0, p[name] < 7)
+    # Variables: visit[j] for j in nodes, s[j] for start time of node j
+    visit = { j: Bool(f'visit_{j}') for j in nodes }
+    s = { j: Real(f's_{j}') for j in nodes }
     
-    solver.add(Distinct([p[name] for name, _, _, _, _ in friends]))
+    # x[(i, j)] for i in [0,7] and j in nodes, i != j
+    x = {}
+    for i in range(0, 8):
+        for j in nodes:
+            if i != j:
+                x[(i, j)] = Bool(f'x_{i}_{j}')
     
-    for name, loc, _, dur, _ in friends:
-        solver.add(Implies(p[name] == 0, s[name] >= travel_times["Russian Hill"][loc]))
-        for other, other_loc, _, other_dur, _ in friends:
-            if name == other:
+    # Constraint 1: Start node (0) has at most one outgoing
+    opt.add(Sum([x[(0, j)] for j in nodes]) <= 1)
+    
+    # Constraint 2: For each node j in nodes
+    for j in nodes:
+        # Incoming arcs: from any i (0-7, i != j)
+        incoming = Sum([x[(i, j)] for i in range(0, 8) if i != j])
+        opt.add(incoming == visit[j])
+        
+        # Outgoing arcs: to any k in nodes (k != j)
+        outgoing = Sum([x[(j, k)] for k in nodes if k != j])
+        opt.add(outgoing <= visit[j])
+        
+        # Time window constraints
+        name, dur, start_avail, end_avail = meetings_by_node[j]
+        opt.add(If(visit[j],
+                   And(s[j] >= start_avail, s[j] + dur <= end_avail),
+                   True))
+    
+    # Constraint 3: Travel constraints
+    for i in range(0, 8):
+        for j in nodes:
+            if i == j:
                 continue
-            solver.add(Implies(p[name] == p[other] + 1, 
-                              s[name] >= s[other] + other_dur + travel_times[other_loc][loc]))
+            if i == 0:
+                # From start node (0) to node j
+                opt.add(s[j] >= travel_matrix[i][j] - M*(1 - x[(i, j)]))
+            else:
+                # From node i to node j (i in [1,7])
+                name_i, dur_i, start_avail_i, end_avail_i = meetings_by_node[i]
+                opt.add(s[j] >= s[i] + dur_i + travel_matrix[i][j] - M*(1 - x[(i, j)]))
     
-    if solver.check() == sat:
-        model = solver.model()
+    # Non-negative start times
+    for j in nodes:
+        opt.add(s[j] >= 0)
+    
+    # Objective: maximize number of visited meetings
+    total_meetings = Sum([If(visit[j], 1, 0) for j in nodes])
+    opt.maximize(total_meetings)
+    
+    # Solve
+    if opt.check() == sat:
+        model = opt.model()
+        # Build the itinerary by following the chain
+        current = 0
+        chain = []
+        # Find the first meeting
+        for j in nodes:
+            if is_true(model[x[(0, j)]]):
+                chain.append(j)
+                current = j
+                break
+        # Traverse the chain
+        while True:
+            next_node = None
+            for k in nodes:
+                if k == current:
+                    continue
+                if is_true(model[x[(current, k)]]):
+                    next_node = k
+                    break
+            if next_node is None:
+                break
+            chain.append(next_node)
+            current = next_node
+        
         itinerary = []
-        for name, loc, start_min, end_min, dur in friends:
-            start_val = model.eval(s[name])
-            if is_algebraic_value(start_val):
+        for j in chain:
+            name, dur, _, _ = meetings_by_node[j]
+            start_val = model[s[j]]
+            # Convert Z3 Real to integer
+            if isinstance(start_val, IntNumRef):
                 start_minutes = start_val.as_long()
             else:
-                start_minutes = int(str(start_val))
+                # Handle Real value: if it's a rational, convert to int
+                if is_rational_value(start_val):
+                    start_minutes = start_val.numerator_as_long() // start_val.denominator_as_long()
+                else:
+                    start_minutes = int(str(start_val))
             end_minutes = start_minutes + dur
-            start_time_str = minutes_to_time(start_minutes)
-            end_time_str = minutes_to_time(end_minutes)
+            # Convert minutes to time string
+            total_minutes_start = start_minutes
+            start_hour = 9 + total_minutes_start // 60
+            start_minute = total_minutes_start % 60
+            total_minutes_end = end_minutes
+            end_hour = 9 + total_minutes_end // 60
+            end_minute = total_minutes_end % 60
+            start_str = f"{start_hour:02d}:{start_minute:02d}"
+            end_str = f"{end_hour:02d}:{end_minute:02d}"
             itinerary.append({
                 "action": "meet",
                 "person": name,
-                "start_time": start_time_str,
-                "end_time": end_time_str
+                "start_time": start_str,
+                "end_time": end_str
             })
-        itinerary_sorted = sorted(itinerary, key=lambda x: x['start_time'])
-        result = {"itinerary": itinerary_sorted}
-        print("SOLUTION:")
-        print(result)
-        return
-    
-    # If all 7 not feasible, try subsets from size 7 down to 1
-    all_friends = friends[:]
-    found = False
-    result_schedule = None
-    for k in range(7, 0, -1):
-        for subset in itertools.combinations(all_friends, k):
-            solver = Solver()
-            s = {}
-            p = {}
-            subset_names = [friend[0] for friend in subset]
-            for name, loc, start_min, end_min, dur in subset:
-                s[name] = Real(f's_{name}')
-                p[name] = Int(f'p_{name}')
-                solver.add(s[name] >= start_min)
-                solver.add(s[name] + dur <= end_min)
-                solver.add(p[name] >= 0, p[name] < k)
-            
-            solver.add(Distinct([p[name] for name in subset_names]))
-            
-            for name, loc, _, dur, _ in subset:
-                solver.add(Implies(p[name] == 0, s[name] >= travel_times["Russian Hill"][loc]))
-                for other, other_loc, _, other_dur, _ in subset:
-                    if name == other:
-                        continue
-                    solver.add(Implies(p[name] == p[other] + 1, 
-                                      s[name] >= s[other] + other_dur + travel_times[other_loc][loc]))
-            
-            if solver.check() == sat:
-                model = solver.model()
-                itinerary = []
-                for name, loc, start_min, end_min, dur in subset:
-                    start_val = model.eval(s[name])
-                    if is_algebraic_value(start_val):
-                        start_minutes = start_val.as_long()
-                    else:
-                        start_minutes = int(str(start_val))
-                    end_minutes = start_minutes + dur
-                    start_time_str = minutes_to_time(start_minutes)
-                    end_time_str = minutes_to_time(end_minutes)
-                    itinerary.append({
-                        "action": "meet",
-                        "person": name,
-                        "start_time": start_time_str,
-                        "end_time": end_time_str
-                    })
-                itinerary_sorted = sorted(itinerary, key=lambda x: x['start_time'])
-                result_schedule = {"itinerary": itinerary_sorted}
-                found = True
-                break
-        if found:
-            break
-    
-    if found:
-        print("SOLUTION:")
-        print(result_schedule)
+        
+        # Output the itinerary in JSON format
+        print('SOLUTION:')
+        print(f'{{"itinerary": {itinerary}}}')
     else:
-        print("SOLUTION:")
-        print('{"itinerary": []}')
+        print("No solution found")
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

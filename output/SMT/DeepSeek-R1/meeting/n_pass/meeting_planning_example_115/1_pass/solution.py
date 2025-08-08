@@ -1,68 +1,57 @@
 from z3 import *
-import json
 
-def main():
-    # Create the variables
-    carol_start = Int('carol_start')
-    jessica_start = Int('jessica_start')
-    jessica_duration = Int('jessica_duration')
-    
-    opt = Optimize()
-    
-    # Carol must start between 11:30 AM (150 minutes from 9:00 AM) and 2:00 PM (300 minutes from 9:00 AM)
-    opt.add(carol_start >= 150)
-    opt.add(carol_start <= 300)
-    
-    # Jessica must start at or after 3:30 PM (390 minutes from 9:00 AM)
-    opt.add(jessica_start >= 390)
-    # Jessica's meeting must last at least 45 minutes and end by 4:45 PM (465 minutes from 9:00 AM)
-    opt.add(jessica_duration >= 45)
-    opt.add(jessica_start + jessica_duration <= 465)
-    
-    # Travel constraint: after meeting Carol (ends at carol_start + 60), travel to Pacific Heights takes 7 minutes
-    opt.add(carol_start + 60 + 7 <= jessica_start)
-    
-    # Objectives: first maximize Jessica's meeting duration, then maximize Carol's start time (to minimize waiting)
-    opt.maximize(jessica_duration)
-    opt.maximize(carol_start)
-    
-    result = {"itinerary": []}
-    if opt.check() == sat:
-        m = opt.model()
-        carol_start_val = m[carol_start].as_long()
-        jessica_start_val = m[jessica_start].as_long()
-        jessica_duration_val = m[jessica_duration].as_long()
-        
-        # Compute Carol's meeting times
-        carol_start_minutes = carol_start_val
-        carol_start_hour = 9 + carol_start_minutes // 60
-        carol_start_minute = carol_start_minutes % 60
-        carol_end_minutes = carol_start_minutes + 60
-        carol_end_hour = 9 + carol_end_minutes // 60
-        carol_end_minute = carol_end_minutes % 60
-        
-        # Compute Jessica's meeting times
-        jessica_start_minutes = jessica_start_val
-        jessica_start_hour = 9 + jessica_start_minutes // 60
-        jessica_start_minute = jessica_start_minutes % 60
-        jessica_end_minutes = jessica_start_minutes + jessica_duration_val
-        jessica_end_hour = 9 + jessica_end_minutes // 60
-        jessica_end_minute = jessica_end_minutes % 60
-        
-        # Format as HH:MM strings
-        carol_start_str = f"{carol_start_hour:02d}:{carol_start_minute:02d}"
-        carol_end_str = f"{carol_end_hour:02d}:{carol_end_minute:02d}"
-        jessica_start_str = f"{jessica_start_hour:02d}:{jessica_start_minute:02d}"
-        jessica_end_str = f"{jessica_end_hour:02d}:{jessica_end_minute:02d}"
-        
-        itinerary = [
-            {"action": "meet", "person": "Carol", "start_time": carol_start_str, "end_time": carol_end_str},
-            {"action": "meet", "person": "Jessica", "start_time": jessica_start_str, "end_time": jessica_end_str}
-        ]
-        result = {"itinerary": itinerary}
-    
-    print("SOLUTION:")
-    print(json.dumps(result))
+def min_to_time(minutes):
+    h = minutes // 60
+    m = minutes % 60
+    return f"{h:02d}:{m:02d}"
 
-if __name__ == "__main__":
-    main()
+# Initialize solver
+opt = Optimize()
+
+# Define variables in minutes (integers)
+C_start = Int('C_start')
+J_start = Int('J_start')
+
+# Convert times to minutes
+start_of_day = 9 * 60  # 9:00 in minutes
+
+# Carol available: 11:30 (690) to 15:00 (900), meeting duration 60 minutes
+carol_available_start = 11 * 60 + 30   # 690
+carol_available_end = 15 * 60          # 900
+# Carol must start by 14:00 (840) to end by 15:00
+s.add(C_start >= carol_available_start)
+s.add(C_start <= carol_available_end - 60)  # C_start <= 840
+
+# Jessica available: 15:30 (930) to 16:45 (1005), meeting duration 45 minutes
+jessica_available_start = 15 * 60 + 30  # 930
+jessica_available_end = 16 * 60 + 45    # 1005
+s.add(J_start >= jessica_available_start)
+s.add(J_start <= jessica_available_end - 45)  # J_start <= 960
+
+# Travel constraints
+# From Richmond to Marina: 9 minutes -> leave Richmond at C_start - 9
+s.add(C_start - 9 >= start_of_day)  # Redundant since C_start>=690, but included for clarity
+# From Marina to Pacific Heights: 7 minutes, leave Marina at C_start + 60, arrive at C_start + 67
+s.add(C_start + 67 <= J_start)
+
+# Optimize: minimize Jessica's start time to reduce total waiting, then maximize Carol's start time
+opt.minimize(J_start)
+opt.maximize(C_start)
+
+if opt.check() == sat:
+    m = opt.model()
+    c_start_val = m.eval(C_start).as_long()
+    j_start_val = m.eval(J_start).as_long()
+    
+    carol_end = c_start_val + 60
+    jessica_end = j_start_val + 45
+    
+    itinerary = [
+        {"action": "meet", "person": "Carol", "start_time": min_to_time(c_start_val), "end_time": min_to_time(carol_end)},
+        {"action": "meet", "person": "Jessica", "start_time": min_to_time(j_start_val), "end_time": min_to_time(jessica_end)}
+    ]
+    
+    result = {"itinerary": itinerary}
+    print(result)
+else:
+    print("No solution found")

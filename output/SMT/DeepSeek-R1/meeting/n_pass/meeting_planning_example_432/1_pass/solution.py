@@ -1,131 +1,105 @@
+import json
 from z3 import *
-import itertools
 
 def main():
+    # Travel times between locations (in minutes)
+    # Locations: 0=Golden Gate Park, 1=Fisherman's Wharf, 2=Mission District, 3=Financial District, 4=Bayview
     travel_times = {
-        ('Golden Gate Park', 'Fisherman\'s Wharf'): 24,
-        ('Golden Gate Park', 'Bayview'): 23,
-        ('Golden Gate Park', 'Mission District'): 17,
-        ('Golden Gate Park', 'Embarcadero'): 25,
-        ('Golden Gate Park', 'Financial District'): 26,
-        ('Fisherman\'s Wharf', 'Golden Gate Park'): 25,
-        ('Fisherman\'s Wharf', 'Bayview'): 26,
-        ('Fisherman\'s Wharf', 'Mission District'): 22,
-        ('Fisherman\'s Wharf', 'Embarcadero'): 8,
-        ('Fisherman\'s Wharf', 'Financial District'): 11,
-        ('Bayview', 'Golden Gate Park'): 22,
-        ('Bayview', 'Fisherman\'s Wharf'): 25,
-        ('Bayview', 'Mission District'): 13,
-        ('Bayview', 'Embarcadero'): 19,
-        ('Bayview', 'Financial District'): 19,
-        ('Mission District', 'Golden Gate Park'): 17,
-        ('Mission District', 'Fisherman\'s Wharf'): 22,
-        ('Mission District', 'Bayview'): 15,
-        ('Mission District', 'Embarcadero'): 19,
-        ('Mission District', 'Financial District'): 17,
-        ('Embarcadero', 'Golden Gate Park'): 25,
-        ('Embarcadero', 'Fisherman\'s Wharf'): 6,
-        ('Embarcadero', 'Bayview'): 21,
-        ('Embarcadero', 'Mission District'): 20,
-        ('Embarcadero', 'Financial District'): 5,
-        ('Financial District', 'Golden Gate Park'): 23,
-        ('Financial District', 'Fisherman\'s Wharf'): 10,
-        ('Financial District', 'Bayview'): 19,
-        ('Financial District', 'Mission District'): 17,
-        ('Financial District', 'Embarcadero'): 4
+        (0, 1): 24, (0, 2): 17, (0, 3): 26, (0, 4): 23,
+        (1, 0): 25, (1, 2): 22, (1, 3): 11, (1, 4): 26,
+        (2, 0): 17, (2, 1): 22, (2, 3): 17, (2, 4): 15,
+        (3, 0): 23, (3, 1): 10, (3, 2): 17, (3, 4): 19,
+        (4, 0): 22, (4, 1): 25, (4, 2): 13, (4, 3): 19
     }
     
-    friends = {
-        'Joseph': {'location': "Fisherman's Wharf", 'window_start': 8*60, 'window_end': 17*60+30, 'min_duration': 90},
-        'Jeffrey': {'location': 'Bayview', 'window_start': 17*60+30, 'window_end': 21*60+30, 'min_duration': 60},
-        'Kevin': {'location': 'Mission District', 'window_start': 11*60+15, 'window_end': 15*60+15, 'min_duration': 30},
-        'Barbara': {'location': 'Financial District', 'window_start': 10*60+30, 'window_end': 16*60+30, 'min_duration': 15}
-    }
+    meetings_info = [
+        {"name": "Joseph", "loc": 1, "duration": 90, "window_low": 480, "window_high": 1050},   # 8:00 AM to 5:30 PM
+        {"name": "Kevin", "loc": 2, "duration": 30, "window_low": 675, "window_high": 915},      # 11:15 AM to 3:15 PM
+        {"name": "Barbara", "loc": 3, "duration": 15, "window_low": 630, "window_high": 990},    # 10:30 AM to 4:30 PM
+        {"name": "Jeffrey", "loc": 4, "duration": 60, "window_low": 1050, "window_high": 1290}   # 5:30 PM to 9:30 PM
+    ]
     
-    perm_list = list(itertools.permutations(['Joseph', 'Kevin', 'Barbara']))
-    solution_found = False
-    itinerary = []
+    # Create Z3 variables and info for each meeting
+    meetings = []
+    for info in meetings_info:
+        name = info["name"]
+        meetings.append({
+            "name": name,
+            "loc": info["loc"],
+            "duration": info["duration"],
+            "window_low": info["window_low"],
+            "window_high": info["window_high"],
+            "start": Int(f"s_{name}"),
+            "order": Int(f"o_{name}"),
+            "include": Bool(f"include_{name}")
+        })
     
-    for perm in perm_list:
-        loc0 = 'Golden Gate Park'
-        loc1 = friends[perm[0]]['location']
-        loc2 = friends[perm[1]]['location']
-        loc3 = friends[perm[2]]['location']
-        loc4 = friends['Jeffrey']['location']
-        
-        try:
-            t0 = travel_times[(loc0, loc1)]
-            t1 = travel_times[(loc1, loc2)]
-            t2 = travel_times[(loc2, loc3)]
-            t3 = travel_times[(loc3, loc4)]
-        except KeyError:
-            continue
-        
-        s1 = Int('s1')
-        d1 = Int('d1')
-        s2 = Int('s2')
-        d2 = Int('d2')
-        s3 = Int('s3')
-        d3 = Int('d3')
-        s4 = Int('s4')
-        d4 = Int('d4')
-        
-        solver = Solver()
-        solver.add(s1 == 9*60 + t0)
-        solver.add(s2 == s1 + d1 + t1)
-        solver.add(s3 == s2 + d2 + t2)
-        solver.add(s4 == s3 + d3 + t3)
-        
-        # Constraints for the first friend in the permutation
-        solver.add(s1 >= friends[perm[0]]['window_start'])
-        solver.add(s1 + d1 <= friends[perm[0]]['window_end'])
-        solver.add(d1 >= friends[perm[0]]['min_duration'])
-        
-        # Constraints for the second friend
-        solver.add(s2 >= friends[perm[1]]['window_start'])
-        solver.add(s2 + d2 <= friends[perm[1]]['window_end'])
-        solver.add(d2 >= friends[perm[1]]['min_duration'])
-        
-        # Constraints for the third friend
-        solver.add(s3 >= friends[perm[2]]['window_start'])
-        solver.add(s3 + d3 <= friends[perm[2]]['window_end'])
-        solver.add(d3 >= friends[perm[2]]['min_duration'])
-        
-        # Constraints for Jeffrey
-        solver.add(s4 >= friends['Jeffrey']['window_start'])
-        solver.add(s4 + d4 <= friends['Jeffrey']['window_end'])
-        solver.add(d4 >= friends['Jeffrey']['min_duration'])
-        
-        if solver.check() == sat:
-            model = solver.model()
-            s1_val = model.evaluate(s1).as_long()
-            d1_val = model.evaluate(d1).as_long()
-            s2_val = model.evaluate(s2).as_long()
-            d2_val = model.evaluate(d2).as_long()
-            s3_val = model.evaluate(s3).as_long()
-            d3_val = model.evaluate(d3).as_long()
-            s4_val = model.evaluate(s4).as_long()
-            d4_val = model.evaluate(d4).as_long()
-            
-            def format_time(minutes):
-                hours = minutes // 60
-                mins = minutes % 60
-                return f"{hours:02d}:{mins:02d}"
-            
-            itinerary = [
-                {"action": "meet", "person": perm[0], "start_time": format_time(s1_val), "end_time": format_time(s1_val + d1_val)},
-                {"action": "meet", "person": perm[1], "start_time": format_time(s2_val), "end_time": format_time(s2_val + d2_val)},
-                {"action": "meet", "person": perm[2], "start_time": format_time(s3_val), "end_time": format_time(s3_val + d3_val)},
-                {"action": "meet", "person": "Jeffrey", "start_time": format_time(s4_val), "end_time": format_time(s4_val + d4_val)}
-            ]
-            solution_found = True
-            break
+    opt = Optimize()
+    n_meetings = len(meetings)
     
-    if not solution_found:
-        itinerary = []
+    # Total included meetings to maximize
+    total_included = Sum([If(m['include'], 1, 0) for m in meetings])
     
-    result = {"itinerary": itinerary}
-    print(f"SOLUTION: {result}")
+    # Window constraints for included meetings
+    for m in meetings:
+        opt.add(Implies(m['include'], 
+                 And(m['start'] >= m['window_low'], 
+                     m['start'] + m['duration'] <= m['window_high'])))
+    
+    # Order constraints: if included, order index in [0, n-1] (n = total_included)
+    n = total_included
+    for m in meetings:
+        opt.add(Implies(m['include'], And(m['order'] >= 0, m['order'] < n)))
+    
+    # Distinct order indices for included meetings
+    for i in range(n_meetings):
+        for j in range(i+1, n_meetings):
+            m1 = meetings[i]
+            m2 = meetings[j]
+            opt.add(Implies(And(m1['include'], m2['include']), m1['order'] != m2['order']))
+    
+    # First meeting constraint: if included and order=0, start after travel from GGP (location 0)
+    for m in meetings:
+        tt = travel_times.get((0, m['loc']), 1000)
+        opt.add(Implies(And(m['include'], m['order'] == 0), m['start'] >= 540 + tt))
+    
+    # Consecutive meetings constraint
+    for i in range(n_meetings):
+        for j in range(n_meetings):
+            if i == j:
+                continue
+            m_i = meetings[i]
+            m_j = meetings[j]
+            tt = travel_times.get((m_j['loc'], m_i['loc']), 1000)
+            cond = And(m_i['include'], m_j['include'], m_j['order'] == m_i['order'] - 1)
+            opt.add(Implies(cond, m_i['start'] >= m_j['start'] + m_j['duration'] + tt))
+    
+    # Maximize the number of included meetings
+    opt.maximize(total_included)
+    
+    # Check for a solution
+    if opt.check() == sat:
+        model = opt.model()
+        scheduled_meetings = []
+        for m in meetings:
+            if is_true(model.eval(m['include'])):
+                order_val = model.eval(m['order']).as_long()
+                start_val = model.eval(m['start']).as_long()
+                end_val = start_val + m['duration']
+                start_time = f"{start_val // 60:02d}:{start_val % 60:02d}"
+                end_time = f"{end_val // 60:02d}:{end_val % 60:02d}"
+                scheduled_meetings.append((order_val, {
+                    "action": "meet",
+                    "person": m['name'],
+                    "start_time": start_time,
+                    "end_time": end_time
+                }))
+        scheduled_meetings.sort(key=lambda x: x[0])
+        itinerary = [item[1] for item in scheduled_meetings]
+        result = {"itinerary": itinerary}
+        print(json.dumps(result))
+    else:
+        print(json.dumps({"itinerary": []}))
 
 if __name__ == "__main__":
     main()

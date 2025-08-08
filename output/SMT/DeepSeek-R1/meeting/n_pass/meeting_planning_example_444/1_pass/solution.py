@@ -1,96 +1,245 @@
 from z3 import *
+import itertools
+import json
 
 def main():
-    # Travel time matrix
-    travel_time = {
-        'FD': {'RH': 10, 'SD': 31, 'NB': 7, 'TC': 23, 'GG': 23},
-        'RH': {'FD': 11, 'SD': 23, 'NB': 5, 'TC': 21, 'GG': 21},
-        'SD': {'FD': 30, 'RH': 24, 'NB': 29, 'TC': 17, 'GG': 11},
-        'NB': {'FD': 8, 'RH': 4, 'SD': 27, 'TC': 22, 'GG': 22},
-        'TC': {'FD': 20, 'RH': 18, 'SD': 17, 'NB': 20, 'GG': 11},
-        'GG': {'FD': 26, 'RH': 19, 'SD': 10, 'NB': 24, 'TC': 13}
+    # Travel time matrix (in minutes)
+    travel = {
+        'Financial District': {
+            'Russian Hill': 10,
+            'Sunset District': 31,
+            'North Beach': 7,
+            'The Castro': 23,
+            'Golden Gate Park': 23
+        },
+        'Russian Hill': {
+            'Financial District': 11,
+            'Sunset District': 23,
+            'North Beach': 5,
+            'The Castro': 21,
+            'Golden Gate Park': 21
+        },
+        'Sunset District': {
+            'Financial District': 30,
+            'Russian Hill': 24,
+            'North Beach': 29,
+            'The Castro': 17,
+            'Golden Gate Park': 11
+        },
+        'North Beach': {
+            'Financial District': 8,
+            'Russian Hill': 4,
+            'Sunset District': 27,
+            'The Castro': 22,
+            'Golden Gate Park': 22
+        },
+        'The Castro': {
+            'Financial District': 20,
+            'Russian Hill': 18,
+            'Sunset District': 17,
+            'North Beach': 20,
+            'Golden Gate Park': 11
+        },
+        'Golden Gate Park': {
+            'Financial District': 26,
+            'Russian Hill': 19,
+            'Sunset District': 10,
+            'North Beach': 24,
+            'The Castro': 13
+        }
     }
     
-    # Friends' data: name, location, duration, available start (minutes from 9:00), available end
-    friends = [
-        ('Patricia', 'SD', 60, 15, 780),    # 9:15 AM to 10:00 PM
-        ('Ronald', 'RH', 105, 285, 495),     # 1:45 PM to 5:15 PM
-        ('Laura', 'NB', 15, 210, 225),       # 12:30 PM to 12:45 PM
-        ('Emily', 'TC', 60, 435, 570),       # 4:15 PM to 6:30 PM
-        ('Mary', 'GG', 60, 360, 450)         # 3:00 PM to 4:30 PM
-    ]
+    # Availability in minutes since 9:00 AM
+    availability = {
+        'Patricia': (15, 780),   # 9:15 AM to 10:00 PM
+        'Ronald': (285, 495),    # 1:45 PM to 5:15 PM
+        'Laura': (210, 225),     # 12:30 PM to 12:45 PM (fixed)
+        'Emily': (435, 570),     # 4:15 PM to 6:30 PM
+        'Mary': (360, 450)       # 3:00 PM to 4:30 PM
+    }
     
-    n = len(friends)
+    # Minimum meeting durations (in minutes)
+    min_duration = {
+        'Patricia': 60,
+        'Ronald': 105,
+        'Laura': 15,
+        'Emily': 60,
+        'Mary': 60
+    }
+    
+    # Locations for each person
+    locations = {
+        'Patricia': 'Sunset District',
+        'Ronald': 'Russian Hill',
+        'Laura': 'North Beach',
+        'Emily': 'The Castro',
+        'Mary': 'Golden Gate Park'
+    }
+    
+    # Start at Financial District at time 0 (9:00 AM)
+    current_location = 'Financial District'
+    
+    # We must meet Laura at 12:30 PM to 12:45 PM (210 to 225 minutes from 9:00 AM)
+    # Morning: Only Patricia is available
     s = Solver()
     
-    # Variables: for each friend, whether we attend, start time, and position in the sequence
-    attend = [Bool(f"attend_{i}") for i in range(n)]
-    start = [Int(f"start_{i}") for i in range(n)]
-    end = [Int(f"end_{i}") for i in range(n)]
-    position = [Int(f"position_{i}") for i in range(n)]
+    # Variables for Patricia's meeting
+    P_start = Int('P_start')
+    P_end = Int('P_end')
     
-    # End time is start time plus duration
-    for i, (name, loc, dur, avail_start, avail_end) in enumerate(friends):
-        s.add(end[i] == start[i] + dur)
+    # Constraints for Patricia
+    s.add(P_start >= availability['Patricia'][0])  # Not before 9:15 AM
+    s.add(P_end == P_start + min_duration['Patricia'])
+    # Travel from Financial District to Sunset District
+    travel_to_p = travel[current_location][locations['Patricia']]
+    s.add(P_start >= travel_to_p)  # Arrive at Patricia by P_start
+    # After meeting Patricia, travel to Laura at North Beach
+    travel_to_l = travel[locations['Patricia']][locations['Laura']]
+    s.add(P_end + travel_to_l <= availability['Laura'][0])  # Arrive by 12:30 PM
     
-    # Constraints for each friend
-    for i, (name, loc, dur, avail_start, avail_end) in enumerate(friends):
-        # If attending, the meeting must be within the availability window
-        s.add(Implies(attend[i], And(start[i] >= avail_start, end[i] <= avail_end)))
-        # If attending, the start time must be at least the travel time from FD to the location
-        s.add(Implies(attend[i], start[i] >= travel_time['FD'][loc]))
-        # Position must be between 0 and n-1 if attending, or -1 if not
-        s.add(Implies(attend[i], And(position[i] >= 0, position[i] < n)))
-        s.add(Implies(Not(attend[i]), position[i] == -1))
+    # Afternoon meetings: Ronald, Emily, Mary (skip one if necessary)
+    afternoon_people = ['Ronald', 'Emily', 'Mary']
+    best_count = 0
+    best_schedule = None
     
-    # If both friends i and j are attended, their positions must be distinct
-    for i in range(n):
-        for j in range(i+1, n):
-            s.add(Implies(And(attend[i], attend[j]), position[i] != position[j]))
-    
-    # For each pair of friends, if both are attended and i has a lower position than j, 
-    # then the start of j must be at least end of i plus travel time from i's location to j's location
-    for i in range(n):
-        for j in range(n):
-            if i != j:
-                # If both are attended and position i < position j, then start_j >= end_i + travel(i_loc, j_loc)
-                cond = And(attend[i], attend[j], position[i] < position[j])
-                loc_i = friends[i][1]
-                loc_j = friends[j][1]
-                travel_ij = travel_time[loc_i][loc_j]
-                s.add(Implies(cond, start[j] >= end[i] + travel_ij))
-    
-    # Maximize the number of attended meetings
-    obj = Sum([If(attend[i], 1, 0) for i in range(n)])
-    s.maximize(obj)
-    
-    # Solve and output
-    if s.check() == sat:
-        model = s.model()
-        schedule = []
-        for i, (name, loc, dur, avail_start, avail_end) in enumerate(friends):
-            if model.evaluate(attend[i]):
-                start_val = model.evaluate(start[i]).as_long()
-                end_val = model.evaluate(end[i]).as_long()
-                # Convert minutes to time string
-                start_hour = 9 + start_val // 60
-                start_minute = start_val % 60
-                end_hour = 9 + end_val // 60
-                end_minute = end_val % 60
-                start_str = f"{start_hour:02d}:{start_minute:02d}"
-                end_str = f"{end_hour:02d}:{end_minute:02d}"
+    # Try to schedule all three in the afternoon
+    for order in itertools.permutations(afternoon_people):
+        s2 = s.__copy__()  # Copy the base solver with Patricia and Laura constraints
+        times = {}
+        for person in afternoon_people:
+            times[f'{person}_start'] = Int(f'{person}_start')
+            times[f'{person}_end'] = Int(f'{person}_end')
+        
+        # Start after Laura (12:45 PM = 225 minutes)
+        current_time = 225
+        current_loc = locations['Laura']
+        valid = True
+        for i, person in enumerate(order):
+            # Travel to the next location
+            travel_time = travel[current_loc][locations[person]]
+            s2.add(times[f'{person}_start'] >= current_time + travel_time)
+            # Meeting duration and availability
+            s2.add(times[f'{person}_end'] == times[f'{person}_start'] + min_duration[person])
+            s2.add(times[f'{person}_start'] >= availability[person][0])
+            s2.add(times[f'{person}_end'] <= availability[person][1])
+            # Update current time and location for next travel
+            current_time = times[f'{person}_end']
+            current_loc = locations[person]
+        
+        if s2.check() == sat:
+            m = s2.model()
+            schedule = []
+            # Add Patricia
+            p_start_val = m[P_start].as_long()
+            p_end_val = m[P_end].as_long()
+            schedule.append({
+                "action": "meet",
+                "person": "Patricia",
+                "start_time": f"{9 + p_start_val // 60:02d}:{p_start_val % 60:02d}",
+                "end_time": f"{9 + p_end_val // 60:02d}:{p_end_val % 60:02d}"
+            })
+            # Add Laura (fixed)
+            schedule.append({
+                "action": "meet",
+                "person": "Laura",
+                "start_time": "12:30",
+                "end_time": "12:45"
+            })
+            # Add afternoon meetings
+            for person in order:
+                s_val = m[times[f'{person}_start']].as_long()
+                e_val = m[times[f'{person}_end']].as_long()
                 schedule.append({
                     "action": "meet",
-                    "person": name,
-                    "start_time": start_str,
-                    "end_time": end_str
+                    "person": person,
+                    "start_time": f"{9 + s_val // 60:02d}:{s_val % 60:02d}",
+                    "end_time": f"{9 + e_val // 60:02d}:{e_val % 60:02d}"
                 })
-        # Sort schedule by start time
-        schedule.sort(key=lambda x: x['start_time'])
-        print('SOLUTION:')
-        print(f'{{"itinerary": {schedule}}}')
-    else:
-        print("No solution found")
+            best_schedule = schedule
+            best_count = len(schedule)
+            break
+    
+    if best_count == 0:  # Could not schedule all three, try subsets of two
+        for skip in afternoon_people:
+            remaining = [p for p in afternoon_people if p != skip]
+            for order in itertools.permutations(remaining):
+                s2 = s.__copy__()
+                times = {}
+                for person in remaining:
+                    times[f'{person}_start'] = Int(f'{person}_start')
+                    times[f'{person}_end'] = Int(f'{person}_end')
+                
+                current_time = 225
+                current_loc = locations['Laura']
+                valid = True
+                for i, person in enumerate(order):
+                    travel_time = travel[current_loc][locations[person]]
+                    s2.add(times[f'{person}_start'] >= current_time + travel_time)
+                    s2.add(times[f'{person}_end'] == times[f'{person}_start'] + min_duration[person])
+                    s2.add(times[f'{person}_start'] >= availability[person][0])
+                    s2.add(times[f'{person}_end'] <= availability[person][1])
+                    current_time = times[f'{person}_end']
+                    current_loc = locations[person]
+                
+                if s2.check() == sat:
+                    m = s2.model()
+                    schedule = []
+                    p_start_val = m[P_start].as_long()
+                    p_end_val = m[P_end].as_long()
+                    schedule.append({
+                        "action": "meet",
+                        "person": "Patricia",
+                        "start_time": f"{9 + p_start_val // 60:02d}:{p_start_val % 60:02d}",
+                        "end_time": f"{9 + p_end_val // 60:02d}:{p_end_val % 60:02d}"
+                    })
+                    schedule.append({
+                        "action": "meet",
+                        "person": "Laura",
+                        "start_time": "12:30",
+                        "end_time": "12:45"
+                    })
+                    for person in order:
+                        s_val = m[times[f'{person}_start']].as_long()
+                        e_val = m[times[f'{person}_end']].as_long()
+                        schedule.append({
+                            "action": "meet",
+                            "person": person,
+                            "start_time": f"{9 + s_val // 60:02d}:{s_val % 60:02d}",
+                            "end_time": f"{9 + e_val // 60:02d}:{e_val % 60:02d}"
+                        })
+                    if len(schedule) > best_count:
+                        best_count = len(schedule)
+                        best_schedule = schedule
+    
+    if best_count == 0:  # Only schedule Patricia and Laura
+        if s.check() == sat:
+            m = s.model()
+            best_schedule = []
+            p_start_val = m[P_start].as_long()
+            p_end_val = m[P_end].as_long()
+            best_schedule.append({
+                "action": "meet",
+                "person": "Patricia",
+                "start_time": f"{9 + p_start_val // 60:02d}:{p_start_val % 60:02d}",
+                "end_time": f"{9 + p_end_val // 60:02d}:{p_end_val % 60:02d}"
+            })
+            best_schedule.append({
+                "action": "meet",
+                "person": "Laura",
+                "start_time": "12:30",
+                "end_time": "12:45"
+            })
+        else:  # Only Laura
+            best_schedule = [{
+                "action": "meet",
+                "person": "Laura",
+                "start_time": "12:30",
+                "end_time": "12:45"
+            }]
+    
+    # Output the solution
+    print('SOLUTION:')
+    print(json.dumps({"itinerary": best_schedule}))
 
 if __name__ == '__main__':
     main()

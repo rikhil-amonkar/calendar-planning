@@ -1,0 +1,85 @@
+from z3 import *
+
+def solve_itinerary():
+    # Cities represented as integers
+    cities = {
+        'Split': 0,
+        'Helsinki': 1,
+        'Reykjavik': 2,
+        'Vilnius': 3,
+        'Geneva': 4
+    }
+    city_names = ['Split', 'Helsinki', 'Reykjavik', 'Vilnius', 'Geneva']
+    n_cities = len(cities)
+    
+    # Direct flights: adjacency list
+    direct_flights = {
+        0: [1, 3, 4],  # Split can fly to Helsinki, Vilnius, Geneva
+        1: [0, 2, 3, 4],  # Helsinki can fly to Split, Reykjavik, Vilnius, Geneva
+        2: [1],  # Reykjavik can fly to Helsinki
+        3: [0, 1],  # Vilnius can fly to Split, Helsinki
+        4: [0, 1]  # Geneva can fly to Split, Helsinki
+    }
+    
+    # Create a Z3 solver
+    s = Solver()
+    
+    # Variables: each day is assigned a city (0 to n_cities-1)
+    days = [Int(f'day_{i}') for i in range(12)]
+    for day in days:
+        s.add(day >= 0, day < n_cities)
+    
+    # Constraints for city stays
+    # Total days per city
+    split_days = Sum([If(day == cities['Split'], 1, 0) for day in days])
+    helsinki_days = Sum([If(day == cities['Helsinki'], 1, 0) for day in days])
+    reykjavik_days = Sum([If(day == cities['Reykjavik'], 1, 0) for day in days])
+    vilnius_days = Sum([If(day == cities['Vilnius'], 1, 0) for day in days])
+    geneva_days = Sum([If(day == cities['Geneva'], 1, 0) for day in days])
+    
+    s.add(split_days == 2)
+    s.add(helsinki_days == 2)
+    s.add(reykjavik_days == 3)
+    s.add(vilnius_days == 3)
+    s.add(geneva_days == 6)
+    
+    # Fixed date constraints (days are 0-based)
+    # Reykjavik between day 9-11 (original days 10-12)
+    s.add(days[9] == cities['Reykjavik'])
+    s.add(days[10] == cities['Reykjavik'])
+    s.add(days[11] == cities['Reykjavik'])
+    
+    # Vilnius between day 6-8 (original days 7-9)
+    s.add(days[6] == cities['Vilnius'])
+    s.add(days[7] == cities['Vilnius'])
+    s.add(days[8] == cities['Vilnius'])
+    
+    # Flight transitions: consecutive days can only be same city or connected by direct flight
+    for i in range(11):  # days 0-10 to days 1-11
+        current_day = days[i]
+        next_day = days[i+1]
+        # Either stay in the same city or move to a directly connected city
+        transition_constraints = [current_day == next_day]
+        for city in direct_flights:
+            for neighbor in direct_flights[city]:
+                transition_constraints.append(And(current_day == city, next_day == neighbor))
+        s.add(Or(*transition_constraints))
+    
+    # Check if the problem is satisfiable
+    if s.check() == sat:
+        m = s.model()
+        itinerary = []
+        for i in range(12):
+            day_num = i + 1  # Convert to 1-based day numbering
+            city_val = m.evaluate(days[i]).as_long()
+            city = city_names[city_val]
+            itinerary.append({'day': day_num, 'place': city})
+        
+        return {'itinerary': itinerary}
+    else:
+        return {'error': 'No valid itinerary found'}
+
+# Execute and print the result
+result = solve_itinerary()
+import json
+print(json.dumps(result, indent=2))

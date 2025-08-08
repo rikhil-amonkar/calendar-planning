@@ -1,105 +1,140 @@
 from z3 import *
 import json
 
-def minutes_to_time(offset_minutes, base_hour=9):
-    total_minutes = base_hour * 60 + offset_minutes
-    hours = total_minutes // 60
-    minutes = total_minutes % 60
-    return f"{hours:02d}:{minutes:02d}"
-
-travel_dict = {
-    ('FD', 'PH'): 13,
-    ('FD', 'FW'): 10,
-    ('FD', 'MD'): 17,
-    ('PH', 'FD'): 13,
-    ('PH', 'FW'): 13,
-    ('PH', 'MD'): 15,
-    ('FW', 'FD'): 11,
-    ('FW', 'PH'): 12,
-    ('FW', 'MD'): 22,
-    ('MD', 'FD'): 17,
-    ('MD', 'PH'): 16,
-    ('MD', 'FW'): 22
-}
-
-def get_travel_time(loc1, loc2):
-    return travel_dict.get((loc1, loc2), 1000000)
-
-def schedule_meetings(meetings, start_location, start_time_offset):
-    n = len(meetings)
-    if n == 0:
-        return []
-    t = [Int(f't_{i}') for i in range(n)]
-    p = [Int(f'p_{i}') for i in range(n)]
-    s = Solver()
-    
-    for i in range(n):
-        s.add(p[i] >= 0)
-        s.add(p[i] < n)
-    s.add(Distinct(p))
-    
-    for i in range(n):
-        name, loc, dur, avail_start, avail_end = meetings[i]
-        s.add(t[i] >= avail_start)
-        s.add(t[i] + dur <= avail_end)
-        s.add(t[i] >= 0)
-        
-    for i in range(n):
-        name_i, loc_i, dur_i, avail_start_i, avail_end_i = meetings[i]
-        s.add(If(p[i] == 0, t[i] >= start_time_offset + get_travel_time(start_location, loc_i), True))
-        for j in range(n):
-            if i == j:
-                continue
-            name_j, loc_j, dur_j, avail_start_j, avail_end_j = meetings[j]
-            s.add(If(p[i] == p[j] + 1, t[i] >= t[j] + dur_j + get_travel_time(loc_j, loc_i), True))
-            
-    if s.check() == sat:
-        model = s.model()
-        schedule = []
-        for i in range(n):
-            name, loc, dur, avail_start, avail_end = meetings[i]
-            start_val = model.evaluate(t[i]).as_long()
-            end_val = start_val + dur
-            start_str = minutes_to_time(start_val)
-            end_str = minutes_to_time(end_val)
-            schedule.append( (start_val, {"action": "meet", "person": name, "start_time": start_str, "end_time": end_str}) )
-        schedule.sort(key=lambda x: x[0])
-        itinerary = [item[1] for item in schedule]
-        return itinerary
-    else:
-        return None
-
 def main():
-    meetings_all = [
-        ('Timothy', 'PH', 75, 0, 390),
-        ('David', 'FW', 15, 105, 390),
-        ('Robert', 'MD', 90, 195, 645)
-    ]
-    start_loc = 'FD'
-    start_time_offset = 0
-    
-    cases = [
-        [0, 1, 2],
-        [0, 1],
-        [0, 2],
-        [1, 2],
-        [0],
-        [1],
-        [2]
+    # Travel times matrix: [from][to]
+    # Locations: Financial District (0), Fisherman's Wharf (1), Pacific Heights (2), Mission District (3)
+    travel = [
+        [0, 10, 13, 17],   # From Financial District
+        [11, 0, 12, 22],    # From Fisherman's Wharf
+        [13, 13, 0, 15],    # From Pacific Heights
+        [17, 22, 16, 0]     # From Mission District
     ]
     
-    result = None
-    for case in cases:
-        meetings_subset = [meetings_all[i] for i in case]
-        result = schedule_meetings(meetings_subset, start_loc, start_time_offset)
-        if result is not None:
-            break
-            
-    if result is None:
-        result = []
+    # Create the optimizer
+    opt = Optimize()
+    
+    # Boolean variables for whether we meet each friend
+    meet_d = Bool('meet_d')
+    meet_t = Bool('meet_t')
+    meet_r = Bool('meet_r')
+    
+    # Start times in minutes after 9:00 AM (integer variables)
+    T_d = Int('T_d')
+    T_t = Int('T_t')
+    T_r = Int('T_r')
+    
+    # Position of each meeting in the itinerary (0 means not meeting)
+    P_d = Int('P_d')
+    P_t = Int('P_t')
+    P_r = Int('P_r')
+    
+    # Durations of meetings in minutes
+    dur_d = 15
+    dur_t = 75
+    dur_r = 90
+    
+    # Availability constraints
+    # David: 10:45 AM (105 min) to 3:30 PM (390 min)
+    opt.add(Implies(meet_d, And(T_d >= 105, T_d + dur_d <= 390)))
+    # Timothy: 9:00 AM (0 min) to 3:30 PM (390 min)
+    opt.add(Implies(meet_t, And(T_t >= 0, T_t + dur_t <= 390)))
+    # Robert: 12:15 PM (195 min) to 7:45 PM (645 min)
+    opt.add(Implies(meet_r, And(T_r >= 195, T_r + dur_r <= 645)))
+    
+    # Position constraints: if meeting happens, position is between 1 and 3; else 0.
+    opt.add(Implies(meet_d, And(P_d >= 1, P_d <= 3)))
+    opt.add(Implies(meet_t, And(P_t >= 1, P_t <= 3)))
+    opt.add(Implies(meet_r, And(P_r >= 1, P_r <= 3)))
+    opt.add(Implies(Not(meet_d), P_d == 0))
+    opt.add(Implies(Not(meet_t), P_t == 0))
+    opt.add(Implies(Not(meet_r), P_r == 0))
+    
+    # Distinct positions for meetings that happen
+    opt.add(Implies(And(meet_d, meet_t), P_d != P_t))
+    opt.add(Implies(And(meet_d, meet_r), P_d != P_r))
+    opt.add(Implies(And(meet_t, meet_r), P_t != P_r))
+    
+    # For a meeting at position > 1, there must be a meeting at position-1
+    opt.add(Implies(And(meet_d, P_d > 1), 
+                   Or(And(meet_t, P_t == P_d - 1), 
+                      And(meet_r, P_r == P_d - 1))))
+    opt.add(Implies(And(meet_t, P_t > 1), 
+                   Or(And(meet_d, P_d == P_t - 1), 
+                      And(meet_r, P_r == P_t - 1))))
+    opt.add(Implies(And(meet_r, P_r > 1), 
+                   Or(And(meet_d, P_d == P_r - 1), 
+                      And(meet_t, P_t == P_r - 1))))
+    
+    # First meeting: must start after travel from Financial District (location 0)
+    opt.add(Implies(And(meet_d, P_d == 1), T_d >= travel[0][1]))
+    opt.add(Implies(And(meet_t, P_t == 1), T_t >= travel[0][2]))
+    opt.add(Implies(And(meet_r, P_r == 1), T_r >= travel[0][3]))
+    
+    # Subsequent meetings: must start after previous meeting ends plus travel
+    opt.add(Implies(And(meet_d, P_d > 1),
+                   Or(
+                      And(meet_t, P_t == P_d - 1, T_d >= T_t + dur_t + travel[2][1]),
+                      And(meet_r, P_r == P_d - 1, T_d >= T_r + dur_r + travel[3][1])
+                   )))
+    opt.add(Implies(And(meet_t, P_t > 1),
+                   Or(
+                      And(meet_d, P_d == P_t - 1, T_t >= T_d + dur_d + travel[1][2]),
+                      And(meet_r, P_r == P_t - 1, T_t >= T_r + dur_r + travel[3][2])
+                   )))
+    opt.add(Implies(And(meet_r, P_r > 1),
+                   Or(
+                      And(meet_d, P_d == P_r - 1, T_r >= T_d + dur_d + travel[1][3]),
+                      And(meet_t, P_t == P_r - 1, T_r >= T_t + dur_t + travel[2][3])
+                   )))
+    
+    # Maximize the number of meetings
+    num_meetings = If(meet_d, 1, 0) + If(meet_t, 1, 0) + If(meet_r, 1, 0)
+    opt.maximize(num_meetings)
+    
+    # Solve the problem
+    if opt.check() == sat:
+        m = opt.model()
+        meetings = []
+        # Check and add David's meeting
+        if is_true(m.evaluate(meet_d)):
+            start_d = m.evaluate(T_d).as_long()
+            meetings.append(("David", start_d, start_d + dur_d))
+        # Check and add Timothy's meeting
+        if is_true(m.evaluate(meet_t)):
+            start_t = m.evaluate(T_t).as_long()
+            meetings.append(("Timothy", start_t, start_t + dur_t))
+        # Check and add Robert's meeting
+        if is_true(m.evaluate(meet_r)):
+            start_r = m.evaluate(T_r).as_long()
+            meetings.append(("Robert", start_r, start_r + dur_r))
         
-    output = {"itinerary": result}
-    print(json.dumps(output, indent=2))
+        # Sort meetings by start time
+        meetings.sort(key=lambda x: x[1])
+        
+        # Convert to itinerary in JSON format
+        itinerary = []
+        for (person, start_minutes, end_minutes) in meetings:
+            # Convert start_minutes to time string
+            start_hour = 9 + start_minutes // 60
+            start_minute = start_minutes % 60
+            end_hour = 9 + end_minutes // 60
+            end_minute = end_minutes % 60
+            start_str = f"{start_hour:02d}:{start_minute:02d}"
+            end_str = f"{end_hour:02d}:{end_minute:02d}"
+            itinerary.append({
+                "action": "meet",
+                "person": person,
+                "start_time": start_str,
+                "end_time": end_str
+            })
+        
+        result = {"itinerary": itinerary}
+        print("SOLUTION:")
+        print(json.dumps(result))
+    else:
+        print("SOLUTION:")
+        print(json.dumps({"itinerary": []}))
 
 if __name__ == "__main__":
     main()

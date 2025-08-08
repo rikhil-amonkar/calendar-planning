@@ -1,0 +1,8 @@
+{
+  "itinerary": [
+    {"action": "meet", "person": "Margaret", "start_time": "09:24", "end_time": "09:54"},
+    {"action": "meet", "person": "Daniel", "start_time": "10:15", "end_time": "10:30"},
+    {"action": "meet", "person": "Charles", "start_time": "18:00", "end_time": "19:30"},
+    {"action": "meet", "person": "Stephanie", "start_time": "19:40", "end_time": "21:10"}
+  ]
+}

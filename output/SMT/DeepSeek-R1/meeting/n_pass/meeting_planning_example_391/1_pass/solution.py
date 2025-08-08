@@ -1,82 +1,112 @@
 from z3 import *
+import itertools
 
-def min_to_time(minutes):
-    hours = minutes // 60
-    mins = minutes % 60
-    return f"{hours:02d}:{mins:02d}"
+# Define travel times between locations
+travel_dict = {
+    "Sunset": {
+        "Alamo": 17,
+        "Russian": 24,
+        "Presidio": 16,
+        "Financial": 30
+    },
+    "Alamo": {
+        "Sunset": 16,
+        "Russian": 13,
+        "Presidio": 18,
+        "Financial": 17
+    },
+    "Russian": {
+        "Sunset": 23,
+        "Alamo": 15,
+        "Presidio": 14,
+        "Financial": 11
+    },
+    "Presidio": {
+        "Sunset": 15,
+        "Alamo": 18,
+        "Russian": 14,
+        "Financial": 23
+    },
+    "Financial": {
+        "Sunset": 31,
+        "Alamo": 17,
+        "Russian": 10,
+        "Presidio": 22
+    }
+}
 
-def main():
-    s0 = Int('s0')  # Kevin
-    s1 = Int('s1')  # Kimberly
-    s2 = 1110       # Joseph
-    s3 = 1178       # Thomas
+# Define meetings with their constraints
+meetings_info = [
+    {"name": "Kevin", "loc": "Alamo", "dur": 75, "min_start": 557, "max_start": 1215},
+    {"name": "Kimberly", "loc": "Russian", "dur": 30, "min_start": 564, "max_start": 720},
+    {"name": "Joseph", "loc": "Presidio", "dur": 45, "min_start": 1110, "max_start": 1110},
+    {"name": "Thomas", "loc": "Financial", "dur": 45, "min_start": 1140, "max_start": 1260}
+]
 
-    e0 = s0 + 75
-    e1 = s1 + 30
-    e2 = s2 + 45
-    e3 = s3 + 45
+# Try combinations in descending order of size (4, 3, 2, 1)
+all_meetings = [0, 1, 2, 3]
+found_schedule = None
 
-    travel_sunset = [17, 24, 16, 30]
-    travel_between = [
-        [0, 13, 18, 17],
-        [15, 0, 14, 11],
-        [18, 14, 0, 23],
-        [17, 10, 22, 0]
-    ]
+for size in range(4, 0, -1):
+    for subset in itertools.combinations(all_meetings, size):
+        solver = Solver()
+        s_vars = [Int(f's_{i}') for i in subset]
+        meeting_list = []
+        
+        # Add constraints for each meeting in the subset
+        for idx, (s, meeting_idx) in enumerate(zip(s_vars, subset)):
+            info = meetings_info[meeting_idx]
+            solver.add(s >= info["min_start"])
+            solver.add(s <= info["max_start"])
+            if info["name"] == "Joseph":
+                solver.add(s == 1110)
+            meeting_list.append((s, meeting_idx, info))
+        
+        # Add pairwise constraints for every two meetings in the subset
+        n = len(subset)
+        for i in range(n):
+            for j in range(i+1, n):
+                s_i = s_vars[i]
+                s_j = s_vars[j]
+                info_i = meetings_info[subset[i]]
+                info_j = meetings_info[subset[j]]
+                loc_i = info_i["loc"]
+                loc_j = info_j["loc"]
+                travel_ij = travel_dict[loc_i][loc_j]
+                travel_ji = travel_dict[loc_j][loc_i]
+                solver.add(Or(
+                    s_j >= s_i + info_i["dur"] + travel_ij,
+                    s_i >= s_j + info_j["dur"] + travel_ji
+                ))
+        
+        if solver.check() == sat:
+            model = solver.model()
+            itinerary = []
+            for s_var, meeting_idx, info in meeting_list:
+                start_val = model[s_var].as_long()
+                end_val = start_val + info["dur"]
+                hours_s = start_val // 60
+                minutes_s = start_val % 60
+                start_str = f"{hours_s:02d}:{minutes_s:02d}"
+                hours_e = end_val // 60
+                minutes_e = end_val % 60
+                end_str = f"{hours_e:02d}:{minutes_e:02d}"
+                itinerary.append({
+                    "action": "meet",
+                    "person": info["name"],
+                    "start_time": start_str,
+                    "end_time": end_str
+                })
+            itinerary_sorted = sorted(itinerary, key=lambda x: x["start_time"])
+            found_schedule = itinerary_sorted
+            break
+    if found_schedule is not None:
+        break
 
-    isKevinFirst = Bool('isKevinFirst')
+# If no schedule is found, default to an empty itinerary
+if found_schedule is None:
+    found_schedule = []
 
-    constraint1 = And(
-        s0 == 540 + travel_sunset[0],
-        s1 == e0 + travel_between[0][1]
-    )
-
-    constraint2 = And(
-        s1 == 540 + travel_sunset[1],
-        s0 == e1 + travel_between[1][0]
-    )
-
-    constraints = [
-        Or(And(isKevinFirst, constraint1), And(Not(isKevinFirst), constraint2)),
-        s0 >= 495, e0 <= 1290,
-        s1 >= 525, e1 <= 750,
-        s2 >= 1110, e2 <= 1155,
-        s3 >= 1140, e3 <= 1305
-    ]
-
-    travel_to_joseph = If(isKevinFirst, 
-                          e1 + travel_between[1][2], 
-                          e0 + travel_between[0][2])
-    constraints.append(s2 >= travel_to_joseph)
-    constraints.append(s3 >= e2 + travel_between[2][3])
-
-    total_travel = If(isKevinFirst,
-        travel_sunset[0] + travel_between[0][1] + travel_between[1][2] + travel_between[2][3],
-        travel_sunset[1] + travel_between[1][0] + travel_between[0][2] + travel_between[2][3]
-    )
-
-    opt = Optimize()
-    for c in constraints:
-        opt.add(c)
-    opt.minimize(total_travel)
-
-    if opt.check() == sat:
-        m = opt.model()
-        s0_val = m.eval(s0).as_long()
-        s1_val = m.eval(s1).as_long()
-        s2_val = 1110
-        s3_val = 1178
-
-        itinerary = [
-            {"action": "meet", "person": "Kevin", "start_time": min_to_time(s0_val), "end_time": min_to_time(s0_val + 75)},
-            {"action": "meet", "person": "Kimberly", "start_time": min_to_time(s1_val), "end_time": min_to_time(s1_val + 30)},
-            {"action": "meet", "person": "Joseph", "start_time": min_to_time(s2_val), "end_time": min_to_time(s2_val + 45)},
-            {"action": "meet", "person": "Thomas", "start_time": min_to_time(s3_val), "end_time": min_to_time(s3_val + 45)}
-        ]
-        print('SOLUTION:')
-        print(f'{{"itinerary": {itinerary}}}')
-    else:
-        print("No solution found")
-
-if __name__ == "__main__":
-    main()
+# Output the solution in JSON format
+print("SOLUTION:")
+print({"itinerary": found_schedule})

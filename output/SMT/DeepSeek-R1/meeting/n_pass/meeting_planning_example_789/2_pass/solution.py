@@ -1,7 +1,50 @@
 from z3 import *
+import json
 
 def main():
-    travel_times = {
+    # Data setup
+    friends = ['Betty', 'Melissa', 'Joshua', 'Jeffrey', 'James', 'Anthony', 'Timothy', 'Emily']
+    locations = {
+        'Betty': 'Russian Hill',
+        'Melissa': 'Alamo Square',
+        'Joshua': 'Haight-Ashbury',
+        'Jeffrey': 'Marina District',
+        'James': 'Bayview',
+        'Anthony': 'Chinatown',
+        'Timothy': 'Presidio',
+        'Emily': 'Sunset District'
+    }
+    durations = {
+        'Betty': 105,
+        'Melissa': 105,
+        'Joshua': 90,
+        'Jeffrey': 45,
+        'James': 90,
+        'Anthony': 75,
+        'Timothy': 90,
+        'Emily': 120
+    }
+    available_start = {
+        'Betty': 7 * 60,        # 420 minutes (7:00 AM)
+        'Melissa': 9 * 60 + 30,  # 570 minutes (9:30 AM)
+        'Joshua': 12 * 60 + 15,  # 735 minutes (12:15 PM)
+        'Jeffrey': 12 * 60 + 15, # 735 minutes (12:15 PM)
+        'James': 7 * 60 + 30,    # 450 minutes (7:30 AM)
+        'Anthony': 11 * 60 + 45, # 705 minutes (11:45 AM)
+        'Timothy': 12 * 60 + 30, # 750 minutes (12:30 PM)
+        'Emily': 19 * 60 + 30    # 1170 minutes (7:30 PM)
+    }
+    available_end = {
+        'Betty': 16 * 60 + 45,  # 1005 minutes (4:45 PM)
+        'Melissa': 17 * 60 + 15, # 1035 minutes (5:15 PM)
+        'Joshua': 19 * 60,       # 1140 minutes (7:00 PM)
+        'Jeffrey': 18 * 60,      # 1080 minutes (6:00 PM)
+        'James': 20 * 60,        # 1200 minutes (8:00 PM)
+        'Anthony': 13 * 60 + 30, # 810 minutes (1:30 PM)
+        'Timothy': 14 * 60 + 45, # 885 minutes (2:45 PM)
+        'Emily': 21 * 60 + 30    # 1290 minutes (9:30 PM)
+    }
+    travel_time = {
         "Union Square": {
             "Russian Hill": 13,
             "Alamo Square": 15,
@@ -94,97 +137,85 @@ def main():
         }
     }
 
-    friends = [
-        {"name": "Betty", "location": "Russian Hill", "min_duration": 105, "avail_start": -120, "avail_end": 465},
-        {"name": "Melissa", "location": "Alamo Square", "min_duration": 105, "avail_start": 30, "avail_end": 495},
-        {"name": "Joshua", "location": "Haight-Ashbury", "min_duration": 90, "avail_start": 195, "avail_end": 600},
-        {"name": "Jeffrey", "location": "Marina District", "min_duration": 45, "avail_start": 195, "avail_end": 540},
-        {"name": "James", "location": "Bayview", "min_duration": 90, "avail_start": -90, "avail_end": 660},
-        {"name": "Anthony", "location": "Chinatown", "min_duration": 75, "avail_start": 165, "avail_end": 270},
-        {"name": "Timothy", "location": "Presidio", "min_duration": 90, "avail_start": 210, "avail_end": 345},
-        {"name": "Emily", "location": "Sunset District", "min_duration": 120, "avail_start": 630, "avail_end": 750}
-    ]
+    emily_index = friends.index('Emily')
+    start_location = "Union Square"
+    start_time = 9 * 60  # 9:00 AM in minutes from midnight (540)
 
-    opt = Optimize()
+    # Create Z3 solver
+    solver = Solver()
+    solver.set("timeout", 300000)  # 5 minutes timeout
 
-    meet = [Bool(f"meet{i}") for i in range(8)]
-    start = [Int(f"start{i}") for i in range(8)]
-    end = [Int(f"end{i}") for i in range(8)]
+    # Define variables: order of meetings and start times
+    n = len(friends)
+    order = [Int(f'order_{i}') for i in range(n)]
+    starts = [Int(f'start_{i}') for i in range(n)]
 
-    opt.add(meet[7] == True)
-    opt.add(start[7] == 630)
-    opt.add(end[7] == 750)
+    # Order constraints: each order[i] is between 0 and n-1, distinct, and last is Emily
+    solver.add([And(order[i] >= 0, order[i] < n) for i in range(n)])
+    solver.add(Distinct(order))
+    solver.add(order[n-1] == emily_index)
 
-    for i in range(8):
-        opt.add(If(meet[i],
-                   And(
-                       start[i] >= friends[i]["avail_start"],
-                       end[i] == start[i] + friends[i]["min_duration"],
-                       end[i] <= friends[i]["avail_end"]
-                   ),
-                   True))
+    # Constraint: Emily's meeting starts at 1170
+    solver.add(starts[emily_index] == 1170)
 
-    for i in range(8):
-        if i == 7:
-            continue
-        loc_i = friends[i]["location"]
-        other_meetings = []
-        for j in range(8):
-            if j == i:
-                continue
-            other_meetings.append(And(meet[j], start[j] < start[i]))
-        opt.add(If(meet[i],
-                   Or(
-                       Or(other_meetings),
-                       start[i] >= travel_times["Union Square"][loc_i]
-                   ),
-                   True))
+    # Availability constraints for each friend
+    for i in range(n):
+        friend = friends[i]
+        solver.add(starts[i] >= available_start[friend])
+        solver.add(starts[i] + durations[friend] <= available_end[friend])
 
-    for i in range(8):
-        for j in range(i+1, 8):
-            loc_i = friends[i]["location"]
-            loc_j = friends[j]["location"]
-            time_ij = travel_times[loc_i][loc_j]
-            time_ji = travel_times[loc_j][loc_i]
-            opt.add(If(And(meet[i], meet[j]),
-                     Or(
-                         end[i] + time_ij <= start[j],
-                         end[j] + time_ji <= start[i]
-                     ),
-                     True))
+    # Travel constraints
+    for k in range(n):
+        if k == 0:
+            # First meeting: travel from start_location to the meeting's location
+            idx0 = order[0]
+            loc0 = locations[friends[idx0]]
+            solver.add(starts[idx0] >= start_time + travel_time[start_location][loc0])
+        else:
+            # Travel from the previous meeting to the current
+            idx_prev = order[k-1]
+            idx_curr = order[k]
+            loc_prev = locations[friends[idx_prev]]
+            loc_curr = locations[friends[idx_curr]]
+            solver.add(starts[idx_curr] >= starts[idx_prev] + durations[friends[idx_prev]] + travel_time[loc_prev][loc_curr])
 
-    num_meetings = Sum([If(meet[i], 1, 0) for i in range(8)])
-    opt.maximize(num_meetings)
+    # Solve the problem
+    if solver.check() == sat:
+        model = solver.model()
+        # Extract start times
+        start_times = {}
+        for i in range(n):
+            start_val = model.evaluate(starts[i]).as_long()
+            start_times[friends[i]] = start_val
 
-    if opt.check() == sat:
-        model = opt.model()
-        scheduled_meetings = []
-        for i in range(8):
-            if is_true(model[meet[i]]):
-                start_val = model[start[i]].as_long()
-                total_minutes_start = start_val
-                hours_start = 9 + total_minutes_start // 60
-                minutes_start = total_minutes_start % 60
-                start_str = f"{hours_start:02d}:{minutes_start:02d}"
-
-                end_val = model[end[i]].as_long()
-                total_minutes_end = end_val
-                hours_end = 9 + total_minutes_end // 60
-                minutes_end = total_minutes_end % 60
-                end_str = f"{hours_end:02d}:{minutes_end:02d}"
-
-                scheduled_meetings.append({
-                    "action": "meet",
-                    "person": friends[i]["name"],
-                    "start_time": start_str,
-                    "end_time": end_str
-                })
-        scheduled_meetings.sort(key=lambda x: x["start_time"])
-        result = {"itinerary": scheduled_meetings}
+        # Build itinerary sorted by start time
+        itinerary = []
+        for friend in friends:
+            start_minutes = start_times[friend]
+            end_minutes = start_minutes + durations[friend]
+            # Convert to HH:MM
+            start_hour = start_minutes // 60
+            start_minute = start_minutes % 60
+            end_hour = end_minutes // 60
+            end_minute = end_minutes % 60
+            start_str = f"{start_hour:02d}:{start_minute:02d}"
+            end_str = f"{end_hour:02d}:{end_minute:02d}"
+            itinerary.append({
+                "action": "meet",
+                "person": friend,
+                "start_time": start_str,
+                "end_time": end_str
+            })
+        
+        # Sort by start time (using string sort since times are HH:MM with leading zeros)
+        itinerary.sort(key=lambda x: x['start_time'])
+        
+        # Output as JSON
+        result = {"itinerary": itinerary}
         print("SOLUTION:")
-        print(result)
+        print(json.dumps(result, indent=2))
     else:
         print("No solution found")
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

@@ -1,92 +1,110 @@
 from z3 import *
+import itertools
 import json
 
 def main():
-    # Define travel_time matrix (5x5) for indices: 
-    # 0: Bayview (virtual start)
-    # 1: Mary (Pacific Heights)
-    # 2: Lisa (Mission District)
-    # 3: Betty (Haight-Ashbury)
-    # 4: Charles (Financial District)
-    travel_time = [
-        [0, 23, 13, 19, 19],
-        [22, 0, 15, 11, 13],
-        [15, 16, 0, 12, 17],
-        [18, 12, 11, 0, 21],
-        [19, 13, 17, 19, 0]
+    # Define travel times dictionary
+    travel = {
+        ('Bayview', 'Pacific Heights'): 23,
+        ('Bayview', 'Mission District'): 13,
+        ('Bayview', 'Haight-Ashbury'): 19,
+        ('Bayview', 'Financial District'): 19,
+        ('Pacific Heights', 'Bayview'): 22,
+        ('Pacific Heights', 'Mission District'): 15,
+        ('Pacific Heights', 'Haight-Ashbury'): 11,
+        ('Pacific Heights', 'Financial District'): 13,
+        ('Mission District', 'Bayview'): 15,
+        ('Mission District', 'Pacific Heights'): 16,
+        ('Mission District', 'Haight-Ashbury'): 12,
+        ('Mission District', 'Financial District'): 17,
+        ('Haight-Ashbury', 'Bayview'): 18,
+        ('Haight-Ashbury', 'Pacific Heights'): 12,
+        ('Haight-Ashbury', 'Mission District'): 11,
+        ('Haight-Ashbury', 'Financial District'): 21,
+        ('Financial District', 'Bayview'): 19,
+        ('Financial District', 'Pacific Heights'): 13,
+        ('Financial District', 'Mission District'): 17,
+        ('Financial District', 'Haight-Ashbury'): 19
+    }
+    
+    # Friend data: name, location, duration, availability_start (min), availability_end (min)
+    friends = [
+        ('Mary', 'Pacific Heights', 45, 60, 600),
+        ('Lisa', 'Mission District', 75, 690, 780),
+        ('Betty', 'Haight-Ashbury', 90, 0, 495),
+        ('Charles', 'Financial District', 120, 135, 360)
     ]
     
-    # Durations for each meeting (index0 is virtual, duration 0)
-    dur = [0, 45, 75, 90, 120]
+    s = Optimize()
     
-    # Availability windows (in minutes from 9:00 AM)
-    # For each friend: [low, high] for start time
-    avail_low = [0, 60, 690, 19, 135]   # index0 unused for real meetings
-    avail_high = [0, 555, 705, 405, 240] # index0 unused for real meetings
+    # Create variables
+    m_vars = {}
+    s_vars = {}
+    for name, loc, dur, start_avail, end_avail in friends:
+        m_vars[name] = Bool(f'm_{name}')
+        s_vars[name] = Int(f's_{name}')
     
-    # Create Z3 variables
-    s = [Int(f's_{i}') for i in range(5)]
-    meet = [Bool(f'meet_{i}') for i in range(5)]
+    # Individual constraints
+    for name, loc, dur, start_avail, end_avail in friends:
+        m = m_vars[name]
+        s_val = s_vars[name]
+        # If meeting this friend, then constraints
+        s.add(Implies(m, s_val >= start_avail))
+        s.add(Implies(m, s_val + dur <= end_avail))
+        # Travel time from Bayview to this location
+        s.add(Implies(m, s_val >= travel[('Bayview', loc)]))
     
-    solver = Solver()
+    # Pairwise disjunctive constraints
+    pairs = list(itertools.combinations(friends, 2))
+    for (f1, f2) in pairs:
+        name1, loc1, dur1, sa1, ea1 = f1
+        name2, loc2, dur2, sa2, ea2 = f2
+        m1 = m_vars[name1]
+        m2 = m_vars[name2]
+        s1 = s_vars[name1]
+        s2 = s_vars[name2]
+        # Travel time from loc1 to loc2 and loc2 to loc1
+        travel_1_to_2 = travel[(loc1, loc2)]
+        travel_2_to_1 = travel[(loc2, loc1)]
+        # Constraint: if both meetings happen, they must not overlap and account for travel
+        s.add(Implies(And(m1, m2),
+                      Or( s1 + dur1 + travel_1_to_2 <= s2,
+                          s2 + dur2 + travel_2_to_1 <= s1 )))
     
-    # Virtual meeting at Bayview at time 0 (9:00 AM)
-    solver.add(meet[0] == True)
-    solver.add(s[0] == 0)
+    # Objective: maximize the number of meetings
+    total_meetings = Sum([If(m_vars[name], 1, 0) for name in m_vars])
+    s.maximize(total_meetings)
     
-    # Constraints for real meetings (indices 1 to 4)
-    for i in range(1, 5):
-        solver.add(Implies(meet[i], And(s[i] >= avail_low[i], s[i] <= avail_high[i])))
-    
-    # Constraints for every pair of meetings (including virtual)
-    for i in range(5):
-        for j in range(5):
-            if i == j:
-                continue
-            c1 = (s[j] >= s[i] + dur[i] + travel_time[i][j])
-            c2 = (s[i] >= s[j] + dur[j] + travel_time[j][i])
-            solver.add(Implies(And(meet[i], meet[j]), Or(c1, c2)))
-    
-    # Objective: maximize the number of meetings (for indices 1 to 4)
-    objective = Sum([If(meet[i], 1, 0) for i in range(1,5)])
-    
-    opt = Optimize()
-    opt.add(solver.assertions())
-    opt.maximize(objective)
-    
-    schedule = []
-    if opt.check() == sat:
-        m = opt.model()
-        friends = [None, "Mary", "Lisa", "Betty", "Charles"]
-        for i in range(1,5):
-            if is_true(m.evaluate(meet[i])):
-                start_val = m.evaluate(s[i])
+    # Check and get the model
+    if s.check() == sat:
+        model = s.model()
+        meetings_list = []
+        for name, loc, dur, sa, ea in friends:
+            if model.evaluate(m_vars[name]):
+                start_val = model.evaluate(s_vars[name])
                 start_minutes = start_val.as_long()
-                total_minutes = start_minutes
-                hours = total_minutes // 60
-                minutes = total_minutes % 60
-                start_time = f"{9+hours:02d}:{minutes:02d}"
-                
-                end_minutes = start_minutes + dur[i]
-                hours_end = end_minutes // 60
-                minutes_end = end_minutes % 60
-                end_time = f"{9+hours_end:02d}:{minutes_end:02d}"
-                
-                schedule.append({
+                end_minutes = start_minutes + dur
+                start_hour = 9 + start_minutes // 60
+                start_minute = start_minutes % 60
+                end_hour = 9 + end_minutes // 60
+                end_minute = end_minutes % 60
+                start_time = f"{start_hour:02d}:{start_minute:02d}"
+                end_time = f"{end_hour:02d}:{end_minute:02d}"
+                meetings_list.append({
                     "action": "meet",
-                    "person": friends[i],
+                    "person": name,
                     "start_time": start_time,
                     "end_time": end_time
                 })
-        # Sort by start_time
-        schedule.sort(key=lambda x: x['start_time'])
+        # Sort meetings by start_time
+        meetings_list.sort(key=lambda x: x['start_time'])
+        result = {"itinerary": meetings_list}
     else:
-        # If no solution found, schedule remains empty
-        pass
-        
-    result = {"itinerary": schedule}
+        result = {"itinerary": []}
+    
+    # Output the solution
     print("SOLUTION:")
     print(json.dumps(result))
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

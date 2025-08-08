@@ -2,74 +2,102 @@ from z3 import *
 import json
 
 def main():
-    meetings = [
-        {'name': 'Stephanie', 'loc': 1, 'dur': 90, 'min_start': 495, 'max_end': 825},  # 8:15 AM to 1:45 PM
-        {'name': 'Brian', 'loc': 4, 'dur': 120, 'min_start': 735, 'max_end': 960},    # 12:15 PM to 4:00 PM
-        {'name': 'Jason', 'loc': 5, 'dur': 60, 'min_start': 510, 'max_end': 1065},    # 8:30 AM to 5:45 PM
-        {'name': 'Sandra', 'loc': 2, 'dur': 15, 'min_start': 780, 'max_end': 1170}    # 1:00 PM to 7:30 PM
-    ]
-    
+    # Travel times between locations (including Haight-Ashbury)
     travel_times = {
-        (0,1): 11, (0,2): 18, (0,4): 17, (0,5): 23,
-        (1,0): 12, (1,2): 15, (1,4): 15, (1,5): 22,
-        (2,0): 19, (2,1): 13, (2,4): 23, (2,5): 25,
-        (4,0): 17, (4,1): 16, (4,2): 23, (4,5): 7,
-        (5,0): 22, (5,1): 22, (5,2): 26, (5,4): 7
+        'HA': {'MD': 11, 'BV': 18, 'PH': 12, 'RH': 17, 'FW': 23},
+        'MD': {'HA': 12, 'BV': 15, 'PH': 16, 'RH': 15, 'FW': 22},
+        'BV': {'HA': 19, 'MD': 13, 'PH': 23, 'RH': 23, 'FW': 25},
+        'PH': {'HA': 11, 'MD': 15, 'BV': 22, 'RH': 7, 'FW': 13},
+        'RH': {'HA': 17, 'MD': 16, 'BV': 23, 'PH': 7, 'FW': 7},
+        'FW': {'HA': 22, 'MD': 22, 'BV': 26, 'PH': 12, 'RH': 7}
     }
+    
+    # Meeting details: names, locations, availability, and durations
+    names = ['Richard', 'Stephanie', 'Sandra', 'Brian', 'Jason']
+    locs = ['PH', 'MD', 'BV', 'RH', 'FW']
+    avail_start = [7*60+15, 8*60+15, 13*60, 12*60+15, 8*60+30]  # in minutes from midnight
+    avail_end = [10*60+15, 13*60+45, 19*60+30, 16*60, 17*60+45]
+    durations = [75, 90, 15, 120, 60]
     
     s = Solver()
     
-    order = [Int('order_%d' % i) for i in range(4)]
-    for i in range(4):
-        s.add(order[i] >= 0, order[i] < 4)
-    s.add(Distinct(order))
+    # Decision variables for meetings
+    meet = [Bool(f"meet_{i}") for i in range(5)]
+    start = [Int(f"start_{i}") for i in range(5)]
+    end = [Int(f"end_{i}") for i in range(5)]
     
-    start_times = [Int('start_%d' % i) for i in range(4)]
-    end_times = [Int('end_%d' % i) for i in range(4)]
+    # Before matrix: before[i][j] is True if meeting i is before meeting j
+    before = [[Bool(f"before_{i}_{j}") if i != j else None for j in range(5)] for i in range(5)]
     
-    for i in range(4):
-        s.add(end_times[i] == start_times[i] + meetings[i]['dur'])
-        s.add(start_times[i] >= meetings[i]['min_start'])
-        s.add(end_times[i] <= meetings[i]['max_end'])
+    # Meeting constraints
+    for i in range(5):
+        s.add(Implies(meet[i], 
+                      And(start[i] >= avail_start[i],
+                          end[i] <= avail_end[i],
+                          end[i] == start[i] + durations[i])))
     
-    first_meeting = order[0]
-    s.add(start_times[first_meeting] == 540 + travel_times[(0, meetings[first_meeting]['loc'])])
+    # Pairwise constraints for meetings
+    for i in range(5):
+        for j in range(5):
+            if i == j:
+                continue
+            s.add(Implies(And(meet[i], meet[j]),
+                          And(Or(before[i][j], before[j][i]),
+                              Not(And(before[i][j], before[j][i]))))
+            s.add(Implies(And(meet[i], meet[j], before[i][j]),
+                          start[j] >= end[i] + travel_times[locs[i]][locs[j]]))
     
-    second_meeting = order[1]
-    s.add(start_times[second_meeting] >= end_times[first_meeting] + travel_times[(meetings[first_meeting]['loc'], meetings[second_meeting]['loc'])])
+    # Transitivity constraints
+    for i in range(5):
+        for j in range(5):
+            if i == j:
+                continue
+            for k in range(5):
+                if i == k or j == k:
+                    continue
+                s.add(Implies(And(meet[i], meet[j], meet[k], before[i][j], before[j][k]),
+                              before[i][k]))
     
-    third_meeting = order[2]
-    s.add(start_times[third_meeting] >= end_times[second_meeting] + travel_times[(meetings[second_meeting]['loc'], meetings[third_meeting]['loc'])])
+    # First meeting constraints (travel from HA)
+    for i in range(5):
+        other_conditions = []
+        for j in range(5):
+            if i != j:
+                other_conditions.append(Implies(meet[j], before[i][j]))
+        is_first_i = And(meet[i], *other_conditions)
+        s.add(Implies(is_first_i, start[i] >= 9*60 + travel_times['HA'][locs[i]]))
     
-    fourth_meeting = order[3]
-    s.add(start_times[fourth_meeting] >= end_times[third_meeting] + travel_times[(meetings[third_meeting]['loc'], meetings[fourth_meeting]['loc'])])
+    # Maximize the number of meetings
+    total_meetings = Sum([If(meet[i], 1, 0) for i in range(5)])
+    s.maximize(total_meetings)
     
+    # Solve and output
     if s.check() == sat:
-        model = s.model()
-        order_vals = [model[order[i]].as_long() for i in range(4)]
-        start_vals = [model[start_times[i]].as_long() for i in range(4)]
-        end_vals = [model[end_times[i]].as_long() for i in range(4)]
-        
+        m = s.model()
+        meetings_list = []
+        for i in range(5):
+            if m.evaluate(meet[i]):
+                s_val = m.evaluate(start[i]).as_long()
+                e_val = m.evaluate(end[i]).as_long()
+                meetings_list.append((s_val, names[i], s_val, e_val))
+        meetings_list.sort(key=lambda x: x[0])
         itinerary = []
-        for idx in order_vals:
-            meeting = meetings[idx]
-            s_minutes = start_vals[idx]
-            e_minutes = end_vals[idx]
-            s_hour = s_minutes // 60
-            s_minute = s_minutes % 60
-            e_hour = e_minutes // 60
-            e_minute = e_minutes % 60
+        for meeting in meetings_list:
+            s_minutes = meeting[2]
+            e_minutes = meeting[3]
+            start_time = f"{s_minutes // 60:02d}:{s_minutes % 60:02d}"
+            end_time = f"{e_minutes // 60:02d}:{e_minutes % 60:02d}"
             itinerary.append({
                 "action": "meet",
-                "person": meeting['name'],
-                "start_time": f"{s_hour:02d}:{s_minute:02d}",
-                "end_time": f"{e_hour:02d}:{e_minute:02d}"
+                "person": meeting[1],
+                "start_time": start_time,
+                "end_time": end_time
             })
-        
-        print("SOLUTION:")
+        print('SOLUTION:')
         print(json.dumps({"itinerary": itinerary}))
     else:
-        print("No solution found")
+        print("SOLUTION:")
+        print('{"itinerary": []}')
 
 if __name__ == "__main__":
     main()

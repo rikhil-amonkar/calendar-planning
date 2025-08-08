@@ -1,177 +1,177 @@
+import itertools
 from z3 import *
-import json
 
-def main():
-    # Define friends data: name, location, (available_start, available_end) in minutes, min_duration
-    friends = [
-        ("Laura", "The Castro", (19*60+45, 21*60+30), 105),   # 7:45 PM to 9:30 PM
-        ("Daniel", "Golden Gate Park", (21*60+15, 21*60+45), 15), # 9:15 PM to 9:45 PM
-        ("William", "Embarcadero", (7*60, 9*60), 90),          # 7:00 AM to 9:00 AM
-        ("Karen", "Russian Hill", (14*60+30, 19*60+45), 30),   # 2:30 PM to 7:45 PM
-        ("Stephanie", "Nob Hill", (7*60+30, 9*60+30), 45),     # 7:30 AM to 9:30 AM
-        ("Joseph", "Alamo Square", (11*60+30, 12*60+45), 15),  # 11:30 AM to 12:45 PM
-        ("Kimberly", "North Beach", (15*60+45, 19*60+15), 30)  # 3:45 PM to 7:15 PM
-    ]
-    base_time = 9 * 60  # 9:00 AM in minutes
-
-    # Build travel dictionary
-    travel_dict = {
-        ("Fisherman's Wharf", "The Castro"): 26,
-        ("Fisherman's Wharf", "Golden Gate Park"): 25,
-        ("Fisherman's Wharf", "Embarcadero"): 8,
-        ("Fisherman's Wharf", "Russian Hill"): 7,
-        ("Fisherman's Wharf", "Nob Hill"): 11,
-        ("Fisherman's Wharf", "Alamo Square"): 20,
-        ("Fisherman's Wharf", "North Beach"): 6,
-        ("The Castro", "Fisherman's Wharf"): 24,
-        ("The Castro", "Golden Gate Park"): 11,
-        ("The Castro", "Embarcadero"): 22,
-        ("The Castro", "Russian Hill"): 18,
-        ("The Castro", "Nob Hill"): 16,
-        ("The Castro", "Alamo Square"): 8,
-        ("The Castro", "North Beach"): 20,
-        ("Golden Gate Park", "Fisherman's Wharf"): 24,
-        ("Golden Gate Park", "The Castro"): 13,
-        ("Golden Gate Park", "Embarcadero"): 25,
-        ("Golden Gate Park", "Russian Hill"): 19,
-        ("Golden Gate Park", "Nob Hill"): 20,
-        ("Golden Gate Park", "Alamo Square"): 10,
-        ("Golden Gate Park", "North Beach"): 24,
-        ("Embarcadero", "Fisherman's Wharf"): 6,
-        ("Embarcadero", "The Castro"): 25,
-        ("Embarcadero", "Golden Gate Park"): 25,
-        ("Embarcadero", "Russian Hill"): 8,
-        ("Embarcadero", "Nob Hill"): 10,
-        ("Embarcadero", "Alamo Square"): 19,
-        ("Embarcadero", "North Beach"): 5,
-        ("Russian Hill", "Fisherman's Wharf"): 7,
-        ("Russian Hill", "The Castro"): 21,
-        ("Russian Hill", "Golden Gate Park"): 21,
-        ("Russian Hill", "Embarcadero"): 8,
-        ("Russian Hill", "Nob Hill"): 5,
-        ("Russian Hill", "Alamo Square"): 15,
-        ("Russian Hill", "North Beach"): 5,
-        ("Nob Hill", "Fisherman's Wharf"): 11,
-        ("Nob Hill", "The Castro"): 17,
-        ("Nob Hill", "Golden Gate Park"): 17,
-        ("Nob Hill", "Embarcadero"): 9,
-        ("Nob Hill", "Russian Hill"): 5,
-        ("Nob Hill", "Alamo Square"): 11,
-        ("Nob Hill", "North Beach"): 8,
-        ("Alamo Square", "Fisherman's Wharf"): 19,
-        ("Alamo Square", "The Castro"): 8,
-        ("Alamo Square", "Golden Gate Park"): 9,
-        ("Alamo Square", "Embarcadero"): 17,
-        ("Alamo Square", "Russian Hill"): 13,
-        ("Alamo Square", "Nob Hill"): 11,
-        ("Alamo Square", "North Beach"): 15,
-        ("North Beach", "Fisherman's Wharf"): 5,
-        ("North Beach", "The Castro"): 22,
-        ("North Beach", "Golden Gate Park"): 22,
-        ("North Beach", "Embarcadero"): 6,
-        ("North Beach", "Russian Hill"): 4,
-        ("North Beach", "Nob Hill"): 7,
-        ("North Beach", "Alamo Square"): 16
+# Hardcoded travel times between locations
+travel_time_dict = {
+    "Fisherman's Wharf": {
+        "The Castro": 26,
+        "Golden Gate Park": 25,
+        "Embarcadero": 8,
+        "Russian Hill": 7,
+        "Nob Hill": 11,
+        "Alamo Square": 20,
+        "North Beach": 6
+    },
+    "The Castro": {
+        "Fisherman's Wharf": 24,
+        "Golden Gate Park": 11,
+        "Embarcadero": 22,
+        "Russian Hill": 18,
+        "Nob Hill": 16,
+        "Alamo Square": 8,
+        "North Beach": 20
+    },
+    "Golden Gate Park": {
+        "Fisherman's Wharf": 24,
+        "The Castro": 13,
+        "Embarcadero": 25,
+        "Russian Hill": 19,
+        "Nob Hill": 20,
+        "Alamo Square": 10,
+        "North Beach": 24
+    },
+    "Embarcadero": {
+        "Fisherman's Wharf": 6,
+        "The Castro": 25,
+        "Golden Gate Park": 25,
+        "Russian Hill": 8,
+        "Nob Hill": 10,
+        "Alamo Square": 19,
+        "North Beach": 5
+    },
+    "Russian Hill": {
+        "Fisherman's Wharf": 7,
+        "The Castro": 21,
+        "Golden Gate Park": 21,
+        "Embarcadero": 8,
+        "Nob Hill": 5,
+        "Alamo Square": 15,
+        "North Beach": 5
+    },
+    "Nob Hill": {
+        "Fisherman's Wharf": 11,
+        "The Castro": 17,
+        "Golden Gate Park": 17,
+        "Embarcadero": 9,
+        "Russian Hill": 5,
+        "Alamo Square": 11,
+        "North Beach": 8
+    },
+    "Alamo Square": {
+        "Fisherman's Wharf": 19,
+        "The Castro": 8,
+        "Golden Gate Park": 9,
+        "Embarcadero": 17,
+        "Russian Hill": 13,
+        "Nob Hill": 11,
+        "North Beach": 15
+    },
+    "North Beach": {
+        "Fisherman's Wharf": 5,
+        "The Castro": 22,
+        "Golden Gate Park": 22,
+        "Embarcadero": 6,
+        "Russian Hill": 4,
+        "Nob Hill": 7,
+        "Alamo Square": 16
     }
+}
 
-    n = len(friends)
-    # Create Z3 variables
-    meet = [Bool(f"meet_{i}") for i in range(n)]
-    start = [Int(f"start_{i}") for i in range(n)]
-    end = [Int(f"end_{i}") for i in range(n)]
-    
-    # Create before matrix: before[i][j] is True if meeting i is before meeting j
-    before = [[Bool(f"before_{i}_{j}") if i != j else None for j in range(n)] for i in range(n)]
-    
-    solver = Optimize()
-    
-    # Set William (index 2) and Stephanie (index 4) to not meet
-    solver.add(meet[2] == False)
-    solver.add(meet[4] == False)
-    
-    # Constraints for each friend
-    for i in range(n):
-        name, loc, (avail_start, avail_end), min_dur = friends[i]
-        # If we meet this friend, the meeting must be within their availability and last at least min_dur
-        solver.add(Implies(meet[i], start[i] >= avail_start))
-        solver.add(Implies(meet[i], end[i] <= avail_end))
-        solver.add(Implies(meet[i], end[i] - start[i] >= min_dur))
-    
-    # Travel time from base to each friend's location
-    T_base = {}
-    for i in range(n):
-        name, loc, _, _ = friends[i]
-        T_base[i] = travel_dict[("Fisherman's Wharf", loc)]
-    
-    # Travel time between friends
-    T = {}
-    for i in range(n):
-        name_i, loc_i, _, _ = friends[i]
-        for j in range(n):
-            if i == j:
-                continue
-            name_j, loc_j, _, _ = friends[j]
-            T[(i, j)] = travel_dict[(loc_i, loc_j)]
-    
-    # Ordering constraints: for every pair of distinct friends we might meet
-    for i in range(n):
-        for j in range(n):
-            if i == j:
-                continue
-            # If both i and j are met, then either i before j or j before i, but not both
-            solver.add(Implies(And(meet[i], meet[j]), Or(before[i][j], before[j][i])))
-            solver.add(Implies(And(meet[i], meet[j]), Not(And(before[i][j], before[j][i]))))
-    
-    # Constraints for the start time of each meeting
-    for i in range(n):
-        name, loc, _, _ = friends[i]
-        # Define first_i: no other meeting j is before i
-        first_i = And(meet[i], *[Not(before[j][i]) for j in range(n) if j != i])
-        # If the meeting i is the first, then start_i >= base_time + T_base[i]
-        # Otherwise, there exists a meeting j that is before i, and start_i >= end_j + T[j][i]
-        other_conditions = []
-        for j in range(n):
-            if j == i:
-                continue
-            cond = And(before[j][i], start[i] >= end[j] + T[(j, i)])
-            other_conditions.append(cond)
-        solver.add(Implies(meet[i], 
-                    If(first_i, 
-                       start[i] >= base_time + T_base[i],
-                       Or(other_conditions)
-                    )))
-    
-    # Maximize the number of meetings
-    solver.maximize(Sum([If(meet[i], 1, 0) for i in range(n)]))
-    
-    # Solve the problem
-    if solver.check() == sat:
-        model = solver.model()
-        itinerary = []
-        for i in range(n):
-            if is_true(model.eval(meet[i])):
-                s_val = model.eval(start[i]).as_long()
-                e_val = model.eval(end[i]).as_long()
-                s_hour = s_val // 60
-                s_min = s_val % 60
-                e_hour = e_val // 60
-                e_min = e_val % 60
-                start_str = f"{s_hour:02d}:{s_min:02d}"
-                end_str = f"{e_hour:02d}:{e_min:02d}"
-                name = friends[i][0]
-                itinerary.append({
-                    "action": "meet",
-                    "person": name,
-                    "start_time": start_str,
-                    "end_time": end_str
-                })
-        # Sort itinerary by start time
-        itinerary.sort(key=lambda x: (int(x['start_time'][:2]), int(x['start_time'][3:5]))
-        result = {"itinerary": itinerary}
-        print("SOLUTION:")
-        print(json.dumps(result, indent=2))
-    else:
-        print("No solution found")
+# Friends data (excluding William and Stephanie)
+friends = [
+    {'name': 'Laura', 'location': 'The Castro', 'start_avail': 645, 'end_avail': 750, 'min_dur': 105},
+    {'name': 'Daniel', 'location': 'Golden Gate Park', 'start_avail': 735, 'end_avail': 765, 'min_dur': 15},
+    {'name': 'Karen', 'location': 'Russian Hill', 'start_avail': 330, 'end_avail': 645, 'min_dur': 30},
+    {'name': 'Joseph', 'location': 'Alamo Square', 'start_avail': 150, 'end_avail': 225, 'min_dur': 15},
+    {'name': 'Kimberly', 'location': 'North Beach', 'start_avail': 405, 'end_avail': 615, 'min_dur': 30}
+]
 
-if __name__ == "__main__":
-    main()
+def minutes_to_time(total_minutes_from_9am):
+    total_minutes_from_midnight = 9 * 60 + total_minutes_from_9am
+    hours = total_minutes_from_midnight // 60
+    minutes = total_minutes_from_midnight % 60
+    return f"{hours:02d}:{minutes:02d}"
+
+# Try combinations from largest to smallest
+solution_found = False
+solution_comb = None
+solution_model = None
+
+for k in range(5, 0, -1):
+    for comb in itertools.combinations(friends, k):
+        s = Solver()
+        start_vars = {}
+        end_vars = {}
+        order_vars = {}
+        for friend in comb:
+            name = friend['name']
+            start_vars[name] = Int(f'start_{name}')
+            end_vars[name] = Int(f'end_{name}')
+            order_vars[name] = Int(f'order_{name}')
+        
+        # Constraints for availability and duration
+        for friend in comb:
+            name = friend['name']
+            s.add(start_vars[name] >= friend['start_avail'])
+            s.add(end_vars[name] == start_vars[name] + friend['min_dur'])
+            s.add(end_vars[name] <= friend['end_avail'])
+        
+        # Order constraints: distinct and in [0, k-1]
+        order_list = [order_vars[f['name']] for f in comb]
+        s.add(Distinct(order_list))
+        for ord_var in order_list:
+            s.add(ord_var >= 0)
+            s.add(ord_var < k)
+        
+        # Travel from start location to the first meeting
+        for friend in comb:
+            name = friend['name']
+            loc = friend['location']
+            travel_time = travel_time_dict['Fisherman\'s Wharf'][loc]
+            s.add(If(order_vars[name] == 0, start_vars[name] >= travel_time, True))
+        
+        # Travel between consecutive meetings
+        for i in comb:
+            for j in comb:
+                if i['name'] == j['name']:
+                    continue
+                loc_i = i['location']
+                loc_j = j['location']
+                travel_time_ij = travel_time_dict[loc_i][loc_j]
+                s.add(If(order_vars[i['name']] < order_vars[j['name']], 
+                         start_vars[j['name']] >= end_vars[i['name']] + travel_time_ij, 
+                         True))
+        
+        if s.check() == sat:
+            m = s.model()
+            solution_found = True
+            solution_comb = comb
+            solution_model = m
+            break
+    if solution_found:
+        break
+
+itinerary = []
+if solution_found:
+    meetings = []
+    for friend in solution_comb:
+        name = friend['name']
+        start_val = m.evaluate(start_vars[name]).as_long()
+        end_val = m.evaluate(end_vars[name]).as_long()
+        start_time_str = minutes_to_time(start_val)
+        end_time_str = minutes_to_time(end_val)
+        meetings.append({
+            'start': start_val,
+            'start_str': start_time_str,
+            'end_str': end_time_str,
+            'name': name
+        })
+    # Sort meetings by start time
+    meetings_sorted = sorted(meetings, key=lambda x: x['start'])
+    itinerary = [{"action": "meet", "person": m['name'], "start_time": m['start_str'], "end_time": m['end_str']} for m in meetings_sorted]
+
+# Output the itinerary in JSON format
+import json
+output = {"itinerary": itinerary}
+print("SOLUTION:")
+print(json.dumps(output, indent=2))

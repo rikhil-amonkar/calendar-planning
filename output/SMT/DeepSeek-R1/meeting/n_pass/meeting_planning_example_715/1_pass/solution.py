@@ -1,184 +1,202 @@
-from z3 import *
 import json
+from z3 import *
 
 def main():
-    # Travel times matrix: 9x9 (0:Presidio, 1:Marina, 2:Castro, 3:Wharf, 4:Bayview, 5:Pacific, 6:Mission, 7:Alamo, 8:Golden Gate)
-    T = [
-        [0, 11, 21, 19, 31, 11, 26, 19, 12],
-        [10, 0, 22, 10, 27, 7, 20, 15, 18],
-        [20, 21, 0, 24, 19, 16, 7, 8, 11],
-        [17, 9, 27, 0, 26, 12, 22, 21, 25],
-        [32, 27, 19, 25, 0, 23, 13, 16, 22],
-        [11, 6, 16, 13, 22, 0, 15, 10, 15],
-        [25, 19, 7, 22, 14, 16, 0, 11, 17],
-        [17, 15, 8, 19, 16, 10, 10, 0, 9],
-        [11, 16, 13, 24, 23, 16, 17, 9, 0]
-    ]
+    friends = ['Amanda', 'Melissa', 'Jeffrey', 'Matthew', 'Nancy', 'Karen', 'Robert', 'Joseph']
+    locations_of_friends = {
+        'Amanda': 'Marina District',
+        'Melissa': 'The Castro',
+        'Jeffrey': 'Fisherman\'s Wharf',
+        'Matthew': 'Bayview',
+        'Nancy': 'Pacific Heights',
+        'Karen': 'Mission District',
+        'Robert': 'Alamo Square',
+        'Joseph': 'Golden Gate Park'
+    }
     
-    friends_data = [
-        {"name": "Amanda", "location": 1, "start_avail": 14*60+45, "end_avail": 19*60+30, "min_duration": 105},
-        {"name": "Melissa", "location": 2, "start_avail": 9*60+30, "end_avail": 17*60+0, "min_duration": 30},
-        {"name": "Jeffrey", "location": 3, "start_avail": 12*60+45, "end_avail": 18*60+45, "min_duration": 120},
-        {"name": "Matthew", "location": 4, "start_avail": 10*60+15, "end_avail": 13*60+15, "min_duration": 30},
-        {"name": "Nancy", "location": 5, "start_avail": 17*60+0, "end_avail": 21*60+30, "min_duration": 105},
-        {"name": "Karen", "location": 6, "start_avail": 17*60+30, "end_avail": 20*60+30, "min_duration": 105},
-        {"name": "Robert", "location": 7, "start_avail": 11*60+15, "end_avail": 17*60+30, "min_duration": 120},
-        {"name": "Joseph", "location": 8, "start_avail": 8*60+30, "end_avail": 21*60+15, "min_duration": 105}
-    ]
+    availability = {
+        'Amanda': (14*60+45 - 9*60, 19*60+30 - 9*60),  # 345 to 630 minutes
+        'Melissa': (9*60+30 - 9*60, 17*60 - 9*60),      # 30 to 480 minutes
+        'Jeffrey': (12*60+45 - 9*60, 18*60+45 - 9*60),  # 225 to 585 minutes
+        'Matthew': (10*60+15 - 9*60, 13*60+15 - 9*60),  # 75 to 255 minutes
+        'Nancy': (17*60 - 9*60, 21*60+30 - 9*60),       # 480 to 750 minutes
+        'Karen': (17*60+30 - 9*60, 20*60+30 - 9*60),    # 510 to 690 minutes
+        'Robert': (11*60+15 - 9*60, 17*60+30 - 9*60),   # 135 to 510 minutes
+        'Joseph': (0, 21*60+15 - 9*60)                  # 0 to 735 minutes
+    }
     
-    # Precompute first travel times: from Presidio (0) to each friend's location
-    first_travel_times = [T[0][f['location']] for f in friends_data]
+    min_time = {
+        'Amanda': 105,
+        'Melissa': 30,
+        'Jeffrey': 120,
+        'Matthew': 30,
+        'Nancy': 105,
+        'Karen': 105,
+        'Robert': 120,
+        'Joseph': 105
+    }
     
-    # Precompute inter-travel times between friends: from friend i to friend j
-    inter_travel_times = [[T[friends_data[i]['location']][friends_data[j]['location']] for j in range(8)] for i in range(8)]
+    locations_list = ['Presidio', 'Marina District', 'The Castro', 'Fisherman\'s Wharf', 'Bayview', 
+                      'Pacific Heights', 'Mission District', 'Alamo Square', 'Golden Gate Park']
     
-    # Start time at Presidio: 9:00 AM = 540 minutes
-    start_presidio = 540
+    travel_dict = {loc: {} for loc in locations_list}
     
-    # Try from 8 meetings down to 1
-    schedule = None
-    for m in range(8, 0, -1):
-        s = [Int(f's_{i}') for i in range(m)]
-        e = [Int(f'e_{i}') for i in range(m)]
-        friend_index = [Int(f'f_{i}') for i in range(m)]
-        
-        solver = Solver()
-        
-        # Each friend_index must be between 0 and 7
-        for i in range(m):
-            solver.add(friend_index[i] >= 0, friend_index[i] <= 7)
-            
-        # Distinct friend indices
-        solver.add(Distinct(friend_index))
-        
-        # First meeting constraints
-        # Travel time from Presidio to first friend
-        travel0 = Int('travel0')
-        cond0 = None
-        for idx in range(8):
-            t_val = first_travel_times[idx]
-            if cond0 is None:
-                cond0 = If(friend_index[0] == idx, t_val, 0)
-            else:
-                cond0 = If(friend_index[0] == idx, t_val, cond0)
-        solver.add(travel0 == cond0)
-        
-        # Start time of first meeting: at least start_presidio + travel0 and at least the friend's start_avail
-        s0_avail = Int('s0_avail')
-        cond_s0_avail = None
-        for idx in range(8):
-            avail_val = friends_data[idx]['start_avail']
-            if cond_s0_avail is None:
-                cond_s0_avail = If(friend_index[0] == idx, avail_val, 0)
-            else:
-                cond_s0_avail = If(friend_index[0] == idx, avail_val, cond_s0_avail)
-        solver.add(s0_avail == cond_s0_avail)
-        solver.add(s[0] >= start_presidio + travel0)
-        solver.add(s[0] >= s0_avail)
-        
-        # End time of first meeting: s0 + min_duration
-        min_dur0 = Int('min_dur0')
-        cond_dur0 = None
-        for idx in range(8):
-            dur_val = friends_data[idx]['min_duration']
-            if cond_dur0 is None:
-                cond_dur0 = If(friend_index[0] == idx, dur_val, 0)
-            else:
-                cond_dur0 = If(friend_index[0] == idx, dur_val, cond_dur0)
-        solver.add(min_dur0 == cond_dur0)
-        solver.add(e[0] == s[0] + min_dur0)
-        
-        # End time must be <= friend's end_avail
-        end_avail0 = Int('end_avail0')
-        cond_end0 = None
-        for idx in range(8):
-            end_val = friends_data[idx]['end_avail']
-            if cond_end0 is None:
-                cond_end0 = If(friend_index[0] == idx, end_val, 0)
-            else:
-                cond_end0 = If(friend_index[0] == idx, end_val, cond_end0)
-        solver.add(end_avail0 == cond_end0)
-        solver.add(e[0] <= end_avail0)
-        
-        # Subsequent meetings
-        for i in range(1, m):
-            # Travel time from friend i-1 to friend i
-            travel_i = Int(f'travel_{i}')
-            cond_travel_i = None
-            for idx_prev in range(8):
-                for idx_curr in range(8):
-                    t_val = inter_travel_times[idx_prev][idx_curr]
-                    if cond_travel_i is None:
-                        cond_travel_i = If(And(friend_index[i-1] == idx_prev, friend_index[i] == idx_curr), t_val, 0)
-                    else:
-                        cond_travel_i = If(And(friend_index[i-1] == idx_prev, friend_index[i] == idx_curr), t_val, cond_travel_i)
-            solver.add(travel_i == cond_travel_i)
-            
-            # Start time of meeting i: at least end of previous meeting + travel time
-            solver.add(s[i] >= e[i-1] + travel_i)
-            
-            # Also, at least the start_avail of friend i
-            s_i_avail = Int(f's_{i}_avail')
-            cond_s_i_avail = None
-            for idx in range(8):
-                avail_val = friends_data[idx]['start_avail']
-                if cond_s_i_avail is None:
-                    cond_s_i_avail = If(friend_index[i] == idx, avail_val, 0)
+    travel_dict['Presidio']['Marina District'] = 11
+    travel_dict['Presidio']['The Castro'] = 21
+    travel_dict['Presidio']['Fisherman\'s Wharf'] = 19
+    travel_dict['Presidio']['Bayview'] = 31
+    travel_dict['Presidio']['Pacific Heights'] = 11
+    travel_dict['Presidio']['Mission District'] = 26
+    travel_dict['Presidio']['Alamo Square'] = 19
+    travel_dict['Presidio']['Golden Gate Park'] = 12
+    
+    travel_dict['Marina District']['Presidio'] = 10
+    travel_dict['Marina District']['The Castro'] = 22
+    travel_dict['Marina District']['Fisherman\'s Wharf'] = 10
+    travel_dict['Marina District']['Bayview'] = 27
+    travel_dict['Marina District']['Pacific Heights'] = 7
+    travel_dict['Marina District']['Mission District'] = 20
+    travel_dict['Marina District']['Alamo Square'] = 15
+    travel_dict['Marina District']['Golden Gate Park'] = 18
+    
+    travel_dict['The Castro']['Presidio'] = 20
+    travel_dict['The Castro']['Marina District'] = 21
+    travel_dict['The Castro']['Fisherman\'s Wharf'] = 24
+    travel_dict['The Castro']['Bayview'] = 19
+    travel_dict['The Castro']['Pacific Heights'] = 16
+    travel_dict['The Castro']['Mission District'] = 7
+    travel_dict['The Castro']['Alamo Square'] = 8
+    travel_dict['The Castro']['Golden Gate Park'] = 11
+    
+    travel_dict['Fisherman\'s Wharf']['Presidio'] = 17
+    travel_dict['Fisherman\'s Wharf']['Marina District'] = 9
+    travel_dict['Fisherman\'s Wharf']['The Castro'] = 27
+    travel_dict['Fisherman\'s Wharf']['Bayview'] = 26
+    travel_dict['Fisherman\'s Wharf']['Pacific Heights'] = 12
+    travel_dict['Fisherman\'s Wharf']['Mission District'] = 22
+    travel_dict['Fisherman\'s Wharf']['Alamo Square'] = 21
+    travel_dict['Fisherman\'s Wharf']['Golden Gate Park'] = 25
+    
+    travel_dict['Bayview']['Presidio'] = 32
+    travel_dict['Bayview']['Marina District'] = 27
+    travel_dict['Bayview']['The Castro'] = 19
+    travel_dict['Bayview']['Fisherman\'s Wharf'] = 25
+    travel_dict['Bayview']['Pacific Heights'] = 23
+    travel_dict['Bayview']['Mission District'] = 13
+    travel_dict['Bayview']['Alamo Square'] = 16
+    travel_dict['Bayview']['Golden Gate Park'] = 22
+    
+    travel_dict['Pacific Heights']['Presidio'] = 11
+    travel_dict['Pacific Heights']['Marina District'] = 6
+    travel_dict['Pacific Heights']['The Castro'] = 16
+    travel_dict['Pacific Heights']['Fisherman\'s Wharf'] = 13
+    travel_dict['Pacific Heights']['Bayview'] = 22
+    travel_dict['Pacific Heights']['Mission District'] = 15
+    travel_dict['Pacific Heights']['Alamo Square'] = 10
+    travel_dict['Pacific Heights']['Golden Gate Park'] = 15
+    
+    travel_dict['Mission District']['Presidio'] = 25
+    travel_dict['Mission District']['Marina District'] = 19
+    travel_dict['Mission District']['The Castro'] = 7
+    travel_dict['Mission District']['Fisherman\'s Wharf'] = 22
+    travel_dict['Mission District']['Bayview'] = 14
+    travel_dict['Mission District']['Pacific Heights'] = 16
+    travel_dict['Mission District']['Alamo Square'] = 11
+    travel_dict['Mission District']['Golden Gate Park'] = 17
+    
+    travel_dict['Alamo Square']['Presidio'] = 17
+    travel_dict['Alamo Square']['Marina District'] = 15
+    travel_dict['Alamo Square']['The Castro'] = 8
+    travel_dict['Alamo Square']['Fisherman\'s Wharf'] = 19
+    travel_dict['Alamo Square']['Bayview'] = 16
+    travel_dict['Alamo Square']['Pacific Heights'] = 10
+    travel_dict['Alamo Square']['Mission District'] = 10
+    travel_dict['Alamo Square']['Golden Gate Park'] = 9
+    
+    travel_dict['Golden Gate Park']['Presidio'] = 11
+    travel_dict['Golden Gate Park']['Marina District'] = 16
+    travel_dict['Golden Gate Park']['The Castro'] = 13
+    travel_dict['Golden Gate Park']['Fisherman\'s Wharf'] = 24
+    travel_dict['Golden Gate Park']['Bayview'] = 23
+    travel_dict['Golden Gate Park']['Pacific Heights'] = 16
+    travel_dict['Golden Gate Park']['Mission District'] = 17
+    travel_dict['Golden Gate Park']['Alamo Square'] = 9
+    
+    s = Optimize()
+    
+    meets = {}
+    starts = {}
+    ends = {}
+    for friend in friends:
+        meets[friend] = Bool(f'meet_{friend}')
+        starts[friend] = Int(f'start_{friend}')
+        ends[friend] = Int(f'end_{friend}')
+    
+    for friend in friends:
+        loc = locations_of_friends[friend]
+        avail_start, avail_end = availability[friend]
+        min_t = min_time[friend]
+        s.add(Implies(meets[friend], 
+                      And(starts[friend] >= avail_start,
+                          ends[friend] <= avail_end,
+                          ends[friend] >= starts[friend] + min_t,
+                          starts[friend] >= 0)))
+    
+    for friend in friends:
+        loc = locations_of_friends[friend]
+        travel_time = travel_dict['Presidio'][loc]
+        s.add(Implies(meets[friend], starts[friend] >= travel_time))
+    
+    for i in range(len(friends)):
+        for j in range(i+1, len(friends)):
+            friend1 = friends[i]
+            friend2 = friends[j]
+            loc1 = locations_of_friends[friend1]
+            loc2 = locations_of_friends[friend2]
+            time1_to_2 = travel_dict[loc1][loc2]
+            time2_to_1 = travel_dict[loc2][loc1]
+            s.add(Implies(And(meets[friend1], meets[friend2]),
+                          Or(ends[friend1] + time1_to_2 <= starts[friend2],
+                             ends[friend2] + time2_to_1 <= starts[friend1])))
+    
+    num_meetings = Sum([If(meets[friend], 1, 0) for friend in friends])
+    s.maximize(num_meetings)
+    
+    itinerary = []
+    if s.check() == sat:
+        model = s.model()
+        schedule = []
+        for friend in friends:
+            if model.eval(meets[friend]):
+                start_min = model.eval(starts[friend])
+                end_min = model.eval(ends[friend])
+                if is_int_value(start_min):
+                    start_val = start_min.as_long()
                 else:
-                    cond_s_i_avail = If(friend_index[i] == idx, avail_val, cond_s_i_avail)
-            solver.add(s_i_avail == cond_s_i_avail)
-            solver.add(s[i] >= s_i_avail)
-            
-            # End time: s[i] + min_duration
-            min_dur_i = Int(f'min_dur_{i}')
-            cond_dur_i = None
-            for idx in range(8):
-                dur_val = friends_data[idx]['min_duration']
-                if cond_dur_i is None:
-                    cond_dur_i = If(friend_index[i] == idx, dur_val, 0)
+                    start_val = int(str(start_min))
+                if is_int_value(end_min):
+                    end_val = end_min.as_long()
                 else:
-                    cond_dur_i = If(friend_index[i] == idx, dur_val, cond_dur_i)
-            solver.add(min_dur_i == cond_dur_i)
-            solver.add(e[i] == s[i] + min_dur_i)
-            
-            # End time <= end_avail of friend i
-            end_avail_i = Int(f'end_avail_{i}')
-            cond_end_i = None
-            for idx in range(8):
-                end_val = friends_data[idx]['end_avail']
-                if cond_end_i is None:
-                    cond_end_i = If(friend_index[i] == idx, end_val, 0)
-                else:
-                    cond_end_i = If(friend_index[i] == idx, end_val, cond_end_i)
-            solver.add(end_avail_i == cond_end_i)
-            solver.add(e[i] <= end_avail_i)
-        
-        if solver.check() == sat:
-            model = solver.model()
-            schedule = []
-            for i in range(m):
-                idx_val = model[friend_index[i]].as_long()
-                friend = friends_data[idx_val]
-                start_min = model[s[i]].as_long()
-                end_min = model[e[i]].as_long()
-                start_hour = start_min // 60
-                start_minute = start_min % 60
-                end_hour = end_min // 60
-                end_minute = end_min % 60
-                start_str = f"{start_hour:02d}:{start_minute:02d}"
-                end_str = f"{end_hour:02d}:{end_minute:02d}"
+                    end_val = int(str(end_min))
+                
+                start_hour = 9 + start_val // 60
+                start_minute = start_val % 60
+                end_hour = 9 + end_val // 60
+                end_minute = end_val % 60
+                
+                start_time = f"{start_hour:02d}:{start_minute:02d}"
+                end_time = f"{end_hour:02d}:{end_minute:02d}"
+                
                 schedule.append({
                     "action": "meet",
-                    "person": friend['name'],
-                    "start_time": start_str,
-                    "end_time": end_str
+                    "person": friend,
+                    "start_time": start_time,
+                    "end_time": end_time
                 })
-            break
+        schedule.sort(key=lambda x: (x['start_time'], x['end_time']))
+        itinerary = schedule
     
-    if schedule is None:
-        schedule = []
-    
-    result = {"itinerary": schedule}
+    result = {"itinerary": itinerary}
     print("SOLUTION:")
     print(json.dumps(result))
 

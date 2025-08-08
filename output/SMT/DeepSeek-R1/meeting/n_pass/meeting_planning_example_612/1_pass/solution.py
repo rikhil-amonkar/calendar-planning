@@ -1,159 +1,155 @@
-from z3 import *
+import z3
 import json
 
 def main():
-    # Total meetings: start (0) and 7 friends (1 to 7)
-    n_friends = 7
-    total_meetings = n_friends + 1  # including start
-
-    # Friend data: index from 1 to 7 (0 is start)
-    names = {
-        1: "Emily", 
-        2: "Mark", 
-        3: "Deborah", 
-        4: "Margaret", 
-        5: "George", 
-        6: "Andrew", 
-        7: "Steven"
+    # Define travel_time_dict with all travel times between locations
+    travel_time_dict = {
+        ("Alamo Square", "Russian Hill"): 13,
+        ("Alamo Square", "Presidio"): 18,
+        ("Alamo Square", "Chinatown"): 16,
+        ("Alamo Square", "Sunset District"): 16,
+        ("Alamo Square", "The Castro"): 8,
+        ("Alamo Square", "Embarcadero"): 17,
+        ("Alamo Square", "Golden Gate Park"): 9,
+        ("Russian Hill", "Alamo Square"): 15,
+        ("Russian Hill", "Presidio"): 14,
+        ("Russian Hill", "Chinatown"): 9,
+        ("Russian Hill", "Sunset District"): 23,
+        ("Russian Hill", "The Castro"): 21,
+        ("Russian Hill", "Embarcadero"): 8,
+        ("Russian Hill", "Golden Gate Park"): 21,
+        ("Presidio", "Alamo Square"): 18,
+        ("Presidio", "Russian Hill"): 14,
+        ("Presidio", "Chinatown"): 21,
+        ("Presidio", "Sunset District"): 15,
+        ("Presidio", "The Castro"): 21,
+        ("Presidio", "Embarcadero"): 20,
+        ("Presidio", "Golden Gate Park"): 12,
+        ("Chinatown", "Alamo Square"): 17,
+        ("Chinatown", "Russian Hill"): 7,
+        ("Chinatown", "Presidio"): 19,
+        ("Chinatown", "Sunset District"): 29,
+        ("Chinatown", "The Castro"): 22,
+        ("Chinatown", "Embarcadero"): 5,
+        ("Chinatown", "Golden Gate Park"): 23,
+        ("Sunset District", "Alamo Square"): 17,
+        ("Sunset District", "Russian Hill"): 24,
+        ("Sunset District", "Presidio"): 16,
+        ("Sunset District", "Chinatown"): 30,
+        ("Sunset District", "The Castro"): 17,
+        ("Sunset District", "Embarcadero"): 31,
+        ("Sunset District", "Golden Gate Park"): 11,
+        ("The Castro", "Alamo Square"): 8,
+        ("The Castro", "Russian Hill"): 18,
+        ("The Castro", "Presidio"): 20,
+        ("The Castro", "Chinatown"): 20,
+        ("The Castro", "Sunset District"): 17,
+        ("The Castro", "Embarcadero"): 22,
+        ("The Castro", "Golden Gate Park"): 11,
+        ("Embarcadero", "Alamo Square"): 19,
+        ("Embarcadero", "Russian Hill"): 8,
+        ("Embarcadero", "Presidio"): 20,
+        ("Embarcadero", "Chinatown"): 7,
+        ("Embarcadero", "Sunset District"): 30,
+        ("Embarcadero", "The Castro"): 25,
+        ("Embarcadero", "Golden Gate Park"): 25,
+        ("Golden Gate Park", "Alamo Square"): 10,
+        ("Golden Gate Park", "Russian Hill"): 19,
+        ("Golden Gate Park", "Presidio"): 11,
+        ("Golden Gate Park", "Chinatown"): 23,
+        ("Golden Gate Park", "Sunset District"): 10,
+        ("Golden Gate Park", "The Castro"): 13,
+        ("Golden Gate Park", "Embarcadero"): 25
     }
-
-    # Locations indices:
-    # 0: Alamo Square, 1: Russian Hill, 2: Presidio, 3: Chinatown, 4: Sunset District, 5: The Castro, 6: Embarcadero, 7: Golden Gate Park
-    # Travel time matrix T: 8x8, T[i][j] = time from location i to j
-    T = [
-        [0, 13, 18, 16, 16, 8, 17, 9],
-        [15, 0, 14, 9, 23, 21, 8, 21],
-        [18, 14, 0, 21, 15, 21, 20, 12],
-        [17, 7, 19, 0, 29, 22, 5, 23],
-        [17, 24, 16, 30, 0, 17, 31, 11],
-        [8, 18, 20, 20, 17, 0, 22, 11],
-        [19, 8, 20, 7, 30, 25, 0, 25],
-        [10, 19, 11, 23, 10, 13, 25, 0]
+    
+    # Define friends with their details: (name, location, available_start, available_end, min_time) in minutes from midnight
+    friends = [
+        ("Emily", "Russian Hill", 12*60+15, 14*60+15, 105),
+        ("Mark", "Presidio", 14*60+45, 19*60+30, 60),
+        ("Deborah", "Chinatown", 7*60+30, 15*60+30, 45),
+        ("Margaret", "Sunset District", 21*60+30, 22*60+30, 60),
+        ("George", "The Castro", 7*60+30, 14*60+15, 60),
+        ("Andrew", "Embarcadero", 20*60+15, 22*60+0, 75),
+        ("Steven", "Golden Gate Park", 11*60+15, 21*60+15, 105)
     ]
-
-    # Availability and durations for friends 1..7 (in minutes from midnight)
-    avail_start = {
-        1: 12*60 + 15,   # 12:15PM
-        2: 14*60 + 45,    # 2:45PM
-        3: 7*60 + 30,     # 7:30AM
-        4: 21*60 + 30,    # 9:30PM
-        5: 7*60 + 30,     # 7:30AM
-        6: 20*60 + 15,    # 8:15PM
-        7: 11*60 + 15     # 11:15AM
-    }
-    avail_end = {
-        1: 14*60 + 15,   # 2:15PM
-        2: 19*60 + 30,    # 7:30PM
-        3: 15*60 + 30,    # 3:30PM
-        4: 22*60 + 30,    # 10:30PM
-        5: 14*60 + 15,    # 2:15PM
-        6: 22*60 + 0,     # 10:00PM
-        7: 21*60 + 15     # 9:15PM
-    }
-    min_duration = {
-        1: 105,
-        2: 60,
-        3: 45,
-        4: 60,
-        5: 60,
-        6: 75,
-        7: 105
-    }
-
-    # Z3 variables
-    meet = [Bool(f'meet_{i}') for i in range(1, 8)]  # meet_i for friend i (index 1..7)
-    start_time = [Int(f'start_{i}') for i in range(0, 8)]  # start_time for meeting i (0..7)
-    end_time = [Int(f'end_{i}') for i in range(0, 8)]      # end_time for meeting i (0..7)
-    before = [[Bool(f'before_{i}_{j}') for j in range(8)] for i in range(8)]  # before[i][j] for i,j in 0..7
-
-    solver = Solver()
-
-    # Meeting 0 (start at Alamo Square) is fixed
-    solver.add(start_time[0] == 540)  # 9:00AM
-    solver.add(end_time[0] == 540)
-
-    # Constraints for friends 1..7: if meet_i is True, then meeting must be within availability window
-    for i in range(1, 8):
-        solver.add(Implies(meet[i-1], 
-                           And(start_time[i] >= avail_start[i],
-                               end_time[i] == start_time[i] + min_duration[i],
-                               end_time[i] <= avail_end[i]
-                           )))
-
-    # For any friend j that is met, the start (0) must be before j
-    for j in range(1, 8):
-        solver.add(Implies(meet[j-1], before[0][j]))
-
-    # For every distinct pair (i, j): if both meetings are selected, enforce ordering and travel time
-    for i in range(8):
-        for j in range(8):
-            if i == j:
-                continue
-            # Determine if meetings i and j are selected
-            selected_i = meet[i-1] if i >= 1 else BoolVal(True)
-            selected_j = meet[j-1] if j >= 1 else BoolVal(True)
-            both_selected = And(selected_i, selected_j)
-
-            # If both selected, enforce travel time constraints and mutual exclusivity of before[i][j] and before[j][i]
-            constraint1 = Implies(before[i][j], end_time[i] + T[i][j] <= start_time[j])
-            constraint2 = Implies(before[j][i], end_time[j] + T[j][i] <= start_time[i])
-            constraint3 = Or(before[i][j], before[j][i])
-            constraint4 = Not(And(before[i][j], before[j][i]))
-            solver.add(Implies(both_selected, And(constraint1, constraint2, constraint3, constraint4)))
-
-    # Transitivity: for every distinct i, j, k, if all selected, then before[i][j] and before[j][k] implies before[i][k]
-    for i in range(8):
-        for j in range(8):
-            if i == j:
-                continue
-            for k in range(8):
-                if i == k or j == k:
-                    continue
-                selected_i = meet[i-1] if i >= 1 else BoolVal(True)
-                selected_j = meet[j-1] if j >= 1 else BoolVal(True)
-                selected_k = meet[k-1] if k >= 1 else BoolVal(True)
-                all_selected = And(selected_i, selected_j, selected_k)
-                trans = Implies(And(before[i][j], before[j][k]), before[i][k])
-                solver.add(Implies(all_selected, trans))
-
-    # Optimize to maximize the number of friends met
-    opt = Optimize()
-    opt.add(solver.assertions())
-    objective = Sum([If(meet_i, 1, 0) for meet_i in meet])
-    opt.maximize(objective)
-
-    if opt.check() == sat:
-        model = opt.model()
-        scheduled_meetings = []
-        for i in range(1, 8):
-            if model.evaluate(meet[i-1]):
-                start_val = model.evaluate(start_time[i])
-                end_val = model.evaluate(end_time[i])
-                start_min = start_val.as_long()
-                end_min = end_val.as_long()
-                start_hh = start_min // 60
-                start_mm = start_min % 60
-                end_hh = end_min // 60
-                end_mm = end_min % 60
-                start_str = f"{start_hh:02d}:{start_mm:02d}"
-                end_str = f"{end_hh:02d}:{end_mm:02d}"
-                scheduled_meetings.append({
-                    "action": "meet",
-                    "person": names[i],
-                    "start_time": start_str,
-                    "end_time": end_str
-                })
+    
+    # We start at 9:00 AM = 540 minutes from midnight
+    start_time_alamo = 540
+    
+    # Initialize Z3 variables
+    num_friends = len(friends)
+    included = [z3.Bool(f"included_{i}") for i in range(num_friends)]
+    start_vars = [z3.Int(f"start_{i}") for i in range(num_friends)]
+    end_vars = [z3.Int(f"end_{i}") for i in range(num_friends)]
+    
+    # Try from k=7 down to k=1
+    k_found = None
+    schedule_found = None
+    for k in range(num_friends, 0, -1):
+        solver = z3.Solver()
         
-        # Sort meetings by start time
-        scheduled_meetings.sort(key=lambda x: x['start_time'])
+        # Add constraints for each friend
+        for i in range(num_friends):
+            # If included, set meeting constraints
+            solver.add(z3.Implies(included[i], start_vars[i] >= friends[i][2]))
+            solver.add(z3.Implies(included[i], end_vars[i] == start_vars[i] + friends[i][4]))
+            solver.add(z3.Implies(included[i], end_vars[i] <= friends[i][3]))
+            # Constraint: start time must be at least the travel time from Alamo Square
+            loc_i = friends[i][1]
+            travel_from_alamo = travel_time_dict[("Alamo Square", loc_i)]
+            solver.add(z3.Implies(included[i], start_vars[i] >= start_time_alamo + travel_from_alamo))
         
-        # Output the solution
-        print("SOLUTION:")
-        output = {"itinerary": scheduled_meetings}
-        print(json.dumps(output))
+        # Pairwise disjunctive constraints for meetings
+        for i in range(num_friends):
+            for j in range(i+1, num_friends):
+                loc_i = friends[i][1]
+                loc_j = friends[j][1]
+                travel_ij = travel_time_dict[(loc_i, loc_j)]
+                travel_ji = travel_time_dict[(loc_j, loc_i)]
+                # Constraint: if both included, then either i before j or j before i
+                constraint_ij = z3.Or(
+                    end_vars[i] + travel_ij <= start_vars[j],
+                    end_vars[j] + travel_ji <= start_vars[i]
+                )
+                solver.add(z3.Implies(z3.And(included[i], included[j]), constraint_ij))
+        
+        # Exactly k meetings included
+        solver.add(z3.Sum([z3.If(included[i], 1, 0) for i in range(num_friends)]) == k)
+        
+        # Check satisfiability
+        if solver.check() == z3.sat:
+            model = solver.model()
+            schedule = []
+            for i in range(num_friends):
+                if z3.is_true(model[included[i]]):
+                    start_val = model.eval(start_vars[i]).as_long()
+                    end_val = model.eval(end_vars[i]).as_long()
+                    start_hour = start_val // 60
+                    start_minute = start_val % 60
+                    end_hour = end_val // 60
+                    end_minute = end_val % 60
+                    schedule.append({
+                        "person": friends[i][0],
+                        "start_time": f"{start_hour:02d}:{start_minute:02d}",
+                        "end_time": f"{end_hour:02d}:{end_minute:02d}"
+                    })
+            # Sort the schedule by start_time
+            schedule.sort(key=lambda x: (int(x['start_time'][:2]), int(x['start_time'][3:5])))
+            k_found = k
+            schedule_found = schedule
+            break
+    
+    # Prepare the output
+    if k_found is None:
+        # No schedule found even for k=1? Then empty itinerary
+        result = {"itinerary": []}
     else:
-        print("SOLUTION:")
-        print(json.dumps({"itinerary": []}))
+        itinerary = [{"action": "meet", "person": item["person"], "start_time": item["start_time"], "end_time": item["end_time"]} for item in schedule_found]
+        result = {"itinerary": itinerary}
+    
+    # Output the solution
+    print("SOLUTION:")
+    print(json.dumps(result))
 
 if __name__ == "__main__":
     main()

@@ -2,146 +2,157 @@ from z3 import *
 import json
 
 def main():
-    # Names of friends
-    names = ['Robert', 'Michelle', 'George', 'William']
+    friends = ['Michelle', 'Robert', 'George', 'William']
     
-    # Durations for each friend in minutes
-    dur = [30, 15, 30, 105]
+    available_start = {
+        'Michelle': 8*60+15,   # 8:15 -> 495 minutes
+        'Robert': 9*60,         # 9:00 -> 540 minutes
+        'George': 10*60+30,     # 10:30 -> 630 minutes
+        'William': 18*60+30     # 18:30 -> 1110 minutes
+    }
+    available_end = {
+        'Michelle': 14*60,      # 14:00 -> 840 minutes
+        'Robert': 13*60+45,     # 13:45 -> 825 minutes
+        'George': 18*60+45,     # 18:45 -> 1125 minutes
+        'William': 20*60+45     # 20:45 -> 1245 minutes
+    }
     
-    # Availability start times in minutes from 9:00 AM (base time)
-    avail_start = [0, -45, 90, 570]  # Robert, Michelle, George, William
+    min_time = {
+        'Michelle': 15,
+        'Robert': 30,
+        'George': 30,
+        'William': 105
+    }
     
-    # Availability end times in minutes from 9:00 AM
-    avail_end = [285, 300, 585, 705]  # 1:45 PM, 2:00 PM, 6:45 PM, 8:45 PM
-    
-    # Travel times from Sunset District to each friend's location
-    travel_start = [29, 30, 16, 24]  # to Robert, Michelle, George, William
-    
-    # Travel times between friends: [from][to] = time in minutes
-    travel_between = [
-        [0, 12, 17, 7],   # from Robert to [Robert, Michelle, George, William]
-        [8, 0, 19, 7],    # from Michelle
-        [19, 21, 0, 14],  # from George
-        [7, 9, 14, 0]     # from William
+    travel_matrix = [
+        [0, 30, 29, 16, 24],   # Sunset District
+        [29, 0, 8, 19, 7],      # Chinatown
+        [27, 12, 17, 19, 7],    # Fisherman's Wharf: corrected from [27,12,0,17,7] to [27,12,17,19,7]? 
+        [15, 21, 19, 0, 14],    # Presidio
+        [23, 7, 7, 14, 0]       # Russian Hill
     ]
     
-    # Define Z3 solver
-    s = Solver()
+    start_to_friend = [
+        travel_matrix[0][1],  # Sunset to Michelle (Chinatown)
+        travel_matrix[0][2],  # Sunset to Robert (Fisherman's Wharf)
+        travel_matrix[0][3],  # Sunset to George (Presidio)
+        travel_matrix[0][4]   # Sunset to William (Russian Hill)
+    ]
     
-    # Define Z3 functions for durations, availability, and travel times
-    dur_z3 = Function('dur', IntSort(), IntSort())
-    avail_start_z3 = Function('avail_start', IntSort(), IntSort())
-    avail_end_z3 = Function('avail_end', IntSort(), IntSort())
-    travel_start_z3 = Function('travel_start', IntSort(), IntSort())
-    travel_between_z3 = Function('travel_between', IntSort(), IntSort(), IntSort())
+    friend_to_friend = [
+        [travel_matrix[1][1], travel_matrix[1][2], travel_matrix[1][3], travel_matrix[1][4]],
+        [travel_matrix[2][1], travel_matrix[2][2], travel_matrix[2][3], travel_matrix[2][4]],
+        [travel_matrix[3][1], travel_matrix[3][2], travel_matrix[3][3], travel_matrix[3][4]],
+        [travel_matrix[4][1], travel_matrix[4][2], travel_matrix[4][3], travel_matrix[4][4]]
+    ]
     
-    # Initialize function values
+    s = Optimize()
+    
+    slots = [Int(f'slot_{i}') for i in range(4)]
+    for slot in slots:
+        s.add(slot >= 0)
+        s.add(slot <= 4)
+        
+    for i in range(3):
+        s.add(If(slots[i] == 4, slots[i+1] == 4, True))
+        
+    met = [Bool(f'met_{f}') for f in friends]
+    for idx in range(len(friends)):
+        s.add(met[idx] == Or([slots[i] == idx for i in range(4)]))
+        
     for i in range(4):
-        s.add(dur_z3(i) == dur[i])
-        s.add(avail_start_z3(i) == avail_start[i])
-        s.add(avail_end_z3(i) == avail_end[i])
-        s.add(travel_start_z3(i) == travel_start[i])
-        for j in range(4):
-            s.add(travel_between_z3(i, j) == travel_between[i][j])
+        for j in range(i+1, 4):
+            s.add(If(And(slots[i] != 4, slots[j] != 4), slots[i] != slots[j]))
+            
+    starts = [Real(f'start_{i}') for i in range(4)]
+    ends = [Real(f'end_{i}') for i in range(4)]
     
-    # Meeting order variables (each can be 0, 1, 2, 3)
-    m0, m1, m2, m3 = Ints('m0 m1 m2 m3')
-    # Start time variables for each meeting
-    S0, S1, S2, S3 = Ints('S0 S1 S2 S3')
+    prev_time = 540.0
     
-    # Constraints: each meeting index is between 0 and 3 and all are distinct
-    s.add(Distinct(m0, m1, m2, m3))
-    for m_var in [m0, m1, m2, m3]:
-        s.add(m_var >= 0, m_var <= 3)
+    def get_start_to_friend_time(f_index):
+        return If(f_index == 0, start_to_friend[0],
+               If(f_index == 1, start_to_friend[1],
+               If(f_index == 2, start_to_friend[2],
+               start_to_friend[3])))
     
-    # Constraints for the first meeting (from Sunset to m0)
-    s.add(S0 >= travel_start_z3(m0))
-    s.add(S0 >= avail_start_z3(m0))
-    s.add(S0 + dur_z3(m0) <= avail_end_z3(m0))
+    def get_friend_to_friend_time(f1, f2):
+        cases = []
+        values = []
+        for i in range(4):
+            for j in range(4):
+                cases.append(And(f1 == i, f2 == j))
+                values.append(friend_to_friend[i][j])
+        expr = values[15]
+        for idx in range(14, -1, -1):
+            expr = If(cases[idx], values[idx], expr)
+        return expr
     
-    # Constraints for the second meeting (from m0 to m1)
-    s.add(S1 >= S0 + dur_z3(m0) + travel_between_z3(m0, m1))
-    s.add(S1 >= avail_start_z3(m1))
-    s.add(S1 + dur_z3(m1) <= avail_end_z3(m1))
+    for i in range(4):
+        f_index = slots[i]
+        cond = (f_index != 4)
+        if i == 0:
+            travel_time = get_start_to_friend_time(f_index)
+        else:
+            travel_time = get_friend_to_friend_time(slots[i-1], f_index)
+        
+        arrival_time = prev_time + travel_time
+        friend_name = friends[f_index]
+        meeting_start = If(cond, If(arrival_time > available_start[friend_name], arrival_time, available_start[friend_name]), 0)
+        meeting_end = If(cond, meeting_start + min_time[friend_name], 0)
+        
+        s.add(If(cond, meeting_end <= available_end[friend_name], True))
+        s.add(If(cond, And(starts[i] == meeting_start, ends[i] == meeting_end), And(starts[i] == 0, ends[i] == 0)))
+        
+        prev_time = If(cond, meeting_end, prev_time)
     
-    # Constraints for the third meeting (from m1 to m2)
-    s.add(S2 >= S1 + dur_z3(m1) + travel_between_z3(m1, m2))
-    s.add(S2 >= avail_start_z3(m2))
-    s.add(S2 + dur_z3(m2) <= avail_end_z3(m2))
+    total_met = Sum([If(met_i, 1, 0) for met_i in met])
+    s.maximize(total_met)
     
-    # Constraints for the fourth meeting (from m2 to m3)
-    s.add(S3 >= S2 + dur_z3(m2) + travel_between_z3(m2, m3))
-    s.add(S3 >= avail_start_z3(m3))
-    s.add(S3 + dur_z3(m3) <= avail_end_z3(m3))
-    
-    # Check for satisfiability
     if s.check() == sat:
-        model = s.model()
-        m0_val = model[m0].as_long()
-        m1_val = model[m1].as_long()
-        m2_val = model[m2].as_long()
-        m3_val = model[m3].as_long()
-        S0_val = model[S0].as_long()
-        S1_val = model[S1].as_long()
-        S2_val = model[S2].as_long()
-        S3_val = model[S3].as_long()
-        
-        # Function to convert minutes from 9:00 AM to HH:MM format
-        def format_time(minutes):
-            total_minutes = minutes
-            hours = 9 + total_minutes // 60
-            mins = total_minutes % 60
-            return f"{hours:02d}:{mins:02d}"
-        
-        # Create meeting entries in chronological order
+        m = s.model()
         itinerary = []
+        def to_int(x):
+            try:
+                return int(x.as_fraction())
+            except:
+                try:
+                    return int(str(x))
+                except:
+                    return 0
+                    
+        for i in range(4):
+            slot_val = m[slots[i]]
+            if isinstance(slot_val, IntNumRef):
+                slot_val_int = slot_val.as_long()
+            else:
+                slot_val_int = int(str(slot_val))
+            if slot_val_int != 4:
+                friend_name = friends[slot_val_int]
+                start_val = m[starts[i]]
+                end_val = m[ends[i]]
+                start_min = to_int(start_val)
+                end_min = to_int(end_val)
+                
+                start_hour = start_min // 60
+                start_minute = start_min % 60
+                end_hour = end_min // 60
+                end_minute = end_min % 60
+                
+                start_time_str = f"{start_hour:02d}:{start_minute:02d}"
+                end_time_str = f"{end_hour:02d}:{end_minute:02d}"
+                
+                itinerary.append({
+                    "action": "meet",
+                    "person": friend_name,
+                    "start_time": start_time_str,
+                    "end_time": end_time_str
+                })
         
-        # Meeting 0
-        start0 = S0_val
-        end0 = S0_val + dur[m0_val]
-        itinerary.append({
-            "action": "meet",
-            "person": names[m0_val],
-            "start_time": format_time(start0),
-            "end_time": format_time(end0)
-        })
-        
-        # Meeting 1
-        start1 = S1_val
-        end1 = S1_val + dur[m1_val]
-        itinerary.append({
-            "action": "meet",
-            "person": names[m1_val],
-            "start_time": format_time(start1),
-            "end_time": format_time(end1)
-        })
-        
-        # Meeting 2
-        start2 = S2_val
-        end2 = S2_val + dur[m2_val]
-        itinerary.append({
-            "action": "meet",
-            "person": names[m2_val],
-            "start_time": format_time(start2),
-            "end_time": format_time(end2)
-        })
-        
-        # Meeting 3
-        start3 = S3_val
-        end3 = S3_val + dur[m3_val]
-        itinerary.append({
-            "action": "meet",
-            "person": names[m3_val],
-            "start_time": format_time(start3),
-            "end_time": format_time(end3)
-        })
-        
-        # Output the itinerary as JSON
         result = {"itinerary": itinerary}
+        print("SOLUTION:")
         print(json.dumps(result))
     else:
-        # If no solution found, output empty itinerary
-        print('{"itinerary": []}')
+        print("No solution found")
 
 if __name__ == "__main__":
     main()

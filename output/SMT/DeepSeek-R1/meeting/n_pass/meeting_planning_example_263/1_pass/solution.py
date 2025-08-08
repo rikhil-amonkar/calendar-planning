@@ -1,165 +1,143 @@
 from z3 import *
-import json
 
-# Convert time to minutes
-def time_to_minutes(time_str):
-    parts = time_str.split(':')
-    hours = int(parts[0])
-    minutes = int(parts[1])
-    return hours * 60 + minutes
-
-# Convert minutes to time string
 def minutes_to_time(minutes):
-    hours = minutes // 60
-    mins = minutes % 60
-    return f"{hours:02d}:{mins:02d}"
+    hour = minutes // 60
+    minute = minutes % 60
+    return f"{hour:02d}:{minute:02d}"
 
-# Travel times dictionary
-travel_times = {
-    "Bayview": {
-        "Embarcadero": 19,
-        "Fisherman's Wharf": 25,
-        "Financial District": 19
-    },
-    "Embarcadero": {
-        "Bayview": 21,
-        "Fisherman's Wharf": 6,
-        "Financial District": 5
-    },
-    "Fisherman's Wharf": {
-        "Bayview": 26,
-        "Embarcadero": 8,
-        "Financial District": 11
-    },
-    "Financial District": {
-        "Bayview": 19,
-        "Embarcadero": 4,
-        "Fisherman's Wharf": 10
-    }
-}
-
-# Friend details
-friends = {
-    "Karen": {
-        "location": "Fisherman's Wharf",
-        "avail_start": time_to_minutes("08:45"),
-        "avail_end": time_to_minutes("15:00"),
-        "min_duration": 30
-    },
-    "Anthony": {
-        "location": "Financial District",
-        "avail_start": time_to_minutes("09:15"),
-        "avail_end": time_to_minutes("21:30"),
-        "min_duration": 105
-    },
-    "Betty": {
-        "location": "Embarcadero",
-        "avail_start": time_to_minutes("19:45"),
-        "avail_end": time_to_minutes("21:45"),
-        "min_duration": 15
-    }
-}
-
-# Initialize Z3 variables
-k_start = Int('k_start')
-k_end = Int('k_end')
-a_start = Int('a_start')
-a_end = Int('a_end')
-b_start = Int('b_start')
-b_end = Int('b_end')
-
-# Order variables
-first = Int('first')  # 0: Karen, 1: Anthony, 2: Betty
-second = Int('second')
-third = Int('third')
-
-s = Solver()
-
-# Define friend indices
-friend_indices = {"Karen": 0, "Anthony": 1, "Betty": 2}
-friend_names = {0: "Karen", 1: "Anthony", 2: "Betty"}
-
-# Order constraints
-s.add(And(first >= 0, first <= 2))
-s.add(And(second >= 0, second <= 2))
-s.add(And(third >= 0, third <= 2))
-s.add(Distinct(first, second, third))
-
-# Meeting duration constraints
-s.add(k_end - k_start >= friends["Karen"]["min_duration"])
-s.add(a_end - a_start >= friends["Anthony"]["min_duration"])
-s.add(b_end - b_start >= friends["Betty"]["min_duration"])
-
-# Availability constraints
-s.add(k_start >= friends["Karen"]["avail_start"])
-s.add(k_end <= friends["Karen"]["avail_end"])
-s.add(a_start >= friends["Anthony"]["avail_start"])
-s.add(a_end <= friends["Anthony"]["avail_end"])
-s.add(b_start >= friends["Betty"]["avail_start"])
-s.add(b_end <= friends["Betty"]["avail_end"])
-
-# Start at Bayview at 9:00 AM (540 minutes)
-start_time = 540
-
-# Constraints for first meeting
-s.add(Or(
-    And(first == 0, k_start >= start_time + travel_times["Bayview"][friends["Karen"]["location"]]),
-    And(first == 1, a_start >= start_time + travel_times["Bayview"][friends["Anthony"]["location"]]),
-    And(first == 2, b_start >= start_time + travel_times["Bayview"][friends["Betty"]["location"]])
-))
-
-# Constraints for second meeting
-s.add(Or(
-    And(first == 0, second == 1, a_start >= k_end + travel_times[friends["Karen"]["location"]][friends["Anthony"]["location"]]),
-    And(first == 0, second == 2, b_start >= k_end + travel_times[friends["Karen"]["location"]][friends["Betty"]["location"]]),
-    And(first == 1, second == 0, k_start >= a_end + travel_times[friends["Anthony"]["location"]][friends["Karen"]["location"]]),
-    And(first == 1, second == 2, b_start >= a_end + travel_times[friends["Anthony"]["location"]][friends["Betty"]["location"]]),
-    And(first == 2, second == 0, k_start >= b_end + travel_times[friends["Betty"]["location"]][friends["Karen"]["location"]]),
-    And(first == 2, second == 1, a_start >= b_end + travel_times[friends["Betty"]["location"]][friends["Anthony"]["location"]]))
-))
-
-# Constraints for third meeting
-s.add(Or(
-    And(second == 0, third == 1, a_start >= k_end + travel_times[friends["Karen"]["location"]][friends["Anthony"]["location"]]),
-    And(second == 0, third == 2, b_start >= k_end + travel_times[friends["Karen"]["location"]][friends["Betty"]["location"]]),
-    And(second == 1, third == 0, k_start >= a_end + travel_times[friends["Anthony"]["location"]][friends["Karen"]["location"]]),
-    And(second == 1, third == 2, b_start >= a_end + travel_times[friends["Anthony"]["location"]][friends["Betty"]["location"]]),
-    And(second == 2, third == 0, k_start >= b_end + travel_times[friends["Betty"]["location"]][friends["Karen"]["location"]]),
-    And(second == 2, third == 1, a_start >= b_end + travel_times[friends["Betty"]["location"]][friends["Anthony"]["location"]]))
-))
-
-# Check satisfiability
-if s.check() == sat:
-    model = s.model()
-    k_start_val = model.eval(k_start).as_long()
-    k_end_val = model.eval(k_end).as_long()
-    a_start_val = model.eval(a_start).as_long()
-    a_end_val = model.eval(a_end).as_long()
-    b_start_val = model.eval(b_start).as_long()
-    b_end_val = model.eval(b_end).as_long()
-    
-    # Create list of meetings
+def main():
     meetings = [
-        {"person": "Karen", "start": k_start_val, "end": k_end_val},
-        {"person": "Anthony", "start": a_start_val, "end": a_end_val},
-        {"person": "Betty", "start": b_start_val, "end": b_end_val}
+        {"name": "Karen", "location": "Fisherman's Wharf", "duration": 30, "min_start": 8*60+45, "max_end": 15*60},
+        {"name": "Anthony", "location": "Financial District", "duration": 105, "min_start": 9*60+15, "max_end": 21*60+30},
+        {"name": "Betty", "location": "Embarcadero", "duration": 15, "min_start": 19*60+45, "max_end": 21*60+45}
     ]
     
-    # Sort meetings by start time
-    meetings_sorted = sorted(meetings, key=lambda x: x['start'])
+    travel_from_bayview = {
+        "Fisherman's Wharf": 25,
+        "Financial District": 19,
+        "Embarcadero": 19
+    }
     
-    # Convert to HH:MM format
-    itinerary = []
-    for meet in meetings_sorted:
-        itinerary.append({
-            "action": "meet",
-            "person": meet["person"],
-            "start_time": minutes_to_time(meet["start"]),
-            "end_time": minutes_to_time(meet["end"])
-        })
+    travel_between = {
+        ("Fisherman's Wharf", "Financial District"): 11,
+        ("Fisherman's Wharf", "Embarcadero"): 8,
+        ("Financial District", "Fisherman's Wharf"): 10,
+        ("Financial District", "Embarcadero"): 4,
+        ("Embarcadero", "Fisherman's Wharf"): 6,
+        ("Embarcadero", "Financial District"): 5
+    }
     
-    # Output as JSON
-    print("SOLUTION:")
-    print(json.dumps({"itinerary": itinerary}))
-else:
-    print("No valid schedule found.")
+    s = Solver()
+    
+    first = Int('first')
+    second = Int('second')
+    third = Int('third')
+    
+    s0 = Int('s0')
+    s1 = Int('s1')
+    s2 = Int('s2')
+    
+    s_k = Int('s_k')
+    s_a = Int('s_a')
+    s_b = Int('s_b')
+    
+    s.add(Distinct(first, second, third))
+    s.add(first >= 0, first <= 2)
+    s.add(second >= 0, second <= 2)
+    s.add(third >= 0, third <= 2)
+    
+    s.add(s0 == 540 + travel_from_bayview[meetings[first]["location"]])
+    s.add(s1 == s0 + meetings[first]["duration"] + travel_between[(meetings[first]["location"], meetings[second]["location"])])
+    s.add(s2 == s1 + meetings[second]["duration"] + travel_between[(meetings[second]["location"], meetings[third]["location"])])
+    
+    s.add(s_k == If(first == 0, s0, If(second == 0, s1, s2)))
+    s.add(s_a == If(first == 1, s0, If(second == 1, s1, s2)))
+    s.add(s_b == If(first == 2, s0, If(second == 2, s1, s2)))
+    
+    s.add(s_k >= meetings[0]["min_start"], s_k + meetings[0]["duration"] <= meetings[0]["max_end"])
+    s.add(s_a >= meetings[1]["min_start"], s_a + meetings[1]["duration"] <= meetings[1]["max_end"])
+    s.add(s_b >= meetings[2]["min_start"], s_b + meetings[2]["duration"] <= meetings[2]["max_end"])
+    
+    if s.check() == sat:
+        m = s.model()
+        s_k_val = m.eval(s_k).as_long()
+        s_a_val = m.eval(s_a).as_long()
+        s_b_val = m.eval(s_b).as_long()
+        meetings_list = [
+            {"person": "Karen", "start": s_k_val, "end": s_k_val + 30},
+            {"person": "Anthony", "start": s_a_val, "end": s_a_val + 105},
+            {"person": "Betty", "start": s_b_val, "end": s_b_val + 15}
+        ]
+        meetings_list.sort(key=lambda x: x['start'])
+        itinerary = []
+        for meet in meetings_list:
+            itinerary.append({
+                "action": "meet",
+                "person": meet['person'],
+                "start_time": minutes_to_time(meet['start']),
+                "end_time": minutes_to_time(meet['end'])
+            })
+        print(f'{{"itinerary": {json.dumps(itinerary)}}}')
+        return
+    
+    pairs = [
+        (0, 1), 
+        (0, 2), 
+        (1, 2)
+    ]
+    orders = [(0, 1), (1, 0)]
+    
+    for pair in pairs:
+        for order in orders:
+            idx1 = pair[order[0]]
+            idx2 = pair[order[1]]
+            loc1 = meetings[idx1]["location"]
+            loc2 = meetings[idx2]["location"]
+            travel_time = travel_between[(loc1, loc2)]
+            
+            start1 = 540 + travel_from_bayview[loc1]
+            end1 = start1 + meetings[idx1]["duration"]
+            start2 = end1 + travel_time
+            end2 = start2 + meetings[idx2]["duration"]
+            
+            valid = True
+            if start1 < meetings[idx1]["min_start"] or end1 > meetings[idx1]["max_end"]:
+                valid = False
+            if start2 < meetings[idx2]["min_start"] or end2 > meetings[idx2]["max_end"]:
+                valid = False
+                
+            if valid:
+                meetings_list = [
+                    {"person": meetings[idx1]["name"], "start": start1, "end": end1},
+                    {"person": meetings[idx2]["name"], "start": start2, "end": end2}
+                ]
+                meetings_list.sort(key=lambda x: x['start'])
+                itinerary = []
+                for meet in meetings_list:
+                    itinerary.append({
+                        "action": "meet",
+                        "person": meet['person'],
+                        "start_time": minutes_to_time(meet['start']),
+                        "end_time": minutes_to_time(meet['end'])
+                    })
+                print(f'{{"itinerary": {json.dumps(itinerary)}}}')
+                return
+    
+    for idx in range(3):
+        start = 540 + travel_from_bayview[meetings[idx]["location"]]
+        end = start + meetings[idx]["duration"]
+        if start >= meetings[idx]["min_start"] and end <= meetings[idx]["max_end"]:
+            itinerary = [{
+                "action": "meet",
+                "person": meetings[idx]["name"],
+                "start_time": minutes_to_time(start),
+                "end_time": minutes_to_time(end)
+            }]
+            print(f'{{"itinerary": {json.dumps(itinerary)}}}')
+            return
+    
+    print('{"itinerary": []}')
+
+if __name__ == '__main__':
+    import json
+    main()

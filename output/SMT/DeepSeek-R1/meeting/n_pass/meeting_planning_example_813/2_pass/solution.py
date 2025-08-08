@@ -1,230 +1,247 @@
-from z3 import *
 import json
+from z3 import *
 
-def main():
-    meetings = [
-        ("Joshua", "Embarcadero", 9*60+45, 18*60, 105),
-        ("Jeffrey", "Bayview", 9*60+45, 20*60+15, 75),
-        ("Charles", "Union Square", 10*60+45, 20*60+15, 120),
-        ("Joseph", "Chinatown", 7*60, 15*60+30, 60),
-        ("Matthew", "Golden Gate Park", 11*60, 19*60+30, 45),
-        ("Carol", "Financial District", 10*60+45, 11*60+15, 15),
-        ("Paul", "Haight-Ashbury", 19*60+15, 20*60+30, 15),
-        ("Rebecca", "Mission District", 17*60, 21*60+45, 45)
-    ]
-    
-    dummy_location = "Marina District"
-    dummy_start = 9 * 60
-    dummy_end = 9 * 60
-    
-    travel_data = """
-Marina District to Embarcadero: 14.
-Marina District to Bayview: 27.
-Marina District to Union Square: 16.
-Marina District to Chinatown: 15.
-Marina District to Sunset District: 19.
-Marina District to Golden Gate Park: 18.
-Marina District to Financial District: 17.
-Marina District to Haight-Ashbury: 16.
-Marina District to Mission District: 20.
-Embarcadero to Marina District: 12.
-Embarcadero to Bayview: 21.
-Embarcadero to Union Square: 10.
-Embarcadero to Chinatown: 7.
-Embarcadero to Sunset District: 30.
-Embarcadero to Golden Gate Park: 25.
-Embarcadero to Financial District: 5.
-Embarcadero to Haight-Ashbury: 21.
-Embarcadero to Mission District: 20.
-Bayview to Marina District: 27.
-Bayview to Embarcadero: 19.
-Bayview to Union Square: 18.
-Bayview to Chinatown: 19.
-Bayview to Sunset District: 23.
-Bayview to Golden Gate Park: 22.
-Bayview to Financial District: 19.
-Bayview to Haight-Ashbury: 19.
-Bayview to Mission District: 13.
-Union Square to Marina District: 18.
-Union Square to Embarcadero: 11.
-Union Square to Bayview: 15.
-Union Square to Chinatown: 7.
-Union Square to Sunset District: 27.
-Union Square to Golden Gate Park: 22.
-Union Square to Financial District: 9.
-Union Square to Haight-Ashbury: 18.
-Union Square to Mission District: 14.
-Chinatown to Marina District: 12.
-Chinatown to Embarcadero: 5.
-Chinatown to Bayview: 20.
-Chinatown to Union Square: 7.
-Chinatown to Sunset District: 29.
-Chinatown to Golden Gate Park: 23.
-Chinatown to Financial District: 5.
-Chinatown to Haight-Ashbury: 19.
-Chinatown to Mission District: 17.
-Sunset District to Marina District: 21.
-Sunset District to Embarcadero: 30.
-Sunset District to Bayview: 22.
-Sunset District to Union Square: 30.
-Sunset District to Chinatown: 30.
-Sunset District to Golden Gate Park: 11.
-Sunset District to Financial District: 30.
-Sunset District to Haight-Ashbury: 15.
-Sunset District to Mission District: 25.
-Golden Gate Park to Marina District: 16.
-Golden Gate Park to Embarcadero: 25.
-Golden Gate Park to Bayview: 23.
-Golden Gate Park to Union Square: 22.
-Golden Gate Park to Chinatown: 23.
-Golden Gate Park to Sunset District: 10.
-Golden Gate Park to Financial District: 26.
-Golden Gate Park to Haight-Ashbury: 7.
-Golden Gate Park to Mission District: 17.
-Financial District to Marina District: 15.
-Financial District to Embarcadero: 4.
-Financial District to Bayview: 19.
-Financial District to Union Square: 9.
-Financial District to Chinatown: 5.
-Financial District to Sunset District: 30.
-Financial District to Golden Gate Park: 23.
-Financial District to Haight-Ashbury: 19.
-Financial District to Mission District: 17.
-Haight-Ashbury to Marina District: 17.
-Haight-Ashbury to Embarcadero: 20.
-Haight-Ashbury to Bayview: 18.
-Haight-Ashbury to Union Square: 19.
-Haight-Ashbury to Chinatown: 19.
-Haight-Ashbury to Sunset District: 15.
-Haight-Ashbury to Golden Gate Park: 7.
-Haight-Ashbury to Financial District: 21.
-Haight-Ashbury to Mission District: 11.
-Mission District to Marina District: 19.
-Mission District to Embarcadero: 19.
-Mission District to Bayview: 14.
-Mission District to Union Square: 15.
-Mission District to Chinatown: 16.
-Mission District to Sunset District: 24.
-Mission District to Golden Gate Park: 17.
-Mission District to Financial District: 15.
-Mission District to Haight-Ashbury: 12.
-    """
-    
-    travel_dict = {}
-    lines = travel_data.strip().split('\n')
-    for line in lines:
-        line = line.strip()
-        if line.endswith('.'):
-            line = line[:-1]
-        parts = line.split(':')
-        if len(parts) < 2:
-            continue
-        time_val = int(parts[1].strip())
-        loc_str = parts[0].strip()
-        if " to " in loc_str:
-            from_loc, to_loc = loc_str.split(" to ")
-            from_loc = from_loc.strip()
-            to_loc = to_loc.strip()
-            travel_dict[(from_loc, to_loc)] = time_val
+# Travel times data as a list of tuples (from, to, time)
+travel_data = [
+    ("Marina District", "Embarcadero", 14),
+    ("Marina District", "Bayview", 27),
+    ("Marina District", "Union Square", 16),
+    ("Marina District", "Chinatown", 15),
+    ("Marina District", "Sunset District", 19),
+    ("Marina District", "Golden Gate Park", 18),
+    ("Marina District", "Financial District", 17),
+    ("Marina District", "Haight-Ashbury", 16),
+    ("Marina District", "Mission District", 20),
+    ("Embarcadero", "Marina District", 12),
+    ("Embarcadero", "Bayview", 21),
+    ("Embarcadero", "Union Square", 10),
+    ("Embarcadero", "Chinatown", 7),
+    ("Embarcadero", "Sunset District", 30),
+    ("Embarcadero", "Golden Gate Park", 25),
+    ("Embarcadero", "Financial District", 5),
+    ("Embarcadero", "Haight-Ashbury", 21),
+    ("Embarcadero", "Mission District", 20),
+    ("Bayview", "Marina District", 27),
+    ("Bayview", "Embarcadero", 19),
+    ("Bayview", "Union Square", 18),
+    ("Bayview", "Chinatown", 19),
+    ("Bayview", "Sunset District", 23),
+    ("Bayview", "Golden Gate Park", 22),
+    ("Bayview", "Financial District", 19),
+    ("Bayview", "Haight-Ashbury", 19),
+    ("Bayview", "Mission District", 13),
+    ("Union Square", "Marina District", 18),
+    ("Union Square", "Embarcadero", 11),
+    ("Union Square", "Bayview", 15),
+    ("Union Square", "Chinatown", 7),
+    ("Union Square", "Sunset District", 27),
+    ("Union Square", "Golden Gate Park", 22),
+    ("Union Square", "Financial District", 9),
+    ("Union Square", "Haight-Ashbury", 18),
+    ("Union Square", "Mission District", 14),
+    ("Chinatown", "Marina District", 12),
+    ("Chinatown", "Embarcadero", 5),
+    ("Chinatown", "Bayview", 20),
+    ("Chinatown", "Union Square", 7),
+    ("Chinatown", "Sunset District", 29),
+    ("Chinatown", "Golden Gate Park", 23),
+    ("Chinatown", "Financial District", 5),
+    ("Chinatown", "Haight-Ashbury", 19),
+    ("Chinatown", "Mission District", 17),
+    ("Sunset District", "Marina District", 21),
+    ("Sunset District", "Embarcadero", 30),
+    ("Sunset District", "Bayview", 22),
+    ("Sunset District", "Union Square", 30),
+    ("Sunset District", "Chinatown", 30),
+    ("Sunset District", "Golden Gate Park", 11),
+    ("Sunset District", "Financial District", 30),
+    ("Sunset District", "Haight-Ashbury", 15),
+    ("Sunset District", "Mission District", 25),
+    ("Golden Gate Park", "Marina District", 16),
+    ("Golden Gate Park", "Embarcadero", 25),
+    ("Golden Gate Park", "Bayview", 23),
+    ("Golden Gate Park", "Union Square", 22),
+    ("Golden Gate Park", "Chinatown", 23),
+    ("Golden Gate Park", "Sunset District", 10),
+    ("Golden Gate Park", "Financial District", 26),
+    ("Golden Gate Park", "Haight-Ashbury", 7),
+    ("Golden Gate Park", "Mission District", 17),
+    ("Financial District", "Marina District", 15),
+    ("Financial District", "Embarcadero", 4),
+    ("Financial District", "Bayview", 19),
+    ("Financial District", "Union Square", 9),
+    ("Financial District", "Chinatown", 5),
+    ("Financial District", "Sunset District", 30),
+    ("Financial District", "Golden Gate Park", 23),
+    ("Financial District", "Haight-Ashbury", 19),
+    ("Financial District", "Mission District", 17),
+    ("Haight-Ashbury", "Marina District", 17),
+    ("Haight-Ashbury", "Embarcadero", 20),
+    ("Haight-Ashbury", "Bayview", 18),
+    ("Haight-Ashbury", "Union Square", 19),
+    ("Haight-Ashbury", "Chinatown", 19),
+    ("Haight-Ashbury", "Sunset District", 15),
+    ("Haight-Ashbury", "Golden Gate Park", 7),
+    ("Haight-Ashbury", "Financial District", 21),
+    ("Haight-Ashbury", "Mission District", 11),
+    ("Mission District", "Marina District", 19),
+    ("Mission District", "Embarcadero", 19),
+    ("Mission District", "Bayview", 14),
+    ("Mission District", "Union Square", 15),
+    ("Mission District", "Chinatown", 16),
+    ("Mission District", "Sunset District", 24),
+    ("Mission District", "Golden Gate Park", 17),
+    ("Mission District", "Financial District", 15),
+    ("Mission District", "Haight-Ashbury", 12)
+]
 
-    our_locations = set([
-        "Marina District", 
-        "Embarcadero", "Bayview", "Union Square", "Chinatown", 
-        "Golden Gate Park", "Financial District", "Haight-Ashbury", "Mission District"
-    ])
-    
-    travel_dict_clean = {}
-    for (from_loc, to_loc), time_val in travel_dict.items():
-        if from_loc in our_locations and to_loc in our_locations:
-            travel_dict_clean[(from_loc, to_loc)] = time_val
+# Build travel dictionary
+travel_dict = {}
+for (src, dst, time_val) in travel_data:
+    travel_dict[(src, dst)] = time_val
 
-    locations = [meeting[1] for meeting in meetings] + [dummy_location]
-    
-    solver = Optimize()
-    
-    m = [Bool(f'm_{i}') for i in range(8)]
-    s = [Int(f's_{i}') for i in range(8)]
-    e = [Int(f'e_{i}') for i in range(8)]
-    
-    s8 = Int('s8')
-    e8 = Int('e8')
-    solver.add(s8 == dummy_start, e8 == dummy_start)
-    
-    s_all = s + [s8]
-    e_all = e + [e8]
-    
-    for i in range(8):
-        name, loc, available_start, available_end, duration = meetings[i]
-        solver.add(Implies(m[i], 
-            And(
-                s[i] >= available_start,
-                e[i] == s[i] + duration,
-                e[i] <= available_end
-            )
-        ))
-    
-    for i in range(8):
-        travel_time = travel_dict_clean.get((dummy_location, locations[i]))
-        if travel_time is None:
-            continue
-        solver.add(Implies(m[i], s[i] >= e8 + travel_time))
-    
-    for i in range(9):
-        for j in range(9):
-            if i == j:
-                continue
-            active_i = m[i] if i < 8 else BoolVal(True)
-            active_j = m[j] if j < 8 else BoolVal(True)
-            active = And(active_i, active_j)
-            
-            from_loc_i = locations[i]
-            to_loc_j = locations[j]
-            time_ij = travel_dict_clean.get((from_loc_i, to_loc_j))
-            if time_ij is None:
-                continue
-                
-            from_loc_j = locations[j]
-            to_loc_i = locations[i]
-            time_ji = travel_dict_clean.get((from_loc_j, to_loc_i))
-            if time_ji is None:
-                continue
-                
-            solver.add(Implies(active, 
-                Or( 
-                    s_all[j] >= e_all[i] + time_ij,
-                    s_all[i] >= e_all[j] + time_ji
-                )))
-    
-    objective = Sum([If(m_i, 1, 0) for m_i in m])
-    solver.maximize(objective)
-    
-    if solver.check() == sat:
-        model = solver.model()
-        itinerary = []
-        for i in range(8):
-            if model.eval(m[i]):
-                name = meetings[i][0]
-                start_min = model.eval(s[i]).as_long()
-                end_min = model.eval(e[i]).as_long()
-                start_hour = start_min // 60
-                start_minute = start_min % 60
-                end_hour = end_min // 60
-                end_minute = end_min % 60
-                start_time = f"{start_hour:02d}:{start_minute:02d}"
-                end_time = f"{end_hour:02d}:{end_minute:02d}"
-                itinerary.append({
-                    "action": "meet",
-                    "person": name,
-                    "start_time": start_time,
-                    "end_time": end_time
-                })
-        itinerary.sort(key=lambda x: x['start_time'])
-        result = {"itinerary": itinerary}
-        print("SOLUTION:")
-        print(json.dumps(result))
-    else:
-        print("SOLUTION:")
-        print(json.dumps({"itinerary": []}))
+# Locations: index 0: Marina District (dummy meeting), then 1..9 for the friends
+locations = [
+    "Marina District",      # 0
+    "Embarcadero",          # 1 Joshua
+    "Bayview",              # 2 Jeffrey
+    "Union Square",         # 3 Charles
+    "Chinatown",            # 4 Joseph
+    "Sunset District",      # 5 Elizabeth
+    "Golden Gate Park",     # 6 Matthew
+    "Financial District",   # 7 Carol
+    "Haight-Ashbury",       # 8 Paul
+    "Mission District"      # 9 Rebecca
+]
 
-if __name__ == "__main__":
-    main()
+# Friend names corresponding to indices 1 to 9
+friend_names = {
+    1: "Joshua",
+    2: "Jeffrey",
+    3: "Charles",
+    4: "Joseph",
+    5: "Elizabeth",
+    6: "Matthew",
+    7: "Carol",
+    8: "Paul",
+    9: "Rebecca"
+}
+
+# Availability and min_duration for friends (indices 1 to 9)
+# [start_minutes, end_minutes, min_duration]
+# Convert times to minutes from midnight
+friend_data = {
+    1: [9*60+45, 18*60, 105],      # Joshua: 9:45-18:00, 105 min
+    2: [9*60+45, 20*60+15, 75],    # Jeffrey: 9:45-20:15, 75 min
+    3: [10*60+45, 20*60+15, 120],  # Charles: 10:45-20:15, 120 min
+    4: [7*60, 15*60+30, 60],       # Joseph: 7:00-15:30, 60 min
+    5: [9*60, 9*60+45, 45],        # Elizabeth: 9:00-9:45, 45 min
+    6: [11*60, 19*60+30, 45],      # Matthew: 11:00-19:30, 45 min
+    7: [10*60+45, 11*60+15, 15],   # Carol: 10:45-11:15, 15 min
+    8: [19*60+15, 20*60+30, 15],   # Paul: 19:15-20:30, 15 min
+    9: [17*60, 21*60+45, 45]       # Rebecca: 17:00-21:45, 45 min
+}
+
+# Build travel time matrix between the 10 locations (index 0 to 9)
+travel_matrix = [[0 for _ in range(10)] for _ in range(10)]
+for i in range(10):
+    for j in range(10):
+        if i != j:
+            travel_matrix[i][j] = travel_dict.get((locations[i], locations[j]), 0)
+
+# Create Z3 optimizer
+opt = Optimize()
+
+# Number of meetings: 10 (0: dummy, 1..9: friends)
+n = 10
+
+# met[i]: whether we meet meeting i (0 is dummy and always met)
+met = [Bool(f'met_{i}') for i in range(n)]
+# For the dummy meeting (index0), we set met[0] to True
+opt.add(met[0] == True)
+# For friends (indices 1..9), met[i] is a variable
+
+# start[i]: start time in minutes (from midnight)
+start = [Int(f'start_{i}') for i in range(n)]
+# Fix start[0] to 540 (9:00 AM)
+opt.add(start[0] == 540)
+
+# min_duration for each meeting
+min_duration = [0] + [friend_data[i][2] for i in range(1, 10)]
+
+# Define end time for each meeting
+end = [start[i] + min_duration[i] for i in range(n)]
+
+# Availability constraints for friends (indices 1 to 9)
+for i in range(1, n):
+    avail_start, avail_end, _ = friend_data[i]
+    # If we meet the friend, then the start time must be within the availability window and the end time must not exceed the availability end
+    opt.add(Implies(met[i], And(start[i] >= avail_start, end[i] <= avail_end)))
+
+# Create before[i][j] for i, j in [0,9] and i != j
+before = [[Bool(f'before_{i}_{j}') for j in range(n)] for i in range(n)]
+
+# For each pair (i, j) with i != j, if both are met, then we have disjunctive constraints
+for i in range(n):
+    for j in range(n):
+        if i != j:
+            # If both meetings are met, then either i before j or j before i
+            opt.add(Implies(And(met[i], met[j]), 
+                          Or(before[i][j], before[j][i])))
+            # Antisymmetry: if i before j then not j before i
+            opt.add(Implies(before[i][j], Not(before[j][i])))
+            # The disjunctive constraint for travel
+            # If i before j is true, then start[j] >= end[i] + travel_time(i, j)
+            opt.add(Implies(And(met[i], met[j], before[i][j]), 
+                          start[j] >= end[i] + travel_matrix[i][j]))
+            # Similarly, if j before i is true, then start[i] >= end[j] + travel_time(j, i)
+            opt.add(Implies(And(met[i], met[j], before[j][i]), 
+                          start[i] >= end[j] + travel_matrix[j][i]))
+
+# Transitivity: for all distinct i, j, k, if i before j and j before k then i before k
+for i in range(n):
+    for j in range(n):
+        if i != j:
+            for k in range(n):
+                if k != i and k != j:
+                    opt.add(Implies(And(before[i][j], before[j][k]), before[i][k]))
+
+# We also force that the dummy meeting (index0) is before every real meeting (if they are met)
+for j in range(1, n):
+    opt.add(Implies(met[j], before[0][j]))
+
+# Objective: maximize the number of met friends (indices 1 to 9)
+num_met = Sum([If(met[i], 1, 0) for i in range(1, n)])
+opt.maximize(num_met)
+
+# Solve
+result = opt.check()
+if result == sat:
+    m = opt.model()
+    # Extract the meetings that are met (for friends, indices 1 to 9)
+    itinerary_entries = []
+    for i in range(1, n):
+        if is_true(m.eval(met[i])):
+            start_val = m.eval(start[i]).as_long()
+            # Convert minutes to HH:MM
+            hours = start_val // 60
+            minutes = start_val % 60
+            start_str = f"{hours:02d}:{minutes:02d}"
+            end_val = start_val + min_duration[i]
+            hours_end = end_val // 60
+            minutes_end = end_val % 60
+            end_str = f"{hours_end:02d}:{minutes_end:02d}"
+            itinerary_entries.append({
+                "action": "meet",
+                "person": friend_names[i],
+                "start_time": start_str,
+                "end_time": end_str
+            })
+    # Sort by start time
+    itinerary_entries.sort(key=lambda x: x['start_time'])
+    # Output as JSON
+    output = {"itinerary": itinerary_entries}
+    print("SOLUTION:")
+    print(json.dumps(output, indent=2))
+else:
+    print("No solution found")

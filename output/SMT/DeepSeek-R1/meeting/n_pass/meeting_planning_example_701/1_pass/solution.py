@@ -1,8 +1,23 @@
+import itertools
 import json
-from z3 import *
 
-# Define travel times between districts
-travel_times = {
+def minutes_to_time(minutes):
+    hours = minutes // 60
+    mins = minutes % 60
+    return f"{hours:02d}:{mins:02d}"
+
+friends = [
+    ("Lisa", "The Castro", (19*60+15, 21*60+15), 120),
+    ("Daniel", "Nob Hill", (8*60+15, 11*60), 15),
+    ("Elizabeth", "Presidio", (21*60+15, 22*60+15), 45),
+    ("Steven", "Marina District", (16*60+30, 20*60+45), 90),
+    ("Timothy", "Pacific Heights", (12*60, 18*60), 90),
+    ("Ashley", "Golden Gate Park", (20*60+45, 21*60+45), 60),
+    ("Kevin", "Chinatown", (12*60, 19*60), 30),
+    ("Betty", "Richmond District", (13*60+15, 15*60+45), 30)
+]
+
+travel_dict = {
     "Mission District": {
         "The Castro": 7,
         "Nob Hill": 12,
@@ -95,100 +110,89 @@ travel_times = {
     }
 }
 
-# Friends data: (name, location, window_start (minutes from 9:00 AM), window_end, min_duration)
-friends = [
-    ("Daniel", "Nob Hill", 0, 120, 15),
-    ("Betty", "Richmond District", 255, 405, 30),
-    ("Kevin", "Chinatown", 180, 600, 30),
-    ("Timothy", "Pacific Heights", 180, 540, 90),
-    ("Steven", "Marina District", 450, 705, 90),
-    ("Lisa", "The Castro", 615, 735, 120),
-    ("Ashley", "Golden Gate Park", 705, 765, 60),
-    ("Elizabeth", "Presidio", 735, 795, 45)
-]
+daniel_index = 1
+all_indices = list(range(8))
+best_schedule = None
+best_size = 0
 
-# Initialize Z3 optimizer
-opt = Optimize()
+for size in range(8, 0, -1):
+    found = False
+    for subset in itertools.combinations(all_indices, size):
+        if daniel_index in subset:
+            remaining = list(subset)
+            remaining.remove(daniel_index)
+            perms = itertools.permutations(remaining)
+            for perm_rest in perms:
+                perm = (daniel_index,) + perm_rest
+                current_location = "Mission District"
+                current_time = 540
+                schedule = []
+                valid = True
+                for idx in perm:
+                    meeting = friends[idx]
+                    from_loc = current_location
+                    to_loc = meeting[1]
+                    travel_time_val = travel_dict[from_loc][to_loc]
+                    current_time += travel_time_val
+                    avail_start, avail_end = meeting[2]
+                    if current_time < avail_start:
+                        current_time = avail_start
+                    start_time = current_time
+                    end_time = start_time + meeting[3]
+                    if end_time > avail_end:
+                        valid = False
+                        break
+                    schedule.append((idx, start_time, end_time))
+                    current_time = end_time
+                    current_location = to_loc
+                if valid:
+                    best_schedule = schedule
+                    best_size = size
+                    found = True
+                    break
+            if found:
+                break
+        else:
+            for perm in itertools.permutations(subset):
+                current_location = "Mission District"
+                current_time = 540
+                schedule = []
+                valid = True
+                for idx in perm:
+                    meeting = friends[idx]
+                    from_loc = current_location
+                    to_loc = meeting[1]
+                    travel_time_val = travel_dict[from_loc][to_loc]
+                    current_time += travel_time_val
+                    avail_start, avail_end = meeting[2]
+                    if current_time < avail_start:
+                        current_time = avail_start
+                    start_time = current_time
+                    end_time = start_time + meeting[3]
+                    if end_time > avail_end:
+                        valid = False
+                        break
+                    schedule.append((idx, start_time, end_time))
+                    current_time = end_time
+                    current_location = to_loc
+                if valid:
+                    best_schedule = schedule
+                    best_size = size
+                    found = True
+                    break
+            if found:
+                break
+    if found:
+        break
 
-# Meeting variables
-meet_vars = []      # Boolean for whether meeting occurs
-start_vars = []     # Integer start time (minutes from 9:00 AM)
-end_vars = []       # End time (start + duration)
-locations = []      # Location of meeting
-names = []          # Friend's name
+itinerary = []
+if best_schedule:
+    for (idx, start_time, end_time) in best_schedule:
+        name = friends[idx][0]
+        start_str = minutes_to_time(start_time)
+        end_str = minutes_to_time(end_time)
+        itinerary.append({"action": "meet", "person": name, "start_time": start_str, "end_time": end_str})
 
-# Dummy meeting at start (Mission District, 9:00 AM)
-meet_vars.append(True)
-start_vars.append(0)
-end_vars.append(0)
-locations.append("Mission District")
-names.append("start")
-
-# Create variables for each friend
-for name, loc, win_start, win_end, dur in friends:
-    meet_var = Bool(f'meet_{name}')
-    start_var = Int(f'start_{name}')
-    end_var = start_var + dur  # End time is start time plus duration
-
-    meet_vars.append(meet_var)
-    start_vars.append(start_var)
-    end_vars.append(end_var)
-    locations.append(loc)
-    names.append(name)
-
-    # Constraint: if meeting occurs, it must be within the friend's window
-    opt.add(Implies(meet_var, And(start_var >= win_start, end_var <= win_end)))
-
-# Add travel constraints for all pairs of meetings (including dummy)
-n = len(meet_vars)  # Total meetings (dummy + friends)
-for i in range(n):
-    for j in range(i + 1, n):
-        # If both meetings occur, ensure non-overlapping with travel time
-        opt.add(Implies(
-            And(meet_vars[i], meet_vars[j]),
-            Or(
-                start_vars[j] >= end_vars[i] + travel_times[locations[i]][locations[j]],
-                start_vars[i] >= end_vars[j] + travel_times[locations[j]][locations[i]]
-            )
-        ))
-
-# Objective: maximize the number of friends met
-total_meet = Sum([If(meet_vars[i], 1, 0) for i in range(1, n)])
-opt.maximize(total_meet)
-
-# Solve the problem
-if opt.check() == sat:
-    model = opt.model()
-    scheduled_meetings = []
-    for i in range(1, n):  # Skip dummy meeting
-        if model.evaluate(meet_vars[i]):
-            start_val = model.evaluate(start_vars[i])
-            start_min = start_val.as_long()
-            dur = friends[i-1][4]  # Duration of the meeting
-            end_min = start_min + dur
-
-            # Convert start time to HH:MM
-            total_minutes_start = start_min
-            hours_start = total_minutes_start // 60
-            minutes_start = total_minutes_start % 60
-            abs_hour_start = 9 + hours_start
-            start_time_str = f"{abs_hour_start:02d}:{minutes_start:02d}"
-
-            # Convert end time to HH:MM
-            total_minutes_end = end_min
-            hours_end = total_minutes_end // 60
-            minutes_end = total_minutes_end % 60
-            abs_hour_end = 9 + hours_end
-            end_time_str = f"{abs_hour_end:02d}:{minutes_end:02d}"
-
-            scheduled_meetings.append((start_min, names[i], start_time_str, end_time_str))
-    
-    # Sort meetings by start time
-    scheduled_meetings.sort(key=lambda x: x[0])
-    itinerary = [{"action": "meet", "person": name, "start_time": st, "end_time": et} 
-                 for _, name, st, et in scheduled_meetings]
-    
-    result = {"itinerary": itinerary}
-    print(json.dumps(result))
-else:
-    print('{"itinerary": []}')
+result = {"itinerary": itinerary}
+print("SOLUTION:")
+print(json.dumps(result))

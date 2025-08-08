@@ -2,133 +2,127 @@ from z3 import *
 import json
 
 def main():
-    meetings = ['Rebecca', 'Stephanie', 'Karen', 'Brian', 'Steven']
-    locations = {
-        'Rebecca': "Fisherman's Wharf",
-        'Stephanie': 'Golden Gate Park',
-        'Karen': 'Chinatown',
-        'Brian': 'Union Square',
-        'Steven': 'North Beach'
-    }
+    n_meetings = 5
+    n_slots = 5
     
-    # Convert times to minutes from 9:00 AM
-    available_start = {
-        'Rebecca': 10,    # 9:10 AM (after 10 min travel)
-        'Stephanie': 120,  # 11:00 AM
-        'Karen': 285,      # 1:45 PM (13:45)
-        'Brian': 360,      # 3:00 PM (15:00)
-        'Steven': 0        # No lower bound beyond travel
-    }
+    meeting_names = ["Rebecca", "Stephanie", "Karen", "Brian", "Steven"]
+    meeting_locs = [4, 1, 2, 3, 5]  # 0:FD, 1:GGP, 2:CT, 3:US, 4:FW, 5:NB
+    meeting_durations = [30, 105, 15, 30, 120]
+    meeting_start_windows = [0, 120, 285, 360, 330]  # in minutes after 9:00AM
+    meeting_end_windows = [135, 300, 450, 495, 705]  # in minutes after 9:00AM
     
-    available_end = {
-        'Rebecca': 135,    # 11:15 AM
-        'Stephanie': 360,  # 3:00 PM (15:00)
-        'Karen': 450,      # 4:30 PM (16:30)
-        'Brian': 495,      # 5:15 PM (17:15)
-        'Steven': 705      # 8:45 PM (20:45)
-    }
+    travel_matrix = [
+        [0, 23, 5, 9, 10, 7],
+        [26, 0, 23, 22, 24, 24],
+        [5, 23, 0, 7, 8, 3],
+        [9, 22, 7, 0, 15, 10],
+        [11, 25, 12, 13, 0, 6],
+        [8, 22, 6, 7, 5, 0]
+    ]
     
-    min_duration = {
-        'Rebecca': 30,
-        'Stephanie': 105,
-        'Karen': 15,
-        'Brian': 30,
-        'Steven': 120
-    }
+    all_pairs = [(i, j) for i in range(6) for j in range(6)]
     
-    # Travel times between locations (in minutes)
-    travel_dict = {
-        'Financial District': {
-            "Fisherman's Wharf": 10,
-            'Golden Gate Park': 23,
-            'Chinatown': 5,
-            'Union Square': 9,
-            'North Beach': 7
-        },
-        "Fisherman's Wharf": {
-            'Golden Gate Park': 25,
-            'Chinatown': 12,
-            'Union Square': 13,
-            'North Beach': 6
-        },
-        'Golden Gate Park': {
-            "Fisherman's Wharf": 24,
-            'Chinatown': 23,
-            'Union Square': 22,
-            'North Beach': 24
-        },
-        'Chinatown': {
-            "Fisherman's Wharf": 8,
-            'Golden Gate Park': 23,
-            'Union Square': 7,
-            'North Beach': 3
-        },
-        'Union Square': {
-            "Fisherman's Wharf": 15,
-            'Golden Gate Park': 22,
-            'Chinatown': 7,
-            'North Beach': 10
-        },
-        'North Beach': {
-            "Fisherman's Wharf": 5,
-            'Golden Gate Park': 22,
-            'Chinatown': 6,
-            'Union Square': 7
-        }
-    }
-    
-    # Create Z3 solver
+    def travel_time_expr(from_loc, to_loc):
+        expr = travel_matrix[all_pairs[-1][0]][all_pairs[-1][1]]
+        for idx in range(len(all_pairs)-2, -1, -1):
+            i, j = all_pairs[idx]
+            expr = If(And(from_loc == i, to_loc == j), travel_matrix[i][j], expr)
+        return expr
+
     s = Solver()
+    opt = Optimize()
     
-    # Create variables for start and end times (in minutes from 9:00 AM)
-    start_vars = {name: Int(f's_{name}') for name in meetings}
-    end_vars = {name: Int(f'e_{name}') for name in meetings}
+    slot_meeting = [Int(f'slot_meeting_{i}') for i in range(n_slots)]
+    start_time = [Int(f'start_time_{i}') for i in range(n_slots)]
     
-    # Add meeting duration constraints
-    for name in meetings:
-        s.add(start_vars[name] >= available_start[name])
-        s.add(end_vars[name] <= available_end[name])
-        s.add(end_vars[name] - start_vars[name] >= min_duration[name])
+    for i in range(n_slots):
+        opt.add(Or(And(slot_meeting[i] >= 0, slot_meeting[i] < n_meetings), slot_meeting[i] == n_meetings))
     
-    # First meeting must account for travel from Financial District
-    for name in meetings:
-        loc = locations[name]
-        travel_time = travel_dict['Financial District'][loc]
-        s.add(start_vars[name] >= travel_time)
+    meet_flags = [Bool(f'meet_{i}') for i in range(n_meetings)]
     
-    # Define meeting sequence: Rebecca -> Stephanie -> Karen -> Brian -> Steven
-    s.add(start_vars['Stephanie'] >= end_vars['Rebecca'] + travel_dict[locations['Rebecca']][locations['Stephanie']])
-    s.add(start_vars['Karen'] >= end_vars['Stephanie'] + travel_dict[locations['Stephanie']][locations['Karen']])
-    s.add(start_vars['Brian'] >= end_vars['Karen'] + travel_dict[locations['Karen']][locations['Brian']])
-    s.add(start_vars['Steven'] >= end_vars['Brian'] + travel_dict[locations['Brian']][locations['Steven']])
+    for i in range(n_meetings):
+        in_slot = [slot_meeting[j] == i for j in range(n_slots)]
+        opt.add(meet_flags[i] == Or(in_slot))
+        opt.add(Implies(meet_flags[i], Sum([If(cond, 1, 0) for cond in in_slot]) == 1))
+        opt.add(Implies(Not(meet_flags[i]), Sum([If(cond, 1, 0) for cond in in_slot]) == 0))
     
-    # Check for solution
-    if s.check() == sat:
-        m = s.model()
-        schedule = []
-        for name in meetings:
-            s_val = m.eval(start_vars[name]).as_long()
-            e_val = m.eval(end_vars[name]).as_long()
-            # Convert minutes to time string
-            start_hour = 9 + s_val // 60
-            start_min = s_val % 60
-            end_hour = 9 + e_val // 60
-            end_min = e_val % 60
-            start_str = f"{start_hour:02d}:{start_min:02d}"
-            end_str = f"{end_hour:02d}:{end_min:02d}"
+    for i in range(n_slots-1):
+        opt.add(Implies(slot_meeting[i] == n_meetings, slot_meeting[i+1] == n_meetings))
+    
+    loc_vars = [Int(f'loc_{i}') for i in range(n_slots)]
+    duration_vars = [Int(f'duration_{i}') for i in range(n_slots)]
+    start_window_vars = [Int(f'start_window_{i}') for i in range(n_slots)]
+    end_window_vars = [Int(f'end_window_{i}') for i in range(n_slots)]
+    
+    for i in range(n_slots):
+        loc_expr = meeting_locs[0]
+        dur_expr = meeting_durations[0]
+        start_win_expr = meeting_start_windows[0]
+        end_win_expr = meeting_end_windows[0]
+        for m in range(1, n_meetings):
+            loc_expr = If(slot_meeting[i] == m, meeting_locs[m], loc_expr)
+            dur_expr = If(slot_meeting[i] == m, meeting_durations[m], dur_expr)
+            start_win_expr = If(slot_meeting[i] == m, meeting_start_windows[m], start_win_expr)
+            end_win_expr = If(slot_meeting[i] == m, meeting_end_windows[m], end_win_expr)
+        loc_expr = If(slot_meeting[i] == n_meetings, 0, loc_expr)
+        dur_expr = If(slot_meeting[i] == n_meetings, 0, dur_expr)
+        start_win_expr = If(slot_meeting[i] == n_meetings, 0, start_win_expr)
+        end_win_expr = If(slot_meeting[i] == n_meetings, 0, end_win_expr)
+        opt.add(loc_vars[i] == loc_expr)
+        opt.add(duration_vars[i] == dur_expr)
+        opt.add(start_window_vars[i] == start_win_expr)
+        opt.add(end_window_vars[i] == end_win_expr)
+    
+    for i in range(n_slots):
+        if i == 0:
+            opt.add(If(slot_meeting[i] == n_meetings, True,
+                    And(
+                        start_time[i] >= travel_time_expr(0, loc_vars[i]),
+                        start_time[i] >= start_window_vars[i],
+                        start_time[i] + duration_vars[i] <= end_window_vars[i]
+                    )))
+        else:
+            opt.add(If(slot_meeting[i] == n_meetings, True,
+                    And(
+                        slot_meeting[i-1] != n_meetings,
+                        start_time[i] >= start_time[i-1] + duration_vars[i-1] + travel_time_expr(loc_vars[i-1], loc_vars[i]),
+                        start_time[i] >= start_window_vars[i],
+                        start_time[i] + duration_vars[i] <= end_window_vars[i]
+                    )))
+    
+    total_meetings = Int('total_meetings')
+    opt.add(total_meetings == Sum([If(flag, 1, 0) for flag in meet_flags]))
+    opt.maximize(total_meetings)
+    
+    schedule = []
+    if opt.check() == sat:
+        model = opt.model()
+        for i in range(n_slots):
+            meeting_idx_val = model.eval(slot_meeting[i])
+            if meeting_idx_val.as_long() == n_meetings:
+                continue
+            meeting_idx = meeting_idx_val.as_long()
+            start_val = model.eval(start_time[i]).as_long()
+            duration_val = meeting_durations[meeting_idx]
+            end_val = start_val + duration_val
+            start_hour = 9 + start_val // 60
+            start_minute = start_val % 60
+            end_hour = 9 + end_val // 60
+            end_minute = end_val % 60
+            start_str = f"{start_hour:02d}:{start_minute:02d}"
+            end_str = f"{end_hour:02d}:{end_minute:02d}"
             schedule.append({
                 "action": "meet",
-                "person": name,
+                "person": meeting_names[meeting_idx],
                 "start_time": start_str,
                 "end_time": end_str
             })
-        
-        # Output sorted itinerary
-        schedule.sort(key=lambda x: x['start_time'])
-        print("SOLUTION:")
-        print(json.dumps({"itinerary": schedule}, indent=2))
     else:
-        print("No valid schedule found")
+        schedule = []
+    
+    print('SOLUTION:')
+    result = {"itinerary": schedule}
+    print(json.dumps(result, indent=2))
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

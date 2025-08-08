@@ -2,56 +2,56 @@ from z3 import *
 import json
 
 def main():
-    # Convert times to minutes from midnight
-    start_nob_hill = 9 * 60  # 9:00 AM (540 minutes)
-    robert_start = 11 * 60 + 15  # 11:15 AM (675 minutes)
-    robert_end = 17 * 60 + 45    # 5:45 PM (1065 minutes)
-    travel_to_presidio = 17       # Travel time in minutes
-
-    # Define meeting start (S) and end (E) times
-    S = Int('S')
-    E = Int('E')
-    
-    s = Solver()
-    # Meeting must occur during Robert's availability
-    s.add(S >= robert_start)
-    s.add(E <= robert_end)
-    # Meeting duration must be at least 120 minutes
-    s.add(E - S >= 120)
-    # Account for travel time: meeting start must be after arrival at Presidio
-    s.add(S >= start_nob_hill + travel_to_presidio)
-    
-    # Optimize to find earliest possible meeting
+    # Initialize the optimizer
     opt = Optimize()
-    opt.add(s.assertions())
-    opt.minimize(S)  # Prefer earlier start times
+    
+    # Define variables (in minutes from 9:00 AM)
+    T0 = Int('T0')  # Departure time from Nob Hill
+    s = Int('s')    # Meeting start time
+    e = Int('e')    # Meeting end time
+    
+    # Travel time from Nob Hill to Presidio
+    travel_time = 17
+    
+    # Convert time constraints to minutes from 9:00 AM
+    robert_start = 135  # 11:15 AM (2h15m after 9:00 AM)
+    robert_end = 525    # 5:45 PM (8h45m after 9:00 AM)
+    
+    # Constraints:
+    opt.add(T0 >= 0)  # Cannot leave Nob Hill before 9:00 AM
+    opt.add(s >= T0 + travel_time)  # Meeting starts after arrival at Presidio
+    opt.add(s >= robert_start)      # Meeting starts no earlier than Robert's availability
+    opt.add(e <= robert_end)        # Meeting ends no later than Robert's availability
+    opt.add(e - s >= 120)           # Meeting lasts at least 120 minutes
+    
+    # Maximize the meeting duration
+    opt.maximize(e - s)
     
     if opt.check() == sat:
-        m = opt.model()
-        start_minutes = m[S].as_long()
-        end_minutes = m[E].as_long()
+        model = opt.model()
+        s_val = model[s].as_long()
+        e_val = model[e].as_long()
         
-        # Convert minutes back to HH:MM format
-        def format_time(minutes):
-            hours = minutes // 60
-            mins = minutes % 60
-            return f"{hours:02d}:{mins:02d}"
+        # Convert minutes to time string (from 9:00 AM base)
+        def min_to_time(mins):
+            total_mins = 9 * 60 + mins
+            hours = total_mins // 60
+            minutes = total_mins % 60
+            return f"{hours:02d}:{minutes:02d}"
         
-        start_str = format_time(start_minutes)
-        end_str = format_time(end_minutes)
+        start_time = min_to_time(s_val)
+        end_time = min_to_time(e_val)
         
         # Create itinerary
-        itinerary = [{
-            "action": "meet",
-            "person": "Robert",
-            "start_time": start_str,
-            "end_time": end_str
-        }]
+        itinerary = [
+            {"action": "meet", "person": "Robert", "start_time": start_time, "end_time": end_time}
+        ]
         
-        # Output as JSON
-        print(json.dumps({"itinerary": itinerary}))
+        # Output JSON
+        result = {"itinerary": itinerary}
+        print(json.dumps(result))
     else:
-        print("No solution found")
+        print('{"itinerary": []}')  # Fallback if no solution found
 
 if __name__ == "__main__":
     main()

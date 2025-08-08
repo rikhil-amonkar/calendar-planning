@@ -1,102 +1,229 @@
 from z3 import *
 import json
 
-def main():
-    friends = [
-        ("Laura", 1, 870, 975, 75),   # (name, location_index, available_start, available_end, min_duration)
-        ("Brian", 2, 615, 1020, 30),
-        ("Karen", 3, 1080, 1215, 90),
-        ("Stephanie", 4, 615, 960, 75),
-        ("Helen", 5, 690, 1305, 120),
-        ("Sandra", 6, 540, 915, 30),
-        ("Mary", 7, 1005, 1125, 120),
-        ("Deborah", 8, 1140, 1245, 105),
-        ("Elizabeth", 9, 540, 795, 105)
-    ]
-    
-    travel = [
-        [0, 11, 25, 15, 17, 17, 20, 19, 15, 19],
-        [10, 0, 17, 13, 15, 9, 11, 16, 17, 15],
-        [26, 19, 0, 14, 18, 12, 7, 20, 23, 11],
-        [16, 15, 14, 0, 5, 21, 14, 8, 11, 7],
-        [18, 16, 17, 4, 0, 22, 18, 6, 8, 9],
-        [17, 9, 11, 19, 23, 0, 7, 25, 26, 16],
-        [20, 13, 7, 13, 17, 9, 0, 19, 22, 9],
-        [20, 19, 20, 8, 5, 25, 21, 0, 5, 12],
-        [17, 17, 22, 11, 7, 23, 21, 4, 0, 15],
-        [20, 15, 10, 8, 11, 18, 11, 14, 17, 0]
-    ]
-    
-    s = Solver()
-    n = len(friends)
-    scheduled = [Bool(f'scheduled_{i}') for i in range(n)]
-    start_time = [Int(f'start_{i}') for i in range(n)]
-    end_time = [Int(f'end_{i}') for i in range(n)]
-    position = [Int(f'pos_{i}') for i in range(n)]
-    
-    m = Sum([If(scheduled[i], 1, 0) for i in range(n)])
-    
-    for i in range(n):
-        s.add(If(scheduled[i], And(position[i] >= 1, position[i] <= n), position[i] == 0))
-    
-    for i in range(n):
-        for j in range(i+1, n):
-            s.add(If(And(scheduled[i], scheduled[j]), position[i] != position[j], True))
-    
-    for k in range(1, n+1):
-        count = Sum([If(And(scheduled[i], position[i] == k), 1, 0) for i in range(n)])
-        s.add(count == If(k <= m, 1, 0))
-    
-    for i in range(n):
-        name_i, loc_i, avail_start_i, avail_end_i, dur_i = friends[i]
-        arrival_time_i = Int(f'arrival_{i}')
-        if scheduled[i]:
-            cond = (position[i] == 1)
-            then_val = 540 + travel[0][loc_i]
-            else_val = 0
-            for j in range(n):
-                _, loc_j, _, _, _ = friends[j]
-                else_val = else_val + If(And(scheduled[j], position[j] == position[i] - 1), 
-                                         end_time[j] + travel[loc_j][loc_i], 0)
-            s.add(arrival_time_i == If(cond, then_val, else_val))
-            s.add(start_time[i] >= arrival_time_i)
-            s.add(start_time[i] >= avail_start_i)
-            s.add(end_time[i] == start_time[i] + dur_i)
-            s.add(end_time[i] <= avail_end_i)
-        else:
-            s.add(arrival_time_i == 0)
-    
-    opt = Optimize()
-    opt.add(s.assertions())
-    opt.maximize(m)
-    
-    if opt.check() == sat:
-        model = opt.model()
-        itinerary = []
-        for i in range(n):
-            if is_true(model.eval(scheduled[i])):
-                start_val = model.eval(start_time[i])
-                end_val = model.eval(end_time[i])
-                start_min = start_val.as_long()
-                end_min = end_val.as_long()
-                start_hour = start_min // 60
-                start_minute = start_min % 60
-                end_hour = end_min // 60
-                end_minute = end_min % 60
-                start_str = f"{start_hour:02d}:{start_minute:02d}"
-                end_str = f"{end_hour:02d}:{end_minute:02d}"
-                itinerary.append({
-                    "action": "meet",
-                    "person": friends[i][0],
-                    "start_time": start_str,
-                    "end_time": end_str
-                })
-        itinerary_sorted = sorted(itinerary, key=lambda x: x['start_time'])
-        print('SOLUTION:')
-        print(json.dumps({"itinerary": itinerary_sorted}))
-    else:
-        print('SOLUTION:')
-        print(json.dumps({"itinerary": []}))
+# Travel data as a multi-line string
+travel_data = """
+Mission District to Alamo Square: 11
+Mission District to Presidio: 25
+Mission District to Russian Hill: 15
+Mission District to North Beach: 17
+Mission District to Golden Gate Park: 17
+Mission District to Richmond District: 20
+Mission District to Embarcadero: 19
+Mission District to Financial District: 15
+Mission District to Marina District: 19
+Alamo Square to Mission District: 10
+Alamo Square to Presidio: 17
+Alamo Square to Russian Hill: 13
+Alamo Square to North Beach: 15
+Alamo Square to Golden Gate Park: 9
+Alamo Square to Richmond District: 11
+Alamo Square to Embarcadero: 16
+Alamo Square to Financial District: 17
+Alamo Square to Marina District: 15
+Presidio to Mission District: 26
+Presidio to Alamo Square: 19
+Presidio to Russian Hill: 14
+Presidio to North Beach: 18
+Presidio to Golden Gate Park: 12
+Presidio to Richmond District: 7
+Presidio to Embarcadero: 20
+Presidio to Financial District: 23
+Presidio to Marina District: 11
+Russian Hill to Mission District: 16
+Russian Hill to Alamo Square: 15
+Russian Hill to Presidio: 14
+Russian Hill to North Beach: 5
+Russian Hill to Golden Gate Park: 21
+Russian Hill to Richmond District: 14
+Russian Hill to Embarcadero: 8
+Russian Hill to Financial District: 11
+Russian Hill to Marina District: 7
+North Beach to Mission District: 18
+North Beach to Alamo Square: 16
+North Beach to Presidio: 17
+North Beach to Russian Hill: 4
+North Beach to Golden Gate Park: 22
+North Beach to Richmond District: 18
+North Beach to Embarcadero: 6
+North Beach to Financial District: 8
+North Beach to Marina District: 9
+Golden Gate Park to Mission District: 17
+Golden Gate Park to Alamo Square: 9
+Golden Gate Park to Presidio: 11
+Golden Gate Park to Russian Hill: 19
+Golden Gate Park to North Beach: 23
+Golden Gate Park to Richmond District: 7
+Golden Gate Park to Embarcadero: 25
+Golden Gate Park to Financial District: 26
+Golden Gate Park to Marina District: 16
+Richmond District to Mission District: 20
+Richmond District to Alamo Square: 13
+Richmond District to Presidio: 7
+Richmond District to Russian Hill: 13
+Richmond District to North Beach: 17
+Richmond District to Golden Gate Park: 9
+Richmond District to Embarcadero: 19
+Richmond District to Financial District: 22
+Richmond District to Marina District: 9
+Embarcadero to Mission District: 20
+Embarcadero to Alamo Square: 19
+Embarcadero to Presidio: 20
+Embarcadero to Russian Hill: 8
+Embarcadero to North Beach: 5
+Embarcadero to Golden Gate Park: 25
+Embarcadero to Richmond District: 21
+Embarcadero to Financial District: 5
+Embarcadero to Marina District: 12
+Financial District to Mission District: 17
+Financial District to Alamo Square: 17
+Financial District to Presidio: 22
+Financial District to Russian Hill: 11
+Financial District to North Beach: 7
+Financial District to Golden Gate Park: 23
+Financial District to Richmond District: 21
+Financial District to Embarcadero: 4
+Financial District to Marina District: 15
+Marina District to Mission District: 20
+Marina District to Alamo Square: 15
+Marina District to Presidio: 10
+Marina District to Russian Hill: 8
+Marina District to North Beach: 11
+Marina District to Golden Gate Park: 18
+Marina District to Richmond District: 11
+Marina District to Embarcadero: 14
+Marina District to Financial District: 17
+"""
 
-if __name__ == '__main__':
-    main()
+# Build travel_dict from travel_data
+travel_dict = {}
+lines = travel_data.strip().split('\n')
+for line in lines:
+    if not line:
+        continue
+    parts = line.split(':')
+    if len(parts) < 2:
+        continue
+    time_part = parts[1].strip()
+    if not time_part.isdigit():
+        continue
+    time_val = int(time_part)
+    from_to_part = parts[0].strip()
+    if ' to ' not in from_to_part:
+        continue
+    from_dist, to_dist = from_to_part.split(' to ', 1)
+    from_dist = from_dist.strip()
+    to_dist = to_dist.strip()
+    travel_dict[(from_dist, to_dist)] = time_val
+
+# List of friends and their details
+friends = ["Laura", "Brian", "Karen", "Stephanie", "Helen", "Sandra", "Mary", "Deborah", "Elizabeth"]
+locations = ["Alamo Square", "Presidio", "Russian Hill", "North Beach", "Golden Gate Park", "Richmond District", "Embarcadero", "Financial District", "Marina District"]
+min_times = [75, 30, 90, 75, 120, 30, 120, 105, 105]  # in minutes
+
+# Windows in minutes from 9:00 AM
+windows = [
+    ( (14*60+30) - 9*60, (16*60+15) - 9*60 ),   # Laura: 14:30-16:15 -> 330-435
+    ( (10*60+15) - 9*60, (17*60) - 9*60 ),       # Brian: 10:15-17:00 -> 75-480
+    ( (18*60) - 9*60, (20*60+15) - 9*60 ),        # Karen: 18:00-20:15 -> 540-675
+    ( (10*60+15) - 9*60, (16*60) - 9*60 ),        # Stephanie: 10:15-16:00 -> 75-420
+    ( (11*60+30) - 9*60, (21*60+45) - 9*60 ),      # Helen: 11:30-21:45 -> 150-765
+    ( 0, (15*60+15) - 9*60 ),                      # Sandra: 9:00-15:15 -> 0-375
+    ( (16*60+45) - 9*60, (18*60+45) - 9*60 ),      # Mary: 16:45-18:45 -> 465-585
+    ( (19*60) - 9*60, (20*60+45) - 9*60 ),         # Deborah: 19:00-20:45 -> 600-705
+    ( 0, (13*60+15) - 9*60 )                       # Elizabeth: 9:00-13:15 -> 0-255
+]
+
+# Build travel_time matrix for friends (9x9)
+travel_time = [[0]*9 for _ in range(9)]
+for i in range(9):
+    for j in range(9):
+        from_loc = locations[i]
+        to_loc = locations[j]
+        travel_time[i][j] = travel_dict.get((from_loc, to_loc), 1000)  # Default to a large number if not found
+
+# Build travel_mission: travel from Mission District to each friend's location
+travel_mission = [0] * 9
+for i in range(9):
+    to_loc = locations[i]
+    travel_mission[i] = travel_dict.get(("Mission District", to_loc), 1000)
+
+# Set up Z3 solver
+s = Solver()
+
+# k: number of meetings scheduled (0-9)
+k = Int('k')
+s.add(k >= 0, k <= 9)
+
+# seq: sequence of meetings (size 9), each element is an integer in [0,8] if active, else -1
+seq = [Int('seq_%d' % i) for i in range(9)]
+for i in range(9):
+    s.add(If(i < k, And(seq[i] >= 0, seq[i] < 9), seq[i] == -1))
+
+# meet: boolean for each friend indicating if they are met
+meet = [Bool('meet_%d' % i) for i in range(9)]
+
+# start_seq: start time (minutes from 9:00) for each position in the sequence
+start_seq = [Int('start_seq_%d' % i) for i in range(9)]
+
+# Constraint: All active positions in seq are distinct
+for i in range(9):
+    for j in range(i+1, 9):
+        s.add(Implies(And(i < k, j < k), seq[i] != seq[j]))
+
+# Constraint: meet[i] is true iff friend i is in the sequence
+for i in range(9):
+    s.add(meet[i] == Or([And(seq[p] == i, p < k) for p in range(9)]))
+
+# Constraint: Window constraints for each meeting in the sequence
+for p in range(9):
+    for i in range(9):
+        s.add(Implies(And(p < k, seq[p] == i),
+                      And(start_seq[p] >= windows[i][0],
+                          start_seq[p] + min_times[i] <= windows[i][1])))
+
+# Travel constraints
+# First meeting: start time >= travel time from Mission
+s.add(Implies(k > 0, start_seq[0] >= travel_mission[seq[0]]))
+
+# Consecutive meetings: start time of next meeting >= end time of current + travel time
+for i in range(8):
+    s.add(Implies(And(i+1 < k),
+                  start_seq[i+1] >= start_seq[i] + min_times[seq[i]] + travel_time[seq[i]][seq[i+1]] ))
+
+# Maximize k
+s.maximize(k)
+
+# Check and get the solution
+if s.check() == sat:
+    m = s.model()
+    k_val = m[k].as_long()
+    itinerary = []
+    for p in range(k_val):
+        friend_idx = m[seq[p]].as_long()
+        start_minutes = m[start_seq[p]].as_long()
+        # Convert start_minutes to time string
+        total_minutes = start_minutes
+        hours_from_9 = total_minutes // 60
+        minutes_remain = total_minutes % 60
+        hours = 9 + hours_from_9
+        minutes = minutes_remain
+        start_time_str = f"{int(hours):02d}:{int(minutes):02d}"
+        # Calculate end time
+        end_minutes = start_minutes + min_times[friend_idx]
+        hours_end = 9 + end_minutes // 60
+        minutes_end = end_minutes % 60
+        end_time_str = f"{int(hours_end):02d}:{int(minutes_end):02d}"
+        person = friends[friend_idx]
+        itinerary.append({
+            "action": "meet",
+            "person": person,
+            "start_time": start_time_str,
+            "end_time": end_time_str
+        })
+    # Output in JSON format
+    result = {"itinerary": itinerary}
+    print("SOLUTION:")
+    print(json.dumps(result, indent=2))
+else:
+    print("No solution found")

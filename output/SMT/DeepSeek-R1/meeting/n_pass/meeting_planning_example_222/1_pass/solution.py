@@ -1,77 +1,87 @@
 from z3 import *
 
-def time_to_minutes(time_str):
-    h, m = map(int, time_str.split(':'))
-    return h * 60 + m
+def minutes_to_time(total_minutes):
+    hours = total_minutes // 60
+    minutes = total_minutes % 60
+    return f"{hours:02d}:{minutes:02d}"
 
-def minutes_to_time(minutes):
-    h = minutes // 60
-    m = minutes % 60
-    return f"{h:02d}:{m:02d}"
+# Initialize Z3 integer variables for start times
+h_start = Int('h_start')  # Helen start time in minutes from midnight
+k_start = Int('k_start')  # Kimberly start time
+p_start = Int('p_start')  # Patricia start time
 
-def main():
-    # Start at Nob Hill at 9:00 AM, arrive at North Beach at 9:08 AM (8 minutes travel)
-    start_time_nob_hill = time_to_minutes("09:00")
-    arrival_north_beach = start_time_nob_hill + 8  # 9:08 AM
+# Initialize solver
+s = Solver()
 
-    # Helen's availability: 7:00 AM to 4:45 PM
-    helen_start_min = time_to_minutes("07:00")
-    helen_end_min = time_to_minutes("16:45")  # 4:45 PM
-    helen_duration = 120  # minutes
+# Convert time constraints to minutes
+nob_hill_arrival = 9 * 60  # 9:00 AM
+helen_available_start = 7 * 60  # 7:00 AM (but we arrive at 9:08, so constraint starts from 9:08)
+helen_available_end = 16 * 60 + 45  # 4:45 PM
+kimberly_available_start = 16 * 60 + 30  # 4:30 PM
+kimberly_available_end = 21 * 60  # 9:00 PM
+patricia_available_start = 18 * 60  # 6:00 PM
+patricia_available_end = 21 * 60 + 15  # 9:15 PM
 
-    # Kimberly's availability: 4:30 PM to 9:00 PM
-    kimberly_start_min = time_to_minutes("16:30")
-    kimberly_end_min = time_to_minutes("21:00")
-    kimberly_duration = 45  # minutes
+# Travel times in minutes
+travel_nob_hill_to_north_beach = 8
+travel_north_beach_to_fisherman_wharf = 5
+travel_fisherman_wharf_to_bayview = 26
 
-    # Patricia's availability: 6:00 PM to 9:15 PM
-    patricia_start_min = time_to_minutes("18:00")
-    patricia_end_min = time_to_minutes("21:15")
-    patricia_duration = 120  # minutes
+# Meeting durations in minutes
+helen_duration = 120
+kimberly_duration = 45
+patricia_duration = 120
 
-    # Travel times
-    travel_nb_to_fw = 5  # North Beach to Fisherman's Wharf
-    travel_fw_to_bv = 26  # Fisherman's Wharf to Bayview
+# Constraints for Helen
+s.add(h_start >= nob_hill_arrival + travel_nob_hill_to_north_beach)  # Arrive at North Beach at 9:08 AM
+s.add(h_start >= helen_available_start)  # Available from 7:00 AM, but we arrive at 9:08
+s.add(h_start + helen_duration <= helen_available_end)  # Must end by 4:45 PM
 
-    # Define Z3 integer variables for start times
-    H_start = Int('H_start')
-    K_start = Int('K_start')
-    P_start = Int('P_start')
+# Constraints for Kimberly
+s.add(k_start >= h_start + helen_duration + travel_north_beach_to_fisherman_wharf)  # Travel after Helen's meeting
+s.add(k_start >= kimberly_available_start)  # Available from 4:30 PM
+s.add(k_start + kimberly_duration <= kimberly_available_end)  # Must end by 9:00 PM
 
-    s = Solver()
+# Constraints for Patricia
+s.add(p_start >= k_start + kimberly_duration + travel_fisherman_wharf_to_bayview)  # Travel after Kimberly's meeting
+s.add(p_start >= patricia_available_start)  # Available from 6:00 PM
+s.add(p_start + patricia_duration <= patricia_available_end)  # Must end by 9:15 PM
 
-    # Helen constraints
-    s.add(H_start >= arrival_north_beach)
-    s.add(H_start + helen_duration <= helen_end_min)
+# Additional constraint to ensure Kimberly ends in time for Patricia's meeting
+s.add(k_start + kimberly_duration + travel_fisherman_wharf_to_bayview <= patricia_available_end - patricia_duration)
 
-    # Kimberly constraints
-    s.add(K_start >= kimberly_start_min)
-    s.add(K_start + kimberly_duration <= kimberly_end_min)
-
-    # Patricia constraints
-    s.add(P_start >= patricia_start_min)
-    s.add(P_start + patricia_duration <= patricia_end_min)
-
-    # Travel constraints
-    s.add(K_start >= H_start + helen_duration + travel_nb_to_fw)
-    s.add(P_start >= K_start + kimberly_duration + travel_fw_to_bv)
-
-    if s.check() == sat:
-        m = s.model()
-        h_val = m.eval(H_start).as_long()
-        k_val = m.eval(K_start).as_long()
-        p_val = m.eval(P_start).as_long()
-
-        itinerary = [
-            {"action": "meet", "person": "Helen", "start_time": minutes_to_time(h_val), "end_time": minutes_to_time(h_val + helen_duration)},
-            {"action": "meet", "person": "Kimberly", "start_time": minutes_to_time(k_val), "end_time": minutes_to_time(k_val + kimberly_duration)},
-            {"action": "meet", "person": "Patricia", "start_time": minutes_to_time(p_val), "end_time": minutes_to_time(p_val + patricia_duration)}
-        ]
-
-        result = {"itinerary": itinerary}
-        print(result)
-    else:
-        print("No solution found")
-
-if __name__ == "__main__":
-    main()
+# Check if a solution exists
+if s.check() == sat:
+    model = s.model()
+    h_start_val = model[h_start].as_long()
+    k_start_val = model[k_start].as_long()
+    p_start_val = model[p_start].as_long()
+    
+    # Create itinerary
+    itinerary = [
+        {
+            "action": "meet",
+            "person": "Helen",
+            "start_time": minutes_to_time(h_start_val),
+            "end_time": minutes_to_time(h_start_val + helen_duration)
+        },
+        {
+            "action": "meet",
+            "person": "Kimberly",
+            "start_time": minutes_to_time(k_start_val),
+            "end_time": minutes_to_time(k_start_val + kimberly_duration)
+        },
+        {
+            "action": "meet",
+            "person": "Patricia",
+            "start_time": minutes_to_time(p_start_val),
+            "end_time": minutes_to_time(p_start_val + patricia_duration)
+        }
+    ]
+    
+    # Output the solution in JSON format
+    print({
+        "itinerary": itinerary
+    })
+else:
+    print("No feasible schedule found.")

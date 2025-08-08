@@ -1,96 +1,102 @@
 from z3 import *
 import json
 
-def format_time(minutes):
-    hours = minutes // 60
-    minutes_remain = minutes % 60
-    return f"{hours:02d}:{minutes_remain:02d}"
-
 def main():
-    meetings = [
-        {"name": "Start", "loc": "Bayview", "min_start": 540, "max_end": 540, "duration": 0},
-        {"name": "Barbara", "loc": "North Beach", "min_start": 825, "max_end": 1215, "duration": 60},
-        {"name": "Margaret", "loc": "Presidio", "min_start": 615, "max_end": 915, "duration": 30},
-        {"name": "Kevin", "loc": "Haight-Ashbury", "min_start": 1200, "max_end": 1245, "duration": 30},
-        {"name": "Kimberly", "loc": "Union Square", "min_start": 465, "max_end": 1005, "duration": 30}
+    # Define meetings and their properties
+    n = 4
+    names = ["Barbara", "Margaret", "Kevin", "Kimberly"]
+    durations = [60, 30, 30, 30]
+    windows = [
+        (285, 675),  # Barbara: 1:45 PM to 8:15 PM (min start: 285 min from 9:00 AM, max end: 675 min)
+        (75, 375),   # Margaret: 10:15 AM to 3:15 PM
+        (660, 705),  # Kevin: 8:00 PM to 8:45 PM
+        (0, 465)     # Kimberly: 9:00 AM to 4:45 PM (0 min to 465 min from 9:00 AM)
+    ]
+    travel_start = [21, 31, 19, 17]  # Travel from Bayview to each friend's location
+    travel_between = [
+        [0, 17, 18, 7],   # From North Beach to others
+        [18, 0, 15, 22],   # From Presidio to others
+        [19, 15, 0, 17],   # From Haight-Ashbury to others
+        [10, 24, 18, 0]    # From Union Square to others
     ]
     
-    travel_times_dict = {
-        'Bayview': {'North Beach': 21, 'Presidio': 31, 'Haight-Ashbury': 19, 'Union Square': 17},
-        'North Beach': {'Bayview': 22, 'Presidio': 17, 'Haight-Ashbury': 18, 'Union Square': 7},
-        'Presidio': {'Bayview': 31, 'North Beach': 18, 'Haight-Ashbury': 15, 'Union Square': 22},
-        'Haight-Ashbury': {'Bayview': 18, 'North Beach': 19, 'Presidio': 15, 'Union Square': 17},
-        'Union Square': {'Bayview': 15, 'North Beach': 10, 'Presidio': 24, 'Haight-Ashbury': 18}
-    }
+    # Initialize Z3 solver and variables
+    opt = Optimize()
+    scheduled = [Bool(f's_{i}') for i in range(n)]
+    start_t = [Real(f't_{i}') for i in range(n)]
+    imm_before = [[Bool(f'imm_{i}_{j}') for j in range(n)] for i in range(n)]
     
-    s = Solver()
+    # Time window constraints
+    for i in range(n):
+        opt.add(Implies(scheduled[i], And(
+            start_t[i] >= windows[i][0],
+            start_t[i] + durations[i] <= windows[i][1]
+        )))
     
-    S = [Int(f'S_{i}') for i in range(5)]
-    E = [Int(f'E_{i}') for i in range(5)]
+    # Constraints for immediate predecessors
+    for i in range(n):
+        for j in range(n):
+            opt.add(Implies(imm_before[i][j], And(scheduled[i], scheduled[j])))
     
-    for i in range(5):
-        if i == 0:
-            s.add(S[0] == 540)
-            s.add(E[0] == 540)
-        else:
-            s.add(S[i] >= meetings[i]['min_start'])
-            s.add(E[i] == S[i] + meetings[i]['duration'])
-            s.add(E[i] <= meetings[i]['max_end'])
-            s.add(S[i] >= 0)
-            s.add(E[i] >= 0)
+    # Predecessor and sequence constraints
+    no_pred_list = []
+    for j in range(n):
+        no_pred = And(scheduled[j], *[Not(imm_before[i][j]) for i in range(n)])
+        no_pred_list.append(no_pred)
+        has_pred = Or([imm_before[i][j] for i in range(n)])
+        opt.add(Implies(scheduled[j], Or(Not(has_pred), has_pred)))
     
-    before = {}
-    for i in range(5):
-        for j in range(5):
-            if i != j:
-                before[(i, j)] = Bool(f"before_{i}_{j}")
+    k = Sum([If(scheduled[i], 1, 0) for i in range(n)])
+    total_edges = Sum([If(imm_before[i][j], 1, 0) for i in range(n) for j in range(n)])
+    opt.add(total_edges == k - 1)
+    opt.add(Sum([If(no_pred_list[j], 1, 0) for j in range(n)]) == 1)
     
-    for i in range(5):
-        for j in range(i+1, 5):
-            s.add(before[(i, j)] == Not(before[(j, i)]))
+    for i in range(n):
+        out_edges = Sum([If(imm_before[i][j], 1, 0) for j in range(n)])
+        opt.add(out_edges <= 1)
     
-    for j in range(1, 5):
-        s.add(before[(0, j)])
+    # Travel time constraints
+    for j in range(n):
+        opt.add(Implies(no_pred_list[j], start_t[j] >= travel_start[j]))
+        for i in range(n):
+            opt.add(Implies(imm_before[i][j], 
+                            start_t[j] >= start_t[i] + durations[i] + travel_between[i][j]))
     
-    for i in range(5):
-        for j in range(5):
-            if i == j:
-                continue
-            for k in range(5):
-                if i == k or j == k:
-                    continue
-                s.add(Implies(And(before[(i, j)], before[(j, k)]), before[(i, k)]))
+    # Maximize the number of meetings
+    opt.maximize(k)
     
-    for i in range(5):
-        for j in range(5):
-            if i == j:
-                continue
-            loc_i = meetings[i]['loc']
-            loc_j = meetings[j]['loc']
-            travel = travel_times_dict[loc_i][loc_j]
-            s.add(Implies(before[(i, j)], S[j] >= E[i] + travel))
-    
-    if s.check() == sat:
-        m = s.model()
-        schedule = []
-        for i in range(1, 5):
-            start_val = m.evaluate(S[i]).as_long()
-            end_val = m.evaluate(E[i]).as_long()
-            schedule.append((meetings[i]['name'], start_val, end_val))
-        schedule.sort(key=lambda x: x[1])
+    # Solve and extract solution
+    if opt.check() == sat:
+        m = opt.model()
         itinerary = []
-        for (name, start, end) in schedule:
-            itinerary.append({
-                "action": "meet",
-                "person": name,
-                "start_time": format_time(start),
-                "end_time": format_time(end)
-            })
-        result = {"itinerary": itinerary}
+        for i in range(n):
+            if m.evaluate(scheduled[i]):
+                start_val = m.evaluate(start_t[i])
+                if is_rational_value(start_val):
+                    num = start_val.numerator_as_long()
+                    den = start_val.denominator_as_long()
+                    minutes = num // den
+                else:
+                    minutes = start_val.as_long()
+                hour = 9 + minutes // 60
+                minute = minutes % 60
+                start_time = f"{hour:02d}:{minute:02d}"
+                end_minutes = minutes + durations[i]
+                end_hour = 9 + end_minutes // 60
+                end_minute = end_minutes % 60
+                end_time = f"{end_hour:02d}:{end_minute:02d}"
+                itinerary.append({
+                    "action": "meet",
+                    "person": names[i],
+                    "start_time": start_time,
+                    "end_time": end_time
+                })
+        itinerary.sort(key=lambda x: x['start_time'])
         print("SOLUTION:")
-        print(json.dumps(result))
+        print(json.dumps({"itinerary": itinerary}))
     else:
-        print("No feasible schedule found.")
+        print("SOLUTION:")
+        print(json.dumps({"itinerary": []}))
 
 if __name__ == "__main__":
     main()

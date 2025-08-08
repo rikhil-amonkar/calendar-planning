@@ -1,245 +1,153 @@
-import json
 from z3 import *
 
 def main():
-    # Parse travel times
-    travel_text = """
-    Marina District to Richmond District: 11.
-    Marina District to Union Square: 16.
-    Marina District to Nob Hill: 12.
-    Marina District to Fisherman's Wharf: 10.
-    Marina District to Golden Gate Park: 18.
-    Marina District to Embarcadero: 14.
-    Marina District to Financial District: 17.
-    Marina District to North Beach: 11.
-    Marina District to Presidio: 10.
-    Richmond District to Marina District: 9.
-    Richmond District to Union Square: 21.
-    Richmond District to Nob Hill: 17.
-    Richmond District to Fisherman's Wharf: 18.
-    Richmond District to Golden Gate Park: 9.
-    Richmond District to Embarcadero: 19.
-    Richmond District to Financial District: 22.
-    Richmond District to North Beach: 17.
-    Richmond District to Presidio: 7.
-    Union Square to Marina District: 18.
-    Union Square to Richmond District: 20.
-    Union Square to Nob Hill: 9.
-    Union Square to Fisherman's Wharf: 15.
-    Union Square to Golden Gate Park: 22.
-    Union Square to Embarcadero: 11.
-    Union Square to Financial District: 9.
-    Union Square to North Beach: 10.
-    Union Square to Presidio: 24.
-    Nob Hill to Marina District: 11.
-    Nob Hill to Richmond District: 14.
-    Nob Hill to Union Square: 7.
-    Nob Hill to Fisherman's Wharf: 10.
-    Nob Hill to Golden Gate Park: 17.
-    Nob Hill to Embarcadero: 9.
-    Nob Hill to Financial District: 9.
-    Nob Hill to North Beach: 8.
-    Nob Hill to Presidio: 17.
-    Fisherman's Wharf to Marina District: 9.
-    Fisherman's Wharf to Richmond District: 18.
-    Fisherman's Wharf to Union Square: 13.
-    Fisherman's Wharf to Nob Hill: 11.
-    Fisherman's Wharf to Golden Gate Park: 25.
-    Fisherman's Wharf to Embarcadero: 8.
-    Fisherman's Wharf to Financial District: 11.
-    Fisherman's Wharf to North Beach: 6.
-    Fisherman's Wharf to Presidio: 17.
-    Golden Gate Park to Marina District: 16.
-    Golden Gate Park to Richmond District: 7.
-    Golden Gate Park to Union Square: 22.
-    Golden Gate Park to Nob Hill: 20.
-    Golden Gate Park to Fisherman's Wharf: 24.
-    Golden Gate Park to Embarcadero: 25.
-    Golden Gate Park to Financial District: 26.
-    Golden Gate Park to North Beach: 23.
-    Golden Gate Park to Presidio: 11.
-    Embarcadero to Marina District: 12.
-    Embarcadero to Richmond District: 21.
-    Embarcadero to Union Square: 10.
-    Embarcadero to Nob Hill: 10.
-    Embarcadero to Fisherman's Wharf: 6.
-    Embarcadero to Golden Gate Park: 25.
-    Embarcadero to Financial District: 5.
-    Embarcadero to North Beach: 5.
-    Embarcadero to Presidio: 20.
-    Financial District to Marina District: 15.
-    Financial District to Richmond District: 21.
-    Financial District to Union Square: 9.
-    Financial District to Nob Hill: 8.
-    Financial District to Fisherman's Wharf: 10.
-    Financial District to Golden Gate Park: 23.
-    Financial District to Embarcadero: 4.
-    Financial District to North Beach: 7.
-    Financial District to Presidio: 22.
-    North Beach to Marina District: 9.
-    North Beach to Richmond District: 18.
-    North Beach to Union Square: 7.
-    North Beach to Nob Hill: 7.
-    North Beach to Fisherman's Wharf: 5.
-    North Beach to Golden Gate Park: 22.
-    North Beach to Embarcadero: 6.
-    North Beach to Financial District: 8.
-    North Beach to Presidio: 17.
-    Presidio to Marina District: 11.
-    Presidio to Richmond District: 7.
-    Presidio to Union Square: 22.
-    Presidio to Nob Hill: 18.
-    Presidio to Fisherman's Wharf: 19.
-    Presidio to Golden Gate Park: 12.
-    Presidio to Embarcadero: 20.
-    Presidio to Financial District: 23.
-    Presidio to North Beach: 18.
-    """
-    travel_dict = {}
-    lines = travel_text.strip().split('\n')
-    for line in lines:
-        line = line.strip()
-        if not line:
-            continue
-        if line.endswith('.'):
-            line = line[:-1]
-        parts = line.split(':')
-        if len(parts) < 2:
-            continue
-        from_to_str = parts[0].strip()
-        time_str = parts[1].strip()
-        try:
-            time_val = int(time_str)
-        except:
-            continue
-        if " to " in from_to_str:
-            locs = from_to_str.split(" to ")
-            from_loc = locs[0].strip()
-            to_loc = locs[1].strip()
-            if from_loc not in travel_dict:
-                travel_dict[from_loc] = {}
-            travel_dict[from_loc][to_loc] = time_val
-
-    meetings = [
-        (0, "Dummy", "Marina District", 0, 0, 0),
-        (1, "Stephanie", "Richmond District", 435, 750, 75),
-        (2, "William", "Union Square", 105, 510, 45),
-        (3, "Elizabeth", "Nob Hill", 195, 360, 105),
-        (4, "Joseph", "Fisherman's Wharf", 225, 300, 75),
-        (5, "Anthony", "Golden Gate Park", 240, 690, 75),
-        (6, "Barbara", "Embarcadero", 615, 690, 75),
-        (7, "Carol", "Financial District", 165, 435, 60),
-        (8, "Sandra", "North Beach", 60, 210, 15),
-        (9, "Kenneth", "Presidio", 735, 795, 45)
+    # Define friends: each tuple contains (name, location, window_start (min from midnight), window_end, min_duration)
+    friends = [
+        ('Stephanie', 'Richmond', 16*60+15, 21*60+30, 75),
+        ('William', 'Union Square', 10*60+45, 17*60+30, 45),
+        ('Elizabeth', 'Nob Hill', 12*60+15, 15*60, 105),
+        ('Joseph', 'Fisherman\'s Wharf', 12*60+45, 14*60, 75),
+        ('Anthony', 'Golden Gate Park', 13*60, 20*60+30, 75),
+        ('Barbara', 'Embarcadero', 19*60+15, 20*60+30, 75),
+        ('Carol', 'Financial District', 11*60+45, 16*60+15, 60),
+        ('Sandra', 'North Beach', 10*60, 12*60+30, 15),
+        ('Kenneth', 'Presidio', 21*60+15, 22*60+15, 45)
     ]
-
-    s = Solver()
-
-    chosen_all = []
-    for i in range(10):
-        if i == 0:
-            chosen_all.append(True)
-        else:
-            chosen_all.append(Bool(f"chosen_{i}"))
     
-    start = [Int(f"start_{i}") for i in range(10)]
-    end = [Int(f"end_{i}") for i in range(10)]
+    # Travel times dictionary: travel_dict[from_location][to_location] = minutes
+    travel_dict = {
+        "Marina District": {
+            "Richmond": 11, "Union Square": 16, "Nob Hill": 12, "Fisherman's Wharf": 10,
+            "Golden Gate Park": 18, "Embarcadero": 14, "Financial District": 17, "North Beach": 11, "Presidio": 10
+        },
+        "Richmond": {
+            "Marina District": 9, "Union Square": 21, "Nob Hill": 17, "Fisherman's Wharf": 18,
+            "Golden Gate Park": 9, "Embarcadero": 19, "Financial District": 22, "North Beach": 17, "Presidio": 7
+        },
+        "Union Square": {
+            "Marina District": 18, "Richmond": 20, "Nob Hill": 9, "Fisherman's Wharf": 15,
+            "Golden Gate Park": 22, "Embarcadero": 11, "Financial District": 9, "North Beach": 10, "Presidio": 24
+        },
+        "Nob Hill": {
+            "Marina District": 11, "Richmond": 14, "Union Square": 7, "Fisherman's Wharf": 10,
+            "Golden Gate Park": 17, "Embarcadero": 9, "Financial District": 9, "North Beach": 8, "Presidio": 17
+        },
+        "Fisherman's Wharf": {
+            "Marina District": 9, "Richmond": 18, "Union Square": 13, "Nob Hill": 11,
+            "Golden Gate Park": 25, "Embarcadero": 8, "Financial District": 11, "North Beach": 6, "Presidio": 17
+        },
+        "Golden Gate Park": {
+            "Marina District": 16, "Richmond": 7, "Union Square": 22, "Nob Hill": 20,
+            "Fisherman's Wharf": 24, "Embarcadero": 25, "Financial District": 26, "North Beach": 23, "Presidio": 11
+        },
+        "Embarcadero": {
+            "Marina District": 12, "Richmond": 21, "Union Square": 10, "Nob Hill": 10,
+            "Fisherman's Wharf": 6, "Golden Gate Park": 25, "Financial District": 5, "North Beach": 5, "Presidio": 20
+        },
+        "Financial District": {
+            "Marina District": 15, "Richmond": 21, "Union Square": 9, "Nob Hill": 8,
+            "Fisherman's Wharf": 10, "Golden Gate Park": 23, "Embarcadero": 4, "North Beach": 7, "Presidio": 22
+        },
+        "North Beach": {
+            "Marina District": 9, "Richmond": 18, "Union Square": 7, "Nob Hill": 7,
+            "Fisherman's Wharf": 5, "Golden Gate Park": 22, "Embarcadero": 6, "Financial District": 8, "Presidio": 17
+        },
+        "Presidio": {
+            "Marina District": 11, "Richmond": 7, "Union Square": 22, "Nob Hill": 18,
+            "Fisherman's Wharf": 19, "Golden Gate Park": 12, "Embarcadero": 20, "Financial District": 23, "North Beach": 18
+        }
+    }
     
-    x = [[None]*10 for _ in range(10)]
-    for i in range(10):
-        for j in range(10):
-            if i == j:
-                continue
-            x[i][j] = Bool(f"x_{i}_{j}")
+    # Initialize Z3 solver
+    opt = Optimize()
     
-    u = [Int(f"u_{i}") for i in range(10)]
+    # Create variables for each friend
+    b_vars = {}  # Boolean: whether we meet the friend
+    s_vars = {}  # Integer: start time (minutes from midnight)
+    e_vars = {}  # Integer: end time (minutes from midnight)
+    d_vars = {}  # Integer: duration of meeting
     
-    s.add(start[0] == 0, end[0] == 0)
+    for name, loc, start_win, end_win, min_dur in friends:
+        b_vars[name] = Bool(f'b_{name}')
+        s_vars[name] = Int(f's_{name}')
+        e_vars[name] = Int(f'e_{name}')
+        d_vars[name] = Int(f'd_{name}')
     
-    for i in range(1, 10):
-        s.add(If(chosen_all[i],
-                 And(start[i] >= meetings[i][3],
-                     end[i] == start[i] + meetings[i][5],
-                     end[i] <= meetings[i][4]),
-                 True))
+    # Starting time: 9:00 AM in minutes from midnight
+    start_time_marina = 9 * 60
     
-    s.add(Sum([x[i][0] for i in range(10) if i != 0]) == 0)
+    # Constraints for each friend
+    for name, loc, start_win, end_win, min_dur in friends:
+        # If we meet the friend, then set constraints
+        opt.add(Implies(b_vars[name], 
+                      And(s_vars[name] >= start_win,
+                          e_vars[name] <= end_win,
+                          e_vars[name] == s_vars[name] + d_vars[name],
+                          d_vars[name] >= min_dur)))
+        
+        # For Joseph and Barbara, fix their meeting times if met
+        if name == 'Joseph':
+            opt.add(Implies(b_vars[name], 
+                           And(s_vars[name] == 12*60+45,
+                               e_vars[name] == 14*60)))
+        if name == 'Barbara':
+            opt.add(Implies(b_vars[name],
+                           And(s_vars[name] == 19*60+15,
+                               e_vars[name] == 20*60+30)))
     
-    real_chosen_exists = Or([chosen_all[i] for i in range(1,10)])
-    s.add(Sum([x[0][j] for j in range(1,10)]) == If(real_chosen_exists, 1, 0))
+    # Constraint: start time must be at least start_time_marina + travel time from Marina to the friend's location
+    for name, loc, start_win, end_win, min_dur in friends:
+        travel_time = travel_dict["Marina District"][loc]
+        opt.add(Implies(b_vars[name], s_vars[name] >= start_time_marina + travel_time))
     
-    for i in range(1,10):
-        s.add(Sum([x[j][i] for j in range(10) if j != i]) == If(chosen_all[i], 1, 0))
+    # Constraints for every pair of distinct friends
+    n = len(friends)
+    for i in range(n):
+        name_i, loc_i, start_win_i, end_win_i, min_dur_i = friends[i]
+        for j in range(i+1, n):
+            name_j, loc_j, start_win_j, end_win_j, min_dur_j = friends[j]
+            # Travel times between the two locations
+            t_ij = travel_dict[loc_i][loc_j]
+            t_ji = travel_dict[loc_j][loc_i]
+            # If both friends are met, then either i before j or j before i with travel time
+            opt.add(Implies(And(b_vars[name_i], b_vars[name_j]),
+                           Or(e_vars[name_i] + t_ij <= s_vars[name_j],
+                              e_vars[name_j] + t_ji <= s_vars[name_i])))
     
-    total_real = Sum([If(chosen_all[i], 1, 0) for i in range(1,10)])
-    s.add(total_real == Sum([If(chosen_all[i], 1, 0) for i in range(1,10)]))
-    total_edges = Sum([x[i][j] for i in range(10) for j in range(10) if i != j])
-    s.add(total_edges == total_real)
+    # Objective: maximize the number of friends met
+    objective = Sum([If(b_vars[name], 1, 0) for name in b_vars])
+    opt.maximize(objective)
     
-    out_degrees = [Sum([x[i][j] for j in range(10) if j != i]) for i in range(1,10)]
-    s.add(Sum(out_degrees) == If(total_real > 0, total_real - 1, 0))
-    for i in range(1,10):
-        s.add(Sum([x[i][j] for j in range(10) if j != i]) <= 1)
-        s.add(Sum([x[i][j] for j in range(10) if j != i]) >= 0)
-    
-    s.add(u[0] == 0)
-    for i in range(1,10):
-        s.add(If(chosen_all[i], And(u[i] >= 1, u[i] <= total_real), True))
-    for i in range(0,10):
-        for j in range(1,10):
-            if i == j:
-                continue
-            s.add(If(x[i][j], u[j] == u[i] + 1, True))
-    
-    def travel_time(i, j):
-        from_loc = meetings[i][2]
-        to_loc = meetings[j][2]
-        return travel_dict[from_loc][to_loc]
-    
-    for i in range(0,10):
-        for j in range(1,10):
-            if i == j:
-                continue
-            tt = travel_time(i, j)
-            s.add(If(x[i][j], start[j] >= end[i] + tt, True))
-    
-    objective = Sum([If(chosen_all[i], 1, 0) for i in range(1,10)])
-    s.maximize(objective)
-    
-    if s.check() == sat:
-        m = s.model()
-        itinerary = []
-        for i in range(1, 10):
-            if m.evaluate(chosen_all[i]):
-                start_val = m.evaluate(start[i])
-                if isinstance(start_val, IntNumRef):
-                    start_min = start_val.as_long()
-                else:
-                    start_min = start_val
-                end_val = m.evaluate(end[i])
-                if isinstance(end_val, IntNumRef):
-                    end_min = end_val.as_long()
-                else:
-                    end_min = end_val
-                total_minutes_start = start_min
-                hours_start = total_minutes_start // 60
-                minutes_start = total_minutes_start % 60
-                start_time_str = f"{9+hours_start:02d}:{minutes_start:02d}"
-                total_minutes_end = end_min
-                hours_end = total_minutes_end // 60
-                minutes_end = total_minutes_end % 60
-                end_time_str = f"{9+hours_end:02d}:{minutes_end:02d}"
-                itinerary.append({
+    # Solve the problem
+    if opt.check() == sat:
+        model = opt.model()
+        # Collect the meetings
+        meetings = []
+        for name, loc, start_win, end_win, min_dur in friends:
+            if model.evaluate(b_vars[name]):
+                start_val = model.evaluate(s_vars[name]).as_long()
+                end_val = model.evaluate(e_vars[name]).as_long()
+                # Format start and end times
+                start_h = start_val // 60
+                start_m = start_val % 60
+                end_h = end_val // 60
+                end_m = end_val % 60
+                start_str = f"{start_h:02d}:{start_m:02d}"
+                end_str = f"{end_h:02d}:{end_m:02d}"
+                meetings.append({
                     "action": "meet",
-                    "person": meetings[i][1],
-                    "start_time": start_time_str,
-                    "end_time": end_time_str
+                    "person": name,
+                    "start_time": start_str,
+                    "end_time": end_str
                 })
-        result = {"itinerary": itinerary}
-        print("SOLUTION:")
-        print(json.dumps(result, indent=2))
+        # Sort meetings by start time
+        meetings.sort(key=lambda x: (int(x['start_time'][:2]), int(x['start_time'][3:5])))
+        # Output as JSON
+        print({
+            "itinerary": meetings
+        })
     else:
-        print("No solution found")
+        print('No solution found')
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

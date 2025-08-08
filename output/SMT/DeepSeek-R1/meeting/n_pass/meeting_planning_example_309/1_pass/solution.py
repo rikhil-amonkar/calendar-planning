@@ -1,81 +1,72 @@
+import itertools
 from z3 import *
-
-def min_to_time(minutes):
-    total_minutes = minutes
-    h = 9 + total_minutes // 60
-    m = total_minutes % 60
-    return f"{h:02d}:{m:02d}"
+import json
 
 def main():
-    # Define the meeting indices: 0=Nancy, 1=Mary, 2=Jessica
-    first, second, third = Ints('first second third')
-    s0, s1, s2 = Ints('s0 s1 s2')  # start times for the first, second, third meeting in the schedule
-
-    # Travel times from FD (starting point) to each meeting location
-    travel_first = If(first == 0, 5, If(first == 1, 17, 19))
-
-    # Travel times between meeting locations (3x3 matrix for meeting indices)
-    def travel_between_z3(i, j):
-        return If(And(i == 0, j == 1), 17,
-              If(And(i == 0, j == 2), 22,
-              If(And(i == 1, j == 0), 16,
-              If(And(i == 1, j == 2), 16,
-              If(And(i == 2, j == 0), 18,
-              If(And(i == 2, j == 1), 16, 0))))))
+    friends = {
+        "Nancy": {"location": "Chinatown", "avail_start": 30, "avail_end": 270, "min_duration": 90},
+        "Mary": {"location": "Alamo Square", "avail_start": 0, "avail_end": 720, "min_duration": 75},
+        "Jessica": {"location": "Bayview", "avail_start": 135, "avail_end": 285, "min_duration": 45}
+    }
     
-    travel_second = travel_between_z3(first, second)
-    travel_third = travel_between_z3(second, third)
-
-    # Durations for each meeting
-    dur_first = If(first == 0, 90, If(first == 1, 75, 45))
-    dur_second = If(second == 0, 90, If(second == 1, 75, 45))
-    dur_third = If(third == 0, 90, If(third == 1, 75, 45))
-
-    s_Nancy = If(first == 0, s0, If(second == 0, s1, s2))
-    s_Mary = If(first == 1, s0, If(second == 1, s1, s2))
-    s_Jessica = If(first == 2, s0, If(second == 2, s1, s2))
-
+    travel_times = {
+        ("Financial District", "Chinatown"): 5,
+        ("Financial District", "Alamo Square"): 17,
+        ("Financial District", "Bayview"): 19,
+        ("Chinatown", "Alamo Square"): 17,
+        ("Chinatown", "Bayview"): 22,
+        ("Alamo Square", "Chinatown"): 16,
+        ("Alamo Square", "Bayview"): 16,
+        ("Bayview", "Chinatown"): 18,
+        ("Bayview", "Alamo Square"): 16
+    }
+    
+    perms = list(itertools.permutations(friends.keys()))
     s = Solver()
-
-    # Constraints for the order and range
-    s.add(Distinct(first, second, third))
-    s.add(first >= 0, first <= 2)
-    s.add(second >= 0, second <= 2)
-    s.add(third >= 0, third <= 2)
-
-    # Constraints for start times considering travel
-    s.add(s0 >= travel_first)
-    s.add(s1 >= s0 + dur_first + travel_second)
-    s.add(s2 >= s1 + dur_second + travel_third)
-
-    # Time window constraints
-    s.add(s_Nancy >= 30, s_Nancy + 90 <= 270)     # Nancy: 9:30 AM to 1:30 PM, min 90 mins
-    s.add(s_Mary >= 0, s_Mary + 75 <= 720)         # Mary: 7:00 AM to 9:00 PM, min 75 mins
-    s.add(s_Jessica >= 135, s_Jessica + 45 <= 285) # Jessica: 11:15 AM to 1:45 PM, min 45 mins
-
-    if s.check() == sat:
-        m = s.model()
-        nancy_start = m.evaluate(s_Nancy).as_long()
-        mary_start = m.evaluate(s_Mary).as_long()
-        jessica_start = m.evaluate(s_Jessica).as_long()
+    schedule = None
+    
+    for order in perms:
+        start_vars = {friend: Int(f'start_{friend}') for friend in friends}
+        constraints = []
         
-        nancy_end = nancy_start + 90
-        mary_end = mary_start + 75
-        jessica_end = jessica_start + 45
+        first = order[0]
+        tt0 = travel_times[("Financial District", friends[first]["location"])]
+        constraints.append(start_vars[first] >= tt0)
+        constraints.append(start_vars[first] >= friends[first]["avail_start"])
+        constraints.append(start_vars[first] + friends[first]["min_duration"] <= friends[first]["avail_end"])
         
-        itinerary = [
-            {"action": "meet", "person": "Nancy", "start_time": min_to_time(nancy_start), "end_time": min_to_time(nancy_end)},
-            {"action": "meet", "person": "Mary", "start_time": min_to_time(mary_start), "end_time": min_to_time(mary_end)},
-            {"action": "meet", "person": "Jessica", "start_time": min_to_time(jessica_start), "end_time": min_to_time(jessica_end)}
-        ]
+        for idx in range(1, len(order)):
+            prev = order[idx-1]
+            curr = order[idx]
+            tt = travel_times[(friends[prev]["location"], friends[curr]["location"])]
+            constraints.append(start_vars[curr] >= start_vars[prev] + friends[prev]["min_duration"] + tt)
+            constraints.append(start_vars[curr] >= friends[curr]["avail_start"])
+            constraints.append(start_vars[curr] + friends[curr]["min_duration"] <= friends[curr]["avail_end"])
         
-        # Format the output as required
-        import json
-        result = {"itinerary": itinerary}
-        print("SOLUTION:")
-        print(json.dumps(result))
-    else:
-        print("No feasible schedule found")
+        s.push()
+        s.add(constraints)
+        if s.check() == sat:
+            m = s.model()
+            schedule = []
+            for friend in order:
+                start_val = m[start_vars[friend]].as_long()
+                hours = 9 + start_val // 60
+                minutes = start_val % 60
+                start_time = f"{hours:02d}:{minutes:02d}"
+                end_val = start_val + friends[friend]["min_duration"]
+                hours_end = 9 + end_val // 60
+                minutes_end = end_val % 60
+                end_time = f"{hours_end:02d}:{minutes_end:02d}"
+                schedule.append({"action": "meet", "person": friend, "start_time": start_time, "end_time": end_time})
+            break
+        else:
+            s.pop()
+    
+    if schedule is None:
+        schedule = []
+    
+    print("SOLUTION:")
+    print(json.dumps({"itinerary": schedule}))
 
 if __name__ == "__main__":
     main()

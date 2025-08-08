@@ -1,118 +1,175 @@
 from z3 import *
+import json
 
 def main():
-    # Define meetings: name, location, start_available (minutes), end_available (minutes), duration (minutes)
-    meetings = [
-        {"name": "Robert", "location": 3, "start_available": 465, "end_available": 630, "duration": 90},  # 7:45AM to 10:30AM
-        {"name": "Steven", "location": 4, "start_available": 510, "end_available": 1020, "duration": 75}, # 8:30AM to 5:00PM
-        {"name": "Anthony", "location": 5, "start_available": 465, "end_available": 1185, "duration": 15}, # 7:45AM to 7:45PM
-        {"name": "Sandra", "location": 6, "start_available": 885, "end_available": 1305, "duration": 45},   # 2:45PM to 9:45PM
-        {"name": "Kevin", "location": 2, "start_available": 1155, "end_available": 1305, "duration": 75},   # 7:15PM to 9:45PM
-        {"name": "Stephanie", "location": 1, "start_available": 1200, "end_available": 1245, "duration": 15} # 8:00PM to 8:45PM
-    ]
+    friends = [0, 1, 3, 4, 5]  # Skipping Robert (index 2)
+    names = {
+        0: "Stephanie",
+        1: "Kevin",
+        3: "Steven",
+        4: "Anthony",
+        5: "Sandra"
+    }
+    durations_dict = {
+        0: 15,
+        1: 75,
+        3: 75,
+        4: 15,
+        5: 45
+    }
+    windows_start_dict = {
+        0: 660,   # 8:00 PM (20:00) = 11*60 = 660 minutes from 9:00 AM
+        1: 615,    # 7:15 PM (19:15) = 10*60 + 15 = 615 minutes
+        3: 7,      # 9:07 AM (travel time 7 minutes from Haight-Ashbury)
+        4: 5,      # 9:05 AM (travel time 5 minutes)
+        5: 345     # 2:45 PM (14:45) = 5*60 + 45 = 345 minutes
+    }
+    windows_end_dict = {
+        0: 705,    # 8:45 PM (20:45) = 660 + 45 = 705 minutes
+        1: 765,    # 9:45 PM (21:45) = 615 + 150 = 765 minutes
+        3: 480,    # 5:00 PM (17:00) = 8*60 = 480 minutes
+        4: 645,    # 7:45 PM (19:45) = 10*60 + 45 = 645 minutes
+        5: 765     # 9:45 PM (21:45) = 765 minutes
+    }
+    travel_start_dict = {
+        0: 17,    # Haight-Ashbury to Russian Hill
+        1: 23,    # Haight-Ashbury to Fisherman's Wharf
+        3: 7,     # Haight-Ashbury to Golden Gate Park
+        4: 5,     # Haight-Ashbury to Alamo Square
+        5: 12     # Haight-Ashbury to Pacific Heights
+    }
+    loc = {
+        0: "Russian Hill",
+        1: "Fisherman's Wharf",
+        3: "Golden Gate Park",
+        4: "Alamo Square",
+        5: "Pacific Heights"
+    }
+    travel_dict = {
+        "Russian Hill": {
+            "Fisherman's Wharf": 7,
+            "Golden Gate Park": 21,
+            "Alamo Square": 15,
+            "Pacific Heights": 7
+        },
+        "Fisherman's Wharf": {
+            "Russian Hill": 7,
+            "Golden Gate Park": 25,
+            "Alamo Square": 20,
+            "Pacific Heights": 12
+        },
+        "Golden Gate Park": {
+            "Russian Hill": 19,
+            "Fisherman's Wharf": 24,
+            "Alamo Square": 10,
+            "Pacific Heights": 16
+        },
+        "Alamo Square": {
+            "Russian Hill": 13,
+            "Fisherman's Wharf": 19,
+            "Golden Gate Park": 9,
+            "Pacific Heights": 10
+        },
+        "Pacific Heights": {
+            "Russian Hill": 7,
+            "Fisherman's Wharf": 13,
+            "Golden Gate Park": 15,
+            "Alamo Square": 10
+        }
+    }
     
-    # Travel matrix: 0=Haight-Ashbury, 1=Russian Hill, 2=Fisherman's Wharf, 3=Nob Hill, 4=Golden Gate Park, 5=Alamo Square, 6=Pacific Heights
-    travel_matrix = [
-        [0, 17, 23, 15, 7, 5, 12],
-        [17, 0, 7, 5, 21, 15, 7],
-        [22, 7, 0, 11, 25, 20, 12],
-        [13, 5, 11, 0, 17, 11, 8],
-        [7, 19, 24, 20, 0, 10, 16],
-        [5, 13, 19, 11, 9, 0, 10],
-        [11, 7, 13, 8, 15, 10, 0]
-    ]
+    # Build travel_between matrix for friends
+    travel_between = {}
+    for i in friends:
+        travel_between[i] = {}
+        for j in friends:
+            if i == j:
+                travel_between[i][j] = 0
+            else:
+                travel_between[i][j] = travel_dict[loc[i]][loc[j]]
     
-    s = [Int(f's_{i}') for i in range(6)]
-    e = [Int(f'e_{i}') for i in range(6)]
-    meet = [Bool(f'meet_{i}') for i in range(6)]
+    n_slots = len(friends)
+    solver = Solver()
+    slots = [Int('slot_%d' % i) for i in range(n_slots)]
+    starts = [Int('start_%d' % i) for i in range(n_slots)]
+    ends = [Int('end_%d' % i) for i in range(n_slots)]
     
-    # Before matrix for i<j
-    before = {}
-    for i in range(6):
-        for j in range(i+1, 6):
-            before[(i, j)] = Bool(f'before_{i}_{j}')
+    # Constraints: slots are distinct and each in friends
+    solver.add(Distinct(slots))
+    for s in slots:
+        solver.add(Or([s == f for f in friends]))
     
-    opt = Optimize()
+    # Helper to build expressions for dictionaries
+    def build_expr(var, dict_vals):
+        expr = IntVal(0)
+        for f in friends:
+            expr = If(var == f, dict_vals[f], expr)
+        return expr
     
-    # Meeting time constraints if meeting is scheduled
-    for i in range(6):
-        opt.add(Implies(meet[i], s[i] >= meetings[i]["start_available"]))
-        opt.add(Implies(meet[i], e[i] <= meetings[i]["end_available"]))
-        opt.add(Implies(meet[i], e[i] == s[i] + meetings[i]["duration"]))
+    # First slot constraints
+    first_travel_expr = build_expr(slots[0], travel_start_dict)
+    win_start_expr0 = build_expr(slots[0], windows_start_dict)
+    win_end_expr0 = build_expr(slots[0], windows_end_dict)
+    dur_expr0 = build_expr(slots[0], durations_dict)
     
-    # Ordering and travel constraints for pairs of meetings (if both are scheduled)
-    for i in range(6):
-        for j in range(i+1, 6):
-            loc_i = meetings[i]["location"]
-            loc_j = meetings[j]["location"]
-            travel_ij = travel_matrix[loc_i][loc_j]
-            travel_ji = travel_matrix[loc_j][loc_i]
-            # If both meetings are scheduled, then enforce ordering and travel time
-            constraint = Implies(
-                And(meet[i], meet[j]),
-                If(
-                    before[(i, j)],
-                    s[j] >= e[i] + travel_ij,
-                    s[i] >= e[j] + travel_ji
-                )
-            )
-            opt.add(constraint)
+    solver.add(starts[0] >= first_travel_expr)
+    solver.add(starts[0] >= win_start_expr0)
+    solver.add(ends[0] == starts[0] + dur_expr0)
+    solver.add(ends[0] <= win_end_expr0)
     
-    # For each meeting, if scheduled and has no prior meeting, then include travel from start location
-    for i in range(6):
-        other_meetings = []
-        for j in range(6):
-            if j == i:
-                continue
-            if j < i:
-                # If j is before i, then before[(j,i)] should be true (but note: we only have for i<j, so we use (j,i) for j<i)
-                other_meetings.append(And(meet[j], before[(j, i)]))
-            else:  # j > i
-                # If before[(i,j)] is false, then j is before i
-                other_meetings.append(And(meet[j], Not(before[(i, j)])))
-        exists_before_i = Or(other_meetings)
-        travel_from_start = travel_matrix[0][meetings[i]["location"]]
-        opt.add(Implies(meet[i], If(exists_before_i, True, s[i] >= 540 + travel_from_start)))
+    # Subsequent slots
+    for idx in range(1, n_slots):
+        prev_friend = slots[idx-1]
+        curr_friend = slots[idx]
+        
+        # Build travel time expression between previous and current
+        travel_expr = IntVal(0)
+        for p in friends:
+            for q in friends:
+                travel_expr = If(And(prev_friend == p, curr_friend == q), travel_between[p][q], travel_expr)
+        
+        # Build expressions for current friend
+        win_start_expr = build_expr(curr_friend, windows_start_dict)
+        win_end_expr = build_expr(curr_friend, windows_end_dict)
+        dur_expr = build_expr(curr_friend, durations_dict)
+        
+        solver.add(starts[idx] >= ends[idx-1] + travel_expr)
+        solver.add(starts[idx] >= win_start_expr)
+        solver.add(ends[idx] == starts[idx] + dur_expr)
+        solver.add(ends[idx] <= win_end_expr)
     
-    # Transitivity: for i < j < k, if i before j and j before k, then i before k
-    for i in range(6):
-        for j in range(i+1, 6):
-            for k in range(j+1, 6):
-                trans_constraint = Implies(
-                    And(meet[i], meet[j], meet[k], before[(i, j)], before[(j, k)]),
-                    before[(i, k)]
-                )
-                opt.add(trans_constraint)
-    
-    # Maximize the number of meetings
-    opt.maximize(Sum([If(meet_i, 1, 0) for meet_i in meet]))
-    
-    if opt.check() == sat:
-        model = opt.model()
-        itinerary = []
-        for i in range(6):
-            if model.evaluate(meet[i]):
-                start_val = model.evaluate(s[i])
-                end_val = model.evaluate(e[i])
-                start_min = start_val.as_long()
-                end_min = end_val.as_long()
-                start_hour = start_min // 60
-                start_minute = start_min % 60
-                end_hour = end_min // 60
-                end_minute = end_min % 60
-                start_str = f"{start_hour:02d}:{start_minute:02d}"
-                end_str = f"{end_hour:02d}:{end_minute:02d}"
-                itinerary.append({
-                    "action": "meet",
-                    "person": meetings[i]["name"],
-                    "start_time": start_str,
-                    "end_time": end_str
-                })
-        # Sort by start time
-        itinerary.sort(key=lambda x: (int(x['start_time'][:2]), int(x['start_time'][3:])))
-        print(f'{{"itinerary": {itinerary}}}')
+    # Check for a solution
+    itinerary = []
+    if solver.check() == sat:
+        model = solver.model()
+        slot_vals = [model.evaluate(s).as_long() for s in slots]
+        start_vals = [model.evaluate(starts[i]).as_long() for i in range(n_slots)]
+        end_vals = [model.evaluate(ends[i]).as_long() for i in range(n_slots)]
+        
+        for i in range(n_slots):
+            friend_idx = slot_vals[i]
+            name = names[friend_idx]
+            start_min = start_vals[i]
+            end_min = end_vals[i]
+            # Convert minutes to time string (base: 9:00 AM)
+            start_hour = 9 + start_min // 60
+            start_minute = start_min % 60
+            end_hour = 9 + end_min // 60
+            end_minute = end_min % 60
+            start_str = "%02d:%02d" % (start_hour, start_minute)
+            end_str = "%02d:%02d" % (end_hour, end_minute)
+            itinerary.append({
+                "action": "meet",
+                "person": name,
+                "start_time": start_str,
+                "end_time": end_str
+            })
     else:
-        print('{"itinerary": []}')
+        # If no solution found, return empty itinerary
+        itinerary = []
+    
+    # Output the itinerary in JSON format
+    print(json.dumps({"itinerary": itinerary}))
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

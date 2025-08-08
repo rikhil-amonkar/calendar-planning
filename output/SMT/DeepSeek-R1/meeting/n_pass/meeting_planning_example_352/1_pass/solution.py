@@ -1,123 +1,153 @@
 from z3 import *
+import itertools
+import json
+
+def min_to_time(total_minutes):
+    hours = total_minutes // 60
+    minutes = total_minutes % 60
+    return f"{hours:02d}:{minutes:02d}"
 
 def main():
-    # Define travel times
-    travel_U = {'C': 7, 'H': 18, 'M': 18}
-    travel_between = {
-        ('C', 'H'): 19, ('C', 'M'): 12,
-        ('H', 'C'): 19, ('H', 'M'): 17,
-        ('M', 'C'): 16, ('M', 'H'): 16
+    location = {
+        'Sandra': 'Chinatown',
+        'Nancy': 'Marina District',
+        'Joseph': 'Haight-Ashbury',
+        'Karen': 'Nob Hill'
     }
-    travel_to_N = {'C': 8, 'H': 15, 'M': 12}
     
-    # Z3 variables for the order of meetings (0: Sandra, 1: Joseph, 2: Nancy)
-    p0, p1, p2 = Ints('p0 p1 p2')
-    S0, S1, S2 = Ints('S0 S1 S2')  # Start times in minutes after 9:00 AM
+    travel_time_dict = {
+        ('Union Square', 'Nob Hill'): 9,
+        ('Union Square', 'Haight-Ashbury'): 18,
+        ('Union Square', 'Chinatown'): 7,
+        ('Union Square', 'Marina District'): 18,
+        ('Nob Hill', 'Union Square'): 7,
+        ('Nob Hill', 'Haight-Ashbury'): 13,
+        ('Nob Hill', 'Chinatown'): 6,
+        ('Nob Hill', 'Marina District'): 11,
+        ('Haight-Ashbury', 'Union Square'): 17,
+        ('Haight-Ashbury', 'Nob Hill'): 15,
+        ('Haight-Ashbury', 'Chinatown'): 19,
+        ('Haight-Ashbury', 'Marina District'): 17,
+        ('Chinatown', 'Union Square'): 7,
+        ('Chinatown', 'Nob Hill'): 8,
+        ('Chinatown', 'Haight-Ashbury'): 19,
+        ('Chinatown', 'Marina District'): 12,
+        ('Marina District', 'Union Square'): 16,
+        ('Marina District', 'Nob Hill'): 12,
+        ('Marina District', 'Haight-Ashbury'): 16,
+        ('Marina District', 'Chinatown'): 16
+    }
     
-    # Permutation constraints: p0, p1, p2 must be a permutation of 0,1,2
-    perm = And(p0 >= 0, p0 <= 2, p1 >= 0, p1 <= 2, p2 >= 0, p2 <= 2,
-               p0 != p1, p0 != p2, p1 != p2)
+    availability_start = {
+        'Sandra': 7*60+15,   # 7:15 AM = 435 minutes
+        'Nancy': 11*60,       # 11:00 AM = 660 minutes
+        'Joseph': 12*60+30,   # 12:30 PM = 750 minutes
+        'Karen': 21*60+15     # 9:15 PM = 1275 minutes
+    }
     
-    # Time window constraints for each friend
-    # Sandra: max_start = 540 (because 540+75=615, which is 7:15 PM)
-    # Joseph: min_start=210 (12:30 PM), max_start=555 (555+90=645 -> 7:45 PM)
-    # Nancy: min_start=120 (11:00 AM), max_start=570 (570+105=675 -> 8:15 PM)
-    min0 = If(p0 == 1, 210, If(p0 == 2, 120, 0))
-    max0 = If(p0 == 0, 540, If(p0 == 1, 555, 570))
-    min1 = If(p1 == 1, 210, If(p1 == 2, 120, 0))
-    max1 = If(p1 == 0, 540, If(p1 == 1, 555, 570))
-    min2 = If(p2 == 1, 210, If(p2 == 2, 120, 0))
-    max2 = If(p2 == 0, 540, If(p2 == 1, 555, 570))
+    availability_end = {
+        'Sandra': 19*60+15,   # 7:15 PM = 1155 minutes
+        'Nancy': 20*60+15,    # 8:15 PM = 1215 minutes
+        'Joseph': 19*60+45,   # 7:45 PM = 1185 minutes
+        'Karen': 21*60+45     # 9:45 PM = 1305 minutes
+    }
     
-    # Durations for each friend
-    dur0 = If(p0 == 0, 75, If(p0 == 1, 90, 105))
-    dur1 = If(p1 == 0, 75, If(p1 == 1, 90, 105))
-    dur2 = If(p2 == 0, 75, If(p2 == 1, 90, 105))
+    duration = {
+        'Sandra': 75,
+        'Nancy': 105,
+        'Joseph': 90,
+        'Karen': 30
+    }
     
-    # Travel time for the first meeting (from Union Square to the first location)
-    travel0 = If(p0 == 0, travel_U['C'], If(p0 == 1, travel_U['H'], travel_U['M']))
-    
-    # Travel time between first and second meeting
-    travel1 = If(And(p0 == 0, p1 == 1), 19,
-                If(And(p0 == 0, p1 == 2), 12,
-                If(And(p0 == 1, p1 == 0), 19,
-                If(And(p0 == 1, p1 == 2), 17,
-                If(And(p0 == 2, p1 == 0), 16,
-                If(And(p0 == 2, p1 == 1), 16, 0))))))
-    
-    # Travel time between second and third meeting
-    travel2 = If(And(p1 == 0, p2 == 1), 19,
-                If(And(p1 == 0, p2 == 2), 12,
-                If(And(p1 == 1, p2 == 0), 19,
-                If(And(p1 == 1, p2 == 2), 17,
-                If(And(p1 == 2, p2 == 0), 16,
-                If(And(p1 == 2, p2 == 1), 16, 0))))))
-    
-    # Travel time from the third meeting to Nob Hill (for Karen)
-    travel3 = If(p2 == 0, travel_to_N['C'], If(p2 == 1, travel_to_N['H'], travel_to_N['M']))
-    
-    # Constraints for start times and travel
-    c0 = And(S0 >= min0, S0 <= max0, S0 >= travel0)
-    c1 = And(S1 >= min1, S1 <= max1, S1 >= S0 + dur0 + travel1)
-    c2 = And(S2 >= min2, S2 <= max2, S2 >= S1 + dur1 + travel2)
-    c_end = S2 + dur2 + travel3 <= 735  # Must reach Nob Hill by 9:15 PM (735 minutes from 9:00 AM)
-    nonneg = And(S0 >= 0, S1 >= 0, S2 >= 0)
-    
-    # Combine all constraints
-    s = Solver()
-    s.add(perm, c0, c1, c2, c_end, nonneg)
-    
-    if s.check() == sat:
-        m = s.model()
-        p0_val = m[p0].as_long()
-        p1_val = m[p1].as_long()
-        p2_val = m[p2].as_long()
-        S0_val = m[S0].as_long()
-        S1_val = m[S1].as_long()
-        S2_val = m[S2].as_long()
-        
-        # Map meeting indices to friend names
-        friends = {0: 'Sandra', 1: 'Joseph', 2: 'Nancy'}
-        friend0 = friends[p0_val]
-        friend1 = friends[p1_val]
-        friend2 = friends[p2_val]
-        
-        # Durations for each meeting
-        durs = {0:75, 1:90, 2:105}
-        dur0_val = durs[p0_val]
-        dur1_val = durs[p1_val]
-        dur2_val = durs[p2_val]
-        
-        # Calculate end times
-        end0 = S0_val + dur0_val
-        end1 = S1_val + dur1_val
-        end2 = S2_val + dur2_val
-        
-        # Convert minutes to HH:MM format (relative to 9:00 AM)
-        def min_to_time(mins):
-            total_mins = 540 + mins  # 9:00 AM is 540 minutes from midnight
-            h = total_mins // 60
-            m = total_mins % 60
-            return f"{h:02d}:{m:02d}"
-        
-        # Karen's meeting (fixed)
-        karen_start = 735
-        karen_end = 765
-        
-        # Create itinerary in chronological order
-        itinerary = [
-            {"action": "meet", "person": friend0, "start_time": min_to_time(S0_val), "end_time": min_to_time(end0)},
-            {"action": "meet", "person": friend1, "start_time": min_to_time(S1_val), "end_time": min_to_time(end1)},
-            {"action": "meet", "person": friend2, "start_time": min_to_time(S2_val), "end_time": min_to_time(end2)},
-            {"action": "meet", "person": "Karen", "start_time": min_to_time(karen_start), "end_time": min_to_time(karen_end)}
-        ]
-        
-        # Output as JSON
-        import json
-        result = {"itinerary": itinerary}
-        print(json.dumps(result, indent=2))
-    else:
-        print("No solution found")
+    start_time_union = 540  # 9:00 AM in minutes
 
-if __name__ == "__main__":
+    def check_permutation(perm):
+        n = len(perm)
+        s = [Int(f's_{i}') for i in range(n)]
+        e = [Int(f'e_{i}') for i in range(n)]
+        solver = Solver()
+        
+        for i in range(n):
+            if perm[i] == 'Karen':
+                solver.add(s[i] == availability_start['Karen'])
+                solver.add(e[i] == availability_start['Karen'] + duration['Karen'])
+        
+        for i in range(n):
+            if i == 0:
+                from_place = 'Union Square'
+                to_place = location[perm[0]]
+                tt = travel_time_dict[(from_place, to_place)]
+                base_val = start_time_union + tt
+                if perm[0] == 'Karen':
+                    pass
+                else:
+                    solver.add(s[0] >= base_val)
+                    solver.add(s[0] >= availability_start[perm[0]])
+                    solver.add(e[0] == s[0] + duration[perm[0]])
+            else:
+                from_place = location[perm[i-1]]
+                to_place = location[perm[i]]
+                tt = travel_time_dict[(from_place, to_place)]
+                arrival_time = e[i-1] + tt
+                if perm[i] == 'Karen':
+                    solver.add(arrival_time <= s[i])
+                else:
+                    solver.add(s[i] >= arrival_time)
+                    solver.add(s[i] >= availability_start[perm[i]])
+                    solver.add(e[i] == s[i] + duration[perm[i]])
+        
+        for i in range(n):
+            if perm[i] != 'Karen':
+                solver.add(e[i] <= availability_end[perm[i]])
+        
+        if solver.check() == sat:
+            model = solver.model()
+            schedule = []
+            for i in range(n):
+                s_val = model.eval(s[i]).as_long()
+                e_val = model.eval(e[i]).as_long()
+                schedule.append((perm[i], s_val, e_val))
+            return schedule
+        else:
+            return None
+
+    friends_all = ['Sandra', 'Nancy', 'Joseph', 'Karen']
+    found_schedule = None
+    found_perm = None
+    num_friends = 0
+
+    for num in range(4, 0, -1):
+        if found_schedule is not None:
+            break
+        for subset in itertools.combinations(friends_all, num):
+            if found_schedule is not None:
+                break
+            perms = list(itertools.permutations(subset))
+            for perm in perms:
+                schedule = check_permutation(perm)
+                if schedule is not None:
+                    found_schedule = schedule
+                    found_perm = perm
+                    num_friends = num
+                    break
+
+    if found_schedule is None:
+        print('No feasible schedule found.')
+        return
+    
+    itinerary = []
+    for meeting in found_schedule:
+        person, start_min, end_min = meeting
+        itinerary.append({
+            "action": "meet",
+            "person": person,
+            "start_time": min_to_time(start_min),
+            "end_time": min_to_time(end_min)
+        })
+    
+    result = {"itinerary": itinerary}
+    print("SOLUTION:")
+    print(json.dumps(result))
+
+if __name__ == '__main__':
     main()
