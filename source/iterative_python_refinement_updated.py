@@ -23,6 +23,7 @@ from openai import OpenAI
 from kani.engines.openai import OpenAIEngine
 from kani import Kani
 from kani.engines.huggingface import HuggingEngine
+from transformers import AutoTokenizer, AutoModelForCausalLM
 
 current_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
 
@@ -177,30 +178,116 @@ Examples:
             logging.error(f"Invalid JSON in API key file {self.args.api_key_file}")
             sys.exit(1)
 
-        self.engines = {}  # Store all engines here
-        
+        self.engines = {}
+        HF_CACHE_DIR = "/local-ssd/rma336/.cache/huggingface"
+
         for model_name in self.args.model:
             try:
                 if model_name.startswith("DeepSeek"):
-                    # Treat DeepSeek like any other OpenAI model
                     self.engines[model_name] = OpenAIEngine(
                         api_key=self.keys.get("deepseek"),
                         model="deepseek-chat" if model_name == "DeepSeek-V3" else "deepseek-reasoner",
                         api_base="https://api.deepseek.com",
                         max_context_size=50000
                     )
+
                 elif model_name.startswith(("gpt", "o3", "o4")):
                     self.engines[model_name] = OpenAIEngine(
                         api_key=self.keys.get("openai"),
                         model=model_name,
-                        # reasoning_effort="high"  # Reasoning effort for o3-mini --> o3-mini-high
                     )
+
                 else:
-                    # HuggingFace model
-                    self.engines[model_name] = HuggingEngine(model_id=model_name)
-                    
+                    # ---- Hugging Face model (e.g., Qwen) ----
+                    model_id = model_name
+                    HF_CACHE_DIR = "/local-ssd/rma336/.cache/huggingface"
+
+                    tok = AutoTokenizer.from_pretrained(
+                        model_id,
+                        cache_dir=HF_CACHE_DIR,
+                        trust_remote_code=True,
+                    )
+                    mdl = AutoModelForCausalLM.from_pretrained(
+                        model_id,
+                        cache_dir=HF_CACHE_DIR,
+                        device_map="auto",
+                        torch_dtype="auto",
+                        trust_remote_code=True,
+                    )
+
+                    # Qwen/Qwen3: set pad token + left padding
+                    if tok.pad_token_id is None:
+                        tok.pad_token = tok.eos_token
+                    tok.padding_side = "left"
+                    mdl.config.pad_token_id = tok.pad_token_id
+                    mdl.eval()
+
+                    # IMPORTANT: construct engine WITHOUT 'model=' to avoid leaking it into model_kwargs
+                    engine = HuggingEngine(model_id=model_id)
+
+                    # Attach preloaded model + tokenizer
+                    engine.model = mdl
+                    engine.tokenizer = tok
+
+                    # (Paranoia) remove any stray 'model' kwarg Kani might forward to generate()
+                    if hasattr(engine, "model_kwargs"):
+                        engine.model_kwargs.pop("model", None)
+
+                    # Ensure attention_mask is produced & sensible gen defaults
+                    engine.encode_kwargs = {
+                        "padding": True,
+                        "truncation": True,
+                        "return_tensors": "pt",
+                    }
+                    gen = getattr(engine, "generation_kwargs", {}) or {}
+                    gen.setdefault("pad_token_id", tok.pad_token_id)
+                    gen.setdefault("eos_token_id", tok.eos_token_id)
+                    gen.setdefault("max_new_tokens", 512)
+                    gen.setdefault("do_sample", False)
+                    gen.setdefault("temperature", 0.0)
+                    engine.generation_kwargs = gen
+
+                    self.engines[model_name] = engine
+
             except Exception as e:
                 logging.error(f"Failed to initialize model {model_name}: {e}")
+
+    # def initialize_models(self):
+    #     """Initialize all requested models using proper kani pattern"""
+    #     try:
+    #         with open(self.args.api_key_file) as f:
+    #             self.keys = json.load(f)
+    #     except FileNotFoundError:
+    #         logging.error(f"API key file {self.args.api_key_file} not found")
+    #         sys.exit(1)
+    #     except json.JSONDecodeError:
+    #         logging.error(f"Invalid JSON in API key file {self.args.api_key_file}")
+    #         sys.exit(1)
+
+    #     self.engines = {}  # Store all engines here
+        
+    #     for model_name in self.args.model:
+    #         try:
+    #             if model_name.startswith("DeepSeek"):
+    #                 # Treat DeepSeek like any other OpenAI model
+    #                 self.engines[model_name] = OpenAIEngine(
+    #                     api_key=self.keys.get("deepseek"),
+    #                     model="deepseek-chat" if model_name == "DeepSeek-V3" else "deepseek-reasoner",
+    #                     api_base="https://api.deepseek.com",
+    #                     max_context_size=50000
+    #                 )
+    #             elif model_name.startswith(("gpt", "o3", "o4")):
+    #                 self.engines[model_name] = OpenAIEngine(
+    #                     api_key=self.keys.get("openai"),
+    #                     model=model_name,
+    #                     # reasoning_effort="high"  # Reasoning effort for o3-mini --> o3-mini-high
+    #                 )
+    #             else:
+    #                 # HuggingFace model
+    #                 self.engines[model_name] = HuggingEngine(model_id=model_name)
+                    
+    #         except Exception as e:
+    #             logging.error(f"Failed to initialize model {model_name}: {e}")
 
     async def get_model_instance(self, model_name):
         """Get a fresh Kani instance for each request"""

@@ -1,0 +1,1 @@
+Return the current domain for attribute attr given available values and any pending constraint.
