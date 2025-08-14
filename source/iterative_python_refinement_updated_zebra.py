@@ -205,8 +205,8 @@ Examples:
                 elif model_name.startswith(("gpt", "o3", "o4")):
                     self.engines[model_name] = OpenAIEngine(
                         api_key=self.keys.get("openai"),
-                        model=model_name
-                        # reasoning_effort="high"  # Reasoning effort for o3-mini --> o3-mini-high
+                        model=model_name,
+                        reasoning_effort="high"  # Reasoning effort for o3-mini --> o3-mini-high
                     )
 
                 else:
@@ -1067,12 +1067,12 @@ Examples:
             return False, {"invalid_golden": True}
         
         try:
+            # Get golden headers from the first house (all houses should have same attributes)
+            golden_headers = set(golden_output[0].keys()) if golden_output else set()
+            
             # Check number of houses matches
             if len(predicted_output) != len(golden_output):
                 return False, {"wrong_length": f"Expected {len(golden_output)} houses, got {len(predicted_output)}"}
-            
-            # Build mapping of golden attributes to predicted attributes
-            attr_mapping = self._build_attribute_mapping(golden_output, predicted_output)
             
             violations = []
             for gold_house, pred_house in zip(golden_output, predicted_output):
@@ -1081,19 +1081,23 @@ Examples:
                     violations.append(f"Wrong house number: expected {gold_house.get('House')}, got {pred_house.get('House')}")
                     continue
                     
-                # Check all attributes
+                # Check all golden attributes exist in predicted output (case insensitive)
                 for gold_attr, gold_value in gold_house.items():
                     if gold_attr == "House":
                         continue
                         
-                    # Find corresponding attribute in prediction
-                    pred_attr = attr_mapping.get(gold_attr, gold_attr)
-                    pred_value = pred_house.get(pred_attr)
+                    # Find matching attribute in prediction (case insensitive)
+                    pred_attr = None
+                    lower_gold_attr = gold_attr.lower()
+                    for p_attr in pred_house.keys():
+                        if p_attr.lower() == lower_gold_attr:
+                            pred_attr = p_attr
+                            break
                     
-                    if pred_value is None:
-                        violations.append(f"Missing attribute {gold_attr} (looked for {pred_attr})")
-                    elif str(pred_value).lower() != str(gold_value).lower():
-                        violations.append(f"Wrong {gold_attr}: expected {gold_value}, got {pred_value}")
+                    if not pred_attr:
+                        violations.append(f"Missing attribute {gold_attr}")
+                    elif str(pred_house[pred_attr]).lower() != str(gold_value).lower():
+                        violations.append(f"Wrong {gold_attr}: expected {gold_value}, got {pred_house[pred_attr]}")
             
             if violations:
                 return False, {"violations": violations}
@@ -1168,10 +1172,32 @@ Examples:
             "calendar": "Given the following time range:\n" + answer_str + "\nExtract the meeting start day and time in a JSON like {\"day\": \"Monday\", \"start_time\": \"14:30\", \"end_time\": \"15:30\"}. The time should be in 24-hour format. If no time range is given at all, output an empty JSON. Do not change the answer whatsoever, just extract the information from the given text.",
             "trip": "Given the following itinerary:\n" + answer_str + "\nExtract the days spent in each city in a JSON format like {\"itinerary\": [{\"day_range\": \"Day 1-2\", \"place\": \"Reykjavik\"}, {\"day_range\": \"Day 2-4\", \"place\": \"Stockholm\"}......]}. Only keep the days in a city. If flying from city A to city B, that day should be included in both ranges for both cites. The day range should be inclusive. For example, arrving at Reykjavik in Day 1 and flying to Stockholm on Day 2 will result in the dictionary above. If no itinerary is given, output an empty JSON. Do not change the answer whatsoever, just extract the information from the given text.",
             "meeting": "Given the following meeting schedule:\n" + answer_str + "\nExtract the complete meeting information in a JSON format like {\"itinerary\": [{\"action\": \"meet\", \"person\": \"David\", \"location\": \"Central Park\", \"start_time\": \"13:00\", \"end_time\": \"14:00\"}, ...]}. Include all fields from the original output including location. The time should be converted to a 24-hour format. If no time range is given at all, output an empty JSON. Do not change the answer whatsoever, just extract the information from the given text.",
-            "zebralogic": "Given the following puzzle solution:\n" + answer_str + "\nExtract the solution in a JSON format like 'solution': {'header': ['House', 'Name', 'Nationality', 'BookGenre', 'Food', 'Color', 'Animal'], 'rows': [['1', 'Bob', 'german', 'mystery', 'grilled cheese', 'yellow', 'dog'], ['2', 'Eric', 'norwegian', 'fantasy', 'stew', 'blue', 'fish'], ['3', 'Peter', 'dane', 'science fiction', 'spaghetti', 'green', 'cat'], ['4', 'Arnold', 'swede', 'biography', 'stir fry', 'red', 'bird'], ['5', 'Alice', 'brit', 'romance', 'pizza', 'white', 'horse']]}, 'created_at': '2024-07-03T21:21:29.209499'} which matches the expected output structure. The JSON should contain all attribute assignments that solve the puzzle. If no valid solution is given, output an empty JSON. Do not change the answer whatsoever, just extract the information from the given text."
+            "zebralogic": (
+                "Given the following puzzle solution:\n" + answer_str + 
+                "\nExtract the solution in a JSON format that exactly matches the expected output structure. "
+                "The JSON should contain all attribute assignments that solve the puzzle. "
+                "The header names MUST exactly match these: " + str(golden_plan["header"]) + ". "
+                "Example of required format:\n"
+                "{\n"
+                '  "solution": {\n'
+                '    "header": ["House", "Name", "Occupation", "Birthday", "HouseStyle", "Height", "Cigar"],\n'
+                '    "rows": [\n'
+                '      ["1", "Eric", "engineer", "april", "colonial", "very short", "prince"],\n'
+                '      ["2", "Arnold", "doctor", "sept", "victorian", "short", "pall mall"]\n'
+                '    ]\n'
+                "  }\n"
+                "}\n\n"
+                "Important:\n"
+                "- Keep all original values exactly as provided\n"
+                "- Change and standardize the header names to match the golden solution, for example if model said Lunch but golden header is Food, the header should be changed to Food.\n"
+                "- Maintain correct house ordering (1, 2, 3...)\n"
+                "- If no valid solution is given, output empty JSON {}\n"
+                "- Do not include any explanatory text, only the JSON"
+            )
         }
 
         try:
+            print(prompt["zebralogic"])
             response = client.chat.completions.create(
                 model="gpt-4.1-nano",
                 messages=[
@@ -1365,7 +1391,7 @@ Examples:
 
     def save_output_files(self, task, example_id, pass_num, conversation, code, output, evaluation):
         """Save all output files for a given pass"""
-        output_dir = f"../output/Python/Qwen3-32B/{task}/single_pass/{example_id}/{pass_num}_pass"
+        output_dir = f"../output/Python/o3-mini-high/{task}/single_pass/{example_id}/{pass_num}_pass"
         os.makedirs(output_dir, exist_ok=True)
         
         # Save conversation

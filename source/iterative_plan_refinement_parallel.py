@@ -75,7 +75,7 @@ def parse_args():
 
 # Load API keys
 try:
-    with open("../scheduling_key.json") as f:
+    with open("../../openai_research/ai2_openai_key.json") as f:
         keys = json.load(f)
 except FileNotFoundError:
     logging.error("scheduling_key.json not found. Please create this file with your API keys.")
@@ -85,10 +85,10 @@ def initialize_model(model_name, keys):
     """Initializes the Kani AI model based on the model name."""
     if model_name.startswith("gpt") or model_name.startswith("o"):
         if model_name == "o3-mini":
-            model_name = "o3-mini-2025-01-31"
+            model_name = "o3-mini"
         elif model_name == "gpt-4o-mini":
             model_name = "gpt-4o-mini-2024-07-18"
-        engine = OpenAIEngine(keys["openai"], model=model_name, max_context_size=20000)
+        engine = OpenAIEngine(keys["openai"], model=model_name, max_context_size=20000, reasoning_effort="high")
     elif model_name == "DeepSeek-R1":
         engine = OpenAIEngine(keys["deepseek"], model="deepseek-reasoner", api_base="https://api.deepseek.com", max_context_size=20000)
     elif model_name == "DeepSeek-V3":
@@ -843,7 +843,7 @@ async def process_single_example(
         logging.info(f"[{example_id}] Starting processing with model {model}")
         
         # Create output directory
-        output_dir = f"../output/Plan/{model}/{task}/n_pass/{example_id}"
+        output_dir = f"../output/Plan/{model}/{task}/single_pass/{example_id}"
         os.makedirs(output_dir, exist_ok=True)
         
         # Initialize AI model (outside semaphore to allow parallel initialization)

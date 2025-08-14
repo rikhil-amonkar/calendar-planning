@@ -1,0 +1,102 @@
+{
+    "has_execution_error": false,
+    "execution_output": "Below is one valid solution. In this plan the 10 cities are visited in the order shown. Note that the \u201cflight\u2010day overlap\u201d rules force the first seven \u201cblocks\u201d to add up to 31 days so that the 8th city (Istanbul) gets an itinerary exactly covering days 25\u201329. (Also, the Krakow visit \u2013 required to include a workshop day between Day\u00a05\u20139 \u2013 comes first so that Day\u00a05 occurs in Krakow.) \n\nHere is one itinerary that meets all the requirements and uses only the following direct flights between successive cities:\n\n\u2022 From Krakow to Vilnius (using the directed flight \u201cfrom Krakow to Vilnius\u201d)  \n\u2022 From Vilnius to Frankfurt (vilnius and frankfurt are connected)  \n\u2022 From Frankfurt to Florence (frankfurt and florence are connected)  \n\u2022 From Florence to Munich (using the directed \u201cfrom Florence to Munich\u201d)  \n\u2022 From Munich to Hamburg (munich and hamburg are connected)  \n\u2022 From Hamburg to Oslo (oslo and hamburg are connected)  \n\u2022 From Oslo to Istanbul (oslo and istanbul are connected)  \n\u2022 From Istanbul to Stockholm (istambul and stockholm are connected)  \n\u2022 From Stockholm to Santorini (using the directed \u201cfrom stockholm to santorini\u201d)  \n\nThe assignments of days are computed as follows. (Remember that when you fly on the last day of a city\u2019s visit that same day is \u201cin\u2010both cities.\u201d) \n\n\u2022 City 1: Krakow for 5 days (the workshop in Krakow happens on Day\u00a05) \u2192 Day\u00a01\u20135  \n\u2022 City 2: Vilnius for 5 days \u2192 starts on Day\u00a05 (overlap with Krakow on Day\u00a05) and runs Day\u00a05\u20139  \n\u2022 City 3: Frankfurt for 4 days \u2192 starts on Day\u00a09 (overlap with Vilnius on Day\u00a09) and runs Day\u00a09\u201312  \n\u2022 City 4: Florence for 2 days \u2192 starts on Day\u00a012 (overlap on Day\u00a012) and runs Day\u00a012\u201313  \n\u2022 City 5: Munich for 5 days \u2192 starts on Day\u00a013 and runs Day\u00a013\u201317  \n\u2022 City 6: Hamburg for 5 days \u2192 starts on Day\u00a017 and runs Day\u00a017\u201321  \n\u2022 City 7: Oslo for 5 days \u2192 starts on Day\u00a021 and runs Day\u00a021\u201325  \n\u2022 City 8: Istanbul for 5 days \u2192 starts on Day\u00a025 (so the annual show from Day\u00a025\u201329 is \u201cinside\u201d this segment) and runs Day\u00a025\u201329  \n\u2022 City 9: Stockholm for 3 days \u2192 starts on Day\u00a029 (overlap with Istanbul on Day\u00a029) and runs Day\u00a029\u201331  \n\u2022 City 10: Santorini for 2 days \u2192 starts on Day\u00a031 (overlap with Stockholm on Day\u00a031) and runs Day\u00a031\u201332\n\nOne can check that the \u201csum of days\u201d (5+5+4+2+5+5+5+5+3+2 = 41) minus the 9 \u201coverlap\u201d days equals the 32\u2010day total. Also, every adjacent pair is connected by an available (direct) flight and all special date requirements are satisfied.\n\nBelow is the required JSON output:\n\n{\n  \"itinerary\": [\n    {\"day_range\": \"Day 1-5\", \"place\": \"Krakow\"},\n    {\"day_range\": \"Day 5-9\", \"place\": \"Vilnius\"},\n    {\"day_range\": \"Day 9-12\", \"place\": \"Frankfurt\"},\n    {\"day_range\": \"Day 12-13\", \"place\": \"Florence\"},\n    {\"day_range\": \"Day 13-17\", \"place\": \"Munich\"},\n    {\"day_range\": \"Day 17-21\", \"place\": \"Hamburg\"},\n    {\"day_range\": \"Day 21-25\", \"place\": \"Oslo\"},\n    {\"day_range\": \"Day 25-29\", \"place\": \"Istanbul\"},\n    {\"day_range\": \"Day 29-31\", \"place\": \"Stockholm\"},\n    {\"day_range\": \"Day 31-32\", \"place\": \"Santorini\"}\n  ]\n}\n\nThis plan meets the requirements:\n\u2013 The workshop in Krakow falls on Day\u00a05 (the last day of Krakow\u2019s visit, which is within [5,9]).  \n\u2013 The annual show in Istanbul is attended exactly during Day\u00a025\u201329.  \n\u2013 Every commuting flight is direct (using the available direct flights listed).  \n\nThis is one acceptable solution.",
+    "pred": {
+        "itinerary": [
+            {
+                "day_range": "Day 1-5",
+                "place": "Krakow"
+            },
+            {
+                "day_range": "Day 5-9",
+                "place": "Vilnius"
+            },
+            {
+                "day_range": "Day 9-12",
+                "place": "Frankfurt"
+            },
+            {
+                "day_range": "Day 12-13",
+                "place": "Florence"
+            },
+            {
+                "day_range": "Day 13-17",
+                "place": "Munich"
+            },
+            {
+                "day_range": "Day 17-21",
+                "place": "Hamburg"
+            },
+            {
+                "day_range": "Day 21-25",
+                "place": "Oslo"
+            },
+            {
+                "day_range": "Day 25-29",
+                "place": "Istanbul"
+            },
+            {
+                "day_range": "Day 29-31",
+                "place": "Stockholm"
+            },
+            {
+                "day_range": "Day 31-32",
+                "place": "Santorini"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "day_range": "Day 1-5",
+                "place": "Oslo"
+            },
+            {
+                "day_range": "Day 5-9",
+                "place": "Krakow"
+            },
+            {
+                "day_range": "Day 9-13",
+                "place": "Vilnius"
+            },
+            {
+                "day_range": "Day 13-16",
+                "place": "Frankfurt"
+            },
+            {
+                "day_range": "Day 16-17",
+                "place": "Florence"
+            },
+            {
+                "day_range": "Day 17-21",
+                "place": "Munich"
+            },
+            {
+                "day_range": "Day 21-25",
+                "place": "Hamburg"
+            },
+            {
+                "day_range": "Day 25-29",
+                "place": "Istanbul"
+            },
+            {
+                "day_range": "Day 29-31",
+                "place": "Stockholm"
+            },
+            {
+                "day_range": "Day 31-32",
+                "place": "Santorini"
+            }
+        ]
+    },
+    "status": "Failed to solve within max passes",
+    "violated_constraint": {
+        "flight": {
+            "from": "Hamburg",
+            "to": "Oslo"
+        }
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1
+}

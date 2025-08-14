@@ -1,0 +1,94 @@
+{
+    "has_execution_error": false,
+    "execution_output": "Below is one valid solution. In this plan the nine cities are visited in the order below. Note that the \u201cflight\u2010day overlap\u201d rule is used so that, for example, Budapest is \u201cvisited\u201d on Days 1\u20135 while Amsterdam is visited on Days 5\u20138 (since Day\u00a05 counts for both places). Also, the three \u201cevent\u201d cities occur at times that let you meet your friend in Paris during Days 11\u201315, attend the Krakow wedding with at least one day between Days 18 and 22, and then meet your Santorini\u2010friend during the Santorini stay (which covers Days 26\u201330, so that a meeting between Days 26\u201329 is possible).\n\nOne correct itinerary is as follows:\n\n\u2022\u2003Segment\u00a01 \u2013 Budapest (5 days). With no prior flight, you start in Budapest on Day\u00a01 and stay through Day\u00a05.\n\n\u2022\u2003Segment\u00a02 \u2013 Amsterdam (4 days). You fly from Budapest to Amsterdam on Day\u00a05 (so Day\u00a05 counts for both cities) and remain in Amsterdam until Day\u00a08.\n\n\u2022\u2003Segment\u00a03 \u2013 Split (4 days). A direct flight exists from Amsterdam to Split (remember that flying occurs on the first day in Split). Thus you are in Split from Day\u00a08 through Day\u00a011.\n\n\u2022\u2003Segment\u00a04 \u2013 Paris (5 days). With a flight from Split to Paris on Day\u00a011 (allowed via the \u201cParis and Split\u201d connection), you are in Paris from Day\u00a011 to Day\u00a015. (Your friend\u2010meeting in Paris may take place on, say, Day\u00a011 or later but no later than Day\u00a015.)\n\n\u2022\u2003Segment\u00a05 \u2013 Krakow (5 days). There is a direct flight from Paris to Krakow. Thus Krakow is visited from Day\u00a015 to Day\u00a019. (The wedding in Krakow can happen late in this segment \u2013 e.g. on Day\u00a018 or 19 \u2013 which lies in the required [18\u201322] window.)\n\n\u2022\u2003Segment\u00a06 \u2013 Vilnius (3 days). Note that the only direct flight from Krakow to Vilnius is the one \u201cfrom Krakow to Vilnius.\u201d Hence you fly on Day\u00a019 and then remain in Vilnius through Day\u00a021.\n\n\u2022\u2003Segment\u00a07 \u2013 Munich (5 days). The only available flight from Vilnius is \u201cfrom Vilnius to Munich.\u201d So you leave Vilnius on Day\u00a021 and then are in Munich from Day\u00a021 to Day\u00a025.\n\n\u2022\u2003Segment\u00a08 \u2013 Geneva (2 days). From Munich you take a direct flight to Geneva (Munich and Geneva are connected), arriving on Day\u00a025. You remain there through Day\u00a026.\n\n\u2022\u2003Segment\u00a09 \u2013 Santorini (5 days). Finally, a direct flight exists from Geneva to Santorini. Flying on Day\u00a026 puts you in Santorini from Day\u00a026 to Day\u00a030. (Your Santorini friend\u2013meeting can be arranged on one of Days\u00a026\u201329.)\n\nNotice that all flight legs obey the connectivity rules (for example, the crucial directed flights\u2014Krakow \u2192 Vilnius and Vilnius \u2192 Munich\u2014occur in the proper order) and the event times fall in the proper parts of the itinerary.\n\nBelow is the JSON output of this valid trip plan:\n\n{\n  \"itinerary\": [\n    {\"day_range\": \"Day 1-5\", \"place\": \"Budapest\"},\n    {\"day_range\": \"Day 5-8\", \"place\": \"Amsterdam\"},\n    {\"day_range\": \"Day 8-11\", \"place\": \"Split\"},\n    {\"day_range\": \"Day 11-15\", \"place\": \"Paris\"},\n    {\"day_range\": \"Day 15-19\", \"place\": \"Krakow\"},\n    {\"day_range\": \"Day 19-21\", \"place\": \"Vilnius\"},\n    {\"day_range\": \"Day 21-25\", \"place\": \"Munich\"},\n    {\"day_range\": \"Day 25-26\", \"place\": \"Geneva\"},\n    {\"day_range\": \"Day 26-30\", \"place\": \"Santorini\"}\n  ]\n}\n\nThis 38\u2011\u201ccity\u2010day\u201d sum (5+4+4+5+5+3+5+2+5) minus 8 overlapping flight days equals exactly 30 days.",
+    "pred": {
+        "itinerary": [
+            {
+                "day_range": "Day 1-5",
+                "place": "Budapest"
+            },
+            {
+                "day_range": "Day 5-8",
+                "place": "Amsterdam"
+            },
+            {
+                "day_range": "Day 8-11",
+                "place": "Split"
+            },
+            {
+                "day_range": "Day 11-15",
+                "place": "Paris"
+            },
+            {
+                "day_range": "Day 15-19",
+                "place": "Krakow"
+            },
+            {
+                "day_range": "Day 19-21",
+                "place": "Vilnius"
+            },
+            {
+                "day_range": "Day 21-25",
+                "place": "Munich"
+            },
+            {
+                "day_range": "Day 25-26",
+                "place": "Geneva"
+            },
+            {
+                "day_range": "Day 26-30",
+                "place": "Santorini"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "day_range": "Day 1-3",
+                "place": "Vilnius"
+            },
+            {
+                "day_range": "Day 3-7",
+                "place": "Munich"
+            },
+            {
+                "day_range": "Day 7-11",
+                "place": "Budapest"
+            },
+            {
+                "day_range": "Day 11-15",
+                "place": "Paris"
+            },
+            {
+                "day_range": "Day 15-18",
+                "place": "Split"
+            },
+            {
+                "day_range": "Day 18-22",
+                "place": "Krakow"
+            },
+            {
+                "day_range": "Day 22-25",
+                "place": "Amsterdam"
+            },
+            {
+                "day_range": "Day 25-29",
+                "place": "Santorini"
+            },
+            {
+                "day_range": "Day 29-30",
+                "place": "Geneva"
+            }
+        ]
+    },
+    "status": "Failed to solve within max passes",
+    "violated_constraint": {
+        "flight": {
+            "from": "Amsterdam",
+            "to": "Split"
+        }
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1
+}
