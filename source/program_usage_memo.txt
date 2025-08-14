@@ -1,0 +1,134 @@
+# Program Usage Memo
+
+## Overview
+This memo describes the usage of iterative refinement programs for solving scheduling problems using either SMT (Satisfiability Modulo Theories) solvers or direct plan generation through Large Language Models (LLMs).
+
+## Program Categories
+
+### SMT-based Refinement Programs
+**Location**: `/output/SMT/{model_name}/`
+
+#### 1. `iterative_smt_refinement_limitedFeedback_enhanced.py`
+- **Purpose**: SMT refinement with minimal feedback (basic error messages only)
+- **Model Access**: Direct API access (OpenAI, DeepSeek, etc.)
+- **Use Case**: When you want to test SMT solutions with minimal guidance (only feedback on execution error message, no plan found and wrong plan without violation feedback)
+- **Command Example**: 
+  ```bash
+  python3 iterative_smt_refinement_limitedFeedback_enhanced.py --task calendar --model DeepSeek-R1 --start 0 --end 5
+  ```
+
+#### 2. `iterative_smt_refinement_feedback_enhanced.py`
+- **Purpose**: SMT refinement with comprehensive constraint violation feedback
+- **Model Access**: Direct API access (OpenAI, DeepSeek, etc.)
+- **Use Case**: When you want detailed feedback to improve SMT solutions iteratively
+- **Command Example**:
+  ```bash
+  python3 iterative_smt_refinement_feedback_enhanced.py --task meeting --model DeepSeek-V3 --start 10 --end 15
+  ```
+
+#### 3. `iterative_smt_refinement_together_with_feedback.py`
+- **Purpose**: SMT refinement with comprehensive feedback using Together.ai models
+- **Model Access**: Together.ai (Qwen, Llama, etc.)
+- **Use Case**: When you want detailed feedback using Together.ai hosted models
+- **Command Example**:
+  ```bash
+  python3 iterative_smt_refinement_together_with_feedback.py --task trip --model Qwen2.5-Coder-32B-Instruct --start 20 --end 25
+  ```
+
+#### 4. `iterative_smt_refinement_together_with_limitedFeedback.py`
+- **Purpose**: SMT refinement with minimal feedback using Together.ai models
+- **Model Access**: Together.ai (Qwen, Llama, etc.)
+- **Use Case**: When you want basic feedback using Together.ai hosted models
+- **Command Example**:
+  ```bash
+  python3 iterative_smt_refinement_together_with_limitedFeedback.py --task calendar --model Qwen2.5-Coder-32B-Instruct --start 30 --end 35
+  ```
+
+### Plan-based Refinement Programs
+**Location**: `/output/Plan/{model_name}/`
+
+#### 5. `iterative_plan_refinement_limitedFeedback.py`
+- **Purpose**: Direct plan generation with minimal feedback
+- **Model Access**: Direct API access (OpenAI, DeepSeek, etc.)
+- **Use Case**: When you want to test direct plan generation with basic guidance
+- **Command Example**:
+  ```bash
+  python3 iterative_plan_refinement_limitedFeedback.py --task meeting --model DeepSeek-R1 --start 0 --end 5
+  ```
+
+#### 6. `iterative_plan_refinement_feedback.py`
+- **Purpose**: Direct plan generation with comprehensive constraint feedback
+- **Model Access**: Direct API access (OpenAI, DeepSeek, etc.)
+- **Use Case**: When you want detailed feedback to improve plans iteratively
+- **Command Example**:
+  ```bash
+  python3 iterative_plan_refinement_feedback.py --task trip --model DeepSeek-V3 --start 10 --end 15
+  ```
+
+#### 7. `iterative_plan_refinement_together_feedback.py`
+- **Purpose**: Direct plan generation with comprehensive feedback using Together.ai models
+- **Model Access**: Together.ai (Qwen, Llama, etc.)
+- **Use Case**: When you want detailed feedback using Together.ai hosted models
+- **Command Example**:
+  ```bash
+  python3 iterative_plan_refinement_together_feedback.py --task calendar --model Qwen2.5-Coder-32B-Instruct --start 20 --end 25
+  ```
+
+#### 8. `iterative_plan_refinement_together_limitedFeedback.py`
+- **Purpose**: Direct plan generation with minimal feedback using Together.ai models
+- **Model Access**: Together.ai (Qwen, Llama, etc.)
+- **Use Case**: When you want basic feedback using Together.ai hosted models
+- **Command Example**:
+  ```bash
+  python3 iterative_plan_refinement_together_limitedFeedback.py --task meeting --model Qwen2.5-Coder-32B-Instruct --start 30 --end 35
+  ```
+
+## Common Command Line Arguments
+
+### Required Arguments
+- `--task`: Task type (`calendar`, `trip`, or `meeting`)
+- `--model`: Model name (e.g., `DeepSeek-R1`, `Qwen2.5-Coder-32B-Instruct`)
+
+### Optional Arguments
+- `--start`: Starting example index (0-based)
+- `--end`: Ending example index (exclusive)
+- `--examples`: Comma-separated list of specific example numbers
+- `--max_passes`: Maximum refinement iterations (default: 5)
+- `--max_concurrent`: Maximum concurrent examples (default: 10)
+- `--rate_limit`: API requests per minute (default: 60)
+- `--fresh`: Clear output directories before running
+
+## Output Structure
+
+### SMT Programs
+```
+/output/SMT/{model_name}/{task}/n_pass/{example_id}/{pass_number}_pass/
+├── conversation.json    # Full conversation history
+├── solution.py         # Generated Z3 code
+├── output.out          # Execution output
+└── evaluation.json     # Constraint evaluation results
+```
+
+### Plan Programs
+```
+/output/Plan/{model_name}/{task}/n_pass/{example_id}/{pass_number}_pass/
+├── conversation.json    # Full conversation history
+├── solution.py         # Generated plan (placeholder for plan programs)
+├── output.out          # Model output
+└── evaluation.json     # Constraint evaluation results
+```
+
+## Key Differences
+
+1. **SMT vs Plan**: SMT programs generate and execute Python code using Z3 solver, while Plan programs generate plans directly
+2. **Feedback Level**: `limitedFeedback` provides basic error messages or notification of no plan found or wrong plan without violation feedback, `feedback` provides detailed constraint violation information
+3. **Model Access**: `together` programs use Together.ai API, others use direct model APIs
+4. **Output Location**: SMT results go to `/output/SMT/`, Plan results go to `/output/Plan/`
+
+## Result folders
+/output/SMT/DeepSeek-R1/
+/output/SMT/DeepSeek-V3/
+/output/SMT/Qwen2.5-Coder-32B-Instruct
+/output/Plan/DeepSeek-R1/
+/output/Plan/DeepSeek-V3/
+/output/Plan/Qwen/Qwen2.5-Coder-32B-Instruct
