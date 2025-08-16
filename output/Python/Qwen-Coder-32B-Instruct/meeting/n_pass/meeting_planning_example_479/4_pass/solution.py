@@ -1,1 +1,0 @@
-return current_time <= meeting_start and meeting_end - timedelta(hours=meeting_start.hour, minutes=meeting_start.minute) >= min_duration

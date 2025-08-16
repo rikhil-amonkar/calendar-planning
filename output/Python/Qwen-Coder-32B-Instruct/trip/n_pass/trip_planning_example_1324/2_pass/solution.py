@@ -1,1 +1,0 @@
-min_day, (start, end) = constraints[city]
