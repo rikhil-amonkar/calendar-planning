@@ -1,0 +1,1 @@
+if all((current_city, city) in direct_flights or (city, current_city) in direct_flights):
