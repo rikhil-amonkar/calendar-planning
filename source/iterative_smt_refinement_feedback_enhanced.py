@@ -77,19 +77,21 @@ def parse_args():
     return args
 
 try:
-    with open("../../scheduling_key.json") as f:
+    with open("../../openai_research/ai2_openai_key.json") as f:
         keys = json.load(f)
 except FileNotFoundError:
-    print("Error: scheduling_key.json not found. Please create this file with your API keys.")
+    print("Error: openai_research/ai2_openai_key.json not found. Please create this file with your API keys.")
     exit(1)
 
 def initialize_model(model_name, keys):
     """Initializes the Kani AI model based on the model name."""
     if model_name.startswith("gpt") or model_name.startswith("o"):
         if model_name == "o3-mini":
-            model_name = "o3-mini-2025-01-31"
+            model_name = "o3-mini"
         elif model_name == "gpt-4o-mini":
             model_name = "gpt-4o-mini-2024-07-18"
+        elif model_name == "gpt-5-2025-08-07":
+            model_name = "gpt-5-2025-08-07"
         engine = OpenAIEngine(keys["openai"], model=model_name, max_context_size=20000)
     elif model_name == "DeepSeek-R1":
         engine = OpenAIEngine(keys["deepseek"], model="deepseek-reasoner", api_base="https://api.deepseek.com", max_context_size=20000)
@@ -104,7 +106,7 @@ def initialize_model(model_name, keys):
 def get_openai_client():
     """Get OpenAI client for GPT-based extraction"""
     try:
-        with open("../../scheduling_key.json") as f:
+        with open("../../openai_research/ai2_openai_key.json") as f:
             key = json.load(f)["openai"]
         return OpenAI(api_key=key)
     except (FileNotFoundError, KeyError):
@@ -217,7 +219,7 @@ def extract_answer_basic(answer_str, task):
     from openai import OpenAI
     
     try:
-        with open("../../scheduling_key.json") as f:
+        with open("../../openai_research/ai2_openai_key.json") as f:
             key = json.load(f)["openai"]
         client = OpenAI(api_key=key)
     except (FileNotFoundError, KeyError):
@@ -658,7 +660,7 @@ async def process_single_example(
                 logging.warning(f"Example ID {example_id} does not match expected format for task {task}, skipping")
                 return
             
-            output_dir = f"../output/SMT/{model}/{task}/n_pass/{example_id}"
+            output_dir = f"../output/SMT/{model}/{task}/single_pass/{example_id}"
             os.makedirs(output_dir, exist_ok=True)
             
             logging.info(f"[{example_id}] Starting processing with model {model}")
@@ -666,7 +668,7 @@ async def process_single_example(
             
             # Initialize AI model
             try:
-                with open("../../scheduling_key.json") as f:
+                with open("../../openai_research/ai2_openai_key.json") as f:
                     keys = json.load(f)
                 ai = initialize_model(model, keys)
                 logging.info(f"[{example_id}] Model initialized successfully")
@@ -1043,7 +1045,7 @@ async def main():
     
     # Clear output directories if fresh flag is set
     if args.fresh:
-        output_base = f"../output/SMT/{args.model}/{args.task}/n_pass"
+        output_base = f"../output/SMT/{args.model}/{args.task}/1_pass"
         if os.path.exists(output_base):
             shutil.rmtree(output_base)
             logging.info(f"Cleared output directory: {output_base}")

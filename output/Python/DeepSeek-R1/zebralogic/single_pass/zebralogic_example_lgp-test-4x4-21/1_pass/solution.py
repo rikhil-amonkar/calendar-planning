@@ -3,98 +3,87 @@ import json
 
 def main():
     names = ['Eric', 'Peter', 'Alice', 'Arnold']
-    cars = ['tesla model 3', 'honda civic', 'toyota camry', 'ford f150']
-    months = ['jan', 'april', 'sept', 'feb']
+    cars = ['honda civic', 'tesla model 3', 'toyota camry', 'ford f150']
+    birthdays = ['jan', 'april', 'sept', 'feb']
     hobbies = ['painting', 'cooking', 'gardening', 'photography']
     
-    def constraint1(m):
-        return m[1] != 'jan'
+    solution_found = False
+    solution_rows = None
     
-    def constraint2(n, h):
-        idx_photo = h.index('photography')
-        idx_eric = n.index('Eric')
-        return idx_photo < idx_eric
-    
-    def constraint3(n, h):
-        idx_photo = h.index('photography')
-        idx_peter = n.index('Peter')
-        return idx_photo < idx_peter
-    
-    def constraint4(c):
-        idx_honda = c.index('honda civic')
-        idx_tesla = c.index('tesla model 3')
-        return idx_tesla == idx_honda + 1
-    
-    def constraint5(c, h):
-        idx_tesla = c.index('tesla model 3')
-        idx_garden = h.index('gardening')
-        return abs(idx_tesla - idx_garden) == 2
-    
-    def constraint6(n, c):
-        idx_tesla = c.index('tesla model 3')
-        return n[idx_tesla] == 'Arnold'
-    
-    def constraint7(m, h):
-        idx_feb = m.index('feb')
-        return h[idx_feb] == 'cooking'
-    
-    def constraint8(n, c):
-        idx_toyota = c.index('toyota camry')
-        return n[idx_toyota] == 'Peter'
-    
-    def constraint9(n, m):
-        idx_april = m.index('april')
-        return n[idx_april] == 'Arnold'
-    
-    def constraint10(n, h):
-        idx_alice = n.index('Alice')
-        return h[idx_alice] == 'photography'
-    
-    def constraint11(n, m):
-        idx_peter = n.index('Peter')
-        return m[idx_peter] == 'jan'
-    
-    for n_perm in itertools.permutations(names):
-        for c_perm in itertools.permutations(cars):
-            if not constraint4(c_perm):
+    for name_perm in itertools.permutations(names):
+        peter_index = name_perm.index('Peter')
+        arnold_index = name_perm.index('Arnold')
+        alice_index = name_perm.index('Alice')
+        
+        for car_perm in itertools.permutations(cars):
+            if car_perm[peter_index] != 'toyota camry':
                 continue
-            if not constraint6(n_perm, c_perm):
+            if car_perm[arnold_index] != 'tesla model 3':
                 continue
-            if not constraint8(n_perm, c_perm):
-                continue
-            for m_perm in itertools.permutations(months):
-                if not constraint1(m_perm):
+            
+            for birthday_perm in itertools.permutations(birthdays):
+                if birthday_perm[1] == 'jan':
                     continue
-                if not constraint9(n_perm, m_perm):
+                if birthday_perm[peter_index] != 'jan':
                     continue
-                if not constraint11(n_perm, m_perm):
+                if birthday_perm[arnold_index] != 'april':
                     continue
-                for h_perm in itertools.permutations(hobbies):
-                    if not constraint2(n_perm, h_perm):
-                        continue
-                    if not constraint3(n_perm, h_perm):
-                        continue
-                    if not constraint5(c_perm, h_perm):
-                        continue
-                    if not constraint7(m_perm, h_perm):
-                        continue
-                    if not constraint10(n_perm, h_perm):
+                
+                for hobby_perm in itertools.permutations(hobbies):
+                    if hobby_perm[alice_index] != 'photography':
                         continue
                     
-                    header = ["House", "Name", "Car", "Month", "Hobby"]
-                    rows = []
+                    idx_feb = birthday_perm.index('feb')
+                    if hobby_perm[idx_feb] != 'cooking':
+                        continue
+                    
+                    if hobby_perm[alice_index] != 'photography':
+                        continue
+                    
+                    idx_eric = name_perm.index('Eric')
+                    if alice_index >= idx_eric:
+                        continue
+                    if alice_index >= peter_index:
+                        continue
+                    
+                    found_adjacent = False
+                    for i in range(3):
+                        if car_perm[i] == 'honda civic' and car_perm[i+1] == 'tesla model 3':
+                            found_adjacent = True
+                            break
+                    if not found_adjacent:
+                        continue
+                    
+                    idx_tesla = arnold_index
+                    idx_garden = hobby_perm.index('gardening')
+                    if abs(idx_tesla - idx_garden) != 2:
+                        continue
+                    
+                    solution_rows = []
                     for i in range(4):
-                        row = [str(i+1), n_perm[i], c_perm[i], m_perm[i], h_perm[i]]
-                        rows.append(row)
-                    solution = {
-                        "solution": {
-                            "header": header,
-                            "rows": rows
-                        }
-                    }
-                    print(json.dumps(solution))
-                    return
-    print(json.dumps({"error": "No solution found"}))
+                        house_num = str(i+1)
+                        row = [house_num, name_perm[i], car_perm[i], birthday_perm[i], hobby_perm[i]]
+                        solution_rows.append(row)
+                    
+                    solution_found = True
+                    break
+                if solution_found:
+                    break
+            if solution_found:
+                break
+        if solution_found:
+            break
+    
+    if not solution_found:
+        print('{"solution": {}}')
+    else:
+        result = {
+            "solution": {
+                "header": ["House", "Name", "CarModel", "Birthday", "Hobby"],
+                "rows": solution_rows
+            }
+        }
+        print(json.dumps(result))
 
 if __name__ == "__main__":
     main()

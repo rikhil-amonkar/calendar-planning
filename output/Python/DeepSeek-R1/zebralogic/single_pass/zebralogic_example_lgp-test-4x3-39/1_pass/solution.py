@@ -1,119 +1,79 @@
 import itertools
 import json
 
-def satisfies(candidate):
-    # Constraint 1: Soccer not in second house (index1)
-    for i, house in enumerate(candidate):
-        if house[2] == 'soccer' and i == 1:
-            return False
-
-    # Constraint 2: Eric has blonde hair
-    for house in candidate:
-        if house[0] == 'Eric':
-            if house[1] != 'blonde':
-                return False
-            break
-
-    # Constraint 3: Blonde hair right of basketball
-    idx_blonde = None
-    idx_basketball = None
-    for i, house in enumerate(candidate):
-        if house[1] == 'blonde':
-            idx_blonde = i
-        if house[2] == 'basketball':
-            idx_basketball = i
-    if idx_blonde is None or idx_basketball is None:
-        return False
-    if idx_blonde <= idx_basketball:
-        return False
-
-    # Constraint 4: Black hair implies tennis
-    for house in candidate:
-        if house[1] == 'black':
-            if house[2] != 'tennis':
-                return False
-            break
-
-    # Constraint 5: Arnold left of red hair
-    idx_arnold = None
-    idx_red = None
-    for i, house in enumerate(candidate):
-        if house[0] == 'Arnold':
-            idx_arnold = i
-        if house[1] == 'red':
-            idx_red = i
-    if idx_arnold is None or idx_red is None:
-        return False
-    if idx_arnold >= idx_red:
-        return False
-
-    # Constraint 6: Alice loves swimming
-    for house in candidate:
-        if house[0] == 'Alice':
-            if house[2] != 'swimming':
-                return False
-            break
-
-    # Constraint 7: Red hair directly left of black hair
-    idx_red2 = None
-    idx_black = None
-    for i, house in enumerate(candidate):
-        if house[1] == 'red':
-            idx_red2 = i
-        if house[1] == 'black':
-            idx_black = i
-    if idx_red2 is None or idx_black is None:
-        return False
-    if idx_black != idx_red2 + 1:
-        return False
-
-    return True
-
 def main():
-    names = ['Eric', 'Alice', 'Peter', 'Arnold']
-    hair_colors = ['blonde', 'black', 'red', 'brown']
-    sports = ['swimming', 'soccer', 'basketball', 'tennis']
+    names_list = ['Eric', 'Alice', 'Peter', 'Arnold']
+    hairs_list = ['blonde', 'black', 'red', 'brown']
+    sports_list = ['swimming', 'soccer', 'basketball', 'tennis']
     
-    perms_names = list(itertools.permutations(names))
-    perms_hair = list(itertools.permutations(hair_colors))
-    perms_sports = list(itertools.permutations(sports))
-    
-    solution_candidate = None
     found = False
+    solution_data = None
     
-    for n_perm in perms_names:
-        if found:
-            break
-        for h_perm in perms_hair:
+    for names_perm in itertools.permutations(names_list):
+        for hairs_perm in itertools.permutations(hairs_list):
+            red_index = None
+            black_index = None
+            for idx, color in enumerate(hairs_perm):
+                if color == 'red':
+                    red_index = idx
+                if color == 'black':
+                    black_index = idx
+            if red_index is None or black_index is None:
+                continue
+            if black_index != red_index + 1:
+                continue
+            
+            for sports_perm in itertools.permutations(sports_list):
+                if sports_perm[1] == 'soccer':
+                    continue
+                
+                eric_index = names_perm.index('Eric')
+                if hairs_perm[eric_index] != 'blonde':
+                    continue
+                
+                basketball_index = sports_perm.index('basketball')
+                if eric_index <= basketball_index:
+                    continue
+                
+                if sports_perm[black_index] != 'tennis':
+                    continue
+                
+                arnold_index = names_perm.index('Arnold')
+                if arnold_index >= red_index:
+                    continue
+                
+                alice_index = names_perm.index('Alice')
+                if sports_perm[alice_index] != 'swimming':
+                    continue
+                
+                solution_data = (names_perm, hairs_perm, sports_perm)
+                found = True
+                break
             if found:
                 break
-            for s_perm in perms_sports:
-                candidate = []
-                for i in range(4):
-                    candidate.append((n_perm[i], h_perm[i], s_perm[i]))
-                if satisfies(candidate):
-                    solution_candidate = candidate
-                    found = True
-                    break
+        if found:
+            break
     
-    if solution_candidate is None:
-        print(json.dumps({"error": "No solution found"}))
-        return
-    
-    header = ["House", "Name", "Hair Color", "Favorite Sport"]
-    rows = []
-    for i in range(4):
-        house_attrs = solution_candidate[i]
-        row = [str(i+1), house_attrs[0], house_attrs[1], house_attrs[2]]
-        rows.append(row)
-    
-    result = {
-        "solution": {
-            "header": header,
-            "rows": rows
+    if found:
+        rows = []
+        for i in range(4):
+            row = [str(i+1), solution_data[0][i], solution_data[1][i], solution_data[2][i]]
+            rows.append(row)
+        solution_dict = {
+            "solution": {
+                "header": ["House", "Name", "HairColor", "FavoriteSport"],
+                "rows": rows
+            }
         }
-    }
-    print(json.dumps(result))
+    else:
+        solution_dict = {
+            "solution": {
+                "header": ["House", "Name", "HairColor", "FavoriteSport"],
+                "rows": []
+            }
+        }
+    
+    print(json.dumps(solution_dict))
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

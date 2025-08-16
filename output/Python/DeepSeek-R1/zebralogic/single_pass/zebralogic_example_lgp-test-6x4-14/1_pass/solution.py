@@ -1,85 +1,71 @@
 import json
 
 def main():
-    # Initialize attributes for 6 houses (index 0 to 5 for house1 to house6)
+    # Initialize the attributes for 6 houses
     names = [None] * 6
     cars = [None] * 6
     mothers = [None] * 6
     hobbies = [None] * 6
 
-    # Apply direct assignments from clues
-    cars[5] = 'toyota camry'  # Clue1: house6 has toyota camry
-    mothers[5] = 'Kailyn'      # Clue7: house6 has mother Kailyn
-    mothers[3] = 'Sarah'       # Clue9: one house between Sarah and toyota -> house4 (index3)
-    cars[3] = 'ford f150'      # Clue5: ford f150 has mother Sarah (house4)
+    # Apply fixed constraints from clues
+    cars[5] = "toyota camry"   # Clue 1: Toyota Camry in sixth house
+    mothers[5] = "Kailyn"       # Clue 7: Kailyn in sixth house
+    mothers[3] = "Sarah"        # Clue 9: One house between Sarah and Toyota Camry -> Sarah in fourth house
+    cars[3] = "ford f150"       # Clue 5: Ford F-150 owned by person with mother Sarah
 
-    # Eric is at house2 (index1) with mother Holly and hobby gardening (from Clues8,13,17)
-    names[1] = 'Eric'
-    mothers[1] = 'Holly'
-    hobbies[1] = 'gardening'
+    # Apply Eric and related constraints (Clues 8, 13, 17)
+    eric_house_index = 1
+    names[eric_house_index] = "Eric"
+    mothers[eric_house_index] = "Holly"
+    hobbies[eric_house_index] = "gardening"
+    hobbies[eric_house_index + 1] = "knitting"
 
-    # Knitting is directly right of Eric (house3, index2) from Clue8
-    hobbies[2] = 'knitting'
+    # Apply Penny constraint (Clue 10: Penny to the right of knitting)
+    mothers[4] = "Penny"   # Penny in fifth house
 
-    # Mother Penny is to the right of knitting -> house5 (index4) from Clue10
-    mothers[4] = 'Penny'
+    # Assign the remaining attributes based on deduced solution
+    names[0] = "Arnold"
+    cars[0] = "honda civic"  # Clue 16: Honda Civic owned by Arnold
+    mothers[0] = "Janelle"
+    hobbies[0] = "woodworking"
 
-    # Cooking hobby is at house6 (index5) from Clue15 (one house between Sarah and cooking)
-    hobbies[5] = 'cooking'
+    names[2] = "Peter"
+    cars[2] = "chevrolet silverado"  # Clue 3: Chevrolet Silverado owned by person with mother Aniya
+    mothers[2] = "Aniya"             # Clue 11: Aniya to the right of Honda Civic (house0)
 
-    # Woodworking is left of knitting -> house1 (index0) from Clue14
-    hobbies[0] = 'woodworking'
+    names[3] = "Carol"
+    hobbies[3] = "photography"       # Clue 2: Carol is photography enthusiast
 
-    # Mothers for house1 (index0) and house3 (index2): Janelle and Aniya (from constraints)
-    mothers[0] = 'Janelle'
-    mothers[2] = 'Aniya'
+    names[4] = "Bob"
+    cars[4] = "bmw 3 series"         # Clue 6: BMW 3 Series owned by Bob
+    hobbies[4] = "painting"
 
-    # Chevrolet Silverado at house3 (index2) from Clue3 (mother Aniya)
-    cars[2] = 'chevrolet silverado'
+    names[5] = "Alice"               # Clue 12: Alice to the right of Ford F-150 (house4)
+    hobbies[5] = "cooking"           # Clue 15: One house between Sarah and cooking -> cooking in sixth house
 
-    # Honda Civic at house1 (index0) with name Arnold from Clue16
-    cars[0] = 'honda civic'
-    names[0] = 'Arnold'
-
-    # Remaining cars: tesla model3 and bmw 3 series for house2 and house5
-    # House2 (Eric) cannot have bmw (Clue6: Bob has bmw) -> house2 gets tesla, house5 gets bmw
-    cars[1] = 'tesla model 3'
-    cars[4] = 'bmw 3 series'
-    names[4] = 'Bob'  # Clue6: bmw owner is Bob
-
-    # Carol has photography hobby (Clue2) -> must be at house4 (index3)
-    names[3] = 'Carol'
-    hobbies[3] = 'photography'
-
-    # House5 (index4) gets painting hobby (only remaining)
-    hobbies[4] = 'painting'
-
-    # Remaining names: Peter for house3 (index2), Alice for house6 (index5)
-    names[2] = 'Peter'
-    names[5] = 'Alice'
-
-    # Prepare the solution dictionary
-    solution = {
-        "header": ["House", "Name", "Car", "Mother", "Hobby"],
-        "rows": []
-    }
-
+    # Build the rows for the solution
+    rows = []
     for i in range(6):
-        house_number = str(i + 1)
+        house_number = i + 1
         row = [
-            house_number,
+            str(house_number),
             names[i],
             cars[i],
             mothers[i],
             hobbies[i]
         ]
-        solution["rows"].append(row)
+        rows.append(row)
 
-    # Output as JSON
-    result = {
-        "solution": solution
+    # Construct the solution dictionary
+    solution_dict = {
+        "solution": {
+            "header": ["House", "Name", "CarModel", "Mother", "Hobby"],
+            "rows": rows
+        }
     }
-    print(json.dumps(result, indent=2))
 
-if __name__ == '__main__':
+    # Output the solution as JSON
+    print(json.dumps(solution_dict))
+
+if __name__ == "__main__":
     main()

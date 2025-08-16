@@ -3,7 +3,6 @@ from itertools import permutations
 
 def solve_puzzle():
     # Define all possible categories and options
-    houses = ['1', '2', '3', '4']
     names = ['Eric', 'Peter', 'Arnold', 'Alice']
     smoothies = ['dragonfruit', 'cherry', 'desert', 'watermelon']
     cigars = ['blue master', 'pall mall', 'dunhill', 'prince']
@@ -16,153 +15,158 @@ def solve_puzzle():
             for cigar_perm in permutations(cigars):
                 for height_perm in permutations(heights):
                     for phone_perm in permutations(phones):
-                        # Create a dictionary to hold the current assignment
-                        assignment = {
-                            '1': {},
-                            '2': {},
-                            '3': {},
-                            '4': {}
-                        }
-                        for i in range(4):
-                            house = houses[i]
-                            assignment[house]['Name'] = name_perm[i]
-                            assignment[house]['Smoothie'] = smoothie_perm[i]
-                            assignment[house]['Cigar'] = cigar_perm[i]
-                            assignment[house]['Height'] = height_perm[i]
-                            assignment[house]['Phone'] = phone_perm[i]
+                        # Create a list of houses with all attributes
+                        houses = [
+                            {
+                                'House': '1',
+                                'Name': name_perm[0],
+                                'Smoothie': smoothie_perm[0],
+                                'Cigar': cigar_perm[0],
+                                'Height': height_perm[0],
+                                'PhoneModel': phone_perm[0]
+                            },
+                            {
+                                'House': '2',
+                                'Name': name_perm[1],
+                                'Smoothie': smoothie_perm[1],
+                                'Cigar': cigar_perm[1],
+                                'Height': height_perm[1],
+                                'PhoneModel': phone_perm[1]
+                            },
+                            {
+                                'House': '3',
+                                'Name': name_perm[2],
+                                'Smoothie': smoothie_perm[2],
+                                'Cigar': cigar_perm[2],
+                                'Height': height_perm[2],
+                                'PhoneModel': phone_perm[2]
+                            },
+                            {
+                                'House': '4',
+                                'Name': name_perm[3],
+                                'Smoothie': smoothie_perm[3],
+                                'Cigar': cigar_perm[3],
+                                'Height': height_perm[3],
+                                'PhoneModel': phone_perm[3]
+                            }
+                        ]
                         
                         # Check all constraints
-                        # 1. The Dragonfruit smoothie lover is Eric.
                         valid = True
-                        for house in assignment:
-                            if assignment[house]['Smoothie'] == 'dragonfruit' and assignment[house]['Name'] != 'Eric':
-                                valid = False
-                                break
-                        if not valid:
-                            continue
                         
-                        # 2. The Dunhill smoker is the person who likes Cherry smoothies.
-                        for house in assignment:
-                            if assignment[house]['Cigar'] == 'dunhill' and assignment[house]['Smoothie'] != 'cherry':
-                                valid = False
-                                break
-                        if not valid:
-                            continue
-                        
-                        # 3. The person who uses a Samsung Galaxy S21 is directly left of the person who uses an iPhone 13.
-                        found = False
-                        for i in range(3):
-                            if assignment[houses[i]]['Phone'] == 'samsung galaxy s21' and assignment[houses[i+1]]['Phone'] == 'iphone 13':
-                                found = True
-                                break
-                        if not found:
-                            valid = False
-                        if not valid:
-                            continue
-                        
-                        # 4. The Dunhill smoker is somewhere to the right of the person who is very short.
-                        very_short_house = None
-                        dunhill_house = None
-                        for house in assignment:
-                            if assignment[house]['Height'] == 'very short':
-                                very_short_house = int(house)
-                            if assignment[house]['Cigar'] == 'dunhill':
-                                dunhill_house = int(house)
-                        if very_short_house is None or dunhill_house is None or dunhill_house <= very_short_house:
-                            valid = False
-                        if not valid:
-                            continue
-                        
-                        # 5. The Watermelon smoothie lover is somewhere to the right of the Desert smoothie lover.
-                        desert_house = None
-                        watermelon_house = None
-                        for house in assignment:
-                            if assignment[house]['Smoothie'] == 'desert':
-                                desert_house = int(house)
-                            if assignment[house]['Smoothie'] == 'watermelon':
-                                watermelon_house = int(house)
-                        if desert_house is None or watermelon_house is None or watermelon_house <= desert_house:
-                            valid = False
-                        if not valid:
-                            continue
-                        
-                        # 6. The Prince smoker is the person who uses a OnePlus 9.
-                        for house in assignment:
-                            if assignment[house]['Cigar'] == 'prince' and assignment[house]['Phone'] != 'oneplus 9':
-                                valid = False
-                                break
-                        if not valid:
-                            continue
-                        
-                        # 7. The person who is tall is in the third house.
-                        if assignment['3']['Height'] != 'tall':
-                            valid = False
-                        if not valid:
-                            continue
-                        
-                        # 8. The person who is very short is the person who uses an iPhone 13.
-                        for house in assignment:
-                            if assignment[house]['Height'] == 'very short' and assignment[house]['Phone'] != 'iphone 13':
-                                valid = False
-                                break
-                        if not valid:
-                            continue
-                        
-                        # 9. The person who smokes Blue Master is not in the first house.
-                        if assignment['1']['Cigar'] == 'blue master':
-                            valid = False
-                        if not valid:
-                            continue
-                        
-                        # 10. The Dunhill smoker is the person who is short.
-                        for house in assignment:
-                            if assignment[house]['Cigar'] == 'dunhill' and assignment[house]['Height'] != 'short':
-                                valid = False
-                                break
-                        if not valid:
-                            continue
-                        
-                        # 11. Peter is not in the third house.
-                        if assignment['3']['Name'] == 'Peter':
-                            valid = False
-                        if not valid:
-                            continue
-                        
-                        # 12. Arnold is the person who uses a Google Pixel 6.
-                        for house in assignment:
-                            if assignment[house]['Name'] == 'Arnold' and assignment[house]['Phone'] != 'google pixel 6':
-                                valid = False
-                                break
-                        if not valid:
-                            continue
-                        
-                        # 13. The Dragonfruit smoothie lover is the person partial to Pall Mall.
-                        for house in assignment:
-                            if assignment[house]['Smoothie'] == 'dragonfruit' and assignment[house]['Cigar'] != 'pall mall':
-                                valid = False
-                                break
-                        if not valid:
-                            continue
-                        
-                        # If all constraints are satisfied, return the solution
-                        solution = {
-                            "solution": {
-                                "header": ["House", "Name", "Smoothie", "Cigar", "Height", "Phone"],
-                                "rows": []
-                            }
-                        }
+                        # Clue 1: The Dragonfruit smoothie lover is Eric.
                         for house in houses:
-                            row = [house]
-                            row.append(assignment[house]['Name'])
-                            row.append(assignment[house]['Smoothie'])
-                            row.append(assignment[house]['Cigar'])
-                            row.append(assignment[house]['Height'])
-                            row.append(assignment[house]['Phone'])
-                            solution["solution"]["rows"].append(row)
-                        return solution
+                            if house['Smoothie'] == 'dragonfruit' and house['Name'] != 'Eric':
+                                valid = False
+                            if house['Name'] == 'Eric' and house['Smoothie'] != 'dragonfruit':
+                                valid = False
+                        
+                        # Clue 2: The Dunhill smoker is the person who likes Cherry smoothies.
+                        for house in houses:
+                            if house['Cigar'] == 'dunhill' and house['Smoothie'] != 'cherry':
+                                valid = False
+                            if house['Smoothie'] == 'cherry' and house['Cigar'] != 'dunhill':
+                                valid = False
+                        
+                        # Clue 3: The person who uses a Samsung Galaxy S21 is directly left of the person who uses an iPhone 13.
+                        s21_pos = None
+                        iphone_pos = None
+                        for i, house in enumerate(houses):
+                            if house['PhoneModel'] == 'samsung galaxy s21':
+                                s21_pos = i
+                            if house['PhoneModel'] == 'iphone 13':
+                                iphone_pos = i
+                        if s21_pos is None or iphone_pos is None or s21_pos + 1 != iphone_pos:
+                            valid = False
+                        
+                        # Clue 4: The Dunhill smoker is somewhere to the right of the person who is very short.
+                        dunhill_pos = None
+                        very_short_pos = None
+                        for i, house in enumerate(houses):
+                            if house['Cigar'] == 'dunhill':
+                                dunhill_pos = i
+                            if house['Height'] == 'very short':
+                                very_short_pos = i
+                        if dunhill_pos is None or very_short_pos is None or dunhill_pos <= very_short_pos:
+                            valid = False
+                        
+                        # Clue 5: The Watermelon smoothie lover is somewhere to the right of the Desert smoothie lover.
+                        desert_pos = None
+                        watermelon_pos = None
+                        for i, house in enumerate(houses):
+                            if house['Smoothie'] == 'desert':
+                                desert_pos = i
+                            if house['Smoothie'] == 'watermelon':
+                                watermelon_pos = i
+                        if desert_pos is not None and watermelon_pos is not None and watermelon_pos <= desert_pos:
+                            valid = False
+                        
+                        # Clue 6: The Prince smoker is the person who uses a OnePlus 9.
+                        for house in houses:
+                            if house['Cigar'] == 'prince' and house['PhoneModel'] != 'oneplus 9':
+                                valid = False
+                            if house['PhoneModel'] == 'oneplus 9' and house['Cigar'] != 'prince':
+                                valid = False
+                        
+                        # Clue 7: The person who is tall is in the third house.
+                        if houses[2]['Height'] != 'tall':
+                            valid = False
+                        
+                        # Clue 8: The person who is very short is the person who uses an iPhone 13.
+                        for house in houses:
+                            if house['Height'] == 'very short' and house['PhoneModel'] != 'iphone 13':
+                                valid = False
+                            if house['PhoneModel'] == 'iphone 13' and house['Height'] != 'very short':
+                                valid = False
+                        
+                        # Clue 9: The person who smokes Blue Master is not in the first house.
+                        if houses[0]['Cigar'] == 'blue master':
+                            valid = False
+                        
+                        # Clue 10: The Dunhill smoker is the person who is short.
+                        for house in houses:
+                            if house['Cigar'] == 'dunhill' and house['Height'] != 'short':
+                                valid = False
+                            if house['Height'] == 'short' and house['Cigar'] != 'dunhill':
+                                valid = False
+                        
+                        # Clue 11: Peter is not in the third house.
+                        if houses[2]['Name'] == 'Peter':
+                            valid = False
+                        
+                        # Clue 12: Arnold is the person who uses a Google Pixel 6.
+                        for house in houses:
+                            if house['Name'] == 'Arnold' and house['PhoneModel'] != 'google pixel 6':
+                                valid = False
+                            if house['PhoneModel'] == 'google pixel 6' and house['Name'] != 'Arnold':
+                                valid = False
+                        
+                        # Clue 13: The Dragonfruit smoothie lover is the person partial to Pall Mall.
+                        for house in houses:
+                            if house['Smoothie'] == 'dragonfruit' and house['Cigar'] != 'pall mall':
+                                valid = False
+                            if house['Cigar'] == 'pall mall' and house['Smoothie'] != 'dragonfruit':
+                                valid = False
+                        
+                        if valid:
+                            # Prepare the solution in the required format
+                            solution = {
+                                "solution": {
+                                    "header": ["House", "Name", "Smoothie", "Cigar", "Height", "PhoneModel"],
+                                    "rows": [
+                                        [
+                                            house['House'],
+                                            house['Name'],
+                                            house['Smoothie'],
+                                            house['Cigar'],
+                                            house['Height'],
+                                            house['PhoneModel']
+                                        ] for house in houses
+                                    ]
+                                }
+                            }
+                            return json.dumps(solution, indent=2)
     
-    return {"solution": {"header": [], "rows": []}}
+    return json.dumps({"solution": {"header": [], "rows": []}})
 
-if __name__ == "__main__":
-    solution = solve_puzzle()
-    print(json.dumps(solution, indent=2))
+print(solve_puzzle())

@@ -1,4 +1,4 @@
-from itertools import permutations
+import itertools
 import json
 
 def main():
@@ -6,71 +6,81 @@ def main():
     occupations = ['doctor', 'teacher', 'engineer']
     hobbies = ['cooking', 'photography', 'gardening']
     
-    solution_found = None
-    
-    for name_perm in permutations(names):
-        for occ_perm in permutations(occupations):
-            for hob_perm in permutations(hobbies):
-                houses = [
-                    [name_perm[0], occ_perm[0], hob_perm[0]],
-                    [name_perm[1], occ_perm[1], hob_perm[1]],
-                    [name_perm[2], occ_perm[2], hob_perm[2]]
-                ]
-                
-                # Find indices for key attributes
-                try:
-                    idx_doc = next(i for i in range(3) if houses[i][1] == 'doctor')
-                    idx_eric = next(i for i in range(3) if houses[i][0] == 'Eric')
-                    idx_cooking = next(i for i in range(3) if houses[i][2] == 'cooking')
-                    idx_gardening = next(i for i in range(3) if houses[i][2] == 'gardening')
-                    idx_photo = next(i for i in range(3) if houses[i][2] == 'photography')
-                    idx_engineer = next(i for i in range(3) if houses[i][1] == 'engineer')
-                except StopIteration:
-                    continue
-                
+    for name_perm in itertools.permutations(names):
+        for occ_perm in itertools.permutations(occupations):
+            for hobby_perm in itertools.permutations(hobbies):
                 # Constraint 1: Doctor and Eric are adjacent
-                if abs(idx_doc - idx_eric) != 1:
+                doctor_index = None
+                eric_index = None
+                for i in range(3):
+                    if occ_perm[i] == 'doctor':
+                        doctor_index = i
+                    if name_perm[i] == 'Eric':
+                        eric_index = i
+                if doctor_index is None or eric_index is None:
                     continue
-                    
-                # Constraint 2: Cooking directly left of teacher
-                if idx_cooking >= 2 or houses[idx_cooking+1][1] != 'teacher':
+                if abs(doctor_index - eric_index) != 1:
                     continue
-                    
+                
+                # Constraint 2: Cooking left of teacher (directly adjacent)
+                cooking_index = None
+                teacher_index = None
+                for i in range(3):
+                    if hobby_perm[i] == 'cooking':
+                        cooking_index = i
+                    if occ_perm[i] == 'teacher':
+                        teacher_index = i
+                if cooking_index is None or teacher_index is None:
+                    continue
+                if teacher_index != cooking_index + 1:
+                    continue
+                
                 # Constraint 3: Doctor right of gardening
-                if idx_doc <= idx_gardening:
+                gardening_index = None
+                for i in range(3):
+                    if hobby_perm[i] == 'gardening':
+                        gardening_index = i
+                if gardening_index is None:
                     continue
-                    
-                # Constraint 4: Photography and teacher same house
-                if houses[idx_photo][1] != 'teacher':
+                if doctor_index <= gardening_index:
                     continue
-                    
-                # Constraint 5: Engineer and Peter same house
-                if houses[idx_engineer][0] != 'Peter':
+                
+                # Constraint 4: Photography enthusiast is the teacher
+                constraint4_ok = True
+                for i in range(3):
+                    if hobby_perm[i] == 'photography':
+                        if occ_perm[i] != 'teacher':
+                            constraint4_ok = False
+                            break
+                if not constraint4_ok:
                     continue
-                    
-                # Valid solution found
-                solution_found = houses
-                break
-            if solution_found:
-                break
-        if solution_found:
-            break
-            
-    if solution_found:
-        result = {
-            "solution": {
-                "header": ["House", "Name", "Occupation", "Hobby"],
-                "rows": [
-                    ["1", solution_found[0][0], solution_found[0][1], solution_found[0][2]],
-                    ["2", solution_found[1][0], solution_found[1][1], solution_found[1][2]],
-                    ["3", solution_found[2][0], solution_found[2][1], solution_found[2][2]]
-                ]
-            }
-        }
-    else:
-        result = {"solution": {}}
-        
-    print(json.dumps(result))
+                
+                # Constraint 5: Engineer is Peter
+                constraint5_ok = True
+                for i in range(3):
+                    if occ_perm[i] == 'engineer':
+                        if name_perm[i] != 'Peter':
+                            constraint5_ok = False
+                            break
+                if not constraint5_ok:
+                    continue
+                
+                # Format the solution
+                solution = {
+                    "solution": {
+                        "header": ["House", "Name", "Occupation", "Hobby"],
+                        "rows": [
+                            ["1", name_perm[0], occ_perm[0], hobby_perm[0]],
+                            ["2", name_perm[1], occ_perm[1], hobby_perm[1]],
+                            ["3", name_perm[2], occ_perm[2], hobby_perm[2]]
+                        ]
+                    }
+                }
+                print(json.dumps(solution))
+                return
+    
+    # If no solution found, output empty solution
+    print(json.dumps({"solution": {"header": ["House", "Name", "Occupation", "Hobby"], "rows": []}}))
 
 if __name__ == "__main__":
     main()

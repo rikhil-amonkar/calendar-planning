@@ -1,111 +1,113 @@
 #!/usr/bin/env python3
-import itertools
 import json
+import itertools
 
-def main():
-    # Define the attributes for the houses
-    houses = [1, 2]
-    names = ['Arnold', 'Eric']
-    occupations = ['engineer', 'doctor']
-    birthday_months = ['april', 'sept']
-    house_styles = ['victorian', 'colonial']
-    heights = ['very short', 'short']
-    favorite_cigars = ['pall mall', 'prince']
+def solve():
+    names = ["Arnold", "Eric"]
+    occupations = ["engineer", "doctor"]
+    birthdays = ["april", "sept"]
+    house_styles = ["victorian", "colonial"]
+    heights = ["very short", "short"]
+    cigars = ["pall mall", "prince"]
 
-    solutions = []
-    
-    # Iterate over all possible permutations for each category
+    solution = None
+
     for name_perm in itertools.permutations(names):
+        # Clue 6: The person who is an engineer is Eric.
+        # Thus, the house with engineer (which is house 1 by Clue 1) must have name Eric.
+        # So, name_perm[0] must be "Eric" if house1 is engineer.
         for occ_perm in itertools.permutations(occupations):
-            for birthday_perm in itertools.permutations(birthday_months):
+            # Clue 1: The person who is an engineer is in the first house.
+            if occ_perm[0] != "engineer":
+                continue
+            if name_perm[0] != "Eric":
+                continue
+
+            for bday_perm in itertools.permutations(birthdays):
+                # Clue 2: The person whose birthday is in April and the person who is a doctor are next to each other.
+                doctor_index = occ_perm.index("doctor")
+                april_index = bday_perm.index("april")
+                if abs(doctor_index - april_index) != 1:
+                    continue
+
                 for style_perm in itertools.permutations(house_styles):
+                    # Clue 3: The person living in a colonial-style house is the person who is an engineer.
+                    engineer_index = occ_perm.index("engineer")
+                    if style_perm[engineer_index] != "colonial":
+                        continue
+                    valid_style = True
+                    for i in range(2):
+                        if style_perm[i] == "colonial" and occ_perm[i] != "engineer":
+                            valid_style = False
+                            break
+                    if not valid_style:
+                        continue
+
                     for height_perm in itertools.permutations(heights):
-                        for cigar_perm in itertools.permutations(favorite_cigars):
-                            candidate = []
+                        # Clue 4: The person who is very short is the person who is an engineer.
+                        if height_perm[engineer_index] != "very short":
+                            continue
+                        valid_height = True
+                        for i in range(2):
+                            if height_perm[i] == "very short" and occ_perm[i] != "engineer":
+                                valid_height = False
+                                break
+                        if not valid_height:
+                            continue
+
+                        for cigar_perm in itertools.permutations(cigars):
+                            # Clue 5: The person who is short is the person partial to Pall Mall.
+                            valid_cigar = True
                             for i in range(2):
-                                candidate.append({
-                                    "House": str(houses[i]),
+                                if height_perm[i] == "short" and cigar_perm[i] != "pall mall":
+                                    valid_cigar = False
+                                    break
+                            if not valid_cigar:
+                                continue
+
+                            houses_data = []
+                            for i in range(2):
+                                house_info = {
+                                    "House": str(i+1),
                                     "Name": name_perm[i],
                                     "Occupation": occ_perm[i],
-                                    "Birthday month": birthday_perm[i],
-                                    "House style": style_perm[i],
+                                    "Birthday": bday_perm[i],
+                                    "HouseStyle": style_perm[i],
                                     "Height": height_perm[i],
-                                    "Favorite cigar": cigar_perm[i]
-                                })
-                            
-                            valid = True
-                            
-                            # Clue 1: The person who is an engineer is in the first house.
-                            if candidate[0]["Occupation"] != "engineer":
-                                valid = False
-                            
-                            # Clue 2: The person whose birthday is in April and the person who is a doctor are next to each other.
-                            try:
-                                april_index = next(i for i, d in enumerate(candidate) if d["Birthday month"] == "april")
-                                doctor_index = next(i for i, d in enumerate(candidate) if d["Occupation"] == "doctor")
-                            except StopIteration:
-                                valid = False
-                            else:
-                                if abs(april_index - doctor_index) != 1:
-                                    valid = False
-                            
-                            # Clue 3: The person living in a colonial-style house is the person who is an engineer.
-                            for d in candidate:
-                                if d["House style"] == "colonial" and d["Occupation"] != "engineer":
-                                    valid = False
-                                    break
-                                if d["Occupation"] == "engineer" and d["House style"] != "colonial":
-                                    valid = False
-                                    break
+                                    "Cigar": cigar_perm[i]
+                                }
+                                houses_data.append(house_info)
+                            solution = houses_data
+                            break
+                        if solution:
+                            break
+                    if solution:
+                        break
+                if solution:
+                    break
+            if solution:
+                break
+        if solution:
+            break
 
-                            # Clue 4: The person who is very short is the person who is an engineer.
-                            for d in candidate:
-                                if d["Height"] == "very short" and d["Occupation"] != "engineer":
-                                    valid = False
-                                    break
-                                if d["Occupation"] == "engineer" and d["Height"] != "very short":
-                                    valid = False
-                                    break
-                            
-                            # Clue 5: The person who is short is the person partial to Pall Mall.
-                            for d in candidate:
-                                if d["Height"] == "short" and d["Favorite cigar"] != "pall mall":
-                                    valid = False
-                                    break
-                                if d["Favorite cigar"] == "pall mall" and d["Height"] != "short":
-                                    valid = False
-                                    break
-                            
-                            # Clue 6: The person who is an engineer is Eric.
-                            for d in candidate:
-                                if d["Occupation"] == "engineer" and d["Name"] != "Eric":
-                                    valid = False
-                                    break
-                                if d["Name"] == "Eric" and d["Occupation"] != "engineer":
-                                    valid = False
-                                    break
-                            
-                            if valid:
-                                solutions.append(candidate)
-    
-    # Assume a unique solution exists; select the first solution found.
-    if solutions:
-        solution = solutions[0]
+    if solution is None:
+        output = {"solution": {"header": ["House", "Name", "Occupation", "Birthday", "HouseStyle", "Height", "Cigar"], "rows": []}}
     else:
-        solution = []
-    
-    # Prepare the JSON output
-    output = {
-        "solution": {
-            "header": ["House", "Name", "Occupation", "Birthday month", "House style", "Height", "Favorite cigar"],
-            "rows": [
-                [house["House"], house["Name"], house["Occupation"], house["Birthday month"], house["House style"], house["Height"], house["Favorite cigar"]]
-                for house in solution
+        rows = []
+        for house in solution:
+            row = [
+                house["House"],
+                house["Name"],
+                house["Occupation"],
+                house["Birthday"],
+                house["HouseStyle"],
+                house["Height"],
+                house["Cigar"]
             ]
-        }
-    }
-    
+            rows.append(row)
+        output = {"solution": {"header": ["House", "Name", "Occupation", "Birthday", "HouseStyle", "Height", "Cigar"], "rows": rows}}
+
     print(json.dumps(output, indent=2))
 
 if __name__ == "__main__":
-    main()
+    solve()

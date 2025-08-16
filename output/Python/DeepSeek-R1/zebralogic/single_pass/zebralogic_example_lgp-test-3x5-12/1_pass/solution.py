@@ -1,118 +1,128 @@
 import itertools
 import json
 
-def satisfies_constraints(houses):
-    # Constraint 1: Pall Mall cigar is Peter.
-    for i in range(3):
-        if houses[i][1] == 'pall mall':
-            if houses[i][0] != 'Peter':
-                return False
-            break
-    else:
-        return False
-
-    # Constraint 2: milk directly left of high school
-    if houses[0][4] == 'milk':
-        if houses[1][3] != 'high school':
-            return False
-    elif houses[1][4] == 'milk':
-        if houses[2][3] != 'high school':
-            return False
-    else:
-        return False
-
-    # Constraint 3: Eric is tea drinker
-    for i in range(3):
-        if houses[i][0] == 'Eric':
-            if houses[i][4] != 'tea':
-                return False
-            break
-    else:
-        return False
-
-    # Constraint 4: Arnold and Prince adjacent
-    arnold_index = None
-    prince_index = None
-    for i in range(3):
-        if houses[i][0] == 'Arnold':
-            arnold_index = i
-        if houses[i][1] == 'prince':
-            prince_index = i
-    if arnold_index is None or prince_index is None:
-        return False
-    if abs(arnold_index - prince_index) != 1:
-        return False
-
-    # Constraint 5: gardening left of prince
-    gardening_index = None
-    for i in range(3):
-        if houses[i][2] == 'gardening':
-            gardening_index = i
-            break
-    else:
-        return False
-    if gardening_index >= prince_index:
-        return False
-
-    # Constraint 6: milk has associate degree
-    for i in range(3):
-        if houses[i][4] == 'milk':
-            if houses[i][3] != 'associate':
-                return False
-            break
-    else:
-        return False
-
-    # Constraint 7: bachelor directly left of photography
-    if houses[0][3] == 'bachelor':
-        if houses[1][2] != 'photography':
-            return False
-    elif houses[1][3] == 'bachelor':
-        if houses[2][2] != 'photography':
-            return False
-    else:
-        return False
-
-    return True
-
 def main():
-    names = ['Eric', 'Peter', 'Arnold']
-    cigars = ['blue master', 'prince', 'pall mall']
-    hobbies = ['photography', 'gardening', 'cooking']
-    educations = ['high school', 'associate', 'bachelor']
-    drinks = ['tea', 'milk', 'water']
+    attributes = {
+        'Name': ['Eric', 'Peter', 'Arnold'],
+        'Cigar': ['blue master', 'prince', 'pall mall'],
+        'Hobby': ['photography', 'gardening', 'cooking'],
+        'Education': ['high school', 'associate', 'bachelor'],
+        'Drink': ['tea', 'milk', 'water']
+    }
+    
+    def satisfies_constraints(houses):
+        # Constraint 1: Pall Mall smoker is Peter
+        for i in range(3):
+            if houses[i]['Cigar'] == 'pall mall':
+                if houses[i]['Name'] != 'Peter':
+                    return False
+                break
+        
+        # Constraint 2: Milk drinker directly left of high school diploma
+        milk_index = None
+        for i in range(3):
+            if houses[i]['Drink'] == 'milk':
+                milk_index = i
+        if milk_index is None or milk_index == 2:
+            return False
+        if houses[milk_index + 1]['Education'] != 'high school':
+            return False
+        
+        # Constraint 3: Eric drinks tea
+        for i in range(3):
+            if houses[i]['Name'] == 'Eric':
+                if houses[i]['Drink'] != 'tea':
+                    return False
+                break
+        
+        # Constraint 4: Arnold and Prince smoker are adjacent
+        arnold_index = None
+        prince_index = None
+        for i in range(3):
+            if houses[i]['Name'] == 'Arnold':
+                arnold_index = i
+            if houses[i]['Cigar'] == 'prince':
+                prince_index = i
+        if arnold_index is None or prince_index is None:
+            return False
+        if abs(arnold_index - prince_index) != 1:
+            return False
+        
+        # Constraint 5: Gardening left of Prince smoker
+        gardening_index = None
+        for i in range(3):
+            if houses[i]['Hobby'] == 'gardening':
+                gardening_index = i
+                break
+        if gardening_index is None:
+            return False
+        if gardening_index >= prince_index:
+            return False
+        
+        # Constraint 6: Milk drinker has associate's degree
+        if houses[milk_index]['Education'] != 'associate':
+            return False
+        
+        # Constraint 7: Bachelor directly left of photography
+        bachelor_index = None
+        photo_index = None
+        for i in range(3):
+            if houses[i]['Education'] == 'bachelor':
+                bachelor_index = i
+            if houses[i]['Hobby'] == 'photography':
+                photo_index = i
+        if bachelor_index is None or photo_index is None:
+            return False
+        if bachelor_index + 1 != photo_index:
+            return False
+        
+        return True
 
-    perms_names = list(itertools.permutations(names))
-    perms_cigars = list(itertools.permutations(cigars))
-    perms_hobbies = list(itertools.permutations(hobbies))
-    perms_educations = list(itertools.permutations(educations))
-    perms_drinks = list(itertools.permutations(drinks))
+    solution_found = False
+    solution_rows = None
 
-    for n in perms_names:
-        for c in perms_cigars:
-            for h in perms_hobbies:
-                for e in perms_educations:
-                    for d in perms_drinks:
+    for names in itertools.permutations(attributes['Name']):
+        if solution_found:
+            break
+        for cigars in itertools.permutations(attributes['Cigar']):
+            if solution_found:
+                break
+            for hobbies in itertools.permutations(attributes['Hobby']):
+                if solution_found:
+                    break
+                for educations in itertools.permutations(attributes['Education']):
+                    if solution_found:
+                        break
+                    for drinks in itertools.permutations(attributes['Drink']):
                         houses = []
                         for i in range(3):
-                            house = (n[i], c[i], h[i], e[i], d[i])
-                            houses.append(house)
-                        if satisfies_constraints(houses):
-                            header = ["House", "name", "favorite cigar", "hobby", "level of education", "favorite drink"]
-                            rows = []
-                            for idx, house in enumerate(houses):
-                                row = [str(idx+1), house[0], house[1], house[2], house[3], house[4]]
-                                rows.append(row)
-                            sol = {
-                                "solution": {
-                                    "header": header,
-                                    "rows": rows
-                                }
+                            house = {
+                                'Name': names[i],
+                                'Cigar': cigars[i],
+                                'Hobby': hobbies[i],
+                                'Education': educations[i],
+                                'Drink': drinks[i]
                             }
-                            print(json.dumps(sol))
-                            return
-    print(json.dumps({"error": "No solution found"}))
-    exit(1)
+                            houses.append(house)
+                        
+                        if satisfies_constraints(houses):
+                            solution_rows = []
+                            for i in range(3):
+                                row = [str(i+1), houses[i]['Name'], houses[i]['Cigar'], houses[i]['Hobby'], houses[i]['Education'], houses[i]['Drink']]
+                                solution_rows.append(row)
+                            solution_found = True
+                            break
 
-if __name__ == "__main__":
+    if solution_found:
+        result = {
+            "solution": {
+                "header": ["House", "Name", "Cigar", "Hobby", "Education", "Drink"],
+                "rows": solution_rows
+            }
+        }
+        print(json.dumps(result))
+    else:
+        print(json.dumps({"error": "No solution found"}))
+
+if __name__ == '__main__':
     main()

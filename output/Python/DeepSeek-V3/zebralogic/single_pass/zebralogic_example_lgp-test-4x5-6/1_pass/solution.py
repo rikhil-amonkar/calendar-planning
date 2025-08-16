@@ -2,180 +2,179 @@ import json
 from itertools import permutations
 
 def solve_puzzle():
-    # Define all possible options for each attribute
+    # Define all possible values for each category
     names = ['Peter', 'Eric', 'Alice', 'Arnold']
     educations = ['bachelor', 'high school', 'associate', 'master']
     music_genres = ['jazz', 'rock', 'pop', 'classical']
     colors = ['green', 'red', 'yellow', 'white']
     flowers = ['lilies', 'carnations', 'daffodils', 'roses']
-    houses = ['1', '2', '3', '4']
-
-    # Generate all possible permutations for each attribute
+    
+    # Generate all possible permutations for each category
     for name_perm in permutations(names):
         for edu_perm in permutations(educations):
             for music_perm in permutations(music_genres):
                 for color_perm in permutations(colors):
                     for flower_perm in permutations(flowers):
-                        # Create a list of houses with their attributes
-                        solution = [
-                            {
-                                'House': house,
-                                'Name': name,
-                                'education': edu,
-                                'music genre': music,
-                                'color': color,
-                                'flower': flower
-                            }
-                            for house, name, edu, music, color, flower in zip(
-                                houses, name_perm, edu_perm, music_perm, color_perm, flower_perm
-                            )
-                        ]
-
+                        # Create a dictionary to hold the current assignment
+                        solution = {
+                            1: {'Name': None, 'Education': None, 'MusicGenre': None, 'Color': None, 'Flower': None},
+                            2: {'Name': None, 'Education': None, 'MusicGenre': None, 'Color': None, 'Flower': None},
+                            3: {'Name': None, 'Education': None, 'MusicGenre': None, 'Color': None, 'Flower': None},
+                            4: {'Name': None, 'Education': None, 'MusicGenre': None, 'Color': None, 'Flower': None}
+                        }
+                        
+                        # Assign the current permutation to the houses
+                        for i in range(4):
+                            house = i + 1
+                            solution[house]['Name'] = name_perm[i]
+                            solution[house]['Education'] = edu_perm[i]
+                            solution[house]['MusicGenre'] = music_perm[i]
+                            solution[house]['Color'] = color_perm[i]
+                            solution[house]['Flower'] = flower_perm[i]
+                        
                         # Check all constraints
                         valid = True
-
+                        
                         # Constraint 1: bachelor's degree loves daffodils
                         for house in solution:
-                            if house['education'] == 'bachelor' and house['flower'] != 'daffodils':
-                                valid = False
-                                break
+                            if solution[house]['Education'] == 'bachelor':
+                                if solution[house]['Flower'] != 'daffodils':
+                                    valid = False
+                                    break
                         if not valid:
                             continue
-
+                        
                         # Constraint 2: carnations not in first house
-                        if solution[0]['flower'] == 'carnations':
+                        if solution[1]['Flower'] == 'carnations':
                             valid = False
                         if not valid:
                             continue
-
+                        
                         # Constraint 3: master's degree is Alice
                         for house in solution:
-                            if house['education'] == 'master' and house['Name'] != 'Alice':
-                                valid = False
-                                break
+                            if solution[house]['Education'] == 'master':
+                                if solution[house]['Name'] != 'Alice':
+                                    valid = False
+                                    break
                         if not valid:
                             continue
-
+                        
                         # Constraint 4: master's degree is directly left of classical music
-                        master_pos = None
-                        classical_pos = None
-                        for i, house in enumerate(solution):
-                            if house['education'] == 'master':
-                                master_pos = i
-                            if house['music genre'] == 'classical':
-                                classical_pos = i
-                        if master_pos is None or classical_pos is None or classical_pos - master_pos != 1:
+                        master_house = None
+                        classical_house = None
+                        for house in solution:
+                            if solution[house]['Education'] == 'master':
+                                master_house = house
+                            if solution[house]['MusicGenre'] == 'classical':
+                                classical_house = house
+                        if master_house is None or classical_house is None or classical_house != master_house + 1:
                             valid = False
                         if not valid:
                             continue
-
+                        
                         # Constraint 5: Eric is not in the second house
-                        if solution[1]['Name'] == 'Eric':
+                        if solution[2]['Name'] == 'Eric':
                             valid = False
                         if not valid:
                             continue
-
+                        
                         # Constraint 6: Arnold is not in the third house
-                        if solution[2]['Name'] == 'Arnold':
+                        if solution[3]['Name'] == 'Arnold':
                             valid = False
                         if not valid:
                             continue
-
+                        
                         # Constraint 7: yellow is directly left of roses
-                        yellow_pos = None
-                        roses_pos = None
-                        for i, house in enumerate(solution):
-                            if house['color'] == 'yellow':
-                                yellow_pos = i
-                            if house['flower'] == 'roses':
-                                roses_pos = i
-                        if yellow_pos is None or roses_pos is None or roses_pos - yellow_pos != 1:
+                        yellow_house = None
+                        roses_house = None
+                        for house in solution:
+                            if solution[house]['Color'] == 'yellow':
+                                yellow_house = house
+                            if solution[house]['Flower'] == 'roses':
+                                roses_house = house
+                        if yellow_house is None or roses_house is None or roses_house != yellow_house + 1:
                             valid = False
                         if not valid:
                             continue
-
+                        
                         # Constraint 8: pop music is in the second house
-                        if solution[1]['music genre'] != 'pop':
+                        if solution[2]['MusicGenre'] != 'pop':
                             valid = False
                         if not valid:
                             continue
-
-                        # Constraint 9: associate's degree not in fourth house
-                        if solution[3]['education'] == 'associate':
+                        
+                        # Constraint 9: associate's degree is not in the fourth house
+                        if solution[4]['Education'] == 'associate':
                             valid = False
                         if not valid:
                             continue
-
-                        # Constraint 10: carnations not in fourth house
-                        if solution[3]['flower'] == 'carnations':
+                        
+                        # Constraint 10: carnations not in the fourth house
+                        if solution[4]['Flower'] == 'carnations':
                             valid = False
                         if not valid:
                             continue
-
+                        
                         # Constraint 11: red is directly left of white
-                        red_pos = None
-                        white_pos = None
-                        for i, house in enumerate(solution):
-                            if house['color'] == 'red':
-                                red_pos = i
-                            if house['color'] == 'white':
-                                white_pos = i
-                        if red_pos is None or white_pos is None or white_pos - red_pos != 1:
+                        red_house = None
+                        white_house = None
+                        for house in solution:
+                            if solution[house]['Color'] == 'red':
+                                red_house = house
+                            if solution[house]['Color'] == 'white':
+                                white_house = house
+                        if red_house is None or white_house is None or white_house != red_house + 1:
                             valid = False
                         if not valid:
                             continue
-
+                        
                         # Constraint 12: red color loves rock music
                         for house in solution:
-                            if house['color'] == 'red' and house['music genre'] != 'rock':
-                                valid = False
-                                break
+                            if solution[house]['Color'] == 'red':
+                                if solution[house]['MusicGenre'] != 'rock':
+                                    valid = False
+                                    break
                         if not valid:
                             continue
-
+                        
                         # Constraint 13: Arnold loves yellow
                         for house in solution:
-                            if house['Name'] == 'Arnold' and house['color'] != 'yellow':
-                                valid = False
-                                break
-                            if house['color'] == 'yellow' and house['Name'] != 'Arnold':
-                                valid = False
-                                break
+                            if solution[house]['Name'] == 'Arnold':
+                                if solution[house]['Color'] != 'yellow':
+                                    valid = False
+                                    break
                         if not valid:
                             continue
-
+                        
                         # Constraint 14: daffodils lover loves yellow
                         for house in solution:
-                            if house['flower'] == 'daffodils' and house['color'] != 'yellow':
-                                valid = False
-                                break
-                            if house['color'] == 'yellow' and house['flower'] != 'daffodils':
-                                valid = False
-                                break
+                            if solution[house]['Flower'] == 'daffodils':
+                                if solution[house]['Color'] != 'yellow':
+                                    valid = False
+                                    break
                         if not valid:
                             continue
-
+                        
+                        # If all constraints are satisfied, return the solution
                         if valid:
-                            # Prepare the output
-                            output = {
+                            result = {
                                 "solution": {
-                                    "header": ["House", "Name", "education", "music genre", "color", "flower"],
+                                    "header": ["House", "Name", "Education", "MusicGenre", "Color", "Flower"],
                                     "rows": []
                                 }
                             }
-                            for house in solution:
-                                output["solution"]["rows"].append([
-                                    house['House'],
-                                    house['Name'],
-                                    house['education'],
-                                    house['music genre'],
-                                    house['color'],
-                                    house['flower']
-                                ])
-                            return output
+                            for house in range(1, 5):
+                                row = [
+                                    str(house),
+                                    solution[house]['Name'],
+                                    solution[house]['Education'],
+                                    solution[house]['MusicGenre'],
+                                    solution[house]['Color'],
+                                    solution[house]['Flower']
+                                ]
+                                result["solution"]["rows"].append(row)
+                            return json.dumps(result, indent=2)
+    
+    return json.dumps({"solution": {"header": [], "rows": []}})
 
-    return {"solution": {"header": [], "rows": []}}
-
-if __name__ == "__main__":
-    solution = solve_puzzle()
-    print(json.dumps(solution, indent=2))
+print(solve_puzzle())

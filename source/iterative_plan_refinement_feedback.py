@@ -88,7 +88,9 @@ def initialize_model(model_name, keys):
             model_name = "o3-mini"
         elif model_name == "gpt-4o-mini":
             model_name = "gpt-4o-mini-2024-07-18"
-        engine = OpenAIEngine(keys["openai"], model=model_name, max_context_size=20000, reasoning_effort="high")
+        elif model_name == "gpt-5-2025-08-07":
+            model_name = "gpt-5-2025-08-07"
+        engine = OpenAIEngine(keys["openai"], model=model_name, max_context_size=20000)
     elif model_name == "DeepSeek-R1":
         engine = OpenAIEngine(keys["deepseek"], model="deepseek-reasoner", api_base="https://api.deepseek.com", max_context_size=20000)
     elif model_name == "DeepSeek-V3":
@@ -528,7 +530,7 @@ def extract_answer_from_text(text, task):
         openai_key = None
         try:
             # Try to load from scheduling_key.json
-            with open("../../scheduling_key.json") as f:
+            with open("../../openai_research/ai2_openai_key.json") as f:
                 key_data = json.load(f)
                 openai_key = key_data.get("openai")
         except (FileNotFoundError, KeyError):

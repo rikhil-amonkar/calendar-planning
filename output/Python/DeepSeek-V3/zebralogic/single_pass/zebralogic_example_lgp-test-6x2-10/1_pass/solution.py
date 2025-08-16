@@ -5,76 +5,99 @@ def solve_puzzle():
     houses = [1, 2, 3, 4, 5, 6]
     names = ["Arnold", "Eric", "Peter", "Alice", "Carol", "Bob"]
     genres = ["jazz", "pop", "classical", "rock", "hip hop", "country"]
-
+    
     # Generate all possible permutations for names and genres
     for name_perm in permutations(names):
-        name_assignment = {house: name for house, name in zip(houses, name_perm)}
-        
-        # Check Carol is in house 6 (clue 3)
-        if name_assignment[6] != "Carol":
-            continue
-        
-        # Check Arnold is not in house 5 (clue 6)
-        if name_assignment[5] == "Arnold":
-            continue
-        
         for genre_perm in permutations(genres):
-            genre_assignment = {house: genre for house, genre in zip(houses, genre_perm)}
+            assignment = {house: {"Name": name, "MusicGenre": genre} 
+                          for house, name, genre in zip(houses, name_perm, genre_perm)}
             
-            # Check Carol loves country (clue 5)
-            if genre_assignment[6] != "country":
+            # Check constraints
+            # Constraint 3: Carol is in the sixth house.
+            if assignment[6]["Name"] != "Carol":
                 continue
             
-            # Check hip hop is in house 3 (clue 9)
-            if genre_assignment[3] != "hip hop":
+            # Constraint 5: The person who loves country music is Carol.
+            if assignment[6]["MusicGenre"] != "country":
                 continue
             
-            # Check Eric is left of hip hop (clue 2) and next to hip hop (clue 4)
-            # Since hip hop is in 3, Eric must be in 2
-            if name_assignment[2] != "Eric":
+            # Constraint 9: The person who loves hip-hop music is in the third house.
+            if assignment[3]["MusicGenre"] != "hip hop":
                 continue
             
-            # Check pop is Peter (clue 8)
-            pop_house = [h for h in houses if genre_assignment[h] == "pop"][0]
-            if name_assignment[pop_house] != "Peter":
+            # Constraint 4: Eric and the person who loves hip-hop music are next to each other.
+            eric_house = None
+            for house in houses:
+                if assignment[house]["Name"] == "Eric":
+                    eric_house = house
+                    break
+            if eric_house is None:
+                continue
+            if abs(eric_house - 3) != 1:
                 continue
             
-            # Check one house between Peter and Bob (clue 10)
-            bob_house = [h for h in houses if name_assignment[h] == "Bob"][0]
-            if abs(pop_house - bob_house) != 2:
+            # Constraint 2: Eric is somewhere to the left of the person who loves hip-hop music.
+            if eric_house >= 3:
                 continue
             
-            # Check Bob is directly left of jazz (clue 1)
+            # Constraint 8: The person who loves pop music is Peter.
+            peter_house = None
+            for house in houses:
+                if assignment[house]["Name"] == "Peter":
+                    peter_house = house
+                    break
+            if peter_house is None:
+                continue
+            if assignment[peter_house]["MusicGenre"] != "pop":
+                continue
+            
+            # Constraint 10: There is one house between Peter and Bob.
+            bob_house = None
+            for house in houses:
+                if assignment[house]["Name"] == "Bob":
+                    bob_house = house
+                    break
+            if bob_house is None:
+                continue
+            if abs(peter_house - bob_house) != 2:
+                continue
+            
+            # Constraint 1: Bob is directly left of the person who loves jazz music.
             jazz_house = bob_house + 1
-            if jazz_house > 6 or genre_assignment[jazz_house] != "jazz":
+            if jazz_house > 6 or assignment[jazz_house]["MusicGenre"] != "jazz":
                 continue
             
-            # Check Arnold is right of pop (clue 7)
-            arnold_house = [h for h in houses if name_assignment[h] == "Arnold"][0]
-            if arnold_house < pop_house:
+            # Constraint 6: Arnold is not in the fifth house.
+            if assignment[5]["Name"] == "Arnold":
                 continue
             
-            # Check rock is not in house 5 (clue 11)
-            if genre_assignment[5] == "rock":
+            # Constraint 7: Arnold is somewhere to the right of the person who loves pop music.
+            arnold_house = None
+            for house in houses:
+                if assignment[house]["Name"] == "Arnold":
+                    arnold_house = house
+                    break
+            if arnold_house is None:
+                continue
+            if arnold_house <= peter_house:
                 continue
             
-            # All checks passed, construct solution
+            # Constraint 11: The person who loves rock music is not in the fifth house.
+            if assignment[5]["MusicGenre"] == "rock":
+                continue
+            
+            # All constraints satisfied, prepare the solution
             solution = {
                 "solution": {
-                    "header": ["House", "Name", "Music genre"],
-                    "rows": []
+                    "header": ["House", "Name", "MusicGenre"],
+                    "rows": [
+                        [str(house), assignment[house]["Name"], assignment[house]["MusicGenre"]] 
+                        for house in houses
+                    ]
                 }
             }
-            for house in houses:
-                solution["solution"]["rows"].append([
-                    str(house),
-                    name_assignment[house],
-                    genre_assignment[house]
-                ])
-            return solution
+            return json.dumps(solution, indent=2)
     
-    return {"solution": {}}
+    return json.dumps({"solution": {"header": [], "rows": []}})
 
-if __name__ == "__main__":
-    solution = solve_puzzle()
-    print(json.dumps(solution, indent=2))
+print(solve_puzzle())

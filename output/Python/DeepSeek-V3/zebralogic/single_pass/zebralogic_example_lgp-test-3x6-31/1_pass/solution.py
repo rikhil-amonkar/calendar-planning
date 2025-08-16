@@ -1,47 +1,57 @@
-import itertools
 import json
+from itertools import permutations
 
 def solve_puzzle():
-    # Define all possible options for each attribute
-    names = ['Eric', 'Peter', 'Arnold']
-    drinks = ['milk', 'water', 'tea']
-    vacations = ['mountain', 'city', 'beach']
-    house_styles = ['colonial', 'victorian', 'ranch']
-    animals = ['cat', 'bird', 'horse']
-    months = ['jan', 'sept', 'april']
+    # Define all possible categories and options
+    categories = {
+        'Name': ['Eric', 'Peter', 'Arnold'],
+        'Drink': ['milk', 'water', 'tea'],
+        'Vacation': ['mountain', 'city', 'beach'],
+        'HouseStyle': ['colonial', 'victorian', 'ranch'],
+        'Animal': ['cat', 'bird', 'horse'],
+        'Birthday': ['jan', 'sept', 'april']
+    }
     
-    # Generate all possible permutations for each attribute
-    for name_perm in itertools.permutations(names):
-        for drink_perm in itertools.permutations(drinks):
-            for vacation_perm in itertools.permutations(vacations):
-                for house_perm in itertools.permutations(house_styles):
-                    for animal_perm in itertools.permutations(animals):
-                        for month_perm in itertools.permutations(months):
-                            # Assign each permutation to houses 1, 2, 3
+    # Generate all possible permutations for each category
+    name_perms = permutations(categories['Name'])
+    drink_perms = permutations(categories['Drink'])
+    vacation_perms = permutations(categories['Vacation'])
+    house_perms = permutations(categories['HouseStyle'])
+    animal_perms = permutations(categories['Animal'])
+    birthday_perms = permutations(categories['Birthday'])
+    
+    # Iterate through all possible combinations
+    for names in name_perms:
+        for drinks in drink_perms:
+            for vacations in vacation_perms:
+                for houses in house_perms:
+                    for animals in animal_perms:
+                        for birthdays in birthday_perms:
+                            # Assign each attribute to houses 1, 2, 3
                             solution = {
                                 1: {
-                                    'Name': name_perm[0],
-                                    'favorite drink': drink_perm[0],
-                                    'vacation': vacation_perm[0],
-                                    'house style': house_perm[0],
-                                    'animal': animal_perm[0],
-                                    'birthday month': month_perm[0]
+                                    'Name': names[0],
+                                    'Drink': drinks[0],
+                                    'Vacation': vacations[0],
+                                    'HouseStyle': houses[0],
+                                    'Animal': animals[0],
+                                    'Birthday': birthdays[0]
                                 },
                                 2: {
-                                    'Name': name_perm[1],
-                                    'favorite drink': drink_perm[1],
-                                    'vacation': vacation_perm[1],
-                                    'house style': house_perm[1],
-                                    'animal': animal_perm[1],
-                                    'birthday month': month_perm[1]
+                                    'Name': names[1],
+                                    'Drink': drinks[1],
+                                    'Vacation': vacations[1],
+                                    'HouseStyle': houses[1],
+                                    'Animal': animals[1],
+                                    'Birthday': birthdays[1]
                                 },
                                 3: {
-                                    'Name': name_perm[2],
-                                    'favorite drink': drink_perm[2],
-                                    'vacation': vacation_perm[2],
-                                    'house style': house_perm[2],
-                                    'animal': animal_perm[2],
-                                    'birthday month': month_perm[2]
+                                    'Name': names[2],
+                                    'Drink': drinks[2],
+                                    'Vacation': vacations[2],
+                                    'HouseStyle': houses[2],
+                                    'Animal': animals[2],
+                                    'Birthday': birthdays[2]
                                 }
                             }
                             
@@ -50,44 +60,47 @@ def solve_puzzle():
                             colonial_pos = None
                             milk_pos = None
                             for i in [1, 2, 3]:
-                                if solution[i]['house style'] == 'colonial':
+                                if solution[i]['HouseStyle'] == 'colonial':
                                     colonial_pos = i
-                                if solution[i]['favorite drink'] == 'milk':
+                                if solution[i]['Drink'] == 'milk':
                                     milk_pos = i
-                            if colonial_pos is not None and milk_pos is not None:
-                                if colonial_pos >= milk_pos:
-                                    continue
+                            if colonial_pos is None or milk_pos is None or colonial_pos >= milk_pos:
+                                continue
                             
                             # Constraint 2: city is directly left of victorian
-                            valid = False
+                            city_pos = None
+                            victorian_pos = None
                             for i in [1, 2]:
-                                if solution[i]['vacation'] == 'city' and solution[i+1]['house style'] == 'victorian':
-                                    valid = True
-                                    break
-                            if not valid:
+                                if solution[i]['Vacation'] == 'city':
+                                    city_pos = i
+                                    if solution[i+1]['HouseStyle'] == 'victorian':
+                                        victorian_pos = i+1
+                            if city_pos is None or victorian_pos is None or city_pos + 1 != victorian_pos:
                                 continue
                             
                             # Constraint 3: jan is directly left of cat
-                            valid = False
+                            jan_pos = None
+                            cat_pos = None
                             for i in [1, 2]:
-                                if solution[i]['birthday month'] == 'jan' and solution[i+1]['animal'] == 'cat':
-                                    valid = True
-                                    break
-                            if not valid:
+                                if solution[i]['Birthday'] == 'jan':
+                                    jan_pos = i
+                                    if solution[i+1]['Animal'] == 'cat':
+                                        cat_pos = i+1
+                            if jan_pos is None or cat_pos is None or jan_pos + 1 != cat_pos:
                                 continue
                             
                             # Constraint 4: water drinker enjoys mountain
                             for i in [1, 2, 3]:
-                                if solution[i]['favorite drink'] == 'water' and solution[i]['vacation'] != 'mountain':
+                                if solution[i]['Drink'] == 'water' and solution[i]['Vacation'] != 'mountain':
                                     break
                             else:
                                 pass
                             else:
                                 continue
                             
-                            # Constraint 5: horse keeper is Peter
+                            # Constraint 5: horse is Peter
                             for i in [1, 2, 3]:
-                                if solution[i]['animal'] == 'horse' and solution[i]['Name'] != 'Peter':
+                                if solution[i]['Animal'] == 'horse' and solution[i]['Name'] != 'Peter':
                                     break
                             else:
                                 pass
@@ -98,26 +111,25 @@ def solve_puzzle():
                             beach_pos = None
                             victorian_pos = None
                             for i in [1, 2, 3]:
-                                if solution[i]['vacation'] == 'beach':
+                                if solution[i]['Vacation'] == 'beach':
                                     beach_pos = i
-                                if solution[i]['house style'] == 'victorian':
+                                if solution[i]['HouseStyle'] == 'victorian':
                                     victorian_pos = i
-                            if beach_pos is not None and victorian_pos is not None:
-                                if beach_pos >= victorian_pos:
-                                    continue
-                            
-                            # Constraint 7: Peter prefers city
-                            for i in [1, 2, 3]:
-                                if solution[i]['Name'] == 'Peter' and solution[i]['vacation'] != 'city':
-                                    break
-                            else:
-                                pass
-                            else:
+                            if beach_pos is None or victorian_pos is None or beach_pos >= victorian_pos:
                                 continue
                             
-                            # Constraint 8: mountain vacation's birthday is april
+                            # Constraint 7: Peter prefers city
+                            peter_city = False
                             for i in [1, 2, 3]:
-                                if solution[i]['vacation'] == 'mountain' and solution[i]['birthday month'] != 'april':
+                                if solution[i]['Name'] == 'Peter' and solution[i]['Vacation'] == 'city':
+                                    peter_city = True
+                                    break
+                            if not peter_city:
+                                continue
+                            
+                            # Constraint 8: mountain vacation is april birthday
+                            for i in [1, 2, 3]:
+                                if solution[i]['Vacation'] == 'mountain' and solution[i]['Birthday'] != 'april':
                                     break
                             else:
                                 pass
@@ -125,27 +137,28 @@ def solve_puzzle():
                                 continue
                             
                             # Constraint 9: Eric drinks water
+                            eric_water = False
                             for i in [1, 2, 3]:
-                                if solution[i]['Name'] == 'Eric' and solution[i]['favorite drink'] != 'water':
+                                if solution[i]['Name'] == 'Eric' and solution[i]['Drink'] == 'water':
+                                    eric_water = True
                                     break
-                            else:
-                                pass
-                            else:
+                            if not eric_water:
                                 continue
                             
-                            # If all constraints passed, return the solution
+                            # If all constraints are satisfied, return the solution
                             output = {
                                 "solution": {
-                                    "header": ["House", "Name", "favorite drink", "vacation", "house style", "animal", "birthday month"],
+                                    "header": ["House", "Name", "Drink", "Vacation", "HouseStyle", "Animal", "Birthday"],
                                     "rows": [
-                                        ["1", solution[1]['Name'], solution[1]['favorite drink'], solution[1]['vacation'], solution[1]['house style'], solution[1]['animal'], solution[1]['birthday month']],
-                                        ["2", solution[2]['Name'], solution[2]['favorite drink'], solution[2]['vacation'], solution[2]['house style'], solution[2]['animal'], solution[2]['birthday month']],
-                                        ["3", solution[3]['Name'], solution[3]['favorite drink'], solution[3]['vacation'], solution[3]['house style'], solution[3]['animal'], solution[3]['birthday month']]
+                                        ["1", solution[1]['Name'], solution[1]['Drink'], solution[1]['Vacation'], solution[1]['HouseStyle'], solution[1]['Animal'], solution[1]['Birthday']],
+                                        ["2", solution[2]['Name'], solution[2]['Drink'], solution[2]['Vacation'], solution[2]['HouseStyle'], solution[2]['Animal'], solution[2]['Birthday']],
+                                        ["3", solution[3]['Name'], solution[3]['Drink'], solution[3]['Vacation'], solution[3]['HouseStyle'], solution[3]['Animal'], solution[3]['Birthday']]
                                     ]
                                 }
                             }
-                            return json.dumps(output, indent=2)
-    
-    return json.dumps({"solution": {}})
+                            return output
+    return {"solution": {"header": [], "rows": []}}
 
-print(solve_puzzle())
+# Solve the puzzle and print the result as JSON
+solution = solve_puzzle()
+print(json.dumps(solution, indent=2))

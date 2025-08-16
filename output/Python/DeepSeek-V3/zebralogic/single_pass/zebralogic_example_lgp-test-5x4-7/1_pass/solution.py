@@ -1,171 +1,110 @@
 import json
 from itertools import permutations
 
-def solve_puzzle():
-    # Define all possible categories and options
-    houses = ['1', '2', '3', '4', '5']
+def solve_zebra_puzzle():
+    # Define all possible categories and their options
+    houses = [1, 2, 3, 4, 5]
     names = ['Alice', 'Peter', 'Bob', 'Eric', 'Arnold']
     smoothies = ['lime', 'dragonfruit', 'desert', 'watermelon', 'cherry']
     animals = ['horse', 'dog', 'bird', 'fish', 'cat']
     nationalities = ['german', 'swede', 'norwegian', 'brit', 'dane']
-    
-    # We'll represent each house as a dictionary with the categories as keys
-    # Initialize all possibilities
-    for name_order in permutations(names):
-        for smoothie_order in permutations(smoothies):
-            for animal_order in permutations(animals):
-                for nationality_order in permutations(nationalities):
-                    # Create a list of houses with current permutation
-                    solution = []
+
+    # Generate all possible permutations for each category
+    for name_perm in permutations(names):
+        for smoothie_perm in permutations(smoothies):
+            for animal_perm in permutations(animals):
+                for nationality_perm in permutations(nationalities):
+                    # Assign each permutation to houses
+                    assignment = []
                     for i in range(5):
-                        house = {
-                            'House': str(i+1),
-                            'Name': name_order[i],
-                            'smoothie': smoothie_order[i],
-                            'animal': animal_order[i],
-                            'nationality': nationality_order[i]
-                        }
-                        solution.append(house)
-                    
+                        assignment.append({
+                            'House': str(i + 1),
+                            'Name': name_perm[i],
+                            'Smoothie': smoothie_perm[i],
+                            'Animal': animal_perm[i],
+                            'Nationality': nationality_perm[i]
+                        })
+
                     # Check all constraints
-                    valid = True
-                    
                     # Constraint 11: The person who keeps horses is in the third house.
-                    if solution[2]['animal'] != 'horse':
-                        valid = False
+                    if assignment[2]['Animal'] != 'horse':
                         continue
-                    
+
                     # Constraint 3: The Dane is the person who keeps horses.
-                    if solution[2]['nationality'] != 'dane':
-                        valid = False
+                    if assignment[2]['Nationality'] != 'dane':
                         continue
-                    
+
                     # Constraint 12: The Norwegian is Alice.
-                    alice_house = None
-                    for house in solution:
-                        if house['Name'] == 'Alice':
-                            alice_house = house
-                            break
-                    if alice_house is None or alice_house['nationality'] != 'norwegian':
-                        valid = False
+                    alice_house = next((h for h in assignment if h['Name'] == 'Alice'), None)
+                    if not alice_house or alice_house['Nationality'] != 'norwegian':
                         continue
-                    
+
                     # Constraint 6: Eric is the cat lover.
-                    eric_house = None
-                    for house in solution:
-                        if house['Name'] == 'Eric':
-                            eric_house = house
-                            break
-                    if eric_house is None or eric_house['animal'] != 'cat':
-                        valid = False
+                    eric_house = next((h for h in assignment if h['Name'] == 'Eric'), None)
+                    if not eric_house or eric_house['Animal'] != 'cat':
                         continue
-                    
-                    # Constraint 7: Bob is the bird keeper.
-                    bob_house = None
-                    for house in solution:
-                        if house['Name'] == 'Bob':
-                            bob_house = house
-                            break
-                    if bob_house is None or bob_house['animal'] != 'bird':
-                        valid = False
-                        continue
-                    
-                    # Constraint 9: The bird keeper is the Watermelon smoothie lover.
-                    if bob_house['smoothie'] != 'watermelon':
-                        valid = False
-                        continue
-                    
+
                     # Constraint 4: The bird keeper is somewhere to the right of the cat lover.
-                    if int(bob_house['House']) <= int(eric_house['House']):
-                        valid = False
+                    cat_house = next((h for h in assignment if h['Animal'] == 'cat'), None)
+                    bird_house = next((h for h in assignment if h['Animal'] == 'bird'), None)
+                    if not cat_house or not bird_house or int(bird_house['House']) <= int(cat_house['House']):
                         continue
-                    
-                    # Find the dog owner
-                    dog_owner = None
-                    for house in solution:
-                        if house['animal'] == 'dog':
-                            dog_owner = house
-                            break
-                    if dog_owner is None:
-                        valid = False
+
+                    # Constraint 7: Bob is the bird keeper.
+                    bob_house = next((h for h in assignment if h['Name'] == 'Bob'), None)
+                    if not bob_house or bob_house['Animal'] != 'bird':
                         continue
-                    
+
+                    # Constraint 9: The bird keeper is the Watermelon smoothie lover.
+                    if bob_house['Smoothie'] != 'watermelon':
+                        continue
+
                     # Constraint 10: The Desert smoothie lover is the dog owner.
-                    if dog_owner['smoothie'] != 'desert':
-                        valid = False
+                    desert_house = next((h for h in assignment if h['Smoothie'] == 'desert'), None)
+                    if not desert_house or desert_house['Animal'] != 'dog':
                         continue
-                    
+
                     # Constraint 1: The Swedish person is directly left of the dog owner.
-                    swede_house = None
-                    for house in solution:
-                        if house['nationality'] == 'swede':
-                            swede_house = house
-                            break
-                    if swede_house is None or int(swede_house['House']) != int(dog_owner['House']) - 1:
-                        valid = False
+                    swede_house = next((h for h in assignment if h['Nationality'] == 'swede'), None)
+                    dog_house = desert_house
+                    if not swede_house or int(swede_house['House']) + 1 != int(dog_house['House']):
                         continue
-                    
+
                     # Constraint 2: There are two houses between the dog owner and the British person.
-                    brit_house = None
-                    for house in solution:
-                        if house['nationality'] == 'brit':
-                            brit_house = house
-                            break
-                    if brit_house is None or abs(int(dog_owner['House']) - int(brit_house['House'])) != 3:
-                        valid = False
+                    brit_house = next((h for h in assignment if h['Nationality'] == 'brit'), None)
+                    if not brit_house or int(brit_house['House']) - int(dog_house['House']) != 3:
                         continue
-                    
+
                     # Constraint 5: The dog owner is directly left of the person who drinks Lime smoothies.
-                    lime_house = None
-                    for house in solution:
-                        if house['smoothie'] == 'lime':
-                            lime_house = house
-                            break
-                    if lime_house is None or int(lime_house['House']) != int(dog_owner['House']) + 1:
-                        valid = False
+                    lime_house = next((h for h in assignment if h['Smoothie'] == 'lime'), None)
+                    if not lime_house or int(lime_house['House']) - int(dog_house['House']) != 1:
                         continue
-                    
+
                     # Constraint 8: The person who likes Cherry smoothies is directly left of Peter.
-                    peter_house = None
-                    for house in solution:
-                        if house['Name'] == 'Peter':
-                            peter_house = house
-                            break
-                    if peter_house is None:
-                        valid = False
+                    cherry_house = next((h for h in assignment if h['Smoothie'] == 'cherry'), None)
+                    peter_house = next((h for h in assignment if h['Name'] == 'Peter'), None)
+                    if not cherry_house or not peter_house or int(peter_house['House']) - int(cherry_house['House']) != 1:
                         continue
-                    
-                    cherry_house = None
-                    for house in solution:
-                        if house['smoothie'] == 'cherry':
-                            cherry_house = house
-                            break
-                    if cherry_house is None or int(cherry_house['House']) != int(peter_house['House']) - 1:
-                        valid = False
-                        continue
-                    
-                    # If all constraints are satisfied, return the solution
-                    if valid:
-                        # Prepare the output in the required format
-                        output = {
-                            "solution": {
-                                "header": ["House", "Name", "smoothie", "animal", "nationality"],
-                                "rows": []
-                            }
+
+                    # All constraints satisfied, prepare the solution
+                    solution = {
+                        "solution": {
+                            "header": ["House", "Name", "Smoothie", "Animal", "Nationality"],
+                            "rows": []
                         }
-                        for house in solution:
-                            row = [
-                                house['House'],
-                                house['Name'],
-                                house['smoothie'],
-                                house['animal'],
-                                house['nationality']
-                            ]
-                            output["solution"]["rows"].append(row)
-                        return output
-    
+                    }
+                    for house in assignment:
+                        solution["solution"]["rows"].append([
+                            house['House'],
+                            house['Name'],
+                            house['Smoothie'],
+                            house['Animal'],
+                            house['Nationality']
+                        ])
+                    return solution
+
     return {"solution": {"header": [], "rows": []}}
 
-# Solve the puzzle and print the result as JSON
-solution = solve_puzzle()
-print(json.dumps(solution, indent=2))
+if __name__ == "__main__":
+    solution = solve_zebra_puzzle()
+    print(json.dumps(solution, indent=2))

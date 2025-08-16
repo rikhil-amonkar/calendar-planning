@@ -1,0 +1,109 @@
+{
+    "has_execution_error": false,
+    "execution_output": "SOLUTION:\nAfter evaluating several possible orders and \u201cpacking\u2010in\u201d the many required meeting durations plus necessary travel between San Francisco neighborhoods, one optimal (maximizing the number of friends met) schedule turns out to be to meet seven friends. (Because the two \u201cevening\u2010long\u201d meetings at Russian Hill and Financial District \u2013 Karen\u2019s and Deborah\u2019s \u2013 cannot both be squeezed in when combined with Mary\u2019s fixed Embarcadero slot, and it also isn\u2019t possible to fit six lengthy \u201cmorning\u201d meetings in the available window; careful \u201cpacking\u201d shows that by dropping one friend from the nine you can meet at most seven.)\n\nOne workable schedule is to drop Karen and (in one variant) also drop the other \u201clong\u2010block\u201d friend (Helen) so that the remaining seven meetings all fit into their individual available time windows while allowing for travel times. For example, if you choose to meet:\n\n\u2003\u2022\u2003Elizabeth (Marina District, available 8:30\u201313:15, 105 minutes needed)\n\u2003\u2022\u2003Sandra (Richmond District, available 8:00\u201315:15, 30 minutes needed)\n\u2003\u2022\u2003Stephanie (North Beach, available 10:15\u201316:00, 75 minutes needed)\n\u2003\u2022\u2003Brian (Presidio, available 10:15\u201317:00, 30 minutes needed)\n\u2003\u2022\u2003Laura (Alamo Square, available 14:30\u201316:15, 75 minutes needed)\n\u2003\u2022\u2003Mary (Embarcadero, available 16:45\u201318:45, 120 minutes needed)\n\u2003\u2022\u2003Deborah (Financial District, available 19:00\u201320:45, 105 minutes needed)\n\nA schedule that meets all these constraints is as follows. (Note that the travel times, taken from the table, force waiting periods; the times shown below assume you depart Mission District at 09:00.)\n\n1. Depart Mission District at 09:00 and travel 19 minutes to the Marina District.\n\u2003\u2003\u2022 Arrive 09:19 and meet Elizabeth at Marina District from 09:19 to 11:04 (105 minutes).\n\n2. Leave immediately and travel about 9 minutes from Marina District to Richmond District.\n\u2003\u2003\u2022 Arrive \u224811:13 and meet Sandra (30 minutes) from 11:13 to 11:43.\n\n3. Then travel 17 minutes from Richmond District to North Beach.\n\u2003\u2003\u2022 Arrive \u224812:00 and meet Stephanie (75 minutes) from 12:00 to 13:15.\n\n4. Next, travel 17 minutes from North Beach to the Presidio.\n\u2003\u2003\u2022 Arrive \u224813:32 and meet Brian (30 minutes) from 13:32 to 14:02.\n\n5. Then travel 19 minutes from the Presidio to Alamo Square.\n\u2003\u2003\u2022 Arrive \u224814:21; since Laura is available only starting at 14:30, wait a few minutes and then meet her (75 minutes) from 14:30 to 15:45.\n\n6. After finishing at Alamo Square, travel 16 minutes to Embarcadero.\n\u2003\u2003\u2022 Although you arrive around 16:01, Mary\u2019s window begins at 16:45. Wait until 16:45 and meet Mary (120 minutes) from 16:45 to 18:45.\n\n7. Finally, travel 5 minutes from Embarcadero to the Financial District.\n\u2003\u2003\u2022 Arrive \u224818:50, wait until 19:00, and meet Deborah (105 minutes) from 19:00 to 20:45.\n\nThis itinerary meets the minimum meeting time for each friend while honoring both their location windows and the travel\u2010time requirements.\n\nThe JSON representation is therefore as follows:\n\n{\n  \"itinerary\": [\n    {\"action\": \"meet\", \"person\": \"Elizabeth\", \"start_time\": \"09:19\", \"end_time\": \"11:04\"},\n    {\"action\": \"meet\", \"person\": \"Sandra\",    \"start_time\": \"11:13\", \"end_time\": \"11:43\"},\n    {\"action\": \"meet\", \"person\": \"Stephanie\", \"start_time\": \"12:00\", \"end_time\": \"13:15\"},\n    {\"action\": \"meet\", \"person\": \"Brian\",     \"start_time\": \"13:32\", \"end_time\": \"14:02\"},\n    {\"action\": \"meet\", \"person\": \"Laura\",     \"start_time\": \"14:30\", \"end_time\": \"15:45\"},\n    {\"action\": \"meet\", \"person\": \"Mary\",      \"start_time\": \"16:45\", \"end_time\": \"18:45\"},\n    {\"action\": \"meet\", \"person\": \"Deborah\",   \"start_time\": \"19:00\", \"end_time\": \"20:45\"}\n  ]\n}\n\nThis schedule maximizes your \u201cfriend\u2010count\u201d for the day while meeting all minimum time requirements and accounting for travel between each location.",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "person": "Elizabeth",
+                "start_time": "09:19",
+                "end_time": "11:04"
+            },
+            {
+                "action": "meet",
+                "person": "Sandra",
+                "start_time": "11:13",
+                "end_time": "11:43"
+            },
+            {
+                "action": "meet",
+                "person": "Stephanie",
+                "start_time": "12:00",
+                "end_time": "13:15"
+            },
+            {
+                "action": "meet",
+                "person": "Brian",
+                "start_time": "13:32",
+                "end_time": "14:02"
+            },
+            {
+                "action": "meet",
+                "person": "Laura",
+                "start_time": "14:30",
+                "end_time": "15:45"
+            },
+            {
+                "action": "meet",
+                "person": "Mary",
+                "start_time": "16:45",
+                "end_time": "18:45"
+            },
+            {
+                "action": "meet",
+                "person": "Deborah",
+                "start_time": "19:00",
+                "end_time": "20:45"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "person": "Sandra",
+                "start_time": "09:20",
+                "end_time": "09:50"
+            },
+            {
+                "action": "meet",
+                "person": "Brian",
+                "start_time": "10:15",
+                "end_time": "10:45"
+            },
+            {
+                "action": "meet",
+                "person": "Stephanie",
+                "start_time": "11:03",
+                "end_time": "12:18"
+            },
+            {
+                "action": "meet",
+                "person": "Helen",
+                "start_time": "12:40",
+                "end_time": "14:40"
+            },
+            {
+                "action": "meet",
+                "person": "Laura",
+                "start_time": "14:49",
+                "end_time": "16:04"
+            },
+            {
+                "action": "meet",
+                "person": "Mary",
+                "start_time": "16:45",
+                "end_time": "18:45"
+            },
+            {
+                "action": "meet",
+                "person": "Deborah",
+                "start_time": "19:00",
+                "end_time": "20:45"
+            }
+        ]
+    },
+    "status": "Failed to solve within max passes",
+    "violated_constraint": {
+        "travel": {
+            "from_person": "Elizabeth",
+            "to_person": "Sandra",
+            "from_location": "Marina District",
+            "to_location": "Richmond District",
+            "travel_time": 11
+        }
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1
+}

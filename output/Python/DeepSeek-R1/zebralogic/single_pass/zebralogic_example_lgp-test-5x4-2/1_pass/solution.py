@@ -3,85 +3,75 @@ import json
 def main():
     houses = [{'name': None, 'color': None, 'phone': None, 'occupation': None} for _ in range(5)]
     
-    # Clue 2: Bob is in the second house (house 2, index 1)
+    # Fixed assignment: Bob in second house (index1)
     houses[1]['name'] = 'Bob'
     
-    # Clue 10: Arnold is the engineer
-    # Clue 11: Alice loves yellow
-    # Clue 12: Eric uses google pixel 6
-    # Clue 13: The person who uses google pixel 6 is the teacher -> Eric is teacher
-    # Assign Eric to house 1 (index 0)
-    houses[0]['name'] = 'Eric'
-    houses[0]['phone'] = 'google pixel 6'
-    houses[0]['occupation'] = 'teacher'
-    
-    # Clue 9: One house between google pixel 6 and huawei p50 -> |0 - ?| = 2 -> positions 0 and 2
-    houses[2]['phone'] = 'huawei p50'
-    
-    # Clue 3 and 4: Samsung user is doctor and loves blue
-    # Clue 7: Blue is directly left of red -> so if blue is at house i, red is at i+1
-    # Assign Bob (house 2, index1) as doctor, with samsung and blue
+    # From clues 3 and 4: doctor uses samsung and loves blue -> assign to house1 (index1)
     houses[1]['occupation'] = 'doctor'
     houses[1]['phone'] = 'samsung galaxy s21'
     houses[1]['color'] = 'blue'
-    # Then red must be at house 3 (index2)
+    
+    # Clue7: blue directly left of red -> house2 (index2) is red
     houses[2]['color'] = 'red'
     
-    # Clue 6: Lawyer uses oneplus 9
-    # Clue 8: Lawyer is to the right of the samsung user (doctor at index1) -> so lawyer at index2,3,4
-    # But house2 (index1) is doctor, house3 (index2) has phone huawei, not oneplus -> skip index2
-    # Assign lawyer to house4 (index3) with oneplus9
-    houses[3]['phone'] = 'oneplus 9'
-    houses[3]['occupation'] = 'lawyer'
+    # Clue14: red is right of teacher -> teacher must be in house0 (index0) (since house1 is doctor)
+    houses[0]['occupation'] = 'teacher'
+    # Clue12 and 13: teacher is Eric and uses google pixel
+    houses[0]['name'] = 'Eric'
+    houses[0]['phone'] = 'google pixel 6'
     
-    # Clue 1: Engineer is to the right of lawyer -> engineer at house5 (index4)
+    # Clue9: one house between google and huawei -> since google is at house0, huawei must be at house2 (index2)
+    houses[2]['phone'] = 'huawei p50'
+    
+    # Clue8: lawyer is right of doctor (house1) -> so house index > 1
+    # Clue1: engineer is right of lawyer
+    # Therefore, lawyer at house3 (index3), engineer at house4 (index4)
+    houses[3]['occupation'] = 'lawyer'
     houses[4]['occupation'] = 'engineer'
-    # Clue 10: Arnold is engineer -> so house5 (index4) is Arnold
+    # Clue6: lawyer uses oneplus9
+    houses[3]['phone'] = 'oneplus 9'
+    
+    # The remaining occupation is artist -> house2 (index2)
+    houses[2]['occupation'] = 'artist'
+    
+    # Clue10: Arnold is engineer -> house4 (index4) name is Arnold
     houses[4]['name'] = 'Arnold'
     
-    # Clue 11: Alice loves yellow -> assign to house4 (index3) as lawyer
+    # Clue11: Alice loves yellow -> find Alice and assign yellow
+    # Houses left: house2 (index2) and house3 (index3) for names Alice and Peter
+    # House2 is red, so Alice cannot be there (yellow required) -> Alice at house3 (index3)
     houses[3]['name'] = 'Alice'
     houses[3]['color'] = 'yellow'
     
-    # Only Peter left for house3 (index2)
+    # Then house2 (index2) must be Peter
     houses[2]['name'] = 'Peter'
-    # Only artist occupation left for house3 (index2)
-    houses[2]['occupation'] = 'artist'
     
-    # Now assign colors: only green and white left
-    # Clue 5: Green not in fifth house -> so house5 (index4) cannot be green -> must be white
-    houses[4]['color'] = 'white'
-    # Then house1 (index0) must be green
+    # Remaining colors: green and white for house0 and house4
+    # Clue5: green not in fifth house -> house4 (index4) cannot be green -> house4 is white, house0 is green
     houses[0]['color'] = 'green'
+    houses[4]['color'] = 'white'
     
-    # Only phone left for house5 (index4) is iphone13
-    phones = ['huawei p50', 'samsung galaxy s21', 'oneplus 9', 'iphone 13', 'google pixel 6']
-    assigned_phones = [house['phone'] for house in houses]
-    remaining_phone = [p for p in phones if p not in assigned_phones][0]
-    houses[4]['phone'] = remaining_phone
-
-    # Prepare the solution in the required JSON format
-    solution_rows = []
+    # Remaining phone: iphone 13 for house4 (index4)
+    houses[4]['phone'] = 'iphone 13'
+    
+    # Build the output rows
+    rows = []
     for i in range(5):
         house_number = str(i+1)
-        row = [
-            house_number,
-            houses[i]['name'],
-            houses[i]['color'],
-            houses[i]['phone'],
-            houses[i]['occupation']
-        ]
-        solution_rows.append(row)
+        name = houses[i]['name']
+        color = houses[i]['color']
+        phone_model = houses[i]['phone']
+        occupation = houses[i]['occupation']
+        rows.append([house_number, name, color, phone_model, occupation])
     
-    header = ["House", "Name", "favorite color", "phone model", "occupation"]
     solution_dict = {
         "solution": {
-            "header": header,
-            "rows": solution_rows
+            "header": ["House", "Name", "Color", "PhoneModel", "Occupation"],
+            "rows": rows
         }
     }
     
-    print(json.dumps(solution_dict, indent=2))
+    print(json.dumps(solution_dict))
 
 if __name__ == "__main__":
     main()

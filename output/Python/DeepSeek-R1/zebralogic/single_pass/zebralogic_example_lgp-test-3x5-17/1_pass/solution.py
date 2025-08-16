@@ -1,81 +1,76 @@
 import itertools
 import json
 
-def satisfies_constraints(candidate):
-    # Check clue3: Tesla owner is very short
-    for house in candidate:
-        if house[4] == 'tesla model 3':
-            if house[2] != 'very short':
-                return False
-    
-    # Check clue4: Short height directly left of samsung galaxy s21
-    found_clue4 = False
-    for i in range(2):
-        if candidate[i][2] == 'short' and candidate[i+1][1] == 'samsung galaxy s21':
-            found_clue4 = True
-            break
-    if not found_clue4:
-        return False
-    
-    # Check clue5: iphone 13 directly left of google pixel 6
-    found_clue5 = False
-    for i in range(2):
-        if candidate[i][1] == 'iphone 13' and candidate[i+1][1] == 'google pixel 6':
-            found_clue5 = True
-            break
-    if not found_clue5:
-        return False
-    
-    # Check clue8: Ford F150 to the right of Toyota Camry
-    cars = [house[4] for house in candidate]
-    try:
-        toyota_index = cars.index('toyota camry')
-        ford_index = cars.index('ford f150')
-    except ValueError:
-        return False
-    if ford_index <= toyota_index:
-        return False
-        
-    return True
-
 def main():
-    attributes = {
-        'name': ['Eric', 'Arnold', 'Peter'],
-        'phone': ['iphone 13', 'samsung galaxy s21', 'google pixel 6'],
-        'height': ['very short', 'short', 'average'],
-        'house_style': ['colonial', 'ranch', 'victorian'],
-        'car': ['tesla model 3', 'toyota camry', 'ford f150']
-    }
+    names = ['Eric', 'Arnold', 'Peter']
+    house_styles = ['ranch', 'colonial', 'victorian']
+    phones = ['iphone 13', 'samsung galaxy s21', 'google pixel 6']
+    cars = ['tesla model 3', 'toyota camry', 'ford f150']
+    height_options = [('short', 'very short'), ('very short', 'short')]
     
-    # Pre-filter permutations based on known constraints
-    name_perms = [('Eric', 'Arnold', 'Peter')]
-    style_perms = [('ranch', 'colonial', 'victorian')]
-    height_perms = [p for p in itertools.permutations(attributes['height']) if p[0]=='average']
-    phone_perms = list(itertools.permutations(attributes['phone']))
-    car_perms = list(itertools.permutations(attributes['car']))
-    
-    for name_p in name_perms:
-        for phone_p in phone_perms:
-            for height_p in height_perms:
-                for style_p in style_perms:
-                    for car_p in car_perms:
-                        candidate = []
-                        for i in range(3):
-                            house = (name_p[i], phone_p[i], height_p[i], style_p[i], car_p[i])
-                            candidate.append(house)
-                        if satisfies_constraints(candidate):
-                            sol = {
-                                "solution": {
-                                    "header": ["House", "Name", "Phone", "Height", "House Style", "Car"],
-                                    "rows": []
-                                }
-                            }
-                            for idx, house in enumerate(candidate, start=1):
-                                row = [str(idx)] + list(house)
-                                sol["solution"]["rows"].append(row)
-                            print(json.dumps(sol))
-                            return
-    print(json.dumps({"error": "No solution found"}))
+    for phone_perm in itertools.permutations(phones):
+        for car_perm in itertools.permutations(cars):
+            for h_perm in height_options:
+                heights = ['average', h_perm[0], h_perm[1]]
+                house0 = ['1', names[0], phone_perm[0], heights[0], house_styles[0], car_perm[0]]
+                house1 = ['2', names[1], phone_perm[1], heights[1], house_styles[1], car_perm[1]]
+                house2 = ['3', names[2], phone_perm[2], heights[2], house_styles[2], car_perm[2]]
+                rows = [house0, house1, house2]
+                
+                c3_ok = True
+                for row in rows:
+                    if row[5] == 'tesla model 3':
+                        if row[3] != 'very short':
+                            c3_ok = False
+                            break
+                if not c3_ok:
+                    continue
+                
+                c4_ok = False
+                if house0[3] == 'short' and house1[2] == 'samsung galaxy s21':
+                    c4_ok = True
+                elif house1[3] == 'short' and house2[2] == 'samsung galaxy s21':
+                    c4_ok = True
+                if not c4_ok:
+                    continue
+                
+                c5_ok = False
+                if house0[2] == 'iphone 13' and house1[2] == 'google pixel 6':
+                    c5_ok = True
+                elif house1[2] == 'iphone 13' and house2[2] == 'google pixel 6':
+                    c5_ok = True
+                if not c5_ok:
+                    continue
+                
+                try:
+                    idx_toyota = None
+                    idx_ford = None
+                    for i, row in enumerate(rows):
+                        if row[5] == 'toyota camry':
+                            idx_toyota = i
+                        if row[5] == 'ford f150':
+                            idx_ford = i
+                    if idx_toyota is None or idx_ford is None:
+                        continue
+                    if idx_ford > idx_toyota:
+                        c8_ok = True
+                    else:
+                        c8_ok = False
+                except:
+                    c8_ok = False
+                if not c8_ok:
+                    continue
+                
+                solution_dict = {
+                    "solution": {
+                        "header": ["House", "Name", "PhoneModel", "Height", "HouseStyle", "CarModel"],
+                        "rows": rows
+                    }
+                }
+                print(json.dumps(solution_dict))
+                return
+                
+    print(json.dumps({"solution": {"header": ["House", "Name", "PhoneModel", "Height", "HouseStyle", "CarModel"], "rows": []}}))
 
 if __name__ == '__main__':
     main()

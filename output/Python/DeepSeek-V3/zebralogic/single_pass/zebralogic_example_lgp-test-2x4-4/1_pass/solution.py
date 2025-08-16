@@ -2,51 +2,60 @@ import json
 from itertools import permutations
 
 def solve_puzzle():
-    # Define all possible attributes
-    names = ['Eric', 'Arnold']
-    house_styles = ['victorian', 'colonial']
-    heights = ['very short', 'short']
-    educations = ['associate', 'high school']
+    # Define all possible options for each attribute
+    names = ["Eric", "Arnold"]
+    house_styles = ["victorian", "colonial"]
+    heights = ["very short", "short"]
+    educations = ["associate", "high school"]
     
-    # Generate all possible permutations for each attribute
+    # Generate all possible permutations for the two houses
     for name_perm in permutations(names):
-        for house_perm in permutations(house_styles):
+        for style_perm in permutations(house_styles):
             for height_perm in permutations(heights):
                 for edu_perm in permutations(educations):
-                    # Check all constraints
-                    # Constraint 2: Victorian is first house
-                    if house_perm[0] != 'victorian':
-                        continue
-                    
-                    # Constraint 1: short is directly left of Eric
-                    # Find index of short and Eric
-                    try:
-                        short_index = height_perm.index('short')
-                        eric_index = name_perm.index('Eric')
-                    except ValueError:
-                        continue
-                    
-                    if short_index + 1 != eric_index:
-                        continue
-                    
-                    # Constraint 3: short person has associate's degree
-                    if edu_perm[short_index] != 'associate':
-                        continue
-                    
-                    # All constraints satisfied, build solution
+                    # Create the solution structure
                     solution = {
+                        "1": {
+                            "Name": name_perm[0],
+                            "HouseStyle": style_perm[0],
+                            "Height": height_perm[0],
+                            "Education": edu_perm[0]
+                        },
+                        "2": {
+                            "Name": name_perm[1],
+                            "HouseStyle": style_perm[1],
+                            "Height": height_perm[1],
+                            "Education": edu_perm[1]
+                        }
+                    }
+                    
+                    # Check all constraints
+                    # Clue 2: Victorian is in the first house
+                    if solution["1"]["HouseStyle"] != "victorian":
+                        continue
+                    
+                    # Clue 1: The person who is short is directly left of Eric
+                    # This means short is in house 1, Eric in house 2
+                    if not (solution["1"]["Height"] == "short" and solution["2"]["Name"] == "Eric"):
+                        continue
+                    
+                    # Clue 3: The person who is short has an associate's degree
+                    if solution["1"]["Height"] == "short" and solution["1"]["Education"] != "associate":
+                        continue
+                    
+                    # If all constraints are satisfied, format the output
+                    output = {
                         "solution": {
-                            "header": ["House", "Name", "house style", "height", "education"],
+                            "header": ["House", "Name", "HouseStyle", "Height", "Education"],
                             "rows": [
-                                ["1", name_perm[0], house_perm[0], height_perm[0], edu_perm[0]],
-                                ["2", name_perm[1], house_perm[1], height_perm[1], edu_perm[1]]
+                                ["1", solution["1"]["Name"], solution["1"]["HouseStyle"], solution["1"]["Height"], solution["1"]["Education"]],
+                                ["2", solution["2"]["Name"], solution["2"]["HouseStyle"], solution["2"]["Height"], solution["2"]["Education"]]
                             ]
                         }
                     }
-                    return solution
+                    return json.dumps(output, indent=2)
     
-    return {"solution": {"header": [], "rows": []}}
+    return json.dumps({"solution": {"header": [], "rows": []}})
 
-# Solve and print the solution as JSON
-solution = solve_puzzle()
-print(json.dumps(solution, indent=2))
+if __name__ == "__main__":
+    print(solve_puzzle())

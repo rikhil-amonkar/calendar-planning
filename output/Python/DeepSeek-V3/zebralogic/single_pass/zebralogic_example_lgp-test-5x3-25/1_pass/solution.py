@@ -2,133 +2,108 @@ import json
 from itertools import permutations
 
 def solve_puzzle():
-    # Define all possible categories and options
-    houses = ['1', '2', '3', '4', '5']
+    # Define all possible options
     names = ['Arnold', 'Bob', 'Alice', 'Eric', 'Peter']
     heights = ['very tall', 'average', 'tall', 'very short', 'short']
-    lunches = ['stew', 'grilled cheese', 'spaghetti', 'pizza', 'stir fry']
+    foods = ['stew', 'grilled cheese', 'spaghetti', 'pizza', 'stir fry']
+    houses = ['1', '2', '3', '4', '5']
     
     # Generate all possible permutations for each category
     for name_perm in permutations(names):
         for height_perm in permutations(heights):
-            for lunch_perm in permutations(lunches):
-                # Assign each permutation to houses 1-5
-                assignment = []
-                for i in range(5):
-                    assignment.append({
-                        'House': houses[i],
-                        'Name': name_perm[i],
-                        'Height': height_perm[i],
-                        'Lunch': lunch_perm[i]
-                    })
-                
-                # Check all constraints
+            for food_perm in permutations(foods):
+                solution = []
                 valid = True
                 
-                # Constraint 1: Alice is short
-                alice_house = None
-                for house in assignment:
-                    if house['Name'] == 'Alice':
-                        if house['Height'] != 'short':
-                            valid = False
-                        alice_house = house
-                if alice_house is None:
-                    valid = False
-                
-                # Constraint 2: Tall is in house 3
-                if assignment[2]['Height'] != 'tall':
-                    valid = False
-                
-                # Constraint 3: Average height is not in house 2
-                if assignment[1]['Height'] == 'average':
-                    valid = False
-                
-                # Constraint 4: Average is left of stew
-                avg_pos = None
-                stew_pos = None
+                # Create a list of house assignments
                 for i in range(5):
-                    if assignment[i]['Height'] == 'average':
-                        avg_pos = i
-                    if assignment[i]['Lunch'] == 'stew':
-                        stew_pos = i
-                if avg_pos is None or stew_pos is None or avg_pos >= stew_pos:
-                    valid = False
+                    house = {
+                        'House': str(i+1),
+                        'Name': name_perm[i],
+                        'Height': height_perm[i],
+                        'Food': food_perm[i]
+                    }
+                    solution.append(house)
                 
-                # Constraint 5: Arnold loves stir fry
-                arnold_house = None
-                for house in assignment:
-                    if house['Name'] == 'Arnold':
-                        if house['Lunch'] != 'stir fry':
-                            valid = False
-                        arnold_house = house
-                if arnold_house is None:
+                # Check all constraints
+                # 1. Alice is short
+                alice_house = next((h for h in solution if h['Name'] == 'Alice'), None)
+                if not alice_house or alice_house['Height'] != 'short':
                     valid = False
+                    continue
                 
-                # Constraint 6: Pizza lover is tall
-                for house in assignment:
-                    if house['Lunch'] == 'pizza':
-                        if house['Height'] != 'tall':
-                            valid = False
-                
-                # Constraint 7: Eric is tall
-                eric_house = None
-                for house in assignment:
-                    if house['Name'] == 'Eric':
-                        if house['Height'] != 'tall':
-                            valid = False
-                        eric_house = house
-                if eric_house is None:
+                # 2. Tall person is in house 3
+                if solution[2]['Height'] != 'tall':
                     valid = False
+                    continue
                 
-                # Constraint 8: Bob is right of Arnold
-                arnold_pos = None
-                bob_pos = None
-                for i in range(5):
-                    if assignment[i]['Name'] == 'Arnold':
-                        arnold_pos = i
-                    if assignment[i]['Name'] == 'Bob':
-                        bob_pos = i
-                if arnold_pos is None or bob_pos is None or bob_pos <= arnold_pos:
+                # 3. Average height not in house 2
+                if solution[1]['Height'] == 'average':
                     valid = False
+                    continue
                 
-                # Constraint 9: Grilled cheese is right of Eric
-                eric_pos = None
-                grilled_pos = None
-                for i in range(5):
-                    if assignment[i]['Name'] == 'Eric':
-                        eric_pos = i
-                    if assignment[i]['Lunch'] == 'grilled cheese':
-                        grilled_pos = i
-                if eric_pos is None or grilled_pos is None or grilled_pos <= eric_pos:
+                # 4. Average height is left of stew
+                avg_house = next((h for h in solution if h['Height'] == 'average'), None)
+                stew_house = next((h for h in solution if h['Food'] == 'stew'), None)
+                if not avg_house or not stew_house or int(avg_house['House']) >= int(stew_house['House']):
                     valid = False
+                    continue
                 
-                # Constraint 10: Very short is left of Arnold
-                very_short_pos = None
-                for i in range(5):
-                    if assignment[i]['Height'] == 'very short':
-                        very_short_pos = i
-                if very_short_pos is None or arnold_pos is None or very_short_pos >= arnold_pos:
+                # 5. Arnold loves stir fry
+                arnold_house = next((h for h in solution if h['Name'] == 'Arnold'), None)
+                if not arnold_house or arnold_house['Food'] != 'stir fry':
                     valid = False
+                    continue
+                
+                # 6. Pizza lover is tall
+                pizza_house = next((h for h in solution if h['Food'] == 'pizza'), None)
+                if not pizza_house or pizza_house['Height'] != 'tall':
+                    valid = False
+                    continue
+                
+                # 7. Eric is tall
+                eric_house = next((h for h in solution if h['Name'] == 'Eric'), None)
+                if not eric_house or eric_house['Height'] != 'tall':
+                    valid = False
+                    continue
+                
+                # 8. Bob is right of Arnold
+                bob_house = next((h for h in solution if h['Name'] == 'Bob'), None)
+                if not bob_house or not arnold_house or int(bob_house['House']) <= int(arnold_house['House']):
+                    valid = False
+                    continue
+                
+                # 9. Grilled cheese is right of Eric
+                gc_house = next((h for h in solution if h['Food'] == 'grilled cheese'), None)
+                if not gc_house or not eric_house or int(gc_house['House']) <= int(eric_house['House']):
+                    valid = False
+                    continue
+                
+                # 10. Very short is left of Arnold
+                vs_house = next((h for h in solution if h['Height'] == 'very short'), None)
+                if not vs_house or not arnold_house or int(vs_house['House']) >= int(arnold_house['House']):
+                    valid = False
+                    continue
                 
                 if valid:
-                    # Prepare the solution in the required format
-                    solution = {
+                    # Prepare the output
+                    output = {
                         "solution": {
-                            "header": ["House", "Name", "Height", "Lunch"],
+                            "header": ["House", "Name", "Height", "Food"],
                             "rows": []
                         }
                     }
-                    for house in assignment:
-                        solution["solution"]["rows"].append([
+                    for house in sorted(solution, key=lambda x: int(x['House'])):
+                        output["solution"]["rows"].append([
                             house['House'],
                             house['Name'],
                             house['Height'],
-                            house['Lunch']
+                            house['Food']
                         ])
-                    return solution
+                    return output
     
-    return {"solution": {"header": [], "rows": []}}
+    return {"solution": {"header": ["House", "Name", "Height", "Food"], "rows": []}}
 
-# Execute and print the solution
+# Solve and print the solution
 solution = solve_puzzle()
 print(json.dumps(solution, indent=2))

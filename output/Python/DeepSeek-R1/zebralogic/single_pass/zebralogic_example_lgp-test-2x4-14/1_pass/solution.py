@@ -1,3 +1,4 @@
+import itertools
 import json
 
 def main():
@@ -6,65 +7,58 @@ def main():
     smoothies = ['cherry', 'desert']
     pets = ['dog', 'cat']
     
-    candidates = []
+    name_perms = list(itertools.permutations(names))
+    style_perms = list(itertools.permutations(styles))
+    smoothie_perms = list(itertools.permutations(smoothies))
+    pet_perms = list(itertools.permutations(pets))
     
-    for name1 in names:
-        name2 = next(n for n in names if n != name1)
-        for style1 in styles:
-            style2 = next(s for s in styles if s != style1)
-            for smoothie1 in smoothies:
-                smoothie2 = next(sm for sm in smoothies if sm != smoothie1)
-                for pet1 in pets:
-                    pet2 = next(p for p in pets if p != pet1)
-                    candidate = {
-                        1: [name1, style1, smoothie1, pet1],
-                        2: [name2, style2, smoothie2, pet2]
-                    }
-                    candidates.append(candidate)
+    solution_rows = None
+    found = False
     
-    solution_found = None
-    for cand in candidates:
-        house1 = cand[1]
-        house2 = cand[2]
-        
-        valid1 = True
-        if house1[2] == 'cherry' and house1[3] != 'dog':
-            valid1 = False
-        if house2[2] == 'cherry' and house2[3] != 'dog':
-            valid1 = False
-            
-        valid2 = True
-        if house1[1] == 'victorian' and house1[3] != 'dog':
-            valid2 = False
-        if house2[1] == 'victorian' and house2[3] != 'dog':
-            valid2 = False
-            
-        victorian_house = 1 if house1[1] == 'victorian' else 2
-        eric_house = 1 if house1[0] == 'Eric' else 2
-        valid3 = (victorian_house < eric_house)
-        
-        if valid1 and valid2 and valid3:
-            solution_found = cand
+    for name_perm in name_perms:
+        if found:
             break
+        for style_perm in style_perms:
+            if found:
+                break
+            for smoothie_perm in smoothie_perms:
+                if found:
+                    break
+                for pet_perm in pet_perms:
+                    house0_attrs = [name_perm[0], style_perm[0], smoothie_perm[0], pet_perm[0]]
+                    house1_attrs = [name_perm[1], style_perm[1], smoothie_perm[1], pet_perm[1]]
+                    
+                    c1_0 = (house0_attrs[2] == 'cherry' and house0_attrs[3] == 'dog')
+                    c1_1 = (house1_attrs[2] == 'cherry' and house1_attrs[3] == 'dog')
+                    if not (c1_0 or c1_1):
+                        continue
+                    
+                    c2_0 = (house0_attrs[1] == 'victorian' and house0_attrs[3] == 'dog')
+                    c2_1 = (house1_attrs[1] == 'victorian' and house1_attrs[3] == 'dog')
+                    if not (c2_0 or c2_1):
+                        continue
+                    
+                    vic_index = 0 if style_perm[0] == 'victorian' else 1
+                    eric_index = 0 if name_perm[0] == 'Eric' else 1
+                    
+                    if vic_index < eric_index:
+                        solution_rows = [
+                            ["1", name_perm[0], style_perm[0], smoothie_perm[0], pet_perm[0]],
+                            ["2", name_perm[1], style_perm[1], smoothie_perm[1], pet_perm[1]]
+                        ]
+                        found = True
+                        break
     
-    if solution_found is None:
-        output = {
-            "solution": {
-                "header": ["House", "Name", "House Style", "Smoothie", "Pet"],
-                "rows": []
-            }
-        }
-    else:
-        row1 = ["1"] + solution_found[1]
-        row2 = ["2"] + solution_found[2]
-        output = {
-            "solution": {
-                "header": ["House", "Name", "House Style", "Smoothie", "Pet"],
-                "rows": [row1, row2]
-            }
-        }
+    if solution_rows is None:
+        solution_rows = []
     
-    print(json.dumps(output))
+    result = {
+        "solution": {
+            "header": ["House", "Name", "HouseStyle", "Smoothie", "Pet"],
+            "rows": solution_rows
+        }
+    }
+    print(json.dumps(result))
 
 if __name__ == "__main__":
     main()

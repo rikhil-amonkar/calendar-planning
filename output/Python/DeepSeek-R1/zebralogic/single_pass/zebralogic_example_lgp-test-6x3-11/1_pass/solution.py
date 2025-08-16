@@ -1,102 +1,72 @@
-import itertools
 import json
 
 def main():
-    names_list = ['Bob', 'Peter', 'Eric', 'Alice', 'Arnold', 'Carol']
-    hairs_list = ['auburn', 'blonde', 'brown', 'black', 'red', 'gray']
-    heights_list = ['very tall', 'average', 'very short', 'tall', 'super tall', 'short']
+    # Initialize the houses: list of 6 dictionaries, each for house index 0 to 5 (representing house1 to house6)
+    houses = [{'Name': None, 'HairColor': None, 'Height': None} for _ in range(6)]
     
-    found = False
-    solution_rows = None
+    # Apply direct clues
+    # Clue 2: Alice is in the fourth house (index 3)
+    houses[3]['Name'] = 'Alice'
+    # Clue 4: The person who is tall is in the sixth house (index 5)
+    houses[5]['Height'] = 'tall'
+    # Clue 10: The person who is very short is in the fifth house (index 4)
+    houses[4]['Height'] = 'very short'
+    # Clue 12: The person who has gray hair is in the third house (index 2)
+    houses[2]['HairColor'] = 'gray'
     
-    for names in itertools.permutations(names_list):
-        if names[3] != 'Alice':
-            continue
-        
-        for hairs in itertools.permutations(hairs_list):
-            if hairs[2] != 'gray':
-                continue
-            if hairs[3] == 'black':
-                continue
-            
-            for heights in itertools.permutations(heights_list):
-                if heights[4] != 'very short':
-                    continue
-                if heights[5] != 'tall':
-                    continue
-                
-                if 'blonde' in hairs:
-                    i_blonde = hairs.index('blonde')
-                    if i_blonde >= 5 or names[i_blonde+1] != 'Bob':
-                        continue
-                else:
-                    continue
-                
-                if 'short' in heights:
-                    i_short = heights.index('short')
-                    if names[i_short] != 'Arnold':
-                        continue
-                else:
-                    continue
-                
-                if 'red' in hairs:
-                    i_red = hairs.index('red')
-                    if names[i_red] != 'Eric':
-                        continue
-                else:
-                    continue
-                
-                if 'average' in heights and 'super tall' in heights:
-                    i_avg = heights.index('average')
-                    i_sup = heights.index('super tall')
-                    if i_sup <= i_avg:
-                        continue
-                else:
-                    continue
-                
-                if names[i_blonde] != 'Carol':
-                    continue
-                
-                i_gray = hairs.index('gray')
-                if abs(i_gray - i_red) != 2:
-                    continue
-                
-                if 'Bob' in names:
-                    i_bob = names.index('Bob')
-                    if hairs[i_bob] != 'brown':
-                        continue
-                else:
-                    continue
-                
-                if heights[i_blonde] != 'very tall':
-                    continue
-                
-                found = True
-                solution_rows = []
-                for i in range(6):
-                    solution_rows.append([str(i+1), names[i], hairs[i], heights[i]])
-                break
-            if found:
-                break
-        if found:
-            break
+    # Clue 8: The person who has blonde hair is Carol
+    # Clue 13: The person who has blonde hair is very tall -> Carol has blonde hair and is very tall
+    # Clue 11: Bob has brown hair
     
-    if found:
-        result = {
-            "solution": {
-                "header": ["House", "name", "hair", "height"],
-                "rows": solution_rows
-            }
+    # Apply clue 1: The person with blonde hair (Carol) is directly left of Bob
+    # Carol must be in house1 (index0) and Bob in house2 (index1)
+    houses[0]['Name'] = 'Carol'
+    houses[0]['HairColor'] = 'blonde'
+    houses[0]['Height'] = 'very tall'
+    houses[1]['Name'] = 'Bob'
+    houses[1]['HairColor'] = 'brown'
+    
+    # Clue 9: One house between gray hair (house3, index2) and red hair -> red hair must be in house5 (index4)
+    houses[4]['HairColor'] = 'red'
+    # Clue 6: The person with red hair is Eric -> house5: Eric
+    houses[4]['Name'] = 'Eric'
+    
+    # Clue 3: The person who is short is Arnold -> Arnold must be assigned to a house with height 'short'
+    # Remaining houses: index2 (house3) and index5 (house6). House6 has height 'tall', so Arnold must be in house3 (index2)
+    houses[2]['Name'] = 'Arnold'
+    houses[2]['Height'] = 'short'
+    
+    # Only name left for house6 (index5) is Peter
+    houses[5]['Name'] = 'Peter'
+    
+    # Hair colors left: auburn and black for houses index3 (house4) and index5 (house6)
+    # Clue 5: Black hair not in fourth house (index3) -> house4 gets auburn, house6 gets black
+    houses[3]['HairColor'] = 'auburn'
+    houses[5]['HairColor'] = 'black'
+    
+    # Heights left: average and super tall for house2 (index1) and house4 (index3)
+    # Clue 7: Super tall is to the right of average -> house2: average, house4: super tall
+    houses[1]['Height'] = 'average'
+    houses[3]['Height'] = 'super tall'
+    
+    # Prepare the solution in the required JSON format
+    solution = {
+        "solution": {
+            "header": ["House", "Name", "HairColor", "Height"],
+            "rows": []
         }
-        print(json.dumps(result))
-    else:
-        result = {
-            "solution": {
-                "header": ["House", "name", "hair", "height"],
-                "rows": []
-            }
-        }
-        print(json.dumps(result))
+    }
+    
+    # Populate rows: house number, name, hair color, height
+    for i in range(6):
+        house_num = str(i+1)
+        name = houses[i]['Name']
+        hair_color = houses[i]['HairColor']
+        height = houses[i]['Height']
+        solution["solution"]["rows"].append([house_num, name, hair_color, height])
+    
+    # Output as JSON
+    print(json.dumps(solution, indent=2))
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

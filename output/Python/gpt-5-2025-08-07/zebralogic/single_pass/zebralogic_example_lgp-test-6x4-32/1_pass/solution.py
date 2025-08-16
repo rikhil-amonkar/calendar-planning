@@ -1,2 +1,3 @@
 if __name__ == "__main__":
-    main()
+    result = solve()
+    print(json.dumps(result, ensure_ascii=False))

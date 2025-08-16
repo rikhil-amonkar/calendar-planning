@@ -1,71 +1,107 @@
 import json
 
 def main():
-    # Initialize the houses as dictionaries with the correct attribute names
-    house1 = {
-        "Name": None,
-        "Favorite Book Genres": None,
-        "Vacation Type": None,
-        "Animals": None,
-        "Favorite Music Genres": None
-    }
-    house2 = {
-        "Name": None,
-        "Favorite Book Genres": None,
-        "Vacation Type": None,
-        "Animals": None,
-        "Favorite Music Genres": None
-    }
+    names = ['Arnold', 'Eric']
+    book_genres = ['science fiction', 'mystery']
+    vacations = ['mountain', 'beach']
+    animals = ['cat', 'horse']
+    music_genres = ['rock', 'pop']
     
-    # Apply clue 5: The person who loves mystery books is in the first house.
-    house1["Favorite Book Genres"] = "mystery"
+    def check_constraints(house1, house2):
+        houses = [house1, house2]
+        
+        # Constraint 1: Beach vacation is Eric
+        beach_house = None
+        for house in houses:
+            if house['Vacation'] == 'beach':
+                beach_house = house
+        if beach_house is None or beach_house['Name'] != 'Eric':
+            return False
+        
+        # Constraint 2: Pop music is the same as beach vacation
+        pop_house = None
+        for house in houses:
+            if house['MusicGenre'] == 'pop':
+                pop_house = house
+        if pop_house is None or pop_house != beach_house:
+            return False
+        
+        # Constraint 3: Rock music is the same as mystery books
+        rock_house = None
+        mystery_house = None
+        for house in houses:
+            if house['MusicGenre'] == 'rock':
+                rock_house = house
+            if house['BookGenre'] == 'mystery':
+                mystery_house = house
+        if rock_house is None or mystery_house is None or rock_house != mystery_house:
+            return False
+        
+        # Constraint 4: Cat lover is in house 1
+        cat_house = None
+        for house in houses:
+            if house['Animal'] == 'cat':
+                cat_house = house
+        if cat_house is None or cat_house['House'] != '1':
+            return False
+        
+        # Constraint 5: Mystery books in house 1
+        if mystery_house['House'] != '1':
+            return False
+        
+        return True
+
+    solutions = []
+    for n1 in names:
+        n2 = next(n for n in names if n != n1)
+        for b1 in book_genres:
+            b2 = next(b for b in book_genres if b != b1)
+            for v1 in vacations:
+                v2 = next(v for v in vacations if v != v1)
+                for a1 in animals:
+                    a2 = next(a for a in animals if a != a1)
+                    for m1 in music_genres:
+                        m2 = next(m for m in music_genres if m != m1)
+                        
+                        house1 = {
+                            'House': '1',
+                            'Name': n1,
+                            'BookGenre': b1,
+                            'Vacation': v1,
+                            'Animal': a1,
+                            'MusicGenre': m1
+                        }
+                        house2 = {
+                            'House': '2',
+                            'Name': n2,
+                            'BookGenre': b2,
+                            'Vacation': v2,
+                            'Animal': a2,
+                            'MusicGenre': m2
+                        }
+                        
+                        if check_constraints(house1, house2):
+                            solutions.append((house1, house2))
     
-    # Apply clue 4: The cat lover is not in the second house (so must be in first)
-    house1["Animals"] = "cat"
-    
-    # Apply clue 3: The person who loves rock music is the person who loves mystery books.
-    # Since mystery books are in house1, rock music must be in house1.
-    house1["Favorite Music Genres"] = "rock"
-    
-    # The remaining book genre for house2 is science fiction
-    house2["Favorite Book Genres"] = "science fiction"
-    
-    # The remaining music genre for house2 is pop
-    house2["Favorite Music Genres"] = "pop"
-    
-    # The remaining animal for house2 is horse
-    house2["Animals"] = "horse"
-    
-    # Apply clue 2: The person who loves pop music is the person who loves beach vacations.
-    # Since house2 has pop music, house2 must have beach vacations.
-    house2["Vacation Type"] = "beach"
-    
-    # Apply clue 1: The person who loves beach vacations is Eric.
-    # Since house2 has beach vacations, Eric must be in house2.
-    house2["Name"] = "Eric"
-    
-    # The remaining vacation type for house1 is mountain
-    house1["Vacation Type"] = "mountain"
-    
-    # The remaining name for house1 is Arnold
-    house1["Name"] = "Arnold"
-    
-    # Prepare the solution dictionary
-    header = ["House", "Name", "Favorite Book Genres", "Vacation Type", "Animals", "Favorite Music Genres"]
-    
-    # Create rows in order of houses (1 then 2)
-    row1 = ["1", house1["Name"], house1["Favorite Book Genres"], house1["Vacation Type"], house1["Animals"], house1["Favorite Music Genres"]]
-    row2 = ["2", house2["Name"], house2["Favorite Book Genres"], house2["Vacation Type"], house2["Animals"], house2["Favorite Music Genres"]]
-    
-    solution = {
-        "solution": {
-            "header": header,
-            "rows": [row1, row2]
+    if solutions:
+        house1, house2 = solutions[0]
+        row1 = [house1['House'], house1['Name'], house1['BookGenre'], house1['Vacation'], house1['Animal'], house1['MusicGenre']]
+        row2 = [house2['House'], house2['Name'], house2['BookGenre'], house2['Vacation'], house2['Animal'], house2['MusicGenre']]
+        solution_dict = {
+            "solution": {
+                "header": ["House", "Name", "BookGenre", "Vacation", "Animal", "MusicGenre"],
+                "rows": [row1, row2]
+            }
         }
-    }
+    else:
+        solution_dict = {
+            "solution": {
+                "header": ["House", "Name", "BookGenre", "Vacation", "Animal", "MusicGenre"],
+                "rows": []
+            }
+        }
     
-    # Output the solution as JSON
-    print(json.dumps(solution, indent=2))
+    print(json.dumps(solution_dict))
 
 if __name__ == "__main__":
     main()

@@ -2,80 +2,92 @@ import json
 from itertools import permutations
 
 def solve_puzzle():
-    # Define the attributes
+    # Define the categories and options
     houses = ['1', '2', '3']
     names = ['Eric', 'Peter', 'Arnold']
     mothers = ['Holly', 'Aniya', 'Janelle']
-    lunches = ['pizza', 'grilled cheese', 'spaghetti']
+    foods = ['pizza', 'grilled cheese', 'spaghetti']
     
-    # Generate all possible permutations for each attribute
+    # Generate all possible permutations for each category
     for name_perm in permutations(names):
         for mother_perm in permutations(mothers):
-            for lunch_perm in permutations(lunches):
-                # Assign attributes to houses
+            for food_perm in permutations(foods):
+                # Assign each permutation to houses
                 assignment = []
                 for i in range(3):
                     assignment.append({
                         'House': houses[i],
                         'Name': name_perm[i],
                         'Mother': mother_perm[i],
-                        'Lunch': lunch_perm[i]
+                        'Food': food_perm[i]
                     })
                 
                 # Check all constraints
-                valid = True
+                # Constraint 3: The person who loves eating grilled cheese is Eric.
+                grilled_cheese_eater = None
+                for house in assignment:
+                    if house['Food'] == 'grilled cheese':
+                        grilled_cheese_eater = house['Name']
+                if grilled_cheese_eater != 'Eric':
+                    continue
                 
-                # Constraint 1: spaghetti eater and Peter are next to each other
+                # Constraint 2: The person who loves eating grilled cheese is directly left of The person whose mother's name is Aniya.
+                grilled_house_index = None
+                aniya_mother_house_index = None
+                for i in range(3):
+                    if assignment[i]['Food'] == 'grilled cheese':
+                        grilled_house_index = i
+                    if assignment[i]['Mother'] == 'Aniya':
+                        aniya_mother_house_index = i
+                if grilled_house_index is None or aniya_mother_house_index is None:
+                    continue
+                if aniya_mother_house_index != grilled_house_index + 1:
+                    continue
+                
+                # Constraint 4: Peter is The person whose mother's name is Holly.
                 peter_house = None
-                spaghetti_house = None
+                holly_mother_house = None
                 for house in assignment:
                     if house['Name'] == 'Peter':
-                        peter_house = int(house['House'])
-                    if house['Lunch'] == 'spaghetti':
-                        spaghetti_house = int(house['House'])
-                if abs(peter_house - spaghetti_house) != 1:
-                    valid = False
+                        peter_house = house
+                    if house['Mother'] == 'Holly':
+                        holly_mother_house = house
+                if peter_house is None or holly_mother_house is None:
+                    continue
+                if peter_house['Mother'] != 'Holly':
+                    continue
                 
-                # Constraint 2: grilled cheese is directly left of Aniya's mother
-                grilled_cheese_house = None
-                aniya_house = None
-                for house in assignment:
-                    if house['Lunch'] == 'grilled cheese':
-                        grilled_cheese_house = int(house['House'])
-                    if house['Mother'] == 'Aniya':
-                        aniya_house = int(house['House'])
-                if grilled_cheese_house + 1 != aniya_house:
-                    valid = False
+                # Constraint 1: The person who loves the spaghetti eater and Peter are next to each other.
+                spaghetti_eater_house = None
+                peter_house_index = None
+                for i in range(3):
+                    if assignment[i]['Food'] == 'spaghetti':
+                        spaghetti_eater_house = i
+                    if assignment[i]['Name'] == 'Peter':
+                        peter_house_index = i
+                if spaghetti_eater_house is None or peter_house_index is None:
+                    continue
+                if abs(spaghetti_eater_house - peter_house_index) != 1:
+                    continue
                 
-                # Constraint 3: grilled cheese eater is Eric
-                for house in assignment:
-                    if house['Lunch'] == 'grilled cheese' and house['Name'] != 'Eric':
-                        valid = False
-                
-                # Constraint 4: Peter's mother is Holly
-                for house in assignment:
-                    if house['Name'] == 'Peter' and house['Mother'] != 'Holly':
-                        valid = False
-                
-                if valid:
-                    # Prepare the solution
-                    solution = {
-                        "solution": {
-                            "header": ["House", "Name", "Mother", "Lunch"],
-                            "rows": []
-                        }
+                # If all constraints are satisfied, prepare the solution
+                solution = {
+                    "solution": {
+                        "header": ["House", "Name", "Mother", "Food"],
+                        "rows": []
                     }
-                    for house in sorted(assignment, key=lambda x: x['House']):
-                        solution["solution"]["rows"].append([
-                            house['House'],
-                            house['Name'],
-                            house['Mother'],
-                            house['Lunch']
-                        ])
-                    return solution
+                }
+                for house in assignment:
+                    solution["solution"]["rows"].append([
+                        house['House'],
+                        house['Name'],
+                        house['Mother'],
+                        house['Food']
+                    ])
+                return solution
     
-    return {"solution": {"header": [], "rows": []}}
+    return {"solution": {"header": ["House", "Name", "Mother", "Food"], "rows": []}}
 
-if __name__ == "__main__":
-    solution = solve_puzzle()
-    print(json.dumps(solution, indent=2))
+# Solve the puzzle and print the solution as JSON
+solution = solve_puzzle()
+print(json.dumps(solution, indent=2))

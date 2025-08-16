@@ -1,182 +1,263 @@
 import json
 
-def same_house_constraint(attrs, attr1, val1, attr2, val2):
-    changed = False
-    for i in range(5):
-        if val1 in attrs[attr1][i] and val2 not in attrs[attr2][i]:
-            attrs[attr1][i].remove(val1)
-            changed = True
-        if val2 in attrs[attr2][i] and val1 not in attrs[attr1][i]:
-            attrs[attr2][i].remove(val2)
-            changed = True
-    return changed
-
-def left_of(attrs, attrA, valA, attrB, valB, distance, direct):
-    if direct and distance == 1:
-        changed = False
-        for i in range(4):
-            if valA in attrs[attrA][i] and valB not in attrs[attrB][i+1]:
-                attrs[attrA][i].remove(valA)
-                changed = True
-        for j in range(1,5):
-            if valB in attrs[attrB][j] and valA not in attrs[attrA][j-1]:
-                attrs[attrB][j].remove(valB)
-                changed = True
-        return changed
-    return False
-
-def strictly_left(attrs, attrA, valA, attrB, valB):
-    changed = False
-    for i in range(5):
-        if valA in attrs[attrA][i]:
-            found = False
-            for j in range(i+1, 5):
-                if valB in attrs[attrB][j]:
-                    found = True
-                    break
-            if not found:
-                attrs[attrA][i].remove(valA)
-                changed = True
-    for j in range(5):
-        if valB in attrs[attrB][j]:
-            found = False
-            for i in range(j):
-                if valA in attrs[attrA][i]:
-                    found = True
-                    break
-            if not found:
-                attrs[attrB][j].remove(valB)
-                changed = True
-    return changed
-
-def distance_constraint(attrs, attr1, val1, attr2, val2, d):
-    changed = False
-    for i in range(5):
-        if val1 in attrs[attr1][i]:
-            poss = []
-            if i - d >= 0:
-                poss.append(i - d)
-            if i + d < 5:
-                poss.append(i + d)
-            found = False
-            for j in poss:
-                if val2 in attrs[attr2][j]:
-                    found = True
-                    break
-            if not found and poss:
-                attrs[attr1][i].remove(val1)
-                changed = True
-    for j in range(5):
-        if val2 in attrs[attr2][j]:
-            poss = []
-            if j - d >= 0:
-                poss.append(j - d)
-            if j + d < 5:
-                poss.append(j + d)
-            found = False
-            for i in poss:
-                if val1 in attrs[attr1][i]:
-                    found = True
-                    break
-            if not found and poss:
-                attrs[attr2][j].remove(val2)
-                changed = True
-    return changed
-
-def unary_assign(attrs, attr, index, value):
-    changed = False
-    if attrs[attr][index] != set([value]):
-        attrs[attr][index] = set([value])
-        changed = True
-    for i in range(5):
-        if i != index and value in attrs[attr][i]:
-            attrs[attr][i].remove(value)
-            changed = True
-    return changed
-
-def unary_remove(attrs, attr, index, value):
-    if value in attrs[attr][index]:
-        attrs[attr][index].remove(value)
-        return True
-    return False
-
-def reduce_attributes(attrs):
-    changed = False
-    for attr in attrs:
-        for i in range(5):
-            if len(attrs[attr][i]) == 1:
-                val = next(iter(attrs[attr][i]))
-                for j in range(5):
-                    if j != i and val in attrs[attr][j]:
-                        attrs[attr][j].remove(val)
-                        changed = True
-    return changed
-
-attrs = {
-    'Name': [set(['Eric','Peter','Arnold','Alice','Bob']) for _ in range(5)],
-    'Lunch': [set(['stir fry','spaghetti','stew','grilled cheese','pizza']) for _ in range(5)],
-    'Car': [set(['ford f150','tesla model 3','bmw 3 series','toyota camry','honda civic']) for _ in range(5)],
-    'Phone': [set(['iphone 13','google pixel 6','samsung galaxy s21','oneplus 9','huawei p50']) for _ in range(5)],
-    'Occupation': [set(['teacher','lawyer','doctor','artist','engineer']) for _ in range(5)],
-    'Drink': [set(['tea','milk','water','root beer','coffee']) for _ in range(5)]
-}
-
-constraints = [
-    lambda a: unary_assign(a, 'Name', 3, 'Eric'),
-    lambda a: unary_remove(a, 'Drink', 4, 'tea'),
-    lambda a: same_house_constraint(a, 'Drink', 'root beer', 'Car', 'honda civic'),
-    lambda a: same_house_constraint(a, 'Name', 'Alice', 'Phone', 'samsung galaxy s21'),
-    lambda a: same_house_constraint(a, 'Name', 'Alice', 'Lunch', 'stir fry'),
-    lambda a: same_house_constraint(a, 'Name', 'Arnold', 'Occupation', 'doctor'),
-    lambda a: same_house_constraint(a, 'Phone', 'iphone 13', 'Drink', 'coffee'),
-    lambda a: same_house_constraint(a, 'Occupation', 'engineer', 'Car', 'bmw 3 series'),
-    lambda a: same_house_constraint(a, 'Lunch', 'stew', 'Phone', 'iphone 13'),
-    lambda a: same_house_constraint(a, 'Phone', 'google pixel 6', 'Drink', 'tea'),
-    lambda a: same_house_constraint(a, 'Name', 'Alice', 'Occupation', 'artist'),
-    lambda a: same_house_constraint(a, 'Name', 'Arnold', 'Car', 'toyota camry'),
-    lambda a: same_house_constraint(a, 'Phone', 'oneplus 9', 'Occupation', 'lawyer'),
-    lambda a: same_house_constraint(a, 'Name', 'Peter', 'Lunch', 'grilled cheese'),
-    lambda a: left_of(a, 'Drink', 'milk', 'Lunch', 'grilled cheese', 1, True),
-    lambda a: strictly_left(a, 'Car', 'bmw 3 series', 'Drink', 'tea'),
-    lambda a: left_of(a, 'Occupation', 'doctor', 'Phone', 'oneplus 9', 1, True),
-    lambda a: left_of(a, 'Car', 'honda civic', 'Lunch', 'spaghetti', 1, True),
-    lambda a: distance_constraint(a, 'Name', 'Alice', 'Car', 'ford f150', 2)
-]
-
-changed = True
-while changed:
-    changed = reduce_attributes(attrs)
-    for constr in constraints:
-        changed = constr(attrs) or changed
-
-solved = True
-for attr in attrs:
-    for i in range(5):
-        if len(attrs[attr][i]) != 1:
-            solved = False
-            break
-    if not solved:
-        break
-
-if not solved:
-    raise Exception("Not solved!")
-
-rows = []
-for i in range(5):
-    row = [str(i+1)]
-    row.append(next(iter(attrs['Name'][i])))
-    row.append(next(iter(attrs['Lunch'][i])))
-    row.append(next(iter(attrs['Car'][i])))
-    row.append(next(iter(attrs['Phone'][i])))
-    row.append(next(iter(attrs['Occupation'][i])))
-    row.append(next(iter(attrs['Drink'][i])))
-    rows.append(row)
-
-result = {
-    "solution": {
-        "header": ["House", "Name", "Lunch", "Car", "Phone", "Occupation", "Drink"],
-        "rows": rows
+def main():
+    attributes = ['Name', 'Food', 'CarModel', 'PhoneModel', 'Occupation', 'Drink']
+    domains = {
+        'Name': {'Eric', 'Peter', 'Arnold', 'Alice', 'Bob'},
+        'Food': {'stir fry', 'spaghetti', 'stew', 'grilled cheese', 'pizza'},
+        'CarModel': {'ford f150', 'tesla model 3', 'bmw 3 series', 'toyota camry', 'honda civic'},
+        'PhoneModel': {'iphone 13', 'google pixel 6', 'samsung galaxy s21', 'oneplus 9', 'huawei p50'},
+        'Occupation': {'teacher', 'lawyer', 'doctor', 'artist', 'engineer'},
+        'Drink': {'tea', 'milk', 'water', 'root beer', 'coffee'}
     }
-}
+    
+    possibilities = {}
+    for attr in attributes:
+        possibilities[attr] = [set(domains[attr]) for _ in range(5)]
+    
+    def clue1():
+        for i in range(5):
+            if 'root beer' in possibilities['Drink'][i]:
+                if 'honda civic' not in possibilities['CarModel'][i]:
+                    possibilities['Drink'][i].discard('root beer')
+            if 'honda civic' in possibilities['CarModel'][i]:
+                if 'root beer' not in possibilities['Drink'][i]:
+                    possibilities['CarModel'][i].discard('honda civic')
+    
+    def clue2():
+        for i in range(4):
+            if 'milk' in possibilities['Drink'][i]:
+                if 'grilled cheese' not in possibilities['Food'][i+1]:
+                    possibilities['Drink'][i].discard('milk')
+            if 'grilled cheese' in possibilities['Food'][i+1]:
+                if 'milk' not in possibilities['Drink'][i]:
+                    possibilities['Food'][i+1].discard('grilled cheese')
+    
+    def clue3_4_14():
+        for i in range(5):
+            if 'Alice' in possibilities['Name'][i]:
+                if 'samsung galaxy s21' not in possibilities['PhoneModel'][i]:
+                    possibilities['Name'][i].discard('Alice')
+                else:
+                    possibilities['PhoneModel'][i] = {'samsung galaxy s21'}
+                if 'stir fry' not in possibilities['Food'][i]:
+                    possibilities['Name'][i].discard('Alice')
+                else:
+                    possibilities['Food'][i] = {'stir fry'}
+                if 'artist' not in possibilities['Occupation'][i]:
+                    possibilities['Name'][i].discard('Alice')
+                else:
+                    possibilities['Occupation'][i] = {'artist'}
+        for i in range(5):
+            if 'samsung galaxy s21' in possibilities['PhoneModel'][i]:
+                if 'Alice' not in possibilities['Name'][i]:
+                    possibilities['PhoneModel'][i].discard('samsung galaxy s21')
+            if 'stir fry' in possibilities['Food'][i]:
+                if 'Alice' not in possibilities['Name'][i]:
+                    possibilities['Food'][i].discard('stir fry')
+            if 'artist' in possibilities['Occupation'][i]:
+                if 'Alice' not in possibilities['Name'][i]:
+                    possibilities['Occupation'][i].discard('artist')
+    
+    def clue5():
+        if 'tea' in possibilities['Drink'][4]:
+            possibilities['Drink'][4].discard('tea')
+    
+    def clue6():
+        for i in range(5):
+            if 'bmw 3 series' in possibilities['CarModel'][i]:
+                found = False
+                for j in range(i+1, 5):
+                    if 'tea' in possibilities['Drink'][j]:
+                        found = True
+                        break
+                if not found:
+                    possibilities['CarModel'][i].discard('bmw 3 series')
+        for j in range(5):
+            if 'tea' in possibilities['Drink'][j]:
+                found = False
+                for i in range(0, j):
+                    if 'bmw 3 series' in possibilities['CarModel'][i]:
+                        found = True
+                        break
+                if not found:
+                    possibilities['Drink'][j].discard('tea')
+    
+    def clue7():
+        for i in range(5):
+            if 'Arnold' in possibilities['Name'][i]:
+                if 'doctor' not in possibilities['Occupation'][i]:
+                    possibilities['Name'][i].discard('Arnold')
+                else:
+                    possibilities['Occupation'][i] = {'doctor'}
+            if 'doctor' in possibilities['Occupation'][i]:
+                if 'Arnold' not in possibilities['Name'][i]:
+                    possibilities['Occupation'][i].discard('doctor')
+    
+    def clue8():
+        for i in range(5):
+            if 'iphone 13' in possibilities['PhoneModel'][i]:
+                if 'coffee' not in possibilities['Drink'][i]:
+                    possibilities['PhoneModel'][i].discard('iphone 13')
+            if 'coffee' in possibilities['Drink'][i]:
+                if 'iphone 13' not in possibilities['PhoneModel'][i]:
+                    possibilities['Drink'][i].discard('coffee')
+    
+    def clue9():
+        for i in range(5):
+            if 'engineer' in possibilities['Occupation'][i]:
+                if 'bmw 3 series' not in possibilities['CarModel'][i]:
+                    possibilities['Occupation'][i].discard('engineer')
+            if 'bmw 3 series' in possibilities['CarModel'][i]:
+                if 'engineer' not in possibilities['Occupation'][i]:
+                    possibilities['CarModel'][i].discard('bmw 3 series')
+    
+    def clue10():
+        for i in range(5):
+            if 'stew' in possibilities['Food'][i]:
+                if 'iphone 13' not in possibilities['PhoneModel'][i]:
+                    possibilities['Food'][i].discard('stew')
+            if 'iphone 13' in possibilities['PhoneModel'][i]:
+                if 'stew' not in possibilities['Food'][i]:
+                    possibilities['PhoneModel'][i].discard('iphone 13')
+    
+    def clue11():
+        for i in range(4):
+            if 'Arnold' in possibilities['Name'][i]:
+                if 'oneplus 9' not in possibilities['PhoneModel'][i+1]:
+                    possibilities['Name'][i].discard('Arnold')
+                if 'lawyer' not in possibilities['Occupation'][i+1]:
+                    possibilities['Name'][i].discard('Arnold')
+            if 'oneplus 9' in possibilities['PhoneModel'][i+1]:
+                if 'Arnold' not in possibilities['Name'][i]:
+                    possibilities['PhoneModel'][i+1].discard('oneplus 9')
+            if 'lawyer' in possibilities['Occupation'][i+1]:
+                if 'Arnold' not in possibilities['Name'][i]:
+                    possibilities['Occupation'][i+1].discard('lawyer')
+    
+    def clue12():
+        for i in range(4):
+            if 'honda civic' in possibilities['CarModel'][i]:
+                if 'spaghetti' not in possibilities['Food'][i+1]:
+                    possibilities['CarModel'][i].discard('honda civic')
+            if 'spaghetti' in possibilities['Food'][i+1]:
+                if 'honda civic' not in possibilities['CarModel'][i]:
+                    possibilities['Food'][i+1].discard('spaghetti')
+    
+    def clue13():
+        for i in range(5):
+            if 'google pixel 6' in possibilities['PhoneModel'][i]:
+                if 'tea' not in possibilities['Drink'][i]:
+                    possibilities['PhoneModel'][i].discard('google pixel 6')
+            if 'tea' in possibilities['Drink'][i]:
+                if 'google pixel 6' not in possibilities['PhoneModel'][i]:
+                    possibilities['Drink'][i].discard('tea')
+    
+    def clue15():
+        for i in range(5):
+            if 'Alice' in possibilities['Name'][i]:
+                possible = False
+                if i <= 2 and 'ford f150' in possibilities['CarModel'][i+2]:
+                    possible = True
+                if i >= 2 and 'ford f150' in possibilities['CarModel'][i-2]:
+                    possible = True
+                if not possible:
+                    possibilities['Name'][i].discard('Alice')
+        for j in range(5):
+            if 'ford f150' in possibilities['CarModel'][j]:
+                possible = False
+                if j >= 2 and 'Alice' in possibilities['Name'][j-2]:
+                    possible = True
+                if j <= 2 and 'Alice' in possibilities['Name'][j+2]:
+                    possible = True
+                if not possible:
+                    possibilities['CarModel'][j].discard('ford f150')
+    
+    def clue16():
+        for i in range(5):
+            if 'Arnold' in possibilities['Name'][i]:
+                if 'toyota camry' not in possibilities['CarModel'][i]:
+                    possibilities['Name'][i].discard('Arnold')
+                else:
+                    possibilities['CarModel'][i] = {'toyota camry'}
+            if 'toyota camry' in possibilities['CarModel'][i]:
+                if 'Arnold' not in possibilities['Name'][i]:
+                    possibilities['CarModel'][i].discard('toyota camry')
+    
+    def clue17():
+        if 'Eric' in possibilities['Name'][3]:
+            possibilities['Name'][3] = {'Eric'}
+        for i in range(5):
+            if i != 3 and 'Eric' in possibilities['Name'][i]:
+                possibilities['Name'][i].discard('Eric')
+    
+    def clue18():
+        for i in range(5):
+            if 'oneplus 9' in possibilities['PhoneModel'][i]:
+                if 'lawyer' not in possibilities['Occupation'][i]:
+                    possibilities['PhoneModel'][i].discard('oneplus 9')
+            if 'lawyer' in possibilities['Occupation'][i]:
+                if 'oneplus 9' not in possibilities['PhoneModel'][i]:
+                    possibilities['Occupation'][i].discard('lawyer')
+    
+    def clue19():
+        for i in range(5):
+            if 'grilled cheese' in possibilities['Food'][i]:
+                if 'Peter' not in possibilities['Name'][i]:
+                    possibilities['Food'][i].discard('grilled cheese')
+            if 'Peter' in possibilities['Name'][i]:
+                if 'grilled cheese' not in possibilities['Food'][i]:
+                    possibilities['Name'][i].discard('Peter')
+    
+    constraint_funcs = [
+        clue1, clue2, clue3_4_14, clue5, clue6, clue7, clue8, clue9, clue10,
+        clue11, clue12, clue13, clue15, clue16, clue17, clue18, clue19
+    ]
+    
+    changed = True
+    while changed:
+        old_possibilities = {}
+        for attr in attributes:
+            old_possibilities[attr] = [set(house_set) for house_set in possibilities[attr]]
+        
+        for func in constraint_funcs:
+            func()
+        
+        for attr in attributes:
+            for i in range(5):
+                if len(possibilities[attr][i]) == 1:
+                    val = next(iter(possibilities[attr][i]))
+                    for j in range(5):
+                        if j != i and val in possibilities[attr][j]:
+                            possibilities[attr][j].discard(val)
+        
+        changed = False
+        for attr in attributes:
+            for i in range(5):
+                if possibilities[attr][i] != old_possibilities[attr][i]:
+                    changed = True
+                    break
+            if changed:
+                break
+    
+    rows = []
+    for i in range(5):
+        row = [str(i+1)]
+        for attr in attributes:
+            if len(possibilities[attr][i]) == 1:
+                row.append(next(iter(possibilities[attr][i])))
+            else:
+                raise RuntimeError(f"House {i+1} has multiple possibilities for {attr}: {possibilities[attr][i]}")
+        rows.append(row)
+    
+    solution_dict = {
+        "solution": {
+            "header": ["House", "Name", "Food", "CarModel", "PhoneModel", "Occupation", "Drink"],
+            "rows": rows
+        }
+    }
+    
+    print(json.dumps(solution_dict))
 
-print(json.dumps(result))
+if __name__ == '__main__':
+    main()

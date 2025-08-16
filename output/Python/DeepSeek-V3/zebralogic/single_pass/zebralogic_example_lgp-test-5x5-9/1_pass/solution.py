@@ -3,272 +3,187 @@ from itertools import permutations
 
 def solve_puzzle():
     # Define all possible categories and options
+    houses = ['1', '2', '3', '4', '5']
     names = ['Bob', 'Arnold', 'Peter', 'Alice', 'Eric']
     drinks = ['milk', 'root beer', 'coffee', 'tea', 'water']
     colors = ['blue', 'green', 'white', 'yellow', 'red']
     flowers = ['daffodils', 'roses', 'lilies', 'tulips', 'carnations']
     hobbies = ['painting', 'cooking', 'photography', 'gardening', 'knitting']
-    
-    # We'll represent each house as a dictionary with these keys
-    attributes = ['Name', 'Drink', 'Color', 'Flower', 'Hobby']
-    
-    # Generate all possible permutations for each attribute
-    # But this is computationally expensive, so we'll use constraints to narrow down
-    
-    # We know from clue 13: water drinker is in house 3 and is Peter
-    # So house 3 has name Peter and drink water
-    # From clue 8: Peter is the water drinker
-    
-    # From clue 15: white is in house 2
-    # From clue 10: white color loves roses
-    # From clue 15 and 10: house 2 has color white and flower roses
-    
-    # From clue 14: carnations lover is root beer drinker
-    # From clue 2: root beer lover enjoys gardening
-    # So carnations -> root beer -> gardening
-    
-    # From clue 4: green color -> lilies
-    # From clue 3: green color -> coffee
-    # So green -> lilies and coffee
-    
-    # From clue 7: Eric is directly left of tea drinker
-    # So if Eric is in house X, tea drinker is in house X+1
-    
-    # From clue 12: cooking is left of painting
-    # So cooking is in house X, painting is in house Y where X < Y
-    
-    # From clue 5: blue is right of daffodils
-    # So daffodils is in X, blue is in Y where X < Y
-    
-    # From clue 6: cooking hobby loves blue color
-    
-    # From clue 11: one house between carnations and red color
-    # So if carnations is in X, red is in X+2 or X-2
-    
-    # From clue 1: Alice is not in house 4
-    # From clue 9: Arnold is photography
-    
-    # Let's try to assign step by step
-    
-    # Initialize houses
-    houses = [{'House': str(i+1)} for i in range(5)]
-    
-    # Assign known values
-    houses[2]['Drink'] = 'water'
-    houses[2]['Name'] = 'Peter'
-    
-    houses[1]['Color'] = 'white'
-    houses[1]['Flower'] = 'roses'
-    
-    # Assign Arnold (clue 9)
-    # Arnold could be in 0,1,3,4 (since house 2 is white, but name not assigned yet)
-    # But house 1 has color white, but name not assigned yet
-    
-    # Assign green color (must be coffee and lilies)
-    # green can't be in house 1 (white), house 2 (white), maybe 0,3,4
-    
-    # carnations is root beer and gardening
-    # and one house between carnations and red
-    
-    # Let's try assigning carnations to house 0
-    # Then red is in house 2
-    # But house 2 is white, so red can't be there
-    # So carnations can't be in 0
-    
-    # Try carnations in 1
-    # Then red is in 3
-    # But house 1 has flower roses (from white color), so carnations can't be there
-    
-    # Try carnations in 2
-    # But house 2 has roses, so no
-    
-    # Try carnations in 3
-    # Then red is in 5
-    # So house 3 has flower carnations, drink root beer, hobby gardening
-    # house 5 has color red
-    
-    houses[3]['Flower'] = 'carnations'
-    houses[3]['Drink'] = 'root beer'
-    houses[3]['Hobby'] = 'gardening'
-    
-    houses[4]['Color'] = 'red'
-    
-    # Now green must be in 0 (since 1,2,3,4 have colors)
-    houses[0]['Color'] = 'green'
-    houses[0]['Drink'] = 'coffee'
-    houses[0]['Flower'] = 'lilies'
-    
-    # From clue 6: cooking hobby loves blue
-    # From clue 5: blue is right of daffodils
-    # From clue 12: cooking is left of painting
-    
-    # Possible colors left: blue, yellow
-    # house 1: color white
-    # house 0: green
-    # house 2: ?
-    # house 3: ?
-    # house 4: red
-    
-    # house 2 and 3 colors not assigned yet
-    # From clue 5: blue is right of daffodils
-    # daffodils must be in house 0,1,2 (since blue must be to right)
-    # house 0 has lilies, 1 has roses, so daffodils in 2
-    houses[2]['Flower'] = 'daffodils'
-    
-    # Then blue is to right, so blue is in 3 or 4
-    # house 4 is red, so blue is in 3
-    houses[3]['Color'] = 'blue'
-    
-    # From clue 6: cooking hobby loves blue
-    # So house 3 has hobby cooking
-    # But house 3 has gardening from earlier - contradiction
-    # So our assumption that carnations is in 3 is wrong
-    
-    # Backtrack: try carnations in 4
-    # Then red is in 2 (but house 2 is white)
-    # Not possible
-    
-    # Try carnations in 1 - but house 1 has roses
-    # So no possible position for carnations - contradiction in earlier steps
-    
-    # Alternative approach: maybe house 1 doesn't have roses
-    # Wait, clue 10 says white color loves roses, and house 2 is white, so house 1 can have other flowers
-    
-    # Reinitialize
-    houses = [{'House': str(i+1)} for i in range(5)]
-    
-    # Assign known values
-    houses[2]['Drink'] = 'water'
-    houses[2]['Name'] = 'Peter'
-    
-    houses[1]['Color'] = 'white'
-    houses[1]['Flower'] = 'roses'
-    
-    # Try carnations in 0
-    # Then red is in 2
-    # But house 2 color not assigned yet
-    houses[0]['Flower'] = 'carnations'
-    houses[0]['Drink'] = 'root beer'
-    houses[0]['Hobby'] = 'gardening'
-    
-    houses[2]['Color'] = 'red'
-    
-    # green must be in 3 or 4 (since 1 is white, 2 is red, 0 could be anything)
-    # try green in 3
-    houses[3]['Color'] = 'green'
-    houses[3]['Drink'] = 'coffee'
-    houses[3]['Flower'] = 'lilies'
-    
-    # From clue 5: blue is right of daffodils
-    # daffodils must be in 0,1,2
-    # 0 has carnations, 1 has roses, so daffodils in 2
-    houses[2]['Flower'] = 'daffodils'
-    
-    # blue is to right, so blue is in 3 or 4
-    # 3 is green, so blue in 4
-    houses[4]['Color'] = 'blue'
-    
-    # From clue 6: cooking hobby loves blue
-    houses[4]['Hobby'] = 'cooking'
-    # But from clue 12: cooking is left of painting
-    # So painting must be to right of cooking, but cooking is in 4 - no house to right
-    # Contradiction
-    
-    # Try green in 4 instead
-    houses = [{'House': str(i+1)} for i in range(5)]
-    houses[2]['Drink'] = 'water'
-    houses[2]['Name'] = 'Peter'
-    houses[1]['Color'] = 'white'
-    houses[1]['Flower'] = 'roses'
-    
-    houses[0]['Flower'] = 'carnations'
-    houses[0]['Drink'] = 'root beer'
-    houses[0]['Hobby'] = 'gardening'
-    houses[2]['Color'] = 'red'
-    
-    houses[4]['Color'] = 'green'
-    houses[4]['Drink'] = 'coffee'
-    houses[4]['Flower'] = 'lilies'
-    
-    # daffodils in 1 or 2
-    # house 1 has roses, so daffodils in 2
-    houses[2]['Flower'] = 'daffodils'
-    
-    # blue is to right, so blue in 3
-    houses[3]['Color'] = 'blue'
-    
-    # cooking hobby loves blue
-    houses[3]['Hobby'] = 'cooking'
-    
-    # painting is to right of cooking, so painting in 4
-    houses[4]['Hobby'] = 'painting'
-    
-    # From clue 7: Eric is directly left of tea drinker
-    # Possible positions:
-    # Eric in 0, tea in 1
-    # Eric in 1, tea in 2 - but 2 has water
-    # Eric in 2, tea in 3
-    # Eric in 3, tea in 4
-    
-    # Try Eric in 0, tea in 1
-    houses[0]['Name'] = 'Eric'
-    houses[1]['Drink'] = 'tea'
-    
-    # Assign names left: Bob, Arnold, Alice
-    # From clue 9: Arnold is photography
-    # Possible in 1,3,4
-    # house 1: name not assigned yet
-    houses[1]['Name'] = 'Arnold'
-    houses[1]['Hobby'] = 'photography'
-    
-    # house 3: name not assigned
-    # house 4: name not assigned
-    # From clue 1: Alice not in 4, so Alice in 3
-    houses[3]['Name'] = 'Alice'
-    houses[4]['Name'] = 'Bob'
-    
-    # Assign remaining drinks
-    # drinks assigned: root beer (0), tea (1), water (2), coffee (4)
-    # remaining: milk
-    houses[3]['Drink'] = 'milk'
-    
-    # Assign remaining hobbies
-    # assigned: gardening (0), photography (1), cooking (3), painting (4)
-    # remaining: knitting
-    houses[2]['Hobby'] = 'knitting'
-    
-    # Assign remaining colors
-    # assigned: white (1), red (2), blue (3), green (4)
-    # remaining: yellow in 0
-    houses[0]['Color'] = 'yellow'
-    
-    # Assign remaining flowers
-    # assigned: carnations (0), roses (1), daffodils (2), lilies (4)
-    # remaining: tulips in 3
-    houses[3]['Flower'] = 'tulips'
-    
-    # Verify all constraints
-    # All constraints should be satisfied now
-    
-    # Prepare the output
-    solution = {
-        "solution": {
-            "header": ["House", "Name", "Drink", "Color", "Flower", "Hobby"],
-            "rows": []
-        }
-    }
-    
-    for house in houses:
-        row = [
-            house['House'],
-            house.get('Name', ''),
-            house.get('Drink', ''),
-            house.get('Color', ''),
-            house.get('Flower', ''),
-            house.get('Hobby', '')
-        ]
-        solution["solution"]["rows"].append(row)
-    
-    return json.dumps(solution, indent=2)
+
+    # Generate all possible permutations for each category
+    for name_perm in permutations(names):
+        for drink_perm in permutations(drinks):
+            for color_perm in permutations(colors):
+                for flower_perm in permutations(flowers):
+                    for hobby_perm in permutations(hobbies):
+                        # Assign each permutation to houses
+                        solution = []
+                        for i in range(5):
+                            house = {
+                                'House': str(i+1),
+                                'Name': name_perm[i],
+                                'Drink': drink_perm[i],
+                                'Color': color_perm[i],
+                                'Flower': flower_perm[i],
+                                'Hobby': hobby_perm[i]
+                            }
+                            solution.append(house)
+
+                        # Check all constraints
+                        valid = True
+
+                        # Constraint 1: Alice is not in the fourth house.
+                        if solution[3]['Name'] == 'Alice':
+                            valid = False
+
+                        # Constraint 2: The root beer lover is the person who enjoys gardening.
+                        for house in solution:
+                            if house['Drink'] == 'root beer' and house['Hobby'] != 'gardening':
+                                valid = False
+                                break
+                        if not valid:
+                            continue
+
+                        # Constraint 3: The person whose favorite color is green is the coffee drinker.
+                        for house in solution:
+                            if house['Color'] == 'green' and house['Drink'] != 'coffee':
+                                valid = False
+                                break
+                        if not valid:
+                            continue
+
+                        # Constraint 4: The person whose favorite color is green is the person who loves the bouquet of lilies.
+                        for house in solution:
+                            if house['Color'] == 'green' and house['Flower'] != 'lilies':
+                                valid = False
+                                break
+                        if not valid:
+                            continue
+
+                        # Constraint 5: The person who loves blue is somewhere to the right of the person who loves a bouquet of daffodils.
+                        blue_house = None
+                        daffodils_house = None
+                        for house in solution:
+                            if house['Color'] == 'blue':
+                                blue_house = int(house['House'])
+                            if house['Flower'] == 'daffodils':
+                                daffodils_house = int(house['House'])
+                        if blue_house is None or daffodils_house is None or blue_house <= daffodils_house:
+                            valid = False
+                        if not valid:
+                            continue
+
+                        # Constraint 6: The person who loves cooking is the person who loves blue.
+                        for house in solution:
+                            if house['Hobby'] == 'cooking' and house['Color'] != 'blue':
+                                valid = False
+                                break
+                        if not valid:
+                            continue
+
+                        # Constraint 7: Eric is directly left of the tea drinker.
+                        eric_pos = None
+                        tea_pos = None
+                        for i, house in enumerate(solution):
+                            if house['Name'] == 'Eric':
+                                eric_pos = i
+                            if house['Drink'] == 'tea':
+                                tea_pos = i
+                        if eric_pos is None or tea_pos is None or tea_pos - eric_pos != 1:
+                            valid = False
+                        if not valid:
+                            continue
+
+                        # Constraint 8: The one who only drinks water is Peter.
+                        for house in solution:
+                            if house['Drink'] == 'water' and house['Name'] != 'Peter':
+                                valid = False
+                                break
+                        if not valid:
+                            continue
+
+                        # Constraint 9: Arnold is the photography enthusiast.
+                        for house in solution:
+                            if house['Name'] == 'Arnold' and house['Hobby'] != 'photography':
+                                valid = False
+                                break
+                        if not valid:
+                            continue
+
+                        # Constraint 10: The person who loves white is the person who loves the rose bouquet.
+                        for house in solution:
+                            if house['Color'] == 'white' and house['Flower'] != 'roses':
+                                valid = False
+                                break
+                        if not valid:
+                            continue
+
+                        # Constraint 11: There is one house between the person who loves a carnations arrangement and the person whose favorite color is red.
+                        carnations_pos = None
+                        red_pos = None
+                        for i, house in enumerate(solution):
+                            if house['Flower'] == 'carnations':
+                                carnations_pos = i
+                            if house['Color'] == 'red':
+                                red_pos = i
+                        if carnations_pos is None or red_pos is None or abs(carnations_pos - red_pos) != 2:
+                            valid = False
+                        if not valid:
+                            continue
+
+                        # Constraint 12: The person who loves cooking is somewhere to the left of the person who paints as a hobby.
+                        cooking_pos = None
+                        painting_pos = None
+                        for i, house in enumerate(solution):
+                            if house['Hobby'] == 'cooking':
+                                cooking_pos = i
+                            if house['Hobby'] == 'painting':
+                                painting_pos = i
+                        if cooking_pos is None or painting_pos is None or cooking_pos >= painting_pos:
+                            valid = False
+                        if not valid:
+                            continue
+
+                        # Constraint 13: The one who only drinks water is in the third house.
+                        if solution[2]['Drink'] != 'water':
+                            valid = False
+                        if not valid:
+                            continue
+
+                        # Constraint 14: The person who loves a carnations arrangement is the root beer lover.
+                        for house in solution:
+                            if house['Flower'] == 'carnations' and house['Drink'] != 'root beer':
+                                valid = False
+                                break
+                        if not valid:
+                            continue
+
+                        # Constraint 15: The person who loves white is in the second house.
+                        if solution[1]['Color'] != 'white':
+                            valid = False
+                        if not valid:
+                            continue
+
+                        # If all constraints are satisfied, return the solution
+                        if valid:
+                            result = {
+                                "solution": {
+                                    "header": ["House", "Name", "Drink", "Color", "Flower", "Hobby"],
+                                    "rows": []
+                                }
+                            }
+                            for house in solution:
+                                row = [
+                                    house['House'],
+                                    house['Name'],
+                                    house['Drink'],
+                                    house['Color'],
+                                    house['Flower'],
+                                    house['Hobby']
+                                ]
+                                result["solution"]["rows"].append(row)
+                            return json.dumps(result, indent=2)
+
+    return json.dumps({"solution": {"header": [], "rows": []}})
 
 print(solve_puzzle())

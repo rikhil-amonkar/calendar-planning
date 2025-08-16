@@ -2,103 +2,101 @@ import json
 from itertools import permutations
 
 def solve_puzzle():
-    # Define all possible options for each attribute
+    # Define all possible options
     names = ['Eric', 'Arnold', 'Peter', 'Alice']
     hair_colors = ['blonde', 'black', 'brown', 'red']
     music_genres = ['pop', 'jazz', 'rock', 'classical']
     houses = ['1', '2', '3', '4']
-
+    
     # Generate all possible permutations for each attribute
     for name_perm in permutations(names):
         for hair_perm in permutations(hair_colors):
             for music_perm in permutations(music_genres):
-                # Assign each permutation to houses 1-4
+                # Assign to houses
                 assignment = []
                 for i in range(4):
                     assignment.append({
-                        'House': str(i + 1),
+                        'House': str(i+1),
                         'Name': name_perm[i],
-                        'Hair Color': hair_perm[i],
-                        'Music Genre': music_perm[i]
+                        'HairColor': hair_perm[i],
+                        'MusicGenre': music_perm[i]
                     })
-
+                
                 # Check all constraints
                 valid = True
-
+                
                 # Constraint 1: Eric has red hair
                 eric_house = None
                 for house in assignment:
                     if house['Name'] == 'Eric':
                         eric_house = house
                         break
-                if not eric_house or eric_house['Hair Color'] != 'red':
+                if not eric_house or eric_house['HairColor'] != 'red':
                     valid = False
                     continue
-
+                
                 # Constraint 2: classical is directly left of blonde
                 classical_pos = None
                 blonde_pos = None
-                for i in range(4):
-                    if assignment[i]['Music Genre'] == 'classical':
+                for i, house in enumerate(assignment):
+                    if house['MusicGenre'] == 'classical':
                         classical_pos = i
-                    if assignment[i]['Hair Color'] == 'blonde':
+                    if house['HairColor'] == 'blonde':
                         blonde_pos = i
                 if classical_pos is None or blonde_pos is None or classical_pos + 1 != blonde_pos:
                     valid = False
                     continue
-
-                # Constraint 3: brown hair is not in house 1
-                if assignment[0]['Hair Color'] == 'brown':
+                
+                # Constraint 3: brown hair not in first house
+                if assignment[0]['HairColor'] == 'brown':
                     valid = False
                     continue
-
-                # Constraint 4: pop is not in house 3
-                if assignment[2]['Music Genre'] == 'pop':
+                
+                # Constraint 4: pop not in third house
+                if assignment[2]['MusicGenre'] == 'pop':
                     valid = False
                     continue
-
-                # Constraint 5: classical is in house 1
-                if assignment[0]['Music Genre'] != 'classical':
+                
+                # Constraint 5: classical in first house
+                if assignment[0]['MusicGenre'] != 'classical':
                     valid = False
                     continue
-
-                # Constraint 6: jazz is the person with red hair
-                jazz_house = None
+                
+                # Constraint 6: jazz is red hair (which is Eric)
                 for house in assignment:
-                    if house['Music Genre'] == 'jazz':
-                        jazz_house = house
+                    if house['MusicGenre'] == 'jazz' and house['Name'] != 'Eric':
+                        valid = False
                         break
-                if not jazz_house or jazz_house['Hair Color'] != 'red':
-                    valid = False
+                if not valid:
                     continue
-
+                
                 # Constraint 7: rock is Arnold
-                rock_house = None
+                arnold_house = None
                 for house in assignment:
-                    if house['Music Genre'] == 'rock':
-                        rock_house = house
+                    if house['Name'] == 'Arnold':
+                        arnold_house = house
                         break
-                if not rock_house or rock_house['Name'] != 'Arnold':
+                if not arnold_house or arnold_house['MusicGenre'] != 'rock':
                     valid = False
                     continue
-
-                # Constraint 8: Peter is right of rock
-                rock_pos = None
+                
+                # Constraint 8: Peter is right of rock (Arnold)
+                arnold_pos = None
                 peter_pos = None
-                for i in range(4):
-                    if assignment[i]['Name'] == 'Peter':
+                for i, house in enumerate(assignment):
+                    if house['Name'] == 'Arnold':
+                        arnold_pos = i
+                    if house['Name'] == 'Peter':
                         peter_pos = i
-                    if assignment[i]['Music Genre'] == 'rock':
-                        rock_pos = i
-                if rock_pos is None or peter_pos is None or peter_pos <= rock_pos:
+                if peter_pos <= arnold_pos:
                     valid = False
                     continue
-
+                
                 if valid:
-                    # Prepare the solution in the required format
+                    # Prepare the solution
                     solution = {
                         "solution": {
-                            "header": ["House", "Name", "Hair Color", "Music Genre"],
+                            "header": ["House", "Name", "HairColor", "MusicGenre"],
                             "rows": []
                         }
                     }
@@ -106,11 +104,11 @@ def solve_puzzle():
                         solution["solution"]["rows"].append([
                             house['House'],
                             house['Name'],
-                            house['Hair Color'],
-                            house['Music Genre']
+                            house['HairColor'],
+                            house['MusicGenre']
                         ])
                     return solution
-
+    
     return {"solution": {"header": [], "rows": []}}
 
 if __name__ == "__main__":

@@ -1,164 +1,244 @@
+import itertools
 import json
-from itertools import permutations
 
 def solve_puzzle():
-    # Define all possible categories and options
     houses = [1, 2, 3, 4, 5, 6]
     names = ['Alice', 'Peter', 'Eric', 'Bob', 'Arnold', 'Carol']
     cigars = ['pall mall', 'yellow monster', 'dunhill', 'blue master', 'prince', 'blends']
-    music = ['hip hop', 'jazz', 'country', 'pop', 'classical', 'rock']
+    music_genres = ['hip hop', 'jazz', 'country', 'pop', 'classical', 'rock']
     drinks = ['water', 'milk', 'boba tea', 'tea', 'root beer', 'coffee']
     mothers = ['Kailyn', 'Penny', 'Janelle', 'Holly', 'Sarah', 'Aniya']
-    lunches = ['soup', 'pizza', 'spaghetti', 'stir fry', 'stew', 'grilled cheese']
+    foods = ['soup', 'pizza', 'spaghetti', 'stir fry', 'stew', 'grilled cheese']
 
-    # Initialize solution structure
-    solution = {
-        "solution": {
-            "header": ["House", "Name", "cigar", "music", "drink", "mother", "lunch"],
-            "rows": []
-        }
-    }
+    # Generate all possible permutations for each attribute
+    for name_perm in itertools.permutations(names):
+        for cigar_perm in itertools.permutations(cigars):
+            for music_perm in itertools.permutations(music_genres):
+                for drink_perm in itertools.permutations(drinks):
+                    for mother_perm in itertools.permutations(mothers):
+                        for food_perm in itertools.permutations(foods):
+                            # Create a dictionary to hold the current assignment
+                            assignment = {}
+                            for i in range(6):
+                                assignment[i+1] = {
+                                    'Name': name_perm[i],
+                                    'Cigar': cigar_perm[i],
+                                    'MusicGenre': music_perm[i],
+                                    'Drink': drink_perm[i],
+                                    'Mother': mother_perm[i],
+                                    'Food': food_perm[i]
+                                }
 
-    # We'll use a backtracking approach to find the solution
-    from constraint import Problem, AllDifferentConstraint
+                            # Check all constraints
+                            valid = True
 
-    problem = Problem()
+                            # Clue 2: Eric is not in the second house.
+                            if assignment[2]['Name'] == 'Eric':
+                                valid = False
 
-    # Add variables for each house
-    for house in houses:
-        problem.addVariable(f"name_{house}", names)
-        problem.addVariable(f"cigar_{house}", cigars)
-        problem.addVariable(f"music_{house}", music)
-        problem.addVariable(f"drink_{house}", drinks)
-        problem.addVariable(f"mother_{house}", mothers)
-        problem.addVariable(f"lunch_{house}", lunches)
+                            # Clue 5: Eric is directly left of Carol.
+                            carol_pos = None
+                            eric_pos = None
+                            for pos in range(1, 6):
+                                if assignment[pos]['Name'] == 'Eric':
+                                    eric_pos = pos
+                                if assignment[pos]['Name'] == 'Carol':
+                                    carol_pos = pos
+                            if eric_pos is None or carol_pos is None or carol_pos != eric_pos + 1:
+                                valid = False
 
-    # All attributes must be unique per category
-    for category in ['name', 'cigar', 'music', 'drink', 'mother', 'lunch']:
-        problem.addConstraint(AllDifferentConstraint(), [f"{category}_{house}" for house in houses])
+                            # Clue 1: Carol is directly left of the person who loves eating grilled cheese.
+                            if carol_pos is not None:
+                                if carol_pos == 6 or assignment[carol_pos + 1]['Food'] != 'grilled cheese':
+                                    valid = False
 
-    # Apply all constraints from the clues
-    # Clue 2: Eric is not in the second house
-    problem.addConstraint(lambda name: name != 'Eric', ["name_2"])
+                            # Clue 3: The person whose mother's name is Holly is somewhere to the right of Carol.
+                            if carol_pos is not None:
+                                holly_pos = None
+                                for pos in range(1, 7):
+                                    if assignment[pos]['Mother'] == 'Holly':
+                                        holly_pos = pos
+                                        break
+                                if holly_pos is None or holly_pos <= carol_pos:
+                                    valid = False
 
-    # Clue 5: Eric is directly left of Carol
-    for i in range(1, 6):
-        problem.addConstraint(lambda e, c: e == 'Eric' and c == 'Carol', [f"name_{i}", f"name_{i+1}"])
+                            # Clue 4: The person who loves grilled cheese is right of the person who loves rock.
+                            grilled_cheese_pos = None
+                            rock_pos = None
+                            for pos in range(1, 7):
+                                if assignment[pos]['Food'] == 'grilled cheese':
+                                    grilled_cheese_pos = pos
+                                if assignment[pos]['MusicGenre'] == 'rock':
+                                    rock_pos = pos
+                            if grilled_cheese_pos is None or rock_pos is None or grilled_cheese_pos <= rock_pos:
+                                valid = False
 
-    # Clue 1: Carol is directly left of the person who loves eating grilled cheese
-    for i in range(1, 6):
-        problem.addConstraint(lambda c, l: (c == 'Carol') and (l == 'grilled cheese'), [f"name_{i}", f"lunch_{i+1}"])
+                            # Clue 6: pop music is not in the third house.
+                            if assignment[3]['MusicGenre'] == 'pop':
+                                valid = False
 
-    # Clue 3: The person whose mother's name is Holly is somewhere to the right of Carol
-    # Carol is in house i, Holly's mother is in house j where j > i
-    # This is handled by finding Carol's position and ensuring Holly is to the right
+                            # Clue 7: Eric loves country music.
+                            if eric_pos is not None and assignment[eric_pos]['MusicGenre'] != 'country':
+                                valid = False
 
-    # Clue 4: The person who loves grilled cheese is somewhere to the right of the person who loves rock music
-    # Rock is in house i, grilled cheese in house j where j > i
+                            # Clue 8: classical music is in the sixth house.
+                            if assignment[6]['MusicGenre'] != 'classical':
+                                valid = False
 
-    # Clue 6: The person who loves pop music is not in the third house
-    problem.addConstraint(lambda m: m != 'pop', ["music_3"])
+                            # Clue 9: coffee drinker is Bob.
+                            bob_pos = None
+                            for pos in range(1, 7):
+                                if assignment[pos]['Name'] == 'Bob':
+                                    bob_pos = pos
+                            if bob_pos is None or assignment[bob_pos]['Drink'] != 'coffee':
+                                valid = False
 
-    # Clue 7: Eric loves country music
-    for house in houses:
-        problem.addConstraint(lambda n, m: (n != 'Eric') or (m == 'country'), [f"name_{house}", f"music_{house}"])
+                            # Clue 10: blends smoker is Peter.
+                            peter_pos = None
+                            for pos in range(1, 7):
+                                if assignment[pos]['Name'] == 'Peter':
+                                    peter_pos = pos
+                            if peter_pos is None or assignment[peter_pos]['Cigar'] != 'blends':
+                                valid = False
 
-    # Clue 8: The person who loves classical music is in the sixth house
-    problem.addConstraint(lambda m: m == 'classical', ["music_6"])
+                            # Clue 11: stew is not in the fifth house.
+                            if assignment[5]['Food'] == 'stew':
+                                valid = False
 
-    # Clue 9: The coffee drinker is Bob
-    for house in houses:
-        problem.addConstraint(lambda n, d: (n != 'Bob') or (d == 'coffee'), [f"name_{house}", f"drink_{house}"])
+                            # Clue 12: root beer lover is directly left of Janelle's mother.
+                            root_beer_pos = None
+                            janelle_pos = None
+                            for pos in range(1, 6):
+                                if assignment[pos]['Drink'] == 'root beer':
+                                    root_beer_pos = pos
+                                if assignment[pos]['Mother'] == 'Janelle':
+                                    janelle_pos = pos
+                            if root_beer_pos is None or janelle_pos is None or janelle_pos != root_beer_pos + 1:
+                                valid = False
 
-    # Clue 10: The person who smokes blends is Peter
-    for house in houses:
-        problem.addConstraint(lambda n, c: (n != 'Peter') or (c == 'blends'), [f"name_{house}", f"cigar_{house}"])
+                            # Clue 13: two houses between Sarah's mother and yellow monster smoker.
+                            sarah_pos = None
+                            yellow_monster_pos = None
+                            for pos in range(1, 7):
+                                if assignment[pos]['Mother'] == 'Sarah':
+                                    sarah_pos = pos
+                                if assignment[pos]['Cigar'] == 'yellow monster':
+                                    yellow_monster_pos = pos
+                            if sarah_pos is None or yellow_monster_pos is None or yellow_monster_pos - sarah_pos != 3:
+                                valid = False
 
-    # Clue 11: The person who loves the stew is not in the fifth house
-    problem.addConstraint(lambda l: l != 'stew', ["lunch_5"])
+                            # Clue 14: Eric is the tea drinker.
+                            if eric_pos is not None and assignment[eric_pos]['Drink'] != 'tea':
+                                valid = False
 
-    # Clue 12: The root beer lover is directly left of the person whose mother's name is Janelle
-    for i in range(1, 6):
-        problem.addConstraint(lambda d, m: (d == 'root beer') and (m == 'Janelle'), [f"drink_{i}", f"mother_{i+1}"])
+                            # Clue 15: pall mall is right of stir fry.
+                            pall_mall_pos = None
+                            stir_fry_pos = None
+                            for pos in range(1, 7):
+                                if assignment[pos]['Cigar'] == 'pall mall':
+                                    pall_mall_pos = pos
+                                if assignment[pos]['Food'] == 'stir fry':
+                                    stir_fry_pos = pos
+                            if pall_mall_pos is not None and stir_fry_pos is not None and pall_mall_pos <= stir_fry_pos:
+                                valid = False
 
-    # Clue 13: There are two houses between the person whose mother's name is Sarah and the person who smokes yellow monster
-    # Sarah in i, yellow monster in i+3
-    for i in range(1, 4):
-        problem.addConstraint(lambda m1, c2: (m1 == 'Sarah') and (c2 == 'yellow monster'), [f"mother_{i}", f"cigar_{i+3}"])
+                            # Clue 16: soup lover is Bob.
+                            if bob_pos is not None and assignment[bob_pos]['Food'] != 'soup':
+                                valid = False
 
-    # Clue 14: Eric is the tea drinker
-    for house in houses:
-        problem.addConstraint(lambda n, d: (n != 'Eric') or (d == 'tea'), [f"name_{house}", f"drink_{house}"])
+                            # Clue 17: hip hop is directly left of Kailyn's mother.
+                            hip_hop_pos = None
+                            kailyn_pos = None
+                            for pos in range(1, 6):
+                                if assignment[pos]['MusicGenre'] == 'hip hop':
+                                    hip_hop_pos = pos
+                                if assignment[pos]['Mother'] == 'Kailyn':
+                                    kailyn_pos = pos
+                            if hip_hop_pos is None or kailyn_pos is None or kailyn_pos != hip_hop_pos + 1:
+                                valid = False
 
-    # Clue 15: The person who smokes pall mall is somewhere to the right of the person who loves stir fry
-    # stir fry in i, pall mall in j where j > i
+                            # Clue 18: Arnold is right of Kailyn's mother.
+                            if kailyn_pos is not None:
+                                arnold_pos = None
+                                for pos in range(1, 7):
+                                    if assignment[pos]['Name'] == 'Arnold':
+                                        arnold_pos = pos
+                                if arnold_pos is None or arnold_pos <= kailyn_pos:
+                                    valid = False
 
-    # Clue 16: The person who loves the soup is Bob
-    for house in houses:
-        problem.addConstraint(lambda n, l: (n != 'Bob') or (l == 'soup'), [f"name_{house}", f"lunch_{house}"])
+                            # Clue 19: water drinker is directly left of blue master smoker.
+                            water_pos = None
+                            blue_master_pos = None
+                            for pos in range(1, 6):
+                                if assignment[pos]['Drink'] == 'water':
+                                    water_pos = pos
+                                if assignment[pos]['Cigar'] == 'blue master':
+                                    blue_master_pos = pos
+                            if water_pos is None or blue_master_pos is None or blue_master_pos != water_pos + 1:
+                                valid = False
 
-    # Clue 17: The person who loves hip-hop music is directly left of the person whose mother's name is Kailyn
-    for i in range(1, 6):
-        problem.addConstraint(lambda m, mother: (m == 'hip hop') and (mother == 'Kailyn'), [f"music_{i}", f"mother_{i+1}"])
+                            # Clue 20: spaghetti is left of blends smoker.
+                            spaghetti_pos = None
+                            blends_pos = None
+                            for pos in range(1, 7):
+                                if assignment[pos]['Food'] == 'spaghetti':
+                                    spaghetti_pos = pos
+                                if assignment[pos]['Cigar'] == 'blends':
+                                    blends_pos = pos
+                            if spaghetti_pos is not None and blends_pos is not None and spaghetti_pos >= blends_pos:
+                                valid = False
 
-    # Clue 18: Arnold is somewhere to the right of the person whose mother's name is Kailyn
-    # Kailyn's mother in i, Arnold in j where j > i
+                            # Clue 21: Sarah's mother is directly left of jazz lover.
+                            if sarah_pos is not None:
+                                jazz_pos = None
+                                for pos in range(1, 7):
+                                    if assignment[pos]['MusicGenre'] == 'jazz':
+                                        jazz_pos = pos
+                                if jazz_pos is None or jazz_pos != sarah_pos + 1:
+                                    valid = False
 
-    # Clue 19: The one who only drinks water is directly left of the person who smokes blue master
-    for i in range(1, 6):
-        problem.addConstraint(lambda d, c: (d == 'water') and (c == 'blue master'), [f"drink_{i}", f"cigar_{i+1}"])
+                            # Clue 22: hip hop is directly left of root beer lover.
+                            if hip_hop_pos is not None and root_beer_pos is not None and root_beer_pos != hip_hop_pos + 1:
+                                valid = False
 
-    # Clue 20: The person who loves spaghetti is somewhere to the left of the person who smokes blends
-    # spaghetti in i, blends in j where i < j
+                            # Clue 23: water drinker loves stew.
+                            if water_pos is not None and assignment[water_pos]['Food'] != 'stew':
+                                valid = False
 
-    # Clue 21: The person whose mother's name is Sarah is directly left of the person who loves jazz music
-    for i in range(1, 6):
-        problem.addConstraint(lambda m, music: (m == 'Sarah') and (music == 'jazz'), [f"mother_{i}", f"music_{i+1}"])
+                            # Clue 24: dunhill is not in the second house.
+                            if assignment[2]['Cigar'] == 'dunhill':
+                                valid = False
 
-    # Clue 22: The person who loves hip-hop music is directly left of the root beer lover
-    for i in range(1, 6):
-        problem.addConstraint(lambda m, d: (m == 'hip hop') and (d == 'root beer'), [f"music_{i}", f"drink_{i+1}"])
+                            # Clue 25: milk drinker is Janelle's mother.
+                            if janelle_pos is not None and assignment[janelle_pos]['Drink'] != 'milk':
+                                valid = False
 
-    # Clue 23: The one who only drinks water is the person who loves the stew
-    for house in houses:
-        problem.addConstraint(lambda d, l: (d != 'water') or (l == 'stew'), [f"drink_{house}", f"lunch_{house}"])
+                            # Clue 26: Eric's mother is Aniya.
+                            if eric_pos is not None and assignment[eric_pos]['Mother'] != 'Aniya':
+                                valid = False
 
-    # Clue 24: The Dunhill smoker is not in the second house
-    problem.addConstraint(lambda c: c != 'dunhill', ["cigar_2"])
+                            if valid:
+                                # Prepare the solution in the required JSON format
+                                solution = {
+                                    "solution": {
+                                        "header": ["House", "Name", "Cigar", "MusicGenre", "Drink", "Mother", "Food"],
+                                        "rows": []
+                                    }
+                                }
+                                for house in range(1, 7):
+                                    row = [
+                                        str(house),
+                                        assignment[house]['Name'],
+                                        assignment[house]['Cigar'],
+                                        assignment[house]['MusicGenre'],
+                                        assignment[house]['Drink'],
+                                        assignment[house]['Mother'],
+                                        assignment[house]['Food']
+                                    ]
+                                    solution["solution"]["rows"].append(row)
+                                return json.dumps(solution, indent=2)
 
-    # Clue 25: The person who likes milk is the person whose mother's name is Janelle
-    for house in houses:
-        problem.addConstraint(lambda d, m: (d != 'milk') or (m == 'Janelle'), [f"drink_{house}", f"mother_{house}"])
-
-    # Clue 26: Eric is the person whose mother's name is Aniya
-    for house in houses:
-        problem.addConstraint(lambda n, m: (n != 'Eric') or (m == 'Aniya'), [f"name_{house}", f"mother_{house}"])
-
-    # Solve the problem
-    solutions = problem.getSolutions()
-    if not solutions:
-        return solution
-
-    # Take the first solution (assuming it's unique)
-    sol = solutions[0]
-
-    # Build the solution rows
-    rows = []
-    for house in houses:
-        row = [
-            str(house),
-            sol[f"name_{house}"],
-            sol[f"cigar_{house}"],
-            sol[f"music_{house}"],
-            sol[f"drink_{house}"],
-            sol[f"mother_{house}"],
-            sol[f"lunch_{house}"]
-        ]
-        rows.append(row)
-
-    solution["solution"]["rows"] = rows
-    return solution
+    return json.dumps({"solution": {"header": [], "rows": []}})
 
 if __name__ == "__main__":
-    solution = solve_puzzle()
-    print(json.dumps(solution, indent=2))
+    print(solve_puzzle())

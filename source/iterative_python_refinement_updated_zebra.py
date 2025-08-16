@@ -205,8 +205,8 @@ Examples:
                 elif model_name.startswith(("gpt", "o3", "o4")):
                     self.engines[model_name] = OpenAIEngine(
                         api_key=self.keys.get("openai"),
-                        model=model_name,
-                        reasoning_effort="high"  # Reasoning effort for o3-mini --> o3-mini-high
+                        model=model_name
+                        # reasoning_effort="high"  # Reasoning effort for o3-mini --> o3-mini-high
                     )
 
                 else:
@@ -453,21 +453,22 @@ Examples:
             "\n\nGenerate a complete, self-contained Python program that:\n"
             "1. Takes the above puzzle constraints as input variables\n"
             "2. Computes the solution using logical rules and constraints\n"
-            "3. Outputs the solution as a JSON-formatted dictionary with the structure:\n"
+            "3. Outputs the solution as a JSON-formatted dictionary with the following EXACT structure:\n"
             "{\n"
             '  "solution": {\n'
-            '    "header": ["House", "Name", ... (all attribute names)],\n'
+            '    "header": [GOLDEN_HEADERS_PLACEHOLDER],\n'
             '    "rows": [\n'
-            '      ["1", "Eric", ... (all attribute values for house 1)],\n'
-            '      ["2", "Arnold", ... (all attribute values for house 2)]\n'
+            '      ["1", VALUE_FOR_HEADER1, VALUE_FOR_HEADER2, ...],\n'
+            '      ["2", VALUE_FOR_HEADER1, VALUE_FOR_HEADER2, ...]\n'
             '    ]\n'
             "  }\n"
             "}\n"
             "\n"
-            "Important Notes:\n"
-            "- The attribute names in the header must exactly match those in the puzzle\n"
-            "- The order of houses must be maintained (house 1 first, then house 2, etc.)\n"
-            "- All attributes must be included in each row\n"
+            "Important Requirements:\n"
+            "- The 'header' field MUST use exactly these attribute names: [GOLDEN_HEADERS_PLACEHOLDER]\n"
+            "- Maintain the exact order of houses (1, 2, 3, ...)\n"
+            "- Include all attributes in each row\n"
+            "- The output must be valid JSON that can be parsed by Python's json module\n"
             "\n"
             "Output only the complete Python code with no additional text or explanation.\n"
             "The code must run independently and output valid JSON when executed."
@@ -1057,108 +1058,70 @@ Examples:
         return None
 
     def evaluate_zebralogic(self, constraints, predicted_output):
-        """Evaluate ZebraLogic solution against constraints with flexible attribute matching."""
+        """Evaluate ZebraLogic solution with more robust comparison"""
         if not predicted_output or not isinstance(predicted_output, list):
-            return False, {"invalid_output": True}
+            return False, {"invalid_output": "No valid output structure found"}
         
         golden_output = self.parse_zebralogic_golden(constraints.get("golden_plan", {}))
         
         if not isinstance(golden_output, list):
-            return False, {"invalid_golden": True}
+            return False, {"invalid_golden": "Invalid golden solution format"}
         
+        # First check for exact match (string comparison of sorted JSON)
         try:
-            # Get golden headers from the first house (all houses should have same attributes)
-            golden_headers = set(golden_output[0].keys()) if golden_output else set()
-            
-            # Check number of houses matches
-            if len(predicted_output) != len(golden_output):
-                return False, {"wrong_length": f"Expected {len(golden_output)} houses, got {len(predicted_output)}"}
-            
-            violations = []
-            for gold_house, pred_house in zip(golden_output, predicted_output):
-                # Check house number matches
-                if str(gold_house.get("House")) != str(pred_house.get("House")):
-                    violations.append(f"Wrong house number: expected {gold_house.get('House')}, got {pred_house.get('House')}")
-                    continue
-                    
-                # Check all golden attributes exist in predicted output (case insensitive)
-                for gold_attr, gold_value in gold_house.items():
-                    if gold_attr == "House":
-                        continue
-                        
-                    # Find matching attribute in prediction (case insensitive)
-                    pred_attr = None
-                    lower_gold_attr = gold_attr.lower()
-                    for p_attr in pred_house.keys():
-                        if p_attr.lower() == lower_gold_attr:
-                            pred_attr = p_attr
-                            break
-                    
-                    if not pred_attr:
-                        violations.append(f"Missing attribute {gold_attr}")
-                    elif str(pred_house[pred_attr]).lower() != str(gold_value).lower():
-                        violations.append(f"Wrong {gold_attr}: expected {gold_value}, got {pred_house[pred_attr]}")
-            
-            if violations:
-                return False, {"violations": violations}
-            return True, {}
-        except Exception as e:
-            return False, {"evaluation_error": str(e)}
-
-    def _build_attribute_mapping(self, golden_houses, predicted_houses):
-        """Build mapping between golden and predicted attribute names."""
-        if not golden_houses or not predicted_houses:
-            return {}
+            pred_str = json.dumps(predicted_output, sort_keys=True)
+            gold_str = json.dumps(golden_output, sort_keys=True)
+            if pred_str == gold_str:
+                return True, {}
+        except Exception:
+            pass
         
-        # Get all unique attributes from golden and predicted
-        golden_attrs = set()
-        pred_attrs = set()
+        # If not exact match, do field-by-field comparison
+        violations = []
         
-        for house in golden_houses:
-            golden_attrs.update(house.keys())
+        # Check structure matches
+        if len(predicted_output) != len(golden_output):
+            violations.append(f"Wrong number of houses: expected {len(golden_output)}, got {len(predicted_output)}")
         
-        for house in predicted_houses:
-            pred_attrs.update(house.keys())
-        
-        # Simple mapping - look for similar attribute names
-        mapping = {}
-        for g_attr in golden_attrs:
-            if g_attr == "House":
+        # Check each house
+        for house_num, (gold_house, pred_house) in enumerate(zip(golden_output, predicted_output), 1):
+            if not isinstance(pred_house, dict):
+                violations.append(f"House {house_num} is not a valid dictionary")
                 continue
                 
-            # Try exact match first
-            if g_attr in pred_attrs:
-                mapping[g_attr] = g_attr
-                continue
+            # Check all fields in golden exist in predicted (case insensitive)
+            for field, gold_value in gold_house.items():
+                field_lower = field.lower()
+                pred_fields = {k.lower(): v for k, v in pred_house.items()}
                 
-            # Try case-insensitive match
-            lower_g = g_attr.lower()
-            for p_attr in pred_attrs:
-                if p_attr.lower() == lower_g:
-                    mapping[g_attr] = p_attr
-                    break
-                    
-            # Try partial matches (e.g., "Pet" vs "Animal")
-            if g_attr not in mapping:
-                for p_attr in pred_attrs:
-                    if p_attr.lower() in g_attr.lower() or g_attr.lower() in p_attr.lower():
-                        mapping[g_attr] = p_attr
-                        break
+                if field_lower not in pred_fields:
+                    violations.append(f"House {house_num} missing field '{field}'")
+                else:
+                    pred_value = pred_house.get(field)  # Use original case for comparison
+                    if str(pred_value).strip().lower() != str(gold_value).strip().lower():
+                        violations.append(
+                            f"House {house_num} wrong {field}: expected '{gold_value}', got '{pred_value}'"
+                        )
         
-        return mapping
+        if violations:
+            return False, {"violations": violations}
+        return True, {}
 
     def format_zebralogic_feedback(self, violated_constraints):
         if not violated_constraints:
             return ""
         
-        feedback = "\nYour solution has the following issues:\n"
-        if "wrong_length" in violated_constraints:
-            feedback += f"- {violated_constraints['wrong_length']}\n"
+        feedback = ["\nYour solution has the following issues:"]
+        
         if "violations" in violated_constraints:
-            for violation in violated_constraints["violations"][:10]:  # Limit to first 10 violations
-                feedback += f"- {violation}\n"
-        feedback += "\nPlease revise your solution to satisfy all constraints."
-        return feedback
+            feedback.extend(f"- {v}" for v in violated_constraints["violations"][:10])  # Limit to 10 violations
+        else:
+            for k, v in violated_constraints.items():
+                if k != "differences":  # Skip GPT-generated differences which may be unreliable
+                    feedback.append(f"- {k}: {v}")
+        
+        feedback.append("\nPlease revise to match all attributes exactly.")
+        return "\n".join(feedback)
 
     def extract_answer(self, answer_str, task):
         """Extract structured answer from text output using GPT-4.1-nano"""
@@ -1175,21 +1138,20 @@ Examples:
             "zebralogic": (
                 "Given the following puzzle solution:\n" + answer_str + 
                 "\nExtract the solution in a JSON format that exactly matches the expected output structure. "
-                "The JSON should contain all attribute assignments that solve the puzzle. "
-                "The header names MUST exactly match these: " + str(golden_plan["header"]) + ". "
+                "The JSON must contain these exact headers: " + str(golden_headers) + ". "
                 "Example of required format:\n"
                 "{\n"
                 '  "solution": {\n'
-                '    "header": ["House", "Name", "Occupation", "Birthday", "HouseStyle", "Height", "Cigar"],\n'
+                '    "header": ' + str(golden_headers) + ',\n'
                 '    "rows": [\n'
-                '      ["1", "Eric", "engineer", "april", "colonial", "very short", "prince"],\n'
-                '      ["2", "Arnold", "doctor", "sept", "victorian", "short", "pall mall"]\n'
+                '      ["1", VALUE_FOR_HEADER1, VALUE_FOR_HEADER2, ...],\n'
+                '      ["2", VALUE_FOR_HEADER1, VALUE_FOR_HEADER2, ...]\n'
                 '    ]\n'
                 "  }\n"
                 "}\n\n"
                 "Important:\n"
                 "- Keep all original values exactly as provided\n"
-                "- Change and standardize the header names to match the golden solution, for example if model said Lunch but golden header is Food, the header should be changed to Food.\n"
+                "- The header names MUST match exactly: " + str(golden_headers) + "\n"
                 "- Maintain correct house ordering (1, 2, 3...)\n"
                 "- If no valid solution is given, output empty JSON {}\n"
                 "- Do not include any explanatory text, only the JSON"
@@ -1197,7 +1159,6 @@ Examples:
         }
 
         try:
-            print(prompt["zebralogic"])
             response = client.chat.completions.create(
                 model="gpt-4.1-nano",
                 messages=[
@@ -1391,7 +1352,7 @@ Examples:
 
     def save_output_files(self, task, example_id, pass_num, conversation, code, output, evaluation):
         """Save all output files for a given pass"""
-        output_dir = f"../output/Python/o3-mini-high/{task}/single_pass/{example_id}/{pass_num}_pass"
+        output_dir = f"../output/Python/DeepSeek-V3/{task}/single_pass/{example_id}/{pass_num}_pass"
         os.makedirs(output_dir, exist_ok=True)
         
         # Save conversation
@@ -1427,7 +1388,13 @@ Examples:
             conversation = []
             
             # Get initial prompt
-            initial_prompt = config["prefix"] + example_data["prompt_0shot"] + config["suffix"]
+            golden_plan = constraints.get("golden_plan", {})
+            golden_headers = golden_plan.get("header", [])
+            header_placeholder = json.dumps(golden_headers)
+
+            # Replace the placeholder with actual headers
+            suffix_with_headers = config["suffix"].replace("[GOLDEN_HEADERS_PLACEHOLDER]", header_placeholder)
+            initial_prompt = config["prefix"] + example_data["prompt_0shot"] + suffix_with_headers         
             current_prompt = initial_prompt
             
             # for pass_num in range(1, self.args.max_passes + 1):

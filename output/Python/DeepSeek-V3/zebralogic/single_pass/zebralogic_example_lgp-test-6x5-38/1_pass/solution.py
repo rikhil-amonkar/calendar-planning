@@ -5,320 +5,340 @@ def solve_puzzle():
     # Define all possible options for each category
     names = ['Arnold', 'Carol', 'Eric', 'Bob', 'Alice', 'Peter']
     months = ['feb', 'mar', 'sept', 'jan', 'may', 'april']
-    lunches = ['stew', 'soup', 'grilled cheese', 'stir fry', 'spaghetti', 'pizza']
+    foods = ['stew', 'soup', 'grilled cheese', 'stir fry', 'spaghetti', 'pizza']
     heights = ['very short', 'average', 'super tall', 'short', 'very tall', 'tall']
-    cars = ['chevrolet silverado', 'ford f150', 'bmw 3 series', 'tesla model 3', 'toyota camry', 'honda civic']
+    car_models = ['chevrolet silverado', 'ford f150', 'bmw 3 series', 'tesla model 3', 'toyota camry', 'honda civic']
     
-    # We'll represent each house as a dictionary, and the solution as a list of houses
-    houses = [{} for _ in range(6)]
+    # We'll represent each house as a dictionary in a list
+    houses = [{'House': str(i)} for i in range(1, 7)]
     
-    # Apply direct clues first
+    # Apply direct assignments first
     # Clue 19: very short is in house 4
-    houses[3]['height'] = 'very short'
+    for house in houses:
+        if house['House'] == '4':
+            house['Height'] = 'very short'
+    
+    # Clue 20: birthday in march is short
+    # Clue 1: honda civic owner is short
+    # So honda civic owner's birthday is march
     
     # Clue 22: Eric's birthday is jan
     for house in houses:
-        if 'name' in house and house['name'] == 'Eric':
-            house['birthday month'] = 'jan'
+        if 'Name' in house and house['Name'] == 'Eric':
+            house['Birthday'] = 'jan'
     
     # Clue 17: tall is Bob
     for house in houses:
-        if 'name' in house and house['name'] == 'Bob':
-            house['height'] = 'tall'
-        elif 'height' in house and house['height'] == 'tall':
-            house['name'] = 'Bob'
+        if 'Name' in house and house['Name'] == 'Bob':
+            house['Height'] = 'tall'
+        elif 'Height' in house and house['Height'] == 'tall':
+            house['Name'] = 'Bob'
     
     # Clue 21: Carol owns tesla model 3
     for house in houses:
-        if 'name' in house and house['name'] == 'Carol':
-            house['car'] = 'tesla model 3'
-        elif 'car' in house and house['car'] == 'tesla model 3':
-            house['name'] = 'Carol'
+        if 'Name' in house and house['Name'] == 'Carol':
+            house['CarModel'] = 'tesla model 3'
+        elif 'CarModel' in house and house['CarModel'] == 'tesla model 3':
+            house['Name'] = 'Carol'
+    
+    # Clue 11: tesla model 3 is left of tall (Bob)
+    # So Carol is left of Bob
     
     # Clue 2: ford f150 is in house 5
-    houses[4]['car'] = 'ford f150'
-    
-    # Clue 20: birthday mar is short
     for house in houses:
-        if 'birthday month' in house and house['birthday month'] == 'mar':
-            house['height'] = 'short'
-        elif 'height' in house and house['height'] == 'short':
-            house['birthday month'] = 'mar'
-    
-    # Clue 1: honda civic owner is short
-    for house in houses:
-        if 'car' in house and house['car'] == 'honda civic':
-            house['height'] = 'short'
-        elif 'height' in house and house['height'] == 'short':
-            house['car'] = 'honda civic'
+        if house['House'] == '5':
+            house['CarModel'] = 'ford f150'
     
     # Clue 12: very tall owns toyota camry
     for house in houses:
-        if 'height' in house and house['height'] == 'very tall':
-            house['car'] = 'toyota camry'
-        elif 'car' in house and house['car'] == 'toyota camry':
-            house['height'] = 'very tall'
+        if 'Height' in house and house['Height'] == 'very tall':
+            house['CarModel'] = 'toyota camry'
+        elif 'CarModel' in house and house['CarModel'] == 'toyota camry':
+            house['Height'] = 'very tall'
     
-    # Clue 11: tesla model 3 is left of tall (bob)
-    # So tesla model 3 is in a house with number less than bob's house
-    
+    # Clue 6: bmw 3 series not in house 3
     # Clue 10: Alice is directly left of bmw 3 series
-    # So Alice is in house X, bmw is in X+1
-    
-    # Clue 7: two houses between stir fry and pizza
-    # So if stir fry is in X, pizza is in X+3
-    
-    # Clue 13: Peter is directly left of pizza lover
-    # So Peter is in X, pizza is in X+1
-    
-    # Clue 8: soup is directly left of Eric
-    # So soup is in X, Eric is in X+1
-    
-    # Clue 3: stir fry is left of Eric
-    # So stir fry is in a house with number less than Eric's
+    # So bmw is in house n, Alice in n-1, n != 3
     
     # Clue 4: may is left of Carol
-    # So may is in a house with number less than Carol's
+    # Clue 18: may is right of Alice
+    # So order: Alice ... may ... Carol
+    
+    # Clue 7: two houses between stir fry and pizza
+    # So if stir fry is in n, pizza is in n+3
+    
+    # Clue 13: Peter is directly left of pizza
+    # So pizza is in n, Peter in n-1
+    
+    # Clue 8: soup is directly left of Eric
+    # So soup in n, Eric in n+1
+    
+    # Clue 3: stir fry is left of Eric
     
     # Clue 5: very short (house 4) is left of april
-    # So april is in house 5 or 6
+    # So april is in 5 or 6
     
-    # Clue 6: bmw 3 series is not in house 3
+    # Clue 15: one house between sept and very short (house 4)
+    # So sept is in 2 (because 4-2=2, one house between is 3)
+    
+    for house in houses:
+        if house['House'] == '2':
+            house['Birthday'] = 'sept'
+    
+    # Clue 16: one house between march and super tall
+    # march is in n, super tall in n+2
+    # march is short (clue 20), and honda civic is short (clue 1)
+    # So march birthday owns honda civic
     
     # Clue 9: spaghetti and may are next to each other
     
-    # Clue 14: stew is not in house 3
+    # Let's try to assign march and honda civic
+    possible_march_positions = []
+    for i in range(1, 5):  # super tall must be <=6
+        if i + 2 <= 6:
+            possible_march_positions.append(i)
     
-    # Clue 15: one house between sept and very short (house 4)
-    # So sept is in house 2 (because 4-2=2, but "one house between" means distance is 2)
-    houses[1]['birthday month'] = 'sept'
+    # Try possible positions for march
+    for march_pos in possible_march_positions:
+        super_tall_pos = march_pos + 2
+        # Assign march and super tall
+        temp_houses = [house.copy() for house in houses]
+        temp_houses[march_pos-1]['Birthday'] = 'mar'
+        temp_houses[march_pos-1]['Height'] = 'short'
+        temp_houses[march_pos-1]['CarModel'] = 'honda civic'
+        temp_houses[super_tall_pos-1]['Height'] = 'super tall'
+        
+        # Assign april (must be right of very short, so 5 or 6)
+        # Check if april can be assigned
+        april_pos = None
+        if 'Birthday' not in temp_houses[4] or temp_houses[4]['Birthday'] == 'april':
+            april_pos = 5
+        elif 'Birthday' not in temp_houses[5] or temp_houses[5]['Birthday'] == 'april':
+            april_pos = 6
+        if april_pos is None:
+            continue
+        temp_houses[april_pos-1]['Birthday'] = 'april'
+        
+        # Assign Eric (birthday jan)
+        # From clue 8: soup is directly left of Eric
+        # From clue 3: stir fry is left of Eric
+        # From clue 7: two houses between stir fry and pizza
+        # From clue 13: Peter is directly left of pizza
+        # Let's find possible positions for Eric
+        possible_eric_positions = []
+        for i in range(2, 7):
+            if 'Name' not in temp_houses[i-1] or temp_houses[i-1]['Name'] == 'Eric':
+                possible_eric_positions.append(i)
+        
+        for eric_pos in possible_eric_positions:
+            temp_houses_eric = [house.copy() for house in temp_houses]
+            temp_houses_eric[eric_pos-1]['Name'] = 'Eric'
+            temp_houses_eric[eric_pos-1]['Birthday'] = 'jan'
+            
+            # soup is directly left of Eric
+            if eric_pos == 1:
+                continue
+            soup_pos = eric_pos - 1
+            if 'Food' in temp_houses_eric[soup_pos-1]:
+                continue
+            temp_houses_eric[soup_pos-1]['Food'] = 'soup'
+            
+            # stir fry is left of Eric
+            # two houses between stir fry and pizza
+            # so stir fry is in n, pizza in n+3, and n+3 <=6 => n <=3
+            possible_stir_fry_pos = []
+            for n in range(1, 4):
+                if n + 3 <= 6:
+                    if 'Food' not in temp_houses_eric[n-1]:
+                        possible_stir_fry_pos.append(n)
+            
+            for stir_fry_pos in possible_stir_fry_pos:
+                temp_houses_sf = [house.copy() for house in temp_houses_eric]
+                temp_houses_sf[stir_fry_pos-1]['Food'] = 'stir fry'
+                pizza_pos = stir_fry_pos + 3
+                temp_houses_sf[pizza_pos-1]['Food'] = 'pizza'
+                
+                # Peter is directly left of pizza
+                if pizza_pos == 1:
+                    continue
+                peter_pos = pizza_pos - 1
+                if 'Name' in temp_houses_sf[peter_pos-1]:
+                    continue
+                temp_houses_sf[peter_pos-1]['Name'] = 'Peter'
+                
+                # Alice is directly left of bmw (clue 10)
+                # bmw not in 3 (clue 6)
+                # So possible bmw positions: 2,4,5,6
+                # But house 5 has ford f150, so bmw can be 2,4,6
+                # Alice is left of bmw
+                possible_bmw_pos = [2,4,6]
+                for bmw_pos in possible_bmw_pos:
+                    if bmw_pos == 1:
+                        continue
+                    alice_pos = bmw_pos - 1
+                    if 'Name' in temp_houses_sf[alice_pos-1] and temp_houses_sf[alice_pos-1]['Name'] != 'Alice':
+                        continue
+                    if 'CarModel' in temp_houses_sf[bmw_pos-1] and temp_houses_sf[bmw_pos-1]['CarModel'] != 'bmw 3 series':
+                        continue
+                    
+                    temp_houses_bmw = [house.copy() for house in temp_houses_sf]
+                    temp_houses_bmw[bmw_pos-1]['CarModel'] = 'bmw 3 series'
+                    temp_houses_bmw[alice_pos-1]['Name'] = 'Alice'
+                    
+                    # Carol owns tesla model 3 (clue 21)
+                    # tesla is left of tall (Bob) (clue 11)
+                    # So Carol is left of Bob
+                    # Assign Carol and Bob
+                    # Find possible positions for Carol and Bob
+                    carol_positions = []
+                    bob_positions = []
+                    for i in range(1, 7):
+                        if 'Name' not in temp_houses_bmw[i-1]:
+                            carol_positions.append(i)
+                        elif temp_houses_bmw[i-1]['Name'] == 'Carol':
+                            carol_positions.append(i)
+                    
+                    for carol_pos in carol_positions:
+                        temp_houses_carol = [house.copy() for house in temp_houses_bmw]
+                        temp_houses_carol[carol_pos-1]['Name'] = 'Carol'
+                        temp_houses_carol[carol_pos-1]['CarModel'] = 'tesla model 3'
+                        
+                        # Bob must be right of Carol
+                        possible_bob_pos = []
+                        for i in range(carol_pos + 1, 7):
+                            if 'Name' not in temp_houses_carol[i-1]:
+                                possible_bob_pos.append(i)
+                            elif temp_houses_carol[i-1]['Name'] == 'Bob':
+                                possible_bob_pos.append(i)
+                        
+                        for bob_pos in possible_bob_pos:
+                            temp_houses_bob = [house.copy() for house in temp_houses_carol]
+                            temp_houses_bob[bob_pos-1]['Name'] = 'Bob'
+                            temp_houses_bob[bob_pos-1]['Height'] = 'tall'
+                            
+                            # Assign remaining names
+                            remaining_names = set(names) - {h.get('Name', '') for h in temp_houses_bob}
+                            remaining_names = list(remaining_names)
+                            if not remaining_names:
+                                pass  # all names assigned
+                            else:
+                                # Assign remaining names to empty houses
+                                empty_houses = [i for i in range(1, 7) if 'Name' not in temp_houses_bob[i-1]]
+                                if len(empty_houses) != len(remaining_names):
+                                    continue
+                                for name, pos in zip(remaining_names, empty_houses):
+                                    temp_houses_bob[pos-1]['Name'] = name
+                            
+                            # Assign may left of Carol (clue 4)
+                            # and may right of Alice (clue 18)
+                            # Alice is in alice_pos
+                            carol_pos = [i+1 for i, h in enumerate(temp_houses_bob) if h.get('Name') == 'Carol'][0]
+                            alice_pos = [i+1 for i, h in enumerate(temp_houses_bob) if h.get('Name') == 'Alice'][0]
+                            possible_may_positions = []
+                            for i in range(alice_pos + 1, carol_pos):
+                                if 'Birthday' not in temp_houses_bob[i-1]:
+                                    possible_may_positions.append(i)
+                            
+                            if not possible_may_positions:
+                                continue
+                            
+                            for may_pos in possible_may_positions:
+                                temp_houses_may = [house.copy() for house in temp_houses_bob]
+                                temp_houses_may[may_pos-1]['Birthday'] = 'may'
+                                
+                                # spaghetti and may are next to each other (clue 9)
+                                spaghetti_pos = None
+                                if may_pos > 1 and 'Food' not in temp_houses_may[may_pos-2]:
+                                    spaghetti_pos = may_pos - 1
+                                elif may_pos < 6 and 'Food' not in temp_houses_may[may_pos]:
+                                    spaghetti_pos = may_pos + 1
+                                
+                                if spaghetti_pos is None:
+                                    continue
+                                temp_houses_may[spaghetti_pos-1]['Food'] = 'spaghetti'
+                                
+                                # Assign remaining foods
+                                remaining_foods = set(foods) - {h.get('Food', '') for h in temp_houses_may}
+                                remaining_foods = list(remaining_foods)
+                                if not remaining_foods:
+                                    pass  # all foods assigned
+                                else:
+                                    # Assign remaining foods to empty houses
+                                    empty_houses = [i for i in range(1, 7) if 'Food' not in temp_houses_may[i-1]]
+                                    if len(empty_houses) != len(remaining_foods):
+                                        continue
+                                    for food, pos in zip(remaining_foods, empty_houses):
+                                        temp_houses_may[pos-1]['Food'] = food
+                                
+                                # Assign remaining birthdays
+                                remaining_months = set(months) - {h.get('Birthday', '') for h in temp_houses_may}
+                                remaining_months = list(remaining_months)
+                                if not remaining_months:
+                                    pass  # all months assigned
+                                else:
+                                    # Assign remaining months to empty houses
+                                    empty_houses = [i for i in range(1, 7) if 'Birthday' not in temp_houses_may[i-1]]
+                                    if len(empty_houses) != len(remaining_months):
+                                        continue
+                                    for month, pos in zip(remaining_months, empty_houses):
+                                        temp_houses_may[pos-1]['Birthday'] = month
+                                
+                                # Assign remaining car models
+                                remaining_cars = set(car_models) - {h.get('CarModel', '') for h in temp_houses_may}
+                                remaining_cars = list(remaining_cars)
+                                if not remaining_cars:
+                                    pass  # all cars assigned
+                                else:
+                                    # Assign remaining cars to empty houses
+                                    empty_houses = [i for i in range(1, 7) if 'CarModel' not in temp_houses_may[i-1]]
+                                    if len(empty_houses) != len(remaining_cars):
+                                        continue
+                                    for car, pos in zip(remaining_cars, empty_houses):
+                                        temp_houses_may[pos-1]['CarModel'] = car
+                                
+                                # Assign remaining heights
+                                remaining_heights = set(heights) - {h.get('Height', '') for h in temp_houses_may}
+                                remaining_heights = list(remaining_heights)
+                                if not remaining_heights:
+                                    pass  # all heights assigned
+                                else:
+                                    # Assign remaining heights to empty houses
+                                    empty_houses = [i for i in range(1, 7) if 'Height' not in temp_houses_may[i-1]]
+                                    if len(empty_houses) != len(remaining_heights):
+                                        continue
+                                    for height, pos in zip(remaining_heights, empty_houses):
+                                        temp_houses_may[pos-1]['Height'] = height
+                                
+                                # Check if all constraints are satisfied
+                                valid = True
+                                for house in temp_houses_may:
+                                    if len(house) != 6:  # House, Name, Birthday, Food, Height, CarModel
+                                        valid = False
+                                        break
+                                
+                                if valid:
+                                    # Prepare the solution
+                                    solution = {
+                                        "solution": {
+                                            "header": ["House", "Name", "Birthday", "Food", "Height", "CarModel"],
+                                            "rows": []
+                                        }
+                                    }
+                                    for house in temp_houses_may:
+                                        row = [
+                                            house['House'],
+                                            house.get('Name', ''),
+                                            house.get('Birthday', '),
+                                            house.get('Food', ''),
+                                            house.get('Height', ''),
+                                            house.get('CarModel', '')
+                                        ]
+                                        solution["solution"]["rows"].append(row)
+                                    return solution
     
-    # Clue 16: one house between mar and super tall
-    # So if mar is in X, super tall is in X+2 or X-2
-    
-    # Clue 18: may is right of Alice
-    # So Alice is left of may
-    
-    # Now let's try to assign based on constraints
-    
-    # From clue 15: sept is in house 2
-    # From clue 19: very short is in house 4
-    # From clue 5: april is right of very short, so april is in 5 or 6
-    
-    # From clue 20: mar is short
-    # From clue 1: short owns honda civic
-    # From clue 16: one house between mar and super tall
-    # Possible positions for mar:
-    # If mar is 1, super tall is 3
-    # If mar is 2, but 2 is sept, so no
-    # If mar is 3, super tall is 5
-    # If mar is 4, super tall is 6
-    # But 4 is very short, not short, so mar is 1 or 3
-    
-    # Try mar in 1:
-    houses[0]['birthday month'] = 'mar'
-    houses[0]['height'] = 'short'
-    houses[0]['car'] = 'honda civic'
-    # Then super tall is in 3
-    houses[2]['height'] = 'super tall'
-    # From clue 12: very tall owns toyota camry
-    # Not assigned yet
-    
-    # From clue 22: Eric's birthday is jan
-    # From clue 8: soup is directly left of Eric
-    # So soup is in X, Eric in X+1
-    
-    # Possible positions for Eric:
-    # Eric can't be in 1 (mar), 2 (sept), so possible 3,4,5,6
-    # But 4 is very short, no month assigned yet
-    # If Eric is in 3:
-    # Then soup is in 2
-    houses[1]['lunch'] = 'soup'
-    houses[2]['name'] = 'Eric'
-    houses[2]['birthday month'] = 'jan'
-    # From clue 3: stir fry is left of Eric (3), so stir fry is 1 or 2
-    # 2 has soup, so stir fry is 1
-    houses[0]['lunch'] = 'stir fry'
-    # From clue 7: two houses between stir fry (1) and pizza (4)
-    # So pizza is in 4
-    houses[3]['lunch'] = 'pizza'
-    # From clue 13: Peter is directly left of pizza (4), so Peter is in 3
-    # But 3 is Eric, conflict
-    # So Eric can't be in 3
-    
-    # Try Eric in 4:
-    # soup is in 3
-    houses[2]['lunch'] = 'soup'
-    houses[3]['name'] = 'Eric'
-    houses[3]['birthday month'] = 'jan'
-    # stir fry is left of Eric, so 1 or 2 or 3
-    # 3 is soup, so 1 or 2
-    # 1 has stir fry or 2 has stir fry
-    # From clue 7: two houses between stir fry and pizza
-    # If stir fry is 1, pizza is 4
-    houses[0]['lunch'] = 'stir fry'
-    houses[3]['lunch'] = 'pizza'
-    # From clue 13: Peter is directly left of pizza (4), so Peter is in 3
-    houses[2]['name'] = 'Peter'
-    # From clue 10: Alice is directly left of bmw
-    # Possible positions:
-    # Alice in 1, bmw in 2
-    # Alice in 2, bmw in 3 - but 3 is Peter, no car assigned
-    # Alice in 4, bmw in 5 - but 4 is Eric
-    # Alice in 5, bmw in 6
-    # Try Alice in 1, bmw in 2
-    houses[0]['name'] = 'Alice'
-    houses[1]['car'] = 'bmw 3 series'
-    # From clue 6: bmw not in 3 - satisfied
-    # From clue 18: may is right of Alice (1), so may is 2,3,4,5,6
-    # From clue 4: may is left of Carol
-    # From clue 9: spaghetti and may are next to each other
-    # may could be in 2,3,4,5
-    # 2: month not assigned, but car is bmw
-    # 3: month not assigned
-    # 4: jan
-    # 5: month not assigned
-    # Try may in 2
-    houses[1]['birthday month'] = 'may'
-    # Then spaghetti is next to may, so 1 or 3
-    # 1: lunch is stir fry, so 3
-    houses[2]['lunch'] = 'spaghetti'
-    # But 2's lunch is not assigned yet
-    # Wait, 3's lunch was soup earlier, but we assigned pizza to 4
-    # Wait, let's see:
-    # house 0: name Alice, lunch stir fry, month mar, height short, car honda civic
-    # house 1: month sept, car bmw, birthday may
-    # house 2: name Peter, lunch soup, height super tall
-    # house 3: name Eric, lunch pizza, month jan, height very short
-    # house 4: car ford f150
-    # house 5: ?
-    # So spaghetti must be next to may (2), so 1 or 3
-    # 1 has stir fry, 3 has pizza, so conflict
-    # So may can't be in 2
-    
-    # Try may in 3
-    houses[2]['birthday month'] = 'may'
-    # spaghetti is next to may, so 2 or 4
-    # 4 has pizza, so 2
-    houses[1]['lunch'] = 'spaghetti'
-    # From clue 4: may is left of Carol
-    # Carol is right of may (3), so Carol is 4,5,6
-    # 4 is Eric, so Carol is 5 or 6
-    # From clue 21: Carol owns tesla model 3
-    # house 5: car is ford f150, so Carol must be in 6
-    houses[5]['name'] = 'Carol'
-    houses[5]['car'] = 'tesla model 3'
-    # From clue 11: tesla is left of tall (bob)
-    # tesla is in 6, so tall must be right of 6, but no house, conflict
-    # So invalid
-    
-    # Try may in 5
-    houses[4]['birthday month'] = 'may'
-    # spaghetti is next to may, so 4 or 6
-    # 4: pizza, so 6
-    houses[5]['lunch'] = 'spaghetti'
-    # From clue 4: may is left of Carol, so Carol is 6
-    houses[5]['name'] = 'Carol'
-    houses[5]['car'] = 'tesla model 3'
-    # From clue 11: tesla is left of tall (bob)
-    # tesla is in 6, so tall must be right of 6, but no house, conflict
-    # So invalid
-    
-    # Thus initial assumption that mar is in 1 leads to contradictions
-    # Try mar in 3
-    houses = [{} for _ in range(6)]
-    houses[3]['height'] = 'very short'  # clue 19
-    houses[1]['birthday month'] = 'sept'  # clue 15
-    houses[2]['birthday month'] = 'mar'  # mar in 3
-    houses[2]['height'] = 'short'  # clue 20
-    houses[2]['car'] = 'honda civic'  # clue 1
-    # From clue 16: one house between mar (3) and super tall, so super tall is 5
-    houses[4]['height'] = 'super tall'
-    
-    # From clue 22: Eric's birthday is jan
-    # From clue 8: soup is directly left of Eric
-    # Possible positions for Eric:
-    # Eric can be in 2,4,5,6
-    # 2: month not assigned, but 3 is mar
-    # If Eric is in 4:
-    # soup is in 3, but 3 is mar, no lunch assigned
-    houses[2]['lunch'] = 'soup'
-    houses[3]['name'] = 'Eric'
-    houses[3]['birthday month'] = 'jan'
-    # From clue 3: stir fry is left of Eric (4), so 1,2,3
-    # 3 is soup, so 1 or 2
-    # From clue 7: two houses between stir fry and pizza
-    # If stir fry is 1, pizza is 4
-    houses[0]['lunch'] = 'stir fry'
-    houses[3]['lunch'] = 'pizza'
-    # From clue 13: Peter is directly left of pizza (4), so Peter is in 3
-    # But 3 is Eric, conflict
-    # So Eric can't be in 4
-    
-    # Try Eric in 5:
-    # soup is in 4
-    houses[3]['lunch'] = 'soup'
-    houses[4]['name'] = 'Eric'
-    houses[4]['birthday month'] = 'jan'
-    # stir fry is left of Eric, so 1,2,3
-    # 3 is soup, so 1 or 2
-    # From clue 7: two houses between stir fry and pizza
-    # If stir fry is 1, pizza is 4
-    houses[0]['lunch'] = 'stir fry'
-    houses[3]['lunch'] = 'pizza'
-    # From clue 13: Peter is directly left of pizza (4), so Peter is in 3
-    houses[2]['name'] = 'Peter'
-    # From clue 10: Alice is directly left of bmw
-    # Possible positions:
-    # Alice in 1, bmw in 2
-    houses[0]['name'] = 'Alice'
-    houses[1]['car'] = 'bmw 3 series'
-    # From clue 6: bmw not in 3 - satisfied
-    # From clue 18: may is right of Alice (1), so may is 2,3,4,5,6
-    # From clue 4: may is left of Carol
-    # From clue 9: spaghetti and may are next to each other
-    # may could be in 2,3,4
-    # 2: car is bmw, month not assigned
-    # 3: name Peter, month not assigned
-    # 4: lunch pizza, month not assigned
-    # Try may in 2
-    houses[1]['birthday month'] = 'may'
-    # spaghetti is next to may, so 1 or 3
-    # 1: lunch stir fry, so 3
-    houses[2]['lunch'] = 'spaghetti'
-    # From clue 4: may is left of Carol, so Carol is right of 2
-    # Possible positions: 3,4,5,6
-    # 3: Peter, 4: Eric, 5: Eric, so Carol is 6
-    houses[5]['name'] = 'Carol'
-    houses[5]['car'] = 'tesla model 3'  # clue 21
-    # From clue 11: tesla is left of tall (bob)
-    # tesla is in 6, so tall must be right of 6, but no house, conflict
-    # So may can't be in 2
-    
-    # Try may in 3
-    houses[2]['birthday month'] = 'may'
-    # spaghetti is next to may, so 2 or 4
-    # 2: car bmw, lunch not assigned
-    houses[1]['lunch'] = 'spaghetti'
-    # From clue 4: may is left of Carol, so Carol is right of 3
-    # 4: Eric, so Carol is 5 or 6
-    # 5: name Eric, so Carol is 6
-    houses[5]['name'] = 'Carol'
-    houses[5]['car'] = 'tesla model 3'
-    # From clue 11: tesla is left of tall (bob)
-    # tesla is in 6, so tall must be right of 6, but no house, conflict
-    # So may can't be in 3
-    
-    # Try may in 4
-    houses[3]['birthday month'] = 'may'
-    # spaghetti is next to may, so 3 or 5
-    # 3: lunch spaghetti or ?
-    # 3: currently name Peter, lunch not assigned, month may?
-    # Wait, may is in 4, so spaghetti is 3 or 5
-    # 3: lunch not assigned
-    houses[2]['lunch'] = 'spaghetti'
-    # From clue 4: may is left of Carol, so Carol is right of 4
-    # 5: name Eric, so Carol is 6
-    houses[5]['name'] = 'Carol'
-    houses[5]['car'] = 'tesla model 3'
-    # From
+    # If no solution found
+    return {"solution": {"header": ["House", "Name", "Birthday", "Food", "Height", "CarModel"], "rows": []}}
+
+# Solve the puzzle and print the solution
+solution = solve_puzzle()
+print(json.dumps(solution, indent=2))

@@ -1,42 +1,53 @@
-import itertools
 import json
+from itertools import permutations
 
 def main():
+    # Define puzzle parameters
+    houses = [1, 2]
     names = ['Eric', 'Arnold']
-    styles = ['victorian', 'colonial']
-    solutions = []
+    house_styles = ['victorian', 'colonial']
     
-    for name_perm in itertools.permutations(names):
-        for style_perm in itertools.permutations(styles):
-            candidate = {
-                1: {'Name': name_perm[0], 'House Style': style_perm[0]},
-                2: {'Name': name_perm[1], 'House Style': style_perm[1]}
-            }
-            
-            if candidate[1]['Name'] != 'Eric':
-                continue
-                
-            v_house = None
-            c_house = None
-            for house_num in [1, 2]:
-                style_val = candidate[house_num]['House Style']
-                if style_val == 'victorian':
-                    v_house = house_num
-                elif style_val == 'colonial':
-                    c_house = house_num
-                    
-            if v_house is not None and c_house is not None and v_house < c_house:
-                rows = [
-                    ['1', candidate[1]['Name'], candidate[1]['House Style']],
-                    ['2', candidate[2]['Name'], candidate[2]['House Style']]
-                ]
-                sol = {
-                    "header": ["House", "Name", "House Style"],
-                    "rows": rows
-                }
-                solutions.append(sol)
+    # Fixed assignment from clue 2: Eric is in house 1
+    name_assignment = {1: 'Eric', 2: 'Arnold'}
     
-    output = {"solution": solutions[0]} if solutions else {"solution": {}}
+    # Generate permutations for house styles
+    style_permutations = list(permutations(house_styles))
+    valid_style_assignment = None
+    
+    # Check clue 1: Victorian left of Colonial
+    for perm in style_permutations:
+        victorian_house = None
+        colonial_house = None
+        
+        # Map styles to houses
+        for idx, style in enumerate(perm):
+            house_num = idx + 1
+            if style == 'victorian':
+                victorian_house = house_num
+            elif style == 'colonial':
+                colonial_house = house_num
+        
+        # Verify constraint
+        if victorian_house is not None and colonial_house is not None:
+            if victorian_house < colonial_house:
+                valid_style_assignment = perm
+                break
+    
+    # Build solution rows
+    rows = []
+    for house in houses:
+        row = [str(house), name_assignment[house], valid_style_assignment[house-1]]
+        rows.append(row)
+    
+    # Construct output dictionary
+    output = {
+        "solution": {
+            "header": ["House", "Name", "HouseStyle"],
+            "rows": rows
+        }
+    }
+    
+    # Output as JSON
     print(json.dumps(output))
 
 if __name__ == "__main__":

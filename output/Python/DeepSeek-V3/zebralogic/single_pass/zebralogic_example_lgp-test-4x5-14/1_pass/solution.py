@@ -2,143 +2,174 @@ import json
 from itertools import permutations
 
 def solve_puzzle():
-    # Define all possible categories and options
-    houses = ['1', '2', '3', '4']
+    # Define all possible options for each category
     names = ['Peter', 'Alice', 'Eric', 'Arnold']
     mothers = ['Janelle', 'Holly', 'Aniya', 'Kailyn']
     smoothies = ['watermelon', 'dragonfruit', 'desert', 'cherry']
     heights = ['tall', 'average', 'short', 'very short']
     educations = ['high school', 'associate', 'master', 'bachelor']
-
-    # Generate all possible permutations for each category
+    
+    # Generate all possible permutations for each house
     for name_perm in permutations(names):
         for mother_perm in permutations(mothers):
             for smoothie_perm in permutations(smoothies):
                 for height_perm in permutations(heights):
                     for education_perm in permutations(educations):
-                        # Create a dictionary to hold the current assignment
-                        assignment = {
-                            '1': {'Name': None, "mother's name": None, 'smoothie': None, 'height': None, 'education': None},
-                            '2': {'Name': None, "mother's name": None, 'smoothie': None, 'height': None, 'education': None},
-                            '3': {'Name': None, "mother's name": None, 'smoothie': None, 'height': None, 'education': None},
-                            '4': {'Name': None, "mother's name": None, 'smoothie': None, 'height': None, 'education': None}
-                        }
-                        
-                        # Assign current permutation values to houses
-                        for i, house in enumerate(houses):
-                            assignment[house]['Name'] = name_perm[i]
-                            assignment[house]["mother's name"] = mother_perm[i]
-                            assignment[house]['smoothie'] = smoothie_perm[i]
-                            assignment[house]['height'] = height_perm[i]
-                            assignment[house]['education'] = education_perm[i]
+                        # Create a list of houses with all attributes
+                        houses = [
+                            {
+                                'House': '1',
+                                'Name': name_perm[0],
+                                'Mother': mother_perm[0],
+                                'Smoothie': smoothie_perm[0],
+                                'Height': height_perm[0],
+                                'Education': education_perm[0]
+                            },
+                            {
+                                'House': '2',
+                                'Name': name_perm[1],
+                                'Mother': mother_perm[1],
+                                'Smoothie': smoothie_perm[1],
+                                'Height': height_perm[1],
+                                'Education': education_perm[1]
+                            },
+                            {
+                                'House': '3',
+                                'Name': name_perm[2],
+                                'Mother': mother_perm[2],
+                                'Smoothie': smoothie_perm[2],
+                                'Height': height_perm[2],
+                                'Education': education_perm[2]
+                            },
+                            {
+                                'House': '4',
+                                'Name': name_perm[3],
+                                'Mother': mother_perm[3],
+                                'Smoothie': smoothie_perm[3],
+                                'Height': height_perm[3],
+                                'Education': education_perm[3]
+                            }
+                        ]
                         
                         # Check all constraints
-                        # Constraint 1: Janelle is in house 3
-                        if assignment['3']["mother's name"] != 'Janelle':
+                        valid = True
+                        
+                        # Clue 1: Janelle is in the third house
+                        if houses[2]['Mother'] != 'Janelle':
+                            valid = False
                             continue
                         
-                        # Constraint 2: Desert smoothie lover has master's degree
-                        desert_house = None
+                        # Clue 2: Desert smoothie lover has master's degree
                         for house in houses:
-                            if assignment[house]['smoothie'] == 'desert':
-                                desert_house = house
+                            if house['Smoothie'] == 'desert' and house['Education'] != 'master':
+                                valid = False
                                 break
-                        if desert_house is None or assignment[desert_house]['education'] != 'master':
+                        if not valid:
                             continue
                         
-                        # Constraint 3: Desert smoothie lover is not in house 1
-                        if desert_house == '1':
+                        # Clue 3: Desert smoothie lover is not in the first house
+                        if houses[0]['Smoothie'] == 'desert':
+                            valid = False
                             continue
                         
-                        # Constraint 4: very short is left of high school
-                        very_short_house = None
-                        high_school_house = None
+                        # Clue 4: very short is left of high school
+                        very_short_pos = None
+                        high_school_pos = None
+                        for i, house in enumerate(houses):
+                            if house['Height'] == 'very short':
+                                very_short_pos = i
+                            if house['Education'] == 'high school':
+                                high_school_pos = i
+                        if very_short_pos is None or high_school_pos is None or very_short_pos >= high_school_pos:
+                            valid = False
+                            continue
+                        
+                        # Clue 5: Eric and cherry smoothie are next to each other
+                        eric_pos = None
+                        cherry_pos = None
+                        for i, house in enumerate(houses):
+                            if house['Name'] == 'Eric':
+                                eric_pos = i
+                            if house['Smoothie'] == 'cherry':
+                                cherry_pos = i
+                        if eric_pos is None or cherry_pos is None or abs(eric_pos - cherry_pos) != 1:
+                            valid = False
+                            continue
+                        
+                        # Clue 6: high school not in third house
+                        if houses[2]['Education'] == 'high school':
+                            valid = False
+                            continue
+                        
+                        # Clue 7: Kailyn's mother has associate's degree
                         for house in houses:
-                            if assignment[house]['height'] == 'very short':
-                                very_short_house = house
-                            if assignment[house]['education'] == 'high school':
-                                high_school_house = house
-                        if very_short_house is None or high_school_house is None or int(very_short_house) >= int(high_school_house):
-                            continue
-                        
-                        # Constraint 5: Eric and cherry lover are next to each other
-                        eric_house = None
-                        cherry_house = None
-                        for house in houses:
-                            if assignment[house]['Name'] == 'Eric':
-                                eric_house = house
-                            if assignment[house]['smoothie'] == 'cherry':
-                                cherry_house = house
-                        if eric_house is None or cherry_house is None or abs(int(eric_house) - int(cherry_house)) != 1:
-                            continue
-                        
-                        # Constraint 6: high school is not in house 3
-                        if high_school_house == '3':
-                            continue
-                        
-                        # Constraint 7: Kailyn's child has associate degree
-                        kailyn_house = None
-                        for house in houses:
-                            if assignment[house]["mother's name"] == 'Kailyn':
-                                kailyn_house = house
+                            if house['Mother'] == 'Kailyn' and house['Education'] != 'associate':
+                                valid = False
                                 break
-                        if kailyn_house is None or assignment[kailyn_house]['education'] != 'associate':
+                        if not valid:
                             continue
                         
-                        # Constraint 8: cherry lover's mother is Aniya
-                        if cherry_house is not None and assignment[cherry_house]["mother's name"] != 'Aniya':
-                            continue
-                        
-                        # Constraint 9: tall person's mother is Janelle (house 3)
-                        if assignment['3']['height'] != 'tall':
-                            continue
-                        
-                        # Constraint 10: Arnold is right of average height
-                        average_house = None
-                        arnold_house = None
+                        # Clue 8: cherry smoothie lover's mother is Aniya
                         for house in houses:
-                            if assignment[house]['height'] == 'average':
-                                average_house = house
-                            if assignment[house]['Name'] == 'Arnold':
-                                arnold_house = house
-                        if average_house is None or arnold_house is None or int(arnold_house) <= int(average_house):
+                            if house['Smoothie'] == 'cherry' and house['Mother'] != 'Aniya':
+                                valid = False
+                                break
+                        if not valid:
                             continue
                         
-                        # Constraint 11: dragonfruit is directly left of short
-                        dragonfruit_house = None
-                        short_house = None
+                        # Clue 9: tall person's mother is Janelle
                         for house in houses:
-                            if assignment[house]['smoothie'] == 'dragonfruit':
-                                dragonfruit_house = house
-                            if assignment[house]['height'] == 'short':
-                                short_house = house
-                        if dragonfruit_house is None or short_house is None or int(short_house) - int(dragonfruit_house) != 1:
+                            if house['Height'] == 'tall' and house['Mother'] != 'Janelle':
+                                valid = False
+                                break
+                        if not valid:
                             continue
                         
-                        # Constraint 12: tall person is Alice
-                        if assignment['3']['Name'] != 'Alice':
+                        # Clue 10: Arnold is right of average height
+                        average_pos = None
+                        arnold_pos = None
+                        for i, house in enumerate(houses):
+                            if house['Height'] == 'average':
+                                average_pos = i
+                            if house['Name'] == 'Arnold':
+                                arnold_pos = i
+                        if average_pos is None or arnold_pos is None or arnold_pos <= average_pos:
+                            valid = False
+                            continue
+                        
+                        # Clue 11: dragonfruit lover is directly left of short person
+                        dragon_pos = None
+                        short_pos = None
+                        for i, house in enumerate(houses):
+                            if house['Smoothie'] == 'dragonfruit':
+                                dragon_pos = i
+                            if house['Height'] == 'short':
+                                short_pos = i
+                        if dragon_pos is None or short_pos is None or (dragon_pos + 1) != short_pos:
+                            valid = False
+                            continue
+                        
+                        # Clue 12: tall person is Alice
+                        for house in houses:
+                            if house['Height'] == 'tall' and house['Name'] != 'Alice':
+                                valid = False
+                                break
+                        if not valid:
                             continue
                         
                         # If all constraints are satisfied, return the solution
-                        solution = {
-                            "solution": {
-                                "header": ["House", "Name", "mother's name", "smoothie", "height", "education"],
-                                "rows": []
+                        if valid:
+                            solution = {
+                                "solution": {
+                                    "header": ["House", "Name", "Mother", "Smoothie", "Height", "Education"],
+                                    "rows": [
+                                        [house['House'], house['Name'], house['Mother'], house['Smoothie'], house['Height'], house['Education']]
+                                        for house in houses
+                                    ]
+                                }
                             }
-                        }
-                        for house in houses:
-                            row = [
-                                house,
-                                assignment[house]['Name'],
-                                assignment[house]["mother's name"],
-                                assignment[house]['smoothie'],
-                                assignment[house]['height'],
-                                assignment[house]['education']
-                            ]
-                            solution["solution"]["rows"].append(row)
-                        return solution
-    return {"solution": {"header": [], "rows": []}}
+                            return json.dumps(solution, indent=2)
+    
+    return json.dumps({"solution": {"header": [], "rows": []}})
 
-if __name__ == "__main__":
-    solution = solve_puzzle()
-    print(json.dumps(solution, indent=2))
+print(solve_puzzle())

@@ -10,167 +10,159 @@ def solve_puzzle():
     occupations = ['engineer', 'doctor', 'lawyer', 'artist', 'teacher']
     hair_colors = ['red', 'blonde', 'black', 'gray', 'brown']
 
-    # Initialize the solution structure
+    # Initialize solution structure
     solution = {
         "solution": {
-            "header": ["House", "Name", "birthday month", "mother's name", "occupation", "hair color"],
+            "header": ["House", "Name", "Birthday", "Mother", "Occupation", "HairColor"],
             "rows": []
         }
     }
 
     # Generate all possible permutations for each category
-    for name_order in permutations(names):
-        for month_order in permutations(months):
-            for mother_order in permutations(mothers):
-                for occupation_order in permutations(occupations):
-                    for hair_order in permutations(hair_colors):
-                        # Create a list of houses with their attributes
-                        houses_data = []
+    for name_perm in permutations(names):
+        for month_perm in permutations(months):
+            for mother_perm in permutations(mothers):
+                for occ_perm in permutations(occupations):
+                    for hair_perm in permutations(hair_colors):
+                        # Create a dictionary for each house
+                        assignment = []
                         valid = True
                         for i in range(5):
                             house = {
                                 "House": str(i+1),
-                                "Name": name_order[i],
-                                "birthday month": month_order[i],
-                                "mother's name": mother_order[i],
-                                "occupation": occupation_order[i],
-                                "hair color": hair_order[i]
+                                "Name": name_perm[i],
+                                "Birthday": month_perm[i],
+                                "Mother": mother_perm[i],
+                                "Occupation": occ_perm[i],
+                                "HairColor": hair_perm[i]
                             }
-                            houses_data.append(house)
+                            assignment.append(house)
 
-                        # Apply the constraints
-                        # Constraint 1: March is in house 5
-                        if houses_data[4]["birthday month"] != "mar":
-                            valid = False
+                        # Check all constraints
+                        # Constraint 1: mar in house 5
+                        if assignment[4]["Birthday"] != 'mar':
                             continue
-                        # Constraint 2: February is in house 1
-                        if houses_data[0]["birthday month"] != "feb":
-                            valid = False
+                        # Constraint 2: feb in house 1
+                        if assignment[0]["Birthday"] != 'feb':
                             continue
-                        # Constraint 3: Eric is the doctor
-                        for house in houses_data:
-                            if house["Name"] == "Eric" and house["occupation"] != "doctor":
+                        # Constraint 3: doctor is Eric
+                        for house in assignment:
+                            if house["Occupation"] == 'doctor' and house["Name"] != 'Eric':
                                 valid = False
                                 break
                         if not valid:
                             continue
-                        # Constraint 4: Janelle is mother in house 3
-                        if houses_data[2]["mother's name"] != "Janelle":
-                            valid = False
+                        # Constraint 4: mother Janelle in house 3
+                        if assignment[2]["Mother"] != 'Janelle':
                             continue
                         # Constraint 5: artist has brown hair
-                        for house in houses_data:
-                            if house["occupation"] == "artist" and house["hair color"] != "brown":
+                        for house in assignment:
+                            if house["Occupation"] == 'artist' and house["HairColor"] != 'brown':
                                 valid = False
                                 break
                         if not valid:
                             continue
-                        # Constraint 6: artist is in house 4
-                        if houses_data[3]["occupation"] != "artist":
-                            valid = False
+                        # Constraint 6: artist in house 4
+                        if assignment[3]["Occupation"] != 'artist':
                             continue
-                        # Constraint 7: Penny is left of black hair
+                        # Constraint 7: Penny left of black hair
                         penny_pos = None
-                        black_hair_pos = None
-                        for i, house in enumerate(houses_data):
-                            if house["mother's name"] == "Penny":
+                        black_pos = None
+                        for i in range(5):
+                            if assignment[i]["Mother"] == 'Penny':
                                 penny_pos = i
-                            if house["hair color"] == "black":
-                                black_hair_pos = i
-                        if penny_pos is None or black_hair_pos is None or penny_pos >= black_hair_pos:
-                            valid = False
+                            if assignment[i]["HairColor"] == 'black':
+                                black_pos = i
+                        if penny_pos is None or black_pos is None or penny_pos >= black_pos:
                             continue
                         # Constraint 8: Peter has black hair
-                        for house in houses_data:
-                            if house["Name"] == "Peter" and house["hair color"] != "black":
+                        for house in assignment:
+                            if house["Name"] == 'Peter' and house["HairColor"] != 'black':
                                 valid = False
                                 break
                         if not valid:
                             continue
                         # Constraint 9: gray hair is teacher
-                        for house in houses_data:
-                            if house["hair color"] == "gray" and house["occupation"] != "teacher":
+                        for house in assignment:
+                            if house["HairColor"] == 'gray' and house["Occupation"] != 'teacher':
                                 valid = False
                                 break
                         if not valid:
                             continue
                         # Constraint 10: Alice's mother is Kailyn
-                        for house in houses_data:
-                            if house["Name"] == "Alice" and house["mother's name"] != "Kailyn":
+                        for house in assignment:
+                            if house["Name"] == 'Alice' and house["Mother"] != 'Kailyn':
                                 valid = False
                                 break
                         if not valid:
                             continue
-                        # Constraint 11: Arnold is right of sept birthday
-                        sept_pos = None
+                        # Constraint 11: Arnold right of sept
                         arnold_pos = None
-                        for i, house in enumerate(houses_data):
-                            if house["birthday month"] == "sept":
-                                sept_pos = i
-                            if house["Name"] == "Arnold":
+                        sept_pos = None
+                        for i in range(5):
+                            if assignment[i]["Name"] == 'Arnold':
                                 arnold_pos = i
-                        if sept_pos is None or arnold_pos is None or arnold_pos <= sept_pos:
-                            valid = False
+                            if assignment[i]["Birthday"] == 'sept':
+                                sept_pos = i
+                        if arnold_pos is None or sept_pos is None or arnold_pos <= sept_pos:
                             continue
                         # Constraint 12: brown hair is jan birthday
-                        for house in houses_data:
-                            if house["hair color"] == "brown" and house["birthday month"] != "jan":
+                        for house in assignment:
+                            if house["HairColor"] == 'brown' and house["Birthday"] != 'jan':
                                 valid = False
                                 break
                         if not valid:
                             continue
                         # Constraint 13: Arnold has blonde hair
-                        for house in houses_data:
-                            if house["Name"] == "Arnold" and house["hair color"] != "blonde":
+                        for house in assignment:
+                            if house["Name"] == 'Arnold' and house["HairColor"] != 'blonde':
                                 valid = False
                                 break
                         if not valid:
                             continue
-                        # Constraint 14: Holly is mother of black hair
-                        for house in houses_data:
-                            if house["hair color"] == "black" and house["mother's name"] != "Holly":
+                        # Constraint 14: mother Holly has black hair
+                        for house in assignment:
+                            if house["Mother"] == 'Holly' and house["HairColor"] != 'black':
                                 valid = False
                                 break
                         if not valid:
                             continue
                         # Constraint 15: Peter is lawyer
-                        for house in houses_data:
-                            if house["Name"] == "Peter" and house["occupation"] != "lawyer":
+                        for house in assignment:
+                            if house["Name"] == 'Peter' and house["Occupation"] != 'lawyer':
                                 valid = False
                                 break
                         if not valid:
                             continue
-                        # Constraint 16: sept is left of Kailyn (Alice's mother)
-                        alice_pos = None
-                        for i, house in enumerate(houses_data):
-                            if house["Name"] == "Alice":
-                                alice_pos = i
-                        if sept_pos is None or alice_pos is None or sept_pos >= alice_pos:
-                            valid = False
+                        # Constraint 16: sept left of Kailyn
+                        kailyn_pos = None
+                        for i in range(5):
+                            if assignment[i]["Mother"] == 'Kailyn':
+                                kailyn_pos = i
+                        if sept_pos is None or kailyn_pos is None or sept_pos >= kailyn_pos:
                             continue
                         # Constraint 17: Alice has gray hair
-                        for house in houses_data:
-                            if house["Name"] == "Alice" and house["hair color"] != "gray":
+                        for house in assignment:
+                            if house["Name"] == 'Alice' and house["HairColor"] != 'gray':
                                 valid = False
                                 break
                         if not valid:
                             continue
 
-                        # If all constraints are satisfied, build the solution
-                        if valid:
-                            rows = []
-                            for house in houses_data:
-                                row = [
-                                    house["House"],
-                                    house["Name"],
-                                    house["birthday month"],
-                                    house["mother's name"],
-                                    house["occupation"],
-                                    house["hair color"]
-                                ]
-                                rows.append(row)
-                            solution["solution"]["rows"] = rows
-                            return json.dumps(solution, indent=2)
+                        # If all constraints passed, format the solution
+                        rows = []
+                        for house in assignment:
+                            row = [
+                                house["House"],
+                                house["Name"],
+                                house["Birthday"],
+                                house["Mother"],
+                                house["Occupation"],
+                                house["HairColor"]
+                            ]
+                            rows.append(row)
+                        solution["solution"]["rows"] = rows
+                        return json.dumps(solution, indent=2)
 
     return json.dumps(solution, indent=2)
 

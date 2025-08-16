@@ -1,111 +1,171 @@
+import itertools
 import json
 
-def check_unary_constraints(index, name, child, smoothie):
-    if name == 'Alice':
-        if child != 'Alice':
-            return False
-        if smoothie != 'watermelon':
-            return False
-    if child == 'Alice':
-        if name != 'Alice':
-            return False
-    if name == 'Bob':
-        if child != 'Timothy':
-            return False
-    if child == 'Timothy':
-        if name != 'Bob':
-            return False
-    if index == 4:
-        if name == 'Alice':
-            return False
-    if index == 1:
-        if child == 'Samantha':
-            return False
-        if name == 'Arnold':
-            return False
-    if child == 'Meredith':
-        return False
-    if smoothie == 'dragonfruit':
-        return False
-    if smoothie == 'watermelon':
-        if name != 'Alice':
-            return False
-    return True
+def main():
+    all_names = ["Arnold", "Peter", "Carol", "Alice", "Bob", "Eric"]
+    all_children = ["Alice", "Timothy", "Bella", "Meredith", "Fred", "Samantha"]
+    all_smoothies = ["desert", "cherry", "watermelon", "blueberry", "lime", "dragonfruit"]
+    
+    # We'll try each possible house for Alice (not house5, index4; and not house6, index5 because house6 child is fixed to Meredith)
+    for a_house in [0, 1, 2, 3]:
+        names = [None] * 6
+        children = [None] * 6
+        smoothies = [None] * 6
+        
+        # Set fixed Alice house
+        names[a_house] = "Alice"
+        children[a_house] = "Alice"
+        smoothies[a_house] = "watermelon"
+        
+        # Set fixed house6 (index5)
+        children[5] = "Meredith"
+        smoothies[5] = "dragonfruit"
+        
+        # Free houses for names: all houses except a_house (5 houses)
+        free_houses_names = [i for i in range(6) if i != a_house]
+        remaining_names = [n for n in all_names if n != "Alice"]
+        
+        # Free houses for children and smoothies: houses that are not a_house and not 5 (4 houses)
+        free_houses_children = [i for i in range(6) if i != a_house and i != 5]
+        remaining_children = [c for c in all_children if c != "Alice" and c != "Meredith"]
+        
+        free_houses_smoothies = free_houses_children[:]  # same houses
+        remaining_smoothies = [s for s in all_smoothies if s != "watermelon" and s != "dragonfruit"]
+        
+        # Generate all permutations for the remaining names
+        for name_perm in itertools.permutations(remaining_names):
+            for idx, house in enumerate(free_houses_names):
+                names[house] = name_perm[idx]
+            
+            # Generate all permutations for the remaining children
+            for child_perm in itertools.permutations(remaining_children):
+                for idx, house in enumerate(free_houses_children):
+                    children[house] = child_perm[idx]
+                
+                # Generate all permutations for the remaining smoothies
+                for smoothie_perm in itertools.permutations(remaining_smoothies):
+                    for idx, house in enumerate(free_houses_smoothies):
+                        smoothies[house] = smoothie_perm[idx]
+                    
+                    # Check all constraints
+                    if check_constraints(names, children, smoothies, a_house):
+                        # Format the solution
+                        solution = {
+                            "header": ["House", "Name", "Children", "Smoothie"],
+                            "rows": []
+                        }
+                        for i in range(6):
+                            row = [str(i+1), names[i], children[i], smoothies[i]]
+                            solution["rows"].append(row)
+                        
+                        result = {"solution": solution}
+                        print(json.dumps(result))
+                        return
 
-def check_binary_constraints(name_positions, child_positions, smoothie_positions):
-    if 'Fred' in child_positions and 'desert' in smoothie_positions:
-        if abs(child_positions['Fred'] - smoothie_positions['desert']) != 1:
-            return False
-    if 'blueberry' in smoothie_positions and 'Fred' in child_positions:
-        if smoothie_positions['blueberry'] >= child_positions['Fred']:
-            return False
-    if 'cherry' in smoothie_positions and 'watermelon' in smoothie_positions:
-        if smoothie_positions['cherry'] >= smoothie_positions['watermelon']:
-            return False
-    if 'Peter' in name_positions and 'Samantha' in child_positions:
-        if name_positions['Peter'] <= child_positions['Samantha']:
-            return False
-    if 'Arnold' in name_positions and 'Carol' in name_positions:
-        if name_positions['Arnold'] != name_positions['Carol'] - 1:
-            return False
-    if 'cherry' in smoothie_positions and 'Samantha' in child_positions:
-        if smoothie_positions['cherry'] != child_positions['Samantha'] - 1:
-            return False
-    return True
+    # If no solution found, output an empty solution
+    result = {
+        "solution": {
+            "header": ["House", "Name", "Children", "Smoothie"],
+            "rows": []
+        }
+    }
+    print(json.dumps(result))
 
-def backtrack(index, state, available_names, available_children, available_smoothies, name_positions, child_positions, smoothie_positions):
-    if index == 5:
-        return state
-    for name in available_names:
-        for child in available_children:
-            for smoothie in available_smoothies:
-                if not check_unary_constraints(index, name, child, smoothie):
-                    continue
-                new_avail_names = available_names - {name}
-                new_avail_children = available_children - {child}
-                new_avail_smoothies = available_smoothies - {smoothie}
-                new_state = state[:]
-                new_state[index] = (name, child, smoothie)
-                new_name_pos = name_positions.copy()
-                new_child_pos = child_positions.copy()
-                new_smoothie_pos = smoothie_positions.copy()
-                new_name_pos[name] = index
-                new_child_pos[child] = index
-                new_smoothie_pos[smoothie] = index
-                if not check_binary_constraints(new_name_pos, new_child_pos, new_smoothie_pos):
-                    continue
-                res = backtrack(index+1, new_state, new_avail_names, new_avail_children, new_avail_smoothies, new_name_pos, new_child_pos, new_smoothie_pos)
-                if res is not None:
-                    return res
-    return None
-
-names = ['Arnold','Peter','Carol','Alice','Bob','Eric']
-children = ['Alice','Timothy','Bella','Meredith','Fred','Samantha']
-smoothies = ['desert','cherry','watermelon','blueberry','lime','dragonfruit']
-
-solution_found = None
-for name6 in names:
-    state = [None] * 6
-    state[5] = (name6, 'Meredith', 'dragonfruit')
-    avail_names = set(names) - {name6}
-    avail_children = set(children) - {'Meredith'}
-    avail_smoothies = set(smoothies) - {'dragonfruit'}
-    name_pos = {name6: 5}
-    child_pos = {'Meredith': 5}
-    smoothie_pos = {'dragonfruit': 5}
-    sol = backtrack(0, state, avail_names, avail_children, avail_smoothies, name_pos, child_pos, smoothie_pos)
-    if sol is not None:
-        solution_found = sol
-        break
-
-if solution_found is None:
-    print(json.dumps({"error": "No solution found"}))
-else:
-    header = ["House", "Name", "Child", "Smoothie"]
-    rows = []
+def check_constraints(names, children, smoothies, a_house):
+    # Clue1: Child Fred and desert smoothie are next to each other.
+    fred_house = None
     for i in range(6):
-        house_num = str(i+1)
-        name_val, child_val, smoothie_val = solution_found[i]
-        rows.append([house_num, name_val, child_val, smoothie_val])
-    output = {"solution": {"header": header, "rows": rows}}
-    print(json.dumps(output))
+        if children[i] == "Fred":
+            fred_house = i
+            break
+    if fred_house is None:
+        return False
+        
+    desert_house = None
+    for i in range(6):
+        if smoothies[i] == "desert":
+            desert_house = i
+            break
+    if desert_house is None:
+        return False
+        
+    if abs(fred_house - desert_house) != 1:
+        return False
+        
+    # Clue2: Blueberry smoothie is left of child Fred.
+    blueberry_house = None
+    for i in range(6):
+        if smoothies[i] == "blueberry":
+            blueberry_house = i
+            break
+    if blueberry_house is None:
+        return False
+    if blueberry_house >= fred_house:
+        return False
+        
+    # Clue4: Child Samantha is not in house2 (index1).
+    if children[1] == "Samantha":
+        return False
+        
+    # Clue5: Watermelon (at a_house) is right of Cherry.
+    cherry_house = None
+    for i in range(6):
+        if smoothies[i] == "cherry":
+            cherry_house = i
+            break
+    if cherry_house is None:
+        return False
+    if cherry_house >= a_house:
+        return False
+        
+    # Clue8: Peter is right of child Samantha.
+    samantha_house = None
+    for i in range(6):
+        if children[i] == "Samantha":
+            samantha_house = i
+            break
+    if samantha_house is None:
+        return False
+        
+    peter_house = None
+    for i in range(6):
+        if names[i] == "Peter":
+            peter_house = i
+            break
+    if peter_house is None:
+        return False
+    if peter_house <= samantha_house:
+        return False
+        
+    # Clue9: Arnold not in house2 (index1).
+    if names[1] == "Arnold":
+        return False
+        
+    # Clue10: Bob is mother of Timothy.
+    found_bob = False
+    for i in range(6):
+        if names[i] == "Bob" and children[i] == "Timothy":
+            found_bob = True
+            break
+    if not found_bob:
+        return False
+        
+    # Clue11: Arnold directly left of Carol.
+    found_arnold_carol = False
+    for i in range(5):
+        if names[i] == "Arnold" and names[i+1] == "Carol":
+            found_arnold_carol = True
+            break
+    if not found_arnold_carol:
+        return False
+        
+    # Clue12: Cherry smoothie directly left of child Samantha.
+    if cherry_house == 5:
+        return False
+    if children[cherry_house+1] != "Samantha":
+        return False
+        
+    return True
+
+if __name__ == "__main__":
+    main()

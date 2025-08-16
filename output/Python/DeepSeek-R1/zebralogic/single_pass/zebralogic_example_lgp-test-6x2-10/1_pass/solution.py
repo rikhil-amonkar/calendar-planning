@@ -2,103 +2,96 @@ import itertools
 import json
 
 def main():
-    fixed_names = {2: 'Eric', 6: 'Carol'}
-    fixed_music = {3: 'hip hop', 6: 'country'}
+    all_names = ["Arnold", "Eric", "Peter", "Alice", "Carol", "Bob"]
+    all_genres = ["jazz", "pop", "classical", "rock", "hip hop", "country"]
     
-    remaining_houses_names = [1, 3, 4, 5]
-    remaining_names = ['Arnold', 'Peter', 'Alice', 'Bob']
+    # Fixed positions
+    fixed_name_indices = {5: "Carol"}  # House 6 (index 5) is Carol
+    fixed_genre_indices = {2: "hip hop", 5: "country"}  # House 3 (index 2) has hip hop, House 6 (index 5) has country
     
-    remaining_houses_music = [1, 2, 4, 5]
-    remaining_music = ['jazz', 'pop', 'classical', 'rock']
+    # Prepare remaining names and genres
+    remaining_names = [n for n in all_names if n not in fixed_name_indices.values()]
+    remaining_genres = [g for g in all_genres if g not in fixed_genre_indices.values()]
     
-    solution_found = None
-    
+    # Generate permutations for the non-fixed houses
     for name_perm in itertools.permutations(remaining_names):
-        name_assignment = fixed_names.copy()
-        for idx, house in enumerate(remaining_houses_names):
-            name_assignment[house] = name_perm[idx]
+        names = list(name_perm)
+        names.append(fixed_name_indices[5])  # Add Carol at index 5
         
-        for music_perm in itertools.permutations(remaining_music):
-            music_assignment = fixed_music.copy()
-            for idx, house in enumerate(remaining_houses_music):
-                music_assignment[house] = music_perm[idx]
-            
-            # Clue 1: Bob is directly left of jazz
-            bob_house = None
-            for house, name in name_assignment.items():
-                if name == 'Bob':
-                    bob_house = house
-                    break
-            jazz_house = None
-            for house, music in music_assignment.items():
-                if music == 'jazz':
-                    jazz_house = house
-                    break
-            if bob_house is None or jazz_house is None or (bob_house + 1) != jazz_house:
-                continue
-            
-            # Clue 7: Arnold is to the right of pop
-            arnold_house = None
-            for house, name in name_assignment.items():
-                if name == 'Arnold':
-                    arnold_house = house
-                    break
-            pop_house = None
-            for house, music in music_assignment.items():
-                if music == 'pop':
-                    pop_house = house
-                    break
-            if arnold_house is None or pop_house is None or not (arnold_house > pop_house):
-                continue
-            
-            # Clue 8: Pop music must be Peter
-            if name_assignment.get(pop_house) != 'Peter':
-                continue
-            
-            # Clue 10: One house between Peter and Bob
-            peter_house = None
-            for house, name in name_assignment.items():
-                if name == 'Peter':
-                    peter_house = house
-                    break
-            if peter_house is None or abs(peter_house - bob_house) != 2:
-                continue
-            
-            # Clue 11: Rock not in house 5
-            if music_assignment.get(5) == 'rock':
-                continue
-            
-            solution_found = (name_assignment, music_assignment)
-            break
+        # Eric must be in house 2 (index 1) due to constraints 2 and 4
+        if names[1] != "Eric":
+            continue
+        # Arnold cannot be in house 5 (index 4) due to constraint 6
+        if names[4] == "Arnold":
+            continue
         
-        if solution_found:
-            break
-    
-    if solution_found:
-        name_assignment, music_assignment = solution_found
-        rows = []
-        for house in range(1, 7):
-            rows.append([
-                str(house),
-                name_assignment[house],
-                music_assignment[house]
-            ])
-        
-        result = {
-            "solution": {
-                "header": ["House", "Name", "Music"],
-                "rows": rows
+        for genre_perm in itertools.permutations(remaining_genres):
+            genres = [None] * 6
+            genres[2] = fixed_genre_indices[2]  # hip hop at index 2
+            genres[5] = fixed_genre_indices[5]  # country at index 5
+            genres[0] = genre_perm[0]
+            genres[1] = genre_perm[1]
+            genres[3] = genre_perm[2]
+            genres[4] = genre_perm[3]
+            
+            # Constraint 11: Rock not in fifth house (index 4)
+            if genres[4] == "rock":
+                continue
+            
+            # Constraint 1: Bob directly left of jazz
+            try:
+                bob_index = names.index("Bob")
+            except ValueError:
+                continue
+            if bob_index == 5:  # Bob cannot be in the last house
+                continue
+            if genres[bob_index + 1] != "jazz":
+                continue
+            
+            # Constraint 7: Arnold right of pop
+            try:
+                pop_index = genres.index("pop")
+            except ValueError:
+                continue
+            try:
+                arnold_index = names.index("Arnold")
+            except ValueError:
+                continue
+            if arnold_index <= pop_index:
+                continue
+            
+            # Constraint 8: Peter has pop
+            try:
+                peter_index = names.index("Peter")
+            except ValueError:
+                continue
+            if genres[peter_index] != "pop":
+                continue
+            
+            # Constraint 10: One house between Peter and Bob
+            if abs(peter_index - bob_index) != 2:
+                continue
+            
+            # All constraints satisfied, prepare output
+            header = ["House", "Name", "MusicGenre"]
+            rows = []
+            for i in range(6):
+                house_num = str(i + 1)
+                name_val = names[i]
+                genre_val = genres[i]
+                rows.append([house_num, name_val, genre_val])
+            
+            solution_dict = {
+                "solution": {
+                    "header": header,
+                    "rows": rows
+                }
             }
-        }
-    else:
-        result = {
-            "solution": {
-                "header": ["House", "Name", "Music"],
-                "rows": []
-            }
-        }
+            print(json.dumps(solution_dict))
+            return
     
-    print(json.dumps(result))
+    # If no solution found
+    print(json.dumps({"solution": {}}))
 
 if __name__ == "__main__":
     main()

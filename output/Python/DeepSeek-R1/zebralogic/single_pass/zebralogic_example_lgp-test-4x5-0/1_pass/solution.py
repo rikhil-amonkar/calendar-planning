@@ -1,3 +1,4 @@
+import itertools
 import json
 
 def main():
@@ -7,213 +8,91 @@ def main():
     heights = ['tall', 'average', 'short', 'very short']
     phones = ['google pixel 6', 'samsung galaxy s21', 'iphone 13', 'oneplus 9']
     
-    n_houses = 4
+    found = False
+    solution = None
     
-    def constraint_check(assignment, k):
-        houses = assignment
-        n = k + 1
+    for n in itertools.permutations(names):
+        if n[2] == 'Peter':
+            continue
         
-        for i in range(n):
-            # Clue 1: Dragonfruit smoothie lover is Eric
-            if houses[i]['smoothie'] == 'dragonfruit':
-                if houses[i]['name'] != 'Eric':
-                    return False
-            if houses[i]['name'] == 'Eric':
-                if houses[i]['smoothie'] != 'dragonfruit':
-                    return False
+        for s in itertools.permutations(smoothies):
+            idx_eric = n.index('Eric')
+            if s[idx_eric] != 'dragonfruit':
+                continue
+            
+            idx_desert = s.index('desert')
+            idx_watermelon = s.index('watermelon')
+            if idx_watermelon <= idx_desert:
+                continue
+            
+            for c in itertools.permutations(cigars):
+                if c[0] == 'blue master':
+                    continue
+                
+                idx_dunhill = c.index('dunhill')
+                if s[idx_dunhill] != 'cherry':
+                    continue
+                
+                if c[idx_eric] != 'pall mall':
+                    continue
+                
+                for h in itertools.permutations(heights):
+                    if h[2] != 'tall':
+                        continue
                     
-            # Clue 2: Dunhill smoker likes Cherry smoothie
-            if houses[i]['cigar'] == 'dunhill':
-                if houses[i]['smoothie'] != 'cherry':
-                    return False
-            if houses[i]['smoothie'] == 'cherry':
-                if houses[i]['cigar'] != 'dunhill':
-                    return False
+                    idx_very_short = h.index('very short')
+                    if idx_dunhill <= idx_very_short:
+                        continue
                     
-            # Clue 6: Prince smoker uses OnePlus 9
-            if houses[i]['cigar'] == 'prince':
-                if houses[i]['phone'] != 'oneplus 9':
-                    return False
-            if houses[i]['phone'] == 'oneplus 9':
-                if houses[i]['cigar'] != 'prince':
-                    return False
+                    if h[idx_dunhill] != 'short':
+                        continue
                     
-            # Clue 8: Very short uses iPhone 13
-            if houses[i]['height'] == 'very short':
-                if houses[i]['phone'] != 'iphone 13':
-                    return False
-            if houses[i]['phone'] == 'iphone 13':
-                if houses[i]['height'] != 'very short':
-                    return False
-                    
-            # Clue 10: Dunhill smoker is short
-            if houses[i]['cigar'] == 'dunhill':
-                if houses[i]['height'] != 'short':
-                    return False
-            if houses[i]['height'] == 'short':
-                if houses[i]['cigar'] != 'dunhill':
-                    return False
-                    
-            # Clue 12: Arnold uses Google Pixel 6
-            if houses[i]['name'] == 'Arnold':
-                if houses[i]['phone'] != 'google pixel 6':
-                    return False
-            if houses[i]['phone'] == 'google pixel 6':
-                if houses[i]['name'] != 'Arnold':
-                    return False
-                    
-            # Clue 13: Dragonfruit smoothie lover smokes Pall Mall
-            if houses[i]['smoothie'] == 'dragonfruit':
-                if houses[i]['cigar'] != 'pall mall':
-                    return False
-            if houses[i]['cigar'] == 'pall mall':
-                if houses[i]['smoothie'] != 'dragonfruit':
-                    return False
-        
-        # Clue 3: Samsung Galaxy S21 directly left of iPhone 13
-        for i in range(n-1):
-            if houses[i]['phone'] == 'samsung galaxy s21' and houses[i+1]['phone'] != 'iphone 13':
-                return False
-            if houses[i+1]['phone'] == 'iphone 13' and houses[i]['phone'] != 'samsung galaxy s21':
-                return False
-        
-        # Clue 4: Dunhill smoker is right of very short person
-        for i in range(n):
-            if houses[i]['cigar'] == 'dunhill':
-                found = False
-                for j in range(i):
-                    if houses[j]['height'] == 'very short':
+                    for p in itertools.permutations(phones):
+                        idx_samsung = p.index('samsung galaxy s21')
+                        idx_iphone = p.index('iphone 13')
+                        if idx_iphone != idx_samsung + 1:
+                            continue
+                        
+                        if p[idx_very_short] != 'iphone 13':
+                            continue
+                        
+                        idx_prince = c.index('prince')
+                        idx_oneplus = p.index('oneplus 9')
+                        if idx_prince != idx_oneplus:
+                            continue
+                        
+                        idx_arnold = n.index('Arnold')
+                        idx_google = p.index('google pixel 6')
+                        if idx_arnold != idx_google:
+                            continue
+                        
                         found = True
+                        solution = (n, s, c, h, p)
                         break
-                if not found:
-                    return False
-        if n == 4:
-            for i in range(4):
-                if houses[i]['height'] == 'very short':
-                    found = False
-                    for j in range(i+1, 4):
-                        if houses[j]['cigar'] == 'dunhill':
-                            found = True
-                            break
-                    if not found:
-                        return False
-        
-        # Clue 5: Watermelon smoothie lover is right of Desert smoothie lover
-        for i in range(n):
-            if houses[i]['smoothie'] == 'watermelon':
-                found = False
-                for j in range(i):
-                    if houses[j]['smoothie'] == 'desert':
-                        found = True
+                    if found:
                         break
-                if not found:
-                    return False
-        if n == 4:
-            for i in range(4):
-                if houses[i]['smoothie'] == 'desert':
-                    found = False
-                    for j in range(i+1, 4):
-                        if houses[j]['smoothie'] == 'watermelon':
-                            found = True
-                            break
-                    if not found:
-                        return False
-        
-        # Clue 7: Tall person is in third house
-        if n > 2:
-            if houses[2]['height'] != 'tall':
-                return False
-        
-        # Clue 9: Blue Master smoker not in first house
-        if n >= 1:
-            if houses[0]['cigar'] == 'blue master':
-                return False
-        
-        # Clue 11: Peter not in third house
-        if n > 2:
-            if houses[2]['name'] == 'Peter':
-                return False
-        
-        return True
-
-    def backtrack(assignment, used, k):
-        if k == 4:
-            return assignment[:]
-        
-        available_names = [n for n in names if n not in used['name']]
-        available_smoothies = [s for s in smoothies if s not in used['smoothie']]
-        available_cigars = [c for c in cigars if c not in used['cigar']]
-        available_heights = [h for h in heights if h not in used['height']]
-        available_phones = [p for p in phones if p not in used['phone']]
-        
-        for name in available_names:
-            for smoothie in available_smoothies:
-                for cigar in available_cigars:
-                    for height in available_heights:
-                        for phone in available_phones:
-                            candidate = {
-                                'name': name,
-                                'smoothie': smoothie,
-                                'cigar': cigar,
-                                'height': height,
-                                'phone': phone
-                            }
-                            assignment.append(candidate)
-                            used['name'].add(name)
-                            used['smoothie'].add(smoothie)
-                            used['cigar'].add(cigar)
-                            used['height'].add(height)
-                            used['phone'].add(phone)
-                            
-                            if constraint_check(assignment, k):
-                                result = backtrack(assignment, used, k+1)
-                                if result is not None:
-                                    return result
-                            
-                            assignment.pop()
-                            used['name'].remove(name)
-                            used['smoothie'].remove(smoothie)
-                            used['cigar'].remove(cigar)
-                            used['height'].remove(height)
-                            used['phone'].remove(phone)
-        return None
-
-    used = {
-        'name': set(),
-        'smoothie': set(),
-        'cigar': set(),
-        'height': set(),
-        'phone': set()
-    }
-    assignment = []
-    sol = backtrack(assignment, used, 0)
+                if found:
+                    break
+            if found:
+                break
+        if found:
+            break
     
-    if sol is None:
-        print('{"solution": {}}')
-        return
+    if not found:
+        rows = []
+    else:
+        n_perm, s_perm, c_perm, h_perm, p_perm = solution
+        rows = []
+        for i in range(4):
+            rows.append([str(i+1), n_perm[i], s_perm[i], c_perm[i], h_perm[i], p_perm[i]])
     
-    header = ['House', 'Name', 'Smoothie', 'Cigar', 'Height', 'Phone']
-    rows = []
-    for i in range(4):
-        house = sol[i]
-        row = [
-            str(i+1),
-            house['name'],
-            house['smoothie'],
-            house['cigar'],
-            house['height'],
-            house['phone']
-        ]
-        rows.append(row)
-    
-    result_dict = {
+    output = {
         "solution": {
-            "header": header,
+            "header": ["House", "Name", "Smoothie", "Cigar", "Height", "PhoneModel"],
             "rows": rows
         }
     }
-    
-    print(json.dumps(result_dict))
+    print(json.dumps(output))
 
 if __name__ == "__main__":
     main()

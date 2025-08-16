@@ -2,337 +2,288 @@ import json
 from itertools import permutations
 
 def solve_puzzle():
-    # Define all possible values for each category
+    # Define all possible categories and options
     houses = [1, 2, 3, 4, 5, 6]
     names = ['Eric', 'Bob', 'Peter', 'Alice', 'Arnold', 'Carol']
-    cars = ['ford f150', 'honda civic', 'toyota camry', 'tesla model 3', 'chevrolet silverado', 'bmw 3 series']
+    car_models = ['ford f150', 'honda civic', 'toyota camry', 'tesla model 3', 'chevrolet silverado', 'bmw 3 series']
     mothers = ['Sarah', 'Penny', 'Holly', 'Aniya', 'Kailyn', 'Janelle']
     hobbies = ['photography', 'cooking', 'knitting', 'gardening', 'woodworking', 'painting']
-    
-    # We'll represent each house as a dictionary with the categories as keys
-    solution = None
-    
-    # Generate all possible permutations for each category (this is brute-force and inefficient for larger problems)
-    # Instead, we'll use a more efficient constraint satisfaction approach
-    
-    # Initialize possible values for each house
-    from collections import defaultdict
-    possible = {
-        'house': houses,
-        'name': names,
-        'car': cars,
-        'mother': mothers,
-        'hobby': hobbies
-    }
-    
-    # We'll create a list of houses, each with their own possible values
-    houses_data = []
-    for house in houses:
-        houses_data.append({
-            'house': house,
-            'name': names.copy(),
-            'car': cars.copy(),
-            'mother': mothers.copy(),
-            'hobby': hobbies.copy()
-        })
-    
-    # Apply the clues one by one to narrow down possibilities
-    
-    # Clue 1: The person who owns a Toyota Camry is in the sixth house.
-    for h in houses_data:
-        if h['house'] == 6:
-            h['car'] = ['toyota camry']
-        else:
-            if 'toyota camry' in h['car']:
-                h['car'].remove('toyota camry')
-    
-    # Clue 2: Carol is the photography enthusiast.
-    for h in houses_data:
-        if 'Carol' in h['name']:
-            h['hobby'] = ['photography']
-        if 'photography' in h['hobby']:
-            if 'Carol' not in h['name']:
-                h['name'] = [n for n in h['name'] if n != 'Carol'  # Wait, this doesn't make sense
-            # Better approach: if hobby is photography, name must be Carol
-            if 'photography' in h['hobby']:
-                h['name'] = [n for n in h['name'] if n == 'Carol']
-    
-    # Clue 3: The person who owns a Chevrolet Silverado is the person whose mother's name is Aniya.
-    # So for any house, if car is chevrolet silverado, then mother is Aniya, and vice versa
-    # We'll note this constraint and apply it during the solving process
-    
-    # Clue 4: The person who owns a Chevrolet Silverado is not in the second house.
-    for h in houses_data:
-        if h['house'] == 2:
-            if 'chevrolet silverado' in h['car']:
-                h['car'].remove('chevrolet silverado')
-    
-    # Clue 5: The person who owns a Ford F-150 is the person whose mother's name is Sarah.
-    # Similar to clue 3, we'll note this constraint
-    
-    # Clue 6: The person who owns a BMW 3 Series is Bob.
-    for h in houses_data:
-        if 'bmw 3 series' in h['car']:
-            h['name'] = ['Bob']
-        if 'Bob' in h['name']:
-            h['car'] = [c for c in h['car'] if c == 'bmw 3 series']
-    
-    # Clue 7: The person whose mother's name is Kailyn is in the sixth house.
-    for h in houses_data:
-        if h['house'] == 6:
-            h['mother'] = ['Kailyn']
-        else:
-            if 'Kailyn' in h['mother']:
-                h['mother'].remove('Kailyn')
-    
-    # Clue 8: Eric is directly left of the person who enjoys knitting.
-    # This means Eric is in house X, knitting is in house X+1
-    # So Eric cannot be in house 6, and knitting cannot be in house 1
-    
-    # Clue 9: There is one house between the person whose mother's name is Sarah and the person who owns a Toyota Camry.
-    # Toyota camry is in house 6, so Sarah's mother is in house 4 (since 4 -> 5 -> 6)
-    for h in houses_data:
-        if h['house'] == 4:
-            h['mother'] = ['Sarah']
-        else:
-            if 'Sarah' in h['mother']:
-                h['mother'].remove('Sarah')
-    
-    # Clue 10: The person whose mother's name is Penny is somewhere to the right of the person who enjoys knitting.
-    # So knitting is to the left of Penny
-    
-    # Clue 11: The person whose mother's name is Aniya is somewhere to the right of the person who owns a Honda Civic.
-    # So honda civic is to the left of Aniya
-    
-    # Clue 12: Alice is somewhere to the right of the person who owns a Ford F-150.
-    # So ford f150 is to the left of Alice
-    
-    # Clue 13: Eric is the person who enjoys gardening.
-    for h in houses_data:
-        if 'Eric' in h['name']:
-            h['hobby'] = ['gardening']
-        if 'gardening' in h['hobby']:
-            h['name'] = [n for n in h['name'] if n == 'Eric']
-    
-    # Clue 14: The woodworking hobbyist is somewhere to the left of the person who enjoys knitting.
-    # So woodworking is to the left of knitting
-    
-    # Clue 15: There is one house between the person whose mother's name is Sarah and the person who loves cooking.
-    # Sarah is in house 4, so cooking is in house 6 (4 -> 5 -> 6)
-    for h in houses_data:
-        if h['house'] == 6:
-            h['hobby'] = ['cooking']
-        else:
-            if 'cooking' in h['hobby']:
-                h['hobby'].remove('cooking')
-    
-    # Clue 16: The person who owns a Honda Civic is Arnold.
-    for h in houses_data:
-        if 'honda civic' in h['car']:
-            h['name'] = ['Arnold']
-        if 'Arnold' in h['name']:
-            h['car'] = [c for c in h['car'] if c == 'honda civic']
-    
-    # Clue 17: The person whose mother's name is Holly is directly left of the person who enjoys knitting.
-    # So holly is in X, knitting is in X+1
-    
-    # Now, let's try to assign based on the constraints
-    
-    # From clue 13 and 8: Eric is gardening and is directly left of knitting
-    # So possible positions for Eric: 1-5, knitting in 2-6
-    # But knitting is in X+1 where Eric is in X
-    # Also, from clue 17: holly is directly left of knitting, so holly is in Y, knitting in Y+1
-    # Therefore, Eric is in Y, holly is in Y, so Eric's mother is holly
-    for h in houses_data:
-        if 'Eric' in h['name']:
-            h['mother'] = ['Holly']
-            knitting_house = h['house'] + 1
-            # Also, knitting is in h['house'] + 1
-            for h2 in houses_data:
-                if h2['house'] == knitting_house:
-                    h2['hobby'] = ['knitting']
-    
-    # From clue 14: woodworking is left of knitting
-    # So woodworking is in any house < knitting_house
-    
-    # From clue 10: penny is right of knitting
-    # So penny is in any house > knitting_house
-    
-    # From clue 5: ford f150 is sarah's mother, sarah is in house 4
-    for h in houses_data:
-        if h['house'] == 4:
-            h['mother'] = ['Sarah']
-            h['car'] = ['ford f150']
-    
-    # From clue 12: alice is right of ford f150 (house 4)
-    # So alice is in house 5 or 6
-    for h in houses_data:
-        if h['house'] in [1, 2, 3, 4]:
-            if 'Alice' in h['name']:
-                h['name'].remove('Alice')
-    
-    # From clue 3: chevrolet silverado is aniya
-    # From clue 11: aniya is right of honda civic
-    # honda civic is arnold
-    # So find arnold's house (honda civic)
-    arnold_house = None
-    for h in houses_data:
-        if 'Arnold' in h['name']:
-            arnold_house = h['house']
-            break
-    
-    if arnold_house is not None:
-        # aniya is to the right of arnold
-        for h in houses_data:
-            if h['house'] <= arnold_house:
-                if 'Aniya' in h['mother']:
-                    h['mother'].remove('Aniya')
-    
-    # From clue 7: house 6 mother is kailyn
-    # From clue 1: house 6 car is toyota camry
-    # From clue 15: house 6 hobby is cooking
-    # But from clue 2: carol is photography
-    # So if house 6 hobby is cooking, carol is not in house 6
-    for h in houses_data:
-        if h['house'] == 6:
-            h['hobby'] = ['cooking']
-            if 'Carol' in h['name']:
-                h['name'].remove('Carol')
-    
-    # From clue 2: carol is photography, so find where photography is
-    for h in houses_data:
-        if 'photography' in h['hobby']:
-            h['name'] = ['Carol']
-    
-    # From clue 6: bmw is bob
-    # So find bob's house
-    bob_house = None
-    for h in houses_data:
-        if 'Bob' in h['name']:
-            bob_house = h['house']
-            break
-    
-    if bob_house is not None:
-        for h in houses_data:
-            if h['house'] == bob_house:
-                h['car'] = ['bmw 3 series']
-    
-    # Now, let's assign based on remaining possibilities
-    # We'll use a backtracking approach to try possible assignments
-    
-    from copy import deepcopy
-    
-    def backtrack(assignments, index):
-        if index == 6:
-            return assignments
-        current_house = houses_data[index]
-        # Try assigning possible values
-        for name in current_house['name']:
-            if name in [a['name'] for a in assignments if a['name'] is not None]:
-                continue
-            for car in current_house['car']:
-                if car in [a['car'] for a in assignments if a['car'] is not None]:
-                    continue
-                for mother in current_house['mother']:
-                    if mother in [a['mother'] for a in assignments if a['mother'] is not None]:
-                        continue
-                    for hobby in current_house['hobby']:
-                        if hobby in [a['hobby'] for a in assignments if a['hobby'] is not None]:
-                            continue
-                        # Check constraints
-                        # Clue 3: chevrolet silverado <-> aniya
-                        if car == 'chevrolet silverado' and mother != 'Aniya':
-                            continue
-                        if mother == 'Aniya' and car != 'chevrolet silverado':
-                            continue
-                        # Clue 5: ford f150 <-> sarah
-                        if car == 'ford f150' and mother != 'Sarah':
-                            continue
-                        if mother == 'Sarah' and car != 'ford f150':
-                            continue
-                        # Clue 8: eric is directly left of knitting
-                        if name == 'Eric':
-                            knitting_house = None
-                            for h in assignments:
-                                if h['hobby'] == 'knitting':
-                                    knitting_house = h['house']
-                            if knitting_house != current_house['house'] + 1:
-                                continue
-                        # Clue 17: holly is directly left of knitting
-                        if mother == 'Holly':
-                            knitting_house = None
-                            for h in assignments:
-                                if h['hobby'] == 'knitting':
-                                    knitting_house = h['house']
-                            if knitting_house != current_house['house'] + 1:
-                                continue
-                        # Clue 10: penny is right of knitting
-                        if mother == 'Penny':
-                            knitting_house = None
-                            for h in assignments:
-                                if h['hobby'] == 'knitting':
-                                    knitting_house = h['house']
-                            if knitting_house is None or current_house['house'] <= knitting_house:
-                                continue
-                        # Clue 11: aniya is right of honda civic
-                        if mother == 'Aniya':
-                            honda_house = None
-                            for h in assignments:
-                                if h['car'] == 'honda civic':
-                                    honda_house = h['house']
-                            if honda_house is None or current_house['house'] <= honda_house:
-                                continue
-                        # Clue 12: alice is right of ford f150 (house 4)
-                        if name == 'Alice' and current_house['house'] <= 4:
-                            continue
-                        # Clue 14: woodworking is left of knitting
-                        if hobby == 'woodworking':
-                            knitting_house = None
-                            for h in assignments:
-                                if h['hobby'] == 'knitting':
-                                    knitting_house = h['house']
-                            if knitting_house is not None and current_house['house'] >= knitting_house:
-                                continue
-                        # If all constraints are satisfied, proceed
-                        new_assignment = {
-                            'house': current_house['house'],
-                            'name': name,
-                            'car': car,
-                            'mother': mother,
-                            'hobby': hobby
-                        }
-                        new_assignments = deepcopy(assignments)
-                        new_assignments.append(new_assignment)
-                        result = backtrack(new_assignments, index + 1)
-                        if result is not None:
-                            return result
-        return None
-    
-    initial_assignments = []
-    solution = backtrack(initial_assignments, 0)
-    
-    if solution is None:
-        return {"solution": {"header": [], "rows": []}}
-    
-    # Format the solution as required
-    header = ["House", "Name", "car", "mother", "hobby"]
-    rows = []
-    for house in sorted(solution, key=lambda x: x['house']):
-        rows.append([
-            str(house['house']),
-            house['name'],
-            house['car'],
-            house['mother'],
-            house['hobby']
-        ])
-    
-    return {
+
+    # Initialize solution structure
+    solution = {
         "solution": {
-            "header": header,
-            "rows": rows
+            "header": ["House", "Name", "CarModel", "Mother", "Hobby"],
+            "rows": []
         }
     }
 
-if __name__ == "__main__":
-    solution = solve_puzzle()
-    print(json.dumps(solution, indent=2))
+    # Generate all possible permutations for each category (brute-force is impractical, so we'll use constraints to narrow down)
+    # Instead, we'll use a backtracking approach with constraints
+
+    # Let's create a dictionary to hold the assignments
+    assignments = {house: {'Name': None, 'CarModel': None, 'Mother': None, 'Hobby': None} for house in houses}
+
+    # Apply direct clues first
+    # Clue 1: The person who owns a Toyota Camry is in the sixth house.
+    assignments[6]['CarModel'] = 'toyota camry'
+
+    # Clue 7: The person whose mother's name is Kailyn is in the sixth house.
+    assignments[6]['Mother'] = 'Kailyn'
+
+    # Clue 16: The person who owns a Honda Civic is Arnold.
+    # So in some house, Name is Arnold and CarModel is honda civic
+
+    # Clue 6: The person who owns a BMW 3 Series is Bob.
+    # So in some house, Name is Bob and CarModel is bmw 3 series
+
+    # Clue 2: Carol is the photography enthusiast.
+    # So in some house, Name is Carol and Hobby is photography
+
+    # Clue 13: Eric is the person who enjoys gardening.
+    # So in some house, Name is Eric and Hobby is gardening
+
+    # Clue 5: The person who owns a Ford F-150 is the person whose mother's name is Sarah.
+    # So in some house, CarModel is ford f150 and Mother is Sarah
+
+    # Clue 9: There is one house between the person whose mother's name is Sarah and the person who owns a Toyota Camry.
+    # Toyota Camry is in house 6, so Sarah's mother is in house 4 (since 4 + 2 = 6)
+    assignments[4]['Mother'] = 'Sarah'
+    assignments[4]['CarModel'] = 'ford f150'  # from clue 5
+
+    # Clue 15: There is one house between the person whose mother's name is Sarah (house 4) and the person who loves cooking.
+    # So cooking is in house 6 (4 + 2 = 6), but house 6's hobby isn't assigned yet
+    # But house 6's mother is Kailyn, let's see if this conflicts
+    # Assign cooking to house 6
+    assignments[6]['Hobby'] = 'cooking'
+
+    # Clue 12: Alice is somewhere to the right of the person who owns a Ford F-150 (house 4)
+    # So Alice is in house 5 or 6
+    # But house 6's name isn't assigned yet, but let's see other clues
+
+    # Clue 8: Eric is directly left of the person who enjoys knitting.
+    # So Eric is in house X, knitting is in house X+1
+
+    # Clue 17: The person whose mother's name is Holly is directly left of the person who enjoys knitting.
+    # So Holly is in house Y, knitting is in Y+1
+    # Therefore, Eric is in Y, because both Eric and Holly are directly left of knitting
+    # So Y must be the same as X, meaning Eric's mother is Holly
+    # So in house X: Name is Eric, Mother is Holly
+    # And house X+1: Hobby is knitting
+
+    # Clue 14: The woodworking hobbyist is somewhere to the left of the person who enjoys knitting.
+    # So woodworking is in house < X+1
+
+    # Clue 10: The person whose mother's name is Penny is somewhere to the right of the person who enjoys knitting.
+    # So Penny is in house > X+1
+
+    # Clue 4: The person who owns a Chevrolet Silverado is not in the second house.
+    # From clue 3: The person who owns a Chevrolet Silverado is the person whose mother's name is Aniya.
+    # So in some house not 2: CarModel is chevrolet silverado and Mother is Aniya
+
+    # Clue 11: The person whose mother's name is Aniya is somewhere to the right of the person who owns a Honda Civic.
+    # So honda civic is left of Aniya (chevrolet silverado)
+
+    # Clue 16: The person who owns a Honda Civic is Arnold.
+    # So in some house: Name is Arnold, CarModel is honda civic
+
+    # Let's find possible positions for Eric and knitting
+    # Eric is in X, knitting in X+1
+    # From clue 17, Eric's mother is Holly
+    # Possible X values: 1,2,3,4,5 (since X+1 must be <=6)
+    # But house 4 has mother Sarah, so X can't be 4
+    # Also, from clue 14, woodworking is left of knitting (so woodworking is in <X+1)
+    # From clue 10, Penny is right of knitting (so Penny is in >X+1)
+    # From clue 12, Alice is right of house 4 (so 5 or 6)
+    # Let's try X=1:
+    # House 1: Name Eric, Mother Holly
+    # House 2: Hobby knitting
+    # Then woodworking must be left of 2, so house 1
+    # But house 1's hobby isn't assigned yet, could be woodworking
+    # Then Penny is right of 2, so 3,4,5,6
+    # But house 4's mother is Sarah, house 6's is Kailyn, so Penny is in 3 or 5
+    # From clue 3 and 11: honda civic is left of chevrolet silverado (Aniya)
+    # Arnold is honda civic, so Arnold is left of Aniya
+    # Let's assign Arnold to house 1, but house 1's name is Eric, so no
+    # Assign Arnold to house 2 or 3
+    # House 2: hobby is knitting, name could be Arnold
+    # Then car is honda civic
+    assignments[2]['Name'] = 'Arnold'
+    assignments[2]['CarModel'] = 'honda civic'
+    assignments[2]['Hobby'] = 'knitting'
+    # Then house 1: name Eric, mother Holly, hobby?
+    assignments[1]['Name'] = 'Eric'
+    assignments[1]['Mother'] = 'Holly'
+    # From clue 13, Eric enjoys gardening
+    assignments[1]['Hobby'] = 'gardening'
+    # So woodworking must be left of knitting (house 2), but house 1's hobby is gardening, so this contradicts clue 14
+    # So X=1 is invalid
+
+    # Try X=2:
+    # House 2: Name Eric, Mother Holly
+    # House 3: Hobby knitting
+    # woodworking is left of 3, so 1 or 2
+    # house 2's hobby not assigned yet, could be woodworking
+    assignments[2]['Hobby'] = 'woodworking'
+    # Penny is right of 3, so 4,5,6
+    # house 4 mother is Sarah, 6 is Kailyn, so Penny is in 5
+    assignments[5]['Mother'] = 'Penny'
+    # From clue 16: Arnold owns honda civic
+    # Must be left of Aniya (chevrolet silverado)
+    # Possible positions: 1 or 3 or 4
+    # house 4's car is ford f150, so not honda civic
+    # house 3: hobby is knitting, could be name Arnold
+    assignments[3]['Name'] = 'Arnold'
+    assignments[3]['CarModel'] = 'honda civic'
+    # Then Aniya is right of honda civic, so house 4 or 5 or 6
+    # house 4's mother is Sarah, 6 is Kailyn, so Aniya is in 5
+    assignments[5]['Mother'] = 'Aniya'  # But earlier we had Penny in 5, conflict
+    # So this path is invalid
+
+    # Try X=3:
+    # House 3: Name Eric, Mother Holly
+    # House 4: Hobby knitting
+    # But house 4's mother is Sarah, and car is ford f150
+    # woodworking is left of 4, so 1,2,3
+    # house 3's hobby could be woodworking
+    assignments[3]['Hobby'] = 'woodworking'
+    # Penny is right of 4, so 5 or 6
+    # house 6's mother is Kailyn, so Penny is in 5
+    assignments[5]['Mother'] = 'Penny'
+    # Arnold is honda civic, must be left of Aniya
+    # Possible positions: 1 or 2
+    assignments[1]['Name'] = 'Arnold'
+    assignments[1]['CarModel'] = 'honda civic'
+    # Then Aniya is right of 1, so 2,3,4,5,6
+    # house 3's mother is Holly, 4 is Sarah, 5 is Penny, 6 is Kailyn, so Aniya is in 2
+    assignments[2]['Mother'] = 'Aniya'
+    # From clue 3: chevrolet silverado is Aniya's car
+    assignments[2]['CarModel'] = 'chevrolet silverado'
+    # From clue 4: chevrolet not in 2, but we have it in 2, conflict
+    # So invalid path
+
+    # Try X=5:
+    # House 5: Name Eric, Mother Holly
+    # House 6: Hobby knitting
+    # But house 6's hobby is cooking from earlier, conflict
+    # So invalid
+
+    # Only remaining is X=3 with adjustments
+    # Let me retry X=3 with different assignments
+    # House 3: Name Eric, Mother Holly, Hobby gardening (from clue 13)
+    assignments[3]['Name'] = 'Eric'
+    assignments[3]['Mother'] = 'Holly'
+    assignments[3]['Hobby'] = 'gardening'
+    # House 4: Hobby knitting
+    assignments[4]['Hobby'] = 'knitting'
+    # woodworking is left of 4, so 1,2,3
+    assignments[1]['Hobby'] = 'woodworking'
+    # Penny is right of 4, so 5 or 6
+    assignments[5]['Mother'] = 'Penny'
+    # Arnold is honda civic, left of Aniya
+    assignments[2]['Name'] = 'Arnold'
+    assignments[2]['CarModel'] = 'honda civic'
+    # Aniya is right of 2, so 3,4,5,6
+    # 3 mother is Holly, 4 is Sarah, 6 is Kailyn, so 5
+    assignments[5]['Mother'] = 'Aniya'  # But earlier we have Penny in 5, conflict
+    # Alternative: maybe Aniya is in 3, but 3 is Holly
+    # So this path seems invalid
+
+    # Let me try X=2 again with different assignments
+    # House 2: Name Eric, Mother Holly, Hobby gardening
+    assignments[2]['Name'] = 'Eric'
+    assignments[2]['Mother'] = 'Holly'
+    assignments[2]['Hobby'] = 'gardening'
+    # House 3: Hobby knitting
+    assignments[3]['Hobby'] = 'knitting'
+    # woodworking is left of 3, so 1
+    assignments[1]['Hobby'] = 'woodworking'
+    # Penny is right of 3, so 4,5,6
+    # 4 mother is Sarah, 6 is Kailyn, so 5
+    assignments[5]['Mother'] = 'Penny'
+    # Arnold is honda civic, left of Aniya
+    assignments[1]['Name'] = 'Arnold'
+    assignments[1]['CarModel'] = 'honda civic'
+    # Aniya is right of 1, so 2,3,4,5,6
+    # 2 mother is Holly, 4 is Sarah, 5 is Penny, 6 is Kailyn, so 3
+    assignments[3]['Mother'] = 'Aniya'
+    # From clue 3: chevrolet silverado is Aniya's car
+    assignments[3]['CarModel'] = 'chevrolet silverado'
+    # From clue 4: chevrolet not in 2, which is satisfied
+    # From clue 6: bmw 3 series is Bob
+    # Bob must be in remaining houses: 4,5,6
+    # house 4: name not assigned
+    assignments[4]['Name'] = 'Bob'
+    assignments[4]['CarModel'] = 'bmw 3 series'
+    # house 5: name not assigned, remaining names: Peter, Alice, Carol
+    # house 6: name not assigned
+    # From clue 2: Carol is photography
+    # photography not assigned yet, possible in 5 or 6
+    # house 6's hobby is cooking, so Carol must be in 5
+    assignments[5]['Name'] = 'Carol'
+    assignments[5]['Hobby'] = 'photography'
+    # house 6's name is remaining: Alice or Peter
+    # From clue 12: Alice is right of ford f150 (house 4)
+    # house 4 has bmw 3 series, not ford f150, wait no:
+    # house 4's car is bmw 3 series, but ford f150 is in house 4? No, earlier we have ford f150 in house 4
+    # Wait, from clue 5: ford f150 is mother Sarah, which is house 4
+    # So house 4's car is ford f150, not bmw 3 series
+    # Conflict: house 4's car was assigned bmw from Bob, but ford is from mother Sarah
+    # So need to reassign
+    assignments[4]['CarModel'] = 'ford f150'  # from clue 5
+    # Then bmw must be elsewhere
+    # Bob must be in house 5 or 6
+    # house 5's name is Carol, so Bob is in 6
+    assignments[6]['Name'] = 'Bob'
+    assignments[6]['CarModel'] = 'bmw 3 series'
+    # Then house 5's name is Carol
+    # house 4's name is remaining: Peter or Alice
+    # From clue 12: Alice is right of ford f150 (house 4), so Alice must be right of 4, so 5 or 6
+    # 5 is Carol, 6 is Bob, so Alice is not possible, meaning our assignments are invalid
+    # Alternative: maybe house 4's name is Alice
+    assignments[4]['Name'] = 'Alice'
+    # Then Bob must be in 5 or 6
+    # 5 is Carol, so Bob in 6
+    assignments[6]['Name'] = 'Bob'
+    assignments[6]['CarModel'] = 'bmw 3 series'
+    # house 5's name is Carol
+    assignments[5]['Name'] = 'Carol'
+    assignments[5]['Hobby'] = 'photography'
+    # house 4's name is Alice
+    # From clue 12: Alice is right of ford f150 (house 4), but Alice is in 4, so this is invalid
+    # So Alice must be right of 4, meaning in 5 or 6
+    # 5 is Carol, 6 is Bob, so no Alice possible, contradiction
+
+    # Let me try a different approach: maybe house 1 is not Arnold
+    # Reset assignments where needed
+    assignments = {house: {'Name': None, 'CarModel': None, 'Mother': None, 'Hobby': None} for house in houses}
+    assignments[6]['CarModel'] = 'toyota camry'
+    assignments[6]['Mother'] = 'Kailyn'
+    assignments[4]['Mother'] = 'Sarah'
+    assignments[4]['CarModel'] = 'ford f150'
+    assignments[6]['Hobby'] = 'cooking'
+
+    # Try Eric in house 1
+    assignments[1]['Name'] = 'Eric'
+    assignments[1]['Mother'] = 'Holly'
+    assignments[1]['Hobby'] = 'gardening'
+    # knitting in 2
+    assignments[2]['Hobby'] = 'knitting'
+    # woodworking left of 2, so 1
+    assignments[1]['Hobby'] = 'woodworking'  # but Eric is gardening, conflict
+    # So invalid
+
+    # Final attempt: Eric in 3, knitting in 4
+    assignments[3]['Name'] = 'Eric'
+    assignments[3]['Mother'] = 'Holly'
+    assignments[3]['Hobby'] = 'gardening'
+    assignments[4]['Hobby'] = 'knitting'
+    # woodworking left of 4: 1,2,3
+    assignments[1]['Hobby'] = 'woodworking'
+    # Penny right of 4: 5
+    assignments[5]['Mother'] = 'Penny'
+    # Arnold is honda civic, left of Aniya
+    assignments[2]['Name'] = 'Arnold'
+    assignments[2]['CarModel'] = 'honda civic'
+    # Aniya is right of 2: 3,4,5,6
+    # 3 is Holly, 4 is Sarah, 6 is Kailyn, so 5
+    assignments[5

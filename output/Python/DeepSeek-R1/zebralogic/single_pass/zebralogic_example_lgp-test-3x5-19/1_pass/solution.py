@@ -1,99 +1,69 @@
+import itertools
 import json
-from itertools import permutations
+
+def check_clue6(candidate):
+    g = None
+    a = None
+    for i in range(3):
+        if candidate[i][4] == 'gardening':
+            g = i
+        if candidate[i][2] == 'associate':
+            a = i
+    if g is None or a is None:
+        return False
+    return a > g
+
+def check_clue9(candidate):
+    for i in range(3):
+        if candidate[i][4] == 'photography':
+            return candidate[i][1] == 'teacher'
+    return False
 
 def main():
-    fixed_names = ['Arnold', 'Peter', 'Eric']
-    fixed_smoothies = ['watermelon', 'desert', 'cherry']
+    names = ['Arnold', 'Peter', 'Eric']
+    smoothies = ['watermelon', 'desert', 'cherry']
+    occ_options = [('engineer', 'teacher'), ('teacher', 'engineer')]
+    edu_domain = ['associate', 'high school', 'bachelor']
+    hob_options = [('gardening', 'photography'), ('photography', 'gardening')]
     
-    occupations_options = [
-        ['teacher', 'doctor', 'engineer'],
-        ['engineer', 'doctor', 'teacher']
-    ]
-    
-    hobbies_options = [
-        ['gardening', 'cooking', 'photography'],
-        ['photography', 'cooking', 'gardening']
-    ]
-    
-    educations_list = ['associate', 'high school', 'bachelor']
-    educations_options = list(permutations(educations_list))
-    
-    found = False
-    sol_occupations = None
-    sol_hobbies = None
-    sol_educations = None
-    
-    for occupations in occupations_options:
-        for hobbies in hobbies_options:
-            for edu_tuple in educations_options:
-                educations = list(edu_tuple)
-                
-                if educations[2] != 'bachelor':
-                    continue
-                
-                gardening_index = None
-                for idx, hobby_val in enumerate(hobbies):
-                    if hobby_val == 'gardening':
-                        gardening_index = idx
-                if gardening_index is None:
-                    continue
-                    
-                associate_index = None
-                for idx, edu_val in enumerate(educations):
-                    if edu_val == 'associate':
-                        associate_index = idx
-                if associate_index is None:
-                    continue
-                    
-                if associate_index <= gardening_index:
-                    continue
-                
-                photo_index = None
-                for idx, hobby_val in enumerate(hobbies):
-                    if hobby_val == 'photography':
-                        photo_index = idx
-                teacher_index = None
-                for idx, occ_val in enumerate(occupations):
-                    if occ_val == 'teacher':
-                        teacher_index = idx
-                if photo_index is None or teacher_index is None:
-                    continue
-                if photo_index != teacher_index:
-                    continue
-                
-                found = True
-                sol_occupations = occupations
-                sol_hobbies = hobbies
-                sol_educations = educations
+    found_solution = None
+    for occ_pair in occ_options:
+        occ0, occ2 = occ_pair
+        for edu_perm in itertools.permutations(edu_domain):
+            if edu_perm[2] != 'bachelor':
+                continue
+            for hob_pair in hob_options:
+                hob0, hob2 = hob_pair
+                candidate = [
+                    [names[0], occ0, edu_perm[0], smoothies[0], hob0],
+                    [names[1], 'doctor', edu_perm[1], smoothies[1], 'cooking'],
+                    [names[2], occ2, edu_perm[2], smoothies[2], hob2]
+                ]
+                if check_clue6(candidate) and check_clue9(candidate):
+                    found_solution = candidate
+                    break
+            if found_solution:
                 break
-            if found:
-                break
-        if found:
+        if found_solution:
             break
-            
-    if not found:
-        result = {"solution": {"header": [], "rows": []}}
-    else:
-        rows = []
-        for i in range(3):
-            house_number = str(i + 1)
-            row = [
-                house_number,
-                fixed_names[i],
-                sol_occupations[i],
-                sol_educations[i],
-                fixed_smoothies[i],
-                sol_hobbies[i]
-            ]
-            rows.append(row)
-        
-        result = {
-            "solution": {
-                "header": ["House", "Name", "Occupation", "Education", "Smoothie", "Hobby"],
-                "rows": rows
-            }
-        }
     
+    if found_solution is None:
+        print(json.dumps({"error": "No solution found"}))
+        return
+    
+    header = ["House", "Name", "Occupation", "Education", "Smoothie", "Hobby"]
+    rows = []
+    for i in range(3):
+        house_data = found_solution[i]
+        row = [str(i+1)] + house_data
+        rows.append(row)
+    
+    result = {
+        "solution": {
+            "header": header,
+            "rows": rows
+        }
+    }
     print(json.dumps(result))
 
 if __name__ == "__main__":

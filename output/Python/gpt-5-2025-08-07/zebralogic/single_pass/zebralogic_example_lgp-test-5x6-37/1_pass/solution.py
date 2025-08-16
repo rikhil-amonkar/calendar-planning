@@ -2,200 +2,211 @@ import json
 import itertools
 
 def solve():
-    houses = [1, 2, 3, 4, 5]
+    houses = [0,1,2,3,4]  # indices for houses 1..5
 
-    names = ["Bob", "Arnold", "Alice", "Peter", "Eric"]
-    hobbies = ["cooking", "gardening", "painting", "photography", "knitting"]
-    sports = ["swimming", "tennis", "soccer", "baseball", "basketball"]
-    styles = ["ranch", "craftsman", "victorian", "modern", "colonial"]
-    children = ["Timothy", "Samantha", "Bella", "Meredith", "Fred"]
-    heights = ["average", "very tall", "very short", "short", "tall"]
+    Names = ['Bob', 'Arnold', 'Alice', 'Peter', 'Eric']
+    Hobbies = ['cooking', 'gardening', 'painting', 'photography', 'knitting']
+    Sports = ['swimming', 'tennis', 'soccer', 'baseball', 'basketball']
+    Styles = ['ranch', 'craftsman', 'victorian', 'modern', 'colonial']
+    Children = ['Timothy', 'Samantha', 'Bella', 'Meredith', 'Fred']
+    Heights = ['average', 'very tall', 'very short', 'short', 'tall']
 
-    def is_next_to(a, b):
-        return abs(a - b) == 1
+    # Helper to check neighbor
+    def is_next_to(i, j):
+        return abs(i - j) == 1
 
-    # Pre-assign fixed constraints
-    # Alice is tall and in house 2
-    # Peter is very tall and in house 4
-    # Victorian is in house 5
-    # Gardening is in house 2
-    # Tall is in house 2
-    # Very tall is in house 4
-    # Peter directly left of Victorian (thus Peter 4, Victorian 5 already satisfies)
-    # These will be enforced in the loops
+    solution = None
 
-    for bob_house, arnold_house, eric_house in itertools.permutations([1, 3, 5], 3):
-        # Names positions
-        name_pos = {
-            "Alice": 2,
-            "Peter": 4,
-            "Bob": bob_house,
-            "Arnold": arnold_house,
-            "Eric": eric_house
-        }
+    # Enumerate names - fix Alice at house 2 (index 1) and Peter at house 4 (index 3)
+    for name_perm in itertools.permutations(Names):
+        name_by_house = list(name_perm)
+        if name_by_house[1] != 'Alice':
+            continue
+        if name_by_house[3] != 'Peter':
+            continue
 
-        # Styles: fix Victorian=5; assign others to 1..4
-        style_values = ["ranch", "craftsman", "modern", "colonial"]
-        for perm in itertools.permutations([1, 2, 3, 4], 4):
-            style_pos = {
-                "victorian": 5,
-                style_values[0]: perm[0],
-                style_values[1]: perm[1],
-                style_values[2]: perm[2],
-                style_values[3]: perm[3],
-            }
+        # Clue 3: Peter is directly left of the person residing in a Victorian house (house index 4 must be Victorian later)
+        # This will be enforced when assigning styles along with clue 20 (Victorian at house 5).
 
-            # Constraints on styles:
-            # Craftsman cannot be 2 (since 2 is tall, but craftsman=average) or 4 (4 is very tall)
-            if style_pos["craftsman"] in (2, 4):
-                continue
-            # Modern cannot be 2 because modern=cooking and 2 has gardening
-            if style_pos["modern"] == 2:
-                continue
-            # Peter directly left of Victorian already satisfied by Peter=4 and Victorian=5
-            # Ranch is somewhere to the left of cooking (which is at modern)
-            if not (style_pos["ranch"] < style_pos["modern"]):
+        # Hobbies partial constraints now:
+        # Clue 8: gardening is in the second house (index 1)
+        # Clue 7: Bob paints
+        # Clue 18: knitting is next to gardening (i.e., index 0 or 2)
+        # Clue 19: modern is cooking (handled in styles/hobbies step)
+        # We'll enforce during hobby/style assignment
+
+        # Enumerate styles - fix Victorian at house 5 (index 4)
+        for style_perm in itertools.permutations(Styles):
+            style_by_house = list(style_perm)
+            if style_by_house[4] != 'victorian':
                 continue
 
-            # Heights
-            height_pos = {}
-            height_pos["tall"] = 2
-            height_pos["very tall"] = 4
-            # Average equals Craftsman
-            height_pos["average"] = style_pos["craftsman"]
-            # Remaining heights: "very short" and "short" to remaining two houses
-            remaining_houses_for_heights = [h for h in houses if h not in {height_pos["tall"], height_pos["very tall"], height_pos["average"]}]
-            for vs_house, short_house in itertools.permutations(remaining_houses_for_heights, 2):
-                height_pos["very short"] = vs_house
-                height_pos["short"] = short_house
+            # Clue 3 again: Peter directly left of Victorian -> house 3 (index 3) must be Peter (already true)
+            if name_by_house[3] != 'Peter':
+                continue
 
-                # Constraint: very short is to the right of Eric
-                if not (height_pos["very short"] > name_pos["Eric"]):
+            # Clue 19 + 12 + 10 implications will tie to modern later. But we can prune:
+            # Modern cannot be index 4 (Victorian), cannot be index 1 (since house 2's hobby is gardening, modern implies cooking),
+            # cannot be index 3 (house 4 has baseball/very tall per other clues -> modern implies tennis conflict).
+            modern_idx = style_by_house.index('modern')
+            if modern_idx in (1, 3, 4):
+                continue
+
+            # Clue 17: ranch left of cooking; with 19 cooking=modern -> ranch left of modern
+            ranch_idx = style_by_house.index('ranch')
+            if not (ranch_idx < modern_idx):
+                continue
+
+            # Additional pruning using height constraints later:
+            # Clue 13: Craftsman-style house has average height; Clue 2 and 16 fix heights at indices 1 and 3 respectively
+            craftsman_idx = style_by_house.index('craftsman')
+            # If craftsman at index 1 or 3 it's impossible because those heights are fixed to tall and very tall, not average.
+            if craftsman_idx in (1, 3):
+                continue
+
+            # Children assignment:
+            # Clue 14: child Fred resides in Victorian (index 4)
+            # Clue 12: Samantha is in modern-style house
+            # Clue 1: average height person has child Meredith, and by Clue 13 average height is in Craftsman house
+            children_by_house = [None]*5
+            children_by_house[4] = 'Fred'  # Clue 14
+            children_by_house[modern_idx] = 'Samantha'  # Clue 12 (and implies tennis later)
+            children_by_house[craftsman_idx] = 'Meredith'  # Clue 1 + 13
+
+            remaining_children = [c for c in Children if c not in children_by_house]
+            remaining_positions = [i for i in houses if children_by_house[i] is None]
+            # There should be exactly two remaining children and positions
+            for extra_children in itertools.permutations(remaining_children):
+                children_test = children_by_house[:]
+                valid_children = True
+                for pos, child in zip(remaining_positions, extra_children):
+                    children_test[pos] = child
+
+                # Clue 6: Meredith and Timothy are next to each other
+                m_idx = children_test.index('Meredith')
+                t_idx = children_test.index('Timothy')
+                if not is_next_to(m_idx, t_idx):
+                    valid_children = False
+
+                if not valid_children:
                     continue
 
-                # Hobbies
-                hobby_pos = {}
-                hobby_pos["gardening"] = 2
-                # Modern = cooking
-                hobby_pos["cooking"] = style_pos["modern"]
-                # Bob = painting
-                hobby_pos["painting"] = name_pos["Bob"]
+                # Heights assignment:
+                height_by_house = [None]*5
+                # Clue 2: tall in house 2 (index 1)
+                height_by_house[1] = 'tall'
+                # Clue 16: Peter is very tall -> index of Peter
+                height_by_house[3] = 'very tall'
+                # Clue 13 and 1: Craftsman -> average -> child Meredith already set
+                height_by_house[craftsman_idx] = 'average'
 
-                # Ensure hobby uniqueness so far
-                used_hobby_houses = {hobby_pos["gardening"], hobby_pos["cooking"], hobby_pos["painting"]}
-                if len(used_hobby_houses) != 3:
-                    continue  # conflict (shouldn't happen, but safe)
+                # Remaining heights to assign
+                rem_heights = [h for h in Heights if h not in height_by_house]
+                rem_positions = [i for i in houses if height_by_house[i] is None]
 
-                # Knitting next to gardening (house 2), so house 1 or 3, and not already taken
-                possible_knitting_houses = [h for h in [1, 3] if h not in used_hobby_houses]
-                if not possible_knitting_houses:
-                    continue
-                for knit_house in possible_knitting_houses:
-                    hobby_pos_local = dict(hobby_pos)
-                    hobby_pos_local["knitting"] = knit_house
-                    # Remaining hobby is photography to the last free house
-                    remaining_houses_for_hobby = [h for h in houses if h not in set(hobby_pos_local.values())]
-                    if len(remaining_houses_for_hobby) != 1:
+                # Enumerate possible assignments for remaining heights
+                for extra_heights in itertools.permutations(rem_heights):
+                    heights_test = height_by_house[:]
+                    for pos, ht in zip(rem_positions, extra_heights):
+                        heights_test[pos] = ht
+
+                    # Clue 9: very short is somewhere to the right of Eric
+                    eric_idx = name_by_house.index('Eric')
+                    vs_idx = heights_test.index('very short')
+                    if not (vs_idx > eric_idx):
                         continue
-                    hobby_pos_local["photography"] = remaining_houses_for_hobby[0]
 
-                    # Sports
-                    sport_pos = {}
-                    # Baseball = very tall
-                    sport_pos["baseball"] = height_pos["very tall"]  # should be 4
-                    if sport_pos["baseball"] != 4:
+                    # Hobbies assignment:
+                    hobby_by_house = [None]*5
+                    # Clue 8: gardening at index 1
+                    hobby_by_house[1] = 'gardening'
+                    # Clue 19: modern -> cooking
+                    hobby_by_house[modern_idx] = 'cooking'
+                    # Clue 7: Bob paints
+                    bob_idx = name_by_house.index('Bob')
+                    # If Bob is at the same house as gardening or cooking, painting would conflict; we will enforce uniqueness below.
+                    # For now, set Bob's hobby.
+                    # If conflict arises (same index already assigned), skip.
+                    if hobby_by_house[bob_idx] is not None and hobby_by_house[bob_idx] != 'painting':
                         continue
-                    # Tennis = modern
-                    sport_pos["tennis"] = style_pos["modern"]
-                    # Basketball = short
-                    sport_pos["basketball"] = height_pos["short"]
-                    # Remaining sports: soccer and swimming to remaining houses
-                    used_sport_houses = {sport_pos["baseball"], sport_pos["tennis"], sport_pos["basketball"]}
-                    remaining_houses_for_sports = [h for h in houses if h not in used_sport_houses]
-                    for soccer_house, swimming_house in itertools.permutations(remaining_houses_for_sports, 2):
-                        # Soccer not in first house
-                        if soccer_house == 1:
+                    hobby_by_house[bob_idx] = 'painting'
+
+                    # Clue 18: knitting next to gardening (index 1), so knitting must be at index 0 or 2
+                    # But if modern_idx == 2, cooking at 2, knitting can't be 2; we'll check when assigning.
+                    remaining_hobbies = [h for h in Hobbies if h not in hobby_by_house]
+                    remaining_positions_hobby = [i for i in houses if hobby_by_house[i] is None]
+
+                    for extra_hobbies in itertools.permutations(remaining_hobbies):
+                        hb_test = hobby_by_house[:]
+                        consistent = True
+                        for pos, hb in zip(remaining_positions_hobby, extra_hobbies):
+                            # enforce knitting adjacency when assigning
+                            hb_test[pos] = hb
+
+                        # Check knitting next to gardening at index 1
+                        knit_idx = hb_test.index('knitting') if 'knitting' in hb_test else None
+                        if knit_idx is None or not is_next_to(knit_idx, 1):
+                            consistent = False
+
+                        # Ensure unique assignments satisfied (they are by permutation)
+                        if not consistent:
                             continue
-                        sport_pos_local = dict(sport_pos)
-                        sport_pos_local["soccer"] = soccer_house
-                        sport_pos_local["swimming"] = swimming_house
 
-                        # Children
-                        child_pos = {}
-                        # Fred = Victorian = 5
-                        child_pos["Fred"] = style_pos["victorian"] if "victorian" in style_pos else 5
-                        # Samantha = modern
-                        child_pos["Samantha"] = style_pos["modern"]
-                        # Meredith = average = craftsman
-                        child_pos["Meredith"] = height_pos["average"]
-                        # Timothy next to Meredith
-                        timothy_candidates = [h for h in houses if is_next_to(h, child_pos["Meredith"]) and h not in {child_pos["Fred"], child_pos["Samantha"], child_pos["Meredith"]}]
-                        if not timothy_candidates:
-                            continue
-                        for tim_house in timothy_candidates:
-                            child_pos_local = dict(child_pos)
-                            child_pos_local["Timothy"] = tim_house
-                            # Remaining child is Bella to the last free house
-                            remaining_house_for_bella = [h for h in houses if h not in set(child_pos_local.values())]
-                            if len(remaining_house_for_bella) != 1:
+                        # Sports assignment:
+                        sport_by_house = [None]*5
+                        # Clue 5: baseball is very tall (and Peter per 16), ensure house 4 (index 3) has baseball
+                        sport_by_house[3] = 'baseball'
+                        # Clue 10: tennis with Samantha; Samantha is at modern_idx
+                        sport_by_house[modern_idx] = 'tennis'
+                        # Clue 15: short -> basketball
+                        short_idx = heights_test.index('short')
+                        sport_by_house[short_idx] = 'basketball'
+                        # Clue 11: soccer not in first house (index 0), we'll check after assignment.
+
+                        remaining_sports = [s for s in Sports if s not in sport_by_house]
+                        remaining_positions_sport = [i for i in houses if sport_by_house[i] is None]
+
+                        for extra_sports in itertools.permutations(remaining_sports):
+                            sp_test = sport_by_house[:]
+                            for pos, sp in zip(remaining_positions_sport, extra_sports):
+                                sp_test[pos] = sp
+
+                            # Clue 11: soccer not in the first house (index 0)
+                            if sp_test[0] == 'soccer':
                                 continue
-                            child_pos_local["Bella"] = remaining_house_for_bella[0]
 
-                            # Final consistency checks across all:
-                            # Alice is tall and in second house - already ensured by name_pos and height_pos
-                            if not (name_pos["Alice"] == 2 and height_pos["tall"] == 2):
-                                continue
-                            # Bob paints - ensured by hobby_pos_local['painting'] == name_pos['Bob']
-                            if hobby_pos_local["painting"] != name_pos["Bob"]:
-                                continue
-                            # Knitting next to gardening - ensured
-                            if not is_next_to(hobby_pos_local["knitting"], hobby_pos_local["gardening"]):
-                                continue
-                            # Modern=cooking and Tennis=Samantha=Modern - ensured by construction
-
-                            # Build the solution table per house
-                            house_info = {}
-                            for h in houses:
-                                # Find values for each category at house h
-                                name_at_h = next(n for n, pos in name_pos.items() if pos == h)
-                                hobby_at_h = next(hb for hb, pos in hobby_pos_local.items() if pos == h)
-                                sport_at_h = next(sp for sp, pos in sport_pos_local.items() if pos == h)
-                                style_at_h = next(st for st, pos in style_pos.items() if pos == h)
-                                child_at_h = next(ch for ch, pos in child_pos_local.items() if pos == h)
-                                height_at_h = next(ht for ht, pos in height_pos.items() if pos == h)
-                                house_info[h] = {
-                                    "name": name_at_h,
-                                    "hobby": hobby_at_h,
-                                    "favorite sports": sport_at_h,
-                                    "style of house": style_at_h,
-                                    "child": child_at_h,
-                                    "heights": height_at_h
-                                }
-
-                            # Return the first valid complete solution
-                            return house_info
-
+                            # All constraints satisfied
+                            solution = {
+                                "names": name_by_house,
+                                "hobbies": hb_test,
+                                "sports": sp_test,
+                                "styles": style_by_house,
+                                "children": children_test,
+                                "heights": heights_test
+                            }
+                            return solution
     return None
 
-solution = solve()
+res = solve()
 
+# Prepare output JSON structure
 output = {
     "solution": {
-        "header": ["House", "name", "hobby", "favorite sports", "style of house", "child", "heights"],
+        "header": ["House", "Name", "Hobby", "FavoriteSport", "HouseStyle", "Children", "Height"],
         "rows": []
     }
 }
 
-if solution:
-    for h in [1, 2, 3, 4, 5]:
+if res:
+    for i in range(5):
         row = [
-            str(h),
-            solution[h]["name"],
-            solution[h]["hobby"],
-            solution[h]["favorite sports"],
-            solution[h]["style of house"],
-            solution[h]["child"],
-            solution[h]["heights"]
+            str(i+1),
+            res["names"][i],
+            res["hobbies"][i],
+            res["sports"][i],
+            res["styles"][i],
+            res["children"][i],
+            res["heights"][i]
         ]
         output["solution"]["rows"].append(row)
 

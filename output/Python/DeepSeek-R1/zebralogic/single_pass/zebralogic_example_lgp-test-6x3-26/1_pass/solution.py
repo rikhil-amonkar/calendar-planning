@@ -1,84 +1,54 @@
-import itertools
 import json
 
 def main():
-    names_list = ['Alice', 'Eric', 'Bob', 'Peter', 'Arnold', 'Carol']
-    remaining_heights = ['very tall', 'tall', 'average']
-    remaining_phones = ['samsung galaxy s21', 'iphone 13', 'huawei p50', 'xiaomi mi 11']
+    houses = [{'House': i+1, 'Name': None, 'Height': None, 'PhoneModel': None} for i in range(6)]
     
-    found_solution = False
-    solution_data = None
+    # Apply direct clues
+    houses[5]['Height'] = 'short'  # Clue 12: house 6 is short
+    houses[4]['PhoneModel'] = 'oneplus 9'  # Clue 7: house 5 uses OnePlus 9
+    houses[3]['PhoneModel'] = 'google pixel 6'  # Clue 5: house 4 uses Google Pixel 6
+    houses[4]['Height'] = 'very short'  # Clue 3: house 5 is very short
+    houses[0]['Height'] = 'super tall'  # Clue 9: house 1 is super tall
     
-    for height_perm in itertools.permutations(remaining_heights):
-        heights = ['super tall'] + list(height_perm) + ['very short', 'short']
-        
-        for name_perm in itertools.permutations(names_list):
-            names = list(name_perm)
-            
-            if 'Eric' not in names[0:3]:
-                continue
-                
-            carol_index = names.index('Carol') if 'Carol' in names else -1
-            if carol_index == -1:
-                continue
-            if heights[carol_index] != 'very tall':
-                continue
-                
-            if 'Arnold' not in names:
-                continue
-            arnold_index = names.index('Arnold')
-            if heights[arnold_index] != 'tall':
-                continue
-                
-            if arnold_index == 0:
-                continue
-            if names[arnold_index-1] != 'Bob':
-                continue
-                
-            for phone_perm in itertools.permutations(remaining_phones):
-                phones = [None] * 6
-                phones[0] = phone_perm[0]
-                phones[1] = phone_perm[1]
-                phones[2] = phone_perm[2]
-                phones[3] = 'google pixel 6'
-                phones[4] = 'oneplus 9'
-                phones[5] = phone_perm[3]
-                
-                if phones[0] == 'samsung galaxy s21':
-                    continue
-                    
-                if phones[carol_index] != 'xiaomi mi 11':
-                    continue
-                    
-                if 'Peter' not in names:
-                    continue
-                peter_index = names.index('Peter')
-                if 'iphone 13' not in phones:
-                    continue
-                iphone_index = phones.index('iphone 13')
-                if peter_index >= iphone_index:
-                    continue
-                    
-                solution_rows = []
-                for i in range(6):
-                    solution_rows.append([str(i+1), names[i], heights[i], phones[i]])
-                
-                solution_data = {
-                    "header": ["House", "Name", "Height", "Phone"],
-                    "rows": solution_rows
-                }
-                found_solution = True
-                break
-            if found_solution:
-                break
-        if found_solution:
-            break
-            
-    if solution_data:
-        result = {"solution": solution_data}
-        print(json.dumps(result))
-    else:
-        print(json.dumps({"solution": {}}))
+    # Assign Carol (very tall, Xiaomi Mi 11) to house 2
+    houses[1]['Name'] = 'Carol'
+    houses[1]['Height'] = 'very tall'
+    houses[1]['PhoneModel'] = 'xiaomi mi 11'
+    
+    # Assign Arnold (tall) to house 4 and Bob to house 3
+    houses[3]['Name'] = 'Arnold'
+    houses[3]['Height'] = 'tall'  # Clue 8
+    houses[2]['Name'] = 'Bob'  # Clue 1: Bob left of Arnold
+    houses[2]['Height'] = 'average'  # Only remaining height for house 3
+    
+    # Assign Eric to house 1
+    houses[0]['Name'] = 'Eric'  # Clue 11: Eric left of house 4
+    
+    # Assign Huawei P50 to house 1
+    houses[0]['PhoneModel'] = 'huawei p50'  # Clue 6 and Clue 2
+    
+    # Assign Peter to house 5 and Alice to house 6
+    houses[4]['Name'] = 'Peter'
+    houses[5]['Name'] = 'Alice'
+    houses[5]['PhoneModel'] = 'iphone 13'  # Clue 2: Peter left of iPhone 13 user
+    
+    # Assign Samsung Galaxy S21 to house 3
+    houses[2]['PhoneModel'] = 'samsung galaxy s21'
+    
+    # Prepare the solution in the required JSON format
+    header = ["House", "Name", "Height", "PhoneModel"]
+    rows = []
+    for house in houses:
+        rows.append([str(house['House']), house['Name'], house['Height'], house['PhoneModel']])
+    
+    solution_dict = {
+        "solution": {
+            "header": header,
+            "rows": rows
+        }
+    }
+    
+    print(json.dumps(solution_dict))
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

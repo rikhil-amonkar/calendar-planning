@@ -2,21 +2,21 @@ import json
 from itertools import permutations
 
 def solve_puzzle():
-    # Define all possible attributes
+    # Define all possible values for each category
     names = ['Alice', 'Peter', 'Arnold', 'Eric']
     mothers = ['Holly', 'Kailyn', 'Janelle', 'Aniya']
     flowers = ['carnations', 'roses', 'lilies', 'daffodils']
     houses = ['1', '2', '3', '4']
     
-    # Generate all possible permutations for each attribute
+    # Generate all possible permutations for each category
     for name_perm in permutations(names):
         for mother_perm in permutations(mothers):
             for flower_perm in permutations(flowers):
-                # Assign each permutation to houses
+                # Assign each permutation to houses 1-4
                 assignment = []
                 for i in range(4):
                     assignment.append({
-                        'House': str(i+1),
+                        'House': houses[i],
                         'Name': name_perm[i],
                         'Mother': mother_perm[i],
                         'Flower': flower_perm[i]
@@ -41,17 +41,17 @@ def solve_puzzle():
                     if house['Name'] == 'Arnold':
                         arnold_house = house
                         break
-                if not arnold_house or arnold_house['Mother'] != 'Holly':
+                if arnold_house is None or arnold_house['Mother'] != 'Holly':
                     valid = False
                     continue
                 
-                # Constraint 6: carnations is right of Holly (Arnold's house)
+                # Constraint 6: Carnations is right of Arnold's mother (Holly)
                 carnation_house = None
                 for house in assignment:
                     if house['Flower'] == 'carnations':
                         carnation_house = house
                         break
-                if not carnation_house or int(carnation_house['House']) <= int(arnold_house['House']):
+                if carnation_house is None or int(carnation_house['House']) <= int(arnold_house['House']):
                     valid = False
                     continue
                 
@@ -61,18 +61,16 @@ def solve_puzzle():
                     if house['Name'] == 'Peter':
                         peter_house = house
                         break
-                if not peter_house or int(peter_house['House']) <= int(carnation_house['House']):
+                if peter_house is None or int(peter_house['House']) <= int(carnation_house['House']):
                     valid = False
                     continue
                 
                 # Constraint 4: Eric loves daffodils
-                eric_house = None
                 for house in assignment:
-                    if house['Name'] == 'Eric':
-                        eric_house = house
+                    if house['Name'] == 'Eric' and house['Flower'] != 'daffodils':
+                        valid = False
                         break
-                if not eric_house or eric_house['Flower'] != 'daffodils':
-                    valid = False
+                if not valid:
                     continue
                 
                 # Constraint 2: Janelle is right of Arnold
@@ -81,17 +79,17 @@ def solve_puzzle():
                     if house['Mother'] == 'Janelle':
                         janelle_house = house
                         break
-                if not janelle_house or int(janelle_house['House']) <= int(arnold_house['House']):
+                if janelle_house is None or int(janelle_house['House']) <= int(arnold_house['House']):
                     valid = False
                     continue
                 
-                # Constraint 7: lilies is directly left of Alice (house 3)
-                if assignment[1]['House'] != '2' or assignment[1]['Flower'] != 'lilies':
+                # Constraint 7: Lilies is directly left of Alice (house 3)
+                if assignment[1]['Flower'] != 'lilies':
                     valid = False
                     continue
                 
                 if valid:
-                    # Prepare the solution
+                    # Prepare the solution in the required format
                     solution = {
                         "solution": {
                             "header": ["House", "Name", "Mother", "Flower"],
@@ -105,10 +103,8 @@ def solve_puzzle():
                             house['Mother'],
                             house['Flower']
                         ])
-                    return solution
+                    return json.dumps(solution, indent=2)
     
-    return {"solution": {"header": [], "rows": []}}
+    return json.dumps({"solution": {"header": [], "rows": []}})
 
-if __name__ == "__main__":
-    solution = solve_puzzle()
-    print(json.dumps(solution, indent=2))
+print(solve_puzzle())

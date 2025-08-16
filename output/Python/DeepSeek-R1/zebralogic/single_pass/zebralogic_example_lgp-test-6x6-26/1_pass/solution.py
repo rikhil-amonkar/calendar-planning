@@ -1,11 +1,9 @@
-import copy
 import json
+from copy import deepcopy
 
 def main():
     attributes = ['name', 'phone', 'cigar', 'flower', 'color', 'sport']
-    attr_index = {attr: idx for idx, attr in enumerate(attributes)}
-    
-    values = {
+    initial_domains = {
         'name': ['Peter', 'Carol', 'Eric', 'Alice', 'Bob', 'Arnold'],
         'phone': ['huawei p50', 'google pixel 6', 'xiaomi mi 11', 'iphone 13', 'samsung galaxy s21', 'oneplus 9'],
         'cigar': ['dunhill', 'pall mall', 'blends', 'blue master', 'prince', 'yellow monster'],
@@ -14,298 +12,313 @@ def main():
         'sport': ['soccer', 'tennis', 'basketball', 'volleyball', 'swimming', 'baseball']
     }
     
-    n = 6
-    domains = [[set(values[attr]) for attr in attributes] for _ in range(n)]
+    domains = {}
+    for attr in attributes:
+        for i in range(6):
+            domains[(attr, i)] = set(initial_domains[attr])
     
-    domains[1][attr_index['phone']] = {'oneplus 9'}
-    domains[0][attr_index['name']] = {'Alice'}
-    
-    def propagate_uniqueness(domains):
-        changed = False
-        n_houses = len(domains)
-        n_attrs = len(domains[0])
-        for a in range(n_attrs):
-            fixed_values = {}
-            for i in range(n_houses):
-                if len(domains[i][a]) == 1:
-                    val = next(iter(domains[i][a]))
-                    if val not in fixed_values:
-                        fixed_values[val] = []
-                    fixed_values[val].append(i)
-            for val, houses in fixed_values.items():
-                if len(houses) > 1:
-                    continue
-                for i in range(n_houses):
-                    if i not in houses and val in domains[i][a]:
-                        domains[i][a].discard(val)
-                        changed = True
-        return changed
+    domains[('phone', 1)] = {'oneplus 9'}
+    domains[('name', 0)] = {'Alice'}
 
-    def propagate_same_house(domains, attr1, value1, attr2, value2):
-        changed = False
-        n_houses = len(domains)
-        A = set()
-        B = set()
-        for i in range(n_houses):
-            if value1 in domains[i][attr1]:
-                A.add(i)
-            if value2 in domains[i][attr2]:
-                B.add(i)
-        common = A & B
-        for i in (A - common):
-            if value1 in domains[i][attr1]:
-                domains[i][attr1].discard(value1)
-                changed = True
-        for i in (B - common):
-            if value2 in domains[i][attr2]:
-                domains[i][attr2].discard(value2)
-                changed = True
-        return changed
+    def constraint1(assignment):
+        if assignment['phone'][1] is not None:
+            return assignment['phone'][1] == 'oneplus 9'
+        return True
 
-    def propagate_left_neighbor(domains, attr1, value1, attr2, value2):
-        changed = False
-        n_houses = len(domains)
-        possible_i = []
-        for i in range(0, n_houses-1):
-            if value1 in domains[i][attr1] and value2 in domains[i+1][attr2]:
-                possible_i.append(i)
-        for i in range(0, n_houses-1):
-            if value1 in domains[i][attr1] and i not in possible_i:
-                domains[i][attr1].discard(value1)
-                changed = True
-        for i in range(1, n_houses):
-            if value2 in domains[i][attr2] and (i-1) not in possible_i:
-                domains[i][attr2].discard(value2)
-                changed = True
-        if value1 in domains[n_houses-1][attr1]:
-            domains[n_houses-1][attr1].discard(value1)
-            changed = True
-        if value2 in domains[0][attr2]:
-            domains[0][attr2].discard(value2)
-            changed = True
-        return changed
+    def constraint2(assignment):
+        if 'xiaomi mi 11' in assignment['phone'] and 'huawei p50' in assignment['phone']:
+            i = assignment['phone'].index('xiaomi mi 11')
+            j = assignment['phone'].index('huawei p50')
+            return i < j
+        return True
 
-    def propagate_adjacent(domains, attr1, value1, attr2, value2):
-        changed = False
-        n_houses = len(domains)
-        A = set()
-        for i in range(n_houses):
-            if value1 in domains[i][attr1]:
-                A.add(i)
-        B = set()
-        for i in range(n_houses):
-            if value2 in domains[i][attr2]:
-                B.add(i)
-        for i in A:
-            if not ((i-1 in B) or (i+1 in B)):
-                domains[i][attr1].discard(value1)
-                changed = True
-        for j in B:
-            if not ((j-1 in A) or (j+1 in A)):
-                domains[j][attr2].discard(value2)
-                changed = True
-        return changed
+    def constraint3(assignment):
+        for i in range(6):
+            if assignment['name'][i] == 'Carol' and assignment['flower'][i] is not None:
+                if assignment['flower'][i] != 'carnations':
+                    return False
+            if assignment['flower'][i] == 'carnations' and assignment['name'][i] is not None:
+                if assignment['name'][i] != 'Carol':
+                    return False
+        return True
 
-    def propagate_left_of(domains, attr1, value1, attr2, value2):
-        changed = False
-        n_houses = len(domains)
-        A = set()
-        for i in range(n_houses):
-            if value1 in domains[i][attr1]:
-                A.add(i)
-        B = set()
-        for i in range(n_houses):
-            if value2 in domains[i][attr2]:
-                B.add(i)
-        new_A = set()
-        for i in A:
-            if any(j > i for j in B):
-                new_A.add(i)
-        for i in A - new_A:
-            domains[i][attr1].discard(value1)
-            changed = True
-        new_B = set()
-        for j in B:
-            if any(i < j for i in A):
-                new_B.add(j)
-        for j in B - new_B:
-            domains[j][attr2].discard(value2)
-            changed = True
-        return changed
+    def constraint4(assignment):
+        if 'purple' in assignment['color'] and 'pall mall' in assignment['cigar']:
+            i = assignment['color'].index('purple')
+            j = assignment['cigar'].index('pall mall')
+            return j == i + 1
+        return True
 
-    constraints = []
-    
-    def c2(domains):
-        return propagate_left_of(domains, attr_index['phone'], 'xiaomi mi 11', attr_index['phone'], 'huawei p50')
-    constraints.append(c2)
-    
-    def c3(domains):
-        return propagate_same_house(domains, attr_index['name'], 'Carol', attr_index['flower'], 'carnations')
-    constraints.append(c3)
-    
-    def c4(domains):
-        return propagate_left_neighbor(domains, attr_index['color'], 'purple', attr_index['cigar'], 'pall mall')
-    constraints.append(c4)
-    
-    def c5(domains):
-        return propagate_same_house(domains, attr_index['color'], 'green', attr_index['cigar'], 'blue master')
-    constraints.append(c5)
-    
-    def c6(domains):
-        return propagate_adjacent(domains, attr_index['color'], 'yellow', attr_index['color'], 'blue')
-    constraints.append(c6)
-    
-    def c7(domains):
-        return propagate_left_of(domains, attr_index['phone'], 'samsung galaxy s21', attr_index['name'], 'Eric')
-    constraints.append(c7)
-    
-    def c8(domains):
-        changed = False
-        a_name = attr_index['name']
-        a_flower = attr_index['flower']
-        for i in range(n):
-            if 'Carol' in domains[i][a_name]:
-                if (i+3 < n and 'daffodils' in domains[i+3][a_flower]) or (i-3 >= 0 and 'daffodils' in domains[i-3][a_flower]):
-                    pass
-                else:
-                    domains[i][a_name].discard('Carol')
-                    changed = True
-        for j in range(n):
-            if 'daffodils' in domains[j][a_flower]:
-                if (j+3 < n and 'Carol' in domains[j+3][a_name]) or (j-3 >= 0 and 'Carol' in domains[j-3][a_name]):
-                    pass
-                else:
-                    domains[j][a_flower].discard('daffodils')
-                    changed = True
-        return changed
-    constraints.append(c8)
-    
-    def c9(domains):
-        return propagate_same_house(domains, attr_index['cigar'], 'prince', attr_index['sport'], 'basketball')
-    constraints.append(c9)
-    
-    def c10(domains):
-        return propagate_same_house(domains, attr_index['cigar'], 'dunhill', attr_index['sport'], 'volleyball')
-    constraints.append(c10)
-    
-    def c11(domains):
-        return propagate_same_house(domains, attr_index['sport'], 'swimming', attr_index['phone'], 'google pixel 6')
-    constraints.append(c11)
-    
-    def c12(domains):
-        return propagate_left_neighbor(domains, attr_index['phone'], 'huawei p50', attr_index['color'], 'white')
-    constraints.append(c12)
-    
-    def c13(domains):
-        return propagate_adjacent(domains, attr_index['phone'], 'oneplus 9', attr_index['flower'], 'roses')
-    constraints.append(c13)
-    
-    def c14(domains):
-        return propagate_left_of(domains, attr_index['flower'], 'iris', attr_index['name'], 'Eric')
-    constraints.append(c14)
-    
-    def c15(domains):
-        return propagate_same_house(domains, attr_index['name'], 'Peter', attr_index['cigar'], 'dunhill')
-    constraints.append(c15)
-    
-    def c16(domains):
-        return propagate_same_house(domains, attr_index['name'], 'Peter', attr_index['color'], 'blue')
-    constraints.append(c16)
-    
-    def c17(domains):
-        return propagate_same_house(domains, attr_index['name'], 'Bob', attr_index['flower'], 'tulips')
-    constraints.append(c17)
-    
-    def c19(domains):
-        return propagate_left_neighbor(domains, attr_index['sport'], 'baseball', attr_index['cigar'], 'blue master')
-    constraints.append(c19)
-    
-    def c20(domains):
-        return propagate_left_of(domains, attr_index['cigar'], 'blends', attr_index['phone'], 'google pixel 6')
-    constraints.append(c20)
-    
-    def c21(domains):
-        return propagate_same_house(domains, attr_index['name'], 'Carol', attr_index['sport'], 'soccer')
-    constraints.append(c21)
-    
-    def c22(domains):
-        return propagate_left_neighbor(domains, attr_index['flower'], 'carnations', attr_index['cigar'], 'blends')
-    constraints.append(c22)
-    
-    def c23(domains):
-        return propagate_same_house(domains, attr_index['name'], 'Eric', attr_index['cigar'], 'blends')
-    constraints.append(c23)
-    
-    def c24(domains):
-        return propagate_same_house(domains, attr_index['sport'], 'volleyball', attr_index['phone'], 'iphone 13')
-    constraints.append(c24)
-    
-    def backtrack(domains):
-        changed = True
-        while changed:
-            changed = False
-            changed = propagate_uniqueness(domains) or changed
-            for constraint in constraints:
-                changed = constraint(domains) or changed
-                
-        for i in range(n):
-            for a in range(len(attributes)):
-                if len(domains[i][a]) == 0:
-                    return None
-                    
-        all_singleton = True
-        for i in range(n):
-            for a in range(len(attributes)):
-                if len(domains[i][a]) != 1:
-                    all_singleton = False
-                    break
-            if not all_singleton:
-                break
-                
-        if all_singleton:
-            sol_rows = []
-            for i in range(n):
-                row = [str(i+1)]
-                for a in range(len(attributes)):
-                    row.append(next(iter(domains[i][a])))
-                sol_rows.append(row)
-            return sol_rows
-            
-        min_domain_size = 100
-        min_i = -1
-        min_a = -1
-        for i in range(n):
-            for a in range(len(attributes)):
-                domain_size = len(domains[i][a])
-                if domain_size > 1 and domain_size < min_domain_size:
-                    min_domain_size = domain_size
-                    min_i = i
-                    min_a = a
-                    
-        if min_i == -1:
+    def constraint5(assignment):
+        if 'green' in assignment['color'] and 'blue master' in assignment['cigar']:
+            i = assignment['color'].index('green')
+            j = assignment['cigar'].index('blue master')
+            return i == j
+        return True
+
+    def constraint6(assignment):
+        if 'yellow' in assignment['color'] and 'blue' in assignment['color']:
+            i = assignment['color'].index('yellow')
+            j = assignment['color'].index('blue')
+            return abs(i - j) == 1
+        return True
+
+    def constraint7(assignment):
+        if 'samsung galaxy s21' in assignment['phone'] and 'Eric' in assignment['name']:
+            i = assignment['phone'].index('samsung galaxy s21')
+            j = assignment['name'].index('Eric')
+            return i < j
+        return True
+
+    def constraint8(assignment):
+        if 'Carol' in assignment['name'] and 'daffodils' in assignment['flower']:
+            i = assignment['name'].index('Carol')
+            j = assignment['flower'].index('daffodils')
+            return abs(i - j) == 3
+        return True
+
+    def constraint9(assignment):
+        if 'prince' in assignment['cigar'] and 'basketball' in assignment['sport']:
+            i = assignment['cigar'].index('prince')
+            j = assignment['sport'].index('basketball')
+            return i == j
+        return True
+
+    def constraint10(assignment):
+        if 'dunhill' in assignment['cigar'] and 'volleyball' in assignment['sport']:
+            i = assignment['cigar'].index('dunhill')
+            j = assignment['sport'].index('volleyball')
+            return i == j
+        return True
+
+    def constraint11(assignment):
+        if 'swimming' in assignment['sport'] and 'google pixel 6' in assignment['phone']:
+            i = assignment['sport'].index('swimming')
+            j = assignment['phone'].index('google pixel 6')
+            return i == j
+        return True
+
+    def constraint12(assignment):
+        if 'huawei p50' in assignment['phone'] and 'white' in assignment['color']:
+            i = assignment['phone'].index('huawei p50')
+            j = assignment['color'].index('white')
+            return j == i + 1
+        return True
+
+    def constraint13(assignment):
+        if 'oneplus 9' in assignment['phone'] and 'roses' in assignment['flower']:
+            i = assignment['phone'].index('oneplus 9')
+            j = assignment['flower'].index('roses')
+            return abs(i - j) == 1
+        return True
+
+    def constraint14(assignment):
+        if 'iris' in assignment['flower'] and 'Eric' in assignment['name']:
+            i = assignment['flower'].index('iris')
+            j = assignment['name'].index('Eric')
+            return i < j
+        return True
+
+    def constraint15(assignment):
+        for i in range(6):
+            if assignment['cigar'][i] == 'dunhill' and assignment['name'][i] is not None:
+                if assignment['name'][i] != 'Peter':
+                    return False
+            if assignment['name'][i] == 'Peter' and assignment['cigar'][i] is not None:
+                if assignment['cigar'][i] != 'dunhill':
+                    return False
+        return True
+
+    def constraint16(assignment):
+        for i in range(6):
+            if assignment['color'][i] == 'blue' and assignment['name'][i] is not None:
+                if assignment['name'][i] != 'Peter':
+                    return False
+            if assignment['name'][i] == 'Peter' and assignment['color'][i] is not None:
+                if assignment['color'][i] != 'blue':
+                    return False
+        return True
+
+    def constraint17(assignment):
+        for i in range(6):
+            if assignment['flower'][i] == 'tulips' and assignment['name'][i] is not None:
+                if assignment['name'][i] != 'Bob':
+                    return False
+            if assignment['name'][i] == 'Bob' and assignment['flower'][i] is not None:
+                if assignment['flower'][i] != 'tulips':
+                    return False
+        return True
+
+    def constraint18(assignment):
+        if assignment['name'][0] is not None:
+            return assignment['name'][0] == 'Alice'
+        return True
+
+    def constraint19(assignment):
+        if 'baseball' in assignment['sport'] and 'blue master' in assignment['cigar']:
+            i = assignment['sport'].index('baseball')
+            j = assignment['cigar'].index('blue master')
+            return j == i + 1
+        return True
+
+    def constraint20(assignment):
+        if 'blends' in assignment['cigar'] and 'google pixel 6' in assignment['phone']:
+            i = assignment['cigar'].index('blends')
+            j = assignment['phone'].index('google pixel 6')
+            return i < j
+        return True
+
+    def constraint21(assignment):
+        for i in range(6):
+            if assignment['sport'][i] == 'soccer' and assignment['name'][i] is not None:
+                if assignment['name'][i] != 'Carol':
+                    return False
+            if assignment['name'][i] == 'Carol' and assignment['sport'][i] is not None:
+                if assignment['sport'][i] != 'soccer':
+                    return False
+        return True
+
+    def constraint22(assignment):
+        if 'carnations' in assignment['flower'] and 'blends' in assignment['cigar']:
+            i = assignment['flower'].index('carnations')
+            j = assignment['cigar'].index('blends')
+            return j == i + 1
+        return True
+
+    def constraint23(assignment):
+        for i in range(6):
+            if assignment['cigar'][i] == 'blends' and assignment['name'][i] is not None:
+                if assignment['name'][i] != 'Eric':
+                    return False
+            if assignment['name'][i] == 'Eric' and assignment['cigar'][i] is not None:
+                if assignment['cigar'][i] != 'blends':
+                    return False
+        return True
+
+    def constraint24(assignment):
+        if 'volleyball' in assignment['sport'] and 'iphone 13' in assignment['phone']:
+            i = assignment['sport'].index('volleyball')
+            j = assignment['phone'].index('iphone 13')
+            return i == j
+        return True
+
+    def constraint_peter(assignment):
+        for i in range(6):
+            if assignment['name'][i] == 'Peter':
+                if assignment['cigar'][i] is not None and assignment['cigar'][i] != 'dunhill':
+                    return False
+                if assignment['color'][i] is not None and assignment['color'][i] != 'blue':
+                    return False
+                if assignment['sport'][i] is not None and assignment['sport'][i] != 'volleyball':
+                    return False
+                if assignment['phone'][i] is not None and assignment['phone'][i] != 'iphone 13':
+                    return False
+        return True
+
+    constraints = [
+        constraint1, constraint2, constraint3, constraint4, constraint5,
+        constraint6, constraint7, constraint8, constraint9, constraint10,
+        constraint11, constraint12, constraint13, constraint14, constraint15,
+        constraint16, constraint17, constraint18, constraint19, constraint20,
+        constraint21, constraint22, constraint23, constraint24, constraint_peter
+    ]
+
+    def check_constraints(assignment):
+        for c in constraints:
+            if not c(assignment):
+                return False
+        return True
+
+    def is_complete(assignment):
+        for attr in attributes:
+            for i in range(6):
+                if assignment[attr][i] is None:
+                    return False
+        return True
+
+    def reduce_domains(old_domains, cell, value):
+        new_domains = deepcopy(old_domains)
+        attr, i = cell
+        for j in range(6):
+            if j != i:
+                key = (attr, j)
+                if value in new_domains[key]:
+                    new_domains[key].remove(value)
+                    if len(new_domains[key]) == 0:
+                        return None
+        return new_domains
+
+    def select_unassigned_variable(assignment, domains):
+        min_domain_size = float('inf')
+        selected_cell = None
+        for attr in attributes:
+            for i in range(6):
+                if assignment[attr][i] is None:
+                    key = (attr, i)
+                    domain_size = len(domains[key])
+                    if domain_size < min_domain_size:
+                        min_domain_size = domain_size
+                        selected_cell = key
+        return selected_cell
+
+    def backtrack(assignment, domains, constraints):
+        if is_complete(assignment):
+            if check_constraints(assignment):
+                return assignment
             return None
-            
-        for val in domains[min_i][min_a]:
-            new_domains = copy.deepcopy(domains)
-            new_domains[min_i][min_a] = {val}
-            res = backtrack(new_domains)
-            if res is not None:
-                return res
-                
+
+        cell = select_unassigned_variable(assignment, domains)
+        if cell is None:
+            return None
+
+        attr, i = cell
+        for value in list(domains[cell]):
+            assignment[attr][i] = value
+            new_domains = reduce_domains(domains, cell, value)
+            if new_domains is None:
+                assignment[attr][i] = None
+                continue
+            if check_constraints(assignment):
+                result = backtrack(assignment, new_domains, constraints)
+                if result is not None:
+                    return result
+            assignment[attr][i] = None
+
         return None
-        
-    solution = backtrack(domains)
-    
+
+    initial_assignment = {
+        'name': [None] * 6,
+        'phone': [None] * 6,
+        'cigar': [None] * 6,
+        'flower': [None] * 6,
+        'color': [None] * 6,
+        'sport': [None] * 6
+    }
+    initial_assignment['name'][0] = 'Alice'
+    initial_assignment['phone'][1] = 'oneplus 9'
+
+    solution = backtrack(initial_assignment, domains, constraints)
     if solution is None:
-        print('{"solution": {}}')
+        print('No solution found')
     else:
         output = {
             "solution": {
-                "header": ["House"] + attributes,
-                "rows": solution
+                "header": ["House", "Name", "PhoneModel", "Cigar", "Flower", "Color", "FavoriteSport"],
+                "rows": []
             }
         }
+        for i in range(6):
+            row = [
+                str(i+1),
+                solution['name'][i],
+                solution['phone'][i],
+                solution['cigar'][i],
+                solution['flower'][i],
+                solution['color'][i],
+                solution['sport'][i]
+            ]
+            output['solution']['rows'].append(row)
         print(json.dumps(output))
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

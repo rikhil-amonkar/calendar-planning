@@ -1,40 +1,48 @@
 import json
 
 def main():
-    # Initialize the two houses
-    house1 = {'House': '1', 'name': None, 'house_style': None, 'height': None, 'education': None}
-    house2 = {'House': '2', 'name': None, 'house_style': None, 'height': None, 'education': None}
-    houses = [house1, house2]
+    names = ['Eric', 'Arnold']
+    house_styles = ['victorian', 'colonial']
+    heights = ['very short', 'short']
+    educations = ['associate', 'high school']
     
-    # Apply clue 2: Victorian house is in the first house
-    houses[0]['house_style'] = 'victorian'
+    solution_rows = None
     
-    # Apply clue 1: The short person is directly left of Eric
-    houses[0]['height'] = 'short'
-    houses[1]['name'] = 'Eric'
-    
-    # Apply clue 3: The short person has an associate's degree
-    houses[0]['education'] = 'associate'
-    
-    # Assign the remaining attributes
-    houses[0]['name'] = 'Arnold'
-    houses[1]['house_style'] = 'colonial'
-    houses[1]['height'] = 'very short'
-    houses[1]['education'] = 'high school'
-    
-    # Prepare the solution dictionary
-    solution_dict = {
+    for name1 in names:
+        for style1 in house_styles:
+            if style1 != 'victorian':
+                continue
+            for height1 in heights:
+                for education1 in educations:
+                    name2 = (set(names) - {name1}).pop()
+                    style2 = (set(house_styles) - {style1}).pop()
+                    height2 = (set(heights) - {height1}).pop()
+                    education2 = (set(educations) - {education1}).pop()
+                    
+                    if height1 == 'short' and name2 == 'Eric' and education1 == 'associate':
+                        solution_rows = [
+                            ['1', name1, style1, height1, education1],
+                            ['2', name2, style2, height2, education2]
+                        ]
+                        break
+                if solution_rows:
+                    break
+            if solution_rows:
+                break
+        if solution_rows:
+            break
+            
+    if solution_rows is None:
+        solution_rows = []
+        
+    output = {
         "solution": {
-            "header": ["House", "Name", "House Style", "Height", "Education"],
-            "rows": [
-                [houses[0]['House'], houses[0]['name'], houses[0]['house_style'], houses[0]['height'], houses[0]['education']],
-                [houses[1]['House'], houses[1]['name'], houses[1]['house_style'], houses[1]['height'], houses[1]['education']]
-            ]
+            "header": ["House", "Name", "HouseStyle", "Height", "Education"],
+            "rows": solution_rows
         }
     }
     
-    # Output the solution as JSON
-    print(json.dumps(solution_dict))
+    print(json.dumps(output))
 
 if __name__ == "__main__":
     main()

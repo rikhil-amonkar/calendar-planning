@@ -1,80 +1,76 @@
 import json
-from itertools import permutations
 
 def solve_puzzle():
-    # Define all possible attributes
+    # Initialize possible values for each attribute
     houses = [1, 2]
-    names = ['Arnold', 'Eric']
-    book_genres = ['science fiction', 'mystery']
-    vacations = ['mountain', 'beach']
-    animals = ['cat', 'horse']
-    music_genres = ['rock', 'pop']
+    names = ["Arnold", "Eric"]
+    book_genres = ["science fiction", "mystery"]
+    vacations = ["mountain", "beach"]
+    animals = ["cat", "horse"]
+    music_genres = ["rock", "pop"]
 
-    # Generate all possible permutations for each attribute
-    for name_perm in permutations(names):
-        for book_perm in permutations(book_genres):
-            for vacation_perm in permutations(vacations):
-                for animal_perm in permutations(animals):
-                    for music_perm in permutations(music_genres):
-                        # Assign attributes to houses
-                        solution = {
-                            1: {
-                                'Name': name_perm[0],
-                                'Book Genre': book_perm[0],
-                                'Vacation': vacation_perm[0],
-                                'Animal': animal_perm[0],
-                                'Music Genre': music_perm[0]
-                            },
-                            2: {
-                                'Name': name_perm[1],
-                                'Book Genre': book_perm[1],
-                                'Vacation': vacation_perm[1],
-                                'Animal': animal_perm[1],
-                                'Music Genre': music_perm[1]
-                            }
-                        }
+    # Initialize solution structure
+    solution = {
+        "solution": {
+            "header": ["House", "Name", "BookGenre", "Vacation", "Animal", "MusicGenre"],
+            "rows": []
+        }
+    }
 
-                        # Apply clues to check validity
-                        # Clue 1: The person who loves beach vacations is Eric.
-                        beach_vacation_house = None
-                        for house in [1, 2]:
-                            if solution[house]['Vacation'] == 'beach':
-                                beach_vacation_house = house
-                        if beach_vacation_house is None or solution[beach_vacation_house]['Name'] != 'Eric':
-                            continue
+    # Create a list to hold possible assignments for each house
+    assignments = []
 
-                        # Clue 2: The person who loves pop music is the person who loves beach vacations.
-                        if solution[beach_vacation_house]['Music Genre'] != 'pop':
-                            continue
+    # Generate all possible combinations for each house
+    from itertools import product
 
-                        # Clue 3: The person who loves rock music is the person who loves mystery books.
-                        rock_music_house = None
-                        for house in [1, 2]:
-                            if solution[house]['Music Genre'] == 'rock':
-                                rock_music_house = house
-                        if rock_music_house is None or solution[rock_music_house]['Book Genre'] != 'mystery':
-                            continue
+    # We'll process each house separately based on constraints
+    house1 = {}
+    house2 = {}
 
-                        # Clue 4: The cat lover is not in the second house.
-                        if solution[2]['Animal'] == 'cat':
-                            continue
+    # Apply clue 5: The person who loves mystery books is in the first house.
+    house1["BookGenre"] = "mystery"
+    house2["BookGenre"] = "science fiction"
 
-                        # Clue 5: The person who loves mystery books is in the first house.
-                        if solution[1]['Book Genre'] != 'mystery':
-                            continue
+    # Apply clue 3: The person who loves rock music is the person who loves mystery books.
+    house1["MusicGenre"] = "rock"
+    # So house2 must have the other music genre
+    house2["MusicGenre"] = "pop"
 
-                        # If all clues are satisfied, return the solution
-                        result = {
-                            "solution": {
-                                "header": ["House", "Name", "Book Genre", "Vacation", "Animal", "Music Genre"],
-                                "rows": [
-                                    ["1", solution[1]['Name'], solution[1]['Book Genre'], solution[1]['Vacation'], solution[1]['Animal'], solution[1]['Music Genre']],
-                                    ["2", solution[2]['Name'], solution[2]['Book Genre'], solution[2]['Vacation'], solution[2]['Animal'], solution[2]['Music Genre']]
-                                ]
-                            }
-                        }
-                        return json.dumps(result, indent=2)
+    # Apply clue 2: The person who loves pop music is the person who loves beach vacations.
+    # house2 has pop music, so:
+    house2["Vacation"] = "beach"
+    # So house1 must have the other vacation
+    house1["Vacation"] = "mountain"
 
-    return json.dumps({"error": "No solution found"}, indent=2)
+    # Apply clue 1: The person who loves beach vacations is Eric.
+    # house2 has beach vacation, so:
+    house2["Name"] = "Eric"
+    # So house1 must have the other name
+    house1["Name"] = "Arnold"
+
+    # Apply clue 4: The cat lover is not in the second house.
+    # So cat must be in house1, horse in house2
+    house1["Animal"] = "cat"
+    house2["Animal"] = "horse"
+
+    # Now build the solution rows
+    solution["solution"]["rows"].append([
+        "1",
+        house1["Name"],
+        house1["BookGenre"],
+        house1["Vacation"],
+        house1["Animal"],
+        house1["MusicGenre"]
+    ])
+    solution["solution"]["rows"].append([
+        "2",
+        house2["Name"],
+        house2["BookGenre"],
+        house2["Vacation"],
+        house2["Animal"],
+        house2["MusicGenre"]
+    ])
+
+    return json.dumps(solution)
 
 print(solve_puzzle())

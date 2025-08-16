@@ -7,105 +7,137 @@ def main():
     musics = ['jazz', 'rock', 'pop', 'classical']
     colors = ['green', 'red', 'yellow', 'white']
     flowers = ['lilies', 'carnations', 'daffodils', 'roses']
+    
+    def check_constraints(assn):
+        if assn[1]['MusicGenre'] != 'pop':
+            return False
+            
+        if assn[0]['Flower'] == 'carnations':
+            return False
+            
+        if assn[1]['Name'] == 'Eric':
+            return False
+            
+        if assn[2]['Name'] == 'Arnold':
+            return False
+            
+        if assn[3]['Education'] == 'associate':
+            return False
+            
+        if assn[3]['Flower'] == 'carnations':
+            return False
+            
+        for i in range(4):
+            if assn[i]['Education'] == 'bachelor' and assn[i]['Flower'] != 'daffodils':
+                return False
+            if assn[i]['Flower'] == 'daffodils' and assn[i]['Education'] != 'bachelor':
+                return False
+                
+        found_clue3 = False
+        for i in range(4):
+            if assn[i]['Education'] == 'master' and assn[i]['Name'] == 'Alice':
+                found_clue3 = True
+                break
+        if not found_clue3:
+            return False
+            
+        found_clue4 = False
+        for i in range(3):
+            if assn[i]['Education'] == 'master' and assn[i+1]['MusicGenre'] == 'classical':
+                found_clue4 = True
+                break
+        if not found_clue4:
+            return False
+            
+        found_clue7 = False
+        for i in range(3):
+            if assn[i]['Color'] == 'yellow' and assn[i+1]['Flower'] == 'roses':
+                found_clue7 = True
+                break
+        if not found_clue7:
+            return False
+            
+        found_clue11 = False
+        for i in range(3):
+            if assn[i]['Color'] == 'red' and assn[i+1]['Color'] == 'white':
+                found_clue11 = True
+                break
+        if not found_clue11:
+            return False
+            
+        found_clue12 = False
+        for i in range(4):
+            if assn[i]['Color'] == 'red' and assn[i]['MusicGenre'] == 'rock':
+                found_clue12 = True
+                break
+        if not found_clue12:
+            return False
+            
+        found_clue13 = False
+        for i in range(4):
+            if assn[i]['Name'] == 'Arnold' and assn[i]['Color'] == 'yellow':
+                found_clue13 = True
+                break
+        if not found_clue13:
+            return False
+            
+        found_clue14 = False
+        for i in range(4):
+            if assn[i]['Flower'] == 'daffodils' and assn[i]['Color'] == 'yellow':
+                found_clue14 = True
+                break
+        if not found_clue14:
+            return False
+            
+        return True
 
-    for name_assign in itertools.permutations(names):
-        if name_assign[1] == 'Eric':  # Clue 5: Eric not in second house (index1)
-            continue
-        if name_assign[2] == 'Arnold':  # Clue 6: Arnold not in third house (index2)
-            continue
+    found_solution = False
+    result_json = None
 
-        for edu_assign in itertools.permutations(educations):
-            try:
-                idx_master = edu_assign.index('master')
-            except ValueError:
-                continue
-            if name_assign[idx_master] != 'Alice':  # Clue 3: master's degree is Alice
-                continue
-            if edu_assign[3] == 'associate':  # Clue 9: associate not in fourth house (index3)
-                continue
-
-            for music_assign in itertools.permutations(musics):
-                if music_assign[1] != 'pop':  # Clue 8: pop music in second house (index1)
-                    continue
-                if idx_master < 3:  # Clue 4: master directly left of classical
-                    if music_assign[idx_master+1] != 'classical':
-                        continue
-                else:
-                    continue
-
-                for color_assign in itertools.permutations(colors):
-                    try:
-                        idx_arnold = name_assign.index('Arnold')
-                    except ValueError:
-                        continue
-                    if color_assign[idx_arnold] != 'yellow':  # Clue 13: Arnold loves yellow
-                        continue
-                    found_red_white = False
-                    for i in range(3):  # Clue 11: red directly left of white
-                        if color_assign[i] == 'red' and color_assign[i+1] == 'white':
-                            found_red_white = True
-                            break
-                    if not found_red_white:
-                        continue
-
-                    for flower_assign in itertools.permutations(flowers):
-                        try:
-                            idx_bachelor = edu_assign.index('bachelor')
-                        except ValueError:
-                            continue
-                        if flower_assign[idx_bachelor] != 'daffodils':  # Clue 1: bachelor loves daffodils
-                            continue
-                        if flower_assign[0] == 'carnations':  # Clue 2: carnations not in first house (index0)
-                            continue
-                        if idx_arnold < 3:  # Clue 7: yellow directly left of roses
-                            if flower_assign[idx_arnold+1] != 'roses':
-                                continue
-                        else:
-                            continue
-                        if flower_assign[3] == 'carnations':  # Clue 10: carnations not in fourth house (index3)
-                            continue
-                        if idx_bachelor != idx_arnold:  # Clue 14: daffodils and yellow same house
-                            continue
-                        try:
-                            idx_red = color_assign.index('red')
-                        except ValueError:
-                            continue
-                        if music_assign[idx_red] != 'rock':  # Clue 12: red color loves rock music
-                            continue
-
-                        solution = []
+    for name_perm in itertools.permutations(names):
+        if found_solution:
+            break
+        for edu_perm in itertools.permutations(educations):
+            if found_solution:
+                break
+            for music_perm in itertools.permutations(musics):
+                if found_solution:
+                    break
+                for color_perm in itertools.permutations(colors):
+                    if found_solution:
+                        break
+                    for flower_perm in itertools.permutations(flowers):
+                        assignment = []
                         for i in range(4):
-                            solution.append({
-                                'House': str(i+1),
-                                'Name': name_assign[i],
-                                'Education': edu_assign[i],
-                                'Music': music_assign[i],
-                                'Color': color_assign[i],
-                                'Flower': flower_assign[i]
-                            })
-
-                        header = ['House', 'Name', 'Education', 'Music', 'Color', 'Flower']
-                        rows = []
-                        for house in solution:
-                            rows.append([
-                                house['House'],
-                                house['Name'],
-                                house['Education'],
-                                house['Music'],
-                                house['Color'],
-                                house['Flower']
-                            ])
-
-                        result = {
-                            "solution": {
-                                "header": header,
-                                "rows": rows
+                            house = {
+                                'Name': name_perm[i],
+                                'Education': edu_perm[i],
+                                'MusicGenre': music_perm[i],
+                                'Color': color_perm[i],
+                                'Flower': flower_perm[i]
                             }
-                        }
-                        print(json.dumps(result))
-                        return
-
-    print(json.dumps({"error": "No solution found"}))
+                            assignment.append(house)
+                        
+                        if check_constraints(assignment):
+                            rows = []
+                            for idx, house_dict in enumerate(assignment, start=1):
+                                row = [str(idx), house_dict['Name'], house_dict['Education'], house_dict['MusicGenre'], house_dict['Color'], house_dict['Flower']]
+                                rows.append(row)
+                            
+                            solution_dict = {
+                                "solution": {
+                                    "header": ["House", "Name", "Education", "MusicGenre", "Color", "Flower"],
+                                    "rows": rows
+                                }
+                            }
+                            result_json = json.dumps(solution_dict, indent=2)
+                            found_solution = True
+                            break
+    
+    if found_solution:
+        print(result_json)
+    else:
+        print(json.dumps({"solution": {"header": [], "rows": []}}))
 
 if __name__ == '__main__':
     main()

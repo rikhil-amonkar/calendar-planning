@@ -1,9 +1,8 @@
-import itertools
 import json
+from itertools import permutations
 
 def solve_puzzle():
-    # Define all possible options for each category
-    houses = ['1', '2', '3', '4']
+    # Define all possible categories and options
     names = ['Eric', 'Alice', 'Peter', 'Arnold']
     smoothies = ['dragonfruit', 'cherry', 'desert', 'watermelon']
     sports = ['soccer', 'tennis', 'basketball', 'swimming']
@@ -11,150 +10,169 @@ def solve_puzzle():
     flowers = ['daffodils', 'roses', 'lilies', 'carnations']
     
     # Generate all possible permutations for each category
-    for name_perm in itertools.permutations(names):
-        for smoothie_perm in itertools.permutations(smoothies):
-            for sport_perm in itertools.permutations(sports):
-                for car_perm in itertools.permutations(cars):
-                    for flower_perm in itertools.permutations(flowers):
-                        # Assign each permutation to houses 1-4
-                        assignment = []
-                        for i in range(4):
-                            assignment.append({
-                                'House': houses[i],
-                                'Name': name_perm[i],
-                                'Smoothie': smoothie_perm[i],
-                                'Sport': sport_perm[i],
-                                'Car': car_perm[i],
-                                'Flower': flower_perm[i]
-                            })
+    for name_order in permutations(names):
+        for smoothie_order in permutations(smoothies):
+            for sport_order in permutations(sports):
+                for car_order in permutations(cars):
+                    for flower_order in permutations(flowers):
+                        # Assign to houses 1-4
+                        solution = {
+                            1: {
+                                'Name': name_order[0],
+                                'Smoothie': smoothie_order[0],
+                                'FavoriteSport': sport_order[0],
+                                'CarModel': car_order[0],
+                                'Flower': flower_order[0]
+                            },
+                            2: {
+                                'Name': name_order[1],
+                                'Smoothie': smoothie_order[1],
+                                'FavoriteSport': sport_order[1],
+                                'CarModel': car_order[1],
+                                'Flower': flower_order[1]
+                            },
+                            3: {
+                                'Name': name_order[2],
+                                'Smoothie': smoothie_order[2],
+                                'FavoriteSport': sport_order[2],
+                                'CarModel': car_order[2],
+                                'Flower': flower_order[2]
+                            },
+                            4: {
+                                'Name': name_order[3],
+                                'Smoothie': smoothie_order[3],
+                                'FavoriteSport': sport_order[3],
+                                'CarModel': car_order[3],
+                                'Flower': flower_order[3]
+                            }
+                        }
                         
                         # Check all constraints
                         valid = True
                         
+                        # Clue 2: Peter is the Dragonfruit smoothie lover.
+                        peter_house = None
+                        for house in solution:
+                            if solution[house]['Name'] == 'Peter':
+                                peter_house = house
+                                break
+                        if peter_house is None or solution[peter_house]['Smoothie'] != 'dragonfruit':
+                            valid = False
+                            continue
+                        
                         # Clue 4: The person who loves tennis is in the first house.
-                        if assignment[0]['Sport'] != 'tennis':
+                        if solution[1]['FavoriteSport'] != 'tennis':
+                            valid = False
+                            continue
+                        
+                        # Clue 6: Arnold is the person who loves basketball.
+                        arnold_house = None
+                        for house in solution:
+                            if solution[house]['Name'] == 'Arnold':
+                                arnold_house = house
+                                break
+                        if arnold_house is None or solution[arnold_house]['FavoriteSport'] != 'basketball':
+                            valid = False
+                            continue
+                        
+                        # Clue 11: The person who loves basketball is the person who loves the bouquet of lilies.
+                        if solution[arnold_house]['Flower'] != 'lilies':
                             valid = False
                             continue
                         
                         # Clue 8: Eric is the person who loves the rose bouquet.
                         eric_house = None
-                        for house in assignment:
-                            if house['Name'] == 'Eric':
+                        for house in solution:
+                            if solution[house]['Name'] == 'Eric':
                                 eric_house = house
                                 break
-                        if not eric_house or eric_house['Flower'] != 'roses':
+                        if eric_house is None or solution[eric_house]['Flower'] != 'roses':
                             valid = False
                             continue
                         
                         # Clue 1: The person who owns a Tesla Model 3 is the person who loves the rose bouquet.
                         tesla_house = None
-                        for house in assignment:
-                            if house['Car'] == 'tesla model 3':
+                        for house in solution:
+                            if solution[house]['CarModel'] == 'tesla model 3':
                                 tesla_house = house
                                 break
-                        if not tesla_house or tesla_house['Flower'] != 'roses':
+                        if tesla_house is None or solution[tesla_house]['Flower'] != 'roses':
                             valid = False
                             continue
-                        
-                        # Clue 2: Peter is the Dragonfruit smoothie lover.
-                        peter_house = None
-                        for house in assignment:
-                            if house['Name'] == 'Peter':
-                                peter_house = house
-                                break
-                        if not peter_house or peter_house['Smoothie'] != 'dragonfruit':
+                        if tesla_house != eric_house:
                             valid = False
                             continue
                         
                         # Clue 3: The Desert smoothie lover is the person who owns a Toyota Camry.
                         desert_house = None
-                        for house in assignment:
-                            if house['Smoothie'] == 'desert':
+                        for house in solution:
+                            if solution[house]['Smoothie'] == 'desert':
                                 desert_house = house
                                 break
-                        if not desert_house or desert_house['Car'] != 'toyota camry':
+                        if desert_house is None or solution[desert_house]['CarModel'] != 'toyota camry':
                             valid = False
                             continue
                         
                         # Clue 5: The person who owns a Toyota Camry and the person who loves basketball are next to each other.
-                        basketball_house = None
-                        for house in assignment:
-                            if house['Sport'] == 'basketball':
-                                basketball_house = house
-                                break
-                        if not basketball_house:
-                            valid = False
-                            continue
-                        toyota_index = houses.index(desert_house['House'])
-                        basketball_index = houses.index(basketball_house['House'])
-                        if abs(toyota_index - basketball_index) != 1:
-                            valid = False
-                            continue
-                        
-                        # Clue 6: Arnold is the person who loves basketball.
-                        if basketball_house['Name'] != 'Arnold':
+                        if abs(desert_house - arnold_house) != 1:
                             valid = False
                             continue
                         
                         # Clue 7: The person who owns a Honda Civic is the person who loves a bouquet of daffodils.
                         honda_house = None
-                        for house in assignment:
-                            if house['Car'] == 'honda civic':
+                        for house in solution:
+                            if solution[house]['CarModel'] == 'honda civic':
                                 honda_house = house
                                 break
-                        if not honda_house or honda_house['Flower'] != 'daffodils':
-                            valid = False
-                            continue
-                        
-                        # Clue 9: The Watermelon smoothie lover is not in the first house.
-                        if assignment[0]['Smoothie'] == 'watermelon':
+                        if honda_house is None or solution[honda_house]['Flower'] != 'daffodils':
                             valid = False
                             continue
                         
                         # Clue 10: The person who owns a Honda Civic is somewhere to the right of the Desert smoothie lover.
-                        honda_index = houses.index(honda_house['House'])
-                        desert_index = houses.index(desert_house['House'])
-                        if honda_index <= desert_index:
+                        if honda_house <= desert_house:
                             valid = False
                             continue
                         
-                        # Clue 11: The person who loves basketball is the person who loves the bouquet of lilies.
-                        if basketball_house['Flower'] != 'lilies':
+                        # Clue 9: The Watermelon smoothie lover is not in the first house.
+                        watermelon_house = None
+                        for house in solution:
+                            if solution[house]['Smoothie'] == 'watermelon':
+                                watermelon_house = house
+                                break
+                        if watermelon_house == 1:
                             valid = False
                             continue
                         
                         # Clue 12: The person who loves tennis and the person who loves soccer are next to each other.
-                        tennis_index = None
-                        soccer_index = None
-                        for i, house in enumerate(assignment):
-                            if house['Sport'] == 'tennis':
-                                tennis_index = i
-                            if house['Sport'] == 'soccer':
-                                soccer_index = i
-                        if tennis_index is None or soccer_index is None or abs(tennis_index - soccer_index) != 1:
+                        soccer_house = None
+                        for house in solution:
+                            if solution[house]['FavoriteSport'] == 'soccer':
+                                soccer_house = house
+                                break
+                        if soccer_house is None or abs(soccer_house - 1) != 1:
                             valid = False
                             continue
                         
                         if valid:
-                            # Prepare the solution in the required format
-                            solution = {
+                            # Prepare the output
+                            output = {
                                 "solution": {
-                                    "header": ["House", "Name", "Smoothie", "Sport", "Car", "Flower"],
+                                    "header": ["House", "Name", "Smoothie", "FavoriteSport", "CarModel", "Flower"],
                                     "rows": []
                                 }
                             }
-                            for house in assignment:
-                                solution["solution"]["rows"].append([
-                                    house['House'],
-                                    house['Name'],
-                                    house['Smoothie'],
-                                    house['Sport'],
-                                    house['Car'],
-                                    house['Flower']
-                                ])
-                            return solution
+                            for house in sorted(solution.keys()):
+                                row = [
+                                    str(house),
+                                    solution[house]['Name'],
+                                    solution[house]['Smoothie'] if 'Smoothie' not in solution[house] else solution[house]['Smoothie'],
+                                    solution[house]['FavoriteSport'],
+                                    solution[house]['CarModel'],
+                                    solution[house]['Flower']
+                                ]
+                                output["solution"]["rows"].append(row)
+                            return output
     return {"solution": {"header": [], "rows": []}}
 
-if __name__ == "__main__":
-    solution = solve_puzzle()
-    print(json.dumps(solution, indent=2))
+result = solve_puzzle()
+print(json.dumps(result, indent=2))

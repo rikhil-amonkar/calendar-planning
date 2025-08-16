@@ -1,0 +1,101 @@
+{
+    "has_execution_error": false,
+    "execution_output": "SOLUTION:\nAfter analyzing both the \u201cwhen\u2010they\u2019re\u2013available\u201d windows and the travel times between San Francisco neighborhoods, one good \u201cmaximum\u2010friends\u201d schedule (meeting 7 friends out of the 10 possibilities) is as follows. In our chosen plan we \u201cpack\u201d the morning with friends whose windows end well before lunch (Linda, James and Anthony) and then in the afternoon meet the four whose available periods are later (Helen, Paul, William and Kimberly). (For example, trying to add an extra long\u2010meeting friend in the morning \u2013 Emily or Nancy \u2013 causes the total required meeting time (plus travel) to run over the day\u2019s span.) \n\nOne possible itinerary that meets all minimum meeting\u2013duration and time\u2013window constraints is:\n\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\nMorning (starting at Russian Hill at 09:00):\n1. Travel from Russian Hill to Haight\u2010Ashbury (17 minutes). Arrive at 09:17.\n2. Meet Linda at Haight\u2013Ashbury (Linda is available from 07:30 until 19:15; minimum 15 minutes). Hold Linda from 09:17 to 09:32.\n3. Depart immediately and travel from Haight\u2013Ashbury to Embarcadero (\u224820 minutes). Arrive about 09:52; wait until James\u2019s slot.\n4. Meet James at Embarcadero (available 10:30\u201311:30; need 30 minutes). Hold James from 10:30 to 11:00.\n5. Immediately after, travel from Embarcadero to Mission District (\u224820 minutes). Arrive about 11:20.\n6. Meet Anthony at Mission District (available 08:00\u201314:45; need 105 minutes). Hold Anthony from 11:20 to 13:05.\n\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\nAfternoon (leaving the Mission District at 13:05):\n7. Travel from Mission District to North Beach (\u224817 minutes). Arrive about 13:22; wait until the friend is \u201cin\u2013place.\u201d\n8. Meet Helen at North Beach (available 13:45\u201318:45; need 30 minutes). Hold Helen from 13:45 to 14:15.\n9. Travel from North Beach to Fisherman\u2019s Wharf (\u22485 minutes). Depart 14:15, arrive about 14:20; wait until Paul\u2019s available time.\n10. Meet Paul at Fisherman\u2019s Wharf (available 14:45\u201318:45; need 90 minutes). Hold Paul from 14:45 to 16:15.\n11. Then, travel directly from Fisherman\u2019s Wharf to Bayview (\u224826 minutes). Depart at 16:15 and arrive about 16:41; wait until William is \u201con\u2013duty.\u201d\n12. Meet William at Bayview (available 17:30\u201320:30; need 120 minutes). Start William at 17:30 and meet until 19:30.\n13. Finally, travel from Bayview to Golden Gate Park (\u224822 minutes). Depart from Bayview at 19:30 and arrive at about 19:52.\n14. Meet Kimberly at Golden Gate Park (available 18:45\u201321:15; need 75 minutes). Hold Kimberly from 19:52 to 21:07.\n\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\nAll meetings fall completely within each friend\u2019s availability window and satisfy the minimum meeting\u2013time requirements. (The wait periods required by each friend\u2019s \u201cstart\u2010time\u201d are unavoidable; note that any attempt to \u201csqueeze in\u201d an extra meeting \u2013 for example, one of the long 120\u2011minute friends Emily or Nancy \u2013 makes it impossible once travel\u2013times are added.)\n\nBelow is the itinerary in the prescribed JSON format:\n\n{\n  \"itinerary\": [\n    {\"action\": \"meet\", \"person\": \"Linda\",    \"start_time\": \"09:17\", \"end_time\": \"09:32\"},\n    {\"action\": \"meet\", \"person\": \"James\",    \"start_time\": \"10:30\", \"end_time\": \"11:00\"},\n    {\"action\": \"meet\", \"person\": \"Anthony\",  \"start_time\": \"11:20\", \"end_time\": \"13:05\"},\n    {\"action\": \"meet\", \"person\": \"Helen\",    \"start_time\": \"13:45\", \"end_time\": \"14:15\"},\n    {\"action\": \"meet\", \"person\": \"Paul\",     \"start_time\": \"14:45\", \"end_time\": \"16:15\"},\n    {\"action\": \"meet\", \"person\": \"William\",  \"start_time\": \"17:30\", \"end_time\": \"19:30\"},\n    {\"action\": \"meet\", \"person\": \"Kimberly\", \"start_time\": \"19:52\", \"end_time\": \"21:07\"}\n  ]\n}\n\nThis schedule \u2013 with a morning block at Haight\u2013Ashbury/Embarcadero/Mission District and an afternoon block moving from North Beach via Fisherman\u2019s Wharf to Bayview and ending in Golden Gate Park \u2013 maximizes the number of friend visits (7 of 10) while honoring all travel\u2013time and availability\u2013window constraints.",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "person": "Linda",
+                "start_time": "09:17",
+                "end_time": "09:32"
+            },
+            {
+                "action": "meet",
+                "person": "James",
+                "start_time": "10:30",
+                "end_time": "11:00"
+            },
+            {
+                "action": "meet",
+                "person": "Anthony",
+                "start_time": "11:20",
+                "end_time": "13:05"
+            },
+            {
+                "action": "meet",
+                "person": "Helen",
+                "start_time": "13:45",
+                "end_time": "14:15"
+            },
+            {
+                "action": "meet",
+                "person": "Paul",
+                "start_time": "14:45",
+                "end_time": "16:15"
+            },
+            {
+                "action": "meet",
+                "person": "William",
+                "start_time": "17:30",
+                "end_time": "19:30"
+            },
+            {
+                "action": "meet",
+                "person": "Kimberly",
+                "start_time": "19:52",
+                "end_time": "21:07"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "person": "Emily",
+                "start_time": "09:15",
+                "end_time": "11:15"
+            },
+            {
+                "action": "meet",
+                "person": "Linda",
+                "start_time": "11:26",
+                "end_time": "11:41"
+            },
+            {
+                "action": "meet",
+                "person": "Anthony",
+                "start_time": "11:52",
+                "end_time": "13:37"
+            },
+            {
+                "action": "meet",
+                "person": "Helen",
+                "start_time": "13:54",
+                "end_time": "14:24"
+            },
+            {
+                "action": "meet",
+                "person": "Paul",
+                "start_time": "14:45",
+                "end_time": "16:15"
+            },
+            {
+                "action": "meet",
+                "person": "William",
+                "start_time": "17:30",
+                "end_time": "19:30"
+            },
+            {
+                "action": "meet",
+                "person": "Kimberly",
+                "start_time": "19:52",
+                "end_time": "21:07"
+            }
+        ]
+    },
+    "status": "Correct plan (constraints satisfied)",
+    "violated_constraint": {},
+    "is_exact_match": false,
+    "constraints_satisfied": true,
+    "pass_number": 1
+}

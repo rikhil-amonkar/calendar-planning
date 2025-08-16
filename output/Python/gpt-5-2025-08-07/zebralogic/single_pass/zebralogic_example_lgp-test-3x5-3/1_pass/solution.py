@@ -1,2 +1,2 @@
 if __name__ == "__main__":
-    main()
+    print(json.dumps(solve_puzzle(), ensure_ascii=False))

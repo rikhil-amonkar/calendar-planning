@@ -3,88 +3,106 @@ from itertools import permutations
 
 def solve_puzzle():
     # Define all possible categories and their options
-    categories = {
-        'House': ['1', '2', '3'],
-        'Name': ['Arnold', 'Eric', 'Peter'],
-        'Music': ['pop', 'rock', 'classical'],
-        'Child': ['Fred', 'Meredith', 'Bella'],
-        'Book': ['mystery', 'romance', 'science fiction']
-    }
-    
+    houses = [1, 2, 3]
+    names = ["Arnold", "Eric", "Peter"]
+    music_genres = ["pop", "rock", "classical"]
+    children = ["Fred", "Meredith", "Bella"]
+    book_genres = ["mystery", "romance", "science fiction"]
+
     # Generate all possible permutations for each category
-    for names in permutations(categories['Name']):
-        if names[0] != 'Peter':  # Clue 2: Peter is in the first house
-            continue
-        
-        for music in permutations(categories['Music']):
-            for child in permutations(categories['Child']):
-                for book in permutations(categories['Book']):
-                    # Create a list of houses with their attributes
-                    houses = [
-                        {'House': '1', 'Name': names[0], 'Music': music[0], 'Child': child[0], 'Book': book[0]},
-                        {'House': '2', 'Name': names[1], 'Music': music[1], 'Child': child[1], 'Book': book[1]},
-                        {'House': '3', 'Name': names[2], 'Music': music[2], 'Child': child[2], 'Book': book[2]}
-                    ]
-                    
-                    # Check all clues
+    for name_perm in permutations(names):
+        for music_perm in permutations(music_genres):
+            for child_perm in permutations(children):
+                for book_perm in permutations(book_genres):
+                    # Assign each permutation to houses
+                    solution = []
+                    for i in range(3):
+                        house = i + 1
+                        name = name_perm[i]
+                        music = music_perm[i]
+                        child = child_perm[i]
+                        book = book_perm[i]
+                        solution.append({
+                            "House": house,
+                            "Name": name,
+                            "MusicGenre": music,
+                            "Children": child,
+                            "BookGenre": book
+                        })
+
+                    # Check all constraints
                     valid = True
-                    
-                    # Clue 1: The person's child is named Fred is directly left of the person who loves mystery books.
-                    fred_pos = None
-                    mystery_pos = None
-                    for i, house in enumerate(houses):
-                        if house['Child'] == 'Fred':
-                            fred_pos = i
-                        if house['Book'] == 'mystery':
-                            mystery_pos = i
-                    if not (fred_pos is not None and mystery_pos is not None and fred_pos + 1 == mystery_pos):
+
+                    # Clue 2: Peter is in the first house
+                    if solution[0]["Name"] != "Peter":
                         valid = False
-                    
-                    # Clue 3: The person who loves mystery books is the person who loves classical music.
+                        continue
+
+                    # Clue 5: Eric is the person who loves mystery books
+                    eric_house = None
+                    mystery_house = None
+                    for house in solution:
+                        if house["Name"] == "Eric":
+                            eric_house = house
+                        if house["BookGenre"] == "mystery":
+                            mystery_house = house
+                    if eric_house is None or mystery_house is None or eric_house["House"] != mystery_house["House"]:
+                        valid = False
+                        continue
+
+                    # Clue 3: The person who loves mystery books loves classical music
+                    if mystery_house["MusicGenre"] != "classical":
+                        valid = False
+                        continue
+
+                    # Clue 1: The person whose child is Fred is directly left of the person who loves mystery books
+                    fred_house = None
+                    for house in solution:
+                        if house["Children"] == "Fred":
+                            fred_house = house
+                    if fred_house is None or (fred_house["House"] + 1) != mystery_house["House"]:
+                        valid = False
+                        continue
+
+                    # Clue 4: The person who loves science fiction books has child Meredith
+                    sf_house = None
+                    for house in solution:
+                        if house["BookGenre"] == "science fiction":
+                            sf_house = house
+                    if sf_house is None or sf_house["Children"] != "Meredith":
+                        valid = False
+                        continue
+
+                    # Clue 6: The person who loves rock music is somewhere to the right of the person who loves romance books
+                    rock_house = None
+                    romance_house = None
+                    for house in solution:
+                        if house["MusicGenre"] == "rock":
+                            rock_house = house
+                        if house["BookGenre"] == "romance":
+                            romance_house = house
+                    if rock_house is None or romance_house is None or rock_house["House"] <= romance_house["House"]:
+                        valid = False
+                        continue
+
                     if valid:
-                        for house in houses:
-                            if house['Book'] == 'mystery' and house['Music'] != 'classical':
-                                valid = False
-                                break
-                    
-                    # Clue 4: The person who loves science fiction books is the person's child is named Meredith.
-                    if valid:
-                        for house in houses:
-                            if house['Book'] == 'science fiction' and house['Child'] != 'Meredith':
-                                valid = False
-                                break
-                    
-                    # Clue 5: Eric is the person who loves mystery books.
-                    if valid:
-                        for house in houses:
-                            if house['Book'] == 'mystery' and house['Name'] != 'Eric':
-                                valid = False
-                                break
-                    
-                    # Clue 6: The person who loves rock music is somewhere to the right of the person who loves romance books.
-                    if valid:
-                        rock_pos = None
-                        romance_pos = None
-                        for i, house in enumerate(houses):
-                            if house['Music'] == 'rock':
-                                rock_pos = i
-                            if house['Book'] == 'romance':
-                                romance_pos = i
-                        if not (rock_pos is not None and romance_pos is not None and rock_pos > romance_pos):
-                            valid = False
-                    
-                    if valid:
-                        # Prepare the solution in the required format
-                        solution = {
+                        # Prepare the output in the required format
+                        output = {
                             "solution": {
-                                "header": ["House", "Name", "Music", "Child", "Book"],
-                                "rows": [
-                                    [house['House'], house['Name'], house['Music'], house['Child'], house['Book']] for house in houses
-                                ]
+                                "header": ["House", "Name", "MusicGenre", "Children", "BookGenre"],
+                                "rows": []
                             }
                         }
-                        return json.dumps(solution, indent=2)
-    
-    return json.dumps({"solution": {}})
+                        for house in sorted(solution, key=lambda x: x["House"]):
+                            output["solution"]["rows"].append([
+                                str(house["House"]),
+                                house["Name"],
+                                house["MusicGenre"],
+                                house["Children"],
+                                house["BookGenre"]
+                            ])
+                        return json.dumps(output, indent=2)
+
+    return json.dumps({"solution": {"header": [], "rows": []}})
 
 print(solve_puzzle())

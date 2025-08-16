@@ -5,114 +5,131 @@ def solve_puzzle():
     # Define all possible categories and options
     houses = ['1', '2', '3']
     names = ['Eric', 'Peter', 'Arnold']
-    cigars = ['blue master', 'prince', 'pall mall']
+    cigars = ['blue master', 'prince', 'pall mall']  # Note: 'prince' is misspelled as 'prince' in the input, but corrected here
     hobbies = ['photography', 'gardening', 'cooking']
     educations = ['high school', 'associate', 'bachelor']
     drinks = ['tea', 'milk', 'water']
-
+    
+    # Correct cigar name from input (assuming 'prince' was intended)
+    cigars = ['blue master', 'prince', 'pall mall']
+    
     # Generate all possible permutations for each category
     for name_perm in permutations(names):
         for cigar_perm in permutations(cigars):
             for hobby_perm in permutations(hobbies):
-                for edu_perm in permutations(educations):
+                for education_perm in permutations(educations):
                     for drink_perm in permutations(drinks):
-                        # Create a solution candidate
-                        candidate = []
+                        # Create a dictionary to hold the current assignment
+                        assignment = {
+                            '1': {'Name': None, 'Cigar': None, 'Hobby': None, 'Education': None, 'Drink': None},
+                            '2': {'Name': None, 'Cigar': None, 'Hobby': None, 'Education': None, 'Drink': None},
+                            '3': {'Name': None, 'Cigar': None, 'Hobby': None, 'Education': None, 'Drink': None}
+                        }
+                        
+                        # Assign values to each house
                         for i in range(3):
-                            candidate.append({
-                                'House': str(i+1),
-                                'Name': name_perm[i],
-                                'cigar': cigar_perm[i],
-                                'hobby': hobby_perm[i],
-                                'education': edu_perm[i],
-                                'drink': drink_perm[i]
-                            })
-
-                        # Check all constraints
-                        valid = True
-
-                        # Constraint 1: Pall Mall is Peter
-                        for house in candidate:
-                            if house['cigar'] == 'pall mall' and house['Name'] != 'Peter':
-                                valid = False
+                            house = houses[i]
+                            assignment[house]['Name'] = name_perm[i]
+                            assignment[house]['Cigar'] = cigar_perm[i]
+                            assignment[house]['Hobby'] = hobby_perm[i]
+                            assignment[house]['Education'] = education_perm[i]
+                            assignment[house]['Drink'] = drink_perm[i]
+                        
+                        # Check constraints
+                        # Constraint 1: The person partial to Pall Mall is Peter.
+                        pall_mall_house = None
+                        for house in houses:
+                            if assignment[house]['Cigar'] == 'pall mall' and assignment[house]['Name'] != 'Peter':
                                 break
-                        if not valid:
-                            continue
-
-                        # Constraint 2: milk is directly left of high school
-                        milk_left_of_hs = False
-                        for i in range(2):
-                            if candidate[i]['drink'] == 'milk' and candidate[i+1]['education'] == 'high school':
-                                milk_left_of_hs = True
-                                break
-                        if not milk_left_of_hs:
-                            valid = False
-                            continue
-
-                        # Constraint 3: Eric is the tea drinker
-                        for house in candidate:
-                            if house['Name'] == 'Eric' and house['drink'] != 'tea':
-                                valid = False
-                                break
-                        if not valid:
-                            continue
-
-                        # Constraint 4: Arnold and Prince smoker are next to each other
-                        arnold_and_prince_adjacent = False
-                        for i in range(3):
-                            if candidate[i]['Name'] == 'Arnold':
-                                if (i > 0 and candidate[i-1]['cigar'] == 'prince') or \
-                                   (i < 2 and candidate[i+1]['cigar'] == 'prince'):
-                                    arnold_and_prince_adjacent = True
+                            if assignment[house]['Cigar'] == 'pall mall':
+                                pall_mall_house = house
+                        else:
+                            if pall_mall_house is None:
+                                continue  # No house has pall mall
+                            
+                            # Constraint 3: Eric is the tea drinker.
+                            eric_house = None
+                            for house in houses:
+                                if assignment[house]['Name'] == 'Eric' and assignment[house]['Drink'] != 'tea':
                                     break
-                        if not arnold_and_prince_adjacent:
-                            valid = False
-                            continue
-
-                        # Constraint 5: gardening is left of Prince smoker
-                        prince_pos = -1
-                        gardening_pos = -1
-                        for i in range(3):
-                            if candidate[i]['cigar'] == 'prince':
-                                prince_pos = i
-                            if candidate[i]['hobby'] == 'gardening':
-                                gardening_pos = i
-                        if gardening_pos >= prince_pos or prince_pos == -1 or gardening_pos == -1:
-                            valid = False
-                            continue
-
-                        # Constraint 6: milk drinker has associate's degree
-                        for house in candidate:
-                            if house['drink'] == 'milk' and house['education'] != 'associate':
-                                valid = False
-                                break
-                        if not valid:
-                            continue
-
-                        # Constraint 7: bachelor is directly left of photography
-                        bachelor_left_of_photo = False
-                        for i in range(2):
-                            if candidate[i]['education'] == 'bachelor' and candidate[i+1]['hobby'] == 'photography':
-                                bachelor_left_of_photo = True
-                                break
-                        if not bachelor_left_of_photo:
-                            valid = False
-                            continue
-
-                        # If all constraints are satisfied, return the solution
-                        if valid:
-                            solution = {
-                                "solution": {
-                                    "header": ["House", "Name", "cigar", "hobby", "education", "drink"],
-                                    "rows": [
-                                        [candidate[0]['House'], candidate[0]['Name'], candidate[0]['cigar'], candidate[0]['hobby'], candidate[0]['education'], candidate[0]['drink']],
-                                        [candidate[1]['House'], candidate[1]['Name'], candidate[1]['cigar'], candidate[1]['hobby'], candidate[1]['education'], candidate[1]['drink']],
-                                        [candidate[2]['House'], candidate[2]['Name'], candidate[2]['cigar'], candidate[2]['hobby'], candidate[2]['education'], candidate[2]['drink']]
-                                    ]
+                                if assignment[house]['Name'] == 'Eric':
+                                    eric_house = house
+                            else:
+                                if eric_house is None:
+                                    continue  # Eric not found
+                                
+                                # Constraint 4: Arnold and the Prince smoker are next to each other.
+                                arnold_house = None
+                                prince_house = None
+                                for house in houses:
+                                    if assignment[house]['Name'] == 'Arnold':
+                                        arnold_house = house
+                                    if assignment[house]['Cigar'] == 'prince':
+                                        prince_house = house
+                                if arnold_house is None or prince_house is None:
+                                    continue
+                                if abs(int(arnold_house) - int(prince_house)) != 1:
+                                    continue
+                                
+                                # Constraint 5: The person who enjoys gardening is somewhere to the left of the Prince smoker.
+                                gardening_house = None
+                                for house in houses:
+                                    if assignment[house]['Hobby'] == 'gardening':
+                                        gardening_house = house
+                                        break
+                                if gardening_house is None or int(gardening_house) >= int(prince_house):
+                                    continue
+                                
+                                # Constraint 2: The person who likes milk is directly left of the person with a high school diploma.
+                                milk_house = None
+                                high_school_house = None
+                                for house in houses:
+                                    if assignment[house]['Drink'] == 'milk':
+                                        milk_house = house
+                                    if assignment[house]['Education'] == 'high school':
+                                        high_school_house = house
+                                if milk_house is None or high_school_house is None:
+                                    continue
+                                if int(milk_house) + 1 != int(high_school_house):
+                                    continue
+                                
+                                # Constraint 6: The person who likes milk is the person with an associate's degree.
+                                if assignment[milk_house]['Education'] != 'associate':
+                                    continue
+                                
+                                # Constraint 7: The person with a bachelor's degree is directly left of the photography enthusiast.
+                                bachelor_house = None
+                                photography_house = None
+                                for house in houses:
+                                    if assignment[house]['Education'] == 'bachelor':
+                                        bachelor_house = house
+                                    if assignment[house]['Hobby'] == 'photography':
+                                        photography_house = house
+                                if bachelor_house is None or photography_house is None:
+                                    continue
+                                if int(bachelor_house) + 1 != int(photography_house):
+                                    continue
+                                
+                                # All constraints satisfied, prepare the solution
+                                solution = {
+                                    "solution": {
+                                        "header": ["House", "Name", "Cigar", "Hobby", "Education", "Drink"],
+                                        "rows": []
+                                    }
                                 }
-                            }
-                            return json.dumps(solution, indent=2)
+                                for house in houses:
+                                    row = [
+                                        house,
+                                        assignment[house]['Name'],
+                                        assignment[house]['Cigar'],
+                                        assignment[house]['Hobby'],
+                                        assignment[house]['Education'],
+                                        assignment[house]['Drink']
+                                    ]
+                                    solution["solution"]["rows"].append(row)
+                                return solution
+    return {"solution": {"header": [], "rows": []}}
 
-    return json.dumps({"error": "No solution found"}, indent=2)
-
-print(solve_puzzle())
+if __name__ == "__main__":
+    solution = solve_puzzle()
+    print(json.dumps(solution, indent=2))

@@ -2,251 +2,212 @@ import json
 from itertools import permutations
 
 def solve_puzzle():
-    # Define all possible values for each category
-    houses = [1, 2, 3, 4, 5]
+    # Define all possible categories and options
+    houses = ['1', '2', '3', '4', '5']
     names = ['Eric', 'Peter', 'Arnold', 'Bob', 'Alice']
-    styles = ['modern', 'craftsman', 'ranch', 'victorian', 'colonial']
+    house_styles = ['modern', 'craftsman', 'ranch', 'victorian', 'colonial']
     mothers = ['Penny', 'Kailyn', 'Holly', 'Janelle', 'Aniya']
-    phones = ['oneplus 9', 'google pixel 6', 'huawei p50', 'iphone 13', 'samsung galaxy s21']
+    phone_models = ['oneplus 9', 'google pixel 6', 'huawei p50', 'iphone 13', 'samsung galaxy s21']
     drinks = ['coffee', 'water', 'root beer', 'tea', 'milk']
     animals = ['fish', 'dog', 'horse', 'bird', 'cat']
 
-    # We'll represent each house as a dictionary with the above keys
-    # We'll try all permutations until we find one that fits all constraints
+    # Generate all possible permutations for each category
+    for name_perm in permutations(names):
+        for style_perm in permutations(house_styles):
+            for mother_perm in permutations(mothers):
+                for phone_perm in permutations(phone_models):
+                    for drink_perm in permutations(drinks):
+                        for animal_perm in permutations(animals):
+                            # Create a dictionary to hold the current assignment
+                            solution = {
+                                '1': {'Name': None, 'HouseStyle': None, 'Mother': None, 'PhoneModel': None, 'Drink': None, 'Animal': None},
+                                '2': {'Name': None, 'HouseStyle': None, 'Mother': None, 'PhoneModel': None, 'Drink': None, 'Animal': None},
+                                '3': {'Name': None, 'HouseStyle': None, 'Mother': None, 'PhoneModel': None, 'Drink': None, 'Animal': None},
+                                '4': {'Name': None, 'HouseStyle': None, 'Mother': None, 'PhoneModel': None, 'Drink': None, 'Animal': None},
+                                '5': {'Name': None, 'HouseStyle': None, 'Mother': None, 'PhoneModel': None, 'Drink': None, 'Animal': None}
+                            }
 
-    # Since brute-forcing all permutations is computationally expensive, we'll apply constraints step by step
-    # Let's iterate through possible assignments for each house, applying constraints as we go
+                            # Assign current permutation to houses
+                            for i, house in enumerate(houses):
+                                solution[house]['Name'] = name_perm[i]
+                                solution[house]['HouseStyle'] = style_perm[i]
+                                solution[house]['Mother'] = mother_perm[i]
+                                solution[house]['PhoneModel'] = phone_perm[i]
+                                solution[house]['Drink'] = drink_perm[i]
+                                solution[house]['Animal'] = animal_perm[i]
 
-    # We'll use a backtracking approach with constraint propagation
+                            # Check all constraints
+                            valid = True
 
-    # Initialize possible values for each house
-    possible = {
-        'house': houses,
-        'name': names,
-        'style': styles,
-        'mother': mothers,
-        'phone': phones,
-        'drink': drinks,
-        'animal': animals
-    }
+                            # Clue 1: Google Pixel 6 is not in the first house
+                            if solution['1']['PhoneModel'] == 'google pixel 6':
+                                valid = False
 
-    # We'll represent the solution as a list of dictionaries, one per house
-    solution = [{} for _ in houses]
+                            # Clue 2: Alice only drinks water
+                            for house in houses:
+                                if solution[house]['Name'] == 'Alice' and solution[house]['Drink'] != 'water':
+                                    valid = False
+                                elif solution[house]['Name'] != 'Alice' and solution[house]['Drink'] == 'water':
+                                    valid = False
 
-    # Apply constraints that give us direct assignments first
+                            # Clue 3: Colonial is right of huawei p50
+                            huawei_house = None
+                            colonial_house = None
+                            for house in houses:
+                                if solution[house]['PhoneModel'] == 'huawei p50':
+                                    huawei_house = int(house)
+                                if solution[house]['HouseStyle'] == 'colonial':
+                                    colonial_house = int(house)
+                            if huawei_house is not None and colonial_house is not None:
+                                if colonial_house <= huawei_house:
+                                    valid = False
+                            else:
+                                valid = False
 
-    # From clue 18: The person who keeps horses is in the third house
-    solution[2]['animal'] = 'horse'
-    
-    # From clue 12: The person who keeps horses is the person in a modern-style house
-    solution[2]['style'] = 'modern'
-    
-    # From clue 4: The person who keeps horses is the person who uses a OnePlus 9
-    solution[2]['phone'] = 'oneplus 9'
-    
-    # From clue 19: The person in a modern-style house is The person whose mother's name is Penny
-    solution[2]['mother'] = 'Penny'
-    
-    # From clue 17: The tea drinker is in the fourth house
-    solution[3]['drink'] = 'tea'
-    
-    # From clue 9: The tea drinker is Bob
-    solution[3]['name'] = 'Bob'
-    
-    # From clue 8: The bird keeper is in the fourth house
-    solution[3]['animal'] = 'bird'
-    
-    # From clue 21: The person whose mother's name is Aniya is not in the fourth house
-    # (no direct assignment, but we'll use this later)
-    
-    # From clue 22: The person whose mother's name is Janelle is the one who only drinks water
-    # From clue 2: The one who only drinks water is Alice
-    # So Alice's mother is Janelle
-    # We'll assign this when we find Alice
-    
-    # From clue 20: The root beer lover is Peter
-    # From clue 6: The root beer lover is the cat lover
-    # So Peter drinks root beer and has a cat
-    
-    # From clue 11: The root beer lover is somewhere to the left of The person whose mother's name is Kailyn
-    # So Peter is left of Kailyn's child
-    
-    # From clue 5: The person in a ranch-style home is The person whose mother's name is Kailyn
-    # So Kailyn's child is in a ranch-style home
-    
-    # From clue 10: The tea drinker is somewhere to the right of The person whose mother's name is Kailyn
-    # So Kailyn's child is left of house 4 (where Bob is)
-    # So Kailyn's child is in house 1, 2, or 3
-    # But house 3's mother is Penny, so Kailyn's child is in 1 or 2
-    
-    # From clue 11: Peter is left of Kailyn's child, so Peter must be in house 1 if Kailyn's child is in 2
-    # Or Peter in 1 or 2 if Kailyn's child is in 3, but Kailyn's child can't be in 3 (mother is Penny)
-    # So Peter is in 1, Kailyn's child in 2
-    
-    solution[0]['name'] = 'Peter'
-    solution[0]['drink'] = 'root beer'
-    solution[0]['animal'] = 'cat'
-    
-    # Kailyn's child is in house 2
-    solution[1]['mother'] = 'Kailyn'
-    solution[1]['style'] = 'ranch'  # from clue 5
-    
-    # From clue 7: The person living in a colonial-style house is not in the fourth house
-    # So colonial is in 1,2,3, or 5
-    # But house 3 is modern, house 2 is ranch, so colonial is 1 or 5
-    
-    # From clue 3: The person living in a colonial-style house is somewhere to the right of the person who uses a Huawei P50
-    # So huawei p50 is left of colonial
-    
-    # From clue 15: The person who uses a Google Pixel 6 is the person in a Craftsman-style house
-    # From clue 1: The person who uses a Google Pixel 6 is not in the first house
-    # So google pixel 6 is in 2,3,4, or 5, in craftsman
-    
-    # House 3 phone is oneplus 9, so pixel is 2,4, or 5
-    
-    # House 2's style is ranch, so pixel can't be in 2 (must be craftsman)
-    # So pixel is in 4 or 5
-    
-    # From clue 13: The person who uses an iPhone 13 is the person who likes milk
-    # From clue 14: The dog owner is the person who likes milk
-    # So iphone 13 user has milk and dog
-    
-    # From clue 16: Eric is not in the second house
-    # House 1 is Peter, house 3 is Bob, so Eric is in 2,4, or 5
-    # But not in 2, so Eric is in 4 or 5
-    
-    # House 4 name is Bob, so Eric is in 5
-    solution[4]['name'] = 'Eric'
-    
-    # Remaining names: Arnold and Alice
-    # House 2 name must be Arnold or Alice
-    # From clue 22: Alice's mother is Janelle
-    # From clue 2: Alice drinks water
-    
-    # Let's see house 2's mother is Kailyn, so Alice can't be in 2
-    # So Alice must be in house 1 or 5
-    # House 1 is Peter, so Alice is in 5
-    # But Eric is in 5, so Alice must be in 1? But 1 is Peter
-    # Wait, seems contradiction. Maybe Alice is in 2
-    
-    # Wait, house 2's mother is Kailyn, but Alice's mother is Janelle, so Alice can't be in 2
-    # So Alice must be in 5, but Eric is in 5. So no, must be another way
-    
-    # Maybe house 2 is Alice, but mother is Kailyn, but Alice's mother is Janelle
-    # So Alice can't be in 2
-    # So Alice must be in 1 or 5
-    # 1 is Peter, so Alice must be in 5, but Eric is in 5
-    # So our assumption must be wrong
-    
-    # Maybe Eric is not in 5? From clue 16, Eric is not in 2, but could be in 4
-    # House 4 name is Bob, so Eric must be in 5
-    # So Alice must be in 1, but 1 is Peter
-    # Contradiction means our earlier assumption is wrong
-    
-    # Alternative approach: maybe Kailyn's child is in 1, Peter is left of it, but no house left
-    # So our initial assumption that Peter is in 1 and Kailyn's child in 2 must be correct
-    # So Alice must be somewhere else
-    
-    # Maybe house 2 is Arnold
-    solution[1]['name'] = 'Arnold'
-    
-    # Then Alice must be in 5
-    solution[4]['name'] = 'Alice'
-    solution[4]['drink'] = 'water'
-    solution[4]['mother'] = 'Janelle'
-    
-    # Now assign mothers: house 2 is Kailyn, house 3 is Penny, house 4 is ?
-    # Remaining mothers: Holly, Aniya
-    # From clue 21: Aniya is not in 4, so house 4 mother is Holly
-    solution[3]['mother'] = 'Holly'
-    # Then house 5 mother is Aniya
-    # But house 5's mother is Janelle (from Alice)
-    # Wait no, house 4 is Bob, mother is ?
-    # Alice is in 5, mother is Janelle
-    # house 1 mother is ?
-    # house 2 is Kailyn, 3 is Penny, 5 is Janelle
-    # remaining mothers: Holly, Aniya
-    # house 1 and 4
-    # from clue 21: Aniya is not in 4, so house 4 is Holly, house 1 is Aniya
-    solution[0]['mother'] = 'Aniya'
-    solution[3]['mother'] = 'Holly'
-    
-    # Now assign drinks: house 1 is root beer, 4 is tea, 5 is water
-    # remaining drinks: coffee, milk
-    # From clue 13: iphone 13 user likes milk
-    # From clue 14: milk drinker has dog
-    # From animals: house 1 is cat, 3 is horse, 4 is bird
-    # So milk drinker is in 2 or 5
-    # 5 is water, so milk is in 2
-    solution[1]['drink'] = 'milk'
-    solution[1]['animal'] = 'dog'
-    solution[1]['phone'] = 'iphone 13'
-    
-    # Then house 5's drink is water (already set)
-    # Remaining drink is coffee in house 3
-    solution[2]['drink'] = 'coffee'
-    
-    # Now assign phones:
-    # house 1: ?
-    # house 2: iphone 13
-    # house 3: oneplus 9
-    # house 4: ?
-    # house 5: ?
-    # remaining phones: google pixel 6, huawei p50, samsung galaxy s21
-    
-    # From clue 15: google pixel 6 is in craftsman
-    # craftsman not in 2 (ranch), not in 3 (modern), so craftsman in 1,4, or 5
-    # From clue 1: pixel not in 1, so pixel in 4 or 5
-    # From clue 3: colonial is right of huawei p50
-    # colonial is in 1 or 5 (since 2 is ranch, 3 modern, 4 ?)
-    # house 1 style: ?
-    # if colonial is in 5, then huawei is left of 5, could be in 1,2,3, or 4
-    # 2 phone is iphone, 3 is oneplus, so huawei in 1 or 4
-    # if huawei in 1, then colonial is right, so colonial in 5
-    # then pixel is in 4 (craftsman)
-    solution[3]['style'] = 'craftsman'
-    solution[3]['phone'] = 'google pixel 6'
-    
-    # then house 1 phone is huawei p50
-    solution[0]['phone'] = 'huawei p50'
-    
-    # then colonial is in 5
-    solution[4]['style'] = 'colonial'
-    
-    # then house 1 style: remaining is victorian
-    solution[0]['style'] = 'victorian'
-    
-    # house 4 style is craftsman (already set)
-    # house 5 phone: remaining is samsung galaxy s21
-    solution[4]['phone'] = 'samsung galaxy s21'
-    
-    # house 1 animal is cat, 2 is dog, 3 is horse, 4 is bird, so 5 is fish
-    solution[4]['animal'] = 'fish'
-    
-    # Verify all constraints are satisfied
-    
-    # Prepare the output
-    output = {
-        "solution": {
-            "header": ["House", "Name", "style", "mother", "phone", "drink", "animal"],
-            "rows": []
-        }
-    }
-    
-    for i in range(5):
-        house = i + 1
-        row = [
-            str(house),
-            solution[i]['name'],
-            solution[i]['style'],
-            solution[i]['mother'],
-            solution[i]['phone'],
-            solution[i]['drink'],
-            solution[i]['animal']
-        ]
-        output["solution"]["rows"].append(row)
-    
-    return json.dumps(output, indent=2)
+                            # Clue 4: Horse keeper uses oneplus 9
+                            for house in houses:
+                                if solution[house]['Animal'] == 'horse' and solution[house]['PhoneModel'] != 'oneplus 9':
+                                    valid = False
+                                elif solution[house]['PhoneModel'] == 'oneplus 9' and solution[house]['Animal'] != 'horse':
+                                    valid = False
 
-if __name__ == "__main__":
-    print(solve_puzzle())
+                            # Clue 5: Ranch-style home has mother Kailyn
+                            for house in houses:
+                                if solution[house]['HouseStyle'] == 'ranch' and solution[house]['Mother'] != 'Kailyn':
+                                    valid = False
+                                elif solution[house]['Mother'] == 'Kailyn' and solution[house]['HouseStyle'] != 'ranch':
+                                    valid = False
+
+                            # Clue 6: Root beer lover is cat lover
+                            for house in houses:
+                                if solution[house]['Drink'] == 'root beer' and solution[house]['Animal'] != 'cat':
+                                    valid = False
+                                elif solution[house]['Animal'] == 'cat' and solution[house]['Drink'] != 'root beer':
+                                    valid = False
+
+                            # Clue 7: Colonial is not in house 4
+                            if solution['4']['HouseStyle'] == 'colonial':
+                                valid = False
+
+                            # Clue 8: Bird is in house 4
+                            if solution['4']['Animal'] != 'bird':
+                                valid = False
+
+                            # Clue 9: Tea drinker is Bob
+                            for house in houses:
+                                if solution[house]['Drink'] == 'tea' and solution[house]['Name'] != 'Bob':
+                                    valid = False
+                                elif solution[house]['Name'] == 'Bob' and solution[house]['Drink'] != 'tea':
+                                    valid = False
+
+                            # Clue 10: Tea drinker is right of Kailyn's mother
+                            tea_house = None
+                            kailyn_house = None
+                            for house in houses:
+                                if solution[house]['Drink'] == 'tea':
+                                    tea_house = int(house)
+                                if solution[house]['Mother'] == 'Kailyn':
+                                    kailyn_house = int(house)
+                            if tea_house is not None and kailyn_house is not None:
+                                if tea_house <= kailyn_house:
+                                    valid = False
+                            else:
+                                valid = False
+
+                            # Clue 11: Root beer lover is left of Kailyn's mother
+                            root_beer_house = None
+                            for house in houses:
+                                if solution[house]['Drink'] == 'root beer':
+                                    root_beer_house = int(house)
+                            if root_beer_house is not None and kailyn_house is not None:
+                                if root_beer_house >= kailyn_house:
+                                    valid = False
+                            else:
+                                valid = False
+
+                            # Clue 12: Horse keeper is in modern house
+                            for house in houses:
+                                if solution[house]['Animal'] == 'horse' and solution[house]['HouseStyle'] != 'modern':
+                                    valid = False
+                                elif solution[house]['HouseStyle'] == 'modern' and solution[house]['Animal'] != 'horse':
+                                    valid = False
+
+                            # Clue 13: iPhone 13 user likes milk
+                            for house in houses:
+                                if solution[house]['PhoneModel'] == 'iphone 13' and solution[house]['Drink'] != 'milk':
+                                    valid = False
+                                elif solution[house]['Drink'] == 'milk' and solution[house]['PhoneModel'] != 'iphone 13':
+                                    valid = False
+
+                            # Clue 14: Dog owner likes milk
+                            for house in houses:
+                                if solution[house]['Animal'] == 'dog' and solution[house]['Drink'] != 'milk':
+                                    valid = False
+                                elif solution[house]['Drink'] == 'milk' and solution[house]['Animal'] != 'dog':
+                                    valid = False
+
+                            # Clue 15: Google Pixel 6 is in craftsman house
+                            for house in houses:
+                                if solution[house]['PhoneModel'] == 'google pixel 6' and solution[house]['HouseStyle'] != 'craftsman':
+                                    valid = False
+                                elif solution[house]['HouseStyle'] == 'craftsman' and solution[house]['PhoneModel'] != 'google pixel 6':
+                                    valid = False
+
+                            # Clue 16: Eric is not in house 2
+                            if solution['2']['Name'] == 'Eric':
+                                valid = False
+
+                            # Clue 17: Tea drinker is in house 4
+                            if solution['4']['Drink'] != 'tea':
+                                valid = False
+
+                            # Clue 18: Horse is in house 3
+                            if solution['3']['Animal'] != 'horse':
+                                valid = False
+
+                            # Clue 19: Modern house has mother Penny
+                            for house in houses:
+                                if solution[house]['HouseStyle'] == 'modern' and solution[house]['Mother'] != 'Penny':
+                                    valid = False
+                                elif solution[house]['Mother'] == 'Penny' and solution[house]['HouseStyle'] != 'modern':
+                                    valid = False
+
+                            # Clue 20: Root beer lover is Peter
+                            for house in houses:
+                                if solution[house]['Drink'] == 'root beer' and solution[house]['Name'] != 'Peter':
+                                    valid = False
+                                elif solution[house]['Name'] == 'Peter' and solution[house]['Drink'] != 'root beer':
+                                    valid = False
+
+                            # Clue 21: Aniya is not mother in house 4
+                            if solution['4']['Mother'] == 'Aniya':
+                                valid = False
+
+                            # Clue 22: Janelle is mother of water drinker (Alice)
+                            for house in houses:
+                                if solution[house]['Name'] == 'Alice' and solution[house]['Mother'] != 'Janelle':
+                                    valid = False
+                                elif solution[house]['Mother'] == 'Janelle' and solution[house]['Name'] != 'Alice':
+                                    valid = False
+
+                            if valid:
+                                # Prepare the output
+                                output = {
+                                    "solution": {
+                                        "header": ["House", "Name", "HouseStyle", "Mother", "PhoneModel", "Drink", "Animal"],
+                                        "rows": []
+                                    }
+                                }
+                                for house in houses:
+                                    row = [house]
+                                    row.append(solution[house]['Name'])
+                                    row.append(solution[house]['HouseStyle'])
+                                    row.append(solution[house]['Mother'])
+                                    row.append(solution[house]['PhoneModel'])
+                                    row.append(solution[house]['Drink'])
+                                    row.append(solution[house]['Animal'])
+                                    output["solution"]["rows"].append(row)
+                                return json.dumps(output, indent=2)
+    return json.dumps({"solution": {"header": [], "rows": []}})
+
+print(solve_puzzle())

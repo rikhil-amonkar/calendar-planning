@@ -2,133 +2,146 @@ import json
 from itertools import permutations
 
 def solve_puzzle():
-    # Define all possible options for each attribute
+    # Define all possible values for each category
     names = ['Eric', 'Peter', 'Alice', 'Arnold']
-    cars = ['tesla model 3', 'honda civic', 'toyota camry', 'ford f150']
-    months = ['jan', 'april', 'sept', 'feb']
+    car_models = ['tesla model 3', 'honda civic', 'toyota camry', 'ford f150']
+    birthday_months = ['jan', 'april', 'sept', 'feb']
     hobbies = ['painting', 'cooking', 'gardening', 'photography']
     
-    # Generate all possible permutations for each attribute
-    for name_order in permutations(names):
-        for car_order in permutations(cars):
-            for month_order in permutations(months):
-                for hobby_order in permutations(hobbies):
-                    # Create a list of houses with their attributes
-                    houses = [
-                        {
-                            'House': str(i + 1),
-                            'Name': name_order[i],
-                            'car': car_order[i],
-                            'birthday month': month_order[i],
-                            'hobby': hobby_order[i]
-                        }
-                        for i in range(4)
-                    ]
-                    
-                    # Check all constraints
-                    valid = True
-                    
-                    # Constraint 1: jan is not in house 2
-                    if any(house['birthday month'] == 'jan' and house['House'] == '2' for house in houses):
-                        valid = False
-                    
-                    # Constraint 2: photography is left of Eric
-                    if valid:
-                        photo_pos = None
-                        eric_pos = None
-                        for house in houses:
-                            if house['hobby'] == 'photography':
-                                photo_pos = int(house['House'])
-                            if house['Name'] == 'Eric':
-                                eric_pos = int(house['House'])
-                        if photo_pos is None or eric_pos is None or photo_pos >= eric_pos:
-                            valid = False
-                    
-                    # Constraint 3: photography is left of Peter
-                    if valid:
-                        peter_pos = None
-                        for house in houses:
-                            if house['Name'] == 'Peter':
-                                peter_pos = int(house['House'])
-                        if photo_pos is None or peter_pos is None or photo_pos >= peter_pos:
-                            valid = False
-                    
-                    # Constraint 4: honda civic is directly left of tesla model 3
-                    if valid:
-                        honda_pos = None
-                        tesla_pos = None
-                        for house in houses:
-                            if house['car'] == 'honda civic':
-                                honda_pos = int(house['House'])
-                            if house['car'] == 'tesla model 3':
-                                tesla_pos = int(house['House'])
-                        if honda_pos is None or tesla_pos is None or honda_pos + 1 != tesla_pos:
-                            valid = False
-                    
-                    # Constraint 5: one house between tesla and gardening
-                    if valid:
-                        gardening_pos = None
-                        for house in houses:
-                            if house['hobby'] == 'gardening':
-                                gardening_pos = int(house['House'])
-                        if gardening_pos is None or abs(tesla_pos - gardening_pos) != 2:
-                            valid = False
-                    
-                    # Constraint 6: tesla owner is Arnold
-                    if valid:
-                        for house in houses:
-                            if house['car'] == 'tesla model 3' and house['Name'] != 'Arnold':
-                                valid = False
-                                break
-                    
-                    # Constraint 7: feb birthday loves cooking
-                    if valid:
-                        for house in houses:
-                            if house['birthday month'] == 'feb' and house['hobby'] != 'cooking':
-                                valid = False
-                                break
-                    
-                    # Constraint 8: toyota camry is Peter
-                    if valid:
-                        for house in houses:
-                            if house['car'] == 'toyota camry' and house['Name'] != 'Peter':
-                                valid = False
-                                break
-                    
-                    # Constraint 9: april birthday is Arnold
-                    if valid:
-                        for house in houses:
-                            if house['birthday month'] == 'april' and house['Name'] != 'Arnold':
-                                valid = False
-                                break
-                    
-                    # Constraint 10: Alice is photography enthusiast
-                    if valid:
-                        for house in houses:
-                            if house['Name'] == 'Alice' and house['hobby'] != 'photography':
-                                valid = False
-                                break
-                    
-                    # Constraint 11: Peter's birthday is jan
-                    if valid:
-                        for house in houses:
-                            if house['Name'] == 'Peter' and house['birthday month'] != 'jan':
-                                valid = False
-                                break
-                    
-                    if valid:
-                        # Prepare the solution in the required format
-                        solution = {
-                            "solution": {
-                                "header": ["House", "Name", "car", "birthday month", "hobby"],
-                                "rows": [
-                                    [house['House'], house['Name'], house['car'], house['birthday month'], house['hobby']]
-                                    for house in houses
-                                ]
-                            }
-                        }
-                        return json.dumps(solution, indent=2)
+    # We'll represent each house as a dictionary with keys: name, car_model, birthday, hobby
+    # Initialize all possibilities
+    houses = [{'name': None, 'car_model': None, 'birthday': None, 'hobby': None} for _ in range(4)]
     
-    return json.dumps({"solution": {"header": [], "rows": []}})
+    # Apply clue 11: Peter's birthday is jan
+    for i in range(4):
+        if houses[i]['name'] is None:
+            houses[i]['name'] = 'Peter'
+            houses[i]['birthday'] = 'jan'
+            break
+    
+    # Apply clue 1: jan is not in house 2
+    if houses[1]['birthday'] == 'jan':
+        # Move Peter to another house
+        for i in [0, 2, 3]:
+            if houses[i]['name'] is None:
+                houses[i]['name'] = 'Peter'
+                houses[i]['birthday'] = 'jan'
+                houses[1]['name'] = None
+                houses[1]['birthday'] = None
+                break
+    
+    # Apply clue 8: Peter owns toyota camry
+    for i in range(4):
+        if houses[i]['name'] == 'Peter':
+            houses[i]['car_model'] = 'toyota camry'
+            break
+    
+    # Apply clue 6: Arnold owns tesla model 3
+    for i in range(4):
+        if houses[i]['name'] == 'Arnold':
+            houses[i]['car_model'] = 'tesla model 3'
+            break
+    
+    # Apply clue 9: Arnold's birthday is april
+    for i in range(4):
+        if houses[i]['name'] == 'Arnold':
+            houses[i]['birthday'] = 'april'
+            break
+    
+    # Apply clue 4: honda civic is directly left of tesla model 3
+    for i in range(3):
+        if houses[i+1]['car_model'] == 'tesla model 3':
+            houses[i]['car_model'] = 'honda civic'
+            break
+    
+    # Apply clue 5: one house between tesla model 3 and gardening
+    # Find tesla model 3 position
+    tesla_pos = None
+    for i in range(4):
+        if houses[i]['car_model'] == 'tesla model 3':
+            tesla_pos = i
+            break
+    if tesla_pos is not None:
+        gardening_pos = tesla_pos + 2
+        if gardening_pos < 4:
+            houses[gardening_pos]['hobby'] = 'gardening'
+    
+    # Apply clue 10: Alice is photography enthusiast
+    for i in range(4):
+        if houses[i]['name'] == 'Alice':
+            houses[i]['hobby'] = 'photography'
+            break
+    
+    # Apply clue 2 and 3: photography is left of Eric and Peter
+    # Since Peter is already placed, we need to find photography position
+    photography_pos = None
+    for i in range(4):
+        if houses[i]['hobby'] == 'photography':
+            photography_pos = i
+            break
+    if photography_pos is not None:
+        # Eric must be to the right of photography
+        for i in range(photography_pos + 1, 4):
+            if houses[i]['name'] is None:
+                houses[i]['name'] = 'Eric'
+                break
+    
+    # Apply clue 7: feb birthday is cooking
+    for i in range(4):
+        if houses[i]['birthday'] == 'feb':
+            houses[i]['hobby'] = 'cooking'
+            break
+    
+    # Fill in remaining names
+    for i in range(4):
+        if houses[i]['name'] is None:
+            for name in names:
+                if name not in [h['name'] for h in houses if h['name'] is not None]:
+                    houses[i]['name'] = name
+                    break
+    
+    # Fill in remaining car models
+    for i in range(4):
+        if houses[i]['car_model'] is None:
+            for car in car_models:
+                if car not in [h['car_model'] for h in houses if h['car_model'] is not None]:
+                    houses[i]['car_model'] = car
+                    break
+    
+    # Fill in remaining birthdays
+    for i in range(4):
+        if houses[i]['birthday'] is None:
+            for bday in birthday_months:
+                if bday not in [h['birthday'] for h in houses if h['birthday'] is not None]:
+                    houses[i]['birthday'] = bday
+                    break
+    
+    # Fill in remaining hobbies
+    for i in range(4):
+        if houses[i]['hobby'] is None:
+            for hobby in hobbies:
+                if hobby not in [h['hobby'] for h in houses if h['hobby'] is not None]:
+                    houses[i]['hobby'] = hobby
+                    break
+    
+    # Prepare the output
+    solution = {
+        "solution": {
+            "header": ["House", "Name", "CarModel", "Birthday", "Hobby"],
+            "rows": []
+        }
+    }
+    
+    for i in range(4):
+        house = houses[i]
+        solution["solution"]["rows"].append([
+            str(i+1),
+            house['name'],
+            house['car_model'],
+            house['birthday'],
+            house['hobby']
+        ])
+    
+    return json.dumps(solution)
 
 print(solve_puzzle())

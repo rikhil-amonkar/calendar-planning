@@ -1,340 +1,234 @@
 import json
-import copy
 
-def main():
-    attributes = ['name', 'drink', 'color', 'flower', 'hobby']
-    names = ['Bob', 'Arnold', 'Peter', 'Alice', 'Eric']
-    drinks = ['milk', 'root beer', 'coffee', 'tea', 'water']
-    colors = ['blue', 'green', 'white', 'yellow', 'red']
-    flowers = ['daffodils', 'roses', 'lilies', 'tulips', 'carnations']
-    hobbies = ['painting', 'cooking', 'photography', 'gardening', 'knitting']
-    
-    domains = {
-        'name': [set(names) for _ in range(5)],
-        'drink': [set(drinks) for _ in range(5)],
-        'color': [set(colors) for _ in range(5)],
-        'flower': [set(flowers) for _ in range(5)],
-        'hobby': [set(hobbies) for _ in range(5)]
-    }
-    
-    domains['color'][1] = {'white'}
-    domains['flower'][1] = {'roses'}
-    domains['drink'][2] = {'water'}
-    domains['name'][2] = {'Peter'}
-    
-    domains['name'][3] = domains['name'][3] - {'Alice'}
-    
-    for attr in domains:
-        for i in range(5):
-            if len(domains[attr][i]) == 1:
-                val = next(iter(domains[attr][i]))
-                for j in range(5):
-                    if j != i and val in domains[attr][j]:
-                        domains[attr][j].remove(val)
-    
-    def all_different(domains):
-        for attr in attributes:
-            fixed_vals = {}
-            for i in range(5):
-                if len(domains[attr][i]) == 1:
-                    val = next(iter(domains[attr][i]))
-                    if val in fixed_vals:
-                        return None
-                    fixed_vals[val] = i
-            for i in range(5):
-                if len(domains[attr][i]) > 1:
-                    to_remove = []
-                    for val in domains[attr][i]:
-                        if val in fixed_vals and fixed_vals[val] != i:
-                            to_remove.append(val)
-                    for val in to_remove:
-                        domains[attr][i].remove(val)
-        return domains
-
-    def propagate_equivalence(domains):
-        for i in range(5):
-            if 'green' in domains['color'][i]:
-                if 'coffee' in domains['drink'][i]:
-                    domains['drink'][i] = {'coffee'}
-                if 'lilies' in domains['flower'][i]:
-                    domains['flower'][i] = {'lilies'}
-            if 'coffee' in domains['drink'][i]:
-                if 'green' in domains['color'][i]:
-                    domains['color'][i] = {'green'}
-                if 'lilies' in domains['flower'][i]:
-                    domains['flower'][i] = {'lilies'}
-            if 'lilies' in domains['flower'][i]:
-                if 'green' in domains['color'][i]:
-                    domains['color'][i] = {'green'}
-                if 'coffee' in domains['drink'][i]:
-                    domains['drink'][i] = {'coffee'}
-            
-            if 'carnations' in domains['flower'][i]:
-                if 'root beer' in domains['drink'][i]:
-                    domains['drink'][i] = {'root beer'}
-                if 'gardening' in domains['hobby'][i]:
-                    domains['hobby'][i] = {'gardening'}
-            if 'root beer' in domains['drink'][i]:
-                if 'carnations' in domains['flower'][i]:
-                    domains['flower'][i] = {'carnations'}
-                if 'gardening' in domains['hobby'][i]:
-                    domains['hobby'][i] = {'gardening'}
-            if 'gardening' in domains['hobby'][i]:
-                if 'root beer' in domains['drink'][i]:
-                    domains['drink'][i] = {'root beer'}
-                if 'carnations' in domains['flower'][i]:
-                    domains['flower'][i] = {'carnations'}
-            
-            if 'cooking' in domains['hobby'][i]:
-                if 'blue' in domains['color'][i]:
-                    domains['color'][i] = {'blue'}
-            if 'blue' in domains['color'][i]:
-                if 'cooking' in domains['hobby'][i]:
-                    domains['hobby'][i] = {'cooking'}
+class Solver:
+    def __init__(self):
+        self.attributes = ['Name', 'Drink', 'Color', 'Flower', 'Hobby']
+        self.domains = {
+            'Name': set(['Bob', 'Arnold', 'Peter', 'Alice', 'Eric']),
+            'Drink': set(['milk', 'root beer', 'coffee', 'tea', 'water']),
+            'Color': set(['blue', 'green', 'white', 'yellow', 'red']),
+            'Flower': set(['daffodils', 'roses', 'lilies', 'tulips', 'carnations']),
+            'Hobby': set(['painting', 'cooking', 'photography', 'gardening', 'knitting'])
+        }
+        self.grid = [ {attr: None for attr in self.attributes} for _ in range(5)]
+        self.house_domains = [ {attr: set(self.domains[attr]) for attr in self.attributes} for _ in range(5)]
         
-        for i in range(5):
-            if 'green' not in domains['color'][i]:
-                if 'coffee' in domains['drink'][i]:
-                    domains['drink'][i].discard('coffee')
-                if 'lilies' in domains['flower'][i]:
-                    domains['flower'][i].discard('lilies')
-            if 'coffee' not in domains['drink'][i]:
-                if 'green' in domains['color'][i]:
-                    domains['color'][i].discard('green')
-                if 'lilies' in domains['flower'][i]:
-                    domains['flower'][i].discard('lilies')
-            if 'lilies' not in domains['flower'][i]:
-                if 'green' in domains['color'][i]:
-                    domains['color'][i].discard('green')
-                if 'coffee' in domains['drink'][i]:
-                    domains['drink'][i].discard('coffee')
-            
-            if 'carnations' not in domains['flower'][i]:
-                if 'root beer' in domains['drink'][i]:
-                    domains['drink'][i].discard('root beer')
-                if 'gardening' in domains['hobby'][i]:
-                    domains['hobby'][i].discard('gardening')
-            if 'root beer' not in domains['drink'][i]:
-                if 'carnations' in domains['flower'][i]:
-                    domains['flower'][i].discard('carnations')
-                if 'gardening' in domains['hobby'][i]:
-                    domains['hobby'][i].discard('gardening')
-            if 'gardening' not in domains['hobby'][i]:
-                if 'root beer' in domains['drink'][i]:
-                    domains['drink'][i].discard('root beer')
-                if 'carnations' in domains['flower'][i]:
-                    domains['flower'][i].discard('carnations')
-            
-            if 'cooking' not in domains['hobby'][i]:
-                if 'blue' in domains['color'][i]:
-                    domains['color'][i].discard('blue')
-            if 'blue' not in domains['color'][i]:
-                if 'cooking' in domains['hobby'][i]:
-                    domains['hobby'][i].discard('cooking')
-        return domains
+        # Set fixed assignments from clues
+        self.set_value(1, 'Color', 'white')   # Clue15
+        self.set_value(1, 'Flower', 'roses')  # Clue10 and Clue15
+        self.set_value(2, 'Drink', 'water')   # Clue13
+        self.set_value(2, 'Name', 'Peter')    # Clue8 and Clue13
+        self.set_value(0, 'Name', 'Eric')     # Clue7 and deduction
+        self.set_value(1, 'Drink', 'tea')     # Clue7 and deduction
 
-    def search(domains):
-        domains = all_different(domains)
-        if domains is None:
-            return None
-        domains = propagate_equivalence(domains)
-        if domains is None:
-            return None
-        
-        changed = True
-        while changed:
-            changed = False
-            for attr in attributes:
-                for i in range(5):
-                    if len(domains[attr][i]) == 0:
-                        return None
-                    if len(domains[attr][i]) == 1:
-                        val = next(iter(domains[attr][i]))
-                        for j in range(5):
-                            if j != i and val in domains[attr][j]:
-                                domains[attr][j].remove(val)
-                                changed = True
-            if changed:
-                domains = all_different(domains)
-                if domains is None:
-                    return None
-                domains = propagate_equivalence(domains)
-                if domains is None:
-                    return None
-        return domains
-
-    def check_solution(assignment):
-        names = [assignment['name'][i] for i in range(5)]
-        drinks = [assignment['drink'][i] for i in range(5)]
-        colors = [assignment['color'][i] for i in range(5)]
-        flowers = [assignment['flower'][i] for i in range(5)]
-        hobbies = [assignment['hobby'][i] for i in range(5)]
-        
-        if names[3] == 'Alice':
-            return False
+    def set_value(self, house_index, attribute, value):
+        self.grid[house_index][attribute] = value
         for i in range(5):
-            if drinks[i] == 'root beer':
-                if hobbies[i] != 'gardening':
+            if i != house_index and value in self.house_domains[i][attribute]:
+                self.house_domains[i][attribute].remove(value)
+        self.house_domains[house_index][attribute] = set([value])
+    
+    def is_complete(self):
+        for house in self.grid:
+            for attr in self.attributes:
+                if house[attr] is None:
                     return False
-            if colors[i] == 'green':
-                if drinks[i] != 'coffee':
-                    return False
-                if flowers[i] != 'lilies':
-                    return False
-        daffodil_house = None
-        blue_house = None
-        for i in range(5):
-            if flowers[i] == 'daffodils':
-                daffodil_house = i
-            if colors[i] == 'blue':
-                blue_house = i
-        if daffodil_house is not None and blue_house is not None:
-            if blue_house <= daffodil_house:
-                return False
-        for i in range(5):
-            if hobbies[i] == 'cooking':
-                if colors[i] != 'blue':
-                    return False
-        if 'Eric' in names:
-            eric_index = names.index('Eric')
-            if eric_index == 4:
-                return False
-            if drinks[eric_index + 1] != 'tea':
-                return False
-        for i in range(5):
-            if drinks[i] == 'water':
-                if names[i] != 'Peter':
-                    return False
-        if 'Arnold' in names:
-            arnold_index = names.index('Arnold')
-            if hobbies[arnold_index] != 'photography':
-                return False
-        for i in range(5):
-            if colors[i] == 'white':
-                if flowers[i] != 'roses':
-                    return False
-        carnation_house = None
-        red_house = None
-        for i in range(5):
-            if flowers[i] == 'carnations':
-                carnation_house = i
-            if colors[i] == 'red':
-                red_house = i
-        if carnation_house is not None and red_house is not None:
-            if abs(carnation_house - red_house) != 2:
-                return False
-        cooking_index = None
-        painting_index = None
-        for i in range(5):
-            if hobbies[i] == 'cooking':
-                cooking_index = i
-            if hobbies[i] == 'painting':
-                painting_index = i
-        if cooking_index is not None and painting_index is not None:
-            if cooking_index >= painting_index:
-                return False
-        if drinks[2] != 'water':
-            return False
-        for i in range(5):
-            if flowers[i] == 'carnations':
-                if drinks[i] != 'root beer':
-                    return False
-        if colors[1] != 'white':
-            return False
         return True
 
-    def solve(domains):
-        branches = []
-        if 'Eric' in domains['name'][0] and 'tea' in domains['drink'][1]:
-            branch = copy.deepcopy(domains)
-            branch['name'][0] = {'Eric'}
-            branch['drink'][1] = {'tea'}
-            for i in range(5):
-                if i != 0:
-                    if 'Eric' in branch['name'][i]:
-                        branch['name'][i].remove('Eric')
-                if i != 1:
-                    if 'tea' in branch['drink'][i]:
-                        branch['drink'][i].remove('tea')
-            branches.append(('A', branch))
-        if 'Eric' in domains['name'][3] and 'tea' in domains['drink'][4]:
-            branch = copy.deepcopy(domains)
-            branch['name'][3] = {'Eric'}
-            branch['drink'][4] = {'tea'}
-            for i in range(5):
-                if i != 3:
-                    if 'Eric' in branch['name'][i]:
-                        branch['name'][i].remove('Eric')
-                if i != 4:
-                    if 'tea' in branch['drink'][i]:
-                        branch['drink'][i].remove('tea')
-            branches.append(('B', branch))
+    def get_unassigned_variable(self):
+        min_domain_size = float('inf')
+        best = None
+        for i in range(5):
+            for attr in self.attributes:
+                if self.grid[i][attr] is None:
+                    domain_size = len(self.house_domains[i][attr])
+                    if domain_size < min_domain_size:
+                        min_domain_size = domain_size
+                        best = (i, attr)
+        return best
+
+    def check_constraints(self):
+        # Clue1: Alice not in fourth house (index3)
+        if self.grid[3]['Name'] == 'Alice':
+            return False
         
-        for label, branch in branches:
-            branch = all_different(branch)
-            branch = propagate_equivalence(branch)
-            if branch is None:
-                continue
-            
-            branch['color'][2] = {'red'}
+        # Clue2: root beer drinker enjoys gardening
+        for i in range(5):
+            if self.grid[i]['Drink'] == 'root beer' and self.grid[i]['Hobby'] is not None and self.grid[i]['Hobby'] != 'gardening':
+                return False
+            if self.grid[i]['Hobby'] == 'gardening' and self.grid[i]['Drink'] is not None and self.grid[i]['Drink'] != 'root beer':
+                return False
+        
+        # Clue3: green color is coffee drinker
+        for i in range(5):
+            if self.grid[i]['Color'] == 'green' and self.grid[i]['Drink'] is not None and self.grid[i]['Drink'] != 'coffee':
+                return False
+            if self.grid[i]['Drink'] == 'coffee' and self.grid[i]['Color'] is not None and self.grid[i]['Color'] != 'green':
+                return False
+        
+        # Clue4: green color loves lilies
+        for i in range(5):
+            if self.grid[i]['Color'] == 'green' and self.grid[i]['Flower'] is not None and self.grid[i]['Flower'] != 'lilies':
+                return False
+            if self.grid[i]['Flower'] == 'lilies' and self.grid[i]['Color'] is not None and self.grid[i]['Color'] != 'green':
+                return False
+        
+        # Clue5: blue color right of daffodils
+        daffodils_house = None
+        blue_house = None
+        for i in range(5):
+            if self.grid[i]['Flower'] == 'daffodils':
+                daffodils_house = i
+            if self.grid[i]['Color'] == 'blue':
+                blue_house = i
+        if daffodils_house is not None and blue_house is not None and blue_house <= daffodils_house:
+            return False
+        
+        # Clue6: cooking hobby has blue color
+        for i in range(5):
+            if self.grid[i]['Hobby'] == 'cooking' and self.grid[i]['Color'] is not None and self.grid[i]['Color'] != 'blue':
+                return False
+            if self.grid[i]['Color'] == 'blue' and self.grid[i]['Hobby'] is not None and self.grid[i]['Hobby'] != 'cooking':
+                return False
+        
+        # Clue7: Eric directly left of tea drinker
+        eric_house = None
+        tea_house = None
+        for i in range(5):
+            if self.grid[i]['Name'] == 'Eric':
+                eric_house = i
+            if self.grid[i]['Drink'] == 'tea':
+                tea_house = i
+        if eric_house is not None and tea_house is not None and tea_house - eric_house != 1:
+            return False
+        
+        # Clue8: water drinker is Peter
+        for i in range(5):
+            if self.grid[i]['Drink'] == 'water' and self.grid[i]['Name'] is not None and self.grid[i]['Name'] != 'Peter':
+                return False
+            if self.grid[i]['Name'] == 'Peter' and self.grid[i]['Drink'] is not None and self.grid[i]['Drink'] != 'water':
+                return False
+        
+        # Clue9: Arnold is photography
+        for i in range(5):
+            if self.grid[i]['Name'] == 'Arnold' and self.grid[i]['Hobby'] is not None and self.grid[i]['Hobby'] != 'photography':
+                return False
+            if self.grid[i]['Hobby'] == 'photography' and self.grid[i]['Name'] is not None and self.grid[i]['Name'] != 'Arnold':
+                return False
+        
+        # Clue10: white color loves roses
+        for i in range(5):
+            if self.grid[i]['Color'] == 'white' and self.grid[i]['Flower'] is not None and self.grid[i]['Flower'] != 'roses':
+                return False
+            if self.grid[i]['Flower'] == 'roses' and self.grid[i]['Color'] is not None and self.grid[i]['Color'] != 'white':
+                return False
+        
+        # Clue11: one house between carnations and red color
+        carnations_house = None
+        red_house = None
+        for i in range(5):
+            if self.grid[i]['Flower'] == 'carnations':
+                carnations_house = i
+            if self.grid[i]['Color'] == 'red':
+                red_house = i
+        if carnations_house is not None and red_house is not None and abs(carnations_house - red_house) != 2:
+            return False
+        
+        # Clue12: cooking left of painting
+        cooking_house = None
+        painting_house = None
+        for i in range(5):
+            if self.grid[i]['Hobby'] == 'cooking':
+                cooking_house = i
+            if self.grid[i]['Hobby'] == 'painting':
+                painting_house = i
+        if cooking_house is not None and painting_house is not None and cooking_house >= painting_house:
+            return False
+        
+        # Clue13: water in third house
+        if self.grid[2]['Drink'] is not None and self.grid[2]['Drink'] != 'water':
+            return False
+        for i in range(5):
+            if i != 2 and self.grid[i]['Drink'] == 'water':
+                return False
+        
+        # Clue14: carnations is root beer
+        for i in range(5):
+            if self.grid[i]['Flower'] == 'carnations' and self.grid[i]['Drink'] is not None and self.grid[i]['Drink'] != 'root beer':
+                return False
+            if self.grid[i]['Drink'] == 'root beer' and self.grid[i]['Flower'] is not None and self.grid[i]['Flower'] != 'carnations':
+                return False
+        
+        # Clue15: white in second house
+        if self.grid[1]['Color'] is not None and self.grid[1]['Color'] != 'white':
+            return False
+        for i in range(5):
+            if i != 1 and self.grid[i]['Color'] == 'white':
+                return False
+        
+        return True
+
+    def solve(self):
+        if self.is_complete():
+            if self.check_constraints():
+                return True
+            else:
+                return False
+        
+        next_var = self.get_unassigned_variable()
+        if next_var is None:
+            return False
+        
+        house_index, attribute = next_var
+        saved_house_domains = [ {a: set(dom) for a, dom in house.items()} for house in self.house_domains]
+        saved_grid = [ dict(house) for house in self.grid ]
+        
+        for value in list(self.house_domains[house_index][attribute]):
+            self.grid[house_index][attribute] = value
+            old_domains = {}
             for i in range(5):
-                if i != 2 and 'red' in branch['color'][i]:
-                    branch['color'][i].remove('red')
+                if i != house_index and value in self.house_domains[i][attribute]:
+                    old_domains[i] = self.house_domains[i][attribute].copy()
+                    self.house_domains[i][attribute].discard(value)
+            old_domain_here = self.house_domains[house_index][attribute]
+            self.house_domains[house_index][attribute] = set([value])
             
-            sub_branches = []
-            if 'carnations' in branch['flower'][0]:
-                sub_branch = copy.deepcopy(branch)
-                sub_branch['flower'][0] = {'carnations'}
-                for i in range(5):
-                    if i != 0 and 'carnations' in sub_branch['flower'][i]:
-                        sub_branch['flower'][i].remove('carnations')
-                sub_branches.append(('A1', sub_branch))
-            if 'carnations' in branch['flower'][4]:
-                sub_branch = copy.deepcopy(branch)
-                sub_branch['flower'][4] = {'carnations'}
-                for i in range(5):
-                    if i != 4 and 'carnations' in sub_branch['flower'][i]:
-                        sub_branch['flower'][i].remove('carnations')
-                sub_branches.append(('A2', sub_branch))
+            if self.check_constraints():
+                if self.solve():
+                    return True
             
-            for sub_label, sub_branch in sub_branches:
-                sub_branch = all_different(sub_branch)
-                sub_branch = propagate_equivalence(sub_branch)
-                if sub_branch is None:
-                    continue
+            self.grid[house_index][attribute] = None
+            for i in range(5):
+                if i in old_domains:
+                    self.house_domains[i][attribute] = old_domains[i]
+            self.house_domains[house_index][attribute] = old_domain_here
+        
+        for i in range(5):
+            self.grid[i] = saved_grid[i]
+            for attr in self.attributes:
+                self.house_domains[i][attr] = saved_house_domains[i][attr]
                 
-                result = search(sub_branch)
-                if result is None:
-                    continue
-                if any(len(result[attr][i]) != 1 for attr in attributes for i in range(5)):
-                    continue
-                
-                assignment = {attr: [next(iter(result[attr][i])) for i in range(5)] for attr in attributes}
-                if check_solution(assignment):
-                    return assignment
-        return None
+        return False
 
-    assignment = solve(domains)
-    if assignment is None:
-        print('{"error": "No solution found"}')
-        return
-
-    solution = {
-        "solution": {
-            "header": ["House", "Name", "Drink", "Color", "Flower", "Hobby"],
-            "rows": []
+def main():
+    solver = Solver()
+    if solver.solve():
+        header = ["House", "Name", "Drink", "Color", "Flower", "Hobby"]
+        rows = []
+        for i in range(5):
+            house_data = [str(i+1)]
+            for attr in ['Name', 'Drink', 'Color', 'Flower', 'Hobby']:
+                house_data.append(solver.grid[i][attr])
+            rows.append(house_data)
+        result = {
+            "solution": {
+                "header": header,
+                "rows": rows
+            }
         }
-    }
-    for i in range(5):
-        house = str(i+1)
-        name = assignment['name'][i]
-        drink = assignment['drink'][i]
-        color = assignment['color'][i]
-        flower = assignment['flower'][i]
-        hobby = assignment['hobby'][i]
-        solution['solution']['rows'].append([house, name, drink, color, flower, hobby])
-    
-    print(json.dumps(solution))
+        print(json.dumps(result))
+    else:
+        print('No solution found')
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

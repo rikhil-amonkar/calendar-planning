@@ -2,132 +2,152 @@ import itertools
 import json
 
 def main():
-    names = ['Peter', 'Alice', 'Eric', 'Arnold']
-    hobbies = ['cooking', 'painting', 'gardening', 'photography']
-    animals = ['horse', 'fish', 'cat', 'bird']
-    book_genres = ['fantasy', 'mystery', 'romance', 'science fiction']
-    birthday_months = ['april', 'jan', 'sept', 'feb']
-    music_genres = ['pop', 'rock', 'classical', 'jazz']
+    attributes = {
+        'Hobby': ['cooking', 'painting', 'gardening', 'photography'],
+        'MusicGenre': ['pop', 'rock', 'classical', 'jazz'],
+        'BookGenre': ['fantasy', 'mystery', 'romance', 'science fiction'],
+        'Birthday': ['april', 'jan', 'sept', 'feb'],
+        'Name': ['Peter', 'Alice', 'Eric', 'Arnold'],
+        'Animal': ['horse', 'fish', 'cat', 'bird']
+    }
     
-    found = None
+    attribute_order = ['Hobby', 'MusicGenre', 'BookGenre', 'Birthday', 'Name', 'Animal']
     
-    for n in itertools.permutations(names):
-        if n[1] == 'Eric':
-            continue
-            
-        for h in itertools.permutations(hobbies):
-            if h[2] == 'cooking':
-                continue
-                
-            for a in itertools.permutations(animals):
-                for b in itertools.permutations(book_genres):
-                    if b[3] == 'romance':
-                        continue
-                    
-                    cooking_index = h.index('cooking')
-                    romance_index = b.index('romance')
-                    if cooking_index != romance_index:
-                        continue
-                    
-                    if romance_index == 0:
-                        continue
-                    if h[romance_index-1] != 'painting':
-                        continue
-                    
-                    for bd in itertools.permutations(birthday_months):
-                        feb_index = bd.index('feb')
-                        fish_index = a.index('fish')
-                        if feb_index != fish_index:
-                            continue
-                            
-                        gardening_index = h.index('gardening')
-                        april_index = bd.index('april')
-                        if gardening_index != april_index:
-                            continue
-                            
-                        for m in itertools.permutations(music_genres):
-                            feb_index = bd.index('feb')
-                            pop_index = m.index('pop')
-                            if feb_index != pop_index:
-                                continue
-                            
-                            horse_index = a.index('horse')
-                            rock_index = m.index('rock')
-                            if horse_index != rock_index:
-                                continue
-                            
-                            jazz_index = m.index('jazz')
-                            if jazz_index != cooking_index:
-                                continue
-                            
-                            mystery_index = b.index('mystery')
-                            if rock_index != mystery_index:
-                                continue
-                            
-                            peter_index = n.index('Peter')
-                            if peter_index != pop_index:
-                                continue
-                            
-                            arnold_index = n.index('Arnold')
-                            if gardening_index != arnold_index:
-                                continue
-                            
-                            if rock_index == 3:
-                                continue
-                            if bd[rock_index+1] != 'jan':
-                                continue
-                            
-                            fantasy_index = b.index('fantasy')
-                            alice_index = n.index('Alice')
-                            if alice_index <= fantasy_index:
-                                continue
-                            
-                            cat_index = a.index('cat')
-                            if cat_index <= horse_index:
-                                continue
-                            
-                            found = (n, h, a, b, bd, m)
-                            break
-                        if found:
-                            break
-                    if found:
-                        break
-                if found:
-                    break
-            if found:
-                break
-        if found:
-            break
-            
-    header = ["House", "Name", "Hobby", "Animals", "Favorite Book Genres", "Birthday Month", "Favorite Music Genres"]
-    rows = []
-    if found:
-        n, h, a, b, bd, m = found
-        for i in range(4):
-            rows.append([
-                str(i+1),
-                n[i],
-                h[i],
-                a[i],
-                b[i],
-                bd[i],
-                m[i]
-            ])
-        solution_dict = {
-            "solution": {
-                "header": header,
-                "rows": rows
-            }
-        }
-    else:
-        solution_dict = {
-            "solution": {
-                "header": header,
-                "rows": []
-            }
-        }
+    # Define constraints as functions
+    def clue1(a):
+        return a['Hobby']['cooking'] == a['BookGenre']['romance']
+    
+    def clue2(a):
+        return a['Birthday']['feb'] == a['MusicGenre']['pop']
+    
+    def clue3(a):
+        return a['Name']['Eric'] != 1
+    
+    def clue4(a):
+        return a['BookGenre']['romance'] != 3
+    
+    def clue5(a):
+        return a['Birthday']['feb'] == a['Animal']['fish']
+    
+    def clue6(a):
+        return a['Name']['Alice'] > a['BookGenre']['fantasy']
+    
+    def clue7(a):
+        return a['Animal']['horse'] == a['MusicGenre']['rock']
+    
+    def clue8(a):
+        return a['Hobby']['gardening'] == a['Birthday']['april']
+    
+    def clue9(a):
+        return a['MusicGenre']['jazz'] == a['Hobby']['cooking']
+    
+    def clue10(a):
+        return a['MusicGenre']['rock'] == a['BookGenre']['mystery']
+    
+    def clue11(a):
+        painting_pos = a['Hobby']['painting']
+        romance_pos = a['BookGenre']['romance']
+        return painting_pos + 1 == romance_pos
+    
+    def clue12(a):
+        return a['Name']['Peter'] == a['MusicGenre']['pop']
+    
+    def clue13(a):
+        return a['Hobby']['gardening'] == a['Name']['Arnold']
+    
+    def clue14(a):
+        rock_pos = a['MusicGenre']['rock']
+        jan_pos = a['Birthday']['jan']
+        return rock_pos + 1 == jan_pos
+    
+    def clue15(a):
+        return a['Hobby']['cooking'] != 2
+    
+    def clue16(a):
+        return a['Animal']['cat'] > a['Animal']['horse']
+    
+    constraints = [
+        (clue1, ['Hobby', 'BookGenre']),
+        (clue2, ['Birthday', 'MusicGenre']),
+        (clue3, ['Name']),
+        (clue4, ['BookGenre']),
+        (clue5, ['Birthday', 'Animal']),
+        (clue6, ['Name', 'BookGenre']),
+        (clue7, ['Animal', 'MusicGenre']),
+        (clue8, ['Hobby', 'Birthday']),
+        (clue9, ['Hobby', 'MusicGenre']),
+        (clue10, ['MusicGenre', 'BookGenre']),
+        (clue11, ['Hobby', 'BookGenre']),
+        (clue12, ['Name', 'MusicGenre']),
+        (clue13, ['Hobby', 'Name']),
+        (clue14, ['MusicGenre', 'Birthday']),
+        (clue15, ['Hobby']),
+        (clue16, ['Animal'])
+    ]
+    
+    attribute_constraints = {attr: [] for attr in attribute_order}
+    for constr_func, req_attrs in constraints:
+        for attr in req_attrs:
+            if attr in attribute_constraints:
+                attribute_constraints[attr].append((constr_func, req_attrs))
+    
+    def backtrack(assignments, remaining_attrs):
+        if not remaining_attrs:
+            return assignments
         
-    print(json.dumps(solution_dict))
+        next_attr = remaining_attrs[0]
+        domain = attributes[next_attr]
+        for perm in itertools.permutations(domain):
+            mapping = {}
+            for idx, value in enumerate(perm):
+                mapping[value] = idx
+            
+            new_assignments = assignments.copy()
+            new_assignments[next_attr] = mapping
+            
+            to_check = attribute_constraints[next_attr]
+            valid = True
+            for (func, req_attrs) in to_check:
+                if all(attr in new_assignments for attr in req_attrs):
+                    if not func(new_assignments):
+                        valid = False
+                        break
+            
+            if not valid:
+                continue
+            
+            result = backtrack(new_assignments, remaining_attrs[1:])
+            if result is not None:
+                return result
+        
+        return None
+    
+    initial_assignments = {}
+    solution_assignments = backtrack(initial_assignments, attribute_order)
+    
+    if solution_assignments is None:
+        print(json.dumps({"solution": {"header": [], "rows": []}}))
+        return
+    
+    house_attributes = ['Name', 'Hobby', 'Animal', 'BookGenre', 'Birthday', 'MusicGenre']
+    rows = []
+    for house_index in range(4):
+        row = [str(house_index + 1)]
+        for attr in house_attributes:
+            mapping = solution_assignments[attr]
+            arr = [None] * 4
+            for value, idx in mapping.items():
+                arr[idx] = value
+            row.append(arr[house_index])
+        rows.append(row)
+    
+    output = {
+        "solution": {
+            "header": ["House", "Name", "Hobby", "Animal", "BookGenre", "Birthday", "MusicGenre"],
+            "rows": rows
+        }
+    }
+    print(json.dumps(output))
 
 if __name__ == '__main__':
     main()

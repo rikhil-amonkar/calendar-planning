@@ -5,30 +5,70 @@ def main():
     sports = ['basketball', 'soccer']
     hobbies = ['photography', 'gardening']
     
-    house1 = {'House': '1', 'Name': None, 'Favorite Sports': None, 'Hobby': None}
-    house2 = {'House': '2', 'Name': None, 'Favorite Sports': None, 'Hobby': None}
+    name_perms = [(names[0], names[1]), (names[1], names[0])]
+    sport_perms = [(sports[0], sports[1]), (sports[1], sports[0])]
+    hobby_perms = [(hobbies[0], hobbies[1]), (hobbies[1], hobbies[0])]
     
-    house1['Hobby'] = 'gardening'
-    house1['Name'] = 'Arnold'
-    house1['Favorite Sports'] = 'basketball'
+    found = False
+    solution_candidate = None
     
-    house2['Name'] = [name for name in names if name != house1['Name']][0]
-    house2['Favorite Sports'] = [sport for sport in sports if sport != house1['Favorite Sports']][0]
-    house2['Hobby'] = [hobby for hobby in hobbies if hobby != house1['Hobby']][0]
-    
-    header = ["House", "Name", "Favorite Sports", "Hobby"]
-    rows = [
-        [house1[attr] for attr in header],
-        [house2[attr] for attr in header]
-    ]
-    
-    result = {
-        "solution": {
-            "header": header,
-            "rows": rows
+    for name_perm in name_perms:
+        for sport_perm in sport_perms:
+            for hobby_perm in hobby_perms:
+                house1 = [1, name_perm[0], sport_perm[0], hobby_perm[0]]
+                house2 = [2, name_perm[1], sport_perm[1], hobby_perm[1]]
+                candidate = [house1, house2]
+                
+                valid = True
+                for house in candidate:
+                    if house[1] == 'Arnold':
+                        if house[3] != 'gardening':
+                            valid = False
+                            break
+                    if house[3] == 'gardening':
+                        if house[1] != 'Arnold':
+                            valid = False
+                            break
+                if not valid:
+                    continue
+                    
+                if candidate[0][3] == 'photography':
+                    valid = False
+                if not valid:
+                    continue
+                    
+                if candidate[0][2] == 'soccer':
+                    valid = False
+                if not valid:
+                    continue
+                    
+                solution_candidate = candidate
+                found = True
+                break
+            if found:
+                break
+        if found:
+            break
+            
+    if solution_candidate:
+        rows = []
+        for house in solution_candidate:
+            row = [str(house[0]), house[1], house[2], house[3]]
+            rows.append(row)
+        result = {
+            "solution": {
+                "header": ["House", "Name", "FavoriteSport", "Hobby"],
+                "rows": rows
+            }
         }
-    }
-    
+    else:
+        result = {
+            "solution": {
+                "header": ["House", "Name", "FavoriteSport", "Hobby"],
+                "rows": []
+            }
+        }
+        
     print(json.dumps(result))
 
 if __name__ == "__main__":

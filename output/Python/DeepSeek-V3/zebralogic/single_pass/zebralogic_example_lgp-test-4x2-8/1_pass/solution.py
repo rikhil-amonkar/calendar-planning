@@ -2,85 +2,72 @@ import json
 from itertools import permutations
 
 def solve_puzzle():
-    # Define the attributes
+    # Define the possible values for each attribute
     names = ['Peter', 'Arnold', 'Alice', 'Eric']
     colors = ['yellow', 'green', 'red', 'white']
+    houses = ['1', '2', '3', '4']
     
-    # Initialize houses
-    houses = [1, 2, 3, 4]
-    solution = []
-    
-    # Generate all possible permutations of names and colors
+    # Generate all possible permutations for names and colors
     for name_perm in permutations(names):
         for color_perm in permutations(colors):
-            # Assign names and colors to houses
-            assignment = []
-            for i in range(4):
-                assignment.append({
-                    'House': str(i + 1),
-                    'Name': name_perm[i],
-                    'Color': color_perm[i]
-                })
+            solution = {
+                '1': {'Name': name_perm[0], 'Color': color_perm[0]},
+                '2': {'Name': name_perm[1], 'Color': color_perm[1]},
+                '3': {'Name': name_perm[2], 'Color': color_perm[2]},
+                '4': {'Name': name_perm[3], 'Color': color_perm[3]},
+            }
             
             # Check all constraints
-            valid = True
-            
             # Constraint 1: Green is in house 3
-            if assignment[2]['Color'] != 'green':
-                valid = False
+            if solution['3']['Color'] != 'green':
+                continue
             
             # Constraint 2: Peter is in house 1
-            if assignment[0]['Name'] != 'Peter':
-                valid = False
-            
-            # Constraint 3: One house between red and yellow
-            red_pos = None
-            yellow_pos = None
-            for i in range(4):
-                if assignment[i]['Color'] == 'red':
-                    red_pos = i + 1
-                if assignment[i]['Color'] == 'yellow':
-                    yellow_pos = i + 1
-            if red_pos is None or yellow_pos is None or abs(red_pos - yellow_pos) != 2:
-                valid = False
+            if solution['1']['Name'] != 'Peter':
+                continue
             
             # Constraint 4: Arnold is directly left of Eric
             arnold_pos = None
             eric_pos = None
-            for i in range(4):
-                if assignment[i]['Name'] == 'Arnold':
-                    arnold_pos = i + 1
-                if assignment[i]['Name'] == 'Eric':
-                    eric_pos = i + 1
-            if arnold_pos is None or eric_pos is None or eric_pos - arnold_pos != 1:
-                valid = False
+            for house in houses:
+                if solution[house]['Name'] == 'Arnold':
+                    arnold_pos = int(house)
+                if solution[house]['Name'] == 'Eric':
+                    eric_pos = int(house)
+            if arnold_pos is None or eric_pos is None or eric_pos != arnold_pos + 1:
+                continue
             
             # Constraint 5: Eric loves yellow
-            if eric_pos is not None and assignment[eric_pos - 1]['Color'] != 'yellow':
-                valid = False
+            if solution[str(eric_pos)]['Color'] != 'yellow':
+                continue
             
-            if valid:
-                solution = assignment
-                break
-        if solution:
-            break
+            # Constraint 3: One house between red and yellow
+            red_pos = None
+            yellow_pos = None
+            for house in houses:
+                if solution[house]['Color'] == 'red':
+                    red_pos = int(house)
+                if solution[house]['Color'] == 'yellow':
+                    yellow_pos = int(house)
+            if red_pos is None or yellow_pos is None:
+                continue
+            if abs(red_pos - yellow_pos) != 2:
+                continue
+            
+            # If all constraints are satisfied, format the solution
+            result = {
+                "solution": {
+                    "header": ["House", "Name", "Color"],
+                    "rows": [
+                        ["1", solution['1']['Name'], solution['1']['Color']],
+                        ["2", solution['2']['Name'], solution['2']['Color']],
+                        ["3", solution['3']['Name'], solution['3']['Color']],
+                        ["4", solution['4']['Name'], solution['4']['Color']]
+                    ]
+                }
+            }
+            return json.dumps(result, indent=2)
     
-    # Prepare the output
-    output = {
-        "solution": {
-            "header": ["House", "Name", "Color"],
-            "rows": []
-        }
-    }
-    
-    for house in solution:
-        output["solution"]["rows"].append([
-            house['House'],
-            house['Name'],
-            house['Color']
-        ])
-    
-    return json.dumps(output, indent=2)
+    return json.dumps({"solution": {"header": [], "rows": []}})
 
-if __name__ == "__main__":
-    print(solve_puzzle())
+print(solve_puzzle())

@@ -1,50 +1,67 @@
-import itertools
 import json
 
 def main():
+    # Define the attributes
     names = ['Arnold', 'Eric']
     vacations = ['beach', 'mountain']
     
-    name_perms = list(itertools.permutations(names))
-    vac_perms = list(itertools.permutations(vacations))
+    # Generate all possible assignments
+    candidates = []
+    for name1 in names:
+        name2 = next(n for n in names if n != name1)
+        for vac1 in vacations:
+            vac2 = next(v for v in vacations if v != vac1)
+            candidate = [
+                {'House': '1', 'Name': name1, 'Vacation': vac1},
+                {'House': '2', 'Name': name2, 'Vacation': vac2}
+            ]
+            candidates.append(candidate)
     
-    solution_found = None
-    for n_perm in name_perms:
-        for v_perm in vac_perms:
-            candidate = {
-                1: {'name': n_perm[0], 'vacation': v_perm[0]},
-                2: {'name': n_perm[1], 'vacation': v_perm[1]}
-            }
-            arnold_house = None
-            beach_house = None
-            for house in [1, 2]:
-                if candidate[house]['name'] == 'Arnold':
-                    arnold_house = house
-                if candidate[house]['vacation'] == 'beach':
-                    beach_house = house
-            if arnold_house is not None and beach_house is not None and arnold_house > beach_house:
-                solution_found = candidate
+    # Find the solution that satisfies the constraints
+    solution_candidate = None
+    for candidate in candidates:
+        # Check if Arnold and beach are in the same house
+        same_house = False
+        for house in candidate:
+            if house['Name'] == 'Arnold' and house['Vacation'] == 'beach':
+                same_house = True
                 break
-        if solution_found is not None:
-            break
-            
-    if solution_found is None:
-        solution_found = {1: {'name': 'Unknown', 'vacation': 'Unknown'}, 2: {'name': 'Unknown', 'vacation': 'Unknown'}}
-    
-    header = ["House", "name", "vacation"]
-    rows = []
-    for house_num in [1, 2]:
-        row = [str(house_num), solution_found[house_num]['name'], solution_found[house_num]['vacation']]
-        rows.append(row)
+        if same_house:
+            continue
         
-    result = {
-        "solution": {
-            "header": header,
-            "rows": rows
-        }
-    }
+        # Get the house numbers for Arnold and beach
+        beach_house_num = None
+        arnold_house_num = None
+        for house in candidate:
+            if house['Vacation'] == 'beach':
+                beach_house_num = int(house['House'])
+            if house['Name'] == 'Arnold':
+                arnold_house_num = int(house['House'])
+        
+        if beach_house_num is None or arnold_house_num is None:
+            continue
+        
+        # Check if Arnold is to the right of the beach lover
+        if arnold_house_num > beach_house_num:
+            solution_candidate = candidate
+            break
     
-    print(json.dumps(result))
+    # Prepare the output
+    if solution_candidate is None:
+        print(json.dumps({"solution": {}}))
+    else:
+        rows = []
+        for house in solution_candidate:
+            row = [house['House'], house['Name'], house['Vacation']]
+            rows.append(row)
+        
+        output = {
+            "solution": {
+                "header": ["House", "Name", "Vacation"],
+                "rows": rows
+            }
+        }
+        print(json.dumps(output))
 
 if __name__ == "__main__":
     main()

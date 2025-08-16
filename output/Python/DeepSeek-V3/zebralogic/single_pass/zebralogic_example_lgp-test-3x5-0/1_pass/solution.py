@@ -2,131 +2,91 @@ import json
 from itertools import permutations
 
 def solve_puzzle():
-    # Define all possible categories and options
+    # Define all possible values for each category
     houses = ['1', '2', '3']
     names = ['Peter', 'Arnold', 'Eric']
     genres = ['science fiction', 'mystery', 'romance']
     smoothies = ['watermelon', 'desert', 'cherry']
-    months = ['april', 'jan', 'sept']
+    birthdays = ['april', 'jan', 'sept']
     heights = ['average', 'very short', 'short']
 
-    # Generate all possible permutations for each category
+    # Generate all possible permutations for each house
     for name_perm in permutations(names):
         for genre_perm in permutations(genres):
             for smoothie_perm in permutations(smoothies):
-                for month_perm in permutations(months):
+                for birthday_perm in permutations(birthdays):
                     for height_perm in permutations(heights):
-                        # Assign each permutation to houses
-                        assignment = []
-                        for i in range(3):
-                            assignment.append({
-                                'House': houses[i],
-                                'Name': name_perm[i],
-                                'book genre': genre_perm[i],
-                                'favorite smoothie': smoothie_perm[i],
-                                'birthday month': month_perm[i],
-                                'height': height_perm[i]
-                            })
-
-                        # Check all constraints
+                        solution = {
+                            '1': {
+                                'Name': name_perm[0],
+                                'BookGenre': genre_perm[0],
+                                'Smoothie': smoothie_perm[0],
+                                'Birthday': birthday_perm[0],
+                                'Height': height_perm[0]
+                            },
+                            '2': {
+                                'Name': name_perm[1],
+                                'BookGenre': genre_perm[1],
+                                'Smoothie': smoothie_perm[1],
+                                'Birthday': birthday_perm[1],
+                                'Height': height_perm[1]
+                            },
+                            '3': {
+                                'Name': name_perm[2],
+                                'BookGenre': genre_perm[2],
+                                'Smoothie': smoothie_perm[2],
+                                'Birthday': birthday_perm[2],
+                                'Height': height_perm[2]
+                            }
+                        }
+                        # Apply all clues to check validity
                         valid = True
-
-                        # Clue 7: Eric is in the first house
-                        if assignment[0]['Name'] != 'Eric':
+                        # Clue 1: Cherry smoothie not in house 2
+                        if solution['2']['Smoothie'] == 'cherry':
                             valid = False
-                            continue
-
-                        # Clue 2: Arnold loves mystery books
-                        for house in assignment:
-                            if house['Name'] == 'Arnold' and house['book genre'] != 'mystery':
+                        # Clue 2: Arnold loves mystery
+                        for house in houses:
+                            if solution[house]['Name'] == 'Arnold' and solution[house]['BookGenre'] != 'mystery':
                                 valid = False
-                                break
-                        if not valid:
-                            continue
-
-                        # Clue 5: Mystery lover's birthday is in September
-                        for house in assignment:
-                            if house['book genre'] == 'mystery' and house['birthday month'] != 'sept':
-                                valid = False
-                                break
-                        if not valid:
-                            continue
-
-                        # Clue 3: January birthday is not in first house
-                        if assignment[0]['birthday month'] == 'jan':
+                        # Clue 3: jan not in house 1
+                        if solution['1']['Birthday'] == 'jan':
                             valid = False
-                            continue
-
-                        # Clue 1: Cherry smoothie is not in second house
-                        if assignment[1]['favorite smoothie'] == 'cherry':
+                        # Clue 4: very short loves romance
+                        for house in houses:
+                            if solution[house]['Height'] == 'very short' and solution[house]['BookGenre'] != 'romance':
+                                valid = False
+                        # Clue 5: mystery lover's birthday is sept
+                        for house in houses:
+                            if solution[house]['BookGenre'] == 'mystery' and solution[house]['Birthday'] != 'sept':
+                                valid = False
+                        # Clue 6: average height is desert lover
+                        for house in houses:
+                            if solution[house]['Height'] == 'average' and solution[house]['Smoothie'] != 'desert':
+                                valid = False
+                        # Clue 7: Eric is in house 1
+                        if solution['1']['Name'] != 'Eric':
                             valid = False
-                            continue
-
-                        # Clue 4: Very short person loves romance
-                        for house in assignment:
-                            if house['height'] == 'very short' and house['book genre'] != 'romance':
+                        # Clue 8: watermelon lover is short
+                        for house in houses:
+                            if solution[house]['Smoothie'] == 'watermelon' and solution[house]['Height'] != 'short':
                                 valid = False
-                                break
-                            if house['book genre'] == 'romance' and house['height'] != 'very short':
+                        # Clue 9: watermelon lover is Eric
+                        for house in houses:
+                            if solution[house]['Smoothie'] == 'watermelon' and solution[house]['Name'] != 'Eric':
                                 valid = False
-                                break
-                        if not valid:
-                            continue
-
-                        # Clue 6: Average height is desert smoothie
-                        for house in assignment:
-                            if house['height'] == 'average' and house['favorite smoothie'] != 'desert':
-                                valid = False
-                                break
-                            if house['favorite smoothie'] == 'desert' and house['height'] != 'average':
-                                valid = False
-                                break
-                        if not valid:
-                            continue
-
-                        # Clue 8: Watermelon lover is short
-                        for house in assignment:
-                            if house['favorite smoothie'] == 'watermelon' and house['height'] != 'short':
-                                valid = False
-                                break
-                            if house['height'] == 'short' and house['favorite smoothie'] != 'watermelon':
-                                valid = False
-                                break
-                        if not valid:
-                            continue
-
-                        # Clue 9: Watermelon lover is Eric
-                        for house in assignment:
-                            if house['Name'] == 'Eric' and house['favorite smoothie'] != 'watermelon':
-                                valid = False
-                                break
-                            if house['favorite smoothie'] == 'watermelon' and house['Name'] != 'Eric':
-                                valid = False
-                                break
-                        if not valid:
-                            continue
-
-                        # If all constraints are satisfied, prepare the solution
                         if valid:
-                            solution = {
+                            # Prepare the output
+                            output = {
                                 "solution": {
-                                    "header": ["House", "Name", "book genre", "favorite smoothie", "birthday month", "height"],
-                                    "rows": []
+                                    "header": ["House", "Name", "BookGenre", "Smoothie", "Birthday", "Height"],
+                                    "rows": [
+                                        ["1", solution['1']['Name'], solution['1']['BookGenre'], solution['1']['Smoothie'], solution['1']['Birthday'], solution['1']['Height']],
+                                        ["2", solution['2']['Name'], solution['2']['BookGenre'], solution['2']['Smoothie'], solution['2']['Birthday'], solution['2']['Height']],
+                                        ["3", solution['3']['Name'], solution['3']['BookGenre'], solution['3']['Smoothie'], solution['3']['Birthday'], solution['3']['Height']]
+                                    ]
                                 }
                             }
-                            for house in assignment:
-                                solution["solution"]["rows"].append([
-                                    house['House'],
-                                    house['Name'],
-                                    house['book genre'],
-                                    house['favorite smoothie'],
-                                    house['birthday month'],
-                                    house['height']
-                                ])
-                            return solution
+                            return json.dumps(output, indent=2)
+    return json.dumps({"solution": {"header": [], "rows": []}})
 
-    return {"solution": {"header": [], "rows": []}}
-
-# Solve the puzzle and print the JSON result
-solution = solve_puzzle()
-print(json.dumps(solution, indent=2))
+print(solve_puzzle())

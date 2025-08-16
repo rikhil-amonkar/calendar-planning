@@ -2,82 +2,55 @@ import json
 from itertools import permutations
 
 def solve_puzzle():
-    # Define the attributes
+    # Define possible values
     names = ['Alice', 'Arnold', 'Peter', 'Eric']
     hair_colors = ['black', 'blonde', 'brown', 'red']
-    houses = [1, 2, 3, 4]
+    houses = ['1', '2', '3', '4']
     
     # Generate all possible permutations for names and hair colors
     for name_perm in permutations(names):
+        # Check clue 5: Alice is in the first house
+        if name_perm[0] != 'Alice':
+            continue
+        
         for hair_perm in permutations(hair_colors):
-            # Assign to houses
-            assignment = []
-            for i in range(4):
-                assignment.append({
-                    'House': str(i + 1),
-                    'Name': name_perm[i],
-                    'hair': hair_perm[i]
-                })
-            
-            # Check constraints
-            # Constraint 5: Alice is in the first house
-            if assignment[0]['Name'] != 'Alice':
+            # Check clue 4: The person who has black hair is not in the first house
+            if hair_perm[0] == 'black':
                 continue
             
-            # Constraint 3: Eric has brown hair
-            eric_house = None
-            for house in assignment:
-                if house['Name'] == 'Eric' and house['hair'] != 'brown':
-                    break
-            else:
-                # Find Eric's house
-                eric_house = None
-                for house in assignment:
-                    if house['Name'] == 'Eric':
-                        eric_house = house
-                        break
-                if eric_house is None:
-                    continue  # Eric must be present
-                
-                # Constraint 1: Eric is directly left of the person who has blonde hair
-                eric_index = int(eric_house['House']) - 1
-                if eric_index >= 3:
-                    continue  # Eric cannot be in the last house
-                if assignment[eric_index + 1]['hair'] != 'blonde':
-                    continue
-                
-                # Constraint 2: Alice and Arnold are next to each other
-                alice_index = 0  # since Alice is in first house
-                arnold_index = None
-                for i, house in enumerate(assignment):
-                    if house['Name'] == 'Arnold':
-                        arnold_index = i
-                        break
-                if arnold_index is None:
-                    continue  # Arnold must be present
-                if abs(alice_index - arnold_index) != 1:
-                    continue
-                
-                # Constraint 4: The person who has black hair is not in the first house
-                if assignment[0]['hair'] == 'black':
-                    continue
-                
-                # All constraints satisfied, prepare the solution
-                solution = {
-                    "solution": {
-                        "header": ["House", "Name", "hair"],
-                        "rows": []
-                    }
+            # Check clue 3: Eric has brown hair
+            eric_index = name_perm.index('Eric')
+            if hair_perm[eric_index] != 'brown':
+                continue
+            
+            # Check clue 1: Eric is directly left of the person who has blonde hair
+            if eric_index + 1 >= len(houses):
+                continue  # Eric is in the last house, can't be directly left
+            if hair_perm[eric_index + 1] != 'blonde':
+                continue
+            
+            # Check clue 2: Alice and Arnold are next to each other
+            alice_index = name_perm.index('Alice')
+            arnold_index = name_perm.index('Arnold')
+            if abs(alice_index - arnold_index) != 1:
+                continue
+            
+            # If all clues are satisfied, construct the solution
+            solution = {
+                "solution": {
+                    "header": ["House", "Name", "HairColor"],
+                    "rows": []
                 }
-                for house in assignment:
-                    solution["solution"]["rows"].append([
-                        house['House'],
-                        house['Name'],
-                        house['hair']
-                    ])
-                return solution
-    return {"solution": {"header": [], "rows": []}}
+            }
+            for i in range(len(houses)):
+                solution["solution"]["rows"].append([
+                    houses[i],
+                    name_perm[i],
+                    hair_perm[i]
+                ])
+            return solution
+    
+    return {"solution": {"header": ["House", "Name", "HairColor"], "rows": []}}
 
-if __name__ == "__main__":
-    solution = solve_puzzle()
-    print(json.dumps(solution, indent=2))
+# Execute and print the solution
+print(json.dumps(solve_puzzle(), indent=2))

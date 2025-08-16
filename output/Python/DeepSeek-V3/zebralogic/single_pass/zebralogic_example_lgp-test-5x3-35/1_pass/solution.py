@@ -6,146 +6,140 @@ def solve_puzzle():
     names = ['Eric', 'Peter', 'Arnold', 'Alice', 'Bob']
     mothers = ['Kailyn', 'Janelle', 'Aniya', 'Penny', 'Holly']
     heights = ['average', 'very short', 'short', 'very tall', 'tall']
-    houses = ['1', '2', '3', '4', '5']
-
+    
     # Generate all possible permutations for each category
     for name_perm in permutations(names):
         for mother_perm in permutations(mothers):
             for height_perm in permutations(heights):
-                # Create a dictionary to hold the current assignment
-                assignment = []
-                for i in range(5):
-                    assignment.append({
-                        'House': str(i+1),
-                        'Name': name_perm[i],
-                        'Mother': mother_perm[i],
-                        'Height': height_perm[i]
-                    })
-
-                # Check all constraints
+                solution = []
                 valid = True
-
+                
+                # Create a solution candidate
+                for i in range(5):
+                    house = str(i + 1)
+                    name = name_perm[i]
+                    mother = mother_perm[i]
+                    height = height_perm[i]
+                    solution.append([house, name, mother, height])
+                
+                # Check all constraints
                 # Constraint 1: Alice's mother is Aniya
                 alice_house = None
-                for house in assignment:
-                    if house['Name'] == 'Alice':
+                aniya_house = None
+                for house in solution:
+                    if house[1] == 'Alice':
                         alice_house = house
-                        break
-                if alice_house and alice_house['Mother'] != 'Aniya':
+                    if house[2] == 'Aniya':
+                        aniya_house = house
+                if alice_house is None or aniya_house is None or alice_house[2] != 'Aniya':
                     valid = False
-
+                    continue
+                
                 # Constraint 2: average height is left of Penny's mother
-                avg_house_pos = None
-                penny_house_pos = None
-                for i, house in enumerate(assignment):
-                    if house['Height'] == 'average':
-                        avg_house_pos = i
-                    if house['Mother'] == 'Penny':
-                        penny_house_pos = i
-                if avg_house_pos is not None and penny_house_pos is not None:
-                    if avg_house_pos >= penny_house_pos:
-                        valid = False
-                elif penny_house_pos is not None and avg_house_pos is None:
-                    valid = False  # average must exist if Penny exists
-
-                # Constraint 3: Janelle is Bob's mother
+                avg_house = None
+                penny_house = None
+                for house in solution:
+                    if house[3] == 'average':
+                        avg_house = house
+                    if house[2] == 'Penny':
+                        penny_house = house
+                if avg_house is None or penny_house is None or int(avg_house[0]) >= int(penny_house[0]):
+                    valid = False
+                    continue
+                
+                # Constraint 3: Janelle's mother is Bob
+                janelle_house = None
                 bob_house = None
-                for house in assignment:
-                    if house['Name'] == 'Bob':
+                for house in solution:
+                    if house[2] == 'Janelle':
+                        janelle_house = house
+                    if house[1] == 'Bob':
                         bob_house = house
-                        break
-                if bob_house and bob_house['Mother'] != 'Janelle':
+                if janelle_house is None or bob_house is None or janelle_house[1] != 'Bob':
                     valid = False
-
+                    continue
+                
                 # Constraint 4: Peter is not in the second house
-                if assignment[1]['Name'] == 'Peter':
+                if solution[1][1] == 'Peter':
                     valid = False
-
+                    continue
+                
                 # Constraint 5: short is directly left of Arnold
-                short_pos = None
-                arnold_pos = None
-                for i, house in enumerate(assignment):
-                    if house['Height'] == 'short':
-                        short_pos = i
-                    if house['Name'] == 'Arnold':
-                        arnold_pos = i
-                if short_pos is not None and arnold_pos is not None:
-                    if arnold_pos != short_pos + 1:
-                        valid = False
-                elif arnold_pos is not None:  # short must exist if Arnold exists
+                short_house = None
+                arnold_house = None
+                for house in solution:
+                    if house[3] == 'short':
+                        short_house = house
+                    if house[1] == 'Arnold':
+                        arnold_house = house
+                if short_house is None or arnold_house is None or int(short_house[0]) + 1 != int(arnold_house[0]):
                     valid = False
-
+                    continue
+                
                 # Constraint 6: very tall is Arnold
-                for house in assignment:
-                    if house['Name'] == 'Arnold' and house['Height'] != 'very tall':
+                for house in solution:
+                    if house[1] == 'Arnold' and house[3] != 'very tall':
                         valid = False
-                    if house['Height'] == 'very tall' and house['Name'] != 'Arnold':
-                        valid = False
-
+                        break
+                if not valid:
+                    continue
+                
                 # Constraint 7: Bob is directly left of average height
-                bob_pos = None
-                avg_pos = None
-                for i, house in enumerate(assignment):
-                    if house['Name'] == 'Bob':
-                        bob_pos = i
-                    if house['Height'] == 'average':
-                        avg_pos = i
-                if bob_pos is not None and avg_pos is not None:
-                    if avg_pos != bob_pos + 1:
-                        valid = False
-                elif bob_pos is not None:  # average must exist if Bob exists
+                bob_house = None
+                avg_house = None
+                for house in solution:
+                    if house[1] == 'Bob':
+                        bob_house = house
+                    if house[3] == 'average':
+                        avg_house = house
+                if bob_house is None or avg_house is None or int(bob_house[0]) + 1 != int(avg_house[0]):
                     valid = False
-
+                    continue
+                
                 # Constraint 8: Eric is not in the fifth house
-                if assignment[4]['Name'] == 'Eric':
+                if solution[4][1] == 'Eric':
                     valid = False
-
+                    continue
+                
                 # Constraint 9: very tall is right of Holly's mother
-                very_tall_pos = None
-                holly_pos = None
-                for i, house in enumerate(assignment):
-                    if house['Height'] == 'very tall':
-                        very_tall_pos = i
-                    if house['Mother'] == 'Holly':
-                        holly_pos = i
-                if very_tall_pos is not None and holly_pos is not None:
-                    if very_tall_pos <= holly_pos:
-                        valid = False
-                elif very_tall_pos is not None:  # holly must exist if very tall exists
+                very_tall_house = None
+                holly_house = None
+                for house in solution:
+                    if house[3] == 'very tall':
+                        very_tall_house = house
+                    if house[2] == 'Holly':
+                        holly_house = house
+                if very_tall_house is None or holly_house is None or int(very_tall_house[0]) <= int(holly_house[0]):
                     valid = False
-
+                    continue
+                
                 # Constraint 10: Eric's mother is Kailyn
                 eric_house = None
-                for house in assignment:
-                    if house['Name'] == 'Eric':
+                kailyn_house = None
+                for house in solution:
+                    if house[1] == 'Eric':
                         eric_house = house
-                        break
-                if eric_house and eric_house['Mother'] != 'Kailyn':
+                    if house[2] == 'Kailyn':
+                        kailyn_house = house
+                if eric_house is None or kailyn_house is None or eric_house[2] != 'Kailyn':
                     valid = False
-
-                # Constraint 11: very short is in the fifth house
-                if assignment[4]['Height'] != 'very short':
+                    continue
+                
+                # Constraint 11: very short is in fifth house
+                if solution[4][3] != 'very short':
                     valid = False
-
+                    continue
+                
                 if valid:
-                    # Prepare the solution in the required format
-                    solution = {
+                    return {
                         "solution": {
                             "header": ["House", "Name", "Mother", "Height"],
-                            "rows": []
+                            "rows": solution
                         }
                     }
-                    for house in assignment:
-                        solution["solution"]["rows"].append([
-                            house['House'],
-                            house['Name'],
-                            house['Mother'],
-                            house['Height']
-                        ])
-                    return solution
-
+    
     return {"solution": {"header": [], "rows": []}}
 
-# Solve the puzzle and print the result as JSON
-solution = solve_puzzle()
-print(json.dumps(solution, indent=2))
+if __name__ == "__main__":
+    solution = solve_puzzle()
+    print(json.dumps(solution, indent=2))

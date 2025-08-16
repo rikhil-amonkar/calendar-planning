@@ -1,80 +1,83 @@
-import itertools
 import json
+from itertools import permutations
 
 def solve_puzzle():
-    # Define the attributes
     houses = [1, 2, 3, 4]
     names = ['Arnold', 'Eric', 'Peter', 'Alice']
     occupations = ['doctor', 'engineer', 'artist', 'teacher']
-    
-    # Generate all possible permutations of names and occupations
-    for name_perm in itertools.permutations(names):
-        for occ_perm in itertools.permutations(occupations):
+
+    # Generate all possible permutations for names and occupations
+    for name_perm in permutations(names):
+        for occ_perm in permutations(occupations):
+            solution = {}
+            valid = True
+
             # Assign names and occupations to houses
-            assignment = []
             for i in range(4):
-                assignment.append({
-                    'House': str(i + 1),
+                solution[i+1] = {
                     'Name': name_perm[i],
                     'Occupation': occ_perm[i]
-                })
-            
-            # Check all constraints
+                }
+
+            # Check constraints
             # Constraint 1: Two houses between Eric and Peter
             eric_pos = None
             peter_pos = None
-            for house in assignment:
-                if house['Name'] == 'Eric':
-                    eric_pos = int(house['House'])
-                if house['Name'] == 'Peter':
-                    peter_pos = int(house['House'])
-            if eric_pos is None or peter_pos is None:
+            for house in solution:
+                if solution[house]['Name'] == 'Eric':
+                    eric_pos = house
+                if solution[house]['Name'] == 'Peter':
+                    peter_pos = house
+            if eric_pos is None or peter_pos is None or abs(eric_pos - peter_pos) != 3:
+                valid = False
                 continue
-            if abs(eric_pos - peter_pos) != 3:
-                continue
-            
-            # Constraint 2: The teacher is Peter
-            for house in assignment:
-                if house['Name'] == 'Peter' and house['Occupation'] != 'teacher':
+
+            # Constraint 2: Teacher is Peter
+            for house in solution:
+                if solution[house]['Name'] == 'Peter' and solution[house]['Occupation'] != 'teacher':
+                    valid = False
                     break
-            else:
-                # Constraint 3: Peter is not in the first house
-                if peter_pos == 1:
-                    continue
-                
-                # Constraint 4: One house between doctor and Alice
-                doctor_pos = None
-                alice_pos = None
-                for house in assignment:
-                    if house['Occupation'] == 'doctor':
-                        doctor_pos = int(house['House'])
-                    if house['Name'] == 'Alice':
-                        alice_pos = int(house['House'])
-                if doctor_pos is None or alice_pos is None:
-                    continue
-                if abs(doctor_pos - alice_pos) != 2:
-                    continue
-                
-                # Constraint 5: The artist is Alice
-                for house in assignment:
-                    if house['Name'] == 'Alice' and house['Occupation'] != 'artist':
-                        break
-                else:
-                    # All constraints satisfied
-                    solution = {
-                        "solution": {
-                            "header": ["House", "Name", "Occupation"],
-                            "rows": []
-                        }
+            if not valid:
+                continue
+
+            # Constraint 3: Peter not in first house
+            if solution[1]['Name'] == 'Peter':
+                valid = False
+                continue
+
+            # Constraint 4: One house between doctor and Alice
+            doctor_pos = None
+            alice_pos = None
+            for house in solution:
+                if solution[house]['Occupation'] == 'doctor':
+                    doctor_pos = house
+                if solution[house]['Name'] == 'Alice':
+                    alice_pos = house
+            if doctor_pos is None or alice_pos is None or abs(doctor_pos - alice_pos) != 2:
+                valid = False
+                continue
+
+            # Constraint 5: Artist is Alice
+            for house in solution:
+                if solution[house]['Name'] == 'Alice' and solution[house]['Occupation'] != 'artist':
+                    valid = False
+                    break
+            if not valid:
+                continue
+
+            # If all constraints are satisfied, format the solution
+            if valid:
+                result = {
+                    "solution": {
+                        "header": ["House", "Name", "Occupation"],
+                        "rows": []
                     }
-                    for house in assignment:
-                        solution["solution"]["rows"].append([
-                            house['House'],
-                            house['Name'],
-                            house['Occupation']
-                        ])
-                    return json.dumps(solution, indent=2)
-    
-    return json.dumps({"solution": {}})
+                }
+                for house in sorted(solution.keys()):
+                    row = [str(house), solution[house]['Name'], solution[house]['Occupation']]
+                    result["solution"]["rows"].append(row)
+                return json.dumps(result, indent=2)
+
+    return json.dumps({"solution": {"header": ["House", "Name", "Occupation"], "rows": []}})
 
 print(solve_puzzle())

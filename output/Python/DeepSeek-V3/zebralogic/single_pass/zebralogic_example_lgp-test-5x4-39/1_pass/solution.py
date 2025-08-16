@@ -2,176 +2,108 @@ import json
 from itertools import permutations
 
 def solve_puzzle():
-    # Define all possible values for each attribute
-    houses = ['1', '2', '3', '4', '5']
+    # Define all possible options for each category
     names = ['Arnold', 'Peter', 'Eric', 'Alice', 'Bob']
     hobbies = ['painting', 'cooking', 'knitting', 'gardening', 'photography']
     heights = ['very tall', 'tall', 'very short', 'average', 'short']
-    lunches = ['stew', 'grilled cheese', 'stir fry', 'spaghetti', 'pizza']
-
-    # Generate all possible permutations for each attribute
+    foods = ['stew', 'grilled cheese', 'stir fry', 'spaghetti', 'pizza']
+    
+    # Initialize houses
+    houses = [1, 2, 3, 4, 5]
+    
+    # We'll use a brute-force approach with pruning based on constraints
     for name_perm in permutations(names):
+        # Constraint 3: Peter is not in the second house
+        if name_perm[1] == 'Peter':
+            continue
+        
+        # Constraint 8: Eric is not in the fifth house
+        if name_perm[4] == 'Eric':
+            continue
+        
+        # Constraint 14: Alice is to the right of the photography enthusiast (Bob)
+        try:
+            alice_pos = name_perm.index('Alice')
+            bob_pos = name_perm.index('Bob')
+            if alice_pos < bob_pos:
+                continue
+        except ValueError:
+            continue
+        
         for hobby_perm in permutations(hobbies):
+            # Constraint 1: Bob is the photography enthusiast
+            if hobby_perm[name_perm.index('Bob')] != 'photography':
+                continue
+            
             for height_perm in permutations(heights):
-                for lunch_perm in permutations(lunches):
+                # Constraint 12: very short is in house 5
+                if height_perm[4] != 'very short':
+                    continue
+                
+                # Constraint 13: tall is in house 3
+                if height_perm[2] != 'tall':
+                    continue
+                
+                # Constraint 9: short is Peter
+                peter_pos = name_perm.index('Peter')
+                if height_perm[peter_pos] != 'short':
+                    continue
+                
+                # Constraint 5: cooking hobby has average height
+                cooking_pos = hobby_perm.index('cooking')
+                if height_perm[cooking_pos] != 'average':
+                    continue
+                
+                for food_perm in permutations(foods):
+                    # Constraint 2: grilled cheese eater is tall
+                    grilled_cheese_pos = food_perm.index('grilled cheese')
+                    if height_perm[grilled_cheese_pos] != 'tall':
+                        continue
+                    
+                    # Constraint 4: tall person is directly left of stir fry lover
+                    tall_pos = height_perm.index('tall')
+                    if tall_pos == 4 or food_perm[tall_pos + 1] != 'stir fry':
+                        continue
+                    
+                    # Constraint 6: Alice is directly left of pizza lover
+                    try:
+                        alice_pos = name_perm.index('Alice')
+                        if alice_pos == 4 or food_perm[alice_pos + 1] != 'pizza':
+                            continue
+                    except ValueError:
+                        continue
+                    
+                    # Constraint 7: spaghetti eater is not in house 2
+                    if food_perm[1] == 'spaghetti':
+                        continue
+                    
+                    # Constraint 10: average height and gardening are next to each other
+                    avg_pos = height_perm.index('average')
+                    gardening_pos = hobby_perm.index('gardening')
+                    if abs(avg_pos - gardening_pos) != 1:
+                        continue
+                    
+                    # Constraint 11: painting is directly left of grilled cheese
+                    painting_pos = hobby_perm.index('painting')
+                    if painting_pos == 4 or food_perm[painting_pos + 1] != 'grilled cheese':
+                        continue
+                    
+                    # All constraints satisfied, build solution
                     solution = {
-                        '1': {'Name': None, 'Hobby': None, 'Height': None, 'Lunch': None},
-                        '2': {'Name': None, 'Hobby': None, 'Height': None, 'Lunch': None},
-                        '3': {'Name': None, 'Hobby': None, 'Height': None, 'Lunch': None},
-                        '4': {'Name': None, 'Hobby': None, 'Height': None, 'Lunch': None},
-                        '5': {'Name': None, 'Hobby': None, 'Height': None, 'Lunch': None},
-                    }
-                    
-                    # Assign the current permutation to each house
-                    for i, house in enumerate(houses):
-                        solution[house]['Name'] = name_perm[i]
-                        solution[house]['Hobby'] = hobby_perm[i]
-                        solution[house]['Height'] = height_perm[i]
-                        solution[house]['Lunch'] = lunch_perm[i]
-                    
-                    # Check all constraints
-                    valid = True
-                    
-                    # 1. Bob is the photography enthusiast.
-                    bob_house = None
-                    for house in houses:
-                        if solution[house]['Name'] == 'Bob':
-                            bob_house = house
-                            break
-                    if solution[bob_house]['Hobby'] != 'photography':
-                        valid = False
-                        continue
-                    
-                    # 2. The person who loves eating grilled cheese is the person who is tall.
-                    grilled_cheese_house = None
-                    for house in houses:
-                        if solution[house]['Lunch'] == 'grilled cheese':
-                            grilled_cheese_house = house
-                            break
-                    if grilled_cheese_house is None or solution[grilled_cheese_house]['Height'] != 'tall':
-                        valid = False
-                        continue
-                    
-                    # 3. Peter is not in the second house.
-                    if solution['2']['Name'] == 'Peter':
-                        valid = False
-                        continue
-                    
-                    # 4. The person who is tall is directly left of the person who loves stir fry.
-                    tall_house = None
-                    for house in houses:
-                        if solution[house]['Height'] == 'tall':
-                            tall_house = house
-                            break
-                    if tall_house is None or int(tall_house) >= 5 or solution[str(int(tall_house) + 1)]['Lunch'] != 'stir fry':
-                        valid = False
-                        continue
-                    
-                    # 5. The person who loves cooking is the person who has an average height.
-                    cooking_house = None
-                    for house in houses:
-                        if solution[house]['Hobby'] == 'cooking':
-                            cooking_house = house
-                            break
-                    if cooking_house is None or solution[cooking_house]['Height'] != 'average':
-                        valid = False
-                        continue
-                    
-                    # 6. Alice is directly left of the person who is a pizza lover.
-                    alice_house = None
-                    for house in houses:
-                        if solution[house]['Name'] == 'Alice':
-                            alice_house = house
-                            break
-                    if alice_house is None or int(alice_house) >= 5 or solution[str(int(alice_house) + 1)]['Lunch'] != 'pizza':
-                        valid = False
-                        continue
-                    
-                    # 7. The person who loves the spaghetti eater is not in the second house.
-                    spaghetti_house = None
-                    for house in houses:
-                        if solution[house]['Lunch'] == 'spaghetti':
-                            spaghetti_house = house
-                            break
-                    if spaghetti_house == '2':
-                        valid = False
-                        continue
-                    
-                    # 8. Eric is not in the fifth house.
-                    if solution['5']['Name'] == 'Eric':
-                        valid = False
-                        continue
-                    
-                    # 9. The person who is short is Peter.
-                    peter_house = None
-                    for house in houses:
-                        if solution[house]['Name'] == 'Peter':
-                            peter_house = house
-                            break
-                    if peter_house is None or solution[peter_house]['Height'] != 'short':
-                        valid = False
-                        continue
-                    
-                    # 10. The person who has an average height and the person who enjoys gardening are next to each other.
-                    average_house = None
-                    gardening_house = None
-                    for house in houses:
-                        if solution[house]['Height'] == 'average':
-                            average_house = house
-                        if solution[house]['Hobby'] == 'gardening':
-                            gardening_house = house
-                    if average_house is None or gardening_house is None or abs(int(average_house) - int(gardening_house)) != 1:
-                        valid = False
-                        continue
-                    
-                    # 11. The person who paints as a hobby is directly left of the person who loves eating grilled cheese.
-                    painting_house = None
-                    for house in houses:
-                        if solution[house]['Hobby'] == 'painting':
-                            painting_house = house
-                            break
-                    if painting_house is None or int(painting_house) >= 5 or solution[str(int(painting_house) + 1)]['Lunch'] != 'grilled cheese':
-                        valid = False
-                        continue
-                    
-                    # 12. The person who is very short is in the fifth house.
-                    if solution['5']['Height'] != 'very short':
-                        valid = False
-                        continue
-                    
-                    # 13. The person who is tall is in the third house.
-                    if solution['3']['Height'] != 'tall':
-                        valid = False
-                        continue
-                    
-                    # 14. Alice is somewhere to the right of the photography enthusiast.
-                    alice_house = None
-                    photography_house = None
-                    for house in houses:
-                        if solution[house]['Name'] == 'Alice':
-                            alice_house = house
-                        if solution[house]['Hobby'] == 'photography':
-                            photography_house = house
-                    if alice_house is None or photography_house is None or int(alice_house) <= int(photography_house):
-                        valid = False
-                        continue
-                    
-                    if valid:
-                        # Prepare the output
-                        output = {
-                            "solution": {
-                                "header": ["House", "Name", "Hobby", "Height", "Lunch"],
-                                "rows": []
-                            }
+                        "solution": {
+                            "header": ["House", "Name", "Hobby", "Height", "Food"],
+                            "rows": []
                         }
-                        for house in houses:
-                            row = [house]
-                            row.append(solution[house]['Name'])
-                            row.append(solution[house]['Hobby'])
-                            row.append(solution[house]['Height'])
-                            row.append(solution[house]['Lunch'])
-                            output["solution"]["rows"].append(row)
-                        return json.dumps(output, indent=2)
+                    }
+                    for i in range(5):
+                        solution["solution"]["rows"].append([
+                            str(i+1),
+                            name_perm[i],
+                            hobby_perm[i],
+                            height_perm[i],
+                            food_perm[i]
+                        ])
+                    return json.dumps(solution)
     
     return json.dumps({"solution": {"header": [], "rows": []}})
 

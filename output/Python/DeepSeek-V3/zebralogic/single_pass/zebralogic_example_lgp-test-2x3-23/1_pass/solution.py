@@ -2,58 +2,60 @@ import json
 from itertools import permutations
 
 def solve_puzzle():
-    # Define the attributes
-    houses = ['1', '2']
-    names = ['Eric', 'Arnold']
-    children = ['Bella', 'Fred']
-    lunches = ['grilled cheese', 'pizza']
+    # Define the possible attributes
+    houses = [1, 2]
+    names = ["Eric", "Arnold"]
+    children = ["Bella", "Fred"]
+    foods = ["grilled cheese", "pizza"]
     
     # Generate all possible permutations for each attribute
     for name_perm in permutations(names):
         for child_perm in permutations(children):
-            for lunch_perm in permutations(lunches):
+            for food_perm in permutations(foods):
                 # Assign attributes to houses
-                solution = {
-                    '1': {
-                        'House': '1',
-                        'Name': name_perm[0],
-                        'Child': child_perm[0],
-                        'Lunch': lunch_perm[0]
-                    },
-                    '2': {
-                        'House': '2',
-                        'Name': name_perm[1],
-                        'Child': child_perm[1],
-                        'Lunch': lunch_perm[1]
+                solution = []
+                for i in range(2):
+                    house = {
+                        "House": str(i + 1),
+                        "Name": name_perm[i],
+                        "Children": child_perm[i],
+                        "Food": food_perm[i]
                     }
-                }
+                    solution.append(house)
                 
-                # Check Clue 1: The person who is a pizza lover is Arnold.
+                # Check the clues
+                # Clue 1: The person who is a pizza lover is Arnold.
                 clue1_passed = True
-                for house in ['1', '2']:
-                    if solution[house]['Lunch'] == 'pizza' and solution[house]['Name'] != 'Arnold':
+                for house in solution:
+                    if house["Food"] == "pizza" and house["Name"] != "Arnold":
                         clue1_passed = False
                         break
                 if not clue1_passed:
                     continue
                 
-                # Check Clue 2: The person who loves eating grilled cheese is directly left of the person's child is named Fred.
-                # Since there are only 2 houses, house 1 must be grilled cheese and house 2's child must be Fred
-                if solution['1']['Lunch'] == 'grilled cheese' and solution['2']['Child'] == 'Fred':
-                    # Prepare the output
-                    output = {
-                        "solution": {
-                            "header": ["House", "Name", "Child", "Lunch"],
-                            "rows": [
-                                [solution['1']['House'], solution['1']['Name'], solution['1']['Child'], solution['1']['Lunch']],
-                                [solution['2']['House'], solution['2']['Name'], solution['2']['Child'], solution['2']['Lunch']]
-                            ]
-                        }
+                # Clue 2: The person who loves eating grilled cheese is directly left of the person's child is named Fred.
+                clue2_passed = False
+                for i in range(1):
+                    if solution[i]["Food"] == "grilled cheese" and solution[i + 1]["Children"] == "Fred":
+                        clue2_passed = True
+                        break
+                if not clue2_passed:
+                    continue
+                
+                # If all clues are passed, format the solution
+                formatted_solution = {
+                    "solution": {
+                        "header": ["House", "Name", "Children", "Food"],
+                        "rows": [
+                            [solution[0]["House"], solution[0]["Name"], solution[0]["Children"], solution[0]["Food"]],
+                            [solution[1]["House"], solution[1]["Name"], solution[1]["Children"], solution[1]["Food"]]
+                        ]
                     }
-                    return output
+                }
+                return formatted_solution
     
-    return {"solution": {"header": [], "rows": []}}
+    return {"solution": {"header": ["House", "Name", "Children", "Food"], "rows": []}}
 
-if __name__ == "__main__":
-    solution = solve_puzzle()
-    print(json.dumps(solution, indent=2))
+# Solve the puzzle and print the result
+result = solve_puzzle()
+print(json.dumps(result, indent=2))

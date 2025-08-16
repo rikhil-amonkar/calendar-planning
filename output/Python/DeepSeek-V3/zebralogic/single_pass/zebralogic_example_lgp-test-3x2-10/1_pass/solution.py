@@ -2,37 +2,36 @@ import json
 from itertools import permutations
 
 def solve_puzzle():
-    # Define the attributes
+    # Define the possible values for each attribute
     names = ['Eric', 'Arnold', 'Peter']
-    heights = ['very short', 'short', 'average']
-    houses = ['1', '2', '3']
+    heights = ['short', 'very short', 'average']
     
     # Generate all possible permutations for names and heights
-    for name_order in permutations(names):
-        for height_order in permutations(heights):
+    for name_perm in permutations(names):
+        for height_perm in permutations(heights):
             # Assign to houses
-            solution = []
-            for i in range(3):
-                solution.append({
-                    'House': str(i + 1),
-                    'Name': name_order[i],
-                    'Height': height_order[i]
-                })
+            solution = [
+                {'House': '1', 'Name': name_perm[0], 'Height': height_perm[0]},
+                {'House': '2', 'Name': name_perm[1], 'Height': height_perm[1]},
+                {'House': '3', 'Name': name_perm[2], 'Height': height_perm[2]}
+            ]
             
-            # Check constraints
+            # Check all constraints
             # Constraint 1: Eric is not in the first house
             if solution[0]['Name'] == 'Eric':
                 continue
+            
             # Constraint 2: very short is left of short
             very_short_pos = None
             short_pos = None
-            for i, house in enumerate(solution):
-                if house['Height'] == 'very short':
+            for i in range(3):
+                if solution[i]['Height'] == 'very short':
                     very_short_pos = i
-                if house['Height'] == 'short':
+                if solution[i]['Height'] == 'short':
                     short_pos = i
             if very_short_pos is None or short_pos is None or very_short_pos >= short_pos:
                 continue
+            
             # Constraint 3: very short is Eric
             for house in solution:
                 if house['Height'] == 'very short' and house['Name'] != 'Eric':
@@ -41,8 +40,8 @@ def solve_puzzle():
                 # Constraint 4: Arnold is not in the first house
                 if solution[0]['Name'] == 'Arnold':
                     continue
-                # All constraints satisfied
-                # Format the output
+                
+                # If all constraints are satisfied, format the solution
                 output = {
                     "solution": {
                         "header": ["House", "Name", "Height"],
@@ -51,9 +50,8 @@ def solve_puzzle():
                         ]
                     }
                 }
-                return output
-    return {"solution": {"header": [], "rows": []}}
+                return json.dumps(output)
+    
+    return json.dumps({"solution": {"header": ["House", "Name", "Height"], "rows": []}})
 
-# Solve and print the solution
-solution = solve_puzzle()
-print(json.dumps(solution, indent=2))
+print(solve_puzzle())

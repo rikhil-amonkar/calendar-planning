@@ -1,63 +1,87 @@
 import json
 
 def main():
-    n_houses = 6
-    names = [None] * n_houses
-    vacations = [None] * n_houses
+    names = [None] * 6
+    vacations = [None] * 6
 
-    # Apply clue 3: Eric is in the second house (index1)
-    names[1] = 'Eric'
+    # Set knowns from clues
+    names[1] = 'Eric'       # Clue 3: Eric in second house
+    vacations[2] = 'cultural'  # Clue 4: cultural in third house
+    names[2] = 'Peter'      # Clue 7: cultural is Peter
+    vacations[3] = 'city'   # Clue 9: city in fourth house
+
+    # Find positions for Bob and Arnold (Clue 5: Bob directly left of Arnold)
+    candidate_pairs = []
+    for i in range(5):
+        j = i + 1
+        if names[i] is not None and names[i] != 'Bob':
+            continue
+        if names[j] is not None and names[j] != 'Arnold':
+            continue
+        candidate_pairs.append((i, j))
     
-    # Apply clue 4: cultural tours in third house (index2)
-    vacations[2] = 'cultural'
+    valid_pairs = []
+    for (i, j) in candidate_pairs:
+        if i == 3:
+            continue
+        valid_pairs.append((i, j))
     
-    # Apply clue 7: the person with cultural tours is Peter (so house3: Peter)
-    names[2] = 'Peter'
+    if not valid_pairs:
+        error_output = {"error": "No valid positions found for Bob and Arnold"}
+        print(json.dumps(error_output))
+        return
     
-    # Apply clue 9: city breaks in fourth house (index3)
-    vacations[3] = 'city'
-    
-    # Apply clue 2: Eric is right of Alice -> Alice must be in house1 (index0)
-    names[0] = 'Alice'
-    
-    # Remaining names: Bob, Carol, Arnold for indices 3,4,5 (houses 4,5,6)
-    # Clue 5: Bob is directly left of Arnold -> they must be consecutive. 
-    # Clue 8: Bob has cruise. Since house4 (index3) has city vacation, Bob cannot be there.
-    # Therefore, Bob must be at index4 (house5) and Arnold at index5 (house6). Carol at index3 (house4).
-    names[3] = 'Carol'
-    names[4] = 'Bob'
-    names[5] = 'Arnold'
-    
-    # Apply clue 8: Bob has cruise -> house5 (index4) vacation is cruise
-    vacations[4] = 'cruise'
-    
-    # Apply clue 1: cultural tours (index2) is left of beach -> beach must be at an index > 2.
-    # Only index5 (house6) is available and >2.
-    vacations[5] = 'beach'
-    
-    # Remaining vacations: mountain and camping for indices0 and 1.
-    # Apply clue 6: camping not in first house -> index0 (house1) cannot be camping -> must be mountain.
-    vacations[0] = 'mountain'
-    vacations[1] = 'camping'
-    
-    # Build the solution structure
-    header = ["House", "Name", "Vacation"]
+    i_bob, i_arnold = valid_pairs[0]
+    names[i_bob] = 'Bob'
+    names[i_arnold] = 'Arnold'
+    vacations[i_bob] = 'cruise'  # Clue 8: Bob likes cruises
+
+    # Clue 2: Alice is left of Eric -> house1 (index0)
+    if names[0] is None:
+        names[0] = 'Alice'
+    elif names[0] != 'Alice':
+        error_output = {"error": "House1 must be Alice"}
+        print(json.dumps(error_output))
+        return
+
+    # Assign Carol to the remaining house
+    for idx in range(6):
+        if names[idx] is None:
+            names[idx] = 'Carol'
+            break
+
+    # Set beach vacation (Clue 1: cultural left of beach)
+    vacations[5] = 'beach'  # House6 (index5) is the only position right of house3
+
+    # Assign remaining vacations (mountain and camping)
+    if vacations[0] is None and vacations[1] is None:
+        vacations[0] = 'mountain'
+        vacations[1] = 'camping'  # Clue 6: camping not in house1
+    else:
+        if vacations[0] is None:
+            vacations[0] = 'mountain'
+        elif vacations[0] == 'camping':
+            error_output = {"error": "Camping cannot be in house1"}
+            print(json.dumps(error_output))
+            return
+        if vacations[1] is None:
+            vacations[1] = 'camping'
+
+    # Build the solution rows
     rows = []
-    for i in range(n_houses):
-        house_num = str(i+1)
-        row = [house_num, names[i], vacations[i]]
-        rows.append(row)
+    for i in range(6):
+        house_num = str(i + 1)
+        name = names[i]
+        vacation = vacations[i]
+        rows.append([house_num, name, vacation])
     
-    solution_dict = {
-        "header": header,
-        "rows": rows
+    solution = {
+        "solution": {
+            "header": ["House", "Name", "Vacation"],
+            "rows": rows
+        }
     }
-    
-    result = {
-        "solution": solution_dict
-    }
-    
-    print(json.dumps(result))
+    print(json.dumps(solution))
 
 if __name__ == "__main__":
     main()

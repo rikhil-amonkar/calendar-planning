@@ -1,52 +1,58 @@
-import itertools
 import json
 
 def main():
+    # Define the houses and attributes
     houses = [1, 2]
-    attributes = ['Name', 'Lunch']
-    domains = {
-        'Name': ['Eric', 'Arnold'],
-        'Lunch': ['pizza', 'grilled cheese']
+    names = ['Eric', 'Arnold']
+    foods = ['pizza', 'grilled cheese']
+    
+    # Generate all possible assignments
+    possibilities = []
+    for name1 in names:
+        for food1 in foods:
+            # House 2 gets the remaining name and food
+            name2 = next(n for n in names if n != name1)
+            food2 = next(f for f in foods if f != food1)
+            candidate = {
+                1: {'Name': name1, 'Food': food1},
+                2: {'Name': name2, 'Food': food2}
+            }
+            possibilities.append(candidate)
+    
+    # Apply clues to filter possibilities
+    valid_candidates = []
+    for candidate in possibilities:
+        # Clue 1: Pizza lover is in house 2
+        if candidate[2]['Food'] != 'pizza':
+            continue
+        # Clue 2: Arnold is not in house 1
+        if candidate[1]['Name'] == 'Arnold':
+            continue
+        valid_candidates.append(candidate)
+    
+    # There should be exactly one valid solution
+    if len(valid_candidates) != 1:
+        raise RuntimeError("No unique solution found")
+    
+    solution = valid_candidates[0]
+    
+    # Build the output structure
+    output = {
+        "solution": {
+            "header": ["House", "Name", "Food"],
+            "rows": []
+        }
     }
     
-    perms = {}
-    for attr in attributes:
-        perms[attr] = list(itertools.permutations(domains[attr]))
+    # Add rows in house order
+    for house in houses:
+        row = [str(house)]
+        row.append(solution[house]['Name'])
+        row.append(solution[house]['Food'])
+        output['solution']['rows'].append(row)
     
-    solutions = []
-    for name_perm in perms['Name']:
-        for lunch_perm in perms['Lunch']:
-            assignment = {}
-            for idx, house in enumerate(houses):
-                assignment[house] = {
-                    'Name': name_perm[idx],
-                    'Lunch': lunch_perm[idx]
-                }
-            if assignment[2]['Lunch'] != 'pizza':
-                continue
-            if assignment[1]['Name'] == 'Arnold':
-                continue
-            solutions.append(assignment)
-    
-    if solutions:
-        sol = solutions[0]
-        header = ['House'] + attributes
-        rows = []
-        for house in houses:
-            row = [str(house)]
-            for attr in attributes:
-                row.append(sol[house][attr])
-            rows.append(row)
-        result = {
-            "solution": {
-                "header": header,
-                "rows": rows
-            }
-        }
-    else:
-        result = {"solution": {"header": [], "rows": []}}
-    
-    print(json.dumps(result))
+    # Output as JSON
+    print(json.dumps(output, indent=2))
 
 if __name__ == "__main__":
     main()

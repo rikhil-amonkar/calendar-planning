@@ -1,92 +1,93 @@
-import itertools
 import json
 
-def is_valid(candidate):
-    arnold_house = None
-    desert_house = None
-    for i in range(2):
-        if candidate[i]['Name'] == 'Arnold':
-            arnold_house = i
-        if candidate[i]['Favorite smoothie'] == 'desert':
-            desert_house = i
-    if arnold_house != desert_house:
-        return False
+def check_constraints(assignment):
+    house1 = assignment[0]
+    house2 = assignment[1]
+    
+    # Clue 1: The Desert smoothie lover is Arnold.
+    for house in assignment:
+        name = house[0]
+        smoothie = house[3]
+        if name == 'Arnold':
+            if smoothie != 'desert':
+                return False
+        if smoothie == 'desert':
+            if name != 'Arnold':
+                return False
+                
+    # Clue 2: The person who has brown hair is the person who loves basketball.
+    for house in assignment:
+        hair = house[1]
+        sport = house[2]
+        if hair == 'brown':
+            if sport != 'basketball':
+                return False
+        if sport == 'basketball':
+            if hair != 'brown':
+                return False
+                
+    # Clue 3: Arnold is somewhere to the left of the person who has black hair.
+    # Determine house numbers for Arnold and black hair.
+    if house1[0] == 'Arnold':
+        arnold_house = 1
+    else:
+        arnold_house = 2
         
-    brown_house = None
-    basketball_house = None
-    for i in range(2):
-        if candidate[i]['Hair color'] == 'brown':
-            brown_house = i
-        if candidate[i]['Favorite sport'] == 'basketball':
-            basketball_house = i
-    if brown_house != basketball_house:
-        return False
+    if house1[1] == 'black':
+        black_hair_house = 1
+    else:
+        black_hair_house = 2
         
-    black_house = None
-    for i in range(2):
-        if candidate[i]['Hair color'] == 'black':
-            black_house = i
-    if arnold_house is None or black_house is None:
-        return False
-    if arnold_house >= black_house:
+    if arnold_house >= black_hair_house:
         return False
         
     return True
 
 def main():
-    names = ['Arnold', 'Eric']
-    hairs = ['black', 'brown']
-    sports = ['basketball', 'soccer']
-    smoothies = ['desert', 'cherry']
+    names = [('Arnold', 'Eric'), ('Eric', 'Arnold')]
+    hairs = [('black', 'brown'), ('brown', 'black')]
+    sports = [('basketball', 'soccer'), ('soccer', 'basketball')]
+    smoothies = [('desert', 'cherry'), ('cherry', 'desert')]
     
-    solution_candidate = None
-    found = False
-    for name_perm in itertools.permutations(names):
-        for hair_perm in itertools.permutations(hairs):
-            for sport_perm in itertools.permutations(sports):
-                for smoothie_perm in itertools.permutations(smoothies):
-                    candidate = [
-                        {
-                            'Name': name_perm[0],
-                            'Hair color': hair_perm[0],
-                            'Favorite sport': sport_perm[0],
-                            'Favorite smoothie': smoothie_perm[0]
-                        },
-                        {
-                            'Name': name_perm[1],
-                            'Hair color': hair_perm[1],
-                            'Favorite sport': sport_perm[1],
-                            'Favorite smoothie': smoothie_perm[1]
-                        }
+    found_solution = False
+    solution_assignment = None
+    
+    for n in names:
+        for h in hairs:
+            for s in sports:
+                for sm in smoothies:
+                    assignment = [
+                        [n[0], h[0], s[0], sm[0]],
+                        [n[1], h[1], s[1], sm[1]]
                     ]
-                    if is_valid(candidate):
-                        solution_candidate = candidate
-                        found = True
+                    if check_constraints(assignment):
+                        found_solution = True
+                        solution_assignment = assignment
                         break
-                if found:
+                if found_solution:
                     break
-            if found:
+            if found_solution:
                 break
-        if found:
+        if found_solution:
             break
             
-    header = ["House", "Name", "Hair color", "Favorite sport", "Favorite smoothie"]
-    rows = []
-    if solution_candidate is not None:
-        for idx in range(2):
-            house = solution_candidate[idx]
-            row = [str(idx+1), house['Name'], house['Hair color'], house['Favorite sport'], house['Favorite smoothie']]
-            rows.append(row)
-    else:
-        rows = [['1', '?', '?', '?', '?'], ['2', '?', '?', '?', '?']]
-        
-    solution_dict = {
+    if solution_assignment is None:
+        solution_assignment = [
+            ["Unknown", "Unknown", "Unknown", "Unknown"],
+            ["Unknown", "Unknown", "Unknown", "Unknown"]
+        ]
+    
+    output = {
         "solution": {
-            "header": header,
-            "rows": rows
+            "header": ["House", "Name", "HairColor", "FavoriteSport", "Smoothie"],
+            "rows": [
+                ["1"] + solution_assignment[0],
+                ["2"] + solution_assignment[1]
+            ]
         }
     }
-    print(json.dumps(solution_dict))
+    
+    print(json.dumps(output))
 
 if __name__ == "__main__":
     main()

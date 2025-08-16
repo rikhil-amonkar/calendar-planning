@@ -4,63 +4,73 @@ import json
 def main():
     names = ['Eric', 'Arnold', 'Peter']
     smoothies = ['desert', 'watermelon', 'cherry']
-    books = ['science fiction', 'romance', 'mystery']
+    book_genres = ['science fiction', 'romance', 'mystery']
     
-    remaining_names = ['Eric', 'Arnold']
-    solution_found = False
-    result_dict = None
+    found = False
+    solution_data = None
     
-    for name_perm in itertools.permutations(remaining_names):
-        assignment_names = ['Peter', name_perm[0], name_perm[1]]
-        
-        for smoothie_perm in itertools.permutations(smoothies):
-            assignment_smoothies = list(smoothie_perm)
+    for n_perm in itertools.permutations(names):
+        if n_perm[0] != 'Peter':
+            continue
             
-            for book_perm in itertools.permutations(books):
-                assignment_books = list(book_perm)
-                
-                arnold_index = assignment_names.index('Arnold')
-                if assignment_books[arnold_index] != 'mystery':
+        for s_perm in itertools.permutations(smoothies):
+            for b_perm in itertools.permutations(book_genres):
+                if b_perm[0] == 'science fiction':
                     continue
-                
-                if assignment_books[0] == 'science fiction':
+                    
+                mystery_index = None
+                for idx, genre in enumerate(b_perm):
+                    if genre == 'mystery':
+                        mystery_index = idx
+                        break
+                if mystery_index is None:
                     continue
-                
-                if arnold_index < 1:
+                    
+                if n_perm[mystery_index] != 'Arnold':
                     continue
-                if assignment_smoothies[arnold_index-1] != 'desert':
+                    
+                cherry_index = None
+                for idx, sm in enumerate(s_perm):
+                    if sm == 'cherry':
+                        cherry_index = idx
+                        break
+                if cherry_index is None or cherry_index >= mystery_index:
                     continue
-                
-                if 'cherry' not in assignment_smoothies:
+                    
+                desert_index = None
+                for idx, sm in enumerate(s_perm):
+                    if sm == 'desert':
+                        desert_index = idx
+                        break
+                if desert_index is None or desert_index != mystery_index - 1:
                     continue
-                cherry_index = assignment_smoothies.index('cherry')
-                if cherry_index >= arnold_index:
-                    continue
-                
+                    
                 rows = []
                 for i in range(3):
-                    house_number = str(i + 1)
-                    row = [house_number, assignment_names[i], assignment_smoothies[i], assignment_books[i]]
-                    rows.append(row)
-                
-                result_dict = {
+                    rows.append([str(i+1), n_perm[i], s_perm[i], b_perm[i]])
+                    
+                solution_data = {
                     "solution": {
-                        "header": ["House", "Name", "Smoothie", "Book"],
+                        "header": ["House", "Name", "Smoothie", "BookGenre"],
                         "rows": rows
                     }
                 }
-                solution_found = True
+                found = True
                 break
-            
-            if solution_found:
+            if found:
                 break
-        if solution_found:
+        if found:
             break
-    
-    if solution_found:
-        print(json.dumps(result_dict, indent=2))
-    else:
-        print(json.dumps({"error": "No solution found"}))
+            
+    if not found:
+        solution_data = {
+            "solution": {
+                "header": ["House", "Name", "Smoothie", "BookGenre"],
+                "rows": []
+            }
+        }
+        
+    print(json.dumps(solution_data))
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

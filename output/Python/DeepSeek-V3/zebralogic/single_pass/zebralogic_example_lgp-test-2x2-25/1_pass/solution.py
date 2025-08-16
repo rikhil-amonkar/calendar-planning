@@ -1,50 +1,43 @@
-import itertools
 import json
+from itertools import permutations
 
 def solve_puzzle():
-    # Define the attributes
-    houses = [1, 2]
+    # Define the possible attributes
     names = ["Arnold", "Eric"]
     vacations = ["beach", "mountain"]
-
-    # Generate all possible permutations of names and vacations
-    for name_perm in itertools.permutations(names):
-        for vac_perm in itertools.permutations(vacations):
-            # Assign attributes to houses
-            solution = []
-            for i in range(2):
-                house = {
-                    "House": str(i + 1),
-                    "Name": name_perm[i],
-                    "Vacation": vac_perm[i]
-                }
-                solution.append(house)
-
+    
+    # Generate all possible permutations for names and vacations
+    for name_order in permutations(names):
+        for vacation_order in permutations(vacations):
+            # Create the house assignments
+            solution = {
+                1: {"Name": name_order[0], "Vacation": vacation_order[0]},
+                2: {"Name": name_order[1], "Vacation": vacation_order[1]}
+            }
+            
             # Check the clues
-            # Clue 1: Arnold is somewhere to the right of the person who loves beach vacations
+            # Clue 1: Arnold is to the right of the person who loves beach vacations
             beach_house = None
             arnold_house = None
-            for house in solution:
-                if house["Vacation"] == "beach":
-                    beach_house = house["House"]
-                if house["Name"] == "Arnold":
-                    arnold_house = house["House"]
+            for house in [1, 2]:
+                if solution[house]["Vacation"] == "beach":
+                    beach_house = house
+                if solution[house]["Name"] == "Arnold":
+                    arnold_house = house
             if beach_house is not None and arnold_house is not None:
-                if int(arnold_house) > int(beach_house):
-                    # Prepare the output
-                    output = {
+                if arnold_house > beach_house:
+                    # Format the solution
+                    result = {
                         "solution": {
                             "header": ["House", "Name", "Vacation"],
                             "rows": [
-                                [str(1), name_perm[0], vac_perm[0]],
-                                [str(2), name_perm[1], vac_perm[1]]
+                                ["1", solution[1]["Name"], solution[1]["Vacation"]],
+                                ["2", solution[2]["Name"], solution[2]["Vacation"]]
                             ]
                         }
                     }
-                    return output
+                    return json.dumps(result, indent=2)
+    
+    return json.dumps({"solution": {"header": [], "rows": []}})
 
-    return {"solution": {"header": [], "rows": []}}
-
-if __name__ == "__main__":
-    solution = solve_puzzle()
-    print(json.dumps(solution, indent=2))
+print(solve_puzzle())

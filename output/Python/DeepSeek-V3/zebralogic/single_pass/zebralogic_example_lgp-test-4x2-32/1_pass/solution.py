@@ -2,89 +2,99 @@ import json
 from itertools import permutations
 
 def solve_puzzle():
-    # Define the attributes
-    houses = [1, 2, 3, 4]
     names = ['Peter', 'Arnold', 'Eric', 'Alice']
     pets = ['bird', 'fish', 'dog', 'cat']
+    houses = [1, 2, 3, 4]
     
     # Generate all possible permutations for names and pets
     for name_perm in permutations(names):
         for pet_perm in permutations(pets):
             solution = {
-                1: {'Name': None, 'pet': None},
-                2: {'Name': None, 'pet': None},
-                3: {'Name': None, 'pet': None},
-                4: {'Name': None, 'pet': None}
+                1: {'Name': name_perm[0], 'Pet': pet_perm[0]},
+                2: {'Name': name_perm[1], 'Pet': pet_perm[1]},
+                3: {'Name': name_perm[2], 'Pet': pet_perm[2]},
+                4: {'Name': name_perm[3], 'Pet': pet_perm[3]}
             }
             
-            # Assign names and pets to houses
-            for i in range(4):
-                solution[i+1]['Name'] = name_perm[i]
-                solution[i+1]['pet'] = pet_perm[i]
-            
-            # Check constraints
-            # Constraint 2: Eric is not in the first house
-            if solution[1]['Name'] == 'Eric':
-                continue
-            
-            # Constraint 3: Eric keeps a bird
-            eric_house = None
-            for house in solution:
-                if solution[house]['Name'] == 'Eric':
-                    eric_house = house
-                    break
-            if solution[eric_house]['pet'] != 'bird':
-                continue
-            
-            # Constraint 5: Alice is not in the first house
-            if solution[1]['Name'] == 'Alice':
-                continue
-            
-            # Constraint 6: Arnold has fish
-            arnold_house = None
-            for house in solution:
-                if solution[house]['Name'] == 'Arnold':
-                    arnold_house = house
-                    break
-            if solution[arnold_house]['pet'] != 'fish':
-                continue
-            
-            # Constraint 4: One house between fish (Arnold) and Peter
-            peter_house = None
-            for house in solution:
-                if solution[house]['Name'] == 'Peter':
-                    peter_house = house
-                    break
-            if abs(arnold_house - peter_house) != 2:
-                continue
-            
-            # Constraint 1: Dog is to the right of Alice
+            # Check all constraints
+            # 1. The person who owns a dog is somewhere to the right of Alice.
             alice_house = None
             dog_house = None
-            for house in solution:
+            for house in houses:
                 if solution[house]['Name'] == 'Alice':
                     alice_house = house
-                if solution[house]['pet'] == 'dog':
+                if solution[house]['Pet'] == 'dog':
                     dog_house = house
-            if dog_house <= alice_house:
-                continue
+            if alice_house is not None and dog_house is not None:
+                if dog_house <= alice_house:
+                    continue
+            elif dog_house is None:
+                continue  # no dog in solution
             
-            # If all constraints are satisfied, format the solution
+            # 2. Eric is not in the first house.
+            if solution[1]['Name'] == 'Eric':
+                continue
+                
+            # 3. Eric is the person who keeps a pet bird.
+            eric_house = None
+            for house in houses:
+                if solution[house]['Name'] == 'Eric':
+                    eric_house = house
+                    if solution[house]['Pet'] != 'bird':
+                        break
+            else:
+                if eric_house is None:
+                    continue  # no Eric in solution
+            if eric_house is not None and solution[eric_house]['Pet'] != 'bird':
+                continue
+                
+            # 4. There is one house between the person with an aquarium of fish and Peter.
+            fish_house = None
+            peter_house = None
+            for house in houses:
+                if solution[house]['Pet'] == 'fish':
+                    fish_house = house
+                if solution[house]['Name'] == 'Peter':
+                    peter_house = house
+            if fish_house is not None and peter_house is not None:
+                if abs(fish_house - peter_house) != 2:
+                    continue
+            else:
+                continue  # missing fish or Peter
+                
+            # 5. Alice is not in the first house.
+            if solution[1]['Name'] == 'Alice':
+                continue
+                
+            # 6. Arnold is the person with an aquarium of fish.
+            arnold_house = None
+            for house in houses:
+                if solution[house]['Name'] == 'Arnold':
+                    arnold_house = house
+                    if solution[house]['Pet'] != 'fish':
+                        break
+            else:
+                if arnold_house is None:
+                    continue  # no Arnold in solution
+            if arnold_house is not None and solution[arnold_house]['Pet'] != 'fish':
+                continue
+                
+            # If all constraints are satisfied, return the solution
             result = {
                 "solution": {
-                    "header": ["House", "Name", "pet"],
+                    "header": ["House", "Name", "Pet"],
                     "rows": [
-                        ["1", solution[1]['Name'], solution[1]['pet']],
-                        ["2", solution[2]['Name'], solution[2]['pet']],
-                        ["3", solution[3]['Name'], solution[3]['pet']],
-                        ["4", solution[4]['Name'], solution[4]['pet']]
+                        ["1", solution[1]['Name'], solution[1]['Pet']],
+                        ["2", solution[2]['Name'], solution[2]['Pet']],
+                        ["3", solution[3]['Name'], solution[3]['Pet']],
+                        ["4", solution[4]['Name'], solution[4]['Pet']]
                     ]
                 }
             }
             return result
     
-    return {"solution": {}}
+    return {"solution": {"header": ["House", "Name", "Pet"], "rows": []}}
 
-# Solve the puzzle and print the result
-solution = solve_puzzle()
-print(json.dumps(solution, indent=2))
+if __name__ == "__main__":
+    solution = solve_puzzle()
+    print(json.dumps(solution, indent=2))

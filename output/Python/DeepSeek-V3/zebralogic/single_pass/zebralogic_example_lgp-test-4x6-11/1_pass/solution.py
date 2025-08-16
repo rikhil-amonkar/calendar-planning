@@ -1,173 +1,198 @@
-import itertools
 import json
+from itertools import permutations
 
 def solve_puzzle():
     # Define all possible categories and options
-    categories = {
-        'House': ['1', '2', '3', '4'],
-        'Name': ['Peter', 'Alice', 'Eric', 'Arnold'],
-        'Hobby': ['cooking', 'painting', 'gardening', 'photography'],
-        'Animal': ['horse', 'fish', 'cat', 'bird'],
-        'Book Genre': ['fantasy', 'mystery', 'romance', 'science fiction'],
-        'Birthday Month': ['april', 'jan', 'sept', 'feb'],
-        'Music Genre': ['pop', 'rock', 'classical', 'jazz']
-    }
+    houses = ['1', '2', '3', '4']
+    names = ['Peter', 'Alice', 'Eric', 'Arnold']
+    hobbies = ['cooking', 'painting', 'gardening', 'photography']
+    animals = ['horse', 'fish', 'cat', 'bird']
+    book_genres = ['fantasy', 'mystery', 'romance', 'science fiction']
+    birthday_months = ['april', 'jan', 'sept', 'feb']
+    music_genres = ['pop', 'rock', 'classical', 'jazz']
     
     # Generate all possible permutations for each category
-    from itertools import permutations
-    name_perms = permutations(categories['Name'])
-    hobby_perms = permutations(categories['Hobby'])
-    animal_perms = permutations(categories['Animal'])
-    book_perms = permutations(categories['Book Genre'])
-    month_perms = permutations(categories['Birthday Month'])
-    music_perms = permutations(categories['Music Genre'])
-    
-    # Try all possible combinations until a solution is found
-    for names in name_perms:
-        for hobbies in hobby_perms:
-            for animals in animal_perms:
-                for books in book_perms:
-                    for months in month_perms:
-                        for musics in music_perms:
-                            solution = {
-                                'House': ['1', '2', '3', '4'],
-                                'Name': list(names),
-                                'Hobby': list(hobbies),
-                                'Animal': list(animals),
-                                'Book Genre': list(books),
-                                'Birthday Month': list(months),
-                                'Music Genre': list(musics)
-                            }
+    for name_perm in permutations(names):
+        for hobby_perm in permutations(hobbies):
+            for animal_perm in permutations(animals):
+                for book_perm in permutations(book_genres):
+                    for bday_perm in permutations(birthday_months):
+                        for music_perm in permutations(music_genres):
+                            # Assign each permutation to houses
+                            assignment = []
+                            for i in range(4):
+                                assignment.append({
+                                    'House': houses[i],
+                                    'Name': name_perm[i],
+                                    'Hobby': hobby_perm[i],
+                                    'Animal': animal_perm[i],
+                                    'BookGenre': book_perm[i],
+                                    'Birthday': bday_perm[i],
+                                    'MusicGenre': music_perm[i]
+                                })
                             
                             # Check all constraints
                             valid = True
                             
-                            # Clue 3: Eric is not in the second house.
-                            if solution['Name'][1] == 'Eric':
+                            # Clue 1: cooking hobby ↔ romance book
+                            for house in assignment:
+                                if (house['Hobby'] == 'cooking') != (house['BookGenre'] == 'romance'):
+                                    valid = False
+                                    break
+                            if not valid:
+                                continue
+                            
+                            # Clue 2: feb birthday ↔ pop music
+                            for house in assignment:
+                                if (house['Birthday'] == 'feb') != (house['MusicGenre'] == 'pop'):
+                                    valid = False
+                                    break
+                            if not valid:
+                                continue
+                            
+                            # Clue 3: Eric not in house 2
+                            if assignment[1]['Name'] == 'Eric':
                                 valid = False
+                            if not valid:
+                                continue
                             
-                            # Clue 12: Peter is the person who loves pop music.
-                            if valid:
-                                peter_index = solution['Name'].index('Peter')
-                                if solution['Music Genre'][peter_index] != 'pop':
+                            # Clue 4: romance book not in house 4
+                            if assignment[3]['BookGenre'] == 'romance':
+                                valid = False
+                            if not valid:
+                                continue
+                            
+                            # Clue 5: feb birthday ↔ fish
+                            for house in assignment:
+                                if (house['Birthday'] == 'feb') != (house['Animal'] == 'fish'):
                                     valid = False
+                                    break
+                            if not valid:
+                                continue
                             
-                            # Clue 2: The person whose birthday is in February loves pop music.
-                            if valid:
-                                feb_index = solution['Birthday Month'].index('feb')
-                                if solution['Music Genre'][feb_index] != 'pop':
+                            # Clue 6: Alice is right of fantasy book lover
+                            fantasy_house = None
+                            alice_house = None
+                            for i, house in enumerate(assignment):
+                                if house['BookGenre'] == 'fantasy':
+                                    fantasy_house = i + 1  # 1-based
+                                if house['Name'] == 'Alice':
+                                    alice_house = i + 1
+                            if fantasy_house is None or alice_house is None or alice_house <= fantasy_house:
+                                valid = False
+                            if not valid:
+                                continue
+                            
+                            # Clue 7: horse ↔ rock music
+                            for house in assignment:
+                                if (house['Animal'] == 'horse') != (house['MusicGenre'] == 'rock'):
                                     valid = False
+                                    break
+                            if not valid:
+                                continue
                             
-                            # Clue 5: The person whose birthday is in February is the fish enthusiast.
-                            if valid:
-                                if solution['Animal'][feb_index] != 'fish':
+                            # Clue 8: gardening hobby ↔ april birthday
+                            for house in assignment:
+                                if (house['Hobby'] == 'gardening') != (house['Birthday'] == 'april'):
                                     valid = False
+                                    break
+                            if not valid:
+                                continue
                             
-                            # Clue 1: The person who loves cooking is the person who loves romance books.
-                            if valid:
-                                cooking_indices = [i for i, h in enumerate(solution['Hobby']) if h == 'cooking']
-                                if len(cooking_indices) != 1:
+                            # Clue 9: jazz music ↔ cooking hobby
+                            for house in assignment:
+                                if (house['MusicGenre'] == 'jazz') != (house['Hobby'] == 'cooking'):
                                     valid = False
-                                else:
-                                    cooking_index = cooking_indices[0]
-                                    if solution['Book Genre'][cooking_index] != 'romance':
-                                        valid = False
+                                    break
+                            if not valid:
+                                continue
                             
-                            # Clue 4: The person who loves romance books is not in the fourth house.
-                            if valid:
-                                romance_index = solution['Book Genre'].index('romance')
-                                if romance_index == 3:
+                            # Clue 10: rock music ↔ mystery book
+                            for house in assignment:
+                                if (house['MusicGenre'] == 'rock') != (house['BookGenre'] == 'mystery'):
                                     valid = False
+                                    break
+                            if not valid:
+                                continue
                             
-                            # Clue 9: The person who loves jazz music is the person who loves cooking.
-                            if valid:
-                                jazz_index = solution['Music Genre'].index('jazz')
-                                if solution['Hobby'][jazz_index] != 'cooking':
+                            # Clue 11: painting is directly left of romance
+                            painting_left = False
+                            for i in range(3):
+                                if assignment[i]['Hobby'] == 'painting' and assignment[i+1]['BookGenre'] == 'romance':
+                                    painting_left = True
+                                    break
+                            if not painting_left:
+                                valid = False
+                            if not valid:
+                                continue
+                            
+                            # Clue 12: Peter loves pop music
+                            for house in assignment:
+                                if (house['Name'] == 'Peter') != (house['MusicGenre'] == 'pop'):
                                     valid = False
+                                    break
+                            if not valid:
+                                continue
                             
-                            # Clue 15: The person who loves cooking is not in the third house.
-                            if valid:
-                                if solution['Hobby'][2] == 'cooking':
+                            # Clue 13: gardening hobby is Arnold
+                            for house in assignment:
+                                if (house['Hobby'] == 'gardening') != (house['Name'] == 'Arnold'):
                                     valid = False
+                                    break
+                            if not valid:
+                                continue
                             
-                            # Clue 11: The person who paints as a hobby is directly left of the person who loves romance books.
-                            if valid:
-                                romance_index = solution['Book Genre'].index('romance')
-                                if romance_index == 0:
-                                    valid = False
-                                else:
-                                    if solution['Hobby'][romance_index - 1] != 'painting':
-                                        valid = False
+                            # Clue 14: rock music is directly left of jan birthday
+                            rock_left = False
+                            for i in range(3):
+                                if assignment[i]['MusicGenre'] == 'rock' and assignment[i+1]['Birthday'] == 'jan':
+                                    rock_left = True
+                                    break
+                            if not rock_left:
+                                valid = False
+                            if not valid:
+                                continue
                             
-                            # Clue 7: The person who keeps horses is the person who loves rock music.
-                            if valid:
-                                horse_index = solution['Animal'].index('horse')
-                                if solution['Music Genre'][horse_index] != 'rock':
-                                    valid = False
+                            # Clue 15: cooking not in house 3
+                            if assignment[2]['Hobby'] == 'cooking':
+                                valid = False
+                            if not valid:
+                                continue
                             
-                            # Clue 10: The person who loves rock music is the person who loves mystery books.
-                            if valid:
-                                rock_index = solution['Music Genre'].index('rock')
-                                if solution['Book Genre'][rock_index] != 'mystery':
-                                    valid = False
+                            # Clue 16: cat is right of horse
+                            horse_pos = None
+                            cat_pos = None
+                            for i, house in enumerate(assignment):
+                                if house['Animal'] == 'horse':
+                                    horse_pos = i
+                                if house['Animal'] == 'cat':
+                                    cat_pos = i
+                            if horse_pos is None or cat_pos is None or cat_pos <= horse_pos:
+                                valid = False
+                            if not valid:
+                                continue
                             
-                            # Clue 14: The person who loves rock music is directly left of the person whose birthday is in January.
+                            # If all constraints are satisfied, return the solution
                             if valid:
-                                jan_index = solution['Birthday Month'].index('jan')
-                                if jan_index == 0:
-                                    valid = False
-                                else:
-                                    if solution['Music Genre'][jan_index - 1] != 'rock':
-                                        valid = False
-                            
-                            # Clue 8: The person who enjoys gardening is the person whose birthday is in April.
-                            if valid:
-                                gardening_index = solution['Hobby'].index('gardening')
-                                if solution['Birthday Month'][gardening_index] != 'april':
-                                    valid = False
-                            
-                            # Clue 13: The person who enjoys gardening is Arnold.
-                            if valid:
-                                if solution['Name'][gardening_index] != 'Arnold':
-                                    valid = False
-                            
-                            # Clue 6: Alice is somewhere to the right of the person who loves fantasy books.
-                            if valid:
-                                fantasy_index = solution['Book Genre'].index('fantasy')
-                                alice_index = solution['Name'].index('Alice')
-                                if alice_index <= fantasy_index:
-                                    valid = False
-                            
-                            # Clue 16: The cat lover is somewhere to the right of the person who keeps horses.
-                            if valid:
-                                horse_index = solution['Animal'].index('horse')
-                                cat_index = solution['Animal'].index('cat')
-                                if cat_index <= horse_index:
-                                    valid = False
-                            
-                            if valid:
-                                # Prepare the output
-                                output = {
+                                solution = {
                                     "solution": {
-                                        "header": ["House", "Name", "Hobby", "Animal", "Book Genre", "Birthday Month", "Music Genre"],
+                                        "header": ["House", "Name", "Hobby", "Animal", "BookGenre", "Birthday", "MusicGenre"],
                                         "rows": []
                                     }
                                 }
-                                
-                                for i in range(4):
-                                    row = [
-                                        str(i + 1),
-                                        solution['Name'][i],
-                                        solution['Hobby'][i],
-                                        solution['Animal'][i],
-                                        solution['Book Genre'][i],
-                                        solution['Birthday Month'][i],
-                                        solution['Music Genre'][i]
-                                    ]
-                                    output["solution"]["rows"].append(row)
-                                
-                                return json.dumps(output, indent=2)
-    
-    return json.dumps({"solution": {"header": [], "rows": []}})
+                                for house in assignment:
+                                    solution["solution"]["rows"].append([
+                                        house['House'],
+                                        house['Name'],
+                                        house['Hobby'],
+                                        house['Animal'],
+                                        house['BookGenre'],
+                                        house['Birthday'],
+                                        house['MusicGenre']
+                                    ])
+                                return solution
+    return {"solution": {"header": [], "rows": []}}
 
-print(solve_puzzle())
+if __name__ == "__main__":
+    solution = solve_puzzle()
+    print(json.dumps(solution, indent=2))

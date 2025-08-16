@@ -2,67 +2,88 @@ import itertools
 import json
 
 def main():
-    names = ['Arnold', 'Eric', 'Peter', 'Alice']
-    occupations = ['doctor', 'engineer', 'artist', 'teacher']
-    
-    for name_perm in itertools.permutations(names):
-        if name_perm[0] == 'Peter':
-            continue
-            
-        eric_index = None
-        peter_index = None
-        for idx, name in enumerate(name_perm):
-            if name == 'Eric':
-                eric_index = idx
-            elif name == 'Peter':
-                peter_index = idx
-                
-        if eric_index is None or peter_index is None:
-            continue
-            
-        if abs(eric_index - peter_index) != 3:
-            continue
-            
-        for occ_perm in itertools.permutations(occupations):
-            if occ_perm[3] != 'teacher':
-                continue
-                
-            alice_index = None
-            for idx, name in enumerate(name_perm):
-                if name == 'Alice':
-                    alice_index = idx
-                    break
-            if alice_index is None:
-                continue
-                
-            if occ_perm[alice_index] != 'artist':
-                continue
-                
-            doctor_index = None
-            for idx, occ in enumerate(occ_perm):
-                if occ == 'doctor':
-                    doctor_index = idx
-                    break
-            if doctor_index is None:
-                continue
-                
-            if abs(doctor_index - alice_index) != 2:
-                continue
-                
-            solution = {
-                "header": ["House", "Name", "Occupation"],
-                "rows": []
-            }
-            for i in range(4):
-                house_num = str(i+1)
-                name_val = name_perm[i]
-                occ_val = occ_perm[i]
-                solution["rows"].append([house_num, name_val, occ_val])
-                
-            print(json.dumps({"solution": solution}))
-            return
-            
-    print(json.dumps({"solution": None}))
+    names = ["Arnold", "Eric", "Peter", "Alice"]
+    occupations = ["doctor", "engineer", "artist", "teacher"]
+    houses = [1, 2, 3, 4]
 
-if __name__ == '__main__':
+    for name_perm in itertools.permutations(names):
+        for occ_perm in itertools.permutations(occupations):
+            assignment = list(zip(name_perm, occ_perm))
+            valid = True
+
+            # Constraint 3: Peter not in first house
+            if assignment[0][0] == "Peter":
+                valid = False
+                continue
+
+            # Constraint 2: Teacher is Peter
+            teacher_index = None
+            for i, (name, occ) in enumerate(assignment):
+                if occ == "teacher":
+                    teacher_index = i
+                    if name != "Peter":
+                        valid = False
+                    break
+
+            if not valid or teacher_index is None:
+                continue
+
+            # Constraint 5: Artist is Alice
+            artist_index = None
+            for i, (name, occ) in enumerate(assignment):
+                if occ == "artist":
+                    artist_index = i
+                    if name != "Alice":
+                        valid = False
+                    break
+
+            if not valid or artist_index is None:
+                continue
+
+            # Build name to house mapping
+            name_to_house = {name: idx + 1 for idx, (name, _) in enumerate(assignment)}
+
+            # Constraint 1: Two houses between Eric and Peter
+            if "Eric" not in name_to_house or "Peter" not in name_to_house:
+                valid = False
+            else:
+                eric_house = name_to_house["Eric"]
+                peter_house = name_to_house["Peter"]
+                if abs(eric_house - peter_house) != 3:
+                    valid = False
+
+            if not valid:
+                continue
+
+            # Constraint 4: One house between doctor and Alice
+            doctor_house = None
+            for i, (_, occ) in enumerate(assignment):
+                if occ == "doctor":
+                    doctor_house = i + 1
+                    break
+
+            if doctor_house is None or "Alice" not in name_to_house:
+                valid = False
+            else:
+                alice_house = name_to_house["Alice"]
+                if abs(doctor_house - alice_house) != 2:
+                    valid = False
+
+            if valid:
+                rows = []
+                for i, (name, occ) in enumerate(assignment):
+                    rows.append([str(i + 1), name, occ])
+                
+                result = {
+                    "solution": {
+                        "header": ["House", "Name", "Occupation"],
+                        "rows": rows
+                    }
+                }
+                print(json.dumps(result))
+                return
+
+    print('{"error": "No solution found"}')
+
+if __name__ == "__main__":
     main()

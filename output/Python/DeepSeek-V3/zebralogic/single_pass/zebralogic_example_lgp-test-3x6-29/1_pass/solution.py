@@ -2,145 +2,123 @@ import json
 from itertools import permutations
 
 def solve_puzzle():
-    # Define all possible options for each attribute
-    names = ['Arnold', 'Peter', 'Eric']
-    animals = ['bird', 'horse', 'cat']
-    months = ['jan', 'sept', 'april']
-    hobbies = ['photography', 'cooking', 'gardening']
-    drinks = ['milk', 'water', 'tea']
-    hair_colors = ['black', 'brown', 'blonde']
+    # Define all possible categories and options
+    categories = {
+        'Name': ['Arnold', 'Peter', 'Eric'],
+        'Animal': ['bird', 'horse', 'cat'],
+        'Birthday': ['jan', 'sept', 'april'],
+        'Hobby': ['photography', 'cooking', 'gardening'],
+        'Drink': ['milk', 'water', 'tea'],
+        'HairColor': ['black', 'brown', 'blonde']
+    }
     
-    # Generate all possible permutations for each attribute
-    for name_perm in permutations(names):
-        for animal_perm in permutations(animals):
-            for month_perm in permutations(months):
-                for hobby_perm in permutations(hobbies):
-                    for drink_perm in permutations(drinks):
-                        for hair_perm in permutations(hair_colors):
-                            # Assign each permutation to houses 1, 2, 3
-                            solution = {
-                                1: {
-                                    'Name': name_perm[0],
-                                    'animal': animal_perm[0],
-                                    'month': month_perm[0],
-                                    'hobby': hobby_perm[0],
-                                    'drink': drink_perm[0],
-                                    'hair_color': hair_perm[0]
+    # Generate all possible permutations for each house
+    for name1, name2, name3 in permutations(categories['Name']):
+        for animal1, animal2, animal3 in permutations(categories['Animal']):
+            for bday1, bday2, bday3 in permutations(categories['Birthday']):
+                for hobby1, hobby2, hobby3 in permutations(categories['Hobby']):
+                    for drink1, drink2, drink3 in permutations(categories['Drink']):
+                        for hair1, hair2, hair3 in permutations(categories['HairColor']):
+                            # Create house assignments
+                            houses = [
+                                {
+                                    'House': '1',
+                                    'Name': name1,
+                                    'Animal': animal1,
+                                    'Birthday': bday1,
+                                    'Hobby': hobby1,
+                                    'Drink': drink1,
+                                    'HairColor': hair1
                                 },
-                                2: {
-                                    'Name': name_perm[1],
-                                    'animal': animal_perm[1],
-                                    'month': month_perm[1],
-                                    'hobby': hobby_perm[1],
-                                    'drink': drink_perm[1],
-                                    'hair_color': hair_perm[1]
+                                {
+                                    'House': '2',
+                                    'Name': name2,
+                                    'Animal': animal2,
+                                    'Birthday': bday2,
+                                    'Hobby': hobby2,
+                                    'Drink': drink2,
+                                    'HairColor': hair2
                                 },
-                                3: {
-                                    'Name': name_perm[2],
-                                    'animal': animal_perm[2],
-                                    'month': month_perm[2],
-                                    'hobby': hobby_perm[2],
-                                    'drink': drink_perm[2],
-                                    'hair_color': hair_perm[2]
+                                {
+                                    'House': '3',
+                                    'Name': name3,
+                                    'Animal': animal3,
+                                    'Birthday': bday3,
+                                    'Hobby': hobby3,
+                                    'Drink': drink3,
+                                    'HairColor': hair3
                                 }
-                            }
+                            ]
                             
                             # Check all constraints
-                            # 2. April is in the third house
-                            if solution[3]['month'] != 'april':
+                            # Constraint 2: April is in house 3
+                            if houses[2]['Birthday'] != 'april':
                                 continue
                             
-                            # 3. Eric is not in the first house
-                            if solution[1]['Name'] == 'Eric':
+                            # Constraint 3: Eric is not in house 1
+                            if houses[0]['Name'] == 'Eric':
                                 continue
                             
-                            # 4. Cat lover is in the second house
-                            if solution[2]['animal'] != 'cat':
+                            # Constraint 4: Cat is in house 2
+                            if houses[1]['Animal'] != 'cat':
                                 continue
                             
-                            # 7. Cat lover has brown hair
-                            if solution[2]['hair_color'] != 'brown':
+                            # Constraint 7: Cat lover has brown hair
+                            if houses[1]['Animal'] == 'cat' and houses[1]['HairColor'] != 'brown':
                                 continue
                             
-                            # 1. Brown hair loves cooking
-                            for house in solution.values():
-                                if house['hair_color'] == 'brown' and house['hobby'] != 'cooking':
+                            # Constraint 1: Brown hair loves cooking
+                            for house in houses:
+                                if house['HairColor'] == 'brown' and house['Hobby'] != 'cooking':
                                     break
                             else:
-                                pass
-                            else:
-                                continue
-                            
-                            # 5. Blonde is left of milk
-                            blonde_pos = None
-                            milk_pos = None
-                            for house_num in [1, 2, 3]:
-                                if solution[house_num]['hair_color'] == 'blonde':
-                                    blonde_pos = house_num
-                                if solution[house_num]['drink'] == 'milk':
-                                    milk_pos = house_num
-                            if blonde_pos is None or milk_pos is None or blonde_pos >= milk_pos:
-                                continue
-                            
-                            # 6. Gardening likes milk
-                            for house in solution.values():
-                                if house['hobby'] == 'gardening' and house['drink'] != 'milk':
-                                    break
-                            else:
-                                pass
-                            else:
-                                continue
-                            
-                            # 8. Arnold is the bird keeper
-                            for house in solution.values():
-                                if house['Name'] == 'Arnold' and house['animal'] != 'bird':
-                                    break
-                            else:
-                                pass
-                            else:
-                                continue
-                            
-                            # 9. Water drinker is photography enthusiast
-                            for house in solution.values():
-                                if house['drink'] == 'water' and house['hobby'] != 'photography':
-                                    break
-                            else:
-                                pass
-                            else:
-                                continue
-                            
-                            # 10. September is directly left of Arnold
-                            sept_pos = None
-                            arnold_pos = None
-                            for house_num in [1, 2, 3]:
-                                if solution[house_num]['month'] == 'sept':
-                                    sept_pos = house_num
-                                if solution[house_num]['Name'] == 'Arnold':
-                                    arnold_pos = house_num
-                            if sept_pos is None or arnold_pos is None or sept_pos + 1 != arnold_pos:
-                                continue
-                            
-                            # If all constraints are satisfied, return the solution
-                            output = {
-                                "solution": {
-                                    "header": ["House", "Name", "animal", "month", "hobby", "drink", "hair_color"],
-                                    "rows": []
-                                }
-                            }
-                            for house_num in [1, 2, 3]:
-                                house = solution[house_num]
-                                output["solution"]["rows"].append([
-                                    str(house_num),
-                                    house['Name'],
-                                    house['animal'],
-                                    house['month'],
-                                    house['hobby'],
-                                    house['drink'],
-                                    house['hair_color']
-                                ])
-                            return output
-    return {"solution": {"header": [], "rows": []}}
+                                # Constraint 5: Blonde is left of milk
+                                blonde_pos = None
+                                milk_pos = None
+                                for i, house in enumerate(houses):
+                                    if house['HairColor'] == 'blonde':
+                                        blonde_pos = i
+                                    if house['Drink'] == 'milk':
+                                        milk_pos = i
+                                if blonde_pos is not None and milk_pos is not None and blonde_pos >= milk_pos:
+                                    continue
+                                
+                                # Constraint 6: Gardening loves milk
+                                for house in houses:
+                                    if house['Hobby'] == 'gardening' and house['Drink'] != 'milk':
+                                        break
+                                else:
+                                    # Constraint 8: Arnold is bird keeper
+                                    for house in houses:
+                                        if house['Name'] == 'Arnold' and house['Animal'] != 'bird':
+                                            break
+                                    else:
+                                        # Constraint 9: Water drinker is photography enthusiast
+                                        for house in houses:
+                                            if house['Drink'] == 'water' and house['Hobby'] != 'photography':
+                                                break
+                                        else:
+                                            # Constraint 10: September is directly left of Arnold
+                                            arnold_pos = None
+                                            sept_pos = None
+                                            for i, house in enumerate(houses):
+                                                if house['Name'] == 'Arnold':
+                                                    arnold_pos = i
+                                                if house['Birthday'] == 'sept':
+                                                    sept_pos = i
+                                            if arnold_pos is not None and sept_pos is not None and sept_pos + 1 == arnold_pos:
+                                                # All constraints satisfied
+                                                solution = {
+                                                    "solution": {
+                                                        "header": ["House", "Name", "Animal", "Birthday", "Hobby", "Drink", "HairColor"],
+                                                        "rows": [
+                                                            [house['House'], house['Name'], house['Animal'], house['Birthday'], house['Hobby'], house['Drink'], house['HairColor']]
+                                                            for house in houses
+                                                        ]
+                                                    }
+                                                }
+                                                return json.dumps(solution, indent=2)
+    
+    return json.dumps({"solution": {"header": [], "rows": []}})
 
-if __name__ == "__main__":
-    solution = solve_puzzle()
-    print(json.dumps(solution, indent=2))
+print(solve_puzzle())

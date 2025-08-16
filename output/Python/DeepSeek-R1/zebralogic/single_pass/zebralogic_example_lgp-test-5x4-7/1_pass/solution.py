@@ -1,112 +1,153 @@
 import itertools
 import json
 
+def satisfies_all_constraints(assignment):
+    # Extract the lists
+    names = assignment['name']
+    smoothies = assignment['smoothie']
+    animals = assignment['animal']
+    nationalities = assignment['nationality']
+    
+    try:
+        dog_index = animals.index('dog')
+    except ValueError:
+        return False
+    try:
+        bird_index = animals.index('bird')
+    except ValueError:
+        return False
+    try:
+        cat_index = animals.index('cat')
+    except ValueError:
+        return False
+    try:
+        brit_index = nationalities.index('brit')
+    except ValueError:
+        return False
+    try:
+        swede_index = nationalities.index('swede')
+    except ValueError:
+        return False
+    try:
+        norwegian_index = nationalities.index('norwegian')
+    except ValueError:
+        return False
+
+    # Constraint 1: Swedish directly left of dog owner.
+    if swede_index != dog_index - 1:
+        return False
+
+    # Constraint 2: Two houses between dog owner and British.
+    if abs(dog_index - brit_index) != 3:
+        return False
+
+    # Constraint 4: Bird keeper right of cat lover.
+    if bird_index <= cat_index:
+        return False
+
+    # Constraint 5: Dog owner directly left of Lime smoothie.
+    if dog_index == 4:
+        return False
+    if smoothies[dog_index+1] != 'lime':
+        return False
+
+    # Constraint 6: Eric is the cat lover.
+    if names[cat_index] != 'Eric':
+        return False
+
+    # Constraint 7: Bob is the bird keeper.
+    if names[bird_index] != 'Bob':
+        return False
+
+    # Constraint 8: Cherry smoothie directly left of Peter.
+    found_cherry = False
+    for i in range(4):
+        if smoothies[i] == 'cherry' and names[i+1] == 'Peter':
+            found_cherry = True
+            break
+    if not found_cherry:
+        return False
+
+    # Constraint 9: Bird keeper is Watermelon smoothie lover.
+    if smoothies[bird_index] != 'watermelon':
+        return False
+
+    # Constraint 10: Desert smoothie lover is dog owner.
+    if smoothies[dog_index] != 'desert':
+        return False
+
+    # Constraint 12: Norwegian is Alice.
+    if names[norwegian_index] != 'Alice':
+        return False
+
+    return True
+
 def main():
     names_list = ['Alice', 'Peter', 'Bob', 'Eric', 'Arnold']
     smoothies_list = ['lime', 'dragonfruit', 'desert', 'watermelon', 'cherry']
+    animals_base = ['dog', 'bird', 'fish', 'cat']  # without 'horse'
+    nationalities_base = ['german', 'swede', 'norwegian', 'brit']  # without 'dane'
+    
+    solution_found = None
     
     for names in itertools.permutations(names_list):
-        eric_index = names.index('Eric')
-        bob_index = names.index('Bob')
-        alice_index = names.index('Alice')
-        
-        if eric_index == 2 or bob_index == 2:
-            continue
-            
-        if bob_index <= eric_index:
-            continue
-            
-        remaining_houses = [i for i in range(5) if i not in [2, eric_index, bob_index]]
-        if len(remaining_houses) != 2:
-            continue
-            
-        for animals_remaining in itertools.permutations(['dog', 'fish']):
-            animal_assignment = [None] * 5
-            animal_assignment[eric_index] = 'cat'
-            animal_assignment[bob_index] = 'bird'
-            animal_assignment[2] = 'horse'
-            animal_assignment[remaining_houses[0]] = animals_remaining[0]
-            animal_assignment[remaining_houses[1]] = animals_remaining[1]
-            
-            dog_index = None
-            for i in remaining_houses:
-                if animal_assignment[i] == 'dog':
-                    dog_index = i
-                    break
-            if dog_index is None:
-                continue
-                
-            if dog_index == 4:
-                continue
-                
-            next_index = dog_index + 1
-            if next_index == bob_index:
-                continue
-                
-            smoothie_assignment = [None] * 5
-            smoothie_assignment[dog_index] = 'desert'
-            smoothie_assignment[next_index] = 'lime'
-            smoothie_assignment[bob_index] = 'watermelon'
-            
-            remaining_smoothie_houses = [i for i in range(5) if smoothie_assignment[i] is None]
-            remaining_smoothies = [s for s in smoothies_list if s not in ['desert', 'lime', 'watermelon']]
-            
-            for smoothies_remaining in itertools.permutations(remaining_smoothies):
-                for idx, s_val in zip(remaining_smoothie_houses, smoothies_remaining):
-                    smoothie_assignment[idx] = s_val
-                    
-                found_cherry = False
-                for i in range(4):
-                    if smoothie_assignment[i] == 'cherry' and names[i+1] == 'Peter':
-                        found_cherry = True
-                        break
-                if not found_cherry:
-                    continue
-                    
-                if dog_index + 3 < 5:
-                    brit_index = dog_index + 3
-                elif dog_index - 3 >= 0:
-                    brit_index = dog_index - 3
-                else:
-                    continue
-                    
-                nationality_assignment = [None] * 5
-                nationality_assignment[2] = 'dane'
-                nationality_assignment[alice_index] = 'norwegian'
-                nationality_assignment[dog_index-1] = 'swede'
-                nationality_assignment[brit_index] = 'brit'
-                
-                assigned_nat_indices = {2, alice_index, dog_index-1, brit_index}
-                if len(assigned_nat_indices) != 4:
-                    continue
-                    
-                remaining_nat_houses = [i for i in range(5) if i not in assigned_nat_indices]
-                if len(remaining_nat_houses) != 1:
-                    continue
-                german_index = remaining_nat_houses[0]
-                nationality_assignment[german_index] = 'german'
-                
-                rows = []
-                for i in range(5):
-                    rows.append([
-                        str(i+1),
-                        names[i],
-                        smoothie_assignment[i],
-                        animal_assignment[i],
-                        nationality_assignment[i]
-                    ])
-                
-                solution_dict = {
-                    "solution": {
-                        "header": ["House", "Name", "Smoothie", "Animal", "Nationality"],
-                        "rows": rows
+        for smoothies in itertools.permutations(smoothies_list):
+            for animals0 in itertools.permutations(animals_base):
+                animals = [
+                    animals0[0],
+                    animals0[1],
+                    'horse',
+                    animals0[2],
+                    animals0[3]
+                ]
+                for nationalities0 in itertools.permutations(nationalities_base):
+                    nationalities = [
+                        nationalities0[0],
+                        nationalities0[1],
+                        'dane',
+                        nationalities0[2],
+                        nationalities0[3]
+                    ]
+                    assignment = {
+                        'name': names,
+                        'smoothie': smoothies,
+                        'animal': animals,
+                        'nationality': nationalities
                     }
-                }
-                
-                print(json.dumps(solution_dict, indent=2))
-                return
-                
-    print('{"error": "No solution found"}')
+                    if satisfies_all_constraints(assignment):
+                        solution_found = assignment
+                        break
+                if solution_found:
+                    break
+            if solution_found:
+                break
+        if solution_found:
+            break
+    
+    if not solution_found:
+        print(json.dumps({"solution": {"header": [], "rows": []}}))
+        return
+    
+    # Format the solution
+    header = ["House", "Name", "Smoothie", "Animal", "Nationality"]
+    rows = []
+    for i in range(5):
+        row = [
+            str(i+1),
+            solution_found['name'][i],
+            solution_found['smoothie'][i],
+            solution_found['animal'][i],
+            solution_found['nationality'][i]
+        ]
+        rows.append(row)
+    
+    result = {
+        "solution": {
+            "header": header,
+            "rows": rows
+        }
+    }
+    print(json.dumps(result))
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

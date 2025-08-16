@@ -1,167 +1,143 @@
 import itertools
 import json
 
-def check_single_house(house):
-    if 'name' in house and house['name'] == 'Eric':
-        if 'house_style' in house and house['house_style'] != 'victorian':
-            return False
-        if 'pet' in house and house['pet'] != 'cat':
-            return False
-    if 'house_style' in house and house['house_style'] == 'victorian':
-        if 'name' in house and house['name'] != 'Eric':
-            return False
-        if 'pet' in house and house['pet'] != 'cat':
-            return False
-    if 'pet' in house and house['pet'] == 'cat':
-        if 'name' in house and house['name'] != 'Eric':
-            return False
-        if 'house_style' in house and house['house_style'] != 'victorian':
-            return False
-    if 'house_style' in house and house['house_style'] == 'colonial':
-        if 'color' in house and house['color'] != 'red':
-            return False
-        if 'flower' in house and house['flower'] != 'roses':
-            return False
-    if 'color' in house and house['color'] == 'red':
-        if 'house_style' in house and house['house_style'] != 'colonial':
-            return False
-        if 'flower' in house and house['flower'] != 'roses':
-            return False
-    if 'flower' in house and house['flower'] == 'roses':
-        if 'house_style' in house and house['house_style'] != 'colonial':
-            return False
-        if 'color' in house and house['color'] != 'red':
-            return False
-    if 'color' in house and house['color'] == 'white':
-        if 'flower' in house and house['flower'] != 'carnations':
-            return False
-        if 'pet' in house and house['pet'] != 'fish':
-            return False
-    if 'flower' in house and house['flower'] == 'carnations':
-        if 'color' in house and house['color'] != 'white':
-            return False
-        if 'pet' in house and house['pet'] != 'fish':
-            return False
-    if 'pet' in house and house['pet'] == 'fish':
-        if 'color' in house and house['color'] != 'white':
-            return False
-        if 'flower' in house and house['flower'] != 'carnations':
-            return False
-    if 'flower' in house and house['flower'] == 'daffodils':
-        if 'color' in house and house['color'] != 'yellow':
-            return False
-    if 'color' in house and house['color'] == 'yellow':
-        if 'flower' in house and house['flower'] != 'daffodils':
-            return False
-    if 'hobby' in house and house['hobby'] == 'photography':
-        if 'pet' in house and house['pet'] != 'dog':
-            return False
-    if 'pet' in house and house['pet'] == 'dog':
-        if 'hobby' in house and house['hobby'] != 'photography':
-            return False
-    return True
-
-def check_global_constraints(state):
-    try:
-        house_rose = next(i for i, house in enumerate(state) if house['flower'] == 'roses')
-        house_peter = next(i for i, house in enumerate(state) if house['name'] == 'Peter')
-        if house_rose <= house_peter:
-            return False
-    except StopIteration:
-        return False
-    try:
-        house_daffodils = next(i for i, house in enumerate(state) if house['flower'] == 'daffodils')
-        if house_daffodils == 3:
-            return False
-    except StopIteration:
-        return False
-    try:
-        house_cooking = next(i for i, house in enumerate(state) if house['hobby'] == 'cooking')
-        house_red = next(i for i, house in enumerate(state) if house['color'] == 'red')
-        if house_cooking <= house_red:
-            return False
-    except StopIteration:
-        return False
-    try:
-        house_white = next(i for i, house in enumerate(state) if house['color'] == 'white')
-        house_gardening = next(i for i, house in enumerate(state) if house['hobby'] == 'gardening')
-        if house_white <= house_gardening:
-            return False
-    except StopIteration:
-        return False
-    return True
-
-def backtrack(i, available, state):
-    if i == 4:
-        if check_global_constraints(state):
-            return state
-        else:
-            return None
-    all_attributes = ['name', 'flower', 'hobby', 'pet', 'color', 'house_style']
-    assigned_attrs = set(state[i].keys())
-    missing_attrs = [attr for attr in all_attributes if attr not in assigned_attrs]
-    if not missing_attrs:
-        return backtrack(i+1, available, state)
-    choices = []
-    for attr in missing_attrs:
-        choices.append(list(available[attr]))
-    found_solution = None
-    for values in itertools.product(*choices):
-        candidate_house = state[i].copy()
-        for idx, attr in enumerate(missing_attrs):
-            candidate_house[attr] = values[idx]
-        if not check_single_house(candidate_house):
-            continue
-        new_available = {}
-        for key in available:
-            new_available[key] = set(available[key])
-        for idx, attr in enumerate(missing_attrs):
-            val = values[idx]
-            if val in new_available[attr]:
-                new_available[attr].remove(val)
-        new_state = state.copy()
-        new_state[i] = candidate_house
-        res = backtrack(i+1, new_available, new_state)
-        if res is not None:
-            found_solution = res
-            break
-    return found_solution
-
 def main():
-    all_attributes = ['name', 'flower', 'hobby', 'pet', 'color', 'house_style']
-    state = [dict() for _ in range(4)]
-    state[1] = {'name': 'Arnold', 'house_style': 'craftsman'}
-    available = {
-        'name': set(['Peter', 'Alice', 'Eric']),
-        'flower': set(['roses', 'daffodils', 'carnations', 'lilies']),
-        'hobby': set(['photography', 'painting', 'cooking', 'gardening']),
-        'pet': set(['dog', 'fish', 'bird', 'cat']),
-        'color': set(['red', 'yellow', 'green', 'white']),
-        'house_style': set(['colonial', 'ranch', 'victorian'])
+    attributes = ['Name', 'Flower', 'Hobby', 'Pet', 'Color', 'HouseStyle']
+    domains = {
+        'Name': ['Peter', 'Arnold', 'Alice', 'Eric'],
+        'Flower': ['roses', 'daffodils', 'carnations', 'lilies'],
+        'Hobby': ['photography', 'painting', 'cooking', 'gardening'],
+        'Pet': ['dog', 'fish', 'bird', 'cat'],
+        'Color': ['red', 'yellow', 'green', 'white'],
+        'HouseStyle': ['craftsman', 'colonial', 'ranch', 'victorian']
     }
-    solution_state = backtrack(0, available, state)
-    if solution_state is None:
-        print('No solution found')
+    
+    same_house_constraints = [
+        ('HouseStyle', 'craftsman', 'Name', 'Arnold'),
+        ('Flower', 'roses', 'Color', 'red'),
+        ('Hobby', 'photography', 'Pet', 'dog'),
+        ('Flower', 'daffodils', 'Color', 'yellow'),
+        ('HouseStyle', 'colonial', 'Color', 'red'),
+        ('Pet', 'fish', 'Color', 'white'),
+        ('Color', 'white', 'Flower', 'carnations'),
+        ('Name', 'Eric', 'HouseStyle', 'victorian'),
+        ('Name', 'Eric', 'Pet', 'cat')
+    ]
+    
+    relative_constraints = [
+        (('Flower', 'roses'), ('Name', 'Peter'), 'right'),
+        (('Hobby', 'cooking'), ('Color', 'red'), 'right'),
+        (('Color', 'white'), ('Hobby', 'gardening'), 'right')
+    ]
+    
+    def check_house(house_i):
+        for (a1, v1, a2, v2) in same_house_constraints:
+            if a1 in house_i and house_i[a1] == v1:
+                if a2 in house_i and house_i[a2] != v2:
+                    return False
+            if a2 in house_i and house_i[a2] == v2:
+                if a1 in house_i and house_i[a1] != v1:
+                    return False
+        return True
+
+    def check_constraints(positions, up_to_house):
+        if 'daffodils' in positions['Flower'] and positions['Flower']['daffodils'] == 3:
+            return False
+        
+        for (a1, v1, a2, v2) in same_house_constraints:
+            if v1 in positions[a1] and v2 in positions[a2]:
+                if positions[a1][v1] != positions[a2][v2]:
+                    return False
+                    
+        for ((a1, v1), (a2, v2), rel) in relative_constraints:
+            if v1 in positions[a1] and v2 in positions[a2]:
+                if rel == 'right':
+                    if positions[a1][v1] <= positions[a2][v2]:
+                        return False
+        return True
+
+    houses = [None] * 4
+    available = {attr: set(domains[attr]) for attr in attributes}
+    positions = {attr: {} for attr in attributes}
+    
+    def backtrack(i):
+        if i == 4:
+            return houses[:]
+        
+        if i == 1:
+            if 'Arnold' not in available['Name'] or 'craftsman' not in available['HouseStyle']:
+                return None
+            house_i = {'Name': 'Arnold', 'HouseStyle': 'craftsman'}
+            available['Name'].remove('Arnold')
+            available['HouseStyle'].remove('craftsman')
+            other_attrs = ['Flower', 'Hobby', 'Pet', 'Color']
+            values_list = [list(available[attr]) for attr in other_attrs]
+            for values in itertools.product(*values_list):
+                for idx, attr in enumerate(other_attrs):
+                    house_i[attr] = values[idx]
+                if not check_house(house_i):
+                    continue
+                for idx, attr in enumerate(other_attrs):
+                    available[attr].remove(values[idx])
+                for attr in other_attrs:
+                    positions[attr][house_i[attr]] = i
+                positions['Name']['Arnold'] = i
+                positions['HouseStyle']['craftsman'] = i
+                houses[i] = house_i
+                if check_constraints(positions, i):
+                    res = backtrack(i+1)
+                    if res is not None:
+                        return res
+                houses[i] = None
+                for attr in other_attrs:
+                    if house_i[attr] in positions[attr]:
+                        del positions[attr][house_i[attr]]
+                positions['Name'].pop('Arnold', None)
+                positions['HouseStyle'].pop('craftsman', None)
+                for idx, attr in enumerate(other_attrs):
+                    available[attr].add(values[idx])
+            available['Name'].add('Arnold')
+            available['HouseStyle'].add('craftsman')
+            return None
+        else:
+            other_attrs = attributes
+            values_list = [list(available[attr]) for attr in other_attrs]
+            for values in itertools.product(*values_list):
+                house_i = dict(zip(other_attrs, values))
+                if not check_house(house_i):
+                    continue
+                for attr, val in zip(other_attrs, values):
+                    available[attr].remove(val)
+                for attr, val in zip(other_attrs, values):
+                    positions[attr][val] = i
+                houses[i] = house_i
+                if check_constraints(positions, i):
+                    res = backtrack(i+1)
+                    if res is not None:
+                        return res
+                houses[i] = None
+                for attr, val in zip(other_attrs, values):
+                    available[attr].add(val)
+                for attr, val in zip(other_attrs, values):
+                    if val in positions[attr]:
+                        del positions[attr][val]
+            return None
+
+    solution = backtrack(0)
+    if solution is None:
+        output = {"solution": {"header": ["House", "Name", "Flower", "Hobby", "Pet", "Color", "HouseStyle"], "rows": []}}
+        print(json.dumps(output))
         return
-    header = ["House", "Name", "Flower", "Hobby", "Pet", "Color", "House Style"]
+
+    header = ["House", "Name", "Flower", "Hobby", "Pet", "Color", "HouseStyle"]
     rows = []
-    for i, house in enumerate(solution_state):
-        row = [
-            str(i+1),
-            house['name'],
-            house['flower'],
-            house['hobby'],
-            house['pet'],
-            house['color'],
-            house['house_style']
-        ]
+    for idx, house in enumerate(solution):
+        row = [str(idx+1)]
+        for attr in header[1:]:
+            row.append(house[attr])
         rows.append(row)
-    output = {
-        "solution": {
-            "header": header,
-            "rows": rows
-        }
-    }
+    
+    output = {"solution": {"header": header, "rows": rows}}
     print(json.dumps(output))
 
 if __name__ == "__main__":

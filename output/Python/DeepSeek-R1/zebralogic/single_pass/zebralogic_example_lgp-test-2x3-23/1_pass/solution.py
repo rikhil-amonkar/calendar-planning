@@ -2,74 +2,55 @@ import itertools
 import json
 
 def main():
-    # Define the attributes and their possible values
-    names = ['Eric', 'Arnold']
-    children = ['Bella', 'Fred']
-    lunches = ['grilled cheese', 'pizza']
+    names_list = ['Eric', 'Arnold']
+    children_list = ['Bella', 'Fred']
+    foods_list = ['grilled cheese', 'pizza']
+    houses = [1, 2]
     
-    solution_found = None
+    found_solution = None
     
-    # Generate all permutations for each attribute
-    for name_perm in itertools.permutations(names):
-        for child_perm in itertools.permutations(children):
-            for lunch_perm in itertools.permutations(lunches):
-                # Create assignment for the two houses
-                house1 = [1, name_perm[0], child_perm[0], lunch_perm[0]]
-                house2 = [2, name_perm[1], child_perm[1], lunch_perm[1]]
-                assignment = [house1, house2]
+    for names in itertools.permutations(names_list):
+        for children in itertools.permutations(children_list):
+            for foods in itertools.permutations(foods_list):
+                assignment = {
+                    1: {'Name': names[0], 'Children': children[0], 'Food': foods[0]},
+                    2: {'Name': names[1], 'Children': children[1], 'Food': foods[1]}
+                }
                 
-                valid = True
+                # Check Clue 1: Pizza eater is Arnold
+                clue1_satisfied = True
+                for house in houses:
+                    if assignment[house]['Food'] == 'pizza':
+                        if assignment[house]['Name'] != 'Arnold':
+                            clue1_satisfied = False
+                            break
+                if not clue1_satisfied:
+                    continue
                 
-                # Check Constraint 1: Pizza eater is Arnold
-                pizza_house = None
-                for house in assignment:
-                    if house[3] == 'pizza':
-                        pizza_house = house
-                        break
-                if pizza_house is None or pizza_house[1] != 'Arnold':
-                    valid = False
-                    continue  # Skip to next permutation if invalid
-                
-                # Check Constraint 2: Grilled cheese eater is directly left of Fred's child
-                gc_house = None
-                for house in assignment:
-                    if house[3] == 'grilled cheese':
-                        gc_house = house
-                        break
-                if gc_house is None:
-                    valid = False
-                else:
-                    idx = assignment.index(gc_house)
-                    if idx == 0:  # Grilled cheese in house1
-                        if assignment[1][2] != 'Fred':  # Check house2's child
-                            valid = False
-                    else:  # Grilled cheese in house2 (no house to the right)
-                        valid = False
-                
-                if valid:
-                    solution_found = assignment
-                    break  # Break out of innermost loop
-            if solution_found is not None:
+                # Check Clue 2: Grilled cheese directly left of Fred child
+                if assignment[1]['Food'] == 'grilled cheese' and assignment[2]['Children'] == 'Fred':
+                    found_solution = assignment
+                    break
+            if found_solution:
                 break
-        if solution_found is not None:
+        if found_solution:
             break
     
-    # Prepare the output
-    if solution_found is None:
-        result = {"solution": {}}
-    else:
-        header = ["House", "Name", "Child", "Lunch"]
-        rows = []
-        for house in solution_found:
-            rows.append([str(attr) for attr in house])
-        result = {
+    if found_solution:
+        rows = [
+            ["1", found_solution[1]['Name'], found_solution[1]['Children'], found_solution[1]['Food']],
+            ["2", found_solution[2]['Name'], found_solution[2]['Children'], found_solution[2]['Food']]
+        ]
+        output = {
             "solution": {
-                "header": header,
+                "header": ["House", "Name", "Children", "Food"],
                 "rows": rows
             }
         }
-    
-    print(json.dumps(result))
+        print(json.dumps(output))
+    else:
+        # Fallback in case no solution found (though the puzzle should have one)
+        print(json.dumps({"solution": {"header": ["House", "Name", "Children", "Food"], "rows": []}}))
 
 if __name__ == "__main__":
     main()

@@ -2,67 +2,66 @@ import json
 from itertools import permutations
 
 def solve_puzzle():
-    # Define possible attributes
+    # Define possible values
     names = ["Arnold", "Peter", "Eric"]
     heights = ["short", "average", "very short"]
-    houses = ["1", "2", "3"]
+    houses = [1, 2, 3]
     
     # Generate all possible permutations for names and heights
-    for name_order in permutations(names):
-        for height_order in permutations(heights):
-            # Assign to houses
+    for name_perm in permutations(names):
+        for height_perm in permutations(heights):
             solution = {
-                "1": {"Name": name_order[0], "height": height_order[0]},
-                "2": {"Name": name_order[1], "height": height_order[1]},
-                "3": {"Name": name_order[2], "height": height_order[2]},
+                1: {"Name": name_perm[0], "Height": height_perm[0]},
+                2: {"Name": name_perm[1], "Height": height_perm[1]},
+                3: {"Name": name_perm[2], "Height": height_perm[2]}
             }
             
             # Check constraints
             # 1. Peter is somewhere to the right of Eric
-            eric_house = None
-            peter_house = None
-            for house in ["1", "2", "3"]:
+            eric_pos = None
+            peter_pos = None
+            for house in solution:
                 if solution[house]["Name"] == "Eric":
-                    eric_house = house
+                    eric_pos = house
                 if solution[house]["Name"] == "Peter":
-                    peter_house = house
-            if eric_house is None or peter_house is None or int(peter_house) <= int(eric_house):
+                    peter_pos = house
+            if eric_pos is None or peter_pos is None or peter_pos <= eric_pos:
                 continue
             
             # 2. The person who is short is in the first house
-            if solution["1"]["height"] != "short":
+            if solution[1]["Height"] != "short":
                 continue
             
-            # 3. One house between short and very short
-            very_short_house = None
-            for house in ["1", "2", "3"]:
-                if solution[house]["height"] == "very short":
-                    very_short_house = house
-            if very_short_house is None or abs(int(very_short_house) - 1) != 2:
+            # 3. One house between short (house 1) and very short
+            very_short_pos = None
+            for house in solution:
+                if solution[house]["Height"] == "very short":
+                    very_short_pos = house
+            if very_short_pos is None or very_short_pos != 3:
                 continue
             
             # 4. Arnold and very short are next to each other
-            arnold_house = None
-            for house in ["1", "2", "3"]:
+            arnold_pos = None
+            for house in solution:
                 if solution[house]["Name"] == "Arnold":
-                    arnold_house = house
-            if arnold_house is None or abs(int(arnold_house) - int(very_short_house)) != 1:
+                    arnold_pos = house
+            if arnold_pos is None or abs(arnold_pos - very_short_pos) != 1:
                 continue
             
             # If all constraints are satisfied, format the solution
             formatted_solution = {
                 "solution": {
-                    "header": ["House", "Name", "height"],
+                    "header": ["House", "Name", "Height"],
                     "rows": [
-                        ["1", solution["1"]["Name"], solution["1"]["height"]],
-                        ["2", solution["2"]["Name"], solution["2"]["height"]],
-                        ["3", solution["3"]["Name"], solution["3"]["height"]]
+                        ["1", solution[1]["Name"], solution[1]["Height"]],
+                        ["2", solution[2]["Name"], solution[2]["Height"]],
+                        ["3", solution[3]["Name"], solution[3]["Height"]]
                     ]
                 }
             }
             return formatted_solution
     
-    return {"solution": {"header": [], "rows": []}}
+    return {"solution": {"header": ["House", "Name", "Height"], "rows": []}}
 
 if __name__ == "__main__":
     solution = solve_puzzle()

@@ -2,121 +2,99 @@ import itertools
 import json
 
 def main():
-    names = ['Eric', 'Peter', 'Arnold']
-    smoothies = ['cherry', 'watermelon', 'desert']
-    flowers = ['carnations', 'lilies', 'daffodils']
-    animals = ['cat', 'horse', 'bird']
-    hobbies = ['photography', 'cooking', 'gardening']
+    names_list = ['Eric', 'Peter', 'Arnold']
+    smoothies_list = ['cherry', 'watermelon', 'desert']
+    flowers_list = ['carnations', 'lilies', 'daffodils']
+    animals_list = ['cat', 'horse', 'bird']
+    hobbies_list = ['photography', 'cooking', 'gardening']
     
-    perms_names = list(itertools.permutations(names))
-    perms_smoothies = list(itertools.permutations(smoothies))
-    perms_flowers = list(itertools.permutations(flowers))
-    perms_animals = list(itertools.permutations(animals))
-    perms_hobbies = list(itertools.permutations(hobbies))
-    
-    all_combinations = itertools.product(perms_names, perms_smoothies, perms_flowers, perms_animals, perms_hobbies)
-    solution_assignment = None
-    
-    for n, s, f, a, h in all_combinations:
-        assignment = []
+    def check(candidate):
+        names, smoothies, flowers, animals, hobbies = candidate
+        
+        # Clue 8: The photography enthusiast is Eric.
         for i in range(3):
-            assignment.append((n[i], s[i], f[i], a[i], h[i]))
+            if hobbies[i] == 'photography':
+                if names[i] != 'Eric':
+                    return False
         
-        if check_constraints(assignment):
-            solution_assignment = assignment
-            break
-    
-    if solution_assignment is None:
-        output = {"error": "No solution found"}
-        print(json.dumps(output))
-    else:
-        header = ["House", "Name", "Smoothie", "Flower", "Animal", "Hobby"]
-        rows = []
-        for idx, house in enumerate(solution_assignment):
-            house_num = str(idx + 1)
-            row = [house_num] + list(house)
-            rows.append(row)
+        # Clue 2: The bird keeper is the person who likes Cherry smoothies.
+        for i in range(3):
+            if animals[i] == 'bird':
+                if smoothies[i] != 'cherry':
+                    return False
         
-        result = {
-            "solution": {
-                "header": header,
-                "rows": rows
-            }
-        }
-        print(json.dumps(result))
+        # Clue 3: The person who loves cooking is the Desert smoothie lover.
+        for i in range(3):
+            if hobbies[i] == 'cooking':
+                if smoothies[i] != 'desert':
+                    return False
+        
+        # Clue 4: The person who enjoys gardening is the person who loves a carnations arrangement.
+        for i in range(3):
+            if hobbies[i] == 'gardening':
+                if flowers[i] != 'carnations':
+                    return False
+        
+        # Clue 6: The person who loves a bouquet of daffodils is the Desert smoothie lover.
+        for i in range(3):
+            if flowers[i] == 'daffodils':
+                if smoothies[i] != 'desert':
+                    return False
+        
+        # Clue 7: The Watermelon smoothie lover is the person who keeps horses.
+        for i in range(3):
+            if smoothies[i] == 'watermelon':
+                if animals[i] != 'horse':
+                    return False
+        
+        # Clue 5: The person who loves cooking is directly left of Peter.
+        cooking_index = None
+        for i in range(3):
+            if hobbies[i] == 'cooking':
+                cooking_index = i
+                break
+        if cooking_index is None:
+            return False
+        if cooking_index == 2:  # Last house, no house to the right
+            return False
+        if names[cooking_index + 1] != 'Peter':
+            return False
+        
+        # Clue 1: The person who keeps horses and the photography enthusiast are next to each other.
+        horse_index = None
+        photo_index = None
+        for i in range(3):
+            if animals[i] == 'horse':
+                horse_index = i
+            if hobbies[i] == 'photography':
+                photo_index = i
+        if horse_index is None or photo_index is None:
+            return False
+        if abs(horse_index - photo_index) != 1:
+            return False
+        
+        return True
 
-def check_constraints(assign):
-    # Constraint 8: Photography enthusiast is Eric
-    found8 = False
-    for i in range(3):
-        if assign[i][4] == 'photography' and assign[i][0] == 'Eric':
-            found8 = True
-            break
-    if not found8:
-        return False
-    
-    # Constraint 2: Bird keeper likes cherry smoothie
-    for i in range(3):
-        if assign[i][3] == 'bird':
-            if assign[i][1] != 'cherry':
-                return False
-            break
-    
-    # Constraint 3: Cooking enthusiast likes desert smoothie
-    for i in range(3):
-        if assign[i][4] == 'cooking':
-            if assign[i][1] != 'desert':
-                return False
-            break
-    
-    # Constraint 4: Gardening enthusiast likes carnations
-    for i in range(3):
-        if assign[i][4] == 'gardening':
-            if assign[i][2] != 'carnations':
-                return False
-            break
-    
-    # Constraint 5: Cooking enthusiast is directly left of Peter
-    cooking_index = None
-    peter_index = None
-    for i in range(3):
-        if assign[i][4] == 'cooking':
-            cooking_index = i
-        if assign[i][0] == 'Peter':
-            peter_index = i
-    if cooking_index is None or peter_index is None:
-        return False
-    if cooking_index != peter_index - 1:
-        return False
-    
-    # Constraint 6: Daffodils enthusiast likes desert smoothie
-    for i in range(3):
-        if assign[i][2] == 'daffodils':
-            if assign[i][1] != 'desert':
-                return False
-            break
-    
-    # Constraint 7: Watermelon smoothie lover keeps horses
-    for i in range(3):
-        if assign[i][1] == 'watermelon':
-            if assign[i][3] != 'horse':
-                return False
-            break
-    
-    # Constraint 1: Horse keeper and photography enthusiast are adjacent
-    horse_index = None
-    photo_index = None
-    for i in range(3):
-        if assign[i][3] == 'horse':
-            horse_index = i
-        if assign[i][4] == 'photography':
-            photo_index = i
-    if horse_index is None or photo_index is None:
-        return False
-    if abs(horse_index - photo_index) != 1:
-        return False
-    
-    return True
+    for names in itertools.permutations(names_list):
+        for smoothies in itertools.permutations(smoothies_list):
+            for flowers in itertools.permutations(flowers_list):
+                for animals in itertools.permutations(animals_list):
+                    for hobbies in itertools.permutations(hobbies_list):
+                        candidate = (names, smoothies, flowers, animals, hobbies)
+                        if check(candidate):
+                            rows = []
+                            for i in range(3):
+                                row = [str(i+1), names[i], smoothies[i], flowers[i], animals[i], hobbies[i]]
+                                rows.append(row)
+                            solution_dict = {
+                                "solution": {
+                                    "header": ["House", "Name", "Smoothie", "Flower", "Animal", "Hobby"],
+                                    "rows": rows
+                                }
+                            }
+                            print(json.dumps(solution_dict))
+                            return
+    print('{"error": "No solution found"}')
 
 if __name__ == '__main__':
     main()

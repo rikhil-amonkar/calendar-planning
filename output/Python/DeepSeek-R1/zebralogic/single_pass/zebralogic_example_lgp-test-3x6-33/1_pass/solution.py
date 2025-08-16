@@ -2,93 +2,122 @@ import itertools
 import json
 
 def main():
-    fixed_flowers = ['carnations', 'daffodils', 'lilies']  # for house0, house1, house2
-    names_list = ['Arnold', 'Eric', 'Peter']
-    hair_remaining = ['black', 'brown']   # for house0 and house2
-    sport_remaining = ['basketball', 'tennis']  # for house0 and house1
-    style_remaining = ['ranch', 'victorian']    # for house0 and house1
-    pet_remaining = ['fish', 'dog']             # for house0 and house1
-
-    solutions = []
-    for names in itertools.permutations(names_list):
-        for hair0, hair2 in itertools.permutations(hair_remaining):
-            hair = [hair0, 'blonde', hair2]
-            for sport0, sport1 in itertools.permutations(sport_remaining):
-                sports = [sport0, sport1, 'soccer']
-                for style0, style1 in itertools.permutations(style_remaining):
-                    styles = [style0, style1, 'colonial']
-                    for pet0, pet1 in itertools.permutations(pet_remaining):
-                        pets = [pet0, pet1, 'cat']
-                        house0 = (names[0], fixed_flowers[0], hair[0], sports[0], styles[0], pets[0])
-                        house1 = (names[1], fixed_flowers[1], hair[1], sports[1], styles[1], pets[1])
-                        house2 = (names[2], fixed_flowers[2], hair[2], sports[2], styles[2], pets[2])
-                        houses = [house0, house1, house2]
-                        
-                        # Constraint 4: Peter loves basketball.
-                        peter_index = None
-                        for idx, name in enumerate(names):
-                            if name == 'Peter':
-                                peter_index = idx
-                                break
-                        if peter_index is None:
-                            continue
-                        if sports[peter_index] != 'basketball':
-                            continue
-                            
-                        # Constraint 5: Arnold is directly left of ranch.
-                        arnold_index = None
-                        for idx, name in enumerate(names):
-                            if name == 'Arnold':
-                                arnold_index = idx
-                                break
-                        if arnold_index is None:
-                            continue
-                        if arnold_index == 2:
-                            continue
-                        if styles[arnold_index+1] != 'ranch':
-                            continue
-                            
-                        # Constraint 6: Dog owner loves basketball.
-                        valid6 = True
-                        for i in range(3):
-                            if pets[i] == 'dog':
-                                if sports[i] != 'basketball':
-                                    valid6 = False
-                                    break
-                        if not valid6:
-                            continue
-                            
-                        # Constraint 9: Arnold is left of black hair.
-                        black_index = None
-                        for idx, color in enumerate(hair):
-                            if color == 'black':
-                                black_index = idx
-                                break
-                        if black_index is None:
-                            continue
-                        if arnold_index >= black_index:
-                            continue
-                            
-                        solutions.append(houses)
+    domains = {
+        'Name': ['Arnold', 'Eric', 'Peter'],
+        'Flower': ['carnations', 'lilies', 'daffodils'],
+        'HairColor': ['black', 'brown', 'blonde'],
+        'FavoriteSport': ['soccer', 'basketball', 'tennis'],
+        'HouseStyle': ['colonial', 'ranch', 'victorian'],
+        'Pet': ['fish', 'dog', 'cat']
+    }
     
-    if solutions:
-        sol = solutions[0]
-        header = ["House", "Name", "Favorite Flower", "Hair Colors", "Favorite Sports", "House Style", "Pet"]
-        rows = []
-        for i, house in enumerate(sol):
-            row = [str(i+1)]
-            row.extend(house)
-            rows.append(row)
-        
-        result = {
+    found_solution = None
+    found = False
+    for name_perm in itertools.permutations(domains['Name']):
+        for flower_perm in itertools.permutations(domains['Flower']):
+            if flower_perm[0] != 'carnations' or flower_perm[1] != 'daffodils' or flower_perm[2] != 'lilies':
+                continue
+            for hair_perm in itertools.permutations(domains['HairColor']):
+                if hair_perm[1] != 'blonde':
+                    continue
+                for sport_perm in itertools.permutations(domains['FavoriteSport']):
+                    if sport_perm[2] != 'soccer':
+                        continue
+                    for style_perm in itertools.permutations(domains['HouseStyle']):
+                        if style_perm[2] != 'colonial':
+                            continue
+                        for pet_perm in itertools.permutations(domains['Pet']):
+                            if pet_perm[2] != 'cat':
+                                continue
+                            houses = [
+                                [name_perm[0], flower_perm[0], hair_perm[0], sport_perm[0], style_perm[0], pet_perm[0]],
+                                [name_perm[1], flower_perm[1], hair_perm[1], sport_perm[1], style_perm[1], pet_perm[1]],
+                                [name_perm[2], flower_perm[2], hair_perm[2], sport_perm[2], style_perm[2], pet_perm[2]]
+                            ]
+                            if check_solution(houses):
+                                found_solution = houses
+                                found = True
+                                break
+                        if found:
+                            break
+                    if found:
+                        break
+                if found:
+                    break
+            if found:
+                break
+        if found:
+            break
+    
+    if found_solution:
+        output = {
             "solution": {
-                "header": header,
-                "rows": rows
+                "header": ["House", "Name", "Flower", "HairColor", "FavoriteSport", "HouseStyle", "Pet"],
+                "rows": [
+                    ["1"] + found_solution[0],
+                    ["2"] + found_solution[1],
+                    ["3"] + found_solution[2]
+                ]
             }
         }
-        print(json.dumps(result))
+        print(json.dumps(output))
     else:
-        print(json.dumps({"solution": {"header": [], "rows": []}}))
+        print(json.dumps({"solution": {}}))
+
+def check_solution(houses):
+    if houses[1][2] != 'blonde':
+        return False
+    if houses[1][1] != 'daffodils':
+        return False
+    if houses[0][1] != 'carnations':
+        return False
+    if houses[2][3] != 'soccer':
+        return False
+    if houses[2][4] != 'colonial':
+        return False
+    if houses[2][5] != 'cat':
+        return False
+    
+    peter_found = False
+    for house in houses:
+        if house[0] == 'Peter':
+            if house[3] != 'basketball':
+                return False
+            peter_found = True
+    if not peter_found:
+        return False
+    
+    arnold_found = False
+    for i in range(2):
+        if houses[i][0] == 'Arnold':
+            if houses[i+1][4] != 'ranch':
+                return False
+            arnold_found = True
+    if not arnold_found:
+        return False
+    
+    dog_found = False
+    for house in houses:
+        if house[5] == 'dog':
+            if house[3] != 'basketball':
+                return False
+            dog_found = True
+    if not dog_found:
+        return False
+    
+    arnold_index = None
+    black_index = None
+    for i, house in enumerate(houses):
+        if house[0] == 'Arnold':
+            arnold_index = i
+        if house[2] == 'black':
+            black_index = i
+    if arnold_index is None or black_index is None:
+        return False
+    if arnold_index >= black_index:
+        return False
+    
+    return True
 
 if __name__ == "__main__":
     main()
