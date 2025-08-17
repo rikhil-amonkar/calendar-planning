@@ -1,0 +1,83 @@
+{
+    "has_execution_error": false,
+    "execution_output": "{\n  \"solution\": {\n    \"header\": [\"House\", \"Name\", \"Vacation\", \"Children\", \"Nationality\"],\n    \"rows\": [\n      [\"1\", \"Peter\", \"cruise\", \"Fred\", \"norwegian\"],\n      [\"2\", \"Bob\", \"camping\", \"Timothy\", \"german\"],\n      [\"3\", \"Eric\", \"city\", \"Bella\", \"swede\"],\n      [\"4\", \"Alice\", \"beach\", \"Meredith\", \"brit\"],\n      [\"5\", \"Arnold\", \"mountain\", \"Samantha\", \"dane\"]\n    ]\n  }\n}\n  \n/* Explanation of the solution:\n\nWe start by \u201cfixing\u201d the clues that give absolute positions:\n\u2022 Clue 6 gives House 1 = cruise.\n\u2022 Clue 7 fixes House 4\u2019s child as Meredith.\n\u2022 Clue 12 tells us the Dane is in House 5.\n\u2022 Clue 1 makes Peter the Norwegian.\n\u2022 Clue 5 makes Alice the Brit.\n\u2022 Clue 11 makes Bob the camping\u2013lover and clue 13 excludes camping from House 5.\n\nNext, the \u201cbeach\u2013Samantha\u201d relation (Clue 3) forces a positioning. In our working, we tried two alternatives. Assigning the beach vacation to House 4 makes the immediately right-hand House 5\u2019s child Samantha. Then the beach and cruise (and the remaining vacations city, camping, mountain) are distributed so that Bob (camping) ends up in House 2 in one valid branch and the \u201cone\u2010between\u201d clue (Clue 10) forces the following:\n  \u2013 With House 2\u2019s vacation = camping and House 1 = cruise already, the only way to have exactly one house between the city\u2013lover and the house whose child is Fred is to put the city break in House 3 and assign Fred to House 1.\n  \nNow children available are: {Bella, Samantha, Fred, Meredith, Timothy}. With Fred fixed in House 1, Meredith fixed in House 4 and, because House 5 must get Samantha (by the beach rule), the remaining two \u2013 Bella and Timothy \u2013 come to Houses 3 and 2 respectively. Clue 4 (Bella is not in House 2) forces Bella into House 3 and Timothy into House 2.\n\nFinally, Clue 2 requires that the Swedish person\u2019s child be Bella. With Bella placed in House 3, that house\u2019s nationality must be swede. Also, Clue 9 (\u201cThe Swedish person is somewhere to the right of the Norwegian\u201d) then forces the Norwegian (Peter) into an earlier house \u2013 here House 1. Since House 5 already is Dane and Bob is in House 2 (and cannot be Norwegian since Peter is already that), the remaining names for Houses 3 and 4 are Eric and Alice, and since Alice is British (Clue 5) House 4 becomes Alice and House 3 becomes Eric.\n\nThe remaining vacation for House 5 becomes mountain by elimination.\nThe remaining nationalities for Houses 1\u20134 (from {norwegian, brit, german, swede}) are then allocated by the above conditions:\n  \u2013 House 1: Peter is Norwegian.\n  \u2013 House 3: Eric (with child Bella) is the Swede.\n  \u2013 House 4: Alice is British.\n  \u2013 House 2: Bob (the only one left) must then be German.\n\nAll clues are met with this final arrangement. */\n",
+    "pred": [
+        {
+            "House": "1",
+            "Name": "Peter",
+            "Vacation": "cruise",
+            "Children": "Fred",
+            "Nationality": "norwegian"
+        },
+        {
+            "House": "2",
+            "Name": "Bob",
+            "Vacation": "camping",
+            "Children": "Timothy",
+            "Nationality": "german"
+        },
+        {
+            "House": "3",
+            "Name": "Eric",
+            "Vacation": "city",
+            "Children": "Bella",
+            "Nationality": "swede"
+        },
+        {
+            "House": "4",
+            "Name": "Alice",
+            "Vacation": "beach",
+            "Children": "Meredith",
+            "Nationality": "brit"
+        },
+        {
+            "House": "5",
+            "Name": "Arnold",
+            "Vacation": "mountain",
+            "Children": "Samantha",
+            "Nationality": "dane"
+        }
+    ],
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Peter",
+            "Vacation": "cruise",
+            "Children": "Fred",
+            "Nationality": "norwegian"
+        },
+        {
+            "House": "2",
+            "Name": "Bob",
+            "Vacation": "camping",
+            "Children": "Timothy",
+            "Nationality": "german"
+        },
+        {
+            "House": "3",
+            "Name": "Eric",
+            "Vacation": "city",
+            "Children": "Bella",
+            "Nationality": "swede"
+        },
+        {
+            "House": "4",
+            "Name": "Alice",
+            "Vacation": "beach",
+            "Children": "Meredith",
+            "Nationality": "brit"
+        },
+        {
+            "House": "5",
+            "Name": "Arnold",
+            "Vacation": "mountain",
+            "Children": "Samantha",
+            "Nationality": "dane"
+        }
+    ],
+    "status": "Exact match",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1
+}
