@@ -1,104 +1,123 @@
-def main():
-    # Travel times
-    travel = build_travel_times()
+import json
 
-    # People constraints (24-hour times as strings)
-    people_list = [
-        Person("Charles",   "Bayview",          to_minutes("11:30"), to_minutes("14:30"), 45),
-        Person("Robert",    "Sunset District",  to_minutes("16:45"), to_minutes("21:00"), 30),
-        Person("Karen",     "Richmond District",to_minutes("19:15"), to_minutes("21:30"), 60),
-        Person("Rebecca",   "Nob Hill",         to_minutes("16:15"), to_minutes("20:30"), 90),
-        Person("Margaret",  "Chinatown",        to_minutes("14:15"), to_minutes("19:45"),120),
-        Person("Patricia",  "Haight-Ashbury",   to_minutes("14:30"), to_minutes("20:30"), 45),
-        Person("Mark",      "North Beach",      to_minutes("14:00"), to_minutes("18:30"),105),
-        Person("Melissa",   "Russian Hill",     to_minutes("13:00"), to_minutes("19:45"), 30),
-        Person("Laura",     "Embarcadero",      to_minutes("7:45"),  to_minutes("13:15"),105),
-    ]
-    name_to_idx = {p.name: i for i, p in enumerate(people_list)}
+def time_to_str(m):
+    h = m // 60
+    mi = m % 60
+    return f"{h}:{mi:02d}"
 
-    start_loc = "Marina District"
-    start_time = to_minutes("9:00")
+# Travel times (minutes) between locations
+travel = {
+    "Marina District": {
+        "Bayview": 27, "Sunset District": 19, "Richmond District": 11, "Nob Hill": 12,
+        "Chinatown": 15, "Haight-Ashbury": 16, "North Beach": 11, "Russian Hill": 8, "Embarcadero": 14
+    },
+    "Bayview": {
+        "Marina District": 27, "Sunset District": 23, "Richmond District": 25, "Nob Hill": 20,
+        "Chinatown": 19, "Haight-Ashbury": 19, "North Beach": 22, "Russian Hill": 23, "Embarcadero": 19
+    },
+    "Sunset District": {
+        "Marina District": 21, "Bayview": 22, "Richmond District": 12, "Nob Hill": 27,
+        "Chinatown": 30, "Haight-Ashbury": 15, "North Beach": 28, "Russian Hill": 24, "Embarcadero": 30
+    },
+    "Richmond District": {
+        "Marina District": 9, "Bayview": 27, "Sunset District": 11, "Nob Hill": 17,
+        "Chinatown": 20, "Haight-Ashbury": 10, "North Beach": 17, "Russian Hill": 13, "Embarcadero": 19
+    },
+    "Nob Hill": {
+        "Marina District": 11, "Bayview": 19, "Sunset District": 24, "Richmond District": 14,
+        "Chinatown": 6, "Haight-Ashbury": 13, "North Beach": 8, "Russian Hill": 5, "Embarcadero": 9
+    },
+    "Chinatown": {
+        "Marina District": 12, "Bayview": 20, "Sunset District": 29, "Richmond District": 20,
+        "Nob Hill": 9, "Haight-Ashbury": 19, "North Beach": 3, "Russian Hill": 7, "Embarcadero": 5
+    },
+    "Haight-Ashbury": {
+        "Marina District": 17, "Bayview": 18, "Sunset District": 15, "Richmond District": 10,
+        "Nob Hill": 15, "Chinatown": 19, "North Beach": 19, "Russian Hill": 17, "Embarcadero": 20
+    },
+    "North Beach": {
+        "Marina District": 9, "Bayview": 25, "Sunset District": 27, "Richmond District": 18,
+        "Nob Hill": 7, "Chinatown": 6, "Haight-Ashbury": 18, "Russian Hill": 4, "Embarcadero": 6
+    },
+    "Russian Hill": {
+        "Marina District": 7, "Bayview": 23, "Sunset District": 23, "Richmond District": 14,
+        "Nob Hill": 5, "Chinatown": 9, "Haight-Ashbury": 17, "North Beach": 5, "Embarcadero": 8
+    },
+    "Embarcadero": {
+        "Marina District": 12, "Bayview": 21, "Sunset District": 30, "Richmond District": 21,
+        "Nob Hill": 10, "Chinatown": 7, "Haight-Ashbury": 21, "North Beach": 5, "Russian Hill": 8
+    },
+}
 
-    # Sort heuristic: try those with earliest latest-start first
-    def latest_start(p: Person) -> int:
-        return p.end - p.min_dur
-    order = sorted(range(len(people_list)), key=lambda i: (latest_start(people_list[i]), people_list[i].end))
+# People constraints
+people = [
+    # name, location, start_min, end_min, min_duration
+    {"name": "Charles",  "location": "Bayview",           "start": 11*60+30, "end": 14*60+30, "duration": 45},
+    {"name": "Robert",   "location": "Sunset District",   "start": 16*60+45, "end": 21*60,    "duration": 30},
+    {"name": "Karen",    "location": "Richmond District", "start": 19*60+15, "end": 21*60+30, "duration": 60},
+    {"name": "Rebecca",  "location": "Nob Hill",          "start": 16*60+15, "end": 20*60+30, "duration": 90},
+    {"name": "Margaret", "location": "Chinatown",         "start": 14*60+15, "end": 19*60+45, "duration": 120},
+    {"name": "Patricia", "location": "Haight-Ashbury",    "start": 14*60+30, "end": 20*60+30, "duration": 45},
+    {"name": "Mark",     "location": "North Beach",       "start": 14*60,    "end": 18*60+30, "duration": 105},
+    {"name": "Melissa",  "location": "Russian Hill",      "start": 13*60,    "end": 19*60+45, "duration": 30},
+    {"name": "Laura",    "location": "Embarcadero",       "start": 7*60+45,  "end": 13*60+15, "duration": 105},
+]
 
-    best_solution = {
-        "count": -1,
-        "total_meeting": -1,
-        "finish_time": 10**9,
-        "travel_time": 10**9,
-        "path": []  # list of tuples (name, location, start, end)
-    }
+start_location = "Marina District"
+start_time = 9 * 60  # 9:00
 
-    from functools import lru_cache
+N = len(people)
 
-    @lru_cache(maxsize=None)
-    def dfs(current_loc: str, current_time: int, remaining_mask: int) -> Tuple[int, int, int, int, Tuple[Tuple[str, str, int, int], ...]]:
-        # Returns tuple: (best_count, total_meeting, finish_time, travel_time, path)
-        best = (-1, -1, 10**9, 10**9, tuple())
-        # Quick bound: if no remaining, return empties
-        if remaining_mask == 0:
-            return (0, 0, current_time, 0, tuple())
+# Precompute for memoization
+from functools import lru_cache
 
-        # Upper bound pruning: count of remaining
-        rem_count = bin(remaining_mask).count("1")
-        # Try each candidate
-        # Construct candidate indices in heuristic order
-        cand_indices = [idx for idx in order if (remaining_mask >> idx) & 1]
+# Map names for deterministic iteration (optional)
+indices = list(range(N))
 
-        for idx in cand_indices:
-            p = people_list[idx]
-            t_travel = travel[current_loc][p.location]
-            arrival = current_time + t_travel
-            start = max(arrival, p.start)
-            end = start + p.min_dur
-            # Feasibility
-            if end > p.end:
-                continue
+def comparator(best, candidate):
+    # Each is a tuple: (count, final_end_time, total_travel, itinerary)
+    # We want to maximize count; then minimize final_end_time; then minimize total_travel
+    if candidate[0] != best[0]:
+        return candidate[0] > best[0]
+    if candidate[1] != best[1]:
+        return candidate[1] < best[1]
+    if candidate[2] != best[2]:
+        return candidate[2] < best[2]
+    return False
 
-            new_mask = remaining_mask & ~(1 << idx)
-            sub = dfs(p.location, end, new_mask)
-            # Compose current result
-            sub_count, sub_meet, sub_finish, sub_travel, sub_path = sub
-            if sub_count >= 0:
-                cur_count = 1 + sub_count
-                cur_meet = p.min_dur + sub_meet
-                cur_finish = sub_finish
-                cur_travel = t_travel + sub_travel
-                cur_path = ((p.name, p.location, start, end),) + sub_path
+@lru_cache(maxsize=None)
+def search(curr_loc, curr_time, met_mask):
+    best = (0, curr_time, 0, [])  # count, final_end_time, total_travel, itinerary
+    for i in indices:
+        if (met_mask >> i) & 1:
+            continue
+        person = people[i]
+        ttravel = travel[curr_loc][person["location"]]
+        arrive = curr_time + ttravel
+        start_mt = max(arrive, person["start"])
+        end_mt = start_mt + person["duration"]
+        if end_mt <= person["end"]:
+            res = search(person["location"], end_mt, met_mask | (1 << i))
+            # Build full tuple for this path
+            count = res[0] + 1
+            # If no further meetings, final_end is end_mt; else it's res[1]
+            final_end = res[1] if res[0] > 0 else end_mt
+            total_travel = res[2] + ttravel
+            meeting_entry = {
+                "action": "meet",
+                "location": person["location"],
+                "person": person["name"],
+                "start_time": time_to_str(start_mt),
+                "end_time": time_to_str(end_mt)
+            }
+            itinerary = [meeting_entry] + res[3]
+            cand = (count, final_end, total_travel, itinerary)
+            if comparator(best, cand):
+                best = cand
+    return best
 
-                # Update best with tie-breakers:
-                # 1) more meetings
-                # 2) if tie, more total meeting time
-                # 3) if tie, earlier finish time
-                # 4) if tie, less travel time
-                if (cur_count > best[0] or
-                    (cur_count == best[0] and cur_meet > best[1]) or
-                    (cur_count == best[0] and cur_meet == best[1] and cur_finish < best[2]) or
-                    (cur_count == best[0] and cur_meet == best[1] and cur_finish == best[2] and cur_travel < best[3])):
-                    best = (cur_count, cur_meet, cur_finish, cur_travel, cur_path)
+best_schedule = search(start_location, start_time, 0)
+itinerary = best_schedule[3]
 
-        # Option to stop scheduling now (end day) — but since objective is max count, skipping doesn't help unless no feasible next
-        if best[0] < 0:
-            # No feasible person remains
-            return (0, 0, current_time, 0, tuple())
-        return best
-
-    remaining_mask = (1 << len(people_list)) - 1
-    count, total_meeting, finish_time, travel_time_sum, path = dfs(start_loc, start_time, remaining_mask)
-
-    # Build JSON itinerary
-    itinerary = []
-    for name, location, start, end in path:
-        itinerary.append({
-            "action": "meet",
-            "location": location,
-            "person": name,
-            "start_time": minutes_to_str(start),
-            "end_time": minutes_to_str(end)
-        })
-
-    output = {"itinerary": itinerary}
-    print(json.dumps(output, ensure_ascii=False))
+output = {"itinerary": itinerary}
+print(json.dumps(output, ensure_ascii=False))

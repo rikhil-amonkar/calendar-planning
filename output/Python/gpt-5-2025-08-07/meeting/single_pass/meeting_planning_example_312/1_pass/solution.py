@@ -1,183 +1,183 @@
 import itertools
 import json
+from dataclasses import dataclass
+from typing import Dict, Tuple, List, Optional
 
-# Helper: time conversion
-def to_minutes(tstr):
-    h, m = tstr.split(":")
-    return int(h) * 60 + int(m)
+# Helper functions
+def t(h: int, m: int) -> int:
+    return h * 60 + m
 
-def minutes_to_str(mins):
-    h = mins // 60
-    m = mins % 60
+def minutes_to_str(minutes: int) -> str:
+    h = minutes // 60
+    m = minutes % 60
     return f"{h}:{m:02d}"
 
-# Input variables: Locations and travel times (in minutes)
-locations = [
-    "Richmond District",
-    "Sunset District",
-    "Haight-Ashbury",
-    "Mission District",
-    "Golden Gate Park",
-]
+@dataclass
+class Person:
+    name: str
+    location: str
+    start: int
+    end: int
+    min_duration: int
 
-travel = {
-    "Richmond District": {
-        "Sunset District": 11,
-        "Haight-Ashbury": 10,
-        "Mission District": 20,
-        "Golden Gate Park": 9,
-    },
-    "Sunset District": {
-        "Richmond District": 12,
-        "Haight-Ashbury": 15,
-        "Mission District": 24,
-        "Golden Gate Park": 11,
-    },
-    "Haight-Ashbury": {
-        "Richmond District": 10,
-        "Sunset District": 15,
-        "Mission District": 11,
-        "Golden Gate Park": 7,
-    },
-    "Mission District": {
-        "Richmond District": 20,
-        "Sunset District": 24,
-        "Haight-Ashbury": 12,
-        "Golden Gate Park": 17,
-    },
-    "Golden Gate Park": {
-        "Richmond District": 7,
-        "Sunset District": 10,
-        "Haight-Ashbury": 7,
-        "Mission District": 17,
-    },
+# Input parameters: travel times (in minutes)
+travel_minutes: Dict[Tuple[str, str], int] = {
+    ("Richmond District", "Sunset District"): 11,
+    ("Richmond District", "Haight-Ashbury"): 10,
+    ("Richmond District", "Mission District"): 20,
+    ("Richmond District", "Golden Gate Park"): 9,
+
+    ("Sunset District", "Richmond District"): 12,
+    ("Sunset District", "Haight-Ashbury"): 15,
+    ("Sunset District", "Mission District"): 24,
+    ("Sunset District", "Golden Gate Park"): 11,
+
+    ("Haight-Ashbury", "Richmond District"): 10,
+    ("Haight-Ashbury", "Sunset District"): 15,
+    ("Haight-Ashbury", "Mission District"): 11,
+    ("Haight-Ashbury", "Golden Gate Park"): 7,
+
+    ("Mission District", "Richmond District"): 20,
+    ("Mission District", "Sunset District"): 24,
+    ("Mission District", "Haight-Ashbury"): 12,
+    ("Mission District", "Golden Gate Park"): 17,
+
+    ("Golden Gate Park", "Richmond District"): 7,
+    ("Golden Gate Park", "Sunset District"): 10,
+    ("Golden Gate Park", "Haight-Ashbury"): 7,
+    ("Golden Gate Park", "Mission District"): 17,
 }
 
-# Starting conditions
+# Constraints
 start_location = "Richmond District"
-start_time_str = "9:00"
+arrival_time = t(9, 0)  # 9:00
 
-# People and constraints
-friends = [
-    {
-        "name": "Sarah",
-        "location": "Sunset District",
-        "window_start": "10:45",
-        "window_end": "19:00",
-        "min_minutes": 30,
-    },
-    {
-        "name": "Richard",
-        "location": "Haight-Ashbury",
-        "window_start": "11:45",
-        "window_end": "15:45",
-        "min_minutes": 90,
-    },
-    {
-        "name": "Elizabeth",
-        "location": "Mission District",
-        "window_start": "11:00",
-        "window_end": "17:15",
-        "min_minutes": 120,
-    },
-    {
-        "name": "Michelle",
-        "location": "Golden Gate Park",
-        "window_start": "18:15",
-        "window_end": "20:45",
-        "min_minutes": 90,
-    },
+people = [
+    Person(
+        name="Sarah",
+        location="Sunset District",
+        start=t(10, 45),
+        end=t(19, 0),
+        min_duration=30
+    ),
+    Person(
+        name="Richard",
+        location="Haight-Ashbury",
+        start=t(11, 45),
+        end=t(15, 45),
+        min_duration=90
+    ),
+    Person(
+        name="Elizabeth",
+        location="Mission District",
+        start=t(11, 0),
+        end=t(17, 15),
+        min_duration=120
+    ),
+    Person(
+        name="Michelle",
+        location="Golden Gate Park",
+        start=t(18, 15),
+        end=t(20, 45),
+        min_duration=90
+    ),
 ]
 
-# Preprocess times into minutes
-for f in friends:
-    f["start_min"] = to_minutes(f["window_start"])
-    f["end_min"] = to_minutes(f["window_end"])
-
-start_time_min = to_minutes(start_time_str)
-
-def simulate_sequence(seq):
+def compute_schedule(order: List[Person]) -> Optional[dict]:
+    actions = []
     current_loc = start_location
-    current_time = start_time_min
-    itinerary = []
+    current_time = arrival_time
     total_travel = 0
-    total_wait = 0
+    total_idle = 0
 
-    for f in seq:
-        # Travel time to friend's location
-        t = travel[current_loc][f["location"]] if current_loc != f["location"] else 0
-        arrival = current_time + t
-        meet_start = max(arrival, f["start_min"])
-        # Check feasibility: must fit minimum duration within availability
-        if meet_start + f["min_minutes"] > f["end_min"]:
-            return None  # infeasible sequence
+    for idx, p in enumerate(order):
+        key = (current_loc, p.location)
+        if key not in travel_minutes:
+            return None  # invalid path
+        travel = travel_minutes[key]
+        total_travel += travel
 
-        wait = max(0, meet_start - arrival)
-        total_wait += wait
-        total_travel += t
-        meet_end = meet_start + f["min_minutes"]
+        arrival_at_p = current_time + travel
+        start_mtg = max(arrival_at_p, p.start)
+        if start_mtg + p.min_duration > p.end:
+            return None  # infeasible due to window
+        # idle waiting (whether at origin before departure or at destination) is the gap
+        idle_here = max(0, start_mtg - arrival_at_p)
+        total_idle += idle_here
 
-        itinerary.append({
+        end_mtg = start_mtg + p.min_duration
+
+        actions.append({
             "action": "meet",
-            "location": f["location"],
-            "person": f["name"],
-            "start_time_min": meet_start,
-            "end_time_min": meet_end,
+            "location": p.location,
+            "person": p.name,
+            "start_time_minutes": start_mtg,
+            "end_time_minutes": end_mtg
         })
 
-        current_time = meet_end
-        current_loc = f["location"]
+        current_loc = p.location
+        current_time = end_mtg
 
-    finish_time = current_time
     return {
-        "itinerary": itinerary,
-        "finish_time": finish_time,
+        "actions": actions,
+        "finish_time": current_time,
         "total_travel": total_travel,
-        "total_wait": total_wait,
-        "sequence_names": " > ".join([f["name"] for f in seq]),
+        "total_idle": total_idle
     }
 
-# Search over all subsets and permutations to maximize number of friends met
-best = None
+# Evaluate all schedules: primary maximize number of friends met,
+# then minimize finish time, then minimize total travel, then minimize idle time,
+# then lexicographic order of names for determinism.
+best_result = None
 best_score = None
-best_seq_names = None
 
-n = len(friends)
-# Iterate from largest subset size to smallest
-for r in range(n, 0, -1):
-    for subset in itertools.combinations(friends, r):
+# Enumerate subsets from largest to smallest
+for r in range(len(people), 0, -1):
+    found_in_size = False
+    for subset in itertools.combinations(people, r):
         for perm in itertools.permutations(subset):
-            result = simulate_sequence(perm)
-            if not result:
+            result = compute_schedule(list(perm))
+            if result is None:
                 continue
-            # Objective: maximize number met, then minimize finish time,
-            # then minimize total travel, then minimize total waiting,
-            # then lexicographically smallest sequence of names for stability
-            num_met = r
+            count_met = len(perm)
             finish_time = result["finish_time"]
             total_travel = result["total_travel"]
-            total_wait = result["total_wait"]
-            seq_names = result["sequence_names"]
+            total_idle = result["total_idle"]
+            names_key = tuple(p.name for p in perm)
 
-            score = (num_met, -finish_time, -total_travel, -total_wait)
-            if (best_score is None or
-                score > best_score or
-                (score == best_score and seq_names < best_seq_names)):
-                best = result
+            score = (
+                count_met,                   # maximize
+                -finish_time,                # minimize finish_time
+                -(-total_travel),            # minimize total_travel (keep tuple consistent)
+                -(-total_idle),              # minimize idle time
+                tuple(names_key)             # deterministic tie-breaker
+            )
+
+            if best_score is None or score > best_score:
                 best_score = score
-                best_seq_names = seq_names
+                best_result = {
+                    "perm": perm,
+                    "schedule": result
+                }
+                found_in_size = True
+    # If we found at least one feasible schedule of this size, no need to check smaller subsets
+    if found_in_size:
+        break
 
-# Build output JSON
-output_itinerary = []
-if best:
-    for item in best["itinerary"]:
-        output_itinerary.append({
+# Build final itinerary JSON
+itinerary = []
+if best_result is not None:
+    for act in best_result["schedule"]["actions"]:
+        itinerary.append({
             "action": "meet",
-            "location": item["location"],
-            "person": item["person"],
-            "start_time": minutes_to_str(item["start_time_min"]),
-            "end_time": minutes_to_str(item["end_time_min"]),
+            "location": act["location"],
+            "person": act["person"],
+            "start_time": minutes_to_str(act["start_time_minutes"]),
+            "end_time": minutes_to_str(act["end_time_minutes"])
         })
 
-result_json = {"itinerary": output_itinerary}
-print(json.dumps(result_json, ensure_ascii=False))
+output = {
+    "itinerary": itinerary
+}
+
+print(json.dumps(output, ensure_ascii=False))

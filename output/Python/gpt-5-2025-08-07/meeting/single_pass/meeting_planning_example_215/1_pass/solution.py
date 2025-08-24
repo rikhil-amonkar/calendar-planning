@@ -1,181 +1,138 @@
 import json
-from itertools import combinations, permutations
+from itertools import combinations, permutations, chain
 
-def parse_ampm(s):
-    s = s.strip().upper()
-    parts = s.replace("AM"," AM").replace("PM"," PM").split()
-    if len(parts) == 2:
-        time_part, ampm = parts
-    else:
-        # already like 'H:MMAM'
-        ampm = s[-2:]
-        time_part = s[:-2].strip()
-    h, m = map(int, time_part.split(":"))
-    if ampm == "AM":
-        if h == 12:
-            h = 0
-    elif ampm == "PM":
-        if h != 12:
-            h += 12
+def h2m(t):
+    h, m = map(int, t.split(":"))
     return h * 60 + m
 
-def minutes_to_str(m):
+def m2h(m):
     h = m // 60
     mm = m % 60
     return f"{h}:{mm:02d}"
 
-# Input variables
-start_location = "Bayview"
-start_time = parse_ampm("9:00AM")
-
-travel = {
-    ("Bayview", "Embarcadero"): 19,
-    ("Bayview", "Richmond District"): 25,
-    ("Bayview", "Fisherman's Wharf"): 25,
-    ("Embarcadero", "Bayview"): 21,
-    ("Embarcadero", "Richmond District"): 21,
-    ("Embarcadero", "Fisherman's Wharf"): 6,
-    ("Richmond District", "Bayview"): 26,
-    ("Richmond District", "Embarcadero"): 19,
-    ("Richmond District", "Fisherman's Wharf"): 18,
-    ("Fisherman's Wharf", "Bayview"): 26,
-    ("Fisherman's Wharf", "Embarcadero"): 8,
-    ("Fisherman's Wharf", "Richmond District"): 18,
-}
-
-def ttime(a, b):
+def travel_time(a, b, dists):
     if a == b:
         return 0
-    return travel[(a, b)]
+    return dists[a][b]
 
-friends = [
-    {
-        "name": "Jessica",
-        "location": "Embarcadero",
-        "start": parse_ampm("4:45PM"),
-        "end": parse_ampm("7:00PM"),
-        "min": 30
-    },
-    {
-        "name": "Sandra",
-        "location": "Richmond District",
-        "start": parse_ampm("6:30PM"),
-        "end": parse_ampm("9:45PM"),
-        "min": 120
-    },
-    {
-        "name": "Jason",
-        "location": "Fisherman's Wharf",
-        "start": parse_ampm("4:00PM"),
-        "end": parse_ampm("4:45PM"),
-        "min": 30
-    }
-]
-
-def compute_latest_arrivals(order):
-    n = len(order)
-    latest = [None] * n
-    # last friend
-    last = order[-1]
-    la = last["end"] - last["min"]
-    if la < last["start"]:
-        return None
-    latest[-1] = la
-    # backwards for previous
-    for i in range(n - 2, -1, -1):
-        cur = order[i]
-        nxt = order[i + 1]
-        depart_by = latest[i + 1] - ttime(cur["location"], nxt["location"])
-        latest_start_bound = min(depart_by - cur["min"], cur["end"] - cur["min"])
-        if latest_start_bound < cur["start"]:
-            return None
-        latest[i] = latest_start_bound
-    return latest
-
-def schedule_order(order):
-    latest = compute_latest_arrivals(order)
-    if latest is None:
-        return None
+def compute_schedule(order, friends, start_loc, start_time_m, dists):
+    current_loc = start_loc
+    current_time = start_time_m
+    total_travel = 0
     itinerary = []
-    loc = start_location
-    current_time = start_time
-    total_duration = 0
-    total_wait = 0
-    for i, f in enumerate(order):
-        travel_time = ttime(loc, f["location"])
-        arrival = current_time + travel_time
-        earliest_start = max(arrival, f["start"])
-        # allowed end upper bound
-        if i < len(order) - 1:
-            next_friend = order[i + 1]
-            depart_by = latest[i + 1] - ttime(f["location"], next_friend["location"])
-            allowed_end_ub = min(f["end"], depart_by)
-        else:
-            allowed_end_ub = f["end"]
-        # feasibility check considering we can delay start up to allowed_end_ub - min
-        if earliest_start > allowed_end_ub - f["min"]:
-            return None
-        # choose start and end to maximize meeting time while keeping feasibility
-        start_mt = earliest_start
-        end_mt = allowed_end_ub
-        # waiting (can't avoid between meetings; for first, we can leave later to avoid waiting)
-        wait = max(0, start_mt - arrival)
-        if i == 0:
-            wait = 0
-        total_wait += wait
-        duration = end_mt - start_mt
-        total_duration += duration
+
+    for name in order:
+        p = friends[name]
+        loc = p["location"]
+        t_travel = travel_time(current_loc, loc, dists)
+        arrival = current_time + t_travel
+        total_travel += t_travel
+
+        window_start = p["window_start"]
+        window_end = p["window_end"]
+        min_dur = p["min_duration"]
+
+        start_meet = max(arrival, window_start)
+        if start_meet + min_dur > window_end:
+            return None  # infeasible
+
+        end_meet = start_meet + min_dur
         itinerary.append({
             "action": "meet",
-            "location": f["location"],
-            "person": f["name"],
-            "start": start_mt,
-            "end": end_mt
+            "location": loc,
+            "person": name,
+            "start_time": m2h(start_meet),
+            "end_time": m2h(end_meet)
         })
-        loc = f["location"]
-        current_time = end_mt
+
+        current_loc = loc
+        current_time = end_meet
+
     return {
         "itinerary": itinerary,
-        "total_duration": total_duration,
-        "total_wait": total_wait,
-        "end_time": current_time,
-        "met_count": len(order)
+        "finish_time": current_time,
+        "total_travel": total_travel,
+        "met_count": len(itinerary)
     }
 
-def evaluate():
+def powerset(iterable):
+    s = list(iterable)
+    for r in range(1, len(s) + 1):
+        for comb in combinations(s, r):
+            yield comb
+
+def main():
+    # Directed travel times in minutes
+    dists = {
+        "Bayview": {
+            "Embarcadero": 19,
+            "Richmond District": 25,
+            "Fisherman's Wharf": 25
+        },
+        "Embarcadero": {
+            "Bayview": 21,
+            "Richmond District": 21,
+            "Fisherman's Wharf": 6
+        },
+        "Richmond District": {
+            "Bayview": 26,
+            "Embarcadero": 19,
+            "Fisherman's Wharf": 18
+        },
+        "Fisherman's Wharf": {
+            "Bayview": 26,
+            "Embarcadero": 8,
+            "Richmond District": 18
+        }
+    }
+
+    # Meeting constraints
+    friends = {
+        "Jessica": {
+            "location": "Embarcadero",
+            "window_start": h2m("16:45"),
+            "window_end": h2m("19:00"),
+            "min_duration": 30
+        },
+        "Sandra": {
+            "location": "Richmond District",
+            "window_start": h2m("18:30"),
+            "window_end": h2m("21:45"),
+            "min_duration": 120
+        },
+        "Jason": {
+            "location": "Fisherman's Wharf",
+            "window_start": h2m("16:00"),
+            "window_end": h2m("16:45"),
+            "min_duration": 30
+        }
+    }
+
+    start_location = "Bayview"
+    start_time = h2m("9:00")
+
+    names = list(friends.keys())
+
     best = None
-    # Primary objective: max met_count
-    # Secondary: max total_duration
-    # Tertiary: min total_wait
-    # Quaternary: min end_time
-    n = len(friends)
-    for k in range(n, 0, -1):
-        for subset in combinations(friends, k):
-            for order in permutations(subset):
-                res = schedule_order(order)
-                if res is None:
-                    continue
-                score = (
-                    res["met_count"],
-                    res["total_duration"],
-                    -res["total_wait"],
-                    -res["end_time"]
-                )
-                if best is None or score > best["score"]:
-                    best = {"score": score, "res": res}
-    return best["res"] if best else None
 
-best_plan = evaluate()
+    # Explore all subsets and permutations to maximize number of friends met
+    for subset in powerset(names):
+        for order in permutations(subset):
+            candidate = compute_schedule(order, friends, start_location, start_time, dists)
+            if candidate is None:
+                continue
 
-output = {"itinerary": []}
-if best_plan:
-    for item in best_plan["itinerary"]:
-        output["itinerary"].append({
-            "action": "meet",
-            "location": item["location"],
-            "person": item["person"],
-            "start_time": minutes_to_str(item["start"]),
-            "end_time": minutes_to_str(item["end"])
-        })
+            if best is None:
+                best = candidate
+            else:
+                # Compare by: 1) more meetings 2) earlier finish time 3) less total travel
+                if (candidate["met_count"] > best["met_count"] or
+                    (candidate["met_count"] == best["met_count"] and candidate["finish_time"] < best["finish_time"]) or
+                    (candidate["met_count"] == best["met_count"] and candidate["finish_time"] == best["finish_time"] and candidate["total_travel"] < best["total_travel"])):
+                    best = candidate
 
-print(json.dumps(output))
+    output = {"itinerary": [] if best is None else best["itinerary"]}
+    print(json.dumps(output, ensure_ascii=False))
+
+if __name__ == "__main__":
+    main()

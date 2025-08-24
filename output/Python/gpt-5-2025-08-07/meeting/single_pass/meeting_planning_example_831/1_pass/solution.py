@@ -1,272 +1,256 @@
+"""
+SOLUTION:
+"""
 import json
+from dataclasses import dataclass
+from typing import Dict, List, Tuple
 
-def parse_ampm(s):
-    s = s.strip().upper()
-    am = s.endswith('AM')
-    pm = s.endswith('PM')
-    time_part = s[:-2]
-    h, m = map(int, time_part.split(':'))
-    if h == 12:
-        h = 0
-    if pm:
-        h += 12
+# -------------------------
+# Helper time functions
+# -------------------------
+def t(h: int, m: int) -> int:
     return h * 60 + m
 
-def m2s(minutes):
+def fmt(minutes: int) -> str:
     h = minutes // 60
     m = minutes % 60
     return f"{h}:{m:02d}"
 
-# Travel times (minutes) as given
-travel = {
-    "Presidio": {
-        "Fisherman's Wharf": 19,
-        "Alamo Square": 19,
-        "Financial District": 23,
-        "Union Square": 22,
-        "Sunset District": 15,
-        "Embarcadero": 20,
-        "Golden Gate Park": 12,
-        "Chinatown": 21,
-        "Richmond District": 7
-    },
-    "Fisherman's Wharf": {
-        "Presidio": 17,
-        "Alamo Square": 21,
-        "Financial District": 11,
-        "Union Square": 13,
-        "Sunset District": 27,
-        "Embarcadero": 8,
-        "Golden Gate Park": 25,
-        "Chinatown": 12,
-        "Richmond District": 18
-    },
-    "Alamo Square": {
-        "Presidio": 17,
-        "Fisherman's Wharf": 19,
-        "Financial District": 17,
-        "Union Square": 14,
-        "Sunset District": 16,
-        "Embarcadero": 16,
-        "Golden Gate Park": 9,
-        "Chinatown": 15,
-        "Richmond District": 11
-    },
-    "Financial District": {
-        "Presidio": 22,
-        "Fisherman's Wharf": 10,
-        "Alamo Square": 17,
-        "Union Square": 9,
-        "Sunset District": 30,
-        "Embarcadero": 4,
-        "Golden Gate Park": 23,
-        "Chinatown": 5,
-        "Richmond District": 21
-    },
-    "Union Square": {
-        "Presidio": 24,
-        "Fisherman's Wharf": 15,
-        "Alamo Square": 15,
-        "Financial District": 9,
-        "Sunset District": 27,
-        "Embarcadero": 11,
-        "Golden Gate Park": 22,
-        "Chinatown": 7,
-        "Richmond District": 20
-    },
-    "Sunset District": {
-        "Presidio": 16,
-        "Fisherman's Wharf": 29,
-        "Alamo Square": 17,
-        "Financial District": 30,
-        "Union Square": 30,
-        "Embarcadero": 30,
-        "Golden Gate Park": 11,
-        "Chinatown": 30,
-        "Richmond District": 12
-    },
-    "Embarcadero": {
-        "Presidio": 20,
-        "Fisherman's Wharf": 6,
-        "Alamo Square": 19,
-        "Financial District": 5,
-        "Union Square": 10,
-        "Sunset District": 30,
-        "Golden Gate Park": 25,
-        "Chinatown": 7,
-        "Richmond District": 21
-    },
-    "Golden Gate Park": {
-        "Presidio": 11,
-        "Fisherman's Wharf": 24,
-        "Alamo Square": 9,
-        "Financial District": 26,
-        "Union Square": 22,
-        "Sunset District": 10,
-        "Embarcadero": 25,
-        "Chinatown": 23,
-        "Richmond District": 7
-    },
-    "Chinatown": {
-        "Presidio": 19,
-        "Fisherman's Wharf": 8,
-        "Alamo Square": 17,
-        "Financial District": 5,
-        "Union Square": 7,
-        "Sunset District": 29,
-        "Embarcadero": 5,
-        "Golden Gate Park": 23,
-        "Richmond District": 20
-    },
-    "Richmond District": {
-        "Presidio": 7,
-        "Fisherman's Wharf": 18,
-        "Alamo Square": 13,
-        "Financial District": 22,
-        "Union Square": 21,
-        "Sunset District": 11,
-        "Embarcadero": 19,
-        "Golden Gate Park": 9,
-        "Chinatown": 20
-    }
-}
-
-# Friends constraints
-friends = [
-    {
-        "name": "Jeffrey",
-        "location": "Fisherman's Wharf",
-        "start": parse_ampm("10:15AM"),
-        "end": parse_ampm("1:00PM"),
-        "min_duration": 90
-    },
-    {
-        "name": "Ronald",
-        "location": "Alamo Square",
-        "start": parse_ampm("7:45AM"),
-        "end": parse_ampm("2:45PM"),
-        "min_duration": 120
-    },
-    {
-        "name": "Jason",
-        "location": "Financial District",
-        "start": parse_ampm("10:45AM"),
-        "end": parse_ampm("4:00PM"),
-        "min_duration": 105
-    },
-    {
-        "name": "Melissa",
-        "location": "Union Square",
-        "start": parse_ampm("5:45PM"),
-        "end": parse_ampm("6:15PM"),
-        "min_duration": 15
-    },
-    {
-        "name": "Elizabeth",
-        "location": "Sunset District",
-        "start": parse_ampm("2:45PM"),
-        "end": parse_ampm("5:30PM"),
-        "min_duration": 105
-    },
-    {
-        "name": "Margaret",
-        "location": "Embarcadero",
-        "start": parse_ampm("1:15PM"),
-        "end": parse_ampm("7:00PM"),
-        "min_duration": 90
-    },
-    {
-        "name": "George",
-        "location": "Golden Gate Park",
-        "start": parse_ampm("7:00PM"),
-        "end": parse_ampm("10:00PM"),
-        "min_duration": 75
-    },
-    {
-        "name": "Richard",
-        "location": "Chinatown",
-        "start": parse_ampm("9:30AM"),
-        "end": parse_ampm("9:00PM"),
-        "min_duration": 15
-    },
-    {
-        "name": "Laura",
-        "location": "Richmond District",
-        "start": parse_ampm("9:45AM"),
-        "end": parse_ampm("6:00PM"),
-        "min_duration": 60
-    }
+# -------------------------
+# Travel times (minutes)
+# -------------------------
+locations = [
+    "Presidio",
+    "Fisherman's Wharf",
+    "Alamo Square",
+    "Financial District",
+    "Union Square",
+    "Sunset District",
+    "Embarcadero",
+    "Golden Gate Park",
+    "Chinatown",
+    "Richmond District",
 ]
 
-start_location = "Presidio"
-start_time = parse_ampm("9:00AM")
+travel: Dict[str, Dict[str, int]] = {loc: {} for loc in locations}
+def add(a: str, b: str, d: int):
+    travel[a][b] = d
 
-# Helper for comparison of solutions
-def better_solution(a, b):
-    # a and b are dicts with keys: count, end_time, travel, path
-    if a is None:
-        return False
-    if b is None:
-        return True
-    if a["count"] != b["count"]:
-        return a["count"] > b["count"]
-    if a["end_time"] != b["end_time"]:
-        return a["end_time"] < b["end_time"]
-    # minimize total travel time
-    if a["travel"] != b["travel"]:
-        return a["travel"] < b["travel"]
-    # as final tie-breaker, lexicographically smallest sequence of names
-    names_a = [m["person"] for m in a["path"]]
-    names_b = [m["person"] for m in b["path"]]
-    return names_a < names_b
+# Presidio
+add("Presidio", "Fisherman's Wharf", 19)
+add("Presidio", "Alamo Square", 19)
+add("Presidio", "Financial District", 23)
+add("Presidio", "Union Square", 22)
+add("Presidio", "Sunset District", 15)
+add("Presidio", "Embarcadero", 20)
+add("Presidio", "Golden Gate Park", 12)
+add("Presidio", "Chinatown", 21)
+add("Presidio", "Richmond District", 7)
 
-best = None
+# Fisherman's Wharf
+add("Fisherman's Wharf", "Presidio", 17)
+add("Fisherman's Wharf", "Alamo Square", 21)
+add("Fisherman's Wharf", "Financial District", 11)
+add("Fisherman's Wharf", "Union Square", 13)
+add("Fisherman's Wharf", "Sunset District", 27)
+add("Fisherman's Wharf", "Embarcadero", 8)
+add("Fisherman's Wharf", "Golden Gate Park", 25)
+add("Fisherman's Wharf", "Chinatown", 12)
+add("Fisherman's Wharf", "Richmond District", 18)
 
-# For efficiency, precompute an order of friends to try (earliest window end first)
-order_indices = list(range(len(friends)))
-order_indices.sort(key=lambda i: friends[i]["end"])
+# Alamo Square
+add("Alamo Square", "Presidio", 17)
+add("Alamo Square", "Fisherman's Wharf", 19)
+add("Alamo Square", "Financial District", 17)
+add("Alamo Square", "Union Square", 14)
+add("Alamo Square", "Sunset District", 16)
+add("Alamo Square", "Embarcadero", 16)
+add("Alamo Square", "Golden Gate Park", 9)
+add("Alamo Square", "Chinatown", 15)
+add("Alamo Square", "Richmond District", 11)
 
-def search(curr_loc, curr_time, remaining_indices, path, travel_sum):
-    global best
-    # Update best with current path
-    current_solution = {
-        "count": len(path),
-        "end_time": curr_time,
-        "travel": travel_sum,
-        "path": path
-    }
-    if better_solution(current_solution, best):
-        best = current_solution
+# Financial District
+add("Financial District", "Presidio", 22)
+add("Financial District", "Fisherman's Wharf", 10)
+add("Financial District", "Alamo Square", 17)
+add("Financial District", "Union Square", 9)
+add("Financial District", "Sunset District", 30)
+add("Financial District", "Embarcadero", 4)
+add("Financial District", "Golden Gate Park", 23)
+add("Financial District", "Chinatown", 5)
+add("Financial District", "Richmond District", 21)
 
-    # Try next friends
-    # Heuristic: iterate remaining by earliest feasible end and proximity
-    for i in sorted(remaining_indices, key=lambda idx: (friends[idx]["end"], travel.get(curr_loc, {}).get(friends[idx]["location"], 1e9))):
-        p = friends[i]
-        # If no travel path, skip
-        if curr_loc not in travel or p["location"] not in travel[curr_loc]:
-            continue
-        drive = travel[curr_loc][p["location"]]
-        arrival = curr_time + drive
-        start_meet = max(arrival, p["start"])
-        end_meet = start_meet + p["min_duration"]
-        if end_meet <= p["end"]:
-            # feasible
-            new_path = path + [{
-                "action": "meet",
-                "location": p["location"],
-                "person": p["name"],
-                "start_time": m2s(start_meet),
-                "end_time": m2s(end_meet)
-            }]
-            new_remaining = [x for x in remaining_indices if x != i]
-            search(p["location"], end_meet, new_remaining, new_path, travel_sum + drive)
-        # else not feasible, skip
+# Union Square
+add("Union Square", "Presidio", 24)
+add("Union Square", "Fisherman's Wharf", 15)
+add("Union Square", "Alamo Square", 15)
+add("Union Square", "Financial District", 9)
+add("Union Square", "Sunset District", 27)
+add("Union Square", "Embarcadero", 11)
+add("Union Square", "Golden Gate Park", 22)
+add("Union Square", "Chinatown", 7)
+add("Union Square", "Richmond District", 20)
 
-# Start search
-search(start_location, start_time, list(range(len(friends))), [], 0)
+# Sunset District
+add("Sunset District", "Presidio", 16)
+add("Sunset District", "Fisherman's Wharf", 29)
+add("Sunset District", "Alamo Square", 17)
+add("Sunset District", "Financial District", 30)
+add("Sunset District", "Union Square", 30)
+add("Sunset District", "Embarcadero", 30)
+add("Sunset District", "Golden Gate Park", 11)
+add("Sunset District", "Chinatown", 30)
+add("Sunset District", "Richmond District", 12)
 
-# Output result
-result = {
-    "itinerary": best["path"] if best else []
+# Embarcadero
+add("Embarcadero", "Presidio", 20)
+add("Embarcadero", "Fisherman's Wharf", 6)
+add("Embarcadero", "Alamo Square", 19)
+add("Embarcadero", "Financial District", 5)
+add("Embarcadero", "Union Square", 10)
+add("Embarcadero", "Sunset District", 30)
+add("Embarcadero", "Golden Gate Park", 25)
+add("Embarcadero", "Chinatown", 7)
+add("Embarcadero", "Richmond District", 21)
+
+# Golden Gate Park
+add("Golden Gate Park", "Presidio", 11)
+add("Golden Gate Park", "Fisherman's Wharf", 24)
+add("Golden Gate Park", "Alamo Square", 9)
+add("Golden Gate Park", "Financial District", 26)
+add("Golden Gate Park", "Union Square", 22)
+add("Golden Gate Park", "Sunset District", 10)
+add("Golden Gate Park", "Embarcadero", 25)
+add("Golden Gate Park", "Chinatown", 23)
+add("Golden Gate Park", "Richmond District", 7)
+
+# Chinatown
+add("Chinatown", "Presidio", 19)
+add("Chinatown", "Fisherman's Wharf", 8)
+add("Chinatown", "Alamo Square", 17)
+add("Chinatown", "Financial District", 5)
+add("Chinatown", "Union Square", 7)
+add("Chinatown", "Sunset District", 29)
+add("Chinatown", "Embarcadero", 5)
+add("Chinatown", "Golden Gate Park", 23)
+add("Chinatown", "Richmond District", 20)
+
+# Richmond District
+add("Richmond District", "Presidio", 7)
+add("Richmond District", "Fisherman's Wharf", 18)
+add("Richmond District", "Alamo Square", 13)
+add("Richmond District", "Financial District", 22)
+add("Richmond District", "Union Square", 21)
+add("Richmond District", "Sunset District", 11)
+add("Richmond District", "Embarcadero", 19)
+add("Richmond District", "Golden Gate Park", 9)
+add("Richmond District", "Chinatown", 20)
+
+# -------------------------
+# Meeting constraints
+# -------------------------
+@dataclass(frozen=True)
+class Person:
+    name: str
+    location: str
+    window_start: int
+    window_end: int
+    min_duration: int
+
+people: Dict[str, Person] = {
+    "Jeffrey": Person("Jeffrey", "Fisherman's Wharf", t(10, 15), t(13, 0), 90),
+    "Ronald": Person("Ronald", "Alamo Square", t(7, 45), t(14, 45), 120),
+    "Jason": Person("Jason", "Financial District", t(10, 45), t(16, 0), 105),
+    "Melissa": Person("Melissa", "Union Square", t(17, 45), t(18, 15), 15),
+    "Elizabeth": Person("Elizabeth", "Sunset District", t(14, 45), t(17, 30), 105),
+    "Margaret": Person("Margaret", "Embarcadero", t(13, 15), t(19, 0), 90),
+    "George": Person("George", "Golden Gate Park", t(19, 0), t(22, 0), 75),
+    "Richard": Person("Richard", "Chinatown", t(9, 30), t(21, 0), 15),
+    "Laura": Person("Laura", "Richmond District", t(9, 45), t(18, 0), 60),
 }
-print(json.dumps(result))
+
+start_location = "Presidio"
+start_time = t(9, 0)
+
+# -------------------------
+# Search for optimal itinerary
+# -------------------------
+PersonName = str
+ItineraryEntry = Tuple[str, str, PersonName, int, int]  # (action, location, person, start, end)
+
+# Pre-sort persons by window end time (earlier deadlines first) to guide search
+person_order = sorted(people.keys(), key=lambda n: people[n].window_end)
+
+best_itinerary: List[ItineraryEntry] = []
+best_count = -1
+best_finish_time = 10**9
+best_total_travel = 10**9
+
+def dfs(current_loc: str,
+        current_time: int,
+        remaining: List[PersonName],
+        itinerary: List[ItineraryEntry],
+        total_travel: int):
+    global best_itinerary, best_count, best_finish_time, best_total_travel
+
+    # Update best if current is better (number of meetings)
+    if len(itinerary) > 0:
+        finish_time = itinerary[-1][4]
+    else:
+        finish_time = current_time
+
+    current_count = sum(1 for e in itinerary if e[0] == "meet")
+
+    improved = False
+    if current_count > best_count:
+        improved = True
+    elif current_count == best_count:
+        # tie-breaker: earliest finish time; then minimal total travel
+        if finish_time < best_finish_time:
+            improved = True
+        elif finish_time == best_finish_time and total_travel < best_total_travel:
+            improved = True
+
+    if improved:
+        best_itinerary = list(itinerary)
+        best_count = current_count
+        best_finish_time = finish_time
+        best_total_travel = total_travel
+
+    # Upper bound: even if we met everyone remaining, could we surpass best?
+    if current_count + len(remaining) <= best_count:
+        return
+
+    # Explore next meetings
+    for name in remaining:
+        p = people[name]
+        if current_loc not in travel or p.location not in travel[current_loc]:
+            continue  # no path known
+        move = travel[current_loc][p.location]
+        arrival = current_time + move
+        start_meet = max(arrival, p.window_start)
+        end_meet = start_meet + p.min_duration
+        if end_meet <= p.window_end:
+            new_remaining = [x for x in remaining if x != name]
+            itinerary.append(("meet", p.location, p.name, start_meet, end_meet))
+            dfs(p.location, end_meet, new_remaining, itinerary, total_travel + move)
+            itinerary.pop()
+
+# Begin search with heuristic ordering
+dfs(start_location, start_time, person_order, [], 0)
+
+# Build output JSON
+output = {
+    "itinerary": [
+        {
+            "action": action,
+            "location": location,
+            "person": person,
+            "start_time": fmt(start),
+            "end_time": fmt(end),
+        }
+        for (action, location, person, start, end) in best_itinerary
+    ]
+}
+
+print(json.dumps(output, ensure_ascii=False, indent=2))

@@ -1,268 +1,229 @@
 import json
-from itertools import combinations
-from functools import lru_cache
+from copy import deepcopy
 
-# Helper functions
-def parse_time_12h(tstr):
-    # Expects formats like '8:45PM' or '10:00AM'
-    tstr = tstr.strip().upper()
-    if tstr.endswith('AM'):
-        ampm = 'AM'
-        core = tstr[:-2]
-    elif tstr.endswith('PM'):
-        ampm = 'PM'
-        core = tstr[:-2]
-    else:
-        raise ValueError(f"Invalid time: {tstr}")
-    core = core.strip()
-    if ':' in core:
-        h_str, m_str = core.split(':')
-    else:
-        h_str, m_str = core, '0'
-    h = int(h_str)
-    m = int(m_str)
-    if ampm == 'AM':
-        if h == 12:
-            h = 0
-    else:
-        if h != 12:
-            h += 12
-    return h * 60 + m
+def to_minutes(tstr):
+    h, m = tstr.split(":")
+    return int(h) * 60 + int(m)
 
-def format_time_24h(minutes):
+def fmt_time(minutes):
     h = minutes // 60
     m = minutes % 60
     return f"{h}:{m:02d}"
 
-# Build directed travel time map (in minutes)
-locations = [
-    "Sunset District",
-    "Russian Hill",
-    "The Castro",
-    "Richmond District",
-    "Marina District",
-    "North Beach",
-    "Union Square",
-    "Golden Gate Park",
-]
+# Input variables
+start_location = "Sunset District"
+start_time_str = "9:00"
 
-travel_list = [
-    ("Sunset District","Russian Hill",24),
-    ("Sunset District","The Castro",17),
-    ("Sunset District","Richmond District",12),
-    ("Sunset District","Marina District",21),
-    ("Sunset District","North Beach",29),
-    ("Sunset District","Union Square",30),
-    ("Sunset District","Golden Gate Park",11),
-
-    ("Russian Hill","Sunset District",23),
-    ("Russian Hill","The Castro",21),
-    ("Russian Hill","Richmond District",14),
-    ("Russian Hill","Marina District",7),
-    ("Russian Hill","North Beach",5),
-    ("Russian Hill","Union Square",11),
-    ("Russian Hill","Golden Gate Park",21),
-
-    ("The Castro","Sunset District",17),
-    ("The Castro","Russian Hill",18),
-    ("The Castro","Richmond District",16),
-    ("The Castro","Marina District",21),
-    ("The Castro","North Beach",20),
-    ("The Castro","Union Square",19),
-    ("The Castro","Golden Gate Park",11),
-
-    ("Richmond District","Sunset District",11),
-    ("Richmond District","Russian Hill",13),
-    ("Richmond District","The Castro",16),
-    ("Richmond District","Marina District",9),
-    ("Richmond District","North Beach",17),
-    ("Richmond District","Union Square",21),
-    ("Richmond District","Golden Gate Park",9),
-
-    ("Marina District","Sunset District",19),
-    ("Marina District","Russian Hill",8),
-    ("Marina District","The Castro",22),
-    ("Marina District","Richmond District",11),
-    ("Marina District","North Beach",11),
-    ("Marina District","Union Square",16),
-    ("Marina District","Golden Gate Park",18),
-
-    ("North Beach","Sunset District",27),
-    ("North Beach","Russian Hill",4),
-    ("North Beach","The Castro",22),
-    ("North Beach","Richmond District",18),
-    ("North Beach","Marina District",9),
-    ("North Beach","Union Square",7),
-    ("North Beach","Golden Gate Park",22),
-
-    ("Union Square","Sunset District",26),
-    ("Union Square","Russian Hill",13),
-    ("Union Square","The Castro",19),
-    ("Union Square","Richmond District",20),
-    ("Union Square","Marina District",18),
-    ("Union Square","North Beach",10),
-    ("Union Square","Golden Gate Park",22),
-
-    ("Golden Gate Park","Sunset District",10),
-    ("Golden Gate Park","Russian Hill",19),
-    ("Golden Gate Park","The Castro",13),
-    ("Golden Gate Park","Richmond District",7),
-    ("Golden Gate Park","Marina District",16),
-    ("Golden Gate Park","North Beach",24),
-    ("Golden Gate Park","Union Square",22),
-]
-
-travel = {frm: {} for frm in locations}
-for frm, to, mins in travel_list:
-    travel[frm][to] = mins
-for loc in locations:
-    travel[loc][loc] = 0  # zero to stay in place
-
-def get_travel(a, b):
-    return travel.get(a, {}).get(b, None)
-
-# Meeting constraints
 people = {
     "Karen": {
         "location": "Russian Hill",
-        "start": parse_time_12h("8:45PM"),
-        "end": parse_time_12h("9:45PM"),
-        "min_dur": 60,
+        "start": "20:45",
+        "end": "21:45",
+        "min_duration": 60
     },
     "Jessica": {
         "location": "The Castro",
-        "start": parse_time_12h("3:45PM"),
-        "end": parse_time_12h("7:30PM"),
-        "min_dur": 60,
+        "start": "15:45",
+        "end": "19:30",
+        "min_duration": 60
     },
     "Matthew": {
         "location": "Richmond District",
-        "start": parse_time_12h("7:30AM"),
-        "end": parse_time_12h("3:15PM"),
-        "min_dur": 15,
+        "start": "7:30",
+        "end": "15:15",
+        "min_duration": 15
     },
     "Michelle": {
         "location": "Marina District",
-        "start": parse_time_12h("10:30AM"),
-        "end": parse_time_12h("6:45PM"),
-        "min_dur": 75,
+        "start": "10:30",
+        "end": "18:45",
+        "min_duration": 75
     },
     "Carol": {
         "location": "North Beach",
-        "start": parse_time_12h("12:00PM"),
-        "end": parse_time_12h("5:00PM"),
-        "min_dur": 90,
+        "start": "12:00",
+        "end": "17:00",
+        "min_duration": 90
     },
     "Stephanie": {
         "location": "Union Square",
-        "start": parse_time_12h("10:45AM"),
-        "end": parse_time_12h("2:15PM"),
-        "min_dur": 30,
+        "start": "10:45",
+        "end": "14:15",
+        "min_duration": 30
     },
     "Linda": {
         "location": "Golden Gate Park",
-        "start": parse_time_12h("10:45AM"),
-        "end": parse_time_12h("10:00PM"),
-        "min_dur": 90,
-    },
+        "start": "10:45",
+        "end": "22:00",
+        "min_duration": 90
+    }
 }
 
-start_location = "Sunset District"
-start_time = parse_time_12h("9:00AM")
+# Travel times (in minutes)
+travel_times = {
+    "Sunset District": {
+        "Russian Hill": 24,
+        "The Castro": 17,
+        "Richmond District": 12,
+        "Marina District": 21,
+        "North Beach": 29,
+        "Union Square": 30,
+        "Golden Gate Park": 11
+    },
+    "Russian Hill": {
+        "Sunset District": 23,
+        "The Castro": 21,
+        "Richmond District": 14,
+        "Marina District": 7,
+        "North Beach": 5,
+        "Union Square": 11,
+        "Golden Gate Park": 21
+    },
+    "The Castro": {
+        "Sunset District": 17,
+        "Russian Hill": 18,
+        "Richmond District": 16,
+        "Marina District": 21,
+        "North Beach": 20,
+        "Union Square": 19,
+        "Golden Gate Park": 11
+    },
+    "Richmond District": {
+        "Sunset District": 11,
+        "Russian Hill": 13,
+        "The Castro": 16,
+        "Marina District": 9,
+        "North Beach": 17,
+        "Union Square": 21,
+        "Golden Gate Park": 9
+    },
+    "Marina District": {
+        "Sunset District": 19,
+        "Russian Hill": 8,
+        "The Castro": 22,
+        "Richmond District": 11,
+        "North Beach": 11,
+        "Union Square": 16,
+        "Golden Gate Park": 18
+    },
+    "North Beach": {
+        "Sunset District": 27,
+        "Russian Hill": 4,
+        "The Castro": 22,
+        "Richmond District": 18,
+        "Marina District": 9,
+        "Union Square": 7,
+        "Golden Gate Park": 22
+    },
+    "Union Square": {
+        "Sunset District": 26,
+        "Russian Hill": 13,
+        "The Castro": 19,
+        "Richmond District": 20,
+        "Marina District": 18,
+        "North Beach": 10,
+        "Golden Gate Park": 22
+    },
+    "Golden Gate Park": {
+        "Sunset District": 10,
+        "Russian Hill": 19,
+        "The Castro": 13,
+        "Richmond District": 7,
+        "Marina District": 16,
+        "North Beach": 24,
+        "Union Square": 22
+    }
+}
 
-names = list(people.keys())
+# Ensure zero travel time to same location
+for loc in list(travel_times.keys()):
+    travel_times[loc][loc] = 0
 
-# Depth-first search to maximize number of meetings
+# Preprocess people time windows to minutes
+people_minutes = {}
+for name, info in people.items():
+    people_minutes[name] = {
+        "location": info["location"],
+        "start": to_minutes(info["start"]),
+        "end": to_minutes(info["end"]),
+        "min_duration": info["min_duration"]
+    }
+
+start_time = to_minutes(start_time_str)
+
+# DFS search to maximize number of meetings.
+names = list(people_minutes.keys())
+
 best_solution = {
     "count": 0,
-    "end_time": None,
-    "total_wait": None,
-    "total_travel": None,
-    "itinerary": None,
+    "finish_time": start_time,
+    "itinerary": []
 }
 
-def better(sol_a, sol_b):
-    # Returns True if sol_a is better than sol_b
-    if sol_b is None:
-        return True
-    if sol_a["count"] != sol_b["count"]:
-        return sol_a["count"] > sol_b["count"]
-    # tie-breaker: earliest end time
-    if sol_a["end_time"] != sol_b["end_time"]:
-        return sol_a["end_time"] < sol_b["end_time"]
-    # next: minimal total waiting
-    if sol_a["total_wait"] != sol_b["total_wait"]:
-        return sol_a["total_wait"] < sol_b["total_wait"]
-    # next: minimal travel time
-    if sol_a["total_travel"] != sol_b["total_travel"]:
-        return sol_a["total_travel"] < sol_b["total_travel"]
-    # else arbitrary tie
-    return False
+# Simple memoization for pruning: (loc, time_rounded, met_bitmask) -> best count achieved
+from functools import lru_cache
 
-def dfs(current_loc, current_time, remaining, itinerary, count, total_travel, total_wait):
+name_to_index = {n: i for i, n in enumerate(names)}
+
+def can_meet_from(state_loc, state_time, person_name):
+    p = people_minutes[person_name]
+    loc = p["location"]
+    travel = travel_times[state_loc][loc]
+    arrival = state_time + travel
+    earliest_start = max(arrival, p["start"])
+    end_time = earliest_start + p["min_duration"]
+    feasible = end_time <= p["end"]
+    return feasible, earliest_start, end_time, loc
+
+def dfs(current_loc, current_time, met_mask, itinerary):
     global best_solution
-    # Update best with current itinerary (even if we can continue, current prefix is a valid solution)
-    current_solution = {
-        "count": count,
-        "end_time": current_time,
-        "total_wait": total_wait,
-        "total_travel": total_travel,
-        "itinerary": itinerary[:],
-    }
-    if better(current_solution, best_solution):
-        best_solution = current_solution
+    met_count = bin(met_mask).count("1")
 
-    # Prune if even meeting everyone remaining can't beat best
-    if count + len(remaining) < best_solution["count"]:
+    # Update best if improved
+    if met_count > best_solution["count"] or (met_count == best_solution["count"] and current_time < best_solution["finish_time"]):
+        best_solution = {
+            "count": met_count,
+            "finish_time": current_time,
+            "itinerary": deepcopy(itinerary)
+        }
+        # Early exit if we met everyone
+        if best_solution["count"] == len(names):
+            return
+
+    # Upper bound pruning
+    remaining = len(names) - met_count
+    if met_count + remaining <= best_solution["count"]:
         return
 
-    # Try each remaining person next
-    for name in list(remaining):
-        info = people[name]
-        to_loc = info["location"]
-        t_travel = get_travel(current_loc, to_loc)
-        if t_travel is None:
-            continue  # no path given (shouldn't happen)
-        arrival = current_time + t_travel
-        # Can wait until availability
-        meeting_start = max(arrival, info["start"])
-        meeting_end = meeting_start + info["min_dur"]
-        if meeting_end > info["end"]:
-            continue  # infeasible
-        wait_time = max(0, info["start"] - arrival)
-        # Recurse
-        remaining_next = set(remaining)
-        remaining_next.remove(name)
-        itinerary_next = itinerary + [{
+    # Order candidates by earliest window end to bias toward tighter windows
+    candidates = []
+    for i, name in enumerate(names):
+        if not (met_mask & (1 << i)):
+            feasible, earliest_start, end_time, loc = can_meet_from(current_loc, current_time, name)
+            if feasible:
+                candidates.append((people_minutes[name]["end"], earliest_start, name, end_time, loc))
+    # Sort by end time, then by earliest start
+    candidates.sort()
+
+    for _, earliest_start, name, end_time, loc in candidates:
+        i = name_to_index[name]
+        # Recurse with meeting scheduled at min duration
+        itinerary.append({
             "action": "meet",
-            "location": to_loc,
+            "location": loc,
             "person": name,
-            "start": meeting_start,
-            "end": meeting_end,
-        }]
-        dfs(
-            to_loc,
-            meeting_end,
-            remaining_next,
-            itinerary_next,
-            count + 1,
-            total_travel + t_travel,
-            total_wait + wait_time
-        )
+            "start_time": fmt_time(earliest_start),
+            "end_time": fmt_time(end_time)
+        })
+        dfs(loc, end_time, met_mask | (1 << i), itinerary)
+        itinerary.pop()
 
-# Start DFS
-dfs(start_location, start_time, set(names), [], 0, 0, 0)
+# Start search
+dfs(start_location, start_time, 0, [])
 
-# Prepare output JSON
-output_itinerary = []
-for item in best_solution["itinerary"]:
-    output_itinerary.append({
-        "action": "meet",
-        "location": item["location"],
-        "person": item["person"],
-        "start_time": format_time_24h(item["start"]),
-        "end_time": format_time_24h(item["end"]),
-    })
+# Build output
+output = {
+    "itinerary": best_solution["itinerary"]
+}
 
-result = {"itinerary": output_itinerary}
-print(json.dumps(result, ensure_ascii=False))
+print(json.dumps(output, ensure_ascii=False))

@@ -1,113 +1,122 @@
-import itertools
 import json
 
-# Input variables
-total_days = 10
-cities = ["Mykonos", "Vienna", "Venice"]
-city_days_required = {
-    "Venice": 6,
-    "Mykonos": 2,
-    "Vienna": 4,
-}
-# Mandatory presence intervals (inclusive) per city
-mandatory_city_intervals = {
-    "Venice": (5, 10)  # must be in Venice on days 5 through 10 inclusive
-}
-# Direct flights (undirected)
-direct_flights = [
-    ("Mykonos", "Vienna"),
-    ("Vienna", "Venice"),
-]
+def build_adjacency(direct_flights):
+    adj = {}
+    for a, neighbors in direct_flights.items():
+        adj.setdefault(a, set())
+        for b in neighbors:
+            adj[a].add(b)
+            adj.setdefault(b, set()).add(a)
+    return adj
 
-# Build adjacency for direct flights
-adj = {}
-for a, b in direct_flights:
-    adj.setdefault(a, set()).add(b)
-    adj.setdefault(b, set()).add(a)
+def count_days_from_segments(segments):
+    # segments: list of tuples (start_day, end_day, city)
+    counts = {}
+    for s, e, city in segments:
+        counts[city] = counts.get(city, 0) + (e - s + 1)
+    return counts
 
-# Helper: check if an ordering of cities is a valid path using only direct flights
-def is_valid_path(order):
-    for i in range(len(order) - 1):
-        if order[i+1] not in adj.get(order[i], set()):
-            return False
-    return True
+def unique_days_covered(segments):
+    covered = set()
+    for s, e, _ in segments:
+        covered.update(range(s, e + 1))
+    return covered
 
-# Helper: compute day ranges for a 3-city path, honoring overlaps on flight days
-def compute_day_ranges(order):
-    # Let the day ranges be:
-    # City1: [1, d12]
-    # City2: [d12, d23]
-    # City3: [d23, total_days]
-    d1 = city_days_required[order[0]]
-    d2 = city_days_required[order[1]]
-    d3 = city_days_required[order[2]]
+def find_itinerary(total_days, required_days, workshop_city, workshop_window, direct_flights):
+    adj = build_adjacency(direct_flights)
+    if workshop_city not in required_days:
+        raise ValueError("Workshop city must be in required_days.")
 
-    # The overlaps imply:
-    # d12 = d1
-    # d23 = total_days - d3 + 1
-    d12 = d1
-    d23 = total_days - d3 + 1
+    # Determine feasible Venice segment starts that cover the workshop window and fit in total_days
+    K = required_days[workshop_city]
+    w_start, w_end = workshop_window
+    window_len = w_end - w_start + 1
+    if K < window_len:
+        raise ValueError("Required days in workshop city are fewer than workshop window length; impossible.")
 
-    # Durations check for middle city:
-    calc_d2 = d23 - d12 + 1
-    if calc_d2 != d2:
-        return None
+    start_min = max(1, w_end - K + 1)  # earliest possible start that still covers workshop end
+    start_max = min(w_start, total_days - K + 1)  # latest possible start that still fits and covers workshop start
 
-    # Ensure valid chronological ordering
-    if not (1 <= d12 <= d23 <= total_days):
-        return None
+    candidates = []
+    for ven_start in range(start_min, start_max + 1):
+        ven_end = ven_start + K - 1
+        # We prefer itineraries that exactly end on total_days (cover the whole trip cleanly)
+        ends_on_total = (ven_end == total_days)
+        candidates.append((not ends_on_total, ven_start, ven_end))  # not ends_on_total so True sorts after False
 
-    ranges = {
-        order[0]: (1, d12),
-        order[1]: (d12, d23),
-        order[2]: (d23, total_days),
+    # Sort to prefer those that end exactly on total_days, then earlier starts
+    candidates.sort()
+
+    for _, ven_start, ven_end in candidates:
+        # C3 is workshop_city (Venice)
+        C3 = workshop_city
+        # C2 must be a neighbor of Venice
+        for C2 in adj.get(C3, []):
+            if C2 not in required_days:
+                continue
+            # C1 must be a neighbor of C2 and distinct from Venice
+            for C1 in adj.get(C2, []):
+                if C1 == C3 or C1 not in required_days:
+                    continue
+                # Flight days (overlap days)
+                d23 = ven_start  # C2 -> C3 on ven_start day
+                # For exact required days, the following must hold:
+                # len(C1) = d12
+                # len(C2) = d23 - d12 + 1
+                # len(C3) = K
+                # unique days = sum(len(ci)) - number_of_flights (2) must equal total_days
+                d12 = required_days[C1]
+                if not (1 <= d12 <= d23):
+                    continue
+                if required_days[C2] != d23 - d12 + 1:
+                    continue
+                unique = required_days[C1] + required_days[C2] + required_days[C3] - 2
+                if unique != total_days:
+                    continue
+                # Validate direct flights for the path C1->C2->C3
+                if C2 not in adj.get(C1, set()):
+                    continue
+                if C3 not in adj.get(C2, set()):
+                    continue
+                # Build segments
+                segments = [
+                    (1, d12, C1),
+                    (d12, d23, C2),
+                    (d23, ven_end, C3),
+                ]
+                # Validate counts exactly
+                counts = count_days_from_segments(segments)
+                valid_counts = all(counts.get(city, 0) == req for city, req in required_days.items())
+                if not valid_counts:
+                    continue
+                # Validate days covered are exactly 1..total_days
+                covered = unique_days_covered(segments)
+                if covered != set(range(1, total_days + 1)):
+                    continue
+                # Found a valid itinerary
+                itinerary = []
+                for s, e, city in sorted(segments, key=lambda x: x[0]):
+                    itinerary.append({"day_range": f"Day {s}-{e}", "place": city})
+                return {"itinerary": itinerary}
+
+    raise ValueError("No valid itinerary could be found with the given constraints.")
+
+if __name__ == "__main__":
+    # Input variables (constraints)
+    total_days = 10
+    required_days = {
+        "Venice": 6,
+        "Mykonos": 2,
+        "Vienna": 4
+    }
+    workshop_city = "Venice"
+    workshop_window = (5, 10)  # inclusive
+
+    direct_flights = {
+        "Mykonos": ["Vienna"],
+        "Vienna": ["Mykonos", "Venice"],
+        "Venice": ["Vienna"]
     }
 
-    # Check mandatory intervals are fully covered by the assigned city ranges
-    for city, (start_req, end_req) in mandatory_city_intervals.items():
-        if city not in ranges:
-            return None
-        start_city, end_city = ranges[city]
-        if not (start_city <= start_req and end_city >= end_req):
-            return None
-
-    # Confirm exact day counts
-    for city in order:
-        s, e = ranges[city]
-        if e - s + 1 != city_days_required[city]:
-            return None
-
-    # Return as ordered list
-    return [(order[0], ranges[order[0]]),
-            (order[1], ranges[order[1]]),
-            (order[2], ranges[order[2]])]
-
-# Validate feasibility via total days sum rule: sum(city_days) must equal total_days + number_of_flights
-if sum(city_days_required[c] for c in cities) != total_days + (len(cities) - 1):
-    result = {"itinerary": []}
-else:
-    candidates = []
-    for order in itertools.permutations(cities):
-        if not is_valid_path(order):
-            continue
-        plan = compute_day_ranges(order)
-        if plan:
-            candidates.append(plan)
-
-    # Choose an optimal plan: prefer the one whose Venice start aligns best with its mandatory interval start
-    def score(plan):
-        ven_range = next(r for c, r in plan if c == "Venice")
-        ven_start = ven_range[0]
-        mandatory_start = mandatory_city_intervals["Venice"][0]
-        # Secondary tie-breaker: earlier cumulative flight days
-        flight_days_sum = plan[0][1][1] + plan[1][1][1]
-        return (abs(ven_start - mandatory_start), flight_days_sum)
-
-    if not candidates:
-        result = {"itinerary": []}
-    else:
-        best_plan = min(candidates, key=score)
-        itinerary = [{"day_range": f"Day {s}-{e}", "place": city} for city, (s, e) in best_plan]
-        result = {"itinerary": itinerary}
-
-print(json.dumps(result, ensure_ascii=False))
+    result = find_itinerary(total_days, required_days, workshop_city, workshop_window, direct_flights)
+    print(json.dumps(result, ensure_ascii=False))

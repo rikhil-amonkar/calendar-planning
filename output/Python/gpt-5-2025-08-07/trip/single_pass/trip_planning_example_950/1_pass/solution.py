@@ -1,5 +1,8 @@
+import json
+import itertools
+
 def main():
-    # Input variables (trip constraints)
+    # Trip constraints
     total_days = 17
     cities = ["Rome", "Mykonos", "Nice", "Riga", "Bucharest", "Munich", "Krakow"]
     durations = {
@@ -11,72 +14,130 @@ def main():
         "Nice": 3,
         "Krakow": 2,
     }
-    # Event constraints
-    must_include = {
-        "Rome": {1, 4},      # Conference on Day 1 and Day 4 in Rome
-    }
-    exact_block = {
-        "Mykonos": (4, 6),   # Wedding in Mykonos Days 4-6; and 3 days total there
-        "Krakow": (16, 17),  # Annual show Days 16-17; and 2 days total there
+    # Required presence constraints (inclusive days)
+    required_days = {
+        "Rome": {1, 4},
+        "Mykonos": {4, 5, 6},
+        "Krakow": {16, 17},
     }
 
-    adjacency = build_adjacency()
+    # Direct flights: "A and B" are bidirectional; "from A to B" are directed A->B
+    bidirectional_pairs = [
+        ("Nice", "Riga"),
+        ("Bucharest", "Munich"),
+        ("Mykonos", "Munich"),
+        ("Riga", "Bucharest"),
+        ("Rome", "Nice"),
+        ("Rome", "Munich"),
+        ("Mykonos", "Nice"),
+        ("Rome", "Mykonos"),
+        ("Munich", "Krakow"),
+        ("Rome", "Bucharest"),
+        ("Nice", "Munich"),
+    ]
+    directed_pairs = [
+        ("Riga", "Munich"),
+        ("Rome", "Riga"),
+    ]
 
-    # We will search for an order that:
-    # - Starts with Rome (to include Day 1)
-    # - Has Mykonos as second city (to start at Day 4 when Rome ends on Day 4)
-    # - Ends with Krakow (to include Days 16-17)
-    # - Uses only direct flights
-    # - Satisfies all day constraints via contiguous blocks with overlaps on flight days
+    # Build adjacency (directed)
+    adj = {c: set() for c in cities}
+    for a, b in bidirectional_pairs:
+        adj[a].add(b)
+        adj[b].add(a)
+    for a, b in directed_pairs:
+        adj[a].add(b)
 
-    start_city = "Rome"
-    end_city = "Krakow"
-    must_be_second = "Mykonos"
+    # Basic feasibility checks
+    if set(durations.keys()) != set(cities):
+        raise ValueError("Durations must be provided for all cities.")
+    sum_city_days = sum(durations.values())
+    # To satisfy total days with overlaps, we need exactly (sum_city_days - total_days) flight days
+    required_flights = sum_city_days - total_days
+    if required_flights < 0:
+        raise ValueError("Impossible: city-day requirements are less than total trip days.")
+    # With N cities, visiting each once in sequence means (N-1) flights.
+    if required_flights != (len(cities) - 1):
+        raise ValueError("Impossible: required overlaps (flight days) don't match number of city transitions.")
 
-    remaining_cities = [c for c in cities if c not in {start_city, end_city}]
-    if must_be_second in remaining_cities:
-        remaining_cities.remove(must_be_second)
+    # We must place:
+    # - Rome first with Day 1 and Day 4 included (duration 4) -> fixed at Day 1-4
+    # - Mykonos next to overlap on Day 4, and must be 3 days -> fixed to Day 4-6
+    # - Krakow must be last and include Days 16-17 (duration 2) -> will be last by construction
+    # Additionally, because only Munich has a direct flight to Krakow, Munich must be the city before Krakow.
+    first = "Rome"
+    second = "Mykonos"
+    last = "Krakow"
+    penultimate = "Munich"
 
-    found_schedule = None
+    middle_candidates = [c for c in cities if c not in {first, second, penultimate, last}]
 
-    # We fix: [Rome] + [Mykonos] + perm(remaining_without_munich) + [Munich] + [Krakow]
-    # because Krakow only connects from Munich and we need Krakow at the end.
-    # So ensure Munich is just before Krakow.
-    middle_fixed_end = "Munich"
-    if middle_fixed_end in remaining_cities:
-        remaining_cities.remove(middle_fixed_end)
+    def valid_path(order):
+        # Check all consecutive legs are direct flights
+        for a, b in zip(order[:-1], order[1:]):
+            if b not in adj.get(a, set()):
+                return False
+        return True
 
-    for perm in permutations(remaining_cities):  # permutes Nice, Riga, Bucharest
-        order = [start_city, must_be_second] + list(perm) + [middle_fixed_end, end_city]
+    def compute_day_ranges(order, durations):
+        # Overlap exactly one day between consecutive cities
+        # City 1: Day 1..d1
+        ranges = {}
+        start = 1
+        for i, city in enumerate(order):
+            end = start + durations[city] - 1
+            ranges[city] = (start, end)
+            # Next city will overlap the 'end' day
+            start = end
+        return ranges
 
-        # Quick adjacency feasibility check
-        feasible_edges = True
-        for i in range(len(order) - 1):
-            a, b = order[i], order[i + 1]
-            if b not in adjacency.get(a, set()):
-                feasible_edges = False
-                break
-        if not feasible_edges:
+    def days_in_range(r):
+        s, e = r
+        return set(range(s, e + 1))
+
+    solution_order = None
+    solution_ranges = None
+
+    # Search feasible permutations for the 3 middle cities
+    for perm in itertools.permutations(middle_candidates):
+        order = [first, second] + list(perm) + [penultimate, last]
+        # 1) Flight feasibility
+        if not valid_path(order):
             continue
-
-        schedule = compute_schedule(order, durations, start_day=1)
-
-        constraints = {
-            "total_days": total_days,
-            "must_include": must_include,
-            "exact_block": exact_block,
-        }
-        if validate_schedule(schedule, adjacency, constraints):
-            found_schedule = schedule
+        # 2) Compute day ranges based on required overlaps
+        ranges = compute_day_ranges(order, durations)
+        # 3) End day must be total_days (by construction it should be)
+        if ranges[last][1] != total_days:
+            continue
+        # 4) Check required day presence for specified cities
+        ok = True
+        for city, req_days in required_days.items():
+            city_days = days_in_range(ranges[city])
+            if not req_days.issubset(city_days):
+                ok = False
+                break
+        # 5) Ensure Munich is penultimate and direct to Krakow (already in order and adjacency check)
+        if order[-2] != penultimate:
+            ok = False
+        # 6) Ensure conference/wedding/show alignment (already encoded in required_days)
+        if ok:
+            solution_order = order
+            solution_ranges = ranges
             break
 
-    if not found_schedule:
-        raise RuntimeError("No valid itinerary found under given constraints.")
+    if not solution_order:
+        raise RuntimeError("No feasible itinerary found under given constraints.")
 
-    # Build the JSON output
+    # Produce itinerary JSON
     itinerary = []
-    for city, start, end in found_schedule:
-        itinerary.append({"day_range": f"Day {start}-{end}", "place": city})
+    for city in solution_order:
+        s, e = solution_ranges[city]
+        itinerary.append({
+            "day_range": f"Day {s}-{e}",
+            "place": city
+        })
 
-    output = {"itinerary": itinerary}
-    print(json.dumps(output))
+    print(json.dumps({"itinerary": itinerary}, ensure_ascii=False))
+
+if __name__ == "__main__":
+    main()

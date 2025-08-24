@@ -411,6 +411,7 @@ Examples:
             "\n"
             "Output only the complete Python code with no additional text or explanation.\n"
             "The code must run independently and output valid JSON when executed."
+            "The script should be clean, well-formatted, and enclosed within ```python and ```. "
         )
 
     @property
@@ -435,6 +436,7 @@ Examples:
             "- Actual calculations to determine durations and transitions\n"
             "Output only the complete Python code with no additional text or explanation.\n"
             "The code must run independently and output valid JSON when executed."
+            "The script should be clean, well-formatted, and enclosed within ```python and ```. "
         )
 
     # ZebraLogic Prompt Info Below (New Addition)
@@ -472,6 +474,7 @@ Examples:
             "\n"
             "Output only the complete Python code with no additional text or explanation.\n"
             "The code must run independently and output valid JSON when executed."
+            "The script should be clean, well-formatted, and enclosed within ```python and ```. "
         )
     
     def remove_leading_zeros(self, time_str):
@@ -1352,7 +1355,7 @@ Examples:
 
     def save_output_files(self, task, example_id, pass_num, conversation, code, output, evaluation):
         """Save all output files for a given pass"""
-        output_dir = f"../output/Python/Qwen3-32B/{task}/single_pass/{example_id}/{pass_num}_pass"
+        output_dir = f"../output/Python/gpt-5-2025-08-07/{task}/single_pass/{example_id}/{pass_num}_pass"
         os.makedirs(output_dir, exist_ok=True)
         
         # Save conversation
@@ -1389,7 +1392,11 @@ Examples:
             
             # Get initial prompt
             golden_plan = constraints.get("golden_plan", {})
-            golden_headers = golden_plan.get("header", [])
+            if task == "zebralogic":
+                golden_headers = golden_plan.get("header", [])
+            else:
+                # For other tasks like meeting, calendar, trip that don't use headers
+                golden_headers = []            
             header_placeholder = json.dumps(golden_headers)
 
             # Replace the placeholder with actual headers

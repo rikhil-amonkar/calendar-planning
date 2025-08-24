@@ -1,179 +1,178 @@
-import itertools, json
+# SOLUTION:
+import json
+import itertools
 
-def to_minutes(t):
-    # t like '9:00', '11:45', '21:30'
-    h, m = map(int, t.split(":"))
+# Time helper functions
+def to_minutes(h, m):
     return h * 60 + m
 
-def fmt_time(m):
-    return f"{m//60}:{m%60:02d}"
+def fmt_time(minutes):
+    h = minutes // 60
+    m = minutes % 60
+    return f"{h}:{m:02d}"
 
-# Input data
+# Input parameters
+
 start_location = "Union Square"
-arrival_time = to_minutes("9:00")
+start_time = to_minutes(9, 0)
 
-# Travel times (minutes)
 travel = {
     "Union Square": {
         "Golden Gate Park": 22,
         "Pacific Heights": 15,
         "Presidio": 24,
         "Chinatown": 7,
-        "The Castro": 19,
+        "The Castro": 19
     },
     "Golden Gate Park": {
         "Union Square": 22,
         "Pacific Heights": 16,
         "Presidio": 11,
         "Chinatown": 23,
-        "The Castro": 13,
+        "The Castro": 13
     },
     "Pacific Heights": {
         "Union Square": 12,
         "Golden Gate Park": 15,
         "Presidio": 11,
         "Chinatown": 11,
-        "The Castro": 16,
+        "The Castro": 16
     },
     "Presidio": {
         "Union Square": 22,
         "Golden Gate Park": 12,
         "Pacific Heights": 11,
         "Chinatown": 21,
-        "The Castro": 21,
+        "The Castro": 21
     },
     "Chinatown": {
         "Union Square": 7,
         "Golden Gate Park": 23,
         "Pacific Heights": 10,
         "Presidio": 19,
-        "The Castro": 22,
+        "The Castro": 22
     },
     "The Castro": {
         "Union Square": 19,
         "Golden Gate Park": 11,
         "Pacific Heights": 16,
         "Presidio": 20,
-        "Chinatown": 20,
-    },
+        "Chinatown": 20
+    }
 }
 
-# Friends constraints
-people = {
+friends = {
     "Andrew": {
         "location": "Golden Gate Park",
-        "start": to_minutes("11:45"),
-        "end": to_minutes("14:30"),
-        "min": 75,
+        "start": to_minutes(11, 45),
+        "end": to_minutes(14, 30),
+        "min": 75
     },
     "Sarah": {
         "location": "Pacific Heights",
-        "start": to_minutes("16:15"),
-        "end": to_minutes("18:45"),
-        "min": 15,
+        "start": to_minutes(16, 15),
+        "end": to_minutes(18, 45),
+        "min": 15
     },
     "Nancy": {
         "location": "Presidio",
-        "start": to_minutes("17:30"),
-        "end": to_minutes("19:15"),
-        "min": 60,
+        "start": to_minutes(17, 30),
+        "end": to_minutes(19, 15),
+        "min": 60
     },
     "Rebecca": {
         "location": "Chinatown",
-        "start": to_minutes("9:45"),
-        "end": to_minutes("21:30"),
-        "min": 90,
+        "start": to_minutes(9, 45),
+        "end": to_minutes(21, 30),
+        "min": 90
     },
     "Robert": {
         "location": "The Castro",
-        "start": to_minutes("8:30"),
-        "end": to_minutes("14:15"),
-        "min": 30,
-    },
+        "start": to_minutes(8, 30),
+        "end": to_minutes(14, 15),
+        "min": 30
+    }
 }
 
-names = ["Andrew", "Sarah", "Nancy", "Rebecca", "Robert"]
-
-def evaluate_order(order):
-    # Build minimal feasible schedule for this order
-    curr_loc = start_location
-    curr_time = arrival_time
-    schedule = []
+# Simulation function: tries to meet everyone in the given order
+def simulate(order):
+    current_loc = start_location
+    current_time_local = start_time
+    itinerary = []
     total_travel = 0
+    total_wait = 0
 
     for person in order:
-        loc = people[person]["location"]
-        # travel time
-        t = travel[curr_loc][loc]
-        total_travel += t
-        arrival = curr_time + t
-        start = max(arrival, people[person]["start"])
-        end = start + people[person]["min"]
-        if end > people[person]["end"]:
-            return None  # infeasible
-        schedule.append({
-            "person": person,
-            "location": loc,
-            "start": start,
-            "end": end
-        })
-        curr_loc = loc
-        curr_time = end
+        info = friends[person]
+        loc = info["location"]
 
-    # Greedy extensions to fill waiting gaps without harming feasibility of next meetings
-    for i in range(len(schedule) - 1):
-        a = schedule[i]
-        b = schedule[i + 1]
-        loc_a = people[a["person"]]["location"]
-        loc_b = people[b["person"]]["location"]
-        t_ab = travel[loc_a][loc_b]
-        # If leaving at a["end"], arrival at b is:
-        arrival_next = a["end"] + t_ab
-        earliest_b = max(arrival_next, people[b["person"]]["start"])
-        slack = earliest_b - arrival_next
-        # Extend meeting a by up to slack, bounded by their availability
-        max_ext_a = people[a["person"]]["end"] - a["end"]
-        ext = min(slack, max_ext_a)
-        if ext > 0:
-            a["end"] += ext
-            # start/end of b remain feasible as planned (arrival becomes earliest_b)
+        # Travel time between locations
+        try:
+            ttime = travel[current_loc][loc]
+        except KeyError:
+            return None  # Missing travel time, treat as infeasible
 
-    # Extend final meeting to end of availability to maximize total meeting time
-    if schedule:
-        last = schedule[-1]
-        last["end"] = min(people[last["person"]]["end"], last["end"])
+        arrival = current_time_local + ttime
+        start_mt = max(arrival, info["start"])
+        end_mt = start_mt + info["min"]
 
-    # Compute score components
-    total_meeting = sum(item["end"] - item["start"] for item in schedule)
-    finish_time = schedule[-1]["end"] if schedule else arrival_time
+        if end_mt <= info["end"]:
+            # Record meeting
+            itinerary.append({
+                "action": "meet",
+                "location": loc,
+                "person": person,
+                "start_time": fmt_time(start_mt),
+                "end_time": fmt_time(end_mt)
+            })
+            total_travel += ttime
+            total_wait += max(0, start_mt - arrival)
+            current_loc = loc
+            current_time_local = end_mt
+        else:
+            return None  # Cannot meet this person in this order
 
     return {
-        "schedule": schedule,
-        "score": (len(schedule), total_meeting, -total_travel, -finish_time),
+        "itinerary": itinerary,
+        "finish_time": current_time_local,
         "total_travel": total_travel,
+        "total_wait": total_wait,
+        "total_meeting_time": sum(friends[p]["min"] for p in order),
+        "met_count": len(order),
+        "order": order
     }
 
-best = None
+# Optimization: maximize number of friends met; tie-breakers as described
+friend_names = list(friends.keys())
 
-# Enumerate all subsets and permutations to find optimal
-for r in range(len(names), 0, -1):
-    for order in itertools.permutations(names, r):
-        res = evaluate_order(order)
-        if res is None:
-            continue
-        if best is None or res["score"] > best["score"]:
-            best = res
+best_plan = None
 
-# Prepare output
-itinerary = []
-if best:
-    for item in best["schedule"]:
-        itinerary.append({
-            "action": "meet",
-            "location": item["location"],
-            "person": item["person"],
-            "start_time": fmt_time(item["start"]),
-            "end_time": fmt_time(item["end"]),
-        })
+# Try from meeting all friends down to fewer
+for k in range(len(friend_names), 0, -1):
+    for combo in itertools.combinations(friend_names, k):
+        for perm in itertools.permutations(combo):
+            result = simulate(perm)
+            if result is None:
+                continue
+            # Evaluate with lexicographic score:
+            # (met_count, total_meeting_time, -finish_time, -total_wait, -total_travel)
+            score = (
+                result["met_count"],
+                result["total_meeting_time"],
+                -result["finish_time"],
+                -result["total_wait"],
+                -result["total_travel"]
+            )
+            if best_plan is None or score > best_plan["score"]:
+                best_plan = {
+                    "score": score,
+                    "result": result
+                }
+    if best_plan is not None and best_plan["result"]["met_count"] == k:
+        break  # Found optimal number of meetings; no need to try fewer
 
-print(json.dumps({"itinerary": itinerary}, ensure_ascii=False))
+output = {
+    "itinerary": best_plan["result"]["itinerary"] if best_plan else []
+}
+
+print(json.dumps(output, ensure_ascii=False))

@@ -1,354 +1,403 @@
 import json
-from copy import deepcopy
+import itertools
 
-# Define categories and values
-categories = {
-    "Name": ["Alice", "Peter", "Eric", "Bob", "Arnold", "Carol"],
-    "Cigar": ["pall mall", "yellow monster", "dunhill", "blue master", "prince", "blends"],
-    "Music": ["hip hop", "jazz", "country", "pop", "classical", "rock"],
-    "Drink": ["water", "milk", "boba tea", "tea", "root beer", "coffee"],
-    "Mother": ["Kailyn", "Penny", "Janelle", "Holly", "Sarah", "Aniya"],
-    "Food": ["soup", "pizza", "spaghetti", "stir fry", "stew", "grilled cheese"],
+# Zebra puzzle solver for the given 6-house logic puzzle
+
+houses = list(range(6))  # 0..5 represent houses 1..6
+
+# Categories and their values
+Names = ["Alice", "Peter", "Eric", "Bob", "Arnold", "Carol"]
+Cigars = ["pall mall", "yellow monster", "dunhill", "blue master", "prince", "blends"]
+Music = ["hip hop", "jazz", "country", "pop", "classical", "rock"]
+Drinks = ["water", "milk", "boba tea", "tea", "root beer", "coffee"]
+Mothers = ["Kailyn", "Penny", "Janelle", "Holly", "Sarah", "Aniya"]
+Food = ["soup", "pizza", "spaghetti", "stir fry", "stew", "grilled cheese"]
+
+all_values = {
+    "Name": Names,
+    "Cigar": Cigars,
+    "MusicGenre": Music,
+    "Drink": Drinks,
+    "Mother": Mothers,
+    "Food": Food
 }
 
-houses = set(range(1, 7))  # 1..6
+# Helpers to access positions and values from partial assignments
+def get_pos(assignments, category, value):
+    arr = assignments.get(category)
+    if arr is None:
+        return None
+    try:
+        return arr.index(value)
+    except ValueError:
+        return None
 
-# Initialize domains: for each (category, value) pair, domain is {1..6}
-domains = {}
-for cat, vals in categories.items():
-    for v in vals:
-        domains[(cat, v)] = set(houses)
+def get_value(assignments, category, index):
+    arr = assignments.get(category)
+    if arr is None:
+        return None
+    return arr[index]
 
-# Constraint classes
-class Constraint:
-    def propagate(self, domains):
+def check_directly_left(assignments, catA, valA, catB, valB):
+    posA = get_pos(assignments, catA, valA)
+    posB = get_pos(assignments, catB, valB)
+    # Boundary impossibility if one side known
+    if posA is not None and posA == 5:
         return False
-
-class AllDifferentConstraint(Constraint):
-    def __init__(self, category, values):
-        self.category = category
-        self.values = values
-
-    def propagate(self, domains):
-        changed = False
-        # Singleton pruning: if a value in this category is assigned to a house,
-        # remove that house from other values' domains.
-        singletons = {next(iter(domains[(self.category, v)]))
-                      for v in self.values if len(domains[(self.category, v)]) == 1}
-        for v in self.values:
-            dom = domains[(self.category, v)]
-            if len(dom) == 1:
-                continue
-            before = set(dom)
-            dom.difference_update(singletons)
-            if dom != before:
-                changed = True
-        return changed
-
-class EqualConstraint(Constraint):
-    def __init__(self, a, b):
-        self.a = a  # (cat, val)
-        self.b = b
-
-    def propagate(self, domains):
-        da = domains[self.a]
-        db = domains[self.b]
-        inter = da & db
-        changed = False
-        if inter != da:
-            domains[self.a] = set(inter)
-            changed = True
-        if inter != db:
-            domains[self.b] = set(inter)
-            changed = True
-        return changed
-
-class NotInConstraint(Constraint):
-    def __init__(self, a, house):
-        self.a = a
-        self.house = house
-
-    def propagate(self, domains):
-        dom = domains[self.a]
-        if self.house in dom:
-            dom.remove(self.house)
-            return True
+    if posB is not None and posB == 0:
         return False
-
-class InConstraint(Constraint):
-    def __init__(self, a, house):
-        self.a = a
-        self.house = house
-
-    def propagate(self, domains):
-        dom = domains[self.a]
-        if dom != {self.house}:
-            domains[self.a] = {self.house}
-            return True
-        return False
-
-class NextLeftConstraint(Constraint):
-    # pos(a) = pos(b) - 1
-    def __init__(self, a, b):
-        self.a = a
-        self.b = b
-
-    def propagate(self, domains):
-        da = domains[self.a]
-        db = domains[self.b]
-        changed = False
-
-        # A cannot be in last house; B cannot be in first
-        before = set(da)
-        da.intersection_update(set(h for h in da if h + 1 in db))
-        if da != before:
-            changed = True
-
-        before = set(db)
-        db.intersection_update(set(h for h in db if h - 1 in da))
-        if db != before:
-            changed = True
-
-        # Also ensure bounds
-        if 6 in da:
-            da.remove(6)
-            changed = True
-        if 1 in db:
-            db.remove(1)
-            changed = True
-
-        # Second pass to enforce mutual support
-        before = set(da)
-        da.intersection_update(set(h for h in da if (h + 1) in db))
-        if da != before:
-            changed = True
-
-        before = set(db)
-        db.intersection_update(set(h for h in db if (h - 1) in da))
-        if db != before:
-            changed = True
-
-        return changed
-
-class SomewhereLeftConstraint(Constraint):
-    # pos(a) < pos(b)
-    def __init__(self, a, b):
-        self.a = a
-        self.b = b
-
-    def propagate(self, domains):
-        da = domains[self.a]
-        db = domains[self.b]
-        changed = False
-
-        # For each h in da, there must be some k in db with k>h
-        before = set(da)
-        da.intersection_update(set(h for h in da if any(k > h for k in db)))
-        if da != before:
-            changed = True
-
-        # For each k in db, there must be some h in da with h<k
-        before = set(db)
-        db.intersection_update(set(k for k in db if any(h < k for h in da)))
-        if db != before:
-            changed = True
-
-        return changed
-
-class DistanceConstraint(Constraint):
-    # abs(pos(a) - pos(b)) == dist
-    def __init__(self, a, b, dist):
-        self.a = a
-        self.b = b
-        self.dist = dist
-
-    def propagate(self, domains):
-        da = domains[self.a]
-        db = domains[self.b]
-        d = self.dist
-        changed = False
-
-        before = set(da)
-        da.intersection_update(set(h for h in da if (h + d in db) or (h - d in db)))
-        if da != before:
-            changed = True
-
-        before = set(db)
-        db.intersection_update(set(h for h in db if (h + d in da) or (h - d in da)))
-        if db != before:
-            changed = True
-
-        return changed
-
-# Build constraints list
-constraints = []
-
-# All-different per category
-for cat, vals in categories.items():
-    constraints.append(AllDifferentConstraint(cat, vals))
-
-# Helper functions to get item keys
-def N(name): return ("Name", name)
-def C(cigar): return ("Cigar", cigar)
-def M(music): return ("Music", music)
-def D(drink): return ("Drink", drink)
-def Mo(mother): return ("Mother", mother)
-def F(food): return ("Food", food)
-
-# Apply clues as constraints
-
-# 1. Carol is directly left of the person who loves eating grilled cheese.
-constraints.append(NextLeftConstraint(N("Carol"), F("grilled cheese")))
-
-# 2. Eric is not in the second house.
-constraints.append(NotInConstraint(N("Eric"), 2))
-
-# 3. The person whose mother's name is Holly is somewhere to the right of Carol.
-constraints.append(SomewhereLeftConstraint(N("Carol"), Mo("Holly")))
-
-# 4. The person who loves eating grilled cheese is somewhere to the right of the person who loves rock music.
-constraints.append(SomewhereLeftConstraint(M("rock"), F("grilled cheese")))
-
-# 5. Eric is directly left of Carol.
-constraints.append(NextLeftConstraint(N("Eric"), N("Carol")))
-
-# 6. The person who loves pop music is not in the third house.
-constraints.append(NotInConstraint(M("pop"), 3))
-
-# 7. Eric is the person who loves country music.
-constraints.append(EqualConstraint(N("Eric"), M("country")))
-
-# 8. The person who loves classical music is in the sixth house.
-constraints.append(InConstraint(M("classical"), 6))
-
-# 9. The coffee drinker is Bob.
-constraints.append(EqualConstraint(D("coffee"), N("Bob")))
-
-# 10. The person who smokes many unique blends is Peter.
-constraints.append(EqualConstraint(C("blends"), N("Peter")))
-
-# 11. The person who loves the stew is not in the fifth house.
-constraints.append(NotInConstraint(F("stew"), 5))
-
-# 12. The root beer lover is directly left of The person whose mother's name is Janelle.
-constraints.append(NextLeftConstraint(D("root beer"), Mo("Janelle")))
-
-# 13. There are two houses between The person whose mother's name is Sarah and the person who smokes Yellow Monster.
-constraints.append(DistanceConstraint(Mo("Sarah"), C("yellow monster"), 3))
-
-# 14. Eric is the tea drinker.
-constraints.append(EqualConstraint(N("Eric"), D("tea")))
-
-# 15. The person partial to Pall Mall is somewhere to the right of the person who loves stir fry.
-constraints.append(SomewhereLeftConstraint(F("stir fry"), C("pall mall")))
-
-# 16. The person who loves the soup is Bob.
-constraints.append(EqualConstraint(F("soup"), N("Bob")))
-
-# 17. The person who loves hip-hop music is directly left of The person whose mother's name is Kailyn.
-constraints.append(NextLeftConstraint(M("hip hop"), Mo("Kailyn")))
-
-# 18. Arnold is somewhere to the right of The person whose mother's name is Kailyn.
-constraints.append(SomewhereLeftConstraint(Mo("Kailyn"), N("Arnold")))
-
-# 19. The one who only drinks water is directly left of the person who smokes Blue Master.
-constraints.append(NextLeftConstraint(D("water"), C("blue master")))
-
-# 20. The person who loves the spaghetti eater is somewhere to the left of the person who smokes many unique blends.
-# Interpreted as: spaghetti is somewhere to the left of blends.
-constraints.append(SomewhereLeftConstraint(F("spaghetti"), C("blends")))
-
-# 21. The person whose mother's name is Sarah is directly left of the person who loves jazz music.
-constraints.append(NextLeftConstraint(Mo("Sarah"), M("jazz")))
-
-# 22. The person who loves hip-hop music is directly left of the root beer lover.
-constraints.append(NextLeftConstraint(M("hip hop"), D("root beer")))
-
-# 23. The one who only drinks water is the person who loves the stew.
-constraints.append(EqualConstraint(D("water"), F("stew")))
-
-# 24. The Dunhill smoker is not in the second house.
-constraints.append(NotInConstraint(C("dunhill"), 2))
-
-# 25. The person who likes milk is The person whose mother's name is Janelle.
-constraints.append(EqualConstraint(D("milk"), Mo("Janelle")))
-
-# 26. Eric is The person whose mother's name is Aniya.
-constraints.append(EqualConstraint(N("Eric"), Mo("Aniya")))
-
-# Derived equality from 17 and 22: the house to the right of hip hop has both Mother=Kailyn and Drink=root beer,
-# hence Mother=Kailyn is the root beer drinker.
-constraints.append(EqualConstraint(Mo("Kailyn"), D("root beer")))
-
-# Solver functions
-def propagate_all(domains):
-    changed = True
-    while changed:
-        changed = False
-        for cons in constraints:
-            if cons.propagate(domains):
-                changed = True
-        # Check for empty domains -> early fail
-        for k, dom in domains.items():
-            if len(dom) == 0:
-                return False
+    if posA is not None and posB is not None:
+        return posA + 1 == posB
     return True
 
-def is_solved(domains):
-    return all(len(dom) == 1 for dom in domains.values())
+def check_left_of(assignments, catL, valL, catR, valR):
+    posL = get_pos(assignments, catL, valL)
+    posR = get_pos(assignments, catR, valR)
+    if posL is not None and posL == 5:
+        return False
+    if posR is not None and posR == 0:
+        return False
+    if posL is not None and posR is not None:
+        return posL < posR
+    return True
 
-def choose_var(domains):
-    # Choose variable with smallest domain > 1
-    best = None
-    best_size = 999
-    for k, dom in domains.items():
-        if 1 < len(dom) < best_size:
-            best = k
-            best_size = len(dom)
-    return best
+def check_same_house(assignments, catA, valA, catB, valB):
+    posA = get_pos(assignments, catA, valA)
+    posB = get_pos(assignments, catB, valB)
+    if posA is not None and posB is not None:
+        return posA == posB
+    return True
 
-def backtrack(domains):
-    if not propagate_all(domains):
+def check_distance(assignments, catA, valA, catB, valB, dist):
+    posA = get_pos(assignments, catA, valA)
+    posB = get_pos(assignments, catB, valB)
+    if posA is not None and posB is not None:
+        return abs(posA - posB) == dist
+    return True
+
+def valid(assignments):
+    # C1: Carol directly left of grilled cheese
+    if not check_directly_left(assignments, "Name", "Carol", "Food", "grilled cheese"):
+        return False
+    # C2: Eric not in 2nd house
+    arrN = assignments.get("Name")
+    if arrN is not None:
+        if arrN[1] == "Eric":
+            return False
+    # C3: Holly to the right of Carol
+    if not check_left_of(assignments, "Name", "Carol", "Mother", "Holly"):
+        return False
+    # C4: Rock left of grilled cheese
+    if not check_left_of(assignments, "MusicGenre", "rock", "Food", "grilled cheese"):
+        return False
+    # C5: Eric directly left of Carol
+    if not check_directly_left(assignments, "Name", "Eric", "Name", "Carol"):
+        return False
+    # C6: Pop not in 3rd house
+    arrM = assignments.get("MusicGenre")
+    if arrM is not None:
+        if arrM[2] == "pop":
+            return False
+    # C7: Eric loves country
+    if not check_same_house(assignments, "Name", "Eric", "MusicGenre", "country"):
+        return False
+    # C8: Classical in 6th house
+    if arrM is not None:
+        if arrM[5] != "classical":
+            return False
+    # C9: Coffee is Bob
+    if not check_same_house(assignments, "Name", "Bob", "Drink", "coffee"):
+        return False
+    # C10: Blends is Peter
+    if not check_same_house(assignments, "Name", "Peter", "Cigar", "blends"):
+        return False
+    # C11: Stew not in 5th house
+    arrF = assignments.get("Food")
+    if arrF is not None:
+        if arrF[4] == "stew":
+            return False
+    # C12: Root beer directly left of Janelle
+    if not check_directly_left(assignments, "Drink", "root beer", "Mother", "Janelle"):
+        return False
+    # C13: Two houses between Sarah and Yellow Monster
+    if not check_distance(assignments, "Mother", "Sarah", "Cigar", "yellow monster", 3):
+        return False
+    # C14: Eric is tea drinker
+    if not check_same_house(assignments, "Name", "Eric", "Drink", "tea"):
+        return False
+    # C15: Pall Mall to the right of stir fry
+    if not check_left_of(assignments, "Food", "stir fry", "Cigar", "pall mall"):
+        return False
+    # C16: Soup is Bob
+    if not check_same_house(assignments, "Name", "Bob", "Food", "soup"):
+        return False
+    # C17: Hip hop directly left of Kailyn
+    if not check_directly_left(assignments, "MusicGenre", "hip hop", "Mother", "Kailyn"):
+        return False
+    # C18: Arnold to the right of Kailyn
+    if not check_left_of(assignments, "Mother", "Kailyn", "Name", "Arnold"):
+        return False
+    # C19: Water directly left of Blue Master
+    if not check_directly_left(assignments, "Drink", "water", "Cigar", "blue master"):
+        return False
+    # C20: Spaghetti to the left of blends smoker (i.e., Peter)
+    if not check_left_of(assignments, "Food", "spaghetti", "Name", "Peter"):
+        return False
+    # C21: Sarah directly left of Jazz
+    if not check_directly_left(assignments, "Mother", "Sarah", "MusicGenre", "jazz"):
+        return False
+    # C22: Hip hop directly left of root beer
+    if not check_directly_left(assignments, "MusicGenre", "hip hop", "Drink", "root beer"):
+        return False
+    # C23: Water drinker is the stew lover
+    if not check_same_house(assignments, "Drink", "water", "Food", "stew"):
+        return False
+    # C24: Dunhill not in 2nd house
+    arrC = assignments.get("Cigar")
+    if arrC is not None:
+        if arrC[1] == "dunhill":
+            return False
+    # C25: Milk drinker is Janelle
+    if not check_same_house(assignments, "Drink", "milk", "Mother", "Janelle"):
+        return False
+    # C26: Eric is Aniya
+    if not check_same_house(assignments, "Name", "Eric", "Mother", "Aniya"):
+        return False
+
+    # Additional structural implications to prune earlier:
+    # From C17 + C22 + C12: hip hop at k, root beer at k+1, Janelle at k+2 (if all categories assigned appropriately)
+    # We'll just rely on the direct checks above; these will be enforced when relevant categories are set.
+
+    return True
+
+def perm_generator_for_category(category, assignments):
+    values = all_values[category]
+    # Build an initial template with positional constraints if any strong ones known
+    template = [None] * 6
+
+    # Positional constraints depending on category
+    if category == "MusicGenre":
+        # C8: classical at house 6
+        template[5] = "classical"
+        # C7: Eric -> country (if Name already assigned)
+        if "Name" in assignments:
+            pos_eric = get_pos(assignments, "Name", "Eric")
+            if pos_eric is not None:
+                # Cannot place country at position 5 (if eric is 5 - but eric cannot be 5 because Carol and GC need space? It's allowed theoretically.)
+                if template[pos_eric] is not None and template[pos_eric] != "country":
+                    return  # conflict
+                # Will set after; we'll enforce via template
+                template[pos_eric] = "country"
+    elif category == "Mother":
+        # C26: Eric -> Aniya
+        if "Name" in assignments:
+            pos_eric = get_pos(assignments, "Name", "Eric")
+            if pos_eric is not None:
+                template[pos_eric] = "Aniya"
+        # From C17: hip hop directly left of Kailyn
+        if "MusicGenre" in assignments:
+            pos_hip = get_pos(assignments, "MusicGenre", "hip hop")
+            if pos_hip is not None:
+                if pos_hip == 5:
+                    return  # impossible
+                if template[pos_hip + 1] is not None and template[pos_hip + 1] != "Kailyn":
+                    return
+                template[pos_hip + 1] = "Kailyn"
+        # From C21: Sarah directly left of Jazz
+        if "MusicGenre" in assignments:
+            pos_jazz = get_pos(assignments, "MusicGenre", "jazz")
+            if pos_jazz is not None:
+                if pos_jazz == 0:
+                    return  # impossible
+                if template[pos_jazz - 1] is not None and template[pos_jazz - 1] != "Sarah":
+                    return
+                template[pos_jazz - 1] = "Sarah"
+        # From C22 + C12: hip hop left of root beer and root beer left of Janelle => Janelle is two to the right of hip hop
+        if "MusicGenre" in assignments:
+            pos_hip = get_pos(assignments, "MusicGenre", "hip hop")
+            if pos_hip is not None:
+                if pos_hip >= 4:
+                    return  # can't fit +2
+                if template[pos_hip + 2] is not None and template[pos_hip + 2] != "Janelle":
+                    return
+                template[pos_hip + 2] = "Janelle"
+    elif category == "Drink":
+        # Bob -> coffee; Eric -> tea
+        if "Name" in assignments:
+            pos_bob = get_pos(assignments, "Name", "Bob")
+            if pos_bob is not None:
+                if template[pos_bob] is not None and template[pos_bob] != "coffee":
+                    return
+                template[pos_bob] = "coffee"
+            pos_eric = get_pos(assignments, "Name", "Eric")
+            if pos_eric is not None:
+                if template[pos_eric] is not None and template[pos_eric] != "tea":
+                    return
+                template[pos_eric] = "tea"
+        # Janelle -> milk and root beer directly left of Janelle
+        if "Mother" in assignments:
+            pos_jan = get_pos(assignments, "Mother", "Janelle")
+            if pos_jan is not None:
+                if template[pos_jan] is not None and template[pos_jan] != "milk":
+                    return
+                template[pos_jan] = "milk"
+                if pos_jan == 0:
+                    return
+                if template[pos_jan - 1] is not None and template[pos_jan - 1] != "root beer":
+                    return
+                template[pos_jan - 1] = "root beer"
+        # From C22: hip hop directly left of root beer
+        if "MusicGenre" in assignments:
+            pos_hip = get_pos(assignments, "MusicGenre", "hip hop")
+            if pos_hip is not None:
+                if pos_hip == 5:
+                    return
+                if template[pos_hip + 1] is not None and template[pos_hip + 1] != "root beer":
+                    return
+                template[pos_hip + 1] = "root beer"
+    elif category == "Cigar":
+        # Peter -> blends
+        if "Name" in assignments:
+            pos_peter = get_pos(assignments, "Name", "Peter")
+            if pos_peter is not None:
+                if template[pos_peter] is not None and template[pos_peter] != "blends":
+                    return
+                template[pos_peter] = "blends"
+        # Dunhill not at 2nd is checked later, but leave template None
+        # From C19: water directly left of blue master
+        if "Drink" in assignments:
+            pos_water = get_pos(assignments, "Drink", "water")
+            if pos_water is not None:
+                if pos_water == 5:
+                    return
+                if template[pos_water + 1] is not None and template[pos_water + 1] != "blue master":
+                    return
+                template[pos_water + 1] = "blue master"
+    elif category == "Food":
+        # Bob -> soup
+        if "Name" in assignments:
+            pos_bob = get_pos(assignments, "Name", "Bob")
+            if pos_bob is not None:
+                if template[pos_bob] is not None and template[pos_bob] != "soup":
+                    return
+                template[pos_bob] = "soup"
+        # Carol directly left of grilled cheese
+        if "Name" in assignments:
+            pos_carol = get_pos(assignments, "Name", "Carol")
+            if pos_carol is not None:
+                if pos_carol == 5:
+                    return
+                if template[pos_carol + 1] is not None and template[pos_carol + 1] != "grilled cheese":
+                    return
+                template[pos_carol + 1] = "grilled cheese"
+        # Water drinker is stew
+        if "Drink" in assignments:
+            pos_water = get_pos(assignments, "Drink", "water")
+            if pos_water is not None:
+                if template[pos_water] is not None and template[pos_water] != "stew":
+                    return
+                template[pos_water] = "stew"
+
+    # Build remaining values and indices
+    fixed_vals = set(v for v in template if v is not None)
+    if len(fixed_vals) != sum(1 for v in template if v is not None):
+        # Duplicate fixed values, impossible
+        return
+
+    remaining_values = [v for v in values if v not in fixed_vals]
+    remaining_indices = [i for i, v in enumerate(template) if v is None]
+
+    # Early impossibility checks for constraints that force values at certain indices:
+    # For Music: pop not in index 2 is checked later in valid(), but we can reject permutations later.
+
+    for perm in itertools.permutations(remaining_values, len(remaining_indices)):
+        arr = template[:]
+        for idx, val in zip(remaining_indices, perm):
+            arr[idx] = val
+
+        # Quick per-category local filters to prune before full valid():
+        if category == "Name":
+            # C2: Eric not in second
+            if arr[1] == "Eric":
+                continue
+            # C5: Eric directly left of Carol
+            if arr.index("Eric") + 1 != arr.index("Carol"):
+                continue
+        elif category == "MusicGenre":
+            # C6: Pop not in third
+            if arr[2] == "pop":
+                continue
+            # C8: classical in 6th (already enforced)
+            pass
+        elif category == "Cigar":
+            # C24: Dunhill not in second
+            if arr[1] == "dunhill":
+                continue
+            # C13: If Mother assigned and Sarah pos known, Yellow Monster must be at pos±3
+            if "Mother" in assignments:
+                pos_sarah = get_pos(assignments, "Mother", "Sarah")
+                if pos_sarah is not None:
+                    pos_ym = arr.index("yellow monster")
+                    if pos_ym not in [pos_sarah - 3, pos_sarah + 3]:
+                        continue
+            # C19: If Drink assigned, enforce water->blue master (already in template but double-check)
+            if "Drink" in assignments:
+                pos_water = get_pos(assignments, "Drink", "water")
+                if pos_water is not None:
+                    if pos_water == 5:
+                        continue
+                    if arr[pos_water + 1] != "blue master":
+                        continue
+        elif category == "Food":
+            # C11: Stew not in 5th
+            if arr[4] == "stew":
+                continue
+            # C20: Spaghetti left of Peter (if Name assigned)
+            if "Name" in assignments:
+                if arr.index("spaghetti") >= get_pos(assignments, "Name", "Peter"):
+                    continue
+
+        # Yield current permutation
+        yield arr
+
+def search(assignments, categories_order, idx):
+    if idx == len(categories_order):
+        if valid(assignments):
+            return assignments
         return None
-    if is_solved(domains):
-        return domains
-    var = choose_var(domains)
-    if var is None:
-        return None
-    dom_values = sorted(domains[var])
-    for h in dom_values:
-        new_domains = deepcopy(domains)
-        new_domains[var] = {h}
-        result = backtrack(new_domains)
-        if result is not None:
-            return result
+
+    category = categories_order[idx]
+    for arr in perm_generator_for_category(category, assignments) or []:
+        assignments[category] = arr
+        if valid(assignments):
+            result = search(assignments, categories_order, idx + 1)
+            if result is not None:
+                return result
+        del assignments[category]
     return None
 
-solution_domains = backtrack(deepcopy(domains))
-if solution_domains is None:
-    raise RuntimeError("No solution found")
+def solve():
+    categories_order = ["Name", "MusicGenre", "Mother", "Drink", "Cigar", "Food"]
+    assignments = {}
+    solution = search(assignments, categories_order, 0)
+    if solution is None:
+        raise RuntimeError("No solution found")
+    # Build output rows
+    header = ["House", "Name", "Cigar", "MusicGenre", "Drink", "Mother", "Food"]
+    rows = []
+    for i in range(6):
+        row = [
+            str(i + 1),
+            solution["Name"][i],
+            solution["Cigar"][i],
+            solution["MusicGenre"][i],
+            solution["Drink"][i],
+            solution["Mother"][i],
+            solution["Food"][i],
+        ]
+        rows.append(row)
+    return {"solution": {"header": header, "rows": rows}}
 
-# Build mapping from (category, value) -> house (int)
-positions = {k: next(iter(v)) for k, v in solution_domains.items()}
-
-# Build rows per house
-header = ["House", "Name", "Cigar", "MusicGenre", "Drink", "Mother", "Food"]
-rows = []
-for h in range(1, 7):
-    # Find value for each category at house h
-    name = next(val for val in categories["Name"] if positions[("Name", val)] == h)
-    cigar = next(val for val in categories["Cigar"] if positions[("Cigar", val)] == h)
-    music = next(val for val in categories["Music"] if positions[("Music", val)] == h)
-    drink = next(val for val in categories["Drink"] if positions[("Drink", val)] == h)
-    mother = next(val for val in categories["Mother"] if positions[("Mother", val)] == h)
-    food = next(val for val in categories["Food"] if positions[("Food", val)] == h)
-    rows.append([str(h), name, cigar, music, drink, mother, food])
-
-output = {
-    "solution": {
-        "header": header,
-        "rows": rows
-    }
-}
-
-print(json.dumps(output, ensure_ascii=False))
+if __name__ == "__main__":
+    result = solve()
+    print(json.dumps(result, ensure_ascii=False))

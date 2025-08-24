@@ -1,19 +1,37 @@
+"SOLUTION:"
+
 import itertools
 import json
-
-def parse_time(t):
-    h, m = t.split(":")
-    return int(h) * 60 + int(m)
-
-def fmt_time(minutes):
-    h = minutes // 60
-    m = minutes % 60
-    return f"{h}:{m:02d}"
 
 # Input variables
 start_location = "Union Square"
 start_time_str = "9:00"
 
+people = [
+    {
+        "name": "Rebecca",
+        "location": "Mission District",
+        "window_start": "11:30",
+        "window_end": "20:15",
+        "min_minutes": 120,
+    },
+    {
+        "name": "Karen",
+        "location": "Bayview",
+        "window_start": "12:45",
+        "window_end": "15:00",
+        "min_minutes": 120,
+    },
+    {
+        "name": "Carol",
+        "location": "Sunset District",
+        "window_start": "10:15",
+        "window_end": "11:45",
+        "min_minutes": 30,
+    },
+]
+
+# Travel times in minutes (asymmetric)
 travel_times = {
     ("Union Square", "Mission District"): 14,
     ("Union Square", "Bayview"): 15,
@@ -29,115 +47,152 @@ travel_times = {
     ("Sunset District", "Bayview"): 22,
 }
 
-people = [
-    {
-        "name": "Rebecca",
-        "location": "Mission District",
-        "window_start": "11:30",
-        "window_end": "20:15",
-        "min_duration": 120,
-    },
-    {
-        "name": "Karen",
-        "location": "Bayview",
-        "window_start": "12:45",
-        "window_end": "15:00",
-        "min_duration": 120,
-    },
-    {
-        "name": "Carol",
-        "location": "Sunset District",
-        "window_start": "10:15",
-        "window_end": "11:45",
-        "min_duration": 30,
-    },
-]
+# Utilities
+def parse_time(s):
+    h, m = s.split(":")
+    return int(h) * 60 + int(m)
 
-# Preprocess times
-for p in people:
-    p["ws"] = parse_time(p["window_start"])
-    p["we"] = parse_time(p["window_end"])
+def minutes_to_str(t):
+    h = t // 60
+    m = t % 60
+    return f"{h}:{m:02d}"
 
-start_time = parse_time(start_time_str)
-people_by_name = {p["name"]: p for p in people}
-
-def travel_time(a, b):
+def get_travel(a, b):
     if a == b:
         return 0
-    return travel_times.get((a, b), float("inf"))
+    return travel_times[(a, b)]
 
-def schedule_order(order):
+# Prepare people with parsed times
+people_data = []
+for p in people:
+    people_data.append({
+        "name": p["name"],
+        "location": p["location"],
+        "start": parse_time(p["window_start"]),
+        "end": parse_time(p["window_end"]),
+        "min": int(p["min_minutes"]),
+    })
+
+start_time = parse_time(start_time_str)
+
+def schedule_order(order, extend_last_to_window_end=True):
     current_loc = start_location
     current_time = start_time
     itinerary = []
-    total_travel = 0
-    total_wait = 0
 
-    for name in order:
-        p = people_by_name[name]
-        t_travel = travel_time(current_loc, p["location"])
-        if t_travel == float("inf"):
-            return None  # No path known
-        arrival = current_time + t_travel
-        wait = max(0, p["ws"] - arrival)
-        start_meet = max(arrival, p["ws"])
-        end_meet = start_meet + p["min_duration"]
-        if end_meet > p["we"]:
+    for idx, person in enumerate(order):
+        # Travel to person's location
+        travel = get_travel(current_loc, person["location"])
+        earliest_arrival = current_time + travel
+
+        # Start time: not before arrival and not before window opens
+        start_meet = max(earliest_arrival, person["start"])
+
+        latest_start_allowed = person["end"] - person["min"]
+        if start_meet > latest_start_allowed:
             return None  # infeasible
+
+        min_end = start_meet + person["min"]
+
+        if idx < len(order) - 1:
+            next_person = order[idx + 1]
+            travel_to_next = get_travel(person["location"], next_person["location"])
+            latest_depart_to_meet_next = (next_person["end"] - next_person["min"]) - travel_to_next
+
+            # If even with minimal meeting we cannot reach next in time, infeasible
+            if min_end > latest_depart_to_meet_next:
+                return None
+
+            # Try to align arrival at next's window start to minimize waiting
+            target_depart = next_person["start"] - travel_to_next
+            depart_max = min(person["end"], latest_depart_to_meet_next)
+            depart = max(min(target_depart, depart_max), min_end)
+            end_meet = depart
+        else:
+            # Last meeting: optionally extend to window end to maximize meeting time
+            end_meet = person["end"] if extend_last_to_window_end else min_end
+
         itinerary.append({
             "action": "meet",
-            "location": p["location"],
-            "person": p["name"],
-            "start_time_min": start_meet,
-            "end_time_min": end_meet,
+            "location": person["location"],
+            "person": person["name"],
+            "start_time": minutes_to_str(start_meet),
+            "end_time": minutes_to_str(end_meet),
+            "_start": start_meet,
+            "_end": end_meet,
+            "_loc": person["location"],
         })
-        total_travel += t_travel
-        total_wait += wait
-        current_loc = p["location"]
+
+        # Advance
         current_time = end_meet
+        current_loc = person["location"]
 
-    return {
-        "itinerary": itinerary,
-        "finish_time": current_time,
-        "total_travel": total_travel,
-        "total_wait": total_wait,
-        "count": len(order),
-    }
+    return itinerary
 
-# Explore all subsets and orders
-best = None
+def evaluate_itinerary(itin):
+    if not itin:
+        return (0, 0, 0, 0, 0)  # score tuple plus helper totals
 
-names = [p["name"] for p in people]
-for r in range(len(names), 0, -1):
-    for order in itertools.permutations(names, r):
-        sched = schedule_order(order)
-        if not sched:
-            continue
-        if best is None:
-            best = sched
-        else:
-            # Compare by: max meetings, min total_wait, min finish_time, min total_travel
-            criteria_best = (best["count"], -best["total_wait"], -best["finish_time"], -best["total_travel"])
-            criteria_new = (sched["count"], -sched["total_wait"], -sched["finish_time"], -sched["total_travel"])
-            # Since we want larger count and smaller waits/finish/travel, we invert signs for the latter
-            if criteria_new > criteria_best:
-                best = sched
-    if best and best["count"] == r:
-        # Found a feasible schedule with max r; no need to consider smaller r
+    # Number of people met
+    n = len(itin)
+
+    # Total meeting time
+    total_meet = sum(item["_end"] - item["_start"] for item in itin)
+
+    # Compute total travel and waiting time
+    cur_loc = start_location
+    cur_time = start_time
+    total_travel = 0
+    total_wait = 0
+    for item in itin:
+        travel = get_travel(cur_loc, item["_loc"])
+        arrival = cur_time + travel
+        wait = max(0, item["_start"] - arrival)
+        total_travel += travel
+        total_wait += wait
+        cur_loc = item["_loc"]
+        cur_time = item["_end"]
+
+    finish_time = itin[-1]["_end"]
+
+    # Score: prioritize more people, more meeting time, less wait, earlier finish, less travel
+    score = (n, total_meet, -total_wait, -finish_time, -total_travel)
+    return score
+
+# Explore schedules across all subsets and permutations
+best_score = None
+best_itinerary = []
+
+# Generate all non-empty subsets
+for r in range(len(people_data), 0, -1):
+    any_found_this_size = False
+    for subset in itertools.combinations(people_data, r):
+        for order in itertools.permutations(subset):
+            itin = schedule_order(order, extend_last_to_window_end=True)
+            if itin is None:
+                continue
+            score = evaluate_itinerary(itin)
+            if (best_score is None) or (score > best_score):
+                best_score = score
+                best_itinerary = itin
+                any_found_this_size = True
+    # If we found at least one schedule using r people, no need to consider smaller subsets
+    if any_found_this_size:
         break
 
-# Format output
+# Prepare output: strip internal keys
 output_itinerary = []
-if best:
-    for item in best["itinerary"]:
-        output_itinerary.append({
-            "action": "meet",
-            "location": item["location"],
-            "person": item["person"],
-            "start_time": fmt_time(item["start_time_min"]),
-            "end_time": fmt_time(item["end_time_min"]),
-        })
+for item in best_itinerary:
+    output_itinerary.append({
+        "action": "meet",
+        "location": item["location"],
+        "person": item["person"],
+        "start_time": item["start_time"],
+        "end_time": item["end_time"],
+    })
 
-result = {"itinerary": output_itinerary}
+result = {
+    "itinerary": output_itinerary
+}
 
 print(json.dumps(result, ensure_ascii=False))

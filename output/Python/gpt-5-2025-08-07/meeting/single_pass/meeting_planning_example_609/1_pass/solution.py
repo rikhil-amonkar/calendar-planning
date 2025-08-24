@@ -1,205 +1,175 @@
 import json
+from itertools import permutations
 
-# Helper functions
-def parse_time(s):
-    h, m = map(int, s.split(":"))
-    return h * 60 + m
+def parse_time_24(s):
+    # s like '9:00' or '19:45'
+    h, m = s.split(':')
+    return int(h) * 60 + int(m)
 
-def minutes_to_str(m):
-    h = m // 60
-    mm = m % 60
-    return f"{h}:{mm:02d}"
+def fmt_time(minutes):
+    h = minutes // 60
+    m = minutes % 60
+    return f"{h}:{m:02d}"
 
-# Travel times (in minutes) between locations
+# Travel times in minutes (directed)
 travel = {
     "Chinatown": {
-        "Mission District": 18,
-        "Alamo Square": 17,
-        "Pacific Heights": 10,
-        "Union Square": 7,
-        "Golden Gate Park": 23,
-        "Sunset District": 29,
-        "Presidio": 19,
+        "Mission District": 18, "Alamo Square": 17, "Pacific Heights": 10,
+        "Union Square": 7, "Golden Gate Park": 23, "Sunset District": 29, "Presidio": 19
     },
     "Mission District": {
-        "Chinatown": 16,
-        "Alamo Square": 11,
-        "Pacific Heights": 16,
-        "Union Square": 15,
-        "Golden Gate Park": 17,
-        "Sunset District": 24,
-        "Presidio": 25,
+        "Chinatown": 16, "Alamo Square": 11, "Pacific Heights": 16,
+        "Union Square": 15, "Golden Gate Park": 17, "Sunset District": 24, "Presidio": 25
     },
     "Alamo Square": {
-        "Chinatown": 16,
-        "Mission District": 10,
-        "Pacific Heights": 10,
-        "Union Square": 14,
-        "Golden Gate Park": 9,
-        "Sunset District": 16,
-        "Presidio": 18,
+        "Chinatown": 16, "Mission District": 10, "Pacific Heights": 10,
+        "Union Square": 14, "Golden Gate Park": 9, "Sunset District": 16, "Presidio": 18
     },
     "Pacific Heights": {
-        "Chinatown": 11,
-        "Mission District": 15,
-        "Alamo Square": 10,
-        "Union Square": 12,
-        "Golden Gate Park": 15,
-        "Sunset District": 21,
-        "Presidio": 11,
+        "Chinatown": 11, "Mission District": 15, "Alamo Square": 10,
+        "Union Square": 12, "Golden Gate Park": 15, "Sunset District": 21, "Presidio": 11
     },
     "Union Square": {
-        "Chinatown": 7,
-        "Mission District": 14,
-        "Alamo Square": 15,
-        "Pacific Heights": 15,
-        "Golden Gate Park": 22,
-        "Sunset District": 26,
-        "Presidio": 24,
+        "Chinatown": 7, "Mission District": 14, "Alamo Square": 15,
+        "Pacific Heights": 15, "Golden Gate Park": 22, "Sunset District": 26, "Presidio": 24
     },
     "Golden Gate Park": {
-        "Chinatown": 23,
-        "Mission District": 17,
-        "Alamo Square": 10,
-        "Pacific Heights": 16,
-        "Union Square": 22,
-        "Sunset District": 10,
-        "Presidio": 11,
+        "Chinatown": 23, "Mission District": 17, "Alamo Square": 10,
+        "Pacific Heights": 16, "Union Square": 22, "Sunset District": 10, "Presidio": 11
     },
     "Sunset District": {
-        "Chinatown": 30,
-        "Mission District": 24,
-        "Alamo Square": 17,
-        "Pacific Heights": 21,
-        "Union Square": 30,
-        "Golden Gate Park": 11,
-        "Presidio": 16,
+        "Chinatown": 30, "Mission District": 24, "Alamo Square": 17,
+        "Pacific Heights": 21, "Union Square": 30, "Golden Gate Park": 11, "Presidio": 16
     },
     "Presidio": {
-        "Chinatown": 21,
-        "Mission District": 26,
-        "Alamo Square": 18,
-        "Pacific Heights": 11,
-        "Union Square": 22,
-        "Golden Gate Park": 12,
-        "Sunset District": 15,
-    },
+        "Chinatown": 21, "Mission District": 26, "Alamo Square": 18,
+        "Pacific Heights": 11, "Union Square": 22, "Golden Gate Park": 12, "Sunset District": 15
+    }
 }
 
-# Participants and constraints
-people = {
-    "David": {
+def get_travel_time(a, b):
+    if a == b:
+        return 0
+    return travel[a][b]
+
+# Meeting constraints (24-hour strings)
+people = [
+    {
+        "name": "David",
         "location": "Mission District",
-        "start": parse_time("8:00"),
-        "end": parse_time("19:45"),
-        "min_duration": 45,
+        "start": parse_time_24("8:00"),
+        "end": parse_time_24("19:45"),
+        "min_duration": 45
     },
-    "Kenneth": {
+    {
+        "name": "Kenneth",
         "location": "Alamo Square",
-        "start": parse_time("14:00"),
-        "end": parse_time("19:45"),
-        "min_duration": 120,
+        "start": parse_time_24("14:00"),
+        "end": parse_time_24("19:45"),
+        "min_duration": 120
     },
-    "John": {
+    {
+        "name": "John",
         "location": "Pacific Heights",
-        "start": parse_time("17:00"),
-        "end": parse_time("20:00"),
-        "min_duration": 15,
+        "start": parse_time_24("17:00"),
+        "end": parse_time_24("20:00"),
+        "min_duration": 15
     },
-    "Charles": {
+    {
+        "name": "Charles",
         "location": "Union Square",
-        "start": parse_time("21:45"),
-        "end": parse_time("22:45"),
-        "min_duration": 60,
+        "start": parse_time_24("21:45"),
+        "end": parse_time_24("22:45"),
+        "min_duration": 60
     },
-    "Deborah": {
+    {
+        "name": "Deborah",
         "location": "Golden Gate Park",
-        "start": parse_time("7:00"),
-        "end": parse_time("18:15"),
-        "min_duration": 90,
+        "start": parse_time_24("7:00"),
+        "end": parse_time_24("18:15"),
+        "min_duration": 90
     },
-    "Karen": {
+    {
+        "name": "Karen",
         "location": "Sunset District",
-        "start": parse_time("17:45"),
-        "end": parse_time("21:15"),
-        "min_duration": 15,
+        "start": parse_time_24("17:45"),
+        "end": parse_time_24("21:15"),
+        "min_duration": 15
     },
-    "Carol": {
+    {
+        "name": "Carol",
         "location": "Presidio",
-        "start": parse_time("8:15"),
-        "end": parse_time("9:15"),
-        "min_duration": 30,
-    },
-}
+        "start": parse_time_24("8:15"),
+        "end": parse_time_24("9:15"),
+        "min_duration": 30
+    }
+]
 
 start_location = "Chinatown"
-start_time = parse_time("9:00")
+start_time = parse_time_24("9:00")
 
-# DFS with memoization to find optimal schedule
-from functools import lru_cache
+def simulate_order(order):
+    current_loc = start_location
+    current_time = start_time
+    itinerary = []
+    total_wait = 0
+    total_travel = 0
 
-names_sorted = sorted(people.keys())
+    for p in order:
+        travel_time = get_travel_time(current_loc, p["location"])
+        arrival = current_time + travel_time
+        meeting_start = max(arrival, p["start"])
+        meeting_end = meeting_start + p["min_duration"]
 
-@lru_cache(maxsize=None)
-def dfs(curr_loc, curr_time, remaining_frozenset):
-    remaining = list(remaining_frozenset)
-    best = {
-        "count": 0,
-        "end_time": curr_time,
-        "wait": 0,
-        "itinerary": (),
-    }
-    # Iterate deterministically over remaining names
-    for name in sorted(remaining):
-        p = people[name]
-        to_loc = p["location"]
-        # If no travel path (shouldn't happen), skip
-        if curr_loc not in travel or to_loc not in travel[curr_loc]:
+        # Can we meet within their availability?
+        if meeting_end <= p["end"]:
+            # Record travel and wait (if any)
+            wait = max(0, meeting_start - arrival)
+            total_wait += wait
+            total_travel += travel_time
+
+            itinerary.append({
+                "action": "meet",
+                "location": p["location"],
+                "person": p["name"],
+                "start": meeting_start,
+                "end": meeting_end
+            })
+            current_loc = p["location"]
+            current_time = meeting_end
+        else:
+            # Skip if infeasible
             continue
-        travel_time = travel[curr_loc][to_loc]
-        arrival = curr_time + travel_time
-        start_meet = max(arrival, p["start"])
-        end_meet = start_meet + p["min_duration"]
-        if end_meet <= p["end"]:
-            waiting = max(0, p["start"] - arrival)
-            next_remaining = frozenset([n for n in remaining if n != name])
-            res = dfs(to_loc, end_meet, next_remaining)
-            new_count = 1 + res["count"]
-            new_end_time = res["end_time"]
-            new_wait = waiting + res["wait"]
-            new_itinerary = (
-                ("meet", to_loc, name, start_meet, end_meet),
-            ) + res["itinerary"]
-            # Choose better result: more meetings, then earlier end, then less waiting, then lexicographic itinerary for determinism
-            def better(a, b):
-                if a["count"] != b["count"]:
-                    return a["count"] > b["count"]
-                if a["end_time"] != b["end_time"]:
-                    return a["end_time"] < b["end_time"]
-                if a["wait"] != b["wait"]:
-                    return a["wait"] < b["wait"]
-                return a["itinerary"] < b["itinerary"]
-            candidate = {
-                "count": new_count,
-                "end_time": new_end_time,
-                "wait": new_wait,
-                "itinerary": new_itinerary,
-            }
-            if better(candidate, best):
-                best = candidate
-    return best
 
-result = dfs(start_location, start_time, frozenset(people.keys()))
+    if itinerary:
+        end_time = itinerary[-1]["end"]
+    else:
+        end_time = start_time
 
-# Convert itinerary to required JSON format
-output = {"itinerary": []}
-for action, location, person, start_m, end_m in result["itinerary"]:
-    output["itinerary"].append({
+    # Primary: maximize count; Secondary: earliest end; Tertiary: minimize waiting; Quaternary: minimize travel
+    score = (len(itinerary), -end_time, -total_wait, -total_travel)
+    return score, itinerary
+
+# Enumerate all permutations and pick the best
+best_score = None
+best_itinerary = None
+
+for order in permutations(people):
+    score, itinerary = simulate_order(order)
+    if best_score is None or score > best_score:
+        best_score = score
+        best_itinerary = itinerary
+
+# Format times for output
+output_itinerary = []
+for item in best_itinerary:
+    output_itinerary.append({
         "action": "meet",
-        "location": location,
-        "person": person,
-        "start_time": minutes_to_str(start_m),
-        "end_time": minutes_to_str(end_m),
+        "location": item["location"],
+        "person": item["person"],
+        "start_time": fmt_time(item["start"]),
+        "end_time": fmt_time(item["end"])
     })
 
-print(json.dumps(output))
+result = {"itinerary": output_itinerary}
+print(json.dumps(result, ensure_ascii=False, indent=2))

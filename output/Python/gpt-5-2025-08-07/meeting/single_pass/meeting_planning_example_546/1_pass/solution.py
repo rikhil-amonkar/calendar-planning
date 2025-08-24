@@ -1,205 +1,173 @@
-import itertools
 import json
 
-def parse_time(t):
-    # t format 'H:MM'
-    h, m = t.split(':')
-    return int(h) * 60 + int(m)
+def hm(h, m):
+    return h * 60 + m
 
-def fmt_time(minutes):
+def fmt(minutes):
     h = minutes // 60
     m = minutes % 60
     return f"{h}:{m:02d}"
 
-# Travel times (in minutes)
+# Travel times (in minutes) between locations
 travel = {
-    'Embarcadero': {
-        'Richmond District': 21,
-        'Union Square': 10,
-        'Financial District': 5,
-        'Pacific Heights': 11,
-        'Nob Hill': 10,
-        'Bayview': 21,
+    "Embarcadero": {
+        "Richmond District": 21,
+        "Union Square": 10,
+        "Financial District": 5,
+        "Pacific Heights": 11,
+        "Nob Hill": 10,
+        "Bayview": 21,
+        "Embarcadero": 0,
     },
-    'Richmond District': {
-        'Embarcadero': 19,
-        'Union Square': 21,
-        'Financial District': 22,
-        'Pacific Heights': 10,
-        'Nob Hill': 17,
-        'Bayview': 26,
+    "Richmond District": {
+        "Embarcadero": 19,
+        "Union Square": 21,
+        "Financial District": 22,
+        "Pacific Heights": 10,
+        "Nob Hill": 17,
+        "Bayview": 26,
+        "Richmond District": 0,
     },
-    'Union Square': {
-        'Embarcadero': 11,
-        'Richmond District': 20,
-        'Financial District': 9,
-        'Pacific Heights': 15,
-        'Nob Hill': 9,
-        'Bayview': 15,
+    "Union Square": {
+        "Embarcadero": 11,
+        "Richmond District": 20,
+        "Financial District": 9,
+        "Pacific Heights": 15,
+        "Nob Hill": 9,
+        "Bayview": 15,
+        "Union Square": 0,
     },
-    'Financial District': {
-        'Embarcadero': 4,
-        'Richmond District': 21,
-        'Union Square': 9,
-        'Pacific Heights': 13,
-        'Nob Hill': 8,
-        'Bayview': 19,
+    "Financial District": {
+        "Embarcadero": 4,
+        "Richmond District": 21,
+        "Union Square": 9,
+        "Pacific Heights": 13,
+        "Nob Hill": 8,
+        "Bayview": 19,
+        "Financial District": 0,
     },
-    'Pacific Heights': {
-        'Embarcadero': 10,
-        'Richmond District': 12,
-        'Union Square': 12,
-        'Financial District': 13,
-        'Nob Hill': 8,
-        'Bayview': 22,
+    "Pacific Heights": {
+        "Embarcadero": 10,
+        "Richmond District": 12,
+        "Union Square": 12,
+        "Financial District": 13,
+        "Nob Hill": 8,
+        "Bayview": 22,
+        "Pacific Heights": 0,
     },
-    'Nob Hill': {
-        'Embarcadero': 9,
-        'Richmond District': 14,
-        'Union Square': 7,
-        'Financial District': 9,
-        'Pacific Heights': 8,
-        'Bayview': 19,
+    "Nob Hill": {
+        "Embarcadero": 9,
+        "Richmond District": 14,
+        "Union Square": 7,
+        "Financial District": 9,
+        "Pacific Heights": 8,
+        "Bayview": 19,
+        "Nob Hill": 0,
     },
-    'Bayview': {
-        'Embarcadero': 19,
-        'Richmond District': 25,
-        'Union Square': 17,
-        'Financial District': 19,
-        'Pacific Heights': 23,
-        'Nob Hill': 20,
+    "Bayview": {
+        "Embarcadero": 19,
+        "Richmond District": 25,
+        "Union Square": 17,
+        "Financial District": 19,
+        "Pacific Heights": 23,
+        "Nob Hill": 20,
+        "Bayview": 0,
     },
 }
 
-# Ensure zero self-travel
-for a in list(travel.keys()):
-    travel[a][a] = 0
-
-# Meeting constraints as input variables
-people = [
+# People constraints
+persons = [
     {
         "name": "Kenneth",
-        "location": "Richmond District",
-        "available_start": "21:15",
-        "available_end": "22:00",
-        "min_duration": 30,
+        "loc": "Richmond District",
+        "start": hm(21, 15),
+        "end": hm(22, 0),
+        "min": 30,
     },
     {
         "name": "Lisa",
-        "location": "Union Square",
-        "available_start": "9:00",
-        "available_end": "16:30",
-        "min_duration": 45,
+        "loc": "Union Square",
+        "start": hm(9, 0),
+        "end": hm(16, 30),
+        "min": 45,
     },
     {
         "name": "Joshua",
-        "location": "Financial District",
-        "available_start": "12:00",
-        "available_end": "15:15",
-        "min_duration": 15,
+        "loc": "Financial District",
+        "start": hm(12, 0),
+        "end": hm(15, 15),
+        "min": 15,
     },
     {
         "name": "Nancy",
-        "location": "Pacific Heights",
-        "available_start": "8:00",
-        "available_end": "11:30",
-        "min_duration": 90,
+        "loc": "Pacific Heights",
+        "start": hm(8, 0),
+        "end": hm(11, 30),
+        "min": 90,
     },
     {
         "name": "Andrew",
-        "location": "Nob Hill",
-        "available_start": "11:30",
-        "available_end": "20:15",
-        "min_duration": 60,
+        "loc": "Nob Hill",
+        "start": hm(11, 30),
+        "end": hm(20, 15),
+        "min": 60,
     },
     {
         "name": "John",
-        "location": "Bayview",
-        "available_start": "16:45",
-        "available_end": "21:30",
-        "min_duration": 75,
+        "loc": "Bayview",
+        "start": hm(16, 45),
+        "end": hm(21, 30),
+        "min": 75,
     },
 ]
 
-# Convert times to minutes for processing
-for p in people:
-    p["start_min"] = parse_time(p["available_start"])
-    p["end_min"] = parse_time(p["available_end"])
-
 start_location = "Embarcadero"
-start_time = parse_time("9:00")
+arrival_time = hm(9, 0)
 
-def evaluate_schedule(order):
-    current_loc = start_location
-    current_time = start_time
-    itinerary = []
-    total_travel = 0
-    total_wait = 0
+# DFS with memoization to maximize number of meetings, then minimize finish time
+from functools import lru_cache
 
-    for person in order:
-        loc = person["location"]
-        if current_loc not in travel or loc not in travel[current_loc]:
-            return None  # Missing travel info
-        t_travel = travel[current_loc][loc]
-        total_travel += t_travel
-        arrival = current_time + t_travel
-        start_meet = max(arrival, person["start_min"])
-        end_meet = start_meet + person["min_duration"]
-        if end_meet > person["end_min"]:
-            return None  # Cannot fit meeting within window
-        wait = max(0, start_meet - arrival)
-        total_wait += wait
+name_order = [p["name"] for p in persons]  # to keep stable ordering if needed
 
-        itinerary.append({
-            "action": "meet",
-            "location": loc,
-            "person": person["name"],
-            "start_time": fmt_time(start_meet),
-            "end_time": fmt_time(end_meet),
-        })
+@lru_cache(maxsize=None)
+def dfs(loc, time, remaining_mask):
+    # Returns (count_met, finish_time, itinerary_json_serializable_list)
+    best_count = 0
+    best_finish = time
+    best_itinerary = []
 
-        current_loc = loc
-        current_time = end_meet
+    n = len(persons)
+    for i in range(n):
+        if not (remaining_mask & (1 << i)):
+            continue
+        p = persons[i]
+        t_travel = travel[loc][p["loc"]]
+        arrive = time + t_travel
+        start = max(arrive, p["start"])
+        end = start + p["min"]
+        if end <= p["end"]:
+            cnt, fin, itin = dfs(p["loc"], end, remaining_mask ^ (1 << i))
+            cnt += 1
+            # Prefer more meetings; tie-breaker: earlier finish time
+            if (cnt > best_count) or (cnt == best_count and fin < best_finish):
+                best_count = cnt
+                best_finish = fin
+                meeting = {
+                    "action": "meet",
+                    "location": p["loc"],
+                    "person": p["name"],
+                    "start_time": fmt(start),
+                    "end_time": fmt(end),
+                }
+                best_itinerary = [meeting] + list(itin)
 
-    return {
-        "itinerary": itinerary,
-        "total_travel": total_travel,
-        "total_wait": total_wait,
-        "finish_time": current_time,
-        "count": len(order),
-    }
+    return best_count, best_finish, tuple(best_itinerary)
 
-def better(a, b):
-    # Returns True if a is better than b
-    if b is None:
-        return True
-    # Primary: meet as many friends as possible
-    if a["count"] != b["count"]:
-        return a["count"] > b["count"]
-    # Secondary: minimize total travel time
-    if a["total_travel"] != b["total_travel"]:
-        return a["total_travel"] < b["total_travel"]
-    # Tertiary: minimize total waiting time
-    if a["total_wait"] != b["total_wait"]:
-        return a["total_wait"] < b["total_wait"]
-    # Quaternary: earliest finish time
-    return a["finish_time"] < b["finish_time"]
+remaining_mask = (1 << len(persons)) - 1
+_, _, itinerary = dfs(start_location, arrival_time, remaining_mask)
 
-best = None
+result = {
+    "itinerary": list(itinerary)
+}
 
-# Consider all subsets and permutations to find an optimal schedule
-n = len(people)
-for k in range(n, 0, -1):
-    found_any = False
-    for combo in itertools.combinations(people, k):
-        for order in itertools.permutations(combo):
-            result = evaluate_schedule(order)
-            if result is not None:
-                found_any = True
-                if better(result, best):
-                    best = result
-    if found_any:
-        break
-
-output = {"itinerary": best["itinerary"] if best else []}
-print(json.dumps(output, ensure_ascii=False))
+print(json.dumps(result, ensure_ascii=False, indent=2))

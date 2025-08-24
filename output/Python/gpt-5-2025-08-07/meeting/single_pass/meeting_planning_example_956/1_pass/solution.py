@@ -1,252 +1,336 @@
 import json
 
-# Helper functions
-def t2m(s):
-    h, m = map(int, s.split(":"))
+def minutes(h, m):
     return h * 60 + m
 
-def m2t(m):
-    h = m // 60
-    mm = m % 60
-    return f"{h}:{mm:02d}"
+def fmt_time(t):
+    h = t // 60
+    m = t % 60
+    return f"{h}:{m:02d}"
 
-# Build directed travel time matrix
-locs = [
-    "The Castro",
-    "Alamo Square",
-    "Richmond District",
-    "Financial District",
-    "Union Square",
-    "Fisherman's Wharf",
-    "Marina District",
-    "Haight-Ashbury",
-    "Mission District",
-    "Pacific Heights",
-    "Golden Gate Park",
-]
+def build_data():
+    # Travel times in minutes (directed)
+    tt = {
+        "The Castro": {
+            "Alamo Square": 8,
+            "Richmond District": 16,
+            "Financial District": 21,
+            "Union Square": 19,
+            "Fisherman's Wharf": 24,
+            "Marina District": 21,
+            "Haight-Ashbury": 6,
+            "Mission District": 7,
+            "Pacific Heights": 16,
+            "Golden Gate Park": 11,
+        },
+        "Alamo Square": {
+            "The Castro": 8,
+            "Richmond District": 11,
+            "Financial District": 17,
+            "Union Square": 14,
+            "Fisherman's Wharf": 19,
+            "Marina District": 15,
+            "Haight-Ashbury": 5,
+            "Mission District": 10,
+            "Pacific Heights": 10,
+            "Golden Gate Park": 9,
+        },
+        "Richmond District": {
+            "The Castro": 16,
+            "Alamo Square": 13,
+            "Financial District": 22,
+            "Union Square": 21,
+            "Fisherman's Wharf": 18,
+            "Marina District": 9,
+            "Haight-Ashbury": 10,
+            "Mission District": 20,
+            "Pacific Heights": 10,
+            "Golden Gate Park": 9,
+        },
+        "Financial District": {
+            "The Castro": 20,
+            "Alamo Square": 17,
+            "Richmond District": 21,
+            "Union Square": 9,
+            "Fisherman's Wharf": 10,
+            "Marina District": 15,
+            "Haight-Ashbury": 19,
+            "Mission District": 17,
+            "Pacific Heights": 13,
+            "Golden Gate Park": 23,
+        },
+        "Union Square": {
+            "The Castro": 17,
+            "Alamo Square": 15,
+            "Richmond District": 20,
+            "Financial District": 9,
+            "Fisherman's Wharf": 15,
+            "Marina District": 18,
+            "Haight-Ashbury": 18,
+            "Mission District": 14,
+            "Pacific Heights": 15,
+            "Golden Gate Park": 22,
+        },
+        "Fisherman's Wharf": {
+            "The Castro": 27,
+            "Alamo Square": 21,
+            "Richmond District": 18,
+            "Financial District": 11,
+            "Union Square": 13,
+            "Marina District": 9,
+            "Haight-Ashbury": 22,
+            "Mission District": 22,
+            "Pacific Heights": 12,
+            "Golden Gate Park": 25,
+        },
+        "Marina District": {
+            "The Castro": 22,
+            "Alamo Square": 15,
+            "Richmond District": 11,
+            "Financial District": 17,
+            "Union Square": 16,
+            "Fisherman's Wharf": 10,
+            "Haight-Ashbury": 16,
+            "Mission District": 20,
+            "Pacific Heights": 7,
+            "Golden Gate Park": 18,
+        },
+        "Haight-Ashbury": {
+            "The Castro": 6,
+            "Alamo Square": 5,
+            "Richmond District": 10,
+            "Financial District": 21,
+            "Union Square": 19,
+            "Fisherman's Wharf": 23,
+            "Marina District": 17,
+            "Mission District": 11,
+            "Pacific Heights": 12,
+            "Golden Gate Park": 7,
+        },
+        "Mission District": {
+            "The Castro": 7,
+            "Alamo Square": 11,
+            "Richmond District": 20,
+            "Financial District": 15,
+            "Union Square": 15,
+            "Fisherman's Wharf": 22,
+            "Marina District": 19,
+            "Haight-Ashbury": 12,
+            "Pacific Heights": 16,
+            "Golden Gate Park": 17,
+        },
+        "Pacific Heights": {
+            "The Castro": 16,
+            "Alamo Square": 10,
+            "Richmond District": 12,
+            "Financial District": 13,
+            "Union Square": 12,
+            "Fisherman's Wharf": 13,
+            "Marina District": 6,
+            "Haight-Ashbury": 11,
+            "Mission District": 15,
+            "Golden Gate Park": 15,
+        },
+        "Golden Gate Park": {
+            "The Castro": 13,
+            "Alamo Square": 9,
+            "Richmond District": 7,
+            "Financial District": 26,
+            "Union Square": 22,
+            "Fisherman's Wharf": 24,
+            "Marina District": 16,
+            "Haight-Ashbury": 7,
+            "Mission District": 17,
+            "Pacific Heights": 16,
+        },
+    }
 
-dist = {a: {} for a in locs}
-def set_dist(a, b, minutes):
-    dist[a][b] = minutes
+    # Friends with constraints
+    friends = [
+        {
+            "person": "William",
+            "location": "Alamo Square",
+            "start": minutes(15, 15),
+            "end": minutes(17, 15),
+            "min_duration": 60,
+        },
+        {
+            "person": "Joshua",
+            "location": "Richmond District",
+            "start": minutes(7, 0),
+            "end": minutes(20, 0),
+            "min_duration": 15,
+        },
+        {
+            "person": "Joseph",
+            "location": "Financial District",
+            "start": minutes(11, 15),
+            "end": minutes(13, 30),
+            "min_duration": 15,
+        },
+        {
+            "person": "David",
+            "location": "Union Square",
+            "start": minutes(16, 45),
+            "end": minutes(19, 15),
+            "min_duration": 45,
+        },
+        {
+            "person": "Brian",
+            "location": "Fisherman's Wharf",
+            "start": minutes(13, 45),
+            "end": minutes(20, 45),
+            "min_duration": 105,
+        },
+        {
+            "person": "Karen",
+            "location": "Marina District",
+            "start": minutes(11, 30),
+            "end": minutes(18, 30),
+            "min_duration": 15,
+        },
+        {
+            "person": "Anthony",
+            "location": "Haight-Ashbury",
+            "start": minutes(7, 15),
+            "end": minutes(10, 30),
+            "min_duration": 30,
+        },
+        {
+            "person": "Matthew",
+            "location": "Mission District",
+            "start": minutes(17, 15),
+            "end": minutes(19, 15),
+            "min_duration": 120,
+        },
+        {
+            "person": "Helen",
+            "location": "Pacific Heights",
+            "start": minutes(8, 0),
+            "end": minutes(12, 0),
+            "min_duration": 75,
+        },
+        {
+            "person": "Jeffrey",
+            "location": "Golden Gate Park",
+            "start": minutes(19, 0),
+            "end": minutes(21, 30),
+            "min_duration": 60,
+        },
+    ]
 
-# Fill distances as given
-set_dist("The Castro", "Alamo Square", 8)
-set_dist("The Castro", "Richmond District", 16)
-set_dist("The Castro", "Financial District", 21)
-set_dist("The Castro", "Union Square", 19)
-set_dist("The Castro", "Fisherman's Wharf", 24)
-set_dist("The Castro", "Marina District", 21)
-set_dist("The Castro", "Haight-Ashbury", 6)
-set_dist("The Castro", "Mission District", 7)
-set_dist("The Castro", "Pacific Heights", 16)
-set_dist("The Castro", "Golden Gate Park", 11)
+    return tt, friends
 
-set_dist("Alamo Square", "The Castro", 8)
-set_dist("Alamo Square", "Richmond District", 11)
-set_dist("Alamo Square", "Financial District", 17)
-set_dist("Alamo Square", "Union Square", 14)
-set_dist("Alamo Square", "Fisherman's Wharf", 19)
-set_dist("Alamo Square", "Marina District", 15)
-set_dist("Alamo Square", "Haight-Ashbury", 5)
-set_dist("Alamo Square", "Mission District", 10)
-set_dist("Alamo Square", "Pacific Heights", 10)
-set_dist("Alamo Square", "Golden Gate Park", 9)
+def search_optimal_schedule(travel, friends, start_loc, start_time):
+    n = len(friends)
+    idx_map = {friends[i]["person"]: i for i in range(n)}
 
-set_dist("Richmond District", "The Castro", 16)
-set_dist("Richmond District", "Alamo Square", 13)
-set_dist("Richmond District", "Financial District", 22)
-set_dist("Richmond District", "Union Square", 21)
-set_dist("Richmond District", "Fisherman's Wharf", 18)
-set_dist("Richmond District", "Marina District", 9)
-set_dist("Richmond District", "Haight-Ashbury", 10)
-set_dist("Richmond District", "Mission District", 20)
-set_dist("Richmond District", "Pacific Heights", 10)
-set_dist("Richmond District", "Golden Gate Park", 9)
+    # Precompute an order for stable iteration (by window start)
+    order = sorted(range(n), key=lambda i: (friends[i]["start"], friends[i]["end"]))
 
-set_dist("Financial District", "The Castro", 20)
-set_dist("Financial District", "Alamo Square", 17)
-set_dist("Financial District", "Richmond District", 21)
-set_dist("Financial District", "Union Square", 9)
-set_dist("Financial District", "Fisherman's Wharf", 10)
-set_dist("Financial District", "Marina District", 15)
-set_dist("Financial District", "Haight-Ashbury", 19)
-set_dist("Financial District", "Mission District", 17)
-set_dist("Financial District", "Pacific Heights", 13)
-set_dist("Financial District", "Golden Gate Park", 23)
+    best = {
+        "count": 0,
+        "end_time": start_time,
+        "total_travel": 0,
+        "itinerary": [],
+        "mask": 0,
+    }
 
-set_dist("Union Square", "The Castro", 17)
-set_dist("Union Square", "Alamo Square", 15)
-set_dist("Union Square", "Richmond District", 20)
-set_dist("Union Square", "Financial District", 9)
-set_dist("Union Square", "Fisherman's Wharf", 15)
-set_dist("Union Square", "Marina District", 18)
-set_dist("Union Square", "Haight-Ashbury", 18)
-set_dist("Union Square", "Mission District", 14)
-set_dist("Union Square", "Pacific Heights", 15)
-set_dist("Union Square", "Golden Gate Park", 22)
+    # Simple cache to prune dominated states: key -> best (count, -end_time) seen
+    from functools import lru_cache
 
-set_dist("Fisherman's Wharf", "The Castro", 27)
-set_dist("Fisherman's Wharf", "Alamo Square", 21)
-set_dist("Fisherman's Wharf", "Richmond District", 18)
-set_dist("Fisherman's Wharf", "Financial District", 11)
-set_dist("Fisherman's Wharf", "Union Square", 13)
-set_dist("Fisherman's Wharf", "Marina District", 9)
-set_dist("Fisherman's Wharf", "Haight-Ashbury", 22)
-set_dist("Fisherman's Wharf", "Mission District", 22)
-set_dist("Fisherman's Wharf", "Pacific Heights", 12)
-set_dist("Fisherman's Wharf", "Golden Gate Park", 25)
+    @lru_cache(maxsize=None)
+    def dfs(current_loc, current_time, mask, total_travel):
+        # Compute optimistic bound
+        remaining_possible = 0
+        for i in range(n):
+            if not (mask & (1 << i)):
+                f = friends[i]
+                # optimistic: zero travel
+                earliest_start = max(current_time, f["start"])
+                if earliest_start + f["min_duration"] <= f["end"]:
+                    remaining_possible += 1
 
-set_dist("Marina District", "The Castro", 22)
-set_dist("Marina District", "Alamo Square", 15)
-set_dist("Marina District", "Richmond District", 11)
-set_dist("Marina District", "Financial District", 17)
-set_dist("Marina District", "Union Square", 16)
-set_dist("Marina District", "Fisherman's Wharf", 10)
-set_dist("Marina District", "Haight-Ashbury", 16)
-set_dist("Marina District", "Mission District", 20)
-set_dist("Marina District", "Pacific Heights", 7)
-set_dist("Marina District", "Golden Gate Park", 18)
+        best_local = (0, current_time, total_travel, [])  # count, end_time, total_travel, itin
 
-set_dist("Haight-Ashbury", "The Castro", 6)
-set_dist("Haight-Ashbury", "Alamo Square", 5)
-set_dist("Haight-Ashbury", "Richmond District", 10)
-set_dist("Haight-Ashbury", "Financial District", 21)
-set_dist("Haight-Ashbury", "Union Square", 19)
-set_dist("Haight-Ashbury", "Fisherman's Wharf", 23)
-set_dist("Haight-Ashbury", "Marina District", 17)
-set_dist("Haight-Ashbury", "Mission District", 11)
-set_dist("Haight-Ashbury", "Pacific Heights", 12)
-set_dist("Haight-Ashbury", "Golden Gate Park", 7)
+        # Try all feasible next meetings, sorted by earliest feasible finish
+        candidates = []
+        for i in order:
+            if mask & (1 << i):
+                continue
+            f = friends[i]
+            if current_loc not in travel or f["location"] not in travel[current_loc]:
+                continue
+            arr = current_time + travel[current_loc][f["location"]]
+            start = max(arr, f["start"])
+            end = start + f["min_duration"]
+            if end <= f["end"]:
+                candidates.append((end, start, i, arr))
 
-set_dist("Mission District", "The Castro", 7)
-set_dist("Mission District", "Alamo Square", 11)
-set_dist("Mission District", "Richmond District", 20)
-set_dist("Mission District", "Financial District", 15)
-set_dist("Mission District", "Union Square", 15)
-set_dist("Mission District", "Fisherman's Wharf", 22)
-set_dist("Mission District", "Marina District", 19)
-set_dist("Mission District", "Haight-Ashbury", 12)
-set_dist("Mission District", "Pacific Heights", 16)
-set_dist("Mission District", "Golden Gate Park", 17)
+        candidates.sort()  # by earliest finish time
 
-set_dist("Pacific Heights", "The Castro", 16)
-set_dist("Pacific Heights", "Alamo Square", 10)
-set_dist("Pacific Heights", "Richmond District", 12)
-set_dist("Pacific Heights", "Financial District", 13)
-set_dist("Pacific Heights", "Union Square", 12)
-set_dist("Pacific Heights", "Fisherman's Wharf", 13)
-set_dist("Pacific Heights", "Marina District", 6)
-set_dist("Pacific Heights", "Haight-Ashbury", 11)
-set_dist("Pacific Heights", "Mission District", 15)
-set_dist("Pacific Heights", "Golden Gate Park", 15)
+        if not candidates:
+            return best_local
 
-set_dist("Golden Gate Park", "The Castro", 13)
-set_dist("Golden Gate Park", "Alamo Square", 9)
-set_dist("Golden Gate Park", "Richmond District", 7)
-set_dist("Golden Gate Park", "Financial District", 26)
-set_dist("Golden Gate Park", "Union Square", 22)
-set_dist("Golden Gate Park", "Fisherman's Wharf", 24)
-set_dist("Golden Gate Park", "Marina District", 16)
-set_dist("Golden Gate Park", "Haight-Ashbury", 7)
-set_dist("Golden Gate Park", "Mission District", 17)
-set_dist("Golden Gate Park", "Pacific Heights", 16)
+        # Branch over candidates
+        local_best_tuple = (-1, float('inf'), float('inf'))  # (count, end_time, total_travel)
+        local_best = best_local
 
-# People constraints
-people = [
-    {"name": "William", "location": "Alamo Square", "start": t2m("15:15"), "end": t2m("17:15"), "min": 60},
-    {"name": "Joshua", "location": "Richmond District", "start": t2m("7:00"), "end": t2m("20:00"), "min": 15},
-    {"name": "Joseph", "location": "Financial District", "start": t2m("11:15"), "end": t2m("13:30"), "min": 15},
-    {"name": "David", "location": "Union Square", "start": t2m("16:45"), "end": t2m("19:15"), "min": 45},
-    {"name": "Brian", "location": "Fisherman's Wharf", "start": t2m("13:45"), "end": t2m("20:45"), "min": 105},
-    {"name": "Karen", "location": "Marina District", "start": t2m("11:30"), "end": t2m("18:30"), "min": 15},
-    {"name": "Anthony", "location": "Haight-Ashbury", "start": t2m("7:15"), "end": t2m("10:30"), "min": 30},
-    {"name": "Matthew", "location": "Mission District", "start": t2m("17:15"), "end": t2m("19:15"), "min": 120},
-    {"name": "Helen", "location": "Pacific Heights", "start": t2m("8:00"), "end": t2m("12:00"), "min": 75},
-    {"name": "Jeffrey", "location": "Golden Gate Park", "start": t2m("19:00"), "end": t2m("21:30"), "min": 60},
-]
+        for end, start, i, arr in candidates:
+            f = friends[i]
+            new_mask = mask | (1 << i)
+            meet_record = {
+                "action": "meet",
+                "location": f["location"],
+                "person": f["person"],
+                "start_time": start,
+                "end_time": end,
+            }
+            # Accumulate travel time (arr - current_time)
+            new_total_travel = total_travel + (arr - current_time if arr > current_time else 0)
 
-# Index people by name for convenience
-people_by_name = {p["name"]: p for p in people}
+            sub_count, sub_end_time, sub_total_travel, sub_itin = dfs(
+                f["location"], end, new_mask, new_total_travel
+            )
 
-start_location = "The Castro"
-start_time = t2m("9:00")
+            # Include current meeting
+            count = 1 + sub_count
+            end_time_res = sub_end_time
+            total_travel_res = sub_total_travel
 
-# DFS to find optimal itinerary
-best = {
-    "count": 0,
-    "end_time": float("inf"),
-    "travel": float("inf"),
-    "itinerary": [],
-}
+            # Tie-breakers: maximize count, then minimize end_time, then minimize total_travel
+            cand_tuple = (count, -end_time_res, -total_travel_res)
+            best_tuple = (local_best_tuple[0], -local_best_tuple[1], -local_best_tuple[2]) if local_best_tuple[0] != -1 else None
 
-# Precompute a simple optimistic bound: number of remaining people
-def dfs(current_loc, current_time, remaining_names, itinerary, travel_so_far):
-    global best
-    # Prune if even meeting everyone remaining doesn't beat best
-    potential = len(itinerary) + len(remaining_names)
-    if potential < best["count"]:
-        return
+            if best_tuple is None or cand_tuple > best_tuple:
+                local_best_tuple = (count, end_time_res, total_travel_res)
+                local_best = (count, end_time_res, total_travel_res, [meet_record] + sub_itin)
 
-    # Update best if at leaf (or even mid if better count so far with potential equals current met)
-    if len(itinerary) > best["count"]:
-        best["count"] = len(itinerary)
-        best["end_time"] = current_time
-        best["travel"] = travel_so_far
-        best["itinerary"] = list(itinerary)
-    elif len(itinerary) == best["count"]:
-        # tie-breakers: earlier finish, then less travel
-        if current_time < best["end_time"] or (current_time == best["end_time"] and travel_so_far < best["travel"]):
-            best["end_time"] = current_time
-            best["travel"] = travel_so_far
-            best["itinerary"] = list(itinerary)
+        return local_best
 
-    if not remaining_names:
-        return
+    count, end_time, total_travel, itin = dfs(start_loc, start_time, 0, 0)
 
-    # Build candidate feasible next meetings
-    candidates = []
-    for name in list(remaining_names):
-        p = people_by_name[name]
-        travel = 0 if current_loc == p["location"] else dist[current_loc][p["location"]]
-        arrival = current_time + travel
-        start = max(arrival, p["start"])
-        end = start + p["min"]
-        if end <= p["end"]:
-            candidates.append((end, start, travel, name))
-
-    # Sort by earliest finishing first (heuristic)
-    candidates.sort()
-
-    for end, start, travel, name in candidates:
-        p = people_by_name[name]
-        # proceed
-        itinerary.append({
+    # Convert times to strings
+    itinerary_out = []
+    for rec in itin:
+        itinerary_out.append({
             "action": "meet",
-            "location": p["location"],
-            "person": p["name"],
-            "start_time": start,
-            "end_time": end,
+            "location": rec["location"],
+            "person": rec["person"],
+            "start_time": fmt_time(rec["start_time"]),
+            "end_time": fmt_time(rec["end_time"]),
         })
-        remaining_names.remove(name)
-        dfs(p["location"], end, remaining_names, itinerary, travel_so_far + travel)
-        remaining_names.add(name)
-        itinerary.pop()
 
-# Run search
-remaining = set(p["name"] for p in people)
-dfs(start_location, start_time, remaining, [], 0)
+    return {"itinerary": itinerary_out}
 
-# Convert times to strings and build output
-output_itinerary = []
-for item in best["itinerary"]:
-    output_itinerary.append({
-        "action": "meet",
-        "location": item["location"],
-        "person": item["person"],
-        "start_time": m2t(item["start_time"]),
-        "end_time": m2t(item["end_time"]),
-    })
+def main():
+    travel, friends = build_data()
+    start_loc = "The Castro"
+    start_time = minutes(9, 0)  # 9:00
 
-result = {"itinerary": output_itinerary}
+    result = search_optimal_schedule(travel, friends, start_loc, start_time)
+    print(json.dumps(result, ensure_ascii=False))
 
-print(json.dumps(result))
+if __name__ == "__main__":
+    # SOLUTION:
+    main()

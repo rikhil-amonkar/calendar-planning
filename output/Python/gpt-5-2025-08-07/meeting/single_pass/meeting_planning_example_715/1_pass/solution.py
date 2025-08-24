@@ -1,15 +1,15 @@
 import json
-from itertools import permutations
+from copy import deepcopy
 
-def to_minutes(h, m):
+def to_min(h, m):
     return h * 60 + m
 
-def fmt_time(t):
+def min_to_str(t):
     h = t // 60
     m = t % 60
     return f"{h}:{m:02d}"
 
-# Travel times (in minutes), directed
+# Travel times in minutes (directed)
 travel = {
     "Presidio": {
         "Marina District": 11,
@@ -103,129 +103,152 @@ travel = {
     }
 }
 
-# Meeting constraints
-people = {
-    "Amanda": {
+# People constraints
+people = [
+    {
+        "name": "Amanda",
         "location": "Marina District",
-        "start": to_minutes(14, 45),
-        "end": to_minutes(19, 30),
+        "start": to_min(14, 45),
+        "end": to_min(19, 30),
         "min_duration": 105
     },
-    "Melissa": {
+    {
+        "name": "Melissa",
         "location": "The Castro",
-        "start": to_minutes(9, 30),
-        "end": to_minutes(17, 0),
+        "start": to_min(9, 30),
+        "end": to_min(17, 0),
         "min_duration": 30
     },
-    "Jeffrey": {
+    {
+        "name": "Jeffrey",
         "location": "Fisherman's Wharf",
-        "start": to_minutes(12, 45),
-        "end": to_minutes(18, 45),
+        "start": to_min(12, 45),
+        "end": to_min(18, 45),
         "min_duration": 120
     },
-    "Matthew": {
+    {
+        "name": "Matthew",
         "location": "Bayview",
-        "start": to_minutes(10, 15),
-        "end": to_minutes(13, 15),
+        "start": to_min(10, 15),
+        "end": to_min(13, 15),
         "min_duration": 30
     },
-    "Nancy": {
+    {
+        "name": "Nancy",
         "location": "Pacific Heights",
-        "start": to_minutes(17, 0),
-        "end": to_minutes(21, 30),
+        "start": to_min(17, 0),
+        "end": to_min(21, 30),
         "min_duration": 105
     },
-    "Karen": {
+    {
+        "name": "Karen",
         "location": "Mission District",
-        "start": to_minutes(17, 30),
-        "end": to_minutes(20, 30),
+        "start": to_min(17, 30),
+        "end": to_min(20, 30),
         "min_duration": 105
     },
-    "Robert": {
+    {
+        "name": "Robert",
         "location": "Alamo Square",
-        "start": to_minutes(11, 15),
-        "end": to_minutes(17, 30),
+        "start": to_min(11, 15),
+        "end": to_min(17, 30),
         "min_duration": 120
     },
-    "Joseph": {
+    {
+        "name": "Joseph",
         "location": "Golden Gate Park",
-        "start": to_minutes(8, 30),
-        "end": to_minutes(21, 15),
+        "start": to_min(8, 30),
+        "end": to_min(21, 15),
         "min_duration": 105
     }
-}
+]
 
+# Index people by name for quick access
+people_by_name = {p["name"]: p for p in people}
+
+# Start conditions
 start_location = "Presidio"
-start_time = to_minutes(9, 0)
+start_time = to_min(9, 0)
 
-# Verify travel matrix has all required directed edges
-locations = set(travel.keys())
-for a in travel:
-    for b in locations - {a}:
-        assert b in travel[a], f"Missing travel time from {a} to {b}"
-
-# Depth-first search over all feasible sequences of meetings
 best_solution = {
-    "itinerary": [],
-    "count": 0,
-    "end_time": start_time,
-    "total_travel": 0
+    "count": -1,
+    "total_meeting": 0,
+    "total_travel": float('inf'),
+    "finish_time": float('inf'),
+    "itinerary": []
 }
 
-def better(sol_a, sol_b):
-    # Return True if sol_a is better than sol_b
-    if sol_a["count"] != sol_b["count"]:
-        return sol_a["count"] > sol_b["count"]
-    if sol_a["end_time"] != sol_b["end_time"]:
-        return sol_a["end_time"] < sol_b["end_time"]
-    if sol_a["total_travel"] != sol_b["total_travel"]:
-        return sol_a["total_travel"] < sol_b["total_travel"]
-    # If still tied, arbitrary but stable preference by lexicographic itinerary
-    a_names = [item["person"] for item in sol_a["itinerary"]]
-    b_names = [item["person"] for item in sol_b["itinerary"]]
-    return a_names < b_names
-
-def search(current_loc, current_time, remaining_names, itinerary, total_travel):
+def evaluate_and_update(itinerary, total_meeting, total_travel):
     global best_solution
+    count = len(itinerary)
+    finish_time = itinerary[-1]["end"] if itinerary else start_time
+    better = False
+    if count > best_solution["count"]:
+        better = True
+    elif count == best_solution["count"]:
+        if total_meeting > best_solution["total_meeting"]:
+            better = True
+        elif total_meeting == best_solution["total_meeting"]:
+            if total_travel < best_solution["total_travel"]:
+                better = True
+            elif total_travel == best_solution["total_travel"]:
+                if finish_time < best_solution["finish_time"]:
+                    better = True
+    if better:
+        best_solution = {
+            "count": count,
+            "total_meeting": total_meeting,
+            "total_travel": total_travel,
+            "finish_time": finish_time,
+            "itinerary": deepcopy(itinerary)
+        }
 
-    # Consider updating best with current partial plan
-    current_solution = {
-        "itinerary": itinerary,
-        "count": len(itinerary),
-        "end_time": current_time,
-        "total_travel": total_travel
-    }
-    if better(current_solution, best_solution):
-        best_solution = current_solution
+def dfs(curr_loc, curr_time, remaining_names, itinerary, total_meeting, total_travel):
+    # Update best with current partial plan
+    evaluate_and_update(itinerary, total_meeting, total_travel)
 
-    # Try to extend with each remaining person if feasible
-    for name in list(remaining_names):
-        info = people[name]
-        loc = info["location"]
-        travel_time = travel[current_loc][loc]
-        arrival = current_time + travel_time
-        start = max(arrival, info["start"])
-        end = start + info["min_duration"]
-        if end <= info["end"]:
-            # feasible meeting
-            meeting = {
+    # Prune if even meeting everyone else can't beat current best
+    potential_max = len(itinerary) + len(remaining_names)
+    if potential_max < best_solution["count"]:
+        return
+
+    # Try each remaining person next
+    for name in sorted(remaining_names):
+        p = people_by_name[name]
+        # Travel time from current location to person's location
+        if curr_loc not in travel or p["location"] not in travel[curr_loc]:
+            continue  # no path defined
+        t_travel = travel[curr_loc][p["location"]]
+        arrival = curr_time + t_travel
+        start_meet = max(arrival, p["start"])
+        end_meet = start_meet + p["min_duration"]
+        if end_meet <= p["end"]:
+            new_it = itinerary + [{
                 "action": "meet",
-                "location": loc,
+                "location": p["location"],
                 "person": name,
-                "start_time": fmt_time(start),
-                "end_time": fmt_time(end)
-            }
-            new_remaining = remaining_names - {name}
-            search(loc, end, new_remaining, itinerary + [meeting], total_travel + travel_time)
-        # else skip implicitly by not choosing this person now
+                "start": start_meet,
+                "end": end_meet
+            }]
+            new_remaining = set(remaining_names)
+            new_remaining.remove(name)
+            dfs(p["location"], end_meet, new_remaining, new_it, total_meeting + p["min_duration"], total_travel + t_travel)
 
-# Kick off search
-all_names = set(people.keys())
-search(start_location, start_time, all_names, [], 0)
+# Run search
+all_names = set(p["name"] for p in people)
+dfs(start_location, start_time, all_names, [], 0, 0)
 
-# Prepare JSON output
-output = {
-    "itinerary": best_solution["itinerary"]
-}
+# Prepare output JSON
+output_itinerary = []
+for item in best_solution["itinerary"]:
+    output_itinerary.append({
+        "action": item["action"],
+        "location": item["location"],
+        "person": item["person"],
+        "start_time": min_to_str(item["start"]),
+        "end_time": min_to_str(item["end"])
+    })
 
-print(json.dumps(output, indent=2))
+result = {"itinerary": output_itinerary}
+
+print(json.dumps(result, ensure_ascii=False))

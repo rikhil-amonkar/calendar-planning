@@ -1,162 +1,137 @@
 import itertools
 import json
 
-# Input variables
-start_location = "Sunset District"
-start_time_str = "9:00"
+# Input variables (meeting constraints and travel times)
 
+# Locations
+SUNSET = "Sunset District"
+CHINATOWN = "Chinatown"
+RUSSIAN_HILL = "Russian Hill"
+NORTH_BEACH = "North Beach"
+
+# Travel times in minutes (directed)
+travel = {
+    SUNSET: {CHINATOWN: 30, RUSSIAN_HILL: 24, NORTH_BEACH: 29},
+    CHINATOWN: {SUNSET: 29, RUSSIAN_HILL: 7, NORTH_BEACH: 3},
+    RUSSIAN_HILL: {SUNSET: 23, CHINATOWN: 9, NORTH_BEACH: 5},
+    NORTH_BEACH: {SUNSET: 27, CHINATOWN: 6, RUSSIAN_HILL: 4},
+}
+
+# Helper to convert H:MM to minutes (24h)
+def hm_to_min(h, m):
+    return h * 60 + m
+
+# Helper to format minutes to H:MM (24h, no leading zero on hour)
+def min_to_hm(t):
+    h = t // 60
+    m = t % 60
+    return f"{h}:{m:02d}"
+
+# Start location/time
+start_location = SUNSET
+start_time = hm_to_min(9, 0)  # 9:00
+
+# Friends constraints: name, location, availability window [start, end], required minimum duration
 friends = [
     {
         "name": "Anthony",
-        "location": "Chinatown",
-        "avail_start": "13:15",
-        "avail_end": "14:30",
-        "min_dur": 60
+        "location": CHINATOWN,
+        "avail_start": hm_to_min(13, 15),  # 13:15
+        "avail_end": hm_to_min(14, 30),    # 14:30
+        "min_duration": 60,
     },
     {
         "name": "Rebecca",
-        "location": "Russian Hill",
-        "avail_start": "19:30",
-        "avail_end": "21:15",
-        "min_dur": 105
+        "location": RUSSIAN_HILL,
+        "avail_start": hm_to_min(19, 30),  # 19:30
+        "avail_end": hm_to_min(21, 15),    # 21:15
+        "min_duration": 105,
     },
     {
         "name": "Melissa",
-        "location": "North Beach",
-        "avail_start": "8:15",
-        "avail_end": "13:30",
-        "min_dur": 105
-    }
+        "location": NORTH_BEACH,
+        "avail_start": hm_to_min(8, 15),   # 8:15
+        "avail_end": hm_to_min(13, 30),    # 13:30
+        "min_duration": 105,
+    },
 ]
 
-# Travel times (minutes), direction-specific
-travel_times = {
-    ("Sunset District", "Chinatown"): 30,
-    ("Sunset District", "Russian Hill"): 24,
-    ("Sunset District", "North Beach"): 29,
-    ("Chinatown", "Sunset District"): 29,
-    ("Chinatown", "Russian Hill"): 7,
-    ("Chinatown", "North Beach"): 3,
-    ("Russian Hill", "Sunset District"): 23,
-    ("Russian Hill", "Chinatown"): 9,
-    ("Russian Hill", "North Beach"): 5,
-    ("North Beach", "Sunset District"): 27,
-    ("North Beach", "Chinatown"): 6,
-    ("North Beach", "Russian Hill"): 4
-}
-
-# Utility functions
-def parse_time(t):
-    h, m = t.split(":")
-    return int(h) * 60 + int(m)
-
-def fmt_time(minutes):
-    h = minutes // 60
-    m = minutes % 60
-    return f"{h}:{m:02d}"
-
-def travel_time(src, dst):
-    if src == dst:
-        return 0
-    return travel_times[(src, dst)]
-
-# Convert friend times
-for f in friends:
-    f["avail_start_min"] = parse_time(f["avail_start"])
-    f["avail_end_min"] = parse_time(f["avail_end"])
-
-start_time = parse_time(start_time_str)
-
-def schedule_for_order(order):
-    itinerary = []
-    current_loc = start_location
+def evaluate_order(order):
     current_time = start_time
-    total_meeting_minutes = 0
-    total_wait_minutes = 0
+    current_loc = start_location
+    itinerary = []
+    total_travel = 0
+    total_wait = 0
 
-    for i, friend in enumerate(order):
+    for person in order:
         # Travel to friend's location
-        ttime = travel_time(current_loc, friend["location"])
-        arrival = current_time + ttime
-        # Start at max(arrival, availability start)
-        start = max(arrival, friend["avail_start_min"])
-        # If we arrive after the latest feasible start (end - min_dur), infeasible
-        latest_start = friend["avail_end_min"] - friend["min_dur"]
-        if start > latest_start:
+        t_travel = travel[current_loc][person["location"]]
+        arrival = current_time + t_travel
+        total_travel += t_travel
+
+        # Determine feasible meeting start and end times
+        start_meet = max(arrival, person["avail_start"])
+        end_meet = start_meet + person["min_duration"]
+
+        # Check feasibility within availability window
+        if end_meet > person["avail_end"]:
             return None  # infeasible
 
-        # Compute end time; try to maximize meeting duration but keep next feasible
-        if i < len(order) - 1:
-            nxt = order[i + 1]
-            next_latest_start = nxt["avail_end_min"] - nxt["min_dur"]
-            # Need to depart in time to reach next_latest_start
-            max_end_due_to_next = next_latest_start - travel_time(friend["location"], nxt["location"])
-            end_cap = min(friend["avail_end_min"], max_end_due_to_next)
-        else:
-            # Last friend: can go until their availability end
-            end_cap = friend["avail_end_min"]
+        # Accumulate wait (if any)
+        if start_meet > arrival:
+            total_wait += (start_meet - arrival)
 
-        # Ensure at least min duration
-        end = max(start + friend["min_dur"], start)  # at least min_dur
-        end = min(end_cap, friend["avail_end_min"])
-
-        # If end still doesn't satisfy min duration, infeasible
-        if end - start < friend["min_dur"]:
-            # Try to shift start earlier if possible (arrive was already earliest)
-            # No room to expand; infeasible
-            return None
-
-        # Record waiting time
-        wait = max(0, start - arrival)
-        total_wait_minutes += wait
-
-        # Record meeting
+        # Record the meeting
         itinerary.append({
             "action": "meet",
-            "location": friend["location"],
-            "person": friend["name"],
-            "start_time": fmt_time(start),
-            "end_time": fmt_time(end)
+            "location": person["location"],
+            "person": person["name"],
+            "start_time": min_to_hm(start_meet),
+            "end_time": min_to_hm(end_meet),
         })
-        total_meeting_minutes += (end - start)
 
-        # Advance
-        current_loc = friend["location"]
-        current_time = end
+        # Update current state
+        current_time = end_meet
+        current_loc = person["location"]
 
+    finish_time = current_time
+    # Objective metrics
+    num_met = len(order)
     return {
+        "feasible": True,
+        "num_met": num_met,
+        "total_wait": total_wait,
+        "total_travel": total_travel,
+        "finish_time": finish_time,
         "itinerary": itinerary,
-        "total_meeting_minutes": total_meeting_minutes,
-        "total_wait_minutes": total_wait_minutes,
-        "met_count": len(order)
     }
 
-# Search over subsets and permutations to maximize number of friends met, then total meeting time, then minimize waiting
-best = None
+def optimize_schedule(friends):
+    best = None
+    # Explore all subsets (largest to smallest), and all permutations within each subset
+    for r in range(len(friends), 0, -1):
+        found_at_this_size = []
+        for subset in itertools.combinations(friends, r):
+            for perm in itertools.permutations(subset):
+                result = evaluate_order(perm)
+                if result:
+                    found_at_this_size.append(result)
+        if found_at_this_size:
+            # Choose best among those with r meetings:
+            # Criteria: maximize num_met, then minimize wait, then travel, then finish time
+            best = min(
+                found_at_this_size,
+                key=lambda x: (-x["num_met"], x["total_wait"], x["total_travel"], x["finish_time"])
+            )
+            break
+    # If none feasible (shouldn't happen), return empty itinerary
+    if not best:
+        return {"itinerary": []}
+    return {"itinerary": best["itinerary"]}
 
-# Generate all subsets of friends, prioritizing larger sets
-n = len(friends)
-indices = list(range(n))
-for r in range(n, 0, -1):
-    found_for_r = False
-    for combo in itertools.combinations(indices, r):
-        subset = [friends[i] for i in combo]
-        for perm in itertools.permutations(subset):
-            result = schedule_for_order(list(perm))
-            if result is None:
-                continue
-            if best is None:
-                best = result
-                found_for_r = True
-            else:
-                # Compare
-                if (result["met_count"] > best["met_count"] or
-                    (result["met_count"] == best["met_count"] and result["total_meeting_minutes"] > best["total_meeting_minutes"]) or
-                    (result["met_count"] == best["met_count"] and result["total_meeting_minutes"] == best["total_meeting_minutes"] and result["total_wait_minutes"] < best["total_wait_minutes"])):
-                    best = result
-                    found_for_r = True
-    if found_for_r:
-        break  # we found at least one schedule with r friends; no need to check smaller r
+def main():
+    result = optimize_schedule(friends)
+    print(json.dumps(result, indent=2))
 
-output = {"itinerary": best["itinerary"] if best else []}
-print(json.dumps(output, ensure_ascii=False))
+if __name__ == "__main__":
+    main()

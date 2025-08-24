@@ -1,185 +1,217 @@
 import json
+from copy import deepcopy
 
-def parse_ampm(s):
-    s = s.strip().upper()
-    if s.endswith('AM') or s.endswith('PM'):
-        ampm = s[-2:]
-        time_part = s[:-2]
-    else:
-        ampm = None
-        time_part = s
-    h, m = map(int, time_part.split(':'))
-    if ampm == 'AM':
-        if h == 12:
-            h = 0
-    elif ampm == 'PM':
-        if h != 12:
-            h += 12
+def time_to_minutes(tstr):
+    # tstr format examples: '9:00', '13:30'
+    h, m = map(int, tstr.split(':'))
     return h * 60 + m
 
-def minutes_to_str(mins):
-    h = mins // 60
-    m = mins % 60
-    return f"{h}:{m:02d}"
+def minutes_to_time(m):
+    h = m // 60
+    mi = m % 60
+    return f"{h}:{mi:02d}"
 
-# Locations
-locations = [
-    "Union Square",
-    "Russian Hill",
-    "Alamo Square",
-    "Haight-Ashbury",
-    "Marina District",
-    "Bayview",
-    "Chinatown",
-    "Presidio",
-    "Sunset District",
-]
+def build_travel_times():
+    locs = [
+        "Union Square", "Russian Hill", "Alamo Square", "Haight-Ashbury",
+        "Marina District", "Bayview", "Chinatown", "Presidio", "Sunset District"
+    ]
+    T = {a: {} for a in locs}
+    # Union Square
+    T["Union Square"]["Russian Hill"] = 13
+    T["Union Square"]["Alamo Square"] = 15
+    T["Union Square"]["Haight-Ashbury"] = 18
+    T["Union Square"]["Marina District"] = 18
+    T["Union Square"]["Bayview"] = 15
+    T["Union Square"]["Chinatown"] = 7
+    T["Union Square"]["Presidio"] = 24
+    T["Union Square"]["Sunset District"] = 27
+    # Russian Hill
+    T["Russian Hill"]["Union Square"] = 10
+    T["Russian Hill"]["Alamo Square"] = 15
+    T["Russian Hill"]["Haight-Ashbury"] = 17
+    T["Russian Hill"]["Marina District"] = 7
+    T["Russian Hill"]["Bayview"] = 23
+    T["Russian Hill"]["Chinatown"] = 9
+    T["Russian Hill"]["Presidio"] = 14
+    T["Russian Hill"]["Sunset District"] = 23
+    # Alamo Square
+    T["Alamo Square"]["Union Square"] = 14
+    T["Alamo Square"]["Russian Hill"] = 13
+    T["Alamo Square"]["Haight-Ashbury"] = 5
+    T["Alamo Square"]["Marina District"] = 15
+    T["Alamo Square"]["Bayview"] = 16
+    T["Alamo Square"]["Chinatown"] = 15
+    T["Alamo Square"]["Presidio"] = 17
+    T["Alamo Square"]["Sunset District"] = 16
+    # Haight-Ashbury
+    T["Haight-Ashbury"]["Union Square"] = 19
+    T["Haight-Ashbury"]["Russian Hill"] = 17
+    T["Haight-Ashbury"]["Alamo Square"] = 5
+    T["Haight-Ashbury"]["Marina District"] = 17
+    T["Haight-Ashbury"]["Bayview"] = 18
+    T["Haight-Ashbury"]["Chinatown"] = 19
+    T["Haight-Ashbury"]["Presidio"] = 15
+    T["Haight-Ashbury"]["Sunset District"] = 15
+    # Marina District
+    T["Marina District"]["Union Square"] = 16
+    T["Marina District"]["Russian Hill"] = 8
+    T["Marina District"]["Alamo Square"] = 15
+    T["Marina District"]["Haight-Ashbury"] = 16
+    T["Marina District"]["Bayview"] = 27
+    T["Marina District"]["Chinatown"] = 15
+    T["Marina District"]["Presidio"] = 10
+    T["Marina District"]["Sunset District"] = 19
+    # Bayview
+    T["Bayview"]["Union Square"] = 18
+    T["Bayview"]["Russian Hill"] = 23
+    T["Bayview"]["Alamo Square"] = 16
+    T["Bayview"]["Haight-Ashbury"] = 19
+    T["Bayview"]["Marina District"] = 27
+    T["Bayview"]["Chinatown"] = 19
+    T["Bayview"]["Presidio"] = 32
+    T["Bayview"]["Sunset District"] = 23
+    # Chinatown
+    T["Chinatown"]["Union Square"] = 7
+    T["Chinatown"]["Russian Hill"] = 7
+    T["Chinatown"]["Alamo Square"] = 17
+    T["Chinatown"]["Haight-Ashbury"] = 19
+    T["Chinatown"]["Marina District"] = 12
+    T["Chinatown"]["Bayview"] = 20
+    T["Chinatown"]["Presidio"] = 19
+    T["Chinatown"]["Sunset District"] = 29
+    # Presidio
+    T["Presidio"]["Union Square"] = 22
+    T["Presidio"]["Russian Hill"] = 14
+    T["Presidio"]["Alamo Square"] = 19
+    T["Presidio"]["Haight-Ashbury"] = 15
+    T["Presidio"]["Marina District"] = 11
+    T["Presidio"]["Bayview"] = 31
+    T["Presidio"]["Chinatown"] = 21
+    T["Presidio"]["Sunset District"] = 15
+    # Sunset District
+    T["Sunset District"]["Union Square"] = 30
+    T["Sunset District"]["Russian Hill"] = 24
+    T["Sunset District"]["Alamo Square"] = 17
+    T["Sunset District"]["Haight-Ashbury"] = 15
+    T["Sunset District"]["Marina District"] = 21
+    T["Sunset District"]["Bayview"] = 22
+    T["Sunset District"]["Chinatown"] = 30
+    T["Sunset District"]["Presidio"] = 16
 
-# Directed travel times in minutes
-tt = {
-    "Union Square": {
-        "Russian Hill": 13, "Alamo Square": 15, "Haight-Ashbury": 18, "Marina District": 18,
-        "Bayview": 15, "Chinatown": 7, "Presidio": 24, "Sunset District": 27
-    },
-    "Russian Hill": {
-        "Union Square": 10, "Alamo Square": 15, "Haight-Ashbury": 17, "Marina District": 7,
-        "Bayview": 23, "Chinatown": 9, "Presidio": 14, "Sunset District": 23
-    },
-    "Alamo Square": {
-        "Union Square": 14, "Russian Hill": 13, "Haight-Ashbury": 5, "Marina District": 15,
-        "Bayview": 16, "Chinatown": 15, "Presidio": 17, "Sunset District": 16
-    },
-    "Haight-Ashbury": {
-        "Union Square": 19, "Russian Hill": 17, "Alamo Square": 5, "Marina District": 17,
-        "Bayview": 18, "Chinatown": 19, "Presidio": 15, "Sunset District": 15
-    },
-    "Marina District": {
-        "Union Square": 16, "Russian Hill": 8, "Alamo Square": 15, "Haight-Ashbury": 16,
-        "Bayview": 27, "Chinatown": 15, "Presidio": 10, "Sunset District": 19
-    },
-    "Bayview": {
-        "Union Square": 18, "Russian Hill": 23, "Alamo Square": 16, "Haight-Ashbury": 19,
-        "Marina District": 27, "Chinatown": 19, "Presidio": 32, "Sunset District": 23
-    },
-    "Chinatown": {
-        "Union Square": 7, "Russian Hill": 7, "Alamo Square": 17, "Haight-Ashbury": 19,
-        "Marina District": 12, "Bayview": 20, "Presidio": 19, "Sunset District": 29
-    },
-    "Presidio": {
-        "Union Square": 22, "Russian Hill": 14, "Alamo Square": 19, "Haight-Ashbury": 15,
-        "Marina District": 11, "Bayview": 31, "Chinatown": 21, "Sunset District": 15
-    },
-    "Sunset District": {
-        "Union Square": 30, "Russian Hill": 24, "Alamo Square": 17, "Haight-Ashbury": 15,
-        "Marina District": 21, "Bayview": 22, "Chinatown": 30, "Presidio": 16
+    # Fill self travel as 0
+    for a in locs:
+        T[a][a] = 0
+    return T
+
+def build_people():
+    # Windows in minutes from midnight
+    def hm(h, m):
+        return h * 60 + m
+    people = {
+        "Betty": {
+            "location": "Russian Hill",
+            "start": hm(7, 0),
+            "end": hm(16, 45),
+            "min_duration": 105
+        },
+        "Melissa": {
+            "location": "Alamo Square",
+            "start": hm(9, 30),
+            "end": hm(17, 15),
+            "min_duration": 105
+        },
+        "Joshua": {
+            "location": "Haight-Ashbury",
+            "start": hm(12, 15),
+            "end": hm(19, 0),
+            "min_duration": 90
+        },
+        "Jeffrey": {
+            "location": "Marina District",
+            "start": hm(12, 15),
+            "end": hm(18, 0),
+            "min_duration": 45
+        },
+        "James": {
+            "location": "Bayview",
+            "start": hm(7, 30),
+            "end": hm(20, 0),
+            "min_duration": 90
+        },
+        "Anthony": {
+            "location": "Chinatown",
+            "start": hm(11, 45),
+            "end": hm(13, 30),
+            "min_duration": 75
+        },
+        "Timothy": {
+            "location": "Presidio",
+            "start": hm(12, 30),
+            "end": hm(14, 45),
+            "min_duration": 90
+        },
+        "Emily": {
+            "location": "Sunset District",
+            "start": hm(19, 30),
+            "end": hm(21, 30),
+            "min_duration": 120
+        }
     }
-}
+    return people
 
-# Ensure all pairs exist and add zero diagonals
-for a in locations:
-    if a not in tt:
-        tt[a] = {}
-    for b in locations:
-        if a == b:
-            tt[a][b] = 0
-        else:
-            # If a->b missing, set to a large travel time (effectively blocks path)
-            if b not in tt[a]:
-                tt[a][b] = 10**9  # Very large to avoid selection
+def compute_optimal_schedule():
+    travel = build_travel_times()
+    people = build_people()
+    start_location = "Union Square"
+    start_time = time_to_minutes("9:00")
 
-# Friends constraints
-friends = [
-    {"name": "Betty", "location": "Russian Hill", "start": parse_ampm("7:00AM"), "end": parse_ampm("4:45PM"), "min": 105},
-    {"name": "Melissa", "location": "Alamo Square", "start": parse_ampm("9:30AM"), "end": parse_ampm("5:15PM"), "min": 105},
-    {"name": "Joshua", "location": "Haight-Ashbury", "start": parse_ampm("12:15PM"), "end": parse_ampm("7:00PM"), "min": 90},
-    {"name": "Jeffrey", "location": "Marina District", "start": parse_ampm("12:15PM"), "end": parse_ampm("6:00PM"), "min": 45},
-    {"name": "James", "location": "Bayview", "start": parse_ampm("7:30AM"), "end": parse_ampm("8:00PM"), "min": 90},
-    {"name": "Anthony", "location": "Chinatown", "start": parse_ampm("11:45AM"), "end": parse_ampm("1:30PM"), "min": 75},
-    {"name": "Timothy", "location": "Presidio", "start": parse_ampm("12:30PM"), "end": parse_ampm("2:45PM"), "min": 90},
-    {"name": "Emily", "location": "Sunset District", "start": parse_ampm("7:30PM"), "end": parse_ampm("9:30PM"), "min": 120},
-]
+    names = list(people.keys())
 
-start_location = "Union Square"
-start_time = parse_ampm("9:00AM")
+    best = {
+        "count": -1,
+        "finish_time": float('inf'),
+        "itinerary": []
+    }
 
-# Pre-sort friends by (end - min) to try tighter windows earlier in search
-friends_sorted = sorted(friends, key=lambda f: (f["end"] - f["min"], f["end"]))
+    # DFS search over all feasible sequences (choose earliest feasible start for each meeting)
+    def dfs(current_location, current_time, remaining_names, itinerary):
+        nonlocal best
 
-best = {
-    "count": -1,
-    "meeting_minutes": -1,
-    "finish_time": 10**9,
-    "travel": 10**9,
-    "itinerary": []
-}
+        met_count = len(itinerary)
+        finish_time = current_time
 
-def potential_count_upper_bound(current_time, remaining):
-    # Upper bound on how many more could possibly be scheduled even with zero travel time
-    cnt = 0
-    for f in remaining:
-        if current_time <= f["end"] - f["min"]:
-            cnt += 1
-    return cnt
+        # Update best if better
+        if met_count > best["count"] or (met_count == best["count"] and finish_time < best["finish_time"]):
+            best = {
+                "count": met_count,
+                "finish_time": finish_time,
+                "itinerary": deepcopy(itinerary)
+            }
 
-def dfs(current_loc, current_time, remaining, itin, total_meeting, total_travel):
-    # Update best with current itinerary
-    curr_count = len(itin)
-    finish_time = current_time
-    improved = False
-    if curr_count > best["count"]:
-        improved = True
-    elif curr_count == best["count"]:
-        if total_meeting > best["meeting_minutes"]:
-            improved = True
-        elif total_meeting == best["meeting_minutes"]:
-            if finish_time < best["finish_time"]:
-                improved = True
-            elif finish_time == best["finish_time"]:
-                if total_travel < best["travel"]:
-                    improved = True
-    if improved:
-        best["count"] = curr_count
-        best["meeting_minutes"] = total_meeting
-        best["finish_time"] = finish_time
-        best["travel"] = total_travel
-        best["itinerary"] = list(itin)
+        # Try to meet each remaining person next
+        for name in remaining_names:
+            person = people[name]
+            t_travel = travel[current_location][person["location"]]
+            arrival = current_time + t_travel
+            start = max(arrival, person["start"])
+            end = start + person["min_duration"]
+            if end <= person["end"]:
+                new_itinerary = itinerary + [{
+                    "action": "meet",
+                    "location": person["location"],
+                    "person": name,
+                    "start_time": minutes_to_time(start),
+                    "end_time": minutes_to_time(end)
+                }]
+                new_remaining = [n for n in remaining_names if n != name]
+                dfs(person["location"], end, new_remaining, new_itinerary)
 
-    # Prune if even optimistically we cannot beat current best count
-    if curr_count + potential_count_upper_bound(current_time, remaining) < best["count"]:
-        return
+    dfs(start_location, start_time, names, [])
 
-    # Try each remaining friend as next meeting
-    for idx, f in enumerate(remaining):
-        travel = tt[current_loc][f["location"]]
-        if travel >= 10**9:
-            continue
-        arrival = current_time + travel
-        start_meet = max(arrival, f["start"])
-        end_meet = start_meet + f["min"]
-        if end_meet <= f["end"]:
-            next_remaining = remaining[:idx] + remaining[idx+1:]
-            next_itin = itin + [{
-                "action": "meet",
-                "location": f["location"],
-                "person": f["name"],
-                "start": start_meet,
-                "end": end_meet
-            }]
-            dfs(f["location"], end_meet, next_remaining, next_itin, total_meeting + f["min"], total_travel + travel)
+    # Prepare output as required JSON
+    return {"itinerary": best["itinerary"]}
 
-# Run search
-dfs(start_location, start_time, friends_sorted, [], 0, 0)
-
-# Build output JSON
-output_itinerary = []
-for item in best["itinerary"]:
-    output_itinerary.append({
-        "action": "meet",
-        "location": item["location"],
-        "person": item["person"],
-        "start_time": minutes_to_str(item["start"]),
-        "end_time": minutes_to_str(item["end"])
-    })
-
-result = {"itinerary": output_itinerary}
-print(json.dumps(result, ensure_ascii=False))
+if __name__ == "__main__":
+    result = compute_optimal_schedule()
+    print(json.dumps(result, ensure_ascii=False))

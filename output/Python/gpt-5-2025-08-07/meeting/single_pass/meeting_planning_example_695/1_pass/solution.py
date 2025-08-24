@@ -1,236 +1,165 @@
-import json
 import itertools
+import json
 
-def parse_time(s):
-    s = s.strip().upper()
-    if s.endswith("AM") or s.endswith("PM"):
-        ampm = s[-2:]
-        time_part = s[:-2]
-    else:
-        # assume 24-hour format
-        ampm = None
-        time_part = s
-    hour, minute = map(int, time_part.split(":"))
-    if ampm == "AM":
-        if hour == 12:
-            hour = 0
-    elif ampm == "PM":
-        if hour != 12:
-            hour += 12
-    return hour * 60 + minute
+def minutes(h, m):
+    return h * 60 + m
 
-def fmt_time(minutes):
-    h = minutes // 60
-    m = minutes % 60
+def parse_time_24(s):
+    # s format: 'H:MM'
+    h, m = s.split(':')
+    return int(h) * 60 + int(m)
+
+def minutes_to_str(t):
+    h = t // 60
+    m = t % 60
     return f"{h}:{m:02d}"
 
-# Travel times (minutes) between locations
-travel = {
-    "Bayview": {
-        "Nob Hill": 20,
-        "Union Square": 17,
-        "Chinatown": 18,
-        "The Castro": 20,
-        "Presidio": 31,
-        "Pacific Heights": 23,
-        "Russian Hill": 23,
-    },
-    "Nob Hill": {
-        "Bayview": 19,
-        "Union Square": 7,
-        "Chinatown": 6,
-        "The Castro": 17,
-        "Presidio": 17,
-        "Pacific Heights": 8,
-        "Russian Hill": 5,
-    },
-    "Union Square": {
-        "Bayview": 15,
-        "Nob Hill": 9,
-        "Chinatown": 7,
-        "The Castro": 19,
-        "Presidio": 24,
-        "Pacific Heights": 15,
-        "Russian Hill": 13,
-    },
-    "Chinatown": {
-        "Bayview": 22,
-        "Nob Hill": 8,
-        "Union Square": 7,
-        "The Castro": 22,
-        "Presidio": 19,
-        "Pacific Heights": 10,
-        "Russian Hill": 7,
-    },
-    "The Castro": {
-        "Bayview": 19,
-        "Nob Hill": 16,
-        "Union Square": 19,
-        "Chinatown": 20,
-        "Presidio": 20,
-        "Pacific Heights": 16,
-        "Russian Hill": 18,
-    },
-    "Presidio": {
-        "Bayview": 31,
-        "Nob Hill": 18,
-        "Union Square": 22,
-        "Chinatown": 21,
-        "The Castro": 21,
-        "Pacific Heights": 11,
-        "Russian Hill": 14,
-    },
-    "Pacific Heights": {
-        "Bayview": 22,
-        "Nob Hill": 8,
-        "Union Square": 12,
-        "Chinatown": 11,
-        "The Castro": 16,
-        "Presidio": 11,
-        "Russian Hill": 7,
-    },
-    "Russian Hill": {
-        "Bayview": 23,
-        "Nob Hill": 5,
-        "Union Square": 11,
-        "Chinatown": 9,
-        "The Castro": 21,
-        "Presidio": 14,
-        "Pacific Heights": 7,
-    },
-}
-
-# Meeting constraints
-friends = [
-    {
-        "name": "Paul",
-        "location": "Nob Hill",
-        "window_start": parse_time("4:15PM"),
-        "window_end": parse_time("9:15PM"),
-        "min_duration": 60,
-    },
-    {
-        "name": "Carol",
-        "location": "Union Square",
-        "window_start": parse_time("6:00PM"),
-        "window_end": parse_time("8:15PM"),
-        "min_duration": 120,
-    },
-    {
-        "name": "Patricia",
-        "location": "Chinatown",
-        "window_start": parse_time("8:00PM"),
-        "window_end": parse_time("9:30PM"),
-        "min_duration": 75,
-    },
-    {
-        "name": "Karen",
-        "location": "The Castro",
-        "window_start": parse_time("5:00PM"),
-        "window_end": parse_time("7:00PM"),
-        "min_duration": 45,
-    },
-    {
-        "name": "Nancy",
-        "location": "Presidio",
-        "window_start": parse_time("11:45AM"),
-        "window_end": parse_time("10:00PM"),
-        "min_duration": 30,
-    },
-    {
-        "name": "Jeffrey",
-        "location": "Pacific Heights",
-        "window_start": parse_time("8:00PM"),
-        "window_end": parse_time("8:45PM"),
-        "min_duration": 45,
-    },
-    {
-        "name": "Matthew",
-        "location": "Russian Hill",
-        "window_start": parse_time("3:45PM"),
-        "window_end": parse_time("9:45PM"),
-        "min_duration": 75,
-    },
-]
-
-start_location = "Bayview"
-start_time = parse_time("9:00AM")
-
-def schedule_order(order):
-    curr_loc = start_location
-    curr_time = start_time
+def compute_schedule(order, friends_dict, travel, start_loc, start_time):
+    current_loc = start_loc
+    current_time = start_time
     itinerary = []
+    travel_used = 0
+    last_loc = start_loc
+    last_time = start_time
+
+    for name in order:
+        friend = friends_dict[name]
+        loc = friend["location"]
+        # If travel time missing, skip this friend
+        if current_loc not in travel or loc not in travel[current_loc]:
+            continue
+        arrival = current_time + travel[current_loc][loc]
+        start = max(arrival, friend["start"])
+        end = start + friend["min_dur"]
+        if end <= friend["end"]:
+            # Meeting is feasible
+            # Accumulate travel used for this successful move
+            travel_used += travel[current_loc][loc]
+            itinerary.append({
+                "action": "meet",
+                "location": loc,
+                "person": name,
+                "start_time": start,
+                "end_time": end
+            })
+            current_loc = loc
+            current_time = end
+        else:
+            # Skip this friend
+            continue
+
+    # Compute total travel used from start to first meeting and between meetings
+    # We already accumulated it during scheduling (only for successful moves)
+    return itinerary, travel_used
+
+def evaluate_itinerary(itinerary, start_loc, start_time, travel):
+    count = len(itinerary)
+    total_meet_minutes = sum(item["end_time"] - item["start_time"] for item in itinerary)
+    # Compute total travel based on actual itinerary
     total_travel = 0
-    total_wait = 0
-    for f in order:
-        loc = f["location"]
-        # Travel time from current location to friend's location
-        if curr_loc not in travel or loc not in travel[curr_loc]:
-            return None  # Missing travel time
-        t_travel = travel[curr_loc][loc]
-        arrival = curr_time + t_travel
-        total_travel += t_travel
-        start_meet = max(arrival, f["window_start"])
-        # Wait if arrive early
-        if start_meet > arrival:
-            total_wait += start_meet - arrival
-        end_meet = start_meet + f["min_duration"]
-        if end_meet > f["window_end"]:
-            return None  # Cannot fit meeting within window
-        itinerary.append({
-            "action": "meet",
-            "location": loc,
-            "person": f["name"],
-            "start_time": start_meet,
-            "end_time": end_meet
-        })
-        curr_loc = loc
-        curr_time = end_meet
-    return {
-        "itinerary": itinerary,
-        "total_travel": total_travel,
-        "total_wait": total_wait,
-        "end_time": curr_time
+    loc = start_loc
+    time = start_time
+    for item in itinerary:
+        to_loc = item["location"]
+        if loc in travel and to_loc in travel[loc]:
+            total_travel += travel[loc][to_loc]
+        else:
+            # If missing a travel entry, penalize heavily (shouldn't happen given inputs)
+            total_travel += 10**6
+        loc = to_loc
+        time = item["end_time"]
+    finish_time = time if itinerary else start_time
+    return count, total_meet_minutes, total_travel, finish_time
+
+def main():
+    # Travel times (in minutes), directional
+    travel = {
+        "Bayview": {
+            "Nob Hill": 20, "Union Square": 17, "Chinatown": 18, "The Castro": 20,
+            "Presidio": 31, "Pacific Heights": 23, "Russian Hill": 23
+        },
+        "Nob Hill": {
+            "Bayview": 19, "Union Square": 7, "Chinatown": 6, "The Castro": 17,
+            "Presidio": 17, "Pacific Heights": 8, "Russian Hill": 5
+        },
+        "Union Square": {
+            "Bayview": 15, "Nob Hill": 9, "Chinatown": 7, "The Castro": 19,
+            "Presidio": 24, "Pacific Heights": 15, "Russian Hill": 13
+        },
+        "Chinatown": {
+            "Bayview": 22, "Nob Hill": 8, "Union Square": 7, "The Castro": 22,
+            "Presidio": 19, "Pacific Heights": 10, "Russian Hill": 7
+        },
+        "The Castro": {
+            "Bayview": 19, "Nob Hill": 16, "Union Square": 19, "Chinatown": 20,
+            "Presidio": 20, "Pacific Heights": 16, "Russian Hill": 18
+        },
+        "Presidio": {
+            "Bayview": 31, "Nob Hill": 18, "Union Square": 22, "Chinatown": 21,
+            "The Castro": 21, "Pacific Heights": 11, "Russian Hill": 14
+        },
+        "Pacific Heights": {
+            "Bayview": 22, "Nob Hill": 8, "Union Square": 12, "Chinatown": 11,
+            "The Castro": 16, "Presidio": 11, "Russian Hill": 7
+        },
+        "Russian Hill": {
+            "Bayview": 23, "Nob Hill": 5, "Union Square": 11, "Chinatown": 9,
+            "The Castro": 21, "Presidio": 14, "Pacific Heights": 7
+        }
     }
 
-best_solution = None
-n = len(friends)
+    # Meeting constraints
+    friends = [
+        {"name": "Paul", "location": "Nob Hill", "start": "16:15", "end": "21:15", "min_dur": 60},
+        {"name": "Carol", "location": "Union Square", "start": "18:00", "end": "20:15", "min_dur": 120},
+        {"name": "Patricia", "location": "Chinatown", "start": "20:00", "end": "21:30", "min_dur": 75},
+        {"name": "Karen", "location": "The Castro", "start": "17:00", "end": "19:00", "min_dur": 45},
+        {"name": "Nancy", "location": "Presidio", "start": "11:45", "end": "22:00", "min_dur": 30},
+        {"name": "Jeffrey", "location": "Pacific Heights", "start": "20:00", "end": "20:45", "min_dur": 45},
+        {"name": "Matthew", "location": "Russian Hill", "start": "15:45", "end": "21:45", "min_dur": 75},
+    ]
 
-# Search for maximum number of meetings; break ties by:
-# 1) minimal total waiting time
-# 2) minimal total travel time
-# 3) earliest end time
-for k in range(n, 0, -1):
-    best_for_k = None
-    for comb in itertools.combinations(friends, k):
-        for perm in itertools.permutations(comb):
-            res = schedule_order(perm)
-            if res is not None:
-                if best_for_k is None:
-                    best_for_k = res
-                else:
-                    # tie-breakers
-                    if res["total_wait"] < best_for_k["total_wait"]:
-                        best_for_k = res
-                    elif res["total_wait"] == best_for_k["total_wait"]:
-                        if res["total_travel"] < best_for_k["total_travel"]:
-                            best_for_k = res
-                        elif res["total_travel"] == best_for_k["total_travel"]:
-                            if res["end_time"] < best_for_k["end_time"]:
-                                best_for_k = res
-    if best_for_k is not None:
-        best_solution = best_for_k
-        break
+    # Convert times to minutes since midnight (24h)
+    for f in friends:
+        f["start"] = parse_time_24(f["start"])
+        f["end"] = parse_time_24(f["end"])
 
-output = {"itinerary": []}
-if best_solution is not None:
-    for item in best_solution["itinerary"]:
-        output["itinerary"].append({
-            "action": item["action"],
+    friends_dict = {f["name"]: f for f in friends}
+    friend_names = [f["name"] for f in friends]
+
+    # Start parameters
+    start_location = "Bayview"
+    start_time = parse_time_24("9:00")  # Arrive at Bayview at 9:00
+
+    best_itinerary = []
+    best_metrics = (-1, -1, float('inf'), float('inf'))  # count, total_meet_minutes, total_travel, finish_time (to be minimized where applicable)
+
+    # Explore all permutations and greedily accept feasible meetings in that order
+    for order in itertools.permutations(friend_names):
+        itinerary, _ = compute_schedule(order, friends_dict, travel, start_location, start_time)
+        count, total_meet_minutes, total_travel, finish_time = evaluate_itinerary(itinerary, start_location, start_time, travel)
+
+        # Optimization criteria: maximize count, then total_meet_minutes; then minimize total_travel; then minimize finish_time
+        metrics = (count, total_meet_minutes, -total_travel, -finish_time)  # invert last two for max comparison
+        best_metrics_cmp = (best_metrics[0], best_metrics[1], -best_metrics[2], -best_metrics[3])
+
+        if metrics > best_metrics_cmp:
+            best_itinerary = itinerary
+            best_metrics = (count, total_meet_minutes, total_travel, finish_time)
+
+    # Prepare output JSON with formatted times
+    output_itinerary = []
+    for item in best_itinerary:
+        output_itinerary.append({
+            "action": "meet",
             "location": item["location"],
             "person": item["person"],
-            "start_time": fmt_time(item["start_time"]),
-            "end_time": fmt_time(item["end_time"]),
+            "start_time": minutes_to_str(item["start_time"]),
+            "end_time": minutes_to_str(item["end_time"])
         })
 
-print(json.dumps(output))
+    result = {"itinerary": output_itinerary}
+    print(json.dumps(result, indent=2))
+
+if __name__ == "__main__":
+    main()

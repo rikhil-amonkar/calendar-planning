@@ -1,193 +1,178 @@
-import itertools
 import json
+from itertools import permutations
 
-# Helper functions for time conversion
-def to_minutes(t):
-    # t like '9:00' or '14:15'
-    h, m = map(int, t.split(":"))
+def time_to_minutes(t):
+    # t like '9:00', '13:30'
+    h, m = map(int, t.split(':'))
     return h * 60 + m
 
-def to_timestr(minutes):
-    h = minutes // 60
-    m = minutes % 60
-    return f"{h}:{m:02d}"
+def minutes_to_time(m):
+    h = m // 60
+    mm = m % 60
+    return f"{h}:{mm:02d}"
 
-# Input variables: travel times (in minutes)
-locations = [
-    "Golden Gate Park",
-    "Haight-Ashbury",
-    "Sunset District",
-    "Marina District",
-    "Financial District",
-    "Union Square",
+# Travel times (in minutes), directional as provided
+travel = {
+    "Golden Gate Park": {
+        "Haight-Ashbury": 7,
+        "Sunset District": 10,
+        "Marina District": 16,
+        "Financial District": 26,
+        "Union Square": 22
+    },
+    "Haight-Ashbury": {
+        "Golden Gate Park": 7,
+        "Sunset District": 15,
+        "Marina District": 17,
+        "Financial District": 21,
+        "Union Square": 17
+    },
+    "Sunset District": {
+        "Golden Gate Park": 11,
+        "Haight-Ashbury": 15,
+        "Marina District": 21,
+        "Financial District": 30,
+        "Union Square": 30
+    },
+    "Marina District": {
+        "Golden Gate Park": 18,
+        "Haight-Ashbury": 16,
+        "Sunset District": 19,
+        "Financial District": 17,
+        "Union Square": 16
+    },
+    "Financial District": {
+        "Golden Gate Park": 23,
+        "Haight-Ashbury": 19,
+        "Sunset District": 31,
+        "Marina District": 15,
+        "Union Square": 9
+    },
+    "Union Square": {
+        "Golden Gate Park": 22,
+        "Haight-Ashbury": 18,
+        "Sunset District": 26,
+        "Marina District": 18,
+        "Financial District": 9
+    }
+}
+
+# Start parameters
+start_location = "Golden Gate Park"
+start_time = time_to_minutes("9:00")
+
+# Friends and constraints
+friends = [
+    {
+        "person": "Sarah",
+        "location": "Haight-Ashbury",
+        "window_start": time_to_minutes("17:00"),
+        "window_end": time_to_minutes("21:30"),
+        "min_duration": 105
+    },
+    {
+        "person": "Patricia",
+        "location": "Sunset District",
+        "window_start": time_to_minutes("17:00"),
+        "window_end": time_to_minutes("19:45"),
+        "min_duration": 45
+    },
+    {
+        "person": "Matthew",
+        "location": "Marina District",
+        "window_start": time_to_minutes("9:15"),
+        "window_end": time_to_minutes("12:00"),
+        "min_duration": 15
+    },
+    {
+        "person": "Joseph",
+        "location": "Financial District",
+        "window_start": time_to_minutes("14:15"),
+        "window_end": time_to_minutes("18:45"),
+        "min_duration": 30
+    },
+    {
+        "person": "Robert",
+        "location": "Union Square",
+        "window_start": time_to_minutes("10:15"),
+        "window_end": time_to_minutes("21:45"),
+        "min_duration": 15
+    }
 ]
 
-travel = {loc: {} for loc in locations}
-# Golden Gate Park to ...
-travel["Golden Gate Park"]["Haight-Ashbury"] = 7
-travel["Golden Gate Park"]["Sunset District"] = 10
-travel["Golden Gate Park"]["Marina District"] = 16
-travel["Golden Gate Park"]["Financial District"] = 26
-travel["Golden Gate Park"]["Union Square"] = 22
-# Haight-Ashbury to ...
-travel["Haight-Ashbury"]["Golden Gate Park"] = 7
-travel["Haight-Ashbury"]["Sunset District"] = 15
-travel["Haight-Ashbury"]["Marina District"] = 17
-travel["Haight-Ashbury"]["Financial District"] = 21
-travel["Haight-Ashbury"]["Union Square"] = 17
-# Sunset District to ...
-travel["Sunset District"]["Golden Gate Park"] = 11
-travel["Sunset District"]["Haight-Ashbury"] = 15
-travel["Sunset District"]["Marina District"] = 21
-travel["Sunset District"]["Financial District"] = 30
-travel["Sunset District"]["Union Square"] = 30
-# Marina District to ...
-travel["Marina District"]["Golden Gate Park"] = 18
-travel["Marina District"]["Haight-Ashbury"] = 16
-travel["Marina District"]["Sunset District"] = 19
-travel["Marina District"]["Financial District"] = 17
-travel["Marina District"]["Union Square"] = 16
-# Financial District to ...
-travel["Financial District"]["Golden Gate Park"] = 23
-travel["Financial District"]["Haight-Ashbury"] = 19
-travel["Financial District"]["Sunset District"] = 31
-travel["Financial District"]["Marina District"] = 15
-travel["Financial District"]["Union Square"] = 9
-# Union Square to ...
-travel["Union Square"]["Golden Gate Park"] = 22
-travel["Union Square"]["Haight-Ashbury"] = 18
-travel["Union Square"]["Sunset District"] = 26
-travel["Union Square"]["Marina District"] = 18
-travel["Union Square"]["Financial District"] = 9
+# Helper to get travel time
+def get_travel(a, b):
+    if a == b:
+        return 0
+    return travel[a][b]
 
-# Participants constraints
-people = {
-    "Sarah": {
-        "location": "Haight-Ashbury",
-        "start": to_minutes("17:00"),
-        "end": to_minutes("21:30"),
-        "min_duration": 105,
-    },
-    "Patricia": {
-        "location": "Sunset District",
-        "start": to_minutes("17:00"),
-        "end": to_minutes("19:45"),
-        "min_duration": 45,
-    },
-    "Matthew": {
-        "location": "Marina District",
-        "start": to_minutes("9:15"),
-        "end": to_minutes("12:00"),
-        "min_duration": 15,
-    },
-    "Joseph": {
-        "location": "Financial District",
-        "start": to_minutes("14:15"),
-        "end": to_minutes("18:45"),
-        "min_duration": 30,
-    },
-    "Robert": {
-        "location": "Union Square",
-        "start": to_minutes("10:15"),
-        "end": to_minutes("21:45"),
-        "min_duration": 15,
-    },
-}
-
-# Start conditions
-start_location = "Golden Gate Park"
-start_time = to_minutes("9:00")
-
-def schedule_order(order):
-    itinerary = []
+# Evaluate a given order: greedily schedule each meeting at earliest feasible time
+def evaluate_order(order):
     current_loc = start_location
     current_time = start_time
-    total_wait = 0
+    itinerary = []
     total_travel = 0
 
-    for person in order:
-        info = people[person]
-        loc = info["location"]
-        a = info["start"]
-        b = info["end"]
-        d = info["min_duration"]
+    for f in order:
+        t_travel = get_travel(current_loc, f["location"])
+        arrive = current_time + t_travel
+        start = max(arrive, f["window_start"])
+        end = start + f["min_duration"]
+        if end <= f["window_end"]:
+            itinerary.append({
+                "action": "meet",
+                "location": f["location"],
+                "person": f["person"],
+                "start_time_min": start,
+                "end_time_min": end,
+                "travel_in_min": t_travel
+            })
+            current_loc = f["location"]
+            current_time = end
+            total_travel += t_travel
+        # if infeasible, skip this friend in this order
+    last_end = itinerary[-1]["end_time_min"] if itinerary else start_time
+    return itinerary, last_end, total_travel
 
-        # Travel time; if missing, cannot travel (should not happen with given data)
-        t_travel = travel[current_loc].get(loc, None)
-        if t_travel is None:
-            return None  # missing travel path
+# Explore all subsets and orders by evaluating all permutations
+best_itinerary = []
+best_last_end = None
+best_total_travel = None
 
-        arrival = current_time + t_travel
-        start_meet = max(arrival, a)
-        if start_meet + d > b:
-            return None  # cannot meet within window
+# Since we want to maximize number of friends met, try all permutations and pick the
+# schedule with maximum meetings; tie-breaker: earliest finish time, then least travel
+for r in range(len(friends), 0, -1):
+    found_for_this_r = False
+    for order in permutations(friends, r):
+        itinerary, last_end, total_travel = evaluate_order(order)
+        # ensure length equals r (i.e., all in this permutation feasible) OR accept partial within this order?
+        # We want the maximum count; evaluate_order may skip infeasible within the order.
+        # So just compare lengths.
+        if len(itinerary) == 0:
+            continue
+        if (len(itinerary) > len(best_itinerary) or
+            (len(itinerary) == len(best_itinerary) and (best_last_end is None or last_end < best_last_end)) or
+            (len(itinerary) == len(best_itinerary) and last_end == best_last_end and (best_total_travel is None or total_travel < best_total_travel))):
+            best_itinerary = itinerary
+            best_last_end = last_end
+            best_total_travel = total_travel
+            found_for_this_r = True
+    # Early stop if we found a full schedule of size r greater than any smaller r
+    # But because evaluate_order might produce fewer than r due to skips, we cannot early stop by r alone.
+    # We'll continue scanning all permutations.
 
-        wait_here = max(0, start_meet - arrival)
-        total_wait += wait_here
-        total_travel += t_travel
-
-        itinerary.append({
-            "action": "meet",
-            "location": loc,
-            "person": person,
-            "start_time": to_timestr(start_meet),
-            "end_time": to_timestr(start_meet + d),
-        })
-
-        current_loc = loc
-        current_time = start_meet + d
-
-    # Metrics to support tie-breakers
-    end_time_of_day = current_time
-    metrics = {
-        "itinerary": itinerary,
-        "total_wait": total_wait,
-        "total_travel": total_travel,
-        "end_time": end_time_of_day,
-    }
-    return metrics
-
-def choose_best_schedule():
-    names = list(people.keys())
-    best = None
-    best_count = -1
-
-    # Search subsets by descending size to maximize number of meetings
-    for r in range(len(names), -1, -1):
-        found_for_r = None
-        for subset in itertools.combinations(names, r):
-            for perm in itertools.permutations(subset):
-                res = schedule_order(perm)
-                if res is None:
-                    continue
-                # Found feasible schedule for this subset
-                count = len(res["itinerary"])
-                # Count should equal r, but check anyway
-                if count != r:
-                    continue
-                # Update best by tie-breakers:
-                # 1) earliest end_time
-                # 2) minimum total_wait
-                # 3) minimum total_travel
-                if found_for_r is None:
-                    found_for_r = res
-                else:
-                    a = res
-                    b = found_for_r
-                    if (a["end_time"], a["total_wait"], a["total_travel"]) < (b["end_time"], b["total_wait"], b["total_travel"]):
-                        found_for_r = a
-        if found_for_r is not None:
-            best = found_for_r
-            best_count = r
-            break
-
-    return best
-
-best_schedule = choose_best_schedule()
-
-# Prepare output JSON
+# Format output
 output = {
-    "itinerary": best_schedule["itinerary"] if best_schedule else []
+    "itinerary": []
 }
 
-print(json.dumps(output, ensure_ascii=False))
+for item in best_itinerary:
+    output["itinerary"].append({
+        "action": "meet",
+        "location": item["location"],
+        "person": item["person"],
+        "start_time": minutes_to_time(item["start_time_min"]),
+        "end_time": minutes_to_time(item["end_time_min"])
+    })
+
+print(json.dumps(output, indent=2))

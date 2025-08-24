@@ -1,12 +1,16 @@
 import json
+from itertools import permutations
 
-# Helper to convert minutes to "H:MM" 24-hour format without leading zero for hour
-def minutes_to_str(m):
+def minutes(tstr):
+    h, m = map(int, tstr.split(":"))
+    return h * 60 + m
+
+def fmt(m):
     h = m // 60
-    mi = m % 60
-    return f"{h}:{mi:02d}"
+    mm = m % 60
+    return f"{h}:{mm:02d}"
 
-# Travel times (in minutes)
+# Travel times (minutes) between locations
 travel = {
     "Richmond District": {
         "Chinatown": 20, "Sunset District": 11, "Alamo Square": 13, "Financial District": 22,
@@ -50,107 +54,90 @@ travel = {
     }
 }
 
-# Friends constraints
-friends = [
-    {"name": "Robert",  "location": "Chinatown",         "start": 7*60+45,  "end": 17*60+30, "min_dur": 120},
-    {"name": "David",   "location": "Sunset District",   "start": 12*60+30, "end": 19*60+45, "min_dur": 45},
-    {"name": "Matthew", "location": "Alamo Square",      "start": 8*60+45,  "end": 13*60+45, "min_dur": 90},
-    {"name": "Jessica", "location": "Financial District","start": 9*60+30,  "end": 18*60+45, "min_dur": 45},
-    {"name": "Melissa", "location": "North Beach",       "start": 7*60+15,  "end": 16*60+45, "min_dur": 45},
-    {"name": "Mark",    "location": "Embarcadero",       "start": 15*60+15, "end": 17*60,    "min_dur": 45},
-    {"name": "Deborah", "location": "Presidio",          "start": 19*60,    "end": 19*60+45, "min_dur": 45},
-    {"name": "Karen",   "location": "Golden Gate Park",  "start": 19*60+30, "end": 22*60,    "min_dur": 120},
-    {"name": "Laura",   "location": "Bayview",           "start": 21*60+15, "end": 22*60+15, "min_dur": 15},
+# Meeting constraints
+people = [
+    {"person": "Robert",  "location": "Chinatown",          "start": minutes("7:45"),  "end": minutes("17:30"), "duration": 120},
+    {"person": "David",   "location": "Sunset District",    "start": minutes("12:30"), "end": minutes("19:45"), "duration": 45},
+    {"person": "Matthew", "location": "Alamo Square",       "start": minutes("8:45"),  "end": minutes("13:45"), "duration": 90},
+    {"person": "Jessica", "location": "Financial District", "start": minutes("9:30"),  "end": minutes("18:45"), "duration": 45},
+    {"person": "Melissa", "location": "North Beach",        "start": minutes("7:15"),  "end": minutes("16:45"), "duration": 45},
+    {"person": "Mark",    "location": "Embarcadero",        "start": minutes("15:15"), "end": minutes("17:00"), "duration": 45},
+    {"person": "Deborah", "location": "Presidio",           "start": minutes("19:00"), "end": minutes("19:45"), "duration": 45},
+    {"person": "Karen",   "location": "Golden Gate Park",   "start": minutes("19:30"), "end": minutes("22:00"), "duration": 120},
+    {"person": "Laura",   "location": "Bayview",            "start": minutes("21:15"), "end": minutes("22:15"), "duration": 15},
 ]
 
 start_location = "Richmond District"
-start_time = 9*60  # 9:00
+start_time = minutes("9:00")
 
-# DFS to explore sequences and choose optimal by:
-# 1) maximize number of meetings
-# 2) minimize total waiting time
-# 3) minimize end time
-# 4) minimize total travel time
-best_solution = {
-    "path": [],
-    "count": 0,
-    "wait": float('inf'),
-    "end_time": float('inf'),
-    "travel": float('inf')
-}
+def build_schedule(order):
+    itinerary = []
+    current_loc = start_location
+    current_time = start_time
+    total_travel = 0
+    total_wait = 0
 
-# For initial baseline, set best to empty schedule with zero wait and travel and end at start_time
-best_solution = {
-    "path": [],
-    "count": 0,
-    "wait": 0,
-    "end_time": start_time,
-    "travel": 0
-}
-
-def better(sol_a, sol_b):
-    # Return True if sol_a is better than sol_b per criteria.
-    if sol_a["count"] != sol_b["count"]:
-        return sol_a["count"] > sol_b["count"]
-    if sol_a["wait"] != sol_b["wait"]:
-        return sol_a["wait"] < sol_b["wait"]
-    if sol_a["end_time"] != sol_b["end_time"]:
-        return sol_a["end_time"] < sol_b["end_time"]
-    if sol_a["travel"] != sol_b["travel"]:
-        return sol_a["travel"] < sol_b["travel"]
-    return False
-
-def dfs(current_loc, current_time, remaining, path, total_wait, total_travel):
-    global best_solution
-
-    # Evaluate current path as a candidate
-    current_sol = {
-        "path": path[:],
-        "count": len(path),
-        "wait": total_wait,
-        "end_time": current_time if path else start_time,
-        "travel": total_travel
-    }
-    if better(current_sol, best_solution):
-        best_solution = current_sol
-
-    # Try to extend with each remaining friend
-    for i, friend in enumerate(remaining):
-        dest = friend["location"]
-        # If no direct travel time defined (shouldn't happen), skip
-        if current_loc not in travel or dest not in travel[current_loc]:
-            continue
-        t_travel = travel[current_loc][dest]
-        arrival = current_time + t_travel
-        start_mt = max(arrival, friend["start"])
-        end_mt = start_mt + friend["min_dur"]
-        if end_mt <= friend["end"]:
-            wait_here = max(0, start_mt - arrival)
-            new_meet = {
+    for p in order:
+        ttime = travel[current_loc][p["location"]]
+        arrival = current_time + ttime
+        start_meet = max(arrival, p["start"])
+        end_meet = start_meet + p["duration"]
+        if end_meet <= p["end"]:
+            # feasible
+            if start_meet > arrival:
+                total_wait += start_meet - arrival
+            total_travel += ttime
+            itinerary.append({
                 "action": "meet",
-                "location": dest,
-                "person": friend["name"],
-                "start_time": minutes_to_str(start_mt),
-                "end_time": minutes_to_str(end_mt)
-            }
-            new_remaining = remaining[:i] + remaining[i+1:]
-            dfs(
-                dest,
-                end_mt,
-                new_remaining,
-                path + [new_meet],
-                total_wait + wait_here,
-                total_travel + t_travel
-            )
+                "location": p["location"],
+                "person": p["person"],
+                "start_time": fmt(start_meet),
+                "end_time": fmt(end_meet)
+            })
+            current_loc = p["location"]
+            current_time = end_meet
         else:
-            # Prune if cannot meet this friend at all from current state
+            # skip this person as infeasible in this order
             continue
 
-# Start DFS
-dfs(start_location, start_time, friends, [], 0, 0)
+    return itinerary, total_travel, total_wait, current_time
 
-# Output result as JSON with the required structure
-output = {
-    "itinerary": best_solution["path"]
+# Search over permutations to maximize number of meetings; tie-break by minimal waiting, then minimal travel, then earliest finish
+best = {
+    "itinerary": [],
+    "count": -1,
+    "wait": float('inf'),
+    "travel": float('inf'),
+    "finish": float('inf'),
+    "order": None
 }
+
+for order in permutations(people):
+    itin, t_travel, t_wait, finish = build_schedule(order)
+    count = len(itin)
+    # Primary objective: maximize number of people met
+    better = False
+    if count > best["count"]:
+        better = True
+    elif count == best["count"]:
+        if t_wait < best["wait"]:
+            better = True
+        elif t_wait == best["wait"]:
+            if t_travel < best["travel"]:
+                better = True
+            elif t_travel == best["travel"]:
+                if finish < best["finish"]:
+                    better = True
+
+    if better:
+        best = {
+            "itinerary": itin,
+            "count": count,
+            "wait": t_wait,
+            "travel": t_travel,
+            "finish": finish,
+            "order": order
+        }
+
+output = {"itinerary": best["itinerary"]}
 print(json.dumps(output, ensure_ascii=False))

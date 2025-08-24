@@ -1,15 +1,11 @@
 import json
 
-def to_minutes(t):
-    h, m = map(int, t.split(":"))
-    return h * 60 + m
-
-def to_time_str(minutes):
+def fmt_time(minutes):
     h = minutes // 60
     m = minutes % 60
     return f"{h}:{m:02d}"
 
-# Travel times (minutes) directional matrix
+# Travel times in minutes (directed)
 travel = {
     "Marina District": {
         "Richmond District": 11,
@@ -20,7 +16,7 @@ travel = {
         "Embarcadero": 14,
         "Financial District": 17,
         "North Beach": 11,
-        "Presidio": 10,
+        "Presidio": 10
     },
     "Richmond District": {
         "Marina District": 9,
@@ -31,7 +27,7 @@ travel = {
         "Embarcadero": 19,
         "Financial District": 22,
         "North Beach": 17,
-        "Presidio": 7,
+        "Presidio": 7
     },
     "Union Square": {
         "Marina District": 18,
@@ -42,7 +38,7 @@ travel = {
         "Embarcadero": 11,
         "Financial District": 9,
         "North Beach": 10,
-        "Presidio": 24,
+        "Presidio": 24
     },
     "Nob Hill": {
         "Marina District": 11,
@@ -53,7 +49,7 @@ travel = {
         "Embarcadero": 9,
         "Financial District": 9,
         "North Beach": 8,
-        "Presidio": 17,
+        "Presidio": 17
     },
     "Fisherman's Wharf": {
         "Marina District": 9,
@@ -64,7 +60,7 @@ travel = {
         "Embarcadero": 8,
         "Financial District": 11,
         "North Beach": 6,
-        "Presidio": 17,
+        "Presidio": 17
     },
     "Golden Gate Park": {
         "Marina District": 16,
@@ -75,7 +71,7 @@ travel = {
         "Embarcadero": 25,
         "Financial District": 26,
         "North Beach": 23,
-        "Presidio": 11,
+        "Presidio": 11
     },
     "Embarcadero": {
         "Marina District": 12,
@@ -86,7 +82,7 @@ travel = {
         "Golden Gate Park": 25,
         "Financial District": 5,
         "North Beach": 5,
-        "Presidio": 20,
+        "Presidio": 20
     },
     "Financial District": {
         "Marina District": 15,
@@ -97,7 +93,7 @@ travel = {
         "Golden Gate Park": 23,
         "Embarcadero": 4,
         "North Beach": 7,
-        "Presidio": 22,
+        "Presidio": 22
     },
     "North Beach": {
         "Marina District": 9,
@@ -108,7 +104,7 @@ travel = {
         "Golden Gate Park": 22,
         "Embarcadero": 6,
         "Financial District": 8,
-        "Presidio": 17,
+        "Presidio": 17
     },
     "Presidio": {
         "Marina District": 11,
@@ -119,104 +115,149 @@ travel = {
         "Golden Gate Park": 12,
         "Embarcadero": 20,
         "Financial District": 23,
-        "North Beach": 18,
-    },
+        "North Beach": 18
+    }
 }
 
+# Ensure zero travel time for same-location moves
+for a in list(travel.keys()):
+    travel[a][a] = 0
+
 # People constraints
-people = [
-    {"name": "Stephanie", "location": "Richmond District", "start": to_minutes("16:15"), "end": to_minutes("21:30"), "min": 75},
-    {"name": "William", "location": "Union Square", "start": to_minutes("10:45"), "end": to_minutes("17:30"), "min": 45},
-    {"name": "Elizabeth", "location": "Nob Hill", "start": to_minutes("12:15"), "end": to_minutes("15:00"), "min": 105},
-    {"name": "Joseph", "location": "Fisherman's Wharf", "start": to_minutes("12:45"), "end": to_minutes("14:00"), "min": 75},
-    {"name": "Anthony", "location": "Golden Gate Park", "start": to_minutes("13:00"), "end": to_minutes("20:30"), "min": 75},
-    {"name": "Barbara", "location": "Embarcadero", "start": to_minutes("19:15"), "end": to_minutes("20:30"), "min": 75},
-    {"name": "Carol", "location": "Financial District", "start": to_minutes("11:45"), "end": to_minutes("16:15"), "min": 60},
-    {"name": "Sandra", "location": "North Beach", "start": to_minutes("10:00"), "end": to_minutes("12:30"), "min": 15},
-    {"name": "Kenneth", "location": "Presidio", "start": to_minutes("21:15"), "end": to_minutes("22:15"), "min": 45},
-]
+people = {
+    "Stephanie": {
+        "location": "Richmond District",
+        "start": 16*60 + 15,  # 16:15
+        "end": 21*60 + 30,    # 21:30
+        "min": 75
+    },
+    "William": {
+        "location": "Union Square",
+        "start": 10*60 + 45,  # 10:45
+        "end": 17*60 + 30,    # 17:30
+        "min": 45
+    },
+    "Elizabeth": {
+        "location": "Nob Hill",
+        "start": 12*60 + 15,  # 12:15
+        "end": 15*60 + 0,     # 15:00
+        "min": 105
+    },
+    "Joseph": {
+        "location": "Fisherman's Wharf",
+        "start": 12*60 + 45,  # 12:45
+        "end": 14*60 + 0,     # 14:00
+        "min": 75
+    },
+    "Anthony": {
+        "location": "Golden Gate Park",
+        "start": 13*60 + 0,   # 13:00
+        "end": 20*60 + 30,    # 20:30
+        "min": 75
+    },
+    "Barbara": {
+        "location": "Embarcadero",
+        "start": 19*60 + 15,  # 19:15
+        "end": 20*60 + 30,    # 20:30
+        "min": 75
+    },
+    "Carol": {
+        "location": "Financial District",
+        "start": 11*60 + 45,  # 11:45
+        "end": 16*60 + 15,    # 16:15
+        "min": 60
+    },
+    "Sandra": {
+        "location": "North Beach",
+        "start": 10*60 + 0,   # 10:00
+        "end": 12*60 + 30,    # 12:30
+        "min": 15
+    },
+    "Kenneth": {
+        "location": "Presidio",
+        "start": 21*60 + 15,  # 21:15
+        "end": 22*60 + 15,    # 22:15
+        "min": 45
+    }
+}
 
-# Index people for set operations
-for i, p in enumerate(people):
-    p["id"] = i
-
+# Start state
 start_location = "Marina District"
-start_time = to_minutes("9:00")
+start_time = 9 * 60  # 9:00
 
-from functools import lru_cache
+names = list(people.keys())
 
-# Precompute window lengths
-for p in people:
-    p["window_len"] = p["end"] - p["start"]
+best_solution = {
+    "count": 0,
+    "total_minutes": 0,
+    "total_travel": 10**9,
+    "itinerary": []
+}
 
-# Convert id -> person dict for quick lookup
-people_by_id = {p["id"]: p for p in people}
+# DFS to explore schedules
+def dfs(curr_loc, curr_time, remaining, itinerary, total_minutes, total_travel):
+    # Update global best solution
+    global best_solution
+    count = len(itinerary)
+    better = False
+    if count > best_solution["count"]:
+        better = True
+    elif count == best_solution["count"]:
+        if total_minutes > best_solution["total_minutes"]:
+            better = True
+        elif total_minutes == best_solution["total_minutes"]:
+            if total_travel < best_solution["total_travel"]:
+                better = True
+    if better:
+        best_solution = {
+            "count": count,
+            "total_minutes": total_minutes,
+            "total_travel": total_travel,
+            "itinerary": itinerary[:]
+        }
 
-# For convenience, list of ids
-all_ids = tuple(p["id"] for p in people)
+    # Simple upper bound pruning
+    if count + len(remaining) <= best_solution["count"]:
+        return
 
-def feasible_meeting(curr_loc, curr_time, person):
-    # Returns (start, end, travel_time) if feasible, else None
-    t_travel = travel[curr_loc][person["location"]]
-    arrive = curr_time + t_travel
-    start = max(arrive, person["start"])
-    end = start + person["min"]
-    if end <= person["end"]:
-        return start, end, t_travel
-    return None
+    # Try each remaining person next
+    # Heuristic order: earlier window end first to reduce branching
+    ordered = sorted(remaining, key=lambda n: people[n]["end"])
+    for name in ordered:
+        p = people[name]
+        loc = p["location"]
+        # Travel time from current location to person's location
+        if curr_loc not in travel or loc not in travel[curr_loc]:
+            continue  # if missing, skip (shouldn't happen)
+        t_travel = travel[curr_loc][loc]
+        arrival = curr_time + t_travel
+        start_meet = max(arrival, p["start"])
+        end_meet = start_meet + p["min"]
+        if end_meet <= p["end"]:
+            # feasible
+            next_itinerary = itinerary + [{
+                "action": "meet",
+                "location": loc,
+                "person": name,
+                "start_time": fmt_time(start_meet),
+                "end_time": fmt_time(end_meet)
+            }]
+            next_remaining = [r for r in remaining if r != name]
+            dfs(
+                loc,
+                end_meet,
+                next_remaining,
+                next_itinerary,
+                total_minutes + p["min"],
+                total_travel + t_travel
+            )
 
-@lru_cache(maxsize=None)
-def search(curr_loc, curr_time, remaining_ids):
-    # remaining_ids is a tuple of ints (ids), sorted
-    # Returns (count, total_meeting_minutes, -final_end_time, total_travel_minutes, schedule_list)
-    best = (0, 0, -curr_time, 0, [])  # no more meetings from here
-    for idx, pid in enumerate(remaining_ids):
-        person = people_by_id[pid]
-        feas = feasible_meeting(curr_loc, curr_time, person)
-        if feas is None:
-            continue
-        start, end, t_travel = feas
-        # Next state
-        new_remaining = list(remaining_ids)
-        new_remaining.pop(idx)
-        new_remaining = tuple(new_remaining)
-        sub = search(person["location"], end, new_remaining)
-        # final end time of the chain
-        sub_count, sub_minutes, sub_neg_final_end, sub_travel, sub_sched = sub
-        # If sub schedule empty, final end is end; else computed in sub_neg_final_end already
-        if sub_count == 0:
-            neg_final_end = -end
-        else:
-            neg_final_end = sub_neg_final_end
-        cand = (
-            1 + sub_count,
-            person["min"] + sub_minutes,
-            neg_final_end,
-            t_travel + sub_travel,
-            [{"action": "meet", "location": person["location"], "person": person["name"], "start": start, "end": end}] + sub_sched,
-        )
-        # Compare candidates: maximize count, then total meeting minutes, then earlier final end (i.e., more negative), then minimize total travel
-        if (
-            cand[0] > best[0]
-            or (cand[0] == best[0] and cand[1] > best[1])
-            or (cand[0] == best[0] and cand[1] == best[1] and cand[2] > best[2])  # more negative => earlier final end
-            or (cand[0] == best[0] and cand[1] == best[1] and cand[2] == best[2] and cand[3] < best[3])
-        ):
-            best = cand
-    return best
+# Run search
+dfs(start_location, start_time, names, [], 0, 0)
 
-best_result = search(start_location, start_time, tuple(all_ids))
-best_schedule = best_result[4]
+# Build output JSON
+output = {
+    "itinerary": best_solution["itinerary"]
+}
 
-# Build JSON itinerary
-output = {"itinerary": []}
-for entry in best_schedule:
-    output["itinerary"].append({
-        "action": "meet",
-        "location": entry["location"],
-        "person": entry["person"],
-        "start_time": to_time_str(entry["start"]),
-        "end_time": to_time_str(entry["end"]),
-    })
-
-print(json.dumps(output))
+print(json.dumps(output, ensure_ascii=False))

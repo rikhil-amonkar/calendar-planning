@@ -1,182 +1,190 @@
-import itertools
 import json
+from itertools import permutations
 
-def minutes(h, m):
+def to_minutes(h, m):
     return h * 60 + m
 
-def minutes_to_str(m):
+def parse_time_str(s):
+    # expects 'H:MM' or 'HH:MM' 24h
+    parts = s.strip().split(':')
+    return to_minutes(int(parts[0]), int(parts[1]))
+
+def fmt_minutes(m):
     h = m // 60
-    mi = m % 60
-    return f"{h}:{mi:02d}"
+    mm = m % 60
+    return f"{h}:{mm:02d}"
 
-# Input parameters
+# Input variables (meeting constraints)
 start_location = "Presidio"
-start_time = minutes(9, 0)
+arrival_time_str = "9:00"
 
-# Travel times (directed, in minutes)
+participants = [
+    {
+        "name": "Jessica",
+        "location": "Golden Gate Park",
+        "window_start": "13:45",
+        "window_end": "15:00",
+        "min_minutes": 30
+    },
+    {
+        "name": "Ashley",
+        "location": "Bayview",
+        "window_start": "17:15",
+        "window_end": "20:00",
+        "min_minutes": 105
+    },
+    {
+        "name": "Ronald",
+        "location": "Chinatown",
+        "window_start": "7:15",
+        "window_end": "14:45",
+        "min_minutes": 90
+    },
+    {
+        "name": "William",
+        "location": "North Beach",
+        "window_start": "13:15",
+        "window_end": "20:15",
+        "min_minutes": 15
+    },
+    {
+        "name": "Daniel",
+        "location": "Mission District",
+        "window_start": "7:00",
+        "window_end": "11:15",
+        "min_minutes": 105
+    },
+]
+
+# Convert participant time strings to minutes
+for p in participants:
+    p["window_start_min"] = parse_time_str(p["window_start"])
+    p["window_end_min"] = parse_time_str(p["window_end"])
+
+start_time_min = parse_time_str(arrival_time_str)
+
+# Travel times (in minutes), directed
 travel = {
     "Presidio": {
         "Golden Gate Park": 12,
         "Bayview": 31,
         "Chinatown": 21,
         "North Beach": 18,
-        "Mission District": 26
+        "Mission District": 26,
     },
     "Golden Gate Park": {
         "Presidio": 11,
         "Bayview": 23,
         "Chinatown": 23,
         "North Beach": 24,
-        "Mission District": 17
+        "Mission District": 17,
     },
     "Bayview": {
         "Presidio": 31,
         "Golden Gate Park": 22,
         "Chinatown": 18,
         "North Beach": 21,
-        "Mission District": 13
+        "Mission District": 13,
     },
     "Chinatown": {
         "Presidio": 19,
         "Golden Gate Park": 23,
         "Bayview": 22,
         "North Beach": 3,
-        "Mission District": 18
+        "Mission District": 18,
     },
     "North Beach": {
         "Presidio": 17,
         "Golden Gate Park": 22,
         "Bayview": 22,
         "Chinatown": 6,
-        "Mission District": 18
+        "Mission District": 18,
     },
     "Mission District": {
         "Presidio": 25,
         "Golden Gate Park": 17,
         "Bayview": 15,
         "Chinatown": 16,
-        "North Beach": 17
-    }
+        "North Beach": 17,
+    },
 }
 
-# Friends and constraints
-people = [
-    {
-        "name": "Jessica",
-        "location": "Golden Gate Park",
-        "available_start": minutes(13, 45),
-        "available_end": minutes(15, 0),
-        "min_duration": 30
-    },
-    {
-        "name": "Ashley",
-        "location": "Bayview",
-        "available_start": minutes(17, 15),
-        "available_end": minutes(20, 0),
-        "min_duration": 105
-    },
-    {
-        "name": "Ronald",
-        "location": "Chinatown",
-        "available_start": minutes(7, 15),
-        "available_end": minutes(14, 45),
-        "min_duration": 90
-    },
-    {
-        "name": "William",
-        "location": "North Beach",
-        "available_start": minutes(13, 15),
-        "available_end": minutes(20, 15),
-        "min_duration": 15
-    },
-    {
-        "name": "Daniel",
-        "location": "Mission District",
-        "available_start": minutes(7, 0),
-        "available_end": minutes(11, 15),
-        "min_duration": 105
-    }
-]
-
-def schedule_for_order(order):
-    current_time = start_time
-    current_location = start_location
+def simulate_schedule(seq):
     itinerary = []
-    total_meet_minutes = 0
+    cur_loc = start_location
+    cur_time = start_time_min
     total_travel = 0
+    total_wait = 0
+    total_meet = 0
 
-    for person in order:
-        from_loc = current_location
-        to_loc = person["location"]
-        # Check travel time exists
-        if from_loc not in travel or to_loc not in travel[from_loc]:
-            return None
-        ttime = travel[from_loc][to_loc]
-        total_travel += ttime
-        arrival = current_time + ttime
-        start = max(arrival, person["available_start"])
-        end = start + person["min_duration"]
-        if end > person["available_end"]:
-            return None
+    for p in seq:
+        t = travel[cur_loc][p["location"]]
+        arrival = cur_time + t
+        total_travel += t
+
+        start_meet = max(arrival, p["window_start_min"])
+        if start_meet > p["window_end_min"]:
+            return None  # cannot meet at all
+
+        wait_here = max(0, p["window_start_min"] - arrival)
+        total_wait += wait_here
+
+        end_meet = start_meet + p["min_minutes"]
+        if end_meet > p["window_end_min"]:
+            return None  # cannot fit minimum meeting
+
         itinerary.append({
             "action": "meet",
-            "location": person["location"],
-            "person": person["name"],
-            "start": start,
-            "end": end
+            "location": p["location"],
+            "person": p["name"],
+            "start_time": fmt_minutes(start_meet),
+            "end_time": fmt_minutes(end_meet),
         })
-        total_meet_minutes += person["min_duration"]
-        current_time = end
-        current_location = to_loc
+        total_meet += p["min_minutes"]
+        cur_loc = p["location"]
+        cur_time = end_meet
 
     return {
         "itinerary": itinerary,
-        "finish_time": current_time,
-        "total_meet_minutes": total_meet_minutes,
-        "total_travel": total_travel
+        "final_end": cur_time,
+        "total_travel": total_travel,
+        "total_wait": total_wait,
+        "total_meet": total_meet,
+        "met_count": len(seq),
     }
 
-best_plan = None
-best_count = -1
+def find_optimal_schedule(participants):
+    n = len(participants)
+    best = None
 
-# Search over subsets by descending size to maximize number of friends met
-n = len(people)
-for size in range(n, 0, -1):
-    best_for_size = None
-    # combinations of people of this size
-    for subset in itertools.combinations(people, size):
-        # try all orders
-        for order in itertools.permutations(subset):
-            plan = schedule_for_order(order)
-            if plan is None:
+    # Search schedules by meeting as many friends as possible first
+    for k in range(n, 0, -1):
+        # For tie-breaking within same k, we collect best candidate
+        best_k = None
+        for seq in permutations(participants, k):
+            res = simulate_schedule(seq)
+            if res is None:
                 continue
-            # Score: maximize total people (constant here), then maximize total meeting time (sum of mins), then minimize finish time, then minimize total travel
-            score = (
-                len(order),
-                plan["total_meet_minutes"],
-                -plan["finish_time"],
-                -plan["total_travel"]
-            )
-            if best_for_size is None or score > best_for_size["score"]:
-                best_for_size = {
-                    "plan": plan,
-                    "score": score
-                }
-    if best_for_size is not None:
-        best_plan = best_for_size["plan"]
-        best_count = size
-        break
+            # Tie-breaking: prioritize earliest final finish, then minimal total wait, then minimal travel
+            if best_k is None:
+                best_k = (seq, res)
+            else:
+                _, br = best_k
+                if (res["final_end"] < br["final_end"] or
+                    (res["final_end"] == br["final_end"] and res["total_wait"] < br["total_wait"]) or
+                    (res["final_end"] == br["final_end"] and res["total_wait"] == br["total_wait"] and res["total_travel"] < br["total_travel"])):
+                    best_k = (seq, res)
+        if best_k is not None:
+            best = best_k
+            break
+
+    return best
+
+best_seq, best_res = find_optimal_schedule(participants)
 
 # Prepare JSON output
-output = {"itinerary": []}
-if best_plan:
-    for item in best_plan["itinerary"]:
-        output["itinerary"].append({
-            "action": "meet",
-            "location": item["location"],
-            "person": item["person"],
-            "start_time": minutes_to_str(item["start"]),
-            "end_time": minutes_to_str(item["end"])
-        })
+output = {
+    "itinerary": best_res["itinerary"]
+}
 
-print(json.dumps(output))
+print(json.dumps(output, ensure_ascii=False))

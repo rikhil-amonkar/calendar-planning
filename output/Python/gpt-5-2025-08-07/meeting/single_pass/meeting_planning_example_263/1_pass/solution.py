@@ -1,11 +1,54 @@
-import itertools
 import json
+import itertools
 
-# Input variables
+def parse_time(s):
+    s = s.strip().upper()
+    if s.endswith("AM") or s.endswith("PM"):
+        ampm = s[-2:]
+        time_part = s[:-2]
+        h, m = map(int, time_part.split(":"))
+        if ampm == "AM":
+            if h == 12:
+                h = 0
+        else:
+            if h != 12:
+                h += 12
+        return h * 60 + m
+    else:
+        h, m = map(int, s.split(":"))
+        return h * 60 + m
+
+def fmt_time(minutes):
+    h = minutes // 60
+    m = minutes % 60
+    return f"{h}:{m:02d}"
+
+# Input variables (constraints)
 start_location = "Bayview"
-start_time_str = "9:00"
+start_time_str = "9:00AM"
 
-# Travel times (directed, in minutes)
+people = {
+    "Betty": {
+        "location": "Embarcadero",
+        "available_start": parse_time("7:45PM"),
+        "available_end": parse_time("9:45PM"),
+        "min_duration": 15
+    },
+    "Karen": {
+        "location": "Fisherman's Wharf",
+        "available_start": parse_time("8:45AM"),
+        "available_end": parse_time("3:00PM"),
+        "min_duration": 30
+    },
+    "Anthony": {
+        "location": "Financial District",
+        "available_start": parse_time("9:15AM"),
+        "available_end": parse_time("9:30PM"),
+        "min_duration": 105
+    },
+}
+
+# Travel times in minutes
 travel = {
     ("Bayview", "Embarcadero"): 19,
     ("Bayview", "Fisherman's Wharf"): 25,
@@ -21,112 +64,92 @@ travel = {
     ("Financial District", "Fisherman's Wharf"): 10,
 }
 
-# Friend constraints
-friends = {
-    "Betty": {
-        "location": "Embarcadero",
-        "start": "19:45",
-        "end": "21:45",
-        "min_minutes": 15,
-    },
-    "Karen": {
-        "location": "Fisherman's Wharf",
-        "start": "8:45",
-        "end": "15:00",
-        "min_minutes": 30,
-    },
-    "Anthony": {
-        "location": "Financial District",
-        "start": "9:15",
-        "end": "21:30",
-        "min_minutes": 105,
-    },
-}
+def travel_time(a, b):
+    return travel[(a, b)]
 
-def parse_time(tstr):
-    # tstr is "H:MM" 24-hour
-    h, m = tstr.split(":")
-    return int(h) * 60 + int(m)
-
-def fmt_time(minutes):
-    h = minutes // 60
-    m = minutes % 60
-    return f"{h}:{m:02d}"
-
-# Convert time strings to minutes
-start_time = parse_time(start_time_str)
-for name, info in friends.items():
-    info["start_min"] = parse_time(info["start"])
-    info["end_min"] = parse_time(info["end"])
-
-people = list(friends.keys())
-
-def travel_time(from_loc, to_loc):
-    if from_loc == to_loc:
-        return 0
-    return travel[(from_loc, to_loc)]
-
-def schedule_order(order):
-    itinerary = []
+def simulate_order(order):
     current_loc = start_location
-    current_time = start_time
-    total_travel = 0
+    current_time = parse_time(start_time_str)
+    itinerary = []
     total_wait = 0
+    total_travel = 0
 
-    for person in order:
-        info = friends[person]
-        loc = info["location"]
-        dur = info["min_minutes"]
-        # travel
-        t = travel_time(current_loc, loc)
-        arrive = current_time + t
-        start_meet = max(arrive, info["start_min"])
-        end_meet = start_meet + dur
-        if end_meet > info["end_min"]:
+    for name in order:
+        loc = people[name]["location"]
+        avail_start = people[name]["available_start"]
+        avail_end = people[name]["available_end"]
+        min_dur = people[name]["min_duration"]
+
+        # travel to person's location
+        t_travel = travel_time(current_loc, loc)
+        arrival = current_time + t_travel
+        total_travel += t_travel
+
+        # wait until available
+        start_meet = max(arrival, avail_start)
+        wait = max(0, start_meet - arrival)
+        total_wait += wait
+
+        end_meet = start_meet + min_dur
+
+        # check feasibility within availability window
+        if end_meet > avail_end:
             return None  # infeasible
-        # accumulate
-        total_travel += t
-        total_wait += max(0, start_meet - arrive)
+
+        # add meeting
         itinerary.append({
             "action": "meet",
             "location": loc,
-            "person": person,
+            "person": name,
             "start_time": fmt_time(start_meet),
             "end_time": fmt_time(end_meet),
         })
+
+        # update state
         current_loc = loc
         current_time = end_meet
 
-    finish_time = current_time
+    last_end = current_time
     return {
         "itinerary": itinerary,
-        "total_travel": total_travel,
+        "count": len(order),
+        "end_time": last_end,
         "total_wait": total_wait,
-        "finish_time": finish_time,
-        "order": order,
+        "total_travel": total_travel
     }
 
+def better(a, b):
+    # Return True if a is better than b
+    if b is None:
+        return True
+    if a["count"] != b["count"]:
+        return a["count"] > b["count"]
+    if a["end_time"] != b["end_time"]:
+        return a["end_time"] < b["end_time"]
+    if a["total_wait"] != b["total_wait"]:
+        return a["total_wait"] < b["total_wait"]
+    if a["total_travel"] != b["total_travel"]:
+        return a["total_travel"] < b["total_travel"]
+    # Tie-breaker: lexicographically smaller itinerary string
+    a_str = json.dumps(a["itinerary"], sort_keys=True)
+    b_str = json.dumps(b["itinerary"], sort_keys=True)
+    return a_str < b_str
+
+names = list(people.keys())
 best = None
-# Objective:
-# 1) maximize number of friends met
-# 2) minimize total travel time
-# 3) minimize total waiting time
-# 4) minimize finish time
-# 5) deterministic tie: lexicographic order of names
-for r in range(len(people), 0, -1):
-    for order in itertools.permutations(people, r):
-        sched = schedule_order(order)
-        if sched is None:
-            continue
-        key = (-len(sched["itinerary"]), sched["total_travel"], sched["total_wait"], sched["finish_time"], tuple(sched["order"]))
-        if best is None or key < best["key"]:
-            best = {"key": key, "sched": sched}
-    if best is not None and -best["key"][0] == r:
-        # Found a feasible schedule with maximal number r; no need to check smaller r
+
+# Try all subsets by size (maximize number of meetings)
+for r in range(len(names), 0, -1):
+    for subset in itertools.combinations(names, r):
+        for perm in itertools.permutations(subset):
+            plan = simulate_order(perm)
+            if plan and better(plan, best):
+                best = plan
+    if best and best["count"] == r:
+        # Found best possible for this r; since we go from max r downwards, we can break if feasible
         break
 
-result = {"itinerary": []}
-if best is not None:
-    result["itinerary"] = best["sched"]["itinerary"]
+output = {"itinerary": best["itinerary"] if best else []}
 
-print(json.dumps(result, ensure_ascii=False))
+print("SOLUTION:")
+print(json.dumps(output, ensure_ascii=False, indent=2))

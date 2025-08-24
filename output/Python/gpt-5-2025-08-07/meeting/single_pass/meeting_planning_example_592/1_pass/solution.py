@@ -1,16 +1,18 @@
+# SOLUTION:
 import json
-from itertools import permutations, combinations
+from itertools import permutations
 
-def hm(h, m):
-    return h * 60 + m
+def parse_time(t):
+    h, m = t.split(":")
+    return int(h) * 60 + int(m)
 
-def fmt(minutes):
+def fmt_time(minutes):
     h = minutes // 60
     m = minutes % 60
     return f"{h}:{m:02d}"
 
-# Travel times in minutes (directed)
-TT = {
+# Travel times (minutes) as directed edges
+travel = {
     ("North Beach", "Pacific Heights"): 8,
     ("North Beach", "Chinatown"): 6,
     ("North Beach", "Union Square"): 7,
@@ -61,90 +63,129 @@ TT = {
     ("Nob Hill", "Golden Gate Park"): 17,
 }
 
-# Friends constraints
+# Meeting constraints
 friends = [
-    {"name": "James", "location": "Pacific Heights", "start": hm(20, 0), "end": hm(22, 0), "min": 120},
-    {"name": "Robert", "location": "Chinatown", "start": hm(12, 15), "end": hm(16, 45), "min": 90},
-    {"name": "Jeffrey", "location": "Union Square", "start": hm(9, 30), "end": hm(15, 30), "min": 120},
-    {"name": "Carol", "location": "Mission District", "start": hm(18, 15), "end": hm(21, 15), "min": 15},
-    {"name": "Mark", "location": "Golden Gate Park", "start": hm(11, 30), "end": hm(17, 45), "min": 15},
-    {"name": "Sandra", "location": "Nob Hill", "start": hm(8, 0), "end": hm(15, 30), "min": 15},
+    {
+        "name": "James",
+        "location": "Pacific Heights",
+        "start": parse_time("20:00"),
+        "end": parse_time("22:00"),
+        "min_duration": 120,
+    },
+    {
+        "name": "Robert",
+        "location": "Chinatown",
+        "start": parse_time("12:15"),
+        "end": parse_time("16:45"),
+        "min_duration": 90,
+    },
+    {
+        "name": "Jeffrey",
+        "location": "Union Square",
+        "start": parse_time("9:30"),
+        "end": parse_time("15:30"),
+        "min_duration": 120,
+    },
+    {
+        "name": "Carol",
+        "location": "Mission District",
+        "start": parse_time("18:15"),
+        "end": parse_time("21:15"),
+        "min_duration": 15,
+    },
+    {
+        "name": "Mark",
+        "location": "Golden Gate Park",
+        "start": parse_time("11:30"),
+        "end": parse_time("17:45"),
+        "min_duration": 15,
+    },
+    {
+        "name": "Sandra",
+        "location": "Nob Hill",
+        "start": parse_time("8:00"),
+        "end": parse_time("15:30"),
+        "min_duration": 15,
+    },
 ]
 
 start_location = "North Beach"
-start_time = hm(9, 0)
+start_time = parse_time("9:00")
 
-def simulate(order):
-    t = start_time
+# Utility to get travel time
+def get_travel(a, b):
+    return travel[(a, b)]
+
+def schedule_from_order(order):
+    # Build a schedule by greedily scheduling each friend in given order at the earliest feasible time
     loc = start_location
+    t = start_time
     itinerary = []
+    total_travel = 0
     total_wait = 0
-    total_meet = 0
+    met = 0
 
     for f in order:
-        key = (loc, f["location"])
-        if key not in TT:
-            return None  # No travel time info; infeasible path
-        travel = TT[key]
-        arrive = t + travel
-        start_meet = max(arrive, f["start"])
-        if start_meet + f["min"] > f["end"]:
-            return None  # Cannot satisfy minimum within window
-        if arrive < f["start"]:
-            total_wait += f["start"] - arrive
-        end_meet = start_meet + f["min"]
-        total_meet += f["min"]
-        itinerary.append({
-            "action": "meet",
-            "location": f["location"],
-            "person": f["name"],
-            "start_time": fmt(start_meet),
-            "end_time": fmt(end_meet),
-        })
-        t = end_meet
-        loc = f["location"]
+        tt = get_travel(loc, f["location"])
+        arrive = t + tt
+        start = max(arrive, f["start"])
+        end = start + f["min_duration"]
+        if end <= f["end"]:
+            wait = max(0, start - arrive)
+            itinerary.append({
+                "action": "meet",
+                "location": f["location"],
+                "person": f["name"],
+                "start_time": start,
+                "end_time": end
+            })
+            met += 1
+            total_travel += tt
+            total_wait += wait
+            t = end
+            loc = f["location"]
+        else:
+            # not feasible in this order; skip
+            continue
 
     return {
-        "itinerary": itinerary,
-        "end_time": t,
-        "total_wait": total_wait,
-        "total_meet": total_meet,
-        "count": len(order),
+        "count": met,
+        "travel": total_travel,
+        "wait": total_wait,
+        "end_time": t if itinerary else start_time,
+        "itinerary": itinerary
     }
 
-def find_best_schedule():
-    n = len(friends)
-    best = None
+# Explore all subsets and permutations; prefer max count, then min travel, then min wait, then earliest end time
+best = None
 
-    # Try to meet as many as possible: check subsets from size n down to 1
-    for k in range(n, 0, -1):
-        found_any = False
-        # For size n, there's only one subset: all friends
-        for subset in combinations(friends, k):
-            # Explore all orders
-            for order in permutations(subset):
-                res = simulate(order)
-                if res is None:
-                    continue
-                found_any = True
-                if best is None:
-                    best = res
-                else:
-                    # Primary: maximize number of friends
-                    if res["count"] > best["count"]:
-                        best = res
-                    elif res["count"] == best["count"]:
-                        # Secondary: minimize total waiting time
-                        if res["total_wait"] < best["total_wait"]:
-                            best = res
-                        elif res["total_wait"] == best["total_wait"]:
-                            # Tertiary: earliest finish time
-                            if res["end_time"] < best["end_time"]:
-                                best = res
-        if found_any:
-            break
-    return best
+# Generate all subsets by using permutations of all friends but allowing partial prefixes:
+# To consider all subsets and orders efficiently, we'll iterate over all permutations and then, for each permutation,
+# build the greedy earliest-feasible schedule in that full order; this implicitly considers all ordered subsets.
+from itertools import permutations
 
-best_schedule = find_best_schedule()
-output = {"itinerary": best_schedule["itinerary"] if best_schedule else []}
-print(json.dumps(output))
+for perm in permutations(friends, len(friends)):
+    result = schedule_from_order(perm)
+    if best is None:
+        best = result
+    else:
+        # Comparator: maximize count; then minimize travel; then minimize wait; then minimize end time
+        if (result["count"] > best["count"] or
+            (result["count"] == best["count"] and result["travel"] < best["travel"]) or
+            (result["count"] == best["count"] and result["travel"] == best["travel"] and result["wait"] < best["wait"]) or
+            (result["count"] == best["count"] and result["travel"] == best["travel"] and result["wait"] == best["wait"] and result["end_time"] < best["end_time"])):
+            best = result
+
+# Convert times for JSON output
+json_itinerary = []
+for item in best["itinerary"]:
+    json_itinerary.append({
+        "action": "meet",
+        "location": item["location"],
+        "person": item["person"],
+        "start_time": fmt_time(item["start_time"]),
+        "end_time": fmt_time(item["end_time"]),
+    })
+
+output = {"itinerary": json_itinerary}
+print(json.dumps(output, ensure_ascii=False))

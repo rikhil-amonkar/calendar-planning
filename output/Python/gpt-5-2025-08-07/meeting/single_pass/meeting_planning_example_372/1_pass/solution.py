@@ -1,171 +1,161 @@
-import itertools
 import json
+import itertools
 
-def minutes(h, m):
-    return h * 60 + m
+# Helper functions
+def hm_to_min(tstr):
+    h, m = tstr.split(":")
+    return int(h) * 60 + int(m)
 
-def parse_time_24(t):
-    # expects 'H:MM' or 'HH:MM'
-    parts = t.split(":")
-    return int(parts[0]) * 60 + int(parts[1])
+def min_to_hm(m):
+    h = m // 60
+    mi = m % 60
+    return f"{h}:{mi:02d}"
 
-def fmt_time(mins):
-    h = mins // 60
-    m = mins % 60
-    return f"{h}:{m:02d}"
-
-# Input parameters (meeting constraints)
-start_location = "Sunset District"
-arrival_time_str = "9:00"
-arrival_time = parse_time_24(arrival_time_str)
-
-friends = [
-    {"name": "Charles", "location": "Alamo Square", "start": parse_time_24("18:00"), "end": parse_time_24("20:45"), "min_duration": 90},
-    {"name": "Margaret", "location": "Russian Hill", "start": parse_time_24("9:00"), "end": parse_time_24("16:00"), "min_duration": 30},
-    {"name": "Daniel", "location": "Golden Gate Park", "start": parse_time_24("8:00"), "end": parse_time_24("13:30"), "min_duration": 15},
-    {"name": "Stephanie", "location": "Mission District", "start": parse_time_24("20:30"), "end": parse_time_24("22:00"), "min_duration": 90},
-]
-
-# Travel matrix (in minutes), asymmetric where specified
-L_SUNSET = "Sunset District"
-L_ALAMO = "Alamo Square"
-L_RUSSIAN = "Russian Hill"
-L_GGP = "Golden Gate Park"
-L_MISSION = "Mission District"
-
+# Input variables: travel times (directed, in minutes)
 travel = {
-    L_SUNSET: {
-        L_ALAMO: 17,
-        L_RUSSIAN: 24,
-        L_GGP: 11,
-        L_MISSION: 24,
+    "Sunset District": {
+        "Alamo Square": 17,
+        "Russian Hill": 24,
+        "Golden Gate Park": 11,
+        "Mission District": 24,
     },
-    L_ALAMO: {
-        L_SUNSET: 16,
-        L_RUSSIAN: 13,
-        L_GGP: 9,
-        L_MISSION: 10,
+    "Alamo Square": {
+        "Sunset District": 16,
+        "Russian Hill": 13,
+        "Golden Gate Park": 9,
+        "Mission District": 10,
     },
-    L_RUSSIAN: {
-        L_SUNSET: 23,
-        L_ALAMO: 15,
-        L_GGP: 21,
-        L_MISSION: 16,
+    "Russian Hill": {
+        "Sunset District": 23,
+        "Alamo Square": 15,
+        "Golden Gate Park": 21,
+        "Mission District": 16,
     },
-    L_GGP: {
-        L_SUNSET: 10,
-        L_ALAMO: 10,
-        L_RUSSIAN: 19,
-        L_MISSION: 17,
+    "Golden Gate Park": {
+        "Sunset District": 10,
+        "Alamo Square": 10,
+        "Russian Hill": 19,
+        "Mission District": 17,
     },
-    L_MISSION: {
-        L_SUNSET: 24,
-        L_ALAMO: 11,
-        L_RUSSIAN: 15,
-        L_GGP: 17,
+    "Mission District": {
+        "Sunset District": 24,
+        "Alamo Square": 11,
+        "Russian Hill": 15,
+        "Golden Gate Park": 17,
     },
 }
 
-def get_travel(a, b):
-    if a == b:
-        return 0
-    return travel[a][b]
+# Input variables: participants constraints
+participants = {
+    "Charles": {
+        "location": "Alamo Square",
+        "window_start": hm_to_min("18:00"),
+        "window_end": hm_to_min("20:45"),
+        "min_duration": 90,
+    },
+    "Margaret": {
+        "location": "Russian Hill",
+        "window_start": hm_to_min("9:00"),
+        "window_end": hm_to_min("16:00"),
+        "min_duration": 30,
+    },
+    "Daniel": {
+        "location": "Golden Gate Park",
+        "window_start": hm_to_min("8:00"),
+        "window_end": hm_to_min("13:30"),
+        "min_duration": 15,
+    },
+    "Stephanie": {
+        "location": "Mission District",
+        "window_start": hm_to_min("20:30"),
+        "window_end": hm_to_min("22:00"),
+        "min_duration": 90,
+    },
+}
+
+# Start conditions
+start_location = "Sunset District"
+start_time = hm_to_min("9:00")
 
 def schedule_order(order):
-    # Compute latest feasible start times via backward pass to minimize idle
-    n = len(order)
-    if n == 0:
-        return False, None, None
-
-    L = [None] * n  # latest start times
-    # last meeting
-    last = order[-1]
-    L[-1] = last["end"] - last["min_duration"]
-    # backward for others
-    for i in range(n - 2, -1, -1):
-        cur = order[i]
-        nxt = order[i + 1]
-        latest_due_to_window = cur["end"] - cur["min_duration"]
-        latest_due_to_next = L[i + 1] - get_travel(cur["location"], nxt["location"]) - cur["min_duration"]
-        L[i] = min(latest_due_to_window, latest_due_to_next)
-        # Early pruning: if latest start before window start, infeasible
-        if L[i] < cur["start"]:
-            return False, None, None
-    # Also ensure last is not before its window start
-    if L[-1] < last["start"]:
-        return False, None, None
-
-    # Forward pass to set actual starts at latest feasible times while respecting arrival constraints
     itinerary = []
-    prev_loc = start_location
-    prev_end = arrival_time
+    current_loc = start_location
+    current_time = start_time
+    total_wait = 0
     total_travel = 0
-    for i, p in enumerate(order):
-        t = get_travel(prev_loc, p["location"])
-        total_travel += t
-        earliest_arrival = prev_end + t
-        low = max(earliest_arrival, p["start"])
-        if low > L[i]:
-            return False, None, None
-        start_time_meet = L[i]
-        end_time_meet = start_time_meet + p["min_duration"]
+
+    for person in order:
+        info = participants[person]
+        loc = info["location"]
+        w_start = info["window_start"]
+        w_end = info["window_end"]
+        dur = info["min_duration"]
+
+        # travel
+        if current_loc not in travel or loc not in travel[current_loc]:
+            return None  # cannot travel
+        t_travel = travel[current_loc][loc]
+        arrival = current_time + t_travel
+        total_travel += t_travel
+
+        # wait if arriving before window
+        start_meet = max(arrival, w_start)
+        wait = max(0, start_meet - arrival)
+        total_wait += wait
+
+        end_meet = start_meet + dur
+        if end_meet > w_end:
+            return None  # cannot fit minimum duration in window
+
+        # record
         itinerary.append({
             "action": "meet",
-            "location": p["location"],
-            "person": p["name"],
-            "start_time": fmt_time(start_time_meet),
-            "end_time": fmt_time(end_time_meet),
+            "location": loc,
+            "person": person,
+            "start_time": min_to_hm(start_meet),
+            "end_time": min_to_hm(end_meet),
         })
-        prev_loc = p["location"]
-        prev_end = end_time_meet
 
-    # Metrics for tie-breaking
-    # Primary objective: maximize count (handled externally)
-    # Secondary: minimize total travel
-    return True, itinerary, {"travel": total_travel}
+        # update current
+        current_loc = loc
+        current_time = end_meet
 
-best_itinerary = None
-best_metrics = None
-best_count = -1
+    return {
+        "itinerary": itinerary,
+        "finish_time": current_time,
+        "total_wait": total_wait,
+        "total_travel": total_travel,
+        "met_count": len(itinerary),
+    }
 
-# Enumerate subsets by size descending to maximize number of meetings
-N = len(friends)
-for size in range(N, 0, -1):
-    found_for_size = False
-    for subset in itertools.combinations(friends, size):
-        for perm in itertools.permutations(subset):
-            # Quick feasibility pruning: Charles before Stephanie (evening order constraint)
-            # Not necessary but speeds up.
-            names = [p["name"] for p in perm]
-            if "Charles" in names and "Stephanie" in names:
-                if names.index("Charles") > names.index("Stephanie"):
-                    # reverse order would be infeasible because Charles ends by 20:45 and Stephanie starts 20:30.
-                    continue
-            feasible, itinerary, metrics = schedule_order(list(perm))
-            if feasible:
-                found_for_size = True
-                if size > best_count:
-                    best_count = size
-                    best_itinerary = itinerary
-                    best_metrics = metrics
-                else:
-                    # tie-break by travel
-                    if size == best_count:
-                        if metrics["travel"] < best_metrics["travel"]:
-                            best_itinerary = itinerary
-                            best_metrics = metrics
-                        elif metrics["travel"] == best_metrics["travel"]:
-                            # tiebreaker by lexicographic itinerary string to have determinism
-                            it_str = json.dumps(itinerary, ensure_ascii=False)
-                            best_str = json.dumps(best_itinerary, ensure_ascii=False)
-                            if it_str < best_str:
-                                best_itinerary = itinerary
-                                best_metrics = metrics
-    if found_for_size:
-        break
+def find_best_schedule():
+    people = list(participants.keys())
 
-output = {
-    "itinerary": best_itinerary if best_itinerary is not None else []
-}
+    best = None
+    # Try all subset sizes from max to min
+    for r in range(len(people), 0, -1):
+        any_feasible = False
+        for subset in itertools.permutations(people, r):
+            sched = schedule_order(subset)
+            if not sched:
+                continue
+            any_feasible = True
+            if best is None:
+                best = sched
+            else:
+                # Compare: maximize met_count, then minimize total_wait, then minimize finish_time, then total_travel
+                if (sched["met_count"] > best["met_count"] or
+                    (sched["met_count"] == best["met_count"] and sched["total_wait"] < best["total_wait"]) or
+                    (sched["met_count"] == best["met_count"] and sched["total_wait"] == best["total_wait"] and sched["finish_time"] < best["finish_time"]) or
+                    (sched["met_count"] == best["met_count"] and sched["total_wait"] == best["total_wait"] and sched["finish_time"] == best["finish_time"] and sched["total_travel"] < best["total_travel"])
+                   ):
+                    best = sched
+        if any_feasible:
+            break  # stop after finding best for largest r
+    return best
 
-print(json.dumps(output))
+best_schedule = find_best_schedule()
+
+# Output JSON with only the itinerary as required
+output = {"itinerary": best_schedule["itinerary"] if best_schedule else []}
+print(json.dumps(output, ensure_ascii=False))

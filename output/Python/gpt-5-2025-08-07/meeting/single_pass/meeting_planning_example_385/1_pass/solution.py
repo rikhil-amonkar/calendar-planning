@@ -1,171 +1,142 @@
-import json
+# SOLUTION:
 import itertools
+import json
+import re
 
-def parse_time(tstr):
-    h, m = tstr.split(":")
-    return int(h) * 60 + int(m)
+def parse_time_ampm(s):
+    s = s.strip().upper()
+    m = re.match(r'^(\d{1,2}):(\d{2})(AM|PM)$', s)
+    if not m:
+        raise ValueError(f"Invalid time format: {s}")
+    h = int(m.group(1))
+    minute = int(m.group(2))
+    ap = m.group(3)
+    if h == 12:
+        h = 0
+    if ap == 'PM':
+        h += 12
+    return h * 60 + minute
 
-def fmt_time(minutes):
-    h = minutes // 60
-    m = minutes % 60
-    return f"{h}:{m:02d}"
+def minutes_to_str(m):
+    h = m // 60
+    minute = m % 60
+    return f"{h}:{minute:02d}"
 
-# Input variables (constraints)
-start_location = "Nob Hill"
-start_time_str = "9:00"
-
-people = {
-    "Jeffrey": {
-        "location": "Presidio",
-        "start": "8:00",
-        "end": "10:00",
-        "min_duration": 105
-    },
-    "Steven": {
-        "location": "North Beach",
-        "start": "13:30",
-        "end": "22:00",
-        "min_duration": 45
-    },
-    "Barbara": {
-        "location": "Fisherman's Wharf",
-        "start": "18:00",
-        "end": "21:30",
-        "min_duration": 30
-    },
-    "John": {
-        "location": "Pacific Heights",
-        "start": "9:00",
-        "end": "13:30",
-        "min_duration": 15
-    }
-}
-
-# Convert time strings to minutes
-for p in people.values():
-    p["start_min"] = parse_time(p["start"])
-    p["end_min"] = parse_time(p["end"])
-
-start_time = parse_time(start_time_str)
-
-# Travel times (in minutes)
+# Input variables: travel times (directed, minutes)
 travel = {
-    "Nob Hill": {
-        "Presidio": 17,
-        "North Beach": 8,
-        "Fisherman's Wharf": 11,
-        "Pacific Heights": 8
-    },
-    "Presidio": {
-        "Nob Hill": 18,
-        "North Beach": 18,
-        "Fisherman's Wharf": 19,
-        "Pacific Heights": 11
-    },
-    "North Beach": {
-        "Nob Hill": 7,
-        "Presidio": 17,
-        "Fisherman's Wharf": 5,
-        "Pacific Heights": 8
-    },
-    "Fisherman's Wharf": {
-        "Nob Hill": 11,
-        "Presidio": 17,
-        "North Beach": 6,
-        "Pacific Heights": 12
-    },
-    "Pacific Heights": {
-        "Nob Hill": 8,
-        "Presidio": 11,
-        "North Beach": 9,
-        "Fisherman's Wharf": 13
-    }
+    ("Nob Hill", "Presidio"): 17,
+    ("Nob Hill", "North Beach"): 8,
+    ("Nob Hill", "Fisherman's Wharf"): 11,
+    ("Nob Hill", "Pacific Heights"): 8,
+
+    ("Presidio", "Nob Hill"): 18,
+    ("Presidio", "North Beach"): 18,
+    ("Presidio", "Fisherman's Wharf"): 19,
+    ("Presidio", "Pacific Heights"): 11,
+
+    ("North Beach", "Nob Hill"): 7,
+    ("North Beach", "Presidio"): 17,
+    ("North Beach", "Fisherman's Wharf"): 5,
+    ("North Beach", "Pacific Heights"): 8,
+
+    ("Fisherman's Wharf", "Nob Hill"): 11,
+    ("Fisherman's Wharf", "Presidio"): 17,
+    ("Fisherman's Wharf", "North Beach"): 6,
+    ("Fisherman's Wharf", "Pacific Heights"): 12,
+
+    ("Pacific Heights", "Nob Hill"): 8,
+    ("Pacific Heights", "Presidio"): 11,
+    ("Pacific Heights", "North Beach"): 9,
+    ("Pacific Heights", "Fisherman's Wharf"): 13,
 }
 
-locations = list(travel.keys())
+# Constraints and availability
+initial_location = "Nob Hill"
+initial_time = parse_time_ampm("9:00AM")
 
-def travel_time(a, b):
-    if a == b:
-        return 0
-    return travel[a][b]
+friends = [
+    {
+        "name": "Jeffrey",
+        "location": "Presidio",
+        "start": parse_time_ampm("8:00AM"),
+        "end": parse_time_ampm("10:00AM"),
+        "min_duration": 105,
+    },
+    {
+        "name": "Steven",
+        "location": "North Beach",
+        "start": parse_time_ampm("1:30PM"),
+        "end": parse_time_ampm("10:00PM"),
+        "min_duration": 45,
+    },
+    {
+        "name": "Barbara",
+        "location": "Fisherman's Wharf",
+        "start": parse_time_ampm("6:00PM"),
+        "end": parse_time_ampm("9:30PM"),
+        "min_duration": 30,
+    },
+    {
+        "name": "John",
+        "location": "Pacific Heights",
+        "start": parse_time_ampm("9:00AM"),
+        "end": parse_time_ampm("1:30PM"),
+        "min_duration": 15,
+    },
+]
 
-def compute_schedule(order_names):
-    # Build ordered list of meeting specs
-    order = [ (name, people[name]["location"], people[name]["start_min"], people[name]["end_min"], people[name]["min_duration"]) for name in order_names ]
+# Enumerate all possible schedules (subsets and orders)
+best = None  # store dict with keys: itinerary, count, meet_minutes, travel_minutes, finish_time
+N = len(friends)
+
+def simulate_sequence(seq):
+    current_loc = initial_location
+    current_time = initial_time
     itinerary = []
-    cur_loc = start_location
-    cur_time = start_time
     total_travel = 0
-    total_idle = 0
-
-    for (name, loc, avail_start, avail_end, dur) in order:
-        t_travel = travel_time(cur_loc, loc)
-        arrive = cur_time + t_travel
-        meet_start = max(arrive, avail_start)
-        meet_end = meet_start + dur
-        # infeasible if end after availability end
-        if meet_end > avail_end:
-            return None
-        idle_wait = meet_start - arrive  # waiting anywhere between prev end and current start
-        total_idle += idle_wait if idle_wait > 0 else 0
+    for person in seq:
+        key = (current_loc, person["location"])
+        if key not in travel:
+            return None  # invalid route
+        t_travel = travel[key]
         total_travel += t_travel
-
+        arrival = current_time + t_travel
+        start_meet = max(arrival, person["start"])
+        end_meet = start_meet + person["min_duration"]
+        if end_meet > person["end"]:
+            return None  # cannot meet minimum during their window
         itinerary.append({
             "action": "meet",
-            "location": loc,
-            "person": name,
-            "start_time": fmt_time(meet_start),
-            "end_time": fmt_time(meet_end)
+            "location": person["location"],
+            "person": person["name"],
+            "start_time": minutes_to_str(start_meet),
+            "end_time": minutes_to_str(end_meet),
         })
-        cur_loc = loc
-        cur_time = meet_end
-
+        current_loc = person["location"]
+        current_time = end_meet
     return {
         "itinerary": itinerary,
-        "metrics": {
-            "num_meetings": len(order),
-            "total_travel": total_travel,
-            "total_idle": total_idle,
-            "end_time": cur_time
-        }
+        "count": len(seq),
+        "meet_minutes": sum(p["min_duration"] for p in seq),
+        "travel_minutes": total_travel,
+        "finish_time": current_time,
     }
 
-# Evaluate all combinations and permutations to find optimal by:
-# 1) Maximize number of meetings
-# 2) Minimize total idle time
-# 3) Minimize total travel time
-# 4) Minimize end time
-names = list(people.keys())
-best = None
-best_score = None
-
-# Iterate subsets by size descending to ensure we prefer larger number of meetings,
-# but still compute a unified score to break ties across permutations.
-for r in range(len(names), 0, -1):
-    found_any = False
-    for subset in itertools.combinations(names, r):
-        for perm in itertools.permutations(subset):
-            result = compute_schedule(perm)
+# Try all subsets and permutations
+for k in range(1, N + 1):
+    for combo in itertools.combinations(friends, k):
+        for perm in itertools.permutations(combo):
+            result = simulate_sequence(perm)
             if result is None:
                 continue
-            found_any = True
-            m = result["metrics"]
-            # Score: prioritize num_meetings, then minimize idle, then travel, then end time
-            score = (
-                m["num_meetings"] * 1_000_000
-                - m["total_idle"] * 1_000
-                - m["total_travel"] * 10
-                - m["end_time"]
-            )
-            if best is None or score > best_score:
-                best = result
-                best_score = score
-    if found_any:
-        break
+            # Tie-breaking: maximize count, then total meeting minutes, then minimize travel time, then earliest finish time
+            key = (-result["count"], -result["meet_minutes"], result["travel_minutes"], result["finish_time"])
+            if best is None or key < best["key"]:
+                best = {"key": key, "plan": result}
 
-# Fallback: no meetings feasible (shouldn't happen here)
+# If no feasible meetings, output empty itinerary
 output = {"itinerary": []}
-if best is not None:
-    output["itinerary"] = best["itinerary"]
+if best:
+    output["itinerary"] = best["plan"]["itinerary"]
 
 print(json.dumps(output, ensure_ascii=False))

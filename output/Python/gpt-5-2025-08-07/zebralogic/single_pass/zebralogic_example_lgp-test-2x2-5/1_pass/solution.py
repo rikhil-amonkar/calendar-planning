@@ -1,59 +1,56 @@
-import json
 import itertools
+import json
 
-def all_bijections(houses, values):
-    for perm in itertools.permutations(values, len(houses)):
-        yield {house: val for house, val in zip(houses, perm)}
-
-def house_of_value(mapping, target_value):
-    for house, val in mapping.items():
-        if val == target_value:
-            return house
-    return None
-
-def solve():
+def solve_puzzle():
     # Input variables
-    houses = [1, 2]  # House numbers from left (1) to right (2)
+    houses = [1, 2]  # left to right
     names = ["Eric", "Arnold"]
     house_styles = ["victorian", "colonial"]
 
-    # Constraints
-    def name_constraints(mapping):
-        # 2. Eric is in the first house.
-        return mapping[1] == "Eric"
+    # Helper to invert a mapping: value -> key
+    def invert_map(m):
+        return {v: k for k, v in m.items()}
 
-    def style_constraints(mapping):
-        # 1. The person residing in a Victorian house is somewhere to the left
-        #    of the person living in a colonial-style house.
-        v_house = house_of_value(mapping, "victorian")
-        c_house = house_of_value(mapping, "colonial")
-        return v_house is not None and c_house is not None and v_house < c_house
-
-    # Compute all valid mappings for names and house styles independently
-    valid_name_mappings = [m for m in all_bijections(houses, names) if name_constraints(m)]
-    valid_style_mappings = [m for m in all_bijections(houses, house_styles) if style_constraints(m)]
-
-    # Combine to form complete solutions (no cross-attribute constraints needed here)
     solutions = []
-    for nm in valid_name_mappings:
-        for sm in valid_style_mappings:
-            # Construct rows per house
-            rows = []
-            for h in sorted(houses):
-                rows.append([str(h), nm[h], sm[h]])
-            solutions.append(rows)
 
-    # Ensure there is at least one solution
-    if not solutions:
-        raise ValueError("No solution found with the given constraints.")
+    # Enumerate all possible assignments ensuring uniqueness via permutations
+    for name_perm in itertools.permutations(names, len(houses)):
+        name_by_house = {house: name_perm[i] for i, house in enumerate(houses)}
 
-    # If multiple, choose the first (should be unique for this puzzle)
-    rows = solutions[0]
+        # Constraint: Eric is in the first house
+        if name_by_house[1] != "Eric":
+            continue
 
+        for style_perm in itertools.permutations(house_styles, len(houses)):
+            style_by_house = {house: style_perm[i] for i, house in enumerate(houses)}
+
+            # Constraint: victorian is to the left of colonial
+            style_pos = invert_map(style_by_house)
+            if style_pos["victorian"] >= style_pos["colonial"]:
+                continue
+
+            # All constraints satisfied; record solution
+            solutions.append((name_by_house, style_by_house))
+
+    if len(solutions) != 1:
+        raise ValueError(f"Expected exactly one solution, found {len(solutions)}.")
+
+    name_by_house, style_by_house = solutions[0]
+
+    # Build the required JSON structure
     output = {
         "solution": {
             "header": ["House", "Name", "HouseStyle"],
-            "rows": rows
+            "rows": []
         }
     }
-    print(json.dumps(output, ensure_ascii=False))
+
+    for h in sorted(houses):
+        row = [str(h), name_by_house[h], style_by_house[h]]
+        output["solution"]["rows"].append(row)
+
+    return output
+
+if __name__ == "__main__":
+    result = solve_puzzle()
+    print(json.dumps(result, ensure_ascii=False))

@@ -1,16 +1,21 @@
 import json
+from functools import lru_cache
 
-def time_to_minutes(t):
-    h, m = map(int, t.split(":"))
-    return h*60 + m
+# Helper functions
+def to_minutes(h, m):
+    return h * 60 + m
 
-def minutes_to_time(m):
-    h = m // 60
-    mm = m % 60
-    return f"{h}:{mm:02d}"
+def fmt(minutes):
+    h = minutes // 60
+    m = minutes % 60
+    return f"{h}:{m:02d}"
 
-# Travel times (minutes) between locations (directed)
-dist = {
+# Input variables
+start_location = "Pacific Heights"
+arrival_time = to_minutes(9, 0)
+
+# Travel times (minutes)
+T = {
     "Pacific Heights": {
         "Golden Gate Park": 15,
         "The Castro": 16,
@@ -20,7 +25,7 @@ dist = {
         "Sunset District": 21,
         "Alamo Square": 10,
         "Financial District": 13,
-        "Mission District": 15
+        "Mission District": 15,
     },
     "Golden Gate Park": {
         "Pacific Heights": 16,
@@ -31,7 +36,7 @@ dist = {
         "Sunset District": 10,
         "Alamo Square": 9,
         "Financial District": 26,
-        "Mission District": 17
+        "Mission District": 17,
     },
     "The Castro": {
         "Pacific Heights": 16,
@@ -42,7 +47,7 @@ dist = {
         "Sunset District": 17,
         "Alamo Square": 8,
         "Financial District": 21,
-        "Mission District": 7
+        "Mission District": 7,
     },
     "Bayview": {
         "Pacific Heights": 23,
@@ -53,7 +58,7 @@ dist = {
         "Sunset District": 23,
         "Alamo Square": 16,
         "Financial District": 19,
-        "Mission District": 13
+        "Mission District": 13,
     },
     "Marina District": {
         "Pacific Heights": 7,
@@ -64,7 +69,7 @@ dist = {
         "Sunset District": 19,
         "Alamo Square": 15,
         "Financial District": 17,
-        "Mission District": 20
+        "Mission District": 20,
     },
     "Union Square": {
         "Pacific Heights": 15,
@@ -75,7 +80,7 @@ dist = {
         "Sunset District": 27,
         "Alamo Square": 15,
         "Financial District": 9,
-        "Mission District": 14
+        "Mission District": 14,
     },
     "Sunset District": {
         "Pacific Heights": 21,
@@ -86,7 +91,7 @@ dist = {
         "Union Square": 30,
         "Alamo Square": 17,
         "Financial District": 30,
-        "Mission District": 25
+        "Mission District": 25,
     },
     "Alamo Square": {
         "Pacific Heights": 10,
@@ -97,7 +102,7 @@ dist = {
         "Union Square": 14,
         "Sunset District": 16,
         "Financial District": 17,
-        "Mission District": 10
+        "Mission District": 10,
     },
     "Financial District": {
         "Pacific Heights": 13,
@@ -108,7 +113,7 @@ dist = {
         "Union Square": 9,
         "Sunset District": 30,
         "Alamo Square": 17,
-        "Mission District": 17
+        "Mission District": 17,
     },
     "Mission District": {
         "Pacific Heights": 16,
@@ -119,150 +124,182 @@ dist = {
         "Union Square": 15,
         "Sunset District": 24,
         "Alamo Square": 11,
-        "Financial District": 15
-    }
+        "Financial District": 15,
+    },
 }
 
-# Meeting constraints
-people = {
-    "Helen": {
+# People constraints
+people = [
+    {
+        "name": "Helen",
         "location": "Golden Gate Park",
-        "start": time_to_minutes("9:30"),
-        "end": time_to_minutes("12:15"),
-        "min_duration": 45
+        "start": to_minutes(9, 30),
+        "end": to_minutes(12, 15),
+        "min_duration": 45,
     },
-    "Steven": {
+    {
+        "name": "Steven",
         "location": "The Castro",
-        "start": time_to_minutes("20:15"),
-        "end": time_to_minutes("22:00"),
-        "min_duration": 105
+        "start": to_minutes(20, 15),
+        "end": to_minutes(22, 0),
+        "min_duration": 105,
     },
-    "Deborah": {
+    {
+        "name": "Deborah",
         "location": "Bayview",
-        "start": time_to_minutes("8:30"),
-        "end": time_to_minutes("12:00"),
-        "min_duration": 30
+        "start": to_minutes(8, 30),
+        "end": to_minutes(12, 0),
+        "min_duration": 30,
     },
-    "Matthew": {
+    {
+        "name": "Matthew",
         "location": "Marina District",
-        "start": time_to_minutes("9:15"),
-        "end": time_to_minutes("14:15"),
-        "min_duration": 45
+        "start": to_minutes(9, 15),
+        "end": to_minutes(14, 15),
+        "min_duration": 45,
     },
-    "Joseph": {
+    {
+        "name": "Joseph",
         "location": "Union Square",
-        "start": time_to_minutes("14:15"),
-        "end": time_to_minutes("18:45"),
-        "min_duration": 120
+        "start": to_minutes(14, 15),
+        "end": to_minutes(18, 45),
+        "min_duration": 120,
     },
-    "Ronald": {
+    {
+        "name": "Ronald",
         "location": "Sunset District",
-        "start": time_to_minutes("16:00"),
-        "end": time_to_minutes("20:45"),
-        "min_duration": 60
+        "start": to_minutes(16, 0),
+        "end": to_minutes(20, 45),
+        "min_duration": 60,
     },
-    "Robert": {
+    {
+        "name": "Robert",
         "location": "Alamo Square",
-        "start": time_to_minutes("18:30"),
-        "end": time_to_minutes("21:15"),
-        "min_duration": 120
+        "start": to_minutes(18, 30),
+        "end": to_minutes(21, 15),
+        "min_duration": 120,
     },
-    "Rebecca": {
+    {
+        "name": "Rebecca",
         "location": "Financial District",
-        "start": time_to_minutes("14:45"),
-        "end": time_to_minutes("16:15"),
-        "min_duration": 30
+        "start": to_minutes(14, 45),
+        "end": to_minutes(16, 15),
+        "min_duration": 30,
     },
-    "Elizabeth": {
+    {
+        "name": "Elizabeth",
         "location": "Mission District",
-        "start": time_to_minutes("18:30"),
-        "end": time_to_minutes("21:00"),
-        "min_duration": 120
-    }
+        "start": to_minutes(18, 30),
+        "end": to_minutes(21, 0),
+        "min_duration": 120,
+    },
+]
+
+# Sort people by end time to guide search (earliest deadlines first)
+people_indices = list(range(len(people)))
+people_order = sorted(people_indices, key=lambda i: (people[i]["end"], people[i]["start"]))
+
+# Memoization: map (loc, time, visited_mask) -> best achievable remaining count from here
+# We'll keep as "max meetings achievable from this state" to prune.
+memo = {}
+
+best_result = {
+    "count": 0,
+    "end_time": float('inf'),
+    "travel_time": float('inf'),
+    "schedule": [],
 }
 
-start_location = "Pacific Heights"
-start_time = time_to_minutes("9:00")
-
-# DFS search for best schedule
-names = list(people.keys())
-
-best = {
-    "count": -1,
-    "total_minutes": -1,
-    "finish_time": float("inf"),
-    "travel_minutes": float("inf"),
-    "itinerary": []
-}
-
-def get_travel(a, b):
+# Precompute pairwise travel times default
+def travel_time(a, b):
     if a == b:
         return 0
-    return dist.get(a, {}).get(b, 0)
+    return T[a][b]
 
-def dfs(current_loc, current_time, remaining, itinerary, total_meeting_minutes, total_travel_minutes):
-    global best
-    # Update best if current itinerary is better (even if we can add more later, we also try deeper)
-    current_count = len(itinerary)
-    # Compare to best only at leaf or intermediate as a candidate
-    def is_better(candidate, incumbent):
-        # candidate: (count, total_meeting_minutes, finish_time, travel_minutes)
-        if candidate[0] > incumbent[0]:
-            return True
-        if candidate[0] < incumbent[0]:
-            return False
-        if candidate[1] > incumbent[1]:
-            return True
-        if candidate[1] < incumbent[1]:
-            return False
-        if candidate[2] < incumbent[2]:
-            return True
-        if candidate[2] > incumbent[2]:
-            return False
-        if candidate[3] < incumbent[3]:
-            return True
-        return False
+def better_schedule(a, b):
+    # Compare by count, then earlier finish, then less travel time, then lexicographically by names for determinism
+    if a["count"] != b["count"]:
+        return a["count"] > b["count"]
+    if a["end_time"] != b["end_time"]:
+        return a["end_time"] < b["end_time"]
+    if a["travel_time"] != b["travel_time"]:
+        return a["travel_time"] < b["travel_time"]
+    # Deterministic fallback
+    names_a = [entry["person"] for entry in a["schedule"]]
+    names_b = [entry["person"] for entry in b["schedule"]]
+    return names_a < names_b
 
-    if is_better((current_count, total_meeting_minutes, current_time, total_travel_minutes),
-                 (best["count"], best["total_minutes"], best["finish_time"], best["travel_minutes"])):
-        best = {
-            "count": current_count,
-            "total_minutes": total_meeting_minutes,
-            "finish_time": current_time,
-            "travel_minutes": total_travel_minutes,
-            "itinerary": list(itinerary)
-        }
+def dfs(curr_loc, curr_time, visited_mask, schedule, travel_accum):
+    global best_result
+    # Update best with current schedule
+    curr_count = bin(visited_mask).count("1")
+    current_end_time = curr_time if schedule else arrival_time
+    candidate = {
+        "count": curr_count,
+        "end_time": current_end_time,
+        "travel_time": travel_accum,
+        "schedule": list(schedule),
+    }
+    if better_schedule(candidate, best_result):
+        best_result = candidate
 
-    # Upper bound pruning: even if we meet everyone remaining, can we beat best?
-    if current_count + len(remaining) < best["count"]:
+    # Upper bound prune: if even meeting all remaining cannot beat current best, prune
+    remaining = len(people) - curr_count
+    if curr_count + remaining < best_result["count"]:
         return
 
-    # Try next meetings sorted by earlier window end to improve pruning
-    for name in sorted(remaining, key=lambda n: people[n]["end"]):
-        p = people[name]
-        travel = get_travel(current_loc, p["location"])
-        arrival = current_time + travel
-        start = max(arrival, p["start"])
-        end = start + p["min_duration"]
-        if end <= p["end"]:
-            # Feasible meeting
-            item = {
-                "action": "meet",
-                "location": p["location"],
-                "person": name,
-                "start_time": minutes_to_time(start),
-                "end_time": minutes_to_time(end)
-            }
-            itinerary.append(item)
-            new_remaining = [r for r in remaining if r != name]
-            dfs(p["location"], end, new_remaining, itinerary, total_meeting_minutes + p["min_duration"], total_travel_minutes + travel)
-            itinerary.pop()
+    # Memo prune
+    key = (curr_loc, curr_time, visited_mask)
+    if key in memo:
+        prev_best_remaining = memo[key]
+        # If from this state we cannot add more than stored bound, prune
+        # Store the max achievable from this state discovered so far
+        if prev_best_remaining >= curr_count:
+            # If we've been here with equal or more meetings already, prune
+            return
+    memo[key] = curr_count
 
-# Run search
-dfs(start_location, start_time, names, [], 0, 0)
+    # Generate candidate next meetings (unvisited)
+    candidates = []
+    for i in people_order:
+        if (visited_mask >> i) & 1:
+            continue
+        p = people[i]
+        t_travel = travel_time(curr_loc, p["location"])
+        arrival = curr_time + t_travel
+        start_meet = max(arrival, p["start"])
+        end_meet = start_meet + p["min_duration"]
+        if end_meet <= p["end"]:
+            # feasible
+            candidates.append((i, start_meet, end_meet, t_travel))
 
-result = {
-    "itinerary": best["itinerary"]
-}
+    # Order candidates by earliest end_meet to encourage tighter schedules
+    candidates.sort(key=lambda x: (x[2], people[x[0]]["end"]))
 
-print(json.dumps(result, ensure_ascii=False))
+    for i, start_meet, end_meet, t_travel in candidates:
+        p = people[i]
+        schedule.append({
+            "action": "meet",
+            "location": p["location"],
+            "person": p["name"],
+            "start_time": fmt(start_meet),
+            "end_time": fmt(end_meet),
+        })
+        dfs(
+            p["location"],
+            end_meet,
+            visited_mask | (1 << i),
+            schedule,
+            travel_accum + t_travel
+        )
+        schedule.pop()
+
+def main():
+    # Start the search
+    dfs(start_location, arrival_time, 0, [], 0)
+
+    # Output result JSON
+    print(json.dumps({"itinerary": best_result["schedule"]}, ensure_ascii=False))
+
+if __name__ == "__main__":
+    main()
