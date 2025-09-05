@@ -1,0 +1,107 @@
+We are going to use constraint satisfaction to solve the puzzle.
+ Since the puzzle is small (3 houses), we can generate all permutations and then filter by the constraints.
+
+ Steps:
+ 1. Define the domains for each attribute: names, book genres, vacations.
+ 2. We have 3 houses, so we will generate all possible assignments for the three attributes.
+    However, note that the attributes are independent but must be combined without repetition per house.
+    We can think of each house having a triple (name, book_genre, vacation).
+
+ 3. We can generate all permutations for names, book genres, and vacations and then combine them for the three houses.
+    But note: the constraints relate attributes across houses.
+
+ 4. Alternatively, we can generate all possible assignments for the three houses by taking the Cartesian product of:
+    - all permutations of names for the three houses
+    - all permutations of book genres for the three houses
+    - all permutations of vacations for the three houses
+
+    However, this would be 3! * 3! * 3! = 6*6*6 = 216 possibilities, which is manageable.
+
+ 5. But note: the constraints are about the positions (house numbers) of the attributes. We can represent the assignment for each house.
+
+ 6. We'll create a list of houses (index 0,1,2 for house1, house2, house3) and assign attributes.
+
+ 7. We'll iterate over:
+    - all possible orders of names (using permutations of ['Eric','Arnold','Peter'])
+    - all possible orders of book genres (using permutations of ['mystery','science fiction','romance'])
+    - all possible orders of vacations (using permutations of ['mountain','beach','city'])
+
+ 8. For each combination of these three permutations, we assign:
+        house_i: name = names_perm[i], book_genre = book_perm[i], vacation = vacation_perm[i]
+
+ 9. Then we check the constraints.
+
+ Constraints from the clues:
+  1. Eric is directly left of Arnold.
+        This means: if Eric is in house i, then Arnold must be in house i+1.
+
+  2. Peter is somewhere to the right of the person who loves beach vacations.
+        Let beach_vacation_house = the house index (0-indexed) of the beach vacation.
+        Then Peter's house index must be greater than beach_vacation_house.
+
+  3. Peter is the person who prefers city breaks.
+        So, the vacation assigned to Peter must be 'city'.
+
+  4. The person who loves mystery books is somewhere to the left of the person who loves beach vacations.
+        Let mystery_book_house = house index of mystery book, and beach_vacation_house = house index of beach vacation.
+        Then mystery_book_house < beach_vacation_house.
+
+  5. The person who loves science fiction books is the person who loves beach vacations.
+        So, for the same house, the book genre is 'science fiction' and vacation is 'beach'.
+
+ 10. We break early if any constraint fails.
+
+ 11. Since we are generating the entire assignment, we can then output the solution in the required JSON format.
+
+ Implementation:
+
+ Let's define:
+   houses = [0, 1, 2] representing house numbers 1,2,3.
+
+ We'll use:
+   names = ['Eric', 'Arnold', 'Peter']
+   book_genres = ['mystery', 'science fiction', 'romance']
+   vacations = ['mountain', 'beach', 'city']
+
+ We'll iterate over:
+   for name_perm in all_permutations(names):
+   for book_perm in all_permutations(book_genres):
+   for vac_perm in all_permutations(vacations):
+
+   Then for each house i (0,1,2):
+        assignment[i] = (name_perm[i], book_perm[i], vac_perm[i])
+
+  Then check constraints.
+
+  Note: We must also account for the fact that the houses are ordered (left to right: index0=house1, index1=house2, index2=house3)
+
+  Constraints in code:
+
+  1. Eric directly left of Arnold:
+        Find the index of 'Eric' in name_perm -> let it be i, then check if name_perm[i+1] is 'Arnold'. But note: if Eric is in the last house (index2), then it fails.
+
+  2. Peter is right of beach vacation person:
+        First, find the house index of beach vacation: let beach_index = index of 'beach' in vac_perm
+        Then, find the house index of Peter: peter_index = index of 'Peter' in name_perm
+        Check: peter_index > beach_index
+
+  3. Peter prefers city breaks -> the vacation assigned to Peter (i.e., vac_perm at peter_index) must be 'city'
+
+  4. Mystery book left of beach vacation:
+        Find mystery_index = index of 'mystery' in book_perm
+        beach_index (from vac_perm) must be greater than mystery_index.
+
+  5. Science fiction book and beach vacation are the same house:
+        For the house that has vacation 'beach', check that its book genre is 'science fiction'
+
+  However, note: we have the same vacation_perm and book_perm for the same house index.
+
+  Let's code accordingly.
+
+  Since we are iterating over all permutations, we can break as soon as we find one assignment that satisfies all constraints.
+
+  We'll create a list of houses with attributes, then output the solution in the required JSON format.
+
+  Note: The output must have house numbers as strings, but the house order is fixed (1,2,3).
+
+  Let's code accordingly.

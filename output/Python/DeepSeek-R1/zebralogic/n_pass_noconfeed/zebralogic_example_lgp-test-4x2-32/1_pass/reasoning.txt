@@ -1,0 +1,255 @@
+We are given 4 houses, each with a name and a pet.
+ Names: Peter, Arnold, Eric, Alice
+ Pets: bird, fish, dog, cat
+
+ Clues:
+ 1. The person who owns a dog is somewhere to the right of Alice.
+    This means Alice is left of the dog owner.
+
+ 2. Eric is not in the first house.
+
+ 3. Eric is the person who keeps a pet bird.
+
+ 4. There is one house between the person with an aquarium of fish and Peter.
+    So, the fish owner and Peter are separated by one house. Possible pairs: (1,3), (2,4), (3,1), (4,2). But note: the fish owner and Peter are two different persons.
+
+ 5. Alice is not in the first house.
+
+ 6. Arnold is the person with an aquarium of fish.
+
+ From clue 6, Arnold has the fish.
+
+ From clue 3, Eric has the bird.
+
+ From clue 2 and 5, neither Eric nor Alice is in house 1.
+
+ So, house 1 must be either Peter or Arnold.
+
+ But clue 6 says Arnold has fish, and clue 4 says there is one house between the fish owner and Peter.
+
+ Let's denote the houses: 1,2,3,4.
+
+ Since Arnold has fish, then clue 4 becomes: There is one house between Arnold and Peter.
+
+ So the possible positions for Arnold and Peter are:
+   Arnold in 1, Peter in 3
+   Arnold in 2, Peter in 4
+   Arnold in 3, Peter in 1
+   Arnold in 4, Peter in 2
+
+ But we know that house 1 cannot be Eric or Alice, so house 1 must be Peter or Arnold.
+
+ Now, if Arnold is in house 1, then Peter must be in house 3 (because one house between).
+ If Arnold is in house 2, then Peter must be in house 4.
+ If Arnold is in house 3, then Peter must be in house 1.
+ If Arnold is in house 4, then Peter must be in house 2.
+
+ But note: house 1 cannot be Eric or Alice, so if Arnold is in house 3, then Peter must be in house 1 -> valid.
+ Similarly, if Arnold is in house 1, then Peter in 3 -> valid.
+
+ However, we also have clue 5: Alice not in first, and clue 2: Eric not in first.
+
+ So, let's list the possibilities for house 1:
+
+ Possibility 1: Arnold in house 1 -> then Peter in house 3.
+ Possibility 2: Peter in house 1 -> then from clue 4, Arnold must be in house 3 (because one house between: house 1 and house 3 have house 2 between them).
+
+ But wait, if Peter is in house 1, then Arnold must be in house 3 (since one house between: house 2 is between 1 and 3). Alternatively, if Peter is in house 1, then Arnold could be in house 3 (because |1-3|=2, meaning one house between) OR Arnold in house -1? No, only houses 1-4.
+
+ So, two cases for house 1: either Arnold or Peter.
+
+ Case A: House 1 is Arnold -> then Peter must be in house 3 (from clue 4).
+ Case B: House 1 is Peter -> then Arnold must be in house 3 (from clue 4).
+
+ Now, we also know Eric has the bird (clue 3) and Eric is not in house 1 (clue 2). So Eric is in house 2,3, or 4.
+
+ In case A: House1: Arnold (fish), House3: Peter. Then Eric must be in house 2 or 4, but house3 is Peter, so Eric in 2 or 4.
+
+ In case B: House1: Peter, House3: Arnold (fish). Then Eric must be in house 2 or 4.
+
+ Now, clue 1: The dog owner is to the right of Alice.
+
+ We also have Alice not in house1 (clue 5). So Alice is in house 2,3, or 4.
+
+ Let's consider the two cases.
+
+ Case A: 
+   House1: Arnold (fish)
+   House3: Peter (so Peter is not Eric, not Alice, not Arnold -> so Peter must have a pet, but we don't know yet)
+
+   The remaining names: Eric and Alice for houses 2 and 4.
+
+   Eric has the bird (clue 3). So Eric cannot have fish (Arnold) or bird (Eric) -> wait, Eric has bird, so Eric's pet is bird.
+
+   So, in house2 and house4, we have Eric (bird) and Alice (unknown pet).
+
+   Now, clue 1: The dog owner is to the right of Alice.
+
+   The dog owner could be in house 2,3, or 4, but note: house1 has fish, house3 has Peter (unknown pet), and house2 and house4 have Eric (bird) and Alice (unknown).
+
+   The dog must be in a house right of Alice. So if Alice is in house2, then dog must be in 3 or 4. If Alice in house4, then no house to the right -> so Alice cannot be in house4. So Alice must be in house2 or house3.
+
+   But house3 is Peter, so if Alice is in house3, then she is Peter? No, because names are unique. So house3 is Peter, so Alice must be in house2.
+
+   Then house4 must be Eric (bird).
+
+   So, case A:
+     House1: Arnold (fish)
+     House2: Alice (unknown pet, but not fish, not bird, not dog? We don't know yet)
+     House3: Peter (unknown pet)
+     House4: Eric (bird)
+
+   Now, pets: we have fish (house1), bird (house4), and remaining dog and cat for house2 and house3.
+
+   Clue 1: The dog owner is to the right of Alice. Alice is in house2, so dog must be in house3 or house4. But house4 has bird, so dog must be in house3 (Peter).
+
+   Then house2 (Alice) must have the cat.
+
+   So case A gives:
+     1: Arnold, fish
+     2: Alice, cat
+     3: Peter, dog
+     4: Eric, bird
+
+   Now, check clue 1: Dog owner (house3) is to the right of Alice (house2) -> yes, house3 is right of house2.
+
+   Now, case B:
+     House1: Peter
+     House3: Arnold (fish)
+
+     Then the remaining names: Eric and Alice for houses 2 and 4.
+
+     Eric has bird (clue3) and Eric not in house1 -> so Eric in 2 or 4.
+
+     Alice not in house1 -> so Alice in 2,3, or 4, but house3 is Arnold, so Alice in 2 or 4.
+
+     Now, clue 1: Dog owner is right of Alice.
+
+     Let's consider the possibilities for Eric and Alice.
+
+     Possibility B1: House2: Eric (bird), then house4: Alice.
+        Then dog owner must be right of Alice. But Alice is in house4, so no house to the right -> contradiction.
+
+     Possibility B2: House2: Alice, then house4: Eric (bird).
+        Then dog owner must be right of Alice (house2). So dog in house3 or house4.
+        House4 has Eric with bird, so dog must be in house3. But house3 is Arnold with fish -> contradiction, because fish != dog.
+
+     Possibility B3: House2: Alice, then house4: Eric (bird) -> same as above.
+
+     Alternatively, if we put Eric in house2 and Alice in house4, we already saw it fails.
+
+     What if we put Alice in house2 and Eric in house4? Then dog must be in house3 or house4. But house3 has fish (Arnold) and house4 has bird (Eric) -> no dog? Contradiction.
+
+     Or if we put Eric in house4 and Alice in house2, same.
+
+     The only other possibility: what if Eric is in house2 and Alice in house4? Then dog must be right of Alice (house4) -> no house right -> impossible.
+
+     So case B is impossible.
+
+ Therefore, only case A is valid.
+
+ So the solution is:
+   House1: Arnold, fish
+   House2: Alice, cat
+   House3: Peter, dog
+   House4: Eric, bird
+
+ We'll code accordingly, but we want to write a program that solves this by constraint propagation.
+
+ However, the problem says to write a program that algorithmically solves the given logic puzzle.
+
+ Since the puzzle is small, we can use a brute force permutation approach.
+
+ Steps:
+   We have 4 houses, each with a name and a pet.
+
+   We'll generate all permutations of names and all permutations of pets, and then check all constraints.
+
+   But note: the constraints are:
+
+   Let houses be 1,2,3,4.
+
+   We'll assign:
+     name[i] for house i
+     pet[i] for house i
+
+   Constraints:
+
+   1. The dog owner is right of Alice: 
+        Let alice_house = house where name is Alice
+        Let dog_house = house where pet is dog
+        Then dog_house > alice_house
+
+   2. Eric not in house1: name[0] != 'Eric' (since house1 is index0)
+
+   3. Eric has bird: for the house where name is Eric, pet must be bird.
+
+   4. One house between fish owner and Peter:
+        Let fish_house = house where pet is fish
+        Let peter_house = house where name is Peter
+        Then |fish_house - peter_house| == 2   (because one house between means they are two apart)
+
+   5. Alice not in house1: name[0] != 'Alice'
+
+   6. Arnold has fish: for the house where name is Arnold, pet must be fish.
+
+   We can iterate over all possible assignments.
+
+   There are 4! * 4! = 576 possibilities, which is manageable.
+
+   Alternatively, we can iterate over the 4! permutations for names and for each, assign pets permutations and check.
+
+   We'll do:
+
+   for name_perm in all_perms of ['Peter','Arnold','Eric','Alice']:
+      for pet_perm in all_perms of ['bird','fish','dog','cat']:
+          assign house i: name_perm[i], pet_perm[i]
+          check all constraints
+
+   We'll index houses from 0 to 3 (so house1 is index0, house2 index1, etc.)
+
+   Constraints:
+
+   Constraint 2: name_perm[0] != 'Eric'
+   Constraint 5: name_perm[0] != 'Alice'
+
+   Constraint 3: For the index i where name_perm[i] == 'Eric', we must have pet_perm[i] == 'bird'
+
+   Constraint 6: For the index i where name_perm[i] == 'Arnold', we must have pet_perm[i] == 'fish'
+
+   Constraint 1: 
+        find index a such that name_perm[a] == 'Alice'
+        find index d such that pet_perm[d] == 'dog'
+        then d > a
+
+   Constraint 4:
+        find index f such that pet_perm[f] == 'fish'
+        find index p such that name_perm[p] == 'Peter'
+        then |f - p| == 2
+
+   We can break early if any constraint fails.
+
+   Let's code accordingly.
+
+   We'll use itertools.permutations.
+
+   Note: We must output the houses in order 1,2,3,4.
+
+   The output JSON must have:
+        {
+          "solution": {
+            "header": ["House", "Name", "Pet"],
+            "rows": [
+              ["1", name0, pet0],
+              ["2", name1, pet1],
+              ["3", name2, pet2],
+              ["4", name3, pet3]
+            ]
+          }
+        }
+
+   We'll generate the solution and then output the JSON.
+
+   Since we know there is only one solution, we can break when we find it.
+
+   Let's code accordingly.

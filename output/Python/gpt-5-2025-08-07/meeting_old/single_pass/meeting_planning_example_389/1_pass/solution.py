@@ -1,1 +1,0 @@
-Return (is_feasible, schedule_records, end_time, total_travel) using minimal durations.

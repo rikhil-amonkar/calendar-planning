@@ -1,0 +1,127 @@
+import itertools
+import json
+
+def main():
+    # Define the attributes and their possible values
+    names = ['Arnold', 'Peter', 'Eric']
+    animals = ['bird', 'horse', 'cat']
+    birthdays = ['jan', 'sept', 'april']
+    hobbies = ['photography', 'cooking', 'gardening']
+    drinks = ['milk', 'water', 'tea']
+    haircolors = ['black', 'brown', 'blonde']
+    
+    # Generate restricted permutations based on constraints
+    name_perms = [p for p in itertools.permutations(names) if p[0] != 'Eric']
+    animal_perms = [p for p in itertools.permutations(animals) if p[1] == 'cat']
+    birthday_perms = [p for p in itertools.permutations(birthdays) if p[2] == 'april']
+    hobby_perms = list(itertools.permutations(hobbies))
+    drink_perms = list(itertools.permutations(drinks))
+    hair_perms = list(itertools.permutations(haircolors))
+    
+    # Iterate over all combinations of restricted permutations
+    for name_perm in name_perms:
+        for animal_perm in animal_perms:
+            for birthday_perm in birthday_perms:
+                for hobby_perm in hobby_perms:
+                    for drink_perm in drink_perms:
+                        for hair_perm in hair_perms:
+                            candidate = [
+                                {
+                                    'Name': name_perm[0],
+                                    'Animal': animal_perm[0],
+                                    'Birthday': birthday_perm[0],
+                                    'Hobby': hobby_perm[0],
+                                    'Drink': drink_perm[0],
+                                    'HairColor': hair_perm[0]
+                                },
+                                {
+                                    'Name': name_perm[1],
+                                    'Animal': animal_perm[1],
+                                    'Birthday': birthday_perm[1],
+                                    'Hobby': hobby_perm[1],
+                                    'Drink': drink_perm[1],
+                                    'HairColor': hair_perm[1]
+                                },
+                                {
+                                    'Name': name_perm[2],
+                                    'Animal': animal_perm[2],
+                                    'Birthday': birthday_perm[2],
+                                    'Hobby': hobby_perm[2],
+                                    'Drink': drink_perm[2],
+                                    'HairColor': hair_perm[2]
+                                }
+                            ]
+                            
+                            if check_constraints(candidate):
+                                output_solution(candidate)
+                                return
+
+def check_constraints(candidate):
+    # Constraint 1: Brown hair implies cooking hobby
+    for house in candidate:
+        if house['HairColor'] == 'brown' and house['Hobby'] != 'cooking':
+            return False
+            
+    # Constraint 5: Blonde hair left of milk drinker
+    blonde_index = None
+    milk_index = None
+    for i, house in enumerate(candidate):
+        if house['HairColor'] == 'blonde':
+            blonde_index = i
+        if house['Drink'] == 'milk':
+            milk_index = i
+    if blonde_index is None or milk_index is None or blonde_index >= milk_index:
+        return False
+        
+    # Constraint 6: Gardening hobby iff milk drink
+    for house in candidate:
+        if (house['Hobby'] == 'gardening') != (house['Drink'] == 'milk'):
+            return False
+            
+    # Constraint 7: Cat lover has brown hair (and cat is in house 2)
+    if candidate[1]['Animal'] != 'cat' or candidate[1]['HairColor'] != 'brown':
+        return False
+        
+    # Constraint 8: Arnold is bird keeper
+    for house in candidate:
+        if house['Name'] == 'Arnold' and house['Animal'] != 'bird':
+            return False
+            
+    # Constraint 9: Water drinker iff photography hobby
+    for house in candidate:
+        if (house['Drink'] == 'water') != (house['Hobby'] == 'photography'):
+            return False
+            
+    # Constraint 10: September birthday directly left of Arnold
+    sept_index = None
+    arnold_index = None
+    for i, house in enumerate(candidate):
+        if house['Birthday'] == 'sept':
+            sept_index = i
+        if house['Name'] == 'Arnold':
+            arnold_index = i
+    if sept_index is None or arnold_index is None or sept_index != arnold_index - 1:
+        return False
+        
+    return True
+
+def output_solution(candidate):
+    header = ["House", "Name", "Animal", "Birthday", "Hobby", "Drink", "HairColor"]
+    rows = []
+    for i, house in enumerate(candidate, start=1):
+        row = [str(i)]
+        for attr in header[1:]:
+            row.append(house[attr])
+        rows.append(row)
+    
+    solution_dict = {
+        "solution": {
+            "header": header,
+            "rows": rows
+        }
+    }
+    
+    print(json.dumps(solution_dict, indent=2))
+
+if __name__ == "__main__":
+    main()

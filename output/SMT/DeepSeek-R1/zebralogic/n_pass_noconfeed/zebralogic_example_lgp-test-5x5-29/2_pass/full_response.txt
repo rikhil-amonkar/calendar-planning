@@ -1,0 +1,177 @@
+```python
+import json
+from z3 import *
+
+def main():
+    # Create a solver instance
+    s = Solver()
+
+    # Define the number of houses
+    n = 5
+    houses = [1, 2, 3, 4, 5]
+
+    # Define enums for each attribute
+    Name = Datatype('Name')
+    for n in ['Eric', 'Peter', 'Alice', 'Bob', 'Arnold']:
+        Name.declare(n)
+    Name = Name.create()
+
+    Nationality = Datatype('Nationality')
+    for nt in ['norwegian', 'brit', 'swede', 'dane', 'german']:
+        Nationality.declare(nt)
+    Nationality = Nationality.create()
+
+    Vacation = Datatype('Vacation')
+    for v in ['cruise', 'mountain', 'camping', 'beach', 'city']:
+        Vacation.declare(v)
+    Vacation = Vacation.create()
+
+    Education = Datatype('Education')
+    for e in ['bachelor', 'master', 'associate', 'doctorate', 'high_school']:
+        Education.declare(e)
+    Education = Education.create()
+
+    Occupation = Datatype('Occupation')
+    for o in ['artist', 'doctor', 'engineer', 'teacher', 'lawyer']:
+        Occupation.declare(o)
+    Occupation = Occupation.create()
+
+    # Create variables for each house and each attribute
+    names = [Const(f'name_{i}', Name) for i in houses]
+    nationalities = [Const(f'nationality_{i}', Nationality) for i in houses]
+    vacations = [Const(f'vacation_{i}', Vacation) for i in houses]
+    educations = [Const(f'education_{i}', Education) for i in houses]
+    occupations = [Const(f'occupation_{i}', Occupation) for i in houses]
+
+    # Add constraint: all attributes are distinct
+    s.add(Distinct(names))
+    s.add(Distinct(nationalities))
+    s.add(Distinct(vacations))
+    s.add(Distinct(educations))
+    s.add(Distinct(occupations))
+
+    # Helper function to get the position of a value in a list
+    def get_position(lst, value):
+        return [If(lst[i] == value, 1, 0) for i in range(5)]
+
+    # Clue 1: The person who likes going on cruises is the person who is a lawyer.
+    for i in range(5):
+        s.add(Implies(vacations[i] == Vacation.cruise, occupations[i] == Occupation.lawyer))
+
+    # Clue 2: The person who loves beach vacations is directly left of Arnold.
+    for i in range(4):
+        s.add(Implies(vacations[i] == Vacation.beach, names[i+1] == Name.Arnold))
+    s.add(Or([vacations[i] == Vacation.beach for i in range(4)]))
+
+    # Clue 3: The person with a doctorate is somewhere to the left of Bob.
+    for i in range(5):
+        for j in range(i+1, 5):
+            s.add(Implies(educations[i] == Education.doctorate, names[j] == Name.Bob))
+
+    # Clue 4: The person with an associate's degree is the person who likes going on cruises.
+    for i in range(5):
+        s.add(Implies(educations[i] == Education.associate, vacations[i] == Vacation.cruise))
+
+    # Clue 5: Peter is not in the first house.
+    s.add(names[0] != Name.Peter)
+
+    # Clue 6: The person who is an artist is Peter.
+    for i in range(5):
+        s.add(Implies(occupations[i] == Occupation.artist, names[i] == Name.Peter))
+
+    # Clue 7: The person who enjoys camping trips is the person with a master's degree.
+    for i in range(5):
+        s.add(Implies(vacations[i] == Vacation.camping, educations[i] == Education.master))
+
+    # Clue 8: The Dane is somewhere to the right of the person who is a doctor.
+    for i in range(5):
+        for j in range(i+1, 5):
+            s.add(Implies(occupations[i] == Occupation.doctor, nationalities[j] == Nationality.dane))
+
+    # Clue 9: The person with an associate's degree is directly left of the person who is an engineer.
+    for i in range(4):
+        s.add(Implies(educations[i] == Education.associate, occupations[i+1] == Occupation.engineer))
+    s.add(Or([educations[i] == Education.associate for i in range(4)]))
+
+    # Clue 10: The person who enjoys camping trips is the British person.
+    for i in range(5):
+        s.add(Implies(vacations[i] == Vacation.camping, nationalities[i] == Nationality.brit))
+
+    # Clue 11: The Norwegian and the person with a bachelor's degree are next to each other.
+    for i in range(5):
+        if i == 0:
+            s.add(Implies(nationalities[i] == Nationality.norwegian, 
+                          educations[i+1] == Education.bachelor))
+        elif i == 4:
+            s.add(Implies(nationalities[i] == Nationality.norwegian, 
+                          educations[i-1] == Education.bachelor))
+        else:
+            s.add(Implies(nationalities[i] == Nationality.norwegian, 
+                          Or(educations[i-1] == Education.bachelor, 
+                             educations[i+1] == Education.bachelor)))
+
+    # Clue 12: The person who is an artist is the Swedish person.
+    for i in range(5):
+        s.add(Implies(occupations[i] == Occupation.artist, nationalities[i] == Nationality.swede))
+
+    # Clue 13: Bob is not in the fourth house.
+    s.add(names[3] != Name.Bob)
+
+    # Clue 14: The person who enjoys camping trips is Eric.
+    for i in range(5):
+        s.add(Implies(vacations[i] == Vacation.camping, names[i] == Name.Eric))
+
+    # Clue 15: Alice is the German.
+    for i in range(5):
+        s.add(Implies(names[i] == Name.Alice, nationalities[i] == Nationality.german))
+
+    # Clue 16: The person who loves beach vacations is somewhere to the left of the person who prefers city breaks.
+    for i in range(5):
+        for j in range(i+1, 5):
+            s.add(Implies(vacations[i] == Vacation.beach, vacations[j] == Vacation.city))
+
+    # Clue 17: The person who enjoys mountain retreats is in the fifth house.
+    s.add(vacations[4] == Vacation.mountain)
+
+    # Clue 18: The person who likes going on cruises is somewhere to the right of the person who loves beach vacations.
+    for i in range(5):
+        for j in range(i+1, 5):
+            s.add(Implies(vacations[i] == Vacation.beach, vacations[j] == Vacation.cruise))
+
+    # Clue 19: The person with a bachelor's degree is in the third house.
+    s.add(educations[2] == Education.bachelor)
+
+    # Check for solution
+    if s.check() == sat:
+        m = s.model()
+        
+        # Extract values for each house
+        result = []
+        attributes = [names, nationalities, vacations, educations, occupations]
+        attr_names = ['Name', 'Nationality', 'Vacation', 'Education', 'Occupation']
+        
+        for i in range(5):
+            house_data = [str(i+1)]
+            for attr_list in attributes:
+                value = m[attr_list[i]]
+                # Convert the Z3 value to a string and replace underscores with spaces
+                value_str = str(value)
+                if value_str == 'high_school':
+                    value_str = 'high school'
+                house_data.append(value_str)
+            result.append(house_data)
+        
+        # Format the output as JSON
+        output = {
+            "solution": {
+                "header": ["House", "Name", "Nationality", "Vacation", "Education", "Occupation"],
+                "rows": result
+            }
+        }
+        print(json.dumps(output, indent=2))
+    else:
+        print("No solution found")
+
+if __name__ == "__main__":
+    main()
+```

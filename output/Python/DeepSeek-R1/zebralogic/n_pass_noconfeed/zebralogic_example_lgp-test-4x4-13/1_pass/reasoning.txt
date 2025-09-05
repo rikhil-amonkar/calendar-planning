@@ -1,0 +1,324 @@
+We are given a puzzle with 4 houses and 4 attributes: Name, Cigar, FavoriteSport, Drink.
+ We are also given 10 clues.
+
+ Steps:
+ 1. We will represent the problem using constraint satisfaction. Since the problem is small (4 houses), we can use a brute force search or logical deduction.
+ 2. Alternatively, we can use a more efficient approach by representing the houses as a list of dictionaries or using a table with 4 positions.
+
+ However, note: The problem has 4 houses and 4 attributes each with 4 values. Total possibilities: (4!)^4 which is too many for brute force without constraints.
+
+ Instead, we can use logical deduction by applying the constraints one by one.
+
+ We'll create a table with 4 houses (index 0 to 3 for house 1 to 4).
+ Each house has:
+   name: None initially
+   cigar: None
+   sport: None
+   drink: None
+
+ We are given clues that directly assign some values.
+
+ Let's list the clues and their implications:
+
+ Clue 1: Peter is in the fourth house. -> House4: name = Peter
+ Clue 2: The tea drinker is the person who loves basketball. -> drink=tea and sport=basketball are the same person.
+ Clue 3: Arnold is the person who smokes Blue Master. -> name=Arnold and cigar='blue master' are same.
+ Clue 4: The person who loves basketball is Eric. -> sport=basketball and name=Eric are same. So from clue2 and clue4: Eric drinks tea and loves basketball.
+ Clue 5: The person who loves tennis is the person who smokes Blue Master. -> sport=tennis and cigar='blue master' are same. And from clue3, Arnold smokes Blue Master, so Arnold loves tennis.
+ Clue 6: There are two houses between the one who only drinks water and Peter. 
+   Since Peter is in house4, the water drinker must be in house1 (because house1 and house4 have two houses between them: house2 and house3).
+ Clue 7: The coffee drinker is Arnold. -> drink=coffee and name=Arnold are same.
+ Clue 8: The person who loves basketball is in the third house. -> sport=basketball is in house3. And from clue4, Eric is in house3 (since he loves basketball). Also from clue2, the tea drinker is in house3 (since basketball and tea are same).
+ Clue 9: The Prince smoker is the person who loves soccer. -> cigar='prince' and sport='soccer' are same.
+ Clue10: Peter is the person partial to Pall Mall. -> name=Peter and cigar='pall mall' are same.
+
+ Now, let's start filling:
+
+ From clue1 and clue10: Peter is in house4 and smokes pall mall.
+
+ From clue8: Basketball (and hence Eric) is in house3. So house3: name=Eric, sport=basketball, drink=tea (from clue2 and clue4).
+
+ From clue6: Water drinker is in house1 (since two houses between house1 and house4).
+
+ From clue7: Arnold drinks coffee. We don't know his house yet.
+
+ From clue3 and clue5: Arnold smokes blue master and loves tennis.
+
+ Now, we know house3 has Eric (basketball, tea). So Arnold cannot be in house3.
+
+ Also, Peter is in house4 (pall mall). So Arnold must be in house1 or house2.
+
+ But house1 drinks water (from clue6). And Arnold drinks coffee (clue7). So Arnold cannot be in house1 (because water != coffee). Therefore, Arnold must be in house2.
+
+ So house2: name=Arnold, drink=coffee, cigar=blue master, sport=tennis.
+
+ Then, house1: drink=water (from clue6). And the remaining name is Alice (since Peter, Eric, Arnold are taken).
+
+ Now, we have house1: name=Alice, drink=water.
+
+ The remaining sport is soccer (since tennis and basketball are taken). And the remaining cigar is prince (since pall mall and blue master and dunhill? Wait, we have four cigars: prince, dunhill, blue master, pall mall. We have used blue master and pall mall. So remaining: prince and dunhill.
+
+ But clue9: Prince smoker loves soccer.
+
+ Since house1: sport is not yet assigned, and the only remaining sport is soccer, so house1 must have sport=soccer. Then, from clue9, house1 must also smoke prince.
+
+ So house1: cigar=prince, sport=soccer.
+
+ Then, the remaining cigar is dunhill, which must be in house3? But house3 already has Eric, basketball, tea. We don't know the cigar for house3 yet.
+
+ But we have house4: Peter with pall mall.
+
+ So house3: cigar must be dunhill (since prince is in house1, blue master in house2, pall mall in house4).
+
+ Now, let's summarize:
+
+ House1: name=Alice, drink=water, cigar=prince, sport=soccer
+ House2: name=Arnold, drink=coffee, cigar=blue master, sport=tennis
+ House3: name=Eric, drink=tea, sport=basketball, cigar=dunhill
+ House4: name=Peter, cigar=pall mall, sport=? (only one left: swimming? but wait, we have four sports: swimming, basketball, soccer, tennis. We have assigned soccer, tennis, basketball. So the remaining sport is swimming.
+
+ So house4: sport=swimming, and drink? The drinks: water, coffee, tea, milk. We have assigned water, coffee, tea. So house4 must drink milk.
+
+ Therefore, the complete solution:
+
+ House1: Alice, prince, soccer, water
+ House2: Arnold, blue master, tennis, coffee
+ House3: Eric, dunhill, basketball, tea
+ House4: Peter, pall mall, swimming, milk
+
+ Now, we must output the solution in the required JSON format.
+
+ However, note: the problem says to write a program that computes the solution. Since we have deduced it by hand, we can code the deduction steps or simply output the result.
+
+ But the requirement is to write a program that algorithmically solves the puzzle. We can code the constraints and use a constraint solver or just encode the deductions.
+
+ Since the problem is small and we have the solution, we can write a program that outputs the solution as a dictionary.
+
+ However, to meet the requirement of "computing" the solution, we can represent the constraints and use a simple search or deduction.
+
+ Alternatively, we can use a list of all possibilities and filter by constraints.
+
+ Let me write a program that uses a brute force over all permutations for each attribute and then applies the constraints.
+
+ Steps in code:
+
+ We have 4 houses: 0,1,2,3 (representing house1, house2, house3, house4)
+
+ Attributes:
+   names: ['Alice', 'Peter', 'Arnold', 'Eric']
+   cigars: ['prince', 'dunhill', 'blue master', 'pall mall']
+   sports: ['swimming', 'basketball', 'soccer', 'tennis']
+   drinks: ['coffee', 'water', 'milk', 'tea']
+
+ We will generate all permutations for each attribute and assign to houses.
+
+ Then we check against the constraints.
+
+ Since 4! = 24, and we have 4 attributes, total combinations: 24^4 = 331776, which is acceptable for a brute force in Python.
+
+ Alternatively, we can use nested loops or itertools.product over the permutations of each attribute.
+
+ However, we can also use a more efficient representation: we assign each attribute for each house, and then check constraints.
+
+ We'll create a list of houses, each house is a dictionary with keys: name, cigar, sport, drink.
+
+ We'll iterate over all possible assignments.
+
+ But note: the constraints are cross-attributes. We can use:
+
+ for names in permutations(['Alice','Peter','Arnold','Eric']):
+   for cigars in permutations(['prince','dunhill','blue master','pall mall']):
+     for sports in permutations(['swimming','basketball','soccer','tennis']):
+       for drinks in permutations(['coffee','water','milk','tea']):
+          assignment = [dict(name=names[i], cigar=cigars[i], sport=sports[i], drink=drinks[i]) for i in range(4)]
+
+ Then we check the constraints on the assignment.
+
+ But 24^4 is 331776, which is acceptable.
+
+ However, we can break early by checking constraints as we go, but for simplicity we'll generate and check.
+
+ Let's code the constraints as functions that take the assignment (list of 4 houses) and return boolean.
+
+ Alternatively, we can represent the assignment as a list of dictionaries for each house.
+
+ Constraints:
+
+ 1. Peter is in the fourth house. -> assignment[3]['name'] == 'Peter'
+ 2. The tea drinker is the person who loves basketball. -> There exists a house where drink=='tea' and sport=='basketball'
+ 3. Arnold is the person who smokes Blue Master. -> There exists a house where name=='Arnold' and cigar=='blue master'
+ 4. The person who loves basketball is Eric. -> There exists a house where sport=='basketball' and name=='Eric'
+ 5. The person who loves tennis is the person who smokes Blue Master. -> There exists a house where sport=='tennis' and cigar=='blue master'
+ 6. There are two houses between the one who only drinks water and Peter.
+      Let i be the index of water drinker (drink=='water'), and Peter is at index 3 (house4). So |i - 3| == 2? But note: two houses between means the difference in indices is 3? Actually, if water is in house1 (index0) and Peter in house4 (index3), then between them are house2 and house3 -> two houses. So the absolute difference in indices must be 3. So |i - 3| == 3? But wait, if water is in house1 (index0) and Peter in house4 (index3), then |0-3|=3. But if water were in house4 and Peter in house1, then also |3-0|=3, but clue says "between" so we assume water is left of Peter? The clue doesn't specify left or right, but since Peter is in house4, the only possibility for two houses between is water in house1. So we can check: the house with water must be index0 and Peter index3.
+
+ 7. The coffee drinker is Arnold. -> There exists a house where drink=='coffee' and name=='Arnold'
+ 8. The person who loves basketball is in the third house. -> assignment[2]['sport'] == 'basketball'
+ 9. The Prince smoker is the person who loves soccer. -> There exists a house where cigar=='prince' and sport=='soccer'
+10. Peter is the person partial to Pall Mall. -> assignment[3]['cigar'] == 'pall mall' (since Peter is in house4)
+
+ Also, note: from clue4 and clue2 and clue8, we can deduce that the basketball lover (house3) is Eric and drinks tea.
+
+ But we'll code the constraints as given.
+
+ However, note: some constraints are redundant (like clue4 and clue8 already force Eric in house3). But we'll code all.
+
+ Let's code the constraints as a function that checks an assignment.
+
+ We'll create a list of constraints as functions.
+
+ We'll also note that each attribute must be unique per house, but that is already taken care of by using permutations.
+
+ Implementation:
+
+ We'll use itertools.permutations for each attribute.
+
+ Code structure:
+
+ import itertools
+
+attributes = {
+    'names': ['Alice', 'Peter', 'Arnold', 'Eric'],
+    'cigars': ['prince', 'dunhill', 'blue master', 'pall mall'],
+    'sports': ['swimming', 'basketball', 'soccer', 'tennis'],
+    'drinks': ['coffee', 'water', 'milk', 'tea']
+}
+
+house_indices = [0,1,2,3]
+
+def check_constraints(assignment):
+    # assignment is a list of 4 dictionaries, each with keys: name, cigar, sport, drink
+    # Constraint 1: Peter in fourth house (index3)
+    if assignment[3]['name'] != 'Peter':
+        return False
+
+    # Constraint 2: tea drinker loves basketball
+    found = False
+    for house in assignment:
+        if house['drink'] == 'tea' and house['sport'] == 'basketball':
+            found = True
+            break
+    if not found:
+        return False
+
+    # Constraint 3: Arnold smokes blue master
+    found = False
+    for house in assignment:
+        if house['name'] == 'Arnold' and house['cigar'] == 'blue master':
+            found = True
+            break
+    if not found:
+        return False
+
+    # Constraint 4: basketball lover is Eric
+    found = False
+    for house in assignment:
+        if house['sport'] == 'basketball' and house['name'] == 'Eric':
+            found = True
+            break
+    if not found:
+        return False
+
+    # Constraint 5: tennis lover is blue master smoker
+    found = False
+    for house in assignment:
+        if house['sport'] == 'tennis' and house['cigar'] == 'blue master':
+            found = True
+            break
+    if not found:
+        return False
+
+    # Constraint 6: two houses between water drinker and Peter
+    # Peter is in house4 (index3). So the water drinker must be in house1 (index0)
+    water_index = None
+    for i, house in enumerate(assignment):
+        if house['drink'] == 'water':
+            water_index = i
+            break
+    if water_index is None or water_index != 0: # because two houses between: from house1 to house4, there are house2 and house3 in between.
+        return False
+
+    # Constraint 7: coffee drinker is Arnold
+    found = False
+    for house in assignment:
+        if house['drink'] == 'coffee' and house['name'] == 'Arnold':
+            found = True
+            break
+    if not found:
+        return False
+
+    # Constraint 8: basketball lover in third house (index2)
+    if assignment[2]['sport'] != 'basketball':
+        return False
+
+    # Constraint 9: prince smoker loves soccer
+    found = False
+    for house in assignment:
+        if house['cigar'] == 'prince' and house['sport'] == 'soccer':
+            found = True
+            break
+    if not found:
+        return False
+
+    # Constraint 10: Peter smokes pall mall
+    if assignment[3]['cigar'] != 'pall mall':
+        return False
+
+    return True
+
+Now, we iterate over all permutations:
+
+for names in itertools.permutations(attributes['names']):
+    for cigars in itertools.permutations(attributes['cigars']):
+        for sports in itertools.permutations(attributes['sports']):
+            for drinks in itertools.permutations(attributes['drinks']):
+                assignment = []
+                for i in range(4):
+                    house = {
+                        'name': names[i],
+                        'cigar': cigars[i],
+                        'sport': sports[i],
+                        'drink': drinks[i]
+                    }
+                    assignment.append(house)
+                if check_constraints(assignment):
+                    # We found the solution
+                    # Format the solution as required
+                    solution = {
+                        "solution": {
+                            "header": ["House", "Name", "Cigar", "FavoriteSport", "Drink"],
+                            "rows": []
+                        }
+                    }
+                    for i, house in enumerate(assignment):
+                        row = [str(i+1), house['name'], house['cigar'], house['sport'], house['drink']]
+                        solution["solution"]["rows"].append(row)
+                    # Print the JSON
+                    import json
+                    print(json.dumps(solution, indent=2))
+                    exit(0)
+
+But note: the problem says to output the code that computes the solution. We are printing the JSON.
+
+We'll write the entire code accordingly.
+
+However, we can break out of the loops once we find the solution.
+
+Let's code accordingly.
+
+We'll use:
+
+import itertools
+import json
+
+... [rest of the code]
+
+But note: the constraints are such that only one solution exists.
+
+We'll run the code and output the JSON.
+
+Alternatively, we can use the deduced solution and just output it without brute force, but the requirement is to compute.
+
+Since the problem is small, we do brute force.
+
+Let's code.

@@ -1,0 +1,96 @@
+```python
+import itertools
+import json
+
+def index_of(lst, value):
+    try:
+        return lst.index(value)
+    except ValueError:
+        return -1
+
+def main():
+    domains = {
+        'Name': ['Peter', 'Arnold', 'Eric'],
+        'CarModel': ['toyota camry', 'ford f150', 'tesla model 3'],
+        'HouseStyle': ['ranch', 'colonial', 'victorian'],
+        'Pet': ['cat', 'dog', 'fish'],
+        'Occupation': ['engineer', 'doctor', 'teacher'],
+        'Vacation': ['city', 'mountain', 'beach']
+    }
+    
+    fixed_assignments = {
+        'Name': [None, None, 'Arnold'],
+        'CarModel': [None, 'toyota camry', None],
+        'HouseStyle': [None, None, 'colonial'],
+        'Pet': ['fish', 'dog', 'cat'],
+        'Occupation': [None, 'engineer', None],
+        'Vacation': [None, 'beach', None]
+    }
+    
+    constraints = [
+        lambda c: c['Pet'][0] == 'fish',
+        lambda c: c['CarModel'][1] == 'toyota camry',
+        lambda c: c['Vacation'][1] != 'mountain',
+        lambda c: c['Vacation'][1] != 'city',
+        lambda c: index_of(c['HouseStyle'], 'ranch') < index_of(c['Name'], 'Peter'),
+        lambda c: index_of(c['CarModel'], 'toyota camry') + 1 == index_of(c['HouseStyle'], 'colonial'),
+        lambda c: c['Pet'][index_of(c['Name'], 'Arnold')] == 'cat',
+        lambda c: index_of(c['Name'], 'Eric') < index_of(c['Vacation'], 'mountain'),
+        lambda c: c['Occupation'][2] != 'engineer',
+        lambda c: index_of(c['CarModel'], 'tesla model 3') < index_of(c['Occupation'], 'teacher'),
+        lambda c: index_of(c['Pet'], 'dog') == index_of(c['Occupation'], 'engineer')
+    ]
+    
+    attributes = list(domains.keys())
+    possible_assignments = {}
+    
+    for attr in attributes:
+        fixed = fixed_assignments[attr]
+        domain = domains[attr]
+        remaining_values = [v for v in domain if v not in fixed]
+        non_fixed_indices = [i for i in range(3) if fixed[i] is None]
+        perms = list(itertools.permutations(remaining_values))
+        assignments = []
+        for p in perms:
+            assignment = fixed[:]
+            for idx, pos in enumerate(non_fixed_indices):
+                assignment[pos] = p[idx]
+            assignments.append(assignment)
+        possible_assignments[attr] = assignments
+    
+    solution_found = None
+    for candidate_values in itertools.product(*[possible_assignments[attr] for attr in attributes]):
+        candidate = dict(zip(attributes, candidate_values))
+        valid = True
+        for constraint in constraints:
+            if not constraint(candidate):
+                valid = False
+                break
+        if valid:
+            solution_found = candidate
+            break
+            
+    if solution_found is None:
+        print("No solution found")
+        return
+        
+    header = ["House", "Name", "CarModel", "HouseStyle", "Pet", "Occupation", "Vacation"]
+    rows = []
+    for i in range(3):
+        row = [str(i+1)]
+        for attr in header[1:]:
+            row.append(solution_found[attr][i])
+        rows.append(row)
+        
+    result = {
+        "solution": {
+            "header": header,
+            "rows": rows
+        }
+    }
+    
+    print(json.dumps(result, indent=2))
+
+if __name__ == "__main__":
+    main()
+```

@@ -1,0 +1,61 @@
+```python
+import json
+
+def main():
+    # Initialize the houses: 4 houses, each with number, name, and style (initially unknown)
+    houses = [
+        {"House": "1", "Name": None, "HouseStyle": None},
+        {"House": "2", "Name": None, "HouseStyle": None},
+        {"House": "3", "Name": None, "HouseStyle": None},
+        {"House": "4", "Name": None, "HouseStyle": None}
+    ]
+    
+    # Apply clue 3: Eric is in the third house
+    houses[2]["Name"] = "Eric"
+    
+    # Apply clue 4: Arnold is in the fourth house
+    houses[3]["Name"] = "Arnold"
+    
+    # Apply clue 1: Eric is in Craftsman-style house
+    houses[2]["HouseStyle"] = "craftsman"
+    
+    # Apply clue 5: Alice is in Victorian house
+    # We don't know which house is Victorian yet, so we'll note this constraint
+    
+    # Apply clue 2: Ranch is directly left of Victorian
+    # Possible positions: (1,2), (2,3), (3,4)
+    # But house 3 is craftsman, so Victorian cannot be in house 3 (would require ranch in house 2)
+    # Also, Victorian cannot be in house 1 (nothing left of it)
+    # So Victorian must be in house 2 or 4
+    
+    # If Victorian in house 4, then ranch must be in house 3
+    # But house 3 is craftsman, not ranch → contradiction
+    # Therefore, Victorian must be in house 2, and ranch in house 1
+    houses[0]["HouseStyle"] = "ranch"
+    houses[1]["HouseStyle"] = "victorian"
+    
+    # Now assign Alice to Victorian house (house 2)
+    houses[1]["Name"] = "Alice"
+    
+    # The remaining name is Peter for house 1
+    houses[0]["Name"] = "Peter"
+    
+    # The remaining style is colonial for house 4
+    houses[3]["HouseStyle"] = "colonial"
+    
+    # Prepare the output in the required JSON format
+    output = {
+        "solution": {
+            "header": ["House", "Name", "HouseStyle"],
+            "rows": [
+                [house["House"], house["Name"], house["HouseStyle"]]
+                for house in houses
+            ]
+        }
+    }
+    
+    print(json.dumps(output, indent=2))
+
+if __name__ == "__main__":
+    main()
+```

@@ -1,0 +1,86 @@
+import json
+
+def main():
+    # Initialize the houses
+    houses = [
+        {'House': '1', 'Name': None, 'Education': None, 'Height': None, 'Food': None, 'Drink': None},
+        {'House': '2', 'Name': None, 'Education': None, 'Height': None, 'Food': None, 'Drink': None}
+    ]
+    
+    # Apply clue 2: Grilled cheese in second house
+    for house in houses:
+        if house['House'] == '2':
+            house['Food'] = 'grilled cheese'
+        else:
+            house['Food'] = 'pizza'
+    
+    # Apply clue 5: Arnold is pizza lover
+    for house in houses:
+        if house['Food'] == 'pizza':
+            house['Name'] = 'Arnold'
+    
+    # Apply clue 1: Very short is pizza lover
+    for house in houses:
+        if house['Food'] == 'pizza':
+            house['Height'] = 'very short'
+    
+    # Apply clue 3: High school diploma is pizza lover
+    for house in houses:
+        if house['Food'] == 'pizza':
+            house['Education'] = 'high school'
+    
+    # Apply clue 4: Tea drinker is grilled cheese lover
+    for house in houses:
+        if house['Food'] == 'grilled cheese':
+            house['Drink'] = 'tea'
+    
+    # The remaining house must have water
+    for house in houses:
+        if house['Drink'] is None:
+            house['Drink'] = 'water'
+    
+    # Assign remaining attributes
+    names = {'Arnold', 'Eric'}
+    used_names = {h['Name'] for h in houses if h['Name']}
+    remaining_name = (names - used_names).pop()
+    
+    educations = {'associate', 'high school'}
+    used_educations = {h['Education'] for h in houses if h['Education']}
+    remaining_education = (educations - used_educations).pop()
+    
+    heights = {'short', 'very short'}
+    used_heights = {h['Height'] for h in houses if h['Height']}
+    remaining_height = (heights - used_heights).pop()
+    
+    for house in houses:
+        if house['Name'] is None:
+            house['Name'] = remaining_name
+        if house['Education'] is None:
+            house['Education'] = remaining_education
+        if house['Height'] is None:
+            house['Height'] = remaining_height
+    
+    # Prepare output
+    header = ["House", "Name", "Education", "Height", "Food", "Drink"]
+    rows = []
+    for house in houses:
+        rows.append([
+            house['House'],
+            house['Name'],
+            house['Education'],
+            house['Height'],
+            house['Food'],
+            house['Drink']
+        ])
+    
+    solution = {
+        "solution": {
+            "header": header,
+            "rows": rows
+        }
+    }
+    
+    print(json.dumps(solution, indent=2))
+
+if __name__ == "__main__":
+    main()

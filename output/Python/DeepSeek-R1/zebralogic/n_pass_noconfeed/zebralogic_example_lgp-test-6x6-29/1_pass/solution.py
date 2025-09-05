@@ -1,0 +1,321 @@
+import copy
+import json
+
+def main():
+    attributes = ['Name', 'HouseStyle', 'Food', 'Vacation', 'Height', 'Cigar']
+    values = {
+        'Name': ['Arnold', 'Carol', 'Peter', 'Eric', 'Bob', 'Alice'],
+        'HouseStyle': ['ranch', 'colonial', 'modern', 'craftsman', 'mediterranean', 'victorian'],
+        'Food': ['pizza', 'stew', 'spaghetti', 'grilled cheese', 'stir fry', 'soup'],
+        'Vacation': ['cultural', 'cruise', 'mountain', 'camping', 'city', 'beach'],
+        'Height': ['average', 'very tall', 'very short', 'short', 'tall', 'super tall'],
+        'Cigar': ['yellow monster', 'prince', 'dunhill', 'pall mall', 'blue master', 'blends']
+    }
+    
+    houses = [{attr: set(values[attr]) for attr in attributes} for _ in range(6)]
+    
+    houses[3]['Name'] = {'Eric'}
+    houses[4]['Name'] = {'Alice'}
+    houses[4]['HouseStyle'] = {'victorian'}
+    
+    def propagate(state):
+        changed = True
+        while changed:
+            changed = False
+            for attr in attributes:
+                for i in range(6):
+                    if len(state[i][attr]) == 1:
+                        value = next(iter(state[i][attr]))
+                        for j in range(6):
+                            if i != j and value in state[j][attr]:
+                                state[j][attr].remove(value)
+                                changed = True
+            
+            for i in range(6):
+                if 'stir fry' in state[i]['Food'] and 'colonial' not in state[i]['HouseStyle']:
+                    state[i]['Food'].remove('stir fry')
+                    changed = True
+                if 'colonial' in state[i]['HouseStyle'] and 'stir fry' not in state[i]['Food']:
+                    state[i]['HouseStyle'].remove('colonial')
+                    changed = True
+            
+            for i in range(6):
+                if 'average' in state[i]['Height'] and 'stir fry' not in state[i]['Food']:
+                    state[i]['Height'].remove('average')
+                    changed = True
+                if 'stir fry' in state[i]['Food'] and 'average' not in state[i]['Height']:
+                    state[i]['Food'].remove('stir fry')
+                    changed = True
+            
+            for i in range(6):
+                if 'beach' in state[i]['Vacation'] and 'ranch' not in state[i]['HouseStyle']:
+                    state[i]['Vacation'].remove('beach')
+                    changed = True
+                if 'ranch' in state[i]['HouseStyle'] and 'beach' not in state[i]['Vacation']:
+                    state[i]['HouseStyle'].remove('ranch')
+                    changed = True
+            
+            for i in range(6):
+                if 'mountain' in state[i]['Vacation'] and 'yellow monster' not in state[i]['Cigar']:
+                    state[i]['Vacation'].remove('mountain')
+                    changed = True
+                if 'yellow monster' in state[i]['Cigar'] and 'mountain' not in state[i]['Vacation']:
+                    state[i]['Cigar'].remove('yellow monster')
+                    changed = True
+            
+            for i in range(6):
+                if 'mountain' in state[i]['Vacation'] and 'very tall' not in state[i]['Height']:
+                    state[i]['Vacation'].remove('mountain')
+                    changed = True
+                if 'very tall' in state[i]['Height'] and 'mountain' not in state[i]['Vacation']:
+                    state[i]['Height'].remove('very tall')
+                    changed = True
+            
+            for i in range(6):
+                if 'tall' in state[i]['Height'] and 'beach' not in state[i]['Vacation']:
+                    state[i]['Height'].remove('tall')
+                    changed = True
+                if 'beach' in state[i]['Vacation'] and 'tall' not in state[i]['Height']:
+                    state[i]['Vacation'].remove('beach')
+                    changed = True
+            
+            for i in range(6):
+                if 'ranch' in state[i]['HouseStyle'] and 'blue master' not in state[i]['Cigar']:
+                    state[i]['HouseStyle'].remove('ranch')
+                    changed = True
+                if 'blue master' in state[i]['Cigar'] and 'ranch' not in state[i]['HouseStyle']:
+                    state[i]['Cigar'].remove('blue master')
+                    changed = True
+            
+            for i in range(6):
+                if 'cultural' in state[i]['Vacation'] and 'pizza' not in state[i]['Food']:
+                    state[i]['Vacation'].remove('cultural')
+                    changed = True
+                if 'pizza' in state[i]['Food'] and 'cultural' not in state[i]['Vacation']:
+                    state[i]['Food'].remove('pizza')
+                    changed = True
+            
+            if 'spaghetti' not in state[3]['Food'] and 'spaghetti' not in state[5]['Food']:
+                for i in [0,1,2,4]:
+                    if 'spaghetti' in state[i]['Food']:
+                        state[i]['Food'].remove('spaghetti')
+                        changed = True
+            
+            for i in range(6):
+                if 'Arnold' in state[i]['Name'] and 'stew' not in state[i]['Food']:
+                    state[i]['Food'] = {'stew'}
+                    changed = True
+                if 'stew' in state[i]['Food'] and 'Arnold' not in state[i]['Name']:
+                    state[i]['Food'].remove('stew')
+                    changed = True
+            
+            for i in range(6):
+                if 'average' in state[i]['Height']:
+                    possible_peter = []
+                    if i-2 >=0: possible_peter.append(i-2)
+                    if i+2 <6: possible_peter.append(i+2)
+                    for j in range(6):
+                        if j not in possible_peter and 'Peter' in state[j]['Name']:
+                            state[j]['Name'].remove('Peter')
+                            changed = True
+                if 'Peter' in state[i]['Name']:
+                    possible_avg = []
+                    if i-2>=0: possible_avg.append(i-2)
+                    if i+2<6: possible_avg.append(i+2)
+                    for j in range(6):
+                        if j not in possible_avg and 'average' in state[j]['Height']:
+                            state[j]['Height'].remove('average')
+                            changed = True
+            
+            if 'craftsman' in state[2]['HouseStyle']:
+                state[2]['HouseStyle'].remove('craftsman')
+                changed = True
+            
+            for i in range(6):
+                if 'colonial' in state[i]['HouseStyle']:
+                    possible_camping = []
+                    if i-2>=0: possible_camping.append(i-2)
+                    if i+2<6: possible_camping.append(i+2)
+                    for j in range(6):
+                        if j not in possible_camping and 'camping' in state[j]['Vacation']:
+                            state[j]['Vacation'].remove('camping')
+                            changed = True
+                if 'camping' in state[i]['Vacation']:
+                    possible_colonial = []
+                    if i-2>=0: possible_colonial.append(i-2)
+                    if i+2<6: possible_colonial.append(i+2)
+                    for j in range(6):
+                        if j not in possible_colonial and 'colonial' in state[j]['HouseStyle']:
+                            state[j]['HouseStyle'].remove('colonial')
+                            changed = True
+            
+            for i in range(6):
+                if 'mountain' in state[i]['Vacation']:
+                    possible_dunhill = []
+                    if i-1>=0: possible_dunhill.append(i-1)
+                    if i+1<6: possible_dunhill.append(i+1)
+                    for j in range(6):
+                        if j not in possible_dunhill and 'dunhill' in state[j]['Cigar']:
+                            state[j]['Cigar'].remove('dunhill')
+                            changed = True
+                if 'dunhill' in state[i]['Cigar']:
+                    possible_mountain = []
+                    if i-1>=0: possible_mountain.append(i-1)
+                    if i+1<6: possible_mountain.append(i+1)
+                    for j in range(6):
+                        if j not in possible_mountain and 'mountain' in state[j]['Vacation']:
+                            state[j]['Vacation'].remove('mountain')
+                            changed = True
+            
+            for i in [4,5]:
+                if 'tall' in state[i]['Height']:
+                    state[i]['Height'].remove('tall')
+                    changed = True
+            
+            for i in range(6):
+                if 'stir fry' in state[i]['Food']:
+                    if i+1 <6:
+                        if 'Bob' not in state[i+1]['Name'] and len(state[i+1]['Name']) > 0:
+                            state[i+1]['Name'] = {'Bob'}
+                            changed = True
+                    else:
+                        state[i]['Food'].remove('stir fry')
+                        changed = True
+                if 'Bob' in state[i]['Name']:
+                    if i-1>=0:
+                        if 'stir fry' not in state[i-1]['Food'] and len(state[i-1]['Food']) > 0:
+                            state[i-1]['Food'] = {'stir fry'}
+                            changed = True
+                    else:
+                        state[i]['Name'].remove('Bob')
+                        changed = True
+            
+            for i in [4,5]:
+                if 'modern' in state[i]['HouseStyle']:
+                    state[i]['HouseStyle'].remove('modern')
+                    changed = True
+            
+            for i in range(6):
+                if 'craftsman' in state[i]['HouseStyle']:
+                    for j in range(0, i+1):
+                        if 'short' in state[j]['Height']:
+                            state[j]['Height'].remove('short')
+                            changed = True
+                if 'short' in state[i]['Height']:
+                    for j in range(i,6):
+                        if 'craftsman' in state[j]['HouseStyle']:
+                            state[j]['HouseStyle'].remove('craftsman')
+                            changed = True
+            
+            for i in range(6):
+                if 'stir fry' in state[i]['Food']:
+                    for j in range(0, i+1):
+                        if 'prince' in state[j]['Cigar']:
+                            state[j]['Cigar'].remove('prince')
+                            changed = True
+                if 'prince' in state[i]['Cigar']:
+                    for j in range(i,6):
+                        if 'stir fry' in state[j]['Food']:
+                            state[j]['Food'].remove('stir fry')
+                            changed = True
+            
+            for i in range(6):
+                if 'grilled cheese' in state[i]['Food']:
+                    possible_super_tall = []
+                    if i-3>=0: possible_super_tall.append(i-3)
+                    if i+3<6: possible_super_tall.append(i+3)
+                    for j in range(6):
+                        if j not in possible_super_tall and 'super tall' in state[j]['Height']:
+                            state[j]['Height'].remove('super tall')
+                            changed = True
+                if 'super tall' in state[i]['Height']:
+                    possible_grilled_cheese = []
+                    if i-3>=0: possible_grilled_cheese.append(i-3)
+                    if i+3<6: possible_grilled_cheese.append(i+3)
+                    for j in range(6):
+                        if j not in possible_grilled_cheese and 'grilled cheese' in state[j]['Food']:
+                            state[j]['Food'].remove('grilled cheese')
+                            changed = True
+            
+            for i in range(6):
+                if 'blends' in state[i]['Cigar']:
+                    if i+1 <6:
+                        if 'blue master' not in state[i+1]['Cigar'] and len(state[i+1]['Cigar']) > 0:
+                            state[i+1]['Cigar'] = {'blue master'}
+                            changed = True
+                    else:
+                        state[i]['Cigar'].remove('blends')
+                        changed = True
+                if 'blue master' in state[i]['Cigar']:
+                    if i-1>=0:
+                        if 'blends' not in state[i-1]['Cigar'] and len(state[i-1]['Cigar']) > 0:
+                            state[i-1]['Cigar'] = {'blends'}
+                            changed = True
+                    else:
+                        state[i]['Cigar'].remove('blue master')
+                        changed = True
+            
+            for i in range(6):
+                if 'pizza' in state[i]['Food']:
+                    for j in range(0, i+1):
+                        if 'cruise' in state[j]['Vacation']:
+                            state[j]['Vacation'].remove('cruise')
+                            changed = True
+                if 'cruise' in state[i]['Vacation']:
+                    for j in range(i,6):
+                        if 'pizza' in state[j]['Food']:
+                            state[j]['Food'].remove('pizza')
+                            changed = True
+        return True
+
+    def is_complete(state):
+        for i in range(6):
+            for attr in attributes:
+                if len(state[i][attr]) != 1:
+                    return False
+        return True
+
+    def backtrack(state):
+        if is_complete(state):
+            return state
+        min_domain = float('inf')
+        chosen_house = None
+        chosen_attr = None
+        for i in range(6):
+            for attr in attributes:
+                domain_size = len(state[i][attr])
+                if domain_size > 1 and domain_size < min_domain:
+                    min_domain = domain_size
+                    chosen_house = i
+                    chosen_attr = attr
+        if chosen_house is None:
+            return None
+        for value in list(state[chosen_house][chosen_attr]):
+            new_state = copy.deepcopy(state)
+            new_state[chosen_house][chosen_attr] = {value}
+            propagate(new_state)
+            if any(len(new_state[i][attr]) == 0 for i in range(6) for attr in attributes):
+                continue
+            result = backtrack(new_state)
+            if result is not None:
+                return result
+        return None
+
+    propagate(houses)
+    solution = backtrack(houses)
+    
+    if solution is None:
+        print("No solution found")
+        return
+    
+    output = {"solution": {"header": ["House", "Name", "HouseStyle", "Food", "Vacation", "Height", "Cigar"], "rows": []}}
+    for i in range(6):
+        row = [str(i+1)]
+        for attr in attributes:
+            row.append(next(iter(solution[i][attr])))
+        output["solution"]["rows"].append(row)
+    
+    print(json.dumps(output, indent=2))
+
+if __name__ == '__main__':
+    main()

@@ -1,0 +1,108 @@
+import json
+from z3 import *
+
+def main():
+    # Create a solver instance
+    solver = Solver()
+
+    # Define the attributes
+    names = ['Peter', 'Eric', 'Arnold']
+    educations = ['bachelor', 'associate', 'high school']
+    occupations = ['teacher', 'doctor', 'engineer']
+
+    # Create Z3 string constants for each attribute value
+    Peter, Eric, Arnold = Strings('Peter Eric Arnold')
+    bachelor, associate, high_school = Strings('bachelor associate high_school')
+    teacher, doctor, engineer = Strings('teacher doctor engineer')
+
+    # Create variables for each house attribute
+    house1_name, house2_name, house3_name = Strings('house1_name house2_name house3_name')
+    house1_edu, house2_edu, house3_edu = Strings('house1_edu house2_edu house3_edu')
+    house1_occ, house2_occ, house3_occ = Strings('house1_occ house2_occ house3_occ')
+
+    # Each attribute must be one of the allowed values
+    solver.add(Or(house1_name == Peter, house1_name == Eric, house1_name == Arnold))
+    solver.add(Or(house2_name == Peter, house2_name == Eric, house2_name == Arnold))
+    solver.add(Or(house3_name == Peter, house3_name == Eric, house3_name == Arnold))
+
+    solver.add(Or(house1_edu == bachelor, house1_edu == associate, house1_edu == high_school))
+    solver.add(Or(house2_edu == bachelor, house2_edu == associate, house2_edu == high_school))
+    solver.add(Or(house3_edu == bachelor, house3_edu == associate, house3_edu == high_school))
+
+    solver.add(Or(house1_occ == teacher, house1_occ == doctor, house1_occ == engineer))
+    solver.add(Or(house2_occ == teacher, house2_occ == doctor, house2_occ == engineer))
+    solver.add(Or(house3_occ == teacher, house3_occ == doctor, house3_occ == engineer))
+
+    # All names are distinct
+    solver.add(Distinct(house1_name, house2_name, house3_name))
+    # All educations are distinct
+    solver.add(Distinct(house1_edu, house2_edu, house3_edu))
+    # All occupations are distinct
+    solver.add(Distinct(house1_occ, house2_occ, house3_occ))
+
+    # Clue 1: The teacher is directly left of the person with an associate's degree.
+    solver.add(Or(
+        And(house1_occ == teacher, house2_edu == associate),
+        And(house2_occ == teacher, house3_edu == associate)
+    ))
+
+    # Clue 2: The person with associate's degree and Eric are next to each other.
+    associate_house = Function('associate_house', StringSort(), IntSort())
+    eric_house = Function('eric_house', StringSort(), IntSort())
+    
+    solver.add(Or(
+        And(house1_edu == associate, house2_name == Eric),
+        And(house1_edu == associate, house3_name == Eric),
+        And(house2_edu == associate, house1_name == Eric),
+        And(house2_edu == associate, house3_name == Eric),
+        And(house3_edu == associate, house1_name == Eric),
+        And(house3_edu == associate, house2_name == Eric)
+    ))
+
+    # Clue 3: Peter is the person with a high school diploma.
+    solver.add(Exists([house1_name, house1_edu], And(house1_name == Peter, house1_edu == high_school)))
+    solver.add(Exists([house2_name, house2_edu], And(house2_name == Peter, house2_edu == high_school)))
+    solver.add(Exists([house3_name, house3_edu], And(house3_name == Peter, house3_edu == high_school)))
+
+    # Clue 4: The doctor is the person with a bachelor's degree.
+    solver.add(Exists([house1_occ, house1_edu], And(house1_occ == doctor, house1_edu == bachelor)))
+    solver.add(Exists([house2_occ, house2_edu], And(house2_occ == doctor, house2_edu == bachelor)))
+    solver.add(Exists([house3_occ, house3_edu], And(house3_occ == doctor, house3_edu == bachelor)))
+
+    # Check if the solver is satisfied and get the model
+    if solver.check() == sat:
+        model = solver.model()
+        
+        # Extract values for each house
+        rows = []
+        for i in range(1, 4):
+            name_var = globals()[f'house{i}_name']
+            edu_var = globals()[f'house{i}_edu']
+            occ_var = globals()[f'house{i}_occ']
+            
+            name_val = model.eval(name_var)
+            edu_val = model.eval(edu_var)
+            occ_val = model.eval(occ_var)
+            
+            # Convert Z3 strings to Python strings
+            name_str = str(name_val).strip('"')
+            edu_str = str(edu_val).strip('"')
+            occ_str = str(occ_val).strip('"')
+            
+            rows.append([str(i), name_str, edu_str, occ_str])
+        
+        # Create the solution dictionary
+        solution = {
+            "solution": {
+                "header": ["House", "Name", "Education", "Occupation"],
+                "rows": rows
+            }
+        }
+        
+        # Output as JSON
+        print(json.dumps(solution, indent=2))
+    else:
+        print("No solution found")
+
+if __name__ == "__main__":
+    main()

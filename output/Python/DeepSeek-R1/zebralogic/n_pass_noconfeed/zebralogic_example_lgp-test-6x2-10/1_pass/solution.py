@@ -1,0 +1,75 @@
+import json
+
+def main():
+    # Initialize the houses: 6 houses, each with a name and a music genre (both initially unknown)
+    houses = list(range(1, 7))
+    names = [None] * 6
+    genres = [None] * 6
+    
+    # Apply direct assignments from clues
+    # Clue 3: Carol is in the sixth house
+    names[5] = 'Carol'
+    # Clue 5: The person who loves country music is Carol
+    genres[5] = 'country'
+    # Clue 9: The person who loves hip-hop music is in the third house
+    genres[2] = 'hip hop'
+    # Clue 8: The person who loves pop music is Peter
+    # (We don't know Peter's house yet, but we know Peter loves pop)
+    
+    # From clue 4 and 2: Eric is adjacent to hip-hop (house 3) and left of hip-hop
+    # So Eric must be in house 2 (since house 4 is right, and left would be house 2)
+    names[1] = 'Eric'
+    
+    # Now, from clue 7: Arnold is right of pop (Peter) and clue 6: Arnold not in fifth
+    # Also, Carol is in sixth, so Arnold can only be in house 4 (since 1,2,3 are left of pop? Wait, we need to find Peter)
+    # Clue 10: One house between Peter and Bob -> |Peter_house - Bob_house| = 2
+    
+    # Since Eric is in house 2, and Carol in 6, the remaining names are Arnold, Peter, Alice, Bob
+    # Peter loves pop (clue 8)
+    
+    # From clue 7: pop is left of Arnold -> so Peter (pop) is left of Arnold
+    # Arnold cannot be in 5 (clue 6) or 6 (Carol), so Arnold must be in 4
+    names[3] = 'Arnold'
+    
+    # Now, Peter must be left of Arnold (house 4), so Peter in 1,2,3. But house 2 is Eric, house 3 is unknown (but music is hip hop, and Peter loves pop, so Peter cannot be in 3)
+    # Therefore Peter must be in house 1
+    names[0] = 'Peter'
+    genres[0] = 'pop'  # Because Peter loves pop
+    
+    # Clue 10: One house between Peter (1) and Bob -> Bob must be in house 3 (since |1-3|=2)
+    names[2] = 'Bob'
+    
+    # Clue 1: Bob is directly left of jazz -> so jazz must be in house 4
+    genres[3] = 'jazz'
+    
+    # Now, only house 4 and 5 left for names? But house 4 is Arnold, so house 5 must be Alice
+    names[4] = 'Alice'
+    
+    # Now music: we have pop (1), hip hop (3), jazz (4), country (6)
+    # Remaining music: classical, rock
+    # Clue 11: rock not in fifth -> so house 5 cannot have rock -> must have classical
+    genres[4] = 'classical'
+    # Then house 2 (Eric) must have rock
+    genres[1] = 'rock'
+    
+    # Verify all clues are satisfied (optional step, but good practice)
+    
+    # Prepare the output
+    solution_rows = []
+    for i in range(6):
+        house_num = str(i+1)
+        name_val = names[i]
+        genre_val = genres[i]
+        solution_rows.append([house_num, name_val, genre_val])
+    
+    output = {
+        "solution": {
+            "header": ["House", "Name", "MusicGenre"],
+            "rows": solution_rows
+        }
+    }
+    
+    print(json.dumps(output, indent=2))
+
+if __name__ == "__main__":
+    main()

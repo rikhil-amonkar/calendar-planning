@@ -1,0 +1,84 @@
+import itertools
+import json
+
+def main():
+    houses = [1, 2]
+    names = ['Eric', 'Arnold']
+    styles = ['victorian', 'colonial']
+    smoothies = ['cherry', 'desert']
+    pets = ['dog', 'cat']
+    
+    # Generate all possible permutations for each attribute
+    name_perms = list(itertools.permutations(names))
+    style_perms = list(itertools.permutations(styles))
+    smoothie_perms = list(itertools.permutations(smoothies))
+    pet_perms = list(itertools.permutations(pets))
+    
+    # Iterate through all combinations of attribute permutations
+    for name_assign in name_perms:
+        for style_assign in style_perms:
+            for smoothie_assign in smoothie_perms:
+                for pet_assign in pet_perms:
+                    assignment = {}
+                    for i, house in enumerate(houses):
+                        assignment[house] = {
+                            'Name': name_assign[i],
+                            'HouseStyle': style_assign[i],
+                            'Smoothie': smoothie_assign[i],
+                            'Pet': pet_assign[i]
+                        }
+                    
+                    # Check constraints
+                    valid = True
+                    # Constraint 1: Cherry smoothie owner owns dog
+                    for house in houses:
+                        if assignment[house]['Smoothie'] == 'cherry' and assignment[house]['Pet'] != 'dog':
+                            valid = False
+                        if assignment[house]['Pet'] == 'dog' and assignment[house]['Smoothie'] != 'cherry':
+                            valid = False
+                    
+                    # Constraint 2: Victorian house owner owns dog
+                    for house in houses:
+                        if assignment[house]['HouseStyle'] == 'victorian' and assignment[house]['Pet'] != 'dog':
+                            valid = False
+                        if assignment[house]['Pet'] == 'dog' and assignment[house]['HouseStyle'] != 'victorian':
+                            valid = False
+                    
+                    # Constraint 3: Victorian house is left of Eric
+                    victorian_house = None
+                    eric_house = None
+                    for house in houses:
+                        if assignment[house]['HouseStyle'] == 'victorian':
+                            victorian_house = house
+                        if assignment[house]['Name'] == 'Eric':
+                            eric_house = house
+                    
+                    if victorian_house is None or eric_house is None or victorian_house >= eric_house:
+                        valid = False
+                    
+                    if valid:
+                        # Prepare the solution in required format
+                        rows = []
+                        for house in sorted(assignment.keys()):
+                            row = [
+                                str(house),
+                                assignment[house]['Name'],
+                                assignment[house]['HouseStyle'],
+                                assignment[house]['Smoothie'],
+                                assignment[house]['Pet']
+                            ]
+                            rows.append(row)
+                        
+                        solution = {
+                            "solution": {
+                                "header": ["House", "Name", "HouseStyle", "Smoothie", "Pet"],
+                                "rows": rows
+                            }
+                        }
+                        print(json.dumps(solution, indent=2))
+                        return
+    
+    print("No solution found")
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,129 @@
+```python
+import json
+
+def main():
+    # Initialize the houses as a list of dictionaries
+    houses = [
+        {'House': '1', 'Name': None, 'HouseStyle': None, 'Mother': None, 'PhoneModel': None, 'Drink': None, 'Animal': None},
+        {'House': '2', 'Name': None, 'HouseStyle': None, 'Mother': None, 'PhoneModel': None, 'Drink': None, 'Animal': None},
+        {'House': '3', 'Name': None, 'HouseStyle': None, 'Mother': None, 'PhoneModel': None, 'Drink': None, 'Animal': None},
+        {'House': '4', 'Name': None, 'HouseStyle': None, 'Mother': None, 'PhoneModel': None, 'Drink': None, 'Animal': None},
+        {'House': '5', 'Name': None, 'HouseStyle': None, 'Mother': None, 'PhoneModel': None, 'Drink': None, 'Animal': None}
+    ]
+    
+    # Apply clues step by step
+    # Clue 17 and 9: Tea drinker is Bob in fourth house
+    houses[3]['Drink'] = 'tea'
+    houses[3]['Name'] = 'Bob'
+    
+    # Clue 8: Bird keeper in fourth house
+    houses[3]['Animal'] = 'bird'
+    
+    # Clue 18: Horse keeper in third house
+    houses[2]['Animal'] = 'horse'
+    
+    # Clue 4: Horse keeper uses OnePlus 9
+    houses[2]['PhoneModel'] = 'oneplus 9'
+    
+    # Clue 12: Horse keeper in modern house
+    houses[2]['HouseStyle'] = 'modern'
+    
+    # Clue 19: Modern house has mother Penny
+    houses[2]['Mother'] = 'Penny'
+    
+    # Clue 2: Alice drinks water
+    # Clue 22: Mother Janelle is water drinker (Alice)
+    # So Alice has mother Janelle and drinks water
+    
+    # Clue 5: Ranch style has mother Kailyn
+    # Clue 10: Tea drinker (house4) right of mother Kailyn -> mother Kailyn in house1,2,3
+    # But house3 mother is Penny, so mother Kailyn in house1 or 2
+    # Clue 11: Root beer lover left of mother Kailyn
+    # Clue 20: Root beer lover is Peter
+    # So Peter left of mother Kailyn
+    # If mother Kailyn in house1, no house left -> impossible
+    # So mother Kailyn in house2
+    houses[1]['Mother'] = 'Kailyn'
+    houses[1]['HouseStyle'] = 'ranch'  # From clue 5
+    
+    # Then Peter must be in house1 (left of house2)
+    houses[0]['Name'] = 'Peter'
+    
+    # Clue 6: Root beer lover is cat lover
+    houses[0]['Drink'] = 'root beer'
+    houses[0]['Animal'] = 'cat'
+    
+    # Now, assign Alice: drinks water and mother Janelle
+    # Available houses: 4 (Bob), 3 (Eric?), 2 (Arnold?), 1 (Peter), so Alice must be in house5
+    houses[4]['Name'] = 'Alice'
+    houses[4]['Drink'] = 'water'
+    houses[4]['Mother'] = 'Janelle'
+    
+    # Names left: Arnold and Eric for houses 2 and 3
+    # Clue 16: Eric not in second house -> so house2 must be Arnold, house3 must be Eric
+    houses[1]['Name'] = 'Arnold'
+    houses[2]['Name'] = 'Eric'
+    
+    # Drinks left: coffee and milk
+    # Clue 13: iPhone13 user likes milk
+    # Clue 14: Dog owner likes milk
+    # Milk drinker must be in house2 or house3 (others taken)
+    # But house3 has animal horse, so cannot be dog -> so house2 has milk, dog, and iPhone13
+    houses[1]['Drink'] = 'milk'
+    houses[1]['Animal'] = 'dog'
+    houses[1]['PhoneModel'] = 'iphone 13'
+    
+    # Then house3 drink is coffee
+    houses[2]['Drink'] = 'coffee'
+    
+    # Phone models left: google pixel 6, huawei p50, samsung galaxy s21
+    # House styles left: colonial, victorian, craftsman (for houses 0,3,4)
+    
+    # Clue 7: Colonial not in fourth house
+    # Clue 3: Colonial right of Huawei P50 user
+    # Colonial must be in house5 (since house3 is modern, house2 is ranch, and not house4)
+    houses[4]['HouseStyle'] = 'colonial'
+    
+    # Then Huawei P50 must be left of colonial (house5)
+    # Clue 15: Google Pixel 6 in craftsman house
+    # Clue 1: Google Pixel 6 not in first house
+    # So craftsman must be in house4 (since not house1, and colonial is house5, ranch house2, modern house3)
+    houses[3]['HouseStyle'] = 'craftsman'
+    houses[3]['PhoneModel'] = 'google pixel 6'  # From clue 15
+    
+    # Then house1 style is victorian
+    houses[0]['HouseStyle'] = 'victorian'
+    
+    # Now, phone models: house1 and house4 and house5 left? But house4 assigned google pixel6, house2 iphone13, house3 oneplus9
+    # So house1 and house5: huawei p50 and samsung galaxy s21
+    # Clue 3: Colonial (house5) right of Huawei P50 -> so Huawei P50 must be in house1 (only left option)
+    houses[0]['PhoneModel'] = 'huawei p50'
+    houses[4]['PhoneModel'] = 'samsung galaxy s21'
+    
+    # Animals: only fish left for house5
+    houses[4]['Animal'] = 'fish'
+    
+    # Mothers left: Aniya and Holly for house0 and house3
+    # Clue 21: Mother Aniya not in fourth house -> so house3 mother cannot be Aniya
+    houses[3]['Mother'] = 'Holly'
+    houses[0]['Mother'] = 'Aniya'
+    
+    # Prepare the output
+    header = ["House", "Name", "HouseStyle", "Mother", "PhoneModel", "Drink", "Animal"]
+    rows = []
+    for house in houses:
+        row = [house['House'], house['Name'], house['HouseStyle'], house['Mother'], house['PhoneModel'], house['Drink'], house['Animal']]
+        rows.append(row)
+    
+    solution_dict = {
+        "solution": {
+            "header": header,
+            "rows": rows
+        }
+    }
+    
+    print(json.dumps(solution_dict, indent=2))
+
+if __name__ == "__main__":
+    main()
+```

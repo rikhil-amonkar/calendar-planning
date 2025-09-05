@@ -1,0 +1,50 @@
+import itertools
+import json
+
+def main():
+    houses = [1, 2]
+    names = ['Arnold', 'Eric']
+    vacations = ['beach', 'mountain']
+    
+    # Generate all possible permutations for names and vacations
+    for name_perm in itertools.permutations(names):
+        for vac_perm in itertools.permutations(vacations):
+            assignment = [
+                {'House': 1, 'Name': name_perm[0], 'Vacation': vac_perm[0]},
+                {'House': 2, 'Name': name_perm[1], 'Vacation': vac_perm[1]}
+            ]
+            
+            # Find the house with beach vacation
+            beach_house = None
+            for house in assignment:
+                if house['Vacation'] == 'beach':
+                    beach_house = house['House']
+                    break
+                    
+            # Find the house with Arnold
+            arnold_house = None
+            for house in assignment:
+                if house['Name'] == 'Arnold':
+                    arnold_house = house['House']
+                    break
+                    
+            # Check constraint: Arnold must be to the right of beach vacation
+            if arnold_house is not None and beach_house is not None and arnold_house > beach_house:
+                # Format the solution
+                rows = []
+                for house in assignment:
+                    rows.append([str(house['House']), house['Name'], house['Vacation']])
+                
+                solution = {
+                    "solution": {
+                        "header": ["House", "Name", "Vacation"],
+                        "rows": rows
+                    }
+                }
+                print(json.dumps(solution, indent=2))
+                return
+                
+    print("No solution found")
+
+if __name__ == "__main__":
+    main()

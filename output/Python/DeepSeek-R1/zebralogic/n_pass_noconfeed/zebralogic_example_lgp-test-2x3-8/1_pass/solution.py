@@ -1,0 +1,70 @@
+import itertools
+import json
+
+def main():
+    # Define the attributes
+    names = ['Arnold', 'Eric']
+    birthdays = ['april', 'sept']
+    mothers = ['Aniya', 'Holly']
+    
+    # Generate all possible permutations for each attribute
+    name_perms = list(itertools.permutations(names))
+    bday_perms = list(itertools.permutations(birthdays))
+    mother_perms = list(itertools.permutations(mothers))
+    
+    # Iterate through all combinations of attribute permutations
+    for name_assign in name_perms:
+        for bday_assign in bday_perms:
+            for mother_assign in mother_perms:
+                # Create assignment for two houses
+                houses = [
+                    {
+                        'House': '1',
+                        'Name': name_assign[0],
+                        'Birthday': bday_assign[0],
+                        'Mother': mother_assign[0]
+                    },
+                    {
+                        'House': '2',
+                        'Name': name_assign[1],
+                        'Birthday': bday_assign[1],
+                        'Mother': mother_assign[1]
+                    }
+                ]
+                
+                # Check clue 2: April birthday in first house
+                if houses[0]['Birthday'] != 'april':
+                    continue
+                
+                # Check clue 1: Eric left of Holly mother
+                eric_house = None
+                holly_mother_house = None
+                for house in houses:
+                    if house['Name'] == 'Eric':
+                        eric_house = int(house['House'])
+                    if house['Mother'] == 'Holly':
+                        holly_mother_house = int(house['House'])
+                
+                if eric_house is None or holly_mother_house is None:
+                    continue
+                    
+                if eric_house >= holly_mother_house:
+                    continue
+                
+                # If we reach here, all constraints are satisfied
+                solution = {
+                    "solution": {
+                        "header": ["House", "Name", "Birthday", "Mother"],
+                        "rows": [
+                            [house['House'], house['Name'], house['Birthday'], house['Mother']]
+                            for house in houses
+                        ]
+                    }
+                }
+                print(json.dumps(solution, indent=2))
+                return
+                
+    print("No solution found")
+
+if __name__ == "__main__":
+    main()

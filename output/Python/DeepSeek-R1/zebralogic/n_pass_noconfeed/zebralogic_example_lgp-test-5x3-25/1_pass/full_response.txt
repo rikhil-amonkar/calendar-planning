@@ -1,0 +1,86 @@
+```python
+import itertools
+import json
+
+def main():
+    names = ['Arnold', 'Bob', 'Alice', 'Eric', 'Peter']
+    heights = ['very tall', 'average', 'tall', 'very short', 'short']
+    foods = ['stew', 'grilled cheese', 'spaghetti', 'pizza', 'stir fry']
+    
+    fixed_house_index = 2  # House 3 is at index 2 (0-based)
+    fixed_house = {'name': 'Eric', 'height': 'tall', 'food': 'pizza'}
+    
+    remaining_names = [n for n in names if n != fixed_house['name']]
+    remaining_heights = [h for h in heights if h != fixed_house['height']]
+    remaining_foods = [f for f in foods if f != fixed_house['food']]
+    
+    assign_indices = [0, 1, 3, 4]  # Indices for houses 1,2,4,5 (0-based)
+    
+    for name_perm in itertools.permutations(remaining_names):
+        for height_perm in itertools.permutations(remaining_heights):
+            for food_perm in itertools.permutations(remaining_foods):
+                houses = [None] * 5
+                houses[fixed_house_index] = fixed_house
+                
+                for idx, pos in enumerate(assign_indices):
+                    houses[pos] = {
+                        'name': name_perm[idx],
+                        'height': height_perm[idx],
+                        'food': food_perm[idx]
+                    }
+                
+                if check_constraints(houses):
+                    rows = []
+                    for i, house in enumerate(houses):
+                        rows.append([str(i+1), house['name'], house['height'], house['food']])
+                    result = {
+                        "solution": {
+                            "header": ["House", "Name", "Height", "Food"],
+                            "rows": rows
+                        }
+                    }
+                    print(json.dumps(result))
+                    return
+
+def check_constraints(houses):
+    # Clue 1: Alice is short
+    alice_house = next((h for h in houses if h['name'] == 'Alice'), None)
+    if not alice_house or alice_house['height'] != 'short':
+        return False
+
+    # Clue 3: Average height not in second house (index1)
+    if houses[1]['height'] == 'average':
+        return False
+
+    # Clue 4: Average height left of stew
+    avg_house = next((i for i, h in enumerate(houses) if h['height'] == 'average'), None)
+    stew_house = next((i for i, h in enumerate(houses) if h['food'] == 'stew'), None)
+    if avg_house is None or stew_house is None or avg_house >= stew_house:
+        return False
+
+    # Clue 5: Arnold loves stir fry
+    arnold_house = next((h for h in houses if h['name'] == 'Arnold'), None)
+    if not arnold_house or arnold_house['food'] != 'stir fry':
+        return False
+
+    # Clue 8: Bob right of Arnold
+    bob_house = next((i for i, h in enumerate(houses) if h['name'] == 'Bob'), None)
+    arnold_index = next((i for i, h in enumerate(houses) if h['name'] == 'Arnold'), None)
+    if bob_house is None or arnold_index is None or bob_house <= arnold_index:
+        return False
+
+    # Clue 9: Grilled cheese right of Eric (house3 index2)
+    gc_house = next((i for i, h in enumerate(houses) if h['food'] == 'grilled cheese'), None)
+    if gc_house is None or gc_house <= 2:
+        return False
+
+    # Clue 10: Very short left of Arnold
+    vs_house = next((i for i, h in enumerate(houses) if h['height'] == 'very short'), None)
+    if vs_house is None or vs_house >= arnold_index:
+        return False
+
+    return True
+
+if __name__ == '__main__':
+    main()
+```

@@ -1,0 +1,921 @@
+We are going to use constraint satisfaction to solve the puzzle.
+ We have 5 houses, each with 4 attributes: name, hobby, height, food.
+ We'll represent the domain for each attribute.
+
+ Steps:
+ 1. Define the domains for each attribute.
+ 2. Parse the clues and convert them into constraints.
+ 3. We can use a backtracking search with constraint propagation.
+
+ However, note that the puzzle is small (5 houses) so we can use a brute force over the permutations for each attribute.
+
+ Alternatively, we can use a constraint satisfaction problem (CSP) with variables for each house and each attribute.
+
+ Let's define the variables:
+   For each house i (1 to 5), we have:
+      name_i, hobby_i, height_i, food_i
+
+ We'll create a list of houses [1,2,3,4,5]
+
+ The attributes:
+   names: ['Arnold', 'Peter', 'Eric', 'Alice', 'Bob']
+   hobbies: ['painting', 'cooking', 'knitting', 'gardening', 'photography']
+   heights: ['very tall', 'tall', 'very short', 'average', 'short']
+   foods: ['stew', 'grilled cheese', 'stir fry', 'spaghetti', 'pizza']
+
+ We have 14 clues. We'll convert each clue into a constraint.
+
+ We can use a CSP solver, but for simplicity, we'll iterate over all possible assignments and check constraints.
+
+ However, the total number of assignments is (5!)^4 which is too high (24^4 = 331776, but 5! is 120, so 120^4 is 207360000).
+ We need a smarter way.
+
+ Instead, we can use the constraints to reduce the domains and then use backtracking.
+
+ Alternatively, we can use a more efficient representation by having a grid of 5 houses and 4 attributes, and then use the constraints to narrow down.
+
+ We'll use a recursive backtracking algorithm that assigns values to each house for each attribute, but we can use the constraints to prune.
+
+ However, note that the constraints are across attributes. We can use a CSP with 5*4=20 variables, but that might be heavy.
+
+ Alternatively, we can iterate over the houses and assign one attribute at a time, but the constraints relate different attributes.
+
+ Another idea: since the houses are ordered, we can represent the solution as a list of dictionaries for each house.
+
+ We'll create a list `houses` of 5 elements, each being a dictionary with keys: 'name', 'hobby', 'height', 'food'
+
+ Initially, each attribute for each house is unknown (set to None or set of possible values).
+
+ We can use constraint propagation by initially setting up domains for each variable (each attribute of each house) and then using the constraints to reduce the domains.
+
+ Steps for constraint propagation:
+
+   Initialize:
+     For each house i, for each attribute, the domain is the full set of values for that attribute.
+
+   Then, we process the constraints until no more changes.
+
+   Then we use backtracking if necessary.
+
+ But given the small size, we can also use a brute force over the permutations of names, then hobbies, then heights, then foods? That would be 120^4 which is too many.
+
+ We need to use the constraints to reduce the search space.
+
+ Alternatively, we can iterate over the houses and use the constraints that fix values.
+
+ Let's list the constraints and see which ones give fixed positions.
+
+ Clue 12: The person who is very short is in the fifth house. -> height_5 = 'very short'
+ Clue 13: The person who is tall is in the third house. -> height_3 = 'tall'
+ Clue 9: The person who is short is Peter. -> So Peter has height 'short'. And we know height_3 is tall, so Peter is not in house 3.
+
+ Also, clue 2: The person who loves eating grilled cheese is the person who is tall. -> So the tall person (house 3) eats grilled cheese -> food_3 = 'grilled cheese'
+
+ Clue 4: The person who is tall is directly left of the person who loves stir fry. -> So the house to the right of tall (house 3) is house 4, so food_4 = 'stir fry'
+
+ Clue 11: The person who paints as a hobby is directly left of the person who loves eating grilled cheese.
+   The grilled cheese eater is in house 3, so the painter is in house 2 -> hobby_2 = 'painting'
+
+ Clue 1: Bob is the photography enthusiast. -> Bob's hobby is photography.
+
+ Clue 5: The person who loves cooking is the person who has an average height. -> So the cooking hobby and average height are the same person.
+
+ Clue 6: Alice is directly left of the person who is a pizza lover. -> So if Alice is in house i, then pizza is in house i+1.
+
+ Clue 7: The person who loves the spaghetti eater is not in the second house. -> This is ambiguous. It says "loves the spaghetti eater", but I think it's a misphrasing. 
+   Looking at the context, it's about the hobby? Wait, no: the attributes are hobby and food. The clue says "loves the spaghetti eater", which might mean the person whose hobby is loving (but that's not a hobby) or it might be a typo.
+
+ Let me read again: "7. The person who loves the spaghetti eater is not in the second house."
+
+ This is confusing. It might mean the person whose hobby is loving (which isn't a hobby) or it might be misworded.
+
+ Looking at the list of hobbies: painting, cooking, knitting, gardening, photography. None is "loves".
+
+ Alternatively, it might be a misphrasing and it means "the person who eats spaghetti" is not in the second house? But the clue says "loves the spaghetti eater", which could mean the person who has the hobby of loving (which isn't there) or it might be a typo and it's "the person who eats spaghetti" is not in the second house.
+
+ Let me check the original puzzle: 
+   "7. The person who loves the spaghetti eater is not in the second house."
+
+ This is ambiguous. However, looking at the context of the other clues, it's likely that this is a mistranslation and it means "The person who eats spaghetti is not in the second house."
+
+ I will assume that because otherwise the word "loves" doesn't appear in any attribute. So I'll take it as: the spaghetti eater (food) is not in the second house.
+
+ So clue 7: The person who eats spaghetti is not in house 2.
+
+ Clue 8: Eric is not in the fifth house.
+ Clue 3: Peter is not in the second house.
+ Clue 10: The person who has an average height and the person who enjoys gardening are next to each other.
+ Clue 14: Alice is somewhere to the right of the photography enthusiast. Since Bob is photography (clue 1), so Alice is right of Bob.
+
+ Also, from clue 9: Peter is short.
+
+ We already have:
+   height_3 = 'tall'
+   height_5 = 'very short'
+   food_3 = 'grilled cheese'
+   food_4 = 'stir fry'
+   hobby_2 = 'painting'
+
+ And from clue 2 and 13, we already used.
+
+ Now, let's list the knowns and unknowns.
+
+ We also know Bob's hobby is photography (clue 1), but we don't know which house Bob is in.
+
+ We know Peter is short (clue 9), so Peter's height is 'short'. And Peter is not in house 2 (clue 3) and not in house 3 (because height_3 is tall) and not in house 5 (height_5 is very short). So Peter must be in house 1 or 4.
+
+ But wait, we have heights: very tall, tall, very short, average, short. So the remaining heights for house 1,2,4 are: very tall, average, short. But house 2: we don't know height yet, house 1 and 4 are also unknown.
+
+ Actually, house 2: height is unknown, house 1 and 4 and also house 2 and 5 are known? We know house 3 and 5, so the remaining heights (very tall, average, short) must go to house 1,2,4.
+
+ And Peter is short and not in house 2, so Peter is in house 1 or 4 with height short.
+
+ Now, clue 14: Alice is to the right of Bob (the photography enthusiast).
+
+ We also have clue 6: Alice is directly left of pizza lover -> so Alice is not in house 5.
+
+ And clue 8: Eric is not in house 5.
+
+ So house 5: name cannot be Eric, Alice, or Peter (since Peter is short and house5 is very short). Also, Bob might be in house5? But Bob is photography, and we don't know where photography is.
+
+ But note: hobby_2 is painting, so photography is not in house2.
+
+ Let's list the names: Arnold, Peter, Eric, Alice, Bob.
+
+ House 5: height is very short, so not Peter (because Peter is short). So house5 name must be either Arnold or Eric? But Eric is not in house5 (clue8), so house5 must be Arnold.
+
+ So, house5: name = 'Arnold', height = 'very short'
+
+ Then, the remaining names: Peter, Eric, Alice, Bob for houses 1,2,3,4.
+
+ We know Peter is in house1 or house4 (because not 2,3,5).
+
+ And Bob is the photography enthusiast.
+
+ Now, clue 14: Alice is to the right of Bob.
+
+ Also, clue 6: Alice is directly left of pizza lover -> so Alice can be in house1,2,3,4 but not5, and since she must be left of pizza, she can be in 1,2,3,4 but if she is in house4 then pizza must be in house5, but house5 food is unknown yet.
+
+ We know food_3 and food_4, so the remaining foods: stew, spaghetti, pizza for houses 1,2,5.
+
+ Clue 7: spaghetti not in house2 -> so spaghetti is in house1 or house5.
+
+ Now, clue 6: Alice left of pizza. So if Alice in house i, then pizza in i+1.
+
+ Possible (Alice, pizza) positions: (1,2), (2,3), (3,4), (4,5)
+
+ But house3 food is grilled cheese, house4 is stir fry, so pizza cannot be in house3 or house4. So the only possibilities are (1,2) or (4,5). But (2,3) would put pizza in3 which is grilled cheese, and (3,4) would put pizza in4 which is stir fry -> invalid.
+
+ So Alice must be in house1 (then pizza in2) or in house4 (then pizza in5).
+
+ Now, clue 14: Alice is right of Bob (photography). So Bob must be left of Alice.
+
+ If Alice is in house1, then Bob would have to be left of house1 -> impossible. So Alice cannot be in house1.
+
+ Therefore, Alice must be in house4, and then pizza must be in house5.
+
+ So, house4: name = 'Alice'
+      food = 'stir fry' (already known)
+ house5: food = 'pizza'
+
+ Then, since Alice is in house4, and Bob must be left of Alice (clue14), so Bob can be in house1,2,3.
+
+ But house3: we know height is tall, and we know Bob's hobby is photography, but we don't know Bob's height.
+
+ Also, Peter is in house1 or house4, but house4 is Alice, so Peter must be in house1.
+
+ So house1: name = 'Peter', and height must be 'short' (because Peter is short)
+
+ Then the remaining names for house2 and house3: Eric and Bob.
+
+ We know Eric is not in house5 (already used) and not in house4 (Alice) and not in house1 (Peter) and not in house5, so Eric must be in house2 or house3.
+
+ And Bob must be in the remaining one.
+
+ Now, clue 14: Alice is right of Bob -> Bob must be left of house4, so Bob can be in 1,2,3. But house1 is Peter, so Bob in house2 or house3.
+
+ Now, we have house1: Peter, short
+ house2: name is either Eric or Bob, hobby is painting, height is unknown (but remaining heights: very tall and average)
+ house3: name is the other of Eric or Bob, height tall, food grilled cheese, hobby unknown (but not painting, which is house2)
+ house4: Alice, stir fry, height unknown (remaining heights: average or very tall? Wait, we have heights: very tall, tall, very short, average, short.
+   assigned: house1: short, house3: tall, house5: very short -> so remaining: very tall and average for house2 and house4.
+
+ house5: Arnold, pizza, very short, hobby unknown.
+
+ Now, clue 10: The person with average height and the gardening hobby are next to each other.
+
+ The average height could be in house2 or house4.
+
+ Also, clue 5: cooking hobby and average height are the same person.
+
+ So the person with average height has hobby cooking.
+
+ Now, hobbies left: cooking, knitting, gardening, photography (since painting is in house2)
+
+ We know Bob is photography, so Bob's hobby is photography.
+
+ Now, if average height is in house2, then hobby2 would be cooking, but we already know hobby2 is painting -> contradiction.
+
+ Therefore, average height cannot be in house2.
+
+ Therefore, average height must be in house4.
+
+ Then, since average height is in house4, then hobby4 must be cooking (from clue5).
+
+ So house4: height = 'average', hobby = 'cooking'
+
+ Then, the remaining height for house2 is 'very tall'
+
+ And the hobbies left for house3 and house5: knitting, gardening, photography.
+
+ But Bob is photography, and Bob is in house2 or house3.
+
+ But house2 hobby is painting, so Bob cannot be in house2 (because Bob's hobby is photography). Therefore, Bob must be in house3.
+
+ Then house3: name = 'Bob', hobby = photography? But wait, Bob is photography, so hobby3 must be photography.
+
+ Then the remaining hobbies: knitting and gardening for house5 and house1.
+
+ Now, house1: hobby unknown (from knitting and gardening)
+ house5: hobby unknown (the other)
+
+ Now, clue 10: average height (house4) and gardening are next to each other. They are next to each other (house4 is next to house3 and house5). So gardening must be in house3 or house5.
+
+ But house3 hobby is photography, so gardening must be in house5.
+
+ Then house1 hobby must be knitting.
+
+ So, house1: hobby = 'knitting'
+ house5: hobby = 'gardening'
+
+ Now, we have all attributes for all houses?
+
+ Let's check:
+
+ House1: name Peter, hobby knitting, height short, food? (remaining foods: stew and spaghetti, but clue7: spaghetti not in house2, so spaghetti can be in house1 or house5. But house5 food is pizza, so house1 food must be stew or spaghetti. And house2 food must be the remaining one.
+
+ The foods: 
+   house1: unknown (stew or spaghetti)
+   house2: unknown (the other)
+   house3: grilled cheese
+   house4: stir fry
+   house5: pizza
+
+ Clue7: spaghetti not in house2 -> so spaghetti must be in house1, and then house2 must be stew.
+
+ So, house1: food = 'spaghetti'
+ house2: food = 'stew'
+
+ Now, let's assign the names for house2 and house3: 
+   We have Bob in house3, so house2 must be Eric.
+
+ So, house2: name Eric, hobby painting, height very tall, food stew
+ house3: name Bob, hobby photography, height tall, food grilled cheese
+ house4: name Alice, hobby cooking, height average, food stir fry
+ house5: name Arnold, hobby gardening, height very short, food pizza
+
+ And house1: name Peter, hobby knitting, height short, food spaghetti
+
+ Now, check all clues:
+
+ 1. Bob is photography -> yes, house3.
+ 2. Grilled cheese eater is tall -> house3 has both.
+ 3. Peter not in second -> Peter in house1, yes.
+ 4. Tall (house3) directly left of stir fry (house4) -> yes.
+ 5. Cooking hobby (house4) and average height (house4) -> same person, yes.
+ 6. Alice (house4) directly left of pizza (house5) -> yes.
+ 7. Spaghetti eater not in second -> spaghetti in house1, so not second, yes.
+ 8. Eric not in fifth -> Eric in house2, yes.
+ 9. Short is Peter -> Peter in house1 with short, yes.
+10. Average height (house4) and gardening (house5) are next to each other -> yes.
+11. Painting (house2) directly left of grilled cheese (house3) -> yes.
+12. Very short in fifth -> yes, Arnold.
+13. Tall in third -> yes.
+14. Alice (house4) right of photography (house3, Bob) -> yes.
+
+ So the solution is correct.
+
+ Now, we'll code this step by step with the deductions we made.
+
+ However, the problem requires a program that algorithmically solves the puzzle, so we cannot hardcode the solution.
+
+ We need to implement a general solver for this puzzle.
+
+ But note: the problem says "Write a Python program that algorithmically solves the given logic puzzle by implementing all constraints and rules."
+
+ We have already deduced the solution by hand, but we must write a program that does the deduction.
+
+ We can use a constraint propagation and backtracking, but the puzzle is small and we have many fixed constraints.
+
+ Alternatively, we can use a brute force over the remaining possibilities after applying the direct constraints.
+
+ However, to be general, we'll create a CSP solver for this specific puzzle.
+
+ Steps for the program:
+
+ 1. Define the variables: for each house (1-5) and each attribute (name, hobby, height, food).
+ 2. Define the domains for each variable.
+ 3. Define the constraints as functions.
+
+ But note: the constraints are across different attributes and houses.
+
+ We can use a dictionary for each house, and then use constraints that relate them.
+
+ We'll use a class or simply a list of dictionaries.
+
+ Alternatively, we can use a constraint satisfaction problem solver from a library, but we are to write from scratch.
+
+ Since the problem is small, we can use brute force over all possible assignments of names, hobbies, heights, foods to the 5 houses, but that would be 5! * 5! * 5! * 5! which is 120^4 = 207360000, which is too many.
+
+ We need to use the constraints to reduce the search space.
+
+ We can iterate over the houses and use the constraints to prune.
+
+ Alternatively, we can use backtracking with forward checking.
+
+ However, given that we have already deduced the solution by hand, and the problem is small, we can encode the constraints as rules and use a constraint propagation until we fix all.
+
+ But the problem requires a program that solves it, so we must code the reasoning.
+
+ We'll create a grid with 5 houses and 4 attributes, and initially set the domains for each cell.
+
+ Then we'll apply the constraints to reduce the domains.
+
+ Then we'll use backtracking if necessary.
+
+ Steps:
+
+   attributes = ['name', 'hobby', 'height', 'food']
+   domains: for each house and each attribute, we have a set of possible values.
+
+   Initialize:
+      for house in 1..5:
+          for attribute in attributes:
+             set the domain to the full list of values for that attribute.
+
+   Then, we have constraints that are unary (fixed values) and binary (relations).
+
+   We'll create a list of constraints.
+
+   The constraints can be:
+
+      - Fixed value: e.g., house5 height must be 'very short'
+      - Equality: e.g., Bob's hobby is photography -> which means for the house where name is Bob, hobby must be photography.
+      - Inequality: e.g., Peter not in house2 -> so for house2, name is not Peter.
+      - Relative position: e.g., Alice directly left of pizza -> so if Alice is in house i, then pizza must be in house i+1, and vice versa.
+
+   We'll write functions to apply each constraint.
+
+   We'll iterate until no changes.
+
+   Then, if there are still multiple choices, we use backtracking.
+
+ But note: we have 14 clues, and we can code each one.
+
+ However, to keep it simple, we'll hardcode the constraints as functions that reduce the domains.
+
+ Let's define the domains as a dictionary of dictionaries:
+
+   domains = {
+      1: {'name': set(names), 'hobby': set(hobbies), ...},
+      ...
+   }
+
+ Alternatively, we can use a list of lists, but dictionary is clearer.
+
+ We'll create a function for each constraint.
+
+ Example constraint for clue12: height of house5 must be 'very short'
+   we set domains[5]['height'] = {'very short'}
+
+ Example constraint for clue13: height of house3 must be 'tall'
+   set domains[3]['height'] = {'tall'}
+
+ Example constraint for clue2: the person who eats grilled cheese is tall -> so the house with height tall must have food grilled cheese, and vice versa.
+   So for the house with height tall (house3), set food to grilled cheese.
+
+   Also, for the house with food grilled cheese, set height to tall.
+
+ But we already fixed house3 height, so we set house3 food to grilled cheese.
+
+ Similarly, clue4: tall (house3) is left of stir fry -> so stir fry must be in house4.
+
+   set domains[4]['food'] = {'stir fry'}
+
+ Clue11: painting left of grilled cheese -> grilled cheese is in house3, so painting must be in house2.
+
+   set domains[2]['hobby'] = {'painting'}
+
+ Clue1: Bob is photography -> so for the house where name is Bob, hobby must be photography, and vice versa.
+
+   This is a constraint between name and hobby.
+
+   We can iterate over houses and for each house, if the name is Bob, then hobby must be photography, and if the hobby is photography, then name must be Bob.
+
+ Clue9: short height is Peter -> so Peter's height is short, and the short height is Peter.
+
+   So if a house has name Peter, then height must be short, and if a house has height short, then name must be Peter.
+
+ Clue5: cooking hobby and average height are the same person -> so for the house with cooking hobby, height must be average, and vice versa.
+
+ Clue6: Alice directly left of pizza -> so if Alice is in house i, then pizza must be in house i+1, and if pizza is in house j, then Alice must be in house j-1.
+
+ Clue7: spaghetti not in house2 -> so for house2, food is not spaghetti.
+
+ Clue8: Eric not in house5 -> so for house5, name is not Eric.
+
+ Clue10: average height and gardening hobby are adjacent.
+
+ Clue14: Alice is right of photography -> which means the house of Alice has number greater than the house of photography.
+
+ We also have clue3: Peter not in house2 -> so house2 name is not Peter.
+
+ We'll write functions that take the domains and reduce them.
+
+ We'll also have a function to check if any domain becomes empty.
+
+ We'll apply the constraints until no change.
+
+ Then, we might need to do backtracking if there are still multiple options.
+
+ However, in this puzzle, we were able to deduce everything without backtracking.
+
+ Let's code the constraints as functions that update the domains.
+
+ Steps:
+
+   Initialize domains for each house and each attribute.
+
+   Then, we'll create a list of constraint functions.
+
+   We'll apply each constraint repeatedly until no change.
+
+   Then, we output the solution.
+
+ But note: some constraints are unary, some are binary, and some are n-ary.
+
+ We'll code each constraint as a function that reduces the domains.
+
+ Example for clue12 and clue13 (unary):
+
+   def apply_clue12(domains):
+        domains[5]['height'] = {'very short'}
+
+   Similarly for clue13.
+
+   For clue4 and clue11, we already have fixed values, so we can set them.
+
+   For the others, we might need to iterate.
+
+   For example, for clue1 (Bob is photography), we can:
+
+        for house in 1..5:
+            if 'Bob' in domains[house]['name']:
+                # then the hobby must be photography
+                domains[house]['hobby'] = domains[house]['hobby'] & {'photography'}
+            if 'photography' in domains[house]['hobby']:
+                domains[house]['name'] = domains[house]['name'] & {'Bob'}
+
+   Similarly for clue9.
+
+   For clue6 (Alice left of pizza):
+
+        for house in [1,2,3,4]:
+            if 'Alice' in domains[house]['name']:
+                # then pizza must be in house+1
+                domains[house+1]['food'] = domains[house+1]['food'] & {'pizza'}
+            if 'pizza' in domains[house]['food'] and house>1:
+                domains[house-1]['name'] = domains[house-1]['name'] & {'Alice'}
+
+   But note: this constraint might be applied multiple times.
+
+   We'll run all constraints in a loop until no change.
+
+   We also need to propagate: when a domain is reduced, we need to check other constraints that might be affected.
+
+   We'll create a list of constraints and apply them until no change.
+
+   However, to avoid infinite loop, we'll break when no domain changes.
+
+   We'll also check for consistency: if any domain becomes empty, we return failure.
+
+   If after applying all constraints, we still have multiple options, we might need to do backtracking, but in this case we hope that the constraints are enough.
+
+   Given that we already deduced the entire solution by hand, we expect the constraints to reduce everything.
+
+ Let's code the constraints one by one.
+
+ We'll create a function for each clue.
+
+ Note: some clues are already applied by fixed assignments, but we'll code them as constraints for generality.
+
+ We'll define:
+
+   houses = [1,2,3,4,5]
+   names = ['Arnold','Peter','Eric','Alice','Bob']
+   hobbies = ['painting','cooking','knitting','gardening','photography']
+   heights = ['very tall','tall','very short','average','short']
+   foods = ['stew','grilled cheese','stir fry','spaghetti','pizza']
+
+   domains = {house: { 'name': set(names), 'hobby': set(hobbies), 'height': set(heights), 'food': set(foods) } for house in houses}
+
+ Then we apply the constraints.
+
+ We'll make a list of constraint functions.
+
+ Let's write the constraint functions:
+
+   clue1: Bob is photography.
+        for each house, if the name is Bob, then hobby must be photography, and vice versa.
+
+   clue2: grilled cheese eater is tall.
+        for each house, if food is grilled cheese, then height must be tall, and vice versa.
+
+   clue3: Peter not in house2.
+        domains[2]['name'] -= {'Peter'}
+
+   clue4: tall is directly left of stir fry.
+        Since tall is in house3 (from clue13), we already set stir fry in house4. But we code it generally?
+        Actually, we have clue13 as a separate constraint that sets house3 height to tall.
+
+        Alternatively, we can code clue4 as: 
+            for each house i in [1,2,3,4]:
+                if tall is in house i, then stir fry must be in house i+1.
+            and for each house j in [2,3,4,5]:
+                if stir fry is in house j, then tall must be in house j-1.
+
+   But we also have clue13 that fixes tall in house3, so it will be handled.
+
+   clue5: cooking hobby and average height are the same person.
+        for each house, if hobby is cooking, then height is average, and vice versa.
+
+   clue6: Alice directly left of pizza.
+        for i in [1,2,3,4]:
+            if Alice in house i, then pizza in house i+1.
+        for j in [2,3,4,5]:
+            if pizza in house j, then Alice in house j-1.
+
+   clue7: spaghetti not in house2.
+        domains[2]['food'] -= {'spaghetti'}
+
+   clue8: Eric not in house5.
+        domains[5]['name'] -= {'Eric'}
+
+   clue9: short height is Peter.
+        for each house, if height is short, then name is Peter, and vice versa.
+
+   clue10: average height and gardening are adjacent.
+        This means for the house with average height, gardening must be in house i-1 or i+1.
+        Similarly, for the house with gardening, average height must be in house j-1 or j+1.
+
+   clue11: painting left of grilled cheese.
+        for i in [1,2,3,4]:
+            if painting in house i, then grilled cheese in house i+1.
+        for j in [2,3,4,5]:
+            if grilled cheese in house j, then painting in house j-1.
+
+   clue12: very short in house5.
+        domains[5]['height'] = {'very short'}
+
+   clue13: tall in house3.
+        domains[3]['height'] = {'tall'}
+
+   clue14: Alice is right of photography.
+        This means the house of Alice has number greater than the house of photography.
+        So if Alice is in house i, then photography must be in house j where j < i.
+
+        We can also say: for each house i where Alice might be, then photography must be in a house in [1, i-1].
+        Similarly, for each house j where photography is, then Alice must be in a house in [j+1, 5].
+
+   We'll code each constraint as a function that takes the domains and returns updated domains (or modifies in place).
+
+   We'll run these constraints in a loop until no change.
+
+   We'll also have a function to check if the domains are fully assigned (each attribute has exactly one value).
+
+   If we reach a state where every attribute has one value, we break.
+
+   If we have an empty domain, we break with error.
+
+   We'll assume that the constraints are sufficient to solve the puzzle without backtracking.
+
+ Let's code accordingly.
+
+ However, note that the constraints might need to be applied in multiple passes.
+
+ We'll create a function for each constraint and then repeatedly apply all until no change.
+
+ Code structure:
+
+   domains = initialize_domains()
+
+   constraints = [clue1, clue2, clue3, ... clue14]
+
+   changed = True
+   while changed:
+        changed = False
+        for constraint in constraints:
+            old_domains = copy.deepcopy(domains)
+            constraint(domains)
+            if domains != old_domains:
+                changed = True
+
+   Then, check if solved.
+
+   But note: we might have multiple constraints that need to be applied in sequence.
+
+   We'll code each constraint function to return True if it made a change, else False.
+
+   Then we can break out if no constraint made a change.
+
+   Alternatively, we can apply each constraint until no change in a round.
+
+   We'll do:
+
+        changed = True
+        while changed:
+            changed = False
+            for constraint in constraints:
+                if constraint(domains):
+                    changed = True
+
+   Each constraint function returns True if it modifies the domains, else False.
+
+ Let's code the constraint functions.
+
+ We must be careful: when we reduce a domain, we might enable other constraints.
+
+ We'll now code each constraint function.
+
+ Note: Some constraints are unary and fixed, so we can apply them once, but we include them in the loop for consistency.
+
+ Alternatively, we can apply the fixed constraints first.
+
+ Let's code.
+
+ We'll use a helper function to check if a domain changed.
+
+ Example for clue12:
+
+   def constraint_clue12(domains):
+        if domains[5]['height'] != {'very short'}:
+            domains[5]['height'] = {'very short'}
+            return True
+        return False
+
+ Similarly for clue13.
+
+ For clue3:
+
+   def constraint_clue3(domains):
+        old = domains[2]['name'].copy()
+        domains[2]['name'] -= {'Peter'}
+        return domains[2]['name'] != old
+
+ But note: if 'Peter' was already removed, then no change.
+
+ Similarly for clue7 and clue8.
+
+ For clue1:
+
+   def constraint_clue1(domains):
+        changed = False
+        for house in houses:
+            if 'Bob' in domains[house]['name']:
+                # then hobby must be photography
+                old_hobby = domains[house]['hobby'].copy()
+                domains[house]['hobby'] &= {'photography'}
+                if domains[house]['hobby'] != old_hobby:
+                    changed = True
+            if 'photography' in domains[house]['hobby']:
+                old_name = domains[house]['name'].copy()
+                domains[house]['name'] &= {'Bob'}
+                if domains[house]['name'] != old_name:
+                    changed = True
+        return changed
+
+ Similarly for clue2, clue5, clue9.
+
+ For clue4:
+
+   def constraint_clue4(domains):
+        changed = False
+        for i in [1,2,3,4]:
+            if 'tall' in domains[i]['height']:
+                # then stir fry must be in house i+1
+                old_food = domains[i+1]['food'].copy()
+                domains[i+1]['food'] &= {'stir fry'}
+                if domains[i+1]['food'] != old_food:
+                    changed = True
+        for j in [2,3,4,5]:
+            if 'stir fry' in domains[j]['food']:
+                old_height = domains[j-1]['height'].copy()
+                domains[j-1]['height'] &= {'tall'}
+                if domains[j-1]['height'] != old_height:
+                    changed = True
+        return changed
+
+ But note: we also have clue13 that fixes tall in house3, so this constraint will set house4 food to stir fry.
+
+ Similarly for clue11.
+
+ For clue6:
+
+   def constraint_clue6(domains):
+        changed = False
+        for i in [1,2,3,4]:
+            if 'Alice' in domains[i]['name']:
+                old_food = domains[i+1]['food'].copy()
+                domains[i+1]['food'] &= {'pizza'}
+                if old_food != domains[i+1]['food']:
+                    changed = True
+        for j in [2,3,4,5]:
+            if 'pizza' in domains[j]['food']:
+                old_name = domains[j-1]['name'].copy()
+                domains[j-1]['name'] &= {'Alice'}
+                if old_name != domains[j-1]['name']:
+                    changed = True
+        return changed
+
+ For clue10:
+
+   def constraint_clue10(domains):
+        changed = False
+        # for each house with average height, gardening must be in adjacent house
+        for i in houses:
+            if 'average' in domains[i]['height']:
+                # gardening must be in i-1 or i+1, if exists
+                possible_hobbies = set()
+                if i-1 in houses:
+                    possible_hobbies |= domains[i-1]['hobby']
+                if i+1 in houses:
+                    possible_hobbies |= domains[i+1]['hobby']
+                if 'gardening' not in possible_hobbies:
+                    # then we cannot have average height here? But wait, this constraint is about reducing the gardening domain?
+                    # Actually, we need to reduce the domain of the gardening hobby to be adjacent to average height.
+                    # But this is a constraint on the gardening hobby, not on the average height.
+                    # Alternatively, we can reduce the domain of the average height house by checking that at least one adjacent house has gardening in its hobby domain.
+                    # But if we are reducing, we might remove average from house i if no adjacent house can have gardening?
+                    # However, we are not yet sure which house has gardening, so we cannot remove average from house i based on this?
+                    # This constraint is better implemented by checking the gardening houses and average houses and then constraining the positions.
+
+        Alternatively, we can do:
+
+        for i in houses:
+            if 'average' in domains[i]['height']:
+                # then gardening must be in i-1 or i+1
+                # so we can reduce the domain of gardening hobby to only houses that are adjacent to i?
+                # But we don't know which house has average, so we must consider all i.
+
+        Similarly, for gardening hobby in house j, then average must be in j-1 or j+1.
+
+        So we can:
+
+        for j in houses:
+            if 'gardening' in domains[j]['hobby']:
+                # then average height must be in j-1 or j+1
+                possible_heights = set()
+                if j-1 in houses:
+                    possible_heights |= domains[j-1]['height']
+                if j+1 in houses:
+                    possible_heights |= domains[j+1]['height']
+                if 'average' not in possible_heights:
+                    # then gardening cannot be in house j? -> remove gardening from house j
+                    old_hobby = domains[j]['hobby'].copy()
+                    domains[j]['hobby'] -= {'gardening'}
+                    if domains[j]['hobby'] != old_hobby:
+                        changed = True
+
+        Similarly, for house i with average height, we can check that at least one adjacent house has gardening in its domain, but that doesn't directly reduce the domain of average height.
+
+        Alternatively, we can reduce the domain of average height by requiring that there exists an adjacent house that has gardening in its hobby domain.
+
+        But that is a存在 constraint and might be hard to implement without backtracking.
+
+        However, we can do:
+
+        for i in houses:
+            if 'average' in domains[i]['height']:
+                # check if there is an adjacent house that has gardening in its hobby domain
+                possible = False
+                if i-1 in houses and 'gardening' in domains[i-1]['hobby']:
+                    possible = True
+                if i+1 in houses and 'gardening' in domains[i+1]['hobby']:
+                    possible = True
+                if not possible:
+                    # then remove average from house i
+                    old_height = domains[i]['height'].copy()
+                    domains[i]['height'] -= {'average'}
+                    if domains[i]['height'] != old_height:
+                        changed = True
+
+        Similarly for gardening.
+
+        So we'll implement both ways.
+
+        We'll do:
+
+        changed1 = constraint_clue10_average(domains)
+        changed2 = constraint_clue10_gardening(domains)
+        return changed1 or changed2
+
+        But we can combine in one function.
+
+   Let's write:
+
+   def constraint_clue10(domains):
+        changed = False
+        for i in houses:
+            if 'average' in domains[i]['height']:
+                # check adjacent houses for gardening possibility
+                adjacent_houses = []
+                if i-1 in houses:
+                    adjacent_houses.append(i-1)
+                if i+1 in houses:
+                    adjacent_houses.append(i+1)
+                if not any('gardening' in domains[j]['hobby'] for j in adjacent_houses):
+                    # then remove average from house i
+                    old = domains[i]['height'].copy()
+                    domains[i]['height'] -= {'average'}
+                    if domains[i]['height'] != old:
+                        changed = True
+
+        for j in houses:
+            if 'gardening' in domains[j]['hobby']:
+                adjacent_houses = []
+                if j-1 in houses:
+                    adjacent_houses.append(j-1)
+                if j+1 in houses:
+                    adjacent_houses.append(j+1)
+                if not any('average' in domains[k]['height'] for k in adjacent_houses):
+                    old = domains[j]['hobby'].copy()
+                    domains[j]['hobby'] -= {'gardening'}
+                    if domains[j]['hobby'] != old:
+                        changed = True
+
+        return changed
+
+ For clue14:
+
+   def constraint_clue14(domains):
+        changed = False
+        # Alice is right of photography -> so the house of Alice > house of photography
+        # For each house i that might have Alice, photography must be in a house < i.
+        # For each house j that might have photography, Alice must be in a house > j.
+
+        # First, for Alice in house i, then photography must be in a house in range(1, i)
+        for i in houses:
+            if 'Alice' in domains[i]['name']:
+                # photography must be in a house with number less than i
+                # so we can reduce the domain of photography hobby to houses [1, i-1]
+                for j in range(i, 6): # houses from i to 5 cannot have photography
+                    old_hobby = domains[j]['hobby'].copy()
+                    domains[j]['hobby'] -= {'photography'}
+                    if domains[j]['hobby'] != old_hobby:
+                        changed = True
+
+        # Similarly, for photography in house j, then Alice must be in a house greater than j.
+        for j in houses:
+            if 'photography' in domains[j]['hobby']:
+                for i in range(1, j+1): # houses from 1 to j cannot have Alice
+                    old_name = domains[i]['name'].copy()
+                    domains[i]['name'] -= {'Alice'}
+                    if domains[i]['name'] != old_name:
+                        changed = True
+
+        return changed
+
+ Now, we have all constraints.
+
+ We'll code them and then run until no change.
+
+ Finally, we check if every attribute for every house has exactly one value.
+
+ Then, we output the solution in the required JSON format.
+
+ Let's code accordingly.
+
+ Note: We must be cautious of performance, but with 5 houses it should be fast.
+
+ We'll now write the code.
+
+ We'll create a function for each constraint.
+
+ We'll use:
+
+   houses = [1,2,3,4,5]
+
+   attributes = ['name','hobby','height','food']
+
+   domains = {h: {a: set(all values for a) for a in attributes} for h in houses}
+
+   all_names = set(names)
+   all_hobbies = set(hobbies)
+   all_heights = set(heights)
+   all_foods = set(foods)
+
+ Then we define the constraints.
+
+ We'll create a list of constraint functions.
+
+ Let's code.

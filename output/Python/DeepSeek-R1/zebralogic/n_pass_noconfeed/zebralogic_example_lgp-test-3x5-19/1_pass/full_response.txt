@@ -1,0 +1,150 @@
+```python
+import itertools
+import json
+
+def main():
+    # Define the attributes and their domains
+    attributes = {
+        'names': ['Arnold', 'Peter', 'Eric'],
+        'occupations': ['doctor', 'teacher', 'engineer'],
+        'educations': ['associate', 'high school', 'bachelor'],
+        'smoothies': ['desert', 'cherry', 'watermelon'],
+        'hobbies': ['gardening', 'cooking', 'photography']
+    }
+    
+    # Generate all permutations for each attribute
+    perms = {}
+    for key, values in attributes.items():
+        perms[key] = list(itertools.permutations(values))
+    
+    solutions = []
+    # Iterate over all combinations of attribute permutations
+    for name_perm in perms['names']:
+        for occupation_perm in perms['occupations']:
+            for education_perm in perms['educations']:
+                for smoothie_perm in perms['smoothies']:
+                    for hobby_perm in perms['hobbies']:
+                        houses = []
+                        for i in range(3):
+                            house = {
+                                'name': name_perm[i],
+                                'occupation': occupation_perm[i],
+                                'education': education_perm[i],
+                                'smoothie': smoothie_perm[i],
+                                'hobby': hobby_perm[i]
+                            }
+                            houses.append(house)
+                        
+                        # Check all clues
+                        # Clue 1: Desert smoothie lover is the doctor
+                        desert_doctor = True
+                        for i in range(3):
+                            if houses[i]['smoothie'] == 'desert' and houses[i]['occupation'] != 'doctor':
+                                desert_doctor = False
+                                break
+                        if not desert_doctor:
+                            continue
+                            
+                        # Clue 2: Arnold not in third house
+                        if houses[2]['name'] == 'Arnold':
+                            continue
+                            
+                        # Clue 3: Cherry smoothie right of Peter
+                        peter_index = None
+                        for i in range(3):
+                            if houses[i]['name'] == 'Peter':
+                                peter_index = i
+                                break
+                        if peter_index is None:
+                            continue
+                        cherry_index = None
+                        for i in range(3):
+                            if houses[i]['smoothie'] == 'cherry':
+                                cherry_index = i
+                                break
+                        if cherry_index is None or cherry_index <= peter_index:
+                            continue
+                            
+                        # Clue 4: Cooking hobby in second house
+                        if houses[1]['hobby'] != 'cooking':
+                            continue
+                            
+                        # Clue 5: Cooking hobby is Peter
+                        cooking_peter = False
+                        for i in range(3):
+                            if houses[i]['hobby'] == 'cooking' and houses[i]['name'] == 'Peter':
+                                cooking_peter = True
+                                break
+                        if not cooking_peter:
+                            continue
+                            
+                        # Clue 6: Associate degree right of gardening hobby
+                        associate_index = None
+                        gardening_index = None
+                        for i in range(3):
+                            if houses[i]['education'] == 'associate':
+                                associate_index = i
+                            if houses[i]['hobby'] == 'gardening':
+                                gardening_index = i
+                        if associate_index is None or gardening_index is None or associate_index <= gardening_index:
+                            continue
+                            
+                        # Clue 7: Bachelor degree right of desert smoothie lover
+                        bachelor_index = None
+                        desert_index = None
+                        for i in range(3):
+                            if houses[i]['education'] == 'bachelor':
+                                bachelor_index = i
+                            if houses[i]['smoothie'] == 'desert':
+                                desert_index = i
+                        if bachelor_index is None or desert_index is None or bachelor_index <= desert_index:
+                            continue
+                            
+                        # Clue 8: Cooking hobby is doctor
+                        cooking_doctor = False
+                        for i in range(3):
+                            if houses[i]['hobby'] == 'cooking' and houses[i]['occupation'] == 'doctor':
+                                cooking_doctor = True
+                                break
+                        if not cooking_doctor:
+                            continue
+                            
+                        # Clue 9: Photography hobby is teacher
+                        photography_teacher = False
+                        for i in range(3):
+                            if houses[i]['hobby'] == 'photography' and houses[i]['occupation'] == 'teacher':
+                                photography_teacher = True
+                                break
+                        if not photography_teacher:
+                            continue
+                        
+                        solutions.append(houses)
+    
+    if solutions:
+        # Take the first solution
+        solution = solutions[0]
+        rows = []
+        for i, house in enumerate(solution):
+            row = [
+                str(i+1),
+                house['name'],
+                house['occupation'],
+                house['education'],
+                house['smoothie'],
+                house['hobby']
+            ]
+            rows.append(row)
+        
+        result = {
+            "solution": {
+                "header": ["House", "Name", "Occupation", "Education", "Smoothie", "Hobby"],
+                "rows": rows
+            }
+        }
+        print(json.dumps(result, indent=2))
+    else:
+        print('No solution found')
+
+if __name__ == '__main__':
+    main()
+```

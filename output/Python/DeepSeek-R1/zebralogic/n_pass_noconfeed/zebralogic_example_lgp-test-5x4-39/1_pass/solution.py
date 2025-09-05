@@ -1,0 +1,99 @@
+import json
+
+def main():
+    # Deduce the solution step by step based on the clues
+    # Initialize the assignments
+    name_house = {}
+    hobby_house = {}
+    height_house = {}
+    food_house = {}
+    
+    # From clue 13: tall is in house 3
+    height_house['tall'] = 3
+    # From clue 12: very short is in house 5
+    height_house['very short'] = 5
+    # From clue 4: tall is directly left of stir fry -> stir fry in house 4
+    food_house['stir fry'] = 4
+    # From clue 2: grilled cheese is tall -> grilled cheese in house 3
+    food_house['grilled cheese'] = 3
+    # From clue 11: painting is directly left of grilled cheese -> painting in house 2
+    hobby_house['painting'] = 2
+    # From clue 6: Alice is directly left of pizza -> Alice in house n, pizza in n+1
+    # From clue 14: Alice is right of photography -> photography left of Alice
+    # From clue 1: Bob is photography -> Bob left of Alice
+    # Also, Alice cannot be in house 5 because pizza would be in house 6 (invalid)
+    # Try possible houses for Alice: 1,2,3,4
+    # If Alice in 1, then pizza in 2 -> but then Alice must be right of photography, so photography must be left of 1 -> impossible
+    # If Alice in 2, then pizza in 3 -> but house 3 has grilled cheese (from above), so pizza cannot be in 3
+    # If Alice in 3, then pizza in 4 -> but house 4 has stir fry, so pizza cannot be in 4
+    # Therefore, Alice must be in house 4, and pizza in house 5
+    name_house['Alice'] = 4
+    food_house['pizza'] = 5
+    # From clue 14: Alice right of photography -> photography in house <4
+    # From clue 1: Bob is photography -> Bob in house <4
+    # From clue 3: Peter not in house 2
+    # From clue 9: short is Peter -> short and Peter same house
+    # From clue 8: Eric not in house 5
+    # Now, names left: Arnold, Peter, Eric, Bob for houses 1,2,3,5
+    # Peter cannot be in house 2, and must be in same house as short
+    # Heights left: very tall, average, short for houses 1,2,4
+    # But house 4 has Alice, and heights: tall in 3, very short in 5, so house 4 must be average (since very tall and short are for 1 and 2)
+    # Actually, house 4 can be average or very tall or short, but note clue 5: cooking is average
+    # From clue 5: cooking is average -> same house
+    # From clue 10: average and gardening are adjacent
+    # Now, average height must be in house 1,2, or4
+    # If average in house 2, then cooking in house 2, and gardening adjacent (house1 or3)
+    # But house2 hobby is painting, so cannot be cooking -> contradiction. So average not in house2
+    # If average in house1, then cooking in house1, and gardening adjacent (house2)
+    # If average in house4, then cooking in house4, and gardening adjacent (house3 or5)
+    # Now, also from clue 9: short is Peter, and Peter not in house2, so Peter in house1 or3 or4 or5
+    # But house3 has tall height, house5 has very short, house4 has Alice, so Peter must be in house1 (since short height must be in house1,2,4 but house2 cannot have Peter, and house4 has Alice)
+    # Therefore, Peter in house1, short in house1
+    name_house['Peter'] = 1
+    height_house['short'] = 1
+    # Then average cannot be in house1 (because short is there), and not in house2, so average must be in house4
+    height_house['average'] = 4
+    # Then cooking must be in house4 (clue5)
+    hobby_house['cooking'] = 4
+    # Then the remaining height very tall must be in house2
+    height_house['very tall'] = 2
+    # Now, clue10: average and gardening adjacent -> average in house4, so gardening in house3 or5
+    # Now, hobbies: painting in2, cooking in4, photography must be Bob's house (clue1), and Bob in house<4 (so1,2,3)
+    # But house1 has Peter, house2 has painting, so Bob must be in house3
+    name_house['Bob'] = 3
+    hobby_house['photography'] = 3
+    # Then gardening must be in house5 (since house3 has photography)
+    hobby_house['gardening'] = 5
+    # Then the remaining hobby knitting in house1
+    hobby_house['knitting'] = 1
+    # Now, names: house1: Peter, house3: Bob, house4: Alice, so house2 and house5: Eric and Arnold
+    # clue8: Eric not in house5 -> so Eric in house2, Arnold in house5
+    name_house['Eric'] = 2
+    name_house['Arnold'] = 5
+    # Foods: grilled cheese in3, stir fry in4, pizza in5, so remaining stew and spaghetti for house1 and2
+    # clue7: spaghetti not in house2 -> so spaghetti in house1, stew in house2
+    food_house['spaghetti'] = 1
+    food_house['stew'] = 2
+    
+    # Now, build the solution matrix
+    houses = []
+    for house_num in range(1, 6):
+        name = next(k for k, v in name_house.items() if v == house_num)
+        hobby = next(k for k, v in hobby_house.items() if v == house_num)
+        height = next(k for k, v in height_house.items() if v == house_num)
+        food = next(k for k, v in food_house.items() if v == house_num)
+        houses.append([str(house_num), name, hobby, height, food])
+    
+    # Create the solution dictionary
+    solution = {
+        "solution": {
+            "header": ["House", "Name", "Hobby", "Height", "Food"],
+            "rows": houses
+        }
+    }
+    
+    # Output the solution as JSON
+    print(json.dumps(solution, indent=2))
+
+if __name__ == "__main__":
+    main()

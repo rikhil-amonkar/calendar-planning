@@ -1,0 +1,115 @@
+```python
+import json
+from z3 import *
+
+def main():
+    # Create the solver
+    solver = Solver()
+
+    # Define the attributes using EnumSort
+    Name, (Bob, Peter, Eric, Alice, Arnold, Carol) = EnumSort('Name', ['Bob', 'Peter', 'Eric', 'Alice', 'Arnold', 'Carol'])
+    HairColor, (auburn, blonde, brown, black, red, gray) = EnumSort('HairColor', ['auburn', 'blonde', 'brown', 'black', 'red', 'gray'])
+    Height, (very_tall, average, very_short, tall, super_tall, short_height) = EnumSort('Height', ['very tall', 'average', 'very short', 'tall', 'super tall', 'short'])
+
+    # Create arrays for each attribute per house (0-based index: house0 = house1, house5 = house6)
+    names = [Const(f'name_{i}', Name) for i in range(6)]
+    hair_colors = [Const(f'hair_{i}', HairColor) for i in range(6)]
+    heights = [Const(f'height_{i}', Height) for i in range(6)]
+
+    # Each attribute must be unique per house
+    solver.add(Distinct(names))
+    solver.add(Distinct(hair_colors))
+    solver.add(Distinct(heights))
+
+    # Add constraints from clues
+    # 1. The person who has blonde hair is directly left of Bob.
+    for i in range(5):
+        solver.add(Implies(hair_colors[i] == blonde, names[i+1] == Bob))
+    # Also ensure Bob is not in first house if blonde is left of him
+    solver.add(Not(And(hair_colors[0] == blonde, names[0] == Bob)))  # Not necessary but explicit
+
+    # 2. Alice is in the fourth house (index3)
+    solver.add(names[3] == Alice)
+
+    # 3. The person who is short is Arnold.
+    solver.add(Exists([i], And(heights[i] == short_height, names[i] == Arnold)))
+
+    # 4. The person who is tall is in the sixth house (index5)
+    solver.add(heights[5] == tall)
+
+    # 5. The person who has black hair is not in the fourth house (index3)
+    solver.add(hair_colors[3] != black)
+
+    # 6. The person who has red hair is Eric.
+    solver.add(Exists([i], And(hair_colors[i] == red, names[i] == Eric)))
+
+    # 7. The person who is super tall is somewhere to the right of the person who has an average height.
+    # Find index where average height exists, then super tall must be at a higher index
+    average_index = Int('average_index')
+    super_tall_index = Int('super_tall_index')
+    solver.add(average_index >= 0, average_index < 6)
+    solver.add(super_tall_index >= 0, super_tall_index < 6)
+    for i in range(6):
+        solver.add(Implies(heights[i] == average, average_index == i))
+        solver.add(Implies(heights[i] == super_tall, super_tall_index == i))
+    solver.add(super_tall_index > average_index)
+
+    # 8. The person who has blonde hair is Carol.
+    solver.add(Exists([i], And(hair_colors[i] == blonde, names[i] == Carol)))
+
+    # 9. There is one house between the person who has gray hair and the person who has red hair.
+    gray_index = Int('gray_index')
+    red_index = Int('red_index')
+    solver.add(gray_index >= 0, gray_index < 6)
+    solver.add(red_index >= 0, red_index < 6)
+    for i in range(6):
+        solver.add(Implies(hair_colors[i] == gray, gray_index == i))
+        solver.add(Implies(hair_colors[i] == red, red_index == i))
+    solver.add(Or(gray_index == red_index + 2, red_index == gray_index + 2))
+
+    # 10. The person who is very short is in the fifth house (index4)
+    solver.add(heights[4] == very_short)
+
+    # 11. Bob is the person who has brown hair.
+    solver.add(Exists([i], And(names[i] == Bob, hair_colors[i] == brown)))
+
+    # 12. The person who has gray hair is in the third house (index2)
+    solver.add(hair_colors[2] == gray)
+
+    # 13. The person who has blonde hair is the person who is very tall.
+    solver.add(Exists([i], And(hair_colors[i] == blonde, heights[i] == very_tall)))
+
+    # Check and get the model
+    if solver.check() == sat:
+        model = solver.model()
+        
+        # Prepare results
+        rows = []
+        for i in range(6):
+            name_val = model.eval(names[i])
+            hair_val = model.eval(hair_colors[i])
+            height_val = model.eval(heights[i])
+            
+            # Convert Z3 values to strings
+            name_str = str(name_val)
+            hair_str = str(hair_val)
+            height_str = str(height_val)
+            
+            rows.append([str(i+1), name_str, hair_str, height_str])
+        
+        # Create the solution dictionary
+        solution_dict = {
+            "solution": {
+                "header": ["House", "Name", "HairColor", "Height"],
+                "rows": rows
+            }
+        }
+        
+        # Output as JSON
+        print(json.dumps(solution_dict, indent=2))
+    else:
+        print("No solution found")
+
+if __name__ == "__main__":
+    main()
+```

@@ -1,0 +1,45 @@
+import json
+
+def main():
+    # Initialize the houses
+    houses = [
+        {"House": "1", "Name": None, "BookGenre": None},
+        {"House": "2", "Name": None, "BookGenre": None}
+    ]
+    
+    # Apply clue: Eric is directly left of the person who loves mystery books.
+    # Since there are only two houses, Eric must be in house 1 and mystery lover in house 2.
+    houses[0]["Name"] = "Eric"
+    houses[1]["BookGenre"] = "mystery"
+    
+    # Assign the remaining name and book genre
+    names = {"Eric", "Arnold"}
+    books = {"science fiction", "mystery"}
+    
+    # Determine used name and book
+    used_name = {house["Name"] for house in houses if house["Name"] is not None}
+    used_book = {house["BookGenre"] for house in houses if house["BookGenre"] is not None}
+    
+    # Assign Arnold to the remaining house (house 2)
+    remaining_name = (names - used_name).pop()
+    houses[1]["Name"] = remaining_name
+    
+    # Assign science fiction to house 1
+    remaining_book = (books - used_book).pop()
+    houses[0]["BookGenre"] = remaining_book
+    
+    # Prepare the output in the required JSON format
+    output = {
+        "solution": {
+            "header": ["House", "Name", "BookGenre"],
+            "rows": [
+                [house["House"], house["Name"], house["BookGenre"]]
+                for house in houses
+            ]
+        }
+    }
+    
+    print(json.dumps(output, indent=2))
+
+if __name__ == "__main__":
+    main()

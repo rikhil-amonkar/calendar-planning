@@ -1,0 +1,177 @@
+```python
+import copy
+import json
+
+def main():
+    attributes = ['Name', 'PhoneModel', 'Cigar', 'Flower', 'Color', 'FavoriteSport']
+    values = {
+        'Name': ['Peter', 'Carol', 'Eric', 'Alice', 'Bob', 'Arnold'],
+        'PhoneModel': ['huawei p50', 'google pixel 6', 'xiaomi mi 11', 'iphone 13', 'samsung galaxy s21', 'oneplus 9'],
+        'Cigar': ['dunhill', 'pall mall', 'blends', 'blue master', 'prince', 'yellow monster'],
+        'Flower': ['daffodils', 'carnations', 'roses', 'tulips', 'lilies', 'iris'],
+        'Color': ['yellow', 'red', 'green', 'blue', 'white', 'purple'],
+        'FavoriteSport': ['soccer', 'tennis', 'basketball', 'volleyball', 'swimming', 'baseball']
+    }
+    
+    domains = []
+    for i in range(6):
+        house = {}
+        for att in attributes:
+            house[att] = set(values[att])
+        domains.append(house)
+    
+    domains[1]['PhoneModel'] = {'oneplus 9'}
+    domains[0]['Name'] = {'Alice'}
+    
+    def somewhere_left(att1, val1, att2, val2):
+        for i in range(6):
+            if val1 in domains[i][att1]:
+                for j in range(0, i+1):
+                    domains[j][att2].discard(val2)
+        for i in range(6):
+            if val2 in domains[i][att2]:
+                for j in range(i, 6):
+                    domains[j][att1].discard(val1)
+                    
+    def directly_left(att1, val1, att2, val2):
+        for i in range(5):
+            if val1 in domains[i][att1] and val2 not in domains[i+1][att2]:
+                domains[i][att1].discard(val1)
+        for i in range(1, 6):
+            if val2 in domains[i][att2] and val1 not in domains[i-1][att1]:
+                domains[i][att2].discard(val2)
+                
+    def adjacent(att1, val1, att2, val2):
+        for i in range(6):
+            if val1 in domains[i][att1]:
+                found = False
+                if i > 0 and val2 in domains[i-1][att2]:
+                    found = True
+                if i < 5 and val2 in domains[i+1][att2]:
+                    found = True
+                if not found:
+                    domains[i][att1].discard(val1)
+        for i in range(6):
+            if val2 in domains[i][att2]:
+                found = False
+                if i > 0 and val1 in domains[i-1][att1]:
+                    found = True
+                if i < 5 and val1 in domains[i+1][att1]:
+                    found = True
+                if not found:
+                    domains[i][att2].discard(val2)
+                    
+    def same_house(att1, val1, att2, val2):
+        for i in range(6):
+            if val1 in domains[i][att1] and val2 not in domains[i][att2]:
+                domains[i][att1].discard(val1)
+            if val2 in domains[i][att2] and val1 not in domains[i][att1]:
+                domains[i][att2].discard(val2)
+                
+    def absolute_difference(att1, val1, att2, val2, diff):
+        for i in range(6):
+            if val1 in domains[i][att1]:
+                for j in range(6):
+                    if abs(i - j) != diff:
+                        domains[j][att2].discard(val2)
+        for j in range(6):
+            if val2 in domains[j][att2]:
+                for i in range(6):
+                    if abs(i - j) != diff:
+                        domains[i][att1].discard(val1)
+                        
+    def clue1(): pass
+    def clue2():
+        somewhere_left('PhoneModel', 'xiaomi mi 11', 'PhoneModel', 'huawei p50')
+    def clue3():
+        same_house('Name', 'Carol', 'Flower', 'carnations')
+    def clue4():
+        directly_left('Color', 'purple', 'Cigar', 'pall mall')
+    def clue5():
+        same_house('Color', 'green', 'Cigar', 'blue master')
+    def clue6():
+        adjacent('Color', 'yellow', 'Color', 'blue')
+    def clue7():
+        somewhere_left('PhoneModel', 'samsung galaxy s21', 'Name', 'Eric')
+    def clue8():
+        absolute_difference('Name', 'Carol', 'Flower', 'daffodils', 3)
+    def clue9():
+        same_house('Cigar', 'prince', 'FavoriteSport', 'basketball')
+    def clue10():
+        same_house('Cigar', 'dunhill', 'FavoriteSport', 'volleyball')
+    def clue11():
+        same_house('FavoriteSport', 'swimming', 'PhoneModel', 'google pixel 6')
+    def clue12():
+        directly_left('PhoneModel', 'huawei p50', 'Color', 'white')
+    def clue13():
+        adjacent('PhoneModel', 'oneplus 9', 'Flower', 'roses')
+    def clue14():
+        somewhere_left('Flower', 'iris', 'Name', 'Eric')
+    def clue15():
+        same_house('Name', 'Peter', 'Cigar', 'dunhill')
+    def clue16():
+        same_house('Name', 'Peter', 'Color', 'blue')
+    def clue17():
+        same_house('Name', 'Bob', 'Flower', 'tulips')
+    def clue18(): pass
+    def clue19():
+        directly_left('FavoriteSport', 'baseball', 'Cigar', 'blue master')
+    def clue20():
+        somewhere_left('Cigar', 'blends', 'PhoneModel', 'google pixel 6')
+    def clue21():
+        same_house('Name', 'Carol', 'FavoriteSport', 'soccer')
+    def clue22():
+        directly_left('Flower', 'carnations', 'Cigar', 'blends')
+    def clue23():
+        same_house('Name', 'Eric', 'Cigar', 'blends')
+    def clue24():
+        same_house('FavoriteSport', 'volleyball', 'PhoneModel', 'iphone 13')
+        
+    clues = [clue1, clue2, clue3, clue4, clue5, clue6, clue7, clue8, clue9, clue10,
+             clue11, clue12, clue13, clue14, clue15, clue16, clue17, clue18, clue19, clue20,
+             clue21, clue22, clue23, clue24]
+             
+    changed = True
+    while changed:
+        changed = False
+        old_domains = copy.deepcopy(domains)
+        
+        for clue in clues:
+            clue()
+            
+        for att in attributes:
+            assigned_values = set()
+            for i in range(6):
+                if len(domains[i][att]) == 1:
+                    assigned_values.add(next(iter(domains[i][att])))
+            for i in range(6):
+                if len(domains[i][att]) > 1:
+                    new_domain = domains[i][att] - assigned_values
+                    if new_domain != domains[i][att]:
+                        changed = True
+                        domains[i][att] = new_domain
+                        
+        if domains == old_domains:
+            changed = False
+            
+    solution = {
+        "solution": {
+            "header": ["House", "Name", "PhoneModel", "Cigar", "Flower", "Color", "FavoriteSport"],
+            "rows": []
+        }
+    }
+    
+    for i in range(6):
+        row = [str(i+1)]
+        for att in attributes:
+            if len(domains[i][att]) == 1:
+                row.append(next(iter(domains[i][att])))
+            else:
+                row.append(None)
+        solution["solution"]["rows"].append(row)
+        
+    print(json.dumps(solution, indent=2))
+    
+if __name__ == "__main__":
+    main()
+```

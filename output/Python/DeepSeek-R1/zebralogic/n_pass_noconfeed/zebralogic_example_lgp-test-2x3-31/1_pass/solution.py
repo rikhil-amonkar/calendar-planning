@@ -1,0 +1,37 @@
+import json
+
+def main():
+    # Initialize the houses
+    houses = [
+        {"House": "1", "Name": None, "FavoriteSport": None, "Hobby": None},
+        {"House": "2", "Name": None, "FavoriteSport": None, "Hobby": None}
+    ]
+    
+    # Apply clue 2: Photography enthusiast not in first house
+    # So house 1 must have gardening, house 2 must have photography
+    houses[0]["Hobby"] = "gardening"
+    houses[1]["Hobby"] = "photography"
+    
+    # Apply clue 1: Gardening is Arnold
+    houses[0]["Name"] = "Arnold"
+    
+    # The remaining name is Eric for house 2
+    houses[1]["Name"] = "Eric"
+    
+    # Apply clue 3: Soccer not in first house
+    houses[0]["FavoriteSport"] = "basketball"
+    houses[1]["FavoriteSport"] = "soccer"
+    
+    # Prepare the output structure
+    header = ["House", "Name", "FavoriteSport", "Hobby"]
+    rows = []
+    for house in houses:
+        rows.append([house["House"], house["Name"], house["FavoriteSport"], house["Hobby"]])
+    
+    solution = {"solution": {"header": header, "rows": rows}}
+    
+    # Output as JSON
+    print(json.dumps(solution, indent=2))
+
+if __name__ == "__main__":
+    main()

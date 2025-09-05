@@ -1,0 +1,169 @@
+import itertools
+import json
+
+def main():
+    # Define the attributes
+    names = ['Peter', 'Eric', 'Alice', 'Arnold']
+    educations = ['bachelor', 'high school', 'associate', 'master']
+    music_genres = ['jazz', 'rock', 'pop', 'classical']
+    colors = ['green', 'red', 'yellow', 'white']
+    flowers = ['lilies', 'carnations', 'daffodils', 'roses']
+    
+    # Generate permutations with pre-filtering
+    name_perms = [
+        p for p in itertools.permutations(names)
+        if p[1] != 'Eric' and p[2] != 'Arnold'
+    ]
+    edu_perms = [
+        p for p in itertools.permutations(educations)
+        if p[3] != 'associate'
+    ]
+    music_perms = [
+        p for p in itertools.permutations(music_genres)
+        if p[1] == 'pop'
+    ]
+    color_perms = list(itertools.permutations(colors))
+    flower_perms = [
+        p for p in itertools.permutations(flowers)
+        if p[0] != 'carnations' and p[3] != 'carnations'
+    ]
+    
+    # Check all constraints
+    def check_constraints(name, edu, music, color, flower):
+        # Constraint 1
+        found = False
+        for i in range(4):
+            if edu[i] == 'bachelor' and flower[i] == 'daffodils':
+                found = True
+                break
+        if not found:
+            return False
+        
+        # Constraint 2 (pre-filtered, but check again)
+        if flower[0] == 'carnations':
+            return False
+        
+        # Constraint 3
+        found = False
+        for i in range(4):
+            if edu[i] == 'master' and name[i] == 'Alice':
+                found = True
+                break
+        if not found:
+            return False
+        
+        # Constraint 4
+        found = False
+        for i in range(3):
+            if edu[i] == 'master' and music[i+1] == 'classical':
+                found = True
+                break
+        if not found:
+            return False
+        
+        # Constraint 5 (pre-filtered)
+        if name[1] == 'Eric':
+            return False
+        
+        # Constraint 6 (pre-filtered)
+        if name[2] == 'Arnold':
+            return False
+        
+        # Constraint 7
+        found = False
+        for i in range(3):
+            if color[i] == 'yellow' and flower[i+1] == 'roses':
+                found = True
+                break
+        if not found:
+            return False
+        
+        # Constraint 8 (pre-filtered)
+        if music[1] != 'pop':
+            return False
+        
+        # Constraint 9 (pre-filtered)
+        if edu[3] == 'associate':
+            return False
+        
+        # Constraint 10 (pre-filtered)
+        if flower[3] == 'carnations':
+            return False
+        
+        # Constraint 11
+        found = False
+        for i in range(3):
+            if color[i] == 'red' and color[i+1] == 'white':
+                found = True
+                break
+        if not found:
+            return False
+        
+        # Constraint 12
+        found = False
+        for i in range(4):
+            if color[i] == 'red' and music[i] == 'rock':
+                found = True
+                break
+        if not found:
+            return False
+        
+        # Constraint 13
+        found = False
+        for i in range(4):
+            if name[i] == 'Arnold' and color[i] == 'yellow':
+                found = True
+                break
+        if not found:
+            return False
+        
+        # Constraint 14
+        found = False
+        for i in range(4):
+            if flower[i] == 'daffodils' and color[i] == 'yellow':
+                found = True
+                break
+        if not found:
+            return False
+        
+        return True
+
+    # Iterate over all combinations
+    solution_found = None
+    for name in name_perms:
+        for edu in edu_perms:
+            for music in music_perms:
+                for color in color_perms:
+                    for flower in flower_perms:
+                        if check_constraints(name, edu, music, color, flower):
+                            solution_found = (name, edu, music, color, flower)
+                            break
+                    if solution_found:
+                        break
+                if solution_found:
+                    break
+            if solution_found:
+                break
+        if solution_found:
+            break
+
+    if solution_found:
+        name, edu, music, color, flower = solution_found
+        rows = [
+            ["1", name[0], edu[0], music[0], color[0], flower[0]],
+            ["2", name[1], edu[1], music[1], color[1], flower[1]],
+            ["3", name[2], edu[2], music[2], color[2], flower[2]],
+            ["4", name[3], edu[3], music[3], color[3], flower[3]]
+        ]
+        result = {
+            "solution": {
+                "header": ["House", "Name", "Education", "MusicGenre", "Color", "Flower"],
+                "rows": rows
+            }
+        }
+        print(json.dumps(result, indent=2))
+    else:
+        print('No solution found')
+
+if __name__ == '__main__':
+    main()

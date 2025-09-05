@@ -1,0 +1,243 @@
+We are given 3 houses, each with a unique combination of attributes: Name, Smoothie, BookGenre.
+ Clues:
+ 1. The person who likes Cherry smoothies is somewhere to the left of the person who loves mystery books.
+ 2. Arnold is the person who loves mystery books.
+ 3. The person who loves science fiction books is not in the first house.
+ 4. The Desert smoothie lover is directly left of the person who loves mystery books.
+ 5. Peter is in the first house.
+
+ Steps:
+ - Since Peter is in house 1 (clue 5), we can assign Peter to house 1.
+ - From clue 2, Arnold loves mystery books. Let's denote the house of Arnold as the mystery book lover.
+ - From clue 4, the Desert smoothie lover is directly left of the mystery book lover (Arnold). So if Arnold is in house N, then desert smoothie is in house N-1.
+ - From clue 1, Cherry smoothie is left of Arnold (mystery books).
+ - From clue 3, science fiction books are not in house 1.
+
+ We have three houses: 1, 2, 3.
+
+ Let's denote:
+   Names: Eric, Arnold, Peter
+   Smoothies: desert, watermelon, cherry
+   BookGenres: science fiction, romance, mystery
+
+ We know:
+   House 1: Peter (name)
+
+ Now, where is Arnold?
+   Since desert smoothie is directly left of Arnold (mystery books), Arnold cannot be in house 1 (because no house left of 1). So Arnold is in house 2 or 3.
+
+ Consider the possibilities for Arnold's house:
+
+ Case 1: Arnold in house 2.
+   Then desert smoothie is in house 1 (directly left).
+   Then cherry smoothie must be left of Arnold (house 2) -> so cherry must be in house 1. But house 1 already has desert smoothie? Contradiction.
+
+ Case 2: Arnold in house 3.
+   Then desert smoothie is in house 2 (directly left).
+   Then cherry smoothie must be left of Arnold (house 3) -> so cherry can be in house 1 or 2. But house 2 has desert, so cherry must be in house 1.
+
+ So we have:
+   House 1: Peter, cherry smoothie, ?
+   House 2: ?, desert smoothie, ?
+   House 3: Arnold, ? (must be watermelon, because cherry and desert are taken), mystery books (by clue 2)
+
+ Now, book genres:
+   House 3 has mystery books (Arnold).
+   House 1 cannot have science fiction (clue 3), so house 1 must have romance.
+   Then house 2 must have science fiction.
+
+ Also, the name for house 2 must be Eric (since Peter is in 1 and Arnold in 3).
+
+ So the complete assignment:
+   House 1: Peter, cherry, romance
+   House 2: Eric, desert, science fiction
+   House 3: Arnold, watermelon, mystery
+
+ Let's verify all clues:
+   Clue 1: Cherry (house1) is left of mystery (house3) -> yes.
+   Clue 2: Arnold loves mystery -> yes (house3).
+   Clue 3: Science fiction is in house2 (not first) -> yes.
+   Clue 4: Desert smoothie (house2) is directly left of mystery books (house3) -> yes.
+   Clue 5: Peter in first house -> yes.
+
+ Therefore, we can code accordingly.
+
+ However, note: the problem asks for a program that algorithmically solves the puzzle. Since the puzzle is small, we can use constraint satisfaction by iterating over possibilities, but we can also use the logical deduction we just did.
+
+ But to be general, we'll set up a constraint satisfaction approach with the given constraints.
+
+ Steps in code:
+ 1. Define the domains for each house for each attribute.
+ 2. Use the clues to reduce the domains.
+ 3. We can use a brute force search over all possibilities (since only 3 houses, 3!*3!*3! = 6*6*6=216 possibilities, which is manageable).
+
+ However, note: the attributes are independent per category, but the assignment must be consistent (each attribute used exactly once per category).
+
+ We can represent the assignment for each house as:
+   house_i: { 'Name': ?, 'Smoothie': ?, 'BookGenre': ? }
+
+ We'll generate all possible assignments and then check against the constraints.
+
+ Alternatively, we can use constraint propagation. But for simplicity and clarity, we'll do:
+
+ Let's create lists for each attribute:
+   names = ['Eric', 'Arnold', 'Peter']
+   smoothies = ['desert', 'watermelon', 'cherry']
+   books = ['science fiction', 'romance', 'mystery']
+
+ And we have houses [1,2,3]
+
+ We'll iterate over all possible assignments of names to houses, smoothies to houses, and books to houses.
+
+ But note: the assignment for each attribute category is a permutation.
+
+ We can do:
+
+ for name_perm in all_permutations(names):  # name_perm[0] for house1, etc.
+   for smoothie_perm in all_permutations(smoothies):
+     for book_perm in all_permutations(books):
+        assignment = {
+          1: {'Name': name_perm[0], 'Smoothie': smoothie_perm[0], 'BookGenre': book_perm[0]},
+          2: {'Name': name_perm[1], 'Smoothie': smoothie_perm[1], 'BookGenre': book_perm[1]},
+          3: {'Name': name_perm[2], 'Smoothie': smoothie_perm[2], 'BookGenre': book_perm[2]}
+        }
+        then check constraints.
+
+ Constraints as functions:
+
+ Clue 1: The person who likes Cherry smoothies is somewhere to the left of the person who loves mystery books.
+   Find house with cherry smoothie: h_cherry
+   Find house with mystery books: h_mystery
+   Check h_cherry < h_mystery
+
+ Clue 2: Arnold is the person who loves mystery books.
+   So for the house with mystery books, the name must be Arnold.
+
+ Clue 3: The person who loves science fiction books is not in the first house.
+   So house1 cannot have book genre 'science fiction'
+
+ Clue 4: The Desert smoothie lover is directly left of the person who loves mystery books.
+   Let h_desert be the house with desert smoothie, and h_mystery as above.
+   Then h_desert + 1 == h_mystery
+
+ Clue 5: Peter is in the first house.
+   So house1 name is Peter.
+
+ We can break early if we know Peter is not in house1 in the current assignment.
+
+ Since the number of possibilities is small, we can do this.
+
+ Let's code accordingly.
+
+ Steps in code:
+   Import itertools for permutations.
+   Define the attributes.
+   Generate all permutations for names, smoothies, books.
+   Iterate and check constraints.
+
+ However, note: we can also use the constraints to reduce the permutations. For example, from clue 5, we know that the name for house1 must be Peter. So we can fix that.
+
+ We can pre-set:
+   name_perm must have name_perm[0] = 'Peter'
+
+ Similarly, from clue 2, the house with mystery books must have name 'Arnold'. So when we assign books, we know that the house with mystery must also have the name Arnold.
+
+ We can break the loops if we set the name for house1 to Peter, and then for the book assignment, the house with mystery must have Arnold, so we can check the name in that house.
+
+ Let's code with the brute force, but with some pre-filtering.
+
+ Alternatively, we can generate the permutations for names with house1 fixed to Peter, and for books we note that the house with mystery must have Arnold, so we can also fix that the name in the house with mystery must be Arnold.
+
+ We'll do:
+
+   for name_perm in permutations(names):
+      if name_perm[0] != 'Peter': continue
+
+   for book_perm in permutations(books):
+      # Find the house index for mystery book
+      mystery_house_index = None
+      for i in range(3):
+          if book_perm[i] == 'mystery':
+              mystery_house_index = i+1
+              break
+      # Check that in the name_perm, the name at mystery_house_index-1 is Arnold
+      if name_perm[mystery_house_index-1] != 'Arnold':
+          continue
+
+   Then for smoothie_perm in permutations(smoothies):
+        ... and then check the other constraints.
+
+ But note: we have to check clue 1 and clue 4 which involve smoothies and books.
+
+ Alternatively, we can do nested loops and check all constraints at the end.
+
+ Since the state space is small, we can do:
+
+   from itertools import permutations
+
+   houses = [1,2,3]
+   for name_perm in permutations(names):
+        if name_perm[0] != 'Peter': continue
+        for smoothie_perm in permutations(smoothies):
+            for book_perm in permutations(books):
+                # Create assignment
+                assignment = {}
+                for i, house in enumerate(houses):
+                    assignment[house] = {
+                        'Name': name_perm[i],
+                        'Smoothie': smoothie_perm[i],
+                        'BookGenre': book_perm[i]
+                    }
+
+                # Check constraints
+                # Clue 2: Arnold is the person who loves mystery books.
+                #   So find the house with mystery book, check name is Arnold.
+                mystery_house = None
+                for house in houses:
+                    if assignment[house]['BookGenre'] == 'mystery':
+                        mystery_house = house
+                        break
+                if mystery_house is None:
+                    continue
+                if assignment[mystery_house]['Name'] != 'Arnold':
+                    continue
+
+                # Clue 3: science fiction not in house1
+                if assignment[1]['BookGenre'] == 'science fiction':
+                    continue
+
+                # Clue 1: Cherry smoothie left of mystery book house
+                cherry_house = None
+                for house in houses:
+                    if assignment[house]['Smoothie'] == 'cherry':
+                        cherry_house = house
+                        break
+                if cherry_house is None or cherry_house >= mystery_house:
+                    continue
+
+                # Clue 4: Desert smoothie directly left of mystery book house
+                if mystery_house == 1:
+                    continue  # no house left of 1
+                if assignment[mystery_house-1]['Smoothie'] != 'desert':
+                    continue
+
+                # Clue 5 is already ensured by the name_perm filter.
+
+                # If we get here, we found the solution.
+
+ Then output the assignment in the required JSON format.
+
+ Let's code accordingly.
+
+ Note: We must output the solution for houses 1,2,3 in order.
+
+ We'll create the rows as:
+   rows = [
+        ["1", assignment[1]['Name'], assignment[1]['Smoothie'], assignment[1]['BookGenre']],
+        ["2", assignment[2]['Name'], assignment[2]['Smoothie'], assignment[2]['BookGenre']],
+        ["3", assignment[3]['Name'], assignment[3]['Smoothie'], assignment[3]['BookGenre']]
+   ]
+
+ And then output the JSON.
+
+ Let's write the code.

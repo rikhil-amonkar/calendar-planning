@@ -1,0 +1,186 @@
+We are getting a KeyError for 'Alice' in the assignment lookup.
+ This suggests that the assignment dictionary might not have an entry for 'Alice'.
+ The issue is that the backtracking algorithm and constraint propagation are working on the domains of each attribute.
+ However, note that the assignment dictionary is built by taking every attribute from the domains and assigning the single value.
+
+ The error occurs when we try to access assignment['Alice'] but 'Alice' might not be in the assignment dictionary?
+ But wait, the assignment dictionary is built by:
+   if all domains have one value, then assignment[attr] = that value for every attribute.
+   or by the backtracking function which should assign every attribute.
+
+ However, note that the backtracking function only assigns one attribute at a time and then propagates, but it does not necessarily assign every attribute until the end.
+
+ But in the code, after backtracking, we build the assignment for every attribute by the single value in the domain.
+
+ Alternatively, the error might be because the assignment dictionary in the backtracking function does not include every attribute until the very end.
+
+ Let me look at the backtracking function:
+
+   We are building the assignment by starting with an empty dictionary and then for the chosen variable we assign a value.
+
+   However, note that the assignment dictionary in backtracking is only used to store the current assignments, but the propagation might have already set all domains to one value.
+
+   The code after propagation and backtracking tries to build an assignment dictionary from the domains.
+
+   But wait: if we do backtracking, we return an assignment dictionary that has keys for every attribute? Actually, no.
+
+   The backtracking function returns the assignment dictionary that it built by assigning one variable at a time. However, note that the assignment dictionary in backtracking is built by:
+
+        new_assignment = assignment.copy()
+        new_assignment[attr] = value
+
+   So it only includes the variables that have been assigned by the backtracking search. But note: the propagation might have fixed the values of other variables, but they are not recorded in the assignment dictionary of the backtracking function.
+
+   This is a problem because after backtracking we try to build the houses from the assignment dictionary, but the assignment dictionary might not have all the attributes.
+
+   Actually, the backtracking function does not need to record every assignment in the assignment dictionary because the domains are already reduced to one value. So we should instead use the domains to build the assignment at the end.
+
+   However, the code after backtracking does:
+
+        if assignment is None:
+            raise Exception("No solution found")
+
+   And then uses the assignment dictionary to build the houses. But the assignment dictionary from backtracking might not have all the keys.
+
+   Instead, we should build the assignment dictionary from the domains after backtracking, just like we do if we don't need backtracking.
+
+   Let me change the code after backtracking:
+
+        if assignment is None:
+            raise Exception("No solution found")
+        else:
+            # But note: the assignment dictionary from backtracking might not have every attribute?
+            # Instead, we should use the domains from the backtracking? However, the backtracking function does not return the domains.
+
+   Alternatively, we can change the backtracking function to return the domains instead of the assignment.
+
+   But looking at the code, the backtracking function is called with the current domains and it returns an assignment (a dictionary of attribute to value) only for the variables it assigned? Actually, no: the backtracking function does not record the domains of the assigned variables.
+
+   Alternatively, we can build the assignment from the domains after backtracking, but note that the backtracking function does not modify the domains in place.
+
+   How about we change the backtracking function to return the updated domains on success, and then we build the assignment from the domains?
+
+   Alternatively, we can note that after backtracking, the domains should be reduced to one value for every attribute. So we can simply build the assignment from the domains that we passed to backtracking? But wait, the backtracking function does deepcopy and does not modify the original.
+
+   Let me restructure:
+
+   We have two cases:
+
+   Case 1: After initial propagation, all domains are single-valued -> we build assignment from domains.
+
+   Case 2: We need backtracking -> we call backtrack({}, domains) and it returns an assignment dictionary.
+
+   But the problem is that the backtracking function does not necessarily have the complete assignment for every attribute because it only records the assignments it made (and propagation might have fixed others without recording in the assignment dictionary).
+
+   So the correct approach is to have the backtracking function also propagate and then, when it finds a solution, the domains are all single-valued. Then we can build the assignment from the domains.
+
+   Alternatively, we can change the backtracking function to return the solved domains, but the current code does not do that.
+
+   Alternatively, we can change the backtracking function to not use an assignment dictionary at all, and instead just rely on the domains. Then when we have all domains of size 1, we can build the assignment.
+
+   However, the current backtracking function uses an assignment dictionary that is passed down and updated. This assignment dictionary is only used for the recursive calls and the solution return, but note that the solution return is the assignment dictionary which might be incomplete.
+
+   Let me change the backtracking function to build the assignment from the domains when a solution is found.
+
+   Actually, the condition for solution is:
+
+        if all(len(domains[attr]) == 1 for attr in domains):
+            return assignment   # But wait, the assignment might not have all the attributes.
+
+   We should instead return the domains and then build the assignment from the domains.
+
+   Alternatively, we can change the return to:
+
+        if all(len(domains[attr]) == 1 for attr in domains):
+            # Build assignment from domains
+            solution_assignment = {}
+            for attr in domains:
+                solution_assignment[attr] = next(iter(domains[attr]))
+            return solution_assignment
+
+   But note: the backtracking function is called with a copy of the domains, so we can do that.
+
+   However, the current code uses the assignment dictionary in the recursive call to pass the assignments made so far. We are not using the assignment dictionary for anything else, so we can get rid of it and just use the domains.
+
+   Alternatively, we can fix the issue by, after getting the assignment from backtracking, building the assignment for every attribute from the domains that were reduced during backtracking? But the backtracking function does not return the domains.
+
+   Given the time, let's change the backtracking function to return the solved domains instead of the assignment, and then build the assignment from the domains.
+
+   Alternatively, we can change the backtracking function to return the assignment dictionary that includes every attribute by building it from the domains at the solution node.
+
+   I will change the backtracking function to:
+
+        if all(len(domains[attr]) == 1 for attr in domains):
+            # Build assignment from domains
+            assignment = {}
+            for attr in domains:
+                assignment[attr] = next(iter(domains[attr]))
+            return assignment
+
+   And then we remove the assignment dictionary from the recursive calls and instead use the domains to check.
+
+   But wait, the current backtracking function uses the assignment dictionary to store the assignments made by the search. However, note that the assignment dictionary is not used in the constraint propagation. The propagation only uses the domains.
+
+   So we can remove the assignment dictionary entirely from the backtracking function and rely solely on the domains.
+
+   Let's refactor the backtracking function to not use an assignment dictionary.
+
+   We'll change the function to:
+
+        def backtrack(domains):
+            if all(len(domains[attr]) == 1 for attr in domains):
+                return domains   # return the solved domains
+
+            # Select unassigned variable
+            unassigned = [attr for attr in domains if len(domains[attr]) > 1]
+            attr = min(unassigned, key=lambda a: len(domains[a]))
+
+            for value in list(domains[attr]):
+                new_domains = copy.deepcopy(domains)
+                new_domains[attr] = {value}
+                new_domains = propagate(new_domains)
+
+                if any(len(new_domains[a]) == 0 for a in new_domains):
+                    continue
+
+                result = backtrack(new_domains)
+                if result is not None:
+                    return result
+
+            return None
+
+   Then after backtracking, we get the domains, and we build the assignment from the domains.
+
+   So the code after initial propagation becomes:
+
+        if all(len(domains[attr]) == 1 for attr in domains):
+            assignment = {attr: next(iter(domains[attr])) for attr in domains}
+        else:
+            solved_domains = backtrack(domains)
+            if solved_domains is None:
+                raise Exception("No solution found")
+            assignment = {attr: next(iter(solved_domains[attr])) for attr in solved_domains}
+
+   This way, we are sure that the assignment dictionary has every attribute.
+
+   Let's implement this change.
+
+   Note: This change might require more memory because we are copying domains in backtracking, but the problem is small.
+
+   We also need to remove the assignment parameter from the backtrack function and remove the assignment dictionary in the recursive call.
+
+   Let's update the code accordingly.
+
+   Also, note that the initial propagation might have already solved the problem, so we don't need to call backtracking.
+
+   We'll change the backtrack function to take only the domains.
+
+   However, note that the propagate function uses the constraints that we defined, which are the same.
+
+   Let's rewrite the backtrack function without assignment.
+
+   We'll also remove the assignment dictionary from the recursive call.
+
+   This should fix the issue because we are building the assignment from the domains which include every attribute.
+
+   Let's generate the code accordingly.

@@ -1,0 +1,61 @@
+import itertools
+import json
+
+def main():
+    names = ["Eric", "Arnold", "Peter"]
+    heights = ["short", "very short", "average"]
+    houses = [1, 2, 3]
+    
+    # Generate all possible permutations of names and heights
+    for name_perm in itertools.permutations(names):
+        for height_perm in itertools.permutations(heights):
+            assignment = list(zip(houses, name_perm, height_perm))
+            
+            # Check constraints
+            valid = True
+            
+            # Constraint 1: Eric not in first house
+            if assignment[0][1] == "Eric":
+                valid = False
+                
+            # Constraint 2: Very short left of short
+            very_short_index = None
+            short_index = None
+            for i, (_, _, height) in enumerate(assignment):
+                if height == "very short":
+                    very_short_index = i
+                if height == "short":
+                    short_index = i
+            if very_short_index is None or short_index is None or very_short_index >= short_index:
+                valid = False
+                
+            # Constraint 3: Very short is Eric
+            for house, name, height in assignment:
+                if height == "very short" and name != "Eric":
+                    valid = False
+                if name == "Eric" and height != "very short":
+                    valid = False
+                    
+            # Constraint 4: Arnold not in first house
+            if assignment[0][1] == "Arnold":
+                valid = False
+                
+            if valid:
+                # Format the solution
+                rows = []
+                for house, name, height in assignment:
+                    rows.append([str(house), name, height])
+                
+                result = {
+                    "solution": {
+                        "header": ["House", "Name", "Height"],
+                        "rows": rows
+                    }
+                }
+                print(json.dumps(result, indent=2))
+                return
+                
+    print('{"solution": {}}')
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,54 @@
+```python
+import itertools
+import json
+
+def main():
+    names = ['Peter', 'Arnold', 'Alice', 'Eric']
+    colors = ['yellow', 'green', 'red', 'white']
+    
+    # Generate all permutations of names and colors for 4 houses
+    for name_perm in itertools.permutations(names):
+        # Constraint 2: Peter is in first house
+        if name_perm[0] != 'Peter':
+            continue
+            
+        for color_perm in itertools.permutations(colors):
+            # Constraint 1: Green color in third house
+            if color_perm[2] != 'green':
+                continue
+                
+            # Constraint 5: Eric loves yellow
+            eric_index = name_perm.index('Eric')
+            if color_perm[eric_index] != 'yellow':
+                continue
+                
+            # Constraint 4: Arnold directly left of Eric
+            arnold_index = name_perm.index('Arnold')
+            if arnold_index + 1 != eric_index:
+                continue
+                
+            # Constraint 3: One house between red and yellow
+            yellow_index = color_perm.index('yellow')
+            red_index = color_perm.index('red')
+            if abs(red_index - yellow_index) != 2:
+                continue
+                
+            # Found valid solution
+            rows = []
+            for i in range(4):
+                rows.append([str(i+1), name_perm[i], color_perm[i]])
+                
+            result = {
+                "solution": {
+                    "header": ["House", "Name", "Color"],
+                    "rows": rows
+                }
+            }
+            print(json.dumps(result))
+            return
+            
+    print(json.dumps({"error": "No solution found"}))
+
+if __name__ == "__main__":
+    main()
+```

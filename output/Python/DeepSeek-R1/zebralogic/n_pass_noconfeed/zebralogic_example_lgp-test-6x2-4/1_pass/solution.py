@@ -1,0 +1,67 @@
+import json
+
+def main():
+    # Initialize arrays for houses 1 to 6 (index 0 to 5)
+    names = [None] * 6
+    phones = [None] * 6
+    
+    # Apply clues
+    # Clue 2: Huawei P50 in first house
+    phones[0] = "huawei p50"
+    # Clue 3: OnePlus 9 in sixth house
+    phones[5] = "oneplus 9"
+    # Clue 7: Huawei P50 user is Eric -> Eric in first house
+    names[0] = "Eric"
+    # Clue 8: Xiaomi Mi 11 in third house
+    phones[2] = "xiaomi mi 11"
+    # Clue 10: Arnold uses OnePlus 9 -> Arnold in sixth house
+    names[5] = "Arnold"
+    
+    # Determine available phones
+    all_phones = {"huawei p50", "iphone 13", "xiaomi mi 11", "oneplus 9", "samsung galaxy s21", "google pixel 6"}
+    assigned_phones = set(phones) - {None}
+    available_phones = list(all_phones - assigned_phones)
+    
+    # Clue 4 and 5: Google Pixel 6 and iPhone 13 not in second house
+    # So second house must have Samsung Galaxy S21
+    phones[1] = "samsung galaxy s21"
+    
+    # Remaining phones: iPhone 13 and Google Pixel 6 for houses 4 and 5 (indices 3 and 4)
+    # Clue 1: iPhone 13 user is Alice
+    # Clue 9: Alice left of Carol
+    # Since houses 1 and 6 are occupied by Eric and Arnold, Alice must be in house 4 or 5
+    # If Alice in house 5, Carol would need to be right (house 6), but house 6 is Arnold -> impossible
+    # So Alice must be in house 4 (index 3) with iPhone 13
+    names[3] = "Alice"
+    phones[3] = "iphone 13"
+    
+    # Then house 5 (index 4) gets Google Pixel 6
+    phones[4] = "google pixel 6"
+    # Carol must be in house 5 (right of Alice)
+    names[4] = "Carol"
+    
+    # Remaining names: Bob and Peter for houses 2 and 3 (indices 1 and 2)
+    # Clue 6: One house between Bob and Carol (house 5)
+    # Possible positions for Bob: house 3 (|3-5|=2) or house 7 (invalid)
+    names[2] = "Bob"
+    # Remaining name Peter goes to house 2
+    names[1] = "Peter"
+    
+    # Build output
+    solution = {
+        "solution": {
+            "header": ["House", "Name", "PhoneModel"],
+            "rows": []
+        }
+    }
+    
+    for i in range(6):
+        house_num = str(i + 1)
+        name = names[i]
+        phone = phones[i]
+        solution["solution"]["rows"].append([house_num, name, phone])
+    
+    print(json.dumps(solution, indent=2))
+
+if __name__ == "__main__":
+    main()

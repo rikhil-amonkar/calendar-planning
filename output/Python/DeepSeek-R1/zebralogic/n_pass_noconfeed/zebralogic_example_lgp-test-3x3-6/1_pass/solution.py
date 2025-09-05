@@ -1,0 +1,83 @@
+import itertools
+import json
+
+def main():
+    houses = [1, 2, 3]
+    names = ['Eric', 'Arnold', 'Peter']
+    genres = ['mystery', 'science fiction', 'romance']
+    vacations = ['mountain', 'beach', 'city']
+    
+    for name_perm in itertools.permutations(names):
+        for genre_perm in itertools.permutations(genres):
+            for vacation_perm in itertools.permutations(vacations):
+                assignment = {
+                    1: {'Name': name_perm[0], 'BookGenre': genre_perm[0], 'Vacation': vacation_perm[0]},
+                    2: {'Name': name_perm[1], 'BookGenre': genre_perm[1], 'Vacation': vacation_perm[1]},
+                    3: {'Name': name_perm[2], 'BookGenre': genre_perm[2], 'Vacation': vacation_perm[2]}
+                }
+                
+                # Constraint 1: Eric directly left of Arnold
+                eric_house = None
+                arnold_house = None
+                for i in houses:
+                    if assignment[i]['Name'] == 'Eric':
+                        eric_house = i
+                    if assignment[i]['Name'] == 'Arnold':
+                        arnold_house = i
+                if eric_house is None or arnold_house is None or eric_house + 1 != arnold_house:
+                    continue
+                    
+                # Constraint 2: Peter right of beach vacation
+                peter_house = None
+                beach_house = None
+                for i in houses:
+                    if assignment[i]['Name'] == 'Peter':
+                        peter_house = i
+                    if assignment[i]['Vacation'] == 'beach':
+                        beach_house = i
+                if peter_house is None or beach_house is None or peter_house <= beach_house:
+                    continue
+                    
+                # Constraint 3: Peter prefers city breaks
+                if assignment[peter_house]['Vacation'] != 'city':
+                    continue
+                    
+                # Constraint 4: Mystery books left of beach vacations
+                mystery_house = None
+                for i in houses:
+                    if assignment[i]['BookGenre'] == 'mystery':
+                        mystery_house = i
+                if mystery_house is None or mystery_house >= beach_house:
+                    continue
+                    
+                # Constraint 5: Sci-fi books same as beach vacations
+                sci_fi_house = None
+                for i in houses:
+                    if assignment[i]['BookGenre'] == 'science fiction':
+                        sci_fi_house = i
+                if sci_fi_house != beach_house:
+                    continue
+                    
+                # Found valid assignment
+                rows = []
+                for house in houses:
+                    rows.append([
+                        str(house),
+                        assignment[house]['Name'],
+                        assignment[house]['BookGenre'],
+                        assignment[house]['Vacation']
+                    ])
+                
+                result = {
+                    "solution": {
+                        "header": ["House", "Name", "BookGenre", "Vacation"],
+                        "rows": rows
+                    }
+                }
+                print(json.dumps(result, indent=2))
+                return
+                
+    print("No solution found")
+
+if __name__ == "__main__":
+    main()

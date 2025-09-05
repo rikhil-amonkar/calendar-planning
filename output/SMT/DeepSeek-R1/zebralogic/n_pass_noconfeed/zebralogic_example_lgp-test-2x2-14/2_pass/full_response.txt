@@ -1,0 +1,58 @@
+```python
+import z3
+import json
+
+def main():
+    # Create a solver
+    solver = z3.Solver()
+    
+    # Define the houses
+    houses = [1, 2]
+    
+    # Define attributes using enums
+    Name = z3.EnumSort('Name', ['Eric', 'Arnold'])
+    Food = z3.EnumSort('Food', ['pizza', 'grilled_cheese'])
+    
+    # Create variables for each house's attributes
+    name_vars = [z3.Const(f'name_{i}', Name) for i in houses]
+    food_vars = [z3.Const(f'food_{i}', Food) for i in houses]
+    
+    # All attributes are distinct
+    solver.add(z3.Distinct(name_vars))
+    solver.add(z3.Distinct(food_vars))
+    
+    # Clue 1: The person who is a pizza lover is in the second house.
+    pizza = z3.Const('pizza', Food)
+    solver.add(food_vars[1] == pizza)
+    
+    # Clue 2: Arnold is not in the first house.
+    arnold = z3.Const('Arnold', Name)
+    solver.add(name_vars[0] != arnold)
+    
+    # Check for solution
+    if solver.check() == z3.sat:
+        model = solver.model()
+        
+        # Prepare results
+        header = ["House", "Name", "Food"]
+        rows = []
+        for i in houses:
+            house_index = i - 1
+            name_val = str(model.eval(name_vars[house_index]))
+            food_val = str(model.eval(food_vars[house_index])).replace('_', ' ')
+            rows.append([str(i), name_val, food_val])
+        
+        # Format as JSON
+        solution = {
+            "solution": {
+                "header": header,
+                "rows": rows
+            }
+        }
+        print(json.dumps(solution, indent=2))
+    else:
+        print('No solution found')
+
+if __name__ == '__main__':
+    main()
+```

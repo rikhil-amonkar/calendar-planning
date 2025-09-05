@@ -1,0 +1,639 @@
+We are going to use constraint satisfaction to solve the puzzle.
+ Since there are 6 houses and 3 attributes (each with 6 possibilities), we can represent the state as:
+   houses = [1,2,3,4,5,6]
+   We have three lists for the three attributes: names, occupations, car models.
+
+ We'll create a list of dictionaries for each house, initially with all possibilities for each attribute.
+
+ Steps:
+ 1. Define the domains for each attribute.
+ 2. Use the clues to reduce the domains.
+
+ However, note that the problem is small enough that we can use a brute-force search over all permutations?
+ But we have 6! * 6! * 6! which is too big (around 10^15). So we need to use constraint propagation.
+
+ Alternatively, we can assign each house a tuple (name, occupation, car) and then use the constraints to narrow down.
+
+ We can use a constraint solver, but we are to write the code without external libraries.
+
+ Approach:
+ We'll create a class or functions that represent the problem.
+
+ Alternatively, we can use a dictionary for each house and then use the constraints to eliminate possibilities.
+
+ Let's represent the state as:
+   houses = {1: {'name': set(all_names), 'occupation': set(all_occupations), 'car': set(all_cars)},
+             2: ... }
+
+ Then we iterate over the constraints and reduce the possibilities.
+
+ However, some constraints are binary (like next to, left of, etc.) and we may need to use AC-3 or similar.
+
+ Since the problem is small (6 houses) and the constraints are many, we can use a recursive backtracking search with forward checking.
+
+ But let's try to do it with iterative constraint propagation first, and if that doesn't yield a unique solution, then we do search.
+
+ Steps:
+
+ 1. Initialize the domains for each house for each variable.
+
+ 2. Apply the unary constraints (clues that directly assign or remove values for a house).
+
+ 3. Apply binary constraints (like next to, left of, etc.) by iterating until no change.
+
+ 4. If we still have multiple possibilities, we might need to do a search (but hopefully the constraints are tight enough).
+
+ However, note that the problem has 6 houses and 18 variables (each house has 3 attributes). We can represent the problem as a CSP with 18 variables, each with domain of size 6, but note that the attributes are independent per category (the names are assigned to houses, etc.)
+
+ Alternatively, we can have three sets of variables: 
+   name_i for house i (domain: names)
+   occupation_i for house i (domain: occupations)
+   car_i for house i (domain: cars)
+
+ And the constraints are between these variables.
+
+ But note: the constraints are both within the same house (like clue 11: the nurse owns Toyota Camry) and between houses (like clue 3: Honda Civic and Peter are next to each other).
+
+ We'll create a CSP for the three attributes.
+
+ However, to keep it simple, we can use a table of 6 houses and for each house, we have three variables. We'll use constraint propagation by iterating the constraints until no change.
+
+ Since the problem is small, we can also use a backtracking algorithm that assigns values to each house for all three attributes, but that would be 18 variables each with 6 values -> 6^18 which is huge.
+
+ Alternatively, we can assign one attribute at a time? But the constraints mix attributes.
+
+ Another idea: since the houses are ordered, we can use the constraints to assign values step by step.
+
+ Let me list the clues again and see which ones give direct assignments:
+
+ Clue 1: car[5] = 'ford f150'
+ Clue 2: car[2] != 'chevrolet silverado'
+ Clue 3: The house with Honda Civic and the house with Peter are adjacent.
+ Clue 4: occupation[5] != 'lawyer'
+ Clue 5: nurse is left of artist (so if nurse is in i, artist in i+1)
+ Clue 6: Carol is right of Eric (so Eric left of Carol)
+ Clue 7: Eric is doctor -> so occupation of Eric's house is doctor, and we know Eric's name, so we can set that house's occupation to doctor and name to Eric.
+ Clue 8: teacher is left of nurse (so teacher in j, nurse in k, j < k)
+ Clue 9: Carol not in house 6 -> so Carol in 1-5
+ Clue 10: Bob is engineer -> so Bob's occupation is engineer.
+ Clue 11: The nurse owns Toyota Camry -> so the car of the nurse is Toyota Camry, and by clue 5, the artist is immediately right of the nurse.
+ Clue 12: One house between Peter and lawyer -> |house(Peter) - house(lawyer)| = 2
+ Clue 13: One house between Tesla Model 3 and Bob -> |house(Tesla) - house(Bob)| = 2
+ Clue 14: Arnold is artist -> so Arnold's occupation is artist.
+
+ We also know that each attribute is unique per house.
+
+ Let's try to assign what we know:
+
+ From clue 1: house 5 car = 'ford f150'
+ From clue 4: house 5 occupation != 'lawyer'
+ From clue 7: Eric is doctor -> so the house where name is Eric has occupation doctor.
+ From clue 10: Bob is engineer -> so the house where name is Bob has occupation engineer.
+ From clue 14: Arnold is artist -> so the house where name is Arnold has occupation artist.
+
+ Also from clue 11: nurse owns Toyota Camry, and from clue 5, nurse is left of artist (by one). And from clue 8, teacher is left of nurse (not necessarily adjacent).
+
+ And from clue 14, artist is Arnold, so nurse is left of Arnold.
+
+ Also, from clue 6: Carol is right of Eric, so Eric is left of Carol.
+
+ From clue 9: Carol not in 6, so Carol in 2,3,4,5 and Eric in 1,2,3,4 (since Eric left of Carol)
+
+ Now, let's list the names: Alice, Arnold, Eric, Peter, Bob, Carol
+ Occupations: engineer, artist, doctor, teacher, nurse, lawyer
+ Cars: chevrolet silverado, ford f150, honda civic, toyota camry, bmw 3 series, tesla model 3
+
+ We can start by creating a grid of possibilities for each house for each attribute.
+
+ We'll create a class to manage the domains.
+
+ However, for the sake of time and clarity, we'll use a recursive backtracking with forward checking, but we note that the state space is 6! * 6! * 6! which is 6^6 * 6^6 * 6^6 = (6!)^3 = (720)^3 = 373248000, which is too big for naive backtracking.
+
+ Alternatively, we can use a more efficient representation: we assign the houses one by one for all attributes? But that would be 18 variables, each with 6 options, which is 6^18, which is 1.0e14, which is too big.
+
+ We need to use the constraints to reduce the domains first.
+
+ Another idea: since the attributes are independent, we can assign one attribute at a time for all houses, but then we have to check constraints that cross attributes.
+
+ Alternatively, we can use a CSP solver that uses the following variables:
+
+   For each house i, we have three variables: name_i, occupation_i, car_i.
+
+   Constraints:
+
+   AllDifferent for names, for occupations, for cars.
+
+   And then the specific constraints.
+
+ We can use the AC-3 algorithm for constraint propagation.
+
+ But given the time, and since the problem is small (only 6 houses), we can try to do it by hand in code? Or we can use a systematic constraint propagation.
+
+ Alternatively, we can use a backtracking algorithm that assigns values to one house at a time for all three attributes, but then we have 6 houses, and for each house we have 6*6*6=216 possibilities, so 216^6 = 2.0e14, which is too big.
+
+ We need to use forward checking and maintain arc consistency.
+
+ Alternatively, we can assign one attribute across all houses first, then the next, then the next. For example, assign names to houses, then occupations, then cars, but then we have to check constraints that involve multiple attributes.
+
+ We can do:
+
+   Step 1: Assign the attributes that are fixed by the clues.
+
+   Step 2: Use the constraints to reduce the domains.
+
+   Step 3: If we still have multiple possibilities, we do search.
+
+ Given the complexity, I will try to use a constraint propagation approach with iterative reduction of domains.
+
+ We'll create a dictionary for each house and for each attribute, we keep a set of possible values.
+
+ Then we'll create a list of constraints (functions that reduce the domains).
+
+ We'll iterate until no change.
+
+ Let's define the constraints as functions that take the domains and return True if there was a change.
+
+ We'll have:
+
+   domains: a list of 6 dictionaries. Each dictionary has keys: 'name', 'occupation', 'car'
+
+   Initially, each house has full sets for each attribute.
+
+   Then we apply the unary constraints.
+
+   Then we apply binary constraints.
+
+   We also have all-different constraints for each attribute across houses.
+
+ We can represent the all-different constraints by, for each value in an attribute, if it appears in only one house for that attribute, then we remove other values for that house's attribute? Actually, we can use forward checking for all-different.
+
+ Alternatively, we can use a function that, for each attribute, checks if a value is only possible in one house, then assign it.
+
+ We'll create a function for that.
+
+ Let's code accordingly.
+
+ Steps in code:
+
+ 1. Initialize the domains.
+
+ 2. Apply unary constraints.
+
+ 3. Apply binary constraints and all-different until no change.
+
+ 4. If still not solved, then we might need to do search, but let's hope the constraints are enough.
+
+ However, note that the problem is designed to be solved by hand, so constraint propagation might be enough.
+
+ Let's code the constraints.
+
+ We'll create a function for each constraint.
+
+ But note: some constraints are between attributes of the same house, and some between different houses.
+
+ We'll create a function for each clue.
+
+ We'll also create a function for the all-different constraint.
+
+ We'll loop until no change, applying all constraints.
+
+ Let's define the domains structure:
+
+   domains = [
+        { 'name': set(['Alice','Arnold','Eric','Peter','Bob','Carol']),
+          'occupation': set(['engineer','artist','doctor','teacher','nurse','lawyer']),
+          'car': set(['chevrolet silverado','ford f150','honda civic','toyota camry','bmw 3 series','tesla model 3']) },
+        ... for each house
+   ]
+
+ Then we apply:
+
+   clue1: house4 (index4) car must be 'ford f150' -> so set domains[4]['car'] = {'ford f150'}
+
+   clue2: house1 (index1) car cannot be 'chevrolet silverado' -> remove it from the set.
+
+   clue3: The house with Honda Civic and Peter are adjacent. This is a binary constraint between the car attribute (Honda Civic) and the name attribute (Peter). We can express it as: for each house i, if it has Honda Civic, then Peter must be in i-1 or i+1. Similarly, if a house has Peter, then Honda Civic must be in adjacent.
+
+   We can write a function that iterates over houses and removes possibilities that violate this.
+
+   Similarly for the others.
+
+ We'll write a function for each constraint.
+
+ However, note: we might need to do forward checking after each removal.
+
+ Alternatively, we can use a constraint propagation algorithm like AC-3.
+
+ Given the time, I will try to code a simple iterative constraint propagation with functions for each clue, and also all-different constraints.
+
+ We'll also have a function for all-different that, for each attribute, if a value is only possible in one house, then remove that value from other houses' attribute sets.
+
+ Let's code accordingly.
+
+ We'll create a function `all_different` that enforces for each attribute that the values must be different across houses.
+
+ Steps for all_different:
+
+   For each attribute (name, occupation, car):
+        For each value in the domain of that attribute, check how many houses have that value in their current set.
+        If only one house has that value, then remove that value from other houses.
+        Also, if a house has only one value left, then remove that value from other houses for that attribute.
+
+ We'll also create a function `propagate` that applies all constraints until no change.
+
+ We'll have a list of constraint functions.
+
+ Let's code the constraints as functions that modify the domains and return True if they made a change.
+
+ We'll do:
+
+   changed = True
+   while changed:
+        changed = False
+        for constraint in constraints:
+            changed |= constraint(domains)
+
+   We'll also include the all_different constraint in the loop.
+
+ Now, let's write each constraint function.
+
+ Note: We have to be careful with indices: houses are 1-indexed in the clues, but our list is 0-indexed.
+
+ We'll define:
+
+   house0 = house1, house1 = house2, ... house5 = house6.
+
+ So for clue1: car of house4 (index4) is 'ford f150'
+
+ Let's write the constraint functions:
+
+   def clue1(domains):
+        # The person who owns a Ford F-150 is in the fifth house.
+        # So set house4 car to {'ford f150'}, and remove other cars for house4.
+        if domains[4]['car'] != {'ford f150'}:
+            domains[4]['car'] = {'ford f150'}
+            return True
+        return False
+
+   def clue2(domains):
+        # The person who owns a Chevrolet Silverado is not in the second house.
+        # So remove 'chevrolet silverado' from house1 (index1) car.
+        if 'chevrolet silverado' in domains[1]['car']:
+            domains[1]['car'].remove('chevrolet silverado')
+            return True
+        return False
+
+   def clue3(domains):
+        # The person who owns a Honda Civic and Peter are next to each other.
+        changed = False
+        # We'll iterate over each house and check for Honda Civic and Peter
+        for i in range(6):
+            # Check if house i has Honda Civic in its car possibilities
+            if 'honda civic' in domains[i]['car']:
+                # Then Peter must be in adjacent house (i-1 or i+1)
+                possible_peter_houses = set()
+                if i-1 >= 0:
+                    possible_peter_houses.add(i-1)
+                if i+1 < 6:
+                    possible_peter_houses.add(i+1)
+                # If currently the Peter name is not in any of these houses, then we must remove Honda Civic from house i?
+                # Actually, we need to check: if for every possible adjacent house, Peter is not possible, then remove Honda Civic from house i.
+                # Alternatively, we can remove the possibility of Peter in non-adjacent houses if house i has Honda Civic.
+
+                # Let's check the adjacent houses: if none of them can be Peter, then we remove Honda Civic from house i.
+                found = False
+                for j in possible_peter_houses:
+                    if 'Peter' in domains[j]['name']:
+                        found = True
+                        break
+                if not found:
+                    domains[i]['car'].remove('honda civic')
+                    changed = True
+
+            # Similarly for Peter: if house i has Peter, then Honda Civic must be in adjacent house.
+            if 'Peter' in domains[i]['name']:
+                possible_honda_houses = set()
+                if i-1 >= 0:
+                    possible_honda_houses.add(i-1)
+                if i+1 < 6:
+                    possible_honda_houses.add(i+1)
+                found = False
+                for j in possible_honda_houses:
+                    if 'honda civic' in domains[j]['car']:
+                        found = True
+                        break
+                if not found:
+                    domains[i]['name'].remove('Peter')
+                    changed = True
+
+        return changed
+
+   Similarly, we'll write for the other clues.
+
+   But note: some clues are unary and already applied in the initial constraints, but we'll write them as functions too for the iterative process.
+
+   However, clue4: The person who is a lawyer is not in the fifth house.
+        So remove 'lawyer' from house4 (index4) occupation.
+
+   clue5: The person who is a nurse is directly left of the person who is an artist.
+        So for each house i (except the last), if nurse is in house i, then artist must be in house i+1.
+        And if artist is in house j, then nurse must be in house j-1.
+
+   We can write:
+        for i in range(5): # house0 to house4
+            if 'nurse' in domains[i]['occupation']:
+                # then artist must be in house i+1
+                if 'artist' not in domains[i+1]['occupation']:
+                    # then remove nurse from house i
+                    domains[i]['occupation'].remove('nurse')
+                    changed = True
+            if 'artist' in domains[i+1]['occupation']:
+                if 'nurse' not in domains[i]['occupation']:
+                    domains[i+1]['occupation'].remove('artist')
+                    changed = True
+
+        But note: it's possible that the domains might have multiple values, so we have to check if the condition is violated.
+
+        Alternatively, we can do:
+            For each house i, if it has nurse, then house i+1 must have artist.
+            So if house i has nurse, and house i+1 does not have artist in its possibilities, then remove nurse from house i.
+
+            Similarly, if house i+1 has artist, then house i must have nurse.
+
+        This is correct.
+
+   clue6: Carol is somewhere to the right of Eric.
+        So Eric cannot be in house5 or house6? Actually, Eric can be in house1-5, but Carol must be right of Eric.
+        We can express: for each house i, if Eric is in house i, then Carol must be in house j>i.
+        Similarly, if Carol is in house i, then Eric must be in house j<i.
+
+        We can do:
+            for i in range(6):
+                if 'Eric' in domains[i]['name']:
+                    # Check if there is any house j>i that has Carol
+                    found = False
+                    for j in range(i+1,6):
+                        if 'Carol' in domains[j]['name']:
+                            found = True
+                            break
+                    if not found:
+                        domains[i]['name'].remove('Eric')
+                        changed = True
+
+                if 'Carol' in domains[i]['name']:
+                    found = False
+                    for j in range(0, i):
+                        if 'Eric' in domains[j]['name']:
+                            found = True
+                            break
+                    if not found:
+                        domains[i]['name'].remove('Carol')
+                        changed = True
+
+   clue7: The person who is a doctor is Eric.
+        So for each house, if the name is Eric, then occupation must be doctor, and vice versa.
+        We can do:
+            for i in range(6):
+                if 'Eric' in domains[i]['name'] and 'doctor' not in domains[i]['occupation']:
+                    domains[i]['occupation'].add('doctor') # wait, no, we are reducing, so we set?
+                    Actually, we want to set the occupation to doctor if Eric is there, and remove other occupations?
+                But note: we are maintaining sets. So we can set the occupation of house i to doctor if Eric is there, and also set the name of house i to Eric if doctor is there.
+
+        Alternatively, we can do:
+            for i in range(6):
+                if 'Eric' in domains[i]['name']:
+                    # then occupation must be doctor
+                    if domains[i]['occupation'] != {'doctor'}:
+                        domains[i]['occupation'] = {'doctor'}
+                        changed = True
+                if 'doctor' in domains[i]['occupation']:
+                    if domains[i]['name'] != {'Eric'}:
+                        domains[i]['name'] = {'Eric'}
+                        changed = True
+
+   clue8: The person who is a teacher is somewhere to the left of the person who is a nurse.
+        So teacher house index < nurse house index.
+        We can do similar to clue6.
+
+        For each house i, if teacher is in house i, then there must be a nurse in a house j>i.
+        For each house i, if nurse is in house i, then there must be a teacher in a house j<i.
+
+        for i in range(6):
+            if 'teacher' in domains[i]['occupation']:
+                found = False
+                for j in range(i+1,6):
+                    if 'nurse' in domains[j]['occupation']:
+                        found = True
+                        break
+                if not found:
+                    domains[i]['occupation'].remove('teacher')
+                    changed = True
+
+            if 'nurse' in domains[i]['occupation']:
+                found = False
+                for j in range(0, i):
+                    if 'teacher' in domains[j]['occupation']:
+                        found = True
+                        break
+                if not found:
+                    domains[i]['occupation'].remove('nurse')
+                    changed = True
+
+   clue9: Carol is not in the sixth house.
+        So remove Carol from house5 (index5) name.
+        if 'Carol' in domains[5]['name']:
+            domains[5]['name'].remove('Carol')
+            changed = True
+
+   clue10: The person who is an engineer is Bob.
+        Similarly to clue7:
+            for i in range(6):
+                if 'Bob' in domains[i]['name']:
+                    if domains[i]['occupation'] != {'engineer'}:
+                        domains[i]['occupation'] = {'engineer'}
+                        changed = True
+                if 'engineer' in domains[i]['occupation']:
+                    if domains[i]['name'] != {'Bob'}:
+                        domains[i]['name'] = {'Bob'}
+                        changed = True
+
+   clue11: The person who owns a Toyota Camry is the person who is a nurse.
+        Similarly to clue7:
+            for i in range(6):
+                if 'nurse' in domains[i]['occupation']:
+                    if domains[i]['car'] != {'toyota camry'}:
+                        domains[i]['car'] = {'toyota camry'}
+                        changed = True
+                if 'toyota camry' in domains[i]['car']:
+                    if domains[i]['occupation'] != {'nurse'}:
+                        domains[i]['occupation'] = {'nurse'}
+                        changed = True
+
+   clue12: There is one house between Peter and the person who is a lawyer.
+        So |house(Peter) - house(lawyer)| = 2.
+        We can do:
+            for i in range(6):
+                if 'Peter' in domains[i]['name']:
+                    # lawyer must be in i-2 or i+2
+                    possible_lawyer_houses = set()
+                    if i-2 >=0:
+                        possible_lawyer_houses.add(i-2)
+                    if i+2 <6:
+                        possible_lawyer_houses.add(i+2)
+                    # Check if any of these houses have lawyer
+                    found = False
+                    for j in possible_lawyer_houses:
+                        if 'lawyer' in domains[j]['occupation']:
+                            found = True
+                            break
+                    if not found:
+                        domains[i]['name'].remove('Peter')
+                        changed = True
+
+                if 'lawyer' in domains[i]['occupation']:
+                    possible_peter_houses = set()
+                    if i-2 >=0:
+                        possible_peter_houses.add(i-2)
+                    if i+2 <6:
+                        possible_peter_houses.add(i+2)
+                    found = False
+                    for j in possible_peter_houses:
+                        if 'Peter' in domains[j]['name']:
+                            found = True
+                            break
+                    if not found:
+                        domains[i]['occupation'].remove('lawyer')
+                        changed = True
+
+   clue13: There is one house between the person who owns a Tesla Model 3 and Bob.
+        Similarly to clue12, but with car and name.
+        |house(Tesla) - house(Bob)| = 2.
+
+        for i in range(6):
+            if 'tesla model 3' in domains[i]['car']:
+                possible_bob_houses = set()
+                if i-2>=0: possible_bob_houses.add(i-2)
+                if i+2<6: possible_bob_houses.add(i+2)
+                found = False
+                for j in possible_bob_houses:
+                    if 'Bob' in domains[j]['name']:
+                        found = True
+                        break
+                if not found:
+                    domains[i]['car'].remove('tesla model 3')
+                    changed = True
+
+            if 'Bob' in domains[i]['name']:
+                possible_tesla_houses = set()
+                if i-2>=0: possible_tesla_houses.add(i-2)
+                if i+2<6: possible_tesla_houses.add(i+2)
+                found = False
+                for j in possible_tesla_houses:
+                    if 'tesla model 3' in domains[j]['car']:
+                        found = True
+                        break
+                if not found:
+                    domains[i]['name'].remove('Bob')
+                    changed = True
+
+   clue14: Arnold is the person who is an artist.
+        Similarly to clue7 and clue10:
+            for i in range(6):
+                if 'Arnold' in domains[i]['name']:
+                    if domains[i]['occupation'] != {'artist'}:
+                        domains[i]['occupation'] = {'artist'}
+                        changed = True
+                if 'artist' in domains[i]['occupation']:
+                    if domains[i]['name'] != {'Arnold'}:
+                        domains[i]['name'] = {'Arnold'}
+                        changed = True
+
+ We also need an all_different function for each attribute:
+
+   def all_different(domains):
+        changed = False
+        # For each attribute
+        for attr in ['name','occupation','car']:
+            # For each value in the domain of that attribute, check the houses that have that value.
+            value_to_houses = {}
+            for i in range(6):
+                for value in domains[i][attr]:
+                    if value not in value_to_houses:
+                        value_to_houses[value] = set()
+                    value_to_houses[value].add(i)
+
+            # For each value, if it appears in only one house, then remove other values for that house's attribute?
+            # Actually, we want to remove the value from other houses for that attribute.
+            for value, houses_set in value_to_houses.items():
+                if len(houses_set) == 1:
+                    house_index = list(houses_set)[0]
+                    # If this house's attribute set has more than one value, then set it to this value.
+                    if domains[house_index][attr] != {value}:
+                        domains[house_index][attr] = {value}
+                        changed = True
+
+            # Also, for each house, if an attribute has only one value, then remove that value from other houses for that attribute.
+            for i in range(6):
+                if len(domains[i][attr]) == 1:
+                    value = list(domains[i][attr])[0]
+                    for j in range(6):
+                        if j != i and value in domains[j][attr]:
+                            domains[j][attr].remove(value)
+                            changed = True
+
+        return changed
+
+ Now, we'll create a list of constraint functions including all the clues and the all_different.
+
+ We'll run the propagation until no change.
+
+ Finally, we check if each house has exactly one value for each attribute. If not, we might need to do search, but let's hope.
+
+ If we get to a state where every house has one value for each attribute, then we output.
+
+ Let's code accordingly.
+
+ Note: We must be cautious because the constraints might remove possibilities that are necessary, but if we do the propagation in a loop, it should be consistent.
+
+ We'll initialize the domains:
+
+   domains = [ { 'name': set(['Alice','Arnold','Eric','Peter','Bob','Carol']),
+                 'occupation': set(['engineer','artist','doctor','teacher','nurse','lawyer']),
+                 'car': set(['chevrolet silverado','ford f150','honda civic','toyota camry','bmw 3 series','tesla model 3']) }
+               for _ in range(6) ]
+
+ Then we create a list of constraint functions:
+
+   constraints = [clue1, clue2, clue3, clue4, clue5, clue6, clue7, clue8, clue9, clue10, clue11, clue12, clue13, clue14, all_different]
+
+ Then we run:
+
+   changed = True
+   while changed:
+        changed = False
+        for constraint in constraints:
+            changed |= constraint(domains)
+
+ Finally, we check if we have a unique assignment for each house.
+
+ If yes, we output the solution.
+
+ If not, we might need to do a search, but let's assume the propagation is enough.
+
+ Let's code accordingly.
+
+ However, note: the constraints might need to be applied in a specific order? But we are iterating until no change.
+
+ We'll code the functions as described.
+
+ Let's write the code.
+
+ Note: We must be careful that when we set a domain to a single value, we do it by setting the set to that value, and then the all_different will propagate.
+
+ We'll now write the complete code.
+
+ Note: The output must be in JSON format as specified.
+
+ We'll assume that after propagation, we have a unique assignment.
+
+ Let's code.

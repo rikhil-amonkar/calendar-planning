@@ -1,0 +1,147 @@
+import itertools
+import json
+
+def satisfies_constraints(assignment):
+    # Create dictionaries to map value to house index
+    name_index = {}
+    car_index = {}
+    mother_index = {}
+    hobby_index = {}
+    for i, house in enumerate(assignment):
+        name_index[house['name']] = i
+        car_index[house['car']] = i
+        mother_index[house['mother']] = i
+        hobby_index[house['hobby']] = i
+
+    # Clue 2: Carol is photography enthusiast
+    if name_index['Carol'] != hobby_index['photography']:
+        return False
+
+    # Clue 3: Chevrolet Silverado owner has mother Aniya
+    if car_index['chevrolet silverado'] != mother_index['Aniya']:
+        return False
+
+    # Clue 4: Chevrolet Silverado not in house2 (index1)
+    if car_index['chevrolet silverado'] == 1:
+        return False
+
+    # Clue 5: Ford F-150 owner has mother Sarah
+    if car_index['ford f150'] != mother_index['Sarah']:
+        return False
+
+    # Clue 6: BMW 3 series owner is Bob
+    if car_index['bmw 3 series'] != name_index['Bob']:
+        return False
+
+    # Clue 7: Mother Kailyn in house6 (index5)
+    if mother_index['Kailyn'] != 5:
+        return False
+
+    # Clue 8: Eric directly left of knitting enthusiast
+    if hobby_index['knitting'] - name_index['Eric'] != 1:
+        return False
+
+    # Clue 9: One house between mother Sarah and Toyota Camry
+    if abs(mother_index['Sarah'] - car_index['toyota camry']) != 2:
+        return False
+
+    # Clue 10: Mother Penny is right of knitting enthusiast
+    if mother_index['Penny'] <= hobby_index['knitting']:
+        return False
+
+    # Clue 11: Mother Aniya is right of Honda Civic owner
+    if mother_index['Aniya'] <= car_index['honda civic']:
+        return False
+
+    # Clue 12: Alice is right of Ford F-150 owner
+    if name_index['Alice'] <= car_index['ford f150']:
+        return False
+
+    # Clue 13: Eric enjoys gardening
+    if assignment[name_index['Eric']]['hobby'] != 'gardening':
+        return False
+
+    # Clue 14: Woodworking is left of knitting
+    if hobby_index['woodworking'] >= hobby_index['knitting']:
+        return False
+
+    # Clue 15: One house between mother Sarah and cooking enthusiast
+    if abs(mother_index['Sarah'] - hobby_index['cooking']) != 2:
+        return False
+
+    # Clue 16: Honda Civic owner is Arnold
+    if car_index['honda civic'] != name_index['Arnold']:
+        return False
+
+    # Clue 17: Mother Holly directly left of knitting enthusiast
+    if mother_index['Holly'] + 1 != hobby_index['knitting']:
+        return False
+
+    return True
+
+def main():
+    houses = [0, 1, 2, 3, 4, 5]
+    names = ['Eric', 'Bob', 'Peter', 'Alice', 'Arnold', 'Carol']
+    cars = ['ford f150', 'honda civic', 'toyota camry', 'tesla model 3', 'chevrolet silverado', 'bmw 3 series']
+    mothers = ['Sarah', 'Penny', 'Holly', 'Aniya', 'Kailyn', 'Janelle']
+    hobbies = ['photography', 'cooking', 'knitting', 'gardening', 'woodworking', 'painting']
+    
+    # Fixed assignments
+    car_fixed = [None] * 6
+    car_fixed[3] = 'ford f150'
+    car_fixed[5] = 'toyota camry'
+    
+    mother_fixed = [None] * 6
+    mother_fixed[3] = 'Sarah'
+    mother_fixed[5] = 'Kailyn'
+    
+    cars_remaining = [c for c in cars if c not in car_fixed]
+    mothers_remaining = [m for m in mothers if m not in mother_fixed]
+    
+    for car_perm in itertools.permutations(cars_remaining):
+        car_assignment = car_fixed[:]
+        car_assignment[0] = car_perm[0]
+        car_assignment[1] = car_perm[1]
+        car_assignment[2] = car_perm[2]
+        car_assignment[4] = car_perm[3]
+        
+        for mother_perm in itertools.permutations(mothers_remaining):
+            mother_assignment = mother_fixed[:]
+            mother_assignment[0] = mother_perm[0]
+            mother_assignment[1] = mother_perm[1]
+            mother_assignment[2] = mother_perm[2]
+            mother_assignment[4] = mother_perm[3]
+            
+            for name_perm in itertools.permutations(names):
+                name_assignment = list(name_perm)
+                
+                for hobby_perm in itertools.permutations(hobbies):
+                    hobby_assignment = list(hobby_perm)
+                    
+                    assignment = []
+                    for i in range(6):
+                        assignment.append({
+                            'name': name_assignment[i],
+                            'car': car_assignment[i],
+                            'mother': mother_assignment[i],
+                            'hobby': hobby_assignment[i]
+                        })
+                    
+                    if satisfies_constraints(assignment):
+                        solution = {
+                            "header": ["House", "Name", "CarModel", "Mother", "Hobby"],
+                            "rows": []
+                        }
+                        for i, house in enumerate(assignment):
+                            solution["rows"].append([
+                                str(i+1),
+                                house['name'],
+                                house['car'],
+                                house['mother'],
+                                house['hobby']
+                            ])
+                        print(json.dumps({"solution": solution}))
+                        return
+
+if __name__ == '__main__':
+    main()

@@ -1,0 +1,102 @@
+```python
+import json
+
+def main():
+    # Initialize the houses as a list of dictionaries
+    houses = [{'name': None, 'hair': None, 'height': None} for _ in range(6)]
+    
+    # Apply direct house assignments from clues
+    houses[3]['name'] = 'Alice'    # House 4
+    houses[2]['hair'] = 'gray'     # House 3
+    houses[4]['height'] = 'very short'  # House 5
+    houses[5]['height'] = 'tall'   # House 6
+    
+    # Apply person-specific attributes from clues
+    # Carol has blonde hair and is very tall (clues 8 and 13)
+    # Bob has brown hair (clue 11)
+    # Eric has red hair (clue 6)
+    # Arnold is short (clue 3)
+    
+    # Determine Carol and Bob's houses using clue 1
+    # Carol (blonde) is directly left of Bob
+    valid_carol_positions = []
+    for i in range(5):  # Check positions 0-4 (since Bob must be right)
+        # Check if Carol can be at position i
+        if houses[i]['hair'] not in [None, 'blonde']:
+            continue
+        if houses[i]['name'] not in [None, 'Carol']:
+            continue
+        if houses[i]['height'] not in [None, 'very tall']:
+            continue
+        # Check if Bob can be at position i+1
+        if houses[i+1]['name'] not in [None, 'Bob']:
+            continue
+        if houses[i+1]['hair'] not in [None, 'brown']:
+            continue
+        valid_carol_positions.append(i)
+    
+    # Further constrain based on other clues
+    # Carol cannot be in house 3 (gray hair), house 4 (Alice), house 5 (very short), or house 6 (tall)
+    valid_carol_positions = [i for i in valid_carol_positions if i not in [2, 3, 4, 5]]
+    # Only valid position is house 1 (index 0)
+    carol_index = 0
+    bob_index = 1
+    
+    houses[carol_index]['name'] = 'Carol'
+    houses[carol_index]['hair'] = 'blonde'
+    houses[carol_index]['height'] = 'very tall'
+    
+    houses[bob_index]['name'] = 'Bob'
+    houses[bob_index]['hair'] = 'brown'
+    
+    # Place Eric with red hair (clue 6 and clue 9)
+    # One house between gray (house 3) and red hair → Eric must be in house 1 or 5
+    # But house 1 has blonde hair, so Eric in house 5
+    houses[4]['name'] = 'Eric'
+    houses[4]['hair'] = 'red'
+    
+    # Assign hair colors for remaining houses
+    # Known hairs: house1: blonde, house2: brown, house3: gray, house5: red
+    # Remaining: auburn and black for house4 and house6
+    # Clue 5: black hair not in house4 → house4 gets auburn, house6 gets black
+    houses[3]['hair'] = 'auburn'
+    houses[5]['hair'] = 'black'
+    
+    # Assign names for remaining houses
+    # Known names: house1: Carol, house2: Bob, house4: Alice, house5: Eric
+    # Remaining: Peter and Arnold for house3 and house6
+    # Clue 3: Arnold is short → cannot be in house6 (tall) → Arnold in house3
+    houses[2]['name'] = 'Arnold'
+    houses[2]['height'] = 'short'  # Arnold is short
+    houses[5]['name'] = 'Peter'
+    
+    # Assign heights for remaining houses
+    # Known heights: house1: very tall, house3: short, house5: very short, house6: tall
+    # Remaining: average and super tall for house2 and house4
+    # Clue 7: super tall is right of average
+    # If average in house2, super tall in house4 → valid
+    # If average in house4, super tall would need to be right, but no house right of house4 except house5 and house6 which are taken → invalid
+    houses[1]['height'] = 'average'
+    houses[3]['height'] = 'super tall'
+    
+    # Prepare the output JSON
+    output = {
+        "solution": {
+            "header": ["House", "Name", "HairColor", "Height"],
+            "rows": []
+        }
+    }
+    
+    for idx, house in enumerate(houses):
+        output['solution']['rows'].append([
+            str(idx + 1),
+            house['name'],
+            house['hair'],
+            house['height']
+        ])
+    
+    print(json.dumps(output, indent=2))
+
+if __name__ == "__main__":
+    main()
+```

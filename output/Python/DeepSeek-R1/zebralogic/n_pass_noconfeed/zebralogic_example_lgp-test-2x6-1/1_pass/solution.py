@@ -1,0 +1,76 @@
+import json
+
+def main():
+    attributes = ['Name', 'FavoriteSport', 'HairColor', 'Height', 'Smoothie', 'Flower']
+    domains = {
+        'Name': ['Arnold', 'Eric'],
+        'FavoriteSport': ['basketball', 'soccer'],
+        'HairColor': ['brown', 'black'],
+        'Height': ['very short', 'short'],
+        'Smoothie': ['desert', 'cherry'],
+        'Flower': ['daffodils', 'carnations']
+    }
+    
+    houses = []
+    for _ in range(2):
+        house = {}
+        for attr in attributes:
+            house[attr] = set(domains[attr])
+        houses.append(house)
+    
+    def constraint1(houses):
+        houses[1]['FavoriteSport'] = houses[1]['FavoriteSport'] - {'soccer'}
+    
+    def constraint2(houses):
+        houses[0]['Smoothie'] = {'desert'}
+        houses[1]['Height'] = {'very short'}
+    
+    def constraint3(houses):
+        houses[1]['HairColor'] = {'brown'}
+    
+    def constraint4(houses):
+        houses[0]['Flower'] = {'carnations'}
+    
+    def constraint5(houses):
+        houses[0]['Name'] = {'Eric'}
+    
+    constraints = [constraint1, constraint2, constraint3, constraint4, constraint5]
+    
+    for constr in constraints:
+        constr(houses)
+    
+    def propagate_uniqueness(houses):
+        changed = True
+        while changed:
+            changed = False
+            for i in range(len(houses)):
+                for attr in attributes:
+                    if len(houses[i][attr]) == 1:
+                        value = next(iter(houses[i][attr]))
+                        for j in range(len(houses)):
+                            if i != j and value in houses[j][attr]:
+                                houses[j][attr].remove(value)
+                                changed = True
+                                
+    propagate_uniqueness(houses)
+    
+    header = ["House", "Name", "FavoriteSport", "HairColor", "Height", "Smoothie", "Flower"]
+    rows = []
+    for i in range(2):
+        row = [str(i+1)]
+        for attr in header[1:]:
+            value = next(iter(houses[i][attr]))
+            row.append(value)
+        rows.append(row)
+    
+    solution = {
+        "solution": {
+            "header": header,
+            "rows": rows
+        }
+    }
+    
+    print(json.dumps(solution, indent=2))
+
+if __name__ == "__main__":
+    main()

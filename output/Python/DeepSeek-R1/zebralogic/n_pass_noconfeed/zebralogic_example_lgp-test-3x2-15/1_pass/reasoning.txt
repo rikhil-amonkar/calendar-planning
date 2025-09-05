@@ -1,0 +1,495 @@
+We are given 3 houses, each with a unique name and a unique height.
+ The heights are: short, average, very short.
+ Names: Arnold, Peter, Eric.
+
+ Clues:
+ 1. Peter is somewhere to the right of Eric. (So Eric is left of Peter)
+ 2. The person who is short is in the first house.
+ 3. There is one house between the person who is short and the person who is very short.
+ 4. Arnold and the person who is very short are next to each other.
+
+ Steps:
+ From clue 2: House 1 has height 'short'
+ From clue 3: There is one house between short and very short.
+   Since there are only 3 houses, the possible arrangements for short and very short are:
+     - short in 1, then very short must be in 3 (because one house between: house 2 is between 1 and 3)
+     - short in 2, then very short in 4 (but we don't have 4) -> invalid
+     - short in 3, then very short in 1 (but then one house between would be house 2, but note: clue 2 says short is in first house)
+   So only possibility: short in house 1, very short in house 3.
+
+ Therefore:
+   House 1: height = short
+   House 3: height = very short
+   Then house 2 must be average.
+
+ Now clue 4: Arnold and the person who is very short are next to each other.
+   The very short is in house 3, so Arnold must be next to house 3. So Arnold is in house 2.
+
+ Then, we have names: Arnold in house 2, and the remaining names: Peter and Eric for houses 1 and 3.
+
+ Clue 1: Peter is to the right of Eric.
+   So Eric must be left of Peter. Therefore, Eric in house 1 and Peter in house 3.
+
+ Let's assign:
+   House 1: name Eric, height short
+   House 2: name Arnold, height average
+   House 3: name Peter, height very short
+
+ Now, let's code accordingly.
+
+ However, note: the problem says we must write a program that algorithmically solves the puzzle by implementing constraints.
+ We are not supposed to hardcode the solution, but we are to use constraints and rules.
+
+ But note: the problem says "Takes the above puzzle constraints as input variables", meaning we are to encode the constraints.
+
+ Since the puzzle is small, we can use a constraint satisfaction approach.
+
+ Steps in code:
+ We have three houses: 1,2,3.
+ Attributes: Name and Height.
+
+ We'll generate all possible assignments and then apply the constraints.
+
+ Alternatively, we can use logic with variables and constraints.
+
+ We'll represent the assignment for each house.
+
+ Let's define:
+   houses = [1,2,3]
+   names = ['Arnold', 'Peter', 'Eric']
+   heights = ['short', 'average', 'very short']
+
+ We need to assign a name and a height to each house.
+
+ Constraints:
+   C1: Peter is right of Eric -> meaning the house number of Peter > house number of Eric.
+   C2: The person who is short is in the first house -> house1 height is short.
+   C3: There is one house between the person who is short and the person who is very short.
+        Since we know from C2 that short is in house1, then very short must be in house3 (because house2 is between them).
+   C4: Arnold and the person who is very short are next to each other.
+
+ However, note: we already deduced from C2 and C3 that:
+   house1: height = short
+   house3: height = very short
+   house2: height = average (by elimination)
+
+ So we can fix the heights.
+
+ Then we have to assign names.
+
+ We can do:
+
+   Let's create a list of houses with fixed heights.
+
+   Then, for names, we have to assign the three names to the three houses.
+
+   Constraints on names:
+      C1: Peter's house > Eric's house.
+      C4: Arnold is next to the very short (house3). So Arnold must be in house2 (since house3's neighbors are house2 and house1? But note: house3 only has one neighbor: house2. Because the houses are in a row, and house3 is at the end. So next to house3 is only house2. So Arnold must be in house2.
+
+   Therefore, we can fix Arnold in house2.
+
+   Then, the remaining names: Eric and Peter for house1 and house3.
+   And C1: Peter is right of Eric -> so Eric must be in house1 and Peter in house3.
+
+ So we can assign accordingly.
+
+ However, the problem requires that we write a program that computes the solution using logical rules and constraints.
+
+ We can encode the constraints as rules and use a simple constraint propagation.
+
+ Since the problem is small, we can use a brute force assignment and check against constraints.
+
+ Steps for brute force:
+
+   For each permutation of names assigned to the three houses (3! = 6 possibilities)
+   For each permutation of heights assigned to the three houses (3! = 6 possibilities) but note we already know the heights from constraints? Actually, we are told that the constraints are given and we must implement them.
+
+   Alternatively, we can note that the constraints already fix the heights, so we only need to assign the names.
+
+   But to be general, let's assume we are going to assign both.
+
+   However, the constraints C2 and C3 fix the heights. So we can set:
+
+      height[0] = 'short'
+      height[2] = 'very short'
+      height[1] = 'average'
+
+   Then we only have to assign names.
+
+   Now, we have 3! = 6 possibilities for names.
+
+   We can iterate over all permutations of names for the three houses.
+
+   For each assignment:
+      house1: name = perm[0]
+      house2: name = perm[1]
+      house3: name = perm[2]
+
+   Check constraints:
+      C1: Peter is right of Eric -> if Eric is in house i and Peter in house j, then j > i.
+      C4: Arnold is next to the very short (house3). So Arnold must be in house2 (only neighbor of house3).
+
+   So we can check:
+      For C4: Arnold must be in house2 (because house3's neighbors are house2 and house1? Actually, house3 is at the end, so its only adjacent house is house2. So Arnold must be in house2.
+
+   Therefore, we can require that house2's name is Arnold.
+
+   Then, for the remaining two houses, we have:
+      house1 and house3: Eric and Peter.
+
+   Then C1: Peter must be right of Eric -> so Eric must be in house1 and Peter in house3.
+
+   So we can simply assign:
+
+      house1: Eric
+      house2: Arnold
+      house3: Peter
+
+   And check C1: house3 (Peter) is right of house1 (Eric) -> true.
+
+   So the solution is fixed.
+
+   However, the problem requires that we write a program that implements the constraints, so we must code the constraints.
+
+   We'll code the constraints without hardcoding the solution.
+
+   We'll generate the height assignment as fixed by the constraints, then generate all name permutations and check the constraints.
+
+   But note: constraint C4 says "Arnold and the person who is very short are next to each other". The very short is in house3, so the neighbor of house3 is house2. So Arnold must be in house2. So we can also fix the name for house2.
+
+   Then the rest is fixed by C1.
+
+   So the program can be:
+
+      heights = ['short', 'average', 'very short']
+      Assign heights to houses:
+          house1: short
+          house2: average
+          house3: very short
+
+      Then, for names, we have to assign Arnold to house2 (because of C4).
+
+      Then, the remaining two names: Eric and Peter for house1 and house3.
+
+      Then, check C1: Peter must be right of Eric. So if we assign Eric to house1 and Peter to house3, then it's satisfied.
+
+      So the assignment is fixed.
+
+   But what if the constraints were not so fixed? We are to write a general solver for this type of puzzle? Actually, the problem says "the given puzzle", so we can rely on the constraints.
+
+   However, to follow the requirement of implementing constraints, we'll code the constraints as checks.
+
+   We'll create a function that checks the assignment for the three houses.
+
+   Let's define the assignment as:
+
+      houses = [
+          { 'house': 1, 'name': ..., 'height': ... },
+          { 'house': 2, 'name': ..., 'height': ... },
+          { 'house': 3, 'name': ..., 'height': ... }
+      ]
+
+   But note: we already fixed the heights, so we only vary the names.
+
+   Alternatively, we can code without fixing the heights by constraint propagation, but the constraints C2 and C3 fix the heights.
+
+   Let's code the constraints in a way that we assign both names and heights by permutation and then check all constraints.
+
+   However, to avoid 6*6=36 possibilities, we can note that the heights are fixed by C2 and C3, so we only need to assign names.
+
+   We'll generate all permutations of names for the three houses and check against the constraints.
+
+   Constraints:
+
+      C1: For the assignment, find the house of Peter and house of Eric. Check if house_Peter > house_Eric.
+      C2: Check that the height of house1 is 'short'
+      C3: Check that there is one house between the short and the very short. Since we fixed the heights, we know that short is in house1 and very short in house3, so this is already satisfied. But we can check: the absolute difference between the house index of short and very short must be 2 (because one house between means |i-j| = 2). But note: in a row of 3, the only pairs with one house between are (1,3) and (3,1). Since C2 fixes short in house1, then very short must be in house3.
+      C4: Arnold and very short are adjacent. So the house number of Arnold and the house number of very short must be consecutive.
+
+   We'll code these constraints.
+
+   Steps:
+
+      Predefine the height assignment:
+          house1: height = 'short'
+          house2: height = 'average'
+          house3: height = 'very short'
+
+      Then, for each permutation of names for the three houses:
+
+          Let name1, name2, name3 = permutation
+
+          Check C1: 
+             Find the house index of Eric and Peter.
+             Let house_Eric = the house number where name is Eric
+             Let house_Peter = the house number where name is Peter
+             Check: house_Peter > house_Eric
+
+          Check C4:
+             The very short is in house3.
+             So we require that Arnold is in house2 or house3? But note: adjacent to house3 is only house2. So we require Arnold must be in house2.
+
+          But note: C4 requires that Arnold is next to very short. Since very short is in house3, then Arnold must be in house2.
+
+          So we can check: the house of Arnold must be 2.
+
+      So we can break the name assignment if house2 is not Arnold.
+
+   Therefore, we can simply:
+
+      We know house2 must be Arnold.
+
+      Then, for the remaining two houses, we assign Eric and Peter, and then check C1: Peter must be right of Eric -> so Eric in house1 and Peter in house3.
+
+   So the code can be:
+
+      houses = [1,2,3]
+      heights = ['short', 'average', 'very short']
+      names = ['Arnold', 'Peter', 'Eric']
+
+      We assign:
+          house1: height = 'short'
+          house2: height = 'average'
+          house3: height = 'very short'
+
+      Then, we assign names:
+          We know from C4 that Arnold must be next to very short (house3) -> so Arnold must be in house2.
+          Then, from C1: Peter is right of Eric -> so Eric must be in house1 and Peter in house3.
+
+   So we can output:
+
+      House1: name='Eric', height='short'
+      House2: name='Arnold', height='average'
+      House3: name='Peter', height='very short'
+
+   Now, let's code accordingly, but we must implement the constraints as checks.
+
+   We'll generate the name assignment by iterating over permutations and then check the constraints.
+
+   Since there are only 6 permutations, we can do:
+
+      from itertools import permutations
+
+      for perm in permutations(names):
+          assignment = {
+              1: {'name': perm[0], 'height': 'short'},
+              2: {'name': perm[1], 'height': 'average'},
+              3: {'name': perm[2], 'height': 'very short'}
+          }
+
+          # Check C1: Peter is right of Eric
+          # Find Eric's house and Peter's house
+          eric_house = None
+          peter_house = None
+          for house in [1,2,3]:
+              if assignment[house]['name'] == 'Eric':
+                  eric_house = house
+              if assignment[house]['name'] == 'Peter':
+                  peter_house = house
+          if eric_house is None or peter_house is None:
+              continue
+          if not (peter_house > eric_house):
+              continue
+
+          # Check C4: Arnold is next to very short (house3)
+          # Find Arnold's house
+          arnold_house = None
+          for house in [1,2,3]:
+              if assignment[house]['name'] == 'Arnold':
+                  arnold_house = house
+          if arnold_house is None:
+              continue
+
+          # The very short is in house3, so check if Arnold is adjacent to house3.
+          if abs(arnold_house - 3) != 1:
+              continue
+
+          # If we passed, then we found the assignment.
+
+   But note: the above loop will check all permutations. However, we already fixed the heights.
+
+   We can break after we find one, because the puzzle has a unique solution.
+
+   Let's code accordingly.
+
+   We'll output the solution in the required JSON format.
+
+   Note: The output must have the exact structure.
+
+   Example output:
+
+      {
+        "solution": {
+          "header": ["House", "Name", "Height"],
+          "rows": [
+            ["1", "Eric", "short"],
+            ["2", "Arnold", "average"],
+            ["3", "Peter", "very short"]
+          ]
+        }
+      }
+
+   We'll create the rows by iterating over houses 1,2,3.
+
+   Code:
+
+      import itertools
+      import json
+
+      names = ['Arnold', 'Peter', 'Eric']
+      # Pre-assigned heights
+      height_assignment = {1: 'short', 2: 'average', 3: 'very short'}
+
+      for perm in itertools.permutations(names):
+          name_assignment = {
+              1: perm[0],
+              2: perm[1],
+              3: perm[2]
+          }
+
+          # Check constraint 1: Peter is right of Eric
+          # Find houses for Eric and Peter
+          eric_house = None
+          peter_house = None
+          for house in [1,2,3]:
+              if name_assignment[house] == 'Eric':
+                  eric_house = house
+              if name_assignment[house] == 'Peter':
+                  peter_house = house
+          if eric_house is None or peter_house is None:
+              continue
+          if peter_house <= eric_house:
+              continue
+
+          # Check constraint 4: Arnold is next to the very short (house3)
+          arnold_house = None
+          for house in [1,2,3]:
+              if name_assignment[house] == 'Arnold':
+                  arnold_house = house
+          if arnold_house is None:
+              continue
+
+          # The very short is in house3, so check if Arnold is in house2 (only adjacent to house3)
+          if abs(arnold_house - 3) != 1:
+              continue
+
+          # If we get here, we found a valid assignment.
+          solution = {
+              "solution": {
+                  "header": ["House", "Name", "Height"],
+                  "rows": []
+              }
+          }
+          for house in [1,2,3]:
+              solution["solution"]["rows"].append([
+                  str(house),
+                  name_assignment[house],
+                  height_assignment[house]
+              ])
+          print(json.dumps(solution))
+          break
+
+   But note: the above code might not break if there are multiple solutions, but the puzzle should have only one.
+
+   However, we are also relying on the fixed height assignment. This is acceptable because the constraints C2 and C3 fixed the heights.
+
+   Let's run the code in our mind:
+
+      We have 6 permutations of names.
+
+      We check each:
+
+        Permutation 1: (Arnold, Peter, Eric)
+          house1: Arnold, house2: Peter, house3: Eric
+          Check C1: Peter (house2) is right of Eric (house3)? -> house2 < house3 -> false, so skip.
+
+        Permutation 2: (Arnold, Eric, Peter)
+          house1: Arnold, house2: Eric, house3: Peter
+          Check C1: Peter (house3) is right of Eric (house2) -> true.
+          Check C4: Arnold is in house1. Is house1 adjacent to house3? The difference is 2 -> not adjacent. So skip.
+
+        Permutation 3: (Peter, Arnold, Eric)
+          house1: Peter, house2: Arnold, house3: Eric
+          Check C1: Peter (house1) and Eric (house3) -> house1 < house3, but we need Peter right of Eric -> wait, Eric is in house3 and Peter in house1, so Peter is left of Eric -> false.
+
+        Permutation 4: (Peter, Eric, Arnold)
+          house1: Peter, house2: Eric, house3: Arnold
+          Check C1: Peter (house1) and Eric (house2) -> house1 < house2, but we need Peter right of Eric -> false.
+
+        Permutation 5: (Eric, Arnold, Peter)
+          house1: Eric, house2: Arnold, house3: Peter
+          Check C1: Peter (house3) is right of Eric (house1) -> true.
+          Check C4: Arnold is in house2, which is adjacent to house3 -> true.
+
+          This is the solution.
+
+        Permutation 6: (Eric, Peter, Arnold)
+          house1: Eric, house2: Peter, house3: Arnold
+          Check C1: Peter (house2) is right of Eric (house1) -> true.
+          Check C4: Arnold is in house3. Is house3 adjacent to house3? No, so we check: adjacent to house3 is house2. But Arnold is in house3, so we are checking if Arnold is next to very short (house3). Note: constraint 4 says "Arnold and the person who is very short are next to each other". The very short is in house3, so if Arnold is in house3, then they are the same person? But wait, the constraint says "Arnold and the person who is very short", implying two different persons. So we must interpret that Arnold is not the very short person.
+
+          Actually, the constraint says: "Arnold and the person who is very short are next to each other." This implies they are two different people. So Arnold cannot be the very short person.
+
+          Therefore, we must also check that Arnold is not in house3 (because house3 is very short). So we require that Arnold is in house2 (the only other adjacent house).
+
+          So in this permutation, Arnold is in house3, which is the very short, so they are the same person -> invalid.
+
+   So we must also add a constraint that Arnold and the very short are different people.
+
+   We can adjust the check for C4:
+
+      We require that the very short is in house3, and Arnold is in a different house (house2) and adjacent.
+
+   So we can check:
+
+      if arnold_house == 3:
+          continue   # because then Arnold is the very short, but constraint says they are next to each other, implying two different people.
+
+   Alternatively, we can note that the constraint says "Arnold and the person who is very short", which implies two entities.
+
+   So we update the code for C4:
+
+      if arnold_house == 3:
+          continue   # Arnold is the very short, so they are not next to each other (they are the same)
+
+      if abs(arnold_house - 3) != 1:
+          continue
+
+   Now, in permutation 5: (Eric, Arnold, Peter) -> Arnold in house2, which is adjacent to house3 and not the same -> valid.
+
+   So we break.
+
+   Let's code accordingly.
+
+   We'll add that check.
+
+   Alternatively, we can also note that the very short is in house3, so we require that Arnold is not in house3 and is in house2.
+
+   So we can simply require:
+
+      if arnold_house != 2:
+          continue
+
+   But what if the very short were in a different house? The constraint doesn't say that the very short is always in house3, but in this puzzle we fixed it. However, to be general we coded the adjacent condition.
+
+   But note: we fixed the heights by the constraints, so we know very short is in house3.
+
+   So we can also require that Arnold is in house2.
+
+   However, the problem says we must implement the constraints, so we should use the constraint as given.
+
+   We'll use the adjacent condition and also ensure that Arnold is not the very short.
+
+   So we check:
+
+      if arnold_house == 3:  # meaning Arnold is the very short -> invalid
+          continue
+      if abs(arnold_house - 3) != 1:  # then not adjacent
+          continue
+
+   This will ensure Arnold is in house2.
+
+   Now, we output the code.
+
+   Let's write the complete code.

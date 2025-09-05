@@ -1,0 +1,44 @@
+import json
+
+def main():
+    names = ['Eric', 'Arnold']
+    birthdays = ['april', 'sept']
+    colors = ['yellow', 'red']
+    
+    # Generate all possible assignments for house1
+    for n1 in names:
+        for b1 in birthdays:
+            for c1 in colors:
+                # House2 gets the remaining values
+                n2 = next(name for name in names if name != n1)
+                b2 = next(b for b in birthdays if b != b1)
+                c2 = next(c for c in colors if c != c1)
+                
+                # Check constraints
+                # Constraint 2: April birthday in first house
+                if b1 != 'april':
+                    continue
+                # Constraint 3: Yellow not in first house
+                if c1 == 'yellow':
+                    continue
+                # Constraint 1: Eric loves yellow (must be in house2)
+                if n2 != 'Eric' or c2 != 'yellow':
+                    continue
+                
+                # Found valid assignment
+                solution = {
+                    "solution": {
+                        "header": ["House", "Name", "Birthday", "Color"],
+                        "rows": [
+                            ["1", n1, b1, c1],
+                            ["2", n2, b2, c2]
+                        ]
+                    }
+                }
+                print(json.dumps(solution))
+                return
+                
+    print("No solution found")
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,140 @@
+import z3
+import json
+
+def main():
+    # Create the solver
+    solver = z3.Solver()
+
+    # Define the attributes with enums
+    Name = z3.EnumSort('Name', ['Alice', 'Eric', 'Bob', 'Peter', 'Arnold'])
+    Birthday = z3.EnumSort('Birthday', ['mar', 'april', 'sept', 'feb', 'jan'])
+    Mother = z3.EnumSort('Mother', ['Holly', 'Janelle', 'Kailyn', 'Penny', 'Aniya'])
+    Occupation = z3.EnumSort('Occupation', ['engineer', 'doctor', 'lawyer', 'artist', 'teacher'])
+    HairColor = z3.EnumSort('HairColor', ['red', 'blonde', 'black', 'gray', 'brown'])
+
+    # Create variables for each house (index 0 to 4 for house 1 to 5)
+    names = [z3.Const(f'name_{i}', Name) for i in range(5)]
+    birthdays = [z3.Const(f'birthday_{i}', Birthday) for i in range(5)]
+    mothers = [z3.Const(f'mother_{i}', Mother) for i in range(5)]
+    occupations = [z3.Const(f'occupation_{i}', Occupation) for i in range(5)]
+    hair_colors = [z3.Const(f'hair_color_{i}', HairColor) for i in range(5)]
+
+    # Each attribute must have distinct values across houses
+    solver.add(z3.Distinct(names))
+    solver.add(z3.Distinct(birthdays))
+    solver.add(z3.Distinct(mothers))
+    solver.add(z3.Distinct(occupations))
+    solver.add(z3.Distinct(hair_colors))
+
+    # Add constraints from clues
+    # 1. The person whose birthday is in March is in the fifth house.
+    solver.add(birthdays[4] == z3.Const('mar', Birthday))
+    
+    # 2. The person whose birthday is in February is in the first house.
+    solver.add(birthdays[0] == z3.Const('feb', Birthday))
+    
+    # 3. The person who is a doctor is Eric.
+    for i in range(5):
+        solver.add(z3.Implies(occupations[i] == z3.Const('doctor', Occupation), names[i] == z3.Const('Eric', Name)))
+    
+    # 4. The person whose mother's name is Janelle is in the third house.
+    solver.add(mothers[2] == z3.Const('Janelle', Mother))
+    
+    # 5. The person who is an artist is the person who has brown hair.
+    for i in range(5):
+        solver.add(z3.Implies(occupations[i] == z3.Const('artist', Occupation), hair_colors[i] == z3.Const('brown', HairColor)))
+    
+    # 6. The person who is an artist is in the fourth house.
+    solver.add(occupations[3] == z3.Const('artist', Occupation))
+    
+    # 7. The person whose mother's name is Penny is somewhere to the left of the person who has black hair.
+    black_hair_index = z3.Int('black_hair_index')
+    penny_mother_index = z3.Int('penny_mother_index')
+    solver.add(penny_mother_index < black_hair_index)
+    for i in range(5):
+        solver.add(z3.Implies(mothers[i] == z3.Const('Penny', Mother), penny_mother_index == i))
+        solver.add(z3.Implies(hair_colors[i] == z3.Const('black', HairColor), black_hair_index == i))
+    
+    # 8. Peter is the person who has black hair.
+    for i in range(5):
+        solver.add(z3.Implies(hair_colors[i] == z3.Const('black', HairColor), names[i] == z3.Const('Peter', Name)))
+    
+    # 9. The person who has gray hair is the person who is a teacher.
+    for i in range(5):
+        solver.add(z3.Implies(hair_colors[i] == z3.Const('gray', HairColor), occupations[i] == z3.Const('teacher', Occupation)))
+    
+    # 10. Alice is The person whose mother's name is Kailyn.
+    for i in range(5):
+        solver.add(z3.Implies(mothers[i] == z3.Const('Kailyn', Mother), names[i] == z3.Const('Alice', Name)))
+    
+    # 11. Arnold is somewhere to the right of the person whose birthday is in September.
+    sept_bday_index = z3.Int('sept_bday_index')
+    arnold_index = z3.Int('arnold_index')
+    solver.add(sept_bday_index < arnold_index)
+    for i in range(5):
+        solver.add(z3.Implies(birthdays[i] == z3.Const('sept', Birthday), sept_bday_index == i))
+        solver.add(z3.Implies(names[i] == z3.Const('Arnold', Name), arnold_index == i))
+    
+    # 12. The person who has brown hair is the person whose birthday is in January.
+    for i in range(5):
+        solver.add(z3.Implies(hair_colors[i] == z3.Const('brown', HairColor), birthdays[i] == z3.Const('jan', Birthday)))
+    
+    # 13. Arnold is the person who has blonde hair.
+    for i in range(5):
+        solver.add(z3.Implies(names[i] == z3.Const('Arnold', Name), hair_colors[i] == z3.Const('blonde', HairColor)))
+    
+    # 14. The person whose mother's name is Holly is the person who has black hair.
+    for i in range(5):
+        solver.add(z3.Implies(mothers[i] == z3.Const('Holly', Mother), hair_colors[i] == z3.Const('black', HairColor)))
+    
+    # 15. Peter is the person who is a lawyer.
+    for i in range(5):
+        solver.add(z3.Implies(names[i] == z3.Const('Peter', Name), occupations[i] == z3.Const('lawyer', Occupation)))
+    
+    # 16. The person whose birthday is in September is somewhere to the left of The person whose mother's name is Kailyn.
+    kailyn_mother_index = z3.Int('kailyn_mother_index')
+    solver.add(sept_bday_index < kailyn_mother_index)
+    for i in range(5):
+        solver.add(z3.Implies(mothers[i] == z3.Const('Kailyn', Mother), kailyn_mother_index == i))
+    
+    # 17. Alice is the person who has gray hair.
+    for i in range(5):
+        solver.add(z3.Implies(names[i] == z3.Const('Alice', Name), hair_colors[i] == z3.Const('gray', HairColor)))
+
+    # Check if the solver can solve the constraints
+    if solver.check() == z3.sat:
+        model = solver.model()
+        
+        # Extract values for each house
+        result = []
+        for i in range(5):
+            name_val = model.eval(names[i])
+            birthday_val = model.eval(birthdays[i])
+            mother_val = model.eval(mothers[i])
+            occupation_val = model.eval(occupations[i])
+            hair_color_val = model.eval(hair_colors[i])
+            
+            # Convert to string and remove the trailing quotes from the enum representation
+            row = [
+                str(i+1),
+                str(name_val).replace('"', ''),
+                str(birthday_val).replace('"', ''),
+                str(mother_val).replace('"', ''),
+                str(occupation_val).replace('"', ''),
+                str(hair_color_val).replace('"', '')
+            ]
+            result.append(row)
+        
+        # Format the output as JSON
+        output = {
+            "solution": {
+                "header": ["House", "Name", "Birthday", "Mother", "Occupation", "HairColor"],
+                "rows": result
+            }
+        }
+        print(json.dumps(output, indent=2))
+    else:
+        print("No solution found")
+
+if __name__ == "__main__":
+    main()

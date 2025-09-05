@@ -1,0 +1,65 @@
+```python
+import json
+
+def main():
+    # Initialize the assignment for 6 houses
+    houses = [1, 2, 3, 4, 5, 6]
+    names = [None] * 6
+    vacations = [None] * 6
+
+    # Apply the clues step by step
+    # Clue 3: Eric is in the second house
+    names[1] = 'Eric'  # House 2 is index 1 (0-indexed)
+
+    # Clue 4: Cultural tours in third house
+    vacations[2] = 'cultural'  # House 3 is index 2
+
+    # Clue 7: Cultural tours is Peter
+    names[2] = 'Peter'  # So House 3 name is Peter
+
+    # Clue 2: Eric is right of Alice -> Alice must be in house 1
+    names[0] = 'Alice'  # House 1
+
+    # Clue 9: City breaks in fourth house
+    vacations[3] = 'city'  # House 4
+
+    # Clue 8: Bob likes cruises
+    # Clue 5: Bob directly left of Arnold
+    # Possible pairs: (4,5) or (5,6)
+    # But house 4 vacation is city, so Bob cannot be in house 4 (because Bob has cruise)
+    # Therefore Bob must be in house 5 and Arnold in house 6
+    names[4] = 'Bob'    # House 5
+    names[5] = 'Arnold' # House 6
+    vacations[4] = 'cruise'  # Because Bob has cruise
+
+    # The remaining name for house 4 is Carol
+    names[3] = 'Carol'
+
+    # Clue 1: Cultural (house 3) left of beach -> beach must be in house 4,5, or 6
+    # But house 4 is city, house 5 is cruise -> so beach must be house 6
+    vacations[5] = 'beach'
+
+    # Remaining vacations: mountain and camping for houses 1 and 2
+    # Clue 6: Camping not in first house -> so house 1 must be mountain, house 2 camping
+    vacations[0] = 'mountain'
+    vacations[1] = 'camping'
+
+    # Prepare the output
+    header = ["House", "Name", "Vacation"]
+    rows = []
+    for i in range(6):
+        house_num = str(i+1)
+        rows.append([house_num, names[i], vacations[i]])
+
+    solution_dict = {
+        "solution": {
+            "header": header,
+            "rows": rows
+        }
+    }
+
+    print(json.dumps(solution_dict, indent=2))
+
+if __name__ == "__main__":
+    main()
+```

@@ -1,0 +1,121 @@
+```python
+import json
+
+def main():
+    # Initialize the houses as a list of dictionaries
+    houses = []
+    for i in range(1, 5):
+        house = {
+            'House': str(i),
+            'Name': None,
+            'Flower': None,
+            'Hobby': None,
+            'Pet': None,
+            'Color': None,
+            'HouseStyle': None
+        }
+        houses.append(house)
+    
+    # Apply the clues step by step
+    # Clue 6: The person in a Craftsman-style house is in the second house.
+    houses[1]['HouseStyle'] = 'craftsman'
+    
+    # Clue 1: The person in a Craftsman-style house is Arnold.
+    houses[1]['Name'] = 'Arnold'
+    
+    # Clue 13: The person living in a colonial-style house is the person whose favorite color is red.
+    # Clue 5: The person who loves the rose bouquet is the person whose favorite color is red.
+    # So colonial house has red color and roses.
+    
+    # Clue 2: The person who loves the rose bouquet is somewhere to the right of Peter.
+    # Clue 9: The person who loves cooking is somewhere to the right of the person whose favorite color is red.
+    # Deduction: Colonial house (red) cannot be house1 (because roses right of Peter) and cannot be house4 (because cooking right of red).
+    # Therefore, colonial must be house3.
+    houses[2]['HouseStyle'] = 'colonial'
+    houses[2]['Color'] = 'red'
+    houses[2]['Flower'] = 'roses'
+    
+    # Peter must be left of colonial (house3)
+    # Since house2 is Arnold, Peter must be in house1.
+    houses[0]['Name'] = 'Peter'
+    
+    # Cooking must be right of red (house3), so cooking in house4.
+    houses[3]['Hobby'] = 'cooking'
+    
+    # Clue 7: Eric is the person residing in a Victorian house.
+    # Clue 14: The person who has a cat is Eric.
+    # The remaining styles are ranch and victorian for house1 and house4.
+    # If victorian were in house1, then Eric would be in house1, but house1 is Peter -> contradiction.
+    # So victorian must be in house4.
+    houses[3]['HouseStyle'] = 'victorian'
+    houses[3]['Name'] = 'Eric'
+    houses[3]['Pet'] = 'cat'
+    
+    # Then house1 must be ranch.
+    houses[0]['HouseStyle'] = 'ranch'
+    
+    # The remaining name is Alice for house3.
+    houses[2]['Name'] = 'Alice'
+    
+    # Clue 4: The person who loves a bouquet of daffodils is not in the fourth house.
+    # Clue 12: The person who loves a bouquet of daffodils is the person who loves yellow.
+    # Clue 10: The person who loves white is the person who loves a carnations arrangement.
+    # Clue 8: The person with an aquarium of fish is the person who loves white.
+    # Clue 11: The person who loves white is somewhere to the right of the person who enjoys gardening.
+    
+    # White cannot be in house1 (because right of gardening), and cannot be in house4 (because house4 has cat, but white has fish).
+    # So white must be in house2.
+    houses[1]['Color'] = 'white'
+    houses[1]['Flower'] = 'carnations'
+    houses[1]['Pet'] = 'fish'
+    
+    # Then gardening must be left of white (house2), so gardening in house1.
+    houses[0]['Hobby'] = 'gardening'
+    
+    # Daffodils must be in house1 or house2, but house2 has carnations, so daffodils in house1.
+    houses[0]['Flower'] = 'daffodils'
+    houses[0]['Color'] = 'yellow'  # Clue 12
+    
+    # Then house4 has lilies and the remaining color green.
+    houses[3]['Flower'] = 'lilies'
+    houses[3]['Color'] = 'green'
+    
+    # Hobbies left: photography and painting for house2 and house3.
+    # Clue 3: The photography enthusiast is the person who owns a dog.
+    # Since house3 has no pet assigned yet, and house2 has fish, so photography must be in house3 with dog.
+    houses[2]['Hobby'] = 'photography'
+    houses[2]['Pet'] = 'dog'
+    
+    # Then house2 has painting.
+    houses[1]['Hobby'] = 'painting'
+    
+    # The only pet left for house1 is bird.
+    houses[0]['Pet'] = 'bird'
+    
+    # Prepare the output JSON
+    header = ["House", "Name", "Flower", "Hobby", "Pet", "Color", "HouseStyle"]
+    rows = []
+    for house in houses:
+        row = [
+            house['House'],
+            house['Name'],
+            house['Flower'],
+            house['Hobby'],
+            house['Pet'],
+            house['Color'],
+            house['HouseStyle']
+        ]
+        rows.append(row)
+    
+    solution = {
+        "solution": {
+            "header": header,
+            "rows": rows
+        }
+    }
+    
+    print(json.dumps(solution, indent=2))
+
+if __name__ == "__main__":
+    main()
+```

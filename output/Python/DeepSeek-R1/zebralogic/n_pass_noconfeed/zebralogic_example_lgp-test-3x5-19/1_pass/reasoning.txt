@@ -1,0 +1,598 @@
+We are going to use constraint programming with backtracking (or a systematic search) but note that the problem is small (3 houses) so we can also use permutations and check constraints.
+
+ Steps:
+ 1. Define the domains for each attribute.
+ 2. Generate all possible assignments for each house (each attribute must be unique per category).
+ 3. Apply the constraints to filter the assignments.
+
+ However, note: There are 3 houses and 5 attributes, each with 3 values. The total possibilities are (3!)^5 which is too many to iterate naively.
+
+ Instead, we can use a more efficient approach by generating permutations for each category and then checking constraints that relate them.
+
+ Alternatively, we can use a constraint solver, but we are to write the code without external libraries.
+
+ Since the problem is small, we can generate all possible assignments for the 3 houses for each attribute set and then check the constraints.
+
+ We have 5 categories: Name, Occupation, Education, Smoothie, Hobby.
+
+ We can represent a house as a tuple of indices for each category, but that would be 5-dimensional and hard.
+
+ Alternatively, we can represent the solution as a list of houses, each house is a dictionary of attributes.
+
+ We'll generate permutations for each category and then assign to houses.
+
+ Let's define:
+   names = ['Arnold', 'Peter', 'Eric']
+   occupations = ['doctor', 'teacher', 'engineer']
+   educations = ['associate', 'high school', 'bachelor']
+   smoothies = ['desert', 'cherry', 'watermelon']
+   hobbies = ['gardening', 'cooking', 'photography']
+
+ We have 9 clues. Some clues are redundant (e.g., clue 4 and 5 together tell us that Peter is in house 2 and loves cooking, and clue 1 and 8 tell us that the doctor loves desert smoothie and cooking, so the doctor is Peter in house 2).
+
+ Let's extract what we can:
+
+ From clue 4 and 5: The person in house 2 loves cooking and is Peter.
+ From clue 8: The person who loves cooking is the doctor -> so Peter (house 2) is the doctor.
+ From clue 1: The Desert smoothie lover is the doctor -> so Peter (house 2) loves desert smoothie.
+
+ So for house 2:
+   Name: Peter
+   Occupation: doctor
+   Smoothie: desert
+   Hobby: cooking
+
+ Now, clue 2: Arnold is not in the third house -> so Arnold must be in house 1 (since house 2 is Peter, so house 3 must be Eric).
+   Therefore:
+      House 1: Arnold
+      House 2: Peter
+      House 3: Eric
+
+ Now, clue 3: The person who likes Cherry smoothies is somewhere to the right of Peter -> Peter is in house 2, so Cherry smoothie must be in house 3 (since right of house 2 is only house 3).
+   Therefore, house 3 has cherry smoothie? But wait, house 2 has desert smoothie, so the remaining smoothies are cherry and watermelon. Since cherry must be to the right of Peter (house 2), then house 3 must have cherry, and house 1 must have watermelon.
+
+ So:
+   House 1: smoothie = watermelon
+   House 2: smoothie = desert
+   House 3: smoothie = cherry
+
+ Now, clue 6: The person with an associate's degree is somewhere to the right of the person who enjoys gardening.
+
+ clue 7: The person with a bachelor's degree is somewhere to the right of the Desert smoothie lover (who is in house 2). So bachelor must be in house 3 (right of house 2).
+
+ So education for house 3 is bachelor.
+
+ Then, the remaining educations are associate and high school for house 1 and 2.
+
+ clue 6: associate is to the right of gardening. Since house 3 is bachelor, associate must be in house 2 or house 1? But if associate is in house 2, then it must be right of gardening (so gardening must be in house 1). If associate is in house 3, but house 3 is bachelor, so associate cannot be in house 3. So associate must be in house 2 or house 1? Wait, house 3 is bachelor, so associate is either house 1 or 2.
+
+ But clue 6: associate is to the right of gardening. So if associate is in house 1, then there is no house to the left for gardening (unless gardening is in a house left of house 1, but there is none). Therefore, associate cannot be in house 1. So associate must be in house 2.
+
+ Then, since associate is in house 2, the person who enjoys gardening must be in house 1 (because house 2 is right of house 1).
+
+ So:
+   House 2: education = associate
+   Then house 1: education = high school
+   House 3: education = bachelor
+
+ And hobby for house 1: gardening.
+
+ Now, the remaining hobby is photography for house 3 (since house 2 is cooking).
+
+ Now, clue 9: The photography enthusiast is the teacher -> so the teacher is in house 3 (since photography is in house 3).
+
+ Then, the occupations: house 2 is doctor, house 3 is teacher, so house 1 must be engineer.
+
+ Let's summarize:
+
+ House 1:
+   Name: Arnold
+   Occupation: engineer
+   Education: high school
+   Smoothie: watermelon
+   Hobby: gardening
+
+ House 2:
+   Name: Peter
+   Occupation: doctor
+   Education: associate
+   Smoothie: desert
+   Hobby: cooking
+
+ House 3:
+   Name: Eric
+   Occupation: teacher
+   Education: bachelor
+   Smoothie: cherry
+   Hobby: photography
+
+ Now, let's verify all clues:
+
+ 1. Desert smoothie lover is doctor -> house 2: desert and doctor -> correct.
+ 2. Arnold not in third -> house 1 -> correct.
+ 3. Cherry smoothie right of Peter: Peter in house2, cherry in house3 -> correct.
+ 4. Cooking in second -> correct.
+ 5. Cooking is Peter -> correct.
+ 6. Associate (house2) is right of gardening (house1) -> correct.
+ 7. Bachelor (house3) is right of desert smoothie (house2) -> correct.
+ 8. Cooking (house2) is doctor -> correct.
+ 9. Photography (house3) is teacher -> correct.
+
+ So we have the solution.
+
+ However, the task is to write a program that computes this. We can do it by encoding the constraints and doing a search, but since we already deduced by hand, we can also just output the solution.
+
+ But the requirement is to write a program that algorithmically solves it.
+
+ Since the problem is small, we can generate all permutations for each attribute and then check the constraints.
+
+ We'll create a list of houses (3 houses). Each house will have slots for each attribute.
+
+ We'll iterate over:
+   all permutations of names for the 3 houses
+   all permutations of occupations for the 3 houses
+   all permutations of educations for the 3 houses
+   all permutations of smoothies for the 3 houses
+   all permutations of hobbies for the 3 houses
+
+ But that would be (3!)^5 = (6)^5 = 7776, which is acceptable for a computer.
+
+ However, we can break early by applying constraints as we go.
+
+ Alternatively, we can use the constraints to reduce the search space.
+
+ Let's code by generating all possible assignments for each category and then checking the constraints.
+
+ We'll represent the solution as a list of 3 dictionaries, or we can have a dictionary for each attribute per house.
+
+ Alternatively, we can have:
+
+   house_i: [name, occupation, education, smoothie, hobby]
+
+ We'll generate:
+
+   for each permutation of names (assigning to house0, house1, house2)
+   for each permutation of occupations
+   for each permutation of educations
+   for each permutation of smoothies
+   for each permutation of hobbies
+
+ Then we check all constraints.
+
+ But note: some constraints are already known and we can use them to reduce the loops.
+
+ Alternatively, we can use the constraints to assign fixed values first.
+
+ Since we already know the solution, we can also code the deductions step by step.
+
+ However, the problem requires a general solver for this type of puzzle (with 3 houses and 5 attributes). But note the constraints are specific.
+
+ Let's code by generating all possible assignments and then checking the constraints.
+
+ Steps in code:
+
+ 1. Define the attributes and their possible values.
+ 2. Create a list of all houses (0,1,2) for house index.
+ 3. Generate all permutations for each attribute category.
+ 4. Iterate over every combination of these permutations (nested loops).
+ 5. For each combination, assign the values to the houses.
+ 6. Check the constraints. If all constraints are satisfied, output the solution.
+
+ We have 9 constraints. We'll write functions for each constraint.
+
+ However, note: some constraints are redundant (like 4 and 5) but we'll check them all.
+
+ We'll create a function for each constraint.
+
+ But note: the constraints are:
+
+ 1. The Desert smoothie lover is the person who is a doctor.
+    -> For some house i, if smoothie[i] == 'desert', then occupation[i] must be 'doctor'
+
+ 2. Arnold is not in the third house.
+    -> name for house index 2 (which is the third house) must not be 'Arnold'
+
+ 3. The person who likes Cherry smoothies is somewhere to the right of Peter.
+    -> Let peter_house be the house index of Peter. Let cherry_house be the house index of cherry smoothie. Then cherry_house > peter_house.
+
+ 4. The person who loves cooking is in the second house.
+    -> hobby for house index 1 (second house) must be 'cooking'
+
+ 5. The person who loves cooking is Peter.
+    -> The house with hobby 'cooking' must have name 'Peter'
+
+ 6. The person with an associate's degree is somewhere to the right of the person who enjoys gardening.
+    -> Let gardening_house be the house index of gardening hobby. Let associate_house be the house index of associate education. Then associate_house > gardening_house.
+
+ 7. The person with a bachelor's degree is somewhere to the right of the Desert smoothie lover.
+    -> Let desert_house be the house index of desert smoothie. Let bachelor_house be the house index of bachelor education. Then bachelor_house > desert_house.
+
+ 8. The person who loves cooking is the person who is a doctor.
+    -> The house with hobby 'cooking' must have occupation 'doctor'
+
+ 9. The photography enthusiast is the person who is a teacher.
+    -> The house with hobby 'photography' must have occupation 'teacher'
+
+ We also have that each attribute must be unique per category, but our permutations already ensure that.
+
+ We'll code accordingly.
+
+ However, note: the constraints 4 and 5 together fix cooking to house2 and Peter, and constraint 8 fixes that the doctor is also there, and constraint 1 fixes the smoothie. So we can use these to reduce the search space.
+
+ But for generality, we'll do a full search.
+
+ Let's code:
+
+ We'll create:
+
+   names = ['Arnold', 'Peter', 'Eric']
+   occupations = ['doctor', 'teacher', 'engineer']
+   educations = ['associate', 'high school', 'bachelor']
+   smoothies = ['desert', 'cherry', 'watermelon']
+   hobbies = ['gardening', 'cooking', 'photography']
+
+   We'll generate:
+      for name_perm in permutations(names):
+         for occ_perm in permutations(occupations):
+            for edu_perm in permutations(educations):
+               for smo_perm in permutations(smoothies):
+                  for hob_perm in permutations(hobbies):
+
+   Then we assign:
+        house0: [name_perm[0], occ_perm[0], edu_perm[0], smo_perm[0], hob_perm[0]]
+        house1: [name_perm[1], occ_perm[1], edu_perm[1], smo_perm[1], hob_perm[1]]
+        house2: [name_perm[2], occ_perm[2], edu_perm[2], smo_perm[2], hob_perm[2]]
+
+   Then we check the constraints.
+
+ We'll break out when we find one that satisfies all.
+
+ Since the solution is unique, we can break.
+
+ Let's code the constraints as functions that take the three houses.
+
+ Alternatively, we can represent the houses as a list of dictionaries, but for simplicity, we'll just have arrays for each attribute.
+
+ We can create:
+
+   house_names = name_perm
+   house_occupations = occ_perm
+   etc.
+
+ Then we can check.
+
+ We'll write a function that takes the assignment (the five permutations) and returns True if all constraints are satisfied.
+
+ Note: We have to be careful with the indices of the houses (0-indexed for code, but the puzzle uses 1-indexed). So house0 is house1, house1 is house2, house2 is house3.
+
+ Constraints that refer to "right" mean a higher index.
+
+ Let's code the constraints:
+
+ 1. For each house i, if smoothie[i] is 'desert', then occupation[i] must be 'doctor'.
+    We can do: for i in range(3): if smoothies[i]=='desert' and occupations[i]!='doctor': return False
+
+ 2. name for house2 (index2) must not be 'Arnold': so if names[2]=='Arnold': return False
+
+ 3. Let peter_index = index of 'Peter' in names. Let cherry_index = index of 'cherry' in smoothies. Then cherry_index > peter_index.
+
+ 4. hobby for house1 (index1) must be 'cooking': so if hobbies[1] != 'cooking': return False
+
+ 5. The house with hobby 'cooking' must have name 'Peter'. So let cooking_index = index of 'cooking' in hobbies, then names[cooking_index] must be 'Peter'
+
+ 6. Let gardening_index = index of 'gardening' in hobbies. Let associate_index = index of 'associate' in educations. Then associate_index > gardening_index.
+
+ 7. Let desert_index = index of 'desert' in smoothies. Let bachelor_index = index of 'bachelor' in educations. Then bachelor_index > desert_index.
+
+ 8. The house with hobby 'cooking' must have occupation 'doctor'. So cooking_index = index of 'cooking' in hobbies, then occupations[cooking_index] must be 'doctor'
+
+ 9. The house with hobby 'photography' must have occupation 'teacher'. So photography_index = index of 'photography' in hobbies, then occupations[photography_index] must be 'teacher'
+
+ We also have to ensure that the permutations are valid (each value appears exactly once) but that is already done by using permutations.
+
+ Let's code accordingly.
+
+ We'll use itertools.permutations.
+
+ Code structure:
+
+ import itertools
+
+ attributes = {
+   'names': ['Arnold', 'Peter', 'Eric'],
+   'occupations': ['doctor', 'teacher', 'engineer'],
+   'educations': ['associate', 'high school', 'bachelor'],
+   'smoothies': ['desert', 'cherry', 'watermelon'],
+   'hobbies': ['gardening', 'cooking', 'photography']
+ }
+
+ We'll iterate over each permutation for each attribute.
+
+ Note: There are 6 permutations for each attribute, so 6^5 = 7776 iterations, which is acceptable.
+
+ Let's code.
+
+ However, we can break early in the loops if a constraint fails at an outer level.
+
+ But for simplicity, we'll do a full iteration and check all constraints at the innermost loop.
+
+ We'll create a function check_constraints that takes the five lists (each of length 3) and returns True if all constraints are satisfied.
+
+ We'll then output the solution in the required JSON format.
+
+ Let's code the check_constraints function.
+
+ Note: We are using 0-indexed for houses, but the output must use 1-indexed for house number.
+
+ Implementation:
+
+ We'll assign:
+   names = list of names for house0, house1, house2
+   occupations = list of occupations for house0, house1, house2
+   etc.
+
+ Then we check:
+
+   constraint2: if names[2] == 'Arnold': return False
+
+   constraint4: if hobbies[1] != 'cooking': return False
+
+   constraint5: Find the index of 'cooking' in hobbies -> must be 1 (from constraint4) so we can check: if names[1] != 'Peter': return False? But wait, constraint4 and 5 together fix cooking in house1 and Peter must be the one in that house. However, if we already have constraint4, then constraint5 becomes: names[1] must be 'Peter'. So we can check that.
+
+   constraint8: occupations[1] must be 'doctor' (because cooking is at index1)
+
+   constraint1: if smoothies[1] != 'desert'? Because the doctor is at index1, so smoothies[1] must be 'desert'. So we can check: if smoothies[1] != 'desert': return False
+
+   constraint3: Find the index of Peter (which should be 1) and the index of cherry smoothie. Then cherry smoothie must be in a house with index > 1, so index2. So if smoothies[2] != 'cherry': return False? But wait, what if there are multiple cherry? No, it's unique. So we can check: if smoothies[2] != 'cherry': return False
+
+   constraint7: bachelor education must be right of desert smoothie (index1). So bachelor must be at index2. So if educations[2] != 'bachelor': return False
+
+   constraint9: photography hobby must be associated with teacher occupation. We know cooking is at index1, so photography must be at index0 or index2. But we also know from constraint9 that the teacher must be where photography is. We don't know where photography is yet.
+
+   constraint6: associate education must be right of gardening hobby. We know educations: index2 is bachelor, so associate must be at index0 or index1. But if associate is at index0, then there is no house to the left for gardening (so constraint6 would fail). So associate must be at index1. Then gardening must be at index0. So we can check: if educations[1] != 'associate': return False, and if hobbies[0] != 'gardening': return False
+
+   Then constraint9: photography must be at index2 (since index0 is gardening, index1 is cooking). So hobbies[2] must be 'photography'. Then occupations[2] must be 'teacher' (constraint9). Then the remaining occupation (engineer) must be at index0.
+
+   Also, the remaining name (Eric) must be at index2.
+
+   So we can also check: if names[2] != 'Eric': return False, and if occupations[0] != 'engineer': return False, and if occupations[2] != 'teacher': return False, and if educations[0] != 'high school': return False.
+
+ But note: we are generating all permutations, so we don't want to hardcode these. We want to check the constraints as stated.
+
+ However, we can use the constraints to check without hardcoding the entire solution.
+
+ Let's code the constraints as described in the list above.
+
+ We'll write:
+
+   def check_constraints(names, occupations, educations, smoothies, hobbies):
+        # Constraint 2: Arnold not in third house (index2)
+        if names[2] == 'Arnold':
+            return False
+
+        # Constraint 4: Cooking in second house (index1)
+        if hobbies[1] != 'cooking':
+            return False
+
+        # Constraint 5: The cooking lover is Peter
+        # Since cooking is at index1, then names[1] must be Peter
+        if names[1] != 'Peter':
+            return False
+
+        # Constraint 8: The cooking lover is doctor
+        if occupations[1] != 'doctor':
+            return False
+
+        # Constraint 1: Desert smoothie lover is doctor -> doctor is at index1, so smoothies[1] must be desert
+        if smoothies[1] != 'desert':
+            return False
+
+        # Constraint 3: Cherry smoothie right of Peter -> Peter is at index1, so cherry must be at index2
+        if smoothies[2] != 'cherry':
+            return False
+
+        # Now, smoothies[0] must be watermelon (by process of elimination) but we don't need to check because permutations ensure uniqueness.
+
+        # Constraint 7: Bachelor degree right of desert smoothie lover -> desert smoothie at index1, so bachelor must be at index2
+        if educations[2] != 'bachelor':
+            return False
+
+        # Constraint 6: Associate degree right of gardening
+        # Find index of associate
+        associate_index = None
+        for i in range(3):
+            if educations[i] == 'associate':
+                associate_index = i
+                break
+        # Find index of gardening
+        gardening_index = None
+        for i in range(3):
+            if hobbies[i] == 'gardening':
+                gardening_index = i
+                break
+        if associate_index <= gardening_index:
+            return False
+
+        # Constraint 9: Photography enthusiast is teacher
+        # Find index of photography
+        photography_index = None
+        for i in range(3):
+            if hobbies[i] == 'photography':
+                photography_index = i
+                break
+        if occupations[photography_index] != 'teacher':
+            return False
+
+        # All constraints satisfied
+        return True
+
+ But note: we have already fixed many attributes by the earlier constraints. So the above function will work.
+
+ However, we must also ensure that the attributes are assigned correctly (unique) but that is already done by the permutations.
+
+ Let's code the iteration.
+
+ We'll use:
+
+   from itertools import permutations
+
+   for name_perm in permutations(names):
+      for occ_perm in permutations(occupations):
+         for edu_perm in permutations(educations):
+            for smo_perm in permutations(smoothies):
+               for hob_perm in permutations(hobbies):
+                  if check_constraints(name_perm, occ_perm, edu_perm, smo_perm, hob_perm):
+                     # We found a solution
+                     solution = {
+                        1: [name_perm[0], occ_perm[0], edu_perm[0], smo_perm[0], hob_perm[0]],
+                        2: [name_perm[1], occ_perm[1], edu_perm[1], smo_perm[1], hob_perm[1]],
+                        3: [name_perm[2], occ_perm[2], edu_perm[2], smo_perm[2], hob_perm[2]]
+                     }
+                     then output in JSON.
+
+ But note: the order of the attributes in the output must be: Name, Occupation, Education, Smoothie, Hobby.
+
+ We'll create the rows accordingly.
+
+ Let's code.
+
+ However, note: the above check_constraints function relies on the fixed constraints (like cooking must be in house2) and so on. But what if the constraints are changed? The function is specific to this puzzle.
+
+ Alternatively, we can make the constraints more general by not assuming the fixed indices for cooking, etc., but instead using the constraints as originally stated.
+
+ Let me rewrite the check_constraints function to use the original constraints without hardcoding the indices:
+
+   def check_constraints(names, occupations, educations, smoothies, hobbies):
+        # 1. Desert smoothie lover is doctor
+        for i in range(3):
+            if smoothies[i] == 'desert' and occupations[i] != 'doctor':
+                return False
+
+        # 2. Arnold not in third house (index2)
+        if names[2] == 'Arnold':
+            return False
+
+        # 3. Cherry smoothie right of Peter
+        # Find Peter's house index
+        peter_index = None
+        for i in range(3):
+            if names[i] == 'Peter':
+                peter_index = i
+                break
+        cherry_index = None
+        for i in range(3):
+            if smoothies[i] == 'cherry':
+                cherry_index = i
+                break
+        if cherry_index <= peter_index:
+            return False
+
+        # 4. Cooking in second house (index1)
+        if hobbies[1] != 'cooking':
+            return False
+
+        # 5. Cooking is Peter
+        cooking_index = None
+        for i in range(3):
+            if hobbies[i] == 'cooking':
+                cooking_index = i
+                break
+        if names[cooking_index] != 'Peter':
+            return False
+
+        # 6. Associate degree right of gardening
+        associate_index = None
+        for i in range(3):
+            if educations[i] == 'associate':
+                associate_index = i
+                break
+        gardening_index = None
+        for i in range(3):
+            if hobbies[i] == 'gardening':
+                gardening_index = i
+                break
+        if associate_index <= gardening_index:
+            return False
+
+        # 7. Bachelor degree right of desert smoothie lover
+        desert_index = None
+        for i in range(3):
+            if smoothies[i] == 'desert':
+                desert_index = i
+                break
+        bachelor_index = None
+        for i in range(3):
+            if educations[i] == 'bachelor':
+                bachelor_index = i
+                break
+        if bachelor_index <= desert_index:
+            return False
+
+        # 8. Cooking lover is doctor
+        if occupations[cooking_index] != 'doctor':
+            return False
+
+        # 9. Photography enthusiast is teacher
+        photo_index = None
+        for i in range(3):
+            if hobbies[i] == 'photography':
+                photo_index = i
+                break
+        if occupations[photo_index] != 'teacher':
+            return False
+
+        return True
+
+ This version is more general and does not assume fixed indices for cooking, etc. (except constraint4 which directly says second house).
+
+ Now, we can run the loops.
+
+ Let's code accordingly.
+
+ We'll use:
+
+   names = ['Arnold', 'Peter', 'Eric']
+   occupations = ['doctor', 'teacher', 'engineer']
+   educations = ['associate', 'high school', 'bachelor']
+   smoothies = ['desert', 'cherry', 'watermelon']
+   hobbies = ['gardening', 'cooking', 'photography']
+
+   We iterate over all permutations of these.
+
+ Code:
+
+   from itertools import permutations
+
+   for n in permutations(names):
+      for o in permutations(occupations):
+         for e in permutations(educations):
+            for s in permutations(smoothies):
+               for h in permutations(hobbies):
+                  if check_constraints(n, o, e, s, h):
+                     # Format the solution
+                     rows = []
+                     for i in range(3):
+                         house_num = i+1
+                         row = [str(house_num), n[i], o[i], e[i], s[i], h[i]]
+                         rows.append(row)
+                     result = {
+                         "solution": {
+                             "header": ["House", "Name", "Occupation", "Education", "Smoothie", "Hobby"],
+                             "rows": rows
+                         }
+                     }
+                     # Then print as JSON
+
+ We'll print the JSON.
+
+ Let's code accordingly.
+
+ Note: We must output the JSON in the exact format.
+
+ We'll use json.dumps to output the result.
+
+ However, the problem says output only the code, so we'll write the code and then run it.
+
+ We'll assume that the solution is unique.
+
+ Let's write the code.

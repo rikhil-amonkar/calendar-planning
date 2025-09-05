@@ -1,0 +1,83 @@
+import json
+
+def main():
+    # Initialize the houses as a list of dictionaries
+    houses = [{'Name': None, 'Color': None, 'PhoneModel': None, 'Occupation': None} for _ in range(5)]
+    
+    # Clue 2: Bob is in the second house (index 1)
+    houses[1]['Name'] = 'Bob'
+    
+    # From clue 12 and 13: Eric uses Google Pixel 6 and is a teacher
+    # From clue 14: red is right of teacher, so Eric must be in house 1 (index 0) because doctor is in house 2 and red in house 3
+    houses[0]['Name'] = 'Eric'
+    houses[0]['PhoneModel'] = 'google pixel 6'
+    houses[0]['Occupation'] = 'teacher'
+    
+    # Clue 10: Arnold is the engineer
+    # Clue 11: Alice loves yellow
+    
+    # Clue 3 and 4: doctor uses Samsung Galaxy S21 and loves blue
+    # Clue 6: lawyer uses OnePlus 9
+    
+    # Based on deduction: doctor is in house 2 (index 1)
+    houses[1]['Occupation'] = 'doctor'
+    houses[1]['Color'] = 'blue'
+    houses[1]['PhoneModel'] = 'samsung galaxy s21'
+    
+    # Clue 7: blue is directly left of red -> red in house 3 (index 2)
+    houses[2]['Color'] = 'red'
+    
+    # Clue 9: one house between Google Pixel 6 (house 1) and Huawei P50 -> Huawei P50 in house 3 (index 2)
+    houses[2]['PhoneModel'] = 'huawei p50'
+    
+    # Clue 1 and 8: doctor < lawyer < engineer, and doctor in house 2, so lawyer and engineer in house 4 and 5
+    houses[3]['Occupation'] = 'lawyer'
+    houses[4]['Occupation'] = 'engineer'
+    
+    # Clue 6: lawyer uses OnePlus 9 -> house 4
+    houses[3]['PhoneModel'] = 'oneplus 9'
+    
+    # Clue 10: Arnold is engineer -> house 5
+    houses[4]['Name'] = 'Arnold'
+    
+    # Only occupation left for house 3 is artist
+    houses[2]['Occupation'] = 'artist'
+    
+    # Names left: Alice and Peter for house 3 and 4, but house 4 is Arnold, so house 3 must be Alice and house 2 must be Peter
+    houses[3]['Name'] = 'Alice'
+    houses[2]['Name'] = 'Peter'
+    
+    # Clue 11: Alice loves yellow -> house 4 (index 3) has color yellow
+    houses[3]['Color'] = 'yellow'
+    
+    # Colors left: green and white for house 1 and 5 (index 0 and 4)
+    # Clue 5: green not in fifth house -> so house 5 cannot be green, so house 5 is white and house 1 is green
+    houses[0]['Color'] = 'green'
+    houses[4]['Color'] = 'white'
+    
+    # Phone left: iphone 13 for house 5
+    houses[4]['PhoneModel'] = 'iphone 13'
+    
+    # Prepare the output JSON
+    solution = {
+        "solution": {
+            "header": ["House", "Name", "Color", "PhoneModel", "Occupation"],
+            "rows": []
+        }
+    }
+    
+    for i in range(5):
+        house_number = str(i+1)
+        row = [
+            house_number,
+            houses[i]['Name'],
+            houses[i]['Color'],
+            houses[i]['PhoneModel'],
+            houses[i]['Occupation']
+        ]
+        solution["solution"]["rows"].append(row)
+    
+    print(json.dumps(solution, indent=2))
+
+if __name__ == "__main__":
+    main()

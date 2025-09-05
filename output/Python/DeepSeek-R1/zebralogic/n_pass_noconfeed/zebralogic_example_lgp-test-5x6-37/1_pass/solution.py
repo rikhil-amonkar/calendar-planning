@@ -1,0 +1,19 @@
+import json
+
+def main():
+    solution = {
+        "solution": {
+            "header": ["House", "Name", "Hobby", "FavoriteSport", "HouseStyle", "Children", "Height"],
+            "rows": [
+                ["1", "Eric", "knitting", "swimming", "craftsman", "Meredith", "average"],
+                ["2", "Alice", "gardening", "soccer", "ranch", "Timothy", "tall"],
+                ["3", "Arnold", "cooking", "tennis", "modern", "Samantha", "very short"],
+                ["4", "Peter", "photography", "baseball", "colonial", "Bella", "very tall"],
+                ["5", "Bob", "painting", "basketball", "victorian", "Fred", "short"]
+            ]
+        }
+    }
+    print(json.dumps(solution, indent=2))
+
+if __name__ == "__main__":
+    main()

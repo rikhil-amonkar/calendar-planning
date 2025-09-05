@@ -1,0 +1,75 @@
+```python
+import z3
+import json
+
+def main():
+    # Define the attributes
+    names = ['Alice', 'Arnold', 'Peter', 'Eric']
+    hair_colors = ['black', 'blonde', 'brown', 'red']
+    
+    # Create Z3 variables for each house
+    house_name = [z3.Int(f'name_{i}') for i in range(4)]
+    house_hair = [z3.Int(f'hair_{i}') for i in range(4)]
+    
+    solver = z3.Solver()
+    
+    # Each name and hair color must be between 0 and 3 (indexing the lists)
+    for i in range(4):
+        solver.add(z3.And(house_name[i] >= 0, house_name[i] < 4))
+        solver.add(z3.And(house_hair[i] >= 0, house_hair[i] < 4))
+    
+    # All names and hair colors are distinct
+    solver.add(z3.Distinct(house_name))
+    solver.add(z3.Distinct(house_hair))
+    
+    # Clue 5: Alice is in the first house
+    solver.add(house_name[0] == names.index('Alice'))
+    
+    # Clue 3: Eric has brown hair
+    eric_index = names.index('Eric')
+    brown_index = hair_colors.index('brown')
+    for i in range(4):
+        solver.add(z3.Implies(house_name[i] == eric_index, house_hair[i] == brown_index))
+    
+    # Clue 1: Eric is directly left of the person with blonde hair
+    blonde_index = hair_colors.index('blonde')
+    for i in range(3):  # Eric can only be in houses 1-3 (0-indexed 0-2)
+        solver.add(z3.Implies(house_name[i] == eric_index, house_hair[i+1] == blonde_index))
+    
+    # Clue 2: Alice and Arnold are next to each other
+    alice_index = names.index('Alice')
+    arnold_index = names.index('Arnold')
+    for i in range(3):
+        solver.add(z3.Or(
+            z3.And(house_name[i] == alice_index, house_name[i+1] == arnold_index),
+            z3.And(house_name[i] == arnold_index, house_name[i+1] == alice_index)
+        ))
+    
+    # Clue 4: Black hair is not in first house
+    black_index = hair_colors.index('black')
+    solver.add(house_hair[0] != black_index)
+    
+    # Check for solution
+    if solver.check() == z3.sat:
+        model = solver.model()
+        solution = {
+            "solution": {
+                "header": ["House", "Name", "HairColor"],
+                "rows": []
+            }
+        }
+        for i in range(4):
+            name_val = model.eval(house_name[i]).as_long()
+            hair_val = model.eval(house_hair[i]).as_long()
+            solution["solution"]["rows"].append([
+                str(i+1),
+                names[name_val],
+                hair_colors[hair_val]
+            ])
+        print(json.dumps(solution, indent=2))
+    else:
+        print('No solution found')
+
+if __name__ == '__main__':
+    main()
+```

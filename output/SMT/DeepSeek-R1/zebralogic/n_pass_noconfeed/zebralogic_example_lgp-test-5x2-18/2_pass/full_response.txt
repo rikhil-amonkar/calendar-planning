@@ -1,0 +1,92 @@
+```python
+import z3
+import json
+
+def main():
+    # Create a solver instance
+    solver = z3.Solver()
+
+    # Define the house numbers
+    houses = [1, 2, 3, 4, 5]
+
+    # Define enums for names and children
+    Name = z3.EnumSort('Name', ['Eric', 'Alice', 'Peter', 'Bob', 'Arnold'])
+    Child = z3.EnumSort('Child', ['Timothy', 'Meredith', 'Samantha', 'Fred', 'Bella'])
+
+    # Create variables for each house's name and child
+    name_vars = [z3.Const(f'name_{i}', Name) for i in houses]
+    child_vars = [z3.Const(f'child_{i}', Child) for i in houses]
+
+    # Add constraints: all names and children are distinct
+    solver.add(z3.Distinct(name_vars))
+    solver.add(z3.Distinct(child_vars))
+
+    # Clue 3: The person's child is named Fred is in the second house.
+    solver.add(child_vars[1] == z3.Const('Fred', Child))
+
+    # Clue 7: The person's child is named Fred is directly left of the person's child is named Bella.
+    # Since Fred is in house 2 (index 1), Bella must be in house 3 (index 2)
+    solver.add(child_vars[2] == z3.Const('Bella', Child))
+
+    # Clue 1: Bob is left of the house with child Samantha
+    bob_index = z3.Int('bob_index')
+    samantha_child_index = z3.Int('samantha_child_index')
+    solver.add(bob_index >= 1, bob_index <= 5)
+    solver.add(samantha_child_index >= 1, samantha_child_index <= 5)
+    solver.add(bob_index < samantha_child_index)
+    for i in range(5):
+        solver.add(z3.Implies(name_vars[i] == z3.Const('Bob', Name), bob_index == i+1))
+        solver.add(z3.Implies(child_vars[i] == z3.Const('Samantha', Child), samantha_child_index == i+1))
+
+    # Clue 2: Mother of Timothy is left of house with child Samantha
+    timothy_child_index = z3.Int('timothy_child_index')
+    solver.add(timothy_child_index >= 1, timothy_child_index <= 5)
+    solver.add(timothy_child_index < samantha_child_index)
+    for i in range(5):
+        solver.add(z3.Implies(child_vars[i] == z3.Const('Timothy', Child), timothy_child_index == i+1))
+
+    # Clue 4: One house between Alice and house with child Samantha
+    alice_index = z3.Int('alice_index')
+    solver.add(alice_index >= 1, alice_index <= 5)
+    solver.add(z3.Or(alice_index - samantha_child_index == 2, samantha_child_index - alice_index == 2))
+    for i in range(5):
+        solver.add(z3.Implies(name_vars[i] == z3.Const('Alice', Name), alice_index == i+1))
+
+    # Clue 5: Eric not in third house
+    solver.add(name_vars[2] != z3.Const('Eric', Name))
+
+    # Clue 6: Bob not in third house
+    solver.add(name_vars[2] != z3.Const('Bob', Name))
+
+    # Clue 8: House with child Samantha is left of Peter
+    peter_index = z3.Int('peter_index')
+    solver.add(peter_index >= 1, peter_index <= 5)
+    solver.add(samantha_child_index < peter_index)
+    for i in range(5):
+        solver.add(z3.Implies(name_vars[i] == z3.Const('Peter', Name), peter_index == i+1))
+
+    # Check satisfiability
+    if solver.check() == z3.sat:
+        model = solver.model()
+        
+        # Prepare results
+        rows = []
+        for i in range(5):
+            house_num = str(i+1)
+            name_val = str(model.eval(name_vars[i]))
+            child_val = str(model.eval(child_vars[i]))
+            rows.append([house_num, name_val, child_val])
+        
+        solution = {
+            "solution": {
+                "header": ["House", "Name", "Children"],
+                "rows": rows
+            }
+        }
+        print(json.dumps(solution, indent=2))
+    else:
+        print("No solution found")
+
+if __name__ == "__main__":
+    main()
+```

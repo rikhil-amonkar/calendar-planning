@@ -1,0 +1,129 @@
+We are given 2 houses. Each has a unique name, birthday month, and color.
+ Clues:
+ 1. Eric loves yellow.
+ 2. April birthday is in the first house.
+ 3. Yellow lover is not in the first house.
+
+ Steps:
+ - Since there are only two houses, we can use constraints to assign the attributes.
+
+ From clue 1 and 3: Eric loves yellow and is not in the first house. So Eric must be in house 2 and loves yellow.
+
+ Then, from clue 2: The person with April birthday is in house 1.
+
+ We have two names: Eric and Arnold. So Arnold must be in house 1.
+
+ We have two birthdays: sept and april. Since april is in house 1, then house 2 must have sept.
+
+ We have two colors: yellow and red. Since Eric (house 2) loves yellow, then house 1 must love red.
+
+ Let's assign:
+
+ House 1:
+   Name: Arnold (since Eric is in house 2)
+   Birthday: april (from clue 2)
+   Color: red (because yellow is in house 2)
+
+ House 2:
+   Name: Eric
+   Birthday: sept
+   Color: yellow
+
+ We can code this by defining the domains and then applying constraints.
+
+ However, note: the problem requires writing a program that algorithmically solves the puzzle.
+
+ We can use a constraint satisfaction approach, but since the problem is small, we can use simple logic.
+
+ We'll create variables for each house and each attribute.
+
+ We can represent the houses as a list of dictionaries, or we can use variables for each attribute per house.
+
+ Let's define:
+ House 1: name1, birthday1, color1
+ House 2: name2, birthday2, color2
+
+ Constraints:
+ 1. name1 != name2, birthday1 != birthday2, color1 != color2
+ 2. Eric loves yellow -> so if a house has Eric, then it must have yellow, and vice versa.
+ 3. April birthday in first house -> birthday1 = 'april'
+ 4. Yellow not in first house -> color1 != yellow -> so color2 must be yellow.
+
+ We can then assign:
+
+ From constraint 4: color2 = yellow
+ From constraint 2: since color2 is yellow, then name2 must be Eric.
+
+ Then, from constraint 3: birthday1 = 'april'
+
+ Then, the remaining name for house1 is Arnold.
+ The remaining birthday for house2 is sept.
+ The remaining color for house1 is red.
+
+ We'll code accordingly.
+
+ However, the problem says to write a program that computes the solution. We can do:
+
+ Steps in code:
+ - Initialize the domains for each attribute.
+ - Use the constraints to eliminate possibilities.
+
+ Since it's small, we can do:
+
+ Let houses be a list of two dictionaries, each with keys: Name, Birthday, Color.
+
+ We'll start by setting all to unknown.
+
+ Then, set birthday1 = 'april' (from clue 2)
+ Then, set color2 = 'yellow' (from clue 3 and clue 1: since yellow is not in first, so in second, and Eric loves yellow, so Eric must be in second)
+
+ Then, from clue 1: Eric loves yellow -> so the house with yellow must have Eric -> so house2 has Eric and yellow.
+
+ Then, house1 must have the other name, which is Arnold, and the other color, which is red, and the other birthday, which is sept.
+
+ But wait: we already set birthday1 to april, so the remaining birthday for house2 is sept.
+
+ So, we have:
+
+ House1: Name: Arnold, Birthday: april, Color: red
+ House2: Name: Eric, Birthday: sept, Color: yellow
+
+ However, note: clue 2 says the person whose birthday is in April is in the first house, which we have.
+
+ But let's double-check: Eric loves yellow (clue 1) and is in house2 (because yellow is not in first, clue 3). So that matches.
+
+ So the solution is fixed.
+
+ We'll code accordingly, but we want to write a program that can be generalized for similar puzzles (though this one is fixed).
+
+ Since the problem is small, we can simply assign based on the constraints.
+
+ We'll write the code in a way that we define the constraints and then solve by elimination.
+
+ However, for two houses, we can do:
+
+ Steps:
+ 1. Create a list of houses, each house represented as a dictionary with keys: House (number), Name, Birthday, Color.
+ 2. Initialize with empty values.
+
+ 3. Apply constraint 2: set House1 Birthday to 'april'
+ 4. Apply constraint 3: set House1 Color to not 'yellow', so since there are only two, we set House2 Color to 'yellow'
+ 5. Apply constraint 1: the person who loves yellow is Eric -> so House2 has Color yellow, so House2 Name must be 'Eric'
+ 6. Now, the remaining name for House1 is 'Arnold'
+ 7. The remaining birthday for House2 is 'sept'
+
+ So we can fill in.
+
+ We'll output the JSON as required.
+
+ Code:
+
+ Let's create a list for the two houses.
+
+ We'll create a list of two dictionaries for the houses, with initial values as None.
+
+ Then we assign step by step.
+
+ Alternatively, we can use a more systematic constraint propagation, but for two houses it's straightforward.
+
+ Let's code accordingly.

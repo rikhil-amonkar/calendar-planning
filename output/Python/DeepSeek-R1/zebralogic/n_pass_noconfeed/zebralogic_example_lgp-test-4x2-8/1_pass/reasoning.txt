@@ -1,0 +1,346 @@
+We are given a puzzle with 4 houses, each with a name and a color.
+ We are to assign each house a name and a color based on the clues.
+
+ Steps:
+ 1. We have two attributes: Name and Color.
+ 2. The names are: Peter, Arnold, Alice, Eric.
+ 3. The colors are: yellow, green, red, white.
+
+ Clues:
+ 1. The person whose favorite color is green is in the third house.
+    -> House 3: Color = green
+ 2. Peter is in the first house.
+    -> House 1: Name = Peter
+ 3. There is one house between the person whose favorite color is red and the person who loves yellow.
+    -> Possible pairs: (red in 1, yellow in 3) or (red in 2, yellow in 4) or (red in 3, yellow in 1) or (red in 4, yellow in 2)
+    But note: clue 1 says green is in house 3, so red cannot be in house 3. Also, clue 5 says Eric loves yellow.
+ 4. Arnold is directly left of Eric.
+    -> So Arnold and Eric are adjacent, with Arnold on the left. Possible: (Arnold in 1, Eric in 2) or (Arnold in 2, Eric in 3) or (Arnold in 3, Eric in 4)
+ 5. Eric is the person who loves yellow.
+    -> Eric's color is yellow.
+
+ From clue 2 and 5, we know:
+   House 1: Peter (name)
+   Eric: name and color yellow.
+
+ From clue 4: Arnold is directly left of Eric. So Eric cannot be in house 1 (since no one left of house 1). Therefore, possible Eric positions: 2,3,4.
+
+ But clue 1: green is in house 3, so if Eric is in house 3, then his color would be green, but clue 5 says Eric loves yellow -> contradiction. Therefore Eric cannot be in house 3.
+ Also, if Eric is in house 2, then Arnold must be in house 1. But house 1 has Peter, so Arnold cannot be in house 1. Therefore, Eric must be in house 4, and Arnold in house 3.
+
+ However, note: clue 1 says house 3 has green color. But if Arnold is in house 3, then his color is green. But Eric is in house 4 and has color yellow.
+
+ Now, let's check the possibilities for clue 3: one house between red and yellow.
+ Since yellow is in house 4 (Eric), then the red must be two positions away with one house in between. So red could be in house 2 (since between house2 and house4 is house3) or in house 1 (but then between house1 and house4 there are two houses: 2 and 3, so that would be two houses between, not one). So the only possibility is red in house 2.
+
+ Alternatively, we can list the possibilities for clue 3: 
+   If yellow is in house 4, then the red must be in house 2 (because then house3 is between them). 
+   If yellow were in house 1, then red would be in house 3, but house3 is green (clue1) so not red. 
+   If yellow in house 2, then red could be in house 4 (but then Eric is yellow and in house2, but we already deduced Eric in house4) or house 0 (invalid). 
+   If yellow in house 3, then red in house 1 or house5, but house3 is green (clue1) so yellow cannot be in house3.
+
+ So with Eric (yellow) in house4, then red must be in house2.
+
+ Then, the remaining color white must be in house1.
+
+ Now, names: 
+   House1: Peter
+   House3: Arnold (from clue4: Arnold left of Eric, and Eric in 4, so Arnold in 3)
+   House4: Eric
+   Then house2 must be Alice.
+
+ So the assignment:
+   House1: Peter, white
+   House2: Alice, red
+   House3: Arnold, green
+   House4: Eric, yellow
+
+ Let's verify all clues:
+   Clue1: green in third -> yes, Arnold has green.
+   Clue2: Peter in first -> yes.
+   Clue3: one house between red and yellow: red in house2, yellow in house4 -> house3 is between them -> yes.
+   Clue4: Arnold directly left of Eric -> Arnold in 3, Eric in 4 -> yes.
+   Clue5: Eric loves yellow -> yes.
+
+ Therefore, the solution is as above.
+
+ However, we are to write a program that algorithmically solves it. Since the problem is small, we can use constraint satisfaction with brute force or logical deduction.
+
+ But note: the problem says to write a program that computes the solution using the given constraints.
+
+ We can use a systematic approach:
+
+ We have 4 houses. We'll create variables for each house for name and color.
+
+ We can use itertools to generate permutations and then check against the constraints.
+
+ Steps in code:
+ 1. Define the possible values for names and colors.
+ 2. Generate all possible assignments for names to houses (permutations of names for the 4 houses).
+ 3. Generate all possible assignments for colors to houses (permutations of colors for the 4 houses).
+ 4. Combine these and check against the constraints.
+
+ Alternatively, we can use the constraints to narrow down.
+
+ Since the problem is small (4! * 4! = 24 * 24 = 576 possibilities) we can iterate.
+
+ However, we can also use the constraints one by one to reduce the possibilities.
+
+ Let's code with a nested loop for names and colors.
+
+ But note: we have 5 constraints, some of which are very specific.
+
+ We can do:
+
+ For each permutation of names (assigning names to houses 1,2,3,4) and for each permutation of colors (assigning colors to houses 1,2,3,4), check:
+
+ Constraints:
+ 1. The house with color green must be house 3.
+ 2. The house with name Peter must be house 1.
+ 3. There is one house between the house with color red and the house with color yellow.
+    This means |index_red - index_yellow| = 2.
+ 4. Arnold is directly left of Eric: so the house index of Arnold must be Eric's index - 1.
+ 5. Eric has color yellow.
+
+ We can break early if any condition fails.
+
+ However, we can also use the constraints to fix some values.
+
+ Let's code accordingly.
+
+ Implementation:
+
+ We'll create two lists: houses [1,2,3,4]
+ We'll create lists for names and colors.
+
+ We'll iterate over all possible name assignments and color assignments.
+
+ But note: constraint 2 fixes name in house1: Peter.
+ Constraint 1 fixes color in house3: green.
+
+ So we can pre-assign:
+   name[0] (house1) = 'Peter'
+   color[2] (house3) = 'green'
+
+ Then we have 3! for names and 3! for colors, so 6*6=36 possibilities.
+
+ We can generate permutations for the remaining names for houses 2,3,4 and remaining colors for houses 1,2,4.
+
+ Alternatively, we can generate the full permutations and then check, but with fixed values we can reduce the search space.
+
+ Let's code with fixed assignments for house1 name and house3 color.
+
+ Steps:
+
+ names = ['Peter', None, None, None]   # house1 fixed, then we assign the remaining three names to houses 2,3,4.
+colors = [None, None, 'green', None]   # house3 fixed, then we assign the remaining three colors to houses 1,2,4.
+
+ We'll generate permutations for the remaining names: ['Arnold','Alice','Eric'] for houses 2,3,4.
+ And permutations for the remaining colors: ['yellow','red','white'] for houses 1,2,4.
+
+ Then we check the constraints on the full assignment.
+
+ Constraints to check:
+ 3. |index of red - index of yellow| = 2. Note: we have assigned colors to houses 1,2,4. The house indices are 1-indexed, but our list is 0-indexed.
+    So if red is in house i (0-indexed index i-1) and yellow in house j, then |i - j| = 2 (in 1-indexed: |house_number_i - house_number_j| = 2).
+    Since our houses are 0-indexed in the list, the condition becomes |i - j| = 2 in 1-indexed, which is |(i+1) - (j+1)| = |i - j| = 2.
+
+    Example: if red in house1 (index0) and yellow in house3 (index2): |0-2|=2 -> valid.
+            if red in house2 (index1) and yellow in house4 (index3): |1-3|=2 -> valid.
+            if red in house4 (index3) and yellow in house2 (index1): |3-1|=2 -> valid.
+            if red in house3 (index2) and yellow in house1 (index0): |2-0|=2 -> valid.
+
+    But note: house3 is fixed to green, so red and yellow cannot be in house3. So we only have houses 1,2,4 for red and yellow.
+
+    So the possible pairs for (red, yellow) in terms of house numbers (1-indexed): 
+        (1,3) -> but house3 is green, so not available for red or yellow -> invalid.
+        (2,4) -> |2-4|=2 -> valid.
+        (4,2) -> |4-2|=2 -> valid.
+        (3,1) and (3,5) and (1,3) and (5,3) are invalid because house3 is green.
+
+    So the only possibilities are red in house2 and yellow in house4, or red in house4 and yellow in house2.
+
+ 4. Arnold is directly left of Eric: so in 1-indexed, Arnold's house = Eric's house - 1.
+    In our 0-indexed list, if Eric is at index i, then Arnold must be at index i-1.
+
+ 5. Eric has color yellow.
+
+ We also have to assign the names and colors accordingly.
+
+ Let's code accordingly.
+
+ We'll iterate over the permutations of names for houses 2,3,4 and colors for houses 1,2,4.
+
+ But note: the color assignment for house1, house2, house4 must be a permutation of ['yellow','red','white'].
+
+ We'll create:
+
+ names_assignment = ['Peter'] + list(perm_name)   # for houses 1,2,3,4
+colors_assignment = [None, None, 'green', None]
+ Then we assign the color permutation to the indices [0,1,3] (which are house1, house2, house4)
+
+ Then we check:
+
+ 1. Already satisfied by fixed assignment.
+
+ 2. Already satisfied.
+
+ 3. Check the positions of red and yellow. We know they must be in houses 2 and 4 (in some order) because house1 and house3 are not available for both? Wait, note: house1 is available for red or yellow, but house3 is not. However, from our earlier deduction, the only valid pairs with one house between and avoiding house3 are (house2 and house4). So we require:
+    - If red is in house2, then yellow must be in house4, or vice versa.
+
+ 4. Check the names: Arnold must be left of Eric by one.
+
+ 5. Check: Eric's color must be yellow.
+
+ We can code accordingly.
+
+ Alternatively, we can use the constraints to reduce the possibilities without iterating over all, but since the problem is small, we can iterate.
+
+ Let's code with iteration.
+
+ Steps in code:
+
+ Import itertools
+
+ Define:
+ names = ['Peter', 'Arnold', 'Alice', 'Eric']
+colors = ['yellow', 'green', 'red', 'white']
+
+ We are going to generate:
+   name_perms: permutations of ['Arnold','Alice','Eric'] for houses 2,3,4.
+   color_perms: permutations of ['yellow','red','white'] for houses 1,2,4.
+
+ Then for each name_perm and color_perm:
+
+   Construct the full name list: house1: 'Peter', then house2: name_perm[0], house3: name_perm[1], house4: name_perm[2]
+   Construct the full color list: 
+        house1: color_perm[0]
+        house2: color_perm[1]
+        house3: 'green'
+        house4: color_perm[2]
+
+   Check constraints:
+
+   Constraint 3: There is one house between red and yellow.
+        Find the house index (1-indexed) for red and yellow.
+        Let red_index = index of 'red' in the color list (0-indexed) + 1
+        Let yellow_index = index of 'yellow' in the color list (0-indexed) + 1
+        Then |red_index - yellow_index| must be 2.
+
+        But note: we have fixed house3 to green, so red and yellow cannot be in house3.
+
+   Constraint 4: Arnold is directly left of Eric.
+        Find the index of Arnold and Eric in the name list (0-indexed). Let arnold_index and eric_index.
+        Then we require: arnold_index + 1 == eric_index.
+
+   Constraint 5: Eric has color yellow.
+        Find the house index of Eric (0-indexed). Then the color at that index must be 'yellow'.
+
+   Note: We don't need to check constraint 1 and 2 because we fixed them.
+
+   If all constraints are satisfied, we found the solution.
+
+ Let's code accordingly.
+
+ However, note: constraint 5 is already partially enforced by the color assignment? Not exactly: we are assigning colors arbitrarily to houses 1,2,4, so we must check that Eric's house (wherever it is) has the color yellow.
+
+ We can break early if constraint 5 fails.
+
+ Implementation:
+
+ We'll iterate over the name permutations and color permutations.
+
+ Example of a name permutation: (Arnold, Alice, Eric) for houses 2,3,4 -> then full names: [Peter, Arnold, Alice, Eric]
+ Example of a color permutation: (yellow, red, white) for houses 1,2,4 -> then full colors: [yellow, red, green, white]
+
+ Then we check:
+
+   constraint 5: Eric is in house4 (if the name permutation has Eric in the last). The color of house4 is white, but Eric must have yellow -> fail.
+
+ So we check constraint 5: find Eric's house index (0-indexed). In the example, Eric is at index3 (house4). Then check color_assignment[3] (which is white) against 'yellow' -> fail.
+
+ We can code accordingly.
+
+ Let's write the code.
+
+ Note: We are to output the solution in the specified JSON format.
+
+ We'll break out when we find the valid assignment.
+
+ Code structure:
+
+ import itertools
+ import json
+
+ names = ['Peter', 'Arnold', 'Alice', 'Eric']
+ colors = ['yellow', 'green', 'red', 'white']
+
+ # Fixed assignments
+ fixed_name_house1 = 'Peter'
+ fixed_color_house3 = 'green'
+
+ # The remaining names and colors
+ remaining_names = [n for n in names if n != fixed_name_house1]
+ remaining_colors = [c for c in colors if c != fixed_color_house3]
+
+ # Generate permutations for the remaining names (for houses 2,3,4) and remaining colors (for houses 1,2,4)
+ for name_perm in itertools.permutations(remaining_names):
+    full_names = [fixed_name_house1] + list(name_perm)   # for house1,2,3,4
+
+    for color_perm in itertools.permutations(remaining_colors):
+        full_colors = [None, None, fixed_color_house3, None]
+        # Assign color_perm[0] to house1 (index0), color_perm[1] to house2 (index1), color_perm[2] to house4 (index3)
+        full_colors[0] = color_perm[0]
+        full_colors[1] = color_perm[1]
+        full_colors[3] = color_perm[2]
+
+        # Check constraint 3: |red index - yellow index| = 2 (in 1-indexed, which is the same as 0-indexed indices difference of 2)
+        # Find the 0-indexed indices of red and yellow in full_colors
+        try:
+            red_index = full_colors.index('red')
+            yellow_index = full_colors.index('yellow')
+        except ValueError:
+            continue
+
+        if abs(red_index - yellow_index) != 2:
+            continue
+
+        # Check constraint 4: Arnold is directly left of Eric (so Arnold's index + 1 = Eric's index)
+        try:
+            arnold_index = full_names.index('Arnold')
+            eric_index = full_names.index('Eric')
+        except ValueError:
+            continue
+
+        if arnold_index + 1 != eric_index:
+            continue
+
+        # Check constraint 5: Eric has color yellow -> the color at eric_index must be yellow
+        if full_colors[eric_index] != 'yellow':
+            continue
+
+        # If we passed all, we found the solution.
+        solution = {
+            "solution": {
+                "header": ["House", "Name", "Color"],
+                "rows": []
+            }
+        }
+        for i in range(4):
+            solution["solution"]["rows"].append([str(i+1), full_names[i], full_colors[i]])
+
+        # Output the solution as JSON
+        print(json.dumps(solution, indent=2))
+        exit(0)
+
+ # If we get here, no solution found? But we know there is one.
+ print('No solution found')
+ exit(1)
+
+ However, note: we might have multiple solutions? But the puzzle should have a unique solution.
+
+ Let's run the code with the known solution to see if it matches.
+
+ We'll output the code as required.
+
+ Note: The problem says to output only the code, so we write the entire program.

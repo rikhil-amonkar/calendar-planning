@@ -1,0 +1,48 @@
+import json
+
+def main():
+    # Initialize the houses as dictionaries
+    houses = [
+        {"House": "1", "Name": None, "BookGenre": None, "Birthday": None, "Animal": None},
+        {"House": "2", "Name": None, "BookGenre": None, "Birthday": None, "Animal": None}
+    ]
+    
+    # Clue 1: Eric is in the first house.
+    houses[0]["Name"] = "Eric"
+    
+    # Clue 2: Eric is the person whose birthday is in September.
+    houses[0]["Birthday"] = "sept"
+    
+    # Clue 3: The person who loves science fiction books is in the second house.
+    houses[1]["BookGenre"] = "science fiction"
+    
+    # Clue 4: The person who keeps horses is the person whose birthday is in September.
+    # Since Eric has birthday in September, he keeps horses.
+    houses[0]["Animal"] = "horse"
+    
+    # Now, assign the remaining values
+    # The remaining name is Arnold, so house 2 gets Arnold
+    houses[1]["Name"] = "Arnold"
+    
+    # The remaining book genre for house 1 is mystery
+    houses[0]["BookGenre"] = "mystery"
+    
+    # The remaining birthday for house 2 is april
+    houses[1]["Birthday"] = "april"
+    
+    # The remaining animal for house 2 is cat
+    houses[1]["Animal"] = "cat"
+    
+    # Prepare the output in the required JSON format
+    header = ["House", "Name", "BookGenre", "Birthday", "Animal"]
+    rows = []
+    for house in houses:
+        row = [house["House"], house["Name"], house["BookGenre"], house["Birthday"], house["Animal"]]
+        rows.append(row)
+    
+    output = {"solution": {"header": header, "rows": rows}}
+    
+    print(json.dumps(output, indent=2))
+
+if __name__ == "__main__":
+    main()

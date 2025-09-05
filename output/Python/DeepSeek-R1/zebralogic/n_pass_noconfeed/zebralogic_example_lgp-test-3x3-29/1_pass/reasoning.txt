@@ -1,0 +1,250 @@
+We are given 3 houses, each with a unique combination of attributes: Name, Mother, Food.
+ We have three attributes, each with three possible values.
+
+ Attributes:
+   Names: Eric, Peter, Arnold
+   Mothers: Holly, Aniya, Janelle
+   Foods: pizza, grilled cheese, spaghetti
+
+ Clues:
+ 1. The person who loves the spaghetti eater and Peter are next to each other.
+    Interpretation: The house of the spaghetti eater and Peter's house are adjacent.
+    Note: "loves the spaghetti eater" might be a misphrasing? Let's read: "the person who loves the spaghetti eater" doesn't make sense.
+    Actually, re-read: "The person who loves the spaghetti eater" might be intended to mean "the person who eats spaghetti".
+    Let me check the original: "the spaghetti eater" -> so it's the one who eats spaghetti. So clue 1: The spaghetti eater and Peter are next to each other.
+
+ 2. The person who loves eating grilled cheese is directly left of The person whose mother's name is Aniya.
+    So: grilled cheese house is immediately left of the house with mother Aniya.
+
+ 3. The person who loves eating grilled cheese is Eric.
+    So: Eric eats grilled cheese.
+
+ 4. Peter is The person whose mother's name is Holly.
+    So: Peter's mother is Holly.
+
+ We can deduce:
+
+ From clue 3: Eric eats grilled cheese.
+ From clue 4: Peter's mother is Holly.
+
+ From clue 2: Grilled cheese (Eric) is directly left of mother Aniya.
+   So Eric is in house n, and mother Aniya is in house n+1.
+
+ Since there are 3 houses, Eric can be in house 1 or 2, but since it must be left of mother Aniya, Eric cannot be in house 3.
+   Possibilities: (Eric in 1, mother Aniya in 2) or (Eric in 2, mother Aniya in 3)
+
+ From clue 4: Peter's mother is Holly, so Peter is not the one with mother Aniya.
+
+ Also, from clue 1: The spaghetti eater and Peter are adjacent.
+
+ Let's assign variables:
+
+ We have three houses: 1, 2, 3.
+
+ We'll represent the state as:
+   House i: [name, mother, food]
+
+ We know:
+   name: Eric, Peter, Arnold
+   mother: Holly, Aniya, Janelle
+   food: pizza, grilled cheese, spaghetti
+
+ Steps:
+
+ We can start by setting Eric's food to grilled cheese (clue 3).
+
+ Then, from clue 2, Eric (grilled cheese) is directly left of mother Aniya.
+
+ So:
+   Option A: Eric in house 1, then mother Aniya in house 2.
+   Option B: Eric in house 2, then mother Aniya in house 3.
+
+ Also, clue 4: Peter's mother is Holly. So Peter has mother Holly.
+
+ Now, let's consider the two options.
+
+ Option A:
+   House 1: name=Eric, food=grilled cheese
+   House 2: mother=Aniya
+
+   Then, since Peter has mother Holly, and mother Aniya is in house 2, so Peter cannot be in house 2. So Peter is in house 1 or 3.
+   But house 1 has Eric, so Peter must be in house 3. Then house 3: name=Peter, mother=Holly (from clue 4).
+
+   Then house 2: name must be Arnold (only one left), mother=Aniya, and food? We have two foods left: pizza and spaghetti.
+
+   Now clue 1: spaghetti eater and Peter are adjacent. Peter is in house 3, so spaghetti eater must be in house 2 (since house 3 is adjacent only to house 2).
+
+   So house 2: food=spaghetti.
+
+   Then house 1: food is grilled cheese (already set), so house 3: food must be pizza.
+
+   Check mothers: house 1 mother is not set yet. The remaining mother is Janelle. So house 1: mother=Janelle.
+
+   So Option A gives:
+     House1: Eric, Janelle, grilled cheese
+     House2: Arnold, Aniya, spaghetti
+     House3: Peter, Holly, pizza
+
+ Option B:
+   Eric in house 2: so house2: name=Eric, food=grilled cheese
+   Then mother Aniya must be in house 3.
+
+   Now, Peter has mother Holly (clue 4). So Peter cannot be in house 3 (which has mother Aniya) and cannot be in house 2 (Eric), so Peter must be in house 1.
+   Then house1: name=Peter, mother=Holly.
+
+   Then house3: name=Arnold, mother=Aniya.
+
+   Now, foods: house2 has grilled cheese, so the remaining foods are pizza and spaghetti.
+
+   Now clue 1: spaghetti eater and Peter are adjacent. Peter is in house1, so adjacent house is house2. So spaghetti eater must be in house2? But house2 has grilled cheese. Contradiction.
+
+   Therefore, Option B is impossible.
+
+ So only Option A is valid.
+
+ Therefore, the solution is:
+   House1: Eric, Janelle, grilled cheese
+   House2: Arnold, Aniya, spaghetti
+   House3: Peter, Holly, pizza
+
+ Now, we output in the required JSON format.
+
+ However, note: the problem says the program must compute the solution algorithmically, so we must code the constraints and search.
+
+ We are to write a program that solves this by encoding the constraints and then searching the space.
+
+ Since the puzzle is small, we can use a constraint satisfaction approach by generating all permutations and checking constraints.
+
+ Steps in code:
+
+ We have 3 houses, and 3 attributes each with 3 values.
+
+ We can represent the problem as:
+
+   houses = [1,2,3]
+   names = ['Eric','Peter','Arnold']
+   mothers = ['Holly','Aniya','Janelle']
+   foods = ['pizza','grilled cheese','spaghetti']
+
+ We need to assign each attribute to a house such that all are unique per attribute.
+
+ We'll generate all possible assignments for each attribute and then check the constraints.
+
+ Alternatively, we can use a brute-force over all possible combinations, but that would be 3! * 3! * 3! = 6*6*6=216, which is manageable.
+
+ We can do:
+
+   for name_perm in permutations(names):
+      assign names to houses: house i gets name_perm[i-1]
+   for mother_perm in permutations(mothers):
+      assign mothers to houses
+   for food_perm in permutations(foods):
+      assign foods to houses
+
+   Then check all constraints.
+
+ But note: we have 3 houses, so we can index by house index.
+
+ Alternatively, we can iterate over all possible assignments for the three attributes independently and then check.
+
+ However, we can also use the constraints to prune.
+
+ Let's code the constraints as functions.
+
+ Constraints:
+
+ 1. The spaghetti eater and Peter are next to each other.
+    Let p_house be the house of Peter, and s_house be the house of spaghetti.
+    Then abs(p_house - s_house) == 1
+
+ 2. The grilled cheese eater is directly left of the mother Aniya.
+    Let g_house be the house of grilled cheese, and a_house be the house of mother Aniya.
+    Then g_house + 1 == a_house
+
+ 3. The grilled cheese eater is Eric.
+    So: for the house with grilled cheese, the name must be Eric.
+
+ 4. Peter's mother is Holly.
+    So: for the house with Peter, the mother must be Holly.
+
+ We can code accordingly.
+
+ We'll create a list of houses, and for each house we will assign the three attributes.
+
+ We'll generate:
+
+   for each permutation of names (assigning to house1, house2, house3)
+   for each permutation of mothers (assigning to house1, house2, house3)
+   for each permutation of foods (assigning to house1, house2, house3)
+
+   then for each house i, we have:
+        name_i = name_perm[i]
+        mother_i = mother_perm[i]
+        food_i = food_perm[i]
+
+   then check the constraints.
+
+ But note: the constraints are independent of the house numbering? Actually, the house numbers are fixed (1,2,3 from left to right).
+
+ We can do:
+
+   Let house1 = (name_perm[0], mother_perm[0], food_perm[0])
+   house2 = (name_perm[1], mother_perm[1], food_perm[1])
+   house3 = (name_perm[2], mother_perm[2], food_perm[2])
+
+ Then check:
+
+   constraint2: find the house index where food is 'grilled cheese', then the next house must have mother 'Aniya'
+   constraint3: the house with food 'grilled cheese' must have name 'Eric'
+   constraint4: the house with name 'Peter' must have mother 'Holly'
+   constraint1: the house with food 'spaghetti' and the house with name 'Peter' must be adjacent.
+
+ We can code these constraints.
+
+ However, note: we are iterating over all 6*6*6=216 possibilities, which is acceptable.
+
+ Let's code accordingly.
+
+ Steps in code:
+
+   Import itertools for permutations.
+
+   Define the attributes.
+
+   For every permutation of names, mothers, foods:
+        Assign to houses 1,2,3.
+
+        Check:
+          constraint3: Find the house with food 'grilled cheese'. Let that house be h. Then the name of house h must be 'Eric'.
+          constraint4: Find the house with name 'Peter'. Then the mother of that house must be 'Holly'.
+          constraint2: Find the house with food 'grilled cheese' (say house i). Then the mother of house i+1 must be 'Aniya'. (Note: if i is 3, then there is no house i+1, so invalid.)
+          constraint1: Find the house with food 'spaghetti' (s_house) and the house with name 'Peter' (p_house). Check if abs(s_house - p_house) == 1.
+
+   If all constraints are satisfied, we found the solution.
+
+   Note: We must also ensure that the assignments are complete and unique, but by using permutations we already have unique assignments.
+
+ Let's code accordingly.
+
+ However, note: the constraints might be satisfied by multiple assignments? But the puzzle should have a unique solution.
+
+ We'll break when we find one.
+
+ We'll create a list of houses as tuples (house_index, name, mother, food). But note: house index is fixed (1,2,3).
+
+ We'll then output in the required JSON.
+
+ Example of output JSON:
+
+   {
+     "solution": {
+        "header": ["House", "Name", "Mother", "Food"],
+        "rows": [
+            ["1", "Eric", "Janelle", "grilled cheese"],
+            ["2", "Arnold", "Aniya", "spaghetti"],
+            ["3", "Peter", "Holly", "pizza"]
+        ]
+     }
+   }
+
+ Let's code accordingly.

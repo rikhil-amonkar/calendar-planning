@@ -1,0 +1,140 @@
+import json
+from itertools import permutations
+
+def main():
+    names = ['Alice', 'Arnold', 'Eric', 'Peter', 'Bob', 'Carol']
+    occupations = ['engineer', 'artist', 'doctor', 'teacher', 'nurse', 'lawyer']
+    cars = ['chevrolet silverado', 'ford f150', 'honda civic', 'toyota camry', 'bmw 3 series', 'tesla model 3']
+    
+    for name_perm in permutations(names):
+        for occ_perm in permutations(occupations):
+            for car_perm in permutations(cars):
+                assignment = []
+                for i in range(6):
+                    assignment.append({
+                        'house': i+1,
+                        'name': name_perm[i],
+                        'occupation': occ_perm[i],
+                        'car': car_perm[i]
+                    })
+                
+                if check_solution(assignment):
+                    output = format_solution(assignment)
+                    print(json.dumps(output, indent=2))
+                    return
+                    
+    print('{"solution": {}}')
+
+def check_solution(assignment):
+    # Create lookup dictionaries
+    name_to_house = {person['name']: person['house'] for person in assignment}
+    occupation_to_house = {person['occupation']: person['house'] for person in assignment}
+    car_to_house = {person['car']: person['house'] for person in assignment}
+    house_to_props = {person['house']: person for person in assignment}
+    
+    # Check each clue
+    # Clue 1: Ford F150 in house 5
+    if car_to_house.get('ford f150') != 5:
+        return False
+        
+    # Clue 2: Chevrolet Silverado not in house 2
+    if car_to_house.get('chevrolet silverado') == 2:
+        return False
+        
+    # Clue 3: Honda Civic and Peter are adjacent
+    honda_house = car_to_house.get('honda civic')
+    peter_house = name_to_house.get('Peter')
+    if honda_house is not None and peter_house is not None:
+        if abs(honda_house - peter_house) != 1:
+            return False
+    else:
+        return False
+        
+    # Clue 4: Lawyer not in house 5
+    if occupation_to_house.get('lawyer') == 5:
+        return False
+        
+    # Clue 5: Nurse directly left of artist
+    nurse_house = occupation_to_house.get('nurse')
+    artist_house = occupation_to_house.get('artist')
+    if nurse_house is not None and artist_house is not None:
+        if artist_house - nurse_house != 1:
+            return False
+    else:
+        return False
+        
+    # Clue 6: Carol right of Eric
+    carol_house = name_to_house.get('Carol')
+    eric_house = name_to_house.get('Eric')
+    if carol_house is not None and eric_house is not None:
+        if carol_house <= eric_house:
+            return False
+    else:
+        return False
+        
+    # Clue 7: Doctor is Eric
+    if house_to_props[occupation_to_house['doctor']]['name'] != 'Eric':
+        return False
+        
+    # Clue 8: Teacher left of nurse
+    teacher_house = occupation_to_house.get('teacher')
+    if teacher_house is not None and nurse_house is not None:
+        if teacher_house >= nurse_house:
+            return False
+    else:
+        return False
+        
+    # Clue 9: Carol not in house 6
+    if carol_house == 6:
+        return False
+        
+    # Clue 10: Engineer is Bob
+    if house_to_props[occupation_to_house['engineer']]['name'] != 'Bob':
+        return False
+        
+    # Clue 11: Toyota Camry owner is nurse
+    if car_to_house.get('toyota camry') != nurse_house:
+        return False
+        
+    # Clue 12: One house between Peter and lawyer
+    lawyer_house = occupation_to_house.get('lawyer')
+    if peter_house is not None and lawyer_house is not None:
+        if abs(peter_house - lawyer_house) != 2:
+            return False
+    else:
+        return False
+        
+    # Clue 13: One house between Tesla Model 3 and Bob
+    tesla_house = car_to_house.get('tesla model 3')
+    bob_house = name_to_house.get('Bob')
+    if tesla_house is not None and bob_house is not None:
+        if abs(tesla_house - bob_house) != 2:
+            return False
+    else:
+        return False
+        
+    # Clue 14: Artist is Arnold
+    if house_to_props[occupation_to_house['artist']]['name'] != 'Arnold':
+        return False
+        
+    return True
+
+def format_solution(assignment):
+    rows = []
+    for person in sorted(assignment, key=lambda x: x['house']):
+        rows.append([
+            str(person['house']),
+            person['name'],
+            person['occupation'],
+            person['car']
+        ])
+    
+    return {
+        "solution": {
+            "header": ["House", "Name", "Occupation", "CarModel"],
+            "rows": rows
+        }
+    }
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,89 @@
+import itertools
+import json
+
+def main():
+    names = ['Eric', 'Arnold', 'Peter', 'Alice']
+    hairs = ['blonde', 'black', 'brown', 'red']
+    musics = ['pop', 'jazz', 'rock', 'classical']
+    
+    fixed_music_house1 = 'classical'
+    fixed_hair_house2 = 'blonde'
+    
+    remaining_hairs = [h for h in hairs if h != fixed_hair_house2]
+    remaining_musics = [m for m in musics if m != fixed_music_house1]
+    
+    name_perms = list(itertools.permutations(names))
+    hair_perms = list(itertools.permutations(remaining_hairs))
+    music_perms = list(itertools.permutations(remaining_musics))
+    
+    found_solution = False
+    solution = None
+    
+    for name_perm in name_perms:
+        for hair_perm in hair_perms:
+            for music_perm in music_perms:
+                name_arr = list(name_perm)
+                hair_arr = [None] * 4
+                music_arr = [None] * 4
+                
+                hair_arr[0] = hair_perm[0]
+                hair_arr[1] = fixed_hair_house2
+                hair_arr[2] = hair_perm[1]
+                hair_arr[3] = hair_perm[2]
+                
+                music_arr[0] = fixed_music_house1
+                music_arr[1] = music_perm[0]
+                music_arr[2] = music_perm[1]
+                music_arr[3] = music_perm[2]
+                
+                # Check constraint 1: Eric has red hair
+                eric_index = name_arr.index('Eric')
+                if hair_arr[eric_index] != 'red':
+                    continue
+                
+                # Check constraint 3: Brown hair not in first house
+                if hair_arr[0] == 'brown':
+                    continue
+                
+                # Check constraint 4: Pop music not in third house
+                if music_arr[2] == 'pop':
+                    continue
+                
+                # Check constraint 6: Jazz music and red hair same person
+                jazz_index = next((i for i, m in enumerate(music_arr) if m == 'jazz'), None)
+                if jazz_index is None or hair_arr[jazz_index] != 'red':
+                    continue
+                
+                # Check constraint 7: Rock music is Arnold
+                rock_index = next((i for i, m in enumerate(music_arr) if m == 'rock'), None)
+                if rock_index is None or name_arr[rock_index] != 'Arnold':
+                    continue
+                
+                # Check constraint 8: Peter is right of rock
+                peter_index = name_arr.index('Peter')
+                if peter_index <= rock_index:
+                    continue
+                
+                found_solution = True
+                solution = (name_arr, hair_arr, music_arr)
+                break
+            if found_solution:
+                break
+        if found_solution:
+            break
+            
+    if found_solution:
+        result = {
+            "solution": {
+                "header": ["House", "Name", "HairColor", "MusicGenre"],
+                "rows": []
+            }
+        }
+        for i in range(4):
+            result["solution"]["rows"].append([str(i+1), solution[0][i], solution[1][i], solution[2][i]])
+        print(json.dumps(result))
+    else:
+        print(json.dumps({"solution": None}))
+
+if __name__ == "__main__":
+    main()

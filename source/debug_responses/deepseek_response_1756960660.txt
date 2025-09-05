@@ -1,0 +1,178 @@
+Prompt:
+You are an expert at solving Zebra logic puzzles. Your task is to write a Python program that algorithmically solves the given logic puzzle by implementing all constraints and rules. The program must actually compute the solution using the given parameters, not just print a pre-determined answer.
+Input puzzle:
+There are 2 houses, numbered 1 to 2 from left to right, as seen from across the street. Each house is occupied by a different person. Each house has a unique attribute for each of the following characteristics:
+ - Each person has a unique name: `Arnold`, `Eric`
+ - Each person has an occupation: `engineer`, `doctor`
+ - Each person has a unique birthday month: `april`, `sept`
+ - Each person lives in a unique style of house: `victorian`, `colonial`
+ - People have unique heights: `very short`, `short`
+ - Everyone has a unique favorite cigar: `pall mall`, `prince`
+
+## Clues:
+1. The person who is an engineer is in the first house.
+2. The person whose birthday is in April and the person who is a doctor are next to each other.
+3. The person living in a colonial-style house is the person who is an engineer.
+4. The person who is very short is the person who is an engineer.
+5. The person who is short is the person partial to Pall Mall.
+6. The person who is an engineer is Eric.
+
+
+Generate a complete, self-contained Python program that:
+1. Takes the above puzzle constraints as input variables
+2. Computes the solution using logical rules and constraints
+3. Outputs the solution as a JSON-formatted dictionary with the following EXACT structure:
+{
+  "solution": {
+    "header": ["House", "Name", "Occupation", "Birthday", "HouseStyle", "Height", "Cigar"],
+    "rows": [
+      ["1", VALUE_FOR_HEADER1, VALUE_FOR_HEADER2, ...],
+      ["2", VALUE_FOR_HEADER1, VALUE_FOR_HEADER2, ...]
+    ]
+  }
+}
+
+Important Requirements:
+- The 'header' field MUST use exactly these attribute names: ["House", "Name", "Occupation", "Birthday", "HouseStyle", "Height", "Cigar"]
+- Maintain the exact order of houses (1, 2, 3, ...)
+- Include all attributes in each row
+- The output must be valid JSON that can be parsed by Python's json module
+
+Output only the complete Python code with no additional text or explanation.
+The code must run independently and output valid JSON when executed.The script should be clean, well-formatted, and enclosed within ```python and ```. 
+
+Response:
+```python
+import json
+from itertools import permutations
+
+def solve_puzzle():
+    # Define all possible values for each attribute
+    names = ['Arnold', 'Eric']
+    occupations = ['engineer', 'doctor']
+    birthdays = ['april', 'sept']
+    house_styles = ['victorian', 'colonial']
+    heights = ['very short', 'short']
+    cigars = ['pall mall', 'prince']
+    
+    # Generate all possible permutations for each house
+    for name_perm in permutations(names):
+        for occ_perm in permutations(occupations):
+            for bday_perm in permutations(birthdays):
+                for style_perm in permutations(house_styles):
+                    for height_perm in permutations(heights):
+                        for cigar_perm in permutations(cigars):
+                            
+                            # Create assignment for house 1
+                            house1 = {
+                                'House': '1',
+                                'Name': name_perm[0],
+                                'Occupation': occ_perm[0],
+                                'Birthday': bday_perm[0],
+                                'HouseStyle': style_perm[0],
+                                'Height': height_perm[0],
+                                'Cigar': cigar_perm[0]
+                            }
+                            
+                            # Create assignment for house 2
+                            house2 = {
+                                'House': '2',
+                                'Name': name_perm[1],
+                                'Occupation': occ_perm[1],
+                                'Birthday': bday_perm[1],
+                                'HouseStyle': style_perm[1],
+                                'Height': height_perm[1],
+                                'Cigar': cigar_perm[1]
+                            }
+                            
+                            # Check clue 1: The person who is an engineer is in the first house.
+                            if house1['Occupation'] != 'engineer':
+                                continue
+                            
+                            # Check clue 2: The person whose birthday is in April and the person who is a doctor are next to each other.
+                            # Since there are only 2 houses, they are always adjacent
+                            april_found = False
+                            doctor_found = False
+                            for house in [house1, house2]:
+                                if house['Birthday'] == 'april':
+                                    april_found = True
+                                if house['Occupation'] == 'doctor':
+                                    doctor_found = True
+                            if not (april_found and doctor_found):
+                                continue
+                            
+                            # Check clue 3: The person living in a colonial-style house is the person who is an engineer.
+                            colonial_engineer = None
+                            for house in [house1, house2]:
+                                if house['HouseStyle'] == 'colonial':
+                                    colonial_engineer = house
+                            if colonial_engineer is None or colonial_engineer['Occupation'] != 'engineer':
+                                continue
+                            
+                            # Check clue 4: The person who is very short is the person who is an engineer.
+                            very_short_engineer = None
+                            for house in [house1, house2]:
+                                if house['Height'] == 'very short':
+                                    very_short_engineer = house
+                            if very_short_engineer is None or very_short_engineer['Occupation'] != 'engineer':
+                                continue
+                            
+                            # Check clue 5: The person who is short is the person partial to Pall Mall.
+                            short_pallmall = None
+                            for house in [house1, house2]:
+                                if house['Height'] == 'short':
+                                    short_pallmall = house
+                            if short_pallmall is None or short_pallmall['Cigar'] != 'pall mall':
+                                continue
+                            
+                            # Check clue 6: The person who is an engineer is Eric.
+                            engineer_eric = None
+                            for house in [house1, house2]:
+                                if house['Occupation'] == 'engineer':
+                                    engineer_eric = house
+                            if engineer_eric is None or engineer_eric['Name'] != 'Eric':
+                                continue
+                            
+                            # All clues satisfied, return the solution
+                            return [house1, house2]
+    
+    return None
+
+def main():
+    solution = solve_puzzle()
+    
+    if solution:
+        # Prepare the output in the required JSON format
+        header = ["House", "Name", "Occupation", "Birthday", "HouseStyle", "Height", "Cigar"]
+        rows = []
+        
+        for house in solution:
+            rows.append([
+                house['House'],
+                house['Name'],
+                house['Occupation'],
+                house['Birthday'],
+                house['HouseStyle'],
+                house['Height'],
+                house['Cigar']
+            ])
+        
+        # Sort rows by house number
+        rows.sort(key=lambda x: int(x[0]))
+        
+        output = {
+            "solution": {
+                "header": header,
+                "rows": rows
+            }
+        }
+        
+        print(json.dumps(output, indent=2))
+    else:
+        print(json.dumps({"solution": None}))
+
+if __name__ == "__main__":
+    main()
+```
+
+Reasoning extracted:

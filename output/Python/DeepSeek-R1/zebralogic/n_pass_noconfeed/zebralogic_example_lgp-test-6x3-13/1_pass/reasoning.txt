@@ -1,0 +1,906 @@
+We are given 6 houses, each with a unique combination of attributes: Name, BookGenre, Occupation.
+ We have clues that relate these attributes.
+
+ Steps:
+ 1. We'll represent the houses as a list of dictionaries? Or we can use constraint satisfaction.
+ 2. Since the problem is small (6 houses), we can use a brute-force approach with permutations and check constraints.
+ 3. Alternatively, we can use a constraint solver, but we'll do iterative elimination.
+
+ However, note: We are to write a program that computes the solution.
+
+ Let's define the domains:
+   Names: ['Bob', 'Arnold', 'Carol', 'Alice', 'Peter', 'Eric']
+   BookGenres: ['romance', 'historical fiction', 'biography', 'mystery', 'fantasy', 'science fiction']
+   Occupations: ['artist', 'doctor', 'nurse', 'engineer', 'teacher', 'lawyer']
+
+ We have 6 houses, each house has a number from 1 to 6.
+
+ We are going to generate all possible assignments? But 6! for each attribute, and we have 3 attributes, so total 6! * 6! * 6! which is too big.
+
+ Instead, we can use the constraints to reduce the possibilities.
+
+ Alternatively, we can represent the problem as a set of variables for each house and use constraints to narrow down.
+
+ Since the problem is small, we can use a permutation of names, then book genres, then occupations, but that would be (6!)^3 which is 10^9, which is too slow.
+
+ We need a smarter way.
+
+ Another idea: use the constraints to assign fixed points and then use constraint propagation.
+
+ Let's list the constraints again and see what we can fix:
+
+ Clue 10: The person who is a doctor is in the first house. -> Occupation of house1 is 'doctor'
+ Clue 12: Eric is in the third house. -> Name of house3 is 'Eric'
+
+ Clue 1: Alice is the person who loves fantasy books. -> So Alice's book genre is fantasy.
+ Clue 3: Carol is the person who loves mystery books. -> Carol's book genre is mystery.
+ Clue 4: The person who is a lawyer is the person who loves fantasy books. -> So Alice is the lawyer (because of clue1 and clue4).
+ Clue 7: The person who is a nurse is directly left of Alice. -> So if Alice is in house i, then nurse is in house i-1.
+ Clue 8: The person who loves biography books is the person who is a teacher. -> biography and teacher are the same person.
+ Clue 9: The person who loves historical fiction books is somewhere to the left of the teacher. -> historical fiction is left of teacher (who has biography).
+ Clue 11: The person who loves science fiction books is the person who is an artist. -> science fiction and artist are the same.
+
+ Also, from clue 2 and 3: Carol loves mystery books and is next to Bob. So Carol and Bob are adjacent.
+ Clue 5: Bob is not in the fifth house.
+ Clue 13: The person who loves mystery books (Carol) is not in the fifth house.
+
+ Also, clue 6: Arnold is left of the engineer.
+
+ We can start by assigning the known facts.
+
+ Let's create arrays for the three attributes for the 6 houses, initially unknown.
+
+ We know:
+   house1: occupation = 'doctor'
+   house3: name = 'Eric'
+
+ Also, from clue1 and clue4: Alice has book genre 'fantasy' and occupation 'lawyer'
+ From clue3: Carol has book genre 'mystery'
+
+ Now, clue7: The nurse is directly left of Alice. So Alice cannot be in house1 (since no house left of 1). So Alice is in house 2 to 6.
+
+ We also know Carol is not in house5 (clue13) and Bob is not in house5 (clue5).
+
+ Let's try to narrow down Alice's house.
+
+ We can consider the possible positions for Alice.
+
+ Also, note that clue2: The person who loves mystery books (Carol) and Bob are next to each other.
+
+ We can try to use a constraint satisfaction approach by iterating over the possible houses for Alice and Carol and Bob.
+
+ Alternatively, we can use a backtracking search, but we have a lot of constraints so we can try to use a more direct approach.
+
+ Let me try to list the constraints in code and use a iterative narrowing.
+
+ We can use a dictionary for each house, and then use constraints to eliminate possibilities.
+
+ Since the problem is small, we can use a permutation of names for the 6 houses, and then assign book genres and occupations accordingly, but that would be 6! = 720 possibilities for names, then for each we can assign book genres and occupations in 720 each, which is 720*720*720 = 373248000, which is too many.
+
+ We need to incorporate the constraints to reduce the search space.
+
+ Alternatively, we can use a constraint solver library, but the problem says to write the program without external libraries.
+
+ Another idea: use the constraints to deduce as much as possible and then do a search over the remaining possibilities.
+
+ Let me try to deduce:
+
+ 1. Alice is lawyer (from 1 and 4) and has fantasy books.
+ 2. Carol has mystery books.
+ 3. Doctor in house1.
+ 4. Eric in house3.
+
+ Also, from clue7: nurse is left of Alice, so Alice is in [2,3,4,5,6] and nurse in [1,2,3,4,5] respectively.
+
+ Now, clue13: Carol (mystery) not in house5, and clue5: Bob not in house5.
+
+ Also, clue2: Carol and Bob are adjacent.
+
+ Now, clue6: Arnold is left of engineer.
+
+ We also have:
+   clue8: biography book and teacher are same.
+   clue9: historical fiction is left of teacher (so left of biography)
+   clue11: science fiction and artist are same.
+
+ Let's list the book genres and occupations that we know are taken:
+   Book genres: 
+      Alice: fantasy
+      Carol: mystery
+   Occupations:
+      Alice: lawyer
+      house1: doctor
+
+ Also, we know that the teacher has biography, and the artist has science fiction.
+
+ Now, let's consider the position of Alice.
+
+ Since nurse is immediately left of Alice, and Alice is not in house1, the possible (nurse, Alice) pairs: 
+   (1,2), (2,3), (3,4), (4,5), (5,6)
+
+ But note: house1 is doctor, so nurse cannot be in house1. So (1,2) is invalid because house1 is doctor, not nurse.
+ So possible: (2,3), (3,4), (4,5), (5,6)
+
+ But house3 has Eric, so if Alice is in house3, then nurse in house2. But then Alice (house3) is Eric? But Alice is a name and Eric is a name, so they are different. Therefore, Alice cannot be in house3 because house3 is Eric.
+
+ So Alice cannot be in house3.
+
+ Then the possible (nurse, Alice) pairs become: (3,4), (4,5), (5,6)
+
+ Now, Carol is not in house5 (clue13) and Bob is not in house5 (clue5). Also, Carol and Bob are adjacent.
+
+ Also, note that house5 cannot be Carol (mystery) and cannot be Bob.
+
+ Now, let's consider where Carol can be. Carol can be in houses: 1,2,3,4,6 (since not 5). But house1 is doctor (occupation) and we don't know the name of house1 yet, but Carol is a name so she can be in house1? Yes, but note: house1 occupation is doctor, and Carol could be the doctor. Similarly, house3 is Eric, so Carol cannot be in house3. So Carol can be in: 1,2,4,6.
+
+ Now, Bob must be adjacent to Carol. So:
+
+   If Carol in 1, then Bob must be in 2.
+   If Carol in 2, then Bob in 1 or 3.
+   If Carol in 4, then Bob in 3 or 5 -> but Bob not in 5, so Bob in 3.
+   If Carol in 6, then Bob in 5 -> but Bob not in 5, so impossible.
+
+ So Carol cannot be in 6.
+
+ Therefore, Carol can be in 1,2,4.
+
+ Now, let's see the possibilities for Alice: in 4,5,6.
+
+ But if Carol is in 4, then Bob must be in 3 (since not 5). But house3 is Eric, so Bob cannot be in 3. Therefore, Carol cannot be in 4.
+
+ So Carol can be in 1 or 2.
+
+ Case 1: Carol in 1 -> then Bob in 2.
+ Case 2: Carol in 2 -> then Bob in 1 or 3.
+
+ But note: house3 is Eric, so if Carol in 2, then Bob can be in 1 or 3, but 3 is Eric, so Bob in 1.
+
+ So:
+   Case 1: Carol in 1, Bob in 2.
+   Case 2: Carol in 2, Bob in 1.
+
+ Now, let's check the (nurse, Alice) pairs: (3,4), (4,5), (5,6)
+
+ In case 1: Carol in house1, Bob in house2.
+   Then house1: name Carol, occupation doctor (since house1 is doctor), book genre mystery (because Carol has mystery).
+   But then house2: name Bob.
+
+   Now, Alice is in 4,5, or 6.
+
+   But note: house1 is already Carol, so Alice cannot be in house1. Also, house2 is Bob, house3 is Eric, so Alice is in 4,5,6.
+
+   Now, the nurse must be immediately left of Alice. So:
+     If Alice in 4, then nurse in 3.
+     If Alice in 5, then nurse in 4.
+     If Alice in 6, then nurse in 5.
+
+   Now, what are the occupations? We know house1 is doctor (occupation) and Carol is the doctor? Yes, because house1 is doctor and Carol is in house1.
+
+   Now, Alice is a lawyer (from clue4). So the nurse is a different occupation.
+
+   Also, we have the constraint that Arnold is left of the engineer.
+
+   Now, let's list the names we have left: Arnold, Peter (since Bob, Carol, Eric, Alice are placed in case1 in houses 1,2,3, and then Alice in 4,5,6, but note: if Alice is in 4,5,6 then the remaining two names (Arnold and Peter) must be in the remaining two houses.
+
+   Actually, in case1, the houses:
+     1: Carol
+     2: Bob
+     3: Eric
+     4,5,6: Alice and the remaining two: Arnold and Peter.
+
+   But Alice is in one of 4,5,6, so the other two houses are Arnold and Peter.
+
+   Now, let's consider the (nurse, Alice) pair.
+
+   Also, we have the book genres: 
+     house1: mystery (Carol)
+     Alice: fantasy (wherever she is)
+     We also have to assign: romance, historical fiction, biography, science fiction.
+
+   And occupations:
+     house1: doctor
+     Alice: lawyer
+     We have to assign: artist, nurse, engineer, teacher.
+
+   Now, the nurse is left of Alice. So if Alice in 4, then nurse in 3. But house3 is Eric, so Eric is the nurse? Then occupation of house3 is nurse.
+   If Alice in 5, then nurse in 4 -> so house4 occupation nurse.
+   If Alice in 6, then nurse in 5 -> house5 occupation nurse.
+
+   Now, let's see if we can eliminate any of these.
+
+   Also, we have clue8 and clue9: 
+      clue8: biography and teacher are same.
+      clue9: historical fiction is left of teacher (so left of biography)
+
+   And clue11: science fiction and artist are same.
+
+   Now, let's consider the possibility of Alice in 4:
+
+     Then nurse in 3 -> so house3 (Eric) is nurse.
+
+     Then house4: Alice, occupation lawyer, book fantasy.
+
+     Then houses 5 and 6: Arnold and Peter.
+
+     Occupations left: artist, engineer, teacher.
+
+     Book genres left: romance, historical fiction, biography, science fiction (but note: fantasy is in house4, mystery in house1, so left: romance, historical fiction, biography, science fiction for houses 2,3,5,6.
+
+     But house2: Bob, and house3: Eric (nurse), so we need to assign book genres to house2, house3, house5, house6.
+
+     Also, occupations left for house2, house5, house6: artist, engineer, teacher. (house3 is nurse, house4 is lawyer, house1 is doctor)
+
+     Now, clue6: Arnold is left of engineer. The remaining names: Arnold and Peter are in house5 and house6. So the engineer must be in house5 or house6. Since Arnold is left of engineer, if engineer in house5, then Arnold must be left, so in house1,2,3,4 but house1,2,3,4 are taken by Carol, Bob, Eric, Alice. So Arnold must be in house5 or house6, but if engineer in house5, then Arnold must be left of house5, so he must be in house1-4, but those are taken. Therefore, engineer cannot be in house5. Therefore, engineer must be in house6. Then Arnold must be left of engineer, so Arnold must be in house1-5, but the only available house for Arnold in 1-5 is house5 (since house1,2,3,4 are taken). So Arnold in house5, then engineer in house6 (Peter).
+
+     So then house5: Arnold, occupation? (not engineer, so artist or teacher)
+        house6: Peter, occupation engineer.
+
+     Now, occupations left for house2 and house5: artist and teacher.
+
+     Now, book genres: 
+        house1: mystery
+        house4: fantasy
+        We need to assign to house2,3,5,6: romance, historical fiction, biography, science fiction.
+
+     Now, clue8 and clue9: teacher has biography, and historical fiction is left of teacher.
+
+     The teacher can be in house2 or house5.
+
+     If teacher in house2, then biography in house2, and historical fiction must be left of house2 -> only house1, but house1 is mystery, so no historical fiction left of house2. Therefore, teacher cannot be in house2.
+
+     Therefore, teacher must be in house5 (Arnold). Then biography in house5.
+
+     Then historical fiction must be left of house5, so in house1,2,3,4. But house1 is mystery, house4 is fantasy, so historical fiction must be in house2 or house3.
+
+     Now, house2: Bob, occupation must be artist (since teacher is in house5, and occupations left for house2 is artist). So house2: artist.
+
+     Then clue11: science fiction is artist -> so house2 has science fiction book genre.
+
+     Then book genres left for house3 and house6: romance and historical fiction.
+
+     But historical fiction must be left of teacher (house5), so it can be in house2,3,4. But house2 is science fiction, house4 is fantasy, so historical fiction must be in house3.
+
+     Then house3: historical fiction, and house6: romance.
+
+     Now, check clue9: historical fiction (house3) is left of teacher (house5) -> yes.
+
+     So let's write down for case1 with Alice in house4:
+
+        house1: Carol, mystery, doctor
+        house2: Bob, science fiction, artist
+        house3: Eric, historical fiction, nurse
+        house4: Alice, fantasy, lawyer
+        house5: Arnold, biography, teacher
+        house6: Peter, romance, engineer
+
+     Now, check clue6: Arnold (house5) is left of engineer (house6) -> yes.
+
+     Also, clue2: mystery (Carol in house1) and Bob (house2) are next to each other -> yes.
+
+     And all other clues seem satisfied.
+
+     But wait, clue7: nurse is directly left of Alice. Nurse is in house3 and Alice in house4 -> yes.
+
+     So this is a possible solution.
+
+     But we had two cases for Carol (house1 or house2) and also Alice could be in 5 or 6. We must check if there are other possibilities.
+
+     We must check case1 with Alice in 5 or 6.
+
+     Case1 with Alice in 5:
+        Then nurse in 4.
+        Then house4 occupation nurse.
+        Then house5: Alice, lawyer, fantasy.
+        Then house6: must be one of Arnold or Peter, and the other in house3? But house3 is Eric, so house3 is fixed. The remaining names: Arnold and Peter for house4 and house6? But house4 is nurse (occupation) and we don't know the name yet.
+
+        Actually, in case1, we have:
+          house1: Carol
+          house2: Bob
+          house3: Eric
+          house4: ? (must be nurse because Alice in 5 -> nurse in 4)
+          house5: Alice
+          house6: ?
+
+        So house4 and house6: Arnold and Peter.
+
+        Now, occupations: 
+          house1: doctor
+          house4: nurse
+          house5: lawyer
+          left: artist, engineer, teacher for house2, house3, house6.
+
+        But house3: Eric, occupation unknown.
+
+        Now, clue6: Arnold left of engineer. The names left: Arnold and Peter for house4 and house6. So if engineer is in house6, then Arnold must be left of house6, so in house1-5. The available house for Arnold in 1-5 is house4 (since house1,2,3,5 are taken by Carol, Bob, Eric, Alice). So Arnold in house4, then engineer in house6 (Peter). Then house4: Arnold, nurse.
+
+        Then occupations for house2 and house3: artist and teacher.
+
+        Now, book genres:
+          house1: mystery
+          house5: fantasy
+          left: romance, historical fiction, biography, science fiction for house2,3,4,6.
+
+        Now, clue8 and clue9: teacher has biography, and historical fiction left of teacher.
+
+        The teacher can be in house2 or house3.
+
+        If teacher in house2, then biography in house2, and historical fiction must be left of house2 -> only house1, but house1 is mystery -> no. So teacher cannot be in house2.
+
+        Therefore, teacher must be in house3 (Eric). Then biography in house3.
+
+        Then historical fiction must be left of house3 -> house1 or house2. But house1 is mystery, so historical fiction must be in house2.
+
+        Then house2: historical fiction.
+
+        Then left book genres for house4 and house6: romance and science fiction.
+
+        Now, clue11: science fiction is artist. So the artist must have science fiction.
+
+        The artist occupation is not assigned yet. The occupations left for house2 and house6: artist and engineer? Wait, we have:
+          house2: occupation? (either artist or nothing? We have occupations: house2 must be one of the remaining: artist or teacher, but teacher is in house3, so house2 must be artist? Then house2: artist.
+
+        Then clue11: artist has science fiction -> so house2 must have science fiction, but we already assigned house2 historical fiction -> contradiction.
+
+        Therefore, Alice cannot be in house5 in case1.
+
+     Now, case1 with Alice in 6:
+        Then nurse in 5.
+        Then house5: nurse.
+        Then house6: Alice, lawyer, fantasy.
+        Then the remaining names: Arnold and Peter for house4 and house5? But house5 is nurse, so name in house5 is either Arnold or Peter, and house4 is the other.
+
+        Now, occupations:
+          house1: doctor
+          house5: nurse
+          house6: lawyer
+          left: artist, engineer, teacher for house2, house3, house4.
+
+        Now, clue6: Arnold left of engineer. The names left: Arnold and Peter for house4 and house5. So if engineer is in house4, then Arnold must be left of house4 -> so in house1,2,3. But house1,2,3 are Carol, Bob, Eric -> no Arnold. So engineer cannot be in house4.
+        If engineer in house5, then Arnold must be left of house5 -> so in house1-4. The available house for Arnold in 1-4 is house4 (since house1,2,3 are taken). So Arnold in house4, then engineer in house5 (but house5 is nurse, so occupation nurse, not engineer) -> contradiction.
+        If engineer in house6, then Arnold must be left of house6 -> so in house1-5. The available house for Arnold is house4 or house5. So if Arnold in house4, then it is left of house6. Then engineer in house6, but house6 is lawyer -> contradiction.
+
+        Therefore, no possible assignment for engineer. So Alice cannot be in house6.
+
+     So in case1, only Alice in house4 is possible.
+
+     Now, we must check case2: Carol in house2 and Bob in house1.
+
+        Then house1: Bob (name), occupation doctor.
+        house2: Carol, book mystery.
+        house3: Eric.
+
+        Now, Alice is in 4,5, or 6.
+
+        The (nurse, Alice) pairs: (3,4), (4,5), (5,6)
+
+        But note: house3 is Eric, so if Alice in 4, then nurse in 3 -> Eric is nurse.
+
+        Now, let's see if we can assign.
+
+        Also, clue6: Arnold left of engineer.
+
+        Now, the names left: Arnold, Peter, and Alice (for house4,5,6) and house1,2,3 are Bob, Carol, Eric.
+
+        So houses 4,5,6: Alice, Arnold, Peter.
+
+        Now, let's try Alice in 4:
+
+          Then nurse in 3 -> Eric is nurse.
+
+          Then house4: Alice, lawyer, fantasy.
+
+          Then houses 5 and 6: Arnold and Peter.
+
+          Occupations:
+            house1: doctor (Bob)
+            house3: nurse (Eric)
+            house4: lawyer (Alice)
+            left: artist, engineer, teacher for house2, house5, house6.
+
+          Now, house2: Carol, occupation unknown.
+
+          Now, clue6: Arnold left of engineer. The engineer must be in house5 or house6. If engineer in house5, then Arnold must be left of house5 -> so in house1-4. The available for Arnold in 1-4 is house5 is not in 1-4, and house1,2,3,4 are Bob, Carol, Eric, Alice -> no Arnold. So engineer cannot be in house5.
+          If engineer in house6, then Arnold must be left of house6 -> so in house1-5. The available for Arnold is house5. So Arnold must be in house5, then engineer in house6 (Peter).
+
+          Then house5: Arnold, occupation? (not engineer, so artist or teacher)
+          house6: Peter, engineer.
+
+          Now, occupations left for house2 and house5: artist and teacher.
+
+          Now, book genres:
+            house2: mystery (Carol)
+            house4: fantasy (Alice)
+            left: romance, historical fiction, biography, science fiction for house1,3,5,6.
+
+          Now, clue8 and clue9: teacher has biography, and historical fiction left of teacher.
+
+          The teacher can be in house2 or house5.
+
+          If teacher in house2, then biography in house2, but house2 is mystery -> contradiction.
+
+          Therefore, teacher must be in house5 (Arnold). Then biography in house5.
+
+          Then historical fiction must be left of house5 -> so in house1,2,3,4. But house2 is mystery, house4 is fantasy, so historical fiction must be in house1 or house3.
+
+          Now, house1: Bob, doctor, book genre unknown.
+          house3: Eric, nurse, book genre unknown.
+
+          Now, clue11: science fiction is artist. The artist is the remaining occupation for house2 (since teacher is in house5). So house2: artist -> so Carol is artist, and then must have science fiction. But house2 has mystery -> contradiction.
+
+        So case2 with Alice in house4 leads to contradiction.
+
+        Now, case2 with Alice in house5:
+          Then nurse in house4.
+          Then house4: nurse (occupation), name? (one of Arnold or Peter, since Alice in house5)
+          Then house5: Alice, lawyer, fantasy.
+          Then house6: the remaining of Arnold or Peter.
+
+          Now, occupations:
+            house1: doctor (Bob)
+            house4: nurse
+            house5: lawyer
+            left: artist, engineer, teacher for house2, house3, house6.
+
+          Now, clue6: Arnold left of engineer. The names left: Arnold and Peter for house4 and house6. So if engineer in house4, then Arnold must be left of house4 -> but house4 is the first available for Arnold? The houses 1,2,3 are Bob, Carol, Eric -> no Arnold. So engineer cannot be in house4.
+          If engineer in house6, then Arnold must be left of house6 -> so in house1-5. The available for Arnold is house4. So Arnold in house4, then engineer in house6 (Peter).
+          Then house4: Arnold, nurse.
+          Then house6: Peter, engineer.
+
+          Now, occupations left for house2 and house3: artist and teacher.
+
+          Now, book genres:
+            house2: mystery (Carol)
+            house5: fantasy (Alice)
+            left: romance, historical fiction, biography, science fiction for house1,3,4,6.
+
+          Now, clue8 and clue9: teacher has biography, and historical fiction left of teacher.
+
+          The teacher can be in house2 or house3.
+
+          If teacher in house2, then biography in house2, but house2 is mystery -> contradiction.
+
+          So teacher must be in house3 (Eric). Then biography in house3.
+
+          Then historical fiction must be left of house3 -> so in house1 or house2. But house2 is mystery, so historical fiction must be in house1.
+
+          Then house1: historical fiction.
+
+          Then left book genres for house4 and house6: romance and science fiction.
+
+          Now, clue11: science fiction is artist. The artist occupation is for house2 (since house3 is teacher, and house2 is the only one left for artist? The occupations left: house2 must be artist (since teacher is in house3). So house2: artist -> then must have science fiction. But house2 is mystery -> contradiction.
+
+        So case2 with Alice in house5 leads to contradiction.
+
+        Now, case2 with Alice in house6:
+          Then nurse in house5.
+          Then house5: nurse (occupation), name? (one of Arnold or Peter)
+          Then house6: Alice, lawyer, fantasy.
+          Then house4: the remaining of Arnold or Peter? Actually, the names for house4,5,6: Alice, Arnold, Peter. So if Alice in house6, then house4 and house5: Arnold and Peter.
+
+          Now, occupations:
+            house1: doctor (Bob)
+            house5: nurse
+            house6: lawyer
+            left: artist, engineer, teacher for house2, house3, house4.
+
+          Now, clue6: Arnold left of engineer. The engineer must be in house2, house3, or house4? But note: Arnold is in house4 or house5.
+
+          If engineer in house4, then Arnold must be left of house4 -> but house4 is the first house for Arnold? The houses 1,2,3 are Bob, Carol, Eric -> no Arnold. So engineer cannot be in house4.
+          If engineer in house5, then Arnold must be left of house5 -> so in house1-4. The available for Arnold is house4. So Arnold in house4, then engineer in house5. But house5 is nurse -> contradiction.
+          If engineer in house6, then Arnold must be left of house6 -> so in house1-5. The available for Arnold is house4 or house5. So if Arnold in house4, then it is left of house6. Then engineer in house6, but house6 is lawyer -> contradiction.
+
+        So case2 with Alice in house6 leads to contradiction.
+
+     Therefore, case2 is impossible.
+
+ So the only solution is the one we found in case1 with Alice in house4.
+
+ Thus, the solution is:
+
+   house1: Carol, mystery, doctor
+   house2: Bob, science fiction, artist
+   house3: Eric, historical fiction, nurse
+   house4: Alice, fantasy, lawyer
+   house5: Arnold, biography, teacher
+   house6: Peter, romance, engineer
+
+ Now, we code this solution.
+
+ However, note: the problem requires a program that computes the solution. But we have deduced by hand.
+
+ We must write a program that uses constraints to solve it.
+
+ Since the problem is small, we can use a brute force over all permutations of names, book genres, and occupations, and check against the constraints.
+
+ But note: 6! * 6! * 6! is too big (10^9). So we must reduce the search space.
+
+ We can fix the known values first.
+
+ Alternatively, we can use a backtracking search with constraint propagation, but that might be complex.
+
+ Given that we already have the solution, we can code the solution directly, but the problem says "compute the solution".
+
+ Alternatively, we can use the constraints to reduce the possibilities for each house.
+
+ We'll create arrays for the three attributes for the 6 houses, and then use the constraints to set values.
+
+ Since we already know the solution, we can write a program that outputs the solution in the required JSON format.
+
+ But the problem says: "Your task is to write a Python program that algorithmically solves the given logic puzzle by implementing all constraints and rules."
+
+ So we must implement a solver.
+
+ We can use a constraint satisfaction problem (CSP) approach with backtracking, but we'll do it in a simple way.
+
+ We have 6 houses, and we need to assign name, book genre, occupation.
+
+ We can generate all permutations of names for the 6 houses, then for each, assign book genres and occupations in a nested loop, but that would be 720 * 720 * 720 which is too slow.
+
+ Instead, we can use the constraints to prune.
+
+ We know:
+   house1: occupation = 'doctor'
+   house3: name = 'Eric'
+
+ So for names, we only need to assign the remaining 5 names to houses 1,2,4,5,6 -> 5! = 120.
+
+ For book genres, we know:
+   Alice has fantasy -> so wherever Alice is, that house has fantasy.
+   Carol has mystery -> so wherever Carol is, that house has mystery.
+
+ Similarly, for occupations:
+   Alice is lawyer -> so wherever Alice is, that house has lawyer.
+
+ We can iterate over the possible assignments of names to the houses (120 possibilities), then for each, we can assign book genres and occupations accordingly.
+
+ But note: the assignment of book genres and occupations must be consistent with the constraints that are independent of names, and also the constraints that relate them.
+
+ We can write a function that checks all constraints.
+
+ Let's define the constraints as functions that take the assignment and return True if satisfied.
+
+ We'll represent the assignment as a list of dictionaries for each house, or we can have three arrays: 
+   names[1..6], book_genres[1..6], occupations[1..6]
+
+ We'll index from 0 to 5 for houses 1 to 6.
+
+ Steps:
+
+   For each permutation of names for the 5 houses (1,2,4,5,6) and fixed house3 as Eric, and fixed house1 occupation as doctor, and fixed Alice and Carol book genres and Alice occupation.
+
+   Then for each, we generate all permutations of book genres for the 6 houses, but we can fix:
+        The house where name is Alice must have book genre fantasy.
+        The house where name is Carol must have book genre mystery.
+
+   Similarly, for occupations: 
+        The house where name is Alice must have occupation lawyer.
+        The house1 must have occupation doctor.
+
+   So for book genres, we have 4 remaining book genres to assign to the remaining 4 houses (because two are taken by Alice and Carol) -> 4! = 24.
+
+   For occupations, we have 4 remaining occupations to assign to the remaining 4 houses (because doctor and lawyer are taken) -> 4! = 24.
+
+   So total: 120 * 24 * 24 = 69120, which is acceptable.
+
+   We can do:
+
+      for each permutation of names (120):
+          assign names to houses, with house3 fixed to Eric, and house1 fixed to one of the names (but not Eric) and similarly for others.
+
+      for each, then for each permutation of book genres (24):
+          assign book genres, ensuring that Alice's house gets fantasy and Carol's house gets mystery.
+
+      for each, then for each permutation of occupations (24):
+          assign occupations, ensuring that house1 gets doctor and Alice's house gets lawyer.
+
+      then check all constraints.
+
+   We must also ensure that the book genres and occupations are assigned to houses that are not already taken by the fixed ones.
+
+   We'll create a list of houses indices [0,1,2,3,4,5] for house1 to house6.
+
+   Let's define the constraints as functions.
+
+   We'll create a function that checks all clues.
+
+   Clues:
+
+    2. The person who loves mystery books and Bob are next to each other.
+        -> We know mystery books are in Carol's house, so Carol and Bob are adjacent.
+
+    6. Arnold is somewhere to the left of the person who is an engineer.
+        -> index(Arnold) < index(engineer)
+
+    7. The person who is a nurse is directly left of Alice.
+        -> index(nurse) = index(Alice) - 1
+
+    8. The person who loves biography books is the person who is a teacher.
+        -> the house with biography book has occupation teacher.
+
+    9. The person who loves historical fiction books is somewhere to the left of the person who is a teacher.
+        -> index(historical fiction) < index(teacher)
+
+    11. The person who loves science fiction books is the person who is an artist.
+        -> the house with science fiction book has occupation artist.
+
+   Also, note: we have already enforced:
+        clue1,3,4,5,10,12,13 by the fixed assignments.
+
+   Clue5: Bob is not in the fifth house -> so Bob not in house4 (if we index from 0: house4 is the fifth house).
+   Clue13: mystery books (Carol) not in fifth house -> so Carol not in house4.
+
+   We must also check these.
+
+   Let's code accordingly.
+
+   We'll generate:
+
+     names = [None] * 6
+     books = [None] * 6
+     occupations = [None] * 6
+
+   We fix:
+     names[2] = 'Eric'   # house3 is index2
+     occupations[0] = 'doctor'   # house1 is index0
+
+   Then we iterate:
+
+     for name_perm in permutations of remaining names for indices [0,1,3,4,5] (5 names: without Eric, but note Eric is fixed, so we have 5 names: ['Bob','Arnold','Carol','Alice','Peter'])
+
+        assign names[0], names[1], names[3], names[4], names[5] from the permutation.
+
+        Then, we note: 
+            alice_index = index of 'Alice' in names
+            carol_index = index of 'Carol' in names
+
+        Then for book_genres_perm in permutations of the remaining book genres (excluding 'fantasy' and 'mystery') for the 4 houses that are not alice_index and not carol_index?
+        But wait: we have 6 houses, and we need to assign fantasy to alice_index and mystery to carol_index, and then the other 4 book genres to the other 4 houses.
+
+        So we have a fixed assignment for two houses, and then we permute the remaining 4 book genres over the remaining 4 houses.
+
+        Similarly for occupations: we assign lawyer to alice_index and doctor is already assigned to index0, so we have 4 occupations left for the remaining 4 houses (excluding index0 and alice_index).
+
+   Then we check all constraints.
+
+   Let's code the constraints as functions.
+
+   We'll create a function:
+
+      def check_constraints(names, books, occupations):
+          # clue2: Carol (mystery) and Bob are adjacent.
+          carol_index = names.index('Carol')
+          bob_index = names.index('Bob')
+          if abs(carol_index - bob_index) != 1:
+              return False
+
+          # clue5: Bob not in fifth house (index4)
+          if bob_index == 4:
+              return False
+
+          # clue6: Arnold left of engineer
+          arnold_index = names.index('Arnold')
+          engineer_index = occupations.index('engineer')
+          if arnold_index >= engineer_index:
+              return False
+
+          # clue7: nurse is directly left of Alice
+          alice_index = names.index('Alice')
+          nurse_index = occupations.index('nurse')
+          if nurse_index != alice_index - 1:
+              return False
+
+          # clue8: biography book and teacher are same
+          # find the house with biography book
+          for i in range(6):
+              if books[i] == 'biography':
+                  if occupations[i] != 'teacher':
+                      return False
+                  break
+          # Similarly, we can also check by finding teacher and see if book is biography?
+          for i in range(6):
+              if occupations[i] == 'teacher':
+                  if books[i] != 'biography':
+                      return False
+                  break
+
+          # clue9: historical fiction left of teacher
+          teacher_index = occupations.index('teacher')
+          historical_index = books.index('historical fiction')
+          if historical_index >= teacher_index:
+              return False
+
+          # clue11: science fiction and artist are same
+          for i in range(6):
+              if books[i] == 'science fiction':
+                  if occupations[i] != 'artist':
+                      return False
+                  break
+          for i in range(6):
+              if occupations[i] == 'artist':
+                  if books[i] != 'science fiction':
+                      return False
+                  break
+
+          # clue13: mystery books (Carol) not in fifth house (index4)
+          if carol_index == 4:
+              return False
+
+          return True
+
+   Note: We already fixed house1 occupation to doctor, and house3 name to Eric, and also assigned fantasy to Alice and mystery to Carol, and lawyer to Alice.
+
+   We must also ensure that the book genres and occupations are assigned correctly to the fixed houses.
+
+   We'll generate the assignments for books and occupations accordingly.
+
+   Implementation:
+
+     We have:
+        names: list of 6 elements, with names[2] = 'Eric'
+        books: we will assign books[alice_index] = 'fantasy', books[carol_index] = 'mystery'
+        occupations: occupations[0] = 'doctor', occupations[alice_index] = 'lawyer'
+
+     Then the remaining book genres are: 
+        remaining_books = [g for g in all_book_genres if g not in ['fantasy','mystery']]
+     And the remaining houses for books are: all indices except alice_index and carol_index.
+
+     Similarly, remaining occupations: 
+        remaining_occupations = [o for o in all_occupations if o not in ['doctor','lawyer']]
+     And the remaining houses for occupations are: all indices except 0 and alice_index.
+
+     Then we iterate over permutations of remaining_books for the remaining book houses, and permutations of remaining_occupations for the remaining occupation houses.
+
+   Code structure:
+
+     from itertools import permutations
+
+     all_names = ['Bob', 'Arnold', 'Carol', 'Alice', 'Peter', 'Eric']
+     all_book_genres = ['romance', 'historical fiction', 'biography', 'mystery', 'fantasy', 'science fiction']
+     all_occupations = ['artist', 'doctor', 'nurse', 'engineer', 'teacher', 'lawyer']
+
+     # We fixed:
+     fixed_name_index = 2  # house3 has Eric
+     fixed_occupation_index = 0  # house1 has doctor
+
+     # Remove Eric from the names for the other houses
+     names_without_eric = [n for n in all_names if n != 'Eric']
+
+     for name_perm in permutations(names_without_eric):
+         # name_perm is for houses [0,1,3,4,5] (because house2 is fixed to Eric)
+         names = [None] * 6
+         names[2] = 'Eric'
+         names[0] = name_perm[0]
+         names[1] = name_perm[1]
+         names[3] = name_perm[2]
+         names[4] = name_perm[3]
+         names[5] = name_perm[4]
+
+         # Check if Carol is in house4 (index3) -> fifth house is index4, so Carol cannot be in index4 (clue13). Also Bob cannot be in index4 (clue5).
+         if names[4] == 'Carol' or names[4] == 'Bob':
+             continue
+
+         alice_index = names.index('Alice')
+         carol_index = names.index('Carol')
+
+         # Check clue13: Carol not in fifth house (index4) - we already skipped if Carol in index4, so we don't need to check again?
+         # But we skipped Carol in index4, so it's safe.
+
+         # Now, assign books: we know alice_index must be 'fantasy', carol_index must be 'mystery'
+         books = [None] * 6
+         books[alice_index] = 'fantasy'
+         books[carol_index] = 'mystery'
+
+         remaining_books = [g for g in all_book_genres if g not in ['fantasy','mystery']]
+         remaining_book_houses = [i for i in range(6) if i not in [alice_index, carol_index]]
+
+         for book_perm in permutations(remaining_books):
+             for idx, house in enumerate(remaining_book_houses):
+                 books[house] = book_perm[idx]
+
+             # Now, assign occupations
+             occupations = [None] * 6
+             occupations[0] = 'doctor'
+             occupations[alice_index] = 'lawyer'
+
+             remaining_occupations = [o for o in all_occupations if o not in ['doctor','lawyer']]
+             remaining_occupation_houses = [i for i in range(6) if i not in [0, alice_index]]
+
+             for occ_perm in permutations(remaining_occupations):
+                 for idx, house in enumerate(remaining_occupation_houses):
+                     occupations[house] = occ_perm[idx]
+
+                 if check_constraints(names, books, occupations):
+                     # We found a solution
+                     # Then output the solution in the required JSON format.
+
+     We break after we find one solution because the puzzle should have a unique solution.
+
+   Let's code accordingly.
+
+   Note: We assume there is only one solution.
+
+   We'll write the check_constraints function as above.
+
+   However, note: in the check_constraints function, we assume that the teacher and biography are present and we break after first found. But if there are multiple, we might break too early? But the puzzle should have unique assignment.
+
+   We'll implement.
+
+   Let's code.
+
+   We'll use itertools.permutations.
+
+   We must be cautious: the indices in the check function are 0-based for houses, where house1 is index0, house2 is index1, ... house6 is index5.
+
+   We'll output the solution in the required JSON format.
+
+   Note: The output must be a JSON string with the exact structure.
+
+   We'll create a list of rows:
+
+      rows = []
+      for i in range(6):
+          row = [str(i+1), names[i], books[i], occupations[i]]
+          rows.append(row)
+
+   Then output:
+      {
+        "solution": {
+          "header": ["House", "Name", "BookGenre", "Occupation"],
+          "rows": rows
+        }
+      }
+
+   We'll use json.dumps to output.
+
+   Let's code accordingly.
+
+   We'll run the code and hope it finds the solution.
+
+   Note: The number of iterations is 120 * 24 * 24 = 69120, which is acceptable.
+
+   We'll code.
+
+   However, we must note: the remaining_books and remaining_occupations might be assigned to the same set of houses, so we generate all permutations.
+
+   Let's code.
+
+   We'll add a check for clue5 and clue13 in the name_perm loop to skip early.
+
+   Also, we can add other checks in the name_perm loop to skip if necessary.
+
+   We'll run the code.
+
+   If we run into performance issues, we can add more constraints early, but 69120 is manageable.
+
+   Code implementation:
+
+   We'll use:
+        import itertools
+
+   Steps:
+
+     Define all lists.
+
+     Precompute the permutations for names without Eric for the 5 houses.
+
+     Then for each name_perm, assign the names.
+
+     Then check if Bob or Carol is in house5 (index4) and skip.
+
+     Then find alice_index and carol_index.
+
+     Then generate permutations for the remaining books and assign.
+
+     Then generate permutations for the remaining occupations and assign.
+
+     Then check all constraints.
+
+     If found, break and output.
+
+   We'll write the check_constraints function.
+
+   Let's code.
+
+   Note: We must ensure that the assignment for books and occupations is complete.
+
+   We'll now write the code.

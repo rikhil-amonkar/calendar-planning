@@ -1,0 +1,74 @@
+import itertools
+import json
+
+def main():
+    houses = [1, 2, 3, 4]
+    names = ['Arnold', 'Eric', 'Peter', 'Alice']
+    occupations = ['doctor', 'engineer', 'artist', 'teacher']
+    
+    for name_perm in itertools.permutations(names):
+        name_assignment = {house: name for house, name in zip(houses, name_perm)}
+        
+        if name_assignment[1] == 'Peter':
+            continue
+            
+        eric_house = None
+        peter_house = None
+        for house, name in name_assignment.items():
+            if name == 'Eric':
+                eric_house = house
+            if name == 'Peter':
+                peter_house = house
+                
+        if eric_house is None or peter_house is None:
+            continue
+            
+        if abs(eric_house - peter_house) != 3:
+            continue
+            
+        for occ_perm in itertools.permutations(occupations):
+            occ_assignment = {house: occ for house, occ in zip(houses, occ_perm)}
+            
+            valid = True
+            for house in houses:
+                if occ_assignment[house] == 'teacher' and name_assignment[house] != 'Peter':
+                    valid = False
+                    break
+            if not valid:
+                continue
+                
+            for house in houses:
+                if occ_assignment[house] == 'artist' and name_assignment[house] != 'Alice':
+                    valid = False
+                    break
+            if not valid:
+                continue
+                
+            doctor_house = None
+            alice_house = None
+            for house in houses:
+                if occ_assignment[house] == 'doctor':
+                    doctor_house = house
+                if name_assignment[house] == 'Alice':
+                    alice_house = house
+                    
+            if doctor_house is None or alice_house is None:
+                continue
+                
+            if abs(doctor_house - alice_house) == 2:
+                rows = []
+                for house in houses:
+                    rows.append([str(house), name_assignment[house], occ_assignment[house]])
+                result = {
+                    "solution": {
+                        "header": ["House", "Name", "Occupation"],
+                        "rows": rows
+                    }
+                }
+                print(json.dumps(result))
+                return
+                
+    print('{"solution": {}}')
+
+if __name__ == "__main__":
+    main()

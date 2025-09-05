@@ -1,0 +1,46 @@
+```python
+import itertools
+import json
+
+def main():
+    names = ['Eric', 'Arnold']
+    house_styles = ['victorian', 'colonial']
+    heights = ['very short', 'short']
+    educations = ['associate', 'high school']
+    
+    for name_perm in itertools.permutations(names):
+        for style_perm in itertools.permutations(house_styles):
+            for height_perm in itertools.permutations(heights):
+                for education_perm in itertools.permutations(educations):
+                    house1 = ['1', name_perm[0], style_perm[0], height_perm[0], education_perm[0]]
+                    house2 = ['2', name_perm[1], style_perm[1], height_perm[1], education_perm[1]]
+                    
+                    # Check constraints
+                    # Constraint 1: The person who is short is directly left of Eric.
+                    if not (house1[3] == 'short' and house2[1] == 'Eric'):
+                        continue
+                    
+                    # Constraint 2: The person residing in a Victorian house is in the first house.
+                    if not house1[2] == 'victorian':
+                        continue
+                    
+                    # Constraint 3: The person who is short is the person with an associate's degree.
+                    if not (house1[3] == 'short' and house1[4] == 'associate'):
+                        continue
+                    
+                    # If all constraints are satisfied, format the solution
+                    solution = {
+                        "solution": {
+                            "header": ["House", "Name", "HouseStyle", "Height", "Education"],
+                            "rows": [house1, house2]
+                        }
+                    }
+                    print(json.dumps(solution, indent=2))
+                    return
+    
+    # If no solution found
+    print(json.dumps({"solution": {"header": [], "rows": []}}))
+
+if __name__ == "__main__":
+    main()
+```

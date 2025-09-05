@@ -1,0 +1,97 @@
+```python
+import itertools
+import json
+
+def main():
+    names = ['Eric', 'Peter', 'Alice', 'Arnold']
+    cars = ['tesla model 3', 'honda civic', 'toyota camry', 'ford f150']
+    birthdays = ['jan', 'april', 'sept', 'feb']
+    hobbies = ['painting', 'cooking', 'gardening', 'photography']
+    
+    for name_perm in itertools.permutations(names):
+        for car_perm in itertools.permutations(cars):
+            for birthday_perm in itertools.permutations(birthdays):
+                for hobby_perm in itertools.permutations(hobbies):
+                    assignment = list(zip(name_perm, car_perm, birthday_perm, hobby_perm))
+                    
+                    # Check fixed constraints per house
+                    valid = True
+                    for i in range(4):
+                        # Constraint 6: Tesla owner is Arnold
+                        if car_perm[i] == 'tesla model 3' and name_perm[i] != 'Arnold':
+                            valid = False
+                            break
+                        # Constraint 8: Toyota Camry owner is Peter
+                        if car_perm[i] == 'toyota camry' and name_perm[i] != 'Peter':
+                            valid = False
+                            break
+                        # Constraint 9: April birthday is Arnold
+                        if birthday_perm[i] == 'april' and name_perm[i] != 'Arnold':
+                            valid = False
+                            break
+                        # Constraint 10: Photography enthusiast is Alice
+                        if hobby_perm[i] == 'photography' and name_perm[i] != 'Alice':
+                            valid = False
+                            break
+                        # Constraint 11: January birthday is Peter
+                        if birthday_perm[i] == 'jan' and name_perm[i] != 'Peter':
+                            valid = False
+                            break
+                    if not valid:
+                        continue
+                    
+                    # Constraint 1: January birthday not in second house
+                    if birthday_perm[1] == 'jan':
+                        continue
+                    
+                    # Constraint 7: February birthday loves cooking
+                    for i in range(4):
+                        if birthday_perm[i] == 'feb' and hobby_perm[i] != 'cooking':
+                            valid = False
+                            break
+                    if not valid:
+                        continue
+                    
+                    # Find indices for relative constraints
+                    photo_idx = hobby_perm.index('photography')
+                    eric_idx = name_perm.index('Eric')
+                    peter_idx = name_perm.index('Peter')
+                    honda_idx = car_perm.index('honda civic')
+                    tesla_idx = car_perm.index('tesla model 3')
+                    gardening_idx = hobby_perm.index('gardening')
+                    
+                    # Constraint 2: Photography left of Eric
+                    if photo_idx >= eric_idx:
+                        continue
+                    
+                    # Constraint 3: Photography left of Peter
+                    if photo_idx >= peter_idx:
+                        continue
+                    
+                    # Constraint 4: Honda Civic directly left of Tesla
+                    if tesla_idx != honda_idx + 1:
+                        continue
+                    
+                    # Constraint 5: One house between Tesla and Gardening
+                    if abs(tesla_idx - gardening_idx) != 2:
+                        continue
+                    
+                    # Build solution
+                    rows = []
+                    for i in range(4):
+                        rows.append([str(i+1), name_perm[i], car_perm[i], birthday_perm[i], hobby_perm[i]])
+                    
+                    result = {
+                        "solution": {
+                            "header": ["House", "Name", "CarModel", "Birthday", "Hobby"],
+                            "rows": rows
+                        }
+                    }
+                    print(json.dumps(result, indent=2))
+                    return
+                    
+    print('No solution found')
+
+if __name__ == '__main__':
+    main()
+```

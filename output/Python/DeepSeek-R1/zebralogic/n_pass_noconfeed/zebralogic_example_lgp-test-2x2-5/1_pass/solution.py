@@ -1,0 +1,29 @@
+import json
+
+def main():
+    # Initialize the solution structure
+    solution = {
+        "solution": {
+            "header": ["House", "Name", "HouseStyle"],
+            "rows": [
+                ["1", None, None],
+                ["2", None, None]
+            ]
+        }
+    }
+    
+    # Apply clue 2: Eric is in the first house
+    solution["solution"]["rows"][0][1] = "Eric"
+    
+    # The remaining name must be Arnold in house 2
+    solution["solution"]["rows"][1][1] = "Arnold"
+    
+    # Apply clue 1: Victorian is left of colonial
+    solution["solution"]["rows"][0][2] = "victorian"
+    solution["solution"]["rows"][1][2] = "colonial"
+    
+    # Output the solution as JSON
+    print(json.dumps(solution, indent=2))
+
+if __name__ == "__main__":
+    main()

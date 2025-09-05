@@ -1,0 +1,72 @@
+import itertools
+import json
+
+def main():
+    names = ['Eric', 'Alice', 'Peter', 'Arnold']
+    hair_colors = ['blonde', 'black', 'red', 'brown']
+    sports = ['swimming', 'soccer', 'basketball', 'tennis']
+    
+    for name_perm in itertools.permutations(names):
+        for hair_perm in itertools.permutations(hair_colors):
+            for sport_perm in itertools.permutations(sports):
+                assignment = list(zip(name_perm, hair_perm, sport_perm))
+                
+                # Check clue 7: red hair directly left of black hair
+                red_index = None
+                black_index = None
+                for i in range(4):
+                    if hair_perm[i] == 'red':
+                        red_index = i
+                    if hair_perm[i] == 'black':
+                        black_index = i
+                if black_index != red_index + 1:
+                    continue
+                
+                # Check clue 1: soccer not in second house
+                if sport_perm[1] == 'soccer':
+                    continue
+                
+                # Check clue 2: Eric has blonde hair
+                eric_index = name_perm.index('Eric')
+                if hair_perm[eric_index] != 'blonde':
+                    continue
+                
+                # Check clue 3: blonde hair right of basketball
+                blonde_index = hair_perm.index('blonde')
+                basketball_index = sport_perm.index('basketball')
+                if blonde_index <= basketball_index:
+                    continue
+                
+                # Check clue 4: black hair loves tennis
+                if sport_perm[black_index] != 'tennis':
+                    continue
+                
+                # Check clue 5: Arnold left of red hair
+                arnold_index = name_perm.index('Arnold')
+                if arnold_index >= red_index:
+                    continue
+                
+                # Check clue 6: Alice loves swimming
+                alice_index = name_perm.index('Alice')
+                if sport_perm[alice_index] != 'swimming':
+                    continue
+                
+                # Found valid assignment
+                solution = {
+                    "solution": {
+                        "header": ["House", "Name", "HairColor", "FavoriteSport"],
+                        "rows": []
+                    }
+                }
+                for i in range(4):
+                    house = i + 1
+                    row = [str(house), name_perm[i], hair_perm[i], sport_perm[i]]
+                    solution["solution"]["rows"].append(row)
+                
+                print(json.dumps(solution, indent=2))
+                return
+    
+    print('{"solution": {"header": ["House", "Name", "HairColor", "FavoriteSport"], "rows": []}}')
+
+if __name__ == "__main__":
+    main()

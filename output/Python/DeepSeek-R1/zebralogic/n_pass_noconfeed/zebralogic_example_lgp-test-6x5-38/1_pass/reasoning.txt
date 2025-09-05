@@ -1,0 +1,609 @@
+We are going to use constraint satisfaction problem (CSP) techniques to solve the puzzle.
+ Since the problem is small (6 houses), we can use a backtracking search with constraint propagation.
+
+ Steps:
+ 1. Define the variables: We have 6 houses. Each house has 5 attributes: name, birthday, food, height, car_model.
+ 2. Define the domains for each attribute.
+ 3. Parse the clues and convert them into constraints.
+
+ However, note that the problem has 6 houses and 5 attributes, each with 6 possible values. The total assignments are (6!)^5 which is too big for naive backtracking.
+
+ Instead, we can use a more efficient approach by using constraint propagation and representing the problem as a grid.
+
+ Alternatively, we can use a constraint solver from the `constraint` module, but since we cannot assume external libraries, we will write our own backtracking with forward checking.
+
+ But note: the problem requires a self-contained Python program.
+
+ We can represent the state as a list of dictionaries for each house, or as a dictionary of attributes for each house.
+
+ However, to make it efficient, we can represent the state as:
+   houses = [1,2,3,4,5,6]
+   For each house, we have a dictionary of possible values for each attribute.
+
+ Alternatively, we can represent the problem with 5 lists (each of length 6) for the attributes, and then assign houses to each.
+
+ Since the constraints are about relative positions (left, right, adjacent, etc.), we can use a matrix representation.
+
+ Let's define:
+   names: ['Arnold', 'Carol', 'Eric', 'Bob', 'Alice', 'Peter']
+   birthdays: ['feb', 'mar', 'sept', 'jan', 'may', 'april']
+   foods: ['stew', 'soup', 'grilled cheese', 'stir fry', 'spaghetti', 'pizza']
+   heights: ['very short', 'average', 'super tall', 'short', 'very tall', 'tall']
+   car_models: ['chevrolet silverado', 'ford f150', 'bmw 3 series', 'tesla model 3', 'toyota camry', 'honda civic']
+
+ We will create a class or use functions to enforce the constraints.
+
+ Approach:
+   We'll create a CSP class that holds the state of the problem.
+
+   The state can be represented by:
+      attributes = ['name', 'birthday', 'food', 'height', 'car_model']
+      For each attribute, we have a list of 6 positions (houses). Initially, each position can be any of the 6 values.
+
+   We'll use a list of domains for each variable (each attribute at each house).
+
+   Alternatively, we can represent the state as a grid (6 houses x 5 attributes) with domains for each cell.
+
+   We'll then apply the constraints to reduce the domains.
+
+   Since the constraints are complex and involve relative positions, we might need to use a backtracking search.
+
+   We'll use a recursive backtracking algorithm that selects a variable (an attribute for a house) and assigns a value, then propagates the constraints.
+
+   However, writing a general CSP solver for this problem might be complex.
+
+   Alternatively, we can use a more direct approach by iterating over the houses and using the constraints to deduce the values.
+
+   Given the number of constraints, we can try to use the clues one by one to narrow down the possibilities.
+
+   We can start by initializing the grid with all possible values for each attribute in each house.
+
+   Then we apply the constraints that fix values (e.g., clue 2: Ford F-150 in house 5, clue 19: very short in house 4, etc.)
+
+   Then we use the constraints that relate two attributes (e.g., clue 1: Honda Civic owner is short).
+
+   We'll represent the grid as a list of dictionaries for each house.
+
+   Let's create a list `houses` of 6 elements. Each element is a dictionary with keys: 'name', 'birthday', 'food', 'height', 'car_model'
+   Initially, each of these keys maps to a set of possible values.
+
+   Then we iterate over the constraints and reduce the domains.
+
+   If we cannot reduce further, we might need to do search.
+
+   However, note that the problem is designed to be solved by hand and likely has a unique solution. We can try to use constraint propagation until we fix all values.
+
+   Steps for the direct approach:
+
+   Initialize:
+     houses = [{'name': set(names), ... } for _ in range(6)]
+
+   Then, we have constraints that assign fixed values:
+
+     clue 2: car_model of house5 is 'ford f150'
+     clue 19: height of house4 is 'very short'
+     clue 17: Bob is tall -> so height 'tall' is Bob's height, and Bob's height is tall.
+     clue 21: Carol owns Tesla Model 3 -> so Carol's car_model is 'tesla model 3'
+     clue 22: Eric's birthday is jan -> so Eric's birthday is 'jan'
+
+   Also, from clue 20: birthday in March is short -> so the person with birthday 'mar' has height 'short'
+
+   We also have relative constraints (left, right, adjacent, between, etc.)
+
+   We'll write functions to apply each type of constraint.
+
+   We'll create a function for each clue and apply them in sequence until no changes.
+
+   However, some constraints might need to be applied multiple times.
+
+   Alternatively, we can use a constraint propagation loop that applies all constraints until the grid doesn't change.
+
+   Since the constraints are of different types, we can represent them as functions that reduce the domains.
+
+   We'll create a list of constraint functions (each corresponding to a clue) and call them repeatedly until no change.
+
+   If we get stuck, we might need to do backtracking, but hopefully the constraints are enough to deduce the solution.
+
+   Let's try to code the constraints as functions that take the grid (list of houses with domains) and return updated grid.
+
+   Note: We must be careful when updating sets.
+
+   We'll also maintain a flag that indicates if any domain has changed.
+
+   We'll loop until no change.
+
+   After that, if there are still multiple possibilities, we might need to do a search, but let's hope that the constraints are tight.
+
+   Now, let's code the constraints.
+
+   Some constraints are unary (fixed value for a house) and some are binary (relations between two attributes, possibly in different houses).
+
+   We'll also note that some constraints are about the relative positions of two attributes (e.g., left of).
+
+   We can create helper functions:
+
+     - left_of(a, b): meaning a is in a lower numbered house than b.
+     - directly_left(a, b): meaning a is in house i and b in house i+1.
+     - adjacent(a, b): meaning |house(a) - house(b)| = 1.
+     - between(a, b, c): meaning a is between b and c (but we don't have such a constraint in this puzzle).
+
+   But note: we don't know which house a particular attribute is in until we assign it.
+
+   Instead, we can iterate over the houses and for each constraint, we can eliminate impossible assignments.
+
+   Example for clue 1: The person who owns a Honda Civic is the person who is short.
+     This means that for every house, if the car_model is Honda Civic, then the height must be short, and vice versa.
+
+     We can do:
+        for house in houses:
+            if 'honda civic' in house['car_model'] and 'short' not in house['height']:
+                remove 'honda civic' from house['car_model']
+            similarly, if 'short' in house['height'] and 'honda civic' not in house['car_model']:
+                remove 'short' from house['height']
+
+   But note: the constraint is an equivalence. So we can also do:
+        We can note that the set of houses where car_model is Honda Civic must be the same as the set of houses where height is short.
+
+   However, since each attribute is unique, we can also do:
+
+        Let S be the set of houses that can have car_model 'honda civic'
+        Let T be the set of houses that can have height 'short'
+        Then S must equal T.
+
+        So if we reduce the domain of one, we can reduce the other.
+
+   But in our representation, we have per-house domains.
+
+   Alternatively, we can use a more global constraint by noting that the two attributes must be in the same house.
+
+   We can do:
+
+        for i in range(6):
+            if the domain for car_model at house i does not include 'honda civic', then we can remove 'short' from height at house i?
+            Actually, no: because if a house cannot have Honda Civic, then it cannot have the short height (if the constraint is equivalence). But wait, the constraint is only one way? Actually, it's two-way: the Honda Civic owner is short, and the short person owns the Honda Civic.
+
+        So if we know that the Honda Civic must be in one of the houses [a, b, c] then the short height must be in one of [a, b, c]. Similarly, if we know that the short height must be in [d, e, f], then the Honda Civic must be in [d, e, f].
+
+   We can do:
+
+        possible_houses_car = set of houses where 'honda civic' is in the car_model domain
+        possible_houses_height = set of houses where 'short' is in the height domain
+
+        Then the intersection of these two sets is the only possible houses for both.
+
+        So we can set:
+            for house not in possible_houses_car ∩ possible_houses_height:
+                remove 'honda civic' from car_model and remove 'short' from height
+
+        But note: if we have already reduced the domains, then we can do:
+
+            common = possible_houses_car ∩ possible_houses_height
+            for i in range(6):
+                if i not in common:
+                    houses[i]['car_model'].discard('honda civic')
+                    houses[i]['height'].discard('short')
+
+   Similarly for other constraints that equate two attributes.
+
+   Now, for relative constraints (like left_of):
+
+     Example: clue 3: The person who loves stir fry is somewhere to the left of Eric.
+
+        Let S be the set of houses that can have food 'stir fry'
+        Let T be the set of houses that can have name 'Eric'
+
+        Then for every pair (s, t) with s in S and t in T, we must have s < t.
+
+        So if we know that Eric is in house i, then stir fry must be in a house j < i.
+
+        Conversely, if we know that stir fry is in house j, then Eric must be in a house i > j.
+
+        We can use this to reduce the domains:
+
+            Let max_stir_fry = max(S)   (if S is the set of possible houses for stir fry)
+            Then Eric must be in a house greater than max_stir_fry? Not exactly: because if S has multiple possibilities, then Eric must be greater than the minimum of S? Actually, no: for every possible stir fry house, Eric must be to the right.
+
+            So the minimum possible house for Eric must be greater than every possible stir fry house? Actually, no: it must be greater than at least one (the actual stir fry house). But note: the constraint is that there exists a stir fry house left of Eric.
+
+            Alternatively, we can do:
+
+                Let T be the set of houses for Eric. Then the stir fry must be in a house that is less than every possible Eric house? Not exactly.
+
+            We can do:
+
+                The possible houses for stir fry must be less than the maximum possible house for Eric? Not exactly.
+
+            Actually, we can do:
+
+                Let min_eric = min(T)
+                Then stir fry must be in a house less than min_eric? Because if Eric is at min_eric, then stir fry must be left of min_eric. So we can remove from S any house >= min_eric.
+
+                Similarly, let max_stir_fry = max(S)
+                Then Eric must be in a house greater than max_stir_fry? Because stir fry is at most at max_stir_fry, so Eric must be right of that. So we can remove from T any house <= max_stir_fry.
+
+            However, note: if we have multiple possibilities, we can do:
+
+                For stir fry, the maximum house it can be in must be less than the maximum house Eric can be in, but also less than every house in T? Not exactly.
+
+            Let me think: if we know that Eric can be in houses [3,4,5], then stir fry must be in a house less than 3? Because if stir fry were in 3, then it would have to be left of Eric, but if Eric is in 3, then it's not left. So stir fry must be in a house less than the minimum of T.
+
+            Similarly, Eric must be in a house greater than the maximum of S? Not exactly: because if S has houses [1,2,3] and T has [4,5,6], then it's okay. But if S has [1,2,6] and T has [3,4,5], then if stir fry is in 6, there is no Eric to the right? So we must remove 6 from S.
+
+            So we can do:
+
+                stir_fry_houses = set of houses where 'stir fry' is in food domain
+                eric_houses = set of houses where 'Eric' is in name domain
+
+                Then we must have: for every house s in stir_fry_houses, there must be a house t in eric_houses such that s < t.
+                This implies that the maximum house in stir_fry_houses must be less than the maximum house in eric_houses? Not exactly, but we can say:
+
+                Let max_eric = max(eric_houses)
+                Let min_eric = min(eric_houses)
+
+                Then we can remove from stir_fry_houses any house that is >= max_eric, because if stir fry is in a house >= max_eric, then there is no Eric to the right (since Eric is at most max_eric).
+
+                Similarly, we can remove from eric_houses any house that is <= min_stir_fry (the minimum of stir_fry_houses) because Eric must be greater than at least one stir fry house.
+
+                But note: it's possible that the stir fry house is not the minimum, but we require that there is at least one stir fry house left of Eric.
+
+                Actually, a safer method is:
+
+                    Remove from stir_fry_houses any house that is greater than or equal to the maximum Eric house? Because if stir fry is in a house s and there is no Eric in a house t>s, then it's invalid.
+
+                Similarly, remove from eric_houses any house that is less than or equal to the minimum stir fry house? Because if Eric is in a house t and there is no stir fry in a house s<t, then it's invalid.
+
+                However, note: the constraint is that the stir fry is left of Eric, so we require at least one stir fry house that is less than at least one Eric house.
+
+                We can do:
+
+                    Let new_stir_fry = {s for s in stir_fry_houses if s < max_eric}
+                    Let new_eric = {t for t in eric_houses if t > min_stir_fry}
+
+                But note: it's possible that the sets become empty if the constraints are too tight.
+
+                Alternatively, we can do:
+
+                    We can remove from stir_fry_houses any house s for which there is no t in eric_houses with s < t.
+                    Similarly, remove from eric_houses any house t for which there is no s in stir_fry_houses with s < t.
+
+                This is computationally more expensive but more accurate.
+
+                For each house i in range(6):
+                    if i is in stir_fry_houses and for every j in eric_houses, i >= j, then remove i from stir_fry_houses.
+                    if i is in eric_houses and for every j in stir_fry_houses, i <= j, then remove i from eric_houses.
+
+   We'll create a function for the left_of constraint between two attributes.
+
+   Similarly for directly_left and adjacent.
+
+   Given the complexity, we might want to use a more general framework.
+
+   However, to keep the code manageable, we will first try to use the constraints that fix values and the equivalence constraints to reduce the domains, and then use the relative constraints.
+
+   We'll create a function for each clue.
+
+   Let's list the clues and the type of constraint:
+
+   1. equivalence: car_model 'honda civic' and height 'short'
+   2. fixed: car_model 'ford f150' in house5
+   3. left_of: food 'stir fry' left of name 'Eric'
+   4. left_of: birthday 'may' left of name 'Carol'
+   5. left_of: height 'very short' left of birthday 'april'
+   6. not equal: car_model 'bmw 3 series' not in house3
+   7. between: two houses between food 'stir fry' and food 'pizza' -> |house_stir_fry - house_pizza| = 3
+   8. directly_left: food 'soup' directly left of name 'Eric'
+   9. adjacent: food 'spaghetti' and birthday 'may' are adjacent
+   10. directly_left: name 'Alice' directly left of car_model 'bmw 3 series'
+   11. left_of: car_model 'tesla model 3' left of height 'tall'
+   12. equivalence: height 'very tall' and car_model 'toyota camry'
+   13. directly_left: name 'Peter' directly left of food 'pizza'
+   14. not in: food 'stew' not in house3
+   15. between: one house between birthday 'sept' and height 'very short' -> |house_sept - house_very_short| = 2
+   16. between: one house between birthday 'mar' and height 'super tall' -> |house_mar - house_super_tall| = 2
+   17. equivalence: name 'Bob' and height 'tall'
+   18. left_of: name 'Alice' left of birthday 'may'
+   19. fixed: height 'very short' in house4
+   20. equivalence: birthday 'mar' and height 'short'
+   21. equivalence: name 'Carol' and car_model 'tesla model 3'
+   22. equivalence: name 'Eric' and birthday 'jan'
+
+   We also have the fixed values from clue 19 and 2.
+
+   Let's start by initializing the grid.
+
+   We'll create a class House with domains for each attribute.
+
+   Alternatively, we can use a dictionary of lists:
+
+        grid = {
+            'name': [set(names)] * 6,
+            'birthday': [set(birthdays)] * 6,
+            'food': [set(foods)] * 6,
+            'height': [set(heights)] * 6,
+            'car_model': [set(car_models)] * 6,
+        }
+
+   But note: if we use [set(...)]*6, then all houses share the same set object. We must create separate sets.
+
+   Instead, we do:
+
+        attributes = ['name', 'birthday', 'food', 'height', 'car_model']
+        domains = {
+            'name': set(names),
+            'birthday': set(birthdays),
+            'food': set(foods),
+            'height': set(heights),
+            'car_model': set(car_models),
+        }
+
+        grid = {attr: [domains[attr].copy() for _ in range(6)] for attr in attributes}
+
+   Now, we can update the grid by applying the constraints.
+
+   We'll create a function for each constraint.
+
+   Let's code the constraints as functions that take the grid and return True if they change the grid.
+
+   We'll then loop until no change.
+
+   Example for fixed value constraint:
+
+        def constraint2(grid):
+            # clue2: car_model of house5 is 'ford f150'
+            changed = False
+            if 'ford f150' in grid['car_model'][4]:
+                grid['car_model'][4] = {'ford f150'}
+                changed = True
+            else:
+                # already removed? then contradiction
+                raise Exception("Contradiction in clue2")
+            # also remove 'ford f150' from other houses
+            for i in range(6):
+                if i != 4:
+                    if 'ford f150' in grid['car_model'][i]:
+                        grid['car_model'][i].remove('ford f150')
+                        changed = True
+            return changed
+
+   Similarly for clue19:
+
+        grid['height'][3] = {'very short'}
+
+   But note: we must also remove 'very short' from other houses.
+
+   We can write a helper function to assign a value to an attribute in a house:
+
+        def assign_value(grid, attr, house_index, value):
+            changed = False
+            if value in grid[attr][house_index]:
+                grid[attr][house_index] = {value}
+                changed = True
+            else:
+                raise Exception(f"Contradiction: cannot assign {value} to {attr} in house {house_index+1}")
+
+            for i in range(6):
+                if i != house_index and value in grid[attr][i]:
+                    grid[attr][i].remove(value)
+                    changed = True
+
+            return changed
+
+   Then for clue19: assign_value(grid, 'height', 3, 'very short')   [since house4 is index 3]
+
+   Similarly for clue2: assign_value(grid, 'car_model', 4, 'ford f150')
+
+   For equivalence constraints, like clue1:
+
+        def equivalence_constraint(grid, attr1, value1, attr2, value2):
+            # The person with value1 in attr1 is the same as value2 in attr2.
+            # So they must be in the same house.
+            changed = False
+            possible_houses1 = [i for i in range(6) if value1 in grid[attr1][i]]
+            possible_houses2 = [i for i in range(6) if value2 in grid[attr2][i]]
+            common = set(possible_houses1) & set(possible_houses2)
+            if not common:
+                raise Exception("No common house for equivalence")
+
+            # Remove value1 from houses not in common for attr1
+            for i in range(6):
+                if i not in common and value1 in grid[attr1][i]:
+                    grid[attr1][i].remove(value1)
+                    changed = True
+            # Remove value2 from houses not in common for attr2
+            for i in range(6):
+                if i not in common and value2 in grid[attr2][i]:
+                    grid[attr2][i].remove(value2)
+                    changed = True
+
+            # Now, for the common houses, we can also reduce the domains of the other attribute?
+            # Actually, no: because the equivalence only says that the two attributes must be in the same house, but doesn't say anything about the other values of the attributes.
+
+            return changed
+
+   But note: if we know that in a common house, if one of the values is fixed, then we can fix the other.
+
+   However, the above function already ensures that the two values are only in the common houses.
+
+   We can also do:
+
+        for house in common:
+            # If value1 is the only value in attr1 at this house, then we can set attr2 to value2?
+            # Actually, we can't because the equivalence doesn't require that the house has only that value for attr1, but it does require that if the house has value1 then it must have value2 and vice versa.
+
+        Alternatively, we can treat it as:
+
+            For each house i:
+                if value1 is in grid[attr1][i] and value2 not in grid[attr2][i]:
+                    remove value1 from grid[attr1][i]
+                if value2 is in grid[attr2][i] and value1 not in grid[attr1][i]:
+                    remove value2 from grid[attr2][i]
+
+        This is similar to the per-house constraint.
+
+   We'll use the common house method above.
+
+   For relative constraints like left_of between two attributes:
+
+        def left_of(grid, attr1, value1, attr2, value2):
+            # value1 is left of value2
+            changed = False
+            houses1 = [i for i in range(6) if value1 in grid[attr1][i]]
+            houses2 = [i for i in range(6) if value2 in grid[attr2][i]]
+
+            if not houses1 or not houses2:
+                return changed
+
+            # Remove from houses1 any house that is >= max(houses2)
+            max2 = max(houses2)
+            new_houses1 = [i for i in houses1 if i < max2]
+            if new_houses1 != houses1:
+                for i in range(6):
+                    if i not in new_houses1 and value1 in grid[attr1][i]:
+                        grid[attr1][i].remove(value1)
+                        changed = True
+
+            # Remove from houses2 any house that is <= min(houses1)
+            min1 = min(houses1)
+            new_houses2 = [i for i in houses2 if i > min1]
+            if new_houses2 != houses2:
+                for i in range(6):
+                    if i not in new_houses2 and value2 in grid[attr2][i]:
+                        grid[attr2][i].remove(value2)
+                        changed = True
+
+            return changed
+
+   However, note: this is an approximation. It might remove values that are still possible if the sets are not singleton.
+
+   But in practice, as the domains reduce, it becomes more accurate.
+
+   We might need to iterate until no change.
+
+   Similarly for directly_left:
+
+        def directly_left(grid, attr1, value1, attr2, value2):
+            # value1 is directly left of value2, meaning if value1 is in house i, then value2 must be in house i+1.
+            changed = False
+            for i in range(5): # i from 0 to 4
+                if value1 in grid[attr1][i] and value2 not in grid[attr2][i+1]:
+                    grid[attr1][i].remove(value1)
+                    changed = True
+                if value2 in grid[attr2][i+1] and value1 not in grid[attr1][i]:
+                    grid[attr2][i+1].remove(value2)
+                    changed = True
+
+            # Also, if value1 is in house5, then it cannot be directly left of value2 (because no house6+)
+            if value1 in grid[attr1][5]:
+                grid[attr1][5].remove(value1)
+                changed = True
+
+            # Similarly, if value2 is in house0, then it cannot be directly right of value1
+            if value2 in grid[attr2][0]:
+                grid[attr2][0].remove(value2)
+                changed = True
+
+            return changed
+
+   For adjacent:
+
+        def adjacent(grid, attr1, value1, attr2, value2):
+            changed = False
+            for i in range(6):
+                possible = False
+                if i>0 and value2 in grid[attr2][i-1]:
+                    possible = True
+                if i<5 and value2 in grid[attr2][i+1]:
+                    possible = True
+                if not possible and value1 in grid[attr1][i]:
+                    grid[attr1][i].remove(value1)
+                    changed = True
+
+            for i in range(6):
+                possible = False
+                if i>0 and value1 in grid[attr1][i-1]:
+                    possible = True
+                if i<5 and value1 in grid[attr1][i+1]:
+                    possible = True
+                if not possible and value2 in grid[attr2][i]:
+                    grid[attr2][i].remove(value2)
+                    changed = True
+
+            return changed
+
+   For between (with one house between):
+
+        def one_house_between(grid, attr1, value1, attr2, value2):
+            # |house1 - house2| = 2
+            changed = False
+            houses1 = [i for i in range(6) if value1 in grid[attr1][i]]
+            houses2 = [i for i in range(6) if value2 in grid[attr2][i]]
+
+            new_houses1 = []
+            for i in houses1:
+                for j in houses2:
+                    if abs(i - j) == 2:
+                        new_houses1.append(i)
+                        break
+            if new_houses1 != houses1:
+                for i in range(6):
+                    if i not in new_houses1 and value1 in grid[attr1][i]:
+                        grid[attr1][i].remove(value1)
+                        changed = True
+
+            new_houses2 = []
+            for i in houses2:
+                for j in houses1:
+                    if abs(i - j) == 2:
+                        new_houses2.append(i)
+                        break
+            if new_houses2 != houses2:
+                for i in range(6):
+                    if i not in new_houses2 and value2 in grid[attr2][i]:
+                        grid[attr2][i].remove(value2)
+                        changed = True
+
+            return changed
+
+   Similarly for two houses between: |i-j|=3.
+
+   We'll code each clue as a function that calls these helpers.
+
+   Then we'll create a list of constraint functions and apply them in a loop until no change.
+
+   Finally, we check if the grid is completely determined (each attribute in each house has only one value).
+
+   If not, we might need to do a search, but let's hope that the constraints are enough.
+
+   Let's code the constraints one by one.
+
+   Note: We must be careful with the indices: houses are 1-indexed in the problem, but we use 0-indexed in code.
+
+   We'll define:
+
+        house1 -> index0, house2->index1, ... house6->index5.
+
+   Now, let's write the code.
+
+   Due to the complexity and length, we might not be able to write a complete solver that always finds the solution without search, but we'll try.
+
+   If we cannot reduce to a single solution, we might need to do a backtracking search. We'll cross that bridge when we come to it.
+
+   Let's start by initializing the grid and then applying the fixed constraints.
+
+   We'll then apply the equivalence constraints, and then the relative constraints.
+
+   We'll create a function for each clue.
+
+   We'll then run a loop that applies all constraint functions until no change.
+
+   We'll also include a function that checks for unique values: if an attribute value is only possible in one house, then assign it and remove from others.
+
+   This is a standard arc-consistency.
+
+   Let's code.
+
+   Note: This might be long, but we'll try to be efficient.
+
+   We'll also note that some constraints are redundant, but we'll code them all.
+
+   Let's go.

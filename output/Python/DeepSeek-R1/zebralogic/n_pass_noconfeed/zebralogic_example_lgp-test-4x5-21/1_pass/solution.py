@@ -1,0 +1,263 @@
+import json
+from typing import List, Dict, Any
+
+def main():
+    # Define the attributes and their possible values
+    attributes = {
+        'Name': ['Eric', 'Alice', 'Peter', 'Arnold'],
+        'Smoothie': ['dragonfruit', 'cherry', 'desert', 'watermelon'],
+        'FavoriteSport': ['soccer', 'tennis', 'basketball', 'swimming'],
+        'CarModel': ['tesla model 3', 'toyota camry', 'honda civic', 'ford f150'],
+        'Flower': ['daffodils', 'roses', 'lilies', 'carnations']
+    }
+    
+    # Initialize the assignments for each house (4 houses)
+    houses = [1, 2, 3, 4]
+    assignments = []
+    for _ in houses:
+        assignments.append({attr: None for attr in attributes})
+    
+    # Initialize domains for each house and each attribute
+    domains = {}
+    for house in houses:
+        for attr, values in attributes.items():
+            domains[(house, attr)] = set(values)
+    
+    # Apply unary constraints to reduce domains
+    # Clue 4: The person who loves tennis is in the first house.
+    domains[(1, 'FavoriteSport')] = {'tennis'}
+    
+    # Clue 9: The Watermelon smoothie lover is not in the first house.
+    domains[(1, 'Smoothie')].discard('watermelon')
+    
+    # Clue 2: Peter is the Dragonfruit smoothie lover.
+    # This means that wherever Peter is, his smoothie is dragonfruit, and vice versa.
+    # But this is a binary constraint, so we'll handle it in the constraint checking.
+    
+    # Clue 6: Arnold is the person who loves basketball.
+    # Similarly binary.
+    
+    # Clue 8: Eric is the person who loves the rose bouquet.
+    # Binary.
+    
+    # We'll now use backtracking search with constraint propagation
+    def is_consistent(assignments, house, attr, value):
+        # Check uniqueness across houses for the same attribute
+        for h in houses:
+            if h != house and assignments[h-1][attr] == value:
+                return False
+        
+        # Create a temporary assignment to check constraints
+        temp_assignments = [dict(house_assignment) for house_assignment in assignments]
+        temp_assignments[house-1][attr] = value
+        
+        # Check all constraints
+        constraints = [
+            constraint1, constraint2, constraint3, constraint4, constraint5,
+            constraint6, constraint7, constraint8, constraint9, constraint10,
+            constraint11, constraint12
+        ]
+        for constraint in constraints:
+            if not constraint(temp_assignments):
+                return False
+                
+        return True
+    
+    def constraint1(assignments):
+        # The person who owns a Tesla Model 3 is the person who loves the rose bouquet.
+        for house in range(4):
+            car = assignments[house]['CarModel']
+            flower = assignments[house]['Flower']
+            if car is not None and flower is not None:
+                if car == 'tesla model 3' and flower != 'roses':
+                    return False
+                if flower == 'roses' and car != 'tesla model 3':
+                    return False
+        return True
+    
+    def constraint2(assignments):
+        # Peter is the Dragonfruit smoothie lover.
+        for house in range(4):
+            name = assignments[house]['Name']
+            smoothie = assignments[house]['Smoothie']
+            if name is not None and smoothie is not None:
+                if name == 'Peter' and smoothie != 'dragonfruit':
+                    return False
+                if smoothie == 'dragonfruit' and name != 'Peter':
+                    return False
+        return True
+    
+    def constraint3(assignments):
+        # The Desert smoothie lover is the person who owns a Toyota Camry.
+        for house in range(4):
+            smoothie = assignments[house]['Smoothie']
+            car = assignments[house]['CarModel']
+            if smoothie is not None and car is not None:
+                if smoothie == 'desert' and car != 'toyota camry':
+                    return False
+                if car == 'toyota camry' and smoothie != 'desert':
+                    return False
+        return True
+    
+    def constraint4(assignments):
+        # The person who loves tennis is in the first house.
+        return assignments[0]['FavoriteSport'] == 'tennis' or assignments[0]['FavoriteSport'] is None
+    
+    def constraint5(assignments):
+        # The person who owns a Toyota Camry and the person who loves basketball are next to each other.
+        camry_house = None
+        basketball_house = None
+        for house in range(4):
+            if assignments[house]['CarModel'] == 'toyota camry':
+                camry_house = house + 1
+            if assignments[house]['FavoriteSport'] == 'basketball':
+                basketball_house = house + 1
+        if camry_house is not None and basketball_house is not None:
+            return abs(camry_house - basketball_house) == 1
+        return True
+    
+    def constraint6(assignments):
+        # Arnold is the person who loves basketball.
+        for house in range(4):
+            name = assignments[house]['Name']
+            sport = assignments[house]['FavoriteSport']
+            if name is not None and sport is not None:
+                if name == 'Arnold' and sport != 'basketball':
+                    return False
+                if sport == 'basketball' and name != 'Arnold':
+                    return False
+        return True
+    
+    def constraint7(assignments):
+        # The person who owns a Honda Civic is the person who loves a bouquet of daffodils.
+        for house in range(4):
+            car = assignments[house]['CarModel']
+            flower = assignments[house]['Flower']
+            if car is not None and flower is not None:
+                if car == 'honda civic' and flower != 'daffodils':
+                    return False
+                if flower == 'daffodils' and car != 'honda civic':
+                    return False
+        return True
+    
+    def constraint8(assignments):
+        # Eric is the person who loves the rose bouquet.
+        for house in range(4):
+            name = assignments[house]['Name']
+            flower = assignments[house]['Flower']
+            if name is not None and flower is not None:
+                if name == 'Eric' and flower != 'roses':
+                    return False
+                if flower == 'roses' and name != 'Eric':
+                    return False
+        return True
+    
+    def constraint9(assignments):
+        # The Watermelon smoothie lover is not in the first house.
+        return assignments[0]['Smoothie'] != 'watermelon' or assignments[0]['Smoothie'] is None
+    
+    def constraint10(assignments):
+        # The person who owns a Honda Civic is somewhere to the right of the Desert smoothie lover.
+        honda_house = None
+        desert_house = None
+        for house in range(4):
+            if assignments[house]['CarModel'] == 'honda civic':
+                honda_house = house + 1
+            if assignments[house]['Smoothie'] == 'desert':
+                desert_house = house + 1
+        if honda_house is not None and desert_house is not None:
+            return honda_house > desert_house
+        return True
+    
+    def constraint11(assignments):
+        # The person who loves basketball is the person who loves the bouquet of lilies.
+        for house in range(4):
+            sport = assignments[house]['FavoriteSport']
+            flower = assignments[house]['Flower']
+            if sport is not None and flower is not None:
+                if sport == 'basketball' and flower != 'lilies':
+                    return False
+                if flower == 'lilies' and sport != 'basketball':
+                    return False
+        return True
+    
+    def constraint12(assignments):
+        # The person who loves tennis and the person who loves soccer are next to each other.
+        tennis_house = None
+        soccer_house = None
+        for house in range(4):
+            if assignments[house]['FavoriteSport'] == 'tennis':
+                tennis_house = house + 1
+            if assignments[house]['FavoriteSport'] == 'soccer':
+                soccer_house = house + 1
+        if tennis_house is not None and soccer_house is not None:
+            return abs(tennis_house - soccer_house) == 1
+        return True
+    
+    def backtrack(assignments, domains):
+        # Check if all assigned
+        if all(assignments[h][attr] is not None for h in range(4) for attr in attributes):
+            return assignments
+        
+        # Select the next variable to assign (MRV: minimum remaining values)
+        min_domain_size = float('inf')
+        next_var = None
+        for house in houses:
+            for attr in attributes:
+                if assignments[house-1][attr] is None:
+                    domain_size = len(domains[(house, attr)])
+                    if domain_size < min_domain_size:
+                        min_domain_size = domain_size
+                        next_var = (house, attr)
+        
+        if next_var is None:
+            return None
+        
+        house, attr = next_var
+        original_domain = set(domains[(house, attr)])
+        for value in original_domain:
+            if is_consistent(assignments, house-1, attr, value):
+                assignments[house-1][attr] = value
+                # Remove value from domains of other houses for the same attribute
+                updates = []
+                for h in houses:
+                    if h != house and value in domains[(h, attr)]:
+                        domains[(h, attr)].remove(value)
+                        updates.append((h, attr))
+                result = backtrack(assignments, domains)
+                if result is not None:
+                    return result
+                # Undo assignment
+                assignments[house-1][attr] = None
+                # Restore domains
+                for (h, a) in updates:
+                    domains[(h, a)].add(value)
+        return None
+    
+    # Run backtracking
+    solution_assignments = backtrack(assignments, domains)
+    
+    if solution_assignments is None:
+        print("No solution found")
+        return
+    
+    # Format the solution as JSON
+    header = ["House", "Name", "Smoothie", "FavoriteSport", "CarModel", "Flower"]
+    rows = []
+    for i, house_assignment in enumerate(solution_assignments):
+        row = [str(i+1)]
+        for attr in header[1:]:
+            row.append(house_assignment[attr])
+        rows.append(row)
+    
+    output = {
+        "solution": {
+            "header": header,
+            "rows": rows
+        }
+    }
+    
+    print(json.dumps(output, indent=2))
+
+if __name__ == "__main__":
+    main()

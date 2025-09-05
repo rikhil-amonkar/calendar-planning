@@ -1,0 +1,153 @@
+We are solving a logic puzzle with 3 houses and 5 attributes.
+ We'll use constraint satisfaction and backtracking or logical deduction.
+
+ Since the problem is small (only 3 houses), we can generate all permutations for each attribute and then apply constraints.
+
+ Steps:
+ 1. Define the attributes and their possible values.
+ 2. Represent the houses as a list of dictionaries or a list of lists for each attribute.
+ 3. We have 5 attributes: Name, Cigar, Hobby, Education, Drink.
+ 4. We'll use the constraints to narrow down the possibilities.
+
+ Alternatively, we can use a constraint solver, but for simplicity and because the problem is small, we can iterate over all possibilities.
+
+ However, note: 3! = 6 for each attribute, and we have 5 attributes, so total possibilities would be (3!)^5 = 7776, which is acceptable but we can do better by applying constraints early.
+
+ Instead, we can represent the house as a tuple of indices and then assign values.
+
+ We'll create a list of houses (3 houses) and assign each attribute a value.
+
+ We can use a dictionary to represent the state of each house, but we'll use a list of lists for the table.
+
+ Approach:
+ Let's create a list for each attribute with 3 elements (for house 1,2,3) and initially set them to None.
+
+ Then, we can iterate by applying the constraints one by one.
+
+ Alternatively, we can use a brute-force over all permutations of names, then cigars, etc., but that would be 6^5 = 7776, which is acceptable.
+
+ However, we can use the constraints to reduce the search space.
+
+ We'll generate all possible assignments for the 5 attributes, but note that the constraints are cross-attributes.
+
+ Since the problem is small, we can do:
+
+ for name_perm in permutations(['Eric','Peter','Arnold']):
+   for cigar_perm in permutations(['blue master','prince','pall mall']):
+      for hobby_perm in permutations(['photography','gardening','cooking']):
+         for education_perm in permutations(['high school','associate','bachelor']):
+            for drink_perm in permutations(['tea','milk','water']):
+                assign to houses 1,2,3
+                check all constraints
+
+ But 6*6*6*6*6 = 7776, which is acceptable.
+
+ However, we can break early by checking constraints as we go.
+
+ We'll create a list of houses, each house is a tuple (house_index, name, cigar, hobby, education, drink)
+
+ But note: the constraints are about positions (left, right, next to).
+
+ Constraints:
+
+ 1. The person partial to Pall Mall is Peter.
+    So, if a house has cigar 'pall mall', then the name must be 'Peter'.
+
+ 2. The person who likes milk is directly left of the person with a high school diploma.
+    So, if house i has drink 'milk', then house i+1 must have education 'high school'.
+
+ 3. Eric is the tea drinker.
+    So, the house with name 'Eric' must have drink 'tea'.
+
+ 4. Arnold and the Prince smoker are next to each other.
+    So, the house with name 'Arnold' and the house with cigar 'prince' must be adjacent.
+
+ 5. The person who enjoys gardening is somewhere to the left of the Prince smoker.
+    So, the house with hobby 'gardening' must be to the left (lower index) of the house with cigar 'prince'.
+
+ 6. The person who likes milk is the person with an associate's degree.
+    So, the house with drink 'milk' must have education 'associate'.
+
+ 7. The person with a bachelor's degree is directly left of the photography enthusiast.
+    So, if house i has education 'bachelor', then house i+1 must have hobby 'photography'.
+
+ Also, note: all attributes are unique per house.
+
+ We have 3 houses, so we can iterate over all permutations.
+
+ Let's code accordingly.
+
+ We'll create a list of the attributes and their domains:
+
+ attributes = ['Name', 'Cigar', 'Hobby', 'Education', 'Drink']
+ domains = {
+   'Name': ['Eric', 'Peter', 'Arnold'],
+   'Cigar': ['blue master', 'prince', 'pall mall'],
+   'Hobby': ['photography', 'gardening', 'cooking'],
+   'Education': ['high school', 'associate', 'bachelor'],
+   'Drink': ['tea', 'milk', 'water']
+ }
+
+ We'll represent an assignment as a list of 5 lists (each of length 3) for the 5 attributes, but it's easier to represent by house.
+
+ Alternatively, we can represent the assignment as a list of 3 dictionaries, each dictionary has keys: Name, Cigar, Hobby, Education, Drink.
+
+ We'll generate all permutations for each attribute and then assign to houses.
+
+ We can do:
+
+ for names in permutations(domains['Name']):
+   for cigars in permutations(domains['Cigar']):
+     for hobbies in permutations(domains['Hobby']):
+        for educations in permutations(domains['Education']):
+           for drinks in permutations(domains['Drink']):
+               assignment = [ 
+                 { 'Name': names[0], 'Cigar': cigars[0], 'Hobby': hobbies[0], 'Education': educations[0], 'Drink': drinks[0] },
+                 { 'Name': names[1], 'Cigar': cigars[1], 'Hobby': hobbies[1], 'Education': educations[1], 'Drink': drinks[1] },
+                 { 'Name': names[2], 'Cigar': cigars[2], 'Hobby': hobbies[2], 'Education': educations[2], 'Drink': drinks[2] }
+               ]
+
+ Then check all constraints on this assignment.
+
+ We'll break early if any constraint fails.
+
+ Let's code the constraints as functions that take the assignment (list of houses, index 0,1,2) and return True if satisfied.
+
+ Note: The houses are in order: house1, house2, house3.
+
+ Constraints:
+
+ 1. The person partial to Pall Mall is Peter.
+    For any house, if cigar is 'pall mall', then name must be 'Peter'.
+
+ 2. The person who likes milk is directly left of the person with a high school diploma.
+    Check: if there is a house i (i in [0,1]) such that drink[i] is 'milk' and education[i+1] is 'high school'. Also note, by constraint 6, the milk drinker has associate's degree, so we can use that too.
+
+ 3. Eric is the tea drinker.
+    Find the house with name 'Eric', then check that its drink is 'tea'.
+
+ 4. Arnold and the Prince smoker are next to each other.
+    Find the index of Arnold (by name) and the index of Prince (by cigar). Then check |index_arnold - index_prince| == 1.
+
+ 5. The person who enjoys gardening is somewhere to the left of the Prince smoker.
+    Find index of gardening (hobby) and index of Prince (cigar). Check index_gardening < index_prince.
+
+ 6. The person who likes milk is the person with an associate's degree.
+    For the house with drink 'milk', check that education is 'associate'.
+
+ 7. The person with a bachelor's degree is directly left of the photography enthusiast.
+    Check: if there is a house i (i in [0,1]) such that education[i] is 'bachelor' and hobby[i+1] is 'photography'.
+
+ We must also ensure that each attribute is unique, but since we are using permutations, that is already taken care of.
+
+ Let's code accordingly.
+
+ We'll break the loops as soon as we can to avoid unnecessary iterations.
+
+ However, 7776 is manageable, but we can break early in the inner loops.
+
+ We'll write a function to check constraints and return True if all are satisfied.
+
+ We'll create the assignment for the 3 houses as a list of dictionaries.
+
+ Let's code.

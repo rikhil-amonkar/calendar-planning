@@ -1,0 +1,149 @@
+We are given 3 houses, each with a name and a height.
+ Names: Eric, Arnold, Peter
+ Heights: short, very short, average
+
+ Clues:
+ 1. Eric is not in the first house.
+ 2. The person who is very short is somewhere to the left of the person who is short.
+ 3. The person who is very short is Eric.
+ 4. Arnold is not in the first house.
+
+ From clue 3: Eric is very short.
+ From clue 2: Eric (very short) is to the left of the short person.
+
+ Also, from clue 1 and clue 4: Neither Eric nor Arnold is in house 1, so house 1 must be Peter.
+
+ Let's assign:
+ Since Eric is very short and must be to the left of the short person, Eric cannot be in the last house (house 3) because then there would be no house to the right for the short person.
+
+ Therefore, Eric must be in house 2 (because house 1 is not allowed for Eric, and house 3 would break clue 2).
+
+ But wait: clue 1 and 4 say Eric and Arnold are not in house 1, so house 1 is Peter.
+
+ Then, Eric must be in house 2 or 3. But if Eric is in house 3, then the very short person (Eric) is in house 3, but clue 2 says the very short person is to the left of the short person. So if Eric is in house 3, there is no house to the right, so he cannot be to the left of anyone. Therefore, Eric must be in house 2.
+
+ Then, the short person must be in house 3 (since Eric is in house 2 and to the left of the short person).
+
+ Then, Arnold must be in house 3? But wait, house 3 has the short person, and we have Eric in house 2 (very short) and Peter in house 1. So house 3 must be Arnold.
+
+ Now, what about the heights? We have:
+ House 1: Peter -> height must be average (since very short and short are taken by Eric and Arnold)
+ House 2: Eric -> very short
+ House 3: Arnold -> short
+
+ This satisfies all clues.
+
+ However, let's code this in a general constraint satisfaction way.
+
+ Steps:
+ We have three houses: 1, 2, 3
+ Attributes: Name and Height
+
+ We can use permutations for the names and heights.
+
+ Approach:
+ We'll generate all possible assignments for names and heights and then apply the constraints.
+
+ Constraints:
+ 1. Eric not in house 1 -> name_house1 != 'Eric'
+ 2. The very short person is to the left of the short person.
+    This means: the house number of very short is less than the house number of short.
+ 3. The very short person is Eric -> so for the house where name is Eric, height must be 'very short'
+ 4. Arnold not in house 1 -> name_house1 != 'Arnold'
+
+ Since there are only 3 houses, we can iterate over all possibilities.
+
+ Let's define:
+ houses = [1,2,3]
+ names = ['Eric','Arnold','Peter']
+ heights = ['short','very short','average']
+
+ We'll create a list of possible assignments for each house.
+
+ Alternatively, we can generate all permutations of names and heights and assign to the three houses.
+
+ Steps in code:
+ 1. Import itertools to generate permutations.
+ 2. For each permutation of names (assigning to houses 1,2,3) and each permutation of heights (assigning to houses 1,2,3):
+ 3. Check the constraints.
+
+ However, note that the constraints are independent for names and heights, but we can combine.
+
+ We can do:
+ for name_perm in itertools.permutations(names):
+   for height_perm in itertools.permutations(heights):
+      assignment = {
+          1: {'name': name_perm[0], 'height': height_perm[0]},
+          2: {'name': name_perm[1], 'height': height_perm[1]},
+          3: {'name': name_perm[2], 'height': height_perm[2]}
+      }
+
+ Then check constraints.
+
+ Constraints:
+ 1. assignment[1]['name'] != 'Eric'
+ 2. Let very_short_house = the house where height is 'very short'
+    Let short_house = the house where height is 'short'
+    Then very_short_house < short_house
+ 3. For the house where name is 'Eric', the height must be 'very short'
+ 4. assignment[1]['name'] != 'Arnold'
+
+ We can break early if any constraint fails.
+
+ Since the puzzle is small, we can do nested loops.
+
+ Let's code accordingly.
+
+ We'll output the solution in the required JSON format.
+
+ Note: The output must have the rows in house order 1,2,3.
+
+ Implementation:
+
+ We'll iterate over all possible assignments and check the constraints.
+
+ Alternatively, we can use the constraints to reduce the search space.
+
+ But let's code with nested loops for clarity.
+
+ Steps:
+
+ 1. Import itertools and json.
+ 2. Define the lists of names and heights.
+ 3. Generate all permutations for names and heights.
+ 4. For each name permutation and each height permutation, create an assignment for the three houses.
+ 5. Check the constraints:
+
+    constraint1: name_perm[0] != 'Eric'
+    constraint4: name_perm[0] != 'Arnold'
+
+    constraint3: For each house i, if name_perm[i] == 'Eric', then height_perm[i] must be 'very short'
+
+    constraint2: Find the house index (1-indexed) for 'very short' and 'short'. Let idx_vs = index of 'very short' in height_perm (plus one because house numbers start at 1) and idx_s = index of 'short' in height_perm (plus one). Then check if idx_vs < idx_s.
+
+ 6. If all constraints are satisfied, then we break and output.
+
+ Since there is only one solution, we can break after finding one.
+
+ Let's code accordingly.
+
+ Note: We are using 0-indexed for the permutations, so house1 is the first element of the permutation.
+
+ Example of permutation for names: 
+   name_perm = ('Eric', 'Arnold', 'Peter') -> house1: Eric, house2: Arnold, house3: Peter
+
+ We'll create a solution dictionary and then output the JSON.
+
+ The output JSON structure:
+ {
+   "solution": {
+     "header": ["House", "Name", "Height"],
+     "rows": [
+         ["1", name_house1, height_house1],
+         ["2", name_house2, height_house2],
+         ["3", name_house3, height_house3]
+     ]
+   }
+ }
+
+ Let's code accordingly.

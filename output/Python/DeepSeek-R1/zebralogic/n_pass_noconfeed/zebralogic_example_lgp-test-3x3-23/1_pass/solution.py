@@ -1,0 +1,124 @@
+import itertools
+import json
+
+def main():
+    # Define the attributes
+    names = ['Peter', 'Arnold', 'Eric']
+    occupations = ['doctor', 'teacher', 'engineer']
+    hobbies = ['cooking', 'photography', 'gardening']
+    
+    # Generate all possible permutations for each attribute
+    for name_perm in itertools.permutations(names):
+        for occ_perm in itertools.permutations(occupations):
+            for hobby_perm in itertools.permutations(hobbies):
+                # Assign attributes to houses (index 0 = House 1, index 1 = House 2, index 2 = House 3)
+                assignment = []
+                for i in range(3):
+                    house = {
+                        'house': str(i+1),
+                        'name': name_perm[i],
+                        'occupation': occ_perm[i],
+                        'hobby': hobby_perm[i]
+                    }
+                    assignment.append(house)
+                
+                # Check constraints
+                # Clue 1: The person who is a doctor and Eric are next to each other.
+                doctor_house = None
+                eric_house = None
+                for house in assignment:
+                    if house['occupation'] == 'doctor':
+                        doctor_house = int(house['house'])
+                    if house['name'] == 'Eric':
+                        eric_house = int(house['house'])
+                if doctor_house is None or eric_house is None or abs(doctor_house - eric_house) != 1:
+                    continue
+                
+                # Clue 2: The person who loves cooking is directly left of the person who is a teacher.
+                cooking_house = None
+                teacher_house = None
+                for house in assignment:
+                    if house['hobby'] == 'cooking':
+                        cooking_house = int(house['house'])
+                    if house['occupation'] == 'teacher':
+                        teacher_house = int(house['house'])
+                if cooking_house is None or teacher_house is None or cooking_house != teacher_house - 1:
+                    continue
+                
+                # Clue 3: The person who is a doctor is somewhere to the right of the person who enjoys gardening.
+                gardening_house = None
+                for house in assignment:
+                    if house['hobby'] == 'gardening':
+                        gardening_house = int(house['house'])
+                if gardening_house is None or doctor_house <= gardening_house:
+                    continue
+                
+                # Clue 4: The photography enthusiast is the person who is a teacher.
+                for house in assignment:
+                    if house['occupation'] == 'teacher' and house['hobby'] != 'photography':
+                        break
+                else:
+                    # Check that no non-teacher has photography hobby if teacher doesn't?
+                    # Actually, we need to ensure that the teacher has photography and vice versa?
+                    # But note: the clue says "the photography enthusiast is the teacher", meaning they are the same.
+                    # So we must check: the teacher has photography, and the photography hobby is held by the teacher.
+                    teacher_photo_ok = True
+                    for house in assignment:
+                        if house['occupation'] == 'teacher' and house['hobby'] != 'photography':
+                            teacher_photo_ok = False
+                        if house['hobby'] == 'photography' and house['occupation'] != 'teacher':
+                            teacher_photo_ok = False
+                    if not teacher_photo_ok:
+                        continue
+                # But note: the above for-else and then check might be redundant. Let's simplify by breaking out if any violation.
+                # Alternatively, we can check directly:
+                # We already checked in the for-else that every teacher has photography? Actually, the for-else above only checks that the teacher has photography, but not the converse.
+                # Let's redo clue 4 check clearly:
+                teacher_has_photography = True
+                photography_is_teacher = True
+                for house in assignment:
+                    if house['occupation'] == 'teacher':
+                        if house['hobby'] != 'photography':
+                            teacher_has_photography = False
+                    if house['hobby'] == 'photography':
+                        if house['occupation'] != 'teacher':
+                            photography_is_teacher = False
+                if not (teacher_has_photography and photography_is_teacher):
+                    continue
+                
+                # Clue 5: The person who is an engineer is Peter.
+                engineer_peter_ok = True
+                for house in assignment:
+                    if house['occupation'] == 'engineer' and house['name'] != 'Peter':
+                        engineer_peter_ok = False
+                    if house['name'] == 'Peter' and house['occupation'] != 'engineer':
+                        engineer_peter_ok = False
+                if not engineer_peter_ok:
+                    continue
+                
+                # If we reached here, all constraints are satisfied
+                # Format the solution as required
+                rows = []
+                for house in assignment:
+                    rows.append([house['house'], house['name'], house['occupation'], house['hobby']])
+                
+                result = {
+                    "solution": {
+                        "header": ["House", "Name", "Occupation", "Hobby"],
+                        "rows": rows
+                    }
+                }
+                print(json.dumps(result, indent=2))
+                return
+    
+    # If no solution found, output empty solution? (But puzzle should have solution)
+    result = {
+        "solution": {
+            "header": ["House", "Name", "Occupation", "Hobby"],
+            "rows": []
+        }
+    }
+    print(json.dumps(result, indent=2))
+
+if __name__ == "__main__":
+    main()

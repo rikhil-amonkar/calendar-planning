@@ -1,0 +1,152 @@
+```python
+import itertools
+import json
+
+def main():
+    # Define the attributes and their possible values
+    attributes = {
+        'names': ['Eric', 'Arnold', 'Peter'],
+        'vacations': ['mountain', 'city', 'beach'],
+        'heights': ['very short', 'average', 'short'],
+        'flowers': ['carnations', 'daffodils', 'lilies'],
+        'hairs': ['brown', 'black', 'blonde'],
+        'educations': ['associate', 'bachelor', 'high school']
+    }
+    
+    # Precompute permutations with fixed constraints
+    vacations_perms = [('beach',) + p for p in itertools.permutations(['mountain', 'city'])]
+    hairs_perms = [['brown', 'black', 'blonde']]  # fixed based on clues
+    educations_perms = [p + ('high school',) for p in itertools.permutations(['associate', 'bachelor'])]
+    
+    # Iterate over all combinations
+    for name_perm in itertools.permutations(attributes['names']):
+        for height_perm in itertools.permutations(attributes['heights']):
+            for flower_perm in itertools.permutations(attributes['flowers']):
+                for vacation_perm in vacations_perms:
+                    for hair_perm in hairs_perms:
+                        for education_perm in educations_perms:
+                            # Create assignment for three houses
+                            assignment = []
+                            for i in range(3):
+                                house = (
+                                    name_perm[i],
+                                    vacation_perm[i],
+                                    height_perm[i],
+                                    flower_perm[i],
+                                    hair_perm[i],
+                                    education_perm[i]
+                                )
+                                assignment.append(house)
+                            
+                            # Check constraints
+                            # Clue 1: Peter has average height
+                            peter_index = None
+                            for i, house in enumerate(assignment):
+                                if house[0] == 'Peter':
+                                    peter_index = i
+                                    if house[2] != 'average':
+                                        break
+                            else:
+                                if peter_index is None:
+                                    continue
+                                # Check if Peter was found and has average height
+                                if assignment[peter_index][2] != 'average':
+                                    continue
+                            
+                            # Clue 2: Arnold loves daffodils
+                            arnold_index = None
+                            for i, house in enumerate(assignment):
+                                if house[0] == 'Arnold':
+                                    arnold_index = i
+                                    if house[3] != 'daffodils':
+                                        break
+                            else:
+                                if arnold_index is None:
+                                    continue
+                                if assignment[arnold_index][3] != 'daffodils':
+                                    continue
+                            
+                            # Clue 3: Very short not in house2 (index1)
+                            very_short_index = None
+                            for i, house in enumerate(assignment):
+                                if house[2] == 'very short':
+                                    very_short_index = i
+                                    if i == 1:
+                                        break
+                            else:
+                                if very_short_index is None:
+                                    continue
+                                if very_short_index == 1:
+                                    continue
+                            
+                            # Clue 6: Short is right of very short
+                            short_index = None
+                            for i, house in enumerate(assignment):
+                                if house[2] == 'short':
+                                    short_index = i
+                            if very_short_index is not None and short_index is not None:
+                                if short_index <= very_short_index:
+                                    continue
+                            else:
+                                continue
+                            
+                            # Clue 7: Eric loves lilies
+                            eric_index = None
+                            for i, house in enumerate(assignment):
+                                if house[0] == 'Eric':
+                                    eric_index = i
+                                    if house[3] != 'lilies':
+                                        break
+                            else:
+                                if eric_index is None:
+                                    continue
+                                if assignment[eric_index][3] != 'lilies':
+                                    continue
+                            
+                            # Clue 8: Lilies (Eric) has bachelor's
+                            if eric_index is not None:
+                                if assignment[eric_index][5] != 'bachelor':
+                                    continue
+                            else:
+                                continue
+                            
+                            # Clue 9: City vacation is right of Peter
+                            city_index = None
+                            for i, house in enumerate(assignment):
+                                if house[1] == 'city':
+                                    city_index = i
+                            if city_index is not None and peter_index is not None:
+                                if city_index <= peter_index:
+                                    continue
+                            else:
+                                continue
+                            
+                            # All constraints satisfied, format the solution
+                            solution = {
+                                "solution": {
+                                    "header": ["House", "Name", "Vacation", "Height", "Flower", "HairColor", "Education"],
+                                    "rows": []
+                                }
+                            }
+                            for i, house in enumerate(assignment):
+                                row = [
+                                    str(i+1),
+                                    house[0],
+                                    house[1],
+                                    house[2],
+                                    house[3],
+                                    house[4],
+                                    house[5]
+                                ]
+                                solution["solution"]["rows"].append(row)
+                            
+                            # Output the JSON
+                            print(json.dumps(solution, indent=2))
+                            return
+    
+    # If no solution found
+    print('{"solution": {"header": [], "rows": []}}')
+
+if __name__ == "__main__":
+    main()
+```

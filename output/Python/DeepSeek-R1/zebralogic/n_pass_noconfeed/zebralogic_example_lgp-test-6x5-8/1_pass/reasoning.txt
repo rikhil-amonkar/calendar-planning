@@ -1,0 +1,1165 @@
+We are going to solve the puzzle by defining the constraints and using constraint propagation and backtracking if necessary.
+ However, note that the puzzle has 6 houses and 5 attributes, each with 6 possible values. We have 20 clues.
+
+ We will represent the problem as a grid of houses (1 to 6) and attributes (name, animal, occupation, sport, height).
+ We'll create a class or use a dictionary to represent the state.
+
+ Alternatively, we can use a constraint satisfaction problem (CSP) approach.
+
+ Steps:
+ 1. Define the variables: house numbers (1 to 6) for each attribute category.
+ 2. Define the domains: for each variable, initially all possible values.
+
+ However, note that the problem has multiple categories and each house has one value per category.
+
+ We can model the problem by having for each house, and for each category, a variable.
+
+ But to avoid too many variables, we can instead model by attributes:
+
+ Let's define:
+   name: [Arnold, Peter, Bob, Eric, Carol, Alice]
+   animal: [horse, rabbit, fish, cat, bird, dog]
+   occupation: [engineer, nurse, lawyer, teacher, artist, doctor]
+   sport: [basketball, volleyball, soccer, tennis, baseball, swimming]
+   height: [average, tall, short, very short, very tall, super tall]
+
+ We have 6 houses. Each house has one value from each category.
+
+ We can represent the assignment as:
+   house_i: {name: ..., animal: ..., occupation: ..., sport: ..., height: ...}
+
+ We will use a dictionary for each house, or we can have arrays for each attribute and then assign indices.
+
+ Since the houses are ordered, we can have:
+
+   names = [None]*6
+   animals = [None]*6
+   occupations = [None]*6
+   sports = [None]*6
+   heights = [None]*6
+
+ Then we can set up constraints that relate these arrays.
+
+ We'll use a constraint solver that uses the clues to narrow down the possibilities.
+
+ Alternatively, we can use a brute force search with backtracking over the 6 houses and 5 attributes, but that would be 6!^5 which is too big.
+
+ Instead, we note that the clues are many and we can use constraint propagation.
+
+ We can use the python-constraint library? But the problem says to write a program that computes the solution.
+
+ Since we cannot rely on external libraries, we will write our own constraint propagation.
+
+ Alternatively, we can use a more direct deduction.
+
+ Let's try to deduce step by step in code.
+
+ We'll create a grid with 6 houses and 5 attributes, and we'll use the clues to fill in.
+
+ We'll represent the state as a list of dictionaries for each house, or as a dictionary of lists for each attribute.
+
+ Approach:
+
+ Let's create arrays for each attribute (each array of length 6, index 0 to 5 for house 1 to 6).
+
+ We'll initialize each array with None.
+
+ Then we'll translate each clue into a constraint that we can use to reduce possibilities.
+
+ We'll iterate until we have a solution.
+
+ However, we might need to do backtracking if we get stuck. But let's see if we can do without.
+
+ Let's list the clues and see what we can deduce immediately.
+
+ Clue 18: The person who loves baseball is in the first house.
+   So, sport[0] = 'baseball'
+
+ Clue 12: The person who loves baseball is directly left of the person who is an engineer.
+   So, house1 has baseball, so the engineer is in house2.
+
+   Therefore, occupation[1] = 'engineer' (since house2 is index1)
+
+ Clue 1: The person who is an engineer is the dog owner.
+   So, animal[1] = 'dog'
+
+ Clue 9: The person who is a lawyer is in the fifth house.
+   So, occupation[4] = 'lawyer' (since house5 is index4)
+
+ Clue 20: The person who is super tall is in the fifth house.
+   So, height[4] = 'super tall'
+
+ Clue 13: Peter is the person who is a nurse.
+   So, wherever nurse is, the name is Peter.
+
+ Clue 5: Arnold is the cat lover.
+   So, animal for Arnold is cat.
+
+ Clue 16: The rabbit owner is Alice.
+   So, animal for Alice is rabbit.
+
+ Clue 17: The fish enthusiast is Carol.
+   So, animal for Carol is fish.
+
+ Clue 7: Carol is the person who loves soccer.
+   So, sport for Carol is soccer.
+
+ Clue 6: The person who keeps horses is the person who is a teacher.
+   So, animal horse and occupation teacher are the same house.
+
+ Clue 10: The person who loves tennis is the person who is a teacher.
+   So, sport tennis and occupation teacher are the same house.
+
+ Therefore, the teacher has animal horse and sport tennis.
+
+ Clue 15: The person who is a teacher is directly left of the person who loves soccer.
+   So, if teacher is in house i, then soccer is in house i+1.
+
+ But we know Carol loves soccer (clue 7) and Carol has animal fish (clue 17).
+
+ Also, clue 15: teacher left of soccer, so teacher in house i, soccer in i+1.
+
+ Since soccer is Carol, then teacher is in the house directly left of Carol.
+
+ Now, clue 3: The person who has an average height is directly left of the rabbit owner.
+   And clue 16: rabbit owner is Alice.
+
+ So, average height is directly left of Alice.
+
+ Clue 11: The person who has an average height is the person who loves swimming.
+   So, the average height person loves swimming.
+
+ Clue 2: The person who has an average height is somewhere to the left of the person who is short.
+   So, average height left of short.
+
+ Clue 4: The person who is tall is somewhere to the left of the person who is very short.
+
+ Clue 8: The person who is tall is the person who loves volleyball.
+
+ Clue 19: The cat lover is somewhere to the right of the person who is very short.
+   And cat lover is Arnold (clue 5).
+
+ So, Arnold is right of very short.
+
+ Also, clue 14: Bob is somewhere to the right of the person who is an artist.
+
+ Now, let's start assigning what we know.
+
+ We have:
+   sport[0] = 'baseball'
+   occupation[1] = 'engineer'
+   animal[1] = 'dog'
+   occupation[4] = 'lawyer'
+   height[4] = 'super tall'
+
+ Also, from clue 12: baseball (house1) is directly left of engineer (house2) -> already used.
+
+ Now, clue 15: teacher directly left of soccer.
+   And soccer is Carol (clue 7). So Carol is in house i for soccer, then teacher in house i-1.
+
+ Also, teacher has animal horse and sport tennis.
+
+ So, the teacher house has: occupation='teacher', animal='horse', sport='tennis'
+
+ And then the next house (i) has sport='soccer' and name='Carol' and animal='fish' (because Carol has fish).
+
+ So, let the teacher be in house j, then:
+   j: occupation='teacher', animal='horse', sport='tennis'
+   j+1: sport='soccer', name='Carol', animal='fish'
+
+ Now, note that Carol cannot be in house1 because teacher must be left of Carol, so Carol in house 2 at earliest.
+
+ But house2 is already engineer and dog, so Carol cannot be in house2. Similarly, house1 has baseball.
+
+ So possible j: 1,2,3,4,5 but j+1 must be within 1..6, so j from 1 to 5.
+
+ But house2 is engineer, so j cannot be 2 because teacher != engineer.
+ Similarly, house4 is lawyer, so j cannot be 4 if teacher != lawyer (which it isn't).
+
+ So j can be 1,3,5.
+
+ But if j=1, then Carol in house2. But house2 has animal dog, but Carol has animal fish -> conflict.
+ So j cannot be 1.
+
+ If j=5, then Carol in house6.
+
+ If j=3, then Carol in house4.
+
+ Now, house4 is lawyer (occupation) and if Carol is in house4, then her occupation is lawyer, but we don't know if that's allowed? There's no constraint against that.
+
+ But also, house4 has height super tall (clue 20). So Carol would be super tall? No problem.
+
+ Now, let's see clue 3: average height is directly left of rabbit owner (Alice).
+
+ And clue 11: average height loves swimming.
+
+ Also, clue 2: average height left of short.
+
+ Now, let's consider the two cases for j (teacher position).
+
+ Case 1: j=3 -> teacher in house3, Carol in house4 (which is lawyer and super tall).
+ Case 2: j=5 -> teacher in house5, Carol in house6.
+
+ But note: house5 is lawyer (clue 9) and super tall (clue 20). So if j=5, then teacher would be in house5, but house5 is lawyer -> conflict because teacher != lawyer.
+
+ Therefore, j cannot be 5.
+
+ So only j=3 is possible.
+
+ Therefore:
+   house3: occupation='teacher', animal='horse', sport='tennis'
+   house4: sport='soccer', name='Carol', animal='fish', occupation='lawyer', height='super tall'
+
+ Wait, house4 occupation is lawyer (from clue 9) and we just put Carol there, so that's consistent.
+
+ So now we have:
+
+   house1: sport='baseball'
+   house2: occupation='engineer', animal='dog'
+   house3: occupation='teacher', animal='horse', sport='tennis'
+   house4: sport='soccer', name='Carol', animal='fish', occupation='lawyer', height='super tall'
+   house5: ? (but we know occupation is lawyer, but that's already in house4? Wait, clue9 says lawyer in fifth house, so house5 (index4) is lawyer. But we just put lawyer in house4 (index3). Contradiction?
+
+ Wait, we have a problem: house4 is index3 (since we index from 0) and house5 is index4.
+
+ Clue9: lawyer in fifth house -> index4.
+ But we just assigned lawyer to house4 (index3) because we thought Carol is in house4 and house4 is lawyer? But house4 is the fourth house.
+
+ Correction: 
+   House numbers: 1 -> index0, 2->index1, 3->index2, 4->index3, 5->index4, 6->index5.
+
+ So clue9: lawyer in fifth house -> index4.
+ clue20: super tall in fifth house -> index4.
+
+ We assigned house4 (index3) as lawyer and super tall by mistake.
+
+ Let's reindex:
+
+   We have:
+     house1: index0
+     house2: index1
+     house3: index2
+     house4: index3
+     house5: index4
+     house6: index5
+
+ So:
+   occupation[4] = 'lawyer' -> index4 is house5
+   height[4] = 'super tall' -> house5
+
+ Now, teacher in j (index j) and Carol in j+1.
+
+ We had j=3 (index2) for teacher -> house3, then Carol in house4 (index3).
+
+ But then house5 (index4) is lawyer and super tall, which is not Carol.
+
+ So that's consistent.
+
+ But wait, we have Carol in house4 (index3), so occupation of Carol is not lawyer (because lawyer is in house5). So what is the occupation of Carol? We don't know yet.
+
+ We assigned house4 (index3) for Carol, but we didn't assign occupation for house4. We only know house4 has sport soccer and animal fish and name Carol.
+
+ The occupation of house4 is not known yet, and it can be anything except the ones already assigned.
+
+ So let's reassign:
+
+   house3 (index2): occupation='teacher', animal='horse', sport='tennis'
+   house4 (index3): name='Carol', animal='fish', sport='soccer'
+
+   house5 (index4): occupation='lawyer', height='super tall'
+
+ Now, what about the engineer? We have:
+
+   house1 (index0): sport='baseball'
+   house2 (index1): occupation='engineer', animal='dog'
+
+ Now, clue 3: average height is directly left of the rabbit owner (Alice).
+
+ So, let average height be in house i, then Alice (rabbit owner) in house i+1.
+
+ Also, average height loves swimming (clue11).
+
+ Now, the remaining houses for name: Arnold, Peter, Bob, Eric, Alice (since Carol is in house4)
+
+ And animals: rabbit and bird left (since horse, dog, fish, cat are assigned? Wait, we have cat not assigned yet. We know Arnold is cat owner (clue5).
+
+ Animals assigned: 
+   house1: ? 
+   house2: dog
+   house3: horse
+   house4: fish
+   house5: ?
+   house6: ?
+
+ So animals left: rabbit, cat, bird.
+
+ And rabbit owner is Alice (clue16).
+
+ So Alice has rabbit.
+
+ Therefore, average height is directly left of Alice (who has rabbit).
+
+ So possible positions for average height: 
+   If Alice in house2, then average height in house1 -> but house1 sport is baseball, and average height loves swimming -> conflict (unless baseball equals swimming, which it isn't). So Alice cannot be in house2.
+   If Alice in house3, then average height in house2 -> but house2 has occupation engineer and animal dog, and average height loves swimming -> so sport of house2 must be swimming. But we don't know sport of house2 yet.
+   If Alice in house4, then average height in house3 -> but house3 has sport tennis, and average height must love swimming -> conflict.
+   If Alice in house5, then average height in house4 -> house4 has sport soccer, and average height must love swimming -> conflict.
+   If Alice in house6, then average height in house5 -> house5 has occupation lawyer and height super tall, but average height must be average -> conflict (super tall != average).
+
+ So the only possibility is Alice in house3? But wait, house3 already has animal horse (from teacher). So Alice cannot be in house3 because each animal is unique.
+
+ Therefore, the only possibility that didn't work? Let me double check.
+
+ We have Alice must have rabbit, and average height must be directly left of Alice.
+
+ The possible houses for Alice: 2,3,4,5,6 (but not 1 because no one left of house1).
+
+ But:
+   house2: animal is already dog, so Alice cannot be in house2.
+   house3: animal is horse, so no.
+   house4: animal is fish, so no.
+   house5: animal not assigned yet -> possible.
+   house6: animal not assigned yet -> possible.
+
+ So Alice can be in house5 or house6.
+
+ Then average height must be in house4 or house5 respectively.
+
+ But average height must love swimming (clue11).
+
+ Now, if Alice in house5, then average height in house4.
+   house4: sport is soccer (from Carol) -> but average height must love swimming, so sport must be swimming -> conflict.
+
+ If Alice in house6, then average height in house5.
+   house5: height is super tall (from clue20) -> but average height cannot be super tall -> conflict.
+
+ So we have a contradiction?
+
+ What's wrong?
+
+ Let me reexamine the teacher and Carol assignment.
+
+ We thought teacher can only be in house3 (index2) because:
+   j=1: then Carol in house2, but house2 has animal dog and Carol has fish -> conflict.
+   j=3: Carol in house4
+   j=5: Carol in house6, but then teacher in house5, but house5 is lawyer -> conflict.
+
+ But what about j=4? 
+   If j=4, then teacher in house4 (index3) and Carol in house5 (index4).
+   But house5 is lawyer (occupation) and super tall (height). Then Carol would be lawyer and super tall.
+
+   And teacher in house4: occupation teacher, animal horse, sport tennis.
+
+   Then house4: occupation teacher -> but then house5 occupation lawyer, that's fine.
+
+   Now, check house5: occupation lawyer, height super tall, and now we assign name Carol, sport soccer (because Carol loves soccer), and animal fish (because Carol has fish).
+
+   So house5: name Carol, occupation lawyer, height super tall, sport soccer, animal fish.
+
+   Then house4: occupation teacher, animal horse, sport tennis.
+
+   Now, what about the engineer? house2 is engineer and dog.
+
+   And house1: sport baseball.
+
+   Now, average height and Alice:
+
+   Alice has rabbit (animal) and is not in house5 (because Carol is there) and not in house4 (teacher) and not in house2 (engineer) and not in house1 (sport baseball) and not in house3 (so far free) and house6.
+
+   So Alice can be in house3 or house6.
+
+   If Alice in house3, then average height in house2.
+     house2: occupation engineer, animal dog, and if average height is there, then sport must be swimming (clue11). 
+     Also, average height in house2, and it must be directly left of rabbit owner (Alice in house3).
+
+   If Alice in house6, then average height in house5.
+     But house5 has height super tall, and average height cannot be super tall -> conflict.
+
+   So only possibility: Alice in house3, average height in house2.
+
+   Then house2: sport must be swimming (because average height loves swimming).
+
+   And house3: animal must be rabbit (because Alice is there) and name Alice.
+
+   But house3: we haven't assigned occupation, sport, height yet.
+
+   Now, what about house3? We have teacher in house4, so house3 is not teacher.
+
+   Also, house3: animal rabbit, name Alice.
+
+   Now, clue 3: average height directly left of rabbit owner -> house2 (average height) left of house3 (rabbit) -> correct.
+
+   Now, clue 2: average height (house2) is left of short height -> so short height must be in house3,4,5,6.
+
+   clue 4: tall is left of very short.
+
+   clue 8: tall loves volleyball.
+
+   clue 19: cat lover (Arnold) is right of very short.
+
+   Also, clue 5: Arnold has cat.
+
+   Now, animals left: cat and bird for house1 and house6.
+
+   house1: animal not assigned yet, and sport baseball.
+   house6: animal not assigned yet.
+
+   Names left: Arnold, Peter, Bob, Eric for house1, house3, house6? Wait, house3 is Alice, house4 is teacher (occupation) but name not assigned yet, house5 is Carol, so names left: Arnold, Peter, Bob, Eric for house1, house3, house4, house6? But house3 is Alice, so names for house1, house4, house6: Arnold, Peter, Bob, Eric.
+
+   Actually, house3 name is Alice, so names left: Arnold, Peter, Bob, Eric for house1, house4, house6.
+
+   But house4 has occupation teacher, so name in house4 is one of Arnold, Peter, Bob, Eric.
+
+   house5: Carol
+   house6: one of the remaining names.
+
+   Now, clue 13: Peter is nurse. So wherever Peter is, occupation is nurse.
+
+   Occupations left: nurse, artist, doctor (since engineer, teacher, lawyer are assigned).
+
+   house1: occupation not assigned
+   house3: occupation not assigned
+   house4: occupation teacher -> already assigned
+   house5: occupation lawyer -> assigned
+   house6: occupation not assigned
+
+   So occupations for house1, house3, house6: nurse, artist, doctor.
+
+   Now, clue 14: Bob is right of artist.
+
+   Let's list the houses:
+
+   house1: sport baseball, occupation ?, name ?, animal ?, height ?
+   house2: occupation engineer, animal dog, sport swimming, height average (because we said average height is in house2)
+   house3: name Alice, animal rabbit, occupation ?, sport ?, height ?
+   house4: occupation teacher, animal horse, sport tennis, name ?, height ?
+   house5: name Carol, occupation lawyer, height super tall, sport soccer, animal fish
+   house6: occupation ?, name ?, animal ?, sport ?, height ?
+
+   Heights left: tall, short, very short, very tall (because average and super tall are assigned)
+
+   clue 2: average height (house2) is left of short -> so short is in house3,4,5,6. But house5 is super tall, so short cannot be house5. So short in house3,4,6.
+
+   clue 4: tall is left of very short.
+
+   clue 8: tall loves volleyball -> so the person with height tall has sport volleyball.
+
+   clue 19: cat lover (Arnold) is right of very short.
+
+   Also, animals left: cat and bird for house1 and house6.
+
+   Since Arnold has cat, and Arnold is in one of house1, house4, house6.
+
+   But clue 19: Arnold is right of very short, so if Arnold in house1, then very short would have to be left of house1 -> impossible. So Arnold cannot be in house1.
+
+   Therefore, Arnold is in house4 or house6.
+
+   But house4 has animal horse, so Arnold cannot be in house4 because Arnold has cat. So Arnold must be in house6.
+
+   Therefore, house6: name Arnold, animal cat.
+
+   Then animal left: bird for house1.
+
+   So house1: animal bird.
+
+   Now, names left for house1 and house4: Peter, Bob, Eric.
+
+   house4: name must be one of Peter, Bob, Eric.
+
+   Occupations left: nurse, artist, doctor for house1, house3, house6.
+
+   house6: occupation is one of nurse, artist, doctor.
+
+   clue 13: Peter is nurse -> so Peter's occupation is nurse.
+
+   So if Peter is in house1, then occupation nurse in house1.
+   If Peter in house4, then occupation nurse in house4, but house4 occupation is teacher -> conflict. So Peter cannot be in house4.
+   If Peter in house6, then occupation nurse in house6.
+
+   So Peter is either in house1 or house6.
+
+   But house6 name is Arnold, so Peter cannot be in house6. Therefore, Peter must be in house1.
+
+   Then house1: name Peter, occupation nurse? But wait, occupations for house1: could be nurse.
+
+   Then house1: name Peter, occupation nurse, animal bird, sport baseball, height ? 
+
+   Then names left: Bob and Eric for house3 and house4.
+
+   house3: name Alice (already) -> wait, no: house3 name is Alice, so the names for house4 are Bob or Eric.
+
+   Actually, we have:
+     house1: name Peter
+     house3: name Alice
+     house4: name must be Bob or Eric
+     house5: name Carol
+     house6: name Arnold
+
+   So house4 name: Bob or Eric.
+
+   Now, occupations left for house3 and house6: artist and doctor.
+
+   clue 14: Bob is right of artist.
+
+   Bob is in house4 (since house4 name is either Bob or Eric, and house3 is Alice, house1 Peter, house5 Carol, house6 Arnold).
+
+   So Bob is in house4.
+
+   Then house4: name Bob, occupation teacher, animal horse, sport tennis, height ?
+
+   Then house3: name Alice, animal rabbit, occupation must be the remaining one between artist and doctor, sport ?, height ?
+
+   And house6: name Arnold, animal cat, occupation the other of artist or doctor, sport ?, height ?
+
+   Now, clue 14: Bob is right of artist -> so artist is left of Bob (house4). So artist must be in house1, house2, or house3.
+
+   But house1: occupation nurse (because Peter is nurse)
+   house2: occupation engineer
+   house3: occupation either artist or doctor.
+
+   So if artist is in house3, then it is left of Bob (house4) -> valid.
+
+   If artist is in house1 or house2, but those occupations are already nurse and engineer, so not artist. So only house3 can be artist.
+
+   Therefore, house3: occupation artist.
+
+   Then house6: occupation doctor.
+
+   Now, sports left: basketball and volleyball for house3 and house6.
+
+   clue 8: tall loves volleyball -> so the person with height tall has sport volleyball.
+
+   Now, heights left: tall, short, very short, very tall for house1, house3, house4, house6.
+
+   house1: height ?
+   house3: height ?
+   house4: height ?
+   house6: height ?
+
+   We know:
+     clue 2: average (house2) is left of short -> so short must be in house3,4,6 (since house5 is super tall).
+     clue 4: tall is left of very short.
+     clue 19: Arnold (house6) is right of very short -> so very short is left of house6.
+
+   Also, clue 8: tall loves volleyball -> so the sport for the tall height is volleyball.
+
+   Now, sports for house3 and house6: basketball and volleyball.
+
+   So if tall is in house3, then sport volleyball in house3 -> then house6 sport basketball.
+   If tall is in house6, then sport volleyball in house6 -> then house3 sport basketball.
+
+   But clue 4: tall is left of very short -> so if tall is in house6, then there is no house right of house6 for very short -> impossible. Therefore, tall cannot be in house6.
+
+   Therefore, tall must be in house3 or house4 or house1? But house1 sport is baseball, and tall loves volleyball -> so if tall is in house1, then sport must be volleyball, but it's baseball -> conflict.
+
+   So tall cannot be in house1.
+
+   Similarly, house4 sport is tennis, so if tall is in house4, then sport must be volleyball -> conflict.
+
+   Therefore, tall must be in house3.
+
+   Then house3: height tall, sport volleyball.
+
+   Then house6: sport basketball.
+
+   Now, clue 4: tall (house3) is left of very short -> so very short must be in house4,5,6. But house5 is super tall, so very short in house4 or house6.
+
+   But clue 19: Arnold (house6) is right of very short -> so very short must be left of house6, so very short in house4 or house5. But house5 is super tall, so very short in house4.
+
+   Therefore, house4: height very short.
+
+   Then clue 4: tall (house3) is left of very short (house4) -> correct.
+
+   Now, heights left: short and very tall for house1 and house6.
+
+   clue 2: average (house2) is left of short -> so short must be in house3,4,6. But house3 is tall, house4 is very short, so short must be in house6.
+
+   Therefore, house6: height short.
+
+   Then house1: height very tall.
+
+   Now, check clue 2: average (house2) is left of short (house6) -> yes.
+
+   Now, all assigned.
+
+ Let's summarize:
+
+   house1: number=1, name=Peter, animal=bird, occupation=nurse, sport=baseball, height=very tall
+   house2: number=2, name=?, animal=dog, occupation=engineer, sport=swimming, height=average
+   house3: number=3, name=Alice, animal=rabbit, occupation=artist, sport=volleyball, height=tall
+   house4: number=4, name=Bob, animal=horse, occupation=teacher, sport=tennis, height=very short
+   house5: number=5, name=Carol, animal=fish, occupation=lawyer, sport=soccer, height=super tall
+   house6: number=6, name=Arnold, animal=cat, occupation=doctor, sport=basketball, height=short
+
+ But wait, house2 name is not assigned. We have names: Peter, Alice, Bob, Carol, Arnold assigned. So the remaining name is Eric.
+
+ So house2: name=Eric.
+
+ Now, check clue 14: Bob is right of artist. Bob is in house4, artist is in house3 (Alice) -> house3 is left of house4, so yes.
+
+ All clues seem satisfied.
+
+ Let's verify clue 19: cat lover (Arnold, house6) is right of very short (house4) -> yes.
+
+ Clue 4: tall (house3) left of very short (house4) -> yes.
+
+ Clue 2: average (house2) left of short (house6) -> yes.
+
+ Clue 3: average height (house2) directly left of rabbit owner (house3, Alice) -> yes.
+
+ Clue 8: tall (house3) loves volleyball -> yes.
+
+ Clue 11: average height (house2) loves swimming -> yes, sport swimming.
+
+ Clue 12: baseball (house1) directly left of engineer (house2) -> yes.
+
+ Clue 15: teacher (house4) directly left of soccer (house5) -> yes, house4 and house5.
+
+ So the solution is complete.
+
+ Now, we code accordingly.
+
+ However, note: we deduced step by step. We want a program that does this algorithmically.
+
+ Since the deduction was complex, we might code the constraints and use a CSP solver, but the problem says to write a program that computes the solution.
+
+ Alternatively, we can hardcode the deductions because we have the solution.
+
+ But the problem requires a program that algorithmically solves the puzzle.
+
+ We'll use a constraint satisfaction approach with backtracking search.
+
+ Steps for CSP:
+
+  Variables: 6 houses, each with 5 attributes: name, animal, occupation, sport, height.
+
+  Domains for each attribute: the possible values.
+
+  Constraints: from the clues.
+
+  We'll represent the state as a list of houses, each house is a dictionary.
+
+  We'll use recursive backtracking.
+
+  However, to make it efficient, we use constraint propagation (forward checking).
+
+  We'll define functions for each constraint.
+
+  Since the problem is small (6 houses), we can do backtracking.
+
+  Let's define the variables:
+
+    houses = [0,1,2,3,4,5]  (index representing house number-1)
+
+    attributes: 
+        names = ['Arnold','Peter','Bob','Eric','Carol','Alice']
+        animals = ['horse','rabbit','fish','cat','bird','dog']
+        occupations = ['engineer','nurse','lawyer','teacher','artist','doctor']
+        sports = ['basketball','volleyball','soccer','tennis','baseball','swimming']
+        heights = ['average','tall','short','very short','very tall','super tall']
+
+    We'll create a list for each house, and for each attribute, we'll assign a value.
+
+  We'll create a class House that has these attributes, or we can use a dictionary.
+
+  Alternatively, we can have a list of assignments for each house.
+
+  We'll create a list `assignment` of length 6, where each element is a dictionary with keys: 'name','animal','occupation','sport','height'
+
+  Initially, each value is None.
+
+  Then we set the known values from the clues that are direct assignments.
+
+  Then we do backtracking search.
+
+  We'll define constraints as functions that check the assignment.
+
+  We'll have a function `consistent` that checks all constraints that can be checked given the current assignment.
+
+  We'll use minimum remaining value heuristic and degree heuristic? Maybe not necessary.
+
+  Alternatively, we can use ac3 algorithm for constraint propagation.
+
+  Given the complexity, we might code the constraints as functions and use backtracking with forward checking.
+
+  However, to keep the code within limits, we'll do simple backtracking with consistency checking.
+
+  Steps in backtracking:
+
+    def backtrack(assignment):
+        if assignment is complete: return assignment
+        select a house and an attribute that is unassigned.
+        for each value in the domain of that attribute for that house:
+            if the value is consistent with the constraints, assign it.
+            then recursively call backtrack.
+            if it returns a solution, return it.
+            else remove the assignment.
+        return failure
+
+  But we have to assign all attributes for all houses. We can select the next unassigned variable (house and attribute).
+
+  Alternatively, we can assign one house at a time, but each house has 5 attributes.
+
+  We'll instead represent the assignment as 5 lists (for each attribute) of length 6.
+
+  We'll have:
+
+    names = [None]*6
+    animals = [None]*6
+    occupations = [None]*6
+    sports = [None]*6
+    heights = [None]*6
+
+  Then we'll have a function that checks all constraints that involve assigned variables.
+
+  We'll define the constraints as functions that take the arrays and return True if the constraint is satisfied.
+
+  Some constraints require knowing the house of a value, so we might need helper functions.
+
+  Given the time, and since we already have the solution, we might output the code that simply builds the solution.
+
+  But the problem requires algorithmic solution.
+
+  Let's code the constraints as functions.
+
+  We'll create a function for each clue.
+
+  Example clue1: The person who is an engineer is the dog owner.
+    This means: there exists a house i where occupation[i]=='engineer' and animal[i]=='dog'
+
+  But note: we might not have assigned both, so we have to check only if both are assigned.
+
+  Similarly, clue2: The person who has an average height is somewhere to the left of the person who is short.
+    Let i be the house of average height, j be the house of short height. Then i < j.
+
+  We'll write a function for each clue that checks if the involved attributes are assigned, and if so, checks the condition.
+
+  We'll have a function `check_constraints` that returns True if all constraints that can be checked are satisfied.
+
+  Then in backtracking, we assign a value and then check consistency.
+
+  We'll select the next unassigned variable by iterating over houses and attributes.
+
+  We'll use:
+
+    attributes = ['name','animal','occupation','sport','height']
+    domains: for each attribute, the list of possible values.
+
+  We'll maintain for each attribute a list of possible values for each house? Actually, we can use the arrays and then for each house, for each attribute, if it's unassigned, we try the values that are still available for that attribute.
+
+  We'll maintain available values for each attribute category:
+
+    available_names = set(names)
+    available_animals = set(animals)
+    ... etc.
+
+  But then for each house, we don't know which values are available, so we need to keep track of the available values per house per attribute.
+
+  Alternatively, we can use a 2D array for each house and each attribute, with the domain.
+
+  We'll initialize:
+
+    domains = {
+        'name': [set(names) for _ in range(6)],
+        'animal': [set(animals) for _ in range(6)],
+        'occupation': [set(occupations) for _ in range(6)],
+        'sport': [set(sports) for _ in range(6)],
+        'height': [set(heights) for _ in range(6)]
+    }
+
+  Then when we assign a value to an attribute of a house, we remove that value from the domains of that attribute for all houses.
+
+  Also, we can use forward checking: when we assign a value, we remove it from the domains of the other houses for that attribute.
+
+  We'll do backtracking with forward checking.
+
+  Steps for backtrack:
+
+    def backtrack(assignment, domains):
+        if assignment is complete: return assignment
+
+        house, attr = select_unassigned_variable(assignment, domains)
+        for value in domains[attr][house]:
+            if value is consistent with constraints (check after assignment):
+                assignment[attr][house] = value
+                old_domains = save_domains(domains)
+                update_domains(domains, attr, house, value)   # remove value from other houses for attr
+                if check_constraints(assignment):   # check all constraints that are fully assigned
+                    result = backtrack(assignment, domains)
+                    if result is not None: return result
+                restore(domains, old_domains)
+                assignment[attr][house] = None
+        return None
+
+  We need to implement check_constraints that checks every clue that has all its variables assigned.
+
+  We'll define each clue as a function that takes the assignment and returns True if the constraint is satisfied, and False if it is violated. If not all variables are assigned, return True.
+
+  Example clue1:
+
+    def clue1(assignment):
+        for i in range(6):
+            if assignment['occupation'][i] == 'engineer':
+                if assignment['animal'][i] is not None:
+                    if assignment['animal'][i] != 'dog':
+                        return False
+        return True
+
+  But also, if there is an engineer assigned and the animal is not assigned, we return True.
+
+  Similarly, clue2:
+
+    def clue2(assignment):
+        # find average height house i
+        i = None
+        for house in range(6):
+            if assignment['height'][house] == 'average':
+                i = house
+                break
+        if i is None: return True   # not assigned yet
+
+        j = None
+        for house in range(6):
+            if assignment['height'][house] == 'short':
+                j = house
+                break
+        if j is None: return True
+
+        return i < j
+
+  We'll write 20 functions for the clues.
+
+  Then check_constraints will call all these functions.
+
+  We'll also add the constraints from the direct assignments initially.
+
+  We'll initialize the assignment arrays and domains.
+
+  We'll also set the known values from the clues that are direct.
+
+  For example, clue18: sport in house0 must be 'baseball'
+    So we set assignment['sport'][0] = 'baseball'
+    And remove 'baseball' from the sport domains of all other houses.
+
+  Similarly, clue9: occupation[4] = 'lawyer'
+    So set assignment['occupation'][4] = 'lawyer'
+
+  We'll do this for all direct assignments.
+
+  Then we start backtracking.
+
+  Given the complexity of coding 20 constraints, and since we already know the solution, we might output the solution directly.
+
+  But the problem requires a program that algorithmically solves it.
+
+  We'll code the constraints.
+
+  Let's list the clues and how to check them:
+
+  1. The person who is an engineer is the dog owner.
+     Check: for the house where occupation is engineer, animal must be dog.
+
+  2. The person who has an average height is somewhere to the left of the person who is short.
+     Check: let i be the house of average height, j of short height -> i < j.
+
+  3. The person who has an average height is directly left of the rabbit owner.
+     Check: average height house i, rabbit owner house j -> j = i+1.
+
+  4. The person who is tall is somewhere to the left of the person who is very short.
+     Check: tall house i, very short house j -> i < j.
+
+  5. Arnold is the cat lover.
+     Check: the house where name is Arnold, animal must be cat.
+
+  6. The person who keeps horses is the person who is a teacher.
+     Check: for the house with animal horse, occupation must be teacher.
+
+  7. Carol is the person who loves soccer.
+     Check: for the house with name Carol, sport must be soccer.
+
+  8. The person who is tall is the person who loves volleyball.
+     Check: for the house with height tall, sport must be volleyball.
+
+  9. The person who is a lawyer is in the fifth house.
+     Check: occupation[4] must be lawyer.
+
+  10. The person who loves tennis is the person who is a teacher.
+      Check: for the house with sport tennis, occupation must be teacher.
+
+  11. The person who has an average height is the person who loves swimming.
+      Check: for the house with height average, sport must be swimming.
+
+  12. The person who loves baseball is directly left of the person who is an engineer.
+      Check: baseball sport house i, engineer occupation house j -> j = i+1.
+
+  13. Peter is the person who is a nurse.
+      Check: for the house with name Peter, occupation must be nurse.
+
+  14. Bob is somewhere to the right of the person who is an artist.
+      Check: let i be the house of Bob, j be the house of artist -> i > j.
+
+  15. The person who is a teacher is directly left of the person who loves soccer.
+      Check: teacher occupation house i, soccer sport house j -> j = i+1.
+
+  16. The rabbit owner is Alice.
+      Check: for the house with animal rabbit, name must be Alice.
+
+  17. The fish enthusiast is Carol.
+      Check: for the house with animal fish, name must be Carol.
+
+  18. The person who loves baseball is in the first house.
+      Check: sport[0] must be baseball.
+
+  19. The cat lover is somewhere to the right of the person who is very short.
+      Check: cat lover house i, very short house j -> i > j.
+
+  20. The person who is super tall is in the fifth house.
+      Check: height[4] must be super tall.
+
+  We'll code these functions.
+
+  We'll create a list of constraint functions.
+
+  Then in `check_constraints`, we call each function and if any returns False, we return False.
+
+  We'll also have a function to check that all assigned values are unique per attribute.
+
+  But that is already enforced by the domain reduction.
+
+  Let's code.
+
+  Note: We assume that the assignment is stored in a dictionary of lists:
+    assignment = {
+        'name': [None]*6,
+        'animal': [None]*6,
+        'occupation': [None]*6,
+        'sport': [None]*6,
+        'height': [None]*6
+    }
+
+  We'll also have a function to check if the assignment is complete: all values are assigned.
+
+  We'll use recursive backtracking.
+
+  Given the time, we might run into performance, but with 6 houses it should be fine.
+
+  Let's code accordingly.
+
+  We'll also initialize the assignment with the direct clues.
+
+  Steps:
+
+    assignment = {attr: [None]*6 for attr in attributes}
+
+    domains = {
+        'name': [set(names) for _ in range(6)],
+        'animal': [set(animals) for _ in range(6)],
+        'occupation': [set(occupations) for _ in range(6)],
+        'sport': [set(sports) for _ in range(6)],
+        'height': [set(heights) for _ in range(6)]
+    }
+
+    # Set direct assignments
+    assignment['sport'][0] = 'baseball'
+    remove_value_from_domains(domains, 'sport', 0, 'baseball')
+
+    assignment['occupation'][4] = 'lawyer'
+    remove_value_from_domains(domains, 'occupation', 4, 'lawyer')
+
+    assignment['height'][4] = 'super tall'
+    remove_value_from_domains(domains, 'height', 4, 'super tall')
+
+    # Also, from clue18, clue9, clue20.
+
+    Then we start backtracking.
+
+  We'll write helper functions to remove value from domains for all houses for a given attribute.
+
+  Specifically, when we assign a value to (attr, house), we remove that value from domains[attr] for all houses.
+
+  Also, we remove it from the domain of that house for other attributes? No, because each attribute is independent.
+
+  But note: the value is unique per attribute category, so when we assign a value to an attribute of a house, that value cannot be used for that attribute in any other house.
+
+  So we do:
+
+    for house_i in range(6):
+        if house_i != house:
+            domains[attr][house_i].discard(value)
+
+  We also need to remove the value from the domain of that attribute for that house? Actually, we assign it, so we don't need to keep it in the domain for that house.
+
+  We'll maintain the domains for each house and each attribute separately.
+
+  Now, let's code.
+
+  Due to the length, we might not code all 20 constraints, but we'll do our best.
+
+  We'll code the constraint functions.
+
+  Note: in the constraint functions, we need to access the assignment.
+
+  We'll define them as:
+
+    def constraint1(assignment):
+        for i in range(6):
+            if assignment['occupation'][i] == 'engineer':
+                if assignment['animal'][i] is not None and assignment['animal'][i] != 'dog':
+                    return False
+        return True
+
+  But also, if there is an engineer and the animal is not assigned, we don't check.
+
+  Similarly for others.
+
+  Let's code the constraints.
+
+  We'll create a list `constraints` that contains these functions.
+
+  Then:
+
+    def check_constraints(assignment):
+        for constraint in constraints:
+            if not constraint(assignment):
+                return False
+        return True
+
+  Now, the backtracking algorithm:
+
+    def backtrack(assignment, domains):
+        if is_complete(assignment):
+            return assignment
+
+        # Select the next unassigned variable (house and attribute) with the smallest domain
+        house, attr = select_unassigned_variable(assignment, domains)
+        for value in list(domains[attr][house]):   # iterate over a copy of the domain
+            assignment[attr][house] = value
+            old_domains = save_domains(domains)   # we need to make a copy of the current domains for backtracking
+            # remove value from other houses for the same attribute
+            for other_house in range(6):
+                if other_house != house:
+                    domains[attr][other_house].discard(value)
+            # Check consistency of the assignment so far
+            if check_constraints(assignment):
+                result = backtrack(assignment, domains)
+                if result is not None:
+                    return result
+            # restore domains
+            restore_domains(domains, old_domains)
+            assignment[attr][house] = None
+
+        return None
+
+  We need functions save_domains and restore_domains.
+
+  We can save the domains by deep copy, but that might be expensive. Alternatively, we can save only the changes.
+
+  Given that there are only 6*5=30 variables, we can use deep copy.
+
+  We'll do:
+
+    def save_domains(domains):
+        saved = {}
+        for attr in domains:
+            saved[attr] = [set(house_domain) for house_domain in domains[attr]]
+        return saved
+
+    def restore_domains(domains, saved):
+        for attr in domains:
+            for house in range(6):
+                domains[attr][house] = saved[attr][house]
+
+  Now, select_unassigned_variable: we want to select the variable with the smallest domain (MRV).
+
+    def select_unassigned_variable(assignment, domains):
+        min_domain_size = float('inf')
+        selected = None
+        for attr in domains:
+            for house in range(6):
+                if assignment[attr][house] is None:
+                    domain_size = len(domains[attr][house])
+                    if domain_size < min_domain_size:
+                        min_domain_size = domain_size
+                        selected = (house, attr)
+        return selected
+
+  Finally, is_complete:
+
+    def is_complete(assignment):
+        for attr in assignment:
+            for value in assignment[attr]:
+                if value is None:
+                    return False
+        return True
+
+  We'll initialize the assignment with the direct clues.
+
+  We'll also remove the values from the domains for the direct assignments.
+
+  Let's code the direct assignments:
+
+    assignment['sport'][0] = 'baseball'
+    remove_value_from_domains(domains, 'sport', 'baseball')   # remove from all houses for sport
+
+    But note: we already set it for house0, so we should remove it from the domains of other houses for sport.
+
+    We can write a function:
+
+    def assign_value(assignment, domains, attr, house, value):
+        assignment[attr][house] = value
+        for other_house in range(6):
+            if other_house != house:
+                domains[attr][other_house].discard(value)
+
+    Then we call this for each direct assignment.
+
+  We have several direct assignments from the clues:
+
+    clue18: assign_value(assignment, domains, 'sport', 0, 'baseball')
+    clue9: assign_value(assignment, domains, 'occupation', 4, 'lawyer')
+    clue20: assign_value(assignment, domains, 'height', 4, 'super tall')
+
+  Also, from clue16: rabbit owner is Alice -> but we don't know the house yet, so not direct.
+  Similarly, others.
+
+  We'll not use the direct assignments that involve relationships yet.
+
+  Now, let's code the constraint functions.
+
+  We'll define 20 functions.
+
+  Note: some clues might be already satisfied by the direct assignments.
+
+  We'll code them one by one.
+
+  Due to the length of the code, we might output a long program.
+
+  Let's hope it works.
+
+  We'll run the backtracking.
+
+  If it doesn't work within a reasonable time, we might use the solution we deduced.
+
+  Given the time, we might output the code with the solution we already deduced.
+
+  But let's try to code the constraints.
+
+  We'll code the program as described.
+
+  Note: The problem requires output in JSON format.
+
+  We'll then convert the assignment to the JSON output.
+
+  Let's code.
+
+  We'll define the attributes and their values.
+
+  We'll define the constraints.
+
+  We'll then run the backtracking.
+
+  We'll also include the direct assignments in the initial assignment.
+
+  We'll assume that the program might take a while to run, but with 6 houses it should be fast.
+
+  Let's code.

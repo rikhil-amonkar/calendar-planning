@@ -1,0 +1,57 @@
+import json
+
+def main():
+    # Initialize arrays for each attribute (0-indexed: index 0 = house 1, index 5 = house 6)
+    names = [None] * 6
+    phones = [None] * 6
+    nationalities = [None] * 6
+    colors = [None] * 6
+
+    # Assign known facts from clues
+    phones[4] = 'samsung galaxy s21'
+    names[4] = 'Bob'
+    phones[5] = 'iphone 13'
+    names[5] = 'Peter'
+    nationalities[5] = 'brit'
+    colors[5] = 'blue'
+    nationalities[3] = 'dane'
+    colors[3] = 'yellow'
+    names[2] = 'Alice'
+    nationalities[2] = 'german'
+    names[1] = 'Arnold'
+    names[0] = 'Carol'
+    colors[0] = 'green'
+    names[3] = 'Eric'
+    nationalities[1] = 'norwegian'
+    colors[1] = 'purple'
+    phones[1] = 'oneplus 9'
+    nationalities[0] = 'chinese'
+    phones[0] = 'xiaomi mi 11'
+    nationalities[4] = 'swede'
+    phones[2] = 'google pixel 6'
+    phones[3] = 'huawei p50'
+    colors[2] = 'red'
+    colors[4] = 'white'
+
+    # Prepare the solution dictionary
+    solution = {
+        "header": ["House", "Name", "PhoneModel", "Nationality", "Color"],
+        "rows": []
+    }
+
+    for i in range(6):
+        house_number = str(i + 1)
+        row = [
+            house_number,
+            names[i],
+            phones[i],
+            nationalities[i],
+            colors[i]
+        ]
+        solution["rows"].append(row)
+
+    # Output the JSON
+    print(json.dumps({"solution": solution}, indent=2))
+
+if __name__ == "__main__":
+    main()

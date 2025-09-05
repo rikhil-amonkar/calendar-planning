@@ -1,0 +1,76 @@
+import itertools
+import json
+
+def main():
+    names = ['Eric', 'Alice', 'Peter', 'Bob', 'Arnold']
+    children = ['Timothy', 'Meredith', 'Samantha', 'Fred', 'Bella']
+    
+    # Generate all permutations of children that satisfy the fixed constraints: house2 has Fred, house3 has Bella
+    children_perms = []
+    for perm in itertools.permutations(children):
+        if perm[1] == 'Fred' and perm[2] == 'Bella':
+            children_perms.append(perm)
+            
+    # Generate all permutations of names
+    names_perms = itertools.permutations(names)
+    
+    solution_found = None
+    for children_perm in children_perms:
+        for names_perm in names_perms:
+            # Check constraint 5: Eric not in third house (index2)
+            if names_perm[2] == 'Eric':
+                continue
+            # Check constraint 6: Bob not in third house (index2)
+            if names_perm[2] == 'Bob':
+                continue
+                
+            # Find indices for constraints
+            bob_index = names_perm.index('Bob')
+            samantha_index = children_perm.index('Samantha')
+            # Constraint 1: Bob left of Samantha's child
+            if bob_index >= samantha_index:
+                continue
+                
+            timothy_index = children_perm.index('Timothy')
+            # Constraint 2: Timothy's child left of Samantha's child
+            if timothy_index >= samantha_index:
+                continue
+                
+            alice_index = names_perm.index('Alice')
+            # Constraint 4: One house between Alice and Samantha's child
+            if abs(alice_index - samantha_index) != 2:
+                continue
+                
+            peter_index = names_perm.index('Peter')
+            # Constraint 8: Samantha's child left of Peter
+            if samantha_index >= peter_index:
+                continue
+                
+            # If we passed all constraints, we found the solution
+            solution_found = (names_perm, children_perm)
+            break
+        
+        if solution_found:
+            break
+            
+    if solution_found:
+        names_perm, children_perm = solution_found
+        rows = []
+        for i in range(5):
+            house_num = str(i+1)
+            name_val = names_perm[i]
+            child_val = children_perm[i]
+            rows.append([house_num, name_val, child_val])
+        
+        result = {
+            "solution": {
+                "header": ["House", "Name", "Children"],
+                "rows": rows
+            }
+        }
+        print(json.dumps(result, indent=2))
+    else:
+        print("No solution found")
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,83 @@
+```python
+import json
+from itertools import permutations
+
+def main():
+    # Define the attributes and their possible values
+    names = ['Arnold', 'Eric']
+    hair_colors = ['black', 'brown']
+    sports = ['basketball', 'soccer']
+    smoothies = ['desert', 'cherry']
+    
+    # Generate all possible permutations for each attribute
+    for name_perm in permutations(names):
+        for hair_perm in permutations(hair_colors):
+            for sport_perm in permutations(sports):
+                for smoothie_perm in permutations(smoothies):
+                    # Create assignment for two houses
+                    assignment = [
+                        {
+                            'House': '1',
+                            'Name': name_perm[0],
+                            'HairColor': hair_perm[0],
+                            'FavoriteSport': sport_perm[0],
+                            'Smoothie': smoothie_perm[0]
+                        },
+                        {
+                            'House': '2',
+                            'Name': name_perm[1],
+                            'HairColor': hair_perm[1],
+                            'FavoriteSport': sport_perm[1],
+                            'Smoothie': smoothie_perm[1]
+                        }
+                    ]
+                    
+                    # Check constraints
+                    valid = True
+                    
+                    # Constraint 1: Desert smoothie lover is Arnold
+                    desert_house = next((h for h in assignment if h['Smoothie'] == 'desert'), None)
+                    if not desert_house or desert_house['Name'] != 'Arnold':
+                        valid = False
+                        continue
+                    
+                    # Constraint 2: Brown hair person loves basketball
+                    brown_hair_house = next((h for h in assignment if h['HairColor'] == 'brown'), None)
+                    if not brown_hair_house or brown_hair_house['FavoriteSport'] != 'basketball':
+                        valid = False
+                        continue
+                    
+                    # Constraint 3: Arnold is left of black hair person
+                    arnold_house = next((h for h in assignment if h['Name'] == 'Arnold'), None)
+                    black_hair_house = next((h for h in assignment if h['HairColor'] == 'black'), None)
+                    if not arnold_house or not black_hair_house or int(arnold_house['House']) >= int(black_hair_house['House']):
+                        valid = False
+                        continue
+                    
+                    if valid:
+                        # Format the solution
+                        header = ["House", "Name", "HairColor", "FavoriteSport", "Smoothie"]
+                        rows = []
+                        for house in sorted(assignment, key=lambda x: int(x['House'])):
+                            rows.append([
+                                house['House'],
+                                house['Name'],
+                                house['HairColor'],
+                                house['FavoriteSport'],
+                                house['Smoothie']
+                            ])
+                        
+                        solution = {
+                            "solution": {
+                                "header": header,
+                                "rows": rows
+                            }
+                        }
+                        print(json.dumps(solution, indent=2))
+                        return
+    
+    print("No solution found")
+
+if __name__ == "__main__":
+    main()
+```

@@ -1,0 +1,117 @@
+```python
+from z3 import *
+
+def main():
+    # Define the attributes
+    names = ['Eric', 'Peter', 'Arnold']
+    cigars = ['blue master', 'prince', 'pall mall']
+    hobbies = ['photography', 'gardening', 'cooking']
+    educations = ['high school', 'associate', 'bachelor']
+    drinks = ['tea', 'milk', 'water']
+    
+    # Create solver
+    solver = Solver()
+    
+    # Create variables for each house's attributes
+    house_name = [Int(f'name_{i}') for i in range(1,4)]
+    house_cigar = [Int(f'cigar_{i}') for i in range(1,4)]
+    house_hobby = [Int(f'hobby_{i}') for i in range(1,4)]
+    house_education = [Int(f'education_{i}') for i in range(1,4)]
+    house_drink = [Int(f'drink_{i}') for i in range(1,4)]
+    
+    # Define value mappings
+    name_val = {0: 'Eric', 1: 'Peter', 2: 'Arnold'}
+    cigar_val = {0: 'blue master', 1: 'prince', 2: 'pall mall'}
+    hobby_val = {0: 'photography', 1: 'gardening', 2: 'cooking'}
+    education_val = {0: 'high school', 1: 'associate', 2: 'bachelor'}
+    drink_val = {0: 'tea', 1: 'milk', 2: 'water'}
+    
+    # Add constraints: each attribute must be between 0 and 2
+    for i in range(3):
+        solver.add(And(house_name[i] >= 0, house_name[i] <= 2))
+        solver.add(And(house_cigar[i] >= 0, house_cigar[i] <= 2))
+        solver.add(And(house_hobby[i] >= 0, house_hobby[i] <= 2))
+        solver.add(And(house_education[i] >= 0, house_education[i] <= 2))
+        solver.add(And(house_drink[i] >= 0, house_drink[i] <= 2))
+    
+    # Each attribute category must have distinct values
+    solver.add(Distinct(house_name))
+    solver.add(Distinct(house_cigar))
+    solver.add(Distinct(house_hobby))
+    solver.add(Distinct(house_education))
+    solver.add(Distinct(house_drink))
+    
+    # Clue 1: The person partial to Pall Mall is Peter.
+    # pall mall = 2, Peter = 1
+    for i in range(3):
+        solver.add(Implies(house_cigar[i] == 2, house_name[i] == 1))
+    
+    # Clue 2: The person who likes milk is directly left of the person with a high school diploma.
+    # milk = 1, high school = 0
+    for i in range(2):
+        solver.add(Implies(house_drink[i] == 1, house_education[i+1] == 0))
+    solver.add(Not(house_drink[2] == 1))  # milk cannot be in house 3
+    
+    # Clue 3: Eric is the tea drinker.
+    # Eric = 0, tea = 0
+    for i in range(3):
+        solver.add(Implies(house_name[i] == 0, house_drink[i] == 0))
+    
+    # Clue 4: Arnold and the Prince smoker are next to each other.
+    # Arnold = 2, prince = 1
+    for i in range(3):
+        for j in range(3):
+            if abs(i - j) == 1:
+                solver.add(Implies(house_name[i] == 2, house_cigar[j] == 1))
+                solver.add(Implies(house_cigar[i] == 1, house_name[j] == 2))
+    
+    # Clue 5: The person who enjoys gardening is somewhere to the left of the Prince smoker.
+    # gardening = 1, prince = 1
+    prince_pos = Int('prince_pos')
+    solver.add(prince_pos >= 1, prince_pos <= 3)
+    for i in range(3):
+        solver.add(Implies(house_cigar[i] == 1, prince_pos == i+1))
+    for i in range(3):
+        solver.add(Implies(house_hobby[i] == 1, i+1 < prince_pos))
+    
+    # Clue 6: The person who likes milk is the person with an associate's degree.
+    # milk = 1, associate = 1
+    for i in range(3):
+        solver.add(Implies(house_drink[i] == 1, house_education[i] == 1))
+    
+    # Clue 7: The person with a bachelor's degree is directly left of the photography enthusiast.
+    # bachelor = 2, photography = 0
+    for i in range(2):
+        solver.add(Implies(house_education[i] == 2, house_hobby[i+1] == 0))
+    solver.add(Not(house_education[2] == 2))  # bachelor cannot be in house 3
+    
+    # Check and get the solution
+    if solver.check() == sat:
+        model = solver.model()
+        
+        # Prepare result data
+        rows = []
+        for i in range(3):
+            name = name_val[model.evaluate(house_name[i]).as_long()]
+            cigar = cigar_val[model.evaluate(house_cigar[i]).as_long()]
+            hobby = hobby_val[model.evaluate(house_hobby[i]).as_long()]
+            education = education_val[model.evaluate(house_education[i]).as_long()]
+            drink = drink_val[model.evaluate(house_drink[i]).as_long()]
+            rows.append([str(i+1), name, cigar, hobby, education, drink])
+        
+        # Format as JSON
+        solution = {
+            "solution": {
+                "header": ["House", "Name", "Cigar", "Hobby", "Education", "Drink"],
+                "rows": rows
+            }
+        }
+        
+        import json
+        print(json.dumps(solution, indent=2))
+    else:
+        print("No solution found")
+
+if __name__ == "__main__":
+    main()
+```

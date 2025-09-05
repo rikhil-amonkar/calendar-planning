@@ -1,0 +1,114 @@
+```python
+import itertools
+import json
+
+def main():
+    # Define the attributes and their possible values
+    names = ['Peter', 'Arnold', 'Eric']
+    books = ['science fiction', 'mystery', 'romance']
+    smoothies = ['watermelon', 'desert', 'cherry']
+    birthdays = ['april', 'jan', 'sept']
+    heights = ['average', 'very short', 'short']
+    
+    # Generate all possible permutations for each attribute
+    name_perms = itertools.permutations(names)
+    book_perms = itertools.permutations(books)
+    smoothie_perms = itertools.permutations(smoothies)
+    birthday_perms = itertools.permutations(birthdays)
+    height_perms = itertools.permutations(heights)
+    
+    # Iterate over all possible combinations of attributes
+    for (n, b, s, bd, h) in itertools.product(name_perms, book_perms, smoothie_perms, birthday_perms, height_perms):
+        # Create assignment for each house
+        houses = []
+        for i in range(3):
+            house = {
+                'House': str(i+1),
+                'Name': n[i],
+                'BookGenre': b[i],
+                'Smoothie': s[i],
+                'Birthday': bd[i],
+                'Height': h[i]
+            }
+            houses.append(house)
+        
+        # Check constraints
+        valid = True
+        
+        # Constraint 1: Cherry smoothie not in second house
+        if houses[1]['Smoothie'] == 'cherry':
+            valid = False
+        
+        # Constraint 2: Arnold loves mystery books
+        for house in houses:
+            if house['Name'] == 'Arnold' and house['BookGenre'] != 'mystery':
+                valid = False
+                break
+        
+        # Constraint 3: January birthday not in first house
+        if houses[0]['Birthday'] == 'jan':
+            valid = False
+        
+        # Constraint 4: Very short height loves romance books
+        for house in houses:
+            if house['Height'] == 'very short' and house['BookGenre'] != 'romance':
+                valid = False
+                break
+        
+        # Constraint 5: Mystery books lover has September birthday
+        for house in houses:
+            if house['BookGenre'] == 'mystery' and house['Birthday'] != 'sept':
+                valid = False
+                break
+        
+        # Constraint 6: Average height loves Desert smoothie
+        for house in houses:
+            if house['Height'] == 'average' and house['Smoothie'] != 'desert':
+                valid = False
+                break
+        
+        # Constraint 7: Eric in first house
+        if houses[0]['Name'] != 'Eric':
+            valid = False
+        
+        # Constraint 8: Watermelon smoothie lover is short
+        for house in houses:
+            if house['Smoothie'] == 'watermelon' and house['Height'] != 'short':
+                valid = False
+                break
+        
+        # Constraint 9: Watermelon smoothie lover is Eric
+        for house in houses:
+            if house['Smoothie'] == 'watermelon' and house['Name'] != 'Eric':
+                valid = False
+                break
+        
+        if valid:
+            # Format the solution as required
+            header = ["House", "Name", "BookGenre", "Smoothie", "Birthday", "Height"]
+            rows = []
+            for house in houses:
+                row = [
+                    house['House'],
+                    house['Name'],
+                    house['BookGenre'],
+                    house['Smoothie'],
+                    house['Birthday'],
+                    house['Height']
+                ]
+                rows.append(row)
+            
+            solution = {
+                "solution": {
+                    "header": header,
+                    "rows": rows
+                }
+            }
+            print(json.dumps(solution, indent=2))
+            return
+    
+    print("No solution found")
+
+if __name__ == "__main__":
+    main()
+```

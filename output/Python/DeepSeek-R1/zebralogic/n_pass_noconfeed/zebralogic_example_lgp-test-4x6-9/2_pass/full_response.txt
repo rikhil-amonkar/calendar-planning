@@ -1,0 +1,111 @@
+```python
+import itertools
+import json
+
+def main():
+    names = ['Peter', 'Arnold', 'Eric', 'Alice']
+    flowers = ['daffodils', 'carnations', 'roses', 'lilies']
+    heights = ['very short', 'short', 'tall', 'average']
+    mothers = ['Janelle', 'Kailyn', 'Holly', 'Aniya']
+    occupations = ['engineer', 'doctor', 'teacher', 'artist']
+    sports = ['swimming', 'basketball', 'tennis', 'soccer']
+    
+    for name_perm in itertools.permutations(names):
+        # Check clue9: Arnold not in third house (index 2)
+        if name_perm[2] == 'Arnold':
+            continue
+            
+        # Find indices for each person
+        eric_index = name_perm.index('Eric')
+        arnold_index = name_perm.index('Arnold')
+        alice_index = name_perm.index('Alice')
+        peter_index = name_perm.index('Peter')
+        
+        # Generate flower assignments
+        other_houses_flower = [i for i in range(4) if i not in [eric_index, arnold_index]]
+        for flower_perm in itertools.permutations(['daffodils', 'carnations']):
+            flower_assignment = [None] * 4
+            flower_assignment[eric_index] = 'roses'  # Clue2
+            flower_assignment[arnold_index] = 'lilies'  # Clue13
+            for idx, house in enumerate(other_houses_flower):
+                flower_assignment[house] = flower_perm[idx]
+                
+            # Generate sport assignments
+            other_houses_sport = [i for i in range(4) if i not in [eric_index, arnold_index]]
+            for sport_perm in itertools.permutations(['soccer', 'basketball']):
+                sport_assignment = [None] * 4
+                sport_assignment[eric_index] = 'swimming'  # Clue1 and Clue2
+                sport_assignment[arnold_index] = 'tennis'  # Derived from constraints
+                for idx, house in enumerate(other_houses_sport):
+                    sport_assignment[house] = sport_perm[idx]
+                    
+                # Determine height assignment
+                height_assignment = [None] * 4
+                height_assignment[arnold_index] = 'tall'  # Clue3
+                soccer_index = sport_assignment.index('soccer')
+                height_assignment[soccer_index] = 'short'  # Clue5
+                basketball_index = sport_assignment.index('basketball')
+                height_assignment[basketball_index] = 'average'  # Clue8
+                height_assignment[eric_index] = 'very short'  # Only one left
+                
+                # Mother assignment
+                carnation_index = flower_assignment.index('carnations')
+                other_mother_houses = [i for i in range(4) if i != alice_index and i != carnation_index]
+                for mother_perm in itertools.permutations(['Kailyn', 'Holly']):
+                    mother_assignment = [None] * 4
+                    mother_assignment[alice_index] = 'Aniya'  # Clue12
+                    mother_assignment[carnation_index] = 'Janelle'  # Clue7
+                    for idx, house in enumerate(other_mother_houses):
+                        mother_assignment[house] = mother_perm[idx]
+                        
+                    # Occupation assignment
+                    other_occupation_houses = [i for i in range(4) if i != 0 and i != peter_index]
+                    for occupation_perm in itertools.permutations(['engineer', 'artist']):
+                        occupation_assignment = [None] * 4
+                        occupation_assignment[0] = 'teacher'  # Clue6
+                        occupation_assignment[peter_index] = 'doctor'  # Clue11
+                        for idx, house in enumerate(other_occupation_houses):
+                            occupation_assignment[house] = occupation_perm[idx]
+                            
+                        # Check clue4: daffodils right of engineer
+                        daffodils_index = flower_assignment.index('daffodils')
+                        engineer_index = occupation_assignment.index('engineer')
+                        if daffodils_index <= engineer_index:
+                            continue
+                            
+                        # Check clue10: mother Holly right of average height
+                        if 'Holly' not in mother_assignment:
+                            continue
+                        holly_index = mother_assignment.index('Holly')
+                        average_index = height_assignment.index('average')
+                        if holly_index <= average_index:
+                            continue
+                            
+                        # Found a solution
+                        solution = []
+                        for i in range(4):
+                            house = [
+                                str(i+1),
+                                name_perm[i],
+                                flower_assignment[i],
+                                height_assignment[i],
+                                mother_assignment[i],
+                                occupation_assignment[i],
+                                sport_assignment[i]
+                            ]
+                            solution.append(house)
+                        
+                        # Format the output
+                        output = {
+                            "solution": {
+                                "header": ["House", "Name", "Flower", "Height", "Mother", "Occupation", "FavoriteSport"],
+                                "rows": solution
+                            }
+                        }
+                        print(json.dumps(output, indent=2))
+                        return
+    print("No solution found")
+
+if __name__ == "__main__":
+    main()
+```
