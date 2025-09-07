@@ -1,0 +1,29 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "10:30 to 11:30 Tuesday",
+    "pred": {
+        "day": "Tuesday",
+        "time_range": "{10:30:11:30}"
+    },
+    "gold": {
+        "day": "Tuesday",
+        "time_range": "{10:30:11:30}"
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 2,
+    "timing": {
+        "api_call_time": 430.77743554115295,
+        "execution_time": 0.08222246170043945,
+        "constraint_eval_time": 7.677078247070312e-05,
+        "pred_extract_time": 0.6955094337463379,
+        "gold_extract_time": 4.00543212890625e-05,
+        "total_tokens": 25576,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\n\ndef schedule_meeting():\n    # Define busy intervals for each participant per day\n    nicole_busy = [\n        [],  # Monday\n        [(960, 990)],  # Tuesday\n        [(900, 930)],  # Wednesday\n        [],  # Thursday\n        [(720, 750), (930, 960)],  # Friday\n    ]\n    daniel_busy = [\n        [(540, 750), (780, 810), (840, 990)],  # Monday\n        [(540, 630), (690, 750), (780, 810), (900, 960), (990, 1020)],  # Tuesday\n        [(540, 600), (660, 750), (780, 810), (840, 870), (990, 1020)],  # Wednesday\n        [(660, 720), (780, 840), (900, 930)],  # Thursday\n        [(600, 660), (690, 720), (750, 870), (900, 930), (960, 990)],  # Friday\n    ]\n    days = [\"Monday\", \"Tuesday\", \"Wednesday\", \"Thursday\", \"Friday\"]\n    \n    day = Int('day')\n    start = Int('start')\n    \n    s = Optimize()\n    \n    # Constraints on day and start\n    s.add(And(day >= 0, day <= 4))\n    s.add(And(start >= 540, start <= 900))  # Ensure meeting ends by 4:00 PM\n\n    # For each day d, and each busy interval of Nicole and Daniel on that day, add constraints\n    for d in range(5):\n        for (s_n, e_n) in nicole_busy[d]:\n            s.add(Or(day != d, Or(start + 60 <= s_n, start >= e_n)))\n        for (s_d, e_d) in daniel_busy[d]:\n            s.add(Or(day != d, Or(start + 60 <= s_d, start >= e_d)))\n    \n    # Objective: minimize the total minutes since the start of the week\n    s.minimize(day * 1440 + start)\n    \n    if s.check() == sat:\n        m = s.model()\n        day_val = m[day].as_long()\n        start_time = m[start].as_long()\n        end_time = start_time + 60\n        # Convert to time strings\n        start_h = start_time // 60\n        start_m = start_time % 60\n        end_h = end_time // 60\n        end_m = end_time % 60\n        start_str = f\"{start_h:02d}:{start_m:02d}\"\n        end_str = f\"{end_h:02d}:{end_m:02d}\"\n        day_name = days[day_val]\n        print(f\"{start_str} to {end_str} {day_name}\")\n    else:\n        print(\"No solution found\")\n\nschedule_meeting()"
+}

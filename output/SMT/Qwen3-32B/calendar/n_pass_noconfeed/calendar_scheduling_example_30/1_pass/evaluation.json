@@ -1,0 +1,29 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "Monday 11:30:12:00",
+    "pred": {
+        "day": "Monday",
+        "time_range": "{11:30:12:00}"
+    },
+    "gold": {
+        "day": "Monday",
+        "time_range": "{12:30:13:00}"
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": false,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 313.8160891532898,
+        "execution_time": 0.07861208915710449,
+        "constraint_eval_time": 5.125999450683594e-05,
+        "pred_extract_time": 0.7174732685089111,
+        "gold_extract_time": 2.574920654296875e-05,
+        "total_tokens": 15742,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import z3\n\nsolver = z3.Solver()\n\nstart_time = z3.Int('start_time')\nend_time = start_time + 30\n\n# Work hours constraints (9:00 AM to 5:00 PM)\nsolver.add(start_time >= 540)  # 9:00 AM in minutes\nsolver.add(end_time <= 1020)   # 5:00 PM in minutes\n\n# Melissa's preference: meeting must start by 14:00 (840 minutes)\nsolver.add(start_time <= 840)\n\n# Function to add non-overlapping constraints for busy intervals\ndef add_constraints(participant_intervals):\n    for busy_start, busy_end in participant_intervals:\n        solver.add(z3.Or(start_time + 30 <= busy_start, start_time >= busy_end))\n\n# Jeffrey's busy intervals (minutes)\njeffrey_intervals = [(570, 600), (630, 660)]  # 9:30-10:00, 10:30-11:00\nadd_constraints(jeffrey_intervals)\n\n# Virginia's busy intervals\nvirginia_intervals = [(540, 570), (600, 630), (870, 900), (960, 990)]  # 9:00-9:30, 10:00-10:30, 14:30-15:00, 16:00-16:30\nadd_constraints(virginia_intervals)\n\n# Melissa's busy intervals\nmelissa_intervals = [(540, 690), (720, 750), (780, 900), (960, 1020)]  # 9:00-11:30, 12:00-12:30, 13:00-15:00, 16:00-17:00\nadd_constraints(melissa_intervals)\n\nif solver.check() == z3.sat:\n    model = solver.model()\n    start = model[start_time].as_long()\n    end = start + 30\n\n    def to_time(mins):\n        hours = mins // 60\n        minutes = mins % 60\n        return f\"{hours:02d}:{minutes:02d}\"\n\n    start_str = to_time(start)\n    end_str = to_time(end)\n    print(f\"Monday {start_str}:{end_str}\")\nelse:\n    print(\"No solution found.\")"
+}

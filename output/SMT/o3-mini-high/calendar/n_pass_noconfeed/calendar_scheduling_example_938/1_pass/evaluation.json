@@ -1,0 +1,29 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "Friday 11:00:11:30",
+    "pred": {
+        "day": "Friday",
+        "time_range": "{11:00:11:30}"
+    },
+    "gold": {
+        "day": "Friday",
+        "time_range": "{11:00:11:30}"
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 67.96573495864868,
+        "execution_time": 0.08410024642944336,
+        "constraint_eval_time": 3.790855407714844e-05,
+        "pred_extract_time": 0.5345284938812256,
+        "gold_extract_time": 1.5497207641601562e-05,
+        "total_tokens": 3315,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import Int, Solver, And, Or, Implies, sat\n\ndef main():\n    # Meeting parameters\n    duration = 30                # meeting duration in minutes\n    work_start = 0               # 9:00 represented as 0 minutes offset\n    work_end = 480               # 17:00 is 480 minutes after 9:00\n    latest_start = work_end - duration  # meeting must finish by 17:00\n    \n    # Day mapping: 0=Monday, 1=Tuesday, 2=Wednesday, 3=Thursday, 4=Friday\n    days = [\"Monday\", \"Tuesday\", \"Wednesday\", \"Thursday\", \"Friday\"]\n    \n    # SMT variables: day and start time (in minutes after 9:00)\n    day = Int(\"day\")       # allowed domain 0..4\n    start = Int(\"start\")   # meeting start in minutes (0 = 9:00, 450 = 16:30)\n    \n    s = Solver()\n    \n    # Domain constraints\n    s.add(day >= 0, day <= 4)\n    s.add(start >= work_start, start <= latest_start)\n    \n    # Eric prefers to avoid more meetings on Wednesday.\n    # Since Eric is fully busy on Monday, Tuesday, and Thursday,\n    # the only possible days are Wednesday and Friday.\n    # Force the meeting to be scheduled on a day other than Wednesday.\n    s.add(day != 2)\n    \n    # Helper function: For a given busy day and busy interval (in minutes relative to 9:00),\n    # add a constraint that if the meeting is on that day then it must not overlap the interval.\n    def add_busy_constraints(solver, busy_day, busy_intervals):\n        for (bstart, bend) in busy_intervals:\n            solver.add(Implies(day == busy_day, Or(start + duration <= bstart, start >= bend)))\n    \n    # Eugene's busy intervals (times are offset from 9:00):\n    # Monday (day=0): 11:00-12:00, 13:30-14:00, 14:30-15:00, 16:00-16:30\n    # Wednesday (day=2): 9:00-9:30, 11:00-11:30, 12:00-12:30, 13:30-15:00\n    # Thursday (day=3): 9:30-10:00, 11:00-12:30\n    # Friday (day=4): 10:30-11:00, 12:00-12:30, 13:00-13:30\n    eugene_busy = {\n        0: [(120, 180), (270, 300), (330, 360), (420, 450)],\n        2: [(0, 30), (120, 150), (180, 210), (270, 360)],\n        3: [(30, 60), (120, 210)],\n        4: [(90, 120), (180, 210), (240, 270)]\n    }\n    for d, intervals in eugene_busy.items():\n        add_busy_constraints(s, d, intervals)\n    \n    # Eric's busy intervals:\n    # Monday (day=0): 9:00-17:00\n    # Tuesday (day=1): 9:00-17:00\n    # Wednesday (day=2): 9:00-11:30, 12:00-14:00, 14:30-16:30\n    # Thursday (day=3): 9:00-17:00\n    # Friday (day=4): 9:00-11:00, 11:30-17:00\n    eric_busy = {\n        0: [(0, 480)],\n        1: [(0, 480)],\n        2: [(0, 150), (180, 300), (330, 450)],\n        3: [(0, 480)],\n        4: [(0, 120), (150, 480)]\n    }\n    for d, intervals in eric_busy.items():\n        add_busy_constraints(s, d, intervals)\n    \n    # Solve the constraints\n    if s.check() == sat:\n        m = s.model()\n        meeting_day = m[day].as_long()\n        meeting_start = m[start].as_long()\n        meeting_end = meeting_start + duration\n        \n        # Convert minutes (offset from 9:00) to actual clock time\n        start_hour = 9 + meeting_start // 60\n        start_min  = meeting_start % 60\n        end_hour   = 9 + meeting_end // 60\n        end_min    = meeting_end % 60\n        \n        print(f\"{days[meeting_day]} {start_hour:02d}:{start_min:02d}:{end_hour:02d}:{end_min:02d}\")\n    else:\n        print(\"No solution found.\")\n\nif __name__ == \"__main__\":\n    main()"
+}

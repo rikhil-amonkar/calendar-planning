@@ -1,0 +1,29 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "Tuesday 14:00:15:00",
+    "pred": {
+        "day": "Tuesday",
+        "time_range": "{14:00:15:00}"
+    },
+    "gold": {
+        "day": "Tuesday",
+        "time_range": "{14:00:15:00}"
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 44.5017032623291,
+        "execution_time": 0.08615922927856445,
+        "constraint_eval_time": 4.363059997558594e-05,
+        "pred_extract_time": 0.5654492378234863,
+        "gold_extract_time": 1.6927719116210938e-05,
+        "total_tokens": 2954,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import Solver, Int, Or, And, If, sat\n\n# Create the solver.\ns = Solver()\n\n# Define variables:\n# day: 0 for Monday, 1 for Tuesday.\n# start: meeting start time in minutes offset from 9:00.\nday = Int('day')\nstart = Int('start')\nmeeting_duration = 60  # meeting duration in minutes\n\n# Ensure day is either Monday (0) or Tuesday (1)\ns.add(Or(day == 0, day == 1))\n\n# Working hours: from 9:00 to 17:00.\n# start must be chosen so that the meeting finishes by 17:00.\ns.add(start >= 0, start + meeting_duration <= 480)  # 480 minutes = 17:00\n\nmeeting_end = start + meeting_duration\n\n# Busy intervals expressed as minutes offset from 9:00.\n# Monday busy intervals:\n#   Alexander: 9:00-11:30 --> (0,150)\n#              12:00-14:30 --> (180,330)\n#              15:00-17:00 --> (360,480)\n#   Russell:   10:30-11:00 --> (90,120)\nbusy_intervals_monday = [\n    (0, 150),    # Alexander\n    (180, 330),  # Alexander\n    (360, 480),  # Alexander\n    (90, 120)    # Russell\n]\n\n# Tuesday busy intervals:\n#   Alexander: 9:00-10:00   --> (0,60)\n#              13:00-14:00  --> (240,300)\n#              15:00-15:30  --> (360,390)\n#              16:00-16:30  --> (420,450)\n#   Russell:   13:00-13:30  --> (240,270)\nbusy_intervals_tuesday = [\n    (0, 60),     # Alexander\n    (240, 300),  # Alexander\n    (360, 390),  # Alexander\n    (420, 450),  # Alexander\n    (240, 270)   # Russell\n]\n\n# For a meeting and a busy interval [a, b), the meeting does NOT conflict if:\n#   meeting_end <= a or start >= b.\ndef no_conflict(start, meeting_end, interval):\n    a, b = interval\n    return Or(meeting_end <= a, start >= b)\n\n# Build constraints for each day.\nconstraints_monday = [no_conflict(start, meeting_end, interval) for interval in busy_intervals_monday]\nconstraints_tuesday = [no_conflict(start, meeting_end, interval) for interval in busy_intervals_tuesday]\n\n# Russell's preference: on Tuesday, prefer not to meet before 13:30.\n# Since 13:30 is 4.5 hours after 9:00, that is 270 minutes.\npreference_tuesday = start >= 270\n\n# Add the day-dependent constraints.\ns.add(\n    If(day == 0,\n       And(*constraints_monday),\n       And(And(*constraints_tuesday), preference_tuesday)\n    )\n)\n\n# Check for a solution.\nif s.check() == sat:\n    m = s.model()\n    chosen_day = m[day].as_long()\n    chosen_start = m[start].as_long()\n    \n    # Convert the start and end times (offset from 9:00) into HH:MM.\n    start_total = chosen_start\n    end_total = chosen_start + meeting_duration\n    # The actual time is 9:00 plus the offset.\n    start_hour = 9 + start_total // 60\n    start_min = start_total % 60\n    end_hour = 9 + end_total // 60\n    end_min = end_total % 60\n\n    # Map day variable to day names.\n    day_name = \"Monday\" if chosen_day == 0 else \"Tuesday\"\n    \n    # Format the time range as HH:MM:HH:MM.\n    meeting_time = f\"{start_hour:02d}:{start_min:02d}:{end_hour:02d}:{end_min:02d}\"\n    \n    print(day_name, meeting_time)\nelse:\n    print(\"No solution found.\")"
+}

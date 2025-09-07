@@ -1,0 +1,29 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "Monday 09:30 - 10:00",
+    "pred": {
+        "day": "Monday",
+        "time_range": "{9:30:10:00}"
+    },
+    "gold": {
+        "day": "Monday",
+        "time_range": "{9:30:10:00}"
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 2,
+    "timing": {
+        "api_call_time": 74.90396070480347,
+        "execution_time": 0.08106446266174316,
+        "constraint_eval_time": 2.3126602172851562e-05,
+        "pred_extract_time": 0.5746374130249023,
+        "gold_extract_time": 2.288818359375e-05,
+        "total_tokens": 3819,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import Optimize, Int, Or, Implies, And, sat\n\n# Meeting parameters\nmeeting_duration = 30\nwork_start = 0       # 9:00 is 0 minutes offset\nwork_end = 480       # 17:00 is 480 minutes offset\n\n# Define day constants\nMON, TUE, WED, THU = 0, 1, 2, 3\nday_names = {MON: \"Monday\", TUE: \"Tuesday\", WED: \"Wednesday\", THU: \"Thursday\"}\n\n# James's busy intervals (in minutes offset from 9:00)\n# Each tuple is (busy_start, busy_end)\nbusy_schedules = {\n    MON: [(0, 30), (90, 120), (210, 240), (330, 390), (450, 480)],\n    TUE: [(0, 120), (150, 180), (210, 450), (420, 480)],\n    WED: [(60, 120), (180, 240), (270, 420)],\n    THU: [(30, 150), (180, 210), (240, 270), (300, 330), (450, 480)]\n}\n\nopt = Optimize()\n\n# Decision variables:\n# \"day\" must be one of the allowed days;\n# \"start\" is the meeting start time (in minutes after 9:00).\nday = Int(\"day\")\nstart = Int(\"start\")\n\n# Allowed days: Monday, Tuesday, Wednesday, Thursday\nopt.add(Or(day == MON, day == TUE, day == WED, day == THU))\n\n# The meeting must start no earlier than 9:00 and finish by 17:00.\nopt.add(start >= work_start, start + meeting_duration <= work_end)\n\n# Cheryl\u2019s preference: she would rather not meet on Wednesday.\nopt.add(day != WED)\n\n# For each day we add constraints so that if that day is chosen, the meeting does not overlap any busy interval.\nfor d, intervals in busy_schedules.items():\n    # For each busy interval, the meeting must either finish before it starts\n    # or must start after it ends.\n    no_overlap = []\n    for (b_start, b_end) in intervals:\n        no_overlap.append(Or(start + meeting_duration <= b_start, start >= b_end))\n    opt.add(Implies(day == d, And(*no_overlap)))\n\n# We want the earliest possible meeting time.\n# That is, we minimize first the day (with Monday = 0, Tuesday = 1, and Thursday = 3)\n# and then minimize the start time.\nopt.minimize(day)\nopt.minimize(start)\n\n# Check the optimization and print the model if one is found\nif opt.check() == sat:\n    m = opt.model()\n    chosen_day = m[day].as_long()\n    chosen_start = m[start].as_long()\n    \n    # Convert the time offset back to an actual time starting at 9:00.\n    meeting_start_minutes = 9 * 60 + chosen_start\n    meeting_end_minutes = meeting_start_minutes + meeting_duration\n    \n    # Helper function to convert minutes to HH:MM format.\n    def to_HHMM(total_minutes):\n        hours = total_minutes // 60\n        minutes = total_minutes % 60\n        return f\"{hours:02d}:{minutes:02d}\"\n    \n    meeting_time = f\"{to_HHMM(meeting_start_minutes)} - {to_HHMM(meeting_end_minutes)}\"\n    print(f\"{day_names[chosen_day]} {meeting_time}\")\nelse:\n    print(\"No solution found.\")"
+}

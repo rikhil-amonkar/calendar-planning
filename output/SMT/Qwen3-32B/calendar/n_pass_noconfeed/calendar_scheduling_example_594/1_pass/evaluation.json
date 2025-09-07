@@ -1,0 +1,29 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "09:00:09:30 Monday",
+    "pred": {
+        "day": "Monday",
+        "time_range": "{9:00:9:30}"
+    },
+    "gold": {
+        "day": "Monday",
+        "time_range": "{9:00:9:30}"
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 351.54130840301514,
+        "execution_time": 0.07699465751647949,
+        "constraint_eval_time": 4.0531158447265625e-05,
+        "pred_extract_time": 0.5981841087341309,
+        "gold_extract_time": 2.8371810913085938e-05,
+        "total_tokens": 18966,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\n\ndef minutes_to_time(m):\n    hours = m // 60\n    mins = m % 60\n    return f\"{hours:02d}:{mins:02d}\"\n\nopt = Optimize()\n\nstart = Int('start')\n\n# Workday is from 9:00 (540) to 17:00 (1020)\nopt.add(And(start >= 540, start <= 990))  # start + 30 <= 1020 \u2192 start <= 990\n\n# Adam's busy intervals in minutes\nadam_busy = [\n    (570, 600),  # 9:30-10:00\n    (750, 780),  # 12:30-13:00\n    (870, 900),  # 14:30-15:00\n    (990, 1020)  # 16:30-17:00\n]\n\n# Roy's busy intervals in minutes\nroy_busy = [\n    (600, 660),  # 10:00-11:00\n    (690, 780),  # 11:30-13:00\n    (810, 870),  # 13:30-14:30\n    (990, 1020)  # 16:30-17:00\n]\n\n# Add constraints for Adam's busy times\nfor s, e in adam_busy:\n    opt.add(Or(start + 30 <= s, start >= e))\n\n# Add constraints for Roy's busy times\nfor s, e in roy_busy:\n    opt.add(Or(start + 30 <= s, start >= e))\n\n# Minimize the start time\nopt.minimize(start)\n\nif opt.check() == sat:\n    model = opt.model()\n    start_val = model[start].as_long()\n    start_time = minutes_to_time(start_val)\n    end_time = minutes_to_time(start_val + 30)\n    print(f\"{start_time}:{end_time} Monday\")\nelse:\n    print(\"No solution found.\")"
+}

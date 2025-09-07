@@ -1,0 +1,29 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "Monday 12:00:12:30",
+    "pred": {
+        "day": "Monday",
+        "time_range": "{12:00:12:30}"
+    },
+    "gold": {
+        "day": "Monday",
+        "time_range": "{12:00:12:30}"
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 254.09459590911865,
+        "execution_time": 0.08026289939880371,
+        "constraint_eval_time": 6.413459777832031e-05,
+        "pred_extract_time": 2.1397764682769775,
+        "gold_extract_time": 3.266334533691406e-05,
+        "total_tokens": 12529,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\n\ndef minutes(t):\n    h, m = map(int, t.split(':'))\n    return h * 60 + m\n\n# Create solver\ns = Solver()\n\n# Variable for start time (in minutes since midnight)\nstart = Int('start')\n# Meeting is between 9:00 (540) and 17:00 (1020), duration 30 mins => start <= 990\ns.add(And(start >= 540, start <= 990))\n\n# Gregory's blocked intervals (in minutes)\ngreg_blocked = [\n    (540, 600),   # 9:00-10:00\n    (630, 690),   # 10:30-11:30\n    (750, 780),   # 12:30-13:00\n    (810, 840)    # 13:30-14:00\n]\nfor b_start, b_end in greg_blocked:\n    s.add(Or(start + 30 <= b_start, start >= b_end))\n\n# Christine's blocked intervals\nchristine_blocked = [\n    (540, 690),   # 9:00-11:30\n    (810, 1020)   # 13:30-17:00\n]\nfor b_start, b_end in christine_blocked:\n    s.add(Or(start + 30 <= b_start, start >= b_end))\n\n# Vincent's blocked intervals\nvincent_blocked = [\n    (540, 570),   # 9:00-9:30\n    (630, 720),   # 10:30-12:00\n    (750, 840),   # 12:30-14:00\n    (870, 1020)   # 14:30-17:00\n]\nfor b_start, b_end in vincent_blocked:\n    s.add(Or(start + 30 <= b_start, start >= b_end))\n\nif s.check() == sat:\n    m = s.model()\n    start_val = m[start].as_long()\n    # Convert start time to HH:MM\n    start_h = start_val // 60\n    start_m = start_val % 60\n    end_val = start_val + 30\n    end_h = end_val // 60\n    end_m = end_val % 60\n    print(f\"Monday {start_h:02d}:{start_m:02d}:{end_h:02d}:{end_m:02d}\")\nelse:\n    print(\"No solution\")"
+}

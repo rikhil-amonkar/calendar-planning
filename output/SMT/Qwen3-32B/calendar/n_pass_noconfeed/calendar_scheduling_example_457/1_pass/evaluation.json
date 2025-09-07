@@ -1,0 +1,29 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "16:00:16:30 Monday",
+    "pred": {
+        "day": "Monday",
+        "time_range": "{16:00:16:30}"
+    },
+    "gold": {
+        "day": "Monday",
+        "time_range": "{16:00:16:30}"
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 379.9174871444702,
+        "execution_time": 0.07004117965698242,
+        "constraint_eval_time": 7.414817810058594e-05,
+        "pred_extract_time": 0.8482537269592285,
+        "gold_extract_time": 2.9802322387695312e-05,
+        "total_tokens": 16477,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\n\n# Define busy intervals in minutes since midnight\nparticipants = {\n    'Andrea': [(570, 630), (810, 870)],\n    'Ruth': [(750, 780), (900, 930)],\n    'Steven': [(600, 630), (660, 690), (720, 750), (810, 840), (900, 960)],\n    'Grace': [],\n    'Kyle': [(540, 570), (630, 720), (750, 780), (810, 900), (930, 960), (990, 1020)],\n    'Elijah': [(540, 660), (690, 750), (810, 840), (930, 960), (990, 1020)],\n    'Lori': [(540, 570), (600, 690), (720, 810), (840, 960), (990, 1020)],\n}\n\nsolver = Solver()\nstart = Int('start')\n\n# Meeting must start between 9:00 (540) and 17:00 - 30 min = 16:30 (990)\nsolver.add(start >= 540)\nsolver.add(start <= 990)\n\n# For each participant's busy intervals, add constraints\nfor person in participants:\n    for (bs, be) in participants[person]:\n        solver.add(Or(start + 30 <= bs, start >= be))\n\nif solver.check() == sat:\n    model = solver.model()\n    start_val = model[start].as_long()\n    # Convert start_val to HH:MM format\n    start_hour = start_val // 60\n    start_minute = start_val % 60\n    end_val = start_val + 30\n    end_hour = end_val // 60\n    end_minute = end_val % 60\n    # Format with leading zeros if needed\n    def format_time(h, m):\n        return f\"{h:02d}:{m:02d}\"\n    start_time = format_time(start_hour, start_minute)\n    end_time = format_time(end_hour, end_minute)\n    print(f\"{start_time}:{end_time} Monday\")\nelse:\n    print(\"No solution found\")"
+}

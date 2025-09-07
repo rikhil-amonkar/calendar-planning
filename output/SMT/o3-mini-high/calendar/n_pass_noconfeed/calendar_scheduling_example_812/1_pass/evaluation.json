@@ -1,0 +1,28 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": true,
+    "execution_output": "No valid meeting time found.",
+    "pred": null,
+    "gold": {
+        "day": "Monday",
+        "time_range": "{10:00:10:30}"
+    },
+    "status": "No plan generated",
+    "violated_constraint": {
+        "missing_output": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 67.37249660491943,
+        "execution_time": 0.0859074592590332,
+        "constraint_eval_time": 1.9073486328125e-06,
+        "pred_extract_time": 0.8813543319702148,
+        "gold_extract_time": 1.5497207641601562e-05,
+        "total_tokens": 3217,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import Optimize, Int, Or, Implies\n\n# Meeting and working hours configuration\nmeeting_duration = 30  # in minutes\nwork_start = 0         # offset minutes from 9:00\nwork_end = 480         # 17:00 equals 480 minutes after 9:00\n\n# Day indices: 0=Monday, 1=Tuesday, 2=Wednesday, 3=Thursday\nday_names = {0: \"Monday\", 1: \"Tuesday\", 2: \"Wednesday\", 3: \"Thursday\"}\n\n# Create SMT variables:\n# \"day\" represents the chosen day (0 to 3)\n# \"start\" represents the meeting start time in minutes offset from 9:00.\nday = Int('day')\nstart = Int('start')\n\n# Create the Z3 optimizer\nopt = Optimize()\n\n# Add basic domain constraints\nopt.add(day >= 0, day <= 3)\nopt.add(start >= work_start, start <= work_end - meeting_duration)\n\n# Define the participants' blocked intervals.\n# The times are offsets in minutes from 9:00.\n# Mary\u2019s calendar: (only specified for Tuesday, Wednesday, and Thursday)\nmary_blocks = {\n    0: [],  # Monday: no meetings\n    1: [(60, 90), (390, 420)],       # Tuesday: 10:00-10:30, 15:30-16:00\n    2: [(30, 60), (360, 390)],        # Wednesday: 9:30-10:00, 15:00-15:30\n    3: [(0, 60), (90, 150)]           # Thursday: 9:00-10:00, 10:30-11:30\n}\n\n# Alexis\u2019s calendar\nalexis_blocks = {\n    0: [(0, 60), (90, 180), (210, 450)],                    # Monday: 9:00-10:00, 10:30-12:00, 12:30-16:30\n    1: [(0, 60), (90, 150), (180, 390), (420, 480)],         # Tuesday: 9:00-10:00, 10:30-11:30, 12:00-15:30, 16:00-17:00\n    2: [(0, 120), (150, 480)],                              # Wednesday: 9:00-11:00, 11:30-17:00\n    3: [(60, 180), (300, 330), (390, 420), (450, 480)]       # Thursday: 10:00-12:00, 14:00-14:30, 15:30-16:00, 16:30-17:00\n}\n\n# Helper function: return constraint that meeting [s, s+meeting_duration] does not overlap a blocked interval.\ndef no_overlap(s, block_start, block_end):\n    # Meeting must end on or before the blocked interval or start on or after it.\n    return Or(s + meeting_duration <= block_start, s >= block_end)\n\n# Add constraints to avoid Mary\u2019s blocks.\nfor d in range(4):\n    for (b_start, b_end) in mary_blocks[d]:\n        opt.add(Implies(day == d, no_overlap(start, b_start, b_end)))\n\n# Add constraints to avoid Alexis\u2019s blocks.\nfor d in range(4):\n    for (b_start, b_end) in alexis_blocks[d]:\n        opt.add(Implies(day == d, no_overlap(start, b_start, b_end)))\n\n# Optimize for the earliest availability: first minimize day, then the start time.\nopt.minimize(day)\nopt.minimize(start)\n\nif opt.check() == 'sat' or opt.check() == 'unknown':  # Optimize returns a sat result as a string sometimes\n    model = opt.model()\n    chosen_day = model[day].as_long()\n    chosen_start = model[start].as_long()\n\n    # Convert the chosen start time to actual clock time.\n    # Since 0 corresponds to 9:00, add 9 to the computed hours.\n    start_hour = 9 + (chosen_start // 60)\n    start_min = chosen_start % 60\n\n    meeting_end = chosen_start + meeting_duration\n    end_hour = 9 + (meeting_end // 60)\n    end_min = meeting_end % 60\n\n    # Format the meeting time as HH:MM:HH:MM and include the day.\n    time_str = f\"{start_hour:02d}:{start_min:02d}:{end_hour:02d}:{end_min:02d}\"\n    print(f\"{day_names[chosen_day]} {time_str}\")\nelse:\n    print(\"No valid meeting time found.\")"
+}

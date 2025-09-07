@@ -1,0 +1,29 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "Monday {12:00:12:30}",
+    "pred": {
+        "day": "Monday",
+        "time_range": "{12:00:12:30}"
+    },
+    "gold": {
+        "day": "Monday",
+        "time_range": "{12:00:12:30}"
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 2,
+    "timing": {
+        "api_call_time": 11.729911804199219,
+        "execution_time": 0.07985091209411621,
+        "constraint_eval_time": 2.1457672119140625e-05,
+        "pred_extract_time": 0.4934065341949463,
+        "gold_extract_time": 1.52587890625e-05,
+        "total_tokens": 1820,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import Optimize, Int, Or, sat\n\n# Helper to convert hour/minute to minutes since midnight\ndef minutes(h, m):\n    return h * 60 + m\n\n# Helper to format minutes since midnight as HH:MM\ndef fmt(mins):\n    return f\"{mins // 60:02d}:{mins % 60:02d}\"\n\n# Work day and meeting settings\nDAY = \"Monday\"\nwork_start = minutes(9, 0)\nwork_end = minutes(17, 0)\nduration = 30  # minutes\n\n# Busy intervals for each participant on Monday, as (start_min, end_min), end-exclusive\nmichael_busy = [\n    (minutes(9, 30), minutes(10, 30)),\n    (minutes(15, 0), minutes(15, 30)),\n    (minutes(16, 0), minutes(16, 30)),\n]\neric_busy = [\n    # Eric is free all day; no busy intervals\n]\narthur_busy = [\n    (minutes(9, 0), minutes(12, 0)),\n    (minutes(13, 0), minutes(15, 0)),\n    (minutes(15, 30), minutes(16, 0)),\n    (minutes(16, 30), minutes(17, 0)),\n]\n\n# Create optimizer to find the earliest valid start time\nopt = Optimize()\nstart = Int(\"start\")\n\n# Meeting must be within work hours\nopt.add(start >= work_start)\nopt.add(start + duration <= work_end)\n\n# No overlap constraints: for each busy interval [s,e), require meeting end <= s or start >= e\ndef add_no_overlap(busy_intervals):\n    for s_i, e_i in busy_intervals:\n        opt.add(Or(start + duration <= s_i, start >= e_i))\n\nadd_no_overlap(michael_busy)\nadd_no_overlap(eric_busy)\nadd_no_overlap(arthur_busy)\n\n# Minimize the start time to get the earliest feasible slot\nopt.minimize(start)\n\nif opt.check() == sat:\n    model = opt.model()\n    st = model[start].as_long()\n    en = st + duration\n    # Output must include the day and the time range in {HH:MM:HH:MM}\n    print(f\"{DAY} {{{fmt(st)}:{fmt(en)}}}\")\nelse:\n    print(\"No feasible meeting time found.\")"
+}

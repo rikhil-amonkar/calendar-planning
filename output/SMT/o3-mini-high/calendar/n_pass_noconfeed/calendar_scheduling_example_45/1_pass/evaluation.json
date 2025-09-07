@@ -1,0 +1,29 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "10:30:11:00\nMonday",
+    "pred": {
+        "day": "Monday",
+        "time_range": "{10:30:11:00}"
+    },
+    "gold": {
+        "day": "Monday",
+        "time_range": "{10:30:11:00}"
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 36.44489312171936,
+        "execution_time": 0.07555937767028809,
+        "constraint_eval_time": 2.1696090698242188e-05,
+        "pred_extract_time": 0.497882604598999,
+        "gold_extract_time": 1.9550323486328125e-05,
+        "total_tokens": 2047,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import Optimize, Int, Or, sat\n\ndef main():\n    # Create an optimization solver (to minimize meeting start time)\n    opt = Optimize()\n\n    # The meeting duration is 30 minutes.\n    duration = 30\n\n    # meeting_start is the number of minutes after 9:00.\n    meeting_start = Int(\"meeting_start\")\n    meeting_end = meeting_start + duration\n\n    # Workday: 9:00 (0 minutes) to 17:00 (480 minutes)\n    opt.add(meeting_start >= 0)\n    opt.add(meeting_end <= 480)\n\n    # Samuel's blocked intervals (in minutes from 9:00):\n    # 9:00 - 10:30  => 0 to 90\n    # 11:30 - 12:00 => 150 to 180\n    # 13:00 - 13:30 => 240 to 270\n    # 14:00 - 16:00 => 300 to 420\n    # 16:30 - 17:00 => 450 to 480\n    blocked_intervals = [\n        (0, 90),\n        (150, 180),\n        (240, 270),\n        (300, 420),\n        (450, 480)\n    ]\n\n    # For each blocked interval, ensure the meeting does not overlap\n    for (block_start, block_end) in blocked_intervals:\n        # The meeting must either finish by block_start or start after block_end\n        opt.add(Or(meeting_end <= block_start, meeting_start >= block_end))\n\n    # We desire the earliest available meeting time so minimize meeting_start.\n    opt.minimize(meeting_start)\n\n    # Check if the constraints are satisfiable and extract the model.\n    if opt.check() == sat:\n        model = opt.model()\n        start_val = model[meeting_start].as_long()  # meeting start in minutes after 9:00\n        end_val = start_val + duration\n\n        # Convert minutes-after-9:00 to actual time (HH:MM)\n        # The meeting starts at 9:00 + start_val minutes\n        start_hour = 9 + start_val // 60\n        start_minute = start_val % 60\n        end_hour = 9 + end_val // 60\n        end_minute = end_val % 60\n\n        # Format the meeting time as HH:MM:HH:MM\n        meeting_time = f\"{start_hour:02d}:{start_minute:02d}:{end_hour:02d}:{end_minute:02d}\"\n        day = \"Monday\"\n\n        print(meeting_time)\n        print(day)\n    else:\n        print(\"No solution found.\")\n\nif __name__ == \"__main__\":\n    main()"
+}

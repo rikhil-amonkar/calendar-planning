@@ -1,0 +1,29 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "Monday\n{15:00:15:30}",
+    "pred": {
+        "day": "Monday",
+        "time_range": "{15:00:15:30}"
+    },
+    "gold": {
+        "day": "Monday",
+        "time_range": "{15:00:15:30}"
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 25.860182523727417,
+        "execution_time": 0.07891488075256348,
+        "constraint_eval_time": 3.886222839355469e-05,
+        "pred_extract_time": 0.6767332553863525,
+        "gold_extract_time": 2.6941299438476562e-05,
+        "total_tokens": 2023,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import Optimize, Int, Or, And, sat\n\ndef minutes(h, m=0):\n    return h * 60 + m\n\ndef fmt(t):\n    h = t // 60\n    m = t % 60\n    return f\"{h:02d}:{m:02d}\"\n\n# Meeting parameters\nDAY = \"Monday\"\nWORK_START = minutes(9, 0)\nWORK_END = minutes(17, 0)\nDURATION = 30\n\n# Busy intervals are [start, end) in minutes from midnight\nbusy = {\n    \"Natalie\": [],\n    \"David\": [\n        (minutes(11,30), minutes(12,0)),\n        (minutes(14,30), minutes(15,0)),\n    ],\n    \"Douglas\": [\n        (minutes(9,30), minutes(10,0)),\n        (minutes(11,30), minutes(12,0)),\n        (minutes(13,0), minutes(13,30)),\n        (minutes(14,30), minutes(15,0)),\n    ],\n    \"Ralph\": [\n        (minutes(9,0), minutes(9,30)),\n        (minutes(10,0), minutes(11,0)),\n        (minutes(11,30), minutes(12,30)),\n        (minutes(13,30), minutes(15,0)),\n        (minutes(15,30), minutes(16,0)),\n        (minutes(16,30), minutes(17,0)),\n    ],\n    \"Jordan\": [\n        (minutes(9,0), minutes(10,0)),\n        (minutes(12,0), minutes(12,30)),\n        (minutes(13,0), minutes(13,30)),\n        (minutes(14,30), minutes(15,0)),\n        (minutes(15,30), minutes(17,0)),\n    ],\n}\n\n# Preference: David does not want to meet before 14:00 on Monday\nPREF_DAVID_NOT_BEFORE = minutes(14, 0)\n\nopt = Optimize()\nstart = Int(\"start\")\nend = Int(\"end\")\n\n# Basic constraints\nopt.add(end == start + DURATION)\nopt.add(start >= WORK_START, end <= WORK_END)\n\n# Apply David's preference\nopt.add(start >= PREF_DAVID_NOT_BEFORE)\n\n# No-overlap constraints for each participant\ndef no_overlap(s, e, intervals):\n    return And([Or(end <= bs, start >= be) for (bs, be) in intervals]) if intervals else And(True)\n\nfor person, intervals in busy.items():\n    opt.add(no_overlap(start, end, intervals))\n\n# Prefer earliest feasible start time\nopt.minimize(start)\n\nif opt.check() == sat:\n    model = opt.model()\n    s_val = model[start].as_long()\n    e_val = model[end].as_long()\n    print(DAY)\n    print(f\"{{{fmt(s_val)}:{fmt(e_val)}}}\")\nelse:\n    print(\"No feasible time found.\")"
+}

@@ -1,0 +1,29 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "12:00:12:30 Monday",
+    "pred": {
+        "day": "Monday",
+        "time_range": "{12:00:12:30}"
+    },
+    "gold": {
+        "day": "Monday",
+        "time_range": "{12:00:12:30}"
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 388.9800446033478,
+        "execution_time": 0.07765626907348633,
+        "constraint_eval_time": 4.7206878662109375e-05,
+        "pred_extract_time": 0.6803951263427734,
+        "gold_extract_time": 2.7179718017578125e-05,
+        "total_tokens": 20583,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\n\n# Define the busy intervals for each participant on each day\nMonday_Arthur = [\n    (11 * 60, 11 * 60 + 30),  # 11:00-11:30\n    (13 * 60 + 30, 14 * 60),  # 13:30-14:00\n    (15 * 60, 15 * 60 + 30)   # 15:00-15:30\n]\nMonday_Michael = [\n    (9 * 60, 12 * 60),          # 9:00-12:00\n    (12 * 60 + 30, 13 * 60),    # 12:30-13:00\n    (14 * 60, 14 * 60 + 30),    # 14:00-14:30\n    (15 * 60, 17 * 60)          # 15:00-17:00\n]\nWednesday_Arthur = [\n    (10 * 60, 10 * 60 + 30),   # 10:00-10:30\n    (11 * 60, 11 * 60 + 30),   # 11:00-11:30\n    (12 * 60, 12 * 60 + 30),   # 12:00-12:30\n    (14 * 60, 14 * 60 + 30),   # 14:00-14:30\n    (16 * 60, 16 * 60 + 30)    # 16:00-16:30\n]\nWednesday_Michael = [\n    (10 * 60, 12 * 60 + 30),   # 10:00-12:30\n    (13 * 60, 13 * 60 + 30)    # 13:00-13:30\n]\n\n# Create the solver and variables\nsolver = Optimize()\nday = Int('day')\nstart = Int('start')\n\n# Day must be 0 (Monday) or 1 (Wednesday)\nsolver.add(Or(day == 0, day == 1))\n\n# Start time must be between 9:00 (540) and 17:00 - 30 mins (990)\nsolver.add(And(start >= 540, start <= 990))\n\n# Add constraints for Monday's busy intervals\nfor s, e in Monday_Arthur:\n    solver.add(Implies(day == 0, Or(start + 30 <= s, e <= start)))\nfor s, e in Monday_Michael:\n    solver.add(Implies(day == 0, Or(start + 30 <= s, e <= start)))\n\n# Add constraints for Wednesday's busy intervals\nfor s, e in Wednesday_Arthur:\n    solver.add(Implies(day == 1, Or(start + 30 <= s, e <= start)))\nfor s, e in Wednesday_Michael:\n    solver.add(Implies(day == 1, Or(start + 30 <= s, e <= start)))\n\n# Minimize day first, then start time\nsolver.minimize(day)\nsolver.minimize(start)\n\n# Check for solution\nif solver.check() == sat:\n    model = solver.model()\n    day_val = model[day].as_long()\n    start_val = model[start].as_long()\n    day_name = \"Monday\" if day_val == 0 else \"Wednesday\"\n    \n    # Convert start and end times to HH:MM format\n    start_h, start_m = divmod(start_val, 60)\n    end_val = start_val + 30\n    end_h, end_m = divmod(end_val, 60)\n    \n    time_str = f\"{start_h:02d}:{start_m:02d}:{end_h:02d}:{end_m:02d}\"\n    print(f\"{time_str} {day_name}\")\nelse:\n    print(\"No solution found\")"
+}

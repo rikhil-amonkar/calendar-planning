@@ -1,0 +1,29 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "12:00:13:00 Tuesday",
+    "pred": {
+        "day": "Tuesday",
+        "time_range": "{12:00:13:00}"
+    },
+    "gold": {
+        "day": "Tuesday",
+        "time_range": "{12:00:13:00}"
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 49.91810917854309,
+        "execution_time": 0.08394885063171387,
+        "constraint_eval_time": 2.7418136596679688e-05,
+        "pred_extract_time": 0.5494289398193359,
+        "gold_extract_time": 1.4543533325195312e-05,
+        "total_tokens": 3208,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\n\n# Define meeting duration (in minutes)\nmeeting_duration = 60\n\n# Day encoding: 0=Monday, 1=Tuesday, 2=Wednesday, 3=Thursday.\nday = Int('day')\nstart = Int('start')  # start time in minutes offset from 9:00\n\ns = Solver()\n\n# The meeting must start within work hours: [9:00, 17:00 - meeting_duration]\ns.add(start >= 0, start <= 480 - meeting_duration)\n\n# The meeting day must be one of Monday (0), Tuesday (1), Wednesday (2), Thursday (3)\ns.add(Or(day == 0, day == 1, day == 2, day == 3))\n\n# Additional constraint: Philip cannot meet on Wednesday (day == 2)\ns.add(day != 2)\n\n# Busy intervals for each participant are given as (day, busy_start, busy_end)\n# Here busy_start and busy_end are minutes offset from 9:00.\nbusy_intervals = []\n\n# Laura's busy slots:\n# Monday: 10:30-11:00, 12:30-13:00, 14:30-15:30, 16:00-17:00\nbusy_intervals += [\n    (0, 90, 120),\n    (0, 210, 240),\n    (0, 330, 390),\n    (0, 420, 480)\n]\n# Tuesday: 9:30-10:00, 11:00-11:30, 13:00-13:30, 14:30-15:00, 16:00-17:00\nbusy_intervals += [\n    (1, 30, 60),\n    (1, 120, 150),\n    (1, 240, 270),\n    (1, 330, 360),\n    (1, 420, 480)\n]\n# Wednesday: 11:30-12:00, 12:30-13:00, 15:30-16:30\nbusy_intervals += [\n    (2, 90 + 60, 120 + 60),  # 11:30 is 150, 12:00 is 180\n    (2, 150 + 60, 180 + 60),  # 12:30 is 210, 13:00 is 240\n    (2, 390, 450)            # 15:30-16:30: 15:30 is 390, 16:30 is 450\n]\n# Thursday: 10:30-11:00, 12:00-13:30, 15:00-15:30, 16:00-16:30\nbusy_intervals += [\n    (3, 90, 120),\n    (3, 180, 270),\n    (3, 360, 390),\n    (3, 420, 450)\n]\n\n# Philip's busy slots:\n# Monday: 9:00-17:00\nbusy_intervals += [\n    (0, 0, 480)\n]\n# Tuesday: 9:00-11:00, 11:30-12:00, 13:00-13:30, 14:00-14:30, 15:00-16:30\nbusy_intervals += [\n    (1, 0, 120),\n    (1, 150, 180),\n    (1, 240, 270),\n    (1, 300, 330),\n    (1, 360, 450)\n]\n# Wednesday: 9:00-10:00, 11:00-12:00, 12:30-16:00, 16:30-17:00\nbusy_intervals += [\n    (2, 0, 60),\n    (2, 120, 180),\n    (2, 150, 420),\n    (2, 450, 480)\n]\n# Thursday: 9:00-10:30, 11:00-12:30, 13:00-17:00\nbusy_intervals += [\n    (3, 0, 90),\n    (3, 120, 150),\n    (3, 240, 480)\n]\n\n# For any busy interval on the meeting day, the meeting must not overlap.\n# Overlap is avoided if: meeting_end <= busy_start OR meeting_start >= busy_end.\nfor (bd, b_start, b_end) in busy_intervals:\n    s.add(Implies(day == bd, Or(start + meeting_duration <= b_start, start >= b_end)))\n\n# Check for a solution\nif s.check() == sat:\n    m = s.model()\n    chosen_day = m[day].as_long()\n    chosen_start = m[start].as_long()\n    \n    # Convert chosen start time (minutes offset from 9:00) into an actual time.\n    # Work starts at 9:00 (i.e., 9*60 minutes).\n    actual_start = 9 * 60 + chosen_start\n    actual_end = actual_start + meeting_duration\n    \n    def format_time(total_minutes):\n        hours = total_minutes // 60\n        minutes = total_minutes % 60\n        return f\"{hours:02}:{minutes:02}\"\n    \n    day_map = {0: \"Monday\", 1: \"Tuesday\", 2: \"Wednesday\", 3: \"Thursday\"}\n    \n    meeting_time_str = f\"{format_time(actual_start)}:{format_time(actual_end)}\"\n    meeting_day_str = day_map[chosen_day]\n    \n    print(meeting_time_str, meeting_day_str)\nelse:\n    print(\"No suitable meeting time found.\")"
+}

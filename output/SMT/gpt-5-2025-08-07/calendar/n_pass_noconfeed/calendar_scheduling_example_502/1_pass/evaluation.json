@@ -1,0 +1,29 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "Monday\n{09:00:09:30}",
+    "pred": {
+        "day": "Monday",
+        "time_range": "{9:00:9:30}"
+    },
+    "gold": {
+        "day": "Monday",
+        "time_range": "{12:00:12:30}"
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": false,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 25.94485640525818,
+        "execution_time": 0.07615876197814941,
+        "constraint_eval_time": 3.361701965332031e-05,
+        "pred_extract_time": 0.5562036037445068,
+        "gold_extract_time": 0.0002906322479248047,
+        "total_tokens": 2106,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "# Requires: z3-solver (pip install z3-solver)\nfrom z3 import Optimize, Int, Or, And, sat\n\ndef to_minutes(h, m):\n    return h * 60 + m\n\ndef fmt_time(mm):\n    h = mm // 60\n    m = mm % 60\n    return f\"{h:02d}:{m:02d}\"\n\ndef main():\n    # Meeting parameters\n    day = \"Monday\"\n    work_start = to_minutes(9, 0)     # 09:00\n    work_end   = to_minutes(17, 0)    # 17:00\n    duration = 30                     # 30 minutes\n    prefer_before = to_minutes(12, 30) # Preference: avoid after 12:30\n\n    # Busy schedules (half-open intervals [start, end))\n    jack_busy = [\n        (to_minutes(9, 30),  to_minutes(10, 30)),\n        (to_minutes(11, 0),  to_minutes(11, 30)),\n        (to_minutes(12, 30), to_minutes(13, 0)),\n        (to_minutes(14, 0),  to_minutes(14, 30)),\n        (to_minutes(16, 0),  to_minutes(16, 30)),\n    ]\n    charlotte_busy = [\n        (to_minutes(9, 30),  to_minutes(10, 0)),\n        (to_minutes(10, 30), to_minutes(12, 0)),\n        (to_minutes(12, 30), to_minutes(13, 30)),\n        (to_minutes(14, 0),  to_minutes(16, 0)),\n    ]\n\n    # Z3 Optimize model\n    opt = Optimize()\n    start = Int(\"start\")\n\n    # Working hours and duration\n    opt.add(start >= work_start)\n    opt.add(start + duration <= work_end)\n\n    # No overlap with busy intervals\n    def no_overlap(intervals):\n        return [Or(start + duration <= s, start >= e) for (s, e) in intervals]\n\n    opt.add(no_overlap(jack_busy))\n    opt.add(no_overlap(charlotte_busy))\n\n    # Preference: avoid after 12:30 (soft); also minimize earliest start to break ties\n    penalty = Int(\"penalty\")\n    opt.add(penalty >= 0)\n    opt.add(penalty >= start - prefer_before)  # penalty = max(0, start - prefer_before)\n    opt.minimize(penalty)\n    opt.minimize(start)  # earliest possible time among equally good options\n\n    if opt.check() != sat:\n        print(\"No feasible meeting time found.\")\n        return\n\n    model = opt.model()\n    s = model[start].as_long()\n    e = s + duration\n\n    # Output\n    time_range = f\"{{{fmt_time(s)}:{fmt_time(e)}}}\"\n    print(day)\n    print(time_range)\n\nif __name__ == \"__main__\":\n    main()"
+}

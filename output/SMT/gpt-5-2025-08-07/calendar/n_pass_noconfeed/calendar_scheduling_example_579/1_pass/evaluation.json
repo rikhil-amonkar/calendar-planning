@@ -1,0 +1,28 @@
+{
+    "has_execution_error": true,
+    "has_no_plan": false,
+    "execution_output": null,
+    "pred": null,
+    "gold": {
+        "day": "Monday",
+        "time_range": "{12:30:13:00}"
+    },
+    "status": "Error",
+    "violated_constraint": {
+        "missing_output": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 30.65148901939392,
+        "execution_time": 0.0745992660522461,
+        "constraint_eval_time": 1.9073486328125e-06,
+        "pred_extract_time": 3.5762786865234375e-06,
+        "gold_extract_time": 2.2649765014648438e-05,
+        "total_tokens": 1688,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\n\ndef minutes(h, m):\n    return h * 60 + m\n\ndef fmt(mm):\n    h = mm // 60\n    m = mm % 60\n    return f\"{h:02d}:{m:02d}\"\n\n# Day of the week\nday = \"Monday\"\n\n# Meeting duration (minutes)\nDUR = 30\n\n# Work hours (on Monday): 09:00 to 17:00\nWORK_START = minutes(9, 0)\nWORK_END   = minutes(17, 0)\n\n# Participants' busy intervals on Monday (half-open [start, end))\nchristine_busy = [\n    (minutes(11, 0), minutes(11, 30)),\n    (minutes(15, 0), minutes(15, 30)),\n]\n\nhelen_busy = [\n    (minutes(9, 30),  minutes(10, 30)),\n    (minutes(11, 0),  minutes(11, 30)),\n    (minutes(12, 0),  minutes(12, 30)),\n    (minutes(13, 30), minutes(16, 0)),\n    (minutes(16, 30), minutes(17, 0)),\n]\n\n# Additional constraint: Helen cannot meet after 15:00 (meeting must end by 15:00)\nHELEN_END_DEADLINE = minutes(15, 0)\n\n# Z3 variables\nstart = Int('start')\nend = Int('end')\n\ns = Optimize()\n\n# Basic constraints\ns.add(end == start + DUR)\ns.add(start >= WORK_START)\ns.add(end <= WORK_END)\n# Align to 30-minute grid\ns.add(Mod(start, 30) == 0)\n\n# Helen's \"not after 15:00\" constraint\ns.add(end <= HELEN_END_DEADLINE)\n\n# No-overlap constraints\ndef no_overlap(st, en, bstart, bend):\n    # Meeting does not intersect [bstart, bend)\n    return Or(en <= bstart, st >= bend)\n\nfor bstart, bend in christine_busy:\n    s.add(no_overlap(start, end, bstart, bend))\n\nfor bstart, bend in helen_busy:\n    s.add(no_overlap(start, end, bstart, bend))\n\n# Prefer the earliest feasible meeting\ns.minimize(start)\n\nif s.check() == sat:\n    m = s.model()\n    st = m[start].as_long()\n    en = m[end].as_long()\n    print(day)\n    print(f\"{{{fmt(st)}:{fmt(en)}}}\")\nelse:\n    print(\"No feasible meeting time found.\")"
+}

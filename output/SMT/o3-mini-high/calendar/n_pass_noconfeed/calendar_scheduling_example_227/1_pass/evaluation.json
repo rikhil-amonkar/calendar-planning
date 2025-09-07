@@ -1,0 +1,29 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "Monday 15:00:15:30",
+    "pred": {
+        "day": "Monday",
+        "time_range": "{15:00:15:30}"
+    },
+    "gold": {
+        "day": "Monday",
+        "time_range": "{15:00:15:30}"
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 55.421459913253784,
+        "execution_time": 0.08005475997924805,
+        "constraint_eval_time": 2.7894973754882812e-05,
+        "pred_extract_time": 0.6418483257293701,
+        "gold_extract_time": 1.6689300537109375e-05,
+        "total_tokens": 2537,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\n\n# Meeting duration in minutes\nduration = 30\n\n# Define the meeting start time in minutes from midnight.\n# The work day is from 9:00 (540) to 17:00 (1020) so that the meeting must satisfy:\n# start >= 540 and start + duration <= 1020.\nstart = Int(\"start\")\n\ns = Solver()\ns.add(start >= 540, start + duration <= 1020)\n\n# David does not want to meet on Monday before 14:00 (14:00 = 840)\ns.add(start >= 840)\n\n# Helper function: For a busy interval [busy_start, busy_end], we must have either the meeting\n# finish on or before busy_start or start on or after busy_end.\ndef no_overlap(busy_start, busy_end):\n    return Or(start + duration <= busy_start, start >= busy_end)\n\n# Busy intervals are given in minutes (from midnight).\n\n# Natalie is free all day, so no constraints for her.\n\n# David's busy intervals:\n#   11:30 - 12:00  -> 11*60+30 = 690, 12*60 = 720\n#   14:30 - 15:00  -> 14*60+30 = 870, 15*60 = 900\ns.add(no_overlap(690, 720))\ns.add(no_overlap(870, 900))\n\n# Douglas's busy intervals:\n#   9:30 - 10:00   -> 9*60+30 = 570, 10*60 = 600\n#   11:30 - 12:00  -> 690, 720\n#   13:00 - 13:30  -> 13*60 = 780, 13*60+30 = 810\n#   14:30 - 15:00  -> 870, 900\ns.add(no_overlap(570, 600))\ns.add(no_overlap(690, 720))\ns.add(no_overlap(780, 810))\ns.add(no_overlap(870, 900))\n\n# Ralph's busy intervals:\n#   9:00 - 9:30   -> 540, 570\n#   10:00 - 11:00 -> 600, 660\n#   11:30 - 12:30 -> 690, 750\n#   13:30 - 15:00 -> 810, 900\n#   15:30 - 16:00 -> 930, 960\n#   16:30 - 17:00 -> 990, 1020\ns.add(no_overlap(540, 570))\ns.add(no_overlap(600, 660))\ns.add(no_overlap(690, 750))\ns.add(no_overlap(810, 900))\ns.add(no_overlap(930, 960))\ns.add(no_overlap(990, 1020))\n\n# Jordan's busy intervals:\n#   9:00 - 10:00   -> 540, 600\n#   12:00 - 12:30  -> 720, 750\n#   13:00 - 13:30  -> 780, 810\n#   14:30 - 15:00  -> 870, 900\n#   15:30 - 17:00  -> 930, 1020\ns.add(no_overlap(540, 600))\ns.add(no_overlap(720, 750))\ns.add(no_overlap(780, 810))\ns.add(no_overlap(870, 900))\ns.add(no_overlap(930, 1020))\n\n# Solve the constraints\nif s.check() == sat:\n    m = s.model()\n    meeting_start = m[start].as_long()\n    meeting_end = meeting_start + duration\n\n    # Function to convert minutes since midnight to \"HH:MM\" format.\n    def minutes_to_time(m):\n        hours = m // 60\n        minutes = m % 60\n        return f\"{hours:02d}:{minutes:02d}\"\n\n    start_str = minutes_to_time(meeting_start)\n    end_str = minutes_to_time(meeting_end)\n    \n    # The meeting is on Monday.\n    print(f\"Monday {start_str}:{end_str}\")\nelse:\n    print(\"No solution found\")"
+}

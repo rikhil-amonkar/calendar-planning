@@ -1,0 +1,1 @@
+opt.add(z3.And(1 <= day, day <= 4))

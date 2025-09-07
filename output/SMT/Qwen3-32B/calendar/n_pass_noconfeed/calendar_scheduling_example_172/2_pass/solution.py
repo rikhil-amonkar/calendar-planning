@@ -1,0 +1,1 @@
+print(f"{{{start_str}:{end_str}}} Monday")

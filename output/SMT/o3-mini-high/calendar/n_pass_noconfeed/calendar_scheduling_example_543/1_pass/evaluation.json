@@ -1,0 +1,29 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "Monday {13:30:14:30}",
+    "pred": {
+        "day": "Monday",
+        "time_range": "{13:30:14:30}"
+    },
+    "gold": {
+        "day": "Monday",
+        "time_range": "{13:30:14:30}"
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 47.746044635772705,
+        "execution_time": 0.06896829605102539,
+        "constraint_eval_time": 2.7894973754882812e-05,
+        "pred_extract_time": 0.5527164936065674,
+        "gold_extract_time": 1.7404556274414062e-05,
+        "total_tokens": 1771,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\n\ndef minutes_to_time(minutes):\n    hours = minutes // 60\n    mins = minutes % 60\n    return f\"{hours:02d}:{mins:02d}\"\n\ndef main():\n    meeting_duration = 60\n    work_start = 9 * 60    # 9:00 AM in minutes (540)\n    work_end = 17 * 60     # 17:00 in minutes (1020)\n\n    # Create a Z3 solver instance\n    solver = Solver()\n    start = Int('start')  # Meeting start time in minutes from midnight\n\n    # Constraint: Meeting must be within work hours.\n    solver.add(start >= work_start, start + meeting_duration <= work_end)\n    \n    # James's busy intervals on Monday:\n    # Busy from 11:30 (690) to 12:00 (720)\n    solver.add(Or(start + meeting_duration <= 690, start >= 720))\n    # Busy from 14:30 (870) to 15:00 (900)\n    solver.add(Or(start + meeting_duration <= 870, start >= 900))\n    \n    # John's busy intervals on Monday:\n    # Busy from 9:30 (570) to 11:00 (660)\n    solver.add(Or(start + meeting_duration <= 570, start >= 660))\n    # Busy from 11:30 (690) to 12:00 (720)\n    solver.add(Or(start + meeting_duration <= 690, start >= 720))\n    # Busy from 12:30 (750) to 13:30 (810)\n    solver.add(Or(start + meeting_duration <= 750, start >= 810))\n    # Busy from 14:30 (870) to 16:30 (990)\n    solver.add(Or(start + meeting_duration <= 870, start >= 990))\n    \n    if solver.check() == sat:\n        model = solver.model()\n        meeting_start = model[start].as_long()\n        meeting_end = meeting_start + meeting_duration\n        start_time = minutes_to_time(meeting_start)\n        end_time = minutes_to_time(meeting_end)\n        day = \"Monday\"\n        # Output in the format: Day {HH:MM:HH:MM}\n        print(f\"{day} {{{start_time}:{end_time}}}\")\n    else:\n        print(\"No solution found.\")\n\nif __name__ == '__main__':\n    main()"
+}

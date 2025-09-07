@@ -1,0 +1,29 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "11:00:11:30 Monday",
+    "pred": {
+        "day": "Monday",
+        "time_range": "{11:00:11:30}"
+    },
+    "gold": {
+        "day": "Monday",
+        "time_range": "{11:00:11:30}"
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 347.1799991130829,
+        "execution_time": 0.0778493881225586,
+        "constraint_eval_time": 5.5789947509765625e-05,
+        "pred_extract_time": 0.6585583686828613,
+        "gold_extract_time": 2.6226043701171875e-05,
+        "total_tokens": 18033,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\n\ndef main():\n    s = Int('s')\n    opt = Optimize()\n\n    # Work hours: 9:00 (540) to 17:00 (1020). Meeting is 30 min.\n    # So start time must be between 540 and 990 (inclusive)\n    opt.add(s >= 540)\n    opt.add(s <= 990)\n\n    # Cynthia's busy intervals\n    busy_cynthia = [(570, 630), (690, 720), (780, 810), (900, 960)]\n    for b_start, b_end in busy_cynthia:\n        opt.add(Or(s + 30 <= b_start, s >= b_end))\n\n    # Lauren's busy intervals\n    busy_lauren = [(540, 570), (630, 660), (690, 720), (780, 810), (840, 870), (900, 930), (960, 1020)]\n    for b_start, b_end in busy_lauren:\n        opt.add(Or(s + 30 <= b_start, s >= b_end))\n\n    # Robert's busy intervals\n    busy_robert = [(630, 660), (690, 720), (750, 810), (840, 960)]\n    for b_start, b_end in busy_robert:\n        opt.add(Or(s + 30 <= b_start, s >= b_end))\n\n    # Steven and Roy are free all day, no constraints\n\n    # Minimize the start time\n    opt.minimize(s)\n\n    if opt.check() == sat:\n        model = opt.model()\n        start_time = model[s].as_long()\n        end_time = start_time + 30\n        # Convert to HH:MM format\n        def to_time(mins):\n            hours = mins // 60\n            minutes = mins % 60\n            return f\"{hours:02d}:{minutes:02d}\"\n        start_str = to_time(start_time)\n        end_str = to_time(end_time)\n        print(f\"{start_str}:{end_str} Monday\")\n    else:\n        print(\"No solution found\")\n\nif __name__ == \"__main__\":\n    main()"
+}

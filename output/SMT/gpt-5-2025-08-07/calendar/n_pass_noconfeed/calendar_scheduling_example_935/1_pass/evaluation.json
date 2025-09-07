@@ -1,0 +1,29 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "Monday {09:00:09:30}",
+    "pred": {
+        "day": "Monday",
+        "time_range": "{9:00:9:30}"
+    },
+    "gold": {
+        "day": "Monday",
+        "time_range": "{9:00:9:30}"
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 47.7286102771759,
+        "execution_time": 0.08910250663757324,
+        "constraint_eval_time": 2.956390380859375e-05,
+        "pred_extract_time": 0.8315274715423584,
+        "gold_extract_time": 1.5497207641601562e-05,
+        "total_tokens": 4059,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\n\n# Meeting parameters\nDURATION = 30  # minutes\nWORK_START = 9 * 60\nWORK_END = 17 * 60\nDAY_MINUTES = WORK_END - WORK_START  # 480\n\n# Days mapping\ndays = [\"Monday\", \"Tuesday\", \"Wednesday\", \"Thursday\", \"Friday\"]\n\ndef hm_to_offset(h, m):\n    return (h * 60 + m) - WORK_START\n\ndef no_overlap(start, dur, bstart, bend):\n    # meeting [start, start+dur) does not overlap busy [bstart, bend)\n    return Or(start + dur <= bstart, start >= bend)\n\n# Busy schedules in minutes offset from 09:00 (i.e., 09:00 -> 0)\nTerry_busy = {\n    0: [(hm_to_offset(10,30), hm_to_offset(11,0)),\n        (hm_to_offset(12,30), hm_to_offset(14,0)),\n        (hm_to_offset(15,0),  hm_to_offset(17,0))],\n    1: [(hm_to_offset(9,30),  hm_to_offset(10,0)),\n        (hm_to_offset(10,30), hm_to_offset(11,0)),\n        (hm_to_offset(14,0),  hm_to_offset(14,30)),\n        (hm_to_offset(16,0),  hm_to_offset(16,30))],\n    2: [(hm_to_offset(9,30),  hm_to_offset(10,30)),\n        (hm_to_offset(11,0),  hm_to_offset(12,0)),\n        (hm_to_offset(13,0),  hm_to_offset(13,30)),\n        (hm_to_offset(15,0),  hm_to_offset(16,0)),\n        (hm_to_offset(16,30), hm_to_offset(17,0))],\n    3: [(hm_to_offset(9,30),  hm_to_offset(10,0)),\n        (hm_to_offset(12,0),  hm_to_offset(12,30)),\n        (hm_to_offset(13,0),  hm_to_offset(14,30)),\n        (hm_to_offset(16,0),  hm_to_offset(16,30))],\n    4: [(hm_to_offset(9,0),   hm_to_offset(11,30)),\n        (hm_to_offset(12,0),  hm_to_offset(12,30)),\n        (hm_to_offset(13,30), hm_to_offset(16,0)),\n        (hm_to_offset(16,30), hm_to_offset(17,0))],\n}\n\nFrances_busy = {\n    0: [(hm_to_offset(9,30),  hm_to_offset(11,0)),\n        (hm_to_offset(11,30), hm_to_offset(13,0)),\n        (hm_to_offset(14,0),  hm_to_offset(14,30)),\n        (hm_to_offset(15,0),  hm_to_offset(16,0))],\n    1: [(hm_to_offset(9,0),   hm_to_offset(9,30)),\n        (hm_to_offset(10,0),  hm_to_offset(10,30)),\n        (hm_to_offset(11,0),  hm_to_offset(12,0)),\n        (hm_to_offset(13,0),  hm_to_offset(14,30)),\n        (hm_to_offset(15,30), hm_to_offset(16,30))],\n    2: [(hm_to_offset(9,30),  hm_to_offset(10,0)),\n        (hm_to_offset(10,30), hm_to_offset(11,0)),\n        (hm_to_offset(11,30), hm_to_offset(16,0)),\n        (hm_to_offset(16,30), hm_to_offset(17,0))],\n    3: [(hm_to_offset(11,0),  hm_to_offset(12,30)),\n        (hm_to_offset(14,30), hm_to_offset(17,0))],\n    4: [(hm_to_offset(9,30),  hm_to_offset(10,30)),\n        (hm_to_offset(11,0),  hm_to_offset(12,30)),\n        (hm_to_offset(13,0),  hm_to_offset(16,0)),\n        (hm_to_offset(16,30), hm_to_offset(17,0))],\n}\n\n# Z3 variables\nday = Int(\"day\")        # 0..4 (Mon..Fri)\nstart = Int(\"start\")    # minutes offset from 09:00, 0..450\n\nopt = Optimize()\n\n# Domain constraints\nopt.add(day >= 0, day <= 4)\nopt.add(start >= 0, start + DURATION <= DAY_MINUTES)\n\n# Availability constraints per participant\nfor d in range(5):\n    for (bs, be) in Terry_busy[d]:\n        opt.add(Implies(day == d, no_overlap(start, DURATION, bs, be)))\n    for (bs, be) in Frances_busy[d]:\n        opt.add(Implies(day == d, no_overlap(start, DURATION, bs, be)))\n\n# Preferences:\n# 1) Avoid Tuesday if possible (soft): penalize choosing Tuesday heavily\n# 2) Earliest availability otherwise: earlier day first, then earlier time\ntuesday_penalty = If(day == 1, 1, 0)  # 1 if Tuesday, else 0\n\n# Cost = Large penalty for Tuesday + weekly position (day) + time within day\n# Weights ensure preference order: avoid Tuesday (dominant), then earliest day, then earliest time\ncost = tuesday_penalty * 10000 + day * 1440 + start\nopt.minimize(cost)\n\nif opt.check() != sat:\n    raise RuntimeError(\"No feasible schedule found\")\nm = opt.model()\n\nchosen_day = m[day].as_long()\nchosen_start = m[start].as_long()\nchosen_end = chosen_start + DURATION\n\n# Convert offsets back to HH:MM\ndef offset_to_hm(off):\n    total = WORK_START + off\n    hh = total // 60\n    mm = total % 60\n    return f\"{hh:02d}:{mm:02d}\"\n\nstart_str = offset_to_hm(chosen_start)\nend_str = offset_to_hm(chosen_end)\n\nprint(f\"{days[chosen_day]} {{{start_str}:{end_str}}}\")"
+}

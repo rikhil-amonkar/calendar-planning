@@ -1,0 +1,29 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "Friday 11:00:11:30",
+    "pred": {
+        "day": "Friday",
+        "time_range": "{11:00:11:30}"
+    },
+    "gold": {
+        "day": "Friday",
+        "time_range": "{11:00:11:30}"
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 465.37452936172485,
+        "execution_time": 0.08044862747192383,
+        "constraint_eval_time": 5.841255187988281e-05,
+        "pred_extract_time": 0.6125984191894531,
+        "gold_extract_time": 2.7894973754882812e-05,
+        "total_tokens": 24344,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\n\n# Define busy intervals for each participant and day\neugene_busy = {\n    0: [(120, 180), (270, 300), (330, 360), (420, 450)],  # Monday\n    2: [(0, 30), (120, 150), (180, 210), (270, 360)],    # Wednesday\n    3: [(30, 60), (120, 210)],                           # Thursday\n    4: [(90, 120), (180, 210), (240, 270)],              # Friday\n}\n\neric_busy = {\n    0: [(0, 480)],  # Monday\n    1: [(0, 480)],  # Tuesday\n    2: [(0, 150), (180, 300), (330, 450)],  # Wednesday\n    3: [(0, 480)],  # Thursday\n    4: [(0, 120), (150, 480)],  # Friday\n}\n\n# Create solver\ns = Solver()\n\n# Variables\nday = Int('day')\nstart = Int('start')\n\n# Constraints on day and start\ns.add(0 <= day, day <= 4)\ns.add(0 <= start, start <= 450)\ns.add(day != 2)  # Avoid Wednesday\n\n# For each day, add constraints for busy intervals\nfor d in range(5):\n    # Eugene's busy intervals on day d\n    for (b_start, b_end) in eugene_busy.get(d, []):\n        s.add(Implies(day == d, Or(start + 30 <= b_start, start >= b_end)))\n    # Eric's busy intervals on day d\n    for (b_start, b_end) in eric_busy.get(d, []):\n        s.add(Implies(day == d, Or(start + 30 <= b_start, start >= b_end)))\n\n# Check if solution exists\nif s.check() == sat:\n    m = s.model()\n    day_val = m[day].as_long()\n    start_val = m[start].as_long()\n    # Convert to day name\n    days = [\"Monday\", \"Tuesday\", \"Wednesday\", \"Thursday\", \"Friday\"]\n    day_name = days[day_val]\n    # Convert start_val to hours and minutes\n    start_h = 9 + start_val // 60\n    start_m = start_val % 60\n    end_val = start_val + 30\n    end_h = 9 + end_val // 60\n    end_m = end_val % 60\n    # Format time as HH:MM:HH:MM\n    time_str = f\"{start_h:02d}:{start_m:02d}:{end_h:02d}:{end_m:02d}\"\n    print(f\"{day_name} {time_str}\")\nelse:\n    print(\"No solution found\")"
+}

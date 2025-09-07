@@ -178,7 +178,7 @@ Examples:
             os.makedirs(f"output/{task}", exist_ok=True)
 
     def initialize_models(self):
-        """Initialize all requested models using proper kani pattern"""
+        """Initialize all requested models and check Z3 availability"""
         try:
             with open(self.args.api_key_file) as f:
                 self.keys = json.load(f)
@@ -188,6 +188,14 @@ Examples:
         except json.JSONDecodeError:
             logging.error(f"Invalid JSON in API key file {self.args.api_key_file}")
             sys.exit(1)
+
+        # Check if Z3 is needed and available
+        if any(task in self.args.task for task in ["calendar", "all"]):
+            try:
+                import z3
+                logging.info("Z3 solver is available")
+            except ImportError:
+                logging.warning("Z3 solver not found. Will attempt to install when needed.")
 
         self.engines = {}
         HF_CACHE_DIR = "/local-ssd/rma336/.cache/huggingface"
@@ -206,7 +214,7 @@ Examples:
                     self.engines[model_name] = OpenAIEngine(
                         api_key=self.keys.get("openai"),
                         model=model_name,
-                        # reasoning_effort="high"  # Reasoning effort for o3-mini --> o3-mini-high
+                        # reasoning_effort="high"  # Reasoning effort for o3-mini --> gpt-5-2025-08-07
                     )
 
                 else:
@@ -470,15 +478,29 @@ Examples:
         }
 
     def parse_calendar_output(self, output):
-        """Parse model output into same structured format as golden, with consistent ordering."""
+        """Parse SMT model output into structured format"""
         if not output:
             return None
         
-        # First try to extract structured answer using GPT-4.1-nano
+        # First try to extract from SMT output format
+        day_match = re.search(r'Day:\s*([A-Za-z]+)', output, re.IGNORECASE)
+        time_match = re.search(r'Time:\s*\{(\d{1,2}:\d{2}):(\d{1,2}:\d{2})\}', output, re.IGNORECASE)
+        
+        if day_match and time_match:
+            day = day_match.group(1)
+            start_time = self.remove_leading_zeros(time_match.group(1))
+            end_time = self.remove_leading_zeros(time_match.group(2))
+            time_output = f"{{{start_time}:{end_time}}}"
+            
+            return {
+                "day": day,
+                "time_range": time_output
+            }
+        
+        # Fallback to GPT extraction
         try:
             extracted = self.extract_answer(output, "calendar")
             if extracted and "day" in extracted and "start_time" in extracted and "end_time" in extracted:
-                # Remove leading zeros from times
                 start_time = self.remove_leading_zeros(extracted['start_time'])
                 end_time = self.remove_leading_zeros(extracted['end_time'])
                 time_output = f"{{{start_time}:{end_time}}}"
@@ -487,51 +509,57 @@ Examples:
                     "time_range": time_output
                 }
         except Exception as e:
-            logging.warning(f"Error extracting answer with GPT-4.1-nano: {e}")
-
-        # Fall back to original parsing if extraction fails
-        day_match = re.search(r'(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)', 
-                            output, re.IGNORECASE)
-        day = day_match.group(0) if day_match else None
+            logging.warning(f"Error extracting answer: {e}")
         
-        time_pattern = re.compile(r"\b\d{2}:\d{2}:\d{2}:\d{2}\b")
-        time_match = time_pattern.search(output)
-        if time_match:
-            time_str = time_match.group(0)
-            parts = time_str.strip("{}").split(":")
-            # Remove leading zeros from hour parts
-            parts[0] = str(int(parts[0]))
-            parts[2] = str(int(parts[2]))
-            time_output = f"{{{':'.join(parts)}}}"
-            return {
-                "day": day,
-                "time_range": time_output
-            }
         return None
 
     def evaluate_calendar(self, constraints, predicted_output):
-        """Evaluate calendar constraints using structured output format."""
-        if not predicted_output or "day" not in predicted_output or "time_range" not in predicted_output:
-            return False, {"missing_fields": True}
+        """Evaluate calendar constraints with SMT-specific handling"""
+        if not predicted_output:
+            return False, {"missing_output": True}
+        
+        # Handle Z3 errors specifically
+        if isinstance(predicted_output, dict):
+            if "z3_error" in predicted_output:
+                return False, {"z3_error": predicted_output["z3_error"]}
+            if "no_solution" in predicted_output:
+                return False, {"no_solution": True}
+            if "error" in predicted_output:
+                return False, {"execution_error": predicted_output["error"]}
+        
+        # Normal evaluation for successful outputs
+        if not isinstance(predicted_output, dict) or "day" not in predicted_output or "time_range" not in predicted_output:
+            return False, {"invalid_format": True}
 
         predicted_day = predicted_output["day"]
         predicted_time = predicted_output["time_range"]
         
         # Convert time strings to numerical values
         try:
-            start_parts = predicted_time.strip("{}").split(":")[0:2]
-            end_parts = predicted_time.strip("{}").split(":")[2:4]
+            time_parts = predicted_time.strip("{}").split(":")
+            if len(time_parts) == 4:  # HH:MM:HH:MM format
+                start_parts = time_parts[0:2]
+                end_parts = time_parts[2:4]
+            else:  # Assume HH:MM-HH:MM format
+                time_range = predicted_time.strip("{}")
+                if "-" in time_range:
+                    start_parts, end_parts = time_range.split("-")
+                    start_parts = start_parts.split(":")
+                    end_parts = end_parts.split(":")
+                else:
+                    return False, {"unparsable_time": predicted_time}
+            
             pred_start = float(start_parts[0]) + float(start_parts[1]) / 60
             pred_end = float(end_parts[0]) + float(end_parts[1]) / 60
         except (ValueError, IndexError):
-            return False, {"unparsable": True}
+            return False, {"unparsable_time": predicted_time}
 
         meeting_duration = constraints.get("meeting_duration", 0)
-        if (pred_end - pred_start) != meeting_duration:
-            return False, {"meeting_duration": meeting_duration}
+        if abs((pred_end - pred_start) - meeting_duration) > 0.01:  # Allow small floating point errors
+            return False, {"meeting_duration": f"expected {meeting_duration}, got {pred_end - pred_start:.2f}"}
 
         for disallowed_range in constraints.get("disallowed_ranges", []):
-            if disallowed_range["day"] == predicted_day:
+            if disallowed_range["day"].lower() == predicted_day.lower():
                 if (pred_start >= disallowed_range["start"] and pred_start < disallowed_range["end"]) or \
                         (pred_end > disallowed_range["start"] and pred_end <= disallowed_range["end"]) or \
                         (pred_start <= disallowed_range["start"] and pred_end >= disallowed_range["end"]):
@@ -542,11 +570,24 @@ Examples:
         if not violated_constraints:
             return ""
         
-        feedback = "\nYour solution violates the following constraints:\n"
-        if "meeting_duration" in violated_constraints:
+        feedback = "\nYour solution has the following issues:\n"
+        
+        if "z3_error" in violated_constraints:
+            feedback += f"- Z3 solver error: {violated_constraints['z3_error']}\n"
+            feedback += "- Please ensure your code properly imports and uses the z3 module\n"
+        elif "no_solution" in violated_constraints:
+            feedback += "- The constraints appear to be unsatisfiable (no solution found)\n"
+            feedback += "- Please check if the constraints are too restrictive\n"
+        elif "execution_error" in violated_constraints:
+            feedback += f"- Execution error: {violated_constraints['execution_error']}\n"
+        elif "meeting_duration" in violated_constraints:
             feedback += f"- The meeting duration must be exactly {violated_constraints['meeting_duration']} hours\n"
-        if "day" in violated_constraints and "start" in violated_constraints:
+        elif "day" in violated_constraints and "start" in violated_constraints:
             feedback += f"- The meeting time conflicts with an unavailable time slot on {violated_constraints['day']} from {violated_constraints['start']} to {violated_constraints['end']}\n"
+        elif "unparsable_time" in violated_constraints:
+            feedback += f"- Could not parse the time format: {violated_constraints['unparsable_time']}\n"
+            feedback += "- Please output time in format: {{HH:MM:HH:MM}} or Day: Monday, Time: {{14:30:15:30}}\n"
+        
         feedback += "\nPlease revise your solution to satisfy these constraints."
         return feedback
 
@@ -1283,51 +1324,56 @@ Return only the Python code:"""
             return ""
 
     def smart_extract_execution_result(self, execution_output, task):
-        """
-        Smart extraction of execution results using GPT
-        Handles various output formats including errors and no-plan scenarios
-        """
+        """Smart extraction of execution results with Z3-specific handling"""
+        if not execution_output:
+            return {"error": "No output"}
+        
+        # Check for Z3-specific errors
+        z3_errors = [
+            "ModuleNotFoundError: No module named 'z3'",
+            "z3.z3types.Z3Exception",
+            "NameError: name 'z3' is not defined",
+            "ImportError"
+        ]
+        
+        for error in z3_errors:
+            if error in execution_output:
+                return {"z3_error": "Z3 solver not properly installed or imported"}
+        
+        # Use the existing extraction logic but with Z3 awareness
         client = self.get_openai_client()
         if not client:
-            logging.warning("OpenAI client not available, falling back to basic extraction")
             return self.extract_answer_basic(execution_output, task)
         
         try:
-            # Determine the expected output format based on task
-            if task == "calendar":
-                expected_format = '{"day": "Monday", "start_time": "14:30", "end_time": "15:30"}'
-            elif task == "trip":
-                expected_format = '{"itinerary": [{"day_range": "Day 1-3", "place": "Venice"}, {"day_range": "Day 3-5", "place": "Vienna"}]}'
-            elif task == "meeting":
-                expected_format = '{"itinerary": [{"action": "meet", "person": "David", "start_time": "13:00", "end_time": "14:00"}]}'
-            elif task == "zebralogic":
-                expected_format = '{"solution": {"header": ["House", "Color", "Nationality", "Drink", "Smoke", "Pet"], "rows": [["1", "Yellow", "Norwegian", "Water", "Kools", "Fox"], ["2", "Blue", "Ukrainian", "Tea", "Chesterfield", "Horse"]]}}'
-            
-            prompt = f"""Extract structured data from the following execution output for a {task} planning task.
+            prompt = f"""Extract structured data from Z3 SMT solver output for a calendar scheduling task.
 
-Execution Output:
-{execution_output}
+    Execution Output:
+    {execution_output}
 
-Expected format: {expected_format}
+    Expected format for successful solution: 
+    Day: Monday, Time: {{14:30:15:30}}
 
-Instructions:
-1. If the output contains valid JSON in the expected format, extract and return it
-2. If the output indicates no plan was found or if the output is empty (like "", "No valid itinerary found", "No solution found", "UNSAT", "unsat", etc.), return {{"no_plan": "reason"}}
-3. If the output contains an execution error message (like "Error:", "Exception:", "Traceback:", etc.), return {{"error": "error_message"}}
-4. If the output is malformed or unclear, try to extract any useful information or return {{"error": "malformed_output"}}
+    Expected format for errors:
+    {{"error": "error_message"}}
 
-Return only valid JSON:"""
+    Instructions:
+    1. If the output contains a valid day and time in the format above, extract it as JSON
+    2. If the output contains Z3 errors or import issues, return {{"z3_error": "description"}}
+    3. If the output indicates no solution (unsat), return {{"no_solution": true}}
+    4. For other errors, return {{"error": "description"}}
+
+    Return only valid JSON:"""
 
             response = client.chat.completions.create(
                 model="gpt-4o-mini",
                 messages=[{"role": "user", "content": prompt}],
                 response_format={"type": "json_object"},
                 temperature=0,
-                max_tokens=2000
+                max_tokens=1000
             )
             
-            result = json.loads(response.choices[0].message.content)
-            return result
+            return json.loads(response.choices[0].message.content)
             
         except Exception as e:
             logging.error(f"Error in smart execution result extraction: {e}")
@@ -1581,20 +1627,51 @@ Return only valid JSON:"""
         
         return code
 
+    def execute_python_code(self, code_path):
+        """Execute Python code and return the output with proper Z3 handling"""
+        try:
+            # Install z3-solver if not present
+            try:
+                import z3
+            except ImportError:
+                subprocess.run([sys.executable, "-m", "pip", "install", "z3-solver"], 
+                            capture_output=True, check=True)
+            
+            result = subprocess.run([sys.executable, code_path], 
+                                capture_output=True, text=True, timeout=30)
+            
+            # Combine stdout and stderr for better error reporting
+            output = result.stdout.strip()
+            if result.stderr:
+                output += "\n" + result.stderr.strip()
+                
+            return output
+        except subprocess.TimeoutExpired:
+            return "Execution timeout"
+        except Exception as e:
+            return f"Execution error: {str(e)}"
+
     def run_generated_code(self, code, task):
-        """Execute generated Python code and return output"""
+        """Execute generated Python code and return output with Z3 support"""
         try:
             # Save the exact code to be executed
-            filename = f"generated_code_{task}_{current_time}.py"
+            filename = f"generated_code_{task}_{int(time.time())}.py"
             with open(filename, "w") as file:
                 file.write(code)
             
             start_time = time.time()
             output = self.execute_python_code(filename)
             exec_time = time.time() - start_time
+            
+            # Clean up the generated file
+            try:
+                os.remove(filename)
+            except:
+                pass
+                
             return output, None, exec_time
         except Exception as e:
-            exec_time = time.time() - start_time
+            exec_time = time.time() - start_time if 'start_time' in locals() else 0
             return None, str(e), exec_time
 
     def count_tokens(self, text):
@@ -1675,7 +1752,7 @@ Return only valid JSON:"""
 
     def save_output_files(self, task, example_id, pass_num, conversation, code, output, evaluation):
         """Save all output files for a given pass"""
-        output_dir = f"../output/SMT/DeepSeek-R1/{task}/n_pass_noconfeed/{example_id}/{pass_num}_pass"
+        output_dir = f"../output/SMT/Qwen3-32B/{task}/n_pass_noconfeed/{example_id}/{pass_num}_pass"
         os.makedirs(output_dir, exist_ok=True)
         
         # Save conversation
@@ -1733,7 +1810,7 @@ Return only valid JSON:"""
         
         # Scan all evaluation files to collect token data
         for task in ["calendar", "meeting", "trip", "zebralogic"]:
-            task_dir = f"../output/SMT/DeepSeek-R1/{task}/n_pass_noconfeed"
+            task_dir = f"../output/SMT/Qwen3-32B/{task}/n_pass_noconfeed"
             if not os.path.exists(task_dir):
                 continue
                 
@@ -1775,7 +1852,7 @@ Return only valid JSON:"""
                 print(f"  Reasoning percentage: {reasoning_percentage:.1f}%")
 
     async def process_example(self, task, example_id, example_data, model_name, semaphore):
-        """Process a single example with multiple passes if needed."""
+        """Process a single example with multiple passes if needed, with Z3-specific handling."""
         async with semaphore:
             config = self.task_config[task]
             
@@ -1803,7 +1880,47 @@ Return only valid JSON:"""
             suffix_with_headers = config["suffix"].replace("[GOLDEN_HEADERS_PLACEHOLDER]", header_placeholder)
             initial_prompt = config["prefix"] + example_data["prompt_0shot"] + suffix_with_headers         
             current_prompt = initial_prompt
-                
+            
+            # Z3 SPECIFIC: Ensure Z3 is available before processing SMT tasks
+            if task == "calendar":
+                try:
+                    # Test Z3 availability
+                    result = subprocess.run([sys.executable, "-c", "import z3; print('Z3 available')"], 
+                                        capture_output=True, text=True, timeout=10)
+                    if result.returncode != 0:
+                        logging.warning("Z3 not available, attempting to install...")
+                        try:
+                            install_result = subprocess.run([sys.executable, "-m", "pip", "install", "z3-solver"], 
+                                                        capture_output=True, text=True, timeout=120)
+                            if install_result.returncode == 0:
+                                logging.info("Z3 installed successfully")
+                            else:
+                                logging.error(f"Failed to install Z3: {install_result.stderr}")
+                                # Save error state and skip this example
+                                self.save_output_files(
+                                    task, example_id, 1, [], "", f"Z3 installation failed: {install_result.stderr}",
+                                    {
+                                        "error": "Z3 not available", 
+                                        "status": "Error",
+                                        "z3_installation_error": install_result.stderr
+                                    }
+                                )
+                                return
+                        except Exception as e:
+                            logging.error(f"Failed to install Z3: {e}")
+                            self.save_output_files(
+                                task, example_id, 1, [], "", f"Z3 installation failed: {e}",
+                                {"error": "Z3 installation failed", "status": "Error"}
+                            )
+                            return
+                except Exception as e:
+                    logging.error(f"Z3 check failed: {e}")
+                    self.save_output_files(
+                        task, example_id, 1, [], "", f"Z3 check failed: {e}",
+                        {"error": "Z3 check failed", "status": "Error"}
+                    )
+                    return
+                    
             for pass_num in range(1, self.args.max_passes + 1):
                 logging.info(f"Processing {task} example {example_id}, pass {pass_num} with {model_name}")
                 
@@ -1812,13 +1929,24 @@ Return only valid JSON:"""
                 response, api_time, full_token_count, reasoning_content, reasoning_tokens = await self.run_model(model_name, current_prompt)
                 if not response:
                     logging.error(f"Failed to get response for {example_id}")
+                    # Save error state
+                    self.save_output_files(
+                        task, example_id, pass_num,
+                        conversation, "", "No response from model",
+                        {
+                            "error": "No response from model",
+                            "status": "Error",
+                            "timing": {
+                                "api_call_time": api_time,
+                                "total_tokens": full_token_count
+                            }
+                        }
+                    )
                     return
 
-                # Inside process_example method, after getting the response:
                 logging.info(f"Full response received: {len(response)} characters")
-                logging.info(f"Reasoning content extracted: {len(reasoning_content)} characters")
                 if reasoning_content:
-                    logging.info(f"First 200 chars of reasoning: {reasoning_content[:200]}...")
+                    logging.info(f"Reasoning content extracted: {len(reasoning_content)} characters")
                 
                 # Add to conversation history
                 conversation.append({"role": "user", "content": current_prompt})
@@ -1841,43 +1969,77 @@ Return only valid JSON:"""
                         conversation, response, "",
                         {
                             "error": "No code found in model response",
+                            "status": "Error",
                             "timing": {
                                 "api_call_time": api_time,
-                                "token_count": full_token_count
-                            }
+                                "total_tokens": full_token_count,
+                                "reasoning_tokens": reasoning_tokens
+                            },
+                            "reasoning_content": reasoning_content
                         }
                     )
-                    return
+                    # Continue to next pass for refinement
+                    current_prompt = "Your previous response did not contain any executable Python code. Please generate a complete Python program that solves the problem."
+                    continue
                 
                 # Execute code with timing
                 output, error, exec_time = self.run_generated_code(code, task)
                 
-                # Check for execution errors
-                has_execution_error = (error is not None or 
-                                      "Error" in (output or "") or 
-                                      "Exception" in (output or "") or 
-                                      "Traceback" in (output or "") or 
-                                      not (output or "").strip())
+                # Z3 SPECIFIC: Enhanced error detection for SMT
+                has_execution_error = False
+                execution_output = output if not error else error
+                
+                # Check for various error types
+                if error is not None:
+                    has_execution_error = True
+                elif any(err in (output or "") for err in ["Error", "Exception", "Traceback", "ModuleNotFoundError", "ImportError"]):
+                    has_execution_error = True
+                elif not (output or "").strip():
+                    has_execution_error = True
+                elif "unsat" in (output or "").lower() and "sat" not in (output or "").lower():
+                    # Z3 specific: unsat means no solution found
+                    has_execution_error = False  # This is a valid SMT result, not an error
+                elif "z3" in (output or "").lower() and ("error" in (output or "").lower() or "exception" in (output or "").lower()):
+                    has_execution_error = True
                 
                 # Parse output and golden plan with timing using smart extraction
                 pred_extract_start = time.time()
-                if task == "zebralogic":
+                
+                # Z3 SPECIFIC: Use SMT-aware extraction for calendar tasks
+                if task == "calendar":
+                    # First try direct parsing from SMT output
+                    predicted_output = self.parse_calendar_output(output if not has_execution_error else None)
+                    
+                    # If that fails, try smart extraction
+                    if not predicted_output or ("day" not in predicted_output and "time_range" not in predicted_output):
+                        smart_result = self.smart_extract_execution_result(output if not has_execution_error else None, task)
+                        if isinstance(smart_result, dict) and "day" in smart_result and "start_time" in smart_result and "end_time" in smart_result:
+                            # Convert smart extraction to our format
+                            start_time = self.remove_leading_zeros(smart_result['start_time'])
+                            end_time = self.remove_leading_zeros(smart_result['end_time'])
+                            predicted_output = {
+                                "day": smart_result["day"],
+                                "time_range": f"{{{start_time}:{end_time}}}"
+                            }
+                elif task == "zebralogic":
                     predicted_output = config["parse_output"](output if not has_execution_error else None, golden_headers)
                 else:
                     # Use smart extraction for execution results
                     predicted_output = self.smart_extract_execution_result(output if not has_execution_error else None, task)
+                    
                 pred_extract_time = time.time() - pred_extract_start
                 
                 gold_extract_start = time.time()
                 golden_output = config["parse_golden"](example_data["golden_plan"])
                 gold_extract_time = time.time() - gold_extract_start
                 
-                # Task-specific plan detection (Moved after predicted_output is defined)
+                # Task-specific plan detection
                 if task == "calendar":
                     has_no_plan = (not has_execution_error and 
                                 (predicted_output is None or 
                                 "day" not in predicted_output or 
-                                "time_range" not in predicted_output))
+                                "time_range" not in predicted_output or
+                                (isinstance(predicted_output, dict) and "no_solution" in predicted_output)))
                 elif task == "zebralogic":
                     has_no_plan = (not has_execution_error and 
                                 (predicted_output is None or 
@@ -1893,7 +2055,15 @@ Return only valid JSON:"""
                 constraint_eval_time = time.time() - constraint_eval_start
                 
                 # Check if output matches golden solution
-                is_exact_match = predicted_output == golden_output
+                is_exact_match = False
+                try:
+                    if predicted_output and golden_output:
+                        # Convert to JSON string for comparison to handle object differences
+                        pred_str = json.dumps(predicted_output, sort_keys=True)
+                        gold_str = json.dumps(golden_output, sort_keys=True)
+                        is_exact_match = pred_str == gold_str
+                except:
+                    is_exact_match = predicted_output == golden_output
 
                 # Determine status
                 if has_execution_error:
@@ -1926,7 +2096,8 @@ Return only valid JSON:"""
                         "total_tokens": full_token_count,
                         "reasoning_tokens": reasoning_tokens
                     },
-                    "reasoning_content": reasoning_content  # Add the actual reasoning text
+                    "reasoning_content": reasoning_content,
+                    "generated_code": code  # Include the generated code for debugging
                 }
                 
                 # Save output files
@@ -1942,27 +2113,46 @@ Return only valid JSON:"""
                 
                 # Only continue refinement if:
                 # 1. There are code execution errors, OR
-                # 2. The code runs but produces no valid plan
-                if has_execution_error or has_no_plan:
+                # 2. The code runs but produces no valid plan, OR
+                # 3. Constraints are not satisfied
+                if has_execution_error or has_no_plan or not constraints_satisfied:
                     if has_execution_error:
                         feedback = [
                             f"Previous code execution failed with error:\n{error if error else output}",
                             f"\nGenerated code that caused the error:\n```python\n{code}\n```",
                             "\nPlease fix the code to eliminate execution errors."
                         ]
-                    else:  # has_no_plan
+                        if "z3" in (error or output or "").lower():
+                            feedback.append("\nZ3-specific tips:")
+                            feedback.append("- Ensure you import z3 correctly: `import z3`")
+                            feedback.append("- Use `z3.Int('varname')` to create integer variables")
+                            feedback.append("- Use `solver = z3.Solver()` and `solver.add(constraints)`")
+                            feedback.append("- Check satisfiability with `solver.check() == z3.sat`")
+                            
+                    elif has_no_plan:
                         feedback = [
                             "The generated code ran successfully but produced no valid plan.",
                             f"\nCode output:\n{output}",
                             f"\nGenerated code:\n```python\n{code}\n```",
                             "\nPlease revise the code to generate a valid plan that meets the requirements."
                         ]
+                    else:  # Constraints not satisfied
+                        feedback = [
+                            "The generated code produced a plan, but it violates constraints:",
+                            config["format_feedback"](violated),
+                            f"\nGenerated plan: {predicted_output}",
+                            f"\nExpected plan: {golden_output}",
+                            f"\nGenerated code:\n```python\n{code}\n```",
+                            "\nPlease revise the code to satisfy all constraints."
+                        ]
                     
                     current_prompt = "\n".join(feedback)
                 else:
-                    # Stop refinement since we have a valid solution (even if wrong)
-                    logging.info(f"Found executable solution for {task} example {example_id} in pass {pass_num}")
+                    # Stop refinement since we have a valid solution
+                    logging.info(f"Found valid solution for {task} example {example_id} in pass {pass_num}")
                     return
+
+            logging.info(f"Reached maximum passes ({self.args.max_passes}) for {task} example {example_id} without finding valid solution")
 
     async def run(self):
         """Main execution method with parallel processing"""

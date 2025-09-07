@@ -1,0 +1,29 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "Wednesday {09:30:10:00}",
+    "pred": {
+        "day": "Wednesday",
+        "time_range": "{9:30:10:00}"
+    },
+    "gold": {
+        "day": "Wednesday",
+        "time_range": "{9:30:10:00}"
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 64.74801564216614,
+        "execution_time": 0.0810086727142334,
+        "constraint_eval_time": 2.47955322265625e-05,
+        "pred_extract_time": 0.6421871185302734,
+        "gold_extract_time": 1.621246337890625e-05,
+        "total_tokens": 2939,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\n\ndef format_time(minutes):\n    # Convert minutes (offset from 9:00) to HH:MM format.\n    hour = 9 + minutes // 60\n    minute = minutes % 60\n    return f\"{hour:02d}:{minute:02d}\"\n\ndef main():\n    duration = 30  # Meeting duration in minutes\n\n    # Define variables:\n    # day: 0 = Monday, 1 = Tuesday, 2 = Wednesday\n    # start: meeting start time in minutes after 9:00 (so 0 means 09:00, 450 means 16:30)\n    day = Int('day')\n    start = Int('start')\n\n    # Use Optimize to minimize the day and time (earliest availability)\n    opt = Optimize()\n    \n    # Domain constraints: valid day and meeting must finish by 17:00.\n    opt.add(Or(day == 0, day == 1, day == 2))\n    opt.add(start >= 0, start <= 480 - duration)\n\n    # Helper: For a given busy interval, the meeting should not overlap it:\n    # Either the meeting ends at or before the busy interval starts,\n    # or the meeting starts at or after the busy interval ends.\n    def no_overlap(busy_start, busy_end):\n        return Or(start + duration <= busy_start, start >= busy_end)\n\n    # Helper to add busy constraints for a particular day value.\n    def add_busy_constraints(day_val, busy_list):\n        for (b_start, b_end) in busy_list:\n            opt.add(Implies(day == day_val, no_overlap(b_start, b_end)))\n    \n    # Existing schedules for Nancy:\n    # Monday (day==0)\n    nancy_monday = [(60, 90), (150, 210), (270, 300), (330, 390), (420, 480)]\n    add_busy_constraints(0, nancy_monday)\n    # Tuesday (day==1)\n    nancy_tuesday = [(30, 90), (120, 150), (180, 210), (240, 270), (390, 420)]\n    add_busy_constraints(1, nancy_tuesday)\n    # Wednesday (day==2)\n    nancy_wednesday = [(60, 150), (270, 420)]\n    add_busy_constraints(2, nancy_wednesday)\n    \n    # Existing schedules for Jose:\n    # Monday (day==0): busy the entire day.\n    jose_monday = [(0, 480)]\n    add_busy_constraints(0, jose_monday)\n    # Tuesday (day==1): busy the entire day.\n    jose_tuesday = [(0, 480)]\n    add_busy_constraints(1, jose_tuesday)\n    # Wednesday (day==2)\n    jose_wednesday = [(0, 30), (60, 210), (270, 330), (360, 480)]\n    add_busy_constraints(2, jose_wednesday)\n    \n    # Objective: schedule the meeting at the earliest availability.\n    # We minimize a weighted sum where the day is primary and the start time secondary.\n    opt.minimize(day * 10000 + start)\n    \n    if opt.check() == sat:\n        model = opt.model()\n        chosen_day = model[day].as_long()\n        chosen_start = model[start].as_long()\n        chosen_end = chosen_start + duration\n        \n        day_names = {0: \"Monday\", 1: \"Tuesday\", 2: \"Wednesday\"}\n        day_str = day_names[chosen_day]\n        start_str = format_time(chosen_start)\n        end_str = format_time(chosen_end)\n        \n        # Output in the format: Day {HH:MM:HH:MM}\n        print(f\"{day_str} {{{start_str}:{end_str}}}\")\n    else:\n        print(\"No solution found.\")\n\nif __name__ == \"__main__\":\n    main()"
+}

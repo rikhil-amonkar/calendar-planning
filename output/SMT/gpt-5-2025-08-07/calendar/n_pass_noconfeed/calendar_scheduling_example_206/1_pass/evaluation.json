@@ -1,0 +1,29 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{15:30:16:00}\nMonday",
+    "pred": {
+        "day": "Monday",
+        "time_range": "{15:30:16:00}"
+    },
+    "gold": {
+        "day": "Monday",
+        "time_range": "{15:30:16:00}"
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 49.611618518829346,
+        "execution_time": 0.07896018028259277,
+        "constraint_eval_time": 3.838539123535156e-05,
+        "pred_extract_time": 0.5148401260375977,
+        "gold_extract_time": 1.8835067749023438e-05,
+        "total_tokens": 2637,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "# Requires: z3-solver\nfrom z3 import Int, Or, Optimize, sat\n\ndef to_min(t):\n    h, m = map(int, t.split(\":\"))\n    return h * 60 + m\n\ndef to_hhmm(m):\n    h = m // 60\n    mm = m % 60\n    return f\"{h:02d}:{mm:02d}\"\n\ndef add_no_overlap(slv, start_var, end_var, busy_start, busy_end):\n    # Meeting [start_var, end_var) must not overlap busy [busy_start, busy_end)\n    slv.add(Or(end_var <= busy_start, start_var >= busy_end))\n\nday = \"Monday\"\nwork_start = to_min(\"09:00\")\nwork_end   = to_min(\"17:00\")\nduration = 30  # minutes\n\nS = Int(\"S\")\nE = Int(\"E\")\n\nopt = Optimize()\nopt.add(E == S + duration)\nopt.add(S >= work_start, E <= work_end)\n# Align to 30-minute grid\nopt.add(S % 30 == 0)\n\n# Participants' busy times (Monday)\nbusy_intervals = []\n# Shirley: 10:30-11:00, 12:00-12:30\nbusy_intervals += [(to_min(\"10:30\"), to_min(\"11:00\"))]\nbusy_intervals += [(to_min(\"12:00\"), to_min(\"12:30\"))]\n\n# Jacob: 9:00-9:30, 10:00-10:30, 11:00-11:30, 12:30-13:30, 14:30-15:00\nbusy_intervals += [(to_min(\"09:00\"), to_min(\"09:30\"))]\nbusy_intervals += [(to_min(\"10:00\"), to_min(\"10:30\"))]\nbusy_intervals += [(to_min(\"11:00\"), to_min(\"11:30\"))]\nbusy_intervals += [(to_min(\"12:30\"), to_min(\"13:30\"))]\nbusy_intervals += [(to_min(\"14:30\"), to_min(\"15:00\"))]\n\n# Stephen: 11:30-12:00, 12:30-13:00\nbusy_intervals += [(to_min(\"11:30\"), to_min(\"12:00\"))]\nbusy_intervals += [(to_min(\"12:30\"), to_min(\"13:00\"))]\n\n# Margaret: 9:00-9:30, 10:30-12:30, 13:00-13:30, 15:00-15:30, 16:30-17:00\nbusy_intervals += [(to_min(\"09:00\"), to_min(\"09:30\"))]\nbusy_intervals += [(to_min(\"10:30\"), to_min(\"12:30\"))]\nbusy_intervals += [(to_min(\"13:00\"), to_min(\"13:30\"))]\nbusy_intervals += [(to_min(\"15:00\"), to_min(\"15:30\"))]\nbusy_intervals += [(to_min(\"16:30\"), to_min(\"17:00\"))]\n\n# Mason: 9:00-10:00, 10:30-11:00, 11:30-12:30, 13:00-13:30, 14:00-14:30, 16:30-17:00\nbusy_intervals += [(to_min(\"09:00\"), to_min(\"10:00\"))]\nbusy_intervals += [(to_min(\"10:30\"), to_min(\"11:00\"))]\nbusy_intervals += [(to_min(\"11:30\"), to_min(\"12:30\"))]\nbusy_intervals += [(to_min(\"13:00\"), to_min(\"13:30\"))]\nbusy_intervals += [(to_min(\"14:00\"), to_min(\"14:30\"))]\nbusy_intervals += [(to_min(\"16:30\"), to_min(\"17:00\"))]\n\n# Add no-overlap constraints\nfor bs, be in busy_intervals:\n    add_no_overlap(opt, S, E, bs, be)\n\n# Preference: Margaret does not want to meet before 14:30\nopt.add(S >= to_min(\"14:30\"))\n\n# Find the earliest feasible slot satisfying all constraints\nopt.minimize(S)\n\nif opt.check() == sat:\n    m = opt.model()\n    s_val = m[S].as_long()\n    e_val = m[E].as_long()\n    print(f\"{{{to_hhmm(s_val)}:{to_hhmm(e_val)}}}\")\n    print(day)\nelse:\n    print(\"No feasible meeting time found.\")"
+}

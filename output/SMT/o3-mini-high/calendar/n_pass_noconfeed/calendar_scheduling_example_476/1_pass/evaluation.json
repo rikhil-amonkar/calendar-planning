@@ -1,0 +1,29 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "Monday: 13:30:14:00",
+    "pred": {
+        "day": "Monday",
+        "time_range": "{13:30:14:00}"
+    },
+    "gold": {
+        "day": "Monday",
+        "time_range": "{13:30:14:00}"
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 47.81727600097656,
+        "execution_time": 0.07910728454589844,
+        "constraint_eval_time": 3.3855438232421875e-05,
+        "pred_extract_time": 0.516669511795044,
+        "gold_extract_time": 1.9550323486328125e-05,
+        "total_tokens": 2477,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\n\ndef minutes_to_time(offset):\n    # Convert offset (in minutes from 9:00) to HH:MM format\n    total_minutes = 9 * 60 + offset\n    hour = total_minutes // 60\n    minute = total_minutes % 60\n    return f\"{hour:02d}:{minute:02d}\"\n\ndef main():\n    duration = 30\n    meeting_start = Int(\"meeting_start\")\n    solver = Solver()\n    \n    # Meeting must start and end during work hours (9:00 to 17:00).\n    # The meeting must start no later than 16:30 -> offset 450.\n    solver.add(meeting_start >= 0, meeting_start <= 450)\n    \n    # Roger's preference: do not meet before 12:30.\n    # 12:30 is 210 minutes after 9:00.\n    solver.add(meeting_start >= 210)\n    \n    # Busy intervals for each participant, measured as minutes from 9:00.\n    # Each tuple represents (busy_start, busy_end).\n    busy_intervals = [\n        # Kathleen: 14:30\u201315:30 -> [330, 390]\n        (330, 390),\n        # Carolyn: 12:00\u201312:30 and 13:00\u201313:30 -> [180, 210] and [240, 270]\n        (180, 210),\n        (240, 270),\n        # Cheryl: 9:00\u20139:30, 10:00\u201311:30, 12:30\u201313:30, 14:00\u201317:00 -> [0, 30], [60, 150], [210, 270], [300, 480]\n        (0, 30),\n        (60, 150),\n        (210, 270),\n        (300, 480),\n        # Virginia: 9:30\u201311:30, 12:00\u201312:30, 13:00\u201313:30, 14:30\u201315:30, 16:00\u201317:00 -> [30, 150], [180, 210], [240, 270], [330, 390], [420, 480]\n        (30, 150),\n        (180, 210),\n        (240, 270),\n        (330, 390),\n        (420, 480),\n        # Angela: 9:30\u201310:00, 10:30\u201311:30, 12:00\u201312:30, 13:00\u201313:30, 14:00\u201316:30 -> [30, 60], [90, 150], [180, 210], [240, 270], [300, 450]\n        (30, 60),\n        (90, 150),\n        (180, 210),\n        (240, 270),\n        (300, 450)\n    ]\n    \n    # For each busy interval, add constraint that the meeting does not overlap.\n    # That is, for each interval [b_start, b_end]:\n    # Either the meeting finishes on or before b_start, or starts on or after b_end.\n    for b_start, b_end in busy_intervals:\n        solver.add(Or(meeting_start + duration <= b_start, meeting_start >= b_end))\n    \n    if solver.check() == sat:\n        model = solver.model()\n        start_val = model[meeting_start].as_long()\n        start_str = minutes_to_time(start_val)\n        end_str = minutes_to_time(start_val + duration)\n        # Output format includes the day and time range in HH:MM:HH:MM format.\n        print(f\"Monday: {start_str}:{end_str}\")\n    else:\n        print(\"No valid meeting time found.\")\n\nif __name__ == \"__main__\":\n    main()"
+}

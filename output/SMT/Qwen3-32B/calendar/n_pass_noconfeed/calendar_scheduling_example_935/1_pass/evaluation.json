@@ -1,0 +1,29 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "09:00:09:30 Monday",
+    "pred": {
+        "day": "Monday",
+        "time_range": "{9:00:9:30}"
+    },
+    "gold": {
+        "day": "Monday",
+        "time_range": "{9:00:9:30}"
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 848.9225196838379,
+        "execution_time": 0.08320927619934082,
+        "constraint_eval_time": 6.651878356933594e-05,
+        "pred_extract_time": 0.7257213592529297,
+        "gold_extract_time": 3.4809112548828125e-05,
+        "total_tokens": 39246,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\n\n# Define busy intervals for Terry and Frances on each day (0=Monday, 1=Tuesday, ..., 4=Friday)\n# Each interval is (start, end) in minutes since 9:00\nterry_busy = {\n    0: [(90, 120), (210, 300), (360, 480)],  # Monday\n    1: [(30, 60), (90, 120), (300, 330), (420, 450)],  # Tuesday\n    2: [(30, 90), (120, 180), (210, 240), (360, 420), (450, 480)],  # Wednesday\n    3: [(30, 60), (180, 210), (240, 330), (420, 450)],  # Thursday\n    4: [(0, 150), (180, 210), (270, 420), (450, 480)],  # Friday\n}\n\nfrances_busy = {\n    0: [(30, 120), (150, 240), (300, 330), (360, 420)],  # Monday\n    1: [(0, 30), (60, 90), (120, 180), (240, 330), (390, 450)],  # Tuesday\n    2: [(30, 60), (90, 120), (150, 420), (450, 480)],  # Wednesday\n    3: [(120, 210), (330, 480)],  # Thursday\n    4: [(30, 90), (120, 210), (270, 390), (450, 480)],  # Friday\n}\n\n# Create variables\nday = Int('day')\nstart_time = Int('start_time')\n\nsolver = Optimize()\n\n# Constraints on day and start_time\nsolver.add(And(0 <= day, day <= 4))\nsolver.add(And(0 <= start_time, start_time <= 450))\n\n# For each day, add constraints that the meeting does not overlap with any busy intervals\nfor d in range(5):\n    # Combine Terry and Frances's busy intervals for the day\n    intervals = terry_busy[d] + frances_busy[d]\n    for (a, b) in intervals:\n        # If the day is d, then the meeting must not overlap with (a, b)\n        solver.add(Implies(day == d, Or(start_time + 30 <= a, start_time >= b)))\n\n# Define the priority for the day to prioritize non-Tuesday days first\n# Priority mapping: Monday (0) \u2192 0, Tuesday (1) \u2192 4, Wednesday (2) \u2192 1, Thursday (3) \u2192 2, Friday (4) \u2192 3\npriority = If(day == 0, 0,\n              If(day == 1, 4,\n                 If(day == 2, 1,\n                    If(day == 3, 2,\n                       If(day == 4, 3, 0)))))\n\nsolver.minimize(priority)\nsolver.minimize(start_time)\n\n# Check if solution exists\nif solver.check() == sat:\n    model = solver.model()\n    day_val = model[day].as_long()\n    start_time_val = model[start_time].as_long()\n    \n    # Convert day to name\n    days = [\"Monday\", \"Tuesday\", \"Wednesday\", \"Thursday\", \"Friday\"]\n    day_name = days[day_val]\n    \n    # Convert start_time to actual time\n    start_minutes = start_time_val\n    end_minutes = start_minutes + 30\n    \n    # Convert to hours and minutes\n    def format_time(minutes):\n        hours = 9 + (minutes // 60)\n        mins = minutes % 60\n        return f\"{hours:02d}:{mins:02d}\"\n    \n    start_str = format_time(start_minutes)\n    end_str = format_time(end_minutes)\n    \n    print(f\"{start_str}:{end_str} {day_name}\")\nelse:\n    print(\"No solution found.\")"
+}

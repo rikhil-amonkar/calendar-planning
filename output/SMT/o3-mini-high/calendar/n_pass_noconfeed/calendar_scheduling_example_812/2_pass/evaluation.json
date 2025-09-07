@@ -1,0 +1,29 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "Monday 10:00:10:30",
+    "pred": {
+        "day": "Monday",
+        "time_range": "{10:00:10:30}"
+    },
+    "gold": {
+        "day": "Monday",
+        "time_range": "{10:00:10:30}"
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 2,
+    "timing": {
+        "api_call_time": 56.496652364730835,
+        "execution_time": 0.08001136779785156,
+        "constraint_eval_time": 2.5987625122070312e-05,
+        "pred_extract_time": 0.7621283531188965,
+        "gold_extract_time": 1.8358230590820312e-05,
+        "total_tokens": 4327,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "#!/usr/bin/env python3\nfrom z3 import Optimize, Int, Or, Implies, sat, unknown\n\n# Meeting and working hours configuration\nmeeting_duration = 30    # in minutes\nwork_start = 0           # 9:00 corresponds to 0 minutes\nwork_end = 480           # 17:00 corresponds to 480 minutes after 9:00\n\n# Day indices: 0=Monday, 1=Tuesday, 2=Wednesday, 3=Thursday\nday_names = {0: \"Monday\", 1: \"Tuesday\", 2: \"Wednesday\", 3: \"Thursday\"}\n\n# Create SMT variables:\n# \"day\" represents the chosen day (0 to 3)\n# \"start\" represents the meeting start time in minutes offset from 9:00.\nday = Int('day')\nstart = Int('start')\n\n# Create the Z3 optimizer\nopt = Optimize()\n\n# Add basic domain constraints\nopt.add(day >= 0, day <= 3)\nopt.add(start >= work_start, start <= work_end - meeting_duration)\n\n# Define the participants' blocked intervals.\n# The times are offsets in minutes from 9:00.\nmary_blocks = {\n    0: [],  # Monday: no meetings\n    1: [(60, 90), (390, 420)],       # Tuesday: 10:00\u201310:30, 15:30\u201316:00\n    2: [(30, 60), (360, 390)],        # Wednesday: 9:30\u201310:00, 15:00\u201315:30\n    3: [(0, 60), (90, 150)]           # Thursday: 9:00\u201310:00, 10:30\u201311:30\n}\n\nalexis_blocks = {\n    0: [(0, 60), (90, 180), (210, 450)],                    # Monday: 9:00\u201310:00, 10:30\u201312:00, 12:30\u201316:30\n    1: [(0, 60), (90, 150), (180, 390), (420, 480)],         # Tuesday: 9:00\u201310:00, 10:30\u201311:30, 12:00\u201315:30, 16:00\u201317:00\n    2: [(0, 120), (150, 480)],                              # Wednesday: 9:00\u201311:00, 11:30\u201317:00\n    3: [(60, 180), (300, 330), (390, 420), (450, 480)]       # Thursday: 10:00\u201312:00, 14:00\u201314:30, 15:30\u201316:00, 16:30\u201317:00\n}\n\n# Helper function: returns the constraint that a meeting starting at s\n# (lasting meeting_duration minutes) does not overlap a blocked interval.\ndef no_overlap(s, block_start, block_end):\n    # The meeting must finish before the block starts OR start after the block ends.\n    return Or(s + meeting_duration <= block_start, s >= block_end)\n\n# Add constraints so that if the meeting is scheduled on day d it does not overlap Mary\u2019s blocks.\nfor d in range(4):\n    for (b_start, b_end) in mary_blocks[d]:\n        opt.add(Implies(day == d, no_overlap(start, b_start, b_end)))\n\n# Add constraints so that if the meeting is scheduled on day d it does not overlap Alexis\u2019s blocks.\nfor d in range(4):\n    for (b_start, b_end) in alexis_blocks[d]:\n        opt.add(Implies(day == d, no_overlap(start, b_start, b_end)))\n\n# Optimize for the earliest availability: first minimize day, then the start time.\nopt.minimize(day)\nopt.minimize(start)\n\n# Call check() once and use its result\nresult = opt.check()\nif result == sat or result == unknown:\n    model = opt.model()\n    chosen_day   = model[day].as_long()\n    chosen_start = model[start].as_long()\n\n    # Convert the chosen start time to actual clock time.\n    # 0 corresponds to 9:00. Thus, add 9 to the computed hours.\n    start_hour = 9 + (chosen_start // 60)\n    start_min  = chosen_start % 60\n\n    meeting_end = chosen_start + meeting_duration\n    end_hour = 9 + (meeting_end // 60)\n    end_min  = meeting_end % 60\n\n    # Format the meeting time as HH:MM:HH:MM and include the day.\n    time_str = f\"{start_hour:02d}:{start_min:02d}:{end_hour:02d}:{end_min:02d}\"\n    print(f\"{day_names[chosen_day]} {time_str}\")\nelse:\n    print(\"No valid meeting time found.\")"
+}

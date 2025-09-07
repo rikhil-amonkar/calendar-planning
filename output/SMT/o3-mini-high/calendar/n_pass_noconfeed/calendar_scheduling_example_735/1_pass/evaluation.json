@@ -1,0 +1,29 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "Monday 09:30:10:00",
+    "pred": {
+        "day": "Monday",
+        "time_range": "{9:30:10:00}"
+    },
+    "gold": {
+        "day": "Monday",
+        "time_range": "{9:30:10:00}"
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 70.023508310318,
+        "execution_time": 0.07134890556335449,
+        "constraint_eval_time": 2.8133392333984375e-05,
+        "pred_extract_time": 0.5753729343414307,
+        "gold_extract_time": 1.6450881958007812e-05,
+        "total_tokens": 4105,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import Optimize, Int, Or, Implies, sat\n\n# meeting duration in minutes\nmeeting_duration = 30\n\n# Create an Optimize instance (for optimization objectives)\nopt = Optimize()\n\n# Define variables:\n# 'day' is an integer representing the day: 0 for Monday, 1 for Tuesday, 2 for Wednesday.\n# 'start' is the meeting start time in minutes offset from 9:00.\nday = Int('day')\nstart = Int('start')\n\n# Working hours: meeting must start between 9:00 and 16:30 (i.e. start in [0, 450]).\nopt.add(Or(day == 0, day == 1, day == 2))\nopt.add(start >= 0, start <= 450)\n\n# Busy intervals are given relative to 9:00. For instance, 9:30 -> 30, 10:30 -> 90, etc.\n\n# Monday busy intervals (in minutes):\n# Ronald: 10:30-11:00 -> (90,120), 12:00-12:30 -> (180,210), 15:30-16:00 -> (390,420)\n# Amber: 9:00-9:30 -> (0,30), 10:00-10:30 -> (60,90), 11:30-12:00 -> (150,180),\n#        12:30-14:00 -> (210,300), 14:30-15:00 -> (330,360), 15:30-17:00 -> (390,480)\nmonday_busy = [\n    (0, 30),    # Amber\n    (60, 90),   # Amber\n    (90, 120),  # Ronald\n    (150, 180), # Amber\n    (180, 210), # Ronald\n    (210, 300), # Amber\n    (330, 360), # Amber\n    (390, 420), # Ronald\n    (390, 480)  # Amber\n]\n\n# Tuesday busy intervals:\n# Ronald: 9:00-9:30 -> (0,30), 12:00-12:30 -> (180,210), 15:30-16:30 -> (390,450)\n# Amber: 9:00-9:30 -> (0,30), 10:00-11:30 -> (60,150), 12:00-12:30 -> (180,210),\n#        13:30-15:30 -> (270,390), 16:30-17:00 -> (450,480)\ntuesday_busy = [\n    (0, 30),\n    (60, 150),\n    (180, 210),\n    (270, 390),\n    (390, 450),\n    (450, 480)\n]\n\n# Wednesday busy intervals:\n# Ronald: 9:30-10:30 -> (30,90), 11:00-12:00 -> (120,180), 12:30-13:00 -> (210,240),\n#         13:30-14:00 -> (270,300), 16:30-17:00 -> (450,480)\n# Amber: 9:00-9:30 -> (0,30), 10:00-10:30 -> (60,90), 11:00-13:30 -> (120,270),\n#        15:00-15:30 -> (360,390)\nwednesday_busy = [\n    (0, 30),    # Amber\n    (30, 90),   # Ronald\n    (60, 90),   # Amber\n    (120, 180), # Ronald\n    (120, 270), # Amber\n    (210, 240), # Ronald\n    (270, 300), # Ronald\n    (360, 390), # Amber\n    (450, 480)  # Ronald\n]\n\n# Helper function: no overlap between meeting [start, start+duration) and a busy interval (bs, be)\ndef non_overlap_constraint(meeting_start, busy_interval):\n    bs, be = busy_interval\n    # The meeting is either completely before the busy interval or completely after.\n    return Or(meeting_start + meeting_duration <= bs, meeting_start >= be)\n\n# For each day, if the meeting is scheduled on that day, then it must not overlap with any busy interval.\nfor (bs, be) in monday_busy:\n    opt.add(Implies(day == 0, non_overlap_constraint(start, (bs, be))))\nfor (bs, be) in tuesday_busy:\n    opt.add(Implies(day == 1, non_overlap_constraint(start, (bs, be))))\nfor (bs, be) in wednesday_busy:\n    opt.add(Implies(day == 2, non_overlap_constraint(start, (bs, be))))\n\n# To choose the earliest possible meeting time (by day and by start time), define an objective.\n# We use a combined metric: Monday (day=0) is the earliest, then Tuesday (day=1), then Wednesday (day=2).\n# Multiplying day by a large constant ensures that any available Monday time is better than Tuesday.\nobjective = day * 10000 + start\nopt.minimize(objective)\n\n# Check if a solution exists and output the meeting day and time in the format HH:MM:HH:MM.\nif opt.check() == sat:\n    model = opt.model()\n    chosen_day = model[day].as_long()\n    chosen_start = model[start].as_long()\n    chosen_end = chosen_start + meeting_duration\n    \n    # Convert from minutes offset to clock time (workday starts at 9:00).\n    start_hour = 9 + chosen_start // 60\n    start_min = chosen_start % 60\n    end_hour = 9 + chosen_end // 60\n    end_min = chosen_end % 60\n    \n    # Format the times with leading zeros.\n    start_time_str = f\"{start_hour:02d}:{start_min:02d}\"\n    end_time_str = f\"{end_hour:02d}:{end_min:02d}\"\n    \n    # Map the numeric day to the day name.\n    days = {0: \"Monday\", 1: \"Tuesday\", 2: \"Wednesday\"}\n    \n    # Output in the format \"Day HH:MM:HH:MM\"\n    print(f\"{days[chosen_day]} {start_time_str}:{end_time_str}\")\nelse:\n    print(\"No valid meeting time found.\")"
+}

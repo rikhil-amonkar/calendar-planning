@@ -1,0 +1,29 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "Tuesday {09:30:10:30}",
+    "pred": {
+        "day": "Tuesday",
+        "time_range": "{9:30:10:30}"
+    },
+    "gold": {
+        "day": "Tuesday",
+        "time_range": "{9:30:10:30}"
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 74.10226821899414,
+        "execution_time": 0.08630609512329102,
+        "constraint_eval_time": 2.6941299438476562e-05,
+        "pred_extract_time": 0.693511962890625,
+        "gold_extract_time": 1.71661376953125e-05,
+        "total_tokens": 3826,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import Int, Optimize, If, Implies, Or, sat\n\ndef format_time(minutes):\n    hour = minutes // 60\n    minute = minutes % 60\n    return f\"{hour:02d}:{minute:02d}\"\n\n# Meeting parameters\nmeeting_duration = 60  # in minutes\n\n# Decision variables:\n# day: 0 = Monday, 1 = Tuesday, 2 = Wednesday, 3 = Thursday, 4 = Friday\n# start: meeting start time in minutes from midnight.\nday = Int('day')\nstart = Int('start')\n\nopt = Optimize()\n\n# Working hours: meeting must be between 9:00 and 17:00.\n# Because the meeting lasts one hour, start must be in [9:00, 16:00]\nopt.add(day >= 0, day <= 4)\nopt.add(start >= 9 * 60, start <= 16 * 60)  # 9:00 is 540; 16:00 is 960.\n\n# Busy intervals for Brian and Julia.\n# Each tuple is (day, busy_start, busy_end) where times are in minutes from midnight.\nbusy_intervals = [\n    # Brian's busy intervals\n    (0, 9 * 60 + 30, 10 * 60),      # Monday: 9:30-10:00\n    (0, 12 * 60 + 30, 14 * 60 + 30),  # Monday: 12:30-14:30\n    (0, 15 * 60 + 30, 16 * 60),      # Monday: 15:30-16:00\n    (1, 9 * 60, 9 * 60 + 30),        # Tuesday: 9:00-9:30\n    (2, 12 * 60 + 30, 14 * 60),      # Wednesday: 12:30-14:00\n    (2, 16 * 60 + 30, 17 * 60),      # Wednesday: 16:30-17:00\n    (3, 11 * 60, 11 * 60 + 30),      # Thursday: 11:00-11:30\n    (3, 13 * 60, 13 * 60 + 30),      # Thursday: 13:00-13:30\n    (3, 16 * 60 + 30, 17 * 60),      # Thursday: 16:30-17:00\n    (4, 9 * 60 + 30, 10 * 60),       # Friday: 9:30-10:00\n    (4, 10 * 60 + 30, 11 * 60),      # Friday: 10:30-11:00\n    (4, 13 * 60, 13 * 60 + 30),      # Friday: 13:00-13:30\n    (4, 15 * 60, 16 * 60),           # Friday: 15:00-16:00\n    (4, 16 * 60 + 30, 17 * 60),      # Friday: 16:30-17:00\n\n    # Julia's busy intervals\n    (0, 9 * 60, 10 * 60),           # Monday: 9:00-10:00\n    (0, 11 * 60, 11 * 60 + 30),      # Monday: 11:00-11:30\n    (0, 12 * 60 + 30, 13 * 60),      # Monday: 12:30-13:00\n    (0, 15 * 60 + 30, 16 * 60),      # Monday: 15:30-16:00\n    (1, 13 * 60, 14 * 60),           # Tuesday: 13:00-14:00\n    (1, 16 * 60, 16 * 60 + 30),      # Tuesday: 16:00-16:30\n    (2, 9 * 60, 11 * 60 + 30),       # Wednesday: 9:00-11:30\n    (2, 12 * 60, 12 * 60 + 30),      # Wednesday: 12:00-12:30\n    (2, 13 * 60, 17 * 60),           # Wednesday: 13:00-17:00\n    (3, 9 * 60, 10 * 60 + 30),       # Thursday: 9:00-10:30\n    (3, 11 * 60, 17 * 60),           # Thursday: 11:00-17:00\n    (4, 9 * 60, 10 * 60),           # Friday: 9:00-10:00\n    (4, 10 * 60 + 30, 11 * 60 + 30),  # Friday: 10:30-11:30\n    (4, 12 * 60 + 30, 14 * 60),      # Friday: 12:30-14:00\n    (4, 14 * 60 + 30, 15 * 60),      # Friday: 14:30-15:00\n    (4, 15 * 60 + 30, 16 * 60)       # Friday: 15:30-16:00\n]\n\n# For each busy interval, if the meeting is scheduled on that day, ensure it does not overlap.\nfor busy_day, busy_start, busy_end in busy_intervals:\n    opt.add(Implies(day == busy_day, Or(start + meeting_duration <= busy_start,\n                                          start >= busy_end)))\n\n# Soft constraint: Brian would like to avoid meetings on Monday (day 0) if possible.\npenalty = If(day == 0, 1, 0)\nopt.minimize(penalty)\n\n# Also, schedule the meeting at the earliest availability (first by day, then by start time).\nopt.minimize(day * 10000 + start)\n\nif opt.check() == sat:\n    model = opt.model()\n    meeting_day_val = model[day].as_long()\n    meeting_start_val = model[start].as_long()\n    meeting_end_val = meeting_start_val + meeting_duration\n\n    day_names = {\n        0: \"Monday\",\n        1: \"Tuesday\",\n        2: \"Wednesday\",\n        3: \"Thursday\",\n        4: \"Friday\"\n    }\n    day_str = day_names[meeting_day_val]\n    start_str = format_time(meeting_start_val)\n    end_str = format_time(meeting_end_val)\n    \n    # Output in the format: Day {HH:MM:HH:MM}\n    print(f\"{day_str} {{{start_str}:{end_str}}}\")\nelse:\n    print(\"No solution found.\")"
+}

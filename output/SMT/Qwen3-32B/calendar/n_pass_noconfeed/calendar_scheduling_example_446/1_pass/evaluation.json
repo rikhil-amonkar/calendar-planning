@@ -1,0 +1,29 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "Monday 16:30:17:00",
+    "pred": {
+        "day": "Monday",
+        "time_range": "{16:30:17:00}"
+    },
+    "gold": {
+        "day": "Monday",
+        "time_range": "{16:30:17:00}"
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 364.16580724716187,
+        "execution_time": 0.07657027244567871,
+        "constraint_eval_time": 5.650520324707031e-05,
+        "pred_extract_time": 0.5996272563934326,
+        "gold_extract_time": 3.314018249511719e-05,
+        "total_tokens": 17168,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\n\ndef minutes_to_time(m):\n    hours = m // 60\n    mins = m % 60\n    return f\"{hours:02d}:{mins:02d}\"\n\nsolver = Solver()\n\nS = Int('S')\n\n# Work hours from 9:00 (540) to 17:00 (1020), meeting is 30 min\nsolver.add(S >= 540)\nsolver.add(S + 30 <= 1020)  # S <= 990\n\n# Megan's busy intervals\nmegan = [(540, 570), (600, 660), (720, 750)]\nfor start, end in megan:\n    solver.add(Or(S + 30 <= start, S >= end))\n\n# Christine's\nchristine = [(540, 570), (690, 720), (780, 840), (930, 990)]\nfor start, end in christine:\n    solver.add(Or(S + 30 <= start, S >= end))\n\n# Sara's\nsara = [(690, 720), (870, 900)]\nfor start, end in sara:\n    solver.add(Or(S + 30 <= start, S >= end))\n\n# Bruce's\nbruce = [(570, 600), (630, 720), (750, 870), (870, 900), (930, 990)]\nfor start, end in bruce:\n    solver.add(Or(S + 30 <= start, S >= end))\n\n# Kathryn's\nkathryn = [(600, 930), (960, 990)]\nfor start, end in kathryn:\n    solver.add(Or(S + 30 <= start, S >= end))\n\n# Billy's\nbilly = [(540, 570), (660, 690), (720, 840), (870, 930)]\nfor start, end in billy:\n    solver.add(Or(S + 30 <= start, S >= end))\n\n# Now check if solvable\nif solver.check() == sat:\n    model = solver.model()\n    start_time = model[S].as_long()\n    end_time = start_time + 30\n    start_str = minutes_to_time(start_time)\n    end_str = minutes_to_time(end_time)\n    print(f\"Monday {start_str}:{end_str}\")\nelse:\n    print(\"No solution found\")"
+}

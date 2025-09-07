@@ -1,0 +1,29 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "Monday 13:00:13:30",
+    "pred": {
+        "day": "Monday",
+        "time_range": "{13:00:13:30}"
+    },
+    "gold": {
+        "day": "Monday",
+        "time_range": "{15:00:15:30}"
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": false,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 530.4588408470154,
+        "execution_time": 0.08075952529907227,
+        "constraint_eval_time": 4.601478576660156e-05,
+        "pred_extract_time": 1.2338440418243408,
+        "gold_extract_time": 2.4080276489257812e-05,
+        "total_tokens": 28045,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import z3\n\nsolver = z3.Solver()\n\nday = z3.Int('day')\nstart_time = z3.Int('start_time')\n\n# Work hours from 9:00 to 17:00 => 0 to 450 minutes\nsolver.add(z3.And(day >= 0, day <= 2))\nsolver.add(z3.And(start_time >= 0, start_time <= 450))\n\n# Susan's preference: not on Tuesday (day 1)\nsolver.add(day != 1)\n\n# Sandra's Monday constraint: start_time <= 390\nsolver.add(z3.Implies(day == 0, start_time <= 390))\n\n# Susan's blocked intervals\nblocked_susan = {\n    0: [(210, 240), (270, 300)],  # Monday\n    1: [(150, 180)],              # Tuesday\n    2: [(30, 90), (300, 330), (390, 450)]  # Wednesday\n}\n\n# Sandra's blocked intervals\nblocked_sandra = {\n    0: [(0, 240), (300, 360), (420, 450)],  # Monday\n    1: [(0, 30), (90, 180), (210, 270), (300, 330), (420, 480)],  # Tuesday\n    2: [(0, 150), (180, 210), (240, 480)]  # Wednesday\n}\n\n# Add constraints for Susan's blocked intervals\nfor d in range(3):\n    for (b_start, b_end) in blocked_susan[d]:\n        solver.add(z3.Implies(day == d, z3.Or(start_time + 30 <= b_start, start_time >= b_end)))\n\n# Add constraints for Sandra's blocked intervals\nfor d in range(3):\n    for (b_start, b_end) in blocked_sandra[d]:\n        solver.add(z3.Implies(day == d, z3.Or(start_time + 30 <= b_start, start_time >= b_end)))\n\nif solver.check() == z3.sat:\n    model = solver.model()\n    day_val = model[day].as_long()\n    start_val = model[start_time].as_long()\n    end_val = start_val + 30\n\n    def to_time(mins):\n        hours = 9 + mins // 60\n        minutes = mins % 60\n        return f\"{hours:02d}:{minutes:02d}\"\n\n    day_names = [\"Monday\", \"Tuesday\", \"Wednesday\"]\n    time_str = f\"{to_time(start_val)}:{to_time(end_val)}\"\n    print(f\"{day_names[day_val]} {time_str}\")\nelse:\n    print(\"No solution found\")"
+}

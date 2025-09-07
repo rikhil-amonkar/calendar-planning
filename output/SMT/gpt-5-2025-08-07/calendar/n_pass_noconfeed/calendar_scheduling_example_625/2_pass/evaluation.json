@@ -1,0 +1,29 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "Tuesday {15:30:16:00}",
+    "pred": {
+        "day": "Tuesday",
+        "time_range": "{15:30:16:00}"
+    },
+    "gold": {
+        "day": "Tuesday",
+        "time_range": "{15:30:16:00}"
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 2,
+    "timing": {
+        "api_call_time": 32.78302478790283,
+        "execution_time": 0.07701945304870605,
+        "constraint_eval_time": 2.288818359375e-05,
+        "pred_extract_time": 0.7894816398620605,
+        "gold_extract_time": 1.6927719116210938e-05,
+        "total_tokens": 2259,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import z3\n\n# Meeting parameters\nDURATION = 30  # minutes\nWORK_START = 9 * 60   # 09:00 in minutes from midnight\nWORK_END   = 17 * 60  # 17:00 in minutes from midnight\nDAY_START_MINUTE = 0\nDAY_END_MINUTE = (WORK_END - WORK_START)  # 480 minutes (8 hours)\n\n# Create optimizer\nopt = z3.Optimize()\n\n# Decision variables\nday = z3.Int('day')      # 0 = Monday, 1 = Tuesday\nstart = z3.Int('start')  # minutes from 09:00 within the chosen day\n\n# Hard constraints: day domain and within working hours\nopt.add(z3.Or(day == 0, day == 1))\nopt.add(z3.And(start >= DAY_START_MINUTE, start + DURATION <= DAY_END_MINUTE))\n# Schedule in 30-minute increments\nopt.add(start % 30 == 0)\n\n# Helper to ensure no overlap with a busy interval [b_start, b_end)\ndef no_overlap(b_start, b_end):\n    return z3.Or(start + DURATION <= b_start, start >= b_end)\n\n# Harold's busy times relative to 09:00 for each day\nmonday_busy = [\n    (0, 60),    # 09:00 - 10:00\n    (90, 480),  # 10:30 - 17:00\n]\ntuesday_busy = [\n    (0, 30),    # 09:00 - 09:30\n    (90, 150),  # 10:30 - 11:30\n    (210, 270), # 12:30 - 13:30\n    (330, 390), # 14:30 - 15:30\n    (420, 480), # 16:00 - 17:00\n]\n\n# Enforce Harold's availability\nopt.add(z3.Implies(day == 0, z3.And(*[no_overlap(s, e) for (s, e) in monday_busy])))\nopt.add(z3.Implies(day == 1, z3.And(*[no_overlap(s, e) for (s, e) in tuesday_busy])))\n\n# Preferences (soft constraints):\n# 1) Prefer Tuesday over Monday\nopt.add_soft(day == 1, weight=10)\n# 2) Prefer on Tuesday at or after 14:30 (avoid Tuesday before 14:30)\nopt.add_soft(z3.Implies(day == 1, start >= 330), weight=5)\n\n# Tie-breaker: among equally preferred options, choose earliest time\nopt.minimize(start)\n\nif opt.check() == z3.sat:\n    m = opt.model()\n    d = m[day].as_long()\n    s = m[start].as_long()\n\n    # Convert to absolute minutes from midnight for formatting\n    abs_start = WORK_START + s\n    abs_end = abs_start + DURATION\n\n    def fmt(mm):\n        h = mm // 60\n        mi = mm % 60\n        return f\"{h:02d}:{mi:02d}\"\n\n    day_name = [\"Monday\", \"Tuesday\"][d]\n    print(f\"{day_name} {{{fmt(abs_start)}:{fmt(abs_end)}}}\")\nelse:\n    print(\"No feasible meeting time found.\")"
+}

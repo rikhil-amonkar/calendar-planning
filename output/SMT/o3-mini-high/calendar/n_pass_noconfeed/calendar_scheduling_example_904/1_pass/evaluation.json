@@ -1,0 +1,31 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "Tuesday 14:00:14:30",
+    "pred": {
+        "day": "Tuesday",
+        "time_range": "{14:30:14:30}"
+    },
+    "gold": {
+        "day": "Tuesday",
+        "time_range": "{14:00:14:30}"
+    },
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "meeting_duration": "expected 0.5, got 0.00"
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 83.32409739494324,
+        "execution_time": 0.08675074577331543,
+        "constraint_eval_time": 3.719329833984375e-05,
+        "pred_extract_time": 0.5465691089630127,
+        "gold_extract_time": 1.4781951904296875e-05,
+        "total_tokens": 3968,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\n\n# Define our variables:\n# day: 1 = Monday, 2 = Tuesday, 3 = Wednesday, 4 = Thursday, 5 = Friday\n# start: meeting start time in minutes from 9:00, meeting duration is fixed to 30 minutes.\nday = Int('day')\nstart = Int('start')\nduration = 30\n\nsolver = Solver()\n\n# Working hours constraints:\n# Meeting must start at or after 9:00 (0 minutes) and finish by 17:00 (480 minutes after 9:00)\nsolver.add(start >= 0, start + duration <= 480)\nsolver.add(And(day >= 1, day <= 5))\n\n# Preference constraints:\n# Daniel would rather not meet on Wednesday (3) or Thursday (4)\nsolver.add(day != 3, day != 4)\n\n# Bradley does not want to meet on Monday (1) or Friday (5)\nsolver.add(day != 1, day != 5)\n# Bradley does not want Tuesday meetings before 12:00 (i.e. 3 hours after 9:00 => start >= 180 when day == 2)\nsolver.add(Implies(day == 2, start >= 180))\n\n# Busy time intervals for Daniel and Bradley are expressed in minutes from 9:00.\n# Each tuple is (day, busy_start, busy_end).\nbusy_intervals_daniel = [\n    # Monday\n    (1, 30, 90),    # 9:30-10:30\n    (1, 180, 210),  # 12:00-12:30\n    (1, 240, 300),  # 13:00-14:00\n    (1, 330, 360),  # 14:30-15:00\n    (1, 390, 420),  # 15:30-16:00\n    # Tuesday\n    (2, 120, 180),  # 11:00-12:00\n    (2, 240, 270),  # 13:00-13:30\n    (2, 390, 420),  # 15:30-16:00\n    (2, 450, 480),  # 16:30-17:00\n    # Wednesday\n    (3, 0, 60),     # 9:00-10:00\n    (3, 300, 330),  # 14:00-14:30\n    # Thursday\n    (4, 90, 120),   # 10:30-11:00\n    (4, 180, 240),  # 12:00-13:00\n    (4, 330, 360),  # 14:30-15:00\n    (4, 390, 420),  # 15:30-16:00\n    # Friday\n    (5, 0, 30),     # 9:00-9:30\n    (5, 150, 180),  # 11:30-12:00\n    (5, 240, 270),  # 13:00-13:30\n    (5, 450, 480)   # 16:30-17:00\n]\n\nbusy_intervals_bradley = [\n    # Monday\n    (1, 30, 120),   # 9:30-11:00\n    (1, 90, 120),   # 11:30-12:00\n    (1, 150, 180),  # 12:30-13:00\n    (1, 300, 360),  # 14:00-15:00\n    # Tuesday\n    (2, 90, 120),   # 10:30-11:00\n    (2, 180, 240),  # 12:00-13:00\n    (2, 270, 300),  # 13:30-14:00\n    (2, 390, 450),  # 15:30-16:30\n    # Wednesday\n    (3, 0, 60),     # 9:00-10:00\n    (3, 120, 240),  # 11:00-13:00\n    (3, 270, 300),  # 13:30-14:00\n    (3, 330, 480),  # 14:30-17:00\n    # Thursday\n    (4, 0, 210),    # 9:00-12:30\n    (4, 270, 300),  # 13:30-14:00\n    (4, 330, 360),  # 14:30-15:00\n    (4, 390, 450),  # 15:30-16:30\n    # Friday\n    (5, 0, 30),     # 9:00-9:30\n    (5, 60, 210),   # 10:00-12:30\n    (5, 240, 270),  # 13:00-13:30\n    (5, 300, 330),  # 14:00-14:30\n    (5, 390, 450)   # 15:30-16:30\n]\n\n# For each busy interval, if the meeting is scheduled on that day, then the meeting must not overlap the busy interval.\nfor (d, b_start, b_end) in busy_intervals_daniel:\n    # If meeting is on day d, then either the meeting ends before the busy interval starts,\n    # or starts after the busy interval ends.\n    solver.add(Implies(day == d, Or(start + duration <= b_start, start >= b_end)))\n\nfor (d, b_start, b_end) in busy_intervals_bradley:\n    solver.add(Implies(day == d, Or(start + duration <= b_start, start >= b_end)))\n\n# Find a solution.\nif solver.check() == sat:\n    model = solver.model()\n    meeting_day = model[day].as_long()\n    meeting_start = model[start].as_long()\n    meeting_end = meeting_start + duration\n\n    # Map day number to day name.\n    day_names = {1: \"Monday\", 2: \"Tuesday\", 3: \"Wednesday\", 4: \"Thursday\", 5: \"Friday\"}\n    day_str = day_names[meeting_day]\n\n    # Convert meeting start/end from minutes (offset from 9:00) to HH:MM format.\n    def to_hhmm(minutes_offset):\n        total_minutes = 9 * 60 + minutes_offset  # 9:00 is the baseline.\n        hours = total_minutes // 60\n        minutes = total_minutes % 60\n        return f\"{hours:02d}:{minutes:02d}\"\n\n    start_str = to_hhmm(meeting_start)\n    end_str = to_hhmm(meeting_end)\n\n    # Output the meeting time and day in the format \"Day HH:MM:HH:MM\"\n    print(f\"{day_str} {start_str}:{end_str}\")\nelse:\n    print(\"No meeting time found.\")"
+}

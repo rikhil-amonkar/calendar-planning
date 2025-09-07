@@ -1,0 +1,29 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "Monday\n{12:12:12:42}",
+    "pred": {
+        "day": "Monday",
+        "time_range": "{12:12:12:42}"
+    },
+    "gold": {
+        "day": "Monday",
+        "time_range": "{12:00:12:30}"
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": false,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 52.29638409614563,
+        "execution_time": 0.0855402946472168,
+        "constraint_eval_time": 3.552436828613281e-05,
+        "pred_extract_time": 0.6142542362213135,
+        "gold_extract_time": 1.8835067749023438e-05,
+        "total_tokens": 2045,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\n\ndef main():\n    # Meeting duration in minutes\n    duration = 30\n\n    # Working hours on Monday: 9:00 (offset 0) to 17:00 (offset 480).\n    # Meeting must finish by 17:00, so start + duration <= 480.\n    start = Int('start')  # minutes offset from 9:00\n\n    solver = Solver()\n    solver.add(start >= 0, start + duration <= 480)\n\n    # Michael's busy intervals (converted relative to 9:00)\n    # Busy: 9:30-10:30 => [30, 90]\n    solver.add(Or(start + duration <= 30, start >= 90))\n    # Busy: 15:00-15:30 => [360, 390]\n    solver.add(Or(start + duration <= 360, start >= 390))\n    # Busy: 16:00-16:30 => [420, 450]\n    solver.add(Or(start + duration <= 420, start >= 450))\n\n    # Arthur's busy intervals (converted relative to 9:00)\n    # Busy: 9:00-12:00 => [0, 180]\n    solver.add(Or(start + duration <= 0, start >= 180))\n    # Busy: 13:00-15:00 => [240, 360]\n    solver.add(Or(start + duration <= 240, start >= 360))\n    # Busy: 15:30-16:00 => [390, 420]\n    solver.add(Or(start + duration <= 390, start >= 420))\n    # Busy: 16:30-17:00 => [450, 480]\n    solver.add(Or(start + duration <= 450, start >= 480))\n\n    if solver.check() == sat:\n        model = solver.model()\n        meeting_start_offset = model.evaluate(start).as_long()  # minutes past 9:00\n        # Convert offset into absolute time (minutes since midnight)\n        meeting_start_total = 9 * 60 + meeting_start_offset\n        meeting_end_total = meeting_start_total + duration\n\n        # Convert minutes to HH:MM format\n        start_hour = meeting_start_total // 60\n        start_min = meeting_start_total % 60\n        end_hour = meeting_end_total // 60\n        end_min = meeting_end_total % 60\n\n        start_time = f\"{start_hour:02d}:{start_min:02d}\"\n        end_time = f\"{end_hour:02d}:{end_min:02d}\"\n\n        # Output the day of the week and the meeting time range\n        print(\"Monday\")\n        print(\"{\" + start_time + \":\" + end_time + \"}\")\n    else:\n        print(\"No feasible meeting time found.\")\n\nif __name__ == \"__main__\":\n    main()"
+}

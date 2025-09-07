@@ -1,0 +1,29 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "12:30:13:00 Wednesday",
+    "pred": {
+        "day": "Wednesday",
+        "time_range": "{12:30:13:00}"
+    },
+    "gold": {
+        "day": "Monday",
+        "time_range": "{13:00:13:30}"
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": false,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 476.0433328151703,
+        "execution_time": 0.07843518257141113,
+        "constraint_eval_time": 6.365776062011719e-05,
+        "pred_extract_time": 0.5533478260040283,
+        "gold_extract_time": 3.266334533691406e-05,
+        "total_tokens": 22925,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\n\ns = Solver()\n\nday = Int('day')\nstart = Int('start')\n\ns.add(Or(day == 0, day == 1, day == 2))\ns.add(And(0 <= start, start <= 450))\n\n# John's constraint on Monday (14:30 is 330 minutes after 9:00)\ns.add(Implies(day == 0, start + 30 <= 330))\n\n# Jennifer's busy intervals\n# Monday: 9:00-11:00 (0-120), 11:30-13:00 (150-240), 13:30-14:30 (270-330), 15:00-17:00 (360-480)\nmon_busy = [(0, 120), (150, 240), (270, 330), (360, 480)]\nfor a, b in mon_busy:\n    s.add(Implies(day == 0, Or(start + 30 <= a, start >= b)))\n\n# Tuesday: 9:00-11:30 (0-150), 12:00-17:00 (180-480)\ntue_busy = [(0, 150), (180, 480)]\nfor a, b in tue_busy:\n    s.add(Implies(day == 1, Or(start + 30 <= a, start >= b)))\n\n# Wednesday: 9:00-11:30 (0-150), 12:00-12:30 (180-210), 13:00-14:00 (240-300), 14:30-16:00 (330-420), 16:30-17:00 (450-480)\nwed_busy = [(0, 150), (180, 210), (240, 300), (330, 420), (450, 480)]\nfor a, b in wed_busy:\n    s.add(Implies(day == 2, Or(start + 30 <= a, start >= b)))\n\nif s.check() == sat:\n    model = s.model()\n    d = model[day].as_long()\n    st = model[start].as_long()\n    days = ['Monday', 'Tuesday', 'Wednesday']\n    day_name = days[d]\n    start_h = 9 + st // 60\n    start_m = st % 60\n    end_h = 9 + (st + 30) // 60\n    end_m = (st + 30) % 60\n    time_str = f\"{start_h:02d}:{start_m:02d}:{end_h:02d}:{end_m:02d}\"\n    print(f\"{time_str} {day_name}\")\nelse:\n    print(\"No solution\")"
+}

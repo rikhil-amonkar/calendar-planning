@@ -1,0 +1,29 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "Monday\n{16:00:16:30}\n16:00:16:30",
+    "pred": {
+        "day": "Monday",
+        "time_range": "{16:00:16:30}"
+    },
+    "gold": {
+        "day": "Monday",
+        "time_range": "{16:00:16:30}"
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 40.81234264373779,
+        "execution_time": 0.08090066909790039,
+        "constraint_eval_time": 2.5510787963867188e-05,
+        "pred_extract_time": 0.49251604080200195,
+        "gold_extract_time": 1.430511474609375e-05,
+        "total_tokens": 1994,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\n\ndef minutes(h, m=0):\n    return h * 60 + m\n\ndef time_str(mins):\n    return f\"{mins//60:02d}:{mins%60:02d}\"\n\n# Meeting details\nday = \"Monday\"\nwork_start = minutes(9, 0)\nwork_end = minutes(17, 0)\nduration = 30  # minutes\n\n# Busy schedules (as [start, end) intervals in minutes from 00:00)\nadam_busy = [\n    (minutes(14, 0), minutes(15, 0)),\n]\n\njohn_busy = [\n    (minutes(13, 0), minutes(13, 30)),\n    (minutes(14, 0), minutes(14, 30)),\n    (minutes(15, 30), minutes(16, 0)),\n    (minutes(16, 30), minutes(17, 0)),\n]\n\nstephanie_busy = [\n    (minutes(9, 30), minutes(10, 0)),\n    (minutes(10, 30), minutes(11, 0)),\n    (minutes(11, 30), minutes(16, 0)),\n    (minutes(16, 30), minutes(17, 0)),\n]\n\nanna_busy = [\n    (minutes(9, 30), minutes(10, 0)),\n    (minutes(12, 0), minutes(12, 30)),\n    (minutes(13, 0), minutes(15, 30)),\n    (minutes(16, 30), minutes(17, 0)),\n]\n\n# Preference: Anna would rather not meet on Monday before 14:30 (treat as constraint)\nanna_pref_start = minutes(14, 30)\n\n# Z3 variables\nstart = Int('start')\nend = Int('end')\n\ns = Solver()\n\n# Meeting duration and bounds within work hours\ns.add(end == start + duration)\ns.add(start >= work_start, end <= work_end)\n\n# Anna's preference constraint\ns.add(start >= anna_pref_start)\n\ndef add_no_overlap(busy_list):\n    for (b_start, b_end) in busy_list:\n        # No overlap: [start, end) does not intersect [b_start, b_end)\n        s.add(Or(end <= b_start, start >= b_end))\n\n# Apply no-overlap constraints for each participant\nadd_no_overlap(adam_busy)\nadd_no_overlap(john_busy)\nadd_no_overlap(stephanie_busy)\nadd_no_overlap(anna_busy)\n\nif s.check() == sat:\n    m = s.model()\n    start_val = m[start].as_long()\n    end_val = m[end].as_long()\n    # Output includes both the day and the time range with braces, and the HH:MM:HH:MM format\n    print(day)\n    print(f\"{{{time_str(start_val)}:{time_str(end_val)}}}\")\n    print(f\"{time_str(start_val)}:{time_str(end_val)}\")\nelse:\n    print(\"No solution found.\")"
+}

@@ -1,0 +1,29 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "Monday\n{09:00:09:30}",
+    "pred": {
+        "day": "Monday",
+        "time_range": "{9:00:9:30}"
+    },
+    "gold": {
+        "day": "Monday",
+        "time_range": "{9:00:9:30}"
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 33.193243980407715,
+        "execution_time": 0.07862448692321777,
+        "constraint_eval_time": 2.1457672119140625e-05,
+        "pred_extract_time": 0.704439640045166,
+        "gold_extract_time": 1.7404556274414062e-05,
+        "total_tokens": 2615,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import Int, Or, And, Optimize, sat\n\ndef minutes_since(day_start_h, day_start_m, h, m):\n    return (h - day_start_h) * 60 + (m - day_start_m)\n\ndef format_time(day_start_h, total_minutes):\n    h = day_start_h + total_minutes // 60\n    m = total_minutes % 60\n    return f\"{h:02d}:{m:02d}\"\n\ndef main():\n    # Meeting parameters\n    day = \"Monday\"\n    work_start_h, work_start_m = 9, 0\n    work_end_h, work_end_m = 17, 0\n    meeting_duration = 30  # minutes\n\n    # Convert work hours to minutes from day start\n    work_start = minutes_since(work_start_h, work_start_m, work_start_h, work_start_m)  # 0\n    work_end = minutes_since(work_start_h, work_start_m, work_end_h, work_end_m)        # 480\n\n    # Busy schedules (start and end are in absolute HH:MM of the same day)\n    # Adam's busy times\n    adam_busy_abs = [\n        (9, 30, 10, 0),\n        (12, 30, 13, 0),\n        (14, 30, 15, 0),\n        (16, 30, 17, 0),\n    ]\n    # Roy's busy times\n    roy_busy_abs = [\n        (10, 0, 11, 0),\n        (11, 30, 13, 0),\n        (13, 30, 14, 30),\n        (16, 30, 17, 0),\n    ]\n\n    # Convert busy times to minutes since work_start\n    def to_minutes_intervals(busy_abs):\n        intervals = []\n        for sh, sm, eh, em in busy_abs:\n            s = minutes_since(work_start_h, work_start_m, sh, sm)\n            e = minutes_since(work_start_h, work_start_m, eh, em)\n            intervals.append((s, e))  # [s, e)\n        return intervals\n\n    adam_busy = to_minutes_intervals(adam_busy_abs)\n    roy_busy = to_minutes_intervals(roy_busy_abs)\n\n    # Z3 model\n    o = Optimize()\n    s = Int(\"start\")  # meeting start time in minutes since work_start\n\n    # Domain constraints\n    o.add(s >= work_start)\n    o.add(s + meeting_duration <= work_end)\n\n    # Non-overlap constraints for each participant\n    def no_overlap_with(intervals):\n        # For meeting [s, s+dur), ensure it does not intersect any [b_start, b_end)\n        return [Or(s + meeting_duration <= b_start, s >= b_end) for (b_start, b_end) in intervals]\n\n    o.add(And(*no_overlap_with(adam_busy)))\n    o.add(And(*no_overlap_with(roy_busy)))\n\n    # Earliest availability: minimize start time\n    o.minimize(s)\n\n    if o.check() != sat:\n        print(\"No feasible meeting time found.\")\n        return\n\n    m = o.model()\n    start_min = m[s].as_long()\n    end_min = start_min + meeting_duration\n\n    start_str = format_time(work_start_h, start_min)\n    end_str = format_time(work_start_h, end_min)\n\n    # Output day and time range in required format\n    print(day)\n    print(f\"{{{start_str}:{end_str}}}\")\n\nif __name__ == \"__main__\":\n    main()"
+}

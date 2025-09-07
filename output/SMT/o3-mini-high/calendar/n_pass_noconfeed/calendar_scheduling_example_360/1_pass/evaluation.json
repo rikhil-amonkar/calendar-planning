@@ -1,0 +1,29 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "Monday 09:00:09:30",
+    "pred": {
+        "day": "Monday",
+        "time_range": "{9:00:9:30}"
+    },
+    "gold": {
+        "day": "Monday",
+        "time_range": "{9:00:9:30}"
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 41.10793495178223,
+        "execution_time": 0.08781313896179199,
+        "constraint_eval_time": 4.744529724121094e-05,
+        "pred_extract_time": 0.656623363494873,
+        "gold_extract_time": 1.4543533325195312e-05,
+        "total_tokens": 2082,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import Solver, Int, Or, sat\n\ndef minutes_to_time(minutes):\n    hour = minutes // 60\n    minute = minutes % 60\n    return f\"{hour:02d}:{minute:02d}\"\n\ndef main():\n    meeting_duration = 30  # meeting duration in minutes\n    meeting_start = Int('meeting_start')\n    meeting_end = meeting_start + meeting_duration\n\n    # Work hours on Monday: 9:00 (540 minutes) to 17:00 (1020 minutes)\n    solver = Solver()\n    solver.add(meeting_start >= 540)\n    solver.add(meeting_end <= 1020)\n    \n    # Reservations for each participant are represented as intervals [start, end) in minutes.\n    reservations = [\n        # Emily's meetings: 10:00-10:30, 16:00-16:30\n        (600, 630), (960, 990),\n        # Maria's meetings: 10:30-11:00, 14:00-14:30\n        (630, 660), (840, 870),\n        # Carl's meetings: 9:30-10:00, 10:30-12:30, 13:30-14:00, 14:30-15:30, 16:00-17:00\n        (570, 600), (630, 750), (810, 840), (870, 930), (960, 1020),\n        # David's meetings: 9:30-11:00, 11:30-12:00, 12:30-13:30, 14:00-15:00, 16:00-17:00\n        (570, 660), (690, 720), (750, 810), (840, 900), (960, 1020),\n        # Frank's meetings: 9:30-10:30, 11:00-11:30, 12:30-13:30, 14:30-17:00\n        (570, 630), (660, 690), (750, 810), (870, 1020)\n        # Mason is free all day.\n    ]\n\n    # For the meeting to not conflict with a reservation, it must either end by the start\n    # of the reservation or start after the reservation ends.\n    for res_start, res_end in reservations:\n        solver.add(Or(meeting_end <= res_start, meeting_start >= res_end))\n    \n    if solver.check() == sat:\n        model = solver.model()\n        start_val = model[meeting_start].as_long()\n        end_val = start_val + meeting_duration\n        \n        # Convert minutes back to HH:MM format\n        start_time = minutes_to_time(start_val)\n        end_time = minutes_to_time(end_val)\n        day = \"Monday\"\n        \n        # Output in the format: \"Monday HH:MM:HH:MM\"\n        print(f\"{day} {start_time}:{end_time}\")\n    else:\n        print(\"No solution found.\")\n\nif __name__ == '__main__':\n    main()"
+}

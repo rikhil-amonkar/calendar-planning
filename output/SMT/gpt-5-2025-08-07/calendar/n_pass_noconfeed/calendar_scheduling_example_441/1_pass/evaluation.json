@@ -1,0 +1,29 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "Monday\n{11:00:11:30}",
+    "pred": {
+        "day": "Monday",
+        "time_range": "{11:00:11:30}"
+    },
+    "gold": {
+        "day": "Monday",
+        "time_range": "{11:00:11:30}"
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 36.62237334251404,
+        "execution_time": 0.08089876174926758,
+        "constraint_eval_time": 2.9802322387695312e-05,
+        "pred_extract_time": 0.5247910022735596,
+        "gold_extract_time": 2.002716064453125e-05,
+        "total_tokens": 1610,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\n\n# Helper functions\ndef hm(h, m):\n    return h * 60 + m\n\ndef fmt(minutes):\n    h = minutes // 60\n    m = minutes % 60\n    return f\"{h:02d}:{m:02d}\"\n\n# Problem setup\nday = \"Monday\"\nwork_start = hm(9, 0)\nwork_end = hm(17, 0)\nduration = 30  # minutes\n\n# Busy schedules (start, end) in minutes since 00:00\nschedules = {\n    \"Joan\":    [(hm(11,30), hm(12, 0)), (hm(14,30), hm(15, 0))],\n    \"Megan\":   [(hm(9, 0),  hm(10, 0)), (hm(14, 0), hm(14,30)), (hm(16, 0), hm(16,30))],\n    \"Austin\":  [],  # free all day\n    \"Betty\":   [(hm(9,30), hm(10, 0)), (hm(11,30),hm(12, 0)), (hm(13,30),hm(14, 0)), (hm(16, 0),hm(16,30))],\n    \"Judith\":  [(hm(9, 0), hm(11, 0)), (hm(12, 0),hm(13, 0)), (hm(14, 0),hm(15, 0))],\n    \"Terry\":   [(hm(9,30), hm(10, 0)), (hm(11,30),hm(12,30)), (hm(13, 0),hm(14, 0)), (hm(15, 0),hm(15,30)), (hm(16, 0),hm(17, 0))],\n    \"Kathryn\": [(hm(9,30), hm(10, 0)), (hm(10,30),hm(11, 0)), (hm(11,30),hm(13, 0)), (hm(14, 0),hm(16, 0)), (hm(16,30),hm(17, 0))],\n}\n\n# Z3 variables\nstart = Int('start')\nend = start + duration\n\ns = Solver()\ns.add(start >= work_start, end <= work_end)\n\n# Non-overlap constraints for each participant's busy intervals\nfor person, busy_list in schedules.items():\n    for (b_start, b_end) in busy_list:\n        # Meeting [start, end) must not intersect busy [b_start, b_end)\n        s.add(Or(end <= b_start, start >= b_end))\n\n# Solve\nif s.check() == sat:\n    m = s.model()\n    start_min = m[start].as_long()\n    end_min = start_min + duration\n    print(day)\n    print(f\"{{{fmt(start_min)}:{fmt(end_min)}}}\")\nelse:\n    print(\"No feasible time found.\")"
+}

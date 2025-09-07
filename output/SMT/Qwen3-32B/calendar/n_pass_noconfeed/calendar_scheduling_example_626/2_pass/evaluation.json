@@ -1,0 +1,28 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": true,
+    "execution_output": "09:00:10:00 Tuesday",
+    "pred": null,
+    "gold": {
+        "day": "Tuesday",
+        "time_range": "{9:00:10:00}"
+    },
+    "status": "No plan generated",
+    "violated_constraint": {
+        "missing_output": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 2,
+    "timing": {
+        "api_call_time": 378.2383861541748,
+        "execution_time": 0.0844419002532959,
+        "constraint_eval_time": 1.430511474609375e-05,
+        "pred_extract_time": 1.787613868713379,
+        "gold_extract_time": 3.314018249511719e-05,
+        "total_tokens": 23214,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\n\ndef schedule_meeting():\n    # Define existing meetings for each day and participant\n    # Monday\n    p_mon_meetings = [(600, 630), (690, 720), (780, 810), (870, 930), (960, 990)]\n    j_mon_meetings = [(540, 1020)]\n\n    # Tuesday\n    p_tue_meetings = [(600, 630), (660, 720), (840, 960), (990, 1020)]\n    j_tue_meetings = [(660, 690), (720, 750), (780, 840), (870, 900), (930, 1020)]\n\n    # Try to find a valid meeting time on Monday\n    s_mon = Solver()\n    start_mon = Int('start_mon')\n    s_mon.add(540 <= start_mon, start_mon + 60 <= 1020)  # Within business hours\n    for s, e in p_mon_meetings + j_mon_meetings:\n        s_mon.add(Or(start_mon + 60 <= s, start_mon >= e))  # No overlap with existing meetings\n\n    if s_mon.check() == sat:\n        m = s_mon.model()\n        start_time = m[start_mon].as_long()\n        day = \"Monday\"\n    else:\n        # Try to find a valid meeting time on Tuesday\n        s_tue = Solver()\n        start_tue = Int('start_tue')\n        s_tue.add(540 <= start_tue, start_tue + 60 <= 1020)  # Within business hours\n        for s, e in p_tue_meetings + j_tue_meetings:\n            s_tue.add(Or(start_tue + 60 <= s, start_tue >= e))  # No overlap with existing meetings\n\n        if s_tue.check() == sat:\n            m = s_tue.model()\n            start_time = m[start_tue].as_long()\n            day = \"Tuesday\"\n        else:\n            print(\"No solution found\")\n            return\n\n    # Format the time in HH:MM:HH:MM format\n    start_h, start_m = divmod(start_time, 60)\n    end_time = start_time + 60\n    end_h, end_m = divmod(end_time, 60)\n    time_str = f\"{start_h:02d}:{start_m:02d}:{end_h:02d}:{end_m:02d}\"\n    print(f\"{time_str} {day}\")\n\nschedule_meeting()"
+}

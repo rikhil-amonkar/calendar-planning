@@ -1,0 +1,29 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "Tuesday 09:00:09:30",
+    "pred": {
+        "day": "Tuesday",
+        "time_range": "{9:00:9:30}"
+    },
+    "gold": {
+        "day": "Tuesday",
+        "time_range": "{9:00:9:30}"
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 345.2477173805237,
+        "execution_time": 0.0838162899017334,
+        "constraint_eval_time": 4.7206878662109375e-05,
+        "pred_extract_time": 0.6213247776031494,
+        "gold_extract_time": 2.384185791015625e-05,
+        "total_tokens": 20365,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\n\nsolver = Solver()\n\nday = Int('day')\nstart = Int('start')\n\n# Day must be Monday (0) or Tuesday (1)\nsolver.add(Or(day == 0, day == 1))\n\n# Start time must be between 9:00 (540) and 16:30 (990)\nsolver.add(And(start >= 540, start <= 990))\n\n# Monday's busy intervals (Cheryl and Kyle)\nmonday_intervals = [\n    (540, 570),  # Cheryl 9:00-9:30\n    (690, 780),  # Cheryl 11:30-13:00\n    (930, 960),  # Cheryl 15:30-16:00\n    (540, 1020)  # Kyle 9:00-17:00\n]\n\nfor b_s, b_e in monday_intervals:\n    solver.add(Or(day != 0, Or(start + 30 <= b_s, start >= b_e)))\n\n# Tuesday's busy intervals (Cheryl and Kyle)\ntuesday_intervals = [\n    (900, 930),  # Cheryl 15:00-15:30\n    (570, 1020)  # Kyle 9:30-17:00\n]\n\nfor b_s, b_e in tuesday_intervals:\n    solver.add(Or(day != 1, Or(start + 30 <= b_s, start >= b_e)))\n\nif solver.check() == sat:\n    model = solver.model()\n    day_val = model[day].as_long()\n    start_val = model[start].as_long()\n    days = ['Monday', 'Tuesday', 'Wednesday']\n    day_name = days[day_val]\n    start_h = start_val // 60\n    start_m = start_val % 60\n    end_val = start_val + 30\n    end_h = end_val // 60\n    end_m = end_val % 60\n    start_time = f\"{start_h:02d}:{start_m:02d}\"\n    end_time = f\"{end_h:02d}:{end_m:02d}\"\n    print(f\"{day_name} {start_time}:{end_time}\")\nelse:\n    print(\"No solution found\")"
+}

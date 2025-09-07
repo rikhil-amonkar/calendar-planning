@@ -1,0 +1,28 @@
+{
+    "has_execution_error": true,
+    "has_no_plan": false,
+    "execution_output": null,
+    "pred": null,
+    "gold": {
+        "day": "Monday",
+        "time_range": "{10:00:11:00}"
+    },
+    "status": "Error",
+    "violated_constraint": {
+        "missing_output": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 56.35694074630737,
+        "execution_time": 0.07894778251647949,
+        "constraint_eval_time": 1.9073486328125e-06,
+        "pred_extract_time": 3.337860107421875e-06,
+        "gold_extract_time": 1.5020370483398438e-05,
+        "total_tokens": 2347,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import Solver, Int, Or\n\n# Convert minutes since midnight to HH:MM\ndef minutes_to_time(m):\n    hours = m // 60\n    minutes = m % 60\n    return f\"{hours:02d}:{minutes:02d}\"\n\n# Duration of the meeting in minutes\nMEETING_DURATION = 60\n\n# Create an SMT solver instance\nsolver = Solver()\n\n# Define an integer variable for meeting start time (in minutes since midnight)\nmeeting_start = Int(\"meeting_start\")\nmeeting_end = meeting_start + MEETING_DURATION\n\n# Working hours: from 9:00 (540 minutes) to 17:00 (1020 minutes)\nsolver.add(meeting_start >= 540, meeting_end <= 1020)\n\n# For each busy interval, we ensure that the meeting does NOT overlap it.\n# The rule: For a busy interval [busy_start, busy_end],\n# it must hold that either meeting_end <= busy_start OR meeting_start >= busy_end.\n\n# Olivia's busy intervals:\n# 12:30 to 13:30  -> [750, 810]\nsolver.add(Or(meeting_end <= 750, meeting_start >= 810))\n# 14:30 to 15:00  -> [870, 900]\nsolver.add(Or(meeting_end <= 870, meeting_start >= 900))\n# 16:30 to 17:00  -> [990, 1020]\nsolver.add(Or(meeting_end <= 990, meeting_start >= 1020))\n\n# Anna has no meetings, so no constraints are added.\n\n# Virginia's busy intervals:\n# 9:00 to 10:00   -> [540, 600]\nsolver.add(Or(meeting_end <= 540, meeting_start >= 600))\n# 11:30 to 16:00  -> [690, 960]\nsolver.add(Or(meeting_end <= 690, meeting_start >= 960))\n# 16:30 to 17:00  -> [990, 1020]\nsolver.add(Or(meeting_end <= 990, meeting_start >= 1020))\n\n# Paul's busy intervals:\n# 9:00 to 9:30   -> [540, 570]\nsolver.add(Or(meeting_end <= 540, meeting_start >= 570))\n# 11:00 to 11:30 -> [660, 690]\nsolver.add(Or(meeting_end <= 660, meeting_start >= 690))\n# 13:00 to 14:00 -> [780, 840]\nsolver.add(Or(meeting_end <= 780, meeting_start >= 840))\n# 14:30 to 16:00 -> [870, 960]\nsolver.add(Or(meeting_end <= 870, meeting_start >= 960))\n# 16:30 to 17:00 -> [990, 1020]\nsolver.add(Or(meeting_end <= 990, meeting_start >= 1020))\n\nif solver.check() == sat:\n    model = solver.model()\n    start_value = model[meeting_start].as_long()\n    end_value = start_value + MEETING_DURATION\n    start_time_str = minutes_to_time(start_value)\n    end_time_str = minutes_to_time(end_value)\n    \n    # Output the day and the proposed time range in HH:MM:HH:MM format\n    print(f\"Monday {start_time_str}:{end_time_str}\")\nelse:\n    print(\"No available meeting slot found.\")"
+}

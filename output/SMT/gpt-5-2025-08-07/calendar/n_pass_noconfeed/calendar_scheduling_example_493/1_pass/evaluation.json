@@ -1,0 +1,29 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "Monday {12:00:12:30}",
+    "pred": {
+        "day": "Monday",
+        "time_range": "{12:00:12:30}"
+    },
+    "gold": {
+        "day": "Monday",
+        "time_range": "{12:00:12:30}"
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 42.198148250579834,
+        "execution_time": 0.0760502815246582,
+        "constraint_eval_time": 2.9325485229492188e-05,
+        "pred_extract_time": 0.6424813270568848,
+        "gold_extract_time": 2.1219253540039062e-05,
+        "total_tokens": 2236,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import Optimize, Int, Or, sat\n\ndef minutes(h, m=0):\n    return h * 60 + m\n\ndef fmt_time(t):\n    return f\"{t // 60:02d}:{t % 60:02d}\"\n\ndef main():\n    day = \"Monday\"\n    work_start = minutes(9, 0)\n    work_end = minutes(17, 0)\n    duration = 30  # minutes\n\n    # Busy intervals per participant on Monday (start, end) in minutes since 00:00\n    busy = {\n        \"Tyler\": [],\n        \"Kelly\": [],\n        \"Stephanie\": [\n            (minutes(11, 0), minutes(11, 30)),\n            (minutes(14, 30), minutes(15, 0)),\n        ],\n        \"Hannah\": [],\n        \"Joe\": [\n            (minutes(9, 0), minutes(9, 30)),\n            (minutes(10, 0), minutes(12, 0)),\n            (minutes(12, 30), minutes(13, 0)),\n            (minutes(14, 0), minutes(17, 0)),\n        ],\n        \"Diana\": [\n            (minutes(9, 0), minutes(10, 30)),\n            (minutes(11, 30), minutes(12, 0)),\n            (minutes(13, 0), minutes(14, 0)),\n            (minutes(14, 30), minutes(15, 30)),\n            (minutes(16, 0), minutes(17, 0)),\n        ],\n        \"Deborah\": [\n            (minutes(9, 0), minutes(10, 0)),\n            (minutes(10, 30), minutes(12, 0)),\n            (minutes(12, 30), minutes(13, 0)),\n            (minutes(13, 30), minutes(14, 0)),\n            (minutes(14, 30), minutes(15, 30)),\n            (minutes(16, 0), minutes(16, 30)),\n        ],\n    }\n\n    # Create optimizer to find the earliest feasible start\n    opt = Optimize()\n    start = Int(\"start\")\n    end = Int(\"end\")\n\n    opt.add(end == start + duration)\n    opt.add(start >= work_start, end <= work_end)\n\n    # Non-overlap constraints with all busy intervals of all participants\n    for intervals in busy.values():\n        for (b_start, b_end) in intervals:\n            opt.add(Or(end <= b_start, start >= b_end))\n\n    # Minimize the start time to get the earliest meeting\n    opt.minimize(start)\n\n    if opt.check() != sat:\n        raise RuntimeError(\"No feasible meeting time found, but the task guarantees a solution.\")\n\n    model = opt.model()\n    s_val = model[start].as_long()\n    e_val = model[end].as_long()\n\n    # Output: Day and time range in {HH:MM:HH:MM}\n    print(f\"{day} {{{fmt_time(s_val)}:{fmt_time(e_val)}}}\")\n\nif __name__ == \"__main__\":\n    main()"
+}

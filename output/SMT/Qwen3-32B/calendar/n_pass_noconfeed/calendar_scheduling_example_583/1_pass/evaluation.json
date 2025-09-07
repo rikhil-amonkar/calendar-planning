@@ -1,0 +1,29 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "09:30:10:00 Monday",
+    "pred": {
+        "day": "Monday",
+        "time_range": "{9:30:10:00}"
+    },
+    "gold": {
+        "day": "Monday",
+        "time_range": "{9:30:10:00}"
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 325.03930044174194,
+        "execution_time": 0.07575726509094238,
+        "constraint_eval_time": 4.553794860839844e-05,
+        "pred_extract_time": 0.6214900016784668,
+        "gold_extract_time": 2.4318695068359375e-05,
+        "total_tokens": 17554,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import z3\n\n# Initialize the solver\nsolver = z3.Optimize()\n\n# Define the start time variable in minutes since midnight\nstart = z3.Int('start')\n\n# Work hours from 9:00 (540) to 17:00 (1020), meeting duration is 30 minutes\n# Start must be between 540 and 990 (inclusive)\nsolver.add(z3.And(start >= 540, start <= 990))\n\n# Lisa's busy intervals (in minutes since midnight)\nlisa_busy = [(540, 570), (630, 660), (840, 960)]\n\n# Anthony's busy intervals (in minutes since midnight)\nanthony_busy = [(540, 570), (660, 690), (750, 810), (840, 900), (930, 960), (990, 1020)]\n\n# Add constraints for each busy interval to avoid overlap\nfor s, e in lisa_busy + anthony_busy:\n    solver.add(z3.Or(start >= e, start + 30 <= s))\n\n# Minimize the start time to find the earliest possible meeting time\nsolver.minimize(start)\n\n# Check if a solution exists\nif solver.check() == z3.sat:\n    model = solver.model()\n    start_val = model[start].as_long()\n    \n    # Convert start time to HH:MM format\n    start_h = start_val // 60\n    start_m = start_val % 60\n    end_val = start_val + 30\n    end_h = end_val // 60\n    end_m = end_val % 60\n    \n    # Format with leading zeros\n    start_time = f\"{start_h:02d}:{start_m:02d}\"\n    end_time = f\"{end_h:02d}:{end_m:02d}\"\n    print(f\"{start_time}:{end_time} Monday\")\nelse:\n    print(\"No solution found\")"
+}

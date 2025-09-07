@@ -1,0 +1,29 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "Monday\n{11:00:11:30}",
+    "pred": {
+        "day": "Monday",
+        "time_range": "{11:00:11:30}"
+    },
+    "gold": {
+        "day": "Monday",
+        "time_range": "{11:00:11:30}"
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 43.924869537353516,
+        "execution_time": 0.06841492652893066,
+        "constraint_eval_time": 4.863739013671875e-05,
+        "pred_extract_time": 0.6389732360839844,
+        "gold_extract_time": 1.621246337890625e-05,
+        "total_tokens": 2375,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\n\ndef minutes(h, m):\n    return h * 60 + m\n\ndef fmt_time(mins):\n    h = mins // 60\n    m = mins % 60\n    return f\"{h:02d}:{m:02d}\"\n\n# Problem parameters\nday = \"Monday\"\nwork_start = minutes(9, 0)\nwork_end = minutes(17, 0)\nduration = 30  # minutes\n\n# Busy schedules (inclusive of start, exclusive of end)\nbusy = {\n    \"Christine\": [\n        (minutes(9,30), minutes(10,30)),\n        (minutes(12,0), minutes(12,30)),\n        (minutes(13,0), minutes(13,30)),\n        (minutes(14,30), minutes(15,0)),\n        (minutes(16,0), minutes(16,30)),\n    ],\n    \"Janice\": [\n        # Janice's calendar is wide open; preference handled as soft constraint\n    ],\n    \"Bobby\": [\n        (minutes(12,0), minutes(12,30)),\n        (minutes(14,30), minutes(15,0)),\n    ],\n    \"Elizabeth\": [\n        (minutes(9,0), minutes(9,30)),\n        (minutes(11,30), minutes(13,0)),\n        (minutes(13,30), minutes(14,0)),\n        (minutes(15,0), minutes(15,30)),\n        (minutes(16,0), minutes(17,0)),\n    ],\n    \"Tyler\": [\n        (minutes(9,0), minutes(11,0)),\n        (minutes(12,0), minutes(12,30)),\n        (minutes(13,0), minutes(13,30)),\n        (minutes(15,30), minutes(16,0)),\n        (minutes(16,30), minutes(17,0)),\n    ],\n    \"Edward\": [\n        (minutes(9,0), minutes(9,30)),\n        (minutes(10,0), minutes(11,0)),\n        (minutes(11,30), minutes(14,0)),\n        (minutes(14,30), minutes(15,30)),\n        (minutes(16,0), minutes(17,0)),\n    ],\n}\n\n# SMT model\nopt = Optimize()\nstart = Int(\"start\")\n\n# Working hours constraint\nopt.add(start >= work_start)\nopt.add(start + duration <= work_end)\n\n# No-overlap constraints for all participants\nfor person, intervals in busy.items():\n    for (b_start, b_end) in intervals:\n        # Meeting ends before busy starts OR starts after busy ends\n        opt.add(Or(start + duration <= b_start, start >= b_end))\n\n# Preference: Janice would rather not meet after 13:00 (soft constraint)\njanice_pref_end = minutes(13, 0)\nopt.add_soft(start + duration <= janice_pref_end, weight=\"1\", id=\"janice_pref_before_13\")\n\n# Tie-breaker: choose earliest feasible time\nopt.minimize(start)\n\nif opt.check() == sat:\n    model = opt.model()\n    s_val = model.evaluate(start).as_long()\n    e_val = s_val + duration\n    print(day)\n    print(\"{\" + f\"{fmt_time(s_val)}:{fmt_time(e_val)}\" + \"}\")\nelse:\n    print(\"No feasible meeting time found.\")"
+}

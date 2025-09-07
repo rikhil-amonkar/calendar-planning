@@ -1,0 +1,29 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "Monday{12:00:13:00}",
+    "pred": {
+        "day": "Monday",
+        "time_range": "{12:00:13:00}"
+    },
+    "gold": {
+        "day": "Monday",
+        "time_range": "{12:00:13:00}"
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 2,
+    "timing": {
+        "api_call_time": 28.05518102645874,
+        "execution_time": 0.07853293418884277,
+        "constraint_eval_time": 2.47955322265625e-05,
+        "pred_extract_time": 0.5513772964477539,
+        "gold_extract_time": 1.811981201171875e-05,
+        "total_tokens": 1870,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import Optimize, Int, Or, sat\n\ndef to_min(hhmm):\n    h, m = map(int, hhmm.split(\":\"))\n    return h * 60 + m\n\ndef fmt(m):\n    return f\"{m // 60:02d}:{m % 60:02d}\"\n\ndef add_no_overlap(opt, start, end, intervals):\n    # Enforce [start, end) does not intersect any [a, b)\n    for a, b in intervals:\n        opt.add(Or(end <= a, start >= b))\n\n# Workday and meeting info\nday = \"Monday\"\nwork_start = to_min(\"09:00\")\nwork_end = to_min(\"17:00\")\nduration = 60\n\n# Busy schedules (inclusive of start, exclusive of end)\nstephanie_busy = [\n    (to_min(\"10:00\"), to_min(\"10:30\")),\n    (to_min(\"16:00\"), to_min(\"16:30\")),\n]\n\ncheryl_busy = [\n    (to_min(\"10:00\"), to_min(\"10:30\")),\n    (to_min(\"11:30\"), to_min(\"12:00\")),\n    (to_min(\"13:30\"), to_min(\"14:00\")),\n    (to_min(\"16:30\"), to_min(\"17:00\")),\n]\n\nbradley_busy = [\n    (to_min(\"09:30\"), to_min(\"10:00\")),\n    (to_min(\"10:30\"), to_min(\"11:30\")),\n    (to_min(\"13:30\"), to_min(\"14:00\")),\n    (to_min(\"14:30\"), to_min(\"15:00\")),\n    (to_min(\"15:30\"), to_min(\"17:00\")),\n]\n\nsteven_busy = [\n    (to_min(\"09:00\"), to_min(\"12:00\")),\n    (to_min(\"13:00\"), to_min(\"13:30\")),\n    (to_min(\"14:30\"), to_min(\"17:00\")),\n]\n\n# SMT model\nopt = Optimize()\nstart = Int(\"start\")\nend = start + duration\n\n# Working hours constraints\nopt.add(start >= work_start, end <= work_end)\n\n# No-overlap constraints for each participant\nadd_no_overlap(opt, start, end, stephanie_busy)\nadd_no_overlap(opt, start, end, cheryl_busy)\nadd_no_overlap(opt, start, end, bradley_busy)\nadd_no_overlap(opt, start, end, steven_busy)\n\n# Prefer earliest feasible start\nopt.minimize(start)\n\nif opt.check() == sat:\n    m = opt.model()\n    st = m[start].as_long()\n    en = st + duration\n    print(f\"{day}{{{fmt(st)}:{fmt(en)}}}\")\nelse:\n    print(\"No feasible time found.\")"
+}

@@ -1,0 +1,29 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "Monday 09:30:10:00",
+    "pred": {
+        "day": "Monday",
+        "time_range": "{9:30:10:00}"
+    },
+    "gold": {
+        "day": "Monday",
+        "time_range": "{9:30:10:00}"
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 421.53878808021545,
+        "execution_time": 0.08067083358764648,
+        "constraint_eval_time": 6.246566772460938e-05,
+        "pred_extract_time": 5.430717706680298,
+        "gold_extract_time": 3.147125244140625e-05,
+        "total_tokens": 22560,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import z3\n\ndef to_time(m):\n    hours = m // 60\n    mins = m % 60\n    return f\"{hours:02d}:{mins:02d}\"\n\n# Define busy intervals in minutes\nronald_busy = {\n    0: [(630, 660), (720, 750), (930, 960)],\n    1: [(540, 570), (720, 750), (930, 990)],\n    2: [(570, 630), (660, 720), (750, 780), (810, 840), (990, 1020)]\n}\n\namber_busy = {\n    0: [(540, 570), (600, 630), (690, 720), (750, 840), (870, 900), (930, 1020)],\n    1: [(540, 570), (600, 690), (720, 750), (810, 930), (990, 1020)],\n    2: [(540, 570), (600, 630), (660, 810), (900, 930)]\n}\n\nopt = z3.Optimize()\n\nday = z3.Int('day')\nstart_time = z3.Int('start_time')\n\n# Constraints for day and start_time\nopt.add(z3.Or(day == 0, day == 1, day == 2))\nopt.add(z3.And(start_time >= 540, start_time <= 990))  # 9:00-17:00 minus 30 min for duration\n\n# For each day, add constraints for busy intervals of Ronald and Amber\nfor d in ronald_busy:\n    for b_start, b_end in ronald_busy[d]:\n        opt.add(z3.Implies(day == d, z3.Or(start_time + 30 <= b_start, start_time >= b_end)))\n\nfor d in amber_busy:\n    for b_start, b_end in amber_busy[d]:\n        opt.add(z3.Implies(day == d, z3.Or(start_time + 30 <= b_start, start_time >= b_end)))\n\n# Optimization: minimize day first, then start_time\nopt.minimize(day)\nopt.minimize(start_time)\n\nif opt.check() == z3.sat:\n    model = opt.model()\n    day_val = model[day].as_long()\n    start_val = model[start_time].as_long()\n    end_val = start_val + 30\n    day_name = ['Monday', 'Tuesday', 'Wednesday'][day_val]\n    start_str = to_time(start_val)\n    end_str = to_time(end_val)\n    print(f\"{day_name} {start_str}:{end_str}\")\nelse:\n    print(\"No solution found\")"
+}

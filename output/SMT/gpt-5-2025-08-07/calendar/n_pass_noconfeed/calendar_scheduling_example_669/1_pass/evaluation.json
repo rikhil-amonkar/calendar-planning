@@ -1,0 +1,29 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "Monday\n{11:30:12:00}",
+    "pred": {
+        "day": "Monday",
+        "time_range": "{11:30:12:00}"
+    },
+    "gold": {
+        "day": "Monday",
+        "time_range": "{12:30:13:00}"
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": false,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 49.62789869308472,
+        "execution_time": 0.07931733131408691,
+        "constraint_eval_time": 2.0503997802734375e-05,
+        "pred_extract_time": 0.4798448085784912,
+        "gold_extract_time": 1.5974044799804688e-05,
+        "total_tokens": 2032,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "# Requires: z3-solver (pip install z3-solver)\nfrom z3 import *\n\ndef mins(h, m):\n    return h * 60 + m\n\ndef fmt(min_total):\n    h = min_total // 60\n    m = min_total % 60\n    return f\"{h:02d}:{m:02d}\"\n\n# Time bounds and meeting duration\nWORK_START = mins(9, 0)\nWORK_END = mins(17, 0)\nMEET_DUR = 30\nPREF_CUTOFF = mins(14, 0)  # Doris would rather not meet after 14:00 on Monday\n\n# Busy schedules (half-open intervals [start, end))\nmonday_busy = [\n    # Jean: no Monday busy slots listed\n    # Doris:\n    (mins(9, 0),  mins(11, 30)),\n    (mins(12, 0), mins(12, 30)),\n    (mins(13, 30), mins(16, 0)),\n    (mins(16, 30), mins(17, 0)),\n]\ntuesday_busy = [\n    # Jean:\n    (mins(11, 30), mins(12, 0)),\n    (mins(16, 0),  mins(16, 30)),\n    # Doris: entire day busy on Tuesday\n    (mins(9, 0), mins(17, 0)),\n]\n\nopt = Optimize()\n\n# Variables\nday = Int('day')        # 0 = Monday, 1 = Tuesday\nstart = Int('start')    # minutes from midnight (within chosen day)\nend = Int('end')\n\nopt.add(day >= 0, day <= 1)\nopt.add(end == start + MEET_DUR)\n\n# Within work hours and aligned to 30-min grid\nopt.add(start >= WORK_START)\nopt.add(end <= WORK_END)\nopt.add(start % 30 == 0)\n\n# No-overlap helper\ndef no_overlap_conditional(condition, intervals):\n    for (bs, be) in intervals:\n        # Meeting [start, end) does not overlap [bs, be)\n        opt.add(Implies(condition, Or(end <= bs, start >= be)))\n\n# Apply constraints per day\nno_overlap_conditional(day == 0, monday_busy)\nno_overlap_conditional(day == 1, tuesday_busy)\n\n# Preference: Doris prefers not meeting on Monday at or after 14:00\npenalty = If(And(day == 0, start >= PREF_CUTOFF), 1, 0)\nopt.minimize(penalty)\n# Also choose the earliest feasible time\nopt.minimize(start)\n\nif opt.check() == sat:\n    model = opt.model()\n    chosen_day = model[day].as_long()\n    s = model[start].as_long()\n    e = s + MEET_DUR\n    day_str = \"Monday\" if chosen_day == 0 else \"Tuesday\"\n\n    print(day_str)\n    print(\"{\" + f\"{fmt(s)}:{fmt(e)}\" + \"}\")\nelse:\n    print(\"No feasible meeting time found.\")"
+}

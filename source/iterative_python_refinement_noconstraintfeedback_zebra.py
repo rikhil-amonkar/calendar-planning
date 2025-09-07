@@ -1375,7 +1375,7 @@ Examples:
 
     def save_output_files(self, task, example_id, pass_num, conversation, code, output, evaluation):
         """Save all output files for a given pass"""
-        output_dir = f"../output/Python/DeepSeek-R1/{task}/n_pass_noconfeed/{example_id}/{pass_num}_pass"
+        output_dir = f"../output/Python/DeepSeek-V3/{task}/n_pass_noconfeed/{example_id}/{pass_num}_pass"
         os.makedirs(output_dir, exist_ok=True)
         
         # Save conversation
@@ -1433,7 +1433,7 @@ Examples:
         
         # Scan all evaluation files to collect token data
         for task in ["calendar", "meeting", "trip", "zebralogic"]:
-            task_dir = f"../output/Python/DeepSeek-R1/{task}/n_pass_noconfeed"
+            task_dir = f"../output/Python/DeepSeek-V3/{task}/n_pass_noconfeed"
             if not os.path.exists(task_dir):
                 continue
                 

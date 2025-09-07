@@ -1,0 +1,29 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "Day: Tuesday, Time: 10:04:11:04",
+    "pred": {
+        "day": "Tuesday",
+        "time_range": "{10:04:11:04}"
+    },
+    "gold": {
+        "day": "Tuesday",
+        "time_range": "{9:30:10:30}"
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": false,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 78.99008655548096,
+        "execution_time": 0.09104084968566895,
+        "constraint_eval_time": 2.6702880859375e-05,
+        "pred_extract_time": 0.8611924648284912,
+        "gold_extract_time": 1.6450881958007812e-05,
+        "total_tokens": 3282,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\n\ndef main():\n    # Create solver instance\n    s = Solver()\n\n    # Define meeting day variable:\n    # 0 -> Monday, 1 -> Tuesday, 2 -> Wednesday\n    day = Int('day')\n    s.add(Or(day == 0, day == 1, day == 2))\n\n    # Define meeting start time (in minutes after 9:00). Meeting duration is 60 minutes.\n    t = Int('t')\n    meeting_duration = 60\n    s.add(t >= 0, t + meeting_duration <= 480)  # within work hours 9:00 (0) to 17:00 (480)\n\n    # Add preference: Stephanie would like to avoid Monday (day 0).\n    s.add(day != 0)\n\n    # Betty cannot meet on Tuesday after 12:30.\n    # For Tuesday (day == 1), the meeting must end by 12:30 (which is 210 minutes after 9:00).\n    s.add(Implies(day == 1, t + meeting_duration <= 210))\n\n    # Helper: For a given busy interval, if the meeting is on that day then it must not overlap the busy time.\n    # Non-overlap: meeting_end <= busy_start or meeting_start >= busy_end.\n    def add_busy_constraint(busy_day, busy_start, busy_end):\n        s.add(Implies(day == busy_day, Or(t + meeting_duration <= busy_start, t >= busy_end)))\n\n    # Schedules for Stephanie (times converted to minutes after 9:00):\n    # Monday (day 0): 9:30-10:00 [30,60], 10:30-11:00 [90,120], 11:30-12:00 [150,180], 14:00-14:30 [300,330]\n    add_busy_constraint(0, 30, 60)\n    add_busy_constraint(0, 90, 120)\n    add_busy_constraint(0, 150, 180)\n    add_busy_constraint(0, 300, 330)\n    # Tuesday (day 1): 12:00-13:00 [180,240]\n    add_busy_constraint(1, 180, 240)\n    # Wednesday (day 2): 9:00-10:00 [0,60], 13:00-14:00 [240,300]\n    add_busy_constraint(2, 0, 60)\n    add_busy_constraint(2, 240, 300)\n\n    # Schedules for Betty:\n    # Monday (day 0): 9:00-10:00 [0,60], 11:00-11:30 [120,150], 14:30-15:00 [330,360], 15:30-16:00 [390,420]\n    add_busy_constraint(0, 0, 60)\n    add_busy_constraint(0, 120, 150)\n    add_busy_constraint(0, 330, 360)\n    add_busy_constraint(0, 390, 420)\n    # Tuesday (day 1): 9:00-9:30 [0,30], 11:30-12:00 [150,180], 12:30-14:30 [210,330], 15:30-16:00 [390,420]\n    add_busy_constraint(1, 0, 30)\n    add_busy_constraint(1, 150, 180)\n    add_busy_constraint(1, 210, 330)\n    add_busy_constraint(1, 390, 420)\n    # Wednesday (day 2): 10:00-11:30 [60,150], 12:00-14:00 [180,300], 14:30-17:00 [330,480]\n    add_busy_constraint(2, 60, 150)\n    add_busy_constraint(2, 180, 300)\n    add_busy_constraint(2, 330, 480)\n\n    # Try solving the constraints\n    if s.check() == sat:\n        m = s.model()\n        chosen_day = m[day].as_long()\n        chosen_t = m[t].as_long()\n\n        # Map integer day to day name\n        day_map = {0: \"Monday\", 1: \"Tuesday\", 2: \"Wednesday\"}\n        day_str = day_map.get(chosen_day, \"Unknown\")\n\n        # Compute start and end times\n        start_minutes = chosen_t         # minutes after 9:00\n        end_minutes = chosen_t + meeting_duration\n        start_hour = 9 + start_minutes // 60\n        start_min = start_minutes % 60\n        end_hour = 9 + end_minutes // 60\n        end_min = end_minutes % 60\n        \n        # Format as HH:MM:HH:MM (e.g., \"10:00:11:00\")\n        time_str = f\"{start_hour:02d}:{start_min:02d}:{end_hour:02d}:{end_min:02d}\"\n        print(f\"Day: {day_str}, Time: {time_str}\")\n    else:\n        print(\"No solution found.\")\n\nif __name__ == \"__main__\":\n    main()"
+}

@@ -1,0 +1,29 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "Monday 11:30:12:00",
+    "pred": {
+        "day": "Monday",
+        "time_range": "{11:30:12:00}"
+    },
+    "gold": {
+        "day": "Monday",
+        "time_range": "{12:30:13:00}"
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": false,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 77.41706967353821,
+        "execution_time": 0.08311200141906738,
+        "constraint_eval_time": 2.288818359375e-05,
+        "pred_extract_time": 0.6157879829406738,
+        "gold_extract_time": 1.7404556274414062e-05,
+        "total_tokens": 2650,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\n\ndef format_time(total_minutes):\n    # Convert meeting time (minutes after 9:00) to an HH:MM string.\n    # For example, 150 -> 9:00 + 150 minutes = 11:30.\n    absolute = 9 * 60 + total_minutes\n    hh = absolute // 60\n    mm = absolute % 60\n    return f\"{hh:02d}:{mm:02d}\"\n\ndef main():\n    s = Solver()\n    \n    # day: 0 means Monday, 1 means Tuesday.\n    day = Int('day')\n    # start: meeting start time in minutes after 9:00.\n    start = Int('start')\n    duration = 30\n    \n    work_start = 0     # 9:00 is 0 minutes after 9:00\n    work_end = 480     # 17:00 is 480 minutes after 9:00\n\n    # The meeting must start within work hours.\n    s.add(start >= work_start, start + duration <= work_end)\n    # The meeting day is either Monday (0) or Tuesday (1).\n    s.add(Or(day == 0, day == 1))\n\n    # ----- Participant Jean's constraints -----\n    # Jean's schedule:\n    #   Tuesday busy: 11:30-12:00 (150-180) and 16:00-16:30 (420-450)\n    s.add(Implies(day == 1, Or(start + duration <= 150, start >= 180)))\n    s.add(Implies(day == 1, Or(start + duration <= 420, start >= 450)))\n    # (Jean is free on Monday, so no constraint is needed for day==0.)\n    \n    # ----- Participant Doris's constraints -----\n    # Doris's schedule on Monday:\n    #   Busy: 9:00-11:30 (0-150)\n    #         12:00-12:30 (180-210)\n    #         13:30-16:00 (270-420)\n    #         16:30-17:00 (450-480) is taken care of by the work hours constraint.\n    #\n    # Also, Doris prefers not to meet on Monday after 14:00 \n    # i.e. the meeting should finish by 14:00 (300 minutes after 9:00).\n    #\n    # On Tuesday, Doris is busy the entire day (9:00-17:00).\n    #\n    # Monday constraints:\n    s.add(Implies(day == 0, start >= 150))  # Meeting must start after 11:30.\n    s.add(Implies(day == 0, Or(start + duration <= 180, start >= 210)))  # Avoid 12:00-12:30.\n    s.add(Implies(day == 0, Or(start + duration <= 270, start >= 420)))  # Avoid 13:30-16:00.\n    # Preference: finish the meeting by 14:00.\n    s.add(Implies(day == 0, start + duration <= 300))\n    \n    # Tuesday constraint:\n    s.add(Implies(day == 1, False))  # Doris is busy all day Tuesday.\n    \n    # Solve the constraints.\n    if s.check() == sat:\n        m = s.model()\n        chosen_day = m[day].as_long()\n        chosen_start = m[start].as_long()\n        chosen_end = chosen_start + duration\n        \n        day_str = \"Monday\" if chosen_day == 0 else \"Tuesday\"\n        time_range = f\"{format_time(chosen_start)}:{format_time(chosen_end)}\"\n        print(f\"{day_str} {time_range}\")\n    else:\n        print(\"No valid meeting time found.\")\n\nif __name__ == \"__main__\":\n    main()"
+}

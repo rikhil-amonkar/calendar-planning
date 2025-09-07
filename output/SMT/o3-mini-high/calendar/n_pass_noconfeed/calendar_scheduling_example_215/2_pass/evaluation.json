@@ -1,0 +1,29 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "Meeting time: 11:00 - 11:30\nMonday",
+    "pred": {
+        "day": "Monday",
+        "time_range": "{11:00:11:30}"
+    },
+    "gold": {
+        "day": "Monday",
+        "time_range": "{11:00:11:30}"
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 2,
+    "timing": {
+        "api_call_time": 55.169926166534424,
+        "execution_time": 0.07937216758728027,
+        "constraint_eval_time": 2.5510787963867188e-05,
+        "pred_extract_time": 0.666417121887207,
+        "gold_extract_time": 1.52587890625e-05,
+        "total_tokens": 3355,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "#!/usr/bin/env python3\nfrom z3 import Optimize, Or, Int, sat\n\ndef minutes_to_str(m):\n    hours = m // 60\n    minutes = m % 60\n    return f\"{hours:02d}:{minutes:02d}\"\n\nwork_start = 9 * 60   # 540\nwork_end = 17 * 60    # 1020\nmeeting_duration = 30\n\ncynthia_busy = [(570, 630), (690, 720), (780, 810), (900, 960)]\nlauren_busy = [(540, 570), (630, 660), (690, 720), (780, 810), (840, 870), (900, 930), (960, 1020)]\nrobert_busy = [(630, 660), (690, 720), (750, 810), (840, 960)]\n\nall_busy = cynthia_busy + lauren_busy + robert_busy\n\nopt = Optimize()\nmeeting_start = Int(\"meeting_start\")\n\nopt.add(meeting_start >= work_start)\nopt.add(meeting_start + meeting_duration <= work_end)\n\nfor (busy_start, busy_end) in all_busy:\n    opt.add(Or(meeting_start + meeting_duration <= busy_start,\n               meeting_start >= busy_end))\n\nopt.minimize(meeting_start)\n\nif opt.check() == sat:\n    model = opt.model()\n    start_val = model[meeting_start].as_long()\n    end_val = start_val + meeting_duration\n    meeting_time = f\"{minutes_to_str(start_val)} - {minutes_to_str(end_val)}\"\n    print(\"Meeting time:\", meeting_time)\n    print(\"Monday\")\nelse:\n    print(\"No valid meeting time found\")"
+}

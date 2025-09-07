@@ -1,0 +1,29 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "Tuesday\n{10:30:11:00}",
+    "pred": {
+        "day": "Tuesday",
+        "time_range": "{10:30:11:00}"
+    },
+    "gold": {
+        "day": "Tuesday",
+        "time_range": "{15:00:15:30}"
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": false,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 33.49148106575012,
+        "execution_time": 0.07986998558044434,
+        "constraint_eval_time": 3.933906555175781e-05,
+        "pred_extract_time": 0.5687446594238281,
+        "gold_extract_time": 1.430511474609375e-05,
+        "total_tokens": 2879,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\n\n# Meeting parameters\nMEETING_DURATION = 30  # minutes\nWORK_START = 0         # minutes from 9:00 (i.e., 9:00)\nWORK_END = 480         # minutes from 9:00 (i.e., 17:00)\n\n# Days\nMONDAY, TUESDAY = 0, 1\n\n# Helper to convert HH:MM to minutes from 9:00\ndef to_minutes(h, m):\n    return (h - 9) * 60 + m\n\n# Busy schedules as intervals [start, end) in minutes from 9:00\njesse_busy = {\n    MONDAY: [\n        (to_minutes(13, 30), to_minutes(14, 0)),\n        (to_minutes(14, 30), to_minutes(15, 0)),\n    ],\n    TUESDAY: [\n        (to_minutes(9, 0), to_minutes(9, 30)),\n        (to_minutes(13, 0), to_minutes(13, 30)),\n        (to_minutes(14, 0), to_minutes(15, 0)),\n    ]\n}\n\nlawrence_busy = {\n    MONDAY: [\n        (to_minutes(9, 0), to_minutes(17, 0)),  # Busy all day Monday\n    ],\n    TUESDAY: [\n        (to_minutes(9, 30), to_minutes(10, 30)),\n        (to_minutes(11, 30), to_minutes(12, 30)),\n        (to_minutes(13, 0), to_minutes(13, 30)),\n        (to_minutes(14, 30), to_minutes(15, 0)),\n        (to_minutes(15, 30), to_minutes(16, 30)),\n    ]\n}\n\n# Lawrence cannot meet on Tuesday after 16:30 => meeting must end by 16:30 on Tuesday\nTUESDAY_END_LIMIT = to_minutes(16, 30)\n\n# Z3 variables\nday = Int('day')\nstart = Int('start')\nend = Int('end')\n\nopt = Optimize()\n\n# Day constraint: Monday or Tuesday\nopt.add(Or(day == MONDAY, day == TUESDAY))\n\n# Meeting within work hours\nopt.add(start >= WORK_START)\nopt.add(end == start + MEETING_DURATION)\nopt.add(end <= WORK_END)\n\n# No overlap with Jesse's busy times\nfor d in [MONDAY, TUESDAY]:\n    for (bs, be) in jesse_busy[d]:\n        # Either the meeting ends before a busy interval starts or starts after it ends\n        opt.add(Implies(day == d, Or(end <= bs, start >= be)))\n\n# No overlap with Lawrence's busy times\nfor d in [MONDAY, TUESDAY]:\n    for (bs, be) in lawrence_busy[d]:\n        opt.add(Implies(day == d, Or(end <= bs, start >= be)))\n\n# Lawrence cannot meet on Tuesday after 16:30 (meeting must end by 16:30)\nopt.add(Implies(day == TUESDAY, end <= TUESDAY_END_LIMIT))\n\n# Optional: find the earliest valid day/time\nopt.minimize(day)    # Prefer Monday over Tuesday if possible (but Monday is fully busy for Lawrence)\nopt.minimize(start)  # Earliest time within the chosen day\n\nif opt.check() != sat:\n    raise RuntimeError(\"No feasible meeting time found.\")\n\nm = opt.model()\nchosen_day = m[day].as_long()\nchosen_start = m[start].as_long()\nchosen_end = m[end].as_long()\n\ndef minutes_to_hhmm(minutes_from_9):\n    total_minutes = minutes_from_9\n    hour = 9 + (total_minutes // 60)\n    minute = total_minutes % 60\n    return f\"{hour:02d}:{minute:02d}\"\n\nday_name = \"Monday\" if chosen_day == MONDAY else \"Tuesday\"\nstart_str = minutes_to_hhmm(chosen_start)\nend_str = minutes_to_hhmm(chosen_end)\n\n# Output: day of the week and time range in {HH:MM:HH:MM}\nprint(day_name)\nprint(f\"{{{start_str}:{end_str}}}\")"
+}

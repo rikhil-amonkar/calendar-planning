@@ -1,0 +1,29 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "Tuesday\n{16:30:17:00}",
+    "pred": {
+        "day": "Tuesday",
+        "time_range": "{16:30:17:00}"
+    },
+    "gold": {
+        "day": "Tuesday",
+        "time_range": "{16:30:17:00}"
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 55.21819877624512,
+        "execution_time": 0.07991623878479004,
+        "constraint_eval_time": 1.811981201171875e-05,
+        "pred_extract_time": 0.5240437984466553,
+        "gold_extract_time": 1.2874603271484375e-05,
+        "total_tokens": 2399,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\n\n# Meeting parameters\nDURATION = 30  # minutes\nWORK_START = 9 * 60\nWORK_END = 17 * 60\nDAY_START_OFFSET = WORK_START  # minutes from 00:00\nWORK_WINDOW = WORK_END - WORK_START\n\n# Days: 0 = Monday, 1 = Tuesday\nday = Int('day')\nstart = Int('start')  # minutes from 9:00 within the chosen day\n\ns = Solver()\n\n# Working hours constraint within the day window\ns.add(Or(day == 0, day == 1))\ns.add(start >= 0)\ns.add(start + DURATION <= WORK_WINDOW)\n\n# Existing schedules (times converted to minutes from 9:00)\ndef m(h, m):  # minutes from 9:00 within the day\n    return (h * 60 + m) - DAY_START_OFFSET\n\n# Busy intervals per person per day as (start, end) half-open [start, end)\nmargaret_busy = {\n    0: [ (m(10,30), m(11,00)),\n         (m(11,30), m(12,00)),\n         (m(13,00), m(13,30)),\n         (m(15,00), m(17,00)) ],\n    1: [ (m(12,00), m(12,30)) ]\n}\n\nalexis_busy = {\n    0: [ (m(9,30),  m(11,30)),\n         (m(12,30), m(13,00)),\n         (m(14,00), m(17,00)) ],\n    1: [ (m(9,00),  m(9,30)),\n         (m(10,00), m(10,30)),\n         (m(14,00), m(16,30)) ]\n}\n\ndef no_overlap_constraints(day_var, start_var, duration, busy_by_day):\n    cs = []\n    for d in [0, 1]:\n        for (bs, be) in busy_by_day[d]:\n            cs.append(Implies(day_var == d, Or(start_var + duration <= bs, start_var >= be)))\n    return cs\n\n# Add non-overlap constraints for each participant\ns.add(no_overlap_constraints(day, start, DURATION, margaret_busy))\ns.add(no_overlap_constraints(day, start, DURATION, alexis_busy))\n\n# Preferences:\n# - Margaret does not want to meet on Monday\n# - Margaret does not want to meet on Tuesday before 14:30\n# Therefore: day == Tuesday and start >= 14:30 - 9:00 = 330 minutes from 9:00\ns.add(day == 1)\ns.add(start >= ((14 * 60 + 30) - DAY_START_OFFSET))  # 14:30 from 9:00 => 330\n\nif s.check() == sat:\n    model = s.model()\n    d_val = model[day].as_long()\n    st = model[start].as_long()\n    et = st + DURATION\n\n    def fmt_time(offset_from_9):\n        abs_minutes = DAY_START_OFFSET + offset_from_9\n        hh = abs_minutes // 60\n        mm = abs_minutes % 60\n        return f\"{hh:02d}:{mm:02d}\"\n\n    day_name = [\"Monday\", \"Tuesday\"][d_val]\n    start_str = fmt_time(st)\n    end_str = fmt_time(et)\n\n    # Output: day on one line, time range in braces on the next line\n    print(day_name)\n    print(f\"{{{start_str}:{end_str}}}\")\nelse:\n    print(\"No solution found.\")"
+}

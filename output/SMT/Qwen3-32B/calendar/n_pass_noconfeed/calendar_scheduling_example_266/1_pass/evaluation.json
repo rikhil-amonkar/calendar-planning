@@ -1,0 +1,29 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{11:00:11:30} Monday",
+    "pred": {
+        "day": "Monday",
+        "time_range": "{11:00:11:30}"
+    },
+    "gold": {
+        "day": "Monday",
+        "time_range": "{11:00:11:30}"
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 367.0548093318939,
+        "execution_time": 0.07929611206054688,
+        "constraint_eval_time": 6.556510925292969e-05,
+        "pred_extract_time": 0.6631190776824951,
+        "gold_extract_time": 3.3855438232421875e-05,
+        "total_tokens": 16317,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\n\ndef to_time(minutes):\n    hours = minutes // 60\n    mins = minutes % 60\n    return f\"{hours:02d}:{mins:02d}\"\n\nsolver = Solver()\n\nstart_time = Int('start_time')\n\n# Work hours 9:00 (540) to 17:00 (1020). Meeting duration 30 mins.\nsolver.add(And(start_time >= 540, start_time <= 990))  # 990 +30 = 1020\n\n# Joe's blocked: 9:30-10:00 (570-600), 10:30-11:00 (630-660)\nfor c, d in [(570, 600), (630, 660)]:\n    solver.add(Or(start_time + 30 <= c, d <= start_time))\n\n# Keith's blocked: 11:30-12:00 (690-720), 15:00-15:30 (900-930)\nfor c, d in [(690, 720), (900, 930)]:\n    solver.add(Or(start_time + 30 <= c, d <= start_time))\n\n# Patricia's blocked: 9:00-9:30 (540-570), 13:00-13:30 (780-810)\nfor c, d in [(540, 570), (780, 810)]:\n    solver.add(Or(start_time + 30 <= c, d <= start_time))\n\n# Nancy's blocked: 9:00-11:00 (540-660), 11:30-16:30 (690-990)\nfor c, d in [(540, 660), (690, 990)]:\n    solver.add(Or(start_time + 30 <= c, d <= start_time))\n\n# Pamela's blocked intervals in minutes\npam_blocked = [(540, 600), (630, 660), (690, 750), (780, 840), (870, 900), (930, 960), (990, 1020)]\nfor c, d in pam_blocked:\n    solver.add(Or(start_time + 30 <= c, d <= start_time))\n\nif solver.check() == sat:\n    model = solver.model()\n    st = model[start_time].as_long()\n    start_str = to_time(st)\n    end_str = to_time(st + 30)\n    print(f\"{{{start_str}:{end_str}}} Monday\")\nelse:\n    print(\"No solution found.\")"
+}

@@ -1,0 +1,33 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "13:30:14:30 Monday",
+    "pred": {
+        "day": "Monday",
+        "time_range": "{14:30:15:30}"
+    },
+    "gold": {
+        "day": "Monday",
+        "time_range": "{13:30:14:30}"
+    },
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "day": "Monday",
+        "start": 14.5,
+        "end": 15
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 2,
+    "timing": {
+        "api_call_time": 291.591313123703,
+        "execution_time": 0.07845783233642578,
+        "constraint_eval_time": 5.030632019042969e-05,
+        "pred_extract_time": 0.6184251308441162,
+        "gold_extract_time": 3.552436828613281e-05,
+        "total_tokens": 17317,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\n\ndef schedule_meeting():\n    solver = Solver()\n    start = Int('start')\n\n    # Work hours from 9:00 (540) to 17:00 (1020)\n    solver.add(And(start >= 540, start + 60 <= 1020))\n\n    # James's availability constraints\n    james_available = Or(\n        And(start >= 540, start + 60 <= 690),  # 9:00-11:30\n        And(start >= 720, start + 60 <= 870),  # 12:00-14:30\n        And(start >= 900, start + 60 <= 1020)  # 15:00-17:00\n    )\n    solver.add(james_available)\n\n    # John's availability constraints for one-hour meeting\n    john_available = And(start >= 780, start <= 810)  # 13:00-13:30\n    solver.add(john_available)\n\n    # Avoid the unavailable slot from 12:30 (750) to 13:30 (810)\n    solver.add(Or(start + 60 <= 750, start >= 810))\n\n    if solver.check() == sat:\n        model = solver.model()\n        start_val = model[start].as_long()\n        day = \"Monday\"\n        start_h = start_val // 60\n        start_m = start_val % 60\n        end_val = start_val + 60\n        end_h = end_val // 60\n        end_m = end_val % 60\n        print(f\"{start_h:02d}:{start_m:02d}:{end_h:02d}:{end_m:02d} {day}\")\n    else:\n        print(\"No solution\")\n\nschedule_meeting()"
+}

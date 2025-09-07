@@ -1,0 +1,31 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "14:00:14:30 Tuesday",
+    "pred": {
+        "day": "Tuesday",
+        "time_range": "{14:30:14:30}"
+    },
+    "gold": {
+        "day": "Tuesday",
+        "time_range": "{14:00:14:30}"
+    },
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "meeting_duration": "expected 0.5, got 0.00"
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 574.2217528820038,
+        "execution_time": 0.07183575630187988,
+        "constraint_eval_time": 5.412101745605469e-05,
+        "pred_extract_time": 0.6570949554443359,
+        "gold_extract_time": 2.8133392333984375e-05,
+        "total_tokens": 29614,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\n\ndef main():\n    solver = Solver()\n\n    day = Int('day')\n    start_time = Int('start_time')\n\n    # Basic constraints\n    solver.add(0 <= day, day <= 4)\n    solver.add(540 <= start_time, start_time <= 990)\n\n    # Daniel's day preferences: not Wednesday (2) or Thursday (3)\n    solver.add(And(day != 2, day != 3))\n\n    # Bradley's day preferences: not Monday (0), Friday (4)\n    solver.add(And(day != 0, day != 4))\n\n    # Bradley's Tuesday before 12:00 (720) constraint\n    solver.add(Implies(day == 1, start_time >= 720))\n\n    # Define busy intervals for Daniel and Bradley\n    daniel_busy = [\n        # Monday (0)\n        [(570, 630), (720, 750), (780, 840), (870, 900), (930, 960)],\n        # Tuesday (1)\n        [(660, 720), (780, 810), (930, 960), (990, 1020)],\n        # Wednesday (2)\n        [(540, 600), (840, 870)],\n        # Thursday (3)\n        [(630, 660), (720, 780), (870, 900), (930, 960)],\n        # Friday (4)\n        [(540, 570), (690, 720), (780, 810), (990, 1020)]\n    ]\n\n    bradley_busy = [\n        # Monday (0)\n        [(570, 660), (690, 720), (750, 780), (840, 900)],\n        # Tuesday (1)\n        [(630, 660), (720, 780), (810, 840), (930, 990)],\n        # Wednesday (2)\n        [(540, 600), (660, 780), (810, 840), (870, 1020)],\n        # Thursday (3)\n        [(540, 750), (810, 840), (870, 900), (930, 990)],\n        # Friday (4)\n        [(540, 570), (600, 750), (780, 810), (840, 870), (930, 990)]\n    ]\n\n    # Add Daniel's busy time constraints\n    for d in range(5):\n        busy_intervals = daniel_busy[d]\n        if not busy_intervals:\n            continue\n        constraints = []\n        for (bs, be) in busy_intervals:\n            constraints.append(Or(start_time + 30 <= bs, be <= start_time))\n        day_constraints = And(constraints)\n        solver.add(Implies(day == d, day_constraints))\n\n    # Add Bradley's busy time constraints\n    for d in range(5):\n        busy_intervals = bradley_busy[d]\n        if not busy_intervals:\n            continue\n        constraints = []\n        for (bs, be) in busy_intervals:\n            constraints.append(Or(start_time + 30 <= bs, be <= start_time))\n        day_constraints = And(constraints)\n        solver.add(Implies(day == d, day_constraints))\n\n    if solver.check() == sat:\n        model = solver.model()\n        day_val = model[day].as_long()\n        start_val = model[start_time].as_long()\n        end_val = start_val + 30\n        days = [\"Monday\", \"Tuesday\", \"Wednesday\", \"Thursday\", \"Friday\"]\n        day_name = days[day_val]\n\n        def to_time(mins):\n            hours = mins // 60\n            minutes = mins % 60\n            return f\"{hours:02d}:{minutes:02d}\"\n\n        start_time_str = to_time(start_val)\n        end_time_str = to_time(end_val)\n        time_range = f\"{start_time_str}:{end_time_str}\"\n        print(f\"{time_range} {day_name}\")\n    else:\n        print(\"No solution found\")\n\nif __name__ == \"__main__\":\n    main()"
+}

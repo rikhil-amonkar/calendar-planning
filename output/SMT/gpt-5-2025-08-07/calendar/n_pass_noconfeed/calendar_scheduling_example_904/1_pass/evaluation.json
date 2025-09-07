@@ -1,0 +1,29 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "Tuesday {14:00:14:30}",
+    "pred": {
+        "day": "Tuesday",
+        "time_range": "{14:00:14:30}"
+    },
+    "gold": {
+        "day": "Tuesday",
+        "time_range": "{14:00:14:30}"
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 72.5965359210968,
+        "execution_time": 0.08368325233459473,
+        "constraint_eval_time": 4.00543212890625e-05,
+        "pred_extract_time": 0.8578205108642578,
+        "gold_extract_time": 2.5272369384765625e-05,
+        "total_tokens": 3393,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\n\n# Time constants\nWORK_START = 9 * 60  # 09:00 in minutes from midnight\nWORK_END = 17 * 60   # 17:00 in minutes from midnight\nDAY_START_OFFSET = WORK_START  # Base for conversion\nMEETING_DURATION = 30  # minutes\nSLOT_GRANULARITY = 30  # minutes\nDAY_NAMES = [\"Monday\", \"Tuesday\", \"Wednesday\", \"Thursday\", \"Friday\"]\n\n# Represent times within the day as minutes offset from 09:00 (0..480)\ndef t(hh, mm):\n    return (hh * 60 + mm) - DAY_START_OFFSET\n\n# Busy schedules per person per day (0=Mon ... 4=Fri), times in minutes from 09:00\nbusy = {\n    \"Daniel\": {\n        0: [(t(9,30), t(10,30)), (t(12,0), t(12,30)), (t(13,0), t(14,0)),\n            (t(14,30), t(15,0)), (t(15,30), t(16,0))],\n        1: [(t(11,0), t(12,0)), (t(13,0), t(13,30)), (t(15,30), t(16,0)), (t(16,30), t(17,0))],\n        2: [(t(9,0), t(10,0)), (t(14,0), t(14,30))],\n        3: [(t(10,30), t(11,0)), (t(12,0), t(13,0)), (t(14,30), t(15,0)), (t(15,30), t(16,0))],\n        4: [(t(9,0), t(9,30)), (t(11,30), t(12,0)), (t(13,0), t(13,30)), (t(16,30), t(17,0))],\n    },\n    \"Bradley\": {\n        0: [(t(9,30), t(11,0)), (t(11,30), t(12,0)), (t(12,30), t(13,0)), (t(14,0), t(15,0))],\n        1: [(t(10,30), t(11,0)), (t(12,0), t(13,0)), (t(13,30), t(14,0)), (t(15,30), t(16,30))],\n        2: [(t(9,0), t(10,0)), (t(11,0), t(13,0)), (t(13,30), t(14,0)), (t(14,30), t(17,0))],\n        3: [(t(9,0), t(12,30)), (t(13,30), t(14,0)), (t(14,30), t(15,0)), (t(15,30), t(16,30))],\n        4: [(t(9,0), t(9,30)), (t(10,0), t(12,30)), (t(13,0), t(13,30)), (t(14,0), t(14,30)), (t(15,30), t(16,30))],\n    }\n}\n\n# Z3 variables\nday = Int('day')       # 0..4 => Monday..Friday\nstart = Int('start')   # minutes from 09:00 within [0..480)\n\ns = Solver()\n\n# Domain constraints\ns.add(day >= 0, day <= 4)\ns.add(start >= 0, start <= (WORK_END - WORK_START) - MEETING_DURATION)\ns.add(start % SLOT_GRANULARITY == 0)\n\n# Non-overlap constraints for each participant on the chosen day\ndef no_overlap_for(person):\n    constraints = []\n    for d in range(5):\n        daily = busy[person][d]\n        # For each busy interval, ensure meeting [start, start+duration) doesn't overlap when day == d\n        day_constraints = [Or(start + MEETING_DURATION <= b_start, start >= b_end) for (b_start, b_end) in daily]\n        constraints.append(Implies(day == d, And(day_constraints) if day_constraints else True))\n    return And(constraints)\n\ns.add(no_overlap_for(\"Daniel\"))\ns.add(no_overlap_for(\"Bradley\"))\n\n# Preferences/constraints:\n# Daniel would rather not meet on Wednesday or Thursday (treat as hard constraints)\ns.add(day != 2)  # Wednesday\ns.add(day != 3)  # Thursday\n\n# Bradley does not want to meet on Monday, Tuesday before 12:00, or Friday (treat as hard constraints)\ns.add(day != 0)  # Monday\ns.add(day != 4)  # Friday\n# If Tuesday, then not before 12:00 (12:00 => 180 minutes from 09:00)\ns.add(Implies(day == 1, start >= t(12, 0)))\n\n# Helper to convert offset minutes (from 09:00) to HH:MM\ndef to_hhmm(offset_minutes):\n    total = DAY_START_OFFSET + offset_minutes\n    hh = total // 60\n    mm = total % 60\n    return f\"{hh:02d}:{mm:02d}\"\n\nif s.check() == sat:\n    m = s.model()\n    d = m[day].as_long()\n    st = m[start].as_long()\n    en = st + MEETING_DURATION\n    day_name = DAY_NAMES[d]\n    time_range = f\"{to_hhmm(st)}:{to_hhmm(en)}\"\n    print(f\"{day_name} {{{time_range}}}\")\nelse:\n    print(\"No valid meeting time found.\")"
+}

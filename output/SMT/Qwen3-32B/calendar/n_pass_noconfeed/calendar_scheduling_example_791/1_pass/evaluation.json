@@ -1,0 +1,29 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "11:30:12:00 Wednesday",
+    "pred": {
+        "day": "Wednesday",
+        "time_range": "{11:30:12:00}"
+    },
+    "gold": {
+        "day": "Wednesday",
+        "time_range": "{11:30:12:00}"
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 637.8429138660431,
+        "execution_time": 0.07979273796081543,
+        "constraint_eval_time": 6.365776062011719e-05,
+        "pred_extract_time": 0.6359148025512695,
+        "gold_extract_time": 4.38690185546875e-05,
+        "total_tokens": 32005,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\n\nday = Int('day')\nstart = Int('start')\n\ns = Solver()\n\n# Day must be 0 (Monday), 1 (Tuesday), or 2 (Wednesday)\ns.add(Or(day == 0, day == 1, day == 2))\n\n# Constraints on start time based on the day\ns.add(Implies(day == 0, And(start >= 540, start <= 990)))\ns.add(Implies(day == 1, And(start >= 540, start <= 990)))\ns.add(Implies(day == 2, And(start >= 540, start <= 780)))\n\n# Nicole's Monday constraints\nnicole_mon = And(\n    Or(start + 30 <= 540, start >= 570),\n    Or(start + 30 <= 780, start >= 810),\n    Or(start + 30 <= 870, start >= 930)\n)\n# Ruth's Monday constraints\nruth_mon = Or(start + 30 <= 540, start >= 1020)\ns.add(Implies(day == 0, And(nicole_mon, ruth_mon)))\n\n# Nicole's Tuesday constraints\nnicole_tue = And(\n    Or(start + 30 <= 540, start >= 570),\n    Or(start + 30 <= 690, start >= 810),\n    Or(start + 30 <= 870, start >= 930)\n)\n# Ruth's Tuesday constraints\nruth_tue = Or(start + 30 <= 540, start >= 1020)\ns.add(Implies(day == 1, And(nicole_tue, ruth_tue)))\n\n# Nicole's Wednesday constraints\nnicole_wed = And(\n    Or(start + 30 <= 600, start >= 660),\n    start <= 720\n)\n# Ruth's Wednesday constraints\nruth_wed = And(\n    Or(start + 30 <= 540, start >= 630),\n    Or(start + 30 <= 660, start >= 690),\n    Or(start + 30 <= 720, start >= 750)\n)\ns.add(Implies(day == 2, And(nicole_wed, ruth_wed)))\n\nif s.check() == sat:\n    m = s.model()\n    day_val = m[day].as_long()\n    start_val = m[start].as_long()\n    days = ['Monday', 'Tuesday', 'Wednesday']\n    day_name = days[day_val]\n    start_h = start_val // 60\n    start_m = start_val % 60\n    end_val = start_val + 30\n    end_h = end_val // 60\n    end_m = end_val % 60\n    time_range = f\"{start_h:02d}:{start_m:02d}:{end_h:02d}:{end_m:02d}\"\n    print(f\"{time_range} {day_name}\")\nelse:\n    print(\"No solution\")"
+}

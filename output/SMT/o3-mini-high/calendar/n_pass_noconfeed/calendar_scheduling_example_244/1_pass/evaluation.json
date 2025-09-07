@@ -1,0 +1,29 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "Monday 11:30:12:00",
+    "pred": {
+        "day": "Monday",
+        "time_range": "{11:30:12:00}"
+    },
+    "gold": {
+        "day": "Monday",
+        "time_range": "{11:30:12:00}"
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 51.396756172180176,
+        "execution_time": 0.08536267280578613,
+        "constraint_eval_time": 3.552436828613281e-05,
+        "pred_extract_time": 0.6800661087036133,
+        "gold_extract_time": 3.2901763916015625e-05,
+        "total_tokens": 1771,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\n\ndef minutes_to_time(minutes):\n    # Convert minutes (offset from 9:00) to actual hour and minute\n    total = 9 * 60 + minutes\n    hour = total // 60\n    minute = total % 60\n    return hour, minute\n\n# Create the solver\ns = Solver()\n\n# Meeting start time (in minutes offset from 9:00)\nm = Int('m')\nmeeting_duration = 30\n\n# Working hours: 9:00 to 17:00 so m must be between 0 and 480-30 = 450 minutes.\ns.add(m >= 0, m <= 450)\n\n# Busy intervals for each participant (expressed in minutes offset from 9:00)\nbusy_intervals = [\n    # Cynthia's busy intervals: 9:00-9:30, 10:00-10:30, 13:30-14:30, 15:00-16:00\n    (0, 30),\n    (60, 90),\n    (270, 330),\n    (360, 420),\n    \n    # Ann's busy intervals: 10:00-11:00, 13:00-13:30, 14:00-15:00, 16:00-16:30\n    (60, 120),\n    (240, 270),\n    (300, 360),\n    (420, 450),\n\n    # Catherine's busy intervals: 9:00-11:30, 12:30-13:30, 14:30-17:00\n    (0, 150),\n    (210, 270),\n    (330, 480),\n\n    # Kyle's busy intervals: 9:00-9:30, 10:00-11:30, 12:00-12:30, 13:00-14:30, 15:00-16:00\n    (0, 30),\n    (60, 150),\n    (180, 210),\n    (240, 330),\n    (360, 420)\n]\n\n# For each busy interval, ensure the meeting [m, m+meeting_duration) does not overlap.\nfor start_busy, end_busy in busy_intervals:\n    s.add(Or(m + meeting_duration <= start_busy, m >= end_busy))\n\nif s.check() == sat:\n    model = s.model()\n    meeting_start = model[m].as_long()\n    meeting_end = meeting_start + meeting_duration\n    start_hour, start_min = minutes_to_time(meeting_start)\n    end_hour, end_min = minutes_to_time(meeting_end)\n    # Output in the format HH:MM:HH:MM along with the day of the week.\n    print(f\"Monday {start_hour:02d}:{start_min:02d}:{end_hour:02d}:{end_min:02d}\")\nelse:\n    print(\"No valid meeting time found.\")"
+}

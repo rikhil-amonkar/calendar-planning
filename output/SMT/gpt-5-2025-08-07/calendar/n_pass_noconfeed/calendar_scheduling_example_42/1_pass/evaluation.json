@@ -1,0 +1,29 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "Monday\n{14:00:15:00}",
+    "pred": {
+        "day": "Monday",
+        "time_range": "{14:00:15:00}"
+    },
+    "gold": {
+        "day": "Monday",
+        "time_range": "{14:00:15:00}"
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 38.02246594429016,
+        "execution_time": 0.07724237442016602,
+        "constraint_eval_time": 3.361701965332031e-05,
+        "pred_extract_time": 0.600623369216919,
+        "gold_extract_time": 2.6226043701171875e-05,
+        "total_tokens": 2274,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\n\ndef to_minutes(hh_mm):\n    h, m = map(int, hh_mm.split(\":\"))\n    return h * 60 + m\n\ndef to_hhmm(m):\n    h = m // 60\n    mi = m % 60\n    return f\"{h:02d}:{mi:02d}\"\n\ndef no_overlap_constraints(start, duration, busy_intervals):\n    constraints = []\n    end = start + duration\n    for (b_start, b_end) in busy_intervals:\n        # Meeting [start, end) must not intersect [b_start, b_end)\n        constraints.append(Or(end <= b_start, start >= b_end))\n    return constraints\n\ndef main():\n    # Work hours and meeting duration\n    day = \"Monday\"\n    work_start = to_minutes(\"09:00\")\n    work_end = to_minutes(\"17:00\")\n    duration = 60  # one hour\n\n    # Participants' busy schedules (Monday)\n    julie_busy = [\n        (to_minutes(\"09:00\"), to_minutes(\"09:30\")),\n        (to_minutes(\"11:00\"), to_minutes(\"11:30\")),\n        (to_minutes(\"12:00\"), to_minutes(\"12:30\")),\n        (to_minutes(\"13:30\"), to_minutes(\"14:00\")),\n        (to_minutes(\"16:00\"), to_minutes(\"17:00\")),\n    ]\n\n    sean_busy = [\n        (to_minutes(\"09:00\"), to_minutes(\"09:30\")),\n        (to_minutes(\"13:00\"), to_minutes(\"13:30\")),\n        (to_minutes(\"15:00\"), to_minutes(\"15:30\")),\n        (to_minutes(\"16:00\"), to_minutes(\"16:30\")),\n    ]\n\n    lori_busy = [\n        (to_minutes(\"10:00\"), to_minutes(\"10:30\")),\n        (to_minutes(\"11:00\"), to_minutes(\"13:00\")),\n        (to_minutes(\"15:30\"), to_minutes(\"17:00\")),\n    ]\n\n    start = Int(\"start\")\n    end = start + duration\n\n    opt = Optimize()\n\n    # Meeting within work hours\n    opt.add(start >= work_start)\n    opt.add(end <= work_end)\n\n    # Optional: start time aligned to 30-minute slots\n    opt.add(start % 30 == 0)\n\n    # No overlap with any participant's busy times\n    opt.add(no_overlap_constraints(start, duration, julie_busy))\n    opt.add(no_overlap_constraints(start, duration, sean_busy))\n    opt.add(no_overlap_constraints(start, duration, lori_busy))\n\n    # Prefer the earliest feasible time\n    opt.minimize(start)\n\n    if opt.check() == sat:\n        model = opt.model()\n        s_val = model[start].as_long()\n        e_val = s_val + duration\n        print(day)\n        print(f\"{{{to_hhmm(s_val)}:{to_hhmm(e_val)}}}\")\n    else:\n        print(\"No feasible time found.\")\n\nif __name__ == \"__main__\":\n    main()"
+}

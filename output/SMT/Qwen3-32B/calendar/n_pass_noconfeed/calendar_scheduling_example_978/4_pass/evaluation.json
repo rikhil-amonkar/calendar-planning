@@ -1,0 +1,33 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "Solution: day = 3, time_range = {9:30:10:30}",
+    "pred": {
+        "day": "Wednesday",
+        "time_range": "{9:30:10:30}"
+    },
+    "gold": {
+        "day": "Tuesday",
+        "time_range": "{9:30:10:30}"
+    },
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "day": "Wednesday",
+        "start": 9,
+        "end": 11.5
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 4,
+    "timing": {
+        "api_call_time": 324.97778606414795,
+        "execution_time": 0.07396769523620605,
+        "constraint_eval_time": 5.650520324707031e-05,
+        "pred_extract_time": 0.6800999641418457,
+        "gold_extract_time": 2.7418136596679688e-05,
+        "total_tokens": 23501,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import z3\n\n# Define variables\nday = z3.Int('day')\nstart_time = z3.Int('start_time')\nend_time = z3.Int('end_time')\n\n# Initialize the Z3 solver\nopt = z3.Solver()\n\n# Constraint: Day must be between 2 and 4 (Tuesday to Thursday)\nopt.add(z3.And(2 <= day, day <= 4))\n\n# Constraint: If the day is Tuesday (2), the time must be 9:30 to 10:30\nopt.add(z3.Implies(\n    day == 2,\n    z3.And(start_time == 570, end_time == 630)\n))\n\n# Optional: Ensure that start_time is less than end_time\nopt.add(start_time < end_time)\n\n# Check for a solution\nif opt.check() == z3.sat:\n    model = opt.model()\n    day_val = model[day].as_long()\n    start_val = model[start_time].as_long()\n    end_val = model[end_time].as_long()\n\n    # Convert minutes back to time format for output\n    def minutes_to_time(minutes):\n        hours = minutes // 60\n        mins = minutes % 60\n        return f\"{hours}:{mins:02d}\"\n\n    start_time_str = minutes_to_time(start_val)\n    end_time_str = minutes_to_time(end_val)\n\n    print(f\"Solution: day = {day_val}, time_range = {{{start_time_str}:{end_time_str}}}\")\nelse:\n    print(\"No solution found.\")"
+}

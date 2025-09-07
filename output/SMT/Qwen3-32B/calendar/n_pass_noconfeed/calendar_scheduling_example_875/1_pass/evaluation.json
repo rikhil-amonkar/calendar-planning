@@ -1,0 +1,29 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "Wednesday 14:30:15:30",
+    "pred": {
+        "day": "Wednesday",
+        "time_range": "{14:30:15:30}"
+    },
+    "gold": {
+        "day": "Wednesday",
+        "time_range": "{14:30:15:30}"
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 402.2472083568573,
+        "execution_time": 0.0826573371887207,
+        "constraint_eval_time": 5.078315734863281e-05,
+        "pred_extract_time": 0.8764805793762207,
+        "gold_extract_time": 2.0742416381835938e-05,
+        "total_tokens": 19290,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\n\nsolver = Solver()\n\nday = Int('day')\nstart_time = Int('start_time')\n\n# Constraints on day and start_time\nsolver.add(And(day >= 0, day <= 3))\nsolver.add(And(start_time >= 540, start_time <= 960))\n\n# Busy periods for Natalie and William\nnatalie_busy = [\n    # Monday (0)\n    [(540, 570), (600, 720), (750, 780), (840, 870), (900, 990)],\n    # Tuesday (1)\n    [(540, 570), (600, 630), (750, 840), (960, 1020)],\n    # Wednesday (2)\n    [(660, 690), (960, 990)],\n    # Thursday (3)\n    [(600, 660), (690, 900), (930, 960), (990, 1020)],\n]\n\nwilliam_busy = [\n    # Monday (0)\n    [(570, 660), (690, 1020)],\n    # Tuesday (1)\n    [(540, 780), (810, 960)],\n    # Wednesday (2)\n    [(540, 750), (780, 870), (930, 960), (990, 1020)],\n    # Thursday (3)\n    [(540, 630), (660, 690), (720, 750), (780, 840), (900, 1020)],\n]\n\n# Add constraints for each day and busy period\nfor d in range(4):\n    all_busy = natalie_busy[d] + william_busy[d]\n    for (s, e) in all_busy:\n        solver.add(Implies(day == d, Or(start_time + 60 <= s, start_time >= e)))\n\nif solver.check() == sat:\n    model = solver.model()\n    day_val = model[day].as_long()\n    start_val = model[start_time].as_long()\n    end_val = start_val + 60\n\n    days = [\"Monday\", \"Tuesday\", \"Wednesday\", \"Thursday\"]\n    day_name = days[day_val]\n\n    def format_time(minutes):\n        hours = minutes // 60\n        mins = minutes % 60\n        return f\"{hours:02d}:{mins:02d}\"\n\n    start_str = format_time(start_val)\n    end_str = format_time(end_val)\n\n    print(f\"{day_name} {start_str}:{end_str}\")\nelse:\n    print(\"No solution found\")"
+}

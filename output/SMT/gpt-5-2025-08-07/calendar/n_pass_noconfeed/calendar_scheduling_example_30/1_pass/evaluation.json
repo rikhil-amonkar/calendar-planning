@@ -1,0 +1,29 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "Monday {11:30:12:00}",
+    "pred": {
+        "day": "Monday",
+        "time_range": "{11:30:12:00}"
+    },
+    "gold": {
+        "day": "Monday",
+        "time_range": "{12:30:13:00}"
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": false,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 34.26544380187988,
+        "execution_time": 0.07794547080993652,
+        "constraint_eval_time": 2.47955322265625e-05,
+        "pred_extract_time": 0.6496036052703857,
+        "gold_extract_time": 1.4066696166992188e-05,
+        "total_tokens": 2055,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\n\n# Helper to convert \"HH:MM\" to minutes since 00:00\ndef to_minutes(t):\n    h, m = map(int, t.split(\":\"))\n    return h * 60 + m\n\n# Helper to format minutes since 00:00 to \"HH:MM\"\ndef fmt(m):\n    h = m // 60\n    mi = m % 60\n    return f\"{h:02d}:{mi:02d}\"\n\n# Problem setup\nday = \"Monday\"\nwork_start = to_minutes(\"09:00\")\nwork_end   = to_minutes(\"17:00\")\nduration   = 30  # minutes\n\n# Busy intervals per participant (as [start, end) in minutes)\nJeffrey_busy = [\n    (to_minutes(\"09:30\"), to_minutes(\"10:00\")),\n    (to_minutes(\"10:30\"), to_minutes(\"11:00\")),\n]\n\nVirginia_busy = [\n    (to_minutes(\"09:00\"), to_minutes(\"09:30\")),\n    (to_minutes(\"10:00\"), to_minutes(\"10:30\")),\n    (to_minutes(\"14:30\"), to_minutes(\"15:00\")),\n    (to_minutes(\"16:00\"), to_minutes(\"16:30\")),\n]\n\nMelissa_busy = [\n    (to_minutes(\"09:00\"), to_minutes(\"11:30\")),\n    (to_minutes(\"12:00\"), to_minutes(\"12:30\")),\n    (to_minutes(\"13:00\"), to_minutes(\"15:00\")),\n    (to_minutes(\"16:00\"), to_minutes(\"17:00\")),\n]\n\n# Melissa would rather not meet after 14:00 (treat as a hard constraint here)\npreference_latest_end = to_minutes(\"14:00\")\n\n# Z3 variables\ns = Int(\"start\")  # meeting start time in minutes since 00:00\ne = Int(\"end\")    # meeting end time\n\nopt = Optimize()\n\n# Basic constraints: within work hours and fixed duration\nopt.add(s >= work_start, e == s + duration, e <= work_end)\n\n# Respect participants' busy intervals: meeting does not overlap any busy interval\ndef no_overlap(intervals):\n    return [Or(e <= a, s >= b) for (a, b) in intervals]\n\nopt.add(no_overlap(Jeffrey_busy))\nopt.add(no_overlap(Virginia_busy))\nopt.add(no_overlap(Melissa_busy))\n\n# Preference: end no later than 14:00 (as a hard constraint for this task)\nopt.add(e <= preference_latest_end)\n\n# Optional: choose the earliest feasible start\nopt.minimize(s)\n\nif opt.check() == sat:\n    model = opt.model()\n    start_val = model[s].as_long()\n    end_val = model[e].as_long()\n    print(f\"{day} {{{fmt(start_val)}:{fmt(end_val)}}}\")\nelse:\n    print(\"No feasible meeting time found.\")"
+}

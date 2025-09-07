@@ -1,0 +1,29 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "Monday {10:30-11:30}",
+    "pred": {
+        "day": "Monday",
+        "time_range": "{10:30:11:30}"
+    },
+    "gold": {
+        "day": "Monday",
+        "time_range": "{10:30:11:30}"
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 2,
+    "timing": {
+        "api_call_time": 23.02997660636902,
+        "execution_time": 0.07710576057434082,
+        "constraint_eval_time": 1.1920928955078125e-05,
+        "pred_extract_time": 0.3817920684814453,
+        "gold_extract_time": 7.867813110351562e-06,
+        "total_tokens": 1907,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "# Requires: z3-solver\nfrom z3 import Int, Optimize, Or, sat\n\ndef to_minutes(hh_mm):\n    hh, mm = map(int, hh_mm.split(':'))\n    return hh * 60 + mm\n\ndef fmt_time(m):\n    hh = m // 60\n    mm = m % 60\n    return f\"{hh:02d}:{mm:02d}\"\n\n# Problem data\nday = \"Monday\"\nwork_start = to_minutes(\"09:00\")\nwork_end   = to_minutes(\"17:00\")\nduration = 60  # minutes\n\n# Busy schedules as half-open intervals [start, end)\n# Ryan: 9:00-9:30, 12:30-13:00\nryan_busy = [\n    (to_minutes(\"09:00\"), to_minutes(\"09:30\")),\n    (to_minutes(\"12:30\"), to_minutes(\"13:00\")),\n]\n\n# Ruth: no meetings\nruth_busy = []\n\n# Denise: 9:30-10:30, 12:00-13:00, 14:30-16:30\ndenise_busy = [\n    (to_minutes(\"09:30\"), to_minutes(\"10:30\")),\n    (to_minutes(\"12:00\"), to_minutes(\"13:00\")),\n    (to_minutes(\"14:30\"), to_minutes(\"16:30\")),\n]\n\n# Preference: Denise does not want to meet after 12:30 -> meeting must end by 12:30\ndenise_end_by = to_minutes(\"12:30\")\n\n# Z3 variables\nS = Int(\"start\")  # start time in minutes from 00:00\nE = Int(\"end\")    # end time in minutes from 00:00\n\nopt = Optimize()\n\n# Basic constraints\nopt.add(E == S + duration)\nopt.add(S >= work_start, E <= work_end)\n\n# Preference constraint (hard)\nopt.add(E <= denise_end_by)\n\ndef no_overlap_with_busy(start, end, busy_intervals):\n    # For each busy interval [b_s, b_e), enforce (end <= b_s) or (start >= b_e)\n    return [Or(end <= b_s, start >= b_e) for (b_s, b_e) in busy_intervals]\n\n# No overlap constraints for all participants\nopt.add(no_overlap_with_busy(S, E, ryan_busy))\nopt.add(no_overlap_with_busy(S, E, ruth_busy))\nopt.add(no_overlap_with_busy(S, E, denise_busy))\n\n# Optional: pick the earliest feasible meeting start\nopt.minimize(S)\n\nif opt.check() == sat:\n    m = opt.model()\n    start_min = m[S].as_long()\n    end_min = m[E].as_long()\n    print(f\"{day} {{{fmt_time(start_min)}-{fmt_time(end_min)}}}\")\nelse:\n    print(\"No feasible meeting time found.\")"
+}

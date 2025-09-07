@@ -1,0 +1,29 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "Monday 10:30:11:00",
+    "pred": {
+        "day": "Monday",
+        "time_range": "{10:30:11:00}"
+    },
+    "gold": {
+        "day": "Monday",
+        "time_range": "{10:30:11:00}"
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 81.2128758430481,
+        "execution_time": 0.07806062698364258,
+        "constraint_eval_time": 2.8133392333984375e-05,
+        "pred_extract_time": 0.5115702152252197,
+        "gold_extract_time": 1.5020370483398438e-05,
+        "total_tokens": 2230,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\n\n# Helper function to format minutes into HH:MM string.\ndef minutes_to_time(m):\n    hours = m // 60\n    minutes = m % 60\n    return f\"{hours:02d}:{minutes:02d}\"\n\n# Create the Z3 solver instance.\nsolver = Solver()\n\n# Define meeting duration in minutes.\nduration = 30\n\n# Let 's' be the meeting start time in minutes after midnight.\ns = Int('s')\n\n# Working hours: meeting must start no earlier than 9:00 (540) \n# and (due to Jose's preference \"no meetings after 15:30\") finish by 15:30 (930).\nsolver.add(s >= 540, s + duration <= 930)\n\n# List all busy intervals (start, end) in minutes for each participant on Monday.\nbusy_intervals = [\n    # Jose's busy times\n    (660, 690),   # 11:00 to 11:30\n    (750, 780),   # 12:30 to 13:00\n\n    # Keith's busy times\n    (840, 870),   # 14:00 to 14:30\n    (900, 930),   # 15:00 to 15:30\n\n    # Logan's busy times\n    (540, 600),   # 9:00 to 10:00\n    (720, 750),   # 12:00 to 12:30\n    (900, 930),   # 15:00 to 15:30\n\n    # Megan's busy times\n    (540, 630),   # 9:00 to 10:30\n    (660, 720),   # 11:00 to 12:00\n    (780, 810),   # 13:00 to 13:30\n    (870, 990),   # 14:30 to 16:30\n\n    # Gary's busy times\n    (540, 570),   # 9:00 to 9:30\n    (600, 630),   # 10:00 to 10:30\n    (690, 780),   # 11:30 to 13:00\n    (810, 840),   # 13:30 to 14:00\n    (870, 990),   # 14:30 to 16:30\n\n    # Bobby's busy times\n    (660, 690),   # 11:00 to 11:30\n    (720, 750),   # 12:00 to 12:30\n    (780, 960)    # 13:00 to 16:00\n]\n\n# For each busy interval, ensure the meeting does not overlap with it.\n# Two intervals [s, s+duration) and [busy_start, busy_end) do not overlap if:\n#   s + duration <= busy_start  OR  s >= busy_end\nfor (busy_start, busy_end) in busy_intervals:\n    solver.add(Or(s + duration <= busy_start, s >= busy_end))\n\n# Check satisfiability and output a valid meeting time.\nif solver.check() == sat:\n    model = solver.model()\n    meeting_start = model[s].as_long()\n    meeting_end = meeting_start + duration\n    # The day is fixed as Monday.\n    day = \"Monday\"\n    # Output the result in the format \"HH:MM:HH:MM\" along with the day.\n    print(f\"{day} {minutes_to_time(meeting_start)}:{minutes_to_time(meeting_end)}\")\nelse:\n    print(\"No meeting time found\")"
+}

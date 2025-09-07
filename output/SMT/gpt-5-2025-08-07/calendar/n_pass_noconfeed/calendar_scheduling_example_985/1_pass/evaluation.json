@@ -1,0 +1,29 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "Wednesday {15:00:16:00}",
+    "pred": {
+        "day": "Wednesday",
+        "time_range": "{15:00:16:00}"
+    },
+    "gold": {
+        "day": "Wednesday",
+        "time_range": "{15:00:16:00}"
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 42.172749519348145,
+        "execution_time": 0.08124136924743652,
+        "constraint_eval_time": 2.8133392333984375e-05,
+        "pred_extract_time": 0.5913066864013672,
+        "gold_extract_time": 1.8835067749023438e-05,
+        "total_tokens": 2791,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\n\ndef minutes(h, m):\n    return h * 60 + m\n\ndef format_time(m):\n    h = m // 60\n    mm = m % 60\n    return f\"{h:02d}:{mm:02d}\"\n\ndef main():\n    # Constants\n    WORK_START = minutes(9, 0)\n    WORK_END = minutes(17, 0)\n    DURATION = 60  # 1 hour\n    days = [\"Monday\", \"Tuesday\", \"Wednesday\", \"Thursday\", \"Friday\"]\n\n    # Busy schedules (minutes from 00:00)\n    # Day index: 0=Mon, 1=Tue, 2=Wed, 3=Thu, 4=Fri\n    diane_busy = {\n        0: [(minutes(12, 0), minutes(12, 30)),\n            (minutes(15, 0), minutes(15, 30))],\n        1: [(minutes(10, 0), minutes(11, 0)),\n            (minutes(11, 30), minutes(12, 0)),\n            (minutes(12, 30), minutes(13, 0)),\n            (minutes(16, 0), minutes(17, 0))],\n        2: [(minutes(9, 0), minutes(9, 30)),\n            (minutes(14, 30), minutes(15, 0)),\n            (minutes(16, 30), minutes(17, 0))],\n        3: [(minutes(15, 30), minutes(16, 30))],\n        4: [(minutes(9, 30), minutes(11, 30)),\n            (minutes(14, 30), minutes(15, 0)),\n            (minutes(16, 0), minutes(17, 0))]\n    }\n\n    matthew_busy = {\n        0: [(minutes(9, 0), minutes(10, 0)),\n            (minutes(10, 30), minutes(17, 0))],\n        1: [(minutes(9, 0), minutes(17, 0))],\n        2: [(minutes(9, 0), minutes(11, 0)),\n            (minutes(12, 0), minutes(14, 30)),\n            (minutes(16, 0), minutes(17, 0))],\n        3: [(minutes(9, 0), minutes(16, 0))],\n        4: [(minutes(9, 0), minutes(17, 0))]\n    }\n\n    # Variables\n    day = Int('day')         # 0..4 for Monday..Friday\n    start = Int('start')     # minutes from 00:00 within the day\n\n    s = Solver()\n\n    # Domain constraints\n    s.add(day >= 0, day <= 4)\n    s.add(start >= WORK_START, start + DURATION <= WORK_END)\n\n    # For each day, ensure no overlap with each person's busy intervals on that day\n    def no_overlap_on_day(person_busy, d):\n        intervals = person_busy.get(d, [])\n        return And([Or(start + DURATION <= s0, start >= e0) for (s0, e0) in intervals])\n\n    for d in range(5):\n        s.add(Implies(day == d, no_overlap_on_day(diane_busy, d)))\n        s.add(Implies(day == d, no_overlap_on_day(matthew_busy, d)))\n\n    # Preference: Matthew would rather not meet on Wednesday before 12:30\n    # Treating as a strict constraint\n    s.add(Implies(day == 2, start >= minutes(12, 30)))\n\n    if s.check() != sat:\n        print(\"No solution found.\")\n        return\n\n    m = s.model()\n    d_val = m[day].as_long()\n    start_val = m[start].as_long()\n    end_val = start_val + DURATION\n\n    day_name = days[d_val]\n    start_str = format_time(start_val)\n    end_str = format_time(end_val)\n\n    # Output must include both the day and the time range in {HH:MM:HH:MM}\n    print(f\"{day_name} {{{start_str}:{end_str}}}\")\n\nif __name__ == \"__main__\":\n    main()"
+}

@@ -1,0 +1,29 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "Monday 14:00:15:00",
+    "pred": {
+        "day": "Monday",
+        "time_range": "{14:00:15:00}"
+    },
+    "gold": {
+        "day": "Monday",
+        "time_range": "{14:00:15:00}"
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 318.13880705833435,
+        "execution_time": 0.07758212089538574,
+        "constraint_eval_time": 5.91278076171875e-05,
+        "pred_extract_time": 0.5313794612884521,
+        "gold_extract_time": 3.266334533691406e-05,
+        "total_tokens": 14157,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\n\n# Define the start time variable\nS = Int('S')\n\nsolver = Solver()\n\n# Add constraints for S to be within 9:00 (540) to 16:00 (960) since meeting is 1h\nsolver.add(S >= 540)\nsolver.add(S <= 960)\n\n# Julie's blocked intervals (in minutes since midnight)\njulie_blocked = [\n    (540, 570),  # 9:00-9:30\n    (660, 690),  # 11:00-11:30\n    (720, 750),  # 12:00-12:30\n    (810, 840),  # 13:30-14:00\n    (960, 1020)  # 16:00-17:00\n]\n\n# Sean's blocked intervals\nsean_blocked = [\n    (540, 570),  # 9:00-9:30\n    (780, 810),  # 13:00-13:30\n    (900, 930),  # 15:00-15:30\n    (960, 990)   # 16:00-16:30\n]\n\n# Lori's blocked intervals\nlori_blocked = [\n    (600, 630),  # 10:00-10:30\n    (660, 780),  # 11:00-13:00\n    (930, 1020)  # 15:30-17:00\n]\n\n# Add constraints for Julie's blocked intervals\nfor b_start, b_end in julie_blocked:\n    solver.add(Or(S + 60 <= b_start, S >= b_end))\n\n# Add constraints for Sean's blocked intervals\nfor b_start, b_end in sean_blocked:\n    solver.add(Or(S + 60 <= b_start, S >= b_end))\n\n# Add constraints for Lori's blocked intervals\nfor b_start, b_end in lori_blocked:\n    solver.add(Or(S + 60 <= b_start, S >= b_end))\n\n# Check if a solution exists\nif solver.check() == sat:\n    model = solver.model()\n    start = model[S].as_long()\n    end = start + 60\n    \n    # Convert minutes to HH:MM format\n    def to_time(mins):\n        hours = mins // 60\n        minutes = mins % 60\n        return f\"{hours:02d}:{minutes:02d}\"\n    \n    start_time = to_time(start)\n    end_time = to_time(end)\n    print(f\"Monday {start_time}:{end_time}\")\nelse:\n    print(\"No solution found\")"
+}

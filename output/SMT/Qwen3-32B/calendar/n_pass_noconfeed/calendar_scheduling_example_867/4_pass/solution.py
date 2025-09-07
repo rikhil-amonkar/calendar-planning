@@ -1,0 +1,1 @@
+print(f"Meeting is on {schedule['day']}, from {schedule['time_range']['start']} to {schedule['time_range']['end']}")

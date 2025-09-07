@@ -1,0 +1,28 @@
+{
+    "has_execution_error": true,
+    "has_no_plan": false,
+    "execution_output": null,
+    "pred": null,
+    "gold": {
+        "day": "Monday",
+        "time_range": "{10:00:10:30}"
+    },
+    "status": "Error",
+    "violated_constraint": {
+        "missing_output": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 51.11815118789673,
+        "execution_time": 0.07919526100158691,
+        "constraint_eval_time": 2.1457672119140625e-06,
+        "pred_extract_time": 1.4066696166992188e-05,
+        "gold_extract_time": 2.384185791015625e-05,
+        "total_tokens": 2334,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\n\n# Meeting parameters\nDAYS = [\"Monday\", \"Tuesday\", \"Wednesday\", \"Thursday\"]\nday = Int(\"day\")        # 0=Mon, 1=Tue, 2=Wed, 3=Thu\nstart = Int(\"start\")    # minutes from 09:00 (workday start)\ndur = 30                # meeting duration in minutes\nwork_start = 0          # 09:00 -> 0\nwork_end = 480          # 17:00 -> 480\n\n# Helper: convert HH:MM to minutes from 09:00\ndef m(h, mm):\n    return (h - 9) * 60 + mm\n\n# Busy intervals per participant per day (times as minutes from 09:00)\n# Mary\nmary_busy = {\n    0: [],  # Monday\n    1: [(m(10,0), m(10,30)), (m(15,30), m(16,0))],                      # Tuesday\n    2: [(m(9,30), m(10,0)), (m(15,0), m(15,30))],                       # Wednesday\n    3: [(m(9,0), m(10,0)), (m(10,30), m(11,30))],                       # Thursday\n}\n\n# Alexis\nalexis_busy = {\n    0: [(m(9,0), m(10,0)), (m(10,30), m(12,0)), (m(12,30), m(16,30))],  # Monday\n    1: [(m(9,0), m(10,0)), (m(10,30), m(11,30)), (m(12,0), m(15,30)), (m(16,0), m(17,0))],  # Tuesday\n    2: [(m(9,0), m(11,0)), (m(11,30), m(17,0))],                        # Wednesday\n    3: [(m(10,0), m(12,0)), (m(14,0), m(14,30)), (m(15,30), m(16,0)), (m(16,30), m(17,0))], # Thursday\n}\n\n# Build solver with optimization for earliest slot (earliest day, then earliest time)\nopt = Optimize()\n\n# Domain constraints\nopt.add(day >= 0, day <= 3)\nopt.add(start >= work_start, start + dur <= work_end)\nopt.add(Mod(start, 30) == 0)  # align to 30-minute slots\n\n# Non-overlap constraints for Mary\nfor d in range(4):\n    for (bs, be) in mary_busy.get(d, []):\n        opt.add(Implies(day == d, Or(start + dur <= bs, start >= be)))\n\n# Non-overlap constraints for Alexis\nfor d in range(4):\n    for (bs, be) in alexis_busy.get(d, []):\n        opt.add(Implies(day == d, Or(start + dur <= bs, start >= be)))\n\n# Objective: earliest availability (prioritize earlier day, then earlier start)\n# Use a weighted linear objective to enforce day priority over start\nopt.minimize(day * 10000 + start)\n\nif opt.check() == sat:\n    mdl = opt.model()\n    d_val = mdl[day].as_long()\n    s_val = mdl[start].as_long()\n    e_val = s_val + dur\n\n    def fmt(t):\n        hh = 9 + t // 60\n        mm = t % 60\n        return f\"{hh:02d}:{mm:02d}\"\n\n    print(f\"{DAYS[d_val]} {{{fmt(s_val)}:{fmt(e_val)}}}\")\nelse:\n    print(\"No feasible meeting time found.\")"
+}

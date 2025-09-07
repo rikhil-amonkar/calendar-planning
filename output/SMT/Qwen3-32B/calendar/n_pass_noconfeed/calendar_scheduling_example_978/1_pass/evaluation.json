@@ -1,0 +1,33 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "10:00:11:00 Monday",
+    "pred": {
+        "day": "Monday",
+        "time_range": "{10:00:11:00}"
+    },
+    "gold": {
+        "day": "Tuesday",
+        "time_range": "{9:30:10:30}"
+    },
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "day": "Monday",
+        "start": 0,
+        "end": 24
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 506.8534972667694,
+        "execution_time": 0.08160543441772461,
+        "constraint_eval_time": 5.626678466796875e-05,
+        "pred_extract_time": 0.5734002590179443,
+        "gold_extract_time": 3.147125244140625e-05,
+        "total_tokens": 27626,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import z3\n\nopt = z3.Optimize()\n\nday = z3.Int('day')\nstart_time = z3.Int('start_time')\n\n# Define work hours constraints\nopt.add(z3.And(0 <= day, day <= 4))\nopt.add(z3.And(540 <= start_time, start_time <= 960))  # 9:00 to 16:00 (start_time + 60 <= 1020)\n\n# Busy times for Brian and Julia per day (0=Monday to 4=Friday)\nbrian_busy = {\n    0: [(570, 600), (750, 870), (930, 960)],  # Monday\n    1: [(540, 570)],  # Tuesday\n    2: [(750, 840), (990, 1020)],  # Wednesday\n    3: [(660, 690), (780, 810), (990, 1020)],  # Thursday\n    4: [(570, 600), (630, 660), (780, 810), (900, 960), (990, 1020)],  # Friday\n}\n\njulia_busy = {\n    0: [(540, 600), (660, 690), (750, 780), (930, 960)],  # Monday\n    1: [(780, 840), (960, 990)],  # Tuesday\n    2: [(540, 690), (720, 750), (780, 1020)],  # Wednesday\n    3: [(540, 630), (660, 1020)],  # Thursday\n    4: [(540, 600), (630, 690), (750, 840), (870, 900), (930, 960)],  # Friday\n}\n\n# Add constraints for each day's busy times\nfor d in range(5):\n    # Brian's constraints for day d\n    for b_start, b_end in brian_busy[d]:\n        cond = (day == d)\n        constraint = z3.Or(start_time + 60 <= b_start, start_time >= b_end)\n        opt.add(z3.Implies(cond, constraint))\n    # Julia's constraints for day d\n    for b_start, b_end in julia_busy[d]:\n        cond = (day == d)\n        constraint = z3.Or(start_time + 60 <= b_start, start_time >= b_end)\n        opt.add(z3.Implies(cond, constraint))\n\n# Optimization objectives: minimize day first, then start_time\nopt.minimize(day)\nopt.minimize(start_time)\n\nif opt.check() == z3.sat:\n    model = opt.model()\n    day_val = model[day].as_long()\n    start_val = model[start_time].as_long()\n    days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']\n    day_name = days[day_val]\n    # Convert start and end times to HH:MM format\n    start_h = start_val // 60\n    start_m = start_val % 60\n    end_val = start_val + 60\n    end_h = end_val // 60\n    end_m = end_val % 60\n    # Format with leading zeros\n    start_time_str = f\"{start_h:02d}:{start_m:02d}\"\n    end_time_str = f\"{end_h:02d}:{end_m:02d}\"\n    print(f\"{start_time_str}:{end_time_str} {day_name}\")\nelse:\n    print(\"No solution found.\")"
+}

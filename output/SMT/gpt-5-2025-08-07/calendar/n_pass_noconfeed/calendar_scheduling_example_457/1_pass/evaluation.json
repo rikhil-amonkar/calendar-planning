@@ -1,0 +1,29 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "Monday {16:00:16:30}",
+    "pred": {
+        "day": "Monday",
+        "time_range": "{16:00:16:30}"
+    },
+    "gold": {
+        "day": "Monday",
+        "time_range": "{16:00:16:30}"
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 80.05237627029419,
+        "execution_time": 0.08059835433959961,
+        "constraint_eval_time": 4.124641418457031e-05,
+        "pred_extract_time": 0.5862681865692139,
+        "gold_extract_time": 1.7404556274414062e-05,
+        "total_tokens": 1847,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\n\ndef to_minutes(hhmm):\n    h, m = map(int, hhmm.split(\":\"))\n    return h * 60 + m\n\ndef to_hhmm(m):\n    h = m // 60\n    mi = m % 60\n    return f\"{h:02d}:{mi:02d}\"\n\n# Meeting parameters\nDAY = \"Monday\"\nMEETING_DURATION = 30\nWORK_START = to_minutes(\"09:00\")\nWORK_END = to_minutes(\"17:00\")\n\n# Busy schedules (inclusive of start, exclusive of end)\nbusy = {\n    \"Andrea\": [(\"09:30\",\"10:30\"), (\"13:30\",\"14:30\")],\n    \"Ruth\": [(\"12:30\",\"13:00\"), (\"15:00\",\"15:30\")],\n    \"Steven\": [(\"10:00\",\"10:30\"), (\"11:00\",\"11:30\"), (\"12:00\",\"12:30\"), (\"13:30\",\"14:00\"), (\"15:00\",\"16:00\")],\n    \"Grace\": [],\n    \"Kyle\": [(\"09:00\",\"09:30\"), (\"10:30\",\"12:00\"), (\"12:30\",\"13:00\"), (\"13:30\",\"15:00\"), (\"15:30\",\"16:00\"), (\"16:30\",\"17:00\")],\n    \"Elijah\": [(\"09:00\",\"11:00\"), (\"11:30\",\"13:00\"), (\"13:30\",\"14:00\"), (\"15:30\",\"16:00\"), (\"16:30\",\"17:00\")],\n    \"Lori\": [(\"09:00\",\"09:30\"), (\"10:00\",\"11:30\"), (\"12:00\",\"13:30\"), (\"14:00\",\"16:00\"), (\"16:30\",\"17:00\")],\n}\n\n# Convert all busy intervals to minutes\nbusy_minutes = {\n    person: [(to_minutes(s), to_minutes(e)) for (s, e) in intervals]\n    for person, intervals in busy.items()\n}\n\n# Z3 model\nopt = Optimize()\nstart = Int(\"start\")\n\n# Core constraints\nopt.add(start >= WORK_START)\nopt.add(start + MEETING_DURATION <= WORK_END)\n# Optional: align meeting start to 30-minute grid\nopt.add(start % 30 == 0)\n\n# No-overlap constraints per participant\nfor person, intervals in busy_minutes.items():\n    for (s, e) in intervals:\n        # Enforce: [start, start+dur) does not intersect [s, e)\n        opt.add(Or(start + MEETING_DURATION <= s, start >= e))\n\n# Prefer earliest feasible time\nopt.minimize(start)\n\nif opt.check() == sat:\n    m = opt.model()\n    s = m[start].as_long()\n    e = s + MEETING_DURATION\n    print(f\"{DAY} {{{to_hhmm(s)}:{to_hhmm(e)}}}\")\nelse:\n    print(\"No feasible time found.\")"
+}

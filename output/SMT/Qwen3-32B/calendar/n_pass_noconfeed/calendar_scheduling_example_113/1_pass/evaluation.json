@@ -1,0 +1,29 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "Monday 10:00:10:30",
+    "pred": {
+        "day": "Monday",
+        "time_range": "{10:00:10:30}"
+    },
+    "gold": {
+        "day": "Monday",
+        "time_range": "{10:00:10:30}"
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 293.45836663246155,
+        "execution_time": 0.08009099960327148,
+        "constraint_eval_time": 4.601478576660156e-05,
+        "pred_extract_time": 0.637991189956665,
+        "gold_extract_time": 2.9087066650390625e-05,
+        "total_tokens": 15270,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\n\n# Initialize solver\nsolver = Solver()\n\n# Define start time variable (in minutes since midnight)\nS = Int('S')\n\n# Add constraints for work hours (9:00-17:00 => 540 to 1020 minutes)\nsolver.add(S >= 540)\nsolver.add(S <= 990)  # Since meeting is 30 min, S + 30 <= 1020 => S <= 990\n\n# Define blocked intervals for each participant\nbradley_blocked = [(570, 600), (750, 780), (810, 840), (930, 960)]\nteresa_blocked = [(630, 660), (720, 750), (780, 810), (870, 900)]\nelizabeth_blocked = [(540, 570), (630, 690), (780, 810), (870, 900), (930, 1020)]\nchristian_blocked = [(540, 570), (630, 1020)]\n\n# Add constraints for each participant's blocked intervals\nfor start, end in bradley_blocked:\n    solver.add(Or(S + 30 <= start, S >= end))\nfor start, end in teresa_blocked:\n    solver.add(Or(S + 30 <= start, S >= end))\nfor start, end in elizabeth_blocked:\n    solver.add(Or(S + 30 <= start, S >= end))\nfor start, end in christian_blocked:\n    solver.add(Or(S + 30 <= start, S >= end))\n\n# Check for solution\nif solver.check() == sat:\n    model = solver.model()\n    start_time = model[S].as_long()\n    end_time = start_time + 30\n\n    # Convert minutes to HH:MM format\n    def to_time_str(minutes):\n        hours = minutes // 60\n        mins = minutes % 60\n        return f\"{hours:02d}:{mins:02d}\"\n\n    start_str = to_time_str(start_time)\n    end_str = to_time_str(end_time)\n    print(f\"Monday {start_str}:{end_str}\")\nelse:\n    print(\"No solution found\")"
+}

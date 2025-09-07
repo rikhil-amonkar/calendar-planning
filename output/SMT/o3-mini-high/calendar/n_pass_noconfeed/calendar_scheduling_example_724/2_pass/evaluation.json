@@ -1,0 +1,29 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "Monday 16:00-16:30",
+    "pred": {
+        "day": "Monday",
+        "time_range": "{16:00:16:30}"
+    },
+    "gold": {
+        "day": "Monday",
+        "time_range": "{16:00:16:30}"
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 2,
+    "timing": {
+        "api_call_time": 41.26583242416382,
+        "execution_time": 0.08279895782470703,
+        "constraint_eval_time": 5.53131103515625e-05,
+        "pred_extract_time": 0.7391357421875,
+        "gold_extract_time": 1.6927719116210938e-05,
+        "total_tokens": 4647,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "#!/usr/bin/env python3\nimport z3\n\ndef main():\n    # Meeting parameters\n    meeting_duration = 30  # in minutes\n    work_start = 9 * 60    # 9:00 as minutes (540)\n    work_end = 17 * 60     # 17:00 as minutes (1020)\n    \n    # Create Z3 solver instance\n    solver = z3.Solver()\n\n    # Define variables:\n    # day: 0 = Monday, 1 = Tuesday, 2 = Wednesday.\n    day = z3.Int('day')\n    # start: meeting start time in minutes (from midnight)\n    start = z3.Int('start')\n    \n    # Instead of declaring a variable for end, we define it as an expression.\n    end_expr = start + meeting_duration  # meeting end time\n\n    # Allowed days: Monday, Tuesday or Wednesday.\n    solver.add(z3.Or(day == 0, day == 1, day == 2))\n    \n    # Meeting must be within working hours.\n    solver.add(start >= work_start)\n    solver.add(end_expr <= work_end)\n    \n    # -----------------------\n    # Busy intervals constraints\n    # For each busy interval on a given day, if the meeting is scheduled on that day,\n    # then the meeting must either end before the busy period starts or start after it ends.\n    \n    # Tyler's busy intervals:\n    # Tuesday (day == 1):\n    #   9:00 to 9:30 -> [540, 570]\n    solver.add(z3.Implies(day == 1, z3.Or(end_expr <= 540, start >= 570)))\n    #   14:30 to 15:00 -> [870, 900]\n    solver.add(z3.Implies(day == 1, z3.Or(end_expr <= 870, start >= 900)))\n    \n    # Wednesday (day == 2):\n    #   10:30 to 11:00 -> [630, 660]\n    solver.add(z3.Implies(day == 2, z3.Or(end_expr <= 630, start >= 660)))\n    #   12:30 to 13:00 -> [750, 780]\n    solver.add(z3.Implies(day == 2, z3.Or(end_expr <= 750, start >= 780)))\n    #   13:30 to 14:00 -> [810, 840]\n    solver.add(z3.Implies(day == 2, z3.Or(end_expr <= 810, start >= 840)))\n    #   16:30 to 17:00 -> [990, 1020]\n    solver.add(z3.Implies(day == 2, z3.Or(end_expr <= 990, start >= 1020)))\n    \n    # Ruth's busy intervals:\n    # Monday (day == 0):\n    #   9:00 to 10:00 -> [540, 600]\n    solver.add(z3.Implies(day == 0, z3.Or(end_expr <= 540, start >= 600)))\n    #   10:30 to 12:00 -> [630, 720]\n    solver.add(z3.Implies(day == 0, z3.Or(end_expr <= 630, start >= 720)))\n    #   12:30 to 14:30 -> [750, 870]\n    solver.add(z3.Implies(day == 0, z3.Or(end_expr <= 750, start >= 870)))\n    #   15:00 to 16:00 -> [900, 960]\n    solver.add(z3.Implies(day == 0, z3.Or(end_expr <= 900, start >= 960)))\n    #   16:30 to 17:00 -> [990, 1020]\n    solver.add(z3.Implies(day == 0, z3.Or(end_expr <= 990, start >= 1020)))\n    \n    # Tuesday (day == 1): whole day busy [540, 1020]\n    solver.add(z3.Implies(day == 1, z3.Or(end_expr <= 540, start >= 1020)))\n    \n    # Wednesday (day == 2): whole day busy [540, 1020]\n    solver.add(z3.Implies(day == 2, z3.Or(end_expr <= 540, start >= 1020)))\n    \n    # -----------------------\n    # Additional constraint:\n    # Tyler prefers to avoid meetings on Monday before 16:00 (i.e. before 960 minutes).\n    solver.add(z3.Implies(day == 0, start >= 16 * 60))\n    \n    # Check for satisfiability and, if successful, extract a solution.\n    if solver.check() == z3.sat:\n        model = solver.model()\n        sol_day = model[day].as_long()\n        sol_start = model[start].as_long()\n        # Use model.evaluate() to get the value of the expression end_expr.\n        sol_end = model.evaluate(end_expr).as_long()\n\n        # Helper function to convert minutes to HH:MM string.\n        def format_time(t):\n            hour = t // 60\n            minute = t % 60\n            return f\"{hour:02d}:{minute:02d}\"\n        \n        day_names = {0: \"Monday\", 1: \"Tuesday\", 2: \"Wednesday\"}\n        day_str = day_names.get(sol_day, \"Unknown\")\n        time_range = f\"{format_time(sol_start)}-{format_time(sol_end)}\"\n        print(f\"{day_str} {time_range}\")\n    else:\n        print(\"No valid meeting time found.\")\n\nif __name__ == \"__main__\":\n    main()"
+}

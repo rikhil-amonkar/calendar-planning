@@ -1,0 +1,29 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "Monday\n{13:30:14:30}",
+    "pred": {
+        "day": "Monday",
+        "time_range": "{13:30:14:30}"
+    },
+    "gold": {
+        "day": "Monday",
+        "time_range": "{13:30:14:30}"
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 58.49058556556702,
+        "execution_time": 0.07361102104187012,
+        "constraint_eval_time": 2.574920654296875e-05,
+        "pred_extract_time": 0.6179332733154297,
+        "gold_extract_time": 1.6689300537109375e-05,
+        "total_tokens": 2285,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\n\ndef minutes(h, m):\n    return h * 60 + m\n\ndef fmt_time(total_minutes):\n    h = total_minutes // 60\n    m = total_minutes % 60\n    return f\"{h:02d}:{m:02d}\"\n\n# Create solver\ns = Solver()\n\n# Variables\nstart = Int('start')   # meeting start time in minutes from 00:00\nend = Int('end')       # meeting end time in minutes from 00:00\nday = Int('day')       # 0=Monday, ..., 6=Sunday\n\n# Constants\nDURATION = 60\nWORK_START = minutes(9, 0)   # 09:00\nWORK_END = minutes(17, 0)    # 17:00\n\n# Meeting duration\ns.add(end == start + DURATION)\n\n# Day constraint: Monday\ns.add(day == 0)\n\n# Work hours constraint (meeting entirely within work hours)\ns.add(start >= WORK_START, end <= WORK_END)\n\n# Busy schedules (half-open intervals [start, end))\n# Anthony: 9:30-10:00, 12:00-13:00, 16:00-16:30\nanthony_busy = [\n    (minutes(9,30), minutes(10,0)),\n    (minutes(12,0), minutes(13,0)),\n    (minutes(16,0), minutes(16,30)),\n]\n\n# Pamela: 9:30-10:00, 16:30-17:00\npamela_busy = [\n    (minutes(9,30), minutes(10,0)),\n    (minutes(16,30), minutes(17,0)),\n]\n\n# Zachary: 9:00-11:30, 12:00-12:30, 13:00-13:30, 14:30-15:00, 16:00-17:00\nzachary_busy = [\n    (minutes(9,0), minutes(11,30)),\n    (minutes(12,0), minutes(12,30)),\n    (minutes(13,0), minutes(13,30)),\n    (minutes(14,30), minutes(15,0)),\n    (minutes(16,0), minutes(17,0)),\n]\n\ndef no_overlap_constraints(start_var, end_var, intervals):\n    cons = []\n    for a, b in intervals:\n        cons.append(Or(end_var <= a, start_var >= b))\n    return cons\n\n# Add no-overlap constraints for each participant\ns.add(no_overlap_constraints(start, end, anthony_busy))\ns.add(no_overlap_constraints(start, end, pamela_busy))\ns.add(no_overlap_constraints(start, end, zachary_busy))\n\n# Pamela prefers not to meet after 14:30 (meeting must end by 14:30)\ns.add(end <= minutes(14,30))\n\n# Solve\nif s.check() == sat:\n    m = s.model()\n    start_min = m[start].as_long()\n    end_min = m[end].as_long()\n    day_val = m[day].as_long()\n\n    day_names = [\"Monday\", \"Tuesday\", \"Wednesday\", \"Thursday\", \"Friday\", \"Saturday\", \"Sunday\"]\n    day_name = day_names[day_val]\n\n    start_str = fmt_time(start_min)\n    end_str = fmt_time(end_min)\n\n    print(day_name)\n    print(f\"{{{start_str}:{end_str}}}\")\nelse:\n    print(\"No feasible meeting time found.\")"
+}

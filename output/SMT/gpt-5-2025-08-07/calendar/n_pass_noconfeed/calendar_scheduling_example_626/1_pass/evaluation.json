@@ -1,0 +1,29 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "Tuesday {09:00:10:00}",
+    "pred": {
+        "day": "Tuesday",
+        "time_range": "{9:00:10:00}"
+    },
+    "gold": {
+        "day": "Tuesday",
+        "time_range": "{9:00:10:00}"
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 26.812146425247192,
+        "execution_time": 0.08696651458740234,
+        "constraint_eval_time": 5.435943603515625e-05,
+        "pred_extract_time": 0.5963799953460693,
+        "gold_extract_time": 1.9073486328125e-05,
+        "total_tokens": 1998,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\n\n# Helper functions\ndef hm_to_min(hhmm):\n    h, m = map(int, hhmm.split(\":\"))\n    return h * 60 + m\n\ndef min_to_hm(m):\n    h = m // 60\n    mi = m % 60\n    return f\"{h:02d}:{mi:02d}\"\n\n# Meeting parameters\nWORK_START = hm_to_min(\"09:00\")\nWORK_END   = hm_to_min(\"17:00\")\nDURATION   = 60  # minutes\nDAYS = [\"Monday\", \"Tuesday\"]\n\n# Participants' busy schedules per day\n# Intervals are half-open [start, end)\npatricia = {\n    0: [(\"10:00\",\"10:30\"), (\"11:30\",\"12:00\"), (\"13:00\",\"13:30\"), (\"14:30\",\"15:30\"), (\"16:00\",\"16:30\")],  # Monday\n    1: [(\"10:00\",\"10:30\"), (\"11:00\",\"12:00\"), (\"14:00\",\"16:00\"), (\"16:30\",\"17:00\")]                      # Tuesday\n}\njesse = {\n    0: [(\"09:00\",\"17:00\")],  # Monday\n    1: [(\"11:00\",\"11:30\"), (\"12:00\",\"12:30\"), (\"13:00\",\"14:00\"), (\"14:30\",\"15:00\"), (\"15:30\",\"17:00\")]  # Tuesday\n}\n\n# Convert schedules to minutes\ndef convert_schedule(sched):\n    out = {}\n    for d, intervals in sched.items():\n        out[d] = [(hm_to_min(s), hm_to_min(e)) for s, e in intervals]\n    return out\n\npatricia_m = convert_schedule(patricia)\njesse_m = convert_schedule(jesse)\n\n# Z3 Variables\nday = Int(\"day\")           # 0 = Monday, 1 = Tuesday\nstart = Int(\"start\")       # minutes from 00:00\nend = Int(\"end\")\n\ns = Solver()\n\n# Domain constraints\ns.add(Or(day == 0, day == 1))\ns.add(start >= WORK_START)\ns.add(end == start + DURATION)\ns.add(end <= WORK_END)\n\n# Non-overlap constraints for each participant on the chosen day\ndef no_overlap_with(schedule):\n    for d in [0,1]:\n        for (b_start, b_end) in schedule[d]:\n            # Meeting [start,end) does not overlap busy [b_start,b_end)\n            s.add(Implies(day == d, Or(end <= b_start, start >= b_end)))\n\nno_overlap_with(patricia_m)\nno_overlap_with(jesse_m)\n\n# Solve\nif s.check() == sat:\n    m = s.model()\n    chosen_day = DAYS[m[day].as_long()]\n    st = m[start].as_long()\n    en = m[end].as_long()\n    print(f\"{chosen_day} {{{min_to_hm(st)}:{min_to_hm(en)}}}\")\nelse:\n    print(\"No solution found\")"
+}

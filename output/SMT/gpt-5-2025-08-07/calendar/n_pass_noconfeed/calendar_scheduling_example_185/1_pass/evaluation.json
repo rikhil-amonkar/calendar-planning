@@ -1,0 +1,29 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "15:00:15:30\nMonday\n{15:00:15:30}",
+    "pred": {
+        "day": "Monday",
+        "time_range": "{15:00:15:30}"
+    },
+    "gold": {
+        "day": "Monday",
+        "time_range": "{15:00:15:30}"
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 54.79852485656738,
+        "execution_time": 0.07834219932556152,
+        "constraint_eval_time": 2.384185791015625e-05,
+        "pred_extract_time": 0.5343344211578369,
+        "gold_extract_time": 1.9550323486328125e-05,
+        "total_tokens": 1762,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import Optimize, Int, Or, sat\n\n# Helper to convert minutes to HH:MM\ndef minutes_to_hhmm(m):\n    hh = m // 60\n    mm = m % 60\n    return f\"{hh:02d}:{mm:02d}\"\n\n# Time helper\ndef t(h, m):\n    return h * 60 + m\n\n# Meeting parameters\nDAY = \"Monday\"\nWORK_START = t(9, 0)\nWORK_END = t(17, 0)\nDURATION = 30  # minutes\n\n# Busy schedules (Monday)\nkimberly_busy = [\n    (t(10, 0), t(10, 30)),\n    (t(11, 0), t(12, 0)),\n    (t(16, 0), t(16, 30)),\n]\n\nmegan_busy = [\n    # No meetings\n]\n\nmarie_busy = [\n    (t(10, 0), t(11, 0)),\n    (t(11, 30), t(15, 0)),\n    (t(16, 0), t(16, 30)),\n]\n\ndiana_busy = [\n    (t(9, 30), t(10, 0)),\n    (t(10, 30), t(14, 30)),\n    (t(15, 30), t(17, 0)),\n]\n\nall_schedules = [\n    kimberly_busy,\n    megan_busy,\n    marie_busy,\n    diana_busy,\n]\n\n# Z3 model\nopt = Optimize()\nstart = Int(\"start\")\nend = Int(\"end\")\n\n# Meeting duration and work hours\nopt.add(end == start + DURATION)\nopt.add(start >= WORK_START, end <= WORK_END)\n\n# Non-overlap constraints: [start, end) does not intersect with any busy [bs, be)\nfor sched in all_schedules:\n    for (bs, be) in sched:\n        opt.add(Or(end <= bs, start >= be))\n\n# Preference: Megan would like to avoid meetings before 10:00\nopt.add_soft(start >= t(10, 0), 1, \"prefer_after_10\")\n\n# Among preferred times, choose the earliest feasible start\nopt.minimize(start)\n\nif opt.check() == sat:\n    model = opt.model()\n    s = model[start].as_long()\n    e = model[end].as_long()\n    s_str = minutes_to_hhmm(s)\n    e_str = minutes_to_hhmm(e)\n\n    # Outputs:\n    # 1) HH:MM:HH:MM\n    print(f\"{s_str}:{e_str}\")\n    # 2) Day of the week\n    print(DAY)\n    # 3) Curly-brace time range as requested example format\n    print(f\"{{{s_str}:{e_str}}}\")\nelse:\n    print(\"No feasible meeting time found.\")"
+}

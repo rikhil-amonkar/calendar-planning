@@ -1,0 +1,29 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "Monday\n11:30:12:00",
+    "pred": {
+        "day": "Monday",
+        "time_range": "{11:30:12:00}"
+    },
+    "gold": {
+        "day": "Monday",
+        "time_range": "{11:30:12:00}"
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 52.48432779312134,
+        "execution_time": 0.0860283374786377,
+        "constraint_eval_time": 3.8623809814453125e-05,
+        "pred_extract_time": 0.7798416614532471,
+        "gold_extract_time": 2.2411346435546875e-05,
+        "total_tokens": 2570,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\n\ndef minutes_to_str(m):\n    hours = m // 60\n    minutes = m % 60\n    return f\"{hours:02}:{minutes:02}\"\n\ndef main():\n    # Convert times to minutes from midnight.\n    work_start = 9 * 60      # 9:00 -> 540\n    work_end = 17 * 60       # 17:00 -> 1020\n    duration = 30            # meeting duration in minutes\n\n    # Define the meeting start time as an integer variable (in minutes)\n    meeting_start = Int('meeting_start')\n    meeting_end = meeting_start + duration\n\n    # Create a solver instance\n    s = Solver()\n\n    # Meeting must be scheduled completely within working hours.\n    s.add(meeting_start >= work_start, meeting_end <= work_end)\n\n    # Define a helper predicate for ensuring the meeting does not overlap a busy interval.\n    # For a busy interval [busy_start, busy_end), the meeting should either end before busy_start or start after busy_end.\n    def no_overlap(busy_start, busy_end):\n        return Or(meeting_end <= busy_start, meeting_start >= busy_end)\n\n    # Busy intervals for each participant (times in minutes from midnight):\n    busy_intervals = [\n        # Jack's busy times: 9:00-9:30 and 14:00-14:30\n        (9 * 60, 9 * 60 + 30),\n        (14 * 60, 14 * 60 + 30),\n\n        # Madison's busy times: 9:30-10:30, 13:00-14:00, 15:00-15:30, and 16:30-17:00\n        (9 * 60 + 30, 10 * 60 + 30),\n        (13 * 60, 14 * 60),\n        (15 * 60, 15 * 60 + 30),\n        (16 * 60 + 30, 17 * 60),\n\n        # Rachel's busy times: 9:30-10:30, 11:00-11:30, 12:00-13:30, 14:30-15:30 and 16:00-17:00\n        (9 * 60 + 30, 10 * 60 + 30),\n        (11 * 60, 11 * 60 + 30),\n        (12 * 60, 13 * 60 + 30),\n        (14 * 60 + 30, 15 * 60 + 30),\n        (16 * 60, 17 * 60),\n\n        # Douglas's busy times: 9:00-11:30 and 12:00-16:30\n        (9 * 60, 11 * 60 + 30),\n        (12 * 60, 16 * 60 + 30),\n\n        # Ryan's busy times: 9:00-9:30, 13:00-14:00 and 14:30-17:00\n        (9 * 60, 9 * 60 + 30),\n        (13 * 60, 14 * 60),\n        (14 * 60 + 30, 17 * 60)\n    ]\n\n    # Add non-overlapping constraints for each busy period.\n    for b_start, b_end in busy_intervals:\n        s.add(no_overlap(b_start, b_end))\n\n    # Check for satisfiability.\n    if s.check() == sat:\n        m = s.model()\n        start_val = m[meeting_start].as_long()\n        end_val = start_val + duration\n        # Output the day and the meeting time in HH:MM:HH:MM format.\n        print(\"Monday\")\n        print(f\"{minutes_to_str(start_val)}:{minutes_to_str(end_val)}\")\n    else:\n        print(\"No valid meeting time found.\")\n\nif __name__ == \"__main__\":\n    main()"
+}

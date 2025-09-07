@@ -1,0 +1,29 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "Monday\n16:00:16:30",
+    "pred": {
+        "day": "Monday",
+        "time_range": "{16:00:16:30}"
+    },
+    "gold": {
+        "day": "Monday",
+        "time_range": "{16:00:16:30}"
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 55.97425150871277,
+        "execution_time": 0.08507823944091797,
+        "constraint_eval_time": 3.075599670410156e-05,
+        "pred_extract_time": 0.7467615604400635,
+        "gold_extract_time": 1.621246337890625e-05,
+        "total_tokens": 3246,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import Solver, Int, Or, sat\n\n# Convert hour:minute to minutes from midnight\ndef time_to_minutes(hour, minute):\n    return hour * 60 + minute\n\n# Meeting and work hours parameters\nmeeting_duration = 30\nwork_start = time_to_minutes(9, 0)    # 9:00 -> 540 minutes\nwork_end = time_to_minutes(17, 0)     # 17:00 -> 1020 minutes\n\n# Create Z3 solver\nsolver = Solver()\n\n# Define meeting start time in minutes after midnight\nstart = Int('start')\n\n# Basic work hour constraints: meeting must start and finish within work hours\nsolver.add(start >= work_start)\nsolver.add(start + meeting_duration <= work_end)\n\n# Angela's preference: avoid meetings before 15:00, so meeting must start at 15:00 or later.\nsolver.add(start >= time_to_minutes(15, 0))\n\n# Busy intervals for each participant on Monday, in minutes (start, end)\nbusy_intervals = [\n    # Katherine's busy times: 12:00-12:30, 13:00-14:30\n    (time_to_minutes(12, 0), time_to_minutes(12, 30)),\n    (time_to_minutes(13, 0), time_to_minutes(14, 30)),\n    # Julie's busy times: 9:00-9:30, 10:30-11:00, 13:30-14:00, 15:00-15:30\n    (time_to_minutes(9, 0), time_to_minutes(9, 30)),\n    (time_to_minutes(10, 30), time_to_minutes(11, 0)),\n    (time_to_minutes(13, 30), time_to_minutes(14, 0)),\n    (time_to_minutes(15, 0), time_to_minutes(15, 30)),\n    # Angela's busy times: 9:00-10:00, 10:30-11:00, 11:30-14:00, 14:30-15:00, 16:30-17:00\n    (time_to_minutes(9, 0), time_to_minutes(10, 0)),\n    (time_to_minutes(10, 30), time_to_minutes(11, 0)),\n    (time_to_minutes(11, 30), time_to_minutes(14, 0)),\n    (time_to_minutes(14, 30), time_to_minutes(15, 0)),\n    (time_to_minutes(16, 30), time_to_minutes(17, 0)),\n    # Nicholas's busy times: 9:30-11:00, 11:30-13:30, 14:00-16:00, 16:30-17:00\n    (time_to_minutes(9, 30), time_to_minutes(11, 0)),\n    (time_to_minutes(11, 30), time_to_minutes(13, 30)),\n    (time_to_minutes(14, 0), time_to_minutes(16, 0)),\n    (time_to_minutes(16, 30), time_to_minutes(17, 0)),\n    # Carl's busy times: 9:00-11:00, 11:30-12:30, 13:00-14:30, 15:00-16:00, 16:30-17:00\n    (time_to_minutes(9, 0), time_to_minutes(11, 0)),\n    (time_to_minutes(11, 30), time_to_minutes(12, 30)),\n    (time_to_minutes(13, 0), time_to_minutes(14, 30)),\n    (time_to_minutes(15, 0), time_to_minutes(16, 0)),\n    (time_to_minutes(16, 30), time_to_minutes(17, 0))\n]\n\n# For each busy interval, ensure that the meeting [start, start+duration)\n# does not overlap with the busy interval.\n#\n# Two intervals [a, b) and [c, d) do not overlap if either:\n#   meeting ends (start + duration) <= busy start, or\n#   meeting starts (start) >= busy end.\nfor (busy_start, busy_end) in busy_intervals:\n    solver.add(Or(start + meeting_duration <= busy_start, start >= busy_end))\n\n# Check for a solution\nif solver.check() == sat:\n    model = solver.model()\n    meeting_start = model[start].as_long()\n    meeting_end = meeting_start + meeting_duration\n\n    # Convert minutes back to HH:MM format\n    start_hour = meeting_start // 60\n    start_min = meeting_start % 60\n    end_hour = meeting_end // 60\n    end_min = meeting_end % 60\n\n    meeting_time = f\"{start_hour:02d}:{start_min:02d}:{end_hour:02d}:{end_min:02d}\"\n    print(\"Monday\")\n    print(meeting_time)\nelse:\n    print(\"No solution found.\")"
+}

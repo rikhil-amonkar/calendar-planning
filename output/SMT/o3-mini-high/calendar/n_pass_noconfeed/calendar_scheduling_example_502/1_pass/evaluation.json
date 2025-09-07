@@ -1,0 +1,29 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "Monday 12:00:12:30",
+    "pred": {
+        "day": "Monday",
+        "time_range": "{12:00:12:30}"
+    },
+    "gold": {
+        "day": "Monday",
+        "time_range": "{12:00:12:30}"
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 58.4041953086853,
+        "execution_time": 0.08413529396057129,
+        "constraint_eval_time": 2.9325485229492188e-05,
+        "pred_extract_time": 0.5971744060516357,
+        "gold_extract_time": 1.5497207641601562e-05,
+        "total_tokens": 2486,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\n\ndef main():\n    # We represent time in minutes from midnight.\n    # 9:00 = 540 minutes, 17:00 = 1020 minutes, 12:30 = 750 minutes.\n    duration = 30  # Meeting duration in minutes\n    meeting_start = Int('meeting_start')\n    meeting_end = meeting_start + duration\n\n    solver = Solver()\n\n    # Working hours constraint (meeting must be between 9:00 and 17:00)\n    solver.add(meeting_start >= 540)          # meeting starts no earlier than 9:00\n    solver.add(meeting_end <= 1020)             # meeting ends no later than 17:00\n\n    # Jack's personal constraint: avoid meetings after 12:30\n    # This means the meeting must end by 12:30.\n    solver.add(meeting_end <= 750)\n\n    # Busy intervals for Jack on Monday (in minutes after midnight)\n    # 9:30-10:30, 11:00-11:30, 12:30-13:00, 14:00-14:30, 16:00-16:30\n    jack_busy = [\n        (570, 630),   # 9:30 to 10:30\n        (660, 690),   # 11:00 to 11:30\n        (750, 780),   # 12:30 to 13:00 (meeting ending at 750 is acceptable)\n        (840, 870),   # 14:00 to 14:30\n        (960, 990)    # 16:00 to 16:30\n    ]\n\n    # Busy intervals for Charlotte on Monday (in minutes after midnight)\n    # 9:30-10:00, 10:30-12:00, 12:30-13:30, 14:00-16:00\n    charlotte_busy = [\n        (570, 600),   # 9:30 to 10:00\n        (630, 720),   # 10:30 to 12:00\n        (750, 810),   # 12:30 to 13:30\n        (840, 960)    # 14:00 to 16:00\n    ]\n\n    # Add constraints: The meeting must not overlap any busy interval.\n    # For each busy interval (s, e), the meeting must either finish by s or start at/after e.\n    for (busy_start, busy_end) in jack_busy:\n        solver.add(Or(meeting_end <= busy_start, meeting_start >= busy_end))\n        \n    for (busy_start, busy_end) in charlotte_busy:\n        solver.add(Or(meeting_end <= busy_start, meeting_start >= busy_end))\n\n    if solver.check() == sat:\n        model = solver.model()\n        start_val = model[meeting_start].as_long()\n        end_val = start_val + duration\n\n        # Convert minutes into HH:MM format\n        start_hour = start_val // 60\n        start_minute = start_val % 60\n        end_hour = end_val // 60\n        end_minute = end_val % 60\n\n        # Format the meeting time as \"HH:MM:HH:MM\"\n        meeting_time = f\"{start_hour:02d}:{start_minute:02d}:{end_hour:02d}:{end_minute:02d}\"\n        day = \"Monday\"\n        print(f\"{day} {meeting_time}\")\n    else:\n        print(\"No valid meeting time could be found.\")\n\nif __name__ == \"__main__\":\n    main()"
+}

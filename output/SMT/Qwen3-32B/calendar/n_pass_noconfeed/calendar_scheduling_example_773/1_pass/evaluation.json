@@ -1,0 +1,29 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "Monday 09:00:10:00",
+    "pred": {
+        "day": "Monday",
+        "time_range": "{9:00:10:00}"
+    },
+    "gold": {
+        "day": "Monday",
+        "time_range": "{9:00:10:00}"
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 407.7605068683624,
+        "execution_time": 0.0780634880065918,
+        "constraint_eval_time": 4.76837158203125e-05,
+        "pred_extract_time": 0.8231892585754395,
+        "gold_extract_time": 2.288818359375e-05,
+        "total_tokens": 21420,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\n\n# Define variables\nday = Int('day')\nstart = Int('start')\n\nopt = Optimize()\n\n# Constraints on day and start\nopt.add(And(day >= 0, day <= 2))\nopt.add(And(start >= 0, start <= 420))\n\n# Busy intervals for each day (Monday, Tuesday, Wednesday)\nbusy_intervals = [\n    # Monday: 10:00-11:30, 12:00-13:00, 14:00-14:30, 15:00-17:00\n    [(60, 150), (180, 240), (300, 330), (360, 480)],\n    # Tuesday: 10:30-11:30, 12:00-14:30, 15:00-15:30, 16:00-17:00\n    [(90, 150), (180, 330), (360, 390), (420, 480)],\n    # Wednesday: 9:30-11:30, 12:30-14:00, 14:30-15:30, 16:30-17:00\n    [(30, 150), (210, 300), (330, 390), (450, 480)]\n]\n\n# Add constraints for each busy interval\nfor d in range(3):\n    for b_start, b_end in busy_intervals[d]:\n        opt.add(Implies(day == d, Or(start + 60 <= b_start, start >= b_end)))\n\n# Objective: minimize day * 1000 + start to prioritize earliest day and time\nopt.minimize(day * 1000 + start)\n\n# Check solution\nif opt.check() == sat:\n    model = opt.model()\n    day_val = model[day].as_long()\n    start_val = model[start].as_long()\n    end_val = start_val + 60\n\n    # Convert minutes since 9:00 to HH:MM format\n    def to_time(minutes):\n        hours = 9 + minutes // 60\n        mins = minutes % 60\n        return f\"{hours:02d}:{mins:02d}\"\n\n    days_of_week = ['Monday', 'Tuesday', 'Wednesday']\n    day_name = days_of_week[day_val]\n    start_time = to_time(start_val)\n    end_time = to_time(end_val)\n\n    print(f\"{day_name} {start_time}:{end_time}\")\nelse:\n    print(\"No solution found.\")"
+}

@@ -1,0 +1,29 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "Monday 10:30:11:00",
+    "pred": {
+        "day": "Monday",
+        "time_range": "{10:30:11:00}"
+    },
+    "gold": {
+        "day": "Monday",
+        "time_range": "{13:30:14:00}"
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": false,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 45.09779238700867,
+        "execution_time": 0.08254647254943848,
+        "constraint_eval_time": 2.3365020751953125e-05,
+        "pred_extract_time": 0.5524909496307373,
+        "gold_extract_time": 1.5974044799804688e-05,
+        "total_tokens": 2044,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import Solver, Int, Or\n\n# Helper function to format minutes into HH:MM format\ndef format_time(total_minutes):\n    hours = total_minutes // 60\n    minutes = total_minutes % 60\n    return f\"{hours:02d}:{minutes:02d}\"\n\n# Create the solver\nsolver = Solver()\n\n# Define the meeting start time (in minutes from midnight)\nS = Int('S')\nduration = 30\n\n# Define work hours:\n# Meeting must start no earlier than 9:00 (540 minutes) and, because Juan cannot meet after 16:00,\n# the meeting must finish by 16:00 (960 minutes), so S+30 <= 960, i.e., S <= 930.\nsolver.add(S >= 540, S <= 930)\n\n# Define a helper function that ensures the meeting does NOT overlap with a busy interval.\n# A meeting [S, S+duration) does not overlap with busy interval [b_start, b_end) if either:\n# the meeting ends on or before the busy period starts or it starts on or after the busy period ends.\ndef no_overlap(b_start, b_end):\n    return Or(S + duration <= b_start, S >= b_end)\n\n# Add busy intervals for each participant (times in minutes from midnight):\n\n# Juan's busy times on Monday:\n#   9:00 - 10:30  -> 540 to 630\n#   15:30 - 16:00 -> 930 to 960\nsolver.add(no_overlap(540, 630))\nsolver.add(no_overlap(930, 960))\n\n# Marilyn's busy times on Monday:\n#   11:00 - 11:30 -> 660 to 690\n#   12:30 - 13:00 -> 750 to 780\nsolver.add(no_overlap(660, 690))\nsolver.add(no_overlap(750, 780))\n\n# Ronald's busy times on Monday:\n#   9:00 - 10:30  -> 540 to 630\n#   12:00 - 12:30 -> 720 to 750\n#   13:00 - 13:30 -> 780 to 810\n#   14:00 - 16:30 -> 840 to 990\nsolver.add(no_overlap(540, 630))\nsolver.add(no_overlap(720, 750))\nsolver.add(no_overlap(780, 810))\nsolver.add(no_overlap(840, 990))\n\n# Solve the constraints\nif solver.check() == 'sat' or solver.check() is not None:\n    model = solver.model()\n    start_time = model[S].as_long()\n    end_time = start_time + duration\n    # Output the meeting day (Monday) and the time range in the format HH:MM:HH:MM\n    print(\"Monday \" + format_time(start_time) + \":\" + format_time(end_time))\nelse:\n    print(\"No solution found.\")"
+}

@@ -1,0 +1,29 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "Monday {11:30:12:00}",
+    "pred": {
+        "day": "Monday",
+        "time_range": "{11:30:12:00}"
+    },
+    "gold": {
+        "day": "Monday",
+        "time_range": "{11:30:12:00}"
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 25.554076433181763,
+        "execution_time": 0.08523225784301758,
+        "constraint_eval_time": 2.5033950805664062e-05,
+        "pred_extract_time": 0.6643478870391846,
+        "gold_extract_time": 1.6450881958007812e-05,
+        "total_tokens": 1640,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import Solver, Int, Or, And, sat\n\n# Helper functions\ndef to_min(t):\n    h, m = map(int, t.split(\":\"))\n    return h * 60 + m\n\ndef fmt(m):\n    h = m // 60\n    mi = m % 60\n    return f\"{h:02d}:{mi:02d}\"\n\n# Problem setup\nday = \"Monday\"\nwork_start = to_min(\"09:00\")\nwork_end   = to_min(\"17:00\")\nduration = 30  # minutes\n\n# Busy intervals per participant (inclusive of start, exclusive of end)\nbusy = {\n    \"Andrea\": [],\n    \"Jack\": [\n        (\"09:00\", \"09:30\"),\n        (\"14:00\", \"14:30\"),\n    ],\n    \"Madison\": [\n        (\"09:30\", \"10:30\"),\n        (\"13:00\", \"14:00\"),\n        (\"15:00\", \"15:30\"),\n        (\"16:30\", \"17:00\"),\n    ],\n    \"Rachel\": [\n        (\"09:30\", \"10:30\"),\n        (\"11:00\", \"11:30\"),\n        (\"12:00\", \"13:30\"),\n        (\"14:30\", \"15:30\"),\n        (\"16:00\", \"17:00\"),\n    ],\n    \"Douglas\": [\n        (\"09:00\", \"11:30\"),\n        (\"12:00\", \"16:30\"),\n    ],\n    \"Ryan\": [\n        (\"09:00\", \"09:30\"),\n        (\"13:00\", \"14:00\"),\n        (\"14:30\", \"17:00\"),\n    ],\n}\n\n# Convert all busy intervals to minutes\nbusy_min = []\nfor person, intervals in busy.items():\n    for s, e in intervals:\n        busy_min.append((to_min(s), to_min(e)))\n\n# Z3 model\ns = Solver()\nstart = Int(\"start\")\n# Meeting within work hours\ns.add(start >= work_start)\ns.add(start + duration <= work_end)\n\n# No overlap with any busy interval\nfor (b_s, b_e) in busy_min:\n    s.add(Or(start + duration <= b_s, start >= b_e))\n\n# Solve\nif s.check() == sat:\n    m = s.model()\n    start_val = m[start].as_long()\n    end_val = start_val + duration\n    print(f\"{day} {{{fmt(start_val)}:{fmt(end_val)}}}\")\nelse:\n    print(\"No feasible time found.\")"
+}

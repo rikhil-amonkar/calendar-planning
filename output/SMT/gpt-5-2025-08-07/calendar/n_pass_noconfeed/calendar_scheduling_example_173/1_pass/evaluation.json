@@ -1,0 +1,29 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "Monday\n{09:30:10:00}",
+    "pred": {
+        "day": "Monday",
+        "time_range": "{9:30:10:00}"
+    },
+    "gold": {
+        "day": "Monday",
+        "time_range": "{9:30:10:00}"
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 49.71718978881836,
+        "execution_time": 0.08386421203613281,
+        "constraint_eval_time": 3.838539123535156e-05,
+        "pred_extract_time": 0.893733024597168,
+        "gold_extract_time": 2.4557113647460938e-05,
+        "total_tokens": 2506,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\n\n# Meeting setup\nDAY = \"Monday\"\nWORK_START = 9 * 60      # 09:00 in minutes from midnight\nWORK_END = 17 * 60       # 17:00 in minutes from midnight\nDURATION = 30            # 30 minutes\n\n# Represent time as minutes from 09:00 to simplify constraints\nDAY_START = 0\nDAY_END = (WORK_END - WORK_START)  # 480 minutes (8 hours)\n\n# Busy intervals for each participant as [start, end) in minutes from 09:00\nJacqueline_busy = [\n    (0, 30),    # 09:00-09:30\n    (120, 150), # 11:00-11:30\n    (210, 240), # 12:30-13:00\n    (390, 420), # 15:30-16:00\n]\n\nHarold_busy = [\n    (60, 90),   # 10:00-10:30\n    (240, 270), # 13:00-13:30\n    (360, 480), # 15:00-17:00\n]\n\nArthur_busy = [\n    (0, 30),    # 09:00-09:30\n    (60, 210),  # 10:00-12:30\n    (330, 360), # 14:30-15:00\n    (390, 480), # 15:30-17:00\n]\n\nKelly_busy = [\n    (0, 30),    # 09:00-09:30\n    (60, 120),  # 10:00-11:00\n    (150, 210), # 11:30-12:30\n    (300, 360), # 14:00-15:00\n    (390, 420), # 15:30-16:00\n]\n\ndef no_overlap_constraints(start, end, busy_list):\n    \"\"\"Generate Z3 constraints ensuring [start, end) does not overlap any busy interval.\"\"\"\n    cons = []\n    for b_start, b_end in busy_list:\n        cons.append(Or(end <= b_start, start >= b_end))\n    return cons\n\n# Variables\nstart = Int('start')\nend = Int('end')\n\nopt = Optimize()\n\n# Core constraints\nopt.add(start >= DAY_START)\nopt.add(end == start + DURATION)\nopt.add(end <= DAY_END)\n\n# Align meeting start to 30-minute increments\nopt.add(start % 30 == 0)\n\n# Participants' availability\nopt.add(no_overlap_constraints(start, end, Jacqueline_busy))\nopt.add(no_overlap_constraints(start, end, Harold_busy))\nopt.add(no_overlap_constraints(start, end, Arthur_busy))\nopt.add(no_overlap_constraints(start, end, Kelly_busy))\n\n# Preference: Harold does not want to meet after 13:00 on Monday (i.e., meeting must end by 13:00)\n# 13:00 is 4 hours after 09:00 -> 240 minutes from DAY_START\nopt.add(end <= 240)\n\n# Optional: choose the earliest feasible time\nopt.minimize(start)\n\nif opt.check() == sat:\n    m = opt.model()\n    s = m[start].as_long()\n    e = m[end].as_long()\n\n    # Convert from minutes-from-09:00 to HH:MM\n    def to_hhmm(offset_from_day_start):\n        total_minutes = WORK_START + offset_from_day_start\n        hh = total_minutes // 60\n        mm = total_minutes % 60\n        return f\"{hh:02d}:{mm:02d}\"\n\n    start_str = to_hhmm(s)\n    end_str = to_hhmm(e)\n\n    print(DAY)\n    print(f\"{{{start_str}:{end_str}}}\")\nelse:\n    print(\"No feasible time found.\")"
+}

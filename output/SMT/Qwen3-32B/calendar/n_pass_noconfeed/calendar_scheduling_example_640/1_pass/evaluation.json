@@ -1,0 +1,29 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "Monday 10:00:10:30",
+    "pred": {
+        "day": "Monday",
+        "time_range": "{10:00:10:30}"
+    },
+    "gold": {
+        "day": "Monday",
+        "time_range": "{10:00:10:30}"
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 496.9379291534424,
+        "execution_time": 0.0777137279510498,
+        "constraint_eval_time": 4.76837158203125e-05,
+        "pred_extract_time": 1.0245912075042725,
+        "gold_extract_time": 2.765655517578125e-05,
+        "total_tokens": 26877,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\n\ndef to_time(mins):\n    h = mins // 60\n    m = mins % 60\n    return f\"{h:02d}:{m:02d}\"\n\n# Define busy intervals\nbobby_mon = [(870, 900)]\nmichael_mon = [(540, 600), (630, 810), (840, 900), (930, 1020)]\nbobby_tue = [(540, 690), (720, 750), (780, 900), (930, 1020)]\nmichael_tue = [(540, 630), (660, 690), (720, 840), (900, 960), (990, 1020)]\n\nday = Int('day')\nstart = Int('start')\n\nopt = Optimize()\n\n# Day must be 0 (Monday) or 1 (Tuesday)\nopt.add(Or(day == 0, day == 1))\n\n# Start time must be between 9:00 (540) and 17:00 - 30 min (990)\nopt.add(And(start >= 540, start <= 990))\n\n# Monday constraints for Bobby\nfor s, e in bobby_mon:\n    opt.add(Implies(day == 0, Or(start + 30 <= s, start >= e)))\n\n# Monday constraints for Michael\nfor s, e in michael_mon:\n    opt.add(Implies(day == 0, Or(start + 30 <= s, start >= e)))\n\n# Tuesday constraints for Bobby\nfor s, e in bobby_tue:\n    opt.add(Implies(day == 1, Or(start + 30 <= s, start >= e)))\n\n# Tuesday constraints for Michael\nfor s, e in michael_tue:\n    opt.add(Implies(day == 1, Or(start + 30 <= s, start >= e)))\n\n# Minimize the start time\nopt.minimize(start)\n\nif opt.check() == sat:\n    model = opt.model()\n    day_val = model[day].as_long()\n    start_val = model[start].as_long()\n    end_val = start_val + 30\n    days = ['Monday', 'Tuesday']\n    start_time = to_time(start_val)\n    end_time = to_time(end_val)\n    print(f\"{days[day_val]} {start_time}:{end_time}\")\nelse:\n    print(\"No solution\")"
+}

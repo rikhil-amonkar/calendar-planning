@@ -1,0 +1,29 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "11:00:11:30 Monday",
+    "pred": {
+        "day": "Monday",
+        "time_range": "{11:00:11:30}"
+    },
+    "gold": {
+        "day": "Monday",
+        "time_range": "{11:00:11:30}"
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 594.1523315906525,
+        "execution_time": 0.06950211524963379,
+        "constraint_eval_time": 7.081031799316406e-05,
+        "pred_extract_time": 5.014952898025513,
+        "gold_extract_time": 3.075599670410156e-05,
+        "total_tokens": 27451,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import z3\n\n# Create a Z3 solver instance\nsolver = z3.Solver()\n\n# Define the start time as an integer variable (in minutes since midnight)\nstart = z3.Int('start')\n\n# Work hours are from 9:00 (540 minutes) to 17:00 (1020 minutes), meeting duration is 30 minutes\nsolver.add(z3.And(start >= 540, start <= 990))  # start <= 990 ensures end time is <= 1020\n\n# Define participants' busy intervals in minutes since midnight\nparticipants = {\n    'Gregory': [(540, 570), (690, 720)],\n    'Jonathan': [(540, 570), (720, 750), (780, 810), (900, 960), (990, 1020)],\n    'Barbara': [(600, 630), (810, 840)],\n    'Jesse': [(600, 660), (750, 870)],\n    'Alan': [(570, 660), (690, 750), (780, 930), (960, 1020)],\n    'Nicole': [(540, 630), (690, 720), (750, 810), (840, 1020)],\n    'Catherine': [(540, 630), (720, 810), (900, 930), (960, 990)]\n}\n\n# Add constraints for each participant's busy intervals\nfor intervals in participants.values():\n    for s_int, e_int in intervals:\n        solver.add(z3.Or(start + 30 <= s_int, start >= e_int))\n\n# Check for a solution\nif solver.check() == z3.sat:\n    model = solver.model()\n    start_val = model[start].as_long()\n    start_time = f\"{(start_val // 60):02d}:{(start_val % 60):02d}\"\n    end_time = f\"{(start_val // 60 + (start_val % 60 + 30) // 60):02d}:{( (start_val % 60 + 30) % 60 ):02d}\"\n    print(f\"{start_time}:{end_time} Monday\")\nelse:\n    print(\"No solution found\")"
+}

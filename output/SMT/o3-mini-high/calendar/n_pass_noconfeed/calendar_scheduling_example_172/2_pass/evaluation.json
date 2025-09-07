@@ -1,0 +1,29 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{'day': 'Monday', 'time_range': '{14:00:14:30}'}",
+    "pred": {
+        "day": "Monday",
+        "time_range": "{14:00:14:30}"
+    },
+    "gold": {
+        "day": "Monday",
+        "time_range": "{14:00:14:30}"
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 2,
+    "timing": {
+        "api_call_time": 64.54790616035461,
+        "execution_time": 0.08338069915771484,
+        "constraint_eval_time": 4.2438507080078125e-05,
+        "pred_extract_time": 0.5889220237731934,
+        "gold_extract_time": 1.4781951904296875e-05,
+        "total_tokens": 2922,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\n\n# Define S as the meeting start time (in minutes from midnight)\nS = Int('S')\n\n# Meeting duration is exactly 30 minutes (0.5 hours)\nduration = 30  \n\n# Create a solver instance and constrain the meeting to occur within working hours:\n# starting no earlier than 9:00 (540 minutes) and finishing by 17:00 (1020 minutes)\nsolver = Solver()\nsolver.add(S >= 540, S + duration <= 1020)\n\n# Busy intervals in minutes for each participant on Monday\n\n# Patrick\u2019s busy intervals:\n#   9:00-9:30, 10:00-10:30, 13:30-14:00, 16:00-16:30\npatrick_busy = [(540, 570), (600, 630), (810, 840), (960, 990)]\n\n# Kayla\u2019s busy intervals:\n#   12:30-13:30, 15:00-15:30, 16:00-16:30\nkayla_busy = [(750, 810), (900, 930), (960, 990)]\n\n# Carl\u2019s busy intervals:\n#   10:30-11:00, 12:00-12:30, 13:00-13:30, 14:30-17:00\ncarl_busy = [(630, 660), (720, 750), (780, 810), (870, 1020)]\n\n# Christian\u2019s busy intervals:\n#   9:00-12:30, 13:00-14:00, 14:30-17:00\nchristian_busy = [(540, 750), (780, 840), (870, 1020)]\n\n# For each busy time interval, the meeting [S, S+duration] must either end \n# before the interval starts or begin after it ends.\ndef add_busy_constraints(busy_list):\n    for (bstart, bend) in busy_list:\n        solver.add(Or(S + duration <= bstart, S >= bend))\n\n# Add constraints for all participants\nadd_busy_constraints(patrick_busy)\nadd_busy_constraints(kayla_busy)\nadd_busy_constraints(carl_busy)\nadd_busy_constraints(christian_busy)\n\n# Check for a solution\nif solver.check() == sat:\n    m = solver.model()\n    meeting_start = m[S].as_long()\n    meeting_end = meeting_start + duration\n\n    # Function to convert minutes to HH:MM string\n    def format_time(minutes):\n        hr = minutes // 60\n        min_part = minutes % 60\n        return f\"{hr:02d}:{min_part:02d}\"\n\n    start_str = format_time(meeting_start)\n    end_str = format_time(meeting_end)\n\n    # Format the output as expected: a dictionary with day and time_range in curly braces.\n    plan = {'day': 'Monday', 'time_range': f\"{{{start_str}:{end_str}}}\"}\n    print(plan)\nelse:\n    print(\"No solution found\")"
+}

@@ -1,0 +1,1 @@
+{'day': 'Thursday', 'time_range': '{16:00:16:30}'}

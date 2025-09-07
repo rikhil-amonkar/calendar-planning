@@ -1,0 +1,29 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "Monday 11:30:12:00",
+    "pred": {
+        "day": "Monday",
+        "time_range": "{11:30:12:00}"
+    },
+    "gold": {
+        "day": "Monday",
+        "time_range": "{11:30:12:00}"
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 327.3007061481476,
+        "execution_time": 0.08379364013671875,
+        "constraint_eval_time": 5.269050598144531e-05,
+        "pred_extract_time": 3.2573118209838867,
+        "gold_extract_time": 2.4080276489257812e-05,
+        "total_tokens": 15020,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\n\ndef to_time(mins):\n    h = mins // 60\n    m = mins % 60\n    return f\"{h:02d}:{m:02d}\"\n\nsolver = Solver()\nstart_time = Int('start_time')\n\n# Work hours from 9:00 (540) to 17:00 (1020), meeting duration 30 mins\nsolver.add(And(start_time >= 540, start_time <= 990))\n\n# Cynthia's busy intervals (minutes since 00:00)\ncynthia = [(540, 570), (600, 630), (810, 870), (900, 960)]\nfor b_start, b_end in cynthia:\n    solver.add(Or(start_time + 30 <= b_start, start_time >= b_end))\n\n# Ann's busy intervals\nann = [(600, 660), (780, 810), (840, 900), (960, 990)]\nfor b_start, b_end in ann:\n    solver.add(Or(start_time + 30 <= b_start, start_time >= b_end))\n\n# Catherine's busy intervals\ncatherine = [(540, 690), (750, 810), (870, 1020)]\nfor b_start, b_end in catherine:\n    solver.add(Or(start_time + 30 <= b_start, start_time >= b_end))\n\n# Kyle's busy intervals\nkyle = [(540, 570), (600, 690), (720, 750), (780, 870), (900, 960)]\nfor b_start, b_end in kyle:\n    solver.add(Or(start_time + 30 <= b_start, start_time >= b_end))\n\nif solver.check() == sat:\n    model = solver.model()\n    start = model[start_time].as_long()\n    end = start + 30\n    start_str = to_time(start)\n    end_str = to_time(end)\n    print(f\"Monday {start_str}:{end_str}\")\nelse:\n    print(\"No solution found\")"
+}

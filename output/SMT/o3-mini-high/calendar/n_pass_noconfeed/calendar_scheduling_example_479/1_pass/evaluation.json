@@ -1,0 +1,29 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "09:30:10:30 Monday",
+    "pred": {
+        "day": "Monday",
+        "time_range": "{9:30:10:30}"
+    },
+    "gold": {
+        "day": "Monday",
+        "time_range": "{9:30:10:30}"
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 51.75494956970215,
+        "execution_time": 0.08001446723937988,
+        "constraint_eval_time": 4.8160552978515625e-05,
+        "pred_extract_time": 0.8492262363433838,
+        "gold_extract_time": 2.0503997802734375e-05,
+        "total_tokens": 2109,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\n\ndef main():\n    s = Solver()\n    \n    # meeting_start is in minutes since midnight.\n    meeting_start = Int('meeting_start')\n    duration = 60\n    meeting_end = meeting_start + duration\n\n    # Working hours: 9:00 (540 minutes) to 17:00 (1020 minutes)\n    s.add(meeting_start >= 540, meeting_start <= 1020 - duration)\n    \n    # Busy intervals for each participant on Monday (in minutes)\n    busy_intervals = [\n        # Joshua's busy times: 11:00-12:30, 13:30-14:30, 16:30-17:00\n        (660, 750),\n        (810, 870),\n        (990, 1020),\n        \n        # Jerry's busy times: 9:00-9:30, 10:30-12:00, 12:30-13:00,\n        # 13:30-14:00, 14:30-15:00, 15:30-16:00\n        (540, 570),\n        (630, 720),\n        (750, 780),\n        (810, 840),\n        (870, 900),\n        (930, 960),\n        \n        # Jesse's busy times: 9:00-9:30, 10:30-12:00, 12:30-13:00,\n        # 14:30-15:00, 15:30-16:30\n        (540, 570),\n        (630, 720),\n        (750, 780),\n        (870, 900),\n        (930, 990),\n        \n        # Kenneth's busy times: 10:30-12:30, 13:30-14:00, 14:30-15:00,\n        # 15:30-16:00, 16:30-17:00\n        (630, 750),\n        (810, 840),\n        (870, 900),\n        (930, 960),\n        (990, 1020)\n    ]\n    \n    # For each busy interval [a, b), the meeting must not overlap. \n    # That is, we add: meeting_end <= a  or  meeting_start >= b.\n    for (busy_start, busy_end) in busy_intervals:\n        s.add(Or(meeting_end <= busy_start, meeting_start >= busy_end))\n    \n    if s.check() == sat:\n        m = s.model()[meeting_start].as_long()\n        meet_start = m\n        meet_end = m + duration\n        \n        def minutes_to_str(minutes):\n            hours = minutes // 60\n            mins = minutes % 60\n            return f\"{hours:02d}:{mins:02d}\"\n        \n        start_str = minutes_to_str(meet_start)\n        end_str = minutes_to_str(meet_end)\n        \n        # Output the meeting time range and the day of the week \"Monday\"\n        print(f\"{start_str}:{end_str} Monday\")\n    else:\n        print(\"No solution found.\")\n\nif __name__ == '__main__':\n    main()"
+}

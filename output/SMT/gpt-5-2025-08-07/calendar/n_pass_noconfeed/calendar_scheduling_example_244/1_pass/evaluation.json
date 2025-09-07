@@ -1,0 +1,29 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "Monday\n{11:30:12:00}",
+    "pred": {
+        "day": "Monday",
+        "time_range": "{11:30:12:00}"
+    },
+    "gold": {
+        "day": "Monday",
+        "time_range": "{11:30:12:00}"
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 26.285671949386597,
+        "execution_time": 0.08192563056945801,
+        "constraint_eval_time": 2.6702880859375e-05,
+        "pred_extract_time": 0.6274044513702393,
+        "gold_extract_time": 1.6927719116210938e-05,
+        "total_tokens": 1886,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "# Meeting Scheduler using Z3 SMT Solver\n# Finds a 30-minute meeting slot for Walter, Cynthia, Ann, Catherine, and Kyle on Monday between 09:00 and 17:00.\n\ntry:\n    from z3 import Int, Or, Optimize, sat\nexcept ImportError:\n    import sys\n    import subprocess\n    subprocess.check_call([sys.executable, \"-m\", \"pip\", \"install\", \"z3-solver\"])\n    from z3 import Int, Or, Optimize, sat\n\ndef t(h, m):\n    return h * 60 + m\n\ndef fmt(m):\n    return f\"{m // 60:02d}:{m % 60:02d}\"\n\n# Work window\nDAY = \"Monday\"\nDAY_START = t(9, 0)\nDAY_END = t(17, 0)\nDURATION = 30  # minutes\n\n# Participants' busy intervals (half-open [start, end))\nwalter = []\ncynthia = [\n    (t(9, 0), t(9, 30)),\n    (t(10, 0), t(10, 30)),\n    (t(13, 30), t(14, 30)),\n    (t(15, 0), t(16, 0)),\n]\nann = [\n    (t(10, 0), t(11, 0)),\n    (t(13, 0), t(13, 30)),\n    (t(14, 0), t(15, 0)),\n    (t(16, 0), t(16, 30)),\n]\ncatherine = [\n    (t(9, 0), t(11, 30)),\n    (t(12, 30), t(13, 30)),\n    (t(14, 30), t(17, 0)),\n]\nkyle = [\n    (t(9, 0), t(9, 30)),\n    (t(10, 0), t(11, 30)),\n    (t(12, 0), t(12, 30)),\n    (t(13, 0), t(14, 30)),\n    (t(15, 0), t(16, 0)),\n]\n\n# Combine all busy intervals (each must be avoided)\nall_busy = walter + cynthia + ann + catherine + kyle\n\nopt = Optimize()\nstart = Int(\"start\")\n\n# Basic time window constraints\nopt.add(start >= DAY_START)\nopt.add(start + DURATION <= DAY_END)\n\n# Avoid overlaps with all busy intervals: meeting end <= busy start OR meeting start >= busy end\nfor (bs, be) in all_busy:\n    opt.add(Or(start + DURATION <= bs, start >= be))\n\n# Optional: pick the earliest feasible start for determinism\nopt.minimize(start)\n\nif opt.check() != sat:\n    raise RuntimeError(\"No feasible meeting time found, but the problem statement guarantees one exists.\")\n\nmodel = opt.model()\ns_val = model[start].as_long()\ne_val = s_val + DURATION\n\nprint(DAY)\nprint(f\"{{{fmt(s_val)}:{fmt(e_val)}}}\")"
+}

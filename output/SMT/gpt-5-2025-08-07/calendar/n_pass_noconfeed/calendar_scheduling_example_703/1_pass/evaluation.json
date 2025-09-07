@@ -1,0 +1,28 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": true,
+    "execution_output": "No solution found.",
+    "pred": null,
+    "gold": {
+        "day": "Tuesday",
+        "time_range": "{9:30:10:30}"
+    },
+    "status": "No plan generated",
+    "violated_constraint": {
+        "missing_output": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 76.22184753417969,
+        "execution_time": 0.08447909355163574,
+        "constraint_eval_time": 2.384185791015625e-06,
+        "pred_extract_time": 0.8817884922027588,
+        "gold_extract_time": 2.574920654296875e-05,
+        "total_tokens": 2879,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import Optimize, Int, And, Or, Implies, If\n\n# Minutes helper: convert HH:MM to minutes from 09:00 (workday start)\ndef to_min(h, m):\n    return (h - 9) * 60 + m\n\n# Meeting parameters\nMEETING_DURATION = 60  # minutes\nWORK_START = 0         # 09:00 -> 0 minutes\nWORK_END = 8 * 60      # 17:00 -> 480 minutes\n\n# Days indexing\nMON, TUE, WED = 0, 1, 2\nday_names = [\"Monday\", \"Tuesday\", \"Wednesday\"]\n\n# Busy schedules per participant per day (times are [start, end) in minutes from 09:00)\nstephanie_busy = {\n    MON: [\n        (to_min(9,30),  to_min(10,0)),\n        (to_min(10,30), to_min(11,0)),\n        (to_min(11,30), to_min(12,0)),\n        (to_min(14,0),  to_min(14,30)),\n    ],\n    TUE: [\n        (to_min(12,0),  to_min(13,0)),\n    ],\n    WED: [\n        (to_min(9,0),   to_min(10,0)),\n        (to_min(13,0),  to_min(14,0)),\n    ],\n}\n\nbetty_busy = {\n    MON: [\n        (to_min(9,0),   to_min(10,0)),\n        (to_min(11,0),  to_min(11,30)),\n        (to_min(14,30), to_min(15,0)),\n        (to_min(15,30), to_min(16,0)),\n    ],\n    TUE: [\n        (to_min(9,0),   to_min(9,30)),\n        (to_min(11,30), to_min(12,0)),\n        (to_min(12,30), to_min(14,30)),\n        (to_min(15,30), to_min(16,0)),\n    ],\n    WED: [\n        (to_min(10,0),  to_min(11,30)),\n        (to_min(12,0),  to_min(14,0)),\n        (to_min(14,30), to_min(17,0)),\n    ],\n}\n\n# SMT variables\nopt = Optimize()\nday = Int(\"day\")\nstart = Int(\"start\")\nend = Int(\"end\")\n\n# Basic constraints\nopt.add(day >= MON, day <= WED)\nopt.add(start >= WORK_START, end == start + MEETING_DURATION, end <= WORK_END)\n\n# Optional: make times align to 30-minute boundaries for readability\nopt.add(start % 30 == 0)\n\n# No overlap helper\ndef no_overlap(start_var, end_var, s, e):\n    return Or(end_var <= s, start_var >= e)\n\n# Apply non-overlap constraints per day for both participants\nfor d in [MON, TUE, WED]:\n    # Stephanie's busy times\n    for (s, e) in stephanie_busy[d]:\n        opt.add(Implies(day == d, no_overlap(start, end, s, e)))\n    # Betty's busy times\n    for (s, e) in betty_busy[d]:\n        opt.add(Implies(day == d, no_overlap(start, end, s, e)))\n\n# Preference: Stephanie would like to avoid more meetings on Monday (soft constraint)\n# Encourage day != MON, but allow Monday if necessary\nopt.add_soft(day != MON, weight=\"1\")\n\n# Constraint: Betty cannot meet on Tuesday after 12:30\n# Interpret as the meeting must finish by 12:30 on Tuesday\nopt.add(Implies(day == TUE, end <= to_min(12, 30)))\n\n# Tie-breaker: prefer earlier times\nopt.minimize(start)\n\n# Solve\nif opt.check() == 1:  # sat\n    m = opt.model()\n    d = m[day].as_long()\n    s = m[start].as_long()\n    e = m[end].as_long()\n\n    def fmt(t):\n        hh = 9 + (t // 60)\n        mm = t % 60\n        return f\"{hh:02d}:{mm:02d}\"\n\n    day_str = day_names[d]\n    print(day_str)\n    print(f\"{{{fmt(s)}:{fmt(e)}}}\")\nelse:\n    print(\"No solution found.\")"
+}

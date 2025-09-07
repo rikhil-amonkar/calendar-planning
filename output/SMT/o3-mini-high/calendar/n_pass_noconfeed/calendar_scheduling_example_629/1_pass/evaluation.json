@@ -1,0 +1,29 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "Meeting Day: Tuesday\nMeeting Time: 16:30:17:00",
+    "pred": {
+        "day": "Tuesday",
+        "time_range": "{16:30:17:00}"
+    },
+    "gold": {
+        "day": "Tuesday",
+        "time_range": "{16:30:17:00}"
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 52.195366621017456,
+        "execution_time": 0.07954263687133789,
+        "constraint_eval_time": 2.0265579223632812e-05,
+        "pred_extract_time": 0.6981492042541504,
+        "gold_extract_time": 1.6450881958007812e-05,
+        "total_tokens": 3167,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\n\n# Helper function: convert minutes since midnight to \"HH:MM\" string.\ndef minutes_to_hhmm(m):\n    hours = m // 60\n    minutes = m % 60\n    return \"{:02d}:{:02d}\".format(hours, minutes)\n\nsolver = Solver()\n\n# Define integer variables:\n# meeting_start: start time in minutes from midnight.\n# day: 0 = Monday, 1 = Tuesday.\nmeeting_start = Int(\"meeting_start\")\nday = Int(\"day\")\n\nduration = 30\n\n# Working hours: meeting must start no earlier than 9:00 (540 minutes)\n# and finish by 17:00 (1020 minutes). So meeting_start can be at most 17*60 - duration.\nsolver.add(meeting_start >= 9 * 60)\nsolver.add(meeting_start <= (17 * 60 - duration))\n\n# Preference constraints:\n# Margaret does not want to meet on Monday => force meeting day to Tuesday.\nsolver.add(day == 1)\n# On Tuesday, Margaret does not want the meeting before 14:30.\nsolver.add(Implies(day == 1, meeting_start >= (14 * 60 + 30)))  # 14:30 = 870 minutes\n\n# Define busy intervals (in minutes from midnight) for each participant.\n# Format: (busy_start, busy_end)\n# Margaret's busy intervals:\nbusy_Margaret_Mon = [(10 * 60 + 30, 11 * 60), (11 * 60 + 30, 12 * 60), (13 * 60, 13 * 60 + 30), (15 * 60, 17 * 60)]\nbusy_Margaret_Tue = [(12 * 60, 12 * 60 + 30)]\n# Alexis's busy intervals:\nbusy_Alexis_Mon = [(9 * 60 + 30, 11 * 60 + 30), (12 * 60 + 30, 13 * 60), (14 * 60, 17 * 60)]\nbusy_Alexis_Tue = [(9 * 60, 9 * 60 + 30), (10 * 60, 10 * 60 + 30), (14 * 60, 16 * 60 + 30)]\n\n# For a meeting [meeting_start, meeting_start+duration) to be valid,\n# it must not intersect any busy interval.\ndef no_overlap(meet_start, busy_start, busy_end):\n    # Either the meeting ends at or before the busy interval starts\n    # or starts at or after the busy interval ends.\n    return Or(meet_start + duration <= busy_start, meet_start >= busy_end)\n\n# Apply busy constraints conditionally for each day.\n# Monday constraints (won't matter since day==1, but added for completeness):\nfor b_start, b_end in busy_Margaret_Mon:\n    solver.add(Implies(day == 0, no_overlap(meeting_start, b_start, b_end)))\nfor b_start, b_end in busy_Alexis_Mon:\n    solver.add(Implies(day == 0, no_overlap(meeting_start, b_start, b_end)))\n\n# Tuesday constraints:\nfor b_start, b_end in busy_Margaret_Tue:\n    solver.add(Implies(day == 1, no_overlap(meeting_start, b_start, b_end)))\nfor b_start, b_end in busy_Alexis_Tue:\n    solver.add(Implies(day == 1, no_overlap(meeting_start, b_start, b_end)))\n\n# Notice: For Tuesday, Alexis has a busy interval from 14:00 to 16:30.\n# Given the preference meeting_start >= 14:30, the meeting would only fit if it\n# starts after Alexis\u2019s meeting, i.e. meeting_start >= 16*60 + 30 = 990.\nsolver.add(Implies(day == 1, meeting_start >= (16 * 60 + 30)))  # meeting_start must be >= 990\n\nif solver.check() == sat:\n    model = solver.model()\n    chosen_day = \"Monday\" if model[day].as_long() == 0 else \"Tuesday\"\n    start = model[meeting_start].as_long()\n    end = start + duration\n    # Format output as HH:MM:HH:MM and include the day of the week.\n    print(\"Meeting Day:\", chosen_day)\n    print(\"Meeting Time:\", minutes_to_hhmm(start) + \":\" + minutes_to_hhmm(end))\nelse:\n    print(\"No solution found.\")"
+}

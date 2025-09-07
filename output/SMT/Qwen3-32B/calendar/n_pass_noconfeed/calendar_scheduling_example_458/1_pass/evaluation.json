@@ -1,0 +1,29 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{16:30:17:00} Monday",
+    "pred": {
+        "day": "Monday",
+        "time_range": "{16:30:17:00}"
+    },
+    "gold": {
+        "day": "Monday",
+        "time_range": "{16:30:17:00}"
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 438.79902720451355,
+        "execution_time": 0.08022522926330566,
+        "constraint_eval_time": 5.650520324707031e-05,
+        "pred_extract_time": 0.6171748638153076,
+        "gold_extract_time": 2.7894973754882812e-05,
+        "total_tokens": 18911,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import z3\n\nsolver = z3.Solver()\n\ns = z3.Int('s')\n\n# Overall time constraints: between 9:00 (0) and 16:30 (450)\nsolver.add(s >= 0)\nsolver.add(s <= 450)\n\n# Wayne's preference: after 14:00 (300 minutes)\nsolver.add(s >= 300)\n\n# All busy intervals\nall_intervals = [\n    # Melissa\n    (60, 120),\n    (210, 300),\n    (360, 390),\n    # Gregory\n    (210, 240),\n    (390, 420),\n    # Victoria\n    (0, 30),\n    (90, 150),\n    (240, 300),\n    (330, 360),\n    (390, 450),\n    # Thomas\n    (60, 180),\n    (210, 240),\n    (330, 420),\n    # Jennifer\n    (0, 30),\n    (60, 90),\n    (120, 240),\n    (270, 330),\n    (360, 390),\n    (420, 450),\n]\n\nfor start, end in all_intervals:\n    solver.add(z3.Or(s + 30 <= start, s >= end))\n\nif solver.check() == z3.sat:\n    model = solver.model()\n    s_val = model[s].as_long()\n    # Convert to time\n    def to_time(minutes):\n        total = 9 * 60 + minutes\n        h = total // 60\n        m = total % 60\n        return f\"{h:02d}:{m:02d}\"\n    start_time = to_time(s_val)\n    end_time = to_time(s_val + 30)\n    print(f\"{{{start_time}:{end_time}}} Monday\")\nelse:\n    print(\"No solution found\")"
+}

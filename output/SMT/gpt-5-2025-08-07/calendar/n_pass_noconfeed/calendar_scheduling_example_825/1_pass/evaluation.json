@@ -1,0 +1,29 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "Tuesday {12:00:13:00}",
+    "pred": {
+        "day": "Tuesday",
+        "time_range": "{12:00:13:00}"
+    },
+    "gold": {
+        "day": "Tuesday",
+        "time_range": "{12:00:13:00}"
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 64.74311470985413,
+        "execution_time": 0.0820775032043457,
+        "constraint_eval_time": 2.9802322387695312e-05,
+        "pred_extract_time": 0.5935642719268799,
+        "gold_extract_time": 1.52587890625e-05,
+        "total_tokens": 2962,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\n\n# Days mapping\nDAYS = [\"Monday\", \"Tuesday\", \"Wednesday\", \"Thursday\"]\n\ndef to_min(t):\n    h, m = map(int, t.split(\":\"))\n    return h * 60 + m\n\ndef rel_to_workday(t):\n    # Workday starts at 09:00\n    return to_min(t) - to_min(\"09:00\")\n\ndef format_hhmm(minutes_from_0900):\n    total = minutes_from_0900 + to_min(\"09:00\")\n    h = total // 60\n    m = total % 60\n    return f\"{h:02d}:{m:02d}\"\n\n# Busy schedules per person per day (relative to 09:00)\n# Day indices: 0=Monday, 1=Tuesday, 2=Wednesday, 3=Thursday\nlaura_busy_str = {\n    0: [(\"10:30\", \"11:00\"), (\"12:30\", \"13:00\"), (\"14:30\", \"15:30\"), (\"16:00\", \"17:00\")],\n    1: [(\"09:30\", \"10:00\"), (\"11:00\", \"11:30\"), (\"13:00\", \"13:30\"), (\"14:30\", \"15:00\"), (\"16:00\", \"17:00\")],\n    2: [(\"11:30\", \"12:00\"), (\"12:30\", \"13:00\"), (\"15:30\", \"16:30\")],\n    3: [(\"10:30\", \"11:00\"), (\"12:00\", \"13:30\"), (\"15:00\", \"15:30\"), (\"16:00\", \"16:30\")],\n}\nphilip_busy_str = {\n    0: [(\"09:00\", \"17:00\")],\n    1: [(\"09:00\", \"11:00\"), (\"11:30\", \"12:00\"), (\"13:00\", \"13:30\"), (\"14:00\", \"14:30\"), (\"15:00\", \"16:30\")],\n    2: [(\"09:00\", \"10:00\"), (\"11:00\", \"12:00\"), (\"12:30\", \"16:00\"), (\"16:30\", \"17:00\")],\n    3: [(\"09:00\", \"10:30\"), (\"11:00\", \"12:30\"), (\"13:00\", \"17:00\")],\n}\n\ndef convert_schedule(schedule_str):\n    schedule = {}\n    for d in range(4):\n        intervals = []\n        for s, e in schedule_str.get(d, []):\n            intervals.append((rel_to_workday(s), rel_to_workday(e)))\n        schedule[d] = intervals\n    return schedule\n\nlaura_busy = convert_schedule(laura_busy_str)\nphilip_busy = convert_schedule(philip_busy_str)\n\n# Z3 variables\nday = Int(\"day\")        # 0..3, but Wednesday (2) disallowed per constraint\nstart = Int(\"start\")    # minutes from 09:00\nduration = 60\nend = start + duration\n\nopt = Optimize()\nopt.set(priority='lex')\n\n# Day constraints: Monday..Thursday, but Philip cannot meet on Wednesday\nopt.add(day >= 0, day <= 3, day != 2)\n\n# Work hours constraints: between 09:00 and 17:00\nopt.add(start >= 0)\nopt.add(end <= rel_to_workday(\"17:00\"))\n\n# No-overlap constraints for each participant, conditional on chosen day\ndef no_overlap_for(schedule, d):\n    intervals = schedule.get(d, [])\n    if not intervals:\n        return True\n    return And([Or(end <= s, start >= e) for (s, e) in intervals])\n\n# Apply conditional constraints per day\nconstraints = []\nfor d in range(4):\n    constraints.append(If(day == d, no_overlap_for(laura_busy, d), True))\n    constraints.append(If(day == d, no_overlap_for(philip_busy, d), True))\nopt.add(constraints)\n\n# Preference: choose earliest possible day and earliest possible start time\nopt.minimize(day)\nopt.minimize(start)\n\nif opt.check() == sat:\n    m = opt.model()\n    d_val = m[day].as_long()\n    s_val = m[start].as_long()\n    e_val = s_val + duration\n    day_name = DAYS[d_val]\n    start_str = format_hhmm(s_val)\n    end_str = format_hhmm(e_val)\n    print(f\"{day_name} {{{start_str}:{end_str}}}\")\nelse:\n    print(\"No solution found\")"
+}
