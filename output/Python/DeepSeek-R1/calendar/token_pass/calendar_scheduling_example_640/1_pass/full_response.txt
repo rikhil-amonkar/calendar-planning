@@ -1,0 +1,96 @@
+```python
+def time_str_to_minutes(time_str):
+    hours, minutes = map(int, time_str.split(':'))
+    return hours * 60 + minutes
+
+def minutes_to_time_str(minutes):
+    hours = minutes // 60
+    mins = minutes % 60
+    return f"{hours}:{mins:02d}"
+
+def merge_intervals(intervals):
+    if not intervals:
+        return []
+    sorted_intervals = sorted(intervals, key=lambda x: x[0])
+    merged = [sorted_intervals[0]]
+    for current in sorted_intervals[1:]:
+        last = merged[-1]
+        if current[0] <= last[1]:
+            last[1] = max(last[1], current[1])
+        else:
+            merged.append(current)
+    return merged
+
+def get_free_intervals(busy_intervals, work_start, work_end):
+    merged_busy = merge_intervals(busy_intervals)
+    free = []
+    current = work_start
+    for start, end in merged_busy:
+        if current < start:
+            free.append([current, start])
+        current = max(current, end)
+    if current < work_end:
+        free.append([current, work_end])
+    return free
+
+def find_common_free_intervals(free1, free2):
+    common = []
+    i = j = 0
+    while i < len(free1) and j < len(free2):
+        low = max(free1[i][0], free2[j][0])
+        high = min(free1[i][1], free2[j][1])
+        if low < high:
+            common.append([low, high])
+        if free1[i][1] < free2[j][1]:
+            i += 1
+        else:
+            j += 1
+    return common
+
+def main():
+    work_start = time_str_to_minutes("9:00")
+    work_end = time_str_to_minutes("17:00")
+    meeting_duration = 30
+
+    bobby_busy = {
+        'Monday': [('14:30', '15:00')],
+        'Tuesday': [('9:00', '11:30'), ('12:00', '12:30'), ('13:00', '15:00'), ('15:30', '17:00')]
+    }
+    michael_busy = {
+        'Monday': [('9:00', '10:00'), ('10:30', '13:30'), ('14:00', '15:00'), ('15:30', '17:00')],
+        'Tuesday': [('9:00', '10:30'), ('11:00', '11:30'), ('12:00', '14:00'), ('15:00', '16:00'), ('16:30', '17:00')]
+    }
+
+    days = ['Monday', 'Tuesday']
+    for day in days:
+        bobby_busy_minutes = []
+        for interval in bobby_busy[day]:
+            start = time_str_to_minutes(interval[0])
+            end = time_str_to_minutes(interval[1])
+            bobby_busy_minutes.append([start, end])
+        
+        michael_busy_minutes = []
+        for interval in michael_busy[day]:
+            start = time_str_to_minutes(interval[0])
+            end = time_str_to_minutes(interval[1])
+            michael_busy_minutes.append([start, end])
+        
+        bobby_free = get_free_intervals(bobby_busy_minutes, work_start, work_end)
+        michael_free = get_free_intervals(michael_busy_minutes, work_start, work_end)
+        common_free = find_common_free_intervals(bobby_free, michael_free)
+        
+        for interval in common_free:
+            start, end = interval
+            if end - start >= meeting_duration:
+                meeting_start = start
+                meeting_end = start + meeting_duration
+                start_str = minutes_to_time_str(meeting_start)
+                end_str = minutes_to_time_str(meeting_end)
+                print(f"{day} {start_str}:{end_str}")
+                return
+    
+    print("No suitable time found")
+
+if __name__ == "__main__":
+    main()
+```

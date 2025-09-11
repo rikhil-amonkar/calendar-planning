@@ -1,0 +1,108 @@
+import itertools
+import json
+
+def main():
+    # Define the graph of direct flights
+    graph_edges = [
+        ('Rome', 'Stuttgart'), ('Venice', 'Rome'), ('Dublin', 'Bucharest'), ('Mykonos', 'Rome'),
+        ('Seville', 'Lisbon'), ('Frankfurt', 'Venice'), ('Venice', 'Stuttgart'), ('Bucharest', 'Lisbon'),
+        ('Nice', 'Mykonos'), ('Venice', 'Lisbon'), ('Dublin', 'Lisbon'), ('Venice', 'Nice'),
+        ('Rome', 'Seville'), ('Frankfurt', 'Rome'), ('Nice', 'Dublin'), ('Rome', 'Bucharest'),
+        ('Frankfurt', 'Dublin'), ('Rome', 'Dublin'), ('Venice', 'Dublin'), ('Rome', 'Lisbon'),
+        ('Frankfurt', 'Lisbon'), ('Nice', 'Rome'), ('Frankfurt', 'Nice'), ('Frankfurt', 'Stuttgart'),
+        ('Frankfurt', 'Bucharest'), ('Lisbon', 'Stuttgart'), ('Nice', 'Lisbon'), ('Seville', 'Dublin')
+    ]
+    
+    graph = {}
+    for u, v in graph_edges:
+        graph.setdefault(u, set()).add(v)
+        graph.setdefault(v, set()).add(u)
+    
+    # Cities and their required days
+    cities_days = {
+        'Rome': 3,
+        'Mykonos': 2,
+        'Lisbon': 2,
+        'Frankfurt': 5,
+        'Nice': 3,
+        'Stuttgart': 4,
+        'Venice': 4,
+        'Dublin': 2,
+        'Bucharest': 2,
+        'Seville': 5
+    }
+    
+    cities_list = list(cities_days.keys())
+    found = False
+    valid_permutation = None
+    
+    for perm in itertools.permutations(cities_list):
+        # Check direct flights between consecutive cities
+        valid_path = True
+        for i in range(len(perm) - 1):
+            if perm[i+1] not in graph.get(perm[i], set()):
+                valid_path = False
+                break
+        if not valid_path:
+            continue
+        
+        # Calculate arrival days for each city
+        arrival = [0] * len(perm)
+        arrival[0] = 1
+        cumulative = cities_days[perm[0]]
+        for i in range(1, len(perm)):
+            arrival[i] = cumulative
+            cumulative += cities_days[perm[i]] - 1
+        
+        # Check if total days match
+        if cumulative != 23:
+            continue
+        
+        # Find indices of constrained cities
+        idx_frankfurt = perm.index('Frankfurt')
+        idx_seville = perm.index('Seville')
+        idx_mykonos = perm.index('Mykonos')
+        
+        # Check Frankfurt constraint (wedding between day 1 and 5)
+ arrival_f = arrival[idx_frankfurt]
+        departure_f = arrival_f + cities_days['Frankfurt'] - 1
+        if not (arrival_f <= 5 and departure_f >= 1):
+            continue
+        
+        # Check Seville constraint (conference between day 13 and 17)
+        arrival_s = arrival[idx_seville]
+        departure_s = arrival_s + cities_days['Seville'] - 1
+        if not (arrival_s <= 17 and departure_s >= 13):
+            continue
+        
+        # Check Mykonos constraint (visit between day 10 and 11)
+        arrival_m = arrival[idx_mykonos]
+        departure_m = arrival_m + cities_days['Mykonos'] - 1
+        if not (arrival_m <= 11 and departure_m >= 10):
+            continue
+        
+        valid_permutation = perm
+        found = True
+        break
+    
+    if not found:
+        print(json.dumps({"itinerary": []}))
+        return
+    
+    # Generate itinerary day ranges
+    itinerary = []
+    current_day = 1
+    for city in valid_permutation:
+        days = cities_days[city]
+        end_day = current_day + days - 1
+        if current_day == end_day:
+            day_range = f"Day {current_day}"
+        else:
+            day_range = f"Day {current_day}-{end_day}"
+        itinerary.append({"day_range": day_range, "place": city})
+        current_day = end_day
+    
+    print(json.dumps({"itinerary": itinerary}))
+
+if __name__ == '__main__':
+    main()

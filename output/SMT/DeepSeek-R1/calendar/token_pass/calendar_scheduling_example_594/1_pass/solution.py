@@ -1,0 +1,69 @@
+from z3 import *
+
+def main():
+    # Initialize the optimizer
+    opt = Optimize()
+    
+    # Meeting duration in minutes
+    duration = 30
+    
+    # Total available minutes from 9:00 to 17:00 (8 hours)
+    total_minutes = 8 * 60
+    
+    # Start time variable in minutes from 9:00
+    S = Int('S')
+    
+    # Constraints: S must be between 0 and total_minutes - duration
+    opt.add(S >= 0)
+    opt.add(S <= total_minutes - duration)
+    
+    # Adam's busy intervals in minutes from 9:00
+    adam_busy = [
+        (30, 60),    # 9:30-10:00
+        (210, 240),  # 12:30-13:00
+        (330, 360),  # 14:30-15:00
+        (450, 480)   # 16:30-17:00
+    ]
+    
+    # Roy's busy intervals in minutes from 9:00
+    roy_busy = [
+        (60, 120),   # 10:00-11:00
+        (150, 240),  # 11:30-13:00
+        (270, 330),  # 13:30-14:30
+        (450, 480)   # 16:30-17:00
+    ]
+    
+    # Add constraints for Adam's busy intervals
+    for start, end in adam_busy:
+        opt.add(Or(S >= end, S + duration <= start))
+    
+    # Add constraints for Roy's busy intervals
+    for start, end in roy_busy:
+        opt.add(Or(S >= end, S + duration <= start))
+    
+    # Minimize S to find the earliest start time
+    opt.minimize(S)
+    
+    # Check for a solution
+    if opt.check() == sat:
+        model = opt.model()
+        start_minutes = model[S].as_long()
+        
+        # Convert start minutes to time string
+        start_hour = 9 + start_minutes // 60
+        start_minute = start_minutes % 60
+        start_time = f"{start_hour}:{start_minute:02d}"
+        
+        # Calculate end time
+        end_minutes = start_minutes + duration
+        end_hour = 9 + end_minutes // 60
+        end_minute = end_minutes % 60
+        end_time = f"{end_hour}:{end_minute:02d}"
+        
+        # Output the day and time range
+        print(f"Monday {start_time}:{end_time}")
+    else:
+        print("No solution found")
+
+if __name__ == "__main__":
+    main()

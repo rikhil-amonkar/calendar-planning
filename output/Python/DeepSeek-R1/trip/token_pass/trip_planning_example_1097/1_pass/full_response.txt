@@ -1,0 +1,91 @@
+```python
+import itertools
+import json
+
+def main():
+    # Define the required days for each city
+    required_days = {
+        'Reykjavik': 4,
+        'Riga': 2,
+        'Oslo': 3,
+        'Lyon': 5,
+        'Dubrovnik': 2,
+        'Madrid': 2,
+        'Warsaw': 4,
+        'London': 3
+    }
+    
+    # Define the flight graph (undirected)
+    graph = {
+        'Warsaw': {'Reykjavik', 'Riga', 'London', 'Oslo', 'Madrid'},
+        'Oslo': {'Madrid', 'Dubrovnik', 'Reykjavik', 'Riga', 'Lyon', 'London'},
+        'Reykjavik': {'Warsaw', 'Madrid', 'Oslo', 'London'},
+        'Riga': {'Warsaw', 'Oslo'},
+        'Lyon': {'London', 'Madrid', 'Oslo'},
+        'Dubrovnik': {'Oslo', 'Madrid'},
+        'Madrid': {'Oslo', 'London', 'Warsaw', 'Lyon', 'Dubrovnik', 'Reykjavik'},
+        'London': {'Lyon', 'Madrid', 'Warsaw', 'Oslo', 'Reykjavik'}
+    }
+    
+    cities = list(required_days.keys())
+    
+    for perm in itertools.permutations(cities):
+        # Check flight connections between consecutive cities
+        valid_connection = True
+        for i in range(len(perm) - 1):
+            if perm[i+1] not in graph[perm[i]]:
+                valid_connection = False
+                break
+        if not valid_connection:
+            continue
+            
+        # Calculate day ranges for each segment
+        segments = []
+        current_day = 1
+        for city in perm:
+            days_needed = required_days[city]
+            end_day = current_day + days_needed - 1
+            segments.append((city, current_day, end_day))
+            current_day = end_day  # Next segment starts on the same day (travel day)
+        
+        # Check if the last day is 18
+        if segments[-1][2] != 18:
+            continue
+            
+        # Check Riga constraint (must include day 4 or 5)
+        riga_valid = False
+        # Check Dubrovnik constraint (must include day 7 or 8)
+        dubrovnik_valid = False
+        
+        for seg in segments:
+            city, start, end = seg
+            if city == 'Riga':
+                if start <= 5 and end >= 4:
+                    riga_valid = True
+            if city == 'Dubrovnik':
+                if start <= 8 and end >= 7:
+                    dubrovnik_valid = True
+                    
+        if not riga_valid or not dubrovnik_valid:
+            continue
+            
+        # Found valid itinerary
+        itinerary = []
+        for seg in segments:
+            city, start, end = seg
+            if start == end:
+                day_range_str = f"Day {start}"
+            else:
+                day_range_str = f"Day {start}-{end}"
+            itinerary.append({"day_range": day_range_str, "place": city})
+        
+        result = {"itinerary": itinerary}
+        print(json.dumps(result))
+        return
+        
+    # If no valid itinerary found, output empty list
+    print(json.dumps({"itinerary": []}))
+
+if __name__ == "__main__":
+    main()
+```

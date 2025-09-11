@@ -1,0 +1,338 @@
+First, I need to schedule a meeting for Martha and Beverly for one hour between 9:00 and 17:00 on Monday, Tuesday, or Wednesday. I have their blocked times, so I need to find a one-hour slot where both are free.
+
+Let's list out the free times for each person on each day based on their blocked times.
+
+Work hours are from 9:00 to 17:00, so we only consider times within that range.
+
+**Monday:**
+
+- Martha blocked: 16:00 to 17:00 → So free from 9:00 to 16:00
+
+- Beverly blocked: 9:00 to 13:30 and 14:00 to 17:00 → So free only from 13:30 to 14:00? That's only 30 minutes, but we need one hour. So no one-hour slot on Monday because Beverly is only free for 30 minutes.
+
+Let's confirm:
+
+Beverly has blocked from 9:00 to 13:30 and then from 14:00 to 17:00. So the only free time is from 13:30 to 14:00, which is 30 minutes. So no one-hour slot on Monday.
+
+**Tuesday:**
+
+- Martha blocked: 15:00 to 15:30 → So free from 9:00 to 15:00 and 15:30 to 17:00
+
+- Beverly blocked: 9:00 to 17:00 → So entirely blocked? No free time at all on Tuesday.
+
+Beverly has blocked from 9:00 to 17:00 on Tuesday, so no free time. So no meeting on Tuesday.
+
+**Wednesday:**
+
+- Martha blocked: 10:00 to 11:00 and 14:00 to 14:30 → So free from 9:00 to 10:00, 11:00 to 14:00, and 14:30 to 17:00
+
+- Beverly blocked: 9:30 to 15:30 and 16:30 to 17:00 → So free from 9:00 to 9:30? But 9:00 to 9:30 is only 30 minutes, and then from 15:30 to 16:30? Let's see:
+
+Beverly blocked: 9:30 to 15:30 → so before 9:30, from 9:00 to 9:30 is free, but that's 30 minutes. Then after 15:30 to 17:00, but blocked from 16:30 to 17:00, so free from 15:30 to 16:30? That's one hour.
+
+Also, from 9:00 to 9:30 is only 30 minutes, so not enough for one hour.
+
+So Beverly free on Wednesday: 9:00 to 9:30 (30 min) and 15:30 to 16:30 (1 hour)
+
+Now Martha free on Wednesday: 9:00 to 10:00 (1 hour), 11:00 to 14:00 (3 hours), and 14:30 to 17:00 (2.5 hours)
+
+We need a one-hour slot where both are free.
+
+So possible overlaps:
+
+- Martha free 9:00-10:00, Beverly free 9:00-9:30 → overlap from 9:00 to 9:30, only 30 minutes, not enough.
+
+- Martha free 11:00-14:00, Beverly free 15:30-16:30? No overlap here because 11:00-14:00 and 15:30-16:30 don't overlap.
+
+- Martha free 14:30-17:00, Beverly free 15:30-16:30 → overlap from 15:30 to 16:30, which is exactly one hour.
+
+So on Wednesday, from 15:30 to 16:30, both are free.
+
+Therefore, the meeting can be on Wednesday from 15:30 to 16:30.
+
+Now, I need to write a Python script that calculates this and outputs the day and time range.
+
+The script should be general, but for this task, I can hardcode the schedules since it's a specific example.
+
+I'll represent the blocked times as lists of intervals for each person on each day.
+
+Then, for each day, find the free times within 9:00 to 17:00, and then find an overlap of at least one hour.
+
+Since the days are limited to Mon, Tue, Wed, I'll iterate over each day.
+
+I'll convert times to minutes for easier calculation.
+
+Let me define:
+
+Start of day: 9:00 = 540 minutes (since 9*60=540)
+
+End of day: 17:00 = 1020 minutes (17*60=1020)
+
+Meeting duration: 60 minutes.
+
+For each person, on each day, I have blocked intervals. I need to find free intervals.
+
+Then find common free intervals for all participants.
+
+In this case, only two participants: Martha and Beverly.
+
+But the script should be able to handle more, but for now, I'll code for two.
+
+Since the task says "there exists a solution", I know Wednesday works.
+
+Now, for the code:
+
+I'll create a function to parse time strings to minutes.
+
+But since the input is given in text, I need to extract the blocked times.
+
+In the code, I'll define the blocked times for each person on each day.
+
+Let me list the blocked times in code.
+
+Martha:
+
+Monday: 16:00 to 17:00 → 16:00 is 960 min, 17:00 is 1020 min
+
+Tuesday: 15:00 to 15:30 → 15:00 is 900 min, 15:30 is 930 min
+
+Wednesday: 10:00 to 11:00 → 10:00 is 600 min, 11:00 is 660 min; and 14:00 to 14:30 → 14:00 is 840 min, 14:30 is 870 min
+
+Beverly:
+
+Monday: 9:00 to 13:30 → 9:00 is 540 min, 13:30 is 810 min; and 14:00 to 17:00 → 14:00 is 840 min, 17:00 is 1020 min
+
+Tuesday: 9:00 to 17:00 → 540 to 1020 min
+
+Wednesday: 9:30 to 15:30 → 9:30 is 570 min, 15:30 is 930 min; and 16:30 to 17:00 → 16:30 is 990 min, 17:00 is 1020 min
+
+Now, for each day, I'll compute free times for each person.
+
+Then find intersection of free times.
+
+Finally, find a slot of 60 minutes.
+
+I'll write the code step by step.
+
+First, define the days we care about: ['Monday', 'Tuesday', 'Wednesday']
+
+For each day, define the blocked intervals for each participant.
+
+Then, for each participant, on that day, compute free intervals between 540 and 1020 min.
+
+Then, for all participants, find common free intervals.
+
+Then, check if any common free interval has duration >= 60 min.
+
+If found, output the day and time range.
+
+Now, for time output, I need to convert back to HH:MM format.
+
+Let's code accordingly.
+
+I'll use lists of intervals, where each interval is a tuple (start, end) in minutes.
+
+Free intervals can be computed by subtracting blocked intervals from the work hours.
+
+Work hours: (540, 1020)
+
+For a set of blocked intervals, free intervals are the gaps between them.
+
+I can sort the blocked intervals and then find the gaps.
+
+But since blocked intervals might overlap, I should merge them first.
+
+In this case, the blocked intervals are given separately, but they might not overlap, so I'll merge them to simplify.
+
+Then, free intervals are between the merged blocked intervals and the boundaries.
+
+Okay, let's implement.
+
+I'll create a function to merge intervals.
+
+Then a function to find free intervals given blocked intervals and range.
+
+Then for each day, for each person, get free intervals.
+
+Then find common free intervals by intersecting all free intervals lists.
+
+Since there are multiple participants, I need to find the intersection of free times for all.
+
+I can do this by iterating through the free intervals of each participant and finding overlapping intervals.
+
+But for simplicity, since we have only two participants, I can find the intersection of two sets of intervals.
+
+For more participants, I might need a general way, but for now, two is fine.
+
+I'll write the code for two participants, but can extend if needed.
+
+Since the task is specific, I'll hardcode the participants.
+
+Now, let's write the code.
+
+First, define the work start and end in minutes.
+
+work_start = 9 * 60 = 540
+
+work_end = 17 * 60 = 1020
+
+duration = 60
+
+Now, define the blocked times for each person on each day.
+
+I'll create a dictionary for Martha and Beverly.
+
+For example:
+
+martha_blocked = {
+
+    'Monday': [(16*60, 17*60)],
+
+    'Tuesday': [(15*60, 15*60 + 30)],
+
+    'Wednesday': [(10*60, 11*60), (14*60, 14*60 + 30)]
+
+}
+
+Similarly for Beverly.
+
+beverly_blocked = {
+
+    'Monday': [(9*60, 13*60 + 30), (14*60, 17*60)],
+
+    'Tuesday': [(9*60, 17*60)],
+
+    'Wednesday': [(9*60 + 30, 15*60 + 30), (16*60 + 30, 17*60)]
+
+}
+
+Now, for each day in ['Monday', 'Tuesday', 'Wednesday']:
+
+    get martha blocked for that day, compute free intervals for martha
+
+    get beverly blocked for that day, compute free intervals for beverly
+
+    then find common free intervals between martha free and beverly free
+
+    then check if any common free interval has length >= duration
+
+    if yes, output day and time range.
+
+Now, to compute free intervals for a person on a day given blocked list:
+
+    if no blocked, then free is [ (work_start, work_end) ]
+
+    else, sort blocked intervals by start time.
+
+    merge blocked intervals.
+
+    then free intervals are from work_start to first blocked start, then between blocked intervals, and from last blocked end to work_end.
+
+Code for merging intervals:
+
+def merge_intervals(intervals):
+    if not intervals:
+        return []
+    sorted_intervals = sorted(intervals, key=lambda x: x[0])
+    merged = []
+    start, end = sorted_intervals[0]
+    for i in range(1, len(sorted_intervals)):
+        if sorted_intervals[i][0] <= end:
+            end = max(end, sorted_intervals[i][1])
+        else:
+            merged.append((start, end))
+            start, end = sorted_intervals[i]
+    merged.append((start, end))
+    return merged
+
+Then, free intervals from merged blocked intervals and range (min_time, max_time):
+
+def get_free_intervals(blocked_list, min_time, max_time):
+    merged_blocked = merge_intervals(blocked_list)
+    free_intervals = []
+    current_start = min_time
+    for blocked in merged_blocked:
+        if current_start < blocked[0]:
+            free_intervals.append((current_start, blocked[0]))
+        current_start = blocked[1]
+    if current_start < max_time:
+        free_intervals.append((current_start, max_time))
+    return free_intervals
+
+Now, for common free intervals between two sets of free intervals.
+
+I need to find overlapping intervals from two lists.
+
+I can iterate through both lists and find overlaps.
+
+Since both lists are sorted, I can use two pointers.
+
+But for simplicity, since lists are small, I can do nested loops.
+
+Define function find_common_intervals(intervals1, intervals2):
+    common = []
+    for start1, end1 in intervals1:
+        for start2, end2 in intervals2:
+            start_overlap = max(start1, start2)
+            end_overlap = min(end1, end2)
+            if start_overlap < end_overlap:
+                common.append((start_overlap, end_overlap))
+    return common
+
+This might create multiple small intervals, but that's okay.
+
+Then, for each common interval, if end_overlap - start_overlap >= duration, then we found a slot.
+
+Now, once found, convert start and end back to time string.
+
+Format HH:MM, so from minutes, hours = minutes // 60, minutes = minutes % 60, then format as string with leading zero if needed.
+
+For output, we need like 15:30:16:30 but in the solution it should be HH:MM:HH:MM, so from time to time.
+
+Also output the day.
+
+Now, let's code accordingly.
+
+I'll write the code step by step.
+
+First, define the blocked times.
+
+Note: in Beverly's Wednesday, 9:30 to 15:30, which is 570 to 930, and 16:30 to 17:00, which is 990 to 1020.
+
+Also, for Martha on Wednesday, 10:00 to 11:00 is 600 to 660, and 14:00 to 14:30 is 840 to 870.
+
+Now, in code, I'll define the days to check.
+
+I'll iterate over days until I find a slot.
+
+Since we know Wednesday works, but code should find it.
+
+Now, let's write the code.
+
+I'll make sure to output the first found slot.
+
+But in this case, only Wednesday has a slot.
+
+Now, for output format, I need to output the day and the time range like HH:MM:HH:MM.
+
+In the solution example, it says output like {14:30:15:30} but in code, we output without braces, just the string.
+
+In the instruction, it says "outputs it in the format HH:MM:HH:MM" so for example "15:30:16:30"
+
+And also output the day.
+
+So in code, I'll print the day and the time range.
+
+But the instruction says "The output of the generated code must include both the time range (like {14:30:15:30}) and the day of the week."
+
+But in the code output, I should print both.
+
+Perhaps print("Wednesday") and print("15:30:16:30") or something.
+
+But to match the format, maybe print("Wednesday 15:30:16:30") or separately.
+
+Since it says "outputs it in the format", I think printing the time range in that format and the day.
+
+In the code, I'll print the day first and then the time range.
+
+Now, let's code.

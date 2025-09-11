@@ -1,0 +1,47 @@
+import json
+
+def main():
+    total_days = 15
+    stuttgart_days = 6
+    seville_days = 7
+    manchester_days = 4
+    friend_constraint_low = 1
+    friend_constraint_high = 6
+
+    orders = [
+        {
+            "cities": ["Stuttgart", "Manchester", "Seville"],
+            "durations": [stuttgart_days, manchester_days, seville_days]
+        },
+        {
+            "cities": ["Seville", "Manchester", "Stuttgart"],
+            "durations": [seville_days, manchester_days, stuttgart_days]
+        }
+    ]
+    
+    itinerary = None
+    for order in orders:
+        cities = order["cities"]
+        durs = order["durations"]
+        T1 = durs[0]
+        T2 = T1 + durs[1] - 1
+        if (total_days - T2 + 1) == durs[2]:
+            if cities[0] == "Stuttgart":
+                if T1 >= friend_constraint_low and T1 <= friend_constraint_high:
+                    itinerary = [
+                        {"day_range": f"Day 1-{T1}", "place": cities[0]},
+                        {"day_range": f"Day {T1}-{T2}", "place": cities[1]},
+                        {"day_range": f"Day {T2}-{total_days}", "place": cities[2]}
+                    ]
+                    break
+            else:
+                if T2 <= friend_constraint_high or (T2 >= friend_constraint_low and total_days >= friend_constraint_low):
+                    continue
+
+    if itinerary is None:
+        itinerary = []
+
+    print(json.dumps({"itinerary": itinerary}))
+
+if __name__ == "__main__":
+    main()

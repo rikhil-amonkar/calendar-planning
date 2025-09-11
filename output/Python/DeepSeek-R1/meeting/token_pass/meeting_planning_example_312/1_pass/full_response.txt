@@ -1,0 +1,91 @@
+```python
+import itertools
+import json
+
+def main():
+    travel_time = {
+        "Richmond District": {
+            "Sunset District": 11,
+            "Haight-Ashbury": 10,
+            "Mission District": 20,
+            "Golden Gate Park": 9
+        },
+        "Sunset District": {
+            "Richmond District": 12,
+            "Haight-Ashbury": 15,
+            "Mission District": 24,
+            "Golden Gate Park": 11
+        },
+        "Haight-Ashbury": {
+            "Richmond District": 10,
+            "Sunset District": 15,
+            "Mission District": 11,
+            "Golden Gate Park": 7
+        },
+        "Mission District": {
+            "Richmond District": 20,
+            "Sunset District": 24,
+            "Haight-Ashbury": 12,
+            "Golden Gate Park": 17
+        },
+        "Golden Gate Park": {
+            "Richmond District": 7,
+            "Sunset District": 10,
+            "Haight-Ashbury": 7,
+            "Mission District": 17
+        }
+    }
+
+    meetings = [
+        {"person": "Sarah", "location": "Sunset District", "avail_start": 105, "avail_end": 600, "min_duration": 30},
+        {"person": "Richard", "location": "Haight-Ashbury", "avail_start": 165, "avail_end": 405, "min_duration": 90},
+        {"person": "Elizabeth", "location": "Mission District", "avail_start": 120, "avail_end": 495, "min_duration": 120},
+        {"person": "Michelle", "location": "Golden Gate Park", "avail_start": 555, "avail_end": 705, "min_duration": 90}
+    ]
+
+    def minutes_to_time(minutes):
+        hours = 9 + minutes // 60
+        mins = minutes % 60
+        return f"{hours}:{mins:02d}"
+
+    best_itinerary = []
+    found = False
+    for size in range(4, 0, -1):
+        for subset in itertools.combinations(meetings, size):
+            for perm in itertools.permutations(subset):
+                itinerary = []
+                current_loc = "Richmond District"
+                current_time = 0
+                valid = True
+                for meeting in perm:
+                    travel_dur = travel_time[current_loc][meeting['location']]
+                    arrival = current_time + travel_dur
+                    start_meeting = max(arrival, meeting['avail_start'])
+                    if start_meeting + meeting['min_duration'] > meeting['avail_end']:
+                        valid = False
+                        break
+                    end_meeting = start_meeting + meeting['min_duration']
+                    itinerary.append({
+                        "action": "meet",
+                        "location": meeting['location'],
+                        "person": meeting['person'],
+                        "start_time": minutes_to_time(start_meeting),
+                        "end_time": minutes_to_time(end_meeting)
+                    })
+                    current_loc = meeting['location']
+                    current_time = end_meeting
+                if valid:
+                    best_itinerary = itinerary
+                    found = True
+                    break
+            if found:
+                break
+        if found:
+            break
+
+    result = {"itinerary": best_itinerary}
+    print(json.dumps(result, indent=2))
+
+if __name__ == "__main__":
+    main()
+```

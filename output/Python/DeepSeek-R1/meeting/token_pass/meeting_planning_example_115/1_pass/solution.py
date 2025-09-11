@@ -1,0 +1,98 @@
+import json
+
+def time_to_minutes(time_str):
+    parts = time_str.split(':')
+    hour = int(parts[0])
+    minute = int(parts[1])
+    return hour * 60 + minute
+
+def minutes_to_time(minutes):
+    hours = minutes // 60
+    mins = minutes % 60
+    return f"{hours}:{mins:02d}"
+
+def main():
+    # Define travel times in minutes
+    travel_times = {
+        ("Richmond District", "Pacific Heights"): 10,
+        ("Richmond District", "Marina District"): 9,
+        ("Pacific Heights", "Richmond District"): 12,
+        ("Pacific Heights", "Marina District"): 6,
+        ("Marina District", "Richmond District"): 11,
+        ("Marina District", "Pacific Heights"): 7
+    }
+    
+    # Convert constraints to minutes
+    start_time_min = time_to_minutes("9:00")
+    jessica_start_min = time_to_minutes("15:30")
+    jessica_end_min = time_to_minutes("16:45")
+    carol_start_min = time_to_minutes("11:30")
+    carol_end_min = time_to_minutes("15:00")
+    
+    # Meeting duration requirements
+    jessica_duration = 45
+    carol_duration = 60
+    
+    # Calculate possible schedules
+    best_schedule = []
+    max_meetings = 0
+    
+    # Option 1: Meet Carol first then Jessica
+    # Travel to Marina District
+    arrive_marina = start_time_min + travel_times[("Richmond District", "Marina District")]
+    # Determine Carol meeting time (latest possible to minimize waiting)
+    carol_meet_start = min(carol_end_min - carol_duration, max(arrive_marina, carol_start_min))
+    carol_meet_end = carol_meet_start + carol_duration
+    if carol_meet_start >= carol_start_min and carol_meet_end <= carol_end_min:
+        # Travel to Pacific Heights
+        travel_to_jessica = travel_times[("Marina District", "Pacific Heights")]
+        arrive_pacific = carol_meet_end + travel_to_jessica
+        # Determine Jessica meeting time
+        jessica_meet_start = max(arrive_pacific, jessica_start_min)
+        jessica_meet_end = jessica_meet_start + jessica_duration
+        if jessica_meet_end <= jessica_end_min:
+            schedule = [
+                {"action": "meet", "location": "Marina District", "person": "Carol", 
+                 "start_time": minutes_to_time(carol_meet_start), 
+                 "end_time": minutes_to_time(carol_meet_end)},
+                {"action": "meet", "location": "Pacific Heights", "person": "Jessica", 
+                 "start_time": minutes_to_time(jessica_meet_start), 
+                 "end_time": minutes_to_time(jessica_meet_end)}
+            ]
+            best_schedule = schedule
+            max_meetings = 2
+    
+    # If we couldn't schedule both, try just Jessica
+    if max_meetings < 2:
+        # Travel directly to Pacific Heights
+        arrive_pacific = start_time_min + travel_times[("Richmond District", "Pacific Heights")]
+        jessica_meet_start = max(arrive_pacific, jessica_start_min)
+        jessica_meet_end = jessica_meet_start + jessica_duration
+        if jessica_meet_end <= jessica_end_min:
+            best_schedule = [
+                {"action": "meet", "location": "Pacific Heights", "person": "Jessica", 
+                 "start_time": minutes_to_time(jessica_meet_start), 
+                 "end_time": minutes_to_time(jessica_meet_end)}
+            ]
+            max_meetings = 1
+        else:
+            # Try just Carol
+            arrive_marina = start_time_min + travel_times[("Richmond District", "Marina District")]
+            carol_meet_start = max(arrive_marina, carol_start_min)
+            carol_meet_end = carol_meet_start + carol_duration
+            if carol_meet_end <= carol_end_min:
+                best_schedule = [
+                    {"action": "meet", "location": "Marina District", "person": "Carol", 
+                     "start_time": minutes_to_time(carol_meet_start), 
+                     "end_time": minutes_to_time(carol_meet_end)}
+                ]
+                max_meetings = 1
+            else:
+                best_schedule = []
+    
+    # Output the result as JSON
+    result = {"itinerary": best_schedule}
+    print(json.dumps(result, indent=2))
+
+if __name__ == "__main__":
+    main()

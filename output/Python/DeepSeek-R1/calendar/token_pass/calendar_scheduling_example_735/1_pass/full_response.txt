@@ -1,0 +1,90 @@
+```python
+def time_to_minutes(time_str):
+    hours, minutes = map(int, time_str.split(':'))
+    return hours * 60 + minutes
+
+def minutes_to_time(minutes):
+    hours = minutes // 60
+    mins = minutes % 60
+    return f"{hours:02d}:{mins:02d}"
+
+def get_free_intervals(blocked_intervals, work_start, work_end):
+    blocked_sorted = sorted(blocked_intervals, key=lambda x: x[0])
+    free_intervals = []
+    current_start = work_start
+    for start, end in blocked_sorted:
+        if current_start < start:
+            free_intervals.append((current_start, start))
+        current_start = max(current_start, end)
+    if current_start < work_end:
+        free_intervals.append((current_start, work_end))
+    return free_intervals
+
+def parse_schedule(schedule_str):
+    days_dict = {}
+    day_blocks = schedule_str.split(';')
+    for block in day_blocks:
+        if not block.strip():
+            continue
+        parts = block.split('during')
+        day = parts[0].strip()
+        intervals_str = parts[1].strip()
+        intervals_list = []
+        intervals = intervals_str.split(',')
+        for interval in intervals:
+            times = interval.split('to')
+            start_str = times[0].strip()
+            end_str = times[1].strip()
+            start_min = time_to_minutes(start_str)
+            end_min = time_to_minutes(end_str)
+            intervals_list.append((start_min, end_min))
+        days_dict[day] = intervals_list
+    return days_dict
+
+def main():
+    work_start = time_to_minutes('09:00')
+    work_end = time_to_minutes('17:00')
+    meeting_duration = 30
+    
+    ronald_str = "Monday during 10:30 to 11:00, 12:00 to 12:30, 15:30 to 16:00; Tuesday during 9:00 to 9:30, 12:00 to 12:30, 15:30 to 16:30; Wednesday during 9:30 to 10:30, 11:00 to 12:00, 12:30 to 13:00, 13:30 to 14:00, 16:30 to 17:00"
+    amber_str = "Monday during 9:00 to 9:30, 10:00 to 10:30, 11:30 to 12:00, 12:30 to 14:00, 14:30 to 15:00, 15:30 to 17:00; Tuesday during 9:00 to 9:30, 10:00 to 11:30, 12:00 to 12:30, 13:30 to 15:30, 16:30 to 17:00; Wednesday during 9:00 to 9:30, 10:00 to 10:30, 11:00 to 13:30, 15:00 to 15:30"
+    
+    ronald_schedule = parse_schedule(ronald_str)
+    amber_schedule = parse_schedule(amber_str)
+    
+    days = ['Monday', 'Tuesday', 'Wednesday']
+    
+    for day in days:
+        ronald_blocked = ronald_schedule.get(day, [])
+        amber_blocked = amber_schedule.get(day, [])
+        
+        ronald_free = get_free_intervals(ronald_blocked, work_start, work_end)
+        amber_free = get_free_intervals(amber_blocked, work_start, work_end)
+        
+        common_free = []
+        i = j = 0
+        while i < len(ronald_free) and j < len(amber_free):
+            low = max(ronald_free[i][0], amber_free[j][0])
+            high = min(ronald_free[i][1], amber_free[j][1])
+            if low < high:
+                common_free.append((low, high))
+            if ronald_free[i][1] < amber_free[j][1]:
+                i += 1
+            else:
+                j += 1
+                
+        for interval in common_free:
+            start, end = interval
+            if end - start >= meeting_duration:
+                meeting_start = start
+                meeting_end = meeting_start + meeting_duration
+                start_str = minutes_to_time(meeting_start)
+                end_str = minutes_to_time(meeting_end)
+                print(f"{day} {start_str}:{end_str}")
+                return
+                
+    print("No suitable time found")
+
+if __name__ == "__main__":
+    main()
+```

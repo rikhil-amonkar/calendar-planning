@@ -1,0 +1,29 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "15:00:15:30\nMonday",
+    "pred": {
+        "day": "Monday",
+        "time_range": "{15:00:15:30}"
+    },
+    "gold": {
+        "day": "Monday",
+        "time_range": "{15:00:15:30}"
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 93.05797481536865,
+        "execution_time": 0.0803065299987793,
+        "constraint_eval_time": 3.504753112792969e-05,
+        "pred_extract_time": 2.8552231788635254,
+        "gold_extract_time": 1.9550323486328125e-05,
+        "total_tokens": 1899,
+        "reasoning_tokens": 768
+    },
+    "reasoning_content": "We are given:\n  - Participants: Natalie, David, Douglas, Ralph, Jordan\n  - Meeting duration: 30 minutes (0.5 hours)\n  - Work hours: 9:00 to 17:00 (so 9:00 is 9*60 = 540 minutes, 17:00 is 17*60 = 1020 minutes)\n  - We are to schedule on Monday.\n\n We represent time in minutes from a reference (e.g., 9:00 = 540 minutes).\n\n Steps:\n 1. Define the start time variable for the meeting (in minutes from 0, but we'll set bounds from 540 to 1020 - 30 = 990 minutes).\n 2. Add constraints for each person's busy times (the meeting should not overlap with any busy interval).\n 3. Also, David does not want to meet before 14:00 (which is 14*60 = 840 minutes). So the meeting must start at or after 840.\n\n Note: The meeting duration is 30 minutes, so if the meeting starts at S, it ends at S+30.\n\n We'll create a Z3 solver and add constraints for each participant's busy intervals.\n\n For each participant, we have a list of busy intervals (each interval is [start, end] in minutes).\n\n We'll define:\n   S = Int('S')  (start time in minutes from 0, but we set bounds [540, 990])\n\n For each busy interval [b_start, b_end] for a participant, we require:\n   Not(And(S < b_end, S+30 > b_start))\n   Which is equivalent to: Or(S >= b_end, S+30 <= b_start)\n\n Additionally, we have David's preference: S >= 840.\n\n We'll then check if the solver can find a solution and output the time in the format HH:MM:HH:MM for Monday.\n\n Let's code accordingly.\n\n Note: The problem states that there exists a solution.\n\n We'll convert the given busy times to minutes:\n\n David's busy: \n   11:30 to 12:00 -> 11*60+30=690 to 12*60=720\n   14:30 to 15:00 -> 14*60+30=870 to 15*60=900\n\n Douglas:\n   9:30 to 10:00 -> 570 to 600\n   11:30 to 12:00 -> 690 to 720\n   13:00 to 13:30 -> 780 to 810\n   14:30 to 15:00 -> 870 to 900\n\n Ralph:\n   9:00 to 9:30 -> 540 to 570\n   10:00 to 11:00 -> 600 to 660\n   11:30 to 12:30 -> 690 to 750\n   13:30 to 15:00 -> 810 to 900\n   15:30 to 16:00 -> 930 to 960\n   16:30 to 17:00 -> 990 to 1020\n\n Jordan:\n   9:00 to 10:00 -> 540 to 600\n   12:00 to 12:30 -> 720 to 750\n   13:00 to 13:30 -> 780 to 810\n   14:30 to 15:00 -> 870 to 900\n   15:30 to 17:00 -> 930 to 1020\n\n Natalie: free all day.\n\n We'll create a list of busy intervals for each participant (except Natalie) and then add constraints.\n\n Let's code accordingly.",
+    "generated_code": "from z3 import *\n\ndef main():\n    # Define the start time in minutes from 9:00 (0 minutes = 9:00)\n    start = Int('start')\n    duration = 30  # minutes\n    end_of_day = 480  # 17:00 is 480 minutes from 9:00\n\n    # Initialize solver\n    s = Solver()\n\n    # Base constraints: meeting must be within work hours\n    s.add(start >= 0)\n    s.add(start + duration <= end_of_day)\n\n    # David's constraint: not before 14:00 (14:00 = 300 minutes from 9:00)\n    s.add(start >= 300)\n\n    # Define busy intervals in minutes from 9:00\n    busy_times = {\n        'David': [(150, 180), (330, 360)],\n        'Douglas': [(30, 60), (150, 180), (240, 270), (330, 360)],\n        'Ralph': [(0, 30), (60, 120), (150, 210), (270, 360), (390, 420), (450, 480)],\n        'Jordan': [(0, 60), (180, 210), (240, 270), (330, 360), (390, 480)]\n    }\n\n    # Add constraints for each participant's busy times\n    for person, intervals in busy_times.items():\n        for (busy_start, busy_end) in intervals:\n            # Meeting must not overlap with busy interval\n            s.add(Or(start + duration <= busy_start, start >= busy_end))\n\n    # Check for a solution\n    if s.check() == sat:\n        m = s.model()\n        start_minutes = m.evaluate(start).as_long()\n        # Convert start minutes to time string\n        start_hour = 9 + start_minutes // 60\n        start_minute = start_minutes % 60\n        end_minutes = start_minutes + duration\n        end_hour = 9 + end_minutes // 60\n        end_minute = end_minutes % 60\n        # Format the output\n        print(f\"{start_hour:02d}:{start_minute:02d}:{end_hour:02d}:{end_minute:02d}\")\n        print(\"Monday\")\n    else:\n        print(\"No solution found\")\n\nif __name__ == \"__main__\":\n    main()"
+}

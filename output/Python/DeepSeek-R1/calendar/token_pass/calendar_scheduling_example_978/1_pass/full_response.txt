@@ -1,0 +1,106 @@
+```python
+def main():
+    # Define work hours in minutes from 9:00
+    work_start = 0
+    work_end = 480  # 17:00 is 480 minutes from 9:00
+    meeting_duration = 60
+    max_start = work_end - meeting_duration  # 420 minutes for start time
+
+    # Days to consider
+    days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
+    
+    # Brian's busy times in minutes from 9:00 for each day
+    brian_busy = {
+        'Monday': [(30, 60), (210, 330), (390, 420)],
+        'Tuesday': [(0, 30)],
+        'Wednesday': [(210, 300), (450, 480)],
+        'Thursday': [(120, 150), (240, 270), (450, 480)],
+        'Friday': [(30, 60), (90, 120), (240, 270), (360, 420), (450, 480)]
+    }
+    
+    # Julia's busy times in minutes from 9:00 for each day
+    julia_busy = {
+        'Monday': [(0, 60), (120, 150), (210, 240), (390, 420)],
+        'Tuesday': [(240, 300), (420, 450)],
+        'Wednesday': [(0, 150), (180, 210), (240, 480)],
+        'Thursday': [(0, 90), (120, 480)],
+        'Friday': [(0, 60), (90, 150), (210, 300), (330, 360), (390, 420)]
+    }
+    
+    # Function to find free intervals given busy intervals and work range
+    def get_free_intervals(busy_list, start, end):
+        free_intervals = []
+        busy_list_sorted = sorted(busy_list, key=lambda x: x[0])
+        current = start
+        for busy in busy_list_sorted:
+            if current < busy[0]:
+                free_intervals.append((current, busy[0]))
+            current = max(current, busy[1])
+        if current < end:
+            free_intervals.append((current, end))
+        return free_intervals
+    
+    # Function to find overlapping intervals between two lists of intervals
+    def find_common_intervals(intervals1, intervals2):
+        common = []
+        i = j = 0
+        while i < len(intervals1) and j < len(intervals2):
+            start1, end1 = intervals1[i]
+            start2, end2 = intervals2[j]
+            start_max = max(start1, start2)
+            end_min = min(end1, end2)
+            if start_max < end_min:
+                common.append((start_max, end_min))
+            if end1 < end2:
+                i += 1
+            else:
+                j += 1
+        return common
+    
+    # Collect all possible meeting slots across days with day and start minute
+    meeting_slots = []  # each element: (day, start_minute)
+    
+    for day in days:
+        # Get free intervals for Brian and Julia on this day
+        brian_free = get_free_intervals(brian_busy[day], work_start, work_end)
+        julia_free = get_free_intervals(julia_busy[day], work_start, work_end)
+        # Find common free intervals
+        common_free = find_common_intervals(brian_free, julia_free)
+        # For each common interval, find possible meeting start times
+        for interval in common_free:
+            start_int, end_int = interval
+            # Meeting must start by max_start
+            start_min = max(start_int, work_start)
+            start_max = min(end_int - meeting_duration, max_start)
+            if start_min <= start_max:
+                # All possible start times from start_min to start_max
+                for start in range(start_min, start_max + 1):
+                    meeting_slots.append((day, start))
+    
+    # If no slots found, return None, but task says there is a solution
+    if not meeting_slots:
+        print("No available slot found")
+        return
+    
+    # Find the slot with the earliest start time (smallest start minute)
+    # Since start minute is from 0 to 420, smaller minute means earlier time of day
+    earliest_slot = min(meeting_slots, key=lambda x: x[1])
+    day, start_min = earliest_slot
+    end_min = start_min + meeting_duration
+    
+    # Convert minutes to time string without leading zero for hours
+    def minute_to_time(m):
+        total_minutes = 9 * 60 + m
+        hours = total_minutes // 60
+        minutes = total_minutes % 60
+        return f"{hours}:{minutes:02d}"
+    
+    start_time_str = minute_to_time(start_min)
+    end_time_str = minute_to_time(end_min)
+    
+    # Output the day and time range
+    print(f"{day} {start_time_str}:{end_time_str}")
+
+if __name__ == '__main__':
+    main()
+```

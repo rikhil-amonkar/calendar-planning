@@ -1,0 +1,1 @@
+for constraint in cities[city]["constraints"]:

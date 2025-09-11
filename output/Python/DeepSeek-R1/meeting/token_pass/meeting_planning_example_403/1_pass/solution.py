@@ -1,0 +1,107 @@
+import itertools
+import json
+
+def main():
+    travel_times = {
+        'Union Square': {
+            'Golden Gate Park': 22,
+            'Pacific Heights': 15,
+            'Presidio': 24,
+            'Chinatown': 7,
+            'The Castro': 19
+        },
+        'Golden Gate Park': {
+            'Union Square': 22,
+            'Pacific Heights': 16,
+            'Presidio': 11,
+            'Chinatown': 23,
+            'The Castro': 13
+        },
+        'Pacific Heights': {
+            'Union Square': 12,
+            'Golden Gate Park': 15,
+            'Presidio': 11,
+            'Chinatown': 11,
+            'The Castro': 16
+        },
+        'Presidio': {
+            'Union Square': 22,
+            'Golden Gate Park': 12,
+            'Pacific Heights': 11,
+            'Chinatown': 21,
+            'The Castro': 21
+        },
+        'Chinatown': {
+            'Union Square': 7,
+            'Golden Gate Park': 23,
+            'Pacific Heights': 10,
+            'Presidio': 19,
+            'The Castro': 22
+        },
+        'The Castro': {
+            'Union Square': 19,
+            'Golden Gate Park': 11,
+            'Pacific Heights': 16,
+            'Presidio': 20,
+            'Chinatown': 20
+        }
+    }
+
+    friends = [
+        {'name': 'Andrew', 'location': 'Golden Gate Park', 'window_start': 165, 'window_end': 330, 'min_duration': 75},
+        {'name': 'Sarah', 'location': 'Pacific Heights', 'window_start': 435, 'window_end': 585, 'min_duration': 15},
+        {'name': 'Nancy', 'location': 'Presidio', 'window_start': 510, 'window_end': 615, 'min_duration': 60},
+        {'name': 'Rebecca', 'location': 'Chinatown', 'window_start': 45, 'window_end': 750, 'min_duration': 90},
+        {'name': 'Robert', 'location': 'The Castro', 'window_start': 0, 'window_end': 315, 'min_duration': 30}
+    ]
+
+    best_count = 0
+    best_schedule = None
+
+    for perm in itertools.permutations(friends):
+        current_time = 0
+        current_location = 'Union Square'
+        schedule = []
+        for friend in perm:
+            tt = travel_times[current_location][friend['location']]
+            arrival_time = current_time + tt
+            start_meeting = max(arrival_time, friend['window_start'])
+            if start_meeting + friend['min_duration'] <= friend['window_end']:
+                end_meeting = start_meeting + friend['min_duration']
+                schedule.append({
+                    'person': friend['name'],
+                    'location': friend['location'],
+                    'start_time': start_meeting,
+                    'end_time': end_meeting
+                })
+                current_time = end_meeting
+                current_location = friend['location']
+            else:
+                continue
+
+        if len(schedule) > best_count:
+            best_count = len(schedule)
+            best_schedule = schedule
+
+    itinerary = []
+    if best_schedule:
+        for meeting in best_schedule:
+            start_minutes = meeting['start_time']
+            end_minutes = meeting['end_time']
+            start_hour = 9 + start_minutes // 60
+            start_minute = start_minutes % 60
+            end_hour = 9 + end_minutes // 60
+            end_minute = end_minutes % 60
+            itinerary.append({
+                "action": "meet",
+                "location": meeting['location'],
+                "person": meeting['person'],
+                "start_time": f"{start_hour}:{start_minute:02d}",
+                "end_time": f"{end_hour}:{end_minute:02d}"
+            })
+
+    result = {"itinerary": itinerary}
+    print(json.dumps(result))
+
+if __name__ == '__main__':
+    main()

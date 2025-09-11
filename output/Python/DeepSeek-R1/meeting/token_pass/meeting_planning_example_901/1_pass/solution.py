@@ -1,0 +1,125 @@
+import json
+
+def main():
+    # Define the locations and their indices
+    locations = [
+        "Russian Hill",
+        "Pacific Heights",
+        "North Beach",
+        "Golden Gate Park",
+        "Embarcadero",
+        "Haight-Ashbury",
+        "Fisherman's Wharf",
+        "Mission District",
+        "Alamo Square",
+        "Bayview",
+        "Richmond District"
+    ]
+    loc_to_index = {loc: idx for idx, loc in enumerate(locations)}
+    
+    # Travel times dictionary
+    travel_dict = {
+        "Russian Hill": {"Pacific Heights":7, "North Beach":5, "Golden Gate Park":21, "Embarcadero":8, "Haight-Ashbury":17, "Fisherman's Wharf":7, "Mission District":16, "Alamo Square":15, "Bayview":23, "Richmond District":14},
+        "Pacific Heights": {"Russian Hill":7, "North Beach":9, "Golden Gate Park":15, "Embarcadero":10, "Haight-Ashbury":11, "Fisherman's Wharf":13, "Mission District":15, "Alamo Square":10, "Bayview":22, "Richmond District":12},
+        "North Beach": {"Russian Hill":4, "Pacific Heights":8, "Golden Gate Park":22, "Embarcadero":6, "Haight-Ashbury":18, "Fisherman's Wharf":5, "Mission District":18, "Alamo Square":16, "Bayview":25, "Richmond District":18},
+        "Golden Gate Park": {"Russian Hill":19, "Pacific Heights":16, "North Beach":23, "Embarcadero":25, "Haight-Ashbury":7, "Fisherman's Wharf":24, "Mission District":17, "Alamo Square":9, "Bayview":23, "Richmond District":7},
+        "Embarcadero": {"Russian Hill":8, "Pacific Heights":11, "North Beach":5, "Golden Gate Park":25, "Haight-Ashbury":21, "Fisherman's Wharf":6, "Mission District":20, "Alamo Square":19, "Bayview":21, "Richmond District":21},
+        "Haight-Ashbury": {"Russian Hill":17, "Pacific Heights":12, "North Beach":19, "Golden Gate Park":7, "Embarcadero":20, "Fisherman's Wharf":23, "Mission District":11, "Alamo Square":5, "Bayview":18, "Richmond District":10},
+        "Fisherman's Wharf": {"Russian Hill":7, "Pacific Heights":12, "North Beach":6, "Golden Gate Park":25, "Embarcadero":8, "Haight-Ashbury":22, "Mission District":22, "Alamo Square":21, "Bayview":26, "Richmond District":18},
+        "Mission District": {"Russian Hill":15, "Pacific Heights":16, "North Beach":17, "Golden Gate Park":17, "Embarcadero":19, "Haight-Ashbury":12, "Fisherman's Wharf":22, "Alamo Square":11, "Bayview":14, "Richmond District":20},
+        "Alamo Square": {"Russian Hill":13, "Pacific Heights":10, "North Beach":15, "Golden Gate Park":9, "Embarcadero":16, "Haight-Ashbury":5, "Fisherman's Wharf":19, "Mission District":10, "Bayview":16, "Richmond District":11},
+        "Bayview": {"Russian Hill":23, "Pacific Heights":23, "North Beach":22, "Golden Gate Park":22, "Embarcadero":19, "Haight-Ashbury":19, "Fisherman's Wharf":25, "Mission District":13, "Alamo Square":16, "Richmond District":25},
+        "Richmond District": {"Russian Hill":13, "Pacific Heights":10, "North Beach":17, "Golden Gate Park":9, "Embarcadero":19, "Haight-Ashbury":10, "Fisherman's Wharf":18, "Mission District":20, "Alamo Square":13, "Bayview":27}
+    }
+    
+    # Initialize travel matrix with large numbers
+    n_loc = len(locations)
+    travel = [[10**9] * n_loc for _ in range(n_loc)]
+    for i in range(n_loc):
+        travel[i][i] = 0
+    for from_loc, to_dict in travel_dict.items():
+        i = loc_to_index[from_loc]
+        for to_loc, time in to_dict.items():
+            j = loc_to_index[to_loc]
+            travel[i][j] = time
+
+    # Define meetings: (name, location_index, start_min, end_min, min_duration)
+    meetings = [
+        ("Emily", loc_to_index["Pacific Heights"], 15, 285, 120),
+        ("Helen", loc_to_index["North Beach"], 285, 585, 30),
+        ("Kimberly", loc_to_index["Golden Gate Park"], 585, 735, 75),
+        ("James", loc_to_index["Embarcadero"], 90, 150, 30),
+        ("Linda", loc_to_index["Haight-Ashbury"], 0, 615, 15),
+        ("Paul", loc_to_index["Fisherman's Wharf"], 345, 585, 90),
+        ("Anthony", loc_to_index["Mission District"], 0, 345, 105),
+        ("Nancy", loc_to_index["Alamo Square"], 0, 285, 120),
+        ("William", loc_to_index["Bayview"], 510, 690, 120),
+        ("Margaret", loc_to_index["Richmond District"], 375, 435, 45)
+    ]
+    n_meetings = len(meetings)
+
+    # Initialize DP table and parent table
+    dp = [[10**9] * n_loc for _ in range(1 << n_meetings)]
+    parent = [[None] * n_loc for _ in range(1 << n_meetings)]
+    dp[0][0] = 0  # start at Russian Hill (index0) at time 0
+
+    # DP iteration
+    for mask in range(1 << n_meetings):
+        for loc in range(n_loc):
+            if dp[mask][loc] < 10**9:
+                for i in range(n_meetings):
+                    if mask & (1 << i):
+                        continue
+                    name, loc_i, start_m, end_m, min_dur = meetings[i]
+                    t = travel[loc][loc_i]
+                    arrival = dp[mask][loc] + t
+                    start_time = max(arrival, start_m)
+                    if start_time + min_dur <= end_m:
+                        end_time = start_time + min_dur
+                        new_mask = mask | (1 << i)
+                        if end_time < dp[new_mask][loc_i]:
+                            dp[new_mask][loc_i] = end_time
+                            parent[new_mask][loc_i] = (mask, loc, i, start_time, end_time)
+
+    # Find the best solution (max number of meetings)
+    best_mask = 0
+    best_loc = 0
+    max_meetings = 0
+    for mask in range(1 << n_meetings):
+        for loc in range(n_loc):
+            if dp[mask][loc] < 10**9:
+                count = bin(mask).count('1')
+                if count > max_meetings:
+                    max_meetings = count
+                    best_mask = mask
+                    best_loc = loc
+
+    # Reconstruct the itinerary
+    itinerary = []
+    mask = best_mask
+    loc = best_loc
+    while mask != 0:
+        prev_mask, prev_loc, i, start_time, end_time = parent[mask][loc]
+        name, loc_i, _, _, _ = meetings[i]
+        itinerary.append({
+            "action": "meet",
+            "location": locations[loc_i],
+            "person": name,
+            "start_time": minutes_to_time(start_time),
+            "end_time": minutes_to_time(end_time)
+        })
+        mask = prev_mask
+        loc = prev_loc
+    itinerary.reverse()
+
+    # Output as JSON
+    result = {"itinerary": itinerary}
+    print(json.dumps(result, indent=2))
+
+def minutes_to_time(m):
+    hours = 9 + m // 60
+    minutes = m % 60
+    return f"{hours}:{minutes:02d}"
+
+if __name__ == "__main__":
+    main()

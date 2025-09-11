@@ -1,0 +1,276 @@
+import json
+
+def main():
+    # Define the travel times as a dictionary of dictionaries
+    travel_times_dict = {
+        "The Castro": {
+            "Alamo Square": 8,
+            "Richmond District": 16,
+            "Financial District": 21,
+            "Union Square": 19,
+            "Fisherman's Wharf": 24,
+            "Marina District": 21,
+            "Haight-Ashbury": 6,
+            "Mission District": 7,
+            "Pacific Heights": 16,
+            "Golden Gate Park": 11
+        },
+        "Alamo Square": {
+            "The Castro": 8,
+            "Richmond District": 11,
+            "Financial District": 17,
+            "Union Square": 14,
+            "Fisherman's Wharf": 19,
+            "Marina District": 15,
+            "Haight-Ashbury": 5,
+            "Mission District": 10,
+            "Pacific Heights": 10,
+            "Golden Gate Park": 9
+        },
+        "Richmond District": {
+            "The Castro": 16,
+            "Alamo Square": 13,
+            "Financial District": 22,
+            "Union Square": 21,
+            "Fisherman's Wharf": 18,
+            "Marina District": 9,
+            "Haight-Ashbury": 10,
+            "Mission District": 20,
+            "Pacific Heights": 10,
+            "Golden Gate Park": 9
+        },
+        "Financial District": {
+            "The Castro": 20,
+            "Alamo Square": 17,
+            "Richmond District": 21,
+            "Union Square": 9,
+            "Fisherman's Wharf": 10,
+            "Marina District": 15,
+            "Haight-Ashbury": 19,
+            "Mission District": 17,
+            "Pacific Heights": 13,
+            "Golden Gate Park": 23
+        },
+        "Union Square": {
+            "The Castro": 17,
+            "Alamo Square": 15,
+            "Richmond District": 20,
+            "Financial District": 9,
+            "Fisherman's Wharf": 15,
+            "Marina District": 18,
+            "Haight-Ashbury": 18,
+            "Mission District": 14,
+            "Pacific Heights": 15,
+            "Golden Gate Park": 22
+        },
+        "Fisherman's Wharf": {
+            "The Castro": 27,
+            "Alamo Square": 21,
+            "Richmond District": 18,
+            "Financial District": 11,
+            "Union Square": 13,
+            "Marina District": 9,
+            "Haight-Ashbury": 22,
+            "Mission District": 22,
+            "Pacific Heights": 12,
+            "Golden Gate Park": 25
+        },
+        "Marina District": {
+            "The Castro": 22,
+            "Alamo Square": 15,
+            "Richmond District": 11,
+            "Financial District": 17,
+            "Union Square": 16,
+            "Fisherman's Wharf": 10,
+            "Haight-Ashbury": 16,
+            "Mission District": 20,
+            "Pacific Heights": 7,
+            "Golden Gate Park": 18
+        },
+        "Haight-Ashbury": {
+            "The Castro": 6,
+            "Alamo Square": 5,
+            "Richmond District": 10,
+            "Financial District": 21,
+            "Union Square": 19,
+            "Fisherman's Wharf": 23,
+            "Marina District": 17,
+            "Mission District": 11,
+            "Pacific Heights": 12,
+            "Golden Gate Park": 7
+        },
+        "Mission District": {
+            "The Castro": 7,
+            "Alamo Square": 11,
+            "Richmond District": 20,
+            "Financial District": 15,
+            "Union Square": 15,
+            "Fisherman's Wharf": 22,
+            "Marina District": 19,
+            "Haight-Ashbury": 12,
+            "Pacific Heights": 16,
+            "Golden Gate Park": 17
+        },
+        "Pacific Heights": {
+            "The Castro": 16,
+            "Alamo Square": 10,
+            "Richmond District": 12,
+            "Financial District": 13,
+            "Union Square": 12,
+            "Fisherman's Wharf": 13,
+            "Marina District": 6,
+            "Haight-Ashbury": 11,
+            "Mission District": 15,
+            "Golden Gate Park": 15
+        },
+        "Golden Gate Park": {
+            "The Castro": 13,
+            "Alamo Square": 9,
+            "Richmond District": 7,
+            "Financial District": 26,
+            "Union Square": 22,
+            "Fisherman's Wharf": 24,
+            "Marina District": 16,
+            "Haight-Ashbury": 7,
+            "Mission District": 17,
+            "Pacific Heights": 16
+        }
+    }
+    
+    # List of locations in order of index
+    locations = [
+        "The Castro",
+        "Alamo Square",
+        "Richmond District",
+        "Financial District",
+        "Union Square",
+        "Fisherman's Wharf",
+        "Marina District",
+        "Haight-Ashbury",
+        "Mission District",
+        "Pacific Heights",
+        "Golden Gate Park"
+    ]
+    
+    # Create a mapping from location name to index
+    loc_to_index = {loc: idx for idx, loc in enumerate(locations)}
+    
+    # Build travel_matrix: 11x11
+    n_locations = len(locations)
+    travel_matrix = [[0] * n_locations for _ in range(n_locations)]
+    for i, loc1 in enumerate(locations):
+        for j, loc2 in enumerate(locations):
+            if i == j:
+                travel_matrix[i][j] = 0
+            else:
+                travel_matrix[i][j] = travel_times_dict[loc1][loc2]
+    
+    # Define friends: (name, location_index, start_avail, end_avail, min_duration)
+    friends = [
+        ("William", loc_to_index["Alamo Square"], 375, 495, 60),
+        ("Joshua", loc_to_index["Richmond District"], -120, 660, 15),
+        ("Joseph", loc_to_index["Financial District"], 135, 270, 15),
+        ("David", loc_to_index["Union Square"], 465, 615, 45),
+        ("Brian", loc_to_index["Fisherman's Wharf"], 285, 705, 105),
+        ("Karen", loc_to_index["Marina District"], 150, 570, 15),
+        ("Anthony", loc_to_index["Haight-Ashbury"], -105, 90, 30),
+        ("Matthew", loc_to_index["Mission District"], 495, 615, 120),
+        ("Helen", loc_to_index["Pacific Heights"], -60, 180, 75),
+        ("Jeffrey", loc_to_index["Golden Gate Park"], 600, 750, 60)
+    ]
+    
+    n_friends = len(friends)
+    INF = 10**9
+    
+    # Initialize DP and prev arrays
+    dp = [[INF] * n_locations for _ in range(1 << n_friends)]
+    prev_mask = [[-1] * n_locations for _ in range(1 << n_friends)]
+    prev_loc = [[-1] * n_locations for _ in range(1 << n_friends)]
+    prev_meeting = [[-1] * n_locations for _ in range(1 << n_friends)]
+    
+    # Start at The Castro (index 0) at time 0
+    dp[0][0] = 0
+    
+    # DP loop
+    for mask in range(1 << n_friends):
+        for loc in range(n_locations):
+            if dp[mask][loc] == INF:
+                continue
+            for j in range(n_friends):
+                if mask & (1 << j):
+                    continue
+                name, f_loc, f_start, f_end, f_dur = friends[j]
+                travel_time = travel_matrix[loc][f_loc]
+                arrival_time = dp[mask][loc] + travel_time
+                start_meeting = max(arrival_time, f_start)
+                if start_meeting + f_dur <= f_end:
+                    new_time = start_meeting + f_dur
+                    new_mask = mask | (1 << j)
+                    if new_time < dp[new_mask][f_loc]:
+                        dp[new_mask][f_loc] = new_time
+                        prev_mask[new_mask][f_loc] = mask
+                        prev_loc[new_mask][f_loc] = loc
+                        prev_meeting[new_mask][f_loc] = j
+    
+    # Find the mask with the most meetings
+    best_mask = 0
+    best_count = 0
+    for mask in range(1 << n_friends):
+        count = bin(mask).count('1')
+        if count > best_count:
+            for loc in range(n_locations):
+                if dp[mask][loc] < INF:
+                    best_mask = mask
+                    best_count = count
+                    break
+    
+    # Find the best location for the best_mask (with minimal time)
+    best_loc = -1
+    best_time = INF
+    for loc in range(n_locations):
+        if dp[best_mask][loc] < best_time:
+            best_time = dp[best_mask][loc]
+            best_loc = loc
+    
+    # Reconstruct the schedule
+    schedule = []
+    mask = best_mask
+    loc = best_loc
+    while mask != 0:
+        j = prev_meeting[mask][loc]
+        prev_m = prev_mask[mask][loc]
+        prev_l = prev_loc[mask][loc]
+        end_time = dp[mask][loc]
+        start_time = end_time - friends[j][4]
+        schedule.append((j, loc, start_time, end_time))
+        mask = prev_m
+        loc = prev_l
+    
+    schedule.reverse()
+    
+    # Helper function to convert minutes to time string
+    def min_to_time(m):
+        total_minutes = int(m)
+        hours = total_minutes // 60
+        minutes = total_minutes % 60
+        hour_str = str(9 + hours)
+        minute_str = f"{minutes:02d}"
+        return f"{hour_str}:{minute_str}"
+    
+    # Build itinerary
+    itinerary = []
+    for j, loc, start, end in schedule:
+        itinerary.append({
+            "action": "meet",
+            "location": locations[loc],
+            "person": friends[j][0],
+            "start_time": min_to_time(start),
+            "end_time": min_to_time(end)
+        })
+    
+    # Output as JSON
+    result = {"itinerary": itinerary}
+    print(json.dumps(result, indent=2))
+
+if __name__ == "__main__":
+    main()

@@ -11,12 +11,15 @@ Features:
 4. Provides iterative feedback for constraint violations
 5. Saves conversation history, plans, and evaluation results for each pass
 6. Parallel processing with rate limiting for efficiency
+7. Extracts DeepSeek reasoning content and counts tokens
 
 Directory structure for outputs:
 ../output/Plan/{model_name}/{task}/n_pass/{example_id}/{pass_number}_pass/
   - conversation.json: Full conversation history
   - plan.json: Generated plan
   - evaluation.json: Constraint evaluation results
+  - reasoning.txt: DeepSeek reasoning content (if available)
+  - full_response.txt: Full model response
 
 Usage:
 python iterative_plan_refinement_parallel.py --task calendar --model gpt-4o-mini --start 0 --end 5
@@ -39,6 +42,7 @@ from typing import List, Dict, Any, Tuple
 import logging
 import shutil
 from openai import OpenAI
+import tiktoken
 
 # Set up logging
 logging.basicConfig(
@@ -1055,11 +1059,176 @@ class RateLimiter:
         
         self.last_request_time = time.time()
 
-async def run_model_with_rate_limit(ai, prompt, rate_limiter):
-    """Run the AI model with rate limiting"""
+def count_tokens(text):
+    """Count tokens in text with fallback to character count if tiktoken fails"""
+    try:
+        # Define the model (e.g., "gpt-3.5-turbo" or "gpt-4")
+        model_name = "gpt-4o"  # this doesn't matter for DeepSeek models
+        # Initialize the encoder for the specific model
+        encoding = tiktoken.encoding_for_model(model_name)
+        # Document to be tokenized
+        document = f"{text}"
+        # Count the tokens
+        tokens = encoding.encode(document)
+        token_count = len(tokens)
+        return token_count
+    except Exception as e:
+        logging.warning(f"Token counting failed, using fallback method: {str(e)}")
+        return len(text)
+
+async def run_model_with_rate_limit(ai, prompt, rate_limiter, model_name):
+    """Run the AI model with rate limiting and extract reasoning content for DeepSeek models"""
     await rate_limiter.wait()
-    response = await ai.chat_round_str(prompt)
-    return response
+    
+    start_time = time.time()
+    try:
+        # 1) Normal Kani round (gets assistant .text for your code extraction)
+        msg = await ai.chat_round_str(prompt)
+        response = msg
+        api_time = time.time() - start_time
+
+        reasoning_content = ""
+        full_token_count = count_tokens(response)  # fallback if usage not available
+        reasoning_tokens = 0
+
+        # 2) If DeepSeek, ALSO call the raw OpenAI-compatible endpoint to get reasoning_content + usage
+        if model_name.startswith("DeepSeek"):
+            engine = ai.engine
+            ds_model = "deepseek-reasoner" if "R1" in model_name else "deepseek-chat"
+
+            # Build messages; include system if you want (you set system_prompt="" above)
+            raw = await engine.client.chat.completions.create(
+                model=ds_model,
+                messages=[{"role": "user", "content": prompt}],
+            )
+            raw_msg = raw.choices[0].message
+
+            # Chain-of-thought lives here for R1:
+            reasoning_content = getattr(raw_msg, "reasoning_content", "") or ""
+
+            # Prefer server usage counts if present
+            try:
+                usage = getattr(raw, "usage", None)
+                if usage:
+                    full_token_count = getattr(usage, "total_tokens", full_token_count) or full_token_count
+                    # DeepSeek does not split "reasoning tokens" in usage today; keep your fallback if you want
+            except Exception:
+                pass
+
+            # Optional: if you want a rough number for reasoning tokens, count the reasoning text
+            reasoning_tokens = count_tokens(reasoning_content) if reasoning_content else 0
+
+        else:
+            # non-DeepSeek path unchanged
+            reasoning_tokens = 0
+
+        return response, api_time, full_token_count, reasoning_content, reasoning_tokens
+
+    except Exception as e:
+        logging.error(f"Error calling model {model_name}: {e}")
+        return None, 0, 0, "", 0
+
+def save_output_files(task, model_name, example_id, pass_num, conversation, plan, evaluation):
+    """Save all output files for a given pass"""
+    output_dir = f"../output/Plan/{model_name}/{task}/token_pass/{example_id}/{pass_num}_pass"
+    os.makedirs(output_dir, exist_ok=True)
+    
+    # Save conversation
+    with open(f"{output_dir}/conversation.json", "w") as f:
+        json.dump(conversation, f, indent=4)
+    
+    # Save plan
+    with open(f"{output_dir}/plan.json", "w") as f:
+        json.dump(plan, f, indent=4)
+    
+    # Save evaluation results (ensure token data is included)
+    evaluation_with_tokens = evaluation.copy()
+    if "timing" not in evaluation_with_tokens:
+        evaluation_with_tokens["timing"] = {}
+    evaluation_with_tokens["timing"].setdefault("total_tokens", 0)
+    evaluation_with_tokens["timing"].setdefault("reasoning_tokens", 0)
+    
+    # Ensure reasoning content is properly included
+    if "reasoning_content" not in evaluation_with_tokens and evaluation.get("reasoning_content"):
+        evaluation_with_tokens["reasoning_content"] = evaluation["reasoning_content"]
+    
+    with open(f"{output_dir}/evaluation.json", "w") as f:
+        json.dump(evaluation_with_tokens, f, indent=4)
+    
+    # Also save reasoning content separately if it exists
+    reasoning_content = evaluation.get("reasoning_content")
+    if reasoning_content:
+        with open(f"{output_dir}/reasoning.txt", "w") as f:
+            f.write(reasoning_content)
+        
+        # Save the full raw response for debugging
+        full_response = None
+        for msg in conversation:
+            if msg.get("role") == "assistant" and "content" in msg:
+                full_response = msg["content"]
+                break
+        
+        if full_response:
+            with open(f"{output_dir}/full_response.txt", "w") as f:
+                f.write(full_response)
+
+def calculate_token_statistics():
+    """Calculate and display token usage statistics across all examples"""
+    token_data = {
+        "calendar": {"total_tokens": 0, "reasoning_tokens": 0, "count": 0},
+        "meeting": {"total_tokens": 0, "reasoning_tokens": 0, "count": 0},
+        "trip": {"total_tokens": 0, "reasoning_tokens": 0, "count": 0},
+        "zebralogic": {"total_tokens": 0, "reasoning_tokens": 0, "count": 0},
+        "overall": {"total_tokens": 0, "reasoning_tokens": 0, "count": 0}
+    }
+    
+    # Scan all evaluation files to collect token data
+    for task in ["calendar", "meeting", "trip", "zebralogic"]:
+        task_dir = f"../output/Plan"
+        if not os.path.exists(task_dir):
+            continue
+            
+        for model_name in os.listdir(task_dir):
+            model_dir = os.path.join(task_dir, model_name, task, "n_pass")
+            if not os.path.exists(model_dir):
+                continue
+                
+            for example_id in os.listdir(model_dir):
+                example_dir = os.path.join(model_dir, example_id)
+                if not os.path.isdir(example_dir):
+                    continue
+                    
+                for pass_dir in os.listdir(example_dir):
+                    if pass_dir.endswith("_pass") and os.path.isdir(os.path.join(example_dir, pass_dir)):
+                        eval_file = os.path.join(example_dir, pass_dir, "evaluation.json")
+                        if os.path.exists(eval_file):
+                            try:
+                                with open(eval_file, 'r') as f:
+                                    eval_data = json.load(f)
+                                    if "timing" in eval_data:
+                                        token_data[task]["total_tokens"] += eval_data["timing"].get("total_tokens", 0)
+                                        token_data[task]["reasoning_tokens"] += eval_data["timing"].get("reasoning_tokens", 0)
+                                        token_data[task]["count"] += 1
+                                        
+                                        token_data["overall"]["total_tokens"] += eval_data["timing"].get("total_tokens", 0)
+                                        token_data["overall"]["reasoning_tokens"] += eval_data["timing"].get("reasoning_tokens", 0)
+                                        token_data["overall"]["count"] += 1
+                            except Exception as e:
+                                logging.warning(f"Error reading evaluation file {eval_file}: {e}")
+    
+    # Print statistics
+    print("\n=== Token Usage Statistics ===")
+    for task in ["calendar", "meeting", "trip", "zebralogic", "overall"]:
+        if token_data[task]["count"] > 0:
+            avg_total = token_data[task]["total_tokens"] / token_data[task]["count"]
+            avg_reasoning = token_data[task]["reasoning_tokens"] / token_data[task]["count"]
+            reasoning_percentage = (avg_reasoning / avg_total * 100) if avg_total > 0 else 0
+            
+            print(f"\n{task.capitalize()}:")
+            print(f"  Examples processed: {token_data[task]['count']}")
+            print(f"  Average total tokens per response: {avg_total:.1f}")
+            print(f"  Average reasoning tokens per response: {avg_reasoning:.1f}")
+            print(f"  Reasoning percentage: {reasoning_percentage:.1f}%")
 
 async def process_single_example(
     example_id,
@@ -1087,7 +1256,7 @@ async def process_single_example(
         logging.info(f"[{example_id}] Starting processing with model {model}")
         
         # Create output directory
-        output_dir = f"../output/Plan/{model}/{task}/single_pass/{example_id}"
+        output_dir = f"../output/Plan/{model}/{task}/token_pass/{example_id}"
         os.makedirs(output_dir, exist_ok=True)
         
         # Initialize AI model (outside semaphore to allow parallel initialization)
@@ -1107,7 +1276,12 @@ async def process_single_example(
                 "violated_constraint": {},
                 "is_exact_match": False,
                 "constraints_satisfied": False,
-                "pass_number": 0
+                "pass_number": 0,
+                "timing": {
+                    "total_tokens": 0,
+                    "reasoning_tokens": 0
+                },
+                "reasoning_content": ""
             }
             with open(f"{output_dir}/1_pass/evaluation.json", "w") as f:
                 json.dump(error_eval_result, f, indent=4)
@@ -1149,7 +1323,7 @@ async def process_single_example(
                     logging.info(f"[{example_id}] Making API call (attempt {retry_count + 1})")
                     # Use semaphore only for the actual API call
                     async with semaphore:
-                        response_text = await run_model_with_rate_limit(ai, current_prompt, rate_limiter)
+                        response_text, api_time, full_token_count, reasoning_content, reasoning_tokens = await run_model_with_rate_limit(ai, current_prompt, rate_limiter, model)
                     logging.info(f"[{example_id}] API call successful")
                     break
                 except Exception as e:
@@ -1167,7 +1341,12 @@ async def process_single_example(
                             "violated_constraint": {},
                             "is_exact_match": False,
                             "constraints_satisfied": False,
-                            "pass_number": pass_num
+                            "pass_number": pass_num,
+                            "timing": {
+                                "total_tokens": 0,
+                                "reasoning_tokens": 0
+                            },
+                            "reasoning_content": ""
                         }
                         with open(f"{pass_output_dir}/evaluation.json", "w") as f:
                             json.dump(error_eval_result, f, indent=4)
@@ -1188,7 +1367,12 @@ async def process_single_example(
                             "violated_constraint": {},
                             "is_exact_match": False,
                             "constraints_satisfied": False,
-                            "pass_number": pass_num
+                            "pass_number": pass_num,
+                            "timing": {
+                                "total_tokens": 0,
+                                "reasoning_tokens": 0
+                            },
+                            "reasoning_content": ""
                         }
                         with open(f"{pass_output_dir}/evaluation.json", "w") as f:
                             json.dump(error_eval_result, f, indent=4)
@@ -1199,7 +1383,13 @@ async def process_single_example(
             
             # Add to conversation history
             conversation_history.append({"role": "user", "content": current_prompt})
-            conversation_history.append({"role": "assistant", "content": response_text})
+            conversation_history.append({
+                "role": "assistant", 
+                "content": response_text,
+                "reasoning_content": reasoning_content,
+                "reasoning_tokens": reasoning_tokens,
+                "total_tokens": full_token_count
+            })
             
             # Save conversation
             with open(f"{pass_output_dir}/conversation.json", "w") as f:
@@ -1275,7 +1465,13 @@ async def process_single_example(
                 "violated_constraint": violated_constraints,
                 "is_exact_match": is_exact_match,
                 "constraints_satisfied": constraints_satisfied,
-                "pass_number": pass_num
+                "pass_number": pass_num,
+                "timing": {
+                    "api_call_time": api_time,
+                    "total_tokens": full_token_count,
+                    "reasoning_tokens": reasoning_tokens
+                },
+                "reasoning_content": reasoning_content
             }
             with open(f"{pass_output_dir}/evaluation.json", "w") as f:
                 json.dump(eval_result, f, indent=4)
@@ -1305,7 +1501,12 @@ async def process_single_example(
                 "violated_constraint": violated_constraints,
                 "is_exact_match": is_exact_match,
                 "constraints_satisfied": constraints_satisfied,
-                "pass_number": pass_num
+                "pass_number": pass_num,
+                "timing": {
+                    "total_tokens": full_token_count,
+                    "reasoning_tokens": reasoning_tokens
+                },
+                "reasoning_content": reasoning_content
             }
             with open(f"{pass_output_dir}/evaluation.json", "w") as f:
                 json.dump(final_eval_result, f, indent=4)
@@ -1326,7 +1527,12 @@ async def process_single_example(
                 "violated_constraint": {},
                 "is_exact_match": False,
                 "constraints_satisfied": False,
-                "pass_number": 0
+                "pass_number": 0,
+                "timing": {
+                    "total_tokens": 0,
+                    "reasoning_tokens": 0
+                },
+                "reasoning_content": ""
             }
             # Try to save to first pass directory, create if needed
             first_pass_dir = f"{output_dir}/1_pass"
@@ -1391,6 +1597,9 @@ async def main():
     success_count = sum(1 for r in results if not isinstance(r, Exception))
     error_count = len(results) - success_count
     logging.info(f"Completed processing {len(results)} examples: {success_count} successful, {error_count} failed")
+    
+    # Calculate and print token statistics
+    calculate_token_statistics()
 
 def load_examples(task):
     """Load examples for the specified task"""
@@ -1448,4 +1657,3 @@ def extract_gold_answer(example, task):
 
 if __name__ == "__main__":
     asyncio.run(main())
-

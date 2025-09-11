@@ -1,0 +1,54 @@
+import json
+
+def time_to_minutes(time_str):
+    parts = time_str.split(':')
+    return int(parts[0]) * 60 + int(parts[1])
+
+def minutes_to_time(minutes):
+    hours = minutes // 60
+    mins = minutes % 60
+    return f"{hours}:{mins:02d}"
+
+def main():
+    # Input parameters
+    start_location = "Russian Hill"
+    start_time_str = "9:00"
+    daniel_location = "Richmond District"
+    daniel_available_start_str = "19:00"
+    daniel_available_end_str = "20:15"
+    min_duration = 75
+    travel_time_to_richmond = 14
+    travel_time_from_richmond = 13
+
+    # Convert times to minutes
+    start_time_min = time_to_minutes(start_time_str)
+    daniel_start_min = time_to_minutes(daniel_available_start_str)
+    daniel_end_min = time_to_minutes(daniel_available_end_str)
+
+    # Calculate latest departure time from Russian Hill
+    latest_arrival_time = daniel_start_min
+    travel_time_needed = travel_time_to_richmond
+    departure_time = latest_arrival_time - travel_time_needed
+
+    # Check if we have enough time to meet the minimum duration
+    available_duration = daniel_end_min - daniel_start_min
+    meeting_duration = min(available_duration, min_duration)
+    meeting_end_time = daniel_start_min + meeting_duration
+
+    # Create itinerary
+    itinerary = []
+    if departure_time >= start_time_min and meeting_duration >= min_duration:
+        itinerary.append({
+            "action": "meet",
+            "location": daniel_location,
+            "person": "Daniel",
+            "start_time": minutes_to_time(daniel_start_min),
+            "end_time": minutes_to_time(meeting_end_time)
+        })
+
+    # Output as JSON
+    result = {"itinerary": itinerary}
+    print(json.dumps(result, indent=2))
+
+if __name__ == "__main__":
+    main()

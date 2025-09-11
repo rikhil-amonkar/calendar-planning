@@ -1,0 +1,92 @@
+```python
+import itertools
+import json
+
+def main():
+    # Define the graph of direct flights
+    graph = {
+        'Split': ['Helsinki', 'Geneva', 'Vilnius'],
+        'Helsinki': ['Split', 'Geneva', 'Reykjavik', 'Vilnius'],
+        'Geneva': ['Split', 'Helsinki'],
+        'Reykjavik': ['Helsinki'],
+        'Vilnius': ['Helsinki', 'Split']
+    }
+    
+    # Desired days per city
+    desired_days = {
+        'Split': 2,
+        'Helsinki': 2,
+        'Reykjavik': 3,
+        'Vilnius': 3,
+        'Geneva': 6
+    }
+    
+    cities = list(desired_days.keys())
+    valid_itinerary = None
+    
+    # Generate all permutations of the cities
+    for perm in itertools.permutations(cities):
+        # Check if consecutive cities are connected by direct flights
+        valid_path = True
+        for i in range(len(perm) - 1):
+            if perm[i+1] not in graph[perm[i]]:
+                valid_path = False
+                break
+        if not valid_path:
+            continue
+            
+        # Calculate start and end days for each city in this permutation
+        itinerary = []
+        current_day = 1
+        for idx, city in enumerate(perm):
+            days_needed = desired_days[city]
+            start_day = current_day
+            end_day = current_day + days_needed - 1
+            current_day = end_day  # Next city starts on the same day (travel day overlap)
+            
+            itinerary.append({
+                'city': city,
+                'start': start_day,
+                'end': end_day
+            })
+        
+        # Check constraints for Reykjavik and Vilnius
+        reykjavik_ok = False
+        vilnius_ok = False
+        for entry in itinerary:
+            if entry['city'] == 'Reykjavik':
+                # Check if any day between 10 and 12 is within [start, end]
+                if entry['start'] <= 12 and entry['end'] >= 10:
+                    reykjavik_ok = True
+            if entry['city'] == 'Vilnius':
+                if entry['start'] <= 9 and entry['end'] >= 7:
+                    vilnius_ok = True
+        
+        if reykjavik_ok and vilnius_ok:
+            valid_itinerary = itinerary
+            break
+            
+    if valid_itinerary is None:
+        print(json.dumps({"error": "No valid itinerary found"}))
+        return
+        
+    # Format the output
+    output_itinerary = []
+    for entry in valid_itinerary:
+        start = entry['start']
+        end = entry['end']
+        if start == end:
+            day_range = f"Day {start}"
+        else:
+            day_range = f"Day {start}-{end}"
+        output_itinerary.append({
+            "day_range": day_range,
+            "place": entry['city']
+        })
+        
+    result = {"itinerary": output_itinerary}
+    print(json.dumps(result))
+
+if __name__ == "__main__":
+    main()
+```

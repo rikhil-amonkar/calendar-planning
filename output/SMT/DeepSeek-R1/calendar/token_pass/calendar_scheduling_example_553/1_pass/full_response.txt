@@ -1,0 +1,59 @@
+```python
+from z3 import *
+
+def main():
+    # Initialize solver
+    s = Solver()
+    
+    # Define time in minutes from 9:00 (0 = 9:00, 480 = 17:00)
+    S = Int('S')
+    min_time = 0
+    max_time = 450  # 17:00 - 30 minutes = 16:30 (450 minutes from 9:00)
+    
+    # Hard constraints: S must be within [0, 450]
+    s.add(S >= min_time, S <= max_time)
+    
+    # Eric's busy intervals (converted to minutes from 9:00)
+    eric_busy = [(180, 240), (300, 360)]
+    for start, end in eric_busy:
+        s.add(Or(S + 30 <= start, S >= end))
+    
+    # Henry's busy intervals
+    henry_busy = [(30, 60), (90, 120), (150, 210), (240, 270), (330, 360), (420, 480)]
+    for start, end in henry_busy:
+        s.add(Or(S + 30 <= start, S >= end))
+    
+    # Henry's preference: meeting should end by 10:00 (60 minutes from 9:00)
+    preference = (S + 30 <= 60)
+    
+    # Check if solution with preference exists
+    if s.check() == sat:
+        m = s.model()
+        start_time = m[S].as_long()
+        # Convert start_time to HH:MM format
+        hours = start_time // 60
+        minutes = start_time % 60
+        end_time_minutes = start_time + 30
+        end_hours = end_time_minutes // 60
+        end_minutes = end_time_minutes % 60
+        print(f"{hours + 9:02d}:{minutes:02d}:{end_hours + 9:02d}:{end_minutes:02d}")
+        print("Monday")
+    else:
+        # Retry without preference
+        s.pop()
+        if s.check() == sat:
+            m = s.model()
+            start_time = m[S].as_long()
+            hours = start_time // 60
+            minutes = start_time % 60
+            end_time_minutes = start_time + 30
+            end_hours = end_time_minutes // 60
+            end_minutes = end_time_minutes % 60
+            print(f"{hours + 9:02d}:{minutes:02d}:{end_hours + 9:02d}:{end_minutes:02d}")
+            print("Monday")
+        else:
+            print("No solution found")
+
+if __name__ == "__main__":
+    main()
+```

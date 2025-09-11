@@ -1,0 +1,106 @@
+```python
+import json
+
+def main():
+    # Define the required days for each city
+    required_days = {
+        "Warsaw": 2,
+        "Budapest": 7,
+        "Paris": 4,
+        "Riga": 7
+    }
+    
+    # Define the graph of direct flights
+    graph = {
+        "Warsaw": ["Budapest", "Paris", "Riga"],
+        "Budapest": ["Warsaw", "Paris"],
+        "Paris": ["Warsaw", "Budapest", "Riga"],
+        "Riga": ["Warsaw", "Paris"]
+    }
+    
+    # Wedding constraints
+    wedding_min_day = 11
+    wedding_max_day = 17
+    
+    # Define the possible routes (after starting in Warsaw)
+    routes = [
+        ["Warsaw", "Budapest", "Paris", "Riga"],
+        ["Warsaw", "Riga", "Paris", "Budapest"]
+    ]
+    
+    # Initialize variables
+ valid_route = None
+    valid_itinerary = None
+    
+    for route in routes:
+        # Check if the route is connected by direct flights
+        valid_connection = True
+        for i in range(len(route) - 1):
+            if route[i+1] not in graph[route[i]]:
+                valid_connection = False
+                break
+        if not valid_connection:
+            continue
+            
+        # Simulate the itinerary for this route
+        current_day = 2  # We leave Warsaw on day 2
+        segments = []
+        # Add the initial Warsaw segment
+        segments.append(("Warsaw", 1, 2))
+        
+        # Process the remaining cities
+        for i in range(1, len(route)):
+            city = route[i]
+            req_days = required_days[city]
+            start_day = current_day
+            end_day = start_day + req_days - 1
+            if end_day > 17:
+                break
+            segments.append((city, start_day, end_day))
+            current_day = end_day
+        
+        # Check if we used all days and ended at day 17
+        if current_day != 17:
+            continue
+            
+        # Check if Riga segment overlaps with wedding days
+        riga_found = False
+        riga_valid = False
+        for seg in segments:
+            if seg[0] == "Riga":
+                riga_found = True
+                start, end = seg[1], seg[2]
+                if start <= wedding_max_day and end >= wedding_min_day:
+                    riga_valid = True
+                break
+                
+        # If Riga is not in the route, skip (but it should be)
+        if not riga_found:
+            continue
+            
+        if riga_valid:
+            valid_route = route
+            valid_itinerary = segments
+            break
+            
+    # If no valid route found, we return an error message (but we expect one to be found)
+    if valid_itinerary is None:
+        print(json.dumps({"error": "No valid itinerary found"}))
+        return
+        
+    # Format the itinerary
+    itinerary_json = []
+    for seg in valid_itinerary:
+        city, start, end = seg
+        if start == end:
+            day_range = f"Day {start}"
+        else:
+            day_range = f"Day {start}-{end}"
+        itinerary_json.append({"day_range": day_range, "place": city})
+        
+    # Output as JSON
+    print(json.dumps({"itinerary": itinerary_json}))
+
+if __name__ == "__main__":
+    main()
+```

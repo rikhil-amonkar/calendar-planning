@@ -1,0 +1,53 @@
+from z3 import *
+
+def main():
+    # Convert time to minutes from 9:00 (540 minutes from midnight)
+    start_of_day = 540  # 9:00
+    end_of_day = 1020   # 17:00
+    duration = 60       # 1 hour
+
+    # Busy intervals in minutes from midnight
+    james_busy = [
+        (690, 720),  # 11:30-12:00
+        (870, 900)   # 14:30-15:00
+    ]
+    john_busy = [
+        (570, 660),  # 9:30-11:00
+        (690, 720),  # 11:30-12:00
+        (750, 810),  # 12:30-13:30
+        (870, 990)   # 14:30-16:30
+    ]
+
+    # Create solver instance
+    s = Solver()
+    # Meeting start time variable (in minutes from midnight)
+    start = Int('start')
+    s.add(start >= start_of_day)
+    s.add(start <= end_of_day - duration)
+
+    # Function to add no-overlap constraints for a set of busy intervals
+    def add_busy_constraints(busy_intervals):
+        for begin, end in busy_intervals:
+            s.add(Or(start + duration <= begin, start >= end))
+
+    add_busy_constraints(james_busy)
+    add_busy_constraints(john_busy)
+
+    # Check for a solution
+    if s.check() == sat:
+        m = s.model()
+        start_val = m.evaluate(start).as_long()
+        # Convert start time to HH:MM format
+        start_hour = start_val // 60
+        start_minute = start_val % 60
+        end_val = start_val + duration
+        end_hour = end_val // 60
+        end_minute = end_val % 60
+        # Format output
+        print(f"{start_hour:02d}:{start_minute:02d}:{end_hour:02d}:{end_minute:02d}")
+        print("Monday")
+    else:
+        print("No solution found")
+
+if __name__ == "__main__":
+    main()

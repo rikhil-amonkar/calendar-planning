@@ -1,0 +1,1 @@
+house_dict[name_perm.index("Carol")]["house"] > house_dict[name_perm.index("Eric")]["house"]

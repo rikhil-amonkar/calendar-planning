@@ -1,0 +1,1 @@
+current_end = start_days[city] - 1

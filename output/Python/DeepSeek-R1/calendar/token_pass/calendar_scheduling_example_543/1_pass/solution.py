@@ -1,0 +1,69 @@
+def main():
+    # Define work hours in minutes from 9:00 (0) to 17:00 (480)
+    work_start = 0
+    work_end = 480
+    meeting_duration = 60
+
+    # Convert busy times to minutes from 9:00
+    busy_intervals = []
+    
+    # James' busy intervals
+    busy_intervals.append([time_to_minutes("11:30"), time_to_minutes("12:00")])
+    busy_intervals.append([time_to_minutes("14:30"), time_to_minutes("15:00")])
+    
+    # John's busy intervals
+    busy_intervals.append([time_to_minutes("9:30"), time_to_minutes("11:00")])
+    busy_intervals.append([time_to_minutes("11:30"), time_to_minutes("12:00")])
+    busy_intervals.append([time_to_minutes("12:30"), time_to_minutes("13:30")])
+    busy_intervals.append([time_to_minutes("14:30"), time_to_minutes("16:30")])
+    
+    # Merge busy intervals
+    merged_busy = merge_intervals(busy_intervals)
+    
+    # Find free intervals within work hours
+    free_intervals = []
+    current_time = work_start
+    
+    for start, end in merged_busy:
+        if current_time < start:
+            free_intervals.append([current_time, start])
+        current_time = max(current_time, end)
+    
+    if current_time < work_end:
+        free_intervals.append([current_time, work_end])
+    
+    # Find first free interval that can accommodate the meeting
+    for start, end in free_intervals:
+        if end - start >= meeting_duration:
+            meeting_start = start
+            meeting_end = meeting_start + meeting_duration
+            print(f"Monday {minutes_to_time(meeting_start)}:{minutes_to_time(meeting_end)}")
+            return
+    
+    print("No suitable time found")
+
+def time_to_minutes(time_str):
+    hours, minutes = map(int, time_str.split(':'))
+    return (hours - 9) * 60 + minutes
+
+def minutes_to_time(minutes):
+    total_minutes = 9 * 60 + minutes
+    hours = total_minutes // 60
+    minutes = total_minutes % 60
+    return f"{hours:02d}:{minutes:02d}"
+
+def merge_intervals(intervals):
+    if not intervals:
+        return []
+    sorted_intervals = sorted(intervals, key=lambda x: x[0])
+    merged = [sorted_intervals[0]]
+    for current in sorted_intervals[1:]:
+        last = merged[-1]
+        if current[0] <= last[1]:
+            last[1] = max(last[1], current[1])
+        else:
+            merged.append(current)
+    return merged
+
+if __name__ == "__main__":
+    main()

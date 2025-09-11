@@ -1,0 +1,118 @@
+```python
+import json
+
+def main():
+    # Travel time matrix (11x11)
+    dist = [
+        [0, 22, 25, 19, 20, 22, 18, 16, 32, 19, 23],
+        [25, 0, 5, 18, 7, 22, 7, 16, 17, 6, 8],
+        [26, 6, 0, 22, 11, 25, 13, 21, 17, 12, 12],
+        [18, 19, 23, 0, 15, 7, 19, 5, 15, 19, 12],
+        [19, 8, 10, 13, 0, 17, 7, 11, 17, 6, 8],
+        [23, 23, 24, 7, 20, 0, 22, 9, 11, 23, 16],
+        [15, 10, 15, 18, 9, 22, 0, 15, 24, 7, 15],
+        [16, 15, 19, 5, 11, 9, 14, 0, 17, 15, 10],
+        [31, 18, 19, 15, 18, 12, 22, 19, 0, 21, 11],
+        [20, 3, 8, 19, 9, 23, 7, 17, 19, 0, 10],
+        [22, 9, 13, 11, 8, 15, 12, 10, 11, 11, 0]
+    ]
+    
+    location_names = [
+        'Bayview',
+        'North Beach',
+        'Fisherman\'s Wharf',
+        'Haight-Ashbury',
+        'Nob Hill',
+        'Golden Gate Park',
+        'Union Square',
+        'Alamo Square',
+        'Presidio',
+        'Chinatown',
+        'Pacific Heights'
+    ]
+    
+    n = 9
+    names = ['Brian', 'Richard', 'Ashley', 'Elizabeth', 'Jessica', 'Deborah', 'Kimberly', 'Kenneth', 'Anthony']
+    loc_indices = [1, 2, 3, 4, 5, 6, 7, 9, 10]
+    available_start = [240, 120, 360, 165, 660, 510, 510, 285, 315]
+    available_end = [600, 225, 690, 570, 765, 780, 735, 630, 420]
+    min_durations = [90, 60, 90, 75, 105, 60, 45, 105, 30]
+    
+    INF = 10**9
+    size = 1 << n
+    dp = [[INF] * n for _ in range(size)]
+    prev_mask = [[-1] * n for _ in range(size)]
+    prev_index = [[-1] * n for _ in range(size)]
+    start_times = [[0] * n for _ in range(size)]
+    
+    for i in range(n):
+        travel_time = dist[0][loc_indices[i]]
+        arrival = travel_time
+        start = max(arrival, available_start[i])
+        if start + min_durations[i] <= available_end[i]:
+            dp[1<<i][i] = start + min_durations[i]
+            start_times[1<<i][i] = start
+    
+    for mask in range(size):
+        for i in range(n):
+            if dp[mask][i] == INF:
+                continue
+            for j in range(n):
+                if mask & (1 << j):
+                    continue
+                new_mask = mask | (1 << j)
+                travel_time_ij = dist[loc_indices[i]][loc_indices[j]]
+                arrival_j = dp[mask][i] + travel_time_ij
+                start_j = max(arrival_j, available_start[j])
+                if start_j + min_durations[j] <= available_end[j]:
+                    end_j = start_j + min_durations[j]
+                    if end_j < dp[new_mask][j]:
+                        dp[new_mask][j] = end_j
+                        prev_mask[new_mask][j] = mask
+                        prev_index[new_mask][j] = i
+                        start_times[new_mask][j] = start_j
+    
+    best_count = -1
+    best_mask = -1
+    best_i = -1
+    for mask in range(size):
+        count = bin(mask).count('1')
+        for i in range(n):
+            if dp[mask][i] < INF and count > best_count:
+                best_count = count
+                best_mask = mask
+                best_i = i
+    
+    def format_time(minutes):
+        total_minutes = minutes
+        hours = 9 + total_minutes // 60
+        minutes_part = total_minutes % 60
+        return f"{hours}:{minutes_part:02d}"
+    
+    itinerary = []
+    current_mask = best_mask
+    current_i = best_i
+    while current_mask != 0 and current_i != -1:
+        start_val = start_times[current_mask][current_i]
+        end_val = dp[current_mask][current_i]
+        meeting = {
+            "action": "meet",
+            "location": location_names[loc_indices[current_i]],
+            "person": names[current_i],
+            "start_time": format_time(start_val),
+            "end_time": format_time(end_val)
+        }
+        itinerary.append(meeting)
+        next_mask = prev_mask[current_mask][current_i]
+        next_i = prev_index[current_mask][current_i]
+        current_mask = next_mask
+        current_i = next_i
+    
+    itinerary.reverse()
+    
+    result = {"itinerary": itinerary}
+    print(json.dumps(result, indent=2))
+
+if __name__ == '__main__':
+    main()
+```

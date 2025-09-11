@@ -1,0 +1,79 @@
+```python
+def main():
+    # Define the day and work hours
+    day = "Monday"
+    work_start = 9 * 60  # 9:00 in minutes from midnight, but we use relative for simplicity
+    work_end = 17 * 60   # 17:00 in minutes
+
+    # Since we are working between 9:00 and 17:00, we set our timeline from 0 to 480 minutes (8 hours)
+    day_start_min = 0
+    day_end_min = 8 * 60  # 480 minutes
+
+    # Define busy intervals for each participant in minutes from 9:00 (0 minutes)
+    # Andrea: free all day, so no busy intervals
+    # Jack: 9:00-9:30, 14:00-14:30
+    jack_busy = [(0, 30), (300, 330)]
+    # Madison: 9:30-10:30, 13:00-14:00, 15:00-15:30, 16:30-17:00
+    madison_busy = [(30, 90), (240, 300), (360, 390), (450, 480)]
+    # Rachel: 9:30-10:30, 11:00-11:30, 12:00-13:30, 14:30-15:30, 16:00-17:00
+    rachel_busy = [(30, 90), (120, 150), (180, 270), (330, 390), (420, 480)]
+    # Douglas: 9:00-11:30, 12:00-16:30
+    douglas_busy = [(0, 150), (180, 450)]
+    # Ryan: 9:00-9:30, 13:00-14:00, 14:30-17:00
+    ryan_busy = [(0, 30), (240, 300), (330, 480)]
+
+    # Combine all busy intervals
+    all_busy = jack_busy + madison_busy + rachel_busy + douglas_busy + ryan_busy
+
+    # Sort intervals by start time
+    all_busy.sort(key=lambda x: x[0])
+
+    # Merge intervals
+    merged = []
+    current_start, current_end = all_busy[0]
+    for start, end in all_busy[1:]:
+        if start <= current_end:
+            current_end = max(current_end, end)
+        else:
+            merged.append((current_start, current_end))
+            current_start, current_end = start, end
+    merged.append((current_start, current_end))
+
+    # Find free gaps between merged intervals
+    free_gaps = []
+    previous_end = day_start_min
+    for start, end in merged:
+        if start > previous_end:
+            free_gaps.append((previous_end, start))
+        previous_end = max(previous_end, end)
+    if previous_end < day_end_min:
+        free_gaps.append((previous_end, day_end_min))
+
+    # Find a gap that is at least 30 minutes
+    meeting_duration = 30
+    suitable_gap = None
+    for gap_start, gap_end in free_gaps:
+        if gap_end - gap_start >= meeting_duration:
+            suitable_gap = (gap_start, gap_end)
+            break
+
+    if suitable_gap is None:
+        print("No suitable time found.")
+        return
+
+    # Convert minutes to time strings
+    def min_to_time(minutes):
+        total_minutes = minutes + work_start  # Adjust to absolute minutes from midnight
+        hours = total_minutes // 60
+        minutes = total_minutes % 60
+        return f"{hours:02d}:{minutes:02d}"
+
+    start_time_str = min_to_time(suitable_gap[0])
+    end_time_str = min_to_time(suitable_gap[0] + meeting_duration)  # Meeting ends after duration
+
+    # Output the day and time range
+    print(f"{day}: {start_time_str}:{end_time_str}")
+
+if __name__ == "__main__":
+    main()
+```

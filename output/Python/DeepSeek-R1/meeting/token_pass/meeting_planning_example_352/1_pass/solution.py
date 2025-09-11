@@ -1,0 +1,93 @@
+import itertools
+import json
+
+def minutes_to_time(minutes):
+    total_minutes = minutes
+    hours = total_minutes // 60
+    minutes_remainder = total_minutes % 60
+    return f"{hours}:{minutes_remainder:02d}"
+
+def main():
+    travel_matrix = {
+        "Union Square": {
+            "Nob Hill": 9,
+            "Haight-Ashbury": 18,
+            "Chinatown": 7,
+            "Marina District": 18
+        },
+        "Nob Hill": {
+            "Union Square": 7,
+            "Haight-Ashbury": 13,
+            "Chinatown": 6,
+            "Marina District": 11
+        },
+        "Haight-Ashbury": {
+            "Union Square": 17,
+            "Nob Hill": 15,
+            "Chinatown": 19,
+            "Marina District": 17
+        },
+        "Chinatown": {
+            "Union Square": 7,
+            "Nob Hill": 8,
+            "Haight-Ashbury": 19,
+            "Marina District": 12
+        },
+        "Marina District": {
+            "Union Square": 16,
+            "Nob Hill": 12,
+            "Haight-Ashbury": 16,
+            "Chinatown": 16
+        }
+    }
+    
+    friends = [
+        {"name": "Karen", "location": "Nob Hill", "start": 735, "end": 765, "min_duration": 30},
+        {"name": "Joseph", "location": "Haight-Ashbury", "start": 210, "end": 645, "min_duration": 90},
+        {"name": "Sandra", "location": "Chinatown", "start": 0, "end": 615, "min_duration": 75},
+        {"name": "Nancy", "location": "Marina District", "start": 120, "end": 675, "min_duration": 105}
+    ]
+    
+    best_count = 0
+    best_itinerary = []
+    
+    for perm in itertools.permutations(friends):
+        current_location = "Union Square"
+        current_time = 0
+        itinerary = []
+        count = 0
+        
+        for friend in perm:
+            travel_time = travel_matrix[current_location][friend["location"]]
+            current_time += travel_time
+            
+            if current_time > friend["end"]:
+                break
+                
+            meeting_start = max(current_time, friend["start"])
+            meeting_end = meeting_start + friend["min_duration"]
+            
+            if meeting_end > friend["end"]:
+                break
+                
+            itinerary.append({
+                "action": "meet",
+                "location": friend["location"],
+                "person": friend["name"],
+                "start_time": minutes_to_time(meeting_start),
+                "end_time": minutes_to_time(meeting_end)
+            })
+            
+            current_time = meeting_end
+            current_location = friend["location"]
+            count += 1
+            
+        if count > best_count:
+            best_count = count
+            best_itinerary = itinerary
+            
+    output = {"itinerary": best_itinerary}
+    print(json.dumps(output, indent=2))
+
+if __name__ == "__main__":
+    main()

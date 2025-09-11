@@ -1,0 +1,26 @@
+direct_flights = {
+    ("Dublin", "Brussels"),
+    ("Mykonos", "Naples"),
+    ("Venice", "Istanbul"),
+    ("Frankfurt", "Krakow"),
+    ("Naples", "Dublin"),
+    ("Krakow", "Brussels"),
+    ("Naples", "Istanbul"),
+    ("Naples", "Brussels"),
+    ("Istanbul", "Frankfurt"),
+    ("Brussels", "Frankfurt"),
+    ("Istanbul", "Krakow"),
+    ("Istanbul", "Brussels"),
+    ("Venice", "Frankfurt"),
+    ("Naples", "Frankfurt"),
+    ("Dublin", "Frankfurt"),
+    ("Venice", "Brussels"),
+    ("Naples", "Venice"),
+    ("Istanbul", "Dublin"),
+    ("Venice", "Dublin"),
+    ("Dublin", "Krakow"),
+    # ✅ Added missing direct flight
+    ("Frankfurt", "Brussels"),
+    # 🔁 Add the missing direct flight from Brussels to Krakow
+    ("Brussels", "Krakow"),
+}

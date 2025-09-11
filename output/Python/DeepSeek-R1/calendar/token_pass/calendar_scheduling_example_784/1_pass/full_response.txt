@@ -1,0 +1,88 @@
+```python
+def main():
+    # Define work hours in minutes from 9:00 (0) to 17:00 (480)
+    work_start = 0
+    work_end = 480
+    duration = 60
+
+    # Blocked intervals in minutes from 9:00
+    judith_blocked = {
+        'Monday': [(180, 210)],  # 12:00-12:30
+        'Tuesday': [],
+        'Wednesday': [(150, 180)]  # 11:30-12:00
+    }
+    
+    timothy_blocked = {
+        'Monday': [(30, 60), (90, 150), (210, 300), (390, 480)],  # 9:30-10:00, 10:30-11:30, 12:30-14:00, 15:30-17:00
+        'Tuesday': [(30, 240), (270, 300), (330, 480)],  # 9:30-13:00, 13:30-14:00, 14:30-17:00
+        'Wednesday': [(0, 30), (90, 120), (270, 330), (360, 390), (420, 450)]  # 9:00-9:30, 10:30-11:00, 13:30-14:30, 15:00-15:30, 16:00-16:30
+    }
+
+    # Helper function to compute free intervals
+    def compute_free_intervals(blocked, start, end):
+        blocked_sorted = sorted(blocked, key=lambda x: x[0])
+        free = []
+        current = start
+        for s, e in blocked_sorted:
+            if current < s:
+                free.append((current, s))
+            current = max(current, e)
+        if current < end:
+            free.append((current, end))
+        return free
+
+    # Helper function to intersect two interval lists
+    def intersect_intervals(intervals1, intervals2):
+        i = j = 0
+        common = []
+        while i < len(intervals1) and j < len(intervals2):
+            a1, a2 = intervals1[i]
+            b1, b2 = intervals2[j]
+            low = max(a1, b1)
+            high = min(a2, b2)
+            if low < high:
+                common.append((low, high))
+            if a2 < b2:
+                i += 1
+            else:
+                j += 1
+        return common
+
+    # Check days in preferred order
+    days_to_check = [
+        ('Tuesday', None),
+        ('Wednesday', lambda start: start >= 180),  # Prefer after 12:00
+        ('Monday', None),
+        ('Wednesday', lambda start: start < 180)   # Before 12:00 as last resort
+    ]
+
+    for day, filter_func in days_to_check:
+        # Compute free intervals for Judith and Timothy
+        judith_free = compute_free_intervals(judith_blocked[day], work_start, work_end)
+        timothy_free = compute_free_intervals(timothy_blocked[day], work_start, work_end)
+        common_free = intersect_intervals(judith_free, timothy_free)
+        
+        # Check for available slot of given duration
+        for start, end in common_free:
+            if end - start >= duration:
+                slot_start = start
+                # Apply filter if exists
+                if filter_func is None or filter_func(slot_start):
+                    # Convert minutes to time string
+                    start_hour = 9 + slot_start // 60
+                    start_minute = slot_start % 60
+                    end_time = slot_start + duration
+                    end_hour = 9 + end_time // 60
+                    end_minute = end_time % 60
+                    
+                    # Format time strings
+                    start_str = f"{start_hour:02d}:{start_minute:02d}"
+                    end_str = f"{end_hour:02d}:{end_minute:02d}"
+                    print(f"{day} {start_str}:{end_str}")
+                    return
+
+    print("No suitable time found")
+
+if __name__ == "__main__":
+    main()
+```

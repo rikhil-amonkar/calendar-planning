@@ -1,0 +1,145 @@
+from datetime import datetime, timedelta
+import json
+
+def main():
+    # Define travel times as a dictionary
+    travel_times = {
+        "The Castro": {
+            "Alamo Square": 8,
+            "Union Square": 19,
+            "Chinatown": 20
+        },
+        "Alamo Square": {
+            "The Castro": 8,
+            "Union Square": 14,
+            "Chinatown": 16
+        },
+        "Union Square": {
+            "The Castro": 19,
+            "Alamo Square": 15,
+            "Chinatown": 7
+        },
+        "Chinatown": {
+            "The Castro": 22,
+            "Alamo Square": 17,
+            "Union Square": 7
+        }
+    }
+    
+    # Define constraints
+    start_location = "The Castro"
+    start_time = datetime.strptime("9:00", "%H:%M")
+    
+    friends = {
+        "Emily": {
+            "location": "Alamo Square",
+            "available_start": datetime.strptime("11:45", "%H:%M"),
+            "available_end": datetime.strptime("15:15", "%H:%M"),
+            "min_duration": 105
+        },
+        "Barbara": {
+            "location": "Union Square",
+            "available_start": datetime.strptime("16:45", "%H:%M"),
+            "available_end": datetime.strptime("18:15", "%H:%M"),
+            "min_duration": 60
+        },
+        "William": {
+            "location": "Chinatown",
+            "available_start": datetime.strptime("17:15", "%H:%M"),
+            "available_end": datetime.strptime("19:00", "%H:%M"),
+            "min_duration": 105
+        }
+    }
+    
+    # Calculate meeting with Emily
+    emily = friends["Emily"]
+    travel_to_alamo = travel_times[start_location][emily["location"]]
+    depart_to_alamo = emily["available_start"] - timedelta(minutes=travel_to_alamo)
+    if depart_to_alamo < start_time:
+        depart_to_alamo = start_time
+    emily_start = emily["available_start"]
+    emily_end = emily["available_end"]  # Use full available time to minimize waiting later
+    emily_duration = (emily_end - emily_start).total_seconds() / 60
+    if emily_duration < emily["min_duration"]:
+        emily_end = emily_start + timedelta(minutes=emily["min_duration"])
+    
+    # Travel to Union Square for Barbara
+    travel_to_union = travel_times[emily["location"]][friends["Barbara"]["location"]]
+    arrival_union = emily_end + timedelta(minutes=travel_to_union)
+    barbara = friends["Barbara"]
+    if arrival_union < barbara["available_start"]:
+        barbara_start = barbara["available_start"]
+    else:
+        barbara_start = arrival_union
+    barbara_end = barbara_start + timedelta(minutes=barbara["min_duration"])
+    if barbara_end > barbara["available_end"]:
+        barbara_end = barbara["available_end"]
+        barbara_start = barbara_end - timedelta(minutes=barbara["min_duration"])
+    
+    # Check if Barbara meeting is valid
+    barbara_duration = (barbara_end - barbara_start).total_seconds() / 60
+    if barbara_duration < barbara["min_duration"]:
+        # Cannot meet Barbara, so try meeting William instead
+        travel_to_chinatown = travel_times[emily["location"]][friends["William"]["location"]]
+        arrival_chinatown = emily_end + timedelta(minutes=travel_to_chinatown)
+        william = friends["William"]
+        if arrival_chinatown < william["available_start"]:
+            william_start = william["available_start"]
+        else:
+            william_start = arrival_chinatown
+        william_end = william_start + timedelta(minutes=william["min_duration"])
+        if william_end > william["available_end"]:
+            william_end = william["available_end"]
+            william_start = william_end - timedelta(minutes=william["min_duration"])
+        william_duration = (william_end - william_start).total_seconds() / 60
+        if william_duration >= william["min_duration"]:
+            itinerary = [
+                {
+                    "action": "meet",
+                    "location": emily["location"],
+                    "person": "Emily",
+                    "start_time": emily_start.strftime("%-H:%M"),
+                    "end_time": emily_end.strftime("%-H:%M")
+                },
+                {
+                    "action": "meet",
+                    "location": william["location"],
+                    "person": "William",
+                    "start_time": william_start.strftime("%-H:%M"),
+                    "end_time": william_end.strftime("%-H:%M")
+                }
+            ]
+        else:
+            itinerary = [
+                {
+                    "action": "meet",
+                    "location": emily["location"],
+                    "person": "Emily",
+                    "start_time": emily_start.strftime("%-H:%M"),
+                    "end_time": emily_end.strftime("%-H:%M")
+                }
+            ]
+    else:
+        itinerary = [
+            {
+                "action": "meet",
+                "location": emily["location"],
+                "person": "Emily",
+                "start_time": emily_start.strftime("%-H:%M"),
+                "end_time": emily_end.strftime("%-H:%M")
+            },
+            {
+                "action": "meet",
+                "location": barbara["location"],
+                "person": "Barbara",
+                "start_time": barbara_start.strftime("%-H:%M"),
+                "end_time": barbara_end.strftime("%-H:%M")
+            }
+        ]
+    
+    # Output as JSON
+    result = {"itinerary": itinerary}
+    print(json.dumps(result, indent=2))
+
+if __name__ == "__main__":
+    main()

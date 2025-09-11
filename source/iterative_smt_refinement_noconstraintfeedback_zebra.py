@@ -1752,7 +1752,7 @@ Return only the Python code:"""
 
     def save_output_files(self, task, example_id, pass_num, conversation, code, output, evaluation):
         """Save all output files for a given pass"""
-        output_dir = f"../output/SMT/Qwen3-32B/{task}/n_pass_noconfeed/{example_id}/{pass_num}_pass"
+        output_dir = f"../output/SMT/Qwen2.5-Coder-32B-Instruct/{task}/n_pass_noconfeed/{example_id}/{pass_num}_pass"
         os.makedirs(output_dir, exist_ok=True)
         
         # Save conversation
@@ -1810,7 +1810,7 @@ Return only the Python code:"""
         
         # Scan all evaluation files to collect token data
         for task in ["calendar", "meeting", "trip", "zebralogic"]:
-            task_dir = f"../output/SMT/Qwen3-32B/{task}/n_pass_noconfeed"
+            task_dir = f"../output/SMT/Qwen2.5-Coder-32B-Instruct/{task}/n_pass_noconfeed"
             if not os.path.exists(task_dir):
                 continue
                 
@@ -2025,7 +2025,7 @@ Return only the Python code:"""
                     predicted_output = config["parse_output"](output if not has_execution_error else None, golden_headers)
                 else:
                     # Use smart extraction for execution results
-                    predicted_output = self.smart_extract_execution_result(output if not has_execution_error else None, task)
+                    predicted_output = config["parse_output"](output if not has_execution_error else None)
                     
                 pred_extract_time = time.time() - pred_extract_start
                 
@@ -2113,9 +2113,8 @@ Return only the Python code:"""
                 
                 # Only continue refinement if:
                 # 1. There are code execution errors, OR
-                # 2. The code runs but produces no valid plan, OR
-                # 3. Constraints are not satisfied
-                if has_execution_error or has_no_plan or not constraints_satisfied:
+                # 2. The code runs but produces no valid plan
+                if has_execution_error or has_no_plan:
                     if has_execution_error:
                         feedback = [
                             f"Previous code execution failed with error:\n{error if error else output}",

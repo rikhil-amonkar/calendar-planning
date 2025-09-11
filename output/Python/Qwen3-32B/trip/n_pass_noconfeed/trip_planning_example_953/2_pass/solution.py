@@ -1,0 +1,1 @@
+if current_day - 1 == 18:

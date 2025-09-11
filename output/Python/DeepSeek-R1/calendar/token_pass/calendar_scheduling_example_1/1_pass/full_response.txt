@@ -1,0 +1,52 @@
+```python
+def main():
+    # Define busy intervals in minutes from 9:00 (9:00 = 0)
+    raymond_busy = [(0, 30), (150, 180), (240, 270), (360, 390)]
+    billy_busy = [(60, 90), (180, 240), (450, 480)]
+    donald_busy = [(0, 30), (60, 120), (180, 240), (300, 330), (420, 480)]
+    
+    # Iterate possible start times from 0 to 330 minutes (9:00 to 14:30)
+    for S in range(0, 331):
+        E = S + 30
+        all_free = True
+        
+        # Check Raymond's schedule
+        for busy in raymond_busy:
+            if busy[0] < E and busy[1] > S:
+                all_free = False
+                break
+        if not all_free:
+            continue
+            
+        # Check Billy's schedule
+        for busy in billy_busy:
+            if busy[0] < E and busy[1] > S:
+                all_free = False
+                break
+        if not all_free:
+            continue
+            
+        # Check Donald's schedule
+        for busy in donald_busy:
+            if busy[0] < E and busy[1] > S:
+                all_free = False
+                break
+                
+        if all_free:
+            # Convert minutes to time string
+            start_total_minutes = 9 * 60 + S
+            end_total_minutes = 9 * 60 + E
+            start_hour = start_total_minutes // 60
+            start_minute = start_total_minutes % 60
+            end_hour = end_total_minutes // 60
+            end_minute = end_total_minutes % 60
+            # Format to HH:MM:HH:MM
+            print("Monday")
+            print(f"{start_hour:02d}:{start_minute:02d}:{end_hour:02d}:{end_minute:02d}")
+            return
+            
+    print("No time found")  # But problem states there is a solution
+
+if __name__ == "__main__":
+    main()
+```

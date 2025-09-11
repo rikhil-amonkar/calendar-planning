@@ -1,0 +1,137 @@
+```python
+import itertools
+import json
+
+def main():
+    # Define travel times matrix
+    travel_times = {
+        'Golden Gate Park': {
+            'Haight-Ashbury': 7,
+            'Sunset District': 10,
+            'Marina District': 16,
+            'Financial District': 26,
+            'Union Square': 22
+        },
+        'Haight-Ashbury': {
+            'Golden Gate Park': 7,
+            'Sunset District': 15,
+            'Marina District': 17,
+            'Financial District': 21,
+            'Union Square': 17
+        },
+        'Sunset District': {
+            'Golden Gate Park': 11,
+            'Haight-Ashbury': 15,
+            'Marina District': 21,
+            'Financial District': 30,
+            'Union Square': 30
+        },
+        'Marina District': {
+            'Golden Gate Park': 18,
+            'Haight-Ashbury': 16,
+            'Sunset District': 19,
+            'Financial District': 17,
+            'Union Square': 16
+        },
+        'Financial District': {
+            'Golden Gate Park': 23,
+            'Haight-Ashbury': 19,
+            'Sunset District': 31,
+            'Marina District': 15,
+            'Union Square': 9
+        },
+        'Union Square': {
+            'Golden Gate Park': 22,
+            'Haight-Ashbury': 18,
+            'Sunset District': 26,
+            'Marina District': 18,
+            'Financial District': 9
+        }
+    }
+    
+    # Define meetings with constraints (times in minutes from 9:00)
+    class Meeting:
+        def __init__(self, name, location, start_avail, end_avail, min_duration):
+            self.name = name
+            self.location = location
+            self.start_avail = start_avail
+            self.end_avail = end_avail
+            self.min_duration = min_duration
+            
+    meetings = [
+        Meeting('Matthew', 'Marina District', 15, 180, 15),
+        Meeting('Robert', 'Union Square', 75, 765, 15),
+        Meeting('Joseph', 'Financial District', 315, 585, 30),
+        Meeting('Patricia', 'Sunset District', 480, 645, 45),
+        Meeting('Sarah', 'Haight-Ashbury', 480, 750, 105)
+    ]
+    
+    # Helper function to convert minutes to time string
+    def min_to_time(minutes):
+        hours = 9 + minutes // 60
+        mins = minutes % 60
+        return f"{hours}:{mins:02d}"
+    
+    # Initialize best results
+    best_met = 0
+    best_waiting = float('inf')
+    best_itinerary = []
+    
+    # Generate all permutations of meetings
+    for perm in itertools.permutations(meetings):
+        current_time = 0
+        current_loc = 'Golden Gate Park'
+        itinerary = []
+        met_count = 0
+        total_waiting = 0
+        
+        for meeting in perm:
+            # Get travel time to meeting location
+            travel_time = travel_times[current_loc][meeting.location]
+            arrival_time = current_time + travel_time
+            
+            # Skip if arrived after availability ends
+            if arrival_time > meeting.end_avail:
+                continue
+                
+            # Calculate wait time and meeting start
+            if arrival_time < meeting.start_avail:
+                wait_time = meeting.start_avail - arrival_time
+                start_time = meeting.start_avail
+            else:
+                wait_time = 0
+                start_time = arrival_time
+                
+            # Check if meeting duration fits
+            if start_time + meeting.min_duration > meeting.end_avail:
+                continue
+                
+            end_time = start_time + meeting.min_duration
+            total_waiting += wait_time
+            itinerary.append((meeting, start_time, end_time))
+            met_count += 1
+            current_time = end_time
+            current_loc = meeting.location
+            
+        # Update best itinerary
+        if met_count > best_met or (met_count == best_met and total_waiting < best_waiting):
+            best_met = met_count
+            best_waiting = total_waiting
+            best_itinerary = itinerary
+            
+    # Convert to JSON output format
+    result = []
+    for meeting, start, end in best_itinerary:
+        result.append({
+            "action": "meet",
+            "location": meeting.location,
+            "person": meeting.name,
+            "start_time": min_to_time(start),
+            "end_time": min_to_time(end)
+        })
+        
+    print(json.dumps({"itinerary": result}, indent=2))
+
+if __name__ == "__main__":
+    main()
+```

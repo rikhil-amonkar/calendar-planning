@@ -1,0 +1,79 @@
+```python
+def get_free_intervals(busy_list, start, end):
+    if not busy_list:
+        return [(start, end)]
+    sorted_busy = sorted(busy_list, key=lambda x: x[0])
+    free_intervals = []
+    current = start
+    for busy in sorted_busy:
+        if current < busy[0]:
+            free_intervals.append((current, busy[0]))
+        current = max(current, busy[1])
+    if current < end:
+        free_intervals.append((current, end))
+    return free_intervals
+
+def intersect_intervals(intervals1, intervals2):
+    i = 0
+    j = 0
+    result = []
+    while i < len(intervals1) and j < len(intervals2):
+        a_start, a_end = intervals1[i]
+        b_start, b_end = intervals2[j]
+        start = max(a_start, b_start)
+        end = min(a_end, b_end)
+        if start < end:
+            result.append((start, end))
+        if a_end < b_end:
+            i += 1
+        else:
+            j += 1
+    return result
+
+def minutes_to_time(minutes):
+    hours = minutes // 60
+    mins = minutes % 60
+    return f"{hours:02d}:{mins:02d}"
+
+def main():
+    work_start = 9 * 60  # 9:00
+    work_end = 17 * 60   # 17:00
+    duration = 30
+    david_constraint_start = 14 * 60  # 14:00
+
+    # Define busy times in minutes for each participant
+    natalie_busy = []
+    david_busy = [(11*60+30, 12*60), (14*60+30, 15*60)]
+    douglas_busy = [(9*60+30, 10*60), (11*60+30, 12*60), (13*60, 13*60+30), (14*60+30, 15*60)]
+    ralph_busy = [(9*60, 9*60+30), (10*60, 11*60), (11*60+30, 12*60+30), (13*60+30, 15*60), (15*60+30, 16*60), (16*60+30, 17*60)]
+    jordan_busy = [(9*60, 10*60), (12*60, 12*60+30), (13*60, 13*60+30), (14*60+30, 15*60), (15*60+30, 17*60)]
+
+    # Get free intervals for each participant within [david_constraint_start, work_end]
+    natalie_free = get_free_intervals(natalie_busy, david_constraint_start, work_end)
+    david_free = get_free_intervals(david_busy, david_constraint_start, work_end)
+    douglas_free = get_free_intervals(douglas_busy, david_constraint_start, work_end)
+    ralph_free = get_free_intervals(ralph_busy, david_constraint_start, work_end)
+    jordan_free = get_free_intervals(jordan_busy, david_constraint_start, work_end)
+
+    # Find common free intervals by intersecting all
+    common_free = natalie_free
+    for intervals in [david_free, douglas_free, ralph_free, jordan_free]:
+        common_free = intersect_intervals(common_free, intervals)
+
+    # Find a time slot with sufficient duration
+    meeting_slot = None
+    for slot in common_free:
+        if slot[1] - slot[0] >= duration:
+            meeting_slot = (slot[0], slot[0] + duration)
+            break
+
+    if meeting_slot:
+        start_time = minutes_to_time(meeting_slot[0])
+        end_time = minutes_to_time(meeting_slot[1])
+        print(f"Monday {start_time}:{end_time}")
+    else:
+        print("No suitable time found.")
+
+if __name__ == "__main__":
+    main()
+```

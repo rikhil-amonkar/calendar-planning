@@ -1,0 +1,84 @@
+def main():
+    # Define work hours (9:00 to 17:00) in minutes from 9:00
+    work_start = 0  # 9:00
+    work_end = 480  # 17:00 (8 hours * 60 minutes)
+    meeting_duration = 30
+
+    # Convert each person's busy intervals to minutes from 9:00
+    # Eric: no meetings → empty list
+    # Ashley: [10:00-10:30), [11:00-12:00), [12:30-13:00), [15:00-16:00)
+    ashley_busy = [
+        (60, 90),   # 10:00-10:30
+        (120, 180), # 11:00-12:00
+        (210, 240), # 12:30-13:00
+        (360, 420)  # 15:00-16:00
+    ]
+    # Ronald: [9:00-9:30), [10:00-11:30), [12:30-14:00), [14:30-17:00)
+    ronald_busy = [
+        (0, 30),    # 9:00-9:30
+        (60, 150),  # 10:00-11:30
+        (210, 300), # 12:30-14:00
+        (330, 480)  # 14:30-17:00
+    ]
+    # Larry: [9:00-12:00), [13:00-17:00)
+    larry_busy = [
+        (0, 180),   # 9:00-12:00
+        (240, 480)  # 13:00-17:00
+    ]
+
+    # Combine all busy intervals
+    all_busy = ashley_busy + ronald_busy + larry_busy
+
+    # Sort intervals by start time
+    all_busy.sort(key=lambda x: x[0])
+
+    # Merge overlapping intervals
+    merged = []
+    for start, end in all_busy:
+        if not merged:
+            merged.append([start, end])
+        else:
+            last_end = merged[-1][1]
+            if start <= last_end:
+                merged[-1][1] = max(last_end, end)
+            else:
+                merged.append([start, end])
+
+    # Find free intervals between work hours
+    free_intervals = []
+    current_time = work_start
+    for busy_start, busy_end in merged:
+        if busy_start > current_time:
+            free_intervals.append((current_time, busy_start))
+        current_time = max(current_time, busy_end)
+    if current_time < work_end:
+        free_intervals.append((current_time, work_end))
+
+    # Find first free interval that can accommodate the meeting
+    for start, end in free_intervals:
+        if end - start >= meeting_duration:
+            meeting_start = start
+            meeting_end = meeting_start + meeting_duration
+            break
+    else:
+        # No slot found (though problem states there is a solution)
+        meeting_start = None
+        meeting_end = None
+
+    # Convert minutes back to HH:MM format
+    base_hour = 9
+    start_hour = (meeting_start // 60) + base_hour
+    start_minute = meeting_start % 60
+    end_hour = (meeting_end // 60) + base_hour
+    end_minute = meeting_end % 60
+
+    # Format time strings
+    start_str = f"{start_hour:02d}:{start_minute:02d}"
+    end_str = f"{end_hour:02d}:{end_minute:02d}"
+
+    # Output the result
+    print(f"{start_str}:{end_str}")
+    print("Monday")
+
+if __name__ == "__main__":
+    main()

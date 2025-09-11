@@ -1,0 +1,64 @@
+```python
+from z3 import *
+
+def main():
+    # Initialize solver
+    s = Solver()
+    
+    # Define start time variable in minutes from 9:00
+    start = Int('start')
+    meeting_duration = 30
+    
+    # Total available time from 9:00 to 17:00 (480 minutes)
+    min_time = 0
+    max_time = 480 - meeting_duration  # 450 minutes (17:00 - 30 minutes)
+    
+    # Constraint: start must be within work hours
+    s.add(start >= min_time, start <= max_time)
+    
+    # Megan's preference: avoid before 10:00 (60 minutes from 9:00)
+    s.add(start >= 60)
+    
+    # Busy intervals in minutes from 9:00 (half-open [start, end))
+    kimberly_busy = [(60, 90), (120, 180), (420, 450)]
+    marie_busy = [(60, 120), (150, 360), (420, 450)]
+    diana_busy = [(30, 60), (90, 330), (390, 480)]
+    
+    # Add constraints for each person's busy intervals
+    for busy in kimberly_busy:
+        b_start, b_end = busy
+        s.add(Or(start + meeting_duration <= b_start, start >= b_end))
+    
+    for busy in marie_busy:
+        b_start, b_end = busy
+        s.add(Or(start + meeting_duration <= b_start, start >= b_end))
+    
+    for busy in diana_busy:
+        b_start, b_end = busy
+        s.add(Or(start + meeting_duration <= b_start, start >= b_end))
+    
+    # Check for a solution
+    if s.check() == sat:
+        m = s.model()
+        start_minutes = m.evaluate(start).as_long()
+        
+        # Convert start minutes to time string
+        hours = start_minutes // 60
+        minutes = start_minutes % 60
+        start_time = f"{9 + hours:02d}:{minutes:02d}"
+        
+        # Calculate end time
+        end_minutes = start_minutes + meeting_duration
+        end_hours = end_minutes // 60
+        end_minutes = end_minutes % 60
+        end_time = f"{9 + end_hours:02d}:{end_minutes:02d}"
+        
+        # Output the result
+        print(f"{start_time}:{end_time}")
+        print("Monday")
+    else:
+        print("No solution found")
+
+if __name__ == "__main__":
+    main()
+```

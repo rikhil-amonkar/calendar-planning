@@ -1,0 +1,123 @@
+```python
+import itertools
+import json
+
+def main():
+    cities = ['Paris', 'Warsaw', 'Krakow', 'Tallinn', 'Riga', 'Copenhagen', 'Helsinki', 'Oslo', 'Santorini', 'Lyon']
+    days_req = {
+        'Paris': 5,
+        'Warsaw': 2,
+        'Krakow': 2,
+        'Tallinn': 2,
+        'Riga': 2,
+        'Copenhagen': 5,
+        'Helsinki': 5,
+        'Oslo': 5,
+        'Santorini': 2,
+        'Lyon': 4
+    }
+    
+    bidirectional_pairs = [
+        ('Warsaw', 'Riga'),
+        ('Warsaw', 'Tallinn'),
+        ('Copenhagen', 'Helsinki'),
+        ('Lyon', 'Paris'),
+        ('Copenhagen', 'Warsaw'),
+        ('Lyon', 'Oslo'),
+        ('Paris', 'Oslo'),
+        ('Paris', 'Riga'),
+        ('Krakow', 'Helsinki'),
+        ('Paris', 'Tallinn'),
+        ('Oslo', 'Riga'),
+        ('Krakow', 'Warsaw'),
+        ('Paris', 'Helsinki'),
+        ('Copenhagen', 'Santorini'),
+        ('Helsinki', 'Warsaw'),
+        ('Helsinki', 'Riga'),
+        ('Copenhagen', 'Krakow'),
+        ('Copenhagen', 'Riga'),
+        ('Paris', 'Krakow'),
+        ('Copenhagen', 'Oslo'),
+        ('Oslo', 'Tallinn'),
+        ('Oslo', 'Helsinki'),
+        ('Copenhagen', 'Tallinn'),
+        ('Oslo', 'Krakow'),
+        ('Helsinki', 'Tallinn'),
+        ('Paris', 'Copenhagen'),
+        ('Paris', 'Warsaw')
+    ]
+    
+    one_way = [
+        ('Riga', 'Tallinn'),
+        ('Santorini', 'Oslo')
+    ]
+    
+    graph = {}
+    for city in cities:
+        graph[city] = set()
+    
+    for a, b in bidirectional_pairs:
+        graph[a].add(b)
+        graph[b].add(a)
+        
+    for a, b in one_way:
+        graph[a].add(b)
+    
+    for perm in itertools.permutations(cities):
+        valid_route = True
+        for i in range(len(perm) - 1):
+            if perm[i+1] not in graph[perm[i]]:
+                valid_route = False
+                break
+        if not valid_route:
+            continue
+            
+        start_days = [1]
+        for i in range(len(perm) - 1):
+            start_days.append(start_days[i] + days_req[perm[i]] - 1)
+        
+        idx_s = perm.index('Santorini')
+        start_s = start_days[idx_s]
+        end_s = start_s + days_req['Santorini'] - 1
+        if not (start_s <= 12 and end_s >= 13):
+            continue
+            
+        idx_k = perm.index('Krakow')
+        start_k = start_days[idx_k]
+        end_k = start_k + days_req['Krakow'] - 1
+        if not (start_k <= 17 and end_k >= 18):
+            continue
+            
+        idx_r = perm.index('Riga')
+        start_r = start_days[idx_r]
+        end_r = start_r + days_req['Riga'] - 1
+        if not (start_r <= 23 and end_r >= 24):
+            continue
+            
+        idx_p = perm.index('Paris')
+        start_p = start_days[idx_p]
+        end_p = start_p + days_req['Paris'] - 1
+        if not (start_p <= 8 and end_p >= 4):
+            continue
+            
+        idx_h = perm.index('Helsinki')
+        start_h = start_days[idx_h]
+        end_h = start_h + days_req['Helsinki'] - 1
+        if not (start_h <= 22 and end_h >= 18):
+            continue
+            
+        itinerary = []
+        for i, city in enumerate(perm):
+            start = start_days[i]
+            end = start + days_req[city] - 1
+            day_range = f"Day {start}-{end}" if start != end else f"Day {start}"
+            itinerary.append({"day_range": day_range, "place": city})
+        
+        print(json.dumps({"itinerary": itinerary}, indent=2))
+        return
+        
+    print(json.dumps({"itinerary": []}))
+
+if __name__ == "__main__":
+    main()
+```

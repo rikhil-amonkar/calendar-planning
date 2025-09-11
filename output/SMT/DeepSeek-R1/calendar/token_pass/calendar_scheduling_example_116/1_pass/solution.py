@@ -1,0 +1,90 @@
+from z3 import *
+
+def main():
+    # Define the start time variable in minutes from 9:00
+    S = Int('S')
+    solver = Solver()
+    
+    # Convert time to minutes from 9:00
+    def time_to_minutes(hour, minute):
+        return (hour - 9) * 60 + minute
+
+    # Meeting duration in minutes
+    duration = 30
+    
+    # Total available minutes (9:00 to 17:00 is 8 hours = 480 minutes)
+    max_time = time_to_minutes(17, 0)
+    
+    # Constraint: Start time must be between 0 and max_time - duration
+    solver.add(S >= 0, S <= max_time - duration)
+    
+    # Define busy intervals for each participant in minutes from 9:00
+    adam_busy = [(time_to_minutes(14, 0), time_to_minutes(15, 0))]
+    john_busy = [
+        (time_to_minutes(13, 0), time_to_minutes(13, 30)),
+        (time_to_minutes(14, 0), time_to_minutes(14, 30)),
+        (time_to_minutes(15, 30), time_to_minutes(16, 0)),
+        (time_to_minutes(16, 30), time_to_minutes(17, 0))
+    ]
+    stephanie_busy = [
+        (time_to_minutes(9, 30), time_to_minutes(10, 0)),
+        (time_to_minutes(10, 30), time_to_minutes(11, 0)),
+        (time_to_minutes(11, 30), time_to_minutes(16, 0)),
+        (time_to_minutes(16, 30), time_to_minutes(17, 0))
+    ]
+    anna_busy = [
+        (time_to_minutes(9, 30), time_to_minutes(10, 0)),
+        (time_to_minutes(12, 0), time_to_minutes(12, 30)),
+        (time_to_minutes(13, 0), time_to_minutes(15, 30)),
+        (time_to_minutes(16, 30), time_to_minutes(17, 0))
+    ]
+    
+    # Anna's preference: Not before 14:30 (330 minutes from 9:00)
+    anna_preference = time_to_minutes(14, 30)
+    solver.add(S >= anna_preference)
+    
+    # Function to add busy interval constraints
+    def add_busy_constraints(busy_intervals):
+        for start, end in busy_intervals:
+            solver.add(Or(S + duration <= start, S >= end))
+    
+    # Add constraints for each participant
+    add_busy_constraints(adam_busy)
+    add_busy_constraints(john_busy)
+    add_busy_constraints(stephanie_busy)
+    add_busy_constraints(anna_busy)
+    
+    # Check if solution exists with Anna's preference
+    if solver.check() == sat:
+        model = solver.model()
+        start_time_minutes = model.eval(S).as_long()
+    else:
+        # Remove Anna's preference and try again
+        solver.reset()
+        solver.add(S >= 0, S <= max_time - duration)
+        add_busy_constraints(adam_busy)
+        add_busy_constraints(john_busy)
+        add_busy_constraints(stephanie_busy)
+        add_busy_constraints(anna_busy)
+        if solver.check() == sat:
+            model = solver.model()
+            start_time_minutes = model.eval(S).as_long()
+        else:
+            print("No solution found")
+            return
+    
+    # Convert minutes back to time format
+    total_minutes = start_time_minutes
+    hours = total_minutes // 60 + 9
+    minutes = total_minutes % 60
+    start_time_str = f"{hours:02d}:{minutes:02d}"
+    
+    end_time_minutes = start_time_minutes + duration
+    hours_end = end_time_minutes // 60 + 9
+    minutes_end = end_time_minutes % 60
+    end_time_str = f"{hours_end:02d}:{minutes_end:02d}"
+    
+    print(f"Monday {start_time_str}:{end_time_str}")
+
+if __name__ == "__main__":
+    main()

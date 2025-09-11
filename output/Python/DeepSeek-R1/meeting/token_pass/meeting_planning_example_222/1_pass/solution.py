@@ -1,0 +1,83 @@
+import itertools
+import json
+
+def main():
+    # Define travel times matrix (in minutes)
+    locations = {"Nob Hill": 0, "North Beach": 1, "Fisherman's Wharf": 2, "Bayview": 3}
+    travel_times = [
+        [0, 8, 11, 19],
+        [7, 0, 5, 22],
+        [11, 6, 0, 26],
+        [20, 21, 25, 0]
+    ]
+    
+    # Define friends' constraints
+    friends = [
+        {"name": "Helen", "location": "North Beach", "location_index": 1, 
+         "start_minutes": 7*60, "end_minutes": 16*60+45, "min_minutes": 120},
+        {"name": "Kimberly", "location": "Fisherman's Wharf", "location_index": 2, 
+         "start_minutes": 16*60+30, "end_minutes": 21*60, "min_minutes": 45},
+        {"name": "Patricia", "location": "Bayview", "location_index": 3, 
+         "start_minutes": 18*60, "end_minutes": 21*60+15, "min_minutes": 120}
+    ]
+    
+    start_time_minutes = 9 * 60  # 9:00 AM
+    start_location = 0  # Nob Hill
+    
+    def minutes_to_time(m):
+        hours = m // 60
+        minutes = m % 60
+        return f"{hours}:{minutes:02d}"
+    
+    def try_schedule(order):
+        current_time = start_time_minutes
+        current_loc = start_location
+        itinerary = []
+        for friend in order:
+            loc_idx = friend["location_index"]
+            travel_time = travel_times[current_loc][loc_idx]
+            arrival_time = current_time + travel_time
+            start_meeting = max(arrival_time, friend["start_minutes"])
+            end_meeting = start_meeting + friend["min_minutes"]
+            
+            if end_meeting > friend["end_minutes"]:
+                return None
+            
+            itinerary.append({
+                "action": "meet",
+                "location": friend["location"],
+                "person": friend["name"],
+                "start_time": minutes_to_time(start_meeting),
+                "end_time": minutes_to_time(end_meeting)
+            })
+            
+            current_time = end_meeting
+            current_loc = loc_idx
+            
+        return itinerary
+    
+    # Try all permutations for 3 friends
+    for perm in itertools.permutations(friends):
+        result = try_schedule(perm)
+        if result is not None:
+            print(json.dumps({"itinerary": result}))
+            return
+    
+    # Try all pairs of 2 friends
+    for perm in itertools.permutations(friends, 2):
+        result = try_schedule(perm)
+        if result is not None:
+            print(json.dumps({"itinerary": result}))
+            return
+    
+    # Try single friends
+    for friend in friends:
+        result = try_schedule([friend])
+        if result is not None:
+            print(json.dumps({"itinerary": result}))
+            return
+    
+    print(json.dumps({"itinerary": []}))
+
+if __name__ == "__main__":
+    main()

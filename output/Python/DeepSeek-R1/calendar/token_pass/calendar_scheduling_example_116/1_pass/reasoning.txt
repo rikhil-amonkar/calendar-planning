@@ -1,0 +1,759 @@
+First, I need to find a time slot for a meeting that works for Adam, John, Stephanie, and Anna on Monday between 9:00 and 17:00. The meeting duration is 30 minutes. I have their busy times and Anna's preference to not meet before 14:30.
+
+List out all the busy times:
+
+- Adam: 14:00 to 15:00
+
+- John: 13:00 to 13:30, 14:00 to 14:30, 15:30 to 16:00, 16:30 to 17:00
+
+- Stephanie: 9:30 to 10:00, 10:30 to 11:00, 11:30 to 16:00, 16:30 to 17:00
+
+- Anna: 9:30 to 10:00, 12:00 to 12:30, 13:00 to 15:30, 16:30 to 17:00
+
+Anna prefers not before 14:30, so I should consider times from 14:30 onwards.
+
+Since the meeting is only 30 minutes, I need to find a 30-minute gap where all are free.
+
+I'll convert all times to minutes from 9:00 for easier calculation. 9:00 is 0 minutes, 10:00 is 60 minutes, etc., up to 17:00 which is 8 hours from 9:00, so 480 minutes.
+
+But since we're dealing with time, I'll work in time strings or datetime objects, but for simplicity, I'll use minutes from 9:00.
+
+Define the work hours: 9:00 to 17:00, which is 8 hours, so from 0 to 480 minutes.
+
+Now, convert each busy block to minutes:
+
+- Adam: 14:00 to 15:00 → 14:00 is 5 hours from 9:00? 9:00 to 14:00 is 5 hours, so 300 minutes to 360 minutes? Let's calculate properly.
+
+From 9:00 to 14:00 is 5 hours, so 300 minutes. But 14:00 is included? In time ranges, we usually consider start inclusive, end exclusive? For free time, we need to find when they are free.
+
+Better to think in terms of time slots.
+
+List all busy times in minutes from 9:00:
+
+9:00 = 0 min
+
+10:00 = 60 min
+
+11:00 = 120 min
+
+12:00 = 180 min
+
+13:00 = 240 min
+
+14:00 = 300 min
+
+15:00 = 360 min
+
+16:00 = 420 min
+
+17:00 = 480 min
+
+Now, Adam busy: 14:00 to 15:00 → 300 to 360 min
+
+John busy: 13:00 to 13:30 → 13:00 is 240 min, 13:30 is 270 min? 13:00 to 13:30 is 240 to 270 min? Let's see: from 13:00 to 13:30 is 30 minutes, so from 240 min to 270 min.
+
+Similarly, 14:00 to 14:30 → 300 to 330 min? 14:00 is 300 min, 14:30 is 330 min? 14:30 is 5.5 hours from 9:00, so 5.5 * 60 = 330 min, yes.
+
+15:30 to 16:00 → 15:30 is 6.5 hours from 9:00? 9:00 to 15:30 is 6.5 hours, so 390 min to 16:00 which is 420 min? 16:00 is 7 hours from 9:00, so 420 min. 15:30 to 16:00 is from 390 min to 420 min.
+
+15:30 is 6.5 * 60 = 390 min, 16:00 is 7 * 60 = 420 min, so 390 to 420 min.
+
+16:30 to 17:00 → 16:30 is 7.5 * 60 = 450 min, 17:00 is 480 min, so 450 to 480 min.
+
+Stephanie busy: 9:30 to 10:00 → 9:30 is 30 min, 10:00 is 60 min, so 30 to 60 min
+
+10:30 to 11:00 → 10:30 is 90 min, 11:00 is 120 min, so 90 to 120 min
+
+11:30 to 16:00 → 11:30 is 150 min, 16:00 is 420 min, so 150 to 420 min
+
+16:30 to 17:00 → 16:30 is 450 min, 17:00 is 480 min, so 450 to 480 min
+
+Anna busy: 9:30 to 10:00 → 30 to 60 min
+
+12:00 to 12:30 → 12:00 is 180 min, 12:30 is 210 min, so 180 to 210 min
+
+13:00 to 15:30 → 13:00 is 240 min, 15:30 is 390 min, so 240 to 390 min
+
+16:30 to 17:00 → 450 to 480 min
+
+Anna prefers not before 14:30, which is 330 min from 9:00? 14:30 is 5.5 hours from 9:00, so 330 min.
+
+So, we need to find a 30-minute slot after 330 min where all are free.
+
+Now, find free times for each person.
+
+First, Adam is busy from 300 to 360 min, so free before 300 and after 360, but within 0 to 480.
+
+So Adam free: 0 to 300 min and 360 to 480 min.
+
+But since meeting must be between 9:00-17:00, which is 0 to 480 min.
+
+John busy: 240-270, 300-330, 390-420, 450-480
+
+So John free: 0-240, 270-300, 330-390, 420-450? Let's list intervals.
+
+From 0 to 480, John busy at 240-270, 300-330, 390-420, 450-480.
+
+So free intervals: from 0 to 240, from 270 to 300, from 330 to 390, from 420 to 450.
+
+But 420 to 450 is 30 minutes? 420 to 450 is 30 minutes, which is fine for a meeting if needed.
+
+Stephanie busy: 30-60, 90-120, 150-420, 450-480
+
+So free intervals: 0-30, 60-90, 120-150, 420-450? 150-420 is busy, so after 420, but 420 to 450? 420 is included in busy? 11:30 to 16:00 is 150 to 420, so at 420, she is busy until 16:00, which is 420, so from 420 onwards? Let's see time ranges.
+
+Typically, if busy from 11:30 to 16:00, that means from 11:30 inclusive to 16:00 exclusive? Or inclusive? In scheduling, we usually consider the end time as exclusive, meaning that at 16:00, she is free.
+
+Similarly, for all, we assume that busy times are inclusive of start time and exclusive of end time, meaning that if busy from 14:00 to 15:00, then at 15:00, she is free.
+
+So for Stephanie, busy from 9:30 to 10:00, so at 10:00, she is free.
+
+Similarly, 10:30 to 11:00, at 11:00 free.
+
+11:30 to 16:00, so at 16:00, she is free.
+
+16:30 to 17:00, so at 17:00, she is free but 17:00 is end of work, so we don't consider after 17:00.
+
+So in minutes, with end exclusive.
+
+Stephanie busy: 30-60, 90-120, 150-420, 450-480
+
+So free: 0-30, 60-90, 120-150, 420-450, and after 480 but we stop at 480.
+
+420-450 is 30 minutes? 420 to 450 is 30 minutes, so from 16:00 to 16:30? 420 min is 16:00, 450 min is 16:30? 16:00 is 420 min, 16:30 is 450 min, so from 420 to 450 min is 16:00 to 16:30, which is free for Stephanie.
+
+But she has busy at 450-480, which is 16:30 to 17:00.
+
+So free slots: 9:00-9:30 (0-30), 10:00-10:30 (60-90), 11:00-11:30 (120-150), 16:00-16:30 (420-450)
+
+Now Anna busy: 9:30 to 10:00 → 30-60, 12:00 to 12:30 → 180-210, 13:00 to 15:30 → 240-390, 16:30 to 17:00 → 450-480
+
+So free: 0-30, 60-180, 210-240, 390-450? 390 to 450 is 60 minutes? 15:30 to 16:30? 15:30 is 390 min, 16:30 is 450 min, so from 390 to 450 min, which is 15:30 to 16:30.
+
+But Anna prefers not before 14:30, which is 330 min, so we should only consider free times after 330 min for Anna, but since she has preferences, we can still consider before but she prefers not, so if possible, we avoid before 14:30.
+
+But the task says "Anna would rather not meet on Monday before 14:30." so it's a preference, not a hard constraint. But since there might be solutions after, we should try to honor it.
+
+Now, we need to find a time when all are free.
+
+List possible free intervals after 330 min.
+
+First, Adam free after 360 min? Adam free from 360 to 480 min.
+
+John free from 330 to 390 min and 420 to 450 min.
+
+Stephanie free from 420 to 450 min only after 330? Stephanie free after 330: she has free at 420-450, but before that, she is busy until 420 min? From 150 to 420 she is busy, so after 330, she is busy until 420, so only free at 420-450.
+
+Anna free after 330: she has free from 390 to 450 min? Since she is busy until 15:30 which is 390 min, so free from 390 to 450 min.
+
+But Anna prefers after 14:30, which is 330 min, but she is busy until 15:30 (390 min), so she is not free before 390 min except if we consider earlier, but she prefers not before 14:30, and she is busy until 15:30, so effectively, after 390 min, she is free until 16:30 (450 min).
+
+Now, all free after 330 min.
+
+Look at John free: 330-390 and 420-450
+
+Stephanie free only 420-450
+
+Adam free from 360-480, so after 360 min.
+
+Anna free from 390-450
+
+So, common free times must be when all are free.
+
+Consider time slots:
+
+From 330 to 390: John is free, but Adam is free only from 360, so from 360 to 390: Adam free, John free, but Stephanie is not free until 420, so Stephanie busy until 420. So not all free.
+
+From 390 to 420: John is free until 390? John free from 330 to 390, so at 390, is John free? Since busy from 390-420, so at 390, John becomes busy? With exclusive end, if John busy from 390 to 420, that means he is free at 390? Let's clarify.
+
+In standard scheduling, if someone is busy from 13:00 to 13:30, it means they are busy from 13:00 inclusive to 13:30 exclusive, so at 13:30, they are free.
+
+Similarly, for John, busy from 15:30 to 16:00, so at 16:00, he is free.
+
+So for John, busy intervals: 240-270, 300-330, 390-420, 450-480
+
+So he is free at time t if t is not in any of these intervals.
+
+For example, at 270 min, he is free because busy until 270 exclusive? Busy from 240 to 270, so at 270 min, he is free.
+
+Similarly, at 330 min, he is free because busy until 330 exclusive.
+
+At 390 min, he is free because busy from 390 to 420, so at 390, he is free.
+
+At 420 min, he is free because busy from 420? No, busy from 390 to 420, so at 420, he is free.
+
+Then busy from 450 to 480, so at 450, he is free? Busy from 450 to 480, so at 450, he becomes busy? No: if busy from 450 to 480, it means from 450 inclusive to 480 exclusive, so at 450, he is busy, and at 480, he is free.
+
+To avoid confusion, let's think in terms of minutes: each minute from 0 to 480.
+
+But for meeting slots, we need a continuous 30-minute interval where all are free.
+
+So, let's find the union of busy times for all, and then find gaps.
+
+First, list all busy minutes or intervals.
+
+Since we have intervals, we can find the free intervals for each and then find intersection.
+
+But let's list all busy intervals in terms of start and end minutes.
+
+Adam busy: [300, 360)
+
+John busy: [240, 270), [300, 330), [390, 420), [450, 480)
+
+Stephanie busy: [30, 60), [90, 120), [150, 420), [450, 480)
+
+Anna busy: [30, 60), [180, 210), [240, 390), [450, 480)
+
+Anna preference: after 330 min, but since she is busy until 390, it doesn't affect much.
+
+Now, find common free time.
+
+First, work hours are from 0 to 480 min.
+
+We need a slot of 30 minutes.
+
+Now, after 330 min, as per preference.
+
+Now, let's see free times after 330 min.
+
+Adam free: [0,300) and [360,480)
+
+John free: [0,240), [270,300), [330,390), [420,450)  and also [390,420) is busy, so free between 390 and 420? No, John busy [390,420), so free outside that.
+
+John free intervals: from 0 to 240, from 270 to 300, from 330 to 390, from 420 to 450? But [420,450) is free? John busy [450,480), so free from 420 to 450.
+
+Similarly, from 330 to 390 is free.
+
+But at 390, since busy from 390 to 420, so free at 390? Yes, because busy start at 390, so at 390, he is busy? No: if busy from 390 to 420, it means from time 390 inclusive to 420 exclusive, so at time 390, he is busy. Similarly, at time 420, he is free.
+
+In interval notation, [a,b) means a <= time < b, so at time a, it is included in busy, so busy.
+
+So for John, at time 330, he is free because busy [300,330) so at 330, free. Busy [390,420) so at 390, he is busy.
+
+Similarly, at 420, he is free.
+
+So John free intervals: [0,240), [270,300), [330,390), [420,450)
+
+Note that [330,390) means from 330 to 390, including 330 but excluding 390, so he is free at 330,331,...,389.999, but not at 390.
+
+Similarly, [420,450) free from 420 to 450, excluding 450.
+
+Stephanie free: [0,30), [60,90), [120,150), [420,450)
+
+Because busy [150,420) so at 420, she is free? Busy [150,420) means from 150 to 420, including 150, excluding 420, so at 420, she is free. Then busy [450,480) so at 450, she is busy.
+
+So free [420,450) meaning from 420 to 450, excluding 450.
+
+Anna free: [0,30), [60,180), [210,240), [390,450)
+
+Because busy [240,390) so at 390, she is free? Busy [240,390) means from 240 to 390, including 240, excluding 390, so at 390, she is free. Then busy [450,480) so at 450, she is busy.
+
+So free [390,450) from 390 to 450, excluding 450.
+
+Now, Anna prefers after 14:30 (330 min), so we should consider free times after 330 min for Anna, but her free [390,450) is after 330, so ok.
+
+Now, we need intersection of free intervals for all after 330 min.
+
+Adam free after 330: but Adam free [360,480) which starts from 360 min.
+
+John free after 330: [330,390) and [420,450)
+
+Stephanie free after 330: only [420,450) because [120,150) is before 330, and [420,450) is after.
+
+Anna free after 330: [390,450)
+
+Now, common free times must be when all have free time.
+
+So possible intervals:
+
+First, from 360 to 390: Adam free [360,480), John free [330,390), but Stephanie is not free; she is busy until 420. So no Stephanie.
+
+From 390 to 420: Adam free [360,480) so includes 390 to 420, but John is busy [390,420), so John not free. Anna free [390,450) so Anna free, but John busy, so not all free.
+
+From 420 to 450: Adam free [360,480) so includes 420 to 450, John free [420,450), Stephanie free [420,450), Anna free [390,450) so includes 420 to 450. So all free from 420 to 450.
+
+But is that true? At time 420, all are free? Let's see:
+
+At 420 min: Adam free? Adam free from 360 to 480, so at 420, free. John free? John free [420,450) so at 420, free. Stephanie free? Stephanie free [420,450) so at 420, free. Anna free? Anna free [390,450) so at 420, free. So yes, all free at 420.
+
+Similarly, until 450: but at 450, are they free? At 450 min: Adam free? Adam free until 480, so at 450, free. John free? John free [420,450) so at 450, not free because [420,450) excludes 450, so at 450, John is busy? John busy from 450 to 480, so at 450, he is busy. Similarly, Stephanie busy at 450? Stephanie busy [450,480) so at 450, busy. Anna busy at 450? Anna busy [450,480) so at 450, busy.
+
+So for a meeting from time S to S+30, we need that for all times in [S, S+30), all are free.
+
+So if we start at 420, end at 450, then from 420 to 450, all are free, but at 450, the meeting ends, so we don't need them free at 450, since the meeting end time is exclusive? Typically, if meeting from 16:00 to 16:30, it means from 16:00 inclusive to 16:30 exclusive, so we need them free from 16:00 to 16:30, meaning up to but not including 16:30.
+
+In minutes, from S to S+30, we need all free from S to S+30, excluding S+30.
+
+So for S=420, we need free from 420 to 450, which is exactly the interval where all are free: Adam free from 420 to 450? Adam free until 480, so yes. John free from 420 to 450, Stephanie free from 420 to 450, Anna free from 420 to 450? Anna free until 450, so from 420 to 450, Anna is free.
+
+But at 450, Anna is not free, but since the meeting ends at 450, we don't need her free at 450, so it's ok.
+
+Similarly for others.
+
+So from 420 to 450 min, all are free.
+
+420 min is 16:00? 420 / 60 = 7 hours, so from 9:00 + 7 hours = 16:00.
+
+450 min is 450 / 60 = 7.5 hours, so 16:30.
+
+So meeting from 16:00 to 16:30.
+
+But Anna prefers after 14:30, which is satisfied since 16:00 is after 14:30.
+
+Also, all are free during this time.
+
+But is there any other time? For example, between 15:30 and 16:00? But let's see.
+
+15:30 is 390 min. From 390 to 420: but John is busy from 390 to 420, so not free. So no.
+
+What about from 16:30 to 17:00? 16:30 is 450 min, but at 450 min, John, Stephanie, Anna are busy, so not free.
+
+So only slot is 16:00 to 16:30.
+
+But in the free intervals, we have [420,450) which is 16:00 to 16:30.
+
+So that works.
+
+Now, for the code, I need to write a Python script to find this time.
+
+I need to represent the busy times and find a gap.
+
+Since the problem says "there exists a solution", I can assume that.
+
+I'll create lists of busy intervals for each person, then find the free intervals for each, then find the intersection, and then find a slot of 30 minutes.
+
+But since we have preferences, I should consider after 14:30 first.
+
+In code, I can convert all times to minutes from 9:00.
+
+First, define work start and end: 9:00 to 17:00 → 0 to 480 min.
+
+Meeting duration: 30 minutes.
+
+Busy times:
+
+Adam: ["14:00-15:00"] → but need to convert to minutes.
+
+Similarly for others.
+
+Anna preference: not before 14:30 → 330 min.
+
+So in code, I'll create a list of busy intervals for each person.
+
+Then for each person, compute free intervals within work hours.
+
+Then find common free intervals by intersecting all free intervals.
+
+Then find a common free interval that has at least 30 minutes and after 330 min.
+
+Then output the time.
+
+Since the output should be in format HH:MM:HH:MM and day Monday.
+
+In this case, day is Monday.
+
+So let's code accordingly.
+
+I'll write the code step by step.
+
+First, parse the busy times from the given strings.
+
+But in the code, I need to input the busy times. Since the task is given, I can hardcode the busy times for each person.
+
+Similarly for preference.
+
+So let's code.
+
+First, define work hours: start_time = "9:00" end_time = "17:00"
+
+Convert to minutes: start_min = 0, end_min = 8*60 = 480? 9:00 to 17:00 is 8 hours, so 480 minutes from start, but since we set start at 0, end at 480.
+
+But 17:00 is included? Usually, meetings can start at 16:30 and end at 17:00, but since end at 17:00, and meeting end at 17:00, it might be ok, but in this case, we have busy until 17:00 for some, so we need to ensure meeting ends by 17:00 or before? The work hours are between 9:00 to 17:00, so meeting must start and end within this time, so start time at least 9:00, end time at most 17:00.
+
+So in minutes, from 0 to 480, but meeting from S to E, with E-S=30, and S >=0, E <=480.
+
+Now, busy intervals are given as strings.
+
+I need to convert time string to minutes.
+
+For example, "14:00" to minutes: 14:00 is 5 hours after 9:00, so 5*60 = 300 minutes? But since we set 9:00 as 0, so for any time, subtract 9:00.
+
+So time_str to minutes: hours and minutes, then total minutes since 9:00.
+
+For example, "14:00" → hours=14, min=0 → total minutes = (14-9)*60 + 0 = 5*60 = 300 min.
+
+Similarly, "15:00" → (15-9)*60 = 6*60=360 min.
+
+But for time like "13:30" → (13-9)*60 + 30 = 4*60 +30=240+30=270 min.
+
+Similarly, "14:30" → (14-9)*60 +30=300+30=330 min.
+
+So in code, I'll write a function to convert time string to minutes since 9:00.
+
+Also, convert minutes back to time string for output.
+
+Now, for each person, define their busy intervals as list of tuples (start_min, end_min).
+
+But note: the busy intervals are given as "14:00 to 15:00" which we interpret as [300,360) in minutes.
+
+Similarly for others.
+
+So let's define the busy intervals.
+
+Adam: has meetings during 14:00 to 15:00 → so busy: (300,360)
+
+John: busy during 13:00 to 13:30, 14:00 to 14:30, 15:30 to 16:00, 16:30 to 17:00
+
+So convert: 13:00 to 13:30 → (240,270) since 13:00=240, 13:30=270
+
+14:00 to 14:30 → (300,330)
+
+15:30 to 16:00 → 15:30=390, 16:00=420? 15:30 is (15-9)*60 +30=6*60+30=360+30=390 min, 16:00=(16-9)*60=7*60=420 min, so (390,420)
+
+16:30 to 17:00 → 16:30=7*60+30=420+30=450 min, 17:00=8*60=480 min, so (450,480)
+
+Stephanie: during 9:30 to 10:00, 10:30 to 11:00, 11:30 to 16:00, 16:30 to 17:00
+
+9:30 to 10:00 → 9:30=30 min, 10:00=60 min, so (30,60)
+
+10:30 to 11:00 → 10:30=90 min, 11:00=120 min, so (90,120)
+
+11:30 to 16:00 → 11:30=150 min, 16:00=420 min, so (150,420)
+
+16:30 to 17:00 → 16:30=450 min, 17:00=480 min, so (450,480)
+
+Anna: during 9:30 to 10:00, 12:00 to 12:30, 13:00 to 15:30, 16:30 to 17:00
+
+9:30 to 10:00 → (30,60)
+
+12:00 to 12:30 → 12:00=180 min, 12:30=210 min, so (180,210)
+
+13:00 to 15:30 → 13:00=240 min, 15:30=390 min, so (240,390)
+
+16:30 to 17:00 → (450,480)
+
+Anna preference: not before 14:30 → which is 330 min.
+
+Now, in code, I need to find free intervals for each person.
+
+Free intervals are the gaps between busy intervals within work hours.
+
+For each person, I have list of busy intervals. I need to sort them by start time, then find free intervals from start_min to first busy start, between busy intervals, and from last busy end to end_min.
+
+Then for all persons, find the intersection of free intervals.
+
+Then from the common free intervals, find one that has length >=30 and after preference time.
+
+Then output the time.
+
+Since the preference is for Anna, but we already have her free intervals, we can apply the preference after finding common free intervals.
+
+In code, I'll proceed.
+
+Let me write the code.
+
+First, define work start and end in minutes: work_start = 0, work_end = 480
+
+Meeting duration = 30 minutes.
+
+Preference min = 330 for Anna.
+
+Now, create a list of busy intervals for each person.
+
+Adam_busy = [ (300,360) ]
+
+John_busy = [ (240,270), (300,330), (390,420), (450,480) ]
+
+Stephanie_busy = [ (30,60), (90,120), (150,420), (450,480) ]
+
+Anna_busy = [ (30,60), (180,210), (240,390), (450,480) ]
+
+Now, for each person, compute free intervals.
+
+Define a function to compute free intervals from busy intervals and work range.
+
+Function get_free_intervals(busy_list, work_start, work_end):
+
+sort busy_list by start time.
+
+free_list = []
+
+current = work_start
+
+for each busy interval (s,e) in sorted busy_list:
+
+if current < s:
+
+free_list.append( (current, s) )
+
+current = e
+
+if current < work_end:
+
+free_list.append( (current, work_end) )
+
+return free_list
+
+But this assumes that busy intervals are within work hours and non-overlapping, which they are.
+
+Now, for Adam, busy_list = [(300,360)]
+
+current = 0
+
+s=300, so from 0 to 300 free, so add (0,300)
+
+current = 360
+
+then after loop, current=360 < work_end=480, so add (360,480)
+
+so free for Adam: [(0,300), (360,480)]
+
+Similarly for John: busy_list = [(240,270), (300,330), (390,420), (450,480)]
+
+sort already sorted.
+
+current=0
+
+first busy: (240,270) → since current=0 <240, add (0,240)
+
+current=270
+
+next busy: (300,330) → current=270 <300, so add (270,300)
+
+current=330
+
+next busy: (390,420) → current=330 <390, so add (330,390)
+
+current=420
+
+next busy: (450,480) → current=420 <450, so add (420,450)
+
+current=480
+
+after loop, current=480, not less than work_end, so no add.
+
+So free for John: [(0,240), (270,300), (330,390), (420,450)]
+
+But note: (330,390) means from 330 to 390, which is correct.
+
+Similarly for Stephanie: busy_list = [(30,60), (90,120), (150,420), (450,480)]
+
+current=0
+
+first busy: (30,60) → current=0<30, add (0,30)
+
+current=60
+
+next busy: (90,120) → current=60<90, add (60,90)
+
+current=120
+
+next busy: (150,420) → current=120<150, add (120,150)
+
+current=420
+
+next busy: (450,480) → current=420<450, add (420,450)
+
+current=480
+
+after loop, no add.
+
+So free for Stephanie: [(0,30), (60,90), (120,150), (420,450)]
+
+For Anna: busy_list = [(30,60), (180,210), (240,390), (450,480)]
+
+current=0
+
+first busy: (30,60) → current=0<30, add (0,30)
+
+current=60
+
+next busy: (180,210) → current=60<180, add (60,180)
+
+current=210
+
+next busy: (240,390) → current=210<240, add (210,240)
+
+current=390
+
+next busy: (450,480) → current=390<450, add (390,450)
+
+current=480
+
+no add.
+
+So free for Anna: [(0,30), (60,180), (210,240), (390,450)]
+
+Now, we need common free intervals for all four.
+
+So we have free intervals for each person.
+
+Now, find the intersection of all free intervals.
+
+Since free intervals are lists, we can start with the free intervals of one person and then intersect with others.
+
+But we need to find intervals where all are free.
+
+So let's take the free intervals of Adam: [(0,300), (360,480)]
+
+Now, intersect with John's free intervals: [(0,240), (270,300), (330,390), (420,450)]
+
+Intersect with Adam's free: so from Adam's first interval (0,300), intersect with John's: (0,240) and (270,300) are within (0,300), so common: (0,240) and (270,300)
+
+From Adam's second interval (360,480), intersect with John's: John has (330,390) which overlaps with (360,480)? (330,390) and (360,480) overlap from 360 to 390, so (360,390) but John free only up to 390, so (360,390)
+
+Also John has (420,450) which is within (360,480), so (420,450)
+
+So common Adam and John: (0,240), (270,300), (360,390), (420,450)
+
+Now intersect with Stephanie's free: [(0,30), (60,90), (120,150), (420,450)]
+
+Now, from common above: (0,240) and Stephanie has (0,30) which is within, so (0,30) common? But (0,240) includes (0,30), but Stephanie free only (0,30), so for common, we need intervals where both free, so the intersection of (0,240) and (0,30) is (0,30)
+
+Similarly, (0,240) and (60,90) is (60,90) but only if (60,90) is within (0,240), which it is, so (60,90)
+
+Similarly, (0,240) and (120,150) is (120,150)
+
+But (0,240) includes all, but Stephanie free only at those intervals, so the common free times between Adam-John and Stephanie are only where Stephanie free, so we need to take the intersection of the common Adam-John intervals with Stephanie intervals.
+
+So common Adam-John intervals: list A: (0,240), (270,300), (360,390), (420,450)
+
+Stephanie intervals: S: (0,30), (60,90), (120,150), (420,450)
+
+Now intersect each:
+
+(0,240) ∩ S: since S has (0,30), (60,90), (120,150), so the intersection is (0,30), (60,90), (120,150) but note that (0,240) is continuous, but S has separate intervals, so the common intervals are (0,30), (60,90), (120,150) because within (0,240), Stephanie is free only in these sub-intervals.
+
+Similarly, (270,300) ∩ S: but S has no intervals between 270 and 300, so no intersection.
+
+(360,390) ∩ S: S has no intervals between 360 and 390, so no.
+
+(420,450) ∩ S: S has (420,450), so (420,450)
+
+So common Adam-John-Stephanie: (0,30), (60,90), (120,150), (420,450)
+
+Now intersect with Anna's free: Anna free: [(0,30), (60,180), (210,240), (390,450)]
+
+Now common with above: (0,30) ∩ Anna: Anna has (0,30), so (0,30)
+
+(60,90) ∩ Anna: Anna has (60,180), which includes (60,90), so (60,90)
+
+(120,150) ∩ Anna: but Anna free (60,180) which includes (120,150), so (120,150)
+
+(420,450) ∩ Anna: Anna has (390,450) which includes (420,450), so (420,450)
+
+So common all: (0,30), (60,90), (120,150), (420,450)
+
+Now, we need a slot of 30 minutes after preference time 330 min.
+
+So look at these intervals: (0,30) → 0 to 30 min → 9:00 to 9:30 → before 14:30, so not preferred.
+
+(60,90) → 10:00 to 10:30 → before, not preferred.
+
+(120,150) → 11:00 to 11:30 → before, not preferred.
+
+(420,450) → 420 to 450 min → 16:00 to 16:30 → after 14:30, preferred.
+
+And length is 30 minutes, which is exactly the meeting duration.
+
+So we can choose this slot.
+
+Thus, meeting from 16:00 to 16:30 on Monday.
+
+Now for output, we need to convert back to time string.
+
+So start time: 420 min from 9:00 → 420 / 60 = 7 hours, so 9:00 + 7 hours = 16:00
+
+End time: 450 min → 450 / 60 = 7.5 hours, so 16:30
+
+So output should be 16:00:16:30 but in format HH:MM:HH:MM, so probably "16:00:16:30" but since it's time range, perhaps with colon between, but in the example output, it says like {14:30:15:30}, so in the code, we output the string in that format.
+
+Also output the day.
+
+So in code, we output the time range and day.
+
+Now, write the code accordingly.
+
+In code, I'll define the busy intervals as above.
+
+Then compute free intervals for each.
+
+Then find common free intervals by iterating through all combinations, but since we have multiple, we can intersect step by step.
+
+Alternatively, we can create a list of all free intervals for all and find intersection, but that might be messy.
+
+Since the intervals are few, we can do multiple intersections.
+
+I'll write a function to intersect two lists of intervals.
+
+Function intersect_intervals(intervals1, intervals2):
+
+This function takes two lists of intervals and returns a list of intervals that are common to both.
+
+How to do: iterate through each interval in intervals1 and for each, find overlap with each interval in intervals2.
+
+But since intervals are sorted, we can merge them.
+
+But for simplicity, since lists are small, we can do nested loops.
+
+For each interval A in intervals1:
+
+For each interval B in intervals2:
+
+Find overlap between A and B: if they overlap, the overlap is from max(A.start, B.start) to min(A.end, B.end)
+
+If positive, add to result.
+
+Then return result.
+
+Then we can intersect all persons' free intervals one by one.
+
+First, free_adam = get_free_intervals(adam_busy, work_start, work_end)
+
+Similarly for others.
+
+Then common_free = intersect_intervals(free_adam, free_john)
+
+Then common_free = intersect_intervals(common_free, free_stephanie)
+
+Then common_free = intersect_intervals(common_free, free_anna)
+
+Then from common_free, find an interval that has length >= meeting_duration and start >= preference_min.
+
+Since meeting duration is 30, we need end - start >= 30.
+
+Also, we need to ensure that the interval is within work hours, but since free intervals are within work hours, it should be ok.
+
+In this case, we have (420,450) which has length 30, so it fits.
+
+Now, for output, we convert start and end minutes to time string.
+
+Convert minutes to time: since 9:00 is base, so for minutes m, time = 9:00 + m minutes.
+
+So hours = 9 + m // 60
+
+minutes = m % 60
+
+Then format as HH:MM
+
+But since m is from 0 to 480, hours will be from 9 to 17, so we can do.
+
+For example, m=420, hours = 9 + 420//60 = 9 + 7 = 16, minutes = 420 % 60 = 0, so 16:00
+
+Similarly, m=450, hours=9+450//60=9+7=16, minutes=30, so 16:30
+
+So output "16:00:16:30" but with colon between, so in the format, it might be "16:00:16:30" or as in example {14:30:15:30}, so without braces, just the string.
+
+In the solution, it should output the time range and day.
+
+So in code, after finding the slot, print the time range and day.
+
+Now, code accordingly.
+
+I'll write the code in Python.
+
+Note: the preference is from Anna, but in code, we use preference min.
+
+Also, since there might be multiple slots, we need to choose one that meets preference. In this case, only one after preference.
+
+So let's code.

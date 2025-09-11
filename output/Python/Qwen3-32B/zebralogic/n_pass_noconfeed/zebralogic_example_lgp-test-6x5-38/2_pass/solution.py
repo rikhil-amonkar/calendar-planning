@@ -1,0 +1,1 @@
+if food_perm[peter_pos + 1] != 'pizza':

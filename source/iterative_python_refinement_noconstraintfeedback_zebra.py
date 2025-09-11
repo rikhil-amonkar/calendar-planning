@@ -602,11 +602,21 @@ Examples:
             if extracted and "itinerary" in extracted:
                 normalized = self.normalize_meeting_itinerary(extracted)
                 if normalized and "itinerary" in normalized:
-                    # Sort by start time for consistent comparison
-                    normalized["itinerary"].sort(key=lambda x: (
-                        datetime.strptime(x.get("start_time", "00:00"), "%H:%M"),
-                        x.get("person", "")
-                    ))
+                    # Sort by start time for consistent comparison with error handling
+                    try:
+                        normalized["itinerary"].sort(key=lambda x: (
+                            datetime.strptime(x.get("start_time", "00:00"), "%H:%M"),
+                            x.get("person", "")
+                        ))
+                    except ValueError as time_error:
+                        # If time parsing fails, sort by string comparison instead
+                        logging.warning(f"Time parsing error during sorting: {time_error}. Falling back to string comparison.")
+                        normalized["itinerary"].sort(key=lambda x: (
+                            x.get("start_time", "00:00"),
+                            x.get("person", "")
+                        ))
+                    except Exception as sort_error:
+                        logging.warning(f"Unexpected error during sorting: {sort_error}. Skipping sort operation.")
                 return normalized
         except Exception as e:
             logging.warning(f"Error extracting answer with GPT-4.1-nano: {e}")
@@ -615,10 +625,19 @@ Examples:
         if isinstance(output, dict):
             normalized = self.normalize_meeting_itinerary(output)
             if normalized and "itinerary" in normalized:
-                normalized["itinerary"].sort(key=lambda x: (
-                    datetime.strptime(x.get("start_time", "00:00"), "%H:%M"),
-                    x.get("person", "")
-                ))
+                try:
+                    normalized["itinerary"].sort(key=lambda x: (
+                        datetime.strptime(x.get("start_time", "00:00"), "%H:%M"),
+                        x.get("person", "")
+                    ))
+                except ValueError as time_error:
+                    logging.warning(f"Time parsing error during sorting: {time_error}. Falling back to string comparison.")
+                    normalized["itinerary"].sort(key=lambda x: (
+                        x.get("start_time", "00:00"),
+                        x.get("person", "")
+                    ))
+                except Exception as sort_error:
+                    logging.warning(f"Unexpected error during sorting: {sort_error}. Skipping sort operation.")
             return normalized
         
         if isinstance(output, str):
@@ -631,10 +650,19 @@ Examples:
                 itinerary_data = json.loads(output)
                 normalized = self.normalize_meeting_itinerary(itinerary_data)
                 if normalized and "itinerary" in normalized:
-                    normalized["itinerary"].sort(key=lambda x: (
-                        datetime.strptime(x.get("start_time", "00:00"), "%H:%M"),
-                        x.get("person", "")
-                    ))
+                    try:
+                        normalized["itinerary"].sort(key=lambda x: (
+                            datetime.strptime(x.get("start_time", "00:00"), "%H:%M"),
+                            x.get("person", "")
+                        ))
+                    except ValueError as time_error:
+                        logging.warning(f"Time parsing error during sorting: {time_error}. Falling back to string comparison.")
+                        normalized["itinerary"].sort(key=lambda x: (
+                            x.get("start_time", "00:00"),
+                            x.get("person", "")
+                        ))
+                    except Exception as sort_error:
+                        logging.warning(f"Unexpected error during sorting: {sort_error}. Skipping sort operation.")
                 return normalized
         except json.JSONDecodeError:
             pass
@@ -646,10 +674,19 @@ Examples:
                 itinerary_data = json.loads(matches.group(0))
                 normalized = self.normalize_meeting_itinerary(itinerary_data)
                 if normalized and "itinerary" in normalized:
-                    normalized["itinerary"].sort(key=lambda x: (
-                        datetime.strptime(x.get("start_time", "00:00"), "%H:%M"),
-                        x.get("person", "")
-                    ))
+                    try:
+                        normalized["itinerary"].sort(key=lambda x: (
+                            datetime.strptime(x.get("start_time", "00:00"), "%H:%M"),
+                            x.get("person", "")
+                        ))
+                    except ValueError as time_error:
+                        logging.warning(f"Time parsing error during sorting: {time_error}. Falling back to string comparison.")
+                        normalized["itinerary"].sort(key=lambda x: (
+                            x.get("start_time", "00:00"),
+                            x.get("person", "")
+                        ))
+                    except Exception as sort_error:
+                        logging.warning(f"Unexpected error during sorting: {sort_error}. Skipping sort operation.")
                 return normalized
             except json.JSONDecodeError:
                 pass
@@ -663,10 +700,19 @@ Examples:
                     if "itinerary" in itinerary_data:
                         normalized = self.normalize_meeting_itinerary(itinerary_data)
                         if normalized and "itinerary" in normalized:
-                            normalized["itinerary"].sort(key=lambda x: (
-                                datetime.strptime(x.get("start_time", "00:00"), "%H:%M"),
-                                x.get("person", "")
-                            ))
+                            try:
+                                normalized["itinerary"].sort(key=lambda x: (
+                                    datetime.strptime(x.get("start_time", "00:00"), "%H:%M"),
+                                    x.get("person", "")
+                                ))
+                            except ValueError as time_error:
+                                logging.warning(f"Time parsing error during sorting: {time_error}. Falling back to string comparison.")
+                                normalized["itinerary"].sort(key=lambda x: (
+                                    x.get("start_time", "00:00"),
+                                    x.get("person", "")
+                                ))
+                            except Exception as sort_error:
+                                logging.warning(f"Unexpected error during sorting: {sort_error}. Skipping sort operation.")
                         return normalized
                 except json.JSONDecodeError:
                     continue
@@ -1375,7 +1421,7 @@ Examples:
 
     def save_output_files(self, task, example_id, pass_num, conversation, code, output, evaluation):
         """Save all output files for a given pass"""
-        output_dir = f"../output/Python/DeepSeek-V3/{task}/n_pass_noconfeed/{example_id}/{pass_num}_pass"
+        output_dir = f"../output/Python/Qwen3-32B/{task}/n_pass_noconfeed/{example_id}/{pass_num}_pass"
         os.makedirs(output_dir, exist_ok=True)
         
         # Save conversation
@@ -1433,7 +1479,7 @@ Examples:
         
         # Scan all evaluation files to collect token data
         for task in ["calendar", "meeting", "trip", "zebralogic"]:
-            task_dir = f"../output/Python/DeepSeek-V3/{task}/n_pass_noconfeed"
+            task_dir = f"../output/Python/Qwen3-32B/{task}/n_pass_noconfeed"
             if not os.path.exists(task_dir):
                 continue
                 
@@ -1532,6 +1578,8 @@ Examples:
                 
                 # Extract code
                 code = self.extract_code(response)
+                
+                # In the process_example method, around line 1592:
                 if not code:
                     logging.warning(f"No code found in response for {example_id}")
                     
@@ -1543,8 +1591,10 @@ Examples:
                             "error": "No code found in model response",
                             "timing": {
                                 "api_call_time": api_time,
-                                "token_count": token_count
-                            }
+                                "total_tokens": full_token_count,  # Changed from token_count to full_token_count
+                                "reasoning_tokens": reasoning_tokens
+                            },
+                            "reasoning_content": reasoning_content  # Add this too
                         }
                     )
                     return

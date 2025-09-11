@@ -1,0 +1,93 @@
+def main():
+    # Define work hours in minutes from 9:00 (0 minutes) to 17:00 (480 minutes)
+    start_work = 0
+    end_work = 480
+    meeting_duration = 30
+    
+    # Define busy intervals for each person in minutes from 9:00
+    jeffrey_busy = [(30, 60), (90, 120)]
+    virginia_busy = [(0, 30), (60, 90), (330, 360), (420, 450)]
+    melissa_busy = [(0, 150), (180, 210), (240, 360), (420, 480)]
+    
+    # Melissa prefers not after 14:00 (300 minutes), but we prioritize slots before 300 minutes for end time
+    preferred_end = 300
+    
+    # Iterate over possible start times every 30 minutes from 0 to 450
+    for start_min in range(start_work, end_work - meeting_duration + 1, 30):
+        end_min = start_min + meeting_duration
+        # Check if the time slot is free for Jeffrey
+        jeffrey_free = True
+        for busy in jeffrey_busy:
+            if busy[0] < end_min and busy[1] > start_min:
+                jeffrey_free = False
+                break
+        if not jeffrey_free:
+            continue
+            
+        # Check for Virginia
+        virginia_free = True
+        for busy in virginia_busy:
+            if busy[0] < end_min and busy[1] > start_min:
+                virginia_free = False
+                break
+        if not virginia_free:
+            continue
+            
+        # Check for Melissa
+        melissa_free = True
+        for busy in melissa_busy:
+            if busy[0] < end_min and busy[1] > start_min:
+                melissa_free = False
+                break
+        if not melissa_free:
+            continue
+            
+        # If all are free, check if it meets preference (end time <= preferred_end)
+        if end_min <= preferred_end:
+            # Convert minutes to time string
+            start_hour = 9 + start_min // 60
+            start_minute = start_min % 60
+            end_hour = 9 + end_min // 60
+            end_minute = end_min % 60
+            # Format to HH:MM
+            start_time_str = f"{start_hour:02d}:{start_minute:02d}"
+            end_time_str = f"{end_hour:02d}:{end_minute:02d}"
+            print(f"Monday {start_time_str}:{end_time_str}")
+            return
+    
+    # If no preferred slot found, find any slot (though problem states solution exists)
+    for start_min in range(start_work, end_work - meeting_duration + 1, 30):
+        end_min = start_min + meeting_duration
+        jeffrey_free = True
+        for busy in jeffrey_busy:
+            if busy[0] < end_min and busy[1] > start_min:
+                jeffrey_free = False
+                break
+        if not jeffrey_free:
+            continue
+            
+        virginia_free = True
+        for busy in virginia_busy:
+            if busy[0] < end_min and busy[1] > start_min:
+                virginia_free = False
+                break
+        if not virginia_free:
+            continue
+            
+        melissa_free = True
+        for busy in melissa_busy:
+            if busy[0] < end_min and busy[1] > start_min:
+                melissa_free = False
+                break
+        if melissa_free:
+            start_hour = 9 + start_min // 60
+            start_minute = start_min % 60
+            end_hour = 9 + end_min // 60
+            end_minute = end_min % 60
+            start_time_str = f"{start_hour:02d}:{start_minute:02d}"
+            end_time_str = f"{end_hour:02d}:{end_minute:02d}"
+            print(f"Monday {start_time_str}:{end_time_str}")
+            return
+
+if __name__ == "__main__":
+    main()

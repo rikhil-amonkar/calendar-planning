@@ -1,0 +1,69 @@
+def time_to_min(time_str):
+    hours, minutes = map(int, time_str.split(':'))
+    return hours * 60 + minutes - 540  # 9:00 is 540 minutes from midnight, so subtract to get minutes after 9:00
+
+def min_to_time(minutes):
+    total_minutes = minutes + 540
+    hours = total_minutes // 60
+    minutes = total_minutes % 60
+    return f"{hours:02d}:{minutes:02d}"
+
+def get_free_intervals(busy_intervals, start=0, end=480):
+    free_intervals = []
+    busy_intervals.sort(key=lambda x: x[0])
+    current = start
+    for busy_start, busy_end in busy_intervals:
+        if current < busy_start:
+            free_intervals.append((current, busy_start))
+        current = max(current, busy_end)
+    if current < end:
+        free_intervals.append((current, end))
+    return free_intervals
+
+def find_meeting_time(carl_busy, margaret_busy, duration=60):
+    days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday']
+    for day in days:
+        if day == 'Thursday':
+            continue  # Skip Thursday initially due to preference
+        carl_free = get_free_intervals(carl_busy[day])
+        margaret_free = get_free_intervals(margaret_busy[day])
+        for c_start, c_end in carl_free:
+            for m_start, m_end in margaret_free:
+                start = max(c_start, m_start)
+                end = min(c_end, m_end)
+                if end - start >= duration:
+                    return day, start, start + duration
+    # If no slot found except Thursday, check Thursday
+    day = 'Thursday'
+    carl_free = get_free_intervals(carl_busy[day])
+    margaret_free = get_free_intervals(margaret_busy[day])
+    for c_start, c_end in carl_free:
+        for m_start, m_end in margaret_free:
+            start = max(c_start, m_start)
+            end = min(c_end, m_end)
+            if end - start >= duration:
+                return day, start, start + duration
+    return None, None, None
+
+# Define busy intervals in minutes after 9:00 for each day
+carl_busy = {
+    'Monday': [(120, 150)],
+    'Tuesday': [(330, 360)],
+    'Wednesday': [(60, 150), (240, 270)],
+    'Thursday': [(270, 300), (420, 450)]
+}
+
+margaret_busy = {
+    'Monday': [(0, 90), (120, 480)],
+    'Tuesday': [(30, 180), (270, 300), (390, 480)],
+    'Wednesday': [(30, 180), (210, 240), (270, 330), (360, 480)],
+    'Thursday': [(60, 180), (210, 300), (330, 480)]
+}
+
+day, start_min, end_min = find_meeting_time(carl_busy, margaret_busy)
+if day is not None:
+    start_time = min_to_time(start_min)
+    end_time = min_to_time(end_min)
+    print(f"{day} {start_time}:{end_time}")
+else:
+    print("No suitable time found.")

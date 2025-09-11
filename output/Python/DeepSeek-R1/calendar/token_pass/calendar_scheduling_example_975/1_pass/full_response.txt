@@ -1,0 +1,70 @@
+```python
+def get_free_intervals(busy_intervals, start_range=0, end_range=480):
+    free_intervals = []
+    busy_sorted = sorted(busy_intervals, key=lambda x: x[0])
+    current_start = start_range
+    for start_b, end_b in busy_sorted:
+        if current_start < start_b:
+            free_intervals.append((current_start, start_b))
+        current_start = max(current_start, end_b)
+    if current_start < end_range:
+        free_intervals.append((current_start, end_range))
+    return free_intervals
+
+def find_common_free_intervals(free1, free2):
+    common_free = []
+    i = j = 0
+    while i < len(free1) and j < len(free2):
+        start1, end1 = free1[i]
+        start2, end2 = free2[j]
+        overlap_start = max(start1, start2)
+        overlap_end = min(end1, end2)
+        if overlap_start < overlap_end:
+            common_free.append((overlap_start, overlap_end))
+        if end1 < end2:
+            i += 1
+        else:
+            j += 1
+    return common_free
+
+def format_time(minutes):
+    hours = 9 + minutes // 60
+    mins = minutes % 60
+    return f"{hours:02d}:{mins:02d}"
+
+def main():
+    nicole_busy = {
+        "Monday": [],
+        "Tuesday": [(420, 450)],  # 16:00 to 16:30
+        "Wednesday": [(360, 390)],  # 15:00 to 15:30
+        "Thursday": [],
+        "Friday": [(180, 210), (390, 420)]  # 12:00-12:30 and 15:30-16:00
+    }
+    
+    daniel_busy = {
+        "Monday": [(0, 210), (240, 270), (300, 450)],
+        "Tuesday": [(0, 90), (150, 210), (240, 270), (360, 420), (450, 480)],
+        "Wednesday": [(0, 60), (120, 210), (240, 270), (300, 330), (450, 480)],
+        "Thursday": [(120, 180), (240, 300), (360, 390)],
+        "Friday": [(60, 120), (150, 180), (210, 330), (360, 390), (420, 450)]
+    }
+    
+    days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
+    meeting_duration = 60
+    
+    for day in days:
+        nicole_free = get_free_intervals(nicole_busy[day])
+        daniel_free = get_free_intervals(daniel_busy[day])
+        common_free = find_common_free_intervals(nicole_free, daniel_free)
+        for start, end in common_free:
+            if end - start >= meeting_duration:
+                start_time = start
+                start_str = format_time(start_time)
+                end_str = format_time(start_time + meeting_duration)
+                print(f"{day} {start_str}:{end_str}")
+                return
+    print("No suitable time found.")
+
+if __name__ == "__main__":
+    main()
+```

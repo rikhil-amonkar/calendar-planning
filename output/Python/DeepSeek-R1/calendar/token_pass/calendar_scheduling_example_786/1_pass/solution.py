@@ -1,0 +1,105 @@
+def main():
+    # Convert time string to minutes since 9:00
+    def time_to_minutes(t):
+        h, m = map(int, t.split(':'))
+        return (h - 9) * 60 + m
+
+    # Convert minutes since 9:00 to time string
+    def minutes_to_time(m):
+        h = 9 + m // 60
+        m = m % 60
+        return f"{h:02d}:{m:02d}"
+
+    # Work hours: 9:00 to 17:00 (480 minutes total)
+    work_start = 0
+    work_end = 480
+
+    # Meeting duration in minutes
+    meeting_duration = 30
+
+    # Define busy intervals in minutes since 9:00 for each day
+    amy_busy = {
+        'Wednesday': [
+            (time_to_minutes('11:00'), time_to_minutes('11:30')),
+            (time_to_minutes('13:30'), time_to_minutes('14:00'))
+        ]
+    }
+
+    pamela_busy = {
+        'Monday': [
+            (time_to_minutes('9:00'), time_to_minutes('10:30')),
+            (time_to_minutes('11:00'), time_to_minutes('16:30'))
+        ],
+        'Tuesday': [
+            (time_to_minutes('9:00'), time_to_minutes('9:30')),
+            (time_to_minutes('10:00'), time_to_minutes('17:00'))
+        ],
+        'Wednesday': [
+            (time_to_minutes('9:00'), time_to_minutes('9:30')),
+            (time_to_minutes('10:00'), time_to_minutes('11:00')),
+            (time_to_minutes('11:30'), time_to_minutes('13:30')),
+            (time_to_minutes('14:30'), time_to_minutes('15:00')),
+            (time_to_minutes('16:00'), time_to_minutes('16:30'))
+        ]
+    }
+
+    # Pamela's preferences: Avoid Monday, and Tue/Wed before 16:00
+    preferred_min_start = time_to_minutes('16:00')
+
+    days = ['Monday', 'Tuesday', 'Wednesday']
+    
+    for day in days:
+        # Skip Monday due to preference
+        if day == 'Monday':
+            continue
+            
+        # Get Amy's busy intervals for the day (empty if not specified)
+        amy_busy_today = amy_busy.get(day, [])
+        # Get Pamela's busy intervals for the day
+        pamela_busy_today = pamela_busy.get(day, [])
+        
+        # Generate free intervals for Amy
+        amy_free = []
+        current = work_start
+        for start, end in sorted(amy_busy_today):
+            if current < start:
+                amy_free.append((current, start))
+            current = end
+        if current < work_end:
+            amy_free.append((current, work_end))
+        
+        # Generate free intervals for Pamela
+        pamela_free = []
+        current = work_start
+        for start, end in sorted(pamela_busy_today):
+            if current < start:
+                pamela_free.append((current, start))
+            current = end
+        if current < work_end:
+            pamela_free.append((current, work_end))
+        
+        # Find overlapping free intervals
+        for a_start, a_end in amy_free:
+            for p_start, p_end in pamela_free:
+                start_overlap = max(a_start, p_start)
+                end_overlap = min(a_end, p_end)
+                if end_overlap - start_overlap >= meeting_duration:
+                    # Apply Pamela's preference for Tue/Wed
+                    if day in ['Tuesday', 'Wednesday'] and start_overlap < preferred_min_start:
+                        # Check if the slot can be shifted to after 16:00
+                        if end_overlap - preferred_min_start >= meeting_duration:
+                            start_overlap = preferred_min_start
+                        else:
+                            continue
+                    # Found a valid slot
+                    meeting_start = start_overlap
+                    meeting_end = meeting_start + meeting_duration
+                    # Format output
+                    time_range = f"{minutes_to_time(meeting_start)}:{minutes_to_time(meeting_end)}"
+                    print(f"{day} {time_range}")
+                    return
+    
+    print("No suitable time found")
+
+if __name__ == "__main__":
+    main()

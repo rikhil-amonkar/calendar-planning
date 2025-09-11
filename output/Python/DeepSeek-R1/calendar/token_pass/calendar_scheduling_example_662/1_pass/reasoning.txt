@@ -1,0 +1,715 @@
+First, I need to schedule a meeting for Gary and David for one hour between 9:00 and 17:00 on Monday or Tuesday. I have their blocked times, and I must find a one-hour slot where both are free.
+
+I'll represent the work hours as from 9:00 to 17:00, which is 8 hours, but since we're dealing with times, I should work in minutes for easier calculation. Let's convert all times to minutes past 9:00 AM.
+
+Base time: 9:00 AM is 0 minutes.
+
+So, 9:00 = 0 min, 10:00 = 60 min, 11:00 = 120 min, 12:00 = 180 min, 13:00 = 240 min, 14:00 = 300 min, 15:00 = 360 min, 16:00 = 420 min, 17:00 = 480 min.
+
+But since the meeting must end by 17:00, the latest start time is 16:00 for a one-hour meeting.
+
+Now, I need to find free slots for both Gary and David on Monday and Tuesday.
+
+Let's list out the blocked times for each in minutes from 9:00.
+
+**Monday:**
+
+Gary's blocked on Monday:
+
+- 9:30 to 10:00 → 30 to 60 min
+
+- 11:00 to 13:00 → 120 to 240 min
+
+- 14:00 to 14:30 → 300 to 330 min
+
+- 16:30 to 17:00 → 450 to 480 min
+
+David's blocked on Monday:
+
+- 9:00 to 9:30 → 0 to 30 min
+
+- 10:00 to 13:00 → 60 to 240 min
+
+- 14:30 to 16:30 → 330 to 450 min
+
+Now, I need to find free intervals on Monday for both.
+
+First, find free times for Gary on Monday.
+
+Work hours: 0 to 480 min
+
+Blocked: [30,60], [120,240], [300,330], [450,480]
+
+So free intervals: from 0 to 30, but 0 is 9:00, which is included? Since work hours start at 9:00, 0 is available if not blocked.
+
+Gary free on Monday:
+
+- Before first block: 0 to 30 (but 0 to 30 is 9:00 to 9:30, but blocked from 9:30, so 9:00 to 9:30 is free? No: blocked from 9:30 to 10:00, so from 9:00 to 9:30 should be free if not blocked. But let's see the blocked times: Gary has blocked from 9:30 to 10:00, so 9:00 to 9:30 is free.
+
+Similarly, between blocks.
+
+After last block: after 17:00? But work ends at 17:00, so we only consider up to 480 min.
+
+List free intervals:
+
+- From start to first block: 0 to 30 (9:00 to 9:30)
+
+- Between first and second block: from 60 to 120 (10:00 to 11:00) but 10:00 is 60 min, 11:00 is 120 min. Blocked until 10:00, so free from 60 to 120? Let's see blocks: blocked from 9:30 to 10:00, which is 30 to 60, so after 60, free until next block at 120.
+
+Blocked [30,60] and [120,240], so between 60 and 120, free.
+
+60 is 10:00, which is included? Since blocked until 10:00, meaning at 10:00, is it free? Typically, if blocked from 9:30 to 10:00, 10:00 is the end time, so at 10:00, it might be free. I need to assume that blocked times are inclusive of start and exclusive of end, or something. In calendar terms, usually, if an event is from 9:30 to 10:00, it means 9:30 to 10:00 is busy, and 10:00 is free if no other event.
+
+Similarly for meeting scheduling, we consider times when both are free.
+
+To avoid confusion, I'll consider the time slots as intervals where the person is busy, and find gaps.
+
+For free time, we can find the union of busy intervals and then invert within work hours.
+
+Let me define the work hours as from 0 to 480 min (9:00 to 17:00).
+
+For Gary on Monday:
+
+Busy intervals: [30,60], [120,240], [300,330], [450,480]
+
+Now, sort these intervals by start time.
+
+Then, find the free gaps.
+
+Start from time 0.
+
+First busy at 30, so free from 0 to 30.
+
+Then after busy at 60, next busy at 120, so free from 60 to 120.
+
+Then after busy at 240, next busy at 300, so free from 240 to 300.
+
+Then after busy at 330, next busy at 450, so free from 330 to 450.
+
+Then after busy at 480, but 480 is end, so no free after.
+
+But free from 330 to 450? 450 is 16:30, and 480 is 17:00, so after 330 to 450, then busy from 450 to 480, so free from 330 to 450, which is 14:30 to 16:30? 330 min from 9:00: 300 min is 14:00, 330 is 14:30, 450 is 16:30, so free from 14:30 to 16:30? But let's confirm: after busy at 330 (14:30), free until next busy at 450 (16:30), so yes, free from 330 to 450.
+
+But 450 is 16:30, which is included in free? Since busy starts at 450, so free up to but not including 450? In terms of time slots, if we have a meeting from 14:30 to 15:30, it would be from 330 to 390 min, which is within 330 to 450, so it should be fine.
+
+Similarly, free from 240 to 300: 240 is 13:00, 300 is 14:00, so free from 13:00 to 14:00.
+
+But let's list all free intervals for Gary on Monday:
+
+- 0 to 30: 9:00 to 9:30
+
+- 60 to 120: 10:00 to 11:00
+
+- 240 to 300: 13:00 to 14:00
+
+- 330 to 450: 14:30 to 16:30
+
+Now for David on Monday:
+
+Busy intervals: [0,30], [60,240], [330,450]
+
+So free intervals:
+
+From start: since busy from 0 to 30, so after 30, but next busy at 60, so free from 30 to 60? 30 to 60 is 9:30 to 10:00.
+
+Then after busy at 240, next busy at 330, so free from 240 to 330? 240 to 330 is 13:00 to 14:30.
+
+Then after busy at 450, next is end at 480, so free from 450 to 480? 450 to 480 is 16:30 to 17:00.
+
+But work hours end at 17:00, so 450 to 480 is free.
+
+So David free on Monday:
+
+- 30 to 60: 9:30 to 10:00
+
+- 240 to 330: 13:00 to 14:30
+
+- 450 to 480: 16:30 to 17:00
+
+Now, we need a one-hour slot where both are free on Monday. So we need to find overlapping free times between Gary and David on Monday.
+
+Gary free: [0,30], [60,120], [240,300], [330,450]
+
+David free: [30,60], [240,330], [450,480]
+
+Now find overlaps:
+
+First, [0,30] and [30,60] – they meet at 30, but since intervals might be open or closed, we need to see if 30 is included. Typically, if free from 0 to 30, it means free at 9:00 but not at 9:30? Let's think in terms of continuous time.
+
+For a meeting from time A to time B, we need both free from A to B.
+
+So for a one-hour meeting, we need a continuous hour where both are free.
+
+So let's find the intersection of free intervals.
+
+Gary free intervals: let's list them as (start, end) where start is inclusive, end exclusive? Or better to use minutes and consider points.
+
+Since we need a slot of 60 minutes, we can find all times where both are free for 60 minutes consecutively.
+
+First, find the combined free times on Monday.
+
+The free times for Gary and David are only when both are free, so we need the intersection.
+
+From the intervals:
+
+- Gary [0,30] and David [30,60] – no overlap because at time 30, Gary free until 30, David free from 30, so at 30, it might be ambiguous. But since meeting needs continuous time, from time T to T+60, we need both free at every point in between.
+
+So for example, from 9:00 to 10:00, Gary is free from 9:00 to 9:30 but busy from 9:30 to 10:00, so not free for entire hour. Similarly, David is busy from 9:00 to 9:30 and free from 9:30 to 10:00, so not both free for any hour starting before 9:30.
+
+Now, look at [60,120] for Gary and [30,60] for David – [60,120] is 10:00 to 11:00, [30,60] is 9:30 to 10:00, so they overlap at 60? But 60 is 10:00. David free until 10:00? [30,60] means from 30 to 60, so at 60, David becomes busy? Or free? In calendar terms, if an event is from 9:30 to 10:00, then at 10:00, the event ends, so free at 10:00.
+
+Similarly, for Gary, blocked from 9:30 to 10:00, so at 10:00, free.
+
+So in terms of intervals, if we consider [a,b) as busy, then free outside that.
+
+So for David, busy [0,30) and [60,240) etc.? But in the problem, it says "during 9:00 to 9:30" which includes 9:00 and up to 9:30, so typically, 9:00 to 9:30 means from 9:00:00 to 9:30:00, so at 9:30:00, it ends, so free after 9:30:00.
+
+So to avoid confusion, I'll assume that blocked times are inclusive of start time and exclusive of end time. So for example, blocked from 9:00 to 9:30 means busy from 9:00 to just before 9:30, so at 9:30, free.
+
+Similarly, for meeting, we need from start time to end time, both free.
+
+So in minutes, let's define the time line from 0 to 480, where time t is minutes after 9:00, so t=0 is 9:00, t=30 is 9:30, etc.
+
+A person is free at time t if not in any blocked interval.
+
+Blocked intervals are given as [start, end) meaning busy from start to end, but end time is not included.
+
+So for Gary on Monday, blocked: 
+9:30 to 10:00 → [30,60) 
+11:00 to 13:00 → [120,240) 
+14:00 to 14:30 → [300,330) 
+16:30 to 17:00 → [450,480)
+
+So free times: from 0 to 30, from 60 to 120, from 240 to 300, from 330 to 450.
+
+Similarly for David on Monday, blocked:
+9:00 to 9:30 → [0,30)
+10:00 to 13:00 → [60,240)
+14:30 to 16:30 → [330,450)
+
+So free times: from 30 to 60, from 240 to 330, from 450 to 480.
+
+Now for both free on Monday, we need times where both are free, so intersection of free intervals.
+
+Gary free: [0,30), [60,120), [240,300), [330,450)
+
+David free: [30,60), [240,330), [450,480)
+
+Now find common free times:
+
+- [0,30) and [30,60) no overlap, since [0,30) ends at 30, [30,60) starts at 30, so at time 30, Gary is free until 30, David is free from 30, so at time 30, it is free for both? But since intervals are half-open, at time 30, Gary is free? Let's see: for Gary, free from 0 to 30, meaning from time 0 to time 30, but at time 30, is it free? Since blocked until 10:00, which is time 60, but free from 0 to 30, so at time 30, it is free if we consider [0,30) then at time 30, it is not included, so free at time 30? This is messy.
+
+To simplify, for meeting scheduling, we consider time slots in terms of availability for a meeting start time.
+
+For a meeting starting at time S, it requires both free from S to S+60.
+
+So we can find all possible start times S from 0 to 420 (since latest start for one-hour meeting is 420 min, which is 16:00, because 16:00 to 17:00).
+
+S from 0 to 420 inclusive? S is start time, and we need both free from S to S+60.
+
+So for each possible S, check if both are free continuously from S to S+60.
+
+Since time is in minutes, we can iterate over S from 0 to 420, but that might be inefficient, but since range is small, it's fine.
+
+But let's do it for Monday first.
+
+First, define a function is_free_gary_monday(t) that returns True if Gary is free at time t on Monday.
+
+But since we need continuous free, we can check for intervals.
+
+From free intervals, we can find where both are free for an hour.
+
+From the free intervals, the intersection of free times for Gary and David on Monday:
+
+The only overlapping free intervals are from 240 to 300 and from 240 to 330, so common from 240 to 300? David free from 240 to 330, Gary free from 240 to 300, so common free from 240 to 300.
+
+Also, from 330 to 450 for Gary and 240 to 330 for David, but 330 to 450 and 240 to 330, common at 330? But David free until 330? Let's see intervals: David free [240,330) meaning free from 240 to 330, so at time 330, David becomes busy? Since blocked from 14:30 to 16:30, which is [330,450), so at time 330, David is busy.
+
+Similarly, Gary free [330,450) so at time 330, Gary is free? But David is busy at 330, so at time 330, David is busy, so not free.
+
+Therefore, the only common free interval on Monday is from 240 to 300, i.e., from 13:00 to 14:00.
+
+But is that one hour? From 240 to 300 is 60 minutes, so from 13:00 to 14:00, both are free.
+
+But let's confirm: Gary free from 13:00 to 14:00? From above, Gary free [240,300) which is 13:00 to 14:00.
+
+David free from 13:00 to 14:30? David free [240,330) which is 13:00 to 14:30? 240 is 13:00, 330 is 14:30, so yes, free from 13:00 to 14:30.
+
+So both free from 13:00 to 14:00, so a meeting from 13:00 to 14:00 works on Monday.
+
+But the meeting duration is one hour, so from 13:00 to 14:00 is perfect.
+
+But we also have Tuesday to consider, but since we found a slot on Monday, we can use it, but let's check Tuesday as well to see if there are other slots, but the task is to find a time, so Monday at 13:00 should work.
+
+But let's make sure about the times. 13:00 is 1:00 PM, which is within work hours.
+
+Now, for Tuesday, we have constraints, but since we already have Monday, we might not need Tuesday, but let's see the solution should output the day and time.
+
+But in the problem, it says "on either Monday or Tuesday", so Monday is fine.
+
+But let's confirm Tuesday to be thorough.
+
+**Tuesday:**
+
+Gary has blocked on Tuesday during: 
+9:00 to 9:30 → [0,30)
+10:30 to 11:00 → [90,120)
+14:30 to 16:00 → [330,420)  because 14:30 is 5.5 hours after 9:00? 9:00 to 14:30 is 5 hours 30 min, so 330 min? 5*60=300, plus 30=330, yes. 16:00 is 7 hours after 9:00? 16-9=7 hours=420 min, so [330,420)
+
+David has blocked on Tuesday during:
+9:00 to 9:30 → [0,30)
+10:00 to 10:30 → [60,90)
+11:00 to 12:30 → [120,210)
+13:00 to 14:30 → [240,330)
+15:00 to 16:00 → [360,420)
+16:30 to 17:00 → [450,480)
+
+Now, work hours from 0 to 480.
+
+Gary free on Tuesday: 
+From blocked [0,30), [90,120), [330,420)
+So free intervals: from 30 to 90, from 120 to 330, from 420 to 480? But 420 to 480 is from 16:00 to 17:00, but Gary free from 420 to 480? Since blocked until 16:00, so free from 16:00 to 17:00.
+
+But let's list:
+Free after 30 until 90: [30,90)
+Free after 120 until 330: [120,330)
+Free after 420 until 480: [420,480)
+
+David free on Tuesday:
+From blocked [0,30), [60,90), [120,210), [240,330), [360,420), [450,480)
+So free intervals: 
+From 30 to 60: [30,60)
+From 90 to 120: [90,120)
+From 210 to 240: [210,240)
+From 330 to 360: [330,360)
+From 420 to 450: [420,450)
+
+But David has blocked at [450,480), so free from 420 to 450? [420,450)
+
+Now, find common free times on Tuesday for both.
+
+Gary free: [30,90), [120,330), [420,480)
+
+David free: [30,60), [90,120), [210,240), [330,360), [420,450)
+
+Now, overlapping intervals:
+
+- [30,90) and [30,60) overlap from 30 to 60
+
+- [30,90) and [90,120) but [30,90) ends at 90, [90,120) starts at 90, so at 90, Gary is free? [30,90) means free from 30 to 90, so at time 90, is it free? Since blocked from 10:30 to 11:00 which is [90,120), so at time 90, Gary becomes busy? So [30,90) includes time 90? No, because [30,90) means from time 30 to time 90, but not including 90, so at time 90, it is busy. Similarly, for David, [90,120) means free from 90 to 120, so at time 90, David is free? Since blocked until 10:00? David blocked [60,90) so at time 90, free.
+
+But for overlap, we need continuous free for both.
+
+The overlapping intervals:
+
+- [30,60) from David and [30,90) from Gary, so common from 30 to 60.
+
+But from 30 to 60 is 30 minutes, which is less than 60 minutes, so not enough for a one-hour meeting.
+
+- [90,120) from David and [30,90) from Gary? But [30,90) ends at 90, so no overlap with [90,120) since at 90, Gary is busy.
+
+Gary free until 90, but not including 90, so at time 90, Gary is busy. David free from 90 to 120, so at time 90, David is free, but Gary is busy, so no overlap.
+
+- [120,330) from Gary and [90,120) from David? [90,120) ends at 120, [120,330) starts at 120, so at time 120, Gary is free? [120,330) means free from 120 to 330, so at time 120, free. David free from 90 to 120, so at time 120, David becomes busy? Since blocked from 11:00 to 12:30 which is [120,210), so at time 120, David is busy. So no overlap at time 120.
+
+- [120,330) from Gary and [210,240) from David: common from 210 to 240, which is 30 minutes, not enough.
+
+- [120,330) from Gary and [330,360) from David? But [120,330) ends at 330, [330,360) starts at 330, so at time 330, Gary is free? [120,330) means free until 330, so at time 330, Gary becomes busy? Since blocked from 14:30 to 16:00 [330,420), so at time 330, Gary is busy. David free from 330 to 360, so at time 330, David is free, but Gary busy, so no.
+
+- [420,480) from Gary and [420,450) from David: common from 420 to 450, which is 30 minutes, not enough.
+
+So on Tuesday, there is no one-hour slot where both are free. The common free times are only 30 minutes segments.
+
+Therefore, the only available day is Monday, with time from 13:00 to 14:00.
+
+So for the meeting, we can schedule on Monday from 13:00 to 14:00.
+
+Now, for the output, we need to output the time range in format HH:MM:HH:MM and the day.
+
+So for Monday, 13:00 to 14:00, which is 13:00:14:00? But the format should be like {14:30:15:30} from the example, but in the output, it should be without braces probably, just the time string.
+
+In the solution example, it says "outputs it in the format HH:MM:HH:MM", so for example, 13:00:14:00.
+
+But 13:00 is 1 PM, which is fine.
+
+Now, to write a Python script that calculates this.
+
+Since the problem might have different constraints, but in this case, we know the answer, but we need a script that can be general, but for this specific task, we can hardcode the blocked times.
+
+The task is to generate a script for this specific scheduling.
+
+So let's code accordingly.
+
+We'll define the work hours from 9:00 to 17:00, which is 480 minutes from 0 to 480.
+
+We'll define the blocked times for each person on each day in minutes from 9:00.
+
+Then for each day, we'll find the free intervals for each person, then find common free intervals, and then find a slot of 60 minutes.
+
+Since we need only one slot, we can find the first available slot.
+
+In this case, on Monday, we have a slot from 13:00 to 14:00.
+
+So in code, we can do:
+
+First, for Monday:
+
+Gary blocked: [30,60), [120,240), [300,330), [450,480)
+
+David blocked: [0,30), [60,240), [330,450)
+
+Then find free for Gary: intervals between blocked and work hours.
+
+Similarly for David.
+
+Then find intersection of free intervals.
+
+Then find a interval of length 60 min in the intersection.
+
+Similarly for Tuesday, but we know Tuesday has no slot, so we only output Monday.
+
+Now, to output the time in HH:MM format.
+
+We need to convert minutes to time string.
+
+For example, time 240 minutes from 9:00 is 9:00 + 240 min = 9:00 + 4 hours = 13:00, so we can compute the time by adding minutes to 9:00.
+
+Since 9:00 is base, time t minutes after 9:00 is at hour = 9 + floor(t/60), minute = t mod 60.
+
+But since t is in minutes, we can format it.
+
+Now, let's write the code.
+
+We'll create a function to convert minutes to time string.
+
+We'll consider times in 24-hour format without AM/PM, so 13:00 is fine.
+
+Now, code structure:
+
+Define work start and end in minutes: start_min = 0, end_min = 480
+
+Meeting duration = 60 minutes
+
+For each day, define blocked intervals for Gary and David.
+
+Then for each day, compute free intervals for Gary and David.
+
+Then compute common free intervals.
+
+Then check if there is a common free interval of at least 60 minutes.
+
+If found, output the day and the time range.
+
+Since we have two days, we can iterate over days.
+
+In this case, we have Monday and Tuesday.
+
+So let's code accordingly.
+
+First, define the days with their blocked times.
+
+We can create a list of days, and for each day, a list of blocked intervals for each participant.
+
+But since there are only two participants, we can combine.
+
+For common free, we need the free times for both, so we can compute the union of busy times for both, then find free time from that, but it might be easier to find free for each and then intersect.
+
+Since the free intervals are limited, we can find all free intervals for Gary and David on a day, then find overlap.
+
+To find overlap between two sets of intervals, we can merge them.
+
+But for simplicity, we can generate a list of time points where the status changes, but for this small case, we can create a boolean array for each minute, but since there are 480 minutes, it's manageable, but we might do without array by using intervals.
+
+Since we need to find a slot of 60 minutes, we can iterate over possible start times from 0 to 420, and for each start time, check if both are free from S to S+60.
+
+For that, we need a function to check if a person is free at a given time on a given day.
+
+So we can define functions for each person and each day.
+
+But let's do it in code.
+
+Let me write the code.
+
+First, define the blocked intervals for Gary on Monday.
+
+gary_monday_blocked = [(30,60), (120,240), (300,330), (450,480)]
+
+Similarly for David.
+
+But in code, we'll represent intervals as (start, end) where end is exclusive.
+
+Then for a time t, Gary is free on Monday if not in any of these intervals.
+
+We can write a helper function.
+
+Similarly for Tuesday.
+
+Now, let's code.
+
+We'll iterate over days: Monday and Tuesday.
+
+For each day, we'll define the blocked intervals for Gary and David.
+
+Then for start time S from 0 to 420, we check if for all t in [S, S+60), both Gary and David are free on that day.
+
+If we find such S, then we output the day and the time range from S to S+60.
+
+We can break after finding the first S.
+
+Since we need to output only one time, and there might be multiple, but in this case, we have one on Monday.
+
+Now, to convert S to time string.
+
+S is minutes from 9:00, so time = 9:00 + S minutes.
+
+So hour = 9 + S // 60
+
+minute = S % 60
+
+Similarly for end time, S+60.
+
+But S+60 might be more than 60 minutes, so hour might change.
+
+For example, S=240, hour = 9 + 240//60 = 9+4=13, minute=0, so 13:00
+
+End time: S+60=300, hour=9+300//60=9+5=14, minute=0, so 14:00
+
+So time string: "13:00:14:00" but we need to format with leading zeros? 13:00 is fine, but for times like 9:05, we should output 09:05? But in the output format, it says HH:MM, so probably with leading zero for hours less than 10? But 13:00 has hour 13, which is two digits, so for hours 9, we should output 09? Let's see the example in the task: it says {14:30:15:30} so 14:30 and 15:30, so hours are without leading zero? 14 is fine, but 9 would be 9, not 09? But in time format, usually HH means two digits, so 09:00 instead of 9:00.
+
+To be consistent, we should output two-digit hours and two-digit minutes.
+
+So for hour, we can format with str.format or f-string.
+
+For example, if hour=9, output "09", if hour=13, output "13".
+
+Similarly for minutes.
+
+So in code, we can format the time string as f"{hour:02d}:{minute:02d}"
+
+But since S is minutes, we can compute hour and minute for start and end.
+
+Now, let's write the code.
+
+We'll first define a function to check if a time t is free for a person on a day based on blocked intervals.
+
+But since we have multiple days, we'll handle each day separately.
+
+We can create a function is_free(t, blocked_intervals) that returns True if t is not in any blocked interval.
+
+For that, we need to check if t is within any interval [start, end) in blocked_intervals.
+
+So for each interval, if start <= t < end, then busy, else free.
+
+But we need to check all intervals.
+
+Now, for the meeting, we need to check for all t from S to S+60, but since intervals are continuous, we can check if the interval [S, S+60) does not overlap with any blocked interval for either person. But since we have two persons, we need to check that for both persons, the interval [S, S+60) is free.
+
+So for a given day, and for S, we check that for Gary, [S, S+60) has no overlap with Gary's blocked intervals, and similarly for David.
+
+That might be efficient.
+
+To check if an interval [A,B) is free for a person, we need that for every blocked interval [X,Y), [A,B) does not overlap with [X,Y), meaning that B <= X or A >= Y, but since blocked intervals might be multiple, we need that [A,B) is contained in free space, but it's easier to check that there is no blocked interval that overlaps with [A,B).
+
+If there is a blocked interval that overlaps with [A,B), then it is not free.
+
+So for a person, given blocked intervals, we can check if [S, S+60) overlaps with any blocked interval. If it overlaps with any, then not free for that person.
+
+So for each person, we can have a list of blocked intervals, and for [S, S+60), we check if for any blocked interval, there is overlap.
+
+Overlap between [A,B) and [X,Y) exists if A < Y and B > X.
+
+So in code, for a given [S, S+60), we can check for each blocked interval, if S < Y and S+60 > X, then overlap, so not free.
+
+Otherwise, free.
+
+But we need to check for both persons.
+
+So for a day, we define Gary_blocked and David_blocked.
+
+Then for S from 0 to 420, we check if for Gary, there is no blocked interval that overlaps with [S, S+60), and similarly for David.
+
+If both true, then we found a slot.
+
+We can do this for each day.
+
+Now, let's implement this.
+
+First, define the blocked intervals for each day and each person.
+
+For Monday:
+
+gary_monday_blocked = [ (30,60), (120,240), (300,330), (450,480) ]
+
+david_monday_blocked = [ (0,30), (60,240), (330,450) ]
+
+For Tuesday:
+
+gary_tuesday_blocked = [ (0,30), (90,120), (330,420) ]
+
+david_tuesday_blocked = [ (0,30), (60,90), (120,210), (240,330), (360,420), (450,480) ]
+
+Now, work hours: from 0 to 480, but S from 0 to 420.
+
+Now, we iterate over days: first Monday, then Tuesday.
+
+For each day, we iterate S from 0 to 420.
+
+For each S, we check both persons.
+
+We'll create a function check_blocked(S, blocked_list) that returns True if the interval [S, S+60) does not overlap with any blocked interval in blocked_list.
+
+That is, for each blocked in blocked_list, if not (S < blocked[1] and S+60 > blocked[0]), then no overlap? Actually, if for all blocked intervals, the condition for overlap is false, then no overlap.
+
+The condition for overlap is: S < blocked[1] and S+60 > blocked[0]
+
+So if for some blocked, this is true, then there is overlap, so not free.
+
+Thus, check_blocked(S, blocked_list) should return False if there is any overlap, meaning if there exists blocked such that S < blocked[1] and S+60 > blocked[0], then not free, so return False. Otherwise, return True.
+
+But we need to ensure that [S, S+60) is within work hours? Since S from 0 to 420, S+60 <= 480, so it is within work hours, so no need to check separately.
+
+Now, in code, for each day, we have two blocked lists.
+
+So for Monday, for S, we check check_blocked(S, gary_monday_blocked) and check_blocked(S, david_monday_blocked)
+
+If both true, then we found a slot.
+
+Similarly for Tuesday.
+
+Now, we need to output the day and the time.
+
+We'll convert S to time string.
+
+Let's code accordingly.
+
+We'll format the time as HH:MM.
+
+So for start time, hour_start = 9 + S // 60
+
+minute_start = S % 60
+
+Similarly, end time: E = S + 60
+
+hour_end = 9 + E // 60
+
+minute_end = E % 60
+
+Then time_str = f"{hour_start:02d}:{minute_start:02d}:{hour_end:02d}:{minute_end:02d}"
+
+But note: if hour_start is 9, it will be 09, but is that desired? In the example output, it might be without leading zero, but since HH suggests two digits, we should use leading zero.
+
+In the example {14:30:15:30}, it has 14 and 15, which are two digits, so for 9, it should be 09? But 09 is two digits, so yes.
+
+But in the output string, we need to output like 13:00:14:00 without braces.
+
+Now, let's write the code.
+
+We'll iterate over days.
+
+We'll define the days and their blocked lists.
+
+Since we have only two days, we can hardcode.
+
+Code:
+
+```python
+def main():
+    # Meeting duration in minutes
+    duration = 60
+    # Work hours: from 0 to 480 minutes (9:00 to 17:00)
+    min_time = 0
+    max_time = 480
+    # Latest start time: max_time - duration = 420
+
+    # Define blocked intervals for each day for each person
+    # Intervals are (start, end) with end exclusive
+    gary_monday_blocked = [(30, 60), (120, 240), (300, 330), (450, 480)]
+    david_monday_blocked = [(0, 30), (60, 240), (330, 450)]
+
+    gary_tuesday_blocked = [(0, 30), (90, 120), (330, 420)]
+    david_tuesday_blocked = [(0, 30), (60, 90), (120, 210), (240, 330), (360, 420), (450, 480)]
+
+    # List of days with their blocked intervals for Gary and David
+    days = [
+        {"name": "Monday", "gary_blocked": gary_monday_blocked, "david_blocked": david_monday_blocked},
+        {"name": "Tuesday", "gary_blocked": gary_tuesday_blocked, "david_blocked": david_tuesday_blocked}
+    ]
+
+    # Function to check if for a given start time S and blocked list, the interval [S, S+duration) is free
+    def is_free(S, blocked_list):
+        for blocked in blocked_list:
+            start_block, end_block = blocked
+            # Check if [S, S+duration) overlaps with [start_block, end_block)
+            if S < end_block and S + duration > start_block:
+                return False
+        return True
+
+    # Iterate over days
+    for day in days:
+        day_name = day["name"]
+        gary_blocked = day["gary_blocked"]
+        david_blocked = day["david_blocked"]
+        # Iterate over possible start times from min_time to max_time - duration
+        for S in range(min_time, max_time - duration + 1):
+            if is_free(S, gary_blocked) and is_free(S, david_blocked):
+                # Found a slot
+                # Calculate start time
+                start_min = S
+                hour_start = 9 + start_min // 60
+                minute_start = start_min % 60
+                end_min = S + duration
+                hour_end = 9 + end_min // 60
+                minute_end = end_min % 60
+                # Format time string
+                time_str = f"{hour_start:02d}:{minute_start:02d}:{hour_end:02d}:{minute_end:02d}"
+                print(f"{day_name}: {time_str}")
+                return
+
+    # If no slot found, but problem says there exists a solution, so we assume found.
+    print("No suitable time found.")
+
+if __name__ == "__main__":
+    main()
+```
+
+But in this code, for Monday, we should find S=240, which is 13:00.
+
+Let's verify for S=240 on Monday.
+
+Check Gary: blocked intervals: [30,60) [120,240) [300,330) [450,480)
+
+For [240,300): does it overlap with any?
+
+With [30,60): no, since 240>60
+
+With [120,240): [120,240) ends at 240, and [240,300) starts at 240, so at 240, is there overlap? Since [120,240) is exclusive of 240, so at time 240, it is free? And [240,300) includes time 240, so for Gary, is time 240 free? From blocked [120,240), which means busy from 120 to 240, but not including 240, so at time 240, free. So [240,300) does not overlap with [120,240) because [120,240) ends at 240, so no overlap with [240,300). Similarly, with other intervals, no overlap, so Gary is free.
+
+Similarly for David: blocked [0,30) [60,240) [330,450)
+
+For [240,300): does it overlap with [60,240)? [60,240) ends at 240, so at time 240, free? So no overlap. With others, no overlap, so David is free.
+
+So yes, S=240 works.
+
+Now, for the output, we print "Monday: 13:00:14:00"
+
+But note: 13:00 is 1 PM, which is correct.
+
+In the time string, we have hours as 13 and 14, which are two digits, so no leading zero issue.
+
+But for hours like 9, it would be 09, which is fine.
+
+Now, we need to output only the code, as per instruction.
+
+So the code above should work.
+
+But in the problem, it says "outputs it in the format HH:MM:HH:MM", so we have that.
+
+Also, output the day.
+
+So we are good.
+
+We can run the code to confirm.
+
+But since we are to provide only code, we output the code block.
+
+So finally, the response should be the Python code enclosed in ```python and ```.

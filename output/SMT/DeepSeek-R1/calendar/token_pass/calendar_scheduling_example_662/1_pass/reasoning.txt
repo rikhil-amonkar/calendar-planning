@@ -1,0 +1,98 @@
+We are given:
+  - Participants: Gary and David
+  - Meeting duration: 1 hour (60 minutes)
+  - Work hours: 9:00 to 17:00 (which is 9*60 to 17*60 minutes from start of day)
+  - Days: Monday or Tuesday
+
+ We'll represent time in minutes from the start of the day (0:00) for each day.
+
+ Steps:
+  1. Define the work hours: start_time = 9*60, end_time = 17*60.
+  2. The meeting must be within work hours and of duration 60 minutes.
+  3. We have two days: Monday and Tuesday. We'll let the solver choose the day.
+
+ Approach:
+  We'll create a Z3 integer variable for the start time of the meeting (in minutes from start of day) and a variable for the day (0 for Monday, 1 for Tuesday).
+
+  Constraints for the meeting:
+    - start_time >= 9*60
+    - end_time = start_time + 60 <= 17*60
+
+  Then we need to avoid the busy intervals for each participant on the chosen day.
+
+  We'll define the busy intervals for each participant on each day.
+
+  For Gary on Monday:
+    [9:30-10:00] -> [570, 600]
+    [11:00-13:00] -> [660, 780]
+    [14:00-14:30] -> [840, 870]
+    [16:30-17:00] -> [990, 1020]
+
+  Similarly for Gary on Tuesday:
+    [9:00-9:30] -> [540, 570]
+    [10:30-11:00] -> [630, 660]
+    [14:30-16:00] -> [870, 960]
+
+  For David on Monday:
+    [9:00-9:30] -> [540, 570]
+    [10:00-13:00] -> [600, 780]
+    [14:30-16:30] -> [870, 990]
+
+  For David on Tuesday:
+    [9:00-9:30] -> [540, 570]
+    [10:00-10:30] -> [600, 630]
+    [11:00-12:30] -> [660, 750]
+    [13:00-14:30] -> [780, 870]
+    [15:00-16:00] -> [900, 960]
+    [16:30-17:00] -> [990, 1020]
+
+  We'll create a variable `day` (0 or 1) and a variable `start` (integer in [9*60, 17*60 - 60]).
+
+  Then for each participant and each day, we'll impose that if the meeting is on that day, then it must not overlap with any of the busy intervals.
+
+  We can express non-overlap by: for each busy interval [b_start, b_end], we require that the meeting [start, start+60] does not overlap, meaning:
+      (start + 60 <= b_start) OR (start >= b_end)
+
+  However, note: the busy intervals are inclusive of the start and exclusive of the end? Actually, in calendar blocks, typically the block is from start to end, meaning the person is busy during [start, end). So if the meeting is from 10:00 to 11:00, and the person is busy until 10:00, then they are free at 10:00. But note: if the person is busy from 9:30 to 10:00, then they are free at 10:00.
+
+  So we'll model the busy intervals as [b_start, b_end) meaning the person is busy from b_start inclusive to b_end exclusive.
+
+  Therefore, the meeting [start, start+60) must not have any overlap with any busy interval [b_start, b_end). This means:
+      meeting_end <= b_start OR meeting_start >= b_end
+
+  Alternatively, we can say: 
+      Not (meeting_start < b_end AND meeting_end > b_start)
+
+  But in Z3, we can break it into disjunction of two conditions.
+
+  We'll create a function that, given a day and a participant, returns the list of busy intervals for that participant on that day.
+
+  Then, for the chosen day, we require that for every busy interval of every participant, the meeting does not overlap.
+
+  We'll use an `If` statement for the day: if the day is Monday, then we use Monday's busy intervals, else Tuesday's.
+
+  However, note: the meeting must be on the same day for both participants.
+
+  Alternatively, we can model the constraints separately for each day and then use the day variable to select which set of constraints to activate.
+
+  We can do:
+
+      for participant in [Gary, David]:
+          if day == 0 (Monday):
+              for each busy interval in participant's Monday:
+                  meeting does not overlap
+          else:
+              for each busy interval in participant's Tuesday:
+                  meeting does not overlap
+
+  But note: the day variable is the same for both participants.
+
+  We'll code accordingly.
+
+  We'll create a solver, add the constraints, and check for satisfiability.
+
+  If sat, then we convert the start time (in minutes) back to HH:MM format.
+
+  We'll output the day and the time range (start to end).
+
+  Let's code accordingly.

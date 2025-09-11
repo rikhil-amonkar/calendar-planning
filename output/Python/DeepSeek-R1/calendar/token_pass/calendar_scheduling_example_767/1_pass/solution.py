@@ -1,0 +1,75 @@
+def main():
+    # Define work hours in minutes from 00:00
+    work_start = 9 * 60  # 09:00
+    work_end = 17 * 60   # 17:00
+
+    # Blocked times in minutes for each person per day
+    blocked = {
+        'Monday': {
+            'Martha': [(16*60, 17*60)],
+            'Beverly': [(9*60, 13*60 + 30), (14*60, 17*60)]
+        },
+        'Tuesday': {
+            'Martha': [(15*60, 15*60 + 30)],
+            'Beverly': [(9*60, 17*60)]
+        },
+        'Wednesday': {
+            'Martha': [(10*60, 11*60), (14*60, 14*60 + 30)],
+            'Beverly': [(9*60 + 30, 15*60 + 30), (16*60 + 30, 17*60)]
+        }
+    }
+
+    days = ['Monday', 'Tuesday', 'Wednesday']
+    meeting_duration = 60  # minutes
+
+    for day in days:
+        # Get free intervals for Martha
+        martha_free = get_free_intervals(work_start, work_end, blocked[day]['Martha'])
+        # Get free intervals for Beverly
+        beverly_free = get_free_intervals(work_start, work_end, blocked[day]['Beverly'])
+        # Find common free intervals
+        common_free = find_common_intervals(martha_free, beverly_free)
+        # Check for a slot that fits the meeting duration
+        for start, end in common_free:
+            if end - start >= meeting_duration:
+                # Convert start and end to HH:MM format
+                start_str = f"{start//60:02d}:{start%60:02d}"
+                end_str = f"{(start + meeting_duration)//60:02d}:{(start + meeting_duration)%60:02d}"
+                print(f"{day}")
+                print(f"{start_str}:{end_str}")
+                return
+
+def get_free_intervals(work_start, work_end, blocked_times):
+    # Initialize with the entire work interval
+    free = [(work_start, work_end)]
+    for block_start, block_end in blocked_times:
+        new_free = []
+        for interval in free:
+            # If the block does not overlap with the interval, keep the interval
+            if block_end <= interval[0] or block_start >= interval[1]:
+                new_free.append(interval)
+            else:
+                # Split the interval around the block
+                if interval[0] < block_start:
+                    new_free.append((interval[0], block_start))
+                if block_end < interval[1]:
+                    new_free.append((block_end, interval[1]))
+        free = new_free
+    return free
+
+def find_common_intervals(intervals1, intervals2):
+    common = []
+    i = j = 0
+    while i < len(intervals1) and j < len(intervals2):
+        start = max(intervals1[i][0], intervals2[j][0])
+        end = min(intervals1[i][1], intervals2[j][1])
+        if start < end:
+            common.append((start, end))
+        if intervals1[i][1] < intervals2[j][1]:
+            i += 1
+        else:
+            j += 1
+    return common
+
+if __name__ == "__main__":
+    main()

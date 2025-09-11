@@ -1,0 +1,1 @@
+start_day = int(entry["day_range"].split()[1].split('-')[0][3:])

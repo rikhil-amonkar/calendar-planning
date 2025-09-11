@@ -1,0 +1,63 @@
+```python
+def main():
+    # Convert time to minutes since 9:00
+    work_start = 0    # 9:00
+    work_end = 480    # 17:00
+    meeting_duration = 30
+
+    # Busy intervals in minutes (since 9:00)
+    lisa_busy = [
+        (0, 30),    # 9:00-9:30
+        (90, 120),  # 10:30-11:00
+        (300, 420)  # 14:00-16:00
+    ]
+    
+    anthony_busy = [
+        (0, 30),    # 9:00-9:30
+        (120, 150), # 11:00-11:30
+        (210, 270), # 12:30-13:30
+        (300, 360), # 14:00-15:00
+        (390, 420), # 15:30-16:00
+        (450, 480)  # 16:30-17:00
+    ]
+    
+    # Combine and sort all busy intervals
+    all_busy = sorted(lisa_busy + anthony_busy, key=lambda x: x[0])
+    
+    # Merge overlapping busy intervals
+    merged_busy = []
+    for start, end in all_busy:
+        if merged_busy and start <= merged_busy[-1][1]:
+            merged_busy[-1] = (merged_busy[-1][0], max(merged_busy[-1][1], end))
+        else:
+            merged_busy.append((start, end))
+    
+    # Find free intervals
+    free_intervals = []
+    current = work_start
+    for start, end in merged_busy:
+        if current < start:
+            free_intervals.append((current, start))
+        current = end
+    if current < work_end:
+        free_intervals.append((current, work_end))
+    
+    # Find first free interval that can accommodate the meeting
+    for start, end in free_intervals:
+        if end - start >= meeting_duration:
+            meeting_start = start
+            meeting_end = meeting_start + meeting_duration
+            # Convert minutes to HH:MM format
+            start_hour = 9 + meeting_start // 60
+            start_minute = meeting_start % 60
+            end_hour = 9 + meeting_end // 60
+            end_minute = meeting_end % 60
+            # Format with leading zeros
+            time_str = f"{start_hour:02d}:{start_minute:02d}:{end_hour:02d}:{end_minute:02d}"
+            print(time_str)
+            print("Monday")
+            return
+
+if __name__ == "__main__":
+    main()
+```

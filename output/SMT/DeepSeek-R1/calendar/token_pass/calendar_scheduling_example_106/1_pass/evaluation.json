@@ -1,0 +1,29 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "10:00:11:00\nMonday",
+    "pred": {
+        "day": "Monday",
+        "time_range": "{10:00:11:00}"
+    },
+    "gold": {
+        "day": "Monday",
+        "time_range": "{10:00:11:00}"
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 88.3219850063324,
+        "execution_time": 0.0818319320678711,
+        "constraint_eval_time": 2.2172927856445312e-05,
+        "pred_extract_time": 0.6150593757629395,
+        "gold_extract_time": 1.3589859008789062e-05,
+        "total_tokens": 1716,
+        "reasoning_tokens": 697
+    },
+    "reasoning_content": "We are given the work hours from 9:00 to 17:00 (which is 9 AM to 5 PM) on Monday.\n We are to schedule a one-hour meeting for Olivia, Anna, Virginia, and Paul.\n\n We'll represent time in minutes from 9:00 (so 9:00 is 0, 10:00 is 60, etc.)\n The total available time in the day is 8 hours (480 minutes) from 9:00 to 17:00.\n\n Steps:\n 1. Define the start time variable (in minutes from 9:00) and the end time (start + 60 minutes).\n 2. Define the constraints for each person's busy intervals (converted to minutes from 9:00).\n 3. The meeting must not overlap with any busy interval for any participant.\n\n For each participant, we have:\n\n Olivia:\n   12:30 to 13:30 -> from (12:30-9:00)=210 minutes to (13:30-9:00)=270 minutes\n   14:30 to 15:00 -> from (14:30-9:00)=330 minutes to (15:00-9:00)=360 minutes\n   16:30 to 17:00 -> from (16:30-9:00)=450 minutes to (17:00-9:00)=480 minutes\n\n Anna: no meetings -> no constraints\n\n Virginia:\n   9:00 to 10:00 -> 0 to 60 minutes\n   11:30 to 16:00 -> (11:30-9:00)=150 minutes to (16:00-9:00)=420 minutes\n   16:30 to 17:00 -> 450 to 480 minutes\n\n Paul:\n   9:00 to 9:30 -> 0 to 30 minutes\n   11:00 to 11:30 -> (11:00-9:00)=120 minutes to (11:30-9:00)=150 minutes\n   13:00 to 14:00 -> (13:00-9:00)=240 minutes to (14:00-9:00)=300 minutes\n   14:30 to 16:00 -> 330 minutes to (16:00-9:00)=420 minutes\n   16:30 to 17:00 -> 450 to 480 minutes\n\n We'll create a Z3 solver and add constraints that the meeting time (start to start+60) does not overlap with any of these busy intervals.\n\n Note: We are to find a start time S (in minutes from 9:00) such that:\n   0 <= S <= 480 - 60 (so that the meeting ends by 17:00)\n\n For each busy interval [B_start, B_end] for a participant, we require:\n   S >= B_end OR S + 60 <= B_start\n\n Alternatively, we can use:\n   Not(And(S < B_end, S + 60 > B_start))\n\n However, Z3 has built-in support for using Or and Not, so we can do:\n\n   Or(S >= B_end, S + 60 <= B_start)\n\n We'll do this for every busy interval of every participant.\n\n Since Anna has no meetings, we don't add any constraints for her.\n\n Let's code accordingly.",
+    "generated_code": "from z3 import Solver, Int, Or, And, sat\n\ndef main():\n    # Initialize solver\n    s = Solver()\n    \n    # Define meeting duration in minutes\n    duration = 60\n    \n    # Total minutes in workday (9:00 to 17:00)\n    total_minutes = 480\n    start_time = Int('start_time')\n    s.add(start_time >= 0)\n    s.add(start_time <= total_minutes - duration)\n    \n    # Convert busy intervals to minutes from 9:00\n    # Olivia: 12:30-13:30, 14:30-15:00, 16:30-17:00\n    olivia_busy = [(210, 270), (330, 360), (450, 480)]\n    # Virginia: 9:00-10:00, 11:30-16:00, 16:30-17:00\n    virginia_busy = [(0, 60), (150, 420), (450, 480)]\n    # Paul: 9:00-9:30, 11:00-11:30, 13:00-14:00, 14:30-16:00, 16:30-17:00\n    paul_busy = [(0, 30), (120, 150), (240, 300), (330, 420), (450, 480)]\n    \n    # Combine all constraints (Anna has no meetings)\n    all_busy = olivia_busy + virginia_busy + paul_busy\n    \n    # Add constraints for each busy interval\n    for busy_start, busy_end in all_busy:\n        s.add(Or(\n            start_time + duration <= busy_start,\n            start_time >= busy_end\n        ))\n    \n    # Check for solution\n    if s.check() == sat:\n        m = s.model()\n        start_minutes = m[start_time].as_long()\n        \n        # Calculate start and end times\n        start_hour = 9 + start_minutes // 60\n        start_minute = start_minutes % 60\n        end_minutes = start_minutes + duration\n        end_hour = 9 + end_minutes // 60\n        end_minute = end_minutes % 60\n        \n        # Format output\n        print(f\"{start_hour:02d}:{start_minute:02d}:{end_hour:02d}:{end_minute:02d}\")\n        print(\"Monday\")\n    else:\n        print(\"No solution found\")\n\nif __name__ == \"__main__\":\n    main()"
+}

@@ -1,0 +1,85 @@
+def main():
+    # Convert time string to minutes past 9:00
+    def time_to_minutes(time_str):
+        hours, minutes = map(int, time_str.split(':'))
+        return (hours - 9) * 60 + minutes
+
+    # Convert minutes past 9:00 back to time string
+    def minutes_to_time(minutes):
+        total_minutes = minutes
+        hours = 9 + total_minutes // 60
+        mins = total_minutes % 60
+        return f"{hours:02d}:{mins:02d}"
+
+    # Timeline parameters
+    timeline_end = time_to_minutes('14:30')  # Meeting must end by 14:30
+    meeting_duration = 60
+
+    # Busy intervals for each person (converted to minutes)
+    anthony_busy = [
+        (time_to_minutes('9:30'), time_to_minutes('10:00')),
+        (time_to_minutes('12:00'), time_to_minutes('13:00')),
+        (time_to_minutes('16:00'), time_to_minutes('16:30'))
+    ]
+    pamela_busy = [
+        (time_to_minutes('9:30'), time_to_minutes('10:00')),
+        (time_to_minutes('16:30'), time_to_minutes('17:00'))
+    ]
+    zachary_busy = [
+        (time_to_minutes('9:00'), time_to_minutes('11:30')),
+        (time_to_minutes('12:00'), time_to_minutes('12:30')),
+        (time_to_minutes('13:00'), time_to_minutes('13:30')),
+        (time_to_minutes('14:30'), time_to_minutes('15:00')),
+        (time_to_minutes('16:00'), time_to_minutes('17:00'))
+    ]
+
+    # Combine and cap busy intervals to timeline_end
+    all_busy = []
+    for start, end in anthony_busy + pamela_busy + zachary_busy:
+        if start < timeline_end:
+            capped_end = min(end, timeline_end)
+            all_busy.append((start, capped_end))
+
+    # Sort intervals by start time
+    all_busy.sort(key=lambda x: x[0])
+
+    # Merge overlapping intervals
+    merged_busy = []
+    for start, end in all_busy:
+        if not merged_busy:
+            merged_busy.append([start, end])
+        else:
+            last_start, last_end = merged_busy[-1]
+            if start <= last_end:
+                merged_busy[-1][1] = max(last_end, end)
+            else:
+                merged_busy.append([start, end])
+
+    # Find free intervals
+    free_intervals = []
+    current_time = 0
+    for start, end in merged_busy:
+        if current_time < start:
+            free_intervals.append((current_time, start))
+        current_time = end
+    if current_time < timeline_end:
+        free_intervals.append((current_time, timeline_end))
+
+    # Find first free interval that can accommodate the meeting
+    for start, end in free_intervals:
+        duration = end - start
+        if duration >= meeting_duration:
+            meeting_start = start
+            meeting_end = meeting_start + meeting_duration
+            # Convert back to time strings
+            start_str = minutes_to_time(meeting_start)
+            end_str = minutes_to_time(meeting_end)
+            print(f"{start_str}:{end_str}")
+            print("Monday")
+            return
+
+    # If no slot found (though problem states there is a solution)
+    print("No suitable time found")
+
+if __name__ == "__main__":
+    main()

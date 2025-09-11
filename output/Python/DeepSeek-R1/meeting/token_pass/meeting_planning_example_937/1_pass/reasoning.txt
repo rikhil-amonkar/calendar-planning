@@ -1,0 +1,565 @@
+We are given travel times between locations. We note that the travel times are symmetric? Actually, looking at the data, they are not exactly symmetric (e.g., Russian Hill to Sunset District: 23, but Sunset District to Russian Hill: 24). So we have to be careful.
+
+ We have 10 locations: 
+   Russian Hill, Sunset District, Union Square, Nob Hill, Marina District, Richmond District, 
+   Financial District, Embarcadero, The Castro, Alamo Square, Presidio.
+
+ But note: the problem says we start at Russian Hill at 9:00AM.
+
+ We have 10 friends, each at a specific location with a time window and a minimum meeting duration.
+
+ The goal: meet as many friends as possible. However, note that the problem does not specify that we must meet everyone, but we want to maximize the number? 
+ But looking at the constraints, it might be impossible to meet everyone because of overlapping times and travel times.
+
+ However, note the problem says: "want to meet as many friends as possible". So we are to maximize the count of meetings.
+
+ But wait: some meetings have long minimum durations (e.g., Patricia: 120 minutes, Kimberly: 105 minutes, etc.). We might not be able to meet everyone.
+
+ Steps:
+
+ 1. We need to model the problem. We have a day from 9:00AM to 10:00PM (or until the last meeting). But note: some friends are available until late (e.g., David until 10:00PM).
+
+ 2. We have to account for travel time between locations.
+
+ 3. We are free to choose the order of meetings, but we must start at Russian Hill at 9:00.
+
+ 4. We can only meet a friend during their available time window, and we must meet for at least the minimum duration.
+
+ 5. We can leave a meeting early (if we have to travel to next) but we must stay for at least the minimum.
+
+ 6. We might not meet a friend at all if we cannot fit them in.
+
+ Approach:
+
+ Since the number of friends is 10, we cannot try all permutations (10! = 3.6e6) but note that the day is long and we have time constraints, so we might use dynamic programming or a greedy approach? 
+ However, the problem is complex because of the travel times and the long durations.
+
+ Alternatively, we can use a constraint satisfaction or a greedy scheduling with backtracking? But note: the problem says "algorithmically", and we are to write a program that computes.
+
+ However, given the complexity, we might use a greedy algorithm that tries to schedule meetings in the order of their availability? But that might not be optimal.
+
+ Alternatively, we can use a state-space search with time and visited friends. The state can be (current time, current location, set of friends met). But the set of friends met would be 2^10 = 1024 states, and the time is continuous? We can discretize time in minutes.
+
+ The day from 9:00 to 22:00 is 15 hours = 900 minutes. So we can have 900 * 10 * 1024 which is about 9 million states. This might be acceptable in C++ with optimization, but in Python it might be borderline.
+
+ Alternatively, we can use a greedy heuristic or a different approach.
+
+ However, note the problem says: "Solve the problem by considering various different schedules and picking the best one". So we are allowed to use any method.
+
+ Since the problem is NP-hard, we might use a greedy algorithm with a good ordering, or we can use a genetic algorithm, but the instruction is to output a complete self-contained program.
+
+ Alternatively, we can use a simple greedy algorithm that schedules meetings in the order of their start time, but we have to account for travel.
+
+ But note: some meetings have very long durations and might block the entire afternoon.
+
+ Another idea: we are required to meet as many as possible, so we might prioritize friends with shorter meetings and tighter windows? Or we might try to schedule the long meetings first because they are harder to fit.
+
+ Given the complexity, I will use a greedy algorithm that tries to schedule meetings in the order of their availability, but we will consider the travel time and duration.
+
+ However, note that the problem does not require meeting everyone, so we might miss some.
+
+ Alternatively, we can use a brute force over the permutation of the friends? 10! is 3.6e6, which is acceptable in C++ but in Python it might be slow. However, we can try to prune early.
+
+ Steps for brute force:
+
+ 1. Generate all permutations of the friends (10! = 3,628,800). For each permutation, we try to schedule the meetings in that order.
+
+ 2. We start at Russian Hill at 9:00.
+
+ 3. For each friend in the permutation, we check:
+    - Travel from current location to the friend's location (using the travel time matrix).
+    - We arrive at the friend's location at (current time + travel time).
+    - We must start the meeting at or after the friend's available start time, and we must leave by the friend's end time (but we can leave early as long as we meet the minimum duration).
+    - We can start the meeting as soon as we arrive, but if we arrive before the friend's start time, we have to wait until the friend is available.
+
+ 4. We try to schedule the meeting to last at least the minimum duration, but we can also stay longer if we have time (but we don't have to). However, to maximize the number of meetings, we might want to leave as soon as the minimum duration is met to save time for travel and other meetings.
+
+ 5. So for each friend, we will schedule the meeting to start at the later of our arrival time and the friend's start time, and then we will stay for exactly the minimum duration (unless the friend's end time doesn't allow it, then we cannot meet this friend in this permutation).
+
+ 6. If we cannot schedule a friend in the permutation (because we arrive too late or the meeting cannot be scheduled within the window), then we skip that friend and move to the next, but note: we might still meet the next friend if they are at a different location and time.
+
+ 7. We count how many friends we successfully meet in the permutation.
+
+ 8. We choose the permutation that maximizes the number of meetings.
+
+ 9. If two permutations have the same number, we might also consider the total time spent (but the problem says "as many friends as possible", so count is the primary goal).
+
+ However, note: we might have multiple meetings with the same count but different schedules. We are to output one optimal schedule.
+
+ But 10! is 3.6e6, which is acceptable in C++ but in Python it might be slow. We can try to optimize by breaking early when the current number of meetings plus the remaining friends is less than the best found so far.
+
+ Alternatively, we can use dynamic programming over subsets (bitmask) and time. The state: (bitmask of met friends, current location, current time). The state space: 2^10 * 10 * (time in minutes). The time in minutes from 9:00 to 22:00 is 780 minutes (13 hours). So total states: 1024 * 10 * 780 = 7,987,200. This is acceptable in C++ but in Python it might be slow. We can try to use a dictionary for states and update the best time for each state.
+
+ However, note: we are only interested in the order of meetings and the schedule. We can try to use DP that stores for each state the earliest time we can finish meeting that set of friends and be at a location.
+
+ Steps for DP:
+
+   dp[mask][loc] = earliest time we finish meeting the set of friends in mask and end at location loc.
+
+   We start at Russian Hill at 9:00, so dp[0][Russian Hill] = 9:00 (in minutes: 9*60 = 540).
+
+   Then we iterate over masks and for each state, we try to add a friend that we haven't met.
+
+   For a friend f at location L, with available time [s, e] and minimum duration d.
+
+   We compute:
+        travel_time = time from current location (loc) to L (from the matrix)
+        arrival_time = dp[mask][loc] + travel_time
+        start_time = max(arrival_time, s)   [if arrival_time is before s, we wait until s]
+        end_time = start_time + d
+
+        If end_time <= e, then we can meet this friend.
+
+        Then we update dp[new_mask][L] = min(dp[new_mask][L], end_time)   [if we found a earlier end time for the same state]
+
+   But note: we want to maximize the number of meetings, so we might not care about the end time if we are meeting more friends? Actually, we do because we want to fit more meetings.
+
+   We can store for each mask and location the earliest time we finish, and then the mask with the most friends met that we can achieve.
+
+   However, we are also interested in the schedule, so we need to store the path.
+
+   Storing the path in DP with state (mask, loc) would require storing the entire sequence, which would require a lot of memory.
+
+   Alternatively, we can do:
+
+        dp[mask][loc] = (earliest end time, parent_mask, parent_loc, friend added, start_time, end_time for that friend)
+
+   Then we can reconstruct the schedule.
+
+   But the state space is 1024 * 10 = 10,240 states. We can do that.
+
+   However, the time is continuous in minutes, so we can represent time as integers (minutes since 9:00).
+
+   Steps:
+
+     Convert all times to minutes past 9:00. So 9:00 -> 0, 9:15 -> 15, 10:00PM -> 13*60 = 780? Wait, 9:00AM to 10:00PM is 13 hours -> 780 minutes.
+
+     But note: some friends are available until 9:45PM (which is 21:45) -> 21:45 is 12 hours and 45 minutes after 9:00? Actually:
+
+        9:00AM to 12:00PM is 3 hours -> 180 minutes.
+        12:00PM to 9:45PM is 9 hours and 45 minutes -> 9*60+45=585 minutes -> total 180+585=765 minutes from 9:00AM to 9:45PM.
+
+        Actually, easier: represent all times in minutes from a reference (say 9:00AM = 0).
+
+        So:
+          9:00AM -> 0
+          9:15AM -> 15
+          10:00PM -> 13*60 = 780? But wait, 9:00AM to 10:00PM is 13 hours -> 780 minutes.
+
+        However, 9:00AM to 12:00PM (noon) is 3 hours -> 180 minutes.
+        Then 12:00PM to 10:00PM is 10 hours -> 600 minutes -> total 780 minutes.
+
+        So 10:00PM is 780 minutes after 9:00AM.
+
+        Similarly, 9:45PM is 12 hours and 45 minutes after 9:00AM -> 12*60+45 = 765 minutes.
+
+        So we can represent time as an integer in [0, 780].
+
+   Now, the constraints for each friend:
+
+        David: Sunset District, [15, 780] (9:15AM to 10:00PM), min 15 minutes.
+        Kenneth: Union Square, [1095, 1125] -> wait, 9:15PM to 9:45PM? 
+                9:15PM is 21:15 -> 21:15 - 9:00 = 12 hours and 15 minutes = 12*60+15 = 735 minutes.
+                9:45PM is 21:45 -> 12*60+45 = 765 minutes.
+
+        So Kenneth: [735, 765], min 15.
+
+        Patricia: Nob Hill, [15*60, 19*60+15] -> 15:00 to 19:15 -> 15:00 is 6 hours after 9:00 -> 360 minutes, 19:15 is 10 hours and 15 minutes -> 615+15=630 minutes? Wait:
+          9:00 to 15:00 is 6 hours -> 360 minutes.
+          9:00 to 19:15 is 10 hours and 15 minutes -> 615 minutes.
+
+        So Patricia: [360, 615], min 120.
+
+        Mary: Marina District, [14*60+45, 16*60+45] -> 14:45 to 16:45 -> 5 hours 45 minutes -> 345 minutes, and 7 hours 45 minutes -> 465 minutes.
+          9:00 to 14:45: 5*60+45 = 345 minutes.
+          9:00 to 16:45: 7*60+45 = 465 minutes.
+
+        Charles: Richmond District, [17*60+15, 21*60] -> 17:15 to 21:00 -> 8*60+15=495 minutes, and 12*60=720 minutes.
+
+        Joshua: Financial District, [14*60+30, 17*60+15] -> 14:30 to 17:15 -> 5*60+30=330 minutes, and 8*60+15=495 minutes.
+
+        Ronald: Embarcadero, [18*60+15, 20*60+45] -> 18:15 to 20:45 -> 9*60+15=555 minutes, and 11*60+45=705 minutes.
+
+        George: The Castro, [14*60+15, 19*60] -> 14:15 to 19:00 -> 5*60+15=315 minutes, and 10*60=600 minutes.
+
+        Kimberly: Alamo Square, [0, 14*60+30] -> 9:00 to 14:30 -> 0 to 5*60+30=330 minutes.
+
+        William: Presidio, [7*60, 12*60+45] -> 7:00AM to 12:45PM -> note: 7:00AM is before 9:00AM? So we have to adjust.
+
+        William is available from 7:00AM to 12:45PM. But we start at 9:00AM. So we can only meet William from 9:00AM to 12:45PM.
+
+        So William: [0, 3*60+45=225 minutes] (because 12:45PM is 3 hours and 45 minutes after 9:00AM).
+
+   Now, let's list the friends with their location, time window (in minutes from 9:00), and minimum duration:
+
+        David: location='Sunset District', start=15, end=780, dur=15
+        Kenneth: location='Union Square', start=735, end=765, dur=15
+        Patricia: location='Nob Hill', start=360, end=615, dur=120
+        Mary: location='Marina District', start=345, end=465, dur=45
+        Charles: location='Richmond District', start=495, end=720, dur=15
+        Joshua: location='Financial District', start=330, end=495, dur=90
+        Ronald: location='Embarcadero', start=555, end=705, dur=30
+        George: location='The Castro', start=315, end=600, dur=105
+        Kimberly: location='Alamo Square', start=0, end=330, dur=105
+        William: location='Presidio', start=0, end=225, dur=60
+
+   We have to be careful: William's available start is 7:00AM, but we can only start at 9:00, so we set start=0.
+
+   Now, we have 10 friends. We'll index them and create a list.
+
+   We also need a travel time matrix. We'll create a dictionary of dictionaries for travel times.
+
+   Steps for DP:
+
+     Initialize:
+        dp[mask][loc] = infinity for all mask and loc, except:
+        dp[0]['Russian Hill'] = 0   (because we start at Russian Hill at time 0)
+
+        We'll have 10 locations (including Russian Hill). But note: the friends are at 10 locations, and we start at Russian Hill.
+
+        The locations we have: 
+            'Russian Hill', 'Sunset District', 'Union Square', 'Nob Hill', 'Marina District', 'Richmond District', 
+            'Financial District', 'Embarcadero', 'The Castro', 'Alamo Square', 'Presidio'
+
+        So 11 locations. But note: we are only concerned with these.
+
+     We'll create a list of locations.
+
+     For each mask from 0 to 1023, and for each location, if dp[mask][loc] is not infinity, then for each friend not in mask:
+        Let friend i not in mask.
+        Let L = friend_i.location
+        travel_time = travel_time[loc][L]
+        arrival_time = dp[mask][loc] + travel_time
+        start_time = max(arrival_time, friend_i.start)
+        end_time = start_time + friend_i.dur
+
+        If end_time <= friend_i.end, then we can meet this friend.
+
+        Then we update:
+            new_mask = mask | (1 << i)
+            if end_time < dp[new_mask][L]:
+                dp[new_mask][L] = end_time
+                parent[new_mask][L] = (mask, loc, i, start_time, end_time)
+
+     Then after processing, we look for the mask with the most bits set (i.e., the most friends met) for which we have a feasible schedule.
+
+     If multiple masks have the same number of friends, we choose the one with the smallest end time? Actually, we don't care about the end time as long as we meet the most.
+
+     Then we reconstruct the schedule by following the parent pointers.
+
+   However, note: we might not necessarily end at a location that allows us to meet more friends, but we are storing the earliest end time for each state, so we are trying to minimize the end time to allow more meetings.
+
+   But the state space is 2^10 * 11 = 11*1024 = 11264 states. This is manageable.
+
+   We need to store for each state (mask, loc) the earliest end time and the parent information.
+
+   Implementation:
+
+     We'll represent time in minutes (integer).
+
+     We'll create a list of friends:
+
+        friends = [
+            {'name': 'David', 'location': 'Sunset District', 'start': 15, 'end': 780, 'dur': 15},
+            {'name': 'Kenneth', 'location': 'Union Square', 'start': 735, 'end': 765, 'dur': 15},
+            {'name': 'Patricia', 'location': 'Nob Hill', 'start': 360, 'end': 615, 'dur': 120},
+            {'name': 'Mary', 'location': 'Marina District', 'start': 345, 'end': 465, 'dur': 45},
+            {'name': 'Charles', 'location': 'Richmond District', 'start': 495, 'end': 720, 'dur': 15},
+            {'name': 'Joshua', 'location': 'Financial District', 'start': 330, 'end': 495, 'dur': 90},
+            {'name': 'Ronald', 'location': 'Embarcadero', 'start': 555, 'end': 705, 'dur': 30},
+            {'name': 'George', 'location': 'The Castro', 'start': 315, 'end': 600, 'dur': 105},
+            {'name': 'Kimberly', 'location': 'Alamo Square', 'start': 0, 'end': 330, 'dur': 105},
+            {'name': 'William', 'location': 'Presidio', 'start': 0, 'end': 225, 'dur': 60}
+        ]
+
+     We'll create a travel time dictionary:
+
+        travel_times = {
+            'Russian Hill': {'Sunset District': 23, 'Union Square': 10, ...},
+            ...
+        }
+
+     Note: the travel times are given for each pair. We have to include all 11 locations.
+
+     We'll create a list of all locations:
+
+        locations = ['Russian Hill', 'Sunset District', 'Union Square', 'Nob Hill', 'Marina District', 'Richmond District', 
+                    'Financial District', 'Embarcadero', 'The Castro', 'Alamo Square', 'Presidio']
+
+     We'll index the friends from 0 to 9.
+
+     Steps:
+
+        Initialize dp as a 2D list of size (1<<10) * 11, with a large number (like 10000) for unattainable.
+        dp[0][loc_index['Russian Hill']] = 0
+
+        parent_mask = [[None] * 11 for _ in range(1<<10)]
+        parent_loc = [[None] * 11 for _ in range(1<<10)]
+        parent_friend = [[None] * 11 for _ in range(1<<10)]
+        parent_start = [[None] * 11 for _ in range(1<<10)]
+        parent_end = [[None] * 11 for _ in range(1<<10)]
+
+        For mask in range(1<<10):
+            for loc_index in range(11):
+                if dp[mask][loc_index] is not infinity:
+                    for i in range(10):   # for each friend not in mask
+                        if mask has bit i set, skip.
+                        friend = friends[i]
+                        to_loc = friend['location']
+                        to_loc_index = loc_index_map[to_loc]
+                        tt = travel_times[locations[loc_index]][to_loc]
+                        arrival = dp[mask][loc_index] + tt
+                        start = max(arrival, friend['start'])
+                        end = start + friend['dur']
+                        if end <= friend['end']:
+                            if end < dp[new_mask][to_loc_index]:
+                                dp[new_mask][to_loc_index] = end
+                                parent_mask[new_mask][to_loc_index] = mask
+                                parent_loc[new_mask][to_loc_index] = loc_index
+                                parent_friend[new_mask][to_loc_index] = i
+                                parent_start[new_mask][to_loc_index] = start
+                                parent_end[new_mask][to_loc_index] = end
+
+        Then we find the mask with the most bits set and with dp[mask][any] < infinity. If multiple, we choose the one with the smallest end time? Actually, we want to meet as many as possible, so we look for the maximum number of bits.
+
+        Then we reconstruct the schedule by going backwards.
+
+        Note: we might have multiple locations for the same mask, so we need to find the mask with the maximum number of friends and then the location with the smallest end time.
+
+        Then we trace back the parent pointers until we get to mask 0.
+
+        We'll collect the meetings in reverse order.
+
+        Then we output the schedule in chronological order.
+
+   However, note: we might not use all friends, so we are only concerned with the mask that has the maximum number of friends.
+
+   We'll convert the times back to string representation.
+
+   Example: if we have a time value T (in minutes from 9:00), then the actual time is:
+        hours = 9 + T // 60
+        minutes = T % 60
+        So we can format as f"{hours}:{minutes:02d}"
+
+   But note: if hours are more than 12, we are in PM, but we are using 24-hour format? The problem says 24-hour format without leading zero. So 13:30 is okay.
+
+   However, note: 9:00 plus 0 minutes is 9:00 -> we want "9:00", not "9:0". So we format minutes with two digits if needed, but the problem says no leading zero? Actually, the example output uses "H:MM" meaning minutes always two digits? Wait, look: "9:00" and "13:30". So we do want two digits for minutes.
+
+   But the problem says: "no leading zero" for the hour. So we have to format the hour without leading zero, but the minutes with two digits.
+
+   However, note: the hour might be 9 or 10, etc. So we can do:
+
+        hour = 9 + T // 60
+        minute = T % 60
+        time_str = f"{hour}:{minute:02d}"
+
+   But wait: 9:00 plus 60 minutes is 10:00, so that's correct.
+
+   However, note: we are starting at 9:00, so T=0 is 9:00, T=60 is 10:00.
+
+   But what about 9:00 plus 120 minutes -> 11:00 -> correct.
+
+   Now, we code accordingly.
+
+   Let's code the travel time matrix. We have to input all the travel times.
+
+   Note: the travel times are given in the problem statement for each pair. We'll create a dictionary of dictionaries.
+
+   Example:
+
+        travel_times['Russian Hill']['Sunset District'] = 23
+        travel_times['Sunset District']['Russian Hill'] = 24   (note: not symmetric)
+
+   We'll create the matrix for all pairs.
+
+   We note that the problem gives travel times from every location to every other? Actually, it gives from each of the 10 locations to the other 10, but note: we have 11 locations (including Russian Hill). Actually, the list of locations in the travel times includes the 10 friends' locations and Russian Hill? Actually, the travel times are given from Russian Hill to each of the 10, and from each of the 10 to Russian Hill and to the others.
+
+   So we have a complete graph of 11 nodes.
+
+   We'll manually create the travel_times dictionary.
+
+   We'll list the travel times as provided.
+
+   Note: the problem gives travel times from Russian Hill to ... and from Sunset District to ... etc.
+
+   We'll create a dictionary for each location.
+
+   Implementation:
+
+        travel_times = {
+            'Russian Hill': {
+                'Sunset District': 23,
+                'Union Square': 10,
+                'Nob Hill': 5,
+                'Marina District': 7,
+                'Richmond District': 14,
+                'Financial District': 11,
+                'Embarcadero': 8,
+                'The Castro': 21,
+                'Alamo Square': 15,
+                'Presidio': 14
+            },
+            'Sunset District': {
+                'Russian Hill': 24,
+                'Union Square': 30,
+                'Nob Hill': 27,
+                'Marina District': 21,
+                'Richmond District': 12,
+                'Financial District': 30,
+                'Embarcadero': 30,
+                'The Castro': 17,
+                'Alamo Square': 17,
+                'Presidio': 16
+            },
+            ... and so on for every location
+        }
+
+   We have to do this for all 11 locations.
+
+   We'll copy the data from the problem.
+
+   Note: the problem also gives travel times from Union Square, Nob Hill, etc. So we'll complete the dictionary.
+
+   Due to the length, we'll write the travel_times dictionary with all the pairs.
+
+   Let's code accordingly.
+
+   We'll then run the DP.
+
+   However, note: the state space is 1024 * 11 = 11264, which is acceptable.
+
+   Let's code.
+
+   We'll create a list of locations and a mapping from location name to index.
+
+   We'll create a list of friends.
+
+   We'll initialize the dp array with a large number (say 10000).
+
+   We'll iterate over masks and locations.
+
+   We'll then reconstruct the best schedule.
+
+   Finally, we output the schedule in JSON format.
+
+   Note: the problem says the output should be a list of actions (each action is meeting a person).
+
+   We'll output the meetings in chronological order.
+
+   Let's code.
+
+   Due to the length of the travel_times dictionary, the code will be long, but we have to include it.
+
+   We'll write the code in the following structure:
+
+        import json
+
+        # Define the travel_times dictionary
+        travel_times = { ... }
+
+        # List of locations
+        locations = [ ... ]
+
+        # List of friends
+        friends = [ ... ]
+
+        # Map location name to index
+        loc_to_index = {loc: idx for idx, loc in enumerate(locations)}
+
+        # Initialize dp and parent arrays
+        n = len(friends)
+        num_mask = 1 << n
+        INF = 10**9
+        dp = [[INF] * len(locations) for _ in range(num_mask)]
+        # Initialize starting state: mask 0 at Russian Hill (index of Russian Hill) at time 0
+        russian_hill_idx = loc_to_index['Russian Hill']
+        dp[0][russian_hill_idx] = 0
+
+        # Parent arrays: we store for each (mask, loc) the previous mask, previous loc, friend index, start time, and end time for the meeting that led to this state.
+        parent_mask = [[-1] * len(locations) for _ in range(num_mask)]
+        parent_loc = [[-1] * len(locations) for _ in range(num_mask)]
+        parent_friend = [[-1] * len(locations) for _ in range(num_mask)]
+        parent_start = [[-1] * len(locations) for _ in range(num_mask)]
+        parent_end = [[-1] * len(locations) for _ in range(num_mask)]
+
+        # Iterate over all masks
+        for mask in range(num_mask):
+            for loc_idx in range(len(locations)):
+                if dp[mask][loc_idx] == INF:
+                    continue
+                # For each friend not in mask
+                for i, friend in enumerate(friends):
+                    if mask & (1 << i):
+                        continue
+                    to_loc = friend['location']
+                    to_loc_idx = loc_to_index[to_loc]
+                    tt = travel_times[locations[loc_idx]][to_loc]
+                    arrival = dp[mask][loc_idx] + tt
+                    start = max(arrival, friend['start'])
+                    end = start + friend['dur']
+                    if end > friend['end']:
+                        continue
+                    new_mask = mask | (1 << i)
+                    if end < dp[new_mask][to_loc_idx]:
+                        dp[new_mask][to_loc_idx] = end
+                        parent_mask[new_mask][to_loc_idx] = mask
+                        parent_loc[new_mask][to_loc_idx] = loc_idx
+                        parent_friend[new_mask][to_loc_idx] = i
+                        parent_start[new_mask][to_loc_idx] = start
+                        parent_end[new_mask][to_loc_idx] = end
+
+        # Find the best mask: the one with the most friends met and the earliest end time
+        best_mask = 0
+        best_loc = 0
+        best_count = 0
+        best_end = INF
+        for mask in range(num_mask):
+            for loc_idx in range(len(locations)):
+                if dp[mask][loc_idx] < INF:
+                    count = bin(mask).count('1')
+                    if count > best_count or (count == best_count and dp[mask][loc_idx] < best_end):
+                        best_count = count
+                        best_end = dp[mask][loc_idx]
+                        best_mask = mask
+                        best_loc = loc_idx
+
+        # Now reconstruct the schedule from best_mask and best_loc
+        schedule = []
+        mask = best_mask
+        loc_idx = best_loc
+        while mask != 0:
+            i = parent_friend[mask][loc_idx]
+            start_time = parent_start[mask][loc_idx]
+            end_time = parent_end[mask][loc_idx]
+            friend_name = friends[i]['name']
+            location_name = friends[i]['location']
+            # Convert start_time and end_time to time strings
+            start_str = f"{9 + start_time // 60}:{start_time % 60:02d}"
+            end_str = f"{9 + end_time // 60}:{end_time % 60:02d}"
+            schedule.append({
+                'action': 'meet',
+                'location': location_name,
+                'person': friend_name,
+                'start_time': start_str,
+                'end_time': end_str
+            })
+            # Go to parent state
+            new_mask = parent_mask[mask][loc_idx]
+            new_loc = parent_loc[mask][loc_idx]
+            mask = new_mask
+            loc_idx = new_loc
+
+        # Reverse the schedule to get chronological order
+        schedule.reverse()
+
+        # Output as JSON
+        result = {'itinerary': schedule}
+        print(json.dumps(result, indent=2))
+
+   However, note: the travel_times dictionary must be complete for every pair of locations.
+
+   We'll now write the travel_times dictionary with all the data.
+
+   Due to the extensive data, we'll write it in a compact way.
+
+   Let's write the code.

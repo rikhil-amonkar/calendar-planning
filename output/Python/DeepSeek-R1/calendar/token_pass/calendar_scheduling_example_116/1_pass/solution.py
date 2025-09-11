@@ -1,0 +1,59 @@
+def main():
+    # Define parameters
+    start_of_day = 0  # 9:00 in minutes from 9:00
+    end_of_day = 480   # 17:00 in minutes from 9:00
+    meeting_duration = 30
+    anna_preference = 330  # 14:30 in minutes from 9:00
+
+    # Define busy intervals for each person (start, end) in minutes, end exclusive
+    adam_busy = [(300, 360)]
+    john_busy = [(240, 270), (300, 330), (390, 420), (450, 480)]
+    stephanie_busy = [(30, 60), (90, 120), (150, 420), (450, 480)]
+    anna_busy = [(30, 60), (180, 210), (240, 390), (450, 480)]
+
+    # List of persons with their busy intervals
+    persons = [
+        {'name': 'Adam', 'busy': adam_busy},
+        {'name': 'John', 'busy': john_busy},
+        {'name': 'Stephanie', 'busy': stephanie_busy},
+        {'name': 'Anna', 'busy': anna_busy}
+    ]
+
+    # Function to check if a person is free from start_time to start_time + duration
+    def is_person_free(busy_intervals, start_time, duration):
+        end_time = start_time + duration
+        for busy_start, busy_end in busy_intervals:
+            # Check for overlap: if [start_time, end_time] overlaps with [busy_start, busy_end]
+            if start_time < busy_end and end_time > busy_start:
+                return False
+        return True
+
+    # Find a time slot that works for everyone after anna_preference
+    found_slot = None
+    for start_minute in range(anna_preference, end_of_day - meeting_duration + 1):
+        all_free = True
+        for person in persons:
+            if not is_person_free(person['busy'], start_minute, meeting_duration):
+                all_free = False
+                break
+        if all_free:
+            found_slot = start_minute
+            break
+
+    # If found, convert to time string
+    if found_slot is not None:
+        # Calculate start time
+        start_hour = 9 + found_slot // 60
+        start_minute = found_slot % 60
+        end_minute = found_slot + meeting_duration
+        end_hour = 9 + end_minute // 60
+        end_minute = end_minute % 60
+        # Format to HH:MM
+        start_time_str = f"{start_hour:02d}:{start_minute:02d}"
+        end_time_str = f"{end_hour:02d}:{end_minute:02d}"
+        print(f"Monday {start_time_str}:{end_time_str}")
+    else:
+        print("No suitable time found")
+
+if __name__ == "__main__":
+    main()

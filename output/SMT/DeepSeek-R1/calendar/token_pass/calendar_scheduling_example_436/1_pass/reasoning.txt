@@ -1,0 +1,69 @@
+We are given the task to schedule a meeting on Monday between 9:00 and 17:00 for 30 minutes.
+ The participants: Patrick, Shirley, Jeffrey, Gloria, Nathan, Angela, David.
+
+ We'll represent time in minutes from 9:00 (which will be 0) to 17:00 (which is 8*60 = 480 minutes).
+ The meeting duration is 30 minutes.
+
+ We need to find a start time S (in minutes from 9:00) such that S >= 0 and S + 30 <= 480.
+
+ For each participant, we have their busy intervals. We must ensure that the meeting interval [S, S+30] does not overlap with any busy interval of any participant.
+
+ Steps:
+ 1. Convert each person's busy intervals to minutes from 9:00.
+    Example: 13:30 -> (13-9)*60 + 30 = 4*60+30 = 270 minutes.
+
+ 2. We'll create a Z3 integer variable for the start time S.
+
+ 3. For each participant, we'll assert that for every busy interval [B_start, B_end], the meeting does not overlap.
+    Non-overlap condition: (S + 30 <= B_start) OR (S >= B_end)
+
+ 4. We'll also assert that S is within [0, 450] (since 450+30=480, which is 17:00).
+
+ 5. We'll check if there's a solution and then convert the solution back to time.
+
+ Let's list the busy intervals in minutes:
+
+ Patrick:
+  13:30-14:00 -> (13-9)*60+30 = 270 to 270+30=300
+  14:30-15:00 -> (14-9)*60+30 = 330 to 330+30=360
+
+ Shirley:
+  9:00-9:30 -> 0 to 30
+  11:00-11:30 -> (11-9)*60 = 120 to 120+30=150
+  12:00-12:30 -> (12-9)*60 = 180 to 180+30=210
+  14:30-15:00 -> 330 to 360
+  16:00-17:00 -> (16-9)*60=420 to 480
+
+ Jeffrey:
+  9:00-9:30 -> 0 to 30
+  10:30-11:00 -> (10-9)*60+30 = 90 to 90+30=120
+  11:30-12:00 -> (11-9)*60+30 = 150 to 150+30=180
+  13:00-13:30 -> (13-9)*60=240 to 240+30=270
+  16:00-17:00 -> 420 to 480
+
+ Gloria:
+  11:30-12:00 -> 150 to 180
+  15:00-15:30 -> (15-9)*60=360 to 360+30=390
+
+ Nathan:
+  9:00-9:30 -> 0 to 30
+  10:30-12:00 -> 90 to 180
+  14:00-17:00 -> (14-9)*60=300 to 480
+
+ Angela:
+  9:00-9:30 -> 0 to 30
+  10:00-11:00 -> (10-9)*60=60 to 60+60=120
+  12:30-15:00 -> (12-9)*60+30=210 to (15-9)*60=360 -> 210 to 360
+  15:30-16:30 -> 390 to 420
+
+ David:
+  9:00-9:30 -> 0 to 30
+  10:00-10:30 -> 60 to 90
+  11:00-14:00 -> 120 to 300
+  14:30-16:30 -> 330 to 420
+
+ Now, we'll code accordingly.
+
+ We note: The meeting must be scheduled on Monday.
+
+ Let's code with Z3.

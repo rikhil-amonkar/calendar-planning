@@ -1,0 +1,60 @@
+```python
+from z3 import *
+
+def main():
+    # Initialize solver
+    s = Solver()
+    
+    # Define meeting duration in minutes
+    duration = 30
+    
+    # Convert time to minutes from 9:00 (0 minutes)
+    work_start = 0
+    work_end = 8 * 60  # 17:00 is 8 hours after 9:00
+    
+    # Define busy intervals in minutes from 9:00
+    jeffrey_busy = [(30, 60), (90, 120)]
+    virginia_busy = [(0, 30), (60, 90), (330, 360), (420, 450)]
+    melissa_busy = [(0, 150), (180, 210), (240, 360), (420, 480)]
+    
+    # Meeting start time variable (in minutes from 9:00)
+    S = Int('S')
+    
+    # Constraint: Meeting must be within work hours
+    s.add(S >= work_start)
+    s.add(S + duration <= work_end)
+    
+    # Constraint: Avoid Melissa's after 14:00 preference (14:00 = 300 minutes from 9:00)
+    s.add(S + duration <= 300)
+    
+    # Add constraints for each person's busy intervals
+    for start, end in jeffrey_busy:
+        s.add(Or(S + duration <= start, S >= end))
+        
+    for start, end in virginia_busy:
+        s.add(Or(S + duration <= start, S >= end))
+        
+    for start, end in melissa_busy:
+        s.add(Or(S + duration <= start, S >= end))
+    
+    # Check for a solution
+    if s.check() == sat:
+        m = s.model()
+        start_minutes = m.evaluate(S).as_long()
+        
+        # Convert minutes to time string
+        start_hour = 9 + start_minutes // 60
+        start_minute = start_minutes % 60
+        end_minutes = start_minutes + duration
+        end_hour = 9 + end_minutes // 60
+        end_minute = end_minutes % 60
+        
+        # Format output
+        time_str = f"{start_hour:02d}:{start_minute:02d}:{end_hour:02d}:{end_minute:02d}"
+        print(f"Monday {time_str}")
+    else:
+        print("No solution found")
+
+if __name__ == "__main__":
+    main()
+```

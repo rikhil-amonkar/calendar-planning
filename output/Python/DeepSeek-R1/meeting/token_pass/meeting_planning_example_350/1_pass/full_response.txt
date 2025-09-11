@@ -1,0 +1,136 @@
+```python
+import itertools
+import json
+
+def time_to_minutes(time_str):
+    parts = time_str.split(':')
+    hours = int(parts[0])
+    minutes = int(parts[1]) if len(parts) > 1 else 0
+    return hours * 60 + minutes
+
+def minutes_to_time(minutes):
+    hours = minutes // 60
+    mins = minutes % 60
+    return f"{hours}:{mins:02d}"
+
+def main():
+    travel_times = {
+        "Bayview": {
+            "Pacific Heights": 23,
+            "Mission District": 13,
+            "Haight-Ashbury": 19,
+            "Financial District": 19
+        },
+        "Pacific Heights": {
+            "Bayview": 22,
+            "Mission District": 15,
+            "Haight-Ashbury": 11,
+            "Financial District": 13
+        },
+        "Mission District": {
+            "Bayview": 15,
+            "Pacific Heights": 16,
+            "Haight-Ashbury": 12,
+            "Financial District": 17
+        },
+        "Haight-Ashbury": {
+            "Bayview": 18,
+            "Pacific Heights": 12,
+            "Mission District": 11,
+            "Financial District": 21
+        },
+        "Financial District": {
+            "Bayview": 19,
+            "Pacific Heights": 13,
+            "Mission District": 17,
+            "Haight-Ashbury": 19
+        }
+    }
+    
+    friends = [
+        {
+            "name": "Mary",
+            "location": "Pacific Heights",
+            "start": time_to_minutes("10:00"),
+            "end": time_to_minutes("19:00"),
+            "min_duration": 45
+        },
+        {
+            "name": "Lisa",
+            "location": "Mission District",
+            "start": time_to_minutes("20:30"),
+            "end": time_to_minutes("22:00"),
+            "min_duration": 75
+        },
+        {
+            "name": "Betty",
+            "location": "Haight-Ashbury",
+            "start": time_to_minutes("7:15"),
+            "end": time_to_minutes("17:15"),
+            "min_duration": 90
+        },
+        {
+            "name": "Charles",
+            "location": "Financial District",
+            "start": time_to_minutes("11:15"),
+            "end": time_to_minutes("15:00"),
+            "min_duration": 120
+        }
+    ]
+    
+    start_time = time_to_minutes("9:00")
+    start_location = "Bayview"
+    
+    best_schedule = []
+    best_count = 0
+    
+    for n in range(len(friends), 0, -1):
+        for perm in itertools.permutations(friends, n):
+            current_time = start_time
+            current_location = start_location
+            schedule = []
+            feasible = True
+            
+            for friend in perm:
+                travel_time = travel_times[current_location][friend["location"]]
+                arrival_time = current_time + travel_time
+                meeting_start = max(arrival_time, friend["start"])
+                meeting_end = meeting_start + friend["min_duration"]
+                
+                if meeting_end > friend["end"]:
+                    feasible = False
+                    break
+                
+                schedule.append({
+                    "friend": friend,
+                    "start": meeting_start,
+                    "end": meeting_end
+                })
+                
+                current_time = meeting_end
+                current_location = friend["location"]
+            
+            if feasible and len(perm) > best_count:
+                best_schedule = schedule
+                best_count = len(perm)
+                break
+        
+        if best_count == n:
+            break
+    
+    itinerary = []
+    for meeting in best_schedule:
+        itinerary.append({
+            "action": "meet",
+            "location": meeting["friend"]["location"],
+            "person": meeting["friend"]["name"],
+            "start_time": minutes_to_time(meeting["start"]),
+            "end_time": minutes_to_time(meeting["end"])
+        })
+    
+    result = {"itinerary": itinerary}
+    print(json.dumps(result, indent=2))
+
+if __name__ == "__main__":
+    main()
+```

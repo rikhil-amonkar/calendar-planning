@@ -1,0 +1,70 @@
+```python
+import json
+
+def main():
+    # Define the graph of direct flights
+    graph = {
+        "Manchester": ["Venice", "Istanbul", "Krakow"],
+        "Venice": ["Manchester", "Istanbul", "Lyon"],
+        "Istanbul": ["Manchester", "Venice", "Krakow", "Lyon"],
+        "Krakow": ["Manchester", "Istanbul"],
+        "Lyon": ["Venice", "Istanbul"]
+    }
+    
+    # Define the required days per city
+    required_days = {
+        "Manchester": 3,
+        "Istanbul": 7,
+        "Venice": 7,
+        "Krakow": 6,
+        "Lyon": 2
+    }
+    
+    # Define event constraints
+    manchester_event = (1, 3)
+    venice_event = (3, 9)
+    
+    # Define the planned order of cities based on constraints and direct flights
+    planned_order = ["Manchester", "Venice", "Lyon", "Istanbul", "Krakow"]
+    
+    # Verify direct flights between consecutive cities
+    for i in range(len(planned_order) - 1):
+        current_city = planned_order[i]
+        next_city = planned_order[i + 1]
+        if next_city not in graph[current_city]:
+            raise ValueError(f"No direct flight from {current_city} to {next_city}")
+    
+    # Calculate day ranges
+    current_day = 1
+    itinerary = []
+    for city in planned_order:
+        days_needed = required_days[city]
+        end_day = current_day + days_needed - 1
+        day_range = f"Day {current_day}-{end_day}"
+        itinerary.append({"day_range": day_range, "place": city})
+        current_day = end_day  Fly on the same day
+    
+    # Verify total days
+    total_days = sum(required_days.values()) - (len(planned_order) - 1)
+    if total_days != 21:
+        raise ValueError("Total days do not match 21")
+    
+    # Verify event constraints
+    manchester_start = int(itinerary[0]["day_range"].split('-')[0].split(' ')[1])
+    manchester_end = int(itinerary[0]["day_range"].split('-')[1])
+    if not (manchester_start <= manchester_event[1] and manchester_end >= manchester_event[0]):
+        raise ValueError("Manchester event constraint not satisfied")
+    
+    venice_index = planned_order.index("Venice")
+    venice_start = int(itinerary[venice_index]["day_range"].split('-')[0].split(' ')[1])
+    venice_end = int(itinerary[venice_index]["day_range"].split('-')[1])
+    if not (venice_start <= venice_event[1] and venice_end >= venice_event[0]):
+        raise ValueError("Venice event constraint not satisfied")
+    
+    # Output the itinerary as JSON
+    result = {"itinerary": itinerary}
+    print(json.dumps(result))
+
+if __name__ == "__main__":
+    main()
+```

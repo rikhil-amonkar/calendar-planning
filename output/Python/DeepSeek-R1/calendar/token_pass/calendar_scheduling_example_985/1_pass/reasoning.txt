@@ -1,0 +1,867 @@
+First, I need to find a one-hour meeting time between Diane and Matthew during work hours (9:00 to 17:00) from Monday to Friday. I have their busy times and a preference from Matthew to avoid Wednesday before 12:30.
+
+I should parse their schedules into a format I can work with in Python. I'll represent each day from Monday to Friday, and for each day, I'll note the available times between 9:00 and 17:00, subtracting the busy times.
+
+Let me list out the busy times for each day for both participants.
+
+For Diane:
+
+- Monday: busy 12:00-12:30, 15:00-15:30
+
+- Tuesday: busy 10:00-11:00, 11:30-12:00, 12:30-13:00, 16:00-17:00
+
+- Wednesday: busy 9:00-9:30, 14:30-15:00, 16:30-17:00
+
+- Thursday: busy 15:30-16:30
+
+- Friday: busy 9:30-11:30, 14:30-15:00, 16:00-17:00
+
+For Matthew:
+
+- Monday: busy 9:00-10:00, 10:30-17:00
+
+- Tuesday: busy 9:00-17:00
+
+- Wednesday: busy 9:00-11:00, 12:00-14:30, 16:00-17:00
+
+- Thursday: busy 9:00-16:00
+
+- Friday: busy 9:00-17:00
+
+Matthew prefers not to meet on Wednesday before 12:30, but since he has meetings until 14:30 on Wednesday, and after that, he might be available, but we need to check.
+
+Now, I need to find a one-hour slot where both are free.
+
+I'll consider each day separately.
+
+Start with Monday:
+
+Diane's available on Monday: from 9:00 to 17:00, but busy 12:00-12:30 and 15:00-15:30. So, available intervals: 9:00-12:00, 12:30-15:00, 15:30-17:00.
+
+Matthew on Monday: busy 9:00-10:00 and 10:30-17:00. So, available only from 10:00-10:30. That's only 30 minutes, but we need one hour. So, no available one-hour slot on Monday.
+
+Next, Tuesday:
+
+Diane: busy 10:00-11:00, 11:30-12:00, 12:30-13:00, 16:00-17:00. So available: 9:00-10:00, 11:00-11:30, 12:00-12:30, 13:00-16:00.
+
+But 9:00-10:00 is 1 hour, 13:00-16:00 is 3 hours, but let's see Matthew.
+
+Matthew on Tuesday: busy 9:00-17:00, so no available time at all. So Tuesday is out.
+
+Wednesday:
+
+Diane: busy 9:00-9:30, 14:30-15:00, 16:30-17:00. So available: 9:30-14:30, 15:00-16:30.
+
+Matthew: busy 9:00-11:00, 12:00-14:30, 16:00-17:00. So available: 11:00-12:00, 14:30-16:00.
+
+But Matthew prefers not to meet before 12:30 on Wednesday. So, available 11:00-12:00 is before 12:30, so we should avoid that if possible, but if no other option, we might consider it, but let's see if there's overlap.
+
+Diane available: 9:30-14:30 and 15:00-16:30
+
+Matthew available: 11:00-12:00 and 14:30-16:00
+
+Now, Matthew prefers not before 12:30, so 11:00-12:00 is not preferred.
+
+Overlap between Diane and Matthew:
+
+First overlap: Diane's 9:30-14:30 and Matthew's 11:00-12:00 → 11:00-12:00 but this is before 12:30, so not preferred.
+
+Second overlap: Diane's 9:30-14:30 and Matthew's 14:30-16:00 → but 14:30 is a point, so from 14:30 to 14:30? No, available times are intervals. Diane available until 14:30, Matthew available from 14:30. So at 14:30, is Diane available? Diane is busy at 14:30? Let's see Diane's busy: 14:30-15:00, so at 14:30, she is busy until 15:00. So Diane's available 9:30-14:30 means up to but not including 14:30? In time intervals, usually we consider [start, end) or inclusive? I need to be careful.
+
+Typically, in scheduling, if someone is busy from 14:30 to 15:00, they are not available at 14:30. So available times should be from the end of one busy to the start of next busy.
+
+For Diane on Wednesday: busy at 9:00-9:30, so available from 9:30 to 14:30? But busy at 14:30-15:00, so actually, available from 9:30 to 14:30? Since busy starts at 14:30, she is available until 14:30, but at 14:30, she becomes busy. So for a meeting starting at 14:30, it would conflict because she is busy at 14:30. Similarly, meeting ending at 14:30 might be ok if it starts before, but since busy at 14:30, she cannot have a meeting that includes 14:30.
+
+To avoid confusion, I'll think in terms of minutes or time slots.
+
+I should convert all times to minutes past a reference, like minutes from 9:00 or something.
+
+Work hours are 9:00 to 17:00, which is 8 hours, from 540 minutes to 1020 minutes (since 9:00 is 9*60=540, 17:00 is 17*60=1020).
+
+But for simplicity, I'll work with time intervals.
+
+For Diane on Wednesday:
+
+- Busy: 9:00-9:30 → so free before 9:00? But work hours start at 9:00, so from 9:00, she is busy until 9:30. So available after 9:30 until next busy.
+
+Next busy: 14:30-15:00 → so available from 9:30 to 14:30? But at 14:30, she becomes busy, so for a meeting, she must start before 14:30 and end by 14:30 if meeting ends at 14:30, but since busy at 14:30, meeting cannot end at 14:30 if it includes busy time. Better to think of available times as [start, end) where end is when busy starts.
+
+So Diane available on Wednesday:
+
+- From 9:30 to 14:30 (since busy at 14:30)
+
+But after 14:30, she is busy until 15:00, so then available from 15:00 to 16:30 (since busy at 16:30-17:00).
+
+Similarly for Matthew.
+
+Matthew on Wednesday: busy 9:00-11:00, so available from 11:00 to 12:00? But busy at 12:00-14:30, so available from 11:00 to 12:00, and then from 14:30 to 16:00? But at 14:30, he becomes available? Busy until 14:30, so available from 14:30 to 16:00.
+
+Now, Matthew prefers not before 12:30, so the slot 11:00-12:00 is before 12:30, so we avoid it if possible.
+
+Now, overlap of available times:
+
+Diane: [9:30, 14:30) and [15:00, 16:30)
+
+Matthew: [11:00, 12:00) and [14:30, 16:00)
+
+But Matthew's [14:30,16:00) and Diane's [15:00,16:30) have overlap from 15:00 to 16:00? Let's see.
+
+Diane available from 15:00 to 16:30, Matthew from 14:30 to 16:00. So from 15:00 to 16:00, both are available. That's one hour from 15:00 to 16:00.
+
+But is Matthew available at 15:00? Yes, from 14:30 to 16:00, so at 15:00 he is available. Diane available at 15:00 since she is free from 15:00.
+
+So from 15:00 to 16:00, both are free for one hour.
+
+But Matthew prefers not before 12:30, but this is after 12:30, so it should be fine.
+
+We also have Diane's [9:30,14:30) and Matthew's [11:00,12:00), but that overlap from 11:00 to 12:00, which is before 12:30, so not preferred. But since we have a preferred slot, we can use the 15:00 slot.
+
+So Wednesday at 15:00 to 16:00 should work.
+
+But let's confirm the busy times.
+
+Diane on Wednesday: busy 14:30-15:00, so at 15:00, she is free, so meeting from 15:00 to 16:00 is fine.
+
+Matthew on Wednesday: busy until 14:30, so from 14:30 free, so at 15:00 free, until 16:00 when he becomes busy? He is busy from 16:00 to 17:00, so from 14:30 to 16:00 free, so 15:00-16:00 is within free time.
+
+So yes, Wednesday 15:00-16:00 works.
+
+But the problem says "find a time that works for everyone's schedule and constraints." And Matthew would rather not meet on Wednesday before 12:30, which is satisfied since 15:00 is after 12:30.
+
+So this seems good.
+
+But let's check other days to make sure.
+
+Thursday:
+
+Diane: busy 15:30-16:30, so available: 9:00-15:30 and 16:30-17:00? But from 9:00 to 15:30, but we need to see Matthew.
+
+Matthew: busy 9:00-16:00, so available only from 16:00-17:00.
+
+Diane available from 16:30-17:00? But Matthew available from 16:00-17:00.
+
+Overlap: from 16:30 to 17:00, which is only 30 minutes, but we need one hour. So no one-hour slot on Thursday.
+
+Friday:
+
+Diane: busy 9:30-11:30, 14:30-15:00, 16:00-17:00. So available: 9:00-9:30, 11:30-14:30, 15:00-16:00.
+
+But 9:00-9:30 is 30 minutes, 11:30-14:30 is 3 hours, 15:00-16:00 is 1 hour.
+
+Matthew: busy 9:00-17:00, so no available time. So Friday is out.
+
+So only possible day is Wednesday with 15:00-16:00.
+
+But in the available times, we have Wednesday 15:00-16:00.
+
+So the meeting should be on Wednesday from 15:00 to 16:00.
+
+Now, I need to write a Python script to output this.
+
+The script should calculate this automatically based on the given schedules.
+
+I need to represent the busy times for each person for each day.
+
+Then for each day, find the available slots for each person, then find overlapping slots that are at least one hour, and consider preferences.
+
+Since Matthew has a preference against Wednesday before 12:30, we should avoid that if possible.
+
+In this case, we found a slot after 12:30.
+
+Now, for the code, I'll define the work hours from 9:00 to 17:00.
+
+I'll represent time as minutes from midnight or from 9:00, but for output, I need to convert back to time.
+
+I'll create a list of days: Monday, Tuesday, Wednesday, Thursday, Friday.
+
+For each day, I'll have busy intervals for Diane and Matthew.
+
+Then I'll compute free intervals for each person on each day within work hours.
+
+Then find common free intervals that are at least 60 minutes.
+
+Then output the first one that satisfies the preference.
+
+Since Matthew prefers not Wednesday before 12:30, if we find a slot on Wednesday after 12:30, we choose that, or if no other day, we might have to use before 12:30, but in this case, we have after.
+
+In the available times on Wednesday, we have 11:00-12:00 which is before 12:30, but we also have 15:00-16:00 which is after, so we choose the after one.
+
+In code, I should prioritize slots that satisfy preferences.
+
+But for now, since the task says "find a time that works", and we have one, I'll code for that.
+
+Let me define the busy times in code.
+
+First, I need to parse the busy times from the text, but since the text is given, I can hardcode them.
+
+The task is to generate code for this specific instance.
+
+So I'll hardcode the busy times for Diane and Matthew for each day.
+
+I'll use a dictionary for each person, with days as keys, and list of busy intervals.
+
+Each busy interval is a tuple (start, end) where start and end are time strings, but I'll convert to minutes for easier calculation.
+
+Let me set work_start = 9*60 = 540 minutes (9:00)
+
+work_end = 17*60 = 1020 minutes (17:00)
+
+Duration = 60 minutes.
+
+Now, for each day, I'll get busy intervals in minutes.
+
+First, Diane's busy times:
+
+Monday: 12:00 to 12:30 → 12*60=720 to 12*60+30=750? 12:00 is 720 minutes, 12:30 is 750 minutes.
+
+Similarly, 15:00 to 15:30 → 15*60=900 to 930? 15:00 is 900, 15:30 is 930.
+
+But in terms of time, 12:00 is 720 minutes from midnight, but since we care about time of day, we can use minutes from 0:00, but for overlap, it's fine.
+
+To avoid large numbers, I can use minutes from 9:00, but then 9:00 is 0, 10:00 is 60, etc. But for output, I need to convert back, so maybe easier to use minutes from midnight.
+
+But 9:00 is 540, 17:00 is 1020, so I'll use that.
+
+So let's define time_to_minutes(time_str): like "12:00" -> 12*60 = 720
+
+Similarly, minutes_to_time(minutes): convert back to HH:MM format.
+
+Now, for Diane:
+
+Monday: busy [(720,750), (900,930)] ? But 12:00 to 12:30, so from 720 to 750, but since 12:30 is included? In intervals, if busy from 12:00 to 12:30, it means during that time, so for free time, we need to consider that she is busy from 12:00 to 12:30, so free before 12:00 and after 12:30.
+
+Similarly, for available slots, we consider [start, end) where end is not available.
+
+In code, when computing free intervals, we can subtract busy intervals from [work_start, work_end].
+
+Similarly for Matthew.
+
+Now, let's list all busy times in minutes.
+
+First, Diane:
+
+Monday: 
+- 12:00-12:30 → 720 to 750
+- 15:00-15:30 → 900 to 930
+
+Tuesday:
+- 10:00-11:00 → 600 to 660
+- 11:30-12:00 → 690 to 720
+- 12:30-13:00 → 750 to 780
+- 16:00-17:00 → 960 to 1020
+
+Wednesday:
+- 9:00-9:30 → 540 to 570
+- 14:30-15:00 → 870 to 900
+- 16:30-17:00 → 990 to 1020
+
+Thursday:
+- 15:30-16:30 → 930 to 990
+
+Friday:
+- 9:30-11:30 → 570 to 690
+- 14:30-15:00 → 870 to 900
+- 16:00-17:00 → 960 to 1020
+
+Now Matthew:
+
+Monday:
+- 9:00-10:00 → 540 to 600
+- 10:30-17:00 → 630 to 1020
+
+Tuesday:
+- 9:00-17:00 → 540 to 1020
+
+Wednesday:
+- 9:00-11:00 → 540 to 660
+- 12:00-14:30 → 720 to 870
+- 16:00-17:00 → 960 to 1020
+
+Thursday:
+- 9:00-16:00 → 540 to 960
+
+Friday:
+- 9:00-17:00 → 540 to 1020
+
+Now, for each day, we need to find free intervals for each person.
+
+Then find intersection of free intervals that are at least 60 minutes.
+
+Also, for Wednesday, we have Matthew's preference: avoid before 12:30, which is 750 minutes (12*60+30=750).
+
+So if we find a slot on Wednesday that starts before 750, we should avoid it if possible.
+
+In code, I'll iterate through each day, compute free intervals for Diane and Matthew, then find common free intervals, then check for duration >=60, and for Wednesday, prefer slots that start at or after 750.
+
+Since we have a slot that satisfies, I'll code accordingly.
+
+I'll write a function to compute free intervals given busy intervals and work start/end.
+
+The free intervals can be computed by sorting busy intervals and then finding gaps between them and between work start and first busy, and last busy and work end.
+
+Then for each day, for both persons, get free intervals, then find overlap between the two sets of free intervals.
+
+Then from the overlapping intervals, find those with length >=60.
+
+Then for Wednesday, filter out those that start before 750 if possible.
+
+But since we need to output a time, I'll choose the first available slot that meets the criteria.
+
+In this case, on Wednesday, we have overlap from 15:00 to 16:00, which is 900 to 960 minutes.
+
+900 >=750, so it satisfies the preference.
+
+Now, let's code accordingly.
+
+I'll create a list of days.
+
+For each day, I'll have the busy intervals for Diane and Matthew.
+
+I'll define the busy times as a dictionary.
+
+First, define work_start = 540
+
+work_end = 1020
+
+duration = 60
+
+Now, days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
+
+diane_busy = {
+    'Monday': [(720,750), (900,930)],
+    'Tuesday': [(600,660), (690,720), (750,780), (960,1020)],
+    'Wednesday': [(540,570), (870,900), (990,1020)],
+    'Thursday': [(930,990)],
+    'Friday': [(570,690), (870,900), (960,1020)]
+}
+
+matthew_busy = {
+    'Monday': [(540,600), (630,1020)],
+    'Tuesday': [(540,1020)],
+    'Wednesday': [(540,660), (720,870), (960,1020)],
+    'Thursday': [(540,960)],
+    'Friday': [(540,1020)]
+}
+
+Note: in the intervals, I have used (start, end) where end is the time when busy ends, so for free, after end.
+
+But in the busy times, for Matthew on Monday, 10:30-17:00, which is 630 to 1020, and since 17:00 is included? But 17:00 is end of work, so probably busy until 17:00, so at 17:00, he is still busy? But meeting until 17:00 might be ok, but since work ends at 17:00, usually meetings are within work hours, so from 9:00 to 17:00, meaning meeting can start at 16:00 and end at 17:00.
+
+In terms of intervals, if busy until 17:00, then he is not available at 17:00 for a meeting start, but if meeting ends at 17:00, it might be acceptable. But typically, for a meeting from 16:00 to 17:00, it should be ok if he is free at 16:00 but busy at 17:00? No, if he is busy until 17:00, that means he is busy at 16:00 to 17:00, so not free for meeting.
+
+In my busy intervals, I have included the end time as busy, so for example, Matthew on Monday: busy from 10:30 to 17:00, so from 630 to 1020 minutes, so he is busy at 630 to 1020, so not available for any meeting during that time.
+
+Similarly, for free intervals, we consider time when he is not busy.
+
+Now, to compute free intervals for a person on a day given busy list.
+
+We have work_start and work_end.
+
+Sort the busy intervals by start time.
+
+Then free intervals are from work_start to first busy start, then between busy intervals, and from last busy end to work_end.
+
+But we need to ensure that the intervals are within [work_start, work_end].
+
+Also, if no busy intervals, then free from work_start to work_end.
+
+Now, let's write a function to get free intervals(busy_list, start, end):
+
+First, sort busy_list by start time.
+
+Then free = []
+
+current = start
+
+for busy in sorted_busy:
+    if current < busy[0]:
+        free.append( (current, busy[0]) )
+    current = max(current, busy[1])
+if current < end:
+    free.append( (current, end) )
+
+return free
+
+This gives free intervals as (start, end) where the person is free from start to end, but end is exclusive? In this case, since busy[1] is the end of busy, so after busy[1], he is free, so free intervals are [free_start, free_end) where free_end is the start of next busy or work_end.
+
+For example, if work_start=540, first busy from 600 to 660, then free from 540 to 600.
+
+Then after 660, free until next busy.
+
+But in the free interval, from 540 to 600, that means from 540 to 600, he is free, so at 600, he becomes busy, so for a meeting starting at 600, it would be at the same time as busy start, which is not good. So meetings should start at free times and end before busy starts.
+
+So in the free interval (540,600), a meeting from 540 to 600 would be ok only if it ends at 600, but since busy starts at 600, it might be acceptable if the meeting ends exactly at busy start, but typically, we consider that time slots are occupied at the start time, so if busy at 600, he cannot have a meeting that includes 600.
+
+To be safe, we should consider that for a meeting of duration D, we need a free interval of length D where the meeting can start at any time within the interval except that the end time must be before the next busy start.
+
+In terms of continuous time, if free from time A to B, then a meeting can start from A to B-D, so that it ends by B.
+
+But in this case, since we are looking for a one-hour meeting, we need a free interval that is at least 60 minutes long, and we can find a start time such that start to start+60 is within free.
+
+But for simplicity, since we are dealing with intervals, we can find overlapping free intervals and then check if the overlapping segment is long enough.
+
+In the free intervals, we have start and end, so the length is end - start minutes.
+
+If end - start >= 60, then we can have a meeting from start to start+60, for example.
+
+But we need to ensure that the entire meeting time is free, so if we have a free interval from A to B, then any meeting from S to S+60 where S >= A and S+60 <= B is fine.
+
+So for each free interval of length L, we can have meetings from A to A+60, A+1 to A+61, ..., up to B-60 to B.
+
+But for output, we just need one time, so we can choose the start time of the meeting.
+
+In this case, for the common free interval, we can take the start time of the overlapping free interval if it has enough length.
+
+But since we need to output a time range, we can output from start to start+60.
+
+Now, back to code.
+
+I'll compute for each day, free intervals for Diane and free intervals for Matthew.
+
+Then find overlapping intervals between Diane free and Matthew free.
+
+Then for each overlapping interval, if the length >=60, then we can have a meeting there.
+
+Then for Wednesday, we skip intervals that start before 750 if possible, but since we might have multiple, we should choose one that satisfies preference.
+
+In this case, only Wednesday has available slot.
+
+Now, let's code.
+
+First, define the busy times in minutes.
+
+Note: in the busy times, I have used the end time as the time when busy ends, so for example, Diane on Monday: busy 12:00-12:30, so from 720 to 750, meaning she is busy from 720 to 750, so free before 720 and after 750.
+
+Similarly for others.
+
+Now, let's write the function to get free intervals.
+
+Function get_free_intervals(busy_list, start_time, end_time):
+    # busy_list is list of (busy_start, busy_end)
+    # start_time and end_time are the work hours
+    free_intervals = []
+    # sort busy_list by busy_start
+    sorted_busy = sorted(busy_list, key=lambda x: x[0])
+    current = start_time
+    for busy in sorted_busy:
+        if busy[0] > current:
+            free_intervals.append( (current, busy[0]) )
+        current = max(current, busy[1])
+    if current < end_time:
+        free_intervals.append( (current, end_time) )
+    return free_intervals
+
+This should work.
+
+Now, for each day, we get free intervals for Diane and Matthew.
+
+Then find common free intervals.
+
+To find common free intervals between two sets of intervals, we can iterate through both lists and find overlaps.
+
+Suppose we have list A and list B of intervals.
+
+We can merge them by iterating through all intervals and finding intersections.
+
+But since the intervals are sorted, we can do a double pointer approach.
+
+Alternatively, for each interval in A, check for overlap with each interval in B, but that might be inefficient, but since there are few intervals, it's ok.
+
+Define a function find_overlap(intervalsA, intervalsB):
+    overlaps = []
+    for a in intervalsA:
+        for b in intervalsB:
+            start = max(a[0], b[0])
+            end = min(a[1], b[1])
+            if start < end:
+                overlaps.append( (start, end) )
+    return overlaps
+
+Then for each overlap, if end - start >= duration, then it can be used.
+
+Then we need to choose a meeting time from that overlap.
+
+Since the overlap interval might be longer than duration, we can choose the start time of the meeting as the start of the overlap interval, or we can choose any time, but for simplicity, we can choose the earliest possible time within the overlap that allows the meeting, but since we need to output a time, we can just output the start of the overlap to start+duration, but only if the overlap is long enough, so if overlap from S to E, and E-S >=60, then we can have meeting from S to S+60, which is within S to E since S+60 <= E.
+
+So for output, we can set meeting_start = overlap_start, meeting_end = meeting_start + duration.
+
+But we need to output in HH:MM format, so we convert minutes to time.
+
+Also, we need to output the day.
+
+Now, for Matthew's preference on Wednesday: avoid meetings before 12:30, i.e., before 750 minutes.
+
+So for Wednesday, if we have an overlap that starts before 750, we might skip it if there is another overlap after, but in this case, on Wednesday, we have two overlaps: one from 11:00-12:00 which is 660 to 720, but 660<750, and another from 15:00-16:00 which is 900 to 960, which is after.
+
+So we should choose the one after 750.
+
+In code, we can for each day, find all possible meeting slots, then for Wednesday, filter out those that start before 750.
+
+But since we are iterating days, we can check for Wednesday separately.
+
+Alternatively, we can iterate days and when we find a slot, for Wednesday, we ensure that the meeting start time is >=750.
+
+But since we might have multiple slots on Wednesday, we should choose the first slot that meets the preference.
+
+In this case, only one slot on Wednesday after 750.
+
+Now, let's code accordingly.
+
+I'll iterate over days, for each day, get free intervals for Diane and Matthew, find overlaps, then for each overlap, if length >=60, then we have a candidate meeting start time = overlap start, and we can break after finding one.
+
+But for Wednesday, we need to ensure that if we find a candidate with start <750, we might skip it if there is another with start >=750, so we need to check all overlaps on Wednesday and choose one with start >=750 if available.
+
+So for Wednesday, we should collect all possible meeting slots and then choose the one that satisfies preference.
+
+Since other days might have slots, but in this case, only Wednesday has slots, so we can handle Wednesday separately.
+
+But to be general, I'll for each day, find all meeting slots (start times) where overlap length >=60.
+
+Then for Wednesday, if there are slots with start >=750, choose the first one, else if no other day, choose the first slot on Wednesday, but since preference is "rather not", it might be acceptable, but the problem says "find a time that works with constraints", and since preference is a constraint, we should try to satisfy it.
+
+In the task, it says "Matthew would rather not meet on Wednesday before 12:30", so it is a preference, not a hard constraint, but since there is a solution after, we use that.
+
+In code, I'll first check for all days except Wednesday, if I find a slot, I'll use it.
+
+Then for Wednesday, I'll find slots and prefer those after 12:30.
+
+But in this case, only Wednesday has slots, so I'll directly handle Wednesday.
+
+Now, for code, I'll list all days, and for each day, compute the available meeting slots.
+
+Then choose the first day that has a slot, but for Wednesday, choose a slot with start >=750 if possible.
+
+Since Monday, Tuesday, Thursday, Friday have no slots, as we saw, so only Wednesday has slots.
+
+So in code, after computing for each day, we can see that only Wednesday has overlapping free intervals with length >=60.
+
+So let's compute for Wednesday.
+
+First, Diane free on Wednesday:
+
+Using get_free_intervals for Diane with busy_list = [(540,570), (870,900), (990,1020)], work_start=540, work_end=1020.
+
+Sort busy: already sorted.
+
+current=540
+
+first busy: (540,570) → since current=540, busy[0]=540, so busy[0] not greater than current, so no free added yet. Then current = max(540,570)=570
+
+next busy: (870,900) → 870>570, so free from 570 to 870 → add (570,870)
+
+current = max(570,900)=900
+
+next busy: (990,1020) → 990>900, so free from 900 to 990 → add (900,990)
+
+current=990
+
+then after, current=990<1020, so free from 990 to 1020? But wait, last busy end at 1020, so current=990, and we add free from 990 to 1020? But Diane is busy from 990 to 1020? No, busy from 990 to 1020? In my busy list, I have (990,1020) for busy, so after 990, she is busy until 1020, so at current=990, which is after busy end? No, in the function, after processing all busy, current=990, which is the end of last busy, so since current=990 <1020, we add free from 990 to 1020? But she is busy until 1020, so she is not free from 990 to 1020. Mistake in the function.
+
+I see the issue in get_free_intervals function.
+
+In the function, after for loop, we add from current to end_time, but current might be after the last busy end, but if last busy end is 1020, then current=1020, so we don't add, but if last busy end is before end_time, we add free from last busy end to end_time.
+
+But in this case, for Diane, last busy end is 1020, so current=1020 after processing, so we should not add any free after.
+
+But in the function, we have if current < end_time, then add (current, end_time).
+
+But if current == end_time, we don't add.
+
+In Diane's case, after processing all busy, current=1020? Let's see.
+
+After last busy (990,1020), we set current = max(current, busy[1]) = max(900,1020)=1020.
+
+Then current=1020, which is not less than end_time=1020, so no free added.
+
+So free intervals are: from above, we added (570,870) and (900,990)?
+
+But from 570 to 870 and 900 to 990.
+
+But from 870 to 900, she is busy, so free from 570 to 870 and 900 to 990? But 990 to 1020 she is busy, so yes, free from 570 to 870 and 900 to 990.
+
+But 900 to 990 is 90 minutes, but she is free from 900 to 990? But from her busy, she has busy at 870 to 900 and 990 to 1020, so after 900, she is free until 990, so yes.
+
+But in terms of time, 900 minutes is 15:00, 990 minutes is 16:30, so free from 15:00 to 16:30? But 990 minutes is 16*60+30=960+30=990, which is 16:30, so from 15:00 to 16:30, but she is free until 16:30, then busy from 16:30 to 17:00.
+
+So in free intervals, we have (900,990) which means from 900 to 990, which is 15:00 to 16:30.
+
+Similarly, (570,870) which is 9:30 to 14:30? 570 minutes is 9*60+30=570, which is 9:30, and 870 minutes is 14*60+30=840+30=870, which is 14:30, so from 9:30 to 14:30.
+
+So Diane free on Wednesday: 9:30-14:30 and 15:00-16:30.
+
+Now Matthew free on Wednesday:
+
+Busy list: [(540,660), (720,870), (960,1020)]
+
+work_start=540, work_end=1020
+
+get_free_intervals:
+
+sort busy: already sorted.
+
+current=540
+
+first busy: (540,660) → busy[0]=540, not greater than current, so no free yet. current=max(540,660)=660
+
+second busy: (720,870) → 720>660, so free from 660 to 720 → add (660,720)
+
+current=max(660,870)=870
+
+third busy: (960,1020) → 960>870, so free from 870 to 960 → add (870,960)
+
+current=max(870,1020)=1020
+
+then current=1020 not less than end_time, so no more.
+
+So free intervals: (660,720) and (870,960)
+
+Which is 11:00-12:00 and 14:30-16:00? 660min=11:00, 720min=12:00, so 11:00 to 12:00.
+
+870min=14:30, 960min=16:00, so 14:30 to 16:00.
+
+Now, find overlaps between Diane free and Matthew free.
+
+Diane: (570,870) and (900,990)
+
+Matthew: (660,720) and (870,960)
+
+Now overlaps:
+
+First, Diane (570,870) and Matthew (660,720) → overlap from max(570,660)=660 to min(870,720)=720 → (660,720)
+
+Second, Diane (570,870) and Matthew (870,960) → max(570,870)=870, min(870,960)=870 → so overlap from 870 to 870? which is zero length, so no overlap. Since 870 is the end, but Matthew free until 870? Matthew free from 870 to 960, meaning from 870 to 960 he is free, but at 870, is he free? Since free interval (870,960), he is free from 870 to 960, so at 870, he is free. But Diane free from 570 to 870, meaning she is free until 870, but at 870, she becomes busy? So for a meeting at 870, Diane is not free because she is busy at 870? From her free interval, she is free from 570 to 870, so at 870, she is still free? No, because the free interval is up to but not including 870? In the free interval, we have (570,870), which means from time 570 to 870, she is free, but at time 870, she may not be free if busy starts at 870.
+
+In our representation, when we have free interval (A,B), it means she is free from time A to time B, but not including time B if busy starts at B. This is because in the busy interval, we have busy from start to end, so at time B, she becomes busy.
+
+So in free interval (570,870), she is free from time 570 to time 870, but at time 870, she becomes busy, so for a meeting, she can only have meetings that start at 570 and end by 870.
+
+Similarly, for Matthew, free interval (870,960), he is free from time 870 to time 960, so at time 870, he becomes free.
+
+So for a meeting starting at time 870, Diane is not available because at 870, she is busy, but if meeting starts at 870, it would be at the same time she becomes busy, which is not good. So effectively, there is no overlap at time 870 because Diane is not free at 870, and Matthew is free at 870 but Diane is not.
+
+Therefore, the overlap between Diane (570,870) and Matthew (870,960) is empty because at 870, Diane is busy, so no shared free time.
+
+Similarly, between Diane (900,990) and Matthew (870,960): overlap from max(900,870)=900 to min(990,960)=960 → but 960>990? min(990,960)=960, but 960>990? No, 960<990, so min is 960, so overlap from 900 to 960? But Diane free until 990, Matthew free until 960, so overlap from 900 to 960.
+
+But is that correct? Diane free from 900 to 990, Matthew free from 870 to 960, so both free from 900 to 960.
+
+So overlap (900,960)
+
+And length 960-900=60 minutes exactly.
+
+So we can have a meeting from 900 to 960, which is 15:00 to 16:00.
+
+Similarly, the other overlap (660,720) which is 11:00 to 12:00, but length 60 minutes? 720-660=60 minutes, so also one hour.
+
+But for Wednesday, Matthew prefers not before 12:30, so 11:00-12:00 is before, so we should not choose it.
+
+So we choose the overlap (900,960) for meeting.
+
+So meeting start at 900 minutes, which is 15:00, end at 900+60=960, which is 16:00.
+
+So output Wednesday, 15:00 to 16:00.
+
+Now for code, we need to output in format HH:MM:HH:MM, so like 15:00:16:00 but with colons? The example output format is {14:30:15:30} but in the solution, it should be output as string.
+
+In the SOLUTION part, it says "outputs it in the format HH:MM:HH:MM" and also output the day.
+
+So for example, "Wednesday" and "15:00:16:00"
+
+But in the example, it has curly braces, but probably without braces in output.
+
+Now, let's write the code.
+
+I'll hardcode the busy times for each day.
+
+Then iterate through days.
+
+For each day, get free intervals for Diane and Matthew.
+
+Then find overlapping intervals.
+
+Then for each overlap, if overlap length >=60, then it is a candidate.
+
+Then for Wednesday, we want to avoid candidates with start <750, so we can collect all candidates for Wednesday and then choose one with start >=750.
+
+Since other days have no candidates, we can break once we find a candidate for a day, but for Wednesday, we need to ensure we choose the right candidate.
+
+In code, I'll first check days except Wednesday, then check Wednesday with preference.
+
+But since only Wednesday has candidates, I'll directly handle Wednesday.
+
+To be thorough, I'll code for all days.
+
+Let's code.
+
+First, define work_start and work_end in minutes.
+
+work_start = 9 * 60  # 9:00
+work_end = 17 * 60   # 17:00
+
+duration = 60
+
+# Define busy times in minutes for each day for Diane and Matthew
+diane_busy = {
+    'Monday': [(12*60, 12*60+30), (15*60, 15*60+30)],
+    'Tuesday': [(10*60, 11*60), (11*60+30, 12*60), (12*60+30, 13*60), (16*60, 17*60)],
+    'Wednesday': [(9*60, 9*60+30), (14*60+30, 15*60), (16*60+30, 17*60)],
+    'Thursday': [(15*60+30, 16*60+30)],
+    'Friday': [(9*60+30, 11*60+30), (14*60+30, 15*60), (16*60, 17*60)]
+}
+
+matthew_busy = {
+    'Monday': [(9*60, 10*60), (10*60+30, 17*60)],
+    'Tuesday': [(9*60, 17*60)],
+    'Wednesday': [(9*60, 11*60), (12*60, 14*60+30), (16*60, 17*60)],
+    'Thursday': [(9*60, 16*60)],
+    'Friday': [(9*60, 17*60)]
+}
+
+# Note: in the busy times, I have used the end time as the time when busy ends, so for example, 12:00 to 12:30 is (720,750)
+
+# Now function to get free intervals
+def get_free_intervals(busy_list, start_time, end_time):
+    # sort the busy list by start time
+    sorted_busy = sorted(busy_list, key=lambda x: x[0])
+    free_intervals = []
+    current = start_time
+    for busy in sorted_busy:
+        if busy[0] > current:
+            free_intervals.append((current, busy[0]))
+        current = max(current, busy[1])
+    if current < end_time:
+        free_intervals.append((current, end_time))
+    return free_intervals
+
+# Function to find overlapping intervals between two lists
+def find_overlapping_intervals(intervals1, intervals2):
+    overlaps = []
+    for i1 in intervals1:
+        for i2 in intervals2:
+            start = max(i1[0], i2[0])
+            end = min(i1[1], i2[1])
+            if start < end:
+                overlaps.append((start, end))
+    return overlaps
+
+# Now iterate through each day
+days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
+preference_time = 12*60 + 30  # 12:30 in minutes
+
+# We'll store candidate meeting times: (day, start_time, end_time) but end_time is start_time + duration, but we have overlap end, so we can compute meeting time from overlap start.
+# Since overlap has start and end, and if length >= duration, we can set meeting start = overlap start, meeting end = overlap start + duration.
+# But we need to ensure that overlap start + duration <= overlap end, which is true if overlap length >= duration.
+
+candidate = None
+
+for day in days:
+    # Get free intervals for Diane and Matthew on this day
+    diane_free = get_free_intervals(diane_busy[day], work_start, work_end)
+    matthew_free = get_free_intervals(matthew_busy[day], work_start, work_end)
+    # Find overlapping free intervals
+    overlaps = find_overlapping_intervals(diane_free, matthew_free)
+    for ov in overlaps:
+        if ov[1] - ov[0] >= duration:  # enough for meeting
+            meeting_start = ov[0]
+            meeting_end = meeting_start + duration
+            # For Wednesday, we have preference
+            if day == 'Wednesday':
+                if meeting_start >= preference_time:
+                    # found good candidate
+                    candidate = (day, meeting_start, meeting_end)
+                    break
+                else:
+                    # skip if before preference, but remember if no other candidate, we might use it later
+                    # since we break only after finding good, we need to check all overlaps on Wednesday
+                    continue
+            else:
+                candidate = (day, meeting_start, meeting_end)
+                break
+    if candidate is not None:
+        # but for Wednesday, we might have found a candidate without preference, but we want to avoid if possible, so if we found a candidate on other day, we break, but for Wednesday, we may have multiple, so we need to ensure that for Wednesday, we only break if we found a candidate with preference, otherwise we continue to other days?
+        # But in this case, only Wednesday has candidates, so for Wednesday, if we find a candidate with preference, we break, else we don't break yet?
+        # Since we are iterating days, and if we find a candidate on Monday, we break, but Monday has no candidate, so for Wednesday, if we find a candidate with preference, we break, else we continue to other days, but other days have no candidate, so we need to use the Wednesday candidate even if before preference.
+        # So in the code, after the inner loop, if candidate is set and day is not Wednesday, we break.
+        if day != 'Wednesday':
+            break
+        else:
+            # if on Wednesday, we have candidate, but if it is with preference, we already broke, but if not, we may have candidate set from earlier overlap, but we want to see if there is another overlap with preference?
+            # In the inner loop for Wednesday, we only set candidate if meeting_start >= preference_time, and then break. If we don't find such, candidate remains None or from previous day? But since previous days have no candidate, candidate is None.
+            # So after inner loop for Wednesday, if candidate is still None, but there might be overlaps with meeting_start < preference_time, we should consider them if no other day.
+            # So we need to check for Wednesday without preference if no candidate found yet.
+            if candidate is None:
+                # try to find any candidate on Wednesday
+                for ov in overlaps:
+                    if ov[1] - ov[0] >= duration:
+                        meeting_start = ov[0]
+                        meeting_end = meeting_start + duration
+                        candidate = (day, meeting_start, meeting_end)
+                        break
+            # then break after Wednesday since we have a candidate or not?
+            if candidate is not None:
+                break
+
+# Now if candidate found, output else not, but problem says there exists a solution, so candidate should be found.
+
+Now, in the above, for Wednesday, in the inner loop, we only set candidate if meeting_start >= preference_time and then break. If we don't find such, we continue the inner loop, but after inner loop, if candidate is still None, we then look for any candidate on Wednesday.
+
+Then we break after Wednesday if candidate is set.
+
+But since we iterate days, after Wednesday, there are Thursday and Friday, which might have candidates, but in this case, they don't, so we break after Wednesday.
+
+But in code, we should not break after Wednesday if no candidate found, but continue to other days. But in the above, after Wednesday, if candidate is None, we continue to Thursday and Friday.
+
+In the inner loop for Wednesday, we might have overlaps but before preference, so we don't set candidate yet, but after inner loop, we set candidate from Wednesday if available.
+
+Then we break only if candidate is set.
+
+But in the for loop, we break after setting candidate for non-Wednesday, but for Wednesday, we set candidate and then break after the day.
+
+Actually, in the code above, after processing each day, if candidate is set and day is not Wednesday, we break. For Wednesday, we set candidate within the day processing, and then after the inner loop, we break if candidate is set.
+
+But if on Wednesday, we found a candidate with preference, we break immediately in the inner loop, and then after inner loop, we break again in the outer break.
+
+But if no candidate with preference, we set candidate after inner loop, and then break.
+
+So it should work.
+
+Now, after the loop, we output candidate.
+
+Now, convert meeting_start and meeting_end to time string.
+
+Define a function minutes_to_time(minutes):
+    hours = minutes // 60
+    mins = minutes % 60
+    return f"{hours:02d}:{mins:02d}"
+
+Then output day and time range as HH:MM:HH:MM
+
+So for example, output = Wednesday + " " + minutes_to_time(meeting_start) + ":" + minutes_to_time(meeting_end)
+
+But minutes_to_time(meeting_start) gives e.g. "15:00", and minutes_to_time(meeting_end) gives "16:00", so we can combine as "15:00:16:00" but with colons between hours and minutes, and between start and end? The format HH:MM:HH:MM suggests that there are two HH:MM pairs separated by a colon, so like "15:00:16:00" which might be confusing, but from the example output {14:30:15:30}, it seems like start time and end time concatenated with colon between hours and minutes and between times? But in the example, it has curly braces, but probably for output, we should output without braces.
+
+In the SOLUTION part, it says "outputs it in the format HH:MM:HH:MM", so for example, "14:30:15:30" meaning start at 14:30 end at 15:30.
+
+But in terms of string, it should be like "14:30:15:30" which has two colons in between, so technically, it is HH:MM:HH:MM, so we output e.g. "15:00:16:00"
+
+But to avoid confusion, we can output as two separate strings, but the instruction says output in that format.
+
+Also, output the day.
+
+So finally, print the day and the time string.
+
+Now, let's code accordingly.
+
+I'll write the code.
+
+Note: in the busy times, I have defined for Tuesday, Diane: (10*60, 11*60) which is 600 to 660, but 11:00 is 660, so from 10:00 to 11:00, which is correct.
+
+Similarly for others.
+
+Now, let's implement.
+
+I'll write the code in a script.
+
+Since the problem says "Provide the response with only code.", I'll output only the code without any explanation.
+
+So here is the code.

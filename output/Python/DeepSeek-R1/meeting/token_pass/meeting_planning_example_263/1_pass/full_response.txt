@@ -1,0 +1,75 @@
+```python
+import itertools
+import json
+
+def main():
+    travel_times = {
+        'Bayview': {'Embarcadero': 19, 'Fisherman\'s Wharf': 25, 'Financial District': 19},
+        'Embarcadero': {'Bayview': 21, 'Fisherman\'s Wharf': 6, 'Financial District': 5},
+        'Fisherman\'s Wharf': {'Bayview': 26, 'Embarcadero': 8, 'Financial District': 11},
+        'Financial District': {'Bayview': 19, 'Embarcadero': 4, 'Fisherman\'s Wharf': 10}
+    }
+    
+    friends = [
+        {'name': 'Karen', 'location': 'Fisherman\'s Wharf', 'start_avail': 8*60+45, 'end_avail': 15*60, 'min_duration': 30},
+        {'name': 'Anthony', 'location': 'Financial District', 'start_avail': 9*60+15, 'end_avail': 21*60+30, 'min_duration': 105},
+        {'name': 'Betty', 'location': 'Embarcadero', 'start_avail': 19*60+45, 'end_avail': 21*60+45, 'min_duration': 15}
+    ]
+    
+    start_location = 'Bayview'
+    start_time = 9 * 60
+    
+    best_count = 0
+    best_schedule = []
+    
+    for order in itertools.permutations(range(len(friends))):
+        current_loc = start_location
+        current_time = start_time
+        scheduled_meetings = []
+        count = 0
+        
+        for idx in order:
+            friend = friends[idx]
+            travel_time = travel_times[current_loc][friend['location']]
+            arrival_time = current_time + travel_time
+            meeting_start = max(arrival_time, friend['start_avail'])
+            meeting_end = meeting_start + friend['min_duration']
+            
+            if meeting_end <= friend['end_avail']:
+                scheduled_meetings.append({
+                    'name': friend['name'],
+                    'location': friend['location'],
+                    'start': meeting_start,
+                    'end': meeting_end
+                })
+                current_loc = friend['location']
+                current_time = meeting_end
+                count += 1
+            else:
+                continue
+                
+        if count > best_count:
+            best_count = count
+            best_schedule = scheduled_meetings
+    
+    itinerary = []
+    for meeting in best_schedule:
+        itinerary.append({
+            'action': 'meet',
+            'location': meeting['location'],
+            'person': meeting['name'],
+            'start_time': format_time(meeting['start']),
+            'end_time': format_time(meeting['end'])
+        })
+    
+    result = {'itinerary': itinerary}
+    print(json.dumps(result, indent=2))
+
+def format_time(minutes):
+    hours = minutes // 60
+    mins = minutes % 60
+    return f"{hours}:{mins:02d}"
+
+if __name__ == '__main__':
+    main()
+```

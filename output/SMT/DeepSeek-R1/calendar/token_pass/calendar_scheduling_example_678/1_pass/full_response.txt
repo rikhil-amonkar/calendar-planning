@@ -1,0 +1,56 @@
+```python
+from z3 import *
+
+def main():
+    # Initialize solver
+    solver = Solver()
+    
+    # Variables: day (0=Monday, 1=Tuesday) and start time in minutes
+    d = Int('d')
+    s = Int('s')
+    
+    # Constraints on day and start time
+    solver.add(Or(d == 0, d == 1))
+    solver.add(s >= 540)   # 9:00
+    solver.add(s <= 960)   # 16:00 (latest start for 1-hour meeting ending by 17:00)
+    
+    # Monday constraints
+    russell_monday_busy = [(630, 660)]
+    alexander_monday_busy = [(540, 690), (720, 870), (900, 1020)]
+    
+    for start, end in russell_monday_busy + alexander_monday_busy:
+        solver.add(If(d == 0, Or(s + 60 <= start, s >= end)))
+    
+    # Tuesday constraints
+    russell_tuesday_busy = [(780, 810)]
+    alexander_tuesday_busy = [(540, 600), (780, 840), (900, 930), (960, 990)]
+    
+    for start, end in russell_tuesday_busy + alexander_tuesday_busy:
+        solver.add(If(d == 1, Or(s + 60 <= start, s >= end)))
+    
+    # Russell's preference: avoid Tuesday before 13:30 (810 minutes)
+    solver.add(If(d == 1, s >= 810))
+    
+    # Check for a solution
+    if solver.check() == sat:
+        model = solver.model()
+        start_min = model[s].as_long()
+        day_val = model[d].as_long()
+        
+        # Convert minutes to HH:MM
+        start_hour = start_min // 60
+        start_minute = start_min % 60
+        end_min = start_min + 60
+        end_hour = end_min // 60
+        end_minute = end_min % 60
+        
+        day_str = "Monday" if day_val == 0 else "Tuesday"
+        time_str = f"{start_hour:02d}:{start_minute:02d}:{end_hour:02d}:{end_minute:02d}"
+        
+        print(f"{day_str} {time_str}")
+    else:
+        print("No solution found")
+
+if __name__ == "__main__":
+    main()
+```

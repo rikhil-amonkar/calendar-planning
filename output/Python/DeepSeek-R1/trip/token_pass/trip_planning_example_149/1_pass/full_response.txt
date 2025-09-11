@@ -1,0 +1,57 @@
+```python
+import json
+
+def main():
+    # Input parameters
+    total_days = 10
+    stays = {
+        'London': 3,
+        'Santorini': 6,
+        'Istanbul': 3
+    }
+    fixed_santorini_days = [5, 10]
+    direct_flights = {('Istanbul', 'London'), ('London', 'Santorini')}
+    
+    # Calculate the start day of the Santorini segment
+    y = total_days - stays['Santorini'] + 1
+    
+    # Non-Santorini cities
+    other_cities = [city for city in stays if city != 'Santorini']
+    
+    # Check possible orders for the first two segments
+    valid_order = None
+    for first_city, second_city in [(other_cities[0], other_cities[1]), (other_cities[1], other_cities[0])]:
+        # Check flight connections
+        if not (connected(first_city, second_city, direct_flights) and 
+                connected(second_city, 'Santorini', direct_flights)):
+            continue
+        
+        # Check day constraints
+        x = stays[first_city]
+        second_city_days = y - x + 1
+        if second_city_days == stays[second_city]:
+            valid_order = (first_city, second_city)
+            break
+    
+    if valid_order is None:
+        raise ValueError("No valid itinerary found with given constraints")
+    
+    first_city, second_city = valid_order
+    x = stays[first_city]
+    
+    # Build itinerary
+    itinerary = [
+        {"day_range": f"Day 1-{x}", "place": first_city},
+        {"day_range": f"Day {x}-{y}", "place": second_city},
+        {"day_range": f"Day {y}-{total_days}", "place": 'Santorini'}
+    ]
+    
+    # Output as JSON
+    print(json.dumps({"itinerary": itinerary}))
+
+def connected(city1, city2, direct_flights):
+    return (city1, city2) in direct_flights or (city2, city1) in direct_flights
+
+if __name__ == "__main__":
+    main()
+```

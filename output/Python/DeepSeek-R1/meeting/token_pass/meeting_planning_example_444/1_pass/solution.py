@@ -1,0 +1,124 @@
+import json
+
+def time_to_minutes(time_str):
+    hours, minutes = map(int, time_str.split(':'))
+    return hours * 60 + minutes
+
+def minutes_to_time(minutes):
+    hours = minutes // 60
+    mins = minutes % 60
+    return f"{hours}:{mins:02d}"
+
+def main():
+    travel_times = {
+        'Financial District': {
+            'Russian Hill': 10,
+            'Sunset District': 31,
+            'North Beach': 7,
+            'The Castro': 23,
+            'Golden Gate Park': 23
+        },
+        'Russian Hill': {
+            'Financial District': 11,
+            'Sunset District': 23,
+            'North Beach': 5,
+            'The Castro': 21,
+            'Golden Gate Park': 21
+        },
+        'Sunset District': {
+            'Financial District': 30,
+            'Russian Hill': 24,
+            'North Beach': 29,
+            'The Castro': 17,
+            'Golden Gate Park': 11
+        },
+        'North Beach': {
+            'Financial District': 8,
+            'Russian Hill': 4,
+            'Sunset District': 27,
+            'The Castro': 22,
+            'Golden Gate Park': 22
+        },
+        'The Castro': {
+            'Financial District': 20,
+            'Russian Hill': 18,
+            'Sunset District': 17,
+            'North Beach': 20,
+            'Golden Gate Park': 11
+        },
+        'Golden Gate Park': {
+            'Financial District': 26,
+            'Russian Hill': 19,
+            'Sunset District': 10,
+            'North Beach': 24,
+            'The Castro': 13
+        }
+    }
+
+    current_time = time_to_minutes('9:00')
+    current_location = 'Financial District'
+    itinerary = []
+
+    # Patricia at Sunset District
+    travel_time = travel_times[current_location]['Sunset District']
+    arrival_time = current_time + travel_time
+    meeting_start = max(arrival_time, time_to_minutes('9:15'))
+    meeting_end = meeting_start + 60
+    itinerary.append({
+        'action': 'meet',
+        'location': 'Sunset District',
+        'person': 'Patricia',
+        'start_time': minutes_to_time(meeting_start),
+        'end_time': minutes_to_time(meeting_end)
+    })
+    current_time = meeting_end
+    current_location = 'Sunset District'
+
+    # Laura at North Beach
+    travel_time = travel_times[current_location]['North Beach']
+    arrival_time = current_time + travel_time
+    meeting_start = max(arrival_time, time_to_minutes('12:30'))
+    meeting_end = meeting_start + 15
+    itinerary.append({
+        'action': 'meet',
+        'location': 'North Beach',
+        'person': 'Laura',
+        'start_time': minutes_to_time(meeting_start),
+        'end_time': minutes_to_time(meeting_end)
+    })
+    current_time = meeting_end
+    current_location = 'North Beach'
+
+    # Ronald at Russian Hill
+    travel_time = travel_times[current_location]['Russian Hill']
+    arrival_time = current_time + travel_time
+    meeting_start = max(arrival_time, time_to_minutes('13:45'))
+    meeting_end = meeting_start + 105
+    itinerary.append({
+        'action': 'meet',
+        'location': 'Russian Hill',
+        'person': 'Ronald',
+        'start_time': minutes_to_time(meeting_start),
+        'end_time': minutes_to_time(meeting_end)
+    })
+    current_time = meeting_end
+    current_location = 'Russian Hill'
+
+    # Emily at The Castro
+    travel_time = travel_times[current_location]['The Castro']
+    arrival_time = current_time + travel_time
+    meeting_start = max(arrival_time, time_to_minutes('16:15'))
+    meeting_end = meeting_start + 60
+    itinerary.append({
+        'action': 'meet',
+        'location': 'The Castro',
+        'person': 'Emily',
+        'start_time': minutes_to_time(meeting_start),
+        'end_time': minutes_to_time(meeting_end)
+    })
+
+    output = {'itinerary': itinerary}
+    print(json.dumps(output, indent=2))
+
+if __name__ == '__main__':
+    main()

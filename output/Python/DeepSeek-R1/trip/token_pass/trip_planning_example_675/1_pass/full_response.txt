@@ -1,0 +1,54 @@
+```python
+import itertools
+import json
+
+def main():
+    cities = ['Dubrovnik', 'Split', 'Milan', 'Porto', 'Krakow', 'Munich']
+    days_dict = {'Dubrovnik': 4, 'Split': 3, 'Milan': 3, 'Porto': 4, 'Krakow': 2, 'Munich': 5}
+    graph = {('Munich', 'Porto'), ('Split', 'Milan'), ('Milan', 'Porto'), ('Munich', 'Krakow'),
+             ('Munich', 'Milan'), ('Dubrovnik', 'Munich'), ('Krakow', 'Split'), ('Krakow', 'Milan'),
+             ('Munich', 'Split')}
+    
+    for perm in itertools.permutations(cities):
+        valid = True
+        for i in range(len(perm) - 1):
+            a, b = perm[i], perm[i+1]
+            if (a, b) not in graph and (b, a) not in graph:
+                valid = False
+                break
+        if not valid:
+            continue
+        
+        start = 1
+        itinerary = []
+        for idx, city in enumerate(perm):
+            end = start + days_dict[city] - 1
+            if city == 'Munich' and not (start <= 4 and end >= 8):
+                valid = False
+                break
+            if city == 'Krakow' and not (start <= 8 and end >= 9):
+                valid = False
+                break
+            if city == 'Milan' and not (start <= 11 and end >= 13):
+                valid = False
+                break
+            itinerary.append((start, end, city))
+            if idx < len(perm) - 1:
+                start = end
+        
+        if valid and end == 16:
+            result = []
+            for s, e, city in itinerary:
+                if s == e:
+                    day_range = f"Day {s}"
+                else:
+                    day_range = f"Day {s}-{e}"
+                result.append({"day_range": day_range, "place": city})
+            print(json.dumps({"itinerary": result}))
+            return
+    
+    print(json.dumps({"itinerary": []}))
+
+if __name__ == "__main__":
+    main()
+```

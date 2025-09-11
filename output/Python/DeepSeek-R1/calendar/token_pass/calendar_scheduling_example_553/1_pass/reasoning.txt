@@ -1,0 +1,222 @@
+We are given the work hours from 9:00 to 17:00 on Monday.
+ We are scheduling for Eric and Henry.
+ Meeting duration: 30 minutes.
+
+ Eric's blocked times on Monday:
+   12:00-13:00, 14:00-15:00
+
+ Henry's meetings on Monday:
+   9:30-10:00, 10:30-11:00, 11:30-12:30, 13:00-13:30, 14:30-15:00, 16:00-17:00
+
+ Additionally, Henry would rather not meet on Monday after 10:00. But note: the meeting must be between 9:00 and 17:00.
+
+ Since Henry prefers not to meet after 10:00, we should try to schedule the meeting before 10:00 if possible.
+
+ Let's break down the available times for each person:
+
+ Eric's available intervals on Monday (within 9:00-17:00):
+   [9:00, 12:00] but excluding the blocked times? Actually, Eric's blocked times are only the ones given, so:
+   Eric is free from 9:00 to 12:00 except that he has a block from 12:00 to 13:00, so actually he is free from 9:00 to 12:00 (but note: 12:00 is the start of his block, so he is free until 12:00).
+   Then from 13:00 to 14:00 (because his next block is 14:00-15:00) and then from 15:00 to 17:00.
+
+ But note: the blocked times are exactly as given, so:
+   Eric's free periods (within 9:00-17:00) are:
+     9:00 - 12:00
+     13:00 - 14:00
+     15:00 - 17:00
+
+ Henry's free periods (within 9:00-17:00) excluding his meetings and considering his preference (but note the preference is just a preference, not a hard constraint. However, the problem says there is a solution that works with existing schedules and constraints, and note the preference is "rather not", so we can use after 10:00 if necessary, but let's try to respect it):
+
+ Henry's meetings break his day into:
+   Before 9:30: 9:00-9:30 (but note: meeting at 9:30, so free from 9:00 to 9:30)
+   Between 10:00 and 10:30: 10:00-10:30 (because meeting ends at 10:00 and next at 10:30)
+   Between 11:00 and 11:30: 11:00-11:30
+   Between 12:30 and 13:00: 12:30-13:00 (because meeting ends at 12:30 and next at 13:00)
+   Between 13:30 and 14:30: 13:30-14:30
+   Between 15:00 and 16:00: 15:00-16:00
+
+ But note: Henry's last meeting is 16:00-17:00, so he is free until 16:00 then busy.
+
+ However, Henry's preference is to not meet after 10:00. So we should try to schedule the meeting in the morning if possible.
+
+ Let's look for a 30-minute slot that is free for both and, if possible, before 10:00.
+
+ Eric's morning free: 9:00-12:00
+ Henry's morning free: 
+   - 9:00-9:30
+   - 10:00-10:30
+   - 11:00-11:30
+
+ Now, note that Henry's preference: he would rather not meet after 10:00, so let's try to use the 9:00-9:30 slot.
+
+ Check Eric: 9:00-9:30 is within Eric's free time (9:00-12:00).
+ Check Henry: 9:00-9:30 is free.
+
+ So we can schedule the meeting from 9:00 to 9:30.
+
+ However, note that the meeting duration is half an hour, so 9:00 to 9:30 is exactly 30 minutes.
+
+ But wait: Henry has a meeting at 9:30, so the meeting ending at 9:30 is acceptable (as long as it doesn't overlap with the next meeting which starts at 9:30, but note that typically meetings are scheduled to end at the half hour and then the next starts, so it's acceptable).
+
+ Since we are respecting Henry's preference to not meet after 10:00, we choose the morning slot.
+
+ However, let's double-check if there's any constraint we missed. Eric has no meeting at that time, and Henry is free until 9:30.
+
+ Therefore, the meeting time is Monday 9:00-9:30.
+
+ But note: the problem says "Henry would rather not meet on Monday after 10:00", meaning he prefers not to, but if we must we can schedule after 10:00. However, we found a slot before 10:00, so we use that.
+
+ Code approach:
+
+ We are going to represent time in minutes from 9:00 (which is 0 minutes) to 17:00 (which is 8*60 = 480 minutes).
+
+ Steps:
+ 1. Define the work day: 9:00 (0) to 17:00 (480 minutes)
+ 2. Represent each person's busy intervals in minutes from start of day (9:00).
+ 3. Find free intervals for each person (within work hours).
+ 4. Find the intersection of free intervals for all participants (Eric and Henry).
+ 5. Also, we have Henry's preference: if possible, choose a slot that starts before 10:00 (which is 60 minutes from 9:00) because he would rather not meet after 10:00.
+
+ However, note: the preference is not a hard constraint, but we are to respect it if possible.
+
+ Since we are to output a time that works for everyone's schedule and constraints, and we found one that also satisfies the preference, we choose 9:00-9:30.
+
+ Let's code accordingly.
+
+ But note: the problem says there exists a solution.
+
+ We'll represent the busy times for Eric and Henry as lists of intervals (each interval is [start_minute, end_minute]).
+
+ Eric's busy times (in minutes from 9:00):
+   12:00-13:00 -> (12:00 is 3*60 = 180, 13:00 is 4*60=240) -> [180, 240]
+   14:00-15:00 -> (14:00 is 5*60=300, 15:00 is 6*60=360) -> [300, 360]
+
+ Henry's busy times (in minutes from 9:00):
+   9:30-10:00 -> (9:30 is 30, 10:00 is 60) -> [30, 60]
+   10:30-11:00 -> (10:30 is 90, 11:00 is 120) -> [90, 120]
+   11:30-12:30 -> (11:30 is 150, 12:30 is 210) -> [150, 210]
+   13:00-13:30 -> (13:00 is 240, 13:30 is 270) -> [240, 270]
+   14:30-15:00 -> (14:30 is 330, 15:00 is 360) -> [330, 360]
+   16:00-17:00 -> (16:00 is 420, 17:00 is 480) -> [420, 480]
+
+ Now, we want to find free intervals for each.
+
+ For Eric:
+   Free intervals: [0, 180], [240, 300], [360, 480]
+
+ For Henry:
+   Free intervals: [0, 30], [60, 90], [120, 150], [210, 240], [270, 330], [360, 420]
+
+ Now, we need to find overlapping free intervals of at least 30 minutes.
+
+ We'll combine the free intervals for both and find the intersection.
+
+ Alternatively, we can iterate over the free intervals of Eric and Henry and check for overlaps.
+
+ Since the preference is for Henry to not meet after 10:00 (i.e., after minute 60), we can try to find a slot that starts at or before minute 60 (i.e., 10:00).
+
+ Let's check the free intervals that start by 10:00 (minute 60):
+
+ Eric's free intervals that start by 60: [0,180] (from 0 to 180)
+ Henry's free intervals that start by 60: [0,30] and [60,90] (but note: [60,90] starts at 60, which is 10:00, but the meeting would be at 10:00, which is after 10:00? Actually, the meeting starting at 10:00 is exactly at 10:00, which is after 10:00. So Henry's preference is to not meet after 10:00, meaning he doesn't want to meet at 10:00 or after? The problem says "after 10:00", which typically means times strictly after 10:00. But note: the meeting starting at 10:00 would run until 10:30, which is after 10:00. So we should avoid that.
+
+ Therefore, we are looking for a meeting that starts at or before 9:59? But note our time is in whole minutes and we are representing in minutes. The preference is against any meeting that starts at 10:00 or later? Or against any meeting that has any part after 10:00?
+
+ Let's re-read: "Henry would rather not meet on Monday after 10:00". This is ambiguous. It could mean:
+   a) Henry does not want to have a meeting that starts after 10:00.
+   b) Henry does not want to have a meeting that has any time after 10:00.
+
+ Typically, if a meeting starts at 10:00 and ends at 10:30, then it is happening after 10:00. So I think we should avoid any meeting that starts at 10:00 or later.
+
+ So we want a meeting that starts at or before 9:59? But note our time slots are in minutes, so the next available minute after 9:59 is 10:00. So we want a meeting that starts at 9:00, 9:01, ... up to 9:59? But note our free intervals are in whole minutes and we are representing in minutes, so we can have a meeting starting at 9:00, 9:30, etc.
+
+ Since we are dealing with minute precision, we can have a meeting that starts at 9:00 (which is before 10:00) and ends at 9:30 (which is before 10:00). Alternatively, a meeting starting at 9:30 and ending at 10:00 would end exactly at 10:00. Is that considered after 10:00? The problem says "after 10:00", so maybe 10:00 is not after, but exactly at 10:00 is borderline.
+
+ However, note Henry's schedule: he has a meeting from 9:30 to 10:00, so if we schedule from 9:30 to 10:00, that would overlap with his meeting. So we cannot schedule at 9:30 because Henry is busy then.
+
+ Therefore, the only morning slot that is entirely before 10:00 and free for both is [9:00, 9:30] (0 to 30 minutes).
+
+ So we choose that.
+
+ Code plan:
+
+ We'll represent the free intervals for each person as a list of [start, end] in minutes.
+
+ Then, we'll find the intersection of free intervals for Eric and Henry.
+
+ Then, we'll look for the first interval that has at least 30 minutes and that starts before 10:00 (minute 60) if possible.
+
+ If we don't find one that starts before 10:00, then we look for any interval that has at least 30 minutes.
+
+ Steps in code:
+
+ 1. Define work day: start_minute = 0 (9:00), end_minute = 480 (17:00)
+ 2. Define busy intervals for Eric and Henry in minutes.
+ 3. Compute free intervals for Eric and Henry (within work day).
+ 4. Find common free intervals (intersection of free intervals of Eric and Henry).
+ 5. For each common free interval, check if it has at least 30 minutes and if it starts before 60 (10:00) then choose the first such interval that starts earliest and satisfies the duration.
+ 6. If we don't find one before 10:00, then we look for any common free interval of at least 30 minutes.
+
+ Since we found [0,30] in the common free intervals, we choose that.
+
+ But note: the common free intervals are the overlapping free times of Eric and Henry.
+
+ Let's compute the common free intervals:
+
+ Eric's free: [0,180], [240,300], [360,480]
+ Henry's free: [0,30], [60,90], [120,150], [210,240], [270,330], [360,420]
+
+ The overlapping intervals (common free time):
+
+ [0,30] (from 0 to 30) -> duration 30 minutes -> valid and starts before 10:00.
+ [60,90] -> but Eric is free [0,180] so [60,90] is within [0,180] -> duration 30 minutes -> but starts at 60 (10:00) which is not before 10:00, so we skip if we have a better one.
+ [120,150] -> within Eric's [0,180] -> duration 30 minutes -> starts at 120 (11:00) -> after 10:00.
+ [210,240] -> but Eric's next free is [240,300] -> no overlap because 210 to 240 is entirely before 240? Actually, 210 to 240 ends at 240, and Eric's free interval starts at 240. So they don't overlap because Eric is free starting at 240 (inclusive) and Henry is free until 240 (exclusive). So [210,240) and [240,300) do not overlap. We have to be careful with boundaries.
+
+ Typically, if Eric is free at 240 (13:00) and Henry is free until 240 (13:00), then a meeting starting at 240 is acceptable? But note: Eric's free interval [240,300] starts at 240, meaning Eric is free at 240. Henry's free interval [210,240] ends at 240, meaning Henry is free until 240 (but not including 240). So they are both free at 240? Actually, no: Henry's free interval [210,240) means he is free from 210 to 240, but at 240 he becomes busy (because his meeting starts at 13:00). So if we want to start a meeting at 240, Henry would be busy. Therefore, we must represent intervals as [start, end) meaning inclusive of start and exclusive of end.
+
+ So we'll represent all intervals as [start, end) in minutes.
+
+ Then, the common free intervals must be computed accordingly.
+
+ Let's recompute the free intervals for Eric and Henry with [start, end) representation:
+
+ Eric's busy: [180,240) and [300,360)
+ Eric's free: [0,180), [240,300), [360,480)
+
+ Henry's busy: [30,60), [90,120), [150,210), [240,270), [330,360), [420,480)
+ Henry's free: [0,30), [60,90), [120,150), [210,240), [270,330), [360,420)
+
+ Now, common free intervals (overlap of Eric's free and Henry's free):
+
+ [0,30) and [0,180) -> [0,30) -> duration 30 minutes -> valid.
+ [60,90) and [0,180) -> [60,90) -> duration 30 minutes -> valid.
+ [120,150) and [0,180) -> [120,150) -> duration 30 minutes -> valid.
+ [210,240) and [240,300) -> no overlap because [210,240) ends at 240 and [240,300) starts at 240 -> no common interval.
+ [270,330) and [240,300) -> overlap from 270 to 300 -> [270,300) -> duration 30 minutes -> valid.
+ [360,420) and [360,480) -> [360,420) -> duration 60 minutes -> valid.
+
+ Now, we have several options. We want to respect Henry's preference to avoid after 10:00 (i.e., avoid meetings that start at 10:00 or later). So we choose the first one that starts before 10:00 (i.e., before minute 60): [0,30) -> 9:00 to 9:30.
+
+ Therefore, we output Monday and the time 9:00 to 9:30.
+
+ Code implementation:
+
+ We'll create a function to convert time string to minutes (e.g., "9:00" -> 0, "10:00" -> 60).
+ We'll create a function to convert minutes to time string (e.g., 0 -> "9:00", 30 -> "9:30").
+
+ Steps in code:
+
+ 1. Define work hours: 9:00 to 17:00 -> [0, 480)
+ 2. Define busy intervals for Eric and Henry in minutes (using [start, end) representation).
+ 3. Compute free intervals for each person within work hours.
+ 4. Find the intersection of free intervals for Eric and Henry.
+ 5. Sort the common free intervals by start time.
+ 6. Look for the first common free interval that has duration >= 30 minutes and that starts before 60 (10:00). If found, use that.
+ 7. If not found, look for the first common free interval that has duration >= 30 minutes (regardless of start time).
+
+ We'll code accordingly.
+
+ Note: The problem says there is a solution.
+
+ Let's code.

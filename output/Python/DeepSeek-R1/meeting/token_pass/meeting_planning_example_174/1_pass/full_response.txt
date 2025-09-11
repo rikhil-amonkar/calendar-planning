@@ -1,0 +1,79 @@
+```python
+import json
+
+def main():
+    # Convert time string to minutes since 9:00
+    def time_to_min(time_str):
+        parts = time_str.split(':')
+        hours = int(parts[0])
+        minutes = int(parts[1]) if len(parts) > 1 else 0
+        return (hours - 9) * 60 + minutes
+
+    # Convert minutes since 9:00 back to time string
+    def min_to_time(min_val):
+        total_minutes = min_val
+        hours = 9 + total_minutes // 60
+        minutes = total_minutes % 60
+        return f"{hours}:{minutes:02d}"
+
+    # Travel times in minutes
+    travel_times = {
+        ("Nob Hill", "Pacific Heights"): 8,
+        ("Nob Hill", "Mission District"): 13,
+        ("Pacific Heights", "Nob Hill"): 8,
+        ("Pacific Heights", "Mission District"): 15,
+        ("Mission District", "Nob Hill"): 12,
+        ("Mission District", "Pacific Heights"): 16
+    }
+
+    # Constraints
+    thomas_available_start = time_to_min("15:30")
+    thomas_available_end = time_to_min("19:15")
+    thomas_min_duration = 75
+
+    kenneth_available_start = time_to_min("12:00")
+    kenneth_available_end = time_to_min("15:45")
+    kenneth_min_duration = 45
+
+    # Start at Nob Hill at 9:00 (0 minutes)
+    current_time = 0
+    itinerary = []
+
+    # Travel to Mission District first
+    travel_to_mission = travel_times[("Nob Hill", "Mission District")]
+    arrival_mission = current_time + travel_to_mission
+    # Wait until Kenneth is available
+    kenneth_start = max(arrival_mission, kenneth_available_start)
+    # Meet Kenneth for the entire available duration until 15:45
+    kenneth_end = kenneth_available_end
+    itinerary.append({
+        "action": "meet",
+        "location": "Mission District",
+        "person": "Kenneth",
+        "start_time": min_to_time(kenneth_start),
+        "end_time": min_to_time(kenneth_end)
+    })
+
+    # Travel to Pacific Heights
+    travel_to_pacific = travel_times[("Mission District", "Pacific Heights")]
+    arrival_pacific = kenneth_end + travel_to_pacific
+    # Thomas is available from 15:30, but we arrive later
+    thomas_start = max(arrival_pacific, thomas_available_start)
+    thomas_end = thomas_start + thomas_min_duration
+    # Check if meeting Thomas fits within his availability
+    if thomas_end <= thomas_available_end:
+        itinerary.append({
+            "action": "meet",
+            "location": "Pacific Heights",
+            "person": "Thomas",
+            "start_time": min_to_time(thomas_start),
+            "end_time": min_to_time(thomas_end)
+        })
+
+    # Output the itinerary as JSON
+    result = {"itinerary": itinerary}
+    print(json.dumps(result, indent=2))
+
+if __name__ == "__main__":
+    main()
+```

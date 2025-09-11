@@ -1,0 +1,53 @@
+from z3 import Int, Solver, And, Or, Not
+
+def main():
+    # Initialize solver
+    s = Solver()
+    
+    # Define start time in minutes from 9:00 (0 = 9:00, 480 = 17:00)
+    start = Int('start')
+    meeting_duration = 30
+    
+    # Total available time window: 9:00 to 17:00 (480 minutes)
+    s.add(start >= 0)
+    s.add(start <= 480 - meeting_duration)
+    
+    # Define busy intervals in minutes from 9:00
+    busy_times = {
+        'Diane': [(30, 60), (330, 360)],
+        'Jack': [(270, 300), (330, 360)],
+        'Eugene': [(0, 60), (90, 150), (180, 330), (360, 450)],
+        'Patricia': [(30, 90), (120, 180), (150, 300), (360, 450)]
+    }
+    
+    # For each person, ensure meeting doesn't overlap any busy interval
+    for person, intervals in busy_times.items():
+        constraints = []
+        for (busy_start, busy_end) in intervals:
+            # Meeting must be entirely before or after the busy interval
+            constraints.append(Or(
+                start + meeting_duration <= busy_start,
+                start >= busy_end
+            ))
+        s.add(And(constraints))
+    
+    # Check for solution
+    if s.check() == sat:
+        m = s.model()
+        start_minutes = m.evaluate(start).as_long()
+        
+        # Convert start time to HH:MM format
+        start_hour = 9 + start_minutes // 60
+        start_minute = start_minutes % 60
+        end_minutes = start_minutes + meeting_duration
+        end_hour = 9 + end_minutes // 60
+        end_minute = end_minutes % 60
+        
+        # Format output
+        print(f"{start_hour:02d}:{start_minute:02d}:{end_hour:02d}:{end_minute:02d}")
+        print("Monday")
+    else:
+        print("No solution found")
+
+if __name__ == "__main__":
+    main()

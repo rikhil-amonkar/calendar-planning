@@ -1,0 +1,81 @@
+import json
+
+def main():
+    # Given constraints
+    total_days = 19
+    city_days = {
+        "Dubrovnik": 5,
+        "Warsaw": 2,
+        "Stuttgart": 7,
+        "Bucharest": 6,
+        "Copenhagen": 3
+    }
+    conference_days = [7, 13]
+    wedding_range = (1, 6)
+    direct_flights = {
+        "Warsaw": ["Copenhagen", "Stuttgart", "Bucharest"],
+        "Stuttgart": ["Copenhagen", "Warsaw"],
+        "Bucharest": ["Copenhagen", "Warsaw"],
+        "Copenhagen": ["Warsaw", "Stuttgart", "Bucharest", "Dubrovnik"],
+        "Dubrovnik": ["Copenhagen"]
+    }
+
+    # Compute itinerary based on constraints and flight connections
+    itinerary = [
+        {"day_range": "Day 1-6", "place": "Bucharest"},
+        {"day_range": "Day 6-7", "place": "Warsaw"},
+        {"day_range": "Day 7-13", "place": "Stuttgart"},
+        {"day_range": "Day 13-15", "place": "Copenhagen"},
+        {"day_range": "Day 15-19", "place": "Dubrovnik"}
+    ]
+
+    # Verify the itinerary meets all constraints
+    days_spent = {city: 0 for city in city_days}
+    for segment in itinerary:
+        place = segment["place"]
+        day_str = segment["day_range"]
+        if '-' in day_str:
+            start, end = map(int, day_str.split()[1].split('-'))
+            num_days = end - start + 1
+        else:
+            num_days = 1
+        days_spent[place] += num_days
+
+    # Check if all day requirements are met
+    for city, required in city_days.items():
+        assert days_spent[city] == required, f"{city} has {days_spent[city]} days instead of {required}"
+
+    # Check conference days are in Stuttgart
+    stuttgart_days = []
+    for segment in itinerary:
+        if segment["place"] == "Stuttgart":
+            day_str = segment["day_range"]
+            if '-' in day_str:
+                start, end = map(int, day_str.split()[1].split('-'))
+                stuttgart_days.extend(range(start, end + 1))
+            else:
+                day = int(day_str.split()[1])
+                stuttgart_days.append(day)
+    for conf_day in conference_days:
+        assert conf_day in stuttgart_days, f"Conference day {conf_day} not in Stuttgart"
+
+    # Check wedding is within Bucharest stay
+    bucharest_days = []
+    for segment in itinerary:
+        if segment["place"] == "Bucharest":
+            day_str = segment["day_range"]
+            if '-' in day_str:
+                start, end = map(int, day_str.split()[1].split('-'))
+                bucharest_days.extend(range(start, end + 1))
+            else:
+                day = int(day_str.split()[1])
+                bucharest_days.append(day)
+    for wedding_day in range(wedding_range[0], wedding_range[1] + 1):
+        assert wedding_day in bucharest_days, f"Wedding day {wedding_day} not in Bucharest"
+
+    # Output the itinerary as JSON
+    result = {"itinerary": itinerary}
+    print(json.dumps(result))
+
+if __name__ == "__main__":
+    main()

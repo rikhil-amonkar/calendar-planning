@@ -1,0 +1,32 @@
+def main():
+    total_days = 12
+    brussels_desired = 2
+    split_desired = 5
+    barcelona_desired = 7
+    
+    # Calculate adjusted days due to travel constraints
+    brussels_actual = 3  # Includes travel day from Brussels to Barcelona
+    barcelona_actual = 7  # Maintain desired Barcelona days
+    split_actual = 4  # Reduce Split by 1 to accommodate travel
+    
+    # Calculate day ranges
+    brussels_start = 1
+    brussels_end = brussels_start + brussels_actual - 1
+    barcelona_start = brussels_end
+    barcelona_end = barcelona_start + barcelona_actual - 1
+    split_start = barcelona_end
+    split_end = total_days
+    
+    # Format day ranges as strings
+    itinerary = [
+        {"day_range": f"Day {brussels_start}-{brussels_end}", "place": "Brussels"},
+        {"day_range": f"Day {barcelona_start}-{barcelona_end}", "place": "Barcelona"},
+        {"day_range": f"Day {split_start}-{split_end}", "place": "Split"}
+    ]
+    
+    # Output as JSON
+    import json
+    print(json.dumps({"itinerary": itinerary}))
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,62 @@
+```python
+def main():
+    work_start = 9 * 60  # 9:00 in minutes
+    work_end = 17 * 60   # 17:00 in minutes
+    duration = 60         # 60 minutes
+
+    # Define busy intervals in minutes from midnight for each person per day
+    betty_busy = {
+        'Monday': [(10*60, 10*60+30), (11*60+30, 12*60+30), (16*60, 16*60+30)],
+        'Tuesday': [(9*60+30, 10*60), (10*60+30, 11*60), (12*60, 12*60+30), (13*60+30, 15*60), (16*60+30, 17*60)],
+        'Friday': [(9*60, 10*60), (11*60+30, 12*60), (12*60+30, 13*60), (14*60+30, 15*60)]
+    }
+    
+    megan_busy = {
+        'Monday': [(9*60, 17*60)],
+        'Tuesday': [(9*60, 9*60+30), (10*60, 10*60+30), (12*60, 14*60), (15*60, 15*60+30), (16*60, 16*60+30)],
+        'Friday': [(9*60, 17*60)]
+    }
+
+    days_to_check = ['Monday', 'Tuesday', 'Friday']
+
+    def get_free_intervals(busy_list, start, end):
+        if not busy_list:
+            return [(start, end)]
+        busy_list.sort(key=lambda x: x[0])
+        free_intervals = []
+        current = start
+        for busystart, busyend in busy_list:
+            if current < busystart:
+                free_intervals.append((current, busystart))
+            current = max(current, busyend)
+        if current < end:
+            free_intervals.append((current, end))
+        return free_intervals
+
+    def find_common_slot(betty_free, megan_free, duration):
+        for b_start, b_end in betty_free:
+            for m_start, m_end in megan_free:
+                start = max(b_start, m_start)
+                end = min(b_end, m_end)
+                if end - start >= duration:
+                    return (start, end)
+        return None
+
+    def minutes_to_time(minutes):
+        hours = minutes // 60
+        mins = minutes % 60
+        return f"{hours:02d}:{mins:02d}"
+
+    for day in days_to_check:
+        betty_free = get_free_intervals(betty_busy[day], work_start, work_end)
+        megan_free = get_free_intervals(megan_busy[day], work_start, work_end)
+        slot = find_common_slot(betty_free, megan_free, duration)
+        if slot:
+            start_time = minutes_to_time(slot[0])
+            end_time = minutes_to_time(slot[1])
+            print(f"{day} {start_time}:{end_time}")
+            return
+
+if __name__ == "__main__":
+    main()
+```

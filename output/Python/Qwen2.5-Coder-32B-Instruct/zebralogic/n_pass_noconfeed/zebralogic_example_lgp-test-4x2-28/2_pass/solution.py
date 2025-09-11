@@ -1,0 +1,1 @@
+name_map[hair_color_perm.index("blonde")] - 1 == name_map["Eric"]

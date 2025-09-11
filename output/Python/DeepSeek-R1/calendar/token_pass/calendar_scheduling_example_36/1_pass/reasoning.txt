@@ -1,0 +1,431 @@
+We are given work hours from 9:00 to 17:00 on Monday.
+ Participants: Ryan, Ruth, Denise.
+ Duration: 1 hour.
+
+ Constraints:
+ Ryan: busy 9:00-9:30, 12:30-13:00.
+ Ruth: free all day.
+ Denise: busy 9:30-10:30, 12:00-13:00, 14:30-16:30.
+ Denise does not want to meet after 12:30.
+
+ However, note that the problem says there exists a solution that works with everyone's schedule.
+
+ Let's break down:
+
+ Since Denise does not want to meet after 12:30, we must schedule the meeting before 12:30.
+
+ Available times for each before 12:30:
+
+ Ryan:
+   Available: from 9:30 to 12:30 (but note his busy is 9:00-9:30 and 12:30-13:00, so he is free from 9:30 to 12:30, but note 12:30 is the end of his available? Actually, the meeting must start and end within the available time. So if we start at 12:00, then the meeting would end at 13:00, but Ryan is busy at 12:30-13:00, so that doesn't work. So we must avoid overlapping with Ryan's busy times.
+
+ Let's think in terms of free intervals:
+
+ Ryan's free intervals on Monday (within 9-17) but before 12:30 (because of Denise's constraint):
+   [9:30, 12:30] but note: the meeting must end by 12:30 (Denise's constraint) and also Ryan is busy at 12:30-13:00, so we cannot have a meeting that goes beyond 12:30 for Ryan? Actually, the meeting must end by 12:30 because Denise doesn't want to meet after 12:30. So the meeting must end by 12:30.
+
+ So for Ryan, if we start at 11:30, then the meeting would end at 12:30. That is acceptable because the meeting ends exactly at 12:30 (which is the limit for Denise) and Ryan is free until 12:30 (his next busy starts at 12:30, but note: if a meeting ends at 12:30, then it does not overlap with the busy period that starts at 12:30).
+
+ However, let's check the exact interpretation of the busy times. Typically, if someone is busy from 12:30 to 13:00, they are free at 12:29:59 and then busy at 12:30:00. So a meeting from 11:30 to 12:30 would end exactly at 12:30, which is the start of Ryan's next meeting. This is usually acceptable because the meeting ends just as the next one starts.
+
+ Similarly, for Denise, the constraint is not to meet after 12:30, meaning the meeting must end by 12:30 at the latest.
+
+ Now, let's look at Denise's schedule and constraint:
+
+ Denise's busy: 9:30-10:30, 12:00-13:00, and 14:30-16:30. But we are only considering before 12:30.
+
+ So Denise's available before 12:30:
+   From 9:00 to 9:30 (but note: work hours start at 9:00, and Denise has no meeting from 9:00 to 9:30? However, the problem says Denise blocked their calendar during 9:30 to 10:30, so 9:00-9:30 is free. But wait, the work hours start at 9:00, so we can consider from 9:00.
+
+ However, note that Ryan is busy until 9:30, so the first available time for Ryan is 9:30.
+
+ So let's list the free intervals for each:
+
+ Ryan: [9:30, 12:30] (but note: we must end by 12:30, so the meeting must start at or before 11:30 to have a full hour)
+
+ Ruth: free all day, so any interval.
+
+ Denise: 
+   Free intervals before 12:30: 
+     [9:00, 9:30] and [10:30, 12:00] (because the next busy is 12:00-13:00, but note: the meeting must end by 12:30, so if we start at 12:00, the meeting would end at 13:00, which is after 12:30 and also conflicts with Denise's busy period 12:00-13:00. So we cannot use 12:00.
+
+ So Denise's available for a meeting that ends by 12:30:
+   [9:00, 9:30] -> duration 30 minutes (not enough for 1 hour)
+   [10:30, 12:00] -> from 10:30 to 12:00 is 1.5 hours, so we can have a meeting of 1 hour in this interval.
+
+ Now, Ryan's available: [9:30, 12:30]. He can do any meeting that starts at or after 9:30 and ends by 12:30.
+
+ So the overlapping free time for all three:
+
+ We need a 1-hour slot that is free for all and ends by 12:30.
+
+ Let's consider the intervals:
+
+ For Denise: [10:30, 12:00] (but note: we can start at 10:30 and end at 11:30, or start at 11:00 and end at 12:00. However, if we start at 11:00 and end at 12:00, note that Denise is busy from 12:00, so that's acceptable because the meeting ends exactly at 12:00 (which is the start of her next meeting). But wait, the problem says Denise has blocked 12:00 to 13:00, so if the meeting ends at 12:00, it's okay.
+
+ However, we must also consider Ryan: he is free until 12:30, so a meeting from 11:00 to 12:00 is okay for Ryan.
+
+ But note: Denise's constraint is that she does not want to meet after 12:30. Since the meeting ends at 12:00, that's fine.
+
+ So two possible slots: 
+   Option 1: 10:30-11:30
+   Option 2: 11:00-12:00
+
+ However, we must check if Ryan is available in these slots.
+
+ Ryan is available from 9:30 to 12:30, so both slots are available for Ryan.
+
+ But wait, what about the slot from 11:30 to 12:30?
+   For Ryan: he is free until 12:30, so 11:30-12:30 is okay (ends at 12:30, which is the start of his next meeting).
+   For Denise: she is busy from 12:00 to 13:00, so if we schedule 11:30-12:30, then the meeting would overlap with her busy period (from 12:00 to 12:30). So that's not available.
+
+ So the available slots are:
+
+ 10:30-11:30 and 11:00-12:00.
+
+ However, note that the problem says there is a solution. We can choose either.
+
+ But let's see if there's any other constraint? The problem says "Denise do not want to meet on Monday after 12:30", which we have already considered.
+
+ We must output the first available slot? Or any? The problem doesn't specify, so we can choose the first one.
+
+ Let's choose 10:30-11:30.
+
+ However, note that the problem says "Note there exists a solution that works with existing schedule of every participant." and we found one.
+
+ But wait, what about the slot from 9:30 to 10:30?
+   Ryan: free at 9:30, so he can do 9:30-10:30.
+   Ruth: free.
+   Denise: busy from 9:30 to 10:30, so that's not available.
+
+ So the first available slot is 10:30-11:30.
+
+ Let's code accordingly.
+
+ Steps in code:
+
+ We are given:
+   Work hours: 9:00 to 17:00 (so we consider time from 9:00 to 17:00)
+   Participants: Ryan, Ruth, Denise
+
+   Ryan's busy: ['9:00-9:30', '12:30-13:00']
+   Ruth's busy: [] (none)
+   Denise's busy: ['9:30-10:30', '12:00-13:00', '14:30-16:30']
+   Denise's constraint: not after 12:30 (so the meeting must end by 12:30)
+
+   Duration: 1 hour
+
+ We need to find a time slot that is free for all and satisfies Denise's constraint.
+
+ Approach:
+
+ 1. Convert time strings to minutes past midnight for easier calculation.
+   9:00 -> 540 minutes
+   17:00 -> 1020 minutes
+
+ 2. Create a list of free intervals for each person within the work hours, considering their busy times.
+
+ 3. Then, find the intersection of free intervals for all three, and also apply the constraint that the meeting must end by 12:30 (which is 750 minutes, since 12*60+30=750).
+
+ 4. We are looking for a slot of 60 minutes.
+
+ 5. We'll generate the free intervals for each person, then find common free times.
+
+ Alternatively, we can create a timeline for the day from 540 to 1020, and mark busy times for each person, then find a slot where everyone is free and that meets the constraint.
+
+ However, note that the problem says there is a solution, so we can do:
+
+ Let's define a function to convert time string to minutes.
+
+ Steps for one person:
+   free_intervals = initially [[540, 1020]]
+   For each busy interval:
+      split the string by '-' and convert each to minutes.
+      Then subtract that busy interval from the free_intervals.
+
+ Then, for the constraint of Denise (end by 12:30), we can adjust her free intervals to only those that end by 12:30? Actually, we are going to intersect with the constraint at the end.
+
+ Alternatively, we can first compute the free intervals for each without the constraint, then when intersecting, we also require that the meeting ends by 12:30.
+
+ Since the constraint is on the meeting time (not on the free intervals of Denise beyond the meeting), we can do:
+
+   After computing the free intervals for all, we will look for a slot of 60 minutes that is free for all and that ends <= 750 (12:30).
+
+ Let's code accordingly.
+
+ However, note: the constraint "Denise does not want to meet after 12:30" means the meeting must not extend beyond 12:30. So the meeting must end by 12:30, and therefore must start by 11:30.
+
+ We can also think: the meeting must be scheduled in a free interval that ends by 12:30.
+
+ But note: the free intervals of Denise might extend beyond 12:30, but we are not allowed to use any part of them after 12:30.
+
+ So for Denise, we can adjust her free intervals by truncating any interval that goes beyond 12:30 to end at 12:30.
+
+ However, let's do step by step.
+
+ Alternatively, we can compute the free intervals for each person without the constraint, then when we find a common free interval, we check if it can accommodate a meeting of 60 minutes that ends by 12:30.
+
+ Since the problem is small, we can do:
+
+   Work hours: 9:00 (540) to 17:00 (1020)
+
+   Ryan's busy in minutes: [540, 570] and [750, 780]
+   Ruth: none
+   Denise's busy: [570, 630], [720, 780], [870, 990]
+
+   Now, let's compute free intervals for each:
+
+   Ryan:
+      free: [570, 750] and [780, 1020]? But wait, we are only considering until 12:30 for the meeting? Actually, we are going to look for a meeting that ends by 12:30 (750), so we are only interested in free intervals that start before 750 and can accommodate a meeting ending by 750.
+
+   Alternatively, we can generate free intervals for each person within [540, 750] (because the meeting must end by 750).
+
+   So let's restrict the work hours to [540, 750] for the purpose of finding the meeting.
+
+   Then, we can compute free intervals for each person in [540, 750]:
+
+   Ryan:
+      Busy: [540,570] and [750,780] -> but note, the meeting must end by 750, so the busy [750,780] doesn't affect because we are ending at 750. So in [540,750], Ryan's busy is only [540,570]. So free: [570,750]
+
+   Ruth: free [540,750]
+
+   Denise:
+      Busy in [540,750]: [570,630] and [720,780] -> but note, we are only going until 750, so the second busy is [720,750] (because we truncate at 750). So Denise's free in [540,750]:
+          [540,570] and [630,720] and [750,750] (but [750,750] is 0 minutes, so we ignore).
+
+      So free intervals: [540,570] and [630,720]
+
+   Now, we need a 60-minute slot that is free for all three.
+
+   Intersection of free intervals:
+
+      Ryan: [570,750]
+      Ruth: [540,750]
+      Denise: [540,570] and [630,720]
+
+   The common free intervals are:
+
+      [570,570] (0 minutes) -> not enough
+      [630,720] -> 90 minutes, which is enough for 60 minutes.
+
+   So we can have a meeting from 630 to 690 minutes (which is 10:30 to 11:30) or from 660 to 720 (11:00 to 12:00). But note: the meeting must end by 750, and both end by 750.
+
+   However, we must also check the constraint for Denise: the meeting must not go after 12:30 (750). Both 11:30 and 12:00 are before 12:30, so both are acceptable.
+
+   We can choose the first available: 10:30-11:30.
+
+   But wait, what about the slot [540,570] for Denise? It is free for Denise and Ruth, but Ryan is busy until 570, so the meeting would have to start at 570 (9:30) and end at 630 (10:30). But that's 60 minutes? 570 to 630 is 60 minutes. However, note that Denise is busy from 570 to 630, so that slot is not free for Denise. So we cannot use [540,570] for a meeting because Ryan isn't free until 570, and if we start at 570, then the meeting goes until 630, which is Denise's busy time.
+
+   So the only common free interval is [630,720].
+
+   Within [630,720], we can have a meeting of 60 minutes. The first available meeting slot is 630 to 690 (10:30 to 11:30).
+
+   So we output: Monday 10:30-11:30.
+
+ Code Implementation:
+
+   We'll represent time in minutes.
+
+   Steps:
+
+   work_start = 9*60 = 540
+   work_end = 17*60 = 1020, but we are constrained by the meeting end time (12:30 = 750) so we set our upper bound to 750 for the meeting end.
+
+   However, note: the meeting must start by 750 - 60 = 690.
+
+   We'll generate free intervals for each person in the range [540, 750] (for the meeting end, but actually the meeting can start as early as 540 and end as late as 750).
+
+   For each person, we'll compute free intervals in [540,750] by subtracting their busy intervals that overlap with [540,750].
+
+   Then, we'll find the intersection of free intervals of all three.
+
+   Then, we'll look for the first interval that has at least 60 minutes.
+
+   Then, we'll output the first such interval (converted back to time string).
+
+   Note: We are to output the day (Monday) and the time range in HH:MM-HH:MM.
+
+   Let's code accordingly.
+
+   We'll create a list of busy intervals for each person in minutes (within [540,750] if they overlap).
+
+   Then, we'll compute free intervals for each person.
+
+   Then, we'll compute the common free intervals by intersecting the free intervals of the three.
+
+   Then, we'll find a slot of 60 minutes.
+
+   Alternatively, we can iterate over the common free intervals and check if the interval length is >= 60, and then take the start time to start time+60.
+
+   Since the common free interval [630,720] is 90 minutes long, we can take the first 60 minutes: 630 to 690.
+
+   We'll output: Monday 10:30-11:30 (since 630 minutes is 10*60+30 -> 10:30, and 690 minutes is 11*60+30 -> 11:30).
+
+   Code:
+
+   Let's define helper functions:
+
+   def time_str_to_minutes(time_str):
+        hours, minutes = time_str.split(':')
+        return int(hours)*60 + int(minutes)
+
+   def minutes_to_time_str(minutes):
+        hours = minutes // 60
+        mins = minutes % 60
+        return f"{hours:02d}:{mins:02d}"
+
+   We are going to create a list of busy intervals for each person in minutes (only those that overlap with [540,750]):
+
+   Ryan_busy = [ [540,570], [750,780] ] -> but note the second interval [750,780] starts at 750, which is the end of our allowed time (the meeting must end by 750, so we cannot have a meeting that includes any time after 750). So for the purpose of free intervals in [540,750], we can ignore the second busy interval because it doesn't affect [540,750] (it starts exactly at 750). So we consider only [540,570] for Ryan.
+
+   Similarly, for Denise: 
+        [570,630] -> entirely within [540,750]
+        [720,780] -> we truncate to [720,750] because we are only concerned up to 750.
+
+   So Denise_busy = [ [570,630], [720,750] ]
+
+   Ruth: no busy.
+
+   Now, let's compute free intervals for each person in [540,750]:
+
+   Ryan:
+        free: [570,750]
+
+   Ruth:
+        free: [540,750]
+
+   Denise:
+        We have busy: [570,630] and [720,750]
+        So free: [540,570] and [630,720]
+
+   Now, we compute the intersection of these free intervals:
+
+        First, intersect Ryan and Ruth: [570,750] (because Ruth is free everywhere, so the intersection with Ryan is Ryan's free intervals)
+
+        Then, intersect with Denise: 
+            [570,750] ∩ [540,570] = [570,570] (a point, 0 minutes)
+            [570,750] ∩ [630,720] = [630,720]
+
+        So the common free interval is [630,720].
+
+   Now, we need a 60-minute meeting. The common free interval is 90 minutes long, so we can start at 630 (10:30) and end at 690 (11:30).
+
+   We output: Monday 10:30-11:30.
+
+   Code implementation:
+
+   We'll create a function to compute free intervals given busy intervals and a range [start, end].
+
+   Steps for one person:
+        free = [ [start, end] ]
+        for each busy interval [b_start, b_end] that overlaps with [start, end]:
+            We adjust the free intervals by removing the busy interval.
+
+   We'll then intersect the free intervals of the three persons.
+
+   However, note: we are only considering the time range [540,750] for the meeting end, so we set our range to [540,750] for free interval calculation.
+
+   But note: the meeting must start at or after 540 and end at or before 750.
+
+   Let's code accordingly.
+
+   We'll create a function:
+
+   def get_free_intervals(busy_list, start, end):
+        free = [[start, end]]
+        for bus in busy_list:
+            b_start, b_end = bus
+            new_free = []
+            for interval in free:
+                # If the busy interval does not overlap with this free interval, then keep the free interval.
+                if b_end <= interval[0] or b_start >= interval[1]:
+                    new_free.append(interval)
+                else:
+                    # There is overlap
+                    if interval[0] < b_start:
+                        new_free.append([interval[0], b_start])
+                    if b_end < interval[1]:
+                        new_free.append([b_end, interval[1]])
+            free = new_free
+        return free
+
+   Then, we'll get free intervals for each person.
+
+   Then, we'll intersect the free intervals of the three.
+
+   We can intersect two sets of intervals by iterating and merging.
+
+   Alternatively, we can do:
+
+        common_free = free1
+        common_free = intersect_intervals(common_free, free2)
+        common_free = intersect_intervals(common_free, free3)
+
+   We'll write a function to intersect two lists of intervals:
+
+   def intersect_intervals(intervals1, intervals2):
+        result = []
+        i = j = 0
+        while i < len(intervals1) and j < len(intervals2):
+            low = max(intervals1[i][0], intervals2[j][0])
+            high = min(intervals1[i][1], intervals2[j][1])
+            if low < high:
+                result.append([low, high])
+            # Move the interval that ends first
+            if intervals1[i][1] < intervals2[j][1]:
+                i += 1
+            else:
+                j += 1
+        return result
+
+   Then, we'll look for the first interval in common_free that has length >= 60.
+
+   Then, we can take the start time of that interval and add 60 minutes.
+
+   But note: the meeting must be exactly 60 minutes, and the interval might be longer, so we can just take the first 60 minutes.
+
+   We output: Monday {start_time}-{end_time}
+
+   Let's code accordingly.
+
+   However, note: the problem says the meeting is one hour.
+
+   We'll assume that the meeting can be scheduled at any minute.
+
+   Now, let's code.
+
+   Important: We are only considering the time range [540,750] for the free intervals because the meeting must end by 750.
+
+   But note: the free intervals we compute for each person are within [540,750]. So we set the overall range from 540 to 750.
+
+   Let's define the busy intervals in minutes for each:
+
+   Ryan_busy = [[540,570], [750,780]] -> but note, we are only considering up to 750, so we adjust the second busy interval to [750,750] (which is 0 minutes) or ignore it? Actually, if we set the range [540,750], then the second busy interval [750,780] starts at 750, which is the end of our range, so it doesn't affect the free intervals inside [540,750). So we can ignore it.
+
+   So we'll consider for Ryan: [540,570]
+
+   Similarly, for Denise: 
+        [570,630] and [720,780] -> we adjust the second to [720,750] because we are only up to 750.
+
+   So Denise_busy = [[570,630], [720,750]]
+
+   Ruth: no busy.
+
+   Now, code:
+
+   work_start = 540
+   work_end = 750   # because meeting must end by 12:30 (750)
+
+   Ryan_busy = [[540,570]]
+   Ruth_busy = [] 
+   Denise_busy = [[570,630], [720,750]]
+
+   Then, compute free intervals for each.
+
+   Then, find common free intervals.
+
+   Then, take the first common free interval that is at least 60 minutes, and then take the first 60 minutes.
+
+   We output the meeting time in the format: Monday HH:MM-HH:MM
+
+   Let's code accordingly.

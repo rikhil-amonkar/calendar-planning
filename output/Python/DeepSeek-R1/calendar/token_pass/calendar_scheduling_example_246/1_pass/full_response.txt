@@ -1,0 +1,52 @@
+```python
+def time_to_minutes(time_str):
+    hours, minutes = map(int, time_str.split(':'))
+    return hours * 60 + minutes
+
+def minutes_to_time(minutes):
+    hours = minutes // 60
+    minutes = minutes % 60
+    return f"{hours:02d}:{minutes:02d}"
+
+def main():
+    work_start = time_to_minutes("09:00")
+    work_end = time_to_minutes("17:00")
+    meeting_duration = 30
+    
+    # Convert busy intervals to minutes
+    busy_intervals = {
+        "Jacob": [(time_to_minutes("13:30"), time_to_minutes("14:00")), (time_to_minutes("14:30"), time_to_minutes("15:00"))],
+        "Diana": [(time_to_minutes("09:30"), time_to_minutes("10:00")), (time_to_minutes("11:30"), time_to_minutes("12:00")), 
+                  (time_to_minutes("13:00"), time_to_minutes("13:30")), (time_to_minutes("16:00"), time_to_minutes("16:30"))],
+        "Adam": [(time_to_minutes("09:30"), time_to_minutes("10:30")), (time_to_minutes("11:00"), time_to_minutes("12:30")), 
+                 (time_to_minutes("15:30"), time_to_minutes("16:00"))],
+        "Angela": [(time_to_minutes("09:30"), time_to_minutes("10:00")), (time_to_minutes("10:30"), time_to_minutes("12:00")), 
+                   (time_to_minutes("13:00"), time_to_minutes("15:30")), (time_to_minutes("16:00"), time_to_minutes("16:30"))],
+        "Dennis": [(time_to_minutes("09:00"), time_to_minutes("09:30")), (time_to_minutes("10:30"), time_to_minutes("11:30")), 
+                   (time_to_minutes("13:00"), time_to_minutes("15:00")), (time_to_minutes("16:30"), time_to_minutes("17:00"))]
+    }
+    
+    # Find available slot
+    current_time = work_start
+    while current_time + meeting_duration <= work_end:
+        slot_end = current_time + meeting_duration
+        available = True
+        for person, intervals in busy_intervals.items():
+            for start, end in intervals:
+                if current_time < end and slot_end > start:
+                    available = False
+                    break
+            if not available:
+                break
+                
+        if available:
+            start_time_str = minutes_to_time(current_time)
+            end_time_str = minutes_to_time(slot_end)
+            print(f"Monday:{start_time_str}:{end_time_str}")
+            return
+            
+        current_time += 30  # Check next 30-minute slot
+
+if __name__ == "__main__":
+    main()
+```

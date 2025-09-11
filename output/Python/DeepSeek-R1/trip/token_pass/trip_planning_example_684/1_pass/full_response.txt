@@ -1,0 +1,128 @@
+```python
+import json
+
+def main():
+    # Define the direct flights graph (undirected)
+    flights = {
+        'Edinburgh': ['Berlin', 'Amsterdam', 'Brussels'],
+        'Amsterdam': ['Berlin', 'Edinburgh', 'Vienna', 'Reykjavik'],
+        'Vienna': ['Berlin', 'Brussels', 'Reykjavik', 'Amsterdam'],
+        'Berlin': ['Edinburgh', 'Amsterdam', 'Vienna', 'Brussels', 'Reykjavik'],
+        'Brussels': ['Edinburgh', 'Vienna', 'Reykjavik', 'Berlin'],
+        'Reykjavik': ['Vienna', 'Amsterdam', 'Brussels', 'Berlin']
+    }
+    
+    # Fixed constraints: (start_day, end_day) inclusive
+    constraints = {
+        'Amsterdam': (5, 8),
+        'Berlin': (16, 19),
+        'Reykjavik': (12, 16)
+    }
+    
+    # Required days per city
+    durations = {
+        'Amsterdam': 4,
+        'Edinburgh': 5,
+        'Brussels': 5,
+        'Vienna': 5,
+        'Berlin': 4,
+        'Reykjavik': 5
+    }
+    
+    # Fixed blocks based on constraints
+    fixed_blocks = [
+        (constraints['Amsterdam'][0], constraints['Amsterdam'][1], 'Amsterdam'),
+        (constraints['Reykjavik'][0], constraints['Reykjavik'][1], 'Reykjavik'),
+        (constraints['Berlin'][0], constraints['Berlin'][1], 'Berlin')
+    ]
+    fixed_blocks.sort(key=lambda x: x[0])
+    
+    # Determine the gaps between fixed blocks
+    gaps = []
+    # Before first fixed block
+    if fixed_blocks[0][0] > 1:
+        gaps.append((1, fixed_blocks[0][0] - 1))
+    
+    # Between fixed blocks
+    for i in range(len(fixed_blocks)-1):
+        gap_start = fixed_blocks[i][1] + 1
+        gap_end = fixed_blocks[i+1][0] - 1
+        if gap_start <= gap_end:
+            gaps.append((gap_start, gap_end))
+    
+    # After last fixed block
+    if fixed_blocks[-1][1] < 23:
+        gaps.append((fixed_blocks[-1][1] + 1, 23))
+    
+    # Remaining cities to assign
+    remaining_cities = ['Edinburgh', 'Brussels', 'Vienna']
+    
+    # Assign cities to gaps based on flight connections
+    assignment = {}
+    # Gap 1: Before Amsterdam (days 1-4)
+    gap1 = gaps[0]
+    # Must connect to Amsterdam
+    for city in remaining_cities:
+        if 'Amsterdam' in flights.get(city, []):
+            assignment[gap1] = city
+            remaining_cities.remove(city)
+            break
+    
+    # Gap 2: Between Amsterdam and Reykjavik (days 9-11)
+    gap2 = gaps[1]
+    # Must connect from Amsterdam and to Reykjavik
+    for city in remaining_cities:
+        if 'Amsterdam' in flights.get(city, []) and 'Reykjavik' in flights.get(city, []):
+            assignment[gap2] = city
+            remaining_cities.remove(city)
+            break
+    
+    # Gap 3: After Berlin (days 20-23)
+    gap3 = gaps[2]
+    # Must connect from Berlin
+    for city in remaining_cities:
+        if 'Berlin' in flights.get(city, []):
+            assignment[gap3] = city
+            remaining_cities.remove(city)
+            break
+    
+    # Build itinerary
+    itinerary = []
+    
+    # Add gap1 assignment (Edinburgh)
+    start, end = gap1
+    city = assignment[gap1]
+    # Extend to day 5 (travel day) for full 5-day stay
+    itinerary.append({'day_range': f'Day {start}-5', 'place': city})
+    
+    # Add Amsterdam block
+    start, end = constraints['Amsterdam']
+    itinerary.append({'day_range': f'Day {start}-{end}', 'place': 'Amsterdam'})
+    
+    # Add gap2 assignment (Vienna)
+    start, end = gap2
+    city = assignment[gap2]
+    # Extend from day 8 to day 12 (travel days)
+    itinerary.append({'day_range': f'Day 8-12', 'place': city})
+    
+    # Add Reykjavik block
+    start, end = constraints['Reykjavik']
+    itinerary.append({'day_range': f'Day {start}-{end}', 'place': 'Reykjavik'})
+    
+    # Add Berlin block
+    start, end = constraints['Berlin']
+    itinerary.append({'day_range': f'Day {start}-{end}', 'place': 'Berlin'})
+    
+    # Add gap3 assignment (Brussels)
+    start, end = gap3
+    city = assignment[gap3]
+    # Extend from day 19 to day 23 (travel day)
+    itinerary.append({'day_range': f'Day 19-23', 'place': city})
+    
+    # Output as JSON
+    result = {'itinerary': itinerary}
+    print(json.dumps(result))
+
+if __name__ == '__main__':
+    main()
+```

@@ -1,0 +1,1 @@
+if (houses[2]['height'] != 'tall'): continue  # Clue 13

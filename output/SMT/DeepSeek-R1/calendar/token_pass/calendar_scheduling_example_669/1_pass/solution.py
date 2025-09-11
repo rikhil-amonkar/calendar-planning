@@ -1,0 +1,76 @@
+from z3 import Int, And, Or, Not, Solver, sat
+
+def main():
+    # Define variables
+    day = Int('day')  # 0 for Monday, 1 for Tuesday
+    start = Int('start')  # Start time in minutes from 9:00
+
+    # Constants
+    duration = 30
+    min_time = 0
+    max_time = 480  # 17:00 - 9:00 = 8 hours = 480 minutes
+
+    s = Solver()
+
+    # Constraint: Day must be 0 (Monday) or 1 (Tuesday)
+    s.add(Or(day == 0, day == 1))
+
+    # Constraint: Start time must be within [min_time, max_time - duration]
+    s.add(start >= min_time, start <= max_time - duration)
+
+    # Jean's constraints
+    # Monday: No meetings, so no constraints
+    # Tuesday: Busy 11:30-12:00 (150-180 mins) and 16:00-16:30 (420-450 mins)
+    jean_tue_constraint = Or(
+        Not(day == 1),  # If not Tuesday, ignore
+        And(  # If Tuesday, avoid busy slots
+            Or(start >= 180, start + duration <= 150),  # Avoid 150-180
+            Or(start >= 450, start + duration <= 420)   # Avoid 420-450
+        )
+    )
+    s.add(jean_tue_constraint)
+
+    # Doris's constraints
+    # Monday: Busy 9:00-11:30 (0-150), 12:00-12:30 (180-210), 13:30-16:00 (270-420), 16:30-17:00 (450-480)
+    doris_mon_constraint = Or(
+        Not(day == 0),  # If not Monday, ignore
+        And(  # If Monday, avoid busy slots
+            Or(start >= 150, start + duration <= 0),   # Avoid 0-150
+            Or(start >= 210, start + duration <= 180), # Avoid 180-210
+            Or(start >= 420, start + duration <= 270), # Avoid 270-420
+            Or(start >= 480, start + duration <= 450)  # Avoid 450-480
+        )
+    )
+    # Tuesday: Entire day busy (0-480)
+    doris_tue_constraint = Or(Not(day == 1), start >= 480, start + duration <= 0)
+    s.add(doris_mon_constraint)
+    s.add(doris_tue_constraint)
+
+    # Preference: Avoid Monday after 14:00 (300 minutes from 9:00)
+    preference = Or(
+        Not(day == 0),  # If not Monday, ignore
+        start + duration <= 300  # Meeting must end by 14:00
+    )
+    s.add(preference)
+
+    # Check for a solution
+    if s.check() == sat:
+        m = s.model()
+        d = m[day].as_long()
+        s_val = m[start].as_long()
+        
+        # Calculate start and end times in HH:MM format
+        start_hour = 9 + s_val // 60
+        start_minute = s_val % 60
+        end_minutes = s_val + duration
+        end_hour = 9 + end_minutes // 60
+        end_minute = end_minutes % 60
+        
+        day_str = "Monday" if d == 0 else "Tuesday"
+        print(f"{start_hour:02d}:{start_minute:02d}:{end_hour:02d}:{end_minute:02d}")
+        print(day_str)
+    else:
+        print("No solution found")
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,53 @@
+def time_to_minutes(time_str):
+    hours, minutes = map(int, time_str.split(':'))
+    return hours * 60 + minutes
+
+def minutes_to_time(minutes):
+    hours = minutes // 60
+    minutes = minutes % 60
+    return f"{hours:02d}:{minutes:02d}"
+
+def find_meeting_time():
+    work_start = time_to_minutes("09:00")
+    work_end = time_to_minutes("17:00")
+    duration = 30
+    
+    james_schedule = {
+        "Monday": ["9:00-9:30", "10:30-11:00", "12:30-13:00", "14:30-15:30", "16:30-17:00"],
+        "Tuesday": ["9:00-11:00", "11:30-12:00", "12:30-15:30", "16:00-17:00"],
+        "Wednesday": ["10:00-11:00", "12:00-13:00", "13:30-16:00"],
+        "Thursday": ["9:30-11:30", "12:00-12:30", "13:00-13:30", "14:00-14:30", "16:30-17:00"]
+    }
+    
+    days = ["Monday", "Tuesday", "Wednesday", "Thursday"]
+    
+    for day in days:
+        busy_intervals = []
+        for meeting in james_schedule[day]:
+            start_str, end_str = meeting.split('-')
+            start_min = time_to_minutes(start_str)
+            end_min = time_to_minutes(end_str)
+            busy_intervals.append((start_min, end_min))
+        
+        busy_intervals.sort(key=lambda x: x[0])
+        free_intervals = []
+        current_time = work_start
+        
+        for start, end in busy_intervals:
+            if current_time < start:
+                free_intervals.append((current_time, start))
+            current_time = max(current_time, end)
+        
+        if current_time < work_end:
+            free_intervals.append((current_time, work_end))
+        
+        for start, end in free_intervals:
+            if end - start >= duration:
+                meeting_start = start
+                meeting_end = meeting_start + duration
+                return day, minutes_to_time(meeting_start), minutes_to_time(meeting_end)
+    
+    return None
+
+day, start_time, end_time = find_meeting_time()
+print(f"{day} {start_time}:{end_time}")

@@ -1,0 +1,54 @@
+```python
+def main():
+    # Define busy intervals in minutes from 9:00
+    cynthia_busy = [(0, 30), (60, 90), (270, 330), (360, 420)]
+    ann_busy = [(60, 120), (240, 270), (300, 360), (420, 450)]
+    catherine_busy = [(0, 150), (210, 270), (330, 480)]
+    kyle_busy = [(0, 30), (60, 150), (180, 210), (240, 330), (360, 420)]
+    persons_busy = [cynthia_busy, ann_busy, catherine_busy, kyle_busy]
+    
+    # Meeting duration in minutes
+    duration = 30
+    # Total time range in minutes (9:00 to 17:00)
+    min_time = 0
+    max_time = 480
+    # Possible start times from min_time to max_time - duration, in 30-minute steps
+    start_times = range(min_time, max_time - duration + 1, 30)
+    
+    # Function to check if a time interval [s, s+duration] overlaps with any busy interval
+    def is_overlap(busy_list, s, dur):
+        for busy_start, busy_end in busy_list:
+            if busy_start < s + dur and busy_end > s:
+                return True
+        return False
+    
+    # Find the first suitable start time
+    for s in start_times:
+        all_free = True
+        for busy_list in persons_busy:
+            if is_overlap(busy_list, s, duration):
+                all_free = False
+                break
+        if all_free:
+            # Calculate start time in HH:MM
+            total_minutes_start = s
+            hours_start = 9 + total_minutes_start // 60
+            minutes_start = total_minutes_start % 60
+            # Calculate end time in HH:MM
+            total_minutes_end = s + duration
+            hours_end = 9 + total_minutes_end // 60
+            minutes_end = total_minutes_end % 60
+            # Format the time strings
+            start_str = f"{hours_start:02d}:{minutes_start:02d}"
+            end_str = f"{hours_end:02d}:{minutes_end:02d}"
+            # Output the time range and day
+            print(f"{start_str}:{end_str}")
+            print("Monday")
+            return
+    
+    # If no time found, but problem states there is a solution, so this should not happen
+    print("No suitable time found")
+
+if __name__ == "__main__":
+    main()
+```

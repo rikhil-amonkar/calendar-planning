@@ -1,0 +1,66 @@
+```python
+def main():
+    # Define work hours in minutes from midnight
+    work_start = 9 * 60  # 9:00
+    work_end = 17 * 60   # 17:00
+    meeting_duration = 30
+    
+    # Juan's constraints: busy times and cannot meet after 16:00 (960 minutes)
+    juan_busy = [(9*60, 10*60+30), (15*60+30, 16*60)]
+    juan_end = 16 * 60  # 16:00
+    
+    # Marilyn's busy times
+    marilyn_busy = [(11*60, 11*60+30), (12*60+30, 13*60)]
+    
+    # Ronald's busy times
+    ronald_busy = [(9*60, 10*60+30), (12*60, 12*60+30), (13*60, 13*60+30), (14*60, 16*60+30)]
+    
+    # Function to get free intervals given busy intervals and overall availability
+    def get_free_intervals(busy_intervals, start_bound, end_bound):
+        free = []
+        current = start_bound
+        for start, end in sorted(busy_intervals):
+            if current < start:
+                free.append((current, min(start, end_bound)))
+            current = max(current, end)
+            if current >= end_bound:
+                break
+        if current < end_bound:
+            free.append((current, end_bound))
+        return free
+    
+    # Get free intervals for each person
+    juan_free = get_free_intervals(juan_busy, work_start, juan_end)
+    marilyn_free = get_free_intervals(marilyn_busy, work_start, work_end)
+    ronald_free = get_free_intervals(ronald_busy, work_start, work_end)
+    
+    # Find common free intervals
+    common_free = []
+    for j_start, j_end in juan_free:
+        for m_start, m_end in marilyn_free:
+            for r_start, r_end in ronald_free:
+                # Find overlapping interval
+                start = max(j_start, m_start, r_start)
+                end = min(j_end, m_end, r_end)
+                if start < end:
+                    common_free.append((start, end))
+    
+    # Find first common interval that fits the meeting duration
+    for start, end in common_free:
+        if end - start >= meeting_duration:
+            meeting_start = start
+            meeting_end = meeting_start + meeting_duration
+            # Convert to HH:MM format
+            def format_time(minutes):
+                h = minutes // 60
+                m = minutes % 60
+                return f"{h:02d}:{m:02d}"
+            print(f"{format_time(meeting_start)}:{format_time(meeting_end)}")
+            print("Monday")
+            return
+    
+    print("No suitable time found")
+
+if __name__ == "__main__":
+    main()
+```

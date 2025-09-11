@@ -1,0 +1,97 @@
+def main():
+    # Convert time string to minutes since midnight
+    def time_to_minutes(time_str):
+        hours, minutes = map(int, time_str.split(':'))
+        return hours * 60 + minutes
+
+    # Convert minutes back to HH:MM format
+    def minutes_to_time(minutes):
+        hours = minutes // 60
+        mins = minutes % 60
+        return f"{hours:02d}:{mins:02d}"
+
+    # Work hours: 9:00 to 17:00 (540 to 1020 minutes)
+    work_start = time_to_minutes("9:00")
+    work_end = time_to_minutes("17:00")
+    meeting_duration = 30
+
+    # Busy intervals for each person (converted to minutes, half-open [start, end))
+    busy_intervals = [
+        # Andrea
+        [(time_to_minutes("9:30"), time_to_minutes("10:30")),
+         (time_to_minutes("13:30"), time_to_minutes("14:30"))],
+        # Ruth
+        [(time_to_minutes("12:30"), time_to_minutes("13:00")),
+         (time_to_minutes("15:00"), time_to_minutes("15:30"))],
+        # Steven
+        [(time_to_minutes("10:00"), time_to_minutes("10:30")),
+         (time_to_minutes("11:00"), time_to_minutes("11:30")),
+         (time_to_minutes("12:00"), time_to_minutes("12:30")),
+         (time_to_minutes("13:30"), time_to_minutes("14:00")),
+         (time_to_minutes("15:00"), time_to_minutes("16:00"))],
+        # Grace (no meetings)
+        [],
+        # Kyle
+        [(time_to_minutes("9:00"), time_to_minutes("9:30")),
+         (time_to_minutes("10:30"), time_to_minutes("12:00")),
+         (time_to_minutes("12:30"), time_to_minutes("13:00")),
+         (time_to_minutes("13:30"), time_to_minutes("15:00")),
+         (time_to_minutes("15:30"), time_to_minutes("16:00")),
+         (time_to_minutes("16:30"), time_to_minutes("17:00"))],
+        # Elijah
+        [(time_to_minutes("9:00"), time_to_minutes("11:00")),
+         (time_to_minutes("11:30"), time_to_minutes("13:00")),
+         (time_to_minutes("13:30"), time_to_minutes("14:00")),
+         (time_to_minutes("15:30"), time_to_minutes("16:00")),
+         (time_to_minutes("16:30"), time_to_minutes("17:00"))],
+        # Lori
+        [(time_to_minutes("9:00"), time_to_minutes("9:30")),
+         (time_to_minutes("10:00"), time_to_minutes("11:30")),
+         (time_to_minutes("12:00"), time_to_minutes("13:30")),
+         (time_to_minutes("14:00"), time_to_minutes("16:00")),
+         (time_to_minutes("16:30"), time_to_minutes("17:00"))]
+    ]
+
+    # Collect all busy intervals
+    all_busy = []
+    for person in busy_intervals:
+        all_busy.extend(person)
+
+    # Sort intervals by start time
+    all_busy.sort(key=lambda x: x[0])
+
+    # Merge overlapping intervals
+    merged = []
+    for start, end in all_busy:
+        if not merged:
+            merged.append([start, end])
+        else:
+            last_start, last_end = merged[-1]
+            if start <= last_end:
+                merged[-1][1] = max(last_end, end)
+            else:
+                merged.append([start, end])
+
+    # Find free intervals within work hours
+    free_intervals = []
+    current = work_start
+    for start, end in merged:
+        if current < start:
+            free_intervals.append((current, start))
+        current = max(current, end)
+    if current < work_end:
+        free_intervals.append((current, work_end))
+
+    # Find first free interval that can accommodate the meeting
+    for start, end in free_intervals:
+        if end - start >= meeting_duration:
+            meeting_start = start
+            meeting_end = meeting_start + meeting_duration
+            print(f"{minutes_to_time(meeting_start)}:{minutes_to_time(meeting_end)}")
+            print("Monday")
+            return
+
+    print("No suitable time found")
+
+if __name__ == "__main__":
+    main()

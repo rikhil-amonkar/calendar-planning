@@ -1,0 +1,157 @@
+import itertools
+import json
+
+def main():
+    days_dict = {
+        'Venice': 3,
+        'Reykjavik': 2,
+        'Munich': 3,
+        'Santorini': 3,
+        'Manchester': 3,
+        'Porto': 3,
+        'Bucharest': 5,
+        'Tallinn': 4,
+        'Valencia': 2,
+        'Vienna': 5
+    }
+    
+    fixed_arrival = {
+        'Munich': 4,
+        'Santorini': 8,
+        'Valencia': 14
+    }
+    
+    flights = [
+        ('Bucharest', 'Manchester'),
+        ('Munich', 'Venice'),
+        ('Santorini', 'Manchester'),
+        ('Vienna', 'Reykjavik'),
+        ('Venice', 'Santorini'),
+        ('Munich', 'Porto'),
+        ('Valencia', 'Vienna'),
+        ('Manchester', 'Vienna'),
+        ('Porto', 'Vienna'),
+        ('Venice', 'Manchester'),
+        ('Santorini', 'Vienna'),
+        ('Munich', 'Manchester'),
+        ('Munich', 'Reykjavik'),
+        ('Bucharest', 'Valencia'),
+        ('Venice', 'Vienna'),
+        ('Bucharest', 'Vienna'),
+        ('Porto', 'Manchester'),
+        ('Munich', 'Vienna'),
+        ('Valencia', 'Porto'),
+        ('Munich', 'Bucharest'),
+        ('Tallinn', 'Munich'),
+        ('Santorini', 'Bucharest'),
+        ('Munich', 'Valencia')
+    ]
+    
+    graph = set()
+    for flight in flights:
+        graph.add(flight)
+        graph.add((flight[1], flight[0]))
+    
+    non_fixed_cities = [city for city in days_dict if city not in fixed_arrival]
+    
+    for assignment in itertools.product([0, 1, 2, 3], repeat=len(non_fixed_cities)):
+        groups = [[] for _ in range(4)]
+        for idx, city in enumerate(non_fixed_cities):
+            groups[assignment[idx]].append(city)
+        
+        group0_sum = sum(days_dict[c] - 1 for c in groups[0])
+        group1_sum = sum(days_dict[c] - 1 for c in groups[1])
+        group2_sum = sum(days_dict[c] - 1 for c in groups[2])
+        
+        if group0_sum != 3 or group1_sum != 2 or group2_sum != 4:
+            continue
+            
+        for perm0 in itertools.permutations(groups[0]):
+            valid0 = True
+            for j in range(len(perm0) - 1):
+                if (perm0[j], perm0[j+1]) not in graph:
+                    valid0 = False
+                    break
+            if not valid0:
+                continue
+                
+            seq0 = list(perm0)
+            if seq0:
+                if (seq0[-1], 'Munich') not in graph:
+                    continue
+            seq0.append('Munich')
+            
+            for perm1 in itertools.permutations(groups[1]):
+                valid1 = True
+                for j in range(len(perm1) - 1):
+                    if (perm1[j], perm1[j+1]) not in graph:
+                        valid1 = False
+                        break
+                if not valid1:
+                    continue
+                    
+                seq1 = list(perm1)
+                if seq1:
+                    if (seq0[-1], seq1[0]) not in graph:
+                        continue
+                    if (seq1[-1], 'Santorini') not in graph:
+                        continue
+                seq01 = seq0 + seq1
+                seq01.append('Santorini')
+                
+                for perm2 in itertools.permutations(groups[2]):
+                    valid2 = True
+                    for j in range(len(perm2) - 1):
+                        if (perm2[j], perm2[j+1]) not in graph:
+                            valid2 = False
+                            break
+                    if not valid2:
+                        continue
+                        
+                    seq2 = list(perm2)
+                    if seq2:
+                        if (seq01[-1], seq2[0]) not in graph:
+                            continue
+                        if (seq2[-1], 'Valencia') not in graph:
+                            continue
+                    seq012 = seq01 + seq2
+                    seq012.append('Valencia')
+                    
+                    for perm3 in itertools.permutations(groups[3]):
+                        valid3 = True
+                        for j in range(len(perm3) - 1):
+                            if (perm3[j], perm3[j+1]) not in graph:
+                                valid3 = False
+                                break
+                        if not valid3:
+                            continue
+                            
+                        seq3 = list(perm3)
+                        if seq3:
+                            if (seq012[-1], seq3[0]) not in graph:
+                                continue
+                        full_sequence = seq012 + seq3
+                        
+                        valid_sequence = True
+                        for i in range(len(full_sequence) - 1):
+                            if (full_sequence[i], full_sequence[i+1]) not in graph:
+                                valid_sequence = False
+                                break
+                                
+                        if valid_sequence:
+                            arrival = 1
+                            itinerary = []
+                            for city in full_sequence:
+                                end_day = arrival + days_dict[city] - 1
+                                itinerary.append({
+                                    "day_range": f"Day {arrival}-{end_day}",
+                                    "place": city
+                                })
+                                arrival = end_day
+                            print(json.dumps({"itinerary": itinerary}))
+                            return
+                            
+    print(json.dumps({"itinerary": []}))
+
+if __name__ == '__main__':
+    main()

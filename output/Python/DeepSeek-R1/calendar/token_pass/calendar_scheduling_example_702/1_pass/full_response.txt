@@ -1,0 +1,81 @@
+```python
+def get_free_intervals(busy_list, start, end):
+    free_intervals = []
+    if not busy_list:
+        free_intervals.append((start, end))
+        return free_intervals
+    busy_list.sort(key=lambda x: x[0])
+    current = start
+    for busy in busy_list:
+        s, e = busy
+        if current < s:
+            free_intervals.append((current, s))
+        current = e
+    if current < end:
+        free_intervals.append((current, end))
+    return free_intervals
+
+def intersect_intervals(intervals1, intervals2):
+    common = []
+    i = j = 0
+    while i < len(intervals1) and j < len(intervals2):
+        a1, a2 = intervals1[i]
+        b1, b2 = intervals2[j]
+        start_overlap = max(a1, b1)
+        end_overlap = min(a2, b2)
+        if start_overlap < end_overlap:
+            common.append((start_overlap, end_overlap))
+        if a2 < b2:
+            i += 1
+        else:
+            j += 1
+    return common
+
+def main():
+    work_start = 0
+    work_end = 480
+    duration = 30
+    robert_busy = {
+        "Monday": [(120, 150), (300, 330), (390, 420)],
+        "Tuesday": [(90, 120), (360, 390)],
+        "Wednesday": [(60, 120), (150, 180), (210, 240), (270, 300), (360, 390), (420, 450)]
+    }
+    ralph_busy = {
+        "Monday": [(60, 270), (300, 330), (360, 480)],
+        "Tuesday": [(0, 30), (60, 90), (120, 150), (180, 240), (300, 390), (420, 480)],
+        "Wednesday": [(90, 120), (150, 180), (240, 330), (450, 480)]
+    }
+    days = ["Monday", "Tuesday", "Wednesday"]
+    all_slots = []
+    for day in days:
+        robert_free = get_free_intervals(robert_busy[day], work_start, work_end)
+        ralph_free = get_free_intervals(ralph_busy[day], work_start, work_end)
+        common_free = intersect_intervals(robert_free, ralph_free)
+        for interval in common_free:
+            start, end = interval
+            if end - start >= duration:
+                all_slots.append((day, start))
+    if not all_slots:
+        return
+    min_start = min(start for _, start in all_slots)
+    candidate_slots = [(day, start) for day, start in all_slots if start == min_start]
+    selected_slot = None
+    for day, start in candidate_slots:
+        if day != "Monday":
+            selected_slot = (day, start)
+            break
+    if selected_slot is None:
+        selected_slot = candidate_slots[0]
+    day, start_minutes = selected_slot
+    start_hour = 9 + start_minutes // 60
+    start_minute = start_minutes % 60
+    end_minutes = start_minutes + duration
+    end_hour = 9 + end_minutes // 60
+    end_minute = end_minutes % 60
+    time_str = f"{start_hour:02d}:{start_minute:02d}:{end_hour:02d}:{end_minute:02d}"
+    print(day)
+    print(time_str)
+
+if __name__ == "__main__":
+    main()
+```

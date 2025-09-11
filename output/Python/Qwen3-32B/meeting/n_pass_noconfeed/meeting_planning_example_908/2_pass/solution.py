@@ -1,0 +1,1 @@
+possible_start = max(arrival_time, friend_start)

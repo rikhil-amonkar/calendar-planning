@@ -1,0 +1,117 @@
+import json
+
+def time_to_minutes(time_str):
+    parts = time_str.split(':')
+    hours = int(parts[0])
+    minutes = int(parts[1]) if len(parts) > 1 else 0
+    return hours * 60 + minutes
+
+def minutes_to_time(minutes):
+    hours = minutes // 60
+    mins = minutes % 60
+    return f"{hours}:{mins:02d}"
+
+def main():
+    travel_times = {
+        'Bayview': {'North Beach': 21, 'Presidio': 31, 'Haight-Ashbury': 19, 'Union Square': 17},
+        'North Beach': {'Bayview': 22, 'Presidio': 17, 'Haight-Ashbury': 18, 'Union Square': 7},
+        'Presidio': {'Bayview': 31, 'North Beach': 18, 'Haight-Ashbury': 15, 'Union Square': 22},
+        'Haight-Ashbury': {'Bayview': 18, 'North Beach': 19, 'Presidio': 15, 'Union Square': 17},
+        'Union Square': {'Bayview': 15, 'North Beach': 10, 'Presidio': 24, 'Haight-Ashbury': 18}
+    }
+    
+    friends = {
+        'Barbara': {'location': 'North Beach', 'start_avail': time_to_minutes('13:45'), 'end_avail': time_to_minutes('20:15'), 'min_duration': 60},
+        'Margaret': {'location': 'Presidio', 'start_avail': time_to_minutes('10:15'), 'end_avail': time_to_minutes('15:15'), 'min_duration': 30},
+        'Kevin': {'location': 'Haight-Ashbury', 'start_avail': time_to_minutes('20:00'), 'end_avail': time_to_minutes('20:45'), 'min_duration': 30},
+        'Kimberly': {'location': 'Union Square', 'start_avail': time_to_minutes('7:45'), 'end_avail': time_to_minutes('16:45'), 'min_duration': 30}
+    }
+    
+    current_location = 'Bayview'
+    current_time = time_to_minutes('9:00')
+    itinerary = []
+    
+    # Meet Kimberly first
+    travel_time = travel_times[current_location]['Union Square']
+    arrival = current_time + travel_time
+    meeting_start = max(arrival, friends['Kimberly']['start_avail'])
+    meeting_end = meeting_start + friends['Kimberly']['min_duration']
+    if meeting_end > friends['Kimberly']['end_avail']:
+        meeting_end = friends['Kimberly']['end_avail']
+        meeting_start = meeting_end - friends['Kimberly']['min_duration']
+    itinerary.append({
+        'action': 'meet',
+        'location': 'Union Square',
+        'person': 'Kimberly',
+        'start_time': minutes_to_time(meeting_start),
+        'end_time': minutes_to_time(meeting_end)
+    })
+    current_location = 'Union Square'
+    current_time = meeting_end
+    
+    # Meet Margaret next
+    travel_time = travel_times[current_location]['Presidio']
+    arrival = current_time + travel_time
+    meeting_start = max(arrival, friends['Margaret']['start_avail'])
+    meeting_end = meeting_start + friends['Margaret']['min_duration']
+    if meeting_end > friends['Margaret']['end_avail']:
+        meeting_end = friends['Margaret']['end_avail']
+        meeting_start = meeting_end - friends['Margaret']['min_duration']
+    itinerary.append({
+        'action': 'meet',
+        'location': 'Presidio',
+        'person': 'Margaret',
+        'start_time': minutes_to_time(meeting_start),
+        'end_time': minutes_to_time(meeting_end)
+    })
+    current_location = 'Presidio'
+    current_time = meeting_end
+    
+    # Travel to North Beach for Barbara with optimal timing
+    travel_time_to_nb = travel_times[current_location]['North Beach']
+    latest_departure = friends['Barbara']['start_avail'] - travel_time_to_nb
+    if current_time < latest_departure:
+        current_time = latest_departure
+    arrival_at_nb = current_time + travel_time_to_nb
+    meeting_start = max(arrival_at_nb, friends['Barbara']['start_avail'])
+    
+    # Calculate latest possible end time considering Kevin's meeting
+    travel_time_to_ha = travel_times['North Beach']['Haight-Ashbury']
+    latest_arrival_at_ha = friends['Kevin']['start_avail']
+    latest_departure_from_nb = latest_arrival_at_ha - travel_time_to_ha
+    meeting_end = min(latest_departure_from_nb, friends['Barbara']['end_avail'])
+    if meeting_end - meeting_start < friends['Barbara']['min_duration']:
+        meeting_end = meeting_start + friends['Barbara']['min_duration']
+        if meeting_end > friends['Barbara']['end_avail']:
+            meeting_end = friends['Barbara']['end_avail']
+    itinerary.append({
+        'action': 'meet',
+        'location': 'North Beach',
+        'person': 'Barbara',
+        'start_time': minutes_to_time(meeting_start),
+        'end_time': minutes_to_time(meeting_end)
+    })
+    current_location = 'North Beach'
+    current_time = meeting_end
+    
+    # Meet Kevin last
+    travel_time = travel_times[current_location]['Haight-Ashbury']
+    arrival = current_time + travel_time
+    meeting_start = max(arrival, friends['Kevin']['start_avail'])
+    meeting_end = meeting_start + friends['Kevin']['min_duration']
+    if meeting_end > friends['Kevin']['end_avail']:
+        meeting_end = friends['Kevin']['end_avail']
+        meeting_start = meeting_end - friends['Kevin']['min_duration']
+    itinerary.append({
+        'action': 'meet',
+        'location': 'Haight-Ashbury',
+        'person': 'Kevin',
+        'start_time': minutes_to_time(meeting_start),
+        'end_time': minutes_to_time(meeting_end)
+    })
+    
+    output = {'itinerary': itinerary}
+    print(json.dumps(output, indent=2))
+
+if __name__ == '__main__':
+    main()

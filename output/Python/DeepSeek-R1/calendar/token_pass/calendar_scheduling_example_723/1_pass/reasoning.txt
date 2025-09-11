@@ -1,0 +1,895 @@
+First, the task is to schedule a meeting between Arthur and Michael for half an hour between 9:00 and 17:00 on Monday, Tuesday, or Wednesday. But Arthur cannot meet on Tuesday, so we only consider Monday and Wednesday.
+
+Arthur's constraints: He cannot meet on Tuesday, so we skip Tuesday.
+
+We need to find a 30-minute slot where both are free, and they want the earliest availability.
+
+Let's list out the free times for each day.
+
+Work hours are 9:00 to 17:00, which is 8 hours, but we need to find gaps.
+
+I should convert times to minutes for easier calculation. Let's set 9:00 as 0 minutes, so 17:00 is 8*60 = 480 minutes.
+
+But for output, we need to convert back to HH:MM.
+
+Now, let's list Arthur's meetings:
+
+Monday: 
+- 11:00 to 11:30 → from 120 to 150 minutes (since 9:00 is 0, 11:00 is 2*60=120, 11:30 is 150)
+- 13:30 to 14:00 → from 270 to 300 minutes (13:30 is 4.5*60=270, 14:00 is 300)
+- 15:00 to 15:30 → from 360 to 390 minutes (15:00 is 6*60=360, 15:30 is 390)
+
+Also, Arthur has meetings on Wednesday, but since we're considering Monday and Wednesday, we'll do Wednesday later.
+
+Arthur cannot meet on Tuesday, so skip.
+
+Michael's meetings on Monday:
+- 9:00 to 12:00 → from 0 to 180 minutes
+- 12:30 to 13:00 → from 210 to 240 minutes (12:30 is 3.5*60=210, 13:00 is 240)
+- 14:00 to 14:30 → from 300 to 330 minutes
+- 15:00 to 17:00 → from 360 to 480 minutes
+
+Now, for Monday, we need to find free slots for both.
+
+First, Arthur's free times on Monday:
+
+Arthur's meetings: 11:00-11:30 (120-150), 13:30-14:00 (270-300), 15:00-15:30 (360-390)
+
+So Arthur's busy times: [120,150], [270,300], [360,390]
+
+But work hours are from 0 to 480, so Arthur's free periods on Monday:
+
+From 0 to 120? But 0 is 9:00, which is start, so from 0 to 120 is free, but 0 to 120 is 9:00 to 11:00, but we need to check if 9:00 to 11:00 is free? Arthur has no meeting from 9:00 to 11:00, so yes, free from 0 to 120.
+
+Then from 150 to 270? 11:30 to 13:30? 11:30 is 150, 13:30 is 270, so free from 150 to 270.
+
+Then from 300 to 360? 14:00 to 15:00? 14:00 is 300, 15:00 is 360, so free from 300 to 360.
+
+Then from 390 to 480? 15:30 to 17:00, free.
+
+But Arthur has meeting at 15:00-15:30, which ends at 390, so from 390 to 480 free.
+
+Now Michael's free times on Monday:
+
+Michael's meetings: 9:00-12:00 (0-180), 12:30-13:00 (210-240), 14:00-14:30 (300-330), 15:00-17:00 (360-480)
+
+So Michael's busy times: [0,180], [210,240], [300,330], [360,480]
+
+Thus free times: from 180 to 210? 12:00 to 12:30? 12:00 is 180, 12:30 is 210, so free from 180 to 210.
+
+But 180 is 12:00, which is included? Since meeting ends at 12:00, so from 180 onwards free? But 180 is exactly 12:00, and meeting ends at 12:00, so time at 12:00 is free? Typically, if meeting ends at 12:00, 12:00 is available for start, but we need to be careful with intervals.
+
+In scheduling, if a meeting ends at 12:00, the time 12:00 is free for a new meeting to start. Similarly, if a meeting starts at 12:00, then 11:59 is free, but 12:00 is busy.
+
+So for free time, we consider the gaps between meetings.
+
+For Michael, meeting from 0 to 180, so after 180, it's free. Meeting from 210 to 240, so from 180 to 210 is free? But 180 to 210 is from 12:00 to 12:30, but meeting at 12:30 to 13:00, so from 12:00 to 12:30 is free.
+
+Similarly, between 240 and 300? Meeting ends at 240 (13:00), and next meeting at 300 (14:00), so from 240 to 300 free? But 240 is 13:00, which is end time, so free from 240 onwards until 300.
+
+But meeting at 12:30-13:00 ends at 240, so from 240 to 300 free.
+
+Then from 330 to 360? Meeting ends at 330 (14:30), and next at 360 (15:00), so free from 330 to 360.
+
+But Michael has meeting from 360 to 480, so no free after that.
+
+So Michael's free periods on Monday:
+- From 180 to 210 (12:00 to 12:30)
+- From 240 to 300 (13:00 to 14:00)
+- From 330 to 360 (14:30 to 15:00)
+
+Now, we need to find when both are free on Monday.
+
+Arthur's free: 
+- 0 to 120 (9:00 to 11:00)
+- 150 to 270 (11:30 to 13:30)
+- 300 to 360 (14:00 to 15:00)
+- 390 to 480 (15:30 to 17:00)
+
+Michael's free:
+- 180 to 210 (12:00 to 12:30)
+- 240 to 300 (13:00 to 14:00)
+- 330 to 360 (14:30 to 15:00)
+
+Now, find overlaps:
+
+First, Arthur 0-120 and Michael free? Michael is busy from 0-180, so no overlap with 0-120.
+
+Arthur 150-270 and Michael free: Michael has 180-210 and 240-300.
+
+Overlap between Arthur 150-270 and Michael 180-210: from 180 to 210, which is 30 minutes? 180 to 210 is 30 minutes, so from 12:00 to 12:30.
+
+But we need 30 minutes, so this slot is available from 12:00 to 12:30.
+
+But is this the earliest? We have other days, but since they want earliest availability, we should check if this works.
+
+Arthur 150-270 includes up to 270, which is 13:30, but Michael free from 240-300, so overlap from 240 to 270? 240 to 270 is 30 minutes? 240 is 13:00, 270 is 13:30, so 13:00 to 13:30, but Arthur is free until 270, which is 13:30, so from 13:00 to 13:30 is available.
+
+But Michael free from 240 to 300, which is 13:00 to 14:00, so yes.
+
+But we have two overlaps on Monday: 
+- 180 to 210: 12:00 to 12:30
+- 240 to 270: 13:00 to 13:30
+
+240 to 270 is 30 minutes, since 270-240=30.
+
+Also, Arthur has 300-360 and Michael 330-360, overlap from 330 to 360, which is 14:30 to 15:00, 30 minutes.
+
+But since we want earliest, 12:00 to 12:30 is earlier than 13:00 to 13:30.
+
+But we also have Wednesday to consider, and Arthur cannot meet on Tuesday, so Wednesday might have earlier slots.
+
+The task says "between the work hours of 9:00 to 17:00 on either Monday, Tuesday or Wednesday." But Arthur cannot meet on Tuesday, so only Monday and Wednesday.
+
+Now, we need to check Wednesday.
+
+Arthur has meetings on Wednesday:
+- 10:00 to 10:30 → from 60 to 90 minutes (10:00 is 1*60=60, 10:30 is 90)
+- 11:00 to 11:30 → from 120 to 150 minutes
+- 12:00 to 12:30 → from 180 to 210 minutes
+- 14:00 to 14:30 → from 300 to 330 minutes
+- 16:00 to 16:30 → from 420 to 450 minutes
+
+Michael has meetings on Wednesday:
+- 10:00 to 12:30 → from 60 to 150 minutes? 10:00 to 12:30 is from 60 to 150? Let's calculate.
+
+10:00 is 60 minutes, 12:30 is 3.5*60=210 minutes? 12:30 is 12*60 + 30 = 720 + 30 = 750 minutes from midnight? No, we are using 9:00 as 0.
+
+Better to stick with minutes from 9:00.
+
+So 9:00 = 0 min
+10:00 = 60 min
+11:00 = 120 min
+12:00 = 180 min
+13:00 = 240 min
+14:00 = 300 min
+15:00 = 360 min
+16:00 = 420 min
+17:00 = 480 min
+
+So for Michael on Wednesday: meetings from 10:00 to 12:30 → 10:00 is 60 min, 12:30 is 180 + 30 = 210 min? 12:00 is 180, 12:30 is 210 min, so from 60 to 210 min.
+
+And 13:00 to 13:30 → 13:00 is 240 min, 13:30 is 270 min, so from 240 to 270.
+
+Now, Arthur's free times on Wednesday:
+
+Arthur's meetings: 
+10:00-10:30: 60-90
+11:00-11:30: 120-150
+12:00-12:30: 180-210
+14:00-14:30: 300-330
+16:00-16:30: 420-450
+
+So Arthur's busy: [60,90], [120,150], [180,210], [300,330], [420,450]
+
+Thus free periods:
+From 0 to 60? 9:00 to 10:00 free
+From 90 to 120? 10:30 to 11:00 free
+From 150 to 180? 11:30 to 12:00 free
+From 210 to 300? 12:30 to 14:00 free
+From 330 to 420? 14:30 to 16:00 free
+From 450 to 480? 16:30 to 17:00 free
+
+Michael's free times on Wednesday:
+
+Michael's meetings: 
+10:00 to 12:30: 60 to 210
+13:00 to 13:30: 240 to 270
+
+So Michael's busy: [60,210], [240,270]
+
+Thus free periods:
+From 0 to 60? 9:00 to 10:00 free
+From 210 to 240? 12:30 to 13:00 free
+From 270 to 480? 13:30 to 17:00 free? But 270 to 480, since no other meetings.
+
+270 is 13:30, 480 is 17:00.
+
+Now, find overlaps on Wednesday:
+
+Arthur free: 
+0-60 (9:00-10:00)
+90-120 (10:30-11:00)
+150-180 (11:30-12:00)
+210-300 (12:30-14:00)
+330-420 (14:30-16:00)
+450-480 (16:30-17:00)
+
+Michael free:
+0-60 (9:00-10:00)
+210-240 (12:30-13:00)
+270-480 (13:30-17:00)
+
+Now overlaps:
+
+- Both free from 0 to 60: 9:00 to 10:00 → 60 minutes, so enough for 30 minutes. So from 9:00 to 9:30 or any time within, but since earliest, we can do 9:00 to 9:30.
+
+But we need to see if there is earlier than Monday? Monday has 12:00, which is later than 9:00.
+
+So on Wednesday, at 9:00, both are free.
+
+But is Michael free at 9:00? Michael has meeting from 10:00 to 12:30, so from 9:00 to 10:00 is free, so yes.
+
+Arthur is free from 9:00 to 10:00.
+
+So the earliest availability is Wednesday at 9:00 to 9:30.
+
+But let's confirm the constraints: Arthur cannot meet on Tuesday, but Wednesday is fine.
+
+The group would like to meet at their earliest availability, so Wednesday 9:00 is earlier than Monday 12:00.
+
+But we need to output the time range and day.
+
+In the code, we need to find this programmatically.
+
+Now, for the code, I need to represent the schedules and find gaps.
+
+I'll create a function or script that handles this.
+
+First, define the work hours: 9:00 to 17:00, which is 0 to 480 minutes.
+
+Then, for each day, except Tuesday since Arthur cannot meet, we have Monday and Wednesday.
+
+We have participants: Arthur and Michael.
+
+Their meetings on each day.
+
+Since the days are separate, we can iterate over days: Monday and Wednesday.
+
+For each day, get the busy intervals for each person, then find free intervals, then find common free intervals that have at least 30 minutes.
+
+Then choose the earliest one.
+
+Earliest means earliest time, so we look for the smallest start time.
+
+Now, for the code, I need to represent time.
+
+I'll convert all times to minutes from 9:00.
+
+So 9:00 is 0, 9:30 is 30, 10:00 is 60, etc.
+
+Then for output, convert back to HH:MM.
+
+Now, let's define the busy times for each person on each day.
+
+From the task:
+
+Arthur on Monday: meetings at 11:00-11:30, 13:30-14:00, 15:00-15:30
+
+In minutes: 
+11:00 is 120, 11:30 is 150 → [120,150]
+13:30 is 270, 14:00 is 300 → [270,300]
+15:00 is 360, 15:30 is 390 → [360,390]
+
+Arthur on Wednesday: meetings at 10:00-10:30, 11:00-11:30, 12:00-12:30, 14:00-14:30, 16:00-16:30
+
+In minutes:
+10:00-10:30: [60,90]
+11:00-11:30: [120,150]
+12:00-12:30: [180,210]
+14:00-14:30: [300,330]
+16:00-16:30: [420,450]
+
+Michael on Monday: meetings at 9:00-12:00, 12:30-13:00, 14:00-14:30, 15:00-17:00
+
+In minutes:
+9:00-12:00: [0,180]  # since 12:00 is 180
+12:30-13:00: [210,240]  # 12:30 is 210, 13:00 is 240
+14:00-14:30: [300,330]  # 14:00 is 300, 14:30 is 330
+15:00-17:00: [360,480]  # 15:00 is 360, 17:00 is 480
+
+Michael on Wednesday: meetings at 10:00-12:30, 13:00-13:30
+
+In minutes:
+10:00-12:30: [60,210]  # 10:00 is 60, 12:30 is 210
+13:00-13:30: [240,270]  # 13:00 is 240, 13:30 is 270
+
+Now, we need to find free times for each person on each day within 0 to 480.
+
+Then find intersection of free times for both persons on that day.
+
+Then find the first interval that has at least 30 minutes.
+
+Since we want earliest, we can check days in order: Monday then Wednesday, but since Wednesday has 9:00, which is earlier, we should check all days and find the earliest time.
+
+But in code, we can iterate over days and find all possible slots, then choose the one with smallest start time.
+
+Now, for free times, we need to compute the gaps between busy intervals and the work hours.
+
+General approach: for a person on a day, with busy intervals, sort the intervals by start time.
+
+Then free intervals are from 0 to first busy start, then between busy intervals, and from last busy end to 480.
+
+But we need to merge intervals if necessary, but in this case, intervals are disjoint.
+
+In code, we can create a list of busy intervals, then find free intervals.
+
+Then for two persons, find common free intervals.
+
+Then find the first common free interval that has duration >= 30 minutes.
+
+Now, let's code accordingly.
+
+We'll define the days we consider: ['Monday', 'Wednesday'] since Tuesday is excluded.
+
+For each day, we have the busy intervals for Arthur and Michael.
+
+Then for each day, compute free intervals for Arthur, free for Michael, then common free.
+
+Then find the earliest slot.
+
+Now, for output, we need to output the day and the time range in HH:MM format.
+
+So let's write the code.
+
+First, define a function to convert time string to minutes from 9:00.
+
+For example, "9:00" -> 0, "10:00" -> 60, etc.
+
+But since we have times like "11:00", we can split by colon and calculate.
+
+But in the input, times are given as HH:MM, so we can parse that.
+
+Similarly, convert minutes back to HH:MM.
+
+Now, in the code, we'll define the busy intervals for each person on each day.
+
+Since the data is given, we can hardcode it.
+
+The task is to generate code for this specific case.
+
+So let's code.
+
+We'll create a list of days to check.
+
+For each day, we have a list of busy intervals for Arthur and for Michael.
+
+Each busy interval is a tuple (start_min, end_min).
+
+Then we compute free intervals for each person.
+
+To compute free intervals, we start from 0, and end at 480.
+
+We have busy intervals, sorted by start.
+
+Then free intervals are the gaps.
+
+Similarly for common free intervals, we can iterate through both free lists and find overlaps.
+
+Then find the first overlap with sufficient duration.
+
+Since we want the earliest, we can check days in order, but since Wednesday might have earlier time, we should check all days and then choose the earliest time overall.
+
+So we can collect all possible slots from all days, then find the one with smallest start time.
+
+But since days are different, we need to consider the day as well.
+
+So we can iterate over days, and for each day, find the first available slot, and then compare across days.
+
+But since time is continuous, we can compare start times including the day, but since work hours are same each day, we can just compare the time of day, but Monday and Wednesday are different days, so we need to consider the day order: Monday before Wednesday? But in terms of time, 9:00 Monday is earlier than 9:00 Wednesday? No, for scheduling, we consider the calendar, but since the days are given as options, we need to find the earliest time slot, meaning the first possible time from 9:00 onwards on those days.
+
+But since Monday comes before Wednesday, a slot on Monday at 12:00 is earlier than Wednesday at 9:00? No, in terms of time of day, 9:00 is earlier than 12:00, but since Monday is before Wednesday, if we have a slot on Monday at 12:00, that is on Monday, which is before Wednesday, so 12:00 Monday is earlier than 9:00 Wednesday? That depends on the week.
+
+In scheduling, when we have multiple days, we consider the day order, so Monday is earlier than Wednesday, so a meeting on Monday is earlier than on Wednesday, even if the time on Wednesday is earlier in the day.
+
+But in this case, the task says "between the work hours of 9:00 to 17:00 on either Monday, Tuesday or Wednesday" and "meet at their earliest availability."
+
+What does "earliest availability" mean? It probably means the first possible time chronologically, so since Monday is before Wednesday, any time on Monday is earlier than any time on Wednesday. So we should check Monday first, and if there is a slot on Monday, we take the earliest on Monday, even if it is later in the day than Wednesday's slots.
+
+For example, if on Monday the earliest slot is 12:00, and on Wednesday there is 9:00, since Monday is before Wednesday, 12:00 Monday is earlier than 9:00 Wednesday.
+
+So we need to consider the day order: Monday, then Wednesday (since Tuesday excluded).
+
+So in code, we should first check Monday, find the earliest slot on Monday, then if no slot on Monday, check Wednesday.
+
+But in this case, there are slots on Monday, so we should take the earliest on Monday.
+
+But let's see the task: "the group would like to meet at their earliest availability."
+
+And from the schedules, on Monday, we have slots at 12:00-12:30 and 13:00-13:30, etc.
+
+But on Wednesday, we have 9:00-10:00, which is earlier in the day, but since Monday is before Wednesday, the earliest availability is on Monday.
+
+But is that correct? Let's think.
+
+If today is Monday, and we are scheduling, then meeting on Monday is earlier than on Wednesday.
+
+But the task doesn't specify the current day, but since we are given days, we assume that Monday is the first day, then Tuesday, then Wednesday.
+
+So chronologically, Monday comes before Wednesday.
+
+Therefore, the earliest possible time is on Monday, not on Wednesday.
+
+In the initial problem, it says "find a suitable time" and "earliest availability", which likely means the first time slot in the week.
+
+So for example, if we have slot on Monday at 12:00, that is earlier than Wednesday at 9:00 because Monday is before Wednesday.
+
+So in code, we should prioritize days in order: Monday, then Wednesday.
+
+We check Monday first, find the earliest slot on Monday, then if no slot, check Wednesday.
+
+In this case, on Monday, there are slots, so we should find the earliest slot on Monday.
+
+From earlier, on Monday, common free times: 
+- 180 to 210: 12:00 to 12:30
+- 240 to 270: 13:00 to 13:30
+- 330 to 360: 14:30 to 15:00
+
+The earliest is 180 to 210, which is 12:00 to 12:30.
+
+So that should be the meeting time.
+
+But let's confirm Arthur cannot meet on Tuesday, but that doesn't affect Monday.
+
+So why did I think about Wednesday? Because Wednesday has 9:00, but since Monday is available, we should use Monday.
+
+The task says "Note there exists a solution that works with existing schedule of every participant." and in this case, on Monday, there is slot.
+
+So for the solution, we should output Monday at 12:00 to 12:30.
+
+But in the example solutions, it might be different, but based on reasoning, Monday has slots.
+
+But let's double-check the schedules.
+
+Arthur on Monday: free from 9:00 to 11:00, but Michael is busy until 12:00, so no overlap before 12:00.
+
+Then Arthur free from 11:30 to 13:30, Michael free from 12:00 to 12:30, so overlap 12:00 to 12:30.
+
+Then Arthur free from 14:00 to 15:00, Michael free from 13:00 to 14:00? Michael free from 13:00 to 14:00? From earlier, Michael free from 240 to 300, which is 13:00 to 14:00, and Arthur free from 300 to 360? No, Arthur free from 300 to 360? Arthur has meeting until 14:00? Let's see Arthur's meetings: 13:30 to 14:00 is meeting, so Arthur free from 14:00 to 15:00, which is 300 to 360.
+
+Michael free from 13:00 to 14:00, which is 240 to 300.
+
+So overlap between Arthur 300-360 and Michael 240-300? That doesn't overlap because Arthur starts at 300 and Michael ends at 300.
+
+300 is 14:00. If Michael is free until 14:00, and Arthur is free from 14:00, then at 14:00, is it free? Typically, if a meeting ends at 14:00, the time 14:00 is available for start. Similarly, if a meeting starts at 14:00, then 14:00 is busy for that meeting.
+
+So for Michael, free until 300 (14:00), meaning that at 300, Michael is free to start a meeting? But since Michael has meeting at 14:00-14:30, which starts at 300, so at time 300, Michael is busy because meeting starts at 300.
+
+Similarly, for Arthur, meeting ends at 300 (14:00), so at 300, Arthur is free.
+
+So for time 300, Arthur is free, but Michael is busy because his meeting starts at 300.
+
+Therefore, there is no overlap at 300; the free intervals are open or closed? We need to define the intervals properly.
+
+In scheduling, when we say free time, we consider times when they are not in meeting. So if a meeting ends at 14:00, then 14:00 is free because the meeting has ended. But if a meeting starts at 14:00, then from 14:00 onwards, they are busy.
+
+So for time t, if a meeting ends at t, then t is free. If a meeting starts at t, then t is busy.
+
+So in terms of intervals, for a meeting from start to end, the person is busy from start to end, inclusive? Or exclusive?
+
+Typically, if a meeting is from 14:00 to 14:30, then at 14:00, they are busy, and at 14:30, they are free? Or at 14:30, still busy? It depends on convention, but usually, meetings are considered to occupy the entire time block, so from 14:00 to 14:30, they are busy, and at 14:30, the meeting ends, so they are free at 14:30.
+
+But for scheduling a new meeting, if we want to start at 14:30, it is ok if no meeting at 14:30.
+
+So in interval notation, we can consider [start, end) where start is inclusive, end is exclusive, meaning that at time end, they are free.
+
+Similarly, for free times, we can have [free_start, free_end) where free_end is when they become busy.
+
+But for simplicity, when we list free intervals, we can use [start, end] where both inclusive, but then at the boundary, it might be messy.
+
+To avoid confusion, let's define the busy intervals as [start, end] meaning during that time, they are busy, so at end time, they are still busy, but after end, they are free.
+
+But for example, if meeting ends at 14:00, then at 14:00, are they free? If we have a meeting from 13:00 to 14:00, then at 14:00, the meeting is over, so they are free at 14:00.
+
+But if we have another meeting starting at 14:00, then at 14:00, they are busy for the next meeting.
+
+So in terms of discrete times, at 14:00, if a meeting ends at 14:00 and no meeting starts at 14:00, then 14:00 is free. But if a meeting starts at 14:00, then 14:00 is busy.
+
+Therefore, for a person, at any time t, they are free if no meeting covers time t.
+
+So for meetings, we can consider them as intervals that cover time points.
+
+For calculation, we can use minutes as integers, and for each minute, determine if busy or free.
+
+But that might be inefficient, but for 8 hours, 480 minutes, it's fine.
+
+Alternatively, we can work with intervals.
+
+To find free intervals, we can list all busy intervals, then the complement between 0 and 480.
+
+Then for common free, find intersection.
+
+And for a meeting of duration 30 minutes, we need a free interval of length 30 minutes.
+
+Now, for the boundaries, if a free interval starts at time s and ends at e, then the available time for meeting start is from s to e - duration.
+
+But for simplicity, we can find intervals where end - start >= duration.
+
+In this case, duration is 30 minutes.
+
+Now, back to Monday: for Arthur, free intervals based on busy [120,150], [270,300], [360,390]
+
+So free intervals: 
+[0,120] but since at 120, is he free? Meeting starts at 120, so at time 120, he is busy? Let's see meeting at 11:00-11:30, so at 11:00 (120), he is busy, so before 120, he is free. So free from 0 to 120, but not including 120? Since at 120, busy.
+
+Similarly, after meeting at 150, he is free from 150 onwards until 270? But at 270, meeting starts, so free from 150 to 270, not including 270? But at 270, busy.
+
+So to be precise, free intervals are: [0,120), [150,270), [300,360), [390,480)
+
+Similarly for Michael on Monday: busy [0,180], [210,240], [300,330], [360,480]
+
+So free intervals: [180,210), [240,300), [330,360)
+
+Now, for common free, we need overlapping free intervals.
+
+So [0,120) and [180,210) no overlap.
+
+[150,270) and [180,210) overlap from 180 to 210, so [180,210)
+
+But [180,210) is within both free intervals.
+
+Similarly, [150,270) and [240,300) overlap from 240 to 270? [240,270) since [240,300) and [150,270) overlap from 240 to 270.
+
+Then [300,360) and [240,300) no overlap because [240,300) ends at 300, and [300,360) starts at 300, so at 300, Michael is free? Let's see Michael free [240,300) means from 240 to 300, not including 300, so at 300, Michael is busy because meeting starts at 300.
+
+Arthur free [300,360) means from 300 to 360, not including 360, so at 300, Arthur is free.
+
+So at time 300, Arthur is free, Michael is busy, so no overlap.
+
+Similarly, [300,360) and [330,360) overlap from 330 to 360? [330,360) and [300,360) overlap from 330 to 360.
+
+So common free on Monday: 
+[180,210) and [240,270) and [330,360)
+
+[240,270) from above.
+
+Now, each of these is 30 minutes? [180,210) is 30 minutes, [240,270) is 30 minutes, [330,360) is 30 minutes.
+
+So the earliest is [180,210) which is 12:00 to 12:30.
+
+Now for Wednesday, similarly.
+
+Arthur free intervals on Wednesday: busy [60,90], [120,150], [180,210], [300,330], [420,450]
+
+So free: [0,60), [90,120), [150,180), [210,300), [330,420), [450,480)
+
+Michael free on Wednesday: busy [60,210], [240,270]
+
+So free: [0,60), [210,240), [270,480)
+
+Now common free:
+[0,60) and [0,60) -> [0,60)
+[90,120) and [0,60) no
+[150,180) and [0,60) no
+[210,300) and [210,240) -> [210,240)
+[210,300) and [270,480) -> [270,300)
+[330,420) and [270,480) -> [330,420)
+[450,480) and [270,480) -> [450,480)
+
+Now, [0,60) is 60 minutes, so can have meeting at 9:00 to 9:30 or etc.
+
+But since we are checking Monday first, and Monday has slot at 180, which is 12:00, which is on Monday, so earlier than Wednesday.
+
+Therefore, the earliest availability is on Monday at 12:00 to 12:30.
+
+So for the code, we should output Monday and 12:00:12:30? But output format HH:MM:HH:MM, so like 12:00:12:30.
+
+But in the solution example, it might be with colon, but in the output, it should be like {14:30:15:30} but without curly braces, just the time.
+
+In the instruction, it says "outputs it in the format HH:MM:HH:MM" so for example, 12:00:12:30.
+
+And the day.
+
+So code should output the day and the time string.
+
+Now, for the code, we'll hardcode the busy intervals for each day and each person.
+
+Then for each day in order: Monday, Wednesday
+
+For each day, compute free intervals for Arthur and Michael.
+
+Then find common free intervals.
+
+Then find the first common free interval with length >= 30.
+
+Then output the day and the time range.
+
+Since the intervals are in minutes, we convert to time string.
+
+Let's code accordingly.
+
+We'll define a function to convert minutes to time string.
+
+For example, minutes to HH:MM from 9:00.
+
+If minutes is 0, then "9:00", if 30, "9:30", etc.
+
+But 60 is "10:00", so we need to calculate hours and minutes.
+
+Since 9:00 is base, time = 9 + minutes/60, but hours and minutes.
+
+Better: total minutes from 9:00, so hours = 9 + floor(minutes/60), but minutes mod 60.
+
+But since minutes from 0 to 480, hours from 9 to 17.
+
+So for a minute value m, time hours = 9 + m // 60
+
+time minutes = m % 60
+
+Then format as HH:MM.
+
+Similarly, for converting time string to minutes, but we don't need that since we hardcode minutes.
+
+In code, we have busy intervals in minutes.
+
+Now, let's write the code.
+
+First, define work start and end in minutes: start_min = 0, end_min = 480
+
+duration = 30
+
+Days to check: ['Monday', 'Wednesday'] but since we check in order, we can iterate over days.
+
+For each day, define busy intervals for Arthur and Michael.
+
+Then for each person, compute free intervals.
+
+Then compute common free intervals.
+
+Then find the first common free interval that has end - start >= duration.
+
+Then output the day and the time range for that interval.
+
+But for the time range, we need to output the start and end time of the meeting? Or the free interval? Since we need a 30-minute meeting, we can take the start time of the free interval and add duration, but since the free interval might be longer, we can just output from start to start + duration.
+
+But since we want the earliest availability, we should output the earliest possible start time within the free interval.
+
+For example, if free interval from 180 to 210, we can start at 180 for 30 minutes, so from 180 to 210.
+
+So we output the time range from start to start + duration.
+
+But in the free interval, we have [180,210), which is 30 minutes, so from 180 to 210 exactly.
+
+So in code, for a common free interval [s,e) with e-s >= duration, we can set meeting start at s, end at s + duration.
+
+But since e-s >= duration, s + duration <= e, so it fits.
+
+And since we want earliest, we take the first such interval.
+
+Now, code implementation.
+
+We'll create a list for days, and for each day, the busy intervals for each person.
+
+Then for each day, compute free intervals for a person by taking the complement of busy intervals between 0 and 480.
+
+To compute free intervals from busy intervals:
+
+Sort busy intervals by start.
+
+Then free intervals start from 0 to first busy start, then between busy intervals, then from last busy end to 480.
+
+But with boundaries as above.
+
+Algorithm for free intervals:
+
+busy_intervals sorted: [b1, b2, ..., bn]
+
+free_intervals = []
+
+current = 0
+
+for each busy interval [s,e]:
+    if current < s, then free interval [current, s)
+    current = e
+
+after all, if current < 480, free interval [current, 480)
+
+But note: at the end, we have [current, 480) where current is the end of last busy.
+
+In this case, since busy intervals end at e, and after e, it is free, so free from e to next s, but since we set current = e, then for next busy, if current < s, then free from current to s.
+
+And after all, free from current to 480.
+
+Now, for common free intervals between two sets of free intervals.
+
+Since free intervals are disjoint and sorted, we can iterate through both lists and find overlaps.
+
+Similarly, for two lists of free intervals A and B, we can find intersection.
+
+Then for each overlapping interval, it is common free.
+
+Then we find the first one with sufficient length.
+
+Now, code accordingly.
+
+Let's code in Python.
+
+First, define the busy intervals for each day and each person.
+
+Since Arthur cannot meet on Tuesday, we skip Tuesday.
+
+So for Monday:
+
+arthur_busy_monday = [ (120,150), (270,300), (360,390) ]  # but in free computation, we need to use these as busy, so for free, we consider these intervals where they are busy.
+
+In the free computation, we use the busy intervals to find free.
+
+Similarly for Michael.
+
+Now, in code, we'll create a function to get free intervals from busy intervals within range [0,480].
+
+Function get_free_intervals(busy_list, start=0, end=480):
+    sorted_busy = sorted(busy_list, key=lambda x: x[0])
+    free_intervals = []
+    current = start
+    for s,e in sorted_busy:
+        if current < s:
+            free_intervals.append( (current, s) )
+        current = e
+    if current < end:
+        free_intervals.append( (current, end) )
+    return free_intervals
+
+This returns list of free intervals as (start, end) where end is not included, so [start, end)
+
+Then for common free intervals between two lists of free intervals, we can do:
+
+def find_common_free(free1, free2):
+    common = []
+    i = 0
+    j = 0
+    while i < len(free1) and j < len(free2):
+        interval1 = free1[i]
+        interval2 = free2[j]
+        start = max(interval1[0], interval2[0])
+        end = min(interval1[1], interval2[1])
+        if start < end:
+            common.append( (start, end) )
+        if interval1[1] < interval2[1]:
+            i += 1
+        else:
+            j += 1
+    return common
+
+This should work for finding overlapping intervals.
+
+Then for each day, we compute free for Arthur and free for Michael, then common free.
+
+Then find the first common free interval where end - start >= duration.
+
+Then output the day and the time range from start to start + duration.
+
+But since the free interval might be longer, but for meeting, we can start at start time, so output meeting from start to start + duration.
+
+And convert start and start+duration to time string.
+
+Now, we iterate over days in order: Monday, then Wednesday.
+
+We break once we find a slot.
+
+Now, let's code accordingly.
+
+First, duration = 30
+
+Days = ['Monday', 'Wednesday']  # we'll iterate over these
+
+But we need to define busy for each day.
+
+So for each day, we have arthur_busy and michael_busy.
+
+For Monday:
+arthur_busy_monday = [(120,150), (270,300), (360,390)]
+michael_busy_monday = [(0,180), (210,240), (300,330), (360,480)]
+
+For Wednesday:
+arthur_busy_wednesday = [(60,90), (120,150), (180,210), (300,330), (420,450)]
+michael_busy_wednesday = [(60,210), (240,270)]
+
+Now, in code, we'll loop for each day.
+
+For day in ['Monday', 'Wednesday']:
+    if day == 'Monday':
+        arthur_busy = arthur_busy_monday
+        michael_busy = michael_busy_monday
+    elif day == 'Wednesday':
+        arthur_busy = arthur_busy_wednesday
+        michael_busy = michael_busy_wednesday
+
+Then compute free for arthur: free_arthur = get_free_intervals(arthur_busy, 0, 480)
+Similarly free_michael = get_free_intervals(michael_busy, 0, 480)
+
+Then common_free = find_common_free(free_arthur, free_michael)
+
+Then for each interval in common_free:
+    if interval[1] - interval[0] >= duration:
+        meeting_start = interval[0]
+        meeting_end = meeting_start + duration
+        # convert to time string
+        start_time = minutes_to_time(meeting_start)
+        end_time = minutes_to_time(meeting_end)
+        print(day)
+        print(f"{start_time}:{end_time}")  # but output format HH:MM:HH:MM, so like "12:00:12:30"
+        break out of loop
+
+If found, break after first day? But we iterate days in order, so for Monday, if found, we break and output. If not, check Wednesday.
+
+But in this case, Monday has slots, so we output Monday.
+
+Now, function minutes_to_time(m):
+    # m is minutes from 9:00
+    total_minutes = m
+    hours = 9 + total_minutes // 60
+    minutes = total_minutes % 60
+    return f"{hours:02d}:{minutes:02d}"
+
+But hours might be 9, 10, etc., so format with leading zero? 09? But in output, it should be like 09:00 or 9:00? Looking at the example, in the output format, it might be without leading zero, but in the instruction, it says HH:MM, which usually means two-digit hours, but 9:00 is written as 9:00, not 09:00.
+
+In the example output in the instruction, it says {14:30:15:30}, so without leading zero for hours? 14:30 is 2-digit hour only if hour is 10 or more, but for 9, it would be 9:00.
+
+In Python, we can format hours without leading zero if less than 10.
+
+But to match the format, we should output as H:MM or HH:MM? Since 14:30 has two-digit hour, but 9:00 has one-digit hour.
+
+In the instruction, it says "HH:MM" but in the example, it shows "14:30" which is two-digit hour, but for 9, it should be "9:00" if we follow that, but "9:00" has only one digit for hour, so not HH.
+
+To avoid confusion, let's see the output format required: "outputs it in the format HH:MM:HH:MM"
+
+HH:MM suggests two-digit hour, but for hours less than 10, it should have leading zero? But in the example, 14:30 has two digits, so for 9, it should be 09:00? But in the time string, sometimes we write without leading zero.
+
+In the instruction, it says "HH:MM" which typically means two-digit hour, so we should output 09:00 for 9:00.
+
+But in the example output, it shows "14:30" which is fine for 14, but for 9, it should be 09:30 or something.
+
+Let's see the task: "outputs it in the format HH:MM:HH:MM"
+
+So for example, if meeting from 9:00 to 9:30, it should be "09:00:09:30" if HH with leading zero.
+
+But in the example solution, it might be without, but to be safe, let's output with leading zero for hours to make it two-digit.
+
+In Python, we can format with leading zero.
+
+So in minutes_to_time, we can do:
+
+hours = 9 + m // 60
+
+but hours could be 9,10,11,12,13,14,15,16,17
+
+so for hours=9, we want "09", for hours=10, "10", etc.
+
+So we can format hours as str(hours).zfill(2) but for hours=9, zfill(2) becomes "09", for hours=10, "10", which is fine.
+
+Similarly for minutes, always two digits.
+
+So return f"{hours:02d}:{minutes:02d}" but hours:02d will give 09, 10, etc., which is good.
+
+But note: when hours=17, it is 17:00, which is fine.
+
+Now, for the output, we need to output the day and the time range in one string? Or separately?
+
+The instruction says: "outputs it in the format HH:MM:HH:MM" and "the script should also output the day of the week"
+
+So we can print the day and then the time string.
+
+For example:
+
+print(day)
+
+print(f"{start_time}:{end_time}")
+
+But the time string should be like start_time and end_time concatenated with colon, so "HH:MM:HH:MM" meaning four parts with colons.
+
+So for example, "12:00:12:30"
+
+So we need to output the start time string and end time string with colon between them, but without spaces.
+
+So in code, we can output: print(f"{start_time_str}:{end_time_str}")
+
+Where start_time_str is like "12:00" and end_time_str is "12:30", so together "12:00:12:30"
+
+Yes.
+
+Now, let's code accordingly.
+
+We'll write the functions and then the main code.
+
+Note: in the free intervals, we have (start, end) where end is exclusive, so for a free interval of 30 minutes, we have end - start = 30, so we can use start to start+30.
+
+Now, implement the code.
+
+We'll assume that we break after finding the first available slot on the first day.
+
+Since we iterate days in order, and for each day, we find the first common free interval that is long enough, and since common free intervals are sorted by start, the first one we find is the earliest on that day.
+
+So in the loop for common_free, we can sort common_free by start, but since find_common_free returns intervals in order, we don't need to sort.
+
+Now, code.

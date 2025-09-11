@@ -1,0 +1,72 @@
+from z3 import *
+
+def main():
+    # Initialize solver
+    s = Solver()
+    
+    # Meeting duration in minutes
+    meeting_duration = 30
+    
+    # Work hours: 9:00 to 17:00 (8 hours = 480 minutes)
+    total_minutes = 480
+    start_time = 0  # 9:00 in minutes from reference
+    
+    # Define start variable in minutes from 9:00
+    S = Int('S')
+    
+    # Constraint: Meeting must fit within work hours
+    s.add(S >= 0)
+    s.add(S <= total_minutes - meeting_duration)
+    
+    # Convert busy times to minutes from 9:00
+    # Katherine: 12:00-12:30, 13:00-14:30
+    katherine_busy = [(180, 210), (240, 330)]
+    # Rebecca: No meetings
+    rebecca_busy = []
+    # Julie: 9:00-9:30, 10:30-11:00, 13:30-14:00, 15:00-15:30
+    julie_busy = [(0, 30), (90, 120), (270, 300), (360, 390)]
+    # Angela: 9:00-10:00, 10:30-11:00, 11:30-14:00, 14:30-15:00, 16:30-17:00
+    angela_busy = [(0, 60), (90, 120), (150, 300), (330, 360), (450, 480)]
+    # Nicholas: 9:30-11:00, 11:30-13:30, 14:00-16:00, 16:30-17:00
+    nicholas_busy = [(30, 120), (150, 270), (300, 420), (450, 480)]
+    # Carl: 9:00-11:00, 11:30-12:30, 13:00-14:30, 15:00-16:00, 16:30-17:00
+    carl_busy = [(0, 120), (150, 210), (240, 330), (360, 420), (450, 480)]
+    
+    # Angela's preference: Avoid before 15:00 (15:00 = 360 minutes from 9:00)
+    s.add(S >= 360)
+    
+    # Function to add busy intervals constraints
+    def add_busy_constraints(busy_intervals):
+        for start, end in busy_intervals:
+            s.add(Or(S + meeting_duration <= start, S >= end))
+    
+    # Add constraints for each participant
+    add_busy_constraints(katherine_busy)
+    add_busy_constraints(rebecca_busy)
+    add_busy_constraints(julie_busy)
+    add_busy_constraints(angela_busy)
+    add_busy_constraints(nicholas_busy)
+    add_busy_constraints(carl_busy)
+    
+    # Check for a solution
+    if s.check() == sat:
+        model = s.model()
+        start_minutes = model.eval(S).as_long()
+        
+        # Calculate start time in hours and minutes
+        start_hour = 9 + start_minutes // 60
+        start_minute = start_minutes % 60
+        
+        # Calculate end time in minutes
+        end_minutes = start_minutes + meeting_duration
+        end_hour = 9 + end_minutes // 60
+        end_minute = end_minutes % 60
+        
+        # Format the output
+        time_range = f"{start_hour:02d}:{start_minute:02d}:{end_hour:02d}:{end_minute:02d}"
+        print(f"Monday {time_range}")
+    else:
+        print("No solution found")
+
+if __name__ == "__main__":
+    main()

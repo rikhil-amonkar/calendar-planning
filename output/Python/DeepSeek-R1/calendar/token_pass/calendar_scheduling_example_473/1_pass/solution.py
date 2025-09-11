@@ -1,0 +1,50 @@
+def main():
+    # Define busy intervals for each participant in minutes from 9:00, with exclusive end
+    busy_intervals = {
+        "Gregory": [(0, 30), (150, 180)],
+        "Jonathan": [(0, 30), (180, 210), (240, 270), (360, 420), (450, 480)],
+        "Barbara": [(60, 90), (270, 300)],
+        "Jesse": [(60, 120), (210, 330)],
+        "Alan": [(30, 120), (150, 210), (240, 390), (420, 480)],
+        "Nicole": [(0, 90), (150, 180), (210, 270), (300, 480)],
+        "Catherine": [(0, 90), (180, 270), (360, 390), (420, 450)]
+    }
+    
+    # Meeting duration in minutes
+    duration = 30
+    # End of day in minutes (17:00 is 480 minutes from 9:00)
+    end_of_day = 480
+    # Maximum start time: end_of_day - duration
+    max_start = end_of_day - duration
+    
+    # Iterate over possible start times from 0 to max_start
+    for S in range(0, max_start + 1):
+        # Check for each participant
+        free = True
+        for participant, intervals in busy_intervals.items():
+            # Check if the meeting [S, S+duration) overlaps with any busy interval
+            for start_busy, end_busy in intervals:
+                if start_busy < S + duration and end_busy > S:
+                    free = False
+                    break
+            if not free:
+                break
+        if free:
+            # Convert S to time from 9:00
+            total_minutes_start = S
+            hours_start = 9 + total_minutes_start // 60
+            minutes_start = total_minutes_start % 60
+            total_minutes_end = S + duration
+            hours_end = 9 + total_minutes_end // 60
+            minutes_end = total_minutes_end % 60
+            # Format the time as HH:MM
+            start_time_str = f"{hours_start:02d}:{minutes_start:02d}"
+            end_time_str = f"{hours_end:02d}:{minutes_end:02d}"
+            print(f"Monday {start_time_str}:{end_time_str}")
+            return
+    
+    # If no time found, but problem says there is a solution
+    print("No time found, but there should be a solution.")
+
+if __name__ == "__main__":
+    main()

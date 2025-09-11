@@ -1,0 +1,75 @@
+```python
+from z3 import *
+
+def main():
+    # Convert time to minutes from 9:00
+    def time_to_minutes(t):
+        hours, minutes = map(int, t.split(':'))
+        return (hours - 9) * 60 + minutes
+
+    # Convert minutes back to time string
+    def minutes_to_time(m):
+        hours = 9 + m // 60
+        minutes = m % 60
+        return f"{hours:02d}:{minutes:02d}"
+
+    # Meeting duration in minutes
+    duration = 30
+    
+    # Work hours: 9:00 to 17:00 (480 minutes from 9:00)
+    work_start = time_to_minutes("09:00")
+    work_end = time_to_minutes("17:00")
+    
+    # Christine's meetings in minutes
+    christine_meetings = [
+        (time_to_minutes("11:00"), time_to_minutes("11:30")),
+        (time_to_minutes("15:00"), time_to_minutes("15:30"))
+    ]
+    
+    # Helen's blocked times in minutes
+    helen_blocked = [
+        (time_to_minutes("09:30"), time_to_minutes("10:30")),
+        (time_to_minutes("11:00"), time_to_minutes("11:30")),
+        (time_to_minutes("12:00"), time_to_minutes("12:30")),
+        (time_to_minutes("13:30"), time_to_minutes("16:00")),
+        (time_to_minutes("16:30"), time_to_minutes("17:00"))
+    ]
+    
+    # Helen cannot meet after 15:00 (360 minutes from 9:00)
+    helen_max_end = time_to_minutes("15:00")
+    
+    # Z3 solver
+    solver = Solver()
+    start = Int('start')
+    
+    # Constraint: meeting must be within work hours
+    solver.add(start >= work_start)
+    solver.add(start + duration <= work_end)
+    
+    # Constraint: meeting must end before Helen's cutoff
+    solver.add(start + duration <= helen_max_end)
+    
+    # Christine's availability constraints
+    for meet_start, meet_end in christine_meetings:
+        # Meeting cannot overlap with Christine's existing meetings
+        solver.add(Or(start + duration <= meet_start, start >= meet_end))
+    
+    # Helen's availability constraints
+    for block_start, block_end in helen_blocked:
+        # Meeting cannot overlap with Helen's blocked times
+        solver.add(Or(start + duration <= block_start, start >= block_end))
+    
+    # Check for a solution
+    if solver.check() == sat:
+        model = solver.model()
+        start_val = model.eval(start).as_long()
+        end_val = start_val + duration
+        start_time = minutes_to_time(start_val)
+        end_time = minutes_to_time(end_val)
+        print(f"Monday {start_time}:{end_time}")
+    else:
+        print("No solution found")
+
+if __name__ == "__main__":
+    main()
+```

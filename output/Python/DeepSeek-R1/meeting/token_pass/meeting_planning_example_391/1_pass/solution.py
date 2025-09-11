@@ -1,0 +1,180 @@
+import json
+from itertools import permutations
+
+def time_to_minutes(time_str):
+    hours, minutes = map(int, time_str.split(':'))
+    return hours * 60 + minutes
+
+def minutes_to_time(minutes):
+    hours = minutes // 60
+    minutes = minutes % 60
+    return f"{hours}:{minutes:02d}"
+
+def main():
+    travel_times = {
+        'Sunset District': {
+            'Alamo Square': 17,
+            'Russian Hill': 24,
+            'Presidio': 16,
+            'Financial District': 30
+        },
+        'Alamo Square': {
+            'Sunset District': 16,
+            'Russian Hill': 13,
+            'Presidio': 18,
+            'Financial District': 17
+        },
+        'Russian Hill': {
+            'Sunset District': 23,
+            'Alamo Square': 15,
+            'Presidio': 14,
+            'Financial District': 11
+        },
+        'Presidio': {
+            'Sunset District': 15,
+            'Alamo Square': 18,
+            'Russian Hill': 14,
+            'Financial District': 23
+        },
+        'Financial District': {
+            'Sunset District': 31,
+            'Alamo Square': 17,
+            'Russian Hill': 10,
+            'Presidio': 22
+        }
+    }
+
+    friends = {
+        'Kevin': {
+            'location': 'Alamo Square',
+            'available_start': time_to_minutes('8:15'),
+            'available_end': time_to_minutes('21:30'),
+            'min_duration': 75
+        },
+        'Kimberly': {
+            'location': 'Russian Hill',
+            'available_start': time_to_minutes('8:45'),
+            'available_end': time_to_minutes('12:30'),
+            'min_duration': 30
+        },
+        'Joseph': {
+            'location': 'Presidio',
+            'available_start': time_to_minutes('18:30'),
+            'available_end': time_to_minutes('19:15'),
+            'min_duration': 45
+        },
+        'Thomas': {
+            'location': 'Financial District',
+            'available_start': time_to_minutes('19:00'),
+            'available_end': time_to_minutes('21:45'),
+            'min_duration': 45
+        }
+    }
+
+    current_location = 'Sunset District'
+    current_time = time_to_minutes('9:00')
+    itinerary = []
+
+    morning_friends = ['Kevin', 'Kimberly']
+    evening_friends = ['Joseph', 'Thomas']
+
+    best_morning_order = None
+    best_morning_end_time = float('inf')
+    best_morning_schedule = None
+
+    for order in permutations(morning_friends):
+        temp_location = current_location
+        temp_time = current_time
+        schedule = []
+        feasible = True
+        
+        for friend in order:
+            loc = friends[friend]['location']
+            travel_time = travel_times[temp_location][loc]
+            temp_time += travel_time
+            start_time = max(temp_time, friends[friend]['available_start'])
+            end_time = start_time + friends[friend]['min_duration']
+            
+            if end_time > friends[friend]['available_end']:
+                feasible = False
+                break
+                
+            schedule.append({
+                'friend': friend,
+                'location': loc,
+                'start_time': start_time,
+                'end_time': end_time
+            })
+            temp_time = end_time
+            temp_location = loc
+            
+        if feasible and temp_time < best_morning_end_time:
+            best_morning_end_time = temp_time
+            best_morning_order = order
+            best_morning_schedule = schedule
+
+    for meeting in best_morning_schedule:
+        itinerary.append({
+            'action': 'meet',
+            'location': meeting['location'],
+            'person': meeting['friend'],
+            'start_time': minutes_to_time(meeting['start_time']),
+            'end_time': minutes_to_time(meeting['end_time'])
+        })
+    
+    current_location = best_morning_schedule[-1]['location']
+    current_time = best_morning_schedule[-1]['end_time']
+
+    best_evening_order = None
+    best_evening_schedule = None
+    feasible_evening = False
+
+    for order in permutations(evening_friends):
+        temp_location = current_location
+        temp_time = current_time
+        schedule = []
+        feasible = True
+        
+        for friend in order:
+            loc = friends[friend]['location']
+            travel_time = travel_times[temp_location][loc]
+            temp_time += travel_time
+            start_time = max(temp_time, friends[friend]['available_start'])
+            end_time = start_time + friends[friend]['min_duration']
+            
+            if end_time > friends[friend]['available_end']:
+                feasible = False
+                break
+                
+            schedule.append({
+                'friend': friend,
+                'location': loc,
+                'start_time': start_time,
+                'end_time': end_time
+            })
+            temp_time = end_time
+            temp_location = loc
+            
+        if feasible:
+            best_evening_schedule = schedule
+            feasible_evening = True
+            break
+
+    if feasible_evening:
+        for meeting in best_evening_schedule:
+            itinerary.append({
+                'action': 'meet',
+                'location': meeting['location'],
+                'person': meeting['friend'],
+                'start_time': minutes_to_time(meeting['start_time']),
+                'end_time': minutes_to_time(meeting['end_time'])
+            })
+
+    output = {
+        "itinerary": itinerary
+    }
+    
+    print(json.dumps(output, indent=2))
+
+if __name__ == '__main__':
+    main()

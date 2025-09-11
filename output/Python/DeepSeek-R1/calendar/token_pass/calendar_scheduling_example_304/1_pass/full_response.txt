@@ -1,0 +1,87 @@
+```python
+def main():
+    # Define work hours: 9:00 to 17:00 in minutes from 9:00
+    day_start = 0
+    day_end = 480  # 17:00 is 8 hours after 9:00
+    duration = 30
+    preference_end = 240  # 13:00 in minutes from 9:00
+
+    # List all busy intervals (start, end) in minutes from 9:00, with end exclusive
+    intervals = [
+        # Christine
+        (30, 90), (180, 210), (240, 270), (330, 360), (420, 450),
+        # Bobby
+        (180, 210), (330, 360),
+        # Elizabeth
+        (0, 30), (150, 240), (270, 300), (360, 390), (420, 480),
+        # Tyler
+        (0, 120), (180, 210), (240, 270), (390, 420), (450, 480),
+        # Edward
+        (0, 30), (60, 120), (150, 300), (330, 390), (420, 480)
+    ]
+
+    # Sort intervals by start time
+    intervals.sort(key=lambda x: x[0])
+
+    # Merge intervals
+    merged = []
+    current_start, current_end = intervals[0]
+    for start, end in intervals[1:]:
+        if start <= current_end:
+            # Overlapping or adjacent, merge
+            current_end = max(current_end, end)
+        else:
+            # No overlap, add current interval and reset
+            merged.append((current_start, current_end))
+            current_start, current_end = start, end
+    merged.append((current_start, current_end))
+
+    # Find free time slots
+    free_slots = []
+    # Check before first busy interval
+    if merged[0][0] > day_start:
+        free_slots.append((day_start, merged[0][0]))
+
+    # Check between merged intervals
+    for i in range(len(merged) - 1):
+        gap_start = merged[i][1]
+        gap_end = merged[i+1][0]
+        if gap_start < gap_end:
+            free_slots.append((gap_start, gap_end))
+
+    # Check after last busy interval
+    if merged[-1][1] < day_end:
+        free_slots.append((merged[-1][1], day_end))
+
+    # Find a free slot that has at least duration and meets preference (start <= preference_end - duration)
+    candidate_slot = None
+    for slot in free_slots:
+        start, end = slot
+        slot_length = end - start
+        if slot_length >= duration:
+            # Check if meeting can be scheduled to end by preference_end
+            if start <= preference_end - duration:
+                candidate_slot = (start, start + duration)
+                break
+    # If no candidate found that meets preference, choose any slot? But problem says there is a solution.
+    if candidate_slot is None:
+        for slot in free_slots:
+            start, end = slot
+            slot_length = end - start
+            if slot_length >= duration:
+                candidate_slot = (start, start + duration)
+                break
+
+    # Convert candidate_slot to time string
+    def minutes_to_time(minutes):
+        hours = 9 + minutes // 60
+        mins = minutes % 60
+        return f"{hours:02d}:{mins:02d}"
+
+    start_time_str = minutes_to_time(candidate_slot[0])
+    end_time_str = minutes_to_time(candidate_slot[1])
+    print(f"Monday {start_time_str}:{end_time_str}")
+
+if __name__ == "__main__":
+    main()
+```

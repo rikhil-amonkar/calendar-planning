@@ -1,0 +1,116 @@
+```python
+import itertools
+import json
+
+def main():
+    # Convert time to minutes after 9:00 AM (9:00 AM = 0)
+    def time_to_minutes(time_str):
+        hours, minutes = map(int, time_str.split(':'))
+        return (hours - 9) * 60 + minutes
+
+    def minutes_to_time(minutes):
+        total_minutes = 540 + minutes  # 9:00 AM is 540 minutes from midnight
+        hours = total_minutes // 60
+        minutes = total_minutes % 60
+        return f"{hours}:{minutes:02d}"
+
+    # Travel times dictionary
+    travel_times = {
+        ('Haight-Ashbury', 'Fisherman\'s Wharf'): 23,
+        ('Haight-Ashbury', 'Richmond District'): 10,
+        ('Haight-Ashbury', 'Mission District'): 11,
+        ('Haight-Ashbury', 'Bayview'): 18,
+        ('Fisherman\'s Wharf', 'Haight-Ashbury'): 22,
+        ('Fisherman\'s Wharf', 'Richmond District'): 18,
+        ('Fisherman\'s Wharf', 'Mission District'): 22,
+        ('Fisherman\'s Wharf', 'Bayview'): 26,
+        ('Richmond District', 'Haight-Ashbury'): 10,
+        ('Richmond District', 'Fisherman\'s Wharf'): 18,
+        ('Richmond District', 'Mission District'): 20,
+        ('Richmond District', 'Bayview'): 26,
+        ('Mission District', 'Haight-Ashbury'): 12,
+        ('Mission District', 'Fisherman\'s Wharf'): 22,
+        ('Mission District', 'Richmond District'): 20,
+        ('Mission District', 'Bayview'): 15,
+        ('Bayview', 'Haight-Ashbury'): 19,
+        ('Bayview', 'Fisherman\'s Wharf'): 25,
+        ('Bayview', 'Richmond District'): 25,
+        ('Bayview', 'Mission District'): 13
+    }
+
+    # Friend constraints in minutes after 9:00 AM
+    friends = [
+        {
+            'name': 'Sarah',
+            'location': 'Fisherman\'s Wharf',
+            'window_start': time_to_minutes('14:45'),  # 345 minutes
+            'window_end': time_to_minutes('17:30'),    # 510 minutes
+            'min_duration': 105
+        },
+        {
+            'name': 'Mary',
+            'location': 'Richmond District',
+            'window_start': time_to_minutes('13:00'),  # 240 minutes
+            'window_end': time_to_minutes('19:15'),    # 615 minutes
+            'min_duration': 75
+        },
+        {
+            'name': 'Helen',
+            'location': 'Mission District',
+            'window_start': time_to_minutes('21:45'),  # 765 minutes
+            'window_end': time_to_minutes('22:30'),    # 810 minutes
+            'min_duration': 30
+        },
+        {
+            'name': 'Thomas',
+            'location': 'Bayview',
+            'window_start': time_to_minutes('15:15'),  # 375 minutes
+            'window_end': time_to_minutes('18:45'),    # 585 minutes
+            'min_duration': 120
+        }
+    ]
+
+    # Try to schedule all friends, then fewer if needed
+    best_itinerary = []
+    max_met = 0
+    for n in range(4, 0, -1):
+        for friend_subset in itertools.combinations(friends, n):
+            for order in itertools.permutations(friend_subset):
+                current_location = 'Haight-Ashbury'
+                current_time = 0
+                itinerary = []
+                valid = True
+                for friend in order:
+                    travel_key = (current_location, friend['location'])
+                    if travel_key not in travel_times:
+                        valid = False
+                        break
+                    travel_duration = travel_times[travel_key]
+                    arrival_time = current_time + travel_duration
+                    start_meeting = max(arrival_time, friend['window_start'])
+                    end_meeting = start_meeting + friend['min_duration']
+                    if end_meeting > friend['window_end']:
+                        valid = False
+                        break
+                    itinerary.append({
+                        'action': 'meet',
+                        'location': friend['location'],
+                        'person': friend['name'],
+                        'start_time': minutes_to_time(start_meeting),
+                        'end_time': minutes_to_time(end_meeting)
+                    })
+                    current_location = friend['location']
+                    current_time = end_meeting
+                if valid and len(order) > max_met:
+                    best_itinerary = itinerary
+                    max_met = len(order)
+        if max_met > 0:
+            break
+
+    # Output result as JSON
+    result = {'itinerary': best_itinerary}
+    print(json.dumps(result, indent=2))
+
+if __name__ == '__main__':
+    main()
+```

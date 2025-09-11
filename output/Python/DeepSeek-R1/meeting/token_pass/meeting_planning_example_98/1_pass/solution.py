@@ -1,0 +1,68 @@
+import json
+
+def time_to_minutes(time_str):
+    hours, minutes = map(int, time_str.split(':'))
+    return hours * 60 + minutes
+
+def minutes_to_time(minutes):
+    hours = minutes // 60
+    mins = minutes % 60
+    return f"{hours}:{mins:02d}"
+
+def main():
+    # Input parameters
+    start_location = "Alamo Square"
+    start_time = "9:00"
+    meeting_person = "Timothy"
+    meeting_location = "Richmond District"
+    meeting_window_start = "20:45"
+    meeting_window_end = "21:30"
+    min_meeting_duration = 45
+    travel_time_to_meeting = 12
+    travel_time_return = 13  # Not used in this scenario
+
+    # Convert times to minutes
+    start_minutes = time_to_minutes(start_time)
+    window_start_minutes = time_to_minutes(meeting_window_start)
+    window_end_minutes = time_to_minutes(meeting_window_end)
+    
+    # Calculate latest possible arrival time at meeting location
+    required_meeting_end = window_start_minutes + min_meeting_duration
+    if required_meeting_end > window_end_minutes:
+        # Adjust meeting to fit within window
+        meeting_end = window_end_minutes
+        meeting_start = meeting_end - min_meeting_duration
+    else:
+        meeting_start = window_start_minutes
+        meeting_end = required_meeting_end
+    
+    # Calculate departure time from start location
+    travel_departure_time = meeting_start - travel_time_to_meeting
+    
+    # Verify schedule feasibility
+    if travel_departure_time < start_minutes:
+        # Not feasible to meet for full duration
+        meeting_start = window_start_minutes
+        meeting_end = window_end_minutes
+        actual_duration = meeting_end - meeting_start
+        if actual_duration < min_meeting_duration:
+            # Cannot meet minimum requirement
+            return json.dumps({"itinerary": []})
+    
+    # Create itinerary
+    itinerary = [
+        {
+            "action": "meet",
+            "location": meeting_location,
+            "person": meeting_person,
+            "start_time": minutes_to_time(meeting_start),
+            "end_time": minutes_to_time(meeting_end)
+        }
+    ]
+    
+    # Output as JSON
+    result = {"itinerary": itinerary}
+    print(json.dumps(result, indent=2))
+
+if __name__ == "__main__":
+    main()

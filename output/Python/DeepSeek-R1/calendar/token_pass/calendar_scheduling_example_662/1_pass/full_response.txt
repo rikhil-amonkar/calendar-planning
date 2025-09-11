@@ -1,0 +1,59 @@
+```python
+def main():
+    # Define work hours in minutes from 9:00 (0) to 17:00 (480)
+    work_start = 0
+    work_end = 480
+    meeting_duration = 60
+    
+    # Blocked times in minutes from 9:00
+    gary_monday = [(30, 60), (120, 240), (300, 330), (450, 480)]
+    gary_tuesday = [(0, 30), (90, 120), (330, 420)]
+    
+    david_monday = [(0, 30), (60, 240), (330, 450)]
+    david_tuesday = [(0, 30), (60, 90), (120, 210), (240, 330), (360, 420), (450, 480)]
+    
+    # Check Monday
+    monday_combined = [True] * (work_end + 1)
+    for start, end in gary_monday:
+        for i in range(start, end):
+            if i < len(monday_combined):
+                monday_combined[i] = False
+    for start, end in david_monday:
+        for i in range(start, end):
+            if i < len(monday_combined):
+                monday_combined[i] = False
+                
+    # Find available slot on Monday
+    for start_minute in range(work_start, work_end - meeting_duration + 1):
+        if all(monday_combined[start_minute:start_minute + meeting_duration]):
+            day = "Monday"
+            start_time = f"{9 + start_minute // 60:02d}:{start_minute % 60:02d}"
+            end_minute = start_minute + meeting_duration
+            end_time = f"{9 + end_minute // 60:02d}:{end_minute % 60:02d}"
+            print(f"{day} {start_time}:{end_time}")
+            return
+            
+    # Check Tuesday
+    tuesday_combined = [True] * (work_end + 1)
+    for start, end in gary_tuesday:
+        for i in range(start, end):
+            if i < len(tuesday_combined):
+                tuesday_combined[i] = False
+    for start, end in david_tuesday:
+        for i in range(start, end):
+            if i < len(tuesday_combined):
+                tuesday_combined[i] = False
+                
+    # Find available slot on Tuesday
+    for start_minute in range(work_start, work_end - meeting_duration + 1):
+        if all(tuesday_combined[start_minute:start_minute + meeting_duration]):
+            day = "Tuesday"
+            start_time = f"{9 + start_minute // 60:02d}:{start_minute % 60:02d}"
+            end_minute = start_minute + meeting_duration
+            end_time = f"{9 + end_minute // 60:02d}:{end_minute % 60:02d}"
+            print(f"{day} {start_time}:{end_time}")
+            return
+
+if __name__ == "__main__":
+    main()
+```

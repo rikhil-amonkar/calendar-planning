@@ -1,0 +1,116 @@
+```python
+import json
+
+def main():
+    # Define the graph of direct flights (undirected)
+    graph = {
+        ('Dublin', 'Brussels'),
+        ('Mykonos', 'Naples'),
+        ('Venice', 'Istanbul'),
+        ('Frankfurt', 'Krakow'),
+        ('Naples', 'Dublin'),
+        ('Krakow', 'Brussels'),
+        ('Naples', 'Istanbul'),
+        ('Naples', 'Brussels'),
+        ('Istanbul', 'Frankfurt'),
+        ('Brussels', 'Frankfurt'),
+        ('Istanbul', 'Krakow'),
+        ('Istanbul', 'Brussels'),
+        ('Venice', 'Frankfurt'),
+        ('Naples', 'Frankfurt'),
+        ('Dublin', 'Krakow'),
+        ('Venice', 'Brussels'),
+        ('Naples', 'Venice'),
+        ('Istanbul', 'Dublin'),
+        ('Venice', 'Dublin'),
+        ('Dublin', 'Frankfurt')
+    }
+    
+    # Required days per city
+    required_days = {
+        'Dublin': 5,
+        'Krakow': 4,
+        'Istanbul': 3,
+        'Venice': 3,
+        'Naples': 4,
+        'Brussels': 2,
+        'Mykonos': 4,
+        'Frankfurt': 3
+    }
+    
+    # Constraints: each constraint is (city, low_day, high_day)
+    constraints = [
+        ('Mykonos', 1, 4),
+        ('Dublin', 11, 15),
+        ('Istanbul', 9, 11),
+        ('Frankfurt', 15, 17)
+    ]
+    
+    # Proposed itinerary (hardcoded after manual calculation)
+    itinerary = [
+        {"day_range": "Day 1-4", "place": "Mykonos"},
+        {"day_range": "Day 4-7", "place": "Naples"},
+        {"day_range": "Day 7-9", "place": "Venice"},
+        {"day_range": "Day 9-11", "place": "Istanbul"},
+        {"day_range": "Day 11-15", "place": "Dublin"},
+        {"day_range": "Day 15-17", "place": "Frankfurt"},
+        {"day_range": "Day 17-20", "place": "Krakow"},
+        {"day_range": "Day 20-21", "place": "Brussels"}
+    ]
+    
+    # Verify the itinerary
+    if verify_itinerary(itinerary, graph, required_days, constraints):
+        result = {"itinerary": itinerary}
+        print(json.dumps(result))
+    else:
+        print('{"error": "No valid itinerary found"}')
+
+def verify_itinerary(itinerary, graph, required_days, constraints):
+    # Convert itinerary to list of (start, end, city)
+    segments = []
+    for entry in itinerary:
+        day_range = entry['day_range']
+        parts = day_range.split()
+        numbers = parts[1].split('-')
+        start = int(numbers[0])
+        end = int(numbers[1])
+        city = entry['place']
+        segments.append((start, end, city))
+    
+    # Check continuity and days
+    if segments[0][0] != 1 or segments[-1][1] != 21:
+        return False
+    
+    # Check required days and consecutive transitions
+    prev_end = None
+    for i, (start, end, city) in enumerate(segments):
+        # Check days per city
+        if (end - start + 1) != required_days[city]:
+            return False
+        
+        # Check transition flights
+        if i > 0:
+            if prev_end != start:
+                return False
+            city_prev = segments[i-1][2]
+            if (city_prev, city) not in graph and (city, city_prev) not in graph:
+                return False
+        prev_end = end
+    
+    # Check constraints
+    for const_city, low, high in constraints:
+        found = False
+        for start, end, city in segments:
+            if city == const_city:
+                # Check overlap: [start, end] overlaps with [low, high]
+                if not (end < low or start > high):
+                    found = True
+                    break
+        if not found:
+            return False
+    
+    return True
+
+if __name__ == '__main__':
+    main()
+```

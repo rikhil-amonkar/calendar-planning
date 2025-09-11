@@ -1,0 +1,106 @@
+```python
+import json
+
+def time_to_min(time_str):
+    parts = time_str.split(':')
+    hours = int(parts[0])
+    minutes = int(parts[1])
+    return hours * 60 + minutes
+
+def min_to_time(minutes):
+    hours = minutes // 60
+    mins = minutes % 60
+    return f"{hours}:{mins:02d}"
+
+def main():
+    travel_times = {
+        'Sunset District': {'Chinatown': 30, 'Russian Hill': 24, 'North Beach': 29},
+        'Chinatown': {'Sunset District': 29, 'Russian Hill': 7, 'North Beach': 3},
+        'Russian Hill': {'Sunset District': 23, 'Chinatown': 9, 'North Beach': 5},
+        'North Beach': {'Sunset District': 27, 'Chinatown': 6, 'Russian Hill': 4}
+    }
+    
+    start_time_min = time_to_min('9:00')
+    current_time = start_time_min
+    current_location = 'Sunset District'
+    itinerary = []
+    
+    # Define friend constraints
+    friends = [
+        {'name': 'Melissa', 'location': 'North Beach', 'avail_start': '8:15', 'avail_end': '13:30', 'min_duration': 105},
+        {'name': 'Anthony', 'location': 'Chinatown', 'avail_start': '13:15', 'avail_end': '14:30', 'min_duration': 60},
+        {'name': 'Rebecca', 'location': 'Russian Hill', 'avail_start': '19:30', 'avail_end': '21:15', 'min_duration': 105}
+    ]
+    
+    # Process Melissa
+    melissa = friends[0]
+    travel_duration = travel_times[current_location][melissa['location']]
+    arrival_time = current_time + travel_duration
+    melissa_avail_start = time_to_min(melissa['avail_start'])
+    melissa_avail_end = time_to_min(melissa['avail_end'])
+    
+    # Calculate latest departure time for Melissa based on Anthony's constraints
+    anthony = friends[1]
+    anthony_avail_end = time_to_min(anthony['avail_end'])
+    latest_arrival_anthony = anthony_avail_end - anthony['min_duration']
+    travel_to_anthony = travel_times[melissa['location']][anthony['location']]
+    latest_departure_melissa = latest_arrival_anthony - travel_to_anthony
+    
+    meet_melissa_start = max(arrival_time, melissa_avail_start)
+    meet_melissa_end = min(latest_departure_melissa, melissa_avail_end)
+    
+    itinerary.append({
+        'action': 'meet',
+        'location': melissa['location'],
+        'person': melissa['name'],
+        'start_time': min_to_time(meet_melissa_start),
+        'end_time': min_to_time(meet_melissa_end)
+    })
+    
+    # Process Anthony
+    current_time = meet_melissa_end + travel_to_anthony
+    anthony_avail_start = time_to_min(anthony['avail_start'])
+    meet_anthony_start = max(current_time, anthony_avail_start)
+    meet_anthony_end = meet_anthony_start + anthony['min_duration']
+    
+    itinerary.append({
+        'action': 'meet',
+        'location': anthony['location'],
+        'person': anthony['name'],
+        'start_time': min_to_time(meet_anthony_start),
+        'end_time': min_to_time(meet_anthony_end)
+    })
+    
+    # Process Rebecca
+    rebecca = friends[2]
+    current_location = anthony['location']
+    travel_duration_rebecca = travel_times[current_location][rebecca['location']]
+    rebecca_avail_start = time_to_min(rebecca['avail_start'])
+    rebecca_avail_end = time_to_min(rebecca['avail_end'])
+    
+    latest_arrival_rebecca = rebecca_avail_end - rebecca['min_duration']
+    departure_time_anthony = meet_anthony_end
+    travel_time_needed = travel_duration_rebecca
+    latest_departure_anthony = latest_arrival_rebecca - travel_time_needed
+    
+    # Wait if necessary before traveling to Rebecca
+    departure_time = max(departure_time_anthony, latest_departure_anthony - (latest_departure_anthony - departure_time_anthony))
+    arrival_rebecca = departure_time + travel_time_needed
+    
+    meet_rebecca_start = max(arrival_rebecca, rebecca_avail_start)
+    meet_rebecca_end = meet_rebecca_start + rebecca['min_duration']
+    
+    itinerary.append({
+        'action': 'meet',
+        'location': rebecca['location'],
+        'person': rebecca['name'],
+        'start_time': min_to_time(meet_rebecca_start),
+        'end_time': min_to_time(meet_rebecca_end)
+    })
+    
+    result = {'itinerary': itinerary}
+    print(json.dumps(result, indent=2))
+
+if __name__ == '__main__':
+    main()
+```

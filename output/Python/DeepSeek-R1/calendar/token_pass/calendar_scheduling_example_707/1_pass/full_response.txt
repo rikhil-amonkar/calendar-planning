@@ -1,0 +1,95 @@
+```python
+def time_to_minutes(time_str):
+    hours, minutes = map(int, time_str.split(':'))
+    return hours * 60 + minutes
+
+def minutes_to_time(minutes):
+    hours = minutes // 60
+    mins = minutes % 60
+    return f"{hours:02d}:{mins:02d}"
+
+def get_free_slots(busy_intervals, day_start, day_end):
+    free_slots = []
+    current_time = day_start
+    for start, end in busy_intervals:
+        if current_time < start:
+            free_slots.append((current_time, start))
+        current_time = max(current_time, end)
+    if current_time < day_end:
+        free_slots.append((current_time, day_end))
+    return free_slots
+
+def find_meeting_slot(ryan_busy, adam_busy, day_start, day_end, duration, day_name, adam_constraint_start=None):
+    ryan_free = get_free_slots(ryan_busy, day_start, day_end)
+    adam_free = get_free_slots(adam_busy, day_start, day_end)
+    
+    if adam_constraint_start is not None:
+        adam_free = [(start, end) for start, end in adam_free if start >= adam_constraint_start]
+    
+    common_free = []
+    for r_start, r_end in ryan_free:
+        for a_start, a_end in adam_free:
+            start = max(r_start, a_start)
+            end = min(r_end, a_end)
+            if start < end:
+                common_free.append((start, end))
+    
+    for start, end in common_free:
+        if end - start >= duration:
+            slot_start = start
+            slot_end = slot_start + duration
+            if slot_end <= end:
+                return minutes_to_time(slot_start), minutes_to_time(slot_end)
+    return None, None
+
+def main():
+    day_start = time_to_minutes("9:00")
+    day_end = time_to_minutes("17:00")
+    duration = 30  # minutes
+    
+    # Ryan's busy times in minutes for each day
+    ryan_busy_monday = [
+        (time_to_minutes("9:30"), time_to_minutes("10:00")),
+        (time_to_minutes("11:00"), time_to_minutes("12:00")),
+        (time_to_minutes("13:00"), time_to_minutes("13:30")),
+        (time_to_minutes("15:30"), time_to_minutes("16:00"))
+    ]
+    ryan_busy_tuesday = [
+        (time_to_minutes("11:30"), time_to_minutes("12:30")),
+        (time_to_minutes("15:30"), time_to_minutes("16:00"))
+    ]
+    
+    # Adam's busy times in minutes for each day
+    adam_busy_monday = [
+        (time_to_minutes("9:00"), time_to_minutes("10:30")),
+        (time_to_minutes("11:00"), time_to_minutes("13:30")),
+        (time_to_minutes("14:00"), time_to_minutes("16:00")),
+        (time_to_minutes("16:30"), time_to_minutes("17:00"))
+    ]
+    adam_busy_tuesday = [
+        (time_to_minutes("9:00"), time_to_minutes("10:00")),
+        (time_to_minutes("10:30"), time_to_minutes("15:30")),
+        (time_to_minutes("16:00"), time_to_minutes("17:00"))
+    ]
+    
+    # Adam's constraint for Monday: avoid before 14:30
+    adam_constraint_monday = time_to_minutes("14:30")
+    
+    # Check Monday
+    start_time, end_time = find_meeting_slot(ryan_busy_monday, adam_busy_monday, day_start, day_end, duration, "Monday", adam_constraint_monday)
+    if start_time and end_time:
+        print(f"Monday {start_time}:{end_time}")
+        return
+    
+    # Check Tuesday
+    start_time, end_time = find_meeting_slot(ryan_busy_tuesday, adam_busy_tuesday, day_start, day_end, duration, "Tuesday")
+    if start_time and end_time:
+        print(f"Tuesday {start_time}:{end_time}")
+        return
+    
+    # If no slot found, but problem says there is a solution
+    print("No suitable time found.")
+
+if __name__ == "__main__":
+    main()
+```

@@ -1,0 +1,88 @@
+```python
+def main():
+    # Define work hours in minutes
+    work_start = 9 * 60  # 9:00
+    work_end = 17 * 60   # 17:00
+    duration = 30        # meeting duration in minutes
+
+    # Define busy intervals for each person on each day in minutes (start, end), end exclusive
+    # Arthur's busy intervals on Monday
+    arthur_busy_monday = [(660, 690), (810, 840), (900, 930)]
+    # Michael's busy intervals on Monday
+    michael_busy_monday = [(540, 720), (750, 780), (840, 870), (900, 1020)]
+    
+    # Arthur's busy intervals on Wednesday
+    arthur_busy_wednesday = [(600, 630), (660, 690), (720, 750), (840, 870), (960, 990)]
+    # Michael's busy intervals on Wednesday
+    michael_busy_wednesday = [(600, 750), (780, 810)]
+
+    # Days to check in order: Monday, Wednesday (skip Tuesday)
+    days = [
+        ("Monday", arthur_busy_monday, michael_busy_monday),
+        ("Wednesday", arthur_busy_wednesday, michael_busy_wednesday)
+    ]
+
+    # Function to compute free intervals from busy intervals within work hours
+    def get_free_intervals(busy_intervals, work_start, work_end):
+        # Sort busy intervals by start time
+        busy_sorted = sorted(busy_intervals, key=lambda x: x[0])
+        free_intervals = []
+        current_start = work_start
+        
+        for busy in busy_sorted:
+            busy_start, busy_end = busy
+            if current_start < busy_start:
+                free_intervals.append((current_start, busy_start))
+            current_start = max(current_start, busy_end)
+        
+        if current_start < work_end:
+            free_intervals.append((current_start, work_end))
+        return free_intervals
+
+    # Function to find overlapping intervals between two sets
+    def find_overlaps(intervals1, intervals2):
+        overlaps = []
+        i = j = 0
+        while i < len(intervals1) and j < len(intervals2):
+            start1, end1 = intervals1[i]
+            start2, end2 = intervals2[j]
+            overlap_start = max(start1, start2)
+            overlap_end = min(end1, end2)
+            if overlap_start < overlap_end:
+                overlaps.append((overlap_start, overlap_end))
+            if end1 < end2:
+                i += 1
+            else:
+                j += 1
+        return overlaps
+
+    # Convert minutes to HH:MM string
+    def minutes_to_time(minutes):
+        hours = minutes // 60
+        mins = minutes % 60
+        return f"{hours:02d}:{mins:02d}"
+
+    # Iterate over days in order
+    for day, arthur_busy, michael_busy in days:
+        # Get free intervals for Arthur and Michael
+        arthur_free = get_free_intervals(arthur_busy, work_start, work_end)
+        michael_free = get_free_intervals(michael_busy, work_start, work_end)
+        
+        # Find overlapping free intervals
+        common_free = find_overlaps(arthur_free, michael_free)
+        
+        # Find the first common interval with sufficient duration
+        for start, end in common_free:
+            if end - start >= duration:
+                # Found a slot, output day and time range
+                start_time = minutes_to_time(start)
+                end_time = minutes_to_time(start + duration)
+                print(f"{day} {start_time}:{end_time}")
+                return
+    
+    # If no slot found, but problem says there is a solution, so this should not happen
+    print("No suitable time found")
+
+if __name__ == "__main__":
+    main()
+```

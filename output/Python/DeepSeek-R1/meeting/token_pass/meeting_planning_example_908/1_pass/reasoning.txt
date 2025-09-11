@@ -1,0 +1,697 @@
+We are going to create a program that uses constraint satisfaction and a greedy or backtracking approach to schedule as many meetings as possible.
+ However, note that the problem is complex due to travel times and the fact that we have to meet each person for a minimum duration.
+
+ Steps:
+ 1. Represent the travel times between locations. We have 10 locations.
+ 2. Represent the availability of each person (friend) and the minimum meeting time required.
+ 3. We start at Financial District at 9:00.
+
+ Since the problem is NP-hard, we might use a heuristic or a greedy algorithm that tries to fit meetings in the available time.
+
+ However, note that we have 10 friends and a day from 9:00 to 20:00 (but note some friends are available until 10:00PM, but we have to consider the last meeting ending by 10:00PM?).
+
+ We are going to try to schedule as many as possible, but note the problem says "optimal" meaning we want to meet as many as possible, but also we have to meet the minimum time.
+
+ Approach:
+ We can use a greedy algorithm that starts from the beginning of the day and tries to schedule the next meeting that fits, but we have to account for travel.
+
+ Alternatively, we can use a state-space search (backtracking) with pruning. However, 10 meetings is manageable with backtracking if we use good heuristics.
+
+ Steps in the algorithm:
+
+ 1. Precompute the travel matrix as a dictionary of dictionaries.
+
+ 2. Represent each meeting as a tuple (person, location, available_start, available_end, min_duration)
+
+ 3. We have to decide the order of meetings. We can generate permutations of meetings and check feasibility, but 10! is 3.6 million which is too many.
+
+ 4. Instead, we can use a greedy approach by sorting the meetings by their available start time or by their available end time.
+
+ However, note that travel times depend on the previous location.
+
+ 5. We can use dynamic programming with state (current_time, current_location, meetings_done) but the state space is continuous in time and 10 locations and 2^10 meetings, which is 10*2^10 states but time is continuous so we need to discretize? Not trivial.
+
+ 6. Alternatively, we can use a constraint programming approach, but we are to write a Python program without external libraries.
+
+ 7. Another idea: use a greedy algorithm that at each step, from the current time and location, looks at all meetings that haven't been scheduled and that can be scheduled (considering travel and time) and picks the one that allows the next meeting to start as early as possible (or that has the earliest possible finish time?).
+
+ 8. We can try to schedule the meetings in the order of their available start time, but adjust for travel.
+
+ However, note: some meetings have tight windows (like Ashley from 9:45 to 11:15, 45 min meeting) and we start at 9:00 at Financial District.
+
+ Let's list the friends and their constraints:
+
+ Mark: Fisherman's Wharf, 8:15-10:00, 30 min -> we can meet Mark from 9:00 to 9:30? But note we are at Financial District at 9:00, travel to Fisherman's Wharf takes 10 minutes, so we can be there at 9:10. Then we need 30 minutes, so we can meet from 9:10 to 9:40. But Mark is available until 10:00, so that works.
+
+ But note: we have to meet Ashley from 9:45 to 11:15 (45 min) at Richmond District. Travel from Fisherman's Wharf to Richmond District: 18 minutes. So if we leave Fisherman's Wharf at 9:40, we arrive at Richmond District at 9:40 + 18 = 9:58. Then we can meet Ashley from 9:58 to 10:43 (45 minutes). But Ashley is available until 11:15, so that works.
+
+ Then we have Joseph at Marina District from 10:45 to 15:00 (90 min). Travel from Richmond District to Marina District: 9 minutes. So we leave Richmond at 10:43, arrive Marina at 10:52. Then we can meet Joseph from 10:52 to 12:22 (90 minutes). But Joseph is available until 15:00, so that works.
+
+ Then we have Stephanie at Presidio from 12:15 to 15:00 (75 min). Travel from Marina District to Presidio: 10 minutes. So we leave Marina at 12:22, arrive Presidio at 12:32. Then we can meet Stephanie from 12:32 to 13:47 (75 minutes). But Stephanie is available until 15:00, so that works.
+
+ Then we have Brian at The Castro from 9:15 to 13:15 (30 min). But we already scheduled until 13:47. So we cannot meet Brian because he is only available until 13:15.
+
+ Then we have Lisa at Haight-Ashbury from 15:30 to 18:30 (45 min). Travel from Presidio to Haight-Ashbury: 15 minutes. So we leave Presidio at 13:47, arrive Haight-Ashbury at 14:02. But Lisa is available only from 15:30, so we have to wait until 15:30. Then we meet from 15:30 to 16:15.
+
+ Then we have Patricia at Union Square from 16:30 to 20:00 (120 min). Travel from Haight-Ashbury to Union Square: 19 minutes. So we leave Haight-Ashbury at 16:15, arrive Union Square at 16:34. Then we meet Patricia from 16:34 to 18:34 (120 minutes). But Patricia is available until 20:00, so that works.
+
+ Then we have Karen at Sunset District from 16:30 to 22:00 (105 min). But we are meeting Patricia until 18:34. Then travel from Union Square to Sunset District: 27 minutes. So we leave Union Square at 18:34, arrive Sunset at 19:01. Then we meet Karen from 19:01 to 20:46 (105 minutes). But Karen is available until 22:00, so that works.
+
+ Then we have William at Russian Hill from 18:45 to 20:00 (60 min). But we are meeting Patricia until 18:34 and then travel to Russian Hill from Union Square? Actually, we are going to Sunset after Patricia, so we skip William? Or we can try to adjust.
+
+ Alternatively, we can try to meet William after Patricia? But note: William is available until 20:00. We finish with Patricia at 18:34, then travel to Russian Hill from Union Square: 13 minutes. So we can be at Russian Hill at 18:47. Then we can meet William from 18:47 to 19:47 (60 minutes). Then we travel from Russian Hill to Sunset District: 23 minutes, so we arrive at Sunset at 20:10. Then we meet Karen from 20:10 to 21:55 (105 minutes). But Karen is available until 22:00, so that works.
+
+ But note: we also have Betty at Bayview from 7:15 to 20:30 (15 min). We haven't scheduled her. We can try to fit her in the morning or in the afternoon.
+
+ In the morning: We start at 9:00 at Financial District. We are going to meet Mark at 9:10-9:40. Then we go to Richmond to meet Ashley at 9:58-10:43. Then we go to Marina to meet Joseph at 10:52-12:22. Then we go to Presidio to meet Stephanie at 12:32-13:47. Then we have a gap until 15:30 for Lisa. We can try to meet Betty at Bayview during this gap.
+
+ Travel from Presidio to Bayview: 31 minutes. So we leave Presidio at 13:47, arrive Bayview at 14:18. Then we meet Betty for 15 minutes from 14:18 to 14:33. Then we have to go to Haight-Ashbury for Lisa at 15:30. Travel from Bayview to Haight-Ashbury: 19 minutes. So we leave Bayview at 14:33, arrive Haight-Ashbury at 14:52. Then we wait until 15:30 to meet Lisa.
+
+ So we can fit Betty in.
+
+ Now we have scheduled everyone except Brian (because we missed his time window).
+
+ So the schedule would be:
+
+ 9:00 - Start at Financial District
+ 9:10-9:40: Meet Mark at Fisherman's Wharf
+ 9:58-10:43: Meet Ashley at Richmond District
+ 10:52-12:22: Meet Joseph at Marina District
+ 12:32-13:47: Meet Stephanie at Presidio
+ 14:18-14:33: Meet Betty at Bayview
+ 15:30-16:15: Meet Lisa at Haight-Ashbury
+ 16:34-18:34: Meet Patricia at Union Square
+ 18:47-19:47: Meet William at Russian Hill
+ 20:10-21:55: Meet Karen at Sunset District
+
+ But note: we have to check the travel times between each step.
+
+ However, this is a greedy schedule and we might have missed a better order.
+
+ Since the problem is complex, we are going to implement a greedy algorithm that tries to schedule the next meeting that has the earliest possible time we can finish (including travel) and that we haven't scheduled yet.
+
+ Steps for the greedy algorithm:
+
+ 1. We have a list of meetings with: person, location, available_start, available_end, min_duration.
+
+ 2. We start at time = 9:00 (convert to minutes) at location = 'Financial District'
+
+ 3. We keep a list of scheduled meetings and a list of unscheduled meetings.
+
+ 4. At each step, we consider all unscheduled meetings that we can attend (considering travel time and the available window).
+
+    For each candidate meeting:
+        travel_time = travel from current location to candidate location
+        arrival_time = current_time + travel_time
+        We can start the meeting at max(arrival_time, candidate_available_start)
+        We must finish by candidate_available_end, so the meeting must end by candidate_available_end.
+        So the meeting can happen from start_time = max(arrival_time, candidate_available_start) to end_time = start_time + min_duration, provided end_time <= candidate_available_end.
+
+    If such a meeting is possible, we note the end_time of the meeting.
+
+ 5. We choose the candidate meeting that has the earliest end_time (so we finish early and have more time for others).
+
+ 6. If no meeting can be scheduled, we break.
+
+ 7. We update the current time to the end_time of the meeting, and current location to the meeting location.
+
+ 8. We remove the scheduled meeting from the unscheduled list.
+
+ 9. We output the schedule.
+
+ However, note: we might have to wait (like for Lisa) until the available start time.
+
+ Implementation details:
+
+ - Convert all times to minutes from midnight.
+
+ - We have to account for travel times between locations.
+
+ - We have a travel matrix: we'll create a dictionary of dictionaries.
+
+ Let's create the travel matrix from the input.
+
+ But note: the input has travel times in both directions, but they are not symmetric? Actually, look:
+
+   Financial District to Fisherman's Wharf: 10
+   Fisherman's Wharf to Financial District: 11
+
+ So we have to use the correct direction.
+
+ We'll create a dictionary:
+
+   travel_times = {
+        'Financial District': {
+            'Fisherman's Wharf': 10,
+            ... },
+        ...
+   }
+
+ But note: the input has all pairs.
+
+ We'll extract the travel times from the text.
+
+ However, the problem says the input is given. We can hardcode the travel matrix.
+
+ Let's list the locations:
+
+ locations = [
+    'Financial District',
+    'Fisherman\'s Wharf',
+    'Presidio',
+    'Bayview',
+    'Haight-Ashbury',
+    'Russian Hill',
+    'The Castro',
+    'Marina District',
+    'Richmond District',
+    'Union Square',
+    'Sunset District'
+]
+
+ But note: the input has 10 locations, but the list above has 11? Actually, the list above has 11 because I included 'The Castro' and others. Let me count:
+
+ Actually, the problem lists 10 friends in 10 different locations. The locations are:
+
+1. Financial District (start)
+2. Fisherman's Wharf (Mark)
+3. Presidio (Stephanie)
+4. Bayview (Betty)
+5. Haight-Ashbury (Lisa)
+6. Russian Hill (William)
+7. The Castro (Brian)
+8. Marina District (Joseph)
+9. Richmond District (Ashley)
+10. Union Square (Patricia)
+11. Sunset District (Karen)
+
+Wait, that's 11. But note: we start at Financial District, and we have 10 friends in 10 other locations. So total 11 distinct locations.
+
+But the travel matrix includes all 11? Actually, the travel matrix includes:
+
+Financial District, Fisherman's Wharf, Presidio, Bayview, Haight-Ashbury, Russian Hill, The Castro, Marina District, Richmond District, Union Square, Sunset District.
+
+So 11 locations.
+
+Now, let's hardcode the travel matrix.
+
+We'll create a dictionary called travel_time, with keys being the source and then inner keys the destination.
+
+We'll parse the input string? But the problem says the input is given as parameters. However, the problem says to write a program that takes the meeting constraints as input variables, but the travel matrix is fixed.
+
+We are going to hardcode the travel matrix.
+
+Steps:
+
+1. Hardcode the travel matrix.
+
+2. Define the meetings with their constraints.
+
+3. Convert time strings to minutes.
+
+4. Implement the greedy scheduler.
+
+But note: the greedy scheduler might not be optimal. However, given the complexity, we'll use this.
+
+Let's code accordingly.
+
+We'll create a list of meetings, each as a dictionary:
+
+meetings = [
+    {'person': 'Mark', 'location': 'Fisherman\'s Wharf', 'available_start': '8:15', 'available_end': '10:00', 'min_duration': 30},
+    ... 
+]
+
+But note: we have to convert the time strings to minutes.
+
+We'll write a helper function to convert time string to minutes.
+
+We'll assume the day starts at 0 minutes (midnight) and 9:00 is 9*60 = 540 minutes.
+
+Now, let's code the greedy algorithm.
+
+However, note: the greedy algorithm might not always find the optimal order. We might miss some meetings if we choose the wrong order.
+
+Alternatively, we can try to generate all permutations of the meetings and check feasibility? 10! is 3,628,800 which is acceptable in Python if we use efficient checking.
+
+But we have 11 meetings (including Betty and Brian) but note: we have 10 friends, so 10 meetings. Actually, we have 10 friends, so 10 meetings.
+
+We can generate all permutations of the 10 meetings and then check the feasibility of the schedule (accounting for travel times and time windows). Then we choose the permutation that allows the most meetings (or if same number of meetings, then the one that finishes earliest or has the most free time?).
+
+But note: we want to meet as many as possible. So we can try to maximize the number of meetings.
+
+Steps for the permutation approach:
+
+ 1. Generate all permutations of the list of meetings (10! = 3.6 million, which is acceptable in Pyton if we use efficient checking, but we might need to break early if a schedule becomes infeasible).
+
+ 2. For each permutation, we simulate the schedule:
+
+    current_time = 540 (9:00)
+    current_location = 'Financial District'
+    scheduled_meetings = []  # list of meetings we successfully scheduled in order
+
+    For each meeting in the permutation:
+        travel_time = travel_times[current_location][meeting['location']]
+        arrival_time = current_time + travel_time
+        start_time = max(arrival_time, meeting['available_start_min'])
+        end_time = start_time + meeting['min_duration']
+        if end_time <= meeting['available_end_min']:
+            scheduled_meetings.append( (meeting, start_time, end_time) )
+            current_time = end_time
+            current_location = meeting['location']
+        else:
+            break out of this permutation? Or skip this meeting and continue? But note: we are trying to schedule as many as possible, so we might skip a meeting that doesn't fit and continue with the next in the permutation.
+
+    Then we record the number of meetings scheduled.
+
+ 3. We choose the permutation that schedules the most meetings. If there are ties, we might choose the one that finishes earliest or has the most total meeting time? The problem says "as many friends as possible", so number of meetings is the primary goal.
+
+ 4. However, 10! is 3.6 million, and we have 10 meetings, so we can try to generate all permutations and evaluate. But note: we might break early if the current permutation already fails to schedule a meeting, then we skip the rest.
+
+ 5. We can also use dynamic programming with state (bitmask of scheduled meetings, current_location) and time. But the state space is 2^10 * 11 = 11 * 1024 = 11264 states, and we can store the minimum time we finish at that state. Then we can do:
+
+    dp[bitmask][location] = the earliest time we finish after having visited the meetings in bitmask and ending at location.
+
+    Then we iterate over bitmask and for each state, we try to schedule a meeting not in bitmask.
+
+    How to account for the available time windows? We can only schedule a meeting if we can arrive and then meet for the minimum duration without exceeding the available end.
+
+    Steps for DP:
+
+        Initialize: dp[0]['Financial District'] = 540 (9:00)
+
+        For each bitmask from 0 to (1<<n)-1:
+            For each location in locations:
+                if dp[bitmask][location] is set, then for each meeting i not in bitmask:
+                    Let m = meetings[i]
+                    travel_time = travel_times[location][m['location']]
+                    arrival_time = dp[bitmask][location] + travel_time
+                    start_time = max(arrival_time, m['available_start_min'])
+                    end_time = start_time + m['min_duration']
+                    if end_time <= m['available_end_min']:
+                        new_bitmask = bitmask | (1<<i)
+                        if end_time < dp[new_bitmask][m['location']] (or if not set, then set it to end_time):
+                            dp[new_bitmask][m['location']] = end_time
+
+        Then we look for the bitmask with the most meetings (largest popcount) and then among those the smallest end time.
+
+    But note: we don't care about the end time for the number of meetings, but we want to schedule as many as possible.
+
+    We can store for each bitmask and location the end time, and then we can also store the parent information to reconstruct the schedule.
+
+    The state space is 1024 * 11 = 11264, which is manageable.
+
+    However, we have 10 meetings, so 10 locations for the meetings, but note: the current location can be any of the 11 locations (including Financial District). So we have 11 locations.
+
+    We'll create an array dp with dimensions [2^10][11]. Initialize with a large number (infinity).
+
+    Then we iterate.
+
+    We also need to remember the order of meetings? We can store the parent state for reconstruction.
+
+    Alternatively, we can just remember the number of meetings and the end time, and then we can reconstruct the schedule by storing the sequence? Not directly in DP.
+
+    We can store the parent information: for each state (bitmask, location), we store which meeting we added and the previous state.
+
+    Steps:
+
+        dp[bitmask][loc] = earliest end time achievable after having done the meetings in bitmask and ending at loc.
+
+        prev[bitmask][loc] = (prev_bitmask, prev_loc, meeting_index) that achieved this state.
+
+    Then we can reconstruct the schedule.
+
+    How to initialize:
+
+        dp[0][index_of_Financial District] = 540
+
+    Then for each state (bitmask, loc) that is not infinity, we try to add any meeting i not in bitmask.
+
+        Let meeting = meetings[i]
+        Let new_loc = meeting['location']
+        travel_time = travel_times[loc][new_loc]
+        arrival = dp[bitmask][loc] + travel_time
+        start = max(arrival, meeting['available_start_min'])
+        end = start + meeting['min_duration']
+        if end <= meeting['available_end_min']:
+            new_bitmask = bitmask | (1<<i)
+            if end < dp[new_bitmask][new_loc]:
+                dp[new_bitmask][new_loc] = end
+                prev[new_bitmask][new_loc] = (bitmask, loc, i)
+
+    Then after processing, we find the state with the largest number of meetings (largest popcount) and among those the smallest end time? Actually, we want as many meetings as possible, so we look for the state with the largest popcount. If there are multiple, we choose the one with the smallest end time (so we finish early).
+
+    Then we reconstruct the schedule by following the prev pointers.
+
+    We have to map the meeting index to the meeting details.
+
+    This DP approach is efficient and will give the optimal solution in terms of number of meetings.
+
+    However, note: the problem says "optimal" for as many friends as possible, so this maximizes the number of meetings.
+
+    Let's code with DP.
+
+ Steps in code:
+
+ 1. Precompute travel matrix as a dictionary of dictionaries.
+
+ 2. List of meetings with their details.
+
+ 3. Convert all time strings to minutes.
+
+ 4. Map location names to indices for the DP state? Actually, we have 11 locations, so we can assign an index to each location.
+
+    locations = [
+        'Financial District',
+        'Fisherman\'s Wharf',
+        'Presidio',
+        'Bayview',
+        'Haight-Ashbury',
+        'Russian Hill',
+        'The Castro',
+        'Marina District',
+        'Richmond District',
+        'Union Square',
+        'Sunset District'
+    ]
+
+    We'll create a mapping: location_to_index = {loc: idx for idx, loc in enumerate(locations)}
+
+ 5. The meetings are stored in a list. Each meeting has a location, so we can get the index of the location for the meeting.
+
+ 6. We have 10 meetings. We'll store them in a list called meetings.
+
+ 7. Initialize dp: a 2D array of size (1<<10) x 11, filled with a large number (e.g., 1440*2 = 2880, which is beyond 10:00PM in minutes).
+
+ 8. Initialize dp[0][location_to_index['Financial District']] = 540 (9:00)
+
+ 9. Initialize prev[bitmask][loc] as None for all.
+
+ 10. Iterate over all bitmasks from 0 to (1<<10)-1, and for each location index, if dp[bitmask][loc] is not infinity, then for each meeting index i not in bitmask:
+
+        meeting = meetings[i]
+        current_end_time = dp[bitmask][loc]
+        travel_time = travel_times[locations[loc]][meeting['location']]
+        arrival = current_end_time + travel_time
+        start = max(arrival, meeting['available_start_min'])
+        end = start + meeting['min_duration']
+        if end <= meeting['available_end_min']:
+            new_bitmask = bitmask | (1<<i)
+            new_loc_index = location_to_index[meeting['location']]
+            if end < dp[new_bitmask][new_loc_index]:
+                dp[new_bitmask][new_loc_index] = end
+                prev[new_bitmask][new_loc_index] = (bitmask, loc, i)
+
+ 11. After iteration, we find the state with the largest number of meetings (largest popcount) and among those the smallest end time. We break ties by end time (earlier is better).
+
+ 12. Then we reconstruct the schedule from the prev pointers.
+
+ 13. We output the schedule in the required JSON format.
+
+ However, note: we might have multiple meetings at the same location? Actually, each meeting is at a distinct location.
+
+ 14. We have to be cautious: the travel matrix might not have every pair? Actually, we have every pair because the input lists all pairs.
+
+ Let's hardcode the travel matrix.
+
+ We'll create a function to convert time string to minutes.
+
+ Code structure:
+
+ import math
+ import json
+
+ def time_to_minutes(t_str):
+     # t_str is like '9:00' or '13:30'
+     parts = t_str.split(':')
+     hours = int(parts[0])
+     minutes = int(parts[1]) if len(parts) > 1 else 0
+     return hours * 60 + minutes
+
+ def minutes_to_time(m):
+     hours = m // 60
+     minutes = m % 60
+     return f"{hours}:{minutes:02d}"
+
+ # Hardcode the travel matrix as a dictionary of dictionaries.
+ travel_times = {
+     'Financial District': {
+         'Fisherman\'s Wharf': 10,
+         'Presidio': 22,
+         'Bayview': 19,
+         'Haight-Ashbury': 19,
+         'Russian Hill': 11,
+         'The Castro': 20,
+         'Marina District': 15,
+         'Richmond District': 21,
+         'Union Square': 9,
+         'Sunset District': 30
+     },
+     'Fisherman\'s Wharf': {
+         'Financial District': 11,
+         'Presidio': 17,
+         'Bayview': 26,
+         'Haight-Ashbury': 22,
+         'Russian Hill': 7,
+         'The Castro': 27,
+         'Marina District': 9,
+         'Richmond District': 18,
+         'Union Square': 13,
+         'Sunset District': 27
+     },
+     'Presidio': {
+         'Financial District': 23,
+         'Fisherman\'s Wharf': 19,
+         'Bayview': 31,
+         'Haight-Ashbury': 15,
+         'Russian Hill': 14,
+         'The Castro': 21,
+         'Marina District': 11,
+         'Richmond District': 7,
+         'Union Square': 22,
+         'Sunset District': 15
+     },
+     'Bayview': {
+         'Financial District': 19,
+         'Fisherman\'s Wharf': 25,
+         'Presidio': 32,
+         'Haight-Ashbury': 19,
+         'Russian Hill': 23,
+         'The Castro': 19,
+         'Marina District': 27,
+         'Richmond District': 25,
+         'Union Square': 18,
+         'Sunset District': 23
+     },
+     'Haight-Ashbury': {
+         'Financial District': 21,
+         'Fisherman\'s Wharf': 23,
+         'Presidio': 15,
+         'Bayview': 18,
+         'Russian Hill': 17,
+         'The Castro': 6,
+         'Marina District': 17,
+         'Richmond District': 10,
+         'Union Square': 19,
+         'Sunset District': 15
+     },
+     'Russian Hill': {
+         'Financial District': 11,
+         'Fisherman\'s Wharf': 7,
+         'Presidio': 14,
+         'Bayview': 23,
+         'Haight-Ashbury': 17,
+         'The Castro': 21,
+         'Marina District': 7,
+         'Richmond District': 14,
+         'Union Square': 10,
+         'Sunset District': 23
+     },
+     'The Castro': {
+         'Financial District': 21,
+         'Fisherman\'s Wharf': 24,
+         'Presidio': 20,
+         'Bayview': 19,
+         'Haight-Ashbury': 6,
+         'Russian Hill': 18,
+         'Marina District': 21,
+         'Richmond District': 16,
+         'Union Square': 19,
+         'Sunset District': 17
+     },
+     'Marina District': {
+         'Financial District': 17,
+         'Fisherman\'s Wharf': 10,
+         'Presidio': 10,
+         'Bayview': 27,
+         'Haight-Ashbury': 16,
+         'Russian Hill': 8,
+         'The Castro': 22,
+         'Richmond District': 11,
+         'Union Square': 16,
+         'Sunset District': 19
+     },
+     'Richmond District': {
+         'Financial District': 22,
+         'Fisherman\'s Wharf': 18,
+         'Presidio': 7,
+         'Bayview': 27,
+         'Haight-Ashbury': 10,
+         'Russian Hill': 13,
+         'The Castro': 16,
+         'Marina District': 9,
+         'Union Square': 21,
+         'Sunset District': 11
+     },
+     'Union Square': {
+         'Financial District': 9,
+         'Fisherman\'s Wharf': 15,
+         'Presidio': 24,
+         'Bayview': 15,
+         'Haight-Ashbury': 18,
+         'Russian Hill': 13,
+         'The Castro': 17,
+         'Marina District': 18,
+         'Richmond District': 20,
+         'Sunset District': 27
+     },
+     'Sunset District': {
+         'Financial District': 30,
+         'Fisherman\'s Wharf': 29,
+         'Presidio': 16,
+         'Bayview': 22,
+         'Haight-Ashbury': 15,
+         'Russian Hill': 24,
+         'The Castro': 17,
+         'Marina District': 21,
+         'Richmond District': 12,
+         'Union Square': 30
+     }
+ }
+
+ # Now, the meetings data:
+
+ meetings = [
+     {'person': 'Mark', 'location': 'Fisherman\'s Wharf', 'available_start': '8:15', 'available_end': '10:00', 'min_duration': 30},
+     {'person': 'Stephanie', 'location': 'Presidio', 'available_start': '12:15', 'available_end': '15:00', 'min_duration': 75},
+     {'person': 'Betty', 'location': 'Bayview', 'available_start': '7:15', 'available_end': '20:30', 'min_duration': 15},
+     {'person': 'Lisa', 'location': 'Haight-Ashbury', 'available_start': '15:30', 'available_end': '18:30', 'min_duration': 45},
+     {'person': 'William', 'location': 'Russian Hill', 'available_start': '18:45', 'available_end': '20:00', 'min_duration': 60},
+     {'person': 'Brian', 'location': 'The Castro', 'available_start': '9:15', 'available_end': '13:15', 'min_duration': 30},
+     {'person': 'Joseph', 'location': 'Marina District', 'available_start': '10:45', 'available_end': '15:00', 'min_duration': 90},
+     {'person': 'Ashley', 'location': 'Richmond District', 'available_start': '9:45', 'available_end': '11:15', 'min_duration': 45},
+     {'person': 'Patricia', 'location': 'Union Square', 'available_start': '16:30', 'available_end': '20:00', 'min_duration': 120},
+     {'person': 'Karen', 'location': 'Sunset District', 'available_start': '16:30', 'available_end': '22:00', 'min_duration': 105}
+ ]
+
+ # Convert the times in meetings to minutes
+ for m in meetings:
+     m['available_start_min'] = time_to_minutes(m['available_start'])
+     m['available_end_min'] = time_to_minutes(m['available_end'])
+
+ # List of locations for indexing
+ locations = list(travel_times.keys())
+ location_to_index = {loc: idx for idx, loc in enumerate(locations)}
+
+ # We have 10 meetings, so we'll create a list of meetings with index 0 to 9.
+
+ # Initialize dp and prev arrays
+ n = len(meetings)
+ num_states = 1 << n
+ dp = [[10**9] * len(locations) for _ in range(num_states)]
+ prev = [[None] * len(locations) for _ in range(num_states)]
+
+ # Initialize starting state: bitmask 0 at Financial District
+ start_loc_index = location_to_index['Financial District']
+ dp[0][start_loc_index] = time_to_minutes('9:00')  # 540
+
+ # Iterate over all bitmasks
+ for bitmask in range(num_states):
+     for loc_idx in range(len(locations)):
+         if dp[bitmask][loc_idx] == 10**9:
+             continue
+         # Try to schedule each meeting not yet scheduled
+         for i in range(n):
+             if bitmask & (1 << i):
+                 continue
+             meeting = meetings[i]
+             # Travel from current location to meeting location
+             from_loc = locations[loc_idx]
+             to_loc = meeting['location']
+             travel_time = travel_times[from_loc][to_loc]
+             arrival_time = dp[bitmask][loc_idx] + travel_time
+             start_time = max(arrival_time, meeting['available_start_min'])
+             end_time = start_time + meeting['min_duration']
+             if end_time <= meeting['available_end_min']:
+                 new_bitmask = bitmask | (1 << i)
+                 new_loc_idx = location_to_index[to_loc]
+                 if end_time < dp[new_bitmask][new_loc_idx]:
+                     dp[new_bitmask][new_loc_idx] = end_time
+                     prev[new_bitmask][new_loc_idx] = (bitmask, loc_idx, i)
+
+ # Find the state with the most meetings scheduled (largest popcount) and the smallest end time
+ best_bitmask = None
+ best_loc_idx = None
+ best_count = -1
+ best_end_time = 10**9
+ for bitmask in range(num_states):
+     for loc_idx in range(len(locations)):
+         if dp[bitmask][loc_idx] == 10**9:
+             continue
+         count = bin(bitmask).count('1')
+         if count > best_count or (count == best_count and dp[bitmask][loc_idx] < best_end_time):
+             best_count = count
+             best_end_time = dp[bitmask][loc_idx]
+             best_bitmask = bitmask
+             best_loc_idx = loc_idx
+
+ # Reconstruct the schedule
+ schedule = []
+ current_bitmask = best_bitmask
+ current_loc_idx = best_loc_idx
+ while current_bitmask != 0:
+     bitmask_prev, loc_idx_prev, i = prev[current_bitmask][current_loc_idx]
+     meeting = meetings[i]
+     # The meeting we scheduled was i, which ended at dp[current_bitmask][current_loc_idx]
+     end_time = dp[current_bitmask][current_loc_idx]
+     start_time = end_time - meeting['min_duration']
+     # Prepend this meeting to the schedule
+     schedule.insert(0, {
+         'action': 'meet',
+         'location': meeting['location'],
+         'person': meeting['person'],
+         'start_time': minutes_to_time(start_time),
+         'end_time': minutes_to_time(end_time)
+     })
+     current_bitmask = bitmask_prev
+     current_loc_idx = loc_idx_prev
+
+ # Output the schedule as JSON
+ result = {'itinerary': schedule}
+ print(json.dumps(result, indent=2))
+
+ However, note: the above DP does not account for the possibility of waiting at a location (like we did for Lisa) because we compute the start_time as max(arrival, available_start). So it's correct.
+
+ But note: the travel matrix includes all pairs, so we are good.
+
+ Let's run the code and see if it schedules 9 meetings (all except Brian) as we thought.
+
+ However, note: we might schedule Brian if we rearrange the order.
+
+ But in our manual schedule, we couldn't schedule Brian because we were busy until 13:47 and Brian is only available until 13:15.
+
+ We'll see what the DP finds.
+
+ We output the code.
+
+ Note: We assume that the travel times are integers and the meeting durations are integers.
+
+ Let's code accordingly.
+
+ One more thing: the meeting with Betty is available from 7:15 to 20:30, so we can schedule her anytime.
+
+ We'll output the code.
+
+ Note: The problem says the program must output JSON. So we print the JSON.
+
+ We'll write the code accordingly.

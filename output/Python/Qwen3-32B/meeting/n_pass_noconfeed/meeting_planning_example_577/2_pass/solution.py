@@ -1,0 +1,1 @@
+itinerary.append( (friend['name'], friend['location'], earliest_start, earliest_start + required) )

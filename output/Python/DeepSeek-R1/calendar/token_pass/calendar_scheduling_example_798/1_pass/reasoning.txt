@@ -1,0 +1,536 @@
+We are given the work hours from 9:00 to 17:00 (which is 5 PM) on Monday, Tuesday, or Wednesday.
+ We are to schedule a 30-minute meeting for Nancy and Jose.
+
+ We are to find the earliest available time slot that works for both.
+
+ Steps:
+ 1. Represent the available time for each participant within the work hours (9:00 to 17:00) on each day.
+ 2. Since we are looking for the earliest available, we'll check Monday first, then Tuesday, then Wednesday.
+
+ However, note that the existing schedules are given as busy blocks. We can compute the free time by subtracting the busy blocks from the work hours.
+
+ Approach:
+ For each day (Monday, Tuesday, Wednesday):
+   - Start with the entire work day as free: [9:00, 17:00] (but note: 17:00 is the end, so the last available slot would start at 16:30 for a 30-minute meeting)
+   - Subtract the busy intervals for each person for that day.
+   - Then find the intersection of free times for both participants for that day.
+
+ We are to find the first free slot of at least 30 minutes.
+
+ How to represent time?
+ We can represent time in minutes from a reference (e.g., 9:00 on Monday as 0 minutes, but we don't need to combine days because we are checking per day).
+
+ Alternatively, we can break the day into time slots (every minute? or every 30 minutes?) but that might be inefficient.
+
+ Instead, we can represent the day as a list of intervals (start, end) in minutes from 9:00.
+
+ Let's define:
+   work_start = 9:00 -> 9*60 = 540 minutes
+   work_end = 17:00 -> 17*60 = 1020 minutes
+
+ We'll convert each time string to minutes past 9:00.
+
+ For example, 10:00 -> (10-9)*60 = 60 minutes.
+
+ But note: we are dealing with time intervals, so we can represent each busy interval as (start_minute, end_minute).
+
+ Then the free time for a person on a day is the complement of the union of their busy intervals within [540, 1020].
+
+ Steps for one person on one day:
+   busy_intervals: list of (start, end) in minutes from 00:00? Actually, we can compute relative to 9:00 or absolute.
+
+ Let's use absolute minutes from 00:00 of the day? But note: 9:00 is 9*60=540, 17:00 is 1020.
+
+ We can convert each time string to minutes from 00:00.
+
+ Example: "10:00" -> 10*60 = 600 minutes.
+
+ So, work hours: [540, 1020]
+
+ For Nancy on Monday:
+   Busy: 
+      10:00 to 10:30 -> [600, 630]
+      11:30 to 12:30 -> [690, 750]
+      13:30 to 14:00 -> [810, 840]
+      14:30 to 15:30 -> [870, 930]
+      16:00 to 17:00 -> [960, 1020]
+
+ Then we can compute free intervals for Nancy on Monday by:
+   free = [540, 600], [630, 690], [750, 810], [840, 870], [930, 960]
+
+ But note: the meeting must be within [540, 1020] and we need 30 minutes.
+
+ Similarly for Jose.
+
+ We'll do for each day and then find the earliest slot that is free for both.
+
+ Implementation:
+
+ We'll create a function to convert a time string to minutes since midnight.
+ Example: "10:00" -> 600
+
+ Steps for one day for one person:
+   - Start with the entire work day as free: [[540, 1020]]
+   - For each busy interval, subtract that interval from the current free list.
+
+ However, we are going to compute the free intervals for each person by taking the work day and removing the busy intervals.
+
+ Then, for two people, we need to find overlapping free intervals that are at least 30 minutes.
+
+ We can do:
+
+   free_nancy = get_free_intervals(work_start, work_end, busy_nancy)
+   free_jose = get_free_intervals(work_start, work_end, busy_jose)
+
+   Then find overlapping intervals between free_nancy and free_jose.
+
+   Then check if any overlapping interval is at least 30 minutes.
+
+ We'll iterate over days in order: Monday, Tuesday, Wednesday.
+
+ Let's code accordingly.
+
+ Note: The problem says there exists a solution.
+
+ How to represent the busy intervals for each person for each day?
+
+ We are given the busy times for each day. We'll parse the input and create a list of busy intervals for each day for each participant.
+
+ Steps in code:
+
+ 1. Define work_start = 540 (9:00) and work_end = 1020 (17:00)
+ 2. Define meeting_duration = 30 minutes.
+
+ 3. For each day in ['Monday', 'Tuesday', 'Wednesday']:
+      a. Get Nancy's busy intervals for that day (as list of (start_minute, end_minute))
+      b. Get Jose's busy intervals for that day.
+      c. Compute free intervals for Nancy on that day (within [540,1020])
+      d. Compute free intervals for Jose on that day.
+      e. Find the intersection of free intervals for Nancy and Jose (i.e., times when both are free).
+      f. Check if any of these intersected intervals is at least 30 minutes long.
+      g. If found, then the first such interval (starting from the beginning of the day) is our candidate.
+
+ 4. Output the day and the time range (in format HH:MM:HH:MM) for the candidate.
+
+ How to compute free intervals given busy intervals in [work_start, work_end]?
+   We can sort the busy intervals by start time.
+   Then initialize:
+        free_intervals = []
+        current_start = work_start
+        For each busy interval (start, end):
+            If current_start < start, then [current_start, start] is free.
+            Then set current_start = max(current_start, end)
+        After processing all busy intervals, if current_start < work_end, then [current_start, work_end] is free.
+
+ But note: busy intervals might overlap. We can merge them first.
+
+ Alternatively, we can merge the busy intervals and then compute the free intervals.
+
+ Let's merge the busy intervals for one person on one day:
+
+   Sort by start.
+   merged = []
+   for interval in sorted_busy:
+        if merged is empty, append.
+        else:
+            last = merged[-1]
+            if interval[0] <= last[1]:
+                last[1] = max(last[1], interval[1])
+            else:
+                merged.append(interval)
+
+   Then compute free intervals as the gaps between merged intervals and the boundaries.
+
+ How to compute free intervals from merged busy intervals:
+
+   free = []
+   start = work_start
+   for busy in merged_busy:
+        if start < busy[0]:
+            free.append([start, busy[0]])
+        start = busy[1]
+   if start < work_end:
+        free.append([start, work_end])
+
+ Then we have the free intervals.
+
+ Then, to find common free intervals for two people:
+
+   We have free1 and free2 (for Nancy and Jose respectively). We can iterate over both lists and find overlaps.
+
+   For example:
+        free1: [a1, a2], [a3, a4]
+        free2: [b1, b2], [b3, b4]
+
+   We can do a two-pointer method to find the intersection of two lists of intervals.
+
+   Alternatively, we can iterate through both lists and for each interval in free1 and free2, compute the overlap:
+
+        overlap_start = max(a_start, b_start)
+        overlap_end = min(a_end, b_end)
+        if overlap_start < overlap_end, then [overlap_start, overlap_end] is a common free interval.
+
+   Then we check if the common free interval is at least 30 minutes (i.e., overlap_end - overlap_start >= 30).
+
+ 5. We break at the first common free interval that is long enough.
+
+ 6. Convert the minute representation back to time string.
+
+   For example, 600 minutes -> 600 // 60 = 10, 600 % 60 = 0 -> "10:00"
+
+ 7. Output the day and the time range in the format: {start_time}:{end_time} and the day.
+
+ Implementation:
+
+ Let's code step by step.
+
+ First, we need to parse the given busy times for each day for each participant.
+
+ We are given:
+
+ Nancy:
+   Monday: 10:00 to 10:30, 11:30 to 12:30, 13:30 to 14:00, 14:30 to 15:30, 16:00 to 17:00
+   Tuesday: 9:30 to 10:30, 11:00 to 11:30, 12:00 to 12:30, 13:00 to 13:30, 15:30 to 16:00
+   Wednesday: 10:00 to 11:30, 13:30 to 16:00
+
+ Jose:
+   Monday: 9:00 to 17:00 -> entire day busy? Then no free time on Monday for Jose.
+   Tuesday: 9:00 to 17:00 -> entire day busy.
+   Wednesday: 9:00 to 9:30, 10:00 to 12:30, 13:30 to 14:30, 15:00 to 17:00
+
+ We note that Monday and Tuesday are entirely busy for Jose, so we skip to Wednesday.
+
+ But let's code accordingly.
+
+ We'll create dictionaries for Nancy and Jose, keyed by day, with a list of busy intervals in minutes.
+
+ Example:
+
+ nancy_busy = {
+    'Monday': [(600,630), (690,750), (810,840), (870,930), (960,1020)],
+    'Tuesday': [(570,630), (660,690), (720,750), (780,810), (930,960)],
+    'Wednesday': [(600,690), (810,960)]
+ }
+
+ Note: we represent the intervals as [start, end) (end is exclusive? or inclusive?).
+
+ Actually, the problem says "blocked during 10:00 to 10:30", which typically means [10:00, 10:30) (i.e., 10:30 is free).
+
+ But in our free time calculation, we are representing intervals as continuous. We'll represent the busy intervals as [start, end] (inclusive of start, exclusive of end) because that is common in calendar systems.
+
+ However, the problem says "between the work hours of 9:00 to 17:00", which is inclusive of 9:00 and exclusive of 17:00? Or inclusive of both?
+
+ Typically, work hours are 9:00 to 17:00 meaning up to but not including 17:00? Or including 17:00?
+
+ But note: the meeting is half an hour. If we have a meeting at 16:30, it would end at 17:00.
+
+ The problem says "between the work hours of 9:00 to 17:00", so we assume [9:00, 17:00] (inclusive of both) but note that a meeting starting at 16:30 would end at 17:00, which is within the work hours.
+
+ So we'll consider the work day as [9:00, 17:00] (inclusive of 17:00). But then our minute representation: 9:00 is 540, 17:00 is 1020.
+
+ However, if we represent the busy intervals as [start, end] (inclusive of both), then the free time calculation must account for the boundaries.
+
+ Alternatively, we can represent the entire day in minutes and use half-open intervals [start, end) for simplicity.
+
+ Let's use half-open intervals [start, end) for free time and busy time.
+
+ Example: if someone is busy from 10:00 to 10:30, that means they are busy from 10:00 (inclusive) to 10:30 (exclusive). So the free time would be [9:00, 10:00) and [10:30, 17:00).
+
+ This way, we can compute free intervals without gaps.
+
+ So we'll represent:
+   work_interval = [540, 1020)  (9:00 to 17:00)
+
+   busy intervals: [start, end) (so the end time is exclusive)
+
+   Then the free intervals are the gaps between the busy intervals within [540,1020).
+
+ How to compute free intervals with half-open:
+
+   Sort and merge the busy intervals (as half-open).
+   Then free intervals are:
+        [540, first_busy_start), [first_busy_end, second_busy_start), ... , [last_busy_end, 1020)
+
+   Then we look for a slot of at least 30 minutes in these free intervals.
+
+   Note: a free interval [a, b) has duration b - a minutes.
+
+   We need b - a >= 30.
+
+   The meeting will be scheduled from [start, start+30) within a free interval [a, b) such that start >= a and start+30 <= b.
+
+   We are to find the earliest start time.
+
+   Alternatively, we can just take the free intervals and then check if the free interval is long enough and then the earliest possible meeting start in that free interval is the start of the free interval (if the free interval is at least 30 minutes).
+
+   But note: the free interval might be longer than 30 minutes, and we are to schedule the meeting at the earliest time.
+
+   So for each common free interval, we can take the start of the free interval as the meeting start, provided the free interval is at least 30 minutes.
+
+   However, what if the free interval is longer? We still take the earliest start.
+
+   So we don't need to check every possible 30-minute slot, we can just check the start of each free interval (if the free interval is at least 30 minutes, then the start time is available).
+
+   But note: the free interval might start at 9:00 and be 45 minutes long, then we can schedule at 9:00.
+
+   However, what if the free interval is 60 minutes long? We still schedule at the beginning.
+
+   So algorithm for one day:
+
+        free_nancy = get_free_intervals(work_start, work_end, nancy_busy_day)
+        free_jose = get_free_intervals(work_start, work_end, jose_busy_day)
+
+        common_free = intersect_intervals(free_nancy, free_jose)
+
+        For each interval [a, b) in common_free:
+            if b - a >= 30:
+                meeting_start = a
+                meeting_end = a + 30
+                return day, meeting_start, meeting_end
+
+   But note: we are to find the earliest, and we are iterating days in order, and within a day we are iterating free intervals in order (which are sorted by time). So the first such interval we find is the earliest.
+
+ 8. Code structure:
+
+   Define a function to convert time string to minutes (e.g., "10:00" -> 600)
+   Define a function to convert minutes to time string (e.g., 600 -> "10:00")
+
+   Define a function to merge intervals (for one person on one day) and then compute free intervals.
+
+   Define a function to compute the free intervals given the work range and busy intervals.
+
+   Define a function to intersect two lists of intervals (for two persons).
+
+   Then iterate over days.
+
+ Let's code accordingly.
+
+ Note: The problem says there is a solution.
+
+ Let's code for the given example.
+
+ We'll create the busy intervals for Nancy and Jose for each day.
+
+ For Nancy on Monday:
+   busy strings: 
+        "10:00 to 10:30" -> [600, 630)
+        "11:30 to 12:30" -> [690, 750)
+        "13:30 to 14:00" -> [810, 840)
+        "14:30 to 15:30" -> [870, 930)
+        "16:00 to 17:00" -> [960, 1020)
+
+ For Jose on Monday:
+   "9:00 to 17:00" -> [540, 1020) -> entire day busy -> free intervals = []
+
+ So we skip Monday.
+
+ Tuesday: 
+   Nancy: 
+        "9:30 to 10:30" -> [570, 630)
+        "11:00 to 11:30" -> [660, 690)
+        "12:00 to 12:30" -> [720, 750)
+        "13:00 to 13:30" -> [780, 810)
+        "15:30 to 16:00" -> [930, 960)
+
+   Jose: 
+        "9:00 to 17:00" -> [540,1020) -> entire day -> free intervals = []
+
+ So skip Tuesday.
+
+ Wednesday:
+   Nancy:
+        "10:00 to 11:30" -> [600, 690)
+        "13:30 to 16:00" -> [810, 960)
+
+   Jose:
+        "9:00 to 9:30" -> [540, 570)
+        "10:00 to 12:30" -> [600, 750)
+        "13:30 to 14:30" -> [810, 870)
+        "15:00 to 17:00" -> [900, 1020)
+
+ Now compute free intervals for Nancy on Wednesday:
+
+   work: [540, 1020)
+   busy: [600,690), [810,960)
+
+   merged busy: same (no overlap)
+   free intervals for Nancy:
+        [540,600), [690,810), [960,1020)
+
+   But note: the second free interval [690,810) is 120 minutes long.
+
+   For Jose on Wednesday:
+        busy: [540,570), [600,750), [810,870), [900,1020)
+        free intervals for Jose:
+            [570,600), [750,810), [870,900)
+
+   Now, common free intervals (intersection of Nancy and Jose free intervals):
+
+        Nancy: [540,600), [690,810), [960,1020)
+        Jose: [570,600), [750,810), [870,900)
+
+        Intersection:
+            [540,600) and [570,600) -> [570,600) -> duration 30 minutes (exactly 30).
+            [690,810) and [750,810) -> [750,810) -> duration 60 minutes.
+            [960,1020) and [870,900) -> no overlap.
+
+        The earliest common free interval is [570,600) on Wednesday.
+
+        But note: the work hours start at 540 (9:00), and this interval is at 9:30 to 10:00 (because 570 minutes is 9:30, 600 is 10:00).
+
+        However, wait: the interval [570,600) is exactly 30 minutes. So we can schedule from 9:30 to 10:00.
+
+        But let's check the constraints: 
+            Nancy is free from 9:00 to 10:00 (because her first busy is at 10:00) -> so 9:30 to 10:00 is free for Nancy.
+            Jose is free from 9:30 to 10:00 (because his first busy is until 9:30 and then next busy starts at 10:00) -> so 9:30 to 10:00 is free for Jose.
+
+        So the meeting can be scheduled at 9:30 to 10:00 on Wednesday.
+
+        However, note that the problem says "the group would like to meet at their earliest availability".
+
+        But wait: is there an earlier time on Wednesday? 
+            The common free interval [570,600) is the first one.
+
+        But note: we also have [750,810) which is later.
+
+        So the answer should be Wednesday at 9:30 to 10:00.
+
+        However, let's double-check the input for Jose on Wednesday: 
+            Jose is busy from 9:00 to 9:30 -> so 9:30 is free.
+            Then busy from 10:00 to 12:30 -> so 10:00 is busy.
+
+        So the free interval for Jose is [9:30, 10:00) (which is [570,600)) and that is exactly 30 minutes.
+
+        So we schedule the meeting at 9:30 to 10:00.
+
+        But note: the problem says "between the work hours of 9:00 to 17:00", and 9:30 is within.
+
+        However, the example output in the problem statement is not provided for this task, but we are to output the code.
+
+        We'll code accordingly.
+
+ Implementation:
+
+   We'll create a function `time_str_to_minutes(time_str)` that takes a string like "10:00" and returns minutes since midnight.
+
+   We'll create a function `minutes_to_time_str(minutes)` that returns a string in HH:MM format.
+
+   We'll create a function `merge_intervals(intervals)` that merges a list of intervals (each interval is [start, end)).
+
+   We'll create a function `get_free_intervals(work_start, work_end, busy_intervals)` that returns free intervals in the work range.
+
+   We'll create a function `intersect_intervals(intervals1, intervals2)` that returns the intersection of two lists of intervals.
+
+   Then we iterate over days.
+
+ Let's code.
+
+ Note: We assume the busy_intervals for a day are given as a list of [start, end) in minutes.
+
+ Steps for `get_free_intervals(work_start, work_end, busy_intervals)`:
+
+   If busy_intervals is empty, then the free interval is [work_start, work_end).
+   Otherwise, merge the busy_intervals.
+
+   Then:
+        free = []
+        current = work_start
+        for busy in merged_busy:
+            if current < busy[0]:
+                free.append([current, busy[0]])
+            current = max(current, busy[1])
+        if current < work_end:
+            free.append([current, work_end])
+
+   Return free.
+
+ Steps for `intersect_intervals(intervals1, intervals2)`:
+
+   We use two pointers i and j.
+   common = []
+   i = 0, j = 0
+   while i < len(intervals1) and j < len(intervals2):
+        a = intervals1[i]
+        b = intervals2[j]
+        start = max(a[0], b[0])
+        end = min(a[1], b[1])
+        if start < end:
+            common.append([start, end])
+        if a[1] < b[1]:
+            i += 1
+        else:
+            j += 1
+
+   Return common.
+
+ Now, let's code accordingly.
+
+ We'll create the busy intervals for Nancy and Jose for each day.
+
+ Note: The input is given in the problem. We'll hardcode the busy intervals for each day.
+
+ We'll create dictionaries:
+
+ nancy_busy = {
+     'Monday': [('10:00','10:30'), ('11:30','12:30'), ('13:30','14:00'), ('14:30','15:30'), ('16:00','17:00')],
+     'Tuesday': [('9:30','10:30'), ('11:00','11:30'), ('12:00','12:30'), ('13:00','13:30'), ('15:30','16:00')],
+     'Wednesday': [('10:00','11:30'), ('13:30','16:00')]
+ }
+
+ jose_busy = {
+     'Monday': [('9:00','17:00')],
+     'Tuesday': [('9:00','17:00')],
+     'Wednesday': [('9:00','9:30'), ('10:00','12:30'), ('13:30','14:30'), ('15:00','17:00')]
+ }
+
+ We'll convert these time strings to minutes.
+
+ Let's code accordingly.
+
+ Note: We assume the time strings are in 24-hour format without AM/PM.
+
+ Code:
+
+   work_start_minutes = 9*60   # 540
+   work_end_minutes = 17*60    # 1020
+
+   days = ['Monday', 'Tuesday', 'Wednesday']
+
+   meeting_duration = 30
+
+   For day in days:
+        nancy_busy_list = nancy_busy[day]   # list of tuples of time strings
+        jose_busy_list = jose_busy[day]
+
+        # Convert each busy interval to minutes
+        nancy_busy_minutes = []
+        for (start, end) in nancy_busy_list:
+            s_min = time_str_to_minutes(start)
+            e_min = time_str_to_minutes(end)
+            nancy_busy_minutes.append([s_min, e_min])
+
+        Similarly for Jose.
+
+        Then compute free intervals for Nancy and Jose.
+
+        Then common_free = intersect_intervals(free_nancy, free_jose)
+
+        For common_interval in common_free:
+            if common_interval[1] - common_interval[0] >= meeting_duration:
+                meeting_start = common_interval[0]
+                meeting_end = meeting_start + meeting_duration
+                # Convert meeting_start and meeting_end to time string
+                start_str = minutes_to_time_str(meeting_start)
+                end_str = minutes_to_time_str(meeting_end)
+                print(day + " " + start_str + ":" + end_str)
+                exit(0)   # we found the earliest
+
+   If we finish without finding, then there is no solution? But the problem says there exists one.
+
+ Let's code the helper functions.
+
+ Note: We assume the busy intervals are half-open [start, end). So when we compute free intervals, we also get half-open intervals.
+
+ However, when we intersect, we are also working with half-open intervals.
+
+ Let's code.

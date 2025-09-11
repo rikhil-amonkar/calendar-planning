@@ -1,0 +1,74 @@
+```python
+from z3 import Int, Solver, And, Or, Not, sat
+
+def main():
+    # Meeting duration in minutes
+    duration = 30
+    
+    # Convert time to minutes from 9:00 (so 9:00 is 0)
+    start_bound = 0  # 9:00
+    end_bound = 480  # 17:00 (8 hours * 60 minutes)
+    
+    # Bobby's preference: meeting should end by 15:00 (360 minutes from 9:00)
+    bobby_pref_end = 360
+    
+    # Define busy intervals in minutes from 9:00
+    lisa_busy = [(0, 60), (90, 150), (210, 240), (420, 450)]
+    bobby_busy = [(0, 30), (60, 90), (150, 180), (360, 390)]
+    randy_busy = [(30, 60), (90, 120), (150, 210), (240, 270), (330, 390), (420, 450)]
+    
+    # Create solver and variables
+    s = Solver()
+    start = Int('start')
+    
+    # Constraint: start must be within [start_bound, end_bound - duration]
+    s.add(start >= start_bound, start <= end_bound - duration)
+    
+    # Function to add no-overlap constraints for a person
+    def add_busy_constraints(busy_intervals):
+        constraints = []
+        for (busy_start, busy_end) in busy_intervals:
+            # Meeting must not overlap with busy interval: it must end before busy_start or start after busy_end
+            constraints.append(Or(start + duration <= busy_start, start >= busy_end))
+        s.add(And(constraints))
+    
+    # Add constraints for each participant
+    add_busy_constraints(lisa_busy)
+    add_busy_constraints(bobby_busy)
+    add_busy_constraints(randy_busy)
+    
+    # First try with Bobby's preference (meeting ends by 15:00)
+    s.push()
+    s.add(start + duration <= bobby_pref_end)
+    
+    if s.check() == sat:
+        model = s.model()
+        start_val = model[start].as_long()
+    else:
+        # Remove Bobby's preference constraint and try again
+        s.pop()
+        if s.check() == sat:
+            model = s.model()
+            start_val = model[start].as_long()
+        else:
+            # No solution found (though problem states one exists)
+            print("No solution found")
+            return
+    
+    # Convert start time back to HH:MM format
+    total_minutes = start_val
+    hours = total_minutes // 60
+    minutes = total_minutes % 60
+    start_time = f"{9 + hours:02d}:{minutes:02d}"
+    
+    # Calculate end time
+    end_val = start_val + duration
+    end_hours = end_val // 60
+    end_minutes = end_val % 60
+    end_time = f"{9 + end_hours:02d}:{end_minutes:02d}"
+    
+    print(f"Monday {start_time}:{end_time}")
+
+if __name__ == "__main__":
+    main()
+```

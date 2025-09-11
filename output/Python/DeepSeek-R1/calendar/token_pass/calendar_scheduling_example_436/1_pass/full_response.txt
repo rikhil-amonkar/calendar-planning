@@ -1,0 +1,84 @@
+```python
+def main():
+    # Define work hours in minutes from 9:00
+    start_of_day = 0  # 9:00
+    end_of_day = 480  # 17:00
+    meeting_duration = 30
+
+    # Busy intervals for each participant: (start_minute, end_minute) where end_minute is exclusive
+    patrick = [(270, 300), (330, 360)]
+    shirley = [(0, 30), (120, 150), (180, 210), (330, 360), (420, 480)]
+    jeffrey = [(0, 30), (90, 120), (150, 180), (240, 270), (420, 480)]
+    gloria = [(150, 180), (360, 390)]
+    nathan = [(0, 30), (90, 180), (300, 480)]
+    angela = [(0, 30), (60, 120), (210, 360), (390, 450)]
+    david = [(0, 30), (60, 90), (120, 300), (330, 450)]
+
+    # Combine all busy intervals
+    all_busy = patrick + shirley + jeffrey + gloria + nathan + angela + david
+
+    # Sort intervals by start time
+    all_busy.sort(key=lambda x: x[0])
+
+    # Merge intervals
+    merged_busy = []
+    if all_busy:
+        merged_busy = [all_busy[0]]
+        for current_start, current_end in all_busy[1:]:
+            last_start, last_end = merged_busy[-1]
+            if current_start < last_end:
+                # Overlap, so merge
+                merged_busy[-1] = (last_start, max(last_end, current_end))
+            else:
+                # No overlap, add new interval
+                merged_busy.append((current_start, current_end))
+
+    # Find free intervals
+    free_intervals = []
+    # Before first busy interval
+    if merged_busy and merged_busy[0][0] > start_of_day:
+        free_intervals.append((start_of_day, merged_busy[0][0]))
+
+    # Between busy intervals
+    for i in range(len(merged_busy) - 1):
+        current_end = merged_busy[i][1]
+        next_start = merged_busy[i+1][0]
+        if current_end < next_start:
+            free_intervals.append((current_end, next_start))
+
+    # After last busy interval
+    if merged_busy and merged_busy[-1][1] < end_of_day:
+        free_intervals.append((merged_busy[-1][1], end_of_day))
+
+    # If no busy intervals, the whole day is free
+    if not merged_busy:
+        free_intervals.append((start_of_day, end_of_day))
+
+    # Find a free interval that can accommodate the meeting
+    meeting_slot = None
+    for start, end in free_intervals:
+        if end - start >= meeting_duration:
+            meeting_slot = (start, start + meeting_duration)
+            break
+
+    # If no slot found, but problem states there is a solution, so we assume one exists
+    if meeting_slot is None:
+        # Fallback: use the first free interval even if shorter? But should not happen.
+        meeting_slot = (start_of_day, start_of_day + meeting_duration)
+
+    # Convert minute time to HH:MM string
+    def minutes_to_time(minutes):
+        hours = minutes // 60 + 9
+        minutes = minutes % 60
+        return f"{hours:02d}:{minutes:02d}"
+
+    start_time_str = minutes_to_time(meeting_slot[0])
+    end_time_str = minutes_to_time(meeting_slot[1])
+
+    # Output the time range and day
+    print(f"{start_time_str}:{end_time_str}")
+    print("Monday")
+
+if __name__ == "__main__":
+    main()
+```

@@ -1,0 +1,71 @@
+import json
+
+def time_to_minutes(time_str):
+    hours, minutes = map(int, time_str.split(':'))
+    return hours * 60 + minutes
+
+def minutes_to_time(minutes):
+    hours = minutes // 60
+    mins = minutes % 60
+    return f"{hours}:{mins:02d}"
+
+def main():
+    # Input parameters
+    start_location = "Fisherman's Wharf"
+    start_time_str = "9:00"
+    kenneth_location = "Nob Hill"
+    kenneth_start_str = "14:15"
+    kenneth_end_str = "19:45"
+    min_meeting_duration = 90
+    travel_time = 11  # minutes from Fisherman's Wharf to Nob Hill
+
+    # Convert times to minutes
+    start_time_min = time_to_minutes(start_time_str)
+    kenneth_start_min = time_to_minutes(kenneth_start_str)
+    kenneth_end_min = time_to_minutes(kenneth_end_str)
+    
+    # Calculate latest departure time from Fisherman's Wharf to arrive exactly at Kenneth's start time
+    departure_time_min = kenneth_start_min - travel_time
+    # Ensure we don't leave before we arrive at Fisherman's Wharf
+    if departure_time_min < start_time_min:
+        departure_time_min = start_time_min
+    
+    # Arrival time at Nob Hill
+    arrival_time_min = departure_time_min + travel_time
+    # Meeting must start at or after Kenneth's available time
+    meeting_start_min = max(arrival_time_min, kenneth_start_min)
+    # Meeting end time (at least 90 minutes after start)
+    meeting_end_min = meeting_start_min + min_meeting_duration
+    # Ensure meeting doesn't exceed Kenneth's availability
+    if meeting_end_min > kenneth_end_min:
+        meeting_end_min = kenneth_end_min
+        meeting_start_min = meeting_end_min - min_meeting_duration
+        # Check if meeting duration is still sufficient
+        if meeting_start_min < kenneth_start_min:
+            meeting_start_min = kenneth_start_min
+            meeting_end_min = meeting_start_min + min_meeting_duration
+            if meeting_end_min > kenneth_end_min:
+                # Cannot meet for required duration
+                meeting_start_min = None
+    
+    if meeting_start_min is None or meeting_end_min > kenneth_end_min:
+        # No valid meeting time found
+        itinerary = []
+    else:
+        # Create meeting entry
+        itinerary = [
+            {
+                "action": "meet",
+                "location": kenneth_location,
+                "person": "Kenneth",
+                "start_time": minutes_to_time(meeting_start_min),
+                "end_time": minutes_to_time(meeting_end_min)
+            }
+        ]
+    
+    # Output as JSON
+    result = {"itinerary": itinerary}
+    print(json.dumps(result, indent=2))
+
+if __name__ == "__main__":
+    main()

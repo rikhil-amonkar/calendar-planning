@@ -1,0 +1,147 @@
+```python
+import json
+
+def format_time(minutes):
+    hours = minutes // 60
+    mins = minutes % 60
+    return f"{hours}:{mins:02d}"
+
+def main():
+    travel_times = {
+        "Bayview": {
+            "Embarcadero": 19,
+            "Richmond District": 25,
+            "Fisherman's Wharf": 25
+        },
+        "Embarcadero": {
+            "Bayview": 21,
+            "Richmond District": 21,
+            "Fisherman's Wharf": 6
+        },
+        "Richmond District": {
+            "Bayview": 26,
+            "Embarcadero": 19,
+            "Fisherman's Wharf": 18
+        },
+        "Fisherman's Wharf": {
+            "Bayview": 26,
+            "Embarcadero": 8,
+            "Richmond District": 18
+        }
+    }
+    
+    start_location = "Bayview"
+    start_time_min = 9 * 60  # 9:00 AM
+    
+    friends = [
+        {
+            "name": "Jason",
+            "location": "Fisherman's Wharf",
+            "avail_start": 16 * 60,      # 4:00 PM
+            "avail_end": 16 * 60 + 45,   # 4:45 PM
+            "min_duration": 30
+        },
+        {
+            "name": "Jessica",
+            "location": "Embarcadero",
+            "avail_start": 16 * 60 + 45, # 4:45 PM
+            "avail_end": 19 * 60,        # 7:00 PM
+            "min_duration": 30
+        },
+        {
+            "name": "Sandra",
+            "location": "Richmond District",
+            "avail_start": 18 * 60 + 30, # 6:30 PM
+            "avail_end": 21 * 60 + 45,   # 9:45 PM
+            "min_duration": 120
+        }
+    ]
+    
+    current_time = start_time_min
+    current_loc = start_location
+    itinerary = []
+    
+    # Schedule Jason first (earliest availability)
+    jason = friends[0]
+    travel_to_jason = travel_times[current_loc][jason["location"]]
+    arrive_jason = current_time + travel_to_jason
+    
+    # Adjust arrival time to within Jason's availability
+    if arrive_jason < jason["avail_start"]:
+        wait_time = jason["avail_start"] - arrive_jason
+        meet_start = jason["avail_start"]
+    else:
+        meet_start = arrive_jason
+    
+    # Check if meeting is possible
+    if meet_start + jason["min_duration"] <= jason["avail_end"]:
+        meet_end = meet_start + jason["min_duration"]
+        itinerary.append({
+            "action": "meet",
+            "location": jason["location"],
+            "person": jason["name"],
+            "start_time": format_time(meet_start),
+            "end_time": format_time(meet_end)
+        })
+        current_time = meet_end
+        current_loc = jason["location"]
+    else:
+        # Skip Jason if not possible
+        pass
+    
+    # Schedule Jessica next
+    jessica = friends[1]
+    travel_to_jessica = travel_times[current_loc][jessica["location"]]
+    arrive_jessica = current_time + travel_to_jessica
+    
+    if arrive_jessica < jessica["avail_start"]:
+        meet_start = jessica["avail_start"]
+    else:
+        meet_start = arrive_jessica
+    
+    # Calculate latest departure time for Sandra
+    sandra = friends[2]
+    travel_to_sandra = travel_times[jessica["location"]][sandra["location"]]
+    latest_departure = sandra["avail_start"] - travel_to_sandra
+    
+    # Adjust Jessica's meeting end to not miss Sandra
+    if meet_start + jessica["min_duration"] <= jessica["avail_end"]:
+        meet_end = min(meet_start + jessica["min_duration"], latest_departure)
+        itinerary.append({
+            "action": "meet",
+            "location": jessica["location"],
+            "person": jessica["name"],
+            "start_time": format_time(meet_start),
+            "end_time": format_time(meet_end)
+        })
+        current_time = meet_end
+        current_loc = jessica["location"]
+    else:
+        # Skip Jessica if not possible
+        pass
+    
+    # Schedule Sandra last
+    travel_to_sandra = travel_times[current_loc][sandra["location"]]
+    arrive_sandra = current_time + travel_to_sandra
+    
+    if arrive_sandra < sandra["avail_start"]:
+        meet_start = sandra["avail_start"]
+    else:
+        meet_start = arrive_sandra
+    
+    if meet_start + sandra["min_duration"] <= sandra["avail_end"]:
+        meet_end = meet_start + sandra["min_duration"]
+        itinerary.append({
+            "action": "meet",
+            "location": sandra["location"],
+            "person": sandra["name"],
+            "start_time": format_time(meet_start),
+            "end_time": format_time(meet_end)
+        })
+    
+    output = {"itinerary": itinerary}
+    print(json.dumps(output))
+
+if __name__ == "__main__":
+    main()
+```

@@ -1,0 +1,127 @@
+import itertools
+import collections
+import json
+
+def time_to_minutes(time_str):
+    h, m = map(int, time_str.split(':'))
+    return h * 60 + m - 540  # 9:00 AM is 540 minutes from midnight
+
+def minutes_to_time(minutes):
+    total_minutes = 540 + minutes
+    h = total_minutes // 60
+    m = total_minutes % 60
+    return f"{h}:{m:02d}"
+
+def main():
+    travel_matrix = {
+        "The Castro": {
+            "Presidio": 20,
+            "Sunset District": 17,
+            "Haight-Ashbury": 6,
+            "Mission District": 7,
+            "Golden Gate Park": 11,
+            "Russian Hill": 18
+        },
+        "Presidio": {
+            "The Castro": 21,
+            "Sunset District": 15,
+            "Haight-Ashbury": 15,
+            "Mission District": 26,
+            "Golden Gate Park": 12,
+            "Russian Hill": 14
+        },
+        "Sunset District": {
+            "The Castro": 17,
+            "Presidio": 16,
+            "Haight-Ashbury": 15,
+            "Mission District": 24,
+            "Golden Gate Park": 11,
+            "Russian Hill": 24
+        },
+        "Haight-Ashbury": {
+            "The Castro": 6,
+            "Presidio": 15,
+            "Sunset District": 15,
+            "Mission District": 11,
+            "Golden Gate Park": 7,
+            "Russian Hill": 17
+        },
+        "Mission District": {
+            "The Castro": 7,
+            "Presidio": 25,
+            "Sunset District": 24,
+            "Haight-Ashbury": 12,
+            "Golden Gate Park": 17,
+            "Russian Hill": 15
+        },
+        "Golden Gate Park": {
+            "The Castro": 13,
+            "Presidio": 11,
+            "Sunset District": 10,
+            "Haight-Ashbury": 7,
+            "Mission District": 17,
+            "Russian Hill": 19
+        },
+        "Russian Hill": {
+            "The Castro": 21,
+            "Presidio": 14,
+            "Sunset District": 23,
+            "Haight-Ashbury": 17,
+            "Mission District": 16,
+            "Golden Gate Park": 21
+        }
+    }
+
+    Friend = collections.namedtuple('Friend', ['name', 'location', 'start', 'end', 'min_duration'])
+    friends = [
+        Friend("Rebecca", "Presidio", time_to_minutes("18:15"), time_to_minutes("20:45"), 60),
+        Friend("Linda", "Sunset District", time_to_minutes("15:30"), time_to_minutes("19:45"), 30),
+        Friend("Elizabeth", "Haight-Ashbury", time_to_minutes("17:15"), time_to_minutes("19:30"), 105),
+        Friend("William", "Mission District", time_to_minutes("13:15"), time_to_minutes("19:30"), 30),
+        Friend("Robert", "Golden Gate Park", time_to_minutes("14:15"), time_to_minutes("21:30"), 45),
+        Friend("Mark", "Russian Hill", time_to_minutes("10:00"), time_to_minutes("21:15"), 75)
+    ]
+
+    best_itinerary = None
+    found = False
+    for k in range(len(friends), 0, -1):
+        for subset in itertools.combinations(friends, k):
+            for perm in itertools.permutations(subset):
+                current_time = 0
+                current_loc = "The Castro"
+                itinerary = []
+                feasible = True
+                for friend in perm:
+                    travel_time = travel_matrix[current_loc][friend.location]
+                    arrival = current_time + travel_time
+                    start_meeting = max(arrival, friend.start)
+                    end_meeting = start_meeting + friend.min_duration
+                    if end_meeting > friend.end:
+                        feasible = False
+                        break
+                    itinerary.append({
+                        "action": "meet",
+                        "location": friend.location,
+                        "person": friend.name,
+                        "start_time": minutes_to_time(start_meeting),
+                        "end_time": minutes_to_time(end_meeting)
+                    })
+                    current_time = end_meeting
+                    current_loc = friend.location
+                if feasible:
+                    best_itinerary = itinerary
+                    found = True
+                    break
+            if found:
+                break
+        if found:
+            break
+
+    if best_itinerary is None:
+        best_itinerary = []
+
+    output = {"itinerary": best_itinerary}
+    print(json.dumps(output, indent=2))
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,72 @@
+import itertools
+import json
+
+def main():
+    days_required = {
+        'Oslo': 2,
+        'Helsinki': 2,
+        'Edinburgh': 3,
+        'Riga': 2,
+        'Tallinn': 5,
+        'Budapest': 5,
+        'Vilnius': 5,
+        'Porto': 5,
+        'Geneva': 4
+    }
+    
+    graph = {
+        'Porto': ['Oslo', 'Edinburgh', 'Geneva'],
+        'Oslo': ['Porto', 'Riga', 'Geneva', 'Edinburgh', 'Vilnius', 'Helsinki', 'Budapest', 'Tallinn'],
+        'Edinburgh': ['Budapest', 'Geneva', 'Porto', 'Oslo', 'Helsinki', 'Riga'],
+        'Riga': ['Tallinn', 'Oslo', 'Helsinki', 'Vilnius'],
+        'Tallinn': ['Riga', 'Vilnius', 'Helsinki', 'Oslo'],
+        'Vilnius': ['Helsinki', 'Tallinn', 'Oslo', 'Riga'],
+        'Helsinki': ['Vilnius', 'Edinburgh', 'Oslo', 'Riga', 'Tallinn', 'Budapest', 'Geneva'],
+        'Budapest': ['Edinburgh', 'Geneva', 'Oslo', 'Helsinki'],
+        'Geneva': ['Edinburgh', 'Oslo', 'Porto', 'Budapest', 'Helsinki']
+    }
+    
+    cities_without_oslo = [city for city in days_required if city != 'Oslo']
+    found = False
+    valid_perm = None
+    
+    for perm in itertools.permutations(cities_without_oslo):
+        candidate = list(perm) + ['Oslo']
+        valid_connection = True
+        for i in range(len(candidate) - 1):
+            if candidate[i+1] not in graph[candidate[i]]:
+                valid_connection = False
+                break
+        if not valid_connection:
+            continue
+        
+        j = candidate.index('Tallinn')
+        if j > 0:
+            total_prev = sum(days_required[c] for c in candidate[:j])
+            start_tallinn = total_prev - (j - 1)
+            if start_tallinn > 8:
+                continue
+                
+        valid_perm = candidate
+        found = True
+        break
+        
+    if not found:
+        print(json.dumps({"itinerary": []}))
+    else:
+        itinerary = []
+        current_start = 1
+        for city in valid_perm:
+            days = days_required[city]
+            end = current_start + days - 1
+            if current_start == end:
+                day_range_str = f"Day {current_start}"
+            else:
+                day_range_str = f"Day {current_start}-{end}"
+            itinerary.append({"day_range": day_range_str, "place": city})
+            current_start = end
+            
+        print(json.dumps({"itinerary": itinerary}))
+
+if __name__ == "__main__":
+    main()

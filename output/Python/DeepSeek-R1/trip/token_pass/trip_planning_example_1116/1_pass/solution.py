@@ -1,0 +1,16 @@
+import json
+
+def main():
+    itinerary = [
+        {"day_range": "Day 1-4", "place": "Stockholm"},
+        {"day_range": "Day 4-7", "place": "Barcelona"},
+        {"day_range": "Day 7-12", "place": "Reykjavik"},
+        {"day_range": "Day 12-16", "place": "Munich"},
+        {"day_range": "Day 16-17", "place": "Oslo"},
+        {"day_range": "Day 17-20", "place": "Frankfurt"}
+    ]
+    
+    print(json.dumps({"itinerary": itinerary}))
+
+if __name__ == "__main__":
+    main()

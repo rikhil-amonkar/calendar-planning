@@ -1,0 +1,45 @@
+import json
+
+def main():
+    total_days = 15
+    cities = {
+        'Paris': {'days': 6},
+        'Madrid': {'days': 7, 'constraints': [('range', (1, 7))]},
+        'Bucharest': {'days': 2, 'constraints': [('range', (14, 15))]},
+        'Seville': {'days': 3}
+    }
+    direct_flights = [
+        ('Paris', 'Bucharest'),
+        ('Seville', 'Paris'),
+        ('Madrid', 'Bucharest'),
+        ('Madrid', 'Paris'),
+        ('Madrid', 'Seville')
+    ]
+    
+    # Fixed constraints
+    madrid_start, madrid_end = 1, 7
+    bucharest_start, bucharest_end = 14, 15
+    
+    # Calculate travel days
+    travel_to_seville = madrid_end  # Day 7
+    days_in_seville = cities['Seville']['days']
+    travel_to_paris = travel_to_seville + days_in_seville - 1  # Day 9
+    days_in_paris = cities['Paris']['days']
+    travel_to_bucharest = travel_to_paris + days_in_paris - 1  # Day 14
+    
+    # Validate Bucharest constraint
+    assert travel_to_bucharest == bucharest_start, "Bucharest start day constraint not met"
+    
+    # Build itinerary
+    itinerary = [
+        {"day_range": f"Day {madrid_start}-{madrid_end}", "place": "Madrid"},
+        {"day_range": f"Day {travel_to_seville}-{travel_to_paris}", "place": "Seville"},
+        {"day_range": f"Day {travel_to_paris}-{travel_to_bucharest}", "place": "Paris"},
+        {"day_range": f"Day {travel_to_bucharest}-{bucharest_end}", "place": "Bucharest"}
+    ]
+    
+    # Output as JSON
+    print(json.dumps({"itinerary": itinerary}))
+
+if __name__ == "__main__":
+    main()

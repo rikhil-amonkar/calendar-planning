@@ -1,0 +1,115 @@
+import itertools
+import json
+
+def main():
+    travel_times = {
+        'Richmond District': {
+            'Marina District': 9,
+            'Chinatown': 20,
+            'Financial District': 22,
+            'Bayview': 26,
+            'Union Square': 21
+        },
+        'Marina District': {
+            'Richmond District': 11,
+            'Chinatown': 16,
+            'Financial District': 17,
+            'Bayview': 27,
+            'Union Square': 16
+        },
+        'Chinatown': {
+            'Richmond District': 20,
+            'Marina District': 12,
+            'Financial District': 5,
+            'Bayview': 22,
+            'Union Square': 7
+        },
+        'Financial District': {
+            'Richmond District': 21,
+            'Marina District': 15,
+            'Chinatown': 5,
+            'Bayview': 19,
+            'Union Square': 9
+        },
+        'Bayview': {
+            'Richmond District': 25,
+            'Marina District': 25,
+            'Chinatown': 18,
+            'Financial District': 19,
+            'Union Square': 17
+        },
+        'Union Square': {
+            'Richmond District': 20,
+            'Marina District': 18,
+            'Chinatown': 7,
+            'Financial District': 9,
+            'Bayview': 15
+        }
+    }
+    
+    friends = [
+        {'name': 'Margaret', 'location': 'Bayview', 'avail_start': 30, 'avail_end': 270, 'min_duration': 30},
+        {'name': 'Robert', 'location': 'Chinatown', 'avail_start': 195, 'avail_end': 675, 'min_duration': 15},
+        {'name': 'Rebecca', 'location': 'Financial District', 'avail_start': 255, 'avail_end': 465, 'min_duration': 75},
+        {'name': 'Kimberly', 'location': 'Marina District', 'avail_start': 255, 'avail_end': 465, 'min_duration': 15},
+        {'name': 'Kenneth', 'location': 'Union Square', 'avail_start': 630, 'avail_end': 735, 'min_duration': 75}
+    ]
+    
+    def minutes_to_time(minutes):
+        total_minutes = 9 * 60 + minutes
+        hours = total_minutes // 60
+        mins = total_minutes % 60
+        return f"{hours}:{mins:02d}"
+    
+    all_permutations = list(itertools.permutations(friends))
+    best_count = 0
+    best_itinerary = None
+    
+    for perm in all_permutations:
+        current_time = 0
+        current_location = 'Richmond District'
+        itinerary = []
+        count = 0
+        for f in perm:
+            tt = travel_times[current_location][f['location']]
+            arrival = current_time + tt
+            if arrival > f['avail_end']:
+                continue
+                
+            start_meeting = max(arrival, f['avail_start'])
+            end_meeting = start_meeting + f['min_duration']
+            
+            if end_meeting > f['avail_end']:
+                continue
+                
+            itinerary.append({
+                'action': 'meet',
+                'location': f['location'],
+                'person': f['name'],
+                'start_time_minutes': start_meeting,
+                'end_time_minutes': end_meeting
+            })
+            count += 1
+            current_time = end_meeting
+            current_location = f['location']
+            
+        if count > best_count:
+            best_count = count
+            best_itinerary = itinerary
+            
+    itinerary_output = []
+    if best_itinerary:
+        for meeting in best_itinerary:
+            itinerary_output.append({
+                'action': 'meet',
+                'location': meeting['location'],
+                'person': meeting['person'],
+                'start_time': minutes_to_time(meeting['start_time_minutes']),
+                'end_time': minutes_to_time(meeting['end_time_minutes'])
+            })
+    
+    result = {'itinerary': itinerary_output}
+    print(json.dumps(result))
+
+if __name__ == '__main__':
+    main()

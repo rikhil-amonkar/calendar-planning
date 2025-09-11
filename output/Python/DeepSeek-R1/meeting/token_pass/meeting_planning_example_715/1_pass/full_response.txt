@@ -1,0 +1,188 @@
+```python
+import itertools
+import json
+
+def time_to_minutes(time_str):
+    time_str = time_str.strip()
+    parts = time_str.split(':')
+    hour = int(parts[0])
+    rest = parts[1]
+    if 'AM' in rest:
+        minutes = int(rest.replace('AM', ''))
+        if hour == 12:
+            hour = 0
+        return hour * 60 + minutes
+    else:
+        minutes = int(rest.replace('PM', ''))
+        if hour != 12:
+            hour += 12
+        return hour * 60 + minutes
+
+def minutes_to_time(minutes):
+    hours = minutes // 60
+    mins = minutes % 60
+    return f"{hours}:{mins:02d}"
+
+travel_times = {
+    "Presidio": {
+        "Presidio": 0,
+        "Marina District": 11,
+        "The Castro": 21,
+        "Fisherman's Wharf": 19,
+        "Bayview": 31,
+        "Pacific Heights": 11,
+        "Mission District": 26,
+        "Alamo Square": 19,
+        "Golden Gate Park": 12
+    },
+    "Marina District": {
+        "Presidio": 10,
+        "Marina District": 0,
+        "The Castro": 22,
+        "Fisherman's Wharf": 10,
+        "Bayview": 27,
+        "Pacific Heights": 7,
+        "Mission District": 20,
+        "Alamo Square": 15,
+        "Golden Gate Park": 18
+    },
+    "The Castro": {
+        "Presidio": 20,
+        "Marina District": 21,
+        "The Castro": 0,
+        "Fisherman's Wharf": 24,
+        "Bayview": 19,
+        "Pacific Heights": 16,
+        "Mission District": 7,
+        "Alamo Square": 8,
+        "Golden Gate Park": 11
+    },
+    "Fisherman's Wharf": {
+        "Presidio": 17,
+        "Marina District": 9,
+        "The Castro": 27,
+        "Fisherman's Wharf": 0,
+        "Bayview": 26,
+        "Pacific Heights": 12,
+        "Mission District": 22,
+        "Alamo Square": 21,
+        "Golden Gate Park": 25
+    },
+    "Bayview": {
+        "Presidio": 32,
+        "Marina District": 27,
+        "The Castro": 19,
+        "Fisherman's Wharf": 25,
+        "Bayview": 0,
+        "Pacific Heights": 23,
+        "Mission District": 13,
+        "Alamo Square": 16,
+        "Golden Gate Park": 22
+    },
+    "Pacific Heights": {
+        "Presidio": 11,
+        "Marina District": 6,
+        "The Castro": 16,
+        "Fisherman's Wharf": 13,
+        "Bayview": 22,
+        "Pacific Heights": 0,
+        "Mission District": 15,
+        "Alamo Square": 10,
+        "Golden Gate Park": 15
+    },
+    "Mission District": {
+        "Presidio": 25,
+        "Marina District": 19,
+        "The Castro": 7,
+        "Fisherman's Wharf": 22,
+        "Bayview": 14,
+        "Pacific Heights": 16,
+        "Mission District": 0,
+        "Alamo Square": 11,
+        "Golden Gate Park": 17
+    },
+    "Alamo Square": {
+        "Presidio": 17,
+        "Marina District": 15,
+        "The Castro": 8,
+        "Fisherman's Wharf": 19,
+        "Bayview": 16,
+        "Pacific Heights": 10,
+        "Mission District": 10,
+        "Alamo Square": 0,
+        "Golden Gate Park": 9
+    },
+    "Golden Gate Park": {
+        "Presidio": 11,
+        "Marina District": 16,
+        "The Castro": 13,
+        "Fisherman's Wharf": 24,
+        "Bayview": 23,
+        "Pacific Heights": 16,
+        "Mission District": 17,
+        "Alamo Square": 9,
+        "Golden Gate Park": 0
+    }
+}
+
+friends = [
+    {"name": "Amanda", "location": "Marina District", "start_minutes": time_to_minutes("2:45PM"), "end_minutes": time_to_minutes("7:30PM"), "min_duration": 105},
+    {"name": "Melissa", "location": "The Castro", "start_minutes": time_to_minutes("9:30AM"), "end_minutes": time_to_minutes("5:00PM"), "min_duration": 30},
+    {"name": "Jeffrey", "location": "Fisherman's Wharf", "start_minutes": time_to_minutes("12:45PM"), "end_minutes": time_to_minutes("6:45PM"), "min_duration": 120},
+    {"name": "Matthew", "location": "Bayview", "start_minutes": time_to_minutes("10:15AM"), "end_minutes": time_to_minutes("1:15PM"), "min_duration": 30},
+    {"name": "Nancy", "location": "Pacific Heights", "start_minutes": time_to_minutes("5:00PM"), "end_minutes": time_to_minutes("9:30PM"), "min_duration": 105},
+    {"name": "Karen", "location": "Mission District", "start_minutes": time_to_minutes("5:30PM"), "end_minutes": time_to_minutes("8:30PM"), "min_duration": 105},
+    {"name": "Robert", "location": "Alamo Square", "start_minutes": time_to_minutes("11:15AM"), "end_minutes": time_to_minutes("5:30PM"), "min_duration": 120},
+    {"name": "Joseph", "location": "Golden Gate Park", "start_minutes": time_to_minutes("8:30AM"), "end_minutes": time_to_minutes("9:15PM"), "min_duration": 105}
+]
+
+start_time = time_to_minutes("9:00AM")
+start_location = "Presidio"
+
+best_count = 0
+best_schedule = []
+best_end_time = float('inf')
+
+for perm in itertools.permutations(friends):
+    current_time = start_time
+    current_location = start_location
+    schedule = []
+    count = 0
+    valid = True
+    
+    for friend in perm:
+        travel_time = travel_times[current_location][friend['location']]
+        arrival_time = current_time + travel_time
+        meeting_start = max(arrival_time, friend['start_minutes'])
+        meeting_end = meeting_start + friend['min_duration']
+        
+        if meeting_end > friend['end_minutes']:
+            break
+            
+        schedule.append({
+            'friend': friend,
+            'start': meeting_start,
+            'end': meeting_end
+        })
+        current_time = meeting_end
+        current_location = friend['location']
+        count += 1
+    else:
+        if count > best_count or (count == best_count and current_time < best_end_time):
+            best_count = count
+            best_schedule = schedule
+            best_end_time = current_time
+
+itinerary = []
+for meeting in best_schedule:
+    itinerary.append({
+        "action": "meet",
+        "location": meeting['friend']['location'],
+        "person": meeting['friend']['name'],
+        "start_time": minutes_to_time(meeting['start']),
+        "end_time": minutes_to_time(meeting['end'])
+    })
+
+output = {"itinerary": itinerary}
+print(json.dumps(output, indent=2))
+```

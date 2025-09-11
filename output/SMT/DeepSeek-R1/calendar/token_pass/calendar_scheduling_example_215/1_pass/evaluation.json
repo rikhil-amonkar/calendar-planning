@@ -1,0 +1,29 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "11:00:11:30",
+    "pred": {
+        "day": "Monday",
+        "time_range": "{11:00:11:30}"
+    },
+    "gold": {
+        "day": "Monday",
+        "time_range": "{11:00:11:30}"
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 62.0836296081543,
+        "execution_time": 0.07732248306274414,
+        "constraint_eval_time": 4.9591064453125e-05,
+        "pred_extract_time": 5.467478275299072,
+        "gold_extract_time": 2.5510787963867188e-05,
+        "total_tokens": 1461,
+        "reasoning_tokens": 397
+    },
+    "reasoning_content": "We are given:\n - Participants: Steven, Roy, Cynthia, Lauren, Robert\n - Meeting duration: 30 minutes (0.5 hours)\n - Work hours: 9:00 to 17:00 (so 8 hours, from 9:00 to 17:00 inclusive, meaning 17:00 is the end of the day and meeting must start by 16:30 to end by 17:00)\n - We are to find the earliest available time.\n\n We note the busy times (in 24-hour format, but we can represent time in minutes from 9:00 for ease):\n\n Let's convert the time to minutes from 9:00 (so 9:00 is 0, 9:30 is 30, 10:00 is 60, ... 17:00 is 480).\n\n Work hours: 0 to 480 minutes (8 hours).\n\n We are to find a meeting start time S (in minutes from 9:00) such that:\n   S >= 0\n   S + 30 <= 480\n\n And for each participant, the meeting interval [S, S+30] must not overlap with any of their busy intervals.\n\n We are to find the earliest S.\n\n Steps:\n 1. Represent each participant's busy intervals in minutes from 9:00.\n 2. We'll use Z3 to find the smallest S that satisfies all constraints.\n\n Since the problem is small, we can use an integer variable for S (in minutes) and assert that for each participant, for each busy interval [B_start, B_end], we have:\n   S >= B_end OR S+30 <= B_start\n\n 3. We then minimize S.\n\n Let's code accordingly.\n\n Note: The example output format is HH:MM:HH:MM, so we need to convert S and S+30 back to time strings.\n\n We'll assume the day is Monday as given.\n\n Let's code accordingly.",
+    "generated_code": "from z3 import *\n\ndef main():\n    # Initialize solver with optimization\n    opt = Optimize()\n    \n    # Meeting duration in minutes\n    meeting_duration = 30\n    \n    # Total available time window: 9:00 to 17:00 (8 hours = 480 minutes)\n    total_minutes = 480\n    \n    # Start time variable (in minutes from 9:00)\n    S = Int('S')\n    \n    # Constraints: Start time must be within [0, total_minutes - meeting_duration]\n    opt.add(S >= 0)\n    opt.add(S <= total_minutes - meeting_duration)\n    \n    # Define busy intervals in minutes from 9:00\n    # Cynthia's busy intervals\n    cynthia_busy = [(30, 90), (150, 180), (240, 270), (360, 420)]\n    # Lauren's busy intervals\n    lauren_busy = [(0, 30), (90, 120), (150, 180), (240, 270), (300, 330), (360, 390), (420, 480)]\n    # Robert's busy intervals\n    robert_busy = [(90, 120), (150, 180), (210, 270), (300, 420)]\n    \n    # Add constraints for each participant's busy intervals\n    # For each busy interval (start, end), meeting must not overlap\n    for start, end in cynthia_busy:\n        opt.add(Or(S + meeting_duration <= start, S >= end))\n    for start, end in lauren_busy:\n        opt.add(Or(S + meeting_duration <= start, S >= end))\n    for start, end in robert_busy:\n        opt.add(Or(S + meeting_duration <= start, S >= end))\n    \n    # Steven and Roy are free all day, so no constraints needed\n    \n    # Find the earliest start time\n    opt.minimize(S)\n    \n    # Check for a solution\n    if opt.check() == sat:\n        m = opt.model()\n        start_minutes = m.eval(S).as_long()\n        \n        # Convert start time to HH:MM format\n        start_hour = 9 + start_minutes // 60\n        start_minute = start_minutes % 60\n        end_minutes = start_minutes + meeting_duration\n        end_hour = 9 + end_minutes // 60\n        end_minute = end_minutes % 60\n        \n        # Format the output\n        print(f\"{start_hour:02d}:{start_minute:02d}:{end_hour:02d}:{end_minute:02d}\")\n    else:\n        print(\"No solution found\")\n\nif __name__ == \"__main__\":\n    main()"
+}

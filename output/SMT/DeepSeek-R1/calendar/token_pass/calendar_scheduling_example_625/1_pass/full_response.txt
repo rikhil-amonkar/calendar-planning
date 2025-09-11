@@ -1,0 +1,73 @@
+```python
+from z3 import *
+
+def main():
+    # Initialize solver
+    solver = Solver()
+    
+    # Define variables
+    day = Int('day')
+    start_minutes = Int('start_minutes')
+    
+    # Meeting duration in minutes
+    meeting_duration = 30
+    
+    # Work day duration in minutes (9:00 to 17:00 is 8 hours)
+    work_day_minutes = 8 * 60
+    max_start = work_day_minutes - meeting_duration
+    
+    # Constraints for day and start_minutes
+    solver.add(day >= 0, day <= 1)
+    solver.add(start_minutes >= 0, start_minutes <= max_start)
+    
+    # Harold's blocked intervals (day, start_minute, end_minute) relative to 9:00
+    blocked_intervals = [
+        (0, 0, 60),    # Monday 9:00-10:00
+        (0, 90, 480),  # Monday 10:30-17:00
+        (1, 0, 30),    # Tuesday 9:00-9:30
+        (1, 90, 150),  # Tuesday 10:30-11:30
+        (1, 210, 270), # Tuesday 12:30-13:30
+        (1, 330, 390), # Tuesday 14:30-15:30
+        (1, 420, 480)  # Tuesday 16:00-17:00
+    ]
+    
+    # Add constraints for blocked intervals
+    for d, block_start, block_end in blocked_intervals:
+        solver.add(
+            Or(
+                day != d,
+                start_minutes + meeting_duration <= block_start,
+                start_minutes >= block_end
+            )
+        )
+    
+    # Harold's preferences: avoid Monday and Tuesday before 14:30 (330 minutes from 9:00)
+    solver.add(day != 0)  # Avoid Monday
+    solver.add(Implies(day == 1, start_minutes >= 330))  # On Tuesday, start at or after 14:30
+    
+    # Check for a solution
+    if solver.check() == sat:
+        model = solver.model()
+        d = model[day].as_long()
+        s = model[start_minutes].as_long()
+        
+        # Convert start minutes to time string
+        start_hour = 9 + s // 60
+        start_minute = s % 60
+        end_minutes = s + meeting_duration
+        end_hour = 9 + end_minutes // 60
+        end_minute = end_minutes % 60
+        
+        # Format time strings with leading zeros
+        start_str = f"{start_hour:02d}:{start_minute:02d}"
+        end_str = f"{end_hour:02d}:{end_minute:02d}"
+        day_str = "Monday" if d == 0 else "Tuesday"
+        
+        # Print the result
+        print(f"{day_str} {start_str}:{end_str}")
+    else:
+        print("No solution found")
+
+if __name__ == "__main__":
+    main()
+```

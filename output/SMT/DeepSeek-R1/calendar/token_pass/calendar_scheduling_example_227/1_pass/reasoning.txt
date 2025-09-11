@@ -1,0 +1,66 @@
+We are given:
+  - Participants: Natalie, David, Douglas, Ralph, Jordan
+  - Meeting duration: 30 minutes (0.5 hours)
+  - Work hours: 9:00 to 17:00 (so 9:00 is 9*60 = 540 minutes, 17:00 is 17*60 = 1020 minutes)
+  - We are to schedule on Monday.
+
+ We represent time in minutes from a reference (e.g., 9:00 = 540 minutes).
+
+ Steps:
+ 1. Define the start time variable for the meeting (in minutes from 0, but we'll set bounds from 540 to 1020 - 30 = 990 minutes).
+ 2. Add constraints for each person's busy times (the meeting should not overlap with any busy interval).
+ 3. Also, David does not want to meet before 14:00 (which is 14*60 = 840 minutes). So the meeting must start at or after 840.
+
+ Note: The meeting duration is 30 minutes, so if the meeting starts at S, it ends at S+30.
+
+ We'll create a Z3 solver and add constraints for each participant's busy intervals.
+
+ For each participant, we have a list of busy intervals (each interval is [start, end] in minutes).
+
+ We'll define:
+   S = Int('S')  (start time in minutes from 0, but we set bounds [540, 990])
+
+ For each busy interval [b_start, b_end] for a participant, we require:
+   Not(And(S < b_end, S+30 > b_start))
+   Which is equivalent to: Or(S >= b_end, S+30 <= b_start)
+
+ Additionally, we have David's preference: S >= 840.
+
+ We'll then check if the solver can find a solution and output the time in the format HH:MM:HH:MM for Monday.
+
+ Let's code accordingly.
+
+ Note: The problem states that there exists a solution.
+
+ We'll convert the given busy times to minutes:
+
+ David's busy: 
+   11:30 to 12:00 -> 11*60+30=690 to 12*60=720
+   14:30 to 15:00 -> 14*60+30=870 to 15*60=900
+
+ Douglas:
+   9:30 to 10:00 -> 570 to 600
+   11:30 to 12:00 -> 690 to 720
+   13:00 to 13:30 -> 780 to 810
+   14:30 to 15:00 -> 870 to 900
+
+ Ralph:
+   9:00 to 9:30 -> 540 to 570
+   10:00 to 11:00 -> 600 to 660
+   11:30 to 12:30 -> 690 to 750
+   13:30 to 15:00 -> 810 to 900
+   15:30 to 16:00 -> 930 to 960
+   16:30 to 17:00 -> 990 to 1020
+
+ Jordan:
+   9:00 to 10:00 -> 540 to 600
+   12:00 to 12:30 -> 720 to 750
+   13:00 to 13:30 -> 780 to 810
+   14:30 to 15:00 -> 870 to 900
+   15:30 to 17:00 -> 930 to 1020
+
+ Natalie: free all day.
+
+ We'll create a list of busy intervals for each participant (except Natalie) and then add constraints.
+
+ Let's code accordingly.

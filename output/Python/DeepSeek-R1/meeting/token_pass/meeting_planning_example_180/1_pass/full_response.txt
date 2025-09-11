@@ -1,0 +1,114 @@
+```python
+import json
+
+def minutes_to_time(minutes):
+    hours = minutes // 60
+    mins = minutes % 60
+    return f"{hours}:{mins:02d}"
+
+def main():
+    # Input parameters
+    start_location = "North Beach"
+    start_time_minutes = 9 * 60  # 9:00 AM
+
+    # Friends' information
+    friends = {
+        "James": {
+            "location": "Mission District",
+            "start": 12 * 60 + 45,  # 12:45
+            "end": 14 * 60,          # 14:00
+            "min_duration": 75
+        },
+        "Robert": {
+            "location": "The Castro",
+            "start": 12 * 60 + 45,   # 12:45
+            "end": 15 * 60 + 15,     # 15:15
+            "min_duration": 30
+        }
+    }
+
+    # Travel times matrix
+    travel_times = {
+        "North Beach": {
+            "Mission District": 18,
+            "The Castro": 22
+        },
+        "Mission District": {
+            "North Beach": 17,
+            "The Castro": 7
+        },
+        "The Castro": {
+            "North Beach": 20,
+            "Mission District": 7
+        }
+    }
+
+    # Try all possible orders of meeting friends
+    orders = [["James", "Robert"], ["Robert", "James"]]
+    best_itinerary = None
+    best_count = 0
+
+    for order in orders:
+        current_time = start_time_minutes
+        current_location = start_location
+        itinerary = []
+        count = 0
+        feasible = True
+
+        for i, friend_name in enumerate(order):
+            info = friends[friend_name]
+            travel_time = travel_times[current_location][info["location"]]
+            arrival_time = current_time + travel_time
+            # Wait if arriving early
+            if arrival_time < info["start"]:
+                arrival_time = info["start"]
+            # Check if minimum duration can be met
+            if arrival_time + info["min_duration"] > info["end"]:
+                feasible = False
+                break
+            # For the last friend, meet until their end time; otherwise meet for minimum duration
+            if i == len(order) - 1:
+                meeting_end = info["end"]
+            else:
+                meeting_end = arrival_time + info["min_duration"]
+            itinerary.append({
+                "action": "meet",
+                "location": info["location"],
+                "person": friend_name,
+                "start_time": minutes_to_time(arrival_time),
+                "end_time": minutes_to_time(meeting_end)
+            })
+            current_time = meeting_end
+            current_location = info["location"]
+            count += 1
+
+        if feasible and count > best_count:
+            best_count = count
+            best_itinerary = itinerary
+
+    # If no itinerary meets both friends, try meeting one friend
+    if best_count < 2:
+        for friend_name, info in friends.items():
+            travel_time = travel_times[start_location][info["location"]]
+            arrival_time = start_time_minutes + travel_time
+            if arrival_time < info["start"]:
+                arrival_time = info["start"]
+            if arrival_time + info["min_duration"] <= info["end"]:
+                meeting_end = info["end"]
+                best_itinerary = [{
+                    "action": "meet",
+                    "location": info["location"],
+                    "person": friend_name,
+                    "start_time": minutes_to_time(arrival_time),
+                    "end_time": minutes_to_time(meeting_end)
+                }]
+                best_count = 1
+                break
+
+    # Output the result as JSON
+    result = {"itinerary": best_itinerary}
+    print(json.dumps(result, indent=2))
+
+if __name__ == "__main__":
+    main()
+```

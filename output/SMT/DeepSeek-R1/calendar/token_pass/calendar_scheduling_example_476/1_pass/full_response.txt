@@ -1,0 +1,54 @@
+```python
+from z3 import *
+
+def main():
+    # Initialize solver
+    s = Solver()
+    
+    # Define time in minutes from 9:00 (0) to 17:00 (480)
+    S = Int('S')
+    min_time = 0
+    max_time = 450  # 17:00 - 30 minutes = 16:30 (450 minutes from 9:00)
+    
+    # Constraint: Start time must be within work hours
+    s.add(S >= min_time, S <= max_time)
+    
+    # Roger's preference: Not before 12:30 (210 minutes from 9:00)
+    s.add(S >= 210)
+    
+    # Busy intervals in minutes from 9:00
+    busy_times = {
+        'Kathleen': [(330, 390)],  # 14:30-15:30
+        'Carolyn': [(180, 210), (240, 270)],  # 12:00-12:30, 13:00-13:30
+        'Cheryl': [(0, 30), (60, 150), (210, 270), (300, 480)],  # 9:00-9:30, 10:00-11:30, 12:30-13:30, 14:00-17:00
+        'Virginia': [(30, 150), (180, 210), (240, 270), (330, 390), (420, 480)],  # 9:30-11:30, 12:00-12:30, 13:00-13:30, 14:30-15:30, 16:00-17:00
+        'Angela': [(30, 60), (90, 150), (180, 210), (240, 270), (300, 450)]  # 9:30-10:00, 10:30-11:30, 12:00-12:30, 13:00-13:30, 14:00-16:30
+    }
+    
+    # Add constraints for each participant's busy times
+    for person, intervals in busy_times.items():
+        for start, end in intervals:
+            # Meeting must not overlap with busy interval: [S, S+30] and [start, end] don't overlap
+            s.add(Or(S + 30 <= start, S >= end))
+    
+    # Check for a solution
+    if s.check() == sat:
+        m = s.model()
+        start_minutes = m[S].as_long()
+        
+        # Convert start time to HH:MM format
+        start_hour = 9 + start_minutes // 60
+        start_minute = start_minutes % 60
+        end_minutes = start_minutes + 30
+        end_hour = 9 + end_minutes // 60
+        end_minute = end_minutes % 60
+        
+        # Format output
+        print(f"{start_hour:02d}:{start_minute:02d}:{end_hour:02d}:{end_minute:02d}")
+        print("Monday")
+    else:
+        print("No solution found")
+
+if __name__ == "__main__":
+    main()
+```

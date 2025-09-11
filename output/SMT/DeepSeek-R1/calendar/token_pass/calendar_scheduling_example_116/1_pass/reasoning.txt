@@ -1,0 +1,131 @@
+We are given the task to schedule a meeting on Monday between 9:00 and 17:00 for 30 minutes.
+ Participants: Adam, John, Stephanie, Anna.
+ Constraints:
+   Adam: busy 14:00-15:00
+   John: busy 13:00-13:30, 14:00-14:30, 15:30-16:00, 16:30-17:00
+   Stephanie: busy 9:30-10:00, 10:30-11:00, 11:30-16:00, 16:30-17:00
+   Anna: busy 9:30-10:00, 12:00-12:30, 13:00-15:30, 16:30-17:00
+   Anna prefers not before 14:30.
+
+ Since the meeting is on Monday, we'll only consider Monday.
+
+ We'll represent time in minutes from 9:00 (which is 0 minutes) to 17:00 (which is 8*60 = 480 minutes).
+ So the total available time window is 480 minutes (8 hours).
+
+ Steps:
+ 1. Define the start time of the meeting as an integer variable in the range [0, 480 - duration].
+    Since the meeting is 30 minutes, the start time must be at most 450 (so that it ends by 480).
+
+ 2. For each participant, we define the intervals when they are busy, and then assert that the meeting does not overlap with any of these intervals.
+
+ 3. Additionally, we have Anna's preference: she would rather not meet before 14:30. 
+    Since 14:30 is (14-9)*60 + 30 = 5*60+30 = 330 minutes from 9:00.
+    We can either treat this as a hard constraint (if possible) or a soft constraint. The problem says "would rather not", so we can try to respect it but if no other time exists we might have to schedule before. However, note the problem says there exists a solution that works with existing schedule and constraints. And the constraint is a preference, but let's note that the problem says "Anna would rather not meet on Monday before 14:30". We are to find a time that works for everyone's schedule and constraints. This might be a hard constraint? The problem says "constraints" and then mentions the preference. However, the problem also says "there exists a solution that works with existing schedule of every participant". So we must check if the preference is a hard constraint or not.
+
+ Let me re-read: "Anna would rather not meet on Monday before 14:30." -> This is a preference, so we can try to avoid before 14:30, but if we cannot then we might have to schedule before. However, note that the problem says "Find a time that works for everyone's schedule and constraints." and then lists the preference. So we should treat it as a constraint? 
+
+ But note: the problem says "there exists a solution that works with existing schedule of every participant". So the existing schedule is hard, but the preference might be soft. However, the problem says "and constraints", so we must consider the preference as a constraint? Let's see the example: if we cannot avoid before 14:30, then we might have to schedule then. But let's check the schedules:
+
+ We can see from the schedules that the only available time after 14:30 for Anna is from 15:30 to 16:30 (because Anna is busy until 15:30 and then from 16:30 to 17:00). But note: Anna is busy from 13:00 to 15:30 and then 16:30 to 17:00. So the free time for Anna on Monday is:
+  9:00-9:30, 10:00-10:30, 11:00-11:30, 12:30-13:00, 15:30-16:30.
+
+ Now, let's look at others:
+
+ Adam: free except 14:00-15:00 -> so free: 9:00-14:00 and 15:00-17:00.
+
+ John: busy at 13:00-13:30, 14:00-14:30, 15:30-16:00, 16:30-17:00 -> free: 9:00-13:00, 13:30-14:00, 14:30-15:30, 16:00-16:30.
+
+ Stephanie: busy 9:30-10:00, 10:30-11:00, 11:30-16:00, 16:30-17:00 -> free: 9:00-9:30, 10:00-10:30, 11:00-11:30, 16:00-16:30.
+
+ Now, let's find the common free time:
+
+ We are looking for a 30-minute slot.
+
+ First, after 14:30 (Anna's preference):
+
+ Anna free: 15:30-16:30.
+
+ Adam free: 15:00-17:00 -> so 15:30-16:30 is free.
+
+ John free: 14:30-15:30 and 16:00-16:30 -> so 15:30-16:00 is free? But note: John is busy from 15:30 to 16:00 -> wait, let me check: John is busy during 15:30-16:00. So John is not free from 15:30 to 16:00. Then what about 16:00-16:30? John is free from 16:00 to 16:30.
+
+ Stephanie free: 16:00-16:30.
+
+ So the common free time after 14:30 is 16:00-16:30 for all.
+
+ But note: Anna is free in 15:30-16:30, but John and Stephanie are free in 16:00-16:30. So 16:00-16:30 works for everyone.
+
+ However, let's check if there is any other time after 14:30? 
+  - 14:30-15:00: 
+      Adam: free? Adam is free until 15:00, but note Adam is free until 14:00 then busy until 15:00 -> so 14:30-15:00 is busy for Adam. So no.
+  - 15:00-15:30:
+      Adam: free from 15:00, so 15:00-15:30 is free for Adam.
+      John: free from 14:30 to 15:30 -> so 15:00-15:30 is free for John.
+      Stephanie: busy until 16:00 -> so no.
+      Anna: busy until 15:30 -> so no.
+
+  - 15:30-16:00:
+      Adam: free.
+      John: busy (15:30-16:00) -> so no.
+      Stephanie: busy until 16:00 -> so no.
+      Anna: free (15:30-16:30) -> but John and Stephanie are not.
+
+  - 16:00-16:30: works.
+
+  - 16:30-17:00: 
+      Anna: busy (16:30-17:00) -> no.
+
+ So the only time after 14:30 is 16:00-16:30.
+
+ Now, what if we consider before 14:30? We have to check if there's any time that fits the hard constraints (everyone free) and then if we can avoid before 14:30 we do, but if not we take the before 14:30. However, the problem says there is a solution that works with existing schedule and constraints. And we found one after 14:30, so we don't need to consider before.
+
+ Therefore, we can set the meeting at 16:00-16:30.
+
+ But note: the problem says "Anna would rather not meet on Monday before 14:30". We are meeting after, so it's fine.
+
+ Now, let's code with Z3.
+
+ We'll define:
+   start = Int('start')  # in minutes from 9:00
+
+ Constraints:
+   0 <= start <= 450 (because 480 - 30 = 450)
+
+ For each participant, we define the busy intervals and assert that the meeting does not overlap.
+
+ We can define non-overlap as: for every busy interval [b_start, b_end), the meeting [start, start+30) should not overlap.
+
+ Non-overlap condition: (start >= b_end) OR (start+30 <= b_start)
+
+ But note: our time is in minutes, and the intervals are half-open? Typically, we consider [start, end) for busy intervals and for the meeting.
+
+ Let's define the busy intervals in minutes from 9:00:
+
+ Adam:
+   [14:00-15:00) -> (14-9)*60 = 300 to (15-9)*60 = 360 -> [300, 360)
+
+ John:
+   [13:00-13:30) -> (13-9)*60 = 240 to 240+30 = 270 -> [240, 270)
+   [14:00-14:30) -> 300 to 330 -> [300, 330)
+   [15:30-16:00) -> (15-9)*60+30 = 390 to 420 -> [390, 420)
+   [16:30-17:00) -> 450 to 480 -> [450, 480)
+
+ Stephanie:
+   [9:30-10:00) -> 30 to 60 -> [30, 60)
+   [10:30-11:00) -> 90 to 120 -> [90, 120)
+   [11:30-16:00) -> 150 to 420 -> [150, 420)
+   [16:30-17:00) -> 450 to 480 -> [450, 480)
+
+ Anna:
+   [9:30-10:00) -> 30 to 60 -> [30, 60)
+   [12:00-12:30) -> 180 to 210 -> [180, 210)
+   [13:00-15:30) -> 240 to 390 -> [240, 390)   [Note: 15:30 is (15-9)*60+30 = 390]
+   [16:30-17:00) -> 450 to 480 -> [450, 480)
+
+ Additionally, we have Anna's preference: start >= 330 (14:30) -> we'll make this a hard constraint because we know there is a solution that satisfies it.
+
+ So we add: start >= 330
+
+ Now, we code accordingly.
+
+ Let's write the code.

@@ -1,0 +1,1062 @@
+We are given:
+ Total days: 24
+ Cities and their required days:
+   Venice: 3 days
+   Reykjavik: 2 days
+   Munich: 3 days, and must be on days 4-6 (so days 4,5,6 in Munich)
+   Santorini: 3 days, and must be between day 8 and 10 (so at least one of these days must be in Santorini, but note: the requirement is to visit relatives between day 8 and 10, meaning we must be in Santorini on at least one of these days? However, the problem says "between day 8 and day 10", which is inclusive, so we must be in Santorini on day 8, 9, or 10? But note the example: "You plan to visit relatives in Santorini between day 8 and day 10" - this might mean that we are in Santorini for a contiguous block that includes days 8,9,10? Actually, the problem says "between day 8 and day 10", which is ambiguous. However, note the Munich example: "From day 4 to day 6" meaning days 4,5,6. So similarly, Santorini must be visited on days 8,9,10? But wait, the problem says "between day 8 and day 10", which is the same as "from day 8 to day 10"? Let's assume it's inclusive and contiguous: we must be in Santorini on days 8,9,10.
+
+ However, note the problem says: "You plan to visit relatives in Santorini between day 8 and day 10." This might not necessarily mean we are there for the entire period, but we must be there at some point during these days. But the problem also says we want to visit Santorini for 3 days. We can interpret that we must have at least one day in Santorini during [8,10] and we have 3 days in total.
+
+ But note the example output structure uses day ranges. We are to output day ranges for each city.
+
+ Also, we have:
+   Manchester: 3 days
+   Porto: 3 days
+   Bucharest: 5 days
+   Tallinn: 4 days
+   Valencia: 2 days, and must attend a workshop between day 14 and 15 (so must be in Valencia on day 14 and 15? The problem says "between day 14 and day 15", which is inclusive, so we must be in Valencia on day 14 and 15? But note: the Munich example uses "from day 4 to day 6" meaning 3 days. So if it's between day 14 and day 15, that is 2 days: day14 and day15.
+
+   Vienna: 5 days
+
+ Also, we are given direct flight connections.
+
+ Important note: When flying on day X, we are in both cities on day X. So if we fly from A to B on day X, then day X counts for both A and B.
+
+ However, we cannot split a day between two cities arbitrarily. We are only in one city per day, except when we fly, then we are in two cities on that day? Actually, the problem says: "if one flies from city A to city B on day X, then they are in both cities A and B on day X". So that day counts for both cities.
+
+ But note: we have fixed constraints on the number of days in each city. So we must account for the day of flight as a day in both cities.
+
+ Approach:
+
+ We have 10 cities and 24 days. We must assign days to cities such that:
+   - The total days in each city matches the required days.
+   - The fixed constraints (Munich on days 4-6, Santorini on days 8-10, Valencia on days 14-15) are satisfied.
+   - Travel between cities must be via direct flights.
+
+ We are to output an itinerary that is a list of day ranges and the city for that range.
+
+ Steps:
+
+ 1. Represent the graph of direct flights.
+
+ 2. We have fixed days for some cities:
+    Munich: days 4,5,6 -> so we are in Munich on these days.
+    Santorini: days 8,9,10 -> so we are in Santorini on these days.
+    Valencia: days 14,15 -> so we are in Valencia on these days.
+
+ 3. Now, we have to assign the remaining days (24 - 3 (Munich) - 3 (Santorini) - 2 (Valencia) = 16 days) to the other cities, but note:
+    We also have the fixed days for the other cities: 
+        Venice: 3
+        Reykjavik: 2
+        Manchester: 3
+        Porto: 3
+        Bucharest: 5
+        Tallinn: 4
+        Vienna: 5
+
+    But note: the fixed days for Munich, Santorini, and Valencia are already assigned, so the remaining required days for these cities are:
+        Venice: 3
+        Reykjavik: 2
+        Manchester: 3
+        Porto: 3
+        Bucharest: 5
+        Tallinn: 4
+        Vienna: 5
+
+    However, note that the fixed days are part of the total required days for those cities. So we have already accounted for:
+        Munich: 3 days (all fixed)
+        Santorini: 3 days (all fixed)
+        Valencia: 2 days (all fixed)
+
+    So the remaining cities and their required days are as above.
+
+ 4. Now, we have 24 days, and we have already assigned 3+3+2=8 days. So 16 days are left to assign to the other 7 cities, but note: the required days for the other 7 cities add up to 3+2+3+3+5+4+5 = 25 days. This is more than 16. Wait, that doesn't add up.
+
+ Let me recalculate:
+
+ Total required days:
+   Venice: 3
+   Reykjavik: 2
+   Munich: 3 (fixed on 4-6)
+   Santorini: 3 (fixed on 8-10)
+   Manchester: 3
+   Porto: 3
+   Bucharest: 5
+   Tallinn: 4
+   Valencia: 2 (fixed on 14-15)
+   Vienna: 5
+
+ Total = 3+2+3+3+3+3+5+4+2+5 = 33 days.
+
+ But we only have 24 days. This is because the flight days are counted twice? The problem says that if we fly on a day, that day counts for two cities.
+
+ So the total required days (if we sum the days we want to be in each city) is 33, but we only have 24 calendar days. This means we must have 33 - 24 = 9 days that are double-counted (i.e., travel days).
+
+ So we will have 9 travel days (flights) in the itinerary.
+
+ How do we model this?
+
+ We are to assign each day to one or two cities (if it's a travel day). But note: the fixed days are already assigned and are not travel days (unless we fly on those days, but note the fixed days are in the middle of a stay?).
+
+ Alternatively, we can think of the itinerary as a sequence of stays in cities, and the travel days are the days we fly. On a travel day, we are in two cities.
+
+ We must ensure that the travel days are only between cities that have direct flights.
+
+ We have fixed constraints on some days, so we cannot move those.
+
+ Let me list the fixed days:
+
+   Day 4,5,6: Munich
+   Day 8,9,10: Santorini
+   Day 14,15: Valencia
+
+ We must also account for the required days in each city.
+
+ We need to assign the other days (the non-fixed days) to the other cities, but also note that we might have travel on fixed days if we are leaving or arriving on a fixed day.
+
+ However, the problem says that if we fly on a day, we are in both cities on that day. So if we fly into Munich on day 4, then day 4 counts for both the previous city and Munich. Similarly, if we fly out of Munich on day 6, then day 6 counts for Munich and the next city.
+
+ But note: the fixed constraints require that we are in Munich on days 4,5,6. So we must be in Munich for the entire period. This means we cannot fly on day 4 or day 6? Actually, we can fly on day 4 and day 6, but then we would be in two cities on those days. However, the requirement for Munich is 3 days, and we are there on days 4,5,6 (3 days) so even if we fly on day 4 and day 6, we still have 3 days in Munich. But note: if we fly on day 4, we are also in another city on day 4, which might be okay if that city's count is adjusted (we are counting that day for that city too). Similarly for day 6.
+
+ However, the fixed constraints for Munich say we must be there on days 4,5,6. So we are in Munich on those days, regardless of whether we fly. So we can fly on day 4 and day 6.
+
+ Similarly for Santorini and Valencia.
+
+ Now, the challenge is to arrange the order of cities such that:
+
+   - We start and end in one of the cities (no round-trip requirement? We just have to visit all cities).
+
+   - The stays in each city must be contiguous? Not necessarily, but the problem does not say we cannot break the stay. However, the example output uses day ranges, which are contiguous. Also, it is more natural to have contiguous stays.
+
+   - We must use direct flights between consecutive cities.
+
+ We have 10 cities. We are to visit each city for a certain number of days (the required days). The fixed days are already set, so we know on which days we are in Munich, Santorini, and Valencia.
+
+ We must assign the other days to the other cities, and also assign the travel days (which will be the days we switch cities) such that the travel is by direct flights.
+
+ We can break the itinerary into segments:
+
+   Days 1-3: ... (not fixed)
+   Days 4-6: Munich
+   Day 7: ... (not fixed, but note: we might travel from Munich to somewhere on day 7? or we might leave Munich on day 6? But note: if we leave Munich on day 6, then day 6 is also in the next city. Similarly, we might arrive in Munich on day 4, so day 4 is also in the previous city.
+
+   Days 8-10: Santorini
+   Days 11-13: ... (not fixed)
+   Days 14-15: Valencia
+   Days 16-24: ... (not fixed)
+
+ We also have fixed required days for the other cities.
+
+ How to model the travel? We can use a graph where nodes are cities, and edges are direct flights.
+
+ We need to sequence the cities such that consecutive cities are connected by a direct flight.
+
+ We have fixed events on specific days, so we know which city we are in on days 4-6, 8-10, 14-15.
+
+ We can think of the itinerary as a path that goes through the cities, and we assign days to each city (with the fixed days already assigned). The total days in each city must match the required days, and the travel days are the days we switch, which count for two cities.
+
+ We must decide the order of the cities and the exact days of travel.
+
+ Given the complexity, we might use a constraint satisfaction or search algorithm. However, the problem is small (10 cities) but with fixed days, we can break the problem into parts.
+
+ Alternatively, we can use a greedy assignment around the fixed days.
+
+ Let me list the cities and their required days (including the fixed days):
+
+   Munich: 3 (fixed on 4-6)
+   Santorini: 3 (fixed on 8-10)
+   Valencia: 2 (fixed on 14-15)
+
+   Venice: 3
+   Reykjavik: 2
+   Manchester: 3
+   Porto: 3
+   Bucharest: 5
+   Tallinn: 4
+   Vienna: 5
+
+ We have to assign the non-fixed days (days 1-3, 7, 11-13, 16-24) to these cities, but note that the fixed days might be extended by travel (if we fly on fixed days, then we are also in another city on that fixed day). However, the fixed days are already assigned to the city, so if we fly on a fixed day, we are also in another city on that day, which means we are effectively adding a day to that other city (without using an extra calendar day).
+
+ We have 24 calendar days, and the total required days (if we sum) is 33, so we need 9 travel days (double-counted days). These travel days must be on days where we are in two cities.
+
+ We can note that the fixed days are 8 days (days 4,5,6,8,9,10,14,15). The non-fixed days are 16 days (24-8). But the non-fixed days must account for the remaining required days (33 - 8 = 25 days) minus the travel days that occur on fixed days? Wait, no.
+
+ Let me define:
+
+   Let T be the set of travel days (days on which we fly). On each travel day, we are in two cities. On non-travel days, we are in one city.
+
+   Let N = 24 be the number of calendar days.
+
+   Let S be the total required days (sum of required days for each city) = 33.
+
+   Then: N + |T| = S, because each travel day adds an extra city-day.
+
+   So |T| = S - N = 9.
+
+   So we have 9 travel days.
+
+   Now, note that some of these travel days might occur on fixed days and some on non-fixed days.
+
+   Let F be the fixed days (8 days). On a fixed day, we are already assigned to a city. If we travel on a fixed day, then we are also in another city on that day, so that fixed day becomes a travel day.
+
+   Let N_f be the number of fixed days that are also travel days.
+
+   Let N_nf be the number of travel days that are on non-fixed days.
+
+   Then: N_f + N_nf = 9.
+
+   On non-fixed days, we have 16 days. On each non-fixed day, if it is not a travel day, we assign one city. If it is a travel day, we assign two cities (but note: the travel day is the day we switch, so it is assigned to two cities). However, the non-fixed days must account for the remaining required days (33 - 8 = 25) minus the days that are accounted for by travel on fixed days (N_f) because on a fixed travel day, we are already counting the fixed city and we add another city, so that fixed travel day accounts for one of the required days of the other city.
+
+   Alternatively, we can think: the total required days for non-fixed cities (i.e., the days that are not fixed) is 25. These 25 days must be covered by:
+
+     - The non-fixed days (16 days) which can be either non-travel (one city) or travel (two cities)
+     - The fixed days that are also travel days (N_f) because on those fixed days, we are adding another city.
+
+   So: number of city-days from non-fixed days = (16 - N_nf) * 1 + N_nf * 2 = 16 + N_nf
+   Plus the fixed travel days: N_f (each fixed travel day adds one city-day)
+
+   So total city-days from non-fixed cities = 16 + N_nf + N_f = 16 + (N_nf + N_f) = 16 + 9 = 25.
+
+   This matches.
+
+   So we have 9 travel days, and they can be on any days (fixed or non-fixed). The fixed days that are travel days will have two cities, and the non-fixed travel days will have two cities.
+
+   Now, the itinerary must be such that the cities are connected by direct flights.
+
+   We must decide the order of the cities and on which days we travel.
+
+   Given the fixed days, we know we are in Munich on days 4-6, Santorini on days 8-10, and Valencia on days 14-15.
+
+   We must enter and leave Munich around days 4-6. Similarly for Santorini and Valencia.
+
+   We can break the itinerary into segments:
+
+     Segment 1: days 1-3 (before Munich)
+     Segment 2: days 4-6 (Munich)
+     Segment 3: day 7 (between Munich and Santorini)
+     Segment 4: days 8-10 (Santorini)
+     Segment 5: days 11-13 (between Santorini and Valencia)
+     Segment 6: days 14-15 (Valencia)
+     Segment 7: days 16-24 (after Valencia)
+
+   We must assign the other cities to these segments, and ensure that between consecutive segments, we have direct flights.
+
+   The cities we have to assign: Venice, Reykjavik, Manchester, Porto, Bucharest, Tallinn, Vienna.
+
+   We also have to account for the required days in these cities.
+
+   We must also decide the travel days. We have 9 travel days. Some of these will be on the fixed days (if we fly on fixed days) and some on non-fixed days.
+
+   How many travel days do we need? We have 10 cities, so we have 9 transitions between cities. Each travel day corresponds to one flight (transition). So we will have exactly 9 travel days, one for each flight between consecutive cities.
+
+   So the number of cities is 10, so we have 9 flights.
+
+   Now, the fixed days are in the middle of the itinerary. We must arrange the order of the cities such that the fixed cities are in the correct order and at the correct days.
+
+   Let me denote the cities by their first letter for brevity (but note: some cities have the same first letter, so we must use full names or abbreviations).
+
+   Cities: 
+     Venice (VCE), Reykjavik (REK), Munich (MUC), Santorini (SAN), Manchester (MAN), Porto (POR), Bucharest (BUH), Tallinn (TAL), Valencia (VAL), Vienna (VIE)
+
+   But note: the fixed cities are MUC, SAN, VAL.
+
+   We know the order of the fixed cities: MUC comes before SAN, and SAN comes before VAL.
+
+   So the overall order must have MUC, then SAN, then VAL, and the other cities can be before, between, or after.
+
+   We have to assign the other cities in the gaps:
+
+     Before MUC: we can have zero or more cities.
+     Between MUC and SAN: we can have zero or more cities.
+     Between SAN and VAL: we can more cities.
+     After VAL: zero or more cities.
+
+   And we must have direct flights between consecutive cities.
+
+   The direct flight graph (undirected):
+
+     BUH-MAN
+     MUC-VCE
+     SAN-MAN
+     VIE-REK
+     VCE-SAN
+     MUC-POR
+     VAL-VIE
+     MAN-VIE
+     POR-VIE
+     VCE-MAN
+     SAN-VIE
+     MUC-MAN
+     MUC-REK
+     BUH-VAL
+     VCE-VIE
+     BUH-VIE
+     POR-MAN
+     MUC-VIE
+     VAL-POR
+     MUC-BUH
+     TAL-MUC
+     SAN-BUH
+     MUC-VAL
+
+   Note: the graph is undirected.
+
+   We must find a path that visits all cities, with the constraint that MUC, SAN, VAL appear in that order, and on the correct days.
+
+   We can try to find a Hamiltonian path that goes through the fixed cities in order.
+
+   However, the fixed cities have fixed days, so the number of days between them is fixed:
+
+     From day 1 to day 3: 3 days (for cities before MUC)
+     Day 7: 1 day (between MUC and SAN)
+     Days 11-13: 3 days (between SAN and VAL)
+     Days 16-24: 9 days (after VAL)
+
+   But note: the travel days are the days we fly, and they are the days we switch cities. So the number of cities in each segment must account for the required days and the travel days.
+
+   Actually, the segments are:
+
+     Segment 1 (days 1-3): we can have one or more cities? But note: if we have multiple cities in segment 1, we must fly between them, and each flight uses one travel day. But the travel days are already accounted for in the double-counting.
+
+   Alternatively, we can think of the itinerary as a sequence of stays in cities. The stays are contiguous, and the travel happens on the day we leave a city (which is the first day of the next city's stay? Or the last day of the current city's stay? The problem says: if we fly from A to B on day X, then we are in A and B on day X. So the stay in city A ends on day X (if we leave on day X) and the stay in city B starts on day X.
+
+   So the day ranges for a city might be, for example, day 1-3: city A, then we fly on day 3 to city B, so city A's stay is day 1-3 (3 days) and city B's stay starts on day 3. But then city B's stay might be day 3-5 (3 days) and then fly on day 5 to city C, etc.
+
+   However, the fixed days are assigned to specific cities, and we cannot break them. For example, Munich must be on days 4-6, so we must be in Munich from day 4 to day 6. This means that we must fly into Munich on day 4 (or earlier) and fly out on day 6 (or later). But note: if we fly into Munich on day 4, then day 4 is also in the previous city. Similarly, if we fly out on day 6, then day 6 is also in the next city.
+
+   So for Munich, the stay is day 4-6, and we might have travel on day 4 and day 6.
+
+   Similarly for Santorini and Valencia.
+
+   Now, let's list the required days for each city and the fixed days:
+
+   Munich: must have 3 days, and they are days 4,5,6. So the stay in Munich is days 4-6.
+
+   Santorini: must have 3 days, and they are days 8,9,10.
+
+   Valencia: must have 2 days, and they are days 14,15.
+
+   For the other cities, we have to assign day ranges that respect the required number of days and the direct flight connections.
+
+   We must decide the order of the cities. Let me try to find a path that includes all cities and has the fixed cities in order.
+
+   We can use the following approach:
+
+     Let the fixed cities be at indices: 
+        MUC at position i1, 
+        SAN at position i2, 
+        VAL at position i3, 
+        with i1 < i2 < i3.
+
+     The other cities can be in any order in the remaining positions.
+
+     We have to check for direct flights between consecutive cities.
+
+     We have 10 cities, so the path has 10 cities.
+
+     We know the three fixed cities and their order, so we can iterate over the possible positions for the other 7 cities.
+
+     However, the number of permutations is 7! = 5040, which is manageable.
+
+     We can generate all permutations of the other 7 cities and insert them around the fixed cities, then check the direct flight connections.
+
+     But note: the fixed cities have fixed days, so the number of days between them might constrain how many cities can be between them. However, the number of cities between fixed cities is not limited by the number of days because we can have multiple cities in a segment if we spend only one day in each, but then we would have travel days between them. But note: the travel days are already accounted for in the double-counting, so the number of days in a segment must be at least the number of cities in that segment (because each city must have at least one day) minus the number of travel days in that segment? wait.
+
+     Actually, the number of days available in a segment is fixed:
+
+        Segment 1: days 1-3 -> 3 days
+        Segment 2: day 7 -> 1 day
+        Segment 3: days 11-13 -> 3 days
+        Segment 4: days 16-24 -> 9 days
+
+     But note: these segments are not necessarily dedicated to only one city. We can have multiple cities in a segment, but then we would have to travel between them on some days, and those travel days will be within the segment.
+
+     For example, in segment 1 (3 days), if we have two cities, then we might have:
+
+        City A: days 1-2 (2 days)
+        Travel on day 2 to city B: so day 2 counts for A and B.
+        City B: days 2-3 (2 days) -> but then city B has 2 days, and city A has 2 days (day1 and day2). But note: we have 3 calendar days, and we have 2 city-days for A and 2 for B, total 4 city-days, which means one travel day (day2) which is double-counted. So the total city-days is 4, and the calendar days are 3, so we have 4 = 3 + 1 travel day.
+
+     So the number of cities in a segment and the number of travel days within the segment are related by:
+
+        Let k be the number of cities in a segment.
+        Let d be the number of calendar days in the segment.
+        Let t be the number of travel days within the segment ( note: the travel between segments is accounted for in the fixed days? Actually, the travel between segments is on the fixed days or on the segment boundaries?).
+
+     Alternatively, we can ignore the day assignment for now and first find a valid order of cities that respects the direct flights and the fixed order of MUC, SAN, VAL.
+
+     Then, we can assign the days to the cities in the order, ensuring that the fixed cities are on the correct days and the required days for each city are satisfied, and the travel days are placed on the days we switch cities.
+
+     But note: the fixed days are already set, so the non-fixed cities must fit into the gaps around the fixed days.
+
+     How many days do we have for the non-fixed cities in each gap?
+
+        Gap1: days 1-3 -> 3 days
+        Gap2: day 7 -> 1 day
+        Gap3: days 11-13 -> 3 days
+        Gap4: days 16-24 -> 9 days
+
+     But note: the non-fixed cities might also have days on the fixed days if they are the city that is paired with the fixed city on a travel day. For example, if we fly into Munich on day4 from city X, then city X gets an extra day (day4). Similarly, if we fly out of Munich on day6 to city Y, then city Y gets an extra day (day6). So the fixed days can also contribute to the non-fixed cities.
+
+     So for each non-fixed city, the total days are the days in the gaps plus possibly days on fixed days if they are adjacent to fixed cities in the order.
+
+     Let me define the order of cities. Let the order be a list of cities: [C1, C2, C3, C4, C5, C6, C7, C8, C9, C10] where C4 = MUC, C6 = SAN, C8 = VAL? But note: the fixed cities might not be at these indices. We know the fixed cities must appear in the order MUC, then SAN, then VAL. So if we let the index of MUC be i, SAN be j, VAL be k, then i<j<k.
+
+     How many cities before MUC? Let's call that n1.
+     How many between MUC and SAN? n2.
+     How many between SAN and VAL? n3.
+     How many after VAL? n4.
+
+     Then: n1 + n2 + n3 + n4 = 7.
+
+     The number of travel days is 9, which is fixed by the number of cities.
+
+     Now, the number of days available for non-fixed cities in the gaps are:
+
+        Gap1: 3 days
+        Gap2: 1 day
+        Gap3: 3 days
+        Gap4: 9 days
+
+     But note: the non-fixed cities might also get days from the fixed days if they are immediately before MUC or after VAL or between MUC and SAN or between SAN and VAL.
+
+     Specifically:
+
+        If there is a city before MUC, then the travel day into MUC (day4) will give that city an extra day (day4).
+        Similarly, if there is a city after MUC, then the travel day out of MUC (day6) will give that city an extra day (day6).
+        Similarly for Santorini: travel in on day8 and travel out on day10.
+        For Valencia: travel in on day14 and travel out on day15.
+
+     So for each non-fixed city, the days it gets are:
+
+        - If it is the city immediately before MUC, it gets day4.
+        - If it is the city immediately after MUC, it gets day6.
+        - If it is the city immediately before SAN, it gets day8.
+        - If it is the city immediately after SAN, it gets day10.
+        - If it is the city immediately before VAL, it gets day14.
+        - If it is the city immediately after VAL, it gets day15.
+
+     And then it gets additional days in the gaps.
+
+     How to assign the days to the non-fixed cities in the gaps? We must ensure that the total days for each non-fixed city matches the required days.
+
+     For example, if a non-fixed city is before MUC, it can have days in gap1 and possibly day4 if it is immediately before MUC.
+
+     Let's denote the non-fixed cities and their required days:
+
+        VCE: 3
+        REK: 2
+        MAN: 3
+        POR: 3
+        BUH: 5
+        TAL: 4
+        VIE: 5
+
+     We must assign these cities to the positions around the fixed cities.
+
+     We can try to find an assignment of the non-fixed cities to the positions (n1, n2, n3, n4) and within each group, order them, such that:
+
+        - The entire sequence has direct flights between consecutive cities.
+        - The number of days for each non-fixed city is made up of:
+             days in the gaps + possibly one of the fixed travel days (if adjacent to a fixed city)
+
+        and matches the required days.
+
+     For example, if a city is in the group before MUC (n1), then it can have days in gap1 (days1-3) and if it is the last city in that group, it will also have day4.
+
+     Similarly, if a city is in the group between MUC and SAN (n2), then it can have days in gap2 (day7) and if it is the first city in that group, it will have day6 from MUC, and if it is the last city in that group, it will have day8 from SAN.
+
+     And so on.
+
+     This is complex.
+
+ Given the complexity and the fact that we are to write a Python program that actually computes the itinerary, we might need to use a search algorithm.
+
+ However, the problem is small enough that we can try to use a brute-force over the possible orders of the non-fixed cities around the fixed cities, and then check the direct flight connections and the day assignment.
+
+ Steps for the program:
+
+  1. Define the graph of direct flights.
+
+  2. Define the fixed cities and their days: 
+        Munich: days [4,5,6]
+        Santorini: days [8,9,10]
+        Valencia: days [14,15]
+
+  3. Define the required days for non-fixed cities.
+
+  4. We will consider the order of cities as a list of 10 cities, with Munich, Santorini, Valencia in that order.
+
+  5. Generate all permutations of the non-fixed cities (7! = 5040) and insert them into the order around the fixed cities.
+
+      The order will have 10 positions. Let the index of Munich be i, Santorini be j, Valencia be k, with i<j<k.
+
+      We can iterate over the possible values of i, j, k such that i<j<k and i>=0, j>=1, k>=2, and i+1+j+1+k+1+ (7) = 10? Actually, the fixed cities will take three positions, and the non-fixed cities will take the other 7.
+
+      Alternatively, we can iterate over the number of cities before Munich (n1), between Munich and Santorini (n2), between Santorini and Valencia (n3), and after Valencia (n4), with n1+n2+n3+n4=7.
+
+      Then, for each combination of (n1, n2, n3, n4), we generate all permutations of the non-fixed cities and assign the first n1 to the group before Munich, the next n2 to the group between Munich and Santorini, etc.
+
+  6. For each order, check if consecutive cities have direct flights.
+
+  7. If the order is valid (direct flights), then try to assign the days to the non-fixed cities in the order, respecting the fixed days and the available days in the gaps, and the travel days on the fixed days.
+
+  8. For each non-fixed city, calculate the number of days it gets from the gaps and from the fixed travel days.
+
+      For example, for a city in the group before Munich (n1 cities), the days come from:
+          - The gap1 (days1-3): if there are multiple cities in this group, they will share the 3 days, and there will be travel days between them within the group.
+          - Additionally, the city that is immediately before Munich will get day4 ( travel day into Munich).
+
+      Similarly, for a city in the group between Munich and Santorini (n2 cities), the days come from:
+          - gap2 (day7)
+          - if it is the first city in the group, it will get day6 ( travel out of Munich)
+          - if it is the last city in the group, it will get day8 ( travel into Santorini)
+
+      And so on.
+
+  9. We must ensure that the number of days for each non-fixed city matches the required days.
+
+  10. If we find such an order and day assignment, then we can output the itinerary.
+
+  11. The itinerary will have day ranges for each city. We can then output the JSON.
+
+ Given the complexity and the length of the code, I will provide a solution that uses a brute-force over the order of non-fixed cities and checks the direct flights and the day assignment.
+
+ However, note that the number of permutations is 7! = 5040, and we also have to choose the groups (n1, n2, n3, n4) which is like putting 7 items into 4 groups, which is C(7+4-1,4-1)=C(10,3)=120 ways. So total 5040 * 120 = 604,800, which is acceptable in Python if implemented carefully.
+
+ Let's code accordingly.
+
+ Steps in code:
+
+  1. Define the graph of direct flights as a set of edges.
+
+  2. List all cities.
+
+  3. Define the fixed cities and their days.
+
+  4. Define the required days for non-fixed cities.
+
+  5. Iterate over all ways to split the non-fixed cities into groups (n1, n2, n3, n4) such that n1+n2+n3+n4=7.
+
+  6. For each split, iterate over all permutations of the non-fixed cities.
+
+  7. For each permutation, assign the non-fixed cities to the groups:
+
+        group1 = perm[0:n1]
+        group2 = perm[n1:n1+n2]
+        group3 = perm[n1+n2:n1+n2+n3]
+        group4 = perm[n1+n2+n3:]
+
+  8. Form the overall order: group1 + ['Munich'] + group2 + ['Santorini'] + group3 + ['Valencia'] + group4
+
+  9. Check if consecutive cities in the order have direct flights. If not, skip.
+
+  10. Now, assign days to the non-fixed cities in the order, taking into account the fixed days and the available days in the gaps.
+
+  11. For each non-fixed city, determine how many days it should have from the gaps and from the fixed travel days.
+
+  12. Check if the required days are satisfied.
+
+  13. If yes, then output the itinerary.
+
+  14. If multiple, output one.
+
+  15. If none, then output an error.
+
+ How to assign days to non-fixed cities in the order?
+
+   We know the fixed days are already assigned to the fixed cities.
+
+   For the non-fixed cities, we need to determine the number of days they have in the gaps and from the fixed travel days.
+
+   Let's define the gaps:
+
+     gap1: days 1-3 -> 3 days
+     gap2: day7 -> 1 day
+     gap3: days 11-13 -> 3 days
+     gap4: days 16-24 -> 9 days
+
+   But note: within a group of cities, the number of calendar days available is the gap size, and the number of city-days needed is the sum of the required days for the cities in that group, minus the days that will be obtained from fixed travel days.
+
+   For group1 (before Munich):
+        Let the cities in group1 be A1, A2, ..., Ak (k=n1).
+        The days they will have are from gap1 and also from the travel day into Munich (day4) for the last city in group1.
+        Specifically, the last city in group1 will have day4 from the travel.
+        So the total city-days for group1 = (number of days from gap1) + (1 if n1>0) = 3 + 1 = 4 city-days.
+        But note: if there are multiple cities in group1, they will have travel between them, which will use some days from gap1 as travel days. However, the travel within group1 will be on days within gap1, and those travel days will be double-counted for two cities.
+
+        Alternatively, we can compute the total city-days required for group1: sum of required days for cities in group1.
+        And the total calendar days in gap1 is 3.
+        Then, the number of travel days within group1 is (n1) because there are n1 cities, so there are n1-1 travels within group1, and one travel from the last city to Munich.
+        But note: the travel from the last city to Munich is on day4, which is outside gap1.
+
+        So within group1, we have n1 cities and n1-1 travels between them. The number of calendar days needed for group1 is: (sum of required days for group1) - (n1-1) because each travel day within group1 saves one calendar day by double-counting.
+        But wait: if we have n1 cities, and we have T travel days within group1, then the number of calendar days used is (sum of required days) - T.
+        Here, T = n1 - 1 (because we need n1-1 travels to connect n1 cities).
+
+        So we require: (sum of required days for group1) - (n1-1) <= 3 (days in gap1) because the travels within group1 are within gap1.
+
+        Additionally, the travel into Munich on day4 will give an extra day to the last city in group1, so that day4 is not in gap1. So the condition is:
+
+            sum(req_days for group1) - (n1-1) <= 3
+
+        But note: the last city in group1 will also get day4 from the travel, so effectively, the last city gets one extra day that is not in gap1. So if we let the required days for the last city be R, then without the travel day, it would have R-1 days in gap1? wait.
+
+        Let me clarify with an example:
+
+          If group1 has one city A, then we have no travel within group1. The city A will have some days in gap1 and also day4. So the number of days for city A is (days in gap1) + 1.
+          We require: days in gap1 + 1 = required days for A.
+
+          So required days for A = (days in gap1) + 1.
+
+          But days in gap1 is at most 3, so required days for A must be at most 4.
+
+          Also, if city A requires R days, then we need to assign R-1 days in gap1 and one day on day4.
+
+          So R-1 <= 3.
+
+        If group1 has two cities A and B:
+          We have one travel within group1 on some day in gap1.
+          City A will have some days in gap1 until the travel day, and city B will have some days in gap1 after the travel day, and city B will also have day4.
+          Let the number of days in gap1 for city A be a, for city B be b (in gap1), and then city B gets day4.
+          Then the total days for city A = a
+          For city B = b + 1
+          And we have a + b + (1 travel day) = 3 calendar days in gap1? because the travel day is within gap1 and is double-counted for A and B, so it is counted in both a and b? wait no.
+
+          Actually, the travel day is a day when we fly from A to B. On that day, we are in both A and B. So city A has a days that are not travel and the travel day, so total a+1 days.
+          City B has b days that are not travel and the travel day and day4, so total b+1+1 = b+2 days.
+
+          And the calendar days in gap1 are a + b + 1 ( because the travel day uses one calendar day) = 3.
+
+          So a + b + 1 = 3.
+
+          Then city A has a+1 days, city B has b+2 days.
+
+          So we require: a+1 = R_A, and b+2 = R_B.
+
+          And a+b+1=3 -> a+b=2.
+
+          So R_A + R_B = a+1 + b+2 = (a+b) + 3 = 2+3 = 5.
+
+          Also, note that a>=0, b>=0.
+
+          So the sum of required days for group1 must be 5 if there are two cities.
+
+        In general, for group1 with n1 cities, the total city-days required is equal to the number of calendar days in gap1 (3) plus the number of travel days within group1 (n1-1) plus one ( for the travel into Munich).
+
+        because: 
+          Let the required days for the cities be R1, R2, ... Rn1.
+          Then: R1 + R2 + ... + Rn1 = 3 + (n1-1) + 1 = 3 + n1.
+
+        Similarly, for group2 (between Munich and Santorini):
+          The cities in group2 will have:
+            - The first city in group2 will have day6 from travel out of Munich.
+            - The last city in group2 will have day8 from travel into Santorini.
+            - And they will have gap2 (1 day) for the days within group2.
+          And within group2, there are n2 cities, so there are n2-1 travel days within group2.
+
+          So the total city-days required for group2 = 1 + (n2-1) + 2 = n2 + 2.
+
+        For group3 (between Santorini and Valencia):
+          Similarly, the total city-days required = gap3 (3) + (n3-1) + 2 = n3 + 4.
+
+        For group4 (after Valencia):
+          The cities in group4 will have:
+            - The first city in group4 will have day15 from travel out of Valencia.
+            - And they will have gap4 (9 days) for the days within group4.
+          And within group4, there are n4 cities, so there are n4-1 travel days within group4.
+
+          So the total city-days required for group4 = 9 + (n4-1) + 1 = n4 + 9.
+
+        So we have conditions for each group:
+
+          Group1: sum of required days = n1 + 3
+          Group2: sum of required days = n2 + 2
+          Group3: sum of required days = n3 + 4
+          Group4: sum of required days = n4 + 9
+
+        Now, let's check with the non-fixed cities required days:
+
+          VCE:3, REK:2, MAN:3, POR:3, BUH:5, TAL:4, VIE:5
+
+          Total required days for non-fixed cities = 3+2+3+3+5+4+5 = 25.
+
+          And the sum of the group conditions: (n1+3) + (n2+2) + (n3+4) + (n4+9) = (n1+n2+n3+n4) + 18 = 7 + 18 = 25.
+
+          So it matches.
+
+        So we can use these conditions to assign the non-fixed cities to groups such that the sum of required days in group1 is n1+3, group2 is n2+2, etc.
+
+        Then, within each group, we must assign the days to each city such that the city's required days are met, and the travel within the group is on the available days.
+
+        For example, in group1, the total required days for the group is n1+3. We need to split this among n1 cities.
+
+        Similarly for other groups.
+
+        So now, we don't need to worry about the exact day assignment within the group because the condition on the sum ensures that the group can be assigned to the gap.
+
+        Therefore, the problem reduces to:
+
+          - Find a split (n1, n2, n3, n4) such that n1+n2+n3+n4=7.
+          - Find an assignment of the non-fixed cities to the groups such that:
+               group1: sum of required days = n1+3
+               group2: sum of required days = n2+2
+               group3: sum of required days = n3+4
+               group4: sum of required days = n4+9
+
+          - Then, for each group, find an order of the cities in that group such that consecutive cities have direct flights, and also have direct flights to the adjacent fixed cities.
+
+          - Then, form the overall order and check direct flights between groups and fixed cities.
+
+        So in code, we can:
+
+          1. Iterate over n1, n2, n3, n4 such that n1+n2+n3+n4=7.
+
+          2. For each split, iterate over all ways to partition the non-fixed cities into groups of sizes n1, n2, n3, n4.
+
+          3. For each partition, check if the sum of required days in group1 is n1+3, group2 is n2+2, etc.
+
+          4. If the sums match, then for each group, generate all permutations of the cities in that group and check the direct flights within the group and with the adjacent fixed cities.
+
+          5. If found, then we have a valid order.
+
+          6. Then, we can output the itinerary by assigning the day ranges based on the order and the fixed days.
+
+        Let's do examples for group1:
+
+          If n1=0, then group1 is empty, so no cities before Munich.
+
+          If n1=1, then group1 has one city, and the required days for that city must be n1+3 = 4.
+
+          Looking at the non-fixed cities, which city has required days 4? Tallinn has 4.
+
+          If n1=2, then group1 must have two cities with total required days = 2+3=5.
+
+          Possible pairs: (VCE:3 and REK:2) -> 5, (VCE:3 and MAN:3) -> 6, not 5. (REK:2 and MAN:3) ->5, (REK:2 and POR:3) ->5, (MAN:3 and POR:3) ->6, etc.
+
+        So we can precompute the possible groups for each split.
+
+        We will code accordingly.
+
+        Steps in code for this approach:
+
+          1. Define the graph.
+
+          2. Define the non-fixed cities and their required days.
+
+          3. Define the fixed cities and their order.
+
+          4. Iterate over n1 in range(0,8), n2 in range(0,8-n1), n3 in range(0,8-n1-n2), n4=7-n1-n2-n3.
+
+          5. For each split (n1,n2,n3,n4), iterate over all combinations of the non-fixed cities for group1 of size n1, then for group2 of size n2 from the remaining, etc.
+
+          6. For each partition, let group1 = selected non-fixed cities for group1, group2 for group2, etc.
+
+          7. Check if:
+                sum(group1 required days) == n1+3
+                sum(group2 required days) == n2+2
+                sum(group3 required days) == n3+4
+                sum(group4 required days) == n4+9
+
+          8. If not, skip.
+
+          9. Then, for group1, generate all permutations of group1 and check:
+                - If n1>0, then the last city in group1 must have a direct flight to Munich.
+                - Within group1, consecutive cities must have direct flights.
+                - If n1==0, then skip.
+
+          10. Similarly for group2: 
+                - The first city in group2 must have a direct flight from Munich.
+                - The last city in group2 must have a direct flight to Santorini.
+                - Within group2, consecutive cities must have direct flights.
+
+          11. For group3:
+                - First city must have direct flight from Santorini.
+                - Last city must have direct flight to Valencia.
+                - Within group3, consecutive cities must have direct flights.
+
+          12. For group4:
+                - First city must have direct flight from Valencia.
+                - Within group4, consecutive cities must have direct flights.
+
+          13. If all checks pass, then we have a valid order.
+
+          14. Then, we can assign the day ranges for each city.
+
+        How to assign day ranges for the itinerary?
+
+          We know the fixed cities have fixed day ranges.
+
+          For the non-fixed cities in group1, they will be placed in gap1 (days1-3) and the travel into Munich on day4 will give the last city an extra day.
+
+          So for group1, we need to assign the days in gap1 to the cities. We will have to decide how many days to spend in each city in group1.
+
+          Since the condition on the sum is satisfied, we can assign the days in the gaps to the cities in each group in proportion to their required days, but note that the travel days within the group will use some days.
+
+          However, for outputting the itinerary, we can simply list the day ranges for each city based on the order and the fixed days.
+
+          Example for group1 with two cities A and B:
+
+            Suppose group1: [A, B] and then Munich.
+
+            We know that city A will have a certain number of days in gap1, and city B will have the remaining days in gap1 plus day4.
+
+            But note: we fly from A to B on some day in gap1, and from B to Munich on day4.
+
+            So the day range for city A might be: day1 to dayX, and city B: dayX to day4.
+
+            where dayX is between day1 and day3.
+
+            Similarly for other groups.
+
+          So to output the day ranges, we need to compute the exact days for each city based on the order and the required days.
+
+          We can do this by:
+
+            Let current_day = 1.
+
+            For each city in the order:
+
+               if it is a non-fixed city in group1, then we assign it a number of days equal to its required days, but note that the last city in group1 will have one day from day4.
+
+               However, to avoid double-counting the travel days, we can:
+
+                 For non-fixed city that is not the last in its group, the number of days in the gap is (required days) because the travel day is within the gap and is already accounted in the required days.
+
+                 wait, no: because the travel day is double-counted, so the number of calendar days spent in the city is actually required days - 1 if it is not the last city in the group and has a travel day after it? Not exactly.
+
+          Given the complexity, and since the problem does not require the exact day-by-day itinerary but only the day ranges, we can output the day ranges based on the order and the fixed days without specifying the exact calendar days for each city within the group.
+
+          For example, for group1, we can output:
+
+            city A: day1-dayX
+            city B: dayX-day4
+
+          where X is chosen such that city A has required days - 1 ( because it will have a travel day on dayX) and city B has required days - 1 ( because it will have a travel day on day4) plus one day from day4? This is messy.
+
+          Alternatively, we can output the day ranges for each city based on the order and the required days, and assume that the travel days are at the end of each city's stay.
+
+          Example itinerary for group1 and Munich:
+
+            city A: day1 to day (1 + required_days_A - 1) = day1 to day required_days_A
+            city B: day required_days_A to day required_days_A + required_days_B - 1)
+            Munich: day4 to day6
+
+          But then we see that city B ends on day required_days_A + required_days_B - 1, which might be day4 if required_days_A=3 and required_days_B=2? Then city B ends on day4, and Munich starts on day4.
+
+          This matches because we fly on day4.
+
+          So we can use the following method to assign day ranges:
+
+            Let current_day = 1.
+            For each city in the order:
+               if the city is non-fixed, then
+                 start_day = current_day
+                 end_day = current_day + required_days[city] - 1
+                 current_day = end_day + 1   [ because the next city starts on the next day? But note: travel days are on the day of flight, so the next city starts on the same day if we fly on that day? wait no]
+
+            However, note that when we fly on day X, we are in two cities on day X. So the next city should start on day X, not day X+1.
+
+            Therefore, for non-fixed cities, the next city should start on the same day as the current city ends if there is a travel day.
+
+            But in our assignment, we want to output the day range for each city, and the day range should include the travel day at the end.
+
+            For example, if city A has required_days=3, then it will have day1,2,3. But then we fly on day3 to city B, so city B starts on day3.
+
+            So for city A, the day range is day1-3, and for city B, the day range is day3-5 if city B has required_days=3.
+
+            So the code for assigning day ranges would be:
+
+              current_day = 1
+              itinerary = []
+              for each city in the order:
+                 start_day = current_day
+                 end_day = current_day + required_days[city] - 1
+                 itinerary.append({"day_range": f"Day {start_day}-{end_day}", "place": city})
+                 current_day = end_day   # because the next city starts on the same day if there is a travel day
+
+            But note: for the fixed cities, their days are fixed, so we must ensure that the fixed city's day range matches the fixed days.
+
+            For example, Munich should have day4-6. So when we reach Munich in the order, current_day should be 4.
+
+            Similarly, Santorini should have day8-10, so current_day should be 8 when we reach Santorini.
+
+            Valencia should have day14-15, so current_day should be 14.
+
+            So we must align the current_day with the fixed days when we reach the fixed cities.
+
+            How to do that? We know the order includes the fixed cities at specific positions.
+
+            We can simulate the order and when we reach a fixed city, we set current_day to the start day of that fixed city.
+
+            But then the days before the fixed city must fit into the gaps.
+
+            Alternatively, we can use the group conditions to ensure that the number of days before Munich is 3, so current_day should be 4 when we reach Munich.
+
+            Similarly, after Munich, we have group2 which has n2 cities and then Santorini. The number of days used by group2 should be the number of travel days within group2 and the gap2 days, but note that the first city in group2 gets day6 from Munich, so group2 should start on day6.
+
+            However, according to the day assignment method above, if we have group1 and then Munich, then after group1, current_day would be the end day of the last city in group1, which should be day3 if group1 has used3 days in gap1 and then they have day4 for the travel to Munich? wait.
+
+            Let's try with group1 having one city with required days=4.
+
+            According to our method for group1:
+              city A: start_day=1, end_day=1+4-1=4.
+            Then current_day becomes 4.
+            Then Munich: start_day=4, end_day=4+3-1=6.
+            Then current_day becomes 6.
+
+            This matches because Munich should start on day4.
+
+            Then group2: if group2 has one city with required days = n2+2 = 1+2=3.
+            city B: start_day=6, end_day=6+3-1=8.
+            Then current_day becomes 8.
+            Then Santorini: start_day=8, end_day=8+3-1=10.
+            Then current_day becomes 10.
+
+            Then group3: if group3 has one city with required days = n3+4 = 1+4=5.
+            city C: start_day=10, end_day=10+5-1=14.
+            Then current_day becomes 14.
+            Then Valencia: start_day=14, end_day=14+2-1=15.
+            Then current_day becomes 15.
+
+            Then group4: if group4 has one city with required days = n4+9 = 1+9=10.
+            city D: start_day=15, end_day=15+10-1=24.
+
+            So the day ranges are assigned correctly.
+
+            Therefore, we can use this method to assign day ranges for the itinerary.
+
+            Note: This method assumes that on the travel day, the next city starts on the same day as the current city ends.
+
+            So in code, after we have found a valid order, we can assign the day ranges as follows:
+
+              current_day = 1
+              itinerary = []
+              for city in order:
+                 if city in fixed_cities:
+                    # use the fixed days
+                    start_day = fixed_days[city][0]
+                    end_day = fixed_days[city][-1]
+                    # make sure current_day is not greater than start_day
+                    if current_day > start_day:
+                       # error, but should not happen if the groups are assigned correctly
+                       break
+                    current_day = end_day + 1   # because the next city starts after the fixed city's end day? wait no, because we fly on the end day.
+                    # But note: for fixed city, we might fly on the end day, so the next city should start on the end day.
+                    # However, in our method, we want the next city to start on the end day of the fixed city.
+                    # So we set current_day = end_day
+                    itinerary.append({"day_range": f"Day {start_day}-{end_day}", "place": city})
+                    current_day = end_day   # because the next city starts on the same day if there is a travel day
+                 else:
+                    start_day = current_day
+                    end_day = current_day + required_days[city] - 1
+                    itinerary.append({"day_range": f"Day {start_day}-{end_day}", "place": city})
+                    current_day = end_day
+
+            But note: for the fixed city, we may have to set current_day to the end_day because the next city starts on that day.
+
+            However, in the example above, for Munich, we have current_day=4 after group1, then we assign Munich from day4 to day6, and then set current_day to day6.
+
+            Then for group2, the next city starts on day6.
+
+            This matches.
+
+            So the code for the fixed city should be:
+
+                itinerary.append({"day_range": f"Day {start_day}-{end_day}", "place": city})
+                current_day = end_day   # because the next city starts on the end day
+
+            But note: if there is no next city, then we don't need to set current_day to end_day.
+
+            However, the fixed city might be the last city, but in our case, Valencia is not the last city if group4 is non-empty.
+
+            Let's code accordingly.
+
+  15. Output the itinerary as JSON.
+
+ Let's code accordingly.
+
+ Note: We assume that the required_days for non-fixed cities include the travel day that might be at the end of the stay? In our method, we are using the required_days directly to compute the end_day.
+
+ But note: the required_days for non-fixed cities already account for the travel days because they are the total days wanted in the city, which includes the travel day if the city is left on the last day.
+
+ So the code should work.
+
+ Implementation:
+
+   We will use a dictionary for required_days for non-fixed cities.
+
+   We will use a list for the fixed cities order: ['Munich', 'Santorini', 'Valencia'].
+
+   We will use a set of edges for the direct flights.
+
+   We will use a list of non-fixed cities.
+
+   Steps:
+
+    1. Define the graph.
+
+    2. Define required_days_non_fixed = {...}
+
+    3. Define fixed_cities = ['Munich', 'Santorini', 'Valencia'] and fixed_days = {'Munich': (4,6), 'Santorini': (8,10), 'Valencia': (14,15)}
+
+    4. non_fixed_cities = list of non-fixed cities.
+
+    5. Iterate over n1, n2, n3, n4.
+
+    6. For each split, iterate over all combinations and permutations.
+
+    7. Check the sum conditions.
+
+    8. Check the direct flights within groups and between fixed cities.
+
+    9. If found, then form the order.
+
+    10. Then, assign the day ranges.
+
+    11. Output the itinerary.
+
+   Let's code accordingly.
+
+   Note: We must ensure that the city names in the itinerary match the given names.
+
+   We will use the full city names as given.
+
+   Let's write the code.
+
+   Note: The graph should include the full city names.
+
+   We will use the following graph edges:
+
+     graph = {
+        ('Bucharest', 'Manchester'),
+        ('Munich', 'Venice'),
+        ('Santorini', 'Manchester'),
+        ('Vienna', 'Reykjavik'),
+        ('Venice', 'Santorini'),
+        ('Munich', 'Porto'),
+        ('Valencia', 'Vienna'),
+        ('Manchester', 'Vienna'),
+        ('Porto', 'Vienna'),
+        ('Venice', 'Manchester'),
+        ('Santorini', 'Vienna'),
+        ('Munich', 'Manchester'),
+        ('Munich', 'Reykjavik'),
+        ('Bucharest', 'Valencia'),
+        ('Venice', 'Vienna'),
+        ('Bucharest', 'Vienna'),
+        ('Porto', 'Manchester'),
+        ('Munich', 'Vienna'),
+        ('Valencia', 'Porto'),
+        ('Munich', 'Bucharest'),
+        ('Tallinn', 'Munich'),
+        ('Santorini', 'Bucharest'),
+        ('Munich', 'Valencia')
+    }
+
+   Note: The graph is undirected, so we will consider both orders.
+
+   We will create a function to check if two cities are connected.
+
+   Let's code.

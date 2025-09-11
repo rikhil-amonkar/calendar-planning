@@ -1,0 +1,42 @@
+We are given the task to schedule a meeting on Monday between 9:00 and 17:00 for 30 minutes.
+ Participants: Eric, Ashley, Ronald, Larry.
+
+ We note that the meeting must be scheduled in the interval [9:00, 17:00) (i.e., from 9:00 to 16:30 if we consider the meeting duration of 30 minutes).
+
+ We are given the busy intervals for each participant (except Eric who is free all day).
+
+ We'll represent time in minutes from 9:00 (i.e., 9:00 = 0, 10:00 = 60, etc.) and the total available time is 8 hours (480 minutes).
+
+ Steps:
+ 1. Define the start time variable (an integer between 0 and 480 - 30 = 450, because the meeting must end by 17:00).
+ 2. For each participant, we define the constraints that the meeting does not overlap with any of their busy intervals.
+
+ Busy intervals (converted to minutes from 9:00):
+   Ashley:
+      10:00-10:30 -> (60, 90)
+      11:00-12:00 -> (120, 180)
+      12:30-13:00 -> (210, 240)
+      15:00-16:00 -> (360, 420)
+
+   Ronald:
+      9:00-9:30   -> (0, 30)
+      10:00-11:30 -> (60, 150)
+      12:30-14:00 -> (210, 300)
+      14:30-17:00 -> (270, 480)  [Note: 14:30 is 330 minutes from 9:00? Let's recalculate: 
+          9:00 to 14:30 is 5 hours and 30 minutes = 330 minutes, and 17:00 is 8 hours = 480 minutes]
+      Correction: 
+        14:30 is 5.5 hours after 9:00 -> 5.5*60 = 330 minutes, and 17:00 is 8 hours after 9:00 -> 8*60=480 minutes.
+        So Ronald's last meeting is from 330 to 480.
+
+   Larry:
+      9:00-12:00  -> (0, 180)
+      13:00-17:00 -> (240, 480)
+
+ 3. We define the constraints for the meeting start time (s) and end time (s+30) such that for each busy interval (b_start, b_end):
+        (s + 30 <= b_start) OR (s >= b_end)
+
+ 4. We are to find one feasible start time.
+
+ Since Eric has no meetings, we don't need to add any constraints for Eric.
+
+ Let's code accordingly.

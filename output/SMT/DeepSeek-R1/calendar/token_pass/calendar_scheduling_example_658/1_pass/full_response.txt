@@ -1,0 +1,72 @@
+```python
+from z3 import *
+
+def main():
+    # Initialize solver
+    s = Solver()
+    
+    # Define variables for day and time slot
+    day = Int('day')
+    slot = Int('slot')
+    
+    # Define day and slot constraints
+    s.add(Or(day == 0, day == 1))  # 0 = Monday, 1 = Tuesday
+    s.add(slot >= 0, slot <= 15)   # 16 slots from 9:00 to 17:00 (30-minute intervals)
+    
+    # Define free time functions for each participant
+    def free_monday_shirley(s):
+        return And(s >= 0, s <= 15, s != 3, s != 6, s != 14)
+    
+    def free_monday_albert(s):
+        return False  # Entire Monday busy
+    
+    def free_tuesday_shirley(s):
+        return And(s >= 0, s <= 15, s != 1)
+    
+    def free_tuesday_albert(s):
+        return And(s >= 0, s <= 15,
+                   s != 1, s != 2, s != 3,
+                   s != 5, s != 6,
+                   s != 8, s != 9, s != 10, s != 11, s != 12, s != 13, s != 14, s != 15)
+    
+    # Meeting constraint: must be free for both participants on the chosen day
+    meeting_constraint = Or(
+        And(day == 0, free_monday_shirley(slot), free_monday_albert(slot)),
+        And(day == 1, free_tuesday_shirley(slot), free_tuesday_albert(slot))
+    )
+    s.add(meeting_constraint)
+    
+    # Soft constraint: Shirley prefers not Tuesday after 10:30 (slots 3-15)
+    soft_constraint = Implies(day == 1, slot < 3)
+    
+    # Check with soft constraint first
+    s.push()
+    s.add(soft_constraint)
+    if s.check() == sat:
+        m = s.model()
+    else:
+        s.pop()
+        s.check()
+        m = s.model()
+    
+    # Get solution values
+    day_val = m[day].as_long()
+    slot_val = m[slot].as_long()
+    
+    # Convert slot to time
+    start_minutes = 9 * 60 + slot_val * 30
+    end_minutes = start_minutes + 30
+    start_time = f"{start_minutes // 60:02d}:{start_minutes % 60:02d}"
+    end_time = f"{end_minutes // 60:02d}:{end_minutes % 60:02d}"
+    time_str = f"{start_time}:{end_time}"
+    
+    # Convert day to string
+    days = ["Monday", "Tuesday"]
+    day_str = days[day_val]
+    
+    # Output result
+    print(f"{day_str} {time_str}")
+
+if __name__ == "__main__":
+    main()
+```

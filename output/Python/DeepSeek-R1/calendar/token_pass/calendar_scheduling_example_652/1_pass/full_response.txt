@@ -1,0 +1,75 @@
+```python
+def main():
+    # Define work hours and constraints
+    work_start = 9 * 60  # 9:00 in minutes
+    work_end = 17 * 60   # 17:00 in minutes
+    meeting_duration = 30  # minutes
+    # Lawrence cannot meet after 16:30 on Tuesday
+    lawrence_end_tue = 16 * 60 + 30  # 16:30 in minutes
+
+    # Jesse's busy intervals on Tuesday (in minutes from midnight, [start, end))
+    jesse_busy_tue = [
+        (9 * 60, 9 * 60 + 30),   # 9:00-9:30
+        (13 * 60, 13 * 60 + 30), # 13:00-13:30
+        (14 * 60, 15 * 60)       # 14:00-15:00
+    ]
+    # Lawrence's busy intervals on Tuesday ([start, end))
+    lawrence_busy_tue = [
+        (9 * 60 + 30, 10 * 60 + 30), # 9:30-10:30
+        (11 * 60 + 30, 12 * 60 + 30), # 11:30-12:30
+        (13 * 60, 13 * 60 + 30),     # 13:00-13:30
+        (14 * 60 + 30, 15 * 60),     # 14:30-15:00
+        (15 * 60 + 30, 16 * 60 + 30) # 15:30-16:30
+    ]
+    # Lawrence cannot meet after 16:30, so effective end time is 16:30
+    effective_end = min(work_end, lawrence_end_tue)
+
+    # Find free intervals for Jesse on Tuesday up to effective_end
+    jesse_free = []
+    current = work_start
+    for start, end in sorted(jesse_busy_tue):
+        if current < start:
+            jesse_free.append((current, start))
+        current = end
+    if current < effective_end:
+        jesse_free.append((current, effective_end))
+    # But note: Jesse might be free after last busy, but we cap at effective_end
+
+    # Find free intervals for Lawrence on Tuesday up to effective_end
+    lawrence_free = []
+    current = work_start
+    for start, end in sorted(lawrence_busy_tue):
+        if current < start:
+            lawrence_free.append((current, start))
+        current = end
+    if current < effective_end:
+        lawrence_free.append((current, effective_end))
+
+    # Find overlapping free intervals
+    common_free = []
+    for j_start, j_end in jesse_free:
+        for l_start, l_end in lawrence_free:
+            start = max(j_start, l_start)
+            end = min(j_end, l_end)
+            if start < end:
+                common_free.append((start, end))
+
+    # Find a time slot of meeting_duration in common_free
+    for start, end in common_free:
+        if end - start >= meeting_duration:
+            # Found a slot, choose the earliest start time
+            meeting_start = start
+            meeting_end = meeting_start + meeting_duration
+            # Convert to time strings
+            start_str = f"{meeting_start // 60:02d}:{meeting_start % 60:02d}"
+            end_str = f"{meeting_end // 60:02d}:{meeting_end % 60:02d}"
+            print("Tuesday")
+            print(f"{start_str}:{end_str}")
+            return
+
+    # If no slot found, but problem says there is a solution, so this should not happen
+    print("No suitable time found")
+
+if __name__ == "__main__":
+    main()
+```

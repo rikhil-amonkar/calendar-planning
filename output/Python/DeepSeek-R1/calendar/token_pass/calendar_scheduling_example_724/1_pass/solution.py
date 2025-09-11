@@ -1,0 +1,88 @@
+def time_to_minutes(time_str):
+    hours, minutes = map(int, time_str.split(':'))
+    return hours * 60 + minutes
+
+def minutes_to_time(minutes):
+    hours = minutes // 60
+    mins = minutes % 60
+    return f"{hours:02d}:{mins:02d}"
+
+def get_free_intervals(busy_intervals, day_start, day_end):
+    free_intervals = []
+    current_start = day_start
+    for start, end in sorted(busy_intervals):
+        if current_start < start:
+            free_intervals.append((current_start, start))
+        current_start = max(current_start, end)
+    if current_start < day_end:
+        free_intervals.append((current_start, day_end))
+    return free_intervals
+
+def find_meeting_time(tyler_busy, ruth_busy, meeting_duration, days, work_start, work_end):
+    day_start = time_to_minutes(work_start)
+    day_end = time_to_minutes(work_end)
+    meeting_duration_minutes = meeting_duration
+    
+    for day in days:
+        tyler_day_busy = tyler_busy.get(day, [])
+        ruth_day_busy = ruth_busy.get(day, [])
+        
+        tyler_free = get_free_intervals(tyler_day_busy, day_start, day_end)
+        ruth_free = get_free_intervals(ruth_day_busy, day_start, day_end)
+        
+        if day == 'Monday':
+            tyler_free = [(start, end) for start, end in tyler_free if start >= time_to_minutes('16:00')]
+        
+        for t_start, t_end in tyler_free:
+            for r_start, r_end in ruth_free:
+                overlap_start = max(t_start, r_start)
+                overlap_end = min(t_end, r_end)
+                if overlap_end - overlap_start >= meeting_duration_minutes:
+                    meeting_end = overlap_start + meeting_duration_minutes
+                    return day, minutes_to_time(overlap_start), minutes_to_time(meeting_end)
+    
+    return None, None, None
+
+def main():
+    work_start = '9:00'
+    work_end = '17:00'
+    meeting_duration = 30
+    days = ['Monday', 'Tuesday', 'Wednesday']
+    
+    tyler_busy = {
+        'Tuesday': [
+            (time_to_minutes('9:00'), time_to_minutes('9:30')),
+            (time_to_minutes('14:30'), time_to_minutes('15:00'))
+        ],
+        'Wednesday': [
+            (time_to_minutes('10:30'), time_to_minutes('11:00')),
+            (time_to_minutes('12:30'), time_to_minutes('13:00')),
+            (time_to_minutes('13:30'), time_to_minutes('14:00')),
+            (time_to_minutes('16:30'), time_to_minutes('17:00'))
+        ]
+    }
+    
+    ruth_busy = {
+        'Monday': [
+            (time_to_minutes('9:00'), time_to_minutes('10:00')),
+            (time_to_minutes('10:30'), time_to_minutes('12:00')),
+            (time_to_minutes('12:30'), time_to_minutes('14:30')),
+            (time_to_minutes('15:00'), time_to_minutes('16:00')),
+            (time_to_minutes('16:30'), time_to_minutes('17:00'))
+        ],
+        'Tuesday': [
+            (time_to_minutes('9:00'), time_to_minutes('17:00'))
+        ],
+        'Wednesday': [
+            (time_to_minutes('9:00'), time_to_minutes('17:00'))
+        ]
+    }
+    
+    day, start_time, end_time = find_meeting_time(tyler_busy, ruth_busy, meeting_duration, days, work_start, work_end)
+    if day and start_time and end_time:
+        print(f"{day} {start_time}:{end_time}")
+    else:
+        print("No suitable time found.")
+
+if __name__ == '__main__':
+    main()

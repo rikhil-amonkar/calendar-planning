@@ -1,0 +1,54 @@
+from z3 import Int, Solver, Or, And
+
+def main():
+    # Initialize solver
+    s = Solver()
+    
+    # Meeting duration in minutes
+    duration = 30
+    
+    # Work hours: 9:00 to 17:00 (540 minutes from midnight, but we use relative minutes from 9:00)
+    # Convert time to minutes since 9:00 (so 9:00 = 0, 17:00 = 480)
+    max_time = 480  # 17:00 - 9:00 = 8 hours = 480 minutes
+    m = Int('m')   # Meeting start time in minutes from 9:00
+    s.add(m >= 0, m <= max_time - duration)  # Meeting must end by 17:00
+
+    # Define busy intervals for each participant in minutes from 9:00
+    # Walter: no meetings -> no constraints
+    # Cynthia's busy intervals
+    cynthia_busy = [(0, 30), (60, 90), (210, 270), (360, 420)]
+    # Ann's busy intervals
+    ann_busy = [(60, 120), (240, 270), (300, 360), (420, 450)]
+    # Catherine's busy intervals
+    catherine_busy = [(0, 150), (210, 270), (330, 480)]
+    # Kyle's busy intervals
+    kyle_busy = [(0, 30), (60, 150), (180, 210), (240, 330), (360, 420)]
+
+    # Function to add constraints for a set of busy intervals
+    def add_busy_constraints(busy_intervals):
+        for start, end in busy_intervals:
+            s.add(Or(m >= end, m + duration <= start))
+
+    # Add constraints for each participant
+    add_busy_constraints(cynthia_busy)
+    add_busy_constraints(ann_busy)
+    add_busy_constraints(catherine_busy)
+    add_busy_constraints(kyle_busy)
+
+    # Check for a solution
+    if s.check() == sat:
+        model = s.model()
+        start_minutes = model[m].as_long()
+        # Convert start minutes to time string
+        start_hour = 9 + start_minutes // 60
+        start_minute = start_minutes % 60
+        end_minutes = start_minutes + duration
+        end_hour = 9 + end_minutes // 60
+        end_minute = end_minutes % 60
+        # Format output
+        print(f"{start_hour:02d}:{start_minute:02d}-{end_hour:02d}:{end_minute:02d}")
+    else:
+        print("No solution found")
+
+if __name__ == "__main__":
+    main()

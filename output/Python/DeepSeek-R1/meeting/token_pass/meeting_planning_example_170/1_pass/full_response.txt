@@ -1,0 +1,112 @@
+```python
+import json
+
+def time_to_minutes(time_str):
+    parts = time_str.split(':')
+    return int(parts[0]) * 60 + int(parts[1])
+
+def minutes_to_time(minutes):
+    hours = minutes // 60
+    mins = minutes % 60
+    return f"{hours}:{mins:02d}"
+
+def main():
+    # Travel times in minutes (from -> to)
+    travel_times = {
+        "North Beach": {
+            "Union Square": 7,
+            "Russian Hill": 4
+        },
+        "Union Square": {
+            "North Beach": 10,
+            "Russian Hill": 13
+        },
+        "Russian Hill": {
+            "North Beach": 5,
+            "Union Square": 11
+        }
+    }
+    
+    # Initial conditions
+    current_location = "North Beach"
+    current_time = time_to_minutes("9:00")
+    
+    # Friend constraints
+    emily_location = "Union Square"
+    emily_window_start = time_to_minutes("16:00")
+    emily_window_end = time_to_minutes("17:15")
+    emily_min_duration = 45
+    
+    margaret_location = "Russian Hill"
+    margaret_window_start = time_to_minutes("19:00")
+    margaret_window_end = time_to_minutes("21:00")
+    margaret_min_duration = 120
+    
+    # Calculate meeting with Emily
+    travel_to_emily = travel_times[current_location][emily_location]
+    arrival_emily = max(emily_window_start, current_time + travel_to_emily)
+    
+    # Determine meeting end time with Emily
+    meeting_end_emily = min(emily_window_end, arrival_emily + emily_min_duration)
+    if meeting_end_emily - arrival_emily < emily_min_duration:
+        meeting_end_emily = emily_window_end
+        meeting_start_emily = meeting_end_emily - emily_min_duration
+        if meeting_start_emily < emily_window_start:
+            meeting_start_emily = emily_window_start
+    else:
+        meeting_start_emily = arrival_emily
+    
+    # Update current time and location after meeting Emily
+    current_time = meeting_end_emily
+    current_location = emily_location
+    
+    # Calculate meeting with Margaret
+    travel_to_margaret = travel_times[current_location][margaret_location]
+    arrival_margaret = current_time + travel_to_margaret
+    
+    # Adjust arrival time if needed
+    if arrival_margaret < margaret_window_start:
+        arrival_margaret = margaret_window_start
+    elif arrival_margaret > margaret_window_end:
+        arrival_margaret = None
+    
+    if arrival_margaret is not None:
+        meeting_end_margaret = min(margaret_window_end, arrival_margaret + margaret_min_duration)
+        if meeting_end_margaret - arrival_margaret < margaret_min_duration:
+            meeting_end_margaret = margaret_window_end
+            meeting_start_margaret = meeting_end_margaret - margaret_min_duration
+        else:
+            meeting_start_margaret = arrival_margaret
+    else:
+        meeting_start_margaret = None
+    
+    # Build itinerary
+    itinerary = []
+    
+    # Add Emily meeting if valid
+    if meeting_start_emily <= emily_window_end and meeting_end_emily - meeting_start_emily >= emily_min_duration:
+        itinerary.append({
+            "action": "meet",
+            "location": emily_location,
+            "person": "Emily",
+            "start_time": minutes_to_time(meeting_start_emily),
+            "end_time": minutes_to_time(meeting_end_emily)
+        })
+    
+    # Add Margaret meeting if valid
+    if meeting_start_margaret is not None and meeting_start_margaret <= margaret_window_end:
+        itinerary.append({
+            "action": "meet",
+            "location": margaret_location,
+            "person": "Margaret",
+            "start_time": minutes_to_time(meeting_start_margaret),
+            "end_time": minutes_to_time(meeting_end_margaret)
+        })
+    
+    # Output as JSON
+    result = {"itinerary": itinerary}
+    print(json.dumps(result, indent=2))
+
+if __name__ == "__main__":
+    main()
+```

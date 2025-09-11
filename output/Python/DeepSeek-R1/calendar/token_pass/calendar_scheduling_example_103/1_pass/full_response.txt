@@ -1,0 +1,72 @@
+To solve this problem, we need to find a suitable 30-minute time slot within the work hours of 9:00 to 17:00 on Monday where all participants (Diane, Jack, Eugene, and Patricia) are available. The solution involves checking each possible 30-minute interval within the work hours against everyone's blocked times to find the first available slot.
+
+### Approach
+1. **Convert Time Strings to Minutes**: Convert each time string (e.g., "9:30") into minutes past 9:00 AM for easier calculation and comparison.
+2. **Initialize Availability Array**: Create an array representing each minute from 9:00 AM to 5:00 PM (480 minutes) marked as initially available.
+3. **Mark Blocked Times**: For each participant's blocked intervals, convert the start and end times to minutes and mark these minutes as unavailable in the availability array.
+4. **Find Available Slot**: Iterate through the availability array to find the first contiguous block of 30 minutes where all minutes are available. Convert the start and end minutes back to time strings for output.
+
+### Solution Code
+```python
+def time_str_to_minutes(time_str):
+    hours, minutes = map(int, time_str.split(':'))
+    return (hours - 9) * 60 + minutes
+
+def minutes_to_time_str(minutes):
+    total_minutes = minutes
+    hours = 9 + total_minutes // 60
+    mins = total_minutes % 60
+    return f"{hours:02d}:{mins:02d}"
+
+def main():
+    work_start = time_str_to_minutes("9:00")
+    work_end = time_str_to_minutes("17:00")
+    total_minutes = work_end - work_start
+    available = [True] * total_minutes
+
+    blocked_intervals = [
+        # Diane's blocked intervals
+        [("9:30", "10:00"), ("14:30", "15:00")],
+        # Jack's blocked intervals
+        [("13:30", "14:00"), ("14:30", "15:00")],
+        # Eugene's blocked intervals
+        [("9:00", "10:00"), ("10:30", "11:30"), ("12:00", "14:30"), ("15:00", "16:30")],
+        # Patricia's blocked intervals
+        [("9:30", "10:30"), ("11:00", "12:00"), ("12:30", "14:00"), ("15:00", "16:30")]
+    ]
+
+    for person_blocks in blocked_intervals:
+        for start_str, end_str in person_blocks:
+            start_min = time_str_to_minutes(start_str)
+            end_min = time_str_to_minutes(end_str)
+            for minute in range(start_min, end_min):
+                if minute < total_minutes:
+                    available[minute] = False
+
+    meeting_duration = 30
+    found_slot = False
+    start_minute = 0
+    for start in range(total_minutes - meeting_duration + 1):
+        if all(available[start + i] for i in range(meeting_duration)):
+            start_minute = start
+            found_slot = True
+            break
+
+    if found_slot:
+        start_time = minutes_to_time_str(start_minute)
+        end_time = minutes_to_time_str(start_minute + meeting_duration)
+        print(f"Monday {start_time}:{end_time}")
+    else:
+        print("No suitable time slot found.")
+
+if __name__ == "__main__":
+    main()
+```
+
+### Explanation
+1. **Time Conversion Functions**: `time_str_to_minutes` converts a time string to minutes past 9:00 AM, and `minutes_to_time_str` converts minutes back to a time string in HH:MM format.
+2. **Initialization**: The `available` array is initialized to `True` for all minutes between 9:00 AM and 5:00 PM.
+3. **Processing Blocked Intervals**: For each participant's blocked intervals, the corresponding minutes in the `available` array are marked as `False`.
+4. **Finding Available Slot**: The code checks for the first contiguous block of 30 minutes where all minutes are available. If found, it converts the start and end minutes to time strings and prints the result. If no slot is found, it outputs a message indicating no suitable time slot was found.
+
+This approach efficiently checks all possible time slots within the given constraints, ensuring the first available slot is found and presented in the required format.

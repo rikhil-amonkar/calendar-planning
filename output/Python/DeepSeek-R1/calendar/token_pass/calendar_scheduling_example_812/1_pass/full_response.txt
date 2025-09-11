@@ -1,0 +1,77 @@
+```python
+def main():
+    work_start = 9 * 60  # 9:00 in minutes
+    work_end = 17 * 60   # 17:00 in minutes
+    meeting_duration = 30
+    days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday']
+    
+    mary_busy = {
+        'Tuesday': [[10*60, 10*60+30], [15*60+30, 16*60]],
+        'Wednesday': [[9*60+30, 10*60], [15*60, 15*60+30]],
+        'Thursday': [[9*60, 10*60], [10*60+30, 11*60+30]]
+    }
+    
+    alexis_busy = {
+        'Monday': [[9*60, 10*60], [10*60+30, 12*60], [12*60+30, 16*60+30]],
+        'Tuesday': [[9*60, 10*60], [10*60+30, 11*60+30], [12*60, 15*60+30], [16*60, 17*60]],
+        'Wednesday': [[9*60, 11*60], [11*60+30, 17*60]],
+        'Thursday': [[10*60, 12*60], [14*60, 14*60+30], [15*60+30, 16*60], [16*60+30, 17*60]]
+    }
+    
+    def compute_free_intervals(work_start, work_end, busy_intervals):
+        clamped_busy = []
+        for interval in busy_intervals:
+            start = max(interval[0], work_start)
+            end = min(interval[1], work_end)
+            if start < end:
+                clamped_busy.append([start, end])
+        clamped_busy.sort(key=lambda x: x[0])
+        free_intervals = []
+        current = work_start
+        for busy in clamped_busy:
+            if busy[0] > current:
+                free_intervals.append([current, busy[0]])
+            current = max(current, busy[1])
+        if current < work_end:
+            free_intervals.append([current, work_end])
+        return free_intervals
+
+    def intersect_intervals(intervals1, intervals2):
+        i = j = 0
+        common = []
+        while i < len(intervals1) and j < len(intervals2):
+            low = max(intervals1[i][0], intervals2[j][0])
+            high = min(intervals1[i][1], intervals2[j][1])
+            if low < high:
+                common.append([low, high])
+            if intervals1[i][1] < intervals2[j][1]:
+                i += 1
+            else:
+                j += 1
+        return common
+
+    for day in days:
+        mary_busy_today = mary_busy.get(day, [])
+        alexis_busy_today = alexis_busy.get(day, [])
+        
+        mary_free = compute_free_intervals(work_start, work_end, mary_busy_today)
+        alexis_free = compute_free_intervals(work_start, work_end, alexis_busy_today)
+        
+        common_free = intersect_intervals(mary_free, alexis_free)
+        
+        for interval in common_free:
+            start, end = interval
+            if end - start >= meeting_duration:
+                meeting_start = start
+                meeting_end = meeting_start + meeting_duration
+                start_hr = meeting_start // 60
+                start_min = meeting_start % 60
+                end_hr = meeting_end // 60
+                end_min = meeting_end % 60
+                print(day)
+                print(f"{start_hr:02d}:{start_min:02d}:{end_hr:02d}:{end_min:02d}")
+                return
+
+if __name__ == "__main__":
+    main()
+```

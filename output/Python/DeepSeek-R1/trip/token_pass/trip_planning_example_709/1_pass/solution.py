@@ -1,0 +1,88 @@
+import itertools
+import json
+
+def main():
+    # Define the graph of direct flights (undirected)
+    graph = {
+        'Helsinki': ['Prague', 'Reykjavik', 'Dubrovnik'],
+        'Valencia': ['Prague', 'Porto'],
+        'Dubrovnik': ['Helsinki'],
+        'Porto': ['Valencia'],
+        'Prague': ['Helsinki', 'Valencia', 'Reykjavik'],
+        'Reykjavik': ['Helsinki', 'Prague']
+    }
+    
+    # Define the required durations for each city
+    durations = {
+        'Helsinki': 4,
+        'Valencia': 5,
+        'Dubrovnik': 4,
+        'Porto': 3,
+        'Prague': 3,
+        'Reykjavik': 4
+    }
+    
+    cities = list(durations.keys())
+    found_itinerary = None
+    
+    # Generate all permutations of the cities
+    for perm in itertools.permutations(cities):
+        valid_sequence = True
+        # Check direct flight constraints between consecutive cities
+        for i in range(len(perm) - 1):
+            if perm[i+1] not in graph[perm[i]]:
+                valid_sequence = False
+                break
+                
+        if not valid_sequence:
+            continue
+            
+        # Calculate day ranges for the itinerary
+        current_day = 1
+        itinerary_ranges = []
+        for city in perm:
+            d = durations[city]
+            end_day = current_day + d - 1
+            itinerary_ranges.append((city, current_day, end_day))
+            current_day = end_day
+            
+        # Check if total days is 18
+        if itinerary_ranges[-1][2] != 18:
+            continue
+            
+        # Check Porto constraint: must be present on day 16, 17, or 18
+        porto_stay = None
+        for stay in itinerary_ranges:
+            if stay[0] == 'Porto':
+                porto_stay = stay
+                break
+        if porto_stay is None:
+            continue
+            
+        start_p, end_p = porto_stay[1], porto_stay[2]
+        if not (start_p <= 18 and end_p >= 16):
+            continue
+            
+        # Found valid itinerary
+        found_itinerary = itinerary_ranges
+        break
+        
+    if found_itinerary is None:
+        # Fallback: output an empty itinerary if none found (should not happen)
+        output_json = {"itinerary": []}
+    else:
+        # Format the itinerary as required
+        itinerary_list = []
+        for stay in found_itinerary:
+            city, start, end = stay
+            if start == end:
+                day_range_str = f"Day {start}"
+            else:
+                day_range_str = f"Day {start}-{end}"
+            itinerary_list.append({"day_range": day_range_str, "place": city})
+        output_json = {"itinerary": itinerary_list}
+        
+    print(json.dumps(output_json, indent=2))
+
+if __name__ == "__main__":
+    main()

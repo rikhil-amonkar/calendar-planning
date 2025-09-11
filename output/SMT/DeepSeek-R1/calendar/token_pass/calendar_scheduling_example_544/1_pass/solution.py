@@ -1,0 +1,55 @@
+from z3 import *
+
+def main():
+    # Initialize solver
+    s = Solver()
+    
+    # Define time in minutes from 9:00 (0) to 17:00 (480)
+    start_min = 0
+    end_max = 480  # 17:00 is 8 hours after 9:00 -> 480 minutes
+    duration = 30  # meeting duration in minutes
+    
+    # Meeting start time variable (in minutes from 9:00)
+    meeting_start = Int('meeting_start')
+    
+    # Constraints for meeting within work hours
+    s.add(meeting_start >= start_min)
+    s.add(meeting_start + duration <= end_max)
+    
+    # Albert's blocked times (in minutes from 9:00)
+    blocked_times = [
+        (0, 60),    # 9:00-10:00
+        (90, 180),  # 10:30-12:00
+        (360, 450)  # 15:00-16:30
+    ]
+    
+    # Add constraints for each blocked interval
+    for block_start, block_end in blocked_times:
+        s.add(Or(
+            meeting_start + duration <= block_start,
+            meeting_start >= block_end
+        ))
+    
+    # Albert cannot meet after 11:00 (11:00 = 120 minutes from 9:00)
+    s.add(meeting_start + duration <= 120)
+    
+    # Check if a solution exists
+    if s.check() == sat:
+        m = s.model()
+        start_minutes = m.eval(meeting_start).as_long()
+        
+        # Convert start minutes to time string
+        start_hour = 9 + start_minutes // 60
+        start_minute = start_minutes % 60
+        end_minutes = start_minutes + duration
+        end_hour = 9 + end_minutes // 60
+        end_minute = end_minutes % 60
+        
+        # Format time strings with leading zeros
+        time_str = f"{start_hour:02d}:{start_minute:02d}:{end_hour:02d}:{end_minute:02d}"
+        print(f"Monday {time_str}")
+    else:
+        print("No solution found")
+
+if __name__ == "__main__":
+    main()

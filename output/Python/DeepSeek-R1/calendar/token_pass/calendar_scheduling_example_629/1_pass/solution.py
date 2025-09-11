@@ -1,0 +1,60 @@
+def main():
+    # Work hours: 9:00 to 17:00 (in minutes from 9:00)
+    start_time = 0
+    end_time = 480  # 17:00 is 480 minutes from 9:00
+
+    # Margaret's constraints on Tuesday: 
+    # - Busy due to meeting: 12:00 to 12:30 (180 to 210 minutes from 9:00)
+    # - Doesn't want to meet before 14:30 (330 minutes from 9:00)
+    # So, effectively busy from 0 to 330 minutes
+    margaret_busy = [(0, 330)]
+    
+    # Alexis's busy intervals on Tuesday from schedule:
+    # 9:00-9:30 (0 to 30), 10:00-10:30 (60 to 90), 14:00-16:30 (300 to 450)
+    alexis_busy = [(0, 30), (60, 90), (300, 450)]
+    
+    # Find free intervals for Margaret within work hours
+    margaret_free = []
+    current = start_time
+    for busy_start, busy_end in margaret_busy:
+        if current < busy_start:
+            margaret_free.append((current, busy_start))
+        current = busy_end
+    if current < end_time:
+        margaret_free.append((current, end_time))
+    
+    # Find free intervals for Alexis within work hours
+    alexis_free = []
+    current = start_time
+    for busy_start, busy_end in alexis_busy:
+        if current < busy_start:
+            alexis_free.append((current, busy_start))
+        current = busy_end
+    if current < end_time:
+        alexis_free.append((current, end_time))
+    
+    # Find overlapping free time of at least 30 minutes
+    meeting_duration = 30
+    for m_start, m_end in margaret_free:
+        for a_start, a_end in alexis_free:
+            overlap_start = max(m_start, a_start)
+            overlap_end = min(m_end, a_end)
+            if overlap_start < overlap_end and overlap_end - overlap_start >= meeting_duration:
+                # Convert minutes to time string
+                start_str = minutes_to_time(overlap_start)
+                end_str = minutes_to_time(overlap_start + meeting_duration)
+                print(f"{start_str}:{end_str}")
+                print("Tuesday")
+                return
+    
+    print("No suitable time found")
+
+def minutes_to_time(minutes):
+    # Convert minutes from 9:00 to HH:MM string
+    total_minutes_from_midnight = 540 + minutes  # 9:00 is 540 minutes from midnight
+    hours = total_minutes_from_midnight // 60
+    minutes_remainder = total_minutes_from_midnight % 60
+    return f"{hours:02d}:{minutes_remainder:02d}"
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,91 @@
+```python
+import json
+
+def parse_time(time_str):
+    time_str = time_str.upper()
+    if "AM" in time_str or "PM" in time_str:
+        parts = time_str.split(':')
+        hour = int(parts[0])
+        minute = int(parts[1][:2])
+        if "PM" in time_str and hour != 12:
+            hour += 12
+        if "AM" in time_str and hour == 12:
+            hour = 0
+        return hour * 60 + minute
+    else:
+        parts = time_str.split(':')
+        return int(parts[0]) * 60 + int(parts[1])
+
+def format_time(minutes):
+    hours = minutes // 60
+    mins = minutes % 60
+    return f"{hours}:{mins:02d}"
+
+def main():
+    travel_times = {
+        'Embarcadero': {'Financial District': 5, 'Alamo Square': 19},
+        'Financial District': {'Embarcadero': 4, 'Alamo Square': 17},
+        'Alamo Square': {'Embarcadero': 17, 'Financial District': 17}
+    }
+    
+    ref_time = parse_time('9:00')
+    
+    stephanie = {
+        'name': 'Stephanie',
+        'location': 'Financial District',
+        'start': parse_time('8:15AM'),
+        'end': parse_time('11:30AM'),
+        'min_duration': 90
+    }
+    
+    john = {
+        'name': 'John',
+        'location': 'Alamo Square',
+        'start': parse_time('10:15AM'),
+        'end': parse_time('8:45PM'),
+        'min_duration': 30
+    }
+    
+    current_time = ref_time
+    current_location = 'Embarcadero'
+    itinerary = []
+    
+    # Try meeting Stephanie first
+    travel_step = travel_times[current_location][stephanie['location']]
+    arrive_step = current_time + travel_step
+    start_meet_step = max(arrive_step, stephanie['start'])
+    end_meet_step = start_meet_step + stephanie['min_duration']
+    if end_meet_step > stephanie['end']:
+        return
+    
+    # Then meet John
+    travel_john = travel_times[stephanie['location']][john['location']]
+    arrive_john = end_meet_step + travel_john
+    start_meet_john = max(arrive_john, john['start'])
+    end_meet_john = start_meet_john + john['min_duration']
+    if end_meet_john > john['end']:
+        return
+    
+    itinerary = [
+        {
+            'action': 'meet',
+            'location': stephanie['location'],
+            'person': stephanie['name'],
+            'start_time': format_time(start_meet_step),
+            'end_time': format_time(end_meet_step)
+        },
+        {
+            'action': 'meet',
+            'location': john['location'],
+            'person': john['name'],
+            'start_time': format_time(start_meet_john),
+            'end_time': format_time(end_meet_john)
+        }
+    ]
+    
+    result = {'itinerary': itinerary}
+    print(json.dumps(result, indent=2))
+
+if __name__ == '__main__':
+    main()
+```

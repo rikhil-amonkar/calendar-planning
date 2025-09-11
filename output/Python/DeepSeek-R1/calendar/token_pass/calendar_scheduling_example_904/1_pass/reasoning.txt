@@ -1,0 +1,772 @@
+First, I need to schedule a meeting for Daniel and Bradley for 30 minutes between 9:00 and 17:00 on Monday to Friday. I have their busy times and some preferences.
+
+Daniel's preferences: He would rather not meet on Wednesday or Thursday. But since the task says "there exists a solution that works with existing schedule," I should consider all days but prioritize based on preferences if possible. However, the solution must work, so I might have to ignore preferences if necessary, but from the task, it seems we can find a time that respects preferences.
+
+Bradley's preferences: Do not want to meet on Monday, Tuesday before 12:00, or Friday.
+
+So, ideally, we should avoid Monday, Tuesday before 12:00, Wednesday, Thursday, and Friday based on preferences. But that leaves only Tuesday after 12:00? Let's see.
+
+Days: Monday, Tuesday, Wednesday, Thursday, Friday.
+
+- Monday: Bradley doesn't want Monday at all.
+
+- Tuesday: Bradley doesn't want before 12:00, so after 12:00 might be okay, but Daniel would rather not Wednesday or Thursday, but Tuesday is not mentioned for Daniel, so Tuesday might be okay for Daniel.
+
+- Wednesday: Daniel would rather not, so avoid.
+
+- Thursday: Daniel would rather not, so avoid.
+
+- Friday: Bradley doesn't want Friday.
+
+So, the only day that might work from preferences is Tuesday after 12:00. But I need to check if there is a time slot on Tuesday after 12:00 where both are free.
+
+I should list all possible free times for both on each day and find a 30-minute slot that fits.
+
+Since the task says "there exists a solution," I need to find it.
+
+I'll write a Python script to handle this.
+
+Steps:
+
+1. Define the work hours: 9:00 to 17:00, which is from 9:00 to 17:00, so time from 9:00 to 17:00 inclusive? But 17:00 is the end, so meeting from 16:30 to 17:00 is okay, but 17:00 to 17:30 is not because work ends at 17:00. So meeting must start at or after 9:00 and end at or before 17:00. So start time from 9:00 to 16:30 for a 30-minute meeting.
+
+2. For each day, I have busy times for Daniel and Bradley.
+
+3. I need to combine their busy times to find free times.
+
+4. Then, find a free slot of 30 minutes that satisfies preferences if possible.
+
+But preferences are not hard constraints? The task says "would rather not" and "do not want", so they are preferences, but since there is a solution, we should try to respect them if possible. However, the solution must work, so if no time on preferred days, we might have to use other days.
+
+From the preferences, Tuesday after 12:00 seems the only preferred option. Let's see if that works.
+
+First, let's list busy times for Tuesday.
+
+Daniel on Tuesday: busy during 11:00 to 12:00, 13:00 to 13:30, 15:30 to 16:00, 16:30 to 17:00.
+
+So Daniel's free times on Tuesday: from 9:00 to 11:00, but 11:00 to 12:00 busy, so free from 12:00 to 13:00? No, 12:00 to 13:00: he is busy from 11:00 to 12:00, so after 12:00, he is free until 13:00? Let's see: busy 11:00-12:00, then 13:00-13:30, so from 12:00 to 13:00 he is free? But 12:00 is the end of busy, so from 12:00 to 13:00 he is free, but 13:00 to 13:30 busy, so free from 12:00 to 13:00 and from 13:30 to 15:30? Busy 15:30-16:00, so free from 13:30 to 15:30, then 16:00 to 16:30? Busy 16:30-17:00, so free from 16:00 to 16:30.
+
+But work hours start at 9:00, so from 9:00 to 11:00 free? But Bradley doesn't want Tuesday before 12:00, so we cannot meet before 12:00 on Tuesday. So for Tuesday, we only consider after 12:00.
+
+Daniel free after 12:00 on Tuesday:
+
+- 12:00 to 13:00 free (since busy 11-12, then 13-13:30)
+
+- 13:30 to 15:30 free (since busy 13:30-13:30? No, busy 13:00-13:30, so after 13:30, free until 15:30)
+
+- 15:30 to 16:00 busy
+
+- 16:00 to 16:30 free? But 16:00 to 16:30 is free, but 16:30 to 17:00 busy.
+
+So free slots: 12:00-13:00, 13:30-15:30, 16:00-16:30.
+
+But 16:00-16:30 is only 30 minutes, so that could work if Bradley is free.
+
+Now Bradley on Tuesday: busy during 10:30 to 11:00, 12:00 to 13:00, 13:30 to 14:00, 15:30 to 16:30.
+
+So after 12:00, Bradley is busy from 12:00 to 13:00, then 13:30 to 14:00, then 15:30 to 16:30.
+
+So free times after 12:00: from 13:00 to 13:30? But 12:00-13:00 busy, so at 13:00, he becomes free until 13:30? Then 13:30-14:00 busy, so free from 14:00 to 15:30? Then 15:30-16:30 busy, so free from 16:30 to 17:00? But work ends at 17:00, so free from 16:30 to 17:00.
+
+But Bradley doesn't want Tuesday before 12:00, so we ignore before 12:00.
+
+So Bradley free on Tuesday after 12:00:
+
+- 13:00 to 13:30 (since busy until 13:00, then free until 13:30)
+
+- 14:00 to 15:30 (since busy 13:30-14:00, then free until 15:30)
+
+- 16:30 to 17:00 (since busy until 16:30)
+
+Now, we need a 30-minute slot where both are free.
+
+Daniel free: 12:00-13:00, 13:30-15:30, 16:00-16:30
+
+Bradley free: 13:00-13:30, 14:00-15:30, 16:30-17:00
+
+Now, common free times:
+
+- 12:00-13:00: Daniel free, but Bradley busy until 13:00, so at 12:00, Bradley is still busy until 13:00, so no overlap. Bradley free from 13:00, but Daniel free until 13:00, so at 13:00, Daniel becomes busy? Daniel free until 13:00? Daniel is free from 12:00 to 13:00, meaning from 12:00 to 13:00 he is free, but at 13:00 he has meeting? Busy from 13:00 to 13:30, so at 13:00, he becomes busy. Similarly, Bradley becomes free at 13:00. So at 13:00, Daniel is busy, Bradley is free, so no common time at 13:00.
+
+The time slots are continuous, so for example, from 12:00 to 13:00, Daniel is free, but Bradley is busy from 12:00 to 13:00, so during that entire period, Bradley is busy, so no common free time.
+
+Next, Daniel free 13:30-15:30, Bradley free 14:00-15:30. So from 14:00 to 15:30, both are free. So we can have a meeting from 14:00 to 14:30 or any time between 14:00 and 15:30 for 30 minutes.
+
+Also, Daniel free 16:00-16:30, but Bradley busy until 16:30, so at 16:00, Bradley is busy until 16:30, so Daniel free but Bradley busy. Then at 16:30, Bradley free, but Daniel busy from 16:30 to 17:00, so no common time.
+
+So on Tuesday, common free time from 14:00 to 15:30.
+
+So we can schedule at 14:00 to 14:30 or 14:30 to 15:00, etc.
+
+But preferences: Daniel would rather not Wednesday or Thursday, but Tuesday is fine. Bradley doesn't want Tuesday before 12:00, but after 12:00 is okay. So Tuesday at 14:00 seems good.
+
+But let's confirm if there are other days that might be preferred? From preferences, Tuesday after 12:00 is the only day that isn't disliked by both? Daniel doesn't mind Tuesday, Bradley okay with Tuesday after 12:00.
+
+But the task says "Daniel would rather not meet on Wednesday. Thursday." and "Bradley do not want to meet on Monday. Tuesday before 12:00. Friday." So Tuesday after 12:00 is acceptable.
+
+So we can choose Tuesday at 14:00.
+
+But let's make sure there isn't a better time? Since preferences are soft, but we found a time on Tuesday, so it should be fine.
+
+Now, for the Python script, I need to output the day and time range.
+
+So output should be Tuesday and 14:00 to 14:30 or something.
+
+But the output format should be HH:MM:HH:MM, so like 14:00:14:30 for 14:00 to 14:30.
+
+But in the example solution, it might be different, but from the task, it says output in format HH:MM:HH:MM.
+
+Also, in the script, I need to code this.
+
+But since I have to write a script, I should generalise it, but for this task, I can hardcode the busy times and preferences.
+
+The task is to generate a script for this specific case.
+
+So let's write the script.
+
+First, I'll define the busy times for each day for each person.
+
+Then, for each day, I'll generate free times for both, then find intersection, then find a slot of 30 minutes.
+
+Also, consider preferences: avoid Monday for Bradley, avoid Tuesday before 12:00 for Bradley, avoid Wednesday and Thursday for Daniel, avoid Friday for Bradley.
+
+So in code, I can iterate through days and check if the day is preferred or not, but since we have a solution on Tuesday, I can just find the first available slot that meets preferences.
+
+But to be thorough, I should check all days and see if there is a slot on preferred days first.
+
+From preferences, the preferred days would be Tuesday after 12:00 only, since other days are disliked.
+
+But let's see if there is a slot on other days that might be acceptable if preferences cannot be met, but in this case, we have Tuesday, so we can use that.
+
+Now, for the script, I need to represent time.
+
+I'll represent time in minutes from 9:00? Or use datetime time objects.
+
+Since it's within a day, I can use minutes from 0:00, but work hours 9:00 to 17:00 is from 540 minutes to 1020 minutes (since 9*60=540, 17*60=1020).
+
+But for simplicity, I can use time strings and convert to minutes.
+
+Let me define a function to convert time string to minutes since midnight.
+
+For example, "9:00" to 540.
+
+Also, busy times are given as strings like "9:30 to 10:30", so I need to parse that.
+
+In the input, it's given in the text, so in code, I'll hardcode the busy times.
+
+Let me list all busy times for each day for each person.
+
+First, Daniel:
+
+Monday: 9:30-10:30, 12:00-12:30, 13:00-14:00, 14:30-15:00, 15:30-16:00
+
+Tuesday: 11:00-12:00, 13:00-13:30, 15:30-16:00, 16:30-17:00
+
+Wednesday: 9:00-10:00, 14:00-14:30
+
+Thursday: 10:30-11:00, 12:00-13:00, 14:30-15:00, 15:30-16:00
+
+Friday: 9:00-9:30, 11:30-12:00, 13:00-13:30, 16:30-17:00
+
+Now Bradley:
+
+Monday: 9:30-11:00, 11:30-12:00, 12:30-13:00, 14:00-15:00
+
+Tuesday: 10:30-11:00, 12:00-13:00, 13:30-14:00, 15:30-16:30
+
+Wednesday: 9:00-10:00, 11:00-13:00, 13:30-14:00, 14:30-17:00
+
+Thursday: 9:00-12:30, 13:30-14:00, 14:30-15:00, 15:30-16:30
+
+Friday: 9:00-9:30, 10:00-12:30, 13:00-13:30, 14:00-14:30, 15:30-16:30
+
+Now, work hours: 9:00 to 17:00, so 540 to 1020 minutes.
+
+Meeting duration: 30 minutes.
+
+Preferences: Daniel avoid Wednesday and Thursday, Bradley avoid Monday, Tuesday before 12:00, Friday.
+
+So in code, I'll first check Tuesday after 12:00 since it's the only preferred, but if not, then check other days, but since we know there is a solution on Tuesday, we can do that.
+
+But for generality, I'll write code to find all possible slots and then choose one that meets preferences or first available.
+
+Since the task says "find a time that works for everyone's schedule and constraints", and constraints include preferences, so we should try to meet preferences.
+
+So I'll prioritize days based on preferences.
+
+First, check Tuesday after 12:00 for free slot.
+
+If found, use it.
+
+Else, check other days except Monday, Wednesday, Thursday, Friday for Bradley and Daniel, but Daniel only avoid Wed, Thu, so Monday and Friday might be okay for Daniel, but Bradley avoid Monday and Friday, so only Tuesday and Wednesday? But Daniel avoid Wednesday, so only Tuesday? But we have Tuesday, so it should be fine.
+
+But let's see if there is slot on other days.
+
+For example, on Monday, let's see if there is common free time.
+
+But Bradley doesn't want Monday, so we avoid unless necessary, but since we have Tuesday, we don't need to.
+
+Similarly for other days.
+
+So in code, I'll iterate through days in order of preference: Tuesday after 12:00, then if no, then other days, but since we have, I'll just code for Tuesday.
+
+But to be complete, I'll write code to handle all days.
+
+Now for the script, I need to output the day and time.
+
+So let's code.
+
+I'll define a function to convert time string to minutes.
+
+Then define busy intervals for each day for each person.
+
+Then for each day, generate free intervals for each person within work hours.
+
+Then find common free intervals.
+
+Then find a slot of 30 minutes within common free intervals.
+
+Also, for Tuesday, if the day is Tuesday, for Bradley, we only consider times after 12:00 (720 minutes).
+
+Similarly, for preferences, we can skip days that are not preferred, but since we might need to use them if no preferred slot, I'll first check preferred days, then others.
+
+But from above, on Tuesday, we have common free time from 14:00 to 15:30, so we can choose 14:00 to 14:30.
+
+So in code, I'll hardcode the busy times and find that.
+
+Now for the output format, I need to output the day and the time range like HH:MM:HH:MM.
+
+So for example, Tuesday and 14:00:14:30.
+
+But in the example solution, it might be with colon between hours and minutes, but in the format, it says HH:MM:HH:MM, which might mean like 14:00:14:30, but that has three colons? No, HH:MM:HH:MM means like 14:00:14:30, which is start time and end time separated by colon, but each time has HH:MM.
+
+In the task, it says "outputs it in the format HH:MM:HH:MM" which is ambiguous, but from context, it probably means start time in HH:MM and end time in HH:MM, separated by colon, so like 14:00:14:30.
+
+But in the example solution in the task, it shows {14:30:15:30} so with braces, but in output, we don't need braces, just the string.
+
+In the code output, we need to print the day and the time.
+
+So let's code.
+
+I'll create a list of days.
+
+For each day, I'll have busy times for Daniel and Bradley.
+
+I'll define busy intervals as list of (start_minute, end_minute) for each person per day.
+
+Then find free intervals for each person.
+
+Then find common free intervals.
+
+Then find a slot of 30 minutes.
+
+Also, for Tuesday, adjust for Bradley's preference after 12:00.
+
+Similarly, for other days, if we consider preferences, we might skip some days, but since we have a solution on Tuesday, we can do that.
+
+In code, I'll first check Tuesday after 12:00.
+
+If I find a slot, output it.
+
+Otherwise, check other days without preference constraints.
+
+But for this case, I know there is a slot on Tuesday.
+
+So let's code accordingly.
+
+First, convert time string to minutes function.
+
+def time_to_minutes(time_str):
+    hours, minutes = time_str.split(':')
+    return int(hours) * 60 + int(minutes)
+
+Then, minutes to time string for output.
+
+def minutes_to_time(minutes):
+    hours = minutes // 60
+    mins = minutes % 60
+    return f"{hours:02d}:{mins:02d}"
+
+Now, work start and end: 9:00 and 17:00, so start_min = 9*60 = 540, end_min = 17*60 = 1020.
+
+Meeting duration = 30 minutes.
+
+Now, define busy intervals for Daniel for each day.
+
+I'll create a dictionary for Daniel_busy where key is day, value is list of intervals.
+
+Similarly for Bradley.
+
+Days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
+
+Daniel_busy = {
+    'Monday': [ ('9:30','10:30'), ('12:00','12:30'), ('13:00','14:00'), ('14:30','15:00'), ('15:30','16:00') ],
+    'Tuesday': [ ('11:00','12:00'), ('13:00','13:30'), ('15:30','16:00'), ('16:30','17:00') ],
+    'Wednesday': [ ('9:00','10:00'), ('14:00','14:30') ],
+    'Thursday': [ ('10:30','11:00'), ('12:00','13:00'), ('14:30','15:00'), ('15:30','16:00') ],
+    'Friday': [ ('9:00','9:30'), ('11:30','12:00'), ('13:00','13:30'), ('16:30','17:00') ]
+}
+
+But note: the busy times include the end time? In scheduling, usually, busy times are [start, end) meaning end time is exclusive, but from the description, when it says "busy during 9:30 to 10:30", it means from 9:30 to 10:30, so at 10:30, he is free? Typically, in such descriptions, "9:30 to 10:30" means busy from 9:30 inclusive to 10:30 exclusive, so free at 10:30. But to be safe, I'll assume that the end time is exclusive, meaning busy until but not including the end time.
+
+Similarly, work hours: from 9:00 to 17:00, so meeting can start at 9:00 and end at 9:30, which is within 17:00? But 17:00 is the end, so meeting can end at 17:00, so if meeting from 16:30 to 17:00, it is okay.
+
+So for free time calculation, we consider intervals where they are not busy.
+
+So for a person, free intervals are from work start to first busy start, then between busy end and next busy start, and from last busy end to work end.
+
+But busy intervals might overlap, but in this case, they are disjoint.
+
+Now for Bradley similarly.
+
+Bradley_busy = {
+    'Monday': [ ('9:30','11:00'), ('11:30','12:00'), ('12:30','13:00'), ('14:00','15:00') ],
+    'Tuesday': [ ('10:30','11:00'), ('12:00','13:00'), ('13:30','14:00'), ('15:30','16:30') ],
+    'Wednesday': [ ('9:00','10:00'), ('11:00','13:00'), ('13:30','14:00'), ('14:30','17:00') ],
+    'Thursday': [ ('9:00','12:30'), ('13:30','14:00'), ('14:30','15:00'), ('15:30','16:30') ],
+    'Friday': [ ('9:00','9:30'), ('10:00','12:30'), ('13:00','13:30'), ('14:00','14:30'), ('15:30','16:30') ]
+}
+
+Now, for each day, I need to get free intervals for Daniel and Bradley.
+
+Then find common free intervals.
+
+Then find a slot of 30 minutes.
+
+Also, for Tuesday, when considering Bradley, we only consider time after 12:00, so we can adjust the free intervals for Bradley on Tuesday to start from max(12:00, free start).
+
+Similarly, for preferences, we might skip days, but let's first handle Tuesday.
+
+In code, I'll loop through days, but for Tuesday, handle separately with time constraint.
+
+Since we want to respect preferences, we should first check Tuesday after 12:00.
+
+So let's code for Tuesday first.
+
+For Tuesday, work hours from 9:00 to 17:00, but for Bradley, we only consider after 12:00, so effectively from 12:00 to 17:00.
+
+But for Daniel, we consider all day, but since we are looking for common time, we need Daniel's free times after 12:00 as well? No, Daniel might be free before 12:00, but since Bradley doesn't want before 12:00, we ignore before 12:00 for common free times on Tuesday.
+
+So for Tuesday, we consider time from 12:00 to 17:00 for both, but Daniel's free times might start before, but we only care after 12:00.
+
+So for each person, on Tuesday, we get free intervals between 12:00 and 17:00.
+
+Then find common free intervals.
+
+Then find 30-minute slot.
+
+Similarly, for other days, we consider full work hours.
+
+But for other days, we have preferences to avoid, so we might skip them if possible, but since we have Tuesday, we can just do Tuesday.
+
+So in code, I'll first check Tuesday with time constraint.
+
+If found, output.
+
+Else, check other days without time constraint but with day preferences? But since the solution exists on Tuesday, we don't need to.
+
+But for completeness, I'll write code that checks all days, but prioritizes Tuesday after 12:00.
+
+But to keep it simple, I'll just code for Tuesday since we know it works.
+
+Now, let's calculate free intervals for Daniel on Tuesday from 12:00 to 17:00.
+
+First, Daniel's busy times on Tuesday: 11:00-12:00, 13:00-13:30, 15:30-16:00, 16:30-17:00
+
+But since we start from 12:00, the busy 11:00-12:00 ends at 12:00, so at 12:00, Daniel is free? Yes, because busy until 12:00, so from 12:00, he is free until 13:00.
+
+Then busy from 13:00 to 13:30, so free from 13:30 to 15:30.
+
+Then busy from 15:30 to 16:00, so free from 16:00 to 16:30.
+
+Then busy from 16:30 to 17:00, so after 16:30, busy until 17:00.
+
+But we consider until 17:00, so free intervals from 12:00 to 13:00, from 13:30 to 15:30, from 16:00 to 16:30.
+
+But 16:00 to 16:30 is only 30 minutes, so it is a possible slot.
+
+Now Bradley on Tuesday from 12:00 to 17:00.
+
+Bradley's busy times: 10:30-11:00, 12:00-13:00, 13:30-14:00, 15:30-16:30
+
+From 12:00, he is busy from 12:00 to 13:00, so at 12:00, he is busy until 13:00.
+
+Then free from 13:00 to 13:30? But busy 12:00-13:00, so at 13:00, he becomes free until 13:30.
+
+Then busy from 13:30 to 14:00, so free from 14:00 to 15:30.
+
+Then busy from 15:30 to 16:30, so free from 16:30 to 17:00.
+
+So free intervals: 13:00-13:30, 14:00-15:30, 16:30-17:00.
+
+Now common free intervals: we need times where both are free.
+
+Daniel free: 12:00-13:00, 13:30-15:30, 16:00-16:30
+
+Bradley free: 13:00-13:30, 14:00-15:30, 16:30-17:00
+
+Now, compare:
+
+- 12:00-13:00: Daniel free, Bradley busy → no common
+
+- 13:00-13:30: Bradley free, but Daniel busy? Daniel free until 13:00, but at 13:00, Daniel becomes busy? Daniel busy from 13:00 to 13:30, so during 13:00 to 13:30, Daniel is busy, so no common.
+
+- 13:30-15:30: Daniel free, but Bradley free from 14:00, so from 13:30 to 14:00, Bradley is busy? Bradley busy until 14:00? Bradley free from 13:00 to 13:30, then busy from 13:30 to 14:00, so at 13:30, Bradley becomes busy until 14:00. So from 13:30 to 14:00, Daniel free, Bradley busy. Then from 14:00 to 15:30, both free. So common from 14:00 to 15:30.
+
+- 16:00-16:30: Daniel free, but Bradley busy until 16:30, so no common.
+
+- 16:30-17:00: Bradley free, but Daniel busy from 16:30, so no common.
+
+So common free interval: 14:00 to 15:30.
+
+Now, within this, we can have a meeting of 30 minutes. We can choose the first available, say 14:00 to 14:30.
+
+So for output, day: Tuesday, time: 14:00 to 14:30.
+
+In format HH:MM:HH:MM, so 14:00:14:30.
+
+Now for the code, I need to output this.
+
+So in code, I'll hardcode this finding.
+
+But to make it a general script, I'll calculate the free intervals.
+
+So let's write code to calculate free intervals for a person on a day within a time range.
+
+But for Tuesday, we restrict to after 12:00.
+
+So function get_free_intervals(busy_intervals, day_start, day_end):
+    # busy_intervals is list of (start, end) in minutes
+    # sort busy intervals by start time
+    # then free intervals from day_start to first busy start, between busy ends, and from last busy end to day_end
+    pass
+
+But since we have the busy intervals, we can compute.
+
+First, convert all busy times to minutes.
+
+I'll define a function to parse the busy lists.
+
+But for now, since it's hardcoded, I'll convert the busy times to minutes for each day.
+
+In code, I'll create Daniel_busy_min and Bradley_busy_min for each day, where each busy time is (start_min, end_min).
+
+Then for a given day and time range, get free intervals.
+
+Then for Tuesday, set time range from 12:00 (720) to 17:00 (1020).
+
+Then get free intervals for Daniel and Bradley within that range.
+
+Then find common free intervals.
+
+Then find a slot of 30 minutes.
+
+Since common free interval is 14:00 to 15:30, which is 840 to 930 minutes, so from 840 to 930, we can start at 840 for 30 minutes to 870, which is 14:30, so 14:00 to 14:30.
+
+Or we can start at any time between 840 and 900 for 30 minutes? Since meeting must be within free time, and free time until 930, so start time from 840 to 900 for a 30-minute meeting ending by 930.
+
+So we can choose 14:00 to 14:30.
+
+Now for the code output, I'll output Tuesday and 14:00:14:30.
+
+So let's write the code.
+
+I'll not overcomplicate since we know the answer.
+
+But to make it a script, I'll code the calculation.
+
+First, define work_start = 9*60 = 540
+
+work_end = 17*60 = 1020
+
+duration = 30
+
+Then for Tuesday, consider start_time = 12*60 = 720
+
+end_time = 1020
+
+Now, Daniel's busy intervals on Tuesday in minutes:
+
+11:00 to 12:00 → 660 to 720
+
+13:00 to 13:30 → 780 to 810
+
+15:30 to 16:00 → 930 to 960
+
+16:30 to 17:00 → 990 to 1020
+
+But since we consider from 720, the first busy 660-720 ends at 720, so at 720, it is free.
+
+So Daniel's free intervals from 720 to 1020:
+
+From 720 to 780? But busy from 780 to 810, so free from 720 to 780? Then from 810 to 930? Then from 960 to 990? Then after 990 busy.
+
+But let's list:
+
+- After 720, free until 780 (since busy at 780)
+
+780 is 13:00, so free from 720 to 780
+
+Then busy from 780 to 810
+
+Then free from 810 to 930 (15:30)
+
+Then busy from 930 to 960
+
+Then free from 960 to 990
+
+Then busy from 990 to 1020
+
+But 960 to 990 is only 30 minutes, but we have free from 810 to 930, which is 120 minutes.
+
+Now Bradley's busy intervals on Tuesday in minutes:
+
+10:30 to 11:00 → 630 to 660
+
+12:00 to 13:00 → 720 to 780
+
+13:30 to 14:00 → 810 to 840
+
+15:30 to 16:30 → 930 to 990
+
+From 720 to 1020:
+
+Bradley busy from 720 to 780
+
+Then free from 780 to 810? But busy until 780, so at 780, free until 810? Then busy from 810 to 840
+
+Then free from 840 to 930? Then busy from 930 to 990
+
+Then free from 990 to 1020
+
+So free intervals: 780 to 810, 840 to 930, 990 to 1020
+
+But 780 to 810 is 30 minutes, but we need common with Daniel.
+
+Daniel free: 720 to 780, 810 to 930, 960 to 990
+
+Bradley free: 780 to 810, 840 to 930, 990 to 1020
+
+Now common: 
+
+720-780 and 780-810: no overlap because at 780, Daniel free until 780? Daniel free from 720 to 780, meaning up to but not including 780? In interval notation, usually [start, end) so free from 720 to 780 means from 720 inclusive to 780 exclusive, so at 780, it becomes busy? But from busy times, Daniel busy from 13:00 which is 780, so at 780, he becomes busy. Similarly, Bradley free from 780 to 810, meaning from 780 inclusive to 810 exclusive? But Bradley busy until 780? Busy from 12:00 to 13:00, which is 720 to 780, so at 780, he becomes free.
+
+So in terms of minutes, if we consider time points, at time t, we can have meeting start.
+
+Typically, for free time, we consider continuous intervals.
+
+To avoid confusion, I'll define intervals as [start, end) meaning start inclusive, end exclusive.
+
+So for Daniel, free intervals from work start to busy start, etc.
+
+So for Daniel on Tuesday from 720 to 1020:
+
+Busy intervals: [660,720) but since we start from 720, this busy interval ends at 720, so from 720, it is free until next busy start at 780.
+
+So free interval: [720,780)
+
+Then busy [780,810)
+
+Then free [810,930)
+
+Then busy [930,960)
+
+Then free [960,990)
+
+Then busy [990,1020)
+
+So free intervals: [720,780), [810,930), [960,990)
+
+Similarly for Bradley on Tuesday from 720 to 1020:
+
+Busy intervals: [720,780) then free? After busy [720,780), then next busy? Bradley has busy [810,840) and [930,990)
+
+So from 720, after busy [720,780), free from 780 to next busy at 810, so [780,810)
+
+Then busy [810,840)
+
+Then free [840,930) because next busy at 930
+
+Then busy [930,990)
+
+Then free [990,1020)
+
+So free intervals: [780,810), [840,930), [990,1020)
+
+Now common free intervals: we need intervals where both are free.
+
+So compare:
+
+Daniel [720,780) and Bradley [780,810) — these are adjacent but not overlapping? [720,780) ends at 780, [780,810) starts at 780, so at time 780, is it free? In [720,780), 780 is not included, so at 780, Daniel is busy. In [780,810), 780 is included, so at 780, Bradley is free. So no overlap because at 780, Daniel is busy.
+
+Similarly, Daniel [810,930) and Bradley [840,930) — overlap from 840 to 930? [810,930) includes 840 to 930, and [840,930) includes 840 to 930, so common [840,930)
+
+Daniel [960,990) and Bradley [990,1020) — no overlap, since [960,990) ends at 990, [990,1020) starts at 990, so at 990, Daniel becomes busy, Bradley becomes free, so no common.
+
+So only common free interval: [840,930)
+
+Now [840,930) is from 14:00 to 15:30.
+
+Within this, we can start a meeting at any time from 840 to 900 for 30 minutes, since 840 + 30 = 870, which is less than 930, and 900 + 30 = 930, which is equal to 930, so if we start at 900, meeting from 900 to 930, which is within free time since free until 930 exclusive, so meeting until 930 is okay because at 930, busy starts, so meeting ends at 930, which is fine.
+
+So possible start times from 840 to 900 inclusive? But since time is continuous, we can start at 840, 841, etc., but for simplicity, we can choose the first start time, say 840.
+
+So meeting from 840 to 870, which is 14:00 to 14:30.
+
+So in code, we can find the first available start time in the common free interval.
+
+For [840,930), the earliest start time is 840, which gives meeting from 840 to 870.
+
+So output Tuesday and 14:00:14:30.
+
+Now for the code, I'll implement this.
+
+But since the script should be clean, I'll write functions to calculate free intervals and common free intervals.
+
+But for this specific case, I can hardcode the common interval for Tuesday.
+
+But let's write a general function.
+
+First, define the busy times in minutes for each day.
+
+I'll create dictionaries for Daniel and Bradley with busy intervals in minutes for each day.
+
+But to save time, I'll just compute for Tuesday.
+
+In the script, I'll focus on Tuesday.
+
+So code:
+
+```python
+def time_to_minutes(time_str):
+    hours, minutes = map(int, time_str.split(':'))
+    return hours * 60 + minutes
+
+def minutes_to_time(minutes):
+    hours = minutes // 60
+    minutes = minutes % 60
+    return f"{hours:02d}:{minutes:02d}"
+
+# Work hours
+work_start = time_to_minutes('9:00')
+work_end = time_to_minutes('17:00')
+meeting_duration = 30
+
+# For Tuesday, we consider from 12:00 to 17:00
+tuesday_start = time_to_minutes('12:00')
+tuesday_end = work_end
+
+# Daniel's busy intervals on Tuesday in minutes
+daniel_busy_tuesday = [
+    (time_to_minutes('11:00'), time_to_minutes('12:00')),
+    (time_to_minutes('13:00'), time_to_minutes('13:30')),
+    (time_to_minutes('15:30'), time_to_minutes('16:00')),
+    (time_to_minutes('16:30'), time_to_minutes('17:00'))
+]
+
+# Bradley's busy intervals on Tuesday in minutes
+bradley_busy_tuesday = [
+    (time_to_minutes('10:30'), time_to_minutes('11:00')),
+    (time_to_minutes('12:00'), time_to_minutes('13:00')),
+    (time_to_minutes('13:30'), time_to_minutes('14:00')),
+    (time_to_minutes('15:30'), time_to_minutes('16:30'))
+]
+
+# Function to get free intervals given busy intervals and time range
+def get_free_intervals(busy_intervals, start_time, end_time):
+    # Sort busy intervals by start time
+    busy_intervals.sort(key=lambda x: x[0])
+    free_intervals = []
+    current_time = start_time
+    for busy_start, busy_end in busy_intervals:
+        if current_time < busy_start:
+            free_intervals.append((current_time, busy_start))
+        current_time = max(current_time, busy_end)
+    if current_time < end_time:
+        free_intervals.append((current_time, end_time))
+    return free_intervals
+
+# Get free intervals for Daniel from tuesday_start to tuesday_end
+# But note: Daniel's busy intervals include times before 12:00, but we consider from 12:00, so we need to adjust.
+# Actually, when we call get_free_intervals with start_time=tuesday_start, it will handle it.
+daniel_free = get_free_intervals(daniel_busy_tuesday, tuesday_start, tuesday_end)
+bradley_free = get_free_intervals(bradley_busy_tuesday, tuesday_start, tuesday_end)
+
+# Now find common free intervals
+common_free = []
+for d_start, d_end in daniel_free:
+    for b_start, b_end in bradley_free:
+        start = max(d_start, b_start)
+        end = min(d_end, b_end)
+        if start < end:
+            common_free.append((start, end))
+
+# Now find a time slot of meeting_duration in common_free
+for start, end in common_free:
+    if end - start >= meeting_duration:
+        meeting_start = start
+        meeting_end = meeting_start + meeting_duration
+        # Output the day and time
+        time_str = minutes_to_time(meeting_start) + ":" + minutes_to_time(meeting_end)
+        print("Tuesday")
+        print(time_str)
+        break
+```
+
+But in this code, for Daniel's busy intervals, the first busy is 11:00-12:00 which ends at 12:00, and we start from 12:00, so in get_free_intervals, current_time starts at 12:00, and first busy_start is 11:00 which is less than current_time? So we need to ensure that busy intervals are within the time range or adjust.
+
+In get_free_intervals, we sort busy intervals, but if busy intervals have times before start_time, we need to ignore them or adjust.
+
+In the function, we iterate through busy intervals, and current_time starts at start_time.
+
+For Daniel, busy intervals include 11:00-12:00, which ends at 12:00. Since current_time is 12:00, and busy_start is 11:00 which is less than current_time, we skip this busy interval because current_time is already 12:00, and busy_end is 12:00, so current_time remains 12:00.
+
+Then next busy interval 13:00-13:30, so busy_start=13:00 which is 780, current_time=720, so since current_time < busy_start, we add free interval from 720 to 780? But 720 to 780 is from 12:00 to 13:00, which is correct.
+
+Then current_time becomes max(720, 780) = 780? But busy_end is 780? 13:00 is 780, and busy_end is 13:30 which is 810? Let's see: time_to_minutes('13:00') is 13*60=780, time_to_minutes('13:30') is 13*60+30=810.
+
+So for busy interval (780,810), so after adding free from 720 to 780, current_time becomes 780? Then we have busy from 780 to 810, so current_time < busy_start? current_time=780, busy_start=780, so since current_time is not less than busy_start, we don't add free, and current_time becomes max(780,810)=810.
+
+Then next busy interval, and so on.
+
+So it should work.
+
+Similarly for Bradley.
+
+So in code, we should get daniel_free as [(720,780), (810,930), (960,990)] but in minutes, and since we use integers, the intervals are [720,780) etc.
+
+Then bradley_free: from tuesday_start=720, busy intervals: first busy (720,780) so current_time=720, busy_start=720, so no free added, current_time becomes max(720,780)=780? Then next busy (810,840)? But we have busy intervals: we have four busy intervals, but the first one is (720,780) which we process.
+
+After current_time=780, next busy is (810,840), so busy_start=810, current_time=780, so since current_time < busy_start, we add free from 780 to 810, so (780,810). Then current_time becomes max(780,840)=840? Then next busy (930,990), so busy_start=930, current_time=840, so add free from 840 to 930, so (840,930). Then current_time=990, then next busy? Then after that, if current_time < end_time, add free from 990 to 1020, but end_time is 1020, so add (990,1020).
+
+So bradley_free = [(780,810), (840,930), (990,1020)]
+
+Then common free: as before, only (840,930)
+
+Then we find meeting slot at 840 to 870.
+
+So code should output Tuesday and 14:00:14:30.
+
+But in the output, we need to print the time in the format HH:MM:HH:MM, so for example, 14:00:14:30.
+
+And the day.
+
+So in code, after finding meeting_start and meeting_end, we convert to time string and print.
+
+So I think this is correct.
+
+Now, for the script, I need to enclose in ```python```.
+
+Also, the task says "Provide the response with only code." so I should not have any comments or anything? But the code should be clean, so I'll keep comments for clarity, but since it says only code, perhaps I should remove comments? But in the example, it might have comments.
+
+Looking at the task: "Generate a fully working Python script with code that calculates a proposed time and outputs it in the format HH:MM:HH:MM. The script should also output the day of the week... The script should be clean, well-formatted, and enclosed within ```python and ```."
+
+So I think comments are okay for well-formatted code.
+
+So I'll include comments.
+
+But to be safe, I'll write the code without comments if needed, but I think with comments is better.
+
+Since the response should only contain code, I'll output only the code block.
+
+So finally, the code.

@@ -1,0 +1,85 @@
+def main():
+    # Define work hours in minutes from 9:00 (0) to 17:00 (480)
+    work_start = 0
+    work_end = 480
+
+    # Convert time string to minutes since 9:00
+    def time_to_minutes(time_str):
+        h, m = map(int, time_str.split(':'))
+        return (h - 9) * 60 + m
+
+    # Convert minutes back to time string
+    def minutes_to_time(minutes):
+        h = 9 + minutes // 60
+        m = minutes % 60
+        return f"{h:02d}:{m:02d}"
+
+    # Busy intervals for each person in minutes
+    stephanie_busy = [
+        (time_to_minutes("10:00"), time_to_minutes("10:30")),
+        (time_to_minutes("16:00"), time_to_minutes("16:30"))
+    ]
+    
+    cheryl_busy = [
+        (time_to_minutes("10:00"), time_to_minutes("10:30")),
+        (time_to_minutes("11:30"), time_to_minutes("12:00")),
+        (time_to_minutes("13:30"), time_to_minutes("14:00")),
+        (time_to_minutes("16:30"), time_to_minutes("17:00"))
+    ]
+    
+    bradley_busy = [
+        (time_to_minutes("9:30"), time_to_minutes("10:00")),
+        (time_to_minutes("10:30"), time_to_minutes("11:30")),
+        (time_to_minutes("13:30"), time_to_minutes("14:00")),
+        (time_to_minutes("14:30"), time_to_minutes("15:00")),
+        (time_to_minutes("15:30"), time_to_minutes("17:00"))
+    ]
+    
+    steven_busy = [
+        (time_to_minutes("9:00"), time_to_minutes("12:00")),
+        (time_to_minutes("13:00"), time_to_minutes("13:30")),
+        (time_to_minutes("14:30"), time_to_minutes("17:00"))
+    ]
+
+    # Generate free intervals for a person
+    def get_free_intervals(busy_intervals):
+        busy_sorted = sorted(busy_intervals, key=lambda x: x[0])
+        free = []
+        current = work_start
+        
+        for start, end in busy_sorted:
+            if current < start:
+                free.append((current, start))
+            current = max(current, end)
+        if current < work_end:
+            free.append((current, work_end))
+        return free
+
+    # Get free intervals for each person
+    stephanie_free = get_free_intervals(stephanie_busy)
+    cheryl_free = get_free_intervals(cheryl_busy)
+    bradley_free = get_free_intervals(bradley_busy)
+    steven_free = get_free_intervals(steven_busy)
+
+    # Find common free time
+    common_free = []
+    for s_int in stephanie_free:
+        for c_int in cheryl_free:
+            for b_int in bradley_free:
+                for st_int in steven_free:
+                    start = max(s_int[0], c_int[0], b_int[0], st_int[0])
+                    end = min(s_int[1], c_int[1], b_int[1], st_int[1])
+                    if start < end:
+                        common_free.append((start, end))
+
+    # Find first interval that can accommodate 60 minutes
+    meeting_duration = 60
+    for start, end in common_free:
+        if end - start >= meeting_duration:
+            meeting_start = start
+            meeting_end = meeting_start + meeting_duration
+            print(f"Monday {minutes_to_time(meeting_start)}:{minutes_to_time(meeting_end)}")
+            return
+
+if __name__ == "__main__":
+    main()

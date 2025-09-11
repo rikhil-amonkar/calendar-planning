@@ -1,0 +1,1 @@
+arrival_time_m Actual arrival is current_time + travel_time_m

@@ -1,0 +1,56 @@
+from z3 import *
+
+def main():
+    # Define the start time variable in minutes from 9:00
+    start = Int('start')
+    opt = Optimize()
+    
+    # Meeting duration in minutes
+    duration = 30
+    
+    # Total working minutes (9:00 to 17:00 is 8 hours = 480 minutes)
+    max_time = 480
+    
+    # Constrain start to within working hours
+    opt.add(start >= 0)
+    opt.add(start <= max_time - duration)
+    
+    # Samuel's busy intervals in minutes from 9:00
+    busy_intervals = [
+        (0, 90),    # 9:00-10:30
+        (150, 180), # 11:30-12:00
+        (240, 270), # 13:00-13:30
+        (300, 420), # 14:00-16:00
+        (450, 480)  # 16:30-17:00
+    ]
+    
+    # Add constraints for each busy interval
+    for b_start, b_end in busy_intervals:
+        opt.add(Or(start + duration <= b_start, start >= b_end))
+    
+    # Minimize the start time to find earliest availability
+    opt.minimize(start)
+    
+    # Check for a solution
+    if opt.check() == sat:
+        model = opt.model()
+        start_val = model.evaluate(start).as_long()
+        
+        # Calculate start and end times in HH:MM format
+        start_hour = 9 + start_val // 60
+        start_minute = start_val % 60
+        end_val = start_val + duration
+        end_hour = 9 + end_val // 60
+        end_minute = end_val % 60
+        
+        # Format the time strings
+        start_str = f"{start_hour:02d}:{start_minute:02d}"
+        end_str = f"{end_hour:02d}:{end_minute:02d}"
+        
+        print(f"{start_str}:{end_str}")
+        print("Monday")
+    else:
+        print("No solution found")
+
+if __name__ == "__main__":
+    main()

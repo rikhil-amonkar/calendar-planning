@@ -1,0 +1,72 @@
+def main():
+    # Meeting duration in minutes
+    duration = 60
+    
+    # Define the time window [start, end) in minutes from 9:00
+    window_start = 0
+    window_end = 210  # 12:30 is 210 minutes from 9:00
+    
+    # Busy intervals for each person (start, end) in minutes, end exclusive
+    ryan_busy = [(0, 30), (210, 240)]
+    ruth_busy = []
+    denise_busy = [(30, 90), (180, 210)]
+    
+    # Function to compute free intervals within a window
+    def get_free_intervals(busy_intervals, start, end):
+        free = []
+        current = start
+        for bus in sorted(busy_intervals, key=lambda x: x[0]):
+            if current < bus[0]:
+                free.append((current, bus[0]))
+            current = max(current, bus[1])
+        if current < end:
+            free.append((current, end))
+        return free
+
+    # Get free intervals for each person
+    ryan_free = get_free_intervals(ryan_busy, window_start, window_end)
+    ruth_free = get_free_intervals(ruth_busy, window_start, window_end)
+    denise_free = get_free_intervals(denise_busy, window_start, window_end)
+    
+    # Function to intersect two sets of intervals
+    def intersect_intervals(intervals1, intervals2):
+        common = []
+        i = j = 0
+        while i < len(intervals1) and j < len(intervals2):
+            low = max(intervals1[i][0], intervals2[j][0])
+            high = min(intervals1[i][1], intervals2[j][1])
+            if low < high:
+                common.append((low, high))
+            if intervals1[i][1] < intervals2[j][1]:
+                i += 1
+            else:
+                j += 1
+        return common
+
+    # Find common free intervals
+    common_free = intersect_intervals(ryan_free, ruth_free)
+    common_free = intersect_intervals(common_free, denise_free)
+    
+    # Find the first available slot of duration
+    meeting_start = None
+    for interval in common_free:
+        start, end = interval
+        if end - start >= duration:
+            meeting_start = start
+            break
+            
+    if meeting_start is None:
+        print("No suitable time found")
+    else:
+        # Convert minutes to time strings
+        hours_start = 9 + meeting_start // 60
+        minutes_start = meeting_start % 60
+        meeting_end = meeting_start + duration
+        hours_end = 9 + meeting_end // 60
+        minutes_end = meeting_end % 60
+        
+        time_str = f"{hours_start:02d}:{minutes_start:02d}:{hours_end:02d}:{minutes_end:02d}"
+        print("Monday", time_str)
+
+if __name__ == "__main__":
+    main()

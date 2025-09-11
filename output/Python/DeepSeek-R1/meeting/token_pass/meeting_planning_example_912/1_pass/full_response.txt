@@ -1,0 +1,268 @@
+```python
+import json
+import itertools
+
+def main():
+    # Define travel times as a nested dictionary
+    travel_times = {
+        'Union Square': {
+            'Presidio': 24,
+            'Alamo Square': 15,
+            'Marina District': 18,
+            'Financial District': 9,
+            'Nob Hill': 9,
+            'Sunset District': 27,
+            'Chinatown': 7,
+            'Russian Hill': 13,
+            'North Beach': 10,
+            'Haight-Ashbury': 18
+        },
+        'Presidio': {
+            'Union Square': 22,
+            'Alamo Square': 19,
+            'Marina District': 11,
+            'Financial District': 23,
+            'Nob Hill': 18,
+            'Sunset District': 15,
+            'Chinatown': 21,
+            'Russian Hill': 14,
+            'North Beach': 18,
+            'Haight-Ashbury': 15
+        },
+        'Alamo Square': {
+            'Union Square': 14,
+            'Presidio': 17,
+            'Marina District': 15,
+            'Financial District': 17,
+            'Nob Hill': 11,
+            'Sunset District': 16,
+            'Chinatown': 15,
+            'Russian Hill': 13,
+            'North Beach': 15,
+            'Haight-Ashbury': 5
+        },
+        'Marina District': {
+            'Union Square': 16,
+            'Presidio': 10,
+            'Alamo Square': 15,
+            'Financial District': 17,
+            'Nob Hill': 12,
+            'Sunset District': 19,
+            'Chinatown': 15,
+            'Russian Hill': 8,
+            'North Beach': 11,
+            'Haight-Ashbury': 16
+        },
+        'Financial District': {
+            'Union Square': 9,
+            'Presidio': 22,
+            'Alamo Square': 17,
+            'Marina District': 15,
+            'Nob Hill': 8,
+            'Sunset District': 30,
+            'Chinatown': 5,
+            'Russian Hill': 11,
+            'North Beach': 7,
+            'Haight-Ashbury': 19
+        },
+        'Nob Hill': {
+            'Union Square': 7,
+            'Presidio': 17,
+            'Alamo Square': 11,
+            'Marina District': 11,
+            'Financial District': 9,
+            'Sunset District': 24,
+            'Chinatown': 6,
+            'Russian Hill': 5,
+            'North Beach': 8,
+            'Haight-Ashbury': 13
+        },
+        'Sunset District': {
+            'Union Square': 30,
+            'Presidio': 16,
+            'Alamo Square': 17,
+            'Marina District': 21,
+            'Financial District': 30,
+            'Nob Hill': 27,
+            'Chinatown': 30,
+            'Russian Hill': 24,
+            'North Beach': 28,
+            'Haight-Ashbury': 15
+        },
+        'Chinatown': {
+            'Union Square': 7,
+            'Presidio': 19,
+            'Alamo Square': 17,
+            'Marina District': 12,
+            'Financial District': 5,
+            'Nob Hill': 9,
+            'Sunset District': 29,
+            'Russian Hill': 7,
+            'North Beach': 3,
+            'Haight-Ashbury': 19
+        },
+        'Russian Hill': {
+            'Union Square': 10,
+            'Presidio': 14,
+            'Alamo Square': 15,
+            'Marina District': 7,
+            'Financial District': 11,
+            'Nob Hill': 5,
+            'Sunset District': 23,
+            'Chinatown': 9,
+            'North Beach': 5,
+            'Haight-Ashbury': 17
+        },
+        'North Beach': {
+            'Union Square': 7,
+            'Presidio': 17,
+            'Alamo Square': 16,
+            'Marina District': 9,
+            'Financial District': 8,
+            'Nob Hill': 7,
+            'Sunset District': 27,
+            'Chinatown': 6,
+            'Russian Hill': 4,
+            'Haight-Ashbury': 18
+        },
+        'Haight-Ashbury': {
+            'Union Square': 19,
+            'Presidio': 15,
+            'Alamo Square': 5,
+            'Marina District': 17,
+            'Financial District': 21,
+            'Nob Hill': 15,
+            'Sunset District': 15,
+            'Chinatown': 19,
+            'Russian Hill': 17,
+            'North Beach': 19
+        }
+    }
+    
+    # List of all locations including Union Square
+    locations = [
+        'Union Square',
+        'Presidio',
+        'Alamo Square',
+        'Marina District',
+        'Financial District',
+        'Nob Hill',
+        'Sunset District',
+        'Chinatown',
+        'Russian Hill',
+        'North Beach',
+        'Haight-Ashbury'
+    ]
+    
+    # Map location name to index
+    loc_to_idx = {loc: idx for idx, loc in enumerate(locations)}
+    
+    # Build distance matrix (11x11)
+    n_locations = len(locations)
+    dist = [[0] * n_locations for _ in range(n_locations)]
+    for i, loc1 in enumerate(locations):
+        for j, loc2 in enumerate(locations):
+            if loc1 == loc2:
+                dist[i][j] = 0
+            else:
+                dist[i][j] = travel_times[loc1][loc2]
+    
+    # Define friends with their constraints (times converted to minutes from 9:00 AM)
+    friends = [
+        {'name': 'Kimberly', 'loc': 'Presidio', 'start': 390, 'end': 420, 'min_duration': 15},
+        {'name': 'Elizabeth', 'loc': 'Alamo Square', 'start': 615, 'end': 675, 'min_duration': 15},
+        {'name': 'Joshua', 'loc': 'Marina District', 'start': 90, 'end': 315, 'min_duration': 45},
+        {'name': 'Sandra', 'loc': 'Financial District', 'start': 630, 'end': 675, 'min_duration': 45},
+        {'name': 'Kenneth', 'loc': 'Nob Hill', 'start': 225, 'end': 765, 'min_duration': 30},
+        {'name': 'Betty', 'loc': 'Sunset District', 'start': 300, 'end': 600, 'min_duration': 60},
+        {'name': 'Deborah', 'loc': 'Chinatown', 'start': 495, 'end': 690, 'min_duration': 15},
+        {'name': 'Barbara', 'loc': 'Russian Hill', 'start': 510, 'end': 735, 'min_duration': 120},
+        {'name': 'Steven', 'loc': 'North Beach', 'start': 525, 'end': 705, 'min_duration': 90},
+        {'name': 'Daniel', 'loc': 'Haight-Ashbury', 'start': 570, 'end': 585, 'min_duration': 15}
+    ]
+    
+    n_friends = len(friends)
+    
+    # Map friend's location to index in the distance matrix
+    for friend in friends:
+        friend['loc_idx'] = loc_to_idx[friend['loc']]
+    
+    # Initialize DP table and parent table
+    dp = [[10**9] * n_locations for _ in range(1 << n_friends)]
+    parent = [[None] * n_locations for _ in range(1 << n_friends)]
+    dp[0][0] = 0  # start at Union Square at time 0
+    
+    # Iterate over all masks
+    for mask in range(1 << n_friends):
+        for loc_idx in range(n_locations):
+            if dp[mask][loc_idx] == 10**9:
+                continue
+            for j in range(n_friends):
+                if mask & (1 << j):
+                    continue
+                friend = friends[j]
+                to_loc_idx = friend['loc_idx']
+                travel_time = dist[loc_idx][to_loc_idx]
+                arrival_time = dp[mask][loc_idx] + travel_time
+                start_time = max(arrival_time, friend['start'])
+                if start_time + friend['min_duration'] <= friend['end']:
+                    end_time = start_time + friend['min_duration']
+                    new_mask = mask | (1 << j)
+                    if end_time < dp[new_mask][to_loc_idx]:
+                        dp[new_mask][to_loc_idx] = end_time
+                        parent[new_mask][to_loc_idx] = (mask, loc_idx, j)
+    
+    # Find the mask with the most meetings
+    best_mask = 0
+    best_count = 0
+    for mask in range(1 << n_friends):
+        count = bin(mask).count('1')
+        for loc_idx in range(n_locations):
+            if dp[mask][loc_idx] < 10**9:
+                if count > best_count:
+                    best_count = count
+                    best_mask = mask
+                break
+    
+    # Reconstruct the schedule
+    # Find the location for the best_mask
+    current_loc = None
+    for loc_idx in range(n_locations):
+        if dp[best_mask][loc_idx] < 10**9:
+            current_loc = loc_idx
+            break
+    
+    schedule = []
+    mask = best_mask
+    loc_idx = current_loc
+    while mask != 0:
+        prev_mask, prev_loc, j = parent[mask][loc_idx]
+        friend = friends[j]
+        start_time_val = dp[mask][loc_idx] - friend['min_duration']
+        end_time_val = dp[mask][loc_idx]
+        schedule.append({
+            'action': 'meet',
+            'location': friend['loc'],
+            'person': friend['name'],
+            'start_time': minutes_to_time(start_time_val),
+            'end_time': minutes_to_time(end_time_val)
+        })
+        mask = prev_mask
+        loc_idx = prev_loc
+    
+    schedule.reverse()
+    
+    # Output as JSON
+    result = {"itinerary": schedule}
+    print(json.dumps(result, indent=2))
+
+def minutes_to_time(minutes):
+    total_minutes = minutes
+    hours = total_minutes // 60
+    mins = total_minutes % 60
+    hour_of_day = 9 + hours
+    return f"{hour_of_day}:{mins:02d}"
+
+if __name__ == '__main__':
+    main()
+```

@@ -1,0 +1,60 @@
+from z3 import *
+
+def main():
+    # Define the start time in minutes from 9:00 (0 minutes)
+    start = Int('start')
+    s = Solver()
+    
+    # Convert time to minutes from 9:00
+    def t(m): return m * 60
+    
+    # Meeting duration in minutes
+    duration = t(1)
+    
+    # Work day boundaries (9:00 to 17:00)
+    min_time = t(0)
+    max_time = t(8)  # 17:00 is 8 hours after 9:00
+    
+    # Pamela's constraint: meeting must end by 14:30 (which is 5.5 hours after 9:00)
+    pamela_max_end = t(5) + 30  # 14:30 is 5*60 + 30 minutes from 9:00
+    
+    # Busy intervals in minutes from 9:00
+    anthony_busy = [(t(0.5), t(1)), (t(3), t(4)), (t(7), t(7.5))]
+    pamela_busy = [(t(0.5), t(1)), (t(7.5), t(8))]
+    zachary_busy = [(t(0), t(2.5)), (t(3), t(3.5)), (t(4), t(4.5)), (t(5.5), t(6)), (t(7), t(8))]
+    
+    # Constraints: start time must be within work hours and meeting must end before 17:00
+    s.add(start >= min_time, start <= max_time - duration)
+    
+    # Pamela's constraint: meeting must end by 14:30
+    s.add(start + duration <= pamela_max_end)
+    
+    # Function to add no-overlap constraints for a set of busy intervals
+    def add_busy_constraints(busy_intervals):
+        for s_start, s_end in busy_intervals:
+            s.add(Or(start + duration <= s_start, start >= s_end))
+    
+    add_busy_constraints(anthony_busy)
+    add_busy_constraints(pamela_busy)
+    add_busy_constraints(zachary_busy)
+    
+    if s.check() == sat:
+        m = s.model()
+        start_minutes = m[start].as_long()
+        
+        # Convert minutes back to time strings
+        def format_time(minutes):
+            total_minutes = minutes
+            hours = total_minutes // 60
+            minutes_remainder = total_minutes % 60
+            return f"{hours + 9:02d}:{minutes_remainder:02d}"
+        
+        start_time = format_time(start_minutes)
+        end_time = format_time(start_minutes + duration)
+        
+        print(f"Monday {start_time}:{end_time}")
+    else:
+        print("No solution found")
+
+if __name__ == "__main__":
+    main()

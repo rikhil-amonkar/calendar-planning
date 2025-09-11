@@ -1,0 +1,125 @@
+import json
+
+def main():
+    # Map location names to indices
+    index_map = {
+        "Presidio": 0,
+        "Nob Hill": 1,
+        "Pacific Heights": 2,
+        "Mission District": 3,
+        "Marina District": 4,
+        "North Beach": 5,
+        "Russian Hill": 6,
+        "Richmond District": 7,
+        "Embarcadero": 8,
+        "Alamo Square": 9,
+        "Sunset District": 10
+    }
+    
+    index_to_name = {v: k for k, v in index_map.items()}
+    
+    travel_dict = {
+        "Sunset District": {"Presidio": 16, "Nob Hill": 27, "Pacific Heights": 21, "Mission District": 25, "Marina District": 21, "North Beach": 28, "Russian Hill": 24, "Richmond District": 12, "Embarcadero": 30, "Alamo Square": 17},
+        "Presidio": {"Sunset District": 15, "Nob Hill": 18, "Pacific Heights": 11, "Mission District": 26, "Marina District": 11, "North Beach": 18, "Russian Hill": 14, "Richmond District": 7, "Embarcadero": 20, "Alamo Square": 19},
+        "Nob Hill": {"Sunset District": 24, "Presidio": 17, "Pacific Heights": 8, "Mission District": 13, "Marina District": 11, "North Beach": 8, "Russian Hill": 5, "Richmond District": 14, "Embarcadero": 9, "Alamo Square": 11},
+        "Pacific Heights": {"Sunset District": 21, "Presidio": 11, "Nob Hill": 8, "Mission District": 15, "Marina District": 6, "North Beach": 9, "Russian Hill": 7, "Richmond District": 12, "Embarcadero": 10, "Alamo Square": 10},
+        "Mission District": {"Sunset District": 24, "Presidio": 25, "Nob Hill": 12, "Pacific Heights": 16, "Marina District": 19, "North Beach": 17, "Russian Hill": 15, "Richmond District": 20, "Embarcadero": 19, "Alamo Square": 11},
+        "Marina District": {"Sunset District": 19, "Presidio": 10, "Nob Hill": 12, "Pacific Heights": 7, "Mission District": 20, "North Beach": 11, "Russian Hill": 8, "Richmond District": 11, "Embarcadero": 14, "Alamo Square": 15},
+        "North Beach": {"Sunset District": 27, "Presidio": 17, "Nob Hill": 7, "Pacific Heights": 8, "Mission District": 18, "Marina District": 9, "Russian Hill": 4, "Richmond District": 18, "Embarcadero": 6, "Alamo Square": 16},
+        "Russian Hill": {"Sunset District": 23, "Presidio": 14, "Nob Hill": 5, "Pacific Heights": 7, "Mission District": 16, "Marina District": 7, "North Beach": 5, "Richmond District": 14, "Embarcadero": 8, "Alamo Square": 15},
+        "Richmond District": {"Sunset District": 11, "Presidio": 7, "Nob Hill": 17, "Pacific Heights": 10, "Mission District": 20, "Marina District": 9, "North Beach": 17, "Russian Hill": 13, "Embarcadero": 19, "Alamo Square": 13},
+        "Embarcadero": {"Sunset District": 30, "Presidio": 20, "Nob Hill": 10, "Pacific Heights": 11, "Mission District": 20, "Marina District": 12, "North Beach": 5, "Russian Hill": 8, "Richmond District": 21, "Alamo Square": 19},
+        "Alamo Square": {"Sunset District": 16, "Presidio": 17, "Nob Hill": 11, "Pacific Heights": 10, "Mission District": 10, "Marina District": 15, "North Beach": 15, "Russian Hill": 13, "Richmond District": 11, "Embarcadero": 16}
+    }
+    
+    n = 10
+    travel_times = [[0] * 11 for _ in range(11)]
+    for loc1, idx1 in index_map.items():
+        for loc2, idx2 in index_map.items():
+            if loc1 in travel_dict and loc2 in travel_dict[loc1]:
+                travel_times[idx1][idx2] = travel_dict[loc1][loc2]
+            else:
+                travel_times[idx1][idx2] = travel_dict[loc2][loc1]
+    
+    friends = [
+        {"name": "Charles", "loc_index": index_map["Presidio"], "avail_start": 255, "avail_end": 360, "min_dur": 105},
+        {"name": "Robert", "loc_index": index_map["Nob Hill"], "avail_start": 255, "avail_end": 510, "min_dur": 90},
+        {"name": "Nancy", "loc_index": index_map["Pacific Heights"], "avail_start": 345, "avail_end": 780, "min_dur": 105},
+        {"name": "Brian", "loc_index": index_map["Mission District"], "avail_start": 390, "avail_end": 780, "min_dur": 60},
+        {"name": "Kimberly", "loc_index": index_map["Marina District"], "avail_start": 480, "avail_end": 645, "min_dur": 75},
+        {"name": "David", "loc_index": index_map["North Beach"], "avail_start": 345, "avail_end": 450, "min_dur": 75},
+        {"name": "William", "loc_index": index_map["Russian Hill"], "avail_start": 210, "avail_end": 555, "min_dur": 120},
+        {"name": "Jeffrey", "loc_index": index_map["Richmond District"], "avail_start": 180, "avail_end": 555, "min_dur": 45},
+        {"name": "Karen", "loc_index": index_map["Embarcadero"], "avail_start": 315, "avail_end": 705, "min_dur": 60},
+        {"name": "Joshua", "loc_index": index_map["Alamo Square"], "avail_start": 585, "avail_end": 780, "min_dur": 60}
+    ]
+    
+    INF = 10**9
+    dp = [[INF] * 11 for _ in range(1<<n)]
+    parent = [[None] * 11 for _ in range(1<<n)]
+    
+    dp[0][10] = 0
+    
+    for bitmask in range(1<<n):
+        for i in range(11):
+            if dp[bitmask][i] == INF:
+                continue
+            for j in range(n):
+                if bitmask & (1 << j):
+                    continue
+                t = travel_times[i][friends[j]['loc_index']]
+                arrival = dp[bitmask][i] + t
+                start_meeting = max(arrival, friends[j]['avail_start'])
+                end_meeting = start_meeting + friends[j]['min_dur']
+                if end_meeting <= friends[j]['avail_end']:
+                    new_bitmask = bitmask | (1 << j)
+                    if end_meeting < dp[new_bitmask][friends[j]['loc_index']]:
+                        dp[new_bitmask][friends[j]['loc_index']] = end_meeting
+                        parent[new_bitmask][friends[j]['loc_index']] = (bitmask, i)
+    
+    best_mask = 0
+    best_count = 0
+    best_j = None
+    for bitmask in range(1<<n):
+        for j in range(10):
+            if dp[bitmask][j] < INF:
+                count = bin(bitmask).count('1')
+                if count > best_count:
+                    best_count = count
+                    best_mask = bitmask
+                    best_j = j
+    
+    def format_time(minutes):
+        hours = minutes // 60
+        minutes %= 60
+        return f"{hours}:{minutes:02d}"
+    
+    itinerary = []
+    current_mask = best_mask
+    current_j = best_j
+    while current_mask != 0:
+        friend_index = current_j
+        for friend in friends:
+            if friend['loc_index'] == current_j:
+                f = friend
+                break
+        end_time = dp[current_mask][current_j]
+        start_time = end_time - f['min_dur']
+        itinerary.append({
+            "action": "meet",
+            "location": index_to_name[current_j],
+            "person": f['name'],
+            "start_time": format_time(start_time),
+            "end_time": format_time(end_time)
+        })
+        prev_mask, prev_i = parent[current_mask][current_j]
+        current_mask = prev_mask
+        current_j = prev_i
+    
+    itinerary.reverse()
+    
+    output = {"itinerary": itinerary}
+    print(json.dumps(output, indent=2))
+
+if __name__ == "__main__":
+    main()

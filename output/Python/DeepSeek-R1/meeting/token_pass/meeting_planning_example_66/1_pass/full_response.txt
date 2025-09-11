@@ -1,0 +1,65 @@
+```python
+import json
+
+def time_to_minutes(time_str):
+    parts = time_str.split(':')
+    hours = int(parts[0])
+    minutes = int(parts[1]) if len(parts) > 1 else 0
+    return hours * 60 + minutes
+
+def minutes_to_time(minutes):
+    hours = minutes // 60
+    mins = minutes % 60
+    return f"{hours}:{mins:02d}"
+
+def main():
+    # Input parameters
+    start_location = "Nob Hill"
+    start_time_str = "9:00"
+    robert_start_str = "11:15"
+    robert_end_str = "17:45"
+    min_meeting_duration = 120
+    travel_to_presidio = 17
+    travel_from_presidio = 18
+
+    # Convert times to minutes
+    start_time = time_to_minutes(start_time_str)
+    robert_start = time_to_minutes(robert_start_str)
+    robert_end = time_to_minutes(robert_end_str)
+    
+    # Calculate earliest arrival at Presidio
+    earliest_arrival = start_time + travel_to_presidio
+    
+    # Determine meeting start time (must be after Robert's availability starts and after travel)
+    meeting_start = max(earliest_arrival, robert_start)
+    
+    # Calculate meeting end time (meeting_start + min_meeting_duration, but not exceeding Robert's end time)
+    meeting_end = min(meeting_start + min_meeting_duration, robert_end)
+    
+    # Adjust if meeting duration is insufficient
+    if meeting_end - meeting_start < min_meeting_duration:
+        meeting_start = robert_end - min_meeting_duration
+        meeting_end = robert_end
+    
+    # Convert back to time strings
+    meeting_start_str = minutes_to_time(meeting_start)
+    meeting_end_str = minutes_to_time(meeting_end)
+    
+    # Build itinerary
+    itinerary = [
+        {
+            "action": "meet",
+            "location": "Presidio",
+            "person": "Robert",
+            "start_time": meeting_start_str,
+            "end_time": meeting_end_str
+        }
+    ]
+    
+    # Output as JSON
+    result = {"itinerary": itinerary}
+    print(json.dumps(result, indent=2))
+
+if __name__ == "__main__":
+    main()
+```

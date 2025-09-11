@@ -1,0 +1,176 @@
+```python
+import itertools
+import json
+
+def time_to_minutes(time_str):
+    parts = time_str.split(':')
+    hour = int(parts[0])
+    minute = int(parts[1])
+    return hour * 60 + minute
+
+def minutes_to_time(minutes):
+    hour = minutes // 60
+    minute = minutes % 60
+    return f"{hour}:{minute:02d}"
+
+# Travel times dictionary
+travel_times = {
+    'Embarcadero': {
+        'Embarcadero': 0,
+        'Golden Gate Park': 25,
+        'Haight-Ashbury': 21,
+        'Bayview': 21,
+        'Presidio': 20,
+        'Financial District': 5
+    },
+    'Golden Gate Park': {
+        'Embarcadero': 25,
+        'Golden Gate Park': 0,
+        'Haight-Ashbury': 7,
+        'Bayview': 23,
+        'Presidio': 11,
+        'Financial District': 26
+    },
+    'Haight-Ashbury': {
+        'Embarcadero': 20,
+        'Golden Gate Park': 7,
+        'Haight-Ashbury': 0,
+        'Bayview': 18,
+        'Presidio': 15,
+        'Financial District': 21
+    },
+    'Bayview': {
+        'Embarcadero': 19,
+        'Golden Gate Park': 22,
+        'Haight-Ashbury': 19,
+        'Bayview': 0,
+        'Presidio': 31,
+        'Financial District': 19
+    },
+    'Presidio': {
+        'Embarcadero': 20,
+        'Golden Gate Park': 12,
+        'Haight-Ashbury': 15,
+        'Bayview': 31,
+        'Presidio': 0,
+        'Financial District': 23
+    },
+    'Financial District': {
+        'Embarcadero': 4,
+        'Golden Gate Park': 23,
+        'Haight-Ashbury': 19,
+        'Bayview': 19,
+        'Presidio': 22,
+        'Financial District': 0
+    }
+}
+
+# Friends data
+friends_data = [
+    {
+        'name': 'Mary',
+        'location': 'Golden Gate Park',
+        'start_avail': '8:45',
+        'end_avail': '11:45',
+        'min_duration': 45
+    },
+    {
+        'name': 'Kevin',
+        'location': 'Haight-Ashbury',
+        'start_avail': '10:15',
+        'end_avail': '16:15',
+        'min_duration': 90
+    },
+    {
+        'name': 'Deborah',
+        'location': 'Bayview',
+        'start_avail': '15:00',
+        'end_avail': '19:15',
+        'min_duration': 120
+    },
+    {
+        'name': 'Stephanie',
+        'location': 'Presidio',
+        'start_avail': '10:00',
+        'end_avail': '17:15',
+        'min_duration': 120
+    },
+    {
+        'name': 'Emily',
+        'location': 'Financial District',
+        'start_avail': '11:30',
+        'end_avail': '21:45',
+        'min_duration': 105
+    }
+]
+
+# Convert time strings to minutes
+for friend in friends_data:
+    friend['start_min'] = time_to_minutes(friend['start_avail'])
+    friend['end_min'] = time_to_minutes(friend['end_avail'])
+
+# Generate all possible subsets of friends
+n_friends = len(friends_data)
+all_indices = list(range(n_friends))
+best_itinerary = None
+best_count = 0
+best_total_duration = 0
+
+# Check subsets from largest to smallest
+for k in range(n_friends, 0, -1):
+    subsets = list(itertools.combinations(all_indices, k))
+    for subset in subsets:
+        total_duration_val = sum(friends_data[i]['min_duration'] for i in subset)
+        # Skip if already found a larger subset or same size with higher total duration
+        if k < best_count or (k == best_count and total_duration_val <= best_total_duration):
+            continue
+        perms = list(itertools.permutations(subset))
+        for perm in perms:
+            current_time = 540  # 9:00 AM
+            current_location = 'Embarcadero'
+            itinerary = []
+            valid = True
+            for idx in perm:
+                friend = friends_data[idx]
+                travel_time = travel_times[current_location][friend['location']]
+                arrival_time = current_time + travel_time
+                start_meeting = max(arrival_time, friend['start_min'])
+                end_meeting = start_meeting + friend['min_duration']
+                if end_meeting > friend['end_min']:
+                    valid = False
+                    break
+                itinerary.append({
+                    'name': friend['name'],
+                    'location': friend['location'],
+                    'start': start_meeting,
+                    'end': end_meeting
+                })
+                current_time = end_meeting
+                current_location = friend['location']
+            if valid:
+                best_itinerary = itinerary
+                best_count = k
+                best_total_duration = total_duration_val
+                break
+        if best_count == k and best_itinerary is not None:
+            break
+    if best_count == n_friends:
+        break
+
+# Format the result
+if best_itinerary is None:
+    result = {"itinerary": []}
+else:
+    itinerary_json = []
+    for meeting in best_itinerary:
+        itinerary_json.append({
+            "action": "meet",
+            "location": meeting['location'],
+            "person": meeting['name'],
+            "start_time": minutes_to_time(meeting['start']),
+            "end_time": minutes_to_time(meeting['end'])
+        })
+    result = {"itinerary": itinerary_json}
+
+print(json.dumps(result))
+```

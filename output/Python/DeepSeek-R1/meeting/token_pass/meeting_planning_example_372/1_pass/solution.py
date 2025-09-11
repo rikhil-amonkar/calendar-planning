@@ -1,0 +1,123 @@
+import json
+
+def minutes_to_time_str(minutes_from_9am):
+    total_minutes = 9 * 60 + minutes_from_9am
+    hours = total_minutes // 60
+    minutes = total_minutes % 60
+    return f"{hours}:{minutes:02d}"
+
+def main():
+    travel_times = {
+        'Sunset District': {
+            'Alamo Square': 17,
+            'Russian Hill': 24,
+            'Golden Gate Park': 11,
+            'Mission District': 24
+        },
+        'Alamo Square': {
+            'Sunset District': 16,
+            'Russian Hill': 13,
+            'Golden Gate Park': 9,
+            'Mission District': 10
+        },
+        'Russian Hill': {
+            'Sunset District': 23,
+            'Alamo Square': 15,
+            'Golden Gate Park': 21,
+            'Mission District': 16
+        },
+        'Golden Gate Park': {
+            'Sunset District': 10,
+            'Alamo Square': 10,
+            'Russian Hill': 19,
+            'Mission District': 17
+        },
+        'Mission District': {
+            'Sunset District': 24,
+            'Alamo Square': 11,
+            'Russian Hill': 15,
+            'Golden Gate Park': 17
+        }
+    }
+
+    # Convert availability windows to minutes from 9:00 AM
+    availability = {
+        'Daniel': {'location': 'Golden Gate Park', 'start': -60, 'end': 270, 'min_duration': 15},
+        'Margaret': {'location': 'Russian Hill', 'start': 0, 'end': 420, 'min_duration': 30},
+        'Charles': {'location': 'Alamo Square', 'start': 540, 'end': 705, 'min_duration': 90},
+        'Stephanie': {'location': 'Mission District', 'start': 690, 'end': 780, 'min_duration': 90}
+    }
+
+    current_time = 0
+    current_location = 'Sunset District'
+    itinerary = []
+
+    # Meet Daniel first
+    travel_time = travel_times[current_location][availability['Daniel']['location']]
+    arrival_time = current_time + travel_time
+    daniel_start = max(arrival_time, availability['Daniel']['start'])
+    daniel_end = min(daniel_start + availability['Daniel']['min_duration'], availability['Daniel']['end'])
+    itinerary.append({
+        "action": "meet",
+        "location": availability['Daniel']['location'],
+        "person": "Daniel",
+        "start_time": minutes_to_time_str(daniel_start),
+        "end_time": minutes_to_time_str(daniel_end)
+    })
+    current_time = daniel_end
+    current_location = availability['Daniel']['location']
+
+    # Then meet Margaret
+    travel_time = travel_times[current_location][availability['Margaret']['location']]
+    arrival_time = current_time + travel_time
+    margaret_start = max(arrival_time, availability['Margaret']['start'])
+    margaret_end = min(availability['Margaret']['end'], margaret_start + availability['Margaret']['min_duration'])
+    itinerary.append({
+        "action": "meet",
+        "location": availability['Margaret']['location'],
+        "person": "Margaret",
+        "start_time": minutes_to_time_str(margaret_start),
+        "end_time": minutes_to_time_str(margaret_end)
+    })
+    current_time = margaret_end
+    current_location = availability['Margaret']['location']
+
+    # Travel to Alamo Square for Charles
+    travel_time = travel_times[current_location][availability['Charles']['location']]
+    arrival_time = current_time + travel_time
+    # Wait if necessary until Charles' availability
+    charles_start = max(arrival_time, availability['Charles']['start'])
+    charles_end = charles_start + availability['Charles']['min_duration']
+    if charles_end > availability['Charles']['end']:
+        charles_start = availability['Charles']['end'] - availability['Charles']['min_duration']
+        charles_end = availability['Charles']['end']
+    itinerary.append({
+        "action": "meet",
+        "location": availability['Charles']['location'],
+        "person": "Charles",
+        "start_time": minutes_to_time_str(charles_start),
+        "end_time": minutes_to_time_str(charles_end)
+    })
+    current_time = charles_end
+    current_location = availability['Charles']['location']
+
+    # Finally meet Stephanie
+    travel_time = travel_times[current_location][availability['Stephanie']['location']]
+    arrival_time = current_time + travel_time
+    stephanie_start = max(arrival_time, availability['Stephanie']['start'])
+    stephanie_end = stephanie_start + availability['Stephanie']['min_duration']
+    if stephanie_end > availability['Stephanie']['end']:
+        stephanie_start = availability['Stephanie']['end'] - availability['Stephanie']['min_duration']
+        stephanie_end = availability['Stephanie']['end']
+    itinerary.append({
+        "action": "meet",
+        "location": availability['Stephanie']['location'],
+        "person": "Stephanie",
+        "start_time": minutes_to_time_str(stephanie_start),
+        "end_time": minutes_to_time_str(stephanie_end)
+    })
+
+    print(json.dumps({"itinerary": itinerary}, indent=2))
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,1 @@
+any(animal_map[i] == 'dog' and nationality_map[i + 2] == 'brit' for i in range(len(houses) - 2)) and

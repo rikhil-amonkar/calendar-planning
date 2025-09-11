@@ -1,0 +1,101 @@
+```python
+import json
+
+def main():
+    # Define the direct flights string
+    flights_str = "Copenhagen and Dubrovnik, Brussels and Copenhagen, Prague and Geneva, Athens and Geneva, Naples and Dubrovnik, Athens and Dubrovnik, Geneva and Mykonos, Naples and Mykonos, Naples and Copenhagen, Munich and Mykonos, Naples and Athens, Prague and Athens, Santorini and Geneva, Athens and Santorini, Naples and Munich, Prague and Copenhagen, Brussels and Naples, Athens and Mykonos, Athens and Copenhagen, Naples and Geneva, Dubrovnik and Munich, Brussels and Munich, Prague and Brussels, Brussels and Athens, Athens and Munich, Geneva and Munich, Copenhagen and Munich, Brussels and Geneva, Copenhagen and Geneva, Prague and Munich, Copenhagen and Santorini, Naples and Santorini, Geneva and Dubrovnik"
+    
+    # Parse the flights string into a list of tuples
+    flights_list = []
+    for part in flights_str.split(','):
+        part = part.strip()
+        cities = part.split(' and ')
+        if len(cities) == 2:
+            flights_list.append((cities[0].strip(), cities[1].strip()))
+    
+    # Define all cities
+    cities = ['Copenhagen', 'Geneva', 'Mykonos', 'Naples', 'Prague', 'Dubrovnik', 'Athens', 'Santorini', 'Brussels', 'Munich']
+    
+    # Build graph as adjacency list
+    graph = {city: set() for city in cities}
+    for a, b in flights_list:
+        graph[a].add(b)
+        graph[b].add(a)
+    
+    # Define the required days per city
+    city_days = {
+        'Copenhagen': 5,
+        'Geneva': 3,
+        'Mykonos': 2,
+        'Naples': 4,
+        'Prague': 2,
+        'Dubrovnik': 3,
+        'Athens': 4,
+        'Santorini': 5,
+        'Brussels': 4,
+        'Munich': 5
+    }
+    
+    # Set of cities excluding Mykonos
+    all_cities = set(cities) - {'Mykonos'}
+    
+    # Function to check time constraints for a given order
+    def check_time_constraints(order):
+        current_day = 1
+        for city in order:
+            duration = city_days[city]
+            end_day = current_day + duration - 1
+            if city == 'Copenhagen':
+                if not (current_day <= 15 and end_day >= 11):
+                    return False
+            if city == 'Naples':
+                if not (current_day <= 8 and end_day >= 5):
+                    return False
+            if city == 'Athens':
+                if not (current_day <= 11 and end_day >= 8):
+                    return False
+            current_day = end_day
+        return True
+
+    # Backtracking function to find valid city order
+    def backtrack(path, remaining):
+        if len(remaining) == 0:
+            if path[-1] in graph['Mykonos']:
+                full_order = path + ['Mykonos']
+                if check_time_constraints(full_order):
+                    return full_order
+            return None
+        
+        for city in list(remaining):
+            if len(path) == 0 or path[-1] in graph[city]:
+                new_path = path + [city]
+                new_remaining = remaining - {city}
+                result = backtrack(new_path, new_remaining)
+                if result is not None:
+                    return result
+        return None
+
+    # Find solution
+    solution = backtrack([], all_cities)
+    if solution is None:
+        print(json.dumps({"itinerary": []}))
+        return
+
+    # Generate itinerary from solution
+    current_day = 1
+    itinerary = []
+    for city in solution:
+        duration = city_days[city]
+        end_day = current_day + duration - 1
+        itinerary.append({
+            "day_range": f"Day {current_day}-{end_day}",
+            "place": city
+        })
+        current_day = end_day
+
+    # Output itinerary as JSON
+    print(json.dumps({"itinerary": itinerary}))
+
+if __name__ == '__main__':
+    main()
+```

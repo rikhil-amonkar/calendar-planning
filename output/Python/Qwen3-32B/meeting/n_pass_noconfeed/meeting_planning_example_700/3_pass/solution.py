@@ -1,0 +1,1 @@
+travel_duration = travel_time[current_location][friend['location']]

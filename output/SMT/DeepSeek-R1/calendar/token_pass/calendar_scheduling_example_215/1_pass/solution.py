@@ -1,0 +1,60 @@
+from z3 import *
+
+def main():
+    # Initialize solver with optimization
+    opt = Optimize()
+    
+    # Meeting duration in minutes
+    meeting_duration = 30
+    
+    # Total available time window: 9:00 to 17:00 (8 hours = 480 minutes)
+    total_minutes = 480
+    
+    # Start time variable (in minutes from 9:00)
+    S = Int('S')
+    
+    # Constraints: Start time must be within [0, total_minutes - meeting_duration]
+    opt.add(S >= 0)
+    opt.add(S <= total_minutes - meeting_duration)
+    
+    # Define busy intervals in minutes from 9:00
+    # Cynthia's busy intervals
+    cynthia_busy = [(30, 90), (150, 180), (240, 270), (360, 420)]
+    # Lauren's busy intervals
+    lauren_busy = [(0, 30), (90, 120), (150, 180), (240, 270), (300, 330), (360, 390), (420, 480)]
+    # Robert's busy intervals
+    robert_busy = [(90, 120), (150, 180), (210, 270), (300, 420)]
+    
+    # Add constraints for each participant's busy intervals
+    # For each busy interval (start, end), meeting must not overlap
+    for start, end in cynthia_busy:
+        opt.add(Or(S + meeting_duration <= start, S >= end))
+    for start, end in lauren_busy:
+        opt.add(Or(S + meeting_duration <= start, S >= end))
+    for start, end in robert_busy:
+        opt.add(Or(S + meeting_duration <= start, S >= end))
+    
+    # Steven and Roy are free all day, so no constraints needed
+    
+    # Find the earliest start time
+    opt.minimize(S)
+    
+    # Check for a solution
+    if opt.check() == sat:
+        m = opt.model()
+        start_minutes = m.eval(S).as_long()
+        
+        # Convert start time to HH:MM format
+        start_hour = 9 + start_minutes // 60
+        start_minute = start_minutes % 60
+        end_minutes = start_minutes + meeting_duration
+        end_hour = 9 + end_minutes // 60
+        end_minute = end_minutes % 60
+        
+        # Format the output
+        print(f"{start_hour:02d}:{start_minute:02d}:{end_hour:02d}:{end_minute:02d}")
+    else:
+        print("No solution found")
+
+if __name__ == "__main__":
+    main()

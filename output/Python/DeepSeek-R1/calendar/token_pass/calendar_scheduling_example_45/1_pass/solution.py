@@ -1,0 +1,48 @@
+def main():
+    # Convert time strings to minutes since midnight for easier calculation
+    def time_to_minutes(time_str):
+        hours, minutes = map(int, time_str.split(':'))
+        return hours * 60 + minutes
+
+    # Convert minutes back to HH:MM format
+    def minutes_to_time(minutes):
+        hours = minutes // 60
+        minutes = minutes % 60
+        return f"{hours:02d}:{minutes:02d}"
+
+    # Work hours
+    work_start = time_to_minutes("09:00")
+    work_end = time_to_minutes("17:00")
+    
+    # Samuel's busy intervals in minutes
+    samuel_busy = [
+        (time_to_minutes("09:00"), time_to_minutes("10:30")),
+        (time_to_minutes("11:30"), time_to_minutes("12:00")),
+        (time_to_minutes("13:00"), time_to_minutes("13:30")),
+        (time_to_minutes("14:00"), time_to_minutes("16:00")),
+        (time_to_minutes("16:30"), time_to_minutes("17:00"))
+    ]
+    
+    # Find free intervals for Samuel within work hours
+    free_intervals = []
+    current_time = work_start
+    
+    for start, end in samuel_busy:
+        if current_time < start:
+            free_intervals.append((current_time, start))
+        current_time = max(current_time, end)
+    
+    if current_time < work_end:
+        free_intervals.append((current_time, work_end))
+    
+    # Find first free interval with sufficient duration (30 minutes)
+    meeting_duration = 30
+    for start, end in free_intervals:
+        if end - start >= meeting_duration:
+            meeting_start = start
+            meeting_end = meeting_start + meeting_duration
+            print(f"Monday:{minutes_to_time(meeting_start)}:{minutes_to_time(meeting_end)}")
+            return
+
+if __name__ == "__main__":
+    main()

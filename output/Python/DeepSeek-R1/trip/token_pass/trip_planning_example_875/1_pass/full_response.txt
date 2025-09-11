@@ -1,0 +1,91 @@
+```python
+import itertools
+import json
+
+def main():
+    # Define the graph of direct flights
+    graph = {
+        'Krakow': ['Split', 'Edinburgh', 'Stuttgart'],
+        'Split': ['Krakow', 'Athens', 'Stuttgart'],
+        'Edinburgh': ['Krakow', 'Stuttgart', 'Venice', 'Athens'],
+        'Venice': ['Stuttgart', 'Edinburgh', 'Athens'],
+        'Stuttgart': ['Venice', 'Krakow', 'Edinburgh', 'Athens', 'Split'],
+        'Athens': ['Split', 'Stuttgart', 'Mykonos', 'Venice', 'Edinburgh'],
+        'Mykonos': ['Athens']
+    }
+    
+    # Required days for each city
+    days_required = {
+        'Stuttgart': 3,
+        'Edinburgh': 4,
+        'Athens': 4,
+        'Split': 2,
+        'Krakow': 4,
+        'Venice': 5,
+        'Mykonos': 4
+    }
+    
+    # Constraints: each constraint is a function (start, end) -> bool
+    constraints = {
+        'Stuttgart': lambda s, e: any(11 <= d <= 13 for d in range(s, e+1)),
+        'Split': lambda s, e: any(13 <= d <= 14 for d in range(s, e+1)),
+        'Krakow': lambda s, e: any(8 <= d <= 11 for d in range(s, e+1))
+    }
+    
+    cities = list(days_required.keys())
+    found = False
+    result_itinerary = None
+    
+    for perm in itertools.permutations(cities):
+        # Check graph connectivity for consecutive cities
+        valid_route = True
+        for i in range(len(perm)-1):
+            if perm[i] not in graph or perm[i+1] not in graph[perm[i]]:
+                valid_route = False
+                break
+        if not valid_route:
+            continue
+            
+        # Calculate start and end days for each city in this permutation
+        start_days = []
+        end_days = []
+        current_start = 1
+        for city in perm:
+            days = days_required[city]
+            end = current_start + days - 1
+            start_days.append(current_start)
+            end_days.append(end)
+            current_start = end  # Next city starts on the same day we fly out
+            
+        # Check constraints for cities that have them
+        satisfies_constraints = True
+        for i, city in enumerate(perm):
+            if city in constraints:
+                s = start_days[i]
+                e = end_days[i]
+                if not constraints[city](s, e):
+                    satisfies_constraints = False
+                    break
+                    
+        if satisfies_constraints:
+            # Build the itinerary list
+            itinerary_list = []
+            for i, city in enumerate(perm):
+                s = start_days[i]
+                e = end_days[i]
+                day_range = f"Day {s}-{e}"
+                itinerary_list.append({"day_range": day_range, "place": city})
+            result_itinerary = itinerary_list
+            found = True
+            break
+            
+    if not found:
+        # Fallback: return an empty itinerary if no valid plan found
+        result_itinerary = []
+        
+    output = {"itinerary": result_itinerary}
+    print(json.dumps(output, indent=2))
+
+if __name__ == "__main__":
+    main()
+```

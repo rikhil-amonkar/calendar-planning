@@ -1,0 +1,105 @@
+import itertools
+import json
+
+def main():
+    # Convert time string (H:MM) to minutes since midnight
+    def time_to_minutes(time_str):
+        parts = time_str.split(':')
+        hour = int(parts[0])
+        minute = int(parts[1]) if len(parts) > 1 else 0
+        return hour * 60 + minute
+
+    # Convert minutes since midnight to time string without leading zeros
+    def minutes_to_time(minutes):
+        hours = minutes // 60
+        mins = minutes % 60
+        return f"{hours}:{mins:02d}"
+
+    # Travel times dictionary
+    travel_times = {
+        'Bayview': {'Russian Hill': 23, 'Alamo Square': 16, 'North Beach': 21, 'Financial District': 19},
+        'Russian Hill': {'Bayview': 23, 'Alamo Square': 15, 'North Beach': 5, 'Financial District': 11},
+        'Alamo Square': {'Bayview': 16, 'Russian Hill': 13, 'North Beach': 15, 'Financial District': 17},
+        'North Beach': {'Bayview': 22, 'Russian Hill': 4, 'Alamo Square': 16, 'Financial District': 8},
+        'Financial District': {'Bayview': 19, 'Russian Hill': 10, 'Alamo Square': 17, 'North Beach': 7}
+    }
+
+    # Friend constraints
+    friends = [
+        {
+            'name': 'Joseph',
+            'location': 'Russian Hill',
+            'start': time_to_minutes('8:30'),
+            'end': time_to_minutes('19:15'),
+            'min_duration': 60
+        },
+        {
+            'name': 'Nancy',
+            'location': 'Alamo Square',
+            'start': time_to_minutes('11:00'),
+            'end': time_to_minutes('16:00'),
+            'min_duration': 90
+        },
+        {
+            'name': 'Jason',
+            'location': 'North Beach',
+            'start': time_to_minutes('16:45'),
+            'end': time_to_minutes('21:45'),
+            'min_duration': 15
+        },
+        {
+            'name': 'Jeffrey',
+            'location': 'Financial District',
+            'start': time_to_minutes('10:30'),
+            'end': time_to_minutes('15:45'),
+            'min_duration': 45
+        }
+    ]
+
+    start_time = time_to_minutes('9:00')
+    start_location = 'Bayview'
+    best_itinerary = []
+    max_meetings = 0
+
+    # Generate all possible orders of meeting friends
+    for order in itertools.permutations(friends):
+        current_time = start_time
+        current_location = start_location
+        itinerary = []
+        meetings_count = 0
+        
+        for friend in order:
+            # Calculate travel time to friend's location
+            travel_time = travel_times[current_location][friend['location']]
+            arrival_time = current_time + travel_time
+            
+            # Adjust start time if arriving before friend's availability
+            meeting_start = max(arrival_time, friend['start'])
+            meeting_end = meeting_start + friend['min_duration']
+            
+            # Check if meeting fits within friend's availability
+            if meeting_end <= friend['end']:
+                itinerary.append({
+                    'action': 'meet',
+                    'location': friend['location'],
+                    'person': friend['name'],
+                    'start_time': minutes_to_time(meeting_start),
+                    'end_time': minutes_to_time(meeting_end)
+                })
+                current_time = meeting_end
+                current_location = friend['location']
+                meetings_count += 1
+            else:
+                break  # This order fails, move to next permutation
+        
+        # Update best itinerary if this order allows more meetings
+        if meetings_count > max_meetings:
+            max_meetings = meetings_count
+            best_itinerary = itinerary
+
+    # Output the result as JSON
+    result = {'itinerary': best_itinerary}
+    print(json.dumps(result, indent=2))
+
+if __name__ == '__main__':
+    main()

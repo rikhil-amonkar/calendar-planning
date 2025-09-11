@@ -1,0 +1,54 @@
+import json
+
+def main():
+    # Convert all times to minutes past midnight for easier calculation
+    # Start at Russian Hill at 9:00 AM (540 minutes)
+    start_time = 9 * 60
+    
+    # Barbara's availability: 1:15 PM to 6:15 PM (795 to 1095 minutes)
+    barbara_start = 13 * 60 + 15
+    barbara_end = 18 * 60 + 15
+    
+    # Travel times in minutes
+    travel_to_richmond = 14
+    travel_from_richmond = 13  # Not used in this scenario
+    
+    # Minimum meeting duration
+    min_duration = 45
+    
+    # Calculate earliest possible arrival at Richmond District
+    # Must account for travel time from Russian Hill
+    earliest_arrival = start_time + travel_to_richmond
+    meeting_start = max(earliest_arrival, barbara_start)
+    
+    # Ensure meeting doesn't exceed Barbara's availability
+    meeting_end = meeting_start + min_duration
+    if meeting_end > barbara_end:
+        meeting_end = barbara_end
+        meeting_start = meeting_end - min_duration
+        if meeting_start < barbara_start:
+            meeting_start = barbara_start
+    
+    # Convert times back to formatted strings
+    def format_time(minutes):
+        hours = minutes // 60
+        mins = minutes % 60
+        return f"{hours}:{mins:02d}"
+    
+    # Create itinerary
+    itinerary = [
+        {
+            "action": "meet",
+            "location": "Richmond District",
+            "person": "Barbara",
+            "start_time": format_time(meeting_start),
+            "end_time": format_time(meeting_end)
+        }
+    ]
+    
+    # Output as JSON
+    result = {"itinerary": itinerary}
+    print(json.dumps(result, indent=2))
+
+if __name__ == "__main__":
+    main()

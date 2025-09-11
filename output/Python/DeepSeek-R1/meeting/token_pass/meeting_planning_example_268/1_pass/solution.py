@@ -1,0 +1,106 @@
+import json
+from itertools import permutations
+
+def time_to_minutes(time_str):
+    parts = time_str.split(':')
+    hours = int(parts[0])
+    minutes = int(parts[1]) if len(parts) > 1 else 0
+    return hours * 60 + minutes
+
+def minutes_to_time(minutes):
+    hours = minutes // 60
+    minutes = minutes % 60
+    return f"{hours}:{minutes:02d}"
+
+def main():
+    travel_times = {
+        'Golden Gate Park': {'Alamo Square': 10, 'Presidio': 11, 'Russian Hill': 19},
+        'Alamo Square': {'Golden Gate Park': 9, 'Presidio': 18, 'Russian Hill': 13},
+        'Presidio': {'Golden Gate Park': 12, 'Alamo Square': 18, 'Russian Hill': 14},
+        'Russian Hill': {'Golden Gate Park': 21, 'Alamo Square': 15, 'Presidio': 14}
+    }
+    
+    meetings = [
+        {'person': 'Timothy', 'location': 'Alamo Square', 'available_start': time_to_minutes('12:00'), 'available_end': time_to_minutes('16:15'), 'min_duration': 105},
+        {'person': 'Mark', 'location': 'Presidio', 'available_start': time_to_minutes('18:45'), 'available_end': time_to_minutes('21:00'), 'min_duration': 60},
+        {'person': 'Joseph', 'location': 'Russian Hill', 'available_start': time_to_minutes('16:45'), 'available_end': time_to_minutes('21:30'), 'min_duration': 60}
+    ]
+    
+    start_location = 'Golden Gate Park'
+    start_time = time_to_minutes('9:00')
+    
+    best_order = None
+    best_itinerary = None
+    
+    for order in permutations(range(len(meetings))):
+        current_time = start_time
+        current_loc = start_location
+        itinerary = []
+        feasible = True
+        
+        for i in order:
+            meeting = meetings[i]
+            travel_duration = travel_times[current_loc][meeting['location']]
+            arrival_time = current_time + travel_duration
+            meeting_start = max(arrival_time, meeting['available_start'])
+            if meeting_start + meeting['min_duration'] > meeting['available_end']:
+                feasible = False
+                break
+            meeting_end = meeting_start + meeting['min_duration']
+            itinerary.append((meeting['person'], meeting['location'], meeting_start, meeting_end))
+            current_time = meeting_end
+            current_loc = meeting['location']
+            
+        if feasible:
+            best_order = order
+            best_itinerary = itinerary
+            break
+            
+    if best_order is None:
+        print('{"itinerary": []}')
+        return
+        
+    adjusted_itinerary = []
+    if best_order == (0, 1, 2):
+        meeting0 = meetings[0]
+        meeting1 = meetings[1]
+        meeting2 = meetings[2]
+        
+        first_start = meeting0['available_end'] - meeting0['min_duration']
+        first_end = first_start + meeting0['min_duration']
+        
+        travel1 = travel_times[meeting0['location']][meeting1['location']]
+        arrival1 = first_end + travel1
+        second_start = max(arrival1, meeting1['available_start'])
+        second_end = second_start + meeting1['min_duration']
+        
+        travel2 = travel_times[meeting1['location']][meeting2['location']]
+        arrival2 = second_end + travel2
+        third_start = max(arrival2, meeting2['available_start'])
+        third_end = third_start + meeting2['min_duration']
+        
+        if third_end <= meeting2['available_end']:
+            adjusted_itinerary = [
+                ('Timothy', 'Alamo Square', first_start, first_end),
+                ('Mark', 'Presidio', second_start, second_end),
+                ('Joseph', 'Russian Hill', third_start, third_end)
+            ]
+        else:
+            adjusted_itinerary = best_itinerary
+    else:
+        adjusted_itinerary = best_itinerary
+        
+    output = {"itinerary": []}
+    for person, location, start, end in adjusted_itinerary:
+        output["itinerary"].append({
+            "action": "meet",
+            "location": location,
+            "person": person,
+            "start_time": minutes_to_time(start),
+            "end_time": minutes_to_time(end)
+        })
+        
+    print(json.dumps(output, indent=2))
+
+if __name__ == "__main__":
+    main()

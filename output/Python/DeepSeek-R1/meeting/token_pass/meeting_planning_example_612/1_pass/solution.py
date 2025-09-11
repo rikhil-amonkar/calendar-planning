@@ -1,0 +1,77 @@
+import itertools
+import json
+
+def time_to_minutes(time_str):
+    parts = time_str.split(':')
+    hour = int(parts[0])
+    minute = int(parts[1])
+    return hour * 60 + minute
+
+def minutes_to_time(minutes):
+    hour = minutes // 60
+    minute = minutes % 60
+    return f"{hour}:{minute:02d}"
+
+def main():
+    travel_matrix = {
+        'Alamo Square': {'Alamo Square': 0, 'Russian Hill': 13, 'Presidio': 18, 'Chinatown': 16, 'Sunset District': 16, 'The Castro': 8, 'Embarcadero': 17, 'Golden Gate Park': 9},
+        'Russian Hill': {'Alamo Square': 15, 'Russian Hill': 0, 'Presidio': 14, 'Chinatown': 9, 'Sunset District': 23, 'The Castro': 21, 'Embarcadero': 8, 'Golden Gate Park': 21},
+        'Presidio': {'Alamo Square': 18, 'Russian Hill': 14, 'Presidio': 0, 'Chinatown': 21, 'Sunset District': 15, 'The Castro': 21, 'Embarcadero': 20, 'Golden Gate Park': 12},
+        'Chinatown': {'Alamo Square': 17, 'Russian Hill': 7, 'Presidio': 19, 'Chinatown': 0, 'Sunset District': 29, 'The Castro': 22, 'Embarcadero': 5, 'Golden Gate Park': 23},
+        'Sunset District': {'Alamo Square': 17, 'Russian Hill': 24, 'Presidio': 16, 'Chinatown': 30, 'Sunset District': 0, 'The Castro': 17, 'Embarcadero': 31, 'Golden Gate Park': 11},
+        'The Castro': {'Alamo Square': 8, 'Russian Hill': 18, 'Presidio': 20, 'Chinatown': 20, 'Sunset District': 17, 'The Castro': 0, 'Embarcadero': 22, 'Golden Gate Park': 11},
+        'Embarcadero': {'Alamo Square': 19, 'Russian Hill': 8, 'Presidio': 20, 'Chinatown': 7, 'Sunset District': 30, 'The Castro': 25, 'Embarcadero': 0, 'Golden Gate Park': 25},
+        'Golden Gate Park': {'Alamo Square': 10, 'Russian Hill': 19, 'Presidio': 11, 'Chinatown': 23, 'Sunset District': 10, 'The Castro': 13, 'Embarcadero': 25, 'Golden Gate Park': 0}
+    }
+    
+    friends = [
+        {'name': 'Emily', 'location': 'Russian Hill', 'start_avail': time_to_minutes('12:15'), 'end_avail': time_to_minutes('14:15'), 'min_duration': 105},
+        {'name': 'Mark', 'location': 'Presidio', 'start_avail': time_to_minutes('14:45'), 'end_avail': time_to_minutes('19:30'), 'min_duration': 60},
+        {'name': 'Deborah', 'location': 'Chinatown', 'start_avail': time_to_minutes('7:30'), 'end_avail': time_to_minutes('15:30'), 'min_duration': 45},
+        {'name': 'Margaret', 'location': 'Sunset District', 'start_avail': time_to_minutes('21:30'), 'end_avail': time_to_minutes('22:30'), 'min_duration': 60},
+        {'name': 'George', 'location': 'The Castro', 'start_avail': time_to_minutes('7:30'), 'end_avail': time_to_minutes('14:15'), 'min_duration': 60},
+        {'name': 'Andrew', 'location': 'Embarcadero', 'start_avail': time_to_minutes('20:15'), 'end_avail': time_to_minutes('22:00'), 'min_duration': 75},
+        {'name': 'Steven', 'location': 'Golden Gate Park', 'start_avail': time_to_minutes('11:15'), 'end_avail': time_to_minutes('21:15'), 'min_duration': 105}
+    ]
+    
+    def simulate(perm, start_time, start_location):
+        current_time = start_time
+        current_loc = start_location
+        itinerary = []
+        for friend in perm:
+            loc = friend['location']
+            travel_time = travel_matrix[current_loc][loc]
+            arrival = current_time + travel_time
+            start_meeting = max(arrival, friend['start_avail'])
+            if start_meeting + friend['min_duration'] > friend['end_avail']:
+                return None
+            end_meeting = start_meeting + friend['min_duration']
+            itinerary.append({
+                'action': 'meet',
+                'location': loc,
+                'person': friend['name'],
+                'start_time': minutes_to_time(start_meeting),
+                'end_time': minutes_to_time(end_meeting)
+            })
+            current_time = end_meeting
+            current_loc = loc
+        return itinerary
+
+    start_time_minutes = time_to_minutes('9:00')
+    start_location = 'Alamo Square'
+    found_itinerary = []
+    
+    for k in range(len(friends), 0, -1):
+        for perm in itertools.permutations(friends, k):
+            itinerary = simulate(perm, start_time_minutes, start_location)
+            if itinerary is not None:
+                found_itinerary = itinerary
+                break
+        if found_itinerary:
+            break
+            
+    output_dict = {"itinerary": found_itinerary}
+    print(json.dumps(output_dict))
+
+if __name__ == "__main__":
+    main()

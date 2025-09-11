@@ -1,0 +1,113 @@
+import itertools
+import json
+
+def main():
+    # Convert time to minutes from midnight
+    def time_to_minutes(time_str):
+        parts = time_str.split(':')
+        hour = int(parts[0])
+        minute = int(parts[1][:-2])
+        period = parts[1][-2:]
+        if period == 'PM' and hour != 12:
+            hour += 12
+        elif period == 'AM' and hour == 12:
+            hour = 0
+        return hour * 60 + minute
+
+    # Convert minutes to time string (24-hour format without leading zero)
+    def minutes_to_time(minutes):
+        hours = minutes // 60
+        minutes = minutes % 60
+        return f"{hours}:{minutes:02d}"
+
+    # Define friends with their constraints (in minutes from midnight)
+    friends = [
+        {'name': 'Jason', 'location': 'Richmond District', 'start': time_to_minutes('1:00PM'), 'end': time_to_minutes('8:45PM'), 'min_duration': 90},
+        {'name': 'Melissa', 'location': 'North Beach', 'start': time_to_minutes('6:45PM'), 'end': time_to_minutes('8:15PM'), 'min_duration': 45},
+        {'name': 'Brian', 'location': 'Financial District', 'start': time_to_minutes('9:45AM'), 'end': time_to_minutes('9:45PM'), 'min_duration': 15},
+        {'name': 'Elizabeth', 'location': 'Golden Gate Park', 'start': time_to_minutes('8:45AM'), 'end': time_to_minutes('9:30PM'), 'min_duration': 105},
+        {'name': 'Laura', 'location': 'Union Square', 'start': time_to_minutes('2:15PM'), 'end': time_to_minutes('7:30PM'), 'min_duration': 75}
+    ]
+    
+    start_time = time_to_minutes('9:00AM')  # 540 minutes
+    start_location = 'Presidio'
+
+    # Travel times dictionary (from, to) -> minutes
+    travel_times = {
+        ('Presidio', 'Richmond District'): 7,
+        ('Presidio', 'North Beach'): 18,
+        ('Presidio', 'Financial District'): 23,
+        ('Presidio', 'Golden Gate Park'): 12,
+        ('Presidio', 'Union Square'): 22,
+        ('Richmond District', 'Presidio'): 7,
+        ('Richmond District', 'North Beach'): 17,
+        ('Richmond District', 'Financial District'): 22,
+        ('Richmond District', 'Golden Gate Park'): 9,
+        ('Richmond District', 'Union Square'): 21,
+        ('North Beach', 'Presidio'): 17,
+        ('North Beach', 'Richmond District'): 18,
+        ('North Beach', 'Financial District'): 8,
+        ('North Beach', 'Golden Gate Park'): 22,
+        ('North Beach', 'Union Square'): 7,
+        ('Financial District', 'Presidio'): 22,
+        ('Financial District', 'Richmond District'): 21,
+        ('Financial District', 'North Beach'): 7,
+        ('Financial District', 'Golden Gate Park'): 23,
+        ('Financial District', 'Union Square'): 9,
+        ('Golden Gate Park', 'Presidio'): 11,
+        ('Golden Gate Park', 'Richmond District'): 7,
+        ('Golden Gate Park', 'North Beach'): 24,
+        ('Golden Gate Park', 'Financial District'): 26,
+        ('Golden Gate Park', 'Union Square'): 22,
+        ('Union Square', 'Presidio'): 24,
+        ('Union Square', 'Richmond District'): 20,
+        ('Union Square', 'North Beach'): 10,
+        ('Union Square', 'Financial District'): 9,
+        ('Union Square', 'Golden Gate Park'): 22
+    }
+
+    best_count = 0
+    best_itinerary = []
+
+    # Generate all permutations of friends
+    for perm in itertools.permutations(friends):
+        current_time = start_time
+        current_location = start_location
+        itinerary = []
+        count = 0
+        
+        for friend in perm:
+            from_to = (current_location, friend['location'])
+            if from_to not in travel_times:
+                continue
+            travel_time = travel_times[from_to]
+            arrival_time = current_time + travel_time
+            start_meeting = max(arrival_time, friend['start'])
+            end_meeting = start_meeting + friend['min_duration']
+            
+            if end_meeting > friend['end']:
+                continue
+                
+            itinerary.append({
+                'action': 'meet',
+                'location': friend['location'],
+                'person': friend['name'],
+                'start_time': minutes_to_time(start_meeting),
+                'end_time': minutes_to_time(end_meeting)
+            })
+            current_time = end_meeting
+            current_location = friend['location']
+            count += 1
+            
+        if count > best_count:
+            best_count = count
+            best_itinerary = itinerary
+
+    # Output the best itinerary as JSON
+    result = {
+        "itinerary": best_itinerary
+    }
+    print(json.dumps(result, indent=2))
+
+if __name__ == '__main__':
+    main()
