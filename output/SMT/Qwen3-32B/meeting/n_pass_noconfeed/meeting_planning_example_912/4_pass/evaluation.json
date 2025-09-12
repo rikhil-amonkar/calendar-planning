@@ -1,0 +1,79 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": true,
+    "execution_output": "{\"itinerary\": []}",
+    "pred": {
+        "itinerary": []
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Marina District",
+                "person": "Joshua",
+                "start_time": "10:30",
+                "end_time": "11:15"
+            },
+            {
+                "action": "meet",
+                "location": "Presidio",
+                "person": "Kimberly",
+                "start_time": "15:30",
+                "end_time": "15:45"
+            },
+            {
+                "action": "meet",
+                "location": "Nob Hill",
+                "person": "Kenneth",
+                "start_time": "16:03",
+                "end_time": "16:33"
+            },
+            {
+                "action": "meet",
+                "location": "Sunset District",
+                "person": "Betty",
+                "start_time": "16:57",
+                "end_time": "17:57"
+            },
+            {
+                "action": "meet",
+                "location": "Haight-Ashbury",
+                "person": "Daniel",
+                "start_time": "18:30",
+                "end_time": "18:45"
+            },
+            {
+                "action": "meet",
+                "location": "Alamo Square",
+                "person": "Elizabeth",
+                "start_time": "19:15",
+                "end_time": "19:30"
+            },
+            {
+                "action": "meet",
+                "location": "Chinatown",
+                "person": "Deborah",
+                "start_time": "19:45",
+                "end_time": "20:00"
+            }
+        ]
+    },
+    "status": "No plan generated",
+    "violated_constraint": {
+        "no_valid_meetings": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 4,
+    "timing": {
+        "api_call_time": 96.2981104850769,
+        "execution_time": 0.08235406875610352,
+        "constraint_eval_time": 9.179115295410156e-05,
+        "pred_extract_time": 0.410214900970459,
+        "gold_extract_time": 0.0001201629638671875,
+        "total_tokens": 8042,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import z3\nimport json\n\n# Sample data: list of friends with their details\nfriends = {\n    \"Alice\": {\n        \"location\": \"Coffee Shop\",\n        \"available_times\": [9*60, 10*60],  # [start, end] in minutes\n        \"min_duration\": 30\n    },\n    \"Bob\": {\n        \"location\": \"Park\",\n        \"available_times\": [10*60, 12*60],\n        \"min_duration\": 45\n    },\n    \"Charlie\": {\n        \"location\": \"Library\",\n        \"available_times\": [11*60, 13*60],\n        \"min_duration\": 20\n    }\n}\n\n# Create Z3 variables for each friend\nstart_times = {name: z3.Int(f\"start_{name}\") for name in friends}\nvisited = {name: z3.Bool(f\"visited_{name}\") for name in friends}\n\n# Initialize the solver\nsolver = z3.Solver()\n\n# Add constraints\nfor name in friends:\n    # If visited, start time must be within available time window\n    solver.add(z3.Implies(visited[name], z3.And(\n        start_times[name] >= friends[name][\"available_times\"][0],\n        start_times[name] <= friends[name][\"available_times\"][1] - friends[name][\"min_duration\"]\n    )))\n\n    # Ensure start times are non-negative\n    solver.add(start_times[name] >= 0)\n\n# Optional: add more constraints like only one meeting per hour, etc.\n\n# Check for solution\nif solver.check() == z3.sat:\n    model = solver.model()\n    visited_names = [name for name in friends if model.eval(visited[name])]\n    visited_meetings = []\n    for name in visited_names:\n        start_val = model.eval(start_times[name]).as_long()\n        duration = friends[name]['min_duration']\n        end_val = start_val + duration\n        visited_meetings.append({\n            'name': name,\n            'start': start_val,\n            'end': end_val\n        })\n    visited_meetings.sort(key=lambda x: x['start'])\n\n    def to_time_str(minutes):\n        hours = minutes // 60\n        mins = minutes % 60\n        return f\"{hours}:{mins:02d}\"\n\n    itinerary = []\n    for item in visited_meetings:\n        itinerary.append({\n            \"action\": \"meet\",\n            \"location\": friends[item['name']]['location'],\n            \"person\": item['name'],\n            \"start_time\": to_time_str(item['start']),\n            \"end_time\": to_time_str(item['end'])\n        })\n    print(json.dumps({\"itinerary\": itinerary}))\nelse:\n    print(\"No solution found.\")"
+}

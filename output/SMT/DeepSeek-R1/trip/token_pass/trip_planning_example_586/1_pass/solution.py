@@ -1,0 +1,104 @@
+from z3 import *
+import json
+
+def main():
+    # Cities enum
+    cities = ['Frankfurt', 'Naples', 'Helsinki', 'Lyon', 'Prague']
+    CityEnum, (Frankfurt, Naples, Helsinki, Lyon, Prague) = EnumSort('CityEnum', cities)
+    city_map = {c: eval(c) for c in cities}
+    
+    # Required days per city
+    required_days = {
+        Frankfurt: 3,
+        Naples: 4,
+        Helsinki: 4,
+        Lyon: 3,
+        Prague: 2
+    }
+    
+    # Direct flights (symmetric)
+    direct_flights = [
+        (Prague, Lyon),
+        (Prague, Frankfurt),
+        (Frankfurt, Lyon),
+        (Helsinki, Naples),
+        (Helsinki, Frankfurt),
+        (Naples, Frankfurt),
+        (Prague, Helsinki)
+    ]
+    
+    # Create symmetric pairs
+    direct_flights += [(b, a) for (a, b) in direct_flights]
+    
+    # Stay variables for each day (1-12)
+    stay = [Const(f'stay_{i}', CityEnum) for i in range(12)]
+    
+    # Flight variables (true if flight occurs on day i, for days 2-12)
+    flight = [Bool(f'flight_{i}') for i in range(1, 12)]
+    
+    s = Solver()
+    
+    # Constraint: Flight on day i iff stay[i-1] != stay[i]
+    for i in range(1, 12):
+        s.add(flight[i-1] == (stay[i-1] != stay[i]))
+    
+    # Constraint: Total days per city must match requirements
+    for city in cities:
+        c = city_map[city]
+        overnight_count = Sum([If(stay[i] == c, 1, 0) for i in range(12)])
+        departure_count = Sum([If(And(flight[i], stay[i] == c), 1, 0) for i in range(11)])
+        s.add(overnight_count + departure_count == required_days[c])
+    
+    # Constraint: Helsinki show from day 2 to day 5
+    for d in range(1, 5):  # days 2-5 (0-indexed: indices 1-4)
+        # Must be in Helsinki on day d (either overnight or departing flight)
+        in_helsinki = Or(
+            stay[d] == Helsinki,
+            And(flight[d-1], stay[d-1] == Helsinki)  # Flight on day d (index d-1) from Helsinki
+        )
+        s.add(in_helsinki)
+    
+    # Constraint: Prague workshop between day 1 and day 2
+    # Must be in Prague on day 1 (overnight)
+    s.add(stay[0] == Prague)
+    # Must be in Prague on day 2 (either overnight or flight from Prague on day 2)
+    in_prague_day2 = Or(
+        stay[1] == Prague,
+        And(flight[0], stay[0] == Prague)  # Flight on day 2 (index 0) from Prague
+    )
+    s.add(in_prague_day2)
+    
+    # Constraint: All flights must be direct
+    for i in range(11):
+        from_city = stay[i]
+        to_city = stay[i+1]
+        valid_flight = Or([And(from_city == a, to_city == b) for (a, b) in direct_flights])
+        s.add(Implies(flight[i], valid_flight))
+    
+    # Check satisfiability
+    if s.check() == sat:
+        m = s.model()
+        stay_values = [m.evaluate(stay[i]) for i in range(12)]
+        
+        # Convert to city names
+        city_names = [str(c) for c in stay_values]
+        
+        # Segment the itinerary
+        segments = []
+        start = 1
+        current_city = city_names[0]
+        for day in range(1, 12):
+            if city_names[day] != current_city:
+                segments.append({"day_range": f"Day {start}-{day}", "place": current_city})
+                start = day
+                current_city = city_names[day]
+        segments.append({"day_range": f"Day {start}-12", "place": current_city})
+        
+        # Output as JSON
+        result = {"itinerary": segments}
+        print(json.dumps(result))
+    else:
+        print('{"itinerary": []}')
+
+if __name__ == '__main__':
+    main()

@@ -1,0 +1,1 @@
+n = 6  # For a 6-house puzzle

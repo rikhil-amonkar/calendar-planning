@@ -1,0 +1,148 @@
+import json
+from z3 import *
+
+def main():
+    # Define location indices
+    locations = [
+        "Russian Hill",
+        "Pacific Heights",
+        "North Beach",
+        "Golden Gate Park",
+        "Embarcadero",
+        "Haight-Ashbury",
+        "Fisherman's Wharf",
+        "Mission District",
+        "Alamo Square",
+        "Bayview",
+        "Richmond District"
+    ]
+    
+    # Create travel time matrix (11x11)
+    travel_times = [
+        [0, 7, 5, 21, 8, 17, 7, 16, 15, 23, 14],
+        [7, 0, 9, 15, 10, 11, 13, 15, 10, 22, 12],
+        [5, 9, 0, 22, 6, 18, 5, 18, 16, 25, 18],
+        [21, 15, 22, 0, 25, 7, 24, 17, 9, 23, 7],
+        [8, 10, 6, 25, 0, 21, 6, 20, 19, 21, 21],
+        [17, 11, 18, 7, 21, 0, 23, 11, 5, 18, 10],
+        [7, 13, 5, 24, 6, 23, 0, 22, 21, 26, 18],
+        [16, 16, 17, 17, 19, 12, 22, 0, 11, 14, 20],
+        [15, 10, 16, 9, 16, 5, 19, 11, 0, 16, 11],
+        [23, 23, 22, 22, 19, 19, 25, 13, 16, 0, 25],
+        [13, 10, 17, 9, 19, 10, 18, 20, 13, 27, 0]
+    ]
+    
+    # Friend data: [name, location, available_start, available_end, min_duration]
+    friends = [
+        ("Emily", "Pacific Heights", 15, 285, 120),
+        ("Helen", "North Beach", 285, 585, 30),
+        ("Kimberly", "Golden Gate Park", 585, 735, 75),
+        ("James", "Embarcadero", 90, 150, 30),
+        ("Linda", "Haight-Ashbury", -90, 615, 15),
+        ("Paul", "Fisherman's Wharf", 345, 585, 90),
+        ("Anthony", "Mission District", -60, 345, 105),
+        ("Nancy", "Alamo Square", -30, 285, 120),
+        ("William", "Bayview", 510, 690, 120),
+        ("Margaret", "Richmond District", 375, 435, 45)
+    ]
+    
+    # Map friend locations to indices
+    loc_to_idx = {loc: idx for idx, loc in enumerate(locations)}
+    friend_loc_indices = [loc_to_idx[loc] for _, loc, _, _, _ in friends]
+    
+    # Create virtual meeting for starting point
+    n = len(friends)
+    met = [Bool(f"met_{i}") for i in range(n)]
+    S = [Int(f"S_{i}") for i in range(n)]
+    E = [Int(f"E_{i}") for i in range(n)]
+    
+    # Virtual meeting at Russian Hill (index 0) at time 0
+    virtual_loc = 0
+    virtual_end = 0
+    
+    # Create optimizer
+    opt = Optimize()
+    
+    # Add constraints for each friend
+    for i in range(n):
+        avail_start, avail_end, min_dur = friends[i][2], friends[i][3], friends[i][4]
+        loc_idx = friend_loc_indices[i]
+        
+        # If meeting occurs, constraints must hold
+        opt.add(Implies(met[i], And(
+            S[i] >= max(avail_start, travel_times[virtual_loc][loc_idx]),
+            E[i] <= avail_end,
+            E[i] == S[i] + min_dur
+        )))
+        
+        # If not meeting, set times to -1 (invalid)
+        opt.add(Implies(Not(met[i]), And(S[i] == -1, E[i] == -1)))
+    
+    # Add constraints for pairwise meetings
+    for i in range(n):
+        for j in range(i+1, n):
+            loc_i = friend_loc_indices[i]
+            loc_j = friend_loc_indices[j]
+            opt.add(Implies(And(met[i], met[j]),
+                Or(
+                    E[i] + travel_times[loc_i][loc_j] <= S[j],
+                    E[j] + travel_times[loc_j][loc_i] <= S[i]
+                )
+            ))
+    
+    # Add constraints from virtual meeting to each friend
+    for i in range(n):
+        loc_idx = friend_loc_indices[i]
+        opt.add(Implies(met[i], S[i] >= virtual_end + travel_times[virtual_loc][loc_idx]))
+    
+    # Maximize number of meetings
+    opt.maximize(Sum([If(met[i], 1, 0) for i in range(n)]))
+    
+    # Check and get model
+    if opt.check() == sat:
+        model = opt.model()
+        itinerary = []
+        
+        # Collect all meetings that occurred
+        meetings = []
+        for i in range(n):
+            if is_true(model.eval(met[i])):
+                start_val = model.eval(S[i]).as_long()
+                end_val = model.eval(E[i]).as_long()
+                name, loc, _, _, _ = friends[i]
+                
+                # Convert minutes to time string
+                def min_to_time(m):
+                    total_min = 540 + m  # 9:00 AM base
+                    h = total_min // 60
+                    m = total_min % 60
+                    return f"{h}:{m:02d}"
+                
+                meetings.append((
+                    start_val,
+                    end_val,
+                    name,
+                    loc
+                ))
+        
+        # Sort meetings by start time
+        meetings.sort(key=lambda x: x[0])
+        
+        # Create itinerary entries
+        for start, end, name, loc in meetings:
+            itinerary.append({
+                "action": "meet",
+                "location": loc,
+                "person": name,
+                "start_time": min_to_time(start),
+                "end_time": min_to_time(end)
+            })
+        
+        # Output as JSON
+        result = {"itinerary": itinerary}
+        print(json.dumps(result, indent=2))
+    else:
+        print('{"itinerary": []}')
+
+if __name__ == "__main__":
+    main()

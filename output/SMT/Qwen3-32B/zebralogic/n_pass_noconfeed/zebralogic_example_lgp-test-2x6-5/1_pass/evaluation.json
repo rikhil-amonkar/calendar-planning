@@ -1,0 +1,61 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"solution\": {\n    \"header\": [\n      \"House\",\n      \"Name\",\n      \"Occupation\",\n      \"Birthday\",\n      \"HouseStyle\",\n      \"Height\",\n      \"Cigar\"\n    ],\n    \"rows\": [\n      [\n        \"1\",\n        \"Eric\",\n        \"engineer\",\n        \"april\",\n        \"colonial\",\n        \"very short\",\n        \"prince\"\n      ],\n      [\n        \"2\",\n        \"Arnold\",\n        \"doctor\",\n        \"sept\",\n        \"victorian\",\n        \"short\",\n        \"pall mall\"\n      ]\n    ]\n  }\n}",
+    "pred": [
+        {
+            "House": "1",
+            "Name": "Eric",
+            "Occupation": "engineer",
+            "Birthday": "april",
+            "HouseStyle": "colonial",
+            "Height": "very short",
+            "Cigar": "prince"
+        },
+        {
+            "House": "2",
+            "Name": "Arnold",
+            "Occupation": "doctor",
+            "Birthday": "sept",
+            "HouseStyle": "victorian",
+            "Height": "short",
+            "Cigar": "pall mall"
+        }
+    ],
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Eric",
+            "Occupation": "engineer",
+            "Birthday": "april",
+            "HouseStyle": "colonial",
+            "Height": "very short",
+            "Cigar": "prince"
+        },
+        {
+            "House": "2",
+            "Name": "Arnold",
+            "Occupation": "doctor",
+            "Birthday": "sept",
+            "HouseStyle": "victorian",
+            "Height": "short",
+            "Cigar": "pall mall"
+        }
+    ],
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 521.221022605896,
+        "execution_time": 0.08979105949401855,
+        "constraint_eval_time": 2.8848648071289062e-05,
+        "pred_extract_time": 6.244236469268799,
+        "gold_extract_time": 5.0067901611328125e-06,
+        "total_tokens": 39995,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\n\ndef main():\n    # Define EnumSorts and their constants\n    name_enum, (arnold, eric) = EnumSort('Name', ['Arnold', 'Eric'])\n    occupation_enum, (engineer, doctor) = EnumSort('Occupation', ['engineer', 'doctor'])\n    birthday_enum, (april, sept) = EnumSort('Birthday', ['april', 'sept'])\n    housestyle_enum, (victorian, colonial) = EnumSort('HouseStyle', ['victorian', 'colonial'])\n    height_enum, (very_short, short) = EnumSort('Height', ['very short', 'short'])\n    cigar_enum, (pall_mall, prince) = EnumSort('Cigar', ['pall mall', 'prince'])\n\n    # Create variables for each house's attributes\n    name1, name2 = Consts('name1 name2', name_enum)\n    occupation1, occupation2 = Consts('occupation1 occupation2', occupation_enum)\n    birthday1, birthday2 = Consts('birthday1 birthday2', birthday_enum)\n    housestyle1, housestyle2 = Consts('housestyle1 housestyle2', housestyle_enum)\n    height1, height2 = Consts('height1 height2', height_enum)\n    cigar1, cigar2 = Consts('cigar1 cigar2', cigar_enum)\n\n    s = Solver()\n\n    # Uniqueness constraints\n    s.add(name1 != name2)\n    s.add(occupation1 != occupation2)\n    s.add(birthday1 != birthday2)\n    s.add(housestyle1 != housestyle2)\n    s.add(height1 != height2)\n    s.add(cigar1 != cigar2)\n\n    # Clue 1: Engineer in first house\n    s.add(occupation1 == engineer)\n\n    # Clue 6: Engineer is Eric\n    s.add(name1 == eric)\n\n    # Clue 3: Colonial-style is engineer's house (house1)\n    s.add(housestyle1 == colonial)\n\n    # Clue 4: Engineer (house1) is very short\n    s.add(height1 == very_short)\n\n    # Clue 5: Short person likes Pall Mall\n    s.add(Implies(height1 == short, cigar1 == pall_mall))\n    s.add(Implies(height2 == short, cigar2 == pall_mall))\n\n    # Clue 2: April and doctor are adjacent\n    s.add(Or(\n        And(birthday1 == april, occupation2 == doctor),\n        And(birthday2 == april, occupation1 == doctor)\n    ))\n\n    # Check satisfiability\n    if s.check() == sat:\n        model = s.model()\n\n        # Extract values for each house\n        row1 = [\n            \"1\",\n            model[name1],\n            model[occupation1],\n            model[birthday1],\n            model[housestyle1],\n            model[height1],\n            model[cigar1],\n        ]\n        row2 = [\n            \"2\",\n            model[name2],\n            model[occupation2],\n            model[birthday2],\n            model[housestyle2],\n            model[height2],\n            model[cigar2],\n        ]\n\n        # Convert from Z3 expressions to strings\n        row1 = [\"1\"] + [str(val) for val in row1[1:]]\n        row2 = [\"2\"] + [str(val) for val in row2[1:]]\n\n        # Prepare JSON structure\n        solution = {\n            \"solution\": {\n                \"header\": [\"House\", \"Name\", \"Occupation\", \"Birthday\", \"HouseStyle\", \"Height\", \"Cigar\"],\n                \"rows\": [row1, row2]\n            }\n        }\n\n        import json\n        print(json.dumps(solution, indent=2))\n    else:\n        print(\"No solution found.\")\n\nif __name__ == \"__main__\":\n    main()"
+}

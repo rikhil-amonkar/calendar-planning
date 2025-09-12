@@ -1,0 +1,184 @@
+```python
+import json
+from z3 import *
+
+def main():
+    # Define the attributes and their possible values
+    attributes = {
+        'Name': ['Eric', 'Peter', 'Arnold', 'Bob', 'Alice'],
+        'HouseStyle': ['modern', 'craftsman', 'ranch', 'victorian', 'colonial'],
+        'Mother': ['Penny', 'Kailyn', 'Holly', 'Janelle', 'Aniya'],
+        'PhoneModel': ['oneplus 9', 'google pixel 6', 'huawei p50', 'iphone 13', 'samsung galaxy s21'],
+        'Drink': ['coffee', 'water', 'root beer', 'tea', 'milk'],
+        'Animal': ['fish', 'dog', 'horse', 'bird', 'cat']
+    }
+    
+    # Create Z3 integer variables for each attribute for each house
+    num_houses = 5
+    name = [Int(f'name_{i}') for i in range(num_houses)]
+    style = [Int(f'style_{i}') for i in range(num_houses)]
+    mother = [Int(f'mother_{i}') for i in range(num_houses)]
+    phone = [Int(f'phone_{i}') for i in range(num_houses)]
+    drink = [Int(f'drink_{i}') for i in range(num_houses)]
+    animal = [Int(f'animal_{i}') for i in range(num_houses)]
+    
+    solver = Solver()
+    
+    # Add constraints for each attribute to be in range and distinct
+    for var_list in [name, style, mother, phone, drink, animal]:
+        solver.add([And(0 <= v, v < num_houses) for v in var_list])
+        solver.add(Distinct(var_list))
+    
+    # Map attribute values to indices
+    name_idx = {v: k for k, v in enumerate(attributes['Name'])}
+    style_idx = {v: k for k, v in enumerate(attributes['HouseStyle'])}
+    mother_idx = {v: k for k, v in enumerate(attributes['Mother'])}
+    phone_idx = {v: k for k, v in enumerate(attributes['PhoneModel'])}
+    drink_idx = {v: k for k, v in enumerate(attributes['Drink'])}
+    animal_idx = {v: k for k, v in enumerate(attributes['Animal'])}
+    
+    # Clue 1: Google Pixel 6 not in first house
+    solver.add(phone[0] != phone_idx['google pixel 6'])
+    
+    # Clue 2: Water drinker is Alice
+    for i in range(num_houses):
+        solver.add(Implies(drink[i] == drink_idx['water'], name[i] == name_idx['Alice']))
+    
+    # Clue 3: Colonial right of Huawei P50
+    colonial_style_idx = style_idx['colonial']
+    huawei_phone_idx = phone_idx['huawei p50']
+    colonial_pos = Int('colonial_pos')
+    huawei_pos = Int('huawei_pos')
+    solver.add(And(0 <= colonial_pos, colonial_pos < num_houses))
+    solver.add(And(0 <= huawei_pos, huawei_pos < num_houses))
+    for i in range(num_houses):
+        solver.add(If(style[i] == colonial_style_idx, colonial_pos == i, True))
+        solver.add(If(phone[i] == huawei_phone_idx, huawei_pos == i, True))
+    solver.add(colonial_pos > huawei_pos)
+    
+    # Clue 4: Horse keeper uses OnePlus 9
+    horse_idx = animal_idx['horse']
+    oneplus_idx = phone_idx['oneplus 9']
+    for i in range(num_houses):
+        solver.add((animal[i] == horse_idx) == (phone[i] == oneplus_idx))
+    
+    # Clue 5: Ranch style mother is Kailyn
+    ranch_idx = style_idx['ranch']
+    kailyn_idx = mother_idx['Kailyn']
+    for i in range(num_houses):
+        solver.add((style[i] == ranch_idx) == (mother[i] == kailyn_idx))
+    
+    # Clue 6: Root beer lover is cat lover
+    rootbeer_idx = drink_idx['root beer']
+    cat_idx = animal_idx['cat']
+    for i in range(num_houses):
+        solver.add((drink[i] == rootbeer_idx) == (animal[i] == cat_idx))
+    
+    # Clue 7: Colonial not in fourth house
+    solver.add(style[3] != colonial_style_idx)
+    
+    # Clue 8: Bird keeper in fourth house
+    solver.add(animal[3] == animal_idx['bird'])
+    
+    # Clue 9: Tea drinker is Bob
+    tea_idx = drink_idx['tea']
+    bob_idx = name_idx['Bob']
+    for i in range(num_houses):
+        solver.add((drink[i] == tea_idx) == (name[i] == bob_idx))
+    
+    # Clue 10: Tea right of Kailyn mother
+    tea_pos = Int('tea_pos')
+    kailyn_mother_pos = Int('kailyn_mother_pos')
+    solver.add(And(0 <= tea_pos, tea_pos < num_houses))
+    solver.add(And(0 <= kailyn_mother_pos, kailyn_mother_pos < num_houses))
+    for i in range(num_houses):
+        solver.add(If(drink[i] == tea_idx, tea_pos == i, True))
+        solver.add(If(mother[i] == kailyn_idx, kailyn_mother_pos == i, True))
+    solver.add(tea_pos > kailyn_mother_pos)
+    
+    # Clue 11: Root beer left of Kailyn mother
+    rootbeer_pos = Int('rootbeer_pos')
+    solver.add(And(0 <= rootbeer_pos, rootbeer_pos < num_houses))
+    for i in range(num_houses):
+        solver.add(If(drink[i] == rootbeer_idx, rootbeer_pos == i, True))
+    solver.add(rootbeer_pos < kailyn_mother_pos)
+    
+    # Clue 12: Horse keeper in modern house
+    modern_idx = style_idx['modern']
+    for i in range(num_houses):
+        solver.add((animal[i] == horse_idx) == (style[i] == modern_idx))
+    
+    # Clue 13: iPhone 13 user likes milk
+    iphone_idx = phone_idx['iphone 13']
+    milk_idx = drink_idx['milk']
+    for i in range(num_houses):
+        solver.add((phone[i] == iphone_idx) == (drink[i] == milk_idx))
+    
+    # Clue 14: Dog owner likes milk
+    dog_idx = animal_idx['dog']
+    for i in range(num_houses):
+        solver.add((animal[i] == dog_idx) == (drink[i] == milk_idx))
+    
+    # Clue 15: Google Pixel 6 in Craftsman house
+    google_idx = phone_idx['google pixel 6']
+    craftsman_idx = style_idx['craftsman']
+    for i in range(num_houses):
+        solver.add((phone[i] == google_idx) == (style[i] == craftsman_idx))
+    
+    # Clue 16: Eric not in second house
+    solver.add(name[1] != name_idx['Eric'])
+    
+    # Clue 17: Tea drinker in fourth house
+    solver.add(drink[3] == tea_idx)
+    
+    # Clue 18: Horse keeper in third house
+    solver.add(animal[2] == horse_idx)
+    
+    # Clue 19: Modern house mother is Penny
+    penny_idx = mother_idx['Penny']
+    for i in range(num_houses):
+        solver.add((style[i] == modern_idx) == (mother[i] == penny_idx))
+    
+    # Clue 20: Root beer lover is Peter
+    peter_idx = name_idx['Peter']
+    for i in range(num_houses):
+        solver.add((drink[i] == rootbeer_idx) == (name[i] == peter_idx))
+    
+    # Clue 21: Aniya mother not in fourth house
+    solver.add(mother[3] != mother_idx['Aniya'])
+    
+    # Clue 22: Janelle mother drinks water
+    janelle_idx = mother_idx['Janelle']
+    for i in range(num_houses):
+        solver.add((mother[i] == janelle_idx) == (drink[i] == drink_idx['water']))
+    
+    # Check solution and output
+    if solver.check() == sat:
+        model = solver.model()
+        rows = []
+        for i in range(num_houses):
+            house_num = str(i+1)
+            n = model.evaluate(name[i]).as_long()
+            s = model.evaluate(style[i]).as_long()
+            m = model.evaluate(mother[i]).as_long()
+            p = model.evaluate(phone[i]).as_long()
+            d = model.evaluate(drink[i]).as_long()
+            a = model.evaluate(animal[i]).as_long()
+            row = [house_num, attributes['Name'][n], attributes['HouseStyle'][s], 
+                   attributes['Mother'][m], attributes['PhoneModel'][p], 
+                   attributes['Drink'][d], attributes['Animal'][a]]
+            rows.append(row)
+        
+        solution = {
+            "solution": {
+                "header": ["House", "Name", "HouseStyle", "Mother", "PhoneModel", "Drink", "Animal"],
+                "rows": rows
+            }
+        }
+        print(json.dumps(solution, indent=2))
+    else:
+        print("No solution found")
+
+if __name__ == "__main__":
+    main()
+```

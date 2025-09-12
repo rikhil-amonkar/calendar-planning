@@ -1,0 +1,141 @@
+from z3 import *
+import json
+
+def main():
+    # Define travel_dict with all given travel times
+    travel_dict = {
+        "Union Square": {
+            "The Castro": 17, "North Beach": 10, "Embarcadero": 11,
+            "Alamo Square": 15, "Nob Hill": 9, "Presidio": 24,
+            "Fisherman's Wharf": 15, "Mission District": 14, "Haight-Ashbury": 18
+        },
+        "The Castro": {
+            "Union Square": 19, "North Beach": 20, "Embarcadero": 22,
+            "Alamo Square": 8, "Nob Hill": 16, "Presidio": 20,
+            "Fisherman's Wharf": 24, "Mission District": 7, "Haight-Ashbury": 6
+        },
+        "North Beach": {
+            "Union Square": 7, "The Castro": 23, "Embarcadero": 6,
+            "Alamo Square": 16, "Nob Hill": 7, "Presidio": 17,
+            "Fisherman's Wharf": 5, "Mission District": 18, "Haight-Ashbury": 18
+        },
+        "Embarcadero": {
+            "Union Square": 10, "The Castro": 25, "North Beach": 5,
+            "Alamo Square": 19, "Nob Hill": 10, "Presidio": 20,
+            "Fisherman's Wharf": 6, "Mission District": 20, "Haight-Ashbury": 21
+        },
+        "Alamo Square": {
+            "Union Square": 14, "The Castro": 8, "North Beach": 15,
+            "Embarcadero": 16, "Nob Hill": 11, "Presidio": 17,
+            "Fisherman's Wharf": 19, "Mission District": 10, "Haight-Ashbury": 5
+        },
+        "Nob Hill": {
+            "Union Square": 7, "The Castro": 17, "North Beach": 8,
+            "Embarcadero": 9, "Alamo Square": 11, "Presidio": 17,
+            "Fisherman's Wharf": 10, "Mission District": 13, "Haight-Ashbury": 13
+        },
+        "Presidio": {
+            "Union Square": 22, "The Castro": 21, "North Beach": 18,
+            "Embarcadero": 20, "Alamo Square": 19, "Nob Hill": 18,
+            "Fisherman's Wharf": 19, "Mission District": 26, "Haight-Ashbury": 15
+        },
+        "Fisherman's Wharf": {
+            "Union Square": 13, "The Castro": 27, "North Beach": 6,
+            "Embarcadero": 8, "Alamo Square": 21, "Nob Hill": 11,
+            "Presidio": 17, "Mission District": 22, "Haight-Ashbury": 22
+        },
+        "Mission District": {
+            "Union Square": 15, "The Castro": 7, "North Beach": 17,
+            "Embarcadero": 19, "Alamo Square": 11, "Nob Hill": 12,
+            "Presidio": 25, "Fisherman's Wharf": 22, "Haight-Ashbury": 12
+        },
+        "Haight-Ashbury": {
+            "Union Square": 19, "The Castro": 6, "North Beach": 19,
+            "Embarcadero": 20, "Alamo Square": 5, "Nob Hill": 15,
+            "Presidio": 15, "Fisherman's Wharf": 23, "Mission District": 11
+        }
+    }
+    
+    # Define meetings: [location, available_start, available_end, min_duration]
+    meetings = [
+        ("The Castro", 1215, 1275, 30),      # Melissa
+        ("North Beach", 420, 630, 15),       # Kimberly
+        ("Embarcadero", 930, 1170, 75),      # Joseph
+        ("Alamo Square", 1245, 1305, 15),    # Barbara
+        ("Nob Hill", 735, 1035, 105),        # Kenneth
+        ("Presidio", 990, 1095, 105),        # Joshua
+        ("Fisherman's Wharf", 570, 930, 45), # Brian
+        ("Mission District", 1170, 1260, 90),# Steven
+        ("Haight-Ashbury", 1140, 1230, 90)   # Betty
+    ]
+    names = ["Melissa", "Kimberly", "Joseph", "Barbara", "Kenneth", "Joshua", "Brian", "Steven", "Betty"]
+    
+    n = 10  # 9 meetings + 1 dummy
+    locations = [m[0] for m in meetings] + ["Union Square"]
+    
+    # Build travel time matrix T
+    T = [[0] * n for _ in range(n)]
+    for i in range(n):
+        for j in range(n):
+            loc_i = locations[i]
+            loc_j = locations[j]
+            T[i][j] = travel_dict[loc_i][loc_j]
+    
+    # Initialize Z3 variables
+    met = [Bool(f'met_{i}') for i in range(9)]
+    met.append(True)  # Dummy meeting always held
+    start = [Int(f'start_{i}') for i in range(n)]
+    end = [Int(f'end_{i}') for i in range(n)]
+    
+    s = Optimize()
+    
+    # Dummy meeting at Union Square at 9:00 AM
+    s.add(start[9] == 540, end[9] == 540)
+    
+    # Constraints for each real meeting
+    for i in range(9):
+        avail_start, avail_end, min_dur = meetings[i][1], meetings[i][2], meetings[i][3]
+        s.add(Implies(met[i], start[i] >= avail_start))
+        s.add(Implies(met[i], end[i] <= avail_end))
+        s.add(Implies(met[i], end[i] - start[i] >= min_dur))
+    
+    # Disjunctive constraints for all pairs
+    for i in range(n):
+        for j in range(i + 1, n):
+            s.add(Implies(And(met[i], met[j]), 
+                          Or(end[i] + T[i][j] <= start[j], 
+                             end[j] + T[j][i] <= start[i])))
+    
+    # Maximize number of meetings
+    objective = Sum([If(met[i], 1, 0) for i in range(9)])
+    s.maximize(objective)
+    
+    if s.check() == sat:
+        m = s.model()
+        itinerary = []
+        for i in range(9):
+            if is_true(m.evaluate(met[i])):
+                start_val = m.evaluate(start[i])
+                end_val = m.evaluate(end[i])
+                start_min = start_val.as_long()
+                end_min = end_val.as_long()
+                hours_s = start_min // 60
+                mins_s = start_min % 60
+                hours_e = end_min // 60
+                mins_e = end_min % 60
+                start_str = f"{hours_s}:{mins_s:02d}"
+                end_str = f"{hours_e}:{mins_e:02d}"
+                itinerary.append({
+                    "action": "meet",
+                    "location": meetings[i][0],
+                    "person": names[i],
+                    "start_time": start_str,
+                    "end_time": end_str
+                })
+        itinerary.sort(key=lambda x: x['start_time'])
+        print(json.dumps({"itinerary": itinerary}, indent=2))
+    else:
+        print('{"itinerary": []}')
+
+if __name__ == "__main__":
+    main()

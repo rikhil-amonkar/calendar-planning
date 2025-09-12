@@ -1,0 +1,413 @@
+We are going to use the Z3 SMT solver to solve the puzzle.
+ We have 6 houses, each with a name and a phone model.
+ We will define two arrays: one for the name of the person in each house, and one for the phone model.
+ Since the attributes are unique, we will use distinct constraints.
+
+ Steps:
+ 1. Define the house indices (1 to 6).
+ 2. Define the possible names and phone models.
+ 3. Create Z3 variables for the name and phone model for each house.
+ 4. Add constraints that all names are distinct and all phone models are distinct.
+ 5. Add constraints from the clues.
+
+ Clues:
+ 1. The person who uses an iPhone 13 is Alice.
+    This means: There is a house where phone is iphone13 and name is Alice. But note: it could be one constraint: 
+        Actually, it says the person (so by name) uses iPhone13. So we can say: the house where name is Alice has phone model iphone13.
+
+ 2. The person who uses a Huawei P50 is in the first house.
+    So house1 has phone model huawei p50.
+
+ 3. The person who uses a OnePlus 9 is in the sixth house.
+    So house6 has phone model oneplus 9.
+
+ 4. The person who uses a Google Pixel 6 is not in the second house.
+    So the phone model in house2 is not google pixel 6.
+
+ 5. The person who uses an iPhone 13 is not in the second house.
+    So the phone model in house2 is not iphone13.
+
+ 6. There is one house between Bob and Carol.
+    So |position of Bob - position of Carol| = 2.
+
+ 7. The person who uses a Huawei P50 is Eric.
+    So the house with phone model huawei p50 has name Eric.
+
+ 8. The person who uses a Xiaomi Mi 11 is in the third house.
+    So house3 has phone model xiaomi mi 11.
+
+ 9. Alice is somewhere to the left of Carol.
+    So the house index of Alice is less than the house index of Carol.
+
+ 10. Arnold is the person who uses a OnePlus 9.
+     So the house with phone model oneplus9 has name Arnold.
+
+ Note: We have to be cautious because some clues relate phone to name and some relate phone to house.
+
+ Implementation:
+ We'll create two arrays:
+   names = [Int('name_1'), Int('name_2'), ...] but we'll use an enumeration for names and phone models.
+
+ Alternatively, we can use EnumSort for names and phone models to make it more readable.
+
+ Let's define an enumeration for names and for phone models.
+
+ Steps in code:
+   from z3 import *
+
+   # Define the house numbers: 1 to 6
+   houses = [1, 2, 3, 4, 5, 6]
+
+   # Create enums for names and phone models
+   Name, (Alice, Arnold, Carol, Peter, Bob, Eric) = EnumSort('Name', ['Alice', 'Arnold', 'Carol', 'Peter', 'Bob', 'Eric'])
+   PhoneModel, (huawei_p50, iphone_13, xiaomi_mi_11, oneplus_9, samsung_galaxy_s21, google_pixel_6) = EnumSort('PhoneModel', 
+        ['huawei_p50', 'iphone_13', 'xiaomi_mi_11', 'oneplus_9', 'samsung_galaxy_s21', 'google_pixel_6'])
+
+   # Create arrays for each house: name[i] and phone[i] for i in range(1,7) but note our houses are 1-indexed.
+   name = [Const('name_%d' % i, Name) for i in houses]
+   phone = [Const('phone_%d' % i, PhoneModel) for i in houses]
+
+   s = Solver()
+
+   # Add distinct constraints for names and phones
+   s.add(Distinct(name))
+   s.add(Distinct(phone))
+
+   # Now add the clues:
+
+   # Clue 1: The person who uses an iPhone 13 is Alice.
+   # This means: There exists a house where phone is iphone_13 and name is Alice. But note: it's actually saying that the person named Alice uses iPhone13, so:
+   #   For the house where name is Alice, the phone must be iphone_13.
+   #   Alternatively, we can say: the house with phone iphone_13 has name Alice. Both are equivalent by clue 1.
+   #   We'll do: For the house i, if name[i] == Alice, then phone[i] == iphone_13, and vice versa.
+   #   But note: the clue says "the person who uses an iPhone 13 is Alice", meaning the user of iPhone13 is Alice, so:
+   #   We can also say: the house with phone iphone_13 has name Alice.
+   #   We'll do: There exists a house i such that phone[i] == iphone_13 and name[i] == Alice, and that is the only one.
+   #   But since we have distinct, we can simply do:
+   s.add(ForAll([x], Implies(phone[x] == iphone_13, name[x] == Alice)))   # But note: x is not defined. We are using constants for each house.
+
+   Alternatively, we can iterate over houses and set a constraint that for each house, if the phone is iphone_13 then the name is Alice.
+   But note: we have 6 houses, so we can do:
+
+   for i in houses:
+        s.add(Implies(phone[i-1] == iphone_13, name[i-1] == Alice))
+
+   However, note that the clue says it is Alice, so we can also just find the house with iphone_13 and set its name to Alice.
+
+   But wait, clue 1 says: the person who uses iPhone13 is Alice -> so the house with phone iphone_13 must have name Alice.
+
+   So we can do:
+        s.add(Exists([x], And(phone[x] == iphone_13, name[x] == Alice)))   # But this is not as direct.
+
+   Alternatively, we can do:
+
+        s.add(Or([And(phone[i] == iphone_13, name[i] == Alice) for i in range(6)]))
+
+   But note: there is exactly one iPhone13, so we can also do:
+
+        for i in range(6):
+            s.add(If(phone[i] == iphone_13, name[i] == Alice, True))
+
+   Actually, a better way is to use a constraint that the house with iPhone13 has Alice.
+
+   Since we have a fixed set of houses, we can do:
+
+        s.add(And([Implies(phone[i] == iphone_13, name[i] == Alice) for i in range(6)]))
+
+   This is equivalent to: for every house, if the phone is iPhone13 then the name is Alice.
+
+   But note: there is exactly one iPhone13, so one of these implications will be active.
+
+   Alternatively, we can use:
+
+        s.add(Exists([i], And(phone[i] == iphone_13, name[i] == Alice)))
+
+   But Z3 doesn't allow using integers as indices in this way with Exists and arrays. We are using Python list of constants.
+
+   So we'll use the for-loop with implications.
+
+   However, note: the clue also implies that Alice uses iPhone13, so we can also do:
+
+        s.add(And([Implies(name[i] == Alice, phone[i] == iphone_13) for i in range(6)]))
+
+   But clue 1 doesn't necessarily say that Alice uses iPhone13? It says the person who uses iPhone13 is Alice, which is equivalent to:
+        user of iPhone13 is Alice -> so if a house has iPhone13 then the name is Alice, and also if the name is Alice then she uses iPhone13.
+
+   So we can do:
+
+        for i in range(6):
+            s.add((phone[i] == iphone_13) == (name[i] == Alice))
+
+   This is the strongest: Alice is in the house that has iPhone13 and vice versa.
+
+   Let's do that for clue 1.
+
+   Similarly for clue 7 and 10.
+
+   Clue 7: The person who uses a Huawei P50 is Eric.
+        So for every house i: (phone[i] == huawei_p50) == (name[i] == Eric)
+
+   Clue 10: Arnold is the person who uses a OnePlus 9.
+        So for every house i: (phone[i] == oneplus_9) == (name[i] == Arnold)
+
+   Now, let's add the other clues.
+
+   Clue 2: The person who uses a Huawei P50 is in the first house.
+        So phone[0] == huawei_p50
+
+   Clue 3: The person who uses a OnePlus 9 is in the sixth house.
+        So phone[5] == oneplus_9
+
+   Clue 4: The person who uses a Google Pixel 6 is not in the second house.
+        So phone[1] != google_pixel_6
+
+   Clue 5: The person who uses an iPhone 13 is not in the second house.
+        So phone[1] != iphone_13
+
+   Clue 6: There is one house between Bob and Carol.
+        Let bob_index = the index (0-5) of the house where name is Bob
+        Let carol_index = the index (0-5) of the house where name is Carol
+        Then |bob_index - carol_index| = 2
+
+        We can define:
+            bob_index = [If(name[i] == Bob, i, -1) for i in range(6)] but we need to find the one that is not -1.
+        Alternatively, we can use:
+
+            bob_house = Int('bob_house')
+            s.add(Or([And(bob_house == i, name[i] == Bob) for i in range(6)]))
+            Similarly for Carol.
+
+        But note: we are using enums and the house indices are 0-5 (representing house numbers 1-6). We want the actual house number? 
+        The problem says houses are numbered 1 to 6. Our list index 0 is house1, index1 is house2, etc.
+
+        So the position of Bob is i+1 if he is in index i.
+
+        But the clue says "one house between", so the difference in house numbers is 2.
+
+        So if Bob is in house number b and Carol in house number c, then |b - c| = 2.
+
+        We can define:
+
+            b = Int('b')
+            c = Int('c')
+            s.add(Or([And(b == i+1, name[i] == Bob) for i in range(6)]))
+            s.add(Or([And(c == i+1, name[i] == Carol) for i in range(6)]))
+            s.add(Or(b - c == 2, c - b == 2))
+
+   Clue 8: The person who uses a Xiaomi Mi 11 is in the third house.
+        So phone[2] == xiaomi_mi_11   (because third house is index2)
+
+   Clue 9: Alice is somewhere to the left of Carol.
+        So the house index of Alice is less than the house index of Carol.
+
+        Let a_index = the index of Alice (0-5)
+        Let c_index = the index of Carol (0-5)
+        Then a_index < c_index
+
+        We can do:
+
+            a_house = Int('a_house')
+            c_house = Int('c_house')
+            s.add(Or([And(a_house == i+1, name[i] == Alice) for i in range(6)]))
+            s.add(Or([And(c_house == i+1, name[i] == Carol) for i in range(6)]))
+            s.add(a_house < c_house)
+
+   However, note that we already have the house numbers as integers (1-6) for the positions.
+
+   Alternatively, we can avoid introducing extra integers by using the index directly:
+
+        We know that the house number is the index+1. So if we find the index of Alice and Carol, then:
+
+            index_Alice = [If(name[i] == Alice, i, -1) for i in range(6)]
+            index_Carol = [If(name[i] == Carol, i, -1) for i in range(6)]
+
+        But we cannot use list comprehensions to create expressions that we then use in constraints.
+
+        Instead, we can do:
+
+            s.add(Or([And(name[i] == Alice, name[j] == Carol, i < j) for i in range(6) for j in range(6)]))
+
+        This is inefficient but for 6 houses it's okay.
+
+        Alternatively, we can use:
+
+            alice_index = Int('alice_index')
+            carol_index = Int('carol_index')
+            for i in range(6):
+                s.add(Implies(name[i] == Alice, alice_index == i))
+                s.add(Implies(name[i] == Carol, carol_index == i))
+            s.add(alice_index < carol_index)
+
+   But note: we are using Z3, and we cannot assign an integer variable in the same way as in imperative programming.
+
+   We'll do:
+
+        alice_index = Int('alice_index')
+        s.add(Or([And(name[i] == Alice, alice_index == i) for i in range(6)]))
+        carol_index = Int('carol_index')
+        s.add(Or([And(name[i] == Carol, carol_index == i) for i in range(6)]))
+        s.add(alice_index < carol_index)
+
+   This is acceptable.
+
+   However, note: the house numbers in the output are 1-indexed, but our indices in the array are 0-indexed.
+
+   We are going to output the house number as i+1 for the i-th element.
+
+   Now, let's code accordingly.
+
+   We'll also note that some clues are already setting specific houses for phones.
+
+   After setting up the solver, we check the model and output the solution in the required JSON format.
+
+   Let's code accordingly.
+
+   We'll create a list of house numbers (1 to 6) for output.
+
+   The output JSON should have:
+        {
+          "solution": {
+            "header": ["House", "Name", "PhoneModel"],
+            "rows": [
+              ["1", name0, phone0],
+              ["2", name1, phone1],
+              ... 
+            ]
+          }
+        }
+
+   We'll convert the Z3 model to the string representation of the enum.
+
+   We have to map the Z3 enum constants to their string names.
+
+   How to get the string from the Z3 enum constant?
+        We can create a mapping from the Z3 constant to the string by using the decl().name() but note that the enum sort we created returns symbolic constants that are of the sort, but they are not the same as the Python variables we defined.
+
+   Alternatively, we can use:
+
+        name_str = { Alice: "Alice", Arnold: "Arnold", ... }
+
+   Similarly for phone models.
+
+   We defined:
+        Name, (Alice, Arnold, Carol, Peter, Bob, Eric) = EnumSort('Name', ['Alice', 'Arnold', 'Carol', 'Peter', 'Bob', 'Eric'])
+   Then Alice is a constant of sort Name, and we can get its name by `Alice.decl().name()` but that returns the same string we passed.
+
+   However, when we get a model, we get a constant that is one of these. We can compare with the defined constants.
+
+   We can create a list of the possible values for Name and PhoneModel and then compare in the model.
+
+   Alternatively, we can use:
+
+        name_list = [Alice, Arnold, Carol, Peter, Bob, Eric]
+        name_str = [str(x) for x in name_list]   # But this might not be the same as the declared name?
+
+   Actually, the EnumSort returns constants that when printed will use the provided names.
+
+   But when we get the value from the model, it is one of these constants.
+
+   We can do:
+
+        for i in range(6):
+            n = model[name[i]]
+            # n is one of the Name constants. We can use the .get_id() to compare? Or we can compare with the defined constants.
+
+        We can create a mapping:
+
+        name_map = { Alice: "Alice", Arnold: "Arnold", Carol: "Carol", Peter: "Peter", Bob: "Bob", Eric: "Eric" }
+
+        Similarly for phone.
+
+   But note: the Z3 model returns a constant that is one of the enumerated ones, so we can use:
+
+        if n == Alice: ... 
+
+   However, we cannot use == in Python for Z3 AST nodes? Actually, in the model, the value is a Z3 expression that we can compare with our constants.
+
+   We can do:
+
+        for constant in name_list:
+            if eq(n, constant):
+                return name_map[constant]
+
+   But we can also use the following trick: when we create the enum, the constants are unique and we can use the .get_id() to compare.
+
+   Alternatively, we can use:
+
+        name_values = { Alice: "Alice", ... }
+
+        and then:
+
+        for key, value in name_values.items():
+            if model.eval(key, model_completion=True) == model.eval(n, model_completion=True):
+                name_str = value
+
+   But note: the model.eval(n) returns the same constant as the model.eval(Alice) if n is Alice.
+
+   Actually, we can simply do:
+
+        model.eval(n) returns the constant, and we can get its name by `str(model.eval(n))` but that might return the internal name?
+
+   Let's test with a simple example:
+
+        from z3 import *
+        Name, (Alice, Bob) = EnumSort('Name', ['Alice', 'Bob'])
+        s = Solver()
+        x = Const('x', Name)
+        s.add(x == Alice)
+        if s.check() == sat:
+            m = s.model()
+            print(str(m[x]))   # This prints "Alice" or something like that?
+
+   Actually, it prints "Alice". So we can use:
+
+        name_str = str(model.eval(name[i]))
+
+   Similarly for phone.
+
+   But note: the phone model strings have spaces, but we defined the enum without spaces? Actually, we defined the enum with underscores.
+
+   We defined:
+        PhoneModel, (huawei_p50, iphone_13, xiaomi_mi_11, oneplus_9, samsung_galaxy_s21, google_pixel_6) = EnumSort('PhoneModel', 
+            ['huawei_p50', 'iphone_13', 'xiaomi_mi_11', 'oneplus_9', 'samsung_galaxy_s21', 'google_pixel_6'])
+
+   So when we print, it will print with underscores. But the expected output in the JSON should be the original string with spaces?
+
+   Looking back at the puzzle, the phone models are given as:
+        `huawei p50`, `iphone 13`, `xiaomi mi 11`, `oneplus 9`, `samsung galaxy s21`, `google pixel 6`
+
+   So we need to map the underscore version back to the spaced version.
+
+   We can create a mapping dictionary:
+
+        phone_mapping = {
+            'huawei_p50': 'huawei p50',
+            'iphone_13': 'iphone 13',
+            'xiaomi_mi_11': 'xiaomi mi 11',
+            'oneplus_9': 'oneplus 9',
+            'samsung_galaxy_s21': 'samsung galaxy s21',
+            'google_pixel_6': 'google pixel 6'
+        }
+
+   Then, for the phone model, we get the string from the model, which will be one of the keys, and then we map it.
+
+   Alternatively, we can change the enum names to have spaces? But EnumSort does not allow spaces in the names.
+
+   So we'll do the mapping.
+
+   Similarly, for names, we don't have spaces, so we can use as is.
+
+   Now, let's code accordingly.
+
+   Steps:
+
+   - Define the enums and the mapping for phone models.
+   - Create the arrays for name and phone for 6 houses (index 0 to 5).
+   - Add distinct constraints.
+   - Add the clues.
+
+   We'll now write the code.
+
+   Note: We have to be careful with the indices: house1 is index0, house2 is index1, etc.
+
+   Let's code.

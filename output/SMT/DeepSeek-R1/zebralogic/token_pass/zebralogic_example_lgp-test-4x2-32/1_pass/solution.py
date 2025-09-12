@@ -1,0 +1,84 @@
+from z3 import *
+import json
+
+def main():
+    # Create solver
+    s = Solver()
+    
+    # House indices
+    houses = [1, 2, 3, 4]
+    
+    # Define the attributes with integer mappings
+    names = {'Peter': 1, 'Arnold': 2, 'Eric': 3, 'Alice': 4}
+    pets = {'bird': 1, 'fish': 2, 'dog': 3, 'cat': 4}
+    
+    # Create variables for each house's name and pet
+    name_vars = [Int(f'name_{i}') for i in houses]
+    pet_vars = [Int(f'pet_{i}') for i in houses]
+    
+    # Each house has exactly one name and one pet
+    s.add([And(1 <= n, n <= 4) for n in name_vars])
+    s.add([And(1 <= p, p <= 4) for p in pet_vars])
+    s.add(Distinct(name_vars))
+    s.add(Distinct(pet_vars))
+    
+    # Create helper variables for person and pet positions
+    name_positions = {name: Int(f'pos_{name}') for name in names}
+    pet_positions = {pet: Int(f'pos_{pet}') for pet in pets}
+    
+    # Constrain positions to match house assignments
+    for i, house in enumerate(houses):
+        for name, idx in names.items():
+            s.add(Implies(name_vars[i] == idx, name_positions[name] == house))
+        for pet, idx in pets.items():
+            s.add(Implies(pet_vars[i] == idx, pet_positions[pet] == house))
+    
+    # Add clues as constraints
+    # 1. The person who owns a dog is somewhere to the right of Alice
+    s.add(pet_positions['dog'] > name_positions['Alice'])
+    
+    # 2. Eric is not in the first house
+    s.add(name_positions['Eric'] != 1)
+    
+    # 3. Eric is the person who keeps a pet bird
+    s.add(name_positions['Eric'] == pet_positions['bird'])
+    
+    # 4. There is one house between the person with an aquarium of fish and Peter
+    s.add(Or(
+        pet_positions['fish'] - name_positions['Peter'] == 2,
+        name_positions['Peter'] - pet_positions['fish'] == 2
+    ))
+    
+    # 5. Alice is not in the first house
+    s.add(name_positions['Alice'] != 1)
+    
+    # 6. Arnold is the person with an aquarium of fish
+    s.add(name_positions['Arnold'] == pet_positions['fish'])
+    
+    # Check for solution
+    if s.check() == sat:
+        m = s.model()
+        result = []
+        for house in houses:
+            # Get name for this house
+            name_val = m.evaluate(name_vars[house-1])
+            name = next(k for k, v in names.items() if v == name_val.as_long())
+            
+            # Get pet for this house
+            pet_val = m.evaluate(pet_vars[house-1])
+            pet = next(k for k, v in pets.items() if v == pet_val.as_long())
+            
+            result.append([str(house), name, pet])
+        
+        output = {
+            "solution": {
+                "header": ["House", "Name", "Pet"],
+                "rows": result
+            }
+        }
+        print(json.dumps(output, indent=2))
+    else:
+        print("No solution found")
+
+if __name__ == "__main__":
+    main()

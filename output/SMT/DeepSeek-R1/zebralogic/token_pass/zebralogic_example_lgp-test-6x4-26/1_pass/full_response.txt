@@ -1,0 +1,105 @@
+```python
+import json
+from z3 import *
+
+def main():
+    # Define the enums for each category
+    Name, (Peter, Bob, Carol, Eric, Alice, Arnold) = EnumSort('Name', ['Peter', 'Bob', 'Carol', 'Eric', 'Alice', 'Arnold'])
+    Pet, (bird, dog, cat, rabbit, fish, hamster) = EnumSort('Pet', ['bird', 'dog', 'cat', 'rabbit', 'fish', 'hamster'])
+    Style, (victorian, ranch, modern, mediterranean, colonial, craftsman) = EnumSort('Style', ['victorian', 'ranch', 'modern', 'mediterranean', 'colonial', 'craftsman'])
+    Birthday, (mar, sept, may, feb, jan, april) = EnumSort('Birthday', ['mar', 'sept', 'may', 'feb', 'jan', 'april'])
+    
+    # Create arrays for each attribute for houses 0 to 5 (representing houses 1 to 6)
+    names = [Const(f"name_{i}", Name) for i in range(6)]
+    pets = [Const(f"pet_{i}", Pet) for i in range(6)]
+    styles = [Const(f"style_{i}", Style) for i in range(6)]
+    birthdays = [Const(f"birthday_{i}", Birthday) for i in range(6)]
+    
+    s = Solver()
+    
+    # Assert all attributes are distinct
+    s.add(Distinct(names))
+    s.add(Distinct(pets))
+    s.add(Distinct(styles))
+    s.add(Distinct(birthdays))
+    
+    # Fixed assignments from clues
+    s.add(names[2] == Carol)  # Clue 5: Carol in third house
+    s.add(names[5] == Eric)   # Clue 8: Eric in sixth house
+    s.add(birthdays[1] == may) # Clue 3: May birthday in second house
+    s.add(styles[1] == colonial) # Clue 4: Colonial in second house
+    s.add(styles[3] == craftsman) # Clue 18: Craftsman in fourth house
+    s.add(pets[3] == dog)     # Clue 19: Dog in fourth house
+    s.add(names[1] == Peter)  # Clue 14: Colonial style is Peter (and colonial is in second house)
+    s.add(names[3] == Arnold) # Clue 11: Craftsman style is Arnold (and craftsman is in fourth house)
+    s.add(birthdays[2] == mar) # Clue 17: Carol is March birthday (and Carol is in third house)
+    
+    # Add other constraints
+    # Clue 1: Hamster right of March birthday
+    for i in range(6):
+        for j in range(6):
+            s.add(Implies(And(pets[i] == hamster, birthdays[j] == mar), i > j))
+    
+    # Clue 2: January left of September
+    for i in range(6):
+        for j in range(6):
+            s.add(Implies(And(birthdays[i] == jan, birthdays[j] == sept), i < j))
+    
+    # Clue 6: Mediterranean not in sixth house
+    s.add(styles[5] != mediterranean)
+    
+    # Clue 7: Fish right of Bob
+    for i in range(6):
+        for j in range(6):
+            s.add(Implies(And(pets[i] == fish, names[j] == Bob), i > j))
+    
+    # Clue 9: One house between cat and Victorian
+    for i in range(6):
+        for j in range(6):
+            s.add(Implies(And(pets[i] == cat, styles[j] == victorian), Or(i - j == 2, j - i == 2)))
+    
+    # Clue 10: Two houses between Victorian and hamster
+    for i in range(6):
+        for j in range(6):
+            s.add(Implies(And(styles[i] == victorian, pets[j] == hamster), Or(i - j == 3, j - i == 3)))
+    
+    # Clue 12: Colonial left of modern
+    for i in range(6):
+        for j in range(6):
+            s.add(Implies(And(styles[i] == colonial, styles[j] == modern), i < j))
+    
+    # Clue 13: Fish not in second house
+    s.add(pets[1] != fish)
+    
+    # Clue 15: January directly left of April
+    s.add(Or([And(birthdays[i] == jan, birthdays[i+1] == april) for i in range(5)]))
+    
+    # Clue 16: One house between bird and modern
+    for i in range(6):
+        for j in range(6):
+            s.add(Implies(And(pets[i] == bird, styles[j] == modern), Or(i - j == 2, j - i == 2)))
+    
+    # Check satisfiability
+    if s.check() == sat:
+        m = s.model()
+        rows = []
+        for i in range(6):
+            name_val = str(m.eval(names[i]))
+            pet_val = str(m.eval(pets[i]))
+            style_val = str(m.eval(styles[i]))
+            birthday_val = str(m.eval(birthdays[i]))
+            rows.append([str(i+1), name_val, pet_val, style_val, birthday_val])
+        
+        result = {
+            "solution": {
+                "header": ["House", "Name", "Pet", "HouseStyle", "Birthday"],
+                "rows": rows
+            }
+        }
+        print(json.dumps(result, indent=2))
+    else:
+        print("No solution found")
+
+if __name__ == "__main__":
+    main()
+```

@@ -1,0 +1,71 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"itinerary\": [\n    {\n      \"action\": \"meet\",\n      \"location\": \"Fisherman's Wharf\",\n      \"person\": \"Jason\",\n      \"start_time\": \"16:00\",\n      \"end_time\": \"16:30\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Embarcadero\",\n      \"person\": \"Jessica\",\n      \"start_time\": \"16:45\",\n      \"end_time\": \"17:15\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Richmond District\",\n      \"person\": \"Sandra\",\n      \"start_time\": \"18:30\",\n      \"end_time\": \"20:30\"\n    }\n  ]\n}",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Fisherman's Wharf",
+                "person": "Jason",
+                "start_time": "16:00",
+                "end_time": "16:30"
+            },
+            {
+                "action": "meet",
+                "location": "Embarcadero",
+                "person": "Jessica",
+                "start_time": "16:45",
+                "end_time": "17:15"
+            },
+            {
+                "action": "meet",
+                "location": "Richmond District",
+                "person": "Sandra",
+                "start_time": "18:30",
+                "end_time": "20:30"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Fisherman's Wharf",
+                "person": "Jason",
+                "start_time": "16:00",
+                "end_time": "16:30"
+            },
+            {
+                "action": "meet",
+                "location": "Embarcadero",
+                "person": "Jessica",
+                "start_time": "16:45",
+                "end_time": "17:15"
+            },
+            {
+                "action": "meet",
+                "location": "Richmond District",
+                "person": "Sandra",
+                "start_time": "18:30",
+                "end_time": "20:30"
+            }
+        ]
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 716.317982673645,
+        "execution_time": 0.08843994140625,
+        "constraint_eval_time": 4.363059997558594e-05,
+        "pred_extract_time": 3.0418143272399902,
+        "gold_extract_time": 8.654594421386719e-05,
+        "total_tokens": 43668,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\nimport json\n\ndef main():\n    friends = [\n        {\n            'name': 'Jason',\n            'location': \"Fisherman's Wharf\",\n            'available_start': 960,  # 4:00 PM\n            'available_end': 1005,   # 4:45 PM\n            'min_duration': 30\n        },\n        {\n            'name': 'Jessica',\n            'location': 'Embarcadero',\n            'available_start': 1005,  # 4:45 PM\n            'available_end': 1140,    # 7:00 PM\n            'min_duration': 30\n        },\n        {\n            'name': 'Sandra',\n            'location': 'Richmond District',\n            'available_start': 1110,  # 6:30 PM\n            'available_end': 1305,    # 9:45 PM\n            'min_duration': 120\n        }\n    ]\n\n    friend_travel_times = [\n        [0, 6, 18],   # From Fisherman's Wharf (0)\n        [8, 0, 21],   # From Embarcadero (1)\n        [18, 19, 0]   # From Richmond District (2)\n    ]\n\n    solver = Solver()\n\n    first = Int('first')\n    second = Int('second')\n    third = Int('third')\n\n    solver.add(And(0 <= first, first <= 2))\n    solver.add(And(0 <= second, second <= 2))\n    solver.add(And(0 <= third, third <= 2))\n    solver.add(Distinct(first, second, third))\n\n    # Step 0: Bayview to first\n    travel_time_0 = If(first == 0, 25, If(first == 1, 19, 25))\n    arrival_time_0 = 540 + travel_time_0  # 9:00 AM = 540 minutes\n\n    available_start_0 = If(first == 0, 960, If(first == 1, 1005, 1110))\n    available_end_0 = If(first == 0, 1005, If(first == 1, 1140, 1305))\n    min_duration_0 = If(first == 0, 30, If(first == 1, 30, 120))\n\n    start_time_0 = If(arrival_time_0 >= available_start_0, arrival_time_0, available_start_0)\n    end_time_0 = start_time_0 + min_duration_0\n    solver.add(end_time_0 <= available_end_0)\n\n    # Step 1: first to second\n    travel_time_1 = If(\n        first == 0,\n        If(second == 1, 6, If(second == 2, 18, 0)),\n        If(first == 1,\n           If(second == 0, 8, If(second == 2, 21, 0)),\n           If(first == 2,\n              If(second == 0, 18, If(second == 1, 19, 0)),\n              0\n           )\n        )\n    )\n    arrival_time_1 = end_time_0 + travel_time_1\n\n    available_start_1 = If(second == 0, 960, If(second == 1, 1005, 1110))\n    available_end_1 = If(second == 0, 1005, If(second == 1, 1140, 1305))\n    min_duration_1 = If(second == 0, 30, If(second == 1, 30, 120))\n\n    start_time_1 = If(arrival_time_1 >= available_start_1, arrival_time_1, available_start_1)\n    end_time_1 = start_time_1 + min_duration_1\n    solver.add(end_time_1 <= available_end_1)\n\n    # Step 2: second to third\n    travel_time_2 = If(\n        second == 0,\n        If(third == 1, 6, If(third == 2, 18, 0)),\n        If(second == 1,\n           If(third == 0, 8, If(third == 2, 21, 0)),\n           If(second == 2,\n              If(third == 0, 18, If(third == 1, 19, 0)),\n              0\n           )\n        )\n    )\n    arrival_time_2 = end_time_1 + travel_time_2\n\n    available_start_2 = If(third == 0, 960, If(third == 1, 1005, 1110))\n    available_end_2 = If(third == 0, 1005, If(third == 1, 1140, 1305))\n    min_duration_2 = If(third == 0, 30, If(third == 1, 30, 120))\n\n    start_time_2 = If(arrival_time_2 >= available_start_2, arrival_time_2, available_start_2)\n    end_time_2 = start_time_2 + min_duration_2\n    solver.add(end_time_2 <= available_end_2)\n\n    if solver.check() == sat:\n        model = solver.model()\n        f = model[first].as_long()\n        s = model[second].as_long()\n        t = model[third].as_long()\n\n        itinerary = []\n        for i, friend_idx in enumerate([f, s, t]):\n            friend = friends[friend_idx]\n            if i == 0:\n                st = model.eval(start_time_0).as_long()\n                et = model.eval(end_time_0).as_long()\n            elif i == 1:\n                st = model.eval(start_time_1).as_long()\n                et = model.eval(end_time_1).as_long()\n            else:\n                st = model.eval(start_time_2).as_long()\n                et = model.eval(end_time_2).as_long()\n\n            def to_time_str(minutes):\n                hours = minutes // 60\n                mins = minutes % 60\n                return f\"{hours}:{mins:02d}\"\n\n            itinerary.append({\n                \"action\": \"meet\",\n                \"location\": friend['location'],\n                \"person\": friend['name'],\n                \"start_time\": to_time_str(st),\n                \"end_time\": to_time_str(et)\n            })\n\n        print(json.dumps({\"itinerary\": itinerary}, indent=2))\n    else:\n        print(json.dumps({\"itinerary\": []}))\n\nif __name__ == \"__main__\":\n    main()"
+}

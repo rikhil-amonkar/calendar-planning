@@ -1,0 +1,36 @@
+We are going to use the Z3 SMT solver to solve the puzzle.
+ We have 4 houses, each with a name and a color.
+ The names: Peter, Arnold, Alice, Eric
+ The colors: yellow, green, red, white
+
+ We'll create two arrays for the house attributes: one for names and one for colors.
+ Since the houses are in order, we can index from 0 to 3 for houses 1 to 4.
+
+ Steps:
+ 1. Define the set of names and colors.
+ 2. Create two arrays of Z3 constants for name and color for each house.
+ 3. Assert that all names and colors are distinct.
+ 4. Add the constraints from the clues.
+
+ Clues:
+ 1. The person whose favorite color is green is in the third house.
+    So, color[2] == green (since index 2 is the third house)
+
+ 2. Peter is in the first house.
+    So, name[0] == Peter
+
+ 3. There is one house between the person whose favorite color is red and the person who loves yellow.
+    This means they are separated by one house. So possible pairs: (red at 1, yellow at 3) or (red at 2, yellow at 4) or (red at 3, yellow at 1) or (red at 4, yellow at 2).
+    But note: the houses are in a row, so we can express this as: |position_red - position_yellow| = 2.
+
+ 4. Arnold is directly left of Eric.
+    So, if Arnold is in house i, Eric is in house i+1.
+
+ 5. Eric is the person who loves yellow.
+    So, the person named Eric has color yellow.
+
+ We'll then solve the constraints and output the solution in the required JSON format.
+
+ Implementation note: We'll use IntSort for the attributes and define constants for each name and color.
+
+ Let's code accordingly.

@@ -1,0 +1,74 @@
+from z3 import *
+import json
+
+def main():
+    # Define the cities
+    RIGA, AMSTERDAM, MYKONOS = 0, 1, 2
+    city_names = {RIGA: "Riga", AMSTERDAM: "Amsterdam", MYKONOS: "Mykonos"}
+    n_days = 7
+    
+    # Initialize Z3 variables
+    base_city = [Int(f'base_city_{i}') for i in range(1, n_days+1)]
+    flight_taken = [Bool(f'flight_taken_{i}') for i in range(1, n_days+1)]
+    flight_dest = [Int(f'flight_dest_{i}') for i in range(1, n_days+1)]
+    
+    solver = Solver()
+    
+    # Constraint: base_city must be valid cities
+    for i in range(n_days):
+        solver.add(And(base_city[i] >= 0, base_city[i] <= 2))
+    
+    # Constraint: flight destinations must be valid and flights only between connected cities
+    for i in range(n_days):
+        solver.add(Implies(flight_taken[i], And(flight_dest[i] >= 0, flight_dest[i] <= 2, flight_dest[i] != base_city[i])))
+        solver.add(Implies(flight_taken[i], 
+                           Or(And(base_city[i] == RIGA, flight_dest[i] == AMSTERDAM),
+                              And(base_city[i] == AMSTERDAM, flight_dest[i] == RIGA),
+                              And(base_city[i] == AMSTERDAM, flight_dest[i] == MYKONOS),
+                              And(base_city[i] == MYKONOS, flight_dest[i] == AMSTERDAM))))
+    
+    # Constraint: base_city continuity
+    for i in range(n_days - 1):
+        solver.add(base_city[i+1] == If(flight_taken[i], flight_dest[i], base_city[i]))
+    
+    # Define presence in each city per day
+    in_riga = [Or(base_city[i] == RIGA, And(flight_taken[i], flight_dest[i] == RIGA)) for i in range(n_days)]
+    in_amsterdam = [Or(base_city[i] == AMSTERDAM, And(flight_taken[i], flight_dest[i] == AMSTERDAM)) for i in range(n_days)]
+    in_mykonos = [Or(base_city[i] == MYKONOS, And(flight_taken[i], flight_dest[i] == MYKONOS)) for i in range(n_days)]
+    
+    # Total days constraints
+    solver.add(sum([If(in_riga[i], 1, 0) for i in range(n_days)]) == 2)
+    solver.add(sum([If(in_amsterdam[i], 1, 0) for i in range(n_days)]) == 2)
+    solver.add(sum([If(in_mykonos[i], 1, 0) for i in range(n_days)]) == 5)
+    
+    # Relative visit in Riga between day 1 and day 2
+    solver.add(Or(in_riga[0], in_riga[1]))
+    
+    # Solve
+    if solver.check() == sat:
+        model = solver.model()
+        base_city_values = [model.evaluate(base_city[i]).as_long() for i in range(n_days)]
+        
+        # Group consecutive days with the same base city
+        itinerary = []
+        start_day = 1
+        current_city = base_city_values[0]
+        for day in range(1, n_days):
+            if base_city_values[day] != current_city:
+                itinerary.append({
+                    "day_range": f"Day {start_day}-{day}",
+                    "place": city_names[current_city]
+                })
+                start_day = day + 1
+                current_city = base_city_values[day]
+        itinerary.append({
+            "day_range": f"Day {start_day}-{n_days}",
+            "place": city_names[current_city]
+        })
+        
+        print(json.dumps({"itinerary": itinerary}))
+    else:
+        print('{"itinerary": []}')
+
+if __name__ == "__main__":
+    main()

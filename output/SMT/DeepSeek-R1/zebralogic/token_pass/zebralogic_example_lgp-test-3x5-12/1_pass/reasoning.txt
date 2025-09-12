@@ -1,0 +1,93 @@
+We are going to use the Z3 SMT solver to solve this puzzle.
+ We have 3 houses, each with 5 attributes: name, cigar, hobby, education, drink.
+ We'll define integer variables for each attribute, representing the house index (1,2,3) for which the attribute is true.
+
+ Alternatively, we can define for each house and each attribute a variable, but since the attributes are unique per category, we can model:
+ For each category (name, cigar, hobby, education, drink), we have a function that maps house index to the value.
+
+ However, a common way is to create a set of variables for each house and each attribute, but since the houses are small (3), we can create:
+
+ Let's define:
+ For house i (1,2,3):
+   name_i: which name (we'll use integers and map them to the names)
+   cigar_i, hobby_i, education_i, drink_i
+
+ But note: the attributes are unique per category, so we must ensure that for each category, the values are distinct.
+
+ Alternatively, we can define for each attribute category a function from house to value, and then use constraints.
+
+ Since the problem is small, we can create 5 arrays of 3 integers (for each category) and then set constraints.
+
+ However, a more straightforward way is to create variables for each house and each attribute, and then assert that for each attribute category, the values are distinct.
+
+ Steps:
+ 1. Define the house indices: 1,2,3
+ 2. For each house, define variables for:
+    - name (Eric, Peter, Arnold) -> we'll assign integers: let's say Eric=1, Peter=2, Arnold=3
+    - cigar (blue master=1, prince=2, pall mall=3)
+    - hobby (photography=1, gardening=2, cooking=3)
+    - education (high school=1, associate=2, bachelor=3)
+    - drink (tea=1, milk=2, water=3)
+
+ 3. Create a solver and add constraints for distinct attributes in each category.
+
+ 4. Add the clues as constraints.
+
+ 5. Check the model and output the solution in the required JSON format.
+
+ Let's code accordingly.
+
+ Note: We have to be careful with the left/right relationships. House 1 is left, then 2, then 3.
+
+ Clues:
+ 1. The person partial to Pall Mall is Peter.
+    -> This means: for the house where cigar is pall mall (3), the name is Peter (2).
+
+ 2. The person who likes milk is directly left of the person with a high school diploma.
+    -> Let milk_drinker be the house with drink=milk (2), and high_school be the house with education=high school (1).
+        Then: milk_drinker = high_school - 1
+
+ 3. Eric is the tea drinker.
+    -> The house with name=Eric (1) has drink=tea (1).
+
+ 4. Arnold and the Prince smoker are next to each other.
+    -> Let Arnold be in house A, Prince smoker in house P. Then |A - P| = 1.
+
+ 5. The person who enjoys gardening is somewhere to the left of the Prince smoker.
+    -> Let gardening hobby be in house G, Prince smoker in house P. Then G < P.
+
+ 6. The person who likes milk is the person with an associate's degree.
+    -> The house with drink=milk (2) has education=associate (2).
+
+ 7. The person with a bachelor's degree is directly left of the photography enthusiast.
+    -> Let bachelor (education=3) be in house B, photography (hobby=1) in house P. Then B = P - 1.
+
+ We'll create arrays for each attribute for houses 1,2,3.
+
+ Alternatively, we can create variables for each house and each attribute, but since there are only 3 houses and 5 attributes, we can create:
+
+   name = [Int('name_%d' % i) for i in range(1,4)]
+   cigar = [Int('cigar_%d' % i) for i in range(1,4)]
+   hobby = [Int('hobby_%d' % i) for i in range(1,4)]
+   education = [Int('education_%d' % i) for i in range(1,4)]
+   drink = [Int('drink_%d' % i) for i in range(1,4)]
+
+ But note: we must constrain each of these arrays to have distinct values and within the range [1,3] (since we have 3 options per category).
+
+ However, Z3 also provides the possibility to use FiniteDomain sorts, but we'll keep it simple with integers and constraints.
+
+ Alternatively, we can use EnumSort for each category, but then the code becomes a bit more complex. Let's stick to integers and map.
+
+ Steps in code:
+
+ 1. Import z3 and json.
+ 2. Create a solver.
+ 3. Define the arrays for each attribute for the three houses.
+ 4. For each array, add constraints that each value is between 1 and 3 and that the values are distinct.
+ 5. Add the constraints from the clues.
+
+ 6. Check if the solver is satisfiable, and then output the solution.
+
+ 7. Format the output as JSON.
+
+ Let's code accordingly.

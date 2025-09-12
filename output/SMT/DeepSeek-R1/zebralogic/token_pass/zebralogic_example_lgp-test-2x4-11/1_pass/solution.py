@@ -1,0 +1,90 @@
+from z3 import *
+import json
+
+def main():
+    # Define the attributes
+    Name = Datatype('Name')
+    Name.declare('Eric')
+    Name.declare('Arnold')
+    Name = Name.create()
+
+    Hobby = Datatype('Hobby')
+    Hobby.declare('gardening')
+    Hobby.declare('photography')
+    Hobby = Hobby.create()
+
+    Pet = Datatype('Pet')
+    Pet.declare('cat')
+    Pet.declare('dog')
+    Pet = Pet.create()
+
+    Height = Datatype('Height')
+    Height.declare('short')
+    Height.declare('very_short')
+    Height = Height.create()
+
+    # Create solver instance
+    s = Solver()
+
+    # Create variables for each house
+    names = [Const(f'name_{i}', Name) for i in range(1, 3)]
+    hobbies = [Const(f'hobby_{i}', Hobby) for i in range(1, 3)]
+    pets = [Const(f'pet_{i}', Pet) for i in range(1, 3)]
+    heights = [Const(f'height_{i}', Height) for i in range(1, 3)]
+
+    # Add uniqueness constraints
+    s.add(Distinct(names))
+    s.add(Distinct(hobbies))
+    s.add(Distinct(pets))
+    s.add(Distinct(heights))
+
+    # Clue 1: The person who is very short is the photography enthusiast.
+    for i in range(2):
+        s.add(Implies(heights[i] == Height.very_short, hobbies[i] == Hobby.photography))
+
+    # Clue 2: Eric is the person who is very short.
+    for i in range(2):
+        s.add(Implies(names[i] == Name.Eric, heights[i] == Height.very_short))
+
+    # Clue 3: The person who has a cat is somewhere to the right of the person who is very short.
+    # Define positions
+    vs_pos = Int('vs_pos')
+    cat_pos = Int('cat_pos')
+    # Determine positions of very_short and cat
+    s.add(Or(And(heights[0] == Height.very_short, vs_pos == 1),
+             And(heights[1] == Height.very_short, vs_pos == 2)))
+    s.add(Or(And(pets[0] == Pet.cat, cat_pos == 1),
+             And(pets[1] == Pet.cat, cat_pos == 2)))
+    s.add(cat_pos > vs_pos)
+
+    # Check for solution
+    if s.check() == sat:
+        m = s.model()
+        rows = []
+        for i in range(2):
+            house_num = str(i + 1)
+            name_val = m.eval(names[i])
+            hobby_val = m.eval(hobbies[i])
+            pet_val = m.eval(pets[i])
+            height_val = m.eval(heights[i])
+            
+            # Convert Z3 values to strings
+            name_str = str(name_val).split('.')[1]
+            hobby_str = str(hobby_val).split('.')[1]
+            pet_str = str(pet_val).split('.')[1]
+            height_str = str(height_val).split('.')[1]
+            
+            rows.append([house_num, name_str, hobby_str, pet_str, height_str])
+        
+        solution = {
+            "solution": {
+                "header": ["House", "Name", "Hobby", "Pet", "Height"],
+                "rows": rows
+            }
+        }
+        print(json.dumps(solution, indent=2))
+    else:
+        print("No solution found")
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,79 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"solution\": {\n    \"header\": [\n      \"House\",\n      \"Name\",\n      \"Cigar\",\n      \"Animal\",\n      \"Children\",\n      \"BookGenre\",\n      \"PhoneModel\"\n    ],\n    \"rows\": [\n      [\n        \"1\",\n        \"Peter\",\n        \"blue master\",\n        \"bird\",\n        \"Fred\",\n        \"mystery\",\n        \"google pixel 6\"\n      ],\n      [\n        \"2\",\n        \"Arnold\",\n        \"pall mall\",\n        \"horse\",\n        \"Meredith\",\n        \"romance\",\n        \"iphone 13\"\n      ],\n      [\n        \"3\",\n        \"Eric\",\n        \"prince\",\n        \"cat\",\n        \"Bella\",\n        \"science fiction\",\n        \"samsung galaxy s21\"\n      ]\n    ]\n  }\n}",
+    "pred": [
+        {
+            "House": "1",
+            "Name": "Peter",
+            "Cigar": "blue master",
+            "Animal": "bird",
+            "Children": "Fred",
+            "BookGenre": "mystery",
+            "PhoneModel": "google pixel 6"
+        },
+        {
+            "House": "2",
+            "Name": "Arnold",
+            "Cigar": "pall mall",
+            "Animal": "horse",
+            "Children": "Meredith",
+            "BookGenre": "romance",
+            "PhoneModel": "iphone 13"
+        },
+        {
+            "House": "3",
+            "Name": "Eric",
+            "Cigar": "prince",
+            "Animal": "cat",
+            "Children": "Bella",
+            "BookGenre": "science fiction",
+            "PhoneModel": "samsung galaxy s21"
+        }
+    ],
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Peter",
+            "Cigar": "blue master",
+            "Animal": "bird",
+            "Children": "Fred",
+            "BookGenre": "mystery",
+            "PhoneModel": "google pixel 6"
+        },
+        {
+            "House": "2",
+            "Name": "Arnold",
+            "Cigar": "pall mall",
+            "Animal": "horse",
+            "Children": "Meredith",
+            "BookGenre": "romance",
+            "PhoneModel": "iphone 13"
+        },
+        {
+            "House": "3",
+            "Name": "Eric",
+            "Cigar": "prince",
+            "Animal": "cat",
+            "Children": "Bella",
+            "BookGenre": "science fiction",
+            "PhoneModel": "samsung galaxy s21"
+        }
+    ],
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 569.7370979785919,
+        "execution_time": 0.08259153366088867,
+        "constraint_eval_time": 7.152557373046875e-05,
+        "pred_extract_time": 2.294275999069214,
+        "gold_extract_time": 1.4066696166992188e-05,
+        "total_tokens": 39197,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\n\n# Define EnumSorts\nNames, (Arnold, Eric, Peter) = EnumSort('Names', ['Arnold', 'Eric', 'Peter'])\nCigars, (pall_mall, blue_master, prince) = EnumSort('Cigars', ['pall_mall', 'blue_master', 'prince'])\nAnimals, (horse, cat, bird) = EnumSort('Animals', ['horse', 'cat', 'bird'])\nChildren, (Bella, Fred, Meredith) = EnumSort('Children', ['Bella', 'Fred', 'Meredith'])\nBookGenres, (science_fiction, romance, mystery) = EnumSort('BookGenres', ['science_fiction', 'romance', 'mystery'])\nPhoneModels, (google_pixel_6, iphone_13, samsung_galaxy_s21) = EnumSort('PhoneModels', ['google_pixel_6', 'iphone_13', 'samsung_galaxy_s21'])\n\n# Create variables for each house (0: house 1, 1: house 2, 2: house 3)\nnames = [Const(f'name_{i}', Names) for i in range(1,4)]\ncigars = [Const(f'cigar_{i}', Cigars) for i in range(1,4)]\nanimals = [Const(f'animal_{i}', Animals) for i in range(1,4)]\nchildren = [Const(f'children_{i}', Children) for i in range(1,4)]\nbookgenres = [Const(f'bookgenre_{i}', BookGenres) for i in range(1,4)]\nphonemodels = [Const(f'phonemodel_{i}', PhoneModels) for i in range(1,4)]\n\ns = Solver()\n\n# Add distinct constraints for each attribute\ns.add(Distinct(names))\ns.add(Distinct(cigars))\ns.add(Distinct(animals))\ns.add(Distinct(children))\ns.add(Distinct(bookgenres))\ns.add(Distinct(phonemodels))\n\n# Add clues as constraints\n\n# Clue 3: Pall Mall in second house\ns.add(cigars[1] == pall_mall)\n\n# Clue 10: science fiction in third house\ns.add(bookgenres[2] == science_fiction)\n\n# Clue 11: mystery not in second house\ns.add(bookgenres[1] != mystery)\n\n# Clue 1: mystery book lover's child is Fred\nfor i in range(3):\n    s.add(If(bookgenres[i] == mystery, children[i] == Fred, True))\n\n# Clue 2: cat lover is Eric\nfor i in range(3):\n    s.add(If(animals[i] == cat, names[i] == Eric, True))\n\n# Clue 4: horse keeper's child is Meredith\nfor i in range(3):\n    s.add(If(animals[i] == horse, children[i] == Meredith, True))\n\n# Clue 5: Bella's parent smokes Prince\nfor i in range(3):\n    s.add(If(children[i] == Bella, cigars[i] == prince, True))\n\n# Clue 6: iPhone 13 directly left of Samsung Galaxy S21\ns.add(Or(\n    And(phonemodels[0] == iphone_13, phonemodels[1] == samsung_galaxy_s21),\n    And(phonemodels[1] == iphone_13, phonemodels[2] == samsung_galaxy_s21)\n))\n\n# Clue 7: Fred's parent is directly left of Arnold\ns.add(Or(\n    And(children[0] == Fred, names[1] == Arnold),\n    And(children[1] == Fred, names[2] == Arnold)\n))\n\n# Clue 8: Peter is left of Eric\ns.add(Or(\n    And(names[0] == Peter, names[1] == Eric),\n    And(names[0] == Peter, names[2] == Eric),\n    And(names[1] == Peter, names[2] == Eric)\n))\n\n# Clue 9: science fiction lover uses Samsung Galaxy S21\nfor i in range(3):\n    s.add(If(bookgenres[i] == science_fiction, phonemodels[i] == samsung_galaxy_s21, True))\n\n# Now check if the constraints are satisfiable\nif s.check() == sat:\n    m = s.model()\n    # Mappings to convert enum strings to problem strings\n    cigar_map = {\n        'pall_mall': 'pall mall',\n        'blue_master': 'blue master',\n        'prince': 'prince'\n    }\n    phone_map = {\n        'google_pixel_6': 'google pixel 6',\n        'iphone_13': 'iphone 13',\n        'samsung_galaxy_s21': 'samsung galaxy s21'\n    }\n    bookgenre_map = {\n        'science_fiction': 'science fiction',\n        'romance': 'romance',\n        'mystery': 'mystery'\n    }\n    animal_map = {\n        'horse': 'horse',\n        'cat': 'cat',\n        'bird': 'bird'\n    }\n    children_map = {\n        'Bella': 'Bella',\n        'Fred': 'Fred',\n        'Meredith': 'Meredith'\n    }\n    names_map = {\n        'Arnold': 'Arnold',\n        'Eric': 'Eric',\n        'Peter': 'Peter'\n    }\n\n    # Now extract the solution for each house\n    solution = []\n    for i in range(3):\n        house_num = i + 1\n        name_val = names_map[str(m.evaluate(names[i]))]\n        cigar_val = cigar_map[str(m.evaluate(cigars[i]))]\n        animal_val = animal_map[str(m.evaluate(animals[i]))]\n        child_val = children_map[str(m.evaluate(children[i]))]\n        book_val = bookgenre_map[str(m.evaluate(bookgenres[i]))]\n        phone_val = phone_map[str(m.evaluate(phonemodels[i]))]\n        solution.append([\n            str(house_num),\n            name_val,\n            cigar_val,\n            animal_val,\n            child_val,\n            book_val,\n            phone_val\n        ])\n    # Output as JSON\n    import json\n    print(json.dumps({\n        \"solution\": {\n            \"header\": [\"House\", \"Name\", \"Cigar\", \"Animal\", \"Children\", \"BookGenre\", \"PhoneModel\"],\n            \"rows\": solution\n        }\n    }, indent=2))\nelse:\n    print(\"No solution found.\")"
+}

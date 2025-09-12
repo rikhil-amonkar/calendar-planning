@@ -1,0 +1,155 @@
+from z3 import *
+import json
+
+def main():
+    solver = Solver()
+    
+    # Define the attributes with integer mappings
+    names = ['Eric', 'Alice', 'Arnold', 'Carol', 'Peter', 'Bob']
+    styles = ['mediterranean', 'modern', 'craftsman', 'ranch', 'colonial', 'victorian']
+    genres = ['country', 'hip hop', 'pop', 'jazz', 'classical', 'rock']
+    hobbies = ['cooking', 'painting', 'photography', 'woodworking', 'gardening', 'knitting']
+    
+    # Create mappings from attribute to integer
+    name_to_int = {name: i for i, name in enumerate(names)}
+    style_to_int = {style: i for i, style in enumerate(styles)}
+    genre_to_int = {genre: i for i, genre in enumerate(genres)}
+    hobby_to_int = {hobby: i for i, hobby in enumerate(hobbies)}
+    
+    # Reverse mappings for output
+    int_to_name = {i: name for name, i in name_to_int.items()}
+    int_to_style = {i: style for style, i in style_to_int.items()}
+    int_to_genre = {i: genre for genre, i in genre_to_int.items()}
+    int_to_hobby = {i: hobby for hobby, i in hobby_to_int.items()}
+    
+    # Create variables for each house: name, style, genre, hobby
+    n = [Int(f'n_{i}') for i in range(1, 7)]
+    s = [Int(f's_{i}') for i in range(1, 7)]
+    m = [Int(f'm_{i}') for i in range(1, 7)]
+    h = [Int(f'h_{i}') for i in range(1, 7)]
+    
+    # Add constraints: each attribute is between 0 and 5
+    for i in range(6):
+        solver.add(n[i] >= 0, n[i] < 6)
+        solver.add(s[i] >= 0, s[i] < 6)
+        solver.add(m[i] >= 0, m[i] < 6)
+        solver.add(h[i] >= 0, h[i] < 6)
+    
+    # Each attribute list must have distinct values
+    solver.add(Distinct(n))
+    solver.add(Distinct(s))
+    solver.add(Distinct(m))
+    solver.add(Distinct(h))
+    
+    # Clue 1: Rock music in fifth house
+    solver.add(m[4] == genre_to_int['rock'])
+    
+    # Clue 2: Classical music and woodworking hobby are adjacent
+    classical_idx = genre_to_int['classical']
+    woodworking_idx = hobby_to_int['woodworking']
+    for i in range(6):
+        for j in range(6):
+            if abs(i - j) == 1:
+                solver.add(Implies(m[i] == classical_idx, h[j] == woodworking_idx))
+                solver.add(Implies(h[i] == woodworking_idx, m[j] == classical_idx))
+    
+    # Clue 3: Mediterranean style loves hip hop
+    solver.add(s[0] == style_to_int['mediterranean'])
+    solver.add(m[0] == genre_to_int['hip hop'])
+    
+    # Clue 4: Two houses between Arnold and Victorian house
+    arnold_idx = name_to_int['Arnold']
+    victorian_idx = style_to_int['victorian']
+    for i in range(6):
+        for j in range(6):
+            if abs(i - j) == 3:
+                solver.add(Implies(n[i] == arnold_idx, s[j] == victorian_idx))
+                solver.add(Implies(s[i] == victorian_idx, n[j] == arnold_idx))
+    
+    # Clue 5: Jazz directly left of Eric
+    jazz_idx = genre_to_int['jazz']
+    eric_idx = name_to_int['Eric']
+    for i in range(5):
+        solver.add(Implies(m[i] == jazz_idx, n[i+1] == eric_idx))
+    
+    # Clue 6: Hip hop left of knitting
+    hip_hop_idx = genre_to_int['hip hop']
+    knitting_idx = hobby_to_int['knitting']
+    for i in range(6):
+        for j in range(6):
+            if i < j:
+                solver.add(Implies(m[i] == hip_hop_idx, h[j] == knitting_idx))
+    
+    # Clue 7: Carol loves hip hop
+    carol_idx = name_to_int['Carol']
+    solver.add(n[0] == carol_idx)  # From clue 3, hip hop is in house 1
+    
+    # Clue 8: Craftsman style is Arnold
+    craftsman_idx = style_to_int['craftsman']
+    solver.add(s[2] == craftsman_idx)  # Arnold will be assigned later
+    solver.add(n[2] == arnold_idx)
+    
+    # Clue 9: Ranch style is Eric
+    ranch_idx = style_to_int['ranch']
+    for i in range(6):
+        solver.add(Implies(s[i] == ranch_idx, n[i] == eric_idx))
+    
+    # Clue 10: Woodworking hobby in Victorian house
+    for i in range(6):
+        solver.add(Implies(h[i] == woodworking_idx, s[i] == victorian_idx))
+    
+    # Clue 11: Country music in first house
+    solver.add(m[0] == genre_to_int['country'])
+    
+    # Clue 12: One house between painting and colonial style
+    painting_idx = hobby_to_int['painting']
+    colonial_idx = style_to_int['colonial']
+    for i in range(6):
+        for j in range(6):
+            if abs(i - j) == 2:
+                solver.add(Implies(h[i] == painting_idx, s[j] == colonial_idx))
+                solver.add(Implies(s[i] == colonial_idx, h[j] == painting_idx))
+    
+    # Clue 13: Alice is photography enthusiast
+    alice_idx = name_to_int['Alice']
+    photography_idx = hobby_to_int['photography']
+    for i in range(6):
+        solver.add(Implies(n[i] == alice_idx, h[i] == photography_idx))
+    
+    # Clue 14: Gardening is Eric
+    gardening_idx = hobby_to_int['gardening']
+    for i in range(6):
+        solver.add(Implies(n[i] == eric_idx, h[i] == gardening_idx))
+    
+    # Clue 15: Bob in third house
+    bob_idx = name_to_int['Bob']
+    solver.add(n[2] == bob_idx)
+    
+    # Check and get the model
+    if solver.check() == sat:
+        model = solver.model()
+        
+        # Prepare the solution rows
+        rows = []
+        for i in range(6):
+            house_num = str(i+1)
+            name_val = int_to_name[model.evaluate(n[i]).as_long()]
+            style_val = int_to_style[model.evaluate(s[i]).as_long()]
+            genre_val = int_to_genre[model.evaluate(m[i]).as_long()]
+            hobby_val = int_to_hobby[model.evaluate(h[i]).as_long()]
+            rows.append([house_num, name_val, style_val, genre_val, hobby_val])
+        
+        # Create the solution dictionary
+        solution = {
+            "solution": {
+                "header": ["House", "Name", "HouseStyle", "MusicGenre", "Hobby"],
+                "rows": rows
+            }
+        }
+        
+        print(json.dumps(solution, indent=2))
+    else:
+        print("No solution found")
+
+if __name__ == "__main__":
+    main()

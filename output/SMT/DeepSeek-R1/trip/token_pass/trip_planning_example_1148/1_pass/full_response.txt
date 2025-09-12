@@ -1,0 +1,109 @@
+```python
+from z3 import *
+import json
+
+def main():
+    # Cities and their indices
+    cities = ["Lisbon", "Dubrovnik", "Copenhagen", "Prague", "Tallinn", "Stockholm", "Split", "Lyon"]
+    n_cities = len(cities)
+    
+    # Direct flights (as symmetric pairs)
+    direct_flights = [
+        (1, 5), (0, 2), (0, 7), (2, 5), (2, 6), (3, 5), (4, 5), (3, 7),
+        (0, 5), (0, 3), (5, 6), (2, 3), (6, 7), (1, 2), (3, 6), (2, 4), (3, 4)
+    ]
+    allowed_pairs = set()
+    for a, b in direct_flights:
+        allowed_pairs.add((a, b))
+        allowed_pairs.add((b, a))
+    
+    # Initialize solver
+    s = Solver()
+    
+    # Create variables for morning and evening cities for each day (1 to 19)
+    m = [Int(f'm_{i}') for i in range(1, 20)]
+    e = [Int(f'e_{i}') for i in range(1, 20)]
+    
+    # Constrain city indices to valid range
+    for i in range(19):
+        s.add(And(m[i] >= 0, m[i] < n_cities))
+        s.add(And(e[i] >= 0, e[i] < n_cities))
+    
+    # Add direct flight constraints for travel days
+    for i in range(19):
+        s.add(If(
+            m[i] != e[i],
+            Or([And(m[i] == a, e[i] == b) for (a, b) in allowed_pairs]),
+            True
+        ))
+    
+    # Continuity constraint: evening city equals next morning city
+    for i in range(18):
+        s.add(e[i] == m[i+1])
+    
+    # Define day counts per city
+    count = [0] * n_cities
+    for c in range(n_cities):
+        count[c] = Sum([
+            If(Or(m[i] == c, e[i] == c), 1, 0)
+            for i in range(19)
+        ])
+    
+    # Apply total day constraints per city
+    s.add(count[0] == 2)  # Lisbon
+    s.add(count[1] == 5)  # Dubrovnik
+    s.add(count[2] == 5)  # Copenhagen
+    s.add(count[3] == 3)  # Prague
+    s.add(count[4] == 2)  # Tallinn
+    s.add(count[5] == 4)  # Stockholm
+    s.add(count[6] == 3)  # Split
+    s.add(count[7] == 2)  # Lyon
+    
+    # Additional constraints for specific events
+    # Lisbon workshop between day 4 and 5
+    s.add(Or(Or(m[3] == 0, e[3] == 0), Or(m[4] == 0, e[4] == 0)))
+    # Tallinn meeting between day 1 and 2
+    s.add(Or(Or(m[0] == 4, e[0] == 4), Or(m[1] == 4, e[1] == 4)))
+    # Stockholm wedding between day 13 and 16
+    stockholm_days = []
+    for i in range(12, 16):  # days 13 to 16 (indices 12 to 15)
+        stockholm_days.append(Or(m[i] == 5, e[i] == 5))
+    s.add(Or(stockholm_days))
+    # Lyon show between day 18 and 19
+    s.add(Or(Or(m[17] == 7, e[17] == 7), Or(m[18] == 7, e[18] == 7)))
+    
+    # Solve and output
+    if s.check() == sat:
+        model = s.model()
+        city_days = [[] for _ in range(n_cities)]
+        
+        # Collect days for each city
+        for i in range(19):
+            day_num = i + 1
+            m_val = model.evaluate(m[i]).as_long()
+            e_val = model.evaluate(e[i]).as_long()
+            city_days[m_val].append(day_num)
+            if m_val != e_val:
+                city_days[e_val].append(day_num)
+        
+        # Generate itinerary ranges
+        itinerary = []
+        for c in range(n_cities):
+            days = sorted(city_days[c])
+            if days:
+                min_day = min(days)
+                max_day = max(days)
+                itinerary.append({
+                    "day_range": f"Day {min_day}-{max_day}",
+                    "place": cities[c]
+                })
+        
+        # Sort by start day
+        itinerary.sort(key=lambda x: int(x['day_range'].split('-')[0].split()[1]))
+        print(json.dumps({"itinerary": itinerary}))
+    else:
+        print('{"itinerary": []}')
+
+if __name__ == "__main__":
+    main()
+```

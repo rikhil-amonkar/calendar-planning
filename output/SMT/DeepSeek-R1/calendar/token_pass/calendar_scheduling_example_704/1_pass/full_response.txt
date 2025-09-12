@@ -1,0 +1,58 @@
+```python
+from z3 import *
+
+def main():
+    # Define the variables
+    day = Int('day')
+    start_time = Int('start_time')
+    
+    # Samuel's busy intervals in minutes from 9:00 for each day
+    samuel_busy = [
+        # Monday
+        [(90, 120), (180, 210), (240, 360), (390, 450)],
+        # Tuesday
+        [(0, 180), (300, 390), (450, 480)],
+        # Wednesday
+        [(90, 120), (150, 180), (210, 240), (300, 330), (360, 420)]
+    ]
+    
+    s = Optimize()
+    
+    # Day must be between 0 (Monday) and 2 (Wednesday)
+    s.add(day >= 0, day <= 2)
+    # Start time must be between 0 and 450 (9:00 to 16:30)
+    s.add(start_time >= 0, start_time <= 450)
+    
+    # Add constraints for Samuel's busy intervals
+    for d in range(3):
+        for interval in samuel_busy[d]:
+            s.add(If(day == d, Or(start_time + 30 <= interval[0], start_time >= interval[1]), True))
+    
+    # Prefer earlier times: minimize day and then start time
+    s.minimize(day * 1000 + start_time)
+    
+    # Check for a solution
+    if s.check() == sat:
+        m = s.model()
+        d_val = m[day].as_long()
+        st_val = m[start_time].as_long()
+        
+        # Convert to day name
+        days = ["Monday", "Tuesday", "Wednesday"]
+        day_name = days[d_val]
+        
+        # Calculate start and end times
+        start_hour = 9 + st_val // 60
+        start_minute = st_val % 60
+        end_time = st_val + 30
+        end_hour = 9 + end_time // 60
+        end_minute = end_time % 60
+        
+        # Format the output
+        print(f"{day_name} {start_hour:02d}:{start_minute:02d}:{end_hour:02d}:{end_minute:02d}")
+    else:
+        print("No solution found")
+
+if __name__ == "__main__":
+    main()
+```

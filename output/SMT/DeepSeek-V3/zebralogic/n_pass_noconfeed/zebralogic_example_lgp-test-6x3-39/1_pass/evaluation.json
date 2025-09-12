@@ -1,0 +1,97 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"solution\": {\n    \"header\": [\n      \"House\",\n      \"Name\",\n      \"Children\",\n      \"Smoothie\"\n    ],\n    \"rows\": [\n      [\n        \"1\",\n        \"Arnold\",\n        \"Bella\",\n        \"blueberry\"\n      ],\n      [\n        \"2\",\n        \"Carol\",\n        \"Fred\",\n        \"cherry\"\n      ],\n      [\n        \"3\",\n        \"Eric\",\n        \"Samantha\",\n        \"desert\"\n      ],\n      [\n        \"4\",\n        \"Alice\",\n        \"Alice\",\n        \"watermelon\"\n      ],\n      [\n        \"5\",\n        \"Bob\",\n        \"Timothy\",\n        \"lime\"\n      ],\n      [\n        \"6\",\n        \"Peter\",\n        \"Meredith\",\n        \"dragonfruit\"\n      ]\n    ]\n  }\n}",
+    "pred": [
+        {
+            "House": "1",
+            "Name": "Arnold",
+            "Children": "Bella",
+            "Smoothie": "blueberry"
+        },
+        {
+            "House": "2",
+            "Name": "Carol",
+            "Children": "Fred",
+            "Smoothie": "cherry"
+        },
+        {
+            "House": "3",
+            "Name": "Eric",
+            "Children": "Samantha",
+            "Smoothie": "desert"
+        },
+        {
+            "House": "4",
+            "Name": "Alice",
+            "Children": "Alice",
+            "Smoothie": "watermelon"
+        },
+        {
+            "House": "5",
+            "Name": "Bob",
+            "Children": "Timothy",
+            "Smoothie": "lime"
+        },
+        {
+            "House": "6",
+            "Name": "Peter",
+            "Children": "Meredith",
+            "Smoothie": "dragonfruit"
+        }
+    ],
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Arnold",
+            "Children": "Bella",
+            "Smoothie": "blueberry"
+        },
+        {
+            "House": "2",
+            "Name": "Carol",
+            "Children": "Fred",
+            "Smoothie": "cherry"
+        },
+        {
+            "House": "3",
+            "Name": "Eric",
+            "Children": "Samantha",
+            "Smoothie": "desert"
+        },
+        {
+            "House": "4",
+            "Name": "Alice",
+            "Children": "Alice",
+            "Smoothie": "watermelon"
+        },
+        {
+            "House": "5",
+            "Name": "Bob",
+            "Children": "Timothy",
+            "Smoothie": "lime"
+        },
+        {
+            "House": "6",
+            "Name": "Peter",
+            "Children": "Meredith",
+            "Smoothie": "dragonfruit"
+        }
+    ],
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 76.41569399833679,
+        "execution_time": 0.09101533889770508,
+        "constraint_eval_time": 3.218650817871094e-05,
+        "pred_extract_time": 1.8267643451690674,
+        "gold_extract_time": 5.4836273193359375e-06,
+        "total_tokens": 1523,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import z3\nimport json\n\ndef main():\n    solver = z3.Solver()\n    \n    n_houses = 6\n    houses = list(range(1, n_houses+1))\n    \n    # Define the attributes\n    names = ['Arnold', 'Peter', 'Carol', 'Alice', 'Bob', 'Eric']\n    children = ['Alice', 'Timothy', 'Bella', 'Meredith', 'Fred', 'Samantha']\n    smoothies = ['desert', 'cherry', 'watermelon', 'blueberry', 'lime', 'dragonfruit']\n    \n    # Create variables for each attribute per house\n    name_vars = [z3.Int(f\"name_{i}\") for i in houses]\n    child_vars = [z3.Int(f\"child_{i}\") for i in houses]\n    smoothie_vars = [z3.Int(f\"smoothie_{i}\") for i in houses]\n    \n    # Constraint: all attributes are within their respective ranges\n    for i in houses:\n        solver.add(z3.And(name_vars[i-1] >= 0, name_vars[i-1] < len(names)))\n        solver.add(z3.And(child_vars[i-1] >= 0, child_vars[i-1] < len(children)))\n        solver.add(z3.And(smoothie_vars[i-1] >= 0, smoothie_vars[i-1] < len(smoothies)))\n    \n    # Constraint: all attributes are distinct per category\n    solver.add(z3.Distinct(name_vars))\n    solver.add(z3.Distinct(child_vars))\n    solver.add(z3.Distinct(smoothie_vars))\n    \n    # Helper function to get the house index of an attribute value\n    def get_house_index(vars_list, value):\n        return z3.If(vars_list[0] == value, 1, \n            z3.If(vars_list[1] == value, 2,\n            z3.If(vars_list[2] == value, 3,\n            z3.If(vars_list[3] == value, 4,\n            z3.If(vars_list[4] == value, 5, 6)))))\n    \n    # Helper function for \"next to\" constraint\n    def adjacent(a, b):\n        return z3.Or(a == b-1, a == b+1)\n    \n    # Helper function for \"to the left of\" constraint\n    def left_of(a, b):\n        return a < b\n    \n    # Helper function for \"directly left of\" constraint\n    def directly_left_of(a, b):\n        return a == b-1\n    \n    # Clue 1: The person's child is named Fred and the Desert smoothie lover are next to each other.\n    fred_child_house = get_house_index(child_vars, children.index('Fred'))\n    desert_smoothie_house = get_house_index(smoothie_vars, smoothies.index('desert'))\n    solver.add(adjacent(fred_child_house, desert_smoothie_house))\n    \n    # Clue 2: The person who drinks Blueberry smoothies is somewhere to the left of the person's child is named Fred.\n    blueberry_smoothie_house = get_house_index(smoothie_vars, smoothies.index('blueberry'))\n    solver.add(left_of(blueberry_smoothie_house, fred_child_house))\n    \n    # Clue 3: Alice is not in the fifth house.\n    alice_name_house = get_house_index(name_vars, names.index('Alice'))\n    solver.add(alice_name_house != 5)\n    \n    # Clue 4: The person's child is named Samantha is not in the second house.\n    samantha_child_house = get_house_index(child_vars, children.index('Samantha'))\n    solver.add(samantha_child_house != 2)\n    \n    # Clue 5: The Watermelon smoothie lover is somewhere to the right of the person who likes Cherry smoothies.\n    watermelon_smoothie_house = get_house_index(smoothie_vars, smoothies.index('watermelon'))\n    cherry_smoothie_house = get_house_index(smoothie_vars, smoothies.index('cherry'))\n    solver.add(left_of(cherry_smoothie_house, watermelon_smoothie_house))\n    \n    # Clue 6: Alice is the person's child is named Alice.\n    alice_child_house = get_house_index(child_vars, children.index('Alice'))\n    solver.add(alice_name_house == alice_child_house)\n    \n    # Clue 7: Alice is the Watermelon smoothie lover.\n    solver.add(alice_name_house == watermelon_smoothie_house)\n    \n    # Clue 8: Peter is somewhere to the right of the person's child is named Samantha.\n    peter_name_house = get_house_index(name_vars, names.index('Peter'))\n    solver.add(left_of(samantha_child_house, peter_name_house))\n    \n    # Clue 9: Arnold is not in the second house.\n    arnold_name_house = get_house_index(name_vars, names.index('Arnold'))\n    solver.add(arnold_name_house != 2)\n    \n    # Clue 10: Bob is the person who is the mother of Timothy.\n    bob_name_house = get_house_index(name_vars, names.index('Bob'))\n    timothy_child_house = get_house_index(child_vars, children.index('Timothy'))\n    solver.add(bob_name_house == timothy_child_house)\n    \n    # Clue 11: Arnold is directly left of Carol.\n    carol_name_house = get_house_index(name_vars, names.index('Carol'))\n    solver.add(directly_left_of(arnold_name_house, carol_name_house))\n    \n    # Clue 12: The person who likes Cherry smoothies is directly left of the person's child is named Samantha.\n    solver.add(directly_left_of(cherry_smoothie_house, samantha_child_house))\n    \n    # Clue 13: The person's child is named Meredith is in the sixth house.\n    meredith_child_house = get_house_index(child_vars, children.index('Meredith'))\n    solver.add(meredith_child_house == 6)\n    \n    # Clue 14: The Dragonfruit smoothie lover is the person's child is named Meredith.\n    dragonfruit_smoothie_house = get_house_index(smoothie_vars, smoothies.index('dragonfruit'))\n    solver.add(dragonfruit_smoothie_house == meredith_child_house)\n    \n    # Check if the constraints are satisfiable\n    if solver.check() == z3.sat:\n        model = solver.model()\n        \n        # Create result structure\n        result = {\n            \"solution\": {\n                \"header\": [\"House\", \"Name\", \"Children\", \"Smoothie\"],\n                \"rows\": []\n            }\n        }\n        \n        # Extract values from the model\n        for house in houses:\n            name_idx = model.evaluate(name_vars[house-1]).as_long()\n            child_idx = model.evaluate(child_vars[house-1]).as_long()\n            smoothie_idx = model.evaluate(smoothie_vars[house-1]).as_long()\n            \n            row = [\n                str(house),\n                names[name_idx],\n                children[child_idx],\n                smoothies[smoothie_idx]\n            ]\n            result[\"solution\"][\"rows\"].append(row)\n        \n        # Output as JSON\n        print(json.dumps(result, indent=2))\n    else:\n        print('{\"error\": \"No solution found\"}')\n\nif __name__ == \"__main__\":\n    main()"
+}

@@ -1,0 +1,62 @@
+{
+    "has_execution_error": true,
+    "has_no_plan": false,
+    "execution_output": null,
+    "pred": null,
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Peter",
+            "Flower": "daffodils",
+            "Hobby": "gardening",
+            "Pet": "bird",
+            "Color": "yellow",
+            "HouseStyle": "ranch"
+        },
+        {
+            "House": "2",
+            "Name": "Arnold",
+            "Flower": "carnations",
+            "Hobby": "painting",
+            "Pet": "fish",
+            "Color": "white",
+            "HouseStyle": "craftsman"
+        },
+        {
+            "House": "3",
+            "Name": "Alice",
+            "Flower": "roses",
+            "Hobby": "photography",
+            "Pet": "dog",
+            "Color": "red",
+            "HouseStyle": "colonial"
+        },
+        {
+            "House": "4",
+            "Name": "Eric",
+            "Flower": "lilies",
+            "Hobby": "cooking",
+            "Pet": "cat",
+            "Color": "green",
+            "HouseStyle": "victorian"
+        }
+    ],
+    "status": "Error",
+    "violated_constraint": {
+        "invalid_output": "No valid output structure found"
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 38.96131873130798,
+        "execution_time": 0.07754278182983398,
+        "constraint_eval_time": 4.291534423828125e-06,
+        "pred_extract_time": 4.291534423828125e-06,
+        "gold_extract_time": 1.4066696166992188e-05,
+        "total_tokens": 3518,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\n\n# Define the domain for each variable\nnames = [\"Peter\", \"Arnold\", \"Alice\", \"Eric\"]\nflowers = [\"roses\", \"daffodils\", \"carnations\", \"lilies\"]\nhobbies = [\"photography\", \"painting\", \"cooking\", \"gardening\"]\npets = [\"dog\", \"fish\", \"bird\", \"cat\"]\ncolors = [\"red\", \"yellow\", \"green\", \"white\"]\nhouse_styles = [\"craftsman\", \"colonial\", \"ranch\", \"victorian\"]\n\n# Create a solver instance\nsolver = Solver()\n\n# Create dictionaries to hold the variables\nname_vars = {i+1: Int(f\"name_{i+1}\") for i in range(4)}\nflower_vars = {i+1: Int(f\"flower_{i+1}\") for i in range(4)}\nhobby_vars = {i+1: Int(f\"hobby_{i+1}\") for i in range(4)}\npet_vars = {i+1: Int(f\"pet_{i+1}\") for i in range(4)}\ncolor_vars = {i+1: Int(f\"color_{i+1}\") for i in range(4)}\nhouse_style_vars = {i+1: Int(f\"house_style_{i+1}\") for i in range(4)}\n\n# Add constraints for unique values\nfor var_dict, domain in [(name_vars, names), (flower_vars, flowers), (hobby_vars, hobbies),\n                        (pet_vars, pets), (color_vars, colors), (house_style_vars, house_styles)]:\n    solver.add(Distinct(*var_dict.values()))\n    for var in var_dict.values():\n        solver.add(var >= 0)\n        solver.add(var < len(domain))\n\n# Define helper function to convert variable to value\ndef get_value(model, var_dict, domain):\n    return domain[model.evaluate(var_dict).as_long()]\n\n# Add puzzle clues as constraints\nsolver.add(house_style_vars[2] == names.index(\"Arnold\"))\nsolver.add(name_vars[2] == names.index(\"Arnold\"))\nsolver.add(flower_vars[1] > name_vars[1])\nsolver.add(pet_vars[name_vars.index(names.index(\"photography\"))] == pets.index(\"dog\"))\nsolver.add(flower_vars[3] != flowers.index(\"daffodils\"))\nsolver.add(flower_vars[name_vars.index(flowers.index(\"roses\"))] == colors.index(\"red\"))\nsolver.add(color_vars[name_vars.index(flowers.index(\"roses\"))] == colors.index(\"red\"))\nsolver.add(name_vars[4] == names.index(\"Eric\"))\nsolver.add(house_style_vars[name_vars.index(names.index(\"Eric\"))] == house_styles.index(\"victorian\"))\nsolver.add(pet_vars[name_vars.index(colors.index(\"white\"))] == pets.index(\"fish\"))\nsolver.add(color_vars[name_vars.index(colors.index(\"white\"))] == colors.index(\"white\"))\nsolver.add(hobby_vars[name_vars.index(colors.index(\"white\"))] == hobbies.index(\"cooking\"))\nsolver.add(color_vars[name_vars.index(colors.index(\"white\"))] == flowers.index(\"carnations\"))\nsolver.add(hobby_vars[name_vars.index(colors.index(\"white\"))] > hobby_vars[name_vars.index(hobbies.index(\"gardening\"))])\nsolver.add(flower_vars[name_vars.index(flowers.index(\"daffodils\"))] == colors.index(\"yellow\"))\nsolver.add(color_vars[name_vars.index(house_styles.index(\"colonial\"))] == colors.index(\"red\"))\nsolver.add(pet_vars[name_vars.index(names.index(\"Eric\"))] == pets.index(\"cat\"))\n\n# Check if the constraints are satisfiable\nif solver.check() == sat:\n    model = solver.model()\n    solution = {\n        \"solution\": {\n            \"header\": [\"House\", \"Name\", \"Flower\", \"Hobby\", \"Pet\", \"Color\", \"HouseStyle\"],\n            \"rows\": []\n        }\n    }\n    for house in range(1, 5):\n        solution[\"solution\"][\"rows\"].append([\n            str(house),\n            get_value(model, name_vars, names),\n            get_value(model, flower_vars, flowers),\n            get_value(model, hobby_vars, hobbies),\n            get_value(model, pet_vars, pets),\n            get_value(model, color_vars, colors),\n            get_value(model, house_style_vars, house_styles)\n        ])\n    import json\n    print(json.dumps(solution))\nelse:\n    print(\"No solution found\")"
+}

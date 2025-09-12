@@ -1,0 +1,94 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "[0, 15, 10]\n[15, 0, 20]\n[10, 20, 0]",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Location 1",
+                "person": "Person 1",
+                "start_time": "0:00",
+                "end_time": "0:15"
+            },
+            {
+                "action": "meet",
+                "location": "Location 3",
+                "person": "Person 3",
+                "start_time": "0:10",
+                "end_time": "0:20"
+            },
+            {
+                "action": "meet",
+                "location": "Location 2",
+                "person": "Person 2",
+                "start_time": "0:15",
+                "end_time": "0:15"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Presidio",
+                "person": "Joshua",
+                "start_time": "9:20",
+                "end_time": "11:05"
+            },
+            {
+                "action": "meet",
+                "location": "Embarcadero",
+                "person": "David",
+                "start_time": "11:25",
+                "end_time": "11:55"
+            },
+            {
+                "action": "meet",
+                "location": "Alamo Square",
+                "person": "Stephanie",
+                "start_time": "15:30",
+                "end_time": "16:00"
+            },
+            {
+                "action": "meet",
+                "location": "Haight-Ashbury",
+                "person": "Kimberly",
+                "start_time": "16:45",
+                "end_time": "18:00"
+            },
+            {
+                "action": "meet",
+                "location": "Golden Gate Park",
+                "person": "Lisa",
+                "start_time": "18:07",
+                "end_time": "18:52"
+            },
+            {
+                "action": "meet",
+                "location": "North Beach",
+                "person": "Timothy",
+                "start_time": "19:45",
+                "end_time": "21:15"
+            }
+        ]
+    },
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "constraints_satisfied_but_no_exact_match": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 3,
+    "timing": {
+        "api_call_time": 65.14883041381836,
+        "execution_time": 0.01863718032836914,
+        "constraint_eval_time": 0.0004050731658935547,
+        "pred_extract_time": 2.61501145362854,
+        "gold_extract_time": 8.893013000488281e-05,
+        "total_tokens": 5025,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "# Sample data: list of friends with their locations\nfriends = [\n    {'name': 'Alice', 'location': 'Home'},\n    {'name': 'Bob', 'location': 'Office'},\n    {'name': 'Charlie', 'location': 'Cafe'}\n]\n\n# Predefined travel times between locations\ntravel_times = {\n    'Home': {'Home': 0, 'Office': 15, 'Cafe': 10},\n    'Office': {'Home': 15, 'Office': 0, 'Cafe': 20},\n    'Cafe': {'Home': 10, 'Office': 20, 'Cafe': 0}\n}\n\n# Precompute travel times between friends\nfriend_locations = [f['location'] for f in friends]\nnum_friends = len(friends)\ntravel_time_between = [[0] * num_friends for _ in range(num_friends)]\n\nfor j in range(num_friends):\n    for k in range(num_friends):\n        loc_j = friend_locations[j]\n        loc_k = friend_locations[k]\n        if loc_j == loc_k:\n            travel_time_between[j][k] = 0\n        else:\n            travel_time_between[j][k] = travel_times[loc_j][loc_k]\n\n# Optional: print the travel time matrix\nfor row in travel_time_between:\n    print(row)"
+}

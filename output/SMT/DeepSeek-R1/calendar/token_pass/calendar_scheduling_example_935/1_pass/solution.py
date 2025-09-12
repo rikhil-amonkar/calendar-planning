@@ -1,0 +1,109 @@
+from z3 import *
+
+def main():
+    # Initialize the optimizer
+    opt = Optimize()
+    
+    # Define variables
+    day = Int('day')  # 0: Monday, 1: Tuesday, 2: Wednesday, 3: Thursday, 4: Friday
+    start_time = Int('start_time')  # Minutes from 9:00
+    
+    # Constraints for day and start_time
+    opt.add(day >= 0, day <= 4)
+    opt.add(start_time >= 0, start_time <= 450)  # 450 minutes = 16:30 (latest start time)
+    
+    # Duration of the meeting is 30 minutes
+    duration = 30
+    
+    # Convert time string to minutes from 9:00
+    def time_to_minutes(t):
+        h, m = map(int, t.split(':'))
+        return (h - 9) * 60 + m
+    
+    # Terry's busy intervals per day
+    terry_busy = {
+        0: [(time_to_minutes('10:30'), time_to_minutes('11:00')), 
+             (time_to_minutes('12:30'), time_to_minutes('14:00')), 
+             (time_to_minutes('15:00'), time_to_minutes('17:00'))],
+        1: [(time_to_minutes('9:30'), time_to_minutes('10:00')), 
+             (time_to_minutes('10:30'), time_to_minutes('11:00')), 
+             (time_to_minutes('14:00'), time_to_minutes('14:30')), 
+             (time_to_minutes('16:00'), time_to_minutes('16:30'))],
+        2: [(time_to_minutes('9:30'), time_to_minutes('10:30')), 
+             (time_to_minutes('11:00'), time_to_minutes('12:00')), 
+             (time_to_minutes('13:00'), time_to_minutes('13:30')), 
+             (time_to_minutes('15:00'), time_to_minutes('16:00')), 
+             (time_to_minutes('16:30'), time_to_minutes('17:00'))],
+        3: [(time_to_minutes('9:30'), time_to_minutes('10:00')), 
+             (time_to_minutes('12:00'), time_to_minutes('12:30')), 
+             (time_to_minutes('13:00'), time_to_minutes('14:30')), 
+             (time_to_minutes('16:00'), time_to_minutes('16:30'))],
+        4: [(time_to_minutes('9:00'), time_to_minutes('11:30')), 
+             (time_to_minutes('12:00'), time_to_minutes('12:30')), 
+             (time_to_minutes('13:30'), time_to_minutes('16:00')), 
+             (time_to_minutes('16:30'), time_to_minutes('17:00'))]
+    }
+    
+    # Frances's busy intervals per day
+    frances_busy = {
+        0: [(time_to_minutes('9:30'), time_to_minutes('11:00')), 
+             (time_to_minutes('11:30'), time_to_minutes('13:00')), 
+             (time_to_minutes('14:00'), time_to_minutes('14:30')), 
+             (time_to_minutes('15:00'), time_to_minutes('16:00'))],
+        1: [(time_to_minutes('9:00'), time_to_minutes('9:30')), 
+             (time_to_minutes('10:00'), time_to_minutes('10:30')), 
+             (time_to_minutes('11:00'), time_to_minutes('12:00')), 
+             (time_to_minutes('13:00'), time_to_minutes('14:30')), 
+             (time_to_minutes('15:30'), time_to_minutes('16:30'))],
+        2: [(time_to_minutes('9:30'), time_to_minutes('10:00')), 
+             (time_to_minutes('10:30'), time_to_minutes('11:00')), 
+             (time_to_minutes('11:30'), time_to_minutes('16:00')), 
+             (time_to_minutes('16:30'), time_to_minutes('17:00'))],
+        3: [(time_to_minutes('11:00'), time_to_minutes('12:30')), 
+             (time_to_minutes('14:30'), time_to_minutes('17:00'))],
+        4: [(time_to_minutes('9:30'), time_to_minutes('10:30')), 
+             (time_to_minutes('11:00'), time_to_minutes('12:30')), 
+             (time_to_minutes('13:00'), time_to_minutes('16:00')), 
+             (time_to_minutes('16:30'), time_to_minutes('17:00'))]
+    }
+    
+    # Add constraints for non-overlap with busy intervals
+    for d in range(5):
+        all_busy = terry_busy[d] + frances_busy[d]
+        for busy_start, busy_end in all_busy:
+            opt.add(If(day == d, 
+                       Or(start_time + duration <= busy_start, start_time >= busy_end), 
+                       True))
+    
+    # Optimize for earliest day and then earliest start time
+    opt.minimize(day)
+    opt.minimize(start_time)
+    
+    # Check for a solution
+    if opt.check() == sat:
+        m = opt.model()
+        d_val = m[day].as_long()
+        s_val = m[start_time].as_long()
+        
+        # Convert day index to name
+        days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
+        day_name = days[d_val]
+        
+        # Convert start time to HH:MM format
+        start_hour = 9 + s_val // 60
+        start_minute = s_val % 60
+        start_str = f"{start_hour:02d}:{start_minute:02d}"
+        
+        # Calculate end time
+        end_time = s_val + duration
+        end_hour = 9 + end_time // 60
+        end_minute = end_time % 60
+        end_str = f"{end_hour:02d}:{end_minute:02d}"
+        
+        # Output the result
+        print(f"{day_name} {start_str}:{end_str}")
+    else:
+        print("No solution found")
+
+if __name__ == '__main__':
+    main()

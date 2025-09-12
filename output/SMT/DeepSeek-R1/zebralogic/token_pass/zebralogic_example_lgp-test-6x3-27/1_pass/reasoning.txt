@@ -1,0 +1,91 @@
+We are going to use the Z3 SMT solver to solve this puzzle.
+ Steps:
+ 1. Define the houses: 1 to 6.
+ 2. Define the attributes: names, occupations, car models.
+ 3. Create Z3 variables for each attribute per house.
+ 4. Set up the constraints based on the clues.
+ 5. Use the solver to check for a model that satisfies all constraints.
+ 6. Extract the solution and format it as required.
+
+ We'll create a function for each clue and then combine them.
+
+ Note: We have 6 houses and 3 attributes (name, occupation, car model).
+
+ We'll create:
+   name[i] for i in 1..6
+   occupation[i] for i in 1..6
+   car_model[i] for i in 1..6
+
+ We'll use Z3's IntSort and then define the possible values for each attribute.
+
+ Alternatively, we can use EnumSort for each attribute set, but since we have multiple attributes, we can use:
+
+   Name = EnumSort('Name', ['Alice', 'Arnold', 'Eric', 'Peter', 'Bob', 'Carol'])
+   Occupation = EnumSort('Occupation', ['engineer', 'artist', 'doctor', 'teacher', 'nurse', 'lawyer'])
+   CarModel = EnumSort('CarModel', ['chevrolet silverado', 'ford f150', 'honda civic', 'toyota camry', 'bmw 3 series', 'tesla model 3'])
+
+ Then, for each house i, we have a variable for name, occupation, and car model.
+
+ However, note that the problem has 6 houses and 3 attributes, so we have 3 arrays of 6 variables each.
+
+ Let's set up the problem accordingly.
+
+ We'll also note that the houses are in order 1 to 6.
+
+ We'll create constraints for:
+   All names are distinct per house, same for occupation and car model.
+
+ Then we add the clues one by one.
+
+ Important: The clues are:
+
+ 1. The person who owns a Ford F-150 is in the fifth house.
+    -> car_model[5] = ford_f150
+
+ 2. The person who owns a Chevrolet Silverado is not in the second house.
+    -> car_model[2] != chevrolet_silverado
+
+ 3. The person who owns a Honda Civic and Peter are next to each other.
+    -> Let honda_civic_house be the house of the Honda Civic, and peter_house be the house of Peter.
+       Then, |honda_civic_house - peter_house| == 1
+
+ 4. The person who is a lawyer is not in the fifth house.
+    -> occupation[5] != lawyer
+
+ 5. The person who is a nurse is directly left of the person who is an artist.
+    -> nurse_house + 1 = artist_house
+
+ 6. Carol is somewhere to the right of Eric.
+    -> carol_house > eric_house
+
+ 7. The person who is a doctor is Eric.
+    -> For the house where name is Eric, occupation is doctor.
+
+ 8. The person who is a teacher is somewhere to the left of the person who is a nurse.
+    -> teacher_house < nurse_house
+
+ 9. Carol is not in the sixth house.
+    -> name[6] != Carol
+
+10. The person who is an engineer is Bob.
+    -> For the house where name is Bob, occupation is engineer.
+
+11. The person who owns a Toyota Camry is the person who is a nurse.
+    -> The house with car_model = toyota_camry is the same as the house with occupation = nurse.
+
+12. There is one house between Peter and the person who is a lawyer.
+    -> |peter_house - lawyer_house| = 2
+
+13. There is one house between the person who owns a Tesla Model 3 and Bob.
+    -> |tesla_model_3_house - bob_house| = 2
+
+14. Arnold is the person who is an artist.
+    -> For the house where name is Arnold, occupation is artist.
+
+ We'll also need to ensure that each attribute (name, occupation, car_model) has distinct values across houses.
+
+ Implementation:
+
+ We'll create Z3 Enum sorts for each category.
+
+ Let's code accordingly.

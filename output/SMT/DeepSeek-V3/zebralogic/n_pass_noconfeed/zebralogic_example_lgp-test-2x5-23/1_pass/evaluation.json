@@ -1,0 +1,57 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"solution\": {\n    \"header\": [\n      \"House\",\n      \"Name\",\n      \"Education\",\n      \"Height\",\n      \"Food\",\n      \"Drink\"\n    ],\n    \"rows\": [\n      [\n        \"1\",\n        \"Arnold\",\n        \"high school\",\n        \"very short\",\n        \"pizza\",\n        \"water\"\n      ],\n      [\n        \"2\",\n        \"Eric\",\n        \"associate\",\n        \"short\",\n        \"grilled cheese\",\n        \"tea\"\n      ]\n    ]\n  }\n}",
+    "pred": [
+        {
+            "House": "1",
+            "Name": "Arnold",
+            "Education": "high school",
+            "Height": "very short",
+            "Food": "pizza",
+            "Drink": "water"
+        },
+        {
+            "House": "2",
+            "Name": "Eric",
+            "Education": "associate",
+            "Height": "short",
+            "Food": "grilled cheese",
+            "Drink": "tea"
+        }
+    ],
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Arnold",
+            "Education": "high school",
+            "Height": "very short",
+            "Food": "pizza",
+            "Drink": "water"
+        },
+        {
+            "House": "2",
+            "Name": "Eric",
+            "Education": "associate",
+            "Height": "short",
+            "Food": "grilled cheese",
+            "Drink": "tea"
+        }
+    ],
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 54.54388117790222,
+        "execution_time": 0.08161139488220215,
+        "constraint_eval_time": 6.127357482910156e-05,
+        "pred_extract_time": 1.2460100650787354,
+        "gold_extract_time": 9.775161743164062e-06,
+        "total_tokens": 1003,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import z3\nimport json\n\ndef main():\n    # Create solver\n    solver = z3.Solver()\n    \n    # Define houses\n    houses = [1, 2]\n    \n    # Define attributes\n    names = ['Arnold', 'Eric']\n    educations = ['associate', 'high school']\n    heights = ['short', 'very short']\n    foods = ['grilled cheese', 'pizza']\n    drinks = ['tea', 'water']\n    \n    # Create variables for each attribute per house\n    name_vars = {h: z3.Int(f'name_{h}') for h in houses}\n    education_vars = {h: z3.Int(f'education_{h}') for h in houses}\n    height_vars = {h: z3.Int(f'height_{h}') for h in houses}\n    food_vars = {h: z3.Int(f'food_{h}') for h in houses}\n    drink_vars = {h: z3.Int(f'drink_{h}') for h in houses}\n    \n    # Define domains for each attribute\n    for h in houses:\n        solver.add(z3.And(name_vars[h] >= 0, name_vars[h] < len(names)))\n        solver.add(z3.And(education_vars[h] >= 0, education_vars[h] < len(educations)))\n        solver.add(z3.And(height_vars[h] >= 0, height_vars[h] < len(heights)))\n        solver.add(z3.And(food_vars[h] >= 0, food_vars[h] < len(foods)))\n        solver.add(z3.And(drink_vars[h] >= 0, drink_vars[h] < len(drinks)))\n    \n    # All attributes must be unique within their category\n    solver.add(z3.Distinct([name_vars[h] for h in houses]))\n    solver.add(z3.Distinct([education_vars[h] for h in houses]))\n    solver.add(z3.Distinct([height_vars[h] for h in houses]))\n    solver.add(z3.Distinct([food_vars[h] for h in houses]))\n    solver.add(z3.Distinct([drink_vars[h] for h in houses]))\n    \n    # Clue 1: The person who is very short is the person who is a pizza lover.\n    very_short_idx = heights.index('very short')\n    pizza_idx = foods.index('pizza')\n    for h in houses:\n        solver.add(z3.Implies(height_vars[h] == very_short_idx, food_vars[h] == pizza_idx))\n    \n    # Clue 2: The person who loves eating grilled cheese is in the second house.\n    grilled_cheese_idx = foods.index('grilled cheese')\n    solver.add(food_vars[2] == grilled_cheese_idx)\n    \n    # Clue 3: The person with a high school diploma is the person who is a pizza lover.\n    high_school_idx = educations.index('high school')\n    for h in houses:\n        solver.add(z3.Implies(education_vars[h] == high_school_idx, food_vars[h] == pizza_idx))\n    \n    # Clue 4: The tea drinker is the person who loves eating grilled cheese.\n    tea_idx = drinks.index('tea')\n    for h in houses:\n        solver.add(z3.Implies(drink_vars[h] == tea_idx, food_vars[h] == grilled_cheese_idx))\n    \n    # Clue 5: Arnold is the person who is a pizza lover.\n    arnold_idx = names.index('Arnold')\n    for h in houses:\n        solver.add(z3.Implies(name_vars[h] == arnold_idx, food_vars[h] == pizza_idx))\n    \n    # Check if solution exists\n    if solver.check() == z3.sat:\n        model = solver.model()\n        \n        # Prepare result\n        result = {\n            \"solution\": {\n                \"header\": [\"House\", \"Name\", \"Education\", \"Height\", \"Food\", \"Drink\"],\n                \"rows\": []\n            }\n        }\n        \n        for house in sorted(houses):\n            name_idx = model.evaluate(name_vars[house]).as_long()\n            education_idx = model.evaluate(education_vars[house]).as_long()\n            height_idx = model.evaluate(height_vars[house]).as_long()\n            food_idx = model.evaluate(food_vars[house]).as_long()\n            drink_idx = model.evaluate(drink_vars[house]).as_long()\n            \n            row = [\n                str(house),\n                names[name_idx],\n                educations[education_idx],\n                heights[height_idx],\n                foods[food_idx],\n                drinks[drink_idx]\n            ]\n            result[\"solution\"][\"rows\"].append(row)\n        \n        print(json.dumps(result, indent=2))\n    else:\n        print('{\"error\": \"No solution found\"}')\n\nif __name__ == \"__main__\":\n    main()"
+}

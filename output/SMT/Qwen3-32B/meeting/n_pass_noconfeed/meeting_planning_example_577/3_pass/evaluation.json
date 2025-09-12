@@ -1,0 +1,101 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "[0, 15, 10, 20, 5]\n[15, 0, 25, 10, 30]\n[10, 25, 0, 12, 18]\n[20, 10, 12, 0, 22]\n[5, 30, 18, 22, 0]",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Location 1",
+                "person": "Person 1",
+                "start_time": "0:00",
+                "end_time": "0:15"
+            },
+            {
+                "action": "meet",
+                "location": "Location 5",
+                "person": "Person 5",
+                "start_time": "0:05",
+                "end_time": "0:30"
+            },
+            {
+                "action": "meet",
+                "location": "Location 3",
+                "person": "Person 3",
+                "start_time": "0:10",
+                "end_time": "0:25"
+            },
+            {
+                "action": "meet",
+                "location": "Location 2",
+                "person": "Person 2",
+                "start_time": "0:15",
+                "end_time": "0:25"
+            },
+            {
+                "action": "meet",
+                "location": "Location 4",
+                "person": "Person 4",
+                "start_time": "0:20",
+                "end_time": "0:22"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Golden Gate Park",
+                "person": "Steven",
+                "start_time": "9:07",
+                "end_time": "10:22"
+            },
+            {
+                "action": "meet",
+                "location": "Alamo Square",
+                "person": "Anthony",
+                "start_time": "10:32",
+                "end_time": "10:47"
+            },
+            {
+                "action": "meet",
+                "location": "Pacific Heights",
+                "person": "Sandra",
+                "start_time": "14:45",
+                "end_time": "15:30"
+            },
+            {
+                "action": "meet",
+                "location": "Russian Hill",
+                "person": "Stephanie",
+                "start_time": "20:00",
+                "end_time": "20:15"
+            },
+            {
+                "action": "meet",
+                "location": "Fisherman's Wharf",
+                "person": "Kevin",
+                "start_time": "20:22",
+                "end_time": "21:37"
+            }
+        ]
+    },
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "constraints_satisfied_but_no_exact_match": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 3,
+    "timing": {
+        "api_call_time": 91.46237802505493,
+        "execution_time": 0.018575429916381836,
+        "constraint_eval_time": 0.00014543533325195312,
+        "pred_extract_time": 5.475288152694702,
+        "gold_extract_time": 5.0067901611328125e-05,
+        "total_tokens": 6899,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "# Define the locations of each friend (index 0 to 4)\nfriends_locations = ['Home', 'Office', 'Park', 'School', 'Gym']\n\n# Initialize a 5x5 travel time matrix\ntravel_time_matrix = [[0 for _ in range(5)] for _ in range(5)]\n\n# Example travel_time dictionary (you can replace this with real data)\ntravel_time = {\n    'Home': {'Office': 15, 'Park': 10, 'School': 20, 'Gym': 5},\n    'Office': {'Home': 15, 'Park': 25, 'School': 10, 'Gym': 30},\n    'Park': {'Home': 10, 'Office': 25, 'School': 12, 'Gym': 18},\n    'School': {'Home': 20, 'Office': 10, 'Park': 12, 'Gym': 22},\n    'Gym': {'Home': 5, 'Office': 30, 'Park': 18, 'School': 22}\n}\n\n# Populate the travel time matrix\nfor k in range(5):\n    for m in range(5):\n        loc_k = friends_locations[k]\n        loc_m = friends_locations[m]\n        if loc_k == loc_m:\n            travel_time_matrix[k][m] = 0\n        else:\n            travel_time_matrix[k][m] = travel_time[loc_k][loc_m]\n\n# Optional: print the matrix\nfor row in travel_time_matrix:\n    print(row)"
+}

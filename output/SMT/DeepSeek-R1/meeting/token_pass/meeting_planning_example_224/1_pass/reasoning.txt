@@ -1,0 +1,511 @@
+We are going to use the Z3 SMT solver to model the problem.
+ Steps:
+ 1. Define the travel time matrix between locations.
+ 2. Convert all time strings to minutes since 9:00 AM (which we set as time 0).
+ 3. Define the constraints for each meeting: available time windows and minimum meeting duration.
+ 4. We have three friends: Melissa, Nancy, Emily at Golden Gate Park, Presidio, Richmond District respectively.
+ 5. We start at Fisherman's Wharf at 9:00 AM (time 0).
+
+ We need to decide the order of meetings and the travel times between them.
+
+ However, note that we are only meeting three people, but we might not be able to meet all due to time constraints?
+ The problem says we want to meet as many as possible, but the constraints might allow meeting all.
+
+ Since there are only three, we can try to schedule all three and see if it's possible. If not, we might have to skip one.
+
+ But note: the problem says "optimal" meaning we want to maximize the number of meetings, but also note that we have minimum durations.
+
+ However, the constraints on Nancy and Emily are long and their available times are in the evening, so we might have to check.
+
+ We'll model the problem with variables for:
+   - The start and end times of each meeting.
+   - The travel times between meetings.
+
+ We have to account for:
+   - The initial travel from Fisherman's Wharf to the first meeting.
+   - Travel between meetings.
+   - The meeting durations must be at least the minimum required.
+
+ Also, each meeting must occur within the friend's available time window.
+
+ We are allowed to leave after 10:00 PM? The problem doesn't specify an end time for us, but we are meeting until at least 10:00 PM.
+
+ We'll assume we can stay until 10:00 PM (which is 13 hours after 9:00 AM, i.e., 13*60 = 780 minutes).
+
+ Let's convert the available times to minutes from 9:00 AM:
+
+ 9:00 AM -> 0 minutes.
+
+ Melissa: 8:30 AM to 8:00 PM.
+   8:30 AM is 30 minutes before 9:00 AM -> -30 minutes.
+   8:00 PM is 11 hours after 9:00 AM -> 11*60 = 660 minutes.
+
+ Nancy: 7:45 PM to 10:00 PM.
+   7:45 PM is 10 hours and 45 minutes after 9:00 AM -> 10*60+45 = 645 minutes.
+   10:00 PM is 13*60 = 780 minutes.
+
+ Emily: 4:45 PM to 10:00 PM.
+   4:45 PM is 7 hours and 45 minutes after 9:00 AM -> 7*60+45 = 465 minutes.
+   10:00 PM is 780 minutes.
+
+ We are starting at Fisherman's Wharf at time 0.
+
+ We have three meetings to schedule. We must decide the order.
+
+ Since there are only 3 meetings, we can consider all 6 permutations of the order.
+
+ However, we are going to use Z3 to solve the scheduling with constraints, so we don't need to iterate over permutations manually.
+
+ We'll create Z3 variables for:
+   - The start time of each meeting (M_start, N_start, E_start)
+   - The end time of each meeting (M_end, N_end, E_end)
+   - The travel times between meetings (which depend on the order)
+
+ But note: the order is not fixed. We have to decide the order. We can use Z3 to choose the order by having variables that represent the sequence.
+
+ Alternatively, we can use a TSP-like formulation with indicators for the order.
+
+ However, because the problem is small, we can use a fixed order and then use Z3 to check for all orders? But that would require 6 copies of the constraints.
+
+ Alternatively, we can use a more abstract formulation by having variables for the start and end of each meeting and then constraints that enforce the travel time between the end of one meeting and the start of the next, but without knowing the order, we have to use a circuit.
+
+ Since the problem is small, we can try to model the order with 3 boolean variables for the relative order of the three meetings, but that becomes messy.
+
+ Another idea: we can have variables for the start time of each meeting and then use constraints that if meeting A is before meeting B, then the end of A plus travel from A's location to B's location must be <= start of B.
+
+ But we don't know the order. So we can have 6 possible orders and use an OR of constraints for each order? Z3 supports OR.
+
+ However, we can also use a more efficient way by having variables for the order index of each meeting (0,1,2) and then use sorting constraints? But that might be complex.
+
+ Alternatively, we can use a chain of meetings by having two additional variables: first_meeting and second_meeting and third_meeting, but then we have to assign which meeting is first, which is second, which is third.
+
+ Let me define:
+
+ Let the meetings be represented by:
+   M: Melissa at Golden Gate Park
+   N: Nancy at Presidio
+   E: Emily at Richmond District
+
+ We'll create variables for the start and end of each meeting, and then we'll create variables for the travel times between the meetings in the order.
+
+ We can have:
+
+   Let T_M, T_N, T_E be the start times of the meetings.
+
+   We also have to account for the initial travel from Fisherman's Wharf to the first meeting location.
+
+   We have to account for the travel from the first meeting to the second, and from the second to the third.
+
+   We don't know the order, so we'll introduce three variables: first, second, third, which are integers from 0 to 2, and they must be distinct.
+
+   But Z3 doesn't have direct support for indexing with symbols, so we can use a different approach.
+
+   Alternatively, we can use 6 implications for the possible orders.
+
+   Since 6 is manageable, we can do:
+
+   Order 1: M then N then E
+   Order 2: M then E then N
+   Order 3: N then M then E
+   Order 4: N then E then M
+   Order 5: E then M then N
+   Order 6: E then N then M
+
+   We'll create a variable for the order (an integer from 1 to 6) and then set constraints accordingly.
+
+   However, Z3 is an SMT solver and we can use if-then-else expressions.
+
+   Alternatively, we can use a more direct encoding by having variables for the start time of each meeting and then constraints that enforce the travel time between any two consecutive meetings, but without knowing the order, we can use a predicate for the order.
+
+   Let's define the travel time function between two locations:
+
+   travel_time(loc1, loc2) -> minutes.
+
+   We'll assign numbers to locations:
+     0: Fisherman's Wharf
+     1: Golden Gate Park
+     2: Presidio
+     3: Richmond District
+
+   Then we can have a travel matrix:
+
+   travel[0][1] = 25
+   travel[0][2] = 17
+   travel[0][3] = 18
+   travel[1][0] = 24
+   travel[1][2] = 11
+   travel[1][3] = 7
+   travel[2][0] = 19
+   travel[2][1] = 12
+   travel[2][3] = 7
+   travel[3][0] = 18
+   travel[3][1] = 9
+   travel[3][2] = 7
+
+   Now, we can define the order by having variables for the start time of each meeting and then for every pair of meetings, if one meeting is right after the other, then the travel time must be accounted for.
+
+   But note: we don't know the order. So we can use a Z3 integer variable for the order of each meeting (0,1,2) and then use constraints that the order must be a permutation of [0,1,2]. Then, for any two meetings, if the order of A is exactly one less than the order of B, then the end time of A plus travel from A's location to B's location must be <= start time of B.
+
+   Also, the first meeting must have start time >= travel from Fisherman's Wharf to that meeting's location.
+
+   We'll assign each meeting a location index:
+
+     M: location 1
+     N: location 2
+     E: location 3
+
+   We'll create integer variables for the order of M, N, E (let's call them order_M, order_N, order_E) which can be 0,1,2.
+
+   Then we require that they are distinct and between 0 and 2.
+
+   Then, for each meeting, the start time must be at least the travel time from Fisherman's Wharf to that meeting's location if it is the first meeting (order==0). But note: we don't know which is first. So we can say:
+
+   For each meeting X, if order_X == 0, then start_X >= travel[0][loc_X]
+
+   For any two meetings X and Y, if order_Y = order_X + 1, then end_X + travel[loc_X][loc_Y] <= start_Y
+
+   Also, we must account for the meeting durations:
+
+   For each meeting, end_X = start_X + duration_X, where duration_X is at least the minimum required.
+
+   But note: we can meet for more than the minimum, but we are trying to maximize the number of meetings, so we might want to meet exactly the minimum to save time? However, the problem doesn't say we have to minimize time, but to meet as many as possible. So we can set the meeting durations to exactly the minimum to save time for other meetings.
+
+   However, the problem does not require to minimize the total time, but to meet as many as possible. So we can set the meeting durations to the minimum required.
+
+   But note: we might have to leave early from a meeting to make it to the next? The constraints say we must meet for at least the minimum. So we can set the meeting duration to exactly the minimum.
+
+   So we set:
+     duration_M = 15
+     duration_N = 105
+     duration_E = 120
+
+   Then the end time for each meeting is start time + duration.
+
+   Now, the constraints for the meetings:
+
+   Melissa: start_M >= -30 and end_M <= 660 (because she is available from -30 to 660)
+   Nancy: start_N >= 645 and end_N <= 780
+   Emily: start_E >= 465 and end_E <= 780
+
+   But note: we are allowed to meet only during these windows.
+
+   Also, we must account for the travel time from the last meeting to ... nowhere? We don't have to go anywhere after the last meeting.
+
+   Now, we want to maximize the number of meetings. However, we are going to try to schedule all three and see if it's possible. If not, we try two, etc.
+
+   But note: the problem says "optimal", meaning we want to meet as many as possible. So we can try to schedule all three, and if that's unsatisfiable, then we try two.
+
+   However, we are using Z3 and we want to maximize the number of meetings. We can use a goal of maximizing the number of meetings that are scheduled.
+
+   Alternatively, we can use a greedy approach: first try to schedule three, then two, then one.
+
+   But note: we might be able to schedule three, but if we skip one, we might have more time for the others? The problem doesn't say we want to maximize the total time, but the number of meetings.
+
+   So we can set a objective to maximize the number of meetings. However, Z3 does not directly support optimization in the same way as linear programming, but we can use `Optimize` instead of `Solver` if we use the OptiMathSAT style, but Z3 does have an optimization capability.
+
+   Since the problem is small, we can do:
+
+   Step 1: Check if we can schedule all three. If yes, then we are done.
+
+   Step 2: If not, then check if we can schedule any two.
+
+   Step 3: Then check for one.
+
+   But note: we might have multiple two-meeting schedules, and we want the one that meets two, and if there are multiple, we don't care which two? The problem doesn't say, so we can pick any two.
+
+   However, the problem says "optimal", meaning the maximum number. So we can do:
+
+   We'll create a solver and add constraints for three meetings. If sat, then we output three.
+
+   If unsat, then we remove one meeting (which one? we don't know, so we have to try which two we can schedule) and try for two.
+
+   We can do this by having a flag for each meeting (whether it is scheduled) and then maximize the number of scheduled meetings.
+
+   Alternatively, we can use the Optimize class in Z3 to maximize the number of meetings.
+
+   We'll use the following approach:
+
+   Let scheduled_M, scheduled_N, scheduled_E be booleans.
+
+   Then we add constraints that if scheduled_M is true, then the constraints for Melissa are added, else we ignore Melissa.
+
+   Similarly for Nancy and Emily.
+
+   Then we want to maximize scheduled_M + scheduled_N + scheduled_E.
+
+   We can use the Z3 Optimize class for this.
+
+   Steps:
+
+   Initialize the optimizer.
+
+   Define the travel matrix.
+
+   Define the start times and end times for each meeting (even if not scheduled, we define them but they become unconstrained if not scheduled).
+
+   For each meeting, we have a boolean flag.
+
+   Constraints for a meeting X only if scheduled_X is true.
+
+   Then we also need to account for the order of the scheduled meetings. We cannot have an order between meetings that are not scheduled.
+
+   This becomes complex.
+
+   Alternatively, we can iterate over the number of meetings we want to schedule, from 3 down to 0, and check for satisfiability.
+
+   Since there are only 3 meetings, we can do:
+
+   Try to schedule all three. If sat, return the schedule.
+
+   Else, try to schedule every pair: (M and N), (M and E), (N and E). If any is sat, return the first we find (or the one that allows the most time? but the problem is about number, so any two is equally good in terms of count).
+
+   Else, try to schedule each one: M, N, E. Then return the one that we can schedule (again, any one is equally good in terms of count).
+
+   But note: we might have multiple two-meeting schedules, but we want the one that maximizes the number, so if we find any two, we return it.
+
+   We'll do:
+
+   Step 1: Try to schedule M, N, E with all constraints.
+
+   Step 2: If step 1 fails, try (M and N) without E, then (M and E) without N, then (N and E) without M.
+
+   Step 3: If step 2 fails, try M alone, then N alone, then E alone.
+
+   We'll write a function for scheduling a set of meetings.
+
+   We'll create a function `schedule_meetings(meetings_to_schedule)` that returns a model if satisfiable, else None.
+
+   meetings_to_schedule is a list of meeting symbols, e.g., ['M','N','E'].
+
+   We'll then call this function in order of decreasing number of meetings.
+
+   Now, let's define the function:
+
+   For a given set of meetings, we create a solver.
+
+   We define variables for the start and end of each meeting in the set.
+
+   We also need to define the order of these meetings. We'll create an integer variable for the order of each meeting in the set, but the order must be a permutation of 0 to len(meetings)-1.
+
+   We also need to account for travel from Fisherman's Wharf to the first meeting, and between consecutive meetings.
+
+   Steps for the function:
+
+   Let meetings = meetings_to_schedule, and n = len(meetings)
+
+   Create a solver.
+
+   For each meeting in the set, create real variables for start and end.
+
+   Create integer variables for the order of each meeting (order_M, order_N, order_E) but only for the ones in the set.
+
+   Add constraints that the orders are distinct and in the range [0, n-1].
+
+   For each meeting X in the set, add the constraints for the available time window and the minimum duration.
+
+   For the first meeting (the one with order 0): 
+        start_X >= travel_time(Fisherman's Wharf, location_X)
+
+   For consecutive meetings: if meeting X has order i and meeting Y has order j and j = i+1, then end_X + travel_time(location_X, location_Y) <= start_Y
+
+   Also, we must ensure that the meetings do not overlap and are in the order specified by the order variables.
+
+   Now, we have to map meeting symbols to locations:
+
+     'M' -> 1 (Golden Gate Park)
+     'N' -> 2 (Presidio)
+     'E' -> 3 (Richmond District)
+
+   We'll create a dictionary for the minimum duration and available time window for each meeting.
+
+   We'll then run the solver and return the model if sat.
+
+   Then in the main, we try:
+
+     meetings = ['M','N','E'] -> if sat, return model
+     else try [['M','N'], ['M','E'], ['N','E']] -> if any sat, return model
+     else try [['M'], ['N'], ['E']] -> return the first sat
+
+   If none of these work, then we return an empty itinerary.
+
+   However, note that we are starting at 9:00 AM and the meetings for Nancy and Emily are in the evening, so we might have time to do multiple.
+
+   Let's code accordingly.
+
+   We'll create a class or functions to handle this.
+
+   Due to the complexity, we'll code step by step.
+
+   Note: We are using Z3, so we need to install z3-solver if not present, but the problem says the code must run independently. We'll assume Z3 is installed.
+
+   We'll use the following code structure:
+
+   import z3
+
+   travel_matrix = [[0, 25, 17, 18],
+                    [24, 0, 11, 7],
+                    [19, 12, 0, 7],
+                    [18, 9, 7, 0]]
+
+   locations = {
+        'Fisherman\'s Wharf': 0,
+        'Golden Gate Park': 1,
+        'Presidio': 2,
+        'Richmond District': 3
+   }
+
+   meetings_info = {
+        'M': {'location': 'Golden Gate Park', 'person': 'Melissa', 'min_duration': 15, 'window': (-30, 660)},
+        'N': {'location': 'Presidio', 'person': 'Nancy', 'min_duration': 105, 'window': (645, 780)},
+        'E': {'location': 'Richmond District', 'person': 'Emily', 'min_duration': 120, 'window': (465, 780)}
+   }
+
+   We'll create a function that, given a list of meeting symbols, returns a model if a schedule exists.
+
+   We'll use real variables for times.
+
+   Steps in the function:
+
+   n = len(meetings)
+   s = z3.Solver()
+
+   # Create variables for each meeting: start and end
+   start_vars = {}
+   end_vars = {}
+   order_vars = {}
+   for m in meetings:
+        start_vars[m] = z3.Real('start_'+m)
+        end_vars[m] = z3.Real('end_'+m)
+        order_vars[m] = z3.Int('order_'+m)
+
+   # Constraints for order: distinct and between 0 and n-1
+   s.add(z3.Distinct([order_vars[m] for m in meetings]))
+   for m in meetings:
+        s.add(order_vars[m] >= 0, order_vars[m] < n)
+
+   # Constraints for each meeting
+   for m in meetings:
+        info = meetings_info[m]
+        loc_index = locations[info['location']]
+        min_dur = info['min_duration']
+        window_start, window_end = info['window']
+
+        # Meeting must be within the window
+        s.add(start_vars[m] >= window_start, end_vars[m] <= window_end)
+        # Duration constraint
+        s.add(end_vars[m] == start_vars[m] + min_dur)
+
+   # Now, constraints for the first meeting: if a meeting has order 0, then its start time must be at least the travel time from Fisherman's Wharf to its location.
+   for m in meetings:
+        info = meetings_info[m]
+        loc_index = locations[info['location']]
+        s.add(z3.Implies(order_vars[m] == 0, start_vars[m] >= travel_matrix[0][loc_index]))
+
+   # Constraints for consecutive meetings: for every pair of meetings, if the order of m1 is exactly one less than the order of m2, then end_m1 + travel_time(loc_m1, loc_m2) <= start_m2
+   for m1 in meetings:
+        for m2 in meetings:
+            if m1 == m2:
+                continue
+            info1 = meetings_info[m1]
+            info2 = meetings_info[m2]
+            loc1 = locations[info1['location']]
+            loc2 = locations[info2['location']]
+            travel_time = travel_matrix[loc1][loc2]
+            s.add(z3.Implies(order_vars[m1] + 1 == order_vars[m2], end_vars[m1] + travel_time <= start_vars[m2]))
+
+   # Check satisfiability
+   if s.check() == z3.sat:
+        return s.model()
+   else:
+        return None
+
+   Then in the main, we try:
+
+   meetings_list = [['M','N','E'], ['M','N'], ['M','E'], ['N','E'], ['M'], ['N'], ['E']]
+
+   for meetings in meetings_list:
+        model = schedule_meetings(meetings)
+        if model is not None:
+            # We found a schedule
+            break
+
+   Then, we need to extract the start times and end times for each meeting from the model.
+
+   But note: the model might not have values for meetings that are not in the current set, so we only output the ones in the set.
+
+   We also need to convert the time in minutes to a time string.
+
+   We know time 0 is 9:00 AM.
+
+   We'll create a function to convert minutes to time string:
+
+   def min_to_time(minutes):
+        total_min = int(round(float(str(model.evaluate(minutes)))))
+        # Convert to hours and minutes since 9:00 AM
+        # Note: minutes can be negative (for Melissa, but we know her window starts at -30, which is 8:30 AM)
+        # We'll compute the time of day in 24-hour format.
+
+        # First, compute total minutes since midnight of 9:00 AM? We know 9:00 AM is 9*60 = 540 minutes since midnight.
+        # So total minutes since midnight = 540 + total_min
+        total_min_since_midnight = 540 + total_min
+        hours = total_min_since_midnight // 60
+        minutes = total_min_since_midnight % 60
+        # Format hours to be in 24-hour format (could be more than 24, but in our case the latest is 780 which is 540+780=1320 -> 22:00, which is 10:00 PM)
+        hours = hours % 24
+        return f"{hours}:{minutes:02d}"
+
+   However, note that the model might return a rational number. We use round to integer because our travel times and durations are integers.
+
+   But note: the model might have non-integer solutions? We used Real, but our constraints are integers. So we can use Int for times? But the travel times and durations are integers, and the windows are integers, so we can use integers.
+
+   Let's change to use integers for start and end times.
+
+   We'll use:
+
+        start_vars[m] = z3.Int('start_'+m)
+        end_vars[m] = z3.Int('end_'+m)
+
+   Then we don't have to round.
+
+   Now, we output the itinerary in the required JSON format.
+
+   We'll create a list of meetings that are scheduled, sorted by their start time.
+
+   In the model, we have the start time for each meeting. We can get the order from the order_vars, but we can also sort by the start time.
+
+   We'll create:
+
+   itinerary = []
+   for m in meetings:  # the meetings we scheduled
+        model_start = model.eval(start_vars[m])
+        model_end = model.eval(end_vars[m])
+        start_str = min_to_time(model_start)
+        end_str = min_to_time(model_end)
+        info = meetings_info[m]
+        itinerary.append({
+            "action": "meet",
+            "location": info['location'],
+            "person": info['person'],
+            "start_time": start_str,
+            "end_time": end_str
+        })
+
+   Then sort itinerary by start_time.
+
+   However, note: the order in the itinerary might not be the order of travel? But we have accounted for the travel constraints, so the start times should reflect the order.
+
+   We'll output the sorted itinerary by start time.
+
+   Let's code accordingly.
+
+   One more thing: the meeting might be scheduled in any order, but the start times will be ordered by the actual meeting time.
+
+   Now, let's write the code.
+
+   Note: We must be cautious with the time conversion for negative minutes.
+
+   For example, if model_start for Melissa is -30, then total_min_since_midnight = 540 -30 = 510 -> 8:30 AM, which is correct.
+
+   We'll code accordingly.
+
+   Let's write the complete code.

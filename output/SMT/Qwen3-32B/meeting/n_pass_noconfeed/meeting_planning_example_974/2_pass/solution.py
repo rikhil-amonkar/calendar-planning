@@ -1,0 +1,1 @@
+solver.add(Implies(friends_vars[i] != -1, end_vars[i] == start_vars[i] + (end_vars[i] - start_vars[i])))

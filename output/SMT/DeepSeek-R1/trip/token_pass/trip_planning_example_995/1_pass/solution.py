@@ -1,0 +1,121 @@
+import json
+from z3 import *
+
+def main():
+    # Cities
+    cities = ['Oslo', 'Stuttgart', 'Venice', 'Split', 'Barcelona', 'Brussels', 'Copenhagen']
+    n_days = 16
+    
+    # Days required per city
+    days_req = {
+        'Oslo': 2,
+        'Stuttgart': 3,
+        'Venice': 4,
+        'Split': 4,
+        'Barcelona': 3,
+        'Brussels': 3,
+        'Copenhagen': 3
+    }
+    
+    # Direct flights (unordered pairs)
+    direct_flights = [
+        ('Venice', 'Stuttgart'),
+        ('Oslo', 'Brussels'),
+        ('Split', 'Copenhagen'),
+        ('Barcelona', 'Copenhagen'),
+        ('Barcelona', 'Venice'),
+        ('Brussels', 'Venice'),
+        ('Barcelona', 'Stuttgart'),
+        ('Copenhagen', 'Brussels'),
+        ('Oslo', 'Split'),
+        ('Oslo', 'Venice'),
+        ('Barcelona', 'Split'),
+        ('Oslo', 'Copenhagen'),
+        ('Barcelona', 'Oslo'),
+        ('Copenhagen', 'Stuttgart'),
+        ('Split', 'Stuttgart'),
+        ('Copenhagen', 'Venice'),
+        ('Barcelona', 'Brussels')
+    ]
+    direct_flights_set = {frozenset(pair) for pair in direct_flights}
+    
+    # Create Z3 variables: in[city][day] for day 1..16
+    in_vars = {}
+    for city in cities:
+        in_vars[city] = [Bool(f"in_{city}_{day}") for day in range(1, n_days+1)]
+    
+    solver = Solver()
+    
+    # Day constraints: exactly one city on first and last day, at least one and at most two on others
+    for day in range(1, n_days+1):
+        day_vars = [in_vars[city][day-1] for city in cities]
+        if day == 1 or day == n_days:
+            solver.add(ExactlyOne(day_vars))
+        else:
+            solver.add(AtLeast(day_vars, 1))
+            solver.add(AtMost(day_vars, 2))
+    
+    # Total days per city constraint
+    for city in cities:
+        solver.add(Sum([If(in_vars[city][day], 1, 0) for day in range(n_days)]) == days_req[city])
+    
+    # Specific constraints
+    solver.add(in_vars['Barcelona'][0])  # Day 1
+    solver.add(in_vars['Barcelona'][1])  # Day 2
+    solver.add(in_vars['Barcelona'][2])  # Day 3
+    solver.add(in_vars['Oslo'][2])       # Day 3
+    solver.add(in_vars['Oslo'][3])       # Day 4
+    solver.add(Or(in_vars['Brussels'][8], in_vars['Brussels'][9], in_vars['Brussels'][10]))  # Days 9,10,11
+    
+    # Direct flight constraints for days 2 to 15
+    for day_idx in range(1, 15):  # Corresponds to days 2 to 15
+        for i in range(len(cities)):
+            for j in range(i+1, len(cities)):
+                city1, city2 = cities[i], cities[j]
+                if frozenset([city1, city2]) not in direct_flights_set:
+                    solver.add(Not(And(in_vars[city1][day_idx], in_vars[city2][day_idx])))
+    
+    # Continuity constraints
+    for day_idx in range(0, n_days-1):  # Days 1 to 15
+        for city1 in cities:
+            for city2 in cities:
+                if city1 != city2:
+                    solver.add(Implies(
+                        And(in_vars[city1][day_idx], in_vars[city2][day_idx+1]),
+                        in_vars[city2][day_idx]
+                    ))
+    
+    # Solve and output
+    if solver.check() == sat:
+        model = solver.model()
+        itinerary = []
+        for city in cities:
+            days = []
+            for day_idx in range(n_days):
+                if is_true(model.evaluate(in_vars[city][day_idx])):
+                    days.append(day_idx+1)
+            if days:
+                intervals = []
+                start = days[0]
+                end = days[0]
+                for d in days[1:]:
+                    if d == end + 1:
+                        end = d
+                    else:
+                        intervals.append((start, end))
+                        start = d
+                        end = d
+                intervals.append((start, end))
+                for s, e in intervals:
+                    if s == e:
+                        day_range = f"Day {s}"
+                    else:
+                        day_range = f"Day {s}-{e}"
+                    itinerary.append({'day_range': day_range, 'place': city})
+        itinerary.sort(key=lambda x: int(x['day_range'].split(' ')[1].split('-')[0]))
+        print(json.dumps({'itinerary': itinerary}, indent=2))
+    else:
+        print('{"itinerary": []}')
+
+if __name__ == "__main__":
+    main()

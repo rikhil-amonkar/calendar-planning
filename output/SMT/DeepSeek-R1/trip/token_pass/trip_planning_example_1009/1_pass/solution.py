@@ -1,0 +1,98 @@
+from z3 import *
+import json
+
+def main():
+    s = Solver()
+    
+    city_names = ['Riga', 'Manchester', 'Bucharest', 'Florence', 'Vienna', 'Istanbul', 'Reykjavik', 'Stuttgart']
+    reqs = [4, 5, 4, 4, 2, 2, 4, 5]
+    
+    direct_edges = [(0, 2), (0, 4), (0, 5), (1, 0), (1, 2), (1, 4), (1, 5), (2, 4), (2, 5), (3, 4), (4, 5), (4, 6), (4, 7), (5, 7), (6, 7)]
+    direct_set = set()
+    for a, b in direct_edges:
+        if a > b:
+            direct_set.add((b, a))
+        else:
+            direct_set.add((a, b))
+    
+    order = [Int('order_%i' % i) for i in range(8)]
+    end = [Int('end_%i' % i) for i in range(7)]
+    
+    for i in range(8):
+        s.add(And(order[i] >= 0, order[i] <= 7))
+    s.add(Distinct(order))
+    
+    for i in range(7):
+        s.add(And(end[i] >= 1, end[i] <= 23))
+    for i in range(6):
+        s.add(end[i] < end[i+1])
+    
+    istanbul_pos = Int('istanbul_pos')
+    s.add(istanbul_pos >= 1, istanbul_pos <= 6)
+    s.add(order[istanbul_pos] == 5)
+    s.add(end[istanbul_pos-1] == 12)
+    s.add(end[istanbul_pos] == 13)
+    
+    bucharest_pos = Int('bucharest_pos')
+    s.add(bucharest_pos >= 1, bucharest_pos <= 6)
+    s.add(order[bucharest_pos] == 2)
+    s.add(end[bucharest_pos-1] == 16)
+    s.add(end[bucharest_pos] == 19)
+    
+    for idx in range(8):
+        expr = None
+        for j in range(8):
+            cond = (order[j] == idx)
+            if j == 0:
+                term = end[0]
+            elif j == 7:
+                term = 23 - end[6] + 1
+            else:
+                term = end[j] - end[j-1] + 1
+            if expr is None:
+                expr = If(cond, term, 0)
+            else:
+                expr = If(cond, term, expr)
+        s.add(expr == reqs[idx])
+    
+    for i in range(7):
+        a = order[i]
+        b = order[i+1]
+        cond = False
+        for (c1, c2) in direct_set:
+            cond = Or(cond, And(a == c1, b == c2))
+        s.add(cond)
+    
+    if s.check() == sat:
+        m = s.model()
+        order_val = [m.evaluate(order[i]).as_long() for i in range(8)]
+        end_val = [m.evaluate(end[i]).as_long() for i in range(7)]
+        
+        itinerary = []
+        start_day = 1
+        end_day0 = end_val[0]
+        itinerary.append({
+            "day_range": f"Day {start_day}-{end_day0}",
+            "place": city_names[order_val[0]]
+        })
+        
+        for i in range(1, 7):
+            start_segment = end_val[i-1]
+            end_segment = end_val[i]
+            itinerary.append({
+                "day_range": f"Day {start_segment}-{end_segment}",
+                "place": city_names[order_val[i]]
+            })
+        
+        start_last = end_val[6]
+        itinerary.append({
+            "day_range": f"Day {start_last}-23",
+            "place": city_names[order_val[7]]
+        })
+        
+        print(json.dumps({"itinerary": itinerary}))
+    else:
+        print('{"itinerary": []}')
+
+if __name__ == "__main__":
+    main()

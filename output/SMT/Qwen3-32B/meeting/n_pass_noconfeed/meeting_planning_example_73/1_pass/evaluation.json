@@ -1,0 +1,43 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"itinerary\": [\n    {\n      \"action\": \"meet\",\n      \"location\": \"Pacific Heights\",\n      \"person\": \"Barbara\",\n      \"start_time\": \"9:07\",\n      \"end_time\": \"10:07\"\n    }\n  ]\n}",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Pacific Heights",
+                "person": "Barbara",
+                "start_time": "9:07",
+                "end_time": "10:07"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Pacific Heights",
+                "person": "Barbara",
+                "start_time": "9:07",
+                "end_time": "10:07"
+            }
+        ]
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 228.513818025589,
+        "execution_time": 0.06669759750366211,
+        "constraint_eval_time": 2.7179718017578125e-05,
+        "pred_extract_time": 1.1691348552703857,
+        "gold_extract_time": 7.557868957519531e-05,
+        "total_tokens": 14925,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import z3\nimport json\n\ndef minutes_to_time(m):\n    hours = m // 60\n    minutes = m % 60\n    return f\"{hours}:{minutes:02d}\"\n\ndef main():\n    # Convert times to minutes since midnight\n    arrival_russian_hill = 9 * 60  # 9:00 AM \u2192 540\n    barbara_start = 7 * 60 + 15  # 7:15 AM \u2192 435\n    barbara_end = 22 * 60  # 10:00 PM \u2192 1320\n    travel_time = 7  # minutes\n    min_meeting_duration = 60  # minutes\n\n    # Earliest arrival at Pacific Heights is arrival time at Russian Hill + travel time\n    earliest_pacific_arrival = arrival_russian_hill + travel_time  # 540 +7 = 547\n\n    # Variables for meeting with Barbara\n    t_start = z3.Int('t_start')\n    t_end = z3.Int('t_end')\n\n    opt = z3.Optimize()\n\n    # Constraints\n    opt.add(t_start >= earliest_pacific_arrival)\n    opt.add(t_end >= t_start + min_meeting_duration)\n    opt.add(t_end <= barbara_end)\n\n    # Optimize for earliest start time\n    opt.minimize(t_start)\n\n    # Check if solution exists\n    if opt.check() == z3.sat:\n        model = opt.model()\n        start_time_min = model[t_start].as_long()\n        end_time_min = model[t_end].as_long()\n\n        # Convert to time strings\n        start_time_str = minutes_to_time(start_time_min)\n        end_time_str = minutes_to_time(end_time_min)\n\n        # Build the itinerary\n        itinerary = [{\n            \"action\": \"meet\",\n            \"location\": \"Pacific Heights\",\n            \"person\": \"Barbara\",\n            \"start_time\": start_time_str,\n            \"end_time\": end_time_str\n        }]\n\n        result = {\"itinerary\": itinerary}\n        print(json.dumps(result, indent=2))\n    else:\n        # No solution found\n        print(json.dumps({\"itinerary\": []}))\n\nif __name__ == \"__main__\":\n    main()"
+}

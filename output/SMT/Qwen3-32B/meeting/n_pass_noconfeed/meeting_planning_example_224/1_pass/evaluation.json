@@ -1,0 +1,73 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"itinerary\": [\n    {\n      \"action\": \"meet\",\n      \"location\": \"Golden Gate Park\",\n      \"person\": \"Melissa\",\n      \"start_time\": \"9:25\",\n      \"end_time\": \"9:40\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Richmond District\",\n      \"person\": \"Emily\",\n      \"start_time\": \"18:08\",\n      \"end_time\": \"20:08\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Presidio\",\n      \"person\": \"Nancy\",\n      \"start_time\": \"20:15\",\n      \"end_time\": \"22:00\"\n    }\n  ]\n}",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Golden Gate Park",
+                "person": "Melissa",
+                "start_time": "9:25",
+                "end_time": "9:40"
+            },
+            {
+                "action": "meet",
+                "location": "Richmond District",
+                "person": "Emily",
+                "start_time": "18:08",
+                "end_time": "20:08"
+            },
+            {
+                "action": "meet",
+                "location": "Presidio",
+                "person": "Nancy",
+                "start_time": "20:15",
+                "end_time": "22:00"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Golden Gate Park",
+                "person": "Melissa",
+                "start_time": "9:25",
+                "end_time": "9:40"
+            },
+            {
+                "action": "meet",
+                "location": "Richmond District",
+                "person": "Emily",
+                "start_time": "16:45",
+                "end_time": "18:45"
+            },
+            {
+                "action": "meet",
+                "location": "Presidio",
+                "person": "Nancy",
+                "start_time": "19:45",
+                "end_time": "21:30"
+            }
+        ]
+    },
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "constraints_satisfied_but_no_exact_match": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 812.1101648807526,
+        "execution_time": 0.11714529991149902,
+        "constraint_eval_time": 0.00012969970703125,
+        "pred_extract_time": 2.3243792057037354,
+        "gold_extract_time": 3.647804260253906e-05,
+        "total_tokens": 51097,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import json\nfrom z3 import *\n\ndef to_time_str(minutes):\n    hours = minutes // 60\n    mins = minutes % 60\n    return f\"{hours}:{mins:02d}\"\n\ndef main():\n    opt = Optimize()\n\n    # Define variables\n    met_M = Bool('met_M')\n    met_N = Bool('met_N')\n    met_E = Bool('met_E')\n\n    s_M = Int('s_M')\n    e_M = Int('e_M')\n    s_N = Int('s_N')\n    e_N = Int('e_N')\n    s_E = Int('s_E')\n    e_E = Int('e_E')\n\n    # Constraints for Melissa (M)\n    opt.add(Implies(met_M, s_M >= 510))  # 8:30 AM\n    opt.add(Implies(met_M, e_M == s_M + 15))\n    opt.add(Implies(met_M, e_M <= 1200))  # 8:00 PM\n\n    opt.add(Implies(met_M, Or(\n        s_M >= 540 + 25,  # FW to GGP: 25\n        And(met_N, s_M >= e_N + 12),  # Presidio to GGP: 12\n        And(met_E, s_M >= e_E + 9)  # RD to GGP: 9\n    )))\n\n    # Constraints for Nancy (N)\n    opt.add(Implies(met_N, s_N >= 1185))  # 7:45 PM\n    opt.add(Implies(met_N, e_N == s_N + 105))\n    opt.add(Implies(met_N, e_N <= 1320))  # 10:00 PM\n\n    opt.add(Implies(met_N, Or(\n        s_N >= 540 + 17,  # FW to Presidio: 17\n        And(met_M, s_N >= e_M + 11),  # GGP to Presidio: 11\n        And(met_E, s_N >= e_E + 7)  # RD to Presidio: 7\n    )))\n\n    # Constraints for Emily (E)\n    opt.add(Implies(met_E, s_E >= 1005))  # 4:45 PM\n    opt.add(Implies(met_E, e_E == s_E + 120))\n    opt.add(Implies(met_E, e_E <= 1320))  # 10:00 PM\n\n    opt.add(Implies(met_E, Or(\n        s_E >= 540 + 18,  # FW to RD: 18\n        And(met_M, s_E >= e_M + 7),  # GGP to RD: 7\n        And(met_N, s_E >= e_N + 7)  # Presidio to RD: 7\n    )))\n\n    # Pairwise constraints\n    opt.add(Implies(And(met_M, met_N), Or(\n        s_M >= e_N + 12,  # Presidio to GGP\n        s_N >= e_M + 11  # GGP to Presidio\n    )))\n    opt.add(Implies(And(met_M, met_E), Or(\n        s_M >= e_E + 9,  # RD to GGP\n        s_E >= e_M + 7  # GGP to RD\n    )))\n    opt.add(Implies(And(met_N, met_E), Or(\n        s_N >= e_E + 7,  # RD to Presidio\n        s_E >= e_N + 7  # Presidio to RD\n    )))\n\n    # Objective: maximize the number of friends met\n    objective = If(met_M, 1, 0) + If(met_N, 1, 0) + If(met_E, 1, 0)\n    opt.maximize(objective)\n\n    # Check satisfiability\n    if opt.check() == sat:\n        model = opt.model()\n        met_M_val = is_true(model.eval(met_M))\n        met_N_val = is_true(model.eval(met_N))\n        met_E_val = is_true(model.eval(met_E))\n\n        # Collect the meetings\n        meetings = []\n        if met_M_val:\n            s = model.eval(s_M).as_long()\n            e = model.eval(e_M).as_long()\n            meetings.append((s, 'meet', 'Golden Gate Park', 'Melissa', e))\n        if met_N_val:\n            s = model.eval(s_N).as_long()\n            e = model.eval(e_N).as_long()\n            meetings.append((s, 'meet', 'Presidio', 'Nancy', e))\n        if met_E_val:\n            s = model.eval(s_E).as_long()\n            e = model.eval(e_E).as_long()\n            meetings.append((s, 'meet', 'Richmond District', 'Emily', e))\n\n        # Sort meetings by start time\n        meetings.sort()\n\n        # Build itinerary\n        itinerary = []\n        for s, action, location, person, e in meetings:\n            itinerary.append({\n                \"action\": action,\n                \"location\": location,\n                \"person\": person,\n                \"start_time\": to_time_str(s),\n                \"end_time\": to_time_str(e)\n            })\n\n        # Output as JSON\n        print(json.dumps({\"itinerary\": itinerary}, indent=2))\n    else:\n        print(json.dumps({\"itinerary\": []}))\n\nif __name__ == \"__main__\":\n    main()"
+}

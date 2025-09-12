@@ -1,0 +1,90 @@
+from z3 import *
+import json
+
+def main():
+    s = Solver()
+    
+    # Define enums for names and music genres
+    NameSort, (Arnold, Eric, Peter, Alice, Carol, Bob) = EnumSort('Name', ['Arnold', 'Eric', 'Peter', 'Alice', 'Carol', 'Bob'])
+    MusicSort, (jazz, pop, classical, rock, hip_hop, country) = EnumSort('Music', ['jazz', 'pop', 'classical', 'rock', 'hip_hop', 'country'])
+    
+    # Create arrays for house attributes
+    name_of = [Const(f'name_{i}', NameSort) for i in range(6)]
+    music_of = [Const(f'music_{i}', MusicSort) for i in range(6)]
+    
+    # Fixed assignments from clues
+    s.add(name_of[1] == Eric)      # House 2: Eric (from clues 2,4,9)
+    s.add(music_of[2] == hip_hop)  # House 3: hip_hop (clue 9)
+    s.add(name_of[5] == Carol)     # House 6: Carol (clue 3)
+    s.add(music_of[5] == country)  # House 6: country (clue 5)
+    
+    # All names and music genres are distinct
+    s.add(Distinct(name_of))
+    s.add(Distinct(music_of))
+    
+    # Define house position variables
+    Bob_house = Int('Bob_house')
+    s.add(Bob_house >= 1, Bob_house <= 6)
+    for i in range(6):
+        s.add(If(name_of[i] == Bob, Bob_house == i+1, True))
+    
+    Peter_house = Int('Peter_house')
+    s.add(Peter_house >= 1, Peter_house <= 6)
+    for i in range(6):
+        s.add(If(name_of[i] == Peter, Peter_house == i+1, True))
+    
+    Arnold_house = Int('Arnold_house')
+    s.add(Arnold_house >= 1, Arnold_house <= 6)
+    for i in range(6):
+        s.add(If(name_of[i] == Arnold, Arnold_house == i+1, True))
+    
+    pop_house = Int('pop_house')
+    s.add(pop_house >= 1, pop_house <= 6)
+    for i in range(6):
+        s.add(If(music_of[i] == pop, pop_house == i+1, True))
+    
+    # Clue 1: Bob directly left of jazz
+    for j in range(1, 6):
+        s.add(If(Bob_house == j, music_of[j] == jazz, True))
+    
+    # Clue 6: Arnold not in fifth house
+    s.add(name_of[4] != Arnold)
+    
+    # Clue 7: pop left of Arnold
+    s.add(pop_house < Arnold_house)
+    
+    # Clue 8: pop music is Peter
+    for i in range(6):
+        s.add(If(music_of[i] == pop, name_of[i] == Peter, True))
+    
+    # Clue 10: One house between Peter and Bob
+    s.add(Or(Peter_house - Bob_house == 2, Bob_house - Peter_house == 2))
+    
+    # Clue 11: rock not in fifth house
+    s.add(music_of[4] != rock)
+    
+    # Check solution
+    if s.check() == sat:
+        m = s.model()
+        solution = []
+        for i in range(6):
+            name_val = m.eval(name_of[i])
+            music_val = m.eval(music_of[i])
+            name_str = str(name_val)
+            music_str = str(music_val)
+            if music_str == 'hip_hop':
+                music_str = 'hip hop'
+            solution.append([str(i+1), name_str, music_str])
+        
+        result = {
+            "solution": {
+                "header": ["House", "Name", "MusicGenre"],
+                "rows": solution
+            }
+        }
+        print(json.dumps(result, indent=2))
+    else:
+        print("No solution found")
+
+if __name__ == "__main__":
+    main()

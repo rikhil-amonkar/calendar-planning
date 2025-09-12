@@ -1,0 +1,122 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "[[0, 10, 5, 15, 20, 12, 8], [10, 0, 10, 18, 22, 14, 16], [5, 10, 0, 7, 10, 8, 6], [15, 18, 7, 0, 12, 9, 11], [20, 22, 10, 12, 0, 13, 14], [12, 14, 8, 9, 13, 0, 10], [8, 16, 6, 11, 14, 10, 0]]",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Location 0",
+                "person": "Person 0",
+                "start_time": "0:00",
+                "end_time": "10:00"
+            },
+            {
+                "action": "meet",
+                "location": "Location 2",
+                "person": "Person 2",
+                "start_time": "5:00",
+                "end_time": "10:00"
+            },
+            {
+                "action": "meet",
+                "location": "Location 6",
+                "person": "Person 6",
+                "start_time": "8:00",
+                "end_time": "0:00"
+            },
+            {
+                "action": "meet",
+                "location": "Location 1",
+                "person": "Person 1",
+                "start_time": "10:00",
+                "end_time": "0:00"
+            },
+            {
+                "action": "meet",
+                "location": "Location 5",
+                "person": "Person 5",
+                "start_time": "12:00",
+                "end_time": "0:00"
+            },
+            {
+                "action": "meet",
+                "location": "Location 3",
+                "person": "Person 3",
+                "start_time": "15:00",
+                "end_time": "0:00"
+            },
+            {
+                "action": "meet",
+                "location": "Location 4",
+                "person": "Person 4",
+                "start_time": "20:00",
+                "end_time": "0:00"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Mission District",
+                "person": "David",
+                "start_time": "9:18",
+                "end_time": "10:03"
+            },
+            {
+                "action": "meet",
+                "location": "Alamo Square",
+                "person": "Kenneth",
+                "start_time": "14:00",
+                "end_time": "16:00"
+            },
+            {
+                "action": "meet",
+                "location": "Golden Gate Park",
+                "person": "Deborah",
+                "start_time": "16:09",
+                "end_time": "17:39"
+            },
+            {
+                "action": "meet",
+                "location": "Pacific Heights",
+                "person": "John",
+                "start_time": "17:55",
+                "end_time": "18:10"
+            },
+            {
+                "action": "meet",
+                "location": "Sunset District",
+                "person": "Karen",
+                "start_time": "18:31",
+                "end_time": "18:46"
+            },
+            {
+                "action": "meet",
+                "location": "Union Square",
+                "person": "Charles",
+                "start_time": "21:45",
+                "end_time": "22:45"
+            }
+        ]
+    },
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "constraints_satisfied_but_no_exact_match": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 4,
+    "timing": {
+        "api_call_time": 131.57971692085266,
+        "execution_time": 0.01889514923095703,
+        "constraint_eval_time": 0.00019478797912597656,
+        "pred_extract_time": 5.652602910995483,
+        "gold_extract_time": 5.698204040527344e-05,
+        "total_tokens": 8970,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "# Define the friends with their locations\nfriends = [\n    {'location': 'Home'},\n    {'location': 'Office'},\n    {'location': 'Cafe'},\n    {'location': 'Park'},\n    {'location': 'Gym'},\n    {'location': 'Library'},\n    {'location': 'Mall'}\n]\n\n# Define travel times between locations\ntravel_time_dict = {\n    ('Home', 'Office'): 10,\n    ('Office', 'Home'): 10,\n    ('Home', 'Cafe'): 5,\n    ('Cafe', 'Home'): 5,\n    ('Home', 'Park'): 15,\n    ('Park', 'Home'): 15,\n    ('Home', 'Gym'): 20,\n    ('Gym', 'Home'): 20,\n    ('Home', 'Library'): 12,\n    ('Library', 'Home'): 12,\n    ('Home', 'Mall'): 8,\n    ('Mall', 'Home'): 8,\n    ('Office', 'Cafe'): 10,\n    ('Cafe', 'Office'): 10,\n    ('Office', 'Park'): 18,\n    ('Park', 'Office'): 18,\n    ('Office', 'Gym'): 22,\n    ('Gym', 'Office'): 22,\n    ('Office', 'Library'): 14,\n    ('Library', 'Office'): 14,\n    ('Office', 'Mall'): 16,\n    ('Mall', 'Office'): 16,\n    ('Cafe', 'Park'): 7,\n    ('Park', 'Cafe'): 7,\n    ('Cafe', 'Gym'): 10,\n    ('Gym', 'Cafe'): 10,\n    ('Cafe', 'Library'): 8,\n    ('Library', 'Cafe'): 8,\n    ('Cafe', 'Mall'): 6,\n    ('Mall', 'Cafe'): 6,\n    ('Park', 'Gym'): 12,\n    ('Gym', 'Park'): 12,\n    ('Park', 'Library'): 9,\n    ('Library', 'Park'): 9,\n    ('Park', 'Mall'): 11,\n    ('Mall', 'Park'): 11,\n    ('Gym', 'Library'): 13,\n    ('Library', 'Gym'): 13,\n    ('Gym', 'Mall'): 14,\n    ('Mall', 'Gym'): 14,\n    ('Library', 'Mall'): 10,\n    ('Mall', 'Library'): 10\n}\n\n# Extract locations from friends\nfriend_locations = [friend['location'] for friend in friends]\n\n# Initialize travel_time_between_friends as a 7x7 matrix\ntravel_time_between_friends = [[0 for _ in range(7)] for _ in range(7)]\n\n# Calculate travel times between friends\nfor i in range(7):\n    for j in range(7):\n        from_loc = friend_locations[i]\n        to_loc = friend_locations[j]\n        if from_loc == to_loc:\n            travel_time_between_friends[i][j] = 0\n        else:\n            travel_time_between_friends[i][j] = travel_time_dict[(from_loc, to_loc)]\n\n# Output the result (for testing)\nprint(travel_time_between_friends)"
+}

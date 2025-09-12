@@ -1,0 +1,152 @@
+```python
+import json
+from z3 import *
+
+def main():
+    # Define the attributes with their possible values
+    names = ['Peter', 'Alice', 'Eric', 'Arnold']
+    hobbies = ['cooking', 'painting', 'gardening', 'photography']
+    animals = ['horse', 'fish', 'cat', 'bird']
+    book_genres = ['fantasy', 'mystery', 'romance', 'science fiction']
+    birthdays = ['april', 'jan', 'sept', 'feb']
+    music_genres = ['pop', 'rock', 'classical', 'jazz']
+    
+    # Create enums for each attribute
+    Name = Enum('Name', names)
+    Hobby = Enum('Hobby', hobbies)
+    Animal = Enum('Animal', animals)
+    BookGenre = Enum('BookGenre', book_genres)
+    Birthday = Enum('Birthday', birthdays)
+    MusicGenre = Enum('MusicGenre', music_genres)
+    
+    # Create solver
+    s = Solver()
+    
+    # Create variables for each house (1-4) for each attribute
+    houses = [1, 2, 3, 4]
+    name = [Const(f'name_{i}', Name) for i in houses]
+    hobby = [Const(f'hobby_{i}', Hobby) for i in houses]
+    animal = [Const(f'animal_{i}', Animal) for i in houses]
+    book = [Const(f'book_{i}', BookGenre) for i in houses]
+    birthday = [Const(f'birthday_{i}', Birthday) for i in houses]
+    music = [Const(f'music_{i}', MusicGenre) for i in houses]
+    
+    # Add constraint that all attributes in each category are distinct
+    s.add(Distinct(name))
+    s.add(Distinct(hobby))
+    s.add(Distinct(animal))
+    s.add(Distinct(book))
+    s.add(Distinct(birthday))
+    s.add(Distinct(music))
+    
+    # Add constraints from clues
+    # 1. The person who loves cooking is the person who loves romance books.
+    for i in houses:
+        s.add(Implies(hobby[i-1] == Hobby.cooking, book[i-1] == BookGenre.romance))
+    
+    # 2. The person whose birthday is in February is the person who loves pop music.
+    for i in houses:
+        s.add(Implies(birthday[i-1] == Birthday.feb, music[i-1] == MusicGenre.pop))
+    
+    # 3. Eric is not in the second house.
+    s.add(name[1] != Name.Eric)
+    
+    # 4. The person who loves romance books is not in the fourth house.
+    s.add(book[3] != BookGenre.romance)
+    
+    # 5. The person whose birthday is in February is the fish enthusiast.
+    for i in houses:
+        s.add(Implies(birthday[i-1] == Birthday.feb, animal[i-1] == Animal.fish))
+    
+    # 6. Alice is somewhere to the right of the person who loves fantasy books.
+    alice_index = Int('alice_index')
+    fantasy_index = Int('fantasy_index')
+    s.add(alice_index > fantasy_index)
+    for i in houses:
+        s.add(Implies(name[i-1] == Name.Alice, alice_index == i))
+        s.add(Implies(book[i-1] == BookGenre.fantasy, fantasy_index == i))
+    
+    # 7. The person who keeps horses is the person who loves rock music.
+    for i in houses:
+        s.add(Implies(animal[i-1] == Animal.horse, music[i-1] == MusicGenre.rock))
+    
+    # 8. The person who enjoys gardening is the person whose birthday is in April.
+    for i in houses:
+        s.add(Implies(hobby[i-1] == Hobby.gardening, birthday[i-1] == Birthday.april))
+    
+    # 9. The person who loves jazz music is the person who loves cooking.
+    for i in houses:
+        s.add(Implies(music[i-1] == MusicGenre.jazz, hobby[i-1] == Hobby.cooking))
+    
+    # 10. The person who loves rock music is the person who loves mystery books.
+    for i in houses:
+        s.add(Implies(music[i-1] == MusicGenre.rock, book[i-1] == BookGenre.mystery))
+    
+    # 11. The person who paints as a hobby is directly left of the person who loves romance books.
+    for i in range(1, 4):
+        s.add(Implies(hobby[i] == Hobby.painting, book[i-1] == BookGenre.romance))
+    
+    # 12. Peter is the person who loves pop music.
+    for i in houses:
+        s.add(Implies(name[i-1] == Name.Peter, music[i-1] == MusicGenre.pop))
+    
+    # 13. The person who enjoys gardening is Arnold.
+    for i in houses:
+        s.add(Implies(hobby[i-1] == Hobby.gardening, name[i-1] == Name.Arnold))
+    
+    # 14. The person who loves rock music is directly left of the person whose birthday is in January.
+    for i in range(1, 4):
+        s.add(Implies(music[i-1] == MusicGenre.rock, birthday[i] == Birthday.jan))
+    
+    # 15. The person who loves cooking is not in the third house.
+    s.add(hobby[2] != Hobby.cooking)
+    
+    # 16. The cat lover is somewhere to the right of the person who keeps horses.
+    cat_index = Int('cat_index')
+    horse_index = Int('horse_index')
+    s.add(cat_index > horse_index)
+    for i in houses:
+        s.add(Implies(animal[i-1] == Animal.cat, cat_index == i))
+        s.add(Implies(animal[i-1] == Animal.horse, horse_index == i))
+    
+    # Check if satisfiable
+    if s.check() == sat:
+        m = s.model()
+        
+        # Prepare solution data
+        header = ["House", "Name", "Hobby", "Animal", "BookGenre", "Birthday", "MusicGenre"]
+        rows = []
+        
+        for i in range(4):
+            house_num = str(i+1)
+            n = m.eval(name[i])
+            h = m.eval(hobby[i])
+            a = m.eval(animal[i])
+            b = m.eval(book[i])
+            bd = m.eval(birthday[i])
+            msc = m.eval(music[i])
+            
+            # Convert Z3 enum values to strings
+            name_str = str(n).split('::')[1]
+            hobby_str = str(h).split('::')[1]
+            animal_str = str(a).split('::')[1]
+            book_str = str(b).split('::')[1]
+            birthday_str = str(bd).split('::')[1]
+            music_str = str(msc).split('::')[1]
+            
+            rows.append([house_num, name_str, hobby_str, animal_str, book_str, birthday_str, music_str])
+        
+        solution = {
+            "solution": {
+                "header": header,
+                "rows": rows
+            }
+        }
+        
+        print(json.dumps(solution, indent=2))
+    else:
+        print("No solution found")
+
+if __name__ == "__main__":
+    main()
+```

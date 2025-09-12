@@ -1,0 +1,1 @@
+is_included = [Bool(f'include_{item}') for item in items]

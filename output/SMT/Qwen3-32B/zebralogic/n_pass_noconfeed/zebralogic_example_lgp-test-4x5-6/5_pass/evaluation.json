@@ -1,0 +1,128 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "Valid Plan Found:\n(1, 2, 5, 3, 4, 6)",
+    "pred": [
+        {
+            "House": "1",
+            "Name": "Valeria",
+            "Education": "High School",
+            "MusicGenre": "Jazz",
+            "Color": "Red",
+            "Flower": "Rose"
+        },
+        {
+            "House": "2",
+            "Name": "Liam",
+            "Education": "College",
+            "MusicGenre": "Rock",
+            "Color": "Blue",
+            "Flower": "Lily"
+        },
+        {
+            "House": "3",
+            "Name": "Sophia",
+            "Education": "University",
+            "MusicGenre": "Classical",
+            "Color": "Green",
+            "Flower": "Daisy"
+        },
+        {
+            "House": "4",
+            "Name": "Ethan",
+            "Education": "Graduate",
+            "MusicGenre": "Pop",
+            "Color": "Yellow",
+            "Flower": "Tulip"
+        },
+        {
+            "House": "5",
+            "Name": "Olivia",
+            "Education": "PhD",
+            "MusicGenre": "Blues",
+            "Color": "Purple",
+            "Flower": "Orchid"
+        },
+        {
+            "House": "6",
+            "Name": "Noah",
+            "Education": "Middle School",
+            "MusicGenre": "Country",
+            "Color": "Black",
+            "Flower": "Sunflower"
+        }
+    ],
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Arnold",
+            "Education": "bachelor",
+            "MusicGenre": "jazz",
+            "Color": "yellow",
+            "Flower": "daffodils"
+        },
+        {
+            "House": "2",
+            "Name": "Peter",
+            "Education": "associate",
+            "MusicGenre": "pop",
+            "Color": "green",
+            "Flower": "roses"
+        },
+        {
+            "House": "3",
+            "Name": "Alice",
+            "Education": "master",
+            "MusicGenre": "rock",
+            "Color": "red",
+            "Flower": "carnations"
+        },
+        {
+            "House": "4",
+            "Name": "Eric",
+            "Education": "high school",
+            "MusicGenre": "classical",
+            "Color": "white",
+            "Flower": "lilies"
+        }
+    ],
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "violations": [
+            "Wrong number of houses: expected 4, got 6",
+            "House 1 wrong Name: expected 'Arnold', got 'Valeria'",
+            "House 1 wrong Education: expected 'bachelor', got 'High School'",
+            "House 1 wrong Color: expected 'yellow', got 'Red'",
+            "House 1 wrong Flower: expected 'daffodils', got 'Rose'",
+            "House 2 wrong Name: expected 'Peter', got 'Liam'",
+            "House 2 wrong Education: expected 'associate', got 'College'",
+            "House 2 wrong MusicGenre: expected 'pop', got 'Rock'",
+            "House 2 wrong Color: expected 'green', got 'Blue'",
+            "House 2 wrong Flower: expected 'roses', got 'Lily'",
+            "House 3 wrong Name: expected 'Alice', got 'Sophia'",
+            "House 3 wrong Education: expected 'master', got 'University'",
+            "House 3 wrong MusicGenre: expected 'rock', got 'Classical'",
+            "House 3 wrong Color: expected 'red', got 'Green'",
+            "House 3 wrong Flower: expected 'carnations', got 'Daisy'",
+            "House 4 wrong Name: expected 'Eric', got 'Ethan'",
+            "House 4 wrong Education: expected 'high school', got 'Graduate'",
+            "House 4 wrong MusicGenre: expected 'classical', got 'Pop'",
+            "House 4 wrong Color: expected 'white', got 'Yellow'",
+            "House 4 wrong Flower: expected 'lilies', got 'Tulip'"
+        ]
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 5,
+    "timing": {
+        "api_call_time": 86.64715051651001,
+        "execution_time": 0.018892765045166016,
+        "constraint_eval_time": 0.0001232624053955078,
+        "pred_extract_time": 2.667416572570801,
+        "gold_extract_time": 1.0728836059570312e-05,
+        "total_tokens": 7319,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import itertools\n\nn = 6  # Number of houses\n\n# Generate all permutations of house positions (1 to n)\nhouse_positions = list(range(1, n + 1))\n\n# Define constraints\ndef is_valid_plan(perm):\n    # Constraint 1: House 1 must be to the left of House 2\n    if perm.index(1) >= perm.index(2):\n        return False\n\n    # Constraint 2: House 3 must be adjacent to House 4\n    idx3 = perm.index(3)\n    idx4 = perm.index(4)\n    if abs(idx3 - idx4) != 1:\n        return False\n\n    # Constraint 3: House 5 must not be adjacent to House 6\n    idx5 = perm.index(5)\n    idx6 = perm.index(6)\n    if abs(idx5 - idx6) == 1:\n        return False\n\n    return True\n\n# Generate and filter permutations\nvalid_plans = []\nfor perm in itertools.permutations(house_positions):\n    if is_valid_plan(perm):\n        valid_plans.append(perm)\n\n# Output the result\nif valid_plans:\n    print(\"Valid Plan Found:\")\n    print(valid_plans[0])\nelse:\n    print(\"No valid plan found under the given constraints.\")"
+}

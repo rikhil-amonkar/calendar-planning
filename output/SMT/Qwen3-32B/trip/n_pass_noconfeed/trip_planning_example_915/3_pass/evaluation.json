@@ -1,0 +1,56 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": true,
+    "execution_output": "No solution found",
+    "pred": null,
+    "gold": {
+        "itinerary": [
+            {
+                "day_range": "Day 1-5",
+                "place": "Florence"
+            },
+            {
+                "day_range": "Day 5-8",
+                "place": "Prague"
+            },
+            {
+                "day_range": "Day 8-12",
+                "place": "Tallinn"
+            },
+            {
+                "day_range": "Day 12-16",
+                "place": "Frankfurt"
+            },
+            {
+                "day_range": "Day 16-18",
+                "place": "Bucharest"
+            },
+            {
+                "day_range": "Day 18-22",
+                "place": "Zurich"
+            },
+            {
+                "day_range": "Day 22-26",
+                "place": "Venice"
+            }
+        ]
+    },
+    "status": "No plan generated",
+    "violated_constraint": {
+        "missing_itinerary": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 3,
+    "timing": {
+        "api_call_time": 583.3800621032715,
+        "execution_time": 0.09650635719299316,
+        "constraint_eval_time": 1.0013580322265625e-05,
+        "pred_extract_time": 0.933297872543335,
+        "gold_extract_time": 0.0001270771026611328,
+        "total_tokens": 41560,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\n\ndays = 26\nnum_cities = 7\n\n# Create variables for each day's city\ncity_per_day = [Int(f\"city_{d}\") for d in range(days)]\n\n# Constraints: each day's city is between 0 and 6\nsolver = Solver()\nfor d in range(days):\n    solver.add(And(0 <= city_per_day[d], city_per_day[d] < num_cities))\n\n# Define direct flights\ndirect_flights = {\n    (0, 1), (0, 2), (0, 3), (0, 4), (0, 5), (0, 6),\n    (1, 0), (1, 2), (1, 3), (1, 4), (1, 5), (1, 6),\n    (2, 0), (2, 1), (2, 3), (2, 4), (2, 5), (2, 6),\n    (3, 0), (3, 1), (3, 2), (3, 4), (3, 5), (3, 6),\n    (4, 0), (4, 1), (4, 2), (4, 3), (4, 5), (4, 6),\n    (5, 0), (5, 1), (5, 2), (5, 3), (5, 4), (5, 6),\n    (6, 0), (6, 1), (6, 2), (6, 3), (6, 4), (6, 5),\n}\n\ndef IsDirectFlight(city_a, city_b):\n    return Or((city_a, city_b) in direct_flights, (city_b, city_a) in direct_flights)\n\nfor d in range(days - 1):\n    current_city = city_per_day[d]\n    next_city = city_per_day[d + 1]\n    solver.add(Or(current_city == next_city, IsDirectFlight(current_city, next_city)))\n\n# Required days for each city\nrequired_days = [3, 5, 4, 5, 2, 2, 5]  # Bucharest, Venice, Prague, Frankfurt, Zurich, Florence, Tallinn\n\nfor c in range(num_cities):\n    solver.add(Sum([If(city_per_day[d] == c, 1, 0) for d in range(days)]) == required_days[c])\n\n# Events\n# Frankfurt during days 12-16 (0-based: 11 to 15)\nfor d in range(11, 16):\n    solver.add(city_per_day[d] == 3)  # Frankfurt is index 3\n\n# Wedding in Venice between day 22 and 26 (0-based: 21 to 25)\nsolver.add(Or([city_per_day[d] == 1 for d in range(21, 26)]))  # Venice is index 1\n\n# Friends in Tallinn between day 8 and 12 (0-based: 7 to 11)\nsolver.add(Or([city_per_day[d] == 6 for d in range(7, 12)]))  # Tallinn is index 6\n\n# \u2705 Adding guided constraints to help the solver find a valid solution\nsolver.add(city_per_day[7] == 6)  # Tallinn on day 8 (0-based 7)\nsolver.add(city_per_day[8] == 6)\nsolver.add(city_per_day[9] == 6)\nsolver.add(city_per_day[10] == 6)\nsolver.add(city_per_day[16] == 6)\n\nsolver.add(city_per_day[21] == 1)  # Venice on day 22 (0-based 21)\nsolver.add(city_per_day[22] == 1)\nsolver.add(city_per_day[23] == 1)\nsolver.add(city_per_day[24] == 1)\nsolver.add(city_per_day[25] == 1)\n\n# Bucharest\nsolver.add(city_per_day[0] == 0)\nsolver.add(city_per_day[1] == 0)\nsolver.add(city_per_day[2] == 0)\n\n# Prague\nsolver.add(city_per_day[3] == 2)\nsolver.add(city_per_day[4] == 2)\nsolver.add(city_per_day[5] == 2)\nsolver.add(city_per_day[6] == 2)\n\n# Zurich\nsolver.add(city_per_day[17] == 4)\nsolver.add(city_per_day[18] == 4)\n\n# Florence\nsolver.add(city_per_day[19] == 5)\nsolver.add(city_per_day[20] == 5)\n\nif solver.check() == sat:\n    model = solver.model()\n    for d in range(days):\n        print(f\"Day {d + 1}: City {model[city_per_day[d]]}\")\nelse:\n    print(\"No solution found\")"
+}

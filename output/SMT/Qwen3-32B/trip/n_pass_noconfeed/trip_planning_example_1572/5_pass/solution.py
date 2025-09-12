@@ -1,0 +1,5 @@
+allowed_flights = {
+    "A": ["B"],
+    "B": ["C"],
+    "C": []
+}

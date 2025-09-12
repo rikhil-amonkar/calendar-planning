@@ -1,0 +1,133 @@
+```python
+import z3
+import json
+
+def main():
+    solver = z3.Solver()
+    
+    # Define the attributes
+    names = ['Alice', 'Peter', 'Bob', 'Eric', 'Arnold']
+    heights = ['very short', 'short', 'tall', 'average', 'very tall']
+    mothers = ['Janelle', 'Kailyn', 'Penny', 'Holly', 'Aniya']
+    hair_colors = ['blonde', 'black', 'gray', 'red', 'brown']
+    
+    # Create variables for each attribute's house assignment
+    name_vars = {n: z3.Int(f'house_{n}') for n in names}
+    height_vars = {h: z3.Int(f'house_{h.replace(" ", "_")}') for h in heights}
+    mother_vars = {m: z3.Int(f'house_{m}') for m in mothers}
+    hair_vars = {hc: z3.Int(f'house_{hc}') for hc in hair_colors}
+    
+    # All houses must be between 1 and 5
+    for var_dict in [name_vars, height_vars, mother_vars, hair_vars]:
+        for v in var_dict.values():
+            solver.add(z3.And(v >= 1, v <= 5))
+    
+    # All attributes within a category are distinct
+    solver.add(z3.Distinct(list(name_vars.values())))
+    solver.add(z3.Distinct(list(height_vars.values())))
+    solver.add(z3.Distinct(list(mother_vars.values())))
+    solver.add(z3.Distinct(list(hair_vars.values())))
+    
+    # Add clues
+    # 1. The tall person has mother Holly
+    solver.add(height_vars['tall'] == mother_vars['Holly'])
+    
+    # 2. Two houses between average height and short
+    solver.add(z3.Or(
+        height_vars['average'] == height_vars['short'] - 3,
+        height_vars['average'] == height_vars['short'] + 3
+    ))
+    
+    # 3. Gray hair directly left of mother Janelle
+    solver.add(hair_vars['gray'] == mother_vars['Janelle'] - 1)
+    
+    # 4. Black hair not in house 4
+    solver.add(hair_vars['black'] != 4)
+    
+    # 5. Eric has black hair
+    solver.add(name_vars['Eric'] == hair_vars['black'])
+    
+    # 6. Very short height has mother Penny
+    solver.add(height_vars['very short'] == mother_vars['Penny'])
+    
+    # 7. Eric and gray hair are adjacent
+    solver.add(z3.Or(
+        name_vars['Eric'] == hair_vars['gray'] + 1,
+        name_vars['Eric'] == hair_vars['gray'] - 1
+    ))
+    
+    # 8. Bob in house 5
+    solver.add(name_vars['Bob'] == 5)
+    
+    # 9. Red hair is Peter
+    solver.add(hair_vars['red'] == name_vars['Peter'])
+    
+    # 10. Mother Kailyn directly left of short height
+    solver.add(mother_vars['Kailyn'] == height_vars['short'] - 1)
+    
+    # 11. Arnold has brown hair
+    solver.add(name_vars['Arnold'] == hair_vars['brown'])
+    
+    # 12. Brown hair left of mother Janelle
+    solver.add(hair_vars['brown'] < mother_vars['Janelle'])
+    
+    # 13. Mother Aniya and very short height are adjacent
+    solver.add(z3.Or(
+        mother_vars['Aniya'] == height_vars['very short'] + 1,
+        mother_vars['Aniya'] == height_vars['very short'] - 1
+    ))
+    
+    # 14. Mother Kailyn in house 3
+    solver.add(mother_vars['Kailyn'] == 3)
+    
+    # Check and get model
+    if solver.check() == z3.sat:
+        model = solver.model()
+        
+        # Create reverse mappings from house numbers to attributes
+        name_map = {}
+        for n, var in name_vars.items():
+            house = model[var].as_long()
+            name_map[house] = n
+            
+        height_map = {}
+        for h, var in height_vars.items():
+            house = model[var].as_long()
+            height_map[house] = h
+            
+        mother_map = {}
+        for m, var in mother_vars.items():
+            house = model[var].as_long()
+            mother_map[house] = m
+            
+        hair_map = {}
+        for hc, var in hair_vars.items():
+            house = model[var].as_long()
+            hair_map[house] = hc
+        
+        # Build the solution rows
+        rows = []
+        for house in range(1, 6):
+            rows.append([
+                str(house),
+                name_map[house],
+                height_map[house],
+                mother_map[house],
+                hair_map[house]
+            ])
+        
+        # Create the solution dictionary
+        solution = {
+            "solution": {
+                "header": ["House", "Name", "Height", "Mother", "HairColor"],
+                "rows": rows
+            }
+        }
+        
+        print(json.dumps(solution, indent=2))
+    else:
+        print("No solution found")
+
+if __name__ == "__main__":
+    main()
+```

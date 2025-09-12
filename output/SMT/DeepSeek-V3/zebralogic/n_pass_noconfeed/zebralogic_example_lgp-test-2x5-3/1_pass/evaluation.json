@@ -1,0 +1,57 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"solution\": {\n    \"header\": [\n      \"House\",\n      \"Name\",\n      \"Hobby\",\n      \"BookGenre\",\n      \"MusicGenre\",\n      \"Birthday\"\n    ],\n    \"rows\": [\n      [\n        \"1\",\n        \"Eric\",\n        \"gardening\",\n        \"mystery\",\n        \"rock\",\n        \"sept\"\n      ],\n      [\n        \"2\",\n        \"Arnold\",\n        \"photography\",\n        \"science fiction\",\n        \"pop\",\n        \"april\"\n      ]\n    ]\n  }\n}",
+    "pred": [
+        {
+            "House": "1",
+            "Name": "Eric",
+            "Hobby": "gardening",
+            "BookGenre": "mystery",
+            "MusicGenre": "rock",
+            "Birthday": "sept"
+        },
+        {
+            "House": "2",
+            "Name": "Arnold",
+            "Hobby": "photography",
+            "BookGenre": "science fiction",
+            "MusicGenre": "pop",
+            "Birthday": "april"
+        }
+    ],
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Eric",
+            "Hobby": "gardening",
+            "BookGenre": "mystery",
+            "MusicGenre": "rock",
+            "Birthday": "sept"
+        },
+        {
+            "House": "2",
+            "Name": "Arnold",
+            "Hobby": "photography",
+            "BookGenre": "science fiction",
+            "MusicGenre": "pop",
+            "Birthday": "april"
+        }
+    ],
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 59.127638816833496,
+        "execution_time": 0.08139276504516602,
+        "constraint_eval_time": 5.173683166503906e-05,
+        "pred_extract_time": 1.311652421951294,
+        "gold_extract_time": 8.821487426757812e-06,
+        "total_tokens": 1128,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import z3\nimport json\n\ndef main():\n    solver = z3.Solver()\n    \n    # Define the houses\n    houses = [1, 2]\n    \n    # Define attributes\n    names = ['Eric', 'Arnold']\n    hobbies = ['gardening', 'photography']\n    book_genres = ['science fiction', 'mystery']\n    music_genres = ['rock', 'pop']\n    birthday_months = ['april', 'sept']\n    \n    # Create variables for each attribute per house\n    name_vars = {house: z3.Int(f'name_{house}') for house in houses}\n    hobby_vars = {house: z3.Int(f'hobby_{house}') for house in houses}\n    book_vars = {house: z3.Int(f'book_{house}') for house in houses}\n    music_vars = {house: z3.Int(f'music_{house}') for house in houses}\n    birthday_vars = {house: z3.Int(f'birthday_{house}') for house in houses}\n    \n    # Define domains for each attribute\n    name_domain = {0: 'Eric', 1: 'Arnold'}\n    hobby_domain = {0: 'gardening', 1: 'photography'}\n    book_domain = {0: 'science fiction', 1: 'mystery'}\n    music_domain = {0: 'rock', 1: 'pop'}\n    birthday_domain = {0: 'april', 1: 'sept'}\n    \n    # All attributes must be within their respective domains\n    for house in houses:\n        solver.add(z3.And(name_vars[house] >= 0, name_vars[house] < len(names)))\n        solver.add(z3.And(hobby_vars[house] >= 0, hobby_vars[house] < len(hobbies)))\n        solver.add(z3.And(book_vars[house] >= 0, book_vars[house] < len(book_genres)))\n        solver.add(z3.And(music_vars[house] >= 0, music_vars[house] < len(music_genres)))\n        solver.add(z3.And(birthday_vars[house] >= 0, birthday_vars[house] < len(birthday_months)))\n    \n    # All attributes must be unique per house\n    solver.add(z3.Distinct([name_vars[house] for house in houses]))\n    solver.add(z3.Distinct([hobby_vars[house] for house in houses]))\n    solver.add(z3.Distinct([book_vars[house] for house in houses]))\n    solver.add(z3.Distinct([music_vars[house] for house in houses]))\n    solver.add(z3.Distinct([birthday_vars[house] for house in houses]))\n    \n    # Clue 1: The person who loves mystery books is the person who loves rock music.\n    for house in houses:\n        solver.add(z3.Implies(book_vars[house] == 1, music_vars[house] == 0))\n        solver.add(z3.Implies(music_vars[house] == 0, book_vars[house] == 1))\n    \n    # Clue 2: Arnold is not in the first house.\n    solver.add(name_vars[1] != 1)  # Arnold is index 1\n    \n    # Clue 3: The person who loves mystery books is the person who enjoys gardening.\n    for house in houses:\n        solver.add(z3.Implies(book_vars[house] == 1, hobby_vars[house] == 0))\n        solver.add(z3.Implies(hobby_vars[house] == 0, book_vars[house] == 1))\n    \n    # Clue 4: The person whose birthday is in April is Arnold.\n    for house in houses:\n        solver.add(z3.Implies(birthday_vars[house] == 0, name_vars[house] == 1))\n        solver.add(z3.Implies(name_vars[house] == 1, birthday_vars[house] == 0))\n    \n    # Clue 5: The person who loves mystery books is in the first house.\n    solver.add(book_vars[1] == 1)\n    \n    # Check if the problem is satisfiable\n    if solver.check() == z3.sat:\n        model = solver.model()\n        \n        # Prepare the solution\n        solution = {\n            \"solution\": {\n                \"header\": [\"House\", \"Name\", \"Hobby\", \"BookGenre\", \"MusicGenre\", \"Birthday\"],\n                \"rows\": []\n            }\n        }\n        \n        for house in sorted(houses):\n            name_val = model.evaluate(name_vars[house]).as_long()\n            hobby_val = model.evaluate(hobby_vars[house]).as_long()\n            book_val = model.evaluate(book_vars[house]).as_long()\n            music_val = model.evaluate(music_vars[house]).as_long()\n            birthday_val = model.evaluate(birthday_vars[house]).as_long()\n            \n            row = [\n                str(house),\n                name_domain[name_val],\n                hobby_domain[hobby_val],\n                book_domain[book_val],\n                music_domain[music_val],\n                birthday_domain[birthday_val]\n            ]\n            solution[\"solution\"][\"rows\"].append(row)\n        \n        print(json.dumps(solution, indent=2))\n    else:\n        print('{\"error\": \"No solution found\"}')\n\nif __name__ == \"__main__\":\n    main()"
+}

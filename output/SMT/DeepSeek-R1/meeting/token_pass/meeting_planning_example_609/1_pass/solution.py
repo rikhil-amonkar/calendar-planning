@@ -1,0 +1,131 @@
+import z3
+import json
+
+def main():
+    # Initialize the optimizer
+    opt = z3.Optimize()
+
+    # Define the locations and their indices
+    locations = [
+        "Chinatown",         # index 0
+        "Mission District",  # index 1
+        "Alamo Square",      # index 2
+        "Pacific Heights",   # index 3
+        "Union Square",      # index 4
+        "Golden Gate Park",  # index 5
+        "Sunset District",   # index 6
+        "Presidio"           # index 7
+    ]
+
+    # Travel time matrix (8x8)
+    travel_time = [
+        [0, 18, 17, 10, 7, 23, 29, 19],   # from Chinatown (0)
+        [16, 0, 11, 16, 15, 17, 24, 25],  # from Mission District (1)
+        [16, 10, 0, 10, 14, 9, 16, 18],   # from Alamo Square (2)
+        [11, 15, 10, 0, 12, 15, 21, 11],  # from Pacific Heights (3)
+        [7, 14, 15, 15, 0, 22, 26, 24],   # from Union Square (4)
+        [23, 17, 10, 16, 22, 0, 10, 11],  # from Golden Gate Park (5)
+        [30, 24, 17, 21, 30, 11, 0, 16],  # from Sunset District (6)
+        [21, 26, 18, 11, 22, 12, 15, 0]   # from Presidio (7)
+    ]
+
+    # Meeting constraints: [available_start, available_end, min_duration, location_index, name]
+    meetings = [
+        [480, 1185, 45, 1, "David"],    # Mission District
+        [840, 1185, 120, 2, "Kenneth"], # Alamo Square
+        [1020, 1200, 15, 3, "John"],    # Pacific Heights
+        [1305, 1365, 60, 4, "Charles"], # Union Square
+        [420, 1095, 90, 5, "Deborah"],  # Golden Gate Park
+        [1065, 1275, 15, 6, "Karen"],   # Sunset District
+        [495, 555, 30, 7, "Carol"]      # Presidio
+    ]
+
+    # Dummy meeting at Chinatown (index 0)
+    dummy_start = 540  # 9:00 AM
+    dummy_end = 540
+    dummy_location = 0
+
+    # Create variables for each meeting (1-7)
+    meet_vars = []
+    start_vars = []
+    end_vars = []
+    for i in range(7):
+        meet_vars.append(z3.Bool(f"meet_{i}"))
+        start_vars.append(z3.Int(f"start_{i}"))
+        end_vars.append(z3.Int(f"end_{i}"))
+
+    # Add constraints for each meeting
+    for i, (avail_start, avail_end, min_dur, loc_idx, name) in enumerate(meetings):
+        # If meeting occurs, it must be within available time and have minimum duration
+        opt.add(z3.Implies(meet_vars[i], start_vars[i] >= avail_start))
+        opt.add(z3.Implies(meet_vars[i], end_vars[i] <= avail_end))
+        opt.add(z3.Implies(meet_vars[i], end_vars[i] == start_vars[i] + min_dur))
+
+    # Add disjunctive constraints for all pairs of meetings (including dummy)
+    all_meetings = [(-1, dummy_start, dummy_end, dummy_location)]  # dummy meeting at index -1
+    for i in range(7):
+        all_meetings.append((i, start_vars[i], end_vars[i], meetings[i][3]))
+
+    for idx1, (i, s1, e1, loc1) in enumerate(all_meetings):
+        for idx2, (j, s2, e2, loc2) in enumerate(all_meetings):
+            if idx1 >= idx2:
+                continue
+            # For real meetings, check if both occur
+            if i == -1 and j == -1:
+                continue
+            elif i == -1:
+                # Dummy meeting with real meeting j
+                opt.add(z3.Implies(meet_vars[j], s2 >= dummy_end + travel_time[dummy_location][loc2]))
+            elif j == -1:
+                # Real meeting i with dummy meeting
+                opt.add(z3.Implies(meet_vars[i], s1 >= dummy_end + travel_time[dummy_location][loc1]))
+            else:
+                # Two real meetings i and j
+                cond = z3.Or(
+                    z3.And(meet_vars[i], meet_vars[j], e1 + travel_time[loc1][loc2] <= s2),
+                    z3.And(meet_vars[i], meet_vars[j], e2 + travel_time[loc2][loc1] <= s1),
+                    z3.Not(meet_vars[i]),
+                    z3.Not(meet_vars[j])
+                )
+                opt.add(cond)
+
+    # Maximize the number of meetings
+    total_meetings = z3.Sum([z3.If(m, 1, 0) for m in meet_vars])
+    opt.maximize(total_meetings)
+
+    # Check and get the model
+    if opt.check() == z3.sat:
+        model = opt.model()
+        itinerary = []
+        # Collect all scheduled meetings
+        scheduled = []
+        for i, (_, _, _, _, name) in enumerate(meetings):
+            if model.evaluate(meet_vars[i]):
+                start_val = model.evaluate(start_vars[i]).as_long()
+                end_val = model.evaluate(end_vars[i]).as_long()
+                location = locations[meetings[i][3]]
+                scheduled.append((start_val, end_val, location, name))
+        # Sort by start time
+        scheduled.sort(key=lambda x: x[0])
+        # Convert to JSON output
+        for start, end, loc, name in scheduled:
+            start_hr = start // 60
+            start_min = start % 60
+            end_hr = end // 60
+            end_min = end % 60
+            start_str = f"{start_hr}:{start_min:02d}"
+            end_str = f"{end_hr}:{end_min:02d}"
+            itinerary.append({
+                "action": "meet",
+                "location": loc,
+                "person": name,
+                "start_time": start_str,
+                "end_time": end_str
+            })
+        output = {"itinerary": itinerary}
+        print(json.dumps(output, indent=2))
+    else:
+        print('{"itinerary": []}')
+
+if __name__ == "__main__":
+    main()

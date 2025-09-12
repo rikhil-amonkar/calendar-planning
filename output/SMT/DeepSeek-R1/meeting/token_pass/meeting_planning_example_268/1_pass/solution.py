@@ -1,0 +1,90 @@
+from z3 import *
+import itertools
+import json
+
+def main():
+    # Convert time to minutes since 9:00 AM
+    def time_to_minutes(time_str):
+        parts = time_str.split(':')
+        hours = int(parts[0])
+        minutes = int(parts[1]) if len(parts) > 1 else 0
+        return (hours - 9) * 60 + minutes
+
+    # Convert minutes since 9:00 AM to time string
+    def minutes_to_time(minutes):
+        total_minutes = 9 * 60 + minutes
+        h = total_minutes // 60
+        m = total_minutes % 60
+        return f"{h}:{m:02d}"
+
+    # Travel times dictionary
+    travel_times = {
+        ('Golden Gate Park', 'Alamo Square'): 10,
+        ('Golden Gate Park', 'Presidio'): 11,
+        ('Golden Gate Park', 'Russian Hill'): 19,
+        ('Alamo Square', 'Golden Gate Park'): 9,
+        ('Alamo Square', 'Presidio'): 18,
+        ('Alamo Square', 'Russian Hill'): 13,
+        ('Presidio', 'Golden Gate Park'): 12,
+        ('Presidio', 'Alamo Square'): 18,
+        ('Presidio', 'Russian Hill'): 14,
+        ('Russian Hill', 'Golden Gate Park'): 21,
+        ('Russian Hill', 'Alamo Square'): 15,
+        ('Russian Hill', 'Presidio'): 14
+    }
+
+    # Friend constraints: (name, location, avail_start, avail_end, min_duration)
+    friends = [
+        ('Timothy', 'Alamo Square', time_to_minutes('12:00'), time_to_minutes('16:15'), 105),
+        ('Mark', 'Presidio', time_to_minutes('18:45'), time_to_minutes('21:00'), 60),
+        ('Joseph', 'Russian Hill', time_to_minutes('16:45'), time_to_minutes('21:30'), 60)
+    ]
+
+    # Try scheduling 3, then 2, then 1 friends
+    for num_meetings in range(3, 0, -1):
+        for combo in itertools.combinations([0, 1, 2], num_meetings):
+            for order in itertools.permutations(combo):
+                s = Solver()
+                starts = [Int(f'start_{i}') for i in range(num_meetings)]
+                ends = [Int(f'end_{i}') for i in range(num_meetings)]
+                
+                current_time = 0  # Start at Golden Gate Park at 9:00 AM
+                constraints = []
+                
+                for i, idx in enumerate(order):
+                    friend = friends[idx]
+                    travel_from = 'Golden Gate Park' if i == 0 else friends[order[i-1]][1]
+                    travel_to = friend[1]
+                    travel_time = travel_times[(travel_from, travel_to)]
+                    
+                    # Add constraints for this meeting
+                    constraints.append(starts[i] >= current_time + travel_time)
+                    constraints.append(starts[i] >= friend[2])
+                    constraints.append(ends[i] == starts[i] + friend[4])
+                    constraints.append(ends[i] <= friend[3])
+                    
+                    current_time = ends[i]
+                
+                s.add(constraints)
+                if s.check() == sat:
+                    m = s.model()
+                    itinerary = []
+                    for i, idx in enumerate(order):
+                        friend = friends[idx]
+                        start_val = m.eval(starts[i]).as_long()
+                        end_val = m.eval(ends[i]).as_long()
+                        itinerary.append({
+                            "action": "meet",
+                            "location": friend[1],
+                            "person": friend[0],
+                            "start_time": minutes_to_time(start_val),
+                            "end_time": minutes_to_time(end_val)
+                        })
+                    
+                    print(json.dumps({"itinerary": itinerary}, indent=2))
+                    return
+                    
+    print(json.dumps({"itinerary": []}, indent=2))
+
+if __name__ == '__main__':
+    main()

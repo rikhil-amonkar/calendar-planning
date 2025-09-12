@@ -1,0 +1,65 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"solution\": {\n    \"header\": [\n      \"House\",\n      \"Name\",\n      \"Occupation\"\n    ],\n    \"rows\": [\n      [\n        \"1\",\n        \"Eric\",\n        \"doctor\"\n      ],\n      [\n        \"2\",\n        \"Arnold\",\n        \"engineer\"\n      ],\n      [\n        \"3\",\n        \"Alice\",\n        \"artist\"\n      ],\n      [\n        \"4\",\n        \"Peter\",\n        \"teacher\"\n      ]\n    ]\n  }\n}",
+    "pred": [
+        {
+            "House": "1",
+            "Name": "Eric",
+            "Occupation": "doctor"
+        },
+        {
+            "House": "2",
+            "Name": "Arnold",
+            "Occupation": "engineer"
+        },
+        {
+            "House": "3",
+            "Name": "Alice",
+            "Occupation": "artist"
+        },
+        {
+            "House": "4",
+            "Name": "Peter",
+            "Occupation": "teacher"
+        }
+    ],
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Eric",
+            "Occupation": "doctor"
+        },
+        {
+            "House": "2",
+            "Name": "Arnold",
+            "Occupation": "engineer"
+        },
+        {
+            "House": "3",
+            "Name": "Alice",
+            "Occupation": "artist"
+        },
+        {
+            "House": "4",
+            "Name": "Peter",
+            "Occupation": "teacher"
+        }
+    ],
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 43.014920711517334,
+        "execution_time": 0.08142685890197754,
+        "constraint_eval_time": 5.5789947509765625e-05,
+        "pred_extract_time": 0.9878685474395752,
+        "gold_extract_time": 7.62939453125e-06,
+        "total_tokens": 778,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import json\nfrom z3 import *\n\ndef main():\n    # Create solver\n    solver = Solver()\n    \n    # Define houses\n    houses = [1, 2, 3, 4]\n    \n    # Define attributes\n    names = ['Arnold', 'Eric', 'Peter', 'Alice']\n    occupations = ['doctor', 'engineer', 'artist', 'teacher']\n    \n    # Create variables for name assignments\n    name_vars = [Int(f'name_{i}') for i in houses]\n    for var in name_vars:\n        solver.add(And(var >= 0, var < len(names)))\n    \n    # Create variables for occupation assignments\n    occ_vars = [Int(f'occ_{i}') for i in houses]\n    for var in occ_vars:\n        solver.add(And(var >= 0, var < len(occupations)))\n    \n    # All names and occupations are distinct\n    solver.add(Distinct(name_vars))\n    solver.add(Distinct(occ_vars))\n    \n    # Clue 1: There are two houses between Eric and Peter\n    eric_idx = names.index('Eric')\n    peter_idx = names.index('Peter')\n    \n    for i in houses:\n        for j in houses:\n            if abs(i - j) == 3:  # Two houses between means distance of 3\n                solver.add(Implies(name_vars[i-1] == eric_idx, name_vars[j-1] == peter_idx))\n                solver.add(Implies(name_vars[i-1] == peter_idx, name_vars[j-1] == eric_idx))\n    \n    # Clue 2: The person who is a teacher is Peter\n    teacher_idx = occupations.index('teacher')\n    for i in houses:\n        solver.add(Implies(occ_vars[i-1] == teacher_idx, name_vars[i-1] == peter_idx))\n    \n    # Clue 3: Peter is not in the first house\n    solver.add(name_vars[0] != peter_idx)\n    \n    # Clue 4: There is one house between the person who is a doctor and Alice\n    doctor_idx = occupations.index('doctor')\n    alice_idx = names.index('Alice')\n    \n    for i in houses:\n        for j in houses:\n            if abs(i - j) == 2:  # One house between means distance of 2\n                solver.add(Implies(occ_vars[i-1] == doctor_idx, name_vars[j-1] == alice_idx))\n                solver.add(Implies(name_vars[i-1] == alice_idx, occ_vars[j-1] == doctor_idx))\n    \n    # Clue 5: The person who is an artist is Alice\n    artist_idx = occupations.index('artist')\n    for i in houses:\n        solver.add(Implies(occ_vars[i-1] == artist_idx, name_vars[i-1] == alice_idx))\n    \n    # Check for solution\n    if solver.check() == sat:\n        model = solver.model()\n        \n        # Extract solution\n        solution = []\n        for house in houses:\n            name_index = model.evaluate(name_vars[house-1]).as_long()\n            occ_index = model.evaluate(occ_vars[house-1]).as_long()\n            \n            solution.append([\n                str(house),\n                names[name_index],\n                occupations[occ_index]\n            ])\n        \n        # Format output as JSON\n        output = {\n            \"solution\": {\n                \"header\": [\"House\", \"Name\", \"Occupation\"],\n                \"rows\": solution\n            }\n        }\n        \n        print(json.dumps(output, indent=2))\n    else:\n        print('{\"error\": \"No solution found\"}')\n\nif __name__ == \"__main__\":\n    main()"
+}

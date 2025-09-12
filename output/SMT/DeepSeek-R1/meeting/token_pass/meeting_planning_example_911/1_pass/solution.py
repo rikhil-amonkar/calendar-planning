@@ -1,0 +1,171 @@
+import json
+from z3 import *
+
+def main():
+    # Base time in minutes from midnight for 9:00 AM
+    base_time = 9 * 60
+
+    # List of all locations
+    locations = [
+        'The Castro',
+        'North Beach',
+        'Golden Gate Park',
+        'Embarcadero',
+        'Haight-Ashbury',
+        'Richmond District',
+        'Nob Hill',
+        'Marina District',
+        'Presidio',
+        'Union Square',
+        'Financial District'
+    ]
+
+    # Travel time matrix between locations
+    travel_matrix = [
+        [0, 20, 11, 22, 6, 16, 16, 21, 20, 19, 21],
+        [23, 0, 22, 6, 18, 18, 7, 9, 17, 7, 8],
+        [13, 23, 0, 25, 7, 7, 20, 16, 11, 22, 26],
+        [25, 5, 25, 0, 21, 21, 10, 12, 20, 10, 5],
+        [6, 19, 7, 20, 0, 10, 15, 17, 15, 19, 21],
+        [16, 17, 9, 19, 10, 0, 17, 9, 7, 21, 22],
+        [17, 8, 17, 9, 13, 14, 0, 11, 17, 7, 9],
+        [22, 11, 18, 14, 16, 11, 12, 0, 10, 16, 17],
+        [21, 18, 12, 20, 15, 7, 18, 11, 0, 22, 23],
+        [17, 10, 22, 11, 18, 20, 9, 18, 24, 0, 9],
+        [20, 7, 23, 4, 19, 21, 8, 15, 22, 9, 0]
+    ]
+
+    # Create travel_times dictionary
+    travel_times = {}
+    for i, loc1 in enumerate(locations):
+        travel_times[loc1] = {}
+        for j, loc2 in enumerate(locations):
+            travel_times[loc1][loc2] = travel_matrix[i][j]
+
+    # Define friends' data
+    friends_data = [
+        {'name': 'Steven', 'location': 'North Beach', 'window_start': '17:30', 'window_end': '20:30', 'min_duration': 15},
+        {'name': 'Sarah', 'location': 'Golden Gate Park', 'window_start': '17:00', 'window_end': '19:15', 'min_duration': 75},
+        {'name': 'Brian', 'location': 'Embarcadero', 'window_start': '14:15', 'window_end': '16:00', 'min_duration': 105},
+        {'name': 'Stephanie', 'location': 'Haight-Ashbury', 'window_start': '10:15', 'window_end': '12:15', 'min_duration': 75},
+        {'name': 'Melissa', 'location': 'Richmond District', 'window_start': '14:00', 'window_end': '19:30', 'min_duration': 30},
+        {'name': 'Nancy', 'location': 'Nob Hill', 'window_start': '8:15', 'window_end': '12:45', 'min_duration': 90},
+        {'name': 'David', 'location': 'Marina District', 'window_start': '11:15', 'window_end': '13:15', 'min_duration': 120},
+        {'name': 'James', 'location': 'Presidio', 'window_start': '15:00', 'window_end': '18:15', 'min_duration': 120},
+        {'name': 'Elizabeth', 'location': 'Union Square', 'window_start': '11:30', 'window_end': '21:00', 'min_duration': 60},
+        {'name': 'Robert', 'location': 'Financial District', 'window_start': '13:15', 'window_end': '15:15', 'min_duration': 45}
+    ]
+
+    # Convert time strings to minutes from base_time (9:00 AM)
+    def time_to_minutes(time_str):
+        parts = time_str.split(':')
+        hours = int(parts[0])
+        minutes = int(parts[1])
+        return hours * 60 + minutes - base_time
+
+    friends = []
+    for data in friends_data:
+        start_minutes = time_to_minutes(data['window_start'])
+        end_minutes = time_to_minutes(data['window_end'])
+        # Adjust for times before base_time
+        if start_minutes < 0:
+            start_minutes = 0
+        friends.append({
+            'name': data['name'],
+            'location': data['location'],
+            'start': start_minutes,
+            'end': end_minutes,
+            'min_duration': data['min_duration']
+        })
+
+    # Add dummy meeting for the start at The Castro
+    dummy_meeting = {
+        'name': 'start',
+        'location': 'The Castro',
+        'start': 0,
+        'end': 0,
+        'min_duration': 0
+    }
+    friends.insert(0, dummy_meeting)
+
+    n = len(friends)
+
+    # Z3 variables
+    meet = [Bool(f'meet_{i}') for i in range(n)]
+    start_times = [Int(f'start_{i}') for i in range(n)]
+    end_times = [Int(f'end_{i}') for i in range(n)]
+
+    optimizer = Optimize()
+
+    # Constraint: dummy meeting is always met and fixed at time 0
+    optimizer.add(meet[0] == True)
+    optimizer.add(start_times[0] == 0)
+    optimizer.add(end_times[0] == 0)
+
+    # Constraints for each friend
+    for i in range(1, n):
+        # If meeting i is held, then it must be within the time window and meet duration
+        optimizer.add(Implies(meet[i], start_times[i] >= friends[i]['start']))
+        optimizer.add(Implies(meet[i], end_times[i] <= friends[i]['end']))
+        optimizer.add(Implies(meet[i], end_times[i] - start_times[i] >= friends[i]['min_duration']))
+
+    # Constraint: travel from dummy meeting (The Castro) to any meeting i
+    for i in range(1, n):
+        from_loc = friends[0]['location']
+        to_loc = friends[i]['location']
+        travel_time = travel_times[from_loc][to_loc]
+        optimizer.add(Implies(meet[i], start_times[i] >= end_times[0] + travel_time))
+
+    # Disjunctive constraints for all pairs of meetings (excluding dummy)
+    for i in range(1, n):
+        for j in range(i+1, n):
+            both_met = And(meet[i], meet[j])
+            i_before_j = Bool(f'i_before_j_{i}_{j}')
+            # If both meetings are held, then one must be before the other with travel time
+            from_i_to_j = travel_times[friends[i]['location']][friends[j]['location']]
+            from_j_to_i = travel_times[friends[j]['location']][friends[i]['location']]
+            constraint = Or(
+                And(i_before_j, end_times[i] + from_i_to_j <= start_times[j]),
+                And(Not(i_before_j), end_times[j] + from_j_to_i <= start_times[i])
+            )
+            optimizer.add(Implies(both_met, constraint))
+
+    # Maximize the number of meetings (excluding dummy)
+    objective = Sum([If(meet[i], 1, 0) for i in range(1, n)])
+    optimizer.maximize(objective)
+
+    # Check and get model
+    if optimizer.check() == sat:
+        model = optimizer.model()
+        itinerary = []
+        # Collect all meetings that are held
+        meetings = []
+        for i in range(1, n):
+            if is_true(model.eval(meet[i])):
+                start_val = model.eval(start_times[i]).as_long()
+                end_val = model.eval(end_times[i]).as_long()
+                # Convert minutes back to time string
+                start_absolute = base_time + start_val
+                end_absolute = base_time + end_val
+                start_hour = start_absolute // 60
+                start_minute = start_absolute % 60
+                end_hour = end_absolute // 60
+                end_minute = end_absolute % 60
+                start_str = f"{start_hour}:{start_minute:02d}"
+                end_str = f"{end_hour}:{end_minute:02d}"
+                meetings.append({
+                    'action': 'meet',
+                    'location': friends[i]['location'],
+                    'person': friends[i]['name'],
+                    'start_time': start_str,
+                    'end_time': end_str
+                })
+        # Sort meetings by start time
+        meetings.sort(key=lambda x: x['start_time'])
+        result = {'itinerary': meetings}
+        print(json.dumps(result, indent=2))
+    else:
+        print('{"itinerary": []}')
+
+if __name__ == '__main__':
+    main()

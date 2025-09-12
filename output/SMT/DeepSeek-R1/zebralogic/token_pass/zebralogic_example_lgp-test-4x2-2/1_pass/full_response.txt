@@ -1,0 +1,67 @@
+```python
+import json
+from z3 import *
+
+def main():
+    # Create solver
+    solver = Solver()
+    
+    # Define enums for names and house styles
+    NameSort, (Arnold, Peter, Eric, Alice) = EnumSort('Name', ['Arnold', 'Peter', 'Eric', 'Alice'])
+    StyleSort, (victorian, ranch, colonial, craftsman) = EnumSort('Style', ['victorian', 'ranch', 'colonial', 'craftsman'])
+    
+    # Create variables for each house
+    names = [Const(f'name_{i}', NameSort) for i in range(1, 5)]
+    styles = [Const(f'style_{i}', StyleSort) for i in range(1, 5)]
+    
+    # Add uniqueness constraints
+    solver.add(Distinct(names))
+    solver.add(Distinct(styles))
+    
+    # Clue 1: Eric is in Craftsman
+    solver.add(And([Or([And(names[i] == Eric, styles[i] == craftsman) for i in range(4)])]))
+    
+    # Clue 2: Ranch directly left of Victorian
+    for i in range(3):
+        solver.add(Implies(styles[i] == ranch, styles[i+1] == victorian))
+    
+    # Clue 3: Eric in third house
+    solver.add(names[2] == Eric)
+    
+    # Clue 4: Arnold in fourth house
+    solver.add(names[3] == Arnold)
+    
+    # Clue 5: Victorian house is Alice
+    solver.add(And([Or([And(styles[i] == victorian, names[i] == Alice) for i in range(4)])]))
+    
+    # Check and get solution
+    if solver.check() == sat:
+        model = solver.model()
+        
+        # Prepare solution rows
+        rows = []
+        for i in range(4):
+            house_num = str(i+1)
+            name_val = model.eval(names[i])
+            style_val = model.eval(styles[i])
+            
+            # Convert Z3 values to strings
+            name_str = str(name_val).split('!')[0]
+            style_str = str(style_val).split('!')[0]
+            
+            rows.append([house_num, name_str, style_str])
+        
+        # Create JSON output
+        solution = {
+            "solution": {
+                "header": ["House", "Name", "HouseStyle"],
+                "rows": rows
+            }
+        }
+        print(json.dumps(solution, indent=2))
+    else:
+        print('No solution found')
+
+if __name__ == '__main__':
+    main()
+```

@@ -1,0 +1,115 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\"itinerary\": [{\"day_range\": \"Day 1-5\", \"place\": \"Porto\"}, {\"day_range\": \"Day 5-8\", \"place\": \"Amsterdam\"}, {\"day_range\": \"Day 8-10\", \"place\": \"Split\"}, {\"day_range\": \"Day 10-13\", \"place\": \"Helsinki\"}, {\"day_range\": \"Day 13-17\", \"place\": \"Reykjavik\"}, {\"day_range\": \"Day 17-19\", \"place\": \"Warsaw\"}, {\"day_range\": \"Day 19-22\", \"place\": \"Naples\"}, {\"day_range\": \"Day 22-24\", \"place\": \"Brussels\"}, {\"day_range\": \"Day 24-26\", \"place\": \"Lyon\"}, {\"day_range\": \"Day 26-27\", \"place\": \"Valencia\"}]}",
+    "pred": {
+        "itinerary": [
+            {
+                "day_range": "Day 1-5",
+                "place": "Porto"
+            },
+            {
+                "day_range": "Day 5-8",
+                "place": "Amsterdam"
+            },
+            {
+                "day_range": "Day 8-10",
+                "place": "Split"
+            },
+            {
+                "day_range": "Day 10-13",
+                "place": "Helsinki"
+            },
+            {
+                "day_range": "Day 13-17",
+                "place": "Reykjavik"
+            },
+            {
+                "day_range": "Day 17-19",
+                "place": "Warsaw"
+            },
+            {
+                "day_range": "Day 19-22",
+                "place": "Naples"
+            },
+            {
+                "day_range": "Day 22-24",
+                "place": "Brussels"
+            },
+            {
+                "day_range": "Day 24-26",
+                "place": "Lyon"
+            },
+            {
+                "day_range": "Day 26-27",
+                "place": "Valencia"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "day_range": "Day 1-5",
+                "place": "Porto"
+            },
+            {
+                "day_range": "Day 5-8",
+                "place": "Amsterdam"
+            },
+            {
+                "day_range": "Day 8-11",
+                "place": "Helsinki"
+            },
+            {
+                "day_range": "Day 11-15",
+                "place": "Reykjavik"
+            },
+            {
+                "day_range": "Day 15-17",
+                "place": "Warsaw"
+            },
+            {
+                "day_range": "Day 17-20",
+                "place": "Naples"
+            },
+            {
+                "day_range": "Day 20-22",
+                "place": "Brussels"
+            },
+            {
+                "day_range": "Day 22-23",
+                "place": "Valencia"
+            },
+            {
+                "day_range": "Day 23-25",
+                "place": "Lyon"
+            },
+            {
+                "day_range": "Day 25-27",
+                "place": "Split"
+            }
+        ]
+    },
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "event_range": {
+            "city": "Naples",
+            "start": 17,
+            "end": 20
+        }
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 1045.1665787696838,
+        "execution_time": 0.17510080337524414,
+        "constraint_eval_time": 7.557868957519531e-05,
+        "pred_extract_time": 3.37953782081604,
+        "gold_extract_time": 0.00017523765563964844,
+        "total_tokens": 67563,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\nimport json\n\n# Define cities and their durations\ncities = ['Warsaw', 'Porto', 'Naples', 'Brussels', 'Split', 'Reykjavik', 'Amsterdam', 'Lyon', 'Helsinki', 'Valencia']\ndurations = {\n    'Warsaw': 3,\n    'Porto': 5,\n    'Naples': 4,\n    'Brussels': 3,\n    'Split': 3,\n    'Reykjavik': 5,\n    'Amsterdam': 4,\n    'Lyon': 3,\n    'Helsinki': 4,\n    'Valencia': 2\n}\n\n# Direct flights\ndirect_flights = {\n    ('Amsterdam', 'Warsaw'), ('Helsinki', 'Brussels'), ('Helsinki', 'Warsaw'), ('Reykjavik', 'Brussels'),\n    ('Amsterdam', 'Lyon'), ('Amsterdam', 'Naples'), ('Amsterdam', 'Reykjavik'), ('Naples', 'Valencia'),\n    ('Porto', 'Brussels'), ('Amsterdam', 'Split'), ('Lyon', 'Split'), ('Warsaw', 'Split'), ('Porto', 'Amsterdam'),\n    ('Helsinki', 'Split'), ('Brussels', 'Lyon'), ('Porto', 'Lyon'), ('Reykjavik', 'Warsaw'), ('Brussels', 'Valencia'),\n    ('Valencia', 'Lyon'), ('Porto', 'Valencia'), ('Warsaw', 'Brussels'), ('Warsaw', 'Naples'), ('Naples', 'Split'),\n    ('Helsinki', 'Naples'), ('Helsinki', 'Reykjavik'), ('Amsterdam', 'Valencia'), ('Naples', 'Brussels')\n}\n\n# Time constraints\ntime_constraints = {\n    'Porto': [(1, 5)],\n    'Naples': [(17, 20)],\n    'Brussels': [(20, 22)],\n    'Amsterdam': [(5, 8)],\n    'Helsinki': [(8, 11)]\n}\n\n# Create city indices\ncity_indices = {city: i for i, city in enumerate(cities)}\ncity_durations = [durations[city] for city in cities]\n\n# Allowed direct flight pairs as indices\nallowed_pairs = set()\nfor (c1, c2) in direct_flights:\n    idx1 = city_indices[c1]\n    idx2 = city_indices[c2]\n    allowed_pairs.add((idx1, idx2))\n    allowed_pairs.add((idx2, idx1))  # Add reverse\n\n# Z3 solver\nsolver = Solver()\n\n# Define sequence of cities (each is an index)\nseq = [Int(f'seq_{i}') for i in range(10)]\n\n# Constraints: each city appears exactly once\nfor i in range(10):\n    solver.add(seq[i] >= 0, seq[i] < 10)\nsolver.add(Distinct(seq))\n\n# Define start and end days for each position\nstart_days = [Int(f'start_{i}') for i in range(10)]\nend_days = [Int(f'end_{i}') for i in range(10)]\n\n# First day is 1\nsolver.add(start_days[0] == 1)\n\n# Start day of position i is end day of position i-1\nfor i in range(1, 10):\n    solver.add(start_days[i] == end_days[i-1])\n\n# End day is start day + duration - 1\nfor i in range(10):\n    duration = 0\n    for idx, dur in enumerate(city_durations):\n        duration += If(seq[i] == idx, dur, 0)\n    solver.add(end_days[i] == start_days[i] + duration - 1)\n\n# Last end day is 27\nsolver.add(end_days[9] == 27)\n\n# Add time constraints\nfor city, ranges in time_constraints.items():\n    city_idx = city_indices[city]\n    for (a, b) in ranges:\n        for i in range(10):\n            # If the city is at position i, then start_days[i] <= b and end_days[i] >= a\n            solver.add(Implies(seq[i] == city_idx, And(start_days[i] <= b, end_days[i] >= a)))\n\n# Add direct flight constraints between consecutive cities\nfor i in range(9):\n    current = seq[i]\n    next_city = seq[i+1]\n    # Check if (current, next_city) is in allowed_pairs\n    disjunction = []\n    for (idx1, idx2) in allowed_pairs:\n        disjunction.append(And(current == idx1, next_city == idx2))\n    solver.add(Or(disjunction))\n\n# Check if the solver can find a solution\nif solver.check() == sat:\n    model = solver.model()\n    # Extract the sequence\n    seq_values = [model.evaluate(seq[i]).as_long() for i in range(10)]\n    # Extract start and end days\n    start_values = [model.evaluate(start_days[i]).as_long() for i in range(10)]\n    end_values = [model.evaluate(end_days[i]).as_long() for i in range(10)]\n    # Build the itinerary\n    itinerary = []\n    for i in range(10):\n        city_name = cities[seq_values[i]]\n        start_day = start_values[i]\n        end_day = end_values[i]\n        day_range = f\"Day {start_day}-{end_day}\"\n        itinerary.append({\"day_range\": day_range, \"place\": city_name})\n    # Output as JSON\n    print(json.dumps({\"itinerary\": itinerary}))\nelse:\n    print(\"No solution found.\")"
+}

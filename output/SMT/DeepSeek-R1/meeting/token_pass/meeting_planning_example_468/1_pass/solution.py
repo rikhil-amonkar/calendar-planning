@@ -1,0 +1,103 @@
+import z3
+import json
+
+def main():
+    # Define locations and their indices
+    locations = [
+        'The Castro',
+        'Bayview',
+        'Pacific Heights',
+        'Alamo Square',
+        'Fisherman\'s Wharf',
+        'Golden Gate Park'
+    ]
+    
+    # Create travel time matrix (6x6)
+    travel_times = [
+        [0, 19, 16, 8, 24, 11],
+        [20, 0, 23, 16, 25, 22],
+        [16, 22, 0, 10, 13, 15],
+        [8, 16, 10, 0, 19, 9],
+        [26, 26, 12, 20, 0, 25],
+        [13, 23, 16, 10, 24, 0]
+    ]
+    
+    # Person information: name, location index, available start/end (minutes from 9:00), min duration
+    persons = [
+        {'name': 'Rebecca', 'loc_idx': 1, 'start_min': 0, 'end_min': 225, 'duration': 90},
+        {'name': 'Amanda', 'loc_idx': 2, 'start_min': 570, 'end_min': 765, 'duration': 90},
+        {'name': 'James', 'loc_idx': 3, 'start_min': 45, 'end_min': 735, 'duration': 90},
+        {'name': 'Sarah', 'loc_idx': 4, 'start_min': 0, 'end_min': 750, 'duration': 90},
+        {'name': 'Melissa', 'loc_idx': 5, 'start_min': 0, 'end_min': 585, 'duration': 90}
+    ]
+    
+    # Create Z3 variables for each meeting
+    meets = [z3.Bool(f"meet_{i}") for i in range(5)]
+    starts = [z3.Int(f"start_{i}") for i in range(5)]
+    ends = [z3.Int(f"end_{i}") for i in range(5)]
+    
+    solver = z3.Solver()
+    
+    # Add meeting duration constraints
+    for i in range(5):
+        solver.add(z3.Implies(meets[i], ends[i] - starts[i] >= persons[i]['duration']))
+        solver.add(z3.Implies(meets[i], starts[i] >= persons[i]['start_min']))
+        solver.add(z3.Implies(meets[i], ends[i] <= persons[i]['end_min']))
+    
+    # Add travel time constraints between meetings
+    for i in range(5):
+        for j in range(5):
+            if i != j:
+                travel_ij = travel_times[persons[i]['loc_idx']][persons[j]['loc_idx']]
+                solver.add(z3.Implies(z3.And(meets[i], meets[j]),
+                    z3.Or(
+                        ends[i] + travel_ij <= starts[j],
+                        ends[j] + travel_ij <= starts[i]
+                    )))
+    
+    # Add constraints from starting point (The Castro)
+    for i in range(5):
+        travel_start = travel_times[0][persons[i]['loc_idx']]
+        solver.add(z3.Implies(meets[i], starts[i] >= travel_start))
+    
+    # Try to maximize number of meetings
+    for k in range(5, 0, -1):
+        solver.push()
+        # Constraint: exactly k meetings must occur
+        solver.add(z3.Sum([z3.If(meets[i], 1, 0) for i in range(5)]) == k)
+        
+        if solver.check() == z3.sat:
+            model = solver.model()
+            itinerary = []
+            
+            # Collect all scheduled meetings
+            for i in range(5):
+                if z3.is_true(model.eval(meets[i])):
+                    start_val = model.eval(starts[i]).as_long()
+                    end_val = model.eval(ends[i]).as_long()
+                    
+                    # Convert minutes to time string
+                    start_time = f"{9 + start_val // 60}:{start_val % 60:02d}"
+                    end_time = f"{9 + end_val // 60}:{end_val % 60:02d}"
+                    
+                    itinerary.append({
+                        "action": "meet",
+                        "location": locations[persons[i]['loc_idx']],
+                        "person": persons[i]['name'],
+                        "start_time": start_time.replace(':0', ':').replace(':00', ':0'),
+                        "end_time": end_time.replace(':0', ':').replace(':00', ':0')
+                    })
+            
+            # Sort itinerary by start time
+            itinerary.sort(key=lambda x: x['start_time'])
+            
+            print(json.dumps({"itinerary": itinerary}, indent=2))
+            return
+            
+        solver.pop()
+    
+    # If no meetings can be scheduled
+    print(json.dumps({"itinerary": []}, indent=2))
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,242 @@
+We are given 3 houses, each with a unique combination of attributes: Name, Mother, Food.
+ We'll define integer variables for each attribute per house. Since there are 3 houses, we can use integers 1,2,3 for each attribute.
+
+ Steps:
+ 1. Define the houses: 1, 2, 3.
+ 2. For each house, we have three attributes: name, mother, food.
+ 3. We'll create Z3 Ints for each attribute per house. Alternatively, we can use EnumSort for each attribute.
+
+ However, note that the problem says there are 3 houses and each attribute has 3 unique values.
+
+ Let's define:
+   Name: Eric, Peter, Arnold -> we'll assign numbers 1,2,3 for each respectively? But we don't know the mapping until we solve.
+   Similarly for Mother: Holly, Aniya, Janelle -> 1,2,3
+   Food: pizza, grilled cheese, spaghetti -> 1,2,3
+
+ But note: the clues use the actual names, so we have to map accordingly.
+
+ Alternatively, we can use EnumSort to make it more readable, but for simplicity and to avoid having to define multiple sorts, we can use integers and then map back.
+
+ However, to make the constraints easier, we can define:
+
+   Let name1, name2, name3 be the name in house 1,2,3. They are integers between 1 and 3, and all distinct.
+   Similarly, mother1, mother2, mother3 and food1, food2, food3.
+
+ But note: the clues talk about relationships between these attributes.
+
+ We can also define inverse functions if needed, but let's try to set up the constraints.
+
+ Alternatively, we can use a matrix approach, but Z3 doesn't have built-in matrices, so we use separate variables.
+
+ Let's assign constants for the attributes:
+
+   Names: Eric=1, Peter=2, Arnold=3
+   Mothers: Holly=1, Aniya=2, Janelle=3
+   Food: pizza=1, grilled cheese=2, spaghetti=3
+
+ Now, the clues:
+
+ 1. "The person who loves the spaghetti eater and Peter are next to each other."
+
+    This means: the house of the spaghetti eater and the house of Peter are adjacent.
+
+    Let spaghetti_house be the house where food is spaghetti (value 3). Similarly, Peter_house is the house where name is Peter (value 2).
+
+    Then: |spaghetti_house - Peter_house| == 1
+
+ 2. "The person who loves eating grilled cheese is directly left of The person whose mother's name is Aniya."
+
+    Let grilled_cheese_house be the house with food=2 (grilled cheese).
+    Let aniya_mother_house be the house with mother=2 (Aniya).
+
+    Then: grilled_cheese_house = aniya_mother_house - 1
+
+ 3. "The person who loves eating grilled cheese is Eric."
+
+    This means: the house with food=2 (grilled cheese) has name=1 (Eric).
+
+    So: name[grilled_cheese_house] = Eric (1)
+
+ 4. "Peter is The person whose mother's name is Holly."
+
+    This means: the house with name=2 (Peter) has mother=1 (Holly).
+
+    So: mother[Peter_house] = Holly (1)
+
+ We also have the uniqueness constraints for each attribute.
+
+ Implementation:
+
+ We'll create 9 variables: name1, name2, name3, mother1, mother2, mother3, food1, food2, food3.
+
+ Each variable is an Int, and we'll constrain them to be between 1 and 3.
+
+ We'll also require that the names are distinct, the mothers are distinct, and the foods are distinct.
+
+ Then we add the constraints from the clues.
+
+ However, note that we have to express the clues in terms of the house variables.
+
+ For clue 1: we need to find the house numbers for spaghetti and Peter. We can define:
+
+   Let spaghetti_house be the house i such that food_i == 3. Similarly, Peter_house is the house i such that name_i == 2.
+
+   But note: we cannot directly use the house index as a variable in Z3. Instead, we can use the following:
+
+   For clue 1: we require that there exists an i and j such that:
+        (food_i == 3) and (name_j == 2) and (|i - j| == 1)
+
+   But note: i and j are house indices (1,2,3). We can write:
+
+        Or(And(food1==3, Or(name1==2, name2==2, name3==2, and then check adjacent) ...) but that would be messy.
+
+   Alternatively, we can define the house indices for each attribute:
+
+        Let peter_house: which house has name=2? We can use a variable for that, but Z3 doesn't allow variables to be used as indices.
+
+   Another approach: since there are only 3 houses, we can write:
+
+        Or(
+            And(food1==3, Or(name2==2, name3==2)),   # if spaghetti in house1, then Peter in house2 or house3, but house1 and house3 are not adjacent -> so only house2
+            And(food2==3, Or(name1==2, name3==2)),   # if spaghetti in house2, then Peter in house1 or house3 (both adjacent)
+            And(food3==3, Or(name1==2, name2==2))    # if spaghetti in house3, then Peter in house1 or house2 -> but only house2 is adjacent to house3? Actually, house2 is adjacent to both, but note: house1 and house3 are not adjacent.
+        )
+
+   But note: adjacent means |i-j|=1, so:
+        house1 adjacent to house2
+        house2 adjacent to house1 and house3
+        house3 adjacent to house2
+
+   So for house1 (spaghetti): only house2 is adjacent -> so Peter must be in house2.
+   For house2 (spaghetti): Peter can be in house1 or house3.
+   For house3 (spaghetti): Peter must be in house2.
+
+   We can write:
+
+        (food1==3) => (name2==2)
+        (food2==3) => Or(name1==2, name3==2)
+        (food3==3) => (name2==2)
+
+   Similarly for the other clues.
+
+ 2. "The person who loves eating grilled cheese is directly left of The person whose mother's name is Aniya."
+
+    Let grilled_cheese_house = i, and aniya_mother_house = j, then j = i+1.
+
+    We can write:
+
+        Or(
+            And(food1==2, mother2==2),   # grilled cheese in 1, aniya mother in 2
+            And(food2==2, mother3==2)    # grilled cheese in 2, aniya mother in 3
+        )
+
+    Note: grilled cheese cannot be in house3 because there is no house to the right.
+
+ 3. "The person who loves eating grilled cheese is Eric."
+
+    This means: in the house where food is grilled cheese (2), the name must be Eric (1).
+
+    We can write:
+
+        (food1==2) => (name1==1)
+        (food2==2) => (name2==1)
+        (food3==2) => (name3==1)
+
+ 4. "Peter is The person whose mother's name is Holly."
+
+    This means: in the house where name is Peter (2), the mother must be Holly (1).
+
+        (name1==2) => (mother1==1)
+        (name2==2) => (mother2==1)
+        (name3==2) => (mother3==1)
+
+ Also, we have the distinct constraints for each attribute set.
+
+ Let's code accordingly.
+
+ We'll create a solver and add the constraints.
+
+ After solving, we'll map the numbers back to the strings.
+
+ Steps in code:
+
+   from z3 import *
+
+   # Define the attributes as integers
+   names = {'Eric': 1, 'Peter': 2, 'Arnold': 3}
+   mothers = {'Holly': 1, 'Aniya': 2, 'Janelle': 3}
+   foods = {'pizza': 1, 'grilled cheese': 2, 'spaghetti': 3}
+
+   # We'll create variables for each house for name, mother, food.
+   n1, n2, n3 = Ints('n1 n2 n3')
+   m1, m2, m3 = Ints('m1 m2 m3')
+   f1, f2, f3 = Ints('f1 f2 f3')
+
+   s = Solver()
+
+   # Each variable is between 1 and 3
+   s.add([n1>=1, n1<=3, n2>=1, n2<=3, n3>=1, n3<=3])
+   s.add([m1>=1, m1<=3, m2>=1, m2<=3, m3>=1, m3<=3])
+   s.add([f1>=1, f1<=3, f2>=1, f2<=3, f3>=1, f3<=3])
+
+   # Distinct constraints
+   s.add(Distinct(n1, n2, n3))
+   s.add(Distinct(m1, m2, m3))
+   s.add(Distinct(f1, f2, f3))
+
+   # Clue 1: The person who loves the spaghetti eater and Peter are next to each other.
+   # We break it down by which house has spaghetti.
+   s.add(
+       Or(
+           And(f1 == foods['spaghetti'], n2 == names['Peter']),   # spaghetti in 1 -> Peter in 2
+           And(f2 == foods['spaghetti'], Or(n1 == names['Peter'], n3 == names['Peter'])), # spaghetti in 2 -> Peter in 1 or 3
+           And(f3 == foods['spaghetti'], n2 == names['Peter'])    # spaghetti in 3 -> Peter in 2
+       )
+   )
+
+   # Clue 2: The person who loves eating grilled cheese is directly left of The person whose mother's name is Aniya.
+   s.add(
+       Or(
+           And(f1 == foods['grilled cheese'], m2 == mothers['Aniya']),
+           And(f2 == foods['grilled cheese'], m3 == mothers['Aniya'])
+       )
+   )
+
+   # Clue 3: The person who loves eating grilled cheese is Eric.
+   s.add(
+       Or(
+           And(f1 == foods['grilled cheese'], n1 == names['Eric']),
+           And(f2 == foods['grilled cheese'], n2 == names['Eric']),
+           And(f3 == foods['grilled cheese'], n3 == names['Eric'])
+       )
+   )
+
+   # Clue 4: Peter is The person whose mother's name is Holly.
+   s.add(
+       Or(
+           And(n1 == names['Peter'], m1 == mothers['Holly']),
+           And(n2 == names['Peter'], m2 == mothers['Holly']),
+           And(n3 == names['Peter'], m3 == mothers['Holly'])
+       )
+   )
+
+   Check if sat, then get the model and assign.
+
+   Then, we create the output JSON.
+
+   We'll create a list of houses, and for each house, we'll have:
+        House number (as string), Name, Mother, Food
+
+   We'll create reverse mappings from the integer constants to the string names.
+
+   Example:
+
+        name_map = {1: 'Eric', 2: 'Peter', 3: 'Arnold'}
+        mother_map = {1: 'Holly', 2: 'Aniya', 3: 'Janelle'}
+        food_map = {1: 'pizza', 2: 'grilled cheese', 3: 'spaghetti'}
+
+   Then for house i, we get the value of n_i, m_i, f_i from the model and map to string.
+
+   Finally, output the JSON.
+
+ Let's code accordingly.

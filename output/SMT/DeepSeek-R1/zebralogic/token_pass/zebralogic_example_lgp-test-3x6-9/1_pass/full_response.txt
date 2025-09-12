@@ -1,0 +1,166 @@
+```python
+import json
+from z3 import *
+
+def main():
+    # Create the solver
+    solver = Solver()
+
+    # Define the attributes and their possible values
+    names = ['Peter', 'Arnold', 'Eric']
+    car_models = ['toyota_camry', 'ford_f150', 'tesla_model_3']
+    house_styles = ['ranch', 'colonial', 'victorian']
+    pets = ['cat', 'dog', 'fish']
+    occupations = ['engineer', 'doctor', 'teacher']
+    vacations = ['city', 'mountain', 'beach']
+
+    # Create enumerations for each attribute type
+    Name = Datatype('Name')
+    for n in names:
+        Name.declare(n)
+    Name = Name.create()
+
+    CarModel = Datatype('CarModel')
+    for cm in car_models:
+        CarModel.declare(cm)
+    CarModel = CarModel.create()
+
+    HouseStyle = Datatype('HouseStyle')
+    for hs in house_styles:
+        HouseStyle.declare(hs)
+    HouseStyle = HouseStyle.create()
+
+    Pet = Datatype('Pet')
+    for p in pets:
+        Pet.declare(p)
+    Pet = Pet.create()
+
+    Occupation = Datatype('Occupation')
+    for o in occupations:
+        Occupation.declare(o)
+    Occupation = Occupation.create()
+
+    Vacation = Datatype('Vacation')
+    for v in vacations:
+        Vacation.declare(v)
+    Vacation = Vacation.create()
+
+    # Create variables for each house's attributes
+    houses = [1, 2, 3]
+    name = [Const(f'name_{i}', Name) for i in houses]
+    car_model = [Const(f'car_model_{i}', CarModel) for i in houses]
+    house_style = [Const(f'house_style_{i}', HouseStyle) for i in houses]
+    pet = [Const(f'pet_{i}', Pet) for i in houses]
+    occupation = [Const(f'occupation_{i}', Occupation) for i in houses]
+    vacation = [Const(f'vacation_{i}', Vacation) for i in houses]
+
+    # Add constraints that all attributes are distinct per category
+    solver.add(Distinct(name))
+    solver.add(Distinct(car_model))
+    solver.add(Distinct(house_style))
+    solver.add(Distinct(pet))
+    solver.add(Distinct(occupation))
+    solver.add(Distinct(vacation))
+
+    # Clue 1: The person with an aquarium of fish is in the first house.
+    solver.add(pet[0] == Pet.fish)
+
+    # Clue 2: The person who owns a Toyota Camry is in the second house.
+    solver.add(car_model[1] == CarModel.toyota_camry)
+
+    # Clue 3: The person who enjoys mountain retreats is not in the second house.
+    solver.add(vacation[1] != Vacation.mountain)
+
+    # Clue 4: The person who prefers city breaks is not in the second house.
+    solver.add(vacation[1] != Vacation.city)
+
+    # Clue 5: The person in a ranch-style home is somewhere to the left of Peter.
+    # Find Peter's house index
+    peter_index = Int('peter_index')
+    solver.add(peter_index >= 1, peter_index <= 3)
+    for i in houses:
+        solver.add(Implies(name[i-1] == Name.Peter, peter_index == i))
+    # Ranch is left of Peter
+    ranch_index = Int('ranch_index')
+    solver.add(ranch_index >= 1, ranch_index <= 3)
+    for i in houses:
+        solver.add(Implies(house_style[i-1] == HouseStyle.ranch, ranch_index == i))
+    solver.add(ranch_index < peter_index)
+
+    # Clue 6: The person who owns a Toyota Camry is directly left of the person living in a colonial-style house.
+    # From clue 2, Toyota Camry is in house 2, so colonial must be in house 3
+    solver.add(house_style[2] == HouseStyle.colonial)
+
+    # Clue 7: Arnold is the person who has a cat.
+    for i in houses:
+        solver.add(Implies(name[i-1] == Name.Arnold, pet[i-1] == Pet.cat))
+
+    # Clue 8: Eric is somewhere to the left of the person who enjoys mountain retreats.
+    # Find Eric's house and mountain vacation house
+    eric_index = Int('eric_index')
+    mountain_index = Int('mountain_index')
+    solver.add(eric_index >= 1, eric_index <= 3)
+    solver.add(mountain_index >= 1, mountain_index <= 3)
+    for i in houses:
+        solver.add(Implies(name[i-1] == Name.Eric, eric_index == i))
+        solver.add(Implies(vacation[i-1] == Vacation.mountain, mountain_index == i))
+    solver.add(eric_index < mountain_index)
+
+    # Clue 9: The person who is an engineer is not in the third house.
+    solver.add(occupation[2] != Occupation.engineer)
+
+    # Clue 10: The person who owns a Tesla Model 3 is somewhere to the left of the person who is a teacher.
+    tesla_index = Int('tesla_index')
+    teacher_index = Int('teacher_index')
+    solver.add(tesla_index >= 1, tesla_index <= 3)
+    solver.add(teacher_index >= 1, teacher_index <= 3)
+    for i in houses:
+        solver.add(Implies(car_model[i-1] == CarModel.tesla_model_3, tesla_index == i))
+        solver.add(Implies(occupation[i-1] == Occupation.teacher, teacher_index == i))
+    solver.add(tesla_index < teacher_index)
+
+    # Clue 11: The person who owns a dog is the person who is an engineer.
+    for i in houses:
+        solver.add(Implies(pet[i-1] == Pet.dog, occupation[i-1] == Occupation.engineer))
+
+    # Check if the problem is satisfiable
+    if solver.check() == sat:
+        model = solver.model()
+        
+        # Prepare the result
+        header = ["House", "Name", "CarModel", "HouseStyle", "Pet", "Occupation", "Vacation"]
+        rows = []
+        
+        for i in range(3):
+            house_num = str(i+1)
+            n = model.eval(name[i])
+            cm = model.eval(car_model[i])
+            hs = model.eval(house_style[i])
+            p = model.eval(pet[i])
+            o = model.eval(occupation[i])
+            v = model.eval(vacation[i])
+            
+            # Convert the Z3 constants to string values
+            n_str = str(n).split('[')[1].split(']')[0] if '[' in str(n) else str(n)
+            cm_str = str(cm).split('[')[1].split(']')[0] if '[' in str(cm) else str(cm)
+            hs_str = str(hs).split('[')[1].split(']')[0] if '[' in str(hs) else str(hs)
+            p_str = str(p).split('[')[1].split(']')[0] if '[' in str(p) else str(p)
+            o_str = str(o).split('[')[1].split(']')[0] if '[' in str(o) else str(o)
+            v_str = str(v).split('[')[1].split(']')[0] if '[' in str(v) else str(v)
+            
+            rows.append([house_num, n_str, cm_str, hs_str, p_str, o_str, v_str])
+        
+        # Create the JSON output
+        output = {
+            "solution": {
+                "header": header,
+                "rows": rows
+            }
+        }
+        print(json.dumps(output, indent=2))
+    else:
+        print("No solution found")
+
+if __name__ == "__main__":
+    main()
+```

@@ -1,0 +1,90 @@
+```python
+import json
+from z3 import *
+
+def main():
+    # Define the enums for attributes
+    Name, (Eric, Arnold, Peter) = EnumSort('Name', ['Eric', 'Arnold', 'Peter'])
+    Book, (mystery, science_fiction, romance) = EnumSort('Book', ['mystery', 'science_fiction', 'romance'])
+    Vacation, (mountain, beach, city) = EnumSort('Vacation', ['mountain', 'beach', 'city'])
+    
+    # Create variables for each house
+    names = [Const(f'name_{i}', Name) for i in range(1, 4)]
+    books = [Const(f'book_{i}', Book) for i in range(1, 4)]
+    vacations = [Const(f'vacation_{i}', Vacation) for i in range(1, 4)]
+    
+    s = Solver()
+    
+    # All attributes are distinct
+    s.add(Distinct(names))
+    s.add(Distinct(books))
+    s.add(Distinct(vacations))
+    
+    # Clue 1: Eric is directly left of Arnold
+    s.add(Or(
+        And(names[0] == Eric, names[1] == Arnold),
+        And(names[1] == Eric, names[2] == Arnold)
+    ))
+    
+    # Clue 2: Peter is right of beach vacation lover
+    # Clue 3: Peter prefers city breaks
+    # Clue 4: Mystery book left of beach vacation
+    # Clue 5: Sci-fi book is beach vacation
+    
+    # Find house indices for key attributes
+    beach_house = Int('beach_house')
+    peter_house = Int('peter_house')
+    mystery_house = Int('mystery_house')
+    
+    s.add(beach_house >= 1, beach_house <= 3)
+    s.add(peter_house >= 1, peter_house <= 3)
+    s.add(mystery_house >= 1, mystery_house <= 3)
+    
+    for i in range(3):
+        house_num = i + 1
+        s.add(If(vacations[i] == beach, beach_house == house_num, True))
+        s.add(If(names[i] == Peter, peter_house == house_num, True))
+        s.add(If(books[i] == mystery, mystery_house == house_num, True))
+    
+    s.add(peter_house > beach_house)  # Peter right of beach
+    
+    # Peter prefers city breaks
+    for i in range(3):
+        s.add(If(names[i] == Peter, vacations[i] == city, True))
+    
+    s.add(mystery_house < beach_house)  # Mystery left of beach
+    
+    # Sci-fi is beach vacation
+    for i in range(3):
+        s.add(If(vacations[i] == beach, books[i] == science_fiction, True))
+    
+    # Check and get solution
+    if s.check() == sat:
+        m = s.model()
+        rows = []
+        for i in range(3):
+            # Get values from model
+            n_val = m.eval(names[i])
+            b_val = m.eval(books[i])
+            v_val = m.eval(vacations[i])
+            
+            # Convert to string representations
+            name_str = str(n_val)
+            book_str = "science fiction" if str(b_val) == "science_fiction" else str(b_val)
+            vacation_str = str(v_val)
+            
+            rows.append([str(i+1), name_str, book_str, vacation_str])
+        
+        solution = {
+            "solution": {
+                "header": ["House", "Name", "BookGenre", "Vacation"],
+                "rows": rows
+            }
+        }
+        print(json.dumps(solution))
+    else:
+        print("No solution found")
+
+if __name__ == "__main__":
+    main()
+```

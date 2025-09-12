@@ -1,0 +1,434 @@
+We are going to use the Z3 SMT solver to schedule the meetings.
+ Steps:
+ 1. Convert all time strings to minutes since 9:00 AM (which we set as 0 minutes).
+    So 9:00 AM = 0, 10:00 AM = 60, etc.
+
+ 2. We have the following friends with their availability (in minutes from 9:00 AM) and minimum meeting duration:
+    Stephanie: Fisherman's Wharf, available from 15:30 (which is 6*60+30 = 390 minutes from 9:00) to 22:00 (13*60 = 780 minutes from 9:00? Actually 22:00 is 22*60 - 9*60 = 13*60 = 780, but note: 9:00 to 22:00 is 13 hours -> 780 minutes). However, note that we are measuring from 9:00, so:
+        Joseph: 7:00 AM -> 7:00 is 2 hours before 9:00, so that would be -120 minutes.
+        But we are starting at 9:00, so we can adjust by setting 9:00 as 0.
+
+    Let's define the availability in minutes from 9:00:
+        Stephanie: start = (15*60+30) - (9*60) = (930 - 540) = 390, end = (22*60) - (9*60) = (1320 - 540) = 780
+        Lisa: 10:45AM to 5:15PM -> (10*60+45)-540 = (645-540)=105, (17*60+15)-540 = (1035-540)=495
+        Melissa: 5:00PM to 9:45PM -> (17*60)-540 = (1020-540)=480, (21*60+45)-540 = (1305-540)=765
+        Betty: 10:45AM to 2:15PM -> (10*60+45)-540=105, (14*60+15)-540= (855-540)=315
+        Sarah: 4:15PM to 7:30PM -> (16*60+15)-540= (975-540)=435, (19*60+30)-540= (1170-540)=630
+        Daniel: 6:30PM to 9:45PM -> (18*60+30)-540= (1110-540)=570, (21*60+45)-540= (1305-540)=765
+        Joshua: 9:00AM to 3:30PM -> (9*60)-540=0, (15*60+30)-540= (930-540)=390
+        Joseph: 7:00AM to 1:00PM -> (7*60)-540 = (420-540)=-120, (13*60)-540= (780-540)=240
+        Andrew: 7:45PM to 10:00PM -> (19*60+45)-540= (1185-540)=645, (22*60)-540= (1320-540)=780
+        John: 1:15PM to 7:45PM -> (13*60+15)-540= (795-540)=255, (19*60+45)-540= (1185-540)=645
+
+ 3. We are starting at Embarcadero at time 0 (9:00 AM).
+
+ 4. We need to decide the order of meetings. We have 10 friends, but note that we cannot meet everyone because of time and travel constraints.
+
+ 5. We are going to use an SMT solver to assign:
+    - For each friend, we have a variable for the start time of the meeting and the end time of the meeting (or duration, but we have minimum duration constraints).
+    - We also have to account for travel time between locations.
+
+ 6. We will use a list of booleans to indicate whether we meet the friend or not (since we want to maximize the number of meetings, but note: the problem says "as many as possible", but also note that some meetings have long minimum durations and might conflict).
+
+ 7. However, note that the problem does not require meeting everyone, so we have to decide which meetings to include.
+
+ 8. We will create a Z3 optimizer and maximize the number of meetings we can have.
+
+ 9. We need to model:
+    - The start time of the meeting for each friend must be within their availability and the meeting must last at least the minimum duration.
+    - The end time of the meeting must be within their availability.
+    - Travel time between consecutive meetings: if we go from meeting A to meeting B, then the start time of B must be at least the end time of A plus the travel time from A's location to B's location.
+
+ 10. We are starting at Embarcadero at time 0, so the first meeting must start after traveling from Embarcadero to the first meeting location.
+
+ 11. We are free to choose the order of meetings, so we must also assign an order to the meetings. We can do this by having a sequence of meetings, but note that the number of meetings we can have is variable.
+
+ 12. Alternatively, we can use a continuous timeline and for each friend, we have a start and end time, and then we impose constraints that for any two meetings that are both held, they must not overlap and must account for travel.
+
+ 13. However, the problem is complex because we have 10 friends and we are allowed to skip some.
+
+ 14. We can use a greedy approach with SMT? Actually, we are going to use an SMT optimizer and use booleans for whether we meet each friend, and then also real variables for the start and end times of each meeting.
+
+ 15. We will also have variables for the order, but that might lead to a lot of permutations. Alternatively, we can use the concept of "non-overlapping" with travel time, and then let the solver decide the order by the start times.
+
+ 16. We can have for each friend i and j (i != j) that if we meet both, then either:
+        end_i + travel_time(i, j) <= start_j   OR
+        end_j + travel_time(j, i) <= start_i
+
+ 17. We also have the constraint that the start time of a meeting must be at least the travel time from the starting point (Embarcadero) if it's the first meeting, but note that we might have multiple meetings and the starting point for travel might be the previous meeting.
+
+ 18. However, the above constraint (16) is enough because the starting point (Embarcadero) can be considered as a meeting with end time 0? Actually, we start at Embarcadero at time 0, so for the first meeting, we require:
+        start_i >= travel_time(Embarcadero, location_i)
+
+ 19. Similarly, we don't have a fixed end, but we don't care about the time after the last meeting.
+
+ 20. We are going to create a list of friends with their data.
+
+ 21. We'll create a Z3 optimizer and maximize the number of meetings (sum of booleans for each friend).
+
+ 22. Steps in code:
+    - Precompute the travel time matrix between every pair of locations (including Embarcadero as a starting point, but note: we are not meeting at Embarcadero, so we only have the 10 locations of the friends).
+
+    - We have 10 friends, each with:
+        name, location, available_start, available_end, min_duration
+
+    - We'll create:
+        meet_i = Bool('meet_i') for each friend i
+        start_i = Real('start_i')
+        end_i = Real('end_i')
+
+    - Constraints for each friend i:
+        If meet_i is true, then:
+            start_i >= available_start_i
+            end_i <= available_end_i
+            end_i - start_i >= min_duration_i
+            start_i >= travel_time from Embarcadero to location_i   [but note: this is only if it's the first meeting, but we don't know the order. Alternatively, we can use the constraint that the meeting must start after we have traveled from the starting point, but that is always true for the first meeting. However, if we have multiple meetings, the travel time might be from another meeting. So we cannot simply set the start_i to be at least the travel from Embarcadero because we might come from another meeting.
+
+    - Instead, we have to account for the travel time from the previous meeting (if any) or from Embarcadero if it's the first. But we don't know the order.
+
+ 23. Another approach: we assume the meetings happen in a sequence. We can create a list of meetings that are selected and then impose the travel time between consecutive meetings. But we don't know the sequence.
+
+ 24. We can use a TSP-like formulation with continuous time variables, but that is complex.
+
+ 25. Alternatively, we can use a constraint that for every pair of meetings (i, j) that are both held, the meetings do not overlap and have enough travel time between them. This is a disjunctive constraint. This is acceptable for 10 meetings because there are 45 pairs.
+
+ 26. We can do:
+        For each pair (i, j) with i != j:
+            meet_i AND meet_j -> (end_i + travel_time(i, j) <= start_j) OR (end_j + travel_time(j, i) <= start_i)
+
+ 27. Also, for each meeting i that is held, we must have:
+        start_i >= travel_time(Embarcadero, location_i)   [because we start at Embarcadero at time 0]
+
+    But note: if we have a meeting before i, then the travel time from the previous meeting (which might be less than from Embarcadero) is already accounted for in the pair constraint. So this constraint for Embarcadero is only necessary if meeting i is the first meeting. However, without knowing the order, we can relax this constraint because if there is a previous meeting, then the pair constraint will ensure that the start_i is after the previous meeting's end plus travel. And if there is no previous meeting (i.e., it's the first), then we must have start_i >= travel_time(Embarcadero, location_i). But note: the pair constraint doesn't involve Embarcadero.
+
+ 28. So we must also account for the travel from Embarcadero to the first meeting. We can do this by having a virtual meeting 0 at Embarcadero that ends at time 0. Then we can treat Embarcadero as a meeting that we always have, and then we can use the pair constraint for every meeting i with the virtual meeting. We can set:
+        virtual meeting: location = "Embarcadero", end_time = 0
+
+    Then for every meeting i that is held, we require:
+        end_0 + travel_time(Embarcadero, location_i) <= start_i   [which is 0 + travel_time(Embarcadero, location_i) <= start_i]
+
+    But note: we are not meeting at Embarcadero, so we don't have a meeting duration there. We just use it as a starting point.
+
+ 29. We can model this by having a virtual meeting with index -1, but in code we can just add the constraint for each meeting i:
+        start_i >= travel_time(Embarcadero, location_i)
+
+    However, this constraint is necessary only if meeting i is the first meeting. But if meeting i is not the first, then the pair constraint with the previous meeting will impose a tighter constraint. So if we impose start_i >= travel_time(Embarcadero, location_i) for every meeting i, it might be too restrictive if the travel time from Embarcadero is longer than from another meeting? Actually, no: because if we come from another meeting j, then we have start_i >= end_j + travel_time(j, i). It is possible that travel_time(j, i) is less than travel_time(Embarcadero, i). So if we require start_i >= travel_time(Embarcadero, i) for every meeting i, then we are adding an unnecessary constraint for meetings that are not first. This might prevent valid schedules where we go from another meeting to meeting i in less time than from Embarcadero.
+
+ 30. Therefore, we cannot simply require start_i >= travel_time(Embarcadero, i). We must account for the possibility that the first meeting might be at a location that is closer to Embarcadero than the travel time from Embarcadero to i if i is not the first.
+
+ 31. So we need to model the virtual meeting at Embarcadero. We can create a virtual meeting (index 0) that has:
+        end_0 = 0
+        location_0 = "Embarcadero"
+
+    And then we require for every meeting i that is held, there must be some meeting j (including the virtual meeting) that is held and that is the immediate predecessor, but that would require order variables.
+
+ 32. Given the complexity, we can use the following:
+
+        Let meetings be indexed from 0 to 9 for the friends, and we add a virtual meeting at index -1 (which we can index as 10 in our list if we make the list of length 11) for Embarcadero.
+
+    We create a list of 11 meetings: the virtual one and the 10 friends.
+
+    For the virtual meeting:
+        meet_10 = True (always)
+        start_10 = 0
+        end_10 = 0
+        location_10 = "Embarcadero"
+
+    Then, we require for every pair of meetings (including the virtual one) that are both held, the disjunctive constraint.
+
+    But note: the virtual meeting is always held, so we have 11 meetings.
+
+    Then, we maximize the number of friends met (so the sum of meet_0 to meet_9).
+
+ 33. We have to be careful: the virtual meeting is fixed and we don't want to count it.
+
+ 34. We'll create a list of all meetings (virtual and real) and then for every pair (i, j) in the list (i != j), we require:
+        If meet_i and meet_j are true, then:
+            (end_i + travel_time(i, j) <= start_j) OR (end_j + travel_time(j, i) <= start_i)
+
+ 35. Also, for each real meeting i, we require the availability constraints.
+
+ 36. We need a travel time function that, given two location names, returns the travel time in minutes.
+
+ 37. We'll create a dictionary for travel times. The input gives travel times between every pair of locations. We have 11 locations (including Embarcadero). Note: the input includes travel times from every location to every other, but we might be missing some? Actually, the input has a complete set of pairs.
+
+ 38. We'll create a dictionary keyed by (from, to) that gives the travel time.
+
+ 39. Steps in code:
+
+    Precompute the travel time dictionary from the given data.
+
+    Define the list of friends (real meetings) and the virtual meeting.
+
+    Create Z3 variables for each real meeting: a boolean flag, a start time, and an end time.
+
+    For the virtual meeting, we fixed meet_virtual = True, start_virtual = 0, end_virtual = 0.
+
+    Constraints for real meetings (if meet_i is true):
+        start_i >= available_start_i
+        end_i <= available_end_i
+        end_i - start_i >= min_duration_i
+
+    For every pair of meetings (i, j) (including virtual and real, and i != j):
+        (meet_i and meet_j) -> (end_i + travel_time(i, j) <= start_j) OR (end_j + travel_time(j, i) <= start_i)
+
+    Then, we maximize the number of real meetings that are true.
+
+ 40. After the solver finds a model, we extract the start and end times for the real meetings that are held, and then we have to output the itinerary in chronological order.
+
+ 41. However, note: the solver does not assign an order, but we can sort the meetings by start time.
+
+ 42. We must be cautious: the travel time between two meetings might be symmetric or not? The given travel times are not symmetric (e.g., Embarcadero to Fisherman's Wharf is 6, but Fisherman's Wharf to Embarcadero is 8). So we must use the directed travel times.
+
+ 43. We'll create a function travel_time(loc1, loc2) that returns the time from loc1 to loc2.
+
+ 44. We'll create a list of all meetings (including virtual) with their locations.
+
+ 45. We have 11 meetings (indexed 0 to 10). The virtual meeting is index 10, and the real meetings are 0 to 9.
+
+ 46. We'll create a list of real meetings with their data.
+
+ 47. Code structure:
+
+    import z3
+
+    # Precompute travel time dictionary
+    travel_dict = {
+        ("Embarcadero", "Fisherman's Wharf"): 6,
+        ... # all given pairs
+    }
+
+    # Note: the input includes both directions for each pair, so we have to enter both.
+
+    # List of real meetings (friends) with their data in a list of tuples:
+    friends = [
+        ("Stephanie", "Fisherman's Wharf", 390, 780, 30),
+        ("Lisa", "Financial District", 105, 495, 15),
+        ... # all friends
+    ]
+
+    # Virtual meeting
+    virtual_meeting = ("Virtual", "Embarcadero", 0, 0, 0)   # but we don't use the availability for virtual, and we fix its start and end.
+
+    # Create a list of all meetings (including virtual) for the pairs constraints. The virtual meeting is the last one.
+
+    n_real = len(friends)
+    n_total = n_real + 1
+
+    # Create Z3 variables for the real meetings
+    meet = [z3.Bool(f"meet_{i}") for i in range(n_real)]
+    start = [z3.Real(f"start_{i}") for i in range(n_real)]
+    end = [z3.Real(f"end_{i}") for i in range(n_real)]
+
+    # Virtual meeting variables (fixed)
+    virtual_meet = z3.Bool("virtual_meet")
+    virtual_start = z3.Real("virtual_start")
+    virtual_end = z3.Real("virtual_end")
+
+    # Now, create a solver and add constraints.
+
+    opt = z3.Optimize()
+
+    # Fix virtual meeting
+    opt.add(virtual_meet == True)
+    opt.add(virtual_start == 0)
+    opt.add(virtual_end == 0)
+
+    # For each real meeting, if meet_i is true, then constraints on start_i and end_i
+    for i, (name, loc, avail_start, avail_end, min_dur) in enumerate(friends):
+        opt.add(z3.Implies(meet[i], start[i] >= avail_start))
+        opt.add(z3.Implies(meet[i], end[i] <= avail_end))
+        opt.add(z3.Implies(meet[i], end[i] - start[i] >= min_dur))
+
+    # Now, for every pair of meetings (including virtual and real), we add the disjunctive constraint.
+    # We have to consider all pairs (i, j) with i != j.
+
+    # First, let's create a list of all meetings (including virtual) for easy indexing.
+    all_meetings = friends + [virtual_meeting]
+    # But note: the virtual meeting is at index n_real, and we have variables for virtual meeting.
+
+    # We'll create a list of the meet variables for all meetings (including virtual)
+    all_meet = meet + [virtual_meet]
+    all_start = start + [virtual_start]
+    all_end = end + [virtual_end]
+
+    # Now, for i in range(n_total):
+    #   for j in range(i+1, n_total):
+    for i in range(n_total):
+        for j in range(i+1, n_total):
+            # Get the locations for meeting i and j
+            loc_i = all_meetings[i][1]
+            loc_j = all_meetings[j][1]
+            travel_ij = travel_dict[(loc_i, loc_j)]
+            travel_ji = travel_dict[(loc_j, loc_i)]
+
+            # The constraint: (meet_i and meet_j) -> (end_i + travel_ij <= start_j) OR (end_j + travel_ji <= start_i)
+            opt.add(z3.Implies(z3.And(all_meet[i], all_meet[j]),
+                               z3.Or(all_end[i] + travel_ij <= all_start[j],
+                                     all_end[j] + travel_ji <= all_start[i])))
+
+    # Now, we maximize the number of real meetings
+    opt.maximize(z3.Sum([z3.If(meet[i], 1, 0) for i in range(n_real)]))
+
+    # Check and get the model
+    if opt.check() == z3.sat:
+        model = opt.model()
+        # Extract the meetings that are held and their times
+        itinerary = []
+        for i in range(n_real):
+            if z3.is_true(model.eval(meet[i])):
+                s = model.eval(start[i])
+                e = model.eval(end[i])
+                # Convert to minutes (as integers) and then to time string
+                s_min = s.as_string()   # This might be a fraction, but we assume the solver gives integers?
+                e_min = e.as_string()
+                # We'll convert to float and then to integer minutes, then to time of day from 9:00 base.
+                # But note: the model might return rationals. We can convert to float and then to integer if needed.
+                # Alternatively, we can use as_fraction() but let's assume they are integers.
+
+                # Actually, we can use:
+                s_val = float(s_min)
+                e_val = float(e_min)
+                # Convert to time string: 9:00 + s_val minutes
+                base_minutes = 9*60
+                start_total_minutes = base_minutes + s_val
+                end_total_minutes = base_minutes + e_val
+
+                start_hour = int(start_total_minutes // 60)
+                start_minute = int(start_total_minutes % 60)
+                end_hour = int(end_total_minutes // 60)
+                end_minute = int(end_total_minutes % 60)
+
+                time_str_start = f"{start_hour}:{start_minute:02d}"
+                time_str_end = f"{end_hour}:{end_minute:02d}"
+
+                itinerary.append({
+                    "action": "meet",
+                    "location": friends[i][1],
+                    "person": friends[i][0],
+                    "start_time": time_str_start,
+                    "end_time": time_str_end
+                })
+
+        # Sort itinerary by start_time
+        itinerary.sort(key=lambda x: x['start_time'])
+
+        # Output as JSON
+        import json
+        result = {"itinerary": itinerary}
+        print(json.dumps(result, indent=2))
+
+    else:
+        print('{"itinerary": []}')
+
+ 48. However, note: the travel_dict must be complete for every pair of locations in our list. We have 11 locations, so we need to have every pair.
+
+ 49. We must fill the travel_dict with all the given travel times.
+
+ 50. Let's list all the locations (including Embarcadero) that appear in the friends and the virtual meeting:
+        Embarcadero (virtual)
+        Fisherman's Wharf
+        Financial District
+        Russian Hill
+        Marina District
+        Richmond District
+        Pacific Heights
+        Haight-Ashbury
+        Presidio
+        Nob Hill
+        The Castro
+
+ 51. We have to make sure we have every pair in the travel_dict. The input seems to have every pair.
+
+ 52. We'll create the travel_dict by parsing the given travel times. Actually, we'll just hardcode the dictionary.
+
+ 53. Note: the input has some travel times that are not symmetric, so we must enter both (from A to B) and (from B to A).
+
+ 54. We'll create the travel_dict as:
+
+        travel_dict = {
+            ("Embarcadero", "Fisherman's Wharf"): 6,
+            ("Embarcadero", "Financial District"): 5,
+            ...,
+            ("Fisherman's Wharf", "Embarcadero"): 8,
+            ...
+        }
+
+ 55. We have to be careful: the input has travel times for every pair in both directions.
+
+ 56. Given the long list, we'll write the dictionary by copying the input.
+
+ 57. Let's code accordingly.
+
+ 58. Note: the problem says "Travel distances (in minutes):" and then lists each pair.
+
+ 59. We'll now write the code.
+
+ 60. One more note: the virtual meeting is fixed and we don't want to output it in the itinerary.
+
+ 61. We are only outputting the real meetings that are held.
+
+ 62. Let's code.
+
+ 63. We assume that the travel times are integers and the solver will handle the real arithmetic.
+
+ 64. We'll use the following for the friends list with availability in minutes from 9:00:
+
+    friends = [
+        ("Stephanie", "Fisherman's Wharf", 390, 780, 30),
+        ("Lisa", "Financial District", 105, 495, 15),
+        ("Melissa", "Russian Hill", 480, 765, 120),
+        ("Betty", "Marina District", 105, 315, 60),
+        ("Sarah", "Richmond District", 435, 630, 105),
+        ("Daniel", "Pacific Heights", 570, 765, 60),
+        ("Joshua", "Haight-Ashbury", 0, 390, 15),
+        ("Joseph", "Presidio", -120, 240, 45),
+        ("Andrew", "Nob Hill", 645, 780, 105),
+        ("John", "The Castro", 255, 645, 45)
+    ]
+
+ 65. Note: Joseph starts at 7:00AM which is -120 minutes from 9:00, and ends at 1:00PM which is 240 minutes from 9:00.
+
+ 66. We must ensure that if we meet Joseph, the start time must be at least -120, but we cannot start before 0? Actually, we are starting at Embarcadero at 9:00 (time 0), so we cannot meet Joseph before 9:00? But Joseph is available from 7:00AM to 1:00PM. We can only meet him after 9:00. So we must adjust the availability for Joseph to start at 0 (9:00) if we are to meet him, because we cannot time travel. So we should change Joseph's available_start to max(-120, 0) = 0? But note: the constraint we set is start_i >= available_start_i. So if we set available_start_i to -120, then the solver might assign a negative start time, which is not possible because we start at 9:00 (0). So we must adjust Joseph's available_start to 0.
+
+ 67. Similarly, for Joshua: available_start is 0 (9:00) and available_end is 390 (15:30). But note: we start at 9:00, so we can meet Joshua at 9:00 only if we are at Haight-Ashbury at 9:00, but we start at Embarcadero. The travel time from Embarcadero to Haight-Ashbury is 21 minutes, so we cannot meet Joshua before 9:21. So the constraint start_i >= available_start_i (0) is too weak. We must account for travel time. But note: we have the virtual meeting constraint that ensures start_i >= travel_time(Embarcadero, location_i). So for Joshua, the start_i will be at least 21, which is greater than 0. So we don't need to adjust the available_start for Joshua.
+
+ 68. For Joseph: the available_start is -120, but we cannot start before 0. So we should adjust Joseph's available_start to 0 because we cannot meet before 9:00. Otherwise, the solver might assign a negative start time, which is not allowed.
+
+ 69. So we'll adjust Joseph's available_start to 0.
+
+ 70. Similarly, for other friends, we don't have this issue because their available_start is after 9:00.
+
+ 71. Let's adjust Joseph's data: (Joseph, Presidio, 0, 240, 45)
+
+ 72. Now, code accordingly.
+
+ 73. We'll now write the code.
+
+ 74. Note: The problem says "You arrive at Embarcadero at 9:00AM", so we cannot meet anyone before 9:00.
+
+ 75. We'll adjust Joseph's available_start to 0.
+
+ 76. Let's code the travel_dict and the friends list.
+
+ 77. We have to be cautious: the travel_dict must include every pair of locations that appear in the list of meetings (including virtual). We have 11 locations.
+
+ 78. We'll now write the code.
+
+ 79. Due to the length of the travel_dict, we'll write a condensed version of the travel_dict with all the pairs.
+
+ 80. We'll use a multi-line string and then parse it? Alternatively, we can write it explicitly.
+
+ 81. Given the character limit, we'll write the travel_dict with all the pairs as per the input.
+
+ 82. We note that the input has all the pairs, so we can copy-paste.
+
+ 83. Let's code.
+
+ 84. We'll use a function to create the travel_dict.
+
+ 85. We'll now write the code.
+
+ Note: The code might be long due to the travel_dict, but we have to include it.
+
+ Let's begin.

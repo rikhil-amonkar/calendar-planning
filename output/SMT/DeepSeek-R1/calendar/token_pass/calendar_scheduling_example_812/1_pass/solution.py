@@ -1,0 +1,87 @@
+from z3 import *
+
+def main():
+    # Define the days
+    days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday']
+    
+    # Convert time to minutes since 9:00 (540 minutes)
+    def time_to_minutes(t):
+        hours, minutes = map(int, t.split(':'))
+        return hours * 60 + minutes - 540  # Offset so 9:00 is 0
+
+    # Convert minutes back to time string
+    def minutes_to_time(m):
+        total_minutes = m + 540
+        hours = total_minutes // 60
+        minutes = total_minutes % 60
+        return f"{hours:02d}:{minutes:02d}"
+
+    # Meeting duration in minutes
+    meeting_duration = 30
+    
+    # Work hours: 9:00 to 17:00 (540 to 1020 minutes)
+    work_start = 0  # 9:00 in our offset (0 = 9:00)
+    work_end = 8 * 60  # 17:00 is 8 hours after 9:00 (480 minutes) -> 480 = 17:00 in offset
+
+    # Busy intervals for Mary and Alexis per day (in minutes from 9:00)
+    mary_busy = [
+        [],  # Monday
+        [(time_to_minutes('10:00'), time_to_minutes('10:30')), (time_to_minutes('15:30'), time_to_minutes('16:00'))],  # Tuesday
+        [(time_to_minutes('9:30'), time_to_minutes('10:00')), (time_to_minutes('15:00'), time_to_minutes('15:30'))],  # Wednesday
+        [(time_to_minutes('9:00'), time_to_minutes('10:00')), (time_to_minutes('10:30'), time_to_minutes('11:30'))]   # Thursday
+    ]
+    
+    alexis_busy = [
+        [(time_to_minutes('9:00'), time_to_minutes('10:00')), (time_to_minutes('10:30'), time_to_minutes('12:00')), (time_to_minutes('12:30'), time_to_minutes('16:30'))],  # Monday
+        [(time_to_minutes('9:00'), time_to_minutes('10:00')), (time_to_minutes('10:30'), time_to_minutes('11:30')), (time_to_minutes('12:00'), time_to_minutes('15:30')), (time_to_minutes('16:00'), work_end)],  # Tuesday
+        [(time_to_minutes('9:00'), time_to_minutes('11:00')), (time_to_minutes('11:30'), work_end)],  # Wednesday
+        [(time_to_minutes('10:00'), time_to_minutes('12:00')), (time_to_minutes('14:00'), time_to_minutes('14:30')), (time_to_minutes('15:30'), time_to_minutes('16:00')), (time_to_minutes('16:30'), work_end)]  # Thursday
+    ]
+
+    # Z3 variables
+    day = Int('day')
+    start_time = Int('start_time')
+    
+    s = Optimize()
+    
+    # Constraints for day and start time
+    s.add(day >= 0, day <= 3)
+    s.add(start_time >= work_start, start_time <= work_end - meeting_duration)
+    
+    # Function to add busy interval constraints
+    def add_busy_constraints(busy_list, person_day):
+        constraints = []
+        for interval in busy_list:
+            # Meeting must not overlap with busy interval
+            constraints.append(Or(
+                start_time + meeting_duration <= interval[0],
+                start_time >= interval[1]
+            ))
+        return And(constraints) if constraints else True
+
+    # Add constraints for each day
+    for d in range(4):
+        # Mary's constraints for day d
+        mary_constraint = add_busy_constraints(mary_busy[d], d)
+        # Alexis' constraints for day d
+        alexis_constraint = add_busy_constraints(alexis_busy[d], d)
+        
+        # If day is d, apply both constraints
+        s.add(Implies(day == d, And(mary_constraint, alexis_constraint)))
+    
+    # Find earliest availability
+    s.minimize(day * 10000 + start_time)
+    
+    # Check and output solution
+    if s.check() == sat:
+        m = s.model()
+        d_val = m[day].as_long()
+        s_val = m[start_time].as_long()
+        start_str = minutes_to_time(s_val)
+        end_str = minutes_to_time(s_val + meeting_duration)
+        print(f"{days[d_val]} {start_str}:{end_str}")
+    else:
+        print("No solution found")
+
+if __name__ == "__main__":
+    main()

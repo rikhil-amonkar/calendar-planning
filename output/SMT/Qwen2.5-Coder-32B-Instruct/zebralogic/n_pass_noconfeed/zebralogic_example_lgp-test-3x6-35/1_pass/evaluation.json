@@ -1,0 +1,79 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\"solution\": {\"header\": [\"House\", \"Name\", \"Vacation\", \"Height\", \"Flower\", \"HairColor\", \"Education\"], \"rows\": [[\"1\", \"Eric\", \"beach\", \"very short\", \"lilies\", \"brown\", \"bachelor\"], [\"2\", \"Peter\", \"mountain\", \"average\", \"carnations\", \"black\", \"associate\"], [\"3\", \"Arnold\", \"city\", \"short\", \"daffodils\", \"blonde\", \"high school\"]]}}",
+    "pred": [
+        {
+            "House": "1",
+            "Name": "Eric",
+            "Vacation": "beach",
+            "Height": "very short",
+            "Flower": "lilies",
+            "HairColor": "brown",
+            "Education": "bachelor"
+        },
+        {
+            "House": "2",
+            "Name": "Peter",
+            "Vacation": "mountain",
+            "Height": "average",
+            "Flower": "carnations",
+            "HairColor": "black",
+            "Education": "associate"
+        },
+        {
+            "House": "3",
+            "Name": "Arnold",
+            "Vacation": "city",
+            "Height": "short",
+            "Flower": "daffodils",
+            "HairColor": "blonde",
+            "Education": "high school"
+        }
+    ],
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Eric",
+            "Vacation": "beach",
+            "Height": "very short",
+            "Flower": "lilies",
+            "HairColor": "brown",
+            "Education": "bachelor"
+        },
+        {
+            "House": "2",
+            "Name": "Peter",
+            "Vacation": "mountain",
+            "Height": "average",
+            "Flower": "carnations",
+            "HairColor": "black",
+            "Education": "associate"
+        },
+        {
+            "House": "3",
+            "Name": "Arnold",
+            "Vacation": "city",
+            "Height": "short",
+            "Flower": "daffodils",
+            "HairColor": "blonde",
+            "Education": "high school"
+        }
+    ],
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 31.27382230758667,
+        "execution_time": 0.08199000358581543,
+        "constraint_eval_time": 6.222724914550781e-05,
+        "pred_extract_time": 2.4765706062316895,
+        "gold_extract_time": 8.344650268554688e-06,
+        "total_tokens": 2967,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\n\n# Define the variables\nnames = ['Eric', 'Arnold', 'Peter']\nvacations = ['mountain', 'city', 'beach']\nheights = ['very short', 'average', 'short']\nflowers = ['carnations', 'daffodils', 'lilies']\nhair_colors = ['brown', 'black', 'blonde']\neducations = ['associate', 'bachelor', 'high school']\n\n# Create dictionaries to hold the Z3 variables\nname_vars = {name: Int(f'{name}_house') for name in names}\nvacation_vars = {vacation: Int(f'{vacation}_house') for vacation in vacations}\nheight_vars = {height: Int(f'{height}_house') for height in heights}\nflower_vars = {flower: Int(f'{flower}_house') for flower in flowers}\nhair_color_vars = {hair_color: Int(f'{hair_color}_house') for hair_color in hair_colors}\neducation_vars = {education: Int(f'{education}_house') for education in educations}\n\n# Create a solver instance\nsolver = Solver()\n\n# Add constraints for each variable to be between 1 and 3\nfor var_dict in [name_vars, vacation_vars, height_vars, flower_vars, hair_color_vars, education_vars]:\n    for var in var_dict.values():\n        solver.add(And(var >= 1, var <= 3))\n\n# Add constraints for all variables to be distinct\nsolver.add(Distinct(list(name_vars.values())))\nsolver.add(Distinct(list(vacation_vars.values())))\nsolver.add(Distinct(list(height_vars.values())))\nsolver.add(Distinct(list(flower_vars.values())))\nsolver.add(Distinct(list(hair_color_vars.values())))\nsolver.add(Distinct(list(education_vars.values())))\n\n# Add specific clues as constraints\nsolver.add(name_vars['Peter'] == height_vars['average'])\nsolver.add(flower_vars['daffodils'] == name_vars['Arnold'])\nsolver.add(height_vars['very short'] != 2)\nsolver.add(vacation_vars['beach'] == 1)\nsolver.add(education_vars['high school'] == 3)\nsolver.add(height_vars['short'] > height_vars['very short'])\nsolver.add(flower_vars['lilies'] == name_vars['Eric'])\nsolver.add(flower_vars['lilies'] == education_vars['bachelor'])\nsolver.add(vacation_vars['city'] > name_vars['Peter'])\nsolver.add(hair_color_vars['blonde'] == 3)\nsolver.add(vacation_vars['beach'] == hair_color_vars['brown'])\n\n# Check if the problem is solvable\nif solver.check() == sat:\n    model = solver.model()\n    \n    # Extract the solution\n    solution = {\n        \"solution\": {\n            \"header\": [\"House\", \"Name\", \"Vacation\", \"Height\", \"Flower\", \"HairColor\", \"Education\"],\n            \"rows\": []\n        }\n    }\n    \n    for house in range(1, 4):\n        row = [str(house)]\n        for attr, var_dict in zip([\"Name\", \"Vacation\", \"Height\", \"Flower\", \"HairColor\", \"Education\"], \n                                 [name_vars, vacation_vars, height_vars, flower_vars, hair_color_vars, education_vars]):\n            for key, value in var_dict.items():\n                if model.evaluate(value) == house:\n                    row.append(key)\n                    break\n        solution[\"solution\"][\"rows\"].append(row)\n    \n    import json\n    print(json.dumps(solution))\nelse:\n    print(\"No solution found\")"
+}

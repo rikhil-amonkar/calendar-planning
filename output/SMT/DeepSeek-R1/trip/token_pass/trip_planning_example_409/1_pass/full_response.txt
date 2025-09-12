@@ -1,0 +1,110 @@
+```python
+import json
+from z3 import *
+
+def main():
+    # Cities and their indices
+    cities = ['Zurich', 'Helsinki', 'Hamburg', 'Bucharest', 'Split']
+    n_days = 12
+    n_cities = len(cities)
+    
+    # Connectivity matrix: 5x5, symmetric
+    connected = [[False] * n_cities for _ in range(n_cities)]
+    # Set self-connections
+    for i in range(n_cities):
+        connected[i][i] = True
+        
+    # Define direct flight connections
+    edges = [
+        (0, 1), (0, 2), (0, 3), (0, 4),
+        (1, 2), (1, 4),
+        (2, 3), (2, 4),
+        (3, 2), # Hamburg and Bucharest
+        (4, 1), (4, 2) # Split connected to Helsinki and Hamburg
+    ]
+    for u, v in edges:
+        connected[u][v] = True
+        connected[v][u] = True
+
+    # Initialize Z3 solver
+    solver = Solver()
+    
+    # Create a 2D array of Z3 booleans: present[day][city]
+    present = [[Bool(f"day_{i}_city_{c}") for c in range(n_cities)] for i in range(n_days)]
+    
+    # Constraints for each day
+    for i in range(n_days):
+        # At least one city per day
+        solver.add(Or([present[i][c] for c in range(n_cities)]))
+        # At most two cities per day
+        city_count = Sum([If(present[i][c], 1, 0) for c in range(n_cities)])
+        solver.add(city_count <= 2)
+        
+        # If two cities are present, they must be connected
+        for c1 in range(n_cities):
+            for c2 in range(c1 + 1, n_cities):
+                both_present = And(present[i][c1], present[i][c2])
+                solver.add(Implies(both_present, connected[c1][c2]))
+    
+    # Consecutive days must share at least one city
+    for i in range(n_days - 1):
+        solver.add(Or([And(present[i][c], present[i+1][c]) for c in range(n_cities)]))
+    
+    # Total days per city constraints
+    city_days = [2, 2, 2, 2, 7]  # Zurich, Helsinki, Hamburg, Bucharest, Split
+    for c in range(n_cities):
+        total = Sum([If(present[i][c], 1, 0) for i in range(n_days)])
+        solver.add(total == city_days[c])
+    
+    # Event constraints
+    # Wedding in Zurich between day 1 and day 3 (days 0-2 in 0-indexed)
+    solver.add(Or([present[i][0] for i in range(3)]))
+    # Conference in Split on day 4 and day 10 (days 3 and 9 in 0-indexed)
+    solver.add(present[3][4])
+    solver.add(present[9][4])
+    
+    # Check feasibility
+    if solver.check() == sat:
+        model = solver.model()
+        # Extract the presence for each day and city
+        itinerary_data = []
+        for c in range(n_cities):
+            days = []
+            for i in range(n_days):
+                if is_true(model.evaluate(present[i][c])):
+                    days.append(i + 1)  # Convert to 1-indexed day
+            # Group consecutive days
+            if days:
+                segments = []
+                start = days[0]
+                prev = days[0]
+                for day in days[1:]:
+                    if day == prev + 1:
+                        prev = day
+                    else:
+                        segments.append((start, prev))
+                        start = day
+                        prev = day
+                segments.append((start, prev))
+                
+                for seg in segments:
+                    start_day, end_day = seg
+                    if start_day == end_day:
+                        day_range = f"Day {start_day}"
+                    else:
+                        day_range = f"Day {start_day}-{end_day}"
+                    itinerary_data.append({
+                        "day_range": day_range,
+                        "place": cities[c]
+                    })
+        
+        # Sort by the start day of each segment
+        itinerary_data.sort(key=lambda x: int(x['day_range'].split(' ')[1].split('-')[0]))
+        result = {"itinerary": itinerary_data}
+        print(json.dumps(result, indent=2))
+    else:
+        print('{"itinerary": []}')
+
+if __name__ == "__main__":
+    main()
+```

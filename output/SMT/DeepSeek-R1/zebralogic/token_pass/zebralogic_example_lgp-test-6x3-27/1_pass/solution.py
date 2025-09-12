@@ -1,0 +1,129 @@
+import json
+from z3 import *
+
+def main():
+    # Create solver
+    s = Solver()
+    
+    # Define enums for attributes
+    Name = Datatype('Name')
+    for n in ['Alice', 'Arnold', 'Eric', 'Peter', 'Bob', 'Carol']:
+        Name.declare(n)
+    Name = Name.create()
+    
+    Occupation = Datatype('Occupation')
+    for o in ['engineer', 'artist', 'doctor', 'teacher', 'nurse', 'lawyer']:
+        Occupation.declare(o)
+    Occupation = Occupation.create()
+    
+    CarModel = Datatype('CarModel')
+    for c in ['chevrolet_silverado', 'ford_f150', 'honda_civic', 'toyota_camry', 'bmw_3_series', 'tesla_model_3']:
+        CarModel.declare(c)
+    CarModel = CarModel.create()
+    
+    # Create variables for each house
+    names = [Const(f'name_{i}', Name) for i in range(1, 7)]
+    occupations = [Const(f'occupation_{i}', Occupation) for i in range(1, 7)]
+    cars = [Const(f'car_{i}', CarModel) for i in range(1, 7)]
+    
+    # Add uniqueness constraints
+    s.add(Distinct(names))
+    s.add(Distinct(occupations))
+    s.add(Distinct(cars))
+    
+    # Clue 1: Ford F-150 in fifth house
+    s.add(cars[4] == CarModel.ford_f150)
+    
+    # Clue 2: Chevrolet Silverado not in second house
+    s.add(cars[1] != CarModel.chevrolet_silverado)
+    
+    # Clue 3: Honda Civic and Peter are adjacent
+    for i in range(5):
+        s.add(Implies(cars[i] == CarModel.honda_civic, 
+                      Or(names[i+1] == Name.Peter, 
+                         If(i > 0, names[i-1] == Name.Peter, False))))
+    for i in range(1, 6):
+        s.add(Implies(names[i] == Name.Peter,
+                      Or(cars[i-1] == CarModel.honda_civic,
+                         If(i < 5, cars[i+1] == CarModel.honda_civic, False))))
+    
+    # Clue 4: Lawyer not in fifth house
+    s.add(occupations[4] != Occupation.lawyer)
+    
+    # Clue 5: Nurse directly left of artist
+    s.add(Or([And(occupations[i] == Occupation.nurse, occupations[i+1] == Occupation.artist) for i in range(5)]))
+    
+    # Clue 6: Carol right of Eric
+    for i in range(6):
+        for j in range(i):
+            s.add(Implies(names[j] == Name.Eric, names[i] != Name.Carol))
+    
+    # Clue 7: Doctor is Eric
+    for i in range(6):
+        s.add(Implies(occupations[i] == Occupation.doctor, names[i] == Name.Eric))
+    
+    # Clue 8: Teacher left of nurse
+    nurse_indices = [i for i in range(6) if occupations[i] == Occupation.nurse]
+    for i in range(6):
+        s.add(Implies(occupations[i] == Occupation.teacher, 
+                      Or([i < j for j in nurse_indices])))
+    
+    # Clue 9: Carol not in sixth house
+    s.add(names[5] != Name.Carol)
+    
+    # Clue 10: Engineer is Bob
+    for i in range(6):
+        s.add(Implies(occupations[i] == Occupation.engineer, names[i] == Name.Bob))
+    
+    # Clue 11: Toyota Camry owner is nurse
+    for i in range(6):
+        s.add(cars[i] == CarModel.toyota_camry == (occupations[i] == Occupation.nurse))
+    
+    # Clue 12: One house between Peter and lawyer
+    for i in range(6):
+        for j in range(6):
+            if abs(i - j) == 2:
+                s.add(Implies(names[i] == Name.Peter, occupations[j] == Occupation.lawyer))
+                s.add(Implies(occupations[j] == Occupation.lawyer, names[i] == Name.Peter))
+    
+    # Clue 13: One house between Tesla Model 3 and Bob
+    for i in range(6):
+        for j in range(6):
+            if abs(i - j) == 2:
+                s.add(Implies(cars[i] == CarModel.tesla_model_3, names[j] == Name.Bob))
+                s.add(Implies(names[j] == Name.Bob, cars[i] == CarModel.tesla_model_3))
+    
+    # Clue 14: Arnold is artist
+    for i in range(6):
+        s.add(Implies(names[i] == Name.Arnold, occupations[i] == Occupation.artist))
+        s.add(Implies(occupations[i] == Occupation.artist, names[i] == Name.Arnold))
+    
+    # Solve the constraints
+    if s.check() == sat:
+        m = s.model()
+        rows = []
+        for i in range(6):
+            house = str(i + 1)
+            name_val = m.eval(names[i])
+            occupation_val = m.eval(occupations[i])
+            car_val = m.eval(cars[i])
+            
+            # Convert to string and replace underscores with spaces for car models
+            name_str = str(name_val)
+            occupation_str = str(occupation_val)
+            car_str = str(car_val).replace('_', ' ')
+            
+            rows.append([house, name_str, occupation_str, car_str])
+        
+        solution = {
+            "solution": {
+                "header": ["House", "Name", "Occupation", "CarModel"],
+                "rows": rows
+            }
+        }
+        print(json.dumps(solution, indent=2))
+    else:
+        print("No solution found")
+
+if __name__ == "__main__":
+    main()

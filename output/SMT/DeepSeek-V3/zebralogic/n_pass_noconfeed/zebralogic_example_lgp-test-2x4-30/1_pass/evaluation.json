@@ -1,0 +1,53 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"solution\": {\n    \"header\": [\n      \"House\",\n      \"Name\",\n      \"HairColor\",\n      \"FavoriteSport\",\n      \"Smoothie\"\n    ],\n    \"rows\": [\n      [\n        \"1\",\n        \"Arnold\",\n        \"brown\",\n        \"basketball\",\n        \"desert\"\n      ],\n      [\n        \"2\",\n        \"Eric\",\n        \"black\",\n        \"soccer\",\n        \"cherry\"\n      ]\n    ]\n  }\n}",
+    "pred": [
+        {
+            "House": "1",
+            "Name": "Arnold",
+            "HairColor": "brown",
+            "FavoriteSport": "basketball",
+            "Smoothie": "desert"
+        },
+        {
+            "House": "2",
+            "Name": "Eric",
+            "HairColor": "black",
+            "FavoriteSport": "soccer",
+            "Smoothie": "cherry"
+        }
+    ],
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Arnold",
+            "HairColor": "brown",
+            "FavoriteSport": "basketball",
+            "Smoothie": "desert"
+        },
+        {
+            "House": "2",
+            "Name": "Eric",
+            "HairColor": "black",
+            "FavoriteSport": "soccer",
+            "Smoothie": "cherry"
+        }
+    ],
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 50.758686780929565,
+        "execution_time": 0.08080005645751953,
+        "constraint_eval_time": 4.935264587402344e-05,
+        "pred_extract_time": 0.9873533248901367,
+        "gold_extract_time": 7.152557373046875e-06,
+        "total_tokens": 903,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import z3\nimport json\n\ndef main():\n    solver = z3.Solver()\n    \n    # Define the houses\n    houses = [1, 2]\n    \n    # Define the attributes\n    names = ['Arnold', 'Eric']\n    hair_colors = ['black', 'brown']\n    sports = ['basketball', 'soccer']\n    smoothies = ['desert', 'cherry']\n    \n    # Create variables for each attribute per house\n    name_vars = {h: z3.Int(f'name_{h}') for h in houses}\n    hair_vars = {h: z3.Int(f'hair_{h}') for h in houses}\n    sport_vars = {h: z3.Int(f'sport_{h}') for h in houses}\n    smoothie_vars = {h: z3.Int(f'smoothie_{h}') for h in houses}\n    \n    # Define the domain for each variable (0-indexed)\n    for h in houses:\n        solver.add(z3.And(name_vars[h] >= 0, name_vars[h] < len(names)))\n        solver.add(z3.And(hair_vars[h] >= 0, hair_vars[h] < len(hair_colors)))\n        solver.add(z3.And(sport_vars[h] >= 0, sport_vars[h] < len(sports)))\n        solver.add(z3.And(smoothie_vars[h] >= 0, smoothie_vars[h] < len(smoothies)))\n    \n    # All attributes must be unique per category\n    solver.add(z3.Distinct([name_vars[h] for h in houses]))\n    solver.add(z3.Distinct([hair_vars[h] for h in houses]))\n    solver.add(z3.Distinct([sport_vars[h] for h in houses]))\n    solver.add(z3.Distinct([smoothie_vars[h] for h in houses]))\n    \n    # Clue 1: The Desert smoothie lover is Arnold.\n    # Find Arnold's house and set smoothie to desert\n    for h in houses:\n        solver.add(z3.Implies(name_vars[h] == names.index('Arnold'), \n                             smoothie_vars[h] == smoothies.index('desert')))\n    \n    # Clue 2: The person who has brown hair is the person who loves basketball.\n    for h in houses:\n        solver.add(z3.Implies(hair_vars[h] == hair_colors.index('brown'),\n                             sport_vars[h] == sports.index('basketball')))\n    \n    # Clue 3: Arnold is somewhere to the left of the person who has black hair.\n    # Find Arnold's house and black hair house, ensure Arnold's house < black hair house\n    arnold_house = None\n    black_hair_house = None\n    \n    # Create variables to track positions\n    arnold_pos = z3.Int('arnold_pos')\n    black_hair_pos = z3.Int('black_hair_pos')\n    \n    # Constrain positions\n    for h in houses:\n        solver.add(z3.Implies(name_vars[h] == names.index('Arnold'), arnold_pos == h))\n        solver.add(z3.Implies(hair_vars[h] == hair_colors.index('black'), black_hair_pos == h))\n    \n    solver.add(arnold_pos < black_hair_pos)\n    \n    # Check if solution exists\n    if solver.check() == z3.sat:\n        model = solver.model()\n        \n        # Prepare solution data\n        rows = []\n        for h in houses:\n            name_idx = model.evaluate(name_vars[h]).as_long()\n            hair_idx = model.evaluate(hair_vars[h]).as_long()\n            sport_idx = model.evaluate(sport_vars[h]).as_long()\n            smoothie_idx = model.evaluate(smoothie_vars[h]).as_long()\n            \n            row = [\n                str(h),\n                names[name_idx],\n                hair_colors[hair_idx],\n                sports[sport_idx],\n                smoothies[smoothie_idx]\n            ]\n            rows.append(row)\n        \n        # Create JSON output\n        solution = {\n            \"solution\": {\n                \"header\": [\"House\", \"Name\", \"HairColor\", \"FavoriteSport\", \"Smoothie\"],\n                \"rows\": rows\n            }\n        }\n        \n        print(json.dumps(solution, indent=2))\n    else:\n        print('{\"error\": \"No solution found\"}')\n\nif __name__ == \"__main__\":\n    main()"
+}

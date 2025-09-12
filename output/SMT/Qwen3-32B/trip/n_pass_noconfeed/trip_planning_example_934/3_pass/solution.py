@@ -1,0 +1,1 @@
+durations[perm[j]] if perm[j] < 7 else 0

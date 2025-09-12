@@ -1,0 +1,91 @@
+import itertools
+from z3 import *
+
+def main():
+    # Convert time to minutes from 9:00 AM
+    travel_times = {
+        'Bayview': {'Embarcadero': 19, 'Richmond District': 25, 'Fisherman\'s Wharf': 25},
+        'Embarcadero': {'Bayview': 21, 'Richmond District': 21, 'Fisherman\'s Wharf': 6},
+        'Richmond District': {'Bayview': 26, 'Embarcadero': 19, 'Fisherman\'s Wharf': 18},
+        'Fisherman\'s Wharf': {'Bayview': 26, 'Embarcadero': 8, 'Richmond District': 18}
+    }
+    
+    friends = [
+        {'name': 'Jessica', 'location': 'Embarcadero', 'available_start': 465, 'available_end': 600, 'min_duration': 30},
+        {'name': 'Sandra', 'location': 'Richmond District', 'available_start': 570, 'available_end': 765, 'min_duration': 120},
+        {'name': 'Jason', 'location': 'Fisherman\'s Wharf', 'available_start': 420, 'available_end': 465, 'min_duration': 30}
+    ]
+    
+    start_location = 'Bayview'
+    
+    def minutes_to_time(minutes):
+        hours = minutes // 60
+        mins = minutes % 60
+        return f"{hours}:{mins:02d}"
+    
+    best_schedule = None
+    best_count = 0
+    
+    for count in [3, 2, 1]:
+        if best_schedule is not None:
+            break
+        for subset in itertools.combinations(range(len(friends)), count):
+            if best_schedule is not None:
+                break
+            for perm in itertools.permutations(subset):
+                solver = Solver()
+                start_vars = [Real(f'start_{i}') for i in perm]
+                end_vars = [Real(f'end_{i}') for i in perm]
+                
+                constraints = []
+                for i, idx in enumerate(perm):
+                    friend = friends[idx]
+                    constraints.append(start_vars[i] >= friend['available_start'])
+                    constraints.append(end_vars[i] == start_vars[i] + friend['min_duration'])
+                    constraints.append(end_vars[i] <= friend['available_end'])
+                
+                for i in range(len(perm)):
+                    if i == 0:
+                        from_loc = start_location
+                        to_loc = friends[perm[i]]['location']
+                        travel_time = travel_times[from_loc][to_loc]
+                        constraints.append(start_vars[i] >= travel_time)
+                    else:
+                        from_loc = friends[perm[i-1]]['location']
+                        to_loc = friends[perm[i]]['location']
+                        travel_time = travel_times[from_loc][to_loc]
+                        constraints.append(start_vars[i] >= end_vars[i-1] + travel_time)
+                
+                solver.add(constraints)
+                if solver.check() == sat:
+                    model = solver.model()
+                    schedule = []
+                    for i, idx in enumerate(perm):
+                        friend = friends[idx]
+                        start_val = model.eval(start_vars[i])
+                        if is_algebraic_value(start_val):
+                            start_minutes = int(start_val.as_decimal(0).replace('?','0'))
+                        else:
+                            start_minutes = int(str(start_val))
+                        end_minutes = start_minutes + friend['min_duration']
+                        schedule.append({
+                            'action': 'meet',
+                            'location': friend['location'],
+                            'person': friend['name'],
+                            'start_time': minutes_to_time(start_minutes),
+                            'end_time': minutes_to_time(end_minutes)
+                        })
+                    best_schedule = schedule
+                    best_count = count
+                    break
+                    
+    if best_schedule is None:
+        result = {"itinerary": []}
+    else:
+        result = {"itinerary": best_schedule}
+        
+    import json
+    print(json.dumps(result, indent=2))
+
+if __name__ == '__main__':
+    main()

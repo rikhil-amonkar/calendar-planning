@@ -1,0 +1,48 @@
+{
+    "has_execution_error": true,
+    "has_no_plan": false,
+    "execution_output": null,
+    "pred": null,
+    "gold": {
+        "itinerary": [
+            {
+                "day_range": "Day 1-2",
+                "place": "Prague"
+            },
+            {
+                "day_range": "Day 2-5",
+                "place": "Helsinki"
+            },
+            {
+                "day_range": "Day 5-8",
+                "place": "Naples"
+            },
+            {
+                "day_range": "Day 8-10",
+                "place": "Frankfurt"
+            },
+            {
+                "day_range": "Day 10-12",
+                "place": "Lyon"
+            }
+        ]
+    },
+    "status": "Error",
+    "violated_constraint": {
+        "missing_itinerary": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 810.1457586288452,
+        "execution_time": 0.01931142807006836,
+        "constraint_eval_time": 5.9604644775390625e-06,
+        "pred_extract_time": 9.059906005859375e-06,
+        "gold_extract_time": 7.891654968261719e-05,
+        "total_tokens": 53198,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import json\nfrom z3 import *\n\n# Define order variables for the 5 cities\no0, o1, o2, o3, o4 = Ints('o0 o1 o2 o3 o4')\norder = [o0, o1, o2, o3, o4]\n\n# Allowed direct flights between cities (as city indices)\nallowed_flights = [\n    (0, 1), (1, 0),  # Prague and Lyon\n    (0, 2), (2, 0),  # Prague and Frankfurt\n    (2, 1), (1, 2),  # Frankfurt and Lyon\n    (3, 4), (4, 3),  # Helsinki and Naples\n    (3, 2), (2, 3),  # Helsinki and Frankfurt\n    (4, 2), (2, 4),  # Naples and Frankfurt\n    (0, 3), (3, 0)   # Prague and Helsinki\n]\n\n# Create Z3 solver instance\nsolver = Solver()\n\n# Constraint: All cities must be unique (each city is visited once)\nsolver.add(Distinct(order))\n\n# Constraint: First city is Prague (0)\nsolver.add(o0 == 0)\n\n# Constraint: Second city is Helsinki (3) to attend the show from day 2 to day 5\nsolver.add(o1 == 3)\n\n# Constraint: All consecutive city transitions must be via direct flights\nfor i in range(4):\n    a, b = order[i], order[i+1]\n    constraints = []\n    for x, y in allowed_flights:\n        constraints.append(And(a == x, b == y))\n    solver.add(Or(constraints))\n\n# Define city durations\ndurations = {0: 2, 1: 3, 2: 3, 3: 4, 4: 4}\n\n# Calculate end days for each city in the sequence\n# Start day of first city is 1, and total trip must end on day 12\ne0 = durations[0]  # First city is Prague (0), duration 2\ne1 = e0 + durations[3] - 1  # Second city is Helsinki (3), duration 4\nd2 = If(order[2] == 0, 2, If(order[2] == 1, 3, If(order[2] == 2, 3, If(order[2] == 3, 4, If(order[2] == 4, 4, 0))))\ne2 = e1 + d2 - 1\nd3 = If(order[3] == 0, 2, If(order[3] == 1, 3, If(order[3] == 2, 3, If(order[3] == 3, 4, If(order[3] == 4, 4, 0))))\ne3 = e2 + d3 - 1\nd4 = If(order[4] == 0, 2, If(order[4] == 1, 3, If(order[4] == 2, 3, If(order[4] == 3, 4, If(order[4] == 4, 4, 0))))\ne4 = e3 + d4 - 1\n\n# Constraint: The trip must end on day 12\nsolver.add(e4 == 12)\n\n# Solve the constraints\nif solver.check() == sat:\n    model = solver.model()\n    sequence = [model.eval(order[i]).as_long() for i in range(5)]\n    city_names = {0: 'Prague', 1: 'Lyon', 2: 'Frankfurt', 3: 'Helsinki', 4: 'Naples'}\n    itinerary = []\n    current_day = 1\n    for i in range(5):\n        city_code = sequence[i]\n        city_name = city_names[city_code]\n        duration = durations[city_code]\n        end_day = current_day + duration - 1\n        day_range = f\"Day {current_day}-{end_day}\"\n        itinerary.append({'day_range': day_range, 'place': city_name})\n        current_day = end_day  # Next city starts on the end day of the current city\n    result = {'itinerary': itinerary}\n    print(json.dumps(result, indent=2))\nelse:\n    print(\"No solution found.\")"
+}

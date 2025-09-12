@@ -1,0 +1,73 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"solution\": {\n    \"header\": [\n      \"House\",\n      \"Name\",\n      \"Mother\",\n      \"Flower\"\n    ],\n    \"rows\": [\n      [\n        \"1\",\n        \"Eric\",\n        \"Aniya\",\n        \"daffodils\"\n      ],\n      [\n        \"2\",\n        \"Arnold\",\n        \"Holly\",\n        \"lilies\"\n      ],\n      [\n        \"3\",\n        \"Alice\",\n        \"Kailyn\",\n        \"carnations\"\n      ],\n      [\n        \"4\",\n        \"Peter\",\n        \"Janelle\",\n        \"roses\"\n      ]\n    ]\n  }\n}",
+    "pred": [
+        {
+            "House": "1",
+            "Name": "Eric",
+            "Mother": "Aniya",
+            "Flower": "daffodils"
+        },
+        {
+            "House": "2",
+            "Name": "Arnold",
+            "Mother": "Holly",
+            "Flower": "lilies"
+        },
+        {
+            "House": "3",
+            "Name": "Alice",
+            "Mother": "Kailyn",
+            "Flower": "carnations"
+        },
+        {
+            "House": "4",
+            "Name": "Peter",
+            "Mother": "Janelle",
+            "Flower": "roses"
+        }
+    ],
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Eric",
+            "Mother": "Aniya",
+            "Flower": "daffodils"
+        },
+        {
+            "House": "2",
+            "Name": "Arnold",
+            "Mother": "Holly",
+            "Flower": "lilies"
+        },
+        {
+            "House": "3",
+            "Name": "Alice",
+            "Mother": "Kailyn",
+            "Flower": "carnations"
+        },
+        {
+            "House": "4",
+            "Name": "Peter",
+            "Mother": "Janelle",
+            "Flower": "roses"
+        }
+    ],
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 2,
+    "timing": {
+        "api_call_time": 275.3159692287445,
+        "execution_time": 0.08402347564697266,
+        "constraint_eval_time": 6.175041198730469e-05,
+        "pred_extract_time": 2.1289713382720947,
+        "gold_extract_time": 1.2636184692382812e-05,
+        "total_tokens": 17664,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\nimport json\n\nsolver = Solver()\n\n# Create variables for each house (1-4) with a dummy at index 0\nname = [None] + [Int(f\"name_{i}\") for i in range(1, 5)]\nmother = [None] + [Int(f\"mother_{i}\") for i in range(1, 5)]\nflower = [None] + [Int(f\"flower_{i}\") for i in range(1, 5)]\n\n# Each attribute must be 0-3 and distinct\nfor i in range(1, 5):\n    solver.add(And(0 <= name[i], name[i] < 4))\n    solver.add(And(0 <= mother[i], mother[i] < 4))\n    solver.add(And(0 <= flower[i], flower[i] < 4))\n\nsolver.add(Distinct(name[1], name[2], name[3], name[4]))\nsolver.add(Distinct(mother[1], mother[2], mother[3], mother[4]))\nsolver.add(Distinct(flower[1], flower[2], flower[3], flower[4]))\n\n# Clue 8: Alice (0) is in house 3\nsolver.add(name[3] == 0)\n\n# Clue 1: Alice's mother is Kailyn (1)\nfor i in range(1, 5):\n    solver.add(Implies(name[i] == 0, mother[i] == 1))\n\n# Clue 5: Arnold (2) has mother Holly (0)\nfor i in range(1, 5):\n    solver.add(Implies(name[i] == 2, mother[i] == 0))\n\n# Clue 4: Eric (3) has flower daffodils (3)\nfor i in range(1, 5):\n    solver.add(Implies(name[i] == 3, flower[i] == 3))\n\n# Clue 7: flower[2] is lilies (2)\nsolver.add(flower[2] == 2)\n\n# Clue 2: Janelle (2) is to the right of Arnold\narnold_house = Int('arnold_house')\njanelle_house = Int('janelle_house')\n\nconstraint_arnold = Or([And(name[i] == 2, arnold_house == i) for i in range(1, 5)])\nsolver.add(constraint_arnold)\nsolver.add(And(1 <= arnold_house, arnold_house <= 4))\n\nconstraint_janelle = Or([And(mother[i] == 2, janelle_house == i) for i in range(1, 5)])\nsolver.add(constraint_janelle)\nsolver.add(And(1 <= janelle_house, janelle_house <= 4))\n\nsolver.add(janelle_house > arnold_house)\n\n# Clue 3: Peter (1) is to the right of carnations (0)\ncarnations_house = Int('carnations_house')\npeter_house = Int('peter_house')\n\nconstraint_carnations = Or([And(flower[i] == 0, carnations_house == i) for i in range(1, 5)])\nsolver.add(constraint_carnations)\nsolver.add(And(1 <= carnations_house, carnations_house <= 4))\n\nconstraint_peter = Or([And(name[i] == 1, peter_house == i) for i in range(1, 5)])\nsolver.add(constraint_peter)\nsolver.add(And(1 <= peter_house, peter_house <= 4))\n\nsolver.add(peter_house > carnations_house)\n\n# Clue 6: carnations_house is to the right of Holly (mother 0)\nholly_house = Int('holly_house')\nconstraint_holly = Or([And(mother[i] == 0, holly_house == i) for i in range(1, 5)])\nsolver.add(constraint_holly)\nsolver.add(And(1 <= holly_house, holly_house <= 4))\n\nsolver.add(carnations_house > holly_house)\n\n# Check if the constraints are satisfiable\nif solver.check() == sat:\n    model = solver.model()\n    # Now extract the values for each house\n    solution_rows = []\n    name_map = {0: 'Alice', 1: 'Peter', 2: 'Arnold', 3: 'Eric'}\n    mother_map = {0: 'Holly', 1: 'Kailyn', 2: 'Janelle', 3: 'Aniya'}\n    flower_map = {0: 'carnations', 1: 'roses', 2: 'lilies', 3: 'daffodils'}\n\n    for house in range(1, 5):\n        n = model[name[house]].as_long()\n        m = model[mother[house]].as_long()\n        f = model[flower[house]].as_long()\n        solution_rows.append([str(house), name_map[n], mother_map[m], flower_map[f]])\n\n    # Output JSON\n    output = {\n        \"solution\": {\n            \"header\": [\"House\", \"Name\", \"Mother\", \"Flower\"],\n            \"rows\": solution_rows\n        }\n    }\n    print(json.dumps(output, indent=2))\nelse:\n    print(\"No solution found.\")"
+}

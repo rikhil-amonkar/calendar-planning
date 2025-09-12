@@ -1,0 +1,88 @@
+from z3 import *
+
+def main():
+    # Define the days and their indices
+    days = ["Monday", "Tuesday", "Wednesday", "Thursday"]
+    day_index_map = {day: idx for idx, day in enumerate(days)}
+    
+    # Work hours: 9:00 to 17:00 (540 to 1020 minutes from midnight)
+    work_start = 540
+    work_end = 1020
+    meeting_duration = 60  # minutes
+    
+    # Convert time string to minutes since midnight
+    def time_to_minutes(time_str):
+        h, m = map(int, time_str.split(':'))
+        return h * 60 + m
+
+    # Parse busy intervals from schedule string
+    def parse_schedule(schedule_str):
+        schedule = {day: [] for day in days}
+        current_day = None
+        parts = schedule_str.split()
+        i = 0
+        while i < len(parts):
+            if parts[i] in days:
+                current_day = parts[i]
+                i += 2  # Skip "during"
+            else:
+                start_time = parts[i]
+                end_time = parts[i+2]
+                i += 3
+                start_min = time_to_minutes(start_time)
+                end_min = time_to_minutes(end_time)
+                schedule[current_day].append((start_min, end_min))
+        return schedule
+
+    # Schedules from the problem
+    natalie_schedule_str = "Monday during 9:00 to 9:30 10:00 to 12:00 12:30 to 13:00 14:00 to 14:30 15:00 to 16:30 Tuesday during 9:00 to 9:30 10:00 to 10:30 12:30 to 14:00 16:00 to 17:00 Wednesday during 11:00 to 11:30 16:00 to 16:30 Thursday during 10:00 to 11:00 11:30 to 15:00 15:30 to 16:00 16:30 to 17:00"
+    william_schedule_str = "Monday during 9:30 to 11:00 11:30 to 17:00 Tuesday during 9:00 to 13:00 13:30 to 16:00 Wednesday during 9:00 to 12:30 13:00 to 14:30 15:30 to 16:00 16:30 to 17:00 Thursday during 9:00 to 10:30 11:00 to 11:30 12:00 to 12:30 13:00 to 14:00 15:00 to 17:00"
+
+    natalie_busy = parse_schedule(natalie_schedule_str)
+    william_busy = parse_schedule(william_schedule_str)
+
+    # Z3 variables
+    day = Int('day')
+    start_time = Int('start_time')
+    
+    solver = Solver()
+    
+    # Day must be between 0 and 3 (Monday to Thursday)
+    solver.add(day >= 0, day <= 3)
+    
+    # Start time must be within work hours and allow meeting duration
+    solver.add(start_time >= work_start)
+    solver.add(start_time + meeting_duration <= work_end)
+    
+    # Function to add busy interval constraints
+    def add_busy_constraints(busy_schedule, person_day):
+        constraints = []
+        for interval in busy_schedule:
+            busy_start, busy_end = interval
+            # Meeting must not overlap with busy interval
+            constraints.append(Or(
+                start_time + meeting_duration <= busy_start,
+                start_time >= busy_end
+            ))
+        solver.add(Implies(day == person_day, And(constraints)))
+    
+    # Add constraints for each day and person
+    for d, day_name in enumerate(days):
+        add_busy_constraints(natalie_busy[day_name], d)
+        add_busy_constraints(william_busy[day_name], d)
+    
+    # Check for a solution
+    if solver.check() == sat:
+        model = solver.model()
+        d = model[day].as_long()
+        s = model[start_time].as_long()
+        day_name = days[d]
+        start_str = f"{s//60:02d}:{s%60:02d}"
+        end_time = s + meeting_duration
+        end_str = f"{end_time//60:02d}:{end_time%60:02d}"
+        print(f"{day_name} {start_str}:{end_str}")
+    else:
+        print("No solution found")
+
+if __name__ == "__main__":
+    main()

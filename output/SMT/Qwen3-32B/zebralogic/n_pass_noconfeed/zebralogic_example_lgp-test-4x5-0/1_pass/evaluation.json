@@ -1,0 +1,58 @@
+{
+    "has_execution_error": true,
+    "has_no_plan": false,
+    "execution_output": null,
+    "pred": null,
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Eric",
+            "Smoothie": "dragonfruit",
+            "Cigar": "pall mall",
+            "Height": "average",
+            "PhoneModel": "samsung galaxy s21"
+        },
+        {
+            "House": "2",
+            "Name": "Peter",
+            "Smoothie": "desert",
+            "Cigar": "blue master",
+            "Height": "very short",
+            "PhoneModel": "iphone 13"
+        },
+        {
+            "House": "3",
+            "Name": "Alice",
+            "Smoothie": "watermelon",
+            "Cigar": "prince",
+            "Height": "tall",
+            "PhoneModel": "oneplus 9"
+        },
+        {
+            "House": "4",
+            "Name": "Arnold",
+            "Smoothie": "cherry",
+            "Cigar": "dunhill",
+            "Height": "short",
+            "PhoneModel": "google pixel 6"
+        }
+    ],
+    "status": "Error",
+    "violated_constraint": {
+        "invalid_output": "No valid output structure found"
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 588.0838680267334,
+        "execution_time": 0.08559489250183105,
+        "constraint_eval_time": 4.5299530029296875e-06,
+        "pred_extract_time": 5.9604644775390625e-06,
+        "gold_extract_time": 1.4781951904296875e-05,
+        "total_tokens": 35951,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\nimport json\n\nsolver = Solver()\n\nhouses = 4\n\n# Variables for each house (0-based index for 4 houses)\nn = [Int(f'n_{i}') for i in range(houses)]  # Names\ns = [Int(f's_{i}') for i in range(houses)]  # Smoothies\nc = [Int(f'c_{i}') for i in range(houses)]  # Cigars\nh = [Int(f'h_{i}') for i in range(houses)]  # Heights\np = [Int(f'p_{i}') for i in range(houses)]  # Phones\n\n# Add distinct constraints for each attribute\nfor var in [n, s, c, h, p]:\n    solver.add(Distinct(var[0], var[1], var[2], var[3]))\n\n# Add clues\n# Clue 1: Dragonfruit (s=0) \u2192 Eric (n=0)\nfor i in range(houses):\n    solver.add(Implies(s[i] == 0, n[i] == 0))\n\n# Clue 2: Dunhill (c=2) \u2192 Cherry (s=1)\nfor i in range(houses):\n    solver.add(Implies(c[i] == 2, s[i] == 1))\n\n# Clue 3: Samsung (p=1) directly left of iPhone (p=2)\nsolver.add(Or(\n    And(p[0] == 1, p[1] == 2),\n    And(p[1] == 1, p[2] == 2),\n    And(p[2] == 1, p[3] == 2)\n))\n\n# Clue 4: Dunhill smoker (c=2) is to the right of very short (h=3)\nfor i in range(houses):\n    for j in range(houses):\n        solver.add(Implies(And(c[i] == 2, h[j] == 3), i > j))\n\n# Clue 5: Watermelon (s=3) is to the right of Desert (s=2)\nfor i in range(houses):\n    for j in range(houses):\n        solver.add(Implies(And(s[i] == 3, s[j] == 2), i > j))\n\n# Clue 6: Prince (c=3) \u2192 phone=3 (oneplus 9)\nfor i in range(houses):\n    solver.add(Implies(c[i] == 3, p[i] == 3))\n\n# Clue 7: Tall (h=0) is in house 3 (index 2)\nsolver.add(h[2] == 0)\n\n# Clue 8: very short (h=3) \u2192 phone=2 (iphone 13)\nfor i in range(houses):\n    solver.add(Implies(h[i] == 3, p[i] == 2))\n\n# Clue 9: Blue Master (c=0) not in first house (house 0)\nsolver.add(c[0] != 0)\n\n# Clue 10: Dunhill (c=2) \u2192 height=2 (short)\nfor i in range(houses):\n    solver.add(Implies(c[i] == 2, h[i] == 2))\n\n# Clue 11: Peter (n=1) not in house 3 (index 2)\nsolver.add(n[2] != 1)\n\n# Clue 12: Arnold (n=2) \u2192 phone=0 (google pixel 6)\nfor i in range(houses):\n    solver.add(Implies(n[i] == 2, p[i] == 0))\n\n# Clue 13: Dragonfruit (s=0) \u2192 Pall Mall (c=1)\nfor i in range(houses):\n    solver.add(Implies(s[i] == 0, c[i] == 1))\n\nif solver.check() == sat:\n    model = solver.model()\n    # Mappings\n    name_map = {0: 'Eric', 1: 'Peter', 2: 'Arnold', 3: 'Alice'}\n    smoothie_map = {0: 'dragonfruit', 1: 'cherry', 2: 'desert', 3: 'watermelon'}\n    cigar_map = {0: 'blue master', 1: 'pall mall', 2: 'dunhill', 3: 'prince'}\n    height_map = {0: 'tall', 1: 'average', 2: 'short', 3: 'very short'}\n    phone_map = {0: 'google pixel 6', 1: 'samsung galaxy s21', 2: 'iphone 13', 3: 'oneplus 9'}\n    \n    rows = []\n    for i in range(4):\n        house_num = i + 1\n        n_val = model.eval(n[i]).as_long()\n        s_val = model.eval(s[i]).as_long()\n        c_val = model.eval(c[i]).as_long()\n        h_val = model.eval(h[i]).as_long()\n        p_val = model.eval(p[i]).as_long()\n        row = [\n            str(house_num),\n            name_map[n_val],\n            smoothie_map[s_val],\n            cigar_map[c_val],\n            height_map[h_val],\n            phone_map[p_val]\n        ]\n        rows.append(row)\n    \n    solution = {\n        \"solution\": {\n            \"header\": [\"House\", \"Name\", \"Smoothie\", \"Cigar\", \"Height\", \"PhoneModel\"],\n            \"rows\": rows\n        }\n    }\n    \n    print(json.dumps(solution, indent=2))\nelse:\n    print(\"No solution found.\")"
+}

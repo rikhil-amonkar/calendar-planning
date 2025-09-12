@@ -1,0 +1,143 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "[0, 15, inf, inf, inf, inf, inf, inf, 30]\n[15, 0, inf, inf, inf, inf, inf, inf, inf]\n[inf, inf, 0, 10, inf, inf, inf, inf, inf]\n[inf, inf, 10, 0, inf, inf, inf, inf, inf]\n[inf, inf, inf, inf, 0, 20, inf, inf, inf]\n[inf, inf, inf, inf, 20, 0, inf, inf, inf]\n[inf, inf, inf, inf, inf, inf, 0, 5, inf]\n[inf, inf, inf, inf, inf, inf, 5, 0, inf]\n[30, inf, inf, inf, inf, inf, inf, inf, 0]",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Location 5",
+                "person": "Person 5",
+                "start_time": "0:00",
+                "end_time": "0:20"
+            },
+            {
+                "action": "meet",
+                "location": "Location 6",
+                "person": "Person 6",
+                "start_time": "0:00",
+                "end_time": "0:20"
+            },
+            {
+                "action": "meet",
+                "location": "Location 7",
+                "person": "Person 7",
+                "start_time": "0:00",
+                "end_time": "0:05"
+            },
+            {
+                "action": "meet",
+                "location": "Location 8",
+                "person": "Person 8",
+                "start_time": "0:00",
+                "end_time": "0:05"
+            },
+            {
+                "action": "meet",
+                "location": "Location 3",
+                "person": "Person 3",
+                "start_time": "0:10",
+                "end_time": "0:20"
+            },
+            {
+                "action": "meet",
+                "location": "Location 4",
+                "person": "Person 4",
+                "start_time": "0:10",
+                "end_time": "0:20"
+            },
+            {
+                "action": "meet",
+                "location": "Location 1",
+                "person": "Person 1",
+                "start_time": "0:15",
+                "end_time": "0:30"
+            },
+            {
+                "action": "meet",
+                "location": "Location 2",
+                "person": "Person 2",
+                "start_time": "0:15",
+                "end_time": "0:15"
+            },
+            {
+                "action": "meet",
+                "location": "Location 9",
+                "person": "Person 9",
+                "start_time": "0:30",
+                "end_time": "0:00"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "North Beach",
+                "person": "Kimberly",
+                "start_time": "9:10",
+                "end_time": "9:25"
+            },
+            {
+                "action": "meet",
+                "location": "Nob Hill",
+                "person": "Kenneth",
+                "start_time": "12:15",
+                "end_time": "14:00"
+            },
+            {
+                "action": "meet",
+                "location": "Fisherman's Wharf",
+                "person": "Brian",
+                "start_time": "14:10",
+                "end_time": "14:55"
+            },
+            {
+                "action": "meet",
+                "location": "Embarcadero",
+                "person": "Joseph",
+                "start_time": "15:30",
+                "end_time": "16:45"
+            },
+            {
+                "action": "meet",
+                "location": "Haight-Ashbury",
+                "person": "Betty",
+                "start_time": "19:00",
+                "end_time": "20:30"
+            },
+            {
+                "action": "meet",
+                "location": "The Castro",
+                "person": "Melissa",
+                "start_time": "20:36",
+                "end_time": "21:06"
+            },
+            {
+                "action": "meet",
+                "location": "Alamo Square",
+                "person": "Barbara",
+                "start_time": "21:14",
+                "end_time": "21:29"
+            }
+        ]
+    },
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "constraints_satisfied_but_no_exact_match": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 3,
+    "timing": {
+        "api_call_time": 87.50488328933716,
+        "execution_time": 0.01885700225830078,
+        "constraint_eval_time": 0.00047135353088378906,
+        "pred_extract_time": 8.007203102111816,
+        "gold_extract_time": 9.608268737792969e-05,
+        "total_tokens": 7177,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "# Define friends' locations (example values)\nfriends_locations = ['Home', 'Office', 'School', 'Park', 'Mall',\n                     'Library', 'Gym', 'Cafe', 'Stadium']\n\n# Initialize a 9x9 travel time matrix\nfriend_travel_times = [[0 for _ in range(9)] for _ in range(9)]\n\n# Example travel times between locations (you can expand this as needed)\ntravel_times = {\n    ('Home', 'Office'): 15,\n    ('Office', 'Home'): 15,\n    ('School', 'Park'): 10,\n    ('Park', 'School'): 10,\n    ('Mall', 'Library'): 20,\n    ('Library', 'Mall'): 20,\n    ('Gym', 'Cafe'): 5,\n    ('Cafe', 'Gym'): 5,\n    ('Stadium', 'Home'): 30,\n    ('Home', 'Stadium'): 30,\n}\n\n# Populate the friend_travel_times matrix\nfor i in range(9):\n    for j in range(9):\n        from_loc = friends_locations[i]\n        to_loc = friends_locations[j]\n        if from_loc == to_loc:\n            friend_travel_times[i][j] = 0\n        else:\n            friend_travel_times[i][j] = travel_times.get((from_loc, to_loc), float('inf'))\n\n# Optional: Print the result\nfor row in friend_travel_times:\n    print(row)"
+}

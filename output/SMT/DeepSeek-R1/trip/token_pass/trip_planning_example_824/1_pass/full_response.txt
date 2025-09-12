@@ -1,0 +1,105 @@
+```python
+import json
+from z3 import *
+
+def main():
+    # City indices
+    cities = ['Berlin', 'Split', 'Bucharest', 'Riga', 'Lisbon', 'Tallinn', 'Lyon']
+    city_index = {city: idx for idx, city in enumerate(cities)}
+    
+    # Segment lengths
+    L = [5, 3, 3, 5, 3, 4, 5]
+    
+    # Direct flights (as bidirectional pairs of indices)
+    flights = [
+        (city_index['Lisbon'], city_index['Bucharest']),
+        (city_index['Berlin'], city_index['Lisbon']),
+        (city_index['Bucharest'], city_index['Riga']),
+        (city_index['Berlin'], city_index['Riga']),
+        (city_index['Split'], city_index['Lyon']),
+        (city_index['Lisbon'], city_index['Riga']),
+        (city_index['Riga'], city_index['Tallinn']),
+        (city_index['Berlin'], city_index['Split']),
+        (city_index['Lyon'], city_index['Lisbon']),
+        (city_index['Berlin'], city_index['Tallinn']),
+        (city_index['Lyon'], city_index['Bucharest'])
+    ]
+    # Make bidirectional
+    flight_set = set()
+    for a, b in flights:
+        flight_set.add((a, b))
+        flight_set.add((b, a))
+    
+    # Initialize solver
+    s = Solver()
+    
+    # Order of cities (7 segments)
+    order = IntVector('o', 7)
+    
+    # Cumulative travel days array (8 elements: cumulative[0] to cumulative[7])
+    cumulative = [0] * 8
+    cumulative[0] = 0
+    
+    # Constraints: order is a permutation of 0..6
+    s.add(Distinct(order))
+    for i in range(7):
+        s.add(order[i] >= 0, order[i] < 7)
+    
+    # Berlin must be first
+    s.add(order[0] == city_index['Berlin'])
+    
+    # Define cumulative array constraints
+    for i in range(1, 8):
+        cumulative[i] = Int(f'cumulative_{i}')
+        # cumulative[i] = cumulative[i-1] + (L[order[i-1]] - 1)
+        s.add(cumulative[i] == cumulative[i-1] + (L[order[i-1]] - 1))
+    
+    # Total cumulative[7] must be 21
+    s.add(cumulative[7] == 21)
+    
+    # Constraints for Lyon and Bucharest start days
+    lyon_pos = Int('lyon_pos')
+    bucharest_pos = Int('bucharest_pos')
+    s.add(lyon_pos >= 0, lyon_pos < 7)
+    s.add(bucharest_pos >= 0, bucharest_pos < 7)
+    
+    # Lyon must be at position lyon_pos with cumulative[lyon_pos] == 6
+    s.add(Or([And(order[i] == city_index['Lyon'], cumulative[i] == 6) for i in range(7)]))
+    # Bucharest must be at position bucharest_pos with cumulative[bucharest_pos] == 12
+    s.add(Or([And(order[i] == city_index['Bucharest'], cumulative[i] == 12) for i in range(7)]))
+    
+    # Direct flight constraints between consecutive segments
+    for i in range(6):
+        city_i = order[i]
+        city_j = order[i+1]
+        s.add(Or([And(city_i == a, city_j == b) for (a, b) in flight_set]))
+    
+    # Check satisfiability
+    if s.check() == sat:
+        m = s.model()
+        # Get the order from the model
+        order_val = [m.evaluate(order[i]).as_long() for i in range(7)]
+        cumulative_val = [0] * 8
+        cumulative_val[0] = 0
+        for i in range(1, 8):
+            cumulative_val[i] = m.evaluate(cumulative[i]).as_long()
+        
+        # Build itinerary
+        itinerary = []
+        for i in range(7):
+            city_idx = order_val[i]
+            start_day = cumulative_val[i] + 1
+            end_day = start_day + L[city_idx] - 1
+            itinerary.append({
+                "day_range": f"Day {start_day}-{end_day}",
+                "place": cities[city_idx]
+            })
+        
+        # Output as JSON
+        print(json.dumps({"itinerary": itinerary}))
+    else:
+        print('No solution found')
+
+if __name__ == '__main__':
+    main()
+```

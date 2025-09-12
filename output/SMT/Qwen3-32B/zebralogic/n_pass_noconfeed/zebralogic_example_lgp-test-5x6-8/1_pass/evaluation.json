@@ -1,0 +1,115 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"solution\": {\n    \"header\": [\n      \"House\",\n      \"Name\",\n      \"HouseStyle\",\n      \"Mother\",\n      \"PhoneModel\",\n      \"Drink\",\n      \"Animal\"\n    ],\n    \"rows\": [\n      [\n        \"1\",\n        \"Peter\",\n        \"victorian\",\n        \"Aniya\",\n        \"huawei p50\",\n        \"root beer\",\n        \"cat\"\n      ],\n      [\n        \"2\",\n        \"Arnold\",\n        \"ranch\",\n        \"Kailyn\",\n        \"iphone 13\",\n        \"milk\",\n        \"dog\"\n      ],\n      [\n        \"3\",\n        \"Eric\",\n        \"modern\",\n        \"Penny\",\n        \"oneplus 9\",\n        \"coffee\",\n        \"horse\"\n      ],\n      [\n        \"4\",\n        \"Bob\",\n        \"craftsman\",\n        \"Holly\",\n        \"google pixel 6\",\n        \"tea\",\n        \"bird\"\n      ],\n      [\n        \"5\",\n        \"Alice\",\n        \"colonial\",\n        \"Janelle\",\n        \"samsung galaxy s21\",\n        \"water\",\n        \"fish\"\n      ]\n    ]\n  }\n}",
+    "pred": [
+        {
+            "House": "1",
+            "Name": "Peter",
+            "HouseStyle": "victorian",
+            "Mother": "Aniya",
+            "PhoneModel": "huawei p50",
+            "Drink": "root beer",
+            "Animal": "cat"
+        },
+        {
+            "House": "2",
+            "Name": "Arnold",
+            "HouseStyle": "ranch",
+            "Mother": "Kailyn",
+            "PhoneModel": "iphone 13",
+            "Drink": "milk",
+            "Animal": "dog"
+        },
+        {
+            "House": "3",
+            "Name": "Eric",
+            "HouseStyle": "modern",
+            "Mother": "Penny",
+            "PhoneModel": "oneplus 9",
+            "Drink": "coffee",
+            "Animal": "horse"
+        },
+        {
+            "House": "4",
+            "Name": "Bob",
+            "HouseStyle": "craftsman",
+            "Mother": "Holly",
+            "PhoneModel": "google pixel 6",
+            "Drink": "tea",
+            "Animal": "bird"
+        },
+        {
+            "House": "5",
+            "Name": "Alice",
+            "HouseStyle": "colonial",
+            "Mother": "Janelle",
+            "PhoneModel": "samsung galaxy s21",
+            "Drink": "water",
+            "Animal": "fish"
+        }
+    ],
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Peter",
+            "HouseStyle": "victorian",
+            "Mother": "Aniya",
+            "PhoneModel": "huawei p50",
+            "Drink": "root beer",
+            "Animal": "cat"
+        },
+        {
+            "House": "2",
+            "Name": "Arnold",
+            "HouseStyle": "ranch",
+            "Mother": "Kailyn",
+            "PhoneModel": "iphone 13",
+            "Drink": "milk",
+            "Animal": "dog"
+        },
+        {
+            "House": "3",
+            "Name": "Eric",
+            "HouseStyle": "modern",
+            "Mother": "Penny",
+            "PhoneModel": "oneplus 9",
+            "Drink": "coffee",
+            "Animal": "horse"
+        },
+        {
+            "House": "4",
+            "Name": "Bob",
+            "HouseStyle": "craftsman",
+            "Mother": "Holly",
+            "PhoneModel": "google pixel 6",
+            "Drink": "tea",
+            "Animal": "bird"
+        },
+        {
+            "House": "5",
+            "Name": "Alice",
+            "HouseStyle": "colonial",
+            "Mother": "Janelle",
+            "PhoneModel": "samsung galaxy s21",
+            "Drink": "water",
+            "Animal": "fish"
+        }
+    ],
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 627.9042196273804,
+        "execution_time": 0.09462618827819824,
+        "constraint_eval_time": 9.441375732421875e-05,
+        "pred_extract_time": 2.240675210952759,
+        "gold_extract_time": 2.3365020751953125e-05,
+        "total_tokens": 39644,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\nimport json\n\ndef main():\n    s = Solver()\n\n    houses = 5\n\n    # Variables for each house (1-5)\n    name = [Int(f\"name_{i}\") for i in range(1, houses + 1)]\n    housestyle = [Int(f\"housestyle_{i}\") for i in range(1, houses + 1)]\n    mother = [Int(f\"mother_{i}\") for i in range(1, houses + 1)]\n    phone = [Int(f\"phone_{i}\") for i in range(1, houses + 1)]\n    drink = [Int(f\"drink_{i}\") for i in range(1, houses + 1)]\n    animal = [Int(f\"animal_{i}\") for i in range(1, houses + 1)]\n\n    # Add constraints: all distinct and in 0-4\n    for attr in [name, housestyle, mother, phone, drink, animal]:\n        s.add(Distinct(attr))\n        for i in range(houses):\n            s.add(And(0 <= attr[i], attr[i] < houses))\n\n    # Add problem-specific constraints\n    # Clue 1: Google Pixel 6 not in first house (phone[0] != 1)\n    s.add(phone[0] != 1)\n\n    # Clue 2: Alice (4) drinks water (1)\n    for h in range(houses):\n        s.add(Implies(drink[h] == 1, name[h] == 4))\n\n    # Clue 3: colonial (4) to the right of huawei p50 (2)\n    colonial_house = Sum([If(housestyle[h] == 4, h + 1, 0) for h in range(houses)])\n    huawei_p50_house = Sum([If(phone[h] == 2, h + 1, 0) for h in range(houses)])\n    s.add(colonial_house > huawei_p50_house)\n\n    # Clue 4: horse (2) uses oneplus 9 (0)\n    for h in range(houses):\n        s.add(Implies(animal[h] == 2, phone[h] == 0))\n        s.add(Implies(phone[h] == 0, animal[h] == 2))\n\n    # Clue 5: ranch (2) has mother Kailyn (1)\n    for h in range(houses):\n        s.add(Implies(housestyle[h] == 2, mother[h] == 1))\n        s.add(Implies(mother[h] == 1, housestyle[h] == 2))\n\n    # Clue 6: root beer (2) is cat (4)\n    for h in range(houses):\n        s.add(Implies(drink[h] == 2, animal[h] == 4))\n        s.add(Implies(animal[h] == 4, drink[h] == 2))\n\n    # Clue 7: colonial not in fourth house (house 4, index 3)\n    s.add(housestyle[3] != 4)\n\n    # Clue 8: bird (3) in fourth house (index 3)\n    s.add(animal[3] == 3)\n\n    # Clue 9: tea (3) is Bob (3)\n    for h in range(houses):\n        s.add(Implies(drink[h] == 3, name[h] == 3))\n\n    # Clue 10: tea house > Kailyn's house\n    tea_house = Sum([If(drink[h] == 3, h + 1, 0) for h in range(houses)])\n    kailyn_house = Sum([If(mother[h] == 1, h + 1, 0) for h in range(houses)])\n    s.add(tea_house > kailyn_house)\n\n    # Clue 11: root beer house < Kailyn's house\n    root_beer_house = Sum([If(drink[h] == 2, h + 1, 0) for h in range(houses)])\n    s.add(root_beer_house < kailyn_house)\n\n    # Clue 12: horse (2) in modern (0)\n    for h in range(houses):\n        s.add(Implies(animal[h] == 2, housestyle[h] == 0))\n        s.add(Implies(housestyle[h] == 0, animal[h] == 2))\n\n    # Clue 13: iphone 13 (3) \u2192 milk (4)\n    for h in range(houses):\n        s.add(Implies(phone[h] == 3, drink[h] == 4))\n\n    # Clue 14: dog (1) \u2192 milk (4)\n    for h in range(houses):\n        s.add(Implies(animal[h] == 1, drink[h] == 4))\n\n    # Clue 15: google pixel 6 (1) \u2192 craftsman (1)\n    for h in range(houses):\n        s.add(Implies(phone[h] == 1, housestyle[h] == 1))\n\n    # Clue 16: Eric (0) not in second house (h=1)\n    s.add(name[1] != 0)\n\n    # Clue 17: tea (3) in fourth house (h=3)\n    s.add(drink[3] == 3)\n\n    # Clue 18: horse (2) in third house (h=2)\n    s.add(animal[2] == 2)\n\n    # Clue 19: modern (0) \u2192 mother Penny (0)\n    for h in range(houses):\n        s.add(Implies(housestyle[h] == 0, mother[h] == 0))\n\n    # Clue 20: root beer (2) \u2192 Peter (1)\n    for h in range(houses):\n        s.add(Implies(drink[h] == 2, name[h] == 1))\n        s.add(Implies(name[h] == 1, drink[h] == 2))\n\n    # Clue 21: Aniya (4) not in fourth house (h=3)\n    s.add(mother[3] != 4)\n\n    # Clue 22: Janelle (3) \u2192 water (1)\n    for h in range(houses):\n        s.add(Implies(mother[h] == 3, drink[h] == 1))\n\n    # Check if the constraints are satisfiable\n    if s.check() == sat:\n        m = s.model()\n        # Prepare the mappings\n        name_list = [\"Eric\", \"Peter\", \"Arnold\", \"Bob\", \"Alice\"]\n        housestyle_list = [\"modern\", \"craftsman\", \"ranch\", \"victorian\", \"colonial\"]\n        mother_list = [\"Penny\", \"Kailyn\", \"Holly\", \"Janelle\", \"Aniya\"]\n        phone_list = [\"oneplus 9\", \"google pixel 6\", \"huawei p50\", \"iphone 13\", \"samsung galaxy s21\"]\n        drink_list = [\"coffee\", \"water\", \"root beer\", \"tea\", \"milk\"]\n        animal_list = [\"fish\", \"dog\", \"horse\", \"bird\", \"cat\"]\n\n        # For each house (1-5)\n        rows = []\n        for h in range(houses):\n            house_num = h + 1\n            n = m.evaluate(name[h]).as_long()\n            hs = m.evaluate(housestyle[h]).as_long()\n            mo = m.evaluate(mother[h]).as_long()\n            ph = m.evaluate(phone[h]).as_long()\n            dr = m.evaluate(drink[h]).as_long()\n            an = m.evaluate(animal[h]).as_long()\n            rows.append([\n                str(house_num),\n                name_list[n],\n                housestyle_list[hs],\n                mother_list[mo],\n                phone_list[ph],\n                drink_list[dr],\n                animal_list[an]\n            ])\n\n        # Create JSON\n        solution = {\n            \"solution\": {\n                \"header\": [\"House\", \"Name\", \"HouseStyle\", \"Mother\", \"PhoneModel\", \"Drink\", \"Animal\"],\n                \"rows\": rows\n            }\n        }\n\n        print(json.dumps(solution, indent=2))\n    else:\n        print(\"No solution found.\")\n\nif __name__ == \"__main__\":\n    main()"
+}

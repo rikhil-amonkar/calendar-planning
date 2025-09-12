@@ -1,0 +1,83 @@
+```python
+import json
+from z3 import *
+
+def main():
+    s = Solver()
+    
+    # Define the enums for names and cigars
+    Name, (Carol, Peter, Eric, Arnold, Alice, Bob) = EnumSort('Name', ['Carol', 'Peter', 'Eric', 'Arnold', 'Alice', 'Bob'])
+    Cigar, (blends, yellow_monster, pall_mall, blue_master, dunhill, prince) = EnumSort('Cigar', ['blends', 'yellow monster', 'pall mall', 'blue master', 'dunhill', 'prince'])
+    
+    # Create arrays for house attributes
+    name_var = [Const(f'name_{i}', Name) for i in range(1, 7)]
+    cigar_var = [Const(f'cigar_{i}', Cigar) for i in range(1, 7)]
+    
+    # Assert all names and cigars are distinct
+    s.add(Distinct(name_var))
+    s.add(Distinct(cigar_var))
+    
+    # Create index variables for names and cigars
+    name_indices = {}
+    for name in ['Carol', 'Peter', 'Eric', 'Arnold', 'Alice', 'Bob']:
+        name_indices[name] = Int(f'index_{name}')
+        s.add(name_indices[name] >= 0, name_indices[name] <= 5)
+    
+    cigar_indices = {}
+    for cigar in ['blends', 'yellow monster', 'pall mall', 'blue master', 'dunhill', 'prince']:
+        cigar_indices[cigar] = Int(f'index_{cigar}')
+        s.add(cigar_indices[cigar] >= 0, cigar_indices[cigar] <= 5)
+    
+    # Assert indices are distinct
+    s.add(Distinct([name_indices[n] for n in name_indices]))
+    s.add(Distinct([cigar_indices[c] for c in cigar_indices]))
+    
+    # Relate indices to house variables
+    for n in name_indices:
+        s.add(name_var[name_indices[n]] == n)
+    for c in cigar_indices:
+        s.add(cigar_var[cigar_indices[c]] == c)
+    
+    # Add clues
+    s.add(name_indices['Arnold'] < cigar_indices['blends'])  # Clue 1
+    s.add(cigar_indices['blue master'] == 4)  # Clue 2 (house 5 is index 4)
+    s.add(name_indices['Arnold'] < cigar_indices['prince'])  # Clue 3
+    s.add(Or(  # Clue 4
+        cigar_indices['yellow monster'] == cigar_indices['blends'] - 2,
+        cigar_indices['yellow monster'] == cigar_indices['blends'] + 2
+    ))
+    s.add(cigar_indices['pall mall'] == 2)  # Clue 5 (house 3 is index 2)
+    s.add(name_indices['Eric'] == 5)  # Clue 6 (house 6 is index 5)
+    s.add(Or(  # Clue 7
+        name_indices['Carol'] == name_indices['Eric'] - 1,
+        name_indices['Carol'] == name_indices['Eric'] + 1
+    ))
+    s.add(name_indices['Peter'] == 0)  # Clue 8 (house 1 is index 0)
+    s.add(name_indices['Bob'] == 2)  # Clue 9 (house 3 is index 2)
+    
+    # Check and get solution
+    if s.check() == sat:
+        m = s.model()
+        name_list = ['Carol', 'Peter', 'Eric', 'Arnold', 'Alice', 'Bob']
+        cigar_list = ['blends', 'yellow monster', 'pall mall', 'blue master', 'dunhill', 'prince']
+        rows = []
+        for i in range(6):
+            name_val = m.evaluate(name_var[i])
+            cigar_val = m.evaluate(cigar_var[i])
+            name_str = name_list[name_val.as_long()]
+            cigar_str = cigar_list[cigar_val.as_long()]
+            rows.append([str(i+1), name_str, cigar_str])
+        
+        solution = {
+            "solution": {
+                "header": ["House", "Name", "Cigar"],
+                "rows": rows
+            }
+        }
+        print(json.dumps(solution, indent=2))
+    else:
+        print("No solution found")
+
+if __name__ == "__main__":
+    main()
+```

@@ -1,0 +1,105 @@
+```python
+from z3 import *
+import json
+
+def main():
+    # Initialize solver
+    s = Solver()
+    
+    # City mapping: 0=Dublin, 1=Riga, 2=Vilnius
+    n_days = 12
+    city_names = {0: 'Dublin', 1: 'Riga', 2: 'Vilnius'}
+    
+    # Direct flights (bidirectional)
+    allowed_flights = [(0,1), (1,0), (1,2), (2,1)]
+    
+    # Variables for each day: morning city (m) and evening city (e)
+    m = [Int('m_%d' % i) for i in range(n_days)]
+    e = [Int('e_%d' % i) for i in range(n_days)]
+    travel = [Bool('travel_%d' % i) for i in range(n_days)]
+    
+    # Constraints for each day
+    for i in range(n_days):
+        # City values are within 0-2
+        s.add(And(m[i] >= 0, m[i] <= 2))
+        s.add(And(e[i] >= 0, e[i] <= 2))
+        
+        # If not travel, morning city equals evening city
+        s.add(Implies(Not(travel[i]), m[i] == e[i]))
+        
+        # If travel, morning != evening and flight exists
+        flight_constraints = []
+        for (a, b) in allowed_flights:
+            flight_constraints.append(And(m[i] == a, e[i] == b))
+        s.add(Implies(travel[i], Or(flight_constraints)))
+    
+    # Continuity between days: evening city equals next morning city
+    for i in range(n_days - 1):
+        s.add(e[i] == m[i+1])
+    
+    # Total days per city constraints
+    days_dublin = 0
+    days_riga = 0
+    days_vilnius = 0
+    for i in range(n_days):
+        # Non-travel days count as 1 for the city
+        days_dublin += If(And(Not(travel[i]), m[i] == 0), 1, 0)
+        days_riga += If(And(Not(travel[i]), m[i] == 1), 1, 0)
+        days_vilnius += If(And(Not(travel[i]), m[i] == 2), 1, 0)
+        
+        # Travel days: morning city counts 1
+        days_dublin += If(And(travel[i], m[i] == 0), 1, 0)
+        days_riga += If(And(travel[i], m[i] == 1), 1, 0)
+        days_vilnius += If(And(travel[i], m[i] == 2), 1, 0)
+        
+        # Travel days: evening city counts 1
+        days_dublin += If(And(travel[i], e[i] == 0), 1, 0)
+        days_riga += If(And(travel[i], e[i] == 1), 1, 0)
+        days_vilnius += If(And(travel[i], e[i] == 2), 1, 0)
+    
+    s.add(days_dublin == 2)
+    s.add(days_riga == 5)
+    s.add(days_vilnius == 7)
+    
+    # Total travel days must be 2 (since 12 + 2 = 14 city-days)
+    total_travel = Sum([If(travel[i], 1, 0) for i in range(n_days)])
+    s.add(total_travel == 2)
+    
+    # Solve and output
+    if s.check() == sat:
+        model = s.model()
+        m_val = [model.evaluate(m[i]).as_long() for i in range(n_days)]
+        e_val = [model.evaluate(e[i]).as_long() for i in range(n_days)]
+        travel_val = [is_true(model.evaluate(travel[i])) for i in range(n_days)]
+        
+        # Form segments from travel days
+        segments = []
+        start = 0
+        current_city = m_val[0]
+        for i in range(1, n_days):
+            if travel_val[i-1]:
+                segments.append((start, i-1, current_city))
+                current_city = m_val[i]  # Next segment starts with morning city of day i
+                start = i-1  Travel day is included in both segments
+        segments.append((start, n_days-1, current_city))
+        
+        # Convert to itinerary JSON
+        itinerary = []
+        for seg in segments:
+            start_day, end_day, city_idx = seg
+            if start_day == end_day:
+                day_range = f"Day {start_day+1}"
+            else:
+                day_range = f"Day {start_day+1}-{end_day+1}"
+            itinerary.append({
+                "day_range": day_range,
+                "place": city_names[city_idx]
+            })
+        
+        print(json.dumps({"itinerary": itinerary}))
+    else:
+        print('{"itinerary": []}')
+
+if __name__ == "__main__":
+    main()
+```

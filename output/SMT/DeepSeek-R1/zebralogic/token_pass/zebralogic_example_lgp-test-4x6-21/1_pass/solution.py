@@ -1,0 +1,166 @@
+import json
+from z3 import *
+
+def main():
+    # Initialize solver
+    s = Solver()
+    
+    # Number of houses
+    n_houses = 4
+    
+    # Attributes and their possible values
+    names = ['Peter', 'Arnold', 'Alice', 'Eric']
+    flowers = ['roses', 'daffodils', 'carnations', 'lilies']
+    hobbies = ['photography', 'painting', 'cooking', 'gardening']
+    pets = ['dog', 'fish', 'bird', 'cat']
+    colors = ['red', 'yellow', 'green', 'white']
+    house_styles = ['craftsman', 'colonial', 'ranch', 'victorian']
+    
+    # Create integer variables for each attribute per house
+    name_vars = [Int(f'name_{i}') for i in range(n_houses)]
+    flower_vars = [Int(f'flower_{i}') for i in range(n_houses)]
+    hobby_vars = [Int(f'hobby_{i}') for i in range(n_houses)]
+    pet_vars = [Int(f'pet_{i}') for i in range(n_houses)]
+    color_vars = [Int(f'color_{i}') for i in range(n_houses)]
+    style_vars = [Int(f'style_{i}') for i in range(n_houses)]
+    
+    # Constraint: All attributes must be between 0 and 3
+    for i in range(n_houses):
+        s.add(name_vars[i] >= 0, name_vars[i] < n_houses)
+        s.add(flower_vars[i] >= 0, flower_vars[i] < n_houses)
+        s.add(hobby_vars[i] >= 0, hobby_vars[i] < n_houses)
+        s.add(pet_vars[i] >= 0, pet_vars[i] < n_houses)
+        s.add(color_vars[i] >= 0, color_vars[i] < n_houses)
+        s.add(style_vars[i] >= 0, style_vars[i] < n_houses)
+    
+    # Constraint: All attributes are distinct within their category
+    s.add(Distinct(name_vars))
+    s.add(Distinct(flower_vars))
+    s.add(Distinct(hobby_vars))
+    s.add(Distinct(pet_vars))
+    s.add(Distinct(color_vars))
+    s.add(Distinct(style_vars))
+    
+    # Helper function to get house index of an attribute value
+    def get_house_index(vars, value):
+        return [If(vars[i] == value, 1, 0) for i in range(n_houses)]
+    
+    # Clue 1: The person in a Craftsman-style house is Arnold.
+    craftsman_idx = house_styles.index('craftsman')
+    arnold_idx = names.index('Arnold')
+    for i in range(n_houses):
+        s.add(Implies(style_vars[i] == craftsman_idx, name_vars[i] == arnold_idx))
+    
+    # Clue 2: The person who loves the rose bouquet is somewhere to the right of Peter.
+    rose_idx = flowers.index('roses')
+    peter_idx = names.index('Peter')
+    rose_house = Int('rose_house')
+    peter_house = Int('peter_house')
+    s.add(rose_house == Sum([If(flower_vars[i] == rose_idx, i, 0) for i in range(n_houses)]))
+    s.add(peter_house == Sum([If(name_vars[i] == peter_idx, i, 0) for i in range(n_houses)]))
+    s.add(rose_house > peter_house)
+    
+    # Clue 3: The photography enthusiast is the person who owns a dog.
+    photo_idx = hobbies.index('photography')
+    dog_idx = pets.index('dog')
+    for i in range(n_houses):
+        s.add(Implies(hobby_vars[i] == photo_idx, pet_vars[i] == dog_idx))
+    
+    # Clue 4: The person who loves a bouquet of daffodils is not in the fourth house.
+    daffodil_idx = flowers.index('daffodils')
+    s.add(flower_vars[3] != daffodil_idx)
+    
+    # Clue 5: The person who loves the rose bouquet is the person whose favorite color is red.
+    red_idx = colors.index('red')
+    for i in range(n_houses):
+        s.add(Implies(flower_vars[i] == rose_idx, color_vars[i] == red_idx))
+    
+    # Clue 6: The person in a Craftsman-style house is in the second house.
+    s.add(style_vars[1] == craftsman_idx)
+    
+    # Clue 7: Eric is the person residing in a Victorian house.
+    eric_idx = names.index('Eric')
+    victorian_idx = house_styles.index('victorian')
+    for i in range(n_houses):
+        s.add(Implies(name_vars[i] == eric_idx, style_vars[i] == victorian_idx))
+    
+    # Clue 8: The person with an aquarium of fish is the person who loves white.
+    fish_idx = pets.index('fish')
+    white_idx = colors.index('white')
+    for i in range(n_houses):
+        s.add(Implies(pet_vars[i] == fish_idx, color_vars[i] == white_idx))
+    
+    # Clue 9: The person who loves cooking is somewhere to the right of the person whose favorite color is red.
+    cooking_idx = hobbies.index('cooking')
+    cooking_house = Int('cooking_house')
+    red_house = Int('red_house')
+    s.add(cooking_house == Sum([If(hobby_vars[i] == cooking_idx, i, 0) for i in range(n_houses)]))
+    s.add(red_house == Sum([If(color_vars[i] == red_idx, i, 0) for i in range(n_houses)]))
+    s.add(cooking_house > red_house)
+    
+    # Clue 10: The person who loves white is the person who loves a carnations arrangement.
+    carnation_idx = flowers.index('carnations')
+    for i in range(n_houses):
+        s.add(Implies(color_vars[i] == white_idx, flower_vars[i] == carnation_idx))
+    
+    # Clue 11: The person who loves white is somewhere to the right of the person who enjoys gardening.
+    gardening_idx = hobbies.index('gardening')
+    white_house = Int('white_house')
+    gardening_house = Int('gardening_house')
+    s.add(white_house == Sum([If(color_vars[i] == white_idx, i, 0) for i in range(n_houses)]))
+    s.add(gardening_house == Sum([If(hobby_vars[i] == gardening_idx, i, 0) for i in range(n_houses)]))
+    s.add(white_house > gardening_house)
+    
+    # Clue 12: The person who loves a bouquet of daffodils is the person who loves yellow.
+    yellow_idx = colors.index('yellow')
+    for i in range(n_houses):
+        s.add(Implies(flower_vars[i] == daffodil_idx, color_vars[i] == yellow_idx))
+    
+    # Clue 13: The person living in a colonial-style house is the person whose favorite color is red.
+    colonial_idx = house_styles.index('colonial')
+    for i in range(n_houses):
+        s.add(Implies(style_vars[i] == colonial_idx, color_vars[i] == red_idx))
+    
+    # Clue 14: The person who has a cat is Eric.
+    cat_idx = pets.index('cat')
+    for i in range(n_houses):
+        s.add(Implies(pet_vars[i] == cat_idx, name_vars[i] == eric_idx))
+    
+    # Check for solution
+    if s.check() == sat:
+        model = s.model()
+        
+        # Map house indices to attribute values
+        solution_rows = []
+        for i in range(n_houses):
+            name_val = model.eval(name_vars[i]).as_long()
+            flower_val = model.eval(flower_vars[i]).as_long()
+            hobby_val = model.eval(hobby_vars[i]).as_long()
+            pet_val = model.eval(pet_vars[i]).as_long()
+            color_val = model.eval(color_vars[i]).as_long()
+            style_val = model.eval(style_vars[i]).as_long()
+            
+            row = [
+                str(i+1),
+                names[name_val],
+                flowers[flower_val],
+                hobbies[hobby_val],
+                pets[pet_val],
+                colors[color_val],
+                house_styles[style_val]
+            ]
+            solution_rows.append(row)
+        
+        # Create JSON output
+        output = {
+            "solution": {
+                "header": ["House", "Name", "Flower", "Hobby", "Pet", "Color", "HouseStyle"],
+                "rows": solution_rows
+            }
+        }
+        print(json.dumps(output, indent=2))
+    else:
+        print("No solution found")
+
+if __name__ == "__main__":
+    main()

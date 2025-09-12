@@ -1,0 +1,76 @@
+```python
+from z3 import *
+
+def main():
+    # Initialize solver
+    s = Solver()
+    
+    # Define the start time in minutes from 9:00 (0 minutes)
+    start = Int('start')
+    meeting_duration = 60  # minutes
+    
+    # Total available minutes from 9:00 to 17:00 (8 hours)
+    total_minutes = 8 * 60
+    
+    # Constraints for start time: between 0 and total_minutes - meeting_duration
+    s.add(start >= 0)
+    s.add(start <= total_minutes - meeting_duration)
+    
+    # Convert busy intervals to minutes from 9:00
+    # Danielle's busy intervals
+    danielle_busy = [
+        (0, 60),    # 9:00-10:00
+        (90, 120),  # 10:30-11:00
+        (330, 360), # 14:30-15:00
+        (390, 420), # 15:30-16:00
+        (450, 480)  # 16:30-17:00
+    ]
+    
+    # Bruce's busy intervals
+    bruce_busy = [
+        (120, 150), # 11:00-11:30
+        (210, 240), # 12:30-13:00
+        (300, 330), # 14:00-14:30
+        (390, 420)  # 15:30-16:00
+    ]
+    
+    # Eric's busy intervals
+    eric_busy = [
+        (0, 30),    # 9:00-9:30
+        (60, 120),  # 10:00-11:00
+        (150, 240), # 11:30-13:00
+        (330, 390)  # 14:30-15:30
+    ]
+    
+    # Function to add non-overlap constraints for a person
+    def add_non_overlap(busy_intervals):
+        for busystart, busyend in busy_intervals:
+            # Meeting must not overlap with busy interval
+            s.add(Or(start + meeting_duration <= busystart, start >= busyend))
+    
+    # Add constraints for each participant
+    add_non_overlap(danielle_busy)
+    add_non_overlap(bruce_busy)
+    add_non_overlap(eric_busy)
+    
+    # Check for a solution
+    if s.check() == sat:
+        m = s.model()
+        start_minutes = m.evaluate(start).as_long()
+        
+        # Convert start minutes to time string
+        start_hour = 9 + start_minutes // 60
+        start_minute = start_minutes % 60
+        end_minutes = start_minutes + meeting_duration
+        end_hour = 9 + end_minutes // 60
+        end_minute = end_minutes % 60
+        
+        # Format the output
+        time_str = f"{start_hour:02d}:{start_minute:02d}:{end_hour:02d}:{end_minute:02d}"
+        print(f"Monday {time_str}")
+    else:
+        print("No suitable time found.")
+
+if __name__ == "__main__":
+    main()
+```

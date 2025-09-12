@@ -1,0 +1,79 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"solution\": {\n    \"header\": [\n      \"House\",\n      \"Name\",\n      \"CarModel\",\n      \"HouseStyle\",\n      \"Pet\",\n      \"Occupation\",\n      \"Vacation\"\n    ],\n    \"rows\": [\n      [\n        \"1\",\n        \"Eric\",\n        \"tesla model 3\",\n        \"ranch\",\n        \"fish\",\n        \"doctor\",\n        \"city\"\n      ],\n      [\n        \"2\",\n        \"Peter\",\n        \"toyota camry\",\n        \"victorian\",\n        \"dog\",\n        \"engineer\",\n        \"beach\"\n      ],\n      [\n        \"3\",\n        \"Arnold\",\n        \"ford f150\",\n        \"colonial\",\n        \"cat\",\n        \"teacher\",\n        \"mountain\"\n      ]\n    ]\n  }\n}",
+    "pred": [
+        {
+            "House": "1",
+            "Name": "Eric",
+            "CarModel": "tesla model 3",
+            "HouseStyle": "ranch",
+            "Pet": "fish",
+            "Occupation": "doctor",
+            "Vacation": "city"
+        },
+        {
+            "House": "2",
+            "Name": "Peter",
+            "CarModel": "toyota camry",
+            "HouseStyle": "victorian",
+            "Pet": "dog",
+            "Occupation": "engineer",
+            "Vacation": "beach"
+        },
+        {
+            "House": "3",
+            "Name": "Arnold",
+            "CarModel": "ford f150",
+            "HouseStyle": "colonial",
+            "Pet": "cat",
+            "Occupation": "teacher",
+            "Vacation": "mountain"
+        }
+    ],
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Eric",
+            "CarModel": "tesla model 3",
+            "HouseStyle": "ranch",
+            "Pet": "fish",
+            "Occupation": "doctor",
+            "Vacation": "city"
+        },
+        {
+            "House": "2",
+            "Name": "Peter",
+            "CarModel": "toyota camry",
+            "HouseStyle": "victorian",
+            "Pet": "dog",
+            "Occupation": "engineer",
+            "Vacation": "beach"
+        },
+        {
+            "House": "3",
+            "Name": "Arnold",
+            "CarModel": "ford f150",
+            "HouseStyle": "colonial",
+            "Pet": "cat",
+            "Occupation": "teacher",
+            "Vacation": "mountain"
+        }
+    ],
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 97.01456952095032,
+        "execution_time": 0.08530402183532715,
+        "constraint_eval_time": 6.270408630371094e-05,
+        "pred_extract_time": 1.8682453632354736,
+        "gold_extract_time": 8.344650268554688e-06,
+        "total_tokens": 1856,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\nimport json\n\ndef main():\n    # Create solver\n    solver = Solver()\n    \n    # Define the attributes\n    houses = [1, 2, 3]\n    names = [\"Peter\", \"Arnold\", \"Eric\"]\n    car_models = [\"toyota camry\", \"ford f150\", \"tesla model 3\"]\n    house_styles = [\"ranch\", \"colonial\", \"victorian\"]\n    pets = [\"cat\", \"dog\", \"fish\"]\n    occupations = [\"engineer\", \"doctor\", \"teacher\"]\n    vacations = [\"city\", \"mountain\", \"beach\"]\n    \n    # Create variables for each attribute per house\n    name_vars = [Int(f\"name_{i}\") for i in houses]\n    car_vars = [Int(f\"car_{i}\") for i in houses]\n    style_vars = [Int(f\"style_{i}\") for i in houses]\n    pet_vars = [Int(f\"pet_{i}\") for i in houses]\n    occupation_vars = [Int(f\"occupation_{i}\") for i in houses]\n    vacation_vars = [Int(f\"vacation_{i}\") for i in houses]\n    \n    # Define domains for each variable\n    for i in houses:\n        solver.add(And(name_vars[i-1] >= 0, name_vars[i-1] < len(names)))\n        solver.add(And(car_vars[i-1] >= 0, car_vars[i-1] < len(car_models)))\n        solver.add(And(style_vars[i-1] >= 0, style_vars[i-1] < len(house_styles)))\n        solver.add(And(pet_vars[i-1] >= 0, pet_vars[i-1] < len(pets)))\n        solver.add(And(occupation_vars[i-1] >= 0, occupation_vars[i-1] < len(occupations)))\n        solver.add(And(vacation_vars[i-1] >= 0, vacation_vars[i-1] < len(vacations)))\n    \n    # All attributes are distinct per category\n    solver.add(Distinct(name_vars))\n    solver.add(Distinct(car_vars))\n    solver.add(Distinct(style_vars))\n    solver.add(Distinct(pet_vars))\n    solver.add(Distinct(occupation_vars))\n    solver.add(Distinct(vacation_vars))\n    \n    # Clue 1: The person with an aquarium of fish is in the first house.\n    solver.add(pet_vars[0] == pets.index(\"fish\"))\n    \n    # Clue 2: The person who owns a Toyota Camry is in the second house.\n    solver.add(car_vars[1] == car_models.index(\"toyota camry\"))\n    \n    # Clue 3: The person who enjoys mountain retreats is not in the second house.\n    solver.add(vacation_vars[1] != vacations.index(\"mountain\"))\n    \n    # Clue 4: The person who prefers city breaks is not in the second house.\n    solver.add(vacation_vars[1] != vacations.index(\"city\"))\n    \n    # Clue 5: The person in a ranch-style home is somewhere to the left of Peter.\n    # Find ranch house position and Peter's position\n    ranch_pos = Int(\"ranch_pos\")\n    peter_pos = Int(\"peter_pos\")\n    solver.add(ranch_pos >= 1, ranch_pos <= 3)\n    solver.add(peter_pos >= 1, peter_pos <= 3)\n    \n    for i in houses:\n        solver.add(Implies(style_vars[i-1] == house_styles.index(\"ranch\"), ranch_pos == i))\n        solver.add(Implies(name_vars[i-1] == names.index(\"Peter\"), peter_pos == i))\n    \n    solver.add(ranch_pos < peter_pos)\n    \n    # Clue 6: The person who owns a Toyota Camry is directly left of the person living in a colonial-style house.\n    toyota_pos = Int(\"toyota_pos\")\n    colonial_pos = Int(\"colonial_pos\")\n    solver.add(toyota_pos >= 1, toyota_pos <= 3)\n    solver.add(colonial_pos >= 1, colonial_pos <= 3)\n    \n    for i in houses:\n        solver.add(Implies(car_vars[i-1] == car_models.index(\"toyota camry\"), toyota_pos == i))\n        solver.add(Implies(style_vars[i-1] == house_styles.index(\"colonial\"), colonial_pos == i))\n    \n    solver.add(colonial_pos == toyota_pos + 1)\n    \n    # Clue 7: Arnold is the person who has a cat.\n    arnold_pos = Int(\"arnold_pos\")\n    cat_pos = Int(\"cat_pos\")\n    solver.add(arnold_pos >= 1, arnold_pos <= 3)\n    solver.add(cat_pos >= 1, cat_pos <= 3)\n    \n    for i in houses:\n        solver.add(Implies(name_vars[i-1] == names.index(\"Arnold\"), arnold_pos == i))\n        solver.add(Implies(pet_vars[i-1] == pets.index(\"cat\"), cat_pos == i))\n    \n    solver.add(arnold_pos == cat_pos)\n    \n    # Clue 8: Eric is somewhere to the left of the person who enjoys mountain retreats.\n    eric_pos = Int(\"eric_pos\")\n    mountain_pos = Int(\"mountain_pos\")\n    solver.add(eric_pos >= 1, eric_pos <= 3)\n    solver.add(mountain_pos >= 1, mountain_pos <= 3)\n    \n    for i in houses:\n        solver.add(Implies(name_vars[i-1] == names.index(\"Eric\"), eric_pos == i))\n        solver.add(Implies(vacation_vars[i-1] == vacations.index(\"mountain\"), mountain_pos == i))\n    \n    solver.add(eric_pos < mountain_pos)\n    \n    # Clue 9: The person who is an engineer is not in the third house.\n    solver.add(occupation_vars[2] != occupations.index(\"engineer\"))\n    \n    # Clue 10: The person who owns a Tesla Model 3 is somewhere to the left of the person who is a teacher.\n    tesla_pos = Int(\"tesla_pos\")\n    teacher_pos = Int(\"teacher_pos\")\n    solver.add(tesla_pos >= 1, tesla_pos <= 3)\n    solver.add(teacher_pos >= 1, teacher_pos <= 3)\n    \n    for i in houses:\n        solver.add(Implies(car_vars[i-1] == car_models.index(\"tesla model 3\"), tesla_pos == i))\n        solver.add(Implies(occupation_vars[i-1] == occupations.index(\"teacher\"), teacher_pos == i))\n    \n    solver.add(tesla_pos < teacher_pos)\n    \n    # Clue 11: The person who owns a dog is the person who is an engineer.\n    dog_pos = Int(\"dog_pos\")\n    engineer_pos = Int(\"engineer_pos\")\n    solver.add(dog_pos >= 1, dog_pos <= 3)\n    solver.add(engineer_pos >= 1, engineer_pos <= 3)\n    \n    for i in houses:\n        solver.add(Implies(pet_vars[i-1] == pets.index(\"dog\"), dog_pos == i))\n        solver.add(Implies(occupation_vars[i-1] == occupations.index(\"engineer\"), engineer_pos == i))\n    \n    solver.add(dog_pos == engineer_pos)\n    \n    # Solve the constraints\n    if solver.check() == sat:\n        model = solver.model()\n        \n        # Create result structure\n        result = {\n            \"solution\": {\n                \"header\": [\"House\", \"Name\", \"CarModel\", \"HouseStyle\", \"Pet\", \"Occupation\", \"Vacation\"],\n                \"rows\": []\n            }\n        }\n        \n        # Extract values for each house\n        for i in range(3):\n            house_num = i + 1\n            name_idx = model.evaluate(name_vars[i]).as_long()\n            car_idx = model.evaluate(car_vars[i]).as_long()\n            style_idx = model.evaluate(style_vars[i]).as_long()\n            pet_idx = model.evaluate(pet_vars[i]).as_long()\n            occupation_idx = model.evaluate(occupation_vars[i]).as_long()\n            vacation_idx = model.evaluate(vacation_vars[i]).as_long()\n            \n            row = [\n                str(house_num),\n                names[name_idx],\n                car_models[car_idx],\n                house_styles[style_idx],\n                pets[pet_idx],\n                occupations[occupation_idx],\n                vacations[vacation_idx]\n            ]\n            result[\"solution\"][\"rows\"].append(row)\n        \n        # Output as JSON\n        print(json.dumps(result, indent=2))\n    else:\n        print('{\"error\": \"No solution found\"}')\n\nif __name__ == \"__main__\":\n    main()"
+}

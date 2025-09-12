@@ -1,0 +1,484 @@
+We are going to use the Z3 SMT solver to model the scheduling problem.
+ Steps:
+ 1. Convert all time strings to minutes since 9:00 AM (which we set as 0 minutes).
+    For example, 9:00 AM is 0, 10:00 AM is 60, etc.
+ 2. We have 10 friends, each with a location, available time window, and minimum meeting duration.
+ 3. We start at Financial District at 9:00 AM (time=0).
+ 4. We need to decide the order of meetings and the travel times between locations.
+
+ However, note: the problem is about meeting as many friends as possible, but the constraints might not allow meeting all.
+ But note the problem says "optimize your goals", which in this case is to meet as many as possible.
+
+ However, the problem does not specify if we have a fixed end time? The day ends at 10:00PM (which is 13 hours from 9AM -> 9AM to 10PM is 13 hours, but 10PM is 22:00, so 22:00 - 9:00 = 13 hours -> 780 minutes).
+
+ But note: the constraints for some friends go until 8:30PM (Betty) and 10:00PM (Karen). So we might have until 10:00PM.
+
+ However, we are only in San Francisco for the day, so we assume we can stay until 10:00PM.
+
+ Important: We must account for travel times between locations.
+
+ Approach:
+ We will model the problem with Z3 by defining:
+   - For each friend, we have a boolean variable indicating whether we meet them or not.
+   - For each friend we meet, we have a start time and end time for the meeting (in minutes from 9:00AM).
+   - We also have the travel time from the end of one meeting to the start of the next.
+
+ However, since we are meeting multiple friends and the order is variable, we need to model the sequence.
+
+ Alternatively, we can use a TSP-like model with continuous time, but note that we are not required to visit every friend.
+
+ We can break the problem into:
+
+   Let friends = [
+        (name, location, available_start, available_end, min_duration),
+        ...]
+
+   We have to assign:
+        meet_i : boolean (whether we meet friend i)
+        start_i : integer (start time of meeting with friend i)
+        end_i : integer (end time of meeting with friend i)
+
+   Constraints for each friend i we meet:
+        available_start_i <= start_i <= available_end_i - min_duration_i
+        end_i = start_i + min_duration_i
+
+   And for the entire schedule, we have to account for travel times between consecutive meetings.
+
+   However, we don't know the order. We can use a permutation of the meetings that we do meet.
+
+   We can use an array for the order: we have at most 10 meetings, but we might not meet all.
+
+   Alternatively, we can use real variables for the start times and then impose constraints that for any two meetings i and j that we meet, either i comes before j or j comes before i, and if i comes before j, then:
+        end_i + travel_time(location_i, location_j) <= start_j
+
+   But note: we are starting at Financial District at time 0. So the first meeting must account for travel from Financial District to the first meeting location.
+
+   Similarly, we don't have to go back to Financial District at the end.
+
+   However, the problem does not require returning to the start.
+
+   We can model the travel constraints by having a variable for the arrival time at each meeting (if we meet that friend). The arrival time at the first meeting is the start time of the first meeting (minus the travel time from Financial District to that location? Actually, we start at Financial District at time 0, so we leave at time 0 and then travel to the first meeting location, so the start time of the first meeting must be at least the travel time from Financial District to that location).
+
+   For the rest, if we go from meeting i to meeting j, then the start time of meeting j must be at least end_i + travel_time(i, j).
+
+   We can use a graph of meetings and use a TSP-like model with Z3, but it's complex.
+
+   Alternatively, we can use a greedy or heuristic approach, but the problem requires using SMT.
+
+   Since the number of friends is small (10), we can try to use a fixed ordering variable for each meeting that we do meet, and then use constraints for the ordering.
+
+   Let's define an array of integers for the index of the meeting in the sequence, but note that we don't know how many we meet.
+
+   Another idea: use a real variable for the start time of each meeting and then impose that for every pair of meetings (i, j) that are both met, either:
+        start_i + duration_i + travel_time(i, j) <= start_j
+        OR
+        start_j + duration_j + travel_time(j, i) <= start_i
+
+   This ensures no overlap and accounts for travel.
+
+   Also, we must account for the initial travel: for every meeting i that is met, the start time of i must be >= travel_time from Financial District to location_i.
+
+   We can use a Z3 optimizer to maximize the number of meetings (or the total meeting time? The problem says "as many friends as possible", so we maximize the count).
+
+   However, note: the problem does not require meeting every friend, and we might have time conflicts.
+
+   Steps in code:
+
+   Let's convert all time strings to minutes from 9:00AM.
+
+   Example:
+        Mark: 8:15AM -> 8:15 is 15 minutes before 9:00, so we represent as -45 minutes? But note: we start at 9:00, so we cannot meet Mark before 9:00? Actually, Mark is available from 8:15 to 10:00, but we start at 9:00, so we can only meet from 9:00 to 10:00.
+
+        So we adjust: for Mark, the available start in our model is max(0, 8:15AM in minutes from 9:00) -> 8:15AM is 9:00 - 45 minutes -> so we set available_start = 0 (because we cannot start before 9:00) and available_end = 60 (because 10:00AM is 60 minutes from 9:00).
+
+        Similarly, for others: if available_start is before 9:00, we set it to 0.
+
+   But note: we are starting at Financial District at 9:00, so we cannot be at another location before 9:00.
+
+   So for each friend, we adjust the available window to be within [max(available_start, 9:00), available_end] in minutes from 9:00.
+
+   Let's define a function to convert time string to minutes from 9:00AM.
+
+   Example time strings: "8:15AM", "10:00AM", "12:15PM", "3:00PM", "6:45PM", "8:00PM", "10:00PM"
+
+   We'll create a helper function:
+
+   def time_to_minutes(time_str):
+        # time_str is like "8:15AM", "12:15PM", etc.
+        parts = time_str.split()
+        if len(parts) == 1:
+            # It might be without AM/PM? But the input has AM/PM.
+            # Actually, the input uses AM/PM without space, e.g., "8:15AM"
+            # Let's split by AM/PM but note there might be no space.
+            if time_str.endswith("AM"):
+                time_str = time_str[:-2]
+                hours, minutes = time_str.split(':')
+                hours = int(hours)
+                minutes = int(minutes)
+                if hours == 12:
+                    total_minutes = minutes
+                else:
+                    total_minutes = hours * 60 + minutes
+            else:
+                time_str = time_str[:-2]
+                hours, minutes = time_str.split(':')
+                hours = int(hours)
+                minutes = int(minutes)
+                if hours == 12:
+                    total_minutes = 12*60 + minutes
+                else:
+                    total_minutes = (hours+12)*60 + minutes
+        else:
+            # We assume format "H:MM XM" with space?
+            # But the input doesn't have space, so we ignore.
+            pass
+
+        Actually, let's parse without assuming space.
+
+   Alternatively, we can note that the input times are given in the constraints in a fixed format without space, e.g., "8:15AM", "10:00AM", "12:15PM", etc.
+
+   We can do:
+
+   def parse_time(s):
+        s = s.strip()
+        if s.endswith("AM"):
+            s = s[:-2]
+            h, m = s.split(':')
+            h = int(h)
+            m = int(m)
+            if h == 12:
+                # 12AM is 0 hours
+                return h*0 + m
+            else:
+                return h*60 + m
+        elif s.endswith("PM"):
+            s = s[:-2]
+            h, m = s.split(':')
+            h = int(h)
+            m = int(m)
+            if h == 12:
+                return h*60 + m
+            else:
+                return (h+12)*60 + m
+        else:
+            raise ValueError("Invalid time format")
+
+   But note: we want minutes from 9:00AM. So 9:00AM is 9*60 = 540 minutes in absolute time of the day.
+
+   However, we want to set 9:00AM as 0. So we subtract 540 minutes from the absolute time.
+
+   Example: 9:00AM absolute is 540, then we set as 0.
+            10:00AM absolute is 600, then we set as 60.
+
+   So we can compute:
+
+        absolute_minutes = parse_time(time_str)
+        minutes_from_9am = absolute_minutes - 540   # because 9:00AM is 540 minutes from midnight
+
+   But note: 12:15PM -> parse_time("12:15PM") = 12*60+15 = 735 -> minutes_from_9am = 735-540=195.
+
+   Now, if we get a negative minutes_from_9am, that means the time is before 9:00AM. We will clamp the available start to 0.
+
+   Steps for each friend:
+
+        available_start_abs = parse_time(available_start_str)
+        available_end_abs = parse_time(available_end_str)
+
+        Then convert to minutes from 9:00AM: 
+            start_rel = max(0, available_start_abs - 540)
+            end_rel = available_end_abs - 540
+
+   But note: we cannot have a meeting starting before 0 (9:00AM) so we clamp.
+
+   Now, we have the travel time matrix between locations. We have 10 locations (including Financial District? Actually, the friends are at 10 districts, but we start at Financial District).
+
+   We'll create a dictionary for travel times between locations.
+
+   Let's list the locations:
+
+   locations = [
+        "Financial District",
+        "Fisherman's Wharf",
+        "Presidio",
+        "Bayview",
+        "Haight-Ashbury",
+        "Russian Hill",
+        "The Castro",
+        "Marina District",
+        "Richmond District",
+        "Union Square",
+        "Sunset District"
+   ]
+
+   But note: the travel times are provided for each pair. We'll create a 2D dictionary.
+
+   Example: travel_time["Financial District"]["Fisherman's Wharf"] = 10
+
+   Now, we set up the Z3 problem:
+
+   We have 10 friends (indexed 0 to 9). For each friend i, we have:
+
+        meet_i = Bool('meet_i')
+        start_i = Int('start_i')
+        end_i = Int('end_i')
+
+   Constraints for each friend i:
+
+        If meet_i is true, then:
+            start_i >= adjusted_available_start_i
+            end_i = start_i + min_duration_i
+            end_i <= adjusted_available_end_i
+
+        Also, for the entire schedule, we have to account for travel from the start (Financial District) to the first meeting, and between meetings.
+
+   We also have the constraint that for any two friends i and j that are met, they must not overlap and must have travel time between.
+
+        We can use:
+
+            For all i != j, if meet_i and meet_j, then:
+                (end_i + travel_time(loc_i, loc_j) <= start_j) OR (end_j + travel_time(loc_j, loc_i) <= start_i)
+
+   Additionally, for each meeting i that is met, the start time must be at least the travel time from Financial District to loc_i.
+
+        start_i >= travel_time("Financial District", loc_i)
+
+   We want to maximize the number of meetings (sum of meet_i as integers).
+
+   However, note: the problem says "optimal meeting schedule", and we are to meet as many as possible.
+
+   We'll use an Optimize object in Z3.
+
+   Steps:
+
+        from z3 import *
+
+        # Create the travel time dictionary
+        travel = {}   # travel[from][to] = minutes
+
+        # Initialize the dictionary with all locations
+        # Then add the travel times from the given data.
+
+        # We have to input all the travel times from the problem.
+
+        # Then, define the friends list with their details.
+
+        friends = [
+            {"name": "Mark", "location": "Fisherman's Wharf", "avail_start": "8:15AM", "avail_end": "10:00AM", "min_duration": 30},
+            ...]
+
+        # Convert the times for each friend.
+
+        # Define the Z3 variables.
+
+        meets = [Bool('meet_%d' % i) for i in range(len(friends))]
+        starts = [Int('start_%d' % i) for i in range(len(friends))]
+        ends = [Int('end_%d' % i) for i in range(len(friends))]
+
+        s = Optimize()
+
+        # Constraints for each friend
+        for i, friend in enumerate(friends):
+            # If we meet this friend, then the start and end must be within the adjusted window
+            s.add(Implies(meets[i], starts[i] >= friend['start_rel']))
+            s.add(Implies(meets[i], ends[i] == starts[i] + friend['min_duration']))
+            s.add(Implies(meets[i], ends[i] <= friend['end_rel']))
+
+            # Also, the start time must be at least the travel time from Financial District to this location
+            travel_from_start = travel["Financial District"][friend['location']]
+            s.add(Implies(meets[i], starts[i] >= travel_from_start))
+
+        # Now, for every pair of friends i and j (i != j)
+        for i in range(len(friends)):
+            for j in range(i+1, len(friends)):
+                # If both meetings are held, then one must come after the other with travel time
+                cond = Implies(And(meets[i], meets[j]),
+                               Or(ends[i] + travel[friends[i]['location']][friends[j]['location']] <= starts[j],
+                                  ends[j] + travel[friends[j]['location']][friends[i]['location']] <= starts[i]))
+                s.add(cond)
+
+        # We also have to consider that we might not meet all, so the above condition only applies if both are met.
+
+        # Objective: maximize the number of meetings
+        s.maximize(Sum([If(meets[i], 1, 0) for i in range(len(friends))]))
+
+        # Check and get the model
+        if s.check() == sat:
+            m = s.model()
+            # Then we extract the meetings that are held, their start and end times.
+            # Then we convert the start and end times (in minutes from 9:00) back to time strings.
+
+            # How to convert minutes from 9:00 to time string?
+            # absolute_minutes = 540 + minutes
+            # Then convert absolute_minutes to hours and minutes.
+
+            # We'll create a list of meetings that are held.
+
+            itinerary = []
+            for i, friend in enumerate(friends):
+                if is_true(m.eval(meets[i])):
+                    start_val = m.eval(starts[i]).as_long()
+                    end_val = m.eval(ends[i]).as_long()
+                    # Convert start_val and end_val to time strings
+                    start_abs = 540 + start_val
+                    end_abs = 540 + end_val
+                    start_time = convert_to_time_str(start_abs)
+                    end_time = convert_to_time_str(end_abs)
+                    itinerary.append({
+                        "action": "meet",
+                        "location": friend['location'],
+                        "person": friend['name'],
+                        "start_time": start_time,
+                        "end_time": end_time
+                    })
+
+            # Sort the itinerary by start_time
+            itinerary.sort(key=lambda x: x['start_time'])
+
+            # Output as JSON
+            import json
+            print(json.dumps({"itinerary": itinerary}, indent=2))
+
+        else:
+            print('No solution found')
+
+   However, note: the travel time dictionary must be filled with all pairs.
+
+   We have to input all the travel times from the problem.
+
+   Let's create the travel time dictionary:
+
+        locations = [ ... ]
+
+        travel = {loc: {loc2: 0 for loc2 in locations} for loc in locations}
+
+        Then we set the travel times from the given data.
+
+   But note: the given data has travel times between every pair, but note that the travel times are not symmetric? Actually, looking at the data:
+
+        Financial District to Fisherman's Wharf: 10.
+        Fisherman's Wharf to Financial District: 11.
+
+   So they are not symmetric. We must use the given values.
+
+   We'll create a list of the travel time entries and then populate the dictionary.
+
+   Alternatively, we can create a list of tuples (from, to, time) and then iterate.
+
+   But the problem gives a long list. We'll copy and parse them.
+
+   However, note: the problem gives travel times for every pair in both directions.
+
+   We'll create a multi-line string and parse it.
+
+   But to keep the code clean, we'll manually create a dictionary of dictionaries.
+
+   Alternatively, we can write a function to parse the given travel times string.
+
+   Since the problem says the input parameters are given, we can hardcode the travel times.
+
+   Let's create the travel dictionary:
+
+        travel = {
+            "Financial District": {
+                "Fisherman's Wharf": 10,
+                "Presidio": 22,
+                "Bayview": 19,
+                "Haight-Ashbury": 19,
+                "Russian Hill": 11,
+                "The Castro": 20,
+                "Marina District": 15,
+                "Richmond District": 21,
+                "Union Square": 9,
+                "Sunset District": 30
+            },
+            "Fisherman's Wharf": {
+                "Financial District": 11,
+                "Presidio": 17,
+                "Bayview": 26,
+                "Haight-Ashbury": 22,
+                "Russian Hill": 7,
+                "The Castro": 27,
+                "Marina District": 9,
+                "Richmond District": 18,
+                "Union Square": 13,
+                "Sunset District": 27
+            },
+            ... for every location
+        }
+
+   We have to do this for all 10 locations.
+
+   This will be long, but we have to include all.
+
+   Let's list all the locations:
+
+        locs = [
+            "Financial District",
+            "Fisherman's Wharf",
+            "Presidio",
+            "Bayview",
+            "Haight-Ashbury",
+            "Russian Hill",
+            "The Castro",
+            "Marina District",
+            "Richmond District",
+            "Union Square",
+            "Sunset District"
+        ]
+
+   Note: the travel times for a location to itself is 0.
+
+   We'll complete the travel dictionary for every pair.
+
+   Now, note: the problem has 10 friends, but we have 11 locations (including Financial District). The friends are at 10 locations (excluding Financial District as a meeting location? Actually, we don't have a friend in Financial District, but we start there).
+
+   We are ready to code.
+
+   However, note: the travel times for some pairs might be missing? We have to make sure we have every pair.
+
+   We'll assume that the travel times for every pair are provided in the input.
+
+   Let's code accordingly.
+
+   One more thing: the minimum durations are given in minutes, so we can use them directly.
+
+   Now, we code.
+
+   Note: This problem is complex and might be computationally heavy for Z3, but with 10 meetings it should be acceptable.
+
+   Let's write the code.
+
+   We'll create a function to parse the time string and convert to absolute minutes.
+
+   Then we adjust by subtracting 540 (9:00AM) and clamp if negative.
+
+   We'll create the list of friends with their details.
+
+   Important: We must adjust the available window for each friend to be at least 0 for start_rel.
+
+   Example for Mark:
+
+        avail_start_abs = parse_time("8:15AM") -> 8*60+15 = 495 -> subtract 540 -> -45 -> clamp to 0.
+        avail_end_abs = parse_time("10:00AM") -> 10*60 = 600 -> subtract 540 -> 60.
+
+   So Mark's window becomes [0, 60] and min_duration=30, so we can only meet from 0 to 30 (if we start at 0, then end at 30) but note: we have to travel to Fisherman's Wharf from Financial District, which takes 10 minutes. So the earliest we can start is 10. So the meeting must be between [10, 30] (because the meeting takes 30 minutes, so must end by 60). So the meeting with Mark is possible from 10 to 30.
+
+   Now, we code accordingly.
+
+   Let's write the code.
+
+   Note: We assume that the travel times are exact and we don't have any other constraints.
+
+   We'll now write the complete code.
+
+   We must be cautious: the travel time dictionary must include every pair of locations.
+
+   We'll create the travel time dictionary for all 11 locations.
+
+   We'll also include the travel time from a location to itself as 0.
+
+   We'll now write the code in the required format.
+
+   Note: The code might be long due to the travel time dictionary.
+
+   Let's begin.

@@ -1,0 +1,97 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"solution\": {\n    \"header\": [\n      \"House\",\n      \"Name\",\n      \"MusicGenre\",\n      \"Children\",\n      \"BookGenre\"\n    ],\n    \"rows\": [\n      [\n        \"1\",\n        \"String\",\n        \"String\",\n        \"0\",\n        \"String\"\n      ],\n      [\n        \"2\",\n        \"String\",\n        \"String\",\n        \"0\",\n        \"String\"\n      ],\n      [\n        \"3\",\n        \"String\",\n        \"String\",\n        \"0\",\n        \"String\"\n      ],\n      [\n        \"4\",\n        \"String\",\n        \"String\",\n        \"0\",\n        \"String\"\n      ],\n      [\n        \"5\",\n        \"String\",\n        \"String\",\n        \"0\",\n        \"String\"\n      ]\n    ]\n  }\n}",
+    "pred": [
+        {
+            "House": "1",
+            "Name": "String",
+            "MusicGenre": "String",
+            "Children": "0",
+            "BookGenre": "String"
+        },
+        {
+            "House": "2",
+            "Name": "String",
+            "MusicGenre": "String",
+            "Children": "0",
+            "BookGenre": "String"
+        },
+        {
+            "House": "3",
+            "Name": "String",
+            "MusicGenre": "String",
+            "Children": "0",
+            "BookGenre": "String"
+        },
+        {
+            "House": "4",
+            "Name": "String",
+            "MusicGenre": "String",
+            "Children": "0",
+            "BookGenre": "String"
+        },
+        {
+            "House": "5",
+            "Name": "String",
+            "MusicGenre": "String",
+            "Children": "0",
+            "BookGenre": "String"
+        }
+    ],
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Peter",
+            "MusicGenre": "pop",
+            "Children": "Fred",
+            "BookGenre": "romance"
+        },
+        {
+            "House": "2",
+            "Name": "Eric",
+            "MusicGenre": "classical",
+            "Children": "Bella",
+            "BookGenre": "mystery"
+        },
+        {
+            "House": "3",
+            "Name": "Arnold",
+            "MusicGenre": "rock",
+            "Children": "Meredith",
+            "BookGenre": "science fiction"
+        }
+    ],
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "violations": [
+            "Wrong number of houses: expected 3, got 5",
+            "House 1 wrong Name: expected 'Peter', got 'String'",
+            "House 1 wrong MusicGenre: expected 'pop', got 'String'",
+            "House 1 wrong Children: expected 'Fred', got '0'",
+            "House 1 wrong BookGenre: expected 'romance', got 'String'",
+            "House 2 wrong Name: expected 'Eric', got 'String'",
+            "House 2 wrong MusicGenre: expected 'classical', got 'String'",
+            "House 2 wrong Children: expected 'Bella', got '0'",
+            "House 2 wrong BookGenre: expected 'mystery', got 'String'",
+            "House 3 wrong Name: expected 'Arnold', got 'String'",
+            "House 3 wrong MusicGenre: expected 'rock', got 'String'",
+            "House 3 wrong Children: expected 'Meredith', got '0'",
+            "House 3 wrong BookGenre: expected 'science fiction', got 'String'"
+        ]
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 3,
+    "timing": {
+        "api_call_time": 55.00737738609314,
+        "execution_time": 0.07831740379333496,
+        "constraint_eval_time": 0.00012350082397460938,
+        "pred_extract_time": 1.9151010513305664,
+        "gold_extract_time": 1.3828277587890625e-05,
+        "total_tokens": 4570,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\nimport json\n\n# Problem parameters\nhouses = 5  # Example value; adjust based on your problem\nnames = [Const(f\"name_{i}\", StringSort()) for i in range(houses)]\nmusics = [Const(f\"music_{i}\", StringSort()) for i in range(houses)]\nchildrens = [Int(f\"children_{i}\") for i in range(houses)]\nbooks = [Const(f\"book_{i}\", StringSort()) for i in range(houses)]\n\n# Solver initialization\ns = Solver()\n\n# Add constraints (example constraints; replace with your actual logic)\nfor i in range(houses):\n    s.add(Distinct([names[i], musics[i], books[i]]))  # Example uniqueness constraint\n    s.add(childrens[i] >= 0)  # Example range constraint\n\n# Add additional problem-specific constraints here...\n\n# Check for satisfiability\nif s.check() == sat:\n    model = s.model()\n    rows = []\n    for i in range(houses):\n        house_num = str(i + 1)\n        name_val = model.evaluate(names[i]).decl().name()\n        music_val = model.evaluate(musics[i]).decl().name()\n        child_val = model.evaluate(childrens[i]).as_string()\n        book_val = model.evaluate(books[i]).decl().name()\n        rows.append([house_num, name_val, music_val, child_val, book_val])\n    solution = {\n        \"solution\": {\n            \"header\": [\"House\", \"Name\", \"MusicGenre\", \"Children\", \"BookGenre\"],\n            \"rows\": rows\n        }\n    }\n    print(json.dumps(solution, indent=2))\nelse:\n    print(\"No solution found.\")"
+}

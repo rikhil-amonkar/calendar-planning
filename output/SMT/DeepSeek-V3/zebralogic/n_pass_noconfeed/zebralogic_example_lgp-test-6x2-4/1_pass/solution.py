@@ -1,0 +1,111 @@
+import z3
+import json
+
+def main():
+    # Define the number of houses
+    n_houses = 6
+    houses = list(range(1, n_houses+1))
+    
+    # Define the attributes
+    names = ['Alice', 'Arnold', 'Carol', 'Peter', 'Bob', 'Eric']
+    phone_models = ['huawei p50', 'iphone 13', 'xiaomi mi 11', 'oneplus 9', 'samsung galaxy s21', 'google pixel 6']
+    
+    # Create Z3 variables for each attribute
+    name_vars = [z3.Int(f'name_{i}') for i in houses]
+    phone_vars = [z3.Int(f'phone_{i}') for i in houses]
+    
+    # Create solver
+    solver = z3.Solver()
+    
+    # Each name variable must be between 0 and 5 (index of names)
+    for var in name_vars:
+        solver.add(z3.And(var >= 0, var < len(names)))
+    
+    # Each phone variable must be between 0 and 5 (index of phone_models)
+    for var in phone_vars:
+        solver.add(z3.And(var >= 0, var < len(phone_models)))
+    
+    # All names are distinct
+    solver.add(z3.Distinct(name_vars))
+    
+    # All phone models are distinct
+    solver.add(z3.Distinct(phone_vars))
+    
+    # Clue 1: The person who uses an iPhone 13 is Alice.
+    iphone13_idx = phone_models.index('iphone 13')
+    alice_idx = names.index('Alice')
+    solver.add(z3.Or([z3.And(name_vars[i] == alice_idx, phone_vars[i] == iphone13_idx) for i in range(n_houses)]))
+    
+    # Clue 2: The person who uses a Huawei P50 is in the first house.
+    huawei_idx = phone_models.index('huawei p50')
+    solver.add(phone_vars[0] == huawei_idx)
+    
+    # Clue 3: The person who uses a OnePlus 9 is in the sixth house.
+    oneplus_idx = phone_models.index('oneplus 9')
+    solver.add(phone_vars[5] == oneplus_idx)
+    
+    # Clue 4: The person who uses a Google Pixel 6 is not in the second house.
+    pixel_idx = phone_models.index('google pixel 6')
+    solver.add(phone_vars[1] != pixel_idx)
+    
+    # Clue 5: The person who uses an iPhone 13 is not in the second house.
+    solver.add(phone_vars[1] != iphone13_idx)
+    
+    # Clue 6: There is one house between Bob and Carol.
+    bob_idx = names.index('Bob')
+    carol_idx = names.index('Carol')
+    for i in range(n_houses):
+        for j in range(n_houses):
+            if abs(i - j) == 2:  # One house between means positions differ by 2
+                solver.add(z3.Or(
+                    z3.And(name_vars[i] == bob_idx, name_vars[j] == carol_idx),
+                    z3.And(name_vars[i] == carol_idx, name_vars[j] == bob_idx)
+                ))
+    
+    # Clue 7: The person who uses a Huawei P50 is Eric.
+    eric_idx = names.index('Eric')
+    solver.add(z3.Or([z3.And(name_vars[i] == eric_idx, phone_vars[i] == huawei_idx) for i in range(n_houses)]))
+    
+    # Clue 8: The person who uses a Xiaomi Mi 11 is in the third house.
+    xiaomi_idx = phone_models.index('xiaomi mi 11')
+    solver.add(phone_vars[2] == xiaomi_idx)
+    
+    # Clue 9: Alice is somewhere to the left of Carol.
+    for i in range(n_houses):
+        for j in range(n_houses):
+            if i < j:  # i is left of j
+                solver.add(z3.Implies(name_vars[j] == carol_idx, z3.Or([name_vars[k] == alice_idx for k in range(i)])))
+    
+    # Clue 10: Arnold is the person who uses a OnePlus 9.
+    arnold_idx = names.index('Arnold')
+    solver.add(z3.Or([z3.And(name_vars[i] == arnold_idx, phone_vars[i] == oneplus_idx) for i in range(n_houses)]))
+    
+    # Check if solution exists
+    if solver.check() == z3.sat:
+        model = solver.model()
+        
+        # Prepare the result
+        result = {
+            "solution": {
+                "header": ["House", "Name", "PhoneModel"],
+                "rows": []
+            }
+        }
+        
+        # Extract values for each house
+        for i in range(n_houses):
+            name_val = model.evaluate(name_vars[i])
+            phone_val = model.evaluate(phone_vars[i])
+            
+            if z3.is_int_value(name_val) and z3.is_int_value(phone_val):
+                name_str = names[name_val.as_long()]
+                phone_str = phone_models[phone_val.as_long()]
+                result["solution"]["rows"].append([str(i+1), name_str, phone_str])
+        
+        # Output as JSON
+        print(json.dumps(result, indent=2))
+    else:
+        print('No solution found')
+
+if __name__ == "__main__":
+    main()

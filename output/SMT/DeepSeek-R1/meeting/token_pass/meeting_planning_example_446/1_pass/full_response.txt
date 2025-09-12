@@ -1,0 +1,96 @@
+```python
+from z3 import *
+import json
+
+def main():
+    # District indices: 0:Richmond, 1:Marina, 2:Chinatown, 3:Financial, 4:Bayview, 5:Union Square
+    district_names = [
+        "Richmond District",
+        "Marina District",
+        "Chinatown",
+        "Financial District",
+        "Bayview",
+        "Union Square"
+    ]
+    
+    travel_time = [
+        [0, 9, 20, 22, 26, 21],
+        [11, 0, 16, 17, 27, 16],
+        [20, 12, 0, 5, 22, 7],
+        [21, 15, 5, 0, 19, 9],
+        [25, 25, 18, 19, 0, 17],
+        [20, 18, 7, 9, 15, 0]
+    ]
+    
+    meetings = [
+        {"name": "Start", "loc": 0, "min_dur": 0, "avail_start": 0, "avail_end": 615},
+        {"name": "Kimberly", "loc": 1, "min_dur": 15, "avail_start": 255, "avail_end": 405},
+        {"name": "Robert", "loc": 2, "min_dur": 15, "avail_start": 195, "avail_end": 495},
+        {"name": "Rebecca", "loc": 3, "min_dur": 75, "avail_start": 255, "avail_end": 405},
+        {"name": "Margaret", "loc": 4, "min_dur": 30, "avail_start": 30, "avail_end": 270},
+        {"name": "Kenneth", "loc": 5, "min_dur": 75, "avail_start": 570, "avail_end": 615}
+    ]
+    
+    s = Optimize()
+    
+    start = [Real(f'start_{i}') for i in range(6)]
+    end = [Real(f'end_{i}') for i in range(6)]
+    do = [Bool(f'do_{i}') for i in range(1, 6)]
+    
+    s.add(start[0] == 0, end[0] == 0)
+    
+    for i in range(1, 6):
+        m_info = meetings[i]
+        s.add(Implies(do[i-1], start[i] >= m_info['avail_start']))
+        s.add(Implies(do[i-1], end[i] == start[i] + m_info['min_dur']))
+        s.add(Implies(do[i-1], end[i] <= m_info['avail_end']))
+        s.add(Implies(do[i-1], start[i] >= end[0] + travel_time[0][m_info['loc']]))
+    
+    for i in range(1, 6):
+        for j in range(i+1, 6):
+            before = Bool(f'before_{i}_{j}')
+            loc_i = meetings[i]['loc']
+            loc_j = meetings[j]['loc']
+            s.add(Implies(And(do[i-1], do[j-1]),
+                         Or(
+                             And(before, start[j] >= end[i] + travel_time[loc_i][loc_j]),
+                             And(Not(before), start[i] >= end[j] + travel_time[loc_j][loc_i])
+                         )))
+    
+    s.maximize(Sum([If(d, 1, 0) for d in do]))
+    
+    itinerary = []
+    if s.check() == sat:
+        m = s.model()
+        for i in range(1, 6):
+            if is_true(m.evaluate(do[i-1])):
+                start_val = m.evaluate(start[i])
+                end_val = m.evaluate(end[i])
+                start_min = start_val.as_long() if is_int_value(start_val) else start_val.numerator_as_long() // start_val.denominator_as_long()
+                end_min = end_val.as_long() if is_int_value(end_val) else end_val.numerator_as_long() // end_val.denominator_as_long()
+                
+                hours_start = 9 + start_min // 60
+                minutes_start = start_min % 60
+                start_str = f"{hours_start}:{minutes_start:02d}"
+                
+                hours_end = 9 + end_min // 60
+                minutes_end = end_min % 60
+                end_str = f"{hours_end}:{minutes_end:02d}"
+                
+                itinerary.append({
+                    "action": "meet",
+                    "location": district_names[meetings[i]['loc']],
+                    "person": meetings[i]['name'],
+                    "start_time": start_str,
+                    "end_time": end_str
+                })
+        
+        itinerary.sort(key=lambda x: x['start_time'])
+    else:
+        itinerary = []
+    
+    print(json.dumps({"itinerary": itinerary}, indent=2))
+
+if __name__ == "__main__":
+    main()
+```

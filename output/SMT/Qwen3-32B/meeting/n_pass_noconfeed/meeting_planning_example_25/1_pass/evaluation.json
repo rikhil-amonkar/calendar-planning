@@ -1,0 +1,43 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\"itinerary\": [{\"action\": \"meet\", \"location\": \"Chinatown\", \"person\": \"David\", \"start_time\": \"16:00\", \"end_time\": \"17:45\"}]}",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Chinatown",
+                "person": "David",
+                "start_time": "16:00",
+                "end_time": "17:45"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Chinatown",
+                "person": "David",
+                "start_time": "16:00",
+                "end_time": "17:45"
+            }
+        ]
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 308.36888790130615,
+        "execution_time": 0.0785675048828125,
+        "constraint_eval_time": 2.7418136596679688e-05,
+        "pred_extract_time": 1.1992788314819336,
+        "gold_extract_time": 8.726119995117188e-05,
+        "total_tokens": 20302,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import z3\nimport json\n\ndef main():\n    solver = z3.Solver()\n\n    depart_GGP = z3.Int('depart_GGP')\n    S = z3.Int('S')\n    E = z3.Int('E')\n\n    solver.add(depart_GGP >= 540)  # 9:00 AM\n    solver.add(S >= 960)  # 4:00 PM\n    solver.add(E == S + 105)\n    solver.add(E <= 1305)  # 9:45 PM\n    solver.add(depart_GGP + 23 <= S)\n\n    if solver.check() == z3.sat:\n        model = solver.model()\n        depart_GGP_val = model.evaluate(depart_GGP).as_long()\n        S_val = model.evaluate(S).as_long()\n        E_val = model.evaluate(E).as_long()\n\n        def to_time_str(minutes):\n            hours = minutes // 60\n            mins = minutes % 60\n            return f\"{hours}:{mins:02d}\"\n\n        itinerary = [\n            {\n                \"action\": \"meet\",\n                \"location\": \"Chinatown\",\n                \"person\": \"David\",\n                \"start_time\": to_time_str(S_val),\n                \"end_time\": to_time_str(E_val)\n            }\n        ]\n        print(json.dumps({\"itinerary\": itinerary}))\n    else:\n        print(json.dumps({\"itinerary\": []}))\n\nif __name__ == \"__main__\":\n    main()"
+}

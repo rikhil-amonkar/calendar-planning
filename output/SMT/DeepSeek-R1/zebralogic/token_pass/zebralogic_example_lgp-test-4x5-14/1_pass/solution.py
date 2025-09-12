@@ -1,0 +1,99 @@
+import json
+from z3 import *
+
+def main():
+    s = Solver()
+    
+    # Define the house variables for each attribute value
+    Peter_house = Int('Peter_house')
+    Alice_house = Int('Alice_house')
+    Eric_house = Int('Eric_house')
+    Arnold_house = Int('Arnold_house')
+    names = [Peter_house, Alice_house, Eric_house, Arnold_house]
+    name_strs = ["Peter", "Alice", "Eric", "Arnold"]
+    
+    Janelle_house = Int('Janelle_house')
+    Holly_house = Int('Holly_house')
+    Aniya_house = Int('Aniya_house')
+    Kailyn_house = Int('Kailyn_house')
+    mothers = [Janelle_house, Holly_house, Aniya_house, Kailyn_house]
+    mother_strs = ["Janelle", "Holly", "Aniya", "Kailyn"]
+    
+    watermelon_house = Int('watermelon_house')
+    dragonfruit_house = Int('dragonfruit_house')
+    desert_house = Int('desert_house')
+    cherry_house = Int('cherry_house')
+    smoothies = [watermelon_house, dragonfruit_house, desert_house, cherry_house]
+    smoothie_strs = ["watermelon", "dragonfruit", "desert", "cherry"]
+    
+    tall_house = Int('tall_house')
+    average_house = Int('average_house')
+    short_house = Int('short_house')
+    very_short_house = Int('very_short_house')
+    heights = [tall_house, average_house, short_house, very_short_house]
+    height_strs = ["tall", "average", "short", "very short"]
+    
+    high_school_house = Int('high_school_house')
+    associate_house = Int('associate_house')
+    master_house = Int('master_house')
+    bachelor_house = Int('bachelor_house')
+    educations = [high_school_house, associate_house, master_house, bachelor_house]
+    education_strs = ["high school", "associate", "master", "bachelor"]
+    
+    all_attrs = names + mothers + smoothies + heights + educations
+    
+    # Each attribute category must have distinct houses between 1 and 4
+    for category in [names, mothers, smoothies, heights, educations]:
+        s.add(Distinct(category))
+        for x in category:
+            s.add(x >= 1, x <= 4)
+    
+    # Add clues
+    s.add(Janelle_house == 3)  # Clue 1
+    s.add(desert_house == master_house)  # Clue 2
+    s.add(desert_house != 1)  # Clue 3
+    s.add(very_short_house < high_school_house)  # Clue 4
+    s.add(Or(Eric_house == cherry_house + 1, Eric_house == cherry_house - 1))  # Clue 5
+    s.add(high_school_house != 3)  # Clue 6
+    s.add(Kailyn_house == associate_house)  # Clue 7
+    s.add(cherry_house == Aniya_house)  # Clue 8
+    s.add(tall_house == Janelle_house)  # Clue 9
+    s.add(Arnold_house > average_house)  # Clue 10
+    s.add(dragonfruit_house + 1 == short_house)  # Clue 11
+    s.add(tall_house == Alice_house)  # Clue 12
+    
+    if s.check() == sat:
+        model = s.model()
+        rows = []
+        for house in range(1, 5):
+            row = [str(house)]
+            # For each attribute category, find the value matching the current house
+            for vars_list, strs_list in [
+                (names, name_strs),
+                (mothers, mother_strs),
+                (smoothies, smoothie_strs),
+                (heights, height_strs),
+                (educations, education_strs)
+            ]:
+                found = False
+                for var, name in zip(vars_list, strs_list):
+                    if model.eval(var).as_long() == house:
+                        row.append(name)
+                        found = True
+                        break
+                if not found:
+                    row.append("Unknown")
+            rows.append(row)
+        
+        solution = {
+            "solution": {
+                "header": ["House", "Name", "Mother", "Smoothie", "Height", "Education"],
+                "rows": rows
+            }
+        }
+        print(json.dumps(solution, indent=2))
+    else:
+        print('No solution found')
+
+if __name__ == '__main__':
+    main()

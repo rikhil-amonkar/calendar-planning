@@ -1,0 +1,87 @@
+import json
+from z3 import *
+
+def main():
+    # Create a solver instance
+    solver = Solver()
+
+    # Define the house indices
+    houses = [1, 2, 3, 4]
+
+    # Define enums for names and occupations
+    NameSort, (Arnold, Eric, Peter, Alice) = EnumSort('Name', ['Arnold', 'Eric', 'Peter', 'Alice'])
+    OccupationSort, (doctor, engineer, artist, teacher) = EnumSort('Occupation', ['doctor', 'engineer', 'artist', 'teacher'])
+
+    # Create Z3 variables for each house's name and occupation
+    names = [Const(f'n_{i}', NameSort) for i in houses]
+    occupations = [Const(f'o_{i}', OccupationSort) for i in houses]
+
+    # Add constraint: all names are distinct
+    solver.add(Distinct(names))
+    # Add constraint: all occupations are distinct
+    solver.add(Distinct(occupations))
+
+    # Clue 1: There are two houses between Eric and Peter
+    # This means |position(Eric) - position(Peter)| = 3
+    eric_pos = Int('eric_pos')
+    peter_pos = Int('peter_pos')
+    solver.add(eric_pos >= 1, eric_pos <= 4)
+    solver.add(peter_pos >= 1, peter_pos <= 4)
+    solver.add(Abs(eric_pos - peter_pos) == 3)
+    # Connect positions to actual name variables
+    for i in range(4):
+        solver.add(Implies(names[i] == Eric, eric_pos == i+1))
+        solver.add(Implies(names[i] == Peter, peter_pos == i+1))
+
+    # Clue 2: The teacher is Peter
+    for i in range(4):
+        solver.add(Implies(occupations[i] == teacher, names[i] == Peter))
+
+    # Clue 3: Peter is not in the first house
+    solver.add(names[0] != Peter)
+
+    # Clue 4: One house between doctor and Alice
+    doctor_pos = Int('doctor_pos')
+    alice_pos = Int('alice_pos')
+    solver.add(doctor_pos >= 1, doctor_pos <= 4)
+    solver.add(alice_pos >= 1, alice_pos <= 4)
+    solver.add(Abs(doctor_pos - alice_pos) == 2)
+    # Connect positions to actual variables
+    for i in range(4):
+        solver.add(Implies(occupations[i] == doctor, doctor_pos == i+1))
+        solver.add(Implies(names[i] == Alice, alice_pos == i+1))
+
+    # Clue 5: The artist is Alice
+    for i in range(4):
+        solver.add(Implies(occupations[i] == artist, names[i] == Alice))
+
+    # Check for solution
+    if solver.check() == sat:
+        model = solver.model()
+        
+        # Prepare result mapping
+        result = []
+        name_map = {0: 'Arnold', 1: 'Eric', 2: 'Peter', 3: 'Alice'}
+        occup_map = {0: 'doctor', 1: 'engineer', 2: 'artist', 3: 'teacher'}
+        
+        for i in range(4):
+            name_val = model.eval(names[i])
+            occup_val = model.eval(occupations[i])
+            # Get integer representation from Z3 enum
+            name_idx = name_val.as_long()
+            occup_idx = occup_val.as_long()
+            result.append([str(i+1), name_map[name_idx], occup_map[occup_idx]])
+        
+        # Format output as JSON
+        output = {
+            "solution": {
+                "header": ["House", "Name", "Occupation"],
+                "rows": result
+            }
+        }
+        print(json.dumps(output, indent=2))
+    else:
+        print("No solution found")
+
+if __name__ == "__main__":
+    main()

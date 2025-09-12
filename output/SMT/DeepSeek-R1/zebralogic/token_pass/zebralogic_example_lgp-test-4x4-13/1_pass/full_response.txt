@@ -1,0 +1,106 @@
+```python
+from z3 import *
+import json
+
+def main():
+    # Define the enums for each category
+    Name, (Alice, Peter, Arnold, Eric) = EnumSort('Name', ['Alice', 'Peter', 'Arnold', 'Eric'])
+    Cigar, (prince, dunhill, blue_master, pall_mall) = EnumSort('Cigar', ['prince', 'dunhill', 'blue_master', 'pall_mall'])
+    Sport, (swimming, basketball, soccer, tennis) = EnumSort('Sport', ['swimming', 'basketball', 'soccer', 'tennis'])
+    Drink, (coffee, water, milk, tea) = EnumSort('Drink', ['coffee', 'water', 'milk', 'tea'])
+    
+    # Create variables for each house's attributes
+    names = [Const(f'name_{i}', Name) for i in range(1,5)]
+    cigars = [Const(f'cigar_{i}', Cigar) for i in range(1,5)]
+    sports = [Const(f'sport_{i}', Sport) for i in range(1,5)]
+    drinks = [Const(f'drink_{i}', Drink) for i in range(1,5)]
+    
+    s = Solver()
+    
+    # All attributes must be distinct per category
+    s.add(Distinct(names))
+    s.add(Distinct(cigars))
+    s.add(Distinct(sports))
+    s.add(Distinct(drinks))
+    
+    # Clue 1: Peter is in the fourth house
+    s.add(names[3] == Peter)
+    
+    # Clue 2: The tea drinker is the person who loves basketball
+    for i in range(4):
+        s.add(Implies(drinks[i] == tea, sports[i] == basketball))
+        s.add(Implies(sports[i] == basketball, drinks[i] == tea))
+    
+    # Clue 3: Arnold is the person who smokes Blue Master
+    for i in range(4):
+        s.add(Implies(names[i] == Arnold, cigars[i] == blue_master))
+        s.add(Implies(cigars[i] == blue_master, names[i] == Arnold))
+    
+    # Clue 4: The person who loves basketball is Eric
+    for i in range(4):
+        s.add(Implies(sports[i] == basketball, names[i] == Eric))
+        s.add(Implies(names[i] == Eric, sports[i] == basketball))
+    
+    # Clue 5: The person who loves tennis is the person who smokes Blue Master
+    for i in range(4):
+        s.add(Implies(sports[i] == tennis, cigars[i] == blue_master))
+        s.add(Implies(cigars[i] == blue_master, sports[i] == tennis))
+    
+    # Clue 6: Two houses between water drinker and Peter (house 4)
+    s.add(drinks[0] == water)  # Water in house 1 (index 0)
+    
+    # Clue 7: The coffee drinker is Arnold
+    for i in range(4):
+        s.add(Implies(drinks[i] == coffee, names[i] == Arnold))
+        s.add(Implies(names[i] == Arnold, drinks[i] == coffee))
+    
+    # Clue 8: Basketball lover in third house
+    s.add(sports[2] == basketball)
+    
+    # Clue 9: Prince smoker loves soccer
+    for i in range(4):
+        s.add(Implies(cigars[i] == prince, sports[i] == soccer))
+        s.add(Implies(sports[i] == soccer, cigars[i] == prince))
+    
+    # Clue 10: Peter smokes Pall Mall
+    for i in range(4):
+        s.add(Implies(names[i] == Peter, cigars[i] == pall_mall))
+        s.add(Implies(cigars[i] == pall_mall, names[i] == Peter))
+    
+    # Check and get solution
+    if s.check() == sat:
+        m = s.model()
+        # Mapping from Z3 constants to strings
+        name_map = {Alice: "Alice", Peter: "Peter", Arnold: "Arnold", Eric: "Eric"}
+        cigar_map = {prince: "prince", dunhill: "dunhill", blue_master: "blue master", pall_mall: "pall mall"}
+        sport_map = {swimming: "swimming", basketball: "basketball", soccer: "soccer", tennis: "tennis"}
+        drink_map = {coffee: "coffee", water: "water", milk: "milk", tea: "tea"}
+        
+        rows = []
+        for i in range(4):
+            house_num = str(i+1)
+            n_val = m.evaluate(names[i])
+            c_val = m.evaluate(cigars[i])
+            s_val = m.evaluate(sports[i])
+            d_val = m.evaluate(drinks[i])
+            
+            n_str = name_map[n_val]
+            c_str = cigar_map[c_val]
+            s_str = sport_map[s_val]
+            d_str = drink_map[d_val]
+            
+            rows.append([house_num, n_str, c_str, s_str, d_str])
+        
+        solution = {
+            "solution": {
+                "header": ["House", "Name", "Cigar", "FavoriteSport", "Drink"],
+                "rows": rows
+            }
+        }
+        print(json.dumps(solution, indent=2))
+    else:
+        print("No solution found")
+
+if __name__ == "__main__":
+    main()
+```

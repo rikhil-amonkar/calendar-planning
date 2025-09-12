@@ -1,0 +1,225 @@
+import json
+from z3 import *
+
+def main():
+    # Location index
+    location_index = {
+        'Marina District': 0,
+        'Bayview': 1,
+        'Sunset District': 2,
+        'Richmond District': 3,
+        'Nob Hill': 4,
+        'Chinatown': 5,
+        'Haight-Ashbury': 6,
+        'North Beach': 7,
+        'Russian Hill': 8,
+        'Embarcadero': 9
+    }
+    
+    # Initialize travel matrix with zeros
+    travel_matrix = [[0] * 10 for _ in range(10)]
+    
+    # Fill travel matrix with provided data
+    travel_matrix[0][1] = 27
+    travel_matrix[0][2] = 19
+    travel_matrix[0][3] = 11
+    travel_matrix[0][4] = 12
+    travel_matrix[0][5] = 15
+    travel_matrix[0][6] = 16
+    travel_matrix[0][7] = 11
+    travel_matrix[0][8] = 8
+    travel_matrix[0][9] = 14
+    
+    travel_matrix[1][0] = 27
+    travel_matrix[1][2] = 23
+    travel_matrix[1][3] = 25
+    travel_matrix[1][4] = 20
+    travel_matrix[1][5] = 19
+    travel_matrix[1][6] = 19
+    travel_matrix[1][7] = 22
+    travel_matrix[1][8] = 23
+    travel_matrix[1][9] = 19
+    
+    travel_matrix[2][0] = 21
+    travel_matrix[2][1] = 22
+    travel_matrix[2][3] = 12
+    travel_matrix[2][4] = 27
+    travel_matrix[2][5] = 30
+    travel_matrix[2][6] = 15
+    travel_matrix[2][7] = 28
+    travel_matrix[2][8] = 24
+    travel_matrix[2][9] = 30
+    
+    travel_matrix[3][0] = 9
+    travel_matrix[3][1] = 27
+    travel_matrix[3][2] = 11
+    travel_matrix[3][4] = 17
+    travel_matrix[3][5] = 20
+    travel_matrix[3][6] = 10
+    travel_matrix[3][7] = 17
+    travel_matrix[3][8] = 13
+    travel_matrix[3][9] = 19
+    
+    travel_matrix[4][0] = 11
+    travel_matrix[4][1] = 19
+    travel_matrix[4][2] = 24
+    travel_matrix[4][3] = 14
+    travel_matrix[4][5] = 6
+    travel_matrix[4][6] = 13
+    travel_matrix[4][7] = 8
+    travel_matrix[4][8] = 5
+    travel_matrix[4][9] = 9
+    
+    travel_matrix[5][0] = 12
+    travel_matrix[5][1] = 20
+    travel_matrix[5][2] = 29
+    travel_matrix[5][3] = 20
+    travel_matrix[5][4] = 9
+    travel_matrix[5][6] = 19
+    travel_matrix[5][7] = 3
+    travel_matrix[5][8] = 7
+    travel_matrix[5][9] = 5
+    
+    travel_matrix[6][0] = 17
+    travel_matrix[6][1] = 18
+    travel_matrix[6][2] = 15
+    travel_matrix[6][3] = 10
+    travel_matrix[6][4] = 15
+    travel_matrix[6][5] = 19
+    travel_matrix[6][7] = 19
+    travel_matrix[6][8] = 17
+    travel_matrix[6][9] = 20
+    
+    travel_matrix[7][0] = 9
+    travel_matrix[7][1] = 25
+    travel_matrix[7][2] = 27
+    travel_matrix[7][3] = 18
+    travel_matrix[7][4] = 7
+    travel_matrix[7][5] = 6
+    travel_matrix[7][6] = 18
+    travel_matrix[7][8] = 4
+    travel_matrix[7][9] = 6
+    
+    travel_matrix[8][0] = 7
+    travel_matrix[8][1] = 23
+    travel_matrix[8][2] = 23
+    travel_matrix[8][3] = 14
+    travel_matrix[8][4] = 5
+    travel_matrix[8][5] = 9
+    travel_matrix[8][6] = 17
+    travel_matrix[8][7] = 5
+    travel_matrix[8][9] = 8
+    
+    travel_matrix[9][0] = 12
+    travel_matrix[9][1] = 21
+    travel_matrix[9][2] = 30
+    travel_matrix[9][3] = 21
+    travel_matrix[9][4] = 10
+    travel_matrix[9][5] = 7
+    travel_matrix[9][6] = 21
+    travel_matrix[9][7] = 5
+    travel_matrix[9][8] = 8
+    
+    # Meetings data: person, location, availability start (min from 9:00), availability end, min duration
+    meetings_data = [
+        {'person': 'Charles', 'location': 'Bayview', 'avail_start': 150, 'avail_end': 330, 'min_duration': 45},
+        {'person': 'Robert', 'location': 'Sunset District', 'avail_start': 465, 'avail_end': 720, 'min_duration': 30},
+        {'person': 'Karen', 'location': 'Richmond District', 'avail_start': 615, 'avail_end': 750, 'min_duration': 60},
+        {'person': 'Rebecca', 'location': 'Nob Hill', 'avail_start': 435, 'avail_end': 690, 'min_duration': 90},
+        {'person': 'Margaret', 'location': 'Chinatown', 'avail_start': 315, 'avail_end': 645, 'min_duration': 120},
+        {'person': 'Patricia', 'location': 'Haight-Ashbury', 'avail_start': 330, 'avail_end': 690, 'min_duration': 45},
+        {'person': 'Mark', 'location': 'North Beach', 'avail_start': 300, 'avail_end': 570, 'min_duration': 105},
+        {'person': 'Melissa', 'location': 'Russian Hill', 'avail_start': 240, 'avail_end': 645, 'min_duration': 30},
+        {'person': 'Laura', 'location': 'Embarcadero', 'avail_start': 0, 'avail_end': 255, 'min_duration': 105}
+    ]
+    
+    n_real = len(meetings_data)
+    
+    # Z3 variables for real meetings
+    meet = [Bool(f'meet_{i+1}') for i in range(n_real)]
+    S = [Int(f'S_{i+1}') for i in range(n_real)]
+    E = [Int(f'E_{i+1}') for i in range(n_real)]
+    
+    # Virtual meeting at Marina District
+    virtual_meeting = {
+        'index': 0,
+        'S': 0,
+        'E': 0,
+        'location': location_index['Marina District'],
+        'meet': True
+    }
+    
+    # Create optimizer
+    opt = Optimize()
+    
+    # Constraints for real meetings
+    for i in range(n_real):
+        data = meetings_data[i]
+        loc_idx = location_index[data['location']]
+        opt.add(If(meet[i],
+                   And(S[i] >= data['avail_start'],
+                       S[i] + data['min_duration'] <= data['avail_end'],
+                       E[i] == S[i] + data['min_duration']),
+                   True))
+    
+    # All meetings including virtual
+    all_meetings = [virtual_meeting]
+    for i in range(n_real):
+        all_meetings.append({
+            'index': i+1,
+            'S': S[i],
+            'E': E[i],
+            'location': location_index[meetings_data[i]['location']],
+            'meet': meet[i]
+        })
+    
+    # Disjunctive constraints for all pairs of meetings
+    n_all = len(all_meetings)
+    for i in range(n_all):
+        for j in range(i+1, n_all):
+            m_i = all_meetings[i]
+            m_j = all_meetings[j]
+            loc_i = m_i['location']
+            loc_j = m_j['location']
+            cond = Or(
+                m_i['E'] + travel_matrix[loc_i][loc_j] <= m_j['S'],
+                m_j['E'] + travel_matrix[loc_j][loc_i] <= m_i['S']
+            )
+            if i == 0:
+                opt.add(If(m_j['meet'], cond, True))
+            else:
+                opt.add(If(And(m_i['meet'], m_j['meet']), cond, True))
+    
+    # Maximize number of meetings
+    opt.maximize(Sum([If(meet[i], 1, 0) for i in range(n_real)]))
+    
+    # Solve
+    if opt.check() == sat:
+        model = opt.model()
+        scheduled_meetings = []
+        for i in range(n_real):
+            if is_true(model.eval(meet[i])):
+                start_val = model.eval(S[i]).as_long()
+                end_val = model.eval(E[i]).as_long()
+                start_str = convert_to_time(start_val)
+                end_str = convert_to_time(end_val)
+                scheduled_meetings.append({
+                    'person': meetings_data[i]['person'],
+                    'location': meetings_data[i]['location'],
+                    'start_time': start_str,
+                    'end_time': end_str
+                })
+        scheduled_meetings.sort(key=lambda x: x['start_time'])
+        itinerary = [{"action": "meet", "location": m['location'], "person": m['person'], "start_time": m['start_time'], "end_time": m['end_time']} for m in scheduled_meetings]
+        print(json.dumps({"itinerary": itinerary}, indent=2))
+    else:
+        print(json.dumps({"itinerary": []}, indent=2))
+
+def convert_to_time(minutes):
+    total_minutes = minutes
+    hours = 9 + total_minutes // 60
+ minutes = total_minutes % 60
+    return f"{hours}:{minutes:02d}"
+
+if __name__ == "__main__":
+    main()

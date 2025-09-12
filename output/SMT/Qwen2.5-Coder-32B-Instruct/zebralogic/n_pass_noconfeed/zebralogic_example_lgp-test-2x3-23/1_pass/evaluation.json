@@ -1,0 +1,49 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n    \"solution\": {\n        \"header\": [\n            \"House\",\n            \"Name\",\n            \"Children\",\n            \"Food\"\n        ],\n        \"rows\": [\n            [\n                \"1\",\n                \"Eric\",\n                \"Bella\",\n                \"grilled cheese\"\n            ],\n            [\n                \"2\",\n                \"Arnold\",\n                \"Fred\",\n                \"pizza\"\n            ]\n        ]\n    }\n}",
+    "pred": [
+        {
+            "House": "1",
+            "Name": "Eric",
+            "Children": "Bella",
+            "Food": "grilled cheese"
+        },
+        {
+            "House": "2",
+            "Name": "Arnold",
+            "Children": "Fred",
+            "Food": "pizza"
+        }
+    ],
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Eric",
+            "Children": "Bella",
+            "Food": "grilled cheese"
+        },
+        {
+            "House": "2",
+            "Name": "Arnold",
+            "Children": "Fred",
+            "Food": "pizza"
+        }
+    ],
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 24.387773990631104,
+        "execution_time": 0.07831501960754395,
+        "constraint_eval_time": 4.696846008300781e-05,
+        "pred_extract_time": 1.4737560749053955,
+        "gold_extract_time": 1.9073486328125e-05,
+        "total_tokens": 2163,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\nimport json\n\n# Define the variables\nhouse1_name = String('house1_name')\nhouse1_children = String('house1_children')\nhouse1_food = String('house1_food')\n\nhouse2_name = String('house2_name')\nhouse2_children = String('house2_children')\nhouse2_food = String('house2_food')\n\n# Create the solver\nsolver = Solver()\n\n# Define the domains\nnames = ['Eric', 'Arnold']\nchildren = ['Bella', 'Fred']\nfoods = ['grilled cheese', 'pizza']\n\n# Add domain constraints\nsolver.add(Or(house1_name == 'Eric', house1_name == 'Arnold'))\nsolver.add(Or(house1_children == 'Bella', house1_children == 'Fred'))\nsolver.add(Or(house1_food == 'grilled cheese', house1_food == 'pizza'))\n\nsolver.add(Or(house2_name == 'Eric', house2_name == 'Arnold'))\nsolver.add(Or(house2_children == 'Bella', house2_children == 'Fred'))\nsolver.add(Or(house2_food == 'grilled cheese', house2_food == 'pizza'))\n\n# Add unique constraints\nsolver.add(Distinct(house1_name, house2_name))\nsolver.add(Distinct(house1_children, house2_children))\nsolver.add(Distinct(house1_food, house2_food))\n\n# Add clue constraints\n# Clue 1: The person who is a pizza lover is Arnold.\nsolver.add(Implies(house1_food == 'pizza', house1_name == 'Arnold'))\nsolver.add(Implies(house2_food == 'pizza', house2_name == 'Arnold'))\n\n# Clue 2: The person who loves eating grilled cheese is directly left of the person's child is named Fred.\nsolver.add(Implies(house1_food == 'grilled cheese', And(house2_children == 'Fred', house1_name != 'Arnold')))\nsolver.add(Implies(house2_food == 'grilled cheese', False))  # This ensures that grilled cheese cannot be in house 2\n\n# Solve the puzzle\nif solver.check() == sat:\n    model = solver.model()\n    solution = {\n        \"solution\": {\n            \"header\": [\"House\", \"Name\", \"Children\", \"Food\"],\n            \"rows\": [\n                [\"1\", model[house1_name].as_string(), model[house1_children].as_string(), model[house1_food].as_string()],\n                [\"2\", model[house2_name].as_string(), model[house2_children].as_string(), model[house2_food].as_string()]\n            ]\n        }\n    }\n    print(json.dumps(solution, indent=4))\nelse:\n    print(\"No solution found\")"
+}

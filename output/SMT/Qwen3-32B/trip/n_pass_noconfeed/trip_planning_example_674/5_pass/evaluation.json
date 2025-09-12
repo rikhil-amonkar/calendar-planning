@@ -1,0 +1,63 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "Valid plan found:\nS_0 = 0\norder_0 = 0\nS_1 = 0\norder_1 = 1\nS_2 = 0\norder_2 = 2\nS_3 = 0\norder_3 = 3\nS_4 = 0\norder_4 = 4\nS_5 = 0\norder_5 = 5\nlast_day = 3",
+    "pred": {
+        "itinerary": [
+            {
+                "day_range": "Day 1-3",
+                "place": "Reykjavik"
+            },
+            {
+                "day_range": "Day 2-4",
+                "place": "Stockholm"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "day_range": "Day 1-2",
+                "place": "Helsinki"
+            },
+            {
+                "day_range": "Day 2-5",
+                "place": "Madrid"
+            },
+            {
+                "day_range": "Day 5-8",
+                "place": "Budapest"
+            },
+            {
+                "day_range": "Day 8-9",
+                "place": "Reykjavik"
+            },
+            {
+                "day_range": "Day 9-11",
+                "place": "Warsaw"
+            },
+            {
+                "day_range": "Day 11-14",
+                "place": "Split"
+            }
+        ]
+    },
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "total_days": 14
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 5,
+    "timing": {
+        "api_call_time": 243.72822046279907,
+        "execution_time": 0.07883024215698242,
+        "constraint_eval_time": 3.0279159545898438e-05,
+        "pred_extract_time": 1.2409589290618896,
+        "gold_extract_time": 0.0001285076141357422,
+        "total_tokens": 18055,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import z3\n\n# Create a Z3 solver instance\nsolver = z3.Solver()\n\n# Define arrays of Z3 integer variables\nS = [z3.Int(f'S_{i}') for i in range(6)]\norder = [z3.Int(f'order_{i}') for i in range(6)]\n\n# Add constraints for order variables\nsolver.add([z3.And(0 <= order[i], order[i] <= 5) for i in range(6)])\nsolver.add(z3.Distinct(order))\n\n# Add constraints for start time variables\nsolver.add([S[i] >= 0 for i in range(6)])\n\n# Define last_day based on S[5] and order[5]\nlast_day = S[5] + z3.If(order[5] == 0, 2,\n                        z3.If(order[5] == 1, 3,\n                              z3.If(order[5] == 2, 4,\n                                    z3.If(order[5] == 3, 4,\n                                          z3.If(order[5] == 4, 2,\n                                                z3.If(order[5] == 5, 4, 0)))))) - 1\n\n# Check if the constraints are satisfiable\nif solver.check() == z3.sat:\n    model = solver.model()\n    print(\"Valid plan found:\")\n    for i in range(6):\n        print(f\"S_{i} = {model[S[i]]}\")\n        print(f\"order_{i} = {model[order[i]]}\")\n    print(f\"last_day = {model.evaluate(last_day)}\")\nelse:\n    print(\"No valid plan found.\")"
+}

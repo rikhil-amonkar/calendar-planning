@@ -1,0 +1,66 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "[travel_time = 10]",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Central Park",
+                "person": "David",
+                "start_time": "13:00",
+                "end_time": "14:00"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Sunset District",
+                "person": "Sarah",
+                "start_time": "10:45",
+                "end_time": "11:15"
+            },
+            {
+                "action": "meet",
+                "location": "Haight-Ashbury",
+                "person": "Richard",
+                "start_time": "11:45",
+                "end_time": "13:15"
+            },
+            {
+                "action": "meet",
+                "location": "Mission District",
+                "person": "Elizabeth",
+                "start_time": "13:26",
+                "end_time": "15:26"
+            },
+            {
+                "action": "meet",
+                "location": "Golden Gate Park",
+                "person": "Michelle",
+                "start_time": "18:15",
+                "end_time": "19:45"
+            }
+        ]
+    },
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "constraints_satisfied_but_no_exact_match": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 5,
+    "timing": {
+        "api_call_time": 60.374512672424316,
+        "execution_time": 0.07540726661682129,
+        "constraint_eval_time": 8.535385131835938e-05,
+        "pred_extract_time": 1.3606998920440674,
+        "gold_extract_time": 4.00543212890625e-05,
+        "total_tokens": 4563,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import z3\n\n# Define an integer variable\ntravel_time = z3.Int('travel_time')\n\n# Create a solver instance\nsolver = z3.Solver()\n\n# Add a constraint\nsolver.add(travel_time == 10)\n\n# Check for satisfiability and print the model if satisfied\nif solver.check() == z3.sat:\n    print(solver.model())"
+}

@@ -1,0 +1,89 @@
+from z3 import *
+import json
+
+def main():
+    # Define travel times between locations
+    travel_times = {
+        'The Castro': {'Presidio': 20, 'Sunset District': 17, 'Haight-Ashbury': 6, 'Mission District': 7, 'Golden Gate Park': 11, 'Russian Hill': 18},
+        'Presidio': {'The Castro': 21, 'Sunset District': 15, 'Haight-Ashbury': 15, 'Mission District': 26, 'Golden Gate Park': 12, 'Russian Hill': 14},
+        'Sunset District': {'The Castro': 17, 'Presidio': 16, 'Haight-Ashbury': 15, 'Mission District': 24, 'Golden Gate Park': 11, 'Russian Hill': 24},
+        'Haight-Ashbury': {'The Castro': 6, 'Presidio': 15, 'Sunset District': 15, 'Mission District': 11, 'Golden Gate Park': 7, 'Russian Hill': 17},
+        'Mission District': {'The Castro': 7, 'Presidio': 25, 'Sunset District': 24, 'Haight-Ashbury': 12, 'Golden Gate Park': 17, 'Russian Hill': 15},
+        'Golden Gate Park': {'The Castro': 13, 'Presidio': 11, 'Sunset District': 10, 'Haight-Ashbury': 7, 'Mission District': 17, 'Russian Hill': 19},
+        'Russian Hill': {'The Castro': 21, 'Presidio': 14, 'Sunset District': 23, 'Haight-Ashbury': 17, 'Mission District': 16, 'Golden Gate Park': 21}
+    }
+
+    # Define people data: name, location, window start, window end, min duration (all in minutes from 9:00 AM)
+    people_data = [
+        {'name': 'Rebecca', 'loc': 'Presidio', 'start': 555, 'end': 705, 'dur': 60},
+        {'name': 'Linda', 'loc': 'Sunset District', 'start': 390, 'end': 645, 'dur': 30},
+        {'name': 'Elizabeth', 'loc': 'Haight-Ashbury', 'start': 495, 'end': 630, 'dur': 105},
+        {'name': 'William', 'loc': 'Mission District', 'start': 255, 'end': 630, 'dur': 30},
+        {'name': 'Robert', 'loc': 'Golden Gate Park', 'start': 315, 'end': 750, 'dur': 45},
+        {'name': 'Mark', 'loc': 'Russian Hill', 'start': 60, 'end': 735, 'dur': 75}
+    ]
+
+    # Initialize Z3 solver and optimization
+    opt = Optimize()
+    
+    # Create variables for each person: whether we meet them and their start time
+    met = [Bool(f'met_{i}') for i in range(6)]
+    start = [Real(f'start_{i}') for i in range(6)]
+    
+    # Add constraints for each person's availability window
+    for i, p in enumerate(people_data):
+        opt.add(Implies(met[i], And(start[i] >= p['start'], start[i] + p['dur'] <= p['end'])))
+        # Constraint from starting location (The Castro) to this person
+        travel_from_start = travel_times['The Castro'][p['loc']]
+        opt.add(Implies(met[i], start[i] >= travel_from_start))
+    
+    # Add constraints for travel times between meetings
+    for i in range(6):
+        for j in range(i+1, 6):
+            travel_ij = travel_times[people_data[i]['loc']][people_data[j]['loc']]
+            travel_ji = travel_times[people_data[j]['loc']][people_data[i]['loc']]
+            constraint = Implies(And(met[i], met[j]),
+                                Or(
+                                    start[i] + people_data[i]['dur'] + travel_ij <= start[j],
+                                    start[j] + people_data[j]['dur'] + travel_ji <= start[i]
+                                ))
+            opt.add(constraint)
+    
+    # Maximize the number of meetings
+    total_met = Sum([If(met[i], 1, 0) for i in range(6)])
+    opt.maximize(total_met)
+    
+    # Solve and output results
+    if opt.check() == sat:
+        model = opt.model()
+        itinerary = []
+        for i, p in enumerate(people_data):
+            if is_true(model.eval(met[i])):
+                start_val = model.eval(start[i])
+                start_minutes = int(str(start_val))
+                end_minutes = start_minutes + p['dur']
+                # Convert to time strings (24-hour format)
+                start_abs = 540 + start_minutes  # 9:00 AM = 540 minutes from midnight
+                end_abs = 540 + end_minutes
+                hours_start = start_abs // 60
+                minutes_start = start_abs % 60
+                hours_end = end_abs // 60
+                minutes_end = end_abs % 60
+                start_str = f"{hours_start}:{minutes_start:02d}"
+                end_str = f"{hours_end}:{minutes_end:02d}"
+                itinerary.append({
+                    "action": "meet",
+                    "location": p['loc'],
+                    "person": p['name'],
+                    "start_time": start_str,
+                    "end_time": end_str
+                })
+        
+        # Sort itinerary by start time
+        itinerary.sort(key=lambda x: x['start_time'])
+        print(json.dumps({"itinerary": itinerary}, indent=2))
+    else:
+        print('{"itinerary": []}')
+
+if __name__ == '__main__':
+    main()

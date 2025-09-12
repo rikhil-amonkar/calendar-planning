@@ -1,0 +1,53 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"itinerary\": [\n    {\n      \"day_range\": \"Day 1-4\",\n      \"place\": \"Vilnius\"\n    },\n    {\n      \"day_range\": \"Day 4-6\",\n      \"place\": \"Munich\"\n    },\n    {\n      \"day_range\": \"Day 6-12\",\n      \"place\": \"Mykonos\"\n    }\n  ]\n}",
+    "pred": {
+        "itinerary": [
+            {
+                "day_range": "Day 1-4",
+                "place": "Vilnius"
+            },
+            {
+                "day_range": "Day 4-6",
+                "place": "Munich"
+            },
+            {
+                "day_range": "Day 6-12",
+                "place": "Mykonos"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "day_range": "Day 1-4",
+                "place": "Vilnius"
+            },
+            {
+                "day_range": "Day 4-6",
+                "place": "Munich"
+            },
+            {
+                "day_range": "Day 6-12",
+                "place": "Mykonos"
+            }
+        ]
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 282.807603597641,
+        "execution_time": 0.0787208080291748,
+        "constraint_eval_time": 4.9114227294921875e-05,
+        "pred_extract_time": 1.4750316143035889,
+        "gold_extract_time": 8.940696716308594e-05,
+        "total_tokens": 19629,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import z3\nimport json\n\n# Define cities as integers: 0 - Vilnius, 1 - Munich, 2 - Mykonos\nfirst = z3.Int('first')\nsecond = z3.Int('second')\nthird = z3.Int('third')\n\ns = z3.Solver()\n\n# All cities must be distinct\ns.add(z3.Distinct(first, second, third))\n\n# Allowed transitions: (Vilnius, Munich), (Munich, Vilnius), (Munich, Mykonos), (Mykonos, Munich)\nallowed_transitions = [(0, 1), (1, 0), (1, 2), (2, 1)]\n\n# Transition between first and second city\ntrans1 = z3.Or([z3.And(first == a, second == b) for a, b in allowed_transitions])\n# Transition between second and third city\ntrans2 = z3.Or([z3.And(second == a, third == b) for a, b in allowed_transitions])\ns.add(trans1, trans2)\n\nif s.check() == z3.sat:\n    model = s.model()\n    first_val = model[first].as_long()\n    second_val = model[second].as_long()\n    third_val = model[third].as_long()\n    \n    # Map city codes to names and durations\n    city_names = {0: 'Vilnius', 1: 'Munich', 2: 'Mykonos'}\n    durations = []\n    for city in [first_val, second_val, third_val]:\n        if city == 0:\n            durations.append(4)\n        elif city == 1:\n            durations.append(3)\n        elif city == 2:\n            durations.append(7)\n    \n    # Calculate day ranges\n    start1 = 1\n    end1 = start1 + durations[0] - 1\n    start2 = end1\n    end2 = start2 + durations[1] - 1\n    start3 = end2\n    end3 = start3 + durations[2] - 1\n    \n    # Build itinerary\n    itinerary = [\n        {\"day_range\": f\"Day {start1}-{end1}\", \"place\": city_names[first_val]},\n        {\"day_range\": f\"Day {start2}-{end2}\", \"place\": city_names[second_val]},\n        {\"day_range\": f\"Day {start3}-{end3}\", \"place\": city_names[third_val]}\n    ]\n    \n    # Output as JSON\n    result = {\"itinerary\": itinerary}\n    print(json.dumps(result, indent=2))\nelse:\n    print(json.dumps({\"error\": \"No solution found\"}))"
+}

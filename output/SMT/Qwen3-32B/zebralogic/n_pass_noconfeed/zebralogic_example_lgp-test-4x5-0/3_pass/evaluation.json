@@ -1,0 +1,58 @@
+{
+    "has_execution_error": true,
+    "has_no_plan": false,
+    "execution_output": null,
+    "pred": null,
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Eric",
+            "Smoothie": "dragonfruit",
+            "Cigar": "pall mall",
+            "Height": "average",
+            "PhoneModel": "samsung galaxy s21"
+        },
+        {
+            "House": "2",
+            "Name": "Peter",
+            "Smoothie": "desert",
+            "Cigar": "blue master",
+            "Height": "very short",
+            "PhoneModel": "iphone 13"
+        },
+        {
+            "House": "3",
+            "Name": "Alice",
+            "Smoothie": "watermelon",
+            "Cigar": "prince",
+            "Height": "tall",
+            "PhoneModel": "oneplus 9"
+        },
+        {
+            "House": "4",
+            "Name": "Arnold",
+            "Smoothie": "cherry",
+            "Cigar": "dunhill",
+            "Height": "short",
+            "PhoneModel": "google pixel 6"
+        }
+    ],
+    "status": "Error",
+    "violated_constraint": {
+        "invalid_output": "No valid output structure found"
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 3,
+    "timing": {
+        "api_call_time": 49.28829503059387,
+        "execution_time": 0.07924103736877441,
+        "constraint_eval_time": 5.7220458984375e-06,
+        "pred_extract_time": 3.337860107421875e-06,
+        "gold_extract_time": 1.049041748046875e-05,
+        "total_tokens": 3784,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import IntVector, Solver, And, Distinct\n\n# Assuming 'houses' is the number of houses (e.g., 5)\n# Define the number of houses\nhouses = 5\n\n# Create variables for each attribute (nationality, drink, color, pet, etc.)\nn = IntVector('n', houses)  # Nationalities\ns = IntVector('s', houses)  # Drinks\nc = IntVector('c', houses)  # Colors\nh = IntVector('h', houses)  # Hobbies or pets\np = IntVector('p', houses)  # Pets or other attributes\n\n# Initialize the solver\nsolver = Solver()\n\n# Add bounds and distinct constraints for each attribute\nfor var in [n, s, c, h, p]:\n    for i in range(houses):\n        solver.add(And(var[i] >= 0, var[i] <= 4))  # Adjust upper bound as needed\n    solver.add(Distinct([var[i] for i in range(houses)]))"
+}

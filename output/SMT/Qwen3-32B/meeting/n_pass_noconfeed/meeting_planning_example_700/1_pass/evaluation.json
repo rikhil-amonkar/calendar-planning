@@ -1,0 +1,63 @@
+{
+    "has_execution_error": true,
+    "has_no_plan": false,
+    "execution_output": null,
+    "pred": null,
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "North Beach",
+                "person": "Helen",
+                "start_time": "11:00",
+                "end_time": "11:45"
+            },
+            {
+                "action": "meet",
+                "location": "Fisherman's Wharf",
+                "person": "Emily",
+                "start_time": "16:15",
+                "end_time": "16:45"
+            },
+            {
+                "action": "meet",
+                "location": "Nob Hill",
+                "person": "Mary",
+                "start_time": "17:30",
+                "end_time": "18:15"
+            },
+            {
+                "action": "meet",
+                "location": "Marina District",
+                "person": "Mark",
+                "start_time": "18:26",
+                "end_time": "19:41"
+            },
+            {
+                "action": "meet",
+                "location": "Golden Gate Park",
+                "person": "Michelle",
+                "start_time": "20:00",
+                "end_time": "20:15"
+            }
+        ]
+    },
+    "status": "Error",
+    "violated_constraint": {
+        "missing_itinerary": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 1192.6999287605286,
+        "execution_time": 0.012110710144042969,
+        "constraint_eval_time": 4.0531158447265625e-06,
+        "pred_extract_time": 8.58306884765625e-06,
+        "gold_extract_time": 6.580352783203125e-05,
+        "total_tokens": 93731,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\nimport json\n\ndef to_time_str(minutes):\n    hours = minutes // 60\n    mins = minutes % 60\n    return f\"{hours}:{mins:02d}\"\n\nfriends = [\n    {'name': 'Helen', 'location': 'North Beach', 'available_start': 660, 'available_end': 735, 'min_duration': 45},\n    {'name': 'Mary', 'location': 'Nob Hill', 'available_start': 1050, 'available_end': 1140, 'min_duration': 45},\n    {'name': 'Barbara', 'location': 'Alamo Square', 'available_start': 1020, 'available_end': 1140, 'min_duration': 120},\n    {'name': 'Mark', 'location': 'Marina District', 'available_start': 1095, 'available_end': 1185, 'min_duration': 75},\n    {'name': 'Emily', 'location': 'Fisherman\\'s Wharf', 'available_start': 975, 'available_end': 1140, 'min_duration': 30},\n    {'name': 'Laura', 'location': 'Sunset District', 'available_start': 1140, 'available_end': 1275, 'min_duration': 75},\n    {'name': 'Michelle', 'location': 'Golden Gate Park', 'available_start': 1200, 'available_end': 1260, 'min_duration': 15},\n]\n\ntravel_times = {\n    'Presidio': {\n        'Pacific Heights': 11,\n        'Golden Gate Park': 12,\n        'Fisherman\\'s Wharf': 19,\n        'Marina District': 11,\n        'Alamo Square': 19,\n        'Sunset District': 15,\n        'Nob Hill': 18,\n        'North Beach': 18,\n    },\n    'Pacific Heights': {\n        'Presidio': 11,\n        'Golden Gate Park': 15,\n        'Fisherman\\'s Wharf': 13,\n        'Marina District': 6,\n        'Alamo Square': 10,\n        'Sunset District': 21,\n        'Nob Hill': 8,\n        'North Beach': 9,\n    },\n    'Golden Gate Park': {\n        'Presidio': 12,\n        'Pacific Heights': 15,\n        'Fisherman\\'s Wharf': 24,\n        'Marina District': 16,\n        'Alamo Square': 9,\n        'Sunset District': 10,\n        'Nob Hill': 20,\n        'North Beach': 23,\n    },\n    'Fisherman\\'s Wharf': {\n        'Presidio': 19,\n        'Pacific Heights': 13,\n        'Golden Gate Park': 24,\n        'Marina District': 9,\n        'Alamo Square': 21,\n        'Sunset District': 27,\n        'Nob Hill': 11,\n        'North Beach': 6,\n    },\n    'Marina District': {\n        'Presidio': 11,\n        'Pacific Heights': 7,\n        'Golden Gate Park': 18,\n        'Fisherman\\'s Wharf': 10,\n        'Alamo Square': 15,\n        'Sunset District': 19,\n        'Nob Hill': 12,\n        'North Beach': 11,\n    },\n    'Alamo Square': {\n        'Presidio': 19,\n        'Pacific Heights': 10,\n        'Golden Gate Park': 9,\n        'Fisherman\\'s Wharf': 21,\n        'Marina District': 15,\n        'Sunset District': 16,\n        'Nob Hill': 11,\n        'North Beach': 15,\n    },\n    'Sunset District': {\n        'Presidio': 15,\n        'Pacific Heights': 21,\n        'Golden Gate Park': 10,\n        'Fisherman\\'s Wharf': 27,\n        'Marina District': 19,\n        'Alamo Square': 16,\n        'Nob Hill': 27,\n        'North Beach': 28,\n    },\n    'Nob Hill': {\n        'Presidio': 18,\n        'Pacific Heights': 8,\n        'Golden Gate Park': 20,\n        'Fisherman\\'s Wharf': 10,\n        'Marina District': 12,\n        'Alamo Square': 11,\n        'Sunset District': 27,\n        'North Beach': 8,\n    },\n    'North Beach': {\n        'Presidio': 18,\n        'Pacific Heights': 9,\n        'Golden Gate Park': 23,\n        'Fisherman\\'s Wharf': 5,\n        'Marina District': 9,\n        'Alamo Square': 16,\n        'Sunset District': 28,\n        'Nob Hill': 7,\n    },\n}\n\nnum_steps = 7\ns = Solver()\n\nfriend_idx = [Int(f'friend_idx_{i}') for i in range(num_steps)]\nstart = [Int(f'start_{i}') for i in range(num_steps)]\nend = [Int(f'end_{i}') for i in range(num_steps)]\n\nfor i in range(num_steps):\n    s.add(And(friend_idx[i] >= -1, friend_idx[i] <= 6))\n\ntravel_time_matrix = [[0 for _ in range(7)] for _ in range(7)]\nfor p in range(7):\n    for c in range(7):\n        prev_loc = friends[p]['location']\n        curr_loc = friends[c]['location']\n        travel_time_matrix[p][c] = travel_times[prev_loc][curr_loc]\n\nfor i in range(num_steps):\n    fi = friend_idx[i]\n    available_start_i = If(fi == 0, friends[0]['available_start'],\n                           If(fi == 1, friends[1]['available_start'],\n                              If(fi == 2, friends[2]['available_start'],\n                                 If(fi == 3, friends[3]['available_start'],\n                                    If(fi == 4, friends[4]['available_start'],\n                                       If(fi == 5, friends[5]['available_start'],\n                                          If(fi == 6, friends[6]['available_start'],\n                                             -1\n                                          )\n                                       )\n                                    )\n                                 )\n                              )\n                           )\n    available_end_i = If(fi == 0, friends[0]['available_end'],\n                         If(fi == 1, friends[1]['available_end'],\n                            If(fi == 2, friends[2]['available_end'],\n                               If(fi == 3, friends[3]['available_end'],\n                                  If(fi == 4, friends[4]['available_end'],\n                                     If(fi == 5, friends[5]['available_end'],\n                                        If(fi == 6, friends[6]['available_end'],\n                                           -1\n                                        )\n                                     )\n                                  )\n                               )\n                            )\n                         )\n    min_duration_i = If(fi == 0, friends[0]['min_duration'],\n                        If(fi == 1, friends[1]['min_duration'],\n                           If(fi == 2, friends[2]['min_duration'],\n                              If(fi == 3, friends[3]['min_duration'],\n                                 If(fi == 4, friends[4]['min_duration'],\n                                    If(fi == 5, friends[5]['min_duration'],\n                                       If(fi == 6, friends[6]['min_duration'],\n                                          -1\n                                       )\n                                    )\n                                 )\n                              )\n                           )\n                        )\n    s.add(Implies(fi != -1, start[i] >= available_start_i))\n    s.add(Implies(fi != -1, end[i] <= available_end_i))\n    s.add(Implies(fi != -1, end[i] - start[i] >= min_duration_i))\n\n    if i == 0:\n        travel_time_0 = If(fi == 0, travel_times['Presidio'][friends[0]['location']],\n                           If(fi == 1, travel_times['Presidio'][friends[1]['location']],\n                              If(fi == 2, travel_times['Presidio'][friends[2]['location']],\n                                 If(fi == 3, travel_times['Presidio'][friends[3]['location']],\n                                    If(fi == 4, travel_times['Presidio'][friends[4]['location']],\n                                       If(fi == 5, travel_times['Presidio'][friends[5]['location']],\n                                          If(fi == 6, travel_times['Presidio'][friends[6]['location']],\n                                             -1\n                                          )\n                                       )\n                                    )\n                                 )\n                              )\n                           )\n        s.add(Implies(fi != -1, start[0] >= 540 + travel_time_0))\n\nfor i in range(1, num_steps):\n    fi_prev = friend_idx[i-1]\n    fi_curr = friend_idx[i]\n    travel_time_expr = 0\n    for p in range(7):\n        for c in range(7):\n            travel_time_expr = If(And(fi_prev == p, fi_curr == c), travel_time_matrix[p][c], travel_time_expr)\n    s.add(Implies(And(fi_prev != -1, fi_curr != -1), start[i] >= end[i-1] + travel_time_expr))\n\nfor i in range(num_steps):\n    for j in range(i+1, num_steps):\n        s.add(Implies(And(friend_idx[i] != -1, friend_idx[j] != -1), friend_idx[i] != friend_idx[j]))\n\nif s.check() == sat:\n    m = s.model()\n    itinerary = []\n    for i in range(num_steps):\n        fi_val = m.eval(friend_idx[i])\n        if fi_val != -1:\n            start_val = m.eval(start[i])\n            end_val = m.eval(end[i])\n            friend = friends[fi_val]\n            itinerary.append({\n                \"action\": \"meet\",\n                \"location\": friend['location'],\n                \"person\": friend['name'],\n                \"start_time\": to_time_str(start_val),\n                \"end_time\": to_time_str(end_val)\n            })\n    print(json.dumps({\"itinerary\": itinerary}))\nelse:\n    print(\"No solution found.\")"
+}

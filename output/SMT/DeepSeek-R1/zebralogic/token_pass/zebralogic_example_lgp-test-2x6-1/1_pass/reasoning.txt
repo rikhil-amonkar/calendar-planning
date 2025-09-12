@@ -1,0 +1,115 @@
+We are given 2 houses. Each has attributes: Name, FavoriteSport, HairColor, Height, Smoothie, Flower.
+ We have two options for each attribute.
+
+ Steps:
+ 1. Define the attributes and their possible values.
+ 2. Create Z3 variables for each attribute for each house.
+ 3. Assert that all attributes are distinct per category (i.e., each name is unique, etc.)
+ 4. Add the constraints from the clues.
+
+ Clues:
+ 1. The person who loves soccer is not in the second house.
+    => So, soccer lover is in house 1.
+
+ 2. The Desert smoothie lover is directly left of the person who is very short.
+    => Since there are only two houses, Desert smoothie lover is in house 1 and very short is in house 2.
+
+ 3. The person who is very short is the person who has brown hair.
+    => So, brown hair is in the same house as very short (which is house 2, from clue 2).
+
+ 4. The person who loves a carnations arrangement is the Desert smoothie lover.
+    => So, carnations lover is in the same house as Desert smoothie lover (which is house 1, from clue 2).
+
+ 5. Eric and the person who has brown hair are next to each other.
+    => Since there are two houses, they are adjacent. Brown hair is in house 2 (from clue 3 and 2), so Eric must be in house 1.
+
+ Also, note that Arnold is the other name.
+
+ Let's code accordingly.
+
+ We'll create a solver and add constraints.
+
+ We'll represent each attribute as an Int variable and use distinct values for each category.
+
+ However, note: the problem has only 2 houses, so we can also use EnumSort for each category, but Int is straightforward.
+
+ Alternatively, we can use finite domain integers (0,1) for each attribute and then map to the actual value.
+
+ Let's define the attributes and their values:
+
+ For each house (index 0 and 1 for house1 and house2), we define:
+
+   Name: Arnold, Eric -> let's assign: Arnold=0, Eric=1
+   FavoriteSport: basketball=0, soccer=1
+   HairColor: brown=0, black=1
+   Height: very short=0, short=1
+   Smoothie: desert=0, cherry=1
+   Flower: daffodils=0, carnations=1
+
+ But note: we have two houses, so we can create variables for each attribute for each house.
+
+ However, we can also create a matrix of variables, where rows are houses and columns are attributes.
+
+ We'll create:
+
+   name[0], name[1] for house1 and house2
+   sport[0], sport[1]
+   hair[0], hair[1]
+   height[0], height[1]
+   smoothie[0], smoothie[1]
+   flower[0], flower[1]
+
+ Then we assert that for each category, the two variables are distinct.
+
+ Then we add the constraints:
+
+ 1. The soccer lover (sport=1) is not in the second house (house index 1). So, sport[1] != 1, which means sport[0] must be 1.
+
+ 2. Desert smoothie lover (smoothie=0) is directly left of the very short (height=0). Since only two houses, house1 has smoothie=0 and house2 has height=0.
+
+    So: smoothie[0] == 0 and height[1] == 0
+
+ 3. The very short (height=0) has brown hair (hair=0). So, for the same house, if height is 0 then hair is 0. Since we know from clue2 that height[1]=0, then hair[1]=0.
+
+ 4. The carnations lover (flower=1) is the Desert smoothie lover (smoothie=0). So, for the same house, if smoothie is 0 then flower is 1. We know smoothie[0]=0, so flower[0]=1.
+
+ 5. Eric (name=1) and the brown hair (hair=0) are next to each other. We know brown hair is in house2 (hair[1]=0). So Eric must be in house1: name[0]=1.
+
+ Then we can deduce:
+
+   name[0] = Eric (1)
+   name[1] = Arnold (0)
+
+   sport[0] = soccer (1)
+   sport[1] = basketball (0) [because distinct]
+
+   hair[1] = brown (0) [from clue3]
+   hair[0] = black (1) [distinct]
+
+   height[1] = very short (0)
+   height[0] = short (1) [distinct]
+
+   smoothie[0] = desert (0)
+   smoothie[1] = cherry (1) [distinct]
+
+   flower[0] = carnations (1) [from clue4]
+   flower[1] = daffodils (0) [distinct]
+
+ So we don't even need a solver? But the problem says to use SMT solver.
+
+ However, let's write the code with Z3 to practice.
+
+ We'll create a solver and add the constraints.
+
+ Steps in code:
+
+ 1. Import z3 and json.
+ 2. Create a solver.
+ 3. Define the attributes for two houses.
+ 4. Assert distinct for each attribute category.
+ 5. Add the constraints from the clues.
+ 6. Check and get the model.
+ 7. Map back the integer values to the strings.
+ 8. Format the output as JSON.
+
+ Let's code accordingly.

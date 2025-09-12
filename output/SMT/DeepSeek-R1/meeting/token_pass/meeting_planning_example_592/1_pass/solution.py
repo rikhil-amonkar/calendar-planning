@@ -1,0 +1,150 @@
+import json
+from z3 import *
+
+def main():
+    # Convert time to minutes since 9:00 AM
+    def time_to_minutes(t):
+        if 'AM' in t:
+            parts = t.replace('AM', '').split(':')
+            hour = int(parts[0])
+            minute = int(parts[1]) if len(parts) > 1 else 0
+            if hour == 12:
+                hour = 0
+            return hour * 60 + minute - 9 * 60  # Offset from 9:00 AM
+        elif 'PM' in t:
+            parts = t.replace('PM', '').split(':')
+            hour = int(parts[0])
+            minute = int(parts[1]) if len(parts) > 1 else 0
+            if hour != 12:
+                hour += 12
+            return hour * 60 + minute - 9 * 60  # Offset from 9:00 AM
+        return 0
+
+    # Travel times dictionary
+    travel_times = {
+        ("North Beach", "Pacific Heights"): 8,
+        ("North Beach", "Chinatown"): 6,
+        ("North Beach", "Union Square"): 7,
+        ("North Beach", "Mission District"): 18,
+        ("North Beach", "Golden Gate Park"): 22,
+        ("North Beach", "Nob Hill"): 7,
+        ("Pacific Heights", "North Beach"): 9,
+        ("Pacific Heights", "Chinatown"): 11,
+        ("Pacific Heights", "Union Square"): 12,
+        ("Pacific Heights", "Mission District"): 15,
+        ("Pacific Heights", "Golden Gate Park"): 15,
+        ("Pacific Heights", "Nob Hill"): 8,
+        ("Chinatown", "North Beach"): 3,
+        ("Chinatown", "Pacific Heights"): 10,
+        ("Chinatown", "Union Square"): 7,
+        ("Chinatown", "Mission District"): 18,
+        ("Chinatown", "Golden Gate Park"): 23,
+        ("Chinatown", "Nob Hill"): 8,
+        ("Union Square", "North Beach"): 10,
+        ("Union Square", "Pacific Heights"): 15,
+        ("Union Square", "Chinatown"): 7,
+        ("Union Square", "Mission District"): 14,
+        ("Union Square", "Golden Gate Park"): 22,
+        ("Union Square", "Nob Hill"): 9,
+        ("Mission District", "North Beach"): 17,
+        ("Mission District", "Pacific Heights"): 16,
+        ("Mission District", "Chinatown"): 16,
+        ("Mission District", "Union Square"): 15,
+        ("Mission District", "Golden Gate Park"): 17,
+        ("Mission District", "Nob Hill"): 12,
+        ("Golden Gate Park", "North Beach"): 24,
+        ("Golden Gate Park", "Pacific Heights"): 16,
+        ("Golden Gate Park", "Chinatown"): 23,
+        ("Golden Gate Park", "Union Square"): 22,
+        ("Golden Gate Park", "Mission District"): 17,
+        ("Golden Gate Park", "Nob Hill"): 20,
+        ("Nob Hill", "North Beach"): 8,
+        ("Nob Hill", "Pacific Heights"): 8,
+        ("Nob Hill", "Chinatown"): 6,
+        ("Nob Hill", "Union Square"): 7,
+        ("Nob Hill", "Mission District"): 13,
+        ("Nob Hill", "Golden Gate Park"): 17,
+    }
+
+    # Friend constraints
+    friends = [
+        {"name": "James", "location": "Pacific Heights", "avail_start": time_to_minutes("8:00PM"), "avail_end": time_to_minutes("10:00PM"), "duration": 120},
+        {"name": "Robert", "location": "Chinatown", "avail_start": time_to_minutes("12:15PM"), "avail_end": time_to_minutes("4:45PM"), "duration": 90},
+        {"name": "Jeffrey", "location": "Union Square", "avail_start": time_to_minutes("9:30AM"), "avail_end": time_to_minutes("3:30PM"), "duration": 120},
+        {"name": "Carol", "location": "Mission District", "avail_start": time_to_minutes("6:15PM"), "avail_end": time_to_minutes("9:15PM"), "duration": 15},
+        {"name": "Mark", "location": "Golden Gate Park", "avail_start": time_to_minutes("11:30AM"), "avail_end": time_to_minutes("5:45PM"), "duration": 15},
+        {"name": "Sandra", "location": "Nob Hill", "avail_start": time_to_minutes("8:00AM"), "avail_end": time_to_minutes("3:30PM"), "duration": 15}
+    ]
+
+    n = len(friends)
+    solver = Optimize()
+
+    # Decision variables
+    meet = [Bool(f"meet_{i}") for i in range(n)]
+    start_time = [Int(f"start_{i}") for i in range(n)]
+    end_time = [Int(f"end_{i}") for i in range(n)]
+
+    # Base constraints for each friend
+    for i, friend in enumerate(friends):
+        solver.add(Implies(meet[i], start_time[i] >= friend["avail_start"]))
+        solver.add(Implies(meet[i], end_time[i] == start_time[i] + friend["duration"]))
+        solver.add(Implies(meet[i], end_time[i] <= friend["avail_end"]))
+
+    # Travel time constraints from North Beach to first meeting
+    for i in range(n):
+        from_loc = "North Beach"
+        to_loc = friends[i]["location"]
+        travel_time = travel_times.get((from_loc, to_loc), 0)
+        solver.add(Implies(meet[i], start_time[i] >= travel_time))
+
+    # Constraints between consecutive meetings
+    for i in range(n):
+        for j in range(i+1, n):
+            if i != j:
+                loc_i = friends[i]["location"]
+                loc_j = friends[j]["location"]
+                travel_ij = travel_times.get((loc_i, loc_j), 0)
+                travel_ji = travel_times.get((loc_j, loc_i), 0)
+                # Either i before j or j before i
+                constraint_i_before_j = And(meet[i], meet[j], end_time[i] + travel_ij <= start_time[j])
+                constraint_j_before_i = And(meet[i], meet[j], end_time[j] + travel_ji <= start_time[i])
+                solver.add(Implies(And(meet[i], meet[j]), Or(constraint_i_before_j, constraint_j_before_i)))
+
+    # Maximize number of meetings
+    solver.maximize(Sum([If(meet[i], 1, 0) for i in range(n)]))
+
+    # Check and get model
+    if solver.check() == sat:
+        model = solver.model()
+        itinerary = []
+        for i, friend in enumerate(friends):
+            if is_true(model.eval(meet[i])):
+                start_val = model.eval(start_time[i]).as_long()
+                end_val = model.eval(end_time[i]).as_long()
+                # Convert minutes to time string
+                total_minutes_start = start_val
+                hours_start = total_minutes_start // 60 + 9
+                minutes_start = total_minutes_start % 60
+                start_str = f"{hours_start}:{minutes_start:02d}"
+
+                total_minutes_end = end_val
+                hours_end = total_minutes_end // 60 + 9
+                minutes_end = total_minutes_end % 60
+                end_str = f"{hours_end}:{minutes_end:02d}"
+
+                itinerary.append({
+                    "action": "meet",
+                    "location": friend["location"],
+                    "person": friend["name"],
+                    "start_time": start_str,
+                    "end_time": end_str
+                })
+        # Sort itinerary by start time
+        itinerary.sort(key=lambda x: x["start_time"])
+        result = {"itinerary": itinerary}
+        print(json.dumps(result, indent=2))
+    else:
+        print('{"itinerary": []}')
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,98 @@
+from z3 import *
+import json
+
+def main():
+    # Cities mapping
+    cities = {0: 'Stuttgart', 1: 'Manchester', 2: 'Madrid', 3: 'Vienna'}
+    
+    # Total days
+    total_days = 15
+    
+    # Create arrays for start and end cities for each day
+    s = [Int('s_%i' % i) for i in range(total_days)]
+    e = [Int('e_%i' % i) for i in range(total_days)]
+    
+    # Initialize solver
+    solver = Solver()
+    
+    # Constrain each city variable to be between 0 and 3
+    for i in range(total_days):
+        solver.add(s[i] >= 0, s[i] <= 3)
+        solver.add(e[i] >= 0, e[i] <= 3)
+    
+    # Continuity constraint: end city of day i is start city of day i+1
+    for i in range(total_days - 1):
+        solver.add(e[i] == s[i+1])
+    
+    # Define allowed direct flights (both directions)
+    allowed_flights = [
+        (0, 3), (3, 0),  # Vienna-Stuttgart
+        (1, 3), (3, 1),  # Manchester-Vienna
+        (2, 3), (3, 2),  # Madrid-Vienna
+        (1, 0), (0, 1),  # Manchester-Stuttgart
+        (1, 2), (2, 1)   # Manchester-Madrid
+    ]
+    
+    # Flight constraints: if start and end cities differ, must be allowed flight
+    for i in range(total_days):
+        flight_taken = (s[i] != e[i])
+        allowed = Or([And(s[i] == a, e[i] == b) for a, b in allowed_flights])
+        solver.add(If(flight_taken, allowed, True))
+    
+    # Count days per city (including flight days)
+    count_S = Sum([If(Or(s[i] == 0, e[i] == 0), 1, 0) for i in range(total_days)])
+    count_MAN = Sum([If(Or(s[i] == 1, e[i] == 1), 1, 0) for i in range(total_days)])
+    count_MAD = Sum([If(Or(s[i] == 2, e[i] == 2), 1, 0) for i in range(total_days)])
+    count_V = Sum([If(Or(s[i] == 3, e[i] == 3), 1, 0) for i in range(total_days)])
+    
+    # Add duration constraints
+    solver.add(count_S == 5)
+    solver.add(count_MAN == 7)
+    solver.add(count_MAD == 4)
+    solver.add(count_V == 2)
+    
+    # Event constraints
+    # Workshop in Stuttgart between day 11-15 (indices 10-14)
+    workshop_constraint = Or([Or(s[i] == 0, e[i] == 0) for i in range(10, 15)])
+    # Wedding in Manchester between day 1-7 (indices 0-6)
+    wedding_constraint = Or([Or(s[i] == 1, e[i] == 1) for i in range(0, 7)])
+    
+    solver.add(workshop_constraint)
+    solver.add(wedding_constraint)
+    
+    # Check satisfiability
+    if solver.check() == sat:
+        model = solver.model()
+        # Extract sleep cities (end cities) for each day
+        sleep_cities = []
+        for i in range(total_days):
+            sleep_cities.append(model.evaluate(e[i]).as_long())
+        
+        # Group consecutive days with same sleep city
+        segments = []
+        start_idx = 0
+        current_city = sleep_cities[0]
+        for i in range(1, total_days):
+            if sleep_cities[i] != current_city:
+                segments.append((start_idx + 1, i, current_city))
+                start_idx = i
+                current_city = sleep_cities[i]
+        segments.append((start_idx + 1, total_days, current_city))
+        
+        # Format itinerary
+        itinerary = []
+        for start, end, city_code in segments:
+            city_name = cities[city_code]
+            if start == end:
+                day_range = f"Day {start}"
+            else:
+                day_range = f"Day {start}-{end}"
+            itinerary.append({"day_range": day_range, "place": city_name})
+        
+        # Output as JSON
+        print(json.dumps({"itinerary": itinerary}))
+    else:
+        print('{"itinerary": []}')
+
+if __name__ == "__main__":
+    main()

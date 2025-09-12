@@ -1,0 +1,112 @@
+from z3 import *
+import json
+
+def main():
+    # Cities mapping
+    cities = {
+        0: "Frankfurt",
+        1: "Manchester",
+        2: "Valencia",
+        3: "Naples",
+        4: "Oslo",
+        5: "Vilnius"
+    }
+    
+    # Direct flights as set of tuples (from, to)
+    direct_flights = set([
+        (2,0), (0,2),  # Valencia and Frankfurt
+        (1,0), (0,1),  # Manchester and Frankfurt
+        (3,1), (1,3),  # Naples and Manchester
+        (3,0), (0,3),  # Naples and Frankfurt
+        (3,4), (4,3),  # Naples and Oslo
+        (4,0), (0,4),  # Oslo and Frankfurt
+        (5,0), (0,5),  # Vilnius and Frankfurt
+        (4,5), (5,4),  # Oslo and Vilnius
+        (1,4), (4,1),  # Manchester and Oslo
+        (2,3), (3,2)   # Valencia and Naples
+    ])
+    
+    # Required days per city
+    required_days = {
+        0: 4,  # Frankfurt
+        1: 4,  # Manchester
+        2: 4,  # Valencia
+        3: 4,  # Naples
+        4: 3,  # Oslo
+        5: 2   # Vilnius
+    }
+    
+    # Create solver
+    s = Solver()
+    
+    # Create variables for start and end days for each city
+    start = [Int(f"start_{i}") for i in range(6)]
+    end = [Int(f"end_{i}") for i in range(6)]
+    
+    # Fixed constraints for Frankfurt and Vilnius
+    s.add(start[0] == 13)
+    s.add(end[0] == 16)
+    s.add(start[5] == 12)
+    s.add(end[5] == 13)
+    
+    # Constraints for other cities: start and end within valid range and duration
+    for i in [1,2,3,4]:
+        s.add(start[i] >= 1)
+        s.add(end[i] <= 12)
+        s.add(end[i] - start[i] + 1 == required_days[i])
+        s.add(start[i] <= end[i])
+    
+    # Order variables for the first four cities (indices 0-3 in the order array)
+    order = [Int(f"order_{i}") for i in range(4)]
+    
+    # The last two cities in the order are fixed: Vilnius (5) then Frankfurt (0)
+    full_order = order + [5, 0]
+    
+    # Each of the first four must be one of {1,2,3,4} and distinct
+    for i in range(4):
+        s.add(Or([order[i] == j for j in [1,2,3,4]]))
+    s.add(Distinct(order))
+    
+    # Constraints for the sequence: start of first city is 1, end of last city in first four is 12
+    s.add(start[full_order[0]] == 1)
+    s.add(end[full_order[3]] == 12)
+    
+    # Constraints for consecutive cities: end of current equals start of next
+    for i in range(5):
+        s.add(end[full_order[i]] == start[full_order[i+1]])
+    
+    # Direct flight constraints between consecutive cities
+    for i in range(5):
+        from_city = full_order[i]
+        to_city = full_order[i+1]
+        s.add(Or((from_city, to_city) in direct_flights, (to_city, from_city) in direct_flights))
+    
+    # Check satisfiability
+    if s.check() == sat:
+        model = s.model()
+        
+        # Extract the order of the first four cities
+        first_four = [model.evaluate(order[i]).as_long() for i in range(4)]
+        full_order = first_four + [5, 0]
+        
+        # Extract start and end days for each city
+        start_vals = [model.evaluate(start[i]).as_long() for i in range(6)]
+        end_vals = [model.evaluate(end[i]).as_long() for i in range(6)]
+        
+        # Create itinerary list
+        itinerary = []
+        for i in range(6):
+            city_index = full_order[i]
+            city_name = cities[city_index]
+            s_day = start_vals[city_index]
+            e_day = end_vals[city_index]
+            day_range = f"Day {s_day}-{e_day}"
+            itinerary.append({"day_range": day_range, "place": city_name})
+        
+        # Output as JSON
+        print(json.dumps({"itinerary": itinerary}))
+    else:
+        print('No solution found')
+
+if __name__ == "__main__":
+    main()

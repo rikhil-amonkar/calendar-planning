@@ -1,0 +1,133 @@
+import itertools
+from z3 import *
+
+def main():
+    travel_times = {
+        'Financial District': {
+            'Fisherman\'s Wharf': 10,
+            'Pacific Heights': 13,
+            'Mission District': 17
+        },
+        'Fisherman\'s Wharf': {
+            'Financial District': 11,
+            'Pacific Heights': 12,
+            'Mission District': 22
+        },
+        'Pacific Heights': {
+            'Financial District': 13,
+            'Fisherman\'s Wharf': 13,
+            'Mission District': 15
+        },
+        'Mission District': {
+            'Financial District': 17,
+            'Fisherman\'s Wharf': 22,
+            'Pacific Heights': 16
+        }
+    }
+    
+    friends = {
+        'David': {
+            'location': 'Fisherman\'s Wharf',
+            'start': 105,  # 10:45 in minutes from 9:00
+            'end': 930,    # 15:30 in minutes from 9:00
+            'duration': 15
+        },
+        'Timothy': {
+            'location': 'Pacific Heights',
+            'start': 0,    # 9:00
+            'end': 930,    # 15:30
+            'duration': 75
+        },
+        'Robert': {
+            'location': 'Mission District',
+            'start': 735,  # 12:15
+            'end': 1185,   # 19:45
+            'duration': 90
+        }
+    }
+    
+    starting_location = 'Financial District'
+    
+    def convert_to_time(minutes):
+        total_minutes = 9 * 60 + minutes
+        hours = total_minutes // 60
+        minutes_remainder = total_minutes % 60
+        return f"{hours}:{minutes_remainder:02d}"
+    
+    def check_schedule(order):
+        s = Solver()
+        n = len(order)
+        S = [Int(f'S_{i}') for i in range(n)]
+        E = [Int(f'E_{i}') for i in range(n)]
+        
+        for i in range(n):
+            friend = friends[order[i]]
+            s.add(S[i] >= friend['start'])
+            s.add(E[i] == S[i] + friend['duration'])
+            s.add(E[i] <= friend['end'])
+            
+            if i == 0:
+                prev_loc = starting_location
+            else:
+                prev_loc = friends[order[i-1]]['location']
+            current_loc = friend['location']
+            travel_time = travel_times[prev_loc][current_loc]
+            
+            if i == 0:
+                s.add(S[i] >= travel_time)
+            else:
+                s.add(S[i] >= E[i-1] + travel_time)
+        
+        if s.check() == sat:
+            return s.model()
+        else:
+            return None
+    
+    orders = list(itertools.permutations(['David', 'Timothy', 'Robert']))
+    model = None
+    found_order = None
+    
+    for order in orders:
+        model = check_schedule(order)
+        if model is not None:
+            found_order = order
+            break
+            
+    if model is None:
+        pairs = list(itertools.permutations(['David', 'Timothy'])) + \
+                list(itertools.permutations(['David', 'Robert'])) + \
+                list(itertools.permutations(['Timothy', 'Robert']))
+        for order in pairs:
+            model = check_schedule(order)
+            if model is not None:
+                found_order = order
+                break
+                
+    if model is None:
+        singles = [['David'], ['Timothy'], ['Robert']]
+        for order in singles:
+            model = check_schedule(order)
+            if model is not None:
+                found_order = order
+                break
+                
+    itinerary = []
+    if model is not None and found_order is not None:
+        for i, friend_name in enumerate(found_order):
+            start_val = model.eval(Int(f'S_{i}')).as_long()
+            end_val = start_val + friends[friend_name]['duration']
+            start_time = convert_to_time(start_val)
+            end_time = convert_to_time(end_val)
+            itinerary.append({
+                "action": "meet",
+                "location": friends[friend_name]['location'],
+                "person": friend_name,
+                "start_time": start_time,
+                "end_time": end_time
+            })
+    
+    import json
+    print(json.dumps({"itinerary": itinerary}, indent=2))
+
+if __name__ == '__main__':
+    main()

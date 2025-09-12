@@ -1,0 +1,61 @@
+{
+    "has_execution_error": true,
+    "has_no_plan": false,
+    "execution_output": null,
+    "pred": null,
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Arnold",
+            "Height": "average",
+            "Mother": "Aniya",
+            "HairColor": "brown"
+        },
+        {
+            "House": "2",
+            "Name": "Eric",
+            "Height": "very short",
+            "Mother": "Penny",
+            "HairColor": "black"
+        },
+        {
+            "House": "3",
+            "Name": "Alice",
+            "Height": "very tall",
+            "Mother": "Kailyn",
+            "HairColor": "gray"
+        },
+        {
+            "House": "4",
+            "Name": "Peter",
+            "Height": "short",
+            "Mother": "Janelle",
+            "HairColor": "red"
+        },
+        {
+            "House": "5",
+            "Name": "Bob",
+            "Height": "tall",
+            "Mother": "Holly",
+            "HairColor": "blonde"
+        }
+    ],
+    "status": "Error",
+    "violated_constraint": {
+        "invalid_output": "No valid output structure found"
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 646.053459405899,
+        "execution_time": 0.08057665824890137,
+        "constraint_eval_time": 6.198883056640625e-06,
+        "pred_extract_time": 1.7404556274414062e-05,
+        "gold_extract_time": 2.956390380859375e-05,
+        "total_tokens": 42253,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import json\nfrom z3 import *\n\ndef main():\n    solver = Solver()\n\n    houses = range(1, 6)  # 1-based\n    name = [Int(f'name_{i}') for i in houses]\n    height = [Int(f'height_{i}') for i in houses]\n    mother = [Int(f'mother_{i}') for i in houses]\n    hair_color = [Int(f'hair_color_{i}') for i in houses]\n\n    # All attributes are permutations (distinct)\n    for attr in [name, height, mother, hair_color]:\n        solver.add(Distinct(attr))\n\n    # Clue 8: Bob is in house 5 (index 4)\n    solver.add(name[4] == 2)  # Bob is index 2\n\n    # Clue 14: mother[3] is Kailyn (index 1)\n    solver.add(mother[2] == 1)  # house 3 is index 2\n\n    # Clue 10 and 14 imply height[4] (house 4, index 3) is short (1)\n    solver.add(height[3] == 1)\n\n    # Clue 2: average (3) in house 1 (index 0)\n    solver.add(height[0] == 3)\n\n    # Clue 5: Eric (3) has black hair (1)\n    for i in range(5):\n        solver.add(If(name[i] == 3, hair_color[i] == 1, True))\n\n    # Clue 9: red hair (3) is Peter (1)\n    for i in range(5):\n        solver.add(If(hair_color[i] == 3, name[i] == 1, True))\n\n    # Clue 11: Arnold (4) has brown hair (4)\n    for i in range(5):\n        solver.add(If(name[i] == 4, hair_color[i] == 4, True))\n\n    # Clue 4: house 5's hair color is not black (1)\n    solver.add(hair_color[4] != 1)\n\n    # Clue 1: tall (2) has mother Holly (3)\n    for i in range(5):\n        solver.add(If(height[i] == 2, mother[i] == 3, True))\n\n    # Clue 6: very short (0) has mother Penny (2)\n    for i in range(5):\n        solver.add(If(height[i] == 0, mother[i] == 2, True))\n\n    # Clue 7: Eric and gray hair (2) are adjacent\n    for i in range(5):\n        if i == 0:\n            solver.add(If(name[i] == 3, hair_color[i+1] == 2, True))\n        elif i == 4:\n            solver.add(If(name[i] == 3, hair_color[i-1] == 2, True))\n        else:\n            solver.add(If(name[i] == 3, Or(hair_color[i-1] == 2, hair_color[i+1] == 2), True))\n\n    # Clue 3: gray hair directly left of mother Janelle (0)\n    solver.add(Or(\n        And(hair_color[0] == 2, mother[1] == 0),\n        And(hair_color[1] == 2, mother[2] == 0),\n        And(hair_color[2] == 2, mother[3] == 0),\n        And(hair_color[3] == 2, mother[4] == 0)\n    ))\n\n    # Clue 12: brown hair (4) is left of mother Janelle (0)\n    brown_house = Int('brown_house')\n    janelle_house = Int('janelle_house')\n    for i in range(5):\n        solver.add(Implies(hair_color[i] == 4, brown_house == i))\n    solver.add(And(hair_color[brown_house] == 4, 0 <= brown_house, brown_house <= 4))\n    for i in range(5):\n        solver.add(Implies(mother[i] == 0, janelle_house == i))\n    solver.add(And(mother[janelle_house] == 0, 0 <= janelle_house, janelle_house <= 4))\n    solver.add(brown_house < janelle_house)\n\n    # Clue 13: very short (0) is adjacent to mother Aniya (4)\n    for i in range(5):\n        if i == 0:\n            solver.add(If(height[i] == 0, mother[i+1] == 4, True))\n        elif i == 4:\n            solver.add(If(height[i] == 0, mother[i-1] == 4, True))\n        else:\n            solver.add(If(height[i] == 0, Or(mother[i-1] == 4, mother[i+1] == 4), True))\n\n    # Check if the solver can find a solution\n    if solver.check() == sat:\n        model = solver.model()\n        # Prepare the solution\n        name_list = ['Alice', 'Peter', 'Bob', 'Eric', 'Arnold']\n        height_list = ['very short', 'short', 'tall', 'average', 'very tall']\n        mother_list = ['Janelle', 'Kailyn', 'Penny', 'Holly', 'Aniya']\n        hair_color_list = ['blonde', 'black', 'gray', 'red', 'brown']\n\n        rows = []\n        for i in range(1, 6):\n            idx = i - 1\n            n = model[name[idx]].as_long()\n            h = model[height[idx]].as_long()\n            m = model[mother[idx]].as_long()\n            hc = model[hair_color[idx]].as_long()\n            rows.append([\n                str(i),\n                name_list[n],\n                height_list[h],\n                mother_list[m],\n                hair_color_list[hc]\n            ])\n\n        solution = {\n            \"solution\": {\n                \"header\": [\"House\", \"Name\", \"Height\", \"Mother\", \"HairColor\"],\n                \"rows\": rows\n            }\n        }\n\n        print(json.dumps(solution))\n    else:\n        print(\"No solution found.\")\n\nif __name__ == \"__main__\":\n    main()"
+}

@@ -1,0 +1,56 @@
+{
+    "has_execution_error": true,
+    "has_no_plan": false,
+    "execution_output": null,
+    "pred": null,
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Russian Hill",
+                "person": "Margaret",
+                "start_time": "9:24",
+                "end_time": "9:54"
+            },
+            {
+                "action": "meet",
+                "location": "Golden Gate Park",
+                "person": "Daniel",
+                "start_time": "10:15",
+                "end_time": "10:30"
+            },
+            {
+                "action": "meet",
+                "location": "Alamo Square",
+                "person": "Charles",
+                "start_time": "18:00",
+                "end_time": "19:30"
+            },
+            {
+                "action": "meet",
+                "location": "Mission District",
+                "person": "Stephanie",
+                "start_time": "20:30",
+                "end_time": "22:00"
+            }
+        ]
+    },
+    "status": "Error",
+    "violated_constraint": {
+        "missing_itinerary": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 674.7092864513397,
+        "execution_time": 0.019574403762817383,
+        "constraint_eval_time": 4.5299530029296875e-06,
+        "pred_extract_time": 1.0728836059570312e-05,
+        "gold_extract_time": 9.226799011230469e-05,
+        "total_tokens": 46802,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\nimport json\n\ndef to_time_str(minutes):\n    h = minutes // 60\n    m = minutes % 60\n    return f\"{h}:{m:02d}\"\n\nfriends = [\n    {'location': 'Golden Gate Park', 'available_start': 480, 'available_end': 810, 'duration': 15},\n    {'location': 'Russian Hill', 'available_start': 540, 'available_end': 1020, 'duration': 30},\n    {'location': 'Alamo Square', 'available_start': 1080, 'available_end': 1245, 'duration': 90},\n    {'location': 'Mission District', 'available_start': 1230, 'available_end': 1320, 'duration': 90},\n]\n\ntravel_time_matrix = [\n    [0, 19, 10, 17],\n    [21, 0, 15, 16],\n    [9, 13, 0, 10],\n    [17, 15, 11, 0],\n]\n\nsunset_to_friend = [11, 24, 17, 24]\n\nsolver = Solver()\n\nfriends_order = [Int(f\"friend_{i}\") for i in range(4)]\nsolver.add(Distinct(friends_order))\nfor f in friends_order:\n    solver.add(And(0 <= f, f <= 3))\n\nstart = [Int(f\"start_{i}\") for i in range(4)]\nend = [Int(f\"end_{i}\") for i in range(4)]\n\nprev_end = 540  # 9:00 AM in minutes\n\nfor i in range(4):\n    if i == 0:\n        travel_time = If(friends_order[0] == 0, 11,\n                         If(friends_order[0] == 1, 24,\n                            If(friends_order[0] == 2, 17, 24)))\n    else:\n        prev_friend = friends_order[i-1]\n        current_friend = friends_order[i]\n        travel_time = If(prev_friend == 0,\n                         If(current_friend == 0, 0,\n                            If(current_friend == 1, 19,\n                               If(current_friend == 2, 10, 17))),\n                         If(prev_friend == 1,\n                            If(current_friend == 0, 21,\n                               If(current_friend == 1, 0,\n                                  If(current_friend == 2, 15, 16))),\n                            If(prev_friend == 2,\n                               If(current_friend == 0, 9,\n                                  If(current_friend == 1, 13,\n                                     If(current_friend == 2, 0, 10))),\n                               If(current_friend == 0, 17,\n                                  If(current_friend == 1, 15,\n                                     If(current_friend == 2, 11, 0)))))\n    arrival_time = prev_end + travel_time\n    solver.add(start[i] >= arrival_time)\n    friend_idx = friends_order[i]\n    duration = friends[friend_idx]['duration']\n    solver.add(end[i] == start[i] + duration)\n    available_start = friends[friend_idx]['available_start']\n    solver.add(start[i] >= available_start)\n    available_end = friends[friend_idx]['available_end']\n    solver.add(end[i] <= available_end)\n    prev_end = end[i]\n\nif solver.check() == sat:\n    model = solver.model()\n    order = [model.eval(friends_order[i]).as_long() for i in range(4)]\n    starts = [model.eval(start[i]).as_long() for i in range(4)]\n    ends = [model.eval(end[i]).as_long() for i in range(4)]\n    itinerary = []\n    for i in range(4):\n        friend_idx = order[i]\n        loc = friends[friend_idx]['location']\n        person = ['Daniel', 'Margaret', 'Charles', 'Stephanie'][friend_idx]\n        itinerary.append({\n            \"action\": \"meet\",\n            \"location\": loc,\n            \"person\": person,\n            \"start_time\": to_time_str(starts[i]),\n            \"end_time\": to_time_str(ends[i])\n        })\n    print(json.dumps({\"itinerary\": itinerary}, indent=2))\nelse:\n    print(\"No solution found\")"
+}

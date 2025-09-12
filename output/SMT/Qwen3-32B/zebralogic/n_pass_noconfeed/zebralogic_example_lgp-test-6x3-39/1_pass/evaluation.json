@@ -1,0 +1,97 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"solution\": {\n    \"header\": [\n      \"House\",\n      \"Name\",\n      \"Children\",\n      \"Smoothie\"\n    ],\n    \"rows\": [\n      [\n        \"1\",\n        \"Arnold\",\n        \"Bella\",\n        \"blueberry\"\n      ],\n      [\n        \"2\",\n        \"Carol\",\n        \"Fred\",\n        \"cherry\"\n      ],\n      [\n        \"3\",\n        \"Eric\",\n        \"Samantha\",\n        \"desert\"\n      ],\n      [\n        \"4\",\n        \"Alice\",\n        \"Alice\",\n        \"watermelon\"\n      ],\n      [\n        \"5\",\n        \"Bob\",\n        \"Timothy\",\n        \"lime\"\n      ],\n      [\n        \"6\",\n        \"Peter\",\n        \"Meredith\",\n        \"dragonfruit\"\n      ]\n    ]\n  }\n}",
+    "pred": [
+        {
+            "House": "1",
+            "Name": "Arnold",
+            "Children": "Bella",
+            "Smoothie": "blueberry"
+        },
+        {
+            "House": "2",
+            "Name": "Carol",
+            "Children": "Fred",
+            "Smoothie": "cherry"
+        },
+        {
+            "House": "3",
+            "Name": "Eric",
+            "Children": "Samantha",
+            "Smoothie": "desert"
+        },
+        {
+            "House": "4",
+            "Name": "Alice",
+            "Children": "Alice",
+            "Smoothie": "watermelon"
+        },
+        {
+            "House": "5",
+            "Name": "Bob",
+            "Children": "Timothy",
+            "Smoothie": "lime"
+        },
+        {
+            "House": "6",
+            "Name": "Peter",
+            "Children": "Meredith",
+            "Smoothie": "dragonfruit"
+        }
+    ],
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Arnold",
+            "Children": "Bella",
+            "Smoothie": "blueberry"
+        },
+        {
+            "House": "2",
+            "Name": "Carol",
+            "Children": "Fred",
+            "Smoothie": "cherry"
+        },
+        {
+            "House": "3",
+            "Name": "Eric",
+            "Children": "Samantha",
+            "Smoothie": "desert"
+        },
+        {
+            "House": "4",
+            "Name": "Alice",
+            "Children": "Alice",
+            "Smoothie": "watermelon"
+        },
+        {
+            "House": "5",
+            "Name": "Bob",
+            "Children": "Timothy",
+            "Smoothie": "lime"
+        },
+        {
+            "House": "6",
+            "Name": "Peter",
+            "Children": "Meredith",
+            "Smoothie": "dragonfruit"
+        }
+    ],
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 497.8395073413849,
+        "execution_time": 0.10515213012695312,
+        "constraint_eval_time": 6.532669067382812e-05,
+        "pred_extract_time": 2.335609197616577,
+        "gold_extract_time": 2.0265579223632812e-05,
+        "total_tokens": 30861,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import z3\nimport json\n\nsolver = z3.Solver()\n\n# Define variables for each house (0-5)\nname = [z3.Int(f'name_{i}') for i in range(6)]\nchild = [z3.Int(f'child_{i}') for i in range(6)]\nsmoothie = [z3.Int(f'smoothie_{i}') for i in range(6)]\n\n# Each array must be a permutation (distinct and 0-5)\nfor arr in [name, child, smoothie]:\n    solver.add(z3.Distinct(arr))\n    for i in range(6):\n        solver.add(z3.And(0 <= arr[i], arr[i] < 6))\n\n# Clue 1: Fred and Desert next to each other\npos_fred = z3.Int('pos_fred')\nfor i in range(6):\n    solver.add(z3.Implies(child[i] == 4, pos_fred == i))\npos_desert = z3.Int('pos_desert')\nfor i in range(6):\n    solver.add(z3.Implies(smoothie[i] == 0, pos_desert == i))\nsolver.add(z3.Abs(pos_fred - pos_desert) == 1)\n\n# Clue 2: Blueberry left of Fred's parent\npos_blueberry = z3.Int('pos_blueberry')\nfor i in range(6):\n    solver.add(z3.Implies(smoothie[i] == 3, pos_blueberry == i))\nsolver.add(pos_blueberry < pos_fred)\n\n# Clue 3: Alice not in house 5 (index 4)\nsolver.add(name[4] != 3)\n\n# Clue 4: Samantha's parent not in house 2 (index 1)\npos_samantha = z3.Int('pos_samantha')\nfor i in range(6):\n    solver.add(z3.Implies(child[i] == 5, pos_samantha == i))\nsolver.add(pos_samantha != 1)\n\n# Clue 5: Watermelon right of Cherry\npos_watermelon = z3.Int('pos_watermelon')\npos_cherry = z3.Int('pos_cherry')\nfor i in range(6):\n    solver.add(z3.Implies(smoothie[i] == 2, pos_watermelon == i))\n    solver.add(z3.Implies(smoothie[i] == 1, pos_cherry == i))\nsolver.add(pos_watermelon > pos_cherry)\n\n# Clue 6: Alice (name) is parent of Alice (child)\nfor i in range(6):\n    solver.add(z3.Implies(name[i] == 3, child[i] == 0))\n\n# Clue 7: Alice's smoothie is Watermelon\nfor i in range(6):\n    solver.add(z3.Implies(name[i] == 3, smoothie[i] == 2))\n\n# Clue 8: Peter (index 1) is right of Samantha's parent\npos_peter = z3.Int('pos_peter')\nfor i in range(6):\n    solver.add(z3.Implies(name[i] == 1, pos_peter == i))\nsolver.add(pos_peter > pos_samantha)\n\n# Clue 9: Arnold not in house 2 (index 1)\nsolver.add(name[1] != 0)\n\n# Clue 10: Bob is parent of Timothy\nfor i in range(6):\n    solver.add(z3.Implies(name[i] == 4, child[i] == 1))\n\n# Clue 11: Arnold directly left of Carol\nsolver.add(z3.Or([z3.And(name[i] == 0, name[i+1] == 2) for i in range(5)]))\n\n# Clue 12: Cherry directly left of Samantha's parent\nsolver.add(pos_samantha == pos_cherry + 1)\n\n# Clue 13: Meredith's parent in house 6 (index 5)\nsolver.add(child[5] == 3)\n\n# Clue 14: Dragonfruit lover is Meredith's parent (house 5)\nsolver.add(smoothie[5] == 5)\n\nif solver.check() == z3.sat:\n    model = solver.model()\n    names_list = [\"Arnold\", \"Peter\", \"Carol\", \"Alice\", \"Bob\", \"Eric\"]\n    children_list = [\"Alice\", \"Timothy\", \"Bella\", \"Meredith\", \"Fred\", \"Samantha\"]\n    smoothie_list = [\"desert\", \"cherry\", \"watermelon\", \"blueberry\", \"lime\", \"dragonfruit\"]\n    \n    rows = []\n    for i in range(6):\n        n = model.eval(name[i]).as_long()\n        c = model.eval(child[i]).as_long()\n        s = model.eval(smoothie[i]).as_long()\n        house_num = i + 1\n        rows.append([\n            str(house_num),\n            names_list[n],\n            children_list[c],\n            smoothie_list[s]\n        ])\n    solution = {\n        \"solution\": {\n            \"header\": [\"House\", \"Name\", \"Children\", \"Smoothie\"],\n            \"rows\": rows\n        }\n    }\n    print(json.dumps(solution, indent=2))\nelse:\n    print(\"No solution found.\")"
+}

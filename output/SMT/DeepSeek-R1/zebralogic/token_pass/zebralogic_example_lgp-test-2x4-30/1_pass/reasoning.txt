@@ -1,0 +1,57 @@
+We are dealing with 2 houses, each with attributes: Name, HairColor, FavoriteSport, Smoothie.
+ We'll use Z3 to model the problem.
+
+ Steps:
+ 1. Define the attributes and their possible values.
+ 2. For each house and each attribute, create a Z3 variable (integer or enum type).
+ 3. Set up the constraints based on the clues.
+ 4. Also, since each attribute is unique, we need to set that all values for an attribute across houses are distinct.
+
+ However, note: the houses are ordered (1 and 2 from left to right).
+
+ We'll use integers to represent the categories, but we can also use Z3's EnumSort for clarity.
+
+ Let's plan:
+
+ We have 2 houses. For each house, we have:
+   name: Arnold or Eric
+   hair color: black or brown
+   favorite sport: basketball or soccer
+   smoothie: desert or cherry
+
+ We can create an enum for each category.
+
+ Alternatively, we can use integers and map them, but using enums makes the code more readable.
+
+ Since the problem is small, we can use enums.
+
+ Steps in code:
+
+ 1. Import z3 and json.
+ 2. Create a solver.
+ 3. Define enums for each category (Name, HairColor, Sport, Smoothie) with their possible values.
+ 4. For each house (1 and 2), create a variable for each attribute.
+ 5. Add constraints that for each attribute type, the values for the two houses are distinct.
+ 6. Add the clues:
+
+    Clue 1: The Desert smoothie lover is Arnold.
+        This means: There is a house where smoothie is desert and name is Arnold. And note: since each attribute is unique, only one house has desert smoothie and only one is Arnold, so they must be the same house.
+
+    Clue 2: The person who has brown hair is the person who loves basketball.
+        So, the house with brown hair must be the same as the house that loves basketball.
+
+    Clue 3: Arnold is somewhere to the left of the person who has black hair.
+        Since houses are ordered, if Arnold is in house i and black hair in house j, then i < j.
+
+ 7. Check the solution and output the assignment.
+
+ However, note: we have only 2 houses, so we can also iterate over the possibilities, but we'll use Z3.
+
+ We'll create:
+
+   House 1: name1, hair1, sport1, smoothie1
+   House 2: name2, hair2, sport2, smoothie2
+
+ 8. After solving, we need to output in the required JSON format.
+
+ Let's code accordingly.

@@ -1,0 +1,29 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "16:30:17:00 Monday",
+    "pred": {
+        "day": "Monday",
+        "time_range": "{16:30:17:00}"
+    },
+    "gold": {
+        "day": "Monday",
+        "time_range": "{16:30:17:00}"
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 554.6121804714203,
+        "execution_time": 0.08449816703796387,
+        "constraint_eval_time": 4.3392181396484375e-05,
+        "pred_extract_time": 0.6457853317260742,
+        "gold_extract_time": 3.075599670410156e-05,
+        "total_tokens": 27980,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import z3\n\n# Create solver instance\nsolver = z3.Solver()\n\n# Define start time variable (in minutes since 9:00 AM)\nS = z3.Int('S')\nE = S + 30  # Meeting duration is 30 minutes\n\n# Work hours from 9:00 AM to 5:00 PM (0 to 480 minutes)\nsolver.add(z3.And(S >= 0, S <= 450))  # S must end by 450 to fit 30 min meeting\n\n# Blocked intervals for each participant in minutes since 9:00 AM\nblocked_intervals = [\n    # Diane\n    (30, 60),     # 9:30-10:00\n    (330, 360),   # 14:30-15:00\n    # Jack\n    (270, 300),   # 13:30-14:00\n    (330, 360),   # 14:30-15:00\n    # Eugene\n    (0, 60),      # 9:00-10:00\n    (90, 150),    # 10:30-11:30\n    (180, 330),   # 12:00-14:30\n    (360, 450),   # 15:00-16:30\n    # Patricia\n    (30, 90),     # 9:30-10:30\n    (120, 180),   # 11:00-12:00\n    (210, 300),   # 12:30-14:00\n    (360, 450),   # 15:00-16:30\n]\n\n# Add constraints to avoid overlaps with blocked intervals\nfor b_start, b_end in blocked_intervals:\n    solver.add(z3.Or(E <= b_start, S >= b_end))\n\n# Check for solution\nif solver.check() == z3.sat:\n    model = solver.model()\n    S_val = model[S].as_long()\n    \n    # Convert start time to HH:MM format\n    start_hours = 9 + (S_val // 60)\n    start_minutes = S_val % 60\n    start_time = f\"{start_hours:02d}:{start_minutes:02d}\"\n    \n    # Convert end time to HH:MM format\n    end_val = S_val + 30\n    end_hours = 9 + (end_val // 60)\n    end_minutes = end_val % 60\n    end_time = f\"{end_hours:02d}:{end_minutes:02d}\"\n    \n    print(f\"{start_time}:{end_time} Monday\")\nelse:\n    print(\"No solution found\")"
+}

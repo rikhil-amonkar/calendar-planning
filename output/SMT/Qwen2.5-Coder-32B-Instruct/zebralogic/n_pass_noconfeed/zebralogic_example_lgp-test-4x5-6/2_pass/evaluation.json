@@ -1,0 +1,89 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\"solution\": {\"header\": [\"House\", \"Name\", \"Education\", \"MusicGenre\", \"Color\", \"Flower\"], \"rows\": [[\"1\", \"Arnold\", \"bachelor\", \"jazz\", \"yellow\", \"daffodils\"], [\"2\", \"Peter\", \"associate\", \"pop\", \"green\", \"roses\"], [\"3\", \"Alice\", \"master\", \"rock\", \"red\", \"carnations\"], [\"4\", \"Eric\", \"high school\", \"classical\", \"white\", \"lilies\"]]}}",
+    "pred": [
+        {
+            "House": "1",
+            "Name": "Arnold",
+            "Education": "bachelor",
+            "MusicGenre": "jazz",
+            "Color": "yellow",
+            "Flower": "daffodils"
+        },
+        {
+            "House": "2",
+            "Name": "Peter",
+            "Education": "associate",
+            "MusicGenre": "pop",
+            "Color": "green",
+            "Flower": "roses"
+        },
+        {
+            "House": "3",
+            "Name": "Alice",
+            "Education": "master",
+            "MusicGenre": "rock",
+            "Color": "red",
+            "Flower": "carnations"
+        },
+        {
+            "House": "4",
+            "Name": "Eric",
+            "Education": "high school",
+            "MusicGenre": "classical",
+            "Color": "white",
+            "Flower": "lilies"
+        }
+    ],
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Arnold",
+            "Education": "bachelor",
+            "MusicGenre": "jazz",
+            "Color": "yellow",
+            "Flower": "daffodils"
+        },
+        {
+            "House": "2",
+            "Name": "Peter",
+            "Education": "associate",
+            "MusicGenre": "pop",
+            "Color": "green",
+            "Flower": "roses"
+        },
+        {
+            "House": "3",
+            "Name": "Alice",
+            "Education": "master",
+            "MusicGenre": "rock",
+            "Color": "red",
+            "Flower": "carnations"
+        },
+        {
+            "House": "4",
+            "Name": "Eric",
+            "Education": "high school",
+            "MusicGenre": "classical",
+            "Color": "white",
+            "Flower": "lilies"
+        }
+    ],
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 2,
+    "timing": {
+        "api_call_time": 46.21268820762634,
+        "execution_time": 0.08587241172790527,
+        "constraint_eval_time": 6.67572021484375e-05,
+        "pred_extract_time": 3.27514910697937,
+        "gold_extract_time": 2.002716064453125e-05,
+        "total_tokens": 4309,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\n\n# Define the domains\nnames = ['Peter', 'Eric', 'Alice', 'Arnold']\neducations = ['bachelor', 'high school', 'associate', 'master']\nmusic_genres = ['jazz', 'rock', 'pop', 'classical']\ncolors = ['green', 'red', 'yellow', 'white']\nflowers = ['lilies', 'carnations', 'daffodils', 'roses']\n\n# Create variables\nhouse_vars = [Int(f'house_{i}') for i in range(1, 5)]\nname_vars = {name: Int(f'name_{name}') for name in names}\neducation_vars = {edu: Int(f'education_{edu}') for edu in educations}\nmusic_genre_vars = {genre: Int(f'music_genre_{genre}') for genre in music_genres}\ncolor_vars = {color: Int(f'color_{color}') for color in colors}\nflower_vars = {flower: Int(f'flower_{flower}') for flower in flowers}\n\n# Create solver\nsolver = Solver()\n\n# Add constraints for unique assignments\nsolver.add(Distinct(house_vars))\nsolver.add(Distinct(list(name_vars.values())))\nsolver.add(Distinct(list(education_vars.values())))\nsolver.add(Distinct(list(music_genre_vars.values())))\nsolver.add(Distinct(list(color_vars.values())))\nsolver.add(Distinct(list(flower_vars.values())))\n\n# Map names to houses\nfor name, var in name_vars.items():\n    solver.add(Or([var == i for i in range(1, 5)]))\n\n# Map educations to houses\nfor edu, var in education_vars.items():\n    solver.add(Or([var == i for i in range(1, 5)]))\n\n# Map music genres to houses\nfor genre, var in music_genre_vars.items():\n    solver.add(Or([var == i for i in range(1, 5)]))\n\n# Map colors to houses\nfor color, var in color_vars.items():\n    solver.add(Or([var == i for i in range(1, 5)]))\n\n# Map flowers to houses\nfor flower, var in flower_vars.items():\n    solver.add(Or([var == i for i in range(1, 5)]))\n\n# Add clues as constraints\nsolver.add(education_vars['bachelor'] == flower_vars['daffodils'])\nsolver.add(flower_vars['carnations'] != 1)\nsolver.add(education_vars['master'] == name_vars['Alice'])\nsolver.add(education_vars['master'] + 1 == music_genre_vars['classical'])\nsolver.add(name_vars['Eric'] != 2)\nsolver.add(name_vars['Arnold'] != 3)\nsolver.add(color_vars['yellow'] + 1 == flower_vars['roses'])\nsolver.add(music_genre_vars['pop'] == 2)\nsolver.add(education_vars['associate'] != 4)\nsolver.add(flower_vars['carnations'] != 4)\nsolver.add(color_vars['red'] + 1 == color_vars['white'])\nsolver.add(music_genre_vars['rock'] == color_vars['red'])\nsolver.add(color_vars['yellow'] == name_vars['Arnold'])\nsolver.add(flower_vars['daffodils'] == color_vars['yellow'])\n\n# Check if the problem is solvable\nif solver.check() == sat:\n    model = solver.model()\n    solution = []\n    for house in range(1, 5):\n        name = next(name for name, var in name_vars.items() if model.evaluate(var) == house)\n        education = next(edu for edu, var in education_vars.items() if model.evaluate(var) == house)\n        music_genre = next(genre for genre, var in music_genre_vars.items() if model.evaluate(var) == house)\n        color = next(color for color, var in color_vars.items() if model.evaluate(var) == house)\n        flower = next(flower for flower, var in flower_vars.items() if model.evaluate(var) == house)\n        solution.append([str(house), name, education, music_genre, color, flower])\n\n    import json\n    print(json.dumps({\n        \"solution\": {\n            \"header\": [\"House\", \"Name\", \"Education\", \"MusicGenre\", \"Color\", \"Flower\"],\n            \"rows\": solution\n        }\n    }))\nelse:\n    print(\"No solution found\")"
+}

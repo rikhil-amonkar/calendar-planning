@@ -1,0 +1,56 @@
+{
+    "has_execution_error": true,
+    "has_no_plan": false,
+    "execution_output": null,
+    "pred": null,
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Alice",
+            "Vacation": "mountain"
+        },
+        {
+            "House": "2",
+            "Name": "Eric",
+            "Vacation": "camping"
+        },
+        {
+            "House": "3",
+            "Name": "Peter",
+            "Vacation": "cultural"
+        },
+        {
+            "House": "4",
+            "Name": "Carol",
+            "Vacation": "city"
+        },
+        {
+            "House": "5",
+            "Name": "Bob",
+            "Vacation": "cruise"
+        },
+        {
+            "House": "6",
+            "Name": "Arnold",
+            "Vacation": "beach"
+        }
+    ],
+    "status": "Error",
+    "violated_constraint": {
+        "invalid_output": "No valid output structure found"
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 26.87080693244934,
+        "execution_time": 0.07963681221008301,
+        "constraint_eval_time": 4.291534423828125e-06,
+        "pred_extract_time": 4.5299530029296875e-06,
+        "gold_extract_time": 1.049041748046875e-05,
+        "total_tokens": 2447,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\nimport json\n\n# Define the variables\nnames = ['Bob', 'Peter', 'Alice', 'Eric', 'Carol', 'Arnold']\nvacations = ['mountain', 'camping', 'cruise', 'city', 'cultural', 'beach']\nhouses = range(1, 7)\n\n# Create the solver\nsolver = Solver()\n\n# Create dictionaries to hold the variables\nname_vars = {name: Int(name) for name in names}\nvacation_vars = {vacation: Int(vacation) for vacation in vacations}\n\n# Add constraints for unique assignments\nsolver.add(Distinct([name_vars[name] for name in names]))\nsolver.add(Distinct([vacation_vars[vacation] for vacation in vacations]))\n\n# Add constraints for houses being between 1 and 6\nfor var in list(name_vars.values()) + list(vacation_vars.values()):\n    solver.add(var >= 1)\n    solver.add(var <= 6)\n\n# Apply the clues\n# 1. The person who goes on cultural tours is somewhere to the left of the person who loves beach vacations.\nsolver.add(vacation_vars['cultural'] < vacation_vars['beach'])\n\n# 2. Eric is somewhere to the right of Alice.\nsolver.add(name_vars['Eric'] > name_vars['Alice'])\n\n# 3. Eric is in the second house.\nsolver.add(name_vars['Eric'] == 2)\n\n# 4. The person who goes on cultural tours is in the third house.\nsolver.add(vacation_vars['cultural'] == 3)\n\n# 5. Bob is directly left of Arnold.\nsolver.add(name_vars['Bob'] + 1 == name_vars['Arnold'])\n\n# 6. The person who enjoys camping trips is not in the first house.\nsolver.add(vacation_vars['camping'] != 1)\n\n# 7. The person who goes on cultural tours is Peter.\nsolver.add(name_vars['Peter'] == vacation_vars['cultural'])\n\n# 8. The person who likes going on cruises is Bob.\nsolver.add(name_vars['Bob'] == vacation_vars['cruise'])\n\n# 9. The person who prefers city breaks is in the fourth house.\nsolver.add(vacation_vars['city'] == 4)\n\n# Solve the problem\nif solver.check() == sat:\n    model = solver.model()\n    \n    # Prepare the solution\n    solution = []\n    for house in houses:\n        name = next(name for name, var in name_vars.items() if model.evaluate(var) == house).as_string()\n        vacation = next(vacation for vacation, var in vacation_vars.items() if model.evaluate(var) == house).as_string()\n        solution.append([str(house), name, vacation])\n    \n    # Output the solution as JSON\n    result = {\n        \"solution\": {\n            \"header\": [\"House\", \"Name\", \"Vacation\"],\n            \"rows\": solution\n        }\n    }\n    print(json.dumps(result, indent=2))\nelse:\n    print(\"No solution found\")"
+}

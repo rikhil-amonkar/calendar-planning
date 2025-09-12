@@ -1,0 +1,50 @@
+We are going to use the Z3 SMT solver to model the problem.
+ We have 3 houses, each with a name, education level, and occupation.
+ We'll define integer variables for each attribute per house, and then use constraints to relate them.
+
+ Steps:
+ 1. Define the attributes and their possible values.
+ 2. Create Z3 variables for each attribute for each house.
+ 3. Add constraints that each attribute (name, education, occupation) is a permutation (all different).
+ 4. Add constraints from the clues.
+
+ Since there are 3 houses, we can represent the house positions as 1, 2, 3.
+
+ We'll create:
+   name_i: the name of the person in house i (we'll map names to integers)
+   education_i: the education level in house i
+   occupation_i: the occupation in house i
+
+ We'll define the mappings for the attributes to integers for easier debugging, but we can also use Z3's EnumSort.
+ However, for simplicity and to output the string names, we'll use integers and then map back.
+
+ Alternatively, we can use Z3's EnumSort for each category, which makes the constraints more readable and output easier.
+
+ Let's use EnumSort for each category.
+
+ Steps in code:
+   - Create enums for Name, Education, Occupation.
+   - For each house, create a constant for each attribute.
+
+ We have 3 houses: house 1, 2, 3.
+
+ Constraints from clues:
+   1. The person who is a teacher is directly left of the person with an associate's degree.
+        This means: teacher is in house i, and associate is in house i+1 for some i in [1,2].
+
+   2. The person with an associate's degree and Eric are next to each other.
+        This means: the house of associate and Eric are adjacent.
+
+   3. Peter is the person with a high school diploma.
+        So, for the house where name is Peter, education is high school.
+
+   4. The person who is a doctor is the person with a bachelor's degree.
+        So, for the house where occupation is doctor, education is bachelor.
+
+ We also have that all attributes are distinct per category.
+
+ We'll create a solver, add the constraints, and check for a solution.
+
+ Output: We need to output a JSON with the solution in the given format.
+
+ Let's code accordingly.

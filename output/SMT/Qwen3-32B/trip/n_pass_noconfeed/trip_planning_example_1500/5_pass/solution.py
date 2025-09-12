@@ -1,0 +1,1 @@
+required_days_by_index = [city_data[str(i)] for i in range(10)]

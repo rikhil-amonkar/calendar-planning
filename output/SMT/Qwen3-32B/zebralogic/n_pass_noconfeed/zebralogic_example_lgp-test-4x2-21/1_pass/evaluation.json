@@ -1,0 +1,65 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"solution\": {\n    \"header\": [\n      \"House\",\n      \"Name\",\n      \"HouseStyle\"\n    ],\n    \"rows\": [\n      [\n        \"1\",\n        \"Eric\",\n        \"ranch\"\n      ],\n      [\n        \"2\",\n        \"Alice\",\n        \"craftsman\"\n      ],\n      [\n        \"3\",\n        \"Arnold\",\n        \"victorian\"\n      ],\n      [\n        \"4\",\n        \"Peter\",\n        \"colonial\"\n      ]\n    ]\n  }\n}",
+    "pred": [
+        {
+            "House": "1",
+            "Name": "Eric",
+            "HouseStyle": "ranch"
+        },
+        {
+            "House": "2",
+            "Name": "Alice",
+            "HouseStyle": "craftsman"
+        },
+        {
+            "House": "3",
+            "Name": "Arnold",
+            "HouseStyle": "victorian"
+        },
+        {
+            "House": "4",
+            "Name": "Peter",
+            "HouseStyle": "colonial"
+        }
+    ],
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Eric",
+            "HouseStyle": "ranch"
+        },
+        {
+            "House": "2",
+            "Name": "Alice",
+            "HouseStyle": "craftsman"
+        },
+        {
+            "House": "3",
+            "Name": "Arnold",
+            "HouseStyle": "victorian"
+        },
+        {
+            "House": "4",
+            "Name": "Peter",
+            "HouseStyle": "colonial"
+        }
+    ],
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 410.734934091568,
+        "execution_time": 0.07577800750732422,
+        "constraint_eval_time": 5.817413330078125e-05,
+        "pred_extract_time": 1.6603062152862549,
+        "gold_extract_time": 1.2874603271484375e-05,
+        "total_tokens": 29188,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import z3\nimport json\n\nsolver = z3.Solver()\n\n# Define variables for names\neric = z3.Int('eric')\narnold = z3.Int('arnold')\npeter = z3.Int('peter')\nalice = 2  # Alice is in house 2 (clue 1)\n\n# Constraints for names\nsolver.add(eric >= 1, eric <= 4)\nsolver.add(arnold >= 1, arnold <= 4)\nsolver.add(peter >= 1, peter <= 4)\nsolver.add(eric != 2, arnold != 2, peter != 2)\nsolver.add(z3.Distinct(eric, arnold, peter, 2))  # Alice is in house 2\nsolver.add(arnold > 2)  # Arnold is to the right of Craftsman (clue 4)\n\n# Define variables for house styles\ncolonial = z3.Int('colonial')\nranch = z3.Int('ranch')\nvictorian = z3.Int('victorian')\n\n# Constraints for house styles\nsolver.add(colonial >= 1, colonial <= 4)\nsolver.add(ranch >= 1, ranch <= 4)\nsolver.add(victorian >= 1, victorian <= 4)\nsolver.add(colonial != 2, ranch != 2, victorian != 2)  # Craftsman is in house 2\nsolver.add(z3.Distinct(colonial, ranch, victorian))\n\n# Clue 2: Victorian house is directly left of Peter\nsolver.add(victorian + 1 == peter)\n\n# Clue 3: Peter is to the right of the ranch-style home\nsolver.add(ranch < peter)\n\nif solver.check() == z3.sat:\n    model = solver.model()\n    # Extract values from the model\n    eric_val = model.eval(eric).as_long()\n    arnold_val = model.eval(arnold).as_long()\n    peter_val = model.eval(peter).as_long()\n    colonial_val = model.eval(colonial).as_long()\n    ranch_val = model.eval(ranch).as_long()\n    victorian_val = model.eval(victorian).as_long()\n\n    rows = []\n    for house_num in range(1, 5):\n        # Determine name\n        if house_num == 2:\n            name = 'Alice'\n        else:\n            if eric_val == house_num:\n                name = 'Eric'\n            elif arnold_val == house_num:\n                name = 'Arnold'\n            elif peter_val == house_num:\n                name = 'Peter'\n            else:\n                name = 'Unknown'\n        # Determine house style\n        if house_num == 2:\n            style = 'craftsman'\n        elif colonial_val == house_num:\n            style = 'colonial'\n        elif ranch_val == house_num:\n            style = 'ranch'\n        elif victorian_val == house_num:\n            style = 'victorian'\n        else:\n            style = 'Unknown'\n        rows.append([str(house_num), name, style])\n\n    solution = {\n        \"solution\": {\n            \"header\": [\"House\", \"Name\", \"HouseStyle\"],\n            \"rows\": rows\n        }\n    }\n\n    print(json.dumps(solution, indent=2))\nelse:\n    print(\"No solution found.\")"
+}

@@ -1,0 +1,109 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"solution\": {\n    \"header\": [\n      \"House\",\n      \"Name\",\n      \"PhoneModel\",\n      \"Nationality\",\n      \"Color\"\n    ],\n    \"rows\": [\n      [\n        \"1\",\n        \"Carol\",\n        \"xiaomi mi 11\",\n        \"chinese\",\n        \"green\"\n      ],\n      [\n        \"2\",\n        \"Arnold\",\n        \"oneplus 9\",\n        \"norwegian\",\n        \"purple\"\n      ],\n      [\n        \"3\",\n        \"Alice\",\n        \"google pixel 6\",\n        \"german\",\n        \"red\"\n      ],\n      [\n        \"4\",\n        \"Eric\",\n        \"huawei p50\",\n        \"dane\",\n        \"yellow\"\n      ],\n      [\n        \"5\",\n        \"Bob\",\n        \"samsung galaxy s21\",\n        \"swede\",\n        \"white\"\n      ],\n      [\n        \"6\",\n        \"Peter\",\n        \"iphone 13\",\n        \"brit\",\n        \"blue\"\n      ]\n    ]\n  }\n}",
+    "pred": [
+        {
+            "House": "1",
+            "Name": "Carol",
+            "PhoneModel": "xiaomi mi 11",
+            "Nationality": "chinese",
+            "Color": "green"
+        },
+        {
+            "House": "2",
+            "Name": "Arnold",
+            "PhoneModel": "oneplus 9",
+            "Nationality": "norwegian",
+            "Color": "purple"
+        },
+        {
+            "House": "3",
+            "Name": "Alice",
+            "PhoneModel": "google pixel 6",
+            "Nationality": "german",
+            "Color": "red"
+        },
+        {
+            "House": "4",
+            "Name": "Eric",
+            "PhoneModel": "huawei p50",
+            "Nationality": "dane",
+            "Color": "yellow"
+        },
+        {
+            "House": "5",
+            "Name": "Bob",
+            "PhoneModel": "samsung galaxy s21",
+            "Nationality": "swede",
+            "Color": "white"
+        },
+        {
+            "House": "6",
+            "Name": "Peter",
+            "PhoneModel": "iphone 13",
+            "Nationality": "brit",
+            "Color": "blue"
+        }
+    ],
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Carol",
+            "PhoneModel": "xiaomi mi 11",
+            "Nationality": "chinese",
+            "Color": "green"
+        },
+        {
+            "House": "2",
+            "Name": "Arnold",
+            "PhoneModel": "oneplus 9",
+            "Nationality": "norwegian",
+            "Color": "purple"
+        },
+        {
+            "House": "3",
+            "Name": "Alice",
+            "PhoneModel": "google pixel 6",
+            "Nationality": "german",
+            "Color": "red"
+        },
+        {
+            "House": "4",
+            "Name": "Eric",
+            "PhoneModel": "huawei p50",
+            "Nationality": "dane",
+            "Color": "yellow"
+        },
+        {
+            "House": "5",
+            "Name": "Bob",
+            "PhoneModel": "samsung galaxy s21",
+            "Nationality": "swede",
+            "Color": "white"
+        },
+        {
+            "House": "6",
+            "Name": "Peter",
+            "PhoneModel": "iphone 13",
+            "Nationality": "brit",
+            "Color": "blue"
+        }
+    ],
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 2,
+    "timing": {
+        "api_call_time": 456.70970273017883,
+        "execution_time": 0.10062909126281738,
+        "constraint_eval_time": 4.982948303222656e-05,
+        "pred_extract_time": 2.506230354309082,
+        "gold_extract_time": 1.1444091796875e-05,
+        "total_tokens": 29878,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\n\ndef solve_puzzle():\n    solver = Solver()\n\n    # Define variables for each house (0-based index for 6 houses)\n    names = [Int(f\"name_{i}\") for i in range(6)]\n    phone_models = [Int(f\"phone_{i}\") for i in range(6)]\n    nationalities = [Int(f\"nation_{i}\") for i in range(6)]\n    colors = [Int(f\"color_{i}\") for i in range(6)]\n\n    # Add constraints for distinctness and domain\n    for attr in [names, phone_models, nationalities, colors]:\n        solver.add(Distinct(attr))\n        for var in attr:\n            solver.add(And(0 <= var, var <= 5))\n\n    # Clue 1: Carol is not in the third house (index 2)\n    solver.add(names[2] != 0)\n\n    # Clue 2: One house between Dane and British\n    for i in range(6):\n        for j in range(6):\n            solver.add(Implies(And(nationalities[i] == 3, nationalities[j] == 5), Abs(i - j) == 2))\n\n    # Clue 3: Carol's favorite color is green\n    for i in range(6):\n        solver.add(Implies(names[i] == 0, colors[i] == 3))\n\n    # Clue 4: Arnold is directly left of Alice\n    solver.add(Or([And(names[i] == 3, names[i+1] == 2) for i in range(5)]))\n\n    # Clue 5: Alice is German\n    for i in range(6):\n        solver.add(Implies(names[i] == 2, nationalities[i] == 4))\n\n    # Clue 6: OnePlus 9 user loves purple\n    for i in range(6):\n        solver.add(Implies(phone_models[i] == 4, colors[i] == 5))\n\n    # Clue 7: Huawei P50 not in third house\n    solver.add(phone_models[2] != 3)\n\n    # Clue 8: Samsung Galaxy S21 is in fifth house (index 4)\n    solver.add(phone_models[4] == 0)\n\n    # Clue 9: White is to the right of red\n    for i in range(6):\n        for j in range(6):\n            solver.add(Implies(And(colors[i] == 1, colors[j] == 4), j > i))\n\n    # Clue 10: Samsung Galaxy S21 is Bob\n    solver.add(names[4] == 1)\n\n    # Clue 11: Dane loves yellow\n    for i in range(6):\n        solver.add(Implies(nationalities[i] == 3, colors[i] == 2))\n\n    # Clue 12: Samsung is left of Peter\n    solver.add(Or([And(phone_models[i] == 0, names[j] == 5, j > i) for i in range(6) for j in range(6)]))\n\n    # Clue 13: Peter loves blue\n    for i in range(6):\n        solver.add(Implies(names[i] == 5, colors[i] == 0))\n\n    # Clue 14: Peter is British\n    for i in range(6):\n        solver.add(Implies(names[i] == 5, nationalities[i] == 5))\n\n    # Clue 15: Samsung directly left of iPhone 13\n    solver.add(Or([And(phone_models[i] == 0, phone_models[i+1] == 2) for i in range(5)]))\n\n    # Clue 16: Norwegian loves purple\n    for i in range(6):\n        solver.add(Implies(nationalities[i] == 2, colors[i] == 5))\n\n    # Clue 17: Xiaomi Mi 11 is Chinese\n    for i in range(6):\n        solver.add(Implies(phone_models[i] == 5, nationalities[i] == 1))\n\n    if solver.check() == sat:\n        model = solver.model()\n        # Define lists for mapping indices to values\n        names_list = [\"Carol\", \"Bob\", \"Alice\", \"Arnold\", \"Eric\", \"Peter\"]\n        phone_list = [\"samsung galaxy s21\", \"google pixel 6\", \"iphone 13\", \"huawei p50\", \"oneplus 9\", \"xiaomi mi 11\"]\n        nation_list = [\"swede\", \"chinese\", \"norwegian\", \"dane\", \"german\", \"brit\"]\n        color_list = [\"blue\", \"red\", \"yellow\", \"green\", \"white\", \"purple\"]\n\n        rows = []\n        for i in range(6):\n            house_num = i + 1\n            name_idx = model[names[i]].as_long()\n            phone_idx = model[phone_models[i]].as_long()\n            nation_idx = model[nationalities[i]].as_long()\n            color_idx = model[colors[i]].as_long()\n            rows.append([\n                str(house_num),\n                names_list[name_idx],\n                phone_list[phone_idx],\n                nation_list[nation_idx],\n                color_list[color_idx]\n            ])\n\n        solution = {\n            \"solution\": {\n                \"header\": [\"House\", \"Name\", \"PhoneModel\", \"Nationality\", \"Color\"],\n                \"rows\": rows\n            }\n        }\n        import json\n        return json.dumps(solution, indent=2)\n    else:\n        return \"No solution found.\"\n\nif __name__ == \"__main__\":\n    print(solve_puzzle())"
+}

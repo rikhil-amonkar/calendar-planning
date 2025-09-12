@@ -1,0 +1,52 @@
+{
+    "has_execution_error": true,
+    "has_no_plan": false,
+    "execution_output": null,
+    "pred": null,
+    "gold": {
+        "itinerary": [
+            {
+                "day_range": "Day 1-2",
+                "place": "Helsinki"
+            },
+            {
+                "day_range": "Day 2-5",
+                "place": "Madrid"
+            },
+            {
+                "day_range": "Day 5-8",
+                "place": "Budapest"
+            },
+            {
+                "day_range": "Day 8-9",
+                "place": "Reykjavik"
+            },
+            {
+                "day_range": "Day 9-11",
+                "place": "Warsaw"
+            },
+            {
+                "day_range": "Day 11-14",
+                "place": "Split"
+            }
+        ]
+    },
+    "status": "Error",
+    "violated_constraint": {
+        "missing_itinerary": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 3,
+    "timing": {
+        "api_call_time": 67.53392744064331,
+        "execution_time": 0.06613016128540039,
+        "constraint_eval_time": 5.9604644775390625e-06,
+        "pred_extract_time": 8.344650268554688e-06,
+        "gold_extract_time": 7.939338684082031e-05,
+        "total_tokens": 4999,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import z3\n\n# Create a Z3 solver instance\nsolver = z3.Solver()\n\n# Define arrays of Z3 integer variables\nS = [z3.Int(f'S_{i}') for i in range(6)]\norder = [z3.Int(f'order_{i}') for i in range(6)]\n\n# Define the last_day expression based on S[5] and order[5]\nlast_day = S[5] + z3.If(order[5] == 0, 2,\n                        z3.If(order[5] == 1, 3,\n                              z3.If(order[5] == 2, 4,\n                                    z3.If(order[5] == 3, 4,\n                                          z3.If(order[5] == 4, 2,\n                                                z3.If(order[5] == 5, 4, 0)))))) - 1\n\n# Example: Add constraints or assert the expression\n# For demonstration, we can add a simple constraint\nsolver.add(last_day > 0)\n\n# Check if the constraints are satisfiable\nif solver.check() == z3.sat:\n    model = solver.model()\n    print(\"Model found:\")\n    for i in range(6):\n        print(f\"S_{i} = {model[S[i]]}\")\n        print(f\"order_{i} = {model[order[i]]}\")\n    print(f\"last_day = {model[last_day]}\")\nelse:\n    print(\"No solution found.\")"
+}

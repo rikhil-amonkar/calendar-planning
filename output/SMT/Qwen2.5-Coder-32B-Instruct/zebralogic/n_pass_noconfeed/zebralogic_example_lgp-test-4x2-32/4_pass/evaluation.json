@@ -1,0 +1,46 @@
+{
+    "has_execution_error": true,
+    "has_no_plan": false,
+    "execution_output": null,
+    "pred": null,
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Arnold",
+            "Pet": "fish"
+        },
+        {
+            "House": "2",
+            "Name": "Alice",
+            "Pet": "cat"
+        },
+        {
+            "House": "3",
+            "Name": "Peter",
+            "Pet": "dog"
+        },
+        {
+            "House": "4",
+            "Name": "Eric",
+            "Pet": "bird"
+        }
+    ],
+    "status": "Error",
+    "violated_constraint": {
+        "invalid_output": "No valid output structure found"
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 4,
+    "timing": {
+        "api_call_time": 35.91929483413696,
+        "execution_time": 0.07701563835144043,
+        "constraint_eval_time": 9.5367431640625e-07,
+        "pred_extract_time": 1.9073486328125e-06,
+        "gold_extract_time": 5.7220458984375e-06,
+        "total_tokens": 3326,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\n\n# Define the variables\nhouses = [Int(f'house_{i}') for i in range(1, 5)]\nnames = ['Peter', 'Arnold', 'Eric', 'Alice']\npets = ['bird', 'fish', 'dog', 'cat']\n\n# Create a solver instance\nsolver = Solver()\n\n# Add constraints for unique assignment of names and pets to houses\nsolver.add(Distinct(houses))\nsolver.add(Or([house == i for house in houses]) for i in range(1, 5))\n\n# Map names and pets to integers for constraint encoding\nname_map = {name: Int(name) for name in names}\npet_map = {pet: Int(pet) for pet in pets}\n\n# Ensure each name and pet is assigned to exactly one house\nfor name in names:\n    solver.add(Or([name_map[name] == house for house in houses]))\n\nfor pet in pets:\n    solver.add(Or([pet_map[pet] == house for house in houses]))\n\n# Add problem-specific constraints\n# 1. The person who owns a dog is somewhere to the right of Alice.\nfor house in houses:\n    for h in houses:\n        if h < house:\n            solver.add(Implies(And(name_map['Alice'] == house, name_map['dog'] == h), False))\n\n# 2. Eric is not in the first house.\nsolver.add(name_map['Eric'] != 1)\n\n# 3. Eric is the person who keeps a pet bird.\nsolver.add(name_map['Eric'] == pet_map['bird'])\n\n# 4. There is one house between the person with an aquarium of fish and Peter.\nsolver.add(Or(name_map['fish'] + 2 == name_map['Peter'], name_map['Peter'] + 2 == name_map['fish']))\n\n# 5. Alice is not in the first house.\nsolver.add(name_map['Alice'] != 1)\n\n# 6. Arnold is the person with an aquarium of fish.\nsolver.add(name_map['Arnold'] == pet_map['fish'])\n\n# Solve the problem\nif solver.check() == sat:\n    model = solver.model()\n    \n    # Extract the solution\n    solution = {house: {} for house in range(1, 5)}\n    for name in names:\n        house_number = model.evaluate(name_map[name]).as_long()\n        solution[house_number]['Name'] = name\n    \n    for pet in pets:\n        house_number = model.evaluate(pet_map[pet]).as_long()\n        solution[house_number]['Pet'] = pet\n    \n    # Format the solution as required\n    result = {\n        \"solution\": {\n            \"header\": [\"House\", \"Name\", \"Pet\"],\n            \"rows\": []\n        }\n    }\n    \n    for house in sorted(solution.keys()):\n        result[\"solution\"][\"rows\"].append([str(house), solution[house][\"Name\"], solution[house][\"Pet\"]])\n    \n    import json\n    print(json.dumps(result, indent=2))\nelse:\n    print(\"No solution found\")"
+}

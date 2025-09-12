@@ -1,0 +1,97 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"solution\": {\n    \"header\": [\n      \"House\",\n      \"Name\",\n      \"Flower\",\n      \"Height\",\n      \"Mother\",\n      \"Occupation\",\n      \"FavoriteSport\"\n    ],\n    \"rows\": [\n      [\n        \"1\",\n        \"Arnold\",\n        \"lilies\",\n        \"tall\",\n        \"Kailyn\",\n        \"teacher\",\n        \"tennis\"\n      ],\n      [\n        \"2\",\n        \"Peter\",\n        \"carnations\",\n        \"average\",\n        \"Janelle\",\n        \"doctor\",\n        \"basketball\"\n      ],\n      [\n        \"3\",\n        \"Eric\",\n        \"roses\",\n        \"very short\",\n        \"Holly\",\n        \"engineer\",\n        \"swimming\"\n      ],\n      [\n        \"4\",\n        \"Alice\",\n        \"daffodils\",\n        \"short\",\n        \"Aniya\",\n        \"artist\",\n        \"soccer\"\n      ]\n    ]\n  }\n}",
+    "pred": [
+        {
+            "House": "1",
+            "Name": "Arnold",
+            "Flower": "lilies",
+            "Height": "tall",
+            "Mother": "Kailyn",
+            "Occupation": "teacher",
+            "FavoriteSport": "tennis"
+        },
+        {
+            "House": "2",
+            "Name": "Peter",
+            "Flower": "carnations",
+            "Height": "average",
+            "Mother": "Janelle",
+            "Occupation": "doctor",
+            "FavoriteSport": "basketball"
+        },
+        {
+            "House": "3",
+            "Name": "Eric",
+            "Flower": "roses",
+            "Height": "very short",
+            "Mother": "Holly",
+            "Occupation": "engineer",
+            "FavoriteSport": "swimming"
+        },
+        {
+            "House": "4",
+            "Name": "Alice",
+            "Flower": "daffodils",
+            "Height": "short",
+            "Mother": "Aniya",
+            "Occupation": "artist",
+            "FavoriteSport": "soccer"
+        }
+    ],
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Arnold",
+            "Flower": "lilies",
+            "Height": "tall",
+            "Mother": "Kailyn",
+            "Occupation": "teacher",
+            "FavoriteSport": "tennis"
+        },
+        {
+            "House": "2",
+            "Name": "Peter",
+            "Flower": "carnations",
+            "Height": "average",
+            "Mother": "Janelle",
+            "Occupation": "doctor",
+            "FavoriteSport": "basketball"
+        },
+        {
+            "House": "3",
+            "Name": "Eric",
+            "Flower": "roses",
+            "Height": "very short",
+            "Mother": "Holly",
+            "Occupation": "engineer",
+            "FavoriteSport": "swimming"
+        },
+        {
+            "House": "4",
+            "Name": "Alice",
+            "Flower": "daffodils",
+            "Height": "short",
+            "Mother": "Aniya",
+            "Occupation": "artist",
+            "FavoriteSport": "soccer"
+        }
+    ],
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 485.08409309387207,
+        "execution_time": 0.09395313262939453,
+        "constraint_eval_time": 6.151199340820312e-05,
+        "pred_extract_time": 2.809965133666992,
+        "gold_extract_time": 1.1682510375976562e-05,
+        "total_tokens": 31789,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\nimport json\n\nsolver = Solver()\n\n# Variables for each house (0 to 3 for houses 1-4)\nname = [Int(f'name_{i}') for i in range(4)]\nflower = [Int(f'flower_{i}') for i in range(4)]\nheight = [Int(f'height_{i}') for i in range(4)]\nmother = [Int(f'mother_{i}') for i in range(4)]\noccupation = [Int(f'occupation_{i}') for i in range(4)]\nsport = [Int(f'sport_{i}') for i in range(4)]\n\n# Add constraints for uniqueness and domain\nfor var_list in [name, flower, height, mother, occupation, sport]:\n    solver.add(Distinct(var_list))\n    for var in var_list:\n        solver.add(And(0 <= var, var < 4))\n\n# Add clues\n# Clue 6: Teacher in first house (index 0)\nsolver.add(occupation[0] == 2)  # teacher is 2\n\n# Clue 11: Peter (0) is doctor (1)\nfor i in range(4):\n    solver.add(Or(name[i] != 0, occupation[i] == 1))\n\n# Clue 3: Arnold (1) is tall (2)\nfor i in range(4):\n    solver.add(Or(name[i] != 1, height[i] == 2))\n\n# Clue 13: Arnold (1) loves lilies (3)\nfor i in range(4):\n    solver.add(Or(name[i] != 1, flower[i] == 3))\n\n# Clue 12: Alice (3) has mother Aniya (3)\nfor i in range(4):\n    solver.add(Or(name[i] != 3, mother[i] == 3))\n\n# Clue 2: roses (2) \u2192 Eric (2)\nfor i in range(4):\n    solver.add(Or(flower[i] != 2, name[i] == 2))\n\n# Clue 1: swimming (0) \u2192 roses (2)\nfor i in range(4):\n    solver.add(Or(sport[i] != 0, flower[i] == 2))\n\n# Clue 5: soccer (3) \u2192 short (1)\nfor i in range(4):\n    solver.add(Or(sport[i] != 3, height[i] == 1))\n\n# Clue 7: mother Janelle (0) \u2192 carnations (1)\nfor i in range(4):\n    solver.add(Or(mother[i] != 0, flower[i] == 1))\n\n# Clue 8: basketball (1) \u2192 average (3)\nfor i in range(4):\n    solver.add(Or(sport[i] != 1, height[i] == 3))\n\n# Clue 9: Arnold not in third house (index 2)\nsolver.add(name[2] != 1)\n\n# Clue 4: daffodils (0) to the right of engineer (0)\npos_daffodils = Int('pos_daffodils')\npos_engineer = Int('pos_engineer')\nfor i in range(4):\n    solver.add(Implies(flower[i] == 0, pos_daffodils == i))\n    solver.add(Implies(occupation[i] == 0, pos_engineer == i))\nsolver.add(Or([pos_daffodils == i for i in range(4)]))\nsolver.add(Or([pos_engineer == i for i in range(4)]))\nsolver.add(pos_daffodils > pos_engineer)\n\n# Clue 10: mother Holly (2) to the right of average height (3)\npos_mother_holly = Int('pos_mother_holly')\npos_avg_height = Int('pos_avg_height')\nfor i in range(4):\n    solver.add(Implies(mother[i] == 2, pos_mother_holly == i))\n    solver.add(Implies(height[i] == 3, pos_avg_height == i))\nsolver.add(Or([pos_mother_holly == i for i in range(4)]))\nsolver.add(Or([pos_avg_height == i for i in range(4)]))\nsolver.add(pos_mother_holly > pos_avg_height)\n\n# Now check\nif solver.check() == sat:\n    model = solver.model()\n    # Mappings\n    name_map = {0: 'Peter', 1: 'Arnold', 2: 'Eric', 3: 'Alice'}\n    flower_map = {0: 'daffodils', 1: 'carnations', 2: 'roses', 3: 'lilies'}\n    height_map = {0: 'very short', 1: 'short', 2: 'tall', 3: 'average'}\n    mother_map = {0: 'Janelle', 1: 'Kailyn', 2: 'Holly', 3: 'Aniya'}\n    occupation_map = {0: 'engineer', 1: 'doctor', 2: 'teacher', 3: 'artist'}\n    sport_map = {0: 'swimming', 1: 'basketball', 2: 'tennis', 3: 'soccer'}\n    \n    rows = []\n    for i in range(4):\n        house_num = i + 1\n        n = model.eval(name[i]).as_long()\n        f = model.eval(flower[i]).as_long()\n        h = model.eval(height[i]).as_long()\n        m = model.eval(mother[i]).as_long()\n        o = model.eval(occupation[i]).as_long()\n        s = model.eval(sport[i]).as_long()\n        row = [\n            str(house_num),\n            name_map[n],\n            flower_map[f],\n            height_map[h],\n            mother_map[m],\n            occupation_map[o],\n            sport_map[s]\n        ]\n        rows.append(row)\n    solution = {\n        \"solution\": {\n            \"header\": [\"House\", \"Name\", \"Flower\", \"Height\", \"Mother\", \"Occupation\", \"FavoriteSport\"],\n            \"rows\": rows\n        }\n    }\n    print(json.dumps(solution, indent=2))\nelse:\n    print(\"No solution found.\")"
+}

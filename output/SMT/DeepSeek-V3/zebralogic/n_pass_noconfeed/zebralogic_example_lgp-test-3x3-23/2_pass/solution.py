@@ -1,0 +1,119 @@
+import json
+from z3 import *
+
+def main():
+    # Create solver
+    solver = Solver()
+    
+    # Define houses
+    houses = [1, 2, 3]
+    
+    # Define attributes
+    names = ['Peter', 'Arnold', 'Eric']
+    occupations = ['doctor', 'teacher', 'engineer']
+    hobbies = ['cooking', 'photography', 'gardening']
+    
+    # Create variables for each attribute per house
+    name_vars = [Int(f'name_{h}') for h in houses]
+    occupation_vars = [Int(f'occupation_{h}') for h in houses]
+    hobby_vars = [Int(f'hobby_{h}') for h in houses]
+    
+    # Constraint: All attributes must be within valid range (0-2)
+    for h in houses:
+        solver.add(And(name_vars[h-1] >= 0, name_vars[h-1] <= 2))
+        solver.add(And(occupation_vars[h-1] >= 0, occupation_vars[h-1] <= 2))
+        solver.add(And(hobby_vars[h-1] >= 0, hobby_vars[h-1] <= 2))
+    
+    # Constraint: All attributes are distinct within their category
+    solver.add(Distinct(name_vars))
+    solver.add(Distinct(occupation_vars))
+    solver.add(Distinct(hobby_vars))
+    
+    # Clue 1: The person who is a doctor and Eric are next to each other.
+    # Find the house where Eric is (name index 2) and doctor is (occupation index 0)
+    eric_doctor_adjacent = []
+    for h in houses:
+        # Eric is in house h
+        eric_condition = (name_vars[h-1] == names.index('Eric'))
+        
+        # Doctor is adjacent to Eric
+        adjacent_conditions = []
+        if h > 1:
+            adjacent_conditions.append(occupation_vars[h-2] == occupations.index('doctor'))
+        if h < 3:
+            adjacent_conditions.append(occupation_vars[h] == occupations.index('doctor'))
+        
+        if adjacent_conditions:
+            eric_doctor_adjacent.append(Implies(eric_condition, Or(adjacent_conditions)))
+    
+    solver.add(And(eric_doctor_adjacent))
+    
+    # Clue 2: The person who loves cooking is directly left of the person who is a teacher.
+    # Cooking hobby index 0, teacher occupation index 1
+    cooking_left_of_teacher = []
+    for h in [1, 2]:  # Only houses 1 and 2 can be left of someone
+        cooking_left_of_teacher.append(And(
+            hobby_vars[h-1] == hobbies.index('cooking'),
+            occupation_vars[h] == occupations.index('teacher')
+        ))
+    solver.add(Or(cooking_left_of_teacher))
+    
+    # Clue 3: The person who is a doctor is somewhere to the right of the person who enjoys gardening.
+    # Doctor occupation index 0, gardening hobby index 2
+    doctor_right_of_gardener = []
+    for gardener_h in houses:
+        for doctor_h in houses:
+            if doctor_h > gardener_h:  # Doctor is right of gardener
+                doctor_right_of_gardener.append(And(
+                    hobby_vars[gardener_h-1] == hobbies.index('gardening'),
+                    occupation_vars[doctor_h-1] == occupations.index('doctor')
+                ))
+    solver.add(Or(doctor_right_of_gardener))
+    
+    # Clue 4: The photography enthusiast is the person who is a teacher.
+    # Photography hobby index 1, teacher occupation index 1
+    for h in houses:
+        solver.add(hobby_vars[h-1] == hobbies.index('photography') == 
+                  (occupation_vars[h-1] == occupations.index('teacher')))
+    
+    # Clue 5: The person who is an engineer is Peter.
+    # Engineer occupation index 2, Peter name index 0
+    for h in houses:
+        solver.add(Implies(
+            occupation_vars[h-1] == occupations.index('engineer'),
+            name_vars[h-1] == names.index('Peter')
+        ))
+    
+    # Check if solution exists
+    if solver.check() == sat:
+        model = solver.model()
+        
+        # Prepare solution data
+        solution_data = {
+            "solution": {
+                "header": ["House", "Name", "Occupation", "Hobby"],
+                "rows": []
+            }
+        }
+        
+        # Extract values for each house
+        for h in houses:
+            name_idx = model.evaluate(name_vars[h-1]).as_long()
+            occupation_idx = model.evaluate(occupation_vars[h-1]).as_long()
+            hobby_idx = model.evaluate(hobby_vars[h-1]).as_long()
+            
+            row = [
+                str(h),
+                names[name_idx],
+                occupations[occupation_idx],
+                hobbies[hobby_idx]
+            ]
+            solution_data["solution"]["rows"].append(row)
+        
+        # Output as JSON
+        print(json.dumps(solution_data, indent=2))
+    else:
+        print('{"error": "No solution found"}')
+
+if __name__ == "__main__":
+    main()

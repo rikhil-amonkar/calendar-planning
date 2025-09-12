@@ -1,0 +1,1 @@
+s.add(z3.Distinct(cities_order))

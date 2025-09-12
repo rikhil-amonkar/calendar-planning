@@ -1,0 +1,73 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "Optimal route: Presidio -> SFO -> San Francisco -> Oakland\nTotal travel time: 60 minutes",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Central Park",
+                "person": "David",
+                "start_time": "13:00",
+                "end_time": "14:00"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "North Beach",
+                "person": "Helen",
+                "start_time": "11:00",
+                "end_time": "11:45"
+            },
+            {
+                "action": "meet",
+                "location": "Fisherman's Wharf",
+                "person": "Emily",
+                "start_time": "16:15",
+                "end_time": "16:45"
+            },
+            {
+                "action": "meet",
+                "location": "Nob Hill",
+                "person": "Mary",
+                "start_time": "17:30",
+                "end_time": "18:15"
+            },
+            {
+                "action": "meet",
+                "location": "Marina District",
+                "person": "Mark",
+                "start_time": "18:26",
+                "end_time": "19:41"
+            },
+            {
+                "action": "meet",
+                "location": "Golden Gate Park",
+                "person": "Michelle",
+                "start_time": "20:00",
+                "end_time": "20:15"
+            }
+        ]
+    },
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "constraints_satisfied_but_no_exact_match": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 5,
+    "timing": {
+        "api_call_time": 175.0100965499878,
+        "execution_time": 0.010942459106445312,
+        "constraint_eval_time": 0.0002033710479736328,
+        "pred_extract_time": 1.1142842769622803,
+        "gold_extract_time": 8.368492126464844e-05,
+        "total_tokens": 12696,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import itertools\n\n# Define a complete travel time matrix between all locations\ntravel_times = {\n    'Presidio': {\n        'SFO': 15,\n        'San Francisco': 10,\n        'Oakland': 30\n    },\n    'SFO': {\n        'Presidio': 15,\n        'San Francisco': 20,\n        'Oakland': 30\n    },\n    'San Francisco': {\n        'Presidio': 10,\n        'SFO': 20,\n        'Oakland': 25\n    },\n    'Oakland': {\n        'Presidio': 30,\n        'SFO': 30,\n        'San Francisco': 25\n    }\n}\n\n# List of friends and their locations\nfriends = [\n    {'location': 'SFO'},\n    {'location': 'San Francisco'},\n    {'location': 'Oakland'}\n]\n\n# Extract just the locations\nlocations = [friend['location'] for friend in friends]\n\n# Initialize variables to track the optimal route and time\nbest_route = None\nmin_total_time = float('inf')\n\n# Try all permutations of the friends' locations\nfor perm in itertools.permutations(locations):\n    # Start at Presidio\n    total_time = travel_times['Presidio'][perm[0]]\n    \n    # Add travel time between each consecutive pair in the permutation\n    for i in range(len(perm) - 1):\n        total_time += travel_times[perm[i]][perm[i + 1]]\n    \n    # Update best route if this one is better\n    if total_time < min_total_time:\n        min_total_time = total_time\n        best_route = perm\n\n# Output the optimal route and total travel time\nprint(f\"Optimal route: Presidio -> {' -> '.join(best_route)}\")\nprint(f\"Total travel time: {min_total_time} minutes\")"
+}

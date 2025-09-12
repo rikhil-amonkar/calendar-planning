@@ -1,0 +1,85 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"solution\": {\n    \"header\": [\n      \"House\",\n      \"Name\",\n      \"MusicGenre\"\n    ],\n    \"rows\": [\n      [\n        \"1\",\n        \"Peter\",\n        \"pop\"\n      ],\n      [\n        \"2\",\n        \"Eric\",\n        \"rock\"\n      ],\n      [\n        \"3\",\n        \"Bob\",\n        \"hip hop\"\n      ],\n      [\n        \"4\",\n        \"Arnold\",\n        \"jazz\"\n      ],\n      [\n        \"5\",\n        \"Alice\",\n        \"classical\"\n      ],\n      [\n        \"6\",\n        \"Carol\",\n        \"country\"\n      ]\n    ]\n  }\n}",
+    "pred": [
+        {
+            "House": "1",
+            "Name": "Peter",
+            "MusicGenre": "pop"
+        },
+        {
+            "House": "2",
+            "Name": "Eric",
+            "MusicGenre": "rock"
+        },
+        {
+            "House": "3",
+            "Name": "Bob",
+            "MusicGenre": "hip hop"
+        },
+        {
+            "House": "4",
+            "Name": "Arnold",
+            "MusicGenre": "jazz"
+        },
+        {
+            "House": "5",
+            "Name": "Alice",
+            "MusicGenre": "classical"
+        },
+        {
+            "House": "6",
+            "Name": "Carol",
+            "MusicGenre": "country"
+        }
+    ],
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Peter",
+            "MusicGenre": "pop"
+        },
+        {
+            "House": "2",
+            "Name": "Eric",
+            "MusicGenre": "rock"
+        },
+        {
+            "House": "3",
+            "Name": "Bob",
+            "MusicGenre": "hip hop"
+        },
+        {
+            "House": "4",
+            "Name": "Arnold",
+            "MusicGenre": "jazz"
+        },
+        {
+            "House": "5",
+            "Name": "Alice",
+            "MusicGenre": "classical"
+        },
+        {
+            "House": "6",
+            "Name": "Carol",
+            "MusicGenre": "country"
+        }
+    ],
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 519.3062047958374,
+        "execution_time": 0.0807642936706543,
+        "constraint_eval_time": 6.842613220214844e-05,
+        "pred_extract_time": 1.3030433654785156,
+        "gold_extract_time": 2.2411346435546875e-05,
+        "total_tokens": 33810,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\nimport json\n\nsolver = Solver()\n\n# Define EnumSorts for names and music genres\nNames, (Arnold, Eric, Peter, Alice, Carol, Bob) = EnumSort('Names', ['Arnold', 'Eric', 'Peter', 'Alice', 'Carol', 'Bob'])\nMusics, (jazz, pop, classical, rock, hip_hop, country) = EnumSort('Musics', ['jazz', 'pop', 'classical', 'rock', 'hip_hop', 'country'])\n\n# Create variables for each house (1-6)\nnames = [Const(f'name_{i}', Names) for i in range(1, 7)]  # indexes 0-5 for houses 1-6\nmusics = [Const(f'music_{i}', Musics) for i in range(1, 7)]\n\n# All names are distinct\nsolver.add(Distinct(names))\n# All musics are distinct\nsolver.add(Distinct(musics))\n\n# Clue 3: Carol is in sixth house (index 5)\nsolver.add(names[5] == Carol)\n\n# Clue 5: Carol loves country music\nsolver.add(musics[5] == country)\n\n# Clue 9: Hip hop is in third house (index 2)\nsolver.add(musics[2] == hip_hop)\n\n# Clue 1: Bob is directly left of jazz\nsolver.add(Or(\n    And(names[0] == Bob, musics[1] == jazz),\n    And(names[1] == Bob, musics[2] == jazz),\n    And(names[2] == Bob, musics[3] == jazz),\n    And(names[3] == Bob, musics[4] == jazz),\n    And(names[4] == Bob, musics[5] == jazz)\n))\n\n# Clue 2: Eric is to the left of hip hop (house 3, so Eric in 1 or 2)\nsolver.add(Or(names[0] == Eric, names[1] == Eric))\n\n# Clue 4: Eric and hip hop are next to each other (hip hop is in 3, so Eric in 2 or 4)\nsolver.add(Or(names[1] == Eric, names[3] == Eric))\n\n# Clue 8: The person who loves pop is Peter\nfor i in range(6):\n    solver.add(Implies(musics[i] == pop, names[i] == Peter))\n\n# Clue 10: One house between Peter and Bob\nsolver.add(Implies(names[0] == Peter, names[2] == Bob))\nsolver.add(Implies(names[1] == Peter, names[3] == Bob))\nsolver.add(Implies(names[2] == Peter, Or(names[4] == Bob, names[0] == Bob)))\nsolver.add(Implies(names[3] == Peter, Or(names[5] == Bob, names[1] == Bob)))\nsolver.add(Implies(names[4] == Peter, names[2] == Bob))\nsolver.add(Implies(names[5] == Peter, names[3] == Bob))\n\n# Clue 6: Arnold not in fifth house (index 4)\nsolver.add(names[4] != Arnold)\n\n# Clue 7: Arnold is to the right of pop (Peter)\nfor i in range(6):\n    if i < 5:\n        solver.add(Implies(names[i] == Peter, Or([names[j] == Arnold for j in range(i+1, 6)])))\n    else:\n        solver.add(Implies(names[i] == Peter, False))  # impossible\n\n# Clue 11: Rock not in fifth house (index 4)\nsolver.add(musics[4] != rock)\n\n# Check if the constraints are satisfiable\nif solver.check() == sat:\n    model = solver.model()\n    rows = []\n    for i in range(6):\n        house_num = i + 1\n        name = model.evaluate(names[i]).decl().name()\n        music = model.evaluate(musics[i]).decl().name()\n        # Replace 'hip_hop' with 'hip hop'\n        if music == 'hip_hop':\n            music = 'hip hop'\n        rows.append([str(house_num), name, music])\n    json_output = {\n        \"solution\": {\n            \"header\": [\"House\", \"Name\", \"MusicGenre\"],\n            \"rows\": rows\n        }\n    }\n    print(json.dumps(json_output, indent=2))\nelse:\n    print(\"No solution found.\")"
+}

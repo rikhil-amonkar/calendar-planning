@@ -1,0 +1,57 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"itinerary\": [\n    {\n      \"action\": \"meet\",\n      \"location\": \"Embarcadero\",\n      \"person\": \"Mark\",\n      \"start_time\": \"13:00\",\n      \"end_time\": \"15:00\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Pacific Heights\",\n      \"person\": \"Karen\",\n      \"start_time\": \"18:45\",\n      \"end_time\": \"20:15\"\n    }\n  ]\n}",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Embarcadero",
+                "person": "Mark",
+                "start_time": "13:00",
+                "end_time": "15:00"
+            },
+            {
+                "action": "meet",
+                "location": "Pacific Heights",
+                "person": "Karen",
+                "start_time": "18:45",
+                "end_time": "20:15"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Embarcadero",
+                "person": "Mark",
+                "start_time": "13:00",
+                "end_time": "15:00"
+            },
+            {
+                "action": "meet",
+                "location": "Pacific Heights",
+                "person": "Karen",
+                "start_time": "18:45",
+                "end_time": "20:15"
+            }
+        ]
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 441.1292464733124,
+        "execution_time": 0.07486343383789062,
+        "constraint_eval_time": 2.6941299438476562e-05,
+        "pred_extract_time": 1.4621381759643555,
+        "gold_extract_time": 6.985664367675781e-05,
+        "total_tokens": 26427,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import z3\nimport json\n\ndef to_time_str(minutes):\n    hours = minutes // 60\n    mins = minutes % 60\n    return f\"{hours}:{mins:02d}\"\n\nsolver = z3.Solver()\n\n# Define variables for Mark's meeting\nstart_mark = z3.Int('start_mark')\nduration_mark = z3.Int('duration_mark')\n\n# Mark's constraints: 1:00PM to 5:45PM (780 to 1065 minutes)\nsolver.add(start_mark >= 780)  # 1:00PM\nsolver.add(start_mark + duration_mark <= 1065)  # 5:45PM\nsolver.add(duration_mark >= 120)  # Minimum 120 minutes\n\n# Karen's fixed meeting window: 6:45PM to 8:15PM (1125 to 1215 minutes)\n# Travel from Embarcadero to Pacific Heights takes 11 minutes\n# Need: end_mark + 11 <= 1125 => start_mark + duration_mark + 11 <= 1125\nsolver.add(start_mark + duration_mark + 11 <= 1125)\n\nif solver.check() == z3.sat:\n    model = solver.model()\n    start_m = model[start_mark].as_long()\n    dur_m = model[duration_mark].as_long()\n    end_m = start_m + dur_m\n\n    # Karen's meeting details\n    start_k = 1125  # 6:45PM\n    end_k = start_k + 90  # 8:15PM\n\n    itinerary = [\n        {\n            \"action\": \"meet\",\n            \"location\": \"Embarcadero\",\n            \"person\": \"Mark\",\n            \"start_time\": to_time_str(start_m),\n            \"end_time\": to_time_str(end_m)\n        },\n        {\n            \"action\": \"meet\",\n            \"location\": \"Pacific Heights\",\n            \"person\": \"Karen\",\n            \"start_time\": to_time_str(start_k),\n            \"end_time\": to_time_str(end_k)\n        }\n    ]\n\n    result = {\"itinerary\": itinerary}\n    print(json.dumps(result, indent=2))\nelse:\n    print(json.dumps({\"itinerary\": []}))"
+}

@@ -1,0 +1,62 @@
+from z3 import *
+import json
+
+def main():
+    # Convert time string to minutes since midnight
+    def time_to_minutes(t):
+        parts = t.split(':')
+        hours = int(parts[0])
+        minutes = int(parts[1]) if len(parts) > 1 else 0
+        return hours * 60 + minutes
+
+    # Convert minutes to time string
+    def minutes_to_time(m):
+        hours = m // 60
+        minutes = m % 60
+        return f"{hours}:{minutes:02d}"
+
+    # Initialize solver
+    solver = Optimize()
+    
+    # Define variables
+    travel_start = Int('travel_start')
+    meet_start = Int('meet_start')
+    meet_end = Int('meet_end')
+    
+    # Constants
+    start_time = time_to_minutes("9:00")
+    david_start = time_to_minutes("16:00")
+    david_end = time_to_minutes("21:45")
+    travel_time = 23
+    min_meet_duration = 105
+    
+    # Constraints
+    solver.add(travel_start >= start_time)
+    solver.add(meet_start >= travel_start + travel_time)
+    solver.add(meet_start >= david_start)
+    solver.add(meet_end <= david_end)
+    solver.add(meet_end - meet_start >= min_meet_duration)
+    
+    # Maximize meeting duration while meeting constraints
+    solver.maximize(meet_end - meet_start)
+    
+    # Check feasibility
+    if solver.check() == sat:
+        model = solver.model()
+        ms = model.eval(meet_start).as_long()
+        me = model.eval(meet_end).as_long()
+        
+        itinerary = [{
+            "action": "meet",
+            "location": "Chinatown",
+            "person": "David",
+            "start_time": minutes_to_time(ms),
+            "end_time": minutes_to_time(me)
+        }]
+        
+        print(json.dumps({"itinerary": itinerary}, indent=2))
+    else:
+        print('{"itinerary": []}')
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,129 @@
+```python
+import json
+from z3 import *
+
+def main():
+    # Define travel times in minutes between districts
+    travel_time = {
+        "Mission District": {
+            "Alamo Square": 11, "Presidio": 25, "Russian Hill": 15, "North Beach": 17,
+            "Golden Gate Park": 17, "Richmond District": 20, "Embarcadero": 19,
+            "Financial District": 15, "Marina District": 19
+        },
+        "Alamo Square": {
+            "Mission District": 10, "Presidio": 17, "Russian Hill": 13, "North Beach": 15,
+            "Golden Gate Park": 9, "Richmond District": 11, "Embarcadero": 16,
+            "Financial District": 17, "Marina District": 15
+        },
+        "Presidio": {
+            "Mission District": 26, "Alamo Square": 19, "Russian Hill": 14, "North Beach": 18,
+            "Golden Gate Park": 12, "Richmond District": 7, "Embarcadero": 20,
+            "Financial District": 23, "Marina District": 11
+        },
+        "Russian Hill": {
+            "Mission District": 16, "Alamo Square": 15, "Presidio": 14, "North Beach": 5,
+            "Golden Gate Park": 21, "Richmond District": 14, "Embarcadero": 8,
+            "Financial District": 11, "Marina District": 7
+        },
+        "North Beach": {
+            "Mission District": 18, "Alamo Square": 16, "Presidio": 17, "Russian Hill": 4,
+            "Golden Gate Park": 22, "Richmond District": 18, "Embarcadero": 6,
+            "Financial District": 8, "Marina District": 9
+        },
+        "Golden Gate Park": {
+            "Mission District": 17, "Alamo Square": 9, "Presidio": 11, "Russian Hill": 19,
+            "North Beach": 23, "Richmond District": 7, "Embarcadero": 25,
+            "Financial District": 26, "Marina District": 16
+        },
+        "Richmond District": {
+            "Mission District": 20, "Alamo Square": 13, "Presidio": 7, "Russian Hill": 13,
+            "North Beach": 17, "Golden Gate Park": 9, "Embarcadero": 19,
+            "Financial District": 22, "Marina District": 9
+        },
+        "Embarcadero": {
+            "Mission District": 20, "Alamo Square": 19, "Presidio": 20, "Russian Hill": 8,
+            "North Beach": 5, "Golden Gate Park": 25, "Richmond District": 21,
+            "Financial District": 5, "Marina District": 12
+        },
+        "Financial District": {
+            "Mission District": 17, "Alamo Square": 17, "Presidio": 22, "Russian Hill": 11,
+            "North Beach": 7, "Golden Gate Park": 23, "Richmond District": 21,
+            "Embarcadero": 4, "Marina District": 15
+        },
+        "Marina District": {
+            "Mission District": 20, "Alamo Square": 15, "Presidio": 10, "Russian Hill": 8,
+            "North Beach": 11, "Golden Gate Park": 18, "Richmond District": 11,
+            "Embarcadero": 14, "Financial District": 17
+        }
+    }
+
+    # Define friends' availability and constraints
+    friends = [
+        {"name": "Laura", "location": "Alamo Square", "start_avail": 870, "end_avail": 975, "min_duration": 75},
+        {"name": "Brian", "location": "Presidio", "start_avail": 615, "end_avail": 1020, "min_duration": 30},
+        {"name": "Karen", "location": "Russian Hill", "start_avail": 1080, "end_avail": 1215, "min_duration": 90},
+        {"name": "Stephanie", "location": "North Beach", "start_avail": 615, "end_avail": 960, "min_duration": 75},
+        {"name": "Helen", "location": "Golden Gate Park", "start_avail": 690, "end_avail": 1305, "min_duration": 120},
+        {"name": "Sandra", "location": "Richmond District", "start_avail": 480, "end_avail": 915, "min_duration": 30},
+        {"name": "Mary", "location": "Embarcadero", "start_avail": 1005, "end_avail": 1125, "min_duration": 120},
+        {"name": "Deborah", "location": "Financial District", "start_avail": 1140, "end_avail": 1245, "min_duration": 105},
+        {"name": "Elizabeth", "location": "Marina District", "start_avail": 510, "end_avail": 795, "min_duration": 105}
+    ]
+    
+    n = len(friends)
+    opt = Optimize()
+    
+    # Create variables for each friend
+    meet = [Bool(f"meet_{i}") for i in range(n)]
+    start = [Real(f"start_{i}") for i in range(n)]
+    end = [Real(f"end_{i}") for i in range(n)]
+    
+    # Base constraints for each friend
+    for i in range(n):
+        f = friends[i]
+        opt.add(Implies(meet[i], start[i] >= f["start_avail"] - 540))  # Convert to minutes from 9:00
+        opt.add(Implies(meet[i], end[i] <= f["end_avail"] - 540))
+        opt.add(Implies(meet[i], end[i] - start[i] >= f["min_duration"]))
+        opt.add(Implies(meet[i], start[i] >= travel_time["Mission District"][f["location"]]))
+    
+    # Constraints for travel time between meetings
+    for i in range(n):
+        for j in range(i + 1, n):
+            loc_i = friends[i]["location"]
+            loc_j = friends[j]["location"]
+            travel_ij = travel_time[loc_i][loc_j]
+            travel_ji = travel_time[loc_j][loc_i]
+            opt.add(Implies(And(meet[i], meet[j]),
+                Or(end[i] + travel_ij <= start[j], end[j] + travel_ji <= start[i])))
+    
+    # Maximize number of meetings
+    opt.maximize(Sum([If(meet[i], 1, 0) for i in range(n)]))
+    
+    if opt.check() == sat:
+        model = opt.model()
+        itinerary = []
+        for i in range(n):
+            if is_true(model.eval(meet[i])):
+                s_val = model.eval(start[i])
+                e_val = model.eval(end[i])
+                s_min = int(s_val.as_string())
+                e_min = int(e_val.as_string())
+                start_abs = 540 + s_min
+                end_abs = 540 + e_min
+                start_str = f"{start_abs // 60}:{start_abs % 60:02d}"
+                end_str = f"{end_abs // 60}:{end_abs % 60:02d}"
+                itinerary.append({
+                    "action": "meet",
+                    "location": friends[i]["location"],
+                    "person": friends[i]["name"],
+                    "start_time": start_str,
+                    "end_time": end_str
+                })
+        itinerary.sort(key=lambda x: x["start_time"])
+        print(json.dumps({"itinerary": itinerary}, indent=2))
+    else:
+        print('{"itinerary": []}')
+
+if __name__ == "__main__":
+    main()
+```

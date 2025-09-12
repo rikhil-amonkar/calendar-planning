@@ -1,0 +1,106 @@
+from z3 import *
+import json
+
+def main():
+    # Cities and their durations
+    cities = ["Tallinn", "Bucharest", "Seville", "Stockholm", "Munich", "Milan"]
+    durations = [2, 4, 5, 5, 5, 2]
+    
+    # Direct flights graph (undirected)
+    graph = [
+        (3, 5),  # Milan-Stockholm
+        (4, 3),  # Munich-Stockholm
+        (1, 4),  # Bucharest-Munich
+        (4, 2),  # Munich-Seville
+        (3, 0),  # Stockholm-Tallinn
+        (4, 5),  # Munich-Milan
+        (4, 0),  # Munich-Tallinn
+        (2, 5)   # Seville-Milan
+    ]
+    
+    # Indices for the remaining cities: Tallinn (0), Seville (2), Stockholm (3), Milan (5)
+    remaining_indices = [0, 2, 3, 5]
+    
+    # Create Z3 variables for the order of the remaining cities
+    a, b, c, d = Ints('a b c d')
+    order = [a, b, c, d]
+    
+    s = Solver()
+    
+    # Each variable must be one of the remaining indices
+    for var in order:
+        s.add(Or([var == idx for idx in remaining_indices]))
+    
+    # All variables must be distinct
+    s.add(Distinct(order))
+    
+    # Start day of the first remaining city is 8 (since Munich ends at day 8)
+    start_a = 8
+    end_a = start_a + durations[a] - 1
+    start_b = end_a
+    end_b = start_b + durations[b] - 1
+    start_c = end_b
+    end_c = start_c + durations[c] - 1
+    start_d = end_c
+    end_d = start_d + durations[d] - 1
+    
+    # The last city must end on day 18
+    s.add(end_d == 18)
+    
+    # Flight constraints between consecutive cities
+    # From Munich (index4) to first city 'a'
+    s.add(Or((4, a) in graph, (a, 4) in graph))
+    # Between a and b
+    s.add(Or((a, b) in graph, (b, a) in graph))
+    # Between b and c
+    s.add(Or((b, c) in graph, (c, b) in graph))
+    # Between c and d
+    s.add(Or((c, d) in graph, (d, c) in graph))
+    
+    # Constraint for Seville (index2): must start on or before day 12
+    s.add(If(a == 2, start_a <= 12, True))
+    s.add(If(b == 2, start_b <= 12, True))
+    s.add(If(c == 2, start_c <= 12, True))
+    s.add(If(d == 2, start_d <= 12, True))
+    
+    # Check if satisfiable
+    if s.check() == sat:
+        model = s.model()
+        order_val = [model[var].as_long() for var in order]
+        
+        # Calculate start and end days for the remaining cities
+        starts = [0] * 6
+        ends = [0] * 6
+        
+        # First two cities are fixed
+        starts[1] = 1  # Bucharest
+        ends[1] = 4    # Bucharest
+        starts[4] = 4  # Munich
+        ends[4] = 8    # Munich
+        
+        # Now the remaining cities
+        current_start = 8
+        for idx in order_val:
+            starts[idx] = current_start
+            ends[idx] = current_start + durations[idx] - 1
+            current_start = ends[idx]
+        
+        # Create itinerary list
+        itinerary = []
+        # We know the order of cities: Bucharest, Munich, then order_val
+        cities_ordered = [1, 4] + order_val
+        
+        for city_idx in cities_ordered:
+            start_day = starts[city_idx]
+            end_day = ends[city_idx]
+            day_range = f"Day {start_day}-{end_day}"
+            itinerary.append({"day_range": day_range, "place": cities[city_idx]})
+        
+        # Output as JSON
+        result = {"itinerary": itinerary}
+        print(json.dumps(result))
+    else:
+        print('{"itinerary": []}')
+
+if __name__ == "__main__":
+    main()

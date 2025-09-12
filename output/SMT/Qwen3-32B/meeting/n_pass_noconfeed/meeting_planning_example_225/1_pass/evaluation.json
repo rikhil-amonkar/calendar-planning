@@ -1,0 +1,57 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\"itinerary\": [{\"action\": \"meet\", \"location\": \"North Beach\", \"person\": \"Sarah\", \"start_time\": \"16:00\", \"end_time\": \"17:00\"}, {\"action\": \"meet\", \"location\": \"Union Square\", \"person\": \"Jeffrey\", \"start_time\": \"17:07\", \"end_time\": \"18:22\"}]}",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "North Beach",
+                "person": "Sarah",
+                "start_time": "16:00",
+                "end_time": "17:00"
+            },
+            {
+                "action": "meet",
+                "location": "Union Square",
+                "person": "Jeffrey",
+                "start_time": "17:07",
+                "end_time": "18:22"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "North Beach",
+                "person": "Sarah",
+                "start_time": "16:00",
+                "end_time": "17:00"
+            },
+            {
+                "action": "meet",
+                "location": "Union Square",
+                "person": "Jeffrey",
+                "start_time": "17:07",
+                "end_time": "18:22"
+            }
+        ]
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 855.0168716907501,
+        "execution_time": 0.10068202018737793,
+        "constraint_eval_time": 3.552436828613281e-05,
+        "pred_extract_time": 2.169130802154541,
+        "gold_extract_time": 9.918212890625e-05,
+        "total_tokens": 63350,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import itertools\nimport json\nfrom z3 import *\n\ndef format_time(m):\n    total_mins = 540 + m  # 9 AM is 540 mins since midnight\n    hours = total_mins // 60\n    minutes = total_mins % 60\n    return f\"{hours}:{minutes:02d}\"\n\n# Define travel times between locations\ntravel_times = {\n    ('Sunset District', 'North Beach'): 29,\n    ('Sunset District', 'Union Square'): 30,\n    ('Sunset District', 'Alamo Square'): 17,\n    ('North Beach', 'Sunset District'): 27,\n    ('North Beach', 'Union Square'): 7,\n    ('North Beach', 'Alamo Square'): 16,\n    ('Union Square', 'Sunset District'): 26,\n    ('Union Square', 'North Beach'): 10,\n    ('Union Square', 'Alamo Square'): 15,\n    ('Alamo Square', 'Sunset District'): 16,\n    ('Alamo Square', 'North Beach'): 15,\n    ('Alamo Square', 'Union Square'): 14,\n}\n\nfriends_data = {\n    'Sarah': {\n        'location': 'North Beach',\n        'available_start': 420,  # 4 PM\n        'available_end': 555,    # 6:15 PM\n        'min_duration': 60\n    },\n    'Jeffrey': {\n        'location': 'Union Square',\n        'available_start': 360,  # 3 PM\n        'available_end': 780,    # 10 PM\n        'min_duration': 75\n    },\n    'Brian': {\n        'location': 'Alamo Square',\n        'available_start': 420,  # 4 PM\n        'available_end': 510,    # 5:30 PM\n        'min_duration': 75\n    }\n}\n\nmax_solution = None\nmax_num_friends = 0\n\n# Check for 3 friends\nfriends_list = ['Sarah', 'Jeffrey', 'Brian']\nfor perm in itertools.permutations(friends_list):\n    solver = Solver()\n    prev_location = 'Sunset District'\n    prev_end = 0  # start time is 9:00 AM (0 mins since 9 AM)\n    for friend in perm:\n        loc = friends_data[friend]['location']\n        travel_time = travel_times[(prev_location, loc)]\n        arrival_time = prev_end + travel_time\n        start_var = Int(f'start_{friend}')\n        end_var = Int(f'end_{friend}')\n        available_start = friends_data[friend]['available_start']\n        available_end = friends_data[friend]['available_end']\n        min_duration = friends_data[friend]['min_duration']\n        # Add constraints\n        solver.add(start_var >= arrival_time)\n        solver.add(start_var >= available_start)\n        solver.add(end_var == start_var + min_duration)\n        solver.add(end_var <= available_end)\n        # Update for next step\n        prev_location = loc\n        prev_end = end_var\n    # Check if the solver is satisfiable\n    if solver.check() == sat:\n        model = solver.model()\n        itinerary = []\n        for friend in perm:\n            start = model.eval(Int(f'start_{friend}')).as_long()\n            end = model.eval(Int(f'end_{friend}')).as_long()\n            start_time = format_time(start)\n            end_time = format_time(end)\n            loc = friends_data[friend]['location']\n            itinerary.append({\n                \"action\": \"meet\",\n                \"location\": loc,\n                \"person\": friend,\n                \"start_time\": start_time,\n                \"end_time\": end_time\n            })\n        max_solution = itinerary\n        max_num_friends = len(perm)\n        # Output and exit early if found\n        print(json.dumps({\"itinerary\": max_solution}))\n        exit()\n\n# Check for 2 friends\nfor subset_size in [2]:\n    for subset in itertools.combinations(friends_list, subset_size):\n        for perm in itertools.permutations(subset):\n            solver = Solver()\n            prev_location = 'Sunset District'\n            prev_end = 0\n            for friend in perm:\n                loc = friends_data[friend]['location']\n                travel_time = travel_times[(prev_location, loc)]\n                arrival_time = prev_end + travel_time\n                start_var = Int(f'start_{friend}')\n                end_var = Int(f'end_{friend}')\n                available_start = friends_data[friend]['available_start']\n                available_end = friends_data[friend]['available_end']\n                min_duration = friends_data[friend]['min_duration']\n                solver.add(start_var >= arrival_time)\n                solver.add(start_var >= available_start)\n                solver.add(end_var == start_var + min_duration)\n                solver.add(end_var <= available_end)\n                prev_location = loc\n                prev_end = end_var\n            if solver.check() == sat:\n                model = solver.model()\n                itinerary = []\n                for friend in perm:\n                    start = model.eval(Int(f'start_{friend}')).as_long()\n                    end = model.eval(Int(f'end_{friend}')).as_long()\n                    start_time = format_time(start)\n                    end_time = format_time(end)\n                    loc = friends_data[friend]['location']\n                    itinerary.append({\n                        \"action\": \"meet\",\n                        \"location\": loc,\n                        \"person\": friend,\n                        \"start_time\": start_time,\n                        \"end_time\": end_time\n                    })\n                if len(itinerary) > max_num_friends:\n                    max_solution = itinerary\n                    max_num_friends = len(itinerary)\n                elif len(itinerary) == max_num_friends and max_solution is None:\n                    max_solution = itinerary\n    if max_solution is not None:\n        break\n\n# Check for 1 friend\nif max_solution is None:\n    for friend in friends_list:\n        solver = Solver()\n        prev_location = 'Sunset District'\n        prev_end = 0\n        loc = friends_data[friend]['location']\n        travel_time = travel_times[(prev_location, loc)]\n        arrival_time = prev_end + travel_time\n        start_var = Int(f'start_{friend}')\n        end_var = Int(f'end_{friend}')\n        available_start = friends_data[friend]['available_start']\n        available_end = friends_data[friend]['available_end']\n        min_duration = friends_data[friend]['min_duration']\n        solver.add(start_var >= arrival_time)\n        solver.add(start_var >= available_start)\n        solver.add(end_var == start_var + min_duration)\n        solver.add(end_var <= available_end)\n        if solver.check() == sat:\n            model = solver.model()\n            start = model.eval(start_var).as_long()\n            end = model.eval(end_var).as_long()\n            start_time = format_time(start)\n            end_time = format_time(end)\n            max_solution = [{\n                \"action\": \"meet\",\n                \"location\": loc,\n                \"person\": friend,\n                \"start_time\": start_time,\n                \"end_time\": end_time\n            }]\n            break\n\n# Output the result\nif max_solution:\n    print(json.dumps({\"itinerary\": max_solution}))\nelse:\n    print(json.dumps({\"itinerary\": []}))"
+}

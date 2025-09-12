@@ -1,0 +1,38 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": true,
+    "execution_output": "No solution found",
+    "pred": null,
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Arnold",
+            "Food": "grilled cheese",
+            "Mother": "Holly"
+        },
+        {
+            "House": "2",
+            "Name": "Eric",
+            "Food": "pizza",
+            "Mother": "Aniya"
+        }
+    ],
+    "status": "No plan generated",
+    "violated_constraint": {
+        "invalid_output": "No valid output structure found"
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 2,
+    "timing": {
+        "api_call_time": 44.77723956108093,
+        "execution_time": 0.07788538932800293,
+        "constraint_eval_time": 4.76837158203125e-06,
+        "pred_extract_time": 0.4614717960357666,
+        "gold_extract_time": 3.62396240234375e-05,
+        "total_tokens": 4190,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\n\ndef solve_puzzle():\n    # Define the variables\n    names = ['Arnold', 'Eric']\n    foods = ['grilled cheese', 'pizza']\n    mothers = ['Holly', 'Aniya']\n    houses = [1, 2]\n\n    # Create symbolic variables\n    name_vars = [[String(f'name_{h}_{n}') for n in range(2)] for h in houses]\n    food_vars = [[String(f'food_{h}_{f}') for f in range(2)] for h in houses]\n    mother_vars = [[String(f'mother_{h}_{m}') for m in range(2)] for h in houses]\n\n    # Create the solver\n    solver = Solver()\n\n    # Add constraints for unique values per category within each house\n    for h in houses:\n        solver.add(Distinct([name_vars[h-1][n] for n in range(2)]))\n        solver.add(Distinct([food_vars[h-1][f] for f in range(2)]))\n        solver.add(Distinct([mother_vars[h-1][m] for m in range(2)]))\n\n    # Add constraints for unique values across houses\n    solver.add(Distinct([name_vars[h-1][n] for h in houses for n in range(2)]))\n    solver.add(Distinct([food_vars[h-1][f] for h in houses for f in range(2)]))\n    solver.add(Distinct([mother_vars[h-1][m] for h in houses for m in range(2)]))\n\n    # Add specific constraints from the clues\n    # Clue 1: The person who loves eating grilled cheese is directly left of the person who is a pizza lover.\n    solver.add(Or(\n        And(food_vars[0][0] == 'grilled cheese', food_vars[0][1] == 'pizza'),\n        And(food_vars[1][0] == 'grilled cheese', food_vars[1][1] == 'pizza')\n    ))\n\n    # Clue 2: Arnold is not in the second house.\n    solver.add(name_vars[1][0] != 'Arnold')\n    solver.add(name_vars[1][1] != 'Arnold')\n\n    # Clue 3: Arnold is The person whose mother's name is Holly.\n    solver.add(Or(\n        And(name_vars[0][0] == 'Arnold', mother_vars[0][0] == 'Holly'),\n        And(name_vars[0][1] == 'Arnold', mother_vars[0][1] == 'Holly')\n    ))\n\n    # Assign possible values to variables\n    for h in houses:\n        for n in range(2):\n            solver.add(Or([name_vars[h-1][n] == name for name in names]))\n            solver.add(Or([food_vars[h-1][n] == food for food in foods]))\n            solver.add(Or([mother_vars[h-1][n] == mother for mother in mothers]))\n\n    # Check if the solver can find a solution\n    if solver.check() == sat:\n        model = solver.model()\n        solution = {\n            \"solution\": {\n                \"header\": [\"House\", \"Name\", \"Food\", \"Mother\"],\n                \"rows\": []\n            }\n        }\n        for h in houses:\n            for n in range(2):\n                name = model.evaluate(name_vars[h-1][n]).as_string().strip('\"')\n                food = model.evaluate(food_vars[h-1][n]).as_string().strip('\"')\n                mother = model.evaluate(mother_vars[h-1][n]).as_string().strip('\"')\n                solution[\"solution\"][\"rows\"].append([str(h), name, food, mother])\n        return solution\n    else:\n        return None\n\n# Solve the puzzle and print the solution in JSON format\nimport json\nsolution = solve_puzzle()\nif solution:\n    print(json.dumps(solution, indent=2))\nelse:\n    print(\"No solution found\")"
+}

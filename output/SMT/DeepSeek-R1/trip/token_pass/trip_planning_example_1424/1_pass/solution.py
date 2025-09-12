@@ -1,0 +1,105 @@
+from z3 import *
+import json
+
+def main():
+    cities = ['Warsaw', 'Porto', 'Naples', 'Brussels', 'Split', 'Reykjavik', 'Amsterdam', 'Lyon', 'Helsinki', 'Valencia']
+    req_days = [3, 5, 4, 3, 3, 5, 4, 3, 4, 2]
+    city_index = {city: idx for idx, city in enumerate(cities)}
+    
+    flight_pairs = [
+        ('Amsterdam', 'Warsaw'), ('Helsinki', 'Brussels'), ('Helsinki', 'Warsaw'), ('Reykjavik', 'Brussels'),
+        ('Amsterdam', 'Lyon'), ('Amsterdam', 'Naples'), ('Amsterdam', 'Reykjavik'), ('Naples', 'Valencia'),
+        ('Porto', 'Brussels'), ('Amsterdam', 'Split'), ('Lyon', 'Split'), ('Warsaw', 'Split'),
+        ('Porto', 'Amsterdam'), ('Helsinki', 'Split'), ('Brussels', 'Lyon'), ('Porto', 'Lyon'),
+        ('Reykjavik', 'Warsaw'), ('Brussels', 'Valencia'), ('Valencia', 'Lyon'), ('Porto', 'Warsaw'),
+        ('Warsaw', 'Valencia'), ('Amsterdam', 'Helsinki'), ('Porto', 'Valencia'), ('Warsaw', 'Brussels'),
+        ('Warsaw', 'Naples'), ('Naples', 'Split'), ('Helsinki', 'Naples'), ('Helsinki', 'Reykjavik'),
+        ('Amsterdam', 'Valencia'), ('Naples', 'Brussels')
+    ]
+    
+    flight_set = set()
+    for (a, b) in flight_pairs:
+        i = city_index[a]
+        j = city_index[b]
+        flight_set.add((min(i, j), max(i, j)))
+    
+    def z3_has_direct_flight(i, j):
+        conditions = []
+        for (a, b) in flight_set:
+            conditions.append(And(i == a, j == b))
+            conditions.append(And(i == b, j == a))
+        return Or(conditions)
+    
+    solver = Solver()
+    
+    city_order = [Int('city_%d' % i) for i in range(10)]
+    for i in range(10):
+        solver.add(city_order[i] >= 0, city_order[i] < 10)
+    solver.add(Distinct(city_order))
+    
+    s = [Int('s_%d' % i) for i in range(10)]
+    e = [Int('e_%d' % i) for i in range(10)]
+    
+    solver.add(s[0] == 1)
+    solver.add(e[0] == s[0] + req_days[city_order[0]] - 1)
+    
+    for i in range(1, 10):
+        solver.add(s[i] == e[i-1])
+        solver.add(e[i] == s[i] + req_days[city_order[i]] - 1)
+    
+    solver.add(e[9] == 27)
+    
+    for i in range(9):
+        solver.add(z3_has_direct_flight(city_order[i], city_order[i+1]))
+    
+    naples_pos = Int('naples_pos')
+    brussels_pos = Int('brussels_pos')
+    solver.add(naples_pos >= 0, naples_pos < 10)
+    solver.add(brussels_pos >= 0, brussels_pos < 10)
+    solver.add(city_order[naples_pos] == city_index['Naples'])
+    solver.add(city_order[brussels_pos] == city_index['Brussels'])
+    solver.add(brussels_pos == naples_pos + 1)
+    solver.add(s[naples_pos] == 17)
+    solver.add(e[naples_pos] == 20)
+    solver.add(s[brussels_pos] == 20)
+    solver.add(e[brussels_pos] == 22)
+    
+    porto_pos = Int('porto_pos')
+    amsterdam_pos = Int('amsterdam_pos')
+    helsinki_pos = Int('helsinki_pos')
+    
+    solver.add(porto_pos >= 0, porto_pos < 10)
+    solver.add(amsterdam_pos >= 0, amsterdam_pos < 10)
+    solver.add(helsinki_pos >= 0, helsinki_pos < 10)
+    solver.add(city_order[porto_pos] == city_index['Porto'])
+    solver.add(city_order[amsterdam_pos] == city_index['Amsterdam'])
+    solver.add(city_order[helsinki_pos] == city_index['Helsinki'])
+    
+    solver.add(s[porto_pos] <= 5)
+    solver.add(s[amsterdam_pos] <= 8)
+    solver.add(e[amsterdam_pos] >= 5)
+    solver.add(s[helsinki_pos] <= 11)
+    solver.add(e[helsinki_pos] >= 8)
+    
+    if solver.check() == sat:
+        model = solver.model()
+        city_order_val = [model.evaluate(city_order[i]).as_long() for i in range(10)]
+        s_val = [model.evaluate(s[i]).as_long() for i in range(10)]
+        e_val = [model.evaluate(e[i]).as_long() for i in range(10)]
+        
+        itinerary = []
+        for i in range(10):
+            city = cities[city_order_val[i]]
+            start = s_val[i]
+            end = e_val[i]
+            itinerary.append({
+                "day_range": f"Day {start}-{end}",
+                "place": city
+            })
+        
+        print(json.dumps({"itinerary": itinerary}))
+    else:
+        print('No solution found')
+
+if __name__ == '__main__':
+    main()

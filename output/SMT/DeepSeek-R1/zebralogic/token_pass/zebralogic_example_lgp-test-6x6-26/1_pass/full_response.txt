@@ -1,0 +1,137 @@
+```python
+from z3 import *
+import json
+
+def main():
+    solver = Solver()
+    
+    # Define the attributes and their possible values
+    names = ['Peter', 'Carol', 'Eric', 'Alice', 'Bob', 'Arnold']
+    phones = ['huawei p50', 'google pixel 6', 'xiaomi mi 11', 'iphone 13', 'samsung galaxy s21', 'oneplus 9']
+    cigars = ['dunhill', 'pall mall', 'blends', 'blue master', 'prince', 'yellow monster']
+    flowers = ['daffodils', 'carnations', 'roses', 'tulips', 'lilies', 'iris']
+    colors = ['yellow', 'red', 'green', 'blue', 'white', 'purple']
+    sports = ['soccer', 'tennis', 'basketball', 'volleyball', 'swimming', 'baseball']
+    
+    # Create integer variables for each attribute's house assignment
+    name_vars = {name: Int(f'{name}_house') for name in names}
+    phone_vars = {phone: Int(f'{phone}_house') for phone in phones}
+    cigar_vars = {cigar: Int(f'{cigar}_house') for cigar in cigars}
+    flower_vars = {flower: Int(f'{flower}_house') for flower in flowers}
+    color_vars = {color: Int(f'{color}_house') for color in colors}
+    sport_vars = {sport: Int(f'{sport}_house') for sport in sports}
+    
+    all_vars = list(name_vars.values()) + list(phone_vars.values()) + list(cigar_vars.values()) + \
+               list(flower_vars.values()) + list(color_vars.values()) + list(sport_vars.values())
+    
+    # Each attribute must be in a house between 1 and 6
+    for var in all_vars:
+        solver.add(var >= 1, var <= 6)
+    
+    # All values within each category must be distinct
+    solver.add(Distinct(list(name_vars.values())))
+    solver.add(Distinct(list(phone_vars.values())))
+    solver.add(Distinct(list(cigar_vars.values())))
+    solver.add(Distinct(list(flower_vars.values())))
+    solver.add(Distinct(list(color_vars.values())))
+    solver.add(Distinct(list(sport_vars.values())))
+    
+    # Add constraints from clues
+    solver.add(phone_vars['oneplus 9'] == 2)  # Clue 1
+    solver.add(phone_vars['xiaomi mi 11'] < phone_vars['huawei p50'])  # Clue 2
+    solver.add(name_vars['Carol'] == flower_vars['carnations'])  # Clue 3
+    solver.add(color_vars['purple'] == cigar_vars['pall mall'] - 1)  # Clue 4
+    solver.add(color_vars['green'] == cigar_vars['blue master'])  # Clue 5
+    solver.add(Or(  # Clue 6
+        color_vars['yellow'] == color_vars['blue'] - 1,
+        color_vars['yellow'] == color_vars['blue'] + 1
+    ))
+    solver.add(name_vars['Eric'] > phone_vars['samsung galaxy s21'])  # Clue 7
+    solver.add(Or(  # Clue 8
+        name_vars['Carol'] == flower_vars['daffodils'] - 3,
+        name_vars['Carol'] == flower_vars['daffodils'] + 3
+    ))
+    solver.add(cigar_vars['prince'] == sport_vars['basketball'])  # Clue 9
+    solver.add(cigar_vars['dunhill'] == sport_vars['volleyball'])  # Clue 10
+    solver.add(sport_vars['swimming'] == phone_vars['google pixel 6'])  # Clue 11
+    solver.add(phone_vars['huawei p50'] == color_vars['white'] - 1)  # Clue 12
+    solver.add(Or(  # Clue 13
+        phone_vars['oneplus 9'] == flower_vars['roses'] - 1,
+        phone_vars['oneplus 9'] == flower_vars['roses'] + 1
+    ))
+    solver.add(flower_vars['iris'] < name_vars['Eric'])  # Clue 14
+    solver.add(cigar_vars['dunhill'] == name_vars['Peter'])  # Clue 15
+    solver.add(color_vars['blue'] == name_vars['Peter'])  # Clue 16
+    solver.add(flower_vars['tulips'] == name_vars['Bob'])  # Clue 17
+    solver.add(name_vars['Alice'] == 1)  # Clue 18
+    solver.add(sport_vars['baseball'] == cigar_vars['blue master'] - 1)  # Clue 19
+    solver.add(phone_vars['google pixel 6'] > cigar_vars['blends'])  # Clue 20
+    solver.add(sport_vars['soccer'] == name_vars['Carol'])  # Clue 21
+    solver.add(flower_vars['carnations'] == cigar_vars['blends'] - 1)  # Clue 22
+    solver.add(cigar_vars['blends'] == name_vars['Eric'])  # Clue 23
+    solver.add(sport_vars['volleyball'] == phone_vars['iphone 13'])  # Clue 24
+    
+    # Check satisfiability
+    if solver.check() == sat:
+        model = solver.model()
+        
+        # Create reverse mappings from house number to attribute value
+        house_to_name = {}
+        house_to_phone = {}
+        house_to_cigar = {}
+        house_to_flower = {}
+        house_to_color = {}
+        house_to_sport = {}
+        
+        for name, var in name_vars.items():
+            house = model.eval(var).as_long()
+            house_to_name[house] = name
+        
+        for phone, var in phone_vars.items():
+            house = model.eval(var).as_long()
+            house_to_phone[house] = phone
+        
+        for cigar, var in cigar_vars.items():
+            house = model.eval(var).as_long()
+            house_to_cigar[house] = cigar
+        
+        for flower, var in flower_vars.items():
+            house = model.eval(var).as_long()
+            house_to_flower[house] = flower
+        
+        for color, var in color_vars.items():
+            house = model.eval(var).as_long()
+            house_to_color[house] = color
+        
+        for sport, var in sport_vars.items():
+            house = model.eval(var).as_long()
+            house_to_sport[house] = sport
+        
+        # Build the solution rows
+        rows = []
+        for house in range(1, 7):
+            rows.append([
+                str(house),
+                house_to_name[house],
+                house_to_phone[house],
+                house_to_cigar[house],
+                house_to_flower[house],
+                house_to_color[house],
+                house_to_sport[house]
+            ])
+        
+        # Create the solution dictionary
+        solution_dict = {
+            "solution": {
+                "header": ["House", "Name", "PhoneModel", "Cigar", "Flower", "Color", "FavoriteSport"],
+                "rows": rows
+            }
+        }
+        
+        print(json.dumps(solution_dict, indent=2))
+    else:
+        print("No solution found")
+
+if __name__ == "__main__":
+    main()
+```

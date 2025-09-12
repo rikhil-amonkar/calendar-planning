@@ -1,0 +1,64 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"solution\": {\n    \"header\": [\n      \"House\",\n      \"Name\",\n      \"HouseStyle\",\n      \"Smoothie\",\n      \"Pet\"\n    ],\n    \"rows\": [\n      [\n        \"1\",\n        \"\\\"Arnold\\\"\",\n        \"\\\"victorian\\\"\",\n        \"\\\"cherry\\\"\",\n        \"\\\"dog\\\"\"\n      ],\n      [\n        \"2\",\n        \"\\\"Eric\\\"\",\n        \"\\\"colonial\\\"\",\n        \"\\\"desert\\\"\",\n        \"\\\"cat\\\"\"\n      ]\n    ]\n  }\n}",
+    "pred": [
+        {
+            "House": "1",
+            "Name": "\"Arnold\"",
+            "HouseStyle": "\"victorian\"",
+            "Smoothie": "\"cherry\"",
+            "Pet": "\"dog\""
+        },
+        {
+            "House": "2",
+            "Name": "\"Eric\"",
+            "HouseStyle": "\"colonial\"",
+            "Smoothie": "\"desert\"",
+            "Pet": "\"cat\""
+        }
+    ],
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Arnold",
+            "HouseStyle": "victorian",
+            "Smoothie": "cherry",
+            "Pet": "dog"
+        },
+        {
+            "House": "2",
+            "Name": "Eric",
+            "HouseStyle": "colonial",
+            "Smoothie": "desert",
+            "Pet": "cat"
+        }
+    ],
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "violations": [
+            "House 1 wrong Name: expected 'Arnold', got '\"Arnold\"'",
+            "House 1 wrong HouseStyle: expected 'victorian', got '\"victorian\"'",
+            "House 1 wrong Smoothie: expected 'cherry', got '\"cherry\"'",
+            "House 1 wrong Pet: expected 'dog', got '\"dog\"'",
+            "House 2 wrong Name: expected 'Eric', got '\"Eric\"'",
+            "House 2 wrong HouseStyle: expected 'colonial', got '\"colonial\"'",
+            "House 2 wrong Smoothie: expected 'desert', got '\"desert\"'",
+            "House 2 wrong Pet: expected 'cat', got '\"cat\"'"
+        ]
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 425.0649411678314,
+        "execution_time": 0.07852458953857422,
+        "constraint_eval_time": 0.00011205673217773438,
+        "pred_extract_time": 1.4103012084960938,
+        "gold_extract_time": 1.2159347534179688e-05,
+        "total_tokens": 29574,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\nimport json\n\nsolver = Solver()\n\n# Variables for house 1\nname1 = String('name1')\nstyle1 = String('style1')\nsmoothie1 = String('smoothie1')\npet1 = String('pet1')\n\n# Variables for house 2\nname2 = String('name2')\nstyle2 = String('style2')\nsmoothie2 = String('smoothie2')\npet2 = String('pet2')\n\n# Domain constraints\nsolver.add(Or(name1 == 'Eric', name1 == 'Arnold'))\nsolver.add(Or(name2 == 'Eric', name2 == 'Arnold'))\n\nsolver.add(Or(style1 == 'victorian', style1 == 'colonial'))\nsolver.add(Or(style2 == 'victorian', style2 == 'colonial'))\n\nsolver.add(Or(smoothie1 == 'cherry', smoothie1 == 'desert'))\nsolver.add(Or(smoothie2 == 'cherry', smoothie2 == 'desert'))\n\nsolver.add(Or(pet1 == 'dog', pet1 == 'cat'))\nsolver.add(Or(pet2 == 'dog', pet2 == 'cat'))\n\n# Uniqueness constraints\nsolver.add(name1 != name2)\nsolver.add(style1 != style2)\nsolver.add(smoothie1 != smoothie2)\nsolver.add(pet1 != pet2)\n\n# Clue 1: Cherry smoothie owner has dog\nsolver.add(If(smoothie1 == 'cherry', pet1 == 'dog', True))\nsolver.add(If(smoothie2 == 'cherry', pet2 == 'dog', True))\n\n# Clue 2: Victorian house owner has dog\nsolver.add(If(style1 == 'victorian', pet1 == 'dog', True))\nsolver.add(If(style2 == 'victorian', pet2 == 'dog', True))\n\n# Clue 3: Victorian is left of Eric\nsolver.add(Implies(style1 == 'victorian', name2 == 'Eric'))\nsolver.add(Implies(style2 == 'victorian', False))  # Victorian can't be in house 2\n\nif solver.check() == sat:\n    model = solver.model()\n    # Extract values for each house\n    h1_name = str(model[name1])\n    h1_style = str(model[style1])\n    h1_smoothie = str(model[smoothie1])\n    h1_pet = str(model[pet1])\n\n    h2_name = str(model[name2])\n    h2_style = str(model[style2])\n    h2_smoothie = str(model[smoothie2])\n    h2_pet = str(model[pet2])\n\n    solution = {\n        \"solution\": {\n            \"header\": [\"House\", \"Name\", \"HouseStyle\", \"Smoothie\", \"Pet\"],\n            \"rows\": [\n                [\"1\", h1_name, h1_style, h1_smoothie, h1_pet],\n                [\"2\", h2_name, h2_style, h2_smoothie, h2_pet]\n            ]\n        }\n    }\n\n    print(json.dumps(solution, indent=2))\nelse:\n    print(\"No solution found.\")"
+}

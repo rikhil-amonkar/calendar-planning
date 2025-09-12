@@ -1,0 +1,83 @@
+import z3
+import json
+
+def main():
+    # Define cities and their required days
+    cities = ['Helsinki', 'Warsaw', 'Madrid', 'Split', 'Reykjavik', 'Budapest']
+    days_req = {
+        'Helsinki': 2,
+        'Warsaw': 3,
+        'Madrid': 4,
+        'Split': 4,
+        'Reykjavik': 2,
+        'Budapest': 4
+    }
+    
+    # Define direct flight graph (undirected)
+    graph = {
+        'Helsinki': ['Reykjavik', 'Split', 'Madrid', 'Budapest', 'Warsaw'],
+        'Reykjavik': ['Helsinki', 'Warsaw', 'Budapest', 'Madrid'],
+        'Budapest': ['Warsaw', 'Madrid', 'Reykjavik', 'Helsinki'],
+        'Warsaw': ['Budapest', 'Reykjavik', 'Helsinki', 'Madrid', 'Split'],
+        'Madrid': ['Split', 'Helsinki', 'Budapest', 'Warsaw'],
+        'Split': ['Madrid', 'Helsinki', 'Warsaw']
+    }
+    
+    # Initialize Z3 variables
+    start = {city: z3.Int(f'start_{city}') for city in cities}
+    end = {city: z3.Int(f'end_{city}') for city in cities}
+    pos = {city: z3.Int(f'pos_{city}') for city in cities}
+    
+    solver = z3.Solver()
+    
+    # Fixed constraints for Helsinki
+    solver.add(pos['Helsinki'] == 0)
+    solver.add(start['Helsinki'] == 1)
+    solver.add(end['Helsinki'] == 2)
+    
+    # General constraints
+    solver.add(z3.Distinct([pos[city] for city in cities]))
+    for city in cities:
+        solver.add(pos[city] >= 0, pos[city] <= 5)
+        solver.add(start[city] >= 1, end[city] <= 14)
+        solver.add(end[city] == start[city] + days_req[city] - 1)
+    
+    # Time window constraints
+    solver.add(start['Reykjavik'] <= 9, end['Reykjavik'] >= 8)
+    solver.add(start['Warsaw'] <= 11, end['Warsaw'] >= 9)
+    
+    # Consecutive city constraints
+    for k in range(5):
+        for city_i in cities:
+            for city_j in cities:
+                if city_i != city_j:
+                    cond = z3.And(pos[city_i] == k, pos[city_j] == k+1)
+                    solver.add(z3.Implies(cond, end[city_i] == start[city_j]))
+                    if city_j not in graph[city_i]:
+                        solver.add(z3.Not(cond))
+    
+    # Last city must end on day 14
+    for city in cities:
+        solver.add(z3.Implies(pos[city] == 5, end[city] == 14))
+    
+    # Solve and output
+    if solver.check() == z3.sat:
+        model = solver.model()
+        pos_val = {city: model.evaluate(pos[city]).as_long() for city in cities}
+        start_val = {city: model.evaluate(start[city]).as_long() for city in cities}
+        end_val = {city: model.evaluate(end[city]).as_long() for city in cities}
+        
+        sorted_cities = sorted(cities, key=lambda x: pos_val[x])
+        itinerary = []
+        for city in sorted_cities:
+            itinerary.append({
+                "day_range": f"Day {start_val[city]}-{end_val[city]}",
+                "place": city
+            })
+        
+        print(json.dumps({"itinerary": itinerary}))
+    else:
+        print('{"itinerary": []}')
+
+if __name__ == '__main__':
+    main()

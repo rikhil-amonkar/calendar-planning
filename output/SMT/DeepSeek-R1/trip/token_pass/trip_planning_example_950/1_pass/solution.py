@@ -1,0 +1,110 @@
+import json
+from z3 import *
+
+def main():
+    # City mappings
+    cities = ['Mykonos', 'Riga', 'Munich', 'Bucharest', 'Rome', 'Nice', 'Krakow']
+    n_days = 17
+    
+    # Allowed direct flights (as tuples of integers)
+    allowed_flights = [
+        (5,1), (1,5),  # Nice-Riga
+        (3,2), (2,3),  # Bucharest-Munich
+        (0,2), (2,0),  # Mykonos-Munich
+        (1,3), (3,1),  # Riga-Bucharest
+        (4,5), (5,4),  # Rome-Nice
+        (4,2), (2,4),  # Rome-Munich
+        (0,5), (5,0),  # Mykonos-Nice
+        (4,0), (0,4),  # Rome-Mykonos
+        (2,6), (6,2),  # Munich-Krakow
+        (4,3), (3,4),  # Rome-Bucharest
+        (5,2), (2,5),  # Nice-Munich
+        (1,2), (2,1),  # Riga-Munich
+        (4,1), (1,4)   # Rome-Riga
+    ]
+    
+    # Create solver
+    solver = Solver()
+    
+    # Create overnight variables for days 1 to 17
+    overnight = [Int(f'overnight_{i}') for i in range(1, n_days+1)]
+    
+    # Constraint: overnight variables must be between 0 and 6
+    for i in range(n_days):
+        solver.add(overnight[i] >= 0, overnight[i] <= 6)
+    
+    # Fixed constraints for Rome (days 1-3) and Krakow (days 16-17)
+    solver.add(overnight[0] == 4)  # Day 1: Rome
+    solver.add(overnight[1] == 4)  # Day 2: Rome
+    solver.add(overnight[2] == 4)  # Day 3: Rome
+    solver.add(overnight[15] == 6) # Day 16: Krakow
+    solver.add(overnight[16] == 6) # Day 17: Krakow
+    
+    # Wedding in Mykonos between day 4 and day 6
+    solver.add(Or(overnight[3] == 0, overnight[4] == 0, overnight[5] == 0))
+    
+    # Flight constraints between consecutive days
+    for i in range(n_days-1):
+        # If cities change, ensure direct flight exists
+        city_i = overnight[i]
+        city_i1 = overnight[i+1]
+        solver.add(If(city_i != city_i1, 
+                      Or([And(city_i == a, city_i1 == b) for a, b in allowed_flights]),
+                      True))
+    
+    # Total days per city constraints
+    # We define overnight[0] for day0 as overnight[0] (day1) to simplify expressions
+    total_days = [0] * 7
+    for city_idx in range(7):
+        conditions = []
+        for i in range(n_days):
+            if i == 0:
+                # For day1: compare overnight[0] with itself (so just check overnight[0])
+                conditions.append(If(overnight[0] == city_idx, 1, 0))
+            else:
+                # For day i+1: check overnight[i-1] OR overnight[i]
+                conditions.append(If(Or(overnight[i-1] == city_idx, overnight[i] == city_idx), 1, 0))
+        total_days[city_idx] = sum(conditions)
+    
+    solver.add(total_days[0] == 3)  # Mykonos
+    solver.add(total_days[1] == 3)  # Riga
+    solver.add(total_days[2] == 4)  # Munich
+    solver.add(total_days[3] == 4)  # Bucharest
+    solver.add(total_days[4] == 4)  # Rome
+    solver.add(total_days[5] == 3)  # Nice
+    solver.add(total_days[6] == 2)  # Krakow
+    
+    # Check satisfaction
+    if solver.check() == sat:
+        model = solver.model()
+        # Extract the overnight stays
+        itinerary = []
+        overnight_values = []
+        for i in range(n_days):
+            val = model.evaluate(overnight[i]).as_long()
+            overnight_values.append(val)
+        
+        # Group consecutive days with the same city
+        current_city = overnight_values[0]
+        start_day = 1
+        for day in range(1, n_days):
+            if overnight_values[day] != current_city:
+                end_day = day
+                itinerary.append({
+                    "day_range": f"Day {start_day}-{end_day}",
+                    "place": cities[current_city]
+                })
+                start_day = day + 1
+                current_city = overnight_values[day]
+        itinerary.append({
+            "day_range": f"Day {start_day}-{n_days}",
+            "place": cities[current_city]
+        })
+        
+        # Output as JSON
+        print(json.dumps({"itinerary": itinerary}))
+    else:
+        print('No solution found')
+
+if __name__ == '__main__':
+    main()

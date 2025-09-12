@@ -1,0 +1,79 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"solution\": {\n    \"header\": [\n      \"House\",\n      \"Name\",\n      \"CarModel\",\n      \"HouseStyle\",\n      \"Pet\",\n      \"Occupation\",\n      \"Vacation\"\n    ],\n    \"rows\": [\n      [\n        \"1\",\n        \"Eric\",\n        \"tesla model 3\",\n        \"ranch\",\n        \"fish\",\n        \"doctor\",\n        \"city\"\n      ],\n      [\n        \"2\",\n        \"Peter\",\n        \"toyota camry\",\n        \"victorian\",\n        \"dog\",\n        \"engineer\",\n        \"beach\"\n      ],\n      [\n        \"3\",\n        \"Arnold\",\n        \"ford f150\",\n        \"colonial\",\n        \"cat\",\n        \"teacher\",\n        \"mountain\"\n      ]\n    ]\n  }\n}",
+    "pred": [
+        {
+            "House": "1",
+            "Name": "Eric",
+            "CarModel": "tesla model 3",
+            "HouseStyle": "ranch",
+            "Pet": "fish",
+            "Occupation": "doctor",
+            "Vacation": "city"
+        },
+        {
+            "House": "2",
+            "Name": "Peter",
+            "CarModel": "toyota camry",
+            "HouseStyle": "victorian",
+            "Pet": "dog",
+            "Occupation": "engineer",
+            "Vacation": "beach"
+        },
+        {
+            "House": "3",
+            "Name": "Arnold",
+            "CarModel": "ford f150",
+            "HouseStyle": "colonial",
+            "Pet": "cat",
+            "Occupation": "teacher",
+            "Vacation": "mountain"
+        }
+    ],
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Eric",
+            "CarModel": "tesla model 3",
+            "HouseStyle": "ranch",
+            "Pet": "fish",
+            "Occupation": "doctor",
+            "Vacation": "city"
+        },
+        {
+            "House": "2",
+            "Name": "Peter",
+            "CarModel": "toyota camry",
+            "HouseStyle": "victorian",
+            "Pet": "dog",
+            "Occupation": "engineer",
+            "Vacation": "beach"
+        },
+        {
+            "House": "3",
+            "Name": "Arnold",
+            "CarModel": "ford f150",
+            "HouseStyle": "colonial",
+            "Pet": "cat",
+            "Occupation": "teacher",
+            "Vacation": "mountain"
+        }
+    ],
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 550.387636423111,
+        "execution_time": 0.08014059066772461,
+        "constraint_eval_time": 6.532669067382812e-05,
+        "pred_extract_time": 1.9068114757537842,
+        "gold_extract_time": 1.2874603271484375e-05,
+        "total_tokens": 37159,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import json\nfrom z3 import *\n\n# Define EnumSorts\nName, (Peter, Arnold, Eric) = EnumSort('Name', ['Peter', 'Arnold', 'Eric'])\nCarModel, (toyota_camry, ford_f150, tesla_model_3) = EnumSort('CarModel', ['toyota_camry', 'ford_f150', 'tesla_model_3'])\nHouseStyle, (ranch, colonial, victorian) = EnumSort('HouseStyle', ['ranch', 'colonial', 'victorian'])\nPet, (cat, dog, fish) = EnumSort('Pet', ['cat', 'dog', 'fish'])\nOccupation, (engineer, doctor, teacher) = EnumSort('Occupation', ['engineer', 'doctor', 'teacher'])\nVacation, (city, mountain, beach) = EnumSort('Vacation', ['city', 'mountain', 'beach'])\n\n# Create variables for each house (0, 1, 2)\nnames = [Const(f'name_{i}', Name) for i in range(3)]\ncar_models = [Const(f'car_model_{i}', CarModel) for i in range(3)]\nhouse_styles = [Const(f'house_style_{i}', HouseStyle) for i in range(3)]\npets = [Const(f'pet_{i}', Pet) for i in range(3)]\noccupations = [Const(f'occupation_{i}', Occupation) for i in range(3)]\nvacations = [Const(f'vacation_{i}', Vacation) for i in range(3)]\n\ns = Solver()\n\n# Add distinct constraints for each attribute\ns.add(Distinct(names))\ns.add(Distinct(car_models))\ns.add(Distinct(house_styles))\ns.add(Distinct(pets))\ns.add(Distinct(occupations))\ns.add(Distinct(vacations))\n\n# Add constraints based on clues\n# Clue 1: Fish in first house (index 0)\ns.add(pets[0] == fish)\n\n# Clue 2: Toyota Camry in second house (index 1)\ns.add(car_models[1] == toyota_camry)\n\n# Clue 3: Mountain not in second house (index 1)\ns.add(vacations[1] != mountain)\n\n# Clue 4: City not in second house (index 1)\ns.add(vacations[1] != city)\n\n# Clue 5: Ranch is left of Peter\ns.add(Or(\n    And(house_styles[0] == ranch, Or(names[1] == Peter, names[2] == Peter)),\n    And(house_styles[1] == ranch, names[2] == Peter)\n))\n\n# Clue 6: Toyota Camry directly left of colonial house (so house_style[2] == colonial)\ns.add(house_styles[2] == colonial)\n\n# Clue 7: Arnold has cat\nfor i in range(3):\n    s.add(Implies(names[i] == Arnold, pets[i] == cat))\n\n# Clue 8: Eric left of mountain\ns.add(Or(\n    And(names[0] == Eric, Or(vacations[1] == mountain, vacations[2] == mountain)),\n    And(names[1] == Eric, vacations[2] == mountain)\n))\n\n# Clue 9: Engineer not in third house (index 2)\ns.add(occupations[2] != engineer)\n\n# Clue 10: Tesla left of teacher\ns.add(Or(\n    And(car_models[0] == tesla_model_3, Or(occupations[1] == teacher, occupations[2] == teacher)),\n    And(car_models[1] == tesla_model_3, occupations[2] == teacher)\n))\n\n# Clue 11: Dog owner is engineer\nfor i in range(3):\n    s.add(Implies(pets[i] == dog, occupations[i] == engineer))\n\nif s.check() == sat:\n    model = s.model()\n    rows = []\n    for i in range(3):\n        house_num = i + 1\n        name = model.evaluate(names[i]).decl().name()\n        car_model = model.evaluate(car_models[i]).decl().name().replace('_', ' ')\n        house_style = model.evaluate(house_styles[i]).decl().name().replace('_', ' ')\n        pet = model.evaluate(pets[i]).decl().name()\n        occupation = model.evaluate(occupations[i]).decl().name()\n        vacation = model.evaluate(vacations[i]).decl().name()\n        rows.append([str(house_num), name, car_model, house_style, pet, occupation, vacation])\n    solution = {\n        \"solution\": {\n            \"header\": [\"House\", \"Name\", \"CarModel\", \"HouseStyle\", \"Pet\", \"Occupation\", \"Vacation\"],\n            \"rows\": rows\n        }\n    }\n    print(json.dumps(solution, indent=2))\nelse:\n    print(\"No solution found.\")"
+}

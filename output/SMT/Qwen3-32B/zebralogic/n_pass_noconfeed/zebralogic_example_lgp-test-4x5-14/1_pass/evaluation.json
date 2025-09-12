@@ -1,0 +1,93 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"solution\": {\n    \"header\": [\n      \"House\",\n      \"Name\",\n      \"Mother\",\n      \"Smoothie\",\n      \"Height\",\n      \"Education\"\n    ],\n    \"rows\": [\n      [\n        \"1\",\n        \"Eric\",\n        \"Kailyn\",\n        \"watermelon\",\n        \"very_short\",\n        \"associate\"\n      ],\n      [\n        \"2\",\n        \"Peter\",\n        \"Aniya\",\n        \"cherry\",\n        \"average\",\n        \"high school\"\n      ],\n      [\n        \"3\",\n        \"Alice\",\n        \"Janelle\",\n        \"dragonfruit\",\n        \"tall\",\n        \"bachelor\"\n      ],\n      [\n        \"4\",\n        \"Arnold\",\n        \"Holly\",\n        \"desert\",\n        \"short\",\n        \"master\"\n      ]\n    ]\n  }\n}",
+    "pred": [
+        {
+            "House": "1",
+            "Name": "Eric",
+            "Mother": "Kailyn",
+            "Smoothie": "watermelon",
+            "Height": "very_short",
+            "Education": "associate"
+        },
+        {
+            "House": "2",
+            "Name": "Peter",
+            "Mother": "Aniya",
+            "Smoothie": "cherry",
+            "Height": "average",
+            "Education": "high school"
+        },
+        {
+            "House": "3",
+            "Name": "Alice",
+            "Mother": "Janelle",
+            "Smoothie": "dragonfruit",
+            "Height": "tall",
+            "Education": "bachelor"
+        },
+        {
+            "House": "4",
+            "Name": "Arnold",
+            "Mother": "Holly",
+            "Smoothie": "desert",
+            "Height": "short",
+            "Education": "master"
+        }
+    ],
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Eric",
+            "Mother": "Kailyn",
+            "Smoothie": "watermelon",
+            "Height": "very short",
+            "Education": "associate"
+        },
+        {
+            "House": "2",
+            "Name": "Peter",
+            "Mother": "Aniya",
+            "Smoothie": "cherry",
+            "Height": "average",
+            "Education": "high school"
+        },
+        {
+            "House": "3",
+            "Name": "Alice",
+            "Mother": "Janelle",
+            "Smoothie": "dragonfruit",
+            "Height": "tall",
+            "Education": "bachelor"
+        },
+        {
+            "House": "4",
+            "Name": "Arnold",
+            "Mother": "Holly",
+            "Smoothie": "desert",
+            "Height": "short",
+            "Education": "master"
+        }
+    ],
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "violations": [
+            "House 1 wrong Height: expected 'very short', got 'very_short'"
+        ]
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 463.0081481933594,
+        "execution_time": 0.08185529708862305,
+        "constraint_eval_time": 0.00013256072998046875,
+        "pred_extract_time": 3.5378544330596924,
+        "gold_extract_time": 1.4543533325195312e-05,
+        "total_tokens": 31372,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\nimport json\n\n# Define EnumSorts for each attribute\nNames, (Peter, Alice, Eric, Arnold) = EnumSort('Names', ['Peter', 'Alice', 'Eric', 'Arnold'])\nMothers, (Janelle, Holly, Aniya, Kailyn) = EnumSort('Mothers', ['Janelle', 'Holly', 'Aniya', 'Kailyn'])\nSmoothies, (watermelon, dragonfruit, desert, cherry) = EnumSort('Smoothies', ['watermelon', 'dragonfruit', 'desert', 'cherry'])\nHeights, (tall, average, short, very_short) = EnumSort('Heights', ['tall', 'average', 'short', 'very_short'])\nEducations, (high_school, associate, master, bachelor) = EnumSort('Educations', ['high school', 'associate', 'master', 'bachelor'])\n\n# Create variables for each house\n# Names\nname_1 = Const('name_1', Names)\nname_2 = Const('name_2', Names)\nname_3 = Const('name_3', Names)\nname_4 = Const('name_4', Names)\n\n# Mothers\nmother_1 = Const('mother_1', Mothers)\nmother_2 = Const('mother_2', Mothers)\nmother_3 = Const('mother_3', Mothers)\nmother_4 = Const('mother_4', Mothers)\n\n# Smoothies\nsmoothie_1 = Const('smoothie_1', Smoothies)\nsmoothie_2 = Const('smoothie_2', Smoothies)\nsmoothie_3 = Const('smoothie_3', Smoothies)\nsmoothie_4 = Const('smoothie_4', Smoothies)\n\n# Heights\nheight_1 = Const('height_1', Heights)\nheight_2 = Const('height_2', Heights)\nheight_3 = Const('height_3', Heights)\nheight_4 = Const('height_4', Heights)\n\n# Educations\neducation_1 = Const('education_1', Educations)\neducation_2 = Const('education_2', Educations)\neducation_3 = Const('education_3', Educations)\neducation_4 = Const('education_4', Educations)\n\ns = Solver()\n\n# Add distinct constraints for each attribute\ns.add(Distinct(name_1, name_2, name_3, name_4))\ns.add(Distinct(mother_1, mother_2, mother_3, mother_4))\ns.add(Distinct(smoothie_1, smoothie_2, smoothie_3, smoothie_4))\ns.add(Distinct(height_1, height_2, height_3, height_4))\ns.add(Distinct(education_1, education_2, education_3, education_4))\n\n# Add clues\ns.add(mother_3 == Janelle)  # Clue 1\ns.add(height_3 == tall)     # Clue 9\ns.add(name_3 == Alice)      # Clue 12\n\n# Clue 2: Desert smoothie lover has master's degree\ns.add(Implies(smoothie_1 == desert, education_1 == master))\ns.add(Implies(smoothie_2 == desert, education_2 == master))\ns.add(Implies(smoothie_3 == desert, education_3 == master))\ns.add(Implies(smoothie_4 == desert, education_4 == master))\n\ns.add(smoothie_1 != desert)  # Clue 3\ns.add(education_3 != high_school)  # Clue 6\n\n# Clue 7: Mother Kailyn has associate's degree\ns.add(Implies(mother_1 == Kailyn, education_1 == associate))\ns.add(Implies(mother_2 == Kailyn, education_2 == associate))\ns.add(Implies(mother_3 == Kailyn, education_3 == associate))\ns.add(Implies(mother_4 == Kailyn, education_4 == associate))\n\n# Clue 8: Cherry smoothie lover's mother is Aniya\ns.add(Implies(smoothie_1 == cherry, mother_1 == Aniya))\ns.add(Implies(smoothie_2 == cherry, mother_2 == Aniya))\ns.add(Implies(smoothie_3 == cherry, mother_3 == Aniya))\ns.add(Implies(smoothie_4 == cherry, mother_4 == Aniya))\n\n# Clue 4: very_short is to the left of high school\ns.add(Or(\n    And(height_1 == very_short, Or(education_2 == high_school, education_3 == high_school, education_4 == high_school)),\n    And(height_2 == very_short, Or(education_3 == high_school, education_4 == high_school)),\n    And(height_3 == very_short, education_4 == high_school)\n))\n\n# Clue 5: Eric and Cherry are adjacent\ns.add(Or(\n    And(name_1 == Eric, smoothie_2 == cherry),\n    And(name_2 == Eric, smoothie_1 == cherry),\n    And(name_2 == Eric, smoothie_3 == cherry),\n    And(name_3 == Eric, smoothie_2 == cherry),\n    And(name_3 == Eric, smoothie_4 == cherry),\n    And(name_4 == Eric, smoothie_3 == cherry)\n))\n\n# Clue 10: Arnold is to the right of average height\ns.add(Or(\n    And(name_2 == Arnold, height_1 == average),\n    And(name_3 == Arnold, Or(height_1 == average, height_2 == average)),\n    And(name_4 == Arnold, Or(height_1 == average, height_2 == average, height_3 == average))\n))\n\n# Clue 11: Dragonfruit directly left of short\ns.add(Or(\n    And(smoothie_1 == dragonfruit, height_2 == short),\n    And(smoothie_2 == dragonfruit, height_3 == short),\n    And(smoothie_3 == dragonfruit, height_4 == short)\n))\n\n# Check if the constraints are satisfiable\nif s.check() == sat:\n    model = s.model()\n    solution = {\n        \"solution\": {\n            \"header\": [\"House\", \"Name\", \"Mother\", \"Smoothie\", \"Height\", \"Education\"],\n            \"rows\": []\n        }\n    }\n    # Extract values for each house\n    for house_num in range(1, 5):\n        house = str(house_num)\n        name = model.eval(globals()[f'name_{house_num}']).decl().name()\n        mother = model.eval(globals()[f'mother_{house_num}']).decl().name()\n        smoothie = model.eval(globals()[f'smoothie_{house_num}']).decl().name()\n        height = model.eval(globals()[f'height_{house_num}']).decl().name()\n        education = model.eval(globals()[f'education_{house_num}']).decl().name()\n        solution[\"solution\"][\"rows\"].append([house, name, mother, smoothie, height, education])\n    print(json.dumps(solution, indent=2))\nelse:\n    print(\"No solution found.\")"
+}

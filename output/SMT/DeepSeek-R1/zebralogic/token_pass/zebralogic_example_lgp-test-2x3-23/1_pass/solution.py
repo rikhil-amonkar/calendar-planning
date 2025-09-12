@@ -1,0 +1,91 @@
+import json
+from z3 import *
+
+def main():
+    # Initialize solver
+    s = Solver()
+    
+    # Define attributes
+    names = ['Eric', 'Arnold']
+    children = ['Bella', 'Fred']
+    foods = ['grilled cheese', 'pizza']
+    
+    # Create enum sorts
+    Name = Datatype('Name')
+    for n in names:
+        Name.declare(n)
+    Name = Name.create()
+    
+    Child = Datatype('Child')
+    for c in children:
+        Child.declare(c)
+    Child = Child.create()
+    
+    Food = Datatype('Food')
+    for f in foods:
+        Food.declare(f)
+    Food = Food.create()
+    
+    # Create variables for each house and attribute
+    house1_name = Const('house1_name', Name)
+    house1_child = Const('house1_child', Child)
+    house1_food = Const('house1_food', Food)
+    
+    house2_name = Const('house2_name', Name)
+    house2_child = Const('house2_child', Child)
+    house2_food = Const('house2_food', Food)
+    
+    # All attributes must be unique per category
+    s.add(Distinct(house1_name, house2_name))
+    s.add(Distinct(house1_child, house2_child))
+    s.add(Distinct(house1_food, house2_food))
+    
+    # Clue 1: The person who is a pizza lover is Arnold
+    s.add(Or(
+        And(house1_food == Food.pizza, house1_name == Name.Arnold),
+        And(house2_food == Food.pizza, house2_name == Name.Arnold)
+    ))
+    
+    # Clue 2: The grilled cheese eater is directly left of Fred's child
+    s.add(And(
+        house1_food == Food.grilled_cheese,
+        house2_child == Child.Fred
+    ))
+    
+    # Check solution
+    if s.check() == sat:
+        m = s.model()
+        
+        # Map house attributes to strings
+        def get_value(val, enum_type):
+            for constructor in enum_type.constructors():
+                if eq(val, constructor()):
+                    return constructor.name()
+            return None
+        
+        rows = []
+        for i, (name, child, food) in enumerate([
+            (house1_name, house1_child, house1_food),
+            (house2_name, house2_child, house2_food)
+        ], 1):
+            rows.append([
+                str(i),
+                get_value(m.eval(name), Name),
+                get_value(m.eval(child), Child),
+                get_value(m.eval(food), Food)
+            ])
+        
+        # Create solution dictionary
+        solution = {
+            "solution": {
+                "header": ["House", "Name", "Children", "Food"],
+                "rows": rows
+            }
+        }
+        
+        print(json.dumps(solution, indent=2))
+    else:
+        print('No solution found')
+
+if __name__ == '__main__':
+    main()

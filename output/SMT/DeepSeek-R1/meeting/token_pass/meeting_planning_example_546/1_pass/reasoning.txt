@@ -1,0 +1,646 @@
+We are going to use Z3 to solve the scheduling problem.
+ Steps:
+ 1. Convert all times to minutes since 9:00 AM (which we set as 0 minutes).
+    So 9:00 AM = 0, 10:00 AM = 60, etc.
+
+ 2. We have the following friends with their availability (in minutes from 9:00 AM):
+    Kenneth: available from (21:15 - 9:00 AM next day? but note: 9:15 PM is 21:15, which is 12*60 + 15*60? Wait, let's convert properly)
+    Actually, we note that the day starts at 9:00 AM and goes until at least 9:30 PM (John until 9:30 PM).
+
+ 3. We'll define the start and end times for each meeting as Z3 integer variables.
+
+ 4. We also have travel times between locations. We must account for travel time between meetings.
+
+ 5. We want to meet as many friends as possible, but note the problem says "optimal" meaning we want to meet all if possible, but if not, we want to maximize the number.
+    However, the constraints might allow meeting all? Let's check the times.
+
+ 6. But note: the problem says "optimize your goals". The primary goal is to meet as many as possible. However, the problem does not specify if we cannot meet all, so we must try to meet all first.
+
+ 7. We'll create a schedule that includes:
+    - The start time of the meeting for each friend (if we decide to meet them)
+    - The end time of the meeting for each friend (which must be at least the minimum duration after the start time)
+
+ 8. We also have to account for the order of meetings and travel time between locations.
+
+ 9. We'll use an array of booleans to indicate whether we meet each friend.
+
+ 10. We'll maximize the number of meetings.
+
+ 11. However, note that some meetings have very tight windows. We might not be able to meet everyone.
+
+ 12. We have 6 friends: Kenneth, Lisa, Joshua, Nancy, Andrew, John.
+
+ 13. We'll assign an order index for the meetings? Alternatively, we can use real-valued start times and then constrain the end time of one meeting plus travel time to be <= the start time of the next.
+
+ 14. Since we are meeting multiple friends, we must decide the order. We can use a continuous timeline and then set constraints for the order.
+
+ 15. We'll create a list of meetings with:
+      meeting_vars = [ (start_k, end_k, met_k), ... ]
+
+ 16. We also have to account for the fact that we start at Embarcadero at time 0 (9:00 AM).
+
+ 17. We'll create a list of locations for each friend.
+
+ 18. We'll create a travel time matrix between the locations (indexed by location names).
+
+ 19. We'll assign each friend a location.
+
+ 20. We'll create a sequence of meetings by order. We can use a permutation of the meetings that we decide to have, but note: we might not meet all, and the order is variable.
+
+ 21. Alternatively, we can avoid explicitly modeling the order by having constraints for every pair of meetings that they do not overlap and have travel time between.
+
+ 22. However, note: we might not meet all, so we can have a variable for the start time of each meeting and then use constraints that if we meet two friends, then either:
+        end_i + travel(i, j) <= start_j   OR   end_j + travel(j, i) <= start_i
+
+ 23. We'll also have the constraint that each meeting must happen within the friend's availability.
+
+ 24. We'll use the following steps:
+
+    Let friends = [
+        ('Kenneth', 'Richmond District', (21*60+15, 22*60)),   # 9:15 PM to 10:00 PM -> 21:15 to 22:00
+        ('Lisa', 'Union Square', (0, 16*60+30)),                # 9:00 AM to 4:30 PM -> 9:00 to 16:30
+        ('Joshua', 'Financial District', (12*60, 15*60+15)),    # 12:00 to 15:15
+        ('Nancy', 'Pacific Heights', (8*60, 11*60+30)),         # 8:00 to 11:30 -> but note we start at 9:00, so available from 9:00 to 11:30
+        ('Andrew', 'Nob Hill', (11*60+30, 20*60+15)),           # 11:30 to 20:15
+        ('John', 'Bayview', (16*60+45, 21*60+30))               # 16:45 to 21:30
+    ]
+
+    Note: We adjust Nancy's start time to 9:00 because we cannot start before 9:00.
+
+ 25. We'll create a Z3 solver and add constraints for each meeting we decide to have (if the meeting is active).
+
+ 26. We'll use a flag for each meeting indicating whether it is scheduled.
+
+ 27. We'll maximize the number of active meetings.
+
+ 28. We'll also have to account for the travel from the previous location to the next. We start at Embarcadero.
+
+ 29. We can model the entire day by having the meetings in some order. We can have variables for the start time of each meeting and then the order is implicit.
+
+ 30. We'll create a list of meetings and then for each pair of meetings (i, j) we add constraints that if both are active, then either:
+        end_i + travel_time(i, j) <= start_j   OR   end_j + travel_time(j, i) <= start_i
+
+ 31. Also, for each meeting, if it is active, then:
+        start_meeting >= max(available_start, time we can get there from previous) but note we don't know the previous.
+
+ 32. Alternatively, we can model the entire day as a sequence of events, but we don't know the order. We can use a graph of possible transitions.
+
+ 33. Another idea: use a continuous timeline and then for each meeting, we have a start time and an end time, and then we have constraints that the start time of a meeting must be at least the end time of the previous meeting plus travel time. But we don't know the order.
+
+ 34. We can use the following approach:
+
+    Let T be the start time of the meeting for friend i.
+
+    We have for each friend i:
+        if active_i:
+            T_i >= available_start_i
+            T_i + duration_i <= available_end_i
+            and also T_i must be at least the time to get from the starting point (Embarcadero) to the location of i, if it's the first meeting.
+
+    But we don't know which meeting is first.
+
+ 35. We can use a graph of meetings and then use the Miller-Tucker-Zemlin (MTZ) constraints for TSP, but that might be heavy.
+
+ 36. Alternatively, we can use a greedy approach with SMT? Not exactly.
+
+ 37. Since the number of friends is small (6), we can try to assign an order to the meetings by having integer variables for the index of each meeting in the sequence, and then use constraints that if meeting i comes before meeting j, then end_i + travel(i,j) <= start_j.
+
+ 38. We'll create an integer variable for the order of each meeting (if active) and then use constraints that the order values are distinct and between 0 and n-1 (where n is the number of active meetings). Then for every pair (i, j) with i != j, if both are active and order_i < order_j, then we require end_i + travel_time(i, j) <= start_j.
+
+ 39. We also have to account for the starting point: the first meeting must have start time >= travel_time from Embarcadero to that location.
+
+ 40. We'll create a travel time function that takes two location names and returns the travel time in minutes.
+
+ 41. We'll create a dictionary for travel times.
+
+ 42. Steps in code:
+
+    from z3 import *
+
+    # Convert time string to minutes since 9:00 AM
+    def time_to_minutes(t):
+        # t is a string like "9:00" or "21:15"
+        parts = t.split(':')
+        hours = int(parts[0])
+        minutes = int(parts[1])
+        total_minutes = (hours - 9) * 60 + minutes
+        return total_minutes
+
+    But note: we are using minutes since 9:00 AM, so 9:00 AM is 0.
+
+    However, the availability of friends is given in clock times. We'll convert each availability to minutes since 9:00 AM.
+
+    Kenneth: 21:15 -> (21-9)*60 + 15 = 12*60+15 = 735 minutes, 22:00 -> (22-9)*60 = 13*60 = 780 minutes.
+    But note: 21:15 is 9:15 PM, which is after 9:00 AM by 12 hours and 15 minutes -> 12*60+15 = 735.
+
+    However, we must be cautious: if a time is before 9:00 AM, then it would be negative. For example, Nancy from 8:00 AM to 11:30 AM.
+        Start: 8:00 -> (8-9)*60 = -60 minutes. But we cannot start before 9:00, so we adjust Nancy's start to 0 (9:00 AM).
+
+    So we adjust the available start for Nancy to max(0, time_to_minutes("8:00")) -> 0.
+
+    Similarly, the available end for Nancy: time_to_minutes("11:30") -> (11-9)*60+30 = 150 minutes.
+
+    Now, let's define the friends with adjusted times (in minutes since 9:00 AM):
+
+    friends = [
+        ('Kenneth', 'Richmond District', (735, 780), 30),
+        ('Lisa', 'Union Square', (0, 450), 45),      # 16:30 is 16*60+30 - 9*60 = 7*60+30 = 450 minutes
+        ('Joshua', 'Financial District', (180, 375), 15),  # 12:00 is 180, 15:15 is 375
+        ('Nancy', 'Pacific Heights', (0, 150), 90),   # adjusted start to 0 (9:00 AM)
+        ('Andrew', 'Nob Hill', (150, 675), 60),       # 11:30 is 150, 20:15 is 675
+        ('John', 'Bayview', (465, 750), 75)           # 16:45 is 465, 21:30 is 750
+    ]
+
+    We also have the travel times between locations. We'll create a dictionary for travel times.
+
+    Note: We have travel times from every location to every other, but we are missing some? We have a symmetric matrix? Actually, the given times are not symmetric, so we use the given ones.
+
+    We'll create a dictionary of dictionaries for travel times.
+
+    travel_times = {
+        'Embarcadero': {'Richmond District': 21, ...},
+        ...
+    }
+
+    But note: we also have travel times from each district to others. We'll include all.
+
+ 43. We'll create variables for each friend: start time (integer) and a boolean flag for whether we meet them.
+
+ 44. We'll also create an order variable for each meeting (if active) that represents the order in which we meet them. We can use an integer variable for each meeting, and if the meeting is not active, we set the order to -1.
+
+ 45. We'll create a variable for the number of meetings we have.
+
+ 46. Constraints:
+
+    For each friend i:
+        If active_i:
+            start_i >= available_start_i
+            start_i + duration_i <= available_end_i
+            order_i >= 0
+
+        Else:
+            order_i == -1
+
+    The order variables for active meetings must be distinct and in the range [0, n-1] (where n is the number of active meetings). But we don't know n in advance.
+
+    Alternatively, we can use the following: for any two active meetings i and j, if order_i < order_j, then:
+        end_i + travel_time(loc_i, loc_j) <= start_j
+
+    Also, for the first meeting, we must have:
+        start_i >= travel_time('Embarcadero', loc_i)
+
+    We can model the first meeting by having a dummy meeting at Embarcadero at time 0? Then we can say for the first meeting, the travel time from Embarcadero to the first location is already accounted for.
+
+    Alternatively, we can add a constraint for each meeting i:
+        if order_i == 0, then start_i >= travel_time('Embarcadero', loc_i)
+        otherwise, there exists a meeting j that is the immediate predecessor (order_j = order_i - 1) and then end_j + travel_time(loc_j, loc_i) <= start_i
+
+    But we don't have immediate predecessor variables.
+
+ 47. We can use the following MTZ-style constraints:
+
+    Let order_i be an integer variable for the position of meeting i in the sequence (if active, else -1). We require that the active orders are a permutation of 0 to n-1.
+
+    Then, for every pair (i, j) with i != j and both active, we require:
+        If order_i < order_j:
+            start_i + duration_i + travel_time(loc_i, loc_j) <= start_j
+        Else (order_j < order_i):
+            start_j + duration_j + travel_time(loc_j, loc_i) <= start_i
+
+    But note: we don't know the travel time between every pair? We have a travel time matrix.
+
+ 48. We'll create a function to get travel time between two locations.
+
+ 49. We'll create a list of location names for each friend.
+
+ 50. We'll create Z3 variables for each friend: start_i (Int), active_i (Bool), order_i (Int)
+
+ 51. We'll create a solver and add the constraints.
+
+ 52. We'll maximize the sum of active_i.
+
+ 53. Then, if we have a solution, we output the meetings in the order of increasing start time.
+
+ 54. However, note: the problem says to output the itinerary as a list of meetings in chronological order.
+
+ 55. We must also note: we might not be able to meet all, so we are maximizing the count.
+
+ 56. Implementation of travel time function:
+
+    We have a dictionary `travel_dict` that maps (from, to) to time.
+
+    Example: travel_dict[('Embarcadero', 'Richmond District')] = 21
+
+ 57. We'll create the travel_dict from the given data.
+
+ 58. Code structure:
+
+    Step 1: Define the travel time dictionary.
+    Step 2: Define the friends with their constraints.
+    Step 3: Create Z3 variables for each friend.
+    Step 4: Create the solver and add constraints.
+    Step 5: Check and get the model.
+    Step 6: Output the schedule in JSON.
+
+ 59. Since the problem is complex, we might need to use Optimize instead of Solver to maximize the number of meetings.
+
+ 60. We'll use an Optimize object.
+
+ 61. Let's code accordingly.
+
+ 62. Note: The travel times are given between districts, but note that we have meetings in districts, and we start at Embarcadero.
+
+ 63. We'll include Embarcadero as a possible starting point.
+
+ 64. We'll create a list of all locations including Embarcadero? Actually, we don't meet at Embarcadero, so we only have the districts of the friends.
+
+ 65. We'll create a travel time function that takes two location strings and returns the travel time.
+
+ 66. We note that the travel times are provided for each pair of districts, so we can create a complete matrix.
+
+ 67. We'll create the travel_dict from the provided data.
+
+ 68. We note that the travel times are not symmetric, so we use the provided times.
+
+ 69. We'll hardcode the travel_dict.
+
+ 70. Now, let's code.
+
+ 71. We'll create a list of friends with:
+        name, location, (available_start, available_end), duration
+
+ 72. We'll create Z3 variables for each friend: start, active, and order.
+
+ 73. We'll also create a variable for the number of active meetings.
+
+ 74. We'll add constraints for each friend if active.
+
+ 75. We'll also add constraints for the ordering.
+
+ 76. We'll use the following for the ordering:
+
+        orders = [Int(f"order_{name}") for name, ... in friends]
+
+        # Constraint: for each active meeting, order_i >= 0, for inactive, order_i == -1
+        # For each pair of active meetings i and j (i != j), order_i != order_j
+        # For each pair of active meetings i and j, if order_i < order_j, then:
+        #   start_i + duration_i + travel_time(i, j) <= start_j
+
+        # Also, for any active meeting i, if it is the first (order_i == 0), then:
+        #   start_i >= travel_time('Embarcadero', loc_i)
+        # But note: we don't know which one is first. Alternatively, we can avoid the concept of first by having a dummy meeting at time 0 at Embarcadero with duration 0 and then travel from Embarcadero to the first meeting is already included in the travel time from Embarcadero to the first location.
+
+        # Instead, we can add a dummy meeting with order = -1 (or 0) that represents the start at Embarcadero at time 0.
+
+        # Let's create a dummy meeting for Embarcadero:
+        #   start_dummy = 0
+        #   end_dummy = 0
+        #   location_dummy = 'Embarcadero'
+        #   active_dummy = True (always)
+        #   order_dummy = -1 (so that the first real meeting has order 0)
+
+        # Then we can require for every active meeting i:
+        #   There exists a meeting j (which could be the dummy) such that order_j < order_i and the travel time from j to i is accounted for.
+
+        # But note: we are using the MTZ constraints for the ordering, so we can include the dummy meeting.
+
+    Alternatively, we can avoid the dummy by having for each active meeting i:
+        start_i >= travel_time('Embarcadero', loc_i)   [if it is the first] but we don't know which is first.
+
+    We can instead say: for every active meeting i, 
+        start_i >= travel_time('Embarcadero', loc_i)   OR there exists another active meeting j that ends before i and the travel time from j to i is added.
+
+    But that would require disjunctive constraints and we don't know the order.
+
+ 77. We'll use the dummy meeting approach.
+
+    We'll create a dummy meeting for the start at Embarcadero.
+
+    We'll have:
+        dummy_start = 0
+        dummy_duration = 0
+        dummy_location = 'Embarcadero'
+        dummy_active = True
+        dummy_order = -1   (so that it is before all real meetings)
+
+    Then, for every active meeting i, we require:
+        There exists a meeting j (which could be the dummy or another meeting) that immediately precedes i? Not immediately, but we have the MTZ constraints for every pair.
+
+    We can extend the MTZ constraints to include the dummy:
+
+        For every active meeting i (including the dummy? but the dummy is fixed):
+            If order_i > dummy_order (which is always true for real meetings), then for the dummy meeting d and meeting i:
+                dummy_end + travel_time(dummy_location, loc_i) <= start_i   [if dummy_order < order_i]
+
+        But note: the dummy meeting has order -1, so for every real meeting i, we have order_i >= 0, so dummy_order < order_i.
+
+        So we can add for every active meeting i:
+            start_i >= travel_time('Embarcadero', loc_i)
+
+        Wait, that is exactly what we need for the first meeting, but note: if the meeting is not the first, then we also have constraints from previous meetings. However, the MTZ constraints already ensure that if a meeting is not first, it comes after another meeting plus travel. But the constraint from the dummy meeting would force every meeting to start at least after the travel from Embarcadero, which is too strict because only the first meeting must account for that.
+
+    Actually, only the first meeting must account for travel from Embarcadero. The others account for travel from the previous meeting.
+
+    So we cannot add for every meeting: start_i >= travel_time('Embarcadero', loc_i).
+
+ 78. We can instead not use a dummy meeting and instead have for each meeting i:
+
+        (order_i == 0) => (start_i >= travel_time('Embarcadero', loc_i))
+
+        and for any two meetings i and j with order_i = order_j - 1, we have the travel constraint. But we don't have direct predecessor variables.
+
+ 79. Given the complexity, we'll use the following:
+
+        For each active meeting i, we require that either:
+            it is the first meeting (order_i == 0) and then start_i >= travel_time('Embarcadero', loc_i)
+            or it is not the first, and there exists an active meeting j such that order_j = order_i - 1 and start_j + duration_j + travel_time(loc_j, loc_i) <= start_i.
+
+        But expressing the existence of a meeting j with order_j = order_i - 1 is difficult in SMT.
+
+ 80. We can use a different approach: let the order variables be continuous from 0 to n-1, and then use constraints that for every pair of active meetings i and j, if order_j = order_i + 1, then the travel constraint holds. But again, we need to know the immediate predecessor.
+
+ 81. Alternatively, we can use a graph and use the following constraint for every pair i, j (i and j active and i != j):
+
+        (order_i < order_j) => (start_i + duration_i + travel_time(i, j) <= start_j)
+
+    This ensures that if i comes before j, then there is enough time to travel from i to j.
+
+    And then for the first meeting, we require:
+
+        start_i >= travel_time('Embarcadero', loc_i)   for every active meeting i that has order_i = 0.
+
+    But note: we don't know which meeting has order_i=0. So we can say:
+
+        For every active meeting i, if there is no other active meeting j with order_j < order_i, then it must be the first meeting and hence start_i >= travel_time('Embarcadero', loc_i).
+
+    How to express "there is no other active meeting j with order_j < order_i" in Z3? We can use:
+
+        For each active meeting i, 
+            And_{j != i} (active_j => (order_j >= order_i))   implies that meeting i is the first.
+
+    But note: there might be multiple meetings with the same order? We ensure distinct orders.
+
+    So for each active meeting i, we can have:
+
+        is_first_i = And([Or(Not(active_j), (order_j >= order_i)) for j in range(len(friends)) if j != i])
+
+        Then, is_first_i implies start_i >= travel_time('Embarcadero', loc_i)
+
+ 82. This is complex and may lead to a large number of constraints.
+
+ 83. Given the small number of friends (6), we can do it.
+
+ 84. Let's try to code accordingly.
+
+ 85. We'll create a list of friends including the dummy meeting for Embarcadero? Actually, we decided against the dummy.
+
+ 86. We'll create the following arrays:
+
+        friends_info = [ ... ]   # without dummy
+        n = len(friends_info)
+
+        active = [Bool(f"active_{i}") for i in range(n)]
+        start = [Int(f"start_{i}") for i in range(n)]
+        order = [Int(f"order_{i}") for i in range(n)]
+        duration = [ friends_info[i][3] for i in range(n) ]
+
+ 87. We'll add constraints for each i:
+
+        If active[i]:
+            start[i] >= friends_info[i][2][0]   # available start
+            start[i] + duration[i] <= friends_info[i][2][1]   # available end
+            order[i] >= 0
+            # and for the ordering: for every j != i, if active[j], then order[i] != order[j]
+            # and for every j != i, if active[i] and active[j] and order[i] < order[j], then start[i] + duration[i] + travel_time(i,j) <= start[j]
+
+        Else:
+            order[i] == -1
+            start[i] == 0   # arbitrary
+
+ 88. Additionally, for each active meeting i, we want to ensure that if it is the first meeting (i.e., for all j != i, either not active or order[j] >= order[i]), then start[i] >= travel_time('Embarcadero', loc_i).
+
+    We can define for each i, a condition is_first_i that is true if for all j != i, either not active[j] or order[j] >= order[i].
+
+    Then add: is_first_i implies (start[i] >= travel_time('Embarcadero', loc_i))
+
+ 89. We'll use the following to express is_first_i for a given i:
+
+        is_first_i = And([ Or(Not(active[j]), order[j] >= order[i]) for j in range(n) if j != i ])
+
+ 90. We then add: If active[i], then (is_first_i implies (start[i] >= travel_time('Embarcadero', friends_info[i][1])))
+
+ 91. We also need to ensure that the orders for active meetings are distinct and in the range [0, n-1].
+
+ 92. We'll use an Optimize object and maximize the number of active meetings.
+
+ 93. Let's code accordingly.
+
+ 94. Note: This might be computationally heavy, but with 6 friends it should be manageable.
+
+ 95. We'll now code.
+
+ 96. We must be cautious: the travel time from a location to itself? We assume 0.
+
+ 97. We'll define a function to get travel time between two locations:
+
+        def get_travel_time(loc1, loc2):
+            if loc1 == loc2:
+                return 0
+            else:
+                return travel_dict[(loc1, loc2)]
+
+ 98. We need to build travel_dict from the given data.
+
+ 99. Let's hardcode the travel_dict.
+
+ 100. We note that the travel times are provided between the following districts:
+
+        districts = ['Embarcadero', 'Richmond District', 'Union Square', 'Financial District', 'Pacific Heights', 'Nob Hill', 'Bayview']
+
+ 101. We'll create travel_dict with keys (from, to) and value the time.
+
+ 102. We'll input the provided times.
+
+ 103. We note that the provided times include times from each district to others, but not all pairs are provided? Let's check: we have from each of the 7 districts to the other 6? Actually, we have 7 districts, and the provided data has 7 lines with 6 times each, so it's complete.
+
+ 104. We'll create the dictionary.
+
+ 105. Code implementation:
+
+        travel_dict = {}
+        # Add entries for Embarcadero
+        travel_dict[('Embarcadero', 'Richmond District')] = 21
+        travel_dict[('Embarcadero', 'Union Square')] = 10
+        travel_dict[('Embarcadero', 'Financial District')] = 5
+        travel_dict[('Embarcadero', 'Pacific Heights')] = 11
+        travel_dict[('Embarcadero', 'Nob Hill')] = 10
+        travel_dict[('Embarcadero', 'Bayview')] = 21
+
+        # Add entries for Richmond District
+        travel_dict[('Richmond District', 'Embarcadero')] = 19
+        travel_dict[('Richmond District', 'Union Square')] = 21
+        travel_dict[('Richmond District', 'Financial District')] = 22
+        travel_dict[('Richmond District', 'Pacific Heights')] = 10
+        travel_dict[('Richmond District', 'Nob Hill')] = 17
+        travel_dict[('Richmond District', 'Bayview')] = 26
+
+        # ... and so on for all districts.
+
+ 106. We'll do this for all provided data.
+
+ 107. Now, let's code the entire program.
+
+ 108. We note that the problem might be too complex for Z3 to find an optimal solution in a reasonable time, but we hope that with 6 friends it will work.
+
+ 109. We'll use the following structure:
+
+        from z3 import *
+        import json
+
+        # Define travel_dict
+        travel_dict = { ... }
+
+        # Define friends info: list of (name, location, (avail_start, avail_end), duration)
+        friends = [
+            ('Kenneth', 'Richmond District', (735, 780), 30),
+            ('Lisa', 'Union Square', (0, 450), 45),
+            ('Joshua', 'Financial District', (180, 375), 15),
+            ('Nancy', 'Pacific Heights', (0, 150), 90),
+            ('Andrew', 'Nob Hill', (150, 675), 60),
+            ('John', 'Bayview', (465, 750), 75)
+        ]
+
+        n = len(friends)
+
+        # Create Z3 variables
+        active = [Bool(f"active_{i}") for i in range(n)]
+        start = [Int(f"start_{i}") for i in range(n)]
+        order = [Int(f"order_{i}") for i in range(n)]
+
+        opt = Optimize()
+
+        # Constraints for each friend
+        for i in range(n):
+            name, loc, (avail_start, avail_end), dur = friends[i]
+            # If active, then within availability and order >=0
+            opt.add(Implies(active[i], start[i] >= avail_start))
+            opt.add(Implies(active[i], start[i] + dur <= avail_end))
+            opt.add(Implies(active[i], order[i] >= 0))
+            opt.add(Implies(Not(active[i]), order[i] == -1))
+            opt.add(Implies(Not(active[i]), start[i] == 0))
+
+        # Constraints for distinct orders for active meetings
+        for i in range(n):
+            for j in range(i+1, n):
+                # If both active, then order[i] != order[j]
+                opt.add(Implies(And(active[i], active[j]), order[i] != order[j]))
+
+        # Constraints for travel times between meetings
+        for i in range(n):
+            for j in range(n):
+                if i == j:
+                    continue
+                name_i, loc_i, _, dur_i = friends[i]
+                name_j, loc_j, _, dur_j = friends[j]
+                travel_ij = travel_dict[(loc_i, loc_j)]
+                # If both active and order[i] < order[j], then start[i] + dur_i + travel_ij <= start[j]
+                opt.add(Implies(And(active[i], active[j], order[i] < order[j]),
+                                start[i] + dur_i + travel_ij <= start[j]))
+
+        # Constraints for the first meeting: must account for travel from Embarcadero
+        for i in range(n):
+            name_i, loc_i, _, dur_i = friends[i]
+            travel_from_emb = travel_dict[('Embarcadero', loc_i)]
+            # Check if meeting i is the first: for all j != i, either not active or order[j] >= order[i]
+            conditions = []
+            for j in range(n):
+                if i == j:
+                    continue
+                conditions.append(Or(Not(active[j]), order[j] >= order[i]))
+            is_first_i = And(conditions)
+            opt.add(Implies(And(active[i], is_first_i), start[i] >= travel_from_emb))
+
+        # Maximize the number of active meetings
+        opt.maximize(Sum([If(active[i], 1, 0) for i in range(n)]))
+
+        # Check if feasible
+        if opt.check() == sat:
+            model = opt.model()
+            # Extract the meetings that are active
+            itinerary = []
+            for i in range(n):
+                if is_true(model.eval(active[i])):
+                    s = model.eval(start[i]).as_long()
+                    # Convert minutes since 9:00 AM to time string
+                    total_minutes = s
+                    hours = total_minutes // 60 + 9
+                    minutes = total_minutes % 60
+                    start_time = f"{hours}:{minutes:02d}"
+                    end_time = f"{hours + (minutes + friends[i][3]) // 60}:{(minutes + friends[i][3]) % 60:02d}"
+                    # But note: we might have to adjust the hours and minutes for end_time.
+                    # Actually, better to compute end_time in minutes since 9:00 AM and then convert.
+                    end_minutes = s + friends[i][3]
+                    end_hours = end_minutes // 60 + 9
+                    end_minutes_rem = end_minutes % 60
+                    end_time = f"{end_hours}:{end_minutes_rem:02d}"
+
+                    itinerary.append({
+                        "action": "meet",
+                        "location": friends[i][1],
+                        "person": friends[i][0],
+                        "start_time": start_time,
+                        "end_time": end_time
+                    })
+
+            # Sort itinerary by start time
+            itinerary.sort(key=lambda x: x['start_time'])
+
+            # Output as JSON
+            result = {"itinerary": itinerary}
+            print(json.dumps(result, indent=2))
+        else:
+            print('{"itinerary": []}')
+
+ 110. However, note: the time string should not have leading zero in the hour? The problem says: "Times should be in 24-hour format like '9:00' or '13:30' (no leading zero)".
+
+        So we should format the hour without leading zero, but the minute with two digits.
+
+        We can do:
+            start_time = f"{hours}:{minutes:02d}" -> but if hours is 9, that's okay. If hours is 13, that's also okay.
+
+        But note: we are adding 9 to the hours. So if s=0, then hours=9, which is correct.
+
+        However, if s=60, then hours=10, which is correct.
+
+        But if s=60*15 (900 minutes), then hours=9+15=24 -> which is 24:00, but we want 0:00 the next day? Actually, we are only until 9:30 PM, so we won't exceed 24.
+
+        But note: Kenneth's meeting is at 21:15 which is 12*60+15=735 minutes, which is 9+12=21 -> 21:15.
+
+        So the conversion is correct.
+
+ 111. We must be cautious: the end_time might roll over to the next day? But the constraints are within the same day.
+
+ 112. Let's run the code and hope it works.
+
+ 113. However, note: the travel_dict must be complete for all pairs of locations that appear in the friends list.
+
+ 114. We have the following locations in the friends list: 
+        'Richmond District', 'Union Square', 'Financial District', 'Pacific Heights', 'Nob Hill', 'Bayview'
+
+ 115. We also have 'Embarcadero' for the starting point.
+
+ 116. We must ensure that travel_dict has entries for every pair of these locations.
+
+ 117. We have provided the travel times for all pairs because we have from each district to every other district.
+
+ 118. Let's code the travel_dict with all the provided times.
+
+ 119. Due to the length of the travel_dict, we'll only show a part in the code below, but we'll include the entire dictionary.
+
+ 120. We note that the provided travel times include all the necessary pairs.
+
+ 121. Finally, we output the code.
+
+ 122. Note: The problem says to output only the code, so we'll output the entire Python code.
+
+ 123. Let's write the code.

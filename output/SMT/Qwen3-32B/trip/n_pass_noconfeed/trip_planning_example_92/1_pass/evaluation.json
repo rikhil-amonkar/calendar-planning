@@ -1,0 +1,53 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"itinerary\": [\n    {\n      \"day_range\": \"Day 1-2\",\n      \"place\": \"Dublin\"\n    },\n    {\n      \"day_range\": \"Day 2-6\",\n      \"place\": \"Riga\"\n    },\n    {\n      \"day_range\": \"Day 6-12\",\n      \"place\": \"Vilnius\"\n    }\n  ]\n}",
+    "pred": {
+        "itinerary": [
+            {
+                "day_range": "Day 1-2",
+                "place": "Dublin"
+            },
+            {
+                "day_range": "Day 2-6",
+                "place": "Riga"
+            },
+            {
+                "day_range": "Day 6-12",
+                "place": "Vilnius"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "day_range": "Day 1-2",
+                "place": "Dublin"
+            },
+            {
+                "day_range": "Day 2-6",
+                "place": "Riga"
+            },
+            {
+                "day_range": "Day 6-12",
+                "place": "Vilnius"
+            }
+        ]
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 783.7560639381409,
+        "execution_time": 0.06971025466918945,
+        "constraint_eval_time": 5.3882598876953125e-05,
+        "pred_extract_time": 2.8934576511383057,
+        "gold_extract_time": 9.369850158691406e-05,
+        "total_tokens": 50136,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\nimport json\n\ndef main():\n    solver = Solver()\n\n    # Variables for cities (0: Dublin, 1: Riga, 2: Vilnius)\n    city_1, city_2, city_3 = Ints('city_1 city_2 city_3')\n    end_1, end_2 = Ints('end_1 end_2')\n\n    # All three cities must be distinct\n    solver.add(Distinct(city_1, city_2, city_3))\n\n    # Transition constraints between city_1 and city_2\n    solver.add(Implies(city_1 == 0, city_2 == 1))\n    solver.add(Implies(city_1 == 1, Or(city_2 == 0, city_2 == 2)))\n    solver.add(Implies(city_1 == 2, False))  # No allowed transitions from Vilnius as first city\n\n    # Transition constraints between city_2 and city_3\n    solver.add(Implies(city_2 == 0, city_3 == 1))\n    solver.add(Implies(city_2 == 1, Or(city_3 == 0, city_3 == 2)))\n    solver.add(Implies(city_2 == 2, False))  # No allowed transitions from Vilnius as second city\n\n    # Constraints for end_1 based on city_1\n    solver.add(Or(\n        And(city_1 == 0, end_1 == 2),\n        And(city_1 == 1, end_1 == 5),\n        And(city_1 == 2, end_1 == 7)\n    ))\n\n    # Constraints for end_2 based on city_2 and end_1\n    solver.add(Or(\n        And(city_2 == 0, end_2 == end_1 + 1),\n        And(city_2 == 1, end_2 == end_1 + 4),\n        And(city_2 == 2, end_2 == end_1 + 6)\n    ))\n\n    # Constraints for city_3's end_3 == 12\n    solver.add(Or(\n        And(city_3 == 0, end_2 + 1 == 12),\n        And(city_3 == 1, end_2 + 4 == 12),\n        And(city_3 == 2, end_2 + 6 == 12)\n    ))\n\n    # Check if the constraints are satisfiable\n    if solver.check() == sat:\n        model = solver.model()\n        c1 = model[city_1].as_long()\n        c2 = model[city_2].as_long()\n        c3 = model[city_3].as_long()\n        e1 = model[end_1].as_long()\n        e2 = model[end_2].as_long()\n\n        # Generate the itinerary\n        itinerary = []\n        city_map = {0: \"Dublin\", 1: \"Riga\", 2: \"Vilnius\"}\n        start_1 = 1\n        day_range_1 = f\"Day {start_1}-{e1}\"\n        itinerary.append({\"day_range\": day_range_1, \"place\": city_map[c1]})\n\n        start_2 = e1\n        day_range_2 = f\"Day {start_2}-{e2}\"\n        itinerary.append({\"day_range\": day_range_2, \"place\": city_map[c2]})\n\n        start_3 = e2\n        day_range_3 = f\"Day {start_3}-12\"\n        itinerary.append({\"day_range\": day_range_3, \"place\": city_map[c3]})\n\n        # Output as JSON\n        print(json.dumps({\"itinerary\": itinerary}, indent=2))\n    else:\n        print(\"No solution found.\")\n\nif __name__ == \"__main__\":\n    main()"
+}

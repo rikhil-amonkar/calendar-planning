@@ -1,0 +1,5 @@
+Bob_index = Int('Bob_index')
+Charlie_index = Int('Charlie_index')
+solver.add(Bob_index == [i for i, n in enumerate(names) if n == Bob][0])
+solver.add(Charlie_index == [i for i, n in enumerate(names) if n == Charlie][0])
+solver.add(heights[Bob_index] > heights[Charlie_index])

@@ -1,0 +1,57 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"itinerary\": [\n    {\n      \"action\": \"meet\",\n      \"location\": \"Presidio\",\n      \"person\": \"Jason\",\n      \"start_time\": \"10:00\",\n      \"end_time\": \"11:30\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Marina District\",\n      \"person\": \"Kenneth\",\n      \"start_time\": \"15:30\",\n      \"end_time\": \"16:15\"\n    }\n  ]\n}",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Presidio",
+                "person": "Jason",
+                "start_time": "10:00",
+                "end_time": "11:30"
+            },
+            {
+                "action": "meet",
+                "location": "Marina District",
+                "person": "Kenneth",
+                "start_time": "15:30",
+                "end_time": "16:15"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Presidio",
+                "person": "Jason",
+                "start_time": "10:00",
+                "end_time": "11:30"
+            },
+            {
+                "action": "meet",
+                "location": "Marina District",
+                "person": "Kenneth",
+                "start_time": "15:30",
+                "end_time": "16:15"
+            }
+        ]
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 437.6383972167969,
+        "execution_time": 0.08070778846740723,
+        "constraint_eval_time": 4.029273986816406e-05,
+        "pred_extract_time": 2.745192289352417,
+        "gold_extract_time": 8.130073547363281e-05,
+        "total_tokens": 26448,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import z3\nimport json\n\ndef minutes_to_time(m):\n    hours = m // 60\n    minutes = m % 60\n    return f\"{hours}:{minutes:02d}\"\n\nsolver = z3.Solver()\n\n# Define variables\narrival_presidio = z3.Int('arrival_presidio')\ns_j = z3.Int('s_j')\ne_j = z3.Int('e_j')\nduration_j = z3.Int('duration_j')\ns_k = z3.Int('s_k')\ne_k = z3.Int('e_k')\nduration_k = z3.Int('duration_k')\n\n# Constraints for arrival at Presidio (Pacific Heights to Presidio takes 11 minutes)\nsolver.add(arrival_presidio >= 551)  # 9:00AM + 11 minutes = 9:11AM = 551 minutes since midnight\n\n# Jason's meeting constraints (Presidio)\nsolver.add(s_j >= arrival_presidio)\nsolver.add(s_j >= 600)  # 10:00AM = 600 minutes since midnight\nsolver.add(e_j == s_j + duration_j)\nsolver.add(duration_j >= 90)  # Minimum 90 minutes\nsolver.add(e_j <= 975)  # 4:15PM = 975 minutes since midnight\n\n# Kenneth's meeting constraints (Marina District)\nsolver.add(s_k >= e_j + 10)  # Presidio to Marina takes 10 minutes\nsolver.add(s_k >= 930)  # 3:30PM = 930 minutes since midnight\nsolver.add(e_k == s_k + duration_k)\nsolver.add(duration_k >= 45)  # Minimum 45 minutes\nsolver.add(e_k <= 1005)  # 4:45PM = 1005 minutes since midnight\n\nif solver.check() == z3.sat:\n    model = solver.model()\n    \n    # Extract meeting times\n    s_j_val = model.eval(s_j).as_long()\n    e_j_val = model.eval(e_j).as_long()\n    s_k_val = model.eval(s_k).as_long()\n    e_k_val = model.eval(e_k).as_long()\n    \n    # Convert to time strings\n    j_start = minutes_to_time(s_j_val)\n    j_end = minutes_to_time(e_j_val)\n    k_start = minutes_to_time(s_k_val)\n    k_end = minutes_to_time(e_k_val)\n    \n    # Create JSON output\n    itinerary = [\n        {\n            \"action\": \"meet\", \n            \"location\": \"Presidio\", \n            \"person\": \"Jason\", \n            \"start_time\": j_start, \n            \"end_time\": j_end\n        },\n        {\n            \"action\": \"meet\", \n            \"location\": \"Marina District\", \n            \"person\": \"Kenneth\", \n            \"start_time\": k_start, \n            \"end_time\": k_end\n        }\n    ]\n    \n    result = {\"itinerary\": itinerary}\n    print(json.dumps(result, indent=2))\nelse:\n    print(\"No valid meeting schedule found.\")"
+}

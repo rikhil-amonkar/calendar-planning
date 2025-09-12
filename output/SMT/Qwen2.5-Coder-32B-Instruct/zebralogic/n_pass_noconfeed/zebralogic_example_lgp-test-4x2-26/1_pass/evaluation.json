@@ -1,0 +1,74 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"solution\": {\n    \"header\": [\n      \"House\",\n      \"Name\",\n      \"Occupation\"\n    ],\n    \"rows\": [\n      [\n        \"1\",\n        \"Eric\",\n        \"\"\n      ],\n      [\n        \"2\",\n        \"Alice\",\n        \"rtis\"\n      ],\n      [\n        \"3\",\n        \"Arnold\",\n        \"\"\n      ],\n      [\n        \"4\",\n        \"Peter\",\n        \"eache\"\n      ]\n    ]\n  }\n}",
+    "pred": [
+        {
+            "House": "1",
+            "Name": "Eric",
+            "Occupation": ""
+        },
+        {
+            "House": "2",
+            "Name": "Alice",
+            "Occupation": "rtis"
+        },
+        {
+            "House": "3",
+            "Name": "Arnold",
+            "Occupation": ""
+        },
+        {
+            "House": "4",
+            "Name": "Peter",
+            "Occupation": "eache"
+        }
+    ],
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Eric",
+            "Occupation": "doctor"
+        },
+        {
+            "House": "2",
+            "Name": "Arnold",
+            "Occupation": "engineer"
+        },
+        {
+            "House": "3",
+            "Name": "Alice",
+            "Occupation": "artist"
+        },
+        {
+            "House": "4",
+            "Name": "Peter",
+            "Occupation": "teacher"
+        }
+    ],
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "violations": [
+            "House 1 wrong Occupation: expected 'doctor', got ''",
+            "House 2 wrong Name: expected 'Arnold', got 'Alice'",
+            "House 2 wrong Occupation: expected 'engineer', got 'rtis'",
+            "House 3 wrong Name: expected 'Alice', got 'Arnold'",
+            "House 3 wrong Occupation: expected 'artist', got ''",
+            "House 4 wrong Occupation: expected 'teacher', got 'eache'"
+        ]
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 21.91396927833557,
+        "execution_time": 0.08104062080383301,
+        "constraint_eval_time": 9.918212890625e-05,
+        "pred_extract_time": 1.17055082321167,
+        "gold_extract_time": 7.867813110351562e-06,
+        "total_tokens": 1997,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\n\n# Create a solver instance\nsolver = Solver()\n\n# Define variables\nnames = ['Arnold', 'Eric', 'Peter', 'Alice']\noccupations = ['doctor', 'engineer', 'artist', 'teacher']\nhouses = [1, 2, 3, 4]\n\n# Create integer variables for each person's house number\nhouse_of = {name: Int(f'house_of_{name}') for name in names}\noccupation_of = {name: String(f'occupation_of_{name}') for name in names}\n\n# Add constraints for unique house numbers\nsolver.add(Distinct([house_of[name] for name in names]))\nfor name in names:\n    solver.add(And(house_of[name] >= 1, house_of[name] <= 4))\n\n# Add constraints for unique occupations\nsolver.add(Distinct([occupation_of[name] for name in names]))\n\n# Clue 1: There are two houses between Eric and Peter.\nsolver.add(Abs(house_of['Eric'] - house_of['Peter']) == 3)\n\n# Clue 2: The person who is a teacher is Peter.\nsolver.add(occupation_of['Peter'] == 'teacher')\n\n# Clue 3: Peter is not in the first house.\nsolver.add(house_of['Peter'] != 1)\n\n# Clue 4: There is one house between the person who is a doctor and Alice.\nsolver.add(Abs(house_of['Alice'] - house_of[name]) == 2 for name in names if occupation_of[name] == 'doctor')\n\n# Clue 5: The person who is an artist is Alice.\nsolver.add(occupation_of['Alice'] == 'artist')\n\n# Solve the constraints\nif solver.check() == sat:\n    model = solver.model()\n    \n    # Prepare the solution in the required format\n    solution = {\n        \"solution\": {\n            \"header\": [\"House\", \"Name\", \"Occupation\"],\n            \"rows\": []\n        }\n    }\n    \n    # Extract the solution\n    for house in houses:\n        for name in names:\n            if model.evaluate(house_of[name]) == house:\n                occupation = model.evaluate(occupation_of[name]).as_string()[1:-1]  # Remove quotes\n                solution[\"solution\"][\"rows\"].append([str(house), name, occupation])\n    \n    # Print the solution as JSON\n    import json\n    print(json.dumps(solution, indent=2))\nelse:\n    print(\"No solution found\")"
+}

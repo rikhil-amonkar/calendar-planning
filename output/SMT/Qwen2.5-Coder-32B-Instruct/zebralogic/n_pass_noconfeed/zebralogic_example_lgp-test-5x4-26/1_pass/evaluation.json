@@ -1,0 +1,61 @@
+{
+    "has_execution_error": true,
+    "has_no_plan": false,
+    "execution_output": null,
+    "pred": null,
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Arnold",
+            "Height": "average",
+            "Mother": "Aniya",
+            "HairColor": "brown"
+        },
+        {
+            "House": "2",
+            "Name": "Eric",
+            "Height": "very short",
+            "Mother": "Penny",
+            "HairColor": "black"
+        },
+        {
+            "House": "3",
+            "Name": "Alice",
+            "Height": "very tall",
+            "Mother": "Kailyn",
+            "HairColor": "gray"
+        },
+        {
+            "House": "4",
+            "Name": "Peter",
+            "Height": "short",
+            "Mother": "Janelle",
+            "HairColor": "red"
+        },
+        {
+            "House": "5",
+            "Name": "Bob",
+            "Height": "tall",
+            "Mother": "Holly",
+            "HairColor": "blonde"
+        }
+    ],
+    "status": "Error",
+    "violated_constraint": {
+        "invalid_output": "No valid output structure found"
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 42.507872343063354,
+        "execution_time": 0.07535338401794434,
+        "constraint_eval_time": 4.291534423828125e-06,
+        "pred_extract_time": 4.5299530029296875e-06,
+        "gold_extract_time": 1.33514404296875e-05,
+        "total_tokens": 3803,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\n\n# Define the houses\nhouses = [Int(f'house_{i}') for i in range(1, 6)]\n\n# Define the domains for each attribute\nnames = ['Alice', 'Peter', 'Bob', 'Eric', 'Arnold']\nheights = ['very short', 'short', 'tall', 'average', 'very tall']\nmothers = ['Janelle', 'Kailyn', 'Penny', 'Holly', 'Aniya']\nhair_colors = ['blonde', 'black', 'gray', 'red', 'brown']\n\n# Create dictionaries to map attributes to Z3 variables\nname_vars = {name: Int(f'name_{name}') for name in names}\nheight_vars = {height: Int(f'height_{height}') for height in heights}\nmother_vars = {mother: Int(f'mother_{mother}') for mother in mothers}\nhair_color_vars = {hair_color: Int(f'hair_color_{hair_color}') for hair_color in hair_colors}\n\n# Create a solver instance\nsolver = Solver()\n\n# Add constraints for unique values for each attribute\nsolver.add(Distinct(houses))\nsolver.add(Distinct(name_vars.values()))\nsolver.add(Distinct(height_vars.values()))\nsolver.add(Distinct(mother_vars.values()))\nsolver.add(Distinct(hair_color_vars.values()))\n\n# Add constraints for each clue\n# 1. The person who is tall is The person whose mother's name is Holly.\nsolver.add(height_vars['tall'] == mother_vars['Holly'])\n\n# 2. There are two houses between the person who has an average height and the person who is short.\nsolver.add(Abs(height_vars['average'] - height_vars['short']) == 3)\n\n# 3. The person who has gray hair is directly left of The person whose mother's name is Janelle.\nsolver.add(hair_color_vars['gray'] + 1 == mother_vars['Janelle'])\n\n# 4. The person who has black hair is not in the fourth house.\nsolver.add(hair_color_vars['black'] != 4)\n\n# 5. Eric is the person who has black hair.\nsolver.add(name_vars['Eric'] == hair_color_vars['black'])\n\n# 6. The person who is very short is The person whose mother's name is Penny.\nsolver.add(height_vars['very short'] == mother_vars['Penny'])\n\n# 7. Eric and the person who has gray hair are next to each other.\nsolver.add(Abs(name_vars['Eric'] - hair_color_vars['gray']) == 1)\n\n# 8. Bob is in the fifth house.\nsolver.add(name_vars['Bob'] == 5)\n\n# 9. The person who has red hair is Peter.\nsolver.add(name_vars['Peter'] == hair_color_vars['red'])\n\n# 10. The person whose mother's name is Kailyn is directly left of the person who is short.\nsolver.add(mother_vars['Kailyn'] + 1 == height_vars['short'])\n\n# 11. Arnold is the person who has brown hair.\nsolver.add(name_vars['Arnold'] == hair_color_vars['brown'])\n\n# 12. The person who has brown hair is somewhere to the left of The person whose mother's name is Janelle.\nsolver.add(hair_color_vars['brown'] < mother_vars['Janelle'])\n\n# 13. The person whose mother's name is Aniya and the person who is very short are next to each other.\nsolver.add(Abs(mother_vars['Aniya'] - height_vars['very short']) == 1)\n\n# 14. The person whose mother's name is Kailyn is in the third house.\nsolver.add(mother_vars['Kailyn'] == 3)\n\n# Solve the puzzle\nif solver.check() == sat:\n    model = solver.model()\n    # Extract the solution\n    solution = []\n    for house in range(1, 6):\n        name = next(key for key, value in name_vars.items() if model.evaluate(value) == house)\n        height = next(key for key, value in height_vars.items() if model.evaluate(value) == house)\n        mother = next(key for key, value in mother_vars.items() if model.evaluate(value) == house)\n        hair_color = next(key for key, value in hair_color_vars.items() if model.evaluate(value) == house)\n        solution.append([str(house), name, height, mother, hair_color])\n    \n    # Format the solution as JSON\n    import json\n    result = {\n        \"solution\": {\n            \"header\": [\"House\", \"Name\", \"Height\", \"Mother\", \"HairColor\"],\n            \"rows\": solution\n        }\n    }\n    print(json.dumps(result, indent=2))\nelse:\n    print(\"No solution found\")"
+}

@@ -1,0 +1,149 @@
+from z3 import *
+import json
+
+def main():
+    solver = Solver()
+    
+    # Define the attributes
+    names = ['Eric', 'Peter', 'Arnold']
+    drinks = ['milk', 'water', 'tea']
+    vacations = ['mountain', 'city', 'beach']
+    house_styles = ['colonial', 'victorian', 'ranch']
+    animals = ['cat', 'bird', 'horse']
+    birthdays = ['jan', 'sept', 'april']
+    
+    # Create variables for each attribute in each house
+    name_vars = [Int(f'name_{i}') for i in range(1, 4)]
+    drink_vars = [Int(f'drink_{i}') for i in range(1, 4)]
+    vacation_vars = [Int(f'vacation_{i}') for i in range(1, 4)]
+    house_style_vars = [Int(f'house_style_{i}') for i in range(1, 4)]
+    animal_vars = [Int(f'animal_{i}') for i in range(1, 4)]
+    birthday_vars = [Int(f'birthday_{i}') for i in range(1, 4)]
+    
+    # Domain constraints for each attribute
+    for var in name_vars:
+        solver.add(And(var >= 0, var < 3))
+    for var in drink_vars:
+        solver.add(And(var >= 0, var < 3))
+    for var in vacation_vars:
+        solver.add(And(var >= 0, var < 3))
+    for var in house_style_vars:
+        solver.add(And(var >= 0, var < 3))
+    for var in animal_vars:
+        solver.add(And(var >= 0, var < 3))
+    for var in birthday_vars:
+        solver.add(And(var >= 0, var < 3))
+    
+    # All attributes must be distinct within their category
+    solver.add(Distinct(name_vars))
+    solver.add(Distinct(drink_vars))
+    solver.add(Distinct(vacation_vars))
+    solver.add(Distinct(house_style_vars))
+    solver.add(Distinct(animal_vars))
+    solver.add(Distinct(birthday_vars))
+    
+    # Get indices for easier reference
+    eric_index = names.index('Eric')
+    peter_index = names.index('Peter')
+    arnold_index = names.index('Arnold')
+    
+    milk_index = drinks.index('milk')
+    water_index = drinks.index('water')
+    tea_index = drinks.index('tea')
+    
+    mountain_index = vacations.index('mountain')
+    city_index = vacations.index('city')
+    beach_index = vacations.index('beach')
+    
+    colonial_index = house_styles.index('colonial')
+    victorian_index = house_styles.index('victorian')
+    ranch_index = house_styles.index('ranch')
+    
+    cat_index = animals.index('cat')
+    bird_index = animals.index('bird')
+    horse_index = animals.index('horse')
+    
+    jan_index = birthdays.index('jan')
+    sept_index = birthdays.index('sept')
+    april_index = birthdays.index('april')
+    
+    # Clue 1: The person living in a colonial-style house is somewhere to the left of the person who likes milk.
+    # This means colonial house is left of milk drinker
+    for i in range(3):
+        for j in range(3):
+            if i < j:
+                # If house i is colonial, then house j drinks milk
+                solver.add(Implies(house_style_vars[i] == colonial_index, drink_vars[j] == milk_index))
+    
+    # Clue 2: The person who prefers city breaks is directly left of the person residing in a Victorian house.
+    for i in range(2):
+        solver.add(Implies(vacation_vars[i] == city_index, house_style_vars[i+1] == victorian_index))
+    
+    # Clue 3: The person whose birthday is in January is directly left of the cat lover.
+    for i in range(2):
+        solver.add(Implies(birthday_vars[i] == jan_index, animal_vars[i+1] == cat_index))
+    
+    # Clue 4: The one who only drinks water is the person who enjoys mountain retreats.
+    for i in range(3):
+        solver.add(drink_vars[i] == water_index == vacation_vars[i] == mountain_index)
+    
+    # Clue 5: The person who keeps horses is Peter.
+    for i in range(3):
+        solver.add(Implies(animal_vars[i] == horse_index, name_vars[i] == peter_index))
+    
+    # Clue 6: The person residing in a Victorian house is somewhere to the right of the person who loves beach vacations.
+    for i in range(3):
+        for j in range(3):
+            if i > j:
+                solver.add(Implies(house_style_vars[i] == victorian_index, vacation_vars[j] == beach_index))
+    
+    # Clue 7: Peter is the person who prefers city breaks.
+    for i in range(3):
+        solver.add(Implies(name_vars[i] == peter_index, vacation_vars[i] == city_index))
+    
+    # Clue 8: The person who enjoys mountain retreats is the person whose birthday is in April.
+    for i in range(3):
+        solver.add(Implies(vacation_vars[i] == mountain_index, birthday_vars[i] == april_index))
+    
+    # Clue 9: Eric is the one who only drinks water.
+    for i in range(3):
+        solver.add(Implies(name_vars[i] == eric_index, drink_vars[i] == water_index))
+    
+    # Check for solution
+    if solver.check() == sat:
+        model = solver.model()
+        
+        # Create result dictionary
+        result = {
+            "solution": {
+                "header": ["House", "Name", "Drink", "Vacation", "HouseStyle", "Animal", "Birthday"],
+                "rows": []
+            }
+        }
+        
+        # Extract values for each house
+        for house in range(3):
+            name_val = model.eval(name_vars[house]).as_long()
+            drink_val = model.eval(drink_vars[house]).as_long()
+            vacation_val = model.eval(vacation_vars[house]).as_long()
+            house_style_val = model.eval(house_style_vars[house]).as_long()
+            animal_val = model.eval(animal_vars[house]).as_long()
+            birthday_val = model.eval(birthday_vars[house]).as_long()
+            
+            row = [
+                str(house + 1),
+                names[name_val],
+                drinks[drink_val],
+                vacations[vacation_val],
+                house_styles[house_style_val],
+                animals[animal_val],
+                birthdays[birthday_val]
+            ]
+            result["solution"]["rows"].append(row)
+        
+        print(json.dumps(result, indent=2))
+    else:
+        print('{"error": "No solution found"}')
+
+if __name__ == "__main__":
+    main()

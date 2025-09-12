@@ -1,0 +1,88 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"solution\": {\n    \"header\": [\n      \"House\",\n      \"Name\",\n      \"Cigar\",\n      \"Hobby\",\n      \"Education\",\n      \"Drink\"\n    ],\n    \"rows\": [\n      [\n        \"1\",\n        \"Peter\",\n        \"blue master\",\n        \"photography\",\n        \"associate\",\n        \"tea\"\n      ],\n      [\n        \"2\",\n        \"Eric\",\n        \"prince\",\n        \"gardening\",\n        \"high school\",\n        \"milk\"\n      ],\n      [\n        \"3\",\n        \"Arnold\",\n        \"pall mall\",\n        \"cooking\",\n        \"bachelor\",\n        \"water\"\n      ]\n    ]\n  }\n}",
+    "pred": [
+        {
+            "House": "1",
+            "Name": "Peter",
+            "Cigar": "blue master",
+            "Hobby": "photography",
+            "Education": "associate",
+            "Drink": "tea"
+        },
+        {
+            "House": "2",
+            "Name": "Eric",
+            "Cigar": "prince",
+            "Hobby": "gardening",
+            "Education": "high school",
+            "Drink": "milk"
+        },
+        {
+            "House": "3",
+            "Name": "Arnold",
+            "Cigar": "pall mall",
+            "Hobby": "cooking",
+            "Education": "bachelor",
+            "Drink": "water"
+        }
+    ],
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Peter",
+            "Cigar": "pall mall",
+            "Hobby": "gardening",
+            "Education": "bachelor",
+            "Drink": "water"
+        },
+        {
+            "House": "2",
+            "Name": "Arnold",
+            "Cigar": "blue master",
+            "Hobby": "photography",
+            "Education": "associate",
+            "Drink": "milk"
+        },
+        {
+            "House": "3",
+            "Name": "Eric",
+            "Cigar": "prince",
+            "Hobby": "cooking",
+            "Education": "high school",
+            "Drink": "tea"
+        }
+    ],
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "violations": [
+            "House 1 wrong Cigar: expected 'pall mall', got 'blue master'",
+            "House 1 wrong Hobby: expected 'gardening', got 'photography'",
+            "House 1 wrong Education: expected 'bachelor', got 'associate'",
+            "House 1 wrong Drink: expected 'water', got 'tea'",
+            "House 2 wrong Name: expected 'Arnold', got 'Eric'",
+            "House 2 wrong Cigar: expected 'blue master', got 'prince'",
+            "House 2 wrong Hobby: expected 'photography', got 'gardening'",
+            "House 2 wrong Education: expected 'associate', got 'high school'",
+            "House 3 wrong Name: expected 'Eric', got 'Arnold'",
+            "House 3 wrong Cigar: expected 'prince', got 'pall mall'",
+            "House 3 wrong Education: expected 'high school', got 'bachelor'",
+            "House 3 wrong Drink: expected 'tea', got 'water'"
+        ]
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 5,
+    "timing": {
+        "api_call_time": 59.55894732475281,
+        "execution_time": 0.08290839195251465,
+        "constraint_eval_time": 9.298324584960938e-05,
+        "pred_extract_time": 1.6512370109558105,
+        "gold_extract_time": 1.7404556274414062e-05,
+        "total_tokens": 5085,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\nimport json\n\n# Define the variables\nhouses = [1, 2, 3]\nnames = ['Eric', 'Peter', 'Arnold']\ncigars = ['blue master', 'prince', 'pall mall']\nhobbies = ['photography', 'gardening', 'cooking']\neducations = ['high school', 'associate', 'bachelor']\ndrinks = ['tea', 'milk', 'water']\n\n# Create dictionaries to map variables to Z3 variables\nname_vars = {house: Int(f'name_{house}') for house in houses}\ncigar_vars = {house: Int(f'cigar_{house}') for house in houses}\nhobby_vars = {house: Int(f'hobby_{house}') for house in houses}\neducation_vars = {house: Int(f'education_{house}') for house in houses}\ndrink_vars = {house: Int(f'drink_{house}') for house in houses}\n\n# Create a solver instance\nsolver = Solver()\n\n# Add domain constraints\nfor house in houses:\n    solver.add(name_vars[house] >= 0)\n    solver.add(name_vars[house] < len(names))\n    solver.add(cigar_vars[house] >= 0)\n    solver.add(cigar_vars[house] < len(cigars))\n    solver.add(hobby_vars[house] >= 0)\n    solver.add(hobby_vars[house] < len(hobbies))\n    solver.add(education_vars[house] >= 0)\n    solver.add(education_vars[house] < len(educations))\n    solver.add(drink_vars[house] >= 0)\n    solver.add(drink_vars[house] < len(drinks))\n\n# All values must be unique across houses\nsolver.add(Distinct([name_vars[house] for house in houses]))\nsolver.add(Distinct([cigar_vars[house] for house in houses]))\nsolver.add(Distinct([hobby_vars[house] for house in houses]))\nsolver.add(Distinct([education_vars[house] for house in houses]))\nsolver.add(Distinct([drink_vars[house] for house in houses]))\n\n# Clue 1: The person partial to Pall Mall is Peter.\nsolver.add(Or([Implies(cigar_vars[house] == cigars.index('pall mall'), name_vars[house] == names.index('Peter')) for house in houses]))\n\n# Clue 2: The person who likes milk is directly left of the person with a high school diploma.\nsolver.add(Or([Implies(drink_vars[house] == drinks.index('milk'), education_vars[house + 1] == educations.index('high school')) for house in [1, 2]]))\n\n# Clue 3: Eric is the tea drinker.\nsolver.add(Or([Implies(drink_vars[house] == drinks.index('tea'), name_vars[house] == names.index('Eric')) for house in houses]))\n\n# Clue 4: Arnold and the Prince smoker are next to each other.\nsolver.add(Or([Implies(name_vars[house] == names.index('Arnold'), cigar_vars[house + 1] == cigars.index('prince')) for house in [1, 2]]))\nsolver.add(Or([Implies(name_vars[house] == names.index('Arnold'), cigar_vars[house - 1] == cigars.index('prince')) for house in [2, 3]]))\nsolver.add(Or([Implies(cigar_vars[house] == cigars.index('prince'), name_vars[house + 1] == names.index('Arnold')) for house in [1, 2]]))\nsolver.add(Or([Implies(cigar_vars[house] == cigars.index('prince'), name_vars[house - 1] == names.index('Arnold')) for house in [2, 3]]))\n\n# Clue 5: The person who enjoys gardening is somewhere to the left of the Prince smoker.\nsolver.add(Or([Implies(hobby_vars[house] == hobbies.index('gardening'), \n                        Or(cigar_vars[house + 1] == cigars.index('prince'), \n                           And(house + 2 in houses, cigar_vars[house + 2] == cigars.index('prince')))) \n               for house in [1]]))  # Changed from [1, 2] to [1] to avoid out-of-range error\n\n# Clue 6: The person who likes milk is the person with an associate's degree.\nsolver.add(Or([Implies(drink_vars[house] == drinks.index('milk'), education_vars[house] == educations.index('associate')) for house in houses]))\n\n# Clue 7: The person with a bachelor's degree is directly left of the photography enthusiast.\nsolver.add(Or([Implies(education_vars[house] == educations.index('bachelor'), hobby_vars[house + 1] == hobbies.index('photography')) for house in [1, 2]]))\n\n# Check if the problem is solvable\nif solver.check() == sat:\n    model = solver.model()\n    solution = {\n        \"solution\": {\n            \"header\": [\"House\", \"Name\", \"Cigar\", \"Hobby\", \"Education\", \"Drink\"],\n            \"rows\": []\n        }\n    }\n    for house in houses:\n        name = names[model[name_vars[house]].as_long()]\n        cigar = cigars[model[cigar_vars[house]].as_long()]\n        hobby = hobbies[model[hobby_vars[house]].as_long()]\n        education = educations[model[education_vars[house]].as_long()]\n        drink = drinks[model[drink_vars[house]].as_long()]\n        solution[\"solution\"][\"rows\"].append([str(house), name, cigar, hobby, education, drink])\n    print(json.dumps(solution, indent=2))\nelse:\n    print(\"No solution found\")"
+}

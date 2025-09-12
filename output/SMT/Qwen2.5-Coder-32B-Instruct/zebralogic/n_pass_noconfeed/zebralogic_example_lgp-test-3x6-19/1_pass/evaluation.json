@@ -1,0 +1,53 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "null",
+    "pred": [],
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Peter",
+            "Cigar": "blue master",
+            "Animal": "bird",
+            "Children": "Fred",
+            "BookGenre": "mystery",
+            "PhoneModel": "google pixel 6"
+        },
+        {
+            "House": "2",
+            "Name": "Arnold",
+            "Cigar": "pall mall",
+            "Animal": "horse",
+            "Children": "Meredith",
+            "BookGenre": "romance",
+            "PhoneModel": "iphone 13"
+        },
+        {
+            "House": "3",
+            "Name": "Eric",
+            "Cigar": "prince",
+            "Animal": "cat",
+            "Children": "Bella",
+            "BookGenre": "science fiction",
+            "PhoneModel": "samsung galaxy s21"
+        }
+    ],
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "invalid_output": "No valid output structure found"
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 43.58092164993286,
+        "execution_time": 0.07866501808166504,
+        "constraint_eval_time": 9.5367431640625e-07,
+        "pred_extract_time": 0.9928569793701172,
+        "gold_extract_time": 1.239776611328125e-05,
+        "total_tokens": 3873,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\n\ndef solve_puzzle():\n    # Define the domains\n    houses = [1, 2, 3]\n    names = [\"Arnold\", \"Eric\", \"Peter\"]\n    cigars = [\"pall mall\", \"blue master\", \"prince\"]\n    animals = [\"horse\", \"cat\", \"bird\"]\n    children = [\"Bella\", \"Fred\", \"Meredith\"]\n    book_genres = [\"science fiction\", \"romance\", \"mystery\"]\n    phone_models = [\"google pixel 6\", \"iphone 13\", \"samsung galaxy s21\"]\n\n    # Create variables\n    name_vars = {h: Int(f\"name_{h}\") for h in houses}\n    cigar_vars = {h: Int(f\"cigar_{h}\") for h in houses}\n    animal_vars = {h: Int(f\"animal_{h}\") for h in houses}\n    child_vars = {h: Int(f\"child_{h}\") for h in houses}\n    book_genre_vars = {h: Int(f\"book_genre_{h}\") for h in houses}\n    phone_model_vars = {h: Int(f\"phone_model_{h}\") for h in houses}\n\n    # Create solver\n    solver = Solver()\n\n    # Add domain constraints\n    for h in houses:\n        solver.add(name_vars[h] >= 0)\n        solver.add(name_vars[h] < len(names))\n        solver.add(cigar_vars[h] >= 0)\n        solver.add(cigar_vars[h] < len(cigars))\n        solver.add(animal_vars[h] >= 0)\n        solver.add(animal_vars[h] < len(animals))\n        solver.add(child_vars[h] >= 0)\n        solver.add(child_vars[h] < len(children))\n        solver.add(book_genre_vars[h] >= 0)\n        solver.add(book_genre_vars[h] < len(book_genres))\n        solver.add(phone_model_vars[h] >= 0)\n        solver.add(phone_model_vars[h] < len(phone_models))\n\n    # All values must be unique\n    solver.add(Distinct([name_vars[h] for h in houses]))\n    solver.add(Distinct([cigar_vars[h] for h in houses]))\n    solver.add(Distinct([animal_vars[h] for h in houses]))\n    solver.add(Distinct([child_vars[h] for h in houses]))\n    solver.add(Distinct([book_genre_vars[h] for h in houses]))\n    solver.add(Distinct([phone_model_vars[h] for h in houses]))\n\n    # Clue constraints\n    solver.add(And(book_genre_vars[h] == book_genres.index(\"mystery\"), child_vars[h] == children.index(\"Fred\")) for h in houses)\n    solver.add(animal_vars[2] == animals.index(\"cat\"))\n    solver.add(cigar_vars[2] == cigars.index(\"pall mall\"))\n    solver.add(And(animal_vars[h] == animals.index(\"horse\"), child_vars[h] == children.index(\"Meredith\")) for h in houses)\n    solver.add(And(child_vars[h] == children.index(\"Bella\"), cigar_vars[h] == cigars.index(\"prince\")) for h in houses)\n    solver.add(phone_model_vars[1] == phone_models.index(\"iphone 13\"))\n    solver.add(phone_model_vars[2] == phone_models.index(\"samsung galaxy s21\"))\n    solver.add(child_vars[h] == children.index(\"Fred\") == name_vars[h + 1] == names.index(\"Arnold\") for h in [1])\n    solver.add(name_vars[h] == names.index(\"Peter\") < name_vars[h + 1] == names.index(\"Eric\") for h in [1, 2])\n    solver.add(book_genre_vars[3] == book_genres.index(\"science fiction\"))\n    solver.add(phone_model_vars[3] == phone_models.index(\"samsung galaxy s21\"))\n    solver.add(book_genre_vars[2] != book_genres.index(\"mystery\"))\n\n    # Solve the puzzle\n    if solver.check() == sat:\n        model = solver.model()\n        solution = []\n        for h in houses:\n            name = names[model[name_vars[h]].as_long()]\n            cigar = cigars[model[cigar_vars[h]].as_long()]\n            animal = animals[model[animal_vars[h]].as_long()]\n            child = children[model[child_vars[h]].as_long()]\n            book_genre = book_genres[model[book_genre_vars[h]].as_long()]\n            phone_model = phone_models[model[phone_model_vars[h]].as_long()]\n            solution.append([str(h), name, cigar, animal, child, book_genre, phone_model])\n\n        return {\n            \"solution\": {\n                \"header\": [\"House\", \"Name\", \"Cigar\", \"Animal\", \"Children\", \"BookGenre\", \"PhoneModel\"],\n                \"rows\": solution\n            }\n        }\n    else:\n        return None\n\n# Output the solution as JSON\nimport json\nprint(json.dumps(solve_puzzle(), indent=2))"
+}

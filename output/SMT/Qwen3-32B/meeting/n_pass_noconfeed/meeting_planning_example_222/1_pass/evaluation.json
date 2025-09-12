@@ -1,0 +1,71 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\"itinerary\": [{\"action\": \"meet\", \"location\": \"North Beach\", \"person\": \"Helen\", \"start_time\": \"9:08\", \"end_time\": \"11:08\"}, {\"action\": \"meet\", \"location\": \"Fisherman's Wharf\", \"person\": \"Kimberly\", \"start_time\": \"16:30\", \"end_time\": \"17:15\"}, {\"action\": \"meet\", \"location\": \"Bayview\", \"person\": \"Patricia\", \"start_time\": \"18:00\", \"end_time\": \"20:00\"}]}",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "North Beach",
+                "person": "Helen",
+                "start_time": "9:08",
+                "end_time": "11:08"
+            },
+            {
+                "action": "meet",
+                "location": "Fisherman's Wharf",
+                "person": "Kimberly",
+                "start_time": "16:30",
+                "end_time": "17:15"
+            },
+            {
+                "action": "meet",
+                "location": "Bayview",
+                "person": "Patricia",
+                "start_time": "18:00",
+                "end_time": "20:00"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "North Beach",
+                "person": "Helen",
+                "start_time": "9:08",
+                "end_time": "11:08"
+            },
+            {
+                "action": "meet",
+                "location": "Fisherman's Wharf",
+                "person": "Kimberly",
+                "start_time": "16:30",
+                "end_time": "17:15"
+            },
+            {
+                "action": "meet",
+                "location": "Bayview",
+                "person": "Patricia",
+                "start_time": "18:00",
+                "end_time": "20:00"
+            }
+        ]
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 569.1513183116913,
+        "execution_time": 0.08004355430603027,
+        "constraint_eval_time": 4.172325134277344e-05,
+        "pred_extract_time": 1.9233057498931885,
+        "gold_extract_time": 8.726119995117188e-05,
+        "total_tokens": 43019,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import z3\nimport itertools\nimport json\n\ndef main():\n    # Define travel times\n    travel_times = {\n        ('Nob Hill', 'North Beach'): 8,\n        ('Nob Hill', 'Fisherman\\'s Wharf'): 11,\n        ('Nob Hill', 'Bayview'): 19,\n        ('North Beach', 'Nob Hill'): 7,\n        ('North Beach', 'Fisherman\\'s Wharf'): 5,\n        ('North Beach', 'Bayview'): 22,\n        ('Fisherman\\'s Wharf', 'Nob Hill'): 11,\n        ('Fisherman\\'s Wharf', 'North Beach'): 6,\n        ('Fisherman\\'s Wharf', 'Bayview'): 26,\n        ('Bayview', 'Nob Hill'): 20,\n        ('Bayview', 'North Beach'): 21,\n        ('Bayview', 'Fisherman\\'s Wharf'): 25,\n    }\n\n    # Friends' data\n    friends = {\n        'Helen': {\n            'location': 'North Beach',\n            'available_start': 7*60,  # 7:00 AM\n            'available_end': 16*60 + 45,  # 4:45 PM\n            'min_duration': 120,\n        },\n        'Kimberly': {\n            'location': 'Fisherman\\'s Wharf',\n            'available_start': 16*60 + 30,  # 4:30 PM\n            'available_end': 21*60,  # 9:00 PM\n            'min_duration': 45,\n        },\n        'Patricia': {\n            'location': 'Bayview',\n            'available_start': 18*60,  # 6:00 PM\n            'available_end': 21*60 + 15,  # 9:15 PM\n            'min_duration': 120,\n        },\n    }\n\n    friends_list = ['Helen', 'Kimberly', 'Patricia']\n\n    # Try permutations in order of largest subset first\n    for subset_size in range(3, 0, -1):\n        for subset in itertools.combinations(friends_list, subset_size):\n            for perm in itertools.permutations(subset):\n                # Create variables and solver\n                variables = {}\n                solver = z3.Solver()\n                prev_time = 540  # Start at Nob Hill at 9:00 AM (540 minutes)\n                prev_location = 'Nob Hill'\n\n                # Create variables and add constraints for each friend in the permutation\n                for friend in perm:\n                    location = friends[friend]['location']\n                    travel_time_val = travel_times[(prev_location, location)]\n                    available_start = friends[friend]['available_start']\n                    available_end = friends[friend]['available_end']\n                    min_duration = friends[friend]['min_duration']\n\n                    start_var = z3.Int(friend + '_start')\n                    end_var = z3.Int(friend + '_end')\n\n                    solver.add(start_var >= prev_time + travel_time_val)\n                    solver.add(start_var >= available_start)\n                    solver.add(end_var >= start_var + min_duration)\n                    solver.add(end_var <= available_end)\n\n                    variables[friend] = (start_var, end_var)\n\n                    prev_time = end_var\n                    prev_location = location\n\n                # Check if the constraints are satisfiable\n                if solver.check() == z3.sat:\n                    model = solver.model()\n                    itinerary = []\n                    for friend in perm:\n                        start = model.evaluate(variables[friend][0]).as_long()\n                        end = model.evaluate(variables[friend][1]).as_long()\n\n                        # Convert to H:MM format\n                        start_h = start // 60\n                        start_m = start % 60\n                        end_h = end // 60\n                        end_m = end % 60\n\n                        start_str = f\"{start_h}:{start_m:02d}\"\n                        end_str = f\"{end_h}:{end_m:02d}\"\n\n                        itinerary.append({\n                            \"action\": \"meet\",\n                            \"location\": friends[friend]['location'],\n                            \"person\": friend,\n                            \"start_time\": start_str,\n                            \"end_time\": end_str\n                        })\n\n                    # Output the result\n                    print(json.dumps({\"itinerary\": itinerary}))\n                    return\n\n    # If no solution found (unlikely given the problem constraints)\n    print(json.dumps({\"itinerary\": []}))\n\nif __name__ == \"__main__\":\n    main()"
+}

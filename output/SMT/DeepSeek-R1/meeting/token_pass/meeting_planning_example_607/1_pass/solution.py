@@ -1,0 +1,143 @@
+from z3 import *
+import json
+
+def main():
+    # Travel times dictionary
+    travel_times = {
+        'Sunset District': {
+            'Russian Hill': 24, 'The Castro': 17, 'Richmond District': 12,
+            'Marina District': 21, 'North Beach': 29, 'Union Square': 30,
+            'Golden Gate Park': 11
+        },
+        'Russian Hill': {
+            'Sunset District': 23, 'The Castro': 21, 'Richmond District': 14,
+            'Marina District': 7, 'North Beach': 5, 'Union Square': 11,
+            'Golden Gate Park': 21
+        },
+        'The Castro': {
+            'Sunset District': 17, 'Russian Hill': 18, 'Richmond District': 16,
+            'Marina District': 21, 'North Beach': 20, 'Union Square': 19,
+            'Golden Gate Park': 11
+        },
+        'Richmond District': {
+            'Sunset District': 11, 'Russian Hill': 13, 'The Castro': 16,
+            'Marina District': 9, 'North Beach': 17, 'Union Square': 21,
+            'Golden Gate Park': 9
+        },
+        'Marina District': {
+            'Sunset District': 19, 'Russian Hill': 8, 'The Castro': 22,
+            'Richmond District': 11, 'North Beach': 11, 'Union Square': 16,
+            'Golden Gate Park': 18
+        },
+        'North Beach': {
+            'Sunset District': 27, 'Russian Hill': 4, 'The Castro': 22,
+            'Richmond District': 18, 'Marina District': 9, 'Union Square': 7,
+            'Golden Gate Park': 22
+        },
+        'Union Square': {
+            'Sunset District': 26, 'Russian Hill': 13, 'The Castro': 19,
+            'Richmond District': 20, 'Marina District': 18, 'North Beach': 10,
+            'Golden Gate Park': 22
+        },
+        'Golden Gate Park': {
+            'Sunset District': 10, 'Russian Hill': 19, 'The Castro': 13,
+            'Richmond District': 7, 'Marina District': 16, 'North Beach': 24,
+            'Union Square': 22
+        }
+    }
+    
+    # Friends data
+    friends = [
+        {'name': 'Karen', 'location': 'Russian Hill', 'avail_start': 20*60+45, 'avail_end': 21*60+45, 'min_duration': 60},
+        {'name': 'Jessica', 'location': 'The Castro', 'avail_start': 15*60+45, 'avail_end': 19*60+30, 'min_duration': 60},
+        {'name': 'Matthew', 'location': 'Richmond District', 'avail_start': 7*60+30, 'avail_end': 15*60+15, 'min_duration': 15},
+        {'name': 'Michelle', 'location': 'Marina District', 'avail_start': 10*60+30, 'avail_end': 18*60+45, 'min_duration': 75},
+        {'name': 'Carol', 'location': 'North Beach', 'avail_start': 12*60, 'avail_end': 17*60, 'min_duration': 90},
+        {'name': 'Stephanie', 'location': 'Union Square', 'avail_start': 10*60+45, 'avail_end': 14*60+15, 'min_duration': 30},
+        {'name': 'Linda', 'location': 'Golden Gate Park', 'avail_start': 10*60+45, 'avail_end': 22*60, 'min_duration': 90}
+    ]
+    
+    n_slots = 7
+    slot_assignment = [Int(f'slot_{i}') for i in range(n_slots)]
+    start_slot = [Int(f'start_{i}') for i in range(n_slots)]
+    end_slot = [Int(f'end_{i}') for i in range(n_slots)]
+    
+    opt = Optimize()
+    
+    # Each slot assignment is between -1 and 6
+    for i in range(n_slots):
+        opt.add(Or([slot_assignment[i] == j for j in range(-1, 7)]))
+    
+    # Each friend appears at most once
+    for fid in range(7):
+        count = Sum([If(slot_assignment[i] == fid, 1, 0) for i in range(n_slots)])
+        opt.add(count <= 1)
+    
+    # Meetings are contiguous from slot0
+    for i in range(1, n_slots):
+        opt.add(Implies(slot_assignment[i] != -1, slot_assignment[i-1] != -1))
+    
+    # Add constraints for each slot
+    for i in range(n_slots):
+        for fid in range(7):
+            condition = (slot_assignment[i] == fid)
+            f = friends[fid]
+            loc = f['location']
+            avail_start = f['avail_start']
+            avail_end = f['avail_end']
+            duration = f['min_duration']
+            
+            # Time window constraints
+            opt.add(If(condition, start_slot[i] >= avail_start, True))
+            opt.add(If(condition, end_slot[i] == start_slot[i] + duration, True))
+            opt.add(If(condition, end_slot[i] <= avail_end, True))
+            
+            # Travel constraints
+            if i == 0:
+                travel = travel_times['Sunset District'][loc]
+                opt.add(If(condition, start_slot[i] >= 540 + travel, True))
+            else:
+                for prev_fid in range(7):
+                    prev_condition = (slot_assignment[i-1] == prev_fid)
+                    prev_loc = friends[prev_fid]['location']
+                    travel = travel_times[prev_loc][loc]
+                    opt.add(If(And(condition, prev_condition), 
+                               start_slot[i] >= end_slot[i-1] + travel, True))
+    
+    # Maximize number of meetings
+    meeting_count = Sum([If(slot_assignment[i] != -1, 1, 0) for i in range(n_slots)])
+    opt.maximize(meeting_count)
+    
+    # Solve
+    if opt.check() == sat:
+        m = opt.model()
+        itinerary = []
+        for i in range(n_slots):
+            fid = m.evaluate(slot_assignment[i]).as_long()
+            if fid == -1:
+                continue
+            f = friends[fid]
+            start_val = m.evaluate(start_slot[i]).as_long()
+            end_val = m.evaluate(end_slot[i]).as_long()
+            
+            # Convert minutes to time string
+            start_h = start_val // 60
+            start_m = start_val % 60
+            end_h = end_val // 60
+            end_m = end_val % 60
+            
+            itinerary.append({
+                'action': 'meet',
+                'location': f['location'],
+                'person': f['name'],
+                'start_time': f'{start_h}:{start_m:02d}',
+                'end_time': f'{end_h}:{end_m:02d}'
+            })
+        
+        result = {'itinerary': itinerary}
+        print(json.dumps(result, indent=2))
+    else:
+        print('{"itinerary": []}')
+
+if __name__ == '__main__':
+    main()

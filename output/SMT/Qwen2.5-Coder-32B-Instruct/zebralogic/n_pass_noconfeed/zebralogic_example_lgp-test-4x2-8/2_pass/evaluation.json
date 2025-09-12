@@ -1,0 +1,74 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"solution\": {\n    \"header\": [\n      \"House\",\n      \"Name\",\n      \"Color\"\n    ],\n    \"rows\": [\n      [\n        \"1\",\n        \"Peter\",\n        \"Unknown\"\n      ],\n      [\n        \"2\",\n        \"Unknown\",\n        \"Unknown\"\n      ],\n      [\n        \"3\",\n        \"Unknown\",\n        \"green\"\n      ],\n      [\n        \"4\",\n        \"Unknown\",\n        \"Unknown\"\n      ]\n    ]\n  }\n}",
+    "pred": [
+        {
+            "House": "1",
+            "Name": "Peter",
+            "Color": "Unknown"
+        },
+        {
+            "House": "2",
+            "Name": "Unknown",
+            "Color": "Unknown"
+        },
+        {
+            "House": "3",
+            "Name": "Unknown",
+            "Color": "green"
+        },
+        {
+            "House": "4",
+            "Name": "Unknown",
+            "Color": "Unknown"
+        }
+    ],
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Peter",
+            "Color": "white"
+        },
+        {
+            "House": "2",
+            "Name": "Alice",
+            "Color": "red"
+        },
+        {
+            "House": "3",
+            "Name": "Arnold",
+            "Color": "green"
+        },
+        {
+            "House": "4",
+            "Name": "Eric",
+            "Color": "yellow"
+        }
+    ],
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "violations": [
+            "House 1 wrong Color: expected 'white', got 'Unknown'",
+            "House 2 wrong Name: expected 'Alice', got 'Unknown'",
+            "House 2 wrong Color: expected 'red', got 'Unknown'",
+            "House 3 wrong Name: expected 'Arnold', got 'Unknown'",
+            "House 4 wrong Name: expected 'Eric', got 'Unknown'",
+            "House 4 wrong Color: expected 'yellow', got 'Unknown'"
+        ]
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 2,
+    "timing": {
+        "api_call_time": 29.31379246711731,
+        "execution_time": 0.07848191261291504,
+        "constraint_eval_time": 6.771087646484375e-05,
+        "pred_extract_time": 1.8291211128234863,
+        "gold_extract_time": 2.288818359375e-05,
+        "total_tokens": 2826,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\nimport json\n\n# Define the variables\nhouses = [Int(f'house_{i}') for i in range(1, 5)]\nnames = ['Peter', 'Arnold', 'Alice', 'Eric']\ncolors = ['yellow', 'green', 'red', 'white']\n\n# Create a solver instance\nsolver = Solver()\n\n# Define the domains for each variable\nfor house in houses:\n    solver.add(house >= 1)\n    solver.add(house <= 4)\n\n# Each house is occupied by a different person\nname_vars = {name: Int(name) for name in names}\ncolor_vars = {color: Int(color) for color in colors}\n\n# Add constraints for unique occupancy\nsolver.add(Distinct([name_vars[name] for name in names]))\nsolver.add(Distinct([color_vars[color] for color in colors]))\n\n# Clue 1: The person whose favorite color is green is in the third house.\nsolver.add(color_vars['green'] == 3)\n\n# Clue 2: Peter is in the first house.\nsolver.add(name_vars['Peter'] == 1)\n\n# Clue 3: There is one house between the person whose favorite color is red and the person who loves yellow.\nsolver.add(Abs(color_vars['red'] - color_vars['yellow']) == 2)\n\n# Clue 4: Arnold is directly left of Eric.\nsolver.add(name_vars['Arnold'] + 1 == name_vars['Eric'])\n\n# Clue 5: Eric is the person who loves yellow.\nsolver.add(name_vars['Eric'] == color_vars['yellow'])\n\n# Solve the problem\nif solver.check() == sat:\n    model = solver.model()\n    \n    # Extract the solution\n    solution = {\n        \"solution\": {\n            \"header\": [\"House\", \"Name\", \"Color\"],\n            \"rows\": []\n        }\n    }\n    \n    house_to_name = {model.evaluate(name_vars[name]).as_long(): name for name in names}\n    house_to_color = {model.evaluate(color_vars[color]).as_long(): color for color in colors}\n    \n    for house in range(1, 5):\n        name = house_to_name.get(house, \"Unknown\")\n        color = house_to_color.get(house, \"Unknown\")\n        solution[\"solution\"][\"rows\"].append([str(house), name, color])\n    \n    # Print the solution as JSON\n    print(json.dumps(solution, indent=2))\nelse:\n    print(\"No solution found\")"
+}

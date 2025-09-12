@@ -1,0 +1,73 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"solution\": {\n    \"header\": [\n      \"House\",\n      \"Name\",\n      \"BookGenre\",\n      \"Smoothie\",\n      \"Birthday\",\n      \"Height\"\n    ],\n    \"rows\": [\n      [\n        \"1\",\n        \"Eric\",\n        \"science fiction\",\n        \"watermelon\",\n        \"april\",\n        \"short\"\n      ],\n      [\n        \"2\",\n        \"Arnold\",\n        \"mystery\",\n        \"desert\",\n        \"sept\",\n        \"average\"\n      ],\n      [\n        \"3\",\n        \"Peter\",\n        \"romance\",\n        \"cherry\",\n        \"jan\",\n        \"very short\"\n      ]\n    ]\n  }\n}",
+    "pred": [
+        {
+            "House": "1",
+            "Name": "Eric",
+            "BookGenre": "science fiction",
+            "Smoothie": "watermelon",
+            "Birthday": "april",
+            "Height": "short"
+        },
+        {
+            "House": "2",
+            "Name": "Arnold",
+            "BookGenre": "mystery",
+            "Smoothie": "desert",
+            "Birthday": "sept",
+            "Height": "average"
+        },
+        {
+            "House": "3",
+            "Name": "Peter",
+            "BookGenre": "romance",
+            "Smoothie": "cherry",
+            "Birthday": "jan",
+            "Height": "very short"
+        }
+    ],
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Eric",
+            "BookGenre": "science fiction",
+            "Smoothie": "watermelon",
+            "Birthday": "april",
+            "Height": "short"
+        },
+        {
+            "House": "2",
+            "Name": "Arnold",
+            "BookGenre": "mystery",
+            "Smoothie": "desert",
+            "Birthday": "sept",
+            "Height": "average"
+        },
+        {
+            "House": "3",
+            "Name": "Peter",
+            "BookGenre": "romance",
+            "Smoothie": "cherry",
+            "Birthday": "jan",
+            "Height": "very short"
+        }
+    ],
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 474.1756784915924,
+        "execution_time": 0.0836493968963623,
+        "constraint_eval_time": 7.796287536621094e-05,
+        "pred_extract_time": 1.236816644668579,
+        "gold_extract_time": 1.3589859008789062e-05,
+        "total_tokens": 30017,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\nimport json\n\nsolver = Solver()\n\n# Define variables for each house (1, 2, 3) and each attribute\nname1, name2, name3 = Ints('name1 name2 name3')\nbg1, bg2, bg3 = Ints('bg1 bg2 bg3')  # BookGenre\nsm1, sm2, sm3 = Ints('sm1 sm2 sm3')  # Smoothie\nbd1, bd2, bd3 = Ints('bd1 bd2 bd3')  # Birthday\nht1, ht2, ht3 = Ints('ht1 ht2 ht3')  # Height\n\n# Add constraints for distinctness and valid ranges for each attribute\nfor var in [name1, name2, name3]:\n    solver.add(And(0 <= var, var <= 2))\nsolver.add(Distinct(name1, name2, name3))\n\nfor var in [bg1, bg2, bg3]:\n    solver.add(And(0 <= var, var <= 2))\nsolver.add(Distinct(bg1, bg2, bg3))\n\nfor var in [sm1, sm2, sm3]:\n    solver.add(And(0 <= var, var <= 2))\nsolver.add(Distinct(sm1, sm2, sm3))\n\nfor var in [bd1, bd2, bd3]:\n    solver.add(And(0 <= var, var <= 2))\nsolver.add(Distinct(bd1, bd2, bd3))\n\nfor var in [ht1, ht2, ht3]:\n    solver.add(And(0 <= var, var <= 2))\nsolver.add(Distinct(ht1, ht2, ht3))\n\n# Add constraints based on clues\n# Clue 1: Cherry smoothie not in second house\nsolver.add(sm2 != 2)\n\n# Clue 2: Arnold loves mystery books\nsolver.add(Or(\n    And(name1 == 1, bg1 == 1),\n    And(name2 == 1, bg2 == 1),\n    And(name3 == 1, bg3 == 1)\n))\n\n# Clue 3: Birthday in January not in first house\nsolver.add(bd1 != 1)\n\n# Clue 4: Very short person loves romance books\nsolver.add(Implies(ht1 == 1, bg1 == 2))\nsolver.add(Implies(ht2 == 1, bg2 == 2))\nsolver.add(Implies(ht3 == 1, bg3 == 2))\n\n# Clue 5: Mystery book lover's birthday is September\nsolver.add(Implies(bg1 == 1, bd1 == 2))\nsolver.add(Implies(bg2 == 1, bd2 == 2))\nsolver.add(Implies(bg3 == 1, bd3 == 2))\n\n# Clue 6: Average height person loves desert smoothie\nsolver.add(Implies(ht1 == 0, sm1 == 1))\nsolver.add(Implies(ht2 == 0, sm2 == 1))\nsolver.add(Implies(ht3 == 0, sm3 == 1))\n\n# Clue 7: Eric is in the first house\nsolver.add(name1 == 2)\n\n# Clue 8: Watermelon lover is short\nsolver.add(Implies(sm1 == 0, ht1 == 2))\nsolver.add(Implies(sm2 == 0, ht2 == 2))\nsolver.add(Implies(sm3 == 0, ht3 == 2))\n\n# Clue 9: Watermelon lover is Eric (in house 1)\nsolver.add(sm1 == 0)\n\n# Solve the constraints\nif solver.check() == sat:\n    model = solver.model()\n    \n    # Mapping from integer values to strings\n    name_map = {0: 'Peter', 1: 'Arnold', 2: 'Eric'}\n    bookgenre_map = {0: 'science fiction', 1: 'mystery', 2: 'romance'}\n    smoothie_map = {0: 'watermelon', 1: 'desert', 2: 'cherry'}\n    birthday_map = {0: 'april', 1: 'jan', 2: 'sept'}\n    height_map = {0: 'average', 1: 'very short', 2: 'short'}\n    \n    # Extract solution data\n    rows = []\n    for i in range(3):\n        house_num = i + 1\n        name_val = model.eval([name1, name2, name3][i]).as_long()\n        bg_val = model.eval([bg1, bg2, bg3][i]).as_long()\n        sm_val = model.eval([sm1, sm2, sm3][i]).as_long()\n        bd_val = model.eval([bd1, bd2, bd3][i]).as_long()\n        ht_val = model.eval([ht1, ht2, ht3][i]).as_long()\n        \n        rows.append([\n            str(house_num),\n            name_map[name_val],\n            bookgenre_map[bg_val],\n            smoothie_map[sm_val],\n            birthday_map[bd_val],\n            height_map[ht_val]\n        ])\n    \n    solution = {\n        \"solution\": {\n            \"header\": [\"House\", \"Name\", \"BookGenre\", \"Smoothie\", \"Birthday\", \"Height\"],\n            \"rows\": rows\n        }\n    }\n    \n    print(json.dumps(solution, indent=2))\nelse:\n    print(\"No solution found.\")"
+}

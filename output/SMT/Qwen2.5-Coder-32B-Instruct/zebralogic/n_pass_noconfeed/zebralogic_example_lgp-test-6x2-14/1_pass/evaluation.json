@@ -1,0 +1,56 @@
+{
+    "has_execution_error": true,
+    "has_no_plan": false,
+    "execution_output": null,
+    "pred": null,
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Peter",
+            "Cigar": "dunhill"
+        },
+        {
+            "House": "2",
+            "Name": "Arnold",
+            "Cigar": "yellow monster"
+        },
+        {
+            "House": "3",
+            "Name": "Bob",
+            "Cigar": "pall mall"
+        },
+        {
+            "House": "4",
+            "Name": "Alice",
+            "Cigar": "blends"
+        },
+        {
+            "House": "5",
+            "Name": "Carol",
+            "Cigar": "blue master"
+        },
+        {
+            "House": "6",
+            "Name": "Eric",
+            "Cigar": "prince"
+        }
+    ],
+    "status": "Error",
+    "violated_constraint": {
+        "invalid_output": "No valid output structure found"
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 30.108420848846436,
+        "execution_time": 0.08132815361022949,
+        "constraint_eval_time": 1.1920928955078125e-06,
+        "pred_extract_time": 1.9073486328125e-06,
+        "gold_extract_time": 6.67572021484375e-06,
+        "total_tokens": 2692,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\n\ndef solve_puzzle():\n    # Define the variables\n    names = [\"Carol\", \"Peter\", \"Eric\", \"Arnold\", \"Alice\", \"Bob\"]\n    cigars = [\"blends\", \"yellow monster\", \"pall mall\", \"blue master\", \"dunhill\", \"prince\"]\n    houses = range(1, 7)\n\n    # Create dictionaries to map names and cigars to their respective house numbers\n    name_vars = {name: Int(name) for name in names}\n    cigar_vars = {cigar: Int(cigar) for cigar in cigars}\n\n    # Create the solver\n    solver = Solver()\n\n    # Add constraints for each name and cigar to be in a unique house\n    for var in list(name_vars.values()) + list(cigar_vars.values()):\n        solver.add(var >= 1)\n        solver.add(var <= 6)\n\n    for i in range(len(names)):\n        for j in range(i + 1, len(names)):\n            solver.add(name_vars[names[i]] != name_vars[names[j]])\n            solver.add(cigar_vars[cigars[i]] != cigar_vars[cigars[j]])\n\n    # Clue 1: Arnold is somewhere to the left of the person who smokes many unique blends.\n    solver.add(name_vars[\"Arnold\"] < cigar_vars[\"blends\"])\n\n    # Clue 2: The person who smokes Blue Master is in the fifth house.\n    solver.add(cigar_vars[\"blue master\"] == 5)\n\n    # Clue 3: Arnold is somewhere to the left of the Prince smoker.\n    solver.add(name_vars[\"Arnold\"] < cigar_vars[\"prince\"])\n\n    # Clue 4: There is one house between the person who smokes Yellow Monster and the person who smokes many unique blends.\n    solver.add(Abs(cigar_vars[\"yellow monster\"] - cigar_vars[\"blends\"]) == 2)\n\n    # Clue 5: The person partial to Pall Mall is in the third house.\n    solver.add(cigar_vars[\"pall mall\"] == 3)\n\n    # Clue 6: Eric is in the sixth house.\n    solver.add(name_vars[\"Eric\"] == 6)\n\n    # Clue 7: Carol and Eric are next to each other.\n    solver.add(Abs(name_vars[\"Carol\"] - name_vars[\"Eric\"]) == 1)\n\n    # Clue 8: Peter is in the first house.\n    solver.add(name_vars[\"Peter\"] == 1)\n\n    # Clue 9: Bob is in the third house.\n    solver.add(name_vars[\"Bob\"] == 3)\n\n    # Solve the problem\n    if solver.check() == sat:\n        model = solver.model()\n        solution = []\n        for house in houses:\n            name = next(name for name, var in name_vars.items() if model.evaluate(var) == house).as_string()[1:-1]\n            cigar = next(cigar for cigar, var in cigar_vars.items() if model.evaluate(var) == house).as_string()[1:-1]\n            solution.append([str(house), name, cigar])\n\n        return {\n            \"solution\": {\n                \"header\": [\"House\", \"Name\", \"Cigar\"],\n                \"rows\": solution\n            }\n        }\n\n    else:\n        return None\n\n# Output the solution as JSON\nimport json\nprint(json.dumps(solve_puzzle(), indent=2))"
+}

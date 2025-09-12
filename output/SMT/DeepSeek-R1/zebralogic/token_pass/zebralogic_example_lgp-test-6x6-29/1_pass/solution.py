@@ -1,0 +1,129 @@
+import json
+from z3 import *
+
+def main():
+    s = Solver()
+    
+    # Define variables for each attribute's house number
+    names = ['Arnold', 'Carol', 'Peter', 'Eric', 'Bob', 'Alice']
+    name_vars = {name: Int(f'{name}_house') for name in names}
+    
+    styles = ['ranch', 'colonial', 'modern', 'craftsman', 'mediterranean', 'victorian']
+    style_vars = {style: Int(f'{style}_house') for style in styles}
+    
+    foods = ['pizza', 'stew', 'spaghetti', 'grilled cheese', 'stir fry', 'soup']
+    food_vars = {food: Int(f'{food}_house') for food in foods}
+    
+    vacations = ['cultural', 'cruise', 'mountain', 'camping', 'city', 'beach']
+    vacation_vars = {vacation: Int(f'{vacation}_house') for vacation in vacations}
+    
+    heights = ['average', 'very tall', 'very short', 'short', 'tall', 'super tall']
+    height_vars = {height: Int(f'{height}_house') for height in heights}
+    
+    cigars = ['yellow monster', 'prince', 'dunhill', 'pall mall', 'blue master', 'blends']
+    cigar_vars = {cigar: Int(f'{cigar}_house') for cigar in cigars}
+    
+    all_vars = list(name_vars.values()) + list(style_vars.values()) + list(food_vars.values()) + \
+               list(vacation_vars.values()) + list(height_vars.values()) + list(cigar_vars.values())
+    
+    # Each attribute must be between 1 and 6
+    for var in all_vars:
+        s.add(var >= 1, var <= 6)
+    
+    # All attributes within each category must be distinct
+    s.add(Distinct(list(name_vars.values())))
+    s.add(Distinct(list(style_vars.values())))
+    s.add(Distinct(list(food_vars.values())))
+    s.add(Distinct(list(vacation_vars.values())))
+    s.add(Distinct(list(height_vars.values())))
+    s.add(Distinct(list(cigar_vars.values())))
+    
+    # Add constraints from clues
+    s.add(name_vars['Alice'] == 5)  # Clue 1
+    s.add(food_vars['stir fry'] == style_vars['colonial'])  # Clue 2
+    # Clue 3: Alice loves spaghetti eater -> handled via clue 14
+    s.add(food_vars['stew'] == name_vars['Arnold'])  # Clue 4
+    s.add(Or(
+        height_vars['average'] - name_vars['Peter'] == 2,
+        name_vars['Peter'] - height_vars['average'] == 2
+    ))  # Clue 5
+    s.add(style_vars['craftsman'] != 3)  # Clue 6
+    s.add(height_vars['average'] == food_vars['stir fry'])  # Clue 7
+    s.add(vacation_vars['beach'] == style_vars['ranch'])  # Clue 8
+    s.add(name_vars['Eric'] == 4)  # Clue 9
+    s.add(Or(
+        style_vars['colonial'] - vacation_vars['camping'] == 2,
+        vacation_vars['camping'] - style_vars['colonial'] == 2
+    ))  # Clue 10
+    s.add(vacation_vars['mountain'] == cigar_vars['yellow monster'])  # Clue 11
+    s.add(vacation_vars['mountain'] == height_vars['very tall'])  # Clue 12
+    s.add(Or(
+        vacation_vars['mountain'] - cigar_vars['dunhill'] == 1,
+        cigar_vars['dunhill'] - vacation_vars['mountain'] == 1
+    ))  # Clue 13
+    # Clue 14: Loves spaghetti eater is in Victorian house -> with Clue 3, Alice is in Victorian
+    s.add(style_vars['victorian'] == name_vars['Alice'])
+    s.add(height_vars['tall'] == vacation_vars['beach'])  # Clue 15
+    s.add(height_vars['tall'] < style_vars['victorian'])  # Clue 16
+    s.add(food_vars['stir fry'] + 1 == name_vars['Bob'])  # Clue 17
+    s.add(style_vars['modern'] < name_vars['Alice'])  # Clue 18
+    s.add(style_vars['craftsman'] < height_vars['short'])  # Clue 19
+    s.add(food_vars['stir fry'] < cigar_vars['prince'])  # Clue 20
+    s.add(Or(
+        food_vars['grilled cheese'] - height_vars['super tall'] == 3,
+        height_vars['super tall'] - food_vars['grilled cheese'] == 3
+    ))  # Clue 21
+    s.add(style_vars['ranch'] == cigar_vars['blue master'])  # Clue 22
+    s.add(cigar_vars['blends'] + 1 == cigar_vars['blue master'])  # Clue 23
+    s.add(vacation_vars['cultural'] == food_vars['pizza'])  # Clue 24
+    s.add(food_vars['pizza'] < vacation_vars['cruise'])  # Clue 25
+    
+    if s.check() == sat:
+        m = s.model()
+        solution = []
+        for house in range(1, 7):
+            row = [str(house)]
+            # Find name
+            for name, var in name_vars.items():
+                if m.evaluate(var).as_long() == house:
+                    row.append(name)
+                    break
+            # Find style
+            for style, var in style_vars.items():
+                if m.evaluate(var).as_long() == house:
+                    row.append(style)
+                    break
+            # Find food
+            for food, var in food_vars.items():
+                if m.evaluate(var).as_long() == house:
+                    row.append(food)
+                    break
+            # Find vacation
+            for vacation, var in vacation_vars.items():
+                if m.evaluate(var).as_long() == house:
+                    row.append(vacation)
+                    break
+            # Find height
+            for height, var in height_vars.items():
+                if m.evaluate(var).as_long() == house:
+                    row.append(height)
+                    break
+            # Find cigar
+            for cigar, var in cigar_vars.items():
+                if m.evaluate(var).as_long() == house:
+                    row.append(cigar)
+                    break
+            solution.append(row)
+        
+        result = {
+            "solution": {
+                "header": ["House", "Name", "HouseStyle", "Food", "Vacation", "Height", "Cigar"],
+                "rows": solution
+            }
+        }
+        print(json.dumps(result, indent=2))
+    else:
+        print("No solution found")
+
+if __name__ == '__main__':
+    main()

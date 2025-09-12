@@ -1,0 +1,105 @@
+import json
+from z3 import *
+
+def main():
+    # Create solver
+    solver = Solver()
+    
+    # Define houses
+    houses = [1, 2, 3, 4]
+    
+    # Define attributes
+    names = ['Peter', 'Arnold', 'Alice', 'Eric']
+    colors = ['yellow', 'green', 'red', 'white']
+    
+    # Create variables for each attribute per house
+    name_vars = [Int(f'name_{i}') for i in houses]
+    color_vars = [Int(f'color_{i}') for i in houses]
+    
+    # Constraint: All names are distinct and within valid range
+    for i in range(len(names)):
+        solver.add(Distinct(name_vars))
+        solver.add(And([name_vars[j] >= 0 for j in houses]))
+        solver.add(And([name_vars[j] < len(names) for j in houses]))
+    
+    # Constraint: All colors are distinct and within valid range
+    for i in range(len(colors)):
+        solver.add(Distinct(color_vars))
+        solver.add(And([color_vars[j] >= 0 for j in houses]))
+        solver.add(And([color_vars[j] < len(colors) for j in houses]))
+    
+    # Clue 1: The person whose favorite color is green is in the third house.
+    green_index = colors.index('green')
+    solver.add(color_vars[2] == green_index)  # House 3 is index 2
+    
+    # Clue 2: Peter is in the first house.
+    peter_index = names.index('Peter')
+    solver.add(name_vars[0] == peter_index)  # House 1 is index 0
+    
+    # Clue 3: There is one house between the person whose favorite color is red and the person who loves yellow.
+    red_index = colors.index('red')
+    yellow_index = colors.index('yellow')
+    
+    # Create all possible positions for red and yellow with one house between
+    red_yellow_constraints = []
+    for i in range(len(houses)):
+        for j in range(len(houses)):
+            if abs(i - j) == 2:  # Exactly one house between
+                red_yellow_constraints.append(And(
+                    color_vars[i] == red_index,
+                    color_vars[j] == yellow_index
+                ))
+    solver.add(Or(red_yellow_constraints))
+    
+    # Clue 4: Arnold is directly left of Eric.
+    arnold_index = names.index('Arnold')
+    eric_index = names.index('Eric')
+    
+    # Arnold must be in position i and Eric in position i+1
+    arnold_eric_constraints = []
+    for i in range(len(houses) - 1):
+        arnold_eric_constraints.append(And(
+            name_vars[i] == arnold_index,
+            name_vars[i + 1] == eric_index
+        ))
+    solver.add(Or(arnold_eric_constraints))
+    
+    # Clue 5: Eric is the person who loves yellow.
+    # This means Eric's house has yellow color
+    solver.add(Exists([i for i in houses], And(
+        name_vars[i] == eric_index,
+        color_vars[i] == yellow_index
+    )))
+    
+    # Check if solution exists
+    if solver.check() == sat:
+        model = solver.model()
+        
+        # Prepare solution data
+        solution_data = {
+            "solution": {
+                "header": ["House", "Name", "Color"],
+                "rows": []
+            }
+        }
+        
+        # Extract values from model
+        for house in houses:
+            house_index = house - 1
+            name_idx = model.evaluate(name_vars[house_index]).as_long()
+            color_idx = model.evaluate(color_vars[house_index]).as_long()
+            
+            row = [
+                str(house),
+                names[name_idx],
+                colors[color_idx]
+            ]
+            solution_data["solution"]["rows"].append(row)
+        
+        # Output as JSON
+        print(json.dumps(solution_data, indent=2))
+    else:
+        print('{"error": "No solution found"}')
+
+if __name__ == "__main__":
+    main()

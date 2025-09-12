@@ -1,0 +1,83 @@
+```python
+import z3
+import json
+
+def main():
+    solver = z3.Solver()
+    
+    # Define attributes as enums for clarity
+    Name = z3.EnumSort('Name', ['Arnold', 'Eric'])
+    Education = z3.EnumSort('Education', ['associate', 'high school'])
+    Height = z3.EnumSort('Height', ['short', 'very short'])
+    Food = z3.EnumSort('Food', ['grilled cheese', 'pizza'])
+    Drink = z3.EnumSort('Drink', ['tea', 'water'])
+    
+    # Create constants for each attribute in each house
+    n1, n2 = z3.Consts('n1 n2', Name)
+    e1, e2 = z3.Consts('e1 e2', Education)
+    h1, h2 = z3.Consts('h1 h2', Height)
+    f1, f2 = z3.Consts('f1 f2', Food)
+    d1, d2 = z3.Consts('d1 d2', Drink)
+    
+    # All attributes must be unique per category
+    solver.add(z3.Distinct(n1, n2))
+    solver.add(z3.Distinct(e1, e2))
+    solver.add(z3.Distinct(h1, h2))
+    solver.add(z3.Distinct(f1, f2))
+    solver.add(z3.Distinct(d1, d2))
+    
+    # Clue 1: The person who is very short is the person who is a pizza lover.
+    solver.add(z3.ForAll([h1, f1], z3.Implies(h1 == z3.Const('very short', Height), f1 == z3.Const('pizza', Food))))
+    solver.add(z3.ForAll([h2, f2], z3.Implies(h2 == z3.Const('very short', Height), f2 == z3.Const('pizza', Food))))
+    
+    # Clue 2: The person who loves eating grilled cheese is in the second house.
+    solver.add(f2 == z3.Const('grilled cheese', Food))
+    
+    # Clue 3: The person with a high school diploma is the person who is a pizza lover.
+    solver.add(z3.ForAll([e1, f1], z3.Implies(e1 == z3.Const('high school', Education), f1 == z3.Const('pizza', Food))))
+    solver.add(z3.ForAll([e2, f2], z3.Implies(e2 == z3.Const('high school', Education), f2 == z3.Const('pizza', Food))))
+    
+    # Clue 4: The tea drinker is the person who loves eating grilled cheese.
+    solver.add(z3.ForAll([d1, f1], z3.Implies(d1 == z3.Const('tea', Drink), f1 == z3.Const('grilled cheese', Food))))
+    solver.add(z3.ForAll([d2, f2], z3.Implies(d2 == z3.Const('tea', Drink), f2 == z3.Const('grilled cheese', Food))))
+    
+    # Clue 5: Arnold is the person who is a pizza lover.
+    solver.add(z3.ForAll([n1, f1], z3.Implies(n1 == z3.Const('Arnold', Name), f1 == z3.Const('pizza', Food))))
+    solver.add(z3.ForAll([n2, f2], z3.Implies(n2 == z3.Const('Arnold', Name), f2 == z3.Const('pizza', Food))))
+    
+    # Check satisfiability
+    if solver.check() == z3.sat:
+        model = solver.model()
+        
+        # Extract values from model
+        house1 = [
+            '1',
+            str(model.eval(n1)),
+            str(model.eval(e1)),
+            str(model.eval(h1)),
+            str(model.eval(f1)),
+            str(model.eval(d1))
+        ]
+        house2 = [
+            '2',
+            str(model.eval(n2)),
+            str(model.eval(e2)),
+            str(model.eval(h2)),
+            str(model.eval(f2)),
+            str(model.eval(d2))
+        ]
+        
+        # Prepare JSON output
+        solution = {
+            "solution": {
+                "header": ["House", "Name", "Education", "Height", "Food", "Drink"],
+                "rows": [house1, house2]
+            }
+        }
+        print(json.dumps(solution, indent=2))
+    else:
+        print('No solution found')
+
+if __name__ == '__main__':
+    main()
+```

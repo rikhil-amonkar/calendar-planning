@@ -1,0 +1,158 @@
+from z3 import *
+import json
+
+def main():
+    # Convert all times to minutes since 9:00 AM (which is 0 minutes)
+    travel_times = {
+        ('The Castro', 'Alamo Square'): 8,
+        ('The Castro', 'Union Square'): 19,
+        ('The Castro', 'Chinatown'): 20,
+        ('Alamo Square', 'The Castro'): 8,
+        ('Alamo Square', 'Union Square'): 14,
+        ('Alamo Square', 'Chinatown'): 16,
+        ('Union Square', 'The Castro'): 19,
+        ('Union Square', 'Alamo Square'): 15,
+        ('Union Square', 'Chinatown'): 7,
+        ('Chinatown', 'The Castro'): 22,
+        ('Chinatown', 'Alamo Square'): 17,
+        ('Chinatown', 'Union Square'): 7
+    }
+    
+    # Meeting constraints
+    emily_window = (11*60 + 45, 15*60 + 15)  # 11:45 to 15:15
+    emily_duration = 105
+    barbara_window = (16*60 + 45, 18*60 + 15) # 16:45 to 18:15
+    barbara_duration = 60
+    william_window = (17*60 + 15, 19*60)      # 17:15 to 19:00
+    william_duration = 105
+    
+    # Create solver
+    s = Optimize()
+    
+    # Decision variables for meeting start times and durations
+    emily_start = Int('emily_start')
+    emily_end = Int('emily_end')
+    barbara_start = Int('barbara_start')
+    barbara_end = Int('barbara_end')
+    william_start = Int('william_start')
+    william_end = Int('william_end')
+    
+    # Meeting duration constraints
+    s.add(emily_end == emily_start + emily_duration)
+    s.add(barbara_end == barbara_start + barbara_duration)
+    s.add(william_end == william_start + william_duration)
+    
+    # Time window constraints
+    s.add(emily_start >= emily_window[0])
+    s.add(emily_end <= emily_window[1])
+    s.add(barbara_start >= barbara_window[0])
+    s.add(barbara_end <= barbara_window[1])
+    s.add(william_start >= william_window[0])
+    s.add(william_end <= william_window[1])
+    
+    # Travel time constraints
+    # We start at The Castro at 9:00 (0 minutes)
+    start_location = 'The Castro'
+    
+    # Create booleans for meeting inclusion
+    meet_emily = Bool('meet_emily')
+    meet_barbara = Bool('meet_barbara')
+    meet_william = Bool('meet_william')
+    
+    # If we meet someone, their start time must be after travel from previous location
+    # We need to consider all possible sequences, so we'll use implications
+    
+    # Possible orders: E->B->W, E->W->B, B->E->W, B->W->E, W->E->B, W->B->E
+    # And also cases where we only meet some subset
+    
+    # Helper function for travel time
+    def travel_time(from_loc, to_loc):
+        return travel_times[(from_loc, to_loc)]
+    
+    # Constraints for Emily
+    s.add(Implies(meet_emily, emily_start >= travel_time(start_location, 'Alamo Square')))
+    
+    # Constraints for Barbara
+    s.add(Implies(And(meet_emily, meet_barbara), 
+                  barbara_start >= emily_end + travel_time('Alamo Square', 'Union Square'))))
+    s.add(Implies(And(meet_william, meet_barbara, Not(meet_emily)),
+                  barbara_start >= william_end + travel_time('Chinatown', 'Union Square'))))
+    s.add(Implies(And(meet_barbara, Not(meet_emily), Not(meet_william)),
+                  barbara_start >= travel_time(start_location, 'Union Square')))
+    
+    # Constraints for William
+    s.add(Implies(And(meet_emily, meet_william),
+                  william_start >= emily_end + travel_time('Alamo Square', 'Chinatown'))))
+    s.add(Implies(And(meet_barbara, meet_william),
+                  william_start >= barbara_end + travel_time('Union Square', 'Chinatown'))))
+    s.add(Implies(And(meet_william, Not(meet_emily), Not(meet_barbara)),
+                  william_start >= travel_time(start_location, 'Chinatown'))))
+    
+    # Additional constraints for other orderings
+    s.add(Implies(And(meet_barbara, meet_emily, Not(meet_william)),
+                  emily_start >= barbara_end + travel_time('Union Square', 'Alamo Square'))))
+    s.add(Implies(And(meet_william, meet_emily, Not(meet_barbara)),
+                  emily_start >= william_end + travel_time('Chinatown', 'Alamo Square'))))
+    s.add(Implies(And(meet_william, meet_barbara, Not(meet_emily)),
+                  barbara_start >= william_end + travel_time('Chinatown', 'Union Square'))))
+    s.add(Implies(And(meet_barbara, meet_william, Not(meet_emily)),
+                  william_start >= barbara_end + travel_time('Union Square', 'Chinatown'))))
+    
+    # Maximize the number of meetings
+    s.maximize(If(meet_emily, 1, 0) + If(meet_barbara, 1, 0) + If(meet_william, 1, 0))
+    
+    # Check and get model
+    if s.check() == sat:
+        m = s.model()
+        itinerary = []
+        
+        # Helper function to convert minutes to time string
+        def min_to_time(min_val):
+            hours = min_val // 60
+            minutes = min_val % 60
+            return f"{hours}:{minutes:02d}"
+        
+        # Add meetings that are scheduled
+        if is_true(m.eval(meet_emily)):
+            start = m.eval(emily_start).as_long()
+            end = m.eval(emily_end).as_long()
+            itinerary.append({
+                "action": "meet",
+                "location": "Alamo Square",
+                "person": "Emily",
+                "start_time": min_to_time(start),
+                "end_time": min_to_time(end)
+            })
+        
+        if is_true(m.eval(meet_barbara)):
+            start = m.eval(barbara_start).as_long()
+            end = m.eval(barbara_end).as_long()
+            itinerary.append({
+                "action": "meet",
+                "location": "Union Square",
+                "person": "Barbara",
+                "start_time": min_to_time(start),
+                "end_time": min_to_time(end)
+            })
+        
+        if is_true(m.eval(meet_william)):
+            start = m.eval(william_start).as_long()
+            end = m.eval(william_end).as_long()
+            itinerary.append({
+                "action": "meet",
+                "location": "Chinatown",
+                "person": "William",
+                "start_time": min_to_time(start),
+                "end_time": min_to_time(end)
+            })
+        
+        # Sort itinerary by start time
+        itinerary.sort(key=lambda x: x['start_time'])
+        
+        result = {"itinerary": itinerary}
+        print(json.dumps(result, indent=2))
+    else:
+        print('{"itinerary": []}')
+
+if __name__ == "__main__":
+    main()

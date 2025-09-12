@@ -1,0 +1,57 @@
+from z3 import *
+
+def main():
+    # Initialize solver
+    opt = Optimize()
+    
+    # Day variable: 0=Monday, 1=Tuesday, 2=Wednesday
+    d = Int('d')
+    # Start time in minutes from 9:00 (0 to 480, but meeting must end by 17:00 so max start is 420)
+    s = Int('s')
+    
+    # Constraints for day and start time
+    opt.add(d >= 0, d <= 2)
+    opt.add(s >= 0, s <= 420)
+    
+    # Busy intervals for Roy each day (each interval is [start, end) in minutes from 9:00)
+    monday_busy = [(60, 150), (180, 240), (300, 330), (360, 480)]
+    tuesday_busy = [(90, 150), (180, 330), (360, 390), (420, 480)]
+    wednesday_busy = [(30, 150), (210, 360), (330, 390), (450, 480)]
+    
+    # Add constraints for each day's busy intervals
+    for start, end in monday_busy:
+        opt.add(If(d == 0, Or(s + 60 <= start, s >= end), True))
+    for start, end in tuesday_busy:
+        opt.add(If(d == 1, Or(s + 60 <= start, s >= end), True))
+    for start, end in wednesday_busy:
+        opt.add(If(d == 2, Or(s + 60 <= start, s >= end), True))
+    
+    # Minimize day and start time lexicographically
+    objective = d * 1000 + s
+    opt.minimize(objective)
+    
+    # Check satisfiability
+    if opt.check() == sat:
+        m = opt.model()
+        day_val = m.evaluate(d).as_long()
+        start_minutes = m.evaluate(s).as_long()
+        
+        # Convert day number to name
+        days = ["Monday", "Tuesday", "Wednesday"]
+        day_name = days[day_val]
+        
+        # Calculate start and end times
+        start_hour = 9 + start_minutes // 60
+        start_minute = start_minutes % 60
+        end_minutes = start_minutes + 60
+        end_hour = 9 + end_minutes // 60
+        end_minute = end_minutes % 60
+        
+        # Format output
+        print(f"{day_name}")
+        print(f"{{{start_hour:02d}:{start_minute:02d}:{end_hour:02d}:{end_minute:02d}}}")
+    else:
+        print("No solution found")
+
+if __name__ == "__main__":
+    main()

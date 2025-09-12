@@ -1,0 +1,87 @@
+We are given 4 houses, each with a name and a house style.
+ We have two attributes: Name and HouseStyle.
+ The names are: Arnold, Peter, Eric, Alice.
+ The house styles are: victorian, ranch, colonial, craftsman.
+
+ We are given clues:
+ 1. Eric is the person in a Craftsman-style house.
+ 2. The person in a ranch-style home is directly left of the person residing in a Victorian house.
+ 3. Eric is in the third house.
+ 4. Arnold is in the fourth house.
+ 5. The person residing in a Victorian house is Alice.
+
+ Since Eric is in the third house (clue 3) and in a Craftsman (clue 1), we can fix:
+   House 3: Name = Eric, HouseStyle = craftsman
+
+ Also, Arnold is in the fourth house (clue 4):
+   House 4: Name = Arnold
+
+ And the Victorian house is occupied by Alice (clue 5).
+
+ Now, clue 2: The ranch-style home is directly left of the Victorian house.
+
+ We have four houses. Let the positions be 1,2,3,4.
+
+ We know:
+   House 3: craftsman (from clue 1 and 3)
+   House 4: Arnold (name) and we don't know the style yet.
+
+ The Victorian house must be either house 1,2,3,4, but we know it is Alice's house.
+ But note: Eric is in house 3 and craftsman, so Victorian cannot be house 3.
+ Also, since ranch is directly left of Victorian, Victorian cannot be house 1 (because there is no house left of 1).
+
+ Therefore, Victorian can be in house 2,3,4. But house 3 is craftsman, so Victorian must be in house 2 or 4.
+
+ However, if Victorian is in house 2, then ranch must be in house 1.
+ If Victorian is in house 4, then ranch must be in house 3. But house 3 is craftsman, so it cannot be ranch.
+ Therefore, Victorian cannot be in house 4. Thus, Victorian must be in house 2, and ranch must be in house 1.
+
+ So we have:
+   House 1: ranch
+   House 2: victorian (and Alice, from clue 5)
+   House 3: craftsman, Eric
+   House 4: Arnold, and the remaining style is colonial.
+
+ But let's verify with Z3 to make sure we are building the model correctly.
+
+ However, the problem requires using Z3 to solve it. So we will set up the problem in Z3.
+
+ Steps:
+  We have two arrays for the four houses: one for name and one for house style.
+
+  We'll create two arrays of Z3 constants for the attributes.
+
+  Let names = [Name1, Name2, Name3, Name4]
+  Let styles = [Style1, Style2, Style3, Style4]
+
+  We'll create an enum for names and an enum for styles.
+
+  Constraints:
+    All names are distinct, all styles are distinct.
+
+  Clue 1: Eric is in a craftsman house -> There exists an i such that names[i] = Eric and styles[i] = craftsman.
+  But clue 3: Eric is in third house -> names[2] = Eric (0-indexed, so index2 is house3)
+  So we can set: names[2] = Eric, styles[2] = craftsman.
+
+  Clue 4: Arnold is in fourth house -> names[3] = Arnold.
+
+  Clue 5: The Victorian house is Alice -> There exists an i such that styles[i] = victorian and names[i] = Alice.
+
+  Clue 2: The ranch-style home is directly left of the Victorian house.
+      This means: There exists an i (from 1 to 3) such that styles[i-1] = ranch and styles[i] = victorian.
+
+  Also, we have the remaining name Peter and the remaining style colonial.
+
+  We can set up the problem with Z3 and solve.
+
+  Since the problem is small, we can use Z3 to assign the remaining attributes.
+
+  We'll create a solver, add the constraints, and then output the solution in the required JSON format.
+
+  Note: We are using 0-indexed for our arrays, so:
+      House 1 -> index0
+      House 2 -> index1
+      House 3 -> index2
+      House 4 -> index3
+
+  Let's code accordingly.

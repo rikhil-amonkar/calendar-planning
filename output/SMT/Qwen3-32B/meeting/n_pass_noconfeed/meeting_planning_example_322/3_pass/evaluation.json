@@ -1,0 +1,56 @@
+{
+    "has_execution_error": true,
+    "has_no_plan": false,
+    "execution_output": null,
+    "pred": null,
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Chinatown",
+                "person": "Michelle",
+                "start_time": "9:30",
+                "end_time": "9:45"
+            },
+            {
+                "action": "meet",
+                "location": "Presidio",
+                "person": "George",
+                "start_time": "10:30",
+                "end_time": "11:00"
+            },
+            {
+                "action": "meet",
+                "location": "Fisherman's Wharf",
+                "person": "Robert",
+                "start_time": "11:19",
+                "end_time": "11:49"
+            },
+            {
+                "action": "meet",
+                "location": "Russian Hill",
+                "person": "William",
+                "start_time": "18:30",
+                "end_time": "20:15"
+            }
+        ]
+    },
+    "status": "Error",
+    "violated_constraint": {
+        "missing_itinerary": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 3,
+    "timing": {
+        "api_call_time": 99.02033162117004,
+        "execution_time": 0.06319284439086914,
+        "constraint_eval_time": 4.5299530029296875e-06,
+        "pred_extract_time": 8.58306884765625e-06,
+        "gold_extract_time": 7.390975952148438e-05,
+        "total_tokens": 7854,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import z3\n\n# Assume the rest of the code defines:\n# - friends: a list of dictionaries with keys like 'available_start', 'available_end', 'min_duration'\n# - friends_var: a list of Z3 Int variables\n# - arrival_time: a list of Z3 Int variables\n# - start_time: a list of Z3 Int variables\n# - end_time: a list of Z3 Int variables\n# - solver: a Z3 solver object initialized with solver = z3.Solver()\n\n# Add constraints for start and end times\navailable_start_expr = z3.If(friends_var[i] == 0, friends[0]['available_start'],\n                             z3.If(friends_var[i] == 1, friends[1]['available_start'],\n                                   z3.If(friends_var[i] == 2, friends[2]['available_start'],\n                                         z3.If(friends_var[i] == 3, friends[3]['available_start'], 0))))\n\navailable_end_expr = z3.If(friends_var[i] == 0, friends[0]['available_end'],\n                           z3.If(friends_var[i] == 1, friends[1]['available_end'],\n                                 z3.If(friends_var[i] == 2, friends[2]['available_end'],\n                                       z3.If(friends_var[i] == 3, friends[3]['available_end'], 0))))\n\nmin_duration_expr = z3.If(friends_var[i] == 0, friends[0]['min_duration'],\n                          z3.If(friends_var[i] == 1, friends[1]['min_duration'],\n                                z3.If(friends_var[i] == 2, friends[2]['min_duration'],\n                                      z3.If(friends_var[i] == 3, friends[3]['min_duration'], 0))))\n\n# Add the constraints using the expressions\nsolver.add(z3.If(friends_var[i] != -1, start_time[i] >= arrival_time[i], True))\nsolver.add(z3.If(friends_var[i] != -1, end_time[i] >= start_time[i] + min_duration_expr, True))\nsolver.add(z3.If(friends_var[i] != -1, end_time[i] <= available_end_expr, True))\nsolver.add(z3.If(friends_var[i] != -1, start_time[i] >= available_start_expr, True))"
+}

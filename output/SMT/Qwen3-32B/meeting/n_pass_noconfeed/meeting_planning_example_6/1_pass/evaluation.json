@@ -1,0 +1,43 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"itinerary\": [\n    {\n      \"action\": \"meet\",\n      \"location\": \"Nob Hill\",\n      \"person\": \"Kenneth\",\n      \"start_time\": \"14:15\",\n      \"end_time\": \"15:45\"\n    }\n  ]\n}",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Nob Hill",
+                "person": "Kenneth",
+                "start_time": "14:15",
+                "end_time": "15:45"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Nob Hill",
+                "person": "Kenneth",
+                "start_time": "14:15",
+                "end_time": "15:45"
+            }
+        ]
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 163.96450543403625,
+        "execution_time": 0.07820677757263184,
+        "constraint_eval_time": 2.4557113647460938e-05,
+        "pred_extract_time": 1.732203722000122,
+        "gold_extract_time": 7.557868957519531e-05,
+        "total_tokens": 9868,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import z3\nimport json\n\ndef main():\n    solver = z3.Solver()\n\n    # Define variables\n    T1 = z3.Int('T1')  # Departure time from Fisherman's Wharf (minutes since midnight)\n    S = z3.Int('S')    # Start time of meeting with Kenneth\n    E = z3.Int('E')    # End time of meeting with Kenneth\n\n    # Constraints\n    # 1. You arrive at Fisherman's Wharf at 9:00AM (540 minutes)\n    #    and can leave anytime after that\n    solver.add(T1 >= 540)\n    \n    # 2. Travel time from Fisherman's Wharf to Nob Hill is 11 minutes\n    #    You must arrive at Nob Hill before the meeting starts\n    solver.add(T1 + 11 <= S)\n    \n    # 3. Kenneth is available from 2:15PM (855 minutes) to 7:45PM (1185 minutes)\n    solver.add(S >= 855)\n    solver.add(E <= 1185)\n    \n    # 4. Meeting must last at least 90 minutes\n    solver.add(E == S + 90)\n\n    # Check for solution\n    if solver.check() == z3.sat:\n        model = solver.model()\n        s_val = model[S].as_long()\n        e_val = model[E].as_long()\n        \n        # Convert minutes to H:MM format\n        def to_time_str(minutes):\n            hours = minutes // 60\n            mins = minutes % 60\n            return f\"{hours}:{mins:02d}\"\n        \n        itinerary = [\n            {\n                \"action\": \"meet\",\n                \"location\": \"Nob Hill\",\n                \"person\": \"Kenneth\",\n                \"start_time\": to_time_str(s_val),\n                \"end_time\": to_time_str(e_val)\n            }\n        ]\n        result = {\"itinerary\": itinerary}\n        print(json.dumps(result, indent=2))\n    else:\n        print(json.dumps({\"itinerary\": []}))\n\nif __name__ == \"__main__\":\n    main()"
+}

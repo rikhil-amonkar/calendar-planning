@@ -1,0 +1,55 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"solution\": {\n    \"header\": [\n      \"House\",\n      \"Name\",\n      \"Height\"\n    ],\n    \"rows\": [\n      [\n        \"1\",\n        \"Eric\",\n        \"short\"\n      ],\n      [\n        \"2\",\n        \"Arnold\",\n        \"average\"\n      ],\n      [\n        \"3\",\n        \"Peter\",\n        \"very short\"\n      ]\n    ]\n  }\n}",
+    "pred": [
+        {
+            "House": "1",
+            "Name": "Eric",
+            "Height": "short"
+        },
+        {
+            "House": "2",
+            "Name": "Arnold",
+            "Height": "average"
+        },
+        {
+            "House": "3",
+            "Name": "Peter",
+            "Height": "very short"
+        }
+    ],
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Eric",
+            "Height": "short"
+        },
+        {
+            "House": "2",
+            "Name": "Arnold",
+            "Height": "average"
+        },
+        {
+            "House": "3",
+            "Name": "Peter",
+            "Height": "very short"
+        }
+    ],
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 399.71755194664,
+        "execution_time": 0.08015918731689453,
+        "constraint_eval_time": 5.507469177246094e-05,
+        "pred_extract_time": 1.141972303390503,
+        "gold_extract_time": 1.239776611328125e-05,
+        "total_tokens": 28722,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\nimport json\n\n# Define EnumSorts for names and heights\nName, (Arnold, Peter, Eric) = EnumSort('Name', ['Arnold', 'Peter', 'Eric'])\nHeight, (Short, Average, VeryShort) = EnumSort('Height', ['short', 'average', 'very short'])\n\n# Create variables for each house's name and height\nname = [Const(f'name_{i+1}', Name) for i in range(3)]\nheight = [Const(f'height_{i+1}', Height) for i in range(3)]\n\ns = Solver()\n\n# Add distinctness constraints\ns.add(Distinct(name[0], name[1], name[2]))\ns.add(Distinct(height[0], height[1], height[2]))\n\n# Person house variables\neric_house = Int('eric_house')\npeter_house = Int('peter_house')\narnold_house = Int('arnold_house')\n\n# Height house variables\nvery_short_house = Int('very_short_house')\n\n# Link person variables to their house numbers\nfor i in range(3):\n    house_num = i + 1\n    s.add(Implies(name[i] == Eric, eric_house == house_num))\n    s.add(Implies(name[i] == Peter, peter_house == house_num))\n    s.add(Implies(name[i] == Arnold, arnold_house == house_num))\n\n# Link very_short_house to the house with VeryShort height\nfor i in range(3):\n    house_num = i + 1\n    s.add(Implies(height[i] == VeryShort, very_short_house == house_num))\n\n# Add puzzle constraints\ns.add(height[0] == Short)  # Clue 2: short is in the first house\ns.add(peter_house > eric_house)  # Clue 1: Peter is to the right of Eric\ns.add(Abs(1 - very_short_house) == 2)  # Clue 3: one house between short and very short\ns.add(Abs(arnold_house - very_short_house) == 1)  # Clue 4: Arnold and very short are adjacent\n\nif s.check() == sat:\n    model = s.model()\n    rows = []\n    for i in range(3):\n        house_num = i + 1\n        name_val = model[name[i]].decl().name()\n        height_val = model[height[i]].decl().name()\n        rows.append([str(house_num), name_val, height_val])\n    solution = {\n        \"solution\": {\n            \"header\": [\"House\", \"Name\", \"Height\"],\n            \"rows\": rows\n        }\n    }\n    print(json.dumps(solution, indent=2))\nelse:\n    print(\"No solution found.\")"
+}

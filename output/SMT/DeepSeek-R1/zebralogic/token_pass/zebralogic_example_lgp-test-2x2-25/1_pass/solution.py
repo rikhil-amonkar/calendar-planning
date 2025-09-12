@@ -1,0 +1,53 @@
+import z3
+import json
+
+def main():
+    solver = z3.Solver()
+    
+    # Define attributes for each house
+    names = [z3.String(f"name_{i}") for i in range(1, 3)]
+    vacations = [z3.String(f"vacation_{i}") for i in range(1, 3)]
+    
+    # Define domain constraints for names and vacations
+    name_domain = ["Arnold", "Eric"]
+    vacation_domain = ["beach", "mountain"]
+    
+    for i in range(2):
+        solver.add(z3.Or([names[i] == name for name in name_domain]))
+        solver.add(z3.Or([vacations[i] == vac for vac in vacation_domain]))
+    
+    # All attributes must be unique
+    solver.add(z3.Distinct(names))
+    solver.add(z3.Distinct(vacations))
+    
+    # Clue 1: Arnold is to the right of the beach vacation lover
+    arnold_pos = z3.Int("arnold_pos")
+    beach_pos = z3.Int("beach_pos")
+    
+    for i in range(2):
+        solver.add(z3.Implies(names[i] == "Arnold", arnold_pos == i+1))
+        solver.add(z3.Implies(vacations[i] == "beach", beach_pos == i+1))
+    
+    solver.add(arnold_pos > beach_pos)
+    
+    # Check for solution
+    if solver.check() == z3.sat:
+        model = solver.model()
+        solution_rows = []
+        for i in range(1, 3):
+            name_val = model.evaluate(names[i-1]).as_string()
+            vacation_val = model.evaluate(vacations[i-1]).as_string()
+            solution_rows.append([str(i), name_val, vacation_val])
+        
+        result = {
+            "solution": {
+                "header": ["House", "Name", "Vacation"],
+                "rows": solution_rows
+            }
+        }
+        print(json.dumps(result))
+    else:
+        print('{"error": "No solution found"}')
+
+if __name__ == "__main__":
+    main()

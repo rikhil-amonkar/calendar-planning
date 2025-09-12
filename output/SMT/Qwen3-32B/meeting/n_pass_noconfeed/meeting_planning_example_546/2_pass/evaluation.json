@@ -1,0 +1,70 @@
+{
+    "has_execution_error": true,
+    "has_no_plan": false,
+    "execution_output": null,
+    "pred": null,
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Pacific Heights",
+                "person": "Nancy",
+                "start_time": "9:11",
+                "end_time": "10:41"
+            },
+            {
+                "action": "meet",
+                "location": "Union Square",
+                "person": "Lisa",
+                "start_time": "10:53",
+                "end_time": "11:38"
+            },
+            {
+                "action": "meet",
+                "location": "Financial District",
+                "person": "Joshua",
+                "start_time": "12:00",
+                "end_time": "12:15"
+            },
+            {
+                "action": "meet",
+                "location": "Nob Hill",
+                "person": "Andrew",
+                "start_time": "12:23",
+                "end_time": "13:23"
+            },
+            {
+                "action": "meet",
+                "location": "Bayview",
+                "person": "John",
+                "start_time": "16:45",
+                "end_time": "18:00"
+            },
+            {
+                "action": "meet",
+                "location": "Richmond District",
+                "person": "Kenneth",
+                "start_time": "21:15",
+                "end_time": "21:45"
+            }
+        ]
+    },
+    "status": "Error",
+    "violated_constraint": {
+        "missing_itinerary": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 2,
+    "timing": {
+        "api_call_time": 549.714994430542,
+        "execution_time": 0.0793461799621582,
+        "constraint_eval_time": 6.198883056640625e-06,
+        "pred_extract_time": 1.2159347534179688e-05,
+        "gold_extract_time": 8.082389831542969e-05,
+        "total_tokens": 38845,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\nimport json\n\n# Define friend data\nfriends = [\n    # Nancy\n    {'name': 'Nancy', 'available_start': 480, 'available_end': 690, 'duration': 90, 'location': 4},\n    # Lisa\n    {'name': 'Lisa', 'available_start': 540, 'available_end': 990, 'duration': 45, 'location': 2},\n    # Andrew\n    {'name': 'Andrew', 'available_start': 690, 'available_end': 1215, 'duration': 60, 'location': 5},\n    # Joshua\n    {'name': 'Joshua', 'available_start': 720, 'available_end': 915, 'duration': 15, 'location': 3},\n    # Kenneth\n    {'name': 'Kenneth', 'available_start': 1275, 'available_end': 1320, 'duration': 30, 'location': 1},\n    # John\n    {'name': 'John', 'available_start': 1005, 'available_end': 1290, 'duration': 75, 'location': 6}\n]\n\n# Travel time matrix\ntravel_time_matrix = [\n    [0, 21, 10, 5, 11, 10, 21],  # Embarcadero\n    [19, 0, 21, 22, 10, 17, 26],  # Richmond\n    [11, 20, 0, 9, 15, 9, 15],    # Union\n    [4, 21, 9, 0, 13, 8, 19],     # Financial\n    [10, 12, 12, 13, 0, 8, 22],   # Pacific\n    [9, 14, 7, 9, 8, 0, 19],      # Nob\n    [19, 25, 17, 19, 23, 20, 0]   # Bayview\n]\n\n# Create solver\nsolver = Optimize()\n\n# Variables for each step\nmeet_vars = []\nperson_vars = []\nstart_vars = []\nend_vars = [Int(f'end_{i}') for i in range(6)]\nloc_vars = [Int(f'loc_{i}') for i in range(6)]\n\nfor step in range(6):\n    meet = Bool(f'meet_{step}')\n    person = Int(f'person_{step}')\n    start = Int(f'start_{step}')\n    meet_vars.append(meet)\n    person_vars.append(person)\n    start_vars.append(start)\n    end = end_vars[step]\n    loc = loc_vars[step]\n\n    # Determine previous end and loc based on step\n    if step == 0:\n        prev_end = 540  # Starting at 9:00 AM\n        prev_loc = 0    # Embarcadero\n    else:\n        prev_end = end_vars[step-1]\n        prev_loc = loc_vars[step-1]\n\n    # If meet is true, person must be between 0 and 5\n    solver.add(Implies(meet, And(person >= 0, person <= 5)))\n\n    # For each possible person, add constraints\n    for p in range(6):\n        p_loc = friends[p]['location']\n        p_start = friends[p]['available_start']\n        p_end_time = friends[p]['available_end']\n        p_duration = friends[p]['duration']\n        travel_time = travel_time_matrix[prev_loc][p_loc]\n\n        solver.add(Implies(And(meet, person == p), start >= prev_end + travel_time))\n        solver.add(Implies(And(meet, person == p), start >= p_start))\n        solver.add(Implies(And(meet, person == p), start + p_duration <= p_end_time))\n        solver.add(Implies(And(meet, person == p), end == start + p_duration))\n        solver.add(Implies(And(meet, person == p), loc == p_loc))\n\n    # If not meet, then end is prev_end and loc is prev_loc\n    solver.add(Implies(Not(meet), end == prev_end))\n    solver.add(Implies(Not(meet), loc == prev_loc))\n\n# Maximize the number of meetings\nsolver.maximize(Sum([If(m, 1, 0) for m in meet_vars]))\n\n# Check if the problem is satisfiable\nresult = solver.check()\nif result == sat:\n    model = solver.model()\n    itinerary = []\n    for i in range(6):\n        meet = model.eval(meet_vars[i])\n        if is_true(meet):\n            person = model.eval(person_vars[i])\n            start = model.eval(start_vars[i])\n            p = person.as_long()\n            friend = friends[p]\n            name = friend['name']\n            location = friend['location']\n            location_names = [\n                'Embarcadero', 'Richmond District', 'Union Square',\n                'Financial District', 'Pacific Heights', 'Nob Hill', 'Bayview'\n            ]\n            location_name = location_names[location]\n            duration = friend['duration']\n            end_time = model.eval(end_vars[i]).as_long()\n            def to_time_str(minutes):\n                hours = minutes // 60\n                mins = minutes % 60\n                return f\"{hours}:{mins:02d}\"\n            start_time_str = to_time_str(start.as_long())\n            end_time_str = to_time_str(end_time)\n            itinerary.append({\n                \"action\": \"meet\",\n                \"location\": location_name,\n                \"person\": name,\n                \"start_time\": start_time_str,\n                \"end_time\": end_time_str\n            })\n    print(json.dumps({\"itinerary\": itinerary}, indent=2))\nelse:\n    print(\"No solution found.\")"
+}

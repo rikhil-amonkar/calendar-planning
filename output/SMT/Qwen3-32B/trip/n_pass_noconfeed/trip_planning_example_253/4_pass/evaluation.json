@@ -1,0 +1,63 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\"itinerary\": [{\"day_range\": \"Day 1-1\", \"place\": \"0\"}, {\"day_range\": \"Day 1-1\", \"place\": \"1\"}, {\"day_range\": \"Day 1-1\", \"place\": \"2\"}, {\"day_range\": \"Day 1-1\", \"place\": \"3\"}]}",
+    "pred": {
+        "itinerary": [
+            {
+                "day_range": "Day 1-1",
+                "place": "0"
+            },
+            {
+                "day_range": "Day 1-1",
+                "place": "1"
+            },
+            {
+                "day_range": "Day 1-1",
+                "place": "2"
+            },
+            {
+                "day_range": "Day 1-1",
+                "place": "3"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "day_range": "Day 1-7",
+                "place": "Vienna"
+            },
+            {
+                "day_range": "Day 7-9",
+                "place": "Lyon"
+            },
+            {
+                "day_range": "Day 9-11",
+                "place": "Amsterdam"
+            },
+            {
+                "day_range": "Day 11-14",
+                "place": "Santorini"
+            }
+        ]
+    },
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "total_days": 14
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 4,
+    "timing": {
+        "api_call_time": 101.61912178993225,
+        "execution_time": 0.07808566093444824,
+        "constraint_eval_time": 1.8596649169921875e-05,
+        "pred_extract_time": 1.4853270053863525,
+        "gold_extract_time": 6.461143493652344e-05,
+        "total_tokens": 8010,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\nimport json\n\n# Initialize solver\ns = Solver()\n\n# Number of cities\nnum_cities = 4\n\n# Define variables\norder = [Int(f'order_{i}') for i in range(num_cities)]\nstart_days = [Int(f'start_{i}') for i in range(num_cities)]\nend_days = [Int(f'end_{i}') for i in range(num_cities)]\n\n# Add constraints to the solver\nfor i in range(num_cities):\n    # Each city is assigned to a unique order (0 to 3)\n    s.add(And(order[i] >= 0, order[i] < num_cities))\n    s.add(Distinct(order))\n\n    # Start day must be at least 1, end day at most 7\n    s.add(And(start_days[i] >= 1, start_days[i] <= 7))\n    s.add(And(end_days[i] >= 1, end_days[i] <= 7))\n\n    # End day must be after or equal to start day\n    s.add(end_days[i] >= start_days[i])\n\n    # No overlapping days between cities\n    for j in range(i + 1, num_cities):\n        s.add(Or(end_days[i] <= start_days[j], end_days[j] <= start_days[i]))\n\n# Check for a satisfying assignment\nif s.check() == sat:\n    model = s.model()\n    city_order = [str(model[order[i]]) for i in range(num_cities)]\n    start_values = [model[start_days[i]].as_long() for i in range(num_cities)]\n    end_values = [model[end_days[i]].as_long() for i in range(num_cities)]\n\n    itinerary = []\n    for i in range(num_cities):\n        city = city_order[i]\n        start = start_values[i]\n        end = end_values[i]\n        day_range = f\"Day {start}-{end}\"\n        itinerary.append({\"day_range\": day_range, \"place\": city})\n\n    print(json.dumps({\"itinerary\": itinerary}))\nelse:\n    print(json.dumps({\"itinerary\": []}))"
+}

@@ -1,0 +1,61 @@
+We are given 2 houses. Each has attributes: Name, Mother, CarModel, Height.
+ We have two options for each attribute.
+
+ Steps:
+ 1. Define the attributes and their possible values.
+ 2. Create Z3 variables for each attribute per house.
+ 3. Assert that all attributes are distinct per category (each category has unique values across houses).
+ 4. Add the constraints from the clues.
+
+ Clues:
+ 1. The person who owns a Tesla Model 3 is somewhere to the right of Arnold.
+    This means: the house of Tesla Model 3 owner has a higher house number than Arnold's house.
+ 2. Arnold is the person who is short.
+    So, the house where Name is 'Arnold' has Height 'short'.
+ 3. The person whose mother's name is Holly is in the second house.
+    So, the house with Mother 'Holly' is house 2.
+
+ Since there are only two houses, we can also note that the mother in house 1 must be the other one (Aniya).
+
+ We'll create variables for each house for each attribute.
+
+ Let's define:
+  House 1 and House 2.
+
+ For each house, we have:
+   Name: can be 'Eric' or 'Arnold'
+   Mother: can be 'Aniya' or 'Holly'
+   CarModel: can be 'ford f150' or 'tesla model 3'
+   Height: can be 'short' or 'very short'
+
+ We'll use Z3 Ints for each attribute and then map them to their string values.
+
+ Alternatively, we can use EnumSort for each attribute to make it more readable.
+
+ We'll create:
+   Name_sort: ('Eric', 'Arnold')
+   Mother_sort: ('Aniya', 'Holly')
+   CarModel_sort: ('ford f150', 'tesla model 3')
+   Height_sort: ('short', 'very short')
+
+ But note: we have to assign these to houses.
+
+ Let's create for each house i (1 and 2) variables:
+   name_i, mother_i, car_i, height_i
+
+ Then we set constraints that all names are distinct, all mothers are distinct, etc.
+
+ Steps in code:
+
+ 1. Import z3 and json.
+ 2. Create a solver.
+ 3. Define the sorts for each attribute.
+ 4. Create variables for each house and each attribute.
+ 5. Assert that within each attribute type, the values are distinct.
+ 6. Add the clue constraints.
+ 7. Check and get the model.
+ 8. Convert the model to the required JSON output.
+
+ Since there are only two houses, we can also use integers and then map, but using EnumSort is clearer.
+
+ Let's code accordingly.

@@ -1,0 +1,75 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"solution\": {\n    \"header\": [\n      \"House\",\n      \"Name\",\n      \"Children\"\n    ],\n    \"rows\": [\n      [\n        \"1\",\n        \"Bob\",\n        \"Timothy\"\n      ],\n      [\n        \"2\",\n        \"Alice\",\n        \"Fred\"\n      ],\n      [\n        \"3\",\n        \"Arnold\",\n        \"Bella\"\n      ],\n      [\n        \"4\",\n        \"Eric\",\n        \"Samantha\"\n      ],\n      [\n        \"5\",\n        \"Peter\",\n        \"Meredith\"\n      ]\n    ]\n  }\n}",
+    "pred": [
+        {
+            "House": "1",
+            "Name": "Bob",
+            "Children": "Timothy"
+        },
+        {
+            "House": "2",
+            "Name": "Alice",
+            "Children": "Fred"
+        },
+        {
+            "House": "3",
+            "Name": "Arnold",
+            "Children": "Bella"
+        },
+        {
+            "House": "4",
+            "Name": "Eric",
+            "Children": "Samantha"
+        },
+        {
+            "House": "5",
+            "Name": "Peter",
+            "Children": "Meredith"
+        }
+    ],
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Bob",
+            "Children": "Timothy"
+        },
+        {
+            "House": "2",
+            "Name": "Alice",
+            "Children": "Fred"
+        },
+        {
+            "House": "3",
+            "Name": "Arnold",
+            "Children": "Bella"
+        },
+        {
+            "House": "4",
+            "Name": "Eric",
+            "Children": "Samantha"
+        },
+        {
+            "House": "5",
+            "Name": "Peter",
+            "Children": "Meredith"
+        }
+    ],
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 455.4480073451996,
+        "execution_time": 0.08223438262939453,
+        "constraint_eval_time": 7.414817810058594e-05,
+        "pred_extract_time": 1.6457605361938477,
+        "gold_extract_time": 1.9550323486328125e-05,
+        "total_tokens": 33280,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import json\nfrom z3 import *\n\ndef main():\n    # Define variables for each person's house and each child's house\n    E_house = Int('E_house')  # Eric\n    A_house = Int('A_house')  # Alice\n    P_house = Int('P_house')  # Peter\n    B_house = Int('B_house')  # Bob\n    Ar_house = Int('Ar_house')  # Arnold\n\n    T_house = Int('T_house')  # Timothy\n    M_house = Int('M_house')  # Meredith\n    S_house = Int('S_house')  # Samantha\n    F_house = Int('F_house')  # Fred\n    Be_house = Int('Be_house')  # Bella\n\n    solver = Solver()\n\n    # Constraints for name houses: 1-5, distinct\n    solver.add(And(1 <= E_house, E_house <= 5))\n    solver.add(And(1 <= A_house, A_house <= 5))\n    solver.add(And(1 <= P_house, P_house <= 5))\n    solver.add(And(1 <= B_house, B_house <= 5))\n    solver.add(And(1 <= Ar_house, Ar_house <= 5))\n    solver.add(Distinct(E_house, A_house, P_house, B_house, Ar_house))\n\n    # Constraints for child houses: 1-5, distinct\n    solver.add(And(1 <= T_house, T_house <= 5))\n    solver.add(And(1 <= M_house, M_house <= 5))\n    solver.add(And(1 <= S_house, S_house <= 5))\n    solver.add(And(1 <= F_house, F_house <= 5))\n    solver.add(And(1 <= Be_house, Be_house <= 5))\n    solver.add(Distinct(T_house, M_house, S_house, F_house, Be_house))\n\n    # Linking constraints: each child's house is the same as a name's house\n    for child_var in [T_house, M_house, S_house, F_house, Be_house]:\n        solver.add(Or(\n            child_var == E_house,\n            child_var == A_house,\n            child_var == P_house,\n            child_var == B_house,\n            child_var == Ar_house\n        ))\n\n    # Clue 3: Fred is in second house\n    solver.add(F_house == 2)\n\n    # Clue 7: Fred directly left of Bella => F_house + 1 == Be_house\n    solver.add(Be_house == F_house + 1)\n\n    # Clue 1: Bob is left of Samantha's house\n    solver.add(B_house < S_house)\n\n    # Clue 2: Mother of Timothy is left of Samantha's house => T_house < S_house\n    solver.add(T_house < S_house)\n\n    # Clue 4: One house between Alice and Samantha => |A_house - S_house| == 2\n    solver.add(Or(\n        A_house - S_house == 2,\n        S_house - A_house == 2\n    ))\n\n    # Clue 5: Eric not in third house\n    solver.add(E_house != 3)\n\n    # Clue 6: Bob not in third house\n    solver.add(B_house != 3)\n\n    # Clue 8: Samantha's house is left of Peter's\n    solver.add(S_house < P_house)\n\n    # Check if the constraints are satisfiable\n    if solver.check() == sat:\n        model = solver.model()\n\n        # Prepare the solution data\n        names_list = ['Eric', 'Alice', 'Peter', 'Bob', 'Arnold']\n        children_list = ['Timothy', 'Meredith', 'Samantha', 'Fred', 'Bella']\n\n        rows = []\n        for house_num in range(1, 6):\n            # Determine the name for this house\n            name = None\n            for idx, var in enumerate([E_house, A_house, P_house, B_house, Ar_house]):\n                if model.eval(var).as_long() == house_num:\n                    name = names_list[idx]\n                    break\n\n            # Determine the child for this house\n            child = None\n            for idx, var in enumerate([T_house, M_house, S_house, F_house, Be_house]):\n                if model.eval(var).as_long() == house_num:\n                    child = children_list[idx]\n                    break\n\n            rows.append([str(house_num), name, child])\n\n        # Build the JSON output\n        solution = {\n            \"solution\": {\n                \"header\": [\"House\", \"Name\", \"Children\"],\n                \"rows\": rows\n            }\n        }\n\n        # Print the JSON output\n        print(json.dumps(solution, indent=2))\n    else:\n        print(\"No solution found.\")\n\nif __name__ == \"__main__\":\n    main()"
+}

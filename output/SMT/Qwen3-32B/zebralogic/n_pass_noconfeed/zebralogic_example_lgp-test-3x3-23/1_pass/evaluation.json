@@ -1,0 +1,61 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"solution\": {\n    \"header\": [\n      \"House\",\n      \"Name\",\n      \"Occupation\",\n      \"Hobby\"\n    ],\n    \"rows\": [\n      [\n        \"1\",\n        \"Peter\",\n        \"engineer\",\n        \"gardening\"\n      ],\n      [\n        \"2\",\n        \"Arnold\",\n        \"doctor\",\n        \"cooking\"\n      ],\n      [\n        \"3\",\n        \"Eric\",\n        \"teacher\",\n        \"photography\"\n      ]\n    ]\n  }\n}",
+    "pred": [
+        {
+            "House": "1",
+            "Name": "Peter",
+            "Occupation": "engineer",
+            "Hobby": "gardening"
+        },
+        {
+            "House": "2",
+            "Name": "Arnold",
+            "Occupation": "doctor",
+            "Hobby": "cooking"
+        },
+        {
+            "House": "3",
+            "Name": "Eric",
+            "Occupation": "teacher",
+            "Hobby": "photography"
+        }
+    ],
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Peter",
+            "Occupation": "engineer",
+            "Hobby": "gardening"
+        },
+        {
+            "House": "2",
+            "Name": "Arnold",
+            "Occupation": "doctor",
+            "Hobby": "cooking"
+        },
+        {
+            "House": "3",
+            "Name": "Eric",
+            "Occupation": "teacher",
+            "Hobby": "photography"
+        }
+    ],
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 667.8960182666779,
+        "execution_time": 0.08147311210632324,
+        "constraint_eval_time": 6.222724914550781e-05,
+        "pred_extract_time": 2.1200032234191895,
+        "gold_extract_time": 1.3113021850585938e-05,
+        "total_tokens": 46506,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\nimport json\n\n# Define constants for easier handling\nname_peter = 0\nname_arnold = 1\nname_eric = 2\n\noccupation_doctor = 0\noccupation_teacher = 1\noccupation_engineer = 2\n\nhobby_cooking = 0\nhobby_photography = 1\nhobby_gardening = 2\n\n# Create solver\ns = Solver()\n\n# Create variables for each house (0-based index)\nnames = [Int('name_%d' % i) for i in range(3)]\noccupations = [Int('occupation_%d' % i) for i in range(3)]\nhobbies = [Int('hobby_%d' % i) for i in range(3)]\n\n# Add constraints for permutations\nfor var in [names, occupations, hobbies]:\n    s.add([And(0 <= v, v <= 2) for v in var])\n    s.add(Distinct(var))\n\n# Clue 5: The person who is an engineer is Peter.\nfor i in range(3):\n    s.add(Implies(occupations[i] == occupation_engineer, names[i] == name_peter))\n\n# Clue 4: The photography enthusiast is the person who is a teacher.\nfor i in range(3):\n    s.add(Implies(occupations[i] == occupation_teacher, hobbies[i] == hobby_photography))\n\n# Clue 2: The person who loves cooking is directly left of the person who is a teacher.\ns.add(Or(\n    And(hobbies[0] == hobby_cooking, occupations[1] == occupation_teacher),\n    And(hobbies[1] == hobby_cooking, occupations[2] == occupation_teacher)\n))\n\n# Clue 1: The person who is a doctor and Eric are next to each other.\ns.add(Or(\n    And(occupations[0] == occupation_doctor, names[1] == name_eric),\n    And(occupations[1] == occupation_doctor, names[0] == name_eric),\n    And(occupations[1] == occupation_doctor, names[2] == name_eric),\n    And(occupations[2] == occupation_doctor, names[1] == name_eric)\n))\n\n# Clue 3: The doctor is to the right of the gardening person.\ndoctor_pos = Int('doctor_pos')\ngardening_pos = Int('gardening_pos')\n\ns.add(Or(\n    And(occupations[0] == occupation_doctor, doctor_pos == 0),\n    And(occupations[1] == occupation_doctor, doctor_pos == 1),\n    And(occupations[2] == occupation_doctor, doctor_pos == 2)\n))\ns.add(Or(\n    And(hobbies[0] == hobby_gardening, gardening_pos == 0),\n    And(hobbies[1] == hobby_gardening, gardening_pos == 1),\n    And(hobbies[2] == hobby_gardening, gardening_pos == 2)\n))\ns.add(And(0 <= doctor_pos, doctor_pos <= 2))\ns.add(And(0 <= gardening_pos, gardening_pos <= 2))\ns.add(doctor_pos > gardening_pos)\n\n# Check if the constraints are satisfiable\nif s.check() == sat:\n    model = s.model()\n    \n    # Create mappings from integer values to strings\n    name_map = {0: 'Peter', 1: 'Arnold', 2: 'Eric'}\n    occupation_map = {0: 'doctor', 1: 'teacher', 2: 'engineer'}\n    hobby_map = {0: 'cooking', 1: 'photography', 2: 'gardening'}\n    \n    # Extract the solution\n    solution_rows = []\n    for i in range(3):\n        house_num = i + 1\n        name_val = model[names[i]].as_long()\n        occ_val = model[occupations[i]].as_long()\n        hobby_val = model[hobbies[i]].as_long()\n        solution_rows.append([\n            str(house_num),\n            name_map[name_val],\n            occupation_map[occ_val],\n            hobby_map[hobby_val]\n        ])\n    \n    # Format as JSON\n    solution = {\n        \"solution\": {\n            \"header\": [\"House\", \"Name\", \"Occupation\", \"Hobby\"],\n            \"rows\": solution_rows\n        }\n    }\n    \n    # Print JSON\n    print(json.dumps(solution, indent=2))\nelse:\n    print(\"No solution found.\")"
+}

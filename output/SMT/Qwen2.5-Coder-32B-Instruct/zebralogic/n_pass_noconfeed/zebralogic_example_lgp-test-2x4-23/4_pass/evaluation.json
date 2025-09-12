@@ -1,0 +1,58 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\"solution\": {\"header\": [\"House\", \"Name\", \"Mother\", \"CarModel\", \"Height\"], \"rows\": [[\"1\", \"Arnold\", \"Aniya\", \"tesla model 3\", \"short\"], [\"2\", \"Eric\", \"Holly\", \"ford f150\", \"very short\"]]}}",
+    "pred": [
+        {
+            "House": "1",
+            "Name": "Arnold",
+            "Mother": "Aniya",
+            "CarModel": "tesla model 3",
+            "Height": "short"
+        },
+        {
+            "House": "2",
+            "Name": "Eric",
+            "Mother": "Holly",
+            "CarModel": "ford f150",
+            "Height": "very short"
+        }
+    ],
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Arnold",
+            "Mother": "Aniya",
+            "CarModel": "ford f150",
+            "Height": "short"
+        },
+        {
+            "House": "2",
+            "Name": "Eric",
+            "Mother": "Holly",
+            "CarModel": "tesla model 3",
+            "Height": "very short"
+        }
+    ],
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "violations": [
+            "House 1 wrong CarModel: expected 'ford f150', got 'tesla model 3'",
+            "House 2 wrong CarModel: expected 'tesla model 3', got 'ford f150'"
+        ]
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 4,
+    "timing": {
+        "api_call_time": 39.22424626350403,
+        "execution_time": 0.08175897598266602,
+        "constraint_eval_time": 8.678436279296875e-05,
+        "pred_extract_time": 1.6255099773406982,
+        "gold_extract_time": 2.09808349609375e-05,
+        "total_tokens": 3580,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\nimport json\n\n# Define the variables\nhouses = [1, 2]\nnames = ['Eric', 'Arnold']\nmothers = ['Aniya', 'Holly']\ncars = ['ford f150', 'tesla model 3']\nheights = ['short', 'very short']\n\n# Create symbolic variables\nname_vars = {house: Int(f'name_{house}') for house in houses}\nmother_vars = {house: Int(f'mother_{house}') for house in houses}\ncar_vars = {house: Int(f'car_{house}') for house in houses}\nheight_vars = {house: Int(f'height_{house}') for house in houses}\n\n# Create a solver instance\nsolver = Solver()\n\n# Add constraints for unique values within each category\nsolver.add(Distinct([name_vars[house] for house in houses]))\nsolver.add(Distinct([mother_vars[house] for house in houses]))\nsolver.add(Distinct([car_vars[house] for house in houses]))\nsolver.add(Distinct([height_vars[house] for house in houses]))\n\n# Restrict the values of the symbolic variables to be within the valid range\nfor house in houses:\n    solver.add(name_vars[house] >= 0)\n    solver.add(name_vars[house] <= len(names) - 1)\n    solver.add(mother_vars[house] >= 0)\n    solver.add(mother_vars[house] <= len(mothers) - 1)\n    solver.add(car_vars[house] >= 0)\n    solver.add(car_vars[house] <= len(cars) - 1)\n    solver.add(height_vars[house] >= 0)\n    solver.add(height_vars[house] <= len(heights) - 1)\n\n# Map symbolic variables to actual values\nname_map = {i: name for i, name in enumerate(names)}\nmother_map = {i: mother for i, mother in enumerate(mothers)}\ncar_map = {i: car for i, car in enumerate(cars)}\nheight_map = {i: height for i, height in enumerate(heights)}\n\n# Add constraints based on clues\n# Clue 1: The person who owns a Tesla Model 3 is somewhere to the right of Arnold.\nsolver.add(Or(car_vars[2] == cars.index('tesla model 3'), \n              And(car_vars[1] == cars.index('tesla model 3'), name_vars[2] != names.index('Arnold'))))\n\n# Clue 2: Arnold is the person who is short.\nsolver.add(name_vars[1] == names.index('Arnold'))\nsolver.add(height_vars[1] == heights.index('short'))\n\n# Clue 3: The person whose mother's name is Holly is in the second house.\nsolver.add(mother_vars[2] == mothers.index('Holly'))\n\n# Solve the problem\nif solver.check() == sat:\n    model = solver.model()\n    solution = {\n        \"solution\": {\n            \"header\": [\"House\", \"Name\", \"Mother\", \"CarModel\", \"Height\"],\n            \"rows\": []\n        }\n    }\n    for house in houses:\n        name = name_map[model[name_vars[house]].as_long()]\n        mother = mother_map[model[mother_vars[house]].as_long()]\n        car = car_map[model[car_vars[house]].as_long()]\n        height = height_map[model[height_vars[house]].as_long()]\n        solution[\"solution\"][\"rows\"].append([str(house), name, mother, car, height])\n    \n    print(json.dumps(solution))\nelse:\n    print(\"No solution found\")"
+}

@@ -1,0 +1,61 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"solution\": {\n    \"header\": [\n      \"House\",\n      \"Name\",\n      \"Smoothie\",\n      \"BookGenre\"\n    ],\n    \"rows\": [\n      [\n        \"1\",\n        \"Peter\",\n        \"cherry\",\n        \"romance\"\n      ],\n      [\n        \"2\",\n        \"Eric\",\n        \"desert\",\n        \"science fiction\"\n      ],\n      [\n        \"3\",\n        \"Arnold\",\n        \"watermelon\",\n        \"mystery\"\n      ]\n    ]\n  }\n}",
+    "pred": [
+        {
+            "House": "1",
+            "Name": "Peter",
+            "Smoothie": "cherry",
+            "BookGenre": "romance"
+        },
+        {
+            "House": "2",
+            "Name": "Eric",
+            "Smoothie": "desert",
+            "BookGenre": "science fiction"
+        },
+        {
+            "House": "3",
+            "Name": "Arnold",
+            "Smoothie": "watermelon",
+            "BookGenre": "mystery"
+        }
+    ],
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Peter",
+            "Smoothie": "cherry",
+            "BookGenre": "romance"
+        },
+        {
+            "House": "2",
+            "Name": "Eric",
+            "Smoothie": "desert",
+            "BookGenre": "science fiction"
+        },
+        {
+            "House": "3",
+            "Name": "Arnold",
+            "Smoothie": "watermelon",
+            "BookGenre": "mystery"
+        }
+    ],
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 347.86605978012085,
+        "execution_time": 0.07787346839904785,
+        "constraint_eval_time": 5.5789947509765625e-05,
+        "pred_extract_time": 1.8211989402770996,
+        "gold_extract_time": 2.1219253540039062e-05,
+        "total_tokens": 25105,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\nimport json\n\n# Define EnumSorts for each attribute category\nNames, (Eric, Arnold, Peter) = EnumSort('Names', ['Eric', 'Arnold', 'Peter'])\nSmoothies, (desert, watermelon, cherry) = EnumSort('Smoothies', ['desert', 'watermelon', 'cherry'])\nGenres, (science_fiction, romance, mystery) = EnumSort('Genres', ['science_fiction', 'romance', 'mystery'])\n\n# Create variables for each house's attributes\nname1, name2, name3 = Consts('name1 name2 name3', Names)\nsmoothie1, smoothie2, smoothie3 = Consts('smoothie1 smoothie2 smoothie3', Smoothies)\ngenre1, genre2, genre3 = Consts('genre1 genre2 genre3', Genres)\n\ns = Solver()\n\n# Add uniqueness constraints for each attribute category\ns.add(Distinct(name1, name2, name3))\ns.add(Distinct(smoothie1, smoothie2, smoothie3))\ns.add(Distinct(genre1, genre2, genre3))\n\n# Clue 5: Peter is in the first house\ns.add(name1 == Peter)\n\n# Clue 2: Arnold loves mystery books\ns.add(Implies(name1 == Arnold, genre1 == mystery))\ns.add(Implies(name2 == Arnold, genre2 == mystery))\ns.add(Implies(name3 == Arnold, genre3 == mystery))\n\n# Clue 4: Desert smoothie lover is directly left of mystery book lover\ns.add(Implies(name2 == Arnold, smoothie1 == desert))\ns.add(Implies(name3 == Arnold, smoothie2 == desert))\n\n# Clue 1: Cherry smoothie lover is somewhere left of mystery book lover\ns.add(Implies(name2 == Arnold, smoothie1 == cherry))\ns.add(Implies(name3 == Arnold, Or(smoothie1 == cherry, smoothie2 == cherry)))\n\n# Clue 3: Science fiction book lover is not in the first house\ns.add(genre1 != science_fiction)\n\n# Check if the constraints are satisfiable\nif s.check() == sat:\n    model = s.model()\n    solution = []\n    for i, n, s_smoothie, g in [(1, name1, smoothie1, genre1),\n                                (2, name2, smoothie2, genre2),\n                                (3, name3, smoothie3, genre3)]:\n        name_val = model.eval(n).decl().name()\n        smoothie_val = model.eval(s_smoothie).decl().name()\n        genre_val = model.eval(g).decl().name()\n        # Convert 'science_fiction' to 'science fiction' for output\n        if genre_val == 'science_fiction':\n            genre_val = 'science fiction'\n        solution.append([str(i), name_val, smoothie_val, genre_val])\n    \n    output = {\n        \"solution\": {\n            \"header\": [\"House\", \"Name\", \"Smoothie\", \"BookGenre\"],\n            \"rows\": solution\n        }\n    }\n    print(json.dumps(output, indent=2))\nelse:\n    print(\"No solution found.\")"
+}

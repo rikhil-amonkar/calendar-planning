@@ -1,0 +1,164 @@
+We are given 3 houses. Each house has attributes: name, cigar, animal, children, book genre, phone model.
+ We'll define integer constants for each house (1, 2, 3) and then define Z3 variables for each attribute per house.
+
+ Steps:
+ 1. Define the house numbers: 1, 2, 3.
+ 2. For each attribute, we define a set of possible values (as integers or enums). We'll use integers and map them to strings.
+
+ We have the following attributes and their possible values:
+   Names: Arnold, Eric, Peter -> we'll assign 0, 1, 2 or use strings? But Z3 works better with integers.
+
+ However, note: the clues involve comparisons and left/right relations. So we'll create IntSort for each attribute and then constrain them.
+
+ But note: the attributes are all different per house, so we can use distinct.
+
+ Let's plan:
+
+ We'll create a Z3 solver and then for each house, we'll create variables for:
+   name, cigar, animal, children, book_genre, phone_model.
+
+ But since there are 3 houses, we can create arrays of variables for each attribute, each array of length 3.
+
+ Alternatively, we can create a matrix of variables, but it's easier to have separate arrays.
+
+ We'll create:
+   names = [Int('name_1'), Int('name_2'), Int('name_3')]
+   similarly for others.
+
+ But we have to assign the domain of each variable. We can use an enumeration sort for each attribute? Or just use integers and set the range.
+
+ Since each attribute has 3 unique values, we can assign 0,1,2 for each attribute and then map back.
+
+ However, note: the clues involve the actual values (like "Fred", "Eric", etc.) so we need to map the integer to the string.
+
+ We can define a mapping for each attribute:
+
+ For example:
+   name_map = {0: 'Arnold', 1: 'Eric', 2: 'Peter'}
+   cigar_map = {0: 'pall mall', 1: 'blue master', 2: 'prince'}
+   animal_map = {0: 'horse', 1: 'cat', 2: 'bird'}
+   children_map = {0: 'Bella', 1: 'Fred', 2: 'Meredith'}
+   book_genre_map = {0: 'science fiction', 1: 'romance', 2: 'mystery'}
+   phone_model_map = {0: 'google pixel 6', 1: 'iphone 13', 2: 'samsung galaxy s21'}
+
+ But note: the clues are given in terms of the string names. So we have to encode the constraints using the integer representations.
+
+ Alternatively, we can use EnumSort for each attribute, but then we have to use the same sort for the same attribute across houses.
+
+ Let's use EnumSort for each attribute to make it more readable and avoid mixing up.
+
+ However, for simplicity and clarity, I will use integers and set the domain for each variable to be between 0 and 2, and then use distinct for each set of attributes.
+
+ Steps:
+
+ 1. Create a solver.
+ 2. For each attribute type, create a list of 3 integer variables (for house 1,2,3).
+ 3. Add constraints that for each attribute type, the three variables are distinct and in [0,2].
+ 4. Add the constraints from the clues.
+
+ But note: the clues sometimes relate different attributes. For example, clue 1: "The person who loves mystery books is the person's child is named Fred."
+
+ This means: the person who loves mystery books has a child named Fred. So we have two attributes: book genre and children.
+
+ We have to be careful with the wording: "is the person's child is named Fred" -> this is a bit ambiguous. Let me re-read:
+
+ 1. The person who loves mystery books is the person's child is named Fred.
+
+ This seems to be: The person who loves mystery books has a child named Fred.
+
+ Similarly, clue 4: The person who keeps horses is the person's child is named Meredith -> the horse keeper has a child named Meredith.
+
+ So we can model these as: for the house with mystery books, the children attribute must be Fred (encoded as 1 in children_map if we use the mapping above).
+
+ But note: we haven't defined the mapping yet. Let me define the integer mappings:
+
+ We have to assign an integer to each possible value. We can do:
+
+   Names: Arnold -> 0, Eric -> 1, Peter -> 2
+   Cigars: pall mall -> 0, blue master -> 1, prince -> 2
+   Animals: horse -> 0, cat -> 1, bird -> 2
+   Children: Bella -> 0, Fred -> 1, Meredith -> 2
+   Book genres: science fiction -> 0, romance -> 1, mystery -> 2
+   Phone models: google pixel 6 -> 0, iphone 13 -> 1, samsung galaxy s21 -> 2
+
+ Now, let's encode the clues:
+
+ 1. The person who loves mystery books (book_genre=2) has a child named Fred (children=1).
+    So: For the house i, if book_genre[i] == 2, then children[i] == 1.
+
+ 2. The cat lover (animal=1) is Eric (name=1).
+    So: For the house i, if animal[i] == 1, then name[i] == 1.
+
+ 3. The person partial to Pall Mall (cigar=0) is in the second house (house index 1, since we index from 0? But note: our houses are 1,2,3 and we have variables for each house).
+    So: cigar[1] == 0   (if we index our list from 0: house1 index0, house2 index1, house3 index2)
+
+ 4. The person who keeps horses (animal=0) has a child named Meredith (children=2).
+    So: For the house i, if animal[i] == 0, then children[i] == 2.
+
+ 5. The person's child is named Bella (children=0) is the Prince smoker (cigar=2).
+    So: For the house i, if children[i] == 0, then cigar[i] == 2.
+
+ 6. The person who uses an iPhone 13 (phone_model=1) is directly left of the person who uses a Samsung Galaxy S21 (phone_model=2).
+    So: Let i be the index of the house with phone_model=1, then the house at i+1 must have phone_model=2.
+    Since houses are in order, we can say: exists i in [0,1] such that phone_model[i] == 1 and phone_model[i+1] == 2.
+
+ 7. The person's child is named Fred (children=1) is directly left of Arnold (name=0).
+    So: The house with children=1 is directly left of the house with name=0.
+    So: exists i in [0,1] such that children[i] == 1 and name[i+1] == 0.
+
+ 8. Peter (name=2) is somewhere to the left of Eric (name=1).
+    So: The house index of Peter (2) is less than the house index of Eric (1).
+
+ 9. The person who loves science fiction books (book_genre=0) is the person who uses a Samsung Galaxy S21 (phone_model=2).
+    So: For the house i, if book_genre[i] == 0, then phone_model[i] == 2.
+
+ 10. The person who loves science fiction books (book_genre=0) is in the third house (index2).
+    So: book_genre[2] == 0.
+
+ 11. The person who loves mystery books (book_genre=2) is not in the second house (index1).
+    So: book_genre[1] != 2.
+
+ Now, note: clue 10 and 9 together imply that the third house has book_genre=0 and phone_model=2.
+
+ Also, from clue 10: house3 has book_genre=0 (science fiction).
+ From clue 11: mystery books (book_genre=2) is not in house2, so it must be in house1 (since house3 is taken by science fiction).
+
+ So, book_genre:
+   house1: mystery (2) or romance (1)
+   house2: romance (1) [because mystery is not allowed and science fiction is in house3]
+   house3: science fiction (0)
+
+ But wait, we have three genres and three houses. So:
+   house1: must be romance (1) or mystery (2)
+   house2: must be the remaining one (if house1 is mystery, then house2 is romance; if house1 is romance, then house2 must be mystery? but clue11 says mystery not in house2, so house1 must be mystery and house2 must be romance.
+
+ So we can deduce:
+   house1: mystery (2)
+   house2: romance (1)
+   house3: science fiction (0)
+
+ But let's not hardcode this, we'll let the solver figure it out with the constraints.
+
+ However, we have to encode the constraints as given.
+
+ Implementation:
+
+ We'll create lists for each attribute, each list has 3 elements (for house1, house2, house3).
+
+ Let's define:
+   houses = [0, 1, 2]  (index representing house1, house2, house3)
+
+   names = [Int('name_%d' % i) for i in range(3)]
+   cigars = [Int('cigar_%d' % i) for i in range(3)]
+   animals = [Int('animal_%d' % i) for i in range(3)]
+   children = [Int('children_%d' % i) for i in range(3)]
+   book_genres = [Int('book_genre_%d' % i) for i in range(3)]
+   phone_models = [Int('phone_model_%d' % i) for i in range(3)]
+
+ Then, for each attribute list, we require that the values are distinct and in [0,2].
+
+ Then we add the constraints from the clues.
+
+ Finally, we check the model and then output the solution in the required JSON format.
+
+ Let's code accordingly.

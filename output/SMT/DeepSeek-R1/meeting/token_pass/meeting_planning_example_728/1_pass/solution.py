@@ -1,0 +1,174 @@
+from z3 import *
+import json
+
+def main():
+    travel_times = {
+        "Marina District": {
+            "Mission District": 20,
+            "Fisherman's Wharf": 10,
+            "Presidio": 10,
+            "Union Square": 16,
+            "Sunset District": 19,
+            "Financial District": 17,
+            "Haight-Ashbury": 16,
+            "Russian Hill": 8
+        },
+        "Mission District": {
+            "Marina District": 19,
+            "Fisherman's Wharf": 22,
+            "Presidio": 25,
+            "Union Square": 15,
+            "Sunset District": 24,
+            "Financial District": 15,
+            "Haight-Ashbury": 12,
+            "Russian Hill": 15
+        },
+        "Fisherman's Wharf": {
+            "Marina District": 9,
+            "Mission District": 22,
+            "Presidio": 17,
+            "Union Square": 13,
+            "Sunset District": 27,
+            "Financial District": 11,
+            "Haight-Ashbury": 22,
+            "Russian Hill": 7
+        },
+        "Presidio": {
+            "Marina District": 11,
+            "Mission District": 26,
+            "Fisherman's Wharf": 19,
+            "Union Square": 22,
+            "Sunset District": 15,
+            "Financial District": 23,
+            "Haight-Ashbury": 15,
+            "Russian Hill": 14
+        },
+        "Union Square": {
+            "Marina District": 18,
+            "Mission District": 14,
+            "Fisherman's Wharf": 15,
+            "Presidio": 24,
+            "Sunset District": 27,
+            "Financial District": 9,
+            "Haight-Ashbury": 18,
+            "Russian Hill": 13
+        },
+        "Sunset District": {
+            "Marina District": 21,
+            "Mission District": 25,
+            "Fisherman's Wharf": 29,
+            "Presidio": 16,
+            "Union Square": 30,
+            "Financial District": 30,
+            "Haight-Ashbury": 15,
+            "Russian Hill": 24
+        },
+        "Financial District": {
+            "Marina District": 15,
+            "Mission District": 17,
+            "Fisherman's Wharf": 10,
+            "Presidio": 22,
+            "Union Square": 9,
+            "Sunset District": 30,
+            "Haight-Ashbury": 19,
+            "Russian Hill": 11
+        },
+        "Haight-Ashbury": {
+            "Marina District": 17,
+            "Mission District": 11,
+            "Fisherman's Wharf": 23,
+            "Presidio": 15,
+            "Union Square": 19,
+            "Sunset District": 15,
+            "Financial District": 21,
+            "Russian Hill": 17
+        },
+        "Russian Hill": {
+            "Marina District": 7,
+            "Mission District": 16,
+            "Fisherman's Wharf": 7,
+            "Presidio": 14,
+            "Union Square": 10,
+            "Sunset District": 23,
+            "Financial District": 11,
+            "Haight-Ashbury": 17
+        }
+    }
+
+    meetings = [
+        ("Karen", "Mission District", 315, 780, 30),
+        ("Richard", "Fisherman's Wharf", 330, 510, 30),
+        ("Robert", "Presidio", 765, 825, 60),
+        ("Joseph", "Union Square", 165, 345, 120),
+        ("Helen", "Sunset District", 345, 705, 105),
+        ("Elizabeth", "Financial District", 60, 225, 75),
+        ("Kimberly", "Haight-Ashbury", 315, 510, 105),
+        ("Ashley", "Russian Hill", 150, 750, 45)
+    ]
+    virtual_meeting = ("Virtual", "Marina District", 0, 0, 0)
+    all_meetings = meetings + [virtual_meeting]
+    
+    n_real = len(meetings)
+    n_total = len(all_meetings)
+    
+    locations = [m[1] for m in all_meetings]
+    durations = [m[4] for m in all_meetings]
+    available_starts = [m[2] for m in all_meetings]
+    available_ends = [m[3] for m in all_meetings]
+    
+    x = [Int('x_%d' % i) for i in range(n_total)]
+    s = [Bool('s_%d' % i) for i in range(n_real)]
+    
+    opt = Optimize()
+    
+    opt.add(x[8] == 0)
+    
+    for i in range(n_real):
+        opt.add(Implies(s[i], And(x[i] >= available_starts[i], x[i] + durations[i] <= available_ends[i])))
+    
+    for i in range(n_total):
+        for j in range(n_total):
+            if i == j:
+                continue
+            scheduled_i = s[i] if i < n_real else True
+            scheduled_j = s[j] if j < n_real else True
+            condition = And(scheduled_i, scheduled_j)
+            travel_ij = travel_times[locations[i]][locations[j]]
+            travel_ji = travel_times[locations[j]][locations[i]]
+            disj1 = (x[i] + durations[i] + travel_ij <= x[j])
+            disj2 = (x[j] + durations[j] + travel_ji <= x[i])
+            opt.add(Implies(condition, Or(disj1, disj2)))
+    
+    total_meetings = Sum([If(s_i, 1, 0) for s_i in s])
+    opt.maximize(total_meetings)
+    
+    if opt.check() == sat:
+        model = opt.model()
+        scheduled_meetings = []
+        for i in range(n_real):
+            if is_true(model.eval(s[i])):
+                start_val = model.eval(x[i]).as_long()
+                hours = start_val // 60
+                minutes = start_val % 60
+                start_time_str = f"{int(hours)}:{int(minutes):02d}"
+                end_val = start_val + durations[i]
+                hours_end = end_val // 60
+                minutes_end = end_val % 60
+                end_time_str = f"{int(hours_end)}:{int(minutes_end):02d}"
+                meeting_info = {
+                    "action": "meet",
+                    "location": locations[i],
+                    "person": meetings[i][0],
+                    "start_time": start_time_str,
+                    "end_time": end_time_str
+                }
+                scheduled_meetings.append(meeting_info)
+        
+        scheduled_meetings.sort(key=lambda m: m['start_time'])
+        result = {"itinerary": scheduled_meetings}
+        print(json.dumps(result, indent=2))
+    else:
+        print('{"itinerary": []}')
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,117 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"solution\": {\n    \"header\": [\n      \"House\",\n      \"Name\",\n      \"Pet\",\n      \"HouseStyle\",\n      \"Birthday\"\n    ],\n    \"rows\": [\n      [\n        \"1\",\n        \"Bob\",\n        \"rabbit\",\n        \"mediterranean\",\n        \"feb\"\n      ],\n      [\n        \"2\",\n        \"Peter\",\n        \"cat\",\n        \"colonial\",\n        \"may\"\n      ],\n      [\n        \"3\",\n        \"Carol\",\n        \"fish\",\n        \"victorian\",\n        \"mar\"\n      ],\n      [\n        \"4\",\n        \"Arnold\",\n        \"dog\",\n        \"craftsman\",\n        \"jan\"\n      ],\n      [\n        \"5\",\n        \"Alice\",\n        \"hamster\",\n        \"modern\",\n        \"april\"\n      ],\n      [\n        \"6\",\n        \"Eric\",\n        \"bird\",\n        \"ranch\",\n        \"sept\"\n      ]\n    ]\n  }\n}",
+    "pred": [
+        {
+            "House": "1",
+            "Name": "Bob",
+            "Pet": "rabbit",
+            "HouseStyle": "mediterranean",
+            "Birthday": "feb"
+        },
+        {
+            "House": "2",
+            "Name": "Peter",
+            "Pet": "cat",
+            "HouseStyle": "colonial",
+            "Birthday": "may"
+        },
+        {
+            "House": "3",
+            "Name": "Carol",
+            "Pet": "fish",
+            "HouseStyle": "victorian",
+            "Birthday": "mar"
+        },
+        {
+            "House": "4",
+            "Name": "Arnold",
+            "Pet": "dog",
+            "HouseStyle": "craftsman",
+            "Birthday": "jan"
+        },
+        {
+            "House": "5",
+            "Name": "Alice",
+            "Pet": "hamster",
+            "HouseStyle": "modern",
+            "Birthday": "april"
+        },
+        {
+            "House": "6",
+            "Name": "Eric",
+            "Pet": "bird",
+            "HouseStyle": "ranch",
+            "Birthday": "sept"
+        }
+    ],
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Bob",
+            "Pet": "cat",
+            "HouseStyle": "mediterranean",
+            "Birthday": "feb"
+        },
+        {
+            "House": "2",
+            "Name": "Peter",
+            "Pet": "rabbit",
+            "HouseStyle": "colonial",
+            "Birthday": "may"
+        },
+        {
+            "House": "3",
+            "Name": "Carol",
+            "Pet": "bird",
+            "HouseStyle": "victorian",
+            "Birthday": "mar"
+        },
+        {
+            "House": "4",
+            "Name": "Arnold",
+            "Pet": "dog",
+            "HouseStyle": "craftsman",
+            "Birthday": "jan"
+        },
+        {
+            "House": "5",
+            "Name": "Alice",
+            "Pet": "fish",
+            "HouseStyle": "modern",
+            "Birthday": "april"
+        },
+        {
+            "House": "6",
+            "Name": "Eric",
+            "Pet": "hamster",
+            "HouseStyle": "ranch",
+            "Birthday": "sept"
+        }
+    ],
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "violations": [
+            "House 1 wrong Pet: expected 'cat', got 'rabbit'",
+            "House 2 wrong Pet: expected 'rabbit', got 'cat'",
+            "House 3 wrong Pet: expected 'bird', got 'fish'",
+            "House 5 wrong Pet: expected 'fish', got 'hamster'",
+            "House 6 wrong Pet: expected 'hamster', got 'bird'"
+        ]
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 2,
+    "timing": {
+        "api_call_time": 68.85750317573547,
+        "execution_time": 0.10560131072998047,
+        "constraint_eval_time": 0.00014734268188476562,
+        "pred_extract_time": 1.6732847690582275,
+        "gold_extract_time": 2.4080276489257812e-05,
+        "total_tokens": 6024,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\n\n# Define the variables\nnames = [\"Peter\", \"Bob\", \"Carol\", \"Eric\", \"Alice\", \"Arnold\"]\npets = [\"bird\", \"dog\", \"cat\", \"rabbit\", \"fish\", \"hamster\"]\nhouse_styles = [\"victorian\", \"ranch\", \"modern\", \"mediterranean\", \"colonial\", \"craftsman\"]\nbirthdays = [\"mar\", \"sept\", \"may\", \"feb\", \"jan\", \"april\"]\n\nhouses = range(1, 7)\n\nname_vars = {house: Int(f'name_{house}') for house in houses}\npet_vars = {house: Int(f'pet_{house}') for house in houses}\nhouse_style_vars = {house: Int(f'house_style_{house}') for house in houses}\nbirthday_vars = {house: Int(f'birthday_{house}') for house in houses}\n\n# Create the solver\nsolver = Solver()\n\n# Add constraints for unique values in each category\nfor category_vars in [name_vars, pet_vars, house_style_vars, birthday_vars]:\n    for i in houses:\n        solver.add(category_vars[i] >= 0)\n        solver.add(category_vars[i] < len(names))\n    solver.add(Distinct(*category_vars.values()))\n\n# Add specific clues as constraints\n# Clue 1: The person with the hamster lives in a house with a higher number than the person born in March.\nsolver.add(Or([And(pet_vars[h1] == pets.index(\"hamster\"), birthday_vars[h2] == birthdays.index(\"mar\"), h1 > h2) for h1 in houses for h2 in houses if h1 != h2]))\n\n# Clue 2: The person born in January lives in a house with a lower number than the person born in September.\nsolver.add(Or([And(birthday_vars[h1] == birthdays.index(\"jan\"), birthday_vars[h2] == birthdays.index(\"sept\"), h1 < h2) for h1 in houses for h2 in houses if h1 != h2]))\n\n# Clue 3: The owner of the house numbered 2 was born in May.\nsolver.add(birthday_vars[2] == birthdays.index(\"may\"))\n\n# Clue 4: The owner of the house numbered 2 lives in a colonial house.\nsolver.add(house_style_vars[2] == house_styles.index(\"colonial\"))\n\n# Clue 5: Carol lives in house number 3.\nsolver.add(name_vars[3] == names.index(\"Carol\"))\n\n# Clue 6: The owner of the house numbered 6 does not live in a Mediterranean house.\nsolver.add(house_style_vars[6] != house_styles.index(\"mediterranean\"))\n\n# Clue 7: The person with the fish lives in a house with a higher number than Bob.\nsolver.add(Or([And(pet_vars[h1] == pets.index(\"fish\"), name_vars[h2] == names.index(\"Bob\"), h1 > h2) for h1 in houses for h2 in houses if h1 != h2]))\n\n# Clue 8: Eric lives in house number 6.\nsolver.add(name_vars[6] == names.index(\"Eric\"))\n\n# Clue 9: The person who owns the cat lives next door to the person who lives in a Victorian house.\nsolver.add(Or([And(pet_vars[h1] == pets.index(\"cat\"), house_style_vars[h2] == house_styles.index(\"victorian\"), Abs(h1 - h2) == 1) for h1 in houses for h2 in houses if h1 != h2]))\n\n# Clue 10: The person who lives in a Victorian house lives two houses away from the person with the hamster.\nsolver.add(Or([And(house_style_vars[h1] == house_styles.index(\"victorian\"), pet_vars[h2] == pets.index(\"hamster\"), Abs(h1 - h2) == 2) for h1 in houses for h2 in houses if h1 != h2]))\n\n# Clue 11: Arnold lives in a Craftsman house.\nsolver.add(Or([And(name_vars[h] == names.index(\"Arnold\"), house_style_vars[h] == house_styles.index(\"craftsman\")) for h in houses]))\n\n# Clue 12: The Colonial house is to the left of the Modern house.\nsolver.add(Or([And(house_style_vars[h1] == house_styles.index(\"colonial\"), house_style_vars[h2] == house_styles.index(\"modern\"), h1 < h2) for h1 in houses for h2 in houses if h1 != h2]))\n\n# Clue 13: The person with the fish does not live in house number 2.\nsolver.add(pet_vars[2] != pets.index(\"fish\"))\n\n# Clue 14: Peter lives in a Colonial house.\nsolver.add(Or([And(name_vars[h] == names.index(\"Peter\"), house_style_vars[h] == house_styles.index(\"colonial\")) for h in houses]))\n\n# Clue 15: The person born in January lives next door to the person born in April.\nsolver.add(Or([And(birthday_vars[h1] == birthdays.index(\"jan\"), birthday_vars[h2] == birthdays.index(\"april\"), Abs(h1 - h2) == 1) for h1 in houses for h2 in houses if h1 != h2]))\n\n# Clue 16: The person with the bird lives next door to the person who lives in a Modern house.\nsolver.add(Or([And(pet_vars[h1] == pets.index(\"bird\"), house_style_vars[h2] == house_styles.index(\"modern\"), Abs(h1 - h2) == 1) for h1 in houses for h2 in houses if h1 != h2]))\n\n# Clue 17: Carol was born in March.\nsolver.add(birthday_vars[3] == birthdays.index(\"mar\"))\n\n# Clue 18: The owner of the house numbered 4 lives in a Craftsman house.\nsolver.add(house_style_vars[4] == house_styles.index(\"craftsman\"))\n\n# Clue 19: The owner of the house numbered 4 has a dog.\nsolver.add(pet_vars[4] == pets.index(\"dog\"))\n\n# Solve the problem\nif solver.check() == sat:\n    model = solver.model()\n    solution = {\n        \"solution\": {\n            \"header\": [\"House\", \"Name\", \"Pet\", \"HouseStyle\", \"Birthday\"],\n            \"rows\": []\n        }\n    }\n    for house in houses:\n        name = names[model.evaluate(name_vars[house]).as_long()]\n        pet = pets[model.evaluate(pet_vars[house]).as_long()]\n        house_style = house_styles[model.evaluate(house_style_vars[house]).as_long()]\n        birthday = birthdays[model.evaluate(birthday_vars[house]).as_long()]\n        solution[\"solution\"][\"rows\"].append([str(house), name, pet, house_style, birthday])\n    \n    import json\n    print(json.dumps(solution, indent=2))\nelse:\n    print(\"No solution found\")"
+}

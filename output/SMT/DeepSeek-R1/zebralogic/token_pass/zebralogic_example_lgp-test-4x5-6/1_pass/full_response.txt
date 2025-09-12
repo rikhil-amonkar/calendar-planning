@@ -1,0 +1,152 @@
+```python
+import json
+from z3 import *
+
+def main():
+    # Initialize the solver
+    solver = Solver()
+    
+    # Define the attributes and their possible values
+    names = ['Peter', 'Eric', 'Alice', 'Arnold']
+    educations = ['bachelor', 'high school', 'associate', 'master']
+    music_genres = ['jazz', 'rock', 'pop', 'classical']
+    colors = ['green', 'red', 'yellow', 'white']
+    flowers = ['lilies', 'carnations', 'daffodils', 'roses']
+    
+    # Create mappings from attribute values to integers
+    name_to_int = {name: i for i, name in enumerate(names)}
+    education_to_int = {edu: i for i, edu in enumerate(educations)}
+    music_to_int = {music: i for i, music in enumerate(music_genres)}
+    color_to_int = {color: i for i, color in enumerate(colors)}
+    flower_to_int = {flower: i for i, flower in enumerate(flowers)}
+    
+    # Create inverse mappings for output
+    int_to_name = {i: name for name, i in name_to_int.items()}
+    int_to_education = {i: edu for edu, i in education_to_int.items()}
+    int_to_music = {i: music for music, i in music_to_int.items()}
+    int_to_color = {i: color for color, i in color_to_int.items()}
+    int_to_flower = {i: flower for flower, i in flower_to_int.items()}
+    
+    # Define variables for each house attribute
+    house_names = [Int(f'name_{i}') for i in range(1, 5)]
+    house_educations = [Int(f'edu_{i}') for i in range(1, 5)]
+    house_music = [Int(f'music_{i}') for i in range(1, 5)]
+    house_colors = [Int(f'color_{i}') for i in range(1, 5)]
+    house_flowers = [Int(f'flower_{i}') for i in range(1, 5)]
+    
+    # Add constraints that each attribute is one of the possible values
+    for i in range(4):
+        solver.add(And(house_names[i] >= 0, house_names[i] < 4))
+        solver.add(And(house_educations[i] >= 0, house_educations[i] < 4))
+        solver.add(And(house_music[i] >= 0, house_music[i] < 4))
+        solver.add(And(house_colors[i] >= 0, house_colors[i] < 4))
+        solver.add(And(house_flowers[i] >= 0, house_flowers[i] < 4))
+    
+    # Each attribute must have distinct values across houses
+    solver.add(Distinct(house_names))
+    solver.add(Distinct(house_educations))
+    solver.add(Distinct(house_music))
+    solver.add(Distinct(house_colors))
+    solver.add(Distinct(house_flowers))
+    
+    # Clue 1: The person with a bachelor's degree is the person who loves a bouquet of daffodils.
+    bachelor_idx = education_to_int['bachelor']
+    daffodils_idx = flower_to_int['daffodils']
+    for i in range(4):
+        solver.add(Implies(house_educations[i] == bachelor_idx, house_flowers[i] == daffodils_idx))
+    
+    # Clue 2: The person who loves a carnations arrangement is not in the first house.
+    carnations_idx = flower_to_int['carnations']
+    solver.add(house_flowers[0] != carnations_idx)
+    
+    # Clue 3: The person with a master's degree is Alice.
+    master_idx = education_to_int['master']
+    alice_idx = name_to_int['Alice']
+    for i in range(4):
+        solver.add(Implies(house_educations[i] == master_idx, house_names[i] == alice_idx))
+    
+    # Clue 4: The person with a master's degree is directly left of the person who loves classical music.
+    classical_idx = music_to_int['classical']
+    for i in range(3):
+        solver.add(Implies(house_educations[i] == master_idx, house_music[i+1] == classical_idx))
+    
+    # Clue 5: Eric is not in the second house.
+    eric_idx = name_to_int['Eric']
+    solver.add(house_names[1] != eric_idx)
+    
+    # Clue 6: Arnold is not in the third house.
+    arnold_idx = name_to_int['Arnold']
+    solver.add(house_names[2] != arnold_idx)
+    
+    # Clue 7: The person who loves yellow is directly left of the person who loves the rose bouquet.
+    yellow_idx = color_to_int['yellow']
+    roses_idx = flower_to_int['roses']
+    for i in range(3):
+        solver.add(Implies(house_colors[i] == yellow_idx, house_flowers[i+1] == roses_idx))
+    
+    # Clue 8: The person who loves pop music is in the second house.
+    pop_idx = music_to_int['pop']
+    solver.add(house_music[1] == pop_idx)
+    
+    # Clue 9: The person with an associate's degree is not in the fourth house.
+    associate_idx = education_to_int['associate']
+    solver.add(house_educations[3] != associate_idx)
+    
+    # Clue 10: The person who loves a carnations arrangement is not in the fourth house.
+    solver.add(house_flowers[3] != carnations_idx)
+    
+    # Clue 11: The person whose favorite color is red is directly left of the person who loves white.
+    red_idx = color_to_int['red']
+    white_idx = color_to_int['white']
+    for i in range(3):
+        solver.add(Implies(house_colors[i] == red_idx, house_colors[i+1] == white_idx))
+    
+    # Clue 12: The person whose favorite color is red is the person who loves rock music.
+    rock_idx = music_to_int['rock']
+    for i in range(4):
+        solver.add(Implies(house_colors[i] == red_idx, house_music[i] == rock_idx))
+    
+    # Clue 13: Arnold is the person who loves yellow.
+    for i in range(4):
+        solver.add(Implies(house_names[i] == arnold_idx, house_colors[i] == yellow_idx))
+    
+    # Clue 14: The person who loves a bouquet of daffodils is the person who loves yellow.
+    for i in range(4):
+        solver.add(Implies(house_flowers[i] == daffodils_idx, house_colors[i] == yellow_idx))
+    
+    # Check if the solver is satisfied and get the solution
+    if solver.check() == sat:
+        model = solver.model()
+        
+        # Retrieve values for each house
+        result = []
+        for i in range(4):
+            name_val = model.evaluate(house_names[i]).as_long()
+            edu_val = model.evaluate(house_educations[i]).as_long()
+            music_val = model.evaluate(house_music[i]).as_long()
+            color_val = model.evaluate(house_colors[i]).as_long()
+            flower_val = model.evaluate(house_flowers[i]).as_long()
+            
+            result.append([
+                str(i+1),
+                int_to_name[name_val],
+                int_to_education[edu_val],
+                int_to_music[music_val],
+                int_to_color[color_val],
+                int_to_flower[flower_val]
+            ])
+        
+        # Format the output as JSON
+        output = {
+            "solution": {
+                "header": ["House", "Name", "Education", "MusicGenre", "Color", "Flower"],
+                "rows": result
+            }
+        }
+        print(json.dumps(output, indent=2))
+    else:
+        print("No solution found")
+
+if __name__ == "__main__":
+    main()
+```

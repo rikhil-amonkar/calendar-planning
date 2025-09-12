@@ -1,0 +1,81 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"solution\": {\n    \"header\": [\n      \"House\",\n      \"Name\",\n      \"Cigar\",\n      \"FavoriteSport\",\n      \"Drink\"\n    ],\n    \"rows\": [\n      [\n        \"1\",\n        \"Alice\",\n        \"prince\",\n        \"soccer\",\n        \"water\"\n      ],\n      [\n        \"2\",\n        \"Arnold\",\n        \"blue master\",\n        \"tennis\",\n        \"coffee\"\n      ],\n      [\n        \"3\",\n        \"Eric\",\n        \"dunhill\",\n        \"basketball\",\n        \"tea\"\n      ],\n      [\n        \"4\",\n        \"Peter\",\n        \"pall mall\",\n        \"swimming\",\n        \"milk\"\n      ]\n    ]\n  }\n}",
+    "pred": [
+        {
+            "House": "1",
+            "Name": "Alice",
+            "Cigar": "prince",
+            "FavoriteSport": "soccer",
+            "Drink": "water"
+        },
+        {
+            "House": "2",
+            "Name": "Arnold",
+            "Cigar": "blue master",
+            "FavoriteSport": "tennis",
+            "Drink": "coffee"
+        },
+        {
+            "House": "3",
+            "Name": "Eric",
+            "Cigar": "dunhill",
+            "FavoriteSport": "basketball",
+            "Drink": "tea"
+        },
+        {
+            "House": "4",
+            "Name": "Peter",
+            "Cigar": "pall mall",
+            "FavoriteSport": "swimming",
+            "Drink": "milk"
+        }
+    ],
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Alice",
+            "Cigar": "prince",
+            "FavoriteSport": "soccer",
+            "Drink": "water"
+        },
+        {
+            "House": "2",
+            "Name": "Arnold",
+            "Cigar": "blue master",
+            "FavoriteSport": "tennis",
+            "Drink": "coffee"
+        },
+        {
+            "House": "3",
+            "Name": "Eric",
+            "Cigar": "dunhill",
+            "FavoriteSport": "basketball",
+            "Drink": "tea"
+        },
+        {
+            "House": "4",
+            "Name": "Peter",
+            "Cigar": "pall mall",
+            "FavoriteSport": "swimming",
+            "Drink": "milk"
+        }
+    ],
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 412.20470666885376,
+        "execution_time": 0.08231687545776367,
+        "constraint_eval_time": 7.653236389160156e-05,
+        "pred_extract_time": 2.9195916652679443,
+        "gold_extract_time": 2.6702880859375e-05,
+        "total_tokens": 25567,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\nimport json\n\ndef main():\n    s = Solver()\n\n    # Define variables for each house (0-3)\n    name = [Int(f\"name_{i}\") for i in range(4)]\n    cigar = [Int(f\"cigar_{i}\") for i in range(4)]\n    sport = [Int(f\"sport_{i}\") for i in range(4)]\n    drink = [Int(f\"drink_{i}\") for i in range(4)]\n\n    # Add constraints for distinct and bounds\n    for var_list in [name, cigar, sport, drink]:\n        s.add(Distinct(var_list))\n        for var in var_list:\n            s.add(And(0 <= var, var <= 3))\n\n    # Add puzzle constraints\n    # Clue 1: Peter is in the fourth house (index 3)\n    s.add(name[3] == 1)  # Peter is 1\n\n    # Clue 2 and 8: The tea drinker (drink=3) is in the third house (index 2)\n    s.add(drink[2] == 3)  # Tea is 3\n\n    # Clue 8: The basketball lover is in the third house (index 2)\n    s.add(sport[2] == 1)  # Basketball is 1\n\n    # Clue 4: The basketball lover is Eric (index 2, name=3)\n    s.add(name[2] == 3)  # Eric is 3\n\n    # Clue 6: Two houses between water drinker and Peter (index 3)\n    s.add(drink[0] == 1)  # Water is 1\n\n    # Clue 3: Arnold (name=2) smokes Blue Master (cigar=2)\n    for i in range(4):\n        s.add(Implies(name[i] == 2, cigar[i] == 2))  # Arnold is 2, Blue Master is 2\n\n    # Clue 5: The tennis lover (sport=3) smokes Blue Master (cigar=2)\n    for i in range(4):\n        s.add(Implies(sport[i] == 3, cigar[i] == 2))  # Tennis is 3\n\n    # Clue 7: Arnold (name=2) drinks coffee (drink=0)\n    for i in range(4):\n        s.add(Implies(name[i] == 2, drink[i] == 0))  # Coffee is 0\n\n    # Clue 9: Prince smoker (cigar=0) loves soccer (sport=2)\n    for i in range(4):\n        s.add(Implies(cigar[i] == 0, sport[i] == 2))  # Prince is 0, Soccer is 2\n\n    # Clue 10: Peter (index 3) smokes Pall Mall (cigar=3)\n    s.add(cigar[3] == 3)  # Pall Mall is 3\n\n    # Check if the constraints are satisfiable\n    if s.check() == sat:\n        model = s.model()\n\n        # Mapping from integer codes to strings\n        names_list = [\"Alice\", \"Peter\", \"Arnold\", \"Eric\"]\n        cigars_list = [\"prince\", \"dunhill\", \"blue master\", \"pall mall\"]\n        sports_list = [\"swimming\", \"basketball\", \"soccer\", \"tennis\"]\n        drinks_list = [\"coffee\", \"water\", \"milk\", \"tea\"]\n\n        rows = []\n        for i in range(4):\n            house_num = i + 1\n            n = model[name[i]].as_long()\n            c = model[cigar[i]].as_long()\n            sp = model[sport[i]].as_long()\n            d = model[drink[i]].as_long()\n            row = [\n                str(house_num),\n                names_list[n],\n                cigars_list[c],\n                sports_list[sp],\n                drinks_list[d]\n            ]\n            rows.append(row)\n\n        solution = {\n            \"solution\": {\n                \"header\": [\"House\", \"Name\", \"Cigar\", \"FavoriteSport\", \"Drink\"],\n                \"rows\": rows\n            }\n        }\n        print(json.dumps(solution, indent=2))\n    else:\n        print(\"No solution found.\")\n\nif __name__ == \"__main__\":\n    main()"
+}

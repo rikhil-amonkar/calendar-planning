@@ -1,0 +1,79 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"solution\": {\n    \"header\": [\n      \"House\",\n      \"Name\",\n      \"Animal\",\n      \"Birthday\",\n      \"Hobby\",\n      \"Drink\",\n      \"HairColor\"\n    ],\n    \"rows\": [\n      [\n        \"1\",\n        \"Peter\",\n        \"horse\",\n        \"jan\",\n        \"photography\",\n        \"water\",\n        \"blonde\"\n      ],\n      [\n        \"2\",\n        \"Eric\",\n        \"cat\",\n        \"sept\",\n        \"cooking\",\n        \"tea\",\n        \"brown\"\n      ],\n      [\n        \"3\",\n        \"Arnold\",\n        \"bird\",\n        \"april\",\n        \"gardening\",\n        \"milk\",\n        \"black\"\n      ]\n    ]\n  }\n}",
+    "pred": [
+        {
+            "House": "1",
+            "Name": "Peter",
+            "Animal": "horse",
+            "Birthday": "jan",
+            "Hobby": "photography",
+            "Drink": "water",
+            "HairColor": "blonde"
+        },
+        {
+            "House": "2",
+            "Name": "Eric",
+            "Animal": "cat",
+            "Birthday": "sept",
+            "Hobby": "cooking",
+            "Drink": "tea",
+            "HairColor": "brown"
+        },
+        {
+            "House": "3",
+            "Name": "Arnold",
+            "Animal": "bird",
+            "Birthday": "april",
+            "Hobby": "gardening",
+            "Drink": "milk",
+            "HairColor": "black"
+        }
+    ],
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Peter",
+            "Animal": "horse",
+            "Birthday": "jan",
+            "Hobby": "photography",
+            "Drink": "water",
+            "HairColor": "blonde"
+        },
+        {
+            "House": "2",
+            "Name": "Eric",
+            "Animal": "cat",
+            "Birthday": "sept",
+            "Hobby": "cooking",
+            "Drink": "tea",
+            "HairColor": "brown"
+        },
+        {
+            "House": "3",
+            "Name": "Arnold",
+            "Animal": "bird",
+            "Birthday": "april",
+            "Hobby": "gardening",
+            "Drink": "milk",
+            "HairColor": "black"
+        }
+    ],
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 2,
+    "timing": {
+        "api_call_time": 221.43023443222046,
+        "execution_time": 0.08222532272338867,
+        "constraint_eval_time": 6.985664367675781e-05,
+        "pred_extract_time": 2.4627554416656494,
+        "gold_extract_time": 1.3113021850585938e-05,
+        "total_tokens": 13618,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import json\nfrom z3 import *\n\ndef main():\n    solver = Solver()\n\n    # Define variables for each house (1, 2, 3)\n    name_1, name_2, name_3 = Ints('name_1 name_2 name_3')\n    animal_1, animal_2, animal_3 = Ints('animal_1 animal_2 animal_3')\n    birthday_1, birthday_2, birthday_3 = Ints('birthday_1 birthday_2 birthday_3')\n    hobby_1, hobby_2, hobby_3 = Ints('hobby_1 hobby_2 hobby_3')\n    drink_1, drink_2, drink_3 = Ints('drink_1 drink_2 drink_3')\n    haircolor_1, haircolor_2, haircolor_3 = Ints('haircolor_1 haircolor_2 haircolor_3')\n\n    # Add constraints for uniqueness and domain\n    solver.add(Distinct(name_1, name_2, name_3))\n    solver.add(Distinct(animal_1, animal_2, animal_3))\n    solver.add(Distinct(birthday_1, birthday_2, birthday_3))\n    solver.add(Distinct(hobby_1, hobby_2, hobby_3))\n    solver.add(Distinct(drink_1, drink_2, drink_3))\n    solver.add(Distinct(haircolor_1, haircolor_2, haircolor_3))\n\n    # Domain constraints: 0,1,2 for each attribute\n    for var in [name_1, name_2, name_3]:\n        solver.add(And(var >= 0, var <= 2))\n    for var in [animal_1, animal_2, animal_3]:\n        solver.add(And(var >= 0, var <= 2))\n    for var in [birthday_1, birthday_2, birthday_3]:\n        solver.add(And(var >= 0, var <= 2))\n    for var in [hobby_1, hobby_2, hobby_3]:\n        solver.add(And(var >= 0, var <= 2))\n    for var in [drink_1, drink_2, drink_3]:\n        solver.add(And(var >= 0, var <= 2))\n    for var in [haircolor_1, haircolor_2, haircolor_3]:\n        solver.add(And(var >= 0, var <= 2))\n\n    # Clue 1: Brown hair (1) \u2192 cooking (1)\n    solver.add(Implies(haircolor_1 == 1, hobby_1 == 1))\n    solver.add(Implies(haircolor_2 == 1, hobby_2 == 1))\n    solver.add(Implies(haircolor_3 == 1, hobby_3 == 1))\n\n    # Clue 2: April (2) is in third house\n    solver.add(birthday_3 == 2)\n\n    # Clue 3: Eric (2) not in first house\n    solver.add(name_1 != 2)\n\n    # Clue 4: Cat (2) in second house\n    solver.add(animal_2 == 2)\n\n    # Clue 5: Blonde (2) left of milk (0)\n    solver.add(Or(\n        And(haircolor_1 == 2, Or(drink_2 == 0, drink_3 == 0)),\n        And(haircolor_2 == 2, drink_3 == 0)\n    ))\n\n    # Clue 6: Gardening (2) is milk (0)\n    solver.add(Implies(hobby_1 == 2, drink_1 == 0))\n    solver.add(Implies(hobby_2 == 2, drink_2 == 0))\n    solver.add(Implies(hobby_3 == 2, drink_3 == 0))\n\n    # Clue 7: Cat lover (animal=2) has brown hair (1). Since animal_2 is 2, haircolor_2 must be 1\n    solver.add(haircolor_2 == 1)\n\n    # Clue 8: Arnold (0) is bird keeper (0)\n    solver.add(Implies(name_1 == 0, animal_1 == 0))\n    solver.add(Implies(name_2 == 0, animal_2 == 0))\n    solver.add(Implies(name_3 == 0, animal_3 == 0))\n\n    # Clue 9: Water (1) \u2192 photography (0)\n    solver.add(Implies(drink_1 == 1, hobby_1 == 0))\n    solver.add(Implies(drink_2 == 1, hobby_2 == 0))\n    solver.add(Implies(drink_3 == 1, hobby_3 == 0))\n\n    # Clue 10: Sept (1) directly left of Arnold\n    solver.add(Or(\n        And(birthday_1 == 1, name_2 == 0),\n        And(birthday_2 == 1, name_3 == 0)\n    ))\n\n    if solver.check() == sat:\n        model = solver.model()\n\n        # Prepare the solution\n        names_list = [name_1, name_2, name_3]\n        animals_list = [animal_1, animal_2, animal_3]\n        birthdays_list = [birthday_1, birthday_2, birthday_3]\n        hobbies_list = [hobby_1, hobby_2, hobby_3]\n        drinks_list = [drink_1, drink_2, drink_3]\n        haircolors_list = [haircolor_1, haircolor_2, haircolor_3]\n\n        rows = []\n        for i in range(3):\n            house_num = str(i + 1)\n            name_val = model[names_list[i]].as_long()\n            animal_val = model[animals_list[i]].as_long()\n            birthday_val = model[birthdays_list[i]].as_long()\n            hobby_val = model[hobbies_list[i]].as_long()\n            drink_val = model[drinks_list[i]].as_long()\n            haircolor_val = model[haircolors_list[i]].as_long()\n\n            name = [\"Arnold\", \"Peter\", \"Eric\"][name_val]\n            animal = [\"bird\", \"horse\", \"cat\"][animal_val]\n            birthday = [\"jan\", \"sept\", \"april\"][birthday_val]\n            hobby = [\"photography\", \"cooking\", \"gardening\"][hobby_val]\n            drink = [\"milk\", \"water\", \"tea\"][drink_val]\n            haircolor = [\"black\", \"brown\", \"blonde\"][haircolor_val]\n\n            rows.append([house_num, name, animal, birthday, hobby, drink, haircolor])\n\n        solution = {\n            \"solution\": {\n                \"header\": [\"House\", \"Name\", \"Animal\", \"Birthday\", \"Hobby\", \"Drink\", \"HairColor\"],\n                \"rows\": rows\n            }\n        }\n\n        print(json.dumps(solution, indent=2))\n    else:\n        print(\"No solution found.\")\n\nif __name__ == \"__main__\":\n    main()"
+}

@@ -1,0 +1,62 @@
+from z3 import *
+
+def main():
+    # Initialize solver with optimization
+    opt = Optimize()
+    
+    # Define variables: day (0=Mon, 1=Tue, 2=Wed) and start time in minutes from 9:00
+    day = Int('day')
+    start = Int('start')
+    
+    # Constraints for day and start time
+    opt.add(day >= 0, day <= 2)
+    opt.add(start >= 0, start <= 450)  # 450 minutes = 16:30 (latest start for 30min meeting)
+    
+    # Ronald's busy intervals per day (in minutes from 9:00)
+    ron_intervals = {
+        0: [(90, 120), (180, 210), (390, 420)],   # Monday
+        1: [(0, 30), (180, 210), (390, 450)],      # Tuesday
+        2: [(30, 90), (120, 180), (210, 240), (270, 300), (450, 480)]  # Wednesday
+    }
+    
+    # Amber's busy intervals per day (in minutes from 9:00)
+    amber_intervals = {
+        0: [(0, 30), (60, 90), (150, 180), (210, 300), (330, 360), (390, 480)],  # Monday
+        1: [(0, 30), (60, 150), (180, 210), (270, 390), (450, 480)],              # Tuesday
+        2: [(0, 30), (60, 90), (120, 270), (360, 390)]                           # Wednesday
+    }
+    
+    # Function to generate non-overlap constraints for a set of intervals
+    def non_overlap(intervals):
+        return And([Or(start + 30 <= s, start >= e) for (s, e) in intervals])
+    
+    # Add constraints for Ronald and Amber based on selected day
+    for d in range(3):
+        opt.add(If(day == d, non_overlap(ron_intervals[d]), True))
+        opt.add(If(day == d, non_overlap(amber_intervals[d]), True))
+    
+    # Optimize for earliest day and then earliest start time
+    opt.minimize(day)
+    opt.minimize(start)
+    
+    # Check and output solution
+    if opt.check() == sat:
+        m = opt.model()
+        d_val = m.eval(day).as_long()
+        s_val = m.eval(start).as_long()
+        
+        # Convert start time to HH:MM format
+        start_hour = 9 + s_val // 60
+        start_minute = s_val % 60
+        end_time = s_val + 30
+        end_hour = 9 + end_time // 60
+        end_minute = end_time % 60
+        
+        days = ["Monday", "Tuesday", "Wednesday"]
+        print(f"{start_hour:02d}:{start_minute:02d}:{end_hour:02d}:{end_minute:02d}")
+        print(days[d_val])
+    else:
+        print("No solution found")
+
+if __name__ == "__main__":
+    main()

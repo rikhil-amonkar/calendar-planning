@@ -1,0 +1,61 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"solution\": {\n    \"header\": [\n      \"House\",\n      \"Name\",\n      \"FavoriteSport\",\n      \"HairColor\",\n      \"Height\",\n      \"Smoothie\",\n      \"Flower\"\n    ],\n    \"rows\": [\n      [\n        \"1\",\n        \"Eric\",\n        \"soccer\",\n        \"black\",\n        \"short\",\n        \"desert\",\n        \"carnations\"\n      ],\n      [\n        \"2\",\n        \"Arnold\",\n        \"basketball\",\n        \"brown\",\n        \"very short\",\n        \"cherry\",\n        \"daffodils\"\n      ]\n    ]\n  }\n}",
+    "pred": [
+        {
+            "House": "1",
+            "Name": "Eric",
+            "FavoriteSport": "soccer",
+            "HairColor": "black",
+            "Height": "short",
+            "Smoothie": "desert",
+            "Flower": "carnations"
+        },
+        {
+            "House": "2",
+            "Name": "Arnold",
+            "FavoriteSport": "basketball",
+            "HairColor": "brown",
+            "Height": "very short",
+            "Smoothie": "cherry",
+            "Flower": "daffodils"
+        }
+    ],
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Eric",
+            "FavoriteSport": "soccer",
+            "HairColor": "black",
+            "Height": "short",
+            "Smoothie": "desert",
+            "Flower": "carnations"
+        },
+        {
+            "House": "2",
+            "Name": "Arnold",
+            "FavoriteSport": "basketball",
+            "HairColor": "brown",
+            "Height": "very short",
+            "Smoothie": "cherry",
+            "Flower": "daffodils"
+        }
+    ],
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 59.6566641330719,
+        "execution_time": 0.07751917839050293,
+        "constraint_eval_time": 6.198883056640625e-05,
+        "pred_extract_time": 1.2063238620758057,
+        "gold_extract_time": 8.821487426757812e-06,
+        "total_tokens": 1101,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import z3\nimport json\n\ndef main():\n    # Create solver\n    solver = z3.Solver()\n    \n    # Define houses\n    houses = [1, 2]\n    \n    # Define attributes\n    names = ['Arnold', 'Eric']\n    sports = ['basketball', 'soccer']\n    hair_colors = ['brown', 'black']\n    heights = ['very short', 'short']\n    smoothies = ['desert', 'cherry']\n    flowers = ['daffodils', 'carnations']\n    \n    # Create variables for each attribute per house\n    name_vars = {h: z3.Int(f'name_{h}') for h in houses}\n    sport_vars = {h: z3.Int(f'sport_{h}') for h in houses}\n    hair_vars = {h: z3.Int(f'hair_{h}') for h in houses}\n    height_vars = {h: z3.Int(f'height_{h}') for h in houses}\n    smoothie_vars = {h: z3.Int(f'smoothie_{h}') for h in houses}\n    flower_vars = {h: z3.Int(f'flower_{h}') for h in houses}\n    \n    # Define domain constraints for each attribute\n    for h in houses:\n        solver.add(z3.And(name_vars[h] >= 0, name_vars[h] < len(names)))\n        solver.add(z3.And(sport_vars[h] >= 0, sport_vars[h] < len(sports)))\n        solver.add(z3.And(hair_vars[h] >= 0, hair_vars[h] < len(hair_colors)))\n        solver.add(z3.And(height_vars[h] >= 0, height_vars[h] < len(heights)))\n        solver.add(z3.And(smoothie_vars[h] >= 0, smoothie_vars[h] < len(smoothies)))\n        solver.add(z3.And(flower_vars[h] >= 0, flower_vars[h] < len(flowers)))\n    \n    # All attributes must be distinct within their category\n    solver.add(z3.Distinct([name_vars[h] for h in houses]))\n    solver.add(z3.Distinct([sport_vars[h] for h in houses]))\n    solver.add(z3.Distinct([hair_vars[h] for h in houses]))\n    solver.add(z3.Distinct([height_vars[h] for h in houses]))\n    solver.add(z3.Distinct([smoothie_vars[h] for h in houses]))\n    solver.add(z3.Distinct([flower_vars[h] for h in houses]))\n    \n    # Clue 1: The person who loves soccer is not in the second house.\n    soccer_index = sports.index('soccer')\n    solver.add(sport_vars[2] != soccer_index)\n    \n    # Clue 2: The Desert smoothie lover is directly left of the person who is very short.\n    desert_index = smoothies.index('desert')\n    very_short_index = heights.index('very short')\n    solver.add(smoothie_vars[1] == desert_index)\n    solver.add(height_vars[2] == very_short_index)\n    \n    # Clue 3: The person who is very short is the person who has brown hair.\n    brown_hair_index = hair_colors.index('brown')\n    solver.add(hair_vars[2] == brown_hair_index)  # very short is in house 2\n    \n    # Clue 4: The person who loves a carnations arrangement is the Desert smoothie lover.\n    carnations_index = flowers.index('carnations')\n    solver.add(flower_vars[1] == carnations_index)  # desert smoothie is in house 1\n    \n    # Clue 5: Eric and the person who has brown hair are next to each other.\n    eric_index = names.index('Eric')\n    # Brown hair is in house 2, so Eric must be in adjacent house (house 1)\n    solver.add(name_vars[1] == eric_index)\n    \n    # Check if solution exists\n    if solver.check() == z3.sat:\n        model = solver.model()\n        \n        # Create result structure\n        result = {\n            \"solution\": {\n                \"header\": [\"House\", \"Name\", \"FavoriteSport\", \"HairColor\", \"Height\", \"Smoothie\", \"Flower\"],\n                \"rows\": []\n            }\n        }\n        \n        # Extract values for each house\n        for house in sorted(houses):\n            name_val = names[model.evaluate(name_vars[house]).as_long()]\n            sport_val = sports[model.evaluate(sport_vars[house]).as_long()]\n            hair_val = hair_colors[model.evaluate(hair_vars[house]).as_long()]\n            height_val = heights[model.evaluate(height_vars[house]).as_long()]\n            smoothie_val = smoothies[model.evaluate(smoothie_vars[house]).as_long()]\n            flower_val = flowers[model.evaluate(flower_vars[house]).as_long()]\n            \n            result[\"solution\"][\"rows\"].append([\n                str(house),\n                name_val,\n                sport_val,\n                hair_val,\n                height_val,\n                smoothie_val,\n                flower_val\n            ])\n        \n        print(json.dumps(result, indent=2))\n    else:\n        print('{\"error\": \"No solution found\"}')\n\nif __name__ == \"__main__\":\n    main()"
+}

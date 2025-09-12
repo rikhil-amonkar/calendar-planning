@@ -1,0 +1,73 @@
+```python
+from z3 import *
+import json
+
+def main():
+    # Cities: Naples (0), Vienna (1), Vilnius (2)
+    cities = ['Naples', 'Vienna', 'Vilnius']
+    city_duration = [5, 7, 7]
+    direct_flights = [(0,1), (1,0), (1,2), (2,1)]
+    
+    # Segment city indices
+    c1, c2, c3 = Ints('c1 c2 c3')
+    # Durations for each segment
+    dur1 = If(c1 == 0, city_duration[0], If(c1 == 1, city_duration[1], city_duration[2]))
+    dur2 = If(c2 == 0, city_duration[0], If(c2 == 1, city_duration[1], city_duration[2]))
+    dur3 = If(c3 == 0, city_duration[0], If(c3 == 1, city_duration[1], city_duration[2]))
+    
+    s = Solver()
+    
+    # Each segment city must be between 0 and 2
+    s.add(And(c1 >= 0, c1 <= 2))
+    s.add(And(c2 >= 0, c2 <= 2))
+    s.add(And(c3 >= 0, c3 <= 2))
+    # All segments must be distinct cities
+    s.add(Distinct([c1, c2, c3]))
+    
+    # Flight connections
+    s.add(Or([And(c1 == i, c2 == j) for (i,j) in direct_flights]))
+    s.add(Or([And(c2 == i, c3 == j) for (i,j) in direct_flights]))
+    
+    # Total days constraint
+    s.add(dur1 + dur2 + dur3 - 2 == 17)
+    
+    # Naples must be visited between day 1 and 5
+    start1 = 1
+    start2 = start1 + dur1 - 1
+    start3 = start2 + dur2 - 1
+    
+    segment1_naples = And(c1 == 0, start1 <= 5, start1 + dur1 - 1 >= 1)
+    segment2_naples = And(c2 == 0, start2 <= 5, start2 + dur2 - 1 >= 1)
+    segment3_naples = And(c3 == 0, start3 <= 5, start3 + dur3 - 1 >= 1)
+    s.add(Or(segment1_naples, segment2_naples, segment3_naples))
+    
+    if s.check() == sat:
+        m = s.model()
+        c1_val = m.evaluate(c1).as_long()
+        c2_val = m.evaluate(c2).as_long()
+        c3_val = m.evaluate(c3).as_long()
+        dur1_val = m.evaluate(dur1).as_long()
+        dur2_val = m.evaluate(dur2).as_long()
+        dur3_val = m.evaluate(dur3).as_long()
+        
+        # Compute day ranges
+        start1 = 1
+        end1 = start1 + dur1_val - 1
+        start2 = end1  # flight day overlaps
+        end2 = start2 + dur2_val - 1
+        start3 = end2  # flight day overlaps
+        end3 = start3 + dur3_val - 1
+        
+        itinerary = [
+            {"day_range": f"Day {start1}-{end1}", "place": cities[c1_val]},
+            {"day_range": f"Day {start2}-{end2}", "place": cities[c2_val]},
+            {"day_range": f"Day {start3}-{end3}", "place": cities[c3_val]}
+        ]
+        
+        print(json.dumps({"itinerary": itinerary}))
+    else:
+        print('{"itinerary": []}')
+
+if __name__ == "__main__":
+    main()
+```

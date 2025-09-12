@@ -1,0 +1,44 @@
+{
+    "has_execution_error": true,
+    "has_no_plan": false,
+    "execution_output": null,
+    "pred": null,
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Peter",
+            "Occupation": "engineer",
+            "Hobby": "gardening"
+        },
+        {
+            "House": "2",
+            "Name": "Arnold",
+            "Occupation": "doctor",
+            "Hobby": "cooking"
+        },
+        {
+            "House": "3",
+            "Name": "Eric",
+            "Occupation": "teacher",
+            "Hobby": "photography"
+        }
+    ],
+    "status": "Error",
+    "violated_constraint": {
+        "invalid_output": "No valid output structure found"
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 4,
+    "timing": {
+        "api_call_time": 17.800633430480957,
+        "execution_time": 0.018563032150268555,
+        "constraint_eval_time": 1.9073486328125e-06,
+        "pred_extract_time": 2.86102294921875e-06,
+        "gold_extract_time": 1.1444091796875e-05,
+        "total_tokens": 266,
+        "reasoning_tokens": 25
+    },
+    "reasoning_content": "The error occurs because `solver` is not defined. You need to create a solver object first. Here's the fixed code:",
+    "generated_code": "from ortools.sat.python import cp_model\n\n# Create the model\nmodel = cp_model.CpModel()\n\n# Your constraint should be added to the model, not the solver\nmodel.add(\n    (hobby_vars[h-1] == hobbies.index('photography')) == \n    (occupation_vars[h-1] == occupations.index('teacher'))\n)\n\n# Then later create the solver and solve\nsolver = cp_model.CpSolver()\nstatus = solver.solve(model)"
+}

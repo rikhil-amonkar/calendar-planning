@@ -1,0 +1,171 @@
+```python
+import json
+from z3 import *
+
+def main():
+    # Define cities and their indices
+    cities = ['Prague', 'Brussels', 'Riga', 'Munich', 'Seville', 'Stockholm', 'Istanbul', 'Amsterdam', 'Vienna', 'Split']
+    city_index = {city: idx for idx, city in enumerate(cities)}
+    
+    # Required days per city
+    required_days = {
+        'Prague': 5,
+        'Brussels': 2,
+        'Riga': 2,
+        'Munich': 2,
+        'Seville': 3,
+        'Stockholm': 2,
+        'Istanbul': 2,
+        'Amsterdam': 3,
+        'Vienna': 5,
+        'Split': 3
+    }
+    
+    # Specific day constraints
+    specific_days = {
+        'Prague': list(range(5, 10)),  # days 5 to 9 inclusive
+        'Stockholm': [16, 17],
+        'Riga': [15, 16],
+        'Vienna': list(range(1, 6)),   # days 1 to 5 inclusive
+        'Split': list(range(11, 14))   # days 11 to 13 inclusive
+    }
+    
+    # Allowed flights (undirected edges)
+    allowed_edges = [
+        ('Riga', 'Stockholm'),
+        ('Stockholm', 'Brussels'),
+        ('Istanbul', 'Munich'),
+        ('Istanbul', 'Riga'),
+        ('Prague', 'Split'),
+        ('Vienna', 'Brussels'),
+        ('Vienna', 'Riga'),
+        ('Split', 'Stockholm'),
+        ('Munich', 'Amsterdam'),
+        ('Split', 'Amsterdam'),
+        ('Amsterdam', 'Stockholm'),
+        ('Amsterdam', 'Riga'),
+        ('Vienna', 'Stockholm'),
+        ('Vienna', 'Istanbul'),
+        ('Vienna', 'Seville'),
+        ('Istanbul', 'Amsterdam'),
+        ('Munich', 'Brussels'),
+        ('Prague', 'Munich'),
+        ('Riga', 'Munich'),
+        ('Prague', 'Amsterdam'),
+        ('Prague', 'Brussels'),
+        ('Prague', 'Istanbul'),
+        ('Istanbul', 'Stockholm'),
+        ('Vienna', 'Prague'),
+        ('Munich', 'Split'),
+        ('Vienna', 'Amsterdam'),
+        ('Prague', 'Stockholm'),
+        ('Brussels', 'Seville'),
+        ('Munich', 'Stockholm'),
+        ('Istanbul', 'Brussels'),
+        ('Amsterdam', 'Seville'),
+        ('Vienna', 'Split'),
+        ('Munich', 'Seville'),
+        ('Riga', 'Brussels'),
+        ('Prague', 'Riga'),
+        ('Vienna', 'Munich')
+    ]
+    
+    # Create directed allowed pairs (both directions)
+    allowed_pairs = set()
+    for edge in allowed_edges:
+        a, b = edge
+        idx_a = city_index[a]
+        idx_b = city_index[b]
+        allowed_pairs.add((idx_a, idx_b))
+        allowed_pairs.add((idx_b, idx_a))
+    
+    # Initialize Z3 solver
+    solver = Solver()
+    
+    # Variables: x[i] for day i wake-up city (1-indexed days 1 to 20)
+    x = [Int(f'x_{i}') for i in range(1, 21)]
+    # Variables: fly[i] for flight on day i (1-indexed days 1 to 19)
+    fly = [Bool(f'fly_{i}') for i in range(1, 20)]
+    
+    # Constraint: x[i] must be between 0 and 9
+    for i in range(20):
+        solver.add(And(x[i] >= 0, x[i] < 10))
+    
+    # Constraint: if not flying, wake-up city same next day
+    for i in range(19):
+        solver.add(If(Not(fly[i]), x[i] == x[i+1], True))
+    
+    # Constraint: flight must be between connected cities
+    for i in range(19):
+        conditions = []
+        for (a, b) in allowed_pairs:
+            conditions.append(And(x[i] == a, x[i+1] == b))
+        solver.add(If(fly[i], Or(conditions), True))
+    
+    # Constraint: total days per city
+    for c_idx, city in enumerate(cities):
+        total = 0
+        for i in range(20):
+            total += If(x[i] == c_idx, 1, 0)
+        for i in range(19):
+            total += If(And(fly[i], x[i+1] == c_idx), 1, 0)
+        solver.add(total == required_days[city])
+    
+    # Constraint: specific days
+    for city, days in specific_days.items():
+        c_idx = city_index[city]
+        for d in days:
+            day_idx = d - 1  # convert to 0-indexed
+            solver.add(Or(
+                x[day_idx] == c_idx,
+                And(day_idx < 19, fly[day_idx], x[day_idx+1] == c_idx)
+            ))
+    
+    # Check satisfiability
+    if solver.check() == sat:
+        model = solver.model()
+        # Extract wake-up cities for each day
+        wake_up_cities = []
+        for i in range(20):
+            val = model.evaluate(x[i])
+            wake_up_cities.append(val.as_long())
+        
+        # Group consecutive days with same wake-up city
+ itinerary = []
+        start = 0
+        current_city = wake_up_cities[0]
+        for i in range(1, 20):
+            if wake_up_cities[i] != current_city:
+                if start == i-1:
+                    itinerary.append({
+                        "day_range": f"Day {start+1}",
+                        "place": cities[current_city]
+                    })
+                else:
+                    itinerary.append({
+                        "day_range": f"Day {start+1}-{i}",
+                        "place": cities[current_city]
+                    })
+                start = i
+                current_city = wake_up_cities[i]
+        # Add last group
+        if start == 19:
+            itinerary.append({
+                "day_range": f"Day {20}",
+                "place": cities[current_city]
+            })
+        else:
+            itinerary.append({
+                "day_range": f"Day {start+1}-20",
+                "place": cities[current_city]
+            })
+        
+        # Output as JSON
+        result = {"itinerary": itinerary}
+        print(json.dumps(result, indent=2))
+    else:
+        print("No valid itinerary found")
+
+if __name__ == "__main__":
+    main()
+```

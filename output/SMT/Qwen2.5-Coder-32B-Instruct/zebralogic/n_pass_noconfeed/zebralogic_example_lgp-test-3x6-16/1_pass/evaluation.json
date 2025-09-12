@@ -1,0 +1,53 @@
+{
+    "has_execution_error": true,
+    "has_no_plan": false,
+    "execution_output": null,
+    "pred": null,
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Eric",
+            "Drink": "milk",
+            "Nationality": "dane",
+            "Education": "high school",
+            "HouseStyle": "ranch",
+            "Smoothie": "watermelon"
+        },
+        {
+            "House": "2",
+            "Name": "Peter",
+            "Drink": "water",
+            "Nationality": "swede",
+            "Education": "bachelor",
+            "HouseStyle": "victorian",
+            "Smoothie": "desert"
+        },
+        {
+            "House": "3",
+            "Name": "Arnold",
+            "Drink": "tea",
+            "Nationality": "brit",
+            "Education": "associate",
+            "HouseStyle": "colonial",
+            "Smoothie": "cherry"
+        }
+    ],
+    "status": "Error",
+    "violated_constraint": {
+        "invalid_output": "No valid output structure found"
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 58.154807329177856,
+        "execution_time": 0.019678354263305664,
+        "constraint_eval_time": 4.5299530029296875e-06,
+        "pred_extract_time": 9.298324584960938e-06,
+        "gold_extract_time": 1.6450881958007812e-05,
+        "total_tokens": 5093,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\n\n# Define the domains\nhouses = [1, 2, 3]\nnames = ['Eric', 'Peter', 'Arnold']\ndrinks = ['tea', 'water', 'milk']\nnationalities = ['dane', 'brit', 'swede']\neducations = ['high school', 'associate', 'bachelor']\nhouse_styles = ['victorian', 'colonial', 'ranch']\nsmoothies = ['cherry', 'watermelon', 'desert']\n\n# Create variables\nname_vars = {h: Int(f'name_{h}') for h in houses}\ndrink_vars = {h: Int(f'drink_{h}') for h in houses}\nnationality_vars = {h: Int(f'nationality_{h}') for h in houses}\neducation_vars = {h: Int(f'education_{h}') for h in houses}\nhouse_style_vars = {h: Int(f'house_style_{h}') for h in houses}\nsmoothie_vars = {h: Int(f'smoothie_{h}') for h in houses}\n\n# Create solver\nsolver = Solver()\n\n# Add domain constraints\nfor h in houses:\n    solver.add(name_vars[h] >= 0, name_vars[h] < len(names))\n    solver.add(drink_vars[h] >= 0, drink_vars[h] < len(drinks))\n    solver.add(nationality_vars[h] >= 0, nationality_vars[h] < len(nationalities))\n    solver.add(education_vars[h] >= 0, education_vars[h] < len(educations))\n    solver.add(house_style_vars[h] >= 0, house_style_vars[h] < len(house_styles))\n    solver.add(smoothie_vars[h] >= 0, smoothie_vars[h] < len(smoothies))\n\n# All values must be distinct within their categories\nsolver.add(Distinct([name_vars[h] for h in houses]))\nsolver.add(Distinct([drink_vars[h] for h in houses]))\nsolver.add(Distinct([nationality_vars[h] for h in houses]))\nsolver.add(Distinct([education_vars[h] for h in houses]))\nsolver.add(Distinct([house_style_vars[h] for h in houses]))\nsolver.add(Distinct([smoothie_vars[h] for h in houses]))\n\n# Clue 1: There is one house between Eric and the tea drinker.\neric_var = Int('eric')\ntea_var = Int('tea')\nsolver.add(Or(And(eric_var == name_vars[1], tea_var == drink_vars[3]),\n             And(eric_var == name_vars[2], tea_var == drink_vars[1]),\n             And(eric_var == name_vars[3], tea_var == drink_vars[1])))\n\n# Clue 2: The person who likes milk is the person in a ranch-style home.\nsolver.add(drink_vars[h] == drinks.index('milk') ==>\n           house_style_vars[h] == house_styles.index('ranch') for h in houses)\n\n# Clue 3: The person with a bachelor's degree is in the second house.\nsolver.add(education_vars[2] == educations.index('bachelor'))\n\n# Clue 4: The person with a high school diploma is the Dane.\ndane_var = Int('dane')\nhigh_school_var = Int('high_school')\nsolver.add(Or(And(dane_var == nationality_vars[1], high_school_var == education_vars[1]),\n             And(dane_var == nationality_vars[2], high_school_var == education_vars[2]),\n             And(dane_var == nationality_vars[3], high_school_var == education_vars[3])))\n\n# Clue 5: The Desert smoothie lover is the Swedish person.\nswede_var = Int('swede')\ndesert_var = Int('desert')\nsolver.add(Or(And(swede_var == nationality_vars[1], desert_var == smoothie_vars[1]),\n             And(swede_var == nationality_vars[2], desert_var == smoothie_vars[2]),\n             And(swede_var == nationality_vars[3], desert_var == smoothie_vars[3])))\n\n# Clue 6: The person residing in a Victorian house is not in the first house.\nsolver.add(house_style_vars[1] != house_styles.index('victorian'))\n\n# Clue 7: The person who likes Cherry smoothies is the person living in a colonial-style house.\ncherry_var = Int('cherry')\ncolonial_var = Int('colonial')\nsolver.add(Or(And(cherry_var == smoothie_vars[1], colonial_var == house_style_vars[1]),\n             And(cherry_var == smoothie_vars[2], colonial_var == house_style_vars[2]),\n             And(cherry_var == smoothie_vars[3], colonial_var == house_style_vars[3])))\n\n# Clue 8: Arnold is somewhere to the right of the person residing in a Victorian house.\nvictorian_var = Int('victorian')\narnold_var = Int('arnold')\nsolver.add(Or(And(victorian_var == house_style_vars[1], arnold_var == name_vars[2]),\n             And(victorian_var == house_style_vars[1], arnold_var == name_vars[3]),\n             And(victorian_var == house_style_vars[2], arnold_var == name_vars[3])))\n\n# Clue 9: The person in a ranch-style home is the person with a high school diploma.\nsolver.add(house_style_vars[h] == house_styles.index('ranch') ==>\n           education_vars[h] == educations.index('high school') for h in houses)\n\n# Solve the problem\nif solver.check() == sat:\n    model = solver.model()\n    solution = {\n        \"solution\": {\n            \"header\": [\"House\", \"Name\", \"Drink\", \"Nationality\", \"Education\", \"HouseStyle\", \"Smoothie\"],\n            \"rows\": []\n        }\n    }\n    for h in houses:\n        name = names[model[name_vars[h]].as_long()]\n        drink = drinks[model[drink_vars[h]].as_long()]\n        nationality = nationalities[model[nationality_vars[h]].as_long()]\n        education = educations[model[education_vars[h]].as_long()]\n        house_style = house_styles[model[house_style_vars[h]].as_long()]\n        smoothie = smoothies[model[smoothie_vars[h]].as_long()]\n        solution[\"solution\"][\"rows\"].append([str(h), name, drink, nationality, education, house_style, smoothie])\n    import json\n    print(json.dumps(solution))\nelse:\n    print(\"No solution found\")"
+}

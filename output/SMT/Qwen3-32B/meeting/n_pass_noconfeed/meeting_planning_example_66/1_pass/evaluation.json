@@ -1,0 +1,45 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\"itinerary\": [{\"action\": \"meet\", \"location\": \"Presidio\", \"person\": \"Robert\", \"start_time\": \"15:23\", \"end_time\": \"17:23\"}]}",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Presidio",
+                "person": "Robert",
+                "start_time": "15:23",
+                "end_time": "17:23"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Presidio",
+                "person": "Robert",
+                "start_time": "11:15",
+                "end_time": "13:15"
+            }
+        ]
+    },
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "constraints_satisfied_but_no_exact_match": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 189.3118932247162,
+        "execution_time": 0.08426856994628906,
+        "constraint_eval_time": 9.250640869140625e-05,
+        "pred_extract_time": 1.050077199935913,
+        "gold_extract_time": 3.147125244140625e-05,
+        "total_tokens": 11469,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import z3\nimport json\n\ndef time_str(minutes):\n    h = minutes // 60\n    m = minutes % 60\n    return f\"{h}:{m:02d}\"\n\nsolver = z3.Solver()\n\n# Variables\nD = z3.Int('D')  # Departure time from Nob Hill in minutes since midnight\n\n# Constraints\n# You arrive at Nob Hill at 9:00 AM (540 min)\n# Robert is available from 11:15 AM (675) to 5:45 PM (1065)\n# Travel time Nob Hill to Presidio: 17 min\n# Minimum meeting duration: 120 min\n\nsolver.add(D >= 540)  # Can't depart Nob Hill before arrival there\nsolver.add(D + 17 >= 675)  # Must arrive at Presidio by Robert's start time\nsolver.add(D + 17 + 120 <= 1065)  # Meeting must end by Robert's end time\n\nif solver.check() == z3.sat:\n    model = solver.model()\n    D_val = model[D].as_long()\n    start_meet = D_val + 17\n    end_meet = start_meet + 120\n    itinerary = [\n        {\n            \"action\": \"meet\",\n            \"location\": \"Presidio\",\n            \"person\": \"Robert\",\n            \"start_time\": time_str(start_meet),\n            \"end_time\": time_str(end_meet)\n        }\n    ]\n    print(json.dumps({\"itinerary\": itinerary}))\nelse:\n    print(json.dumps({\"itinerary\": []}))"
+}

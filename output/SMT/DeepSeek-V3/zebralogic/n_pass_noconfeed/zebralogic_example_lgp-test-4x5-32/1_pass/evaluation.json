@@ -1,0 +1,58 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": true,
+    "execution_output": "{\"error\": \"No solution found\"}",
+    "pred": null,
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Arnold",
+            "Hobby": "photography",
+            "Birthday": "april",
+            "Education": "associate",
+            "Smoothie": "dragonfruit"
+        },
+        {
+            "House": "2",
+            "Name": "Eric",
+            "Hobby": "gardening",
+            "Birthday": "jan",
+            "Education": "bachelor",
+            "Smoothie": "desert"
+        },
+        {
+            "House": "3",
+            "Name": "Alice",
+            "Hobby": "cooking",
+            "Birthday": "sept",
+            "Education": "high school",
+            "Smoothie": "cherry"
+        },
+        {
+            "House": "4",
+            "Name": "Peter",
+            "Hobby": "painting",
+            "Birthday": "feb",
+            "Education": "master",
+            "Smoothie": "watermelon"
+        }
+    ],
+    "status": "No plan generated",
+    "violated_constraint": {
+        "invalid_output": "No valid output structure found"
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 87.86088562011719,
+        "execution_time": 0.08489561080932617,
+        "constraint_eval_time": 1.9073486328125e-06,
+        "pred_extract_time": 0.41550612449645996,
+        "gold_extract_time": 1.2159347534179688e-05,
+        "total_tokens": 1643,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import z3\nimport json\n\ndef main():\n    # Create solver\n    solver = z3.Solver()\n    \n    # Define attributes\n    names = ['Arnold', 'Alice', 'Eric', 'Peter']\n    hobbies = ['cooking', 'painting', 'photography', 'gardening']\n    birthdays = ['jan', 'feb', 'april', 'sept']\n    educations = ['master', 'bachelor', 'associate', 'high school']\n    smoothies = ['cherry', 'watermelon', 'desert', 'dragonfruit']\n    houses = [1, 2, 3, 4]\n    \n    # Create variables for each attribute per house\n    name_vars = [z3.Int(f'name_{i}') for i in houses]\n    hobby_vars = [z3.Int(f'hobby_{i}') for i in houses]\n    birthday_vars = [z3.Int(f'birthday_{i}') for i in houses]\n    education_vars = [z3.Int(f'education_{i}') for i in houses]\n    smoothie_vars = [z3.Int(f'smoothie_{i}') for i in houses]\n    \n    # Define domains for each variable\n    for i in houses:\n        solver.add(z3.And(name_vars[i-1] >= 0, name_vars[i-1] < len(names)))\n        solver.add(z3.And(hobby_vars[i-1] >= 0, hobby_vars[i-1] < len(hobbies)))\n        solver.add(z3.And(birthday_vars[i-1] >= 0, birthday_vars[i-1] < len(birthdays)))\n        solver.add(z3.And(education_vars[i-1] >= 0, education_vars[i-1] < len(educations)))\n        solver.add(z3.And(smoothie_vars[i-1] >= 0, smoothie_vars[i-1] < len(smoothies)))\n    \n    # All attributes are distinct per house\n    solver.add(z3.Distinct(name_vars))\n    solver.add(z3.Distinct(hobby_vars))\n    solver.add(z3.Distinct(birthday_vars))\n    solver.add(z3.Distinct(education_vars))\n    solver.add(z3.Distinct(smoothie_vars))\n    \n    # Clue 1: The Desert smoothie lover is the person whose birthday is in January.\n    desert_idx = smoothies.index('desert')\n    jan_idx = birthdays.index('jan')\n    for i in houses:\n        solver.add(z3.Implies(smoothie_vars[i-1] == desert_idx, birthday_vars[i-1] == jan_idx))\n    \n    # Clue 2: Eric is the person with a bachelor's degree.\n    eric_idx = names.index('Eric')\n    bachelor_idx = educations.index('bachelor')\n    for i in houses:\n        solver.add(z3.Implies(name_vars[i-1] == eric_idx, education_vars[i-1] == bachelor_idx))\n    \n    # Clue 3: The person whose birthday is in January is the person with a bachelor's degree.\n    for i in houses:\n        solver.add(z3.Implies(birthday_vars[i-1] == jan_idx, education_vars[i-1] == bachelor_idx))\n    \n    # Clue 4: The person with a high school diploma is in the third house.\n    hs_idx = educations.index('high school')\n    solver.add(education_vars[2] == hs_idx)\n    \n    # Clue 5: The Watermelon smoothie lover is not in the third house.\n    watermelon_idx = smoothies.index('watermelon')\n    solver.add(smoothie_vars[2] != watermelon_idx)\n    \n    # Clue 6: The person with an associate's degree is Arnold.\n    associate_idx = educations.index('associate')\n    arnold_idx = names.index('Arnold')\n    for i in houses:\n        solver.add(z3.Implies(education_vars[i-1] == associate_idx, name_vars[i-1] == arnold_idx))\n    \n    # Clue 7: The person with a master's degree is the person who paints as a hobby.\n    master_idx = educations.index('master')\n    painting_idx = hobbies.index('painting')\n    for i in houses:\n        solver.add(z3.Implies(education_vars[i-1] == master_idx, hobby_vars[i-1] == painting_idx))\n    \n    # Clue 8: There is one house between the Dragonfruit smoothie lover and the person whose birthday is in September.\n    dragonfruit_idx = smoothies.index('dragonfruit')\n    sept_idx = birthdays.index('sept')\n    for i in houses:\n        for j in houses:\n            if abs(i - j) == 2:  # One house between means positions differ by 2\n                solver.add(z3.Or(\n                    z3.And(smoothie_vars[i-1] == dragonfruit_idx, birthday_vars[j-1] == sept_idx),\n                    z3.And(smoothie_vars[j-1] == dragonfruit_idx, birthday_vars[i-1] == sept_idx)\n                ))\n    \n    # Clue 9: The person with a high school diploma is the person whose birthday is in September.\n    for i in houses:\n        solver.add(z3.Implies(education_vars[i-1] == hs_idx, birthday_vars[i-1] == sept_idx))\n    \n    # Clue 10: The person who loves cooking is Alice.\n    cooking_idx = hobbies.index('cooking')\n    alice_idx = names.index('Alice')\n    for i in houses:\n        solver.add(z3.Implies(hobby_vars[i-1] == cooking_idx, name_vars[i-1] == alice_idx))\n    \n    # Clue 11: The person whose birthday is in April and the person who enjoys gardening are next to each other.\n    april_idx = birthdays.index('april')\n    gardening_idx = hobbies.index('gardening')\n    for i in houses:\n        for j in houses:\n            if abs(i - j) == 1:  # Adjacent houses\n                solver.add(z3.Or(\n                    z3.And(birthday_vars[i-1] == april_idx, hobby_vars[j-1] == gardening_idx),\n                    z3.And(birthday_vars[j-1] == april_idx, hobby_vars[i-1] == gardening_idx)\n                ))\n    \n    # Clue 12: The person who paints as a hobby is the person whose birthday is in February.\n    feb_idx = birthdays.index('feb')\n    for i in houses:\n        solver.add(z3.Implies(hobby_vars[i-1] == painting_idx, birthday_vars[i-1] == feb_idx))\n    \n    # Check if satisfiable\n    if solver.check() == z3.sat:\n        model = solver.model()\n        \n        # Extract values\n        result = []\n        for i in houses:\n            name_val = model.eval(name_vars[i-1]).as_long()\n            hobby_val = model.eval(hobby_vars[i-1]).as_long()\n            birthday_val = model.eval(birthday_vars[i-1]).as_long()\n            education_val = model.eval(education_vars[i-1]).as_long()\n            smoothie_val = model.eval(smoothie_vars[i-1]).as_long()\n            \n            result.append([\n                str(i),\n                names[name_val],\n                hobbies[hobby_val],\n                birthdays[birthday_val],\n                educations[education_val],\n                smoothies[smoothie_val]\n            ])\n        \n        # Create JSON output\n        output = {\n            \"solution\": {\n                \"header\": [\"House\", \"Name\", \"Hobby\", \"Birthday\", \"Education\", \"Smoothie\"],\n                \"rows\": result\n            }\n        }\n        \n        print(json.dumps(output, indent=2))\n    else:\n        print('{\"error\": \"No solution found\"}')\n\nif __name__ == \"__main__\":\n    main()"
+}

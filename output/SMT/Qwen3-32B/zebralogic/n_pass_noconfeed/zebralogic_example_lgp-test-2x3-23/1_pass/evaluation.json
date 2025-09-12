@@ -1,0 +1,49 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\"solution\": {\"header\": [\"House\", \"Name\", \"Children\", \"Food\"], \"rows\": [[\"1\", \"Eric\", \"Bella\", \"grilled cheese\"], [\"2\", \"Arnold\", \"Fred\", \"pizza\"]]}}",
+    "pred": [
+        {
+            "House": "1",
+            "Name": "Eric",
+            "Children": "Bella",
+            "Food": "grilled cheese"
+        },
+        {
+            "House": "2",
+            "Name": "Arnold",
+            "Children": "Fred",
+            "Food": "pizza"
+        }
+    ],
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Eric",
+            "Children": "Bella",
+            "Food": "grilled cheese"
+        },
+        {
+            "House": "2",
+            "Name": "Arnold",
+            "Children": "Fred",
+            "Food": "pizza"
+        }
+    ],
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 385.6111695766449,
+        "execution_time": 0.07776594161987305,
+        "constraint_eval_time": 5.6743621826171875e-05,
+        "pred_extract_time": 1.6245343685150146,
+        "gold_extract_time": 1.2636184692382812e-05,
+        "total_tokens": 28729,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import z3\nimport json\n\ndef main():\n    # Define EnumSorts\n    Name, (Arnold, Eric) = z3.EnumSort('Name', ['Arnold', 'Eric'])\n    Child, (Bella, Fred) = z3.EnumSort('Child', ['Bella', 'Fred'])\n    Food, (GrilledCheese, Pizza) = z3.EnumSort('Food', ['grilled cheese', 'pizza'])\n\n    # Create variables for each house\n    name1 = z3.Const('name1', Name)\n    child1 = z3.Const('child1', Child)\n    food1 = z3.Const('food1', Food)\n    name2 = z3.Const('name2', Name)\n    child2 = z3.Const('child2', Child)\n    food2 = z3.Const('food2', Food)\n\n    solver = z3.Solver()\n\n    # Add uniqueness constraints\n    solver.add(name1 != name2)\n    solver.add(child1 != child2)\n    solver.add(food1 != food2)\n\n    # Add clue constraints\n    # Clue 1: Pizza lover is Arnold\n    solver.add(z3.Implies(food1 == Pizza, name1 == Arnold))\n    solver.add(z3.Implies(food2 == Pizza, name2 == Arnold))\n\n    # Clue 2: Grilled cheese is directly left of Fred's parent\n    solver.add(food1 == GrilledCheese)\n    solver.add(child2 == Fred)\n\n    # Check satisfiability\n    if solver.check() == z3.sat:\n        model = solver.model()\n        # Extract values\n        def get_str(var):\n            return model.evaluate(var).decl().name()\n\n        # House 1\n        h1_name = get_str(name1)\n        h1_child = get_str(child1)\n        h1_food = get_str(food1)\n        # House 2\n        h2_name = get_str(name2)\n        h2_child = get_str(child2)\n        h2_food = get_str(food2)\n\n        solution = {\n            \"solution\": {\n                \"header\": [\"House\", \"Name\", \"Children\", \"Food\"],\n                \"rows\": [\n                    [\"1\", h1_name, h1_child, h1_food],\n                    [\"2\", h2_name, h2_child, h2_food]\n                ]\n            }\n        }\n        print(json.dumps(solution))\n    else:\n        print(json.dumps({\"error\": \"No solution found\"}))\n\nif __name__ == \"__main__\":\n    main()"
+}

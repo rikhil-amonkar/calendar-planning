@@ -1,0 +1,65 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"solution\": {\n    \"header\": [\n      \"House\",\n      \"Name\",\n      \"Color\"\n    ],\n    \"rows\": [\n      [\n        \"1\",\n        \"Peter\",\n        \"white\"\n      ],\n      [\n        \"2\",\n        \"Alice\",\n        \"red\"\n      ],\n      [\n        \"3\",\n        \"Arnold\",\n        \"green\"\n      ],\n      [\n        \"4\",\n        \"Eric\",\n        \"yellow\"\n      ]\n    ]\n  }\n}",
+    "pred": [
+        {
+            "House": "1",
+            "Name": "Peter",
+            "Color": "white"
+        },
+        {
+            "House": "2",
+            "Name": "Alice",
+            "Color": "red"
+        },
+        {
+            "House": "3",
+            "Name": "Arnold",
+            "Color": "green"
+        },
+        {
+            "House": "4",
+            "Name": "Eric",
+            "Color": "yellow"
+        }
+    ],
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Peter",
+            "Color": "white"
+        },
+        {
+            "House": "2",
+            "Name": "Alice",
+            "Color": "red"
+        },
+        {
+            "House": "3",
+            "Name": "Arnold",
+            "Color": "green"
+        },
+        {
+            "House": "4",
+            "Name": "Eric",
+            "Color": "yellow"
+        }
+    ],
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 347.2548522949219,
+        "execution_time": 0.07884979248046875,
+        "constraint_eval_time": 5.602836608886719e-05,
+        "pred_extract_time": 1.5909204483032227,
+        "gold_extract_time": 1.1682510375976562e-05,
+        "total_tokens": 21973,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\nimport json\n\n# Initialize the solver\nsolver = Solver()\n\n# Define variables for each house (1 to 4)\nname_1 = Int('name_1')\nname_2 = Int('name_2')\nname_3 = Int('name_3')\nname_4 = Int('name_4')\n\ncolor_1 = Int('color_1')\ncolor_2 = Int('color_2')\ncolor_3 = Int('color_3')\ncolor_4 = Int('color_4')\n\n# Add constraints for distinct names and colors\nsolver.add(Distinct(name_1, name_2, name_3, name_4))\nsolver.add(Distinct(color_1, color_2, color_3, color_4))\n\n# Ensure all name and color values are within valid ranges\nfor n in [name_1, name_2, name_3, name_4]:\n    solver.add(And(n >= 0, n <= 3))\nfor c in [color_1, color_2, color_3, color_4]:\n    solver.add(And(c >= 0, c <= 3))\n\n# Clue 1: The person whose favorite color is green is in the third house.\nsolver.add(color_3 == 1)\n\n# Clue 2: Peter is in the first house.\nsolver.add(name_1 == 0)\n\n# Clue 3: One house between red and yellow\nclue3 = Or(\n    And(color_1 == 2, color_3 == 0),\n    And(color_1 == 0, color_3 == 2),\n    And(color_2 == 2, color_4 == 0),\n    And(color_2 == 0, color_4 == 2)\n)\nsolver.add(clue3)\n\n# Clue 4: Arnold is directly left of Eric\nclue4 = Or(\n    And(name_1 == 1, name_2 == 3),\n    And(name_2 == 1, name_3 == 3),\n    And(name_3 == 1, name_4 == 3)\n)\nsolver.add(clue4)\n\n# Clue 5: Eric loves yellow\nclue5 = And(\n    Or(name_1 != 3, color_1 == 0),\n    Or(name_2 != 3, color_2 == 0),\n    Or(name_3 != 3, color_3 == 0),\n    Or(name_4 != 3, color_4 == 0)\n)\nsolver.add(clue5)\n\n# Solve the constraints\nif solver.check() == sat:\n    model = solver.model()\n    names = [model[name_1], model[name_2], model[name_3], model[name_4]]\n    colors = [model[color_1], model[color_2], model[color_3], model[color_4]]\n    \n    # Mapping integer values to names and colors\n    name_map = {0: 'Peter', 1: 'Arnold', 2: 'Alice', 3: 'Eric'}\n    color_map = {0: 'yellow', 1: 'green', 2: 'red', 3: 'white'}\n    \n    rows = []\n    for i in range(4):\n        house_num = i + 1\n        name_val = name_map[names[i].as_long()]\n        color_val = color_map[colors[i].as_long()]\n        rows.append([str(house_num), name_val, color_val])\n    \n    solution = {\n        \"solution\": {\n            \"header\": [\"House\", \"Name\", \"Color\"],\n            \"rows\": rows\n        }\n    }\n    \n    print(json.dumps(solution, indent=2))\nelse:\n    print(\"No solution found.\")"
+}

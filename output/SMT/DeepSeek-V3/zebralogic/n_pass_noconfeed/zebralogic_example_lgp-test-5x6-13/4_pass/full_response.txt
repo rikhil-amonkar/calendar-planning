@@ -1,0 +1,180 @@
+```python
+import z3
+import json
+
+def main():
+    solver = z3.Solver()
+    
+    n_houses = 5
+    houses = list(range(1, n_houses+1))
+    
+    # Define all attributes
+    names = ['Eric', 'Peter', 'Arnold', 'Alice', 'Bob']
+    foods = ['stir fry', 'spaghetti', 'stew', 'grilled cheese', 'pizza']
+    car_models = ['ford f150', 'tesla model 3', 'bmw 3 series', 'toyota camry', 'honda civic']
+    phone_models = ['iphone 13', 'google pixel 6', 'samsung galaxy s21', 'oneplus 9', 'huawei p50']
+    occupations = ['teacher', 'lawyer', 'doctor', 'artist', 'engineer']
+    drinks = ['tea', 'milk', 'water', 'root beer', 'coffee']
+    
+    # Create variables for each attribute per house
+    name_vars = [z3.Int(f"name_{i}") for i in houses]
+    food_vars = [z3.Int(f"food_{i}") for i in houses]
+    car_vars = [z3.Int(f"car_{i}") for i in houses]
+    phone_vars = [z3.Int(f"phone_{i}") for i in houses]
+    occupation_vars = [z3.Int(f"occupation_{i}") for i in houses]
+    drink_vars = [z3.Int(f"drink_{i}") for i in houses]
+    
+    # Define domains for each attribute
+    for i in houses:
+        solver.add(z3.And(name_vars[i-1] >= 0, name_vars[i-1] < len(names)))
+        solver.add(z3.And(food_vars[i-1] >= 0, food_vars[i-1] < len(foods)))
+        solver.add(z3.And(car_vars[i-1] >= 0, car_vars[i-1] < len(car_models)))
+        solver.add(z3.And(phone_vars[i-1] >= 0, phone_vars[i-1] < len(phone_models)))
+        solver.add(z3.And(occupation_vars[i-1] >= 0, occupation_vars[i-1] < len(occupations)))
+        solver.add(z3.And(drink_vars[i-1] >= 0, drink_vars[i-1] < len(drinks)))
+    
+    # All attributes are distinct per category
+    solver.add(z3.Distinct(name_vars))
+    solver.add(z3.Distinct(food_vars))
+    solver.add(z3.Distinct(car_vars))
+    solver.add(z3.Distinct(phone_vars))
+    solver.add(z3.Distinct(occupation_vars))
+    solver.add(z3.Distinct(drink_vars))
+    
+    # Helper function to get index of a value in a list
+    def idx(lst, val):
+        return lst.index(val)
+    
+    # Clue 1: The root beer lover is the person who owns a Honda Civic.
+    for i in houses:
+        solver.add(z3.Implies(drink_vars[i-1] == idx(drinks, 'root beer'), 
+                             car_vars[i-1] == idx(car_models, 'honda civic')))
+    
+    # Clue 2: The person who likes milk is directly left of the person who loves eating grilled cheese.
+    for i in range(1, n_houses):
+        solver.add(z3.Implies(drink_vars[i-1] == idx(drinks, 'milk'), 
+                             food_vars[i] == idx(foods, 'grilled cheese')))
+    
+    # Clue 3: Alice is the person who uses a Samsung Galaxy S21.
+    for i in houses:
+        solver.add(z3.Implies(name_vars[i-1] == idx(names, 'Alice'), 
+                             phone_vars[i-1] == idx(phone_models, 'samsung galaxy s21')))
+    
+    # Clue 4: Alice is the person who loves stir fry.
+    for i in houses:
+        solver.add(z3.Implies(name_vars[i-1] == idx(names, 'Alice'), 
+                             food_vars[i-1] == idx(foods, 'stir fry')))
+    
+    # Clue 5: The tea drinker is not in the fifth house.
+    solver.add(drink_vars[4] != idx(drinks, 'tea'))
+    
+    # Clue 6: The person who owns a BMW 3 Series is somewhere to the left of the tea drinker.
+    for i in houses:
+        for j in range(i+1, n_houses+1):
+            solver.add(z3.Implies(drink_vars[j-1] == idx(drinks, 'tea'), 
+                                 car_vars[i-1] == idx(car_models, 'bmw 3 series')))
+    
+    # Clue 7: The person who is a doctor is Arnold.
+    for i in houses:
+        solver.add(z3.Implies(occupation_vars[i-1] == idx(occupations, 'doctor'), 
+                             name_vars[i-1] == idx(names, 'Arnold')))
+    
+    # Clue 8: The person who uses an iPhone 13 is the coffee drinker.
+    for i in houses:
+        solver.add(z3.Implies(phone_vars[i-1] == idx(phone_models, 'iphone 13'), 
+                             drink_vars[i-1] == idx(drinks, 'coffee')))
+    
+    # Clue 9: The person who is an engineer is the person who owns a BMW 3 Series.
+    for i in houses:
+        solver.add(z3.Implies(occupation_vars[i-1] == idx(occupations, 'engineer'), 
+                             car_vars[i-1] == idx(car_models, 'bmw 3 series')))
+    
+    # Clue 10: The person who loves the stew is the person who uses an iPhone 13.
+    for i in houses:
+        solver.add(z3.Implies(food_vars[i-1] == idx(foods, 'stew'), 
+                             phone_vars[i-1] == idx(phone_models, 'iphone 13')))
+    
+    # Clue 11: The person who is a doctor is directly left of the person who uses a OnePlus 9.
+    for i in range(1, n_houses):
+        solver.add(z3.Implies(occupation_vars[i-1] == idx(occupations, 'doctor'), 
+                             phone_vars[i] == idx(phone_models, 'oneplus 9')))
+    
+    # Clue 12: The person who owns a Honda Civic is directly left of the person who loves the spaghetti eater.
+    for i in range(1, n_houses):
+        solver.add(z3.Implies(car_vars[i-1] == idx(car_models, 'honda civic'), 
+                             food_vars[i] == idx(foods, 'spaghetti')))
+    
+    # Clue 13: The person who uses a Google Pixel 6 is the tea drinker.
+    for i in houses:
+        solver.add(z3.Implies(phone_vars[i-1] == idx(phone_models, 'google pixel 6'), 
+                             drink_vars[i-1] == idx(drinks, 'tea')))
+    
+    # Clue 14: Alice is the person who is an artist.
+    for i in houses:
+        solver.add(z3.Implies(name_vars[i-1] == idx(names, 'Alice'), 
+                             occupation_vars[i-1] == idx(occupations, 'artist')))
+    
+    # Clue 15: There is one house between Alice and the person who owns a Ford F-150.
+    for i in houses:
+        for j in houses:
+            if abs(i - j) == 2:  # Exactly one house between them
+                solver.add(z3.Implies(name_vars[i-1] == idx(names, 'Alice'), 
+                                     car_vars[j-1] == idx(car_models, 'ford f150')))
+    
+    # Clue 16: Arnold is the person who owns a Toyota Camry.
+    for i in houses:
+        solver.add(z3.Implies(name_vars[i-1] == idx(names, 'Arnold'), 
+                             car_vars[i-1] == idx(car_models, 'toyota camry')))
+    
+    # Clue 17: Eric is in the fourth house.
+    solver.add(name_vars[3] == idx(names, 'Eric'))
+    
+    # Clue 18: The person who uses a OnePlus 9 is the person who is a lawyer.
+    for i in houses:
+        solver.add(z3.Implies(phone_vars[i-1] == idx(phone_models, 'oneplus 9'), 
+                             occupation_vars[i-1] == idx(occupations, 'lawyer')))
+    
+    # Clue 19: The person who loves eating grilled cheese is Peter.
+    for i in houses:
+        solver.add(z3.Implies(food_vars[i-1] == idx(foods, 'grilled cheese'), 
+                             name_vars[i-1] == idx(names, 'Peter')))
+    
+    # Check satisfiability
+    if solver.check() == z3.sat:
+        model = solver.model()
+        
+        # Extract values from the model
+        result = []
+        for i in houses:
+            name_idx = model.eval(name_vars[i-1]).as_long()
+            food_idx = model.eval(food_vars[i-1]).as_long()
+            car_idx = model.eval(car_vars[i-1]).as_long()
+            phone_idx = model.eval(phone_vars[i-1]).as_long()
+            occupation_idx = model.eval(occupation_vars[i-1]).as_long()
+            drink_idx = model.eval(drink_vars[i-1]).as_long()
+            
+            result.append([
+                str(i),
+                names[name_idx],
+                foods[food_idx],
+                car_models[car_idx],
+                phone_models[phone_idx],
+                occupations[occupation_idx],
+                drinks[drink_idx]
+            ])
+        
+        # Format output as JSON
+        output = {
+            "solution": {
+                "header": ["House", "Name", "Food", "CarModel", "PhoneModel", "Occupation", "Drink"],
+                "rows": result
+            }
+        }
+        
+        print(json.dumps(output, indent=2))
+    else:
+        print('{"error": "No solution found"}')
+
+if __name__ == "__main__":
+    main()
+```

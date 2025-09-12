@@ -1,0 +1,231 @@
+```python
+import json
+from z3 import *
+
+def main():
+    # Travel time matrix (in minutes)
+    travel_time = {
+        "The Castro": {
+            "Alamo Square": 8,
+            "Richmond District": 16,
+            "Financial District": 21,
+            "Union Square": 19,
+            "Fisherman's Wharf": 24,
+            "Marina District": 21,
+            "Haight-Ashbury": 6,
+            "Mission District": 7,
+            "Pacific Heights": 16,
+            "Golden Gate Park": 11
+        },
+        "Alamo Square": {
+            "The Castro": 8,
+            "Richmond District": 11,
+            "Financial District": 17,
+            "Union Square": 14,
+            "Fisherman's Wharf": 19,
+            "Marina District": 15,
+            "Haight-Ashbury": 5,
+            "Mission District": 10,
+            "Pacific Heights": 10,
+            "Golden Gate Park": 9
+        },
+        "Richmond District": {
+            "The Castro": 16,
+            "Alamo Square": 13,
+            "Financial District": 22,
+            "Union Square": 21,
+            "Fisherman's Wharf": 18,
+            "Marina District": 9,
+            "Haight-Ashbury": 10,
+            "Mission District": 20,
+            "Pacific Heights": 10,
+            "Golden Gate Park": 9
+        },
+        "Financial District": {
+            "The Castro": 20,
+            "Alamo Square": 17,
+            "Richmond District": 21,
+            "Union Square": 9,
+            "Fisherman's Wharf": 10,
+            "Marina District": 15,
+            "Haight-Ashbury": 19,
+            "Mission District": 17,
+            "Pacific Heights": 13,
+            "Golden Gate Park": 23
+        },
+        "Union Square": {
+            "The Castro": 17,
+            "Alamo Square": 15,
+            "Richmond District": 20,
+            "Financial District": 9,
+            "Fisherman's Wharf": 15,
+            "Marina District": 18,
+            "Haight-Ashbury": 18,
+            "Mission District": 14,
+            "Pacific Heights": 15,
+            "Golden Gate Park": 22
+        },
+        "Fisherman's Wharf": {
+            "The Castro": 27,
+            "Alamo Square": 21,
+            "Richmond District": 18,
+            "Financial District": 11,
+            "Union Square": 13,
+            "Marina District": 9,
+            "Haight-Ashbury": 22,
+            "Mission District": 22,
+            "Pacific Heights": 12,
+            "Golden Gate Park": 25
+        },
+        "Marina District": {
+            "The Castro": 22,
+            "Alamo Square": 15,
+            "Richmond District": 11,
+            "Financial District": 17,
+            "Union Square": 16,
+            "Fisherman's Wharf": 10,
+            "Haight-Ashbury": 16,
+            "Mission District": 20,
+            "Pacific Heights": 7,
+            "Golden Gate Park": 18
+        },
+        "Haight-Ashbury": {
+            "The Castro": 6,
+            "Alamo Square": 5,
+            "Richmond District": 10,
+            "Financial District": 21,
+            "Union Square": 19,
+            "Fisherman's Wharf": 23,
+            "Marina District": 17,
+            "Mission District": 11,
+            "Pacific Heights": 12,
+            "Golden Gate Park": 7
+        },
+        "Mission District": {
+            "The Castro": 7,
+            "Alamo Square": 11,
+            "Richmond District": 20,
+            "Financial District": 15,
+            "Union Square": 15,
+            "Fisherman's Wharf": 22,
+            "Marina District": 19,
+            "Haight-Ashbury": 12,
+            "Pacific Heights": 16,
+            "Golden Gate Park": 17
+        },
+        "Pacific Heights": {
+            "The Castro": 16,
+            "Alamo Square": 10,
+            "Richmond District": 12,
+            "Financial District": 13,
+            "Union Square": 12,
+            "Fisherman's Wharf": 13,
+            "Marina District": 6,
+            "Haight-Ashbury": 11,
+            "Mission District": 15,
+            "Golden Gate Park": 15
+        },
+        "Golden Gate Park": {
+            "The Castro": 13,
+            "Alamo Square": 9,
+            "Richmond District": 7,
+            "Financial District": 26,
+            "Union Square": 22,
+            "Fisherman's Wharf": 24,
+            "Marina District": 16,
+            "Haight-Ashbury": 7,
+            "Mission District": 17,
+            "Pacific Heights": 16
+        }
+    }
+
+    # Friend data: name, location, available start, available end, min duration
+    friends = [
+        ("William", "Alamo Square", 15*60+15, 17*60+15, 60),
+        ("Joshua", "Richmond District", 7*60, 20*60, 15),
+        ("Joseph", "Financial District", 11*60+15, 13*60+30, 15),
+        ("David", "Union Square", 16*60+45, 19*60+15, 45),
+        ("Brian", "Fisherman's Wharf", 13*60+45, 20*60+45, 105),
+        ("Karen", "Marina District", 11*60+30, 18*60+30, 15),
+        ("Anthony", "Haight-Ashbury", 7*60+15, 10*60+30, 30),
+        ("Matthew", "Mission District", 17*60+15, 19*60+15, 120),
+        ("Helen", "Pacific Heights", 8*60, 12*60, 75),
+        ("Jeffrey", "Golden Gate Park", 19*60, 21*60+30, 60)
+    ]
+
+    n = len(friends)
+    s = Solver()
+
+    # Decision variables for each friend
+    meet = [Bool(f"meet_{i}") for i in range(n)]
+    start = [Int(f"start_{i}") for i in range(n)]
+    end = [Int(f"end_{i}") for i in range(n)]
+    order = [Int(f"order_{i}") for i in range(n)]
+
+    # Dummy start at The Castro at 9:00
+    start_dummy = 9*60
+    end_dummy = 9*60
+
+    # Constraints for each friend
+    for i, (name, loc, avail_start, avail_end, min_dur) in enumerate(friends):
+        s.add(If(meet[i], start[i] >= avail_start, True))
+        s.add(If(meet[i], end[i] <= avail_end, True))
+        s.add(If(meet[i], end[i] == start[i] + min_dur, True))
+        s.add(If(meet[i], order[i] >= 0, order[i] == -1))
+        s.add(order[i] < n)
+
+    # Distinct orders for meetings that are held
+    for i in range(n):
+        for j in range(i+1, n):
+            s.add(If(And(meet[i], meet[j]), order[i] != order[j], True))
+
+    # Travel constraints from dummy start and between meetings
+    for i in range(n):
+        # If meeting i is held and is first (order[i]==0), then start[i] >= end_dummy + travel from The Castro to loc
+        s.add(If(And(meet[i], order[i] == 0), 
+                 start[i] >= end_dummy + travel_time["The Castro"][friends[i][1]], 
+                 True))
+        
+        for j in range(n):
+            if i != j:
+                # If both meetings are held and order[i] < order[j], then start[j] >= end[i] + travel time from i to j
+                s.add(If(And(meet[i], meet[j], order[i] < order[j]),
+                         start[j] >= end[i] + travel_time[friends[i][1]][friends[j][1]],
+                         True))
+
+    # Maximize the number of meetings
+    opt = Optimize()
+    opt.add(s.assertions())
+    opt.maximize(Sum([If(meet[i], 1, 0) for i in range(n)]))
+    
+    if opt.check() == sat:
+        m = opt.model()
+        scheduled_meetings = []
+        for i, (name, loc, _, _, _) in enumerate(friends):
+            if is_true(m.evaluate(meet[i])):
+                start_val = m.evaluate(start[i]).as_long()
+                end_val = m.evaluate(end[i]).as_long()
+                # Convert minutes to time string
+                start_hour = start_val // 60
+                start_min = start_val % 60
+                end_hour = end_val // 60
+                end_min = end_val % 60
+                start_str = f"{start_hour}:{start_min:02d}"
+                end_str = f"{end_hour}:{end_min:02d}"
+                scheduled_meetings.append({
+                    "action": "meet",
+                    "location": loc,
+                    "person": name,
+                    "start_time": start_str,
+                    "end_time": end_str
+                })
+        # Sort meetings by start time
+        scheduled_meetings.sort(key=lambda x: x['start_time'])
+        result = {"itinerary": scheduled_meetings}
+        print(json.dumps(result, indent=2))
+    else:
+        print('{"itinerary": []}')
+
+if __name__ == "__main__":
+    main()
+```

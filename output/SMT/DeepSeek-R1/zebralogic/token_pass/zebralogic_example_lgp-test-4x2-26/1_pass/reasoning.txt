@@ -1,0 +1,278 @@
+We are going to use the Z3 SMT solver to solve the puzzle.
+ We have 4 houses, each with a name and an occupation.
+
+ Steps:
+ 1. Define the attributes: names and occupations.
+ 2. Create integer variables for the positions of each name and occupation (or use a matrix approach).
+ 3. Alternatively, we can assign each house a name and an occupation and then set constraints.
+
+ We'll create two sets of variables:
+   - Name variables for each house: name1, name2, name3, name4 (each is an integer representing the name, but we can use enums)
+   - Occupation variables for each house: occ1, occ2, occ3, occ4
+
+ Alternatively, we can use a more abstract representation by creating Z3 constants for each attribute and then use constraints.
+
+ Since the problem is small, we can use the following approach:
+
+ Let's define:
+   - The names: Arnold, Eric, Peter, Alice -> we'll map them to integers 0,1,2,3 or use Z3 enums.
+   - The occupations: doctor, engineer, artist, teacher -> similarly.
+
+ However, to make the constraints easier, we can also define the position of each person and each occupation.
+
+ Another common approach is to create an integer for each attribute (name and occupation) that represents the house number where that attribute is.
+
+ We'll do:
+   Let name_house = [Int('name_Arnold'), Int('name_Eric'), Int('name_Peter'), Int('name_Alice')]
+   Let occ_house = [Int('occ_doctor'), Int('occ_engineer'), Int('occ_artist'), Int('occ_teacher')]
+
+ But then we must constrain each to be between 1 and 4 and all distinct.
+
+ Alternatively, we can model per house:
+
+   For each house i (from 1 to 4), we have:
+      name_i: which is one of the names (we can use an Enum sort for names and occupations)
+      occ_i: which is one of the occupations
+
+ We'll use the latter because it is more straightforward for the clues that relate adjacent houses.
+
+ Steps in code:
+
+ 1. Create enums for Name and Occupation.
+ 2. Create variables for each house: name[1..4] and occ[1..4] of the enum types.
+ 3. Add constraints that all names are distinct and all occupations are distinct.
+ 4. Add the clues as constraints.
+
+ Clues:
+  1. There are two houses between Eric and Peter.
+        This means |house(Eric) - house(Peter)| = 3. (since houses 1 and 4 have two houses between: 2 and 3)
+        But note: the houses are 1,2,3,4. So if Eric is in 1, Peter must be in 4, and vice versa.
+
+  2. The person who is a teacher is Peter.
+        So for the house where the occupation is teacher, the name must be Peter.
+
+  3. Peter is not in the first house.
+        So name_1 != Peter
+
+  4. There is one house between the person who is a doctor and Alice.
+        |house(doctor) - house(Alice)| = 2
+
+  5. The person who is an artist is Alice.
+        So for the house where the occupation is artist, the name must be Alice.
+
+ We have two ways to model: by attribute (name and occupation) per house, or by the house number for each attribute.
+
+ Let's model by house:
+
+   We'll create:
+      NameSort = EnumSort('Name', ['Arnold', 'Eric', 'Peter', 'Alice'])
+      OccSort = EnumSort('Occ', ['doctor', 'engineer', 'artist', 'teacher'])
+
+   Then for each house i (1..4), we have:
+      n_i = Const('n_%d' % i, NameSort)
+      o_i = Const('o_%d' % i, OccSort)
+
+   Then we require that all n_i are distinct and all o_i are distinct.
+
+   We also define a function to get the house number of a name? Actually, we don't have direct house number variables for each name, so we have to express the clues in terms of the n_i and o_i.
+
+   For clue 1: There are two houses between Eric and Peter.
+        We can note that Eric and Peter must be in house 1 and 4, but we don't know which one is which? Actually, clue 3 says Peter is not in first, so Peter must be in 4 and Eric in 1.
+
+        However, let's not jump to conclusions and let the solver decide.
+
+        We can define:
+          Let house_of_Eric = the house i where n_i == Eric
+          Similarly, house_of_Peter = the house i where n_i == Peter
+
+        But Z3 doesn't allow getting the index from an array of variables easily.
+
+        Alternatively, we can create integers for the house numbers of each name and occupation.
+
+   Another approach: use the position of the attributes.
+
+   We can define:
+      name_house = [Int('name_Arnold'), Int('name_Eric'), ...] and similarly for occupations.
+
+   This might be easier for the constraints that talk about the positions.
+
+   Let's do:
+
+      Let name_house be a Z3 integer for each name, and similarly for occupation.
+
+      Constraints:
+        For each name, 1 <= name_house <= 4
+        Distinct([name_house[n] for n in names])
+        Similarly for occupations.
+
+   Then the clues:
+
+      1. Abs(name_house_Eric - name_house_Peter) == 3
+      2. name_house_Peter == occ_house_teacher   (because the teacher is Peter)
+      3. name_house_Peter != 1
+      4. Abs(occ_house_doctor - name_house_Alice) == 2
+      5. name_house_Alice == occ_house_artist
+
+   We have to also link that the same house has a name and an occupation, but note: the same house has one name and one occupation, but the constraints above are independent.
+
+   However, we must also have that for each house, the name and occupation are assigned to the same house number. But wait, we don't have a direct constraint that the name_house and occ_house are for the same person? Actually, no: the puzzle does not require that the name and occupation are related in any way except through the clues.
+
+   But note: the clues 2 and 5 already relate name and occupation for teacher and artist.
+
+   However, we must also ensure that the assignment of names to houses and occupations to houses are consistent, meaning that for each house, there is one name and one occupation. But we don't have a direct constraint that the name_house and occ_house sets are independent? Actually, they are independent except for the constraints given.
+
+   But wait: the puzzle says each house has a unique attribute for each characteristic, so the name_house and occ_house are two independent assignments to the same set of houses.
+
+   So we don't need to link them except through the clues that relate name and occupation (like clue 2 and 5).
+
+   So we can model with two sets of variables: name_house for each name, and occ_house for each occupation.
+
+   Let's code with this approach.
+
+   Steps:
+
+      from z3 import *
+
+      # Define the names and occupations
+      names = ['Arnold', 'Eric', 'Peter', 'Alice']
+      occupations = ['doctor', 'engineer', 'artist', 'teacher']
+
+      # Create integer variables for the house of each name
+      name_house = {}
+      for n in names:
+          name_house[n] = Int('name_house_' + n)
+
+      # Similarly for occupations
+      occ_house = {}
+      for o in occupations:
+          occ_house[o] = Int('occ_house_' + o)
+
+      s = Solver()
+
+      # Each name_house and occ_house must be between 1 and 4
+      for n in names:
+          s.add(And(name_house[n] >= 1, name_house[n] <= 4))
+      for o in occupations:
+          s.add(And(occ_house[o] >= 1, occ_house[o] <= 4))
+
+      # The names are in distinct houses
+      s.add(Distinct([name_house[n] for n in names]))
+      s.add(Distinct([occ_house[o] for o in occupations]))
+
+      # Now the clues:
+
+      # 1. There are two houses between Eric and Peter.
+      s.add(Abs(name_house['Eric'] - name_house['Peter']) == 3)
+
+      # 2. The person who is a teacher is Peter.
+      s.add(occ_house['teacher'] == name_house['Peter'])
+
+      # 3. Peter is not in the first house.
+      s.add(name_house['Peter'] != 1)
+
+      # 4. There is one house between the person who is a doctor and Alice.
+      s.add(Abs(occ_house['doctor'] - name_house['Alice']) == 2)
+
+      # 5. The person who is an artist is Alice.
+      s.add(occ_house['artist'] == name_house['Alice'])
+
+   Now, if we solve, we get the house numbers for each name and each occupation.
+
+   But note: we also want to output the house by number (1,2,3,4) with the name and occupation in that house.
+
+   How do we get that? We have the house for each name and occupation, but we want for each house, the name and occupation.
+
+   We can create a reverse mapping: for each house number, which name and occupation is there.
+
+   Alternatively, we can create variables for the name and occupation of each house, but we don't have that.
+
+   We can compute the reverse from the model.
+
+   After solving, we can do:
+
+        model = s.model()
+        house_name = {}
+        for n in names:
+            h = model[name_house[n]].as_long()
+            house_name[h] = n
+
+        Similarly for occupation.
+
+   Then we can output for house 1 to 4.
+
+   However, note: the constraints are set on the house numbers of the attributes, so this reverse mapping is valid.
+
+   Let's code accordingly.
+
+   We must also note: the constraints might be unsatisfiable? But the puzzle is designed to be solved.
+
+   Let's write the code accordingly.
+
+   We'll output the solution in the required JSON format.
+
+   Example output for house 1:
+        row: ["1", name for house 1, occupation for house 1]
+
+   We'll create a list for the rows.
+
+   Code structure:
+
+      if s.check() == sat:
+          m = s.model()
+          # Create a list for the houses: we'll have 4 houses, each we will assign name and occupation.
+          result = []
+          # First, create a mapping from house number to name
+          house_to_name = {}
+          for n in names:
+              house_num = m[name_house[n]].as_long()
+              house_to_name[house_num] = n
+
+          house_to_occ = {}
+          for o in occupations:
+              house_num = m[occ_house[o]].as_long()
+              house_to_occ[house_num] = o
+
+          # Now for each house from 1 to 4
+          rows = []
+          for i in range(1,5):
+              name_val = house_to_name[i]
+              occ_val = house_to_occ[i]
+              rows.append([str(i), name_val, occ_val])
+
+          # Then create the JSON structure.
+
+      else:
+          print("No solution found")
+
+   However, note: the model might not evaluate the integers to numbers? We use as_long().
+
+   Let's code accordingly.
+
+   We'll output the JSON string.
+
+   But note: the output must be exactly as the structure.
+
+   We'll use:
+
+        import json
+        solution = {
+            "solution": {
+                "header": ["House", "Name", "Occupation"],
+                "rows": rows
+            }
+        }
+        print(json.dumps(solution))
+
+   However, note: the rows are already in the format [house_num, name, occupation] for each house.
+
+   Let's code accordingly.
+
+   One more thing: we must ensure that the model evaluates the integers. We used Int so that should be fine.
+
+   Let's write the code.
+
+   We'll enclose in a main function or just write the script.
+
+   Since the problem is small, we can write without a main.
+
+   Code:

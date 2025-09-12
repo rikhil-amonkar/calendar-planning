@@ -1,0 +1,194 @@
+import json
+from z3 import *
+
+def main():
+    # Define the enums for each attribute
+    Name = Enum('Name', ['Alice', 'Peter', 'Eric', 'Bob', 'Arnold', 'Carol'])
+    Cigar = Enum('Cigar', ['pall mall', 'yellow monster', 'dunhill', 'blue master', 'prince', 'blends'])
+    MusicGenre = Enum('MusicGenre', ['hip hop', 'jazz', 'country', 'pop', 'classical', 'rock'])
+    Drink = Enum('Drink', ['water', 'milk', 'boba tea', 'tea', 'root beer', 'coffee'])
+    Mother = Enum('Mother', ['Kailyn', 'Penny', 'Janelle', 'Holly', 'Sarah', 'Aniya'])
+    Food = Enum('Food', ['soup', 'pizza', 'spaghetti', 'stir fry', 'stew', 'grilled cheese'])
+
+    # Create solver instance
+    s = Solver()
+
+    # Create variables for each house and attribute
+    names = [Const(f'n_{i}', Name) for i in range(1, 7)]
+    cigars = [Const(f'c_{i}', Cigar) for i in range(1, 7)]
+    music_genres = [Const(f'm_{i}', MusicGenre) for i in range(1, 7)]
+    drinks = [Const(f'd_{i}', Drink) for i in range(1, 7)]
+    mothers = [Const(f'mo_{i}', Mother) for i in range(1, 7)]
+    foods = [Const(f'f_{i}', Food) for i in range(1, 7)]
+
+    # Add distinct constraints for all attributes
+    s.add(Distinct(names))
+    s.add(Distinct(cigars))
+    s.add(Distinct(music_genres))
+    s.add(Distinct(drinks))
+    s.add(Distinct(mothers))
+    s.add(Distinct(foods))
+
+    # Define helper functions for house positions
+    def get_house(var, value):
+        return [If(var[i] == value, i+1, 0) for i in range(6)]
+    
+    def exactly_one_house(conditions):
+        return Sum(conditions) == 1
+
+    # Clue 1: Carol is directly left of the person who loves eating grilled cheese.
+    s.add(Or([And(names[i] == Name.Carol, foods[i+1] == Food.grilled_cheese) for i in range(5)]))
+
+    # Clue 2: Eric is not in the second house.
+    s.add(names[1] != Name.Eric)
+
+    # Clue 3: The person whose mother's name is Holly is somewhere to the right of Carol.
+    carol_house = Int('carol_house')
+    s.add(carol_house >= 1, carol_house <= 6)
+    s.add(exactly_one_house([If(names[i] == Name.Carol, i+1, 0) for i in range(6)]))
+    holly_house = Int('holly_house')
+    s.add(holly_house >= 1, holly_house <= 6)
+    s.add(exactly_one_house([If(mothers[i] == Mother.Holly, i+1, 0) for i in range(6)]))
+    s.add(holly_house > carol_house)
+
+    # Clue 4: The person who loves eating grilled cheese is somewhere to the right of the person who loves rock music.
+    grilled_cheese_house = Int('grilled_cheese_house')
+    s.add(grilled_cheese_house >= 1, grilled_cheese_house <= 6)
+    s.add(exactly_one_house([If(foods[i] == Food.grilled_cheese, i+1, 0) for i in range(6)]))
+    rock_house = Int('rock_house')
+    s.add(rock_house >= 1, rock_house <= 6)
+    s.add(exactly_one_house([If(music_genres[i] == MusicGenre.rock, i+1, 0) for i in range(6)]))
+    s.add(grilled_cheese_house > rock_house)
+
+    # Clue 5: Eric is directly left of Carol.
+    s.add(Or([And(names[i] == Name.Eric, names[i+1] == Name.Carol) for i in range(5)]))
+
+    # Clue 6: The person who loves pop music is not in the third house.
+    s.add(music_genres[2] != MusicGenre.pop)
+
+    # Clue 7: Eric is the person who loves country music.
+    s.add(Or([And(names[i] == Name.Eric, music_genres[i] == MusicGenre.country) for i in range(6)]))
+
+    # Clue 8: The person who loves classical music is in the sixth house.
+    s.add(music_genres[5] == MusicGenre.classical)
+
+    # Clue 9: The coffee drinker is Bob.
+    s.add(Or([And(drinks[i] == Drink.coffee, names[i] == Name.Bob) for i in range(6)]))
+
+    # Clue 10: The person who smokes many unique blends is Peter.
+    s.add(Or([And(cigars[i] == Cigar.blends, names[i] == Name.Peter) for i in range(6)]))
+
+    # Clue 11: The person who loves the stew is not in the fifth house.
+    s.add(foods[4] != Food.stew)
+
+    # Clue 12: The root beer lover is directly left of The person whose mother's name is Janelle.
+    s.add(Or([And(drinks[i] == Drink.root_beer, mothers[i+1] == Mother.Janelle) for i in range(5)]))
+
+    # Clue 13: There are two houses between The person whose mother's name is Sarah and the person who smokes Yellow Monster.
+    sarah_house = Int('sarah_house')
+    s.add(sarah_house >= 1, sarah_house <= 6)
+    s.add(exactly_one_house([If(mothers[i] == Mother.Sarah, i+1, 0) for i in range(6)]))
+    yellow_monster_house = Int('yellow_monster_house')
+    s.add(yellow_monster_house >= 1, yellow_monster_house <= 6)
+    s.add(exactly_one_house([If(cigars[i] == Cigar.yellow_monster, i+1, 0) for i in range(6)]))
+    s.add(Or(sarah_house + 3 == yellow_monster_house, yellow_monster_house + 3 == sarah_house))
+
+    # Clue 14: Eric is the tea drinker.
+    s.add(Or([And(names[i] == Name.Eric, drinks[i] == Drink.tea) for i in range(6)]))
+
+    # Clue 15: The person partial to Pall Mall is somewhere to the right of the person who loves stir fry.
+    pall_mall_house = Int('pall_mall_house')
+    s.add(pall_mall_house >= 1, pall_mall_house <= 6)
+    s.add(exactly_one_house([If(cigars[i] == Cigar.pall_mall, i+1, 0) for i in range(6)]))
+    stir_fry_house = Int('stir_fry_house')
+    s.add(stir_fry_house >= 1, stir_fry_house <= 6)
+    s.add(exactly_one_house([If(foods[i] == Food.stir_fry, i+1, 0) for i in range(6)]))
+    s.add(pall_mall_house > stir_fry_house)
+
+    # Clue 16: The person who loves the soup is Bob.
+    s.add(Or([And(foods[i] == Food.soup, names[i] == Name.Bob) for i in range(6)]))
+
+    # Clue 17: The person who loves hip-hop music is directly left of The person whose mother's name is Kailyn.
+    s.add(Or([And(music_genres[i] == MusicGenre.hip_hop, mothers[i+1] == Mother.Kailyn) for i in range(5)]))
+
+    # Clue 18: Arnold is somewhere to the right of The person whose mother's name is Kailyn.
+    kailyn_house = Int('kailyn_house')
+    s.add(kailyn_house >= 1, kailyn_house <= 6)
+    s.add(exactly_one_house([If(mothers[i] == Mother.Kailyn, i+1, 0) for i in range(6)]))
+    arnold_house = Int('arnold_house')
+    s.add(arnold_house >= 1, arnold_house <= 6)
+    s.add(exactly_one_house([If(names[i] == Name.Arnold, i+1, 0) for i in range(6)]))
+    s.add(arnold_house > kailyn_house)
+
+    # Clue 19: The one who only drinks water is directly left of the person who smokes Blue Master.
+    s.add(Or([And(drinks[i] == Drink.water, cigars[i+1] == Cigar.blue_master) for i in range(5)]))
+
+    # Clue 20: The person who loves the spaghetti eater is somewhere to the left of the person who smokes many unique blends.
+    spaghetti_house = Int('spaghetti_house')
+    s.add(spaghetti_house >= 1, spaghetti_house <= 6)
+    s.add(exactly_one_house([If(foods[i] == Food.spaghetti, i+1, 0) for i in range(6)]))
+    blends_house = Int('blends_house')
+    s.add(blends_house >= 1, blends_house <= 6)
+    s.add(exactly_one_house([If(cigars[i] == Cigar.blends, i+1, 0) for i in range(6)]))
+    s.add(spaghetti_house < blends_house)
+
+    # Clue 21: The person whose mother's name is Sarah is directly left of the person who loves jazz music.
+    s.add(Or([And(mothers[i] == Mother.Sarah, music_genres[i+1] == MusicGenre.jazz) for i in range(5)]))
+
+    # Clue 22: The person who loves hip-hop music is directly left of the root beer lover.
+    s.add(Or([And(music_genres[i] == MusicGenre.hip_hop, drinks[i+1] == Drink.root_beer) for i in range(5)]))
+
+    # Clue 23: The one who only drinks water is the person who loves the stew.
+    s.add(Or([And(drinks[i] == Drink.water, foods[i] == Food.stew) for i in range(6)]))
+
+    # Clue 24: The Dunhill smoker is not in the second house.
+    s.add(cigars[1] != Cigar.dunhill)
+
+    # Clue 25: The person who likes milk is The person whose mother's name is Janelle.
+    s.add(Or([And(drinks[i] == Drink.milk, mothers[i] == Mother.Janelle) for i in range(6)]))
+
+    # Clue 26: Eric is The person whose mother's name is Aniya.
+    s.add(Or([And(names[i] == Name.Eric, mothers[i] == Mother.Aniya) for i in range(6)]))
+
+    # Solve the constraints
+    if s.check() == sat:
+        model = s.model()
+        
+        # Map Z3 values to original strings
+        name_list = ['Alice', 'Peter', 'Eric', 'Bob', 'Arnold', 'Carol']
+        cigar_list = ['pall mall', 'yellow monster', 'dunhill', 'blue master', 'prince', 'blends']
+        music_list = ['hip hop', 'jazz', 'country', 'pop', 'classical', 'rock']
+        drink_list = ['water', 'milk', 'boba tea', 'tea', 'root beer', 'coffee']
+        mother_list = ['Kailyn', 'Penny', 'Janelle', 'Holly', 'Sarah', 'Aniya']
+        food_list = ['soup', 'pizza', 'spaghetti', 'stir fry', 'stew', 'grilled cheese']
+        
+        rows = []
+        for i in range(6):
+            name_val = model.eval(names[i])
+            cigar_val = model.eval(cigars[i])
+            music_val = model.eval(music_genres[i])
+            drink_val = model.eval(drinks[i])
+            mother_val = model.eval(mothers[i])
+            food_val = model.eval(foods[i])
+            
+            name_str = name_list[name_val.as_long()]
+            cigar_str = cigar_list[cigar_val.as_long()]
+            music_str = music_list[music_val.as_long()]
+            drink_str = drink_list[drink_val.as_long()]
+            mother_str = mother_list[mother_val.as_long()]
+            food_str = food_list[food_val.as_long()]
+            
+            rows.append([str(i+1), name_str, cigar_str, music_str, drink_str, mother_str, food_str])
+        
+        result = {
+            "solution": {
+                "header": ["House", "Name", "Cigar", "MusicGenre", "Drink", "Mother", "Food"],
+                "rows": rows
+            }
+        }
+        print(json.dumps(result))
+    else:
+        print('{"solution": {}}')
+
+if __name__ == "__main__":
+    main()

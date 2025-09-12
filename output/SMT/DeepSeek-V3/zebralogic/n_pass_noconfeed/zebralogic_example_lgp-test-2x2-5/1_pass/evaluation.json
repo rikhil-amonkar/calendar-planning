@@ -1,0 +1,45 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"solution\": {\n    \"header\": [\n      \"House\",\n      \"Name\",\n      \"HouseStyle\"\n    ],\n    \"rows\": [\n      [\n        \"1\",\n        \"Eric\",\n        \"victorian\"\n      ],\n      [\n        \"2\",\n        \"Arnold\",\n        \"colonial\"\n      ]\n    ]\n  }\n}",
+    "pred": [
+        {
+            "House": "1",
+            "Name": "Eric",
+            "HouseStyle": "victorian"
+        },
+        {
+            "House": "2",
+            "Name": "Arnold",
+            "HouseStyle": "colonial"
+        }
+    ],
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Eric",
+            "HouseStyle": "victorian"
+        },
+        {
+            "House": "2",
+            "Name": "Arnold",
+            "HouseStyle": "colonial"
+        }
+    ],
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 45.467204093933105,
+        "execution_time": 0.07880163192749023,
+        "constraint_eval_time": 4.839897155761719e-05,
+        "pred_extract_time": 1.0099859237670898,
+        "gold_extract_time": 7.62939453125e-06,
+        "total_tokens": 829,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import z3\nimport json\n\ndef main():\n    solver = z3.Solver()\n    \n    # Define houses\n    houses = [1, 2]\n    \n    # Define attributes\n    names = ['Eric', 'Arnold']\n    house_styles = ['victorian', 'colonial']\n    \n    # Create variables for each attribute per house\n    name_vars = {house: z3.Int(f'name_{house}') for house in houses}\n    style_vars = {house: z3.Int(f'style_{house}') for house in houses}\n    \n    # Create mapping from integers to attribute values\n    name_map = {i: name for i, name in enumerate(names)}\n    style_map = {i: style for i, style in enumerate(house_styles)}\n    \n    # Constraint: All names are unique and within valid range\n    for house in houses:\n        solver.add(z3.And(name_vars[house] >= 0, name_vars[house] < len(names)))\n    solver.add(z3.Distinct([name_vars[house] for house in houses]))\n    \n    # Constraint: All house styles are unique and within valid range\n    for house in houses:\n        solver.add(z3.And(style_vars[house] >= 0, style_vars[house] < len(house_styles)))\n    solver.add(z3.Distinct([style_vars[house] for house in houses]))\n    \n    # Clue 1: Victorian house is to the left of colonial house\n    # Find which house has victorian and which has colonial\n    victorian_index = house_styles.index('victorian')\n    colonial_index = house_styles.index('colonial')\n    \n    # Victorian house must have lower house number than colonial house\n    for house1 in houses:\n        for house2 in houses:\n            if house1 < house2:\n                # If house1 has victorian, then house2 cannot have colonial if house1 < house2\n                # But we need to express: victorian is left of colonial\n                # So we add constraint that if a house has victorian, then some house to its right must have colonial\n                pass\n    \n    # Better approach: find the house with victorian and the house with colonial\n    # and ensure victorian house number < colonial house number\n    victorian_house = z3.Int('victorian_house')\n    colonial_house = z3.Int('colonial_house')\n    \n    solver.add(victorian_house >= 1, victorian_house <= 2)\n    solver.add(colonial_house >= 1, colonial_house <= 2)\n    solver.add(victorian_house != colonial_house)\n    \n    # Link these variables to the style variables\n    for house in houses:\n        solver.add(z3.Implies(style_vars[house] == victorian_index, victorian_house == house))\n        solver.add(z3.Implies(style_vars[house] == colonial_index, colonial_house == house))\n    \n    solver.add(victorian_house < colonial_house)\n    \n    # Clue 2: Eric is in the first house\n    eric_index = names.index('Eric')\n    solver.add(name_vars[1] == eric_index)\n    \n    # Check if solution exists\n    if solver.check() == z3.sat:\n        model = solver.model()\n        \n        # Prepare solution data\n        rows = []\n        for house in sorted(houses):\n            name_val = model.eval(name_vars[house]).as_long()\n            style_val = model.eval(style_vars[house]).as_long()\n            \n            rows.append([\n                str(house),\n                name_map[name_val],\n                style_map[style_val]\n            ])\n        \n        solution = {\n            \"solution\": {\n                \"header\": [\"House\", \"Name\", \"HouseStyle\"],\n                \"rows\": rows\n            }\n        }\n        \n        print(json.dumps(solution, indent=2))\n    else:\n        print('{\"error\": \"No solution found\"}')\n\nif __name__ == \"__main__\":\n    main()"
+}

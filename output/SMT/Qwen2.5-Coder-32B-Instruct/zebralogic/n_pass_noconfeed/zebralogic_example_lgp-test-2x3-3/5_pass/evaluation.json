@@ -1,0 +1,38 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": true,
+    "execution_output": "No solution found",
+    "pred": null,
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Arnold",
+            "Food": "grilled cheese",
+            "Mother": "Holly"
+        },
+        {
+            "House": "2",
+            "Name": "Eric",
+            "Food": "pizza",
+            "Mother": "Aniya"
+        }
+    ],
+    "status": "No plan generated",
+    "violated_constraint": {
+        "invalid_output": "No valid output structure found"
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 5,
+    "timing": {
+        "api_call_time": 107.37583470344543,
+        "execution_time": 0.0795738697052002,
+        "constraint_eval_time": 1.9073486328125e-06,
+        "pred_extract_time": 0.7467732429504395,
+        "gold_extract_time": 2.193450927734375e-05,
+        "total_tokens": 9165,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\n\ndef solve_puzzle():\n    # Define the variables\n    names = ['Arnold', 'Eric']\n    foods = ['grilled cheese', 'pizza']\n    mothers = ['Holly', 'Aniya']\n    houses = [1, 2]\n\n    # Create symbolic variables\n    name_vars = [[Int(f'name_{h}_{n}') for n in range(2)] for h in houses]\n    food_vars = [[Int(f'food_{h}_{f}') for f in range(2)] for h in houses]\n    mother_vars = [[Int(f'mother_{h}_{m}') for m in range(2)] for h in houses]\n\n    # Create the solver\n    solver = Solver()\n\n    # Map names, foods, and mothers to integers\n    name_map = {name: i for i, name in enumerate(names)}\n    food_map = {food: i for i, food in enumerate(foods)}\n    mother_map = {mother: i for i, mother in enumerate(mothers)}\n\n    # Add constraints for unique values per category within each house\n    for h in houses:\n        solver.add(Distinct([name_vars[h-1][n] for n in range(2)]))\n        solver.add(Distinct([food_vars[h-1][f] for f in range(2)]))\n        solver.add(Distinct([mother_vars[h-1][m] for m in range(2)]))\n\n    # Add constraints for unique values across houses\n    solver.add(Distinct([name_vars[h-1][n] for h in houses for n in range(2)]))\n    solver.add(Distinct([food_vars[h-1][f] for h in houses for f in range(2)]))\n    solver.add(Distinct([mother_vars[h-1][m] for h in houses for m in range(2)]))\n\n    # Add specific constraints from the clues\n    # Clue 1: The person who loves eating grilled cheese is directly left of the person who is a pizza lover.\n    solver.add(Or(\n        And(food_vars[0][0] == food_map['grilled cheese'], food_vars[0][1] == food_map['pizza']),\n        And(food_vars[1][0] == food_map['grilled cheese'], food_vars[1][1] == food_map['pizza'])\n    ))\n\n    # Clue 2: Arnold is not in the second house.\n    solver.add(name_vars[1][0] != name_map['Arnold'])\n    solver.add(name_vars[1][1] != name_map['Arnold'])\n\n    # Clue 3: Arnold is the person whose mother's name is Holly.\n    solver.add(Or(\n        And(name_vars[0][0] == name_map['Arnold'], mother_vars[0][0] == mother_map['Holly']),\n        And(name_vars[0][1] == name_map['Arnold'], mother_vars[0][1] == mother_map['Holly'])\n    ))\n\n    # Clue 4: Eric is the other person.\n    solver.add(Or(\n        And(name_vars[0][0] == name_map['Eric'], mother_vars[0][0] == mother_map['Aniya']),\n        And(name_vars[0][1] == name_map['Eric'], mother_vars[0][1] == mother_map['Aniya'])\n    ))\n\n    # Assign possible values to variables\n    for h in houses:\n        for n in range(2):\n            solver.add(name_vars[h-1][n] >= 0)\n            solver.add(name_vars[h-1][n] < len(names))\n            solver.add(food_vars[h-1][n] >= 0)\n            solver.add(food_vars[h-1][n] < len(foods))\n            solver.add(mother_vars[h-1][n] >= 0)\n            solver.add(mother_vars[h-1][n] < len(mothers))\n\n    # Check if the solver can find a solution\n    if solver.check() == sat:\n        model = solver.model()\n        solution = {\n            \"solution\": {\n                \"header\": [\"House\", \"Name\", \"Food\", \"Mother\"],\n                \"rows\": []\n            }\n        }\n        for h in houses:\n            for n in range(2):\n                name = names[model.evaluate(name_vars[h-1][n]).as_long()]\n                food = foods[model.evaluate(food_vars[h-1][n]).as_long()]\n                mother = mothers[model.evaluate(mother_vars[h-1][n]).as_long()]\n                solution[\"solution\"][\"rows\"].append([str(h), name, food, mother])\n        return solution\n    else:\n        return None\n\n# Solve the puzzle and print the solution in JSON format\nimport json\nsolution = solve_puzzle()\nif solution:\n    print(json.dumps(solution, indent=2))\nelse:\n    print(\"No solution found\")"
+}

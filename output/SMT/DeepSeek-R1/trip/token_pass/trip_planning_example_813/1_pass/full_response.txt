@@ -1,0 +1,125 @@
+```python
+from z3 import *
+import json
+
+def main():
+    # Define cities and their required days
+    cities = ['Seville', 'Vilnius', 'Santorini', 'London', 'Stuttgart', 'Dublin', 'Frankfurt']
+    req_days = [5, 3, 2, 2, 3, 3, 5]
+    city_to_index = {city: idx for idx, city in enumerate(cities)}
+    
+    # Define direct flights (undirected graph)
+    flight_pairs = [
+        ('Frankfurt', 'Dublin'),
+        ('Frankfurt', 'London'),
+        ('London', 'Dublin'),
+        ('Vilnius', 'Frankfurt'),
+        ('Frankfurt', 'Stuttgart'),
+        ('Dublin', 'Seville'),
+        ('London', 'Santorini'),
+        ('Stuttgart', 'London'),
+        ('Santorini', 'Dublin')
+    ]
+    
+    # Create connectivity matrix
+    n = len(cities)
+    connected = [[False] * n for _ in range(n)]
+    for a, b in flight_pairs:
+        i, j = city_to_index[a], city_to_index[b]
+        connected[i][j] = True
+        connected[j][i] = True
+
+    # Initialize solver
+    s = Solver()
+    
+    # Order of cities (indexed)
+    order = [Int(f'order_{i}') for i in range(n)]
+    # Duration in each city
+    duration = [Int(f'duration_{i}') for i in range(n)]
+    
+    # Constraints: order is permutation of cities
+    s.add(Distinct(order))
+    for i in range(n):
+        s.add(And(order[i] >= 0, order[i] < n))
+    
+    # Duration constraints
+    total_days = 17
+    for i in range(n):
+        # Each duration must be at least the required days for that city
+        s.add(duration[i] >= req_days[i])
+    # Total days accounting for travel days (n-1 travel days double-counted)
+    s.add(Sum(duration) == total_days + (n - 1))
+    
+    # Flight connectivity constraints
+    for i in range(n - 1):
+        # Current and next city must be connected
+        current_city = order[i]
+        next_city = order[i+1]
+        # Create OR condition for all connected pairs
+        constraints = []
+        for j in range(n):
+            for k in range(n):
+                if connected[j][k]:
+                    constraints.append(And(current_city == j, next_city == k))
+        s.add(Or(constraints))
+    
+    # Compute start and end days for each segment
+    start_day = [Int(f'start_{i}') for i in range(n)]
+    end_day = [Int(f'end_{i}') for i in range(n)]
+    
+    s.add(start_day[0] == 1)
+    s.add(end_day[0] == duration[0])
+    for i in range(1, n):
+        s.add(start_day[i] == end_day[i-1])
+        s.add(end_day[i] == start_day[i] + duration[i] - 1)
+    
+    # Specific constraints
+    london_idx = city_to_index['London']
+    stuttgart_idx = city_to_index['Stuttgart']
+    
+    # London between day 9 and 10 (inclusive both days)
+    london_constraints = []
+    for i in range(n):
+        london_constraints.append(
+            And(order[i] == london_idx,
+                start_day[i] <= 9,
+                end_day[i] >= 10)
+        )
+    s.add(Or(london_constraints))
+    
+    # Stuttgart between day 7 and 9 (inclusive all days)
+    stuttgart_constraints = []
+    for i in range(n):
+        stuttgart_constraints.append(
+            And(order[i] == stuttgart_idx,
+                start_day[i] <= 7,
+                end_day[i] >= 9)
+        )
+    s.add(Or(stuttgart_constraints))
+    
+    # Check and get solution
+    if s.check() == sat:
+        m = s.model()
+        order_val = [m.eval(order[i]).as_long() for i in range(n)]
+        duration_val = [m.eval(duration[i]).as_long() for i in range(n)]
+        start_val = [m.eval(start_day[i]).as_long() for i in range(n)]
+        end_val = [m.eval(end_day[i]).as_long() for i in range(n)]
+        
+        # Create itinerary
+        itinerary = []
+        for i in range(n):
+            city = cities[order_val[i]]
+            start = start_val[i]
+            end = end_val[i]
+            itinerary.append({
+                "day_range": f"Day {start}-{end}",
+                "place": city
+            })
+        
+        print(json.dumps({"itinerary": itinerary}))
+    else:
+        print('{"itinerary": []}')
+
+if __name__ == '__main__':
+    main()
+```

@@ -1,0 +1,77 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"solution\": {\n    \"header\": [\n      \"House\",\n      \"Name\",\n      \"PhoneModel\",\n      \"Height\",\n      \"HouseStyle\",\n      \"CarModel\"\n    ],\n    \"rows\": [\n      [\n        \"1\",\n        \"Eric\",\n        \"iphone 13\",\n        \"average\",\n        \"ranch\",\n        \"toyota camry\"\n      ],\n      [\n        \"2\",\n        \"Arnold\",\n        \"google pixel 6\",\n        \"short\",\n        \"colonial\",\n        \"ford f150\"\n      ],\n      [\n        \"3\",\n        \"Peter\",\n        \"samsung galaxy s21\",\n        \"very_short\",\n        \"victorian\",\n        \"tesla model 3\"\n      ]\n    ]\n  }\n}",
+    "pred": [
+        {
+            "House": "1",
+            "Name": "Eric",
+            "PhoneModel": "iphone 13",
+            "Height": "average",
+            "HouseStyle": "ranch",
+            "CarModel": "toyota camry"
+        },
+        {
+            "House": "2",
+            "Name": "Arnold",
+            "PhoneModel": "google pixel 6",
+            "Height": "short",
+            "HouseStyle": "colonial",
+            "CarModel": "ford f150"
+        },
+        {
+            "House": "3",
+            "Name": "Peter",
+            "PhoneModel": "samsung galaxy s21",
+            "Height": "very_short",
+            "HouseStyle": "victorian",
+            "CarModel": "tesla model 3"
+        }
+    ],
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Eric",
+            "PhoneModel": "iphone 13",
+            "Height": "average",
+            "HouseStyle": "ranch",
+            "CarModel": "toyota camry"
+        },
+        {
+            "House": "2",
+            "Name": "Arnold",
+            "PhoneModel": "google pixel 6",
+            "Height": "short",
+            "HouseStyle": "colonial",
+            "CarModel": "ford f150"
+        },
+        {
+            "House": "3",
+            "Name": "Peter",
+            "PhoneModel": "samsung galaxy s21",
+            "Height": "very short",
+            "HouseStyle": "victorian",
+            "CarModel": "tesla model 3"
+        }
+    ],
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "violations": [
+            "House 3 wrong Height: expected 'very short', got 'very_short'"
+        ]
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 473.4449796676636,
+        "execution_time": 0.07911539077758789,
+        "constraint_eval_time": 0.00012087821960449219,
+        "pred_extract_time": 1.7097978591918945,
+        "gold_extract_time": 1.2874603271484375e-05,
+        "total_tokens": 32232,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\nimport json\n\n# Define EnumSorts for each attribute category\nNames, (Eric, Arnold, Peter) = EnumSort('Names', ['Eric', 'Arnold', 'Peter'])\nPhones, (iphone_13, samsung_galaxy_s21, google_pixel_6) = EnumSort('Phones', ['iphone_13', 'samsung_galaxy_s21', 'google_pixel_6'])\nHeights, (very_short, average, short) = EnumSort('Heights', ['very_short', 'average', 'short'])\nHouseStyles, (colonial, ranch, victorian) = EnumSort('HouseStyles', ['colonial', 'ranch', 'victorian'])\nCars, (tesla_model_3, toyota_camry, ford_f150) = EnumSort('Cars', ['tesla_model_3', 'toyota_camry', 'ford_f150'])\n\n# Create variables for each house (1, 2, 3)\n# House 1\nname_1 = Const('name_1', Names)\nphone_1 = Const('phone_1', Phones)\nheight_1 = Const('height_1', Heights)\nstyle_1 = Const('style_1', HouseStyles)\ncar_1 = Const('car_1', Cars)\n\n# House 2\nname_2 = Const('name_2', Names)\nphone_2 = Const('phone_2', Phones)\nheight_2 = Const('height_2', Heights)\nstyle_2 = Const('style_2', HouseStyles)\ncar_2 = Const('car_2', Cars)\n\n# House 3\nname_3 = Const('name_3', Names)\nphone_3 = Const('phone_3', Phones)\nheight_3 = Const('height_3', Heights)\nstyle_3 = Const('style_3', HouseStyles)\ncar_3 = Const('car_3', Cars)\n\n# Initialize solver\nsolver = Solver()\n\n# Add distinct constraints for each category\nsolver.add(Distinct(name_1, name_2, name_3))\nsolver.add(Distinct(phone_1, phone_2, phone_3))\nsolver.add(Distinct(height_1, height_2, height_3))\nsolver.add(Distinct(style_1, style_2, style_3))\nsolver.add(Distinct(car_1, car_2, car_3))\n\n# Add constraints based on clues\n# Clue 2: colonial-style house is in the second house\nsolver.add(style_2 == colonial)\n\n# Clue 7: Arnold is in the second house\nsolver.add(name_2 == Arnold)\n\n# Clue 9: average height is in the first house\nsolver.add(height_1 == average)\n\n# Clue 6: colonial is to the right of ranch => ranch is in house 1\nsolver.add(style_1 == ranch)\n\n# Clue 1: Peter is to the right of Eric\nsolver.add(Or(name_1 != Eric, Or(name_2 == Peter, name_3 == Peter)))\nsolver.add(Or(name_2 != Eric, name_3 == Peter))\nsolver.add(name_3 != Eric)\n\n# Clue 3: Tesla owner is very short\nsolver.add((car_1 == tesla_model_3) == (height_1 == very_short))\nsolver.add((car_2 == tesla_model_3) == (height_2 == very_short))\nsolver.add((car_3 == tesla_model_3) == (height_3 == very_short))\n\n# Clue 4: short is directly left of Samsung Galaxy S21\nsolver.add(Or(\n    And(height_1 == short, phone_2 == samsung_galaxy_s21),\n    And(height_2 == short, phone_3 == samsung_galaxy_s21)\n))\n\n# Clue 5: iPhone 13 is directly left of Google Pixel 6\nsolver.add(Or(\n    And(phone_1 == iphone_13, phone_2 == google_pixel_6),\n    And(phone_2 == iphone_13, phone_3 == google_pixel_6)\n))\n\n# Clue 8: Ford F-150 is to the right of Toyota Camry\nsolver.add(Or(car_1 != toyota_camry, Or(car_2 == ford_f150, car_3 == ford_f150)))\nsolver.add(Or(car_2 != toyota_camry, car_3 == ford_f150))\nsolver.add(car_3 != toyota_camry)\n\n# Check for solution\nif solver.check() == sat:\n    model = solver.model()\n    rows = []\n    for house_num in [1, 2, 3]:\n        if house_num == 1:\n            name, phone, height, style, car = name_1, phone_1, height_1, style_1, car_1\n        elif house_num == 2:\n            name, phone, height, style, car = name_2, phone_2, height_2, style_2, car_2\n        else:\n            name, phone, height, style, car = name_3, phone_3, height_3, style_3, car_3\n\n        name_val = model.evaluate(name).decl().name()\n        phone_val = model.evaluate(phone).decl().name()\n        height_val = model.evaluate(height).decl().name()\n        style_val = model.evaluate(style).decl().name()\n        car_val = model.evaluate(car).decl().name()\n\n        # Format phone and car names to match problem statement\n        if phone_val == 'iphone_13':\n            phone_str = 'iphone 13'\n        elif phone_val == 'samsung_galaxy_s21':\n            phone_str = 'samsung galaxy s21'\n        elif phone_val == 'google_pixel_6':\n            phone_str = 'google pixel 6'\n        else:\n            phone_str = phone_val\n\n        if car_val == 'ford_f150':\n            car_str = 'ford f150'\n        elif car_val == 'toyota_camry':\n            car_str = 'toyota camry'\n        elif car_val == 'tesla_model_3':\n            car_str = 'tesla model 3'\n        else:\n            car_str = car_val\n\n        rows.append([str(house_num), name_val, phone_str, height_val, style_val, car_str])\n\n    solution = {\n        \"solution\": {\n            \"header\": [\"House\", \"Name\", \"PhoneModel\", \"Height\", \"HouseStyle\", \"CarModel\"],\n            \"rows\": rows\n        }\n    }\n\n    print(json.dumps(solution, indent=2))\nelse:\n    print(\"No solution found.\")"
+}

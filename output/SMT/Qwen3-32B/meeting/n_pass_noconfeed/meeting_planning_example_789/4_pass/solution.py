@@ -1,0 +1,1 @@
+val0 if cond0 else (val1 if cond1 else (val2 if cond2 else 0))

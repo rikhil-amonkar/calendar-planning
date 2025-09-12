@@ -1,0 +1,71 @@
+We are dealing with 2 houses. Each attribute has 2 possible values.
+ We'll create Z3 variables for each attribute per house.
+ However, since there are only 2 houses, we can also model by having variables for each attribute and then assign to houses.
+
+ Steps:
+ 1. Define the attributes and their possible values.
+ 2. Create Z3 variables for each attribute for each house? Actually, we can create variables for each house and each category.
+
+ Alternatively, we can define:
+   Name: for house 1 and house 2
+   BookGenre: for house 1 and house 2
+   etc.
+
+ But note: the clues relate these attributes.
+
+ Since the houses are ordered, we can create variables for each attribute in each house.
+
+ Let's define:
+   For house i (i=1,2):
+     name_i: which can be "Arnold" or "Eric"
+     book_i: which can be "science fiction" or "mystery"
+     vacation_i: which can be "mountain" or "beach"
+     animal_i: which can be "cat" or "horse"
+     music_i: which can be "rock" or "pop"
+
+ However, Z3 doesn't have built-in strings for all theories, so we will use integers or enums.
+
+ We'll use EnumSort for each category.
+
+ Steps in code:
+   Create enums for:
+     Name: Arnold, Eric
+     BookGenre: science_fiction, mystery
+     Vacation: mountain, beach
+     Animal: cat, horse
+     MusicGenre: rock, pop
+
+   Then for each house i, we have a variable for each category.
+
+   Constraints:
+     All variables for the same category across houses must be distinct.
+
+   Then add the clues.
+
+ Clues:
+   1. The person who loves beach vacations is Eric.
+      This means: for the house where vacation is beach, the name must be Eric.
+
+   2. The person who loves pop music is the person who loves beach vacations.
+      So, the house with pop music is the same as the house with beach vacation.
+
+   3. The person who loves rock music is the person who loves mystery books.
+      So, the house with rock music is the same as the house with mystery books.
+
+   4. The cat lover is not in the second house.
+      So, animal_2 != cat -> animal_1 must be cat? Actually, since there are two houses, if cat is not in house2, then it must be in house1.
+
+   5. The person who loves mystery books is in the first house.
+      So, book_1 = mystery.
+
+ We also have the constraint that each attribute is unique per house.
+
+ Implementation:
+
+   We'll create a solver and add the constraints.
+
+   Then we'll check and get the model.
+
+   Finally, we'll format the output as JSON.
+
+ Let's code accordingly.

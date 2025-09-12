@@ -1,0 +1,43 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\"itinerary\": [{\"action\": \"meet\", \"location\": \"Richmond District\", \"person\": \"Barbara\", \"start_time\": \"13:15\", \"end_time\": \"14:00\"}]}",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Richmond District",
+                "person": "Barbara",
+                "start_time": "13:15",
+                "end_time": "14:00"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Richmond District",
+                "person": "Barbara",
+                "start_time": "13:15",
+                "end_time": "14:00"
+            }
+        ]
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 233.42824459075928,
+        "execution_time": 0.0705726146697998,
+        "constraint_eval_time": 3.3855438232421875e-05,
+        "pred_extract_time": 0.9293618202209473,
+        "gold_extract_time": 8.606910705566406e-05,
+        "total_tokens": 15511,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import z3\nimport json\n\nsolver = z3.Solver()\n\n# Define variables\nt_depart = z3.Int('t_depart')  # Departure time from Russian Hill (minutes since midnight)\nmeet_start = z3.Int('meet_start')  # Start time of meeting with Barbara (minutes since midnight)\nduration = z3.Int('duration')  # Duration of meeting with Barbara (minutes)\n\n# Constraints\nsolver.add(t_depart >= 540)  # Arrive at Russian Hill at 9:00 AM (540 min)\nsolver.add(meet_start >= 795)  # Barbara available from 1:15 PM (795 min)\nsolver.add(meet_start + duration <= 1095)  # Barbara leaves at 6:15 PM (1095 min)\nsolver.add(duration >= 45)  # Minimum meeting duration\nsolver.add(t_depart + 14 <= meet_start)  # Travel time from Russian Hill to Richmond\n\nif solver.check() == z3.sat:\n    model = solver.model()\n    t_depart_val = model[t_depart].as_long()\n    meet_start_val = model[meet_start].as_long()\n    duration_val = model[duration].as_long()\n    meet_end_val = meet_start_val + duration_val\n\n    def to_time(m):\n        h = m // 60\n        mi = m % 60\n        return f\"{h}:{mi:02d}\"\n\n    itinerary = [\n        {\n            \"action\": \"meet\",\n            \"location\": \"Richmond District\",\n            \"person\": \"Barbara\",\n            \"start_time\": to_time(meet_start_val),\n            \"end_time\": to_time(meet_end_val)\n        }\n    ]\n    result = {\"itinerary\": itinerary}\n    print(json.dumps(result))\nelse:\n    print(json.dumps({\"itinerary\": []}))"
+}

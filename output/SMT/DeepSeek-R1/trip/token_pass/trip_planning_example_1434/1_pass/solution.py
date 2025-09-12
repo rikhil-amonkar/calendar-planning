@@ -1,0 +1,104 @@
+from z3 import *
+import json
+
+def main():
+    # Define city names and required days
+    cities = ["Frankfurt", "Rome", "Mykonos", "Lisbon", "Nice", "Stuttgart", "Venice", "Dublin", "Bucharest", "Seville"]
+    required_days = [5, 3, 2, 2, 3, 4, 4, 2, 2, 5]
+    
+    # Map city name to index
+    city_index = {city: idx for idx, city in enumerate(cities)}
+    
+    # Direct flights as city name pairs
+    direct_flights_str = [
+        ("Rome", "Stuttgart"), ("Venice", "Rome"), ("Dublin", "Bucharest"), ("Mykonos", "Rome"),
+        ("Seville", "Lisbon"), ("Frankfurt", "Venice"), ("Venice", "Stuttgart"), ("Bucharest", "Lisbon"),
+        ("Nice", "Mykonos"), ("Venice", "Lisbon"), ("Dublin", "Lisbon"), ("Venice", "Nice"),
+        ("Rome", "Seville"), ("Frankfurt", "Rome"), ("Nice", "Dublin"), ("Rome", "Bucharest"),
+        ("Frankfurt", "Dublin"), ("Rome", "Dublin"), ("Venice", "Dublin"), ("Rome", "Lisbon"),
+        ("Frankfurt", "Lisbon"), ("Nice", "Rome"), ("Frankfurt", "Nice"), ("Frankfurt", "Stuttgart"),
+        ("Frankfurt", "Bucharest"), ("Lisbon", "Stuttgart"), ("Nice", "Lisbon"), ("Seville", "Dublin")
+    ]
+    
+    # Create directed edges set (both directions)
+    directed_edges = set()
+    for (a, b) in direct_flights_str:
+        idx_a = city_index[a]
+        idx_b = city_index[b]
+        directed_edges.add((idx_a, idx_b))
+        directed_edges.add((idx_b, idx_a))
+    
+    # Create solver
+    s = Solver()
+    
+    # Variables: order of cities (10), start_day and end_day for each segment (10 each)
+    order = [Int('order_%i' % i) for i in range(10)]
+    start_day = [Int('start_day_%i' % i) for i in range(10)]
+    end_day = [Int('end_day_%i' % i) for i in range(10)]
+    
+    # Constraint: order is a permutation of 0..9
+    s.add(Distinct(order))
+    for i in range(10):
+        s.add(And(order[i] >= 0, order[i] < 10))
+    
+    # First city starts at day 1
+    s.add(start_day[0] == 1)
+    # Last city ends at day 23
+    s.add(end_day[9] == 23)
+    # Consecutive cities share travel day
+    for i in range(9):
+        s.add(start_day[i+1] == end_day[i])
+    
+    # Duration constraints for each city
+    for i in range(10):
+        city_idx = order[i]
+        req_days = required_days[city_idx]
+        s.add(end_day[i] - start_day[i] + 1 == req_days)
+    
+    # Constraints for specific cities
+    # Mykonos (index2) must be from day10 to day11
+    for i in range(10):
+        s.add(If(order[i] == 2, And(start_day[i] == 10, end_day[i] == 11), True))
+    
+    # Seville (index9) must be from day13 to day17
+    for i in range(10):
+        s.add(If(order[i] == 9, And(start_day[i] == 13, end_day[i] == 17), True))
+    
+    # Frankfurt (index0) must have start_day <=5 and duration 5
+    for i in range(10):
+        s.add(If(order[i] == 0, And(start_day[i] <= 5, end_day[i] == start_day[i] + 4), True))
+    
+    # Direct flights between consecutive cities
+    for i in range(9):
+        city_i = order[i]
+        city_j = order[i+1]
+        edge_constraints = []
+        for (a, b) in directed_edges:
+            edge_constraints.append(And(city_i == a, city_j == b))
+        s.add(Or(edge_constraints))
+    
+    # Solve
+    if s.check() == sat:
+        m = s.model()
+        order_val = [m.evaluate(order[i]).as_long() for i in range(10)]
+        start_day_val = [m.evaluate(start_day[i]).as_long() for i in range(10)]
+        end_day_val = [m.evaluate(end_day[i]).as_long() for i in range(10)]
+        
+        itinerary_list = []
+        for i in range(10):
+            city_idx = order_val[i]
+            city_name = cities[city_idx]
+            start = start_day_val[i]
+            end = end_day_val[i]
+            if start == end:
+                day_range = f"Day {start}"
+            else:
+                day_range = f"Day {start}-{end}"
+            itinerary_list.append({"day_range": day_range, "place": city_name})
+        
+        print(json.dumps({"itinerary": itinerary_list}))
+    else:
+        print('{"itinerary": []}')
+
+if __name__ == "__main__":
+    main()

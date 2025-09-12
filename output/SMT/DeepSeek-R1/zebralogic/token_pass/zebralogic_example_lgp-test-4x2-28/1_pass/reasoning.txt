@@ -1,0 +1,106 @@
+We are going to use the Z3 SMT solver to solve this puzzle.
+ We have 4 houses, each with a name and a hair color.
+ The names are: Alice, Arnold, Peter, Eric.
+ The hair colors are: black, blonde, brown, red.
+
+ We will define two arrays for the house attributes: one for name and one for hair color.
+ Since the houses are in order, we can index from 0 to 3 for houses 1 to 4.
+
+ Steps:
+ 1. Create Z3 variables for the name and hair color for each house.
+ 2. Since each attribute (name and hair color) must be unique, we will use Distinct constraints.
+ 3. Add constraints based on the clues.
+
+ Clues:
+ 1. Eric is directly left of the person who has blonde hair.
+    This means: Eric is in house i, and the blonde hair is in house i+1.
+
+ 2. Alice and Arnold are next to each other.
+    So, the absolute difference in their house indices is 1.
+
+ 3. Eric is the person who has brown hair.
+    So, for the house where the name is Eric, the hair color is brown.
+
+ 4. The person who has black hair is not in the first house.
+    So, black hair is not in house 0 (which corresponds to house 1).
+
+ 5. Alice is in the first house.
+    So, name of house 0 is Alice.
+
+ We'll then solve the constraints and output the solution in the required JSON format.
+
+ Implementation:
+ Let's define:
+   names = [Alice, Arnold, Peter, Eric]
+   hair_colors = [black, blonde, brown, red]
+
+ We'll create two arrays of Z3 constants for the house indices for name and hair color.
+
+ However, note: we can also model by assigning a value for each house for name and hair color.
+
+ Let's create:
+   name_vars = [Int('name_%d' % i) for i in range(4)]
+   hair_vars = [Int('hair_%d' % i) for i in range(4)]
+
+ But we need to map the names and hair colors to integers.
+
+ Alternatively, we can use EnumSort for better readability.
+
+ Let's use EnumSort for both names and hair colors.
+
+ We'll create:
+   NameSort, name_consts = EnumSort('Name', ['Alice', 'Arnold', 'Peter', 'Eric'])
+   HairSort, hair_consts = EnumSort('Hair', ['black', 'blonde', 'brown', 'red'])
+
+ Then for each house i, we have:
+   name_i = Const('name_%d' % i, NameSort)
+   hair_i = Const('hair_%d' % i, HairSort)
+
+ Then we can set the distinct constraints.
+
+ But note: the problem says each house has a unique attribute for each characteristic, so we don't need to enforce that the same name appears in two houses because the distinct on names will do that.
+
+ Alternatively, we can also use a list of variables for each house and then use Distinct on the list of name variables and Distinct on the list of hair variables.
+
+ Let's do that.
+
+ Steps in code:
+
+ 1. Import z3 and json.
+ 2. Define the sorts for Name and Hair.
+ 3. Create variables for each house for name and hair.
+ 4. Create a solver.
+ 5. Add constraints:
+    a. Distinct on names and Distinct on hair colors.
+    b. Clue 1: There exists an i (0<=i<3) such that name_i == Eric and hair_{i+1} == blonde.
+    c. Clue 2: There exists an i and j such that |i-j|==1 and (name_i==Alice and name_j==Arnold) OR (name_i==Arnold and name_j==Alice). Alternatively, we can use Or([And(name_i==Alice, name_j==Arnold) for adjacent i,j]).
+    d. Clue 3: For each house i, if name_i == Eric then hair_i == brown.
+    e. Clue 4: hair_0 != black (since house index 0 is the first house).
+    f. Clue 5: name_0 == Alice.
+
+ 6. Check the model and then format the output.
+
+ However, note: Clue 1 says Eric is directly left of the blonde hair. So we can write:
+    Or([And(name[i] == Eric, hair[i+1] == blonde) for i in range(3)])
+
+ 7. Also, for Clue 2: We can iterate over adjacent houses (i and i+1) and check if the pair (Alice, Arnold) or (Arnold, Alice) appears in any adjacent pair.
+
+ Let's code accordingly.
+
+ We'll create the solver and then output the model in the required JSON format.
+
+ Note: The output must be a JSON with the structure:
+ {
+   "solution": {
+     "header": ["House", "Name", "HairColor"],
+     "rows": [
+         ["1", ... , ...],
+         ["2", ... , ...],
+         ...
+     ]
+   }
+ }
+
+ We'll map the house numbers from 1 to 4 (so index 0 is house 1, index 1 is house 2, etc.)
+
+ Let's write the code accordingly.

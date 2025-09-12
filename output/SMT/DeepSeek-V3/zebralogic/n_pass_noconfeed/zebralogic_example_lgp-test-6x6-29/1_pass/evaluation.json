@@ -1,0 +1,80 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": true,
+    "execution_output": "{\"error\": \"No solution found\"}",
+    "pred": null,
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Carol",
+            "HouseStyle": "colonial",
+            "Food": "stir fry",
+            "Vacation": "city",
+            "Height": "average",
+            "Cigar": "pall mall"
+        },
+        {
+            "House": "2",
+            "Name": "Bob",
+            "HouseStyle": "craftsman",
+            "Food": "pizza",
+            "Vacation": "cultural",
+            "Height": "very short",
+            "Cigar": "prince"
+        },
+        {
+            "House": "3",
+            "Name": "Peter",
+            "HouseStyle": "modern",
+            "Food": "grilled cheese",
+            "Vacation": "camping",
+            "Height": "short",
+            "Cigar": "blends"
+        },
+        {
+            "House": "4",
+            "Name": "Eric",
+            "HouseStyle": "ranch",
+            "Food": "soup",
+            "Vacation": "beach",
+            "Height": "tall",
+            "Cigar": "blue master"
+        },
+        {
+            "House": "5",
+            "Name": "Alice",
+            "HouseStyle": "victorian",
+            "Food": "spaghetti",
+            "Vacation": "mountain",
+            "Height": "very tall",
+            "Cigar": "yellow monster"
+        },
+        {
+            "House": "6",
+            "Name": "Arnold",
+            "HouseStyle": "mediterranean",
+            "Food": "stew",
+            "Vacation": "cruise",
+            "Height": "super tall",
+            "Cigar": "dunhill"
+        }
+    ],
+    "status": "No plan generated",
+    "violated_constraint": {
+        "invalid_output": "No valid output structure found"
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 137.87228226661682,
+        "execution_time": 0.09632706642150879,
+        "constraint_eval_time": 2.1457672119140625e-06,
+        "pred_extract_time": 0.5343952178955078,
+        "gold_extract_time": 1.5974044799804688e-05,
+        "total_tokens": 2939,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import json\nfrom z3 import *\n\ndef main():\n    # Create solver\n    s = Solver()\n    \n    # Number of houses\n    n = 6\n    houses = [1, 2, 3, 4, 5, 6]\n    \n    # Attributes\n    names = [\"Arnold\", \"Carol\", \"Peter\", \"Eric\", \"Bob\", \"Alice\"]\n    house_styles = [\"ranch\", \"colonial\", \"modern\", \"craftsman\", \"mediterranean\", \"victorian\"]\n    foods = [\"pizza\", \"stew\", \"spaghetti\", \"grilled cheese\", \"stir fry\", \"soup\"]\n    vacations = [\"cultural\", \"cruise\", \"mountain\", \"camping\", \"city\", \"beach\"]\n    heights = [\"average\", \"very tall\", \"very short\", \"short\", \"tall\", \"super tall\"]\n    cigars = [\"yellow monster\", \"prince\", \"dunhill\", \"pall mall\", \"blue master\", \"blends\"]\n    \n    # Create variables for each attribute per house\n    name_vars = [Int(f\"name_{i}\") for i in houses]\n    style_vars = [Int(f\"style_{i}\") for i in houses]\n    food_vars = [Int(f\"food_{i}\") for i in houses]\n    vacation_vars = [Int(f\"vacation_{i}\") for i in houses]\n    height_vars = [Int(f\"height_{i}\") for i in houses]\n    cigar_vars = [Int(f\"cigar_{i}\") for i in houses]\n    \n    # Domain constraints - each variable must be between 0 and 5\n    for i in houses:\n        s.add(And(name_vars[i-1] >= 0, name_vars[i-1] < n))\n        s.add(And(style_vars[i-1] >= 0, style_vars[i-1] < n))\n        s.add(And(food_vars[i-1] >= 0, food_vars[i-1] < n))\n        s.add(And(vacation_vars[i-1] >= 0, vacation_vars[i-1] < n))\n        s.add(And(height_vars[i-1] >= 0, height_vars[i-1] < n))\n        s.add(And(cigar_vars[i-1] >= 0, cigar_vars[i-1] < n))\n    \n    # All attributes must be distinct within their category\n    s.add(Distinct(name_vars))\n    s.add(Distinct(style_vars))\n    s.add(Distinct(food_vars))\n    s.add(Distinct(vacation_vars))\n    s.add(Distinct(height_vars))\n    s.add(Distinct(cigar_vars))\n    \n    # Helper functions\n    def find_attr_position(attr_vars, attr_value):\n        \"\"\"Find the house position of an attribute value\"\"\"\n        return [i+1 for i in range(n) if attr_vars[i] == attr_value][0]\n    \n    def get_attr_value(attr_vars, house_num):\n        \"\"\"Get the attribute value for a specific house\"\"\"\n        return attr_vars[house_num-1]\n    \n    # Clue 1: Alice is in the fifth house.\n    alice_idx = names.index(\"Alice\")\n    s.add(name_vars[4] == alice_idx)\n    \n    # Clue 2: The person who loves stir fry is the person living in a colonial-style house.\n    stir_fry_idx = foods.index(\"stir fry\")\n    colonial_idx = house_styles.index(\"colonial\")\n    for i in houses:\n        s.add(Implies(food_vars[i-1] == stir_fry_idx, style_vars[i-1] == colonial_idx))\n    \n    # Clue 3: Alice is the person who loves the spaghetti eater.\n    spaghetti_idx = foods.index(\"spaghetti\")\n    s.add(food_vars[4] == spaghetti_idx)\n    \n    # Clue 4: Arnold is the person who loves the stew.\n    arnold_idx = names.index(\"Arnold\")\n    stew_idx = foods.index(\"stew\")\n    for i in houses:\n        s.add(Implies(name_vars[i-1] == arnold_idx, food_vars[i-1] == stew_idx))\n    \n    # Clue 5: There is one house between the person who has an average height and Peter.\n    average_idx = heights.index(\"average\")\n    peter_idx = names.index(\"Peter\")\n    for i in houses:\n        for j in houses:\n            if abs(i - j) == 2:  # One house between means positions differ by 2\n                s.add(Or(\n                    And(height_vars[i-1] == average_idx, name_vars[j-1] == peter_idx),\n                    And(height_vars[j-1] == average_idx, name_vars[i-1] == peter_idx)\n                ))\n    \n    # Clue 6: The person in a Craftsman-style house is not in the third house.\n    craftsman_idx = house_styles.index(\"craftsman\")\n    s.add(style_vars[2] != craftsman_idx)\n    \n    # Clue 7: The person who has an average height is the person who loves stir fry.\n    for i in houses:\n        s.add(Implies(height_vars[i-1] == average_idx, food_vars[i-1] == stir_fry_idx))\n    \n    # Clue 8: The person who loves beach vacations is the person in a ranch-style home.\n    beach_idx = vacations.index(\"beach\")\n    ranch_idx = house_styles.index(\"ranch\")\n    for i in houses:\n        s.add(Implies(vacation_vars[i-1] == beach_idx, style_vars[i-1] == ranch_idx))\n    \n    # Clue 9: Eric is in the fourth house.\n    eric_idx = names.index(\"Eric\")\n    s.add(name_vars[3] == eric_idx)\n    \n    # Clue 10: There is one house between the person living in a colonial-style house and the person who enjoys camping trips.\n    camping_idx = vacations.index(\"camping\")\n    for i in houses:\n        for j in houses:\n            if abs(i - j) == 2:  # One house between means positions differ by 2\n                s.add(Or(\n                    And(style_vars[i-1] == colonial_idx, vacation_vars[j-1] == camping_idx),\n                    And(style_vars[j-1] == colonial_idx, vacation_vars[i-1] == camping_idx)\n                ))\n    \n    # Clue 11: The person who enjoys mountain retreats is the person who smokes Yellow Monster.\n    mountain_idx = vacations.index(\"mountain\")\n    yellow_monster_idx = cigars.index(\"yellow monster\")\n    for i in houses:\n        s.add(Implies(vacation_vars[i-1] == mountain_idx, cigar_vars[i-1] == yellow_monster_idx))\n    \n    # Clue 12: The person who enjoys mountain retreats is the person who is very tall.\n    very_tall_idx = heights.index(\"very tall\")\n    for i in houses:\n        s.add(Implies(vacation_vars[i-1] == mountain_idx, height_vars[i-1] == very_tall_idx))\n    \n    # Clue 13: The person who enjoys mountain retreats and the Dunhill smoker are next to each other.\n    dunhill_idx = cigars.index(\"dunhill\")\n    for i in houses:\n        for j in houses:\n            if abs(i - j) == 1:  # Adjacent houses\n                s.add(Or(\n                    And(vacation_vars[i-1] == mountain_idx, cigar_vars[j-1] == dunhill_idx),\n                    And(vacation_vars[j-1] == mountain_idx, cigar_vars[i-1] == dunhill_idx)\n                ))\n    \n    # Clue 14: The person who loves the spaghetti eater is the person residing in a Victorian house.\n    victorian_idx = house_styles.index(\"victorian\")\n    s.add(style_vars[4] == victorian_idx)  # Alice is in 5th house and loves spaghetti eater\n    \n    # Clue 15: The person who is tall is the person who loves beach vacations.\n    tall_idx = heights.index(\"tall\")\n    for i in houses:\n        s.add(Implies(height_vars[i-1] == tall_idx, vacation_vars[i-1] == beach_idx))\n    \n    # Clue 16: The person who is tall is somewhere to the left of the person residing in a Victorian house.\n    for i in houses:\n        for j in houses:\n            if i < j:  # i is left of j\n                s.add(Implies(And(height_vars[i-1] == tall_idx, style_vars[j-1] == victorian_idx), i < j))\n    \n    # Clue 17: The person who loves stir fry is directly left of Bob.\n    bob_idx = names.index(\"Bob\")\n    for i in range(1, n):\n        s.add(Implies(food_vars[i-1] == stir_fry_idx, name_vars[i] == bob_idx))\n    \n    # Clue 18: The person in a modern-style house is somewhere to the left of Alice.\n    modern_idx = house_styles.index(\"modern\")\n    for i in range(1, 5):  # Alice is in house 5, so modern must be in 1-4\n        s.add(Implies(style_vars[i-1] == modern_idx, i < 5))\n    \n    # Clue 19: The person in a Craftsman-style house is somewhere to the left of the person who is short.\n    short_idx = heights.index(\"short\")\n    for i in houses:\n        for j in houses:\n            if i < j:  # i is left of j\n                s.add(Implies(And(style_vars[i-1] == craftsman_idx, height_vars[j-1] == short_idx), i < j))\n    \n    # Clue 20: The person who loves stir fry is somewhere to the left of the Prince smoker.\n    prince_idx = cigars.index(\"prince\")\n    for i in houses:\n        for j in houses:\n            if i < j:  # i is left of j\n                s.add(Implies(And(food_vars[i-1] == stir_fry_idx, cigar_vars[j-1] == prince_idx), i < j))\n    \n    # Clue 21: There are two houses between the person who loves eating grilled cheese and the person who is super tall.\n    grilled_cheese_idx = foods.index(\"grilled cheese\")\n    super_tall_idx = heights.index(\"super tall\")\n    for i in houses:\n        for j in houses:\n            if abs(i - j) == 3:  # Two houses between means positions differ by 3\n                s.add(Or(\n                    And(food_vars[i-1] == grilled_cheese_idx, height_vars[j-1] == super_tall_idx),\n                    And(food_vars[j-1] == grilled_cheese_idx, height_vars[i-1] == super_tall_idx)\n                ))\n    \n    # Clue 22: The person in a ranch-style home is the person who smokes Blue Master.\n    blue_master_idx = cigars.index(\"blue master\")\n    for i in houses:\n        s.add(Implies(style_vars[i-1] == ranch_idx, cigar_vars[i-1] == blue_master_idx))\n    \n    # Clue 23: The person who smokes many unique blends is directly left of the person who smokes Blue Master.\n    blends_idx = cigars.index(\"blends\")\n    for i in range(1, n):\n        s.add(Implies(cigar_vars[i-1] == blends_idx, cigar_vars[i] == blue_master_idx))\n    \n    # Clue 24: The person who goes on cultural tours is the person who is a pizza lover.\n    cultural_idx = vacations.index(\"cultural\")\n    pizza_idx = foods.index(\"pizza\")\n    for i in houses:\n        s.add(Implies(vacation_vars[i-1] == cultural_idx, food_vars[i-1] == pizza_idx))\n    \n    # Clue 25: The person who is a pizza lover is somewhere to the left of the person who likes going on cruises.\n    cruise_idx = vacations.index(\"cruise\")\n    for i in houses:\n        for j in houses:\n            if i < j:  # i is left of j\n                s.add(Implies(And(food_vars[i-1] == pizza_idx, vacation_vars[j-1] == cruise_idx), i < j))\n    \n    # Solve the constraints\n    if s.check() == sat:\n        model = s.model()\n        \n        # Extract the solution\n        solution = []\n        for i in range(n):\n            house_num = i + 1\n            name_idx = model.evaluate(name_vars[i]).as_long()\n            style_idx = model.evaluate(style_vars[i]).as_long()\n            food_idx = model.evaluate(food_vars[i]).as_long()\n            vacation_idx = model.evaluate(vacation_vars[i]).as_long()\n            height_idx = model.evaluate(height_vars[i]).as_long()\n            cigar_idx = model.evaluate(cigar_vars[i]).as_long()\n            \n            row = [\n                str(house_num),\n                names[name_idx],\n                house_styles[style_idx],\n                foods[food_idx],\n                vacations[vacation_idx],\n                heights[height_idx],\n                cigars[cigar_idx]\n            ]\n            solution.append(row)\n        \n        # Format the output as JSON\n        output = {\n            \"solution\": {\n                \"header\": [\"House\", \"Name\", \"HouseStyle\", \"Food\", \"Vacation\", \"Height\", \"Cigar\"],\n                \"rows\": solution\n            }\n        }\n        \n        print(json.dumps(output, indent=2))\n    else:\n        print('{\"error\": \"No solution found\"}')\n\nif __name__ == \"__main__\":\n    main()"
+}

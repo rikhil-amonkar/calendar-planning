@@ -1,0 +1,435 @@
+We are going to use Z3 to solve the puzzle.
+ We have 3 houses, each with 5 attributes: name, smoothie, flower, animal, hobby.
+ We will create integer variables for each attribute, each taking a value in {1,2,3} representing the house number.
+
+ Alternatively, we can create Z3 constants for each possible value and assign them to houses.
+
+ Since there are 3 houses, we can define for each attribute a function that maps house number to the value.
+
+ However, a common approach is to create a set of variables for each house and each category.
+
+ Let's define:
+   Name: Eric, Peter, Arnold -> we'll assign each a house number (or create a variable for each house's name)
+   Similarly for the others.
+
+ We can create a matrix of variables for each house and each category.
+
+ But note: the problem says each attribute is unique per house.
+
+ We can do:
+
+   Let name_i be the name in house i (i from 1 to 3). But Z3 doesn't have symbolic strings, so we use integers and map.
+
+ Alternatively, we can use EnumSort for each category.
+
+ Let's use EnumSort for each category to make it more readable.
+
+ Steps:
+   1. Create enums for each category.
+   2. For each house (1,2,3), create a variable for each category.
+   3. Assert that all variables in the same category are distinct.
+   4. Add the constraints from the clues.
+
+ However, note: the clues relate attributes from different categories.
+
+ We have 5 categories: Name, Smoothie, Flower, Animal, Hobby.
+
+ We'll create:
+   NameSort = EnumSort('NameSort', ['Eric','Peter','Arnold'])
+   SmoothieSort = EnumSort('SmoothieSort', ['cherry','watermelon','desert'])
+   FlowerSort = EnumSort('FlowerSort', ['carnations','lilies','daffodils'])
+   AnimalSort = EnumSort('AnimalSort', ['cat','horse','bird'])
+   HobbySort = EnumSort('HobbySort', ['photography','cooking','gardening'])
+
+ Then for each house i (1,2,3), we have:
+   name[i] = Const('name_%d' % i, NameSort)
+   smoothie[i] = Const('smoothie_%d' % i, SmoothieSort)
+   flower[i] = Const('flower_%d' % i, FlowerSort)
+   animal[i] = Const('animal_%d' % i, AnimalSort)
+   hobby[i] = Const('hobby_%d' % i, HobbySort)
+
+ Then we assert that for each category, the three variables are distinct.
+
+ Then we add the constraints from the clues.
+
+ But note: the clues also refer to the house positions (left, right, next to).
+
+ We also have house numbers 1,2,3. We can use the integer house numbers for positional constraints.
+
+ Let's translate the clues:
+
+ 1. The person who keeps horses and the photography enthusiast are next to each other.
+    Let horse_house be the house number where animal is horse.
+    Let photography_house be the house number where hobby is photography.
+    Then: Abs(horse_house - photography_house) == 1
+
+ 2. The bird keeper is the person who likes Cherry smoothies.
+    Let bird_house = house where animal is bird
+    Let cherry_house = house where smoothie is cherry
+    Then: bird_house == cherry_house
+
+ 3. The person who loves cooking is the Desert smoothie lover.
+    cooking_house (hobby cooking) = desert_house (smoothie desert)
+
+ 4. The person who enjoys gardening is the person who loves a carnations arrangement.
+    gardening_house (hobby gardening) = carnations_house (flower carnations)
+
+ 5. The person who loves cooking is directly left of Peter.
+    Let cooking_house = house of hobby cooking
+    Let peter_house = house of name Peter
+    Then: cooking_house + 1 == peter_house
+
+ 6. The person who loves a bouquet of daffodils is the Desert smoothie lover.
+    daffodils_house (flower daffodils) = desert_house (smoothie desert)
+
+ 7. The Watermelon smoothie lover is the person who keeps horses.
+    watermelon_house (smoothie watermelon) = horse_house (animal horse)
+
+ 8. The photography enthusiast is Eric.
+    photography_house (hobby photography) = eric_house (name Eric)
+
+ However, note: we have defined variables for each house for each category.
+
+ How to get the house number for a particular attribute value? We can use the same technique as above by defining functions, but note that we have only 3 houses.
+
+ Alternatively, we can avoid using house numbers for attributes and instead relate the variables for the same house.
+
+ For example, for clue 2: For the house i, if animal[i] is bird, then smoothie[i] must be cherry.
+
+ So we can write:
+   For each house i, (animal[i] == bird) implies (smoothie[i] == cherry)
+
+ But note: the bird keeper is exactly one person, so we can also use:
+   Or([ And(animal[i] == bird, smoothie[i] == cherry) for i in [1,2,3] ])
+
+ However, the clue says they are the same person, so we can also do:
+
+   Exists i such that animal[i]==bird and smoothie[i]==cherry, and for others, if animal[i]==bird then smoothie[i]!=cherry is automatically false? Actually, the implication way is safe.
+
+ But note: the implication way might be weaker because it doesn't force that there is exactly one bird and one cherry, but we already have distinct constraints.
+
+ Alternatively, we can define a function that returns the house number for a given attribute value? But that would require using arrays or something else.
+
+ Since the problem is small (3 houses), we can use:
+
+   For clue 2: 
+      for i in range(1,4): 
+          s.add(Implies(animal[i] == bird, smoothie[i] == cherry))
+
+ But note: the bird is only in one house, so this is equivalent to: 
+      for the house with bird, smoothie must be cherry.
+
+ Similarly for the others.
+
+ However, some clues are about the same person (same house) and some are about relative positions.
+
+ Let's do it by defining the variables per house and then adding constraints that relate attributes in the same house and also constraints that relate houses.
+
+ We'll create a list of houses [1,2,3]
+
+ Steps in code:
+
+   from z3 import *
+
+   # Create enums
+   Name = EnumSort('Name', ['Eric','Peter','Arnold'])
+   Smoothie = EnumSort('Smoothie', ['cherry','watermelon','desert'])
+   Flower = EnumSort('Flower', ['carnations','lilies','daffodils'])
+   Animal = EnumSort('Animal', ['cat','horse','bird'])
+   Hobby = EnumSort('Hobby', ['photography','cooking','gardening'])
+
+   # Create constants for each value in the enums for easier reference
+   Eric, Peter, Arnold = Name
+   cherry, watermelon, desert = Smoothie
+   carnations, lilies, daffodils = Flower
+   cat, horse, bird = Animal
+   photography, cooking, gardening = Hobby
+
+   # For each house, we create a variable for each category
+   names = [Const('name_%d' % i, Name) for i in range(1,4)]
+   smoothies = [Const('smoothie_%d' % i, Smoothie) for i in range(1,4)]
+   flowers = [Const('flower_%d' % i, Flower) for i in range(1,4)]
+   animals = [Const('animal_%d' % i, Animal) for i in range(1,4)]
+   hobbies = [Const('hobby_%d' % i, Hobby) for i in range(1,4)]
+
+   s = Solver()
+
+   # Assert that each category has distinct values
+   s.add(Distinct(names))
+   s.add(Distinct(smoothies))
+   s.add(Distinct(flowers))
+   s.add(Distinct(animals))
+   s.add(Distinct(hobbies))
+
+   # Now add the clues:
+
+   # 1. The person who keeps horses and the photography enthusiast are next to each other.
+   #    We need to find the house of horse and house of photography, then |h1 - h2| = 1.
+   #    Instead, we can say: for each pair of adjacent houses, if one has horse then the other has photography, or vice versa.
+   #    Alternatively, we can get the house index of horse and photography and then compare.
+   #    But note: we don't have a direct way to get the house number from the value, so we can use:
+   #        For i in [1,2,3]: if animal[i] is horse, then hobby[i-1] is photography or hobby[i+1] is photography (if exists)
+   #    Since there are only 3 houses, we can do:
+
+   for i in range(1,4):
+       if i == 1:
+           # only right neighbor exists
+           s.add(Implies(animals[i-1] == horse, hobbies[1] == photography)) # house1 animal horse -> house2 hobby photography
+       elif i == 2:
+           s.add(Implies(animals[i-1] == horse, Or(hobbies[0] == photography, hobbies[2] == photography)))
+       else: # i==3
+           s.add(Implies(animals[i-1] == horse, hobbies[1] == photography))
+
+   But wait, this is messy. Alternatively, we can define the house numbers for horse and photography:
+
+   Let horse_house = If(animals[0]==horse, 1, If(animals[1]==horse, 2, 3))
+   Let photo_house = If(hobbies[0]==photography, 1, If(hobbies[1]==photography, 2, 3))
+
+   Then we can add: Abs(horse_house - photo_house) == 1
+
+   However, Z3 doesn't have a built-in Abs for integers, but we can do:
+
+      Or(horse_house - photo_house == 1, photo_house - horse_house == 1)
+
+   But note: horse_house and photo_house are integers, but we are using Z3 integers. We can define:
+
+   horse_house = Int('horse_house')
+   s.add(horse_house == If(animals[0]==horse, 1, If(animals[1]==horse, 2, 3)))
+   Similarly for photo_house.
+
+   Alternatively, we can avoid introducing integers and use the adjacency on the list indices.
+
+   We can do:
+
+      s.add(Or(
+          And(animals[0] == horse, hobbies[1] == photography),
+          And(animals[1] == horse, Or(hobbies[0] == photography, hobbies[2] == photography)),
+          And(animals[2] == horse, hobbies[1] == photography)
+      ))
+
+   This says:
+      If horse in house1, then photography in house2.
+      If horse in house2, then photography in house1 or house3.
+      If horse in house3, then photography in house2.
+
+   This is correct.
+
+   Similarly for the other constraints that involve positions.
+
+   But note: clue 5: directly left -> so we can use:
+
+      cooking_house + 1 = peter_house
+
+   We can define:
+      cooking_house = If(hobbies[0]==cooking, 1, If(hobbies[1]==cooking, 2, 3))
+      peter_house = If(names[0]==Peter, 1, If(names[1]==Peter, 2, 3))
+
+   Then add: cooking_house + 1 == peter_house
+
+   Alternatively, we can avoid integers by:
+
+      Or(
+          And(hobbies[0]==cooking, names[1]==Peter),   # cooking in 1, Peter in 2
+          And(hobbies[1]==cooking, names[2]==Peter)    # cooking in 2, Peter in 3
+      )
+
+   This is simpler and doesn't require integers.
+
+   Let's use this direct encoding for the positional constraints.
+
+   So for clue 1, we do:
+
+      s.add(Or(
+          And(animals[0] == horse, hobbies[1] == photography),
+          And(animals[1] == horse, Or(hobbies[0] == photography, hobbies[2] == photography)),
+          And(animals[2] == horse, hobbies[1] == photography)
+      ))
+
+   But note: the clue says they are next to each other, so it could be either order.
+
+   This encoding already allows that.
+
+   Now, for the clues that are about the same person (same house), we can use:
+
+   For clue 2: For each house i, if animal is bird then smoothie is cherry.
+
+   s.add([Implies(animals[i] == bird, smoothies[i] == cherry) for i in range(3)])
+
+   Similarly for clue 3: 
+        s.add([Implies(hobbies[i] == cooking, smoothies[i] == desert) for i in range(3)])
+
+   Clue 4: 
+        s.add([Implies(hobbies[i] == gardening, flowers[i] == carnations) for i in range(3)])
+
+   Clue 5: We did above without integers.
+
+   Clue 6: 
+        s.add([Implies(flowers[i] == daffodils, smoothies[i] == desert) for i in range(3)])
+
+   Clue 7: 
+        s.add([Implies(smoothies[i] == watermelon, animals[i] == horse) for i in range(3)])
+
+   Clue 8: 
+        s.add([Implies(hobbies[i] == photography, names[i] == Eric) for i in range(3)])
+
+   But note: clue 8 says the photography enthusiast is Eric, so we can also write:
+        for i in range(3): if hobby[i] is photography then name[i] is Eric.
+
+   However, note that the clues 2,3,4,6,7,8 are all about the same house, so the implication is correct.
+
+   But wait: the implications are one way. However, because each attribute value is unique, the reverse implication is also enforced by the distinct constraints? Not exactly. For example, clue 2: if animal is bird then smoothie is cherry. But it doesn't say that if smoothie is cherry then animal is bird. However, the clue says "the bird keeper is the person who likes Cherry smoothies", which is equivalent to: bird keeper <-> cherry smoothie. So we need both directions.
+
+   Let's check the clues:
+
+   2. "The bird keeper is the person who likes Cherry smoothies." -> This means they are the same person. So we must have: animal bird and smoothie cherry in the same house, and no other house has both? Actually, no: it's an equivalence for that house. But note: the bird keeper is one person and the cherry smoothie lover is one person, so we can write:
+
+        For the house with bird, it must have cherry smoothie, and for the house with cherry smoothie, it must have bird.
+
+   So we need:
+
+        For i in range(3): (animals[i] == bird) == (smoothies[i] == cherry)
+
+   But Z3 doesn't have == for boolean expressions in the same way? We can use:
+
+        s.add([ animals[i] == bird if and only if smoothies[i] == cherry for i in range(3) ])
+
+   Actually, we can do:
+
+        for i in range(3):
+            s.add(animals[i] == bird == (smoothies[i] == cherry))
+
+   But that is not correct syntax. Instead, we can do:
+
+        for i in range(3):
+            s.add(animals[i] == bird == (smoothies[i] == cherry))
+
+   Wait, no: that would be comparing three booleans. We want:
+
+        (animals[i] == bird) == (smoothies[i] == cherry)
+
+   But in Z3, we can use:
+
+        s.add( (animals[i] == bird) == (smoothies[i] == cherry) )
+
+   This is correct.
+
+   Alternatively, we can note that the bird and the cherry smoothie are in the same house, so we can write:
+
+        exists i such that animals[i]==bird and smoothies[i]==cherry, and for j != i, animals[j]!=bird and smoothies[j]!=cherry? Not exactly: the bird and cherry are in the same house, but other houses might have cherry? No, because each attribute is unique. So if we force that the house with bird has cherry, then the house with cherry is that same house. So the implication in one direction is enough because of the uniqueness? Let me see:
+
+        If we say: for every house, if it has bird then it has cherry, then the bird house has cherry. And because cherry is unique, no other house has cherry. So the house with cherry is the bird house. So the reverse is also true.
+
+        Similarly, if we say: for every house, if it has cherry then it has bird, then the cherry house has bird, and because bird is unique, the bird house is the cherry house.
+
+        So we can use one direction. But to be safe, we can use both.
+
+   However, the problem is small, so we can use the bidirectional constraint for clarity.
+
+   Let's do for clue 2:
+
+        for i in range(3):
+            s.add( (animals[i] == bird) == (smoothies[i] == cherry) )
+
+   Similarly for clue 3,4,6,7,8? Let's check:
+
+   Clue 3: "The person who loves cooking is the Desert smoothie lover." -> same person. So we can do:
+
+        for i in range(3):
+            s.add( (hobbies[i] == cooking) == (smoothies[i] == desert) )
+
+   Clue 4: "The person who enjoys gardening is the person who loves a carnations arrangement." -> same person.
+
+        for i in range(3):
+            s.add( (hobbies[i] == gardening) == (flowers[i] == carnations) )
+
+   Clue 6: "The person who loves a bouquet of daffodils is the Desert smoothie lover." -> same person.
+
+        for i in range(3):
+            s.add( (flowers[i] == daffodils) == (smoothies[i] == desert) )
+
+   Clue 7: "The Watermelon smoothie lover is the person who keeps horses." -> same person.
+
+        for i in range(3):
+            s.add( (smoothies[i] == watermelon) == (animals[i] == horse) )
+
+   Clue 8: "The photography enthusiast is Eric." -> same person.
+
+        for i in range(3):
+            s.add( (hobbies[i] == photography) == (names[i] == Eric) )
+
+   Now, clue 5: "The person who loves cooking is directly left of Peter."
+
+        We can write:
+
+        Or(
+            And(hobbies[0] == cooking, names[1] == Peter),
+            And(hobbies[1] == cooking, names[2] == Peter)
+        )
+
+   Note: cooking cannot be in house3 because there is no house to the right of 3 for Peter.
+
+   Now, we have to also note that the constraints above (especially the bidirectional ones) might be redundant with the distinct constraints, but they are correct.
+
+   Let's code accordingly.
+
+   After adding all constraints, we check the model and then format the output.
+
+   We'll create a list of houses (1,2,3) and for each house, we have the values for each category.
+
+   We need to output:
+
+      {
+        "solution": {
+          "header": ["House", "Name", "Smoothie", "Flower", "Animal", "Hobby"],
+          "rows": [
+            ["1", name1, smoothie1, flower1, animal1, hobby1],
+            ["2", name2, smoothie2, flower2, animal2, hobby2],
+            ["3", name3, smoothie3, flower3, animal3, hobby3]
+          ]
+        }
+      }
+
+   We must convert the Z3 model values to strings.
+
+   How to get the string representation of an enum value?
+
+   We can create a mapping from the Z3 enum value to its name.
+
+   Alternatively, we can use the `as_string` method? But note: the Z3 model returns a constant, which we can compare with the enum constants we defined.
+
+   We can do:
+
+      if model[name_i] == Eric: then output "Eric"
+
+   So we'll define:
+
+      name_map = { Eric: "Eric", Peter: "Peter", Arnold: "Arnold" }
+      similarly for the others.
+
+   Then we can build the rows.
+
+   Let's code accordingly.
+
+   We assume the model is sat.
+
+   We'll create a list for each house and then output the JSON.
+
+   Note: We are using 0-indexed lists for houses, but house numbers are 1-indexed.
+
+   Example:
+
+      names = [Const('name_1', Name), Const('name_2', Name), Const('name_3', Name)]
+
+   So for house i (0-indexed), the house number is i+1.
+
+   Let's write the code.
+
+   We'll use:
+
+      import json
+
+   And then output the JSON string.
+
+   We must ensure the output is exactly as required.
+
+   Let's code.

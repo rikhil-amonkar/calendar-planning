@@ -1,0 +1,106 @@
+from z3 import *
+import json
+
+def main():
+    # Cities and required days
+    cities = ['Reykjavik', 'Stuttgart', 'Vienna', 'Edinburgh', 'Manchester', 'Split', 'Lyon', 'Prague']
+    required_days = {
+        'Vienna': 4,
+        'Lyon': 3,
+        'Edinburgh': 4,
+        'Reykjavik': 5,
+        'Stuttgart': 5,
+        'Manchester': 2,
+        'Split': 5,
+        'Prague': 4
+    }
+    
+    # Direct flights (undirected graph)
+    edges = [
+        ('Reykjavik', 'Stuttgart'),
+        ('Stuttgart', 'Split'),
+        ('Stuttgart', 'Vienna'),
+        ('Prague', 'Manchester'),
+        ('Edinburgh', 'Prague'),
+        ('Manchester', 'Split'),
+        ('Prague', 'Vienna'),
+        ('Vienna', 'Manchester'),
+        ('Prague', 'Split'),
+        ('Vienna', 'Lyon'),
+        ('Stuttgart', 'Edinburgh'),
+        ('Split', 'Lyon'),
+        ('Stuttgart', 'Manchester'),
+        ('Prague', 'Lyon'),
+        ('Reykjavik', 'Vienna'),
+        ('Prague', 'Reykjavik'),
+        ('Vienna', 'Split')
+    ]
+    
+    # Build graph dictionary
+    graph = {}
+    for city in cities:
+        graph[city] = set()
+    for u, v in edges:
+        graph[u].add(v)
+        graph[v].add(u)
+    
+    # Z3 solver
+    s = Solver()
+    
+    # Arrival and departure variables for each city
+    arr = {city: Int(f'arr_{city}') for city in cities}
+    dep = {city: Int(f'dep_{city}') for city in cities}
+    
+    # Order variables: permutation of city indices
+    order = [Int(f'order_{i}') for i in range(8)]
+    
+    # Constraints for order indices
+    for i in range(8):
+        s.add(order[i] >= 0, order[i] < 8)
+    s.add(Distinct(order))
+    
+    # Basic constraints for arrival and departure
+    for city in cities:
+        s.add(arr[city] >= 1, arr[city] <= 25)
+        s.add(dep[city] >= 1, dep[city] <= 25)
+        s.add(dep[city] >= arr[city])
+        s.add(dep[city] - arr[city] + 1 == required_days[city])
+    
+    # Event constraints
+    s.add(arr['Edinburgh'] <= 5, dep['Edinburgh'] >= 8)
+    s.add(arr['Split'] <= 19, dep['Split'] >= 23)
+    
+    # First and last city constraints
+    for idx, city in enumerate(cities):
+        s.add(If(order[0] == idx, arr[city] == 1, True))
+        s.add(If(order[7] == idx, dep[city] == 25, True))
+    
+    # Consecutive city constraints
+    for i in range(7):
+        for j in range(8):
+            city_j = cities[j]
+            for k in range(8):
+                if j == k:
+                    continue
+                city_k = cities[k]
+                condition = And(order[i] == j, order[i+1] == k)
+                flight_constraint = city_k in graph[city_j]
+                dep_arr_constraint = dep[city_j] == arr[city_k]
+                s.add(If(condition, And(dep_arr_constraint, flight_constraint), True))
+    
+    # Solve and output
+    if s.check() == sat:
+        m = s.model()
+        order_val = [m.evaluate(order[i]).as_long() for i in range(8)]
+        itinerary = []
+        for idx in order_val:
+            city = cities[idx]
+            a = m.evaluate(arr[city]).as_long()
+            d = m.evaluate(dep[city]).as_long()
+            itinerary.append({'day_range': f'Day {a}-{d}', 'place': city})
+        print(json.dumps({'itinerary': itinerary}))
+    else:
+        print('{"itinerary": []}')
+
+if __name__ == '__main__':
+    main()

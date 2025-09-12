@@ -1,0 +1,150 @@
+from z3 import *
+import json
+
+def travel_time(loc1, loc2):
+    travel_dict = {
+        "Fisherman's Wharf": {
+            "The Castro": 26,
+            "Golden Gate Park": 25,
+            "Embarcadero": 8,
+            "Russian Hill": 7,
+            "Nob Hill": 11,
+            "Alamo Square": 20,
+            "North Beach": 6
+        },
+        "The Castro": {
+            "Fisherman's Wharf": 24,
+            "Golden Gate Park": 11,
+            "Embarcadero": 22,
+            "Russian Hill": 18,
+            "Nob Hill": 16,
+            "Alamo Square": 8,
+            "North Beach": 20
+        },
+        "Golden Gate Park": {
+            "Fisherman's Wharf": 24,
+            "The Castro": 13,
+            "Embarcadero": 25,
+            "Russian Hill": 19,
+            "Nob Hill": 20,
+            "Alamo Square": 10,
+            "North Beach": 24
+        },
+        "Embarcadero": {
+            "Fisherman's Wharf": 6,
+            "The Castro": 25,
+            "Golden Gate Park": 25,
+            "Russian Hill": 8,
+            "Nob Hill": 10,
+            "Alamo Square": 19,
+            "North Beach": 5
+        },
+        "Russian Hill": {
+            "Fisherman's Wharf": 7,
+            "The Castro": 21,
+            "Golden Gate Park": 21,
+            "Embarcadero": 8,
+            "Nob Hill": 5,
+            "Alamo Square": 15,
+            "North Beach": 5
+        },
+        "Nob Hill": {
+            "Fisherman's Wharf": 11,
+            "The Castro": 17,
+            "Golden Gate Park": 17,
+            "Embarcadero": 9,
+            "Russian Hill": 5,
+            "Alamo Square": 11,
+            "North Beach": 8
+        },
+        "Alamo Square": {
+            "Fisherman's Wharf": 19,
+            "The Castro": 8,
+            "Golden Gate Park": 9,
+            "Embarcadero": 17,
+            "Russian Hill": 13,
+            "Nob Hill": 11,
+            "North Beach": 15
+        },
+        "North Beach": {
+            "Fisherman's Wharf": 5,
+            "The Castro": 22,
+            "Golden Gate Park": 22,
+            "Embarcadero": 6,
+            "Russian Hill": 4,
+            "Nob Hill": 7,
+            "Alamo Square": 16
+        }
+    }
+    return travel_dict[loc1][loc2]
+
+def main():
+    meetings = [
+        {"name": "Laura", "loc": "The Castro", "avail_start": 645, "avail_end": 750, "min_dur": 105},
+        {"name": "Daniel", "loc": "Golden Gate Park", "avail_start": 735, "avail_end": 765, "min_dur": 15},
+        {"name": "William", "loc": "Embarcadero", "avail_start": -120, "avail_end": 0, "min_dur": 90},
+        {"name": "Karen", "loc": "Russian Hill", "avail_start": 330, "avail_end": 645, "min_dur": 30},
+        {"name": "Stephanie", "loc": "Nob Hill", "avail_start": -90, "avail_end": 30, "min_dur": 45},
+        {"name": "Joseph", "loc": "Alamo Square", "avail_start": 150, "avail_end": 225, "min_dur": 15},
+        {"name": "Kimberly", "loc": "North Beach", "avail_start": 405, "avail_end": 615, "min_dur": 30}
+    ]
+    
+    n = len(meetings)
+    meet_vars = [Bool('meet_%d' % i) for i in range(n)]
+    start_vars = [Int('start_%d' % i) for i in range(n)]
+    end_vars = [Int('end_%d' % i) for i in range(n)]
+    
+    dummy_loc = "Fisherman's Wharf"
+    
+    solver = Solver()
+    opt = Optimize()
+    
+    for i in range(n):
+        m = meetings[i]
+        opt.add(Implies(meet_vars[i], start_vars[i] >= max(0, m['avail_start'])))
+        opt.add(Implies(meet_vars[i], end_vars[i] <= m['avail_end']))
+        opt.add(Implies(meet_vars[i], end_vars[i] - start_vars[i] >= m['min_dur']))
+        opt.add(Implies(meet_vars[i], start_vars[i] >= travel_time(dummy_loc, m['loc'])))
+    
+    for i in range(n):
+        for j in range(i+1, n):
+            order_var = Bool('order_%d_%d' % (i, j))
+            opt.add(Implies(And(meet_vars[i], meet_vars[j]), 
+                           Or(
+                               And(order_var, end_vars[i] + travel_time(meetings[i]['loc'], meetings[j]['loc']) <= start_vars[j]),
+                               And(Not(order_var), end_vars[j] + travel_time(meetings[j]['loc'], meetings[i]['loc']) <= start_vars[i])
+                           )))
+    
+    meeting_count = Sum([If(meet_vars[i], 1, 0) for i in range(n)])
+    opt.maximize(meeting_count)
+    
+    if opt.check() == sat:
+        model = opt.model()
+        itinerary = []
+        for i in range(n):
+            if is_true(model.eval(meet_vars[i])):
+                start_val = model.eval(start_vars[i]).as_long()
+                end_val = model.eval(end_vars[i]).as_long()
+                total_minutes_start = 9 * 60 + start_val
+                total_minutes_end = 9 * 60 + end_val
+                hours_start = total_minutes_start // 60
+                minutes_start = total_minutes_start % 60
+                hours_end = total_minutes_end // 60
+                minutes_end = total_minutes_end % 60
+                start_str = f"{hours_start}:{minutes_start:02d}"
+                end_str = f"{hours_end}:{minutes_end:02d}"
+                itinerary.append({
+                    "action": "meet",
+                    "location": meetings[i]['loc'],
+                    "person": meetings[i]['name'],
+                    "start_time": start_str,
+                    "end_time": end_str
+                })
+        
+        itinerary.sort(key=lambda x: x['start_time'])
+        print(json.dumps({"itinerary": itinerary}, indent=2))
+    else:
+        print('{"itinerary": []}')
+
+if __name__ == "__main__":
+    main()

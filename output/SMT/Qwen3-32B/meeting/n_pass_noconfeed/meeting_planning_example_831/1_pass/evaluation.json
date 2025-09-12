@@ -1,0 +1,129 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"itinerary\": [\n    {\n      \"action\": \"meet\",\n      \"location\": \"Fisherman's Wharf\",\n      \"person\": \"Jeffrey\",\n      \"start_time\": \"10:15\",\n      \"end_time\": \"11:45\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Alamo Square\",\n      \"person\": \"Ronald\",\n      \"start_time\": \"12:06\",\n      \"end_time\": \"14:06\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Richmond District\",\n      \"person\": \"Laura\",\n      \"start_time\": \"14:17\",\n      \"end_time\": \"15:17\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Chinatown\",\n      \"person\": \"Richard\",\n      \"start_time\": \"15:37\",\n      \"end_time\": \"15:52\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Embarcadero\",\n      \"person\": \"Margaret\",\n      \"start_time\": \"15:57\",\n      \"end_time\": \"17:27\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Union Square\",\n      \"person\": \"Melissa\",\n      \"start_time\": \"17:45\",\n      \"end_time\": \"18:00\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Golden Gate Park\",\n      \"person\": \"George\",\n      \"start_time\": \"20:45\",\n      \"end_time\": \"22:00\"\n    }\n  ]\n}",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Fisherman's Wharf",
+                "person": "Jeffrey",
+                "start_time": "10:15",
+                "end_time": "11:45"
+            },
+            {
+                "action": "meet",
+                "location": "Alamo Square",
+                "person": "Ronald",
+                "start_time": "12:06",
+                "end_time": "14:06"
+            },
+            {
+                "action": "meet",
+                "location": "Richmond District",
+                "person": "Laura",
+                "start_time": "14:17",
+                "end_time": "15:17"
+            },
+            {
+                "action": "meet",
+                "location": "Chinatown",
+                "person": "Richard",
+                "start_time": "15:37",
+                "end_time": "15:52"
+            },
+            {
+                "action": "meet",
+                "location": "Embarcadero",
+                "person": "Margaret",
+                "start_time": "15:57",
+                "end_time": "17:27"
+            },
+            {
+                "action": "meet",
+                "location": "Union Square",
+                "person": "Melissa",
+                "start_time": "17:45",
+                "end_time": "18:00"
+            },
+            {
+                "action": "meet",
+                "location": "Golden Gate Park",
+                "person": "George",
+                "start_time": "20:45",
+                "end_time": "22:00"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Fisherman's Wharf",
+                "person": "Jeffrey",
+                "start_time": "10:15",
+                "end_time": "11:45"
+            },
+            {
+                "action": "meet",
+                "location": "Alamo Square",
+                "person": "Ronald",
+                "start_time": "12:06",
+                "end_time": "14:06"
+            },
+            {
+                "action": "meet",
+                "location": "Embarcadero",
+                "person": "Margaret",
+                "start_time": "14:22",
+                "end_time": "15:52"
+            },
+            {
+                "action": "meet",
+                "location": "Chinatown",
+                "person": "Richard",
+                "start_time": "15:59",
+                "end_time": "16:14"
+            },
+            {
+                "action": "meet",
+                "location": "Richmond District",
+                "person": "Laura",
+                "start_time": "16:34",
+                "end_time": "17:34"
+            },
+            {
+                "action": "meet",
+                "location": "Union Square",
+                "person": "Melissa",
+                "start_time": "17:55",
+                "end_time": "18:10"
+            },
+            {
+                "action": "meet",
+                "location": "Golden Gate Park",
+                "person": "George",
+                "start_time": "19:00",
+                "end_time": "20:15"
+            }
+        ]
+    },
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "constraints_satisfied_but_no_exact_match": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 933.0538246631622,
+        "execution_time": 0.911768913269043,
+        "constraint_eval_time": 0.00044465065002441406,
+        "pred_extract_time": 5.4046454429626465,
+        "gold_extract_time": 0.00010156631469726562,
+        "total_tokens": 61914,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\nimport json\n\nfriends = [\n    {\n        'name': 'Jeffrey',\n        'location': 1,  # Fisherman's Wharf\n        'available_start': 615,\n        'available_end': 780,\n        'min_duration': 90\n    },\n    {\n        'name': 'Ronald',\n        'location': 2,  # Alamo Square\n        'available_start': 465,\n        'available_end': 885,\n        'min_duration': 120\n    },\n    {\n        'name': 'Jason',\n        'location': 3,  # Financial District\n        'available_start': 645,\n        'available_end': 960,\n        'min_duration': 105\n    },\n    {\n        'name': 'Melissa',\n        'location': 4,  # Union Square\n        'available_start': 1065,\n        'available_end': 1095,\n        'min_duration': 15\n    },\n    {\n        'name': 'Elizabeth',\n        'location': 5,  # Sunset District\n        'available_start': 885,\n        'available_end': 1050,\n        'min_duration': 105\n    },\n    {\n        'name': 'Margaret',\n        'location': 6,  # Embarcadero\n        'available_start': 795,\n        'available_end': 1140,\n        'min_duration': 90\n    },\n    {\n        'name': 'George',\n        'location': 7,  # Golden Gate Park\n        'available_start': 1140,\n        'available_end': 1320,\n        'min_duration': 75\n    },\n    {\n        'name': 'Richard',\n        'location': 8,  # Chinatown\n        'available_start': 570,\n        'available_end': 1260,\n        'min_duration': 15\n    },\n    {\n        'name': 'Laura',\n        'location': 9,  # Richmond District\n        'available_start': 585,\n        'available_end': 1080,\n        'min_duration': 60\n    }\n]\n\ntravel_times = [\n    # Presidio, Fisherman's Wharf, Alamo Square, Financial District, Union Square, Sunset District, Embarcadero, Golden Gate Park, Chinatown, Richmond District\n    [0, 19, 19, 23, 22, 15, 20, 12, 21, 7],  # Presidio\n    [17, 0, 21, 11, 13, 27, 8, 25, 12, 18],  # Fisherman's Wharf\n    [17, 21, 0, 17, 14, 16, 16, 9, 15, 11],  # Alamo Square\n    [22, 10, 17, 0, 9, 30, 4, 23, 5, 21],  # Financial District\n    [24, 15, 15, 9, 0, 27, 11, 22, 7, 20],  # Union Square\n    [16, 29, 17, 30, 30, 0, 30, 11, 30, 12],  # Sunset District\n    [20, 6, 19, 5, 10, 30, 0, 25, 7, 21],  # Embarcadero\n    [11, 24, 9, 26, 22, 10, 25, 0, 23, 9],  # Golden Gate Park\n    [19, 8, 17, 5, 7, 29, 5, 23, 0, 20],  # Chinatown\n    [7, 18, 13, 22, 21, 11, 19, 9, 20, 0],  # Richmond District\n]\n\nfriends_count = len(friends)\nsteps = friends_count  # maximum possible steps\n\nsolver = Optimize()\n\n# Define variables\nfriend_idx = [Int(f\"friend_idx_{i}\") for i in range(steps)]\nstart_time = [Int(f\"start_time_{i}\") for i in range(steps)]\nend_time = [Int(f\"end_time_{i}\") for i in range(steps)]\n\nlocations = [\n    \"Presidio\",\n    \"Fisherman's Wharf\",\n    \"Alamo Square\",\n    \"Financial District\",\n    \"Union Square\",\n    \"Sunset District\",\n    \"Embarcadero\",\n    \"Golden Gate Park\",\n    \"Chinatown\",\n    \"Richmond District\"\n]\n\n# Helper functions to get friend's properties based on friend index\ndef get_location(friend_idx_var):\n    loc = 0\n    for i in range(friends_count):\n        loc = If(friend_idx_var == i, friends[i]['location'], loc)\n    return loc\n\ndef get_available_start(friend_idx_var):\n    start = 0\n    for i in range(friends_count):\n        start = If(friend_idx_var == i, friends[i]['available_start'], start)\n    return start\n\ndef get_available_end(friend_idx_var):\n    end = 0\n    for i in range(friends_count):\n        end = If(friend_idx_var == i, friends[i]['available_end'], end)\n    return end\n\ndef get_min_duration(friend_idx_var):\n    duration = 0\n    for i in range(friends_count):\n        duration = If(friend_idx_var == i, friends[i]['min_duration'], duration)\n    return duration\n\n# Helper function to get travel time between two location codes\ndef get_travel_time(prev_loc, curr_loc):\n    tt = 0\n    for i in range(10):\n        for j in range(10):\n            tt = If(And(prev_loc == i, curr_loc == j), travel_times[i][j], tt)\n    return tt\n\n# Add constraints for each step\n# Step 0\nsolver.add(Implies(friend_idx[0] != -1, start_time[0] >= 540 + get_travel_time(0, get_location(friend_idx[0]))))\nsolver.add(Implies(friend_idx[0] != -1, start_time[0] >= get_available_start(friend_idx[0])))\nsolver.add(Implies(friend_idx[0] != -1, end_time[0] == start_time[0] + get_min_duration(friend_idx[0])))\nsolver.add(Implies(friend_idx[0] != -1, end_time[0] <= get_available_end(friend_idx[0])))\n\n# Steps 1 to steps-1\nfor i in range(1, steps):\n    # If current friend is not -1, then previous is not -1\n    solver.add(Implies(friend_idx[i] != -1, friend_idx[i-1] != -1))\n    \n    prev_loc = get_location(friend_idx[i-1])\n    curr_loc = get_location(friend_idx[i])\n    travel_time = get_travel_time(prev_loc, curr_loc)\n    \n    solver.add(Implies(friend_idx[i] != -1, start_time[i] >= end_time[i-1] + travel_time))\n    solver.add(Implies(friend_idx[i] != -1, start_time[i] >= get_available_start(friend_idx[i])))\n    solver.add(Implies(friend_idx[i] != -1, end_time[i] == start_time[i] + get_min_duration(friend_idx[i])))\n    solver.add(Implies(friend_idx[i] != -1, end_time[i] <= get_available_end(friend_idx[i])))\n\n# Add constraints for friend indices to be in range\nfor i in range(steps):\n    solver.add(And(friend_idx[i] >= -1, friend_idx[i] <= friends_count - 1))\n\n# Add uniqueness constraints\nfor i in range(steps):\n    for j in range(i+1, steps):\n        solver.add(Or(friend_idx[i] == -1, friend_idx[j] == -1, friend_idx[i] != friend_idx[j]))\n\n# Maximize the number of friends met\ntotal_met = Sum([If(friend_idx[i] != -1, 1, 0) for i in range(steps)])\nsolver.maximize(total_met)\n\n# Check for solution\nif solver.check() == sat:\n    model = solver.model()\n    itinerary = []\n    for i in range(steps):\n        fi_val = model[friend_idx[i]].as_long()\n        if fi_val != -1:\n            fi = fi_val\n            name = friends[fi]['name']\n            loc_code = friends[fi]['location']\n            loc_name = locations[loc_code]\n            st = model[start_time[i]].as_long()\n            et = model[end_time[i]].as_long()\n            # Format time as H:MM\n            def format_time(minutes):\n                hours = minutes // 60\n                mins = minutes % 60\n                return f\"{hours}:{mins:02d}\"\n            itinerary.append({\n                \"action\": \"meet\",\n                \"location\": loc_name,\n                \"person\": name,\n                \"start_time\": format_time(st),\n                \"end_time\": format_time(et)\n            })\n    # Output JSON\n    print(json.dumps({\"itinerary\": itinerary}, indent=2))\nelse:\n    print(\"No solution found.\")"
+}

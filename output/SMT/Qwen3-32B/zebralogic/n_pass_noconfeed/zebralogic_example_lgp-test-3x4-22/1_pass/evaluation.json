@@ -1,0 +1,47 @@
+{
+    "has_execution_error": true,
+    "has_no_plan": false,
+    "execution_output": null,
+    "pred": null,
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Peter",
+            "MusicGenre": "pop",
+            "Children": "Fred",
+            "BookGenre": "romance"
+        },
+        {
+            "House": "2",
+            "Name": "Eric",
+            "MusicGenre": "classical",
+            "Children": "Bella",
+            "BookGenre": "mystery"
+        },
+        {
+            "House": "3",
+            "Name": "Arnold",
+            "MusicGenre": "rock",
+            "Children": "Meredith",
+            "BookGenre": "science fiction"
+        }
+    ],
+    "status": "Error",
+    "violated_constraint": {
+        "invalid_output": "No valid output structure found"
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 477.2723968029022,
+        "execution_time": 0.07929563522338867,
+        "constraint_eval_time": 7.867813110351562e-06,
+        "pred_extract_time": 4.5299530029296875e-06,
+        "gold_extract_time": 1.33514404296875e-05,
+        "total_tokens": 35072,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\nimport json\n\n# Define EnumSorts for each attribute\nName, (Arnold, Eric, Peter) = EnumSort('Name', ['Arnold', 'Eric', 'Peter'])\nMusicGenre, (pop, rock, classical) = EnumSort('MusicGenre', ['pop', 'rock', 'classical'])\nChildren, (Fred, Meredith, Bella) = EnumSort('Children', ['Fred', 'Meredith', 'Bella'])\nBookGenre, (mystery, romance, science_fiction) = EnumSort('BookGenre', ['mystery', 'romance', 'science fiction'])\n\nhouses = 3\n\n# Create variables for each house's attributes\nnames = [Const(f'name_{i+1}', Name) for i in range(houses)]\nmusics = [Const(f'music_{i+1}', MusicGenre) for i in range(houses)]\nchildrens = [Const(f'child_{i+1}', Children) for i in range(houses)]\nbooks = [Const(f'book_{i+1}', BookGenre) for i in range(houses)]\n\ns = Solver()\n\n# Add uniqueness constraints for each attribute\ns.add(Distinct(names))\ns.add(Distinct(musics))\ns.add(Distinct(childrens))\ns.add(Distinct(books))\n\n# Add clues as constraints\n# Clue 2: Peter is in the first house.\ns.add(names[0] == Peter)\n\n# Clue 5: Eric is the person who loves mystery books.\ns.add(Or([And(books[i] == mystery, names[i] == Eric) for i in range(houses)]))\n\n# Clue 3: The person who loves mystery books loves classical music.\ns.add(Or([And(books[i] == mystery, musics[i] == classical) for i in range(houses)]))\n\n# Clue 1: The person whose child is Fred is directly left of the person who loves mystery books.\ns.add(Or(\n    And(childrens[0] == Fred, books[1] == mystery),\n    And(childrens[1] == Fred, books[2] == mystery)\n))\n\n# Clue 4: The person who loves science fiction books has child Meredith.\ns.add(Or([And(books[i] == science_fiction, childrens[i] == Meredith) for i in range(houses)]))\n\n# Clue 6: Rock music is to the right of romance books.\ns.add(Or(\n    And(books[0] == romance, Or(musics[1] == rock, musics[2] == rock)),\n    And(books[1] == romance, musics[2] == rock)\n))\n\n# Check for solution\nif s.check() == sat:\n    model = s.model()\n    rows = []\n    for i in range(houses):\n        house_num = str(i + 1)\n        name_val = model.evaluate(names[i]).name()\n        music_val = model.evaluate(musics[i]).name()\n        child_val = model.evaluate(childrens[i]).name()\n        book_val = model.evaluate(books[i]).name()\n        rows.append([house_num, name_val, music_val, child_val, book_val])\n    solution = {\n        \"solution\": {\n            \"header\": [\"House\", \"Name\", \"MusicGenre\", \"Children\", \"BookGenre\"],\n            \"rows\": rows\n        }\n    }\n    print(json.dumps(solution, indent=2))\nelse:\n    print(\"No solution found.\")"
+}

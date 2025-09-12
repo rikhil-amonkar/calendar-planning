@@ -1,0 +1,86 @@
+```python
+from z3 import *
+import json
+
+def main():
+    # City mapping
+    cities = ['Split', 'Vilnius', 'Santorini', 'Madrid']
+    c2n = {city: idx for idx, city in enumerate(cities)}
+    
+    s = Solver()
+    
+    # Morning and evening city for each day (1-14)
+    morning_city = [Int(f'morning_{i}') for i in range(1, 15)]
+    evening_city = [Int(f'evening_{i}') for i in range(1, 15)]
+    
+    # City values must be between 0 and 3
+    for i in range(14):
+        s.add(And(morning_city[i] >= 0, morning_city[i] <= 3))
+        s.add(And(evening_city[i] >= 0, evening_city[i] <= 3))
+    
+    # Evening city equals next morning city
+    for i in range(13):
+        s.add(evening_city[i] == morning_city[i+1])
+    
+    # Direct flights constraints
+    direct_flights = [(c2n['Vilnius'], c2n['Split']), (c2n['Split'], c2n['Vilnius']),
+                      (c2n['Split'], c2n['Madrid']), (c2n['Madrid'], c2n['Split']),
+                      (c2n['Madrid'], c2n['Santorini']), (c2n['Santorini'], c2n['Madrid'])]
+    for i in range(14):
+        flight_possible = Or([And(morning_city[i] == a, evening_city[i] == b) for a, b in direct_flights])
+        s.add(Implies(morning_city[i] != evening_city[i], flight_possible))
+    
+    # Exactly 3 flight days
+    flight_days = [If(morning_city[i] != evening_city[i], 1, 0) for i in range(14)]
+    s.add(sum(flight_days) == 3)
+    
+    # City day counts
+    for cidx, city in enumerate(cities):
+        total_days = 0
+        for i in range(14):
+            total_days += If(morning_city[i] == cidx, 1, 0)
+            total_days += If(And(evening_city[i] == cidx, morning_city[i] != cidx), 1, 0)
+        if city == 'Split':
+            s.add(total_days == 5)
+        elif city == 'Vilnius':
+            s.add(total_days == 4)
+        elif city == 'Santorini':
+            s.add(total_days == 2)
+        elif city == 'Madrid':
+            s.add(total_days == 6)
+    
+    # Conference days in Santorini
+    s.add(morning_city[12] == c2n['Santorini'])  # Day 13
+    s.add(evening_city[12] == c2n['Santorini'])  # Day 13
+    s.add(morning_city[13] == c2n['Santorini'])  # Day 14
+    s.add(evening_city[13] == c2n['Santorini'])  # Day 14
+
+    if s.check() == sat:
+        m = s.model()
+        morn_vals = [m.evaluate(morning_city[i]).as_long() for i in range(14)]
+        eve_vals = [m.evaluate(evening_city[i]).as_long() for i in range(14)]
+        
+        segments = []
+        current_city = morn_vals[0]
+        start_day = 1
+        for day_idx in range(1, 14):
+            if morn_vals[day_idx] != current_city:
+                segments.append((start_day, day_idx, current_city))
+                start_day = day_idx
+                current_city = morn_vals[day_idx]
+        segments.append((start_day, 14, current_city))
+        
+        itinerary = []
+        for seg in segments:
+            start, end, ccode = seg
+            city_name = cities[ccode]
+            day_range = f"Day {start}-{end}" if start != end else f"Day {start}"
+            itinerary.append({"day_range": day_range, "place": city_name})
+        
+        print(json.dumps({"itinerary": itinerary}))
+    else:
+        print('{"itinerary": []}')
+
+if __name__ == "__main__":
+    main()
+```

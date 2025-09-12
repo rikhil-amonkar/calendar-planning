@@ -1,0 +1,82 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\"itinerary\": [{\"day_range\": \"Day 1-5\", \"place\": \"Stockholm\"}, {\"day_range\": \"Day 6-6\", \"place\": \"Berlin\"}, {\"day_range\": \"Day 7-7\", \"place\": \"Tallinn\"}, {\"day_range\": \"Day 8-9\", \"place\": \"Berlin\"}, {\"day_range\": \"Day 10-10\", \"place\": \"Tallinn\"}, {\"day_range\": \"Day 11-12\", \"place\": \"Prague\"}]}",
+    "pred": {
+        "itinerary": [
+            {
+                "day_range": "Day 1-5",
+                "place": "Stockholm"
+            },
+            {
+                "day_range": "Day 6-6",
+                "place": "Berlin"
+            },
+            {
+                "day_range": "Day 7-7",
+                "place": "Tallinn"
+            },
+            {
+                "day_range": "Day 8-9",
+                "place": "Berlin"
+            },
+            {
+                "day_range": "Day 10-10",
+                "place": "Tallinn"
+            },
+            {
+                "day_range": "Day 11-12",
+                "place": "Prague"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "day_range": "Day 1-2",
+                "place": "Prague"
+            },
+            {
+                "day_range": "Day 2-6",
+                "place": "Stockholm"
+            },
+            {
+                "day_range": "Day 6-8",
+                "place": "Berlin"
+            },
+            {
+                "day_range": "Day 8-12",
+                "place": "Tallinn"
+            }
+        ]
+    },
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "gap/overlap": [
+            {
+                "place": "Stockholm",
+                "start": 1,
+                "end": 5
+            },
+            {
+                "place": "Berlin",
+                "start": 6,
+                "end": 6
+            }
+        ]
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 2,
+    "timing": {
+        "api_call_time": 285.8938491344452,
+        "execution_time": 0.10430121421813965,
+        "constraint_eval_time": 4.7206878662109375e-05,
+        "pred_extract_time": 2.4658102989196777,
+        "gold_extract_time": 0.0001347064971923828,
+        "total_tokens": 19687,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\nimport json\n\ndef main():\n    s = Solver()\n\n    # Define cities as 0: Prague, 1: Berlin, 2: Tallinn, 3: Stockholm\n    cities = [Int(f'city_{i+1}') for i in range(12)]  # city_1 to city_12\n\n    # Allowed direct flights between cities\n    allowed_pairs = [\n        (0, 2), (2, 0),  # Prague-Tallinn\n        (1, 2), (2, 1),  # Berlin-Tallinn\n        (2, 3), (3, 2),  # Tallinn-Stockholm\n        (0, 3), (3, 0),  # Prague-Stockholm\n        (3, 1), (1, 3)   # Berlin-Stockholm\n    ]\n\n    # Constraint 1: Allowed transitions between cities\n    for i in range(11):  # days 1 to 11 (indices 0 to 10)\n        current = cities[i]\n        next_city = cities[i+1]\n        allowed = Or([And(current == a, next_city == b) for a, b in allowed_pairs])\n        s.add(Implies(current != next_city, allowed))\n\n    # Constraint 2: Required durations for each city (sum = 12 days)\n    required_durations = {0: 2, 1: 3, 2: 2, 3: 5}\n    for city_id in required_durations:\n        count_in_city_vars = Sum([If(c == city_id, 1, 0) for c in cities])\n        s.add(count_in_city_vars == required_durations[city_id])\n\n    # Constraint 3: Conference in Berlin on day 6 and 8\n    s.add(cities[5] == 1)  # day 6 is index 5\n    s.add(cities[7] == 1)  # day 8 is index 7\n\n    # Constraint 4: Visit relatives in Tallinn between day 8 and 12\n    s.add(Or([cities[i] == 2 for i in range(7, 12)]))\n\n    # Check for solution\n    if s.check() == sat:\n        model = s.model()\n        itinerary = []\n        for i in range(12):\n            city_val = model[cities[i]].as_long()\n            itinerary.append((i + 1, city_val))  # day (1-12), city code\n\n        # Group consecutive days into ranges\n        grouped = []\n        current_place = itinerary[0][1]\n        start_day = 1\n        for i in range(1, 12):\n            day, place = itinerary[i]\n            if place != current_place:\n                grouped.append((start_day, i, current_place))\n                current_place = place\n                start_day = day\n        grouped.append((start_day, 12, current_place))\n\n        # Convert to JSON format\n        city_names = {0: \"Prague\", 1: \"Berlin\", 2: \"Tallinn\", 3: \"Stockholm\"}\n        result = []\n        for start, end, city_code in grouped:\n            result.append({\n                \"day_range\": f\"Day {start}-{end}\",\n                \"place\": city_names[city_code]\n            })\n\n        print(json.dumps({\"itinerary\": result}))\n    else:\n        print(json.dumps({\"itinerary\": []}))\n\nif __name__ == \"__main__\":\n    main()"
+}

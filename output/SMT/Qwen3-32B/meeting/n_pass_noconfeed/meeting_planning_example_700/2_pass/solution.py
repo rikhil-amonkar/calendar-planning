@@ -1,0 +1,3 @@
+travel_time_0 = If(fi == 0, travel_times['Presidio'][friends[0]['location']],
+                   If(fi == 1, travel_times['Presidio'][friends[1]['location']],
+                      ...

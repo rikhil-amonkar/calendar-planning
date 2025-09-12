@@ -1,0 +1,265 @@
+We are given 2 houses, each with a person who has a name, birthday month, and mother's name.
+ We have three attributes: Name (Arnold, Eric), Birthday (april, sept), Mother (Aniya, Holly)
+
+ We'll create Z3 variables for each house and each attribute.
+ Since there are 2 houses, we can create:
+   For house i (1 and 2), we have:
+     name_i: which can be either Arnold or Eric
+     birthday_i: april or sept
+     mother_i: Aniya or Holly
+
+ However, note that the problem says each attribute is unique per house, but since there are 2 houses and 2 options for each attribute, we can use integers and define the mappings.
+
+ We'll use Z3 Ints and define the possible values for each attribute.
+
+ Steps:
+ 1. Create Z3 variables for each attribute for each house.
+ 2. Define the domains for each attribute (using constraints that the value must be in a set of integers we map to the options).
+ 3. Add the uniqueness constraints for each attribute across houses.
+ 4. Add the clues.
+
+ Clue 1: Eric is somewhere to the left of the person whose mother's name is Holly.
+    This means: the house of Eric is to the left of the house with mother Holly.
+    Let e_house be the house number of Eric, and h_house be the house number of mother Holly.
+    Then e_house < h_house.
+
+ Clue 2: The person whose birthday is in April is in the first house.
+    So, for house 1, birthday must be april.
+
+ Since there are only two houses, we can also note that if house1 has april, then house2 must have sept.
+
+ Approach for variables:
+
+ We can represent each attribute by an integer with a meaning:
+
+ For names: Let 0 = Arnold, 1 = Eric.
+ For birthday: 0 = april, 1 = sept.
+ For mother: 0 = Aniya, 1 = Holly.
+
+ Then for house i, we have:
+   name_i: Int
+   birthday_i: Int
+   mother_i: Int
+
+ Constraints:
+   For each house i, name_i is in {0,1}, birthday_i in {0,1}, mother_i in {0,1}.
+   The names across houses are distinct: name_1 != name_2
+   Similarly for birthday and mother.
+
+ Then we add the clues:
+
+ Clue 1: Eric (which is 1) is to the left of mother Holly (which is 1).
+   We need to find which house has name_i == 1 (Eric) and which house has mother_i == 1 (Holly), and require that the Eric house number is less than the Holly mother house number.
+
+   But note: the houses are fixed (1 and 2). So we can do:
+   Let eric_house be the house where name_i equals 1. Since there are two houses, we can use an implication or direct condition.
+
+   Alternatively, we can state:
+     (name_1 == 1) implies that the mother Holly must be in house 2 (because left means house1 is left of house2, so if Eric is in house1 then Holly must be in house2; if Eric is in house2 then there is no house to the right, so Eric cannot be in house2). Therefore, Eric must be in house1 and Holly mother in house2.
+
+   But let's do it generally with inequalities.
+
+   We can define:
+     For house1: if name_1 == 1 then the house with mother Holly must be greater than 1, which is house2.
+     For house2: if name_2 == 1 then there is no house to the right, so this cannot happen.
+
+   Alternatively, we can use a condition: (name_1 == 1 and mother_2 == 1) OR (name_2 == 1 and ... but wait, if Eric is in house2, then there is no house to the right, so the clue would be violated. Therefore, Eric must be in house1 and the mother Holly in house2.
+
+   However, to be general and scalable, we can define the house index and compare.
+
+   Since we only have two houses, we can do:
+
+   Option 1: 
+     We require that the house index of Eric is less than the house index of mother Holly.
+
+   How to get the house index for Eric? We can use a function, but since we have only two houses, we can do:
+
+     (name_1 == 1) => (mother_2 == 1)   [because if Eric in house1, then Holly must be in house2]
+     and also, we must have name_2 != 1 (because if Eric is in house2, then there's no house to the right, so it's impossible). So we must have name_2 != 1.
+
+   Alternatively, we can express without if-then:
+
+     (name_1 == 1 and mother_2 == 1) OR (name_1 == 1 and mother_1 == 1) is not allowed because if Eric is in house1, then Holly must be in a house to the right, so only house2. But note: the clue says "somewhere to the left", so Eric and Holly mother must be in different houses.
+
+   So we can write:
+     And(name_1 == 1, mother_2 == 1)
+
+   But wait, what if Eric is in house2? Then there's no house to the right, so that's impossible. So we must also have that Eric is not in house2.
+
+   So we can do:
+     And(name_1 == 1, mother_2 == 1)
+
+   However, let me think if the clue allows Eric and Holly mother to be in the same house? The clue says "to the left", so they must be in different houses.
+
+   So the above is safe.
+
+   But note: the clue does not say that Eric and Holly mother are different people. In fact, they could be the same? But wait, the attributes are for the same house. So if Eric is in a house, then his mother is the mother attribute of that house. The clue says "the person whose mother's name is Holly", so that is a house where the mother attribute is Holly.
+
+   The clue is about two different attributes: the name (Eric) and the mother (Holly). They could be in the same house or different. But the clue says Eric is to the left of the person with mother Holly, so they must be in different houses, and Eric's house is left.
+
+   Therefore, we must have:
+     The house of Eric (where name is Eric) has a house number less than the house of the person with mother Holly.
+
+   So if Eric is in house1, then the Holly mother must be in house2.
+   If Eric were in house2, then there is no house to the right, so it's impossible.
+
+   So we have: Eric must be in house1 and Holly mother in house2.
+
+   So we can simply set:
+     name_1 == 1   (since 1 represents Eric)
+     mother_2 == 1 (since 1 represents Holly)
+
+ Clue 2: The person whose birthday is in April is in the first house.
+   So birthday_1 must be 0 (april).
+
+ Since we have two houses, we can then set birthday_2 must be 1 (sept).
+
+ But let's code the constraints in Z3 without hard-coding, but we can use the above reasoning to simplify.
+
+ However, to be general, we'll code the constraints without assuming the number of houses.
+
+ But note: the problem says there are 2 houses, so we can do:
+
+   For clue 1: We require that the house with name Eric (value 1) has a lower house number than the house with mother Holly (value 1).
+
+   We can define a function that returns the house number for a given attribute value for a given type.
+
+   Alternatively, we can use:
+
+     Let e_house = If(name_1 == 1, 1, If(name_2 == 1, 2, -1))
+     Similarly, h_house = If(mother_1 == 1, 1, If(mother_2 == 1, 2, -1))
+
+   Then we require: e_house < h_house
+
+   But note: we know that each attribute appears exactly once, so we don't have to worry about -1.
+
+   However, since we have only two houses, we can do:
+
+     (name_1 == 1) => (mother_2 == 1)
+     (name_2 == 1) => False   [because if Eric is in house2, then there's no house to the right, so we must avoid that]
+
+   So we can also do: Not(name_2 == 1)
+
+   But let's do the general way with comparing house numbers.
+
+   We can define:
+     e_house = 1 if name_1==1 else (2 if name_2==1 else 3)
+     h_house = 1 if mother_1==1 else (2 if mother_2==1 else 3)
+
+   Then we require e_house < h_house.
+
+   But note: we have only two houses, so we can use integers and ite (if-then-else).
+
+   However, Z3 supports ite.
+
+   Alternatively, we can use:
+
+     Or(
+        And(name_1 == 1, mother_2 == 1),   # Eric in 1, Holly in 2
+        # There is no other possibility because if Eric in 1 and Holly in 1, then it would be same house, but the clue says left (so different) and if Eric in 2 then no right house.
+     )
+
+   So we'll do: And(name_1 == 1, mother_2 == 1)
+
+   But wait, what if there were more houses? The problem says 2 houses, so we can use the simplified constraint.
+
+   Since the problem might be extended, let's do the general way for two houses.
+
+   We'll create two integers for the house numbers of Eric and Holly mother.
+
+   Steps for general way:
+
+     e_house = If(name_1 == 1, 1, 2)   # because exactly one house has Eric
+     h_house = If(mother_1 == 1, 1, 2)   # because exactly one house has mother Holly
+
+     Then add: e_house < h_house
+
+   But note: if we use this, then when name_2==1, e_house becomes 2, and then we require 2 < h_house. But h_house can only be 1 or 2, so 2 < 1 or 2 < 2 are both false. So it will force that e_house must be 1 and h_house must be 2.
+
+   So this is safe.
+
+   However, we can also use:
+
+     e_house = 1 * (name_1==1) + 2 * (name_2==1)   # but note: only one house has Eric, so exactly one of these is true.
+
+   Similarly for h_house.
+
+   But Z3 doesn't allow using booleans directly in arithmetic. We can use:
+
+     e_house = If(name_1==1, 1, If(name_2==1, 2, 3))
+
+   But we know one of them must be true, so we can skip the else part.
+
+   Actually, we can define:
+
+     e_house = If(name_1==1, 1, 2)   # because if name_1 is not Eric, then Eric must be in house2.
+
+   Similarly for h_house.
+
+   So we'll do:
+
+     e_house = If(name_1==1, 1, 2)
+     h_house = If(mother_1==1, 1, 2)
+
+     s.add(e_house < h_house)
+
+ 5. Also, we have clue 2: birthday_1 must be 0 (april).
+
+ 6. Then we solve and output.
+
+ However, note: the problem says the birthdays are unique, so if house1 has april (0), then house2 must have sept (1).
+
+ Similarly for the other attributes.
+
+ Let's code accordingly.
+
+ We'll create a solver and add the constraints.
+
+ After solving, we'll map the integer values back to the strings.
+
+ Output must be in JSON format as specified.
+
+ Implementation:
+
+ Let's define:
+   houses = [1, 2]
+   names = ['Arnold', 'Eric'] -> mapped to 0 and 1
+   birthdays = ['april', 'sept'] -> 0 and 1
+   mothers = ['Aniya', 'Holly'] -> 0 and 1
+
+ We create Z3 variables for each house:
+
+   name = [Int('name_1'), Int('name_2')]
+   birthday = [Int('birthday_1'), Int('birthday_2')]
+   mother = [Int('mother_1'), Int('mother_2')]
+
+ Constraints:
+
+   For each i in [0,1] (representing house i+1):
+     s.add(And(name[i] >= 0, name[i] <= 1))
+     s.add(And(birthday[i] >= 0, birthday[i] <= 1))
+     s.add(And(mother[i] >= 0, mother[i] <= 1))
+
+   Distinct names: name[0] != name[1]
+   Distinct birthdays: birthday[0] != birthday[1]
+   Distinct mothers: mother[0] != mother[1]
+
+   Clue 1: 
+        e_house = If(name[0] == 1, 1, 2)
+        h_house = If(mother[0] == 1, 1, 2)
+        s.add(e_house < h_house)
+
+   Clue 2: birthday[0] == 0   (april)
+
+ Then we check and get the model.
+
+ Then we create the output:
+
+   For house i (1 and 2):
+     name_str = names[model[name[i]].as_long()]
+     birthday_str = birthdays[model[birthday[i]].as_long()]
+     mother_str = mothers[model[mother[i]].as_long()]
+
+   Then output the JSON.
+
+ Let's code accordingly.

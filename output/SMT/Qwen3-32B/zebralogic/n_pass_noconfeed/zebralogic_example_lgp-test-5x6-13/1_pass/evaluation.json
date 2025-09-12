@@ -1,0 +1,115 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"solution\": {\n    \"header\": [\n      \"House\",\n      \"Name\",\n      \"Food\",\n      \"CarModel\",\n      \"PhoneModel\",\n      \"Occupation\",\n      \"Drink\"\n    ],\n    \"rows\": [\n      [\n        \"1\",\n        \"Bob\",\n        \"stew\",\n        \"bmw 3 series\",\n        \"iphone 13\",\n        \"engineer\",\n        \"coffee\"\n      ],\n      [\n        \"2\",\n        \"Alice\",\n        \"stir fry\",\n        \"honda civic\",\n        \"samsung galaxy s21\",\n        \"artist\",\n        \"root beer\"\n      ],\n      [\n        \"3\",\n        \"Arnold\",\n        \"spaghetti\",\n        \"toyota camry\",\n        \"google pixel 6\",\n        \"doctor\",\n        \"tea\"\n      ],\n      [\n        \"4\",\n        \"Eric\",\n        \"pizza\",\n        \"ford f150\",\n        \"oneplus 9\",\n        \"lawyer\",\n        \"milk\"\n      ],\n      [\n        \"5\",\n        \"Peter\",\n        \"grilled cheese\",\n        \"tesla model 3\",\n        \"huawei p50\",\n        \"teacher\",\n        \"water\"\n      ]\n    ]\n  }\n}",
+    "pred": [
+        {
+            "House": "1",
+            "Name": "Bob",
+            "Food": "stew",
+            "CarModel": "bmw 3 series",
+            "PhoneModel": "iphone 13",
+            "Occupation": "engineer",
+            "Drink": "coffee"
+        },
+        {
+            "House": "2",
+            "Name": "Alice",
+            "Food": "stir fry",
+            "CarModel": "honda civic",
+            "PhoneModel": "samsung galaxy s21",
+            "Occupation": "artist",
+            "Drink": "root beer"
+        },
+        {
+            "House": "3",
+            "Name": "Arnold",
+            "Food": "spaghetti",
+            "CarModel": "toyota camry",
+            "PhoneModel": "google pixel 6",
+            "Occupation": "doctor",
+            "Drink": "tea"
+        },
+        {
+            "House": "4",
+            "Name": "Eric",
+            "Food": "pizza",
+            "CarModel": "ford f150",
+            "PhoneModel": "oneplus 9",
+            "Occupation": "lawyer",
+            "Drink": "milk"
+        },
+        {
+            "House": "5",
+            "Name": "Peter",
+            "Food": "grilled cheese",
+            "CarModel": "tesla model 3",
+            "PhoneModel": "huawei p50",
+            "Occupation": "teacher",
+            "Drink": "water"
+        }
+    ],
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Bob",
+            "Food": "stew",
+            "CarModel": "bmw 3 series",
+            "PhoneModel": "iphone 13",
+            "Occupation": "engineer",
+            "Drink": "coffee"
+        },
+        {
+            "House": "2",
+            "Name": "Alice",
+            "Food": "stir fry",
+            "CarModel": "honda civic",
+            "PhoneModel": "samsung galaxy s21",
+            "Occupation": "artist",
+            "Drink": "root beer"
+        },
+        {
+            "House": "3",
+            "Name": "Arnold",
+            "Food": "spaghetti",
+            "CarModel": "toyota camry",
+            "PhoneModel": "google pixel 6",
+            "Occupation": "doctor",
+            "Drink": "tea"
+        },
+        {
+            "House": "4",
+            "Name": "Eric",
+            "Food": "pizza",
+            "CarModel": "ford f150",
+            "PhoneModel": "oneplus 9",
+            "Occupation": "lawyer",
+            "Drink": "milk"
+        },
+        {
+            "House": "5",
+            "Name": "Peter",
+            "Food": "grilled cheese",
+            "CarModel": "tesla model 3",
+            "PhoneModel": "huawei p50",
+            "Occupation": "teacher",
+            "Drink": "water"
+        }
+    ],
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 534.4606544971466,
+        "execution_time": 0.09576010704040527,
+        "constraint_eval_time": 0.00010824203491210938,
+        "pred_extract_time": 2.995574951171875,
+        "gold_extract_time": 2.6702880859375e-05,
+        "total_tokens": 35501,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\nimport json\n\n# Define EnumSorts for each attribute\nNames, (Eric, Peter, Arnold, Alice, Bob) = EnumSort('Names', ['Eric', 'Peter', 'Arnold', 'Alice', 'Bob'])\nFoods, (stir_fry, spaghetti, stew, grilled_cheese, pizza) = EnumSort('Foods', ['stir fry', 'spaghetti', 'stew', 'grilled cheese', 'pizza'])\nCarModels, (ford_f150, tesla_model_3, bmw_3_series, toyota_camry, honda_civic) = EnumSort('CarModels', ['ford f150', 'tesla model 3', 'bmw 3 series', 'toyota camry', 'honda civic'])\nPhoneModels, (iphone_13, google_pixel_6, samsung_galaxy_s21, oneplus_9, huawei_p50) = EnumSort('PhoneModels', ['iphone 13', 'google pixel 6', 'samsung galaxy s21', 'oneplus 9', 'huawei p50'])\nOccupations, (teacher, lawyer, doctor, artist, engineer) = EnumSort('Occupations', ['teacher', 'lawyer', 'doctor', 'artist', 'engineer'])\nDrinks, (tea, milk, water, root_beer, coffee) = EnumSort('Drinks', ['tea', 'milk', 'water', 'root beer', 'coffee'])\n\n# Create variables for each house (0-4 for houses 1-5)\nnames = [Const(f\"name_{i}\", Names) for i in range(5)]\nfoods = [Const(f\"food_{i}\", Foods) for i in range(5)]\ncars = [Const(f\"car_{i}\", CarModels) for i in range(5)]\nphones = [Const(f\"phone_{i}\", PhoneModels) for i in range(5)]\noccupations = [Const(f\"occupation_{i}\", Occupations) for i in range(5)]\ndrinks = [Const(f\"drink_{i}\", Drinks) for i in range(5)]\n\nsolver = Solver()\n\n# Add distinct constraints for each attribute\nsolver.add(Distinct(names))\nsolver.add(Distinct(foods))\nsolver.add(Distinct(cars))\nsolver.add(Distinct(phones))\nsolver.add(Distinct(occupations))\nsolver.add(Distinct(drinks))\n\n# Add all the clues as constraints\n# Clue 1: Root beer lover owns Honda Civic\nsolver.add(Or([And(drinks[h] == root_beer, cars[h] == honda_civic) for h in range(5)]))\n\n# Clue 2: Milk drinker is directly left of grilled cheese eater\nsolver.add(Or([And(drinks[h] == milk, foods[h+1] == grilled_cheese) for h in range(4)]))\n\n# Clue 3: Alice uses Samsung Galaxy S21\nsolver.add(Or([And(names[h] == Alice, phones[h] == samsung_galaxy_s21) for h in range(5)]))\n\n# Clue 4: Alice loves stir fry\nsolver.add(Or([And(names[h] == Alice, foods[h] == stir_fry) for h in range(5)]))\n\n# Clue 5: Tea drinker is not in the fifth house\nsolver.add(drinks[4] != tea)\n\n# Clue 6: BMW 3 Series owner is left of tea drinker\nsolver.add(Or([And(cars[i] == bmw_3_series, drinks[j] == tea, i < j) for i in range(5) for j in range(5)]))\n\n# Clue 7: Arnold is the doctor\nsolver.add(Or([And(names[h] == Arnold, occupations[h] == doctor) for h in range(5)]))\n\n# Clue 8: iPhone 13 user is coffee drinker\nsolver.add(Or([And(phones[h] == iphone_13, drinks[h] == coffee) for h in range(5)]))\n\n# Clue 9: Engineer owns BMW 3 Series\nsolver.add(Or([And(occupations[h] == engineer, cars[h] == bmw_3_series) for h in range(5)]))\n\n# Clue 10: Stew lover uses iPhone 13\nsolver.add(Or([And(foods[h] == stew, phones[h] == iphone_13) for h in range(5)]))\n\n# Clue 11: Doctor is directly left of OnePlus 9 user\nsolver.add(Or([And(occupations[h] == doctor, phones[h+1] == oneplus_9) for h in range(4)]))\n\n# Clue 12: Honda Civic is directly left of spaghetti eater\nsolver.add(Or([And(cars[h] == honda_civic, foods[h+1] == spaghetti) for h in range(4)]))\n\n# Clue 13: Google Pixel 6 user is tea drinker\nsolver.add(Or([And(phones[h] == google_pixel_6, drinks[h] == tea) for h in range(5)]))\n\n# Clue 14: Alice is an artist\nsolver.add(Or([And(names[h] == Alice, occupations[h] == artist) for h in range(5)]))\n\n# Clue 15: One house between Alice and Ford F-150 owner\nsolver.add(Or([And(names[i] == Alice, cars[j] == ford_f150, Or(i - j == 2, j - i == 2)) for i in range(5) for j in range(5)]))\n\n# Clue 16: Arnold owns Toyota Camry\nsolver.add(Or([And(names[h] == Arnold, cars[h] == toyota_camry) for h in range(5)]))\n\n# Clue 17: Eric is in the fourth house\nsolver.add(names[3] == Eric)\n\n# Clue 18: OnePlus 9 user is a lawyer\nsolver.add(Or([And(phones[h] == oneplus_9, occupations[h] == lawyer) for h in range(5)]))\n\n# Clue 19: Peter is the grilled cheese lover\nsolver.add(Or([And(names[h] == Peter, foods[h] == grilled_cheese) for h in range(5)]))\n\n# Check for a solution\nif solver.check() == sat:\n    model = solver.model()\n    solution_rows = []\n    for h in range(5):\n        house_num = h + 1\n        name = str(model.eval(names[h]))\n        food = str(model.eval(foods[h]))\n        car = str(model.eval(cars[h]))\n        phone = str(model.eval(phones[h]))\n        occupation = str(model.eval(occupations[h]))\n        drink = str(model.eval(drinks[h]))\n        solution_rows.append([str(house_num), name, food, car, phone, occupation, drink])\n    json_output = {\n        \"solution\": {\n            \"header\": [\"House\", \"Name\", \"Food\", \"CarModel\", \"PhoneModel\", \"Occupation\", \"Drink\"],\n            \"rows\": solution_rows\n        }\n    }\n    print(json.dumps(json_output, indent=2))\nelse:\n    print(\"No solution found.\")"
+}

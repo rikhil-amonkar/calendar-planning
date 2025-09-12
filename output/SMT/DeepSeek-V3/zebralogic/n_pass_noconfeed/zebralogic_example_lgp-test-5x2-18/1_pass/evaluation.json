@@ -1,0 +1,75 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"solution\": {\n    \"header\": [\n      \"House\",\n      \"Name\",\n      \"Children\"\n    ],\n    \"rows\": [\n      [\n        \"1\",\n        \"Bob\",\n        \"Timothy\"\n      ],\n      [\n        \"2\",\n        \"Alice\",\n        \"Fred\"\n      ],\n      [\n        \"3\",\n        \"Arnold\",\n        \"Bella\"\n      ],\n      [\n        \"4\",\n        \"Eric\",\n        \"Samantha\"\n      ],\n      [\n        \"5\",\n        \"Peter\",\n        \"Meredith\"\n      ]\n    ]\n  }\n}",
+    "pred": [
+        {
+            "House": "1",
+            "Name": "Bob",
+            "Children": "Timothy"
+        },
+        {
+            "House": "2",
+            "Name": "Alice",
+            "Children": "Fred"
+        },
+        {
+            "House": "3",
+            "Name": "Arnold",
+            "Children": "Bella"
+        },
+        {
+            "House": "4",
+            "Name": "Eric",
+            "Children": "Samantha"
+        },
+        {
+            "House": "5",
+            "Name": "Peter",
+            "Children": "Meredith"
+        }
+    ],
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Bob",
+            "Children": "Timothy"
+        },
+        {
+            "House": "2",
+            "Name": "Alice",
+            "Children": "Fred"
+        },
+        {
+            "House": "3",
+            "Name": "Arnold",
+            "Children": "Bella"
+        },
+        {
+            "House": "4",
+            "Name": "Eric",
+            "Children": "Samantha"
+        },
+        {
+            "House": "5",
+            "Name": "Peter",
+            "Children": "Meredith"
+        }
+    ],
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 43.395230293273926,
+        "execution_time": 0.08002328872680664,
+        "constraint_eval_time": 6.341934204101562e-05,
+        "pred_extract_time": 1.1678071022033691,
+        "gold_extract_time": 1.0013580322265625e-05,
+        "total_tokens": 882,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import z3\nimport json\n\ndef main():\n    # Create solver\n    solver = z3.Solver()\n    \n    # Define houses\n    n_houses = 5\n    houses = list(range(1, n_houses+1))\n    \n    # Define attributes\n    names = ['Eric', 'Alice', 'Peter', 'Bob', 'Arnold']\n    children = ['Timothy', 'Meredith', 'Samantha', 'Fred', 'Bella']\n    \n    # Create variables for each attribute position\n    name_vars = [z3.Int(f'name_{name}') for name in names]\n    child_vars = [z3.Int(f'child_{child}') for child in children]\n    \n    # Each attribute must be in exactly one house (1-5)\n    for var in name_vars + child_vars:\n        solver.add(z3.And(var >= 1, var <= 5))\n    \n    # All attributes must have distinct houses\n    solver.add(z3.Distinct(name_vars))\n    solver.add(z3.Distinct(child_vars))\n    \n    # Create mapping for easier access\n    name_to_var = dict(zip(names, name_vars))\n    child_to_var = dict(zip(children, child_vars))\n    \n    # Clue 1: Bob is somewhere to the left of the person's child is named Samantha.\n    solver.add(name_to_var['Bob'] < child_to_var['Samantha'])\n    \n    # Clue 2: The person who is the mother of Timothy is somewhere to the left of the person's child is named Samantha.\n    solver.add(child_to_var['Timothy'] < child_to_var['Samantha'])\n    \n    # Clue 3: The person's child is named Fred is in the second house.\n    solver.add(child_to_var['Fred'] == 2)\n    \n    # Clue 4: There is one house between Alice and the person's child is named Samantha.\n    solver.add(z3.Or(\n        name_to_var['Alice'] == child_to_var['Samantha'] - 2,\n        name_to_var['Alice'] == child_to_var['Samantha'] + 2\n    ))\n    \n    # Clue 5: Eric is not in the third house.\n    solver.add(name_to_var['Eric'] != 3)\n    \n    # Clue 6: Bob is not in the third house.\n    solver.add(name_to_var['Bob'] != 3)\n    \n    # Clue 7: The person's child is named Fred is directly left of the person's child is named Bella.\n    solver.add(child_to_var['Fred'] == child_to_var['Bella'] - 1)\n    \n    # Clue 8: The person's child is named Samantha is somewhere to the left of Peter.\n    solver.add(child_to_var['Samantha'] < name_to_var['Peter'])\n    \n    # Check if solution exists\n    if solver.check() == z3.sat:\n        model = solver.model()\n        \n        # Create result structure\n        result = {\n            \"solution\": {\n                \"header\": [\"House\", \"Name\", \"Children\"],\n                \"rows\": []\n            }\n        }\n        \n        # Find which name and child is in each house\n        house_data = []\n        for house in houses:\n            house_data.append({\"house\": house, \"name\": None, \"child\": None})\n        \n        # Populate names\n        for name in names:\n            house_num = model.eval(name_to_var[name]).as_long()\n            for entry in house_data:\n                if entry[\"house\"] == house_num:\n                    entry[\"name\"] = name\n        \n        # Populate children\n        for child in children:\n            house_num = model.eval(child_to_var[child]).as_long()\n            for entry in house_data:\n                if entry[\"house\"] == house_num:\n                    entry[\"child\"] = child\n        \n        # Create rows in order\n        for entry in sorted(house_data, key=lambda x: x[\"house\"]):\n            result[\"solution\"][\"rows\"].append([\n                str(entry[\"house\"]),\n                entry[\"name\"],\n                entry[\"child\"]\n            ])\n        \n        print(json.dumps(result, indent=2))\n    else:\n        print('{\"error\": \"No solution found\"}')\n\nif __name__ == \"__main__\":\n    main()"
+}

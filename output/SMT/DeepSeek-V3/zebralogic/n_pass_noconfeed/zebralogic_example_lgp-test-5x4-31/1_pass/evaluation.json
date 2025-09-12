@@ -1,0 +1,110 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"solution\": {\n    \"header\": [\n      \"House\",\n      \"Name\",\n      \"Vacation\",\n      \"Children\",\n      \"Nationality\"\n    ],\n    \"rows\": [\n      [\n        \"1\",\n        \"Eric\",\n        \"cruise\",\n        \"Samantha\",\n        \"german\"\n      ],\n      [\n        \"2\",\n        \"Peter\",\n        \"mountain\",\n        \"Fred\",\n        \"norwegian\"\n      ],\n      [\n        \"3\",\n        \"Bob\",\n        \"camping\",\n        \"Bella\",\n        \"swede\"\n      ],\n      [\n        \"4\",\n        \"Alice\",\n        \"city\",\n        \"Meredith\",\n        \"brit\"\n      ],\n      [\n        \"5\",\n        \"Arnold\",\n        \"beach\",\n        \"Timothy\",\n        \"dane\"\n      ]\n    ]\n  }\n}",
+    "pred": [
+        {
+            "House": "1",
+            "Name": "Eric",
+            "Vacation": "cruise",
+            "Children": "Samantha",
+            "Nationality": "german"
+        },
+        {
+            "House": "2",
+            "Name": "Peter",
+            "Vacation": "mountain",
+            "Children": "Fred",
+            "Nationality": "norwegian"
+        },
+        {
+            "House": "3",
+            "Name": "Bob",
+            "Vacation": "camping",
+            "Children": "Bella",
+            "Nationality": "swede"
+        },
+        {
+            "House": "4",
+            "Name": "Alice",
+            "Vacation": "city",
+            "Children": "Meredith",
+            "Nationality": "brit"
+        },
+        {
+            "House": "5",
+            "Name": "Arnold",
+            "Vacation": "beach",
+            "Children": "Timothy",
+            "Nationality": "dane"
+        }
+    ],
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Peter",
+            "Vacation": "cruise",
+            "Children": "Fred",
+            "Nationality": "norwegian"
+        },
+        {
+            "House": "2",
+            "Name": "Bob",
+            "Vacation": "camping",
+            "Children": "Timothy",
+            "Nationality": "german"
+        },
+        {
+            "House": "3",
+            "Name": "Eric",
+            "Vacation": "city",
+            "Children": "Bella",
+            "Nationality": "swede"
+        },
+        {
+            "House": "4",
+            "Name": "Alice",
+            "Vacation": "beach",
+            "Children": "Meredith",
+            "Nationality": "brit"
+        },
+        {
+            "House": "5",
+            "Name": "Arnold",
+            "Vacation": "mountain",
+            "Children": "Samantha",
+            "Nationality": "dane"
+        }
+    ],
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "violations": [
+            "House 1 wrong Name: expected 'Peter', got 'Eric'",
+            "House 1 wrong Children: expected 'Fred', got 'Samantha'",
+            "House 1 wrong Nationality: expected 'norwegian', got 'german'",
+            "House 2 wrong Name: expected 'Bob', got 'Peter'",
+            "House 2 wrong Vacation: expected 'camping', got 'mountain'",
+            "House 2 wrong Children: expected 'Timothy', got 'Fred'",
+            "House 2 wrong Nationality: expected 'german', got 'norwegian'",
+            "House 3 wrong Name: expected 'Eric', got 'Bob'",
+            "House 3 wrong Vacation: expected 'city', got 'camping'",
+            "House 4 wrong Vacation: expected 'beach', got 'city'",
+            "House 5 wrong Vacation: expected 'mountain', got 'beach'",
+            "House 5 wrong Children: expected 'Samantha', got 'Timothy'"
+        ]
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 71.81293654441833,
+        "execution_time": 0.0930023193359375,
+        "constraint_eval_time": 0.00014090538024902344,
+        "pred_extract_time": 1.5190520286560059,
+        "gold_extract_time": 9.059906005859375e-06,
+        "total_tokens": 1455,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import json\nfrom z3 import *\n\ndef main():\n    # Create solver\n    s = Solver()\n    \n    # Define the attributes\n    houses = [1, 2, 3, 4, 5]\n    names = ['Alice', 'Bob', 'Arnold', 'Eric', 'Peter']\n    vacations = ['cruise', 'city', 'camping', 'beach', 'mountain']\n    children = ['Bella', 'Samantha', 'Fred', 'Meredith', 'Timothy']\n    nationalities = ['dane', 'norwegian', 'brit', 'german', 'swede']\n    \n    # Create variables for each attribute per house\n    name_vars = [Int(f'name_{i}') for i in houses]\n    vacation_vars = [Int(f'vacation_{i}') for i in houses]\n    child_vars = [Int(f'child_{i}') for i in houses]\n    nationality_vars = [Int(f'nationality_{i}') for i in houses]\n    \n    # Define domains for each variable\n    for i in houses:\n        s.add(And(name_vars[i-1] >= 0, name_vars[i-1] < len(names)))\n        s.add(And(vacation_vars[i-1] >= 0, vacation_vars[i-1] < len(vacations)))\n        s.add(And(child_vars[i-1] >= 0, child_vars[i-1] < len(children)))\n        s.add(And(nationality_vars[i-1] >= 0, nationality_vars[i-1] < len(nationalities)))\n    \n    # All attributes are distinct per house\n    s.add(Distinct(name_vars))\n    s.add(Distinct(vacation_vars))\n    s.add(Distinct(child_vars))\n    s.add(Distinct(nationality_vars))\n    \n    # Clue 1: The Norwegian is Peter.\n    for i in houses:\n        s.add(Implies(nationality_vars[i-1] == nationalities.index('norwegian'), \n                      name_vars[i-1] == names.index('Peter')))\n    \n    # Clue 2: The Swedish person is the person's child is named Bella.\n    for i in houses:\n        s.add(Implies(nationality_vars[i-1] == nationalities.index('swede'), \n                      child_vars[i-1] == children.index('Bella')))\n    \n    # Clue 3: The person who loves beach vacations is directly left of the person's child is named Samantha.\n    for i in range(1, 5):  # Houses 1-4 (since directly left means i+1 exists)\n        s.add(Implies(vacation_vars[i-1] == vacations.index('beach'), \n                      child_vars[i] == children.index('Samantha')))\n    \n    # Clue 4: The person's child is named Bella is not in the second house.\n    s.add(child_vars[1] != children.index('Bella'))\n    \n    # Clue 5: Alice is the British person.\n    for i in houses:\n        s.add(Implies(name_vars[i-1] == names.index('Alice'), \n                      nationality_vars[i-1] == nationalities.index('brit')))\n    \n    # Clue 6: The person who likes going on cruises is in the first house.\n    s.add(vacation_vars[0] == vacations.index('cruise'))\n    \n    # Clue 7: The person's child is named Meredith is in the fourth house.\n    s.add(child_vars[3] == children.index('Meredith'))\n    \n    # Clue 8: Eric is not in the fifth house.\n    s.add(name_vars[4] != names.index('Eric'))\n    \n    # Clue 9: The Swedish person is somewhere to the right of the Norwegian.\n    norwegian_pos = Int('norwegian_pos')\n    swede_pos = Int('swede_pos')\n    s.add(norwegian_pos >= 1)\n    s.add(norwegian_pos <= 5)\n    s.add(swede_pos >= 1)\n    s.add(swede_pos <= 5)\n    \n    for i in houses:\n        s.add(Implies(nationality_vars[i-1] == nationalities.index('norwegian'), norwegian_pos == i))\n        s.add(Implies(nationality_vars[i-1] == nationalities.index('swede'), swede_pos == i))\n    \n    s.add(swede_pos > norwegian_pos)\n    \n    # Clue 10: There is one house between the person's child is named Fred and the person who prefers city breaks.\n    fred_pos = Int('fred_pos')\n    city_pos = Int('city_pos')\n    s.add(fred_pos >= 1)\n    s.add(fred_pos <= 5)\n    s.add(city_pos >= 1)\n    s.add(city_pos <= 5)\n    \n    for i in houses:\n        s.add(Implies(child_vars[i-1] == children.index('Fred'), fred_pos == i))\n        s.add(Implies(vacation_vars[i-1] == vacations.index('city'), city_pos == i))\n    \n    s.add(Or(And(fred_pos + 2 == city_pos), And(city_pos + 2 == fred_pos)))\n    \n    # Clue 11: Bob is the person who enjoys camping trips.\n    for i in houses:\n        s.add(Implies(name_vars[i-1] == names.index('Bob'), \n                      vacation_vars[i-1] == vacations.index('camping')))\n    \n    # Clue 12: The Dane is in the fifth house.\n    s.add(nationality_vars[4] == nationalities.index('dane'))\n    \n    # Clue 13: The person who enjoys camping trips is not in the fifth house.\n    s.add(vacation_vars[4] != vacations.index('camping'))\n    \n    # Check for solution\n    if s.check() == sat:\n        model = s.model()\n        \n        # Extract values\n        result = []\n        for i in houses:\n            name_idx = model.evaluate(name_vars[i-1]).as_long()\n            vacation_idx = model.evaluate(vacation_vars[i-1]).as_long()\n            child_idx = model.evaluate(child_vars[i-1]).as_long()\n            nationality_idx = model.evaluate(nationality_vars[i-1]).as_long()\n            \n            result.append([\n                str(i),\n                names[name_idx],\n                vacations[vacation_idx],\n                children[child_idx],\n                nationalities[nationality_idx]\n            ])\n        \n        # Format output as JSON\n        output = {\n            \"solution\": {\n                \"header\": [\"House\", \"Name\", \"Vacation\", \"Children\", \"Nationality\"],\n                \"rows\": result\n            }\n        }\n        \n        print(json.dumps(output, indent=2))\n    else:\n        print('{\"error\": \"No solution found\"}')\n\nif __name__ == \"__main__\":\n    main()"
+}

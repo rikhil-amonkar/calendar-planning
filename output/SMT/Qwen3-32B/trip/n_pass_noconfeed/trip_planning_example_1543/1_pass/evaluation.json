@@ -1,0 +1,70 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": true,
+    "execution_output": "Execution timeout",
+    "pred": {
+        "itinerary": []
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "day_range": "Day 1-3",
+                "place": "Prague"
+            },
+            {
+                "day_range": "Day 3-5",
+                "place": "London"
+            },
+            {
+                "day_range": "Day 5-9",
+                "place": "Lisbon"
+            },
+            {
+                "day_range": "Day 9-11",
+                "place": "Athens"
+            },
+            {
+                "day_range": "Day 11-13",
+                "place": "Dubrovnik"
+            },
+            {
+                "day_range": "Day 13-15",
+                "place": "Dublin"
+            },
+            {
+                "day_range": "Day 15-16",
+                "place": "Seville"
+            },
+            {
+                "day_range": "Day 16-20",
+                "place": "Porto"
+            },
+            {
+                "day_range": "Day 20-23",
+                "place": "Warsaw"
+            },
+            {
+                "day_range": "Day 23-26",
+                "place": "Vilnius"
+            }
+        ]
+    },
+    "status": "No plan generated",
+    "violated_constraint": {
+        "total_days": 26
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 502.7276382446289,
+        "execution_time": 30.03527808189392,
+        "constraint_eval_time": 1.7642974853515625e-05,
+        "pred_extract_time": 0.48534584045410156,
+        "gold_extract_time": 0.0002086162567138672,
+        "total_tokens": 32649,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import z3\nimport json\n\n# Define cities and their required durations\ncities = [\n    'Prague',\n    'Warsaw',\n    'Dublin',\n    'Athens',\n    'Vilnius',\n    'Porto',\n    'London',\n    'Seville',\n    'Lisbon',\n    'Dubrovnik'\n]\ncity_to_int = {city: i for i, city in enumerate(cities)}\nint_to_city = {i: city for i, city in enumerate(cities)}\n\nrequired_durations = {\n    'Prague': 3,\n    'Warsaw': 4,\n    'Dublin': 3,\n    'Athens': 3,\n    'Vilnius': 4,\n    'Porto': 5,\n    'London': 3,\n    'Seville': 2,\n    'Lisbon': 5,\n    'Dubrovnik': 3\n}\n\n# Direct flights (city pairs)\ndirect_flights = {\n    ('Warsaw', 'Vilnius'),\n    ('Prague', 'Athens'),\n    ('London', 'Lisbon'),\n    ('Lisbon', 'Porto'),\n    ('Prague', 'Lisbon'),\n    ('London', 'Dublin'),\n    ('Athens', 'Vilnius'),\n    ('Athens', 'Dublin'),\n    ('Prague', 'London'),\n    ('London', 'Warsaw'),\n    ('Dublin', 'Seville'),\n    ('Seville', 'Porto'),\n    ('Lisbon', 'Athens'),\n    ('Dublin', 'Porto'),\n    ('Athens', 'Warsaw'),\n    ('Lisbon', 'Warsaw'),\n    ('Porto', 'Warsaw'),\n    ('Prague', 'Warsaw'),\n    ('Prague', 'Dublin'),\n    ('Athens', 'Dubrovnik'),\n    ('Lisbon', 'Dublin'),\n    ('Dubrovnik', 'Dublin'),\n    ('Lisbon', 'Seville'),\n    ('London', 'Athens')\n}\n\n# Convert direct flights to integer pairs\nallowed_flights = set()\nfor (a, b) in direct_flights:\n    allowed_flights.add((city_to_int[a], city_to_int[b]))\n    allowed_flights.add((city_to_int[b], city_to_int[a]))  # Assuming bidirectional flights\n\n# Create solver\ns = z3.Solver()\n\n# Create variables for each day (1 to 26)\ndays = 26\nday_vars = [z3.Int(f'day_{i+1}') for i in range(days)]\n\n# Constraints for each day to be one of the cities\nfor d in day_vars:\n    s.add(z3.Or([d == i for i in range(len(cities))]))\n\n# Constraints for consecutive days to have allowed transitions\nfor i in range(days - 1):\n    prev = day_vars[i]\n    curr = day_vars[i + 1]\n    transitions = []\n    for a, b in allowed_flights:\n        transitions.append(z3.And(prev == a, curr == b))\n    s.add(z3.Or(transitions))\n\n# Constraints for required durations\nfor city, duration in required_durations.items():\n    city_index = city_to_int[city]\n    count = sum(z3.If(day_vars[i] == city_index, 1, 0) for i in range(days))\n    s.add(count == duration)\n\n# Event constraints\nprague_index = city_to_int['Prague']\nwarsaw_index = city_to_int['Warsaw']\nporto_index = city_to_int['Porto']\nlondon_index = city_to_int['London']\nlisbon_index = city_to_int['Lisbon']\n\n# Prague workshop between day 1-3 (indices 0,1,2)\ns.add(z3.Or(day_vars[0] == prague_index, day_vars[1] == prague_index, day_vars[2] == prague_index))\n\n# Warsaw friends between day 20-23 (indices 19-22)\ns.add(z3.Or(day_vars[19] == warsaw_index, day_vars[20] == warsaw_index, day_vars[21] == warsaw_index, day_vars[22] == warsaw_index))\n\n# Porto conference between day 16-20 (indices 15-19)\ns.add(z3.Or(day_vars[15] == porto_index, day_vars[16] == porto_index, day_vars[17] == porto_index, day_vars[18] == porto_index, day_vars[19] == porto_index))\n\n# London wedding between day 3-5 (indices 2-4)\ns.add(z3.Or(day_vars[2] == london_index, day_vars[3] == london_index, day_vars[4] == london_index))\n\n# Lisbon relatives between day 5-9 (indices 4-8)\ns.add(z3.Or(day_vars[4] == lisbon_index, day_vars[5] == lisbon_index, day_vars[6] == lisbon_index, day_vars[7] == lisbon_index, day_vars[8] == lisbon_index))\n\n# Check for solution\nif s.check() == z3.sat:\n    model = s.model()\n    itinerary = []\n    current_city = None\n    start_day = 1\n    for i in range(days):\n        day = i + 1  # days are 1-based\n        city_idx = model[day_vars[i]].as_long()\n        city_name = int_to_city[city_idx]\n        if current_city is None:\n            current_city = city_name\n            start_day = day\n        elif city_name != current_city:\n            end_day = day - 1\n            itinerary.append({\"day_range\": f\"Day {start_day}-{end_day}\", \"place\": current_city})\n            current_city = city_name\n            start_day = day\n    # Append the last city\n    end_day = days\n    itinerary.append({\"day_range\": f\"Day {start_day}-{end_day}\", \"place\": current_city})\n    print(json.dumps({\"itinerary\": itinerary}, indent=2))\nelse:\n    print(\"No solution found.\")"
+}

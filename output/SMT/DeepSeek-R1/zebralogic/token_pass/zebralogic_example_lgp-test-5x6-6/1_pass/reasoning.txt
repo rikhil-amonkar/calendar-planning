@@ -1,0 +1,875 @@
+We are going to use the Z3 SMT solver to solve this puzzle.
+ We have 5 houses, each with 6 attributes: name, vacation, education, color, phone model, food.
+ We will define 6 sets of variables for each attribute, each with 5 possibilities (one per house).
+
+ Steps:
+ 1. Define the house indices (1 to 5).
+ 2. Define the attributes and their possible values.
+ 3. Create Z3 variables for each attribute for each house.
+ 4. Add constraints that all attributes are distinct per category.
+ 5. Add constraints from the clues.
+
+ We note that some clues are redundant (e.g., clue 6 and 7 together tell us Eric is in house 3 and has a doctorate, and clue 9 says the doctorate is pizza lover, etc.)
+
+ Let's break down the attributes:
+
+ Names: Arnold, Eric, Alice, Bob, Peter
+ Vacation: mountain, city, cruise, beach, camping
+ Education: doctorate, high school, bachelor, associate, master
+ Color: blue, red, white, yellow, green
+ PhoneModel: google pixel 6, iphone 13, oneplus 9, huawei p50, samsung galaxy s21
+ Food: grilled cheese, stir fry, pizza, spaghetti, stew
+
+ We'll create a list for each attribute and then create variables for each house.
+
+ Since the houses are ordered, we can use integers 1 to 5 for house numbers.
+
+ We'll define:
+   Name[i] for house i
+   Vacation[i] for house i
+   Education[i] for house i
+   Color[i] for house i
+   PhoneModel[i] for house i
+   Food[i] for house i
+
+ We'll use Z3's IntSort and then use distinct constraints.
+
+ Alternatively, we can use EnumSort for each attribute to make it more readable, but we'll use integers and mappings.
+
+ However, to make the constraints easier, we can use EnumSort for each category.
+
+ Let's create enums for each category.
+
+ But note: the problem requires output in string form, so we can map the integer solutions back to strings.
+
+ Alternatively, we can use Z3's EnumSort for each attribute type and then use the symbolic constants.
+
+ Since we have multiple attributes, we'll create an enum for each.
+
+ Steps in code:
+
+ 1. Import z3 and json.
+ 2. Create a solver.
+ 3. Define the enums for each attribute type.
+
+ However, note that the problem has 5 houses and 6 attributes, so we have 30 variables.
+
+ We'll create:
+
+   Name = [Int('name_%d' % i) for i in range(1,6)]
+   but then we have to set the domain for each variable.
+
+ Alternatively, we can use:
+
+   NameSort, (Arnold, Eric, Alice, Bob, Peter) = EnumSort('Name', ['Arnold','Eric','Alice','Bob','Peter'])
+   and similarly for others.
+
+ This way, we can use symbolic constants.
+
+ Let's do it with EnumSort for each category.
+
+ But note: we have to assign each house a value from the enum.
+
+ We'll create a list of variables for each house and each attribute.
+
+ However, we can also create a list of houses and for each house, we have variables for each attribute.
+
+ We'll create:
+
+   houses = range(1,6)
+   attributes = ['name', 'vacation', 'education', 'color', 'phone', 'food']
+
+   For each attribute, we create an enum sort and then for each house, we create a constant for that attribute.
+
+   Actually, we can create:
+
+      name = Function('name', IntSort(), NameSort)
+      but that might be overkill.
+
+   Alternatively, we can create a list for each attribute:
+
+      name = [Const('name_%d' % i, NameSort) for i in houses]
+
+   Similarly for others.
+
+ 4. Add constraints that for each attribute type, the values for the 5 houses are distinct.
+
+ 5. Add the constraints from the clues.
+
+ Let's start by defining the enums.
+
+ Note: We have to be careful with the order of the enum values. The order in the enum does not imply the house order.
+
+ We'll define:
+
+   NameSort, name_list = EnumSort('Name', ['Arnold','Eric','Alice','Bob','Peter'])
+   VacationSort, vacation_list = EnumSort('Vacation', ['mountain','city','cruise','beach','camping'])
+   EducationSort, education_list = EnumSort('Education', ['doctorate','high school','bachelor','associate','master'])
+   ColorSort, color_list = EnumSort('Color', ['blue','red','white','yellow','green'])
+   PhoneModelSort, phone_list = EnumSort('PhoneModel', ['google pixel 6','iphone 13','oneplus 9','huawei p50','samsung galaxy s21'])
+   FoodSort, food_list = EnumSort('Food', ['grilled cheese','stir fry','pizza','spaghetti','stew'])
+
+   Then, for each house i (from 1 to 5), we have:
+
+      n_i = Const('n_%d' % i, NameSort)
+      v_i = Const('v_%d' % i, VacationSort)
+      e_i = Const('e_%d' % i, EducationSort)
+      c_i = Const('c_%d' % i, ColorSort)
+      p_i = Const('p_%d' % i, PhoneModelSort)
+      f_i = Const('f_%d' % i, FoodSort)
+
+   Then we add distinct constraints for each attribute.
+
+ 6. Now, we add the clues.
+
+ Let's translate each clue into a constraint.
+
+ Clue 1: The person who loves the stew is not in the first house.
+   f_1 != stew
+
+ Clue 2: There are two houses between the person who loves stir fry and the person with an associate's degree.
+   Let i be the house of stir fry and j be the house of associate's degree.
+   Then |i - j| = 3. (because two houses between means, for example, house1 and house4: between are house2 and house3 -> two houses between)
+   But note: the houses are in a row. So we can write:
+      Or(And(i==1, j==4), And(i==2, j==5), And(i==4, j==1), And(i==5, j==2))
+   However, we don't know which one is left or right. So we can do:
+      Abs(i - j) == 3
+   But Z3 doesn't have Abs for symbolic integers, so we do:
+      Or(i - j == 3, j - i == 3)
+
+   We have to get the house for stir fry and associate's degree.
+
+   Let stir_fry_house = [i for i in houses if f_i == stir_fry]
+   But we cannot use that in Z3. Instead, we can use:
+
+      exists i, j such that f_i == stir_fry and e_j == associate and (i - j == 3 or j - i == 3)
+
+   But we can also define:
+
+      stir_fry_house = Int('stir_fry_house')
+      associate_house = Int('associate_house')
+
+      and then constrain:
+        And([Or(stir_fry_house == i, f_i != stir_fry) for i in houses])   # but this is inefficient and might be messy.
+
+   Alternatively, we can use the following:
+
+      for i in houses:
+          for j in houses:
+              if abs(i-j)==3:
+                  add constraint: If(f_i == stir_fry, e_j == associate, True) and If(e_j == associate, f_i == stir_fry, True)
+
+   But that would be 5*5=25 constraints per clue, which is acceptable.
+
+   However, a more efficient way is to use the following:
+
+      Or([And(f_i == stir_fry, e_j == associate, Or(i - j == 3, j - i == 3)) for i in houses for j in houses])
+
+   But note: the clue says "there are two houses between", which means exactly two, so the houses are separated by 3.
+
+   So we can write:
+
+      Or([And(f_i == stir_fry, e_j == associate, (i - j == 3)) for i in houses for j in houses] +
+         [And(f_i == stir_fry, e_j == associate, (j - i == 3)) for i in houses for j in houses])
+
+   But note: we can also write:
+
+      Or([And(f_i == stir_fry, e_j == associate, (i - j == 3)) for i in houses for j in houses] +
+         [And(f_i == stir_fry, e_j == associate, (j - i == 3)) for i in houses for j in houses])
+
+   However, this is redundant because if i-j==3 then j-i==-3, so we can just check absolute difference by two cases.
+
+   Alternatively, we can define:
+
+      Or([And(f_i == stir_fry, e_j == associate, (i == j+3)) for j in range(1,3)] +
+         [And(f_i == stir_fry, e_j == associate, (j == i+3)) for i in range(1,3)])
+
+   But note: houses are 1 to 5, so j+3: j can be 1 or 2 -> 4 and 5. Similarly, i+3: i can be 1 or 2 -> 4 and 5.
+
+   So we can write:
+
+      Or(And(f_1 == stir_fry, e_4 == associate),
+         And(f_2 == stir_fry, e_5 == associate),
+         And(f_4 == stir_fry, e_1 == associate),
+         And(f_5 == stir_fry, e_2 == associate))
+
+   This is more efficient.
+
+   However, to keep the code generic, we can use:
+
+      Or([And(f[i] == stir_fry, e[j] == associate) for i, j in [(1,4), (2,5), (4,1), (5,2)]])
+
+   But note: we are using constants for each house, so we can index by i-1 if we stored the variables in a list.
+
+   Let's assume we have lists:
+
+      n = [n1, n2, n3, n4, n5]
+      v = [v1, v2, v3, v4, v5]
+      e = [e1, e2, e3, e4, e5]
+      c = [c1, c2, c3, c4, c5]
+      p = [p1, p2, p3, p4, p5]
+      f = [f1, f2, f3, f4, f5]
+
+   Then for clue 2:
+
+      Or( And(f[0] == stir_fry, e[3] == associate),
+          And(f[1] == stir_fry, e[4] == associate),
+          And(f[3] == stir_fry, e[0] == associate),
+          And(f[4] == stir_fry, e[1] == associate) )
+
+ Clue 3: The person who enjoys mountain retreats is the person with a bachelor's degree.
+   For each house i: if v_i == mountain then e_i == bachelor
+   But since both are unique, we can also say: there exists an i such that v_i == mountain and e_i == bachelor, and for that i, it is the same.
+
+   We can write: 
+      ForAll([i], Implies(v_i == mountain, e_i == bachelor))
+
+   But note: we can also write:
+
+      Or([And(v_i == mountain, e_i == bachelor) for i in houses])
+
+   But since there's exactly one mountain and one bachelor, we can also do:
+
+      exists i: v_i == mountain and e_i == bachelor
+
+   However, the clue says they are the same person, so we can do:
+
+      for i in houses: (v_i == mountain) == (e_i == bachelor)
+
+   But that is equivalent to:
+
+      And([v_i == mountain if and only if e_i == bachelor for i in houses])
+
+   However, note that there is exactly one mountain and one bachelor, so we can also do:
+
+      Let mountain_house = the house where v_i == mountain
+      Let bachelor_house = the house where e_i == bachelor
+      Then mountain_house == bachelor_house
+
+   We can do:
+
+      Or([And(v_i == mountain, e_i == bachelor) for i in houses])
+
+   But note: this is already enforced by the distinct constraints? No, because they are different attributes.
+
+   We'll do:
+
+      exists i: v_i == mountain and e_i == bachelor
+
+   But since they are both unique, we can write:
+
+      ForAll(i, (v_i == mountain) == (e_i == bachelor))
+
+   This is stronger and ensures that the same house has both.
+
+   Alternatively, we can just say:
+
+      [v_i == mountain for i in houses] == [e_i == bachelor for i in houses]
+
+   But that is not directly expressible in Z3.
+
+   So we do:
+
+      And([Implies(v_i == mountain, e_i == bachelor) for i in houses] + [Implies(e_i == bachelor, v_i == mountain) for i in houses])
+
+   Or more simply:
+
+      And([(v_i == mountain) == (e_i == bachelor) for i in houses])
+
+   This is efficient.
+
+ Clue 4: The person with a doctorate is somewhere to the right of Bob.
+   Let bob_house = the house where n_i == Bob
+   Let doc_house = the house where e_i == doctorate
+   Then doc_house > bob_house
+
+   We can write:
+
+      exists i, j: n_i == Bob and e_j == doctorate and j > i
+
+   But we can also do:
+
+      bob_house = Int('bob_house')
+      doc_house = Int('doc_house')
+      ... but we are using enums, so we can't compare the house numbers directly with the enum values.
+
+   Alternatively, we can use:
+
+      For the house of Bob and house of doctorate, we know the house index (1 to 5) and we can compare.
+
+   We can define:
+
+      bob_house = If(n1 == Bob, 1, If(n2==Bob,2, ...))
+      doc_house = If(e1==doctorate,1, If(e2==doctorate,2, ...))
+
+   Then add: doc_house > bob_house
+
+   But that is messy.
+
+   Alternatively, we can use:
+
+      Or([And(n_i == Bob, e_j == doctorate, j>i) for i in houses for j in houses if j>i])
+
+   But note: we don't need to iterate over all j>i, because we know there's only one Bob and one doctorate.
+
+   We can do:
+
+      Or([And(n_i == Bob, [e_j == doctorate for j in houses if j>i]) for i in houses])
+
+   But that is not directly expressible.
+
+   Instead, we can do:
+
+      And([Implies(n_i == Bob, Or([e_j == doctorate for j in houses if j>i])) for i in houses])
+
+   But note: there is exactly one Bob, so for the house i where Bob is, there must be a doctorate in a house j>i.
+
+   We can write:
+
+      Or([And(n_i == Bob, Or([e_j == doctorate for j in range(i+1,6)])) for i in range(1,6)])
+
+   But we are using 0-indexed lists, so:
+
+      for i in [0,1,2,3,4]:
+          if n[i] == Bob, then Or(e[i+1] == doctorate, e[i+2]==doctorate, ... e[4]==doctorate)
+
+   We can write:
+
+      Or([And(n[i] == Bob, Or([e[j] == doctorate for j in range(i+1,5)])) for i in range(0,5)])
+
+   But note: the houses are 1-indexed in our list indices (0-indexed in Python list).
+
+   Actually, our list index 0 corresponds to house1, index4 to house5.
+
+   So if Bob is in house i (index i-1), then doctorate must be in a house j>i (index from i to 4, but note: j>i so index from i to 4, but our list index for house j is j-1).
+
+   Let's reindex:
+
+      Let the list index = i (0 to 4) for house i+1.
+
+      Then if Bob is in list index i, then doctorate must be in list index j where j>i.
+
+      So we can write:
+
+          And([Implies(n[i] == Bob, Or([e[j] == doctorate for j in range(i+1,5)])) for i in range(0,5)])
+
+   But note: this is not exactly "for all i", but we know there is exactly one Bob, so we can also do:
+
+      Or([And(n[i] == Bob, Or([e[j] == doctorate for j in range(i+1,5)])) for i in range(0,5)])
+
+   However, this is a disjunction over i, and for the i where Bob is, we require that one of the e[j] for j>i is doctorate.
+
+   This is acceptable.
+
+   Alternatively, we can define a function that returns the house number of an attribute value.
+
+   But note: we have multiple attributes, so we might do:
+
+      bob_house = Sum([If(n[i] == Bob, i+1, 0) for i in range(5)])
+      doc_house = Sum([If(e[i] == doctorate, i+1, 0) for i in range(5)])
+
+      Then add: doc_house > bob_house
+
+   This works because the Sum will be the house number (since only one house has Bob and one has doctorate).
+
+   We'll use this method for clues that require comparing house positions.
+
+   Similarly for other clues.
+
+ Clue 5: The person who uses a Samsung Galaxy S21 is in the third house.
+   p_3 == samsung_galaxy_s21   (since house3 is index2 in 0-indexed list)
+
+ Clue 6: Eric is the person with a doctorate.
+   For the house i where n_i == Eric, then e_i == doctorate.
+
+   We can write: exists i: n_i == Eric and e_i == doctorate
+
+   But again, we can do:
+
+      And([(n_i == Eric) == (e_i == doctorate) for i in houses])
+
+   Or:
+
+      ForAll(i, (n_i == Eric) == (e_i == doctorate))
+
+   This is strong and ensures they are the same house.
+
+ Clue 7: The person with a doctorate is in the third house.
+   e_3 == doctorate   (house3 is index2)
+
+ Clue 8: The person who loves stir fry is the person with a bachelor's degree.
+   Similarly: ForAll(i, (f_i == stir_fry) == (e_i == bachelor))
+
+ Clue 9: The person with a doctorate is the person who is a pizza lover.
+   ForAll(i, (e_i == doctorate) == (f_i == pizza))
+
+ Clue 10: The person whose favorite color is green is somewhere to the right of Peter.
+   Let peter_house = the house where n_i == Peter
+   Let green_house = the house where c_i == green
+   Then green_house > peter_house
+
+   We can use the same method as clue4.
+
+ Clue 11: The person who enjoys camping trips is the person who uses an iPhone 13.
+   ForAll(i, (v_i == camping) == (p_i == iphone_13))
+
+ Clue 12: The person who likes going on cruises is Alice.
+   For the house i where v_i == cruise, then n_i == Alice.
+
+   We can write: ForAll(i, (v_i == cruise) == (n_i == Alice))
+
+ Clue 13: There is one house between the person with a high school diploma and the person who uses a Samsung Galaxy S21.
+   So |high_school_house - samsung_house| = 2
+
+   We can do:
+
+      Or(And(high_school_house = 1, samsung_house = 3),
+         And(high_school_house = 2, samsung_house = 4),
+         And(high_school_house = 3, samsung_house = 1 or 5),
+         And(high_school_house = 4, samsung_house = 2),
+         And(high_school_house = 5, samsung_house = 3))
+
+   But note: we already know from clue5 that samsung is in house3 (index2).
+
+   So we can simplify: |high_school_house - 3| = 2 -> high_school_house is 1 or 5.
+
+   So: e_1 == high_school or e_5 == high_school   (but note: house1 is index0, house5 is index4)
+
+   Actually, we can write:
+
+      Or(e[0] == high_school, e[4] == high_school)
+
+   But wait: the clue says "one house between", so if samsung is in house3, then high school must be in house1 or house5.
+
+   So we can write:
+
+      Or(e1 == high_school, e5 == high_school)
+
+   But note: we are using 0-indexed list for e, so:
+
+        e[0] (house1) or e[4] (house5)
+
+ Clue 14: The person who uses a Google Pixel 6 is Arnold.
+   ForAll(i, (p_i == google_pixel_6) == (n_i == Arnold))
+
+ Clue 15: The person who uses a OnePlus 9 is somewhere to the right of the person who uses a Huawei P50.
+   Let oneplus_house = house where p_i == oneplus_9
+   Let huawei_house = house where p_i == huawei_p50
+   Then oneplus_house > huawei_house
+
+   We can use the same method as clue4.
+
+ Clue 16: Arnold is the person who loves eating grilled cheese.
+   ForAll(i, (n_i == Arnold) == (f_i == grilled_cheese))
+
+ Clue 17: The person who loves eating grilled cheese is not in the fourth house.
+   f_4 != grilled_cheese   (house4 is index3)
+
+ Clue 18: There are two houses between the person with a bachelor's degree and the person whose favorite color is red.
+   |bachelor_house - red_house| = 3
+
+   We can do:
+
+      Or(And(bachelor_house = 1, red_house = 4),
+         And(bachelor_house = 2, red_house = 5),
+         And(bachelor_house = 4, red_house = 1),
+         And(bachelor_house = 5, red_house = 2))
+
+   We can write:
+
+      Or(And(e[0] == bachelor, c[3] == red),
+         And(e[1] == bachelor, c[4] == red),
+         And(e[3] == bachelor, c[0] == red),
+         And(e[4] == bachelor, c[1] == red))
+
+ Clue 19: The person who loves beach vacations is somewhere to the right of the person who prefers city breaks.
+   Let beach_house = house where v_i == beach
+   Let city_house = house where v_i == city
+   Then beach_house > city_house
+
+   We can use the same method as clue4.
+
+ Clue 20: The person whose favorite color is green is not in the second house.
+   c_2 != green   (house2 is index1)
+
+ Clue 21: The person who loves blue is somewhere to the right of Peter.
+   Let blue_house = house where c_i == blue
+   Let peter_house = house where n_i == Peter
+   Then blue_house > peter_house
+
+   We can use the same method as clue4.
+
+ Clue 22: There is one house between the person who enjoys camping trips and the person who loves yellow.
+   |camping_house - yellow_house| = 2
+
+   We can do:
+
+      Or(And(camping_house = 1, yellow_house = 3),
+         And(camping_house = 2, yellow_house = 4),
+         And(camping_house = 3, yellow_house = 1 or 5),
+         And(camping_house = 4, yellow_house = 2),
+         And(camping_house = 5, yellow_house = 3))
+
+   But note: we can use the same method as clue13.
+
+   We'll use the absolute difference by cases.
+
+   Alternatively, we can define:
+
+      camping_house = Sum([If(v_i == camping, i+1, 0) for i in range(5)])
+      yellow_house = Sum([If(c_i == yellow, i+1, 0) for i in range(5)])
+      And(Or(camping_house - yellow_house == 2, yellow_house - camping_house == 2))
+
+   But note: we are using the actual house numbers (1 to 5) for these sums.
+
+   We'll use this method for clues that require comparing house positions when the relationship is not simple.
+
+ However, note that some clues are already giving fixed positions (like clue5 and clue7).
+
+ We have to be cautious: clue7 says doctorate is in house3, and clue6 says Eric has doctorate, so Eric is in house3.
+ Also clue9 says doctorate is pizza lover, so house3 has pizza.
+
+ And clue5 says phone in house3 is samsung.
+
+ So we already know for house3: 
+   name: Eric
+   education: doctorate
+   food: pizza
+   phone: samsung galaxy s21
+
+ Now, let's start coding.
+
+ We'll create a list for each attribute for the 5 houses.
+
+ We'll use the EnumSort for each attribute and then create constants for each house.
+
+ Steps:
+
+   from z3 import *
+
+   solver = Solver()
+
+   # Define the enums
+   NameSort, (Arnold, Eric, Alice, Bob, Peter) = EnumSort('Name', ['Arnold','Eric','Alice','Bob','Peter'])
+   VacationSort, (mountain, city, cruise, beach, camping) = EnumSort('Vacation', ['mountain','city','cruise','beach','camping'])
+   EducationSort, (doctorate, high_school, bachelor, associate, master) = EnumSort('Education', ['doctorate','high school','bachelor','associate','master'])
+   ColorSort, (blue, red, white, yellow, green) = EnumSort('Color', ['blue','red','white','yellow','green'])
+   PhoneModelSort, (google_pixel_6, iphone_13, oneplus_9, huawei_p50, samsung_galaxy_s21) = EnumSort('PhoneModel', ['google pixel 6','iphone 13','oneplus 9','huawei p50','samsung galaxy s21'])
+   FoodSort, (grilled_cheese, stir_fry, pizza, spaghetti, stew) = EnumSort('Food', ['grilled cheese','stir fry','pizza','spaghetti','stew'])
+
+   # Create the attributes for each house (5 houses)
+   n = [Const('n_%d' % i, NameSort) for i in range(1,6)]
+   v = [Const('v_%d' % i, VacationSort) for i in range(1,6)]
+   e = [Const('e_%d' % i, EducationSort) for i in range(1,6)]
+   c = [Const('c_%d' % i, ColorSort) for i in range(1,6)]
+   p = [Const('p_%d' % i, PhoneModelSort) for i in range(1,6)]
+   f = [Const('f_%d' % i, FoodSort) for i in range(1,6)]
+
+   # Add distinct constraints for each attribute
+   solver.add(Distinct(n))
+   solver.add(Distinct(v))
+   solver.add(Distinct(e))
+   solver.add(Distinct(c))
+   solver.add(Distinct(p))
+   solver.add(Distinct(f))
+
+   # Now, add the clues one by one.
+
+   # Clue 1: The person who loves the stew is not in the first house.
+   solver.add(f[0] != stew)
+
+   # Clue 2: There are two houses between the person who loves stir fry and the person with an associate's degree.
+   # We'll use the absolute difference of 3 in house numbers (1-indexed) -> indices 0 and 3, 1 and 4, 3 and 0, 4 and 1.
+   solver.add(Or(
+        And(f[0] == stir_fry, e[3] == associate),
+        And(f[1] == stir_fry, e[4] == associate),
+        And(f[3] == stir_fry, e[0] == associate),
+        And(f[4] == stir_fry, e[1] == associate)
+   ))
+
+   # Clue 3: The person who enjoys mountain retreats is the person with a bachelor's degree.
+   for i in range(5):
+        solver.add( (v[i] == mountain) == (e[i] == bachelor) )
+
+   # Clue 4: The person with a doctorate is somewhere to the right of Bob.
+   # We'll define the house numbers for Bob and doctorate.
+   bob_house = Sum([If(n[i] == Bob, i+1, 0) for i in range(5)])
+   doc_house = Sum([If(e[i] == doctorate, i+1, 0) for i in range(5)])
+   solver.add(doc_house > bob_house)
+
+   # Clue 5: The person who uses a Samsung Galaxy S21 is in the third house.
+   solver.add(p[2] == samsung_galaxy_s21)   # house3 is index2
+
+   # Clue 6: Eric is the person with a doctorate.
+   for i in range(5):
+        solver.add( (n[i] == Eric) == (e[i] == doctorate) )
+
+   # Clue 7: The person with a doctorate is in the third house.
+   solver.add(e[2] == doctorate)
+
+   # Clue 8: The person who loves stir fry is the person with a bachelor's degree.
+   for i in range(5):
+        solver.add( (f[i] == stir_fry) == (e[i] == bachelor) )
+
+   # Clue 9: The person with a doctorate is the person who is a pizza lover.
+   for i in range(5):
+        solver.add( (e[i] == doctorate) == (f[i] == pizza) )
+
+   # Clue 10: The person whose favorite color is green is somewhere to the right of Peter.
+   peter_house = Sum([If(n[i] == Peter, i+1, 0) for i in range(5)])
+   green_house = Sum([If(c[i] == green, i+1, 0) for i in range(5)])
+   solver.add(green_house > peter_house)
+
+   # Clue 11: The person who enjoys camping trips is the person who uses an iPhone 13.
+   for i in range(5):
+        solver.add( (v[i] == camping) == (p[i] == iphone_13) )
+
+   # Clue 12: The person who likes going on cruises is Alice.
+   for i in range(5):
+        solver.add( (v[i] == cruise) == (n[i] == Alice) )
+
+   # Clue 13: There is one house between the person with a high school diploma and the person who uses a Samsung Galaxy S21.
+   # We know Samsung is in house3 (index2). So high school must be in house1 or house5.
+   solver.add(Or(e[0] == high_school, e[4] == high_school))
+
+   # Clue 14: The person who uses a Google Pixel 6 is Arnold.
+   for i in range(5):
+        solver.add( (p[i] == google_pixel_6) == (n[i] == Arnold) )
+
+   # Clue 15: The person who uses a OnePlus 9 is somewhere to the right of the person who uses a Huawei P50.
+   huawei_house = Sum([If(p[i] == huawei_p50, i+1, 0) for i in range(5)])
+   oneplus_house = Sum([If(p[i] == oneplus_9, i+1, 0) for i in range(5)])
+   solver.add(oneplus_house > huawei_house)
+
+   # Clue 16: Arnold is the person who loves eating grilled cheese.
+   for i in range(5):
+        solver.add( (n[i] == Arnold) == (f[i] == grilled_cheese) )
+
+   # Clue 17: The person who loves eating grilled cheese is not in the fourth house.
+   solver.add(f[3] != grilled_cheese)   # house4 is index3
+
+   # Clue 18: There are two houses between the person with a bachelor's degree and the person whose favorite color is red.
+   # |bachelor_house - red_house| = 3
+   bachelor_house = Sum([If(e[i] == bachelor, i+1, 0) for i in range(5)])
+   red_house = Sum([If(c[i] == red, i+1, 0) for i in range(5)])
+   solver.add(Or(bachelor_house - red_house == 3, red_house - bachelor_house == 3))
+
+   # Clue 19: The person who loves beach vacations is somewhere to the right of the person who prefers city breaks.
+   city_house = Sum([If(v[i] == city, i+1, 0) for i in range(5)])
+   beach_house = Sum([If(v[i] == beach, i+1, 0) for i in range(5)])
+   solver.add(beach_house > city_house)
+
+   # Clue 20: The person whose favorite color is green is not in the second house.
+   solver.add(c[1] != green)   # house2 is index1
+
+   # Clue 21: The person who loves blue is somewhere to the right of Peter.
+   blue_house = Sum([If(c[i] == blue, i+1, 0) for i in range(5)])
+   solver.add(blue_house > peter_house)   # peter_house is already defined above
+
+   # Clue 22: There is one house between the person who enjoys camping trips and the person who loves yellow.
+   camping_house = Sum([If(v[i] == camping, i+1, 0) for i in range(5)])
+   yellow_house = Sum([If(c[i] == yellow, i+1, 0) for i in range(5)])
+   solver.add(Or(camping_house - yellow_house == 2, yellow_house - camping_house == 2))
+
+   # Now, check and get the model.
+
+   if solver.check() == sat:
+        model = solver.model()
+        # We will create a list of rows for the output.
+        rows = []
+        for i in range(5):
+            # For each house, we get the value of each attribute.
+            # We need to convert the Z3 expression to a string, but note: the model gives us the constant, which is one of the enum values.
+            # How to get the string? We can use the .name() method of the constant? But note: the model gives us an interpetation of the constant.
+
+            # Alternatively, we can create a mapping from the Z3 constants to the string names.
+
+            # We can create a list of the possible values for each attribute and then compare the model's value to the constants.
+
+            # For example, for name, we have:
+            #   name_values = [Arnold, Eric, Alice, Bob, Peter]
+            #   name_strings = ['Arnold','Eric','Alice','Bob','Peter']
+
+            # We can do:
+
+            def get_value(model, var, possible_constants, possible_strings):
+                for j, const in enumerate(possible_constants):
+                    if model[var] == const:
+                        return possible_strings[j]
+                return None
+
+            # But note: the model might not directly give the constant but an expression that evaluates to it.
+
+            # Alternatively, we can use:
+            #   model[var].as_long()   but that is for integers.
+
+            # Since we used EnumSort, the model will give one of the constants.
+
+            # We can create a list of the constants and their names for each attribute.
+
+            # Let's create a list for each attribute:
+
+            name_consts = [Arnold, Eric, Alice, Bob, Peter]
+            name_str = ['Arnold','Eric','Alice','Bob','Peter']
+
+            vacation_consts = [mountain, city, cruise, beach, camping]
+            vacation_str = ['mountain','city','cruise','beach','camping']
+
+            education_consts = [doctorate, high_school, bachelor, associate, master]
+            education_str = ['doctorate','high school','bachelor','associate','master']
+
+            color_consts = [blue, red, white, yellow, green]
+            color_str = ['blue','red','white','yellow','green']
+
+            phone_consts = [google_pixel_6, iphone_13, oneplus_9, huawei_p50, samsung_galaxy_s21]
+            phone_str = ['google pixel 6','iphone 13','oneplus 9','huawei p50','samsung galaxy s21']
+
+            food_consts = [grilled_cheese, stir_fry, pizza, spaghetti, stew]
+            food_str = ['grilled cheese','stir fry','pizza','spaghetti','stew']
+
+            n_val = get_value(model, n[i], name_consts, name_str)
+            v_val = get_value(model, v[i], vacation_consts, vacation_str)
+            e_val = get_value(model, e[i], education_consts, education_str)
+            c_val = get_value(model, c[i], color_consts, color_str)
+            p_val = get_value(model, p[i], phone_consts, phone_str)
+            f_val = get_value(model, f[i], food_consts, food_str)
+
+            row = [str(i+1), n_val, v_val, e_val, c_val, p_val, f_val]
+            rows.append(row)
+
+        # Now, create the JSON output.
+        solution = {
+            "solution": {
+                "header": ["House", "Name", "Vacation", "Education", "Color", "PhoneModel", "Food"],
+                "rows": rows
+            }
+        }
+
+        import json
+        print(json.dumps(solution, indent=2))
+
+   else:
+        print("No solution found")
+
+ However, note: the above get_value function might not work because model[var] might not be exactly one of the constants we defined? Actually, when we use EnumSort, the model will assign one of the constants.
+
+ But let's test with a simple example.
+
+ Alternatively, we can use:
+
+    model[n[i]].as_long()
+
+ but that doesn't work because the enum constants are not integers.
+
+ We can use:
+
+    const_index = None
+    for j, const in enumerate(name_consts):
+        if eq(model[n[i]], const):
+            const_index = j
+    n_val = name_str[const_index]
+
+ But note: we can use the __eq__ method of the Z3 expression.
+
+ However, we can also use:
+
+    if model.eval(n[i]) == model.eval(Arnold):
+        n_val = 'Arnold'
+    elif ...
+
+ This is safe.
+
+ Let's change the get_value to:
+
+    def get_value(model, var, const_list, str_list):
+        for j, const in enumerate(const_list):
+            if model.eval(var) == model.eval(const):
+                return str_list[j]
+        return None
+
+ But note: the model.eval(var) returns the value of var in the model, and similarly for const.
+
+ Alternatively, we can use:
+
+    value = model[var]
+    for j, const in enumerate(const_list):
+        if value == const:
+            return str_list[j]
+
+ But note: the model might represent the constants in a different way? Actually, when we use the same EnumSort, the constants are from the same sort.
+
+ Let's try to use the direct comparison.
+
+ We'll create a helper function:
+
+    def get_str_value(model, var, consts, strs):
+        value = model[var]
+        for i, c in enumerate(consts):
+            if eq(value, c):
+                return strs[i]
+        return None
+
+ But note: the model[var] returns an expression, and we can compare it to the constant.
+
+ However, we can also use:
+
+    if model[var].eq(const):
+        ...
+
+ But that might not be necessary.
+
+ Alternatively, we can use:
+
+    for j in range(len(const_list)):
+        if model[var] == const_list[j]:
+            return str_list[j]
+
+ This should work because the model assigns one of the constants.
+
+ Let's code accordingly.
+
+ However, note: the model might not directly return the constant but an expression that is equal to the constant. So we can use:
+
+    if model.eval(var) == model.eval(const_list[j]):
+        return str_list[j]
+
+ This is safer.
+
+ We'll do:
+
+    for j in range(len(const_list)):
+        if model.eval(var) == model.eval(const_list[j]):
+            return str_list[j]
+
+ But note: this might be inefficient, but we only have 5 values per attribute.
+
+ Let's write the code accordingly.
+
+ We'll create a function to get the string representation:
+
+    def get_str(model, var, consts, strs):
+        for j, c in enumerate(consts):
+            if model.eval(var, model_completion=True) == model.eval(c, model_completion=True):
+                return strs[j]
+        return "Unknown"
+
+ But note: model.eval(var) returns the value of var in the model.
+
+ We can simply do:
+
+    value = model.eval(var)
+    for j, c in enumerate(consts):
+        if value == model.eval(c):
+            return strs[j]
+
+ But note: the model.eval(c) might be the same as c if c is a constant? Actually, yes.
+
+ Let's try this.
+
+ We'll now write the code accordingly.
+
+ Note: We must be cautious because the model might not be complete for the constants? But we have defined them.
+
+ Let's code accordingly.
+
+ We'll now output the complete code.

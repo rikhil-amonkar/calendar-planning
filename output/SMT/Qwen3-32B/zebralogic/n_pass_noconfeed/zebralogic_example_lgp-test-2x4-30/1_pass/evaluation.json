@@ -1,0 +1,40 @@
+{
+    "has_execution_error": true,
+    "has_no_plan": false,
+    "execution_output": null,
+    "pred": null,
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Arnold",
+            "HairColor": "brown",
+            "FavoriteSport": "basketball",
+            "Smoothie": "desert"
+        },
+        {
+            "House": "2",
+            "Name": "Eric",
+            "HairColor": "black",
+            "FavoriteSport": "soccer",
+            "Smoothie": "cherry"
+        }
+    ],
+    "status": "Error",
+    "violated_constraint": {
+        "invalid_output": "No valid output structure found"
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 386.8156690597534,
+        "execution_time": 0.07941770553588867,
+        "constraint_eval_time": 8.344650268554688e-06,
+        "pred_extract_time": 9.059906005859375e-06,
+        "gold_extract_time": 2.1696090698242188e-05,
+        "total_tokens": 28273,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import json\nfrom z3 import *\n\ndef main():\n    # Define EnumSorts\n    Name, (Arnold, Eric) = EnumSort('Name', ['Arnold', 'Eric'])\n    HairColor, (black, brown) = EnumSort('HairColor', ['black', 'brown'])\n    FavoriteSport, (basketball, soccer) = EnumSort('FavoriteSport', ['basketball', 'soccer'])\n    Smoothie, (desert, cherry) = EnumSort('Smoothie', ['desert', 'cherry'])\n\n    # House variables\n    name1 = Const('name1', Name)\n    hair1 = Const('hair1', HairColor)\n    sport1 = Const('sport1', FavoriteSport)\n    smoothie1 = Const('smoothie1', Smoothie)\n\n    name2 = Const('name2', Name)\n    hair2 = Const('hair2', HairColor)\n    sport2 = Const('sport2', FavoriteSport)\n    smoothie2 = Const('smoothie2', Smoothie)\n\n    solver = Solver()\n\n    # Uniqueness constraints\n    solver.add(name1 != name2)\n    solver.add(hair1 != hair2)\n    solver.add(sport1 != sport2)\n    solver.add(smoothie1 != smoothie2)\n\n    # Clue 1: Desert lover is Arnold\n    solver.add(Implies(name1 == Arnold, smoothie1 == desert))\n    solver.add(Implies(name2 == Arnold, smoothie2 == desert))\n\n    # Clue 2: Brown hair implies basketball\n    solver.add(Implies(hair1 == brown, sport1 == basketball))\n    solver.add(Implies(hair2 == brown, sport2 == basketball))\n\n    # Clue 3: Arnold is left of black hair\n    arnold_pos = If(name1 == Arnold, 1, 2)\n    black_pos = If(hair1 == black, 1, 2)\n    solver.add(arnold_pos < black_pos)\n\n    if solver.check() == sat:\n        model = solver.model()\n        # Extract values for house 1 and 2\n        n1 = model[name1].name()\n        h1 = model[hair1].name()\n        s1 = model[sport1].name()\n        sm1 = model[smoothie1].name()\n\n        n2 = model[name2].name()\n        h2 = model[hair2].name()\n        s2 = model[sport2].name()\n        sm2 = model[smoothie2].name()\n\n        solution = {\n            \"solution\": {\n                \"header\": [\"House\", \"Name\", \"HairColor\", \"FavoriteSport\", \"Smoothie\"],\n                \"rows\": [\n                    [\"1\", n1, h1, s1, sm1],\n                    [\"2\", n2, h2, s2, sm2]\n                ]\n            }\n        }\n\n        print(json.dumps(solution, indent=2))\n    else:\n        print(json.dumps({\"error\": \"No solution found\"}, indent=2))\n\nif __name__ == \"__main__\":\n    main()"
+}

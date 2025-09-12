@@ -1,0 +1,94 @@
+from z3 import *
+import json
+
+def min_to_time(m):
+    hours = m // 60
+    minutes = m % 60
+    return f"{hours}:{minutes:02d}"
+
+def main():
+    # Initialize solver with optimization
+    opt = Optimize()
+    
+    # Define variables
+    r_start = Int('r_start')
+    r_duration = Int('r_duration')
+    c_start = Int('c_start')
+    c_duration = Int('c_duration')
+    order = Bool('order')
+    
+    # Travel times (in minutes)
+    t_bu = 17  # Bayview to Union Square
+    t_bp = 31  # Bayview to Presidio
+    t_up = 24  # Union Square to Presidio
+    t_pu = 22  # Presidio to Union Square
+    
+    # Time constraints (in minutes from midnight)
+    start_time = 540  # 9:00 AM at Bayview
+    r_available_start = 525  # 8:45 AM
+    r_available_end = 780    # 1:00 PM
+    c_available_start = 585  # 9:45 AM
+    c_available_end = 780    # 1:00 PM
+    
+    # Add hard constraints
+    constraints = [
+        r_start >= r_available_start,
+        r_start + r_duration <= r_available_end,
+        c_start >= c_available_start,
+        c_start + c_duration <= c_available_end,
+        r_duration >= 0,
+        c_duration >= 0,
+        Or(
+            And(order, 
+                r_start >= start_time + t_bu,
+                c_start >= r_start + r_duration + t_up),
+            And(Not(order),
+                c_start >= start_time + t_bp,
+                r_start >= c_start + c_duration + t_pu)
+        )
+    ]
+    
+    opt.add(constraints)
+    
+    # Add soft constraints for desired minimum durations
+    opt.add_soft(r_duration >= 120)
+    opt.add_soft(c_duration >= 120)
+    
+    # Maximize total meeting time
+    opt.maximize(r_duration + c_duration)
+    
+    if opt.check() == sat:
+        m = opt.model()
+        r_start_val = m.eval(r_start).as_long()
+        r_duration_val = m.eval(r_duration).as_long()
+        c_start_val = m.eval(c_start).as_long()
+        c_duration_val = m.eval(c_duration).as_long()
+        
+        # Create meeting events
+        richard_meeting = {
+            "action": "meet",
+            "location": "Union Square",
+            "person": "Richard",
+            "start_time": min_to_time(r_start_val),
+            "end_time": min_to_time(r_start_val + r_duration_val)
+        }
+        
+        charles_meeting = {
+            "action": "meet",
+            "location": "Presidio",
+            "person": "Charles",
+            "start_time": min_to_time(c_start_val),
+            "end_time": min_to_time(c_start_val + c_duration_val)
+        }
+        
+        # Sort meetings by start time
+        itinerary = [richard_meeting, charles_meeting]
+        itinerary.sort(key=lambda x: x['start_time'])
+        
+        result = {"itinerary": itinerary}
+        print(json.dumps(result, indent=2))
+    else:
+        print('{"itinerary": []}')
+
+if __name__ == "__main__":
+    main()

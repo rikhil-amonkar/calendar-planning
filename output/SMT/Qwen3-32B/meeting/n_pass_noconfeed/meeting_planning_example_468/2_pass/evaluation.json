@@ -1,0 +1,63 @@
+{
+    "has_execution_error": true,
+    "has_no_plan": false,
+    "execution_output": null,
+    "pred": null,
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Bayview",
+                "person": "Rebecca",
+                "start_time": "9:19",
+                "end_time": "10:49"
+            },
+            {
+                "action": "meet",
+                "location": "Alamo Square",
+                "person": "James",
+                "start_time": "11:05",
+                "end_time": "12:35"
+            },
+            {
+                "action": "meet",
+                "location": "Fisherman's Wharf",
+                "person": "Sarah",
+                "start_time": "12:54",
+                "end_time": "14:24"
+            },
+            {
+                "action": "meet",
+                "location": "Golden Gate Park",
+                "person": "Melissa",
+                "start_time": "14:49",
+                "end_time": "16:19"
+            },
+            {
+                "action": "meet",
+                "location": "Pacific Heights",
+                "person": "Amanda",
+                "start_time": "18:30",
+                "end_time": "20:00"
+            }
+        ]
+    },
+    "status": "Error",
+    "violated_constraint": {
+        "missing_itinerary": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 2,
+    "timing": {
+        "api_call_time": 654.6361541748047,
+        "execution_time": 0.011539697647094727,
+        "constraint_eval_time": 4.5299530029296875e-06,
+        "pred_extract_time": 8.344650268554688e-06,
+        "gold_extract_time": 8.296966552734375e-05,
+        "total_tokens": 49532,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\nimport json\n\n# Define friend information and travel times\nfriends_info = [\n    {'name': 'Rebecca', 'location': 'Bayview', 'available_start': 540, 'available_end': 765},\n    {'name': 'Amanda', 'location': 'Pacific Heights', 'available_start': 1050, 'available_end': 1245},\n    {'name': 'James', 'location': 'Alamo Square', 'available_start': 585, 'available_end': 1275},\n    {'name': 'Sarah', 'location': \"Fisherman's Wharf\", 'available_start': 480, 'available_end': 1230},\n    {'name': 'Melissa', 'location': 'Golden Gate Park', 'available_start': 540, 'available_end': 1065},\n]\n\n# Travel times between friends (based on their locations)\nfriend_to_friend_travel_times = [\n    [0, 23, 16, 25, 22],\n    [22, 0, 10, 13, 15],\n    [16, 10, 0, 19, 9],\n    [26, 12, 20, 0, 25],\n    [23, 16, 10, 24, 0],\n]\n\nMAX_STEPS = 5\nsolver = Optimize()\n\nused = [Bool(f'used_{i}') for i in range(MAX_STEPS)]\nfriend = [Int(f'friend_{i}') for i in range(MAX_STEPS)]\nstart_time = [Int(f'start_time_{i}') for i in range(MAX_STEPS)]\nend_time = [Int(f'end_time_{i}') for i in range(MAX_STEPS)]\n\n# Constraints for friend indices\nfor i in range(MAX_STEPS):\n    solver.add(And(friend[i] >= 0, friend[i] <= 4))\n\n# Uniqueness constraints\nfor i in range(MAX_STEPS):\n    for j in range(i + 1, MAX_STEPS):\n        solver.add(Implies(And(used[i], used[j]), friend[i] != friend[j]))\n\n# Helper function for travel times\ndef get_travel_time_expr(prev_friend, curr_friend):\n    return friend_to_friend_travel_times[prev_friend][curr_friend]\n\n# Add constraints for each step\nfor i in range(MAX_STEPS):\n    if i == 0:\n        # Travel from Castro to current friend's location\n        current_loc = If(friend[i] == 0, 1,\n                         If(friend[i] == 1, 2,\n                            If(friend[i] == 2, 3,\n                               If(friend[i] == 3, 4,\n                                  If(friend[i] == 4, 5, 0))))\n        travel_time_expr = If(current_loc == 1, 19,\n                              If(current_loc == 2, 16,\n                                 If(current_loc == 3, 8,\n                                    If(current_loc == 4, 24,\n                                       If(current_loc == 5, 11, 0))))\n        arrival_time = 540 + travel_time_expr\n    else:\n        # Travel between previous friend and current friend\n        travel_time_expr = get_travel_time_expr(friend[i-1], friend[i])\n        arrival_time = end_time[i-1] + travel_time_expr\n\n    # Available start and end times for the current friend\n    available_start_expr = If(friend[i] == 0, 540,\n                              If(friend[i] == 1, 1050,\n                                 If(friend[i] == 2, 585,\n                                    If(friend[i] == 3, 480,\n                                       If(friend[i] == 4, 540, 0))))\n    available_end_expr = If(friend[i] == 0, 765,\n                            If(friend[i] == 1, 1245,\n                               If(friend[i] == 2, 1275,\n                                  If(friend[i] == 3, 1230,\n                                     If(friend[i] == 4, 1065, 0))))\n\n    # Add constraints if this step is used\n    solver.add(Implies(used[i], start_time[i] >= arrival_time))\n    solver.add(Implies(used[i], start_time[i] >= available_start_expr))\n    solver.add(Implies(used[i], end_time[i] == start_time[i] + 90))\n    solver.add(Implies(used[i], end_time[i] <= available_end_expr))\n\n# Maximize the number of used steps\nobjective = Sum([If(used[i], 1, 0) for i in range(MAX_STEPS)])\nsolver.maximize(objective)\n\n# Check for a solution\nif solver.check() == sat:\n    model = solver.model()\n    itinerary = []\n    for i in range(MAX_STEPS):\n        if is_true(model.eval(used[i])):\n            f = model.eval(friend[i]).as_long()\n            st = model.eval(start_time[i]).as_long()\n            et = model.eval(end_time[i]).as_long()\n            name = friends_info[f]['name']\n            def to_time_str(m):\n                h = m // 60\n                m = m % 60\n                return f\"{h}:{m:02d}\"\n            itinerary.append({\n                \"action\": \"meet\",\n                \"location\": friends_info[f]['location'],\n                \"person\": name,\n                \"start_time\": to_time_str(st),\n                \"end_time\": to_time_str(et)\n            })\n    # Sort by start time\n    itinerary.sort(key=lambda x: x['start_time'])\n    print(json.dumps({\"itinerary\": itinerary}, indent=2))\nelse:\n    print(json.dumps({\"itinerary\": []}))"
+}

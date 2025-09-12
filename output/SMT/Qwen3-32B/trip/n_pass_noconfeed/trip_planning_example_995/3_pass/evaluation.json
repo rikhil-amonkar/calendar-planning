@@ -1,0 +1,56 @@
+{
+    "has_execution_error": true,
+    "has_no_plan": false,
+    "execution_output": null,
+    "pred": null,
+    "gold": {
+        "itinerary": [
+            {
+                "day_range": "Day 1-3",
+                "place": "Barcelona"
+            },
+            {
+                "day_range": "Day 3-4",
+                "place": "Oslo"
+            },
+            {
+                "day_range": "Day 4-7",
+                "place": "Split"
+            },
+            {
+                "day_range": "Day 7-9",
+                "place": "Copenhagen"
+            },
+            {
+                "day_range": "Day 9-11",
+                "place": "Brussels"
+            },
+            {
+                "day_range": "Day 11-14",
+                "place": "Venice"
+            },
+            {
+                "day_range": "Day 14-16",
+                "place": "Stuttgart"
+            }
+        ]
+    },
+    "status": "Error",
+    "violated_constraint": {
+        "missing_itinerary": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 3,
+    "timing": {
+        "api_call_time": 174.37101864814758,
+        "execution_time": 0.01894354820251465,
+        "constraint_eval_time": 6.4373016357421875e-06,
+        "pred_extract_time": 8.58306884765625e-06,
+        "gold_extract_time": 9.083747863769531e-05,
+        "total_tokens": 13134,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "# For each city in the order, compute duration and add constraints\nfor i in range(7):\n    duration = If(c[i] == Barcelona, 3,\n            If(c[i] == Brussels, 3,\n            If(c[i] == Copenhagen, 3,\n            If(c[i] == Oslo, 2,\n            If(c[i] == Split, 4,\n            If(c[i] == Stuttgart, 3, 4))))))  # Removed one closing parenthesis\n    end_day = start_days[i] + duration - 1\n    if i < 6:\n        s.add(start_days[i+1] == end_day)"
+}

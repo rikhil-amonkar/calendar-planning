@@ -1,0 +1,126 @@
+import json
+from z3 import *
+
+def main():
+    # Travel times dictionary
+    travel_times = {
+        'Bayview': {'North Beach': 22, 'Fisherman\'s Wharf': 25, 'Haight-Ashbury': 19, 'Nob Hill': 20, 
+                   'Golden Gate Park': 22, 'Union Square': 18, 'Alamo Square': 16, 'Presidio': 32, 
+                   'Chinatown': 19, 'Pacific Heights': 23},
+        'North Beach': {'Bayview': 25, 'Fisherman\'s Wharf': 5, 'Haight-Ashbury': 18, 'Nob Hill': 7, 
+                       'Golden Gate Park': 22, 'Union Square': 7, 'Alamo Square': 16, 'Presidio': 17, 
+                       'Chinatown': 6, 'Pacific Heights': 8},
+        'Fisherman\'s Wharf': {'Bayview': 26, 'North Beach': 6, 'Haight-Ashbury': 22, 'Nob Hill': 11, 
+                              'Golden Gate Park': 25, 'Union Square': 13, 'Alamo Square': 21, 'Presidio': 17, 
+                              'Chinatown': 12, 'Pacific Heights': 12},
+        'Haight-Ashbury': {'Bayview': 18, 'North Beach': 19, 'Fisherman\'s Wharf': 23, 'Nob Hill': 15, 
+                          'Golden Gate Park': 7, 'Union Square': 19, 'Alamo Square': 5, 'Presidio': 15, 
+                          'Chinatown': 19, 'Pacific Heights': 12},
+        'Nob Hill': {'Bayview': 19, 'North Beach': 8, 'Fisherman\'s Wharf': 10, 'Haight-Ashbury': 13, 
+                    'Golden Gate Park': 17, 'Union Square': 7, 'Alamo Square': 11, 'Presidio': 17, 
+                    'Chinatown': 6, 'Pacific Heights': 8},
+        'Golden Gate Park': {'Bayview': 23, 'North Beach': 23, 'Fisherman\'s Wharf': 24, 'Haight-Ashbury': 7, 
+                            'Nob Hill': 20, 'Union Square': 22, 'Alamo Square': 9, 'Presidio': 11, 
+                            'Chinatown': 23, 'Pacific Heights': 16},
+        'Union Square': {'Bayview': 15, 'North Beach': 10, 'Fisherman\'s Wharf': 15, 'Haight-Ashbury': 18, 
+                        'Nob Hill': 9, 'Golden Gate Park': 22, 'Alamo Square': 15, 'Presidio': 24, 
+                        'Chinatown': 7, 'Pacific Heights': 15},
+        'Alamo Square': {'Bayview': 16, 'North Beach': 15, 'Fisherman\'s Wharf': 19, 'Haight-Ashbury': 5, 
+                        'Nob Hill': 11, 'Golden Gate Park': 9, 'Union Square': 14, 'Presidio': 17, 
+                        'Chinatown': 15, 'Pacific Heights': 10},
+        'Presidio': {'Bayview': 31, 'North Beach': 18, 'Fisherman\'s Wharf': 19, 'Haight-Ashbury': 15, 
+                    'Nob Hill': 18, 'Golden Gate Park': 12, 'Union Square': 22, 'Alamo Square': 19, 
+                    'Chinatown': 21, 'Pacific Heights': 11},
+        'Chinatown': {'Bayview': 20, 'North Beach': 3, 'Fisherman\'s Wharf': 8, 'Haight-Ashbury': 19, 
+                     'Nob Hill': 9, 'Golden Gate Park': 23, 'Union Square': 7, 'Alamo Square': 17, 
+                     'Presidio': 19, 'Pacific Heights': 10},
+        'Pacific Heights': {'Bayview': 22, 'North Beach': 9, 'Fisherman\'s Wharf': 13, 'Haight-Ashbury': 11, 
+                           'Nob Hill': 8, 'Golden Gate Park': 15, 'Union Square': 12, 'Alamo Square': 10, 
+                           'Presidio': 11, 'Chinatown': 11}
+    }
+
+    # Friend data: name, location, available start/end (minutes from 9:00), min duration
+    friends = [
+        {'name': 'Brian', 'location': 'North Beach', 'start_avail': 240, 'end_avail': 600, 'min_dur': 90},
+        {'name': 'Richard', 'location': 'Fisherman\'s Wharf', 'start_avail': 120, 'end_avail': 225, 'min_dur': 60},
+        {'name': 'Ashley', 'location': 'Haight-Ashbury', 'start_avail': 360, 'end_avail': 690, 'min_dur': 90},
+        {'name': 'Elizabeth', 'location': 'Nob Hill', 'start_avail': 165, 'end_avail': 570, 'min_dur': 75},
+        {'name': 'Jessica', 'location': 'Golden Gate Park', 'start_avail': 660, 'end_avail': 765, 'min_dur': 105},
+        {'name': 'Deborah', 'location': 'Union Square', 'start_avail': 510, 'end_avail': 780, 'min_dur': 60},
+        {'name': 'Kimberly', 'location': 'Alamo Square', 'start_avail': 510, 'end_avail': 735, 'min_dur': 45},
+        {'name': 'Matthew', 'location': 'Presidio', 'start_avail': -45, 'end_avail': 0, 'min_dur': 15},
+        {'name': 'Kenneth', 'location': 'Chinatown', 'start_avail': 285, 'end_avail': 630, 'min_dur': 105},
+        {'name': 'Anthony', 'location': 'Pacific Heights', 'start_avail': 315, 'end_avail': 420, 'min_dur': 30}
+    ]
+
+    n = len(friends)
+    s = Optimize()
+
+    # Decision variables
+    meet = [Bool(f"meet_{i}") for i in range(n)]
+    start = [Real(f"start_{i}") for i in range(n)]
+    end = [Real(f"end_{i}") for i in range(n)]
+
+    # Base constraints for each friend
+    for i in range(n):
+        # If we meet, constraints apply
+        s.add(Implies(meet[i], start[i] >= friends[i]['start_avail']))
+        s.add(Implies(meet[i], end[i] <= friends[i]['end_avail']))
+        s.add(Implies(meet[i], end[i] - start[i] >= friends[i]['min_dur']))
+        # If not meeting, set times to 0
+        s.add(Implies(Not(meet[i]), start[i] == 0))
+        s.add(Implies(Not(meet[i]), end[i] == 0))
+
+    # Constraints for travel from Bayview to first meeting
+    for i in range(n):
+        travel_time = travel_times['Bayview'][friends[i]['location']]
+        s.add(Implies(meet[i], start[i] >= travel_time))
+
+    # Disjunctive constraints for overlapping meetings with travel
+    for i in range(n):
+        for j in range(i+1, n):
+            loc_i = friends[i]['location']
+            loc_j = friends[j]['location']
+            travel_ij = travel_times[loc_i][loc_j]
+            travel_ji = travel_times[loc_j][loc_i]
+            # Either i comes before j or j comes before i
+            s.add(Implies(And(meet[i], meet[j]),
+                          Or(end[i] + travel_ij <= start[j],
+                             end[j] + travel_ji <= start[i])))
+
+    # Maximize number of meetings
+    s.maximize(Sum([If(meet[i], 1, 0) for i in range(n)]))
+
+    if s.check() == sat:
+        m = s.model()
+        itinerary = []
+        for i in range(n):
+            if is_true(m.eval(meet[i])):
+                start_val = m.eval(start[i])
+                end_val = m.eval(end[i])
+                # Convert to integers
+                start_min = int(start_val.as_string())
+                end_min = int(end_val.as_string())
+                # Convert to time string
+                start_hour = 9 + start_min // 60
+                start_min %= 60
+                end_hour = 9 + end_min // 60
+                end_min %= 60
+                start_str = f"{start_hour}:{start_min:02d}"
+                end_str = f"{end_hour}:{end_min:02d}"
+                itinerary.append({
+                    "action": "meet",
+                    "location": friends[i]['location'],
+                    "person": friends[i]['name'],
+                    "start_time": start_str,
+                    "end_time": end_str
+                })
+        # Sort itinerary by start time
+        itinerary.sort(key=lambda x: x['start_time'])
+        result = {"itinerary": itinerary}
+        print(json.dumps(result, indent=2))
+    else:
+        print('{"itinerary": []}')
+
+if __name__ == "__main__":
+    main()

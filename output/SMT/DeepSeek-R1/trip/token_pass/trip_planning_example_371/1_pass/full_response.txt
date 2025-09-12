@@ -1,0 +1,107 @@
+```python
+import json
+from z3 import *
+
+def main():
+    # Cities and days
+    cities = ['Vienna', 'Stockholm', 'Nice', 'Split']
+    n_days = 9
+    day_indices = range(n_days)  # 0-indexed for days 1-9
+
+    # Direct flights (undirected)
+    direct_flights = [
+        ('Vienna', 'Stockholm'),
+        ('Vienna', 'Nice'),
+        ('Vienna', 'Split'),
+        ('Stockholm', 'Split'),
+        ('Nice', 'Stockholm')
+    ]
+    direct_flights_set = set()
+    for (a, b) in direct_flights:
+        direct_flights_set.add((a, b))
+        direct_flights_set.add((b, a))
+
+    # Create solver and presence matrix
+    solver = Solver()
+    presence = [[Bool(f"day_{d}_{c}") for c in cities] for d in day_indices]
+
+    # Constraint: Each day must have at least one city and at most two cities
+    for d in day_indices:
+        solver.add(AtLeast(*presence[d], 1))
+        solver.add(AtMost(*presence[d], 2))
+
+    # Constraint: If two cities are present on the same day, they must have a direct flight
+    for d in day_indices:
+        for i, c1 in enumerate(cities):
+            for j, c2 in enumerate(cities[i+1:], start=i+1):
+                both_present = And(presence[d][i], presence[d][j])
+                solver.add(Implies(both_present, (c1, c2) in direct_flights_set))
+
+    # Total days per city constraints
+    total_days = {
+        'Nice': 2,
+        'Stockholm': 5,
+        'Split': 3,
+        'Vienna': 2
+    }
+    for idx, city in enumerate(cities):
+        solver.add(Sum([If(presence[d][idx], 1, 0) for d in day_indices]) == total_days[city])
+
+    # Specific day constraints
+    # Day 7 and Day 9 must be in Split (indices 6 and 8)
+    split_idx = cities.index('Split')
+    solver.add(presence[6][split_idx])  # Day 7
+    solver.add(presence[8][split_idx])  # Day 9
+
+    # Workshop in Vienna between day 1 and day 2 (indices 0 and 1)
+    vienna_idx = cities.index('Vienna')
+    solver.add(presence[0][vienna_idx])  # Day 1
+    solver.add(presence[1][vienna_idx])  # Day 2
+
+    # Check and get model
+    if solver.check() == sat:
+        model = solver.model()
+        itinerary_segments = []
+
+        # For each city, collect days where present
+        city_days = {city: [] for city in cities}
+        for d in day_indices:
+            for idx, city in enumerate(cities):
+                if is_true(model.eval(presence[d][idx])):
+                    city_days[city].append(d+1)  # Convert to 1-indexed
+
+        # Group consecutive days for each city
+        for city, days_list in city_days.items():
+            days_list.sort()
+            if not days_list:
+                continue
+            start = days_list[0]
+            end = days_list[0]
+            for day in days_list[1:]:
+                if day == end + 1:
+                    end = day
+                else:
+                    itinerary_segments.append((start, end, city))
+                    start = day
+                    end = day
+            itinerary_segments.append((start, end, city))
+
+        # Sort segments by start day
+        itinerary_segments.sort(key=lambda x: x[0])
+
+        # Format output
+        itinerary_json = []
+        for start, end, city in itinerary_segments:
+            if start == end:
+                day_range = f"Day {start}"
+            else:
+                day_range = f"Day {start}-{end}"
+            itinerary_json.append({"day_range": day_range, "place": city})
+
+        print(json.dumps({"itinerary": itinerary_json}))
+    else:
+        print('{"itinerary": []}')
+
+if __name__ == "__main__":
+    main()
+```

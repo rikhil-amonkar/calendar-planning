@@ -1,0 +1,85 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"solution\": {\n    \"header\": [\n      \"House\",\n      \"Name\",\n      \"MusicGenre\"\n    ],\n    \"rows\": [\n      [\n        \"1\",\n        \"Peter\",\n        \"pop\"\n      ],\n      [\n        \"2\",\n        \"Eric\",\n        \"rock\"\n      ],\n      [\n        \"3\",\n        \"Bob\",\n        \"hip hop\"\n      ],\n      [\n        \"4\",\n        \"Arnold\",\n        \"jazz\"\n      ],\n      [\n        \"5\",\n        \"Alice\",\n        \"classical\"\n      ],\n      [\n        \"6\",\n        \"Carol\",\n        \"country\"\n      ]\n    ]\n  }\n}",
+    "pred": [
+        {
+            "House": "1",
+            "Name": "Peter",
+            "MusicGenre": "pop"
+        },
+        {
+            "House": "2",
+            "Name": "Eric",
+            "MusicGenre": "rock"
+        },
+        {
+            "House": "3",
+            "Name": "Bob",
+            "MusicGenre": "hip hop"
+        },
+        {
+            "House": "4",
+            "Name": "Arnold",
+            "MusicGenre": "jazz"
+        },
+        {
+            "House": "5",
+            "Name": "Alice",
+            "MusicGenre": "classical"
+        },
+        {
+            "House": "6",
+            "Name": "Carol",
+            "MusicGenre": "country"
+        }
+    ],
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Peter",
+            "MusicGenre": "pop"
+        },
+        {
+            "House": "2",
+            "Name": "Eric",
+            "MusicGenre": "rock"
+        },
+        {
+            "House": "3",
+            "Name": "Bob",
+            "MusicGenre": "hip hop"
+        },
+        {
+            "House": "4",
+            "Name": "Arnold",
+            "MusicGenre": "jazz"
+        },
+        {
+            "House": "5",
+            "Name": "Alice",
+            "MusicGenre": "classical"
+        },
+        {
+            "House": "6",
+            "Name": "Carol",
+            "MusicGenre": "country"
+        }
+    ],
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 46.496384382247925,
+        "execution_time": 0.08050251007080078,
+        "constraint_eval_time": 6.747245788574219e-05,
+        "pred_extract_time": 2.146862030029297,
+        "gold_extract_time": 1.1682510375976562e-05,
+        "total_tokens": 831,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import z3\nimport json\n\ndef main():\n    solver = z3.Solver()\n    \n    houses = [1, 2, 3, 4, 5, 6]\n    \n    names = ['Arnold', 'Eric', 'Peter', 'Alice', 'Carol', 'Bob']\n    genres = ['jazz', 'pop', 'classical', 'rock', 'hip hop', 'country']\n    \n    name_vars = {name: z3.Int(f'name_{name}') for name in names}\n    genre_vars = {genre: z3.Int(f'genre_{genre}') for genre in genres}\n    \n    for name in names:\n        solver.add(z3.And(name_vars[name] >= 1, name_vars[name] <= 6))\n    for genre in genres:\n        solver.add(z3.And(genre_vars[genre] >= 1, genre_vars[genre] <= 6))\n    \n    solver.add(z3.Distinct([name_vars[name] for name in names]))\n    solver.add(z3.Distinct([genre_vars[genre] for genre in genres]))\n    \n    # Clue 1: Bob is directly left of the person who loves jazz music.\n    solver.add(name_vars['Bob'] == genre_vars['jazz'] - 1)\n    \n    # Clue 2: Eric is somewhere to the left of the person who loves hip-hop music.\n    solver.add(name_vars['Eric'] < genre_vars['hip hop'])\n    \n    # Clue 3: Carol is in the sixth house.\n    solver.add(name_vars['Carol'] == 6)\n    \n    # Clue 4: Eric and the person who loves hip-hop music are next to each other.\n    solver.add(z3.Or(\n        name_vars['Eric'] == genre_vars['hip hop'] - 1,\n        name_vars['Eric'] == genre_vars['hip hop'] + 1\n    ))\n    \n    # Clue 5: The person who loves country music is Carol.\n    solver.add(genre_vars['country'] == name_vars['Carol'])\n    \n    # Clue 6: Arnold is not in the fifth house.\n    solver.add(name_vars['Arnold'] != 5)\n    \n    # Clue 7: Arnold is somewhere to the right of the person who loves pop music.\n    solver.add(name_vars['Arnold'] > genre_vars['pop'])\n    \n    # Clue 8: The person who loves pop music is Peter.\n    solver.add(genre_vars['pop'] == name_vars['Peter'])\n    \n    # Clue 9: The person who loves hip-hop music is in the third house.\n    solver.add(genre_vars['hip hop'] == 3)\n    \n    # Clue 10: There is one house between Peter and Bob.\n    solver.add(z3.Or(\n        name_vars['Peter'] == name_vars['Bob'] + 2,\n        name_vars['Peter'] == name_vars['Bob'] - 2\n    ))\n    \n    # Clue 11: The person who loves rock music is not in the fifth house.\n    solver.add(genre_vars['rock'] != 5)\n    \n    if solver.check() == z3.sat:\n        model = solver.model()\n        \n        result = []\n        for house in houses:\n            row = [str(house)]\n            \n            for name in names:\n                if model.evaluate(name_vars[name]).as_long() == house:\n                    row.append(name)\n                    break\n            \n            for genre in genres:\n                if model.evaluate(genre_vars[genre]).as_long() == house:\n                    row.append(genre)\n                    break\n            \n            result.append(row)\n        \n        output = {\n            \"solution\": {\n                \"header\": [\"House\", \"Name\", \"MusicGenre\"],\n                \"rows\": result\n            }\n        }\n        \n        print(json.dumps(output, indent=2))\n    else:\n        print('{\"error\": \"No solution found\"}')\n\nif __name__ == \"__main__\":\n    main()"
+}

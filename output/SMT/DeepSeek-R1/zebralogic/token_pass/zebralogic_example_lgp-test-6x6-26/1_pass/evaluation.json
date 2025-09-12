@@ -1,0 +1,133 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"solution\": {\n    \"header\": [\n      \"House\",\n      \"Name\",\n      \"PhoneModel\",\n      \"Cigar\",\n      \"Flower\",\n      \"Color\",\n      \"FavoriteSport\"\n    ],\n    \"rows\": [\n      [\n        \"1\",\n        \"Alice\",\n        \"samsung galaxy s21\",\n        \"yellow monster\",\n        \"iris\",\n        \"red\",\n        \"baseball\"\n      ],\n      [\n        \"2\",\n        \"Carol\",\n        \"oneplus 9\",\n        \"blue master\",\n        \"carnations\",\n        \"green\",\n        \"soccer\"\n      ],\n      [\n        \"3\",\n        \"Eric\",\n        \"xiaomi mi 11\",\n        \"blends\",\n        \"roses\",\n        \"yellow\",\n        \"tennis\"\n      ],\n      [\n        \"4\",\n        \"Peter\",\n        \"iphone 13\",\n        \"dunhill\",\n        \"lilies\",\n        \"blue\",\n        \"volleyball\"\n      ],\n      [\n        \"5\",\n        \"Arnold\",\n        \"huawei p50\",\n        \"prince\",\n        \"daffodils\",\n        \"purple\",\n        \"basketball\"\n      ],\n      [\n        \"6\",\n        \"Bob\",\n        \"google pixel 6\",\n        \"pall mall\",\n        \"tulips\",\n        \"white\",\n        \"swimming\"\n      ]\n    ]\n  }\n}",
+    "pred": [
+        {
+            "House": "1",
+            "Name": "Alice",
+            "PhoneModel": "samsung galaxy s21",
+            "Cigar": "yellow monster",
+            "Flower": "iris",
+            "Color": "red",
+            "FavoriteSport": "baseball"
+        },
+        {
+            "House": "2",
+            "Name": "Carol",
+            "PhoneModel": "oneplus 9",
+            "Cigar": "blue master",
+            "Flower": "carnations",
+            "Color": "green",
+            "FavoriteSport": "soccer"
+        },
+        {
+            "House": "3",
+            "Name": "Eric",
+            "PhoneModel": "xiaomi mi 11",
+            "Cigar": "blends",
+            "Flower": "roses",
+            "Color": "yellow",
+            "FavoriteSport": "tennis"
+        },
+        {
+            "House": "4",
+            "Name": "Peter",
+            "PhoneModel": "iphone 13",
+            "Cigar": "dunhill",
+            "Flower": "lilies",
+            "Color": "blue",
+            "FavoriteSport": "volleyball"
+        },
+        {
+            "House": "5",
+            "Name": "Arnold",
+            "PhoneModel": "huawei p50",
+            "Cigar": "prince",
+            "Flower": "daffodils",
+            "Color": "purple",
+            "FavoriteSport": "basketball"
+        },
+        {
+            "House": "6",
+            "Name": "Bob",
+            "PhoneModel": "google pixel 6",
+            "Cigar": "pall mall",
+            "Flower": "tulips",
+            "Color": "white",
+            "FavoriteSport": "swimming"
+        }
+    ],
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Alice",
+            "PhoneModel": "samsung galaxy s21",
+            "Cigar": "yellow monster",
+            "Flower": "iris",
+            "Color": "red",
+            "FavoriteSport": "baseball"
+        },
+        {
+            "House": "2",
+            "Name": "Carol",
+            "PhoneModel": "oneplus 9",
+            "Cigar": "blue master",
+            "Flower": "carnations",
+            "Color": "green",
+            "FavoriteSport": "soccer"
+        },
+        {
+            "House": "3",
+            "Name": "Eric",
+            "PhoneModel": "xiaomi mi 11",
+            "Cigar": "blends",
+            "Flower": "roses",
+            "Color": "yellow",
+            "FavoriteSport": "tennis"
+        },
+        {
+            "House": "4",
+            "Name": "Peter",
+            "PhoneModel": "iphone 13",
+            "Cigar": "dunhill",
+            "Flower": "lilies",
+            "Color": "blue",
+            "FavoriteSport": "volleyball"
+        },
+        {
+            "House": "5",
+            "Name": "Arnold",
+            "PhoneModel": "huawei p50",
+            "Cigar": "prince",
+            "Flower": "daffodils",
+            "Color": "purple",
+            "FavoriteSport": "basketball"
+        },
+        {
+            "House": "6",
+            "Name": "Bob",
+            "PhoneModel": "google pixel 6",
+            "Cigar": "pall mall",
+            "Flower": "tulips",
+            "Color": "white",
+            "FavoriteSport": "swimming"
+        }
+    ],
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 218.22516584396362,
+        "execution_time": 0.08438730239868164,
+        "constraint_eval_time": 9.226799011230469e-05,
+        "pred_extract_time": 2.0043747425079346,
+        "gold_extract_time": 1.3828277587890625e-05,
+        "total_tokens": 6333,
+        "reasoning_tokens": 3756
+    },
+    "reasoning_content": "We are going to use the Z3 SMT solver to solve this puzzle.\n We have 6 houses, each with 6 attributes: name, phone model, cigar, flower, color, favorite sport.\n We will define 6 lists of Z3 constants, each list for one attribute, and each constant can take an integer value from 1 to 6 (the house number).\n\n However, note: the problem is to assign each attribute to a house, so we can model by having for each house, the value of each attribute.\n\n Alternatively, we can model by having for each attribute type, a function from house number to the value of that attribute.\n\n But note: the clues relate attributes to each other and to house positions.\n\n We will model by having:\n   For each attribute, we have an integer variable for the house number that has that attribute.\n\n However, there are 6 names, 6 phone models, etc. So we have 6*6 = 36 variables, each representing the house number for a particular attribute value.\n\n But note: each attribute set must be a permutation of houses 1-6.\n\n Alternatively, we can model by having for each house, and for each attribute, a variable that represents which value (from a fixed set of possibilities) that house has.\n\n Since the attributes are categorical, we can assign an integer for each possible value and then use Z3 to assign these integers to houses.\n\n We'll create:\n   Let houses be 1..6.\n\n   We'll create 6 arrays (for the 6 attributes) of Z3 Ints, each of size 6 (for the 6 houses). But note: the problem says each house has one value for each attribute.\n\n Alternatively, we can create for each attribute type, an array of 6 Z3 Ints, where the index is the house number (from 1 to 6) and the value is an integer representing the specific value of that attribute.\n\n However, the clues often refer to the house numbers and relative positions.\n\n Another common approach is to have for each attribute value, a variable that is the house number where that attribute value occurs.\n\n Let's define:\n\n   Let the names be: Peter, Carol, Eric, Alice, Bob, Arnold -> we assign each a number, but we don't care about the number, we care about the house.\n\n   We can define:\n      name_house = [Int('name_Peter'), Int('name_Carol'), ...]\n\n   Similarly for the others.\n\n   But note: we have to ensure that each of these variables are between 1 and 6 and distinct.\n\n   Also, we have to model the clues.\n\n   However, some clues are about the relative positions (left, right, next to, etc.) so it's easier to work with house numbers.\n\n   Example clue: \"The person who uses a OnePlus 9 is in the second house.\" -> phone_OnePlus9 = 2\n\n   Another: \"The person who uses a Xiaomi Mi 11 is somewhere to the left of the person who uses a Huawei P50.\" -> phone_XiaomiMi11 < phone_HuaweiP50\n\n   So we can model by having for each attribute value, a variable for the house number.\n\n   Steps:\n\n   Let's define:\n\n      names = ['Peter', 'Carol', 'Eric', 'Alice', 'Bob', 'Arnold']\n      phones = ['huawei p50', 'google pixel 6', 'xiaomi mi 11', 'iphone 13', 'samsung galaxy s21', 'oneplus 9']\n      cigars = ['dunhill', 'pall mall', 'blends', 'blue master', 'prince', 'yellow monster']\n      flowers = ['daffodils', 'carnations', 'roses', 'tulips', 'lilies', 'iris']\n      colors = ['yellow', 'red', 'green', 'blue', 'white', 'purple']\n      sports = ['soccer', 'tennis', 'basketball', 'volleyball', 'swimming', 'baseball']\n\n   Then for each name, we create an Int variable for the house number, and similarly for the others.\n\n   We then add constraints that for each category (names, phones, etc.), the house numbers are distinct and between 1 and 6.\n\n   Then we encode each clue.\n\n   Finally, we solve and then for each house, we want to output the attributes.\n\n   How to output per house? We will have to for each house, find which attribute values are assigned to that house.\n\n   Alternatively, we can create inverse functions: for each house i and each category, we can create a variable that tells the value, but that would be more complicated.\n\n   Since we are going to output by house, we can instead model by having for each house, and for each category, a variable that is the value of that category for that house.\n\n   But note: the clues are expressed in terms of the house numbers of the attribute values, so it might be easier to have variables for the house of each attribute value.\n\n   However, we can do both: we can define for each category, a function from house number to the value (as an integer index) and then also have variables for the house of each attribute value.\n\n   Alternatively, we can avoid having too many variables by only having the house for each attribute value, and then when we need to relate two attributes, we use the house numbers.\n\n   Let me choose the method of having for each attribute value, a variable for its house.\n\n   We'll have:\n\n      house_of_name = { name: Int(f'house_{name}') for name in names }\n      similarly for phones, cigars, etc.\n\n   Then we have constraints that for each category, the values of the variables are distinct and in [1,6].\n\n   Then we encode the clues.\n\n   Example clue 1: house_of_phone['oneplus 9'] == 2\n\n   Clue 2: house_of_phone['xiaomi mi 11'] < house_of_phone['huawei p50']\n\n   Clue 3: house_of_name['Carol'] == house_of_flower['carnations']\n\n   Clue 4: house_of_color['purple'] + 1 == house_of_cigar['pall mall']\n\n   Clue 5: house_of_color['green'] == house_of_cigar['blue master']\n\n   Clue 6: Abs(house_of_color['yellow'] - house_of_color['blue']) == 1\n\n   Clue 7: house_of_name['Eric'] > house_of_phone['samsung galaxy s21']\n\n   Clue 8: Abs(house_of_name['Carol'] - house_of_flower['daffodils']) == 2\n\n   Clue 9: house_of_cigar['prince'] == house_of_sport['basketball']\n\n   Clue 10: house_of_cigar['dunhill'] == house_of_sport['volleyball']\n\n   Clue 11: house_of_sport['swimming'] == house_of_phone['google pixel 6']\n\n   Clue 12: house_of_phone['huawei p50'] + 1 == house_of_color['white']\n\n   Clue 13: Abs(house_of_phone['oneplus 9'] - house_of_flower['roses']) == 1\n\n   Clue 14: house_of_flower['iris'] < house_of_name['Eric']\n\n   Clue 15: house_of_cigar['dunhill'] == house_of_name['Peter']\n\n   Clue 16: house_of_color['blue'] == house_of_name['Peter']\n\n   Clue 17: house_of_flower['tulips'] == house_of_name['Bob']\n\n   Clue 18: house_of_name['Alice'] == 1\n\n   Clue 19: house_of_sport['baseball'] + 1 == house_of_cigar['blue master']\n\n   Clue 20: house_of_phone['google pixel 6'] > house_of_cigar['blends']\n\n   Clue 21: house_of_sport['soccer'] == house_of_name['Carol']\n\n   Clue 22: house_of_flower['carnations'] + 1 == house_of_cigar['blends']\n\n   Clue 23: house_of_cigar['blends'] == house_of_name['Eric']\n\n   Clue 24: house_of_sport['volleyball'] == house_of_phone['iphone 13']\n\n   Now, note: we have defined house_of_name, house_of_phone, etc. for each attribute value.\n\n   But wait, in clue 23, we have house_of_cigar['blends'] and house_of_name['Eric'] must be equal.\n\n   We have to be cautious: some attribute values might have the same house, but that's allowed if they are of different categories.\n\n   However, note that each house has one value for each category, so if two attributes from different categories are in the same house, that's the same person.\n\n   Now, we have to also ensure that for each category, the houses are distinct and in 1..6.\n\n   Let's code accordingly.\n\n   Steps in code:\n\n   Initialize the solver.\n\n   Define the lists of attributes.\n\n   Define the variables for the house of each attribute value in each category.\n\n   Add constraints that for each category, the house numbers are distinct and in [1,6].\n\n   Add each clue as a constraint.\n\n   Check satisfaction and get the model.\n\n   Then, we want to output for each house (1 to 6) the name, phone, cigar, flower, color, sport.\n\n   How do we get that? We have the house for each attribute value, but we need the inverse: for a given house, what are the attribute values.\n\n   We can create a list for each house and for each category, and then for each attribute value, we set the house of that attribute value to the house number, then for house i, we can find which attribute value in a category has house i.\n\n   Alternatively, we can create a mapping from house number to the attribute value for each category by iterating over the model.\n\n   We'll do:\n\n      For house i in [1,6]:\n          For the name: find which name n has house_of_name[n] == i in the model.\n          Similarly for the others.\n\n   We can create a list of dictionaries for each house, but we have to be careful because we have to output in the order of the houses.\n\n   Let's code accordingly.\n\n   Note: We must be cautious because the model returns Z3 expressions, so we have to use model.evaluate(var) to get the value.\n\n   We'll create a list of the variables we defined, and then after solving, we can get the value of each variable.\n\n   Alternatively, we can create a list of all the variables and then for each house, for each category, we check which variable in that category has value i.\n\n   Since the number of variables is small, we can do:\n\n      result = []\n      for i in range(1,7):\n          row = [str(i)]\n          for category in [names, phones, cigars, flowers, colors, sports]:\n              for value in category:\n                  var = house_of[category][value]  # We need to store the variables in a dictionary of dictionaries\n                  if model.evaluate(var).as_long() == i:\n                      row.append(value)\n          result.append(row)\n\n   But note: we have to be careful because the categories are fixed and we have to output in the order: Name, PhoneModel, Cigar, Flower, Color, FavoriteSport.\n\n   So we can define the categories in the order we want to output, but note the header order.\n\n   Alternatively, we can create a list of the categories in the output order, and then for each category, we have a dictionary of variables.\n\n   Let me define:\n\n      attributes = {\n          'Name': names,\n          'PhoneModel': phones,\n          'Cigar': cigars,\n          'Flower': flowers,\n          'Color': colors,\n          'FavoriteSport': sports\n      }\n\n   Then we can create a dictionary of variables for each attribute type.\n\n   Steps:\n\n      variables = {}\n      for attr, values in attributes.items():\n          variables[attr] = {}\n          for v in values:\n              variables[attr][v] = Int(f'house_{attr}_{v}')\n\n   Then we add constraints for each attribute type: distinct list of variables[attr].values() and each in [1,6].\n\n   Then we add the clues.\n\n   Now, let's code the clues using these variables.\n\n   Example:\n\n      Clue 1: variables['PhoneModel']['oneplus 9'] == 2\n\n   Clue 2: variables['PhoneModel']['xiaomi mi 11'] < variables['PhoneModel']['huawei p50']\n\n   Clue 3: variables['Name']['Carol'] == variables['Flower']['carnations']\n\n   Clue 4: variables['Color']['purple'] + 1 == variables['Cigar']['pall mall']\n\n   Clue 5: variables['Color']['green'] == variables['Cigar']['blue master']\n\n   Clue 6: Abs(variables['Color']['yellow'] - variables['Color']['blue']) == 1\n\n   Clue 7: variables['Name']['Eric'] > variables['PhoneModel']['samsung galaxy s21']\n\n   Clue 8: Abs(variables['Name']['Carol'] - variables['Flower']['daffodils']) == 2\n\n   Clue 9: variables['Cigar']['prince'] == variables['FavoriteSport']['basketball']\n\n   Clue 10: variables['Cigar']['dunhill'] == variables['FavoriteSport']['volleyball']\n\n   Clue 11: variables['FavoriteSport']['swimming'] == variables['PhoneModel']['google pixel 6']\n\n   Clue 12: variables['PhoneModel']['huawei p50'] + 1 == variables['Color']['white']\n\n   Clue 13: Abs(variables['PhoneModel']['oneplus 9'] - variables['Flower']['roses']) == 1\n\n   Clue 14: variables['Flower']['iris'] < variables['Name']['Eric']\n\n   Clue 15: variables['Cigar']['dunhill'] == variables['Name']['Peter']\n\n   Clue 16: variables['Color']['blue'] == variables['Name']['Peter']\n\n   Clue 17: variables['Flower']['tulips'] == variables['Name']['Bob']\n\n   Clue 18: variables['Name']['Alice'] == 1\n\n   Clue 19: variables['FavoriteSport']['baseball'] + 1 == variables['Cigar']['blue master']\n\n   Clue 20: variables['PhoneModel']['google pixel 6'] > variables['Cigar']['blends']\n\n   Clue 21: variables['FavoriteSport']['soccer'] == variables['Name']['Carol']\n\n   Clue 22: variables['Flower']['carnations'] + 1 == variables['Cigar']['blends']\n\n   Clue 23: variables['Cigar']['blends'] == variables['Name']['Eric']\n\n   Clue 24: variables['FavoriteSport']['volleyball'] == variables['PhoneModel']['iphone 13']\n\n   Now, note: some of these clues are redundant? But we'll add them all.\n\n   Let's code accordingly.\n\n   We'll use z3.\n\n   We have to be cautious with absolute value. We can define a helper function for absolute difference.\n\n   Define:\n\n      def abs_diff(a, b):\n          return If(a > b, a - b, b - a)\n\n   But note: we are comparing integers, so we can also use:\n\n      Or(And(a - b == 2), And(b - a == 2))\n\n   But for clarity, we'll define a function for absolute value.\n\n   Alternatively, for clue 6 and 8 and 13, we can use:\n\n      Or( (a - b == 1), (b - a == 1) )   for adjacent (next to each other) -> but note: clue 6 says next to each other, so absolute difference 1.\n\n      Similarly, clue 8: two houses between -> absolute difference 3? Wait, no: if there are two houses between, then the difference in house numbers is 3.\n\n      Example: house 1 and house 4 have two houses between (2 and 3). So |a-b| = 3.\n\n   So clue 8: |house_Carol - house_daffodils| = 3.\n\n   Similarly, clue 13: next to each other -> |house_oneplus9 - house_roses| = 1.\n\n   Let me correct:\n\n      Clue 6: |yellow_color - blue_color| = 1\n      Clue 8: |Carol_name - daffodils_flower| = 3   [because two houses between means difference of 3]\n      Clue 13: |oneplus9_phone - roses_flower| = 1\n\n   But wait, the clue says: \"There are two houses between Carol and the person who loves a bouquet of daffodils.\"\n\n      So if Carol is in house i, daffodils in house j, then |i - j| = 3.\n\n   Similarly, clue 13: next to each other -> |i - j| = 1.\n\n   So we'll define a function for absolute value.\n\n   Alternatively, we can use:\n\n      For clue 8: Or( Carol_house + 3 == daffodils_house, Carol_house - 3 == daffodils_house )\n\n   But note: the houses are 1 to 6, so we have to make sure that the arithmetic doesn't go out of bounds, but Z3 will handle that.\n\n   Let's code accordingly.\n\n   Implementation:\n\n   We'll create a solver, add the constraints, and then check.\n\n   We'll use a list of all variables to ensure we distinct per category.\n\n   Let's code.",
+    "generated_code": "from z3 import *\nimport json\n\ndef main():\n    solver = Solver()\n    \n    # Define the attributes and their possible values\n    names = ['Peter', 'Carol', 'Eric', 'Alice', 'Bob', 'Arnold']\n    phones = ['huawei p50', 'google pixel 6', 'xiaomi mi 11', 'iphone 13', 'samsung galaxy s21', 'oneplus 9']\n    cigars = ['dunhill', 'pall mall', 'blends', 'blue master', 'prince', 'yellow monster']\n    flowers = ['daffodils', 'carnations', 'roses', 'tulips', 'lilies', 'iris']\n    colors = ['yellow', 'red', 'green', 'blue', 'white', 'purple']\n    sports = ['soccer', 'tennis', 'basketball', 'volleyball', 'swimming', 'baseball']\n    \n    # Create integer variables for each attribute's house assignment\n    name_vars = {name: Int(f'{name}_house') for name in names}\n    phone_vars = {phone: Int(f'{phone}_house') for phone in phones}\n    cigar_vars = {cigar: Int(f'{cigar}_house') for cigar in cigars}\n    flower_vars = {flower: Int(f'{flower}_house') for flower in flowers}\n    color_vars = {color: Int(f'{color}_house') for color in colors}\n    sport_vars = {sport: Int(f'{sport}_house') for sport in sports}\n    \n    all_vars = list(name_vars.values()) + list(phone_vars.values()) + list(cigar_vars.values()) + \\\n               list(flower_vars.values()) + list(color_vars.values()) + list(sport_vars.values())\n    \n    # Each attribute must be in a house between 1 and 6\n    for var in all_vars:\n        solver.add(var >= 1, var <= 6)\n    \n    # All values within each category must be distinct\n    solver.add(Distinct(list(name_vars.values())))\n    solver.add(Distinct(list(phone_vars.values())))\n    solver.add(Distinct(list(cigar_vars.values())))\n    solver.add(Distinct(list(flower_vars.values())))\n    solver.add(Distinct(list(color_vars.values())))\n    solver.add(Distinct(list(sport_vars.values())))\n    \n    # Add constraints from clues\n    solver.add(phone_vars['oneplus 9'] == 2)  # Clue 1\n    solver.add(phone_vars['xiaomi mi 11'] < phone_vars['huawei p50'])  # Clue 2\n    solver.add(name_vars['Carol'] == flower_vars['carnations'])  # Clue 3\n    solver.add(color_vars['purple'] == cigar_vars['pall mall'] - 1)  # Clue 4\n    solver.add(color_vars['green'] == cigar_vars['blue master'])  # Clue 5\n    solver.add(Or(  # Clue 6\n        color_vars['yellow'] == color_vars['blue'] - 1,\n        color_vars['yellow'] == color_vars['blue'] + 1\n    ))\n    solver.add(name_vars['Eric'] > phone_vars['samsung galaxy s21'])  # Clue 7\n    solver.add(Or(  # Clue 8\n        name_vars['Carol'] == flower_vars['daffodils'] - 3,\n        name_vars['Carol'] == flower_vars['daffodils'] + 3\n    ))\n    solver.add(cigar_vars['prince'] == sport_vars['basketball'])  # Clue 9\n    solver.add(cigar_vars['dunhill'] == sport_vars['volleyball'])  # Clue 10\n    solver.add(sport_vars['swimming'] == phone_vars['google pixel 6'])  # Clue 11\n    solver.add(phone_vars['huawei p50'] == color_vars['white'] - 1)  # Clue 12\n    solver.add(Or(  # Clue 13\n        phone_vars['oneplus 9'] == flower_vars['roses'] - 1,\n        phone_vars['oneplus 9'] == flower_vars['roses'] + 1\n    ))\n    solver.add(flower_vars['iris'] < name_vars['Eric'])  # Clue 14\n    solver.add(cigar_vars['dunhill'] == name_vars['Peter'])  # Clue 15\n    solver.add(color_vars['blue'] == name_vars['Peter'])  # Clue 16\n    solver.add(flower_vars['tulips'] == name_vars['Bob'])  # Clue 17\n    solver.add(name_vars['Alice'] == 1)  # Clue 18\n    solver.add(sport_vars['baseball'] == cigar_vars['blue master'] - 1)  # Clue 19\n    solver.add(phone_vars['google pixel 6'] > cigar_vars['blends'])  # Clue 20\n    solver.add(sport_vars['soccer'] == name_vars['Carol'])  # Clue 21\n    solver.add(flower_vars['carnations'] == cigar_vars['blends'] - 1)  # Clue 22\n    solver.add(cigar_vars['blends'] == name_vars['Eric'])  # Clue 23\n    solver.add(sport_vars['volleyball'] == phone_vars['iphone 13'])  # Clue 24\n    \n    # Check satisfiability\n    if solver.check() == sat:\n        model = solver.model()\n        \n        # Create reverse mappings from house number to attribute value\n        house_to_name = {}\n        house_to_phone = {}\n        house_to_cigar = {}\n        house_to_flower = {}\n        house_to_color = {}\n        house_to_sport = {}\n        \n        for name, var in name_vars.items():\n            house = model.eval(var).as_long()\n            house_to_name[house] = name\n        \n        for phone, var in phone_vars.items():\n            house = model.eval(var).as_long()\n            house_to_phone[house] = phone\n        \n        for cigar, var in cigar_vars.items():\n            house = model.eval(var).as_long()\n            house_to_cigar[house] = cigar\n        \n        for flower, var in flower_vars.items():\n            house = model.eval(var).as_long()\n            house_to_flower[house] = flower\n        \n        for color, var in color_vars.items():\n            house = model.eval(var).as_long()\n            house_to_color[house] = color\n        \n        for sport, var in sport_vars.items():\n            house = model.eval(var).as_long()\n            house_to_sport[house] = sport\n        \n        # Build the solution rows\n        rows = []\n        for house in range(1, 7):\n            rows.append([\n                str(house),\n                house_to_name[house],\n                house_to_phone[house],\n                house_to_cigar[house],\n                house_to_flower[house],\n                house_to_color[house],\n                house_to_sport[house]\n            ])\n        \n        # Create the solution dictionary\n        solution_dict = {\n            \"solution\": {\n                \"header\": [\"House\", \"Name\", \"PhoneModel\", \"Cigar\", \"Flower\", \"Color\", \"FavoriteSport\"],\n                \"rows\": rows\n            }\n        }\n        \n        print(json.dumps(solution_dict, indent=2))\n    else:\n        print(\"No solution found\")\n\nif __name__ == \"__main__\":\n    main()"
+}

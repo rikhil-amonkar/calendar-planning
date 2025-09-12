@@ -1,0 +1,208 @@
+We are going to use the Z3 SMT solver to solve this puzzle.
+ We have 5 houses, each with 5 attributes: name, drink, color, flower, hobby.
+ We will define integer variables for each attribute, each taking a value from 1 to 5 representing the house number.
+
+ However, note: the problem says the houses are numbered 1 to 5 from left to right.
+
+ Alternatively, we can model by assigning a value (an integer) for each attribute to the house number that has that attribute.
+
+ But note: the clues often relate attributes to each other and to positions.
+
+ Another common approach is to create a set of variables for each house and each category, but that would be 5*5=25 variables.
+
+ Let's define:
+ For each category, we have a function that maps house number to the value of that category.
+
+ However, Z3 doesn't have direct support for strings, so we will use integers and then map them.
+
+ We'll define enumerations for each category.
+
+ Steps:
+ 1. Define the categories and their possible values as integers (with mappings to strings for output).
+ 2. For each house (1 to 5), we define a variable for each category? Actually, we can define for each category a list of 5 variables (one per house) but that might be messy.
+
+ Alternatively, we can define for each attribute value (e.g., each name) in which house it appears.
+
+ Let me define:
+ Let Bob, Arnold, Peter, Alice, Eric be the names. We want to know in which house each is. So we can define an integer for each name, representing the house number.
+
+ Similarly for drinks: milk, root_beer, coffee, tea, water -> each an integer (house number)
+
+ And for colors: blue, green, white, yellow, red -> each an integer (house number)
+
+ Flowers: daffodils, roses, lilies, tulips, carnations -> each an integer (house number)
+
+ Hobbies: painting, cooking, photography, gardening, knitting -> each an integer (house number)
+
+ But note: some clues are about relative positions (left/right). So we also care about the house numbers.
+
+ We have 25 variables in total (5 categories * 5 values). However, we can also model by having for each house, the name, drink, etc. but that would be 5 houses * 5 categories = 25 variables, but then we have to ensure that in each house the attributes are unique per category.
+
+ Actually, the common approach in Z3 for these puzzles is to create a matrix (house x category) of integer variables, where the integer represents the value of that category for that house. But then we have to ensure that in each category, the values are distinct.
+
+ Alternatively, we can model by having for each category, a function from house to the value, but then we have to ensure that the values in each category are distinct.
+
+ Since the problem is small (5 houses), we can do:
+
+ Let name[1], name[2], ... name[5] be the name in house i. But we cannot use strings in Z3, so we assign numbers to each name and then use constraints that each name is distinct and in the range of the enumeration.
+
+ We'll create an IntSort for each category, but we have to define the possible values.
+
+ Alternatively, we can use EnumSort for each category.
+
+ Let's do:
+
+ We'll create an enumeration for each category with the possible values.
+
+ However, note: the clues often relate different categories (e.g., the root beer lover is the gardening person). So we need to equate the house number for root beer and gardening.
+
+ So we can define:
+
+ For each attribute value (like root beer) we define a variable that is the house number where it occurs.
+
+ Then we have 5 variables for names, 5 for drinks, etc.
+
+ We'll create:
+
+ Names: Bob, Arnold, Peter, Alice, Eric -> we define variables for each: Bob_house, Arnold_house, etc.
+
+ But then we have to ensure that all these are distinct and between 1 and 5.
+
+ Similarly for the others.
+
+ This gives 5*5 = 25 variables.
+
+ We can also define the inverse: for each house, what is the name, but we don't have direct variables for that. However, we can define constraints that, for example, the house of Alice is not 4 (clue 1) by: Alice_house != 4.
+
+ And clue 7: Eric is directly left of the tea drinker -> Eric_house = tea_house - 1
+
+ This is manageable.
+
+ Let's define:
+
+ from z3 import *
+
+ # Define the integer variables for each attribute value.
+
+ # Names
+ Bob = Int('Bob')
+ Arnold = Int('Arnold')
+ Peter = Int('Peter')
+ Alice = Int('Alice')
+ Eric = Int('Eric')
+
+ # Drinks
+ milk = Int('milk')
+ root_beer = Int('root_beer')
+ coffee = Int('coffee')
+ tea = Int('tea')
+ water = Int('water')
+
+ # Colors
+ blue = Int('blue')
+ green = Int('green')
+ white = Int('white')
+ yellow = Int('yellow')
+ red = Int('red')
+
+ # Flowers
+ daffodils = Int('daffodils')
+ roses = Int('roses')
+ lilies = Int('lilies')
+ tulips = Int('tulips')
+ carnations = Int('carnations')
+
+ # Hobbies
+ painting = Int('painting')
+ cooking = Int('cooking')
+ photography = Int('photography')
+ gardening = Int('gardening')
+ knitting = Int('knitting')
+
+ Then we create a solver and add constraints:
+
+ 1. All variables are between 1 and 5.
+ 2. The variables in each category are all distinct.
+
+ Then we add the clues.
+
+ But note: some clues relate attributes from different categories, e.g., clue 2: root_beer == gardening
+ clue 3: green == coffee
+ clue 4: green == lilies
+ clue 5: blue > daffodils   (since right means higher house number)
+ clue 6: cooking == blue
+ clue 7: Eric == tea - 1
+ clue 8: water == Peter
+ clue 9: photography == Arnold
+ clue 10: white == roses
+ clue 11: |carnations - red| == 2   (one house between means difference of 2 in house numbers, but note: could be carnations left or right of red)
+        So: (carnations == red - 2) OR (carnations == red + 2)
+ clue 12: cooking < painting
+ clue 13: water == 3
+ clue 14: carnations == root_beer
+ clue 15: white == 2
+
+ Also note: clue 8 and clue 13 together: Peter drinks water and is in house 3.
+
+ Let's code accordingly.
+
+ However, note: clue 13 says the one who only drinks water is in the third house, and clue 8 says that is Peter. So we have:
+   water = 3, and Peter = 3.
+
+ We can also add: Peter == 3, water == 3.
+
+ Now, let's write the code.
+
+ We'll create a solver, add the constraints, and then check the model.
+
+ After getting the model, we need to output the table.
+
+ But note: we have variables for each attribute value (which house it is in). To build the table, we need for each house, the values of each category.
+
+ We can create a list of dictionaries for each house, and then for each attribute value variable, we assign the value to the house.
+
+ Alternatively, we can create inverse mappings.
+
+ Since we have the house number for each attribute, we can create for each house i:
+
+   name: the name x such that the value of x is i
+   drink: the drink x such that value of x is i
+   etc.
+
+ We can do this by iterating over the model.
+
+ However, note: we have 25 variables. We can create a list of all variables and then for each house, for each category, find which variable in that category has value i.
+
+ Let's define the categories:
+
+ categories = {
+    "Name": [Bob, Arnold, Peter, Alice, Eric],
+    "Drink": [milk, root_beer, coffee, tea, water],
+    "Color": [blue, green, white, yellow, red],
+    "Flower": [daffodils, roses, lilies, tulips, carnations],
+    "Hobby": [painting, cooking, photography, gardening, knitting]
+ }
+
+ And we also have the string names for each variable. We can create a mapping from variable to its string.
+
+ Alternatively, we can create a list of tuples (variable, string) for each category.
+
+ Then, after getting the model, for each house i (1 to 5), we can for each category, find the string for which the variable's value in the model is i.
+
+ We'll build the table accordingly.
+
+ Let's code accordingly.
+
+ Steps in code:
+
+ 1. Import z3.
+ 2. Define all variables as integers.
+ 3. Create a solver.
+ 4. Add constraints that each variable is between 1 and 5.
+ 5. For each category, add distinct constraints for the variables in that category.
+ 6. Add each clue as a constraint.
+ 7. Check sat, get model.
+ 8. Build the output table by for each house i from 1 to 5, and for each category, find which variable in that category has value i in the model.
+ 9. Output the JSON.
+
+ Let's code.

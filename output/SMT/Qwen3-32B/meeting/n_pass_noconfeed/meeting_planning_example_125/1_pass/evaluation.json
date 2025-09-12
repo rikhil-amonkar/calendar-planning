@@ -1,0 +1,57 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"itinerary\": [\n    {\n      \"action\": \"meet\",\n      \"location\": \"Financial District\",\n      \"person\": \"Stephanie\",\n      \"start_time\": \"9:05\",\n      \"end_time\": \"10:35\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Alamo Square\",\n      \"person\": \"John\",\n      \"start_time\": \"10:52\",\n      \"end_time\": \"11:22\"\n    }\n  ]\n}",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Financial District",
+                "person": "Stephanie",
+                "start_time": "9:05",
+                "end_time": "10:35"
+            },
+            {
+                "action": "meet",
+                "location": "Alamo Square",
+                "person": "John",
+                "start_time": "10:52",
+                "end_time": "11:22"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Financial District",
+                "person": "Stephanie",
+                "start_time": "9:05",
+                "end_time": "10:35"
+            },
+            {
+                "action": "meet",
+                "location": "Alamo Square",
+                "person": "John",
+                "start_time": "10:52",
+                "end_time": "11:22"
+            }
+        ]
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 286.69186544418335,
+        "execution_time": 0.08029961585998535,
+        "constraint_eval_time": 3.5762786865234375e-05,
+        "pred_extract_time": 1.881422758102417,
+        "gold_extract_time": 7.414817810058594e-05,
+        "total_tokens": 18265,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import z3\nimport json\n\ndef minutes_to_time(m):\n    hours = m // 60\n    minutes = m % 60\n    return f\"{hours}:{minutes:02d}\"\n\n# Define Z3 variables\ns_start = z3.Int('s_start')\nj_start = z3.Int('j_start')\n\n# Constraints for Stephanie's meeting\n# Must start after arriving at Embarcadero (9:00 AM) + 5 min travel to FD\nstephanie_constraints = [\n    s_start >= 9 * 60 + 5,  # 9:05 AM (545)\n    s_start + 90 <= 11 * 60 + 30  # 11:30 AM (690)\n]\n\n# Constraints for John's meeting\n# Must start after arriving from FD (s_start + 90 + 17) and after 10:15 AM\njohn_constraints = [\n    j_start >= s_start + 90 + 17,  # Travel time FD->Alamo Square is 17 min\n    j_start >= 10 * 60 + 15,       # 10:15 AM (615)\n    j_start + 30 <= 20 * 60 + 45   # 8:45 PM (1245)\n]\n\n# Combine all constraints\nconstraints = stephanie_constraints + john_constraints\n\n# Create and solve Z3 model\nsolver = z3.Solver()\nsolver.add(constraints)\n\nif solver.check() == z3.sat:\n    model = solver.model()\n    s_start_val = model[s_start].as_long()\n    j_start_val = model[j_start].as_long()\n\n    # Calculate meeting times\n    stephanie_start = s_start_val\n    stephanie_end = s_start_val + 90\n    john_start = j_start_val\n    john_end = j_start_val + 30\n\n    # Convert to time strings\n    itinerary = [\n        {\n            \"action\": \"meet\",\n            \"location\": \"Financial District\",\n            \"person\": \"Stephanie\",\n            \"start_time\": minutes_to_time(stephanie_start),\n            \"end_time\": minutes_to_time(stephanie_end)\n        },\n        {\n            \"action\": \"meet\",\n            \"location\": \"Alamo Square\",\n            \"person\": \"John\",\n            \"start_time\": minutes_to_time(john_start),\n            \"end_time\": minutes_to_time(john_end)\n        }\n    ]\n\n    result = {\"itinerary\": itinerary}\n    print(json.dumps(result, indent=2))\nelse:\n    print(json.dumps({\"error\": \"No valid meeting schedule found\"}, indent=2))"
+}

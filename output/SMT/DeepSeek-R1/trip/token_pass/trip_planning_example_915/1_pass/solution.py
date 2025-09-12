@@ -1,0 +1,96 @@
+from z3 import *
+import json
+
+def main():
+    # City mapping
+    cities = ["Bucharest", "Venice", "Prague", "Frankfurt", "Zurich", "Florence", "Tallinn"]
+    city_to_num = {c: i for i, c in enumerate(cities)}
+    
+    # Required days per city
+    req_days = [3, 5, 4, 5, 5, 5, 5]
+    
+    # Direct flights (undirected)
+    edges = [
+        (city_to_num["Prague"], city_to_num["Tallinn"]),
+        (city_to_num["Prague"], city_to_num["Zurich"]),
+        (city_to_num["Florence"], city_to_num["Prague"]),
+        (city_to_num["Frankfurt"], city_to_num["Bucharest"]),
+        (city_to_num["Frankfurt"], city_to_num["Venice"]),
+        (city_to_num["Prague"], city_to_num["Bucharest"]),
+        (city_to_num["Bucharest"], city_to_num["Zurich"]),
+        (city_to_num["Tallinn"], city_to_num["Frankfurt"]),
+        (city_to_num["Zurich"], city_to_num["Florence"]),
+        (city_to_num["Frankfurt"], city_to_num["Zurich"]),
+        (city_to_num["Zurich"], city_to_num["Venice"]),
+        (city_to_num["Florence"], city_to_num["Frankfurt"]),
+        (city_to_num["Prague"], city_to_num["Frankfurt"]),
+        (city_to_num["Tallinn"], city_to_num["Zurich"])
+    ]
+    
+    # Create solver
+    s = Solver()
+    
+    # Order of cities (7 stays)
+    order = [Int(f'order_{i}') for i in range(7)]
+    # Start days for each stay
+    start = [Int(f'start_{i}') for i in range(7)]
+    
+    # Constraints for order: each city exactly once, between 0 and 6
+    s.add([And(o >= 0, o <= 6) for o in order])
+    s.add(Distinct(order))
+    
+    # Start day constraints
+    s.add(start[0] == 1)
+    for i in range(1, 7):
+        s.add(start[i] == start[i-1] + req_days[order[i-1]])
+    s.add(start[6] + req_days[order[6]] - 1 == 26)
+    
+    # Direct flight constraints between consecutive stays
+    for i in range(6):
+        city1 = order[i]
+        city2 = order[i+1]
+        # Check if (city1, city2) or (city2, city1) is in edges
+        s.add(Or(
+            *[And(city1 == a, city2 == b) for a, b in edges] +
+            [And(city1 == b, city2 == a) for a, b in edges]
+        ))
+    
+    # City-specific date constraints
+    for idx, city in enumerate(cities):
+        if city == "Venice":
+            venice_index = Int('venice_index')
+            s.add(venice_index == [i for i in range(7) if order[i] == city_to_num[city]][0])
+            s.add(start[venice_index] >= 18)
+            s.add(start[venice_index] <= 22)
+        elif city == "Frankfurt":
+            frankfurt_index = Int('frankfurt_index')
+            s.add(frankfurt_index == [i for i in range(7) if order[i] == city_to_num[city]][0])
+            s.add(start[frankfurt_index] >= 8)
+            s.add(start[frankfurt_index] <= 16)
+        elif city == "Tallinn":
+            tallinn_index = Int('tallinn_index')
+            s.add(tallinn_index == [i for i in range(7) if order[i] == city_to_num[city]][0])
+            s.add(start[tallinn_index] >= 4)
+            s.add(start[tallinn_index] <= 12)
+    
+    # Check if satisfiable
+    if s.check() == sat:
+        m = s.model()
+        order_val = [m.evaluate(order[i]).as_long() for i in range(7)]
+        start_val = [m.evaluate(start[i]).as_long() for i in range(7)]
+        
+        itinerary = []
+        for i in range(7):
+            city_index = order_val[i]
+            city_name = cities[city_index]
+            start_day = start_val[i]
+            end_day = start_val[i] + req_days[city_index] - 1
+            day_range = f"Day {start_day}-{end_day}"
+            itinerary.append({"day_range": day_range, "place": city_name})
+        
+        print(json.dumps({"itinerary": itinerary}))
+    else:
+        print('{"itinerary": []}')
+
+if __name__ == "__main__":
+    main()

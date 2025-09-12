@@ -1,0 +1,45 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"solution\": {\n    \"header\": [\n      \"House\",\n      \"Name\",\n      \"Vacation\"\n    ],\n    \"rows\": [\n      [\n        \"1\",\n        \"Eric\",\n        \"beach\"\n      ],\n      [\n        \"2\",\n        \"Arnold\",\n        \"mountain\"\n      ]\n    ]\n  }\n}",
+    "pred": [
+        {
+            "House": "1",
+            "Name": "Eric",
+            "Vacation": "beach"
+        },
+        {
+            "House": "2",
+            "Name": "Arnold",
+            "Vacation": "mountain"
+        }
+    ],
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Eric",
+            "Vacation": "beach"
+        },
+        {
+            "House": "2",
+            "Name": "Arnold",
+            "Vacation": "mountain"
+        }
+    ],
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 239.85502123832703,
+        "execution_time": 0.07748651504516602,
+        "constraint_eval_time": 4.792213439941406e-05,
+        "pred_extract_time": 1.138434886932373,
+        "gold_extract_time": 1.0728836059570312e-05,
+        "total_tokens": 17051,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import json\nfrom z3 import *\n\ndef main():\n    # Define variables for each house's attributes\n    name1 = Int('name1')\n    name2 = Int('name2')\n    vacation1 = Int('vacation1')\n    vacation2 = Int('vacation2')\n\n    solver = Solver()\n\n    # Possible values for names (0: Arnold, 1: Eric) and vacations (0: beach, 1: mountain)\n    solver.add(Or(name1 == 0, name1 == 1))\n    solver.add(Or(name2 == 0, name2 == 1))\n    solver.add(Or(vacation1 == 0, vacation1 == 1))\n    solver.add(Or(vacation2 == 0, vacation2 == 1))\n\n    # Uniqueness constraints\n    solver.add(name1 != name2)\n    solver.add(vacation1 != vacation2)\n\n    # Clue constraints\n    solver.add(vacation2 != 0)  # Beach vacation cannot be in house 2\n    solver.add(Implies(vacation1 == 0, name2 == 0))  # If house 1 has beach, Arnold is in house 2\n\n    if solver.check() == sat:\n        model = solver.model()\n        # Extract values from the model\n        n1 = model[name1].as_long()\n        n2 = model[name2].as_long()\n        v1 = model[vacation1].as_long()\n        v2 = model[vacation2].as_long()\n\n        # Mapping integers to human-readable values\n        name_map = {0: 'Arnold', 1: 'Eric'}\n        vacation_map = {0: 'beach', 1: 'mountain'}\n\n        # Construct the solution rows\n        rows = [\n            [\"1\", name_map[n1], vacation_map[v1]],\n            [\"2\", name_map[n2], vacation_map[v2]]\n        ]\n\n        # Format the solution as required JSON\n        solution = {\n            \"solution\": {\n                \"header\": [\"House\", \"Name\", \"Vacation\"],\n                \"rows\": rows\n            }\n        }\n\n        print(json.dumps(solution, indent=2))\n    else:\n        print(\"No solution found.\")\n\nif __name__ == \"__main__\":\n    main()"
+}

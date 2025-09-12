@@ -1,0 +1,100 @@
+from z3 import *
+
+def main():
+    # Define the solver
+    solver = Optimize()
+    
+    # Define the day and start time variables
+    day = Int('day')
+    start_minute = Int('start_minute')
+    
+    # Define constants
+    meeting_duration = 60
+    work_day_start = 9 * 60  # 9:00 in minutes
+    work_day_end = 17 * 60   # 17:00 in minutes
+    work_day_length = work_day_end - work_day_start
+    days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
+    
+    # Constraints for day and start_minute
+    solver.add(day >= 0, day <= 4)
+    solver.add(start_minute >= 0, start_minute + meeting_duration <= work_day_length)
+    
+    # Nicole's busy intervals per day (in minutes from work day start)
+    nicole_busy = {
+        1: [(16*60 - work_day_start, 16*60 + 30 - work_day_start)],  # Tuesday 16:00-16:30 -> 420-450
+        2: [(15*60 - work_day_start, 15*60 + 30 - work_day_start)],  # Wednesday 15:00-15:30 -> 360-390
+        4: [(12*60 - work_day_start, 12*60 + 30 - work_day_start),   # Friday 12:00-12:30 -> 180-210
+            (15*60 + 30 - work_day_start, 16*60 - work_day_start)]   # Friday 15:30-16:00 -> 390-420
+    }
+    
+    # Daniel's busy intervals per day (in minutes from work day start)
+    daniel_busy = {
+        0: [(9*60 - work_day_start, 12*60 + 30 - work_day_start),    # Monday 9:00-12:30 -> 0-210
+            (13*60 - work_day_start, 13*60 + 30 - work_day_start),   # Monday 13:00-13:30 -> 240-270
+            (14*60 - work_day_start, 16*60 + 30 - work_day_start)],  # Monday 14:00-16:30 -> 300-450
+        1: [(9*60 - work_day_start, 10*60 + 30 - work_day_start),    # Tuesday 9:00-10:30 -> 0-90
+            (11*60 + 30 - work_day_start, 12*60 + 30 - work_day_start), # Tuesday 11:30-12:30 -> 150-210
+            (13*60 - work_day_start, 13*60 + 30 - work_day_start),   # Tuesday 13:00-13:30 -> 240-270
+            (15*60 - work_day_start, 16*60 - work_day_start),        # Tuesday 15:00-16:00 -> 360-420
+            (16*60 + 30 - work_day_start, 17*60 - work_day_start)],  # Tuesday 16:30-17:00 -> 450-480
+        2: [(9*60 - work_day_start, 10*60 - work_day_start),         # Wednesday 9:00-10:00 -> 0-60
+            (11*60 - work_day_start, 12*60 + 30 - work_day_start),   # Wednesday 11:00-12:30 -> 120-210
+            (13*60 - work_day_start, 13*60 + 30 - work_day_start),   # Wednesday 13:00-13:30 -> 240-270
+            (14*60 - work_day_start, 14*60 + 30 - work_day_start),   # Wednesday 14:00-14:30 -> 300-330
+            (16*60 + 30 - work_day_start, 17*60 - work_day_start)],  # Wednesday 16:30-17:00 -> 450-480
+        3: [(11*60 - work_day_start, 12*60 - work_day_start),        # Thursday 11:00-12:00 -> 120-180
+            (13*60 - work_day_start, 14*60 - work_day_start),        # Thursday 13:00-14:00 -> 240-300
+            (15*60 - work_day_start, 15*60 + 30 - work_day_start)],  # Thursday 15:00-15:30 -> 360-390
+        4: [(10*60 - work_day_start, 11*60 - work_day_start),        # Friday 10:00-11:00 -> 60-120
+            (11*60 + 30 - work_day_start, 12*60 - work_day_start),   # Friday 11:30-12:00 -> 150-180
+            (12*60 + 30 - work_day_start, 14*60 + 30 - work_day_start), # Friday 12:30-14:30 -> 210-330
+            (15*60 - work_day_start, 15*60 + 30 - work_day_start),   # Friday 15:00-15:30 -> 360-390
+            (16*60 - work_day_start, 16*60 + 30 - work_day_start)]   # Friday 16:00-16:30 -> 420-450
+    }
+    
+    # Function to add busy interval constraints
+    def add_busy_constraints(busy_intervals, participant):
+        for d, intervals in busy_intervals.items():
+            for interval in intervals:
+                # For each busy interval, ensure the meeting doesn't overlap if on this day
+                solver.add(
+                    Implies(
+                        day == d,
+                        Or(
+                            start_minute + meeting_duration <= interval[0],
+                            start_minute >= interval[1]
+                        )
+                    )
+                )
+    
+    # Add constraints for both participants
+    add_busy_constraints(nicole_busy, "Nicole")
+    add_busy_constraints(daniel_busy, "Daniel")
+    
+    # Minimize the start time (earliest availability)
+    solver.minimize(day * work_day_length + start_minute)
+    
+    # Check for a solution
+    if solver.check() == sat:
+        model = solver.model()
+        d = model.evaluate(day).as_long()
+        s = model.evaluate(start_minute).as_long()
+        
+        # Convert start minute to time string
+        start_hour = 9 + s // 60
+        start_min = s % 60
+        end_time = s + meeting_duration
+        end_hour = 9 + end_time // 60
+        end_min = end_time % 60
+        
+        # Format the time strings
+        start_str = f"{start_hour:02d}:{start_min:02d}"
+        end_str = f"{end_hour:02d}:{end_min:02d}"
+        
+        # Output the day and time range
+        print(f"{days[d]}:{start_str}:{end_str}")
+    else:
+        print("No solution found")
+
+if __name__ == "__main__":
+    main()

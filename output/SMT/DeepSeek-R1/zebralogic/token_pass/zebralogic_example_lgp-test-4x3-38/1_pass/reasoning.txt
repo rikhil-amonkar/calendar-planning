@@ -1,0 +1,74 @@
+We are given 4 houses, each with a person (name), a mother's name, and a favorite flower.
+ We have three attributes: Name, Mother, Flower.
+
+ Since the houses are ordered from 1 to 4, we can assign each attribute to a house.
+
+ We are given 8 clues.
+
+ Steps:
+ 1. Define the attributes and their possible values.
+ 2. Create Z3 variables for each attribute in each house.
+ 3. Assert that all attributes are distinct per category (each name, mother, flower is unique).
+ 4. Add the constraints from the clues.
+
+ Clues:
+ 1. Alice is The person whose mother's name is Kailyn.
+    This means: For the house where name is Alice, mother is Kailyn.
+
+ 2. The person whose mother's name is Janelle is somewhere to the right of Arnold.
+    Let A_house be the house of Arnold, and J_house be the house with mother Janelle.
+    Then J_house > A_house.
+
+ 3. Peter is somewhere to the right of the person who loves a carnations arrangement.
+    Let P_house be Peter's house, and C_house be the carnations house.
+    Then P_house > C_house.
+
+ 4. Eric is the person who loves a bouquet of daffodils.
+    For the house where name is Eric, flower is daffodils.
+
+ 5. Arnold is The person whose mother's name is Holly.
+    For the house where name is Arnold, mother is Holly.
+
+ 6. The person who loves a carnations arrangement is somewhere to the right of The person whose mother's name is Holly.
+    Let C_house be carnations house, H_house be the house with mother Holly.
+    Then C_house > H_house.
+
+ 7. The person who loves the boquet of lilies is directly left of Alice.
+    Let L_house be lilies house, A_house be Alice's house.
+    Then L_house = A_house - 1.
+
+ 8. Alice is in the third house.
+    So, the house 3 has name Alice.
+
+ We'll create variables for:
+   names: [name1, name2, name3, name4]
+   mothers: [mother1, mother2, mother3, mother4]
+   flowers: [flower1, flower2, flower3, flower4]
+
+ We'll use IntSort for each variable and map them to the possible values.
+
+ Alternatively, we can use EnumSort for each category to make it more readable and avoid integer mappings.
+
+ Let's use EnumSort for each category.
+
+ Steps in code:
+   - Create enums for Name, Mother, Flower.
+   - Create variables for each house for name, mother, flower.
+
+ But note: We have 4 houses, so we need to assign each attribute to a house.
+
+ We'll create:
+   name = [Const('name_1', Name), Const('name_2', Name), ...]
+   similarly for mother and flower.
+
+ Then we add the distinct constraints for each set.
+
+ Then we add the constraints from the clues.
+
+ Finally, we check the model and output the solution in the required JSON format.
+
+ Since the houses are fixed (1 to 4), we can simply iterate over the houses.
+
+ Important: The output must be in the order of houses 1 to 4.
+
+ Let's code accordingly.

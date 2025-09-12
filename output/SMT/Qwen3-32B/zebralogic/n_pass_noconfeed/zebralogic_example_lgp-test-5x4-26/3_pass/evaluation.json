@@ -1,0 +1,118 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "Solution found:\nPerson 0: Hair Color = 4, Mother = 0\nPerson 1: Hair Color = 4, Mother = 0\nPerson 2: Hair Color = 4, Mother = 0\nPerson 3: Hair Color = 4, Mother = 0\nPerson 4: Hair Color = 0, Mother = 0",
+    "pred": [
+        {
+            "House": "1",
+            "Name": null,
+            "Height": null,
+            "Mother": "0",
+            "HairColor": "4"
+        },
+        {
+            "House": "2",
+            "Name": null,
+            "Height": null,
+            "Mother": "0",
+            "HairColor": "4"
+        },
+        {
+            "House": "3",
+            "Name": null,
+            "Height": null,
+            "Mother": "0",
+            "HairColor": "4"
+        },
+        {
+            "House": "4",
+            "Name": null,
+            "Height": null,
+            "Mother": "0",
+            "HairColor": "4"
+        },
+        {
+            "House": "5",
+            "Name": null,
+            "Height": null,
+            "Mother": "0",
+            "HairColor": "0"
+        }
+    ],
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Arnold",
+            "Height": "average",
+            "Mother": "Aniya",
+            "HairColor": "brown"
+        },
+        {
+            "House": "2",
+            "Name": "Eric",
+            "Height": "very short",
+            "Mother": "Penny",
+            "HairColor": "black"
+        },
+        {
+            "House": "3",
+            "Name": "Alice",
+            "Height": "very tall",
+            "Mother": "Kailyn",
+            "HairColor": "gray"
+        },
+        {
+            "House": "4",
+            "Name": "Peter",
+            "Height": "short",
+            "Mother": "Janelle",
+            "HairColor": "red"
+        },
+        {
+            "House": "5",
+            "Name": "Bob",
+            "Height": "tall",
+            "Mother": "Holly",
+            "HairColor": "blonde"
+        }
+    ],
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "violations": [
+            "House 1 wrong Name: expected 'Arnold', got 'None'",
+            "House 1 wrong Height: expected 'average', got 'None'",
+            "House 1 wrong Mother: expected 'Aniya', got '0'",
+            "House 1 wrong HairColor: expected 'brown', got '4'",
+            "House 2 wrong Name: expected 'Eric', got 'None'",
+            "House 2 wrong Height: expected 'very short', got 'None'",
+            "House 2 wrong Mother: expected 'Penny', got '0'",
+            "House 2 wrong HairColor: expected 'black', got '4'",
+            "House 3 wrong Name: expected 'Alice', got 'None'",
+            "House 3 wrong Height: expected 'very tall', got 'None'",
+            "House 3 wrong Mother: expected 'Kailyn', got '0'",
+            "House 3 wrong HairColor: expected 'gray', got '4'",
+            "House 4 wrong Name: expected 'Peter', got 'None'",
+            "House 4 wrong Height: expected 'short', got 'None'",
+            "House 4 wrong Mother: expected 'Janelle', got '0'",
+            "House 4 wrong HairColor: expected 'red', got '4'",
+            "House 5 wrong Name: expected 'Bob', got 'None'",
+            "House 5 wrong Height: expected 'tall', got 'None'",
+            "House 5 wrong Mother: expected 'Holly', got '0'",
+            "House 5 wrong HairColor: expected 'blonde', got '0'"
+        ]
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 3,
+    "timing": {
+        "api_call_time": 64.56472301483154,
+        "execution_time": 0.0821688175201416,
+        "constraint_eval_time": 0.00015926361083984375,
+        "pred_extract_time": 1.466447353363037,
+        "gold_extract_time": 2.1696090698242188e-05,
+        "total_tokens": 4903,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\n\n# Initialize the Z3 solver\nsolver = Solver()\n\n# Define variables\n# Assuming 5 people (indices 0 to 4) and hair colors 0 to 4\nhair_color = Ints('hair_color_0 hair_color_1 hair_color_2 hair_color_3 hair_color_4')\nmother = Ints('mother_0 mother_1 mother_2 mother_3 mother_4')\n\n# Add constraints that each hair_color and mother is unique and in range [0, 4]\nfor var in hair_color + mother:\n    solver.add(And(0 <= var, var <= 4))\n\n# Add clue constraint\n# Clue 12: brown hair (4) is left of mother Janelle (0)\n# That is, if hair_color[i] == 4, then mother[j] == 0 for some j > i\nsolver.add(Or(\n    And(hair_color[0] == 4, mother[1] == 0),\n    And(hair_color[0] == 4, mother[2] == 0),\n    And(hair_color[0] == 4, mother[3] == 0),\n    And(hair_color[0] == 4, mother[4] == 0),\n    And(hair_color[1] == 4, mother[2] == 0),\n    And(hair_color[1] == 4, mother[3] == 0),\n    And(hair_color[1] == 4, mother[4] == 0),\n    And(hair_color[2] == 4, mother[3] == 0),\n    And(hair_color[2] == 4, mother[4] == 0),\n    And(hair_color[3] == 4, mother[4] == 0)\n))\n\n# Solve and print results\nif solver.check() == sat:\n    model = solver.model()\n    print(\"Solution found:\")\n    for i in range(5):\n        print(f\"Person {i}: Hair Color = {model[hair_color[i]]}, Mother = {model[mother[i]]}\")\nelse:\n    print(\"No solution found.\")"
+}

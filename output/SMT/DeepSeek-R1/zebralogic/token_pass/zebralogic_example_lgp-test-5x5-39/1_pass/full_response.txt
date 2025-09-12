@@ -1,0 +1,168 @@
+```python
+import json
+from z3 import *
+
+def main():
+    # Define the attributes and their possible values
+    names = ['Alice', 'Eric', 'Bob', 'Peter', 'Arnold']
+    birthdays = ['mar', 'april', 'sept', 'feb', 'jan']
+    mothers = ['Holly', 'Janelle', 'Kailyn', 'Penny', 'Aniya']
+    occupations = ['engineer', 'doctor', 'lawyer', 'artist', 'teacher']
+    hair_colors = ['red', 'blonde', 'black', 'gray', 'brown']
+    
+    n = 5  # Number of houses
+    houses = range(n)  # 0-indexed for programming convenience
+    
+    # Create Z3 variables for each attribute for each house
+    name_vars = [Int(f"name_{i}") for i in houses]
+    birthday_vars = [Int(f"birthday_{i}") for i in houses]
+    mother_vars = [Int(f"mother_{i}") for i in houses]
+    occupation_vars = [Int(f"occupation_{i}") for i in houses]
+    hair_color_vars = [Int(f"hair_color_{i}") for i in houses]
+    
+    solver = Solver()
+    
+    # Each attribute variable must be between 0 and 4 (indices of the possible values)
+    for i in houses:
+        solver.add(name_vars[i] >= 0, name_vars[i] < n)
+        solver.add(birthday_vars[i] >= 0, birthday_vars[i] < n)
+        solver.add(mother_vars[i] >= 0, mother_vars[i] < n)
+        solver.add(occupation_vars[i] >= 0, occupation_vars[i] < n)
+        solver.add(hair_color_vars[i] >= 0, hair_color_vars[i] < n)
+    
+    # All attributes must have distinct values across houses
+    solver.add(Distinct(name_vars))
+    solver.add(Distinct(birthday_vars))
+    solver.add(Distinct(mother_vars))
+    solver.add(Distinct(occupation_vars))
+    solver.add(Distinct(hair_color_vars))
+    
+    # Precompute indices for attribute values
+    mar_idx = birthdays.index('mar')
+    feb_idx = birthdays.index('feb')
+    doctor_idx = occupations.index('doctor')
+    eric_idx = names.index('Eric')
+    janelle_idx = mothers.index('Janelle')
+    artist_idx = occupations.index('artist')
+    brown_idx = hair_colors.index('brown')
+    penny_idx = mothers.index('Penny')
+    black_idx = hair_colors.index('black')
+    peter_idx = names.index('Peter')
+    gray_idx = hair_colors.index('gray')
+    teacher_idx = occupations.index('teacher')
+    alice_idx = names.index('Alice')
+    kailyn_idx = mothers.index('Kailyn')
+    arnold_idx = names.index('Arnold')
+    sept_idx = birthdays.index('sept')
+    jan_idx = birthdays.index('jan')
+    blonde_idx = hair_colors.index('blonde')
+    holly_idx = mothers.index('Holly')
+    lawyer_idx = occupations.index('lawyer')
+    
+    # Add constraints from the clues
+    # 1. The person whose birthday is in March is in the fifth house.
+    solver.add(birthday_vars[4] == mar_idx)
+    
+    # 2. The person whose birthday is in February is in the first house.
+    solver.add(birthday_vars[0] == feb_idx)
+    
+    # 3. The person who is a doctor is Eric.
+    for i in houses:
+        solver.add(Implies(occupation_vars[i] == doctor_idx, name_vars[i] == eric_idx))
+    
+    # 4. The person whose mother's name is Janelle is in the third house.
+    solver.add(mother_vars[2] == janelle_idx)
+    
+    # 5. The person who is an artist is the person who has brown hair.
+    for i in houses:
+        solver.add((occupation_vars[i] == artist_idx) == (hair_color_vars[i] == brown_idx))
+    
+    # 6. The person who is an artist is in the fourth house.
+    solver.add(occupation_vars[3] == artist_idx)
+    
+    # 7. The person whose mother's name is Penny is somewhere to the left of the person who has black hair.
+    for i in houses:
+        for j in houses:
+            if i < j:
+                solver.add(Implies(And(mother_vars[i] == penny_idx, hair_color_vars[j] == black_idx), True))
+            else:
+                solver.add(Implies(And(mother_vars[i] == penny_idx, hair_color_vars[j] == black_idx), False))
+    
+    # 8. Peter is the person who has black hair.
+    for i in houses:
+        solver.add((name_vars[i] == peter_idx) == (hair_color_vars[i] == black_idx))
+    
+    # 9. The person who has gray hair is the person who is a teacher.
+    for i in houses:
+        solver.add((hair_color_vars[i] == gray_idx) == (occupation_vars[i] == teacher_idx))
+    
+    # 10. Alice is The person whose mother's name is Kailyn.
+    for i in houses:
+        solver.add((name_vars[i] == alice_idx) == (mother_vars[i] == kailyn_idx))
+    
+    # 11. Arnold is somewhere to the right of the person whose birthday is in September.
+    for i in houses:
+        for j in houses:
+            if i > j:
+                solver.add(Implies(And(name_vars[i] == arnold_idx, birthday_vars[j] == sept_idx), True))
+            else:
+                solver.add(Implies(And(name_vars[i] == arnold_idx, birthday_vars[j] == sept_idx), False))
+    
+    # 12. The person who has brown hair is the person whose birthday is in January.
+    for i in houses:
+        solver.add((hair_color_vars[i] == brown_idx) == (birthday_vars[i] == jan_idx))
+    
+    # 13. Arnold is the person who has blonde hair.
+    for i in houses:
+        solver.add((name_vars[i] == arnold_idx) == (hair_color_vars[i] == blonde_idx))
+    
+    # 14. The person whose mother's name is Holly is the person who has black hair.
+    for i in houses:
+        solver.add((mother_vars[i] == holly_idx) == (hair_color_vars[i] == black_idx))
+    
+    # 15. Peter is the person who is a lawyer.
+    for i in houses:
+        solver.add((name_vars[i] == peter_idx) == (occupation_vars[i] == lawyer_idx))
+    
+    # 16. The person whose birthday is in September is somewhere to the left of The person whose mother's name is Kailyn.
+    for i in houses:
+        for j in houses:
+            if i < j:
+                solver.add(Implies(And(birthday_vars[i] == sept_idx, mother_vars[j] == kailyn_idx), True))
+            else:
+                solver.add(Implies(And(birthday_vars[i] == sept_idx, mother_vars[j] == kailyn_idx), False))
+    
+    # 17. Alice is the person who has gray hair.
+    for i in houses:
+        solver.add((name_vars[i] == alice_idx) == (hair_color_vars[i] == gray_idx))
+    
+    # Check if the constraints are satisfiable
+    if solver.check() == sat:
+        model = solver.model()
+        
+        # Map house indices to attribute values
+        solution_rows = []
+        for i in houses:
+            name_val = names[model.evaluate(name_vars[i]).as_long()]
+            birthday_val = birthdays[model.evaluate(birthday_vars[i]).as_long()]
+            mother_val = mothers[model.evaluate(mother_vars[i]).as_long()]
+            occupation_val = occupations[model.evaluate(occupation_vars[i]).as_long()]
+            hair_color_val = hair_colors[model.evaluate(hair_color_vars[i]).as_long()]
+            
+            solution_rows.append([str(i+1), name_val, birthday_val, mother_val, occupation_val, hair_color_val])
+        
+        # Create the JSON output
+        output = {
+            "solution": {
+                "header": ["House", "Name", "Birthday", "Mother", "Occupation", "HairColor"],
+                "rows": solution_rows
+            }
+        }
+        
+        print(json.dumps(output, indent=2))
+    else:
+        print("No solution found")
+
+if __name__ == "__main__":
+    main()
+```

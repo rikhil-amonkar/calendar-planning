@@ -1,0 +1,71 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\"itinerary\": [{\"action\": \"meet\", \"location\": \"North Beach\", \"person\": \"Melissa\", \"start_time\": \"9:29\", \"end_time\": \"11:14\"}, {\"action\": \"meet\", \"location\": \"Chinatown\", \"person\": \"Anthony\", \"start_time\": \"13:15\", \"end_time\": \"14:15\"}, {\"action\": \"meet\", \"location\": \"Russian Hill\", \"person\": \"Rebecca\", \"start_time\": \"19:30\", \"end_time\": \"21:15\"}]}",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "North Beach",
+                "person": "Melissa",
+                "start_time": "9:29",
+                "end_time": "11:14"
+            },
+            {
+                "action": "meet",
+                "location": "Chinatown",
+                "person": "Anthony",
+                "start_time": "13:15",
+                "end_time": "14:15"
+            },
+            {
+                "action": "meet",
+                "location": "Russian Hill",
+                "person": "Rebecca",
+                "start_time": "19:30",
+                "end_time": "21:15"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "North Beach",
+                "person": "Melissa",
+                "start_time": "9:29",
+                "end_time": "11:14"
+            },
+            {
+                "action": "meet",
+                "location": "Chinatown",
+                "person": "Anthony",
+                "start_time": "13:15",
+                "end_time": "14:15"
+            },
+            {
+                "action": "meet",
+                "location": "Russian Hill",
+                "person": "Rebecca",
+                "start_time": "19:30",
+                "end_time": "21:15"
+            }
+        ]
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 406.1121542453766,
+        "execution_time": 0.08085203170776367,
+        "constraint_eval_time": 2.574920654296875e-05,
+        "pred_extract_time": 1.9200098514556885,
+        "gold_extract_time": 5.0067901611328125e-05,
+        "total_tokens": 26394,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import json\nfrom z3 import *\n\ndef to_time_str(minutes):\n    hours = minutes // 60\n    mins = minutes % 60\n    return f\"{hours}:{mins:02d}\"\n\nsolver = Solver()\n\nstart_m = Int('start_m')\nstart_a = Int('start_a')\nstart_r = Int('start_r')\n\n# Constraints for Melissa (North Beach)\n# Arrival at North Beach: 540 (start time) + 29 (Sunset to NB) = 569\nsolver.add(start_m >= 569)\nsolver.add(start_m <= 705)  # 705 + 105 = 810\n\n# Constraints for Anthony (Chinatown)\nsolver.add(start_a >= 795)\nsolver.add(start_a <= 810)  # 810 + 60 = 870\n\n# Constraints for Rebecca (Russian Hill)\nsolver.add(start_r == 1170)\n\n# Transition from Melissa to Anthony: NB to Chinatown (6 min)\nsolver.add(start_a >= start_m + 105 + 6)\n\n# Transition from Anthony to Rebecca: Chinatown to Russian Hill (7 min)\nsolver.add(start_r >= start_a + 60 + 7)\n\nif solver.check() == sat:\n    model = solver.model()\n    start_m_val = model[start_m].as_long()\n    start_a_val = model[start_a].as_long()\n    start_r_val = model[start_r].as_long()\n\n    end_m_val = start_m_val + 105\n    end_a_val = start_a_val + 60\n    end_r_val = start_r_val + 105\n\n    itinerary = [\n        {\n            \"action\": \"meet\",\n            \"location\": \"North Beach\",\n            \"person\": \"Melissa\",\n            \"start_time\": to_time_str(start_m_val),\n            \"end_time\": to_time_str(end_m_val)\n        },\n        {\n            \"action\": \"meet\",\n            \"location\": \"Chinatown\",\n            \"person\": \"Anthony\",\n            \"start_time\": to_time_str(start_a_val),\n            \"end_time\": to_time_str(end_a_val)\n        },\n        {\n            \"action\": \"meet\",\n            \"location\": \"Russian Hill\",\n            \"person\": \"Rebecca\",\n            \"start_time\": to_time_str(start_r_val),\n            \"end_time\": to_time_str(end_r_val)\n        }\n    ]\n\n    result = {\"itinerary\": itinerary}\n    print(json.dumps(result))\nelse:\n    print(json.dumps({\"itinerary\": []}))"
+}

@@ -1,0 +1,95 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"solution\": {\n    \"header\": [\n      \"House\",\n      \"Name\",\n      \"Color\",\n      \"PhoneModel\",\n      \"Occupation\"\n    ],\n    \"rows\": [\n      [\n        \"1\",\n        \"Eric\",\n        \"green\",\n        \"google pixel 6\",\n        \"teacher\"\n      ],\n      [\n        \"2\",\n        \"Bob\",\n        \"blue\",\n        \"samsung galaxy s21\",\n        \"doctor\"\n      ],\n      [\n        \"3\",\n        \"Peter\",\n        \"red\",\n        \"huawei p50\",\n        \"artist\"\n      ],\n      [\n        \"4\",\n        \"Alice\",\n        \"yellow\",\n        \"oneplus 9\",\n        \"lawyer\"\n      ],\n      [\n        \"5\",\n        \"Arnold\",\n        \"white\",\n        \"iphone 13\",\n        \"engineer\"\n      ]\n    ]\n  }\n}",
+    "pred": [
+        {
+            "House": "1",
+            "Name": "Eric",
+            "Color": "green",
+            "PhoneModel": "google pixel 6",
+            "Occupation": "teacher"
+        },
+        {
+            "House": "2",
+            "Name": "Bob",
+            "Color": "blue",
+            "PhoneModel": "samsung galaxy s21",
+            "Occupation": "doctor"
+        },
+        {
+            "House": "3",
+            "Name": "Peter",
+            "Color": "red",
+            "PhoneModel": "huawei p50",
+            "Occupation": "artist"
+        },
+        {
+            "House": "4",
+            "Name": "Alice",
+            "Color": "yellow",
+            "PhoneModel": "oneplus 9",
+            "Occupation": "lawyer"
+        },
+        {
+            "House": "5",
+            "Name": "Arnold",
+            "Color": "white",
+            "PhoneModel": "iphone 13",
+            "Occupation": "engineer"
+        }
+    ],
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Eric",
+            "Color": "green",
+            "PhoneModel": "google pixel 6",
+            "Occupation": "teacher"
+        },
+        {
+            "House": "2",
+            "Name": "Bob",
+            "Color": "blue",
+            "PhoneModel": "samsung galaxy s21",
+            "Occupation": "doctor"
+        },
+        {
+            "House": "3",
+            "Name": "Peter",
+            "Color": "red",
+            "PhoneModel": "huawei p50",
+            "Occupation": "artist"
+        },
+        {
+            "House": "4",
+            "Name": "Alice",
+            "Color": "yellow",
+            "PhoneModel": "oneplus 9",
+            "Occupation": "lawyer"
+        },
+        {
+            "House": "5",
+            "Name": "Arnold",
+            "Color": "white",
+            "PhoneModel": "iphone 13",
+            "Occupation": "engineer"
+        }
+    ],
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 628.9676225185394,
+        "execution_time": 0.08873748779296875,
+        "constraint_eval_time": 5.7220458984375e-05,
+        "pred_extract_time": 2.7531750202178955,
+        "gold_extract_time": 1.811981201171875e-05,
+        "total_tokens": 41217,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import json\nfrom z3 import *\n\ndef main():\n    # Define variables for each house (0-based index)\n    names = [Int(f'name_{i}') for i in range(5)]\n    colors = [Int(f'color_{i}') for i in range(5)]\n    phones = [Int(f'phone_{i}') for i in range(5)]\n    occupations = [Int(f'occupation_{i}') for i in range(5)]\n\n    solver = Solver()\n\n    # Add constraints for distinct and range\n    for attr in [names, colors, phones, occupations]:\n        for i in range(5):\n            solver.add(And(0 <= attr[i], attr[i] < 5))\n        solver.add(Distinct(attr))\n\n    # Add clues\n    # Clue 2: Bob is in the second house (index 1)\n    solver.add(names[1] == 0)  # Bob is 0 in names\n\n    # Clue 3: Samsung Galaxy S21 (1) is doctor (2)\n    for i in range(5):\n        solver.add(Implies(phones[i] == 1, occupations[i] == 2))\n\n    # Clue 4: Doctor (2) loves blue (0)\n    for i in range(5):\n        solver.add(Implies(occupations[i] == 2, colors[i] == 0))\n\n    # Clue 5: Green (1) not in fifth house (index 4)\n    for i in range(5):\n        solver.add(Implies(colors[i] == 1, Not(i == 4)))\n\n    # Clue 6: Lawyer (4) uses OnePlus 9 (2)\n    for i in range(5):\n        solver.add(Implies(occupations[i] == 4, phones[i] == 2))\n\n    # Clue 7: Blue (0) directly left of red (4)\n    solver.add(Or(\n        And(colors[0] == 0, colors[1] == 4),\n        And(colors[1] == 0, colors[2] == 4),\n        And(colors[2] == 0, colors[3] == 4),\n        And(colors[3] == 0, colors[4] == 4)\n    ))\n\n    # Clue 8: Lawyer (4) is to the right of Samsung Galaxy S21 (1)\n    s21_idx = Int('s21_idx')\n    lawyer_idx = Int('lawyer_idx')\n    solver.add(Or([And(phones[i] == 1, s21_idx == i) for i in range(5)]))\n    solver.add(Or([And(occupations[i] == 4, lawyer_idx == i) for i in range(5)]))\n    solver.add(lawyer_idx > s21_idx)\n\n    # Clue 1: Engineer (3) is to the right of lawyer (4)\n    engineer_idx = Int('engineer_idx')\n    solver.add(Or([And(occupations[i] == 3, engineer_idx == i) for i in range(5)]))\n    solver.add(engineer_idx > lawyer_idx)\n\n    # Clue 9: One house between Google Pixel 6 (4) and Huawei P50 (0)\n    gp_idx = Int('gp_idx')\n    hp_idx = Int('hp_idx')\n    solver.add(Or([And(phones[i] == 4, gp_idx == i) for i in range(5)]))\n    solver.add(Or([And(phones[i] == 0, hp_idx == i) for i in range(5)]))\n    solver.add(Or(gp_idx - hp_idx == 2, hp_idx - gp_idx == 2))\n\n    # Clue 10: Arnold (2) is engineer (3)\n    for i in range(5):\n        solver.add(Implies(names[i] == 2, occupations[i] == 3))\n\n    # Clue 11: Alice (3) loves yellow (3)\n    for i in range(5):\n        solver.add(Implies(names[i] == 3, colors[i] == 3))\n\n    # Clue 12: Google Pixel 6 (4) is Eric (1)\n    for i in range(5):\n        solver.add(Implies(phones[i] == 4, names[i] == 1))\n\n    # Clue 13: Google Pixel 6 (4) is teacher (1)\n    for i in range(5):\n        solver.add(Implies(phones[i] == 4, occupations[i] == 1))\n\n    # Clue 14: Red (4) is to the right of teacher (1)\n    red_idx = Int('red_idx')\n    teacher_idx = Int('teacher_idx')\n    solver.add(Or([And(colors[i] == 4, red_idx == i) for i in range(5)]))\n    solver.add(Or([And(occupations[i] == 1, teacher_idx == i) for i in range(5)]))\n    solver.add(red_idx > teacher_idx)\n\n    # Check solution\n    if solver.check() == sat:\n        model = solver.model()\n\n        # Mapping from integer codes to strings\n        name_map = {0: \"Bob\", 1: \"Eric\", 2: \"Arnold\", 3: \"Alice\", 4: \"Peter\"}\n        color_map = {0: \"blue\", 1: \"green\", 2: \"white\", 3: \"yellow\", 4: \"red\"}\n        phone_map = {0: \"huawei p50\", 1: \"samsung galaxy s21\", 2: \"oneplus 9\", 3: \"iphone 13\", 4: \"google pixel 6\"}\n        occupation_map = {0: \"artist\", 1: \"teacher\", 2: \"doctor\", 3: \"engineer\", 4: \"lawyer\"}\n\n        rows = []\n        for i in range(5):\n            house_num = i + 1\n            name_val = model[names[i]].as_long()\n            color_val = model[colors[i]].as_long()\n            phone_val = model[phones[i]].as_long()\n            occupation_val = model[occupations[i]].as_long()\n            rows.append([str(house_num), name_map[name_val], color_map[color_val], phone_map[phone_val], occupation_map[occupation_val]])\n\n        solution = {\n            \"solution\": {\n                \"header\": [\"House\", \"Name\", \"Color\", \"PhoneModel\", \"Occupation\"],\n                \"rows\": rows\n            }\n        }\n\n        print(json.dumps(solution, indent=2))\n    else:\n        print(json.dumps({\"error\": \"No solution found\"}))\n\nif __name__ == \"__main__\":\n    main()"
+}

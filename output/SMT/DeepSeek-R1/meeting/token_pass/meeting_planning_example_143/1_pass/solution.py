@@ -1,0 +1,115 @@
+from z3 import *
+import json
+
+def main():
+    # Convert time to minutes since 9:00 AM
+    def time_to_minutes(time_str):
+        parts = time_str.split(':')
+        hours = int(parts[0])
+        minutes = int(parts[1]) if len(parts) > 1 else 0
+        return hours * 60 + minutes - 540  # Subtract 9:00 AM (540 minutes)
+
+    def minutes_to_time(minutes):
+        total_minutes = minutes + 540
+        hours = total_minutes // 60
+        mins = total_minutes % 60
+        return f"{hours}:{mins:02d}"
+
+    # Travel times in minutes
+    travel_times = {
+        ("North Beach", "Pacific Heights"): 8,
+        ("North Beach", "Embarcadero"): 6,
+        ("Pacific Heights", "North Beach"): 9,
+        ("Pacific Heights", "Embarcadero"): 10,
+        ("Embarcadero", "North Beach"): 5,
+        ("Embarcadero", "Pacific Heights"): 11
+    }
+
+    # Constraints
+    karen_start_min = time_to_minutes("18:45")
+    karen_end_min = time_to_minutes("20:15")
+    mark_start_min = time_to_minutes("13:00")
+    mark_end_min = time_to_minutes("17:45")
+    min_karen_duration = 90
+    min_mark_duration = 120
+
+    # Create Z3 variables
+    m_start = Int('m_start')
+    m_dur = Int('m_dur')
+    k_start = Int('k_start')
+    k_dur = Int('k_dur')
+    order = Int('order')  # 0: Mark first, 1: Karen first
+
+    s = Optimize()
+
+    # Meeting duration constraints
+    s.add(m_dur >= min_mark_duration)
+    s.add(k_dur >= min_karen_duration)
+
+    # Time window constraints
+    s.add(m_start >= mark_start_min)
+    s.add(m_start + m_dur <= mark_end_min)
+    s.add(k_start >= karen_start_min)
+    s.add(k_start + k_dur <= karen_end_min)
+
+    # Order and travel constraints
+    s.add(Or(order == 0, order == 1))
+    start_loc = "North Beach"
+    current_time = 0  # Start at 9:00 AM
+
+    # Mark meeting travel
+    mark_travel = travel_times[(start_loc, "Embarcadero")]
+    s.add(If(order == 0, m_start >= current_time + mark_travel, True))
+
+    # Karen meeting travel
+    karen_travel = travel_times[(start_loc, "Pacific Heights")]
+    s.add(If(order == 1, k_start >= current_time + karen_travel, True))
+
+    # Between meetings travel
+    after_mark_time = m_start + m_dur
+    after_karen_time = k_start + k_dur
+    mark_to_karen_travel = travel_times[("Embarcadero", "Pacific Heights")]
+    karen_to_mark_travel = travel_times[("Pacific Heights", "Embarcadero")]
+
+    s.add(If(order == 0, k_start >= after_mark_time + mark_to_karen_travel, True))
+    s.add(If(order == 1, m_start >= after_karen_time + karen_to_mark_travel, True))
+
+    # Maximize total meeting time
+    total_duration = m_dur + k_dur
+    s.maximize(total_duration)
+
+    if s.check() == sat:
+        model = s.model()
+        m_start_val = model[m_start].as_long()
+        m_dur_val = model[m_dur].as_long()
+        k_start_val = model[k_start].as_long()
+        k_dur_val = model[k_dur].as_long()
+        order_val = model[order].as_long()
+
+        meetings = []
+        if order_val == 0:
+            meetings.append(("Embarcadero", "Mark", m_start_val, m_dur_val))
+            meetings.append(("Pacific Heights", "Karen", k_start_val, k_dur_val))
+        else:
+            meetings.append(("Pacific Heights", "Karen", k_start_val, k_dur_val))
+            meetings.append(("Embarcadero", "Mark", m_start_val, m_dur_val))
+
+        itinerary = []
+        for loc, person, start, dur in meetings:
+            start_time = minutes_to_time(start)
+            end_time = minutes_to_time(start + dur)
+            itinerary.append({
+                "action": "meet",
+                "location": loc,
+                "person": person,
+                "start_time": start_time,
+                "end_time": end_time
+            })
+
+        result = {"itinerary": itinerary}
+        print(json.dumps(result, indent=2))
+    else:
+        print('{"itinerary": []}')
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,408 @@
+We are going to use the Z3 SMT solver to schedule the meetings.
+ Steps:
+ 1. Define the travel time matrix as a dictionary of dictionaries.
+ 2. Convert all times to minutes since 9:00 AM (which will be our time 0).
+ 3. Define the constraints for each person: available time window and minimum meeting duration.
+ 4. We need to decide the order of meetings and the travel times between them.
+ 5. We are going to use Z3 to assign start times for each meeting (if we decide to meet that person) and also decide the order.
+
+ However, note: We want to meet as many friends as possible, but the problem doesn't specify that we must meet all.
+ But note: the problem says "optimal" meaning we want to maximize the number of meetings? Or maybe we want to meet all if possible?
+ But the constraints might not allow meeting everyone because of time and travel.
+
+ Since the problem says "as many friends as possible", we will try to maximize the count of meetings.
+
+ Approach:
+ We will create a Z3 model that decides for each person whether we meet them (a boolean variable) and then the start and end times for the meeting.
+
+ Additionally, we must account for travel between meetings. We are starting at Sunset District at 9:00 AM (time 0).
+
+ We have 7 friends. We need to assign an order to the meetings we are going to have. Let's index the friends.
+
+ We can use a Z3 solver and use an objective to maximize the number of meetings.
+
+ Steps in code:
+
+ 1. Precompute the time in minutes for each time point.
+    Base time: 9:00 AM = 0 minutes.
+
+ 2. Define the availability for each person in minutes from base:
+    Karen: 8:45 PM -> 20:45 -> 20*60+45 = 1245 minutes from midnight, but we start at 9:00 (which is 9*60=540 minutes from midnight).
+        So relative to 9:00: 1245 - 540 = 705 minutes until 9:45 PM -> 1245+60=1305? Wait, 9:45 PM is 21:45 -> 21*60+45=1305 -> 1305-540=765.
+        So Karen: available from 705 to 765 minutes after 9:00.
+
+    Similarly for others.
+
+ 3. We'll create a list of friends with:
+    - name
+    - location
+    - available_start (in minutes from 9:00)
+    - available_end (in minutes from 9:00)
+    - min_duration
+
+ 4. We also have the travel times between locations.
+
+ 5. We need to decide the order of meetings. We can use a permutation of the friends we are meeting, but note: we might not meet all.
+
+ 6. Alternatively, we can use real-valued variables for the start time of each meeting and then constrain them to be within the available window and account for travel between consecutive meetings.
+
+ 7. We'll create a Z3 model and for each friend, we have:
+    - a boolean variable: meet_i (whether we meet that friend)
+    - a real variable: start_i (start time of the meeting for friend i)
+    - end_i = start_i + min_duration_i (if we meet, otherwise 0)
+
+ 8. Constraints for each friend i:
+    If meet_i is true, then:
+        start_i >= available_start_i
+        end_i <= available_end_i
+    Otherwise, we don't constrain the start_i and end_i (but we don't care).
+
+ 9. We also need to account for travel between meetings. We need to decide the order of meetings. We can use a graph of meetings and travel times, but note: we are starting at Sunset and then going to each meeting and then eventually we might end somewhere.
+
+ 10. We can use a constraint that between two meetings i and j, if we meet both and if we go from i to j, then the start of j must be at least end_i + travel_time(location_i, location_j).
+
+ 11. However, the order is not fixed. We can use either:
+      - A fixed ordering by introducing integer variables for the order index of each meeting, or
+      - Use constraints that for every pair of meetings (i, j) with i != j, if both are met, then either:
+            start_j >= end_i + travel_time(i, j)   OR
+            start_i >= end_j + travel_time(j, i)
+
+ 12. This pairwise constraint can be heavy but since we have only 7 friends, it's acceptable.
+
+ 13. Additionally, we start at Sunset at time 0. So for the first meeting, we have to add travel time from Sunset to the meeting location.
+
+ 14. Similarly, we don't have a fixed end location, so we don't care about the travel after the last meeting.
+
+ 15. For each meeting i, we have an additional constraint if it is the first meeting? Actually, we can handle the starting point by:
+        If meeting i is held, then start_i >= travel_time('Sunset District', location_i)
+
+ 16. But note: we might have multiple meetings and the travel from the previous meeting to the next. So the constraint for a meeting might come from the previous meeting or from the start.
+
+ 17. Alternatively, we can model the entire schedule as a sequence of meetings. We'll create a variable for the start time of each meeting and then for each pair, we enforce the travel time if they are consecutive in the schedule? But without knowing the order, we have to use the pairwise non-overlap with travel.
+
+ 18. We'll use the following for every pair (i, j) with i != j:
+        (meet_i and meet_j) implies (start_j >= end_i + travel_time(i, j) OR start_i >= end_j + travel_time(j, i))
+
+ 19. And for each meeting i, if it is met, then we also have to account for travel from the start (Sunset) to i:
+        start_i >= travel_time('Sunset District', location_i)
+
+ 20. But note: if a meeting is not the first, then the constraint from the previous meeting will force the start time to be after the travel. However, the constraint from the start (Sunset) is necessary for the first meeting, but also for any meeting that is met, because we start at Sunset. Actually, if we have multiple meetings, the constraint from the start might be too strict for non-first meetings. However, we must account for the travel from Sunset to the first meeting. So we can drop the constraint that every meeting must have start_i >= travel from Sunset, because if it's not the first, then the travel from Sunset is not required. Instead, we can model the starting point by having a virtual meeting at Sunset at time 0.
+
+ 21. Let's introduce a virtual meeting "start" at Sunset District at time 0. Then for every meeting i, we require:
+        If meeting i is the first meeting, then we require start_i >= travel_time(Sunset, location_i). But we don't know which is first.
+
+ 22. Alternatively, we can use the following: for every meeting i, if it is met, then there must be a previous meeting or the start. We can use the pairwise constraints to cover the travel from the previous meeting to the next, and then separately for each meeting, we require that if it is the only meeting, then we have the travel from Sunset. But that complicates.
+
+ 23. Another idea: We can have a variable for the order of meetings. We'll assign an integer index for each meeting that is met, and then use constraints for consecutive meetings. But that might be complex.
+
+ 24. Given the complexity, we'll stick with the pairwise constraints for the meetings and then separately for each meeting, we require that the start time is at least the travel time from Sunset. Why? Because even if it is not the first, the constraint from the previous meeting will push it later, so the travel from Sunset constraint is only necessary if it is the first. But if we require for every meeting i: start_i >= travel_time(Sunset, location_i), then that might be too strict because if we go from Sunset to meeting i via another meeting j, then the travel time from j to i might be less than from Sunset to i? Actually, no: the travel time from Sunset to i is fixed, and if we go via j, then the total travel time is travel(Sunset, j) + travel(j, i) which is at least travel(Sunset, i) by triangle inequality? But note: our travel times are not necessarily symmetric and might not satisfy triangle inequality. However, in our given matrix, we have symmetric travel times? Let's check: 
+    Sunset to Russian Hill: 24, but Russian Hill to Sunset: 23 -> not symmetric. So we cannot assume symmetry.
+
+ 25. Actually, the problem does not require triangle inequality. So we cannot assume that going via another location is faster.
+
+ 26. Therefore, we cannot simply require start_i >= travel_time(Sunset, location_i) for every meeting, because if we go from Sunset to j and then to i, the total travel time might be more than travel_time(Sunset, i). So we must model the sequence.
+
+ 27. We'll introduce a virtual starting point at time 0 at Sunset. Then for every meeting i, we have a variable prev_i that indicates which meeting we came from (or the start). This becomes complex.
+
+ 28. Alternatively, we can use a TSP-like model with Z3, but that is heavy.
+
+ 29. Given the complexity and the fact that we have only 7 meetings, we can use the pairwise constraints and then additionally, for each meeting, we require that the start time is at least the travel time from Sunset. This might be suboptimal if we do multiple meetings, but note: if we do multiple meetings, the pairwise constraints will ensure that the travel between meetings is accounted for. The constraint from Sunset to the first meeting is necessary, but if we require every meeting to have start_i >= travel_time(Sunset, location_i), then the first meeting will satisfy that, and the subsequent meetings will be constrained by the pairwise constraints. However, if we have two meetings, the second meeting might have a start time that is after the first meeting's end plus travel, which might be greater than the travel from Sunset to the second meeting. So it is safe to require every meeting to have start_i >= travel_time(Sunset, location_i). This constraint is necessary for the first meeting and harmless for the others because the pairwise constraint will already enforce a later time.
+
+ 30. But note: what if the travel from Sunset to meeting i is 30 minutes, but we go from Sunset to meeting j (which is 20 minutes away) and then from j to i (which is 10 minutes), then the total travel time is 30 minutes, which is the same as direct. So if we require start_i >= 30, it is exactly the same as the total travel. So it is safe.
+
+ 31. However, if the travel from j to i is 15 minutes, then the total travel would be 20+15=35, which is more than 30, so the constraint start_i>=30 is still satisfied. So we can do:
+
+        For each meeting i: if meet_i, then start_i >= travel_time(Sunset, location_i)
+
+ 32. And for every pair of meetings (i, j) with i != j:
+        (meet_i and meet_j) implies (start_j >= end_i + travel_time(location_i, location_j) OR start_i >= end_j + travel_time(location_j, location_i))
+
+ 33. We also have the availability constraints for each meeting.
+
+ 34. We want to maximize the number of meetings.
+
+ 35. We'll use Z3 to solve this.
+
+ 36. We'll create a list of friends with their data.
+
+ 37. We'll create a dictionary for travel times. Note: the travel times are given between districts. We'll create a matrix with all the districts.
+
+ 38. We note that the travel times are not symmetric in the given data? Actually, looking at the data:
+        Sunset District to Russian Hill: 24
+        Russian Hill to Sunset District: 23
+    So we have to be careful to use the correct direction.
+
+ 39. We'll create a travel time function that takes two locations and returns the travel time in minutes.
+
+ 40. We'll define the travel time matrix as a nested dictionary.
+
+ 41. Steps in code:
+
+    from z3 import *
+
+    # Convert time string to minutes from 9:00
+    def time_to_minutes(time_str):
+        parts = time_str.split(':')
+        hour = int(parts[0])
+        minute = int(parts[1])
+        total_minutes = hour * 60 + minute
+        # Subtract 9:00 which is 540 minutes from midnight, so base is 0 at 9:00
+        return total_minutes - 540
+
+    # Convert minutes from 9:00 to time string
+    def minutes_to_time(minutes):
+        total_minutes = minutes + 540
+        hour = total_minutes // 60
+        minute = total_minutes % 60
+        return f"{hour}:{minute:02d}"
+
+    # Define the travel time matrix
+    travel_times = {
+        'Sunset District': {
+            'Russian Hill': 24,
+            'The Castro': 17,
+            'Richmond District': 12,
+            'Marina District': 21,
+            'North Beach': 29,
+            'Union Square': 30,
+            'Golden Gate Park': 11
+        },
+        'Russian Hill': {
+            'Sunset District': 23,
+            'The Castro': 21,
+            'Richmond District': 14,
+            'Marina District': 7,
+            'North Beach': 5,
+            'Union Square': 11,
+            'Golden Gate Park': 21
+        },
+        'The Castro': {
+            'Sunset District': 17,
+            'Russian Hill': 18,
+            'Richmond District': 16,
+            'Marina District': 21,
+            'North Beach': 20,
+            'Union Square': 19,
+            'Golden Gate Park': 11
+        },
+        'Richmond District': {
+            'Sunset District': 11,
+            'Russian Hill': 13,
+            'The Castro': 16,
+            'Marina District': 9,
+            'North Beach': 17,
+            'Union Square': 21,
+            'Golden Gate Park': 9
+        },
+        'Marina District': {
+            'Sunset District': 19,
+            'Russian Hill': 8,
+            'The Castro': 22,
+            'Richmond District': 11,
+            'North Beach': 11,
+            'Union Square': 16,
+            'Golden Gate Park': 18
+        },
+        'North Beach': {
+            'Sunset District': 27,
+            'Russian Hill': 4,
+            'The Castro': 22,
+            'Richmond District': 18,
+            'Marina District': 9,
+            'Union Square': 7,
+            'Golden Gate Park': 22
+        },
+        'Union Square': {
+            'Sunset District': 26,
+            'Russian Hill': 13,
+            'The Castro': 19,
+            'Richmond District': 20,
+            'Marina District': 18,
+            'North Beach': 10,
+            'Golden Gate Park': 22
+        },
+        'Golden Gate Park': {
+            'Sunset District': 10,
+            'Russian Hill': 19,
+            'The Castro': 13,
+            'Richmond District': 7,
+            'Marina District': 16,
+            'North Beach': 24,
+            'Union Square': 22
+        }
+    }
+
+    # Define the friends data
+    friends = [
+        {
+            'name': 'Karen',
+            'location': 'Russian Hill',
+            'available_start': time_to_minutes('20:45'),  # 8:45 PM
+            'available_end': time_to_minutes('21:45'),    # 9:45 PM
+            'min_duration': 60
+        },
+        {
+            'name': 'Jessica',
+            'location': 'The Castro',
+            'available_start': time_to_minutes('15:45'),  # 3:45 PM
+            'available_end': time_to_minutes('19:30'),    # 7:30 PM
+            'min_duration': 60
+        },
+        {
+            'name': 'Matthew',
+            'location': 'Richmond District',
+            'available_start': time_to_minutes('7:30'),   # 7:30 AM -> negative? 7:30 AM is before 9:00, so 7:30 is -90 minutes from 9:00
+            'available_end': time_to_minutes('15:15'),    # 3:15 PM -> 15*60+15 - 540 = 375 minutes
+            'min_duration': 15
+        },
+        {
+            'name': 'Michelle',
+            'location': 'Marina District',
+            'available_start': time_to_minutes('10:30'),  # 10:30 AM -> 90 minutes
+            'available_end': time_to_minutes('18:45'),    # 6:45 PM -> 18*60+45 - 540 = 585 minutes
+            'min_duration': 75
+        },
+        {
+            'name': 'Carol',
+            'location': 'North Beach',
+            'available_start': time_to_minutes('12:00'),  # 12:00 PM -> 180 minutes
+            'available_end': time_to_minutes('17:00'),    # 5:00 PM -> 17*60 - 540 = 480 minutes
+            'min_duration': 90
+        },
+        {
+            'name': 'Stephanie',
+            'location': 'Union Square',
+            'available_start': time_to_minutes('10:45'),  # 10:45 AM -> 105 minutes
+            'available_end': time_to_minutes('14:15'),    # 2:15 PM -> 14*60+15 - 540 = 255 minutes
+            'min_duration': 30
+        },
+        {
+            'name': 'Linda',
+            'location': 'Golden Gate Park',
+            'available_start': time_to_minutes('10:45'),  # 10:45 AM -> 105 minutes
+            'available_end': time_to_minutes('22:00'),    # 10:00 PM -> 22*60 - 540 = 780 minutes
+            'min_duration': 90
+        }
+    ]
+
+    # Note: Matthew's available_start is negative (7:30AM is before 9:00). We'll adjust: if available_start is negative, then set it to 0? Because we cannot start before 9:00.
+    # But note: we start at 9:00, so we cannot meet Matthew before 9:00. So we set available_start to max(0, available_start) for Matthew? Actually, we can set the constraint to start_i >= max(0, available_start) for Matthew.
+
+    # Now, we create Z3 variables for each friend.
+
+    n = len(friends)
+    meet = [Bool(f"meet_{i}") for i in range(n)]
+    start = [Real(f"start_{i}") for i in range(n)]
+    end = [Real(f"end_{i}") for i in range(n)]
+
+    s = Solver()
+
+    # For each friend, if we meet them, then set the constraints for availability and duration.
+    for i in range(n):
+        friend = friends[i]
+        s.add(Implies(meet[i], start[i] >= friend['available_start']))
+        s.add(Implies(meet[i], end[i] == start[i] + friend['min_duration']))
+        s.add(Implies(meet[i], end[i] <= friend['available_end']))
+
+        # Also, we require that the meeting start time is at least the travel time from Sunset to the friend's location.
+        travel_from_sunset = travel_times['Sunset District'][friend['location']]
+        s.add(Implies(meet[i], start[i] >= travel_from_sunset))
+
+    # Now, for every pair of friends i and j (i != j), if both are met, then we require either i before j or j before i with travel time.
+    for i in range(n):
+        for j in range(i+1, n):
+            # If both meetings are held, then one must come after the other with travel time.
+            travel_ij = travel_times[friends[i]['location']][friends[j]['location']]
+            travel_ji = travel_times[friends[j]['location']][friends[i]['location']]
+
+            # Condition: (meet_i and meet_j) implies (start_j >= end_i + travel_ij OR start_i >= end_j + travel_ji)
+            s.add(Implies(And(meet[i], meet[j]),
+                          Or(start[j] >= end[i] + travel_ij, start[i] >= end[j] + travel_ji)
+                         ))
+
+    # We want to maximize the number of meetings.
+    # We'll use the following: maximize the sum of meet[i] (which we can do by checking satisfaction with increasing number of meetings)
+    # Alternatively, we can use an optimizer in Z3, but the free version of Z3 doesn't support optimization for integers well. We'll use a iterative approach.
+
+    # We'll iterate from the total number of meetings down to 0 and see which is feasible.
+
+    # First, we check if we can meet all 7.
+    # If not, we reduce one by one.
+
+    # We'll create a list of conditions for at least k meetings.
+    # We'll start with k = n and go down until we find a solution.
+
+    # Alternatively, we can use a while loop.
+
+    # We'll do:
+    found = False
+    model = None
+    for k in range(n, -1, -1):
+        s_push = s.push()
+        # Add constraint that the number of meetings is at least k
+        s_push.add(AtLeast(*meet, k))
+        if s_push.check() == sat:
+            model = s_push.model()
+            found = True
+            break
+        s_push.pop()
+
+    if not found:
+        print('No solution found')
+        exit(0)
+
+    # Now, we extract the solution.
+    itinerary = []
+    for i in range(n):
+        if is_true(model.eval(meet[i])):
+            start_val = model.eval(start[i])
+            # Convert to integer if possible, else round to nearest minute?
+            # We assume the start time is an integer in minutes.
+            start_minutes = round(float(start_val.as_string()))
+            end_minutes = start_minutes + friends[i]['min_duration']
+            itinerary.append({
+                'action': 'meet',
+                'location': friends[i]['location'],
+                'person': friends[i]['name'],
+                'start_time': minutes_to_time(start_minutes),
+                'end_time': minutes_to_time(end_minutes)
+            })
+
+    # Sort the itinerary by start_time
+    itinerary.sort(key=lambda x: x['start_time'])
+
+    # Output as JSON
+    import json
+    print(json.dumps({'itinerary': itinerary}, indent=2))
+
+ 42. However, note: the travel times are integers and the meeting durations are integers, so the start times should be integers. We use Real for start times but we assume the model will assign integers.
+
+ 43. Also note: Matthew's available_start is negative. We set the constraint to start_i >= available_start (which is negative) and also >= travel time (which is positive). So it will be at least the travel time.
+
+ 44. Let's test with Matthew: available_start is -90 (because 7:30AM is 7*60+30=450 minutes from midnight, minus 540 = -90). But we cannot start before 0 (9:00AM). So we should adjust the constraint for Matthew to be start_i >= max(0, available_start) but note: we already have the constraint from travel time (11 minutes) which is positive. So it's safe.
+
+ 45. However, we might want to set available_start to 0 for Matthew because we cannot start before 9:00. Let's adjust the available_start for Matthew to 0.
+
+ 46. Similarly, for any friend, if available_start is negative, we set it to 0.
+
+ 47. We'll adjust the friends data after converting to minutes:
+
+    for friend in friends:
+        if friend['available_start'] < 0:
+            friend['available_start'] = 0
+
+ 48. Also, note: the available_end for Linda is 780 (which is 22:00, i.e., 10:00PM). We are using 24-hour format.
+
+ 49. Let's code accordingly.
+
+ 50. We'll now write the code.
+
+ 51. Note: We must be cautious with the travel time matrix: we have defined every pair, so we can look up any two locations.
+
+ 52. We assume that the travel time between the same location is 0, but note: we don't have same location meetings? Actually, two friends might be in the same location? In our data, all locations are distinct.
+
+ 53. We'll run the code and hope it works.
+
+ 54. If the solver takes too long, we might need to optimize, but with 7 meetings it should be acceptable.
+
+ Let's code accordingly.

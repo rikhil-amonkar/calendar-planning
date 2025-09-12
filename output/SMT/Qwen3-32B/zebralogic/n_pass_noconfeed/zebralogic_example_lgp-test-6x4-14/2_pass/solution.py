@@ -1,0 +1,1 @@
+solver.add(Distinct(*category.values()))

@@ -1,0 +1,53 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"solution\": {\n    \"header\": [\n      \"House\",\n      \"Name\",\n      \"Hobby\",\n      \"Pet\",\n      \"Height\"\n    ],\n    \"rows\": [\n      [\n        \"1\",\n        \"Eric\",\n        \"photography\",\n        \"dog\",\n        \"very short\"\n      ],\n      [\n        \"2\",\n        \"Arnold\",\n        \"gardening\",\n        \"cat\",\n        \"short\"\n      ]\n    ]\n  }\n}",
+    "pred": [
+        {
+            "House": "1",
+            "Name": "Eric",
+            "Hobby": "photography",
+            "Pet": "dog",
+            "Height": "very short"
+        },
+        {
+            "House": "2",
+            "Name": "Arnold",
+            "Hobby": "gardening",
+            "Pet": "cat",
+            "Height": "short"
+        }
+    ],
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Eric",
+            "Hobby": "photography",
+            "Pet": "dog",
+            "Height": "very short"
+        },
+        {
+            "House": "2",
+            "Name": "Arnold",
+            "Hobby": "gardening",
+            "Pet": "cat",
+            "Height": "short"
+        }
+    ],
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 50.6932168006897,
+        "execution_time": 0.07986640930175781,
+        "constraint_eval_time": 5.173683166503906e-05,
+        "pred_extract_time": 0.971005916595459,
+        "gold_extract_time": 6.67572021484375e-06,
+        "total_tokens": 901,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import z3\nimport json\n\ndef main():\n    # Create solver\n    solver = z3.Solver()\n    \n    # Define houses\n    houses = [1, 2]\n    \n    # Define attributes with their possible values\n    names = ['Eric', 'Arnold']\n    hobbies = ['gardening', 'photography']\n    pets = ['cat', 'dog']\n    heights = ['short', 'very short']\n    \n    # Create variables for each attribute in each house\n    name_vars = [z3.Int(f'name_{h}') for h in houses]\n    hobby_vars = [z3.Int(f'hobby_{h}') for h in houses]\n    pet_vars = [z3.Int(f'pet_{h}') for h in houses]\n    height_vars = [z3.Int(f'height_{h}') for h in houses]\n    \n    # Constraint: all attributes must be within their domain\n    for h in houses:\n        solver.add(z3.And(name_vars[h-1] >= 0, name_vars[h-1] < len(names)))\n        solver.add(z3.And(hobby_vars[h-1] >= 0, hobby_vars[h-1] < len(hobbies)))\n        solver.add(z3.And(pet_vars[h-1] >= 0, pet_vars[h-1] < len(pets)))\n        solver.add(z3.And(height_vars[h-1] >= 0, height_vars[h-1] < len(heights)))\n    \n    # Constraint: all attributes are unique within their category\n    solver.add(z3.Distinct(name_vars))\n    solver.add(z3.Distinct(hobby_vars))\n    solver.add(z3.Distinct(pet_vars))\n    solver.add(z3.Distinct(height_vars))\n    \n    # Clue 1: The person who is very short is the photography enthusiast.\n    very_short_idx = heights.index('very short')\n    photography_idx = hobbies.index('photography')\n    \n    for h in houses:\n        solver.add(z3.Implies(\n            height_vars[h-1] == very_short_idx,\n            hobby_vars[h-1] == photography_idx\n        ))\n    \n    # Clue 2: Eric is the person who is very short.\n    eric_idx = names.index('Eric')\n    \n    for h in houses:\n        solver.add(z3.Implies(\n            name_vars[h-1] == eric_idx,\n            height_vars[h-1] == very_short_idx\n        ))\n    \n    # Clue 3: The person who has a cat is somewhere to the right of the person who is very short.\n    cat_idx = pets.index('cat')\n    \n    # Find the house with very short person\n    very_short_house = z3.Int('very_short_house')\n    solver.add(z3.Or([z3.And(height_vars[h-1] == very_short_idx, very_short_house == h) for h in houses]))\n    \n    # Find the house with cat\n    cat_house = z3.Int('cat_house')\n    solver.add(z3.Or([z3.And(pet_vars[h-1] == cat_idx, cat_house == h) for h in houses]))\n    \n    # Constraint: cat house is to the right of very short house\n    solver.add(cat_house > very_short_house)\n    \n    # Check for solution\n    if solver.check() == z3.sat:\n        model = solver.model()\n        \n        # Prepare solution data\n        solution = {\n            \"solution\": {\n                \"header\": [\"House\", \"Name\", \"Hobby\", \"Pet\", \"Height\"],\n                \"rows\": []\n            }\n        }\n        \n        for h in houses:\n            name_val = names[model.evaluate(name_vars[h-1]).as_long()]\n            hobby_val = hobbies[model.evaluate(hobby_vars[h-1]).as_long()]\n            pet_val = pets[model.evaluate(pet_vars[h-1]).as_long()]\n            height_val = heights[model.evaluate(height_vars[h-1]).as_long()]\n            \n            solution[\"solution\"][\"rows\"].append([\n                str(h),\n                name_val,\n                hobby_val,\n                pet_val,\n                height_val\n            ])\n        \n        print(json.dumps(solution, indent=2))\n    else:\n        print('{\"error\": \"No solution found\"}')\n\nif __name__ == \"__main__\":\n    main()"
+}

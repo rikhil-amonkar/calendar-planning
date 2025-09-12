@@ -1,0 +1,69 @@
+```python
+from z3 import *
+import json
+
+def main():
+    # Convert time strings to minutes since midnight
+    def time_to_minutes(time_str):
+        parts = time_str.split(':')
+        hours = int(parts[0])
+        minutes = int(parts[1]) if len(parts) > 1 else 0
+        return hours * 60 + minutes
+
+    # Convert minutes back to time string
+    def minutes_to_time(minutes):
+        hours = minutes // 60
+        mins = minutes % 60
+        return f"{hours}:{mins:02d}"
+
+    # Input parameters
+    start_location = "Russian Hill"
+    start_time = time_to_minutes("9:00")
+    travel_times = {
+        ("Russian Hill", "Pacific Heights"): 7,
+        ("Pacific Heights", "Russian Hill"): 7
+    }
+    barbara_availability_start = time_to_minutes("7:15")
+    barbara_availability_end = time_to_minutes("22:00")
+    meeting_duration = 60
+
+    # Calculate arrival time at Pacific Heights
+    travel_duration = travel_times[(start_location, "Pacific Heights")]
+    arrival_time = start_time + travel_duration
+
+    # Create Z3 solver and variables
+    s = Int('meeting_start')
+    solver = Optimize()
+    
+    # Add constraints
+    solver.add(s >= arrival_time)
+    solver.add(s >= barbara_availability_start)
+    solver.add(s + meeting_duration <= barbara_availability_end)
+    
+    # Minimize start time to find optimal schedule
+    solver.minimize(s)
+    
+    # Check feasibility and get solution
+    if solver.check() == sat:
+        model = solver.model()
+        meeting_start = model[s].as_long()
+        meeting_end = meeting_start + meeting_duration
+        
+        # Create itinerary
+        itinerary = [{
+            "action": "meet",
+            "location": "Pacific Heights",
+            "person": "Barbara",
+            "start_time": minutes_to_time(meeting_start),
+            "end_time": minutes_to_time(meeting_end)
+        }]
+        
+        # Output result as JSON
+        result = {"itinerary": itinerary}
+        print(json.dumps(result))
+    else:
+        print('{"itinerary": []}')
+
+if __name__ == "__main__":
+    main()
+```

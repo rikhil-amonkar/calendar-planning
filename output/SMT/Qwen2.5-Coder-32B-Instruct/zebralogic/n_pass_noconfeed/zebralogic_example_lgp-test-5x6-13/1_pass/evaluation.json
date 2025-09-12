@@ -1,0 +1,115 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\"solution\": {\"header\": [\"House\", \"Name\", \"Food\", \"CarModel\", \"PhoneModel\", \"Occupation\", \"Drink\"], \"rows\": [[\"1\", \"Bob\", \"stew\", \"bmw 3 series\", \"iphone 13\", \"engineer\", \"coffee\"], [\"2\", \"Alice\", \"stir fry\", \"honda civic\", \"samsung galaxy s21\", \"artist\", \"root beer\"], [\"3\", \"Arnold\", \"spaghetti\", \"toyota camry\", \"google pixel 6\", \"doctor\", \"tea\"], [\"4\", \"Eric\", \"pizza\", \"ford f150\", \"oneplus 9\", \"lawyer\", \"milk\"], [\"5\", \"Peter\", \"grilled cheese\", \"tesla model 3\", \"huawei p50\", \"teacher\", \"water\"]]}}",
+    "pred": [
+        {
+            "House": "1",
+            "Name": "Bob",
+            "Food": "stew",
+            "CarModel": "bmw 3 series",
+            "PhoneModel": "iphone 13",
+            "Occupation": "engineer",
+            "Drink": "coffee"
+        },
+        {
+            "House": "2",
+            "Name": "Alice",
+            "Food": "stir fry",
+            "CarModel": "honda civic",
+            "PhoneModel": "samsung galaxy s21",
+            "Occupation": "artist",
+            "Drink": "root beer"
+        },
+        {
+            "House": "3",
+            "Name": "Arnold",
+            "Food": "spaghetti",
+            "CarModel": "toyota camry",
+            "PhoneModel": "google pixel 6",
+            "Occupation": "doctor",
+            "Drink": "tea"
+        },
+        {
+            "House": "4",
+            "Name": "Eric",
+            "Food": "pizza",
+            "CarModel": "ford f150",
+            "PhoneModel": "oneplus 9",
+            "Occupation": "lawyer",
+            "Drink": "milk"
+        },
+        {
+            "House": "5",
+            "Name": "Peter",
+            "Food": "grilled cheese",
+            "CarModel": "tesla model 3",
+            "PhoneModel": "huawei p50",
+            "Occupation": "teacher",
+            "Drink": "water"
+        }
+    ],
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Bob",
+            "Food": "stew",
+            "CarModel": "bmw 3 series",
+            "PhoneModel": "iphone 13",
+            "Occupation": "engineer",
+            "Drink": "coffee"
+        },
+        {
+            "House": "2",
+            "Name": "Alice",
+            "Food": "stir fry",
+            "CarModel": "honda civic",
+            "PhoneModel": "samsung galaxy s21",
+            "Occupation": "artist",
+            "Drink": "root beer"
+        },
+        {
+            "House": "3",
+            "Name": "Arnold",
+            "Food": "spaghetti",
+            "CarModel": "toyota camry",
+            "PhoneModel": "google pixel 6",
+            "Occupation": "doctor",
+            "Drink": "tea"
+        },
+        {
+            "House": "4",
+            "Name": "Eric",
+            "Food": "pizza",
+            "CarModel": "ford f150",
+            "PhoneModel": "oneplus 9",
+            "Occupation": "lawyer",
+            "Drink": "milk"
+        },
+        {
+            "House": "5",
+            "Name": "Peter",
+            "Food": "grilled cheese",
+            "CarModel": "tesla model 3",
+            "PhoneModel": "huawei p50",
+            "Occupation": "teacher",
+            "Drink": "water"
+        }
+    ],
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 38.66254448890686,
+        "execution_time": 0.09466838836669922,
+        "constraint_eval_time": 8.487701416015625e-05,
+        "pred_extract_time": 4.165573358535767,
+        "gold_extract_time": 1.33514404296875e-05,
+        "total_tokens": 3491,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\n\ndef solve_puzzle():\n    # Define variables\n    names = ['Eric', 'Peter', 'Arnold', 'Alice', 'Bob']\n    foods = ['stir fry', 'spaghetti', 'stew', 'grilled cheese', 'pizza']\n    cars = ['ford f150', 'tesla model 3', 'bmw 3 series', 'toyota camry', 'honda civic']\n    phones = ['iphone 13', 'google pixel 6', 'samsung galaxy s21', 'oneplus 9', 'huawei p50']\n    occupations = ['teacher', 'lawyer', 'doctor', 'artist', 'engineer']\n    drinks = ['tea', 'milk', 'water', 'root beer', 'coffee']\n\n    # Create variables for each house\n    house_vars = [Int(f'house_{i}') for i in range(1, 6)]\n\n    # Create dictionaries for each attribute\n    name_vars = {name: Int(name) for name in names}\n    food_vars = {food: Int(food) for food in foods}\n    car_vars = {car: Int(car) for car in cars}\n    phone_vars = {phone: Int(phone) for phone in phones}\n    occupation_vars = {occupation: Int(occupation) for occupation in occupations}\n    drink_vars = {drink: Int(drink) for drink in drinks}\n\n    # Create solver instance\n    solver = Solver()\n\n    # Add constraints for each attribute to be in a house from 1 to 5\n    for var_dict in [name_vars, food_vars, car_vars, phone_vars, occupation_vars, drink_vars]:\n        solver.add(Distinct(*var_dict.values()))\n        for var in var_dict.values():\n            solver.add(var >= 1)\n            solver.add(var <= 5)\n\n    # Add specific clues as constraints\n    solver.add(drink_vars['root beer'] == car_vars['honda civic'])\n    solver.add(drink_vars['milk'] + 1 == food_vars['grilled cheese'])\n    solver.add(phone_vars['samsung galaxy s21'] == name_vars['Alice'])\n    solver.add(food_vars['stir fry'] == name_vars['Alice'])\n    solver.add(drink_vars['tea'] != 5)\n    solver.add(car_vars['bmw 3 series'] < drink_vars['tea'])\n    solver.add(occupation_vars['doctor'] == name_vars['Arnold'])\n    solver.add(phone_vars['iphone 13'] == drink_vars['coffee'])\n    solver.add(occupation_vars['engineer'] == car_vars['bmw 3 series'])\n    solver.add(food_vars['stew'] == phone_vars['iphone 13'])\n    solver.add(occupation_vars['doctor'] + 1 == phone_vars['oneplus 9'])\n    solver.add(car_vars['honda civic'] + 1 == food_vars['spaghetti'])\n    solver.add(phone_vars['google pixel 6'] == drink_vars['tea'])\n    solver.add(occupation_vars['artist'] == name_vars['Alice'])\n    solver.add(Abs(name_vars['Alice'] - car_vars['ford f150']) == 2)\n    solver.add(car_vars['toyota camry'] == name_vars['Arnold'])\n    solver.add(name_vars['Eric'] == 4)\n    solver.add(phone_vars['oneplus 9'] == occupation_vars['lawyer'])\n    solver.add(food_vars['grilled cheese'] == name_vars['Peter'])\n\n    # Solve the puzzle\n    if solver.check() == sat:\n        model = solver.model()\n        solution = []\n        for house in range(1, 6):\n            house_solution = [str(house)]\n            for var_dict in [name_vars, food_vars, car_vars, phone_vars, occupation_vars, drink_vars]:\n                for key, value in var_dict.items():\n                    if model.evaluate(value) == house:\n                        house_solution.append(key)\n            solution.append(house_solution)\n\n        # Format the solution as JSON\n        import json\n        json_solution = {\n            \"solution\": {\n                \"header\": [\"House\", \"Name\", \"Food\", \"CarModel\", \"PhoneModel\", \"Occupation\", \"Drink\"],\n                \"rows\": solution\n            }\n        }\n        print(json.dumps(json_solution))\n    else:\n        print(\"No solution found\")\n\nsolve_puzzle()"
+}

@@ -1,0 +1,539 @@
+We are going to model the problem using Z3. We have multiple friends to meet at different locations with time constraints.
+ Steps:
+ 1. Convert all times to minutes since 9:00 AM (which we set as time 0). So 9:00 AM is 0, 10:00 AM is 60, etc.
+ 2. We have travel times between locations. We'll create a dictionary for travel time between two locations.
+ 3. We are going to decide the order of meetings. Since there are 10 friends, we cannot try all permutations (10! is too big) but we can use Z3 to assign start times and then constrain the order by travel times.
+
+ However, note: We are allowed to meet in any order, but we must account for travel time between locations.
+
+ We have the following friends and their constraints (converted to minutes from 9:00 AM):
+
+ Mary: Embarcadero, available from 20:00 (which is 11*60 = 660 minutes from 9:00? Let's calculate: 
+  9:00 to 20:00 is 11 hours -> 660 minutes, but note: 20:00 is 8PM -> 11*60 = 660, but we are starting at 9:00 so 20:00 is 660 minutes from 9:00? Actually:
+  9:00 to 12:00 is 180 minutes, then 12:00 to 20:00 is 8*60=480, so total 660 minutes. Similarly, 9:15PM is 660+15=675.
+
+ But note: We are starting at 9:00 AM (time 0). So:
+
+ Mary: start_available = 20:00 -> 660, end_available = 21:15 -> 660+75 = 735? Wait, 21:15 is 9:15PM -> 660+75=735, but note 20:00 to 21:15 is 75 minutes, so yes.
+
+ However, let's convert all times to minutes from 9:00 AM:
+
+ 9:00 AM -> 0
+
+ Mary: 8:00PM to 9:15PM -> 20:00 to 21:15 -> 20:00 is 11*60 = 660, 21:15 is 12*60 + 15 = 735? But wait, from 9:00 to 20:00 is 11 hours -> 660 minutes, and 21:15 is 12 hours and 15 minutes from 9:00? Actually, 21:15 is 12*60+15 = 735 minutes from 9:00? Let me check: 9:00 to 21:00 is 12 hours (720 minutes) and then 15 more minutes -> 735. So Mary: 660 to 735.
+
+ Similarly:
+
+ Kenneth: 11:15AM to 7:15PM -> 11:15 is 2 hours and 15 minutes from 9:00 -> 135 minutes; 7:15PM is 19:15 -> 10 hours and 15 minutes from 9:00 -> 615 minutes? Actually: 9:00 to 12:00 is 3 hours (180 minutes), but 11:15 is 2 hours 15 minutes -> 135 minutes. Then 7:15PM is 19:15 -> 10 hours and 15 minutes from 9:00 -> 615 minutes.
+
+ Joseph: 8:00PM to 10:00PM -> 20:00 to 22:00 -> 660 to 780 minutes.
+
+ Sarah: 11:45AM to 2:30PM -> 11:45 is 2 hours 45 minutes -> 165 minutes; 2:30PM is 14:30 -> 5 hours 30 minutes -> 330 minutes.
+
+ Thomas: 7:15PM to 7:45PM -> 19:15 to 19:45 -> 615 to 645 minutes.
+
+ Daniel: 1:45PM to 8:30PM -> 13:45 to 20:30 -> 4 hours 45 minutes -> 285 minutes; 20:30 is 11 hours 30 minutes -> 690 minutes.
+
+ Richard: 8:00AM to 6:45PM -> Note: 8:00AM is 1 hour before 9:00, so we represent that as -60 minutes? But we start at 9:00, so we can only meet after 9:00. So Richard's available start is 9:00 (0) and end is 18:45 -> 9 hours 45 minutes -> 585 minutes.
+
+ Mark: 5:30PM to 9:30PM -> 17:30 to 21:30 -> 8 hours 30 minutes -> 510 minutes; 21:30 is 12 hours 30 minutes -> 750 minutes.
+
+ David: 8:00PM to 9:00PM -> 20:00 to 21:00 -> 660 to 720 minutes.
+
+ Karen: 1:15PM to 6:30PM -> 13:15 to 18:30 -> 4 hours 15 minutes -> 255 minutes; 18:30 is 9 hours 30 minutes -> 570 minutes.
+
+ But note: We cannot meet before 9:00, so for Richard, we set the available start to 0 (9:00) even though he is available from 8:00.
+
+ Minimum meeting times (in minutes):
+ Mary: 75
+ Kenneth: 30
+ Joseph: 120
+ Sarah: 90
+ Thomas: 15
+ Daniel: 15
+ Richard: 30
+ Mark: 120
+ David: 60
+ Karen: 120
+
+ We have 10 meetings. We need to decide the order and the start and end times for each meeting.
+
+ We'll create variables for each meeting: start time and end time.
+
+ Constraints for each meeting:
+   start_i >= available_start_i
+   end_i <= available_end_i
+   end_i - start_i >= min_duration_i
+
+ Also, travel constraints: if we go from meeting i to meeting j, then start_j >= end_i + travel_time(location_i, location_j)
+
+ However, we don't know the order. We can use a topological ordering by having integer variables for the order of meetings, but that might be complex.
+
+ Alternatively, we can use real-valued variables for start and end times and then use the travel matrix to constrain the sequence without explicitly having an order variable.
+
+ But note: We are allowed to choose the order arbitrarily.
+
+ We can create a graph of meetings and then use constraints that for every pair of meetings (i, j), either i comes before j or j comes before i.
+
+ However, that would require O(n^2) constraints and we have 10 meetings -> 45 constraints, which is acceptable.
+
+ We can introduce a boolean variable for each pair (i, j) that is true if i comes before j.
+
+ Then for each pair (i, j):
+   if i comes before j, then start_j >= end_i + travel_time(i, j)
+   else, start_i >= end_j + travel_time(j, i)
+
+ But note: We are starting at Nob Hill at time 0 (9:00). So the first meeting must account for travel from Nob Hill to the first meeting location.
+
+ Similarly, we are not required to go back to Nob Hill at the end.
+
+ We can handle the starting point by having a special "start" at Nob Hill at time 0.
+
+ So we have 11 "events": start (at Nob Hill at time 0) and then the 10 meetings.
+
+ For the start event:
+   location: Nob Hill
+   start_time: 0
+   end_time: 0 (we leave immediately)
+
+ Then for each meeting i, we have travel time from the start location (Nob Hill) to the meeting i's location, so we require:
+   start_i >= travel_time(Nob Hill, location_i)
+
+ But note: We might not necessarily start with a meeting at Nob Hill (unless we have a meeting there, but we don't have a friend at Nob Hill). So we leave Nob Hill at time 0.
+
+ Alternatively, we can model the starting point as a meeting with duration 0 at Nob Hill at time 0.
+
+ Let's create a list of meetings including the start:
+
+ Meetings: [start, Mary, Kenneth, Joseph, Sarah, Thomas, Daniel, Richard, Mark, David, Karen]
+
+ But note: We are only meeting 10 friends, so we have 10 real meetings and 1 virtual start.
+
+ We'll index the meetings from 0 to 10, where index 0 is the start.
+
+ For the start meeting (index 0):
+   location = "Nob Hill"
+   start_time = 0
+   end_time = 0
+   min_duration = 0
+
+ For the other meetings (index 1 to 10), we have the constraints as above.
+
+ We need a travel time matrix between all locations (including Nob Hill). We are given travel times between every pair, but note that the travel times are not symmetric? Let's check:
+
+ For example: Nob Hill to Embarcadero: 9, but Embarcadero to Nob Hill: 10 -> not symmetric.
+
+ So we have a directed graph with possibly different travel times in each direction.
+
+ We'll create a dictionary for travel times:
+
+ travel_times = {
+   ("Nob Hill", "Embarcadero"): 9,
+   ("Nob Hill", "The Castro"): 17,
+   ... and so on for every pair.
+
+ But note: We have all pairs given.
+
+ We are going to create a list of the meeting information (excluding the start) with:
+
+ meetings = [
+   {"name": "Mary", "location": "Embarcadero", "avail_start": 660, "avail_end": 735, "min_dur": 75},
+   ... and so on
+ ]
+
+ We'll assign an index to each friend (1 to 10). The start is index 0.
+
+ Now, we create Z3 variables for the start and end times of each meeting (including the start). We have 11 meetings (index 0 to 10).
+
+ Let s[0], e[0] for the start meeting, and s[i], e[i] for i from 1 to 10.
+
+ Constraints for the start meeting (index 0):
+   s[0] == 0
+   e[0] == 0
+
+ For each real meeting i (from 1 to 10):
+   s[i] >= meetings[i-1]["avail_start"]
+   e[i] <= meetings[i-1]["avail_end"]
+   e[i] - s[i] >= meetings[i-1]["min_dur"]
+
+ For every pair of distinct meetings (i, j) where i and j are from 0 to 10 and i != j, we need to enforce the order and travel time.
+
+ We'll create a Boolean variable for each pair (i, j) (i < j) to indicate if i comes before j.
+
+ However, to avoid double constraints, we can do:
+
+ For each pair (i, j) with i != j:
+   Let before[i][j] be a Bool (if i comes before j)
+
+   Then we require:
+      If before[i][j] is true, then s[j] >= e[i] + travel_time(location_i, location_j)
+      Else, s[i] >= e[j] + travel_time(location_j, location_i)
+
+ But note: We have 11 meetings, so 11*10 = 110 constraints (each pair twice, but we can do half by using i != j and then the condition for both orders).
+
+ Alternatively, we can use a single constraint for each unordered pair (i, j) (i != j) by using a Bool for one direction.
+
+ We can define for each pair (i, j) with i < j, a Bool variable b_{i,j} that is True if i comes before j, and False otherwise.
+
+ Then for each such pair (i, j):
+   s[j] >= e[i] + travel_time(i, j) OR s[i] >= e[j] + travel_time(j, i)
+
+ But we can use the Bool to choose:
+
+   If b_{i,j} then s[j] >= e[i] + travel_time(i, j)
+   Else s[i] >= e[j] + travel_time(j, i)
+
+ This covers the ordering.
+
+ We must also ensure that the entire schedule does not exceed the day (but we don't have a hard end time, so we can minimize the total time? Actually, we want to meet as many as possible, but note: we are required to meet all? Actually, the problem says "as many friends as possible", but the constraints might make it impossible to meet everyone. However, the problem does not say we must meet everyone. So we might have to choose a subset.
+
+ But note: The problem says "optimal meeting schedule" and we are using an SMT solver. We are going to maximize the number of meetings we can attend.
+
+ However, the problem does not specify if we can skip meetings. We are to meet as many as possible. So we need to decide which meetings to attend.
+
+ We can introduce a Boolean for each meeting (except the start) that indicates if we attend that meeting.
+
+ Then for meeting i (1..10):
+   If we attend, then the constraints above hold. Otherwise, we set the meeting to not happen. How to model not happening? We can set the start and end times to 0 and then adjust the travel constraints accordingly? Alternatively, we can set the duration to 0 and then the travel constraints become trivial.
+
+ But note: We cannot set the meeting to 0 because the available times might not include 0. We can set the meeting to happen outside its available time? That would break the constraints. Alternatively, we can have the meeting not happen by setting its start and end to a special value, but then the travel constraints would have to be conditional.
+
+ Alternatively, we can model the schedule as a sequence of meetings that we actually attend, and then the number of meetings is variable.
+
+ This becomes a complex scheduling with optional meetings.
+
+ Given the complexity, and since the problem says "as many as possible", we might need to maximize the count of meetings we attend.
+
+ We can do:
+
+   For each meeting i (1..10), let attended[i] be a Bool.
+
+   Then the constraints for meeting i are only active if attended[i] is true.
+
+   Also, for the travel constraints, if a meeting is not attended, we skip it.
+
+   How to skip in the travel constraints? We can modify the travel constraints to only apply if both meetings are attended.
+
+   For each pair (i, j) (i and j from 0 to 10, i != j), we require:
+      If attended[i] and attended[j] then (either i before j or j before i) and the corresponding travel constraint.
+
+   But if one of them is not attended, then we don't enforce the constraint.
+
+ Alternatively, we can create a list of attended meetings and then only constrain the ones that are attended. However, Z3 does not allow dynamic arrays, so we have to conditionally enable constraints.
+
+ We can do:
+
+   For each pair (i, j) (i != j):
+      If attended[i] and attended[j], then (before[i][j] -> (s[j] >= e[i] + travel_time(i, j))) and (not before[i][j] -> (s[i] >= e[j] + travel_time(j, i)))
+
+   But note: We don't need to enforce an order between two meetings if one of them is not attended. So we can do:
+
+      If attended[i] and attended[j], then (before[i][j] OR before[j][i]) is true, but actually we defined before for i<j. We can define for every unordered pair (i,j) with i != j, a Bool b_{i,j} that is true if i is before j (and then for j before i, we can use not b_{i,j}).
+
+   Actually, we can define for every pair (i, j) with i != j, a Bool b_{i,j} that indicates i is before j. Then we have:
+
+      If attended[i] and attended[j], then either b_{i,j} or b_{j,i} is true, but note: we cannot have both. And we must have one if both are attended.
+
+   Alternatively, we can avoid defining b for every pair and instead use the following for each pair (i, j) with i != j:
+
+      s[j] >= e[i] + travel_time(i, j) OR s[i] >= e[j] + travel_time(j, i) OR (not attended[i]) OR (not attended[j])
+
+   This is simpler: if both are attended, then one of the two travel constraints must hold. If either is not attended, then the constraint is automatically satisfied.
+
+   This is a good way.
+
+   So for every pair (i, j) with i != j:
+        Or( Not(attended[i]), Not(attended[j]), 
+            s[j] >= e[i] + travel_time(location_i, location_j),
+            s[i] >= e[j] + travel_time(location_j, location_i) )
+
+   However, note: the travel times are between the locations of meeting i and j.
+
+   But wait, this allows both conditions to be false if one is not attended, but if both are attended, then at least one of the two travel constraints must hold. This does not enforce that one meeting must come after the other. It allows both travel constraints to hold, which would mean they don't overlap but that's okay.
+
+   Actually, this constraint is enough to ensure that if both are attended, then there is no overlap and travel time is accounted for.
+
+   However, note: It is possible that both conditions are true, which would force both orders, which is impossible. But that won't happen because if both are true, then we have:
+
+        s[j] >= e[i] + T_ij and s[i] >= e[j] + T_ji
+
+        Then s[i] + s[j] >= e[i] + e[j] + T_ij + T_ji
+
+        But e[i] >= s[i] and e[j] >= s[j], so:
+
+        s[i] + s[j] >= s[i] + s[j] + T_ij + T_ji
+
+        which implies 0 >= T_ij + T_ji, which is false because travel times are positive.
+
+   So if both conditions are true, it's impossible. Therefore, exactly one of the two travel constraints must hold if both are attended.
+
+   So the constraint for each pair (i, j) (i != j) is:
+
+        Or( Not(attended[i]), Not(attended[j]), 
+            s[j] >= e[i] + travel_time(location_i, location_j),
+            s[i] >= e[j] + travel_time(location_j, location_i) )
+
+   This ensures that if both meetings are attended, then either i is before j or j is before i, with travel time.
+
+   We also need to account for the start meeting (index 0) which is always attended.
+
+   For the start meeting (index 0) and any other meeting i (which might be attended or not), we have:
+
+        If attended[i], then we must travel from the start location (Nob Hill) to meeting i's location. But note: the start meeting has end_time 0, so we require:
+
+        s[i] >= 0 + travel_time("Nob Hill", location_i)
+
+   So for every meeting i (1..10):
+        If attended[i], then s[i] >= travel_time("Nob Hill", location_i)
+
+   Similarly, we don't need to worry about the start meeting in the pair constraints because we have included the start meeting (index 0) in the pairs.
+
+   Now, we want to maximize the number of meetings attended.
+
+   We can define:
+
+        objective = Sum([If(attended[i], 1, 0) for i in range(1,11)])
+
+   And then we maximize objective.
+
+   However, note: We might also want to minimize the total time? But the problem says "as many as possible", so we prioritize number of meetings.
+
+   But if we can meet the same number, we might want to finish earlier? The problem doesn't say. So we'll just maximize the count.
+
+   Steps:
+
+   Let meetings_info = [
+        {"name": "Mary", "location": "Embarcadero", "avail_start": 660, "avail_end": 735, "min_dur": 75},
+        ... for each friend
+   ]
+
+   We have 10 friends.
+
+   We create a list of locations for the 11 meetings (index0: "Nob Hill", then each friend's location).
+
+   We create a travel time function that, given two location names, returns the travel time.
+
+   We create Z3 variables:
+
+        s = [Real('s_{}'.format(i)) for i in range(11)]
+        e = [Real('e_{}'.format(i)) for i in range(11)]
+        attended = [Bool('attended_{}'.format(i)) for i in range(11)]
+
+   But note: the start meeting (index0) is always attended, so we set attended[0] = True.
+
+   For i in range(1,11): attended[i] is a Boolean we want to decide.
+
+   Constraints:
+
+        For meeting0:
+            s[0] == 0, e[0] == 0
+
+        For each meeting i in 1..10:
+            If attended[i]:
+                s[i] >= meetings_info[i-1]['avail_start']
+                e[i] <= meetings_info[i-1]['avail_end']
+                e[i] - s[i] >= meetings_info[i-1]['min_dur']
+            Else:
+                # We can set the meeting to have no duration and not affect the schedule? But we don't have to set the time variables for unattended meetings. However, we must set them to some value that doesn't break the travel constraints. We can set them to 0? But then the travel constraints with other meetings might be affected because 0 might be too early. Alternatively, we can set them to a time that doesn't conflict, but that is complex.
+
+            Instead, we can leave the variables unconstrained if not attended, but then the travel constraints (which are conditional on attended) will ignore them.
+
+        For each pair (i, j) with i != j (and i,j in [0,1,...,10]):
+            We add the constraint:
+                Or( Not(attended[i]), Not(attended[j]), 
+                    s[j] >= e[i] + travel_time(location_i, location_j),
+                    s[i] >= e[j] + travel_time(location_j, location_i) )
+
+        Additionally, for each meeting i in 1..10:
+            If attended[i]:
+                s[i] >= travel_time("Nob Hill", location_i)   [because we start at Nob Hill at time0]
+
+   We maximize: Sum([If(attended[i], 1, 0) for i in range(1,11)])
+
+   We use an Optimize object in Z3 to maximize.
+
+   However, note: We might not be able to meet everyone, so we are maximizing the count.
+
+   After getting the model, we output the itinerary for the meetings that are attended, in the order of their start times.
+
+   But note: the output should be a list of meetings (only the ones attended) with their start and end times, converted back to time strings.
+
+   How to convert minutes from 9:00 to a time string:
+
+        total_minutes = s[i] (which is an integer in the model, we assume we get integer minutes)
+        hours = (total_minutes // 60) + 9
+        minutes = total_minutes % 60
+        Then format as hours:minutes, but note: if hours >= 24, then we have to adjust? But our latest meeting is 10:00PM (22:00) which is 780 minutes from 9:00 -> 13 hours, so 9+13=22, so it's safe.
+
+   However, we might have meetings that start after midnight? The problem says "for the day", so we assume we finish by midnight.
+
+   We'll assume the model returns integer values for start and end times.
+
+   We'll use Int variables for s and e to avoid real numbers and to ensure we get integer minutes.
+
+   Steps in code:
+
+   Precompute the travel time dictionary from the given data.
+
+   Precompute the list of meetings (friends) with their constraints.
+
+   Create a list of locations for the 11 meetings (index0: "Nob Hill", then for each friend in the order of the list above).
+
+   Initialize the solver and optimize.
+
+   Code structure:
+
+   from z3 import *
+
+   travel_dict = {}  # keys: (from, to) -> time
+
+   # Populate travel_dict with the given data. We have 10 locations, but note: we also have Nob Hill as a location.
+
+   meetings_list = [
+        # Mary
+        {"name": "Mary", "location": "Embarcadero", "avail_start": 660, "avail_end": 735, "min_dur": 75},
+        # Kenneth
+        {"name": "Kenneth", "location": "The Castro", "avail_start": 135, "avail_end": 615, "min_dur": 30},
+        # Joseph
+        {"name": "Joseph", "location": "Haight-Ashbury", "avail_start": 660, "avail_end": 780, "min_dur": 120},
+        # Sarah
+        {"name": "Sarah", "location": "Union Square", "avail_start": 165, "avail_end": 330, "min_dur": 90},
+        # Thomas
+        {"name": "Thomas", "location": "North Beach", "avail_start": 615, "avail_end": 645, "min_dur": 15},
+        # Daniel
+        {"name": "Daniel", "location": "Pacific Heights", "avail_start": 285, "avail_end": 690, "min_dur": 15},
+        # Richard
+        {"name": "Richard", "location": "Chinatown", "avail_start": 0, "avail_end": 585, "min_dur": 30},
+        # Mark
+        {"name": "Mark", "location": "Golden Gate Park", "avail_start": 510, "avail_end": 750, "min_dur": 120},
+        # David
+        {"name": "David", "location": "Marina District", "avail_start": 660, "avail_end": 720, "min_dur": 60},
+        # Karen
+        {"name": "Karen", "location": "Russian Hill", "avail_start": 255, "avail_end": 570, "min_dur": 120}
+   ]
+
+   locations = ["Nob Hill"] + [m['location'] for m in meetings_list]
+
+   # Create the travel_dict from the given string. We'll hardcode the travel times in a dictionary.
+
+   # We are given travel times between every pair of the 10 locations (excluding Nob Hill) and also including Nob Hill? Actually, the given data includes Nob Hill.
+
+   # We have 11 locations (including Nob Hill). The given data has travel times for all pairs of the 11 locations? Actually, the given data has 10 locations (the friends' locations) and Nob Hill. So we have 11 locations.
+
+   # We'll create a dictionary with keys (from, to) and the travel time.
+
+   # Example: travel_dict[("Nob Hill", "Embarcadero")] = 9
+
+   # We are given all pairs, so we can write them in a multi-line string and parse, but the problem says to take the input as given. Since we are writing code, we can hardcode.
+
+   # Alternatively, we can copy the given travel times and create a dictionary.
+
+   # We'll create a list of the location names:
+
+   all_locations = ["Nob Hill", "Embarcadero", "The Castro", "Haight-Ashbury", "Union Square", "North Beach", "Pacific Heights", "Chinatown", "Golden Gate Park", "Marina District", "Russian Hill"]
+
+   # But note: the given travel times include all these.
+
+   # We'll hardcode the travel_dict as a dictionary with keys (from_name, to_name) and value the travel time.
+
+   # Since the given data is long, we'll write a function to parse the given string, but the problem says the input is given. Alternatively, we can copy the data as a multi-line string and parse it.
+
+   # However, to keep the code clean, we'll hardcode the travel_dict by copying the given travel times.
+
+   # Example: 
+   travel_dict = {
+        ("Nob Hill", "Embarcadero"): 9,
+        ("Nob Hill", "The Castro"): 17,
+        ("Nob Hill", "Haight-Ashbury"): 13,
+        ("Nob Hill", "Union Square"): 7,
+        ("Nob Hill", "North Beach"): 8,
+        ("Nob Hill", "Pacific Heights"): 8,
+        ("Nob Hill", "Chinatown"): 6,
+        ("Nob Hill", "Golden Gate Park"): 17,
+        ("Nob Hill", "Marina District"): 11,
+        ("Nob Hill", "Russian Hill"): 5,
+        ... and so on for every pair
+   }
+
+   But note: We have 11 locations, so 11*10=110 entries.
+
+   We are given the travel times in the problem statement. We'll copy all.
+
+   Due to the length, we'll write a function to populate travel_dict from a multi-line string, but the problem says the input is given. Alternatively, we can hardcode by copying.
+
+   Given the character limit, I will hardcode a subset for the example, but note: we must have all.
+
+   Alternatively, we can note that the travel times are provided in a symmetric way for some pairs, but not all. We have to include every directed pair.
+
+   Since the problem says "Output only the complete Python code", we must include the entire travel_dict.
+
+   Due to the length, I will write a function that returns the travel_dict by creating it from the given data in a compact way.
+
+   We can create a list of the travel times as:
+
+   data = """
+   Nob Hill to Embarcadero: 9.
+   Nob Hill to The Castro: 17.
+   ... (all the lines)
+   """
+
+   Then parse each line.
+
+   But note: the problem says the input is given, so we can assume the travel times are fixed.
+
+   We'll do:
+
+   travel_dict = {}
+   lines = """Nob Hill to Embarcadero: 9.
+   Nob Hill to The Castro: 17.
+   ... """
+   for line in lines.strip().split('\n'):
+        parts = line.split(':')
+        from_to = parts[0].split(' to ')
+        from_loc = from_to[0].strip()
+        to_loc = from_to[1].strip()
+        time = int(parts[1].strip().rstrip('.'))
+        travel_dict[(from_loc, to_loc)] = time
+
+   But note: the given data has lines like "Embarcadero to Nob Hill: 10." so we have both directions.
+
+   We'll do that.
+
+   Now, code:
+
+   Steps:
+
+   1. Precompute travel_dict from the given string.
+   2. Precompute meetings_list.
+   3. locations = ["Nob Hill"] + [m['location'] for m in meetings_list]
+   4. Create Z3 variables: s, e (Int), attended (Bool) for 11 meetings.
+   5. Create optimizer.
+   6. Add constraints.
+   7. Maximize sum of attended for indices 1..10.
+   8. Check and get model.
+   9. Extract the meetings that are attended, then sort by start time.
+   10. Convert each start and end time to time string.
+   11. Output JSON.
+
+   Note: We must ensure that the travel_dict has an entry for every pair of locations we need. We have 11 locations, so we have 11*10=110 entries. The given data has exactly 110 lines.
+
+   Let's code accordingly.
+
+   Due to the length of the travel data, we'll put the travel data string in triple quotes.
+
+   We'll write the code.
+
+   Note: The travel data string is very long. We must copy exactly as given.
+
+   We are given:
+
+   Travel distances (in minutes):
+   Nob Hill to Embarcadero: 9.
+   ... [until]
+   Russian Hill to Marina District: 7.
+
+   So we copy exactly that block.
+
+   We'll assign that string to a variable and parse.
+
+   Let's code.

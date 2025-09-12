@@ -1,0 +1,53 @@
+{
+    "has_execution_error": true,
+    "has_no_plan": false,
+    "execution_output": null,
+    "pred": null,
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Arnold",
+            "Flower": "carnations",
+            "HairColor": "brown",
+            "FavoriteSport": "tennis",
+            "HouseStyle": "victorian",
+            "Pet": "fish"
+        },
+        {
+            "House": "2",
+            "Name": "Peter",
+            "Flower": "daffodils",
+            "HairColor": "blonde",
+            "FavoriteSport": "basketball",
+            "HouseStyle": "ranch",
+            "Pet": "dog"
+        },
+        {
+            "House": "3",
+            "Name": "Eric",
+            "Flower": "lilies",
+            "HairColor": "black",
+            "FavoriteSport": "soccer",
+            "HouseStyle": "colonial",
+            "Pet": "cat"
+        }
+    ],
+    "status": "Error",
+    "violated_constraint": {
+        "invalid_output": "No valid output structure found"
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 36.45998954772949,
+        "execution_time": 0.08045387268066406,
+        "constraint_eval_time": 1.1920928955078125e-06,
+        "pred_extract_time": 1.6689300537109375e-06,
+        "gold_extract_time": 1.0728836059570312e-05,
+        "total_tokens": 3357,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\n\ndef solve_puzzle():\n    # Define the variables\n    names = ['Arnold', 'Eric', 'Peter']\n    flowers = ['carnations', 'lilies', 'daffodils']\n    hair_colors = ['black', 'brown', 'blonde']\n    sports = ['soccer', 'basketball', 'tennis']\n    house_styles = ['colonial', 'ranch', 'victorian']\n    pets = ['fish', 'dog', 'cat']\n\n    # Create variables for each characteristic\n    name_vars = [Int(f'name_{i}') for i in range(3)]\n    flower_vars = [Int(f'flower_{i}') for i in range(3)]\n    hair_color_vars = [Int(f'hair_color_{i}') for i in range(3)]\n    sport_vars = [Int(f'sport_{i}') for i in range(3)]\n    house_style_vars = [Int(f'house_style_{i}') for i in range(3)]\n    pet_vars = [Int(f'pet_{i}') for i in range(3)]\n\n    # Create a solver instance\n    solver = Solver()\n\n    # Add constraints for unique values\n    solver.add(Distinct(name_vars))\n    solver.add(Distinct(flower_vars))\n    solver.add(Distinct(hair_color_vars))\n    solver.add(Distinct(sport_vars))\n    solver.add(Distinct(house_style_vars))\n    solver.add(Distinct(pet_vars))\n\n    # Map values to integers\n    value_map = {name: i for i, name in enumerate(names)}\n    value_map.update({flower: i for i, flower in enumerate(flowers)})\n    value_map.update({hair_color: i for i, hair_color in enumerate(hair_colors)})\n    value_map.update({sport: i for i, sport in enumerate(sports)})\n    value_map.update({house_style: i for i, house_style in enumerate(house_styles)})\n    value_map.update({pet: i for i, pet in enumerate(pets)})\n\n    # Add constraints based on clues\n    solver.add(pet_vars[value_map['cat']] == sport_vars[value_map['soccer']])\n    solver.add(hair_color_vars[1] == value_map['blonde'])\n    solver.add(flower_vars[value_map['daffodils']] == hair_color_vars[value_map['blonde']])\n    solver.add(name_vars[value_map['Peter']] == sport_vars[value_map['basketball']])\n    solver.add(name_vars[value_map['Arnold']] == house_style_vars[value_map['ranch']] - 1)\n    solver.add(pet_vars[value_map['dog']] == sport_vars[value_map['basketball']])\n    solver.add(flower_vars[value_map['carnations']] == hair_color_vars[value_map['blonde']] - 1)\n    solver.add(sport_vars[value_map['soccer']] == 2)\n    solver.add(name_vars[value_map['Arnold']] < hair_color_vars[value_map['black']])\n    solver.add(house_style_vars[2] == value_map['colonial'])\n\n    # Solve the puzzle\n    if solver.check() == sat:\n        model = solver.model()\n        solution = {\n            \"solution\": {\n                \"header\": [\"House\", \"Name\", \"Flower\", \"HairColor\", \"FavoriteSport\", \"HouseStyle\", \"Pet\"],\n                \"rows\": []\n            }\n        }\n\n        for house in range(3):\n            name = names[model.evaluate(name_vars[house]).as_long()]\n            flower = flowers[model.evaluate(flower_vars[house]).as_long()]\n            hair_color = hair_colors[model.evaluate(hair_color_vars[house]).as_long()]\n            sport = sports[model.evaluate(sport_vars[house]).as_long()]\n            house_style = house_styles[model.evaluate(house_style_vars[house]).as_long()]\n            pet = pets[model.evaluate(pet_vars[house]).as_long()]\n\n            solution[\"solution\"][\"rows\"].append([str(house + 1), name, flower, hair_color, sport, house_style, pet])\n\n        return solution\n\n# Print the solution as JSON\nimport json\nprint(json.dumps(solve_puzzle(), indent=2))"
+}

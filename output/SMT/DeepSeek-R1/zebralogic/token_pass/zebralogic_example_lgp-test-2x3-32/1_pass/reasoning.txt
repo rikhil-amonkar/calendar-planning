@@ -1,0 +1,79 @@
+We are dealing with 2 houses, each with a name, birthday month, and color.
+ We have three attributes: Name (Eric, Arnold), Birthday (sept, april), Color (yellow, red)
+
+ Clues:
+ 1. Eric loves yellow -> So Eric's color is yellow.
+ 2. The person whose birthday is in April is in the first house.
+ 3. The person who loves yellow is not in the first house.
+
+ Since there are only two houses, we can set up variables for each house for each attribute.
+
+ However, note that the houses are fixed (1 and 2). We will create variables for each attribute in each house.
+
+ Steps:
+ 1. Create a solver.
+ 2. Define the attributes for each house.
+
+ We can represent:
+   House 1: name1, birthday1, color1
+   House 2: name2, birthday2, color2
+
+ But note: the attributes are enums, so we can use Z3's EnumSort for each attribute type.
+
+ Alternatively, we can use integers and define the possible values, but using EnumSort is clearer.
+
+ Let's create enums for:
+   Name: Eric, Arnold
+   Birthday: sept, april
+   Color: yellow, red
+
+ We have two houses, so we will create variables for each house for each attribute.
+
+ Constraints:
+   All attributes in the same house are consistent, and across houses the attributes are distinct for each category.
+
+ Also, the clues:
+
+ Clue 1: Eric loves yellow -> This means that for the person with name Eric, the color is yellow.
+         But note: we don't know which house Eric is in. So we can say: for the house where name is Eric, color must be yellow.
+
+ Clue 2: The April birthday is in house 1 -> So birthday1 must be april.
+
+ Clue 3: The person who loves yellow is not in the first house -> So color1 != yellow, and therefore color2 must be yellow.
+
+ However, note clue 1 and clue 3: clue 3 says yellow is not in house1, so yellow must be in house2.
+ And clue 1 says Eric loves yellow, so Eric must be in house2.
+
+ Also, from clue 2: house1 has april birthday, so house2 must have sept birthday.
+
+ Now, let's see what we have for house1: 
+   birthday1 = april
+   color1 != yellow -> so color1 must be red (since only two colors)
+   name1: since Eric is in house2, then house1 must be Arnold.
+
+ But let's code it with Z3 to practice.
+
+ Approach:
+
+ We'll create an Enum for each category.
+
+ For each house, we have three variables: name, birthday, color.
+
+ We'll assert that for each category (name, birthday, color), the two houses have distinct values.
+
+ Then we'll add the constraints from the clues.
+
+ Clue 1: For the house where the name is Eric, the color must be yellow.
+         We can do: (If name_i is Eric, then color_i is yellow) for i in [1,2]
+
+ Clue 2: birthday1 == april
+
+ Clue 3: color1 != yellow
+
+ Let's code accordingly.
+
+ We'll then check the model and output the solution in the required JSON format.
+
+ Note: The output must be in the order of houses 1 and 2.
+
+ Let's write the code.

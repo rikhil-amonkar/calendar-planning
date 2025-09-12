@@ -1,0 +1,45 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n    \"solution\": {\n        \"header\": [\n            \"House\",\n            \"Name\",\n            \"Vacation\"\n        ],\n        \"rows\": [\n            [\n                \"1\",\n                \"Eric\",\n                \"beach\"\n            ],\n            [\n                \"2\",\n                \"Arnold\",\n                \"mountain\"\n            ]\n        ]\n    }\n}",
+    "pred": [
+        {
+            "House": "1",
+            "Name": "Eric",
+            "Vacation": "beach"
+        },
+        {
+            "House": "2",
+            "Name": "Arnold",
+            "Vacation": "mountain"
+        }
+    ],
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Eric",
+            "Vacation": "beach"
+        },
+        {
+            "House": "2",
+            "Name": "Arnold",
+            "Vacation": "mountain"
+        }
+    ],
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 18.637386083602905,
+        "execution_time": 0.0756685733795166,
+        "constraint_eval_time": 4.649162292480469e-05,
+        "pred_extract_time": 1.245915412902832,
+        "gold_extract_time": 2.2649765014648438e-05,
+        "total_tokens": 1611,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\nimport json\n\n# Define the variables\nhouse1_name = String('house1_name')\nhouse1_vacation = String('house1_vacation')\nhouse2_name = String('house2_name')\nhouse2_vacation = String('house2_vacation')\n\n# Create a solver instance\nsolver = Solver()\n\n# Add constraints for unique names and vacations\nsolver.add(Distinct(house1_name, house2_name))\nsolver.add(Distinct(house1_vacation, house2_vacation))\n\n# Add constraints for the possible values of names and vacations\nnames = ['Arnold', 'Eric']\nvacations = ['beach', 'mountain']\n\nsolver.add(Or(house1_name == 'Arnold', house1_name == 'Eric'))\nsolver.add(Or(house1_vacation == 'beach', house1_vacation == 'mountain'))\nsolver.add(Or(house2_name == 'Arnold', house2_name == 'Eric'))\nsolver.add(Or(house2_vacation == 'beach', house2_vacation == 'mountain'))\n\n# Add the clue constraint: Arnold is somewhere to the right of the person who loves beach vacations.\nsolver.add(Implies(house1_vacation == 'beach', house2_name == 'Arnold'))\nsolver.add(Implies(house2_vacation == 'beach', False))  # Arnold cannot be in house 1 if house 2 loves beach\n\n# Check if the constraints are satisfiable\nif solver.check() == sat:\n    model = solver.model()\n    solution = {\n        \"solution\": {\n            \"header\": [\"House\", \"Name\", \"Vacation\"],\n            \"rows\": [\n                [\"1\", model[house1_name].as_string(), model[house1_vacation].as_string()],\n                [\"2\", model[house2_name].as_string(), model[house2_vacation].as_string()]\n            ]\n        }\n    }\n    print(json.dumps(solution, indent=4))\nelse:\n    print(\"No solution found\")"
+}

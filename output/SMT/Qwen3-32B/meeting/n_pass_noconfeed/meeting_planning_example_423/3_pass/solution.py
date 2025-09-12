@@ -1,0 +1,1 @@
+available_start_expr_1 = friends_data.get(friend, {}).get('available_start', 0)

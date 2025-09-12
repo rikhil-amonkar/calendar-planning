@@ -1,0 +1,156 @@
+```python
+from z3 import *
+import json
+
+def main():
+    # City mapping
+    cities = {
+        "Stockholm": 0,
+        "Hamburg": 1,
+        "Florence": 2,
+        "Istanbul": 3,
+        "Oslo": 4,
+        "Vilnius": 5,
+        "Santorini": 6,
+        "Munich": 7,
+        "Frankfurt": 8,
+        "Krakow": 9
+    }
+    city_names = {v: k for k, v in cities.items()}
+    
+    # Required days per city
+    required_days = {
+        cities["Stockholm"]: 3,
+        cities["Hamburg"]: 5,
+        cities["Florence"]: 2,
+        cities["Istanbul"]: 5,
+        cities["Oslo"]: 5,
+        cities["Vilnius"]: 5,
+        cities["Santorini"]: 2,
+        cities["Munich"]: 5,
+        cities["Frankfurt"]: 4,
+        cities["Krakow"]: 5
+    }
+    
+    # Direct flights (symmetrical)
+    connections = [
+        (cities["Oslo"], cities["Stockholm"]),
+        (cities["Stockholm"], cities["Oslo"]),
+        (cities["Krakow"], cities["Frankfurt"]),
+        (cities["Frankfurt"], cities["Krakow"]),
+        (cities["Krakow"], cities["Istanbul"]),
+        (cities["Istanbul"], cities["Krakow"]),
+        (cities["Munich"], cities["Stockholm"]),
+        (cities["Stockholm"], cities["Munich"]),
+        (cities["Hamburg"], cities["Stockholm"]),
+        (cities["Stockholm"], cities["Hamburg"]),
+        (cities["Krakow"], cities["Vilnius"]),
+        (cities["Vilnius"], cities["Krakow"]),
+        (cities["Oslo"], cities["Istanbul"]),
+        (cities["Istanbul"], cities["Oslo"]),
+        (cities["Istanbul"], cities["Stockholm"]),
+        (cities["Stockholm"], cities["Istanbul"]),
+        (cities["Oslo"], cities["Krakow"]),
+        (cities["Krakow"], cities["Oslo"]),
+        (cities["Vilnius"], cities["Istanbul"]),
+        (cities["Istanbul"], cities["Vilnius"]),
+        (cities["Oslo"], cities["Vilnius"]),
+        (cities["Vilnius"], cities["Oslo"]),
+        (cities["Frankfurt"], cities["Istanbul"]),
+        (cities["Istanbul"], cities["Frankfurt"]),
+        (cities["Oslo"], cities["Frankfurt"]),
+        (cities["Frankfurt"], cities["Oslo"]),
+        (cities["Munich"], cities["Hamburg"]),
+        (cities["Hamburg"], cities["Munich"]),
+        (cities["Munich"], cities["Istanbul"]),
+        (cities["Istanbul"], cities["Munich"]),
+        (cities["Oslo"], cities["Munich"]),
+        (cities["Munich"], cities["Oslo"]),
+        (cities["Frankfurt"], cities["Florence"]),
+        (cities["Florence"], cities["Frankfurt"]),
+        (cities["Oslo"], cities["Hamburg"]),
+        (cities["Hamburg"], cities["Oslo"]),
+        (cities["Vilnius"], cities["Frankfurt"]),
+        (cities["Frankfurt"], cities["Vilnius"]),
+        (cities["Florence"], cities["Munich"]),
+        (cities["Munich"], cities["Florence"]),
+        (cities["Krakow"], cities["Munich"]),
+        (cities["Munich"], cities["Krakow"]),
+        (cities["Hamburg"], cities["Istanbul"]),
+        (cities["Istanbul"], cities["Hamburg"]),
+        (cities["Frankfurt"], cities["Stockholm"]),
+        (cities["Stockholm"], cities["Frankfurt"]),
+        (cities["Stockholm"], cities["Santorini"]),
+        (cities["Santorini"], cities["Stockholm"]),
+        (cities["Frankfurt"], cities["Munich"]),
+        (cities["Munich"], cities["Frankfurt"]),
+        (cities["Santorini"], cities["Oslo"]),
+        (cities["Oslo"], cities["Santorini"]),
+        (cities["Krakow"], cities["Stockholm"]),
+        (cities["Stockholm"], cities["Krakow"]),
+        (cities["Vilnius"], cities["Munich"]),
+        (cities["Munich"], cities["Vilnius"]),
+        (cities["Frankfurt"], cities["Hamburg"]),
+        (cities["Hamburg"], cities["Frankfurt"])
+    ]
+    
+    # Create Z3 variables for each day
+    days = 32
+    city_vars = [Int(f"day_{i}") for i in range(1, days+1)]
+    
+    s = Solver()
+    
+    # Each day variable must be a valid city index
+    for day in city_vars:
+        s.add(day >= 0, day <= 9)
+    
+    # Constraints for required days per city
+    for city_idx, req_days in required_days.items():
+        s.add(Sum([If(var == city_idx, 1, 0) for var in city_vars]) == req_days)
+    
+    # Fixed events constraints
+    # Krakow workshop between day 5 and 9 (inclusive)
+    for i in range(5, 10):
+        s.add(city_vars[i-1] == cities["Krakow"])
+    
+    # Istanbul show between day 25 and 29 (inclusive)
+    for i in range(25, 30):
+        s.add(city_vars[i-1] == cities["Istanbul"])
+    
+    # Flight constraints: consecutive days must be connected by direct flights
+    for i in range(days-1):
+        current_city = city_vars[i]
+        next_city = city_vars[i+1]
+        # Allow staying in the same city or direct flight
+        s.add(Or(
+            current_city == next_city,
+            Or([And(current_city == a, next_city == b) for a, b in connections])
+        ))
+    
+    # Solve the problem
+    if s.check() == sat:
+        model = s.model()
+        itinerary = []
+        current_city = model.evaluate(city_vars[0])
+        start_day = 1
+        for i in range(1, days):
+            curr_city_val = model.evaluate(city_vars[i])
+            if curr_city_val.as_long() != current_city.as_long():
+                itinerary.append({
+                    "day_range": f"Day {start_day}-{i}",
+                    "place": city_names[current_city.as_long()]
+                })
+                start_day = i
+                current_city = curr_city_val
+        itinerary.append({
+            "day_range": f"Day {start_day}-{days}",
+            "place": city_names[current_city.as_long()]
+        })
+        
+        print(json.dumps({"itinerary": itinerary}))
+    else:
+        print("No solution found")
+
+if __name__ == "__main__":
+    main()
+```

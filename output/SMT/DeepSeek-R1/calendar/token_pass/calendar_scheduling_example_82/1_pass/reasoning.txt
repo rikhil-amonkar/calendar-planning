@@ -1,0 +1,59 @@
+We are given the task to schedule a meeting for Michael, Eric, and Arthur on Monday between 9:00 and 17:00.
+ The meeting duration is 30 minutes.
+
+ Steps:
+ 1. We'll represent time in minutes from 9:00 (which is 0 minutes) to 17:00 (which is 8*60 = 480 minutes).
+ 2. We have to avoid the busy times for each person.
+
+ Michael's busy intervals (in minutes from 9:00):
+  9:30-10:30 -> (30, 90)
+  15:00-15:30 -> (360, 390)
+  16:00-16:30 -> (420, 450)
+
+ Eric: free all day.
+
+ Arthur's busy intervals:
+  9:00-12:00 -> (0, 180)
+  13:00-15:00 -> (240, 360)
+  15:30-16:00 -> (390, 420)
+  16:30-17:00 -> (450, 480)
+
+ We are to find a 30-minute slot that does not conflict with any of these.
+
+ We'll use Z3 to find a start time S (in minutes from 9:00) such that:
+  0 <= S <= 480 - 30 (so that the meeting ends by 17:00)
+
+ And for each person, the meeting [S, S+30] must not overlap with any of their busy intervals.
+
+ We can model non-overlap for a set of busy intervals [b_start, b_end] by:
+   For each busy interval: (S + 30 <= b_start) OR (S >= b_end)
+
+ However, note that the busy intervals are given as inclusive of start and exclusive of end?
+ But in the problem, the meeting is half an hour, and we are representing time in minutes.
+
+ Since the meeting is half an hour, we can represent the end time as S+30.
+
+ We'll create a Z3 Int variable for S.
+
+ Constraints for Michael:
+   (S + 30 <= 30) OR (S >= 90)   [for 9:30-10:30]
+   (S + 30 <= 360) OR (S >= 390)  [for 15:00-15:30]
+   (S + 30 <= 420) OR (S >= 450)  [for 16:00-16:30]
+
+ Constraints for Arthur:
+   (S + 30 <= 0) OR (S >= 180)   [for 9:00-12:00] -> note: S>=0, so the first condition is impossible -> S>=180
+   (S + 30 <= 240) OR (S >= 360) [for 13:00-15:00]
+   (S + 30 <= 390) OR (S >= 420) [for 15:30-16:00]
+   (S + 30 <= 450) OR (S >= 480) [for 16:30-17:00]
+
+ But note: the meeting must be within [0, 450] (because 450+30=480, which is 17:00).
+
+ However, note that the constraints for Arthur's first interval actually force S to be at least 180.
+
+ Let's code accordingly.
+
+ We'll also note that Eric has no constraints.
+
+ We'll then convert the solution S (in minutes from 9:00) back to a time string.
+
+ Let's write the code accordingly.

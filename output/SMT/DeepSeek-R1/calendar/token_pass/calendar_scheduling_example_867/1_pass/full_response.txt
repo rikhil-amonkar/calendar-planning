@@ -1,0 +1,81 @@
+```python
+from z3 import *
+
+def main():
+    # Define the variables
+    day = Int('day')
+    start = Int('start')  # minutes from 9:00
+
+    s = Solver()
+
+    # Day must be between 1 and 3 (Tuesday to Thursday) since Betty cannot meet on Monday
+    s.add(day >= 1, day <= 3)
+    
+    # Start time must be between 0 and 450 (9:00 to 16:30)
+    s.add(start >= 0, start <= 450)
+    
+    # Betty's constraints: on Tuesday (day1) and Thursday (day3), start must be at or after 15:00 (360 minutes)
+    s.add(If(Or(day == 1, day == 3), start >= 360, True))
+    
+    # Betty's busy intervals (in minutes from 9:00)
+    betty_busy = {
+        1: [(0, 30), (150, 180), (210, 240), (270, 300), (450, 480)],  # Tuesday
+        2: [(30, 90), (240, 270), (300, 330)],                         # Wednesday
+        3: [(30, 60), (150, 180), (300, 330), (360, 390), (450, 480)]  # Thursday
+    }
+    
+    # Scott's busy intervals (in minutes from 9:00)
+    scott_busy = {
+        1: [(0, 30), (60, 120), (150, 180), (210, 270), (300, 360), (420, 450)],  # Tuesday
+        2: [(30, 210), (240, 270), (300, 330), (360, 390), (420, 450)],           # Wednesday
+        3: [(0, 30), (60, 90), (120, 180), (210, 240), (360, 420), (450, 480)]    # Thursday
+    }
+    
+    # Add constraints for Betty's busy intervals
+    for d, intervals in betty_busy.items():
+        for busy_start, busy_end in intervals:
+            s.add(If(day == d, Or(start + 30 <= busy_start, start >= busy_end), True))
+    
+    # Add constraints for Scott's busy intervals
+    for d, intervals in scott_busy.items():
+        for busy_start, busy_end in intervals:
+            s.add(If(day == d, Or(start + 30 <= busy_start, start >= busy_end), True))
+    
+    # Try to avoid Wednesday (day2) first
+    s.push()
+    s.add(day != 2)
+    
+    if s.check() == sat:
+        m = s.model()
+    else:
+        s.pop()
+        # If avoiding Wednesday is unsat, allow Wednesday
+        s.check()
+        m = s.model()
+    
+    # Get the solution values
+    day_val = m[day].as_long()
+    start_val = m[start].as_long()
+    
+    # Convert to day string
+    days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday']
+    day_str = days[day_val]
+    
+    # Convert start minutes to time string
+    total_minutes = start_val
+    hours = 9 + total_minutes // 60
+    minutes = total_minutes % 60
+    start_time = f"{hours:02d}:{minutes:02d}"
+    
+    # Calculate end time
+    end_minutes = start_val + 30
+    end_hours = 9 + end_minutes // 60
+    end_minutes %= 60
+    end_time = f"{end_hours:02d}:{end_minutes:02d}"
+    
+    # Print the result
+    print(f"{day_str} {start_time}:{end_time}")
+
+if __name__ == "__main__":
+    main()
+```

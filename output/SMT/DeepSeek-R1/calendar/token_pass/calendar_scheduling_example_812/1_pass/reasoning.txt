@@ -1,0 +1,250 @@
+We are scheduling a meeting for Mary and Alexis.
+ The meeting duration is 30 minutes (half an hour).
+ Work hours: 9:00 to 17:00 (which is 9:00 to 17:00) on Monday, Tuesday, Wednesday, Thursday.
+
+ We are to find the earliest available time.
+
+ Steps:
+ 1. Represent each day and time in minutes from start of the week (Monday 9:00) or by day and time of day.
+ 2. We have four days: Monday, Tuesday, Wednesday, Thursday. We can index days from 0 to 3.
+ 3. We'll represent time in minutes from 9:00 on the given day. So 9:00 is 0, 10:00 is 60, etc.
+
+ However, note: the meeting can be scheduled on any of these days, and we are to find the earliest time.
+
+ We'll create variables for the start time of the meeting: 
+   day (an integer from 0 to 3) and start_minute (an integer from 0 to 480, because 8 hours from 9:00 to 17:00 is 8*60=480 minutes).
+
+ But note: the meeting must end by 17:00, so the start_minute must be at most 480 - 30 = 450.
+
+ Constraints for each participant: they have busy intervals. The meeting must not overlap with any busy interval.
+
+ We are to minimize the overall time (earliest availability). We can represent the overall time as: total_minutes = day * (24*60) + (9*60 + start_minute) but note we are only considering 9:00-17:00 each day.
+ Alternatively, we can minimize by day and then by minute.
+
+ Since the days are discrete and we are only considering 4 days, we can iterate over days and then minutes? 
+ But the problem says to use Z3, so we'll use an SMT solver.
+
+ Alternatively, we can model the entire week in minutes from Monday 9:00 to Thursday 17:00. The total minutes we have: 4 days * 8 hours * 60 minutes = 1920 minutes.
+
+ We can let T be an integer from 0 to 1919, but note that each day we only have 480 minutes (from 0 to 479 for each day). Then the meeting start time T must be such that:
+   T mod 480 is between 0 and 450 (so that the meeting ends by 17:00) and the day is determined by T // 480.
+
+ However, note that the work hours are only 9:00-17:00 each day, so we don't have to worry about overnight.
+
+ Alternatively, we can have two variables: day (0 to 3) and minute (0 to 450) and then we can map that to a continuous time by: total_minutes = day * 480 + minute.
+
+ We want to minimize total_minutes.
+
+ Constraints: For each participant, for each busy interval in their schedule, the meeting must not overlap.
+
+ How to represent busy intervals?
+   For each participant, we have a list of busy intervals on each day.
+
+   We can convert each busy interval to a continuous representation in terms of total minutes from Monday 9:00.
+
+   For example, Monday: 
+        Mary has no meetings on Monday? (from the given: Mary's meetings are on Tue, Wed, Thu)
+        Alexis on Monday: 9:00-10:00 -> minute 0 to 60, 10:30-12:00 -> 90 to 180, 12:30-16:30 -> 150 to 450? Wait, let's recalc:
+
+   We represent each day in minutes from 9:00:
+        9:00 -> 0
+        10:00 -> 60
+        10:30 -> 90
+        12:00 -> 180 (because 12:00 is 3 hours from 9:00 -> 180 minutes)
+        12:30 -> 210
+        16:30 -> 7*60+30 = 450 minutes? But note: 16:30 is 7 hours and 30 minutes after 9:00 -> 7*60+30 = 450, and 17:00 is 480.
+
+   So for Alexis on Monday:
+        9:00-10:00: [0, 60)
+        10:30-12:00: [90, 180)
+        12:30-16:30: [210, 450)
+
+   Similarly for other days.
+
+   We'll create a list of busy intervals for each participant in terms of total minutes from Monday 9:00.
+
+   For Mary:
+        Tuesday:
+            10:00-10:30: Tuesday is day1 -> offset = 1*480 + (10:00-9:00)*60 = 480 + 60 = 540 to 480+90=570
+            15:30-16:00: 480 + (15:30-9:00)*60 to 480 + (16:00-9:00)*60 -> 480 + 6.5*60 to 480+7*60 -> 480+390 to 480+420 -> 870 to 900
+        Wednesday:
+            9:30-10:00: day2 -> 2*480 + (9:30-9:00)*60 to 2*480 + (10:00-9:00)*60 -> 960+30 to 960+60 -> 990 to 1020
+            15:00-15:30: 2*480 + (15:00-9:00)*60 to 2*480 + (15:30-9:00)*60 -> 960+360 to 960+390 -> 1320 to 1350
+        Thursday:
+            9:00-10:00: day3 -> 3*480 + 0 to 3*480+60 -> 1440 to 1500
+            10:30-11:30: 3*480 + 90 to 3*480+150 -> 1440+90 to 1440+150 -> 1530 to 1590
+
+   For Alexis:
+        Monday: as above -> [0,60), [90,180), [210,450)
+        Tuesday:
+            day1 (480 to 960)
+            9:00-10:00: 480+0 to 480+60 -> [480, 540)
+            10:30-11:30: 480+90 to 480+150 -> [570, 630)
+            12:00-15:30: 480+180 to 480+390 -> [660, 870)
+            16:00-17:00: 480+420 to 480+480 -> [900, 960)
+        Wednesday:
+            day2 (960 to 1440)
+            9:00-11:00: 960+0 to 960+120 -> [960, 1080)
+            11:30-17:00: 960+150 to 960+480 -> [1110, 1440)
+        Thursday:
+            day3 (1440 to 1920)
+            10:00-12:00: 1440+60 to 1440+180 -> [1500, 1620)
+            14:00-14:30: 1440+300 to 1440+330 -> [1740, 1770)
+            15:30-16:00: 1440+390 to 1440+420 -> [1830, 1860)
+            16:30-17:00: 1440+450 to 1440+480 -> [1890, 1920)
+
+ Now, the meeting is 30 minutes long. So if the meeting starts at time T (in total minutes from Monday 9:00), then it occupies [T, T+30).
+
+ Constraints: for each participant, for each busy interval [B_start, B_end), the meeting must not overlap, meaning:
+   Either T+30 <= B_start OR T >= B_end
+
+ But note: we are only considering the four days and within 9:00-17:00, so T must be in [0, 480) for day0, [480, 960) for day1, etc., and T+30 must not exceed the end of the day (so T mod 480 must be <= 450).
+
+ We'll create a Z3 solver and add constraints.
+
+ Steps in code:
+
+ 1. Define the total minutes for the week: we have 4 days, each with 480 minutes (from 0 to 479 per day). So total minutes from Monday 9:00 to Thursday 17:00 is 1920 minutes.
+
+ 2. We define an integer variable T for the start time (in minutes from Monday 9:00) that ranges from 0 to 1890 (because the latest start time on Thursday would be 1890, which is 1440 + 450, and then the meeting ends at 1920, which is Thursday 17:00).
+
+ 3. We also have to ensure that T is within the working hours of each day: i.e., for each day, if T is in day i, then T must be in [i*480, i*480+450] (so that the meeting ends by (i*480+480)).
+
+ 4. Alternatively, we can break T into day and minute, but we can also use modulo arithmetic. However, Z3 doesn't have native modulo for integers, but we can use Div and Mod.
+
+ 5. Alternatively, we can define T as an integer and then constrain that T must be in one of the days and within the minute range.
+
+ 6. We'll create a list of busy intervals for each participant (as tuples of start, end).
+
+ 7. For each busy interval (b_start, b_end) for a participant, we require that the meeting [T, T+30) does not overlap: (T >= b_end) OR (T+30 <= b_start)
+
+ 8. We want to minimize T.
+
+ 9. Then we convert T back to day and time.
+
+ Implementation:
+
+ Let's define the busy intervals for Mary and Alexis as above.
+
+ Note: We must consider that the meeting must be scheduled only on Monday, Tuesday, Wednesday, Thursday.
+
+ Code:
+
+ We'll use Z3's Int and Solver.
+
+ Steps:
+
+   from z3 import *
+
+   T = Int('T')
+   s = Solver()
+
+   # Constrain T to be in [0, 1890] and also such that the meeting does not go beyond the end of the day.
+   # But note: we have to break by day. Actually, we can also express the constraint by:
+   #   For each day i (0<=i<=3), if T is in [i*480, i*480+450] then it's valid.
+
+   # Alternatively, we can say: T must be >=0 and T <= 1890, and also for each day i, if T is in [i*480, (i+1)*480) then T mod 480 <= 450.
+   # But we can also break the constraint by day by using:
+   #   (And(T >= i*480, T <= i*480+450) for at least one i.
+
+   # However, we have to consider that T might be in any of the four days.
+
+   # We can do:
+   #   s.add(Or(And(T >= 0, T <= 450), And(T >= 480, T <= 930), And(T >= 960, T <= 1410), And(T >= 1440, T <= 1890)))
+
+   # Note: 
+   #   Day0 (Monday): 0 to 450
+   #   Day1 (Tuesday): 480 to 930 (because 480+450=930)
+   #   Day2 (Wednesday): 960 to 1410 (960+450=1410)
+   #   Day3 (Thursday): 1440 to 1890 (1440+450=1890)
+
+   # But note: the meeting must not span two days. So we can constrain T to be in these intervals.
+
+   s.add(Or(And(T >= 0, T <= 450), And(T >= 480, T <= 930), And(T >= 960, T <= 1410), And(T >= 1440, T <= 1890)))
+
+   # Now, we add the busy intervals for Mary and Alexis.
+
+   # Mary's busy intervals (as total minutes from Monday 9:00):
+   mary_busy = [
+        (540, 570),   # Tuesday 10:00-10:30
+        (870, 900),   # Tuesday 15:30-16:00
+        (990, 1020),  # Wednesday 9:30-10:00
+        (1320, 1350), # Wednesday 15:00-15:30
+        (1440, 1500), # Thursday 9:00-10:00
+        (1530, 1590)  # Thursday 10:30-11:30
+   ]
+
+   # Alexis's busy intervals:
+   alexis_busy = [
+        (0, 60), (90, 180), (210, 450),   # Monday
+        (480, 540), (570, 630), (660, 870), (900, 960), # Tuesday
+        (960, 1080), (1110, 1440), # Wednesday
+        (1500, 1620), (1740, 1770), (1830, 1860), (1890, 1920) # Thursday
+   ]
+
+   # For each busy interval in mary_busy, add constraint: meeting [T, T+30) does not overlap.
+   for start, end in mary_busy:
+        s.add(Or(T + 30 <= start, T >= end))
+
+   for start, end in alexis_busy:
+        s.add(Or(T + 30 <= start, T >= end))
+
+   # We want to minimize T.
+   # We can use an optimization solver, but Z3's Solver doesn't directly support minimization for integers in the same way as for linear arithmetic. 
+   # Alternatively, we can use Optimize instead of Solver.
+
+   # Since we are looking for the earliest, we can use the Optimize class.
+
+   opt = Optimize()
+   # Add the same constraints to opt
+   opt.add(Or(And(T >= 0, T <= 450), And(T >= 480, T <= 930), And(T >= 960, T <= 1410), And(T >= 1440, T <= 1890)))
+
+   for start, end in mary_busy:
+        opt.add(Or(T + 30 <= start, T >= end))
+
+   for start, end in alexis_busy:
+        opt.add(Or(T + 30 <= start, T >= end))
+
+   opt.minimize(T)
+
+   # Check and get the model.
+
+   if opt.check() == sat:
+        m = opt.model()
+        T_val = m.eval(T).as_long()
+        # Now convert T_val to day and time.
+        day_index = T_val // 480
+        minute_in_day = T_val % 480
+        start_hour = 9 + minute_in_day // 60
+        start_minute = minute_in_day % 60
+        end_minute_in_day = minute_in_day + 30
+        end_hour = 9 + end_minute_in_day // 60
+        end_minute = end_minute_in_day % 60
+
+        days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday']
+        day_str = days[day_index]
+
+        # Format the time as HH:MM:HH:MM
+        print(f"{day_str} {start_hour:02d}:{start_minute:02d}:{end_hour:02d}:{end_minute:02d}")
+
+   Else: print no solution (but the problem says there is a solution).
+
+ However, note: the problem says there exists a solution.
+
+ Let's run the code and see if we get the expected output.
+
+ But note: the problem says the group would like to meet at their earliest availability.
+
+ We are minimizing T, so we get the earliest.
+
+ Let's see what the earliest available time is.
+
+ We'll code accordingly.
+
+ Important: We must be cautious with the boundaries (inclusive/exclusive). Our busy intervals are represented as [start, end) meaning the interval is closed at the start and open at the end.
+
+ The meeting is [T, T+30) so it does not include T+30.
+
+ This matches the busy intervals.
+
+ Let's code accordingly.

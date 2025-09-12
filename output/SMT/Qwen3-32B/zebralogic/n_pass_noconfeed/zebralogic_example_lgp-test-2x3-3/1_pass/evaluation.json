@@ -1,0 +1,49 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"solution\": {\n    \"header\": [\n      \"House\",\n      \"Name\",\n      \"Food\",\n      \"Mother\"\n    ],\n    \"rows\": [\n      [\n        \"1\",\n        \"Arnold\",\n        \"grilled cheese\",\n        \"Holly\"\n      ],\n      [\n        \"2\",\n        \"Eric\",\n        \"pizza\",\n        \"Aniya\"\n      ]\n    ]\n  }\n}",
+    "pred": [
+        {
+            "House": "1",
+            "Name": "Arnold",
+            "Food": "grilled cheese",
+            "Mother": "Holly"
+        },
+        {
+            "House": "2",
+            "Name": "Eric",
+            "Food": "pizza",
+            "Mother": "Aniya"
+        }
+    ],
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Arnold",
+            "Food": "grilled cheese",
+            "Mother": "Holly"
+        },
+        {
+            "House": "2",
+            "Name": "Eric",
+            "Food": "pizza",
+            "Mother": "Aniya"
+        }
+    ],
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 263.10065245628357,
+        "execution_time": 0.07619619369506836,
+        "constraint_eval_time": 5.125999450683594e-05,
+        "pred_extract_time": 2.416328191757202,
+        "gold_extract_time": 1.1205673217773438e-05,
+        "total_tokens": 20003,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import z3\nimport json\n\n# Create EnumSorts for each attribute\nname_sort, (arnold, eric) = z3.EnumSort('Name', ['Arnold', 'Eric'])\nfood_sort, (grilled_cheese, pizza) = z3.EnumSort('Food', ['grilled cheese', 'pizza'])\nmother_sort, (holly, aniya) = z3.EnumSort('Mother', ['Holly', 'Aniya'])\n\n# Variables for house 1 and house 2\nname1 = z3.Const('name1', name_sort)\nfood1 = z3.Const('food1', food_sort)\nmother1 = z3.Const('mother1', mother_sort)\n\nname2 = z3.Const('name2', name_sort)\nfood2 = z3.Const('food2', food_sort)\nmother2 = z3.Const('mother2', mother_sort)\n\n# Create solver and add constraints\nsolver = z3.Solver()\n\n# Each category must have unique values between houses\nsolver.add(name1 != name2)\nsolver.add(food1 != food2)\nsolver.add(mother1 != mother2)\n\n# Clue 1: Grilled cheese is directly left of pizza\nsolver.add(food1 == grilled_cheese)\nsolver.add(food2 == pizza)\n\n# Clue 2: Arnold is not in the second house\nsolver.add(name2 == eric)\n\n# Clue 3: Arnold's mother is Holly\nsolver.add(mother1 == holly)\n\n# Check for solution\nif solver.check() == z3.sat:\n    model = solver.model()\n    \n    # Extract values for house 1\n    h1_name = str(model.eval(name1))\n    h1_food = str(model.eval(food1))\n    h1_mother = str(model.eval(mother1))\n    \n    # Extract values for house 2\n    h2_name = str(model.eval(name2))\n    h2_food = str(model.eval(food2))\n    h2_mother = str(model.eval(mother2))\n    \n    # Build solution dictionary\n    solution = {\n        \"solution\": {\n            \"header\": [\"House\", \"Name\", \"Food\", \"Mother\"],\n            \"rows\": [\n                [\"1\", h1_name, h1_food, h1_mother],\n                [\"2\", h2_name, h2_food, h2_mother]\n            ]\n        }\n    }\n    \n    # Output as JSON\n    print(json.dumps(solution, indent=2))\nelse:\n    print(json.dumps({\"error\": \"No solution found\"}))"
+}

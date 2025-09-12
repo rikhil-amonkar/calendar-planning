@@ -1,0 +1,1 @@
+travel_time_matrix[loc_to_idx[from_loc]][loc_to_idx[to_loc]] = travel_time_dict[from_loc].get(to_loc, float('inf'))

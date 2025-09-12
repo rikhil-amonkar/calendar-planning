@@ -1,0 +1,92 @@
+import json
+from z3 import *
+
+def main():
+    # Travel time dictionary: keys are (from, to) where from and to are location indices
+    travel_time_dict = {
+        (0,1):22, (0,2):15, (0,3):24, (0,4):7, (0,5):19,
+        (1,0):22, (1,2):16, (1,3):11, (1,4):23, (1,5):13,
+        (2,0):12, (2,1):15, (2,3):11, (2,4):11, (2,5):16,
+        (3,0):22, (3,1):12, (3,2):11, (3,4):21, (3,5):21,
+        (4,0):7, (4,1):23, (4,2):10, (4,3):19, (4,5):20,
+        (5,0):19, (5,1):11, (5,2):16, (5,3):20, (5,4):20
+    }
+    
+    # Location index to name mapping
+    location_names = {
+        0: "Union Square",
+        1: "Golden Gate Park",
+        2: "Pacific Heights",
+        3: "Presidio",
+        4: "Chinatown",
+        5: "The Castro"
+    }
+    
+    # People data: name, location index, available start (minutes from 8:00AM), available end, minimum duration
+    people = [
+        {'name':'Andrew', 'loc':1, 'start':225, 'end':390, 'min_dur':75},
+        {'name':'Sarah', 'loc':2, 'start':495, 'end':645, 'min_dur':15},
+        {'name':'Nancy', 'loc':3, 'start':570, 'end':675, 'min_dur':60},
+        {'name':'Rebecca', 'loc':4, 'start':105, 'end':810, 'min_dur':90},
+        {'name':'Robert', 'loc':5, 'start':30, 'end':375, 'min_dur':30}
+    ]
+    
+    # Create Z3 variables
+    opt = Optimize()
+    met = [Bool(f'met_{i}') for i in range(5)]
+    S = [Int(f'S_{i}') for i in range(5)]
+    E = [Int(f'E_{i}') for i in range(5)]
+    
+    # Constraints for each person
+    for i in range(5):
+        # If meeting is scheduled, it must be within availability and meet duration
+        opt.add(Implies(met[i], And(
+            S[i] >= people[i]['start'],
+            E[i] <= people[i]['end'],
+            E[i] - S[i] >= people[i]['min_dur']
+        )))
+        # Start time must account for travel from Union Square (location 0)
+        opt.add(Implies(met[i], S[i] >= 60 + travel_time_dict[(0, people[i]['loc'])]))
+    
+    # Disjunctive constraints for all pairs of meetings
+    for i in range(5):
+        for j in range(i+1, 5):
+            opt.add(Implies(And(met[i], met[j]), 
+                         Or(
+                             S[i] >= E[j] + travel_time_dict[(people[j]['loc'], people[i]['loc'])],
+                             S[j] >= E[i] + travel_time_dict[(people[i]['loc'], people[j]['loc'])]
+                         )))
+    
+    # Maximize the number of meetings
+    meeting_count = Sum([If(met[i], 1, 0) for i in range(5)])
+    opt.maximize(meeting_count)
+    
+    # Solve and get model
+    if opt.check() == sat:
+        model = opt.model()
+        itinerary = []
+        for i in range(5):
+            if is_true(model[met[i]]):
+                start_val = model[S[i]].as_long()
+                end_val = model[E[i]].as_long()
+                # Convert minutes from 8:00AM to time string
+                start_hour = (start_val // 60) + 8
+                start_minute = start_val % 60
+                end_hour = (end_val // 60) + 8
+                end_minute = end_val % 60
+                itinerary.append({
+                    "action": "meet",
+                    "location": location_names[people[i]['loc']],
+                    "person": people[i]['name'],
+                    "start_time": f"{start_hour}:{start_minute:02d}",
+                    "end_time": f"{end_hour}:{end_minute:02d}"
+                })
+        # Sort itinerary by start time
+        itinerary.sort(key=lambda x: x['start_time'])
+        result = {"itinerary": itinerary}
+        print(json.dumps(result, indent=2))
+    else:
+        print('{"itinerary": []}')
+
+if __name__ == "__main__":
+    main()

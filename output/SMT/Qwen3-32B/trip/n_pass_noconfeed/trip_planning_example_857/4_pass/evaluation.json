@@ -1,0 +1,63 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "City code: 3\nDays: 4",
+    "pred": {
+        "itinerary": [
+            {
+                "day_range": "Day 1-4",
+                "place": "City code 3"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "day_range": "Day 1-5",
+                "place": "Hamburg"
+            },
+            {
+                "day_range": "Day 5-6",
+                "place": "Frankfurt"
+            },
+            {
+                "day_range": "Day 6-10",
+                "place": "Naples"
+            },
+            {
+                "day_range": "Day 10-12",
+                "place": "Mykonos"
+            },
+            {
+                "day_range": "Day 12-14",
+                "place": "Geneva"
+            },
+            {
+                "day_range": "Day 14-15",
+                "place": "Porto"
+            },
+            {
+                "day_range": "Day 15-18",
+                "place": "Manchester"
+            }
+        ]
+    },
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "total_days": 18
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 4,
+    "timing": {
+        "api_call_time": 79.84632468223572,
+        "execution_time": 0.07269644737243652,
+        "constraint_eval_time": 3.0517578125e-05,
+        "pred_extract_time": 0.6076691150665283,
+        "gold_extract_time": 0.0001628398895263672,
+        "total_tokens": 6508,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import z3\n\ndef get_days_expression(city_code_var):\n    return z3.If(city_code_var == 0, 2,\n                 z3.If(city_code_var == 1, 3,\n                       z3.If(city_code_var == 2, 3,\n                             z3.If(city_code_var == 3, 4,\n                                   z3.If(city_code_var == 4, 5,\n                                         z3.If(city_code_var == 5, 5, 2))))))\n\n# Define the Z3 integer variables\ncity_code_var = z3.Int('city_code')\ndays_var = z3.Int('days')\n\n# Create the solver and add the constraint\nsolver = z3.Solver()\nsolver.add(days_var == get_days_expression(city_code_var))\n\n# Example: Add a constraint to test a specific city code\nsolver.add(city_code_var == 3)\n\n# Check if the constraints are satisfiable\nif solver.check() == z3.sat:\n    model = solver.model()\n    print(f\"City code: {model[city_code_var]}\")\n    print(f\"Days: {model[days_var]}\")\nelse:\n    print(\"No solution found.\")"
+}

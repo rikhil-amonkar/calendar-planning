@@ -1,0 +1,1 @@
+(2 if city_index == 7 else 0)

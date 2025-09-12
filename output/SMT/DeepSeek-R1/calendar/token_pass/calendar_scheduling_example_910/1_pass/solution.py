@@ -1,0 +1,76 @@
+from z3 import *
+
+def main():
+    # Define the work hours in minutes from midnight
+    work_start = 9 * 60
+    work_end = 17 * 60
+    meeting_duration = 60
+    
+    # Define the days: 0=Monday, 1=Tuesday, 2=Wednesday, 3=Thursday, 4=Friday
+    days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
+    
+    # Busy intervals for each day (in minutes from midnight)
+    busy_intervals = {
+        0: [(690, 720), (780, 930)],  # Monday
+        1: [(540, 570), (660, 810), (840, 990)],  # Tuesday
+        2: [(540, 570), (600, 660), (690, 810), (840, 870), (900, 990)],  # Wednesday
+        3: [(570, 600), (630, 690), (720, 750), (750, 780), (900, 930), (990, 1020)],  # Thursday
+        4: [(540, 630), (630, 660), (660, 720), (750, 870), (840, 870), (930, 960), (990, 1020)]  # Friday
+    }
+    
+    # Z3 variables
+    day = Int('day')
+    start_minute = Int('start_minute')
+    
+    # Solver instance
+    s = Solver()
+    
+    # Constraints: day must be between 0 and 4, start_minute must allow the meeting to end by work_end
+    s.add(day >= 0, day <= 4)
+    s.add(start_minute >= 0, start_minute <= (work_end - work_start - meeting_duration))
+    
+    # Add constraints for each day: meeting must not overlap with any busy interval
+    for d, intervals in busy_intervals.items():
+        for interval in intervals:
+            s.add(If(day == d, 
+                     Or(start_minute + work_start + meeting_duration <= interval[0], 
+                        start_minute + work_start >= interval[1]), 
+                     True))
+    
+    # Soft constraints: avoid Tuesday (day1) for Bryan and avoid Monday (day0) and Thursday (day3) for Nicholas
+    # First try with soft constraints
+    soft_solver = Solver()
+    soft_solver.add(s.assertions())
+    soft_solver.add(Or(day == 2, day == 4))  # Prefer Wednesday or Friday
+    
+    model = None
+    if soft_solver.check() == sat:
+        model = soft_solver.model()
+    else:
+        # If no solution with soft constraints, try without
+        if s.check() == sat:
+            model = s.model()
+        else:
+            print("No solution found")
+            return
+    
+    # Extract solution
+    d = model[day].as_long()
+    start = model[start_minute].as_long()
+    abs_start = work_start + start
+    abs_end = abs_start + meeting_duration
+    
+    # Convert to time strings
+    start_hour = abs_start // 60
+    start_min = abs_start % 60
+    end_hour = abs_end // 60
+    end_min = abs_end % 60
+    
+    # Format output
+    time_str = f"{start_hour:02d}:{start_min:02d}:{end_hour:02d}:{end_min:02d}"
+    day_str = days[d]
+    
+    print(f"{day_str} {time_str}")
+
+if __name__ == "__main__":
+    main()

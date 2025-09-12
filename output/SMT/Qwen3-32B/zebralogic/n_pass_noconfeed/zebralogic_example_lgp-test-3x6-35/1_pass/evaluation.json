@@ -1,0 +1,79 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"solution\": {\n    \"header\": [\n      \"House\",\n      \"Name\",\n      \"Vacation\",\n      \"Height\",\n      \"Flower\",\n      \"HairColor\",\n      \"Education\"\n    ],\n    \"rows\": [\n      [\n        \"1\",\n        \"Eric\",\n        \"beach\",\n        \"very short\",\n        \"lilies\",\n        \"brown\",\n        \"bachelor\"\n      ],\n      [\n        \"2\",\n        \"Peter\",\n        \"mountain\",\n        \"average\",\n        \"carnations\",\n        \"black\",\n        \"associate\"\n      ],\n      [\n        \"3\",\n        \"Arnold\",\n        \"city\",\n        \"short\",\n        \"daffodils\",\n        \"blonde\",\n        \"high school\"\n      ]\n    ]\n  }\n}",
+    "pred": [
+        {
+            "House": "1",
+            "Name": "Eric",
+            "Vacation": "beach",
+            "Height": "very short",
+            "Flower": "lilies",
+            "HairColor": "brown",
+            "Education": "bachelor"
+        },
+        {
+            "House": "2",
+            "Name": "Peter",
+            "Vacation": "mountain",
+            "Height": "average",
+            "Flower": "carnations",
+            "HairColor": "black",
+            "Education": "associate"
+        },
+        {
+            "House": "3",
+            "Name": "Arnold",
+            "Vacation": "city",
+            "Height": "short",
+            "Flower": "daffodils",
+            "HairColor": "blonde",
+            "Education": "high school"
+        }
+    ],
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Eric",
+            "Vacation": "beach",
+            "Height": "very short",
+            "Flower": "lilies",
+            "HairColor": "brown",
+            "Education": "bachelor"
+        },
+        {
+            "House": "2",
+            "Name": "Peter",
+            "Vacation": "mountain",
+            "Height": "average",
+            "Flower": "carnations",
+            "HairColor": "black",
+            "Education": "associate"
+        },
+        {
+            "House": "3",
+            "Name": "Arnold",
+            "Vacation": "city",
+            "Height": "short",
+            "Flower": "daffodils",
+            "HairColor": "blonde",
+            "Education": "high school"
+        }
+    ],
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 534.1231462955475,
+        "execution_time": 0.0824131965637207,
+        "constraint_eval_time": 5.316734313964844e-05,
+        "pred_extract_time": 2.449979066848755,
+        "gold_extract_time": 1.0728836059570312e-05,
+        "total_tokens": 38303,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\nimport json\n\n# Define EnumSorts for each category\nName, (Eric, Arnold, Peter) = EnumSort('Name', ['Eric', 'Arnold', 'Peter'])\nVacation, (mountain, city, beach) = EnumSort('Vacation', ['mountain', 'city', 'beach'])\nHeight, (vs, avg, sh) = EnumSort('Height', ['very short', 'average', 'short'])\nFlower, (carnations, daffodils, lilies) = EnumSort('Flower', ['carnations', 'daffodils', 'lilies'])\nHairColor, (brown, black, blonde) = EnumSort('HairColor', ['brown', 'black', 'blonde'])\nEducation, (associate, bachelor, highschool) = EnumSort('Education', ['associate', 'bachelor', 'high school'])\n\n# Create variables for each house and each attribute\n# House 1\nname_1 = Const('name_1', Name)\nvacation_1 = Const('vacation_1', Vacation)\nheight_1 = Const('height_1', Height)\nflower_1 = Const('flower_1', Flower)\nhaircolor_1 = Const('haircolor_1', HairColor)\neducation_1 = Const('education_1', Education)\n\n# House 2\nname_2 = Const('name_2', Name)\nvacation_2 = Const('vacation_2', Vacation)\nheight_2 = Const('height_2', Height)\nflower_2 = Const('flower_2', Flower)\nhaircolor_2 = Const('haircolor_2', HairColor)\neducation_2 = Const('education_2', Education)\n\n# House 3\nname_3 = Const('name_3', Name)\nvacation_3 = Const('vacation_3', Vacation)\nheight_3 = Const('height_3', Height)\nflower_3 = Const('flower_3', Flower)\nhaircolor_3 = Const('haircolor_3', HairColor)\neducation_3 = Const('education_3', Education)\n\ns = Solver()\n\n# Add constraints for uniqueness in each category\ns.add(Distinct(name_1, name_2, name_3))\ns.add(Distinct(vacation_1, vacation_2, vacation_3))\ns.add(Distinct(height_1, height_2, height_3))\ns.add(Distinct(flower_1, flower_2, flower_3))\ns.add(Distinct(haircolor_1, haircolor_2, haircolor_3))\ns.add(Distinct(education_1, education_2, education_3))\n\n# Add clues as constraints\n# Clue 1: Peter is average height\ns.add(Implies(name_1 == Peter, height_1 == avg))\ns.add(Implies(name_2 == Peter, height_2 == avg))\ns.add(Implies(name_3 == Peter, height_3 == avg))\n\n# Clue 2: Arnold loves daffodils\ns.add(Implies(name_1 == Arnold, flower_1 == daffodils))\ns.add(Implies(name_2 == Arnold, flower_2 == daffodils))\ns.add(Implies(name_3 == Arnold, flower_3 == daffodils))\n\n# Clue 3: very short not in house 2\ns.add(height_2 != vs)\n\n# Clue 4: beach in house 1\ns.add(vacation_1 == beach)\n\n# Clue 5: high school in house 3\ns.add(education_3 == highschool)\n\n# Clue 6: short is to the right of very short\nh_very_short = Int('h_very_short')\nh_short = Int('h_short')\ns.add(\n    Or(\n        And(h_very_short == 1, height_1 == vs),\n        And(h_very_short == 2, height_2 == vs),\n        And(h_very_short == 3, height_3 == vs)\n    )\n)\ns.add(\n    Or(\n        And(h_short == 1, height_1 == sh),\n        And(h_short == 2, height_2 == sh),\n        And(h_short == 3, height_3 == sh)\n    )\n)\ns.add(h_short > h_very_short)\n\n# Clue 7: Eric loves lilies\ns.add(Implies(name_1 == Eric, flower_1 == lilies))\ns.add(Implies(name_2 == Eric, flower_2 == lilies))\ns.add(Implies(name_3 == Eric, flower_3 == lilies))\n\n# Clue 8: lilies lover has bachelor\ns.add(Implies(flower_1 == lilies, education_1 == bachelor))\ns.add(Implies(flower_2 == lilies, education_2 == bachelor))\ns.add(Implies(flower_3 == lilies, education_3 == bachelor))\n\n# Clue 9: city is to the right of Peter\nh_peter = Int('h_peter')\nh_city = Int('h_city')\ns.add(\n    Or(\n        And(h_peter == 1, name_1 == Peter),\n        And(h_peter == 2, name_2 == Peter),\n        And(h_peter == 3, name_3 == Peter)\n    )\n)\ns.add(\n    Or(\n        And(h_city == 1, vacation_1 == city),\n        And(h_city == 2, vacation_2 == city),\n        And(h_city == 3, vacation_3 == city)\n    )\n)\ns.add(h_city > h_peter)\n\n# Clue 10: blonde in third house\ns.add(haircolor_3 == blonde)\n\n# Clue 11: beach vacation has brown hair\ns.add(Implies(vacation_1 == beach, haircolor_1 == brown))\ns.add(Implies(vacation_2 == beach, haircolor_2 == brown))\ns.add(Implies(vacation_3 == beach, haircolor_3 == brown))\n\nif s.check() == sat:\n    model = s.model()\n    rows = []\n    for house_num in [1, 2, 3]:\n        if house_num == 1:\n            name_var = name_1\n            vacation_var = vacation_1\n            height_var = height_1\n            flower_var = flower_1\n            haircolor_var = haircolor_1\n            education_var = education_1\n        elif house_num == 2:\n            name_var = name_2\n            vacation_var = vacation_2\n            height_var = height_2\n            flower_var = flower_2\n            haircolor_var = haircolor_2\n            education_var = education_2\n        else:\n            name_var = name_3\n            vacation_var = vacation_3\n            height_var = height_3\n            flower_var = flower_3\n            haircolor_var = haircolor_3\n            education_var = education_3\n\n        name = model[name_var]\n        vacation = model[vacation_var]\n        height = model[height_var]\n        flower = model[flower_var]\n        haircolor = model[haircolor_var]\n        education = model[education_var]\n\n        name_str = name.decl().name()\n        vacation_str = vacation.decl().name()\n        height_str = height.decl().name()\n        flower_str = flower.decl().name()\n        haircolor_str = haircolor.decl().name()\n        education_str = education.decl().name()\n\n        rows.append([str(house_num), name_str, vacation_str, height_str, flower_str, haircolor_str, education_str])\n\n    solution = {\n        \"solution\": {\n            \"header\": [\"House\", \"Name\", \"Vacation\", \"Height\", \"Flower\", \"HairColor\", \"Education\"],\n            \"rows\": rows\n        }\n    }\n\n    print(json.dumps(solution, indent=2))"
+}

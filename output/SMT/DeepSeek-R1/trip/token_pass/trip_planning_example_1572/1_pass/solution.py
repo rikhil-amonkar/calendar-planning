@@ -1,0 +1,87 @@
+from z3 import *
+import json
+
+def main():
+    cities = ["Lyon", "Paris", "Riga", "Berlin", "Stockholm", "Zurich", "Nice", "Seville", "Milan", "Naples"]
+    city_index = {city: idx for idx, city in enumerate(cities)}
+    
+    required_days = {
+        "Lyon": 3,
+        "Paris": 5,
+        "Riga": 2,
+        "Berlin": 2,
+        "Stockholm": 3,
+        "Zurich": 5,
+        "Nice": 2,
+        "Seville": 3,
+        "Milan": 3,
+        "Naples": 4
+    }
+    
+    direct_flights = [
+        ("Paris", "Stockholm"), ("Seville", "Paris"), ("Naples", "Zurich"),
+        ("Nice", "Riga"), ("Berlin", "Milan"), ("Paris", "Zurich"),
+        ("Paris", "Nice"), ("Milan", "Paris"), ("Milan", "Riga"),
+        ("Paris", "Lyon"), ("Milan", "Naples"), ("Paris", "Riga"),
+        ("Berlin", "Stockholm"), ("Stockholm", "Riga"), ("Nice", "Zurich"),
+        ("Milan", "Zurich"), ("Lyon", "Nice"), ("Zurich", "Stockholm"),
+        ("Zurich", "Riga"), ("Berlin", "Naples"), ("Milan", "Stockholm"),
+        ("Berlin", "Zurich"), ("Milan", "Seville"), ("Paris", "Naples"),
+        ("Berlin", "Riga"), ("Nice", "Stockholm"), ("Berlin", "Paris"),
+        ("Nice", "Naples"), ("Berlin", "Nice")
+    ]
+    
+    allowed_pairs = set()
+    for a, b in direct_flights:
+        i, j = city_index[a], city_index[b]
+        allowed_pairs.add((i, j))
+        allowed_pairs.add((j, i))
+    
+    c = [Int(f'c_{i}') for i in range(1, 24)]
+    s = Solver()
+    
+    for i in range(23):
+        s.add(c[i] >= 0, c[i] < len(cities))
+    
+    for i in range(1, 23):
+        s.add(If(c[i-1] != c[i],
+                 Or([And(c[i-1] == a, c[i] == b) for (a, b) in allowed_pairs]),
+                 True))
+    
+    for city, req in required_days.items():
+        idx = city_index[city]
+        total = 0
+        total += If(c[0] == idx, 1, 0)
+        for i in range(1, 23):
+            total += If(c[i] == idx, 1, 0)
+        for i in range(1, 23):
+            total += If(And(c[i-1] == idx, c[i] != idx), 1, 0)
+        s.add(total == req)
+    
+    s.add(c[0] == city_index["Berlin"])
+    s.add(c[11] == city_index["Nice"])
+    s.add(c[19] == city_index["Stockholm"])
+    s.add(Or(c[20] == city_index["Stockholm"], c[21] == city_index["Stockholm"]))
+    
+    if s.check() == sat:
+        m = s.model()
+        seq = [m.evaluate(c[i]).as_long() for i in range(23)]
+        city_names = [cities[idx] for idx in seq]
+        
+        itinerary = []
+        start = 1
+        current_city = city_names[0]
+        for day in range(1, 23):
+            if city_names[day] != current_city:
+                end = day
+                itinerary.append({"day_range": f"Day {start}-{end}", "place": current_city})
+                start = day + 1
+                current_city = city_names[day]
+        itinerary.append({"day_range": f"Day {start}-23", "place": current_city})
+        
+        print(json.dumps({"itinerary": itinerary}))
+    else:
+        print('{"itinerary": []}')
+
+if __name__ == "__main__":
+    main()

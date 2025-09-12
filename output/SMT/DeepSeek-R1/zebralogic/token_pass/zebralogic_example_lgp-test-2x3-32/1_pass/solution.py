@@ -1,0 +1,61 @@
+import json
+from z3 import *
+
+def main():
+    # Create enums for attributes
+    Name, (eric, arnold) = EnumSort('Name', ['Eric', 'Arnold'])
+    Birthday, (april, sept) = EnumSort('Birthday', ['april', 'sept'])
+    Color, (yellow, red) = EnumSort('Color', ['yellow', 'red'])
+    
+    # Create variables for each house
+    houses = [1, 2]
+    names = [Const(f'name_{i}', Name) for i in houses]
+    birthdays = [Const(f'birthday_{i}', Birthday) for i in houses]
+    colors = [Const(f'color_{i}', Color) for i in houses]
+    
+    s = Solver()
+    
+    # All attributes are distinct
+    s.add(Distinct(names))
+    s.add(Distinct(birthdays))
+    s.add(Distinct(colors))
+    
+    # Clue 1: Eric loves yellow
+    for i in range(len(houses)):
+        s.add(Implies(names[i] == eric, colors[i] == yellow))
+    
+    # Clue 2: April birthday in first house
+    s.add(birthdays[0] == april)
+    
+    # Clue 3: Yellow lover not in first house
+    s.add(colors[0] != yellow)
+    
+    # Check and get solution
+    if s.check() == sat:
+        m = s.model()
+        solution = {
+            "solution": {
+                "header": ["House", "Name", "Birthday", "Color"],
+                "rows": []
+            }
+        }
+        
+        for i in range(len(houses)):
+            name_val = m.evaluate(names[i])
+            birthday_val = m.evaluate(birthdays[i])
+            color_val = m.evaluate(colors[i])
+            
+            row = [
+                str(i+1),
+                str(name_val),
+                str(birthday_val),
+                str(color_val)
+            ]
+            solution["solution"]["rows"].append(row)
+        
+        print(json.dumps(solution, indent=2))
+    else:
+        print('No solution found')
+
+if __name__ == '__main__':
+    main()

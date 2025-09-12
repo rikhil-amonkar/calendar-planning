@@ -1,0 +1,67 @@
+```python
+from z3 import *
+import json
+
+def main():
+    cities = ['Manchester', 'Istanbul', 'Venice', 'Krakow', 'Lyon']
+    req_days = [3, 7, 7, 6, 2]
+    n = len(cities)
+    
+    flight_edges = [
+        [0, 1, 1, 1, 0],
+        [1, 0, 1, 1, 1],
+        [1, 1, 0, 0, 1],
+        [1, 1, 0, 0, 0],
+        [0, 1, 1, 0, 0]
+    ]
+    
+    s = Solver()
+    
+    order = [Int('order_%d' % i) for i in range(n)]
+    for i in range(n):
+        s.add(And(order[i] >= 0, order[i] < n))
+    s.add(Distinct(order))
+    
+    arrival_day = [Int('arrival_day_%d' % i) for i in range(n)]
+    departure_day = [Int('departure_day_%d' % i) for i in range(n)]
+    
+    first_city = order[0]
+    s.add(arrival_day[first_city] == 1)
+    s.add(departure_day[first_city] == arrival_day[first_city] + req_days[first_city] - 1)
+    
+    for i in range(1, n):
+        current_city = order[i]
+        prev_city = order[i-1]
+        s.add(arrival_day[current_city] == departure_day[prev_city])
+        s.add(departure_day[current_city] == arrival_day[current_city] + req_days[current_city] - 1)
+    
+    last_city = order[n-1]
+    s.add(departure_day[last_city] == 21)
+    
+    for i in range(n-1):
+        city1 = order[i]
+        city2 = order[i+1]
+        s.add(flight_edges[city1][city2] == 1)
+    
+    s.add(arrival_day[0] <= 3)
+    s.add(arrival_day[2] <= 9)
+    
+    if s.check() == sat:
+        m = s.model()
+        order_values = [m.evaluate(order[i]) for i in range(n)]
+        city_indices = [m.evaluate(order[i]).as_long() for i in range(n)]
+        itinerary = []
+        for idx in city_indices:
+            a = m.evaluate(arrival_day[idx]).as_long()
+            d = m.evaluate(departure_day[idx]).as_long()
+            itinerary.append({
+                "day_range": f"Day {a}-{d}",
+                "place": cities[idx]
+            })
+        print(json.dumps({"itinerary": itinerary}))
+    else:
+        print('{"itinerary": []}')
+
+if __name__ == "__main__":
+    main()
+```

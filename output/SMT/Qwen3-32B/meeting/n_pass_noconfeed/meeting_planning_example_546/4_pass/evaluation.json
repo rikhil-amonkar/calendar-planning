@@ -1,0 +1,70 @@
+{
+    "has_execution_error": true,
+    "has_no_plan": false,
+    "execution_output": null,
+    "pred": null,
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Pacific Heights",
+                "person": "Nancy",
+                "start_time": "9:11",
+                "end_time": "10:41"
+            },
+            {
+                "action": "meet",
+                "location": "Union Square",
+                "person": "Lisa",
+                "start_time": "10:53",
+                "end_time": "11:38"
+            },
+            {
+                "action": "meet",
+                "location": "Financial District",
+                "person": "Joshua",
+                "start_time": "12:00",
+                "end_time": "12:15"
+            },
+            {
+                "action": "meet",
+                "location": "Nob Hill",
+                "person": "Andrew",
+                "start_time": "12:23",
+                "end_time": "13:23"
+            },
+            {
+                "action": "meet",
+                "location": "Bayview",
+                "person": "John",
+                "start_time": "16:45",
+                "end_time": "18:00"
+            },
+            {
+                "action": "meet",
+                "location": "Richmond District",
+                "person": "Kenneth",
+                "start_time": "21:15",
+                "end_time": "21:45"
+            }
+        ]
+    },
+    "status": "Error",
+    "violated_constraint": {
+        "missing_itinerary": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 4,
+    "timing": {
+        "api_call_time": 85.13343787193298,
+        "execution_time": 0.0762181282043457,
+        "constraint_eval_time": 4.291534423828125e-06,
+        "pred_extract_time": 1.3113021850585938e-05,
+        "gold_extract_time": 8.249282836914062e-05,
+        "total_tokens": 6069,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import Bool, Int, And, Implies, If, Solver\n\n# Initialize the solver\nsolver = Solver()\n\n# Assuming meet_vars, person_vars, start_vars, end_vars, loc_vars are defined as lists of Z3 variables\nmeet_vars = []\nperson_vars = []\nstart_vars = []\n\n# Sample placeholder for end_vars and loc_vars (should be defined earlier)\nend_vars = [Int(f'end_{step}') for step in range(6)]\nloc_vars = [Int(f'loc_{step}') for step in range(6)]\n\n# Example data structures (should be defined in the actual code)\nfriends = [\n    {'location': 1, 'available_start': 540, 'available_end': 1080, 'duration': 30},\n    {'location': 2, 'available_start': 540, 'available_end': 1080, 'duration': 30},\n    # ... fill in for all 6 friends\n]\ntravel_time_matrix = [\n    [0, 10, 20, 30, 40, 50],  # from location 0 to others\n    [10, 0, 15, 25, 35, 45],  # from location 1 to others\n    # ... fill in for all 6 locations\n]\n\nfor step in range(6):\n    meet = Bool(f'meet_{step}')\n    person = Int(f'person_{step}')\n    start = Int(f'start_{step}')\n    meet_vars.append(meet)\n    person_vars.append(person)\n    start_vars.append(start)\n    end = end_vars[step]\n    loc = loc_vars[step]\n\n    # Determine previous end and loc based on step\n    if step == 0:\n        prev_end = 540  # Starting at 9:00 AM\n        prev_loc = 0    # Embarcadero\n    else:\n        prev_end = end_vars[step-1]\n        prev_loc = loc_vars[step-1]\n\n    # If meet is true, person must be between 0 and 5\n    solver.add(Implies(meet, And(person >= 0, person <= 5)))\n\n    # For each possible person, add constraints\n    for p in range(6):\n        p_loc = friends[p]['location']\n        p_start = friends[p]['available_start']\n        p_end_time = friends[p]['available_end']\n        p_duration = friends[p]['duration']\n\n        # Compute travel_time\n        if step == 0:\n            # prev_loc is a concrete integer (0)\n            travel_time = travel_time_matrix[0][p_loc]\n        else:\n            # prev_loc is a Z3 variable, build the If chain\n            tt = travel_time_matrix[0][p_loc]\n            for i in range(1, 7):\n                tt = If(prev_loc == i, travel_time_matrix[i][p_loc], tt)\n            travel_time = tt\n\n        solver.add(Implies(And(meet, person == p), start >= prev_end + travel_time))\n        solver.add(Implies(And(meet, person == p), start >= p_start))\n        solver.add(Implies(And(meet, person == p), start + p_duration <= p_end_time))\n        solver.add(Implies(And(meet, person == p), end == start + p_duration))\n        solver.add(Implies(And(meet, person == p), loc == p_loc))\n\n    # If not meet, then end is prev_end and loc is prev_loc\n    solver.add(Implies(Not(meet), end == prev_end))\n    solver.add(Implies(Not(meet), loc == prev_loc))"
+}

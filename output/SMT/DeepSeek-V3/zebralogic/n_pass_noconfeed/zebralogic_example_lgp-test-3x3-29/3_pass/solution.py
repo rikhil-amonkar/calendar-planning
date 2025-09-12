@@ -1,0 +1,101 @@
+import z3
+import json
+
+def main():
+    # Create solver
+    solver = z3.Solver()
+    
+    # Define houses
+    houses = [1, 2, 3]
+    
+    # Define attributes
+    names = ['Eric', 'Peter', 'Arnold']
+    mothers = ['Holly', 'Aniya', 'Janelle']
+    foods = ['pizza', 'grilled cheese', 'spaghetti']
+    
+    # Create variables for each attribute per house
+    name_vars = {house: z3.Int(f'name_{house}') for house in houses}
+    mother_vars = {house: z3.Int(f'mother_{house}') for house in houses}
+    food_vars = {house: z3.Int(f'food_{house}') for house in houses}
+    
+    # Each attribute must be one of the possible values (0, 1, 2)
+    for house in houses:
+        solver.add(z3.And(name_vars[house] >= 0, name_vars[house] < len(names)))
+        solver.add(z3.And(mother_vars[house] >= 0, mother_vars[house] < len(mothers)))
+        solver.add(z3.And(food_vars[house] >= 0, food_vars[house] < len(foods)))
+    
+    # All attributes within each category must be distinct
+    solver.add(z3.Distinct([name_vars[house] for house in houses]))
+    solver.add(z3.Distinct([mother_vars[house] for house in houses]))
+    solver.add(z3.Distinct([food_vars[house] for house in houses]))
+    
+    # Clue 1: The person who loves the spaghetti eater and Peter are next to each other.
+    spaghetti_index = foods.index('spaghetti')
+    peter_index = names.index('Peter')
+    
+    # Find house with spaghetti
+    for house in houses:
+        # Check if this house has spaghetti
+        has_spaghetti = (food_vars[house] == spaghetti_index)
+        
+        # This house (spaghetti eater) is next to Peter
+        adjacent_conditions = []
+        if house > 1:  # Has left neighbor
+            adjacent_conditions.append(name_vars[house-1] == peter_index)
+        if house < 3:  # Has right neighbor
+            adjacent_conditions.append(name_vars[house+1] == peter_index)
+        
+        # If there are adjacent conditions, add the implication
+        if adjacent_conditions:
+            solver.add(z3.Implies(has_spaghetti, z3.Or(adjacent_conditions)))
+    
+    # Clue 2: The person who loves eating grilled cheese is directly left of The person whose mother's name is Aniya.
+    grilled_cheese_index = foods.index('grilled cheese')
+    aniya_index = mothers.index('Aniya')
+    
+    for house in houses:
+        if house < 3:  # Can only be left of house 2 or 3
+            solver.add(z3.Implies(food_vars[house] == grilled_cheese_index, 
+                                 mother_vars[house+1] == aniya_index))
+    
+    # Clue 3: The person who loves eating grilled cheese is Eric.
+    eric_index = names.index('Eric')
+    for house in houses:
+        solver.add(z3.Implies(food_vars[house] == grilled_cheese_index, 
+                             name_vars[house] == eric_index))
+    
+    # Clue 4: Peter is The person whose mother's name is Holly.
+    holly_index = mothers.index('Holly')
+    for house in houses:
+        solver.add(z3.Implies(name_vars[house] == peter_index, 
+                             mother_vars[house] == holly_index))
+    
+    # Check if solution exists
+    if solver.check() == z3.sat:
+        model = solver.model()
+        
+        # Prepare solution data
+        solution_data = []
+        for house in sorted(houses):
+            name_idx = model.evaluate(name_vars[house]).as_long()
+            mother_idx = model.evaluate(mother_vars[house]).as_long()
+            food_idx = model.evaluate(food_vars[house]).as_long()
+            
+            solution_data.append({
+                "House": str(house),
+                "Name": names[name_idx],
+                "Mother": mothers[mother_idx],
+                "Food": foods[food_idx]
+            })
+        
+        # Create JSON output
+        output = {
+            "solution": solution_data
+        }
+        
+        print(json.dumps(output, indent=2))
+    else:
+        print('{"error": "No solution found"}')
+
+if __name__ == "__main__":
+    main()

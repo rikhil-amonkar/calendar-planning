@@ -1,0 +1,313 @@
+We are going to use the Z3 SMT solver to solve this puzzle.
+ We have 5 houses. For each house, we have a name, color, phone model, and occupation.
+ We'll define Z3 variables for each attribute per house.
+
+ Steps:
+ 1. Define the house indices (1 to 5).
+ 2. Define the domains for each attribute (names, colors, phone models, occupations).
+ 3. Create Z3 variables for each attribute in each house.
+ 4. Add constraints that all attributes are distinct (each value appears exactly once).
+ 5. Add the constraints from the clues.
+
+ Clues:
+  1. The person who is an engineer is somewhere to the right of the person who is a lawyer.
+  2. Bob is in the second house.
+  3. The person who uses a Samsung Galaxy S21 is the person who is a doctor.
+  4. The person who is a doctor is the person who loves blue.
+  5. The person whose favorite color is green is not in the fifth house.
+  6. The person who is a lawyer is the person who uses a OnePlus 9.
+  7. The person who loves blue is directly left of the person whose favorite color is red.
+  8. The person who is a lawyer is somewhere to the right of the person who uses a Samsung Galaxy S21.
+  9. There is one house between the person who uses a Google Pixel 6 and the person who uses a Huawei P50.
+  10. Arnold is the person who is an engineer.
+  11. Alice is the person who loves yellow.
+  12. The person who uses a Google Pixel 6 is Eric.
+  13. The person who uses a Google Pixel 6 is the person who is a teacher.
+  14. The person whose favorite color is red is somewhere to the right of the person who is a teacher.
+
+ Note: We have to be cautious about the ordering of houses (left to right, 1 is leftmost, 5 is rightmost).
+
+ Implementation:
+ We'll create lists for each attribute (name, color, phone, occupation) for the 5 houses.
+
+ We'll use Z3's IntSort and define a function to get the index of a value in a domain.
+
+ Alternatively, we can use EnumSort for each attribute to make it more symbolic, but using integers and distinct constraints is also common.
+
+ Let's define:
+   names: Bob, Eric, Arnold, Alice, Peter -> we'll map to 0,1,2,3,4
+   colors: blue, green, white, yellow, red -> 0,1,2,3,4
+   phones: huawei p50, samsung galaxy s21, oneplus 9, iphone 13, google pixel 6 -> 0,1,2,3,4
+   occupations: artist, teacher, doctor, engineer, lawyer -> 0,1,2,3,4
+
+ But note: We have to output the string names, so we'll keep mapping arrays.
+
+ Alternatively, we can use Z3's EnumSort for each category to avoid integer mapping and have more readable constraints.
+
+ However, for simplicity and to avoid having to map back from Z3 symbols to strings, we can use integers and then map with arrays.
+
+ Let's do:
+
+   name_domain = ['Bob', 'Eric', 'Arnold', 'Alice', 'Peter']
+   color_domain = ['blue', 'green', 'white', 'yellow', 'red']
+   phone_domain = ['huawei p50', 'samsung galaxy s21', 'oneplus 9', 'iphone 13', 'google pixel 6']
+   occupation_domain = ['artist', 'teacher', 'doctor', 'engineer', 'lawyer']
+
+ For each house i (0 to 4, representing house 1 to 5), we define:
+   name[i] = Int('name_i')
+   color[i] = Int('color_i')
+   phone[i] = Int('phone_i')
+   occupation[i] = Int('occupation_i')
+
+ Then we constrain each of these arrays to have distinct values in [0,4] (or [0, len(domain)-1])
+
+ Then we add the constraints from the clues.
+
+ However, note: The clues sometimes relate attributes of the same person (e.g., clue 3: the person with phone samsung is doctor) and sometimes relative positions.
+
+ We'll also define helper functions to get the house index of a person with a given attribute? But note: we are using Z3, so we cannot use Python conditionals arbitrarily.
+
+ Alternatively, we can use the following for relative positions:
+
+ For clue 1: engineer is to the right of lawyer -> exists i, j such that occupation[i] = lawyer and occupation[j] = engineer and j > i.
+
+ But we can also express without exists by using the house indices of the lawyer and engineer.
+
+ We can define a function that returns the house index (0-4) for a given attribute value in a category. However, Z3 does not support returning an integer index directly for a condition.
+
+ Instead, we can use:
+
+   For any attribute, we can say: the house index where occupation is lawyer is less than the house index where occupation is engineer.
+
+ How to get the house index for a given attribute value? We can use a Z3 function that maps an attribute value to a house index, but note that each value is unique.
+
+ We can do:
+
+   lawyer_house = Int('lawyer_house')
+   s.add(And([If(occupation[i] == lawyer_index, lawyer_house == i, True) for i in range(5)]))
+
+ But this is cumbersome for each attribute. Alternatively, we can use the following:
+
+   Let lawyer_index = occupation_domain.index('lawyer')
+   Then the house index of the lawyer is the i such that occupation[i] == lawyer_index.
+
+ We can define a function to get the house index for a given value in an array of Z3 variables:
+
+   def get_house_index(arr, value):
+       return [If(arr[i] == value, i, -1) for i in range(5)]
+
+ But note: we cannot use list comprehensions that return a list of Z3 expressions and then use Or, because the value is unique. Instead, we can use:
+
+   house_index = Int('house_index_for_attr')
+   s.add(Or([And(arr[i] == value, house_index == i) for i in range(5)]))
+
+ However, this becomes messy if we have to do it for every attribute.
+
+ Alternatively, we can avoid extracting the house index and instead express constraints by comparing the attributes in different houses.
+
+ For example, for clue 1: engineer is right of lawyer.
+
+   We can say: There exists a house i for lawyer and a house j for engineer with j > i.
+
+   But we can also say: For the house that has lawyer, there is a house to the right that has engineer.
+
+   We can do:
+
+      s.add(Or([And(occupation[i] == lawyer_index, Or([And(occupation[j] == engineer_index, j > i) for j in range(5)])) for i in range(5)]))
+
+   But note: This is inefficient and creates many constraints. Alternatively, we can use:
+
+      lawyer_pos = Int('lawyer_pos')
+      engineer_pos = Int('engineer_pos')
+      s.add(lawyer_pos >= 0, lawyer_pos < 5)
+      s.add(engineer_pos >= 0, engineer_pos < 5)
+      for i in range(5):
+          s.add(If(occupation[i] == lawyer_index, lawyer_pos == i, True))
+          s.add(If(occupation[i] == engineer_index, engineer_pos == i, True))
+      s.add(engineer_pos > lawyer_pos)
+
+   This is more efficient and readable.
+
+ But note: We have multiple such constraints, so we might want to write a helper function.
+
+ However, to keep the code simple and avoid too many auxiliary variables, we can also express without extracting positions for every attribute.
+
+ Let's consider the clues:
+
+  Clue 1: engineer is right of lawyer -> we can use the method with two auxiliary variables for lawyer and engineer positions.
+
+  Clue 8: lawyer is right of the person with samsung galaxy s21 -> we'll need the position of the samsung user and the lawyer.
+
+  Clue 9: one house between google pixel and huawei p50 -> |pos_google - pos_huawei| = 2.
+
+  Clue 14: red color is right of the teacher -> we need the position of red and teacher.
+
+ So we will need to extract house indices for several attributes.
+
+ Let's define a function that, given an array of Z3 variables (for the 5 houses) and a value, returns the house index (0-4) for that value.
+
+ However, note: We cannot return a Z3 expression from a function and then use it in multiple constraints without having to reevaluate the conditions.
+
+ Alternatively, we can define a function that adds constraints to set an auxiliary variable to the house index of a given value.
+
+ We'll do:
+
+   def get_position(s, arr, value, pos_var):
+       constraints = []
+       for i in range(5):
+           constraints.append(If(arr[i] == value, pos_var == i, True))
+       s.add(constraints)
+
+ But note: This function will add 5 constraints to the solver. We'll create an Int variable for each attribute we are interested in.
+
+ Let's plan the auxiliary variables we need:
+
+   We need the house index for:
+     - Lawyer (occupation)
+     - Engineer (occupation)
+     - Samsung phone (phone)
+     - Blue color (color)
+     - OnePlus 9 (phone) -> but note: clue 6 says lawyer uses OnePlus 9, so we can use the lawyer's phone, but we already have lawyer occupation.
+     - Google Pixel 6 (phone)
+     - Huawei P50 (phone)
+     - Teacher (occupation) -> from clue 13, the Google Pixel 6 user is teacher, so same as Google Pixel 6.
+     - Red color (color)
+     - Green color (color) -> for clue 5
+     - Arnold (name) -> clue 10
+     - Alice (name) -> clue 11
+     - Eric (name) -> clue 12
+
+ However, note that some of these are the same: e.g., lawyer and oneplus9 are the same person, so same house.
+
+ We don't need to create an auxiliary variable for every attribute, but we need to relate them.
+
+ Let's go clue by clue and add constraints without auxiliary variables where possible.
+
+ Approach:
+
+  We'll define the domains and the integer mappings.
+
+  Steps:
+
+   Let:
+      names = ['Bob', 'Eric', 'Arnold', 'Alice', 'Peter']
+      colors = ['blue', 'green', 'white', 'yellow', 'red']
+      phones = ['huawei p50', 'samsung galaxy s21', 'oneplus 9', 'iphone 13', 'google pixel 6']
+      occupations = ['artist', 'teacher', 'doctor', 'engineer', 'lawyer']
+
+   We'll create arrays for each attribute for the 5 houses (index 0 to 4 for house 1 to 5).
+
+   We'll create a solver.
+
+   For each attribute array, we add that each element is between 0 and 4, and all distinct.
+
+   Then:
+
+   Clue 2: Bob is in second house -> name[1] = index of 'Bob' (which is 0).
+
+   Clue 3: The person with phone samsung is doctor -> for each house i: if phone[i] == index of 'samsung galaxy s21' then occupation[i] == index of 'doctor'
+
+   Clue 4: The doctor loves blue -> for each house i: if occupation[i] == doctor_index then color[i] == blue_index
+
+   Clue 5: Green color not in fifth house -> color[4] != green_index
+
+   Clue 6: Lawyer uses OnePlus 9 -> for each house i: if occupation[i] == lawyer_index then phone[i] == oneplus9_index
+
+   Clue 7: Blue is directly left of red -> exists i (0 to 3) such that color[i] == blue_index and color[i+1] == red_index
+
+   Clue 8: Lawyer is right of samsung user -> let samsung_house be the house of samsung phone, lawyer_house be the house of lawyer, then lawyer_house > samsung_house.
+
+   Clue 9: One house between Google Pixel and Huawei P50 -> |house_google - house_huawei| = 2
+
+   Clue 10: Arnold is engineer -> for each house i: if name[i] == arnold_index then occupation[i] == engineer_index
+
+   Clue 11: Alice loves yellow -> for each house i: if name[i] == alice_index then color[i] == yellow_index
+
+   Clue 12: Google Pixel 6 is Eric -> for each house i: if phone[i] == google_pixel_index then name[i] == eric_index
+
+   Clue 13: Google Pixel 6 is teacher -> for each house i: if phone[i] == google_pixel_index then occupation[i] == teacher_index
+
+   Clue 14: Red is right of teacher -> let teacher_house be the house of teacher, red_house be the house of red color, then red_house > teacher_house.
+
+   Clue 1: Engineer is right of lawyer -> engineer_house > lawyer_house.
+
+  We see that for clues 8, 9, 14, and 1 we need the house indices of specific attributes.
+
+  So we will create auxiliary variables for:
+      lawyer_house, engineer_house, samsung_house, google_pixel_house, huawei_house, teacher_house, red_house
+
+  How many? 7 auxiliary variables.
+
+  We'll define them as Int and constrain them to be in [0,4].
+
+  Then we add constraints to set these variables:
+
+      For lawyer_house: for i in range(5): if occupation[i] == lawyer_index, then lawyer_house == i.
+      Similarly for others.
+
+  Then we add:
+      Clue 8: lawyer_house > samsung_house
+      Clue 9: Or(google_pixel_house - huawei_house == 2, huawei_house - google_pixel_house == 2)
+      Clue 14: red_house > teacher_house
+      Clue 1: engineer_house > lawyer_house
+
+  Note: teacher_house is the same as google_pixel_house because of clue 13.
+
+  So we can avoid defining teacher_house and use google_pixel_house for clue 14.
+
+  Also, from clue 12 and 13, the google pixel user is Eric and teacher, so we have:
+      name[google_pixel_house] = eric_index
+      occupation[google_pixel_house] = teacher_index
+
+  And from clue 14: red_house > google_pixel_house.
+
+  So we can define:
+      red_house: for i in range(5): if color[i] == red_index, then red_house = i.
+
+  And then add: red_house > google_pixel_house.
+
+  Now, let's code accordingly.
+
+  Steps in code:
+
+  1. Define the domains and their indices.
+  2. Create arrays for the attributes for 5 houses.
+  3. Create a solver.
+  4. Add constraints for each attribute array: each element between 0 and 4, and distinct.
+  5. Add clue 2: name[1] == bob_index.
+  6. Add clue 3: for each i, phone[i] == samsung_index => occupation[i] == doctor_index.
+  7. Add clue 4: for each i, occupation[i] == doctor_index => color[i] == blue_index.
+  8. Add clue 5: color[4] != green_index.
+  9. Add clue 6: for each i, occupation[i] == lawyer_index => phone[i] == oneplus9_index.
+  10. Add clue 7: for i in range(4): Or(And(color[i] == blue_index, color[i+1] == red_index))
+  11. Add auxiliary variables for: lawyer_house, engineer_house, samsung_house, google_pixel_house, huawei_house, red_house.
+  12. Add constraints to set these auxiliary variables by iterating over houses.
+  13. Add clue 8: lawyer_house > samsung_house
+  14. Add clue 9: Or(google_pixel_house - huawei_house == 2, huawei_house - google_pixel_house == 2)
+  15. Add clue 10: for each i, name[i] == arnold_index => occupation[i] == engineer_index.
+  16. Add clue 11: for each i, name[i] == alice_index => color[i] == yellow_index.
+  17. Add clue 12: for each i, phone[i] == google_pixel_index => name[i] == eric_index.
+  18. Add clue 13: for each i, phone[i] == google_pixel_index => occupation[i] == teacher_index.
+  19. Add clue 14: red_house > google_pixel_house  [because teacher_house is google_pixel_house]
+  20. Add clue 1: engineer_house > lawyer_house
+
+  21. Check and get the model.
+
+  22. Map back the integer values to the strings using the domains.
+
+  23. Format the output as JSON.
+
+ Let's code accordingly.
+
+ Note: We have to be cautious about the indices of the domains.
+
+ We'll define:
+
+   name_domain = ['Bob', 'Eric', 'Arnold', 'Alice', 'Peter']
+   color_domain = ['blue', 'green', 'white', 'yellow', 'red']
+   phone_domain = ['huawei p50', 'samsung galaxy s21', 'oneplus 9', 'iphone 13', 'google pixel 6']
+   occupation_domain = ['artist', 'teacher', 'doctor', 'engineer', 'lawyer']
+
+   Then the index of 'Bob' is 0, 'Eric' is 1, etc.
+
+ Let's write the code accordingly.

@@ -1,0 +1,108 @@
+```python
+from z3 import *
+import json
+
+def time_to_minutes(time_str):
+    parts = time_str.split(':')
+    hour = int(parts[0])
+    minute = int(parts[1])
+    return (hour - 9) * 60 + minute
+
+def minutes_to_time(minutes):
+    total_minutes = minutes
+    hour = total_minutes // 60 + 9
+    minute = total_minutes % 60
+    return f"{hour}:{minute:02d}"
+
+def main():
+    travel_times = {
+        'Mission District': {'The Castro': 7, 'Nob Hill': 12, 'Presidio': 25, 'Marina District': 19, 'Pacific Heights': 16, 'Golden Gate Park': 17, 'Chinatown': 16, 'Richmond District': 20},
+        'The Castro': {'Mission District': 7, 'Nob Hill': 16, 'Presidio': 20, 'Marina District': 21, 'Pacific Heights': 16, 'Golden Gate Park': 11, 'Chinatown': 22, 'Richmond District': 16},
+        'Nob Hill': {'Mission District': 13, 'The Castro': 17, 'Presidio': 17, 'Marina District': 11, 'Pacific Heights': 8, 'Golden Gate Park': 17, 'Chinatown': 6, 'Richmond District': 14},
+        'Presidio': {'Mission District': 26, 'The Castro': 21, 'Nob Hill': 18, 'Marina District': 11, 'Pacific Heights': 11, 'Golden Gate Park': 12, 'Chinatown': 21, 'Richmond District': 7},
+        'Marina District': {'Mission District': 20, 'The Castro': 22, 'Nob Hill': 12, 'Presidio': 10, 'Pacific Heights': 7, 'Golden Gate Park': 18, 'Chinatown': 15, 'Richmond District': 11},
+        'Pacific Heights': {'Mission District': 15, 'The Castro': 16, 'Nob Hill': 8, 'Presidio': 11, 'Marina District': 6, 'Golden Gate Park': 15, 'Chinatown': 11, 'Richmond District': 12},
+        'Golden Gate Park': {'Mission District': 17, 'The Castro': 13, 'Nob Hill': 20, 'Presidio': 11, 'Marina District': 16, 'Pacific Heights': 16, 'Chinatown': 23, 'Richmond District': 7},
+        'Chinatown': {'Mission District': 17, 'The Castro': 22, 'Nob Hill': 9, 'Presidio': 19, 'Marina District': 12, 'Pacific Heights': 10, 'Golden Gate Park': 23, 'Richmond District': 20},
+        'Richmond District': {'Mission District': 20, 'The Castro': 16, 'Nob Hill': 17, 'Presidio': 7, 'Marina District': 9, 'Pacific Heights': 10, 'Golden Gate Park': 9, 'Chinatown': 20}
+    }
+    
+    friends = [
+        {'name': 'Lisa', 'location': 'The Castro', 'start_avail': time_to_minutes('19:15'), 'end_avail': time_to_minutes('21:15'), 'duration': 120},
+        {'name': 'Daniel', 'location': 'Nob Hill', 'start_avail': time_to_minutes('8:15'), 'end_avail': time_to_minutes('11:00'), 'duration': 15},
+        {'name': 'Elizabeth', 'location': 'Presidio', 'start_avail': time_to_minutes('21:15'), 'end_avail': time_to_minutes('22:15'), 'duration': 45},
+        {'name': 'Steven', 'location': 'Marina District', 'start_avail': time_to_minutes('16:30'), 'end_avail': time_to_minutes('20:45'), 'duration': 90},
+        {'name': 'Timothy', 'location': 'Pacific Heights', 'start_avail': time_to_minutes('12:00'), 'end_avail': time_to_minutes('18:00'), 'duration': 90},
+        {'name': 'Ashley', 'location': 'Golden Gate Park', 'start_avail': time_to_minutes('20:45'), 'end_avail': time_to_minutes('21:45'), 'duration': 60},
+        {'name': 'Kevin', 'location': 'Chinatown', 'start_avail': time_to_minutes('12:00'), 'end_avail': time_to_minutes('19:00'), 'duration': 30},
+        {'name': 'Betty', 'location': 'Richmond District', 'start_avail': time_to_minutes('13:15'), 'end_avail': time_to_minutes('15:45'), 'duration': 30}
+    ]
+    
+    n = len(friends)
+    solver = None
+    model = None
+    max_meetings = 0
+    
+    for k in range(n, 0, -1):
+        s = Solver()
+        do_meet = [Bool(f"do_meet_{i}") for i in range(n)]
+        start = [Int(f"start_{i}") for i in range(n)]
+        
+        # Constraint: exactly k meetings
+        s.add(Sum([If(do_meet[i], 1, 0) for i in range(n)]) == k)
+        
+        for i in range(n):
+            # If we meet friend i, then constraints apply
+            friend = friends[i]
+            loc = friend['location']
+            travel_from_mission = travel_times['Mission District'][loc]
+            s.add(Implies(do_meet[i], start[i] >= travel_from_mission))
+            s.add(Implies(do_meet[i], start[i] >= friend['start_avail']))
+            s.add(Implies(do_meet[i], start[i] + friend['duration'] <= friend['end_avail']))
+            
+            for j in range(i+1, n):
+                if i != j:
+                    loc_i = friends[i]['location']
+                    loc_j = friends[j]['location']
+                    travel_ij = travel_times[loc_i][loc_j]
+                    travel_ji = travel_times[loc_j][loc_i]
+                    s.add(Implies(And(do_meet[i], do_meet[j]),
+                                  Or(start[i] + friends[i]['duration'] + travel_ij <= start[j],
+                                     start[j] + friends[j]['duration'] + travel_ji <= start[i])))
+        
+        if s.check() == sat:
+            model = s.model()
+            max_meetings = k
+            break
+    
+    itinerary = []
+    if model is not None:
+        meeting_list = []
+        for i in range(n):
+            if is_true(model.eval(do_meet[i])):
+                start_val = model.eval(start[i]).as_long()
+                friend = friends[i]
+                meeting_list.append({
+                    'name': friend['name'],
+                    'location': friend['location'],
+                    'start': start_val,
+                    'end': start_val + friend['duration']
+                })
+        meeting_list.sort(key=lambda x: x['start'])
+        for meet in meeting_list:
+            itinerary.append({
+                'action': 'meet',
+                'location': meet['location'],
+                'person': meet['name'],
+                'start_time': minutes_to_time(meet['start']),
+                'end_time': minutes_to_time(meet['end'])
+            })
+    
+    result = {
+        "itinerary": itinerary
+    }
+    print(json.dumps(result, indent=2))
+
+if __name__ == '__main__':
+    main()
+```

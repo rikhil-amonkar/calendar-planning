@@ -1,0 +1,1 @@
+animals = ['dog', 'cat', 'rabbit', 'hamster']  # or whatever animals are in your problem

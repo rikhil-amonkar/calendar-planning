@@ -1,0 +1,102 @@
+import json
+from z3 import *
+
+def main():
+    # Define the attributes and their possible values
+    names = ['Eric', 'Peter', 'Arnold', 'Alice', 'Bob']
+    mothers = ['Kailyn', 'Janelle', 'Aniya', 'Penny', 'Holly']
+    heights = ['average', 'very short', 'short', 'very tall', 'tall']
+    
+    # Create Z3 enums for each attribute
+    NameSort, name_consts = EnumSort('Name', names)
+    MotherSort, mother_consts = EnumSort('Mother', mothers)
+    HeightSort, height_consts = EnumSort('Height', heights)
+    
+    # Unpack constants for easier access
+    Eric, Peter, Arnold, Alice, Bob = name_consts
+    Kailyn, Janelle, Aniya, Penny, Holly = mother_consts
+    average, very_short, short, very_tall, tall = height_consts
+    
+    # Create variables for each house attribute
+    house_names = [Const(f'name_{i}', NameSort) for i in range(5)]
+    house_mothers = [Const(f'mother_{i}', MotherSort) for i in range(5)]
+    house_heights = [Const(f'height_{i}', HeightSort) for i in range(5)]
+    
+    solver = Solver()
+    
+    # All attributes must be unique
+    solver.add(Distinct(house_names))
+    solver.add(Distinct(house_mothers))
+    solver.add(Distinct(house_heights))
+    
+    # Add clues as constraints
+    # Clue 1: Alice is the person whose mother's name is Aniya
+    for i in range(5):
+        solver.add(Implies(house_names[i] == Alice, house_mothers[i] == Aniya))
+    
+    # Clue 2: Average height left of mother Penny
+    for i in range(5):
+        for j in range(5):
+            solver.add(Implies(And(house_heights[i] == average, house_mothers[j] == Penny), i < j))
+    
+    # Clue 3: Mother Janelle is Bob
+    for i in range(5):
+        solver.add(Implies(house_mothers[i] == Janelle, house_names[i] == Bob))
+    
+    # Clue 4: Peter not in second house
+    solver.add(house_names[1] != Peter)
+    
+    # Clue 5: Short directly left of Arnold
+    for i in range(4):
+        solver.add(Implies(house_heights[i] == short, house_names[i+1] == Arnold))
+    
+    # Clue 6: Very tall is Arnold
+    for i in range(5):
+        solver.add(Implies(house_heights[i] == very_tall, house_names[i] == Arnold))
+    
+    # Clue 7: Bob directly left of average height
+    for i in range(4):
+        solver.add(Implies(house_names[i] == Bob, house_heights[i+1] == average))
+    
+    # Clue 8: Eric not in fifth house
+    solver.add(house_names[4] != Eric)
+    
+    # Clue 9: Very tall right of mother Holly
+    for i in range(5):
+        for j in range(5):
+            solver.add(Implies(And(house_heights[i] == very_tall, house_mothers[j] == Holly), i > j))
+    
+    # Clue 10: Eric's mother is Kailyn
+    for i in range(5):
+        solver.add(Implies(house_names[i] == Eric, house_mothers[i] == Kailyn))
+    
+    # Clue 11: Very short in fifth house
+    solver.add(house_heights[4] == very_short)
+    
+    # Check for solution
+    if solver.check() == sat:
+        model = solver.model()
+        rows = []
+        for i in range(5):
+            name_val = model.eval(house_names[i])
+            mother_val = model.eval(house_mothers[i])
+            height_val = model.eval(house_heights[i])
+            rows.append([
+                str(i+1),
+                name_val.name(),
+                mother_val.name(),
+                height_val.name()
+            ])
+        
+        solution = {
+            "solution": {
+                "header": ["House", "Name", "Mother", "Height"],
+                "rows": rows
+            }
+        }
+        print(json.dumps(solution, indent=2))
+    else:
+        print('{"error": "No solution found"}')
+
+if __name__ == '__main__':
+    main()

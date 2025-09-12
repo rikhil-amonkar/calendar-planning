@@ -1,0 +1,73 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"solution\": {\n    \"header\": [\n      \"House\",\n      \"Name\",\n      \"Mother\",\n      \"Flower\"\n    ],\n    \"rows\": [\n      [\n        \"1\",\n        \"Eric\",\n        \"Aniya\",\n        \"daffodils\"\n      ],\n      [\n        \"2\",\n        \"Arnold\",\n        \"Holly\",\n        \"lilies\"\n      ],\n      [\n        \"3\",\n        \"Alice\",\n        \"Kailyn\",\n        \"carnations\"\n      ],\n      [\n        \"4\",\n        \"Peter\",\n        \"Janelle\",\n        \"roses\"\n      ]\n    ]\n  }\n}",
+    "pred": [
+        {
+            "House": "1",
+            "Name": "Eric",
+            "Mother": "Aniya",
+            "Flower": "daffodils"
+        },
+        {
+            "House": "2",
+            "Name": "Arnold",
+            "Mother": "Holly",
+            "Flower": "lilies"
+        },
+        {
+            "House": "3",
+            "Name": "Alice",
+            "Mother": "Kailyn",
+            "Flower": "carnations"
+        },
+        {
+            "House": "4",
+            "Name": "Peter",
+            "Mother": "Janelle",
+            "Flower": "roses"
+        }
+    ],
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Eric",
+            "Mother": "Aniya",
+            "Flower": "daffodils"
+        },
+        {
+            "House": "2",
+            "Name": "Arnold",
+            "Mother": "Holly",
+            "Flower": "lilies"
+        },
+        {
+            "House": "3",
+            "Name": "Alice",
+            "Mother": "Kailyn",
+            "Flower": "carnations"
+        },
+        {
+            "House": "4",
+            "Name": "Peter",
+            "Mother": "Janelle",
+            "Flower": "roses"
+        }
+    ],
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 47.46097755432129,
+        "execution_time": 0.07944345474243164,
+        "constraint_eval_time": 5.7697296142578125e-05,
+        "pred_extract_time": 1.4399700164794922,
+        "gold_extract_time": 7.62939453125e-06,
+        "total_tokens": 885,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\nimport json\n\ndef main():\n    # Create solver\n    solver = Solver()\n    \n    # Define houses\n    n_houses = 4\n    houses = range(1, n_houses+1)\n    \n    # Define attributes\n    names = ['Alice', 'Peter', 'Arnold', 'Eric']\n    mothers = ['Holly', 'Kailyn', 'Janelle', 'Aniya']\n    flowers = ['carnations', 'roses', 'lilies', 'daffodils']\n    \n    # Create integer variables for each attribute's position\n    name_pos = {name: Int(f'name_{name}') for name in names}\n    mother_pos = {mother: Int(f'mother_{mother}') for mother in mothers}\n    flower_pos = {flower: Int(f'flower_{flower}') for flower in flowers}\n    \n    # Each attribute must be in exactly one house (1-4)\n    for attr_dict in [name_pos, mother_pos, flower_pos]:\n        for attr in attr_dict:\n            solver.add(And(attr_dict[attr] >= 1, attr_dict[attr] <= n_houses))\n    \n    # All attributes of the same type must have distinct positions\n    for attr_dict in [name_pos, mother_pos, flower_pos]:\n        solver.add(Distinct([attr_dict[attr] for attr in attr_dict]))\n    \n    # Clue 1: Alice is The person whose mother's name is Kailyn.\n    solver.add(name_pos['Alice'] == mother_pos['Kailyn'])\n    \n    # Clue 2: The person whose mother's name is Janelle is somewhere to the right of Arnold.\n    solver.add(mother_pos['Janelle'] > name_pos['Arnold'])\n    \n    # Clue 3: Peter is somewhere to the right of the person who loves a carnations arrangement.\n    solver.add(name_pos['Peter'] > flower_pos['carnations'])\n    \n    # Clue 4: Eric is the person who loves a bouquet of daffodils.\n    solver.add(name_pos['Eric'] == flower_pos['daffodils'])\n    \n    # Clue 5: Arnold is The person whose mother's name is Holly.\n    solver.add(name_pos['Arnold'] == mother_pos['Holly'])\n    \n    # Clue 6: The person who loves a carnations arrangement is somewhere to the right of The person whose mother's name is Holly.\n    solver.add(flower_pos['carnations'] > mother_pos['Holly'])\n    \n    # Clue 7: The person who loves the bouquet of lilies is directly left of Alice.\n    solver.add(flower_pos['lilies'] == name_pos['Alice'] - 1)\n    \n    # Clue 8: Alice is in the third house.\n    solver.add(name_pos['Alice'] == 3)\n    \n    # Check if solution exists\n    if solver.check() == sat:\n        model = solver.model()\n        \n        # Create result structure\n        result = {\n            \"solution\": {\n                \"header\": [\"House\", \"Name\", \"Mother\", \"Flower\"],\n                \"rows\": []\n            }\n        }\n        \n        # For each house, find the attributes\n        for house in houses:\n            # Find name for this house\n            name_val = None\n            for name, pos_var in name_pos.items():\n                if model.evaluate(pos_var).as_long() == house:\n                    name_val = name\n                    break\n            \n            # Find mother for this house\n            mother_val = None\n            for mother, pos_var in mother_pos.items():\n                if model.evaluate(pos_var).as_long() == house:\n                    mother_val = mother\n                    break\n            \n            # Find flower for this house\n            flower_val = None\n            for flower, pos_var in flower_pos.items():\n                if model.evaluate(pos_var).as_long() == house:\n                    flower_val = flower\n                    break\n            \n            result[\"solution\"][\"rows\"].append([str(house), name_val, mother_val, flower_val])\n        \n        # Output as JSON\n        print(json.dumps(result, indent=2))\n    else:\n        print('{\"error\": \"No solution found\"}')\n\nif __name__ == \"__main__\":\n    main()"
+}

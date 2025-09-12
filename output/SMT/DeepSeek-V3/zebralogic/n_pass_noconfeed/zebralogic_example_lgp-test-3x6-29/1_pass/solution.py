@@ -1,0 +1,118 @@
+from z3 import *
+import json
+
+def main():
+    # Create solver
+    solver = Solver()
+    
+    # Define the attributes
+    houses = [1, 2, 3]
+    names = ['Arnold', 'Peter', 'Eric']
+    animals = ['bird', 'horse', 'cat']
+    birthdays = ['jan', 'sept', 'april']
+    hobbies = ['photography', 'cooking', 'gardening']
+    drinks = ['milk', 'water', 'tea']
+    hair_colors = ['black', 'brown', 'blonde']
+    
+    # Create variables for each attribute per house
+    name_vars = [Int(f'name_{i}') for i in houses]
+    animal_vars = [Int(f'animal_{i}') for i in houses]
+    birthday_vars = [Int(f'birthday_{i}') for i in houses]
+    hobby_vars = [Int(f'hobby_{i}') for i in houses]
+    drink_vars = [Int(f'drink_{i}') for i in houses]
+    hair_color_vars = [Int(f'hair_color_{i}') for i in houses]
+    
+    # Define domains for each variable
+    for i in houses:
+        solver.add(And(name_vars[i-1] >= 0, name_vars[i-1] < len(names)))
+        solver.add(And(animal_vars[i-1] >= 0, animal_vars[i-1] < len(animals)))
+        solver.add(And(birthday_vars[i-1] >= 0, birthday_vars[i-1] < len(birthdays)))
+        solver.add(And(hobby_vars[i-1] >= 0, hobby_vars[i-1] < len(hobbies)))
+        solver.add(And(drink_vars[i-1] >= 0, drink_vars[i-1] < len(drinks)))
+        solver.add(And(hair_color_vars[i-1] >= 0, hair_color_vars[i-1] < len(hair_colors)))
+    
+    # All attributes are distinct within their category
+    solver.add(Distinct(name_vars))
+    solver.add(Distinct(animal_vars))
+    solver.add(Distinct(birthday_vars))
+    solver.add(Distinct(hobby_vars))
+    solver.add(Distinct(drink_vars))
+    solver.add(Distinct(hair_color_vars))
+    
+    # Clue 1: The person who has brown hair is the person who loves cooking.
+    brown_hair_index = hair_colors.index('brown')
+    cooking_index = hobbies.index('cooking')
+    for i in houses:
+        solver.add(Implies(hair_color_vars[i-1] == brown_hair_index, hobby_vars[i-1] == cooking_index))
+    
+    # Clue 2: The person whose birthday is in April is in the third house.
+    april_index = birthdays.index('april')
+    solver.add(birthday_vars[2] == april_index)
+    
+    # Clue 3: Eric is not in the first house.
+    eric_index = names.index('Eric')
+    solver.add(name_vars[0] != eric_index)
+    
+    # Clue 4: The cat lover is in the second house.
+    cat_index = animals.index('cat')
+    solver.add(animal_vars[1] == cat_index)
+    
+    # Clue 5: The person who has blonde hair is somewhere to the left of the person who likes milk.
+    blonde_index = hair_colors.index('blonde')
+    milk_index = drinks.index('milk')
+    for i in houses:
+        for j in houses:
+            if i < j:
+                solver.add(Implies(hair_color_vars[i-1] == blonde_index, drink_vars[j-1] == milk_index))
+    
+    # Clue 6: The person who enjoys gardening is the person who likes milk.
+    gardening_index = hobbies.index('gardening')
+    for i in houses:
+        solver.add(Implies(hobby_vars[i-1] == gardening_index, drink_vars[i-1] == milk_index))
+    
+    # Clue 7: The cat lover is the person who has brown hair.
+    for i in houses:
+        solver.add(Implies(animal_vars[i-1] == cat_index, hair_color_vars[i-1] == brown_hair_index))
+    
+    # Clue 8: Arnold is the bird keeper.
+    arnold_index = names.index('Arnold')
+    bird_index = animals.index('bird')
+    for i in houses:
+        solver.add(Implies(name_vars[i-1] == arnold_index, animal_vars[i-1] == bird_index))
+    
+    # Clue 9: The one who only drinks water is the photography enthusiast.
+    water_index = drinks.index('water')
+    photography_index = hobbies.index('photography')
+    for i in houses:
+        solver.add(Implies(drink_vars[i-1] == water_index, hobby_vars[i-1] == photography_index))
+    
+    # Clue 10: The person whose birthday is in September is directly left of Arnold.
+    sept_index = birthdays.index('sept')
+    for i in range(1, 3):  # Only houses 1 and 2 can be left of Arnold
+        solver.add(Implies(birthday_vars[i-1] == sept_index, name_vars[i] == arnold_index))
+    
+    # Check if the problem is satisfiable
+    if solver.check() == sat:
+        model = solver.model()
+        
+        # Extract the solution
+        solution = {"solution": {"header": ["House", "Name", "Animal", "Birthday", "Hobby", "Drink", "HairColor"], "rows": []}}
+        
+        for i in houses:
+            house_num = str(i)
+            name = names[model.eval(name_vars[i-1]).as_long()]
+            animal = animals[model.eval(animal_vars[i-1]).as_long()]
+            birthday = birthdays[model.eval(birthday_vars[i-1]).as_long()]
+            hobby = hobbies[model.eval(hobby_vars[i-1]).as_long()]
+            drink = drinks[model.eval(drink_vars[i-1]).as_long()]
+            hair_color = hair_colors[model.eval(hair_color_vars[i-1]).as_long()]
+            
+            solution["solution"]["rows"].append([house_num, name, animal, birthday, hobby, drink, hair_color])
+        
+        # Output as JSON
+        print(json.dumps(solution, indent=2))
+    else:
+        print('{"error": "No solution found"}')
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,65 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"solution\": {\n    \"header\": [\n      \"House\",\n      \"Name\",\n      \"HouseStyle\"\n    ],\n    \"rows\": [\n      [\n        \"1\",\n        \"Peter\",\n        \"ranch\"\n      ],\n      [\n        \"2\",\n        \"Alice\",\n        \"victorian\"\n      ],\n      [\n        \"3\",\n        \"Eric\",\n        \"craftsman\"\n      ],\n      [\n        \"4\",\n        \"Arnold\",\n        \"colonial\"\n      ]\n    ]\n  }\n}",
+    "pred": [
+        {
+            "House": "1",
+            "Name": "Peter",
+            "HouseStyle": "ranch"
+        },
+        {
+            "House": "2",
+            "Name": "Alice",
+            "HouseStyle": "victorian"
+        },
+        {
+            "House": "3",
+            "Name": "Eric",
+            "HouseStyle": "craftsman"
+        },
+        {
+            "House": "4",
+            "Name": "Arnold",
+            "HouseStyle": "colonial"
+        }
+    ],
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Peter",
+            "HouseStyle": "ranch"
+        },
+        {
+            "House": "2",
+            "Name": "Alice",
+            "HouseStyle": "victorian"
+        },
+        {
+            "House": "3",
+            "Name": "Eric",
+            "HouseStyle": "craftsman"
+        },
+        {
+            "House": "4",
+            "Name": "Arnold",
+            "HouseStyle": "colonial"
+        }
+    ],
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 336.75074553489685,
+        "execution_time": 0.07878327369689941,
+        "constraint_eval_time": 5.7697296142578125e-05,
+        "pred_extract_time": 1.9167256355285645,
+        "gold_extract_time": 2.5033950805664062e-05,
+        "total_tokens": 21910,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\nimport json\n\n# Define Z3 integer variables for each house's name and style\nname = [Int(f'name_{i}') for i in range(1, 5)]\nstyle = [Int(f'style_{i}') for i in range(1, 5)]\n\ns = Solver()\n\n# Add constraints for distinct names and styles\ns.add(Distinct(name[0], name[1], name[2], name[3]))\ns.add(Distinct(style[0], style[1], style[2], style[3]))\n\n# Domain constraints: each variable must be between 0 and 3\nfor n in name + style:\n    s.add(And(n >= 0, n <= 3))\n\n# Add specific constraints based on the puzzle clues\n# Clue 3: Eric is in the third house (index 2) => name[2] = 2\ns.add(name[2] == 2)\n# Clue 4: Arnold is in the fourth house (index 3) => name[3] = 0\ns.add(name[3] == 0)\n# Clue 1: Eric's house is Craftsman-style => style[2] = 3\ns.add(style[2] == 3)\n# Clue 5: The person in the Victorian house is Alice\nfor i in range(4):\n    s.add(Implies(style[i] == 0, name[i] == 3))\n# Clue 2: Ranch is directly left of Victorian\ns.add(Or(\n    And(style[0] == 1, style[1] == 0),\n    And(style[1] == 1, style[2] == 0),\n    And(style[2] == 1, style[3] == 0)\n))\n\nif s.check() == sat:\n    model = s.model()\n    # Mapping from integer values to names and styles\n    name_map = {0: 'Arnold', 1: 'Peter', 2: 'Eric', 3: 'Alice'}\n    style_map = {0: 'victorian', 1: 'ranch', 2: 'colonial', 3: 'craftsman'}\n    rows = []\n    for i in range(4):\n        house_num = i + 1\n        current_name = model[name[i]].as_long()\n        current_style = model[style[i]].as_long()\n        rows.append([str(house_num), name_map[current_name], style_map[current_style]])\n    solution = {\n        \"solution\": {\n            \"header\": [\"House\", \"Name\", \"HouseStyle\"],\n            \"rows\": rows\n        }\n    }\n    print(json.dumps(solution, indent=2))\nelse:\n    print(\"No solution found.\")"
+}

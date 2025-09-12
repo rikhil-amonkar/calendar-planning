@@ -1,0 +1,65 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"solution\": {\n    \"header\": [\n      \"House\",\n      \"Name\",\n      \"Pet\"\n    ],\n    \"rows\": [\n      [\n        \"1\",\n        \"Arnold\",\n        \"fish\"\n      ],\n      [\n        \"2\",\n        \"Alice\",\n        \"cat\"\n      ],\n      [\n        \"3\",\n        \"Peter\",\n        \"dog\"\n      ],\n      [\n        \"4\",\n        \"Eric\",\n        \"bird\"\n      ]\n    ]\n  }\n}",
+    "pred": [
+        {
+            "House": "1",
+            "Name": "Arnold",
+            "Pet": "fish"
+        },
+        {
+            "House": "2",
+            "Name": "Alice",
+            "Pet": "cat"
+        },
+        {
+            "House": "3",
+            "Name": "Peter",
+            "Pet": "dog"
+        },
+        {
+            "House": "4",
+            "Name": "Eric",
+            "Pet": "bird"
+        }
+    ],
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Arnold",
+            "Pet": "fish"
+        },
+        {
+            "House": "2",
+            "Name": "Alice",
+            "Pet": "cat"
+        },
+        {
+            "House": "3",
+            "Name": "Peter",
+            "Pet": "dog"
+        },
+        {
+            "House": "4",
+            "Name": "Eric",
+            "Pet": "bird"
+        }
+    ],
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 505.77205991744995,
+        "execution_time": 0.08334732055664062,
+        "constraint_eval_time": 5.698204040527344e-05,
+        "pred_extract_time": 1.7231829166412354,
+        "gold_extract_time": 2.0503997802734375e-05,
+        "total_tokens": 30214,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import json\nfrom z3 import *\n\ns = Solver()\n\nnames = [Int(f'names_{i}') for i in range(4)]\npets = [Int(f'pets_{i}') for i in range(4)]\n\n# Add constraints for names to be permutation of 0-3\nfor i in range(4):\n    s.add(And(0 <= names[i], names[i] <= 3))\ns.add(Distinct(names))\n\n# Same for pets\nfor i in range(4):\n    s.add(And(0 <= pets[i], pets[i] <= 3))\ns.add(Distinct(pets))\n\n# Clue 2: Eric not in first house (names[0] != 2)\ns.add(names[0] != 2)\n\n# Clue 5: Alice not in first house (names[0] != 3)\ns.add(names[0] != 3)\n\n# Clue 3: Eric has bird\nfor h in range(4):\n    s.add(Implies(names[h] == 2, pets[h] == 0))\n\n# Clue 6: Arnold has fish\nfor h in range(4):\n    s.add(Implies(names[h] == 1, pets[h] == 1))\n\n# Clue 4: Fish and Peter are two apart\nfor h in range(4):\n    target_p = (h + 2) % 4\n    s.add(Implies(names[h] == 1, names[target_p] == 0))\n\n# Clue 1: Dog is to the right of Alice\nfor i in range(4):\n    for j in range(4):\n        s.add(Implies(And(names[i] == 3, pets[j] == 2), j > i))\n\nif s.check() == sat:\n    model = s.model()\n    rows = []\n    name_map = {0: 'Peter', 1: 'Arnold', 2: 'Eric', 3: 'Alice'}\n    pet_map = {0: 'bird', 1: 'fish', 2: 'dog', 3: 'cat'}\n    for i in range(4):\n        house_num = i + 1\n        n = model.eval(names[i]).as_long()\n        p = model.eval(pets[i]).as_long()\n        rows.append([str(house_num), name_map[n], pet_map[p]])\n    solution = {\n        \"solution\": {\n            \"header\": [\"House\", \"Name\", \"Pet\"],\n            \"rows\": rows\n        }\n    }\n    print(json.dumps(solution, indent=2))\nelse:\n    print(\"No solution found.\")"
+}

@@ -1,0 +1,97 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"solution\": {\n    \"header\": [\n      \"House\",\n      \"Name\",\n      \"Flower\",\n      \"Hobby\",\n      \"Pet\",\n      \"Color\",\n      \"HouseStyle\"\n    ],\n    \"rows\": [\n      [\n        \"1\",\n        \"Peter\",\n        \"daffodils\",\n        \"gardening\",\n        \"bird\",\n        \"yellow\",\n        \"ranch\"\n      ],\n      [\n        \"2\",\n        \"Arnold\",\n        \"carnations\",\n        \"painting\",\n        \"fish\",\n        \"white\",\n        \"craftsman\"\n      ],\n      [\n        \"3\",\n        \"Alice\",\n        \"roses\",\n        \"photography\",\n        \"dog\",\n        \"red\",\n        \"colonial\"\n      ],\n      [\n        \"4\",\n        \"Eric\",\n        \"lilies\",\n        \"cooking\",\n        \"cat\",\n        \"green\",\n        \"victorian\"\n      ]\n    ]\n  }\n}",
+    "pred": [
+        {
+            "House": "1",
+            "Name": "Peter",
+            "Flower": "daffodils",
+            "Hobby": "gardening",
+            "Pet": "bird",
+            "Color": "yellow",
+            "HouseStyle": "ranch"
+        },
+        {
+            "House": "2",
+            "Name": "Arnold",
+            "Flower": "carnations",
+            "Hobby": "painting",
+            "Pet": "fish",
+            "Color": "white",
+            "HouseStyle": "craftsman"
+        },
+        {
+            "House": "3",
+            "Name": "Alice",
+            "Flower": "roses",
+            "Hobby": "photography",
+            "Pet": "dog",
+            "Color": "red",
+            "HouseStyle": "colonial"
+        },
+        {
+            "House": "4",
+            "Name": "Eric",
+            "Flower": "lilies",
+            "Hobby": "cooking",
+            "Pet": "cat",
+            "Color": "green",
+            "HouseStyle": "victorian"
+        }
+    ],
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Peter",
+            "Flower": "daffodils",
+            "Hobby": "gardening",
+            "Pet": "bird",
+            "Color": "yellow",
+            "HouseStyle": "ranch"
+        },
+        {
+            "House": "2",
+            "Name": "Arnold",
+            "Flower": "carnations",
+            "Hobby": "painting",
+            "Pet": "fish",
+            "Color": "white",
+            "HouseStyle": "craftsman"
+        },
+        {
+            "House": "3",
+            "Name": "Alice",
+            "Flower": "roses",
+            "Hobby": "photography",
+            "Pet": "dog",
+            "Color": "red",
+            "HouseStyle": "colonial"
+        },
+        {
+            "House": "4",
+            "Name": "Eric",
+            "Flower": "lilies",
+            "Hobby": "cooking",
+            "Pet": "cat",
+            "Color": "green",
+            "HouseStyle": "victorian"
+        }
+    ],
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 521.2671337127686,
+        "execution_time": 0.09099340438842773,
+        "constraint_eval_time": 7.867813110351562e-05,
+        "pred_extract_time": 2.970693826675415,
+        "gold_extract_time": 1.52587890625e-05,
+        "total_tokens": 36239,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import json\nfrom z3 import *\n\n# Define the attributes and their possible values\nnames = [\"Peter\", \"Arnold\", \"Alice\", \"Eric\"]\nflowers = [\"roses\", \"daffodils\", \"carnations\", \"lilies\"]\nhobbies = [\"photography\", \"painting\", \"cooking\", \"gardening\"]\npets = [\"dog\", \"fish\", \"bird\", \"cat\"]\ncolors = [\"red\", \"yellow\", \"green\", \"white\"]\nhouse_styles = [\"craftsman\", \"colonial\", \"ranch\", \"victorian\"]\n\n# Create mappings from string to index\nname_to_idx = {name: i for i, name in enumerate(names)}\nflower_to_idx = {f: i for i, f in enumerate(flowers)}\nhobby_to_idx = {h: i for i, h in enumerate(hobbies)}\npet_to_idx = {p: i for i, p in enumerate(pets)}\ncolor_to_idx = {c: i for i, c in enumerate(colors)}\nstyle_to_idx = {s: i for i, s in enumerate(house_styles)}\n\n# Reverse mappings for output\nidx_to_name = {v: k for k, v in name_to_idx.items()}\nidx_to_flower = {v: k for k, v in flower_to_idx.items()}\nidx_to_hobby = {v: k for k, v in hobby_to_idx.items()}\nidx_to_pet = {v: k for k, v in pet_to_idx.items()}\nidx_to_color = {v: k for k, v in color_to_idx.items()}\nidx_to_style = {v: k for k, v in style_to_idx.items()}\n\n# Create variables for each house's attributes\nname_vars = [Int(f'name_{i}') for i in range(4)]\nflower_vars = [Int(f'flower_{i}') for i in range(4)]\nhobby_vars = [Int(f'hobby_{i}') for i in range(4)]\npet_vars = [Int(f'pet_{i}') for i in range(4)]\ncolor_vars = [Int(f'color_{i}') for i in range(4)]\nstyle_vars = [Int(f'style_{i}') for i in range(4)]\n\nsolver = Solver()\n\n# Add constraints that all variables are in 0-3 and distinct per attribute\nfor vars in [name_vars, flower_vars, hobby_vars, pet_vars, color_vars, style_vars]:\n    for v in vars:\n        solver.add(And(0 <= v, v < 4))\n    solver.add(Distinct(vars))\n\n# Add clue constraints\n# Clue 1 and 6: Craftsman is Arnold in house 2 (index 1)\nsolver.add(style_vars[1] == style_to_idx['craftsman'])  # clue 6\nsolver.add(name_vars[1] == name_to_idx['Arnold'])  # clue 1\n\n# Clue 2: Rose lover is to the right of Peter\nroses_idx = flower_to_idx['roses']\npeter_idx = name_to_idx['Peter']\nsolver.add(Or([And(flower_vars[i] == roses_idx, name_vars[j] == peter_idx, i > j) for i in range(4) for j in range(4)]))\n\n# Clue 3: Photography is dog\nfor i in range(4):\n    solver.add(Implies(hobby_vars[i] == hobby_to_idx['photography'], pet_vars[i] == pet_to_idx['dog']))\n\n# Clue 4: Daffodils not in fourth house\ndaffodils_idx = flower_to_idx['daffodils']\nsolver.add(flower_vars[3] != daffodils_idx)\n\n# Clue 5: Rose lover's color is red\nred_idx = color_to_idx['red']\nfor i in range(4):\n    solver.add(Implies(flower_vars[i] == roses_idx, color_vars[i] == red_idx))\n\n# Clue 7: Eric in Victorian\neric_idx = name_to_idx['Eric']\nvictorian_idx = style_to_idx['victorian']\nfor i in range(4):\n    solver.add(Implies(name_vars[i] == eric_idx, style_vars[i] == victorian_idx))\n\n# Clue 8: Fish owner loves white\nfish_idx = pet_to_idx['fish']\nwhite_idx = color_to_idx['white']\nfor i in range(4):\n    solver.add(Implies(pet_vars[i] == fish_idx, color_vars[i] == white_idx))\n\n# Clue 9: Cooking to the right of red\ncooking_idx = hobby_to_idx['cooking']\nsolver.add(Or([And(hobby_vars[i] == cooking_idx, color_vars[j] == red_idx, i > j) for i in range(4) for j in range(4)]))\n\n# Clue 10: White lover has carnations\ncarnations_idx = flower_to_idx['carnations']\nfor i in range(4):\n    solver.add(Implies(color_vars[i] == white_idx, flower_vars[i] == carnations_idx))\n\n# Clue 11: White lover to the right of gardening\ngardening_idx = hobby_to_idx['gardening']\nsolver.add(Or([And(color_vars[i] == white_idx, hobby_vars[j] == gardening_idx, i > j) for i in range(4) for j in range(4)]))\n\n# Clue 12: Daffodils lover has yellow\nyellow_idx = color_to_idx['yellow']\nfor i in range(4):\n    solver.add(Implies(flower_vars[i] == daffodils_idx, color_vars[i] == yellow_idx))\n\n# Clue 13: Colonial has red\ncolonial_idx = style_to_idx['colonial']\nfor i in range(4):\n    solver.add(Implies(style_vars[i] == colonial_idx, color_vars[i] == red_idx))\n\n# Clue 14: Eric has cat\ncat_idx = pet_to_idx['cat']\nfor i in range(4):\n    solver.add(Implies(name_vars[i] == eric_idx, pet_vars[i] == cat_idx))\n\nif solver.check() == sat:\n    model = solver.model()\n    solution_rows = []\n    for i in range(4):\n        house_num = i + 1\n        name = idx_to_name[model[name_vars[i]].as_long()]\n        flower = idx_to_flower[model[flower_vars[i]].as_long()]\n        hobby = idx_to_hobby[model[hobby_vars[i]].as_long()]\n        pet = idx_to_pet[model[pet_vars[i]].as_long()]\n        color = idx_to_color[model[color_vars[i]].as_long()]\n        style = idx_to_style[model[style_vars[i]].as_long()]\n        solution_rows.append([str(house_num), name, flower, hobby, pet, color, style])\n    solution = {\n        \"solution\": {\n            \"header\": [\"House\", \"Name\", \"Flower\", \"Hobby\", \"Pet\", \"Color\", \"HouseStyle\"],\n            \"rows\": solution_rows\n        }\n    }\n    print(json.dumps(solution, indent=2))\nelse:\n    print(\"No solution found.\")"
+}

@@ -1,0 +1,46 @@
+{
+    "has_execution_error": true,
+    "has_no_plan": false,
+    "execution_output": null,
+    "pred": null,
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Alice",
+            "HairColor": "red"
+        },
+        {
+            "House": "2",
+            "Name": "Arnold",
+            "HairColor": "black"
+        },
+        {
+            "House": "3",
+            "Name": "Eric",
+            "HairColor": "brown"
+        },
+        {
+            "House": "4",
+            "Name": "Peter",
+            "HairColor": "blonde"
+        }
+    ],
+    "status": "Error",
+    "violated_constraint": {
+        "invalid_output": "No valid output structure found"
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 42.87543535232544,
+        "execution_time": 0.0769968032836914,
+        "constraint_eval_time": 2.1457672119140625e-06,
+        "pred_extract_time": 3.0994415283203125e-06,
+        "gold_extract_time": 1.049041748046875e-05,
+        "total_tokens": 740,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import json\nfrom z3 import *\n\ndef main():\n    # Create solver\n    solver = Solver()\n    \n    # Define houses\n    houses = [1, 2, 3, 4]\n    \n    # Define attributes\n    names = ['Alice', 'Arnold', 'Peter', 'Eric']\n    hair_colors = ['black', 'blonde', 'brown', 'red']\n    \n    # Create variables for each attribute per house\n    name_vars = [Int(f'name_{i}') for i in houses]\n    hair_vars = [Int(f'hair_{i}') for i in houses]\n    \n    # Constraint: All name variables must be within valid range (0-3)\n    for n in name_vars:\n        solver.add(n >= 0, n < len(names))\n    \n    # Constraint: All hair variables must be within valid range (0-3)\n    for h in hair_vars:\n        solver.add(h >= 0, h < len(hair_colors))\n    \n    # Constraint: All names are distinct\n    solver.add(Distinct(name_vars))\n    \n    # Constraint: All hair colors are distinct\n    solver.add(Distinct(hair_vars))\n    \n    # Clue 1: Eric is directly left of the person who has blonde hair\n    eric_index = names.index('Eric')\n    blonde_index = hair_colors.index('blonde')\n    for i in range(1, 4):  # Houses 2,3,4 can have Eric to their left\n        solver.add(Implies(name_vars[i] == eric_index, hair_vars[i+1] == blonde_index))\n    \n    # Clue 2: Alice and Arnold are next to each other\n    alice_index = names.index('Alice')\n    arnold_index = names.index('Arnold')\n    for i in range(1, 4):  # Check adjacent pairs\n        solver.add(Or(\n            And(name_vars[i] == alice_index, name_vars[i+1] == arnold_index),\n            And(name_vars[i] == arnold_index, name_vars[i+1] == alice_index)\n        ))\n    \n    # Clue 3: Eric is the person who has brown hair\n    brown_index = hair_colors.index('brown')\n    for i in houses:\n        solver.add(Implies(name_vars[i] == eric_index, hair_vars[i] == brown_index))\n    \n    # Clue 4: The person who has black hair is not in the first house\n    black_index = hair_colors.index('black')\n    solver.add(hair_vars[1] != black_index)\n    \n    # Clue 5: Alice is in the first house\n    solver.add(name_vars[1] == alice_index)\n    \n    # Check if solution exists\n    if solver.check() == sat:\n        model = solver.model()\n        \n        # Prepare solution data\n        rows = []\n        for house in houses:\n            name_idx = model.evaluate(name_vars[house]).as_long()\n            hair_idx = model.evaluate(hair_vars[house]).as_long()\n            \n            rows.append([\n                str(house),\n                names[name_idx],\n                hair_colors[hair_idx]\n            ])\n        \n        # Create JSON output\n        solution = {\n            \"solution\": {\n                \"header\": [\"House\", \"Name\", \"HairColor\"],\n                \"rows\": rows\n            }\n        }\n        \n        print(json.dumps(solution, indent=2))\n    else:\n        print('{\"error\": \"No solution found\"}')\n\nif __name__ == \"__main__\":\n    main()"
+}

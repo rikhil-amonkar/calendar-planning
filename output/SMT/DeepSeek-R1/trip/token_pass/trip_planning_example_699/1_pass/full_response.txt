@@ -1,0 +1,99 @@
+```python
+from z3 import *
+import json
+
+def main():
+    # Define the cities
+    cities = ['Dublin', 'London', 'Helsinki', 'Reykjavik', 'Mykonos', 'Hamburg']
+    CityEnum = Enum('City', cities)
+    
+    # Direct flights (symmetric)
+    direct_flights = [
+        (CityEnum.Dublin, CityEnum.London),
+        (CityEnum.Hamburg, CityEnum.Dublin),
+        (CityEnum.Helsinki, CityEnum.Reykjavik),
+        (CityEnum.Hamburg, CityEnum.London),
+        (CityEnum.Dublin, CityEnum.Helsinki),
+        (CityEnum.Reykjavik, CityEnum.London),
+        (CityEnum.London, CityEnum.Mykonos),
+        (CityEnum.Dublin, CityEnum.Reykjavik),
+        (CityEnum.Hamburg, CityEnum.Helsinki),
+        (CityEnum.Helsinki, CityEnum.London)
+    ]
+    allowed_pairs = set()
+    for (c1, c2) in direct_flights:
+        allowed_pairs.add((c1, c2))
+        allowed_pairs.add((c2, c1))
+    
+    # Create arrays for morning and evening cities for days 1 to 16
+    morning = [Const(f'morning_{i}', CityEnum) for i in range(1, 17)]
+    evening = [Const(f'evening_{i}', CityEnum) for i in range(1, 17)]
+    
+    s = Solver()
+    
+    # Consistency between consecutive days
+    for i in range(0, 15):
+        s.add(evening[i] == morning[i+1])
+    
+    # Define visited function for a city and day index
+    def visited(city, day_index):
+        return Or(morning[day_index] == city, evening[day_index] == city)
+    
+    # Days required per city
+    days_required = {
+        CityEnum.Mykonos: 3,
+        CityEnum.Reykjavik: 2,
+        CityEnum.Dublin: 5,
+        CityEnum.London: 5,
+        CityEnum.Helsinki: 4,
+        CityEnum.Hamburg: 2
+    }
+    
+    # Add constraints for total days per city
+    for city, req_days in days_required.items():
+        total_visits = Sum([If(visited(city, i), 1, 0) for i in range(16)])
+        s.add(total_visits == req_days)
+    
+    # Specific constraints
+    s.add(Or(visited(CityEnum.Reykjavik, 8), visited(CityEnum.Reykjavik, 9)))  # Day 9 or 10
+    s.add(Or(visited(CityEnum.Hamburg, 0), visited(CityEnum.Hamburg, 1)))      # Day 1 or 2
+    for i in range(1, 6):  # Days 2 to 6 (indices 1 to 5)
+        s.add(visited(CityEnum.Dublin, i))
+    
+    # Flight constraints
+    for i in range(16):
+        flight_taken = (morning[i] != evening[i])
+        allowed_flight = Or([And(morning[i] == c1, evening[i] == c2) for (c1, c2) in allowed_pairs])
+        s.add(Implies(flight_taken, allowed_flight))
+    
+    # Exactly 5 flight days (because total city days = 21, calendar days = 16)
+    flight_days = Sum([If(morning[i] != evening[i], 1, 0) for i in range(16)])
+    s.add(flight_days == 5)
+    
+    # Solve
+    if s.check() == sat:
+        m = s.model()
+        evening_cities = []
+        for i in range(16):
+            evening_city_val = m.evaluate(evening[i])
+            evening_cities.append(str(evening_city_val))
+        
+        # Group consecutive days with same evening city
+        itinerary = []
+        start_day = 1
+        current_city = evening_cities[0]
+        for day_num in range(2, 17):
+            if evening_cities[day_num-1] != current_city:
+                end_day = day_num - 1
+                itinerary.append({"day_range": f"Day {start_day}-{end_day}", "place": current_city})
+                start_day = day_num
+                current_city = evening_cities[day_num-1]
+        itinerary.append({"day_range": f"Day {start_day}-16", "place": current_city})
+        
+        print(json.dumps({"itinerary": itinerary}))
+    else:
+        print('{"itinerary": []}')
+
+if __name__ == "__main__":
+    main()
+```

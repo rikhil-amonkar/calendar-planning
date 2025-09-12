@@ -1,0 +1,454 @@
+We are given 6 houses, each with a unique name, hair color, and height.
+ We'll use Z3 to assign each attribute to a house.
+
+ Steps:
+ 1. Define the houses as integers 1 to 6.
+ 2. Define the attributes for each category (name, hair color, height).
+ 3. Create Z3 variables for each attribute's house assignment, or alternatively, for each house's attributes.
+
+ Since we have multiple attributes, we can model by:
+   For each house i, we have:
+      name_i: which name is in house i
+      hair_color_i: which hair color is in house i
+      height_i: which height is in house i
+
+ But note: the clues often relate attributes of the same person (house) and also relative positions.
+
+ Alternatively, we can create a mapping from house to each attribute, and then also have inverses for the attributes to house.
+
+ However, Z3 has support for arrays and functions, but we can also use integers for each attribute's house.
+
+ Let's define:
+   For each name, we assign an integer variable representing the house number where that name lives.
+   Similarly for hair colors and heights.
+
+ But note: some clues are about relative positions (e.g., directly left, one house between). So it's easier to also have the house number as the index.
+
+ Another approach: create 3 arrays (or lists of variables) for the 3 attributes per house.
+
+ Since we have 6 houses, we can create:
+
+   names = [Int('name_%d' % i) for i in range(1,7)]
+   hair_colors = [Int('hair_%d' % i) for i in range(1,7)]
+   heights = [Int('height_%d' % i) for i in range(1,7)]
+
+ But then we must constrain that each of these arrays is a permutation of [1..6] (if we map each attribute to an integer code) OR we can use enumeration sorts.
+
+ Alternatively, we can use Z3's EnumSort for each category.
+
+ Let's define an enumeration for each category.
+
+ However, the problem requires outputting the string values, so we can map integers to strings.
+
+ But to make it easier, we can use Z3's EnumSort to create symbolic constants for each attribute.
+
+ Steps in code:
+
+ 1. Create enums for Name, HairColor, Height.
+ 2. For each house, we have a variable for name, hair color, height.
+ 3. Add constraints that all names are distinct, etc.
+
+ But note: the clues relate attributes and houses.
+
+ Alternatively, we can define:
+
+   Name = EnumSort('Name', ['Bob','Peter','Eric','Alice','Arnold','Carol'])
+   HairColor = EnumSort('HairColor', ['auburn','blonde','brown','black','red','gray'])
+   Height = EnumSort('Height', ['very tall','average','very short','tall','super tall','short'])
+
+   Then for each house i (from 1 to 6), we have:
+      n[i] = Const('n_%d' % i, Name)
+      hc[i] = Const('hc_%d' % i, HairColor)
+      ht[i] = Const('ht_%d' % i, Height)
+
+   And then we require that the n[i] are distinct, hc[i] are distinct, ht[i] are distinct.
+
+ 4. Then we add the constraints from the clues.
+
+ However, note that some clues are about the house number of an attribute (e.g., Alice is in fourth house) and some are about relative positions.
+
+ We also note that the houses are ordered 1 to 6.
+
+ Let's code accordingly.
+
+ But note: the clues also relate attributes of the same house (e.g., the person who has blonde hair is Carol, so the house with blonde hair must be the same as the house with Carol).
+
+ We can also define inverse functions: for each attribute, we can define a function that returns the house number, but that might complicate.
+
+ Alternatively, we can define the house as the index and then for each attribute we have a function from house to the attribute value, and then for the inverse we can use:
+
+   For example, the house of Alice: we know n[4] = Alice (from clue 2)
+
+   But note: clue 1: "directly left of Bob" means that the house with blonde hair is house i, and Bob is in house i+1.
+
+   So we can express: exists i such that hc[i] = Blonde and n[i+1] = Bob.
+
+   But we can also use:
+
+      For i in range(1,6): Implies(hc[i]==Blonde, n[i+1]==Bob)
+
+   But note: the clue says "directly left", so only one possibility.
+
+ 5. We'll create a solver and add all constraints.
+
+ 6. Then we check the model and output the table.
+
+ However, note that the output must be in JSON format with the exact structure.
+
+ Let's plan the code structure.
+
+ We'll use Z3 and also json module for output.
+
+ Steps:
+
+  - Import z3 and json
+  - Define the sorts and constants for each attribute.
+
+  - Create arrays for n, hc, ht for houses 1 to 6.
+
+  - Create a solver.
+
+  - Add distinct constraints for n, hc, ht.
+
+  - Add each clue as constraint.
+
+  - Check and get model.
+
+  - Then, for each house from 1 to 6, we get the value of n[i], hc[i], ht[i] and convert to string.
+
+  - Build the rows for the JSON output.
+
+  - Print the JSON.
+
+ Let's code accordingly.
+
+ Note: We have to be careful with the house indices. Our arrays n, hc, ht are indexed from 1 to 6.
+
+ Let's define the attributes as enums.
+
+ We'll create the enums and then also create a list of the possible values for each enum so we can convert the z3 expressions to strings.
+
+ Implementation:
+
+  Name, (Bob, Peter, Eric, Alice, Arnold, Carol) = EnumSort('Name', ['Bob','Peter','Eric','Alice','Arnold','Carol'])
+  Similarly for others.
+
+  But note: we need to get the string representation from the z3 model. We can use the `as_string` method of the constant, but note that the model returns a z3 expression.
+
+  Alternatively, we can create a mapping from the z3 constant to its name.
+
+  We can do:
+
+      name_dict = { Bob: 'Bob', Peter: 'Peter', ... }
+
+  But we can also create a list of the constants and then use the index, but since we have the enum, we can use:
+
+      for i in range(1,7):
+          n_val = model[n[i]]
+          # Now we can compare n_val with each of the constants, but that is inefficient.
+
+  Alternatively, we can use:
+
+      if eq(n_val, Bob):
+          ...
+
+  But Z3 provides `eq` but we can also use the Python `==` if we use the same symbolic constants.
+
+  However, we can create a list of all the constants and then find which one is equal.
+
+  But note: the model will give us one of the constants, so we can create a reverse mapping from the constant to the string.
+
+  Let's create:
+
+      name_list = ['Bob','Peter','Eric','Alice','Arnold','Carol']
+      hair_list = ['auburn','blonde','brown','black','red','gray']
+      height_list = ['very tall','average','very short','tall','super tall','short']
+
+  And then we create the enum with:
+
+      Name = EnumSort('Name', name_list)
+      HairColor = EnumSort('HairColor', hair_list)
+      Height = EnumSort('Height', height_list)
+
+  Then we get constants: Name.Bob, Name.Peter, etc.
+
+  But note: the enum values are created as constants in the sort, and we can get their name by the index in the list? Not directly.
+
+  Alternatively, we can create a mapping from the constant to the string by using the index in the list of the enum constructors.
+
+  However, we can use:
+
+      name_consts = [Name.Bob, Name.Peter, Name.Eric, Name.Alice, Name.Arnold, Name.Carol]
+
+  and then for a model value for n[i], we can compare it with each constant in name_consts until we find the one that is equal, then use the corresponding string from name_list.
+
+  But note: the model may not be the same constant object, but we can use eq.
+
+  Alternatively, we can use:
+
+      for j in range(len(name_list)):
+          if model.eval(n[i]) == name_consts[j]:
+              name_str = name_list[j]
+
+  But note: model.eval(n[i]) returns a z3 expression that we can compare with the constant.
+
+  However, we can also use the following trick: since the enum values are distinct, we can use the index of the constant in the enum sort.
+
+  But let's stick with the comparison method.
+
+  We'll create:
+
+      name_consts = [Name.Bob, Name.Peter, Name.Eric, Name.Alice, Name.Arnold, Name.Carol]
+      hair_consts = [HairColor.auburn, HairColor.blonde, HairColor.brown, HairColor.black, HairColor.red, HairColor.gray]
+      height_consts = [Height.very_tall, Height.average, Height.very_short, Height.tall, Height.super_tall, Height.short]
+
+  Note: the enum sort will create the constants with the exact names we provided, but with spaces replaced by underscores? Actually, the EnumSort function takes a list of strings, and it creates constants that are accessible as attributes, but we are creating them in a list.
+
+  Actually, we don't need to create the constants individually if we use the list of names. We can get the constants from the enum sort by index? Not exactly.
+
+  Alternatively, we can create the constants by:
+
+      Name = EnumSort('Name', name_list)
+      Name_Bob = Name[0]   # but this is not the way EnumSort works.
+
+  The EnumSort returns a sort and a list of constants. So we can do:
+
+      Name, name_consts = EnumSort('Name', name_list)
+      HairColor, hair_consts = EnumSort('HairColor', hair_list)
+      Height, height_consts = EnumSort('Height', height_list)
+
+  Then, we have the constants in the order of the list.
+
+  Now, we can create the variables for each house:
+
+      n = [Const('n_%d' % i, Name) for i in range(1,7)]
+      hc = [Const('hc_%d' % i, HairColor) for i in range(1,7)]
+      ht = [Const('ht_%d' % i, Height) for i in range(1,7)]
+
+  Then we add constraints.
+
+  Let's now encode the clues:
+
+  1. The person who has blonde hair is directly left of Bob.
+        We need to find a house i (from 1 to 5) such that:
+            hc[i] == HairColor.blonde and n[i+1] == Name.Bob
+        But note: the clue doesn't say that the blonde hair is not in house 6, so we can imply for each i from 1 to 5:
+            Or( And(hc[i]==hair_consts[1], n[i+1]==name_consts[0]) for i in range(1,6) )   # but note: Bob is the first in name_list -> index0, blonde is index1 in hair_list.
+
+        Alternatively, we can do:
+            for i in range(1,6):
+                if hc[i] == hair_consts[1]:
+                    then n[i+1] == name_consts[0]
+
+        But note: the blonde hair is in exactly one house, so we can also use:
+            exists i in [1,5] such that: hc[i] == blonde and n[i+1] == Bob
+
+        We can do:
+            solver.add(Or([And(hc[i] == hair_consts[1], n[i+1] == name_consts[0]) for i in range(1,6)]))
+
+  2. Alice is in the fourth house.
+        n[4] == Name.Alice   (which is name_consts[3])
+
+  3. The person who is short is Arnold.
+        We need to find the house i where ht[i] == Height.short and n[i] == Name.Arnold.
+        So: For the same house i, n[i] == Name.Arnold and ht[i] == Height.short.
+
+        We can do: exists i: And(n[i]==name_consts[4], ht[i]==height_consts[5])
+        But note: the heights: short is the last in height_list (index5), and Arnold is the fifth in name_list (index4).
+
+        Alternatively, we can say: for all houses, if the height is short then the name is Arnold, and vice versa.
+
+        Since each attribute is unique, we can do:
+            For i in range(1,7): Implies(ht[i]==height_consts[5], n[i]==name_consts[4])
+            and similarly the other way.
+
+        But note: the clue says "the person who is short is Arnold", meaning they are the same person, so same house.
+
+        We can also do: There exists one house i such that both conditions hold.
+
+        However, we can simply say: for the house i that has short height, the name is Arnold, and for the house j that has Arnold, the height is short.
+
+        We can do:
+            solver.add(Exists([i], And(ht[i] == height_consts[5], n[i] == name_consts[4])))
+        But that is not efficient. Instead, we can use:
+
+            for i in range(1,7):
+                solver.add( (ht[i] == height_consts[5]) == (n[i] == name_consts[4]) )
+
+        This means: in every house, the height is short if and only if the name is Arnold.
+
+  4. The person who is tall is in the sixth house.
+        ht[6] == Height.tall   (which is height_consts[3])
+
+  5. The person who has black hair is not in the fourth house.
+        hc[4] != HairColor.black   (hair_consts[3])
+
+  6. The person who has red hair is Eric.
+        Similarly to clue 3: for every house i, (hc[i] == hair_consts[4]) == (n[i] == name_consts[2])
+        Note: red hair is index4 in hair_list, Eric is index2 in name_list.
+
+  7. The person who is super tall is somewhere to the right of the person who has an average height.
+        Let house_i be the house with average height, and house_j with super tall, and j > i.
+        We can define the house number for average height and super tall as integers?
+
+        Alternatively, we can use:
+
+            average_house = Int('average_house')
+            super_tall_house = Int('super_tall_house')
+
+            solver.add(average_house >= 1, average_house <= 6)
+            solver.add(super_tall_house >= 1, super_tall_house <= 6)
+
+            for i in range(1,7):
+                solver.add(If(ht[i] == height_consts[1], average_house == i, True))
+                solver.add(If(ht[i] == height_consts[4], super_tall_house == i, True))
+
+            solver.add(super_tall_house > average_house)
+
+        But note: we are using integers for houses, and we know the house numbers are 1 to 6.
+
+        Alternatively, we can use:
+
+            average_index = -1
+            super_tall_index = -1
+            for i in range(1,7):
+                if ht[i] == height_consts[1]:
+                    average_index = i
+                if ht[i] == height_consts[4]:
+                    super_tall_index = i
+            Then assert super_tall_index > average_index.
+
+        But in Z3, we can't use imperative loops, so we have to use a logical OR to set the average_index.
+
+        We can do:
+
+            average_house = Int('average_house')
+            super_tall_house = Int('super_tall_house')
+            solver.add(Or([And(ht[i] == height_consts[1], average_house == i) for i in range(1,7)]))
+            solver.add(Or([And(ht[i] == height_consts[4], super_tall_house == i) for i in range(1,7)]))
+            solver.add(super_tall_house > average_house)
+
+        But note: we must also ensure that average_house and super_tall_house are between 1 and 6, which we get from the constraints.
+
+  8. The person who has blonde hair is Carol.
+        Similarly to clue 3 and 6: for every house i, (hc[i] == hair_consts[1]) == (n[i] == name_consts[5])
+        Note: blonde hair is index1, Carol is index5.
+
+  9. There is one house between the person who has gray hair and the person who has red hair.
+        Let gray_house and red_house be the houses for gray and red hair.
+        Then |gray_house - red_house| = 2.
+
+        We can do:
+
+            gray_house = Int('gray_house')
+            red_house = Int('red_house')
+            solver.add(Or([And(hc[i] == hair_consts[5], gray_house == i) for i in range(1,7)]))
+            solver.add(Or([And(hc[i] == hair_consts[4], red_house == i) for i in range(1,7)]))
+            solver.add(Or(gray_house - red_house == 2, red_house - gray_house == 2))
+
+  10. The person who is very short is in the fifth house.
+        ht[5] == Height.very_short   (index2 in height_list)
+
+  11. Bob is the person who has brown hair.
+        For every house i, (n[i] == name_consts[0]) == (hc[i] == hair_consts[2])
+        Note: Bob is index0, brown hair is index2.
+
+  12. The person who has gray hair is in the third house.
+        hc[3] == HairColor.gray   (index5)
+
+  13. The person who has blonde hair is the person who is very tall.
+        For every house i, (hc[i] == hair_consts[1]) == (ht[i] == height_consts[0])
+        Note: blonde hair is index1, very tall is index0.
+
+  But note: we have already defined the mapping for blonde hair to Carol in clue 8, and now we are mapping blonde hair to very tall.
+
+  Also, note: the clues are about the same person, so we are relating attributes of the same house.
+
+  We'll now code accordingly.
+
+  However, note that using integers for the house numbers of attributes might be heavy for the solver, but since the problem is small, it's acceptable.
+
+  Alternatively, we can avoid using integers for the house numbers for the attributes by using the relative positions on the array of houses.
+
+  For example, for clue 9, we can say:
+
+        for i in range(1,7):
+            if hc[i] == hair_consts[5]:   # gray
+                then hc[i+2] == hair_consts[4] or hc[i-2] == hair_consts[4]   (with bounds checking)
+
+        Similarly for clue 1, we already did without introducing integers.
+
+  Let's try to avoid introducing integers for the house numbers of attributes when possible.
+
+  Revised plan for clues that don't require integers:
+
+  1. clue1: 
+        solver.add(Or([And(hc[i] == hair_consts[1], n[i+1] == name_consts[0]) for i in range(1,6)]))
+
+  7. clue7: 
+        We can do without integers by:
+            for i in range(1,7):
+                for j in range(1,7)):
+                    if i < j:
+                        Implies(ht[i] == height_consts[1], And(ht[j] == height_consts[4], j>i))
+                    else:
+                        Implies(ht[i] == height_consts[1], And(ht[j] == height_consts[4], j>i))   # but note: we only need one average and one super tall.
+
+        But note: there is exactly one average and one super tall, so we can do:
+
+            average_index = -1
+            super_tall_index = -1
+            for i in range(1,7):
+                solver.add(If(ht[i] == height_consts[1], average_index == i, True))
+                solver.add(If(ht[i] == height_consts[4], super_tall_index == i, True))
+            solver.add(super_tall_index > average_index)
+
+        But we cannot use assignment in Z3. So we have to use a logical OR.
+
+        Alternatively, we can use:
+
+            solver.add(Or([And(ht[i] == height_consts[1], Or([And(ht[j] == height_consts[4], j>i) for j in range(i+1,7)])) for i in range(1,7)]))
+
+        This says: for the house i that has average height, there exists a house j>i that has super tall.
+
+  9. clue9: 
+        We can do without integers by:
+
+            for i in range(1,5): # because i+2 must be <=6
+                solver.add(Implies(hc[i] == hair_consts[5], hc[i+2] == hair_consts[4]))
+            for i in range(3,7): # i-2 must be >=1
+                solver.add(Implies(hc[i] == hair_consts[5], hc[i-2] == hair_consts[4]))
+            and similarly for red hair being the gray hair's neighbor with one in between.
+
+        But note: the clue says "one house between", so the difference is exactly 2.
+
+        We can also do:
+
+            solver.add(Or([And(hc[i] == hair_consts[5], hc[i+2] == hair_consts[4]) for i in range(1,5)] + 
+                        [And(hc[i] == hair_consts[5], hc[i-2] == hair_consts[4]) for i in range(3,7)]))
+
+        This covers both cases.
+
+  However, note that clue 12 already fixes gray hair to house 3, so we might not need this, but we'll add it for completeness.
+
+  Let's code accordingly.
+
+  We'll now write the code.
+
+  Note: We have to be cautious with the indices of the attributes in the lists.
+
+  Let's define the lists:
+
+      name_list = ['Bob','Peter','Eric','Alice','Arnold','Carol']
+      hair_list = ['auburn','blonde','brown','black','red','gray']
+      height_list = ['very tall','average','very short','tall','super tall','short']
+
+  And then create the enums and constants.
+
+  We'll create the solver and add the distinct constraints for n, hc, ht.
+
+  Then add the clues.
+
+  Finally, we'll output the solution.
+
+  Let's code.

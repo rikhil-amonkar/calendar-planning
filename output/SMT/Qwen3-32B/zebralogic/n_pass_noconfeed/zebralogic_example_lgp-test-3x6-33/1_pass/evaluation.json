@@ -1,0 +1,79 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"solution\": {\n    \"header\": [\n      \"House\",\n      \"Name\",\n      \"Flower\",\n      \"HairColor\",\n      \"FavoriteSport\",\n      \"HouseStyle\",\n      \"Pet\"\n    ],\n    \"rows\": [\n      [\n        \"1\",\n        \"Arnold\",\n        \"carnations\",\n        \"brown\",\n        \"tennis\",\n        \"victorian\",\n        \"fish\"\n      ],\n      [\n        \"2\",\n        \"Peter\",\n        \"daffodils\",\n        \"blonde\",\n        \"basketball\",\n        \"ranch\",\n        \"dog\"\n      ],\n      [\n        \"3\",\n        \"Eric\",\n        \"lilies\",\n        \"black\",\n        \"soccer\",\n        \"colonial\",\n        \"cat\"\n      ]\n    ]\n  }\n}",
+    "pred": [
+        {
+            "House": "1",
+            "Name": "Arnold",
+            "Flower": "carnations",
+            "HairColor": "brown",
+            "FavoriteSport": "tennis",
+            "HouseStyle": "victorian",
+            "Pet": "fish"
+        },
+        {
+            "House": "2",
+            "Name": "Peter",
+            "Flower": "daffodils",
+            "HairColor": "blonde",
+            "FavoriteSport": "basketball",
+            "HouseStyle": "ranch",
+            "Pet": "dog"
+        },
+        {
+            "House": "3",
+            "Name": "Eric",
+            "Flower": "lilies",
+            "HairColor": "black",
+            "FavoriteSport": "soccer",
+            "HouseStyle": "colonial",
+            "Pet": "cat"
+        }
+    ],
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Arnold",
+            "Flower": "carnations",
+            "HairColor": "brown",
+            "FavoriteSport": "tennis",
+            "HouseStyle": "victorian",
+            "Pet": "fish"
+        },
+        {
+            "House": "2",
+            "Name": "Peter",
+            "Flower": "daffodils",
+            "HairColor": "blonde",
+            "FavoriteSport": "basketball",
+            "HouseStyle": "ranch",
+            "Pet": "dog"
+        },
+        {
+            "House": "3",
+            "Name": "Eric",
+            "Flower": "lilies",
+            "HairColor": "black",
+            "FavoriteSport": "soccer",
+            "HouseStyle": "colonial",
+            "Pet": "cat"
+        }
+    ],
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 532.9650089740753,
+        "execution_time": 0.08024930953979492,
+        "constraint_eval_time": 7.987022399902344e-05,
+        "pred_extract_time": 7.348963975906372,
+        "gold_extract_time": 1.33514404296875e-05,
+        "total_tokens": 36427,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\nimport json\n\n# Define EnumSorts for each attribute category\nNames, (Arnold, Eric, Peter) = EnumSort('Names', ['Arnold', 'Eric', 'Peter'])\nFlowers, (carnations, lilies, daffodils) = EnumSort('Flowers', ['carnations', 'lilies', 'daffodils'])\nHairColors, (black, brown, blonde) = EnumSort('HairColors', ['black', 'brown', 'blonde'])\nSports, (soccer, basketball, tennis) = EnumSort('Sports', ['soccer', 'basketball', 'tennis'])\nStyles, (colonial, ranch, victorian) = EnumSort('Styles', ['colonial', 'ranch', 'victorian'])\nPets, (fish, dog, cat) = EnumSort('Pets', ['fish', 'dog', 'cat'])\n\n# Create variables for each house (0, 1, 2) and each attribute\nname = [Const(f'name_{i}', Names) for i in range(3)]\nflower = [Const(f'flower_{i}', Flowers) for i in range(3)]\nhair_color = [Const(f'hair_color_{i}', HairColors) for i in range(3)]\nsport = [Const(f'sport_{i}', Sports) for i in range(3)]\nstyle = [Const(f'style_{i}', Styles) for i in range(3)]\npet = [Const(f'pet_{i}', Pets) for i in range(3)]\n\ns = Solver()\n\n# Add distinct constraints for each category\ns.add(Distinct(name))\ns.add(Distinct(flower))\ns.add(Distinct(hair_color))\ns.add(Distinct(sport))\ns.add(Distinct(style))\ns.add(Distinct(pet))\n\n# Add puzzle constraints\n# Clue 1: The person who has a cat loves soccer (house 3 has both)\ns.add(pet[2] == cat, sport[2] == soccer)\n\n# Clue 2: House 2 has blonde hair\ns.add(hair_color[1] == blonde)\n\n# Clue 3: Daffodils lover has blonde hair (house 2 has daffodils)\ns.add(flower[1] == daffodils)\n\n# Clue 4: Peter loves basketball\nfor i in range(3):\n    s.add(Implies(name[i] == Peter, sport[i] == basketball))\n\n# Clue 5: Arnold is directly left of ranch-style home\ns.add(Or(\n    And(name[0] == Arnold, style[1] == ranch),\n    And(name[1] == Arnold, style[2] == ranch)\n))\n\n# Clue 6: Dog owner loves basketball\ns.add(Or(\n    And(pet[0] == dog, sport[0] == basketball),\n    And(pet[1] == dog, sport[1] == basketball),\n    And(pet[2] == dog, sport[2] == basketball)\n))\n\n# Clue 7: Carnations lover is directly left of blonde hair (house 1 has carnations)\ns.add(flower[0] == carnations)\n\n# Clue 8: Soccer lover is in house 3\ns.add(sport[2] == soccer)\n\n# Clue 9: Arnold is left of black hair\ns.add(Or(\n    And(name[0] == Arnold, Or(hair_color[1] == black, hair_color[2] == black)),\n    And(name[1] == Arnold, hair_color[2] == black)\n))\n\n# Clue 10: Colonial-style house is in house 3\ns.add(style[2] == colonial)\n\n# Check for solution\nif s.check() == sat:\n    model = s.model()\n    solution_data = {\n        \"solution\": {\n            \"header\": [\"House\", \"Name\", \"Flower\", \"HairColor\", \"FavoriteSport\", \"HouseStyle\", \"Pet\"],\n            \"rows\": []\n        }\n    }\n    for i in range(3):\n        house_num = str(i + 1)\n        name_val = model.eval(name[i]).decl().name()\n        flower_val = model.eval(flower[i]).decl().name()\n        hair_color_val = model.eval(hair_color[i]).decl().name()\n        sport_val = model.eval(sport[i]).decl().name()\n        style_val = model.eval(style[i]).decl().name()\n        pet_val = model.eval(pet[i]).decl().name()\n        solution_data[\"solution\"][\"rows\"].append([\n            house_num, name_val, flower_val, hair_color_val, sport_val, style_val, pet_val\n        ])\n    print(json.dumps(solution_data, indent=2))\nelse:\n    print(\"No solution found.\")"
+}

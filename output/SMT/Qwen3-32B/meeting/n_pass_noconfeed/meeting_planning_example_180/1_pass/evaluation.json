@@ -1,0 +1,57 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"itinerary\": [\n    {\n      \"action\": \"meet\",\n      \"location\": \"Mission District\",\n      \"person\": \"James\",\n      \"start_time\": \"12:45\",\n      \"end_time\": \"14:00\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"The Castro\",\n      \"person\": \"Robert\",\n      \"start_time\": \"14:07\",\n      \"end_time\": \"14:37\"\n    }\n  ]\n}",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Mission District",
+                "person": "James",
+                "start_time": "12:45",
+                "end_time": "14:00"
+            },
+            {
+                "action": "meet",
+                "location": "The Castro",
+                "person": "Robert",
+                "start_time": "14:07",
+                "end_time": "14:37"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Mission District",
+                "person": "James",
+                "start_time": "12:45",
+                "end_time": "14:00"
+            },
+            {
+                "action": "meet",
+                "location": "The Castro",
+                "person": "Robert",
+                "start_time": "14:07",
+                "end_time": "14:37"
+            }
+        ]
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 394.4106013774872,
+        "execution_time": 0.08129000663757324,
+        "constraint_eval_time": 3.933906555175781e-05,
+        "pred_extract_time": 1.4791755676269531,
+        "gold_extract_time": 7.891654968261719e-05,
+        "total_tokens": 25099,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\nimport json\n\ndef to_time_str(minutes):\n    hours = minutes // 60\n    mins = minutes % 60\n    return f\"{hours}:{mins:02d}\"\n\nsolver = Solver()\n\n# Variables\ndep_NB = Int('dep_NB')\nstart_james = Int('start_james')\nend_james = Int('end_james')\nstart_robert = Int('start_robert')\nend_robert = Int('end_robert')\n\n# Constraints for James\nsolver.add(end_james == start_james + 75)\nsolver.add(start_james >= 765)\nsolver.add(end_james <= 840)\n\n# Constraints for arrival at Mission\nsolver.add(dep_NB >= 540)\nsolver.add(dep_NB + 18 <= start_james)\n\n# Constraints for Robert\nsolver.add(end_robert == start_robert + 30)\nsolver.add(start_robert >= 765)\nsolver.add(end_robert <= 975)\n\n# Arrival at Castro is end_james + 7 (travel time from Mission to Castro)\nsolver.add(end_james + 7 <= start_robert)\n\n# Check if satisfiable\nif solver.check() == sat:\n    model = solver.model()\n    sj = model[start_james].as_long()\n    ej = model[end_james].as_long()\n    sr = model[start_robert].as_long()\n    er = model[end_robert].as_long()\n\n    itinerary = [\n        {\n            \"action\": \"meet\",\n            \"location\": \"Mission District\",\n            \"person\": \"James\",\n            \"start_time\": to_time_str(sj),\n            \"end_time\": to_time_str(ej)\n        },\n        {\n            \"action\": \"meet\",\n            \"location\": \"The Castro\",\n            \"person\": \"Robert\",\n            \"start_time\": to_time_str(sr),\n            \"end_time\": to_time_str(er)\n        }\n    ]\n    print(json.dumps({\"itinerary\": itinerary}, indent=2))\nelse:\n    print(\"No solution found\")"
+}

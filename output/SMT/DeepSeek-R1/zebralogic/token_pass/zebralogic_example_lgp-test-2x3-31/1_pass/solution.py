@@ -1,0 +1,59 @@
+import json
+from z3 import *
+
+def main():
+    # Define the sorts and constants for each category
+    NameSort, (Eric, Arnold) = EnumSort('Name', ['Eric', 'Arnold'])
+    SportSort, (basketball, soccer) = EnumSort('Sport', ['basketball', 'soccer'])
+    HobbySort, (photography, gardening) = EnumSort('Hobby', ['photography', 'gardening'])
+    
+    # Create variables for each house's attributes
+    names = [Const(f'name_{i}', NameSort) for i in range(2)]
+    sports = [Const(f'sport_{i}', SportSort) for i in range(2)]
+    hobbies = [Const(f'hobby_{i}', HobbySort) for i in range(2)]
+    
+    s = Solver()
+    
+    # All attributes must be unique per category
+    s.add(Distinct(names))
+    s.add(Distinct(sports))
+    s.add(Distinct(hobbies))
+    
+    # Clue 1: The person who enjoys gardening is Arnold.
+    s.add(Or([And(hobbies[i] == gardening, names[i] == Arnold) for i in range(2)]))
+    
+    # Clue 2: The photography enthusiast is not in the first house.
+    s.add(hobbies[0] != photography)
+    
+    # Clue 3: The person who loves soccer is not in the first house.
+    s.add(sports[0] != soccer)
+    
+    # Check for solution
+    if s.check() == sat:
+        m = s.model()
+        rows = []
+        for i in range(2):
+            # Evaluate each attribute for the house
+            name_val = m.eval(names[i])
+            sport_val = m.eval(sports[i])
+            hobby_val = m.eval(hobbies[i])
+            
+            # Convert Z3 values to strings
+            name_str = 'Eric' if name_val == Eric else 'Arnold'
+            sport_str = 'basketball' if sport_val == basketball else 'soccer'
+            hobby_str = 'photography' if hobby_val == photography else 'gardening'
+            
+            rows.append([str(i+1), name_str, sport_str, hobby_str])
+        
+        solution = {
+            "solution": {
+                "header": ["House", "Name", "FavoriteSport", "Hobby"],
+                "rows": rows
+            }
+        }
+        print(json.dumps(solution, indent=2))
+    else:
+        print('No solution found')
+
+if __name__ == '__main__':
+    main()

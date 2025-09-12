@@ -1,0 +1,69 @@
+We are given 2 houses. Each has attributes: Name, Hobby, BookGenre, MusicGenre, Birthday.
+ We have two options for each attribute.
+
+ Steps:
+ 1. Define the attributes and their possible values.
+ 2. Create Z3 variables for each attribute for each house.
+ 3. Assert that for each attribute, the values are distinct per house.
+ 4. Add the constraints from the clues.
+
+ Clues:
+ 1. The person who loves mystery books is the person who loves rock music.
+    -> This means: For the person (house) that has BookGenre = mystery, they also have MusicGenre = rock.
+ 2. Arnold is not in the first house.
+    -> So Arnold is in house 2.
+ 3. The person who loves mystery books is the person who enjoys gardening.
+    -> So the person with BookGenre = mystery also has Hobby = gardening.
+ 4. The person whose birthday is in April is Arnold.
+    -> So the person with Birthday = april has Name = Arnold.
+ 5. The person who loves mystery books is in the first house.
+    -> So house 1 has BookGenre = mystery.
+
+ From clue 5: House 1 has BookGenre = mystery.
+ Then from clue 1 and 3, we know that the same person (house 1) also has MusicGenre = rock and Hobby = gardening.
+
+ Also, from clue 4: The person with Birthday = april is Arnold. And from clue 2, Arnold is in house 2.
+ Therefore, house 2 has Birthday = april and Name = Arnold.
+
+ Then, since house 1 has BookGenre = mystery, and there are only two books, house 2 must have science fiction.
+ Similarly, house 1 has MusicGenre = rock, so house 2 must have pop.
+ And house 1 has Hobby = gardening, so house 2 must have photography.
+
+ For the birthday: house 2 has april, so house 1 must have sept.
+
+ And for the name: house 2 is Arnold, so house 1 must be Eric.
+
+ However, we are to use Z3 to solve this. We will set up the problem and let Z3 verify.
+
+ Let's define the attributes:
+
+ Attributes and their possible values:
+  Name: ["Eric", "Arnold"]
+  Hobby: ["gardening", "photography"]
+  BookGenre: ["science fiction", "mystery"]
+  MusicGenre: ["rock", "pop"]
+  Birthday: ["april", "sept"]
+
+ We'll create a list of houses: [1, 2]
+
+ We'll create a Z3 variable for each attribute in each house.
+
+ Since the attributes are finite and small, we can use EnumSort for each attribute.
+
+ Alternatively, we can use IntSort and use distinct constraints, but using EnumSort is more efficient and readable.
+
+ Let's create EnumSort for each attribute.
+
+ Steps in code:
+ 1. Import z3 and json.
+ 2. Create a solver.
+ 3. Define the attributes and their types.
+ 4. Create variables for each house and each attribute.
+ 5. Assert that for each attribute category, the values are distinct.
+ 6. Add the constraints from the clues.
+ 7. Check and get the model.
+ 8. Format the output as JSON.
+
+ However, note: the problem is small and we can also solve without Z3, but the requirement is to use Z3.
+
+ Let's code accordingly.

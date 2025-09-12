@@ -1,0 +1,95 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"solution\": {\n    \"header\": [\n      \"House\",\n      \"Name\",\n      \"Birthday\",\n      \"Cigar\",\n      \"Drink\"\n    ],\n    \"rows\": [\n      [\n        \"1\",\n        \"Bob\",\n        \"april\",\n        \"prince\",\n        \"milk\"\n      ],\n      [\n        \"2\",\n        \"Alice\",\n        \"feb\",\n        \"blends\",\n        \"tea\"\n      ],\n      [\n        \"3\",\n        \"Eric\",\n        \"jan\",\n        \"pall mall\",\n        \"root beer\"\n      ],\n      [\n        \"4\",\n        \"Arnold\",\n        \"sept\",\n        \"blue master\",\n        \"coffee\"\n      ],\n      [\n        \"5\",\n        \"Peter\",\n        \"mar\",\n        \"dunhill\",\n        \"water\"\n      ]\n    ]\n  }\n}",
+    "pred": [
+        {
+            "House": "1",
+            "Name": "Bob",
+            "Birthday": "april",
+            "Cigar": "prince",
+            "Drink": "milk"
+        },
+        {
+            "House": "2",
+            "Name": "Alice",
+            "Birthday": "feb",
+            "Cigar": "blends",
+            "Drink": "tea"
+        },
+        {
+            "House": "3",
+            "Name": "Eric",
+            "Birthday": "jan",
+            "Cigar": "pall mall",
+            "Drink": "root beer"
+        },
+        {
+            "House": "4",
+            "Name": "Arnold",
+            "Birthday": "sept",
+            "Cigar": "blue master",
+            "Drink": "coffee"
+        },
+        {
+            "House": "5",
+            "Name": "Peter",
+            "Birthday": "mar",
+            "Cigar": "dunhill",
+            "Drink": "water"
+        }
+    ],
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Bob",
+            "Birthday": "april",
+            "Cigar": "prince",
+            "Drink": "milk"
+        },
+        {
+            "House": "2",
+            "Name": "Alice",
+            "Birthday": "feb",
+            "Cigar": "blends",
+            "Drink": "tea"
+        },
+        {
+            "House": "3",
+            "Name": "Eric",
+            "Birthday": "jan",
+            "Cigar": "pall mall",
+            "Drink": "root beer"
+        },
+        {
+            "House": "4",
+            "Name": "Arnold",
+            "Birthday": "sept",
+            "Cigar": "blue master",
+            "Drink": "coffee"
+        },
+        {
+            "House": "5",
+            "Name": "Peter",
+            "Birthday": "mar",
+            "Cigar": "dunhill",
+            "Drink": "water"
+        }
+    ],
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 631.8669929504395,
+        "execution_time": 0.0962066650390625,
+        "constraint_eval_time": 7.724761962890625e-05,
+        "pred_extract_time": 1.9970521926879883,
+        "gold_extract_time": 2.0742416381835938e-05,
+        "total_tokens": 42926,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\nimport json\n\n# Define EnumSorts\nNames, (Peter, Alice, Eric, Bob, Arnold) = EnumSort('Names', ['Peter', 'Alice', 'Eric', 'Bob', 'Arnold'])\nBirthdays, (jan, feb, mar, april, sept) = EnumSort('Birthdays', ['jan', 'feb', 'mar', 'april', 'sept'])\nCigars, (pall_mall, prince, dunhill, blends, blue_master) = EnumSort('Cigars', ['pall mall', 'prince', 'dunhill', 'blends', 'blue master'])\nDrinks, (water, coffee, tea, milk, root_beer) = EnumSort('Drinks', ['water', 'coffee', 'tea', 'milk', 'root beer'])\n\n# Create variables for each house (0-based index, 0 to 4)\nname = [Const(f'name_{i}', Names) for i in range(5)]\nbirthday = [Const(f'birthday_{i}', Birthdays) for i in range(5)]\ncigar = [Const(f'cigar_{i}', Cigars) for i in range(5)]\ndrink = [Const(f'drink_{i}', Drinks) for i in range(5)]\n\ns = Solver()\n\n# Add uniqueness constraints for each attribute\ns.add(Distinct(name))\ns.add(Distinct(birthday))\ns.add(Distinct(cigar))\ns.add(Distinct(drink))\n\n# Add clues as constraints\n\n# Clue 1: Root beer lover is Eric.\nfor i in range(5):\n    s.add(Implies(drink[i] == root_beer, name[i] == Eric))\n\n# Clue 2: Pall Mall smoker is in the third house (index 2)\ns.add(cigar[2] == pall_mall)\n\n# Clue 3: Bob's birthday is April.\nfor i in range(5):\n    s.add(Implies(name[i] == Bob, birthday[i] == april))\n\n# Clue 4: Dunhill smoker has birthday March.\nfor i in range(5):\n    s.add(Implies(cigar[i] == dunhill, birthday[i] == mar))\n\n# Clue 5: Peter is to the right of root beer lover.\nfor i in range(5):\n    for j in range(5):\n        s.add(Implies(And(drink[i] == root_beer, name[j] == Peter), j > i))\n\n# Clue 6: One house between birthday jan and Peter.\nfor i in range(5):\n    for j in range(5):\n        s.add(Implies(And(birthday[i] == jan, name[j] == Peter), Or(j == i + 2, j == i - 2)))\n\n# Clue 7: Blends smoker has birthday February.\nfor i in range(5):\n    s.add(Implies(cigar[i] == blends, birthday[i] == feb))\n\n# Clue 8: Birthday feb is in house 2 (index 1)\ns.add(birthday[1] == feb)\n\n# Clue 9: Arnold is directly left of Peter.\nfor i in range(4):  # 0 to 3\n    s.add(Implies(name[i] == Arnold, name[i + 1] == Peter))\n\n# Clue 10: Milk drinker not in fifth house (index 4)\ns.add(drink[4] != milk)\n\n# Clue 11: Blue Master smoker drinks coffee.\nfor i in range(5):\n    s.add(Implies(cigar[i] == blue_master, drink[i] == coffee))\n\n# Clue 12: One house between tea and coffee drinkers.\nfor i in range(5):\n    for j in range(5):\n        cond = Or(And(drink[i] == tea, drink[j] == coffee), And(drink[i] == coffee, drink[j] == tea))\n        s.add(Implies(cond, Or(j == i + 2, i == j + 2)))\n\n# Clue 13: Eric is in third house (index 2)\ns.add(name[2] == Eric)\ns.add(drink[2] == root_beer)  # From clue 1\ns.add(cigar[2] == pall_mall)  # From clue 2\n\n# Solve\nif s.check() == sat:\n    model = s.model()\n    \n    # Create mappings from Enum constants to strings\n    name_to_str = {Peter: 'Peter', Alice: 'Alice', Eric: 'Eric', Bob: 'Bob', Arnold: 'Arnold'}\n    birthday_to_str = {jan: 'jan', feb: 'feb', mar: 'mar', april: 'april', sept: 'sept'}\n    cigar_to_str = {pall_mall: 'pall mall', prince: 'prince', dunhill: 'dunhill', blends: 'blends', blue_master: 'blue master'}\n    drink_to_str = {water: 'water', coffee: 'coffee', tea: 'tea', milk: 'milk', root_beer: 'root beer'}\n    \n    # Generate rows\n    rows = []\n    for i in range(5):\n        house_num = i + 1\n        n = model.evaluate(name[i])\n        b = model.evaluate(birthday[i])\n        c = model.evaluate(cigar[i])\n        d = model.evaluate(drink[i])\n        row = [\n            str(house_num),\n            name_to_str[n],\n            birthday_to_str[b],\n            cigar_to_str[c],\n            drink_to_str[d],\n        ]\n        rows.append(row)\n    \n    # Build JSON\n    solution = {\n        \"solution\": {\n            \"header\": [\"House\", \"Name\", \"Birthday\", \"Cigar\", \"Drink\"],\n            \"rows\": rows\n        }\n    }\n    \n    print(json.dumps(solution, indent=2))\nelse:\n    print(\"No solution found.\")"
+}

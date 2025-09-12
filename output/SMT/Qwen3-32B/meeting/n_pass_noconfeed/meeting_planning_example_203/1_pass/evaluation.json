@@ -1,0 +1,73 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"itinerary\": [\n    {\n      \"action\": \"meet\",\n      \"location\": \"PH\",\n      \"person\": \"Timothy\",\n      \"start_time\": \"9:13\",\n      \"end_time\": \"10:28\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"FW\",\n      \"person\": \"David\",\n      \"start_time\": \"10:45\",\n      \"end_time\": \"11:00\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"MD\",\n      \"person\": \"Robert\",\n      \"start_time\": \"12:15\",\n      \"end_time\": \"13:45\"\n    }\n  ]\n}",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "PH",
+                "person": "Timothy",
+                "start_time": "9:13",
+                "end_time": "10:28"
+            },
+            {
+                "action": "meet",
+                "location": "FW",
+                "person": "David",
+                "start_time": "10:45",
+                "end_time": "11:00"
+            },
+            {
+                "action": "meet",
+                "location": "MD",
+                "person": "Robert",
+                "start_time": "12:15",
+                "end_time": "13:45"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Fisherman's Wharf",
+                "person": "David",
+                "start_time": "10:45",
+                "end_time": "11:00"
+            },
+            {
+                "action": "meet",
+                "location": "Pacific Heights",
+                "person": "Timothy",
+                "start_time": "11:12",
+                "end_time": "12:27"
+            },
+            {
+                "action": "meet",
+                "location": "Mission District",
+                "person": "Robert",
+                "start_time": "12:42",
+                "end_time": "14:12"
+            }
+        ]
+    },
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "constraints_satisfied_but_no_exact_match": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 607.5378308296204,
+        "execution_time": 0.0800468921661377,
+        "constraint_eval_time": 0.00022029876708984375,
+        "pred_extract_time": 2.1022398471832275,
+        "gold_extract_time": 6.0558319091796875e-05,
+        "total_tokens": 44418,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import itertools\nimport z3\nimport json\n\ndef to_time_str(minutes):\n    hours = minutes // 60\n    mins = minutes % 60\n    return f\"{hours}:{mins:02d}\"\n\ntravel_times = {\n    ('FD', 'FW'): 10,\n    ('FD', 'PH'): 13,\n    ('FD', 'MD'): 17,\n    ('FW', 'FD'): 11,\n    ('FW', 'PH'): 12,\n    ('FW', 'MD'): 22,\n    ('PH', 'FD'): 13,\n    ('PH', 'FW'): 13,\n    ('PH', 'MD'): 15,\n    ('MD', 'FD'): 17,\n    ('MD', 'FW'): 22,\n    ('MD', 'PH'): 16,\n}\n\nfriends = {\n    'Timothy': {\n        'location': 'PH',\n        'available_start': 540,  # 9:00 AM\n        'available_end': 930,    # 3:30 PM\n        'required_duration': 75\n    },\n    'David': {\n        'location': 'FW',\n        'available_start': 645,  # 10:45 AM\n        'available_end': 930,\n        'required_duration': 15\n    },\n    'Robert': {\n        'location': 'MD',\n        'available_start': 735,  # 12:15 PM\n        'available_end': 1185,   # 7:45 PM\n        'required_duration': 90\n    }\n}\n\nfriends_list = ['Timothy', 'David', 'Robert']\n\ndef is_permutation_feasible(perm):\n    solver = z3.Solver()\n    start_vars = {}\n    prev_end = 540  # starting at FD at 9:00 AM\n    prev_loc = 'FD'\n\n    for friend in perm:\n        loc = friends[friend]['location']\n        travel_time = travel_times[(prev_loc, loc)]\n        arrival = prev_end + travel_time\n        s = z3.Int(f's_{friend}')\n        start_vars[friend] = s\n        solver.add(s >= arrival)\n        solver.add(s >= friends[friend]['available_start'])\n        end = s + friends[friend]['required_duration']\n        solver.add(end <= friends[friend]['available_end'])\n        prev_end = end\n        prev_loc = loc\n\n    if solver.check() == z3.sat:\n        return True, solver.model(), start_vars\n    else:\n        return False, None, None\n\nitinerary = []\n\nfor subset_size in range(len(friends_list), 0, -1):\n    for subset in itertools.combinations(friends_list, subset_size):\n        for perm in itertools.permutations(subset):\n            feasible, model, start_vars = is_permutation_feasible(perm)\n            if feasible:\n                for friend in perm:\n                    s = model.eval(start_vars[friend]).as_long()\n                    duration = friends[friend]['required_duration']\n                    e = s + duration\n                    itinerary.append({\n                        \"action\": \"meet\",\n                        \"location\": friends[friend]['location'],\n                        \"person\": friend,\n                        \"start_time\": to_time_str(s),\n                        \"end_time\": to_time_str(e)\n                    })\n                result = {\n                    \"itinerary\": itinerary\n                }\n                print(json.dumps(result, indent=2))\n                exit()\n\nprint(json.dumps({\"itinerary\": []}))"
+}

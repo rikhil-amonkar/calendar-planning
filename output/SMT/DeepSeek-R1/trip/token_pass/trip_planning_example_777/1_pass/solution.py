@@ -1,0 +1,143 @@
+from z3 import *
+import json
+
+def main():
+    # City codes and names
+    cities = ['Dublin', 'Helsinki', 'Riga', 'Reykjavik', 'Vienna', 'Tallinn']
+    n_cities = len(cities)
+    
+    # Required days per city
+    req_days = {
+        'Dublin': 5,
+        'Helsinki': 3,
+        'Riga': 3,
+        'Reykjavik': 2,
+        'Vienna': 2,
+        'Tallinn': 5
+    }
+    
+    # Direct flights (bidirectional)
+    direct_flights = [
+        (1, 2), (2, 5), (2, 4), (2, 0), (4, 1), (3, 4), (3, 1), (3, 0),
+        (1, 0), (5, 0), (1, 5), (4, 0)
+    ]
+    allowed = set()
+    for i, j in direct_flights:
+        allowed.add((i, j))
+        allowed.add((j, i))
+    
+    # Initialize solver
+    s = Solver()
+    
+    # Segment order variables
+    order = [Int(f'order_{i}') for i in range(n_cities)]
+    for i in range(n_cities):
+        s.add(order[i] >= 0, order[i] < n_cities)
+    s.add(Distinct(order))
+    
+    # End day variables (e1 to e5)
+    e = [Int(f'e{i}') for i in range(1, n_cities)]
+    for i in range(len(e)):
+        s.add(e[i] >= 1, e[i] <= 15)
+    for i in range(len(e) - 1):
+        s.add(e[i] <= e[i+1])
+    
+    # Function to compute days for a segment
+    def segment_days(seg_index, e_vals):
+        if seg_index == 0:
+            return e_vals[0]
+        elif seg_index == n_cities - 1:
+            return 16 - e_vals[-1]
+        else:
+            return e_vals[seg_index] - e_vals[seg_index-1] + 1
+    
+    # Constraints for required days per city
+    for city_idx in range(n_cities):
+        city_days = req_days[cities[city_idx]]
+        constraints = []
+        for seg_idx in range(n_cities):
+            if seg_idx == 0:
+                days_expr = e[0]
+            elif seg_idx == n_cities - 1:
+                days_expr = 16 - e[-1]
+            else:
+                days_expr = e[seg_idx] - e[seg_idx-1] + 1
+            constraints.append(And(order[seg_idx] == city_idx, days_expr == city_days))
+        s.add(Or(constraints))
+    
+    # Event constraints for Vienna (must cover days 2 and 3)
+    vienna_constraints = []
+    for seg_idx in range(n_cities):
+        if seg_idx == 0:
+            cond = And(order[seg_idx] == 4, e[0] >= 3)
+        elif seg_idx == n_cities - 1:
+            cond = And(order[seg_idx] == 4, e[-1] <= 2)
+        else:
+            cond = And(order[seg_idx] == 4, e[seg_idx-1] <= 2, e[seg_idx] >= 3)
+        vienna_constraints.append(cond)
+    s.add(Or(vienna_constraints))
+    
+    # Event constraints for Helsinki (must cover days 3, 4, 5)
+    helsinki_constraints = []
+    for seg_idx in range(n_cities):
+        if seg_idx == 0:
+            cond = And(order[seg_idx] == 1, e[0] >= 5)
+        elif seg_idx == n_cities - 1:
+            cond = And(order[seg_idx] == 1, e[-1] <= 5)
+        else:
+            cond = And(order[seg_idx] == 1, e[seg_idx-1] <= 3, e[seg_idx] >= 5)
+        helsinki_constraints.append(cond)
+    s.add(Or(helsinki_constraints))
+    
+    # Event constraints for Tallinn (must cover days 7 to 11)
+    tallinn_constraints = []
+    for seg_idx in range(n_cities):
+        if seg_idx == 0:
+            cond = And(order[seg_idx] == 5, e[0] >= 7)
+        elif seg_idx == n_cities - 1:
+            cond = And(order[seg_idx] == 5, e[-1] <= 11)
+        else:
+            cond = And(order[seg_idx] == 5, e[seg_idx-1] <= 11, e[seg_idx] >= 7)
+        tallinn_constraints.append(cond)
+    s.add(Or(tallinn_constraints))
+    
+    # Direct flight constraints between consecutive segments
+    for seg_idx in range(n_cities - 1):
+        city_i = order[seg_idx]
+        city_j = order[seg_idx+1]
+        allowed_flights = []
+        for (c1, c2) in allowed:
+            allowed_flights.append(And(city_i == c1, city_j == c2))
+        s.add(Or(allowed_flights))
+    
+    # Solve and output
+    if s.check() == sat:
+        m = s.model()
+        order_val = [m.evaluate(o).as_long() for o in order]
+        e_val = [m.evaluate(ev).as_long() for ev in e]
+        
+        itinerary = []
+        prev_end = 0
+        for seg_idx in range(n_cities):
+            city_idx = order_val[seg_idx]
+            city_name = cities[city_idx]
+            if seg_idx == 0:
+                start = 1
+                end = e_val[0]
+            elif seg_idx == n_cities - 1:
+                start = e_val[-1]
+                end = 15
+            else:
+                start = e_val[seg_idx-1]
+                end = e_val[seg_idx]
+            itinerary.append({
+                'day_range': f"Day {start}-{end}",
+                'place': city_name
+            })
+        
+        print(json.dumps({'itinerary': itinerary}))
+    else:
+        print("No solution found")
+
+if __name__ == '__main__':
+    main()

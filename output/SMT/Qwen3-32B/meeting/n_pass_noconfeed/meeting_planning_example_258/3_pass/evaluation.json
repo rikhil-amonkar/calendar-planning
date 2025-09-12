@@ -1,0 +1,59 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "Solution exists: [S_0 = 9, arrival_time = 0]",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Central Park",
+                "person": "David",
+                "start_time": "13:00",
+                "end_time": "14:00"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Presidio",
+                "person": "Betty",
+                "start_time": "10:15",
+                "end_time": "11:00"
+            },
+            {
+                "action": "meet",
+                "location": "Richmond District",
+                "person": "David",
+                "start_time": "13:00",
+                "end_time": "14:30"
+            },
+            {
+                "action": "meet",
+                "location": "Fisherman's Wharf",
+                "person": "Barbara",
+                "start_time": "14:48",
+                "end_time": "16:48"
+            }
+        ]
+    },
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "constraints_satisfied_but_no_exact_match": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 3,
+    "timing": {
+        "api_call_time": 52.69565463066101,
+        "execution_time": 0.07845854759216309,
+        "constraint_eval_time": 9.226799011230469e-05,
+        "pred_extract_time": 1.4372038841247559,
+        "gold_extract_time": 3.695487976074219e-05,
+        "total_tokens": 4216,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import z3  # Make sure Z3 is imported\n\n# Initialize the Z3 solver\nsolver = z3.Solver()\n\n# Example: Declare S[i] and arrival_time as Z3 integer variables\n# (You need to adjust this based on your actual variable definitions)\nS = [z3.Int(f\"S_{i}\") for i in range(5)]  # Example: 5 integer variables\narrival_time = z3.Int(\"arrival_time\")\n\n# Example friend data\ncurrent_friend = {\n    \"available_start\": 9  # Example available start time\n}\n\n# Add the constraint\ni = 0  # Example index\nsolver.add(S[i] >= z3.If(arrival_time >= current_friend['available_start'], arrival_time, current_friend['available_start']))\n\n# Check for satisfiability\nif solver.check() == z3.sat:\n    print(\"Solution exists:\", solver.model())\nelse:\n    print(\"No solution found.\")"
+}

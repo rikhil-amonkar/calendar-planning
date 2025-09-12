@@ -1,0 +1,81 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"solution\": {\n    \"header\": [\n      \"House\",\n      \"Name\",\n      \"Cigar\",\n      \"Hobby\",\n      \"Education\",\n      \"Drink\"\n    ],\n    \"rows\": [\n      [\n        \"1\",\n        \"Peter\",\n        \"pall mall\",\n        \"gardening\",\n        \"associate\",\n        \"milk\"\n      ],\n      [\n        \"2\",\n        \"Arnold\",\n        \"blue master\",\n        \"photography\",\n        \"high school\",\n        \"water\"\n      ],\n      [\n        \"3\",\n        \"Eric\",\n        \"prince\",\n        \"cooking\",\n        \"bachelor\",\n        \"tea\"\n      ]\n    ]\n  }\n}",
+    "pred": [
+        {
+            "House": "1",
+            "Name": "Peter",
+            "Cigar": "pall mall",
+            "Hobby": "gardening",
+            "Education": "associate",
+            "Drink": "milk"
+        },
+        {
+            "House": "2",
+            "Name": "Arnold",
+            "Cigar": "blue master",
+            "Hobby": "photography",
+            "Education": "high school",
+            "Drink": "water"
+        },
+        {
+            "House": "3",
+            "Name": "Eric",
+            "Cigar": "prince",
+            "Hobby": "cooking",
+            "Education": "bachelor",
+            "Drink": "tea"
+        }
+    ],
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Peter",
+            "Cigar": "pall mall",
+            "Hobby": "gardening",
+            "Education": "bachelor",
+            "Drink": "water"
+        },
+        {
+            "House": "2",
+            "Name": "Arnold",
+            "Cigar": "blue master",
+            "Hobby": "photography",
+            "Education": "associate",
+            "Drink": "milk"
+        },
+        {
+            "House": "3",
+            "Name": "Eric",
+            "Cigar": "prince",
+            "Hobby": "cooking",
+            "Education": "high school",
+            "Drink": "tea"
+        }
+    ],
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "violations": [
+            "House 1 wrong Education: expected 'bachelor', got 'associate'",
+            "House 1 wrong Drink: expected 'water', got 'milk'",
+            "House 2 wrong Education: expected 'associate', got 'high school'",
+            "House 2 wrong Drink: expected 'milk', got 'water'",
+            "House 3 wrong Education: expected 'high school', got 'bachelor'"
+        ]
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 878.5566728115082,
+        "execution_time": 0.0805959701538086,
+        "constraint_eval_time": 0.00011801719665527344,
+        "pred_extract_time": 1.3599083423614502,
+        "gold_extract_time": 1.2874603271484375e-05,
+        "total_tokens": 60852,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\n\ndef main():\n    # Define EnumSorts\n    Names, (Eric, Peter, Arnold) = EnumSort('Names', ['Eric', 'Peter', 'Arnold'])\n    Cigars, (BlueMaster, Prince, PallMall) = EnumSort('Cigars', ['BlueMaster', 'Prince', 'PallMall'])\n    Hobbies, (Photography, Gardening, Cooking) = EnumSort('Hobbies', ['Photography', 'Gardening', 'Cooking'])\n    Education, (HighSchool, Associate, Bachelor) = EnumSort('Education', ['HighSchool', 'Associate', 'Bachelor'])\n    Drinks, (Tea, Milk, Water) = EnumSort('Drinks', ['Tea', 'Milk', 'Water'])\n\n    # Create variables for each house (0-based index for 1,2,3 houses)\n    name_1 = Const('name_1', Names)\n    name_2 = Const('name_2', Names)\n    name_3 = Const('name_3', Names)\n    names = [name_1, name_2, name_3]\n\n    cigar_1 = Const('cigar_1', Cigars)\n    cigar_2 = Const('cigar_2', Cigars)\n    cigar_3 = Const('cigar_3', Cigars)\n    cigars = [cigar_1, cigar_2, cigar_3]\n\n    hobby_1 = Const('hobby_1', Hobbies)\n    hobby_2 = Const('hobby_2', Hobbies)\n    hobby_3 = Const('hobby_3', Hobbies)\n    hobbies = [hobby_1, hobby_2, hobby_3]\n\n    education_1 = Const('education_1', Education)\n    education_2 = Const('education_2', Education)\n    education_3 = Const('education_3', Education)\n    educations = [education_1, education_2, education_3]\n\n    drink_1 = Const('drink_1', Drinks)\n    drink_2 = Const('drink_2', Drinks)\n    drink_3 = Const('drink_3', Drinks)\n    drinks = [drink_1, drink_2, drink_3]\n\n    s = Solver()\n\n    # Add distinct constraints for each category\n    s.add(Distinct(names))\n    s.add(Distinct(cigars))\n    s.add(Distinct(hobbies))\n    s.add(Distinct(educations))\n    s.add(Distinct(drinks))\n\n    # Add clues\n    # Clue 1: The person partial to Pall Mall is Peter.\n    for i in range(3):\n        s.add(Implies(cigars[i] == PallMall, names[i] == Peter))\n\n    # Clue 2: Milk drinker directly left of high school\n    s.add(Implies(drinks[0] == Milk, educations[1] == HighSchool))\n    s.add(Implies(drinks[1] == Milk, educations[2] == HighSchool))\n    s.add(Or(drinks[0] == Milk, drinks[1] == Milk))  # Milk can't be in house 3\n\n    # Clue 3: Eric is tea drinker\n    for i in range(3):\n        s.add(Implies(names[i] == Eric, drinks[i] == Tea))\n\n    # Clue 4: Arnold and Prince smoker are next to each other\n    s.add(Implies(names[0] == Arnold, cigars[1] == Prince))\n    s.add(Implies(names[1] == Arnold, Or(cigars[0] == Prince, cigars[2] == Prince)))\n    s.add(Implies(names[2] == Arnold, cigars[1] == Prince))\n\n    # Clue 5: Gardening is left of Prince smoker\n    for i in range(3):\n        for j in range(3):\n            cond = And(hobbies[i] == Gardening, cigars[j] == Prince)\n            s.add(Implies(cond, i < j))\n\n    # Clue 6: Milk drinker has associate\n    for i in range(3):\n        s.add(Implies(drinks[i] == Milk, educations[i] == Associate))\n\n    # Clue 7: Bachelor directly left of photography\n    s.add(Implies(educations[0] == Bachelor, hobbies[1] == Photography))\n    s.add(Implies(educations[1] == Bachelor, hobbies[2] == Photography))\n\n    # Check solution\n    if s.check() == sat:\n        model = s.model()\n\n        # Mapping from Enum constants to strings\n        name_map = {Eric: 'Eric', Peter: 'Peter', Arnold: 'Arnold'}\n        cigar_map = {BlueMaster: 'blue master', Prince: 'prince', PallMall: 'pall mall'}\n        hobby_map = {Photography: 'photography', Gardening: 'gardening', Cooking: 'cooking'}\n        education_map = {HighSchool: 'high school', Associate: 'associate', Bachelor: 'bachelor'}\n        drink_map = {Tea: 'tea', Milk: 'milk', Water: 'water'}\n\n        rows = []\n        for i in range(3):\n            house_num = i + 1\n            name = name_map[model[names[i]]]\n            cigar = cigar_map[model[cigars[i]]]\n            hobby = hobby_map[model[hobbies[i]]]\n            education = education_map[model[educations[i]]]\n            drink = drink_map[model[drinks[i]]]\n            rows.append([str(house_num), name, cigar, hobby, education, drink])\n\n        solution = {\n            \"solution\": {\n                \"header\": [\"House\", \"Name\", \"Cigar\", \"Hobby\", \"Education\", \"Drink\"],\n                \"rows\": rows\n            }\n        }\n\n        import json\n        print(json.dumps(solution, indent=2))\n    else:\n        print(\"No solution found.\")\n\nif __name__ == \"__main__\":\n    main()"
+}

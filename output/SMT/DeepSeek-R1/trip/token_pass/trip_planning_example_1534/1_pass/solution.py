@@ -1,0 +1,146 @@
+import json
+from z3 import *
+
+def main():
+    # City mapping
+    cities = ['Paris', 'Venice', 'Vilnius', 'Salzburg', 'Amsterdam', 'Barcelona', 'Hamburg', 'Florence', 'Tallinn', 'Warsaw']
+    city_index = {city: idx for idx, city in enumerate(cities)}
+    
+    # Required days per city
+    req_days = {
+        'Warsaw': 4,
+        'Venice': 3,
+        'Vilnius': 3,
+        'Salzburg': 4,
+        'Amsterdam': 2,
+        'Barcelona': 5,
+        'Paris': 2,
+        'Hamburg': 4,
+        'Florence': 5,
+        'Tallinn': 2
+    }
+    
+    # Direct flights graph
+    edges = [
+        ('Paris', 'Venice'),
+        ('Barcelona', 'Amsterdam'),
+        ('Amsterdam', 'Warsaw'),
+        ('Amsterdam', 'Vilnius'),
+        ('Barcelona', 'Warsaw'),
+        ('Warsaw', 'Venice'),
+        ('Amsterdam', 'Hamburg'),
+        ('Barcelona', 'Hamburg'),
+        ('Barcelona', 'Florence'),
+        ('Barcelona', 'Venice'),
+        ('Paris', 'Hamburg'),
+        ('Paris', 'Vilnius'),
+        ('Paris', 'Amsterdam'),
+        ('Paris', 'Florence'),
+        ('Florence', 'Amsterdam'),
+        ('Vilnius', 'Warsaw'),
+        ('Barcelona', 'Tallinn'),
+        ('Paris', 'Warsaw'),
+        ('Tallinn', 'Warsaw'),
+        ('Tallinn', 'Vilnius'),
+        ('Amsterdam', 'Tallinn'),
+        ('Paris', 'Tallinn'),
+        ('Paris', 'Barcelona'),
+        ('Venice', 'Hamburg'),
+        ('Warsaw', 'Hamburg'),
+        ('Hamburg', 'Salzburg'),
+        ('Amsterdam', 'Venice')
+    ]
+    
+    allowed_pairs = set()
+    for (a, b) in edges:
+        idx_a = city_index[a]
+        idx_b = city_index[b]
+        allowed_pairs.add((min(idx_a, idx_b), max(idx_a, idx_b)))
+    
+    # Z3 solver
+    solver = Solver()
+    
+    # Variables for each day: city_start and city_end (0-indexed days 0 to 24)
+    city_start = [Int('city_start_%d' % d) for d in range(25)]
+    city_end = [Int('city_end_%d' % d) for d in range(25)]
+    
+    # Domain constraints
+    for d in range(25):
+        solver.add(And(city_start[d] >= 0, city_start[d] < len(cities)))
+        solver.add(And(city_end[d] >= 0, city_end[d] < len(cities)))
+    
+    # Continuity constraints
+    for d in range(1, 25):
+        solver.add(city_start[d] == city_end[d-1])
+    
+    # Flight constraints
+    for d in range(25):
+        s = city_start[d]
+        e = city_end[d]
+        flight_condition = Or([Or(And(s == a, e == b), And(s == b, e == a)) for (a, b) in allowed_pairs])
+        solver.add(Implies(s != e, flight_condition))
+    
+    # Total days per city
+    for city, total in req_days.items():
+        c_idx = city_index[city]
+        count = 0
+        for d in range(25):
+            count += If(Or(city_start[d] == c_idx, city_end[d] == c_idx), 1, 0)
+        solver.add(count == total)
+    
+    # Event constraints
+    paris_idx = city_index['Paris']
+    salzburg_idx = city_index['Salzburg']
+    hamburg_idx = city_index['Hamburg']
+    barcelona_idx = city_index['Barcelona']
+    tallinn_idx = city_index['Tallinn']
+    
+    # Paris on day 1 and 2 only
+    for d in range(25):
+        if d in [0, 1]:  # Day1 and Day2 (0-indexed)
+            solver.add(Or(city_start[d] == paris_idx, city_end[d] == paris_idx))
+        else:
+            solver.add(And(city_start[d] != paris_idx, city_end[d] != paris_idx))
+    
+    # Salzburg on days 22-25 only (0-indexed days 21-24)
+    for d in range(25):
+        if 21 <= d <= 24:
+            solver.add(Or(city_start[d] == salzburg_idx, city_end[d] == salzburg_idx))
+        else:
+            solver.add(And(city_start[d] != salzburg_idx, city_end[d] != salzburg_idx))
+    
+    # Hamburg on days 19-22 only (0-indexed days 18-21)
+    for d in range(25):
+        if 18 <= d <= 21:
+            solver.add(Or(city_start[d] == hamburg_idx, city_end[d] == hamburg_idx))
+        else:
+            solver.add(And(city_start[d] != hamburg_idx, city_end[d] != hamburg_idx))
+    
+    # Barcelona between day 2 and day 6 (0-indexed days 1-5), but note day2 is Paris so we use days 2-5 (index 2-5)
+    solver.add(Or([Or(city_start[d] == barcelona_idx, city_end[d] == barcelona_idx) for d in [2,3,4,5]]))
+    
+    # Tallinn on day 11 or 12 (0-indexed days 10 or 11)
+    solver.add(Or(Or(city_start[10] == tallinn_idx, city_end[10] == tallinn_idx),
+                 Or(city_start[11] == tallinn_idx, city_end[11] == tallinn_idx)))
+    
+    # Solve
+    if solver.check() == sat:
+        model = solver.model()
+        itinerary = []
+        for d in range(25):
+            day_num = d + 1
+            start_val = model.evaluate(city_start[d]).as_long()
+            end_val = model.evaluate(city_end[d]).as_long()
+            start_city = cities[start_val]
+            end_city = cities[end_val]
+            if start_val == end_val:
+                itinerary.append({"day_range": f"Day {day_num}-{day_num}", "place": start_city})
+            else:
+                itinerary.append({"day_range": f"Day {day_num}-{day_num}", "place": start_city})
+                itinerary.append({"day_range": f"Day {day_num}-{day_num}", "place": end_city})
+        print(json.dumps({"itinerary": itinerary}))
+    else:
+        print("No solution found")
+
+if __name__ == "__main__":
+    main()

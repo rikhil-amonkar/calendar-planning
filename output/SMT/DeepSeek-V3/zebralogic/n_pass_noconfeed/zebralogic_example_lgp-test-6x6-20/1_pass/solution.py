@@ -1,0 +1,203 @@
+import z3
+import json
+
+def main():
+    solver = z3.Solver()
+    
+    n_houses = 6
+    houses = list(range(1, n_houses+1))
+    
+    # Define all attributes
+    names = ['Alice', 'Peter', 'Eric', 'Bob', 'Arnold', 'Carol']
+    cigars = ['pall mall', 'yellow monster', 'dunhill', 'blue master', 'prince', 'blends']
+    music_genres = ['hip hop', 'jazz', 'country', 'pop', 'classical', 'rock']
+    drinks = ['water', 'milk', 'boba tea', 'tea', 'root beer', 'coffee']
+    mothers = ['Kailyn', 'Penny', 'Janelle', 'Holly', 'Sarah', 'Aniya']
+    foods = ['soup', 'pizza', 'spaghetti', 'stir fry', 'stew', 'grilled cheese']
+    
+    # Create variables for each attribute per house
+    name_vars = [z3.Int(f"name_{i}") for i in houses]
+    cigar_vars = [z3.Int(f"cigar_{i}") for i in houses]
+    music_vars = [z3.Int(f"music_{i}") for i in houses]
+    drink_vars = [z3.Int(f"drink_{i}") for i in houses]
+    mother_vars = [z3.Int(f"mother_{i}") for i in houses]
+    food_vars = [z3.Int(f"food_{i}") for i in houses]
+    
+    # Define domains for each variable
+    for i in houses:
+        solver.add(z3.And(name_vars[i-1] >= 0, name_vars[i-1] < len(names)))
+        solver.add(z3.And(cigar_vars[i-1] >= 0, cigar_vars[i-1] < len(cigars)))
+        solver.add(z3.And(music_vars[i-1] >= 0, music_vars[i-1] < len(music_genres)))
+        solver.add(z3.And(drink_vars[i-1] >= 0, drink_vars[i-1] < len(drinks)))
+        solver.add(z3.And(mother_vars[i-1] >= 0, mother_vars[i-1] < len(mothers)))
+        solver.add(z3.And(food_vars[i-1] >= 0, food_vars[i-1] < len(foods)))
+    
+    # All attributes are distinct per house
+    solver.add(z3.Distinct(name_vars))
+    solver.add(z3.Distinct(cigar_vars))
+    solver.add(z3.Distinct(music_vars))
+    solver.add(z3.Distinct(drink_vars))
+    solver.add(z3.Distinct(mother_vars))
+    solver.add(z3.Distinct(food_vars))
+    
+    # Helper function to get house index of an attribute value
+    def get_house_index(vars_list, value):
+        return z3.If(vars_list[0] == value, 1,
+                z3.If(vars_list[1] == value, 2,
+                z3.If(vars_list[2] == value, 3,
+                z3.If(vars_list[3] == value, 4,
+                z3.If(vars_list[4] == value, 5, 6)))))
+    
+    # Helper function for "directly left of"
+    def directly_left(a, b):
+        return a + 1 == b
+    
+    # Helper function for "somewhere to the right"
+    def somewhere_right(a, b):
+        return a > b
+    
+    # Helper function for "somewhere to the left"
+    def somewhere_left(a, b):
+        return a < b
+    
+    # Helper function for "two houses between"
+    def two_houses_between(a, b):
+        return z3.Or(a + 3 == b, a - 3 == b)
+    
+    # Convert attribute names to indices for constraints
+    name_idx = {name: i for i, name in enumerate(names)}
+    cigar_idx = {cigar: i for i, cigar in enumerate(cigars)}
+    music_idx = {music: i for i, music in enumerate(music_genres)}
+    drink_idx = {drink: i for i, drink in enumerate(drinks)}
+    mother_idx = {mother: i for i, mother in enumerate(mothers)}
+    food_idx = {food: i for i, food in enumerate(foods)}
+    
+    # Clue 1: Carol is directly left of the person who loves eating grilled cheese.
+    carol_house = get_house_index(name_vars, name_idx['Carol'])
+    grilled_cheese_house = get_house_index(food_vars, food_idx['grilled cheese'])
+    solver.add(directly_left(carol_house, grilled_cheese_house))
+    
+    # Clue 2: Eric is not in the second house.
+    eric_house = get_house_index(name_vars, name_idx['Eric'])
+    solver.add(eric_house != 2)
+    
+    # Clue 3: The person whose mother's name is Holly is somewhere to the right of Carol.
+    holly_house = get_house_index(mother_vars, mother_idx['Holly'])
+    solver.add(somewhere_right(holly_house, carol_house))
+    
+    # Clue 4: The person who loves eating grilled cheese is somewhere to the right of the person who loves rock music.
+    rock_house = get_house_index(music_vars, music_idx['rock'])
+    solver.add(somewhere_right(grilled_cheese_house, rock_house))
+    
+    # Clue 5: Eric is directly left of Carol.
+    solver.add(directly_left(eric_house, carol_house))
+    
+    # Clue 6: The person who loves pop music is not in the third house.
+    pop_house = get_house_index(music_vars, music_idx['pop'])
+    solver.add(pop_house != 3)
+    
+    # Clue 7: Eric is the person who loves country music.
+    solver.add(music_vars[eric_house-1] == music_idx['country'])
+    
+    # Clue 8: The person who loves classical music is in the sixth house.
+    solver.add(music_vars[5] == music_idx['classical'])
+    
+    # Clue 9: The coffee drinker is Bob.
+    coffee_house = get_house_index(drink_vars, drink_idx['coffee'])
+    bob_house = get_house_index(name_vars, name_idx['Bob'])
+    solver.add(coffee_house == bob_house)
+    
+    # Clue 10: The person who smokes many unique blends is Peter.
+    blends_house = get_house_index(cigar_vars, cigar_idx['blends'])
+    peter_house = get_house_index(name_vars, name_idx['Peter'])
+    solver.add(blends_house == peter_house)
+    
+    # Clue 11: The person who loves the stew is not in the fifth house.
+    stew_house = get_house_index(food_vars, food_idx['stew'])
+    solver.add(stew_house != 5)
+    
+    # Clue 12: The root beer lover is directly left of The person whose mother's name is Janelle.
+    root_beer_house = get_house_index(drink_vars, drink_idx['root beer'])
+    janelle_house = get_house_index(mother_vars, mother_idx['Janelle'])
+    solver.add(directly_left(root_beer_house, janelle_house))
+    
+    # Clue 13: There are two houses between The person whose mother's name is Sarah and the person who smokes Yellow Monster.
+    sarah_house = get_house_index(mother_vars, mother_idx['Sarah'])
+    yellow_monster_house = get_house_index(cigar_vars, cigar_idx['yellow monster'])
+    solver.add(two_houses_between(sarah_house, yellow_monster_house))
+    
+    # Clue 14: Eric is the tea drinker.
+    solver.add(drink_vars[eric_house-1] == drink_idx['tea'])
+    
+    # Clue 15: The person partial to Pall Mall is somewhere to the right of the person who loves stir fry.
+    pall_mall_house = get_house_index(cigar_vars, cigar_idx['pall mall'])
+    stir_fry_house = get_house_index(food_vars, food_idx['stir fry'])
+    solver.add(somewhere_right(pall_mall_house, stir_fry_house))
+    
+    # Clue 16: The person who loves the soup is Bob.
+    soup_house = get_house_index(food_vars, food_idx['soup'])
+    solver.add(soup_house == bob_house)
+    
+    # Clue 17: The person who loves hip-hop music is directly left of The person whose mother's name is Kailyn.
+    hip_hop_house = get_house_index(music_vars, music_idx['hip hop'])
+    kailyn_house = get_house_index(mother_vars, mother_idx['Kailyn'])
+    solver.add(directly_left(hip_hop_house, kailyn_house))
+    
+    # Clue 18: Arnold is somewhere to the right of The person whose mother's name is Kailyn.
+    arnold_house = get_house_index(name_vars, name_idx['Arnold'])
+    solver.add(somewhere_right(arnold_house, kailyn_house))
+    
+    # Clue 19: The one who only drinks water is directly left of the person who smokes Blue Master.
+    water_house = get_house_index(drink_vars, drink_idx['water'])
+    blue_master_house = get_house_index(cigar_vars, cigar_idx['blue master'])
+    solver.add(directly_left(water_house, blue_master_house))
+    
+    # Clue 20: The person who loves the spaghetti eater is somewhere to the left of the person who smokes many unique blends.
+    spaghetti_house = get_house_index(food_vars, food_idx['spaghetti'])
+    solver.add(somewhere_left(spaghetti_house, blends_house))
+    
+    # Clue 21: The person whose mother's name is Sarah is directly left of the person who loves jazz music.
+    jazz_house = get_house_index(music_vars, music_idx['jazz'])
+    solver.add(directly_left(sarah_house, jazz_house))
+    
+    # Clue 22: The person who loves hip-hop music is directly left of the root beer lover.
+    solver.add(directly_left(hip_hop_house, root_beer_house))
+    
+    # Clue 23: The one who only drinks water is the person who loves the stew.
+    solver.add(water_house == stew_house)
+    
+    # Clue 24: The Dunhill smoker is not in the second house.
+    dunhill_house = get_house_index(cigar_vars, cigar_idx['dunhill'])
+    solver.add(dunhill_house != 2)
+    
+    # Clue 25: The person who likes milk is The person whose mother's name is Janelle.
+    milk_house = get_house_index(drink_vars, drink_idx['milk'])
+    solver.add(milk_house == janelle_house)
+    
+    # Clue 26: Eric is The person whose mother's name is Aniya.
+    solver.add(mother_vars[eric_house-1] == mother_idx['Aniya'])
+    
+    # Solve the constraints
+    if solver.check() == z3.sat:
+        model = solver.model()
+        
+        # Extract the solution
+        solution = {"solution": {"header": ["House", "Name", "Cigar", "MusicGenre", "Drink", "Mother", "Food"], "rows": []}}
+        
+        for i in range(n_houses):
+            house_num = str(i + 1)
+            name = names[model.evaluate(name_vars[i]).as_long()]
+            cigar = cigars[model.evaluate(cigar_vars[i]).as_long()]
+            music = music_genres[model.evaluate(music_vars[i]).as_long()]
+            drink = drinks[model.evaluate(drink_vars[i]).as_long()]
+            mother = mothers[model.evaluate(mother_vars[i]).as_long()]
+            food = foods[model.evaluate(food_vars[i]).as_long()]
+            
+            solution["solution"]["rows"].append([house_num, name, cigar, music, drink, mother, food])
+        
+        print(json.dumps(solution, indent=2))
+    else:
+        print('{"error": "No solution found"}')
+
+if __name__ == "__main__":
+    main()

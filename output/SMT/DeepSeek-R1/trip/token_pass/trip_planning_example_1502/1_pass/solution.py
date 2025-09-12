@@ -1,0 +1,173 @@
+import z3
+import json
+
+def main():
+    # Define the cities
+    cities = [
+        "Santorini", "Valencia", "Madrid", "Seville", "Bucharest",
+        "Vienna", "Riga", "Tallinn", "Krakow", "Frankfurt"
+    ]
+    city_enum = z3.DeclareSort('City')
+    city_dict = {city: z3.Const(city, city_enum) for city in cities}
+    
+    # Direct flights graph (undirected)
+    direct_flights = [
+        ("Vienna", "Bucharest"),
+        ("Santorini", "Madrid"),
+        ("Seville", "Valencia"),
+        ("Vienna", "Seville"),
+        ("Madrid", "Valencia"),
+        ("Bucharest", "Riga"),
+        ("Valencia", "Bucharest"),
+        ("Santorini", "Bucharest"),
+        ("Vienna", "Valencia"),
+        ("Vienna", "Madrid"),
+        ("Valencia", "Krakow"),
+        ("Valencia", "Frankfurt"),
+        ("Krakow", "Frankfurt"),
+        ("Riga", "Tallinn"),
+        ("Vienna", "Krakow"),
+        ("Vienna", "Frankfurt"),
+        ("Madrid", "Seville"),
+        ("Santorini", "Vienna"),
+        ("Vienna", "Riga"),
+        ("Frankfurt", "Tallinn"),
+        ("Frankfurt", "Bucharest"),
+        ("Madrid", "Bucharest"),
+        ("Frankfurt", "Riga"),
+        ("Madrid", "Frankfurt")
+    ]
+    
+    # Required days per city
+    req_days = {
+        "Santorini": 3,
+        "Valencia": 4,
+        "Madrid": 2,
+        "Seville": 2,
+        "Bucharest": 3,
+        "Vienna": 4,
+        "Riga": 4,
+        "Tallinn": 5,
+        "Krakow": 5,
+        "Frankfurt": 4
+    }
+    
+    # Total days
+    total_days = 27
+    days = list(range(1, total_days+1))
+    
+    # Initialize solver
+    solver = z3.Solver()
+    
+    # Arrays for city_start and city_end for each day
+    city_start = [z3.Const(f'city_start_{i}', city_enum) for i in days]
+    city_end = [z3.Const(f'city_end_{i}', city_enum) for i in days]
+    fly = [z3.Bool(f'fly_{i}') for i in days]
+    
+    # Constraint: city_start[1] can be any city
+    # For i>1, city_start[i] = city_end[i-1]
+    for i in days:
+        if i == 1:
+            # No constraint on city_start[1]
+            pass
+        else:
+            solver.add(city_start[i-1] == city_end[i-2])
+    
+    # Constraint: if not fly, city_end equals city_start; if fly, city_end != city_start and there's a direct flight
+    for i in days:
+        not_fly_constraint = z3.Implies(z3.Not(fly[i-1]), city_end[i-1] == city_start[i-1])
+        fly_constraint = z3.Implies(fly[i-1], 
+                                    z3.And(city_end[i-1] != city_start[i-1],
+                                            z3.Or([z3.And(city_start[i-1] == city_dict[a], city_end[i-1] == city_dict[b]) 
+                                                  for (a,b) in direct_flights] +
+                                                 [z3.And(city_start[i-1] == city_dict[b], city_end[i-1] == city_dict[a]) 
+                                                  for (a,b) in direct_flights])))
+        solver.add(not_fly_constraint)
+        solver.add(fly_constraint)
+    
+    # Constraint: total flights must be 9 (because total city-day assignments = 27 + flights = 36)
+    solver.add(z3.Sum([z3.If(fly_i, 1, 0) for fly_i in fly]) == 9)
+    
+    # Constraints for required days per city
+    for city in cities:
+        count = 0
+        for i in days:
+            # Count city_start[i] if it equals the city
+            count += z3.If(city_start[i-1] == city_dict[city], 1, 0)
+            # If flying, count city_end[i] if it equals the city
+            count += z3.If(z3.And(fly[i-1], city_end[i-1] == city_dict[city]), 1, 0)
+        solver.add(count == req_days[city])
+    
+    # Specific constraints
+    # Madrid show: must be in Madrid on days 6 and 7
+    # We require city_end[6] = Madrid (so day7 starts in Madrid)
+    solver.add(city_end[5] == city_dict["Madrid"])  # day6 index is 5 (0-indexed)
+    # day7: city_start[7] is Madrid (because city_end[6]=Madrid), so we are in Madrid on day7
+    
+    # Vienna wedding: between day3 and day6 (inclusive) -> at least one day in Vienna in [3,4,5,6]
+    wedding_days = [3,4,5,6]
+    wedding_constraints = []
+    for i in wedding_days:
+        # Being in Vienna on day i: city_start[i] == Vienna OR (fly[i] and city_end[i] == Vienna)
+        cond = z3.Or(city_start[i-1] == city_dict["Vienna"],
+                     z3.And(fly[i-1], city_end[i-1] == city_dict["Vienna"]))
+        wedding_constraints.append(cond)
+    solver.add(z3.Or(wedding_constraints))
+    
+    # Riga conference: during day20 to day23 (inclusive) -> must be in Riga on each day
+    for i in range(20, 24):
+        cond = z3.Or(city_start[i-1] == city_dict["Riga"],
+                     z3.And(fly[i-1], city_end[i-1] == city_dict["Riga"]))
+        solver.add(cond)
+    
+    # Tallinn workshop: between day23 and day27 (inclusive) -> must be in Tallinn on each day
+    for i in range(23, 28):
+        cond = z3.Or(city_start[i-1] == city_dict["Tallinn"],
+                     z3.And(fly[i-1], city_end[i-1] == city_dict["Tallinn"]))
+        solver.add(cond)
+    
+    # Krakow friends: between day11 and day15 (inclusive) -> must be in Krakow on each day
+    for i in range(11, 16):
+        cond = z3.Or(city_start[i-1] == city_dict["Krakow"],
+                     z3.And(fly[i-1], city_end[i-1] == city_dict["Krakow"]))
+        solver.add(cond)
+    
+    # Check satisfiability
+    if solver.check() == z3.sat:
+        model = solver.model()
+        # Get the overnight city for each day
+        assignments = []
+        for i in days:
+            city_val = model[city_end[i-1]]
+            # Find the city name that matches the value
+            for city_name, const in city_dict.items():
+                if model.eval(const).eq(city_val):
+                    assignments.append(city_name)
+                    break
+        
+        # Group consecutive days with the same city
+        itinerary_list = []
+        current_city = assignments[0]
+        start_day = 1
+        for i in range(1, total_days):
+            if assignments[i] != current_city:
+                end_day = i
+                itinerary_list.append({
+                    "day_range": f"Day {start_day}-{end_day}",
+                    "place": current_city
+                })
+                current_city = assignments[i]
+                start_day = i+1
+        itinerary_list.append({
+            "day_range": f"Day {start_day}-{total_days}",
+            "place": current_city
+        })
+        
+        # Output as JSON
+        result = {"itinerary": itinerary_list}
+        print(json.dumps(result, indent=2))
+    else:
+        print('No solution found')
+
+if __name__ == '__main__':
+    main()

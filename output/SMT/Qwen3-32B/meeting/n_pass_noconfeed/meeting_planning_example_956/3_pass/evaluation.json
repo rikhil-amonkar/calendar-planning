@@ -1,0 +1,91 @@
+{
+    "has_execution_error": true,
+    "has_no_plan": false,
+    "execution_output": null,
+    "pred": null,
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Richmond District",
+                "person": "Joshua",
+                "start_time": "9:16",
+                "end_time": "9:31"
+            },
+            {
+                "action": "meet",
+                "location": "Haight-Ashbury",
+                "person": "Anthony",
+                "start_time": "9:41",
+                "end_time": "10:11"
+            },
+            {
+                "action": "meet",
+                "location": "Pacific Heights",
+                "person": "Helen",
+                "start_time": "10:23",
+                "end_time": "11:38"
+            },
+            {
+                "action": "meet",
+                "location": "Financial District",
+                "person": "Joseph",
+                "start_time": "11:51",
+                "end_time": "12:06"
+            },
+            {
+                "action": "meet",
+                "location": "Alamo Square",
+                "person": "William",
+                "start_time": "15:15",
+                "end_time": "16:15"
+            },
+            {
+                "action": "meet",
+                "location": "Union Square",
+                "person": "David",
+                "start_time": "16:45",
+                "end_time": "17:30"
+            },
+            {
+                "action": "meet",
+                "location": "Marina District",
+                "person": "Karen",
+                "start_time": "17:48",
+                "end_time": "18:03"
+            },
+            {
+                "action": "meet",
+                "location": "Fisherman's Wharf",
+                "person": "Brian",
+                "start_time": "18:13",
+                "end_time": "19:58"
+            },
+            {
+                "action": "meet",
+                "location": "Golden Gate Park",
+                "person": "Jeffrey",
+                "start_time": "20:23",
+                "end_time": "21:23"
+            }
+        ]
+    },
+    "status": "Error",
+    "violated_constraint": {
+        "missing_itinerary": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 3,
+    "timing": {
+        "api_call_time": 127.80288791656494,
+        "execution_time": 0.07368946075439453,
+        "constraint_eval_time": 7.3909759521484375e-06,
+        "pred_extract_time": 7.3909759521484375e-06,
+        "gold_extract_time": 0.00011014938354492188,
+        "total_tokens": 8148,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import Solver, Int, If, Implies, And\n\n# Define number of locations\nnum_locations = 11\n\n# Define travel_time as a 2D list (11x11 matrix)\n# Placeholder travel times (e.g., travel_time[i][j] = time from location i to j)\ntravel_time = [\n    [0, 15, 20, 10, 25, 30, 12, 18, 22, 28, 35],\n    [15, 0, 25, 10, 10, 20, 22, 18, 15, 28, 30],\n    [20, 25, 0, 15, 30, 25, 20, 22, 18, 10, 15],\n    [10, 10, 15, 0, 20, 25, 12, 18, 22, 28, 35],\n    [25, 10, 30, 20, 0, 10, 22, 18, 15, 28, 30],\n    [30, 20, 25, 25, 10, 0, 20, 22, 18, 10, 15],\n    [12, 22, 20, 12, 22, 20, 0, 18, 22, 28, 35],\n    [18, 18, 22, 18, 18, 22, 18, 0, 15, 28, 30],\n    [22, 15, 18, 22, 15, 18, 22, 15, 0, 10, 15],\n    [28, 28, 10, 28, 28, 10, 28, 28, 10, 0, 15],\n    [35, 30, 15, 35, 30, 15, 35, 30, 15, 15, 0]\n]\n\n# Initialize solver\nsolver = Solver()\n\n# Assume `location`, `is_used`, and `start_time` are already defined as Z3 variables\n# (This is a simplified example, in your full code they should be defined accordingly)\n\n# Example: Define `location` as an array of integers\nlocation = [Int(f'location_{i}') for i in range(num_locations)]\n\n# Example: Define `is_used` as an array of Boolean variables\nis_used = [Bool(f'is_used_{i}') for i in range(num_locations)]\n\n# Example: Define `start_time` as an array of integers\nstart_time = [Int(f'start_time_{i}') for i in range(num_locations)]\n\n# Compute travel time from Castro (0) to location[i]\nfor i in range(num_locations):\n    travel_time_0_expr = travel_time[0][0]\n    for loc in range(1, num_locations):\n        travel_time_0_expr = If(location[i] == loc, travel_time[0][loc], travel_time_0_expr)\n    \n    # Add constraint: if location[i] is used, then start_time[i] must be >= 540 + travel_time_0_expr\n    solver.add(Implies(is_used[i], start_time[i] >= 540 + travel_time_0_expr))\n\n# Example check for solution feasibility\nprint(solver.check())"
+}

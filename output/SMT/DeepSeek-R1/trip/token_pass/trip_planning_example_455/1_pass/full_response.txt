@@ -1,0 +1,104 @@
+```python
+from z3 import *
+import json
+
+def main():
+    # City mapping
+    cities = {
+        'Reykjavik': 0,
+        'Riga': 1,
+        'Warsaw': 2,
+        'Istanbul': 3,
+        'Krakow': 4
+    }
+    city_names = {v: k for k, v in cities.items()}
+    
+    required_days = {
+        cities['Reykjavik']: 7,
+        cities['Riga']: 2,
+        cities['Warsaw']: 3,
+        cities['Istanbul']: 6,
+        cities['Krakow']: 7
+    }
+    
+    direct_flights = [
+        (cities['Istanbul'], cities['Krakow']),
+        (cities['Warsaw'], cities['Reykjavik']),
+        (cities['Istanbul'], cities['Warsaw']),
+        (cities['Riga'], cities['Istanbul']),
+        (cities['Krakow'], cities['Warsaw']),
+        (cities['Riga'], cities['Warsaw'])
+    ]
+    
+    s = Solver()
+    num_days = 21
+    days = range(1, num_days+1)
+    
+    morning_city = [Int(f'morning_{i}') for i in days]
+    night_city = [Int(f'night_{i}') for i in days]
+    
+    # Constraint: cities are between 0 and 4
+    for i in days:
+        s.add(And(morning_city[i-1] >= 0, morning_city[i-1] <= 4))
+        s.add(And(night_city[i-1] >= 0, night_city[i-1] <= 4))
+    
+    # Constraint: morning_city[i] = night_city[i-1] for i>1
+    for i in range(2, num_days+1):
+        s.add(morning_city[i-1] == night_city[i-2])
+    
+    # Travel day constraint: if morning != night, then must have direct flight
+    for i in days:
+        travel_day = morning_city[i-1] != night_city[i-1]
+        allowed_flight = Or([Or(And(morning_city[i-1] == a, night_city[i-1] == b),
+                            And(morning_city[i-1] == b, night_city[i-1] == a))
+                            for a, b in direct_flights])
+        s.add(Implies(travel_day, allowed_flight))
+    
+    # Indicators for each city each day
+    indicators = {}
+    for c in range(5):
+        for i in days:
+            indicators[(c, i)] = Or(morning_city[i-1] == c, night_city[i-1] == c)
+    
+    # Total days per city
+    for c in range(5):
+        total = Sum([If(indicators[(c, i)], 1, 0) for i in days])
+        s.add(total == required_days[c])
+    
+    # Riga must be visited on day 1 or day 2
+    s.add(Or(indicators[(cities['Riga'], 1)], indicators[(cities['Riga'], 2)]))
+    
+    # Istanbul must be visited between day 2 and day 7
+    s.add(Or([indicators[(cities['Istanbul'], i)] for i in range(2, 8)]))
+    
+    if s.check() == sat:
+        m = s.model()
+        itinerary = []
+        current_city = None
+        start_day = 1
+        for i in days:
+            mc = m.evaluate(morning_city[i-1]).as_long()
+            nc = m.evaluate(night_city[i-1]).as_long()
+            if current_city is None:
+                current_city = mc
+                start_day = i
+            if mc != nc:
+                # Travel day: morning city and night city differ
+                itinerary.append({
+                    'day_range': f'Day {start_day}-{i}',
+                    'place': city_names[current_city]
+                })
+                start_day = i
+                current_city = nc
+            elif i == num_days:
+                itinerary.append({
+                    'day_range': f'Day {start_day}-{i}',
+                    'place': city_names[current_city]
+                })
+        print(json.dumps({'itinerary': itinerary}))
+    else:
+        print('No solution found')
+
+if __name__ == '__main__':
+    main()
+```

@@ -1,0 +1,308 @@
+We are given:
+ - Participants: Nicole and Ruth
+ - Meeting duration: 30 minutes (half an hour)
+ - Work hours: 9:00 to 17:00 (so we consider time slots from 9:00 to 17:00, but note that the meeting must end by 17:00)
+ - Days: Monday, Tuesday, Wednesday
+
+ Constraints on existing schedules:
+
+ Nicole's busy times:
+   Monday: 9:00-9:30, 13:00-13:30, 14:30-15:30
+   Tuesday: 9:00-9:30, 11:30-13:30, 14:30-15:30
+   Wednesday: 10:00-11:00, 12:30-15:00, 16:00-17:00
+
+ Ruth's busy times:
+   Monday: 9:00-17:00 (entire day)
+   Tuesday: 9:00-17:00 (entire day)
+   Wednesday: 9:00-10:30, 11:00-11:30, 12:00-12:30, 13:30-15:30, 16:00-16:30
+
+ Additional constraint: Ruth does not want to meet on Wednesday after 13:30.
+
+ Since Monday and Tuesday are completely blocked for Ruth (9:00-17:00), we can only consider Wednesday for Ruth.
+ But note: the problem says there exists a solution that works.
+
+ However, let's check Wednesday for Ruth:
+   Ruth's available on Wednesday:
+     From 10:30 to 11:00 (but note: 9:00-10:30 is busy, so 10:30 is free until 11:00)
+     From 11:30 to 12:00 (but note: 11:00-11:30 is busy, then 11:30-12:00 is free until the next busy at 12:00)
+     From 12:30 to 13:30 (because 12:00-12:30 is busy, then 12:30-13:30 is free until 13:30)
+     And then Ruth does not want to meet after 13:30 on Wednesday, so we cannot use any time after 13:30.
+
+ But note: the additional constraint says Ruth does not want to meet on Wednesday after 13:30, meaning even if she is free, she doesn't want to.
+
+ So available slots for Ruth on Wednesday:
+   [10:30-11:00] (30 minutes)
+   [11:30-12:00] (30 minutes)
+   [12:30-13:30] (60 minutes)
+
+ Now, let's check Nicole's Wednesday:
+   Nicole is busy on Wednesday: 10:00-11:00, 12:30-15:00, 16:00-17:00
+
+ So Nicole's free times on Wednesday:
+   [9:00-10:00] (60 minutes)
+   [11:00-12:30] (90 minutes)
+   [15:00-16:00] (60 minutes)
+
+ Now we need to find a 30-minute slot that is free for both on Wednesday and also satisfies Ruth's preference (i.e., not after 13:30).
+
+ Overlap of free times (Wednesday):
+   Ruth: [10:30-11:00], [11:30-12:00], [12:30-13:30]
+   Nicole: [9:00-10:00], [11:00-12:30], [15:00-16:00]
+
+ Overlapping intervals:
+   - [10:30-11:00] and [9:00-10:00] -> no overlap (Nicole is free until 10:00, Ruth starts at 10:30 -> no)
+   - [10:30-11:00] and [11:00-12:30] -> no, because Nicole is free starting at 11:00, but Ruth's slot ends at 11:00 (if we consider continuous time, 11:00 is the end of Ruth's slot and the start of Nicole's free time -> they don't overlap)
+   - [11:30-12:00] and [11:00-12:30] -> yes, from 11:30 to 12:00 (30 minutes)
+   - [12:30-13:30] and [11:00-12:30] -> no, because Nicole is free until 12:30 (exclusive at 12:30? note: Nicole's busy at 12:30, so at 12:30 she becomes busy. So if the meeting starts at 12:30, then it would be at the boundary. But note: the meeting is half an hour, so if it starts at 12:30, it would end at 13:00. However, Nicole is busy from 12:30, so she cannot do 12:30-13:00 because 12:30 is the start of her busy block. Similarly, Ruth's slot starts at 12:30. So we must be careful.
+
+ Let's think in terms of discrete time points? But we are using SMT, so we can model with integers (minutes from 9:00 on each day).
+
+ Alternatively, we can use Z3 to model the constraints.
+
+ Steps for the Z3 model:
+
+ We are going to model the problem by considering each day separately? Or we can model the three days and then choose one.
+
+ Since the meeting is on one of the days, we can create a variable for the day and a variable for the start time (in minutes from 0:00 of that day?).
+
+ Alternatively, we can model each day as a separate set of constraints and then check for each day.
+
+ However, note that the work hours are 9:00 to 17:00, which is 8 hours = 480 minutes, but we are only considering 9:00 to 17:00 (so 8 hours, but the meeting must start by 16:30 because it takes 30 minutes).
+
+ Let's represent time in minutes from 9:00 on the given day. So 9:00 is 0, 9:30 is 30, 10:00 is 60, ... 17:00 is 480.
+
+ We'll have:
+   day: an integer that can be 0 (Monday), 1 (Tuesday), 2 (Wednesday)
+   start: an integer in [0, 450] (because 450 minutes from 9:00 is 16:30, and then 30 minutes meeting ends at 17:00)
+
+ But note: the meeting must be within work hours, so start must be at least 0 and at most 450.
+
+ Now, we need to model the busy intervals for each participant per day.
+
+ For Nicole on Monday:
+   Busy: [0,30) [from 9:00 to 9:30), [240,270) [13:00 to 13:30), [330,390) [14:30 to 15:30)
+   Similarly for Tuesday and Wednesday.
+
+ For Ruth on Monday: entire day [0,480) -> so no free time on Monday.
+   Similarly, Tuesday: [0,480) -> no free time.
+
+ So we can ignore Monday and Tuesday for Ruth because she is entirely busy.
+
+ Therefore, the meeting must be on Wednesday (day=2).
+
+ Now, for Wednesday, we have:
+
+ Nicole's busy intervals (in minutes from 9:00):
+   10:00-11:00 -> [60, 120)
+   12:30-15:00 -> [210, 360)
+   16:00-17:00 -> [420, 480)
+
+ So Nicole is free on Wednesday in:
+   [0,60) and [120,210) and [360,420)
+
+ Ruth's busy intervals on Wednesday (in minutes from 9:00):
+   9:00-10:30 -> [0,90)
+   11:00-11:30 -> [120,150)
+   12:00-12:30 -> [180,210)
+   13:30-15:30 -> [270,390)
+   16:00-16:30 -> [420,450)
+
+ And Ruth is free on Wednesday in:
+   [90,120) -> 10:30 to 11:00 (30 minutes)
+   [150,180) -> 11:30 to 12:00 (30 minutes)
+   [210,270) -> 12:30 to 13:30 (60 minutes)
+   [450,480) -> 16:30 to 17:00 (30 minutes) BUT note: Ruth does not want to meet after 13:30 on Wednesday, so we cannot use [450,480) even though it's free.
+
+ So the available free intervals for Ruth (with the preference) are:
+   [90,120), [150,180), [210,270) (but note: the additional constraint says no meeting after 13:30, which is 270 minutes from 9:00? 9:00 to 13:30 is 4.5 hours -> 270 minutes. So 13:30 is at 270. So the meeting must start and end by 13:30? Or does "after 13:30" mean meetings that start after 13:30? Let's assume it means the meeting cannot start at 13:30 or later? Or does it mean the meeting cannot overlap with time after 13:30? We'll interpret as: the meeting must end by 13:30? Or start by 13:00 so that it ends by 13:30?
+
+ The problem says: "Ruth do not want to meet on Wednesday after 13:30". This is ambiguous. We can interpret it as the meeting cannot take place at any time that is after 13:30. So the meeting must end by 13:30. So the meeting must start by 13:00 (if it's 30 minutes) so that it ends by 13:30.
+
+ Alternatively, it might mean that the meeting cannot start after 13:30. But note: if the meeting starts at 13:30, it would end at 14:00, which is after 13:30. So we assume that the meeting must start at or before 13:00 (so that it ends by 13:30) OR we can say the meeting must be entirely within [0, 270] (i.e., by 13:30).
+
+ So for Ruth, we must have the meeting ending by 13:30 (270 minutes from 9:00). So the meeting must start by 13:00 (240) and end by 13:30 (270). But note: the available free intervals for Ruth that are entirely before 13:30 are:
+   [90,120) -> ends at 11:00 (which is before 13:30) -> valid
+   [150,180) -> ends at 12:00 -> valid
+   [210,270) -> this interval goes until 13:30. But if we take a meeting from 13:00 to 13:30, that is within [210,270) and ends exactly at 13:30. Is that allowed? The constraint says "after 13:30", so 13:30 is not after. So we can allow a meeting that ends at 13:30.
+
+ So Ruth's available intervals that satisfy the additional constraint are:
+   [90,120), [150,180), [210,270)
+
+ Now, we need a 30-minute meeting that is within one of these intervals and also within Nicole's free intervals on Wednesday.
+
+ Nicole's free intervals on Wednesday: [0,60), [120,210), [360,420)
+
+ We look for an overlap of 30 minutes between Ruth's available intervals and Nicole's free intervals.
+
+ Let's check each of Ruth's intervals:
+
+ 1. [90,120): This overlaps with Nicole's [0,60) -> no, and [120,210) -> no (because 120 is the end of Ruth's interval and the start of Nicole's next interval). So no overlap.
+
+ 2. [150,180): This is entirely within Nicole's [120,210) -> yes, from 150 to 180 (30 minutes). So this is a candidate.
+
+ 3. [210,270): This interval starts at 210 and ends at 270. Nicole's free intervals: [120,210) ends at 210, so if we take a meeting from 210 to 240, that would be at the boundary. But note: Nicole's busy at 12:30 (which is 210 minutes from 9:00) so she is not free at 210. So we cannot start at 210. We can start at 210:01? But we are modeling in minutes. So we are using integer minutes, and the intervals are half-open [start, end). So Nicole is free from minute 120 to minute 210 (exclusive of 210). So she is not free at 210. Therefore, the meeting cannot start at 210. So the interval [210,270) does not overlap with Nicole's free time.
+
+ Therefore, the only candidate is the second interval: [150,180) on Wednesday.
+
+ So the meeting should be on Wednesday from 11:30 to 12:00.
+
+ But wait, let's double-check the time:
+
+ 150 minutes from 9:00: 
+   9:00 + 150 minutes = 9:00 + 2 hours 30 minutes = 11:30.
+ 180 minutes from 9:00 = 12:00.
+
+ So the meeting is from 11:30 to 12:00.
+
+ Now, we'll model this in Z3 to confirm.
+
+ However, note: the problem says there exists a solution, and we found one.
+
+ We'll write the Z3 code to solve this.
+
+ Steps in Z3:
+
+ 1. We define the day variable (0=Mon, 1=Tue, 2=Wed) and the start time (in minutes from 9:00 on that day, from 0 to 450).
+
+ 2. We add constraints that the meeting must be within work hours (0 <= start <= 450, and start + 30 <= 480).
+
+ 3. For each participant, we define their busy intervals for each day. Then we assert that for the chosen day, the meeting time ( [start, start+30) ) does not overlap with any of the busy intervals of that participant on that day.
+
+ 4. Additionally, for Ruth on Wednesday, we have the constraint that the meeting must not extend after 13:30 (i.e., meeting must end by 13:30, which is 270 minutes from 9:00). So if the day is Wednesday, then we require start+30 <= 270.
+
+ 5. We also note that Monday and Tuesday are entirely busy for Ruth, so we can avoid those days by forcing the day to be Wednesday? Or we can let Z3 figure it out. But since we know Monday and Tuesday are entirely busy for Ruth, we can also model Ruth's busy intervals for Monday and Tuesday and let Z3 avoid them.
+
+ However, let's model all days and constraints.
+
+ Since the problem is small, we can model the busy intervals for each participant on each day.
+
+ We'll create a function that returns the busy intervals for a participant on a given day (in minutes from 9:00).
+
+ Alternatively, we can create a list of busy intervals for each participant and then for the chosen day, we check.
+
+ We'll use the following:
+
+   day = Int('day')
+   start = Int('start')
+
+ Constraints on day: 0 <= day <= 2
+
+ For each day d, we have a set of busy intervals for Nicole and Ruth.
+
+ We can use an implication: if day==d, then the meeting must not overlap with any busy interval of that participant on day d.
+
+ We'll define the busy intervals as a list of tuples (start_busy, end_busy) for each participant and each day.
+
+ Alternatively, we can use a function that returns the busy intervals for a participant on a day.
+
+ Let's define:
+
+   nicole_busy = {
+       0: [(0,30), (240,270), (330,390)],
+       1: [(0,30), (150,210), (330,390)],
+       2: [(60,120), (210,360), (420,480)]
+   }
+
+   ruth_busy = {
+       0: [(0,480)],
+       1: [(0,480)],
+       2: [(0,90), (120,150), (180,210), (270,390), (420,450)]
+   }
+
+ And then for Ruth on Wednesday, we have an additional constraint: if day==2, then start+30 <= 270.
+
+ Now, we iterate for each day d and for each busy interval (s_b, e_b) in the participant's busy list for that day, we assert:
+
+   If day==d, then NOT (start < e_b && start+30 > s_b)
+
+ Also, we must ensure that the meeting does not span across two busy intervals? Actually, the above condition is enough.
+
+ Let's code accordingly.
+
+ We'll use Z3's Ints for day and start.
+
+ Note: We are using integer arithmetic, and the intervals are half-open [start, end).
+
+ We'll also assert that the meeting must be within working hours: start >=0 and start+30<=480.
+
+ Now, let's write the code.
+
+ We'll use the following:
+
+   from z3 import *
+
+   s = Solver()
+
+   day = Int('day')
+   start = Int('start')
+
+   # Constraints on day and start
+   s.add(day >= 0, day <= 2)
+   s.add(start >= 0, start <= 450) # because meeting duration 30, so start at most 450
+
+   # Define busy intervals for Nicole and Ruth for each day
+   nicole_busy = {
+       0: [(0,30), (240,270), (330,390)],
+       1: [(0,30), (150,210), (330,390)],
+       2: [(60,120), (210,360), (420,480)]
+   }
+
+   ruth_busy = {
+       0: [(0,480)],
+       1: [(0,480)],
+       2: [(0,90), (120,150), (180,210), (270,390), (420,450)]
+   }
+
+   # For each day, we add constraints for Nicole and Ruth
+   for d in range(3):
+       # Nicole's constraints for day d
+       for interval in nicole_busy[d]:
+           s_b, e_b = interval
+           # If the meeting is on day d, then it must not overlap with this busy interval
+           s.add(If(day == d, Not(And(start < e_b, start + 30 > s_b)), True)
+
+       # Ruth's constraints for day d
+       for interval in ruth_busy[d]:
+           s_b, e_b = interval
+           s.add(If(day == d, Not(And(start < e_b, start + 30 > s_b)), True)
+
+   # Additional constraint for Ruth on Wednesday: meeting must end by 13:30 (270 minutes from 9:00)
+   s.add(If(day == 2, start + 30 <= 270, True))
+
+   # Check and get the model
+   if s.check() == sat:
+       m = s.model()
+       d = m[day].as_long()
+       s_val = m[start].as_long()
+       # Convert day number to day name
+       days = ["Monday", "Tuesday", "Wednesday"]
+       day_name = days[d]
+       # Convert start time in minutes to time string
+       hours = 9 + s_val // 60
+       minutes = s_val % 60
+       end_time = s_val + 30
+       end_hours = 9 + end_time // 60
+       end_minutes = end_time % 60
+       # Format as HH:MM for start and end
+       time_str = f"{hours:02d}:{minutes:02d}-{end_hours:02d}:{end_minutes:02d}"
+       print(f"{day_name} {time_str}")
+   else:
+       print("No solution found")
+
+ However, note: the additional constraint for Ruth on Wednesday is already modeled by the busy intervals? Actually, the busy intervals for Ruth on Wednesday already block after 13:30 except for the interval [450,480) which is free but after 13:30. But the additional constraint says she doesn't want to meet after 13:30, so we block any meeting that ends after 13:30 (or starts after 13:00). We have already added the constraint for Wednesday: meeting must end by 270 (13:30). So that will block using [450,480) because that meeting would start at 450 (16:30) and end at 480 (17:00), which is after 13:30.
+
+ But note: the busy intervals for Ruth on Wednesday already block [270,390) and [420,450). So the only free interval after 13:30 that is not blocked by the busy intervals is [450,480). Our additional constraint blocks that by requiring the meeting to end by 270 on Wednesday.
+
+ So the code should be correct.
+
+ Let's run the code and see if it gives the expected solution (Wednesday 11:30-12:00).
+
+ However, note: the meeting from 11:30 to 12:00 is 150 to 180 minutes from 9:00.
+
+ Check Nicole on Wednesday: Nicole is free from 120 to 210, which includes 150 to 180.
+ Check Ruth on Wednesday: Ruth is free from 150 to 180 (because her busy intervals are [120,150) and [180,210) ... so 150 to 180 is free).
+ And the meeting ends at 180 (12:00) which is before 13:30 (270), so it satisfies the additional constraint.
+
+ So the code should output: Wednesday 11:30-12:00.
+
+ Now, we output the code.

@@ -1,0 +1,56 @@
+{
+    "has_execution_error": true,
+    "has_no_plan": false,
+    "execution_output": null,
+    "pred": null,
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Peter",
+            "Height": "very short",
+            "Food": "spaghetti"
+        },
+        {
+            "House": "2",
+            "Name": "Arnold",
+            "Height": "very tall",
+            "Food": "stir fry"
+        },
+        {
+            "House": "3",
+            "Name": "Eric",
+            "Height": "tall",
+            "Food": "pizza"
+        },
+        {
+            "House": "4",
+            "Name": "Bob",
+            "Height": "average",
+            "Food": "grilled cheese"
+        },
+        {
+            "House": "5",
+            "Name": "Alice",
+            "Height": "short",
+            "Food": "stew"
+        }
+    ],
+    "status": "Error",
+    "violated_constraint": {
+        "invalid_output": "No valid output structure found"
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 501.0600674152374,
+        "execution_time": 0.07982015609741211,
+        "constraint_eval_time": 5.4836273193359375e-06,
+        "pred_extract_time": 1.0728836059570312e-05,
+        "gold_extract_time": 1.9073486328125e-05,
+        "total_tokens": 33681,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\nimport json\n\n# Define EnumSorts\nNames, (Arnold, Bob, Alice, Eric, Peter) = EnumSort('Names', ['Arnold', 'Bob', 'Alice', 'Eric', 'Peter'])\nHeights, (very_tall, average, tall, very_short, short) = EnumSort('Heights', ['very_tall', 'average', 'tall', 'very_short', 'short'])\nFoods, (stew, grilled_cheese, spaghetti, pizza, stir_fry) = EnumSort('Foods', ['stew', 'grilled_cheese', 'spaghetti', 'pizza', 'stir_fry'])\n\n# Create variables for each house (0-based index for 5 houses)\nnames = [Const(f'name_{i}', Names) for i in range(5)]\nheights = [Const(f'height_{i}', Heights) for i in range(5)]\nfoods = [Const(f'food_{i}', Foods) for i in range(5)]\n\nsolver = Solver()\n\n# Add distinct constraints\nsolver.add(Distinct(names))\nsolver.add(Distinct(heights))\nsolver.add(Distinct(foods))\n\n# Add clues\n# Clue 1: Alice is short\nfor i in range(5):\n    solver.add(Implies(names[i] == Alice, heights[i] == short))\n\n# Clue 2: tall in house 3 (index 2)\nsolver.add(heights[2] == tall)\n\n# Clue 3: average not in house 2 (index 1)\nsolver.add(heights[1] != average)\n\n# Clue 4: average is left of stew\nfor i in range(5):\n    for j in range(5):\n        solver.add(Implies(And(heights[i] == average, foods[j] == stew), i < j))\n\n# Clue 5: Arnold loves stir_fry\nfor i in range(5):\n    solver.add(Implies(names[i] == Arnold, foods[i] == stir_fry))\n\n# Clue 6: pizza lover is tall (house 3, index 2)\nsolver.add(foods[2] == pizza)\n\n# Clue 7: Eric is in house 3 (index 2)\nsolver.add(names[2] == Eric)\n\n# Clue 8: Bob is to the right of Arnold\nfor i in range(5):\n    for j in range(5):\n        solver.add(Implies(And(names[i] == Arnold, names[j] == Bob), i < j))\n\n# Clue 9: grilled_cheese to the right of Eric (house 3, index 2)\nfor j in range(5):\n    solver.add(Implies(foods[j] == grilled_cheese, j >= 3))  # j is index (0-4), house numbers j+1 >= 4\n\n# Clue 10: very_short is left of Arnold\nfor i in range(5):\n    for j in range(5):\n        solver.add(Implies(And(heights[i] == very_short, names[j] == Arnold), i < j))\n\n# Check solution\nif solver.check() == sat:\n    model = solver.model()\n    solution = {\n        \"solution\": {\n            \"header\": [\"House\", \"Name\", \"Height\", \"Food\"],\n            \"rows\": []\n        }\n    }\n    for i in range(5):\n        house_num = i + 1\n        name_val = model.eval(names[i]).as_string()\n        height_val = model.eval(heights[i]).as_string()\n        food_val = model.eval(foods[i]).as_string()\n        solution[\"solution\"][\"rows\"].append([str(house_num), name_val, height_val, food_val])\n    print(json.dumps(solution, indent=2))\nelse:\n    print(\"No solution found.\")"
+}

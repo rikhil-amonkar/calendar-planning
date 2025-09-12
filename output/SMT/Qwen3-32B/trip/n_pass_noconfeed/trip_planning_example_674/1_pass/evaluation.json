@@ -1,0 +1,52 @@
+{
+    "has_execution_error": true,
+    "has_no_plan": false,
+    "execution_output": null,
+    "pred": null,
+    "gold": {
+        "itinerary": [
+            {
+                "day_range": "Day 1-2",
+                "place": "Helsinki"
+            },
+            {
+                "day_range": "Day 2-5",
+                "place": "Madrid"
+            },
+            {
+                "day_range": "Day 5-8",
+                "place": "Budapest"
+            },
+            {
+                "day_range": "Day 8-9",
+                "place": "Reykjavik"
+            },
+            {
+                "day_range": "Day 9-11",
+                "place": "Warsaw"
+            },
+            {
+                "day_range": "Day 11-14",
+                "place": "Split"
+            }
+        ]
+    },
+    "status": "Error",
+    "violated_constraint": {
+        "missing_itinerary": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 874.9703464508057,
+        "execution_time": 0.01917862892150879,
+        "constraint_eval_time": 6.198883056640625e-06,
+        "pred_extract_time": 1.049041748046875e-05,
+        "gold_extract_time": 8.296966552734375e-05,
+        "total_tokens": 56478,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import z3\nimport json\n\ndef main():\n    city_codes = {\n        'Helsinki': 0,\n        'Warsaw': 1,\n        'Madrid': 2,\n        'Split': 3,\n        'Reykjavik': 4,\n        'Budapest': 5\n    }\n\n    durations = {\n        0: 2,  # Helsinki\n        1: 3,  # Warsaw\n        2: 4,  # Madrid\n        3: 4,  # Split\n        4: 2,  # Reykjavik\n        5: 4   # Budapest\n    }\n\n    direct_flights = [\n        ('Helsinki', 'Reykjavik'),\n        ('Budapest', 'Warsaw'),\n        ('Madrid', 'Split'),\n        ('Helsinki', 'Split'),\n        ('Helsinki', 'Madrid'),\n        ('Helsinki', 'Budapest'),\n        ('Reykjavik', 'Warsaw'),\n        ('Helsinki', 'Warsaw'),\n        ('Madrid', 'Budapest'),\n        ('Budapest', 'Reykjavik'),\n        ('Madrid', 'Warsaw'),\n        ('Warsaw', 'Split'),\n        ('Reykjavik', 'Madrid'),\n    ]\n\n    allowed_flights = set()\n    for a, b in direct_flights:\n        allowed_flights.add((city_codes[a], city_codes[b]))\n        allowed_flights.add((city_codes[b], city_codes[a]))\n\n    s = z3.Solver()\n\n    # Order variables: first city is Helsinki (code 0)\n    order = [0] + [z3.Int(f\"order_{i}\") for i in range(1, 6)]\n\n    # Ensure remaining cities are distinct and in the allowed set\n    s.add(z3.Distinct(order[1:]))\n    for i in range(1, 6):\n        s.add(z3.And(order[i] >= 1, order[i] <= 5))\n\n    # Start day variables\n    S = [z3.Int(f\"S_{i}\") for i in range(6)]\n    s.add(S[0] == 1)\n\n    for i in range(1, 6):\n        prev_city = order[i - 1]\n        duration_prev = z3.If(prev_city == 0, 2,\n                              z3.If(prev_city == 1, 3,\n                                    z3.If(prev_city == 2, 4,\n                                          z3.If(prev_city == 3, 4,\n                                                z3.If(prev_city == 4, 2,\n                                                      z3.If(prev_city == 5, 4, 0))))))\n        s.add(S[i] == S[i - 1] + duration_prev - 1)\n\n    # Flight constraints between consecutive cities\n    for i in range(1, 6):\n        prev = order[i - 1]\n        curr = order[i]\n        constraints = []\n        for a, b in allowed_flights:\n            constraints.append(z3.And(prev == a, curr == b))\n        s.add(z3.Or(*constraints))\n\n    # Constraints for Warsaw and Reykjavik\n    for i in range(6):\n        # Warsaw constraint\n        s.add(z3.Implies(order[i] == 1,\n                         z3.Or(\n                             z3.And(S[i] >= 9, S[i] <= 11),\n                             z3.And(S[i] + 1 >= 9, S[i] + 1 <= 11),\n                             z3.And(S[i] + 2 >= 9, S[i] + 2 <= 11)\n                         )))\n        # Reykjavik constraint\n        s.add(z3.Implies(order[i] == 4,\n                         z3.Or(\n                             z3.And(S[i] >= 8, S[i] <= 9),\n                             z3.And(S[i] + 1 >= 8, S[i] + 1 <= 9)\n                         )))\n\n    # Ensure total days is 14\n    last_day = S[5] + z3.If(order[5] == 0, 2,\n                            z3.If(order[5] == 1, 3,\n                                  z3.If(order[5] == 2, 4,\n                                        z3.If(order[5] == 3, 4,\n                                              z3.If(order[5] == 4, 2,\n                                                    z3.If(order[5] == 5, 4, 0))))) - 1\n    s.add(last_day == 14)\n\n    if s.check() == z3.sat:\n        model = s.model()\n        order_values = [model.evaluate(order[i]).as_long() for i in range(6)]\n        S_values = [model.evaluate(S[i]).as_long() for i in range(6)]\n\n        # Generate itinerary\n        itinerary = []\n        for i in range(6):\n            city_code = order_values[i]\n            city_name = [k for k, v in city_codes.items() if v == city_code][0]\n            duration = durations[city_code]\n            start_day = S_values[i]\n            end_day = start_day + duration - 1\n            itinerary.append({\n                \"day_range\": f\"Day {start_day}-{end_day}\",\n                \"place\": city_name\n            })\n\n        print(json.dumps({\"itinerary\": itinerary}, indent=2))\n    else:\n        print(\"No solution found.\")\n\nif __name__ == \"__main__\":\n    main()"
+}

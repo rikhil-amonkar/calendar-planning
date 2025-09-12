@@ -1,0 +1,29 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "13:00:14:00 Monday",
+    "pred": {
+        "day": "Monday",
+        "time_range": "{13:00:14:00}"
+    },
+    "gold": {
+        "day": "Monday",
+        "time_range": "{13:00:14:00}"
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 442.34563159942627,
+        "execution_time": 0.08679986000061035,
+        "constraint_eval_time": 4.7206878662109375e-05,
+        "pred_extract_time": 0.5401263236999512,
+        "gold_extract_time": 4.744529724121094e-05,
+        "total_tokens": 24458,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\n\ndef minutes_to_time(m):\n    hours = m // 60\n    mins = m % 60\n    return f\"{hours:02d}:{mins:02d}\"\n\ns = Solver()\n\nday = Int('day')\nstart_time = Int('start_time')\n\n# Day must be 0 (Monday) or 1 (Tuesday)\ns.add(Or(day == 0, day == 1))\n\n# Time must be between 9:00 (540) and 17:00 (1020) minus 60 minutes (so start_time <= 960)\ns.add(And(start_time >= 540, start_time <= 960))\n\n# Blocked intervals for each day and participant\nmon_g_blocked = [(570, 600), (660, 780), (840, 870), (990, 1020)]\nmon_d_blocked = [(540, 570), (600, 780), (870, 990)]\nmon_blocked = mon_g_blocked + mon_d_blocked\n\ntue_g_blocked = [(540, 570), (630, 660), (870, 960)]\ntue_d_blocked = [(540, 570), (600, 630), (660, 750), (780, 870), (900, 960), (990, 1020)]\ntue_blocked = tue_g_blocked + tue_d_blocked\n\n# Constraints for Monday\nmon_overlap_constraints = And([Or(start_time + 60 <= b_start, start_time >= b_end) for (b_start, b_end) in mon_blocked])\n# Constraints for Tuesday\ntue_overlap_constraints = And([Or(start_time + 60 <= b_start, start_time >= b_end) for (b_start, b_end) in tue_blocked])\n\n# Add implications based on day\ns.add(Implies(day == 0, mon_overlap_constraints))\ns.add(Implies(day == 1, tue_overlap_constraints))\n\nif s.check() == sat:\n    model = s.model()\n    day_val = model[day].as_long()\n    start = model[start_time].as_long()\n    end = start + 60\n    day_str = \"Monday\" if day_val == 0 else \"Tuesday\"\n    start_str = minutes_to_time(start)\n    end_str = minutes_to_time(end)\n    print(f\"{start_str}:{end_str} {day_str}\")\nelse:\n    print(\"No solution found.\")"
+}

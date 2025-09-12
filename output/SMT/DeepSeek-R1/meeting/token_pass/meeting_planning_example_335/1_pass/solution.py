@@ -1,0 +1,127 @@
+import z3
+import json
+
+def main():
+    # Convert time to minutes from 9:00 AM (which is 0 minutes)
+    def time_to_minutes(time_str):
+        parts = time_str.split(':')
+        hour = int(parts[0])
+        minute = int(parts[1]) if len(parts) > 1 else 0
+        return (hour - 9) * 60 + minute
+
+    def minutes_to_time(minutes):
+        total_hours = 9 + minutes // 60
+        mins = minutes % 60
+        return f"{total_hours}:{mins:02d}"
+
+    # Travel times dictionary
+    travel_times = {
+        ('Pacific Heights', 'North Beach'): 9,
+        ('Pacific Heights', 'Financial District'): 13,
+        ('Pacific Heights', 'Alamo Square'): 10,
+        ('Pacific Heights', 'Mission District'): 15,
+        ('North Beach', 'Pacific Heights'): 8,
+        ('North Beach', 'Financial District'): 8,
+        ('North Beach', 'Alamo Square'): 16,
+        ('North Beach', 'Mission District'): 18,
+        ('Financial District', 'Pacific Heights'): 13,
+        ('Financial District', 'North Beach'): 7,
+        ('Financial District', 'Alamo Square'): 17,
+        ('Financial District', 'Mission District'): 17,
+        ('Alamo Square', 'Pacific Heights'): 10,
+        ('Alamo Square', 'North Beach'): 15,
+        ('Alamo Square', 'Financial District'): 17,
+        ('Alamo Square', 'Mission District'): 10,
+        ('Mission District', 'Pacific Heights'): 16,
+        ('Mission District', 'North Beach'): 17,
+        ('Mission District', 'Financial District'): 17,
+        ('Mission District', 'Alamo Square'): 11
+    }
+
+    # Meeting constraints
+    meetings = [
+        {'name': 'Helen', 'location': 'North Beach', 'start_avail': time_to_minutes('9:00'), 'end_avail': time_to_minutes('17:00'), 'min_dur': 15},
+        {'name': 'Betty', 'location': 'Financial District', 'start_avail': time_to_minutes('19:00'), 'end_avail': time_to_minutes('21:45'), 'min_dur': 90},
+        {'name': 'Amanda', 'location': 'Alamo Square', 'start_avail': time_to_minutes('19:45'), 'end_avail': time_to_minutes('21:00'), 'min_dur': 60},
+        {'name': 'Kevin', 'location': 'Mission District', 'start_avail': time_to_minutes('10:45'), 'end_avail': time_to_minutes('14:45'), 'min_dur': 45}
+    ]
+
+    # Initialize Z3 solver and variables
+    solver = z3.Optimize()
+    n = len(meetings)
+    
+    # Variables for each meeting: start time, end time, and whether it's scheduled
+    s = [z3.Int(f's_{i}') for i in range(n)]
+    e = [z3.Int(f'e_{i}') for i in range(n)]
+    do_meet = [z3.Bool(f'do_{i}') for i in range(n)]
+    
+    # Order variables to sequence the meetings
+    order = [z3.Int(f'order_{i}') for i in range(n)]
+    
+    # Constraints for each meeting
+    for i, m in enumerate(meetings):
+        # If meeting is scheduled, it must be within availability and have minimum duration
+        solver.add(z3.Implies(do_meet[i], s[i] >= m['start_avail']))
+        solver.add(z3.Implies(do_meet[i], e[i] == s[i] + m['min_dur']))
+        solver.add(z3.Implies(do_meet[i], e[i] <= m['end_avail']))
+        # If not scheduled, set order to -1
+        solver.add(z3.Implies(z3.Not(do_meet[i]), order[i] == -1))
+        solver.add(z3.Implies(do_meet[i], order[i] >= 0))
+        solver.add(z3.Implies(do_meet[i], order[i] < n))
+    
+    # All scheduled meetings have distinct orders
+    solver.add(z3.Distinct([z3.If(do_meet[i], order[i], -1) for i in range(n)]))
+    
+    # Travel time constraints between consecutive meetings
+    for i in range(n):
+        for j in range(n):
+            if i != j:
+                # If both meetings are scheduled and j immediately follows i
+                cond = z3.And(do_meet[i], do_meet[j], order[j] == order[i] + 1)
+                travel_time = travel_times[(meetings[i]['location'], meetings[j]['location'])]
+                solver.add(z3.Implies(cond, s[j] >= e[i] + travel_time))
+    
+    # Constraint for first meeting: must account for travel from Pacific Heights
+    for i in range(n):
+        cond = z3.And(do_meet[i], order[i] == 0)
+        travel_time = travel_times[('Pacific Heights', meetings[i]['location'])]
+        solver.add(z3.Implies(cond, s[i] >= travel_time))
+    
+    # Maximize the number of meetings scheduled
+    scheduled_count = z3.Sum([z3.If(do_meet[i], 1, 0) for i in range(n)])
+    solver.maximize(scheduled_count)
+    
+    # Check and get model
+    if solver.check() == z3.sat:
+        model = solver.model()
+        scheduled_meetings = []
+        for i in range(n):
+            if z3.is_true(model.eval(do_meet[i])):
+                start_val = model.eval(s[i]).as_long()
+                end_val = model.eval(e[i]).as_long()
+                scheduled_meetings.append({
+                    'order': model.eval(order[i]).as_long(),
+                    'name': meetings[i]['name'],
+                    'location': meetings[i]['location'],
+                    'start': start_val,
+                    'end': end_val
+                })
+        # Sort by order
+        scheduled_meetings.sort(key=lambda x: x['order'])
+        # Convert to itinerary
+        itinerary = []
+        for m in scheduled_meetings:
+            itinerary.append({
+                'action': 'meet',
+                'location': m['location'],
+                'person': m['name'],
+                'start_time': minutes_to_time(m['start']),
+                'end_time': minutes_to_time(m['end'])
+            })
+        result = {'itinerary': itinerary}
+        print(json.dumps(result, indent=2))
+    else:
+        print('{"itinerary": []}')
+
+if __name__ == '__main__':
+    main()

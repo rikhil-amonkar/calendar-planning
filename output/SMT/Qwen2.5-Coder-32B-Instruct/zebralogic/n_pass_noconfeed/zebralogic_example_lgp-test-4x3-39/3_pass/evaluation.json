@@ -1,0 +1,50 @@
+{
+    "has_execution_error": true,
+    "has_no_plan": false,
+    "execution_output": null,
+    "pred": null,
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Arnold",
+            "HairColor": "brown",
+            "FavoriteSport": "basketball"
+        },
+        {
+            "House": "2",
+            "Name": "Alice",
+            "HairColor": "red",
+            "FavoriteSport": "swimming"
+        },
+        {
+            "House": "3",
+            "Name": "Peter",
+            "HairColor": "black",
+            "FavoriteSport": "tennis"
+        },
+        {
+            "House": "4",
+            "Name": "Eric",
+            "HairColor": "blonde",
+            "FavoriteSport": "soccer"
+        }
+    ],
+    "status": "Error",
+    "violated_constraint": {
+        "invalid_output": "No valid output structure found"
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 3,
+    "timing": {
+        "api_call_time": 46.21530199050903,
+        "execution_time": 0.08023190498352051,
+        "constraint_eval_time": 4.291534423828125e-06,
+        "pred_extract_time": 7.867813110351562e-06,
+        "gold_extract_time": 1.5020370483398438e-05,
+        "total_tokens": 4164,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\n\n# Define the variables\nnames = ['Eric', 'Alice', 'Peter', 'Arnold']\nhair_colors = ['blonde', 'black', 'red', 'brown']\nfavorite_sports = ['swimming', 'soccer', 'basketball', 'tennis']\nhouses = [1, 2, 3, 4]\n\n# Create the solver\nsolver = Solver()\n\n# Define the arrays for each attribute\nname_map = {house: Int(f'name_{house}') for house in houses}\nhair_color_map = {house: Int(f'hair_color_{house}') for house in houses}\nfavorite_sport_map = {house: Int(f'favorite_sport_{house}') for house in houses}\n\n# Add constraints for unique values\nsolver.add(Distinct([name_map[house] for house in houses]))\nsolver.add(Distinct([hair_color_map[house] for house in houses]))\nsolver.add(Distinct([favorite_sport_map[house] for house in houses]))\n\n# Map values to integers\nname_to_int = {name: i for i, name in enumerate(names)}\nint_to_name = {i: name for i, name in enumerate(names)}\n\nhair_color_to_int = {color: i for i, color in enumerate(hair_colors)}\nint_to_hair_color = {i: color for i, color in enumerate(hair_colors)}\n\nfavorite_sport_to_int = {sport: i for i, sport in enumerate(favorite_sports)}\nint_to_favorite_sport = {i: sport for i, sport in enumerate(favorite_sports)}\n\n# Add constraints based on clues\n# 1. The person who loves soccer is not in the second house.\nsolver.add(favorite_sport_map[2] != favorite_sport_to_int['soccer'])\n\n# 2. Eric is the person who has blonde hair.\nsolver.add(name_map[1] == name_to_int['Eric'])\nsolver.add(hair_color_map[1] == hair_color_to_int['blonde'])\n\n# 3. The person who has blonde hair is somewhere to the right of the person who loves basketball.\nfor i in range(1, 4):\n    solver.add(Or(hair_color_map[i] != hair_color_to_int['blonde'], favorite_sport_map[i + 1] == favorite_sport_to_int['basketball']))\n\n# 4. The person who has black hair is the person who loves tennis.\nsolver.add(Or([And(hair_color_map[house] == hair_color_to_int['black'],\n                    favorite_sport_map[house] == favorite_sport_to_int['tennis']) for house in houses]))\n\n# 5. Arnold is somewhere to the left of the person who has red hair.\nsolver.add(Or([And(name_map[i] == name_to_int['Arnold'], \n                    Or([hair_color_map[j] == hair_color_to_int['red'] for j in range(i + 1, 5)])) for i in range(1, 4)]))\n\n# 6. Alice is the person who loves swimming.\nsolver.add(Or([And(name_map[house] == name_to_int['Alice'], \n                    favorite_sport_map[house] == favorite_sport_to_int['swimming']) for house in houses]))\n\n# 7. The person who has red hair is directly left of the person who has black hair.\nsolver.add(Or([And(hair_color_map[i] == hair_color_to_int['red'], \n                    hair_color_map[i + 1] == hair_color_to_int['black']) for i in range(1, 4)]))\n\n# Solve the problem\nif solver.check() == sat:\n    model = solver.model()\n    solution = {\n        \"solution\": {\n            \"header\": [\"House\", \"Name\", \"HairColor\", \"FavoriteSport\"],\n            \"rows\": []\n        }\n    }\n    for house in houses:\n        name = int_to_name[model.evaluate(name_map[house]).as_long()]\n        hair_color = int_to_hair_color[model.evaluate(hair_color_map[house]).as_long()]\n        favorite_sport = int_to_favorite_sport[model.evaluate(favorite_sport_map[house]).as_long()]\n        solution[\"solution\"][\"rows\"].append([str(house), name, hair_color, favorite_sport])\n    \n    import json\n    print(json.dumps(solution))\nelse:\n    print(\"No solution found\")"
+}

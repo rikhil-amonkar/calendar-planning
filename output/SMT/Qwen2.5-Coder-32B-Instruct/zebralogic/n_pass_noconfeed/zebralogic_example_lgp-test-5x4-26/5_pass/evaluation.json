@@ -1,0 +1,61 @@
+{
+    "has_execution_error": true,
+    "has_no_plan": false,
+    "execution_output": null,
+    "pred": null,
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Arnold",
+            "Height": "average",
+            "Mother": "Aniya",
+            "HairColor": "brown"
+        },
+        {
+            "House": "2",
+            "Name": "Eric",
+            "Height": "very short",
+            "Mother": "Penny",
+            "HairColor": "black"
+        },
+        {
+            "House": "3",
+            "Name": "Alice",
+            "Height": "very tall",
+            "Mother": "Kailyn",
+            "HairColor": "gray"
+        },
+        {
+            "House": "4",
+            "Name": "Peter",
+            "Height": "short",
+            "Mother": "Janelle",
+            "HairColor": "red"
+        },
+        {
+            "House": "5",
+            "Name": "Bob",
+            "Height": "tall",
+            "Mother": "Holly",
+            "HairColor": "blonde"
+        }
+    ],
+    "status": "Error",
+    "violated_constraint": {
+        "invalid_output": "No valid output structure found"
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 5,
+    "timing": {
+        "api_call_time": 77.57052111625671,
+        "execution_time": 0.0796804428100586,
+        "constraint_eval_time": 4.291534423828125e-06,
+        "pred_extract_time": 9.059906005859375e-06,
+        "gold_extract_time": 1.6927719116210938e-05,
+        "total_tokens": 6520,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\n\n# Define the number of houses\nnum_houses = 5\n\n# Define the domains for each attribute\nnames = ['Alice', 'Peter', 'Bob', 'Eric', 'Arnold']\nheights = ['very short', 'short', 'tall', 'average', 'very tall']\nmothers = ['Janelle', 'Kailyn', 'Penny', 'Holly', 'Aniya']\nhair_colors = ['blonde', 'black', 'gray', 'red', 'brown']\n\n# Create arrays to map houses to attributes\nname_vars = [Int(f'name_house_{i+1}') for i in range(num_houses)]\nheight_vars = [Int(f'height_house_{i+1}') for i in range(num_houses)]\nmother_vars = [Int(f'mother_house_{i+1}') for i in range(num_houses)]\nhair_color_vars = [Int(f'hair_color_house_{i+1}') for i in range(num_houses)]\n\n# Create a solver instance\nsolver = Solver()\n\n# Add constraints for unique values for each attribute\nsolver.add(Distinct(name_vars))\nsolver.add(Distinct(height_vars))\nsolver.add(Distinct(mother_vars))\nsolver.add(Distinct(hair_color_vars))\n\n# Map each attribute to its possible values\nfor i in range(num_houses):\n    solver.add(Or([name_vars[i] == j for j in range(len(names))]))\n    solver.add(Or([height_vars[i] == j for j in range(len(heights))]))\n    solver.add(Or([mother_vars[i] == j for j in range(len(mothers))]))\n    solver.add(Or([hair_color_vars[i] == j for j in range(len(hair_colors))]))\n\n# Add constraints for each clue\n# 1. The person who is tall is The person whose mother's name is Holly.\ntall_index = heights.index('tall')\nholly_index = mothers.index('Holly')\nsolver.add(Exists([Int('i')], And(0 <= Int('i'), Int('i') < num_houses, height_vars[Int('i')] == tall_index, mother_vars[Int('i')] == holly_index)))\n\n# 2. There are two houses between the person who has an average height and the person who is short.\naverage_index = heights.index('average')\nshort_index = heights.index('short')\nsolver.add(Exists([Int('i'), Int('j')], And(0 <= Int('i'), Int('i') < num_houses, 0 <= Int('j'), Int('j') < num_houses, Int('i') != Int('j'), Abs(Int('i') - Int('j')) == 3, height_vars[Int('i')] == average_index, height_vars[Int('j')] == short_index)))\n\n# 3. The person who has gray hair is directly left of The person whose mother's name is Janelle.\ngray_index = hair_colors.index('gray')\njanelle_index = mothers.index('Janelle')\nsolver.add(Exists([Int('i')], And(0 <= Int('i'), Int('i') < num_houses - 1, hair_color_vars[Int('i')] == gray_index, mother_vars[Int('i') + 1] == janelle_index)))\n\n# 4. The person who has black hair is not in the fourth house.\nblack_index = hair_colors.index('black')\nsolver.add(hair_color_vars[3] != black_index)\n\n# 5. Eric is the person who has black hair.\neric_index = names.index('Eric')\nsolver.add(Exists([Int('i')], And(0 <= Int('i'), Int('i') < num_houses, name_vars[Int('i')] == eric_index, hair_color_vars[Int('i')] == black_index)))\n\n# 6. The person who is very short is The person whose mother's name is Penny.\nvery_short_index = heights.index('very short')\npenny_index = mothers.index('Penny')\nsolver.add(Exists([Int('i')], And(0 <= Int('i'), Int('i') < num_houses, height_vars[Int('i')] == very_short_index, mother_vars[Int('i')] == penny_index)))\n\n# 7. Eric and the person who has gray hair are next to each other.\nsolver.add(Exists([Int('i'), Int('j')], And(0 <= Int('i'), Int('i') < num_houses, 0 <= Int('j'), Int('j') < num_houses, Int('i') != Int('j'), Abs(Int('i') - Int('j')) == 1, name_vars[Int('i')] == eric_index, hair_color_vars[Int('j')] == gray_index)))\n\n# 8. Bob is in the fifth house.\nbob_index = names.index('Bob')\nsolver.add(name_vars[4] == bob_index)\n\n# 9. The person who has red hair is Peter.\npeter_index = names.index('Peter')\nred_index = hair_colors.index('red')\nsolver.add(Exists([Int('i')], And(0 <= Int('i'), Int('i') < num_houses, name_vars[Int('i')] == peter_index, hair_color_vars[Int('i')] == red_index)))\n\n# 10. The person whose mother's name is Kailyn is directly left of the person who is short.\nkailyn_index = mothers.index('Kailyn')\nsolver.add(Exists([Int('i')], And(0 <= Int('i'), Int('i') < num_houses - 1, mother_vars[Int('i')] == kailyn_index, height_vars[Int('i') + 1] == short_index)))\n\n# 11. Arnold is the person who has brown hair.\narnold_index = names.index('Arnold')\nbrown_index = hair_colors.index('brown')\nsolver.add(Exists([Int('i')], And(0 <= Int('i'), Int('i') < num_houses, name_vars[Int('i')] == arnold_index, hair_color_vars[Int('i')] == brown_index)))\n\n# 12. The person who has brown hair is somewhere to the left of The person whose mother's name is Janelle.\nsolver.add(Exists([Int('i'), Int('j')], And(0 <= Int('i'), Int('i') < num_houses, 0 <= Int('j'), Int('j') < num_houses, Int('i') < Int('j'), hair_color_vars[Int('i')] == brown_index, mother_vars[Int('j')] == janelle_index)))\n\n# 13. The person whose mother's name is Aniya and the person who is very short are next to each other.\naniya_index = mothers.index('Aniya')\nsolver.add(Exists([Int('i'), Int('j')], And(0 <= Int('i'), Int('i') < num_houses, 0 <= Int('j'), Int('j') < num_houses, Int('i') != Int('j'), Abs(Int('i') - Int('j')) == 1, mother_vars[Int('i')] == aniya_index, height_vars[Int('j')] == very_short_index)))\n\n# 14. The person whose mother's name is Kailyn is in the third house.\nsolver.add(mother_vars[2] == kailyn_index)\n\n# Solve the puzzle\nif solver.check() == sat:\n    model = solver.model()\n    # Extract the solution\n    solution = []\n    for house in range(num_houses):\n        name = names[model.evaluate(name_vars[house]).as_long()]\n        height = heights[model.evaluate(height_vars[house]).as_long()]\n        mother = mothers[model.evaluate(mother_vars[house]).as_long()]\n        hair_color = hair_colors[model.evaluate(hair_color_vars[house]).as_long()]\n        solution.append([str(house + 1), name, height, mother, hair_color])\n    \n    # Format the solution as JSON\n    import json\n    result = {\n        \"solution\": {\n            \"header\": [\"House\", \"Name\", \"Height\", \"Mother\", \"HairColor\"],\n            \"rows\": solution\n        }\n    }\n    print(json.dumps(result, indent=2))\nelse:\n    print(\"No solution found\")"
+}

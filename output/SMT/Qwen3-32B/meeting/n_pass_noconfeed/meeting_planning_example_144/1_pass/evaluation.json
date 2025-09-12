@@ -1,0 +1,57 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"itinerary\": [\n    {\n      \"action\": \"meet\",\n      \"location\": \"Mission District\",\n      \"person\": \"Laura\",\n      \"start_time\": \"12:15\",\n      \"end_time\": \"13:30\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Financial District\",\n      \"person\": \"Anthony\",\n      \"start_time\": \"13:47\",\n      \"end_time\": \"14:17\"\n    }\n  ]\n}",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Mission District",
+                "person": "Laura",
+                "start_time": "12:15",
+                "end_time": "13:30"
+            },
+            {
+                "action": "meet",
+                "location": "Financial District",
+                "person": "Anthony",
+                "start_time": "13:47",
+                "end_time": "14:17"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Mission District",
+                "person": "Laura",
+                "start_time": "12:15",
+                "end_time": "13:30"
+            },
+            {
+                "action": "meet",
+                "location": "Financial District",
+                "person": "Anthony",
+                "start_time": "13:47",
+                "end_time": "14:17"
+            }
+        ]
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 364.2460322380066,
+        "execution_time": 0.0704958438873291,
+        "constraint_eval_time": 2.7894973754882812e-05,
+        "pred_extract_time": 2.3868918418884277,
+        "gold_extract_time": 6.103515625e-05,
+        "total_tokens": 24611,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\nimport json\n\ndef to_time_str(minutes):\n    hours = minutes // 60\n    mins = minutes % 60\n    return f\"{hours}:{mins:02d}\"\n\n# Define variables for start times of meetings\nS_L = Int('S_L')  # Laura's meeting start time in minutes since midnight\nS_A = Int('S_A')  # Anthony's meeting start time in minutes since midnight\n\n# Solver instance\nsolver = Solver()\n\n# Scenario 1: Laura first, then Anthony\nscenario1_constraints = [\n    S_L >= 540 + 7,  # Castro to Mission travel time\n    S_L >= 735,       # Laura's earliest available time\n    S_L + 75 <= 1065, # Laura's meeting duration\n    S_A >= (S_L + 75 + 17),  # Mission to Financial District travel time\n    S_A >= 750,       # Anthony's earliest available time\n    S_A + 30 <= 885   # Anthony's meeting duration\n]\n\n# Scenario 2: Anthony first, then Laura\nscenario2_constraints = [\n    S_A >= 540 + 20,  # Castro to Financial District travel time\n    S_A >= 750,       # Anthony's earliest available time\n    S_A + 30 <= 885,  # Anthony's meeting duration\n    S_L >= (S_A + 30 + 17),  # Financial District to Mission travel time\n    S_L >= 735,       # Laura's earliest available time\n    S_L + 75 <= 1065  # Laura's meeting duration\n]\n\n# Add constraints for either scenario\nsolver.add(Or(And(scenario1_constraints), And(scenario2_constraints)))\n\n# Check for solution\nif solver.check() == sat:\n    model = solver.model()\n    sl_val = model[S_L].as_long()\n    sa_val = model[S_A].as_long()\n    \n    # Determine itinerary order\n    if sl_val < sa_val:\n        itinerary = [\n            {\n                \"action\": \"meet\",\n                \"location\": \"Mission District\",\n                \"person\": \"Laura\",\n                \"start_time\": to_time_str(sl_val),\n                \"end_time\": to_time_str(sl_val + 75)\n            },\n            {\n                \"action\": \"meet\",\n                \"location\": \"Financial District\",\n                \"person\": \"Anthony\",\n                \"start_time\": to_time_str(sa_val),\n                \"end_time\": to_time_str(sa_val + 30)\n            }\n        ]\n    else:\n        itinerary = [\n            {\n                \"action\": \"meet\",\n                \"location\": \"Financial District\",\n                \"person\": \"Anthony\",\n                \"start_time\": to_time_str(sa_val),\n                \"end_time\": to_time_str(sa_val + 30)\n            },\n            {\n                \"action\": \"meet\",\n                \"location\": \"Mission District\",\n                \"person\": \"Laura\",\n                \"start_time\": to_time_str(sl_val),\n                \"end_time\": to_time_str(sl_val + 75)\n            }\n        ]\n    \n    result = {\"itinerary\": itinerary}\n    print(json.dumps(result, indent=2))\nelse:\n    print(json.dumps({\"error\": \"No valid meeting schedule found\"}))"
+}

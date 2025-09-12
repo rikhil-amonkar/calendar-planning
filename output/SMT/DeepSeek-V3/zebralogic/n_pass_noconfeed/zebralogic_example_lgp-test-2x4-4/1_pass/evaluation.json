@@ -1,0 +1,53 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"solution\": {\n    \"header\": [\n      \"House\",\n      \"Name\",\n      \"HouseStyle\",\n      \"Height\",\n      \"Education\"\n    ],\n    \"rows\": [\n      [\n        \"1\",\n        \"Arnold\",\n        \"victorian\",\n        \"short\",\n        \"associate\"\n      ],\n      [\n        \"2\",\n        \"Eric\",\n        \"colonial\",\n        \"very short\",\n        \"high school\"\n      ]\n    ]\n  }\n}",
+    "pred": [
+        {
+            "House": "1",
+            "Name": "Arnold",
+            "HouseStyle": "victorian",
+            "Height": "short",
+            "Education": "associate"
+        },
+        {
+            "House": "2",
+            "Name": "Eric",
+            "HouseStyle": "colonial",
+            "Height": "very short",
+            "Education": "high school"
+        }
+    ],
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Arnold",
+            "HouseStyle": "victorian",
+            "Height": "short",
+            "Education": "associate"
+        },
+        {
+            "House": "2",
+            "Name": "Eric",
+            "HouseStyle": "colonial",
+            "Height": "very short",
+            "Education": "high school"
+        }
+    ],
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 48.25495481491089,
+        "execution_time": 0.07573437690734863,
+        "constraint_eval_time": 4.5299530029296875e-05,
+        "pred_extract_time": 0.8762140274047852,
+        "gold_extract_time": 5.4836273193359375e-06,
+        "total_tokens": 870,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import z3\nimport json\n\ndef main():\n    solver = z3.Solver()\n    \n    # Define the houses\n    houses = [1, 2]\n    \n    # Define attributes\n    names = ['Eric', 'Arnold']\n    house_styles = ['victorian', 'colonial']\n    heights = ['very short', 'short']\n    educations = ['associate', 'high school']\n    \n    # Create variables for each attribute per house\n    name_vars = {h: z3.Int(f'name_{h}') for h in houses}\n    style_vars = {h: z3.Int(f'style_{h}') for h in houses}\n    height_vars = {h: z3.Int(f'height_{h}') for h in houses}\n    education_vars = {h: z3.Int(f'education_{h}') for h in houses}\n    \n    # Define domains for each attribute\n    name_domain = {0: 'Eric', 1: 'Arnold'}\n    style_domain = {0: 'victorian', 1: 'colonial'}\n    height_domain = {0: 'very short', 1: 'short'}\n    education_domain = {0: 'associate', 1: 'high school'}\n    \n    # Constraint: All attributes must be within their domain\n    for h in houses:\n        solver.add(z3.And(name_vars[h] >= 0, name_vars[h] < len(names)))\n        solver.add(z3.And(style_vars[h] >= 0, style_vars[h] < len(house_styles)))\n        solver.add(z3.And(height_vars[h] >= 0, height_vars[h] < len(heights)))\n        solver.add(z3.And(education_vars[h] >= 0, education_vars[h] < len(educations)))\n    \n    # Constraint: All attributes must be unique per house\n    solver.add(z3.Distinct([name_vars[h] for h in houses]))\n    solver.add(z3.Distinct([style_vars[h] for h in houses]))\n    solver.add(z3.Distinct([height_vars[h] for h in houses]))\n    solver.add(z3.Distinct([education_vars[h] for h in houses]))\n    \n    # Clue 1: The person who is short is directly left of Eric.\n    # Since there are only 2 houses, short must be in house 1 and Eric in house 2\n    solver.add(height_vars[1] == 1)  # short is in house 1\n    solver.add(name_vars[2] == 0)    # Eric is in house 2\n    \n    # Clue 2: The person residing in a Victorian house is in the first house.\n    solver.add(style_vars[1] == 0)  # victorian is in house 1\n    \n    # Clue 3: The person who is short is the person with an associate's degree.\n    # Since short is in house 1, associate must also be in house 1\n    solver.add(education_vars[1] == 0)  # associate is in house 1\n    \n    # Check if solution exists\n    if solver.check() == z3.sat:\n        model = solver.model()\n        \n        # Prepare the solution\n        header = [\"House\", \"Name\", \"HouseStyle\", \"Height\", \"Education\"]\n        rows = []\n        \n        for house in sorted(houses):\n            name_val = name_domain[model.evaluate(name_vars[house]).as_long()]\n            style_val = style_domain[model.evaluate(style_vars[house]).as_long()]\n            height_val = height_domain[model.evaluate(height_vars[house]).as_long()]\n            education_val = education_domain[model.evaluate(education_vars[house]).as_long()]\n            \n            rows.append([str(house), name_val, style_val, height_val, education_val])\n        \n        # Create JSON output\n        output = {\n            \"solution\": {\n                \"header\": header,\n                \"rows\": rows\n            }\n        }\n        \n        print(json.dumps(output, indent=2))\n    else:\n        print('{\"error\": \"No solution found\"}')\n\nif __name__ == \"__main__\":\n    main()"
+}

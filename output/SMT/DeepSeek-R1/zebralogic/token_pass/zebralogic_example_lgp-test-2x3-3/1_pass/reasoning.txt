@@ -1,0 +1,109 @@
+We are given 2 houses, each with a unique combination of attributes: Name, Food, Mother.
+ We have three attributes: Name (Arnold, Eric), Food (grilled cheese, pizza), Mother (Holly, Aniya)
+
+ Clues:
+ 1. The person who loves eating grilled cheese is directly left of the person who is a pizza lover.
+    Since there are only two houses, this means:
+        House 1: grilled cheese
+        House 2: pizza
+
+ 2. Arnold is not in the second house -> so Arnold is in house 1.
+
+ 3. Arnold is the person whose mother's name is Holly -> so Arnold's mother is Holly, and since Arnold is in house 1, then house 1 has mother Holly.
+
+ Then, by process of elimination:
+    House 1: Arnold, grilled cheese, Holly
+    House 2: Eric, pizza, Aniya
+
+ However, we are to solve using Z3 to demonstrate the general method.
+
+ Steps in Z3:
+  We will create integer constants for each attribute and assign them to houses (or vice versa).
+  Alternatively, we can use enumerations for each attribute and then define functions from house to attribute.
+
+ Since the houses are fixed (1 and 2), we can create variables for each house and each attribute.
+
+ Let's define:
+   For house i (i=1,2):
+      name_i: which can be either Arnold or Eric (we can use an enumerated sort for names, or integers with constraints)
+      food_i: grilled cheese or pizza
+      mother_i: Holly or Aniya
+
+ We'll create an IntSort for each attribute and then constrain the values.
+
+ Alternatively, we can use EnumSort for each attribute.
+
+ Let's use EnumSort for each attribute to make it more readable.
+
+ Steps:
+  1. Create a Z3 solver.
+  2. Define enums for Name, Food, Mother.
+  3. For each house (1 and 2), create a constant for each attribute.
+  4. Add constraint that all attributes are distinct per category (but note: the problem says each attribute is unique per house, so for each attribute type, the two houses have different values).
+
+  5. Add the constraints from the clues.
+
+ However, note: the houses are only two, so we can also use direct assignments.
+
+ But let's do it in a way that can be extended to more houses.
+
+ We'll create:
+   Name = EnumSort('Name', ['Arnold','Eric'])
+   Food = EnumSort('Food', ['grilled_cheese','pizza'])   # Note: we use underscore to avoid space
+   Mother = EnumSort('Mother', ['Holly','Aniya'])
+
+ Then for house 1 and house 2, we create variables for each attribute.
+
+ Let:
+   name = Function('name', IntSort(), Name)   # But we only have two houses, so we can make two constants.
+
+ Alternatively, we can create constants for each house and each attribute.
+
+ Since there are only two houses, we can do:
+
+   name1, name2 = Consts('name1 name2', Name)
+   food1, food2 = Consts('food1 food2', Food)
+   mother1, mother2 = Consts('mother1 mother2', Mother)
+
+ Then we add the constraints:
+
+   Distinct(name1, name2)
+   Distinct(food1, food2)
+   Distinct(mother1, mother2)
+
+ Now, the clues:
+
+ 1. The person who loves eating grilled cheese is directly left of the person who is a pizza lover.
+    Since there are only two houses, this means:
+        food1 = grilled_cheese and food2 = pizza
+
+ 2. Arnold is not in the second house -> so name2 != Arnold, which implies name1 = Arnold.
+
+ 3. Arnold is the person whose mother's name is Holly -> so for the house where name is Arnold, mother is Holly.
+    Since Arnold is in house1, then mother1 = Holly.
+
+ Then, by elimination, we can set:
+   name2 = Eric
+   mother2 = Aniya
+
+ But we will let Z3 do the deductions.
+
+ Let's code accordingly.
+
+ However, note: we must use the exact string values for the output. We'll map the enum constants to strings.
+
+ We'll create a mapping from Z3 enums to strings for output.
+
+ Implementation:
+
+ We'll create the enums and then the variables for each house.
+
+ Then we add the constraints.
+
+ Then we check and get the model.
+
+ Then we output the rows as per required JSON.
+
+ Note: The output must be in the order of houses 1 and 2.
+
+ Let's write the code accordingly.

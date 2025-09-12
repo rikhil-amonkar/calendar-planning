@@ -1,0 +1,111 @@
+from z3 import *
+import json
+
+def main():
+    # Create a solver instance
+    s = Solver()
+    
+    # Define city enumeration
+    City = Datatype('City')
+    City.declare('Mykonos')
+    City.declare('Vienna')
+    City.declare('Venice')
+    City = City.create()
+    
+    # Segment variables: cities and lengths
+    s1_city, s2_city, s3_city = Consts('s1_city s2_city s3_city', City)
+    s1_len, s2_len, s3_len = Ints('s1_len s2_len s3_len')
+    
+    # Direct flights set
+    direct_flights = [(City.Mykonos, City.Vienna), (City.Vienna, City.Mykonos), 
+                     (City.Vienna, City.Venice), (City.Venice, City.Vienna)]
+    
+    # Constraints for segment connections
+    s.add(Or(And(s1_city == City.Mykonos, s2_city == City.Vienna),
+             And(s1_city == City.Vienna, s2_city == City.Mykonos),
+             And(s1_city == City.Vienna, s2_city == City.Venice),
+             And(s1_city == City.Venice, s2_city == City.Vienna)))
+    s.add(Or(And(s2_city == City.Mykonos, s3_city == City.Vienna),
+             And(s2_city == City.Vienna, s3_city == City.Mykonos),
+             And(s2_city == City.Vienna, s3_city == City.Venice),
+             And(s2_city == City.Venice, s3_city == City.Vienna)))
+    
+    # Segment length constraints (at least 1 day)
+    s.add(s1_len >= 1, s2_len >= 1, s3_len >= 1)
+    
+    # Total days constraint (accounting for double-counted travel days)
+    s.add(s1_len + s2_len + s3_len == 12)
+    
+    # City day constraints
+    s.add(Sum(If(s1_city == City.Mykonos, s1_len, 0),
+              If(s2_city == City.Mykonos, s2_len, 0),
+              If(s3_city == City.Mykonos, s3_len, 0)) == 2)
+    s.add(Sum(If(s1_city == City.Vienna, s1_len, 0),
+              If(s2_city == City.Vienna, s2_len, 0),
+              If(s3_city == City.Vienna, s3_len, 0)) == 4)
+    s.add(Sum(If(s1_city == City.Venice, s1_len, 0),
+              If(s2_city == City.Venice, s2_len, 0),
+              If(s3_city == City.Venice, s3_len, 0)) == 6)
+    
+    # Calculate segment start and end days
+    start1 = 1
+    end1 = start1 + s1_len - 1
+    start2 = end1
+    end2 = start2 + s2_len - 1
+    start3 = end2
+    end3 = start3 + s3_len - 1
+    s.add(end3 == 10)  # Total calendar days must be 10
+    
+    # Workshop constraint: Venice must be visited between days 5-10
+    venice_segment_constraints = []
+    for seg_start, seg_end, seg_city in [(start1, end1, s1_city),
+                                         (start2, end2, s2_city),
+                                         (start3, end3, s3_city)]:
+        venice_segment_constraints.append(
+            And(seg_city == City.Venice,
+                seg_start <= 10,
+                seg_end >= 5)
+        )
+    s.add(Or(venice_segment_constraints))
+    
+    # Check satisfiability
+    if s.check() == sat:
+        m = s.model()
+        # Extract segment values
+        s1_city_val = m.eval(s1_city)
+        s2_city_val = m.eval(s2_city)
+        s3_city_val = m.eval(s3_city)
+        s1_len_val = m.eval(s1_len).as_long()
+        s2_len_val = m.eval(s2_len).as_long()
+        s3_len_val = m.eval(s3_len).as_long()
+        
+        # Calculate day ranges
+        seg1_start = 1
+        seg1_end = seg1_start + s1_len_val - 1
+        seg2_start = seg1_end
+        seg2_end = seg2_start + s2_len_val - 1
+        seg3_start = seg2_end
+        seg3_end = seg3_start + s3_len_val - 1
+        
+        # Build itinerary
+        itinerary = []
+        itinerary.append({
+            "day_range": f"Day {seg1_start}-{seg1_end}",
+            "place": str(s1_city_val)
+        })
+        itinerary.append({
+            "day_range": f"Day {seg2_start}-{seg2_end}",
+            "place": str(s2_city_val)
+        })
+        itinerary.append({
+            "day_range": f"Day {seg3_start}-{seg3_end}",
+            "place": str(s3_city_val)
+        })
+        
+        # Output as JSON
+        print(json.dumps({"itinerary": itinerary}))
+    else:
+        print('{"itinerary": []}')
+
+if __name__ == "__main__":
+    main()

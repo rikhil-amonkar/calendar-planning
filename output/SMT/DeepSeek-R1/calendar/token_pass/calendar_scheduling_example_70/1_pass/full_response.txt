@@ -1,0 +1,81 @@
+To solve this meeting scheduling problem, we need to find the earliest available 30-minute slot between 9:00 and 17:00 on Monday that accommodates the busy schedules of all participants. The solution uses the Z3 SMT solver to model and solve the constraints efficiently.
+
+### Approach
+1. **Convert Time to Minutes**: Translate all time points into minutes past 9:00 AM for easier arithmetic manipulation.
+2. **Define Variables**: Use Z3 integer variables to represent the start and end times of the meeting.
+3. **Set Constraints**:
+   - The meeting must start between 9:00 AM (0 minutes) and 4:30 PM (450 minutes) to ensure it ends by 5:00 PM.
+   - The meeting duration must be exactly 30 minutes.
+   - The meeting must not overlap with any of the participants' busy intervals.
+4. **Solve for Earliest Time**: Use Z3 to find the earliest start time that satisfies all constraints.
+5. **Convert Back to Time Format**: Translate the solution back into a readable time format.
+
+### Solution Code
+```python
+from z3 import *
+
+def main():
+    # Initialize solver
+    s = Solver()
+    
+    # Meeting duration in minutes
+    meeting_duration = 30
+    
+    # Work hours: 9:00 to 17:00 (8 hours = 480 minutes)
+    work_start = 0
+    work_end = 480
+    
+    # Define start time variable (in minutes from 9:00)
+    start = Int('start')
+    
+    # Constraint: Start time must be within work hours and allow meeting to end by 17:00
+    s.add(start >= work_start)
+    s.add(start <= work_end - meeting_duration)
+    
+    # Busy intervals in minutes from 9:00
+    denise_busy = [(180, 210), (390, 420)]  # 12:00-12:30, 15:30-16:00
+    angela_busy = []  # No meetings
+    natalie_busy = [(0, 150), (180, 240), (300, 330), (360, 480)]  # 9:00-11:30, 12:00-13:00, 14:00-14:30, 15:00-17:00
+    
+    # Function to add no-overlap constraints for a person's busy intervals
+    def add_no_overlap_constraints(busy_intervals):
+        for interval in busy_intervals:
+            b_start, b_end = interval
+            # Meeting must not overlap with busy interval: it must end before or start after
+            s.add(Or(start + meeting_duration <= b_start, start >= b_end))
+    
+    # Add constraints for each participant
+    add_no_overlap_constraints(denise_busy)
+    add_no_overlap_constraints(angela_busy)
+    add_no_overlap_constraints(natalie_busy)
+    
+    # Check if a solution exists
+    if s.check() == sat:
+        m = s.model()
+        start_minutes = m.evaluate(start).as_long()
+        
+        # Convert start minutes to time string
+        start_hour = 9 + start_minutes // 60
+        start_minute = start_minutes % 60
+        end_minutes = start_minutes + meeting_duration
+        end_hour = 9 + end_minutes // 60
+        end_minute = end_minutes % 60
+        
+        # Format the output
+        time_str = f"{start_hour:02d}:{start_minute:02d}:{end_hour:02d}:{end_minute:02d}"
+        print("Monday")
+        print(time_str)
+    else:
+        print("No solution found")
+
+if __name__ == "__main__":
+    main()
+```
+
+### Explanation
+1. **Time Conversion**: All times are converted into minutes past 9:00 AM to simplify arithmetic operations. For example, 12:00 PM becomes 180 minutes (3 hours * 60 minutes).
+2. **Z3 Variables and Constraints**: The start time of the meeting is represented as a Z3 integer variable. Constraints ensure the meeting fits within work hours and avoids all busy intervals.
+3. **Non-Overlap Constraints**: For each busy interval, constraints are added to ensure the meeting does not overlap. This is done by requiring the meeting to either end before the busy interval starts or start after it ends.
+4. **Earliest Time Solution**: The solver checks for the earliest feasible start time. If found, it converts the solution back to a readable time format and prints the result.
+
+This approach efficiently leverages constraint programming to find the optimal meeting time, ensuring all participants' schedules are respected while meeting the requirement for the earliest available slot.

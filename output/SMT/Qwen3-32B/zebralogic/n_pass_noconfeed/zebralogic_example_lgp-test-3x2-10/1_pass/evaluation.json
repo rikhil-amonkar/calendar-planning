@@ -1,0 +1,55 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"solution\": {\n    \"header\": [\n      \"House\",\n      \"Name\",\n      \"Height\"\n    ],\n    \"rows\": [\n      [\n        \"1\",\n        \"Peter\",\n        \"average\"\n      ],\n      [\n        \"2\",\n        \"Eric\",\n        \"very short\"\n      ],\n      [\n        \"3\",\n        \"Arnold\",\n        \"short\"\n      ]\n    ]\n  }\n}",
+    "pred": [
+        {
+            "House": "1",
+            "Name": "Peter",
+            "Height": "average"
+        },
+        {
+            "House": "2",
+            "Name": "Eric",
+            "Height": "very short"
+        },
+        {
+            "House": "3",
+            "Name": "Arnold",
+            "Height": "short"
+        }
+    ],
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Peter",
+            "Height": "average"
+        },
+        {
+            "House": "2",
+            "Name": "Eric",
+            "Height": "very short"
+        },
+        {
+            "House": "3",
+            "Name": "Arnold",
+            "Height": "short"
+        }
+    ],
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 169.1392855644226,
+        "execution_time": 0.07919096946716309,
+        "constraint_eval_time": 4.0531158447265625e-05,
+        "pred_extract_time": 0.8107039928436279,
+        "gold_extract_time": 8.821487426757812e-06,
+        "total_tokens": 11413,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\nimport json\n\n# Initialize solver\nsolver = Solver()\n\n# Define variables for each person's house\nE = Int('E')  # Eric's house\nA = Int('A')  # Arnold's house\nP = Int('P')  # Peter's house\n\n# Define variables for each height's house\nvs = Int('vs')  # very short\ns = Int('s')    # short\na = Int('a')    # average\n\n# Constraints for people's houses\nsolver.add(And(1 <= E, E <= 3))\nsolver.add(And(1 <= A, A <= 3))\nsolver.add(And(1 <= P, P <= 3))\nsolver.add(Distinct(E, A, P))\nsolver.add(E != 1)  # Clue 1: Eric is not in the first house\nsolver.add(A != 1)  # Clue 4: Arnold is not in the first house\n\n# Constraints for heights\nsolver.add(And(1 <= vs, vs <= 3))\nsolver.add(And(1 <= s, s <= 3))\nsolver.add(And(1 <= a, a <= 3))\nsolver.add(Distinct(vs, s, a))\nsolver.add(vs < s)  # Clue 2: very short is left of short\nsolver.add(E == vs)  # Clue 3: Eric is very short\n\n# Check for solution\nif solver.check() == sat:\n    model = solver.model()\n    \n    # Extract values from model\n    e_val = model[E].as_long()\n    a_val = model[A].as_long()\n    p_val = model[P].as_long()\n    vs_val = model[vs].as_long()\n    s_val = model[s].as_long()\n    a_h_val = model[a].as_long()\n    \n    # Build solution rows\n    rows = []\n    for house_num in [1, 2, 3]:\n        # Determine name\n        if e_val == house_num:\n            name = \"Eric\"\n        elif a_val == house_num:\n            name = \"Arnold\"\n        else:\n            name = \"Peter\"\n            \n        # Determine height\n        if vs_val == house_num:\n            height = \"very short\"\n        elif s_val == house_num:\n            height = \"short\"\n        else:\n            height = \"average\"\n            \n        rows.append([str(house_num), name, height])\n    \n    # Format as required JSON\n    solution = {\n        \"solution\": {\n            \"header\": [\"House\", \"Name\", \"Height\"],\n            \"rows\": rows\n        }\n    }\n    \n    print(json.dumps(solution, indent=2))\nelse:\n    print(json.dumps({\"error\": \"No solution found\"}))"
+}

@@ -1,0 +1,162 @@
+import z3
+import json
+
+def main():
+    # Convert time to minutes since midnight
+    def time_to_minutes(time_str):
+        parts = time_str.split(':')
+        hours = int(parts[0])
+        minutes = int(parts[1]) if len(parts) > 1 else 0
+        return hours * 60 + minutes
+
+    # Convert minutes back to time string
+    def minutes_to_time(minutes):
+        hours = minutes // 60
+        mins = minutes % 60
+        return f"{hours}:{mins:02d}"
+
+    # Travel times dictionary
+    travel_times = {
+        "Haight-Ashbury": {
+            "Mission District": 11,
+            "Bayview": 18,
+            "Pacific Heights": 12,
+            "Russian Hill": 17,
+            "Fisherman's Wharf": 23
+        },
+        "Mission District": {
+            "Haight-Ashbury": 12,
+            "Bayview": 15,
+            "Pacific Heights": 16,
+            "Russian Hill": 15,
+            "Fisherman's Wharf": 22
+        },
+        "Bayview": {
+            "Haight-Ashbury": 19,
+            "Mission District": 13,
+            "Pacific Heights": 23,
+            "Russian Hill": 23,
+            "Fisherman's Wharf": 25
+        },
+        "Pacific Heights": {
+            "Haight-Ashbury": 11,
+            "Mission District": 15,
+            "Bayview": 22,
+            "Russian Hill": 7,
+            "Fisherman's Wharf": 13
+        },
+        "Russian Hill": {
+            "Haight-Ashbury": 17,
+            "Mission District": 16,
+            "Bayview": 23,
+            "Pacific Heights": 7,
+            "Fisherman's Wharf": 7
+        },
+        "Fisherman's Wharf": {
+            "Haight-Ashbury": 22,
+            "Mission District": 22,
+            "Bayview": 26,
+            "Pacific Heights": 12,
+            "Russian Hill": 7
+        }
+    }
+
+    # Friend constraints
+    friends = [
+        {"name": "Stephanie", "location": "Mission District", 
+         "start": time_to_minutes("8:15"), "end": time_to_minutes("13:45"), "min_duration": 90},
+        {"name": "Sandra", "location": "Bayview", 
+         "start": time_to_minutes("13:00"), "end": time_to_minutes("19:30"), "min_duration": 15},
+        {"name": "Richard", "location": "Pacific Heights", 
+         "start": time_to_minutes("7:15"), "end": time_to_minutes("10:15"), "min_duration": 75},
+        {"name": "Brian", "location": "Russian Hill", 
+         "start": time_to_minutes("12:15"), "end": time_to_minutes("16:00"), "min_duration": 120},
+        {"name": "Jason", "location": "Fisherman's Wharf", 
+         "start": time_to_minutes("8:30"), "end": time_to_minutes("17:45"), "min_duration": 60}
+    ]
+    
+    start_location = "Haight-Ashbury"
+    start_time = time_to_minutes("9:00")
+    
+    # Initialize Z3 solver
+    solver = z3.Optimize()
+    
+    # Create variables for each friend meeting
+    meet_vars = []
+    start_vars = []
+    end_vars = []
+    for i, friend in enumerate(friends):
+        meet_vars.append(z3.Bool(f"meet_{i}"))
+        start_vars.append(z3.Int(f"start_{i}"))
+        end_vars.append(z3.Int(f"end_{i}"))
+    
+    # Constraint: If we meet, must be within available time and duration
+    for i, friend in enumerate(friends):
+        solver.add(z3.Implies(meet_vars[i], 
+            z3.And(
+                start_vars[i] >= friend["start"],
+                end_vars[i] <= friend["end"],
+                end_vars[i] - start_vars[i] >= friend["min_duration"]
+            )))
+    
+    # Constraint: Travel time from start location to first meeting
+    for i, friend in enumerate(friends):
+        travel = travel_times[start_location][friend["location"]]
+        solver.add(z3.Implies(meet_vars[i], start_vars[i] >= start_time + travel))
+    
+    # Constraints for travel between meetings
+    for i in range(len(friends)):
+        for j in range(i+1, len(friends)):
+            # If both meetings happen, they must not overlap and include travel
+            travel_ij = travel_times[friends[i]["location"]][friends[j]["location"]]
+            travel_ji = travel_times[friends[j]["location"]][friends[i]["location"]]
+            
+            solver.add(z3.Implies(z3.And(meet_vars[i], meet_vars[j]),
+                z3.Or(
+                    end_vars[i] + travel_ij <= start_vars[j],
+                    end_vars[j] + travel_ji <= start_vars[i]
+                )))
+    
+    # Maximize number of meetings
+    meeting_count = z3.Sum([z3.If(var, 1, 0) for var in meet_vars])
+    solver.maximize(meeting_count)
+    
+    # Check feasibility
+    if solver.check() == z3.sat:
+        model = solver.model()
+        itinerary = []
+        
+        # Collect all scheduled meetings
+        meetings = []
+        for i, friend in enumerate(friends):
+            if z3.is_true(model.eval(meet_vars[i])):
+                start_val = model.eval(start_vars[i]).as_long()
+                end_val = model.eval(end_vars[i]).as_long()
+                meetings.append({
+                    "person": friend["name"],
+                    "location": friend["location"],
+                    "start": start_val,
+                    "end": end_val
+                })
+        
+        # Sort meetings by start time
+        meetings.sort(key=lambda x: x["start"])
+        
+        # Convert to output format
+        for meeting in meetings:
+            itinerary.append({
+                "action": "meet",
+                "location": meeting["location"],
+                "person": meeting["person"],
+                "start_time": minutes_to_time(meeting["start"]),
+                "end_time": minutes_to_time(meeting["end"])
+            })
+        
+        # Output as JSON
+        result = {"itinerary": itinerary}
+        print(json.dumps(result, indent=2))
+    else:
+        print('{"itinerary": []}')
+
+if __name__ == "__main__":
+    main()

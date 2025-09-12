@@ -1,0 +1,29 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "12:00:13:00 Tuesday",
+    "pred": {
+        "day": "Tuesday",
+        "time_range": "{12:00:13:00}"
+    },
+    "gold": {
+        "day": "Tuesday",
+        "time_range": "{12:00:13:00}"
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 764.4145250320435,
+        "execution_time": 0.0801842212677002,
+        "constraint_eval_time": 5.125999450683594e-05,
+        "pred_extract_time": 0.5228021144866943,
+        "gold_extract_time": 4.315376281738281e-05,
+        "total_tokens": 36546,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\n\n# Create solver instance\nsolver = Solver()\n\n# Variables\nday = Int('day')\nstart = Int('start')\n\n# Constraints for day and start time\nsolver.add(Or(day == 1, day == 3))  # Tuesday (1) or Thursday (3)\nsolver.add(start >= 540, start <= 960)  # 9:00 to 16:00\n\n# Helper function to add non-overlapping constraints for intervals\ndef add_non_overlap_constraints(participant_intervals, day_value):\n    for s, e in participant_intervals:\n        solver.add(Implies(day == day_value, Or(start + 60 <= s, e <= start)))\n\n# Tuesday (day == 1) intervals\n# Laura's busy times on Tuesday\nlaura_tue_intervals = [\n    (570, 600),  # 9:30-10:00\n    (660, 690),  # 11:00-11:30\n    (780, 810),  # 13:00-13:30\n    (870, 900),  # 14:30-15:00\n    (960, 1020)  # 16:00-17:00\n]\n# Philip's busy times on Tuesday\nphilip_tue_intervals = [\n    (540, 660),  # 9:00-11:00\n    (690, 720),  # 11:30-12:00\n    (780, 810),  # 13:00-13:30\n    (840, 870),  # 14:00-14:30\n    (900, 990)   # 15:00-16:30\n]\nadd_non_overlap_constraints(laura_tue_intervals, 1)\nadd_non_overlap_constraints(philip_tue_intervals, 1)\n\n# Thursday (day == 3) intervals\n# Laura's busy times on Thursday\nlaura_thu_intervals = [\n    (630, 660),  # 10:30-11:00\n    (720, 810),  # 12:00-13:30\n    (900, 930),  # 15:00-15:30\n    (960, 990)   # 16:00-16:30\n]\n# Philip's busy times on Thursday\nphilip_thu_intervals = [\n    (540, 630),  # 9:00-10:30\n    (660, 750),  # 11:00-12:30\n    (780, 1020)  # 13:00-17:00\n]\nadd_non_overlap_constraints(laura_thu_intervals, 3)\nadd_non_overlap_constraints(philip_thu_intervals, 3)\n\n# Check for solution\nif solver.check() == sat:\n    model = solver.model()\n    day_val = model.eval(day).as_long()\n    start_val = model.eval(start).as_long()\n    end_val = start_val + 60\n\n    # Convert day to name\n    day_name = ''\n    if day_val == 1:\n        day_name = 'Tuesday'\n    elif day_val == 3:\n        day_name = 'Thursday'\n\n    # Convert start and end times to HH:MM format\n    def to_time_str(minutes):\n        h = minutes // 60\n        m = minutes % 60\n        return f\"{h:02d}:{m:02d}\"\n    \n    start_str = to_time_str(start_val)\n    end_str = to_time_str(end_val)\n    print(f\"{start_str}:{end_str} {day_name}\")\nelse:\n    print(\"No solution found\")"
+}

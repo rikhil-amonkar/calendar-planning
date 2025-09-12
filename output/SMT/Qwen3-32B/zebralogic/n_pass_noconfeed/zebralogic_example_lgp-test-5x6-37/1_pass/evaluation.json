@@ -1,0 +1,71 @@
+{
+    "has_execution_error": true,
+    "has_no_plan": false,
+    "execution_output": null,
+    "pred": null,
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Eric",
+            "Hobby": "knitting",
+            "FavoriteSport": "swimming",
+            "HouseStyle": "craftsman",
+            "Children": "Meredith",
+            "Height": "average"
+        },
+        {
+            "House": "2",
+            "Name": "Alice",
+            "Hobby": "gardening",
+            "FavoriteSport": "soccer",
+            "HouseStyle": "ranch",
+            "Children": "Timothy",
+            "Height": "tall"
+        },
+        {
+            "House": "3",
+            "Name": "Arnold",
+            "Hobby": "cooking",
+            "FavoriteSport": "tennis",
+            "HouseStyle": "modern",
+            "Children": "Samantha",
+            "Height": "very short"
+        },
+        {
+            "House": "4",
+            "Name": "Peter",
+            "Hobby": "photography",
+            "FavoriteSport": "baseball",
+            "HouseStyle": "colonial",
+            "Children": "Bella",
+            "Height": "very tall"
+        },
+        {
+            "House": "5",
+            "Name": "Bob",
+            "Hobby": "painting",
+            "FavoriteSport": "basketball",
+            "HouseStyle": "victorian",
+            "Children": "Fred",
+            "Height": "short"
+        }
+    ],
+    "status": "Error",
+    "violated_constraint": {
+        "invalid_output": "No valid output structure found"
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 611.095050573349,
+        "execution_time": 0.07689881324768066,
+        "constraint_eval_time": 5.245208740234375e-06,
+        "pred_extract_time": 1.0013580322265625e-05,
+        "gold_extract_time": 2.0265579223632812e-05,
+        "total_tokens": 44759,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\nimport json\n\ndef main():\n    # Define EnumSorts\n    Name, (Bob, Arnold, Alice, Peter, Eric) = EnumSort('Name', ['Bob', 'Arnold', 'Alice', 'Peter', 'Eric'])\n    Hobby, (Cooking, Gardening, Painting, Photography, Knitting) = EnumSort('Hobby', ['cooking', 'gardening', 'painting', 'photography', 'knitting'])\n    Sport, (Swimming, Tennis, Soccer, Baseball, Basketball) = EnumSort('Sport', ['swimming', 'tennis', 'soccer', 'baseball', 'basketball'])\n    HouseStyle, (Ranch, Craftsman, Victorian, Modern, Colonial) = EnumSort('HouseStyle', ['ranch', 'craftsman', 'victorian', 'modern', 'colonial'])\n    Child, (Timothy, Samantha, Bella, Meredith, Fred) = EnumSort('Child', ['Timothy', 'Samantha', 'Bella', 'Meredith', 'Fred'])\n    Height, (Average, VeryTall, VeryShort, Short, Tall) = EnumSort('Height', ['average', 'very tall', 'very short', 'short', 'tall'])\n\n    # Create variables for each house (1-5) and each attribute\n    houses = [1, 2, 3, 4, 5]\n    name = [Const(f\"name_{i}\", Name) for i in houses]\n    hobby = [Const(f\"hobby_{i}\", Hobby) for i in houses]\n    sport = [Const(f\"sport_{i}\", Sport) for i in houses]\n    house_style = [Const(f\"style_{i}\", HouseStyle) for i in houses]\n    child = [Const(f\"child_{i}\", Child) for i in houses]\n    height = [Const(f\"height_{i}\", Height) for i in houses]\n\n    solver = Solver()\n\n    # Add constraints that each attribute is unique per category\n    for lst in [name, hobby, sport, house_style, child, height]:\n        solver.add(Distinct(lst))\n\n    # Now add all the clues as constraints\n\n    # Clue 1: The person with average height has child Meredith.\n    for i in houses:\n        solver.add(If(height[i] == Average, child[i] == Meredith, True))\n\n    # Clue 2: Tall is in house 2\n    solver.add(height[2] == Tall)\n\n    # Clue 3: Peter is directly left of the person residing in a Victorian house\n    clue3 = Or([And(name[i] == Peter, house_style[i+1] == Victorian) for i in range(1, 5)])\n    solver.add(clue3)\n\n    # Clue 4: Alice is the person who is tall\n    solver.add(name[2] == Alice)\n\n    # Clue 5: The person who loves baseball is the person who is very tall\n    for i in houses:\n        solver.add(If(sport[i] == Baseball, height[i] == VeryTall, True))\n        solver.add(If(height[i] == VeryTall, sport[i] == Baseball, True))\n\n    # Clue 6: Meredith's parent and Timothy's parent are next to each other\n    clue6 = Or([Or(And(child[i] == Meredith, child[i+1] == Timothy), And(child[i+1] == Meredith, child[i] == Timothy)) for i in range(1, 5)])\n    solver.add(clue6)\n\n    # Clue 7: Bob's hobby is painting\n    for i in houses:\n        solver.add(If(name[i] == Bob, hobby[i] == Painting, True))\n\n    # Clue 8: Gardening is in house 2\n    solver.add(hobby[2] == Gardening)\n\n    # Clue 9: VeryShort is to the right of Eric\n    for j in range(2, 6):\n        i_values = range(1, j)\n        condition = Or([name[i] == Eric for i in i_values])\n        solver.add(If(height[j] == VeryShort, condition, True))\n    solver.add(height[1] != VeryShort)\n\n    # Clue 10: Tennis lover has child Samantha\n    for i in houses:\n        solver.add(If(sport[i] == Tennis, child[i] == Samantha, True))\n\n    # Clue 11: Soccer not in first house\n    for i in houses:\n        solver.add(If(sport[i] == Soccer, i != 1, True))\n\n    # Clue 12: Samantha's parent is in modern-style house\n    for i in houses:\n        solver.add(If(child[i] == Samantha, house_style[i] == Modern, True))\n\n    # Clue 13: Craftsman style has average height\n    for i in houses:\n        solver.add(If(house_style[i] == Craftsman, height[i] == Average, True))\n\n    # Clue 14: Fred's parent is in Victorian house\n    for i in houses:\n        solver.add(If(child[i] == Fred, house_style[i] == Victorian, True))\n\n    # Clue 15: Short person loves basketball\n    for i in houses:\n        solver.add(If(height[i] == Short, sport[i] == Basketball, True))\n\n    # Clue 16: Peter is very tall\n    for i in houses:\n        solver.add(If(name[i] == Peter, height[i] == VeryTall, True))\n\n    # Clue 17: Ranch is left of cooking\n    clue17 = Or([And(house_style[i] == Ranch, hobby[j] == Cooking) for i in range(1, 5) for j in range(i+1, 6)])\n    solver.add(clue17)\n\n    # Clue 18: Knitting and Gardening are adjacent\n    solver.add(Or(hobby[1] == Knitting, hobby[3] == Knitting))\n\n    # Clue 19: Modern style has cooking\n    for i in houses:\n        solver.add(If(house_style[i] == Modern, hobby[i] == Cooking, True))\n\n    # Clue 20: Victorian is in house 5\n    solver.add(house_style[5] == Victorian)\n\n    # Check for solution\n    if solver.check() == sat:\n        model = solver.model()\n        solution = []\n        for i in houses:\n            row = [\n                str(i),\n                model.evaluate(name[i]).decl().name(),\n                model.evaluate(hobby[i]).decl().name(),\n                model.evaluate(sport[i]).decl().name(),\n                model.evaluate(house_style[i]).decl().name(),\n                model.evaluate(child[i]).decl().name(),\n                model.evaluate(height[i]).decl().name()\n            ]\n            solution.append(row)\n        result = {\n            \"solution\": {\n                \"header\": [\"House\", \"Name\", \"Hobby\", \"FavoriteSport\", \"HouseStyle\", \"Children\", \"Height\"],\n                \"rows\": solution\n            }\n        }\n        print(json.dumps(result, indent=2))\n    else:\n        print(\"No solution found.\")\n\nif __name__ == \"__main__\":\n    main()"
+}

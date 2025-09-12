@@ -1,0 +1,143 @@
+import json
+from z3 import *
+
+def main():
+    solver = Solver()
+    
+    # Define the attributes with integer representations
+    names = ['Eric', 'Peter', 'Arnold', 'Alice', 'Bob']
+    foods = ['stir fry', 'spaghetti', 'stew', 'grilled cheese', 'pizza']
+    cars = ['ford f150', 'tesla model 3', 'bmw 3 series', 'toyota camry', 'honda civic']
+    phones = ['iphone 13', 'google pixel 6', 'samsung galaxy s21', 'oneplus 9', 'huawei p50']
+    occupations = ['teacher', 'lawyer', 'doctor', 'artist', 'engineer']
+    drinks = ['tea', 'milk', 'water', 'root beer', 'coffee']
+    
+    # Create variables for each house and each attribute
+    name_vars = [Int(f'name_{i}') for i in range(1,6)]
+    food_vars = [Int(f'food_{i}') for i in range(1,6)]
+    car_vars = [Int(f'car_{i}') for i in range(1,6)]
+    phone_vars = [Int(f'phone_{i}') for i in range(1,6)]
+    occupation_vars = [Int(f'occupation_{i}') for i in range(1,6)]
+    drink_vars = [Int(f'drink_{i}') for i in range(1,6)]
+    
+    # Ensure each attribute has a value between 0 and 4
+    for var in name_vars + food_vars + car_vars + phone_vars + occupation_vars + drink_vars:
+        solver.add(var >= 0, var <= 4)
+    
+    # Ensure all attributes are distinct within their category
+    solver.add(Distinct(name_vars))
+    solver.add(Distinct(food_vars))
+    solver.add(Distinct(car_vars))
+    solver.add(Distinct(phone_vars))
+    solver.add(Distinct(occupation_vars))
+    solver.add(Distinct(drink_vars))
+    
+    # Add clues as constraints
+    # Clue 1: root beer lover owns Honda Civic
+    for i in range(5):
+        solver.add(Implies(drink_vars[i] == drinks.index('root beer'), car_vars[i] == cars.index('honda civic')))
+    
+    # Clue 2: milk drinker left of grilled cheese eater
+    for i in range(4):
+        solver.add(Implies(drink_vars[i] == drinks.index('milk'), food_vars[i+1] == foods.index('grilled cheese')))
+    
+    # Clue 3: Alice uses Samsung Galaxy S21
+    for i in range(5):
+        solver.add(Implies(name_vars[i] == names.index('Alice'), phone_vars[i] == phones.index('samsung galaxy s21')))
+    
+    # Clue 4: Alice loves stir fry
+    for i in range(5):
+        solver.add(Implies(name_vars[i] == names.index('Alice'), food_vars[i] == foods.index('stir fry')))
+    
+    # Clue 5: tea drinker not in fifth house
+    solver.add(drink_vars[4] != drinks.index('tea'))
+    
+    # Clue 6: BMW owner left of tea drinker
+    for i in range(5):
+        for j in range(5):
+            if i < j:
+                solver.add(Implies(And(car_vars[i] == cars.index('bmw 3 series'), drink_vars[j] == drinks.index('tea')), i < j))
+    
+    # Clue 7: doctor is Arnold
+    for i in range(5):
+        solver.add(Implies(occupation_vars[i] == occupations.index('doctor'), name_vars[i] == names.index('Arnold')))
+    
+    # Clue 8: iPhone 13 user is coffee drinker
+    for i in range(5):
+        solver.add(Implies(phone_vars[i] == phones.index('iphone 13'), drink_vars[i] == drinks.index('coffee')))
+    
+    # Clue 9: engineer owns BMW
+    for i in range(5):
+        solver.add(Implies(occupation_vars[i] == occupations.index('engineer'), car_vars[i] == cars.index('bmw 3 series')))
+    
+    # Clue 10: stew lover uses iPhone 13
+    for i in range(5):
+        solver.add(Implies(food_vars[i] == foods.index('stew'), phone_vars[i] == phones.index('iphone 13')))
+    
+    # Clue 11: doctor left of OnePlus 9 user
+    for i in range(4):
+        solver.add(Implies(occupation_vars[i] == occupations.index('doctor'), phone_vars[i+1] == phones.index('oneplus 9')))
+    
+    # Clue 12: Honda Civic owner left of spaghetti eater
+    for i in range(4):
+        solver.add(Implies(car_vars[i] == cars.index('honda civic'), food_vars[i+1] == foods.index('spaghetti')))
+    
+    # Clue 13: Google Pixel 6 user is tea drinker
+    for i in range(5):
+        solver.add(Implies(phone_vars[i] == phones.index('google pixel 6'), drink_vars[i] == drinks.index('tea')))
+    
+    # Clue 14: Alice is artist
+    for i in range(5):
+        solver.add(Implies(name_vars[i] == names.index('Alice'), occupation_vars[i] == occupations.index('artist')))
+    
+    # Clue 15: One house between Alice and Ford F150 owner
+    for i in range(5):
+        for j in range(5):
+            if abs(i - j) == 2:
+                solver.add(Implies(name_vars[i] == names.index('Alice'), car_vars[j] == cars.index('ford f150')))
+    
+    # Clue 16: Arnold owns Toyota Camry
+    for i in range(5):
+        solver.add(Implies(name_vars[i] == names.index('Arnold'), car_vars[i] == cars.index('toyota camry')))
+    
+    # Clue 17: Eric in fourth house
+    solver.add(name_vars[3] == names.index('Eric'))
+    
+    # Clue 18: OnePlus 9 user is lawyer
+    for i in range(5):
+        solver.add(Implies(phone_vars[i] == phones.index('oneplus 9'), occupation_vars[i] == occupations.index('lawyer')))
+    
+    # Clue 19: grilled cheese eater is Peter
+    for i in range(5):
+        solver.add(Implies(food_vars[i] == foods.index('grilled cheese'), name_vars[i] == names.index('Peter')))
+    
+    # Check and get solution
+    if solver.check() == sat:
+        model = solver.model()
+        
+        # Prepare solution data
+        rows = []
+        for i in range(5):
+            house_num = str(i+1)
+            name_val = names[model.evaluate(name_vars[i]).as_long()]
+            food_val = foods[model.evaluate(food_vars[i]).as_long()]
+            car_val = cars[model.evaluate(car_vars[i]).as_long()]
+            phone_val = phones[model.evaluate(phone_vars[i]).as_long()]
+            occupation_val = occupations[model.evaluate(occupation_vars[i]).as_long()]
+            drink_val = drinks[model.evaluate(drink_vars[i]).as_long()]
+            
+            rows.append([house_num, name_val, food_val, car_val, phone_val, occupation_val, drink_val])
+        
+        solution = {
+            "solution": {
+                "header": ["House", "Name", "Food", "CarModel", "PhoneModel", "Occupation", "Drink"],
+                "rows": rows
+            }
+        }
+        
+        print(json.dumps(solution, indent=2))
+    else:
+        print("No solution found")
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,60 @@
+{
+    "has_execution_error": true,
+    "has_no_plan": false,
+    "execution_output": null,
+    "pred": null,
+    "gold": {
+        "itinerary": [
+            {
+                "day_range": "Day 1-5",
+                "place": "Stuttgart"
+            },
+            {
+                "day_range": "Day 5-8",
+                "place": "Edinburgh"
+            },
+            {
+                "day_range": "Day 8-11",
+                "place": "Prague"
+            },
+            {
+                "day_range": "Day 11-15",
+                "place": "Reykjavik"
+            },
+            {
+                "day_range": "Day 15-18",
+                "place": "Vienna"
+            },
+            {
+                "day_range": "Day 18-19",
+                "place": "Manchester"
+            },
+            {
+                "day_range": "Day 19-23",
+                "place": "Split"
+            },
+            {
+                "day_range": "Day 23-25",
+                "place": "Lyon"
+            }
+        ]
+    },
+    "status": "Error",
+    "violated_constraint": {
+        "missing_itinerary": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 692.4750647544861,
+        "execution_time": 0.07605409622192383,
+        "constraint_eval_time": 7.152557373046875e-06,
+        "pred_extract_time": 1.0728836059570312e-05,
+        "gold_extract_time": 9.417533874511719e-05,
+        "total_tokens": 45507,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import z3\nimport json\n\n# Define city codes and durations\ncities = ['Vienna', 'Lyon', 'Edinburgh', 'Reykjavik', 'Stuttgart', 'Manchester', 'Split', 'Prague']\ndurations = [4, 3, 4, 5, 5, 2, 5, 4]\nnum_cities = len(cities)\n\n# Allowed direct flights (city codes)\nallowed_flights = set()\nallowed_pairs = [\n    (3,4), (4,3),  # Reykjavik-Stuttgart\n    (4,6), (6,4),  # Stuttgart-Split\n    (4,0), (0,4),  # Stuttgart-Vienna\n    (7,5), (5,7),  # Prague-Manchester\n    (2,7), (7,2),  # Edinburgh-Prague\n    (5,6), (6,5),  # Manchester-Split\n    (7,0), (0,7),  # Prague-Vienna\n    (0,5), (5,0),  # Vienna-Manchester\n    (7,6), (6,7),  # Prague-Split\n    (0,1), (1,0),  # Vienna-Lyon\n    (4,2), (2,4),  # Stuttgart-Edinburgh\n    (6,1), (1,6),  # Split-Lyon\n    (4,5), (5,4),  # Stuttgart-Manchester\n    (7,1), (1,7),  # Prague-Lyon\n    (3,0), (0,3),  # Reykjavik-Vienna\n    (7,3), (3,7),  # Prague-Reykjavik\n    (0,6), (6,0),  # Vienna-Split\n]\nfor a, b in allowed_pairs:\n    allowed_flights.add((a, b))\n\n# Create Z3 solver\nsolver = z3.Solver()\n\n# Create variables for positions and start days\npos = [z3.Int(f'pos_{i}') for i in range(num_cities)]\ns = [z3.Int(f's_{i}') for i in range(num_cities)]\n\n# Add constraints\n# 1. All positions are distinct and in 0..7\nsolver.add(z3.Distinct(pos))\nfor i in range(num_cities):\n    solver.add(pos[i] >= 0, pos[i] < num_cities)\n\n# 2. s_0 == 1\nsolver.add(s[0] == 1)\n\n# 3. s_{i+1} = s_i + durations[pos_i] - 1\nfor i in range(num_cities - 1):\n    solver.add(s[i+1] == s[i] + durations[pos[i]] - 1)\n\n# 4. end day of last city is 25\nsolver.add(s[num_cities - 1] + durations[pos[num_cities - 1]] - 1 == 25)\n\n# 5. Edinburgh (code 2) must have start day 5\nfor i in range(num_cities):\n    solver.add(z3.Implies(pos[i] == 2, s[i] == 5))\n\n# 6. Split (code 6) must have start day between 15 and 21\nfor i in range(num_cities):\n    solver.add(z3.Implies(pos[i] == 6, s[i] >= 15))\n    solver.add(z3.Implies(pos[i] == 6, s[i] <= 21))\n\n# 7. Consecutive cities must have direct flights\nfor i in range(num_cities - 1):\n    current_city = pos[i]\n    next_city = pos[i+1]\n    flight_constraints = []\n    for a, b in allowed_flights:\n        flight_constraints.append(z3.And(current_city == a, next_city == b))\n    solver.add(z3.Or(flight_constraints))\n\n# Check if the constraints are satisfiable\nif solver.check() == z3.sat:\n    model = solver.model()\n    # Extract the order of cities\n    order = []\n    for i in range(num_cities):\n        pos_val = model.evaluate(pos[i]).as_long()\n        order.append(pos_val)\n    # Now, get the start days for each position\n    start_days = []\n    for i in range(num_cities):\n        start_days.append(model.evaluate(s[i]).as_long())\n    # Now, create the itinerary\n    itinerary = []\n    for i in range(num_cities):\n        city_code = order[i]\n        city_name = cities[city_code]\n        start_day = start_days[i]\n        duration = durations[city_code]\n        end_day = start_day + duration - 1\n        day_range = f\"Day {start_day}-{end_day}\"\n        itinerary.append({\"day_range\": day_range, \"place\": city_name})\n    # Output as JSON\n    print(json.dumps({\"itinerary\": itinerary}))\nelse:\n    print(\"No solution found.\")"
+}

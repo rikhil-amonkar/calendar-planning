@@ -1,0 +1,105 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"solution\": {\n    \"header\": [\n      \"House\",\n      \"Name\",\n      \"Birthday\",\n      \"Mother\",\n      \"Occupation\",\n      \"HairColor\"\n    ],\n    \"rows\": [\n      [\n        \"1\",\n        \"Eric\",\n        \"feb\",\n        \"Penny\",\n        \"doctor\",\n        \"red\"\n      ],\n      [\n        \"2\",\n        \"Peter\",\n        \"sept\",\n        \"Holly\",\n        \"lawyer\",\n        \"black\"\n      ],\n      [\n        \"3\",\n        \"Arnold\",\n        \"april\",\n        \"Janelle\",\n        \"engineer\",\n        \"blonde\"\n      ],\n      [\n        \"4\",\n        \"Bob\",\n        \"jan\",\n        \"Aniya\",\n        \"artist\",\n        \"brown\"\n      ],\n      [\n        \"5\",\n        \"Alice\",\n        \"mar\",\n        \"Kailyn\",\n        \"teacher\",\n        \"gray\"\n      ]\n    ]\n  }\n}",
+    "pred": [
+        {
+            "House": "1",
+            "Name": "Eric",
+            "Birthday": "feb",
+            "Mother": "Penny",
+            "Occupation": "doctor",
+            "HairColor": "red"
+        },
+        {
+            "House": "2",
+            "Name": "Peter",
+            "Birthday": "sept",
+            "Mother": "Holly",
+            "Occupation": "lawyer",
+            "HairColor": "black"
+        },
+        {
+            "House": "3",
+            "Name": "Arnold",
+            "Birthday": "april",
+            "Mother": "Janelle",
+            "Occupation": "engineer",
+            "HairColor": "blonde"
+        },
+        {
+            "House": "4",
+            "Name": "Bob",
+            "Birthday": "jan",
+            "Mother": "Aniya",
+            "Occupation": "artist",
+            "HairColor": "brown"
+        },
+        {
+            "House": "5",
+            "Name": "Alice",
+            "Birthday": "mar",
+            "Mother": "Kailyn",
+            "Occupation": "teacher",
+            "HairColor": "gray"
+        }
+    ],
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Eric",
+            "Birthday": "feb",
+            "Mother": "Penny",
+            "Occupation": "doctor",
+            "HairColor": "red"
+        },
+        {
+            "House": "2",
+            "Name": "Peter",
+            "Birthday": "sept",
+            "Mother": "Holly",
+            "Occupation": "lawyer",
+            "HairColor": "black"
+        },
+        {
+            "House": "3",
+            "Name": "Arnold",
+            "Birthday": "april",
+            "Mother": "Janelle",
+            "Occupation": "engineer",
+            "HairColor": "blonde"
+        },
+        {
+            "House": "4",
+            "Name": "Bob",
+            "Birthday": "jan",
+            "Mother": "Aniya",
+            "Occupation": "artist",
+            "HairColor": "brown"
+        },
+        {
+            "House": "5",
+            "Name": "Alice",
+            "Birthday": "mar",
+            "Mother": "Kailyn",
+            "Occupation": "teacher",
+            "HairColor": "gray"
+        }
+    ],
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 711.3015415668488,
+        "execution_time": 0.10060739517211914,
+        "constraint_eval_time": 9.036064147949219e-05,
+        "pred_extract_time": 2.919905424118042,
+        "gold_extract_time": 2.6226043701171875e-05,
+        "total_tokens": 49107,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import json\nfrom z3 import *\n\n# Define EnumSorts\nNames, (Alice, Eric, Bob, Peter, Arnold) = EnumSort('Names', ['Alice', 'Eric', 'Bob', 'Peter', 'Arnold'])\nBirthdays, (mar, april, sept, feb, jan) = EnumSort('Birthdays', ['mar', 'april', 'sept', 'feb', 'jan'])\nMothers, (Holly, Janelle, Kailyn, Penny, Aniya) = EnumSort('Mothers', ['Holly', 'Janelle', 'Kailyn', 'Penny', 'Aniya'])\nOccupations, (engineer, doctor, lawyer, artist, teacher) = EnumSort('Occupations', ['engineer', 'doctor', 'lawyer', 'artist', 'teacher'])\nHairColors, (red, blonde, black, gray, brown) = EnumSort('HairColors', ['red', 'blonde', 'black', 'gray', 'brown'])\n\n# Create functions for each attribute\nname_func = Function('name', IntSort(), Names)\nbirthday_func = Function('birthday', IntSort(), Birthdays)\nmother_func = Function('mother', IntSort(), Mothers)\noccupation_func = Function('occupation', IntSort(), Occupations)\nhaircolor_func = Function('haircolor', IntSort(), HairColors)\n\ns = Solver()\n\n# Add uniqueness constraints for each attribute\nfor i in range(1, 6):\n    for j in range(i + 1, 6):\n        s.add(name_func(i) != name_func(j))\n        s.add(birthday_func(i) != birthday_func(j))\n        s.add(mother_func(i) != mother_func(j))\n        s.add(occupation_func(i) != occupation_func(j))\n        s.add(haircolor_func(i) != haircolor_func(j))\n\n# Add clues\n# Clue 1: birthday is mar in house 5\ns.add(birthday_func(5) == mar)\n\n# Clue 2: birthday is feb in house 1\ns.add(birthday_func(1) == feb)\n\n# Clue 3: doctor is Eric\nfor h in range(1, 6):\n    s.add(Implies(occupation_func(h) == doctor, name_func(h) == Eric))\n\n# Clue 4: mother is Janelle in house 3\ns.add(mother_func(3) == Janelle)\n\n# Clue 5: artist has brown hair\nfor h in range(1, 6):\n    s.add(Implies(occupation_func(h) == artist, haircolor_func(h) == brown))\n\n# Clue 6: artist is in house 4\ns.add(occupation_func(4) == artist)\n\n# Clue 7: Penny is left of black hair\nclue7 = Or([And(mother_func(i) == Penny, haircolor_func(j) == black) for i in range(1, 6) for j in range(i + 1, 6)])\ns.add(clue7)\n\n# Clue 8: Peter has black hair\nfor h in range(1, 6):\n    s.add(Implies(name_func(h) == Peter, haircolor_func(h) == black))\n\n# Clue 9: gray hair is teacher\nfor h in range(1, 6):\n    s.add(Implies(haircolor_func(h) == gray, occupation_func(h) == teacher))\n\n# Clue 10: Alice's mother is Kailyn\nfor h in range(1, 6):\n    s.add(Implies(name_func(h) == Alice, mother_func(h) == Kailyn))\n\n# Clue 11: Arnold is right of sept birthday\nfor h1 in range(1, 6):\n    for h2 in range(1, 6):\n        s.add(Implies(And(birthday_func(h1) == sept, name_func(h2) == Arnold), h2 > h1))\n\n# Clue 12: brown hair has jan birthday\nfor h in range(1, 6):\n    s.add(Implies(haircolor_func(h) == brown, birthday_func(h) == jan))\n\n# Clue 13: Arnold has blonde hair\nfor h in range(1, 6):\n    s.add(Implies(name_func(h) == Arnold, haircolor_func(h) == blonde))\n\n# Clue 14: Holly's mother has black hair\nfor h in range(1, 6):\n    s.add(Implies(mother_func(h) == Holly, haircolor_func(h) == black))\n\n# Clue 15: Peter is lawyer\nfor h in range(1, 6):\n    s.add(Implies(name_func(h) == Peter, occupation_func(h) == lawyer))\n\n# Clue 16: sept birthday is left of Kailyn mother\nfor h_sept in range(1, 6):\n    for h_kailyn in range(1, 6):\n        s.add(Implies(And(birthday_func(h_sept) == sept, mother_func(h_kailyn) == Kailyn), h_sept < h_kailyn))\n\n# Clue 17: Alice has gray hair\nfor h in range(1, 6):\n    s.add(Implies(name_func(h) == Alice, haircolor_func(h) == gray))\n\n# Check for solution\nif s.check() == sat:\n    model = s.model()\n    rows = []\n    for h in range(1, 6):\n        name_val = model.eval(name_func(h)).decl().name()\n        birthday_val = model.eval(birthday_func(h)).decl().name()\n        mother_val = model.eval(mother_func(h)).decl().name()\n        occupation_val = model.eval(occupation_func(h)).decl().name()\n        haircolor_val = model.eval(haircolor_func(h)).decl().name()\n        rows.append([str(h), name_val, birthday_val, mother_val, occupation_val, haircolor_val])\n    solution = {\n        \"solution\": {\n            \"header\": [\"House\", \"Name\", \"Birthday\", \"Mother\", \"Occupation\", \"HairColor\"],\n            \"rows\": rows\n        }\n    }\n    print(json.dumps(solution, indent=2))\nelse:\n    print(\"No solution found.\")"
+}

@@ -1,0 +1,57 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"itinerary\": [\n    {\n      \"action\": \"meet\",\n      \"location\": \"Marina District\",\n      \"person\": \"Carol\",\n      \"start_time\": \"11:30\",\n      \"end_time\": \"12:30\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Pacific Heights\",\n      \"person\": \"Jessica\",\n      \"start_time\": \"15:30\",\n      \"end_time\": \"16:15\"\n    }\n  ]\n}",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Marina District",
+                "person": "Carol",
+                "start_time": "11:30",
+                "end_time": "12:30"
+            },
+            {
+                "action": "meet",
+                "location": "Pacific Heights",
+                "person": "Jessica",
+                "start_time": "15:30",
+                "end_time": "16:15"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Marina District",
+                "person": "Carol",
+                "start_time": "11:30",
+                "end_time": "12:30"
+            },
+            {
+                "action": "meet",
+                "location": "Pacific Heights",
+                "person": "Jessica",
+                "start_time": "15:30",
+                "end_time": "16:15"
+            }
+        ]
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 396.21211767196655,
+        "execution_time": 0.07825589179992676,
+        "constraint_eval_time": 3.9577484130859375e-05,
+        "pred_extract_time": 1.9536755084991455,
+        "gold_extract_time": 7.82012939453125e-05,
+        "total_tokens": 26078,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import z3\nimport json\n\ndef to_time_str(minutes):\n    hours = minutes // 60\n    mins = minutes % 60\n    return f\"{hours}:{mins:02d}\"\n\ndef main():\n    solver = z3.Solver()\n\n    # Variables\n    carol_start = z3.Int('carol_start')\n    carol_end = z3.Int('carol_end')\n    jessica_start = z3.Int('jessica_start')\n    jessica_end = z3.Int('jessica_end')\n\n    # Carol's constraints (11:30 AM to 3:00 PM)\n    solver.add(carol_start >= 690)  # 11:30 AM in minutes\n    solver.add(carol_end <= 900)    # 3:00 PM in minutes\n    solver.add(carol_end - carol_start >= 60)  # Minimum 60 minutes\n\n    # Jessica's constraints (3:30 PM to 4:45 PM)\n    solver.add(jessica_start >= 930)  # 3:30 PM in minutes\n    solver.add(jessica_end <= 1005)   # 4:45 PM in minutes\n    solver.add(jessica_end - jessica_start >= 45)  # Minimum 45 minutes\n\n    # Timeline constraints\n    # Travel from Richmond to Marina (9 minutes)\n    # Carol's meeting must start after arrival at Marina (9:00 AM + 9 min = 9:09 AM = 549)\n    # But Carol's earliest availability is 11:30 AM (690), so no need to add\n    # Travel from Marina to Pacific Heights (7 minutes)\n    solver.add(jessica_start >= carol_end + 7)\n    solver.add(jessica_start >= 930)  # Jessica's earliest start time\n\n    if solver.check() == z3.sat:\n        model = solver.model()\n        c_start = model.eval(carol_start).as_long()\n        c_end = model.eval(carol_end).as_long()\n        j_start = model.eval(jessica_start).as_long()\n        j_end = model.eval(jessica_end).as_long()\n\n        itinerary = [\n            {\n                \"action\": \"meet\",\n                \"location\": \"Marina District\",\n                \"person\": \"Carol\",\n                \"start_time\": to_time_str(c_start),\n                \"end_time\": to_time_str(c_end)\n            },\n            {\n                \"action\": \"meet\",\n                \"location\": \"Pacific Heights\",\n                \"person\": \"Jessica\",\n                \"start_time\": to_time_str(j_start),\n                \"end_time\": to_time_str(j_end)\n            }\n        ]\n        print(json.dumps({\"itinerary\": itinerary}, indent=2))\n    else:\n        print(json.dumps({\"itinerary\": []}))\n\nif __name__ == \"__main__\":\n    main()"
+}

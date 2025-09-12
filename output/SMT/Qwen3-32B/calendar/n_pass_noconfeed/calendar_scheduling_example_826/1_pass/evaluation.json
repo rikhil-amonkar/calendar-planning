@@ -1,0 +1,29 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "Monday 11:30:12:00",
+    "pred": {
+        "day": "Monday",
+        "time_range": "{11:30:12:00}"
+    },
+    "gold": {
+        "day": "Monday",
+        "time_range": "{9:30:10:00}"
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": false,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 737.0397706031799,
+        "execution_time": 0.08174252510070801,
+        "constraint_eval_time": 2.9802322387695312e-05,
+        "pred_extract_time": 0.6193094253540039,
+        "gold_extract_time": 2.6941299438476562e-05,
+        "total_tokens": 41282,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\n\n# Define the days and their occupied i lists\ndays = [\"Monday\", \"Tuesday\", \"Wednesday\", \"Thursday\"]\noccupied = {\n    \"Monday\": [0, 3, 7, 11, 12, 15],\n    \"Tuesday\": [0,1,2,3,5,7,8,9,10,11,12,14,15],\n    \"Wednesday\": [2,3,6,7,9,10,11,12,13],\n    \"Thursday\": [1,2,3,4,5,6,8,10,15]\n}\n\nfor day in days:\n    solver = Solver()\n    i = Int('i')\n    solver.add(And(i >= 0, i <= 15))\n    if occupied[day]:\n        solver.add(Not(Or([i == o for o in occupied[day]])))\n    if solver.check() == sat:\n        model = solver.model()\n        selected_i = model[i].as_long()\n        start_minutes = selected_i * 30\n        start_hour = 9 + start_minutes // 60\n        start_min = start_minutes % 60\n        end_minutes = start_minutes + 30\n        end_hour = 9 + end_minutes // 60\n        end_min = end_minutes % 60\n        start_time = f\"{start_hour:02d}:{start_min:02d}\"\n        end_time = f\"{end_hour:02d}:{end_min:02d}\"\n        print(f\"{day} {start_time}:{end_time}\")\n        break"
+}

@@ -1752,7 +1752,7 @@ Return only the Python code:"""
 
     def save_output_files(self, task, example_id, pass_num, conversation, code, output, evaluation):
         """Save all output files for a given pass"""
-        output_dir = f"../output/SMT/Qwen2.5-Coder-32B-Instruct/{task}/n_pass_noconfeed/{example_id}/{pass_num}_pass"
+        output_dir = f"../output/SMT/Qwen3-32B/{task}/n_pass_noconfeed/{example_id}/{pass_num}_pass"
         os.makedirs(output_dir, exist_ok=True)
         
         # Save conversation
@@ -1810,7 +1810,7 @@ Return only the Python code:"""
         
         # Scan all evaluation files to collect token data
         for task in ["calendar", "meeting", "trip", "zebralogic"]:
-            task_dir = f"../output/SMT/Qwen2.5-Coder-32B-Instruct/{task}/n_pass_noconfeed"
+            task_dir = f"../output/SMT/Qwen3-32B/{task}/n_pass_noconfeed"
             if not os.path.exists(task_dir):
                 continue
                 

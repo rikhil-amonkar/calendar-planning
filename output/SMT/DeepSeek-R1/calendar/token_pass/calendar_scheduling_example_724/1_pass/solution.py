@@ -1,0 +1,88 @@
+from z3 import *
+
+def main():
+    # Initialize solver
+    s = Solver()
+    
+    # Define day variable: 0=Monday, 1=Tuesday, 2=Wednesday
+    day = Int('day')
+    
+    # Define start time in minutes from midnight
+    start_time = Int('start_time')
+    
+    # Meeting duration in minutes
+    duration = 30
+    
+    # Work hours: 9:00 to 17:00 (in minutes from midnight)
+    work_start = 9 * 60
+    work_end = 17 * 60
+    
+    # Constraint: day must be between 0 and 2
+    s.add(day >= 0, day <= 2)
+    
+    # Constraint: meeting must be within work hours
+    s.add(start_time >= work_start)
+    s.add(start_time + duration <= work_end)
+    
+    # Define busy times for Tyler and Ruth (in minutes from midnight)
+    # Tyler's busy intervals per day
+    tyler_busy = {
+        0: [],  # Monday: no fixed busy times, but has preference
+        1: [(9*60, 9*60+30), (14*60+30, 15*60)],  # Tuesday
+        2: [(10*60+30, 11*60), (12*60+30, 13*60), (13*60+30, 14*60), (16*60+30, 17*60)]  # Wednesday
+    }
+    
+    # Ruth's busy intervals per day
+    ruth_busy = {
+        0: [(9*60, 10*60), (10*60+30, 12*60), (12*60+30, 14*60+30), (15*60, 16*60), (16*60+30, 17*60)],
+        1: [(9*60, 17*60)],  # Entire Tuesday busy
+        2: [(9*60, 17*60)]   # Entire Wednesday busy
+    }
+    
+    # For each day, add constraints that the meeting doesn't overlap with busy times
+    for d in range(3):
+        # Create condition for meeting on day d
+        day_condition = (day == d)
+        
+        # Tyler's constraints for day d
+        for busy_start, busy_end in tyler_busy[d]:
+            # Meeting must not overlap with busy interval
+            s.add(Implies(day_condition, 
+                          Or(start_time + duration <= busy_start, 
+                             start_time >= busy_end)))
+        
+        # Ruth's constraints for day d
+        for busy_start, busy_end in ruth_busy[d]:
+            s.add(Implies(day_condition, 
+                          Or(start_time + duration <= busy_start, 
+                             start_time >= busy_end)))
+    
+    # Tyler's preference: Avoid Monday before 16:00
+    s.add(Implies(day == 0, start_time >= 16*60))
+    
+    # Check for solution
+    if s.check() == sat:
+        m = s.model()
+        d = m[day].as_long()
+        start_minutes = m[start_time].as_long()
+        
+        # Convert minutes to time string
+        start_hour = start_minutes // 60
+        start_minute = start_minutes % 60
+        end_minutes = start_minutes + duration
+        end_hour = end_minutes // 60
+        end_minute = end_minutes % 60
+        
+        # Format time strings
+        time_str = f"{start_hour:02d}:{start_minute:02d}:{end_hour:02d}:{end_minute:02d}"
+        
+        # Map day index to day name
+        days = ["Monday", "Tuesday", "Wednesday"]
+        day_str = days[d]
+        
+        print(f"{day_str} {time_str}")
+    else:
+        print("No solution found")
+
+if __name__ == "__main__":
+    main()

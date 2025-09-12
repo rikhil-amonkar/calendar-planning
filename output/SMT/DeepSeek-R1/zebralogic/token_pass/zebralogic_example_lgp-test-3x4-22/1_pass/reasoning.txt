@@ -1,0 +1,84 @@
+We are given 3 houses. Each house has attributes: Name, MusicGenre, Children, BookGenre.
+ We need to assign each attribute to a house such that all are unique per category.
+
+ Steps:
+ 1. Define the attributes and the houses.
+ 2. Create Z3 variables for each attribute for each house.
+ 3. Set up the constraints based on the clues.
+
+ Let house numbers be 1, 2, 3.
+
+ We'll create:
+   Name: Arnold, Eric, Peter
+   MusicGenre: pop, rock, classical
+   Children: Fred, Meredith, Bella
+   BookGenre: mystery, romance, science fiction
+
+ Since the houses are ordered, we can use the house numbers to represent positions.
+
+ We'll create a list of houses, and for each house, we'll have a variable for each attribute.
+
+ Alternatively, we can create arrays for each attribute type, indexed by house number (1-indexed, but we'll use 0-indexed in code).
+
+ We'll use IntSort for each variable and use distinct constraints.
+
+ However, note that the attributes are symbolic. We can use EnumSort for each category.
+
+ Approach:
+   For each category, we'll create an Enum sort with the given names.
+
+   Then for each house i (0,1,2 for houses 1,2,3), we'll have a variable for that category.
+
+   Then we add constraints that all variables in the same category are distinct.
+
+   Then we add the constraints from the clues.
+
+ Clues:
+ 1. The person's child is named Fred is directly left of the person who loves mystery books.
+    Let Children_i be the child for house i.
+    Let BookGenre_i be the book genre for house i.
+    So: There exists an i such that Children_i == Fred and BookGenre_{i+1} == mystery.
+
+ 2. Peter is in the first house.
+    So: Name_0 == Peter
+
+ 3. The person who loves mystery books is the person who loves classical music.
+    So: For the house j where BookGenre_j == mystery, then MusicGenre_j == classical.
+
+ 4. The person who loves science fiction books is the person's child is named Meredith.
+    So: For the house j where BookGenre_j == science_fiction, then Children_j == Meredith.
+
+ 5. Eric is the person who loves mystery books.
+    So: For the house j where BookGenre_j == mystery, then Name_j == Eric.
+
+ 6. The person who loves rock music is somewhere to the right of the person who loves romance books.
+    Let pos_rock be the house number for rock music, and pos_romance for romance books.
+    Then: pos_rock > pos_romance.
+
+ We have 3 houses, so we can use integers 0,1,2 for house indices.
+
+ Implementation:
+
+ We'll create:
+   Name_sort, (Arnold, Eric, Peter) = EnumSort('Name', ['Arnold','Eric','Peter'])
+   Music_sort = EnumSort('Music', ['pop','rock','classical'])
+   Children_sort = EnumSort('Children', ['Fred','Meredith','Bella'])
+   Book_sort = EnumSort('Book', ['mystery','romance','science_fiction'])
+
+ Then for each house i in [0,1,2]:
+   name[i] = Const('name_%d' % i, Name_sort)
+   music[i] = Const('music_%d' % i, Music_sort)
+   children[i] = Const('children_%d' % i, Children_sort)
+   book[i] = Const('book_%d' % i, Book_sort)
+
+ Then we add:
+   Distinct(name[0], name[1], name[2])
+   ... for each category.
+
+ Then we add the constraints.
+
+ Finally, we check and output the model.
+
+ Note: We must output the solution in the order of houses 1,2,3 (which are indices 0,1,2).
+
+ Let's code accordingly.

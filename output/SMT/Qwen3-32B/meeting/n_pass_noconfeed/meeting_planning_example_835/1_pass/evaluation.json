@@ -1,0 +1,129 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\"itinerary\": [{\"action\": \"meet\", \"location\": \"Bayview\", \"person\": \"Deborah\", \"start_time\": \"10:38\", \"end_time\": \"11:08\"}, {\"action\": \"meet\", \"location\": \"Golden Gate Park\", \"person\": \"Helen\", \"start_time\": \"11:30\", \"end_time\": \"12:15\"}, {\"action\": \"meet\", \"location\": \"Financial District\", \"person\": \"Rebecca\", \"start_time\": \"14:45\", \"end_time\": \"15:15\"}, {\"action\": \"meet\", \"location\": \"Union Square\", \"person\": \"Joseph\", \"start_time\": \"15:24\", \"end_time\": \"17:24\"}, {\"action\": \"meet\", \"location\": \"Sunset District\", \"person\": \"Ronald\", \"start_time\": \"17:51\", \"end_time\": \"18:51\"}, {\"action\": \"meet\", \"location\": \"The Castro\", \"person\": \"Steven\", \"start_time\": \"20:15\", \"end_time\": \"22:00\"}, {\"action\": \"meet\", \"location\": \"Marina District\", \"person\": \"Matthew\", \"start_time\": \"9:26\", \"end_time\": \"10:11\"}]}",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Marina District",
+                "person": "Matthew",
+                "start_time": "9:26",
+                "end_time": "10:11"
+            },
+            {
+                "action": "meet",
+                "location": "Bayview",
+                "person": "Deborah",
+                "start_time": "10:38",
+                "end_time": "11:08"
+            },
+            {
+                "action": "meet",
+                "location": "Golden Gate Park",
+                "person": "Helen",
+                "start_time": "11:30",
+                "end_time": "12:15"
+            },
+            {
+                "action": "meet",
+                "location": "Financial District",
+                "person": "Rebecca",
+                "start_time": "14:45",
+                "end_time": "15:15"
+            },
+            {
+                "action": "meet",
+                "location": "Union Square",
+                "person": "Joseph",
+                "start_time": "15:24",
+                "end_time": "17:24"
+            },
+            {
+                "action": "meet",
+                "location": "Sunset District",
+                "person": "Ronald",
+                "start_time": "17:51",
+                "end_time": "18:51"
+            },
+            {
+                "action": "meet",
+                "location": "The Castro",
+                "person": "Steven",
+                "start_time": "20:15",
+                "end_time": "22:00"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Golden Gate Park",
+                "person": "Helen",
+                "start_time": "9:30",
+                "end_time": "10:15"
+            },
+            {
+                "action": "meet",
+                "location": "Bayview",
+                "person": "Deborah",
+                "start_time": "10:38",
+                "end_time": "11:08"
+            },
+            {
+                "action": "meet",
+                "location": "Marina District",
+                "person": "Matthew",
+                "start_time": "11:35",
+                "end_time": "12:20"
+            },
+            {
+                "action": "meet",
+                "location": "Financial District",
+                "person": "Rebecca",
+                "start_time": "14:45",
+                "end_time": "15:15"
+            },
+            {
+                "action": "meet",
+                "location": "Union Square",
+                "person": "Joseph",
+                "start_time": "15:24",
+                "end_time": "17:24"
+            },
+            {
+                "action": "meet",
+                "location": "Sunset District",
+                "person": "Ronald",
+                "start_time": "17:51",
+                "end_time": "18:51"
+            },
+            {
+                "action": "meet",
+                "location": "The Castro",
+                "person": "Steven",
+                "start_time": "20:15",
+                "end_time": "22:00"
+            }
+        ]
+    },
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "constraints_satisfied_but_no_exact_match": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 1344.4809761047363,
+        "execution_time": 2.5778067111968994,
+        "constraint_eval_time": 0.0003237724304199219,
+        "pred_extract_time": 5.2907702922821045,
+        "gold_extract_time": 5.3882598876953125e-05,
+        "total_tokens": 82457,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import json\nfrom z3 import *\n\n# Define friends and their data\nfriends = [\n    {'name': 'Helen', 'location': 1, 'start': 570, 'end': 735, 'duration': 45},\n    {'name': 'Steven', 'location': 2, 'start': 1215, 'end': 1320, 'duration': 105},\n    {'name': 'Deborah', 'location': 3, 'start': 510, 'end': 720, 'duration': 30},\n    {'name': 'Matthew', 'location': 4, 'start': 555, 'end': 855, 'duration': 45},\n    {'name': 'Joseph', 'location': 5, 'start': 855, 'end': 1125, 'duration': 120},\n    {'name': 'Ronald', 'location': 6, 'start': 960, 'end': 1245, 'duration': 60},\n    {'name': 'Robert', 'location': 7, 'start': 1110, 'end': 1275, 'duration': 120},\n    {'name': 'Rebecca', 'location': 8, 'start': 885, 'end': 975, 'duration': 30},\n    {'name': 'Elizabeth', 'location': 9, 'start': 1110, 'end': 1260, 'duration': 120},\n]\n\n# Define travel matrix\ntravel_times = [\n    (0, 1, 15), (0, 2, 16), (0, 3, 22), (0, 4, 6), (0, 5, 12), (0, 6, 21), (0, 7, 10), (0, 8, 13), (0, 9, 15),\n    (1, 0, 16), (1, 2, 13), (1, 3, 23), (1, 4, 16), (1, 5, 22), (1, 6, 10), (1, 7, 9), (1, 8, 26), (1, 9, 17),\n    (2, 0, 16), (2, 1, 11), (2, 3, 19), (2, 4, 21), (2, 5, 19), (2, 6, 17), (2, 7, 8), (2, 8, 21), (2, 9, 7),\n    (3, 0, 23), (3, 1, 22), (3, 2, 19), (3, 4, 27), (3, 5, 18), (3, 6, 23), (3, 7, 16), (3, 8, 19), (3, 9, 13),\n    (4, 0, 7), (4, 1, 18), (4, 2, 22), (4, 3, 27), (4, 5, 16), (4, 6, 19), (4, 7, 15), (4, 8, 17), (4, 9, 20),\n    (5, 0, 15), (5, 1, 22), (5, 2, 17), (5, 3, 15), (5, 4, 18), (5, 6, 27), (5, 7, 15), (5, 8, 9), (5, 9, 14),\n    (6, 0, 21), (6, 1, 11), (6, 2, 17), (6, 3, 22), (6, 4, 21), (6, 5, 30), (6, 7, 17), (6, 8, 30), (6, 9, 25),\n    (7, 0, 10), (7, 1, 9), (7, 2, 8), (7, 3, 16), (7, 4, 15), (7, 5, 14), (7, 6, 16), (7, 8, 17), (7, 9, 10),\n    (8, 0, 13), (8, 1, 23), (8, 2, 20), (8, 3, 19), (8, 4, 15), (8, 5, 9), (8, 6, 30), (8, 7, 17), (8, 9, 17),\n    (9, 0, 16), (9, 1, 17), (9, 2, 7), (9, 3, 14), (9, 4, 19), (9, 5, 15), (9, 6, 24), (9, 7, 11), (9, 8, 15),\n]\n\ntravel_matrix = [[0 for _ in range(10)] for _ in range(10)]\nfor from_loc, to_loc, time in travel_times:\n    travel_matrix[from_loc][to_loc] = time\n\n# Define locations\nlocations = [\n    \"Pacific Heights\",\n    \"Golden Gate Park\",\n    \"The Castro\",\n    \"Bayview\",\n    \"Marina District\",\n    \"Union Square\",\n    \"Sunset District\",\n    \"Alamo Square\",\n    \"Financial District\",\n    \"Mission District\"\n]\n\n# Z3 setup\nsolver = Optimize()\n\n# Define travel_time_func as a function from two integers to integer\ntravel_time_func = Function('travel_time_func', IntSort(), IntSort(), IntSort())\nfor from_loc in range(10):\n    for to_loc in range(10):\n        solver.add(travel_time_func(from_loc, to_loc) == travel_matrix[from_loc][to_loc])\n\n# Define friend data arrays as Z3 arrays\nfriend_location = Array('friend_location', IntSort(), IntSort())\nfriend_start = Array('friend_start', IntSort(), IntSort())\nfriend_end = Array('friend_end', IntSort(), IntSort())\nfriend_duration = Array('friend_duration', IntSort(), IntSort())\n\nfor j in range(len(friends)):\n    friend_location = Store(friend_location, j, friends[j]['location'])\n    friend_start = Store(friend_start, j, friends[j]['start'])\n    friend_end = Store(friend_end, j, friends[j]['end'])\n    friend_duration = Store(friend_duration, j, friends[j]['duration'])\n\n# Define variables for each step\nmax_meetings = 10\nmeet = [Bool(f\"meet_{i}\") for i in range(max_meetings)]\nfriend = [Int(f\"friend_{i}\") for i in range(max_meetings)]\nstart = [Int(f\"start_{i}\") for i in range(max_meetings)]\ncurrent_time = [Int(f\"current_time_{i}\") for i in range(max_meetings)]\ncurrent_location = [Int(f\"current_location_{i}\") for i in range(max_meetings)]\n\n# Initial conditions for step 0\nsolver.add(Implies(meet[0], And(0 <= friend[0], friend[0] < len(friends))))\n\nfl_0 = Select(friend_location, friend[0])\nfs_0 = Select(friend_start, friend[0])\nfe_0 = Select(friend_end, friend[0])\nfd_0 = Select(friend_duration, friend[0])\n\nsolver.add(Implies(meet[0], start[0] >= 540 + travel_time_func(0, fl_0)))\nsolver.add(Implies(meet[0], start[0] >= fs_0))\nsolver.add(Implies(meet[0], start[0] + fd_0 <= fe_0))\nsolver.add(Implies(meet[0], current_time[0] == start[0] + fd_0))\nsolver.add(Implies(meet[0], current_location[0] == fl_0))\nsolver.add(Implies(Not(meet[0]), current_time[0] == 540))\nsolver.add(Implies(Not(meet[0]), current_location[0] == 0))\n\n# Add constraints for steps 1 to 9\nfor i in range(1, max_meetings):\n    solver.add(Implies(meet[i], And(0 <= friend[i], friend[i] < len(friends))))\n\n    fl_i = Select(friend_location, friend[i])\n    fs_i = Select(friend_start, friend[i])\n    fe_i = Select(friend_end, friend[i])\n    fd_i = Select(friend_duration, friend[i])\n\n    solver.add(Implies(meet[i], start[i] >= current_time[i-1] + travel_time_func(current_location[i-1], fl_i)))\n    solver.add(Implies(meet[i], start[i] >= fs_i))\n    solver.add(Implies(meet[i], start[i] + fd_i <= fe_i))\n    solver.add(Implies(meet[i], current_time[i] == start[i] + fd_i))\n    solver.add(Implies(meet[i], current_location[i] == fl_i))\n    solver.add(Implies(Not(meet[i]), current_time[i] == current_time[i-1]))\n    solver.add(Implies(Not(meet[i]), current_location[i] == current_location[i-1]))\n\n# Add constraints to ensure each friend is met at most once\nfor j in range(len(friends)):\n    count = 0\n    for i in range(max_meetings):\n        count += If(And(meet[i], friend[i] == j), 1, 0)\n    solver.add(count <= 1)\n\n# Maximize the number of friends met\ntotal_meet = 0\nfor i in range(max_meetings):\n    total_meet += If(meet[i], 1, 0)\nsolver.maximize(total_meet)\n\n# Check if the solver can find a solution\nresult = solver.check()\nif result == sat:\n    model = solver.model()\n    # Extract the itinerary\n    itinerary = []\n    for i in range(max_meetings):\n        if model.eval(meet[i]):\n            friend_idx = model.eval(friend[i]).as_long()\n            friend_data = friends[friend_idx]\n            start_time = model.eval(start[i]).as_long()\n            end_time = start_time + friend_data['duration']\n            # Convert to H:MM format\n            start_h = start_time // 60\n            start_m = start_time % 60\n            end_h = end_time // 60\n            end_m = end_time % 60\n            start_str = f\"{start_h}:{start_m:02d}\"\n            end_str = f\"{end_h}:{end_m:02d}\"\n            itinerary.append({\n                \"action\": \"meet\",\n                \"location\": locations[friend_data['location']],\n                \"person\": friend_data['name'],\n                \"start_time\": start_str,\n                \"end_time\": end_str\n            })\n    # Sort by start time\n    itinerary.sort(key=lambda x: x['start_time'])\n    print(json.dumps({\"itinerary\": itinerary}))\nelse:\n    print(json.dumps({\"itinerary\": []}))"
+}

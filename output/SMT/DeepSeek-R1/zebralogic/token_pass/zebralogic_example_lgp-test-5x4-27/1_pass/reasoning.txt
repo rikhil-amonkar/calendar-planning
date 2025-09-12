@@ -1,0 +1,524 @@
+We are given 5 houses, each with a unique name, birthday month, cigar, and drink.
+ We have clues that relate these attributes.
+
+ Steps:
+ 1. Define the attributes and their possible values.
+ 2. Create Z3 variables (integers) for each attribute, representing the house number for that attribute.
+    Alternatively, we can create variables for each house and assign values for each attribute (using Function or Array).
+    However, since we have multiple attributes and we need to assign a value per house, we can model by house.
+
+ Approach by house:
+   For each house i (1 to 5), we define:
+     name_i, birthday_i, cigar_i, drink_i
+
+ But note: the attributes are unique per house, so we must ensure that for each attribute type, the values are distinct.
+
+ Alternatively, we can define integers for each attribute value and then constrain the house numbers for these attributes to be between 1 and 5 and distinct per attribute.
+
+ However, the clues often relate positions (left/right) and attributes.
+
+ Let's choose the following:
+
+ We'll create Z3 integers for:
+   - The house number for each name: Peter, Alice, Eric, Bob, Arnold.
+   - Similarly for birthday months: april, feb, mar, jan, sept.
+   - For cigars: pall_mall, prince, dunhill, blends, blue_master.
+   - For drinks: water, coffee, tea, milk, root_beer.
+
+ But note: the clues also talk about relative positions (e.g., right of, directly left, one house between).
+
+ We can also create variables for each house that assign an integer value to each attribute, but then we have to map the integer to the actual value.
+
+ Alternatively, we can use EnumSort for each attribute and then create constants for each value.
+
+ Let me use the following plan:
+
+ We'll create an EnumSort for each category (Name, Birthday, Cigar, Drink) with their values.
+
+ Then, for each house (1 to 5), we create a constant for each attribute.
+
+ Example:
+   Name = [Peter, Alice, Eric, Bob, Arnold]
+   We create a sort for Name, and then variables: name1, name2, name3, name4, name5 of that sort.
+
+ Then we add the constraint that all name_i are distinct.
+
+ Similarly for birthday_i, cigar_i, drink_i.
+
+ Then we translate the clues.
+
+ However, note that some clues are given in terms of the attribute value (e.g., root beer lover is Eric) meaning:
+   The house where the drink is root_beer is the same house where the name is Eric.
+
+ Also, we have relative positions. We can use the house numbers (1 to 5) and use arithmetic.
+
+ Let's code accordingly.
+
+ Steps in code:
+
+ 1. Import z3 and json.
+ 2. Create solver.
+ 3. Define the enums for each category.
+ 4. For each house (1 to 5), create a variable for each attribute (name, birthday, cigar, drink).
+ 5. Add constraints that for each attribute type, the values for the 5 houses are distinct.
+ 6. Add the clues.
+
+ Clues translation:
+
+ 1. The root beer lover is Eric.
+    -> drink of Eric's house is root_beer, and also name of the root_beer drinker is Eric.
+    Alternatively: The house where drink is root_beer is the same as the house where name is Eric.
+
+ 2. The person partial to Pall Mall is in the third house.
+    -> cigar3 = pall_mall
+
+ 3. The person whose birthday is in April is Bob.
+    -> The house where birthday is april is the same as the house where name is Bob.
+
+ 4. The Dunhill smoker is the person whose birthday is in March.
+    -> The house where cigar is dunhill is the same as the house where birthday is mar.
+
+ 5. Peter is somewhere to the right of the root beer lover.
+    -> Let house_root_beer = house of root_beer drinker, house_peter = house of Peter.
+        house_peter > house_root_beer
+
+ 6. There is one house between the person whose birthday is in January and Peter.
+    -> Let house_jan = house of jan birthday, house_peter = house of Peter.
+        |house_jan - house_peter| = 2   (because one house between means difference of 2 in house numbers)
+
+ 7. The person who smokes many unique blends is the person whose birthday is in February.
+    -> The house where cigar is blends is the same as the house where birthday is feb.
+
+ 8. The person whose birthday is in February is in the second house.
+    -> birthday2 = feb
+
+ 9. Arnold is directly left of Peter.
+    -> Let house_arnold = house of Arnold, house_peter = house of Peter.
+        house_arnold + 1 = house_peter
+
+10. The person who likes milk is not in the fifth house.
+    -> drink5 != milk
+
+11. The person who smokes Blue Master is the coffee drinker.
+    -> The house where cigar is blue_master is the same as the house where drink is coffee.
+
+12. There is one house between the tea drinker and the coffee drinker.
+    -> Let house_tea = house of tea drinker, house_coffee = house of coffee drinker.
+        |house_tea - house_coffee| = 2
+
+13. Eric is in the third house.
+    -> name3 = Eric
+
+ We have to be cautious: the clue 13 says Eric is in the third house, so we set name3 = Eric.
+
+ Also note: clue 1 and clue 13: Eric is in house3 and is the root beer lover, so drink3 must be root_beer.
+
+ But wait, clue 13 is given separately.
+
+ Let's code accordingly.
+
+ Implementation:
+
+ We'll create a solver and then define:
+
+   NameSort, name_consts = EnumSort('Name', ['Peter','Alice','Eric','Bob','Arnold'])
+   Similarly for Birthday, Cigar, Drink.
+
+ Then for each house i in [1,2,3,4,5]:
+   name[i] = Const('name_%d' % i, NameSort)
+   birthday[i] = Const('birthday_%d' % i, BirthdaySort)
+   cigar[i] = Const('cigar_%d' % i, CigarSort)
+   drink[i] = Const('drink_%d' % i, DrinkSort)
+
+ Then we add distinct constraints for each attribute array.
+
+ Now, we translate the clues.
+
+ However, note that we have to relate attributes from different categories that are in the same house.
+
+ Let's code the clues:
+
+ 1. The root beer lover is Eric.
+    We can express: For the house where drink is root_beer, the name is Eric.
+    But we don't have a direct way to get the house from the attribute. Instead, we can say:
+        There exists a house i such that drink[i] == root_beer and name[i] == Eric.
+    But since attributes are unique, we can also say:
+        The house of Eric (which we can get from the name variable) must have drink root_beer.
+
+    Alternatively, we can define variables for the house of each attribute value? That might be more complicated.
+
+    Instead, we can use:
+        For the house i that has name Eric, then drink[i] must be root_beer.
+
+    Similarly, for the house i that has drink root_beer, then name[i] must be Eric.
+
+    We can do either. Let's do the first: for the house where name is Eric, the drink is root_beer.
+
+    But note: we have house of Eric from clue 13: house3. So we can set drink3 = root_beer.
+
+    However, let's not rely on that for the constraint. We'll write the constraint generally.
+
+    We can do:
+
+        And([Implies(name[i] == Eric, drink[i] == root_beer) for i in range(1,6)])
+
+    But since Eric is in exactly one house, we can also do:
+
+        drink[house_of_Eric] = root_beer
+
+    But we don't have a variable for house_of_Eric. We can get it by:
+
+        house_of_Eric = If(name[i]==Eric, i, 0) ... but that is messy.
+
+    Alternatively, we can define a function that returns the house for a given name? Not directly.
+
+    Since we have the name for each house, we can do:
+
+        for i in range(1,6):
+            s.add(Implies(name[i] == Eric, drink[i] == root_beer))
+
+    Similarly for other constraints that relate two attributes in the same house.
+
+ 2. cigar[3] = pall_mall
+
+ 3. For the house i where birthday[i] == april, then name[i] == Bob.
+        for i in range(1,6):
+            s.add(Implies(birthday[i] == april, name[i] == Bob))
+
+ 4. For the house i where cigar[i] == dunhill, then birthday[i] == mar.
+        for i in range(1,6):
+            s.add(Implies(cigar[i] == dunhill, birthday[i] == mar))
+
+ 5. Peter is right of root beer lover.
+        Let house_root_beer = the house where drink is root_beer.
+        Let house_peter = the house where name is Peter.
+
+        We can do:
+            for i in range(1,6):
+                for j in range(1,6):
+                    # This is inefficient but we have only 5 houses so it's okay.
+                    s.add(Implies(And(drink[i]==root_beer, name[j]==Peter), j > i))
+
+ 6. One house between jan birthday and Peter.
+        for i in range(1,6):
+            for j in range(1,6):
+                s.add(Implies(And(birthday[i]==jan, name[j]==Peter), Abs(i-j)==2))
+
+ 7. For the house i where cigar[i] == blends, then birthday[i] == feb.
+        for i in range(1,6):
+            s.add(Implies(cigar[i] == blends, birthday[i] == feb))
+
+ 8. birthday[2] = feb
+
+ 9. Arnold is directly left of Peter.
+        for i in range(1,6):
+            for j in range(1,6):
+                s.add(Implies(And(name[i]==Arnold, name[j]==Peter), i+1==j))
+
+10. drink[5] != milk
+
+11. For the house i where cigar[i] == blue_master, then drink[i] == coffee.
+        for i in range(1,6):
+            s.add(Implies(cigar[i] == blue_master, drink[i] == coffee))
+
+12. One house between tea and coffee drinker.
+        for i in range(1,6):
+            for j in range(1,6):
+                s.add(Implies(And(drink[i]==tea, drink[j]==coffee), Abs(i-j)==2))
+
+13. name[3] = Eric
+
+ However, note that using double loops for the implications might be inefficient, but with 5 houses it's acceptable.
+
+ Alternatively, we can define the house of an attribute by using a function that returns the house number for a given attribute value? 
+ But that would require using arrays and then constraints become more complex.
+
+ Let's stick with the double loops for the constraints that relate two attributes that are in the same house (like clue 1,3,4,7,11) and for the relative positions (5,6,9,12).
+
+ But note: for clue 5, we are relating two different attributes (drink and name) that might be in different houses.
+
+ We can also avoid double loops by defining the house of an attribute value as an integer variable and then constraining that variable.
+
+ For example, let house_of_name_Peter = Int('house_of_name_Peter')
+ Then we can set:
+    For i in range(1,6): house_of_name_Peter == i if name[i] == Peter
+
+ Similarly for others.
+
+ This would allow us to write:
+
+    s.add(house_of_name_Peter > house_of_drink_root_beer)
+
+ But then we have to define 20 such variables (5 names, 5 birthdays, 5 cigars, 5 drinks) and set their constraints.
+
+ Considering the small size, we can do either.
+
+ I'll stick with the double loops for simplicity.
+
+ However, note that for the constraints that relate two attributes in the same house (like clue 1,3,4,7,11) we don't need double loops, we can do:
+
+    for i in range(1,6):
+        s.add(Implies(name[i]==Eric, drink[i]==root_beer))
+
+ This is efficient.
+
+ For constraints that relate two attributes that might be in different houses (like clue 5,6,9,12) we need to consider pairs of houses.
+
+ We can also break them by defining the house of the attribute:
+
+    Let house_root_beer = Int('house_root_beer')
+    s.add(house_root_beer >= 1, house_root_beer <=5)
+    for i in range(1,6):
+        s.add(Implies(drink[i]==root_beer, house_root_beer == i))
+
+    Similarly for house_peter.
+
+    Then we can write: s.add(house_peter > house_root_beer)
+
+ This would be more efficient and clearer.
+
+ Let's do that for the constraints that involve relative positions between two attributes that are not in the same house.
+
+ So for clues 5,6,9,12 we will define auxiliary house variables.
+
+ Steps for auxiliary variables:
+
+   For each attribute value that appears in a relative position clue, we define an integer variable representing the house number.
+
+   We have:
+     root_beer (drink) -> clue 5
+     Peter (name) -> clue 5,6,9
+     jan (birthday) -> clue 6
+     Arnold (name) -> clue 9
+     tea (drink) -> clue 12
+     coffee (drink) -> clue 12
+
+   So we need to define:
+     house_root_beer, house_peter, house_jan, house_arnold, house_tea, house_coffee.
+
+   We constrain each of these to be between 1 and 5, and also:
+
+        for i in range(1,6):
+            s.add(Implies(drink[i]==root_beer, house_root_beer == i))
+            s.add(Implies(name[i]==Peter, house_peter == i))
+            s.add(Implies(birthday[i]==jan, house_jan == i))
+            s.add(Implies(name[i]==Arnold, house_arnold == i))
+            s.add(Implies(drink[i]==tea, house_tea == i))
+            s.add(Implies(drink[i]==coffee, house_coffee == i))
+
+   Then we can write:
+
+     clue5: house_peter > house_root_beer
+     clue6: Abs(house_jan - house_peter) == 2
+     clue9: house_arnold + 1 == house_peter
+     clue12: Abs(house_tea - house_coffee) == 2
+
+ This is more efficient and clearer.
+
+ Let's code accordingly.
+
+ Now, let's write the code.
+
+ Note: We must also ensure that the attributes are distinct. We already have distinct constraints for each attribute per house.
+
+ We'll create the enums and then the variables for each house.
+
+ Code structure:
+
+   from z3 import *
+   import json
+
+   s = Solver()
+
+   # Define enums
+   NameSort, (Peter, Alice, Eric, Bob, Arnold) = EnumSort('Name', ['Peter','Alice','Eric','Bob','Arnold'])
+   BirthdaySort, (april, feb, mar, jan, sept) = EnumSort('Birthday', ['april','feb','mar','jan','sept'])
+   CigarSort, (pall_mall, prince, dunhill, blends, blue_master) = EnumSort('Cigar', ['pall mall','prince','dunhill','blends','blue master'])
+   DrinkSort, (water, coffee, tea, milk, root_beer) = EnumSort('Drink', ['water','coffee','tea','milk','root beer'])
+
+   # Create variables for each house for each attribute
+   names = [Const('name_%d' % i, NameSort) for i in range(1,6)]
+   birthdays = [Const('birthday_%d' % i, BirthdaySort) for i in range(1,6)]
+   cigars = [Const('cigar_%d' % i, CigarSort) for i in range(1,6)]
+   drinks = [Const('drink_%d' % i, DrinkSort) for i in range(1,6)]
+
+   # Distinct constraints
+   s.add(Distinct(names))
+   s.add(Distinct(birthdays))
+   s.add(Distinct(cigars))
+   s.add(Distinct(drinks))
+
+   # Auxiliary house variables for relative position constraints
+   house_root_beer = Int('house_root_beer')
+   house_peter = Int('house_peter')
+   house_jan = Int('house_jan')
+   house_arnold = Int('house_arnold')
+   house_tea = Int('house_tea')
+   house_coffee = Int('house_coffee')
+
+   # Constrain auxiliary variables to be in [1,5]
+   s.add(house_root_beer >= 1, house_root_beer <= 5)
+   s.add(house_peter >= 1, house_peter <= 5)
+   s.add(house_jan >= 1, house_jan <= 5)
+   s.add(house_arnold >= 1, house_arnold <= 5)
+   s.add(house_tea >= 1, house_tea <= 5)
+   s.add(house_coffee >= 1, house_coffee <= 5)
+
+   # Link auxiliary variables to the attributes
+   for i in range(5):
+        # i from 0 to 4, representing house i+1
+        s.add(Implies(drinks[i]==root_beer, house_root_beer == i+1))
+        s.add(Implies(names[i]==Peter, house_peter == i+1))
+        s.add(Implies(birthdays[i]==jan, house_jan == i+1))
+        s.add(Implies(names[i]==Arnold, house_arnold == i+1))
+        s.add(Implies(drinks[i]==tea, house_tea == i+1))
+        s.add(Implies(drinks[i]==coffee, house_coffee == i+1))
+
+   # Now the clues:
+
+   # 1. The root beer lover is Eric.
+   for i in range(5):
+        s.add(Implies(names[i]==Eric, drinks[i]==root_beer))
+
+   # 2. The person partial to Pall Mall is in the third house.
+   s.add(cigars[2] == pall_mall)   # house3 is index2
+
+   # 3. The person whose birthday is in April is Bob.
+   for i in range(5):
+        s.add(Implies(birthdays[i]==april, names[i]==Bob))
+
+   # 4. The Dunhill smoker is the person whose birthday is in March.
+   for i in range(5):
+        s.add(Implies(cigars[i]==dunhill, birthdays[i]==mar))
+
+   # 5. Peter is somewhere to the right of the root beer lover.
+   s.add(house_peter > house_root_beer)
+
+   # 6. There is one house between the person whose birthday is in January and Peter.
+   s.add(Abs(house_jan - house_peter) == 2)
+
+   # 7. The person who smokes many unique blends is the person whose birthday is in February.
+   for i in range(5):
+        s.add(Implies(cigars[i]==blends, birthdays[i]==feb))
+
+   # 8. The person whose birthday is in February is in the second house.
+   s.add(birthdays[1] == feb)   # house2 is index1
+
+   # 9. Arnold is directly left of Peter.
+   s.add(house_arnold + 1 == house_peter)
+
+   # 10. The person who likes milk is not in the fifth house.
+   s.add(drinks[4] != milk)   # house5 is index4
+
+   # 11. The person who smokes Blue Master is the coffee drinker.
+   for i in range(5):
+        s.add(Implies(cigars[i]==blue_master, drinks[i]==coffee))
+
+   # 12. There is one house between the tea drinker and the coffee drinker.
+   s.add(Abs(house_tea - house_coffee) == 2)
+
+   # 13. Eric is in the third house.
+   s.add(names[2] == Eric)   # house3 is index2
+
+   Check if sat and then get the model.
+
+   Then, we create a list of dictionaries for each house, and then output the JSON.
+
+   Note: We have to convert the Z3 constants to strings for output.
+
+   We can create a mapping from the Z3 constants to their string names.
+
+   For example, for the name in house i, we can do:
+        model[names[i]]
+
+   But note: the model returns a Z3 datatype, we can use .as_string() to get the name? Actually, we can use:
+
+        str(model[names[i]])
+
+   However, the EnumSort returns a symbol, and we can get the name by using the constructor. Alternatively, we can compare with the constants and then get the string.
+
+   Since we defined the constants with the same name as the string, we can create a reverse mapping.
+
+   Alternatively, we can use:
+
+        if model[names[i]] == Peter: then output "Peter"
+
+   But that would be long.
+
+   Instead, we can create a list of the constants and their string representations.
+
+   Actually, the Z3 model gives a constant that we can compare with our defined constants (Peter, Alice, etc.) and then we can map to the string.
+
+   We can create a function to get the string from the Z3 expression and our defined constants.
+
+   Alternatively, we can create a list of the possible values and then check which one it equals.
+
+   Since the attributes are distinct per house, we can simply iterate over the possible values and check which one is equal.
+
+   However, a simpler way is to create a mapping from the Z3 constant to the string for each category.
+
+   We can do:
+
+        name_map = { Peter: "Peter", Alice: "Alice", Eric: "Eric", Bob: "Bob", Arnold: "Arnold" }
+
+   Similarly for the others.
+
+   Then, for a house i, we can do:
+
+        name_str = name_map[model[names[i]]]
+
+   But note: the model[names[i]] might not be exactly one of the constants we defined? Actually, it should be.
+
+   Let's do that.
+
+   Steps for output:
+
+        if s.check() == sat:
+            m = s.model()
+            result = []
+            for i in range(5):
+                house_num = i+1
+                name_val = m[names[i]]
+                birthday_val = m[birthdays[i]]
+                cigar_val = m[cigars[i]]
+                drink_val = m[drinks[i]]
+
+                # Convert to string using the maps
+                name_str = name_map[name_val]
+                birthday_str = birthday_map[birthday_val]
+                cigar_str = cigar_map[cigar_val]
+                drink_str = drink_map[drink_val]
+
+                result.append([str(house_num), name_str, birthday_str, cigar_str, drink_str])
+
+            Then create the JSON.
+
+   Let's define the maps:
+
+        name_map = { Peter: "Peter", Alice: "Alice", Eric: "Eric", Bob: "Bob", Arnold: "Arnold" }
+        birthday_map = { april: "april", feb: "feb", mar: "mar", jan: "jan", sept: "sept" }
+        cigar_map = { pall_mall: "pall mall", prince: "prince", dunhill: "dunhill", blends: "blends", blue_master: "blue master" }
+        drink_map = { water: "water", coffee: "coffee", tea: "tea", milk: "milk", root_beer: "root beer" }
+
+   But note: the Z3 constants are the same as the ones we defined.
+
+   However, we must be cautious: the Z3 model might return a constant that is not exactly one of these if the model is incomplete? But we have distinct constraints so it should be one of them.
+
+   Let's code accordingly.
+
+   Finally, output the JSON.
+
+   Note: The output must be exactly as specified.
+
+   We'll create a dictionary:
+
+        output = {
+            "solution": {
+                "header": ["House", "Name", "Birthday", "Cigar", "Drink"],
+                "rows": result
+            }
+        }
+
+   Then print json.dumps(output)
+
+   Let's write the code.

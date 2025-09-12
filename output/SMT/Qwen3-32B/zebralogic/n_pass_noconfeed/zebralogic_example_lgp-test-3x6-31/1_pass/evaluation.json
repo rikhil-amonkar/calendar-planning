@@ -1,0 +1,79 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"solution\": {\n    \"header\": [\n      \"House\",\n      \"Name\",\n      \"Drink\",\n      \"Vacation\",\n      \"HouseStyle\",\n      \"Animal\",\n      \"Birthday\"\n    ],\n    \"rows\": [\n      [\n        \"1\",\n        \"Arnold\",\n        \"tea\",\n        \"beach\",\n        \"colonial\",\n        \"bird\",\n        \"sept\"\n      ],\n      [\n        \"2\",\n        \"Peter\",\n        \"milk\",\n        \"city\",\n        \"ranch\",\n        \"horse\",\n        \"jan\"\n      ],\n      [\n        \"3\",\n        \"Eric\",\n        \"water\",\n        \"mountain\",\n        \"victorian\",\n        \"cat\",\n        \"april\"\n      ]\n    ]\n  }\n}",
+    "pred": [
+        {
+            "House": "1",
+            "Name": "Arnold",
+            "Drink": "tea",
+            "Vacation": "beach",
+            "HouseStyle": "colonial",
+            "Animal": "bird",
+            "Birthday": "sept"
+        },
+        {
+            "House": "2",
+            "Name": "Peter",
+            "Drink": "milk",
+            "Vacation": "city",
+            "HouseStyle": "ranch",
+            "Animal": "horse",
+            "Birthday": "jan"
+        },
+        {
+            "House": "3",
+            "Name": "Eric",
+            "Drink": "water",
+            "Vacation": "mountain",
+            "HouseStyle": "victorian",
+            "Animal": "cat",
+            "Birthday": "april"
+        }
+    ],
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Arnold",
+            "Drink": "tea",
+            "Vacation": "beach",
+            "HouseStyle": "colonial",
+            "Animal": "bird",
+            "Birthday": "sept"
+        },
+        {
+            "House": "2",
+            "Name": "Peter",
+            "Drink": "milk",
+            "Vacation": "city",
+            "HouseStyle": "ranch",
+            "Animal": "horse",
+            "Birthday": "jan"
+        },
+        {
+            "House": "3",
+            "Name": "Eric",
+            "Drink": "water",
+            "Vacation": "mountain",
+            "HouseStyle": "victorian",
+            "Animal": "cat",
+            "Birthday": "april"
+        }
+    ],
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 542.656060218811,
+        "execution_time": 0.08177399635314941,
+        "constraint_eval_time": 6.961822509765625e-05,
+        "pred_extract_time": 1.9471054077148438,
+        "gold_extract_time": 1.430511474609375e-05,
+        "total_tokens": 40027,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\nimport json\n\nsolver = Solver()\n\n# Define variables for each attribute's house\n# Names: Eric, Peter, Arnold\neric_house = Int('eric_house')\npeter_house = Int('peter_house')\narnold_house = Int('arnold_house')\n\n# Drinks: milk, water, tea\nmilk_house = Int('milk_house')\nwater_house = Int('water_house')\ntea_house = Int('tea_house')\n\n# Vacations: mountain, city, beach\nmountain_house = Int('mountain_house')\ncity_house = Int('city_house')\nbeach_house = Int('beach_house')\n\n# HouseStyles: colonial, victorian, ranch\ncolonial_house = Int('colonial_house')\nvictorian_house = Int('victorian_house')\nranch_house = Int('ranch_house')\n\n# Animals: cat, bird, horse\ncat_house = Int('cat_house')\nbird_house = Int('bird_house')\nhorse_house = Int('horse_house')\n\n# Birthdays: jan, sept, april\njan_house = Int('jan_house')\nsept_house = Int('sept_house')\napril_house = Int('april_house')\n\n# Add constraints for each category to have distinct houses (0-2)\ndef add_category_constraints(variables):\n    solver.add(Distinct(variables))\n    for v in variables:\n        solver.add(And(v >= 0, v <= 2))\n\n# Names\nadd_category_constraints([eric_house, peter_house, arnold_house])\n\n# Drinks\nadd_category_constraints([milk_house, water_house, tea_house])\n\n# Vacations\nadd_category_constraints([mountain_house, city_house, beach_house])\n\n# HouseStyles\nadd_category_constraints([colonial_house, victorian_house, ranch_house])\n\n# Animals\nadd_category_constraints([cat_house, bird_house, horse_house])\n\n# Birthdays\nadd_category_constraints([jan_house, sept_house, april_house])\n\n# Now add the clue constraints\n\n# Clue 1: colonial < milk\nsolver.add(colonial_house < milk_house)\n\n# Clue 2: city directly left of victorian \u2192 city +1 = victorian\nsolver.add(city_house + 1 == victorian_house)\n\n# Clue 3: jan directly left of cat \u2192 jan +1 = cat\nsolver.add(jan_house + 1 == cat_house)\n\n# Clue 4: water = mountain\nsolver.add(water_house == mountain_house)\n\n# Clue 5: Peter has horse \u2192 peter_house = horse_house\nsolver.add(peter_house == horse_house)\n\n# Clue 6: victorian > beach\nsolver.add(victorian_house > beach_house)\n\n# Clue 7: Peter prefers city \u2192 peter_house = city_house\nsolver.add(peter_house == city_house)\n\n# Clue 8: mountain = april\nsolver.add(mountain_house == april_house)\n\n# Clue 9: Eric drinks water \u2192 eric_house = water_house\nsolver.add(eric_house == water_house)\n\n# Check if the constraints are satisfiable\nif solver.check() == sat:\n    model = solver.model()\n    # Precompute all the house positions for each attribute\n    eric_h = model.eval(eric_house).as_long()\n    peter_h = model.eval(peter_house).as_long()\n    arnold_h = model.eval(arnold_house).as_long()\n\n    milk_h = model.eval(milk_house).as_long()\n    water_h = model.eval(water_house).as_long()\n    tea_h = model.eval(tea_house).as_long()\n\n    mountain_h = model.eval(mountain_house).as_long()\n    city_h = model.eval(city_house).as_long()\n    beach_h = model.eval(beach_house).as_long()\n\n    colonial_h = model.eval(colonial_house).as_long()\n    victorian_h = model.eval(victorian_house).as_long()\n    ranch_h = model.eval(ranch_house).as_long()\n\n    cat_h = model.eval(cat_house).as_long()\n    bird_h = model.eval(bird_house).as_long()\n    horse_h = model.eval(horse_house).as_long()\n\n    jan_h = model.eval(jan_house).as_long()\n    sept_h = model.eval(sept_house).as_long()\n    april_h = model.eval(april_house).as_long()\n\n    # Prepare data structure for the solution\n    solution_rows = []\n    for h in [0, 1, 2]:\n        house_num = str(h + 1)  # Convert 0-based to 1-based as string\n        # Determine name\n        if eric_h == h:\n            name = \"Eric\"\n        elif peter_h == h:\n            name = \"Peter\"\n        else:\n            name = \"Arnold\"\n\n        # Determine drink\n        if milk_h == h:\n            drink = \"milk\"\n        elif water_h == h:\n            drink = \"water\"\n        else:\n            drink = \"tea\"\n\n        # Determine vacation\n        if mountain_h == h:\n            vacation = \"mountain\"\n        elif city_h == h:\n            vacation = \"city\"\n        else:\n            vacation = \"beach\"\n\n        # Determine house style\n        if colonial_h == h:\n            house_style = \"colonial\"\n        elif victorian_h == h:\n            house_style = \"victorian\"\n        else:\n            house_style = \"ranch\"\n\n        # Determine animal\n        if cat_h == h:\n            animal = \"cat\"\n        elif bird_h == h:\n            animal = \"bird\"\n        else:\n            animal = \"horse\"\n\n        # Determine birthday\n        if jan_h == h:\n            birthday = \"jan\"\n        elif sept_h == h:\n            birthday = \"sept\"\n        else:\n            birthday = \"april\"\n\n        solution_rows.append([house_num, name, drink, vacation, house_style, animal, birthday])\n\n    # Build the JSON structure\n    solution = {\n        \"solution\": {\n            \"header\": [\"House\", \"Name\", \"Drink\", \"Vacation\", \"HouseStyle\", \"Animal\", \"Birthday\"],\n            \"rows\": solution_rows\n        }\n    }\n    print(json.dumps(solution, indent=2))\nelse:\n    print(\"No solution found.\")"
+}

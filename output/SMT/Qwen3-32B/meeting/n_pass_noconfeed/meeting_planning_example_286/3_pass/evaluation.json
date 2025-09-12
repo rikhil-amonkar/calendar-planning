@@ -1,0 +1,49 @@
+{
+    "has_execution_error": true,
+    "has_no_plan": false,
+    "execution_output": null,
+    "pred": null,
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Sunset District",
+                "person": "Carol",
+                "start_time": "10:15",
+                "end_time": "10:45"
+            },
+            {
+                "action": "meet",
+                "location": "Bayview",
+                "person": "Karen",
+                "start_time": "12:45",
+                "end_time": "14:45"
+            },
+            {
+                "action": "meet",
+                "location": "Mission District",
+                "person": "Rebecca",
+                "start_time": "14:58",
+                "end_time": "16:58"
+            }
+        ]
+    },
+    "status": "Error",
+    "violated_constraint": {
+        "missing_itinerary": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 3,
+    "timing": {
+        "api_call_time": 181.94957423210144,
+        "execution_time": 0.05240201950073242,
+        "constraint_eval_time": 4.291534423828125e-06,
+        "pred_extract_time": 8.344650268554688e-06,
+        "gold_extract_time": 6.437301635742188e-05,
+        "total_tokens": 13968,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import Solver, Int, sat\n\ndef check_permutation(perm, travel_times):\n    solver = Solver()\n    start_vars = {}\n    end_vars = {}\n\n    prev_end = 540  # start at Union Square at 9:00 AM (540 mins)\n    prev_loc = 'Union Square'\n\n    for friend in perm:\n        name = friend['name']\n        loc = friend['location']\n        avail_start = friend['available_start']\n        avail_end = friend['available_end']\n        min_dur = friend['min_duration']\n\n        # Compute travel time from previous location to current location\n        travel_time = travel_times[(prev_loc, loc)]\n\n        # Arrival time at current location is prev_end + travel_time\n        arrival_time = prev_end + travel_time\n\n        # Define start and end variables for this friend\n        start = Int(f'start_{name}')\n        end = Int(f'end_{name}')\n\n        # Add constraints for start time\n        solver.add(start >= arrival_time)\n        solver.add(start >= avail_start)\n\n        # Add constraint for end time (end == start + min_duration)\n        solver.add(end == start + min_dur)\n        solver.add(end <= avail_end)\n\n        # Store variables\n        start_vars[name] = start\n        end_vars[name] = end\n\n        # Update prev_end and prev_loc for next iteration\n        prev_end = end\n        prev_loc = loc\n\n    if solver.check() == sat:\n        model = solver.model()\n        times = []\n        for friend in perm:\n            name = friend['name']\n            start_val = model[start_vars[name]].as_long()\n            end_val = model[end_vars[name]].as_long()\n            times.append((name, start_val, end_val))\n        return True, times\n    else:\n        return False, None"
+}

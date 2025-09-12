@@ -1,0 +1,62 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": true,
+    "execution_output": "No solution found.",
+    "pred": {
+        "itinerary": []
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "day_range": "Day 1-2",
+                "place": "Oslo"
+            },
+            {
+                "day_range": "Day 2-4",
+                "place": "Dubrovnik"
+            },
+            {
+                "day_range": "Day 4-5",
+                "place": "Helsinki"
+            },
+            {
+                "day_range": "Day 5-9",
+                "place": "Krakow"
+            },
+            {
+                "day_range": "Day 9-10",
+                "place": "Vilnius"
+            },
+            {
+                "day_range": "Day 10-11",
+                "place": "Paris"
+            },
+            {
+                "day_range": "Day 11-15",
+                "place": "Madrid"
+            },
+            {
+                "day_range": "Day 15-18",
+                "place": "Mykonos"
+            }
+        ]
+    },
+    "status": "No plan generated",
+    "violated_constraint": {
+        "total_days": 18
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 5,
+    "timing": {
+        "api_call_time": 1126.7993037700653,
+        "execution_time": 0.10063290596008301,
+        "constraint_eval_time": 8.58306884765625e-06,
+        "pred_extract_time": 0.5321943759918213,
+        "gold_extract_time": 7.486343383789062e-05,
+        "total_tokens": 66154,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import z3\nimport json\n\n# Define cities and their indices\ncities = ['Oslo', 'Dubrovnik', 'Krakow', 'Vilnius', 'Helsinki', 'Madrid', 'Paris', 'Mykonos']\ndirect_flights = set([\n    (0, 2), (2, 0),\n    (0, 6), (6, 0),\n    (6, 5), (5, 6),\n    (4, 3), (3, 4),\n    (0, 5), (5, 0),\n    (0, 4), (4, 0),\n    (4, 2), (2, 4),\n    (1, 4), (4, 1),\n    (1, 5), (5, 1),\n    (0, 1), (1, 0),\n    (2, 3), (3, 2),\n    (4, 6), (6, 4),\n    (3, 6), (6, 3),\n    (4, 5), (5, 4),\n    (5, 7), (7, 5),\n])\n\ndurations = [2, 3, 5, 2, 2, 5, 2, 4]  # index 0-7\n\ns = z3.Solver()\n\n# Positions 2-7 (indices 2-7 in the sequence)\npos2 = z3.Int('pos2')\npos3 = z3.Int('pos3')\npos4 = z3.Int('pos4')\npos5 = z3.Int('pos5')\npos6 = z3.Int('pos6')\npos7 = z3.Int('pos7')\n\npositions = [pos2, pos3, pos4, pos5, pos6, pos7]\n\n# All positions 2-7 must be in {2,3,4,5,6,7} and distinct\nallowed_cities = [2, 3, 4, 5, 6, 7]\ns.add(z3.Distinct(positions))\nfor p in positions:\n    s.add(z3.Or([p == city for city in allowed_cities]))\n\n# Define allowed pairs (a, b) where there's a direct flight from a to b\nallowed_pairs = [(a, b) for a in allowed_cities for b in allowed_cities if (a, b) in direct_flights]\n\n# First pair: (1, pos2)\nallowed_b = [b for b in allowed_cities if (1, b) in direct_flights]\ns.add(z3.Or([pos2 == b for b in allowed_b]))\n\n# Second to sixth pairs\nfor i in range(2, 7):\n    s.add(z3.Or([(positions[i-2] == a) & (positions[i-1] == b) for (a, b) in allowed_pairs]))\n\n# Define get_duration function\ndef get_duration(city_var):\n    return z3.If(city_var == 2, 5,\n                 z3.If(city_var == 3, 2,\n                      z3.If(city_var == 4, 2,\n                           z3.If(city_var == 5, 5,\n                                z3.If(city_var == 6, 2, 4)))))\n\n# Compute start_day expressions\nstart_day_expr = [0] * 8\nstart_day_expr[0] = 1  # Oslo starts day 1\nstart_day_expr[1] = start_day_expr[0] + durations[0]  # 1 + 2 = 3\nstart_day_expr[2] = start_day_expr[1] + durations[1]  # 3 + 3 = 6\n\nstart_day_expr[3] = start_day_expr[2] + get_duration(pos2)\nstart_day_expr[4] = start_day_expr[3] + get_duration(pos3)\nstart_day_expr[5] = start_day_expr[4] + get_duration(pos4)\nstart_day_expr[6] = start_day_expr[5] + get_duration(pos5)\nstart_day_expr[7] = start_day_expr[6] + get_duration(pos6)\n\n# Constraint for last day (adjusted to 25)\ns.add(start_day_expr[7] + get_duration(pos7) - 1 == 25)\n\n# Constraints for Mykonos (must be visited on day 15)\nmykonos_conditions = []\nfor i in range(2, 8):\n    city_var = positions[i-2]\n    start = start_day_expr[i]\n    duration = get_duration(city_var)\n    end = start + duration - 1\n    mykonos_conditions.append(z3.And(city_var == 7, start <= 15, 15 <= end))\ns.add(z3.Or(mykonos_conditions))\n\n# Solve\nif s.check() == z3.sat:\n    model = s.model()\n    pos_values = [model.eval(p) for p in positions]\n    sequence = [0, 1] + [int(str(p)) for p in pos_values]\n    start_days = [0] * 8\n    start_days[0] = 1\n    start_days[1] = 3\n    start_days[2] = 6\n    for i in range(3, 8):\n        prev_city = sequence[i-1]\n        duration_prev = durations[prev_city]\n        start_days[i] = start_days[i-1] + duration_prev\n\n    itinerary = []\n    for i in range(8):\n        city = sequence[i]\n        start = start_days[i]\n        duration = durations[city]\n        end = start + duration - 1\n        day_range = f\"Day {start}-{end}\"\n        itinerary.append({\"day_range\": day_range, \"place\": cities[city]})\n\n    print(json.dumps({\"itinerary\": itinerary}, indent=2))\nelse:\n    print(\"No solution found.\")"
+}

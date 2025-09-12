@@ -1,0 +1,97 @@
+We are going to use the Z3 SMT solver to solve the puzzle.
+ We have 4 houses (indexed 1 to 4). For each house, we have:
+   - Name: Eric, Peter, Arnold, Alice
+   - Smoothie: dragonfruit, cherry, desert, watermelon
+   - Cigar: blue master, pall mall, dunhill, prince
+   - Height: tall, average, short, very short
+   - PhoneModel: google pixel 6, samsung galaxy s21, iphone 13, oneplus 9
+
+ We will create Z3 constants for each attribute per house, but note that the problem is small (4 houses) so we can use 5 arrays of 4 integers, each integer representing an attribute.
+
+ Alternatively, we can use 5 arrays of 4 integers, and then use constraints to assign unique values.
+
+ Steps:
+ 1. Define the attributes as Enums or using integers with fixed mappings.
+ 2. Create arrays for each attribute: name, smoothie, cigar, height, phone for each house (index 0 to 3 for house 1 to 4).
+ 3. Add constraints that all attributes in each category are distinct.
+ 4. Add the given clues as constraints.
+
+ Since the problem is small, we can use integers and then map back to the strings.
+
+ Let's define the possible values for each category:
+
+ Names: Eric, Peter, Arnold, Alice -> let's map to 0,1,2,3
+ Smoothie: dragonfruit, cherry, desert, watermelon -> 0,1,2,3
+ Cigar: blue master, pall mall, dunhill, prince -> 0,1,2,3
+ Height: tall, average, short, very short -> 0,1,2,3
+ PhoneModel: google pixel 6, samsung galaxy s21, iphone 13, oneplus 9 -> 0,1,2,3
+
+ We'll create arrays for each attribute of length 4 (for 4 houses).
+
+ However, note: the houses are ordered (1 to 4). We'll index our arrays by house index (0 for house1, 1 for house2, etc.)
+
+ Let's define:
+   name = [Int('name_%d' % i) for i in range(4)]
+   smoothie = [Int('smoothie_%d' % i) for i in range(4)]
+   cigar = [Int('cigar_%d' % i) for i in range(4)]
+   height = [Int('height_%d' % i) for i in range(4)]
+   phone = [Int('phone_%d' % i) for i in range(4)]
+
+ Then we add constraints that each of these arrays has distinct values in the range [0,3].
+
+ Now, let's translate the clues:
+
+ 1. The Dragonfruit smoothie lover is Eric.
+    We need to find the house where smoothie is dragonfruit (0) and name is Eric (0). So:
+        Exists i in [0,3]: smoothie[i] == 0 and name[i] == 0
+    But note: since both are unique, we can say: for the same house i, smoothie[i]==0 and name[i]==0.
+
+ 2. The Dunhill smoker is the person who likes Cherry smoothies.
+    Dunhill cigar is 2, Cherry smoothie is 1 -> same house i: cigar[i]==2 and smoothie[i]==1.
+
+ 3. The person who uses a Samsung Galaxy S21 is directly left of the person who uses an iPhone 13.
+    Samsung Galaxy S21 is 1, iPhone 13 is 2 -> phone[i] == 1 and phone[i+1] == 2 for i in [0,2] (since left of, so i+1 must be within range).
+
+ 4. The Dunhill smoker is somewhere to the right of the person who is very short.
+    Dunhill cigar is 2, very short height is 3 -> Let j be the house of very short (height[j]==3) and i be the house of Dunhill (cigar[i]==2) and i > j.
+
+ 5. The Watermelon smoothie lover is somewhere to the right of the Desert smoothie lover.
+    Watermelon smoothie is 3, Desert smoothie is 2 -> Let j: smoothie[j]==2, i: smoothie[i]==3 and i > j.
+
+ 6. The Prince smoker is the person who uses a OnePlus 9.
+    Prince cigar is 3, OnePlus 9 phone is 3 -> same house i: cigar[i]==3 and phone[i]==3.
+
+ 7. The person who is tall is in the third house.
+    Tall height is 0 -> height[2] == 0 (since third house is index 2).
+
+ 8. The person who is very short is the person who uses an iPhone 13.
+    Very short height is 3, iPhone 13 phone is 2 -> same house i: height[i]==3 and phone[i]==2.
+
+ 9. The person who smokes Blue Master is not in the first house.
+    Blue Master cigar is 0 -> cigar[0] != 0.
+
+10. The Dunhill smoker is the person who is short.
+    Dunhill cigar is 2, short height is 2 -> same house i: cigar[i]==2 and height[i]==2.
+
+11. Peter is not in the third house.
+    Peter name is 1 -> name[2] != 1.
+
+12. Arnold is the person who uses a Google Pixel 6.
+    Arnold name is 2, Google Pixel 6 phone is 0 -> same house i: name[i]==2 and phone[i]==0.
+
+13. The Dragonfruit smoothie lover is the person partial to Pall Mall.
+    Dragonfruit smoothie is 0, Pall Mall cigar is 1 -> same house i: smoothie[i]==0 and cigar[i]==1.
+
+ We also have to ensure that all attributes in each category are distinct and in the range [0,3].
+
+ Let's code accordingly.
+
+ However, note: clue 1 and clue 13 both involve dragonfruit smoothie. From clue 1: dragonfruit smoothie is Eric, and from clue 13: dragonfruit smoothie is also Pall Mall cigar.
+
+ We'll create a solver, add the constraints, and then check.
+
+ We'll create a function that returns the solution in the required JSON format.
+
+ Important: We must output the solution for each house in order.
+
+ Let's code accordingly.

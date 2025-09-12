@@ -1,0 +1,73 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"solution\": {\n    \"header\": [\n      \"House\",\n      \"Name\",\n      \"Smoothie\",\n      \"Flower\",\n      \"Animal\",\n      \"Hobby\"\n    ],\n    \"rows\": [\n      [\n        \"1\",\n        \"Arnold\",\n        \"desert\",\n        \"daffodils\",\n        \"cat\",\n        \"cooking\"\n      ],\n      [\n        \"2\",\n        \"Peter\",\n        \"watermelon\",\n        \"carnations\",\n        \"horse\",\n        \"gardening\"\n      ],\n      [\n        \"3\",\n        \"Eric\",\n        \"cherry\",\n        \"lilies\",\n        \"bird\",\n        \"photography\"\n      ]\n    ]\n  }\n}",
+    "pred": [
+        {
+            "House": "1",
+            "Name": "Arnold",
+            "Smoothie": "desert",
+            "Flower": "daffodils",
+            "Animal": "cat",
+            "Hobby": "cooking"
+        },
+        {
+            "House": "2",
+            "Name": "Peter",
+            "Smoothie": "watermelon",
+            "Flower": "carnations",
+            "Animal": "horse",
+            "Hobby": "gardening"
+        },
+        {
+            "House": "3",
+            "Name": "Eric",
+            "Smoothie": "cherry",
+            "Flower": "lilies",
+            "Animal": "bird",
+            "Hobby": "photography"
+        }
+    ],
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Arnold",
+            "Smoothie": "desert",
+            "Flower": "daffodils",
+            "Animal": "cat",
+            "Hobby": "cooking"
+        },
+        {
+            "House": "2",
+            "Name": "Peter",
+            "Smoothie": "watermelon",
+            "Flower": "carnations",
+            "Animal": "horse",
+            "Hobby": "gardening"
+        },
+        {
+            "House": "3",
+            "Name": "Eric",
+            "Smoothie": "cherry",
+            "Flower": "lilies",
+            "Animal": "bird",
+            "Hobby": "photography"
+        }
+    ],
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 28.78828001022339,
+        "execution_time": 0.08245539665222168,
+        "constraint_eval_time": 7.462501525878906e-05,
+        "pred_extract_time": 1.9827125072479248,
+        "gold_extract_time": 2.6226043701171875e-05,
+        "total_tokens": 2624,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\n\ndef solve_puzzle():\n    # Create Solver instance\n    solver = Solver()\n\n    # Define domains\n    houses = [1, 2, 3]\n    names = ['Eric', 'Peter', 'Arnold']\n    smoothies = ['cherry', 'watermelon', 'desert']\n    flowers = ['carnations', 'lilies', 'daffodils']\n    animals = ['cat', 'horse', 'bird']\n    hobbies = ['photography', 'cooking', 'gardening']\n\n    # Create variables\n    house_of = {}\n    for attr in [names, smoothies, flowers, animals, hobbies]:\n        for item in attr:\n            house_of[item] = Int(f'house_of_{item}')\n\n    # Add domain constraints\n    for item in house_of.values():\n        solver.add(And(item >= 1, item <= 3))\n\n    # All items must be in different houses\n    for attr in [names, smoothies, flowers, animals, hobbies]:\n        solver.add(Distinct([house_of[item] for item in attr]))\n\n    # Clue 1: The person who keeps horses and the photography enthusiast are next to each other.\n    solver.add(Abs(house_of['horse'] - house_of['photography']) == 1)\n\n    # Clue 2: The bird keeper is the person who likes Cherry smoothies.\n    solver.add(house_of['bird'] == house_of['cherry'])\n\n    # Clue 3: The person who loves cooking is the Desert smoothie lover.\n    solver.add(house_of['cooking'] == house_of['desert'])\n\n    # Clue 4: The person who enjoys gardening is the person who loves a carnations arrangement.\n    solver.add(house_of['gardening'] == house_of['carnations'])\n\n    # Clue 5: The person who loves cooking is directly left of Peter.\n    solver.add(house_of['cooking'] + 1 == house_of['Peter'])\n\n    # Clue 6: The person who loves a bouquet of daffodils is the Desert smoothie lover.\n    solver.add(house_of['daffodils'] == house_of['desert'])\n\n    # Clue 7: The Watermelon smoothie lover is the person who keeps horses.\n    solver.add(house_of['watermelon'] == house_of['horse'])\n\n    # Clue 8: The photography enthusiast is Eric.\n    solver.add(house_of['photography'] == house_of['Eric'])\n\n    # Solve the puzzle\n    if solver.check() == sat:\n        model = solver.model()\n        solution = {\n            \"solution\": {\n                \"header\": [\"House\", \"Name\", \"Smoothie\", \"Flower\", \"Animal\", \"Hobby\"],\n                \"rows\": []\n            }\n        }\n        for house in houses:\n            row = [str(house)]\n            for attr, var in house_of.items():\n                if model.evaluate(var) == house:\n                    row.append(attr)\n            solution[\"solution\"][\"rows\"].append(row)\n        return solution\n    else:\n        return None\n\n# Output the solution as JSON\nimport json\nprint(json.dumps(solve_puzzle(), indent=2))"
+}

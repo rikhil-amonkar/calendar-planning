@@ -1,0 +1,49 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\"solution\": {\"header\": [\"House\", \"Name\", \"FavoriteSport\", \"Hobby\"], \"rows\": [[\"1\", \"Arnold\", \"basketball\", \"gardening\"], [\"2\", \"Eric\", \"soccer\", \"photography\"]]}}",
+    "pred": [
+        {
+            "House": "1",
+            "Name": "Arnold",
+            "FavoriteSport": "basketball",
+            "Hobby": "gardening"
+        },
+        {
+            "House": "2",
+            "Name": "Eric",
+            "FavoriteSport": "soccer",
+            "Hobby": "photography"
+        }
+    ],
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Arnold",
+            "FavoriteSport": "basketball",
+            "Hobby": "gardening"
+        },
+        {
+            "House": "2",
+            "Name": "Eric",
+            "FavoriteSport": "soccer",
+            "Hobby": "photography"
+        }
+    ],
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 346.9487273693085,
+        "execution_time": 0.07545137405395508,
+        "constraint_eval_time": 4.5299530029296875e-05,
+        "pred_extract_time": 1.1774351596832275,
+        "gold_extract_time": 1.0251998901367188e-05,
+        "total_tokens": 23949,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import z3\nimport json\n\ndef main():\n    s = z3.Solver()\n\n    # Variables for each house's attributes\n    name_1 = z3.Int('name_1')\n    name_2 = z3.Int('name_2')\n\n    sport_1 = z3.Int('sport_1')\n    sport_2 = z3.Int('sport_2')\n\n    hobby_1 = z3.Int('hobby_1')\n    hobby_2 = z3.Int('hobby_2')\n\n    # Uniqueness constraints\n    s.add(name_1 != name_2)\n    s.add(sport_1 != sport_2)\n    s.add(hobby_1 != hobby_2)\n\n    # Clue 1: Arnold's hobby is gardening. So (name == Arnold) <-> (hobby == gardening)\n    s.add((name_1 == 1) == (hobby_1 == 1))\n    s.add((name_2 == 1) == (hobby_2 == 1))\n\n    # Clue 2: photography enthusiast is not in the first house\n    s.add(hobby_1 == 1)\n\n    # Clue 3: soccer lover is not in the first house\n    s.add(sport_1 == 0)\n\n    if s.check() == z3.sat:\n        m = s.model()\n\n        # Extract values for house 1\n        n1 = m[name_1].as_long()\n        s1 = m[sport_1].as_long()\n        h1 = m[hobby_1].as_long()\n\n        # House 2\n        n2 = m[name_2].as_long()\n        s2 = m[sport_2].as_long()\n        h2 = m[hobby_2].as_long()\n\n        # Map to strings\n        def get_name(v): return 'Arnold' if v == 1 else 'Eric'\n        def get_sport(v): return 'basketball' if v == 0 else 'soccer'\n        def get_hobby(v): return 'photography' if v == 0 else 'gardening'\n\n        rows = [\n            [\"1\", get_name(n1), get_sport(s1), get_hobby(h1)],\n            [\"2\", get_name(n2), get_sport(s2), get_hobby(h2)]\n        ]\n\n        solution = {\n            \"solution\": {\n                \"header\": [\"House\", \"Name\", \"FavoriteSport\", \"Hobby\"],\n                \"rows\": rows\n            }\n        }\n\n        print(json.dumps(solution))\n    else:\n        print(json.dumps({\"solution\": None}))\n\nif __name__ == \"__main__\":\n    main()"
+}

@@ -1,0 +1,79 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"solution\": {\n    \"header\": [\n      \"House\",\n      \"Name\",\n      \"Vacation\",\n      \"Height\",\n      \"Flower\",\n      \"HairColor\",\n      \"Education\"\n    ],\n    \"rows\": [\n      [\n        \"1\",\n        \"Eric\",\n        \"beach\",\n        \"very short\",\n        \"lilies\",\n        \"brown\",\n        \"bachelor\"\n      ],\n      [\n        \"2\",\n        \"Peter\",\n        \"mountain\",\n        \"average\",\n        \"carnations\",\n        \"black\",\n        \"associate\"\n      ],\n      [\n        \"3\",\n        \"Arnold\",\n        \"city\",\n        \"short\",\n        \"daffodils\",\n        \"blonde\",\n        \"high school\"\n      ]\n    ]\n  }\n}",
+    "pred": [
+        {
+            "House": "1",
+            "Name": "Eric",
+            "Vacation": "beach",
+            "Height": "very short",
+            "Flower": "lilies",
+            "HairColor": "brown",
+            "Education": "bachelor"
+        },
+        {
+            "House": "2",
+            "Name": "Peter",
+            "Vacation": "mountain",
+            "Height": "average",
+            "Flower": "carnations",
+            "HairColor": "black",
+            "Education": "associate"
+        },
+        {
+            "House": "3",
+            "Name": "Arnold",
+            "Vacation": "city",
+            "Height": "short",
+            "Flower": "daffodils",
+            "HairColor": "blonde",
+            "Education": "high school"
+        }
+    ],
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Eric",
+            "Vacation": "beach",
+            "Height": "very short",
+            "Flower": "lilies",
+            "HairColor": "brown",
+            "Education": "bachelor"
+        },
+        {
+            "House": "2",
+            "Name": "Peter",
+            "Vacation": "mountain",
+            "Height": "average",
+            "Flower": "carnations",
+            "HairColor": "black",
+            "Education": "associate"
+        },
+        {
+            "House": "3",
+            "Name": "Arnold",
+            "Vacation": "city",
+            "Height": "short",
+            "Flower": "daffodils",
+            "HairColor": "blonde",
+            "Education": "high school"
+        }
+    ],
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 87.30008316040039,
+        "execution_time": 0.08328843116760254,
+        "constraint_eval_time": 6.198883056640625e-05,
+        "pred_extract_time": 1.5722343921661377,
+        "gold_extract_time": 9.059906005859375e-06,
+        "total_tokens": 1671,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\nimport json\n\ndef main():\n    solver = Solver()\n    \n    # Define the houses\n    houses = [1, 2, 3]\n    \n    # Define attributes\n    names = ['Eric', 'Arnold', 'Peter']\n    vacations = ['mountain', 'city', 'beach']\n    heights = ['very short', 'short', 'average']\n    flowers = ['carnations', 'daffodils', 'lilies']\n    hair_colors = ['brown', 'black', 'blonde']\n    educations = ['associate', 'bachelor', 'high school']\n    \n    # Create variables for each attribute per house\n    name_vars = [Int(f\"name_{h}\") for h in houses]\n    vacation_vars = [Int(f\"vacation_{h}\") for h in houses]\n    height_vars = [Int(f\"height_{h}\") for h in houses]\n    flower_vars = [Int(f\"flower_{h}\") for h in houses]\n    hair_color_vars = [Int(f\"hair_color_{h}\") for h in houses]\n    education_vars = [Int(f\"education_{h}\") for h in houses]\n    \n    # Each attribute must be between 0 and 2 (representing the index in the attribute list)\n    for h in houses:\n        solver.add(And(name_vars[h-1] >= 0, name_vars[h-1] < len(names)))\n        solver.add(And(vacation_vars[h-1] >= 0, vacation_vars[h-1] < len(vacations)))\n        solver.add(And(height_vars[h-1] >= 0, height_vars[h-1] < len(heights)))\n        solver.add(And(flower_vars[h-1] >= 0, flower_vars[h-1] < len(flowers)))\n        solver.add(And(hair_color_vars[h-1] >= 0, hair_color_vars[h-1] < len(hair_colors)))\n        solver.add(And(education_vars[h-1] >= 0, education_vars[h-1] < len(educations)))\n    \n    # All attributes are distinct within their category\n    solver.add(Distinct(name_vars))\n    solver.add(Distinct(vacation_vars))\n    solver.add(Distinct(height_vars))\n    solver.add(Distinct(flower_vars))\n    solver.add(Distinct(hair_color_vars))\n    solver.add(Distinct(education_vars))\n    \n    # Clue 1: Peter is the person who has an average height.\n    # Peter is at index 2 in names, average height is at index 2 in heights\n    for h in houses:\n        solver.add(Implies(name_vars[h-1] == 2, height_vars[h-1] == 2))\n    \n    # Clue 2: The person who loves a bouquet of daffodils is Arnold.\n    # Arnold is at index 1 in names, daffodils is at index 1 in flowers\n    for h in houses:\n        solver.add(Implies(flower_vars[h-1] == 1, name_vars[h-1] == 1))\n    \n    # Clue 3: The person who is very short is not in the second house.\n    # very short is at index 0 in heights\n    solver.add(height_vars[1] != 0)\n    \n    # Clue 4: The person who loves beach vacations is in the first house.\n    # beach is at index 2 in vacations\n    solver.add(vacation_vars[0] == 2)\n    \n    # Clue 5: The person with a high school diploma is in the third house.\n    # high school is at index 2 in educations\n    solver.add(education_vars[2] == 2)\n    \n    # Clue 6: The person who is short is somewhere to the right of the person who is very short.\n    # short is at index 1, very short is at index 0 in heights\n    very_short_house = Int(\"very_short_house\")\n    short_house = Int(\"short_house\")\n    solver.add(very_short_house >= 1, very_short_house <= 3)\n    solver.add(short_house >= 1, short_house <= 3)\n    \n    for h in houses:\n        solver.add(Implies(height_vars[h-1] == 0, very_short_house == h))\n        solver.add(Implies(height_vars[h-1] == 1, short_house == h))\n    \n    solver.add(short_house > very_short_house)\n    \n    # Clue 7: The person who loves the bouquet of lilies is Eric.\n    # Eric is at index 0 in names, lilies is at index 2 in flowers\n    for h in houses:\n        solver.add(Implies(flower_vars[h-1] == 2, name_vars[h-1] == 0))\n    \n    # Clue 8: The person who loves the bouquet of lilies is the person with a bachelor's degree.\n    # lilies is at index 2 in flowers, bachelor is at index 1 in educations\n    for h in houses:\n        solver.add(Implies(flower_vars[h-1] == 2, education_vars[h-1] == 1))\n    \n    # Clue 9: The person who prefers city breaks is somewhere to the right of Peter.\n    # city is at index 1 in vacations, Peter is at index 2 in names\n    peter_house = Int(\"peter_house\")\n    city_house = Int(\"city_house\")\n    solver.add(peter_house >= 1, peter_house <= 3)\n    solver.add(city_house >= 1, city_house <= 3)\n    \n    for h in houses:\n        solver.add(Implies(name_vars[h-1] == 2, peter_house == h))\n        solver.add(Implies(vacation_vars[h-1] == 1, city_house == h))\n    \n    solver.add(city_house > peter_house)\n    \n    # Clue 10: The person who has blonde hair is in the third house.\n    # blonde is at index 2 in hair_colors\n    solver.add(hair_color_vars[2] == 2)\n    \n    # Clue 11: The person who loves beach vacations is the person who has brown hair.\n    # beach is at index 2 in vacations, brown is at index 0 in hair_colors\n    for h in houses:\n        solver.add(Implies(vacation_vars[h-1] == 2, hair_color_vars[h-1] == 0))\n    \n    # Check if the problem is satisfiable\n    if solver.check() == sat:\n        model = solver.model()\n        \n        # Create result structure\n        result = {\n            \"solution\": {\n                \"header\": [\"House\", \"Name\", \"Vacation\", \"Height\", \"Flower\", \"HairColor\", \"Education\"],\n                \"rows\": []\n            }\n        }\n        \n        # Extract values for each house\n        for h in houses:\n            name_idx = model.evaluate(name_vars[h-1]).as_long()\n            vacation_idx = model.evaluate(vacation_vars[h-1]).as_long()\n            height_idx = model.evaluate(height_vars[h-1]).as_long()\n            flower_idx = model.evaluate(flower_vars[h-1]).as_long()\n            hair_color_idx = model.evaluate(hair_color_vars[h-1]).as_long()\n            education_idx = model.evaluate(education_vars[h-1]).as_long()\n            \n            row = [\n                str(h),\n                names[name_idx],\n                vacations[vacation_idx],\n                heights[height_idx],\n                flowers[flower_idx],\n                hair_colors[hair_color_idx],\n                educations[education_idx]\n            ]\n            result[\"solution\"][\"rows\"].append(row)\n        \n        print(json.dumps(result, indent=2))\n    else:\n        print('{\"error\": \"No solution found\"}')\n\nif __name__ == \"__main__\":\n    main()"
+}

@@ -1,0 +1,138 @@
+```python
+import json
+from z3 import *
+
+def main():
+    solver = Solver()
+    
+    # Define enums for each category
+    Name, (Bob, Arnold, Peter, Alice, Eric) = EnumSort('Name', ['Bob', 'Arnold', 'Peter', 'Alice', 'Eric'])
+    Drink, (milk, root_beer, coffee, tea, water) = EnumSort('Drink', ['milk', 'root beer', 'coffee', 'tea', 'water'])
+    Color, (blue, green, white, yellow, red) = EnumSort('Color', ['blue', 'green', 'white', 'yellow', 'red'])
+    Flower, (daffodils, roses, lilies, tulips, carnations) = EnumSort('Flower', ['daffodils', 'roses', 'lilies', 'tulips', 'carnations'])
+    Hobby, (painting, cooking, photography, gardening, knitting) = EnumSort('Hobby', ['painting', 'cooking', 'photography', 'gardening', 'knitting'])
+    
+    # Create variables for each house's attributes
+    names = [Const(f'n_{i}', Name) for i in range(1,6)]
+    drinks = [Const(f'd_{i}', Drink) for i in range(1,6)]
+    colors = [Const(f'c_{i}', Color) for i in range(1,6)]
+    flowers = [Const(f'f_{i}', Flower) for i in range(1,6)]
+    hobbies = [Const(f'h_{i}', Hobby) for i in range(1,6)]
+    
+    # All attributes must be distinct per category
+    solver.add(Distinct(names))
+    solver.add(Distinct(drinks))
+    solver.add(Distinct(colors))
+    solver.add(Distinct(flowers))
+    solver.add(Distinct(hobbies))
+    
+    # Add constraints from clues
+    # 1. Alice is not in the fourth house.
+    solver.add(names[3] != Alice)
+    
+    # 2. The root beer lover is the person who enjoys gardening.
+    for i in range(5):
+        solver.add(Implies(drinks[i] == root_beer, hobbies[i] == gardening))
+    
+    # 3. The person whose favorite color is green is the coffee drinker.
+    for i in range(5):
+        solver.add(Implies(colors[i] == green, drinks[i] == coffee))
+    
+    # 4. The person whose favorite color is green is the person who loves the bouquet of lilies.
+    for i in range(5):
+        solver.add(Implies(colors[i] == green, flowers[i] == lilies))
+    
+    # 5. The person who loves blue is somewhere to the right of the person who loves a bouquet of daffodils.
+    blue_idx = Int('blue_idx')
+    daffodils_idx = Int('daffodils_idx')
+    solver.add(blue_idx >= 1, blue_idx <= 5)
+    solver.add(daffodils_idx >= 1, daffodils_idx <= 5)
+    for i in range(5):
+        solver.add(If(colors[i] == blue, blue_idx == i+1, True))
+        solver.add(If(flowers[i] == daffodils, daffodils_idx == i+1, True))
+    solver.add(blue_idx > daffodils_idx)
+    
+    # 6. The person who loves cooking is the person who loves blue.
+    for i in range(5):
+        solver.add(Implies(hobbies[i] == cooking, colors[i] == blue))
+    
+    # 7. Eric is directly left of the tea drinker.
+    for i in range(4):
+        solver.add(Implies(names[i] == Eric, drinks[i+1] == tea))
+    
+    # 8. The one who only drinks water is Peter.
+    for i in range(5):
+        solver.add(Implies(drinks[i] == water, names[i] == Peter))
+    
+    # 9. Arnold is the photography enthusiast.
+    for i in range(5):
+        solver.add(Implies(names[i] == Arnold, hobbies[i] == photography))
+    
+    # 10. The person who loves white is the person who loves the rose bouquet.
+    for i in range(5):
+        solver.add(Implies(colors[i] == white, flowers[i] == roses))
+    
+    # 11. There is one house between the person who loves a carnations arrangement and the person whose favorite color is red.
+    carnations_idx = Int('carnations_idx')
+    red_idx = Int('red_idx')
+    solver.add(carnations_idx >= 1, carnations_idx <= 5)
+    solver.add(red_idx >= 1, red_idx <= 5)
+    for i in range(5):
+        solver.add(If(flowers[i] == carnations, carnations_idx == i+1, True))
+        solver.add(If(colors[i] == red, red_idx == i+1, True))
+    solver.add(Or(carnations_idx - red_idx == 2, red_idx - carnations_idx == 2))
+    
+    # 12. The person who loves cooking is somewhere to the left of the person who paints as a hobby.
+    cooking_idx = Int('cooking_idx')
+    painting_idx = Int('painting_idx')
+    solver.add(cooking_idx >= 1, cooking_idx <= 5)
+    solver.add(painting_idx >= 1, painting_idx <= 5)
+    for i in range(5):
+        solver.add(If(hobbies[i] == cooking, cooking_idx == i+1, True))
+        solver.add(If(hobbies[i] == painting, painting_idx == i+1, True))
+    solver.add(cooking_idx < painting_idx)
+    
+    # 13. The one who only drinks water is in the third house.
+    solver.add(drinks[2] == water)
+    
+    # 14. The person who loves a carnations arrangement is the root beer lover.
+    for i in range(5):
+        solver.add(Implies(flowers[i] == carnations, drinks[i] == root_beer))
+    
+    # 15. The person who loves white is in the second house.
+    solver.add(colors[1] == white)
+    
+    # Check and get the solution
+    if solver.check() == sat:
+        model = solver.model()
+        
+        # Map house numbers to attribute values
+        result = []
+        attr_names = ['Name', 'Drink', 'Color', 'Flower', 'Hobby']
+        for i in range(5):
+            name_val = model.eval(names[i])
+            drink_val = model.eval(drinks[i])
+            color_val = model.eval(colors[i])
+            flower_val = model.eval(flowers[i])
+            hobby_val = model.eval(hobbies[i])
+            
+            # Convert Z3 symbols to strings
+            row = [str(i+1)]
+            for val in [name_val, drink_val, color_val, flower_val, hobby_val]:
+                row.append(str(val).replace('root_beer', 'root beer'))
+            result.append(row)
+        
+        # Format as JSON
+        output = {
+            "solution": {
+                "header": ["House", "Name", "Drink", "Color", "Flower", "Hobby"],
+                "rows": result
+            }
+        }
+        print(json.dumps(output, indent=2))
+    else:
+        print("No solution found")
+
+if __name__ == '__main__':
+    main()
+```

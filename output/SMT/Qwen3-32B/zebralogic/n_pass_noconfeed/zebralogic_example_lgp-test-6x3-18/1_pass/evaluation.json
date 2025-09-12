@@ -1,0 +1,62 @@
+{
+    "has_execution_error": true,
+    "has_no_plan": false,
+    "execution_output": null,
+    "pred": null,
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Bob",
+            "Mother": "Penny",
+            "Pet": "dog"
+        },
+        {
+            "House": "2",
+            "Name": "Peter",
+            "Mother": "Sarah",
+            "Pet": "fish"
+        },
+        {
+            "House": "3",
+            "Name": "Arnold",
+            "Mother": "Janelle",
+            "Pet": "cat"
+        },
+        {
+            "House": "4",
+            "Name": "Alice",
+            "Mother": "Holly",
+            "Pet": "bird"
+        },
+        {
+            "House": "5",
+            "Name": "Carol",
+            "Mother": "Aniya",
+            "Pet": "hamster"
+        },
+        {
+            "House": "6",
+            "Name": "Eric",
+            "Mother": "Kailyn",
+            "Pet": "rabbit"
+        }
+    ],
+    "status": "Error",
+    "violated_constraint": {
+        "invalid_output": "No valid output structure found"
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 605.6504762172699,
+        "execution_time": 0.07995009422302246,
+        "constraint_eval_time": 5.4836273193359375e-06,
+        "pred_extract_time": 1.0728836059570312e-05,
+        "gold_extract_time": 1.9073486328125e-05,
+        "total_tokens": 40364,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import json\nfrom z3 import *\n\ndef main():\n    s = Solver()\n\n    # Define variables for each house (1-6)\n    name_vars = [Int(f'name_{i+1}') for i in range(6)]\n    mother_vars = [Int(f'mother_{i+1}') for i in range(6)]\n    pet_vars = [Int(f'pet_{i+1}') for i in range(6)]\n\n    # Constraints: all variables are between 0 and 5\n    for var in name_vars + mother_vars + pet_vars:\n        s.add(And(0 <= var, var <= 5))\n\n    # All must be distinct\n    s.add(Distinct(name_vars))\n    s.add(Distinct(mother_vars))\n    s.add(Distinct(pet_vars))\n\n    # Clue 1: Bob is not in the second house (Bob is index 2, house 2 is index 1)\n    s.add(name_vars[1] != 2)\n\n    # Variables for specific positions\n    cat_house = Int('cat_house')\n    rabbit_house = Int('rabbit_house')\n    s.add(And(1 <= cat_house, cat_house <= 6))\n    s.add(And(1 <= rabbit_house, rabbit_house <= 6))\n\n    # Clue 2: Two houses between cat and rabbit\n    s.add(Abs(cat_house - rabbit_house) == 3)\n\n    # Clue 3: Cat is directly left of Holly's mother (mother in next house is Holly)\n    s.add(mother_vars[cat_house] == 1)  # Holly is index 1\n\n    # Clue 7: Cat's mother is Janelle (index 2)\n    s.add(mother_vars[cat_house - 1] == 2)\n\n    # Clue 10: Arnold is the cat owner (index 0)\n    s.add(name_vars[cat_house - 1] == 0)\n\n    # Pet constraints for cat and rabbit\n    s.add(pet_vars[cat_house - 1] == 3)  # cat is index 3\n    s.add(pet_vars[rabbit_house - 1] == 5)  # rabbit is index 5\n\n    # Clue 4: Hamster directly left of rabbit\n    s.add(pet_vars[rabbit_house - 2] == 0)  # hamster is index 0\n    s.add(rabbit_house >= 2)  # to avoid negative index\n\n    # Clue 5: Rabbit owner is Eric (index 1)\n    s.add(name_vars[rabbit_house - 1] == 1)\n\n    # Clue 6: One house between dog and cat\n    dog_house = Int('dog_house')\n    s.add(And(1 <= dog_house, dog_house <= 6))\n    s.add(pet_vars[dog_house - 1] == 1)  # dog is index 1\n    s.add(Abs(dog_house - cat_house) == 2)\n\n    # Clue 8 and 9: Alice directly left of Carol, Carol's mother is Aniya (index 3)\n    alice_house = Int('alice_house')\n    carol_house = Int('carol_house')\n    s.add(And(1 <= alice_house, alice_house <= 5))  # Carol can't be in house 6+1\n    s.add(And(1 <= carol_house, carol_house <= 6))\n    s.add(name_vars[alice_house - 1] == 3)  # Alice is index 3\n    s.add(name_vars[carol_house - 1] == 4)  # Carol is index 4\n    s.add(carol_house == alice_house + 1)\n    s.add(mother_vars[carol_house - 1] == 3)  # Aniya is index 3\n\n    # Clue 11: Rabbit's mother is Kailyn (index 5)\n    s.add(mother_vars[rabbit_house - 1] == 5)\n\n    # Clue 12: Fish owner's mother is Sarah (index 0)\n    fish_house = Int('fish_house')\n    s.add(And(1 <= fish_house, fish_house <= 6))\n    s.add(pet_vars[fish_house - 1] == 4)  # fish is index 4\n    s.add(mother_vars[fish_house - 1] == 0)\n\n    if s.check() == sat:\n        model = s.model()\n\n        # Mapping integers to names, mothers, pets\n        name_list = ['Arnold', 'Eric', 'Bob', 'Alice', 'Carol', 'Peter']\n        mother_list = ['Sarah', 'Holly', 'Janelle', 'Aniya', 'Penny', 'Kailyn']\n        pet_list = ['hamster', 'dog', 'bird', 'cat', 'fish', 'rabbit']\n\n        solution_rows = []\n        for house in range(1, 7):\n            name_idx = model[name_vars[house - 1]].as_long()\n            mother_idx = model[mother_vars[house - 1]].as_long()\n            pet_idx = model[pet_vars[house - 1]].as_long()\n            solution_rows.append([\n                str(house),\n                name_list[name_idx],\n                mother_list[mother_idx],\n                pet_list[pet_idx]\n            ])\n\n        output = {\n            \"solution\": {\n                \"header\": [\"House\", \"Name\", \"Mother\", \"Pet\"],\n                \"rows\": solution_rows\n            }\n        }\n\n        print(json.dumps(output, indent=2))\n    else:\n        print(\"No solution found.\")\n\nif __name__ == \"__main__\":\n    main()"
+}

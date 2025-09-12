@@ -1,0 +1,75 @@
+from z3 import *
+
+def main():
+    # City indices
+    Split = 0
+    Helsinki = 1
+    Reykjavik = 2
+    Vilnius = 3
+    Geneva = 4
+    
+    city_names = ["Split", "Helsinki", "Reykjavik", "Vilnius", "Geneva"]
+    desired_days = [2, 2, 3, 3, 6]
+    connections = [(Split, Helsinki), (Geneva, Split), (Geneva, Helsinki),
+                   (Helsinki, Reykjavik), (Vilnius, Helsinki), (Split, Vilnius)]
+    # Make symmetric
+    connections += [(b, a) for (a, b) in connections]
+    
+    s = Solver()
+    
+    # Order of cities (permutation)
+    order = [Int('order%d' % i) for i in range(5)]
+    for i in range(5):
+        s.add(order[i] >= 0, order[i] < 5)
+    s.add(Distinct(order))
+    
+    # Start and end days for each city
+    start = [Int('start%d' % i) for i in range(5)]
+    end = [Int('end%d' % i) for i in range(5)]
+    
+    # Constraints for each city
+    for i in range(5):
+        s.add(start[i] >= 1, end[i] <= 12, start[i] <= end[i])
+        s.add(end[i] - start[i] + 1 == desired_days[i])
+    
+    # Event constraints
+    s.add(start[Reykjavik] <= 10, end[Reykjavik] >= 12)
+    s.add(start[Vilnius] <= 7, end[Vilnius] >= 9)
+    
+    # Order constraints
+    s.add(start[order[0]] == 1)
+    s.add(end[order[4]] == 12)
+    for i in range(4):
+        s.add(end[order[i]] == start[order[i+1]])
+    
+    # Direct flight constraints
+    for i in range(4):
+        city_i = order[i]
+        city_j = order[i+1]
+        s.add(Or([And(city_i == a, city_j == b) for (a, b) in connections]))
+    
+    # Solve
+    if s.check() == sat:
+        model = s.model()
+        order_val = [model.evaluate(order[i]).as_long() for i in range(5)]
+        start_val = [model.evaluate(start[i]).as_long() for i in range(5)]
+        end_val = [model.evaluate(end[i]).as_long() for i in range(5)]
+        
+        itinerary = []
+        for i in range(5):
+            city_index = order_val[i]
+            city_name = city_names[city_index]
+            s_day = start_val[city_index]
+            e_day = end_val[city_index]
+            itinerary.append({
+                "day_range": f"Day {s_day}-{e_day}",
+                "place": city_name
+            })
+        
+        import json
+        print(json.dumps({"itinerary": itinerary}))
+    else:
+        print('{"itinerary": []}')
+
+if __name__ == "__main__":
+    main()

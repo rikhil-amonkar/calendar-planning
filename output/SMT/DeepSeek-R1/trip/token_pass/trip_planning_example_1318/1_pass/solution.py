@@ -1,0 +1,123 @@
+from z3 import *
+import json
+
+def main():
+    # Define cities and their indices
+    cities = ["Oslo", "Helsinki", "Edinburgh", "Riga", "Tallinn", "Budapest", "Vilnius", "Porto", "Geneva"]
+    n_days = 25
+    n_cities = len(cities)
+    
+    # Define direct flights as undirected edges (stored as sorted tuples)
+    direct_flights = set()
+    flight_data = [
+        "Porto and Oslo", "Edinburgh and Budapest", "Edinburgh and Geneva",
+        "from Riga to Tallinn", "Edinburgh and Porto", "Vilnius and Helsinki",
+        "from Tallinn to Vilnius", "Riga and Oslo", "Geneva and Oslo",
+        "Edinburgh and Oslo", "Edinburgh and Helsinki", "Vilnius and Oslo",
+        "Riga and Helsinki", "Budapest and Geneva", "Helsinki and Budapest",
+        "Helsinki and Oslo", "Edinburgh and Riga", "Tallinn and Helsinki",
+        "Geneva and Porto", "Budapest and Oslo", "Helsinki and Geneva",
+        "from Riga to Vilnius", "Tallinn and Oslo"
+    ]
+    
+    for flight in flight_data:
+        parts = flight.split()
+        if parts[0] == "from":
+            city1 = parts[1]
+            city2 = parts[3]
+        else:
+            city1 = parts[0]
+            city2 = parts[2]
+        idx1 = cities.index(city1)
+        idx2 = cities.index(city2)
+        direct_flights.add((min(idx1, idx2), max(idx1, idx2)))
+    
+    # Create Z3 variables for morning and evening cities for each day
+    morning = [Int('m_%d' % i) for i in range(1, n_days+1)]
+    evening = [Int('e_%d' % i) for i in range(1, n_days+1)]
+    
+    s = Solver()
+    
+    # Constrain morning and evening cities to valid indices
+    for i in range(n_days):
+        s.add(And(morning[i] >= 0, morning[i] < n_cities))
+        s.add(And(evening[i] >= 0, evening[i] < n_cities))
+    
+    # Constrain direct flights for travel days
+    for i in range(n_days):
+        m = morning[i]
+        e = evening[i]
+        flight_day = (m != e)
+        # Create condition for valid flight
+        valid_flight = Or([And(Min(m, e) == a, Max(m, e) == b) for (a, b) in direct_flights])
+        s.add(If(flight_day, valid_flight, True))
+    
+    # Constrain consecutive day consistency
+    for i in range(n_days-1):
+        s.add(evening[i] == morning[i+1])
+    
+    # Define total days per city accounting function
+    total_days = [0] * n_cities
+    for c in range(n_cities):
+        for i in range(n_days):
+            # Count morning occurrence
+            total_days[c] += If(morning[i] == c, 1, 0)
+            # Count evening occurrence only if it's a flight day (different from morning)
+            total_days[c] += If(And(evening[i] == c, morning[i] != evening[i]), 1, 0)
+    
+    # Add constraints for total days per city
+    s.add(total_days[0] == 2)  # Oslo
+    s.add(total_days[1] == 2)  # Helsinki
+    s.add(total_days[2] == 3)  # Edinburgh
+    s.add(total_days[3] == 2)  # Riga
+    s.add(total_days[4] == 5)  # Tallinn
+    s.add(total_days[5] == 5)  # Budapest
+    s.add(total_days[6] == 5)  # Vilnius
+    s.add(total_days[7] == 5)  # Porto
+    s.add(total_days[8] == 4)  # Geneva
+    
+    # Constrain meeting in Oslo between day 24 and 25
+    s.add(Or(evening[23] == 0, morning[24] == 0))
+    
+    # Constrain wedding in Tallinn between day 4 and 8
+    wedding_constraints = []
+    for i in range(3, 8):  days 4 to 8 (0-indexed)
+        wedding_constraints.append(Or(morning[i] == 4, evening[i] == 4))
+    s.add(Or(wedding_constraints))
+    
+    # Check satisfiability
+    if s.check() == sat:
+        m = s.model()
+        morning_vals = [m.evaluate(morning[i]).as_long() for i in range(n_days)]
+        evening_vals = [m.evaluate(evening[i]).as_long() for i in range(n_days)]
+        
+        # Determine days each city appears
+        city_days = [[] for _ in range(n_cities)]
+        for day in range(n_days):
+            city_days[morning_vals[day]].append(day+1)
+            if morning_vals[day] != evening_vals[day]:
+                city_days[evening_vals[day]].append(day+1)
+        
+        # Calculate day ranges for each city
+        city_ranges = []
+        for c in range(n_cities):
+            if city_days[c]:
+                min_day = min(city_days[c])
+                max_day = max(city_days[c])
+                city_ranges.append((min_day, max_day, cities[c]))
+        
+        # Sort cities by start day
+        city_ranges.sort(key=lambda x: x[0])
+        
+        # Format itinerary
+        itinerary = []
+        for start, end, city in city_ranges:
+            itinerary.append({"day_range": f"Day {start}-{end}", "place": city})
+        
+        # Output JSON
+        print(json.dumps({"itinerary": itinerary}))
+    else:
+        print('{"itinerary": []}')
+
+if __name__ == "__main__":
+    main()

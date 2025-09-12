@@ -1,0 +1,104 @@
+```python
+from z3 import *
+import json
+
+def main():
+    # Convert time to minutes since 9:00 AM
+    def time_to_minutes(time_str):
+        parts = time_str.split(':')
+        hours = int(parts[0])
+        minutes = int(parts[1]) if len(parts) > 1 else 0
+        return (hours - 9) * 60 + minutes
+
+    # Convert minutes back to time string
+    def minutes_to_time(minutes):
+        total_minutes = minutes
+        hours = 9 + total_minutes // 60
+        mins = total_minutes % 60
+        return f"{hours}:{mins:02d}"
+
+    # Travel time matrix (5x5)
+    # Indexes: 0=Richmond, 1=Sunset, 2=Haight-Ashbury, 3=Mission, 4=Golden Gate Park
+    travel_time = [
+        [0, 11, 10, 20, 9],
+        [12, 0, 15, 24, 11],
+        [10, 15, 0, 11, 7],
+        [20, 24, 12, 0, 17],
+        [7, 10, 7, 17, 0]
+    ]
+
+    # Meeting data: [name, location_index, available_start, available_end, min_duration]
+    meetings_info = [
+        ["Sarah", 1, time_to_minutes("10:45"), time_to_minutes("19:00"), 30],
+        ["Richard", 2, time_to_minutes("11:45"), time_to_minutes("15:45"), 90],
+        ["Elizabeth", 3, time_to_minutes("11:00"), time_to_minutes("17:15"), 120],
+        ["Michelle", 4, time_to_minutes("18:15"), time_to_minutes("20:45"), 90]
+    ]
+
+    # Create Z3 variables
+    scheduled = [Bool(f'scheduled_{i}') for i in range(4)]
+    start = [Real(f'start_{i}') for i in range(4)]
+    end = [Real(f'end_{i}') for i in range(4)]
+    before = [[Bool(f'before_{i}_{j}') for j in range(4)] for i in range(4)]
+
+    # Create optimizer
+    opt = Optimize()
+
+    # Add constraints for each meeting
+    for i, (name, loc_idx, avail_start, avail_end, min_dur) in enumerate(meetings_info):
+        opt.add(Implies(scheduled[i], start[i] >= avail_start))
+        opt.add(Implies(scheduled[i], end[i] == start[i] + min_dur))
+        opt.add(Implies(scheduled[i], end[i] <= avail_end))
+
+    # Add ordering constraints for pairs
+    for i in range(4):
+        for j in range(4):
+            if i != j:
+                opt.add(Implies(And(scheduled[i], scheduled[j]), 
+                              Or(before[i][j], before[j][i])))
+                opt.add(Implies(And(scheduled[i], scheduled[j]), 
+                              Not(And(before[i][j], before[j][i]))))
+                opt.add(Implies(And(scheduled[i], scheduled[j], before[i][j]), 
+                              end[i] + travel_time[meetings_info[i][1]][meetings_info[j][1]] <= start[j]))
+
+    # Add constraints for first meeting
+    for i in range(4):
+        no_before = And([Not(before[j][i]) for j in range(4) if j != i])
+        opt.add(Implies(And(scheduled[i], no_before), 
+                      start[i] >= travel_time[0][meetings_info[i][1]]))
+
+    # Maximize number of scheduled meetings
+    goal = Sum([If(scheduled[i], 1, 0) for i in range(4)])
+    opt.maximize(goal)
+
+    # Check feasibility
+    if opt.check() == sat:
+        model = opt.model()
+        itinerary = []
+        for i, (name, loc_idx, _, _, _) in enumerate(meetings_info):
+            if is_true(model.eval(scheduled[i])):
+                start_val = model.eval(start[i])
+                end_val = model.eval(end[i])
+                if is_int_value(start_val) and is_int_value(end_val):
+                    start_min = start_val.as_long()
+                    end_min = end_val.as_long()
+                else:
+                    start_min = int(str(start_val))
+                    end_min = int(str(end_val))
+                location_name = ["Sunset District", "Haight-Ashbury", 
+                                "Mission District", "Golden Gate Park"][loc_idx-1]
+                itinerary.append({
+                    "action": "meet",
+                    "location": location_name,
+                    "person": name,
+                    "start_time": minutes_to_time(start_min),
+                    "end_time": minutes_to_time(end_min)
+                })
+        result = {"itinerary": itinerary}
+        print(json.dumps(result, indent=2))
+    else:
+        print('{"itinerary": []}')
+
+if __name__ == "__main__":
+    main()
+```

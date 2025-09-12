@@ -1,0 +1,61 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"solution\": {\n    \"header\": [\n      \"House\",\n      \"Name\",\n      \"BookGenre\",\n      \"Vacation\"\n    ],\n    \"rows\": [\n      [\n        \"1\",\n        \"Eric\",\n        \"mystery\",\n        \"mountain\"\n      ],\n      [\n        \"2\",\n        \"Arnold\",\n        \"science fiction\",\n        \"beach\"\n      ],\n      [\n        \"3\",\n        \"Peter\",\n        \"romance\",\n        \"city\"\n      ]\n    ]\n  }\n}",
+    "pred": [
+        {
+            "House": "1",
+            "Name": "Eric",
+            "BookGenre": "mystery",
+            "Vacation": "mountain"
+        },
+        {
+            "House": "2",
+            "Name": "Arnold",
+            "BookGenre": "science fiction",
+            "Vacation": "beach"
+        },
+        {
+            "House": "3",
+            "Name": "Peter",
+            "BookGenre": "romance",
+            "Vacation": "city"
+        }
+    ],
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Eric",
+            "BookGenre": "mystery",
+            "Vacation": "mountain"
+        },
+        {
+            "House": "2",
+            "Name": "Arnold",
+            "BookGenre": "science fiction",
+            "Vacation": "beach"
+        },
+        {
+            "House": "3",
+            "Name": "Peter",
+            "BookGenre": "romance",
+            "Vacation": "city"
+        }
+    ],
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 501.34316897392273,
+        "execution_time": 0.07149887084960938,
+        "constraint_eval_time": 5.459785461425781e-05,
+        "pred_extract_time": 1.3678174018859863,
+        "gold_extract_time": 1.2159347534179688e-05,
+        "total_tokens": 31711,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import json\nfrom z3 import *\n\ndef main():\n    solver = Solver()\n\n    # Define variables for each house (1, 2, 3)\n    name_1, name_2, name_3 = Ints('name_1 name_2 name_3')\n    name_vars = [name_1, name_2, name_3]\n\n    book_1, book_2, book_3 = Ints('book_1 book_2 book_3')\n    book_vars = [book_1, book_2, book_3]\n\n    vac_1, vac_2, vac_3 = Ints('vac_1 vac_2 vac_3')\n    vac_vars = [vac_1, vac_2, vac_3]\n\n    p_house, b_house, m_house = Ints('p_house b_house m_house')\n\n    # All variables are between 0 and 2\n    for var in name_vars + book_vars + vac_vars:\n        solver.add(And(0 <= var, var <= 2))\n\n    # Each category has distinct values\n    solver.add(Distinct(name_1, name_2, name_3))\n    solver.add(Distinct(book_1, book_2, book_3))\n    solver.add(Distinct(vac_1, vac_2, vac_3))\n\n    # Clue 1: Eric (0) directly left of Arnold (1)\n    clue1 = Or(\n        And(name_1 == 0, name_2 == 1),\n        And(name_2 == 0, name_3 == 1)\n    )\n    solver.add(clue1)\n\n    # Constraints for p_house (Peter's house)\n    solver.add(And(1 <= p_house, p_house <= 3))\n    solver.add((name_1 == 2) == (p_house == 1))\n    solver.add((name_2 == 2) == (p_house == 2))\n    solver.add((name_3 == 2) == (p_house == 3))\n\n    # Constraints for b_house (beach vacation)\n    solver.add(And(1 <= b_house, b_house <= 3))\n    solver.add((vac_1 == 1) == (b_house == 1))\n    solver.add((vac_2 == 1) == (b_house == 2))\n    solver.add((vac_3 == 1) == (b_house == 3))\n\n    # Constraints for m_house (mystery book)\n    solver.add(And(1 <= m_house, m_house <= 3))\n    solver.add((book_1 == 0) == (m_house == 1))\n    solver.add((book_2 == 0) == (m_house == 2))\n    solver.add((book_3 == 0) == (m_house == 3))\n\n    # Clue 2: Peter is to the right of beach\n    solver.add(p_house > b_house)\n\n    # Clue 3: Peter's vacation is city (2)\n    clue3 = Or(\n        And(p_house == 1, vac_1 == 2),\n        And(p_house == 2, vac_2 == 2),\n        And(p_house == 3, vac_3 == 2)\n    )\n    solver.add(clue3)\n\n    # Clue 4: mystery is left of beach\n    solver.add(m_house < b_house)\n\n    # Clue 5: beach vacation's book is science fiction (1)\n    clue5 = Or(\n        And(b_house == 1, book_1 == 1),\n        And(b_house == 2, book_2 == 1),\n        And(b_house == 3, book_3 == 1)\n    )\n    solver.add(clue5)\n\n    if solver.check() == sat:\n        model = solver.model()\n        rows = []\n        for i in [1, 2, 3]:\n            idx = i - 1\n            name_val = model[name_vars[idx]].as_long()\n            book_val = model[book_vars[idx]].as_long()\n            vac_val = model[vac_vars[idx]].as_long()\n            name_str = {0: 'Eric', 1: 'Arnold', 2: 'Peter'}[name_val]\n            book_str = {0: 'mystery', 1: 'science fiction', 2: 'romance'}[book_val]\n            vac_str = {0: 'mountain', 1: 'beach', 2: 'city'}[vac_val]\n            rows.append([str(i), name_str, book_str, vac_str])\n        solution = {\n            \"solution\": {\n                \"header\": [\"House\", \"Name\", \"BookGenre\", \"Vacation\"],\n                \"rows\": rows\n            }\n        }\n        print(json.dumps(solution, indent=2))\n    else:\n        print(\"No solution found.\")\n\nif __name__ == \"__main__\":\n    main()"
+}

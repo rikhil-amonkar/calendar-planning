@@ -1,0 +1,74 @@
+```python
+import z3
+import json
+
+def main():
+    # Define the number of houses
+    n_houses = 3
+    houses = list(range(1, n_houses+1))
+    
+    # Create solver
+    solver = z3.Solver()
+    
+    # Define enums for attributes
+    Name = z3.EnumSort('Name', ['Eric', 'Arnold', 'Peter'])
+    Height = z3.EnumSort('Height', ['short', 'very_short', 'average'])
+    
+    # Create variables for each house
+    name_vars = [z3.Const(f'name_{i}', Name) for i in houses]
+    height_vars = [z3.Const(f'height_{i}', Height) for i in houses]
+    
+    # All attributes are distinct
+    solver.add(z3.Distinct(name_vars))
+    solver.add(z3.Distinct(height_vars))
+    
+    # Extract values from enums
+    names = {str(getattr(Name, attr)): getattr(Name, attr) for attr in ['Eric', 'Arnold', 'Peter']}
+    heights = {str(getattr(Height, attr)): getattr(Height, attr) for attr in ['short', 'very_short', 'average']}
+    
+    # Clue 1: Eric is not in the first house
+    solver.add(name_vars[0] != names['Eric'])
+    
+    # Clue 2: Very short is left of short
+    # Find indices for very_short and short
+    very_short_index = z3.Int('very_short_index')
+    short_index = z3.Int('short_index')
+    solver.add(very_short_index >= 1, very_short_index <= n_houses)
+    solver.add(short_index >= 1, short_index <= n_houses)
+    for i in houses:
+        solver.add(z3.Implies(height_vars[i-1] == heights['very_short'], very_short_index == i))
+        solver.add(z3.Implies(height_vars[i-1] == heights['short'], short_index == i))
+    solver.add(very_short_index < short_index)
+    
+    # Clue 3: Very short is Eric
+    for i in houses:
+        solver.add(z3.Implies(height_vars[i-1] == heights['very_short'], name_vars[i-1] == names['Eric']))
+    
+    # Clue 4: Arnold is not in first house
+    solver.add(name_vars[0] != names['Arnold'])
+    
+    # Check and get model
+    if solver.check() == z3.sat:
+        model = solver.model()
+        
+        # Prepare results
+        rows = []
+        for i in houses:
+            name_val = str(model.eval(name_vars[i-1]))
+            height_val = str(model.eval(height_vars[i-1])).replace('_', ' ')
+            rows.append([str(i), name_val, height_val])
+        
+        # Format JSON output
+        solution = {
+            "solution": {
+                "header": ["House", "Name", "Height"],
+                "rows": rows
+            }
+        }
+        print(json.dumps(solution, indent=2))
+    else:
+        print('No solution found')
+
+if __name__ == '__main__':
+    main()
+```

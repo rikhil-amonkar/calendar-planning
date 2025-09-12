@@ -1,0 +1,5 @@
+Looking at the error, the issue is in the clue 1 constraint where you're trying to use `i` in a list comprehension that creates the variables for `z3.Exists()`, but then you're also trying to use `i` as an index in the constraint itself.
+
+The problem is that `i` in the list comprehension `[i for i in range(n_houses)]` is local to that comprehension and not accessible in the constraint `name_vars[i] == alice_idx`.
+
+Here's the fixed code:

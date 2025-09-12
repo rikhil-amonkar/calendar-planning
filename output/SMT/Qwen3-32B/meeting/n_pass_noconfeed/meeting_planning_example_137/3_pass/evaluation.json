@@ -1,0 +1,63 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "Barbara first: False\nBarbara: 0 to 1\nKate: 0 to 1",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": null,
+                "person": "Barbara",
+                "start_time": "0:00",
+                "end_time": "1:00"
+            },
+            {
+                "action": "meet",
+                "location": null,
+                "person": "Kate",
+                "start_time": "0:00",
+                "end_time": "1:00"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Chinatown",
+                "person": "Kenneth",
+                "start_time": "12:00",
+                "end_time": "13:30"
+            },
+            {
+                "action": "meet",
+                "location": "Golden Gate Park",
+                "person": "Barbara",
+                "start_time": "13:53",
+                "end_time": "14:38"
+            }
+        ]
+    },
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "person": "Barbara",
+        "time_of_day": {
+            "from": "8:15AM",
+            "to": "7:00PM"
+        }
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 3,
+    "timing": {
+        "api_call_time": 64.3603298664093,
+        "execution_time": 0.08861112594604492,
+        "constraint_eval_time": 8.749961853027344e-05,
+        "pred_extract_time": 1.7685606479644775,
+        "gold_extract_time": 4.172325134277344e-05,
+        "total_tokens": 5157,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import z3\n\n# Example: Define integer variables (adjust as needed for your problem)\nB_start = z3.Int('B_start')\nB_end = z3.Int('B_end')\nK_start = z3.Int('K_start')\nK_end = z3.Int('K_end')\n\n# Example: Define a boolean variable for Barbara being first\nbarbara_first = z3.Bool('barbara_first')\n\n# Create a Z3 solver instance\nsolver = z3.Solver()\n\n# Add constraints to the solver (example placeholder)\n# Replace these with your actual constraints\nsolver.add(B_start < B_end)  # Barbara's meeting starts before it ends\nsolver.add(K_start < K_end)  # Kate's meeting starts before it ends\n# Example constraint involving barbara_first\nsolver.add(z3.Implies(barbara_first, B_start < K_start))  # Barbara starts first if barbara_first is true\n\n# Check if the constraints are satisfiable\nif solver.check() == z3.sat:\n    model = solver.model()\n    bf = z3.is_true(model.eval(barbara_first))  # Correct way to get Python boolean\n\n    b_start = model.eval(B_start).as_long()\n    b_end = model.eval(B_end).as_long()\n    k_start = model.eval(K_start).as_long()\n    k_end = model.eval(K_end).as_long()\n\n    # Print or use the results as needed\n    print(f\"Barbara first: {bf}\")\n    print(f\"Barbara: {b_start} to {b_end}\")\n    print(f\"Kate: {k_start} to {k_end}\")\nelse:\n    print(\"No solution found.\")"
+}

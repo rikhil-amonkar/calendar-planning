@@ -1,0 +1,92 @@
+```python
+import json
+from z3 import *
+
+def main():
+    # Define the attributes
+    names = ['Alice', 'Peter', 'Arnold', 'Eric']
+    mothers = ['Holly', 'Kailyn', 'Janelle', 'Aniya']
+    flowers = ['carnations', 'roses', 'lilies', 'daffodils']
+    
+    # Create Z3 enums for each attribute type
+    NameSort, (Alice, Peter, Arnold, Eric) = EnumSort('Name', names)
+    MotherSort, (Holly, Kailyn, Janelle, Aniya) = EnumSort('Mother', mothers)
+    FlowerSort, (carnations, roses, lilies, daffodils) = EnumSort('Flower', flowers)
+    
+    # Create variables for each house's attributes
+    house_names = [Const(f'name_{i}', NameSort) for i in range(4)]
+    house_mothers = [Const(f'mother_{i}', MotherSort) for i in range(4)]
+    house_flowers = [Const(f'flower_{i}', FlowerSort) for i in range(4)]
+    
+    solver = Solver()
+    
+    # Add uniqueness constraints
+    solver.add(Distinct(house_names))
+    solver.add(Distinct(house_mothers))
+    solver.add(Distinct(house_flowers))
+    
+    # Clue 8: Alice is in the third house (index 2)
+    solver.add(house_names[2] == Alice)
+    
+    # Clue 1: Alice is the person whose mother's name is Kailyn
+    for i in range(4):
+        solver.add(Implies(house_names[i] == Alice, house_mothers[i] == Kailyn))
+    
+    # Clue 2: The person whose mother's name is Janelle is right of Arnold
+    for i in range(4):
+        for j in range(4):
+            solver.add(Implies(And(house_names[i] == Arnold, house_mothers[j] == Janelle), j > i))
+    
+    # Clue 3: Peter is right of the person who loves carnations
+    for i in range(4):
+        for j in range(4):
+            solver.add(Implies(And(house_names[i] == Peter, house_flowers[j] == carnations), i > j))
+    
+    # Clue 4: Eric loves daffodils
+    for i in range(4):
+        solver.add(Implies(house_names[i] == Eric, house_flowers[i] == daffodils))
+    
+    # Clue 5: Arnold's mother is Holly
+    for i in range(4):
+        solver.add(Implies(house_names[i] == Arnold, house_mothers[i] == Holly))
+    
+    # Clue 6: Carnations lover is right of Holly's mother
+    for i in range(4):
+        for j in range(4):
+            solver.add(Implies(And(house_flowers[i] == carnations, house_mothers[j] == Holly), i > j))
+    
+    # Clue 7: Lilies lover is directly left of Alice
+    for i in range(4):
+        solver.add(Implies(house_flowers[i] == lilies, i == 1))  # Alice is at index 2, so left is index 1
+    
+    # Check and get the solution
+    if solver.check() == sat:
+        model = solver.model()
+        
+        # Prepare the solution dictionary
+        solution = {
+            "solution": {
+                "header": ["House", "Name", "Mother", "Flower"],
+                "rows": []
+            }
+        }
+        
+        # Map Z3 values back to strings
+        name_map = {Alice: "Alice", Peter: "Peter", Arnold: "Arnold", Eric: "Eric"}
+        mother_map = {Holly: "Holly", Kailyn: "Kailyn", Janelle: "Janelle", Aniya: "Aniya"}
+        flower_map = {carnations: "carnations", roses: "roses", lilies: "lilies", daffodils: "daffodils"}
+        
+        for i in range(4):
+            house_num = str(i + 1)
+            name_val = name_map[model.eval(house_names[i])]
+            mother_val = mother_map[model.eval(house_mothers[i])]
+            flower_val = flower_map[model.eval(house_flowers[i])]
+            solution["solution"]["rows"].append([house_num, name_val, mother_val, flower_val])
+        
+        print(json.dumps(solution, indent=2))
+    else:
+        print('No solution found')
+
+if __name__ == "__main__":
+    main()
+```

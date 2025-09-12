@@ -1,0 +1,101 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "sat\n[friend_1 = -1, friend_0 = -1, friend_2 = -1]",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "unknown",
+                "person": "friend_0",
+                "start_time": "0:00",
+                "end_time": "0:00"
+            },
+            {
+                "action": "meet",
+                "location": "unknown",
+                "person": "friend_1",
+                "start_time": "0:00",
+                "end_time": "0:00"
+            },
+            {
+                "action": "meet",
+                "location": "unknown",
+                "person": "friend_2",
+                "start_time": "0:00",
+                "end_time": "0:00"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Richmond District",
+                "person": "Jeffrey",
+                "start_time": "12:00",
+                "end_time": "12:45"
+            },
+            {
+                "action": "meet",
+                "location": "Presidio",
+                "person": "Charles",
+                "start_time": "13:15",
+                "end_time": "15:00"
+            },
+            {
+                "action": "meet",
+                "location": "Nob Hill",
+                "person": "Robert",
+                "start_time": "15:18",
+                "end_time": "16:48"
+            },
+            {
+                "action": "meet",
+                "location": "Marina District",
+                "person": "Kimberly",
+                "start_time": "17:00",
+                "end_time": "18:15"
+            },
+            {
+                "action": "meet",
+                "location": "Embarcadero",
+                "person": "Karen",
+                "start_time": "18:29",
+                "end_time": "19:29"
+            },
+            {
+                "action": "meet",
+                "location": "Mission District",
+                "person": "Brian",
+                "start_time": "19:49",
+                "end_time": "20:49"
+            },
+            {
+                "action": "meet",
+                "location": "Alamo Square",
+                "person": "Joshua",
+                "start_time": "21:00",
+                "end_time": "22:00"
+            }
+        ]
+    },
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "constraints_satisfied_but_no_exact_match": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 3,
+    "timing": {
+        "api_call_time": 60.242488861083984,
+        "execution_time": 0.07792425155639648,
+        "constraint_eval_time": 0.0004074573516845703,
+        "pred_extract_time": 2.5772552490234375,
+        "gold_extract_time": 9.989738464355469e-05,
+        "total_tokens": 5011,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\n\n# Initialize the solver\nsolver = Solver()\n\n# Example: Define variables (adjust based on your actual setup)\nfriends_vars = [Int(f'friend_{i}') for i in range(3)]  # Example with 3 friends\nstart_vars = [Int(f'start_{i}') for i in range(3)]\nend_vars = [Int(f'end_{i}') for i in range(3)]\n\n# Example constraint: If a friend is scheduled (not -1), then end time is greater than start time\nfor i in range(3):\n    solver.add(Implies(friends_vars[i] != -1, end_vars[i] > start_vars[i]))\n\n# Check for satisfiability\nprint(solver.check())\nif solver.check() == sat:\n    print(solver.model())"
+}

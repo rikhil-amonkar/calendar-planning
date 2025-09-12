@@ -1,0 +1,73 @@
+from z3 import *
+import json
+
+def main():
+    s = Solver()
+    
+    cities = ['Reykjavik', 'Riga', 'Oslo', 'Lyon', 'Dubrovnik', 'Madrid', 'Warsaw', 'London']
+    req_days = [4, 2, 3, 5, 2, 2, 4, 3]
+    city_index = {name: idx for idx, name in enumerate(cities)}
+    
+    flight_list = [
+        (0, 6), (2, 5), (6, 1), (3, 7), (5, 7), (6, 7), (0, 5), (6, 2), (2, 4),
+        (0, 2), (1, 2), (2, 3), (2, 7), (7, 0), (6, 5), (5, 3), (4, 5)
+    ]
+    flight_set = set()
+    for (u, v) in flight_list:
+        flight_set.add((u, v))
+        flight_set.add((v, u))
+    
+    city_order = [Int(f'city_order_{i}') for i in range(8)]
+    start_segment = [Int(f'start_segment_{i}') for i in range(8)]
+    end_segment = [Int(f'end_segment_{i}') for i in range(8)]
+    
+    for i in range(8):
+        s.add(city_order[i] >= 0, city_order[i] < 8)
+    s.add(Distinct(city_order))
+    
+    s.add(start_segment[0] == 1)
+    s.add(end_segment[7] == 18)
+    
+    for i in range(8):
+        req_expr = 0
+        for j in range(8):
+            req_expr = If(city_order[i] == j, req_days[j], req_expr)
+        s.add(end_segment[i] == start_segment[i] + req_expr - 1)
+        if i < 7:
+            s.add(start_segment[i+1] == end_segment[i])
+    
+    for i in range(8):
+        s.add(If(city_order[i] == 1, And(start_segment[i] == 4, end_segment[i] == 5), True))
+        s.add(If(city_order[i] == 4, And(start_segment[i] == 7, end_segment[i] == 8), True))
+    
+    for i in range(7):
+        a = city_order[i]
+        b = city_order[i+1]
+        cond = False
+        for (u, v) in flight_set:
+            cond = Or(cond, And(a == u, b == v))
+        s.add(cond)
+    
+    if s.check() == sat:
+        m = s.model()
+        segs = []
+        for i in range(8):
+            city_idx = m.evaluate(city_order[i]).as_long()
+            start_val = m.evaluate(start_segment[i]).as_long()
+            end_val = m.evaluate(end_segment[i]).as_long()
+            segs.append((start_val, end_val, cities[city_idx]))
+        
+        itinerary = []
+        for start, end, city in segs:
+            if start == end:
+                day_range = f"Day {start}"
+            else:
+                day_range = f"Day {start}-{end}"
+            itinerary.append({"day_range": day_range, "place": city})
+        
+        print(json.dumps({"itinerary": itinerary}))
+    else:
+        print('{"itinerary": []}')
+
+if __name__ == "__main__":
+    main()

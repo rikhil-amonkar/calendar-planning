@@ -1,0 +1,72 @@
+We are given 4 houses, each with a name and a pet.
+ We have two attributes: name and pet.
+ The names are: Peter, Arnold, Eric, Alice.
+ The pets are: bird, fish, dog, cat.
+
+ We are to assign each house a name and a pet such that all clues are satisfied.
+
+ We'll use Z3 to solve the puzzle.
+
+ Steps:
+ 1. Define the houses: 1,2,3,4.
+ 2. For each attribute (name and pet), we define an integer variable for each house, and then use constraints to ensure they are distinct and within the range of possible values.
+
+ Since there are 4 houses, we can represent each attribute by an integer from 0 to 3, and then map them to the actual names and pets.
+
+ Alternatively, we can use Z3's EnumSort for each attribute to make it more readable and avoid mapping.
+
+ Let's use EnumSort for both name and pet.
+
+ We'll create:
+   NameSort = EnumSort('NameSort', ['Peter', 'Arnold', 'Eric', 'Alice'])
+   PetSort = EnumSort('PetSort', ['bird', 'fish', 'dog', 'cat'])
+
+ Then for each house i (from 1 to 4), we'll have:
+   name[i] = Const('name_i', NameSort)
+   pet[i] = Const('pet_i', PetSort)
+
+ But note: we have 4 houses, so we can index from 0 to 3 for programming convenience, then output house numbers starting at 1.
+
+ Alternatively, we can create arrays for name and pet of length 4 (index 0 to 3 for house 1 to 4).
+
+ We'll then add constraints for distinct names and distinct pets.
+
+ Then we add the clues:
+
+ 1. The person who owns a dog is somewhere to the right of Alice.
+    This means: the house index of the dog owner is greater than the house index of Alice.
+
+ 2. Eric is not in the first house -> so Eric is not in house index 0.
+
+ 3. Eric is the person who keeps a pet bird -> so for the house where name is Eric, the pet is bird.
+
+ 4. There is one house between the person with an aquarium of fish and Peter.
+    Note: "aquarium of fish" means the pet fish. So, the house with fish and Peter's house have one house between them.
+    So, if fish is in house i and Peter is in house j, then |i - j| = 2.
+
+ 5. Alice is not in the first house -> so Alice is not in house index 0.
+
+ 6. Arnold is the person with an aquarium of fish -> so for the house where name is Arnold, the pet is fish.
+
+ We also have that all attributes are unique per house, so we already have distinct constraints.
+
+ Implementation:
+
+ Let's create two arrays: name and pet, each of size 4 (for houses 0 to 3).
+
+ We'll define the sorts and then the constants for each house.
+
+ Steps in code:
+
+ 1. Import z3 and json.
+ 2. Create solver.
+ 3. Define enums for Name and Pet.
+ 4. Create arrays for name and pet for 4 houses (index 0 to 3).
+ 5. Add constraint that all names are distinct and all pets are distinct.
+ 6. Add clues as constraints.
+
+ Then solve and output the solution in the required JSON format.
+
+ Note: We must output the houses in order 1 to 4, so we'll map our indices 0->1, 1->2, etc.
+
+ Let's code accordingly.

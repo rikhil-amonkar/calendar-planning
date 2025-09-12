@@ -1,0 +1,97 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"solution\": {\n    \"header\": [\n      \"House\",\n      \"Name\",\n      \"BookGenre\",\n      \"Occupation\"\n    ],\n    \"rows\": [\n      [\n        \"1\",\n        \"Carol\",\n        \"mystery\",\n        \"doctor\"\n      ],\n      [\n        \"2\",\n        \"Bob\",\n        \"science fiction\",\n        \"artist\"\n      ],\n      [\n        \"3\",\n        \"Eric\",\n        \"historical fiction\",\n        \"nurse\"\n      ],\n      [\n        \"4\",\n        \"Alice\",\n        \"fantasy\",\n        \"lawyer\"\n      ],\n      [\n        \"5\",\n        \"Arnold\",\n        \"biography\",\n        \"teacher\"\n      ],\n      [\n        \"6\",\n        \"Peter\",\n        \"romance\",\n        \"engineer\"\n      ]\n    ]\n  }\n}",
+    "pred": [
+        {
+            "House": "1",
+            "Name": "Carol",
+            "BookGenre": "mystery",
+            "Occupation": "doctor"
+        },
+        {
+            "House": "2",
+            "Name": "Bob",
+            "BookGenre": "science fiction",
+            "Occupation": "artist"
+        },
+        {
+            "House": "3",
+            "Name": "Eric",
+            "BookGenre": "historical fiction",
+            "Occupation": "nurse"
+        },
+        {
+            "House": "4",
+            "Name": "Alice",
+            "BookGenre": "fantasy",
+            "Occupation": "lawyer"
+        },
+        {
+            "House": "5",
+            "Name": "Arnold",
+            "BookGenre": "biography",
+            "Occupation": "teacher"
+        },
+        {
+            "House": "6",
+            "Name": "Peter",
+            "BookGenre": "romance",
+            "Occupation": "engineer"
+        }
+    ],
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Carol",
+            "BookGenre": "mystery",
+            "Occupation": "doctor"
+        },
+        {
+            "House": "2",
+            "Name": "Bob",
+            "BookGenre": "science fiction",
+            "Occupation": "artist"
+        },
+        {
+            "House": "3",
+            "Name": "Eric",
+            "BookGenre": "historical fiction",
+            "Occupation": "nurse"
+        },
+        {
+            "House": "4",
+            "Name": "Alice",
+            "BookGenre": "fantasy",
+            "Occupation": "lawyer"
+        },
+        {
+            "House": "5",
+            "Name": "Arnold",
+            "BookGenre": "biography",
+            "Occupation": "teacher"
+        },
+        {
+            "House": "6",
+            "Name": "Peter",
+            "BookGenre": "romance",
+            "Occupation": "engineer"
+        }
+    ],
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 406.1284327507019,
+        "execution_time": 0.07882928848266602,
+        "constraint_eval_time": 4.1484832763671875e-05,
+        "pred_extract_time": 1.5953023433685303,
+        "gold_extract_time": 1.239776611328125e-05,
+        "total_tokens": 29136,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\nimport json\n\ndef solve_puzzle():\n    s = Solver()\n\n    # Define variables for each person's house\n    bob_house = Int('bob_house')\n    arnold_house = Int('arnold_house')\n    carol_house = Int('carol_house')\n    alice_house = Int('alice_house')\n    peter_house = Int('peter_house')\n    eric_house = Int('eric_house')\n\n    # Define variables for each book genre's house\n    romance_house = Int('romance_house')\n    historical_fiction_house = Int('historical_fiction_house')\n    biography_house = Int('biography_house')\n    mystery_house = Int('mystery_house')\n    fantasy_house = Int('fantasy_house')\n    science_fiction_house = Int('science_fiction_house')\n\n    # Define variables for each occupation's house\n    artist_house = Int('artist_house')\n    doctor_house = Int('doctor_house')\n    nurse_house = Int('nurse_house')\n    engineer_house = Int('engineer_house')\n    teacher_house = Int('teacher_house')\n    lawyer_house = Int('lawyer_house')\n\n    # Add constraints that all are between 1 and 6\n    for var in [bob_house, arnold_house, carol_house, alice_house, peter_house, eric_house]:\n        s.add(And(1 <= var, var <= 6))\n\n    for var in [romance_house, historical_fiction_house, biography_house, mystery_house, fantasy_house, science_fiction_house]:\n        s.add(And(1 <= var, var <= 6))\n\n    for var in [artist_house, doctor_house, nurse_house, engineer_house, teacher_house, lawyer_house]:\n        s.add(And(1 <= var, var <= 6))\n\n    # Add distinctness constraints\n    s.add(Distinct([bob_house, arnold_house, carol_house, alice_house, peter_house, eric_house]))\n    s.add(Distinct([romance_house, historical_fiction_house, biography_house, mystery_house, fantasy_house, science_fiction_house]))\n    s.add(Distinct([artist_house, doctor_house, nurse_house, engineer_house, teacher_house, lawyer_house]))\n\n    # Add the clues as constraints\n    s.add(alice_house == fantasy_house)  # Clue 1\n    s.add(Abs(mystery_house - bob_house) == 1)  # Clue 2\n    s.add(carol_house == mystery_house)  # Clue 3\n    s.add(lawyer_house == fantasy_house)  # Clue 4\n    s.add(bob_house != 5)  # Clue 5\n    s.add(arnold_house < engineer_house)  # Clue 6\n    s.add(nurse_house + 1 == alice_house)  # Clue 7\n    s.add(biography_house == teacher_house)  # Clue 8\n    s.add(historical_fiction_house < teacher_house)  # Clue 9\n    s.add(doctor_house == 1)  # Clue 10\n    s.add(science_fiction_house == artist_house)  # Clue 11\n    s.add(eric_house == 3)  # Clue 12\n    s.add(mystery_house != 5)  # Clue 13\n\n    if s.check() == sat:\n        model = s.model()\n\n        # Process names\n        name_to_house = {\n            'Bob': model.eval(bob_house).as_long(),\n            'Arnold': model.eval(arnold_house).as_long(),\n            'Carol': model.eval(carol_house).as_long(),\n            'Alice': model.eval(alice_house).as_long(),\n            'Peter': model.eval(peter_house).as_long(),\n            'Eric': model.eval(eric_house).as_long(),\n        }\n        house_to_name = {v: k for k, v in name_to_house.items()}\n\n        # Process books\n        book_to_house = {\n            'romance': model.eval(romance_house).as_long(),\n            'historical fiction': model.eval(historical_fiction_house).as_long(),\n            'biography': model.eval(biography_house).as_long(),\n            'mystery': model.eval(mystery_house).as_long(),\n            'fantasy': model.eval(fantasy_house).as_long(),\n            'science fiction': model.eval(science_fiction_house).as_long(),\n        }\n        house_to_book = {v: k for k, v in book_to_house.items()}\n\n        # Process occupations\n        occupation_to_house = {\n            'artist': model.eval(artist_house).as_long(),\n            'doctor': model.eval(doctor_house).as_long(),\n            'nurse': model.eval(nurse_house).as_long(),\n            'engineer': model.eval(engineer_house).as_long(),\n            'teacher': model.eval(teacher_house).as_long(),\n            'lawyer': model.eval(lawyer_house).as_long(),\n        }\n        house_to_occupation = {v: k for k, v in occupation_to_house.items()}\n\n        # Build the solution rows\n        rows = []\n        for h in range(1, 7):\n            row = [\n                str(h),\n                house_to_name[h],\n                house_to_book[h],\n                house_to_occupation[h]\n            ]\n            rows.append(row)\n\n        solution = {\n            \"solution\": {\n                \"header\": [\"House\", \"Name\", \"BookGenre\", \"Occupation\"],\n                \"rows\": rows\n            }\n        }\n        return json.dumps(solution, indent=2)\n    else:\n        return json.dumps({\"error\": \"No solution found\"})\n\nif __name__ == \"__main__\":\n    print(solve_puzzle())"
+}

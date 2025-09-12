@@ -1,0 +1,45 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"solution\": {\n    \"header\": [\n      \"House\",\n      \"Name\",\n      \"Food\"\n    ],\n    \"rows\": [\n      [\n        \"1\",\n        \"Eric\",\n        \"grilled cheese\"\n      ],\n      [\n        \"2\",\n        \"Arnold\",\n        \"pizza\"\n      ]\n    ]\n  }\n}",
+    "pred": [
+        {
+            "House": "1",
+            "Name": "Eric",
+            "Food": "grilled cheese"
+        },
+        {
+            "House": "2",
+            "Name": "Arnold",
+            "Food": "pizza"
+        }
+    ],
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Eric",
+            "Food": "grilled cheese"
+        },
+        {
+            "House": "2",
+            "Name": "Arnold",
+            "Food": "pizza"
+        }
+    ],
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 15.694844245910645,
+        "execution_time": 0.07774233818054199,
+        "constraint_eval_time": 4.839897155761719e-05,
+        "pred_extract_time": 1.4176106452941895,
+        "gold_extract_time": 1.4543533325195312e-05,
+        "total_tokens": 1414,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\nimport json\n\n# Define the variables\nhouse1_name = String('house1_name')\nhouse2_name = String('house2_name')\nhouse1_food = String('house1_food')\nhouse2_food = String('house2_food')\n\n# Create a solver instance\nsolver = Solver()\n\n# Define the domain of possible values\nnames = ['Eric', 'Arnold']\nfoods = ['pizza', 'grilled cheese']\n\n# Add constraints for unique names and foods per house\nsolver.add(Distinct(house1_name, house2_name))\nsolver.add(Distinct(house1_food, house2_food))\n\n# Add constraints based on the clues\nsolver.add(house2_food == 'pizza')\nsolver.add(house1_name != 'Arnold')\n\n# Add constraints for domain values\nsolver.add(Or(house1_name == 'Eric', house1_name == 'Arnold'))\nsolver.add(Or(house2_name == 'Eric', house2_name == 'Arnold'))\nsolver.add(Or(house1_food == 'pizza', house1_food == 'grilled cheese'))\nsolver.add(Or(house2_food == 'pizza', house2_food == 'grilled cheese'))\n\n# Check if the constraints are satisfiable\nif solver.check() == sat:\n    model = solver.model()\n    solution = {\n        \"solution\": {\n            \"header\": [\"House\", \"Name\", \"Food\"],\n            \"rows\": [\n                [\"1\", model[house1_name].as_string(), model[house1_food].as_string()],\n                [\"2\", model[house2_name].as_string(), model[house2_food].as_string()]\n            ]\n        }\n    }\n    print(json.dumps(solution, indent=2))\nelse:\n    print(\"No solution found\")"
+}

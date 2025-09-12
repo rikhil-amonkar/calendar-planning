@@ -1,0 +1,45 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"solution\": {\n    \"header\": [\n      \"House\",\n      \"Name\",\n      \"HouseStyle\"\n    ],\n    \"rows\": [\n      [\n        \"1\",\n        \"Eric\",\n        \"victorian\"\n      ],\n      [\n        \"2\",\n        \"Arnold\",\n        \"colonial\"\n      ]\n    ]\n  }\n}",
+    "pred": [
+        {
+            "House": "1",
+            "Name": "Eric",
+            "HouseStyle": "victorian"
+        },
+        {
+            "House": "2",
+            "Name": "Arnold",
+            "HouseStyle": "colonial"
+        }
+    ],
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Eric",
+            "HouseStyle": "victorian"
+        },
+        {
+            "House": "2",
+            "Name": "Arnold",
+            "HouseStyle": "colonial"
+        }
+    ],
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 208.36040210723877,
+        "execution_time": 0.07460308074951172,
+        "constraint_eval_time": 4.5299530029296875e-05,
+        "pred_extract_time": 1.3164241313934326,
+        "gold_extract_time": 8.344650268554688e-06,
+        "total_tokens": 16087,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import json\nfrom z3 import *\n\ndef main():\n    # Define EnumSorts for names and house styles\n    Names, (Eric, Arnold) = EnumSort('Names', ['Eric', 'Arnold'])\n    HouseStyles, (Victorian, Colonial) = EnumSort('HouseStyles', ['victorian', 'colonial'])\n\n    # Variables for each house's attributes\n    name1 = Const('name1', Names)\n    name2 = Const('name2', Names)\n    style1 = Const('style1', HouseStyles)\n    style2 = Const('style2', HouseStyles)\n\n    # Create solver instance and add constraints\n    s = Solver()\n    \n    # Clue 2: Eric is in the first house\n    s.add(name1 == Eric)\n    \n    # Each name and style must be unique\n    s.add(name1 != name2)\n    s.add(style1 != style2)\n    \n    # Clue 1: Victorian is to the left of Colonial => style1 is Victorian\n    s.add(style1 == Victorian)\n\n    # Check for solution\n    if s.check() == sat:\n        model = s.model()\n        \n        # Extract values from the model\n        name1_val = model.evaluate(name1).decl().name()\n        name2_val = model.evaluate(name2).decl().name()\n        style1_val = model.evaluate(style1).decl().name()\n        style2_val = model.evaluate(style2).decl().name()\n\n        # Construct the solution dictionary\n        solution = {\n            \"solution\": {\n                \"header\": [\"House\", \"Name\", \"HouseStyle\"],\n                \"rows\": [\n                    [\"1\", name1_val, style1_val],\n                    [\"2\", name2_val, style2_val]\n                ]\n            }\n        }\n\n        # Output as JSON\n        print(json.dumps(solution, indent=2))\n    else:\n        print(json.dumps({\"solution\": \"No solution found\"}, indent=2))\n\nif __name__ == \"__main__\":\n    main()"
+}

@@ -1,0 +1,99 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"itinerary\": [\n    {\n      \"action\": \"meet\",\n      \"location\": \"Golden Gate Park\",\n      \"person\": \"Andrew\",\n      \"start_time\": \"11:45\",\n      \"end_time\": \"13:00\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"The Castro\",\n      \"person\": \"Robert\",\n      \"start_time\": \"13:13\",\n      \"end_time\": \"13:43\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Pacific Heights\",\n      \"person\": \"Sarah\",\n      \"start_time\": \"16:15\",\n      \"end_time\": \"16:30\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Presidio\",\n      \"person\": \"Nancy\",\n      \"start_time\": \"17:30\",\n      \"end_time\": \"18:30\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Chinatown\",\n      \"person\": \"Rebecca\",\n      \"start_time\": \"18:51\",\n      \"end_time\": \"20:21\"\n    }\n  ]\n}",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Golden Gate Park",
+                "person": "Andrew",
+                "start_time": "11:45",
+                "end_time": "13:00"
+            },
+            {
+                "action": "meet",
+                "location": "The Castro",
+                "person": "Robert",
+                "start_time": "13:13",
+                "end_time": "13:43"
+            },
+            {
+                "action": "meet",
+                "location": "Pacific Heights",
+                "person": "Sarah",
+                "start_time": "16:15",
+                "end_time": "16:30"
+            },
+            {
+                "action": "meet",
+                "location": "Presidio",
+                "person": "Nancy",
+                "start_time": "17:30",
+                "end_time": "18:30"
+            },
+            {
+                "action": "meet",
+                "location": "Chinatown",
+                "person": "Rebecca",
+                "start_time": "18:51",
+                "end_time": "20:21"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Golden Gate Park",
+                "person": "Andrew",
+                "start_time": "11:45",
+                "end_time": "13:00"
+            },
+            {
+                "action": "meet",
+                "location": "The Castro",
+                "person": "Robert",
+                "start_time": "13:13",
+                "end_time": "13:43"
+            },
+            {
+                "action": "meet",
+                "location": "Pacific Heights",
+                "person": "Sarah",
+                "start_time": "16:15",
+                "end_time": "16:30"
+            },
+            {
+                "action": "meet",
+                "location": "Presidio",
+                "person": "Nancy",
+                "start_time": "17:30",
+                "end_time": "18:30"
+            },
+            {
+                "action": "meet",
+                "location": "Chinatown",
+                "person": "Rebecca",
+                "start_time": "18:51",
+                "end_time": "20:21"
+            }
+        ]
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 812.874582529068,
+        "execution_time": 0.08281970024108887,
+        "constraint_eval_time": 6.127357482910156e-05,
+        "pred_extract_time": 5.038039922714233,
+        "gold_extract_time": 0.00010418891906738281,
+        "total_tokens": 59162,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import z3\nimport json\n\nfriends = [\n    {\n        'name': 'Andrew',\n        'location': 'Golden Gate Park',\n        'earliest': 705,\n        'latest': 870,\n        'duration': 75\n    },\n    {\n        'name': 'Sarah',\n        'location': 'Pacific Heights',\n        'earliest': 975,\n        'latest': 1125,\n        'duration': 15\n    },\n    {\n        'name': 'Nancy',\n        'location': 'Presidio',\n        'earliest': 1050,\n        'latest': 1155,\n        'duration': 60\n    },\n    {\n        'name': 'Rebecca',\n        'location': 'Chinatown',\n        'earliest': 585,\n        'latest': 1290,\n        'duration': 90\n    },\n    {\n        'name': 'Robert',\n        'location': 'The Castro',\n        'earliest': 510,\n        'latest': 855,\n        'duration': 30\n    }\n]\n\ntravel_time = {\n    'Union Square': {\n        'Golden Gate Park': 22,\n        'Pacific Heights': 15,\n        'Presidio': 24,\n        'Chinatown': 7,\n        'The Castro': 19\n    },\n    'Golden Gate Park': {\n        'Union Square': 22,\n        'Pacific Heights': 16,\n        'Presidio': 11,\n        'Chinatown': 23,\n        'The Castro': 13\n    },\n    'Pacific Heights': {\n        'Union Square': 12,\n        'Golden Gate Park': 15,\n        'Presidio': 11,\n        'Chinatown': 11,\n        'The Castro': 16\n    },\n    'Presidio': {\n        'Union Square': 22,\n        'Golden Gate Park': 12,\n        'Pacific Heights': 11,\n        'Chinatown': 21,\n        'The Castro': 21\n    },\n    'Chinatown': {\n        'Union Square': 7,\n        'Golden Gate Park': 23,\n        'Pacific Heights': 10,\n        'Presidio': 19,\n        'The Castro': 22\n    },\n    'The Castro': {\n        'Union Square': 19,\n        'Golden Gate Park': 11,\n        'Pacific Heights': 16,\n        'Presidio': 20,\n        'Chinatown': 20\n    }\n}\n\nmeet = []\nstart = []\nend = []\nfor friend in friends:\n    name = friend['name']\n    meet.append(z3.Bool(f'meet_{name}'))\n    start.append(z3.Int(f'start_{name}'))\n    end.append(z3.Int(f'end_{name}'))\n\nopt = z3.Optimize()\n\nfor i in range(len(friends)):\n    friend = friends[i]\n    loc = friend['location']\n    earliest = friend['earliest']\n    latest = friend['latest']\n    duration = friend['duration']\n    opt.add(z3.Implies(meet[i], start[i] >= earliest))\n    opt.add(z3.Implies(meet[i], end[i] <= latest))\n    opt.add(z3.Implies(meet[i], end[i] - start[i] >= duration))\n    opt.add(z3.Implies(meet[i], start[i] >= 540 + travel_time['Union Square'][loc]))\n\nfor i in range(len(friends)):\n    for j in range(len(friends)):\n        if i != j:\n            loc_i = friends[i]['location']\n            loc_j = friends[j]['location']\n            travel_time_ij = travel_time[loc_i][loc_j]\n            opt.add(z3.Implies(z3.And(meet[i], meet[j]), z3.Or(\n                start[j] >= end[i] + travel_time_ij,\n                start[i] >= end[j] + travel_time[loc_j][loc_i]\n            )))\n\nopt.maximize(z3.Sum([z3.If(m, 1, 0) for m in meet]))\n\nif opt.check() == z3.sat:\n    model = opt.model()\n    met_friends = []\n    for i in range(len(friends)):\n        if model.eval(meet[i]):\n            met_friends.append({\n                'name': friends[i]['name'],\n                'location': friends[i]['location'],\n                'start': model.eval(start[i]),\n                'end': model.eval(end[i])\n            })\n    met_friends.sort(key=lambda x: x['start'].as_long())\n    itinerary = []\n    for f in met_friends:\n        start_time = f['start'].as_long()\n        end_time = f['end'].as_long()\n        def to_time_str(t):\n            hours = t // 60\n            minutes = t % 60\n            return f\"{hours}:{minutes:02d}\"\n        itinerary.append({\n            \"action\": \"meet\",\n            \"location\": f['location'],\n            \"person\": f['name'],\n            \"start_time\": to_time_str(start_time),\n            \"end_time\": to_time_str(end_time)\n        })\n    print(json.dumps({\"itinerary\": itinerary}, indent=2))\nelse:\n    print(json.dumps({\"error\": \"No solution found\"}, indent=2))"
+}

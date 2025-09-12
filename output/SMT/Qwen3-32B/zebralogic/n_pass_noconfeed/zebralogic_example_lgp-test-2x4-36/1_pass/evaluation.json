@@ -1,0 +1,53 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"solution\": {\n    \"header\": [\n      \"House\",\n      \"Name\",\n      \"BookGenre\",\n      \"Birthday\",\n      \"Animal\"\n    ],\n    \"rows\": [\n      [\n        \"1\",\n        \"Eric\",\n        \"mystery\",\n        \"sept\",\n        \"horse\"\n      ],\n      [\n        \"2\",\n        \"Arnold\",\n        \"science fiction\",\n        \"april\",\n        \"cat\"\n      ]\n    ]\n  }\n}",
+    "pred": [
+        {
+            "House": "1",
+            "Name": "Eric",
+            "BookGenre": "mystery",
+            "Birthday": "sept",
+            "Animal": "horse"
+        },
+        {
+            "House": "2",
+            "Name": "Arnold",
+            "BookGenre": "science fiction",
+            "Birthday": "april",
+            "Animal": "cat"
+        }
+    ],
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Eric",
+            "BookGenre": "mystery",
+            "Birthday": "sept",
+            "Animal": "horse"
+        },
+        {
+            "House": "2",
+            "Name": "Arnold",
+            "BookGenre": "science fiction",
+            "Birthday": "april",
+            "Animal": "cat"
+        }
+    ],
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 272.27687096595764,
+        "execution_time": 0.07788920402526855,
+        "constraint_eval_time": 4.172325134277344e-05,
+        "pred_extract_time": 1.401937484741211,
+        "gold_extract_time": 9.298324584960938e-06,
+        "total_tokens": 20275,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import json\nfrom z3 import *\n\ndef solve_puzzle():\n    solver = Solver()\n\n    # Variables for house 1\n    name1 = String('name1')\n    book1 = String('book1')\n    birth1 = String('birth1')\n    animal1 = String('animal1')\n\n    # Variables for house 2\n    name2 = String('name2')\n    book2 = String('book2')\n    birth2 = String('birth2')\n    animal2 = String('animal2')\n\n    # Add domain constraints for names\n    solver.add(Or(name1 == 'Eric', name1 == 'Arnold'))\n    solver.add(Or(name2 == 'Eric', name2 == 'Arnold'))\n    solver.add(name1 != name2)\n\n    # Add domain constraints for book genres\n    solver.add(Or(book1 == 'science fiction', book1 == 'mystery'))\n    solver.add(Or(book2 == 'science fiction', book2 == 'mystery'))\n    solver.add(book1 != book2)\n\n    # Add domain constraints for birthdays\n    solver.add(Or(birth1 == 'april', birth1 == 'sept'))\n    solver.add(Or(birth2 == 'april', birth2 == 'sept'))\n    solver.add(birth1 != birth2)\n\n    # Add domain constraints for animals\n    solver.add(Or(animal1 == 'horse', animal1 == 'cat'))\n    solver.add(Or(animal2 == 'horse', animal2 == 'cat'))\n    solver.add(animal1 != animal2)\n\n    # Add puzzle-specific constraints\n    solver.add(name1 == 'Eric')  # Clue 1\n    solver.add(birth1 == 'sept')  # Clue 2\n    solver.add(book2 == 'science fiction')  # Clue 3\n    solver.add(Implies(animal1 == 'horse', birth1 == 'sept'))  # Clue 4 part 1\n    solver.add(Implies(animal2 == 'horse', birth2 == 'sept'))  # Clue 4 part 2\n\n    # Check for solution\n    if solver.check() == sat:\n        model = solver.model()\n\n        # Extract values for house 1\n        n1 = model.eval(name1).as_string()\n        b1 = model.eval(book1).as_string()\n        br1 = model.eval(birth1).as_string()\n        a1 = model.eval(animal1).as_string()\n\n        # Extract values for house 2\n        n2 = model.eval(name2).as_string()\n        b2 = model.eval(book2).as_string()\n        br2 = model.eval(birth2).as_string()\n        a2 = model.eval(animal2).as_string()\n\n        # Build the JSON structure\n        solution = {\n            \"solution\": {\n                \"header\": [\"House\", \"Name\", \"BookGenre\", \"Birthday\", \"Animal\"],\n                \"rows\": [\n                    [\"1\", n1, b1, br1, a1],\n                    [\"2\", n2, b2, br2, a2]\n                ]\n            }\n        }\n\n        return json.dumps(solution, indent=2)\n    else:\n        return json.dumps({\"error\": \"No solution found\"}, indent=2)\n\n# Run the function and print the result\nprint(solve_puzzle())"
+}

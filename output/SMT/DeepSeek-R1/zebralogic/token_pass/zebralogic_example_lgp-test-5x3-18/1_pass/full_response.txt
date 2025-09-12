@@ -1,0 +1,115 @@
+```python
+import json
+from z3 import *
+
+def main():
+    # Define the sorts for attributes
+    Name = Datatype('Name')
+    Name.declare('Alice')
+    Name.declare('Eric')
+    Name.declare('Arnold')
+    Name.declare('Bob')
+    Name.declare('Peter')
+    Name = Name.create()
+
+    Flower = Datatype('Flower')
+    Flower.declare('tulips')
+    Flower.declare('roses')
+    Flower.declare('lilies')
+    Flower.declare('daffodils')
+    Flower.declare('carnations')
+    Flower = Flower.create()
+
+    Animal = Datatype('Animal')
+    Animal.declare('dog')
+    Animal.declare('horse')
+    Animal.declare('cat')
+    Animal.declare('bird')
+    Animal.declare('fish')
+    Animal = Animal.create()
+
+    # Create solver instance
+    s = Solver()
+
+    # Create variables for each house
+    houses = [1, 2, 3, 4, 5]
+    names = [Const(f"name_{i}", Name) for i in houses]
+    flowers = [Const(f"flower_{i}", Flower) for i in houses]
+    animals = [Const(f"animal_{i}", Animal) for i in houses]
+
+    # Add uniqueness constraints
+    s.add(Distinct(names))
+    s.add(Distinct(flowers))
+    s.add(Distinct(animals))
+
+    # Clue 1: Alice is in the second house.
+    s.add(names[1] == Name.Alice)
+
+    # Clue 2: The person who loves lilies is the bird keeper.
+    for i in houses:
+        s.add(Implies(flowers[i-1] == Flower.lilies, animals[i-1] == Animal.bird))
+
+    # Clue 3: Peter is right of the tulips lover.
+    tulips_house = Int('tulips_house')
+    s.add(Or([And(flowers[i-1] == Flower.tulips, tulips_house == i) for i in houses]))
+    peter_house = Int('peter_house')
+    s.add(Or([And(names[i-1] == Name.Peter, peter_house == i) for i in houses]))
+    s.add(peter_house > tulips_house)
+
+    # Clue 4: Fish enthusiast loves daffodils.
+    for i in houses:
+        s.add(Implies(animals[i-1] == Animal.fish, flowers[i-1] == Flower.daffodils))
+
+    # Clue 5: Horse keeper is Eric.
+    for i in houses:
+        s.add(Implies(animals[i-1] == Animal.horse, names[i-1] == Name.Eric))
+
+    # Clue 6: Two houses between dog owner and Bob.
+    bob_house = Int('bob_house')
+    s.add(Or([And(names[i-1] == Name.Bob, bob_house == i) for i in houses]))
+    dog_house = Int('dog_house')
+    s.add(Or([And(animals[i-1] == Animal.dog, dog_house == i) for i in houses]))
+    s.add(Or(dog_house - bob_house == 3, bob_house - dog_house == 3))
+
+    # Clue 7: Fish enthusiast directly left of Bob.
+    s.add(bob_house == dog_house + 1)  # From clue 6 and 7, Bob is right of fish
+
+    # Clue 8: Alice directly left of horse keeper.
+    s.add(animals[2] == Animal.horse)  # Since Alice is in house 2 (index 1)
+
+    # Clue 9: Carnations directly left of tulips.
+    for i in range(1, 5):
+        s.add(Implies(flowers[i-1] == Flower.carnations, flowers[i] == Flower.tulips))
+
+    # Clue 10: Cat not in first house.
+    s.add(animals[0] != Animal.cat)
+
+    # Check and get solution
+    if s.check() == sat:
+        m = s.model()
+        result = []
+        for i in houses:
+            idx = i-1
+            name_val = m.eval(names[idx])
+            flower_val = m.eval(flowers[idx])
+            animal_val = m.eval(animals[idx])
+            result.append([
+                str(i),
+                str(name_val).split('.')[1],
+                str(flower_val).split('.')[1],
+                str(animal_val).split('.')[1]
+            ])
+        
+        solution = {
+            "solution": {
+                "header": ["House", "Name", "Flower", "Animal"],
+                "rows": result
+            }
+        }
+        print(json.dumps(solution, indent=2))
+    else:
+        print("No solution found")
+
+if __name__ == "__main__":
+    main()
+```

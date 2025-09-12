@@ -1,0 +1,72 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": true,
+    "execution_output": "{\n  \"itinerary\": []\n}",
+    "pred": {
+        "itinerary": []
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Union Square",
+                "person": "Jeffrey",
+                "start_time": "9:30",
+                "end_time": "11:30"
+            },
+            {
+                "action": "meet",
+                "location": "Chinatown",
+                "person": "Robert",
+                "start_time": "12:15",
+                "end_time": "13:45"
+            },
+            {
+                "action": "meet",
+                "location": "Golden Gate Park",
+                "person": "Mark",
+                "start_time": "14:08",
+                "end_time": "14:23"
+            },
+            {
+                "action": "meet",
+                "location": "Nob Hill",
+                "person": "Sandra",
+                "start_time": "14:43",
+                "end_time": "14:58"
+            },
+            {
+                "action": "meet",
+                "location": "Mission District",
+                "person": "Carol",
+                "start_time": "18:15",
+                "end_time": "18:30"
+            },
+            {
+                "action": "meet",
+                "location": "Pacific Heights",
+                "person": "James",
+                "start_time": "20:00",
+                "end_time": "22:00"
+            }
+        ]
+    },
+    "status": "No plan generated",
+    "violated_constraint": {
+        "no_valid_meetings": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 846.8045969009399,
+        "execution_time": 0.0844271183013916,
+        "constraint_eval_time": 0.00011324882507324219,
+        "pred_extract_time": 1.0309841632843018,
+        "gold_extract_time": 0.00016498565673828125,
+        "total_tokens": 63522,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import json\nfrom z3 import *\n\n# Define travel times between locations\ntravel_times = {\n    ('North Beach', 'Pacific Heights'): 8,\n    ('North Beach', 'Chinatown'): 6,\n    ('North Beach', 'Union Square'): 7,\n    ('North Beach', 'Mission District'): 18,\n    ('North Beach', 'Golden Gate Park'): 22,\n    ('North Beach', 'Nob Hill'): 7,\n    ('Pacific Heights', 'North Beach'): 9,\n    ('Pacific Heights', 'Chinatown'): 11,\n    ('Pacific Heights', 'Union Square'): 12,\n    ('Pacific Heights', 'Mission District'): 15,\n    ('Pacific Heights', 'Golden Gate Park'): 15,\n    ('Pacific Heights', 'Nob Hill'): 8,\n    ('Chinatown', 'North Beach'): 3,\n    ('Chinatown', 'Pacific Heights'): 10,\n    ('Chinatown', 'Union Square'): 7,\n    ('Chinatown', 'Mission District'): 18,\n    ('Chinatown', 'Golden Gate Park'): 23,\n    ('Chinatown', 'Nob Hill'): 8,\n    ('Union Square', 'North Beach'): 10,\n    ('Union Square', 'Pacific Heights'): 15,\n    ('Union Square', 'Chinatown'): 7,\n    ('Union Square', 'Mission District'): 14,\n    ('Union Square', 'Golden Gate Park'): 22,\n    ('Union Square', 'Nob Hill'): 9,\n    ('Mission District', 'North Beach'): 17,\n    ('Mission District', 'Pacific Heights'): 16,\n    ('Mission District', 'Chinatown'): 16,\n    ('Mission District', 'Union Square'): 15,\n    ('Mission District', 'Golden Gate Park'): 17,\n    ('Mission District', 'Nob Hill'): 12,\n    ('Golden Gate Park', 'North Beach'): 24,\n    ('Golden Gate Park', 'Pacific Heights'): 16,\n    ('Golden Gate Park', 'Chinatown'): 23,\n    ('Golden Gate Park', 'Union Square'): 22,\n    ('Golden Gate Park', 'Mission District'): 17,\n    ('Golden Gate Park', 'Nob Hill'): 20,\n    ('Nob Hill', 'North Beach'): 8,\n    ('Nob Hill', 'Pacific Heights'): 8,\n    ('Nob Hill', 'Chinatown'): 6,\n    ('Nob Hill', 'Union Square'): 7,\n    ('Nob Hill', 'Mission District'): 13,\n    ('Nob Hill', 'Golden Gate Park'): 17,\n}\n\n# Define friends' data\nfriends_data = {\n    'James': {\n        'location': 'Pacific Heights',\n        'available_start': 20 * 60,  # 8:00 PM\n        'available_end': 22 * 60,    # 10:00 PM\n        'min_duration': 120\n    },\n    'Robert': {\n        'location': 'Chinatown',\n        'available_start': 12 * 60 + 15,  # 12:15 PM\n        'available_end': 16 * 60 + 45,    # 4:45 PM\n        'min_duration': 90\n    },\n    'Jeffrey': {\n        'location': 'Union Square',\n        'available_start': 9 * 60 + 30,  # 9:30 AM\n        'available_end': 15 * 60 + 30,   # 3:30 PM\n        'min_duration': 120\n    },\n    'Carol': {\n        'location': 'Mission District',\n        'available_start': 18 * 60 + 15,  # 6:15 PM\n        'available_end': 21 * 60 + 15,    # 9:15 PM\n        'min_duration': 15\n    },\n    'Mark': {\n        'location': 'Golden Gate Park',\n        'available_start': 11 * 60 + 30,  # 11:30 AM\n        'available_end': 17 * 60 + 45,    # 5:45 PM\n        'min_duration': 15\n    },\n    'Sandra': {\n        'location': 'Nob Hill',\n        'available_start': 8 * 60,  # 8:00 AM\n        'available_end': 15 * 60 + 30,  # 3:30 PM\n        'min_duration': 15\n    }\n}\n\nfriends_list = ['James', 'Robert', 'Jeffrey', 'Carol', 'Mark', 'Sandra']\n\n# Create Z3 solver\nsolver = Solver()\n\n# Create variables for each friend\nmeet_vars = {name: Bool(f'meet_{name}') for name in friends_list}\nstart_times = {name: Int(f'start_{name}') for name in friends_list}\nend_times = {name: Int(f'end_{name}') for name in friends_list}\n\n# Add constraints for each friend\nfor name in friends_list:\n    data = friends_data[name]\n    loc = data['location']\n    available_start = data['available_start']\n    available_end = data['available_end']\n    min_duration = data['min_duration']\n    \n    # If the friend is met, their start time must be within available window, duration sufficient, and initial arrival time\n    solver.add(If(meet_vars[name],\n                  And(\n                      start_times[name] >= available_start,\n                      end_times[name] <= available_end,\n                      end_times[name] - start_times[name] >= min_duration,\n                      start_times[name] >= 9 * 60 + travel_times[('North Beach', loc)]\n                  ),\n                  True))\n\n# Add pairwise constraints between all friends\nfor i in range(len(friends_list)):\n    for j in range(i + 1, len(friends_list)):\n        nameA = friends_list[i]\n        nameB = friends_list[j]\n        locA = friends_data[nameA]['location']\n        locB = friends_data[nameB]['location']\n        travel_time_A_to_B = travel_times[(locA, locB)]\n        travel_time_B_to_A = travel_times[(locB, locA)]\n        \n        # If both are met, then their meetings must be ordered with sufficient travel time\n        solver.add(Implies(\n            And(meet_vars[nameA], meet_vars[nameB]),\n            Or(\n                start_times[nameB] >= end_times[nameA] + travel_time_A_to_B,\n                start_times[nameA] >= end_times[nameB] + travel_time_B_to_A\n            )\n        ))\n\n# Check if the constraints are satisfiable\nif solver.check() == sat:\n    model = solver.model()\n    \n    # Collect the meetings that are met\n    meetings = []\n    for name in friends_list:\n        if is_true(model.eval(meet_vars[name])):\n            start = model.eval(start_times[name]).as_long()\n            end = model.eval(end_times[name]).as_long()\n            # Convert to H:MM format\n            def to_time_str(minutes):\n                hours = minutes // 60\n                mins = minutes % 60\n                return f\"{hours}:{mins:02d}\"\n            meetings.append({\n                \"action\": \"meet\",\n                \"location\": friends_data[name]['location'],\n                \"person\": name,\n                \"start_time\": to_time_str(start),\n                \"end_time\": to_time_str(end)\n            })\n    \n    # Sort the meetings by start time to create itinerary\n    meetings.sort(key=lambda x: x['start_time'])\n    \n    # Output as JSON\n    print(json.dumps({\"itinerary\": meetings}, indent=2))\nelse:\n    print(\"No solution found.\")"
+}

@@ -1,0 +1,38 @@
+{
+    "has_execution_error": true,
+    "has_no_plan": false,
+    "execution_output": null,
+    "pred": null,
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Arnold",
+            "Birthday": "april",
+            "Color": "red"
+        },
+        {
+            "House": "2",
+            "Name": "Eric",
+            "Birthday": "sept",
+            "Color": "yellow"
+        }
+    ],
+    "status": "Error",
+    "violated_constraint": {
+        "invalid_output": "No valid output structure found"
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 22.712263345718384,
+        "execution_time": 0.07284021377563477,
+        "constraint_eval_time": 1.1920928955078125e-06,
+        "pred_extract_time": 1.9073486328125e-06,
+        "gold_extract_time": 4.76837158203125e-06,
+        "total_tokens": 1989,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\nimport json\n\n# Define the variables\nhouse1_name = String('house1_name')\nhouse1_birthday = String('house1_birthday')\nhouse1_color = String('house1_color')\n\nhouse2_name = String('house2_name')\nhouse2_birthday = String('house2_birthday')\nhouse2_color = String('house2_color')\n\n# Define the domains\nnames = ['Eric', 'Arnold']\nbirthdays = ['sept', 'april']\ncolors = ['yellow', 'red']\n\n# Create the solver\nsolver = Solver()\n\n# Add domain constraints\nsolver.add(house1_name == 'Eric' | house1_name == 'Arnold')\nsolver.add(house1_birthday == 'sept' | house1_birthday == 'april')\nsolver.add(house1_color == 'yellow' | house1_color == 'red')\n\nsolver.add(house2_name == 'Eric' | house2_name == 'Arnold')\nsolver.add(house2_birthday == 'sept' | house2_birthday == 'april')\nsolver.add(house2_color == 'yellow' | house2_color == 'red')\n\n# Add uniqueness constraints\nsolver.add(house1_name != house2_name)\nsolver.add(house1_birthday != house2_birthday)\nsolver.add(house1_color != house2_color)\n\n# Add clue constraints\n# Clue 1: Eric is the person who loves yellow.\nsolver.add(Implies(house1_color == 'yellow', house1_name == 'Eric'))\nsolver.add(Implies(house2_color == 'yellow', house2_name == 'Eric'))\n\n# Clue 2: The person whose birthday is in April is in the first house.\nsolver.add(house1_birthday == 'april')\n\n# Clue 3: The person who loves yellow is not in the first house.\nsolver.add(house1_color != 'yellow')\n\n# Check if the problem is solvable\nif solver.check() == sat:\n    model = solver.model()\n    solution = {\n        \"solution\": {\n            \"header\": [\"House\", \"Name\", \"Birthday\", \"Color\"],\n            \"rows\": [\n                [\"1\", model[house1_name].as_string(), model[house1_birthday].as_string(), model[house1_color].as_string()],\n                [\"2\", model[house2_name].as_string(), model[house2_birthday].as_string(), model[house2_color].as_string()]\n            ]\n        }\n    }\n    print(json.dumps(solution))\nelse:\n    print(\"No solution found\")"
+}

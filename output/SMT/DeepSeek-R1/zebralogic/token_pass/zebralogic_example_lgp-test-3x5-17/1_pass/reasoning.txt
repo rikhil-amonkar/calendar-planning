@@ -1,0 +1,206 @@
+We are going to use the Z3 SMT solver to solve this puzzle.
+ We have 3 houses, each with 5 attributes: Name, PhoneModel, Height, HouseStyle, CarModel.
+ We will create integer variables for each attribute, representing the house index (1,2,3) for which that attribute is assigned.
+
+ Alternatively, we can create a matrix of variables for each house and each attribute.
+
+ Since there are 3 houses, we can define:
+ For each attribute, we have a mapping from house index to the value of that attribute.
+
+ However, it is more straightforward to define for each house and each attribute a variable that holds the value (from a finite set of possibilities).
+
+ But note: the attributes are categorical and we have to assign each category to exactly one house.
+
+ We can use the following approach:
+
+ Let's define:
+  House 1, 2, 3
+
+ For each house, we have:
+   name: which can be Eric, Arnold, Peter -> we'll assign numbers to these, but we can use EnumSort.
+
+ Alternatively, we can use integers and define the possible values.
+
+ However, to make it easier, we can use Z3's EnumSort for each attribute.
+
+ Steps:
+ 1. Create a solver.
+ 2. Define sorts for each attribute with their possible values.
+ 3. For each house (1,2,3) and for each attribute, create a constant (variable) that represents the value of that attribute for the house.
+
+ But note: We have 3 houses and 5 attributes, so we will have 15 variables.
+
+ 4. Add constraints that all attributes are unique (for each attribute type, the values for the three houses are distinct).
+
+ 5. Add the constraints from the clues.
+
+ 6. Check the model and output the solution in the required JSON format.
+
+ However, note that the houses are ordered (left to right: 1,2,3). So we can use the house index as the position.
+
+ Let's define:
+
+  We'll create a list of houses: [1,2,3]
+
+  For each attribute, we create a function (or variable per house) that gives the value of that attribute in the house.
+
+  We can do:
+
+      Name = Function('Name', IntSort(), IntSort())   # But we don't have to use functions, we can use variables for each house.
+
+  Alternatively, we can create 5 lists (one for each attribute) of 3 variables, each variable for a house.
+
+  Let me create:
+
+      names = [Int('name_%d' % i) for i in range(1,4)]
+      phones = [Int('phone_%d' % i) for i in range(1,4)]
+      heights = [Int('height_%d' % i) for i in range(1,4)]
+      styles = [Int('style_%d' % i) for i in range(1,4)]
+      cars = [Int('car_%d' % i) for i in range(1,4)]
+
+  But then we have to define the possible values for each attribute.
+
+  We can use an EnumSort for each attribute.
+
+  Let's do:
+
+      NameSort, (Eric, Arnold, Peter) = EnumSort('Name', ['Eric','Arnold','Peter'])
+      PhoneSort, (iphone13, samsung_galaxy_s21, google_pixel6) = EnumSort('Phone', ['iphone13','samsung_galaxy_s21','google_pixel6'])
+      HeightSort, (very_short, average, short) = EnumSort('Height', ['very_short','average','short'])
+      StyleSort, (colonial, ranch, victorian) = EnumSort('Style', ['colonial','ranch','victorian'])
+      CarSort, (tesla_model3, toyota_camry, ford_f150) = EnumSort('Car', ['tesla_model3','toyota_camry','ford_f150'])
+
+  Then for each house i (1,2,3), we define:
+
+      n_i = Const('name_%d' % i, NameSort)
+      p_i = Const('phone_%d' % i, PhoneSort)
+      h_i = Const('height_%d' % i, HeightSort)
+      s_i = Const('style_%d' % i, StyleSort)
+      c_i = Const('car_%d' % i, CarSort)
+
+  Then we add constraints that all n_i are distinct, etc.
+
+  Alternatively, we can use the house index as the domain for the attributes and then use the value of the attribute in the house.
+
+  Since the houses are fixed (1,2,3), we can also use the position to represent the house.
+
+  We are going to create 5 lists of constants (each of length 3) for the attributes.
+
+  Then we add the constraints.
+
+  Let's code accordingly.
+
+  Steps:
+
+  - Create the sorts and the constants for each house and each attribute.
+  - Assert that for each attribute type, the three houses have distinct values.
+  - Add the clues as constraints.
+
+  Clue 1: Peter is somewhere to the right of Eric.
+      This means: the house index of Peter is greater than the house index of Eric.
+
+  Clue 2: The person living in a colonial-style house is in the second house.
+      So, for house 2, the style is colonial.
+
+  Clue 3: The person who owns a Tesla Model 3 is the person who is very short.
+      So, for the house that has car = tesla_model3, the height is very_short.
+
+  Clue 4: The person who is short is directly left of the person who uses a Samsung Galaxy S21.
+      So, if house i has height=short, then house i+1 has phone=samsung_galaxy_s21.
+
+  Clue 5: The person who uses an iPhone 13 is directly left of the person who uses a Google Pixel 6.
+      Similarly, if house i has phone=iphone13, then house i+1 has phone=google_pixel6.
+
+  Clue 6: The person living in a colonial-style house is somewhere to the right of the person in a ranch-style home.
+      So, the house with style=colonial has index greater than the house with style=ranch.
+
+  Clue 7: Arnold is in the second house.
+      So, house 2 has name=Arnold.
+
+  Clue 8: The person who owns a Ford F-150 is somewhere to the right of the person who owns a Toyota Camry.
+      So, the house with car=ford_f150 has index greater than the house with car=toyota_camry.
+
+  Clue 9: The person who has an average height is in the first house.
+      So, house 1 has height=average.
+
+  We have to map the house indices (1,2,3) to the attributes.
+
+  Let's create the variables for each house:
+
+      For house i in [1,2,3]:
+          n_i = Const('name_%d' % i, NameSort)
+          p_i = Const('phone_%d' % i, PhoneSort)
+          h_i = Const('height_%d' % i, HeightSort)
+          s_i = Const('style_%d' % i, StyleSort)
+          c_i = Const('car_%d' % i, CarSort)
+
+  Then we add the distinct constraints for each attribute set.
+
+  We also need to define the ordering of houses (by index).
+
+  Now, let's code accordingly.
+
+  We'll create a solver, add the constraints, and then check.
+
+  After getting the model, we will output the solution in the required JSON format.
+
+  Note: The output must be a JSON string with the exact structure.
+
+  We'll create a list of rows, each row is for a house and has the house number (as string) and then the values for each attribute (as strings).
+
+  We have to map the Z3 constants back to their string names.
+
+  We can create a mapping from the Z3 constant to its name by using the decl().name() method, but note that we have defined the enums with specific string names.
+
+  Alternatively, we can create a reverse mapping for each sort.
+
+  Let's do:
+
+      name_dict = {0: 'Eric', 1: 'Arnold', 2: 'Peter'}   # but wait, the EnumSort might assign arbitrary numbers? Actually, we can use the constants directly.
+
+  Actually, when we create the EnumSort, the constants are created. We can compare them with the constants we defined.
+
+  But when we get the model, we can get the value of n_1, etc. and then we can use the following to get the name:
+
+      for constant in [Eric, Arnold, Peter]:
+          if model.eval(n_1) == constant:
+             name = constant.decl().name()
+
+  However, we can also use the __str__ method of the constant in the model, but note that the model will show the constant's name.
+
+  Alternatively, we can use:
+
+      model[n_1]
+
+  This returns the constant, and then we can get its name by .decl().name().
+
+  But note: the EnumSort constants are represented as their own values. So we can do:
+
+      name_str = model[n_1].decl().name()
+
+  Similarly for the others.
+
+  However, we must be cautious because the model might not be evaluated to one of the constants if we don't use the appropriate tactics.
+
+  Alternatively, we can use:
+
+      solver.add([n_1 == Eric, n_1 == Arnold, n_1 == Peter])   # but we don't need to do this because we already have the distinct constraint and the domain.
+
+  Let's code accordingly.
+
+  We'll create the enums and then the variables.
+
+  Note: We have 3 houses, so we create variables for each house.
+
+  Steps in code:
+
+  1. Import z3.
+  2. Create the EnumSorts for each attribute.
+  3. Create the variables for each house and each attribute.
+  4. Create a solver.
+  5. Add distinct constraints for each attribute across houses.
+  6. Add the clues.
+  7. Check and get the model.
+  8. Format the output as JSON.
+
+  Let's code.

@@ -1,0 +1,111 @@
+import itertools
+from z3 import *
+
+def main():
+    # Convert time to minutes since midnight
+    def time_to_minutes(time_str):
+        parts = time_str.split(':')
+        hours = int(parts[0])
+        minutes = int(parts[1]) if len(parts) > 1 else 0
+        return hours * 60 + minutes
+
+    def minutes_to_time(minutes):
+        hours = minutes // 60
+        mins = minutes % 60
+        return f"{hours}:{mins:02d}"
+
+    # Travel times dictionary
+    travel_times = {
+        ('Fisherman\'s Wharf', 'Golden Gate Park'): 25,
+        ('Fisherman\'s Wharf', 'Presidio'): 17,
+        ('Fisherman\'s Wharf', 'Richmond District'): 18,
+        ('Golden Gate Park', 'Fisherman\'s Wharf'): 24,
+        ('Golden Gate Park', 'Presidio'): 11,
+        ('Golden Gate Park', 'Richmond District'): 7,
+        ('Presidio', 'Fisherman\'s Wharf'): 19,
+        ('Presidio', 'Golden Gate Park'): 12,
+        ('Presidio', 'Richmond District'): 7,
+        ('Richmond District', 'Fisherman\'s Wharf'): 18,
+        ('Richmond District', 'Golden Gate Park'): 9,
+        ('Richmond District', 'Presidio'): 7
+    }
+
+    # Friend constraints
+    friends = [
+        {
+            'name': 'Melissa',
+            'location': 'Golden Gate Park',
+            'window_start': time_to_minutes('8:30'),
+            'window_end': time_to_minutes('20:00'),
+            'duration': 15
+        },
+        {
+            'name': 'Nancy',
+            'location': 'Presidio',
+            'window_start': time_to_minutes('19:45'),
+            'window_end': time_to_minutes('22:00'),
+            'duration': 105
+        },
+        {
+            'name': 'Emily',
+            'location': 'Richmond District',
+            'window_start': time_to_minutes('16:45'),
+            'window_end': time_to_minutes('22:00'),
+            'duration': 120
+        }
+    ]
+
+    start_location = 'Fisherman\'s Wharf'
+    start_time = time_to_minutes('9:00')
+
+    # Try to schedule all three friends first, then two, then one
+    for num_friends in range(3, 0, -1):
+        for friend_comb in itertools.combinations(friends, num_friends):
+            for order in itertools.permutations(friend_comb):
+                s = Solver()
+                meeting_vars = []
+
+                # Create variables for each meeting start time
+                for i, friend in enumerate(order):
+                    meeting_start = Int(f"start_{i}")
+                    s.add(meeting_start >= 0)
+                    meeting_vars.append((friend, meeting_start))
+
+                # Constraints for first meeting
+                first_friend, first_start = meeting_vars[0]
+                travel_time = travel_times[(start_location, first_friend['location'])]
+                s.add(first_start >= start_time + travel_time)
+                s.add(first_start >= first_friend['window_start'])
+                s.add(first_start + first_friend['duration'] <= first_friend['window_end'])
+
+                # Constraints for subsequent meetings
+                for i in range(1, len(meeting_vars)):
+                    prev_friend, prev_start = meeting_vars[i-1]
+                    curr_friend, curr_start = meeting_vars[i]
+                    travel_time = travel_times[(prev_friend['location'], curr_friend['location'])]
+                    s.add(curr_start >= prev_start + prev_friend['duration'] + travel_time)
+                    s.add(curr_start >= curr_friend['window_start'])
+                    s.add(curr_start + curr_friend['duration'] <= curr_friend['window_end'])
+
+                if s.check() == sat:
+                    model = s.model()
+                    itinerary = []
+                    for friend, start_var in meeting_vars:
+                        start_val = model[start_var].as_long()
+                        end_val = start_val + friend['duration']
+                        itinerary.append({
+                            "action": "meet",
+                            "location": friend['location'],
+                            "person": friend['name'],
+                            "start_time": minutes_to_time(start_val),
+                            "end_time": minutes_to_time(end_val)
+                        })
+                    print(f'{{"itinerary": {json.dumps(itinerary)}}}')
+                    return
+
+    # If no meetings can be scheduled
+    print('{"itinerary": []}')
+
+if __name__ == '__main__':
+    import json
+    main()

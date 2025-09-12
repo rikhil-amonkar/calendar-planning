@@ -1,0 +1,72 @@
+from z3 import *
+
+def main():
+    # Initialize solver
+    opt = Optimize()
+    
+    # Define variables
+    day = Int('day')
+    start_time = Int('start_time')
+    
+    # Define day mapping
+    days = {0: "Monday", 1: "Tuesday", 2: "Wednesday"}
+    
+    # Meeting duration in minutes
+    duration = 30
+    
+    # Work hours: 9:00 to 17:00 (480 minutes from 9:00)
+    max_time = 480 - duration
+    
+    # Add constraints for day and start time
+    opt.add(day >= 0, day <= 2)
+    opt.add(start_time >= 0, start_time <= max_time)
+    
+    # Convert busy times to minutes from 9:00
+    robert_busy = {
+        0: [(120, 150), (300, 330), (390, 420)],  # Monday
+        1: [(90, 120), (360, 390)],               # Tuesday
+        2: [(60, 120), (150, 180), (210, 240), (270, 300), (360, 390), (420, 450)]  # Wednesday
+    }
+    
+    ralph_busy = {
+        0: [(60, 270), (300, 330), (360, 480)],   # Monday
+        1: [(0, 30), (60, 90), (120, 150), (180, 240), (300, 390), (420, 480)],  # Tuesday
+        2: [(90, 120), (150, 180), (240, 330), (450, 480)]  # Wednesday
+    }
+    
+    # Add constraints for Robert's availability
+    for d, intervals in robert_busy.items():
+        for s_busy, e_busy in intervals:
+            opt.add(If(day == d, Or(start_time + duration <= s_busy, start_time >= e_busy), True))
+    
+    # Add constraints for Ralph's availability
+    for d, intervals in ralph_busy.items():
+        for s_busy, e_busy in intervals:
+            opt.add(If(day == d, Or(start_time + duration <= s_busy, start_time >= e_busy), True))
+    
+    # Define cost function to minimize (earliest availability)
+    cost = day * 1000 + start_time
+    opt.minimize(cost)
+    
+    # Check for solution
+    if opt.check() == sat:
+        m = opt.model()
+        d_val = m[day].as_long()
+        s_val = m[start_time].as_long()
+        
+        # Calculate start and end times
+        start_hour = 9 + s_val // 60
+        start_minute = s_val % 60
+        end_minutes = s_val + duration
+        end_hour = 9 + end_minutes // 60
+        end_minute = end_minutes % 60
+        
+        # Format output
+        day_str = days[d_val]
+        time_str = f"{start_hour:02d}:{start_minute:02d}:{end_hour:02d}:{end_minute:02d}"
+        print(f"{day_str} {time_str}")
+    else:
+        print("No solution found")
+
+if __name__ == "__main__":
+    main()

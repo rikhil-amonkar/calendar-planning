@@ -1,0 +1,35 @@
+We are dealing with 2 houses and two attributes: name and food.
+ We have two names: Eric and Arnold
+ Two foods: pizza and grilled cheese
+
+ Clues:
+ 1. The person who is a pizza lover is in the second house.
+ 2. Arnold is not in the first house.
+
+ Since there are only two houses, if Arnold is not in the first, then he must be in the second.
+ And from clue 1, the pizza lover is in the second house.
+
+ We'll use Z3 to set up the constraints.
+
+ Steps:
+ 1. Define the houses: house1 and house2. We'll use integers to represent the house numbers (1 and 2).
+ 2. For each attribute, we define a Z3 variable for each house. Since there are two houses, we can have:
+    - Name for house1: name1, and for house2: name2
+    - Food for house1: food1, and for house2: food2
+
+ 3. We'll use Z3's EnumSort for the names and foods to make it easier.
+
+ 4. Constraints:
+    - Each attribute (name and food) must be unique per house.
+    - Clue 1: The pizza lover is in the second house -> so food2 must be pizza.
+    - Clue 2: Arnold is not in the first house -> so name1 must not be Arnold, meaning name1 must be Eric, and then name2 must be Arnold.
+
+ 5. Since the problem is small, we can also use the uniqueness constraints by having distinct values for the two houses for each attribute.
+
+ 6. We'll create a solver, add the constraints, and check for a solution.
+
+ 7. Then, we'll format the solution as a JSON string with the required structure.
+
+ However, note: The output must be a JSON string with the exact structure.
+
+ Let's code accordingly.

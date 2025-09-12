@@ -1,0 +1,45 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"solution\": {\n    \"header\": [\n      \"House\",\n      \"Name\",\n      \"Food\"\n    ],\n    \"rows\": [\n      [\n        \"1\",\n        \"Eric\",\n        \"grilled cheese\"\n      ],\n      [\n        \"2\",\n        \"Arnold\",\n        \"pizza\"\n      ]\n    ]\n  }\n}",
+    "pred": [
+        {
+            "House": "1",
+            "Name": "Eric",
+            "Food": "grilled cheese"
+        },
+        {
+            "House": "2",
+            "Name": "Arnold",
+            "Food": "pizza"
+        }
+    ],
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Eric",
+            "Food": "grilled cheese"
+        },
+        {
+            "House": "2",
+            "Name": "Arnold",
+            "Food": "pizza"
+        }
+    ],
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 31.28194785118103,
+        "execution_time": 0.09061789512634277,
+        "constraint_eval_time": 4.982948303222656e-05,
+        "pred_extract_time": 0.9520182609558105,
+        "gold_extract_time": 7.62939453125e-06,
+        "total_tokens": 506,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import z3\nimport json\n\ndef main():\n    solver = z3.Solver()\n    \n    # Define houses\n    houses = [1, 2]\n    \n    # Define attributes\n    names = ['Eric', 'Arnold']\n    foods = ['pizza', 'grilled cheese']\n    \n    # Create variables for each attribute per house\n    name_vars = {}\n    food_vars = {}\n    \n    for house in houses:\n        name_vars[house] = z3.Int(f'name_{house}')\n        food_vars[house] = z3.Int(f'food_{house}')\n    \n    # Constraint: All attributes must be within their domain\n    for house in houses:\n        solver.add(z3.And(name_vars[house] >= 0, name_vars[house] < len(names)))\n        solver.add(z3.And(food_vars[house] >= 0, food_vars[house] < len(foods)))\n    \n    # Constraint: All attributes are distinct within their category\n    solver.add(z3.Distinct([name_vars[house] for house in houses]))\n    solver.add(z3.Distinct([food_vars[house] for house in houses]))\n    \n    # Clue 1: The person who is a pizza lover is in the second house.\n    pizza_index = foods.index('pizza')\n    solver.add(food_vars[2] == pizza_index)\n    \n    # Clue 2: Arnold is not in the first house.\n    arnold_index = names.index('Arnold')\n    solver.add(name_vars[1] != arnold_index)\n    \n    # Check if solution exists\n    if solver.check() == z3.sat:\n        model = solver.model()\n        \n        # Prepare solution data\n        header = [\"House\", \"Name\", \"Food\"]\n        rows = []\n        \n        for house in sorted(houses):\n            name_index = model.evaluate(name_vars[house]).as_long()\n            food_index = model.evaluate(food_vars[house]).as_long()\n            \n            row = [\n                str(house),\n                names[name_index],\n                foods[food_index]\n            ]\n            rows.append(row)\n        \n        # Create JSON output\n        solution = {\n            \"solution\": {\n                \"header\": header,\n                \"rows\": rows\n            }\n        }\n        \n        print(json.dumps(solution, indent=2))\n    else:\n        print('{\"error\": \"No solution found\"}')\n\nif __name__ == \"__main__\":\n    main()"
+}

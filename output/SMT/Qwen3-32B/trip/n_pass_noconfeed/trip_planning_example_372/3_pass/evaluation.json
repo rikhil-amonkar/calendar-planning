@@ -1,0 +1,44 @@
+{
+    "has_execution_error": true,
+    "has_no_plan": false,
+    "execution_output": null,
+    "pred": null,
+    "gold": {
+        "itinerary": [
+            {
+                "day_range": "Day 1-4",
+                "place": "Madrid"
+            },
+            {
+                "day_range": "Day 4-5",
+                "place": "Seville"
+            },
+            {
+                "day_range": "Day 5-7",
+                "place": "Porto"
+            },
+            {
+                "day_range": "Day 7-13",
+                "place": "Stuttgart"
+            }
+        ]
+    },
+    "status": "Error",
+    "violated_constraint": {
+        "missing_itinerary": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 3,
+    "timing": {
+        "api_call_time": 67.36907577514648,
+        "execution_time": 0.07520532608032227,
+        "constraint_eval_time": 5.9604644775390625e-06,
+        "pred_extract_time": 8.106231689453125e-06,
+        "gold_extract_time": 7.796287536621094e-05,
+        "total_tokens": 5055,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import Solver, Int, If\n\n# Initialize solver\nsolver = Solver()\n\n# Define required durations for each city\nrequired_duration = {0: 2, 1: 7, 2: 3, 3: 4}\n\n# Define variables\ns = [Int(f's_{i}') for i in range(4)]\nseq = [Int(f'city_{i}') for i in range(4)]\n\nfor i in range(4):\n    city = seq[i]\n    si = s[i]\n    in_transitions = 1 if i > 0 else 0\n    out_transitions = 1 if i < 3 else 0\n\n    # Use Z3 If to express the duration conditionally\n    rd = If(city == 0, required_duration[0],\n            If(city == 1, required_duration[1],\n               If(city == 2, required_duration[2],\n                  required_duration[3])))\n\n    solver.add(si + in_transitions + out_transitions == rd)"
+}

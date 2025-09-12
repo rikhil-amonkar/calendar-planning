@@ -1,0 +1,64 @@
+from z3 import *
+
+def main():
+    # Create solver and variables
+    solver = Solver()
+    day = Int('day')
+    start_time = Int('start_time')  # in minutes from 00:00
+
+    # Day constraints: 0=Monday, 1=Tuesday, 2=Wednesday
+    solver.add(day >= 0, day <= 2)
+    
+    # Work hours: 9:00 to 17:00 (540 to 1020 minutes)
+    solver.add(start_time >= 540, start_time <= 960)  # 960 = 16:00, latest start for 1h meeting
+
+    # Define non-overlap condition
+    def no_overlap(start, duration, block_start, block_end):
+        return Or(start + duration <= block_start, start >= block_end)
+    
+    # Martha's busy intervals (in minutes)
+    martha_busy = [
+        (0, 960, 1020),   # Mon 16:00-17:00
+        (1, 900, 930),    # Tue 15:00-15:30
+        (2, 600, 660),    # Wed 10:00-11:00
+        (2, 840, 870)     # Wed 14:00-14:30
+    ]
+    
+    # Beverly's busy intervals (in minutes)
+    beverly_busy = [
+        (0, 540, 810),    # Mon 9:00-13:30
+        (0, 840, 1020),   # Mon 14:00-17:00
+        (1, 540, 1020),   # Tue 9:00-17:00
+        (2, 570, 930),    # Wed 9:30-15:30
+        (2, 990, 1020)    # Wed 16:30-17:00
+    ]
+    
+    # Add constraints for Martha
+    for d, start_b, end_b in martha_busy:
+        solver.add(If(day == d, no_overlap(start_time, 60, start_b, end_b), True))
+        
+    # Add constraints for Beverly
+    for d, start_b, end_b in beverly_busy:
+        solver.add(If(day == d, no_overlap(start_time, 60, start_b, end_b), True))
+    
+    # Check for solution
+    if solver.check() == sat:
+        model = solver.model()
+        d_val = model[day].as_long()
+        s_val = model[start_time].as_long()
+        
+        # Convert to time format
+        start_hour = s_val // 60
+        start_min = s_val % 60
+        end_time = s_val + 60
+        end_hour = end_time // 60
+        end_min = end_time % 60
+        
+        days = ["Monday", "Tuesday", "Wednesday"]
+        print(f"{days[d_val]}")
+        print(f"{start_hour:02d}:{start_min:02d}:{end_hour:02d}:{end_min:02d}")
+    else:
+        print("No solution found")
+
+if __name__ == "__main__":
+    main()

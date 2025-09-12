@@ -1,0 +1,104 @@
+```python
+from z3 import *
+import json
+
+def main():
+    # Define the required days for each city
+    required_days = {
+        'London': 3,
+        'Zurich': 2,
+        'Bucharest': 2,
+        'Hamburg': 5,
+        'Barcelona': 4,
+        'Reykjavik': 5,
+        'Stuttgart': 5,
+        'Stockholm': 2,
+        'Tallinn': 4,
+        'Milan': 5
+    }
+    
+    cities = list(required_days.keys())
+    
+    # Define the direct flights as an undirected graph
+    connections_list = [
+        ('London', 'Hamburg'), ('London', 'Reykjavik'), ('Milan', 'Barcelona'), ('Reykjavik', 'Barcelona'),
+        ('Reykjavik', 'Stuttgart'), ('Stockholm', 'Reykjavik'), ('London', 'Stuttgart'), ('Milan', 'Zurich'),
+        ('London', 'Barcelona'), ('Stockholm', 'Hamburg'), ('Zurich', 'Barcelona'), ('Stockholm', 'Stuttgart'),
+        ('Milan', 'Hamburg'), ('Stockholm', 'Tallinn'), ('Hamburg', 'Bucharest'), ('London', 'Bucharest'),
+        ('Milan', 'Stockholm'), ('Stuttgart', 'Hamburg'), ('London', 'Zurich'), ('Milan', 'Reykjavik'),
+        ('London', 'Stockholm'), ('Milan', 'Stuttgart'), ('Stockholm', 'Barcelona'), ('London', 'Milan'),
+        ('Zurich', 'Hamburg'), ('Bucharest', 'Barcelona'), ('Zurich', 'Stockholm'), ('Barcelona', 'Tallinn'),
+        ('Zurich', 'Tallinn'), ('Hamburg', 'Barcelona'), ('Stuttgart', 'Barcelona'), ('Zurich', 'Reykjavik'),
+        ('Zurich', 'Bucharest')
+    ]
+    
+    connected_set = set()
+    for (a, b) in connections_list:
+        connected_set.add((a, b))
+        connected_set.add((b, a))
+    
+    # Initialize Z3 solver and variables
+    s = Solver()
+    
+    # Position variable for each city (0 to 9)
+    position = {city: Int(f'pos_{city}') for city in cities}
+    
+    # Constraints: positions are distinct and between 0 and 9
+    s.add(Distinct([position[city] for city in cities]))
+    for city in cities:
+        s.add(position[city] >= 0, position[city] <= 9)
+    
+    # Define start day for each city
+    start = {}
+    for city in cities:
+        expr = 1
+        for other in cities:
+            if other == city:
+                continue
+            expr += (required_days[other] - 1) * If(position[other] < position[city], 1, 0)
+        start[city] = expr
+    
+    # Define end day for each city
+    end = {city: start[city] + required_days[city] - 1 for city in cities}
+    
+    # Specific constraints
+    s.add(start['London'] == 1)  # London must start on day 1
+    s.add(start['Zurich'] == 7)  # Zurich must start on day 7
+    s.add(start['Reykjavik'] >= 5, start['Reykjavik'] <= 13)  # Reykjavik must include days 9-13
+    s.add(start['Milan'] <= 7)  # Milan must include days between 3 and 7
+    
+    # Flight connectivity constraints
+    for a in cities:
+        for b in cities:
+            if a != b:
+                # If b immediately follows a in the permutation, they must be connected
+                s.add(If(position[b] == position[a] + 1, (a, b) in connected_set, True))
+    
+    # Check feasibility
+    if s.check() == sat:
+        model = s.model()
+        # Get positions from model
+        pos_values = {city: model.evaluate(position[city]).as_long() for city in cities}
+        # Sort cities by their position
+        ordered_cities = sorted(cities, key=lambda city: pos_values[city])
+        
+        # Build itinerary
+        itinerary = []
+        current_day = 1
+        for city in ordered_cities:
+            dur = required_days[city]
+            end_day = current_day + dur - 1
+            itinerary.append({
+                'day_range': f"Day {current_day}-{end_day}",
+                'place': city
+            })
+            current_day = end_day  # Overlap travel day
+        
+        # Output as JSON
+        print(json.dumps({"itinerary": itinerary}))
+    else:
+        print('{"itinerary": []}')
+
+if __name__ == '__main__':
+    main()
+```

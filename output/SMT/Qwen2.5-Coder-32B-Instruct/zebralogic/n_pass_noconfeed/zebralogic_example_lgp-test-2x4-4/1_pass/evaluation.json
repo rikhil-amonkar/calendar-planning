@@ -1,0 +1,40 @@
+{
+    "has_execution_error": true,
+    "has_no_plan": false,
+    "execution_output": null,
+    "pred": null,
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Arnold",
+            "HouseStyle": "victorian",
+            "Height": "short",
+            "Education": "associate"
+        },
+        {
+            "House": "2",
+            "Name": "Eric",
+            "HouseStyle": "colonial",
+            "Height": "very short",
+            "Education": "high school"
+        }
+    ],
+    "status": "Error",
+    "violated_constraint": {
+        "invalid_output": "No valid output structure found"
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 27.51029324531555,
+        "execution_time": 0.07370114326477051,
+        "constraint_eval_time": 1.430511474609375e-06,
+        "pred_extract_time": 1.9073486328125e-06,
+        "gold_extract_time": 6.198883056640625e-06,
+        "total_tokens": 2454,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\nimport json\n\n# Define the variables\nhouse1_name = String('house1_name')\nhouse2_name = String('house2_name')\nhouse1_style = String('house1_style')\nhouse2_style = String('house2_style')\nhouse1_height = String('house1_height')\nhouse2_height = String('house2_height')\nhouse1_education = String('house1_education')\nhouse2_education = String('house2_education')\n\n# Create a solver instance\nsolver = Solver()\n\n# Define the domains\nnames = ['Eric', 'Arnold']\nstyles = ['victorian', 'colonial']\nheights = ['very short', 'short']\neducations = ['associate', 'high school']\n\n# Add domain constraints\nsolver.add(house1_name == names[0] | house1_name == names[1])\nsolver.add(house2_name == names[0] | house2_name == names[1])\nsolver.add(house1_style == styles[0] | house1_style == styles[1])\nsolver.add(house2_style == styles[0] | house2_style == styles[1])\nsolver.add(house1_height == heights[0] | house1_height == heights[1])\nsolver.add(house2_height == heights[0] | house2_height == heights[1])\nsolver.add(house1_education == educations[0] | house1_education == educations[1])\nsolver.add(house2_education == educations[0] | house2_education == educations[1])\n\n# Add uniqueness constraints\nsolver.add(house1_name != house2_name)\nsolver.add(house1_style != house2_style)\nsolver.add(house1_height != house2_height)\nsolver.add(house1_education != house2_education)\n\n# Add clue constraints\n# Clue 1: The person who is short is directly left of Eric.\nsolver.add(Implies(house1_height == 'short', house2_name == 'Eric'))\n# Clue 2: The person residing in a Victorian house is in the first house.\nsolver.add(house1_style == 'victorian')\n# Clue 3: The person who is short is the person with an associate's degree.\nsolver.add(Implies(house1_height == 'short', house1_education == 'associate'))\n\n# Check if the constraints are satisfiable\nif solver.check() == sat:\n    model = solver.model()\n    solution = {\n        \"solution\": {\n            \"header\": [\"House\", \"Name\", \"HouseStyle\", \"Height\", \"Education\"],\n            \"rows\": [\n                [\"1\", model[house1_name].as_string(), model[house1_style].as_string(), model[house1_height].as_string(), model[house1_education].as_string()],\n                [\"2\", model[house2_name].as_string(), model[house2_style].as_string(), model[house2_height].as_string(), model[house2_education].as_string()]\n            ]\n        }\n    }\n    print(json.dumps(solution))\nelse:\n    print(\"No solution found\")"
+}

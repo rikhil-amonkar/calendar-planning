@@ -1,0 +1,53 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"solution\": {\n    \"header\": [\n      \"House\",\n      \"Name\",\n      \"BookGenre\",\n      \"Birthday\",\n      \"Animal\"\n    ],\n    \"rows\": [\n      [\n        \"1\",\n        \"Eric\",\n        \"mystery\",\n        \"sept\",\n        \"horse\"\n      ],\n      [\n        \"2\",\n        \"Arnold\",\n        \"science fiction\",\n        \"april\",\n        \"cat\"\n      ]\n    ]\n  }\n}",
+    "pred": [
+        {
+            "House": "1",
+            "Name": "Eric",
+            "BookGenre": "mystery",
+            "Birthday": "sept",
+            "Animal": "horse"
+        },
+        {
+            "House": "2",
+            "Name": "Arnold",
+            "BookGenre": "science fiction",
+            "Birthday": "april",
+            "Animal": "cat"
+        }
+    ],
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Eric",
+            "BookGenre": "mystery",
+            "Birthday": "sept",
+            "Animal": "horse"
+        },
+        {
+            "House": "2",
+            "Name": "Arnold",
+            "BookGenre": "science fiction",
+            "Birthday": "april",
+            "Animal": "cat"
+        }
+    ],
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 50.97868824005127,
+        "execution_time": 0.07883834838867188,
+        "constraint_eval_time": 6.628036499023438e-05,
+        "pred_extract_time": 0.9604532718658447,
+        "gold_extract_time": 2.7418136596679688e-05,
+        "total_tokens": 914,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import z3\nimport json\n\ndef main():\n    # Create solver\n    solver = z3.Solver()\n    \n    # Define houses\n    houses = [1, 2]\n    \n    # Define attributes\n    names = ['Eric', 'Arnold']\n    book_genres = ['science fiction', 'mystery']\n    birthday_months = ['april', 'sept']\n    animals = ['horse', 'cat']\n    \n    # Create variables for each attribute in each house\n    name_vars = {h: z3.Int(f'name_{h}') for h in houses}\n    book_vars = {h: z3.Int(f'book_{h}') for h in houses}\n    birthday_vars = {h: z3.Int(f'birthday_{h}') for h in houses}\n    animal_vars = {h: z3.Int(f'animal_{h}') for h in houses}\n    \n    # Define domains for each attribute type\n    name_domain = {0: 'Eric', 1: 'Arnold'}\n    book_domain = {0: 'science fiction', 1: 'mystery'}\n    birthday_domain = {0: 'april', 1: 'sept'}\n    animal_domain = {0: 'horse', 1: 'cat'}\n    \n    # Constraint: All attributes within their categories must be unique and within domain\n    for h in houses:\n        solver.add(z3.And(name_vars[h] >= 0, name_vars[h] < len(names)))\n        solver.add(z3.And(book_vars[h] >= 0, book_vars[h] < len(book_genres)))\n        solver.add(z3.And(birthday_vars[h] >= 0, birthday_vars[h] < len(birthday_months)))\n        solver.add(z3.And(animal_vars[h] >= 0, animal_vars[h] < len(animals)))\n    \n    # Constraint: All names are different\n    solver.add(z3.Distinct([name_vars[h] for h in houses]))\n    # Constraint: All book genres are different\n    solver.add(z3.Distinct([book_vars[h] for h in houses]))\n    # Constraint: All birthday months are different\n    solver.add(z3.Distinct([birthday_vars[h] for h in houses]))\n    # Constraint: All animals are different\n    solver.add(z3.Distinct([animal_vars[h] for h in houses]))\n    \n    # Clue 1: Eric is in the first house\n    solver.add(name_vars[1] == 0)  # Eric is index 0\n    \n    # Clue 2: Eric is the person whose birthday is in September\n    # Since Eric is in house 1, birthday in house 1 must be sept (index 1)\n    solver.add(birthday_vars[1] == 1)\n    \n    # Clue 3: The person who loves science fiction books is in the second house\n    solver.add(book_vars[2] == 0)  # science fiction is index 0\n    \n    # Clue 4: The person who keeps horses is the person whose birthday is in September\n    # Since birthday in sept is in house 1 (from clue 2), animal in house 1 must be horse (index 0)\n    solver.add(animal_vars[1] == 0)\n    \n    # Check if solution exists\n    if solver.check() == z3.sat:\n        model = solver.model()\n        \n        # Prepare result\n        header = [\"House\", \"Name\", \"BookGenre\", \"Birthday\", \"Animal\"]\n        rows = []\n        \n        for house in sorted(houses):\n            name_val = name_domain[model.evaluate(name_vars[house]).as_long()]\n            book_val = book_domain[model.evaluate(book_vars[house]).as_long()]\n            birthday_val = birthday_domain[model.evaluate(birthday_vars[house]).as_long()]\n            animal_val = animal_domain[model.evaluate(animal_vars[house]).as_long()]\n            \n            rows.append([str(house), name_val, book_val, birthday_val, animal_val])\n        \n        # Create JSON output\n        result = {\n            \"solution\": {\n                \"header\": header,\n                \"rows\": rows\n            }\n        }\n        \n        print(json.dumps(result, indent=2))\n    else:\n        print('{\"error\": \"No solution found\"}')\n\nif __name__ == \"__main__\":\n    main()"
+}

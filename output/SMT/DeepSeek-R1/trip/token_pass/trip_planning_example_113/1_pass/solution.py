@@ -1,0 +1,40 @@
+from z3 import *
+
+def main():
+    # Define the variables for travel days
+    d1 = Int('d1')  # day of travel from Naples to Milan
+    d2 = Int('d2')  # day of travel from Milan to Seville
+
+    s = Solver()
+    
+    # Constraints on travel days
+    s.add(d1 >= 1, d1 <= 12)
+    s.add(d2 >= 1, d2 <= 12)
+    s.add(d1 < d2)
+    
+    # Constraints from city day requirements
+    s.add(d1 == 3)  # Naples days = d1 = 3
+    s.add(d2 - d1 + 1 == 7)  # Milan days = d2 - d1 + 1 = 7
+    s.add(12 - d2 + 1 == 4)  # Seville days = 12 - d2 + 1 = 4
+    
+    # Check if a solution exists
+    if s.check() == sat:
+        m = s.model()
+        d1_val = m.evaluate(d1).as_long()
+        d2_val = m.evaluate(d2).as_long()
+        
+        # Construct the itinerary segments
+        itinerary = [
+            {"day_range": f"Day 1-{d1_val}", "place": "Naples"},
+            {"day_range": f"Day {d1_val}-{d2_val}", "place": "Milan"},
+            {"day_range": f"Day {d2_val}-12", "place": "Seville"}
+        ]
+        
+        # Output as JSON
+        import json
+        print(json.dumps({"itinerary": itinerary}))
+    else:
+        print('No solution found')
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,94 @@
+import json
+from z3 import *
+
+def main():
+    # Create the solver
+    s = Solver()
+    
+    # Define the attributes using enums
+    Name = Datatype('Name')
+    Name.declare('Eric')
+    Name.declare('Arnold')
+    Name.declare('Peter')
+    Name = Name.create()
+    
+    Smoothie = Datatype('Smoothie')
+    Smoothie.declare('desert')
+    Smoothie.declare('watermelon')
+    Smoothie.declare('cherry')
+    Smoothie = Smoothie.create()
+    
+    BookGenre = Datatype('BookGenre')
+    BookGenre.declare('science_fiction')
+    BookGenre.declare('romance')
+    BookGenre.declare('mystery')
+    BookGenre = BookGenre.create()
+    
+    # Create variables for each house
+    houses = range(3)
+    names = [Const(f'name_{i}', Name) for i in houses]
+    smoothies = [Const(f'smoothie_{i}', Smoothie) for i in houses]
+    books = [Const(f'book_{i}', BookGenre) for i in houses]
+    
+    # Add uniqueness constraints
+    s.add(Distinct(names))
+    s.add(Distinct(smoothies))
+    s.add(Distinct(books))
+    
+    # Clue 5: Peter is in the first house
+    s.add(names[0] == Name.Peter)
+    
+    # Clue 2: Arnold loves mystery books
+    # Find which house has mystery books and set name to Arnold there
+    for i in houses:
+        s.add(Implies(books[i] == BookGenre.mystery, names[i] == Name.Arnold))
+    
+    # Clue 3: Science fiction books not in first house
+    s.add(books[0] != BookGenre.science_fiction)
+    
+    # Clue 4: Desert smoothie directly left of mystery books
+    for i in range(2):  # Only check first two houses for desert smoothie
+        s.add(Implies(smoothies[i] == Smoothie.desert, books[i+1] == BookGenre.mystery))
+    
+    # Clue 1: Cherry smoothie left of mystery books
+    # Create constraints for cherry smoothie being in a house left of mystery books
+    mystery_house = Int('mystery_house')
+    s.add(And([Or([If(books[i] == BookGenre.mystery, mystery_house == i, False) for i in houses])]))
+    
+    cherry_house = Int('cherry_house')
+    s.add(And([Or([If(smoothies[i] == Smoothie.cherry, cherry_house == i, False) for i in houses])]))
+    s.add(cherry_house < mystery_house)
+    
+    # Check for solution
+    if s.check() == sat:
+        m = s.model()
+        solution_rows = []
+        for i in houses:
+            name_val = m.eval(names[i])
+            smoothie_val = m.eval(smoothies[i])
+            book_val = m.eval(books[i])
+            
+            # Convert to string values
+            name_str = str(name_val)
+            smoothie_str = str(smoothie_val)
+            book_str = str(book_val)
+            
+            # Adjust book genre string for science fiction
+            if book_str == 'science_fiction':
+                book_str = 'science fiction'
+                
+            solution_rows.append([str(i+1), name_str, smoothie_str, book_str])
+        
+        # Create the solution dictionary
+        solution_dict = {
+            "solution": {
+                "header": ["House", "Name", "Smoothie", "BookGenre"],
+                "rows": solution_rows
+            }
+        }
+        print(json.dumps(solution_dict, indent=2))
+    else:
+        print("No solution found")
+
+if __name__ == "__main__":
+    main()

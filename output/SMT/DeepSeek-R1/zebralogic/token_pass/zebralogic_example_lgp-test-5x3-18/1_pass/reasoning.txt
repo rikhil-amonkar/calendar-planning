@@ -1,0 +1,103 @@
+We are going to use the Z3 SMT solver to model and solve the puzzle.
+ Steps:
+ 1. Define the house indices (1 to 5).
+ 2. Define the attributes: names, flowers, animals.
+ 3. Create Z3 variables for each attribute per house.
+ 4. Create a solver and add constraints for uniqueness (each attribute is a permutation).
+ 5. Add the constraints from the clues.
+ 6. Check if the solver is satisfied and then extract the model.
+ 7. Format the solution as a JSON string with the required structure.
+
+ Note: We are going to use IntSort for the attributes and define an enumeration for each category.
+
+ However, note that the puzzle has 5 houses and 3 attributes (name, flower, animal).
+
+ We'll create:
+   - For each house i (1..5), we have:
+        name_i, flower_i, animal_i
+
+ We'll map each possible value to an integer.
+
+ Let's define the mappings:
+
+ Names: 
+   Alice -> 0, Eric -> 1, Arnold -> 2, Bob -> 3, Peter -> 4
+
+ Flowers:
+   tulips -> 0, roses -> 1, lilies -> 2, daffodils -> 3, carnations -> 4
+
+ Animals:
+   dog -> 0, horse -> 1, cat -> 2, bird -> 3, fish -> 4
+
+ But note: The clues use the actual string names, so we have to map accordingly.
+
+ Alternatively, we can use Z3's EnumSort to create symbolic constants for each attribute, but using integers is also fine.
+
+ However, to make the code more readable and avoid integer mapping, we can use EnumSort.
+
+ Let's use EnumSort for each category.
+
+ Steps for Z3:
+
+   NameSort = EnumSort('Name', ['Alice', 'Eric', 'Arnold', 'Bob', 'Peter'])
+   FlowerSort = EnumSort('Flower', ['tulips', 'roses', 'lilies', 'daffodils', 'carnations'])
+   AnimalSort = EnumSort('Animal', ['dog', 'horse', 'cat', 'bird', 'fish'])
+
+ Then for each house i, we define:
+   name[i] = Const('name_%d' % i, NameSort)
+   flower[i] = Const('flower_%d' % i, FlowerSort)
+   animal[i] = Const('animal_%d' % i, AnimalSort)
+
+ But note: We have 5 houses, so we'll create arrays for each attribute.
+
+ Alternatively, we can create a list of 5 constants for each attribute.
+
+ However, we can also use Function for position? Actually, we are going to model each house as having three attributes.
+
+ We'll create arrays for each attribute of length 5.
+
+ Constraints:
+
+   Distinct on name, flower, animal.
+
+ Then we add the clues.
+
+ Let's code accordingly.
+
+ Important: The houses are numbered 1 to 5 from left to right.
+
+ Clues:
+
+ 1. Alice is in the second house -> name[1] == Alice (if we index from 0: house1 is index0, house2 is index1, etc.)
+    But note: our list indices in Python are 0-indexed, but the house numbers are 1-indexed.
+
+    We'll create arrays for houses 0 to 4 (representing house1 to house5).
+
+ 2. The person who loves the bouquet of lilies is the bird keeper.
+    For some house i: flower[i] == lilies and animal[i] == bird.
+
+ 3. Peter is somewhere to the right of the person who loves the vase of tulips.
+    Let i be the house of tulips, then Peter is in house j>i.
+
+ 4. The fish enthusiast is the person who loves a bouquet of daffodils.
+    For some house i: animal[i] == fish and flower[i] == daffodils.
+
+ 5. The person who keeps horses is Eric -> animal[i] == horse and name[i] == Eric.
+
+ 6. There are two houses between the dog owner and Bob.
+    Let i be dog owner and j be Bob (name Bob). Then |i - j| = 3.
+
+ 7. The fish enthusiast is directly left of Bob.
+    Let i be fish (animal) and j be Bob (name). Then j = i+1.
+
+ 8. Alice is directly left of the person who keeps horses.
+    Let i be Alice (name) and j be horse (animal). Then j = i+1.
+
+ 9. The person who loves a carnations arrangement is directly left of the person who loves the vase of tulips.
+    Let i be carnations and j be tulips. Then j = i+1.
+
+ 10. The cat lover is not in the first house -> animal[0] != cat.
+
+ We also have to define the domain for each house.
+
+ Let's code accordingly.

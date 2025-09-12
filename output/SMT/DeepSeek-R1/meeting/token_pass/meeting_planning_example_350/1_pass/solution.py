@@ -1,0 +1,162 @@
+import json
+from z3 import *
+
+def main():
+    # Convert time string to minutes past midnight
+    def time_to_minutes(time_str):
+        parts = time_str.split(':')
+        hour = int(parts[0])
+        minute = int(parts[1]) if len(parts) > 1 else 0
+        return hour * 60 + minute
+
+    # Convert minutes back to time string
+    def minutes_to_time(minutes):
+        hours = minutes // 60
+        mins = minutes % 60
+        return f"{hours}:{mins:02d}"
+
+    # Travel times dictionary
+    travel_times = {
+        "Bayview": {
+            "Pacific Heights": 23,
+            "Mission District": 13,
+            "Haight-Ashbury": 19,
+            "Financial District": 19
+        },
+        "Pacific Heights": {
+            "Bayview": 22,
+            "Mission District": 15,
+            "Haight-Ashbury": 11,
+            "Financial District": 13
+        },
+        "Mission District": {
+            "Bayview": 15,
+            "Pacific Heights": 16,
+            "Haight-Ashbury": 12,
+            "Financial District": 17
+        },
+        "Haight-Ashbury": {
+            "Bayview": 18,
+            "Pacific Heights": 12,
+            "Mission District": 11,
+            "Financial District": 21
+        },
+        "Financial District": {
+            "Bayview": 19,
+            "Pacific Heights": 13,
+            "Mission District": 17,
+            "Haight-Ashbury": 19
+        }
+    }
+
+    # Friends data: name, location, available start, available end, min duration
+    friends = [
+        {
+            "name": "Mary",
+            "location": "Pacific Heights",
+            "available_start": time_to_minutes("10:00"),
+            "available_end": time_to_minutes("19:00"),
+            "min_duration": 45
+        },
+        {
+            "name": "Lisa",
+            "location": "Mission District",
+            "available_start": time_to_minutes("20:30"),
+            "available_end": time_to_minutes("22:00"),
+            "min_duration": 75
+        },
+        {
+            "name": "Betty",
+            "location": "Haight-Ashbury",
+            "available_start": time_to_minutes("7:15"),
+            "available_end": time_to_minutes("17:15"),
+            "min_duration": 90
+        },
+        {
+            "name": "Charles",
+            "location": "Financial District",
+            "available_start": time_to_minutes("11:15"),
+            "available_end": time_to_minutes("15:00"),
+            "min_duration": 120
+        }
+    ]
+
+    start_location = "Bayview"
+    start_time = time_to_minutes("9:00")
+    n = len(friends)
+
+    # Try to schedule from all friends down to none
+    for k in range(n, -1, -1):
+        s = Solver()
+        scheduled = [Bool(f'scheduled_{i}') for i in range(n)]
+        start_times = [Int(f'start_{i}') for i in range(n)]
+        end_times = [Int(f'end_{i}') for i in range(n)]
+        positions = [Int(f'pos_{i}') for i in range(n)]
+
+        # Exactly k friends are scheduled
+        s.add(Sum([If(scheduled[i], 1, 0) for i in range(n)]) == k)
+
+        # Each scheduled friend must meet constraints
+        for i in range(n):
+            s.add(If(scheduled[i],
+                     And(start_times[i] >= friends[i]["available_start"],
+                         end_times[i] <= friends[i]["available_end"],
+                         end_times[i] - start_times[i] >= friends[i]["min_duration"]),
+                     True))
+
+        # Position constraints: scheduled friends have unique positions 0..k-1, unscheduled have -1
+        for i in range(n):
+            s.add(If(scheduled[i],
+                     And(positions[i] >= 0, positions[i] < k),
+                     positions[i] == -1))
+        s.add(Distinct([positions[i] for i in range(n) if scheduled[i]]))
+
+        # Travel time from start location to first meeting
+        for i in range(n):
+            s.add(If(And(scheduled[i], positions[i] == 0),
+                     start_times[i] >= start_time + travel_times[start_location][friends[i]["location"]],
+                     True))
+
+        # Travel time between consecutive meetings
+        for i in range(n):
+            for j in range(n):
+                if i != j:
+                    s.add(If(And(scheduled[i], scheduled[j], positions[j] == positions[i] + 1),
+                             start_times[j] >= end_times[i] + travel_times[friends[i]["location"]][friends[j]["location"]],
+                             True))
+
+        if s.check() == sat:
+            m = s.model()
+            # Collect scheduled meetings
+            meetings = []
+            for i in range(n):
+                if is_true(m.eval(scheduled[i])):
+                    pos = m.eval(positions[i]).as_long()
+                    start_val = m.eval(start_times[i]).as_long()
+                    end_val = m.eval(end_times[i]).as_long()
+                    meetings.append({
+                        "position": pos,
+                        "name": friends[i]["name"],
+                        "location": friends[i]["location"],
+                        "start": start_val,
+                        "end": end_val
+                    })
+            # Sort by position
+            meetings.sort(key=lambda x: x["position"])
+            itinerary = []
+            for meet in meetings:
+                itinerary.append({
+                    "action": "meet",
+                    "location": meet["location"],
+                    "person": meet["name"],
+                    "start_time": minutes_to_time(meet["start"]),
+                    "end_time": minutes_to_time(meet["end"])
+                })
+            result = {"itinerary": itinerary}
+            print(json.dumps(result, indent=2))
+            return
+    # If no meetings scheduled
+    print(json.dumps({"itinerary": []}, indent=2))
+
+if __name__ == "__main__":
+    main()

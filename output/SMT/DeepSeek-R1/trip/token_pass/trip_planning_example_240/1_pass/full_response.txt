@@ -1,0 +1,96 @@
+```python
+from z3 import *
+import json
+
+def main():
+    # Create solver
+    s = Solver()
+    
+    # Days and cities
+    days = list(range(1, 13))
+    cities = ['Prague', 'Berlin', 'Tallinn', 'Stockholm']
+    
+    # In-city variables: in_city[city][day] for day 1 to 12
+    in_city = {}
+    for city in cities:
+        in_city[city] = [Bool(f"in_{city}_{d}") for d in days]
+    
+    # Constraint: Total days per city
+    s.add(Sum([If(in_city['Prague'][d-1], 1, 0) for d in days]) == 2)
+    s.add(Sum([If(in_city['Berlin'][d-1], 1, 0) for d in days]) == 3)
+    s.add(Sum([If(in_city['Tallinn'][d-1], 1, 0) for d in days]) == 5)
+    s.add(Sum([If(in_city['Stockholm'][d-1], 1, 0) for d in days]) == 5)
+    
+    # Specific day constraints
+    # Day 6 in Berlin
+    s.add(in_city['Berlin'][5] == True)
+    # Day 8 in Berlin and Tallinn
+    s.add(in_city['Berlin'][7] == True)
+    s.add(in_city['Tallinn'][7] == True)
+    # Days 9-12 in Tallinn
+    for d in [8, 9, 10, 11]:  # indices for days 9-12
+        s.add(in_city['Tallinn'][d] == True)
+    
+    # Each day: at least one city, at most two cities
+    for d_index in range(len(days)):
+        day_vars = [in_city[city][d_index] for city in cities]
+        s.add(Sum([If(var, 1, 0) for var in day_vars]) >= 1)
+        s.add(Sum([If(var, 1, 0) for var in day_vars]) <= 2)
+    
+    # Flight connections: only allowed pairs can be together on a day
+    allowed_pairs = [
+        ('Berlin', 'Tallinn'),
+        ('Prague', 'Tallinn'),
+        ('Stockholm', 'Tallinn'),
+        ('Prague', 'Stockholm'),
+        ('Stockholm', 'Berlin')
+    ]
+    # Disallow non-connected pairs
+    for d_index in range(len(days)):
+        # Prague and Berlin cannot be together
+        s.add(Not(And(in_city['Prague'][d_index], in_city['Berlin'][d_index])))
+        # Note: Other disallowed pairs are not present due to allowed_pairs, but we only need to disallow Prague-Berlin
+        # as other non-allowed pairs are not possible given the cities and the allowed_pairs.
+    
+    # Solve the problem
+    if s.check() == sat:
+        model = s.model()
+        itinerary = []
+        current_places = None
+        start_day = 1
+        # Evaluate each day
+        day_assignments = []
+        for d_index in range(len(days)):
+            day = d_index + 1
+            places = []
+            for city in cities:
+                if is_true(model.eval(in_city[city][d_index])):
+                    places.append(city)
+            day_assignments.append(places)
+        
+        # Group consecutive days with the same set of places
+        start_index = 0
+        current_places = day_assignments[0]
+        for d_index in range(1, len(day_assignments)):
+            if day_assignments[d_index] == current_places:
+                continue
+            else:
+                end_day = d_index  # previous day
+                day_range = f"Day {start_index+1}-{end_day}"
+                place_str = " and ".join(sorted(current_places))
+                itinerary.append({"day_range": day_range, "place": place_str})
+                start_index = d_index
+                current_places = day_assignments[d_index]
+        # Add the last segment
+        day_range = f"Day {start_index+1}-12"
+        place_str = " and ".join(sorted(current_places))
+        itinerary.append({"day_range": day_range, "place": place_str})
+        
+        # Output as JSON
+        print(json.dumps({"itinerary": itinerary}))
+    else:
+        print('{"itinerary": []}')
+
+if __name__ == "__main__":
+    main()
+```

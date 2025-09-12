@@ -1,0 +1,137 @@
+```python
+import json
+from z3 import *
+
+def main():
+    # Create solver
+    s = Solver()
+    
+    # Define houses
+    n = 6
+    houses = [1, 2, 3, 4, 5, 6]
+    
+    # Define attributes
+    names = ['Bob', 'Arnold', 'Carol', 'Alice', 'Peter', 'Eric']
+    genres = ['romance', 'historical fiction', 'biography', 'mystery', 'fantasy', 'science fiction']
+    occupations = ['artist', 'doctor', 'nurse', 'engineer', 'teacher', 'lawyer']
+    
+    # Create variables for each attribute per house
+    name_vars = [Int(f'name_{i}') for i in houses]
+    genre_vars = [Int(f'genre_{i}') for i in houses]
+    occupation_vars = [Int(f'occupation_{i}') for i in houses]
+    
+    # Constraint: all attributes are within valid range (0-5)
+    for i in houses:
+        s.add(And(name_vars[i-1] >= 0, name_vars[i-1] < len(names)))
+        s.add(And(genre_vars[i-1] >= 0, genre_vars[i-1] < len(genres)))
+        s.add(And(occupation_vars[i-1] >= 0, occupation_vars[i-1] < len(occupations)))
+    
+    # Constraint: all attributes are distinct
+    s.add(Distinct(name_vars))
+    s.add(Distinct(genre_vars))
+    s.add(Distinct(occupation_vars))
+    
+    # Create mapping from attribute names to indices
+    name_to_idx = {name: idx for idx, name in enumerate(names)}
+    genre_to_idx = {genre: idx for idx, genre in enumerate(genres)}
+    occupation_to_idx = {occupation: idx for idx, occupation in enumerate(occupations)}
+    
+    # Clue 1: Alice is the person who loves fantasy books.
+    alice_idx = name_to_idx['Alice']
+    fantasy_idx = genre_to_idx['fantasy']
+    s.add(Exists([i for i in range(n)], lambda i: And(name_vars[i] == alice_idx, genre_vars[i] == fantasy_idx)))
+    
+    # Clue 2: The person who loves mystery books and Bob are next to each other.
+    mystery_idx = genre_to_idx['mystery']
+    bob_idx = name_to_idx['Bob']
+    for i in range(n):
+        for j in range(n):
+            if abs(i - j) == 1:  # adjacent houses
+                s.add(Implies(genre_vars[i] == mystery_idx, name_vars[j] == bob_idx))
+                s.add(Implies(name_vars[i] == bob_idx, genre_vars[j] == mystery_idx))
+    
+    # Clue 3: Carol is the person who loves mystery books.
+    carol_idx = name_to_idx['Carol']
+    s.add(Exists([i for i in range(n)], lambda i: And(name_vars[i] == carol_idx, genre_vars[i] == mystery_idx)))
+    
+    # Clue 4: The person who is a lawyer is the person who loves fantasy books.
+    lawyer_idx = occupation_to_idx['lawyer']
+    s.add(Exists([i for i in range(n)], lambda i: And(occupation_vars[i] == lawyer_idx, genre_vars[i] == fantasy_idx)))
+    
+    # Clue 5: Bob is not in the fifth house.
+    s.add(name_vars[4] != bob_idx)  # house 5 is index 4
+    
+    # Clue 6: Arnold is somewhere to the left of the person who is an engineer.
+    arnold_idx = name_to_idx['Arnold']
+    engineer_idx = occupation_to_idx['engineer']
+    for i in range(n):
+        for j in range(i+1, n):  # j is to the right of i
+            s.add(Implies(name_vars[i] == arnold_idx, occupation_vars[j] == engineer_idx))
+    
+    # Clue 7: The person who is a nurse is directly left of Alice.
+    nurse_idx = occupation_to_idx['nurse']
+    for i in range(n-1):
+        s.add(Implies(occupation_vars[i] == nurse_idx, name_vars[i+1] == alice_idx))
+    
+    # Clue 8: The person who loves biography books is the person who is a teacher.
+    biography_idx = genre_to_idx['biography']
+    teacher_idx = occupation_to_idx['teacher']
+    s.add(Exists([i for i in range(n)], lambda i: And(genre_vars[i] == biography_idx, occupation_vars[i] == teacher_idx)))
+    
+    # Clue 9: The person who loves historical fiction books is somewhere to the left of the person who is a teacher.
+    historical_fiction_idx = genre_to_idx['historical fiction']
+    for i in range(n):
+        for j in range(i+1, n):  # j is to the right of i
+            s.add(Implies(genre_vars[i] == historical_fiction_idx, occupation_vars[j] == teacher_idx))
+    
+    # Clue 10: The person who is a doctor is in the first house.
+    doctor_idx = occupation_to_idx['doctor']
+    s.add(occupation_vars[0] == doctor_idx)
+    
+    # Clue 11: The person who loves science fiction books is the person who is an artist.
+    scifi_idx = genre_to_idx['science fiction']
+    artist_idx = occupation_to_idx['artist']
+    s.add(Exists([i for i in range(n)], lambda i: And(genre_vars[i] == scifi_idx, occupation_vars[i] == artist_idx)))
+    
+    # Clue 12: Eric is in the third house.
+    eric_idx = name_to_idx['Eric']
+    s.add(name_vars[2] == eric_idx)  # house 3 is index 2
+    
+    # Clue 13: The person who loves mystery books is not in the fifth house.
+    s.add(genre_vars[4] != mystery_idx)  # house 5 is index 4
+    
+    # Check if solution exists
+    if s.check() == sat:
+        model = s.model()
+        
+        # Prepare solution data
+        solution = {
+            "solution": {
+                "header": ["House", "Name", "BookGenre", "Occupation"],
+                "rows": []
+            }
+        }
+        
+        # Extract values for each house
+        for i in range(n):
+            house_num = i + 1
+            name_idx = model.evaluate(name_vars[i]).as_long()
+            genre_idx = model.evaluate(genre_vars[i]).as_long()
+            occupation_idx = model.evaluate(occupation_vars[i]).as_long()
+            
+            row = [
+                str(house_num),
+                names[name_idx],
+                genres[genre_idx],
+                occupations[occupation_idx]
+            ]
+            solution["solution"]["rows"].append(row)
+        
+        # Output as JSON
+        print(json.dumps(solution, indent=2))
+    else:
+        print('{"error": "No solution found"}')
+
+if __name__ == "__main__":
+    main()
+```

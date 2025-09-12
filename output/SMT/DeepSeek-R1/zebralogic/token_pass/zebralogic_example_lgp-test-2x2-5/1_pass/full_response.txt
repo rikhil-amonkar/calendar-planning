@@ -1,0 +1,56 @@
+```python
+import json
+from z3 import *
+
+def main():
+    # Define the sorts for attributes
+    NameSort, (eric, arnold) = EnumSort('Name', ['Eric', 'Arnold'])
+    StyleSort, (victorian, colonial) = EnumSort('Style', ['victorian', 'colonial'])
+    
+    # Create variables for each house
+    houses = [1, 2]
+    names = [Const(f'name_{i}', NameSort) for i in houses]
+    styles = [Const(f'style_{i}', StyleSort) for i in houses]
+    
+    solver = Solver()
+    
+    # All names and styles are distinct
+    solver.add(Distinct(names))
+    solver.add(Distinct(styles))
+    
+    # Clue 1: Victorian left of colonial
+    solver.add(Or(
+        And(styles[0] == victorian, styles[1] == colonial)
+    ))
+    
+    # Clue 2: Eric in first house
+    solver.add(names[0] == eric)
+    
+    # Check solution
+    if solver.check() == sat:
+        model = solver.model()
+        solution_rows = []
+        for i in range(len(houses)):
+            house_num = str(i + 1)
+            name_val = model.eval(names[i])
+            style_val = model.eval(styles[i])
+            
+            # Convert to string values
+            name_str = 'Eric' if name_val == eric else 'Arnold'
+            style_str = 'victorian' if style_val == victorian else 'colonial'
+            
+            solution_rows.append([house_num, name_str, style_str])
+        
+        result = {
+            "solution": {
+                "header": ["House", "Name", "HouseStyle"],
+                "rows": solution_rows
+            }
+        }
+        print(json.dumps(result, indent=2))
+    else:
+        print("No solution found")
+
+if __name__ == "__main__":
+    main()
+```

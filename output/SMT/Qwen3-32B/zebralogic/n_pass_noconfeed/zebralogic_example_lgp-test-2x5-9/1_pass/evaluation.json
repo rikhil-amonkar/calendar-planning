@@ -1,0 +1,57 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"solution\": {\n    \"header\": [\n      \"House\",\n      \"Name\",\n      \"BookGenre\",\n      \"Vacation\",\n      \"Animal\",\n      \"MusicGenre\"\n    ],\n    \"rows\": [\n      [\n        \"1\",\n        \"Arnold\",\n        \"mystery\",\n        \"mountain\",\n        \"cat\",\n        \"rock\"\n      ],\n      [\n        \"2\",\n        \"Eric\",\n        \"science fiction\",\n        \"beach\",\n        \"horse\",\n        \"pop\"\n      ]\n    ]\n  }\n}",
+    "pred": [
+        {
+            "House": "1",
+            "Name": "Arnold",
+            "BookGenre": "mystery",
+            "Vacation": "mountain",
+            "Animal": "cat",
+            "MusicGenre": "rock"
+        },
+        {
+            "House": "2",
+            "Name": "Eric",
+            "BookGenre": "science fiction",
+            "Vacation": "beach",
+            "Animal": "horse",
+            "MusicGenre": "pop"
+        }
+    ],
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Arnold",
+            "BookGenre": "mystery",
+            "Vacation": "mountain",
+            "Animal": "cat",
+            "MusicGenre": "rock"
+        },
+        {
+            "House": "2",
+            "Name": "Eric",
+            "BookGenre": "science fiction",
+            "Vacation": "beach",
+            "Animal": "horse",
+            "MusicGenre": "pop"
+        }
+    ],
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 303.074405670166,
+        "execution_time": 0.07950234413146973,
+        "constraint_eval_time": 5.936622619628906e-05,
+        "pred_extract_time": 1.9735417366027832,
+        "gold_extract_time": 1.1205673217773438e-05,
+        "total_tokens": 22024,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\nimport json\n\nsolver = Solver()\n\n# Variables for house 1\nname1 = String('name1')\nbook1 = String('book1')\nvacation1 = String('vacation1')\nanimal1 = String('animal1')\nmusic1 = String('music1')\n\n# Variables for house 2\nname2 = String('name2')\nbook2 = String('book2')\nvacation2 = String('vacation2')\nanimal2 = String('animal2')\nmusic2 = String('music2')\n\n# Constraints for uniqueness and domain for each category\n\n# Names\nsolver.add(Or(name1 == \"Arnold\", name1 == \"Eric\"))\nsolver.add(Or(name2 == \"Arnold\", name2 == \"Eric\"))\nsolver.add(name1 != name2)\n\n# Book genres\nsolver.add(Or(book1 == \"science fiction\", book1 == \"mystery\"))\nsolver.add(Or(book2 == \"science fiction\", book2 == \"mystery\"))\nsolver.add(book1 != book2)\n\n# Vacation\nsolver.add(Or(vacation1 == \"mountain\", vacation1 == \"beach\"))\nsolver.add(Or(vacation2 == \"mountain\", vacation2 == \"beach\"))\nsolver.add(vacation1 != vacation2)\n\n# Animal\nsolver.add(Or(animal1 == \"cat\", animal1 == \"horse\"))\nsolver.add(Or(animal2 == \"cat\", animal2 == \"horse\"))\nsolver.add(animal1 != animal2)\n\n# Music\nsolver.add(Or(music1 == \"rock\", music1 == \"pop\"))\nsolver.add(Or(music2 == \"rock\", music2 == \"pop\"))\nsolver.add(music1 != music2)\n\n# Clue 5: mystery book in first house\nsolver.add(book1 == \"mystery\")\n\n# Clue 4: cat lover not in second house\nsolver.add(animal1 == \"cat\")\n\n# Clue 1: beach vacation is Eric\nsolver.add(Implies(vacation1 == \"beach\", name1 == \"Eric\"))\nsolver.add(Implies(vacation2 == \"beach\", name2 == \"Eric\"))\n\n# Clue 2: pop music is same as beach vacation\nsolver.add(Implies(vacation1 == \"beach\", music1 == \"pop\"))\nsolver.add(Implies(vacation2 == \"beach\", music2 == \"pop\"))\n\n# Clue 3: rock implies mystery book\nsolver.add(Implies(music1 == \"rock\", book1 == \"mystery\"))\nsolver.add(Implies(music2 == \"rock\", book2 == \"mystery\"))\n\nif solver.check() == sat:\n    model = solver.model()\n    \n    # Extract values for house 1\n    h1_name = model.eval(name1).as_string()\n    h1_book = model.eval(book1).as_string()\n    h1_vacation = model.eval(vacation1).as_string()\n    h1_animal = model.eval(animal1).as_string()\n    h1_music = model.eval(music1).as_string()\n    \n    # Extract values for house 2\n    h2_name = model.eval(name2).as_string()\n    h2_book = model.eval(book2).as_string()\n    h2_vacation = model.eval(vacation2).as_string()\n    h2_animal = model.eval(animal2).as_string()\n    h2_music = model.eval(music2).as_string()\n    \n    # Build the JSON structure\n    solution = {\n        \"solution\": {\n            \"header\": [\"House\", \"Name\", \"BookGenre\", \"Vacation\", \"Animal\", \"MusicGenre\"],\n            \"rows\": [\n                [\"1\", h1_name, h1_book, h1_vacation, h1_animal, h1_music],\n                [\"2\", h2_name, h2_book, h2_vacation, h2_animal, h2_music]\n            ]\n        }\n    }\n    \n    print(json.dumps(solution, indent=2))\nelse:\n    print(\"No solution found.\")"
+}

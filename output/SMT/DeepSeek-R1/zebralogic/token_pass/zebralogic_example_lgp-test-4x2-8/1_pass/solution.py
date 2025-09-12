@@ -1,0 +1,79 @@
+import json
+from z3 import *
+
+def main():
+    # Create solver
+    solver = Solver()
+    
+    # Houses: 1 to 4
+    houses = [1, 2, 3, 4]
+    
+    # Define attributes
+    names = ['Peter', 'Arnold', 'Alice', 'Eric']
+    colors = ['yellow', 'green', 'red', 'white']
+    
+    # Create Z3 variables for each house's name and color
+    name_vars = [Int(f'name_{i}') for i in houses]
+    color_vars = [Int(f'color_{i}') for i in houses]
+    
+    # Each name and color variable must be between 0 and 3 (index of attributes)
+    for i in houses:
+        solver.add(And(name_vars[i-1] >= 0, name_vars[i-1] < len(names)))
+        solver.add(And(color_vars[i-1] >= 0, color_vars[i-1] < len(colors)))
+    
+    # All names and colors are distinct
+    solver.add(Distinct(name_vars))
+    solver.add(Distinct(color_vars))
+    
+    # Clue 1: Green color is in third house
+    solver.add(color_vars[2] == colors.index('green'))
+    
+    # Clue 2: Peter is in first house
+    solver.add(name_vars[0] == names.index('Peter'))
+    
+    # Clue 3: One house between red and yellow colors
+    red_index = colors.index('red')
+    yellow_index = colors.index('yellow')
+    for i in houses:
+        for j in houses:
+            if abs(i - j) == 2:  # Exactly one house between
+                solver.add(Or(
+                    And(color_vars[i-1] == red_index, color_vars[j-1] == yellow_index),
+                    And(color_vars[i-1] == yellow_index, color_vars[j-1] == red_index)
+                ))
+    
+    # Clue 4: Arnold directly left of Eric
+    arnold_index = names.index('Arnold')
+    eric_index = names.index('Eric')
+    for i in range(3):  # Houses 1-3 can be left of next
+        solver.add(Implies(name_vars[i] == arnold_index, name_vars[i+1] == eric_index))
+    
+    # Clue 5: Eric loves yellow
+    solver.add(Implies(name_vars[i] == eric_index, color_vars[i] == yellow_index) for i in range(4))
+    
+    # Check and get solution
+    if solver.check() == sat:
+        model = solver.model()
+        
+        # Prepare solution rows
+        rows = []
+        for i in houses:
+            name_val = model.evaluate(name_vars[i-1])
+            color_val = model.evaluate(color_vars[i-1])
+            name_str = names[name_val.as_long()]
+            color_str = colors[color_val.as_long()]
+            rows.append([str(i), name_str, color_str])
+        
+        # Format as JSON
+        solution = {
+            "solution": {
+                "header": ["House", "Name", "Color"],
+                "rows": rows
+            }
+        }
+        print(json.dumps(solution, indent=2))
+    else:
+        print('No solution found')
+
+if __name__ == '__main__':
+    main()

@@ -1,0 +1,86 @@
+import json
+from z3 import *
+
+def main():
+    # Create the solver
+    solver = Solver()
+    
+    # Define the attributes
+    names = ['Alice', 'Arnold', 'Peter', 'Eric']
+    hair_colors = ['black', 'blonde', 'brown', 'red']
+    
+    # Create enumerations for names and hair colors
+    NameSort, name_consts = EnumSort('Name', names)
+    HairSort, hair_consts = EnumSort('Hair', hair_colors)
+    
+    # Unpack the constants for easier access
+    Alice, Arnold, Peter, Eric = name_consts
+    black, blonde, brown, red = hair_consts
+    
+    # Create arrays for house attributes (index 0 = house 1, index 1 = house 2, etc.)
+    name_vars = [Const(f'name_{i}', NameSort) for i in range(4)]
+    hair_vars = [Const(f'hair_{i}', HairSort) for i in range(4)]
+    
+    # Each house has a unique name
+    solver.add(Distinct(name_vars))
+    # Each house has a unique hair color
+    solver.add(Distinct(hair_vars))
+    
+    # Clue 5: Alice is in the first house
+    solver.add(name_vars[0] == Alice)
+    
+    # Clue 3: Eric is the person who has brown hair
+    # Find Eric's house and set its hair to brown
+    for i in range(4):
+        solver.add(Implies(name_vars[i] == Eric, hair_vars[i] == brown))
+    
+    # Clue 1: Eric is directly left of the person who has blonde hair
+    for i in range(3):  # Only check first 3 houses since Eric must be left
+        solver.add(Implies(name_vars[i] == Eric, hair_vars[i+1] == blonde))
+    
+    # Clue 2: Alice and Arnold are next to each other
+    # Since Alice is in house 1, Arnold must be in house 2
+    solver.add(name_vars[1] == Arnold)
+    
+    # Clue 4: The person who has black hair is not in the first house
+    solver.add(hair_vars[0] != black)
+    
+    # Check for solution
+    if solver.check() == sat:
+        model = solver.model()
+        
+        # Prepare results
+        rows = []
+        for i in range(4):
+            house_num = str(i+1)
+            name_val = model.eval(name_vars[i])
+            hair_val = model.eval(hair_vars[i])
+            
+            # Convert Z3 symbols to string names
+            name_str = None
+            for j, const in enumerate(name_consts):
+                if eq(name_val, const):
+                    name_str = names[j]
+                    break
+                    
+            hair_str = None
+            for j, const in enumerate(hair_consts):
+                if eq(hair_val, const):
+                    hair_str = hair_colors[j]
+                    break
+                    
+            rows.append([house_num, name_str, hair_str])
+        
+        # Format output as JSON
+        output = {
+            "solution": {
+                "header": ["House", "Name", "HairColor"],
+                "rows": rows
+            }
+        }
+        print(json.dumps(output, indent=2))
+    else:
+        print('No solution found')
+
+if __name__ == '__main__':
+    main()

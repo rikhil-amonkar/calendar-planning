@@ -1,0 +1,111 @@
+We are dealing with 2 houses and three attributes: Name, FavoriteSport, Hobby.
+ We have two options for each attribute: 
+   Names: Eric, Arnold
+   FavoriteSport: basketball, soccer
+   Hobby: photography, gardening
+
+ We'll create Z3 variables for each attribute per house.
+
+ Since there are 2 houses, we can create:
+   For house i (1 and 2):
+     name_i: which can be either Eric or Arnold
+     sport_i: basketball or soccer
+     hobby_i: photography or gardening
+
+ However, note that the houses are fixed (1 and 2) and we are assigning values to these.
+
+ We'll use Z3's EnumSort for each attribute to create symbolic constants.
+
+ Steps:
+ 1. Create enums for Name, FavoriteSport, and Hobby.
+ 2. Create variables for each house and each attribute.
+ 3. Add constraints that all attributes are distinct per category (each name is unique, etc.)
+ 4. Add the given clues.
+
+ Clues:
+  1. The person who enjoys gardening is Arnold. 
+     This means: hobby = gardening -> name = Arnold. But note: it says "is Arnold", so it's an equivalence? 
+     Actually, it says "the person who enjoys gardening is Arnold", meaning that the hobby gardening is associated with the name Arnold.
+     So, we can say: There exists a house where hobby is gardening and name is Arnold, and that is the same person.
+
+  2. The photography enthusiast is not in the first house.
+     So, hobby_1 != photography.
+
+  3. The person who loves soccer is not in the first house.
+     So, sport_1 != soccer.
+
+ Since there are only two houses, we can also use the fact that if something is not in house1, it must be in house2.
+
+ Let's code accordingly.
+
+ We'll create:
+   NameSort, [Eric, Arnold] = EnumSort('Name', ['Eric','Arnold'])
+   SportSort, [basketball, soccer] = EnumSort('Sport', ['basketball','soccer'])
+   HobbySort, [photography, gardening] = EnumSort('Hobby', ['photography','gardening'])
+
+ For house 1 and 2, we define:
+   name1, name2 of NameSort
+   sport1, sport2 of SportSort
+   hobby1, hobby2 of HobbySort
+
+ Constraints:
+   Distinct names: name1 != name2
+   Distinct sports: sport1 != sport2
+   Distinct hobbies: hobby1 != hobby2
+
+ Clue 1: The person who enjoys gardening is Arnold.
+   This means: For the house where hobby is gardening, the name must be Arnold.
+   We can write: For each house i, if hobby_i is gardening, then name_i must be Arnold.
+   But note: since gardening is unique, only one house has gardening. So we can also do:
+   (hobby1 == gardening) == (name1 == Arnold)   [if house1 has gardening then name1 is Arnold, and if house1 doesn't, then house2 must have gardening and then name2 must be Arnold]
+   Alternatively, we can use: 
+   Or(And(hobby1 == gardening, name1 == Arnold), And(hobby2 == gardening, name2 == Arnold))
+
+   However, the clue says "the person who enjoys gardening is Arnold", so it's a direct mapping. We can also say:
+   There exists a house i such that (hobby_i == gardening and name_i == Arnold) and for all houses, if hobby is gardening then name is Arnold (but since only one gardening, it's the same).
+
+   We can simply state: 
+   (hobby1 == gardening) == (name1 == Arnold)
+   (hobby2 == gardening) == (name2 == Arnold)
+
+   But wait, that would force that if house1 has gardening then name1 is Arnold, and if not, then name1 is not Arnold. Similarly for house2.
+   This is correct because if house1 has gardening, then name1 must be Arnold, and if house2 has gardening, then name2 must be Arnold.
+
+   Alternatively, we can do:
+   For i in [1,2]: (hobby_i == gardening) implies (name_i == Arnold)
+
+   But note: the clue doesn't say that Arnold enjoys gardening, it says the gardening enthusiast is Arnold (so it's bidirectional). However, since each person has a unique hobby and name, and we know Arnold exists and gardening exists, we can use the implication in both ways? Actually, the clue is stating an equivalence: the gardening enthusiast is exactly Arnold.
+
+   However, note that the clue doesn't say that Arnold does gardening, but that the person doing gardening is Arnold. So if Arnold is in a house, that house must have gardening? Not necessarily: the clue says the gardening enthusiast is Arnold, meaning that the person with hobby gardening is named Arnold. So it's: 
+      (hobby_i == gardening) if and only if (name_i == Arnold) for the house i that has gardening.
+
+   But note: since there is only one gardening and one Arnold, we can also model it by:
+      There exists one house where both are true, and in the other house, since the name is not Arnold, the hobby is not gardening.
+
+   So we can do:
+      (hobby1 == gardening) == (name1 == Arnold)
+      (hobby2 == gardening) == (name2 == Arnold)
+
+   This is correct.
+
+ Clue 2: The photography enthusiast is not in the first house.
+   So: hobby1 != photography
+
+ Clue 3: The person who loves soccer is not in the first house.
+   So: sport1 != soccer
+
+ Since there are only two houses, we can also deduce that house2 must have photography and soccer.
+
+ Let's code accordingly.
+
+ We'll create a solver, add the constraints, and check.
+
+ Then, we'll extract the values and format the output as JSON.
+
+ We'll create a list of houses (1 and 2) and for each, we'll get the value of name, sport, hobby.
+
+ We'll then create a list of rows, each row being [house_number, name, sport, hobby] as strings.
+
+ Finally, we output the JSON.
+
+ Let's code.

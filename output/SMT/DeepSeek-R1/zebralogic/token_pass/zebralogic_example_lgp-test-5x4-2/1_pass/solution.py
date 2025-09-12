@@ -1,0 +1,139 @@
+from z3 import *
+import json
+
+def main():
+    s = Solver()
+    
+    # Define enums for each category
+    Name, (Bob, Eric, Arnold, Alice, Peter) = EnumSort('Name', ['Bob', 'Eric', 'Arnold', 'Alice', 'Peter'])
+    Color, (blue, green, white, yellow, red) = EnumSort('Color', ['blue', 'green', 'white', 'yellow', 'red'])
+    PhoneModel, (huawei_p50, samsung_galaxy_s21, oneplus_9, iphone_13, google_pixel_6) = EnumSort('PhoneModel', 
+        ['huawei_p50', 'samsung_galaxy_s21', 'oneplus_9', 'iphone_13', 'google_pixel_6'])
+    Occupation, (artist, teacher, doctor, engineer, lawyer) = EnumSort('Occupation', 
+        ['artist', 'teacher', 'doctor', 'engineer', 'lawyer'])
+    
+    # Create attributes for each house
+    houses = [1, 2, 3, 4, 5]
+    name = Function('name', IntSort(), Name)
+    color = Function('color', IntSort(), Color)
+    phone = Function('phone', IntSort(), PhoneModel)
+    occupation = Function('occupation', IntSort(), Occupation)
+    
+    # Each attribute must be unique per house
+    s.add(Distinct([name(i) for i in houses]))
+    s.add(Distinct([color(i) for i in houses]))
+    s.add(Distinct([phone(i) for i in houses]))
+    s.add(Distinct([occupation(i) for i in houses]))
+    
+    # Clue 1: Engineer is right of lawyer
+    lawyer_house = Int('lawyer_house')
+    engineer_house = Int('engineer_house')
+    s.add(And(lawyer_house >= 1, lawyer_house <= 5))
+    s.add(And(engineer_house >= 1, engineer_house <= 5))
+    s.add(occupation(lawyer_house) == lawyer)
+    s.add(occupation(engineer_house) == engineer)
+    s.add(engineer_house > lawyer_house)
+    
+    # Clue 2: Bob in second house
+    s.add(name(2) == Bob)
+    
+    # Clue 3: Samsung user is doctor
+    for i in houses:
+        s.add(Implies(phone(i) == samsung_galaxy_s21, occupation(i) == doctor))
+    
+    # Clue 4: Doctor loves blue
+    for i in houses:
+        s.add(Implies(occupation(i) == doctor, color(i) == blue))
+    
+    # Clue 5: Green not in fifth house
+    s.add(color(5) != green)
+    
+    # Clue 6: Lawyer uses OnePlus 9
+    for i in houses:
+        s.add(Implies(occupation(i) == lawyer, phone(i) == oneplus_9))
+    
+    # Clue 7: Blue directly left of red
+    for i in range(1, 5):
+        s.add(Implies(color(i) == blue, color(i+1) == red))
+    
+    # Clue 8: Lawyer right of Samsung user
+    samsung_house = Int('samsung_house')
+    s.add(And(samsung_house >= 1, samsung_house <= 5))
+    s.add(phone(samsung_house) == samsung_galaxy_s21)
+    s.add(lawyer_house > samsung_house)
+    
+    # Clue 9: One house between Google Pixel and Huawei
+    google_house = Int('google_house')
+    huawei_house = Int('huawei_house')
+    s.add(And(google_house >= 1, google_house <= 5))
+    s.add(And(huawei_house >= 1, huawei_house <= 5))
+    s.add(phone(google_house) == google_pixel_6)
+    s.add(phone(huawei_house) == huawei_p50)
+    s.add(Or(google_house == huawei_house + 2, google_house == huawei_house - 2))
+    
+    # Clue 10: Arnold is engineer
+    for i in houses:
+        s.add(Implies(name(i) == Arnold, occupation(i) == engineer))
+    
+    # Clue 11: Alice loves yellow
+    for i in houses:
+        s.add(Implies(name(i) == Alice, color(i) == yellow))
+    
+    # Clue 12: Google Pixel user is Eric
+    for i in houses:
+        s.add(Implies(phone(i) == google_pixel_6, name(i) == Eric))
+    
+    # Clue 13: Google Pixel user is teacher
+    for i in houses:
+        s.add(Implies(phone(i) == google_pixel_6, occupation(i) == teacher))
+    
+    # Clue 14: Red right of teacher
+    teacher_house = Int('teacher_house')
+    red_house = Int('red_house')
+    s.add(And(teacher_house >= 1, teacher_house <= 5))
+    s.add(And(red_house >= 1, red_house <= 5))
+    s.add(occupation(teacher_house) == teacher)
+    s.add(color(red_house) == red)
+    s.add(red_house > teacher_house)
+    
+    # Solve the constraints
+    if s.check() == sat:
+        m = s.model()
+        # Create mapping from Z3 values to strings
+        name_map = {Bob: "Bob", Eric: "Eric", Arnold: "Arnold", Alice: "Alice", Peter: "Peter"}
+        color_map = {blue: "blue", green: "green", white: "white", yellow: "yellow", red: "red"}
+        phone_map = {
+            huawei_p50: "huawei p50",
+            samsung_galaxy_s21: "samsung galaxy s21",
+            oneplus_9: "oneplus 9",
+            iphone_13: "iphone 13",
+            google_pixel_6: "google pixel 6"
+        }
+        occupation_map = {artist: "artist", teacher: "teacher", doctor: "doctor", engineer: "engineer", lawyer: "lawyer"}
+        
+        rows = []
+        for i in houses:
+            n_val = m.evaluate(name(i))
+            c_val = m.evaluate(color(i))
+            p_val = m.evaluate(phone(i))
+            o_val = m.evaluate(occupation(i))
+            rows.append([
+                str(i),
+                name_map[n_val],
+                color_map[c_val],
+                phone_map[p_val],
+                occupation_map[o_val]
+            ])
+        
+        solution = {
+            "solution": {
+                "header": ["House", "Name", "Color", "PhoneModel", "Occupation"],
+                "rows": rows
+            }
+        }
+        print(json.dumps(solution, indent=2))
+    else:
+        print("No solution found")
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,68 @@
+{
+    "has_execution_error": true,
+    "has_no_plan": false,
+    "execution_output": null,
+    "pred": null,
+    "gold": {
+        "itinerary": [
+            {
+                "day_range": "Day 1-3",
+                "place": "London"
+            },
+            {
+                "day_range": "Day 3-7",
+                "place": "Milan"
+            },
+            {
+                "day_range": "Day 7-8",
+                "place": "Zurich"
+            },
+            {
+                "day_range": "Day 8-9",
+                "place": "Stockholm"
+            },
+            {
+                "day_range": "Day 9-13",
+                "place": "Reykjavik"
+            },
+            {
+                "day_range": "Day 13-17",
+                "place": "Stuttgart"
+            },
+            {
+                "day_range": "Day 17-21",
+                "place": "Hamburg"
+            },
+            {
+                "day_range": "Day 21-22",
+                "place": "Bucharest"
+            },
+            {
+                "day_range": "Day 22-25",
+                "place": "Barcelona"
+            },
+            {
+                "day_range": "Day 25-28",
+                "place": "Tallinn"
+            }
+        ]
+    },
+    "status": "Error",
+    "violated_constraint": {
+        "missing_itinerary": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 2,
+    "timing": {
+        "api_call_time": 388.9641082286835,
+        "execution_time": 0.012051105499267578,
+        "constraint_eval_time": 1.3113021850585938e-05,
+        "pred_extract_time": 2.0265579223632812e-05,
+        "gold_extract_time": 0.00014519691467285156,
+        "total_tokens": 18937,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\nimport json\n\n# Define cities and their index-based data\ncities = ['London', 'Milan', 'Reykjavik', 'Zurich', 'Bucharest', 'Hamburg', 'Barcelona', 'Stuttgart', 'Stockholm', 'Tallinn']\n\n# City-specific data by index\nrequired_days_by_index = [3, 5, 5, 2, 2, 5, 4, 5, 2, 4]\nmust_include_days_by_index = [\n    [(1, 3)],  # London\n    [(3, 7)],  # Milan\n    [(9, 13)],  # Reykjavik\n    [(7, 8)],  # Zurich\n    [],  # Bucharest\n    [],  # Hamburg\n    [],  # Barcelona\n    [],  # Stuttgart\n    [],  # Stockholm\n    [],  # Tallinn\n]\n\n# Direct flights between cities\ndirect_flights = {\n    ('London', 'Hamburg'), ('Hamburg', 'London'),\n    ('London', 'Reykjavik'), ('Reykjavik', 'London'),\n    ('Milan', 'Barcelona'), ('Barcelona', 'Milan'),\n    ('Reykjavik', 'Barcelona'), ('Barcelona', 'Reykjavik'),\n    ('Reykjavik', 'Stuttgart'), ('Stuttgart', 'Reykjavik'),\n    ('Stockholm', 'Reykjavik'), ('Reykjavik', 'Stockholm'),\n    ('London', 'Stuttgart'), ('Stuttgart', 'London'),\n    ('Milan', 'Zurich'), ('Zurich', 'Milan'),\n    ('London', 'Barcelona'), ('Barcelona', 'London'),\n    ('Stockholm', 'Hamburg'), ('Hamburg', 'Stockholm'),\n    ('Zurich', 'Barcelona'), ('Barcelona', 'Zurich'),\n    ('Stockholm', 'Stuttgart'), ('Stuttgart', 'Stockholm'),\n    ('Milan', 'Hamburg'), ('Hamburg', 'Milan'),\n    ('Stockholm', 'Tallinn'), ('Tallinn', 'Stockholm'),\n    ('Hamburg', 'Bucharest'), ('Bucharest', 'Hamburg'),\n    ('London', 'Bucharest'), ('Bucharest', 'London'),\n    ('Milan', 'Stockholm'), ('Stockholm', 'Milan'),\n    ('Milan', 'Stuttgart'), ('Stuttgart', 'Milan'),\n    ('Stockholm', 'Barcelona'), ('Barcelona', 'Stockholm'),\n    ('London', 'Milan'), ('Milan', 'London'),\n    ('Zurich', 'Hamburg'), ('Hamburg', 'Zurich'),\n    ('Bucharest', 'Barcelona'), ('Barcelona', 'Bucharest'),\n    ('Zurich', 'Stockholm'), ('Stockholm', 'Zurich'),\n    ('Barcelona', 'Tallinn'), ('Tallinn', 'Barcelona'),\n    ('Zurich', 'Tallinn'), ('Tallinn', 'Zurich'),\n    ('Hamburg', 'Barcelona'), ('Barcelona', 'Hamburg'),\n    ('Stuttgart', 'Barcelona'), ('Barcelona', 'Stuttgart'),\n    ('Zurich', 'Reykjavik'), ('Reykjavik', 'Zurich'),\n    ('Zurich', 'Bucharest'), ('Bucharest', 'Zurich'),\n}\n\n# Create a solver\ns = Solver()\n\n# Sequence of cities (permutation)\nsequence = [Int(f'seq_{i}') for i in range(10)]\n\n# Add constraints for valid city indices and distinct sequence\nfor i in range(10):\n    s.add(And(sequence[i] >= 0, sequence[i] < 10))\ns.add(Distinct(sequence))\n\n# Duration, start, and end for each city in sequence\nduration = [Int(f'duration_{i}') for i in range(10)]\nstart = [Int(f'start_{i}') for i in range(10)]\nend = [Int(f'end_{i}') for i in range(10)]\n\n# First day is day 1\ns.add(start[0] == 1)\n\n# Start of next city is end of previous\nfor i in range(1, 10):\n    s.add(start[i] == end[i - 1])\n\n# End is start + duration - 1\nfor i in range(10):\n    s.add(end[i] == start[i] + duration[i] - 1)\n\n# Total duration is 28\ns.add(Sum(duration) == 28)\n\n# Apply duration and must_include constraints using Z3 If expressions\nfor i in range(10):\n    city_idx = sequence[i]\n    # Build required days expression\n    required_expr = If(city_idx == 0, required_days_by_index[0],\n                       If(city_idx == 1, required_days_by_index[1],\n                          If(city_idx == 2, required_days_by_index[2],\n                             If(city_idx == 3, required_days_by_index[3],\n                                If(city_idx == 4, required_days_by_index[4],\n                                   If(city_idx == 5, required_days_by_index[5],\n                                      If(city_idx == 6, required_days_by_index[6],\n                                         If(city_idx == 7, required_days_by_index[7],\n                                            If(city_idx == 8, required_days_by_index[8],\n                                               required_days_by_index[9]))))))))\n    s.add(duration[i] >= required_expr)\n\n    # Add must_include constraints\n    for j in range(10):\n        for (s_day, e_day) in must_include_days_by_index[j]:\n            s.add(Implies(city_idx == j, And(start[i] <= s_day, end[i] >= e_day)))\n\n# Flight constraints between consecutive cities\nfor i in range(9):\n    current_city = sequence[i]\n    next_city = sequence[i + 1]\n    valid_transitions = []\n    for a in range(10):\n        for b in range(10):\n            if (cities[a], cities[b]) in direct_flights:\n                valid_transitions.append(And(current_city == a, next_city == b))\n    s.add(Or(valid_transitions))\n\n# Check for solution and output\nif s.check() == sat:\n    m = s.model()\n    seq_values = [m.eval(sequence[i]).as_long() for i in range(10)]\n    cities_order = [cities[idx] for idx in seq_values]\n    durations = [m.eval(duration[i]).as_long() for i in range(10)]\n    starts = [m.eval(start[i]).as_long() for i in range(10)]\n    ends = [m.eval(end[i]).as_long() for i in range(10)]\n    itinerary = []\n    for i in range(10):\n        city = cities_order[i]\n        start_day = starts[i]\n        end_day = ends[i]\n        day_range = f\"Day {start_day}-{end_day}\"\n        itinerary.append({\"day_range\": day_range, \"place\": city})\n    print(json.dumps({\"itinerary\": itinerary}))\nelse:\n    print(json.dumps({\"itinerary\": []}))"
+}

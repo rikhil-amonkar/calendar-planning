@@ -1,0 +1,167 @@
+```python
+import json
+from z3 import *
+
+def main():
+    # Create solver
+    s = Solver()
+    
+    # Define the houses
+    houses = [1, 2, 3, 4]
+    
+    # Define attributes
+    names = ['Peter', 'Arnold', 'Eric', 'Alice']
+    flowers = ['daffodils', 'carnations', 'roses', 'lilies']
+    heights = ['very short', 'short', 'tall', 'average']
+    mothers = ['Janelle', 'Kailyn', 'Holly', 'Aniya']
+    occupations = ['engineer', 'doctor', 'teacher', 'artist']
+    sports = ['swimming', 'basketball', 'tennis', 'soccer']
+    
+    # Create variables for each attribute per house
+    name_vars = [Int(f'name_{i}') for i in houses]
+    flower_vars = [Int(f'flower_{i}') for i in houses]
+    height_vars = [Int(f'height_{i}') for i in houses]
+    mother_vars = [Int(f'mother_{i}') for i in houses]
+    occupation_vars = [Int(f'occupation_{i}') for i in houses]
+    sport_vars = [Int(f'sport_{i}') for i in houses]
+    
+    # Constraint: all attributes must be within valid range (0-3)
+    for i in houses:
+        s.add(And(name_vars[i-1] >= 0, name_vars[i-1] < 4))
+        s.add(And(flower_vars[i-1] >= 0, flower_vars[i-1] < 4))
+        s.add(And(height_vars[i-1] >= 0, height_vars[i-1] < 4))
+        s.add(And(mother_vars[i-1] >= 0, mother_vars[i-1] < 4))
+        s.add(And(occupation_vars[i-1] >= 0, occupation_vars[i-1] < 4))
+        s.add(And(sport_vars[i-1] >= 0, sport_vars[i-1] < 4))
+    
+    # Constraint: all attributes must be distinct within their category
+    s.add(Distinct(name_vars))
+    s.add(Distinct(flower_vars))
+    s.add(Distinct(height_vars))
+    s.add(Distinct(mother_vars))
+    s.add(Distinct(occupation_vars))
+    s.add(Distinct(sport_vars))
+    
+    # Helper function to get index of a value in a list
+    def idx(lst, val):
+        return lst.index(val)
+    
+    # Clue 1: The person who loves swimming is the person who loves the rose bouquet.
+    for i in houses:
+        s.add(Implies(sport_vars[i-1] == idx(sports, 'swimming'), 
+                      flower_vars[i-1] == idx(flowers, 'roses')))
+    
+    # Clue 2: The person who loves the rose bouquet is Eric.
+    for i in houses:
+        s.add(Implies(flower_vars[i-1] == idx(flowers, 'roses'), 
+                      name_vars[i-1] == idx(names, 'Eric')))
+    
+    # Clue 3: Arnold is the person who is tall.
+    for i in houses:
+        s.add(Implies(name_vars[i-1] == idx(names, 'Arnold'), 
+                      height_vars[i-1] == idx(heights, 'tall')))
+    
+    # Clue 4: The person who loves a bouquet of daffodils is somewhere to the right of the person who is an engineer.
+    for i in houses:
+        for j in houses:
+            if i > j:  # i is to the right of j
+                s.add(Implies(And(flower_vars[i-1] == idx(flowers, 'daffodils'),
+                                 occupation_vars[j-1] == idx(occupations, 'engineer')),
+                             True))
+            else:
+                s.add(Not(And(flower_vars[i-1] == idx(flowers, 'daffodils'),
+                              occupation_vars[j-1] == idx(occupations, 'engineer'))))
+    
+    # Clue 5: The person who loves soccer is the person who is short.
+    for i in houses:
+        s.add(Implies(sport_vars[i-1] == idx(sports, 'soccer'), 
+                      height_vars[i-1] == idx(heights, 'short')))
+    
+    # Clue 6: The person who is a teacher is in the first house.
+    s.add(occupation_vars[0] == idx(occupations, 'teacher'))
+    
+    # Clue 7: The person whose mother's name is Janelle is the person who loves a carnations arrangement.
+    for i in houses:
+        s.add(Implies(mother_vars[i-1] == idx(mothers, 'Janelle'), 
+                      flower_vars[i-1] == idx(flowers, 'carnations')))
+    
+    # Clue 8: The person who loves basketball is the person who has an average height.
+    for i in houses:
+        s.add(Implies(sport_vars[i-1] == idx(sports, 'basketball'), 
+                      height_vars[i-1] == idx(heights, 'average')))
+    
+    # Clue 9: Arnold is not in the third house.
+    s.add(name_vars[2] != idx(names, 'Arnold'))
+    
+    # Clue 10: The person whose mother's name is Holly is somewhere to the right of the person who has an average height.
+    avg_height_house = None
+    holly_mother_house = None
+    
+    # Find the house with average height
+    for i in houses:
+        s.add(Implies(height_vars[i-1] == idx(heights, 'average'), 
+                      avg_height_house == i))
+    
+    # Find the house with Holly mother
+    for i in houses:
+        s.add(Implies(mother_vars[i-1] == idx(mothers, 'Holly'), 
+                      holly_mother_house == i))
+    
+    # Holly mother is to the right of average height
+    s.add(holly_mother_house > avg_height_house)
+    
+    # Clue 11: Peter is the person who is a doctor.
+    for i in houses:
+        s.add(Implies(name_vars[i-1] == idx(names, 'Peter'), 
+                      occupation_vars[i-1] == idx(occupations, 'doctor')))
+    
+    # Clue 12: The person whose mother's name is Aniya is Alice.
+    for i in houses:
+        s.add(Implies(mother_vars[i-1] == idx(mothers, 'Aniya'), 
+                      name_vars[i-1] == idx(names, 'Alice')))
+    
+    # Clue 13: Arnold is the person who loves the bouquet of lilies.
+    for i in houses:
+        s.add(Implies(name_vars[i-1] == idx(names, 'Arnold'), 
+                      flower_vars[i-1] == idx(flowers, 'lilies')))
+    
+    # Solve the constraints
+    if s.check() == sat:
+        model = s.model()
+        
+        # Create result structure
+        result = {
+            "solution": {
+                "header": ["House", "Name", "Flower", "Height", "Mother", "Occupation", "FavoriteSport"],
+                "rows": []
+            }
+        }
+        
+        # Extract values for each house
+        for house in houses:
+            name_idx = model.evaluate(name_vars[house-1]).as_long()
+            flower_idx = model.evaluate(flower_vars[house-1]).as_long()
+            height_idx = model.evaluate(height_vars[house-1]).as_long()
+            mother_idx = model.evaluate(mother_vars[house-1]).as_long()
+            occupation_idx = model.evaluate(occupation_vars[house-1]).as_long()
+            sport_idx = model.evaluate(sport_vars[house-1]).as_long()
+            
+            row = [
+                str(house),
+                names[name_idx],
+                flowers[flower_idx],
+                heights[height_idx],
+                mothers[mother_idx],
+                occupations[occupation_idx],
+                sports[sport_idx]
+            ]
+            result["solution"]["rows"].append(row)
+        
+        # Output as JSON
+        print(json.dumps(result, indent=2))
+    else:
+        print('{"error": "No solution found"}')
+
+if __name__ == "__main__":
+    main()
+```

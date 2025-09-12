@@ -1,0 +1,94 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "[0, 20, 15, 10, 12]\n[20, 0, 25, 30, 18]\n[15, 25, 0, 22, 10]\n[10, 30, 22, 0, 15]\n[12, 18, 10, 15, 0]",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Location 1",
+                "person": "Person 1",
+                "start_time": "0:00",
+                "end_time": "0:20"
+            },
+            {
+                "action": "meet",
+                "location": "Location 2",
+                "person": "Person 2",
+                "start_time": "0:20",
+                "end_time": "0:40"
+            },
+            {
+                "action": "meet",
+                "location": "Location 3",
+                "person": "Person 3",
+                "start_time": "0:40",
+                "end_time": "1:00"
+            },
+            {
+                "action": "meet",
+                "location": "Location 4",
+                "person": "Person 4",
+                "start_time": "1:00",
+                "end_time": "1:20"
+            },
+            {
+                "action": "meet",
+                "location": "Location 5",
+                "person": "Person 5",
+                "start_time": "1:20",
+                "end_time": "1:30"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Nob Hill",
+                "person": "Ronald",
+                "start_time": "10:00",
+                "end_time": "11:45"
+            },
+            {
+                "action": "meet",
+                "location": "The Castro",
+                "person": "Helen",
+                "start_time": "13:30",
+                "end_time": "15:30"
+            },
+            {
+                "action": "meet",
+                "location": "Sunset District",
+                "person": "Joshua",
+                "start_time": "15:47",
+                "end_time": "17:17"
+            },
+            {
+                "action": "meet",
+                "location": "Haight-Ashbury",
+                "person": "Margaret",
+                "start_time": "17:32",
+                "end_time": "18:32"
+            }
+        ]
+    },
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "constraints_satisfied_but_no_exact_match": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 5,
+    "timing": {
+        "api_call_time": 335.69099020957947,
+        "execution_time": 0.018863201141357422,
+        "constraint_eval_time": 0.00012350082397460938,
+        "pred_extract_time": 4.290311574935913,
+        "gold_extract_time": 4.267692565917969e-05,
+        "total_tokens": 24045,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "# Define friends with their locations\nfriends = [\n    {'location': 'Home'},\n    {'location': 'Office'},\n    {'location': 'Library'},\n    {'location': 'Park'},\n    {'location': 'Mall'}\n]\n\n# Define travel times between different locations (including both directions)\ntravel_times = {\n    ('Home', 'Office'): 20, ('Office', 'Home'): 20,\n    ('Home', 'Library'): 15, ('Library', 'Home'): 15,\n    ('Home', 'Park'): 10, ('Park', 'Home'): 10,\n    ('Home', 'Mall'): 12, ('Mall', 'Home'): 12,\n    ('Office', 'Library'): 25, ('Library', 'Office'): 25,\n    ('Office', 'Park'): 30, ('Park', 'Office'): 30,\n    ('Office', 'Mall'): 18, ('Mall', 'Office'): 18,\n    ('Library', 'Park'): 22, ('Park', 'Library'): 22,\n    ('Library', 'Mall'): 10, ('Mall', 'Library'): 10,\n    ('Park', 'Mall'): 15, ('Mall', 'Park'): 15\n}\n\n# Initialize travel_times_between_friends as a 5x5 matrix\ntravel_times_between_friends = [[0 for _ in range(5)] for _ in range(5)]\n\n# Calculate travel times between friends based on their locations\nfor prev in range(5):\n    for curr in range(5):\n        prev_loc = friends[prev]['location']\n        curr_loc = friends[curr]['location']\n        if prev_loc == curr_loc:\n            travel_times_between_friends[prev][curr] = 0\n        else:\n            # Use .get() to avoid KeyError and provide a clear error message\n            time = travel_times.get((prev_loc, curr_loc))\n            if time is None:\n                raise ValueError(f\"Missing travel time for pair: ({prev_loc}, {curr_loc})\")\n            travel_times_between_friends[prev][curr] = time\n\n# Optional: Print the resulting matrix for verification\nfor row in travel_times_between_friends:\n    print(row)"
+}

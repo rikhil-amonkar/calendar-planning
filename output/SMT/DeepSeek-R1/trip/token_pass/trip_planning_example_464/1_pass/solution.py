@@ -1,0 +1,95 @@
+from z3 import *
+import json
+
+def main():
+    # Cities encoding: 0: Krakow, 1: Frankfurt, 2: Oslo, 3: Dubrovnik, 4: Naples
+    required_days = [5, 4, 3, 5, 5]
+    direct_flights = [(3,2), (1,0), (1,2), (3,1), (0,2), (4,2), (4,3), (4,1)]
+    
+    solver = Solver()
+    
+    # Order of cities visited (5 variables for the permutation)
+    order = [Int(f"order_{i}") for i in range(5)]
+    for i in range(5):
+        solver.add(And(order[i] >= 0, order[i] < 5))
+    solver.add(Distinct(order))
+    
+    # Start days for each city in the order
+    s = [Int(f"s_{i}") for i in range(5)]
+    
+    # Non-travel days for each city in the order
+    non_travel = [Int(f"non_travel_{i}") for i in range(5)]
+    for i in range(5):
+        if i == 0 or i == 4:
+            solver.add(non_travel[i] == required_days[order[i]] - 1)
+        else:
+            solver.add(non_travel[i] == required_days[order[i]] - 2)
+        solver.add(non_travel[i] >= 0)
+    
+    # Constraints for start days and end day
+    solver.add(s[0] == 1)
+    solver.add(s[1] == s[0] + non_travel[0])
+    solver.add(s[2] == s[1] + non_travel[1] + 1)
+    solver.add(s[3] == s[2] + non_travel[2] + 1)
+    solver.add(s[4] == s[3] + non_travel[3] + 1)
+    solver.add(s[4] + non_travel[4] == 18)
+    
+    # Constraints for specific cities
+    for i in range(5):
+        solver.add(Implies(order[i] == 3, s[i] == 5))  # Dubrovnik starts on day5
+        solver.add(Implies(order[i] == 2, s[i] == 16)) # Oslo starts on day16
+    
+    # Constraints for direct flights between consecutive cities
+    for i in range(4):
+        city1 = order[i]
+        city2 = order[i+1]
+        solver.add(Or(
+            And(city1 == a, city2 == b) for (a,b) in direct_flights
+        ))
+    
+    if solver.check() == sat:
+        model = solver.model()
+        order_val = [model.evaluate(order[i]).as_long() for i in range(5)]
+        s_val = [model.evaluate(s[i]).as_long() for i in range(5)]
+        
+        # Map city index to name
+        city_names = {
+            0: "Krakow",
+            1: "Frankfurt",
+            2: "Oslo",
+            3: "Dubrovnik",
+            4: "Naples"
+        }
+        
+        itinerary = []
+        # First city: from day1 to s1
+        start_day = 1
+        end_day = s_val[1]
+        itinerary.append({
+            "day_range": f"Day {start_day}-{end_day}",
+            "place": city_names[order_val[0]]
+        })
+        
+        # Middle cities: from s_i to s_{i+1}
+        for i in range(1, 4):
+            start_day = s_val[i]
+            end_day = s_val[i+1]
+            itinerary.append({
+                "day_range": f"Day {start_day}-{end_day}",
+                "place": city_names[order_val[i]]
+            })
+        
+        # Last city: from s4 to 18
+        start_day = s_val[4]
+        end_day = 18
+        itinerary.append({
+            "day_range": f"Day {start_day}-{end_day}",
+            "place": city_names[order_val[4]]
+        })
+        
+        print(json.dumps({"itinerary": itinerary}))
+    else:
+        print('{"itinerary": []}')
+
+if __name__ == "__main__":
+    main()

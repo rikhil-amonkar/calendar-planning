@@ -1,0 +1,103 @@
+import json
+from z3 import *
+
+def main():
+    # Define the attributes and their possible values
+    names = ['Eric', 'Arnold']
+    genres = ['science fiction', 'mystery']
+    months = ['april', 'sept']
+    animals = ['horse', 'cat']
+    
+    # Create Z3 enums for each attribute type
+    Name = Datatype('Name')
+    for n in names:
+        Name.declare(n)
+    Name = Name.create()
+    
+    BookGenre = Datatype('BookGenre')
+    for g in genres:
+        BookGenre.declare(g)
+    BookGenre = BookGenre.create()
+    
+    Birthday = Datatype('Birthday')
+    for m in months:
+        Birthday.declare(m)
+    Birthday = Birthday.create()
+    
+    Animal = Datatype('Animal')
+    for a in animals:
+        Animal.declare(a)
+    Animal = Animal.create()
+    
+    # Create variables for each house's attributes
+    house1_name = Const('house1_name', Name)
+    house1_book = Const('house1_book', BookGenre)
+    house1_birthday = Const('house1_birthday', Birthday)
+    house1_animal = Const('house1_animal', Animal)
+    
+    house2_name = Const('house2_name', Name)
+    house2_book = Const('house2_book', BookGenre)
+    house2_birthday = Const('house2_birthday', Birthday)
+    house2_animal = Const('house2_animal', Animal)
+    
+    s = Solver()
+    
+    # All attributes must be unique
+    s.add(Distinct(house1_name, house2_name))
+    s.add(Distinct(house1_book, house2_book))
+    s.add(Distinct(house1_birthday, house2_birthday))
+    s.add(Distinct(house1_animal, house2_animal))
+    
+    # Apply clues
+    # Clue 1: Eric is in the first house
+    s.add(house1_name == Name.Eric)
+    
+    # Clue 2: Eric's birthday is in September
+    s.add(house1_birthday == Birthday.sept)
+    
+    # Clue 3: Science fiction lover is in second house
+    s.add(house2_book == BookGenre.science_fiction)
+    
+    # Clue 4: Horse keeper has September birthday
+    s.add(house1_animal == Animal.horse)
+    
+    # Check for solution
+    if s.check() == sat:
+        m = s.model()
+        
+        # Helper function to convert Z3 values to strings
+        def z3_to_str(val, sort):
+            for constructor in sort.constructors():
+                if eq(val, constructor()):
+                    return constructor.name()
+            return None
+        
+        # Extract values for house 1
+        h1_name = z3_to_str(m[house1_name], Name)
+        h1_book = z3_to_str(m[house1_book], BookGenre)
+        h1_bday = z3_to_str(m[house1_birthday], Birthday)
+        h1_animal = z3_to_str(m[house1_animal], Animal)
+        
+        # Extract values for house 2
+        h2_name = z3_to_str(m[house2_name], Name)
+        h2_book = z3_to_str(m[house2_book], BookGenre)
+        h2_bday = z3_to_str(m[house2_birthday], Birthday)
+        h2_animal = z3_to_str(m[house2_animal], Animal)
+        
+        # Prepare JSON output
+        solution = {
+            "solution": {
+                "header": ["House", "Name", "BookGenre", "Birthday", "Animal"],
+                "rows": [
+                    ["1", h1_name, h1_book, h1_bday, h1_animal],
+                    ["2", h2_name, h2_book, h2_bday, h2_animal]
+                ]
+            }
+        }
+        
+        print(json.dumps(solution, indent=2))
+    else:
+        print('No solution found')
+
+if __name__ == '__main__':
+    main()

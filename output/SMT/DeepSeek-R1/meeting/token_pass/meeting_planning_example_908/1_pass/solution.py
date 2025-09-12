@@ -1,0 +1,240 @@
+from z3 import *
+import json
+
+def time_str_to_minutes(s):
+    time, period = s[:-2], s[-2:]
+    hours, minutes = time.split(':')
+    hours = int(hours)
+    minutes = int(minutes)
+    if period == 'PM':
+        if hours != 12:
+            hours += 12
+    else:
+        if hours == 12:
+            hours = 0
+    total_minutes = hours * 60 + minutes
+    return total_minutes - 540  # 9:00 AM is 540 minutes
+
+travel_times = {
+    "Financial District": {
+        "Fisherman's Wharf": 10,
+        "Presidio": 22,
+        "Bayview": 19,
+        "Haight-Ashbury": 19,
+        "Russian Hill": 11,
+        "The Castro": 20,
+        "Marina District": 15,
+        "Richmond District": 21,
+        "Union Square": 9,
+        "Sunset District": 30
+    },
+    "Fisherman's Wharf": {
+        "Financial District": 11,
+        "Presidio": 17,
+        "Bayview": 26,
+        "Haight-Ashbury": 22,
+        "Russian Hill": 7,
+        "The Castro": 27,
+        "Marina District": 9,
+        "Richmond District": 18,
+        "Union Square": 13,
+        "Sunset District": 27
+    },
+    "Presidio": {
+        "Financial District": 23,
+        "Fisherman's Wharf": 19,
+        "Bayview": 31,
+        "Haight-Ashbury": 15,
+        "Russian Hill": 14,
+        "The Castro": 21,
+        "Marina District": 11,
+        "Richmond District": 7,
+        "Union Square": 22,
+        "Sunset District": 15
+    },
+    "Bayview": {
+        "Financial District": 19,
+        "Fisherman's Wharf": 25,
+        "Presidio": 32,
+        "Haight-Ashbury": 19,
+        "Russian Hill": 23,
+        "The Castro": 19,
+        "Marina District": 27,
+        "Richmond District": 25,
+        "Union Square": 18,
+        "Sunset District": 23
+    },
+    "Haight-Ashbury": {
+        "Financial District": 21,
+        "Fisherman's Wharf": 23,
+        "Presidio": 15,
+        "Bayview": 18,
+        "Russian Hill": 17,
+        "The Castro": 6,
+        "Marina District": 17,
+        "Richmond District": 10,
+        "Union Square": 19,
+        "Sunset District": 15
+    },
+    "Russian Hill": {
+        "Financial District": 11,
+        "Fisherman's Wharf": 7,
+        "Presidio": 14,
+        "Bayview": 23,
+        "Haight-Ashbury": 17,
+        "The Castro": 21,
+        "Marina District": 7,
+        "Richmond District": 14,
+        "Union Square": 10,
+        "Sunset District": 23
+    },
+    "The Castro": {
+        "Financial District": 21,
+        "Fisherman's Wharf": 24,
+        "Presidio": 20,
+        "Bayview": 19,
+        "Haight-Ashbury": 6,
+        "Russian Hill": 18,
+        "Marina District": 21,
+        "Richmond District": 16,
+        "Union Square": 19,
+        "Sunset District": 17
+    },
+    "Marina District": {
+        "Financial District": 17,
+        "Fisherman's Wharf": 10,
+        "Presidio": 10,
+        "Bayview": 27,
+        "Haight-Ashbury": 16,
+        "Russian Hill": 8,
+        "The Castro": 22,
+        "Richmond District": 11,
+        "Union Square": 16,
+        "Sunset District": 19
+    },
+    "Richmond District": {
+        "Financial District": 22,
+        "Fisherman's Wharf": 18,
+        "Presidio": 7,
+        "Bayview": 27,
+        "Haight-Ashbury": 10,
+        "Russian Hill": 13,
+        "The Castro": 16,
+        "Marina District": 9,
+        "Union Square": 21,
+        "Sunset District": 11
+    },
+    "Union Square": {
+        "Financial District": 9,
+        "Fisherman's Wharf": 15,
+        "Presidio": 24,
+        "Bayview": 15,
+        "Haight-Ashbury": 18,
+        "Russian Hill": 13,
+        "The Castro": 17,
+        "Marina District": 18,
+        "Richmond District": 20,
+        "Sunset District": 27
+    },
+    "Sunset District": {
+        "Financial District": 30,
+        "Fisherman's Wharf": 29,
+        "Presidio": 16,
+        "Bayview": 22,
+        "Haight-Ashbury": 15,
+        "Russian Hill": 24,
+        "The Castro": 17,
+        "Marina District": 21,
+        "Richmond District": 12,
+        "Union Square": 30
+    }
+}
+
+friends = [
+    ("Mark", "Fisherman's Wharf", time_str_to_minutes("8:15AM"), time_str_to_minutes("10:00AM"), 30),
+    ("Stephanie", "Presidio", time_str_to_minutes("12:15PM"), time_str_to_minutes("3:00PM"), 75),
+    ("Betty", "Bayview", time_str_to_minutes("7:15AM"), time_str_to_minutes("8:30PM"), 15),
+    ("Lisa", "Haight-Ashbury", time_str_to_minutes("3:30PM"), time_str_to_minutes("6:30PM"), 45),
+    ("William", "Russian Hill", time_str_to_minutes("6:45PM"), time_str_to_minutes("8:00PM"), 60),
+    ("Brian", "The Castro", time_str_to_minutes("9:15AM"), time_str_to_minutes("1:15PM"), 30),
+    ("Joseph", "Marina District", time_str_to_minutes("10:45AM"), time_str_to_minutes("3:00PM"), 90),
+    ("Ashley", "Richmond District", time_str_to_minutes("9:45AM"), time_str_to_minutes("11:15AM"), 45),
+    ("Patricia", "Union Square", time_str_to_minutes("4:30PM"), time_str_to_minutes("8:00PM"), 120),
+    ("Karen", "Sunset District", time_str_to_minutes("4:30PM"), time_str_to_minutes("10:00PM"), 105)
+]
+
+s = Optimize()
+meet_vars = []
+start_vars = []
+end_vars = []
+
+for i, (name, loc, win_start, win_end, dur) in enumerate(friends):
+    meet_var = Bool(f"meet_{name}")
+    start_var = Real(f"start_{name}")
+    end_var = Real(f"end_{name}")
+    meet_vars.append(meet_var)
+    start_vars.append(start_var)
+    end_vars.append(end_var)
+    
+    adjusted_start = max(0, win_start)
+    s.add(Implies(meet_var, start_var >= adjusted_start))
+    s.add(Implies(meet_var, end_var <= win_end))
+    s.add(Implies(meet_var, end_var == start_var + dur))
+    travel_from_start = travel_times["Financial District"][loc]
+    s.add(Implies(meet_var, start_var >= travel_from_start))
+
+n = len(friends)
+for i in range(n):
+    for j in range(i+1, n):
+        meet_i = meet_vars[i]
+        meet_j = meet_vars[j]
+        start_i = start_vars[i]
+        end_i = end_vars[i]
+        start_j = start_vars[j]
+        end_j = end_vars[j]
+        loc_i = friends[i][1]
+        loc_j = friends[j][1]
+        travel_ij = travel_times[loc_i][loc_j]
+        travel_ji = travel_times[loc_j][loc_i]
+        
+        s.add(Implies(And(meet_i, meet_j),
+                     Or(end_i + travel_ij <= start_j,
+                        end_j + travel_ji <= start_i)))
+
+total_meetings = Sum([If(meet_var, 1, 0) for meet_var in meet_vars])
+s.maximize(total_meetings)
+
+if s.check() == sat:
+    m = s.model()
+    meetings_held = []
+    for i, (name, loc, win_start, win_end, dur) in enumerate(friends):
+        if is_true(m.evaluate(meet_vars[i])):
+            start_val = m.evaluate(start_vars[i])
+            end_val = m.evaluate(end_vars[i])
+            start_minutes = round(float(start_val.as_string()))
+            end_minutes = round(float(end_val.as_string()))
+            meetings_held.append((name, loc, start_minutes, end_minutes))
+    
+    meetings_held.sort(key=lambda x: x[2])
+    itinerary = []
+    for name, loc, start_minutes, end_minutes in meetings_held:
+        total_start = 540 + start_minutes
+        total_end = 540 + end_minutes
+        start_hour = total_start // 60
+        start_minute = total_start % 60
+        end_hour = total_end // 60
+        end_minute = total_end % 60
+        start_time = f"{start_hour}:{start_minute:02d}"
+        end_time = f"{end_hour}:{end_minute:02d}"
+        itinerary.append({
+            "action": "meet",
+            "location": loc,
+            "person": name,
+            "start_time": start_time,
+            "end_time": end_time
+        })
+    
+    result = {"itinerary": itinerary}
+    print(json.dumps(result, indent=2))
+else:
+    print('{"itinerary": []}')

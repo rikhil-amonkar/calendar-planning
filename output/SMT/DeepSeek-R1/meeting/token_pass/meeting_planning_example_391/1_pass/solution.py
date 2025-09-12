@@ -1,0 +1,102 @@
+from z3 import *
+import json
+
+def main():
+    # Travel time matrix (5x5): indices 0-3 for people, 4 for start (Sunset District)
+    # Order: [Kevin, Kimberly, Joseph, Thomas, Start]
+    T = [
+        [0, 13, 18, 17, 16],   # From Kevin (Alamo Square)
+        [15, 0, 14, 11, 23],   # From Kimberly (Russian Hill)
+        [18, 14, 0, 23, 15],   # From Joseph (Presidio)
+        [17, 10, 22, 0, 31],   # From Thomas (Financial District)
+        [17, 24, 16, 30, 0]    # From Start (Sunset District)
+    ]
+    
+    # Availability and duration constraints
+    availability_start = [495, 525, 1110, 1140]  # Kevin, Kimberly, Joseph, Thomas
+    availability_end = [1290, 750, 1155, 1305]    # Kevin, Kimberly, Joseph, Thomas
+    min_duration = [75, 30, 45, 45]               # Kevin, Kimberly, Joseph, Thomas
+    names = ["Kevin", "Kimberly", "Joseph", "Thomas"]
+    locations = ["Alamo Square", "Russian Hill", "Presidio", "Financial District"]
+    
+    # Initialize solver
+    s = Optimize()
+    
+    # Decision variables
+    meet = [Bool(f"meet_{name}") for name in names]
+    start = [Int(f"start_{name}") for name in names]
+    end = [Int(f"end_{name}") for name in names]
+    slots = [Int(f"slot_{i}") for i in range(4)]
+    
+    # Constraints for each person
+    for i in range(4):
+        s.add(If(meet[i],
+                 And(start[i] >= availability_start[i],
+                     end[i] <= availability_end[i],
+                     end[i] - start[i] >= min_duration[i]),
+                 True))
+    
+    # Slot constraints
+    for i in range(4):
+        s.add(Or(slots[i] == -1, And(slots[i] >= 0, slots[i] <= 3)))
+    
+    # Each scheduled meeting appears exactly once
+    for j in range(4):
+        s.add(If(meet[j],
+                 Sum([If(slots[i] == j, 1, 0) for i in range(4)]) == 1,
+                 True))
+    
+    # Slots must be contiguous without gaps
+    for i in range(3):
+        s.add(If(slots[i] == -1, slots[i+1] == -1, True))
+    
+    # Distinct slots for non-negative values
+    distinct_slots = []
+    for i in range(4):
+        distinct_slots.append(If(slots[i] >= 0, slots[i], -i-10))
+    s.add(Distinct(distinct_slots))
+    
+    # Travel constraints from start to first meeting
+    for i in range(4):
+        s.add(If(And(slots[0] == i, meet[i]),
+                 start[i] >= 540 + T[4][i],
+                 True))
+    
+    # Travel constraints between consecutive meetings
+    for slot_idx in range(1, 4):
+        for i in range(4):
+            for j in range(4):
+                s.add(If(And(slots[slot_idx-1] == i, slots[slot_idx] == j, meet[i], meet[j]),
+                         start[j] >= end[i] + T[i][j],
+                         True))
+    
+    # Maximize number of meetings
+    total_meetings = Sum([If(meet[i], 1, 0) for i in range(4)])
+    s.maximize(total_meetings)
+    
+    # Solve and output
+    if s.check() == sat:
+        m = s.model()
+        itinerary = []
+        for slot_idx in range(4):
+            slot_val = m.evaluate(slots[slot_idx])
+            if slot_val.as_string() != "-1":
+                i = slot_val.as_long()
+                start_val = m.evaluate(start[i]).as_long()
+                end_val = m.evaluate(end[i]).as_long()
+                # Convert minutes to time string
+                start_str = f"{start_val // 60}:{start_val % 60:02d}"
+                end_str = f"{end_val // 60}:{end_val % 60:02d}"
+                itinerary.append({
+                    "action": "meet",
+                    "location": locations[i],
+                    "person": names[i],
+                    "start_time": start_str,
+                    "end_time": end_str
+                })
+        print(json.dumps({"itinerary": itinerary}, indent=2))
+    else:
+        print('{"itinerary": []}')
+
+if __name__ == "__main__":
+    main()

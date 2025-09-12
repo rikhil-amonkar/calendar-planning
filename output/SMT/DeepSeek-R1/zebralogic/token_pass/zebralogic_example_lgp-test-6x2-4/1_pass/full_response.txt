@@ -1,0 +1,97 @@
+```python
+import z3
+import json
+
+def main():
+    # Define the number of houses
+    n_houses = 6
+    houses = list(range(n_houses))  # 0-indexed: house0 = house1, etc.
+
+    # Define enums for attributes
+    NameSort, name_consts = z3.EnumSort('Name', ['Alice', 'Arnold', 'Carol', 'Peter', 'Bob', 'Eric'])
+    alice, arnold, carol, peter, bob, eric = name_consts
+    
+    PhoneSort, phone_consts = z3.EnumSort('PhoneModel', [
+        'huawei p50', 'iphone 13', 'xiaomi mi 11', 
+        'oneplus 9', 'samsung galaxy s21', 'google pixel 6'
+    ])
+    huawei_p50, iphone13, xiaomi_mi11, oneplus9, samsung_galaxy_s21, google_pixel6 = phone_consts
+
+    # Create arrays for house attributes
+    name = [z3.Const(f'name_{i}', NameSort) for i in houses]
+    phone = [z3.Const(f'phone_{i}', PhoneSort) for i in houses]
+
+    solver = z3.Solver()
+
+    # All names and phones are distinct
+    solver.add(z3.Distinct(name))
+    solver.add(z3.Distinct(phone))
+
+    # Clue 1: iPhone 13 user is Alice
+    solver.add(z3.Exists([i], z3.And(phone[i] == iphone13, name[i] == alice)))
+
+    # Clue 2: Huawei P50 in first house
+    solver.add(phone[0] == huawei_p50)
+
+    # Clue 3: OnePlus 9 in sixth house
+    solver.add(phone[5] == oneplus9)
+
+    # Clue 4: Google Pixel 6 not in second house
+    solver.add(phone[1] != google_pixel6)
+
+    # Clue 5: iPhone 13 not in second house
+    solver.add(phone[1] != iphone13)
+
+    # Clue 6: One house between Bob and Carol (|i-j| = 2)
+    for i in range(n_houses):
+        for j in range(n_houses):
+            if abs(i - j) == 2:
+                solver.add(z3.Or(
+                    z3.And(name[i] == bob, name[j] == carol),
+                    z3.And(name[i] == carol, name[j] == bob)
+                ))
+
+    # Clue 7: Huawei P50 user is Eric
+    solver.add(z3.Exists([i], z3.And(phone[i] == huawei_p50, name[i] == eric)))
+
+    # Clue 8: Xiaomi Mi 11 in third house
+    solver.add(phone[2] == xiaomi_mi11)
+
+    # Clue 9: Alice left of Carol
+    solver.add(z3.Exists([i, j], z3.And(i < j, name[i] == alice, name[j] == carol)))
+
+    # Clue 10: Arnold uses OnePlus 9
+    solver.add(z3.Exists([i], z3.And(phone[i] == oneplus9, name[i] == arnold)))
+
+    # Check and get model
+    if solver.check() == z3.sat:
+        model = solver.model()
+        
+        # Map house indices to attribute values
+        result = []
+        for i in houses:
+            name_val = model.eval(name[i])
+            phone_val = model.eval(phone[i])
+            result.append({
+                'house': str(i+1),
+                'name': str(name_val),
+                'phone': str(phone_val)
+            })
+        
+        # Format JSON output
+        output = {
+            "solution": {
+                "header": ["House", "Name", "PhoneModel"],
+                "rows": [
+                    [r['house'], r['name'], r['phone']]
+                    for r in result
+                ]
+            }
+        }
+        print(json.dumps(output, indent=2))
+    else:
+        print("No solution found")
+
+if __name__ == '__main__':
+    main()
+```

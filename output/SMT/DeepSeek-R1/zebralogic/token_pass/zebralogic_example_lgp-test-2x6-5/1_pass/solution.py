@@ -1,0 +1,103 @@
+import json
+from z3 import *
+
+def main():
+    # Create solver
+    solver = Solver()
+    
+    # Define enums for each attribute
+    Name = Enum('Name', ['Arnold', 'Eric'])
+    Occupation = Enum('Occupation', ['engineer', 'doctor'])
+    Birthday = Enum('Birthday', ['april', 'sept'])
+    HouseStyle = Enum('HouseStyle', ['victorian', 'colonial'])
+    Height = Enum('Height', ['very_short', 'short'])
+    Cigar = Enum('Cigar', ['pall_mall', 'prince'])
+    
+    # Create variables for each house (index 0 for house 1, index 1 for house 2)
+    names = [Const(f"name_{i}", Name) for i in range(2)]
+    occupations = [Const(f"occupation_{i}", Occupation) for i in range(2)]
+    birthdays = [Const(f"birthday_{i}", Birthday) for i in range(2)]
+    house_styles = [Const(f"house_style_{i}", HouseStyle) for i in range(2)]
+    heights = [Const(f"height_{i}", Height) for i in range(2)]
+    cigars = [Const(f"cigar_{i}", Cigar) for i in range(2)]
+    
+    # Add uniqueness constraints for each attribute
+    solver.add(Distinct(names))
+    solver.add(Distinct(occupations))
+    solver.add(Distinct(birthdays))
+    solver.add(Distinct(house_styles))
+    solver.add(Distinct(heights))
+    solver.add(Distinct(cigars))
+    
+    # Clue 1: The person who is an engineer is in the first house.
+    solver.add(occupations[0] == Occupation.engineer)
+    
+    # Clue 2: The person whose birthday is in April and the person who is a doctor are next to each other.
+    # Since there are only 2 houses, they must be adjacent by definition
+    april_birthday = Birthday.april
+    doctor_occupation = Occupation.doctor
+    solver.add(
+        Or(
+            And(birthdays[0] == april_birthday, occupations[1] == doctor_occupation),
+            And(birthdays[1] == april_birthday, occupations[0] == doctor_occupation)
+        )
+    )
+    
+    # Clue 3: The person living in a colonial-style house is the person who is an engineer.
+    solver.add(house_styles[0] == HouseStyle.colonial)  # Since engineer is in house 1
+    
+    # Clue 4: The person who is very short is the person who is an engineer.
+    solver.add(heights[0] == Height.very_short)
+    
+    # Clue 5: The person who is short is the person partial to Pall Mall.
+    short_height = Height.short
+    pall_mall_cigar = Cigar.pall_mall
+    solver.add(
+        Or(
+            And(heights[0] == short_height, cigars[0] == pall_mall_cigar),
+            And(heights[1] == short_height, cigars[1] == pall_mall_cigar)
+        )
+    )
+    
+    # Clue 6: The person who is an engineer is Eric.
+    solver.add(names[0] == Name.Eric)
+    
+    # Check satisfiability
+    if solver.check() == sat:
+        model = solver.model()
+        
+        # Map house data
+        rows = []
+        for i in range(2):
+            name_val = model.eval(names[i])
+            occupation_val = model.eval(occupations[i])
+            birthday_val = model.eval(birthdays[i])
+            house_style_val = model.eval(house_styles[i])
+            height_val = model.eval(heights[i])
+            cigar_val = model.eval(cigars[i])
+            
+            # Convert to string and replace underscores with spaces for output
+            row = [
+                str(i+1),
+                str(name_val),
+                str(occupation_val),
+                str(birthday_val),
+                str(house_style_val).replace('_', ' '),
+                str(height_val).replace('_', ' '),
+                str(cigar_val).replace('_', ' ')
+            ]
+            rows.append(row)
+        
+        # Create JSON output
+        solution = {
+            "solution": {
+                "header": ["House", "Name", "Occupation", "Birthday", "HouseStyle", "Height", "Cigar"],
+                "rows": rows
+            }
+        }
+        print(json.dumps(solution, indent=2))
+    else:
+        print('No solution found')
+
+if __name__ == '__main__':
+    main()

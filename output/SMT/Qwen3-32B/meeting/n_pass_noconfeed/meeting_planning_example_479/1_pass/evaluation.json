@@ -1,0 +1,101 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"itinerary\": [\n    {\n      \"action\": \"meet\",\n      \"location\": \"Golden Gate Park\",\n      \"person\": \"Mary\",\n      \"start_time\": \"11:00\",\n      \"end_time\": \"11:45\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Haight-Ashbury\",\n      \"person\": \"Kevin\",\n      \"start_time\": \"12:59\",\n      \"end_time\": \"14:29\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Presidio\",\n      \"person\": \"Stephanie\",\n      \"start_time\": \"14:44\",\n      \"end_time\": \"16:44\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Bayview\",\n      \"person\": \"Deborah\",\n      \"start_time\": \"17:15\",\n      \"end_time\": \"19:15\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Financial District\",\n      \"person\": \"Emily\",\n      \"start_time\": \"20:00\",\n      \"end_time\": \"21:45\"\n    }\n  ]\n}",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Golden Gate Park",
+                "person": "Mary",
+                "start_time": "11:00",
+                "end_time": "11:45"
+            },
+            {
+                "action": "meet",
+                "location": "Haight-Ashbury",
+                "person": "Kevin",
+                "start_time": "12:59",
+                "end_time": "14:29"
+            },
+            {
+                "action": "meet",
+                "location": "Presidio",
+                "person": "Stephanie",
+                "start_time": "14:44",
+                "end_time": "16:44"
+            },
+            {
+                "action": "meet",
+                "location": "Bayview",
+                "person": "Deborah",
+                "start_time": "17:15",
+                "end_time": "19:15"
+            },
+            {
+                "action": "meet",
+                "location": "Financial District",
+                "person": "Emily",
+                "start_time": "20:00",
+                "end_time": "21:45"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Golden Gate Park",
+                "person": "Mary",
+                "start_time": "9:25",
+                "end_time": "10:10"
+            },
+            {
+                "action": "meet",
+                "location": "Haight-Ashbury",
+                "person": "Kevin",
+                "start_time": "10:17",
+                "end_time": "11:47"
+            },
+            {
+                "action": "meet",
+                "location": "Presidio",
+                "person": "Stephanie",
+                "start_time": "12:02",
+                "end_time": "14:02"
+            },
+            {
+                "action": "meet",
+                "location": "Bayview",
+                "person": "Deborah",
+                "start_time": "15:00",
+                "end_time": "17:00"
+            },
+            {
+                "action": "meet",
+                "location": "Financial District",
+                "person": "Emily",
+                "start_time": "17:19",
+                "end_time": "19:04"
+            }
+        ]
+    },
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "constraints_satisfied_but_no_exact_match": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 826.8694326877594,
+        "execution_time": 0.08402538299560547,
+        "constraint_eval_time": 0.0004849433898925781,
+        "pred_extract_time": 5.398194074630737,
+        "gold_extract_time": 0.0001010894775390625,
+        "total_tokens": 58134,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\nimport json\n\n# Define travel times between locations\ntravel_time = {\n    # From Embarcadero\n    ('Embarcadero', 'Golden Gate Park'): 25,\n    ('Embarcadero', 'Haight-Ashbury'): 21,\n    ('Embarcadero', 'Bayview'): 21,\n    ('Embarcadero', 'Presidio'): 20,\n    ('Embarcadero', 'Financial District'): 5,\n    # From Golden Gate Park\n    ('Golden Gate Park', 'Embarcadero'): 25,\n    ('Golden Gate Park', 'Haight-Ashbury'): 7,\n    ('Golden Gate Park', 'Bayview'): 23,\n    ('Golden Gate Park', 'Presidio'): 11,\n    ('Golden Gate Park', 'Financial District'): 26,\n    # From Haight-Ashbury\n    ('Haight-Ashbury', 'Embarcadero'): 20,\n    ('Haight-Ashbury', 'Golden Gate Park'): 7,\n    ('Haight-Ashbury', 'Bayview'): 18,\n    ('Haight-Ashbury', 'Presidio'): 15,\n    ('Haight-Ashbury', 'Financial District'): 21,\n    # From Bayview\n    ('Bayview', 'Embarcadero'): 19,\n    ('Bayview', 'Golden Gate Park'): 22,\n    ('Bayview', 'Haight-Ashbury'): 19,\n    ('Bayview', 'Presidio'): 31,\n    ('Bayview', 'Financial District'): 19,\n    # From Presidio\n    ('Presidio', 'Embarcadero'): 20,\n    ('Presidio', 'Golden Gate Park'): 12,\n    ('Presidio', 'Haight-Ashbury'): 15,\n    ('Presidio', 'Bayview'): 31,\n    ('Presidio', 'Financial District'): 23,\n    # From Financial District\n    ('Financial District', 'Embarcadero'): 4,\n    ('Financial District', 'Golden Gate Park'): 23,\n    ('Financial District', 'Haight-Ashbury'): 19,\n    ('Financial District', 'Bayview'): 19,\n    ('Financial District', 'Presidio'): 22,\n}\n\n# Define friend data (name, location, available times, min duration)\nfriends_data = [\n    {\n        'name': 'Mary',\n        'location': 'Golden Gate Park',\n        'available_start': 525,  # 8:45 AM\n        'available_end': 705,    # 11:45 AM\n        'min_duration': 45\n    },\n    {\n        'name': 'Kevin',\n        'location': 'Haight-Ashbury',\n        'available_start': 615,  # 10:15 AM\n        'available_end': 975,    # 4:15 PM\n        'min_duration': 90\n    },\n    {\n        'name': 'Deborah',\n        'location': 'Bayview',\n        'available_start': 900,  # 3:00 PM\n        'available_end': 1155,   # 7:15 PM\n        'min_duration': 120\n    },\n    {\n        'name': 'Stephanie',\n        'location': 'Presidio',\n        'available_start': 600,  # 10:00 AM\n        'available_end': 1035,   # 5:15 PM\n        'min_duration': 120\n    },\n    {\n        'name': 'Emily',\n        'location': 'Financial District',\n        'available_start': 690,  # 11:30 AM\n        'available_end': 1305,   # 9:45 PM\n        'min_duration': 105\n    }\n]\n\nfriends = ['Mary', 'Kevin', 'Deborah', 'Stephanie', 'Emily']\n\n# Initialize Z3 solver\nsolver = Optimize()\n\n# Create variables for meeting decisions and time constraints\nmeet_vars = {}\nstart_vars = {}\nend_vars = {}\n\nfor friend in friends:\n    meet = Bool(f'meet_{friend}')\n    meet_vars[friend] = meet\n    start = Int(f'start_{friend}')\n    end = Int(f'end_{friend}')\n    start_vars[friend] = start\n    end_vars[friend] = end\n    solver.add(Implies(meet, end >= start))  # Ensure end >= start\n\ninitial_time = 540  # 9:00 AM in minutes\n\nfor friend in friends:\n    data = next(f for f in friends_data if f['name'] == friend)\n    loc = data['location']\n    available_start = data['available_start']\n    available_end = data['available_end']\n    min_duration = data['min_duration']\n    travel_time_from_emb = travel_time[('Embarcadero', loc)]\n    meet = meet_vars[friend]\n    start = start_vars[friend]\n    end = end_vars[friend]\n    \n    # Add constraints if the friend is met\n    solver.add(Implies(meet, start >= initial_time + travel_time_from_emb))\n    solver.add(Implies(meet, start >= available_start))\n    solver.add(Implies(meet, end <= available_end))\n    solver.add(Implies(meet, end - start >= min_duration))\n\n# Add pairwise constraints between friends\nfor i in range(len(friends)):\n    for j in range(i + 1, len(friends)):\n        friend1 = friends[i]\n        friend2 = friends[j]\n        meet1 = meet_vars[friend1]\n        meet2 = meet_vars[friend2]\n        start1 = start_vars[friend1]\n        end1 = end_vars[friend1]\n        loc1 = next(f for f in friends_data if f['name'] == friend1)['location']\n        start2 = start_vars[friend2]\n        end2 = end_vars[friend2]\n        loc2 = next(f for f in friends_data if f['name'] == friend2)['location']\n        travel1to2 = travel_time[(loc1, loc2)]\n        travel2to1 = travel_time[(loc2, loc1)]\n        solver.add(Implies(And(meet1, meet2), Or(\n            start2 >= end1 + travel1to2,\n            start1 >= end2 + travel2to1\n        )))\n\n# Objective: Maximize the number of friends met\nobjective = Sum([If(meet_vars[friend], 1, 0) for friend in friends])\nsolver.maximize(objective)\n\n# Solve and output the result\nif solver.check() == sat:\n    model = solver.model()\n    met_friends = []\n    for friend in friends:\n        if is_true(model.evaluate(meet_vars[friend])):\n            data = next(f for f in friends_data if f['name'] == friend)\n            start_val = model.evaluate(start_vars[friend]).as_long()\n            end_val = model.evaluate(end_vars[friend]).as_long()\n            met_friends.append({\n                'name': friend,\n                'location': data['location'],\n                'start': start_val,\n                'end': end_val\n            })\n    # Sort by start time to determine meeting order\n    met_friends.sort(key=lambda x: x['start'])\n    # Format the result as JSON\n    itinerary = []\n    for f in met_friends:\n        def to_time_str(m):\n            hours = m // 60\n            minutes = m % 60\n            return f\"{hours}:{minutes:02d}\"\n        itinerary.append({\n            \"action\": \"meet\",\n            \"location\": f['location'],\n            \"person\": f['name'],\n            \"start_time\": to_time_str(f['start']),\n            \"end_time\": to_time_str(f['end'])\n        })\n    print(json.dumps({\"itinerary\": itinerary}, indent=2))\nelse:\n    print(\"No solution found.\")"
+}

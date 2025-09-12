@@ -1,0 +1,182 @@
+```python
+from z3 import *
+import json
+
+def time_to_minutes(time_str):
+    time_str = time_str.upper()
+    is_pm = "PM" in time_str
+    time_str = time_str.replace("AM", "").replace("PM", "")
+    parts = time_str.split(':')
+    hour = int(parts[0])
+    minute = int(parts[1])
+    if is_pm and hour != 12:
+        hour += 12
+    if not is_pm and hour == 12:
+        hour = 0
+    total_minutes = hour * 60 + minute
+    return total_minutes - 540  # Subtract 9:00 AM (540 minutes from midnight)
+
+def minutes_to_time(minutes):
+    total_minutes = minutes + 540
+    hour = total_minutes // 60
+    minute = total_minutes % 60
+    return f"{hour}:{minute:02d}"
+
+def main():
+    # Define travel times dictionary
+    travel_times = {
+        ('Union Square', 'Russian Hill'): 13,
+        ('Union Square', 'Alamo Square'): 15,
+        ('Union Square', 'Haight-Ashbury'): 18,
+        ('Union Square', 'Marina District'): 18,
+        ('Union Square', 'Bayview'): 15,
+        ('Union Square', 'Chinatown'): 7,
+        ('Union Square', 'Presidio'): 24,
+        ('Union Square', 'Sunset District'): 27,
+        ('Russian Hill', 'Union Square'): 10,
+        ('Russian Hill', 'Alamo Square'): 15,
+        ('Russian Hill', 'Haight-Ashbury'): 17,
+        ('Russian Hill', 'Marina District'): 7,
+        ('Russian Hill', 'Bayview'): 23,
+        ('Russian Hill', 'Chinatown'): 9,
+        ('Russian Hill', 'Presidio'): 14,
+        ('Russian Hill', 'Sunset District'): 23,
+        ('Alamo Square', 'Union Square'): 14,
+        ('Alamo Square', 'Russian Hill'): 13,
+        ('Alamo Square', 'Haight-Ashbury'): 5,
+        ('Alamo Square', 'Marina District'): 15,
+        ('Alamo Square', 'Bayview'): 16,
+        ('Alamo Square', 'Chinatown'): 15,
+        ('Alamo Square', 'Presidio'): 17,
+        ('Alamo Square', 'Sunset District'): 16,
+        ('Haight-Ashbury', 'Union Square'): 19,
+        ('Haight-Ashbury', 'Russian Hill'): 17,
+        ('Haight-Ashbury', 'Alamo Square'): 5,
+        ('Haight-Ashbury', 'Marina District'): 17,
+        ('Haight-Ashbury', 'Bayview'): 18,
+        ('Haight-Ashbury', 'Chinatown'): 19,
+        ('Haight-Ashbury', 'Presidio'): 15,
+        ('Haight-Ashbury', 'Sunset District'): 15,
+        ('Marina District', 'Union Square'): 16,
+        ('Marina District', 'Russian Hill'): 8,
+        ('Marina District', 'Alamo Square'): 15,
+        ('Marina District', 'Haight-Ashbury'): 16,
+        ('Marina District', 'Bayview'): 27,
+        ('Marina District', 'Chinatown'): 15,
+        ('Marina District', 'Presidio'): 10,
+        ('Marina District', 'Sunset District'): 19,
+        ('Bayview', 'Union Square'): 18,
+        ('Bayview', 'Russian Hill'): 23,
+        ('Bayview', 'Alamo Square'): 16,
+        ('Bayview', 'Haight-Ashbury'): 19,
+        ('Bayview', 'Marina District'): 27,
+        ('Bayview', 'Chinatown'): 19,
+        ('Bayview', 'Presidio'): 32,
+        ('Bayview', 'Sunset District'): 23,
+        ('Chinatown', 'Union Square'): 7,
+        ('Chinatown', 'Russian Hill'): 7,
+        ('Chinatown', 'Alamo Square'): 17,
+        ('Chinatown', 'Haight-Ashbury'): 19,
+        ('Chinatown', 'Marina District'): 12,
+        ('Chinatown', 'Bayview'): 20,
+        ('Chinatown', 'Presidio'): 19,
+        ('Chinatown', 'Sunset District'): 29,
+        ('Presidio', 'Union Square'): 22,
+        ('Presidio', 'Russian Hill'): 14,
+        ('Presidio', 'Alamo Square'): 19,
+        ('Presidio', 'Haight-Ashbury'): 15,
+        ('Presidio', 'Marina District'): 11,
+        ('Presidio', 'Bayview'): 31,
+        ('Presidio', 'Chinatown'): 21,
+        ('Presidio', 'Sunset District'): 15,
+        ('Sunset District', 'Union Square'): 30,
+        ('Sunset District', 'Russian Hill'): 24,
+        ('Sunset District', 'Alamo Square'): 17,
+        ('Sunset District', 'Haight-Ashbury'): 15,
+        ('Sunset District', 'Marina District'): 21,
+        ('Sunset District', 'Bayview'): 22,
+        ('Sunset District', 'Chinatown'): 30,
+        ('Sunset District', 'Presidio'): 16
+    }
+    
+    # Add zero travel time for same location
+    locations = ['Union Square', 'Russian Hill', 'Alamo Square', 'Haight-Ashbury', 'Marina District', 'Bayview', 'Chinatown', 'Presidio', 'Sunset District']
+    for loc in locations:
+        travel_times[(loc, loc)] = 0
+
+    # Define friends data
+    friends = [
+        {'name': 'Betty', 'location': 'Russian Hill', 'avail_start': time_to_minutes('7:00AM'), 'avail_end': time_to_minutes('4:45PM'), 'min_duration': 105},
+        {'name': 'Melissa', 'location': 'Alamo Square', 'avail_start': time_to_minutes('9:30AM'), 'avail_end': time_to_minutes('5:15PM'), 'min_duration': 105},
+        {'name': 'Joshua', 'location': 'Haight-Ashbury', 'avail_start': time_to_minutes('12:15PM'), 'avail_end': time_to_minutes('7:00PM'), 'min_duration': 90},
+        {'name': 'Jeffrey', 'location': 'Marina District', 'avail_start': time_to_minutes('12:15PM'), 'avail_end': time_to_minutes('6:00PM'), 'min_duration': 45},
+        {'name': 'James', 'location': 'Bayview', 'avail_start': time_to_minutes('7:30AM'), 'avail_end': time_to_minutes('8:00PM'), 'min_duration': 90},
+        {'name': 'Anthony', 'location': 'Chinatown', 'avail_start': time_to_minutes('11:45AM'), 'avail_end': time_to_minutes('1:30PM'), 'min_duration': 75},
+        {'name': 'Timothy', 'location': 'Presidio', 'avail_start': time_to_minutes('12:30PM'), 'avail_end': time_to_minutes('2:45PM'), 'min_duration': 90},
+        {'name': 'Emily', 'location': 'Sunset District', 'avail_start': time_to_minutes('7:30PM'), 'avail_end': time_to_minutes('9:30PM'), 'min_duration': 120}
+    ]
+    
+    n = len(friends)
+    opt = Optimize()
+    
+    # Create variables for each friend
+    met = [Bool(f'met_{i}') for i in range(n)]
+    start = [Real(f'start_{i}') for i in range(n)]
+    end = [Real(f'end_{i}') for i in range(n)]
+    
+    # Add constraints for each friend
+    for i, friend in enumerate(friends):
+        # If meeting happens, enforce availability and duration
+        opt.add(Implies(met[i], start[i] >= friend['avail_start']))
+        opt.add(Implies(met[i], end[i] <= friend['avail_end']))
+        opt.add(Implies(met[i], end[i] - start[i] >= friend['min_duration']))
+    
+    # Add constraints for travel from Union Square (start location)
+    for i in range(n):
+        travel_from_start = travel_times[('Union Square', friends[i]['location'])]
+        opt.add(Implies(met[i], start[i] >= travel_from_start))
+    
+    # Add constraints for travel between meetings
+    for i in range(n):
+        for j in range(i+1, n):
+            travel_ij = travel_times[(friends[i]['location'], friends[j]['location'])]
+            travel_ji = travel_times[(friends[j]['location'], friends[i]['location'])]
+            # If both meetings happen, they must not overlap and include travel time
+            both_met = And(met[i], met[j])
+            constraint = Or(
+                start[i] >= end[j] + travel_ji,
+                start[j] >= end[i] + travel_ij
+            )
+            opt.add(Implies(both_met, constraint))
+    
+    # Maximize the number of meetings
+    opt.maximize(Sum([If(met[i], 1, 0) for i in range(n)]))
+    
+    # Check and get model
+    if opt.check() == sat:
+        model = opt.model()
+        itinerary = []
+        for i, friend in enumerate(friends):
+            if is_true(model.eval(met[i])):
+                s = model.eval(start[i])
+                e = model.eval(end[i])
+                # Convert to integers (minutes)
+                s_val = int(s.as_string()) if isinstance(s, IntNumRef) else int(float(s.as_string()))
+                e_val = int(e.as_string()) if isinstance(e, IntNumRef) else int(float(e.as_string()))
+                itinerary.append({
+                    'action': 'meet',
+                    'location': friend['location'],
+                    'person': friend['name'],
+                    'start_time': minutes_to_time(s_val),
+                    'end_time': minutes_to_time(e_val)
+                })
+        # Sort by start time
+        itinerary.sort(key=lambda x: time_to_minutes(x['start_time']))
+        result = {'itinerary': itinerary}
+        print(json.dumps(result, indent=2))
+    else:
+        print('{"itinerary": []}')
+
+if __name__ == '__main__':
+    main()
+```

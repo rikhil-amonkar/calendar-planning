@@ -1,0 +1,91 @@
+{
+    "has_execution_error": true,
+    "has_no_plan": false,
+    "execution_output": null,
+    "pred": null,
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Chinatown",
+                "person": "Jason",
+                "start_time": "9:21",
+                "end_time": "10:36"
+            },
+            {
+                "action": "meet",
+                "location": "North Beach",
+                "person": "Kenneth",
+                "start_time": "10:39",
+                "end_time": "11:09"
+            },
+            {
+                "action": "meet",
+                "location": "Marina District",
+                "person": "Mark",
+                "start_time": "11:18",
+                "end_time": "12:33"
+            },
+            {
+                "action": "meet",
+                "location": "Embarcadero",
+                "person": "Kimberly",
+                "start_time": "12:47",
+                "end_time": "14:02"
+            },
+            {
+                "action": "meet",
+                "location": "Nob Hill",
+                "person": "Jessica",
+                "start_time": "14:12",
+                "end_time": "15:42"
+            },
+            {
+                "action": "meet",
+                "location": "Russian Hill",
+                "person": "Brian",
+                "start_time": "15:47",
+                "end_time": "16:47"
+            },
+            {
+                "action": "meet",
+                "location": "Union Square",
+                "person": "Stephanie",
+                "start_time": "16:57",
+                "end_time": "18:42"
+            },
+            {
+                "action": "meet",
+                "location": "Financial District",
+                "person": "Steven",
+                "start_time": "18:51",
+                "end_time": "19:51"
+            },
+            {
+                "action": "meet",
+                "location": "Haight-Ashbury",
+                "person": "Karen",
+                "start_time": "21:00",
+                "end_time": "21:45"
+            }
+        ]
+    },
+    "status": "Error",
+    "violated_constraint": {
+        "missing_itinerary": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 4,
+    "timing": {
+        "api_call_time": 176.98685765266418,
+        "execution_time": 0.021439075469970703,
+        "constraint_eval_time": 1.2159347534179688e-05,
+        "pred_extract_time": 2.6464462280273438e-05,
+        "gold_extract_time": 0.000186920166015625,
+        "total_tokens": 14816,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from ortools.sat.python import cp_model\n\n# Example data for friends (can be replaced with actual data)\nfriends = [\n    {\"name\": \"Alice\", \"location\": \"Park\"},\n    {\"name\": \"Bob\", \"location\": \"Cafe\"},\n    {\"name\": \"Charlie\", \"location\": \"Library\"},\n]\n\n# Number of positions in the itinerary\nnum_positions = 5  # Example value; adjust based on your problem\n\n# Create the model\nmodel = cp_model.CpModel()\n\n# Define decision variables\nfriend_vars = []\nstart_vars = []\nend_vars = []\n\nfor i in range(num_positions):\n    # Friend index variable: 0 to len(friends) - 1, or 9 if unused\n    friend_var = model.NewIntVar(0, len(friends) - 1, f'friend_{i}')\n    friend_vars.append(friend_var)\n\n    # Start and end time variables (in minutes, e.g., 600 = 10:00 AM)\n    start_var = model.NewIntVar(600, 1080, f'start_{i}')  # 10:00 AM to 6:00 PM\n    end_var = model.NewIntVar(660, 1140, f'end_{i}')      # 11:00 AM to 7:00 PM\n\n    start_vars.append(start_var)\n    end_vars.append(end_var)\n\n    # Add constraint: end time must be after start time\n    model.Add(end_var > start_var)\n\n# (Add more constraints here if needed, e.g., no overlapping meetings, etc.)\n\n# Solve the model\nsolver = cp_model.CpSolver()\nstatus = solver.Solve(model)\n\n# Process and print the solution\nitinerary = []\nfor i in range(num_positions):\n    f_idx_val = solver.Value(friend_vars[i])\n    if f_idx_val != 9:  # Assuming 9 means no meeting at this position\n        start = solver.Value(start_vars[i])\n        end = solver.Value(end_vars[i])\n        friend = friends[f_idx_val]\n\n        def to_time(minutes):\n            hours = minutes // 60\n            mins = minutes % 60\n            return f\"{hours}:{mins:02d}\"\n\n        itinerary.append({\n            \"action\": \"meet\",\n            \"location\": friend[\"location\"],\n            \"person\": friend[\"name\"],\n            \"start_time\": to_time(start),\n            \"end_time\": to_time(end)\n        })\n\n# Output the itinerary\nif status == cp_model.OPTIMAL or status == cp_model.FEASIBLE:\n    for item in itinerary:\n        print(f\"Meet {item['person']} at {item['location']} from {item['start_time']} to {item['end_time']}\")\nelse:\n    print(\"No solution found.\")"
+}

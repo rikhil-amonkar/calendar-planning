@@ -1,0 +1,149 @@
+import json
+from z3 import *
+
+def main():
+    # Create solver
+    solver = Solver()
+
+    # Houses
+    houses = [1, 2, 3, 4, 5, 6]
+
+    # Attributes with integer mappings
+    names = ['Arnold', 'Peter', 'Carol', 'Alice', 'Bob', 'Eric']
+    name_map = {n: i for i, n in enumerate(names)}
+    children = ['Alice', 'Timothy', 'Bella', 'Meredith', 'Fred', 'Samantha']
+    child_map = {c: i for i, c in enumerate(children)}
+    smoothies = ['desert', 'cherry', 'watermelon', 'blueberry', 'lime', 'dragonfruit']
+    smoothie_map = {s: i for i, s in enumerate(smoothies)}
+
+    # Create Z3 variables for each attribute per house
+    name_vars = [Int(f'name_{i}') for i in houses]
+    child_vars = [Int(f'child_{i}') for i in houses]
+    smoothie_vars = [Int(f'smoothie_{i}') for i in houses]
+
+    # Constraint: All attributes are within their respective ranges
+    for i in houses:
+        solver.add(And(name_vars[i-1] >= 0, name_vars[i-1] < len(names)))
+        solver.add(And(child_vars[i-1] >= 0, child_vars[i-1] < len(children)))
+        solver.add(And(smoothie_vars[i-1] >= 0, smoothie_vars[i-1] < len(smoothies)))
+
+    # Constraint: All attributes are distinct per category
+    solver.add(Distinct(name_vars))
+    solver.add(Distinct(child_vars))
+    solver.add(Distinct(smoothie_vars))
+
+    # Clue 1: Child Fred and Desert smoothie lover are adjacent
+    fred_child = child_map['Fred']
+    desert_smoothie = smoothie_map['desert']
+    for i in range(1, 6):
+        solver.add(Implies(
+            Or(child_vars[i-1] == fred_child, child_vars[i] == fred_child),
+            Or(smoothie_vars[i-1] == desert_smoothie, smoothie_vars[i] == desert_smoothie)
+        ))
+
+    # Clue 2: Blueberry smoothie left of Child Fred
+    blueberry_smoothie = smoothie_map['blueberry']
+    fred_house = Int('fred_house')
+    solver.add(Or([And(child_vars[i] == fred_child, fred_house == i+1) for i in range(6)]))
+    blueberry_house = Int('blueberry_house')
+    solver.add(Or([And(smoothie_vars[i] == blueberry_smoothie, blueberry_house == i+1) for i in range(6)]))
+    solver.add(blueberry_house < fred_house)
+
+    # Clue 3: Alice not in fifth house
+    alice_name = name_map['Alice']
+    solver.add(name_vars[4] != alice_name)
+
+    # Clue 4: Child Samantha not in second house
+    samantha_child = child_map['Samantha']
+    solver.add(child_vars[1] != samantha_child)
+
+    # Clue 5: Watermelon right of Cherry smoothie
+    watermelon_smoothie = smoothie_map['watermelon']
+    cherry_smoothie = smoothie_map['cherry']
+    watermelon_house = Int('watermelon_house')
+    cherry_house = Int('cherry_house')
+    solver.add(Or([And(smoothie_vars[i] == watermelon_smoothie, watermelon_house == i+1) for i in range(6)]))
+    solver.add(Or([And(smoothie_vars[i] == cherry_smoothie, cherry_house == i+1) for i in range(6)]))
+    solver.add(watermelon_house > cherry_house)
+
+    # Clue 6: Alice (person) has child Alice
+    alice_child = child_map['Alice']
+    for i in range(6):
+        solver.add(Implies(name_vars[i] == alice_name, child_vars[i] == alice_child))
+
+    # Clue 7: Alice (person) drinks Watermelon smoothie
+    for i in range(6):
+        solver.add(Implies(name_vars[i] == alice_name, smoothie_vars[i] == watermelon_smoothie))
+
+    # Clue 8: Peter right of Child Samantha
+    peter_name = name_map['Peter']
+    peter_house = Int('peter_house')
+    samantha_house = Int('samantha_house')
+    solver.add(Or([And(name_vars[i] == peter_name, peter_house == i+1) for i in range(6)]))
+    solver.add(Or([And(child_vars[i] == samantha_child, samantha_house == i+1) for i in range(6)]))
+    solver.add(peter_house > samantha_house)
+
+    # Clue 9: Arnold not in second house
+    arnold_name = name_map['Arnold']
+    solver.add(name_vars[1] != arnold_name)
+
+    # Clue 10: Bob has child Timothy
+    bob_name = name_map['Bob']
+    timothy_child = child_map['Timothy']
+    for i in range(6):
+        solver.add(Implies(name_vars[i] == bob_name, child_vars[i] == timothy_child))
+
+    # Clue 11: Arnold directly left of Carol
+    carol_name = name_map['Carol']
+    for i in range(5):
+        solver.add(Implies(name_vars[i] == arnold_name, name_vars[i+1] == carol_name))
+
+    # Clue 12: Cherry smoothie directly left of Child Samantha
+    for i in range(5):
+        solver.add(Implies(
+            And(smoothie_vars[i] == cherry_smoothie, child_vars[i+1] == samantha_child),
+            True
+        ))
+    # Ensure exactly one such occurrence
+    solver.add(Or([And(smoothie_vars[i] == cherry_smoothie, child_vars[i+1] == samantha_child) for i in range(5)]))
+
+    # Clue 13: Child Meredith in sixth house
+    meredith_child = child_map['Meredith']
+    solver.add(child_vars[5] == meredith_child)
+
+    # Clue 14: Dragonfruit smoothie lover has child Meredith
+    dragonfruit_smoothie = smoothie_map['dragonfruit']
+    solver.add(smoothie_vars[5] == dragonfruit_smoothie)
+
+    # Check and get model
+    if solver.check() == sat:
+        model = solver.model()
+        
+        # Retrieve values
+        solution_rows = []
+        for i in range(6):
+            house_num = i + 1
+            name_val = model.eval(name_vars[i])
+            child_val = model.eval(child_vars[i])
+            smoothie_val = model.eval(smoothie_vars[i])
+            
+            # Convert integers to corresponding strings
+            name_str = names[int(str(name_val))]
+            child_str = children[int(str(child_val))]
+            smoothie_str = smoothies[int(str(smoothie_val))]
+            
+            solution_rows.append([str(house_num), name_str, child_str, smoothie_str])
+        
+        # Format output
+        output = {
+            "solution": {
+                "header": ["House", "Name", "Children", "Smoothie"],
+                "rows": solution_rows
+            }
+        }
+        print(json.dumps(output, indent=2))
+    else:
+        print("No solution found")
+
+if __name__ == "__main__":
+    main()

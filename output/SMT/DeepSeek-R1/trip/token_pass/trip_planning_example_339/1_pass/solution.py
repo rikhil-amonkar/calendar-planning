@@ -1,0 +1,101 @@
+import json
+from z3 import *
+
+def main():
+    # Cities and connections
+    cities = ['Riga', 'Budapest', 'Paris', 'Warsaw']
+    connections = [
+        ('Warsaw', 'Budapest'),
+        ('Warsaw', 'Riga'),
+        ('Budapest', 'Paris'),
+        ('Warsaw', 'Paris'),
+        ('Paris', 'Riga')
+    ]
+    
+    # Create solver
+    s = Solver()
+    
+    # Create variables: for each day (1-17) and each city, a Boolean indicating presence
+    presence = [[Bool(f"day_{day}_{city}") for city in cities] for day in range(1, 18)]
+    
+    # Constraints for each day
+    for day in range(17):
+        # At least one city per day
+        s.add(Or(presence[day]))
+        
+        # At most two cities per day
+        for i in range(len(cities)):
+            for j in range(i+1, len(cities)):
+                for k in range(j+1, len(cities)):
+                    s.add(Not(And(presence[day][i], presence[day][j], presence[day][k])))
+        
+        # If two cities, they must be connected
+        for i in range(len(cities)):
+            for j in range(i+1, len(cities)):
+                city_i = cities[i]
+                city_j = cities[j]
+                connected = Or([And(city_i == c1, city_j == c2) for c1, c2 in connections] + 
+                              [And(city_i == c2, city_j == c1) for c1, c2 in connections])
+                s.add(Implies(And(presence[day][i], presence[day][j]), connected))
+    
+    # Consecutive day overlap constraint
+    for day in range(16):
+        s.add(Or([And(presence[day][i], presence[day+1][i]) for i in range(len(cities))]))
+    
+    # Total days per city
+    total_days = [
+        (sum([If(presence[day][0], 1, 0) for day in range(17)]), 7),  # Riga
+        (sum([If(presence[day][1], 1, 0) for day in range(17)]), 7),  # Budapest
+        (sum([If(presence[day][2], 1, 0) for day in range(17)]), 4),  # Paris
+        (sum([If(presence[day][3], 1, 0) for day in range(17)]), 2)   # Warsaw
+    ]
+    for total, target in total_days:
+        s.add(total == target)
+    
+    # Specific constraints
+    s.add(presence[0][3])  # Day 1 in Warsaw
+    s.add(presence[1][3])  # Day 2 in Warsaw
+    s.add(Or([presence[day][0] for day in range(10, 17)]))  # Riga between day 11-17
+    
+    # Check and get model
+    if s.check() == sat:
+        m = s.model()
+        itinerary = []
+        current_set = None
+        start_day = 1
+        day_assignments = []
+        
+        # Decode each day's cities
+        for day in range(17):
+            day_cities = []
+            for i, city in enumerate(cities):
+                if is_true(m.evaluate(presence[day][i])):
+                    day_cities.append(city)
+            day_assignments.append(frozenset(day_cities))
+        
+        # Group consecutive days with same city set
+        for day in range(17):
+            current = day_assignments[day]
+            if current != current_set:
+                if current_set is not None:
+                    end_day = day
+                    place_str = " and ".join(sorted(list(current_set)))
+                    itinerary.append({
+                        "day_range": f"Day {start_day}-{end_day}" if start_day != end_day else f"Day {start_day}",
+                        "place": place_str
+                    })
+                start_day = day + 1
+                current_set = current
+        # Add last group
+        place_str = " and ".join(sorted(list(current_set)))
+        itinerary.append({
+            "day_range": f"Day {start_day}-17" if start_day != 17 else "Day 17",
+            "place": place_str
+        })
+        
+        print(json.dumps({"itinerary": itinerary}))
+    else:
+        print('{"itinerary": []}')
+
+if __name__ == "__main__":
+    main()

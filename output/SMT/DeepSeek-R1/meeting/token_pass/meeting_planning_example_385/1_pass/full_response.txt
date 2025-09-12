@@ -1,0 +1,97 @@
+```python
+import json
+from z3 import *
+
+def main():
+    # Convert time to minutes since 9:00 AM
+    travel_times = {
+        'Nob Hill': {'Presidio': 17, 'North Beach': 8, 'Fisherman\'s Wharf': 11, 'Pacific Heights': 8},
+        'Presidio': {'Nob Hill': 18, 'North Beach': 18, 'Fisherman\'s Wharf': 19, 'Pacific Heights': 11},
+        'North Beach': {'Nob Hill': 7, 'Presidio': 17, 'Fisherman\'s Wharf': 5, 'Pacific Heights': 8},
+        'Fisherman\'s Wharf': {'Nob Hill': 11, 'Presidio': 17, 'North Beach': 6, 'Pacific Heights': 12},
+        'Pacific Heights': {'Nob Hill': 8, 'Presidio': 11, 'North Beach': 9, 'Fisherman\'s Wharf': 13}
+    }
+    
+    meetings = [
+        {'name': 'John', 'location': 'Pacific Heights', 'avail_start': 0, 'avail_end': 270, 'min_dur': 15},
+        {'name': 'Steven', 'location': 'North Beach', 'avail_start': 270, 'avail_end': 780, 'min_dur': 45},
+        {'name': 'Barbara', 'location': 'Fisherman\'s Wharf', 'avail_start': 540, 'avail_end': 750, 'min_dur': 30}
+    ]
+    
+    n = len(meetings)
+    s = Solver()
+    
+    # Create variables for start and end times
+    starts = [Real(f"start_{i}") for i in range(n)]
+    ends = [Real(f"end_{i}") for i in range(n)]
+    orders = [Int(f"order_{i}") for i in range(n)]
+    
+    # Order constraints
+    for i in range(n):
+        s.add(orders[i] >= 0, orders[i] < n)
+    s.add(Distinct(orders))
+    
+    # Meeting duration and availability constraints
+    for i, m in enumerate(meetings):
+        s.add(starts[i] >= m['avail_start'])
+        s.add(ends[i] <= m['avail_end'])
+        s.add(ends[i] - starts[i] >= m['min_dur'])
+    
+    # Travel constraints between meetings
+    for i in range(n):
+        for j in range(n):
+            if i != j:
+                cond = And(orders[i] < orders[j])
+                travel = travel_times[meetings[i]['location']][meetings[j]['location']]
+                s.add(Implies(cond, starts[j] >= ends[i] + travel))
+    
+    # Travel from start location (Nob Hill) to first meeting
+    for i in range(n):
+        cond = (orders[i] == 0)
+        travel = travel_times['Nob Hill'][meetings[i]['location']]
+        s.add(Implies(cond, starts[i] >= travel))
+    
+    if s.check() == sat:
+        model = s.model()
+        itinerary = []
+        meeting_list = []
+        for i in range(n):
+            start_val = model.evaluate(starts[i]).as_string()
+            end_val = model.evaluate(ends[i]).as_string()
+            # Convert to float and round to nearest integer
+            start_min = round(float(start_val))
+            end_min = round(float(end_val))
+            meeting_list.append({
+                'index': i,
+                'start': start_min,
+                'end': end_min,
+                'name': meetings[i]['name'],
+                'location': meetings[i]['location']
+            })
+        
+        # Sort by start time
+        meeting_list.sort(key=lambda x: x['start'])
+        
+        def min_to_time(min_val):
+            hours = min_val // 60
+            minutes = min_val % 60
+            return f"{hours}:{minutes:02d}"
+        
+        for meet in meeting_list:
+            itinerary.append({
+                "action": "meet",
+                "location": meet['location'],
+                "person": meet['name'],
+                "start_time": min_to_time(meet['start']),
+                "end_time": min_to_time(meet['end'])
+            })
+        
+        result = {"itinerary": itinerary}
+        print(json.dumps(result, indent=2))
+    else:
+        # Fallback if no solution found (should not happen given manual check)
+        print('{"itinerary": []}')
+
+if __name__ == "__main__":
+    main()
+```

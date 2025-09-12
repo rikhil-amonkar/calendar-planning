@@ -1,0 +1,95 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"solution\": {\n    \"header\": [\n      \"House\",\n      \"Name\",\n      \"Vacation\",\n      \"Children\",\n      \"Nationality\"\n    ],\n    \"rows\": [\n      [\n        \"1\",\n        \"Peter\",\n        \"cruise\",\n        \"Fred\",\n        \"norwegian\"\n      ],\n      [\n        \"2\",\n        \"Bob\",\n        \"camping\",\n        \"Timothy\",\n        \"german\"\n      ],\n      [\n        \"3\",\n        \"Eric\",\n        \"city\",\n        \"Bella\",\n        \"swede\"\n      ],\n      [\n        \"4\",\n        \"Alice\",\n        \"beach\",\n        \"Meredith\",\n        \"brit\"\n      ],\n      [\n        \"5\",\n        \"Arnold\",\n        \"mountain\",\n        \"Samantha\",\n        \"dane\"\n      ]\n    ]\n  }\n}",
+    "pred": [
+        {
+            "House": "1",
+            "Name": "Peter",
+            "Vacation": "cruise",
+            "Children": "Fred",
+            "Nationality": "norwegian"
+        },
+        {
+            "House": "2",
+            "Name": "Bob",
+            "Vacation": "camping",
+            "Children": "Timothy",
+            "Nationality": "german"
+        },
+        {
+            "House": "3",
+            "Name": "Eric",
+            "Vacation": "city",
+            "Children": "Bella",
+            "Nationality": "swede"
+        },
+        {
+            "House": "4",
+            "Name": "Alice",
+            "Vacation": "beach",
+            "Children": "Meredith",
+            "Nationality": "brit"
+        },
+        {
+            "House": "5",
+            "Name": "Arnold",
+            "Vacation": "mountain",
+            "Children": "Samantha",
+            "Nationality": "dane"
+        }
+    ],
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Peter",
+            "Vacation": "cruise",
+            "Children": "Fred",
+            "Nationality": "norwegian"
+        },
+        {
+            "House": "2",
+            "Name": "Bob",
+            "Vacation": "camping",
+            "Children": "Timothy",
+            "Nationality": "german"
+        },
+        {
+            "House": "3",
+            "Name": "Eric",
+            "Vacation": "city",
+            "Children": "Bella",
+            "Nationality": "swede"
+        },
+        {
+            "House": "4",
+            "Name": "Alice",
+            "Vacation": "beach",
+            "Children": "Meredith",
+            "Nationality": "brit"
+        },
+        {
+            "House": "5",
+            "Name": "Arnold",
+            "Vacation": "mountain",
+            "Children": "Samantha",
+            "Nationality": "dane"
+        }
+    ],
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 2,
+    "timing": {
+        "api_call_time": 46.25653409957886,
+        "execution_time": 0.09899449348449707,
+        "constraint_eval_time": 9.608268737792969e-05,
+        "pred_extract_time": 2.128636598587036,
+        "gold_extract_time": 2.8848648071289062e-05,
+        "total_tokens": 4425,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\n\ndef solve_puzzle():\n    # Define the variables\n    houses = [Int(f'house_{i}') for i in range(1, 6)]\n    names = ['Alice', 'Bob', 'Arnold', 'Eric', 'Peter']\n    vacations = ['cruise', 'city', 'camping', 'beach', 'mountain']\n    children = ['Bella', 'Samantha', 'Fred', 'Meredith', 'Timothy']\n    nationalities = ['dane', 'norwegian', 'brit', 'german', 'swede']\n\n    # Create the solver\n    solver = Solver()\n\n    # Define the domain for each variable\n    for var in houses:\n        solver.add(var >= 1)\n        solver.add(var <= 5)\n\n    # Ensure all values are distinct\n    solver.add(Distinct(houses))\n\n    # Define the mappings\n    name_map = {name: Int(f'name_{name}') for name in names}\n    vacation_map = {vacation: Int(f'vacation_{vacation}') for vacation in vacations}\n    child_map = {child: Int(f'child_{child}') for child in children}\n    nationality_map = {nationality: Int(f'nationality_{nationality}') for nationality in nationalities}\n\n    # Add the clues as constraints\n    solver.add(name_map['Peter'] == nationality_map['norwegian'])\n    solver.add(child_map['Bella'] == nationality_map['swede'])\n    solver.add(vacation_map['beach'] + 1 == child_map['Samantha'])\n    solver.add(child_map['Bella'] != 2)\n    solver.add(name_map['Alice'] == nationality_map['brit'])\n    solver.add(vacation_map['cruise'] == 1)\n    solver.add(child_map['Meredith'] == 4)\n    solver.add(name_map['Eric'] != 5)\n    solver.add(nationality_map['swede'] > nationality_map['norwegian'])\n    solver.add(Abs(child_map['Fred'] - vacation_map['city']) == 2)\n    solver.add(name_map['Bob'] == vacation_map['camping'])\n    solver.add(nationality_map['dane'] == 5)\n    solver.add(vacation_map['camping'] != 5)\n\n    # Ensure all mapped variables are distinct and within the domain\n    solver.add(Distinct(list(name_map.values())))\n    solver.add(Distinct(list(vacation_map.values())))\n    solver.add(Distinct(list(child_map.values())))\n    solver.add(Distinct(list(nationality_map.values())))\n\n    for var in list(name_map.values()) + list(vacation_map.values()) + list(child_map.values()) + list(nationality_map.values()):\n        solver.add(var >= 1)\n        solver.add(var <= 5)\n\n    # Map the names to houses\n    for name, house in name_map.items():\n        solver.add(Or([house == h for h in houses]))\n\n    # Map the vacations to houses\n    for vacation, house in vacation_map.items():\n        solver.add(Or([house == h for h in houses]))\n\n    # Map the children to houses\n    for child, house in child_map.items():\n        solver.add(Or([house == h for h in houses]))\n\n    # Map the nationalities to houses\n    for nationality, house in nationality_map.items():\n        solver.add(Or([house == h for h in houses]))\n\n    # Solve the problem\n    if solver.check() == sat:\n        model = solver.model()\n        result = {\n            \"solution\": {\n                \"header\": [\"House\", \"Name\", \"Vacation\", \"Children\", \"Nationality\"],\n                \"rows\": []\n            }\n        }\n\n        # Extract the solution\n        for house in range(1, 6):\n            name = next(name for name, var in name_map.items() if model.evaluate(var) == house)\n            vacation = next(vacation for vacation, var in vacation_map.items() if model.evaluate(var) == house)\n            child = next(child for child, var in child_map.items() if model.evaluate(var) == house)\n            nationality = next(nationality for nationality, var in nationality_map.items() if model.evaluate(var) == house)\n            result[\"solution\"][\"rows\"].append([str(house), name, vacation, child, nationality])\n\n        import json\n        print(json.dumps(result, indent=2))\n    else:\n        print(\"No solution found\")\n\nsolve_puzzle()"
+}

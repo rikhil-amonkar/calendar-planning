@@ -1,0 +1,99 @@
+```python
+import json
+from z3 import *
+
+def main():
+    # Define the attributes
+    names = ['Peter', 'Alice', 'Bob', 'Eric', 'Arnold']
+    heights = ['very tall', 'average', 'tall', 'very short', 'short']
+    
+    # Create Z3 enums for names and heights
+    NameSort, name_consts = EnumSort('Name', names)
+    HeightSort, height_consts = EnumSort('Height', heights)
+    
+    # Create variables for each house
+    n1, n2, n3, n4, n5 = Consts('n1 n2 n3 n4 n5', NameSort)
+    h1, h2, h3, h4, h5 = Consts('h1 h2 h3 h4 h5', HeightSort)
+    
+    s = Solver()
+    
+    # All names and heights are distinct
+    s.add(Distinct(n1, n2, n3, n4, n5))
+    s.add(Distinct(h1, h2, h3, h4, h5))
+    
+    # Clue 1: The person who is short is in the second house.
+    s.add(h2 == height_consts[4])  # short is last in heights list
+    
+    # Clue 2: Peter is directly left of Bob.
+    s.add(Or(
+        And(n1 == name_consts[0], n2 == name_consts[2]),
+        And(n2 == name_consts[0], n3 == name_consts[2]),
+        And(n3 == name_consts[0], n4 == name_consts[2]),
+        And(n4 == name_consts[0], n5 == name_consts[2])
+    ))
+    
+    # Clue 3: Eric is somewhere to the left of Peter.
+    # Create position variables for Eric and Peter
+    eric_pos = Int('eric_pos')
+    peter_pos = Int('peter_pos')
+    s.add(eric_pos >= 1, eric_pos <= 5)
+    s.add(peter_pos >= 1, peter_pos <= 5)
+    s.add(eric_pos < peter_pos)
+    
+    # Map positions to names
+    for i, house in enumerate([n1, n2, n3, n4, n5], 1):
+        s.add(Implies(house == name_consts[3], eric_pos == i))  # Eric is index 3
+        s.add(Implies(house == name_consts[0], peter_pos == i))  # Peter is index 0
+    
+    # Clue 4: The person who is very tall is directly left of Peter.
+    s.add(Or(
+        And(peter_pos == 2, h1 == height_consts[0]),  # very tall is index 0
+        And(peter_pos == 3, h2 == height_consts[0]),
+        And(peter_pos == 4, h3 == height_consts[0]),
+        And(peter_pos == 5, h4 == height_consts[0])
+    ))
+    
+    # Clue 5: Alice is directly left of the person who has an average height.
+    s.add(Or(
+        And(n1 == name_consts[1], h2 == height_consts[1]),  # Alice index 1, average index 1
+        And(n2 == name_consts[1], h3 == height_consts[1]),
+        And(n3 == name_consts[1], h4 == height_consts[1]),
+        And(n4 == name_consts[1], h5 == height_consts[1])
+    ))
+    
+    # Clue 6: The person who is short and the person who is very short are next to each other.
+    # Since short is in house 2 (from clue 1), very short must be in house 1 or 3
+    s.add(Or(h1 == height_consts[3], h3 == height_consts[3]))  # very short is index 3
+    
+    # Clue 7: The person who has an average height is in the fifth house.
+    s.add(h5 == height_consts[1])  # average is index 1
+    
+    # Check and get model
+    if s.check() == sat:
+        m = s.model()
+        
+        # Map Z3 values to strings
+        name_map = {name_consts[i]: names[i] for i in range(len(names))}
+        height_map = {height_consts[i]: heights[i] for i in range(len(heights))}
+        
+        # Collect results
+        rows = []
+        for i, (n_var, h_var) in enumerate(zip([n1, n2, n3, n4, n5], [h1, h2, h3, h4, h5]), 1):
+            name_val = m.eval(n_var)
+            height_val = m.eval(h_var)
+            rows.append([str(i), name_map[name_val], height_map[height_val]])
+        
+        # Create JSON output
+        solution = {
+            "solution": {
+                "header": ["House", "Name", "Height"],
+                "rows": rows
+            }
+        }
+        print(json.dumps(solution, indent=2))
+    else:
+        print("No solution found")
+
+if __name__ == "__main__":
+    main()
+```

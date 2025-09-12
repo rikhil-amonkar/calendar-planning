@@ -1,0 +1,474 @@
+We are going to use the Z3 SMT solver to model the scheduling problem.
+ Steps:
+ 1. Convert all time strings to minutes since 9:00 AM (which will be 0 minutes).
+ 2. Define the travel time matrix between locations (as given).
+ 3. For each friend, we have their availability window and the minimum meeting duration.
+ 4. We need to decide the order of meetings and the start and end times for each meeting, including travel times.
+
+ However, note: We are starting at Presidio at 9:00 AM (which is time 0).
+
+ Important: We cannot meet Kevin because his availability is before 9:00 AM? 
+    Kevin's availability: 7:15AM to 8:45AM -> but we start at 9:00AM. So we cannot meet Kevin.
+
+ But let's check the constraints: We arrive at Presidio at 9:00AM. So we cannot meet Kevin because he is only available until 8:45AM.
+
+ So we will not include Kevin.
+
+ We have 7 friends: Michelle, Emily, Mark, Barbara, Laura, Mary, Helen.
+
+ We need to assign a meeting time for each friend we can meet, ensuring:
+   - The meeting starts and ends within the friend's availability.
+   - The meeting lasts at least the minimum required duration.
+   - We account for travel time from the previous location (or from Presidio for the first meeting).
+
+ We are going to use Z3 to model:
+   - The start time of each meeting (as a Z3 integer variable).
+   - The end time of each meeting (which is start time + meeting duration, but note: meeting duration is at least the minimum, but we can meet longer? However, we are trying to meet as many as possible, but note: we are also constrained by the availability. We might set the meeting duration exactly to the minimum to allow more meetings? But the problem says we want to meet as many as possible, so we might try to minimize the total time spent? However, the problem does not specify that we must minimize time, but we must meet the minimum duration and then we can leave.
+
+ However, note: we are free to leave after the minimum duration. So we can set the meeting duration exactly to the minimum to save time.
+
+ But wait: the problem says "optimal meeting schedule" to meet as many friends as possible. So we are trying to maximize the number of meetings.
+
+ However, note that some meetings might be impossible due to time conflicts and travel times.
+
+ Approach:
+
+ We will create a list of friends with:
+   name, location, available_start, available_end, min_duration
+
+ We will then create Z3 variables for the start time and end time of each meeting (for each friend we attempt to meet).
+
+ Constraints for each meeting we attempt:
+   start >= available_start
+   end <= available_end
+   end = start + min_duration   [since we are going to set the meeting to the minimum to save time]
+
+ But note: we might not be able to meet all, so we need to decide which ones to meet. We'll use a flag for each meeting indicating whether we are meeting that person.
+
+ We also need to account for travel times. We'll have a variable for the order of meetings? Alternatively, we can use a TSP-like formulation with continuous time, but that is complex.
+
+ Alternatively, we can use a fixed order? But the order is not fixed, we must decide the order.
+
+ We can use a permutation of the meetings? But that would require 7! which is 5040, which is manageable by Z3? Not exactly, because we are using SMT, we can use real variables for times and then use constraints for the order.
+
+ We can do:
+
+   Let meetings be indexed by i from 0 to n-1 (n=7). We will have a variable for the start time of each meeting (if the meeting happens). We also have a boolean variable for each meeting indicating if it happens.
+
+   We also need to decide the order. We can have an array of the meetings and then impose constraints on the start times and travel times.
+
+   However, we don't know the order. We can use a graph of travel times and then use the following:
+
+   For each meeting i and j (i != j), if both happen, then either:
+        start_j >= end_i + travel_time(location_i, location_j)
+   or
+        start_i >= end_j + travel_time(location_j, location_i)
+
+   This is a disjunctive constraint and can be modeled with booleans and an ordering variable.
+
+   But note: we are starting at Presidio and then going to the first meeting, and then from there to the next, etc.
+
+   We can break the problem by having:
+
+   Let first meeting: we travel from Presidio to that location.
+
+   For the first meeting, we have:
+        start_0 >= travel_time(Presidio, location_0)
+
+   For consecutive meetings: if meeting j follows meeting i, then we have:
+        start_j >= end_i + travel_time(location_i, location_j)
+
+   But we don't know the order. So we need to introduce variables for the order.
+
+   Alternatively, we can use a TSP formulation with Z3, but that is heavy.
+
+   Since the number of meetings is small (7), we can try to generate all possible permutations of the meetings that we are going to have (but we don't know which ones we are going to have, so we have to consider subsets and then orderings of the subsets). This would be 2^7 * 7! which is 128 * 5040 = 645120, which is too many for brute force, but Z3 can handle the constraints with clever modeling.
+
+   We can use the following approach:
+
+   Let n = number of friends (7).
+
+   We introduce an array `order` of n integers, which represents the order of meetings. But note: we might not meet all, so we can have some meetings not happening and then the order for those is irrelevant.
+
+   Alternatively, we can use real variables for the start times and then use constraints that for every two meetings i and j that happen, either:
+        start_i + min_duration_i + travel_time(i, j) <= start_j
+   or
+        start_j + min_duration_j + travel_time(j, i) <= start_i
+
+   This is a disjunctive constraint and can be modeled with a boolean matrix `before(i, j)` which is true if meeting i comes before meeting j.
+
+   We can do:
+
+   For each pair (i, j) with i != j:
+        if before(i, j) is true, then:
+            start_i + min_duration_i + travel_time(i, j) <= start_j
+        else:
+            start_j + min_duration_j + travel_time(j, i) <= start_i
+
+   But note: if we don't meet i or j, then we don't care about the constraint. So we can condition the constraint on both i and j being met.
+
+   Let `met[i]` be a boolean that is true if we meet friend i.
+
+   Then the constraint becomes:
+
+        If met[i] and met[j]:
+            (before(i, j) -> (start_i + min_duration_i + travel_time(i, j) <= start_j)) AND
+            (not before(i, j) -> (start_j + min_duration_j + travel_time(j, i) <= start_i))
+
+   We also need to set the travel time from Presidio to the first meeting(s). We can handle that by having a virtual starting point at Presidio at time 0.
+
+   For every meeting i that is met, we require:
+        start_i >= travel_time(Presidio, location_i)
+
+   But note: if meeting i is the first one, then that's correct. But if it is not the first, then the constraint from the previous meeting will require a later time. However, the constraint above (with the virtual start) might be redundant if there is another meeting that comes before i, because then the constraint from the previous meeting would have already required a time that includes the travel from the previous meeting to i, which might be more than from Presidio to i. So we can drop the direct Presidio constraint and rely on the disjunctive constraints if we ensure that for every meeting that is met, there is at least one meeting (possibly the virtual start) that comes before it.
+
+   Alternatively, we can introduce a virtual meeting 0 at Presidio at time 0 with duration 0. Then we require for every meeting i that is met:
+        before(0, i) is true (if we meet i, then the virtual meeting must come before i) and then we set:
+        start_i >= 0 + 0 + travel_time(Presidio, location_i)
+
+   But note: the virtual meeting is always first? Not exactly, because we might have multiple meetings, but the virtual meeting is always the very first. So we can set:
+
+        For every meeting i that is met:
+            before(0, i) is true.
+
+   And then for the virtual meeting and any meeting i:
+        start_i >= travel_time(Presidio, location_i)
+
+   But wait, the disjunctive constraint between virtual meeting and meeting i would be:
+        if before(0, i) then:
+            start_0 + duration_0 + travel_time(Presidio, location_i) <= start_i
+        which is: 0 + 0 + travel_time(Presidio, location_i) <= start_i
+
+   So we can model the virtual meeting as meeting index -1, but Z3 doesn't allow negative indices. Instead, we can have an array of meetings that includes the virtual meeting.
+
+   Let's index the virtual meeting as `v` (v=0) and then the real meetings from 1 to n.
+
+   Then we have n+1 meetings. The virtual meeting has fixed start time 0, duration 0, and location Presidio.
+
+   Then we require for every real meeting i (from 1 to n) that is met, we have the disjunctive constraints with every other real meeting j (from 1 to n) and also with the virtual meeting.
+
+   We also need to ensure that the virtual meeting is first. We can set for every real meeting i:
+        before(0, i) is true.
+
+   Now, the constraints for the virtual meeting and real meeting i are already covered by the disjunctive constraint, and we don't need an extra constraint.
+
+   However, we must note that the virtual meeting is always met (always true).
+
+   So we have n+1 meetings, with meeting0 (virtual) fixed.
+
+   We then define:
+
+        met[0] = True
+        start0 = 0
+        duration0 = 0
+        location0 = "Presidio"
+
+   For each real meeting i (1..n), we have the constraints:
+
+        met[i] -> (start_i >= available_start_i and end_i <= available_end_i and end_i = start_i + min_duration_i)
+
+   And for every pair of meetings (i, j) (including the virtual meeting) with i != j, if both met[i] and met[j] are true, then:
+
+        if before(i, j) then:
+            start_i + duration_i + travel_time(location_i, location_j) <= start_j
+        else:
+            start_j + duration_j + travel_time(location_j, location_i) <= start_i
+
+   We also need to ensure that the `before` matrix is consistent (antisymmetric and total for the meetings that are met). We can enforce:
+
+        For i != j, if met[i] and met[j], then before(i, j) XOR before(j, i)
+        For i, j, k: if before(i, j) and before(j, k)) then before(i, k)
+
+   But note: Z3 might struggle with the transitivity if we have many meetings. Alternatively, we can avoid transitivity by using a real-valued variable for the order (like a continuous time line) and then the constraints on the times will naturally enforce transitivity via the inequalities. The `before` matrix is then implicitly defined by the start times? But wait, we cannot use the start times to define the order because two meetings might have the same start time? Actually, they cannot because we have travel times and durations, so they must be separated in time. So we can use the start times to define the order. Then we don't need the `before` matrix? 
+
+   However, the disjunctive constraint is non-linear and requires knowing which meeting comes first. But if we don't use the `before` matrix, we can write:
+
+        met[i] and met[j] -> 
+            (start_i + duration_i + travel_time(i, j) <= start_j) OR 
+            (start_j + duration_j + travel_time(j, i) <= start_i)
+
+   This is exactly what we want. And Z3 can handle this with an OR. We don't need the `before` matrix if we use this constraint.
+
+   So we can avoid the `before` matrix and just use:
+
+        For each pair (i, j) with i != j (including the virtual meeting) and i and j in [0..n] (with virtual meeting 0 and real meetings 1..n):
+            If met[i] and met[j]:
+                Or( 
+                    start_i + duration_i + travel_time(i, j) <= start_j,
+                    start_j + duration_j + travel_time(j, i) <= start_i
+                )
+
+   This ensures that between any two meetings, there is enough travel time.
+
+   Now, we also have the availability constraints for each real meeting.
+
+   We want to maximize the number of meetings (i.e., the sum of met[i] for i in 1..n).
+
+   Steps in code:
+
+   1. Precompute the travel time matrix between all locations (including Presidio). Note: the travel times are given between every pair of the 8 locations (excluding virtual). We have 8 locations: 
+        locations = ["Presidio", "Pacific Heights", "Golden Gate Park", "Fisherman's Wharf", "Marina District", "Alamo Square", "Sunset District", "Nob Hill", "North Beach"]
+
+   But note: the virtual meeting is at Presidio, so we can use the given travel times from Presidio to others.
+
+   However, note: the travel times are symmetric? Let's check: 
+        Presidio to Pacific Heights: 11, and Pacific Heights to Presidio: 11 -> symmetric?
+        But not all are symmetric: 
+        Presidio to Fisherman's Wharf: 19, Fisherman's Wharf to Presidio: 17 -> not symmetric.
+
+   So we cannot assume symmetry. We have to use the given directed travel times.
+
+   We'll create a dictionary for travel times:
+
+        travel_times = {
+            ("Presidio", "Pacific Heights"): 11,
+            ("Presidio", "Golden Gate Park"): 12,
+            ...,
+            ("North Beach", "Nob Hill"): 7
+        }
+
+   But note: we have all pairs in the input.
+
+   2. Convert the availability times to minutes since 9:00AM.
+
+        Example: 
+          9:00AM -> 0
+          10:00AM -> 60
+          1:00PM -> 4*60 = 240
+          5:00PM -> (5+12)*60 = 1020? Wait, 5PM is 17:00 -> (17-9)*60 = 8*60 = 480? No, wait:
+
+        We are starting at 9:00AM as 0.
+
+        So:
+          9:00AM -> 0
+          10:00AM -> 60
+          12:00PM (noon) -> 3*60 = 180
+          1:00PM -> 4*60 = 240
+          5:00PM -> (17-9)*60 = 8*60 = 480
+          8:00PM -> (20-9)*60 = 11*60 = 660
+
+        But note: 5:00PM is 17:00, so (17-9)=8 hours -> 8*60=480 minutes.
+
+        However, let's double check with the constraints:
+
+        Michelle: 8:00PM to 9:00PM -> 20:00 to 21:00 -> (20-9)*60=660 to (21-9)*60=720.
+
+        Emily: 4:15PM to 7:00PM -> 16:15 to 19:00 -> (16-9)*60+15=7*60+15=435 to (19-9)*60=10*60=600.
+
+   3. Create the list of friends (excluding Kevin):
+
+        friends = [
+            {"name": "Michelle", "location": "Golden Gate Park", "start_avail": 660, "end_avail": 720, "min_dur": 15},
+            {"name": "Emily", "location": "Fisherman's Wharf", "start_avail": 435, "end_avail": 600, "min_dur": 30},
+            {"name": "Mark", "location": "Marina District", "start_avail": 375, "end_avail": 465, "min_dur": 75},   # 6:15PM is 18:15 -> (18-9)*60+15=9*60+15=555? Wait, 6:15PM is 18:15 -> (18-9)=9 hours -> 9*60+15=555. 7:45PM is 19:45 -> (19-9)=10 hours -> 10*60+45=645. But wait, 6:15PM to 7:45PM is 555 to 645.
+            ... and so on.
+
+        Let's recalculate all availabilities in minutes since 9:00AM:
+
+        Michelle: 8:00PM to 9:00PM -> 20:00 to 21:00 -> (20-9)*60=660 to (21-9)*60=720.
+        Emily: 4:15PM to 7:00PM -> 16:15 to 19:00 -> (16-9)*60+15=7*60+15=435 to (19-9)*60=600.
+        Mark: 6:15PM to 7:45PM -> 18:15 to 19:45 -> (18-9)*60+15=9*60+15=555 to (19-9)*60+45=10*60+45=645.
+        Barbara: 5:00PM to 7:00PM -> 17:00 to 19:00 -> (17-9)*60=480 to (19-9)*60=600.
+        Laura: 7:00PM to 9:15PM -> 19:00 to 21:15 -> (19-9)*60=600 to (21-9)*60+15=12*60+15=735.
+        Mary: 5:30PM to 7:00PM -> 17:30 to 19:00 -> (17-9)*60+30=8*60+30=510 to (19-9)*60=600.
+        Helen: 11:00AM to 12:15PM -> 11:00 to 12:15 -> (11-9)*60=120 to (12-9)*60+15=3*60+15=195.
+
+   4. We have 7 friends.
+
+   5. We'll create a Z3 solver and define:
+
+        n = 7
+        met = [Bool(f'met_{i}') for i in range(n)]
+        start = [Int(f'start_{i}') for i in range(n)]
+        duration = [friend['min_dur'] for friend in friends]   # fixed to the minimum
+
+        We also have the virtual meeting (index -1) but we'll handle it separately.
+
+   Alternatively, we can include the virtual meeting as meeting index 0, and then the real meetings are indices 1 to 7. Then we have 8 meetings.
+
+        meetings[0]: virtual, fixed start=0, duration=0, location="Presidio", met[0]=True
+        meetings[1] to meetings[7]: the friends.
+
+   We'll create a list `meetings` of length 8.
+
+   For each meeting i (0 to 7), we have:
+        location[i] = (for i=0: "Presidio", for i>=1: friends[i-1]['location'])
+        min_dur[i] = (for i=0: 0, for i>=1: friends[i-1]['min_dur'])
+        available_start[i] = (for i=0: 0, for i>=1: friends[i-1]['start_avail'])
+        available_end[i] = (for i=0: 24*60 [large number], for i>=1: friends[i-1]['end_avail'])
+
+   For the virtual meeting, we set met[0] to True.
+
+   For i from 1 to 7, we have constraints:
+
+        If met[i] is True, then:
+            start[i] >= available_start[i]
+            start[i] + min_dur[i] <= available_end[i]
+
+   For every pair (i, j) with i != j (0<=i,j<=7), if met[i] and met[j] are True, then:
+        Or( 
+            start[i] + min_dur[i] + travel_time(location[i], location[j]) <= start[j],
+            start[j] + min_dur[j] + travel_time(location[j], location[i]) <= start[i]
+        )
+
+   We want to maximize the number of met meetings (for i from 1 to 7). So the objective is to maximize the sum of met[1] to met[7].
+
+   However, note: we might not be able to meet all, so we try to maximize the count.
+
+   We can use a while loop: first try to meet 7, then 6, etc. until the solver finds a solution.
+
+   Alternatively, we can use the `Optimize` class in Z3 to maximize the sum.
+
+   Since the problem is complex, we'll use the Optimize class.
+
+   Steps in code:
+
+        from z3 import *
+
+        # Define the travel time dictionary
+        travel_times = {
+            ("Presidio", "Pacific Heights"): 11,
+            ... # all given pairs
+        }
+
+        # Precompute the list of meetings (including virtual)
+        meetings = []
+        # Meeting0: virtual
+        meetings.append({
+            'name': 'start',
+            'location': 'Presidio',
+            'min_dur': 0,
+            'avail_start': 0,
+            'avail_end': 24*60   # large enough
+        })
+
+        # Add the friends
+        for friend in friends_list:   # we'll create friends_list from the input
+            meetings.append({
+                'name': friend['name'],
+                'location': friend['location'],
+                'min_dur': friend['min_dur'],
+                'avail_start': friend['start_avail'],
+                'avail_end': friend['end_avail']
+            })
+
+        n_meetings = len(meetings)   # 8
+
+        # Z3 variables
+        met = [Bool(f'met_{i}') for i in range(n_meetings)]
+        start = [Int(f'start_{i}') for i in range(n_meetings)]
+
+        # Fixed for virtual meeting
+        solver = Optimize()
+        solver.add(met[0] == True)
+        solver.add(start[0] == 0)
+
+        # For each meeting i (from 1 to 7)
+        for i in range(1, n_meetings):
+            # If met[i] is true, then the start time must be within availability and the meeting must have the minimum duration
+            solver.add(Implies(met[i], start[i] >= meetings[i]['avail_start']))
+            solver.add(Implies(met[i], start[i] + meetings[i]['min_dur'] <= meetings[i]['avail_end']))
+
+        # For every pair of meetings (i, j) with i != j
+        for i in range(n_meetings):
+            for j in range(n_meetings):
+                if i == j:
+                    continue
+                # If both meetings are met, then we need to have enough travel time between them
+                cond = And(met[i], met[j])
+                loc_i = meetings[i]['location']
+                loc_j = meetings[j]['location']
+                travel_ij = travel_times.get((loc_i, loc_j), None)
+                travel_ji = travel_times.get((loc_j, loc_i), None)
+                if travel_ij is None or travel_ji is None:
+                    # We must have all travel times, so we should not get None. If we do, it's an error.
+                    # But note: we have all pairs, so we can assume they exist.
+                    continue
+
+                # The disjunctive constraint
+                constraint = Or(
+                    start[i] + meetings[i]['min_dur'] + travel_ij <= start[j],
+                    start[j] + meetings[j]['min_dur'] + travel_ji <= start[i]
+                )
+                solver.add(Implies(cond, constraint))
+
+        # We want to maximize the number of met meetings (excluding the virtual meeting)
+        objective = Sum([If(met[i], 1, 0) for i in range(1, n_meetings)])
+        solver.maximize(objective)
+
+        # Check and get the model
+        if solver.check() == sat:
+            model = solver.model()
+            # Then we can extract the schedule for the meetings that are met.
+            # But note: we have to output the itinerary in chronological order.
+
+        However, note: the objective is to meet as many as possible, but we might have multiple solutions with the same number of meetings. We don't have a secondary objective (like minimizing total time) so any solution that meets the maximum number is acceptable.
+
+   6. After getting the model, we need to collect all meetings that are met (excluding the virtual meeting) and then sort by start time.
+
+   7. Convert the start time (in minutes since 9:00AM) to time string.
+
+        Example: if start_i is 135 minutes, then 9:00AM + 135 minutes = 11:15AM -> "11:15"
+
+   8. Output the itinerary as JSON.
+
+   However, note: the travel times are given between the district names exactly as written. We must use the same string for the location.
+
+   Let's list the locations exactly as in the travel times:
+
+        "Presidio"
+        "Pacific Heights"
+        "Golden Gate Park"
+        "Fisherman's Wharf"
+        "Marina District"
+        "Alamo Square"
+        "Sunset District"
+        "Nob Hill"
+        "North Beach"
+
+   We'll create the travel time dictionary with these exact strings.
+
+   Now, let's code accordingly.
+
+   Note: We must include the travel times for all pairs, including the ones that are not directly from Presidio.
+
+   We'll create a dictionary `travel_time_dict` with keys (from, to) and value the time.
+
+   We have to be careful: the input includes travel times from every district to every other.
+
+   Let's write the code accordingly.
+
+   Due to the complexity and length of the travel time input, we'll copy the travel times as a multi-line string and then parse it? Alternatively, we can hardcode the dictionary.
+
+   But the problem says to write the code, so we'll hardcode the travel time dictionary.
+
+   However, note: the input has 8*8=64 entries, but we are given 8*8=64 lines (including duplicates? Actually, the input includes both directions for each pair).
+
+   We'll create the dictionary by listing every pair.
+
+   Example:
+
+        travel_time_dict = {
+            ("Presidio", "Pacific Heights"): 11,
+            ("Presidio", "Golden Gate Park"): 12,
+            ...,
+            ("North Beach", "Nob Hill"): 7
+        }
+
+   We'll write it in the code.
+
+   Now, let's code.
+
+   Note: This code might be long due to the travel time dictionary.
+
+   We'll break the code into sections.
+
+   Steps:
+
+        Section 1: Define the travel_time_dict.
+        Section 2: Define the friends list with availability in minutes.
+        Section 3: Create the meetings list (including virtual).
+        Section 4: Z3 setup and constraints.
+        Section 5: Solve and output.
+
+   Let's code.

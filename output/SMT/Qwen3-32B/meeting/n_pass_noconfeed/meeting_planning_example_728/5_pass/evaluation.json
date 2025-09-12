@@ -1,0 +1,108 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "[inf, 30, 15]\n[30, inf, 25]\n[15, 25, inf]",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Location 1",
+                "person": "Person 1",
+                "start_time": "0:00",
+                "end_time": "0:30"
+            },
+            {
+                "action": "meet",
+                "location": "Location 3",
+                "person": "Person 3",
+                "start_time": "0:15",
+                "end_time": "0:40"
+            },
+            {
+                "action": "meet",
+                "location": "Location 2",
+                "person": "Person 2",
+                "start_time": "0:30",
+                "end_time": "0:55"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Financial District",
+                "person": "Elizabeth",
+                "start_time": "10:00",
+                "end_time": "11:15"
+            },
+            {
+                "action": "meet",
+                "location": "Union Square",
+                "person": "Joseph",
+                "start_time": "11:45",
+                "end_time": "13:45"
+            },
+            {
+                "action": "meet",
+                "location": "Fisherman's Wharf",
+                "person": "Richard",
+                "start_time": "14:30",
+                "end_time": "15:00"
+            },
+            {
+                "action": "meet",
+                "location": "Haight-Ashbury",
+                "person": "Kimberly",
+                "start_time": "15:22",
+                "end_time": "17:07"
+            },
+            {
+                "action": "meet",
+                "location": "Mission District",
+                "person": "Karen",
+                "start_time": "17:18",
+                "end_time": "17:48"
+            },
+            {
+                "action": "meet",
+                "location": "Sunset District",
+                "person": "Helen",
+                "start_time": "18:12",
+                "end_time": "19:57"
+            },
+            {
+                "action": "meet",
+                "location": "Russian Hill",
+                "person": "Ashley",
+                "start_time": "20:21",
+                "end_time": "21:06"
+            },
+            {
+                "action": "meet",
+                "location": "Presidio",
+                "person": "Robert",
+                "start_time": "21:45",
+                "end_time": "22:45"
+            }
+        ]
+    },
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "constraints_satisfied_but_no_exact_match": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 5,
+    "timing": {
+        "api_call_time": 64.38712930679321,
+        "execution_time": 0.011017322540283203,
+        "constraint_eval_time": 0.00018668174743652344,
+        "pred_extract_time": 2.8949832916259766,
+        "gold_extract_time": 7.033348083496094e-05,
+        "total_tokens": 4870,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "# Define the locations and their indices\nlocations = ['Home', 'Office', 'Store']\nloc_to_idx = {loc: i for i, loc in enumerate(locations)}\n\n# Define the travel time dictionary\ntravel_time_dict = {\n    'Home': {'Office': 30, 'Store': 15},\n    'Office': {'Home': 30, 'Store': 25},\n    'Store': {'Home': 15, 'Office': 25},\n}\n\n# Initialize the travel time matrix with infinity (or a large number)\nnum_locations = len(locations)\ntravel_time_matrix = [[float('inf')] * num_locations for _ in range(num_locations)]\n\n# Populate the travel time matrix\nfor from_loc in locations:\n    for to_loc in locations:\n        if from_loc != to_loc:  # Skip self-travel\n            travel_time_matrix[loc_to_idx[from_loc]][loc_to_idx[to_loc]] = travel_time_dict[from_loc].get(to_loc, float('inf'))\n\n# Optional: Print the matrix for verification\nfor row in travel_time_matrix:\n    print(row)"
+}

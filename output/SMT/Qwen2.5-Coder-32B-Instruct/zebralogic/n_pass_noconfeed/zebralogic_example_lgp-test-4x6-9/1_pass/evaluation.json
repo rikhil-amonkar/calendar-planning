@@ -1,0 +1,62 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "null",
+    "pred": [],
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Arnold",
+            "Flower": "lilies",
+            "Height": "tall",
+            "Mother": "Kailyn",
+            "Occupation": "teacher",
+            "FavoriteSport": "tennis"
+        },
+        {
+            "House": "2",
+            "Name": "Peter",
+            "Flower": "carnations",
+            "Height": "average",
+            "Mother": "Janelle",
+            "Occupation": "doctor",
+            "FavoriteSport": "basketball"
+        },
+        {
+            "House": "3",
+            "Name": "Eric",
+            "Flower": "roses",
+            "Height": "very short",
+            "Mother": "Holly",
+            "Occupation": "engineer",
+            "FavoriteSport": "swimming"
+        },
+        {
+            "House": "4",
+            "Name": "Alice",
+            "Flower": "daffodils",
+            "Height": "short",
+            "Mother": "Aniya",
+            "Occupation": "artist",
+            "FavoriteSport": "soccer"
+        }
+    ],
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "invalid_output": "No valid output structure found"
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 51.898051023483276,
+        "execution_time": 0.0805518627166748,
+        "constraint_eval_time": 1.6689300537109375e-06,
+        "pred_extract_time": 0.8403301239013672,
+        "gold_extract_time": 3.075599670410156e-05,
+        "total_tokens": 4446,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\n\ndef solve_puzzle():\n    # Define the domains\n    houses = [1, 2, 3, 4]\n    names = [\"Peter\", \"Arnold\", \"Eric\", \"Alice\"]\n    flowers = [\"daffodils\", \"carnations\", \"roses\", \"lilies\"]\n    heights = [\"very short\", \"short\", \"tall\", \"average\"]\n    mothers = [\"Janelle\", \"Kailyn\", \"Holly\", \"Aniya\"]\n    occupations = [\"engineer\", \"doctor\", \"teacher\", \"artist\"]\n    sports = [\"swimming\", \"basketball\", \"tennis\", \"soccer\"]\n\n    # Create Solver\n    solver = Solver()\n\n    # Declare variables\n    house_name = {h: Int(f\"house_{h}_name\") for h in houses}\n    house_flower = {h: Int(f\"house_{h}_flower\") for h in houses}\n    house_height = {h: Int(f\"house_{h}_height\") for h in houses}\n    house_mother = {h: Int(f\"house_{h}_mother\") for h in houses}\n    house_occupation = {h: Int(f\"house_{h}_occupation\") for h in houses}\n    house_sport = {h: Int(f\"house_{h}_sport\") for h in houses}\n\n    # Add domain constraints\n    for h in houses:\n        solver.add(house_name[h] >= 0)\n        solver.add(house_name[h] < len(names))\n        solver.add(house_flower[h] >= 0)\n        solver.add(house_flower[h] < len(flowers))\n        solver.add(house_height[h] >= 0)\n        solver.add(house_height[h] < len(heights))\n        solver.add(house_mother[h] >= 0)\n        solver.add(house_mother[h] < len(mothers))\n        solver.add(house_occupation[h] >= 0)\n        solver.add(house_occupation[h] < len(occupations))\n        solver.add(house_sport[h] >= 0)\n        solver.add(house_sport[h] < len(sports))\n\n    # All values must be unique across houses\n    solver.add(Distinct([house_name[h] for h in houses]))\n    solver.add(Distinct([house_flower[h] for h in houses]))\n    solver.add(Distinct([house_height[h] for h in houses]))\n    solver.add(Distinct([house_mother[h] for h in houses]))\n    solver.add(Distinct([house_occupation[h] for h in houses]))\n    solver.add(Distinct([house_sport[h] for h in houses]))\n\n    # Clue constraints\n    solver.add(house_name[1] == names.index(\"Peter\"))\n    solver.add(house_name[1] == occupations.index(\"doctor\"))\n    solver.add(house_name[2] == names.index(\"Arnold\"))\n    solver.add(house_name[2] == heights.index(\"tall\"))\n    solver.add(house_name[2] == flowers.index(\"lilies\"))\n    solver.add(house_name[3] != names.index(\"Arnold\"))\n    solver.add(house_name[4] == mothers.index(\"Aniya\"))\n    solver.add(house_name[4] == names.index(\"Alice\"))\n    solver.add(house_sport[1] == sports.index(\"tennis\"))\n    solver.add(house_occupation[1] == occupations.index(\"teacher\"))\n    solver.add(house_flower[2] == flowers.index(\"roses\"))\n    solver.add(house_sport[2] == sports.index(\"swimming\"))\n    solver.add(house_height[3] == heights.index(\"short\"))\n    solver.add(house_sport[3] == sports.index(\"soccer\"))\n    solver.add(house_height[4] == heights.index(\"average\"))\n    solver.add(house_sport[4] == sports.index(\"basketball\"))\n    solver.add(house_flower[3] == flowers.index(\"daffodils\"))\n    solver.add(house_flower[4] == flowers.index(\"carnations\"))\n    solver.add(house_mother[2] == mothers.index(\"Janelle\"))\n    solver.add(house_mother[4] == mothers.index(\"Holly\"))\n\n    # Additional constraints from clues\n    solver.add(Or(house_flower[h] != flowers.index(\"daffodils\") for h in range(1, 4)) | Or(house_occupation[h] != occupations.index(\"engineer\") for h in range(1, 4)))\n    solver.add(Or(house_height[h] != heights.index(\"average\") for h in range(1, 4)) | Or(house_mother[h] != mothers.index(\"Holly\") for h in range(1, 4)))\n\n    # Solve the puzzle\n    if solver.check() == sat:\n        model = solver.model()\n        solution = {\n            \"solution\": {\n                \"header\": [\"House\", \"Name\", \"Flower\", \"Height\", \"Mother\", \"Occupation\", \"FavoriteSport\"],\n                \"rows\": []\n            }\n        }\n        for h in houses:\n            name = names[model.eval(house_name[h]).as_long()]\n            flower = flowers[model.eval(house_flower[h]).as_long()]\n            height = heights[model.eval(house_height[h]).as_long()]\n            mother = mothers[model.eval(house_mother[h]).as_long()]\n            occupation = occupations[model.eval(house_occupation[h]).as_long()]\n            sport = sports[model.eval(house_sport[h]).as_long()]\n            solution[\"solution\"][\"rows\"].append([str(h), name, flower, height, mother, occupation, sport])\n        return solution\n    else:\n        return None\n\n# Output the solution as JSON\nimport json\nprint(json.dumps(solve_puzzle(), indent=2))"
+}

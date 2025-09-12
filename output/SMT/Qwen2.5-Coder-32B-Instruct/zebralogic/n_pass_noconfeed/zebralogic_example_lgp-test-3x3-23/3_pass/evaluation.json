@@ -1,0 +1,44 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": true,
+    "execution_output": "No solution found",
+    "pred": null,
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Peter",
+            "Occupation": "engineer",
+            "Hobby": "gardening"
+        },
+        {
+            "House": "2",
+            "Name": "Arnold",
+            "Occupation": "doctor",
+            "Hobby": "cooking"
+        },
+        {
+            "House": "3",
+            "Name": "Eric",
+            "Occupation": "teacher",
+            "Hobby": "photography"
+        }
+    ],
+    "status": "No plan generated",
+    "violated_constraint": {
+        "invalid_output": "No valid output structure found"
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 3,
+    "timing": {
+        "api_call_time": 161.5291223526001,
+        "execution_time": 0.020422935485839844,
+        "constraint_eval_time": 3.337860107421875e-06,
+        "pred_extract_time": 0.37224483489990234,
+        "gold_extract_time": 1.1920928955078125e-05,
+        "total_tokens": 15763,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import itertools\n\n# Define the variables\nhouses = [1, 2, 3]\nnames = ['Peter', 'Arnold', 'Eric']\noccupations = ['doctor', 'teacher', 'engineer']\nhobbies = ['cooking', 'photography', 'gardening']\n\n# Map names, occupations, and hobbies to integers\nname_map = {name: i for i, name in enumerate(names)}\noccupation_map = {occupation: i for i, occupation in enumerate(occupations)}\nhobby_map = {hobby: i for i, hobby in enumerate(hobbies)}\n\n# Function to check if a given assignment satisfies all constraints\ndef check_constraints(name_assignment, occupation_assignment, hobby_assignment):\n    # Clue 1: The person who is a doctor and Eric are next to each other.\n    for house in houses[:-1]:\n        if (occupation_assignment[house] == occupation_map['doctor'] and name_assignment[house + 1] == name_map['Eric']) or \\\n           (name_assignment[house] == name_map['Eric'] and occupation_assignment[house + 1] == occupation_map['doctor']):\n            continue\n        else:\n            return False\n    \n    # Clue 2: The person who loves cooking is directly left of the person who is a teacher.\n    for house in houses[:-1]:\n        if (hobby_assignment[house] == hobby_map['cooking'] and occupation_assignment[house + 1] == occupation_map['teacher']):\n            continue\n        else:\n            return False\n    \n    # Clue 3: The person who is a doctor is somewhere to the right of the person who enjoys gardening.\n    if (hobby_assignment[1] == hobby_map['gardening'] and occupation_assignment[2] == occupation_map['doctor']) or \\\n       (hobby_assignment[1] == hobby_map['gardening'] and occupation_assignment[3] == occupation_map['doctor']) or \\\n       (hobby_assignment[2] == hobby_map['gardening'] and occupation_assignment[3] == occupation_map['doctor']):\n        pass\n    else:\n        return False\n    \n    # Clue 4: The photography enthusiast is the person who is a teacher.\n    for house in houses:\n        if hobby_assignment[house] == hobby_map['photography'] and occupation_assignment[house] == occupation_map['teacher']:\n            continue\n        else:\n            return False\n    \n    # Clue 5: The person who is an engineer is Peter.\n    for house in houses:\n        if occupation_assignment[house] == occupation_map['engineer'] and name_assignment[house] == name_map['Peter']:\n            continue\n        else:\n            return False\n    \n    return True\n\n# Generate all possible permutations of names, occupations, and hobbies\nfor name_perm in itertools.permutations(names):\n    for occupation_perm in itertools.permutations(occupations):\n        for hobby_perm in itertools.permutations(hobbies):\n            name_assignment = {house: name_map[name_perm[i]] for i, house in enumerate(houses)}\n            occupation_assignment = {house: occupation_map[occupation_perm[i]] for i, house in enumerate(houses)}\n            hobby_assignment = {house: hobby_map[hobby_perm[i]] for i, house in enumerate(houses)}\n            \n            if check_constraints(name_assignment, occupation_assignment, hobby_assignment):\n                solution = {\n                    \"solution\": {\n                        \"header\": [\"House\", \"Name\", \"Occupation\", \"Hobby\"],\n                        \"rows\": []\n                    }\n                }\n                for house in houses:\n                    name = name_perm[house - 1]\n                    occupation = occupation_perm[house - 1]\n                    hobby = hobby_perm[house - 1]\n                    solution[\"solution\"][\"rows\"].append([str(house), name, occupation, hobby])\n                import json\n                print(json.dumps(solution))\n                break\n        else:\n            continue\n        break\n    else:\n        continue\n    break\nelse:\n    print(\"No solution found\")"
+}

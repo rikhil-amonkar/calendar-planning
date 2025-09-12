@@ -1,0 +1,92 @@
+```python
+import json
+from z3 import *
+
+def main():
+    solver = Solver()
+    
+    # House indices: 0, 1, 2 for houses 1, 2, 3
+    houses = [0, 1, 2]
+    
+    # Attributes with integer mappings
+    names = {'Peter': 0, 'Arnold': 1, 'Eric': 2}
+    occupations = {'doctor': 0, 'teacher': 1, 'engineer': 2}
+    hobbies = {'cooking': 0, 'photography': 1, 'gardening': 2}
+    
+    # Create variables for each house
+    name_vars = [Int(f'name_{i}') for i in houses]
+    occupation_vars = [Int(f'occupation_{i}') for i in houses]
+    hobby_vars = [Int(f'hobby_{i}') for i in houses]
+    
+    # Add constraints for valid values
+    for i in houses:
+        solver.add(name_vars[i] >= 0, name_vars[i] <= 2)
+        solver.add(occupation_vars[i] >= 0, occupation_vars[i] <= 2)
+        solver.add(hobby_vars[i] >= 0, hobby_vars[i] <= 2)
+    
+    # All attributes are distinct per category
+    solver.add(Distinct(name_vars))
+    solver.add(Distinct(occupation_vars))
+    solver.add(Distinct(hobby_vars))
+    
+    # Clue 1: Doctor and Eric are adjacent
+    doctor_index = Int('doctor_index')
+    eric_index = Int('eric_index')
+    solver.add(doctor_index >= 0, doctor_index <= 2)
+    solver.add(eric_index >= 0, eric_index <= 2)
+    for i in houses:
+        solver.add(If(occupation_vars[i] == occupations['doctor'], doctor_index == i, True))
+        solver.add(If(name_vars[i] == names['Eric'], eric_index == i, True))
+    solver.add(Or(doctor_index - eric_index == 1, eric_index - doctor_index == 1))
+    
+    # Clue 2: Cooking left of teacher
+    for i in [0, 1]:
+        solver.add(Implies(hobby_vars[i] == hobbies['cooking'], occupation_vars[i+1] == occupations['teacher']))
+    
+    # Clue 3: Doctor right of gardening
+    gardening_index = Int('gardening_index')
+    solver.add(gardening_index >= 0, gardening_index <= 2)
+    for i in houses:
+        solver.add(If(hobby_vars[i] == hobbies['gardening'], gardening_index == i, True))
+    solver.add(doctor_index > gardening_index)
+    
+    # Clue 4: Photography enthusiast is teacher
+    for i in houses:
+        solver.add((occupation_vars[i] == occupations['teacher']) == (hobby_vars[i] == hobbies['photography']))
+    
+    # Clue 5: Engineer is Peter
+    for i in houses:
+        solver.add((occupation_vars[i] == occupations['engineer']) == (name_vars[i] == names['Peter']))
+    
+    # Solve and output
+    if solver.check() == sat:
+        model = solver.model()
+        result = []
+        rev_names = {v: k for k, v in names.items()}
+        rev_occupations = {v: k for k, v in occupations.items()}
+        rev_hobbies = {v: k for k, v in hobbies.items()}
+        
+        for i in houses:
+            name_val = model.evaluate(name_vars[i]).as_long()
+            occupation_val = model.evaluate(occupation_vars[i]).as_long()
+            hobby_val = model.evaluate(hobby_vars[i]).as_long()
+            result.append([
+                str(i+1),
+                rev_names[name_val],
+                rev_occupations[occupation_val],
+                rev_hobbies[hobby_val]
+            ])
+        
+        json_output = {
+            "solution": {
+                "header": ["House", "Name", "Occupation", "Hobby"],
+                "rows": result
+            }
+        }
+        print(json.dumps(json_output, indent=2))
+    else:
+        print('{"solution": {}}')
+
+if __name__ == "__main__":
+    main()
+```

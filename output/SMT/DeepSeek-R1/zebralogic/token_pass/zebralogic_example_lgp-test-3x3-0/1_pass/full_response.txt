@@ -1,0 +1,96 @@
+```python
+import json
+from z3 import *
+
+def main():
+    # Define the attributes
+    names = ['Peter', 'Eric', 'Arnold']
+    educations = ['bachelor', 'associate', 'high school']
+    occupations = ['teacher', 'doctor', 'engineer']
+    
+    # Create Z3 sorts and constants
+    Name = Datatype('Name')
+    for n in names:
+        Name.declare(n)
+    Name = Name.create()
+    
+    Education = Datatype('Education')
+    for e in educations:
+        Education.declare(e)
+    Education = Education.create()
+    
+    Occupation = Datatype('Occupation')
+    for o in occupations:
+        Occupation.declare(o)
+    Occupation = Occupation.create()
+    
+    # Create variables for each house attribute
+    house_names = [Const(f'name_{i}', Name) for i in range(1,4)]
+    house_educations = [Const(f'edu_{i}', Education) for i in range(1,4)]
+    house_occupations = [Const(f'occ_{i}', Occupation) for i in range(1,4)]
+    
+    s = Solver()
+    
+    # All attributes are unique
+    s.add(Distinct(house_names))
+    s.add(Distinct(house_educations))
+    s.add(Distinct(house_occupations))
+    
+    # Clue 1: The teacher is directly left of the associate's degree
+    for i in range(2):
+        s.add(Implies(house_occupations[i] == Occupation.teacher, 
+                      house_educations[i+1] == Education.associate))
+    
+    # Clue 2: Associate's degree and Eric are adjacent
+    for i in range(3):
+        adjacent = []
+        if i > 0:
+            adjacent.append(house_names[i-1] == Name.Eric)
+        if i < 2:
+            adjacent.append(house_names[i+1] == Name.Eric)
+        s.add(Implies(house_educations[i] == Education.associate, Or(adjacent)))
+    
+    # Clue 3: Peter has high school diploma
+    for i in range(3):
+        s.add(Implies(house_names[i] == Name.Peter, 
+                      house_educations[i] == Education.high_school))
+    
+    # Clue 4: Doctor has bachelor's degree
+    for i in range(3):
+        s.add(Implies(house_occupations[i] == Occupation.doctor, 
+                      house_educations[i] == Education.bachelor))
+    
+    # Check and get solution
+    if s.check() == sat:
+        m = s.model()
+        solution = {
+            "solution": {
+                "header": ["House", "Name", "Education", "Occupation"],
+                "rows": []
+            }
+        }
+        
+        # Helper function to get string value from Z3 constant
+        def get_value(z3_const, datatype):
+            for i in range(datatype.num_constructors()):
+                if m[z3_const] == datatype.constructor(i)():
+                    return datatype.constructor(i).name()
+            return None
+        
+        # Build rows for each house
+        for i in range(3):
+            row = [
+                str(i+1),
+                get_value(house_names[i], Name),
+                get_value(house_educations[i], Education),
+                get_value(house_occupations[i], Occupation)
+            ]
+            solution["solution"]["rows"].append(row)
+        
+        print(json.dumps(solution, indent=2))
+    else:
+        print("No solution found")
+
+if __name__ == "__main__":
+    main()
+```

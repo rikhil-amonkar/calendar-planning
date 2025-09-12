@@ -1,0 +1,107 @@
+```python
+from z3 import *
+import json
+
+def main():
+    # Define travel times dictionary
+    travel_times = {
+        ("Presidio", "Golden Gate Park"): 12,
+        ("Presidio", "Bayview"): 31,
+        ("Presidio", "Chinatown"): 21,
+        ("Presidio", "North Beach"): 18,
+        ("Presidio", "Mission District"): 26,
+        ("Golden Gate Park", "Presidio"): 11,
+        ("Golden Gate Park", "Bayview"): 23,
+        ("Golden Gate Park", "Chinatown"): 23,
+        ("Golden Gate Park", "North Beach"): 24,
+        ("Golden Gate Park", "Mission District"): 17,
+        ("Bayview", "Presidio"): 31,
+        ("Bayview", "Golden Gate Park"): 22,
+        ("Bayview", "Chinatown"): 18,
+        ("Bayview", "North Beach"): 21,
+        ("Bayview", "Mission District"): 13,
+        ("Chinatown", "Presidio"): 19,
+        ("Chinatown", "Golden Gate Park"): 23,
+        ("Chinatown", "Bayview"): 22,
+        ("Chinatown", "North Beach"): 3,
+        ("Chinatown", "Mission District"): 18,
+        ("North Beach", "Presidio"): 17,
+        ("North Beach", "Golden Gate Park"): 22,
+        ("North Beach", "Bayview"): 22,
+        ("North Beach", "Chinatown"): 6,
+        ("North Beach", "Mission District"): 18,
+        ("Mission District", "Presidio"): 25,
+        ("Mission District", "Golden Gate Park"): 17,
+        ("Mission District", "Bayview"): 15,
+        ("Mission District", "Chinatown"): 16,
+        ("Mission District", "North Beach"): 17
+    }
+    
+    # Meeting information
+    meetings = [
+        {"name": "Jessica", "location": "Golden Gate Park", "start_avail": 825, "end_avail": 900, "min_duration": 30},
+        {"name": "Ashley", "location": "Bayview", "start_avail": 1035, "end_avail": 1200, "min_duration": 105},
+        {"name": "Ronald", "location": "Chinatown", "start_avail": 435, "end_avail": 885, "min_duration": 90},
+        {"name": "William", "location": "North Beach", "start_avail": 795, "end_avail": 1215, "min_duration": 15},
+        {"name": "Daniel", "location": "Mission District", "start_avail": 420, "end_avail": 675, "min_duration": 105}
+    ]
+    
+    # Initialize solver
+    opt = Optimize()
+    
+    # Create variables for each meeting
+    start_vars = [Real(f"start_{i}") for i in range(len(meetings))]
+    end_vars = [Real(f"end_{i}") for i in range(len(meetings))]
+    do_meet = [Bool(f"do_meet_{i}") for i in range(len(meetings))]
+    
+    # Base constraints for each meeting
+    for i, m in enumerate(meetings):
+        opt.add(Implies(do_meet[i], start_vars[i] >= m["start_avail"]))
+        opt.add(Implies(do_meet[i], end_vars[i] == start_vars[i] + m["min_duration"]))
+        opt.add(Implies(do_meet[i], end_vars[i] <= m["end_avail"]))
+    
+    # Travel constraints between meetings
+    for i in range(len(meetings)):
+        for j in range(len(meetings)):
+            if i != j:
+                travel = travel_times[(meetings[i]["location"], meetings[j]["location"])]
+                constraint = Implies(And(do_meet[i], do_meet[j]),
+                                    Or(end_vars[i] + travel <= start_vars[j], 
+                                       end_vars[j] + travel <= start_vars[i]))
+                opt.add(constraint)
+    
+    # Initial travel constraint from Presidio
+    for i in range(len(meetings)):
+        travel = travel_times[("Presidio", meetings[i]["location"])]
+        opt.add(Implies(do_meet[i], start_vars[i] >= 540 + travel))
+    
+    # Maximize number of meetings
+    opt.maximize(Sum([If(do_meet[i], 1, 0) for i in range(len(meetings))]))
+    
+    # Solve
+    if opt.check() == sat:
+        model = opt.model()
+        itinerary = []
+        for i, m in enumerate(meetings):
+            if is_true(model.evaluate(do_meet[i])):
+                start_val = model.evaluate(start_vars[i])
+                end_val = model.evaluate(end_vars[i])
+                start_min = round(float(start_val.as_fraction()))
+                end_min = round(float(end_val.as_fraction()))
+                start_str = f"{start_min//60}:{start_min%60:02d}"
+                end_str = f"{end_min//60}:{end_min%60:02d}"
+                itinerary.append({
+                    "action": "meet",
+                    "location": m["location"],
+                    "person": m["name"],
+                    "start_time": start_str,
+                    "end_time": end_str
+                })
+        itinerary.sort(key=lambda x: x["start_time"])
+        print(json.dumps({"itinerary": itinerary}, indent=2))
+    else:
+        print('{"itinerary": []}')
+
+if __name__ == "__main__":
+    main()
+```

@@ -1,0 +1,65 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"solution\": {\n    \"header\": [\n      \"House\",\n      \"Name\",\n      \"HairColor\"\n    ],\n    \"rows\": [\n      [\n        \"1\",\n        \"Alice\",\n        \"red\"\n      ],\n      [\n        \"2\",\n        \"Arnold\",\n        \"black\"\n      ],\n      [\n        \"3\",\n        \"Eric\",\n        \"brown\"\n      ],\n      [\n        \"4\",\n        \"Peter\",\n        \"blonde\"\n      ]\n    ]\n  }\n}",
+    "pred": [
+        {
+            "House": "1",
+            "Name": "Alice",
+            "HairColor": "red"
+        },
+        {
+            "House": "2",
+            "Name": "Arnold",
+            "HairColor": "black"
+        },
+        {
+            "House": "3",
+            "Name": "Eric",
+            "HairColor": "brown"
+        },
+        {
+            "House": "4",
+            "Name": "Peter",
+            "HairColor": "blonde"
+        }
+    ],
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Alice",
+            "HairColor": "red"
+        },
+        {
+            "House": "2",
+            "Name": "Arnold",
+            "HairColor": "black"
+        },
+        {
+            "House": "3",
+            "Name": "Eric",
+            "HairColor": "brown"
+        },
+        {
+            "House": "4",
+            "Name": "Peter",
+            "HairColor": "blonde"
+        }
+    ],
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 361.96256732940674,
+        "execution_time": 0.0777277946472168,
+        "constraint_eval_time": 5.841255187988281e-05,
+        "pred_extract_time": 1.6552352905273438,
+        "gold_extract_time": 2.3365020751953125e-05,
+        "total_tokens": 25105,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import z3\nimport json\n\n# Define the enum sorts for names and hair colors\nName, (Alice, Arnold, Peter, Eric) = z3.EnumSort('Name', ['Alice', 'Arnold', 'Peter', 'Eric'])\nHairColor, (black, blonde, brown, red) = z3.EnumSort('HairColor', ['black', 'blonde', 'brown', 'red'])\n\n# Create variables for each house's name and hair color (houses 1-4)\nnames_in_houses = [z3.Const(f'name_{i+1}', Name) for i in range(4)]\nhairs_in_houses = [z3.Const(f'hair_{i+1}', HairColor) for i in range(4)]\n\nsolver = z3.Solver()\n\n# All names are distinct\nsolver.add(z3.Distinct(names_in_houses))\n# All hair colors are distinct\nsolver.add(z3.Distinct(hairs_in_houses))\n\n# Clue 5: Alice is in the first house\nsolver.add(names_in_houses[0] == Alice)\n\n# Clue 2: Alice and Arnold are next to each other. Since Alice is in house 1, Arnold must be in house 2\nsolver.add(names_in_houses[1] == Arnold)\n\n# Clue 4: The person with black hair is not in the first house\nsolver.add(hairs_in_houses[0] != black)\n\n# Clue 3: Eric has brown hair\nfor i in range(4):\n    solver.add(z3.Implies(names_in_houses[i] == Eric, hairs_in_houses[i] == brown))\n\n# Clue 1: Eric is directly left of the person with blonde hair\nfor i in range(3):  # houses 1, 2, 3 (indices 0, 1, 2)\n    solver.add(z3.Implies(names_in_houses[i] == Eric, hairs_in_houses[i+1] == blonde))\n\nif solver.check() == z3.sat:\n    model = solver.model()\n    # Prepare the solution data\n    solution_data = {\n        \"solution\": {\n            \"header\": [\"House\", \"Name\", \"HairColor\"],\n            \"rows\": []\n        }\n    }\n    for i in range(4):\n        house_num = i + 1\n        name = str(model.eval(names_in_houses[i]))\n        hair_color = str(model.eval(hairs_in_houses[i]))\n        solution_data[\"solution\"][\"rows\"].append([str(house_num), name, hair_color])\n    # Output as JSON\n    print(json.dumps(solution_data, indent=2))\nelse:\n    print(\"No solution found.\")"
+}

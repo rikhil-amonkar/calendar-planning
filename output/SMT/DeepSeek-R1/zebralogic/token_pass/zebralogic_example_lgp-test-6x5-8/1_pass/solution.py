@@ -1,0 +1,173 @@
+import z3
+import json
+
+def main():
+    # Create the solver
+    solver = z3.Solver()
+
+    # Define the enums for each category
+    Name = z3.EnumSort('Name', ['Arnold', 'Peter', 'Bob', 'Eric', 'Carol', 'Alice'])
+    Animal = z3.EnumSort('Animal', ['horse', 'rabbit', 'fish', 'cat', 'bird', 'dog'])
+    Occupation = z3.EnumSort('Occupation', ['engineer', 'nurse', 'lawyer', 'teacher', 'artist', 'doctor'])
+    FavoriteSport = z3.EnumSort('FavoriteSport', ['basketball', 'volleyball', 'soccer', 'tennis', 'baseball', 'swimming'])
+    Height = z3.EnumSort('Height', ['average', 'tall', 'short', 'very short', 'very tall', 'super tall'])
+
+    # Create the constants for each value
+    names = [z3.Const(f"name_{i}", Name) for i in range(6)]
+    animals = [z3.Const(f"animal_{i}", Animal) for i in range(6)]
+    occupations = [z3.Const(f"occupation_{i}", Occupation) for i in range(6)]
+    sports = [z3.Const(f"sport_{i}", FavoriteSport) for i in range(6)]
+    heights = [z3.Const(f"height_{i}", Height) for i in range(6)]
+
+    # Each attribute must have distinct values
+    solver.add(z3.Distinct(names))
+    solver.add(z3.Distinct(animals))
+    solver.add(z3.Distinct(occupations))
+    solver.add(z3.Distinct(sports))
+    solver.add(z3.Distinct(heights))
+
+    # Helper functions for position constraints
+    def left_of(a, b):
+        return z3.Exists([i, j], z3.And(i < j, a == i, b == j))
+
+    def directly_left(a, b):
+        return z3.Exists([i], z3.And(a == i, b == i+1))
+
+    # Convert clues to constraints
+    # Clue 1: The person who is an engineer is the dog owner.
+    engineer = z3.Const('engineer', Occupation)
+    dog = z3.Const('dog', Animal)
+    solver.add(engineer == z3.Const('engineer', Occupation))
+    solver.add(dog == z3.Const('dog', Animal))
+    solver.add(z3.ForAll([i], z3.Implies(occupations[i] == engineer, animals[i] == dog)))
+
+    # Clue 2: The person who has an average height is somewhere to the left of the person who is short.
+    average = z3.Const('average', Height)
+    short = z3.Const('short', Height)
+    solver.add(average == z3.Const('average', Height))
+    solver.add(short == z3.Const('short', Height))
+    solver.add(z3.Exists([i, j], z3.And(i < j, heights[i] == average, heights[j] == short)))
+
+    # Clue 3: The person who has an average height is directly left of the rabbit owner.
+    rabbit = z3.Const('rabbit', Animal)
+    solver.add(rabbit == z3.Const('rabbit', Animal))
+    solver.add(z3.Exists([i], z3.And(heights[i] == average, animals[i+1] == rabbit)))
+
+    # Clue 4: The person who is tall is somewhere to the left of the person who is very short.
+    tall = z3.Const('tall', Height)
+    very_short = z3.Const('very short', Height)
+    solver.add(tall == z3.Const('tall', Height))
+    solver.add(very_short == z3.Const('very short', Height))
+    solver.add(z3.Exists([i, j], z3.And(i < j, heights[i] == tall, heights[j] == very_short)))
+
+    # Clue 5: Arnold is the cat lover.
+    arnold = z3.Const('Arnold', Name)
+    cat = z3.Const('cat', Animal)
+    solver.add(arnold == z3.Const('Arnold', Name))
+    solver.add(cat == z3.Const('cat', Animal))
+    solver.add(z3.ForAll([i], z3.Implies(names[i] == arnold, animals[i] == cat)))
+
+    # Clue 6: The person who keeps horses is the person who is a teacher.
+    horse = z3.Const('horse', Animal)
+    teacher = z3.Const('teacher', Occupation)
+    solver.add(horse == z3.Const('horse', Animal))
+    solver.add(teacher == z3.Const('teacher', Occupation))
+    solver.add(z3.ForAll([i], z3.Implies(animals[i] == horse, occupations[i] == teacher)))
+
+    # Clue 7: Carol is the person who loves soccer.
+    carol = z3.Const('Carol', Name)
+    soccer = z3.Const('soccer', FavoriteSport)
+    solver.add(carol == z3.Const('Carol', Name))
+    solver.add(soccer == z3.Const('soccer', FavoriteSport))
+    solver.add(z3.ForAll([i], z3.Implies(names[i] == carol, sports[i] == soccer)))
+
+    # Clue 8: The person who is tall is the person who loves volleyball.
+    volleyball = z3.Const('volleyball', FavoriteSport)
+    solver.add(volleyball == z3.Const('volleyball', FavoriteSport))
+    solver.add(z3.ForAll([i], z3.Implies(heights[i] == tall, sports[i] == volleyball)))
+
+    # Clue 9: The person who is a lawyer is in the fifth house.
+    lawyer = z3.Const('lawyer', Occupation)
+    solver.add(lawyer == z3.Const('lawyer', Occupation))
+    solver.add(occupations[4] == lawyer)
+
+    # Clue 10: The person who loves tennis is the person who is a teacher.
+    tennis = z3.Const('tennis', FavoriteSport)
+    solver.add(tennis == z3.Const('tennis', FavoriteSport))
+    solver.add(z3.ForAll([i], z3.Implies(sports[i] == tennis, occupations[i] == teacher)))
+
+    # Clue 11: The person who has an average height is the person who loves swimming.
+    swimming = z3.Const('swimming', FavoriteSport)
+    solver.add(swimming == z3.Const('swimming', FavoriteSport))
+    solver.add(z3.ForAll([i], z3.Implies(heights[i] == average, sports[i] == swimming)))
+
+    # Clue 12: The person who loves baseball is directly left of the person who is an engineer.
+    baseball = z3.Const('baseball', FavoriteSport)
+    solver.add(baseball == z3.Const('baseball', FavoriteSport))
+    solver.add(z3.Exists([i], z3.And(sports[i] == baseball, occupations[i+1] == engineer)))
+
+    # Clue 13: Peter is the person who is a nurse.
+    peter = z3.Const('Peter', Name)
+    nurse = z3.Const('nurse', Occupation)
+    solver.add(peter == z3.Const('Peter', Name))
+    solver.add(nurse == z3.Const('nurse', Occupation))
+    solver.add(z3.ForAll([i], z3.Implies(names[i] == peter, occupations[i] == nurse)))
+
+    # Clue 14: Bob is somewhere to the right of the person who is an artist.
+    bob = z3.Const('Bob', Name)
+    artist = z3.Const('artist', Occupation)
+    solver.add(bob == z3.Const('Bob', Name))
+    solver.add(artist == z3.Const('artist', Occupation))
+    solver.add(z3.Exists([i, j], z3.And(i < j, occupations[i] == artist, names[j] == bob)))
+
+    # Clue 15: The person who is a teacher is directly left of the person who loves soccer.
+    solver.add(z3.Exists([i], z3.And(occupations[i] == teacher, sports[i+1] == soccer)))
+
+    # Clue 16: The rabbit owner is Alice.
+    alice = z3.Const('Alice', Name)
+    solver.add(alice == z3.Const('Alice', Name))
+    solver.add(z3.ForAll([i], z3.Implies(animals[i] == rabbit, names[i] == alice)))
+
+    # Clue 17: The fish enthusiast is Carol.
+    fish = z3.Const('fish', Animal)
+    solver.add(fish == z3.Const('fish', Animal))
+    solver.add(z3.ForAll([i], z3.Implies(animals[i] == fish, names[i] == carol)))
+
+    # Clue 18: The person who loves baseball is in the first house.
+    solver.add(sports[0] == baseball)
+
+    # Clue 19: The cat lover is somewhere to the right of the person who is very short.
+    solver.add(z3.Exists([i, j], z3.And(i < j, heights[i] == very_short, animals[j] == cat)))
+
+    # Clue 20: The person who is super tall is in the fifth house.
+    super_tall = z3.Const('super tall', Height)
+    solver.add(super_tall == z3.Const('super tall', Height))
+    solver.add(heights[4] == super_tall)
+
+    # Check for solution
+    if solver.check() == z3.sat:
+        model = solver.model()
+        
+        # Extract the values for each house
+        result = []
+        for i in range(6):
+            name_val = str(model.eval(names[i]))
+            animal_val = str(model.eval(animals[i]))
+            occupation_val = str(model.eval(occupations[i]))
+            sport_val = str(model.eval(sports[i]))
+            height_val = str(model.eval(heights[i]))
+            result.append([str(i+1), name_val, animal_val, occupation_val, sport_val, height_val])
+        
+        # Format the output as JSON
+        output = {
+            "solution": {
+                "header": ["House", "Name", "Animal", "Occupation", "FavoriteSport", "Height"],
+                "rows": result
+            }
+        }
+        print(json.dumps(output, indent=2))
+    else:
+        print("No solution found")
+
+if __name__ == "__main__":
+    main()

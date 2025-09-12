@@ -1,0 +1,62 @@
+We are going to use the Z3 SMT solver to solve this puzzle.
+ Since there are 2 houses, we will create 2 sets of variables for each attribute.
+ We have four attributes: Name, HouseStyle, Height, Education.
+
+ Steps:
+ 1. Define the attributes and their possible values.
+ 2. Create Z3 variables for each attribute for each house.
+ 3. Assert that each attribute has a unique value per house (i.e., for each attribute, the values for the two houses are distinct).
+ 4. Add the constraints from the clues.
+
+ Clues:
+ 1. The person who is short is directly left of Eric.
+    This means: the short person is in house 1 and Eric is in house 2.
+ 2. The person residing in a Victorian house is in the first house.
+    So, house 1 is victorian, and therefore house 2 must be colonial.
+ 3. The person who is short is the person with an associate's degree.
+    So, the short person has the associate's degree, and the other person (very short) has the high school education.
+
+ However, note that the heights are: very short and short.
+
+ Let's break down:
+
+ From clue 1: The short person is directly left of Eric -> so short is in house 1, Eric in house 2.
+ From clue 2: Victorian is in house 1 -> so house 1 is victorian, house 2 is colonial.
+ From clue 3: The short person has associate's degree -> so house 1 has associate's degree, and therefore house 2 has high school.
+
+ Now, the names: Eric is in house 2, so Arnold must be in house 1.
+
+ Heights: We have two heights: very short and short. Since house 1 is short, then house 2 must be very short.
+
+ But let's double-check with the constraints.
+
+ We'll create variables for each house:
+
+ For house i (i=1,2):
+   name_i: Eric or Arnold
+   style_i: victorian or colonial
+   height_i: very short or short
+   education_i: associate or high school
+
+ Constraints:
+   All variables for the same attribute must be distinct.
+
+   Clue 1: The person who is short is directly left of Eric.
+      This implies: 
+          height_1 == "short"
+          name_2 == "Eric"
+
+   Clue 2: The person residing in a Victorian house is in the first house.
+          style_1 == "victorian"
+
+   Clue 3: The person who is short is the person with an associate's degree.
+          We know from clue 1 that the short person is in house 1, so:
+          education_1 == "associate"
+
+ Now, we can deduce the rest.
+
+ But we are going to code it with Z3.
+
+ We'll use EnumSort for each attribute to make it easier.
+
+ Let's code accordingly.

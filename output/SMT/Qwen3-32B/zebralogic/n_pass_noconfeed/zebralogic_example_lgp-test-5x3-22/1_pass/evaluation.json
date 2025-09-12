@@ -1,0 +1,85 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"solution\": {\n    \"header\": [\n      \"House\",\n      \"Name\",\n      \"Smoothie\",\n      \"Nationality\"\n    ],\n    \"rows\": [\n      [\n        \"1\",\n        \"Arnold\",\n        \"lime\",\n        \"swede\"\n      ],\n      [\n        \"2\",\n        \"Peter\",\n        \"dragonfruit\",\n        \"german\"\n      ],\n      [\n        \"3\",\n        \"Alice\",\n        \"watermelon\",\n        \"norwegian\"\n      ],\n      [\n        \"4\",\n        \"Bob\",\n        \"desert\",\n        \"dane\"\n      ],\n      [\n        \"5\",\n        \"Eric\",\n        \"cherry\",\n        \"brit\"\n      ]\n    ]\n  }\n}",
+    "pred": [
+        {
+            "House": "1",
+            "Name": "Arnold",
+            "Smoothie": "lime",
+            "Nationality": "swede"
+        },
+        {
+            "House": "2",
+            "Name": "Peter",
+            "Smoothie": "dragonfruit",
+            "Nationality": "german"
+        },
+        {
+            "House": "3",
+            "Name": "Alice",
+            "Smoothie": "watermelon",
+            "Nationality": "norwegian"
+        },
+        {
+            "House": "4",
+            "Name": "Bob",
+            "Smoothie": "desert",
+            "Nationality": "dane"
+        },
+        {
+            "House": "5",
+            "Name": "Eric",
+            "Smoothie": "cherry",
+            "Nationality": "brit"
+        }
+    ],
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Arnold",
+            "Smoothie": "lime",
+            "Nationality": "swede"
+        },
+        {
+            "House": "2",
+            "Name": "Peter",
+            "Smoothie": "dragonfruit",
+            "Nationality": "german"
+        },
+        {
+            "House": "3",
+            "Name": "Alice",
+            "Smoothie": "watermelon",
+            "Nationality": "norwegian"
+        },
+        {
+            "House": "4",
+            "Name": "Bob",
+            "Smoothie": "desert",
+            "Nationality": "dane"
+        },
+        {
+            "House": "5",
+            "Name": "Eric",
+            "Smoothie": "cherry",
+            "Nationality": "brit"
+        }
+    ],
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 589.2413396835327,
+        "execution_time": 0.08188366889953613,
+        "constraint_eval_time": 7.033348083496094e-05,
+        "pred_extract_time": 3.4055004119873047,
+        "gold_extract_time": 2.1219253540039062e-05,
+        "total_tokens": 38805,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import json\nfrom z3 import *\n\n# Define EnumSorts for the attributes\nName, (Arnold, Eric, Bob, Peter, Alice) = EnumSort('Name', ['Arnold', 'Eric', 'Bob', 'Peter', 'Alice'])\nSmoothie, (Desert, Watermelon, Lime, Cherry, Dragonfruit) = EnumSort('Smoothie', ['desert', 'watermelon', 'lime', 'cherry', 'dragonfruit'])\nNationality, (German, Swede, Norwegian, Dane, Brit) = EnumSort('Nationality', ['german', 'swede', 'norwegian', 'dane', 'brit'])\n\n# Create variables for each house (1-5)\nnames = [Const(f'name_{i+1}', Name) for i in range(5)]\nsmoothies = [Const(f'smoothie_{i+1}', Smoothie) for i in range(5)]\nnationalities = [Const(f'nationality_{i+1}', Nationality) for i in range(5)]\n\ns = Solver()\n\n# Add uniqueness constraints\ns.add(Distinct(names))\ns.add(Distinct(smoothies))\ns.add(Distinct(nationalities))\n\n# Add specific constraints from the puzzle\n# Clue 2: Dragonfruit in house 2 (index 1)\ns.add(smoothies[1] == Dragonfruit)\n\n# Clue 10: Alice in house 3 (index 2)\ns.add(names[2] == Alice)\n\n# Clue 11: Watermelon in house 3 (index 2)\ns.add(smoothies[2] == Watermelon)\n\n# Clue 9: Alice is Norwegian (house 3, index 2)\ns.add(nationalities[2] == Norwegian)\n\n# Clue 3: Peter not in first house (index 0)\ns.add(names[0] != Peter)\n\n# Clue 8: Bob is Dane\nfor i in range(5):\n    s.add(Implies(names[i] == Bob, nationalities[i] == Dane))\n\n# Clue 6: Swede in house 1 (index 0)\ns.add(nationalities[0] == Swede)\n\n# Clue 4: Dane and Brit adjacent\nfor i in range(5):\n    adjacent_brit = []\n    if i > 0:\n        adjacent_brit.append(nationalities[i-1] == Brit)\n    if i < 4:\n        adjacent_brit.append(nationalities[i+1] == Brit)\n    cond = Or(adjacent_brit)\n    s.add(Implies(names[i] == Bob, cond))\n\n# Clue 7: Two houses between Lime and Dane (Bob's house)\nfor i in range(5):\n    lime_pos = []\n    if i - 3 >= 0:\n        lime_pos.append(smoothies[i - 3] == Lime)\n    if i + 3 < 5:\n        lime_pos.append(smoothies[i + 3] == Lime)\n    cond = Or(lime_pos)\n    s.add(Implies(names[i] == Bob, cond))\n\n# Clue 1: Eric is to the right of Dragonfruit (house 2)\nfor i in range(5):\n    s.add(Implies(names[i] == Eric, i >= 2))\n\n# Clue 5: Desert not in fifth house (index 4)\ns.add(smoothies[4] != Desert)\n\nif s.check() == sat:\n    model = s.model()\n    rows = []\n    for i in range(5):\n        house_num = str(i + 1)\n        name = str(model.eval(names[i]))\n        smoothie = str(model.eval(smoothies[i]))\n        nat = str(model.eval(nationalities[i]))\n        rows.append([house_num, name, smoothie, nat])\n    solution = {\n        \"solution\": {\n            \"header\": [\"House\", \"Name\", \"Smoothie\", \"Nationality\"],\n            \"rows\": rows\n        }\n    }\n    print(json.dumps(solution, indent=2))\nelse:\n    print(\"No solution found.\")"
+}

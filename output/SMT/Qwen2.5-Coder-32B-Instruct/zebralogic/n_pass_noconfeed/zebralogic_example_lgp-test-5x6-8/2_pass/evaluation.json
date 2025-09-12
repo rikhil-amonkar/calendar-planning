@@ -1,0 +1,71 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": true,
+    "execution_output": "No solution found",
+    "pred": null,
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Peter",
+            "HouseStyle": "victorian",
+            "Mother": "Aniya",
+            "PhoneModel": "huawei p50",
+            "Drink": "root beer",
+            "Animal": "cat"
+        },
+        {
+            "House": "2",
+            "Name": "Arnold",
+            "HouseStyle": "ranch",
+            "Mother": "Kailyn",
+            "PhoneModel": "iphone 13",
+            "Drink": "milk",
+            "Animal": "dog"
+        },
+        {
+            "House": "3",
+            "Name": "Eric",
+            "HouseStyle": "modern",
+            "Mother": "Penny",
+            "PhoneModel": "oneplus 9",
+            "Drink": "coffee",
+            "Animal": "horse"
+        },
+        {
+            "House": "4",
+            "Name": "Bob",
+            "HouseStyle": "craftsman",
+            "Mother": "Holly",
+            "PhoneModel": "google pixel 6",
+            "Drink": "tea",
+            "Animal": "bird"
+        },
+        {
+            "House": "5",
+            "Name": "Alice",
+            "HouseStyle": "colonial",
+            "Mother": "Janelle",
+            "PhoneModel": "samsung galaxy s21",
+            "Drink": "water",
+            "Animal": "fish"
+        }
+    ],
+    "status": "No plan generated",
+    "violated_constraint": {
+        "invalid_output": "No valid output structure found"
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 2,
+    "timing": {
+        "api_call_time": 56.74992656707764,
+        "execution_time": 0.08095026016235352,
+        "constraint_eval_time": 6.9141387939453125e-06,
+        "pred_extract_time": 3.001406669616699,
+        "gold_extract_time": 3.0517578125e-05,
+        "total_tokens": 5400,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\n\n# Define the domains\nnames = [\"Eric\", \"Peter\", \"Arnold\", \"Bob\", \"Alice\"]\nhouse_styles = [\"modern\", \"craftsman\", \"ranch\", \"victorian\", \"colonial\"]\nmothers = [\"Penny\", \"Kailyn\", \"Holly\", \"Janelle\", \"Aniya\"]\nphone_models = [\"oneplus 9\", \"google pixel 6\", \"huawei p50\", \"iphone 13\", \"samsung galaxy s21\"]\ndrinks = [\"coffee\", \"water\", \"root beer\", \"tea\", \"milk\"]\nanimals = [\"fish\", \"dog\", \"horse\", \"bird\", \"cat\"]\n\n# Create a solver instance\nsolver = Solver()\n\n# Define variables\nhouses = [Int(f\"house_{i}\") for i in range(1, 6)]\nname_vars = {name: Int(f\"name_{name}\") for name in names}\nhouse_style_vars = {style: Int(f\"house_style_{style}\") for style in house_styles}\nmother_vars = {mother: Int(f\"mother_{mother}\") for mother in mothers}\nphone_model_vars = {model: Int(f\"phone_model_{model}\") for model in phone_models}\ndrink_vars = {drink: Int(f\"drink_{drink}\") for drink in drinks}\nanimal_vars = {animal: Int(f\"animal_{animal}\") for animal in animals}\n\n# Add domain constraints\nfor var in houses + list(name_vars.values()) + list(house_style_vars.values()) + \\\n           list(mother_vars.values()) + list(phone_model_vars.values()) + \\\n           list(drink_vars.values()) + list(animal_vars.values()):\n    solver.add(var >= 1)\n    solver.add(var <= 5)\n\n# All variables are distinct\nsolver.add(Distinct(houses))\nsolver.add(Distinct(list(name_vars.values())))\nsolver.add(Distinct(list(house_style_vars.values())))\nsolver.add(Distinct(list(mother_vars.values())))\nsolver.add(Distinct(list(phone_model_vars.values())))\nsolver.add(Distinct(list(drink_vars.values())))\nsolver.add(Distinct(list(animal_vars.values())))\n\n# Map names to houses\nfor name, var in name_vars.items():\n    solver.add(var == houses[names.index(name)])\n\n# Map house styles to houses\nfor style, var in house_style_vars.items():\n    solver.add(var == houses[house_styles.index(style)])\n\n# Map mothers to houses\nfor mother, var in mother_vars.items():\n    solver.add(var == houses[mothers.index(mother)])\n\n# Map phone models to houses\nfor model, var in phone_model_vars.items():\n    solver.add(var == houses[phone_models.index(model)])\n\n# Map drinks to houses\nfor drink, var in drink_vars.items():\n    solver.add(var == houses[drinks.index(drink)])\n\n# Map animals to houses\nfor animal, var in animal_vars.items():\n    solver.add(var == houses[animals.index(animal)])\n\n# Add clues as constraints\nsolver.add(phone_model_vars[\"google pixel 6\"] != 1)\nsolver.add(drink_vars[\"water\"] == name_vars[\"Alice\"])\nsolver.add(house_style_vars[\"colonial\"] > phone_model_vars[\"huawei p50\"])\nsolver.add(animal_vars[\"horse\"] == phone_model_vars[\"oneplus 9\"])\nsolver.add(house_style_vars[\"ranch\"] == mother_vars[\"Kailyn\"])\nsolver.add(drink_vars[\"root beer\"] == animal_vars[\"cat\"])\nsolver.add(house_style_vars[\"colonial\"] != 4)\nsolver.add(animal_vars[\"bird\"] == 4)\nsolver.add(drink_vars[\"tea\"] == name_vars[\"Bob\"])\nsolver.add(drink_vars[\"tea\"] > mother_vars[\"Kailyn\"])\nsolver.add(drink_vars[\"root beer\"] < mother_vars[\"Kailyn\"])\nsolver.add(animal_vars[\"horse\"] == house_style_vars[\"modern\"])\nsolver.add(phone_model_vars[\"iphone 13\"] == drink_vars[\"milk\"])\nsolver.add(animal_vars[\"dog\"] == drink_vars[\"milk\"])\nsolver.add(phone_model_vars[\"google pixel 6\"] == house_style_vars[\"craftsman\"])\nsolver.add(name_vars[\"Eric\"] != 2)\nsolver.add(drink_vars[\"tea\"] == 4)\nsolver.add(animal_vars[\"horse\"] == 3)\nsolver.add(house_style_vars[\"modern\"] == mother_vars[\"Penny\"])\nsolver.add(drink_vars[\"root beer\"] == name_vars[\"Peter\"])\nsolver.add(mother_vars[\"Aniya\"] != 4)\nsolver.add(mother_vars[\"Janelle\"] == drink_vars[\"water\"])\n\n# Check if the problem is solvable\nif solver.check() == sat:\n    m = solver.model()\n    result = {\n        \"solution\": {\n            \"header\": [\"House\", \"Name\", \"HouseStyle\", \"Mother\", \"PhoneModel\", \"Drink\", \"Animal\"],\n            \"rows\": []\n        }\n    }\n    for i in range(1, 6):\n        house_info = [str(i)]\n        for d, vars_dict in zip([names, house_styles, mothers, phone_models, drinks, animals],\n                               [name_vars, house_style_vars, mother_vars, phone_model_vars, drink_vars, animal_vars]):\n            for key, var in vars_dict.items():\n                if m.evaluate(var) == i:\n                    house_info.append(key)\n        result[\"solution\"][\"rows\"].append(house_info)\n    import json\n    print(json.dumps(result))\nelse:\n    print(\"No solution found\")"
+}

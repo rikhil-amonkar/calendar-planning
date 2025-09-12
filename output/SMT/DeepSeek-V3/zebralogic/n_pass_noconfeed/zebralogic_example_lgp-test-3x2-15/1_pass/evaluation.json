@@ -1,0 +1,60 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"solution\": {\n    \"header\": [\n      \"House\",\n      \"Name\",\n      \"Height\"\n    ],\n    \"rows\": [\n      [\n        \"1\",\n        \"Peter\",\n        \"short\"\n      ],\n      [\n        \"2\",\n        \"Arnold\",\n        \"average\"\n      ],\n      [\n        \"3\",\n        \"Eric\",\n        \"very short\"\n      ]\n    ]\n  }\n}",
+    "pred": [
+        {
+            "House": "1",
+            "Name": "Peter",
+            "Height": "short"
+        },
+        {
+            "House": "2",
+            "Name": "Arnold",
+            "Height": "average"
+        },
+        {
+            "House": "3",
+            "Name": "Eric",
+            "Height": "very short"
+        }
+    ],
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Eric",
+            "Height": "short"
+        },
+        {
+            "House": "2",
+            "Name": "Arnold",
+            "Height": "average"
+        },
+        {
+            "House": "3",
+            "Name": "Peter",
+            "Height": "very short"
+        }
+    ],
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "violations": [
+            "House 1 wrong Name: expected 'Eric', got 'Peter'",
+            "House 3 wrong Name: expected 'Peter', got 'Eric'"
+        ]
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 48.62507653236389,
+        "execution_time": 0.08009028434753418,
+        "constraint_eval_time": 3.2901763916015625e-05,
+        "pred_extract_time": 1.0769946575164795,
+        "gold_extract_time": 3.814697265625e-06,
+        "total_tokens": 886,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import json\nfrom z3 import *\n\ndef main():\n    # Create solver\n    solver = Solver()\n    \n    # Define houses\n    houses = [1, 2, 3]\n    \n    # Define attributes\n    names = ['Arnold', 'Peter', 'Eric']\n    heights = ['short', 'average', 'very short']\n    \n    # Create variables for each attribute per house\n    name_vars = [Int(f'name_{i}') for i in houses]\n    height_vars = [Int(f'height_{i}') for i in houses]\n    \n    # Constraint: All names are unique and assigned to exactly one house\n    solver.add(Distinct(name_vars))\n    for i in range(len(houses)):\n        solver.add(name_vars[i] >= 0, name_vars[i] < len(names))\n    \n    # Constraint: All heights are unique and assigned to exactly one house\n    solver.add(Distinct(height_vars))\n    for i in range(len(houses)):\n        solver.add(height_vars[i] >= 0, height_vars[i] < len(heights))\n    \n    # Clue 1: Peter is somewhere to the right of Eric\n    peter_idx = names.index('Peter')\n    eric_idx = names.index('Eric')\n    for i in houses:\n        for j in houses:\n            if j <= i:\n                solver.add(Not(And(name_vars[i-1] == peter_idx, name_vars[j-1] == eric_idx)))\n    \n    # Clue 2: The person who is short is in the first house\n    short_idx = heights.index('short')\n    solver.add(height_vars[0] == short_idx)\n    \n    # Clue 3: There is one house between the person who is short and the person who is very short\n    very_short_idx = heights.index('very short')\n    solver.add(Or(\n        And(height_vars[0] == short_idx, height_vars[2] == very_short_idx),\n        And(height_vars[2] == short_idx, height_vars[0] == very_short_idx)\n    ))\n    \n    # Clue 4: Arnold and the person who is very short are next to each other\n    arnold_idx = names.index('Arnold')\n    for i in houses:\n        if i == 1:  # First house, only check right neighbor\n            solver.add(Implies(name_vars[0] == arnold_idx, height_vars[1] == very_short_idx))\n            solver.add(Implies(height_vars[0] == very_short_idx, name_vars[1] == arnold_idx))\n        elif i == 3:  # Last house, only check left neighbor\n            solver.add(Implies(name_vars[2] == arnold_idx, height_vars[1] == very_short_idx))\n            solver.add(Implies(height_vars[2] == very_short_idx, name_vars[1] == arnold_idx))\n        else:  # Middle house, check both neighbors\n            solver.add(Implies(name_vars[1] == arnold_idx, \n                              Or(height_vars[0] == very_short_idx, height_vars[2] == very_short_idx)))\n            solver.add(Implies(height_vars[1] == very_short_idx, \n                              Or(name_vars[0] == arnold_idx, name_vars[2] == arnold_idx)))\n    \n    # Check if solution exists\n    if solver.check() == sat:\n        model = solver.model()\n        \n        # Extract solution\n        solution = []\n        for i in houses:\n            house_num = str(i)\n            name_idx = model.evaluate(name_vars[i-1]).as_long()\n            height_idx = model.evaluate(height_vars[i-1]).as_long()\n            \n            name_val = names[name_idx]\n            height_val = heights[height_idx]\n            \n            solution.append([house_num, name_val, height_val])\n        \n        # Format output as JSON\n        output = {\n            \"solution\": {\n                \"header\": [\"House\", \"Name\", \"Height\"],\n                \"rows\": solution\n            }\n        }\n        \n        print(json.dumps(output, indent=2))\n    else:\n        print('{\"error\": \"No solution found\"}')\n\nif __name__ == \"__main__\":\n    main()"
+}

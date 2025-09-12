@@ -1,0 +1,97 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"solution\": {\n    \"header\": [\n      \"House\",\n      \"Name\",\n      \"Hobby\",\n      \"Animal\",\n      \"BookGenre\",\n      \"Birthday\",\n      \"MusicGenre\"\n    ],\n    \"rows\": [\n      [\n        \"1\",\n        \"Peter\",\n        \"painting\",\n        \"fish\",\n        \"fantasy\",\n        \"feb\",\n        \"pop\"\n      ],\n      [\n        \"2\",\n        \"Alice\",\n        \"cooking\",\n        \"bird\",\n        \"romance\",\n        \"sept\",\n        \"jazz\"\n      ],\n      [\n        \"3\",\n        \"Arnold\",\n        \"gardening\",\n        \"horse\",\n        \"mystery\",\n        \"april\",\n        \"rock\"\n      ],\n      [\n        \"4\",\n        \"Eric\",\n        \"photography\",\n        \"cat\",\n        \"science fiction\",\n        \"jan\",\n        \"classical\"\n      ]\n    ]\n  }\n}",
+    "pred": [
+        {
+            "House": "1",
+            "Name": "Peter",
+            "Hobby": "painting",
+            "Animal": "fish",
+            "BookGenre": "fantasy",
+            "Birthday": "feb",
+            "MusicGenre": "pop"
+        },
+        {
+            "House": "2",
+            "Name": "Alice",
+            "Hobby": "cooking",
+            "Animal": "bird",
+            "BookGenre": "romance",
+            "Birthday": "sept",
+            "MusicGenre": "jazz"
+        },
+        {
+            "House": "3",
+            "Name": "Arnold",
+            "Hobby": "gardening",
+            "Animal": "horse",
+            "BookGenre": "mystery",
+            "Birthday": "april",
+            "MusicGenre": "rock"
+        },
+        {
+            "House": "4",
+            "Name": "Eric",
+            "Hobby": "photography",
+            "Animal": "cat",
+            "BookGenre": "science fiction",
+            "Birthday": "jan",
+            "MusicGenre": "classical"
+        }
+    ],
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Peter",
+            "Hobby": "painting",
+            "Animal": "fish",
+            "BookGenre": "fantasy",
+            "Birthday": "feb",
+            "MusicGenre": "pop"
+        },
+        {
+            "House": "2",
+            "Name": "Alice",
+            "Hobby": "cooking",
+            "Animal": "bird",
+            "BookGenre": "romance",
+            "Birthday": "sept",
+            "MusicGenre": "jazz"
+        },
+        {
+            "House": "3",
+            "Name": "Arnold",
+            "Hobby": "gardening",
+            "Animal": "horse",
+            "BookGenre": "mystery",
+            "Birthday": "april",
+            "MusicGenre": "rock"
+        },
+        {
+            "House": "4",
+            "Name": "Eric",
+            "Hobby": "photography",
+            "Animal": "cat",
+            "BookGenre": "science fiction",
+            "Birthday": "jan",
+            "MusicGenre": "classical"
+        }
+    ],
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 700.3630890846252,
+        "execution_time": 0.08488583564758301,
+        "constraint_eval_time": 8.916854858398438e-05,
+        "pred_extract_time": 4.931104898452759,
+        "gold_extract_time": 1.5020370483398438e-05,
+        "total_tokens": 44851,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\nimport json\n\n# Define EnumSorts for each attribute\nNames, (Peter, Alice, Eric, Arnold) = EnumSort('Names', ['Peter', 'Alice', 'Eric', 'Arnold'])\nHobbies, (Cooking, Painting, Gardening, Photography) = EnumSort('Hobbies', ['cooking', 'painting', 'gardening', 'photography'])\nAnimals, (Horse, Fish, Cat, Bird) = EnumSort('Animals', ['horse', 'fish', 'cat', 'bird'])\nBookGenres, (Fantasy, Mystery, Romance, ScienceFiction) = EnumSort('BookGenres', ['fantasy', 'mystery', 'romance', 'science_fiction'])\nBirthdays, (April, Jan, Sept, Feb) = EnumSort('Birthdays', ['april', 'jan', 'sept', 'feb'])\nMusicGenres, (Pop, Rock, Classical, Jazz) = EnumSort('MusicGenres', ['pop', 'rock', 'classical', 'jazz'])\n\n# Create variables for each house (1-4)\nn1, n2, n3, n4 = Consts('n1 n2 n3 n4', Names)\nh1, h2, h3, h4 = Consts('h1 h2 h3 h4', Hobbies)\na1, a2, a3, a4 = Consts('a1 a2 a3 a4', Animals)\nbg1, bg2, bg3, bg4 = Consts('bg1 bg2 bg3 bg4', BookGenres)\nd1, d2, d3, d4 = Consts('d1 d2 d3 d4', Birthdays)\nm1, m2, m3, m4 = Consts('m1 m2 m3 m4', MusicGenres)\n\ns = Solver()\n\n# Add distinct constraints for each attribute\ns.add(Distinct(n1, n2, n3, n4))\ns.add(Distinct(h1, h2, h3, h4))\ns.add(Distinct(a1, a2, a3, a4))\ns.add(Distinct(bg1, bg2, bg3, bg4))\ns.add(Distinct(d1, d2, d3, d4))\ns.add(Distinct(m1, m2, m3, m4))\n\n# Add constraints based on clues\n# Clue 1: Cooking and Romance\ns.add((h1 == Cooking) == (bg1 == Romance))\ns.add((h2 == Cooking) == (bg2 == Romance))\ns.add((h3 == Cooking) == (bg3 == Romance))\ns.add((h4 == Cooking) == (bg4 == Romance))\n\n# Clue 2: Feb and Pop\ns.add((d1 == Feb) == (m1 == Pop))\ns.add((d2 == Feb) == (m2 == Pop))\ns.add((d3 == Feb) == (m3 == Pop))\ns.add((d4 == Feb) == (m4 == Pop))\n\n# Clue 3: Eric not in second house\ns.add(n2 != Eric)\n\n# Clue 4: Romance not in fourth house\ns.add(bg4 != Romance)\n\n# Clue 5: Feb and Fish\ns.add((d1 == Feb) == (a1 == Fish))\ns.add((d2 == Feb) == (a2 == Fish))\ns.add((d3 == Feb) == (a3 == Fish))\ns.add((d4 == Feb) == (a4 == Fish))\n\n# Clue 6: Alice to the right of fantasy\npos_fantasy = If(bg1 == Fantasy, 1, If(bg2 == Fantasy, 2, If(bg3 == Fantasy, 3, 4)))\npos_alice = If(n1 == Alice, 1, If(n2 == Alice, 2, If(n3 == Alice, 3, 4)))\ns.add(pos_alice > pos_fantasy)\n\n# Clue 7: Horse and Rock\ns.add((a1 == Horse) == (m1 == Rock))\ns.add((a2 == Horse) == (m2 == Rock))\ns.add((a3 == Horse) == (m3 == Rock))\ns.add((a4 == Horse) == (m4 == Rock))\n\n# Clue 8: Gardening and April\ns.add((h1 == Gardening) == (d1 == April))\ns.add((h2 == Gardening) == (d2 == April))\ns.add((h3 == Gardening) == (d3 == April))\ns.add((h4 == Gardening) == (d4 == April))\n\n# Clue 9: Jazz and Cooking\ns.add((m1 == Jazz) == (h1 == Cooking))\ns.add((m2 == Jazz) == (h2 == Cooking))\ns.add((m3 == Jazz) == (h3 == Cooking))\ns.add((m4 == Jazz) == (h4 == Cooking))\n\n# Clue 10: Rock and Mystery\ns.add((m1 == Rock) == (bg1 == Mystery))\ns.add((m2 == Rock) == (bg2 == Mystery))\ns.add((m3 == Rock) == (bg3 == Mystery))\ns.add((m4 == Rock) == (bg4 == Mystery))\n\n# Clue 11: Painter left of romance\ns.add(Or(\n    And(h1 == Painting, bg2 == Romance),\n    And(h2 == Painting, bg3 == Romance),\n    And(h3 == Painting, bg4 == Romance)\n))\n\n# Clue 12: Peter and Pop\ns.add((n1 == Peter) == (m1 == Pop))\ns.add((n2 == Peter) == (m2 == Pop))\ns.add((n3 == Peter) == (m3 == Pop))\ns.add((n4 == Peter) == (m4 == Pop))\n\n# Clue 13: Gardening is Arnold\ns.add((h1 == Gardening) == (n1 == Arnold))\ns.add((h2 == Gardening) == (n2 == Arnold))\ns.add((h3 == Gardening) == (n3 == Arnold))\ns.add((h4 == Gardening) == (n4 == Arnold))\n\n# Clue 14: Rock left of Jan\ns.add(Or(\n    And(m1 == Rock, d2 == Jan),\n    And(m2 == Rock, d3 == Jan),\n    And(m3 == Rock, d4 == Jan)\n))\n\n# Clue 15: Cooking not in third house\ns.add(h3 != Cooking)\n\n# Clue 16: Cat to the right of Horse\npos_horse = If(a1 == Horse, 1, If(a2 == Horse, 2, If(a3 == Horse, 3, 4)))\npos_cat = If(a1 == Cat, 1, If(a2 == Cat, 2, If(a3 == Cat, 3, 4)))\ns.add(pos_cat > pos_horse)\n\n# Check for solution\nif s.check() == sat:\n    model = s.model()\n    # Prepare the rows\n    names = [n1, n2, n3, n4]\n    hobbies = [h1, h2, h3, h4]\n    animals = [a1, a2, a3, a4]\n    book_genres = [bg1, bg2, bg3, bg4]\n    birthdays_list = [d1, d2, d3, d4]\n    music_genres = [m1, m2, m3, m4]\n    \n    rows = []\n    for idx in range(4):\n        house_num = idx + 1\n        name = model.eval(names[idx]).decl().name()\n        hobby = model.eval(hobbies[idx]).decl().name()\n        animal = model.eval(animals[idx]).decl().name()\n        book_genre = model.eval(book_genres[idx]).decl().name()\n        birthday = model.eval(birthdays_list[idx]).decl().name()\n        music_genre = model.eval(music_genres[idx]).decl().name()\n        \n        # Replace 'science_fiction' with 'science fiction'\n        if book_genre == 'science_fiction':\n            book_genre = 'science fiction'\n        \n        rows.append([\n            str(house_num),\n            name,\n            hobby,\n            animal,\n            book_genre,\n            birthday,\n            music_genre\n        ])\n    \n    solution = {\n        \"solution\": {\n            \"header\": [\"House\", \"Name\", \"Hobby\", \"Animal\", \"BookGenre\", \"Birthday\", \"MusicGenre\"],\n            \"rows\": rows\n        }\n    }\n    print(json.dumps(solution, indent=2))\nelse:\n    print(\"No solution found.\")"
+}

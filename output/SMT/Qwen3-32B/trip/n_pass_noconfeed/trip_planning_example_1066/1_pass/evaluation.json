@@ -1,0 +1,60 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": true,
+    "execution_output": "No solution found.",
+    "pred": null,
+    "gold": {
+        "itinerary": [
+            {
+                "day_range": "Day 1-4",
+                "place": "Stuttgart"
+            },
+            {
+                "day_range": "Day 4-6",
+                "place": "Split"
+            },
+            {
+                "day_range": "Day 6-10",
+                "place": "Helsinki"
+            },
+            {
+                "day_range": "Day 10-13",
+                "place": "Brussels"
+            },
+            {
+                "day_range": "Day 13-15",
+                "place": "Bucharest"
+            },
+            {
+                "day_range": "Day 15-19",
+                "place": "London"
+            },
+            {
+                "day_range": "Day 19-20",
+                "place": "Mykonos"
+            },
+            {
+                "day_range": "Day 20-21",
+                "place": "Madrid"
+            }
+        ]
+    },
+    "status": "No plan generated",
+    "violated_constraint": {
+        "missing_itinerary": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 600.7837474346161,
+        "execution_time": 0.13791227340698242,
+        "constraint_eval_time": 1.2636184692382812e-05,
+        "pred_extract_time": 0.6001136302947998,
+        "gold_extract_time": 0.00017547607421875,
+        "total_tokens": 40420,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\n\ndef main():\n    # Define cities and durations\n    cities_names = [\"Brussels\", \"Bucharest\", \"Stuttgart\", \"Mykonos\", \"Madrid\", \"Helsinki\", \"Split\", \"London\"]\n    durations = [4, 3, 4, 2, 2, 5, 3, 5]  # index 0-7\n\n    # allowed_flights as list of tuples (a, b)\n    allowed_flights = [\n        (5,7), (7,5),\n        (6,4), (4,6),\n        (5,4), (4,5),\n        (7,4), (4,7),\n        (0,7), (7,0),\n        (1,7), (7,1),\n        (0,1), (1,0),\n        (1,4), (4,1),\n        (6,5), (5,6),\n        (3,4), (4,3),\n        (2,7), (7,2),\n        (5,0), (0,5),\n        (0,4), (4,0),\n        (6,7), (7,6),\n        (2,6), (6,2),\n        (7,3), (3,7),\n    ]\n\n    # Create Z3 solver\n    solver = Solver()\n\n    # Variables\n    cities = [Int(f'city_{i}') for i in range(8)]\n    start_days = [Int(f'start_{i}') for i in range(8)]\n\n    # Constraint 1: cities is a permutation of 0-7\n    for c in cities:\n        solver.add(And(0 <= c, c <= 7))\n    solver.add(Distinct(cities))\n\n    # Constraint 2: start_days[0] = 1\n    solver.add(start_days[0] == 1)\n\n    # Constraint 3: start_days[i] = start_days[i-1] + duration of previous city\n    for i in range(1, 8):\n        prev_city = cities[i-1]\n        # Compute duration_prev based on prev_city\n        duration_prev = If(prev_city == 0, 4,\n            If(prev_city == 1, 3,\n                If(prev_city == 2, 4,\n                    If(prev_city == 3, 2,\n                        If(prev_city == 4, 2,\n                            If(prev_city == 5, 5,\n                                If(prev_city == 6, 3,\n                                    If(prev_city == 7, 5, 0)\n                                )\n                            )\n                        )\n                    )\n                )\n            )\n        )\n        solver.add(start_days[i] == start_days[i-1] + duration_prev)\n\n    # Constraint 4: end_day == 21\n    last_city = cities[7]\n    duration_last = If(last_city == 0, 4,\n        If(last_city == 1, 3,\n            If(last_city == 2, 4,\n                If(last_city == 3, 2,\n                    If(last_city == 4, 2,\n                        If(last_city == 5, 5,\n                            If(last_city == 6, 3,\n                                If(last_city == 7, 5, 0)\n                            )\n                        )\n                    )\n                )\n            )\n        )\n    )\n    solver.add(start_days[7] + duration_last - 1 == 21)\n\n    # Constraint 5: transitions between cities must be allowed\n    for i in range(7):\n        c1 = cities[i]\n        c2 = cities[i+1]\n        # Check if (c1, c2) is in allowed_flights\n        constraints = []\n        for (a, b) in allowed_flights:\n            constraints.append(And(c1 == a, c2 == b))\n        solver.add(Or(constraints))\n\n    # Constraint 6: Madrid's start day is 20\n    for i in range(8):\n        solver.add(Implies(cities[i] == 4, start_days[i] == 20))\n\n    # Constraint 7: Stuttgart's start day <=4\n    for i in range(8):\n        solver.add(Implies(cities[i] == 2, start_days[i] <= 4))\n\n    # Check if the solver can find a solution\n    if solver.check() == sat:\n        model = solver.model()\n        # Extract cities and start_days\n        cities_solution = [model.evaluate(c).as_long() for c in cities]\n        start_days_solution = [model.evaluate(s).as_long() for s in start_days]\n\n        # Generate the itinerary\n        itinerary = []\n        for i in range(8):\n            city_index = cities_solution[i]\n            city_name = cities_names[city_index]\n            start_day = start_days_solution[i]\n            duration = durations[city_index]\n            end_day = start_day + duration - 1\n            day_range = f\"Day {start_day}-{end_day}\"\n            itinerary.append({\"day_range\": day_range, \"place\": city_name})\n\n        # Output as JSON\n        import json\n        print(json.dumps({\"itinerary\": itinerary}, indent=2))\n    else:\n        print(\"No solution found.\")\n\nif __name__ == \"__main__\":\n    main()"
+}

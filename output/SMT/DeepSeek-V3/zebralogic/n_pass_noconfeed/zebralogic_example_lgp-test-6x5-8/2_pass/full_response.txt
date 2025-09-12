@@ -1,0 +1,191 @@
+```python
+from z3 import *
+import json
+
+def main():
+    # Create solver
+    s = Solver()
+    
+    # Define the number of houses
+    n = 6
+    houses = range(1, n+1)
+    
+    # Define all possible values for each attribute
+    names = ['Arnold', 'Peter', 'Bob', 'Eric', 'Carol', 'Alice']
+    animals = ['horse', 'rabbit', 'fish', 'cat', 'bird', 'dog']
+    occupations = ['engineer', 'nurse', 'lawyer', 'teacher', 'artist', 'doctor']
+    sports = ['basketball', 'volleyball', 'soccer', 'tennis', 'baseball', 'swimming']
+    heights = ['average', 'tall', 'short', 'very short', 'very tall', 'super tall']
+    
+    # Create integer variables for each attribute
+    name_vars = [Int(f'name_{i}') for i in houses]
+    animal_vars = [Int(f'animal_{i}') for i in houses]
+    occupation_vars = [Int(f'occupation_{i}') for i in houses]
+    sport_vars = [Int(f'sport_{i}') for i in houses]
+    height_vars = [Int(f'height_{i}') for i in houses]
+    
+    # Constraint: All variables must be within valid range (0-5)
+    for i in houses:
+        s.add(And(name_vars[i-1] >= 0, name_vars[i-1] < n))
+        s.add(And(animal_vars[i-1] >= 0, animal_vars[i-1] < n))
+        s.add(And(occupation_vars[i-1] >= 0, occupation_vars[i-1] < n))
+        s.add(And(sport_vars[i-1] >= 0, sport_vars[i-1] < n))
+        s.add(And(height_vars[i-1] >= 0, height_vars[i-1] < n))
+    
+    # Constraint: All attributes in each category must be distinct
+    s.add(Distinct(name_vars))
+    s.add(Distinct(animal_vars))
+    s.add(Distinct(occupation_vars))
+    s.add(Distinct(sport_vars))
+    s.add(Distinct(height_vars))
+    
+    # Helper function to get index of a value in a list
+    def idx(lst, val):
+        return lst.index(val)
+    
+    # Apply all clues as constraints
+    # Clue 1: The person who is an engineer is the dog owner.
+    for i in houses:
+        s.add(Implies(occupation_vars[i-1] == idx(occupations, 'engineer'), 
+                      animal_vars[i-1] == idx(animals, 'dog')))
+    
+    # Clue 2: The person who has an average height is somewhere to the left of the person who is short.
+    avg_height_idx = idx(heights, 'average')
+    short_height_idx = idx(heights, 'short')
+    for i in houses:
+        for j in houses:
+            if j <= i:
+                continue
+            s.add(Implies(And(height_vars[i-1] == avg_height_idx, height_vars[j-1] == short_height_idx), i < j))
+    
+    # Clue 3: The person who has an average height is directly left of the rabbit owner.
+    rabbit_idx = idx(animals, 'rabbit')
+    for i in range(1, n):
+        s.add(Implies(height_vars[i-1] == avg_height_idx, animal_vars[i] == rabbit_idx))
+    
+    # Clue 4: The person who is tall is somewhere to the left of the person who is very short.
+    tall_idx = idx(heights, 'tall')
+    very_short_idx = idx(heights, 'very short')
+    for i in houses:
+        for j in houses:
+            if j <= i:
+                continue
+            s.add(Implies(And(height_vars[i-1] == tall_idx, height_vars[j-1] == very_short_idx), i < j))
+    
+    # Clue 5: Arnold is the cat lover.
+    arnold_idx = idx(names, 'Arnold')
+    cat_idx = idx(animals, 'cat')
+    for i in houses:
+        s.add(Implies(name_vars[i-1] == arnold_idx, animal_vars[i-1] == cat_idx))
+    
+    # Clue 6: The person who keeps horses is the person who is a teacher.
+    horse_idx = idx(animals, 'horse')
+    teacher_idx = idx(occupations, 'teacher')
+    for i in houses:
+        s.add(Implies(animal_vars[i-1] == horse_idx, occupation_vars[i-1] == teacher_idx))
+    
+    # Clue 7: Carol is the person who loves soccer.
+    carol_idx = idx(names, 'Carol')
+    soccer_idx = idx(sports, 'soccer')
+    for i in houses:
+        s.add(Implies(name_vars[i-1] == carol_idx, sport_vars[i-1] == soccer_idx))
+    
+    # Clue 8: The person who is tall is the person who loves volleyball.
+    volleyball_idx = idx(sports, 'volleyball')
+    for i in houses:
+        s.add(Implies(height_vars[i-1] == tall_idx, sport_vars[i-1] == volleyball_idx))
+    
+    # Clue 9: The person who is a lawyer is in the fifth house.
+    lawyer_idx = idx(occupations, 'lawyer')
+    s.add(occupation_vars[4] == lawyer_idx)
+    
+    # Clue 10: The person who loves tennis is the person who is a teacher.
+    tennis_idx = idx(sports, 'tennis')
+    for i in houses:
+        s.add(Implies(sport_vars[i-1] == tennis_idx, occupation_vars[i-1] == teacher_idx))
+    
+    # Clue 11: The person who has an average height is the person who loves swimming.
+    swimming_idx = idx(sports, 'swimming')
+    for i in houses:
+        s.add(Implies(height_vars[i-1] == avg_height_idx, sport_vars[i-1] == swimming_idx))
+    
+    # Clue 12: The person who loves baseball is directly left of the person who is an engineer.
+    baseball_idx = idx(sports, 'baseball')
+    engineer_idx = idx(occupations, 'engineer')
+    for i in range(1, n):
+        s.add(Implies(sport_vars[i-1] == baseball_idx, occupation_vars[i] == engineer_idx))
+    
+    # Clue 13: Peter is the person who is a nurse.
+    peter_idx = idx(names, 'Peter')
+    nurse_idx = idx(occupations, 'nurse')
+    for i in houses:
+        s.add(Implies(name_vars[i-1] == peter_idx, occupation_vars[i-1] == nurse_idx))
+    
+    # Clue 14: Bob is somewhere to the right of the person who is an artist.
+    bob_idx = idx(names, 'Bob')
+    artist_idx = idx(occupations, 'artist')
+    for i in houses:
+        for j in houses:
+            if j >= i:
+                continue
+            s.add(Implies(And(name_vars[i-1] == bob_idx, occupation_vars[j-1] == artist_idx), i > j))
+    
+    # Clue 15: The person who is a teacher is directly left of the person who loves soccer.
+    for i in range(1, n):
+        s.add(Implies(occupation_vars[i-1] == teacher_idx, sport_vars[i] == soccer_idx))
+    
+    # Clue 16: The rabbit owner is Alice.
+    alice_idx = idx(names, 'Alice')
+    for i in houses:
+        s.add(Implies(animal_vars[i-1] == rabbit_idx, name_vars[i-1] == alice_idx))
+    
+    # Clue 17: The fish enthusiast is Carol.
+    fish_idx = idx(animals, 'fish')
+    for i in houses:
+        s.add(Implies(animal_vars[i-1] == fish_idx, name_vars[i-1] == carol_idx))
+    
+    # Clue 18: The person who loves baseball is in the first house.
+    s.add(sport_vars[0] == baseball_idx)
+    
+    # Clue 19: The cat lover is somewhere to the right of the person who is very short.
+    for i in houses:
+        for j in houses:
+            if j >= i:
+                continue
+            s.add(Implies(And(animal_vars[i-1] == cat_idx, height_vars[j-1] == very_short_idx), i > j))
+    
+    # Clue 20: The person who is super tall is in the fifth house.
+    super_tall_idx = idx(heights, 'super tall')
+    s.add(height_vars[4] == super_tall_idx)
+    
+    # Check if the constraints are satisfiable
+    if s.check() == sat:
+        model = s.model()
+        
+        # Extract the solution
+        solution = []
+        for i in houses:
+            house_num = str(i)
+            name = names[model.evaluate(name_vars[i-1]).as_long()]
+            animal = animals[model.evaluate(animal_vars[i-1]).as_long()]
+            occupation = occupations[model.evaluate(occupation_vars[i-1]).as_long()]
+            sport = sports[model.evaluate(sport_vars[i-1]).as_long()]
+            height = heights[model.evaluate(height_vars[i-1]).as_long()]
+            
+            solution.append([house_num, name, animal, occupation, sport, height])
+        
+        # Format the output as JSON
+        output = {
+            "solution": {
+                "header": ["House", "Name", "Animal", "Occupation", "FavoriteSport", "Height"],
+                "rows": solution
+            }
+        }
+        
+        print(json.dumps(output, indent=2))
+    else:
+        print('{"error": "No solution found"}')
+
+if __name__ == "__main__":
+    main()
+```

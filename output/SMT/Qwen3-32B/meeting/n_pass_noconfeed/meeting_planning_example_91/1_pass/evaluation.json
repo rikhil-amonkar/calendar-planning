@@ -1,0 +1,43 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"itinerary\": [\n    {\n      \"action\": \"meet\",\n      \"location\": \"Richmond District\",\n      \"person\": \"Daniel\",\n      \"start_time\": \"19:00\",\n      \"end_time\": \"20:15\"\n    }\n  ]\n}",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Richmond District",
+                "person": "Daniel",
+                "start_time": "19:00",
+                "end_time": "20:15"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Richmond District",
+                "person": "Daniel",
+                "start_time": "19:00",
+                "end_time": "20:15"
+            }
+        ]
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 296.90117931365967,
+        "execution_time": 0.07929801940917969,
+        "constraint_eval_time": 3.170967102050781e-05,
+        "pred_extract_time": 1.5376744270324707,
+        "gold_extract_time": 6.961822509765625e-05,
+        "total_tokens": 19087,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\nimport json\n\ndef time_to_min(t):\n    h, m = map(int, t.split(':'))\n    return h * 60 + m\n\ndef min_to_time(m):\n    h = m // 60\n    minute = m % 60\n    return f\"{h}:{minute:02d}\"\n\n# Input parameters\ntravel_time_russian_to_richmond = 14  # minutes\narrival_russian_hill_time = time_to_min(\"9:00\")  # 9:00 AM\ndaniel_available_start = time_to_min(\"19:00\")  # 7:00 PM\ndaniel_available_end = time_to_min(\"20:15\")  # 8:15 PM\nmin_meeting_duration = 75  # minutes\n\n# Z3 variables\ndeparture_russian_hill = Int('departure_russian_hill')\nmeeting_start = Int('meeting_start')\nmeeting_end = Int('meeting_end')\n\ns = Solver()\n\n# Constraints\ns.add(departure_russian_hill >= arrival_russian_hill_time)\ns.add(departure_russian_hill + travel_time_russian_to_richmond <= meeting_start)\ns.add(meeting_start >= daniel_available_start)\ns.add(meeting_end <= daniel_available_end)\ns.add(meeting_end - meeting_start >= min_meeting_duration)\n\nif s.check() == sat:\n    model = s.model()\n    ms = model.evaluate(meeting_start).as_long()\n    me = model.evaluate(meeting_end).as_long()\n\n    itinerary = [\n        {\n            \"action\": \"meet\",\n            \"location\": \"Richmond District\",\n            \"person\": \"Daniel\",\n            \"start_time\": min_to_time(ms),\n            \"end_time\": min_to_time(me)\n        }\n    ]\n    print(json.dumps({\"itinerary\": itinerary}, indent=2))\nelse:\n    print(\"No solution found.\")"
+}

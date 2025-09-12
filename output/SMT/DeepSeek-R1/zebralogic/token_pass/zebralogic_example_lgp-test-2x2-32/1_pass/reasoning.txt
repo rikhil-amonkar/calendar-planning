@@ -1,0 +1,32 @@
+We are solving a puzzle with 2 houses.
+ We have two attributes: Name and BookGenre.
+ The names are Eric and Arnold.
+ The book genres are science fiction and mystery.
+
+ Clue:
+ 1. Eric is directly left of the person who loves mystery books.
+
+ Since there are only two houses, "directly left" means Eric is in house 1 and the mystery lover is in house 2.
+
+ Steps:
+ 1. We'll use Z3 to assign values for each house for each attribute.
+ 2. We'll create two integer arrays for the two attributes: one for name and one for book genre.
+    Alternatively, we can use two arrays of integers that represent the house index for each value, but since the problem is small, we can model by house.
+
+ Approach by house:
+   For each house i (1 and 2), we define:
+      name_i: which name is in house i (we'll use an integer encoding for the names)
+      book_genre_i: which book genre is in house i
+
+ 3. We must ensure that the assignments are unique for each attribute.
+
+ 4. We encode the clue: Eric is directly left of the mystery lover.
+    This means: There exists a house i (which must be 1) such that:
+        name_i = Eric and book_genre_{i+1} = mystery.
+
+ 5. Since there are only two houses, we can also express: 
+        name_1 = Eric and book_genre_2 = mystery.
+
+ 6. We'll use Z3 to solve the constraints and then output the solution in the required JSON format.
+
+ Let's code accordingly.

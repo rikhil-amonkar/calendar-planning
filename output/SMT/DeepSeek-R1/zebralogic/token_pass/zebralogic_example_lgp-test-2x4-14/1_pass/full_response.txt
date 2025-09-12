@@ -1,0 +1,68 @@
+```python
+import z3
+import json
+
+def main():
+    # Create solver
+    solver = z3.Solver()
+    
+    # Define enums for attributes
+    Name = z3.EnumSort('Name', ['Eric', 'Arnold'])
+    HouseStyle = z3.EnumSort('HouseStyle', ['victorian', 'colonial'])
+    Smoothie = z3.EnumSort('Smoothie', ['cherry', 'desert'])
+    Pet = z3.EnumSort('Pet', ['dog', 'cat'])
+    
+    # Create constants for each house's attributes
+    names = [z3.Const(f'name_{i}', Name) for i in range(2)]
+    styles = [z3.Const(f'style_{i}', HouseStyle) for i in range(2)]
+    smoothies = [z3.Const(f'smoothie_{i}', Smoothie) for i in range(2)]
+    pets = [z3.Const(f'pet_{i}', Pet) for i in range(2)]
+    
+    # Add uniqueness constraints
+    solver.add(z3.Distinct(names))
+    solver.add(z3.Distinct(styles))
+    solver.add(z3.Distinct(smoothies))
+    solver.add(z3.Distinct(pets))
+    
+    # Clue 1: Cherry smoothie owner has dog
+    for i in range(2):
+        solver.add(z3.Implies(smoothies[i] == z3.Const('cherry', Smoothie), 
+                             pets[i] == z3.Const('dog', Pet)))
+    
+    # Clue 2: Victorian house owner has dog
+    for i in range(2):
+        solver.add(z3.Implies(styles[i] == z3.Const('victorian', HouseStyle), 
+                             pets[i] == z3.Const('dog', Pet)))
+    
+    # Clue 3: Victorian house is left of Eric
+    # Victorian must be in house 1 (index 0), Eric in house 2 (index 1)
+    solver.add(styles[0] == z3.Const('victorian', HouseStyle))
+    solver.add(names[1] == z3.Const('Eric', Name))
+    
+    # Check for solution
+    if solver.check() == z3.sat:
+        model = solver.model()
+        
+        # Map house attributes
+        result = []
+        for i in range(2):
+            name_val = str(model.eval(names[i]))
+            style_val = str(model.eval(styles[i]))
+            smoothie_val = str(model.eval(smoothies[i]))
+            pet_val = str(model.eval(pets[i]))
+            result.append([str(i+1), name_val, style_val, smoothie_val, pet_val])
+        
+        # Format output
+        solution = {
+            "solution": {
+                "header": ["House", "Name", "HouseStyle", "Smoothie", "Pet"],
+                "rows": result
+            }
+        }
+        print(json.dumps(solution, indent=2))
+    else:
+        print('No solution found')
+
+if __name__ == '__main__':
+    main()
+```

@@ -1,0 +1,53 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"itinerary\": [\n    {\n      \"day_range\": \"Day 1-2\",\n      \"place\": \"Mykonos\"\n    },\n    {\n      \"day_range\": \"Day 2-5\",\n      \"place\": \"Vienna\"\n    },\n    {\n      \"day_range\": \"Day 5-10\",\n      \"place\": \"Venice\"\n    }\n  ]\n}",
+    "pred": {
+        "itinerary": [
+            {
+                "day_range": "Day 1-2",
+                "place": "Mykonos"
+            },
+            {
+                "day_range": "Day 2-5",
+                "place": "Vienna"
+            },
+            {
+                "day_range": "Day 5-10",
+                "place": "Venice"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "day_range": "Day 1-2",
+                "place": "Mykonos"
+            },
+            {
+                "day_range": "Day 2-5",
+                "place": "Vienna"
+            },
+            {
+                "day_range": "Day 5-10",
+                "place": "Venice"
+            }
+        ]
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 573.4471552371979,
+        "execution_time": 0.08160686492919922,
+        "constraint_eval_time": 5.7220458984375e-05,
+        "pred_extract_time": 2.4962778091430664,
+        "gold_extract_time": 9.131431579589844e-05,
+        "total_tokens": 37019,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import json\nfrom z3 import *\n\ndef main():\n    solver = Solver()\n\n    s1 = Int('s1')\n    s2 = Int('s2')\n    s3 = Int('s3')\n\n    # All cities are distinct and in 0,1,2\n    solver.add(And([s1 >= 0, s1 <= 2]))\n    solver.add(And([s2 >= 0, s2 <= 2]))\n    solver.add(And([s3 >= 0, s3 <= 2]))\n    solver.add(Distinct(s1, s2, s3))\n\n    # Allowed transitions between consecutive cities\n    allowed_transitions = [(0, 1), (1, 0), (1, 2), (2, 1)]\n\n    # Check transitions between s1 and s2\n    transitions_s1s2 = [And(s1 == a, s2 == b) for a, b in allowed_transitions]\n    solver.add(Or(transitions_s1s2))\n\n    # Check transitions between s2 and s3\n    transitions_s2s3 = [And(s2 == a, s3 == b) for a, b in allowed_transitions]\n    solver.add(Or(transitions_s2s3))\n\n    # Compute durations for each segment\n    d1 = If(s1 == 0, 2, If(s1 == 1, 4, 6))\n    d2 = If(s2 == 0, 2, If(s2 == 1, 4, 6))\n    d3 = If(s3 == 0, 2, If(s3 == 1, 4, 6))\n\n    # Compute end days\n    seg1_end = d1\n    seg2_end = seg1_end + d2 - 1\n    seg3_end = seg2_end + d3 - 1\n\n    # The third segment must end on day 10\n    solver.add(seg3_end == 10)\n\n    # Now check if the model is satisfiable\n    if solver.check() == sat:\n        model = solver.model()\n        order = [model[s1].as_long(), model[s2].as_long(), model[s3].as_long()]\n        cities = {0: 'Mykonos', 1: 'Vienna', 2: 'Venice'}\n        segments = []\n        current_start = 1\n        for city_id in order:\n            duration = 2 if city_id == 0 else 4 if city_id == 1 else 6\n            end = current_start + duration - 1\n            city_name = cities[city_id]\n            segments.append({\n                'start': current_start,\n                'end': end,\n                'city': city_name\n            })\n            current_start = end  # next segment starts at this end\n\n        # Build the itinerary JSON\n        itinerary = []\n        for seg in segments:\n            day_range = f\"Day {seg['start']}-{seg['end']}\"\n            itinerary.append({'day_range': day_range, 'place': seg['city']})\n\n        result = {'itinerary': itinerary}\n        print(json.dumps(result, indent=2))\n    else:\n        print(\"No solution found\")\n\nif __name__ == \"__main__\":\n    main()"
+}

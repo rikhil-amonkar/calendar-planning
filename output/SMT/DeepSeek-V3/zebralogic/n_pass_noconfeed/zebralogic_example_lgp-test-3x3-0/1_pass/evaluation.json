@@ -1,0 +1,73 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"solution\": {\n    \"header\": [\n      \"House\",\n      \"Name\",\n      \"Education\",\n      \"Occupation\"\n    ],\n    \"rows\": [\n      [\n        \"1\",\n        \"Arnold\",\n        \"associate\",\n        \"engineer\"\n      ],\n      [\n        \"2\",\n        \"Eric\",\n        \"bachelor\",\n        \"doctor\"\n      ],\n      [\n        \"3\",\n        \"Peter\",\n        \"high school\",\n        \"teacher\"\n      ]\n    ]\n  }\n}",
+    "pred": [
+        {
+            "House": "1",
+            "Name": "Arnold",
+            "Education": "associate",
+            "Occupation": "engineer"
+        },
+        {
+            "House": "2",
+            "Name": "Eric",
+            "Education": "bachelor",
+            "Occupation": "doctor"
+        },
+        {
+            "House": "3",
+            "Name": "Peter",
+            "Education": "high school",
+            "Occupation": "teacher"
+        }
+    ],
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Peter",
+            "Education": "high school",
+            "Occupation": "teacher"
+        },
+        {
+            "House": "2",
+            "Name": "Arnold",
+            "Education": "associate",
+            "Occupation": "engineer"
+        },
+        {
+            "House": "3",
+            "Name": "Eric",
+            "Education": "bachelor",
+            "Occupation": "doctor"
+        }
+    ],
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "violations": [
+            "House 1 wrong Name: expected 'Peter', got 'Arnold'",
+            "House 1 wrong Education: expected 'high school', got 'associate'",
+            "House 1 wrong Occupation: expected 'teacher', got 'engineer'",
+            "House 2 wrong Name: expected 'Arnold', got 'Eric'",
+            "House 2 wrong Education: expected 'associate', got 'bachelor'",
+            "House 2 wrong Occupation: expected 'engineer', got 'doctor'",
+            "House 3 wrong Name: expected 'Eric', got 'Peter'",
+            "House 3 wrong Education: expected 'bachelor', got 'high school'",
+            "House 3 wrong Occupation: expected 'doctor', got 'teacher'"
+        ]
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 54.06863832473755,
+        "execution_time": 0.08137392997741699,
+        "constraint_eval_time": 0.00010180473327636719,
+        "pred_extract_time": 1.4894416332244873,
+        "gold_extract_time": 7.3909759521484375e-06,
+        "total_tokens": 1015,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import z3\nimport json\n\ndef main():\n    # Create solver\n    solver = z3.Solver()\n    \n    # Define houses\n    houses = [1, 2, 3]\n    \n    # Define attributes\n    names = ['Peter', 'Eric', 'Arnold']\n    educations = ['bachelor', 'associate', 'high school']\n    occupations = ['teacher', 'doctor', 'engineer']\n    \n    # Create variables for each attribute per house\n    name_vars = [z3.Int(f'name_{h}') for h in houses]\n    education_vars = [z3.Int(f'education_{h}') for h in houses]\n    occupation_vars = [z3.Int(f'occupation_{h}') for h in houses]\n    \n    # Define domains for each variable\n    for h in houses:\n        solver.add(z3.And(name_vars[h-1] >= 0, name_vars[h-1] < len(names)))\n        solver.add(z3.And(education_vars[h-1] >= 0, education_vars[h-1] < len(educations)))\n        solver.add(z3.And(occupation_vars[h-1] >= 0, occupation_vars[h-1] < len(occupations)))\n    \n    # All attributes are distinct within their categories\n    solver.add(z3.Distinct(name_vars))\n    solver.add(z3.Distinct(education_vars))\n    solver.add(z3.Distinct(occupation_vars))\n    \n    # Clue 1: The person who is a teacher is directly left of the person with an associate's degree.\n    teacher_idx = occupations.index('teacher')\n    associate_idx = educations.index('associate')\n    \n    # Teacher is directly left of associate's degree\n    for h in [1, 2]:  # Only houses 1 and 2 can be left of someone\n        solver.add(z3.Implies(\n            occupation_vars[h-1] == teacher_idx,\n            z3.And(\n                education_vars[h] == associate_idx,\n                occupation_vars[h] != teacher_idx  # Ensure different person\n            )\n        ))\n    \n    # Clue 2: The person with an associate's degree and Eric are next to each other.\n    eric_idx = names.index('Eric')\n    \n    # Associate's degree and Eric are adjacent\n    for h in houses:\n        if h == 1:\n            # Can only be right of Eric\n            solver.add(z3.Implies(\n                education_vars[h-1] == associate_idx,\n                name_vars[h] == eric_idx\n            ))\n        elif h == 3:\n            # Can only be left of Eric\n            solver.add(z3.Implies(\n                education_vars[h-1] == associate_idx,\n                name_vars[h-2] == eric_idx\n            ))\n        else:\n            # Can be left or right of Eric\n            solver.add(z3.Implies(\n                education_vars[h-1] == associate_idx,\n                z3.Or(\n                    name_vars[h-2] == eric_idx,  # left\n                    name_vars[h] == eric_idx     # right\n                )\n            ))\n    \n    # Clue 3: Peter is the person with a high school diploma.\n    peter_idx = names.index('Peter')\n    high_school_idx = educations.index('high school')\n    \n    for h in houses:\n        solver.add(z3.Implies(\n            name_vars[h-1] == peter_idx,\n            education_vars[h-1] == high_school_idx\n        ))\n    \n    # Clue 4: The person who is a doctor is the person with a bachelor's degree.\n    doctor_idx = occupations.index('doctor')\n    bachelor_idx = educations.index('bachelor')\n    \n    for h in houses:\n        solver.add(z3.Implies(\n            occupation_vars[h-1] == doctor_idx,\n            education_vars[h-1] == bachelor_idx\n        ))\n    \n    # Check if solution exists\n    if solver.check() == z3.sat:\n        model = solver.model()\n        \n        # Extract solution\n        solution = []\n        for h in houses:\n            name_val = model.eval(name_vars[h-1]).as_long()\n            education_val = model.eval(education_vars[h-1]).as_long()\n            occupation_val = model.eval(occupation_vars[h-1]).as_long()\n            \n            solution.append([\n                str(h),\n                names[name_val],\n                educations[education_val],\n                occupations[occupation_val]\n            ])\n        \n        # Create JSON output\n        output = {\n            \"solution\": {\n                \"header\": [\"House\", \"Name\", \"Education\", \"Occupation\"],\n                \"rows\": solution\n            }\n        }\n        \n        print(json.dumps(output, indent=2))\n    else:\n        print('{\"error\": \"No solution found\"}')\n\nif __name__ == \"__main__\":\n    main()"
+}

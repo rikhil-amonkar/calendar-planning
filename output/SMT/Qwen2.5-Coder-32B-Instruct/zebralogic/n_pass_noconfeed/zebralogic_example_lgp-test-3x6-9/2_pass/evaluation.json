@@ -1,0 +1,53 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "null",
+    "pred": [],
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Eric",
+            "CarModel": "tesla model 3",
+            "HouseStyle": "ranch",
+            "Pet": "fish",
+            "Occupation": "doctor",
+            "Vacation": "city"
+        },
+        {
+            "House": "2",
+            "Name": "Peter",
+            "CarModel": "toyota camry",
+            "HouseStyle": "victorian",
+            "Pet": "dog",
+            "Occupation": "engineer",
+            "Vacation": "beach"
+        },
+        {
+            "House": "3",
+            "Name": "Arnold",
+            "CarModel": "ford f150",
+            "HouseStyle": "colonial",
+            "Pet": "cat",
+            "Occupation": "teacher",
+            "Vacation": "mountain"
+        }
+    ],
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "invalid_output": "No valid output structure found"
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 2,
+    "timing": {
+        "api_call_time": 50.424050092697144,
+        "execution_time": 0.07990145683288574,
+        "constraint_eval_time": 5.0067901611328125e-06,
+        "pred_extract_time": 1.0157945156097412,
+        "gold_extract_time": 2.1457672119140625e-05,
+        "total_tokens": 4012,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\n\ndef solve_puzzle():\n    # Define the variables\n    names = ['Peter', 'Arnold', 'Eric']\n    cars = ['toyota camry', 'ford f150', 'tesla model 3']\n    styles = ['ranch', 'colonial', 'victorian']\n    pets = ['cat', 'dog', 'fish']\n    jobs = ['engineer', 'doctor', 'teacher']\n    vacations = ['city', 'mountain', 'beach']\n\n    # Create variables for each attribute in each house\n    name_vars = [String(f'name_{i}') for i in range(1, 4)]\n    car_vars = [String(f'car_{i}') for i in range(1, 4)]\n    style_vars = [String(f'style_{i}') for i in range(1, 4)]\n    pet_vars = [String(f'pet_{i}') for i in range(1, 4)]\n    job_vars = [String(f'job_{i}') for i in range(1, 4)]\n    vacation_vars = [String(f'vacation_{i}') for i in range(1, 4)]\n\n    # Create a solver instance\n    s = Solver()\n\n    # Add domain constraints\n    for i in range(3):\n        s.add(Or([name_vars[i] == name for name in names]))\n        s.add(Or([car_vars[i] == car for car in cars]))\n        s.add(Or([style_vars[i] == style for style in styles]))\n        s.add(Or([pet_vars[i] == pet for pet in pets]))\n        s.add(Or([job_vars[i] == job for job in jobs]))\n        s.add(Or([vacation_vars[i] == vacation for vacation in vacations]))\n\n    # Add uniqueness constraints\n    s.add(Distinct(name_vars))\n    s.add(Distinct(car_vars))\n    s.add(Distinct(style_vars))\n    s.add(Distinct(pet_vars))\n    s.add(Distinct(job_vars))\n    s.add(Distinct(vacation_vars))\n\n    # Add clue constraints\n    s.add(pet_vars[0] == 'fish')  # Clue 1\n    s.add(car_vars[1] == 'toyota camry')  # Clue 2\n    s.add(vacation_vars[1] != 'mountain')  # Clue 3\n    s.add(vacation_vars[1] != 'city')  # Clue 4\n    s.add(Or(name_vars[0] == 'Peter', name_vars[1] == 'Peter'))  # Clue 5\n    s.add(And(car_vars[1] == 'toyota camry', style_vars[2] == 'colonial'))  # Clue 6\n    s.add(pet_vars[1] == 'cat')  # Clue 7\n    s.add(Or(name_vars[0] == 'Eric', name_vars[1] == 'Eric'))  # Clue 8\n    s.add(job_vars[2] != 'engineer')  # Clue 9\n    s.add(Or(job_vars[0] == 'teacher', job_vars[1] == 'teacher'))  # Clue 10\n    s.add(job_vars[2] == 'engineer')  # Clue 11\n    s.add(pet_vars[2] == 'dog')  # Clue 11 (implied)\n\n    # Check if the problem is solvable\n    if s.check() == sat:\n        m = s.model()\n        solution = {\n            \"solution\": {\n                \"header\": [\"House\", \"Name\", \"CarModel\", \"HouseStyle\", \"Pet\", \"Occupation\", \"Vacation\"],\n                \"rows\": []\n            }\n        }\n        for i in range(1, 4):\n            solution[\"solution\"][\"rows\"].append([\n                str(i),\n                m[name_vars[i-1]].as_string()[1:-1],\n                m[car_vars[i-1]].as_string()[1:-1],\n                m[style_vars[i-1]].as_string()[1:-1],\n                m[pet_vars[i-1]].as_string()[1:-1],\n                m[job_vars[i-1]].as_string()[1:-1],\n                m[vacation_vars[i-1]].as_string()[1:-1]\n            ])\n        return solution\n    else:\n        return None\n\n# Solve the puzzle and print the solution as JSON\nimport json\nprint(json.dumps(solve_puzzle(), indent=2))"
+}

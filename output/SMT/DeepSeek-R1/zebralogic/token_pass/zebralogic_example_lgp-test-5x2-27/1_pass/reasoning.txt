@@ -1,0 +1,464 @@
+We are given 5 houses, each with a unique name and a unique height.
+ Names: Peter, Alice, Bob, Eric, Arnold
+ Heights: very tall, average, tall, very short, short
+
+ Clues:
+ 1. The person who is short is in the second house.
+ 2. Peter is directly left of Bob. (So Peter's house number = Bob's house number - 1)
+ 3. Eric is somewhere to the left of Peter. (Eric's house number < Peter's house number)
+ 4. The person who is very tall is directly left of Peter. (So very tall's house number = Peter's house number - 1)
+ 5. Alice is directly left of the person who has an average height. (Alice's house number = average height's house number - 1)
+ 6. The person who is short and the person who is very short are next to each other. (|short house - very short house| = 1)
+ 7. The person who has an average height is in the fifth house.
+
+ We note from clue 7 that average height is in house 5.
+ Then from clue 5, Alice is directly left of the average height person, so Alice must be in house 4.
+
+ Also, from clue 1, short is in house 2.
+
+ We have to assign the names and heights to houses 1 to 5.
+
+ Steps:
+ 1. We'll create two arrays for names and heights, each of length 5 (index 0 to 4 for house 1 to 5).
+ 2. We'll use Z3 to set up the constraints.
+
+ However, note that some clues are already giving fixed positions:
+   - House 2: height = short
+   - House 4: name = Alice
+   - House 5: height = average
+
+ Also, from clue 2: Peter is directly left of Bob -> Peter in house i, Bob in house i+1.
+ From clue 4: very tall is directly left of Peter -> very tall in house j, Peter in house j+1.
+
+ From clue 3: Eric is left of Peter -> Eric's house < Peter's house.
+
+ From clue 6: short (house 2) and very short are adjacent -> very short must be in house 1 or house 3.
+
+ Let's set up the Z3 variables.
+
+ We'll create:
+   - name_vars: a list of 5 Z3 constants for the names in each house.
+   - height_vars: a list of 5 Z3 constants for the heights in each house.
+
+ We'll use EnumSort for names and heights.
+
+ Alternatively, we can use IntSort and map each value, but EnumSort is more readable.
+
+ Implementation:
+
+ We'll create two enums: one for names and one for heights.
+
+ Steps in code:
+  1. Import z3.
+  2. Define the house indices (0 to 4 for house 1 to 5).
+  3. Define the enums for names and heights.
+  4. Create variables for each house for name and height.
+  5. Create a solver.
+  6. Add constraint that all names are distinct and all heights are distinct.
+  7. Add the constraints from the clues.
+
+ But note: we have fixed assignments from the clues that we can set directly.
+
+ However, to be general, we'll encode all constraints.
+
+ Let's break down the clues:
+
+ Clue 1: height_vars[1] == short   (since house 2 is index 1)
+
+ Clue 2: There exists an i (0<=i<=3) such that name_vars[i] == Peter and name_vars[i+1] == Bob.
+         Alternatively, we can express: for the house index of Peter, it must be that the next house is Bob.
+
+ Clue 3: The house index of Eric is less than the house index of Peter.
+
+ Clue 4: There exists a j such that height_vars[j] == very_tall and name_vars[j+1] == Peter.
+
+ Clue 5: There exists a k such that name_vars[k] == Alice and height_vars[k+1] == average.
+         But we know from clue 7 that average is in house 5 (index 4) and Alice must be in house 4 (index 3).
+
+ Clue 6: The house index of short (which is 1) and the house index of very_short are adjacent.
+         So, the index of very_short is either 0 or 2.
+
+ Clue 7: height_vars[4] == average
+
+ Additionally, we know Alice is in house 4 (index 3) from clue 5 and 7.
+
+ So, we can set:
+   name_vars[3] = Alice
+   height_vars[4] = average
+   height_vars[1] = short
+
+ Now, let's set up the variables and constraints.
+
+ We'll create an enum for names with the five names, and an enum for heights with the five heights.
+
+ Then, we'll create an array for the house names and house heights.
+
+ We'll also need to get the house index for each person and each height for some constraints.
+
+ Alternatively, we can use the array of variables and use the index to represent the house.
+
+ For constraints that involve the position of a particular person or height, we can define a function that returns the index.
+
+ However, Z3 does not have a built-in way to get the index of a value in an array without using a loop and constraints.
+
+ We can do:
+
+   For each name (like Peter), we can define a variable that represents the house index of Peter.
+
+   Similarly for heights.
+
+   But note: we have 5 houses, so we can do:
+
+      peter_house = Int('peter_house')
+      solver.add(peter_house >= 0, peter_house <= 4)
+      for i in range(5):
+          solver.add(If(name_vars[i] == Peter, peter_house == i, True))
+
+   Similarly for others.
+
+ However, to avoid too many auxiliary variables, we can also express constraints without them by using the array and the index.
+
+ For example, for clue 3: Eric is left of Peter -> we need to find the indices where Eric and Peter are.
+
+   We can do: 
+      solver.add(Or([And(name_vars[i] == Eric, name_vars[j] == Peter, i < j) for i in range(5) for j in range(5)]))
+
+   But that would be inefficient and create many constraints.
+
+   Alternatively, we can use the same technique with auxiliary variables for the house indices of each person and height.
+
+ Let's define:
+
+   peter_house = Int('peter_house')
+   bob_house = Int('bob_house')
+   eric_house = Int('eric_house')
+   alice_house = Int('alice_house')   # but we already know alice_house=3
+   arnold_house = Int('arnold_house')
+
+   Similarly for heights, but we may not need all.
+
+   We also need:
+      very_tall_house = Int('very_tall_house')
+      average_house = Int('average_house')   # known to be 4
+      tall_house = Int('tall_house')
+      very_short_house = Int('very_short_house')
+      short_house = Int('short_house')   # known to be 1
+
+   Then we can set:
+      solver.add(alice_house == 3)
+      solver.add(average_house == 4)
+      solver.add(short_house == 1)
+
+   And for each house i, we assert:
+      solver.add(If(name_vars[i] == Peter, peter_house == i, True))
+      ... and similarly for others.
+
+   Then we can express the constraints in terms of these house indices.
+
+ This might be easier.
+
+ Let's do:
+
+   We'll create integer variables for the house index of each name and each height.
+
+   Then we add constraints that each of these indices is between 0 and 4.
+
+   And we add the constraints that the name_vars[i] is the name corresponding to the house i, and similarly for height.
+
+   Actually, we don't need to create both the array and the index variables. We can use one or the other.
+
+   But note: we have to assign both a name and a height to each house, and we have to output the assignment for each house.
+
+   So it's natural to have the arrays for names and heights.
+
+   And then we also define the index variables for each attribute to help with the constraints that involve ordering.
+
+   We'll do both.
+
+ Implementation:
+
+   from z3 import *
+
+   # Define the sorts
+   Name = Datatype('Name')
+   for n in ['Peter', 'Alice', 'Bob', 'Eric', 'Arnold']:
+       Name.declare(n)
+   Name = Name.create()
+
+   Height = Datatype('Height')
+   for h in ['very_tall', 'average', 'tall', 'very_short', 'short']:
+       Height.declare(h)
+   Height = Height.create()
+
+   # Create arrays for house names and heights
+   names = [Const('name_%d' % i, Name) for i in range(5)]
+   heights = [Const('height_%d' % i, Height) for i in range(5)]
+
+   # Create solver
+   s = Solver()
+
+   # Distinct constraints
+   s.add(Distinct(names))
+   s.add(Distinct(heights))
+
+   # Fixed assignments from clues
+   s.add(heights[1] == Height.short)   # house 2
+   s.add(names[3] == Name.Alice)        # house 4
+   s.add(heights[4] == Height.average)  # house 5
+
+   # Now, define the house index variables for each person and each height we care about.
+   peter_house = Int('peter_house')
+   bob_house = Int('bob_house')
+   eric_house = Int('eric_house')
+   arnold_house = Int('arnold_house')
+
+   very_tall_house = Int('very_tall_house')
+   tall_house = Int('tall_house')
+   very_short_house = Int('very_short_house')
+
+   # We already know:
+   short_house = 1   # (index 1)
+   average_house = 4 # (index 4)
+   alice_house = 3   # (index 3)
+
+   # Now, for each of these index variables, we constraint them to be the index where the corresponding name or height appears.
+   for i in range(5):
+      s.add(If(names[i] == Name.Peter, peter_house == i, True))
+      s.add(If(names[i] == Name.Bob, bob_house == i, True))
+      s.add(If(names[i] == Name.Eric, eric_house == i, True))
+      s.add(If(names[i] == Name.Arnold, arnold_house == i, True))
+
+      s.add(If(heights[i] == Height.very_tall, very_tall_house == i, True))
+      s.add(If(heights[i] == Height.tall, tall_house == i, True))
+      s.add(If(heights[i] == Height.very_short, very_short_house == i, True))
+
+   # Now add the constraints:
+
+   # Clue 2: Peter is directly left of Bob -> peter_house + 1 == bob_house
+   s.add(peter_house + 1 == bob_house)
+
+   # Clue 3: Eric is left of Peter -> eric_house < peter_house
+   s.add(eric_house < peter_house)
+
+   # Clue 4: The person who is very tall is directly left of Peter -> very_tall_house + 1 == peter_house
+   s.add(very_tall_house + 1 == peter_house)
+
+   # Clue 5 is already used (Alice left of average, and average in 5, so Alice in 4)
+
+   # Clue 6: The person who is short (house index 1) and very_short are adjacent -> |very_short_house - 1| == 1
+   s.add(Or(very_short_house == 0, very_short_house == 2))
+
+   # Clue 7 is already set.
+
+   # Check if the solver is satisfied and get the model.
+
+   Now, we have to also consider that we have all names and heights assigned.
+
+   We'll get the model and then output the assignment for each house.
+
+   We'll create the output in the required JSON format.
+
+   Note: We have to convert the Z3 constants to strings for output.
+
+   We can define a function to convert the Z3 constant to the name string.
+
+   For example, if we have Name.Peter, we want to output "Peter".
+
+   We can use the following:
+
+      for i in range(5):
+          n = model[names[i]]
+          # n is a Z3 datatype, we can use n.decl().name() to get the name string.
+
+   Similarly for heights.
+
+   But note: the Z3 datatype might not directly give the string, but we can compare with the constructors.
+
+   Alternatively, we can use:
+
+      if n == Name.Peter:
+          name_str = "Peter"
+      ...
+
+   We can create a mapping.
+
+   However, since we have a fixed set, we can do:
+
+      name_map = { Name.Peter: "Peter", ... }
+
+   Similarly for height.
+
+   Let's code accordingly.
+
+   We'll create:
+
+      name_map = {}
+      for name in [Name.Peter, Name.Alice, Name.Bob, Name.Eric, Name.Arnold]:
+          name_map[name] = str(name).split('::')[-1]   # This might not work because the string representation of the constant may vary.
+
+   Alternatively, we can define the mapping by creating the constants and then using the constructor.
+
+   Actually, we can use:
+
+      name_map = {
+          Name.Peter: "Peter",
+          Name.Alice: "Alice",
+          Name.Bob: "Bob",
+          Name.Eric: "Eric",
+          Name.Arnold: "Arnold"
+      }
+
+   Similarly for height.
+
+   But note: the Z3 datatype constants are unique, so we can do this.
+
+   However, a safer way is to use the `as_long` if we used integers, but we used enums.
+
+   Alternatively, we can use:
+
+      if eq(n, Name.Peter):
+          ...
+
+   But that is inefficient.
+
+   We can use the following trick:
+
+      We know that the Z3 datatype values are actually integers internally, but we don't have to rely on that.
+
+   Instead, we can create a list of the possible values and compare using equality.
+
+   Since we have a small set, we can do:
+
+      for i in range(5):
+          n_val = model.eval(names[i])
+          for candidate, string in [(Name.Peter, "Peter"), (Name.Alice, "Alice"), ...]:
+              if eq(n_val, candidate):
+                  name_str = string
+                  break
+
+   Similarly for height.
+
+   But note: we can also use the `__eq__` method of the Z3 datatype, but we are comparing two Z3 expressions.
+
+   Alternatively, we can use:
+
+      if model.eval(names[i] == Name.Peter):
+          name_str = "Peter"
+
+   This is safe because we are evaluating the equality in the model.
+
+   However, that would require 5 checks for each house (for names) and 5 for heights, which is acceptable.
+
+   We can do:
+
+      house_i_names = []
+      for i in range(5):
+          n = model.eval(names[i])
+          h = model.eval(heights[i])
+          name_str = None
+          height_str = None
+          for name in [Name.Peter, Name.Alice, Name.Bob, Name.Eric, Name.Arnold]:
+              if model.eval(n == name):
+                  name_str = str(name).split('::')[-1]   # But note: the string representation of the enum value might be 'Name::Peter'
+                  break
+          # Alternatively, we can use a pre-defined map from the Z3 constant to the string without the sort prefix.
+          # Actually, the .name() method of the constructor function returns the name without the sort.
+
+          # Let me check: Name.Peter is a FuncDeclRef, and we can get its name by Name.Peter.name() -> returns 'Peter'
+
+          # But note: when we do model.eval(names[i]), we get a Z3 expression that is an application of the constructor.
+
+          # We can get the constructor function by n.decl(), and then get its name by n.decl().name()
+
+          # This should work.
+
+      So, we can do:
+
+          name_str = n.decl().name()
+          height_str = h.decl().name()
+
+   This is simpler.
+
+   Example:
+
+      n = Name.Peter
+      n.decl().name() -> returns 'Peter'
+
+   So we can use that.
+
+   But note: what if n is not one of the constructors? But in our model, it must be.
+
+   So, we can safely use:
+
+      name_str = model.eval(names[i]).decl().name()
+      height_str = model.eval(heights[i]).decl().name()
+
+   Now, let's code accordingly.
+
+   We'll create the output dictionary.
+
+   Steps after solving:
+
+      if s.check() == sat:
+          m = s.model()
+          rows = []
+          for i in range(5):
+              house_number = i+1
+              name = m.eval(names[i]).decl().name()
+              height = m.eval(heights[i]).decl().name()
+              rows.append([str(house_number), name, height])
+
+          Then create the JSON.
+
+   But note: the height strings: we have 'very_tall', 'average', etc. but the problem uses 'very tall' (with space) in the input.
+   However, the problem says the output must use the exact attribute values as given in the input.
+
+   But in our Height enum, we used underscores. We must change the output to match the input.
+
+   The input heights are: `very tall`, `average`, `tall`, `very short`, `short`
+
+   So we need to map:
+
+      very_tall -> "very tall"
+      very_short -> "very short"
+      others remain the same.
+
+   Alternatively, we can define the enum with spaces, but Z3 doesn't allow spaces in symbol names.
+
+   So we'll do a replacement:
+
+      height_str = height_str.replace('_', ' ')
+
+   But note: 'tall' and 'average' and 'short' don't have underscores, so they remain.
+
+   So:
+
+      very_tall becomes "very tall"
+      very_short becomes "very short"
+
+   This matches.
+
+   Now, let's code.
+
+   We must also ensure that the house numbers are strings as in the example output.
+
+   We are using house numbers as strings in the output.
+
+   Let's write the code.
+
+   Note: We must also set the bounds for the index variables (0 to 4).
+
+   We'll add:
+
+      s.add(peter_house >= 0, peter_house < 5)
+      ... for all index variables.
+
+   Now, code.
+
+   One more thing: we have to assign Arnold and tall, which are not directly constrained except by being distinct.
+
+   But our constraints should be enough.
+
+   Let's code accordingly.
+
+   We'll now write the complete code.

@@ -1,0 +1,234 @@
+We are going to use the Z3 SMT solver to model and solve the puzzle.
+ We have 3 houses, each with a name, occupation, and hobby.
+ We will define integer variables for each attribute (name, occupation, hobby) for each house.
+ Since there are 3 houses, we can represent each attribute by an integer from 0 to 2 (or 1 to 3) but we will use 1-3 for house numbers and then map the attributes.
+
+ However, note: the houses are fixed by their number (1,2,3). So we are going to assign for each house (by number) the attributes.
+
+ We'll create:
+   For each house i (1,2,3):
+      name_i: which can be one of {Peter, Arnold, Eric} -> we'll assign numbers to these, but we'll use Z3 integers and then constrain them to be distinct and in [1,3] for each attribute.
+
+ Alternatively, we can use Z3's EnumSort for each category to make it more readable, but for simplicity and JSON output we can map to strings.
+
+ Let's plan:
+   We have three attributes: Name, Occupation, Hobby.
+
+   We can define three integer variables for each house? Actually, we can define:
+      Let name[1], name[2], name[3] be the name in house 1,2,3. But note: the values are from a set of three.
+
+   Instead, we can define for each house, three variables (but that's 9 variables). Alternatively, we can define:
+
+   We'll create three arrays (or lists) of Z3 integers, one for each attribute, each of length 3 (index 0 for house1, index1 for house2, index2 for house3?).
+
+   But note: the houses are ordered (1,2,3). So we can index by house index (0-indexed for code, but house numbers are 1-indexed).
+
+   Alternatively, we can use three variables for each attribute per house, but that would be 9 variables. Instead, we can use:
+
+   Let:
+      Names: we assign numbers: Peter=1, Arnold=2, Eric=3.
+      Occupations: doctor=1, teacher=2, engineer=3.
+      Hobbies: cooking=1, photography=2, gardening=3.
+
+   Then for each house i (0,1,2 representing house numbers 1,2,3), we have:
+      n[i] : the name in house i+1
+      o[i] : the occupation in house i+1
+      h[i] : the hobby in house i+1
+
+   We must have that the n, o, h for the three houses are all distinct (each attribute is a permutation of [1,2,3]).
+
+   Now, let's translate the clues:
+
+   1. The person who is a doctor and Eric are next to each other.
+        Let doctor occupation is represented by 1.
+        Eric is represented by 3.
+
+        So, for some house i, if o[i] == 1 (doctor) then the name in that house is not necessarily Eric, but they are next to each other.
+        This means: the doctor and Eric are in adjacent houses.
+
+        We can express: there exists an i (0,1,2) such that (o[i] == 1 and (n[i-1] == 3 or n[i+1] == 3)) OR (n[i] == 3 and (o[i-1] == 1 or o[i+1] == 1))
+        But note: we have to be careful with boundaries.
+
+        Alternatively, we can use absolute difference of indices = 1.
+
+        Let doctor_house be the index where o[i] == 1, and eric_house be the index where n[i] == 3.
+        Then |doctor_house - eric_house| == 1.
+
+   2. The person who loves cooking is directly left of the person who is a teacher.
+        Cooking hobby is 1, teacher occupation is 2.
+        So, for some i (0 or 1, because left of house 2 or 3), we have:
+           h[i] == 1 and o[i+1] == 2.
+
+   3. The person who is a doctor is somewhere to the right of the person who enjoys gardening.
+        Doctor occupation is 1, gardening hobby is 3.
+        Let doctor_house be the index where o[i] == 1, and gardening_house be the index where h[i] == 3.
+        Then doctor_house > gardening_house.
+
+   4. The photography enthusiast is the person who is a teacher.
+        Photography hobby is 2, teacher occupation is 2.
+        So, for every house i, if h[i] == 2 then o[i] == 2, and vice versa? Actually, it says the same person, so for the house where hobby is photography, the occupation is teacher.
+        So, there exists a house i such that h[i] == 2 and o[i] == 2. But note: since each attribute is unique, it's exactly one.
+
+        Alternatively, we can say: for all i, (h[i] == 2) == (o[i] == 2). But since each value appears exactly once, we can just equate the indices: the house with hobby photography is the same as the house with occupation teacher.
+
+        Actually, we can model: the index where h[i] == 2 is the same as the index where o[i] == 2.
+
+   5. The person who is an engineer is Peter.
+        Engineer occupation is 3, Peter name is 1.
+        So, for the house i where o[i] == 3, we have n[i] == 1.
+
+   We also have the inherent constraints that all n, o, h are distinct in the sense of being a permutation of [1,2,3].
+
+   We'll use Z3 to solve for the arrays n, o, h.
+
+   Steps:
+      - Create a solver.
+      - Create three arrays of integers (n, o, h) of length 3.
+      - For each array, assert that the values are distinct and between 1 and 3.
+      - Add the constraints from the clues.
+
+   However, note: the clues require comparing indices (houses) for different attributes.
+
+   Alternatively, we can define the variables for each attribute per house, and then use the constraints.
+
+   Let's code accordingly.
+
+   We'll create:
+      n = [Int('n0'), Int('n1'), Int('n2')]   # for house0 (which is house1), house1 (house2), house2 (house3)
+      similarly for o and h.
+
+   Then:
+      for i in range(3):
+          solver.add(n[i] >= 1, n[i] <= 3)
+          solver.add(o[i] >= 1, o[i] <= 3)
+          solver.add(h[i] >= 1, h[i] <= 3)
+
+      solver.add(Distinct(n))
+      solver.add(Distinct(o))
+      solver.add(Distinct(h))
+
+   Now, clue 1: The doctor and Eric are next to each other.
+      We need to find the house index for doctor (where o[i] == 1) and for Eric (where n[i] == 3). Then the absolute difference in their indices must be 1.
+
+      We can do:
+        doctor_index = [i for i in range(3) if o[i] == 1] -> but we cannot use list comprehension in Z3 constraints.
+
+      Instead, we can use:
+        For each i, if o[i] == 1, then for Eric (n[j] == 3) we require |i - j| == 1.
+
+      Alternatively, we can use:
+        solver.add(Or([And(o[i] == 1, Or( 
+            And(i>0, n[i-1] == 3), 
+            And(i<2, n[i+1] == 3)
+        )) for i in range(3)]))
+
+      Similarly, we can also allow the case where Eric is the doctor? But note: the clue says "the person who is a doctor and Eric" are two persons? Actually, the clue says they are next to each other, so they are two different people. So the doctor is not Eric.
+
+      So we can also add that the doctor is not Eric: for all i, Not(And(o[i]==1, n[i]==3))
+
+   But wait, the clue doesn't say they are different, but if they are the same person, then they are trivially next to themselves? But the houses are different, so the same person cannot be in two houses. So the doctor and Eric are two different people, so they cannot be in the same house. So we don't need to explicitly say they are different because if they were the same, then we would have o[i]==1 and n[i]==3, but then the condition "next to each other" would be trivially satisfied (same house) but that's not possible because the same person is in one house. So we must interpret that they are two different people. So we can add the constraint that the doctor is not Eric.
+
+   However, the clue says "the person who is a doctor and Eric" - this implies two entities. So we can assume they are different.
+
+   Alternatively, the clue might be read as: the doctor and Eric are two people and they are adjacent. So we can model without excluding same house, but same house is impossible because one house cannot have two different attributes (each house has one person, so one name and one occupation). So if the doctor and Eric are the same, then that house would have occupation doctor and name Eric, which is allowed? But wait, the clue says "the person who is a doctor and Eric" - if it's the same person, then it's one person. But the clue says "are next to each other", which implies two entities. So the clue intends two different people.
+
+   So we'll model as two different people.
+
+   We can do:
+
+        doctor_house = [i for i in range(3) if o[i]==1] -> but we cannot use this in Z3.
+
+        Instead, we can do:
+
+        adjacent = False
+        for i in range(3):
+            for j in range(3):
+                if abs(i-j) == 1:
+                    adjacent = Or(adjacent, And(o[i]==1, n[j]==3))
+        solver.add(adjacent)
+
+   But note: this would allow the case where the same house is doctor and Eric? No, because if i==j then abs(i-j)=0, not 1. So we are safe.
+
+   Alternatively, we can do:
+
+        solver.add(Or(
+            And(o[0]==1, n[1]==3),
+            And(o[1]==1, Or(n[0]==3, n[2]==3)),
+            And(o[2]==1, n[1]==3)
+        ))
+
+   This is efficient.
+
+   Clue 2: The person who loves cooking is directly left of the person who is a teacher.
+        Cooking (hobby=1) is left of teacher (occupation=2). So:
+          solver.add(Or(
+              And(h[0]==1, o[1]==2),
+              And(h[1]==1, o[2]==2)
+          ))
+
+   Clue 3: The doctor is to the right of the gardening enthusiast.
+        Doctor (occupation=1) is right of gardening (hobby=3). So:
+          Let gardening_house be the index where h[i]==3, and doctor_house be the index where o[i]==1. Then doctor_house > gardening_house.
+
+        We can do:
+          solver.add(Exists([i,j], And(
+              h[i] == 3,
+              o[j] == 1,
+              j > i
+          )))   -> but Z3 supports quantifiers, but it's better to avoid if we can.
+
+        Alternatively, we can use:
+
+          doctor_right_of_gardening = False
+          for i in range(3):
+              for j in range(3):
+                  if j > i:
+                      doctor_right_of_gardening = Or(doctor_right_of_gardening, And(h[i]==3, o[j]==1))
+          solver.add(doctor_right_of_gardening)
+
+        But note: this allows the same house? No, because j>i, so different houses. Also, note: the doctor and the gardening enthusiast are different people (unless the same house, but j>i so different houses).
+
+        Alternatively, we can use:
+
+          solver.add(Or(
+              And(h[0]==3, Or(o[1]==1, o[2]==1)),
+              And(h[1]==3, o[2]==1)
+          ))
+
+   Clue 4: The photography enthusiast is the teacher.
+        So, for the same house i, we have h[i]==2 and o[i]==2.
+
+        We can do:
+          for i in range(3):
+              solver.add( (h[i]==2) == (o[i]==2) )
+
+        But note: since each value appears exactly once, we can also do:
+          solver.add(Exists(i, And(h[i]==2, o[i]==2))) -> but that is weaker because it doesn't prevent that in another house, if h[i]!=2 then o[i] might be 2? No, because o[i] must be 2 in exactly one house, and h[i] must be 2 in exactly one house. So if we force that the same house has both, then it's enough.
+
+        Actually, we can simply say: there exists an i such that h[i]==2 and o[i]==2. But note: if we say that, then we are not preventing that in another house, if h[i] is not 2, then o[i] might be 2? But wait, the clue says the photography enthusiast (so the one with hobby photography) is the teacher (so the one with occupation teacher). So it's exactly one house that has both. So we can do:
+
+          solver.add(And([ (h[i]==2) == (o[i]==2) for i in range(3) ]))
+
+        This is strong: it says in every house, if the hobby is photography then the occupation is teacher, and vice versa.
+
+   Clue 5: The engineer is Peter.
+        Engineer occupation is 3, Peter name is 1.
+        So, for the house i where o[i]==3, we have n[i]==1.
+
+        We can do:
+          for i in range(3):
+              solver.add( (o[i]==3) == (n[i]==1) )
+
+        This says: in every house, the occupation is engineer if and only if the name is Peter.
+
+   Now, we solve and then map the numbers back to strings.
+
+   After solving, we will output for each house (1,2,3) the name, occupation, and hobby as strings.
+
+   Let's code accordingly.
+
+   Note: We must be cautious with the indices. Our list index 0 corresponds to house1, index1 to house2, index2 to house3.
+
+   We'll create the solver, add the constraints, check, and then output the JSON.
+
+   Let's write the code.

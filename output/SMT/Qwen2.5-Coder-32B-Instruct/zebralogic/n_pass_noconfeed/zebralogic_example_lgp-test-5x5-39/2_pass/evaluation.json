@@ -1,0 +1,66 @@
+{
+    "has_execution_error": true,
+    "has_no_plan": false,
+    "execution_output": null,
+    "pred": null,
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Eric",
+            "Birthday": "feb",
+            "Mother": "Penny",
+            "Occupation": "doctor",
+            "HairColor": "red"
+        },
+        {
+            "House": "2",
+            "Name": "Peter",
+            "Birthday": "sept",
+            "Mother": "Holly",
+            "Occupation": "lawyer",
+            "HairColor": "black"
+        },
+        {
+            "House": "3",
+            "Name": "Arnold",
+            "Birthday": "april",
+            "Mother": "Janelle",
+            "Occupation": "engineer",
+            "HairColor": "blonde"
+        },
+        {
+            "House": "4",
+            "Name": "Bob",
+            "Birthday": "jan",
+            "Mother": "Aniya",
+            "Occupation": "artist",
+            "HairColor": "brown"
+        },
+        {
+            "House": "5",
+            "Name": "Alice",
+            "Birthday": "mar",
+            "Mother": "Kailyn",
+            "Occupation": "teacher",
+            "HairColor": "gray"
+        }
+    ],
+    "status": "Error",
+    "violated_constraint": {
+        "invalid_output": "No valid output structure found"
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 2,
+    "timing": {
+        "api_call_time": 67.01896095275879,
+        "execution_time": 0.07749700546264648,
+        "constraint_eval_time": 4.0531158447265625e-06,
+        "pred_extract_time": 1.0251998901367188e-05,
+        "gold_extract_time": 1.4066696166992188e-05,
+        "total_tokens": 6001,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\n\n# Define the domains\nhouses = [1, 2, 3, 4, 5]\nnames = [\"Alice\", \"Eric\", \"Bob\", \"Peter\", \"Arnold\"]\nbirthdays = [\"mar\", \"april\", \"sept\", \"feb\", \"jan\"]\nmothers = [\"Holly\", \"Janelle\", \"Kailyn\", \"Penny\", \"Aniya\"]\noccupations = [\"engineer\", \"doctor\", \"lawyer\", \"artist\", \"teacher\"]\nhair_colors = [\"red\", \"blonde\", \"black\", \"gray\", \"brown\"]\n\n# Create the solver\nsolver = Solver()\n\n# Declare variables\nname_vars = {house: Int(f\"name_{house}\") for house in houses}\nbirthday_vars = {house: Int(f\"birthday_{house}\") for house in houses}\nmother_vars = {house: Int(f\"mother_{house}\") for house in houses}\noccupation_vars = {house: Int(f\"occupation_{house}\") for house in houses}\nhair_color_vars = {house: Int(f\"hair_color_{house}\") for house in houses}\n\n# Add domain constraints\nfor house in houses:\n    solver.add(name_vars[house] >= 0)\n    solver.add(name_vars[house] < len(names))\n    solver.add(birthday_vars[house] >= 0)\n    solver.add(birthday_vars[house] < len(birthdays))\n    solver.add(mother_vars[house] >= 0)\n    solver.add(mother_vars[house] < len(mothers))\n    solver.add(occupation_vars[house] >= 0)\n    solver.add(occupation_vars[house] < len(occupations))\n    solver.add(hair_color_vars[house] >= 0)\n    solver.add(hair_color_vars[house] < len(hair_colors))\n\n# Add uniqueness constraints\nfor attr_vars in [name_vars, birthday_vars, mother_vars, occupation_vars, hair_color_vars]:\n    solver.add(Distinct([attr_vars[house] for house in houses]))\n\n# Add clue constraints\n# Clue 1\nsolver.add(birthday_vars[5] == birthdays.index(\"mar\"))\n\n# Clue 2\nsolver.add(birthday_vars[1] == birthdays.index(\"feb\"))\n\n# Clue 3\nsolver.add(occupation_vars[names.index(\"Eric\")] == occupations.index(\"doctor\"))\n\n# Clue 4\nsolver.add(mother_vars[3] == mothers.index(\"Janelle\"))\n\n# Clue 5\nartist_house = Int('artist_house')\nsolver.add(occupation_vars[artist_house] == occupations.index(\"artist\"))\nsolver.add(hair_color_vars[artist_house] == hair_colors.index(\"brown\"))\n\n# Clue 6\nsolver.add(occupation_vars[4] == occupations.index(\"artist\"))\n\n# Clue 7\npenny_house = Int('penny_house')\nsolver.add(mother_vars[penny_house] == mothers.index(\"Penny\"))\nblack_house = Int('black_house')\nsolver.add(hair_color_vars[black_house] == hair_colors.index(\"black\"))\nsolver.add(mother_vars[penny_house] < black_house)\n\n# Clue 8\nsolver.add(name_vars[names.index(\"Peter\")] == hair_colors.index(\"black\"))\n\n# Clue 9\ngray_house = Int('gray_house')\nsolver.add(hair_color_vars[gray_house] == hair_colors.index(\"gray\"))\nsolver.add(occupation_vars[gray_house] == occupations.index(\"teacher\"))\n\n# Clue 10\nalice_house = Int('alice_house')\nsolver.add(name_vars[alice_house] == names.index(\"Alice\"))\nsolver.add(mother_vars[alice_house] == mothers.index(\"Kailyn\"))\n\n# Clue 11\narnold_house = Int('arnold_house')\nsolver.add(name_vars[arnold_house] == names.index(\"Arnold\"))\nsept_house = Int('sept_house')\nsolver.add(birthday_vars[sept_house] == birthdays.index(\"sept\"))\nsolver.add(arnold_house > sept_house)\n\n# Clue 12\nbrown_house = Int('brown_house')\nsolver.add(hair_color_vars[brown_house] == hair_colors.index(\"brown\"))\nsolver.add(brown_house == birthdays.index(\"jan\"))\n\n# Clue 13\nsolver.add(name_vars[arnold_house] == hair_colors.index(\"blonde\"))\n\n# Clue 14\nholly_house = Int('holly_house')\nsolver.add(mother_vars[holly_house] == mothers.index(\"Holly\"))\nsolver.add(hair_color_vars[holly_house] == hair_colors.index(\"black\"))\n\n# Clue 15\nsolver.add(name_vars[names.index(\"Peter\")] == occupations.index(\"lawyer\"))\n\n# Clue 16\nsolver.add(sept_house < mothers.index(\"Kailyn\"))\n\n# Clue 17\nsolver.add(name_vars[alice_house] == hair_colors.index(\"gray\"))\n\n# Solve the puzzle\nif solver.check() == sat:\n    model = solver.model()\n    solution = {\n        \"solution\": {\n            \"header\": [\"House\", \"Name\", \"Birthday\", \"Mother\", \"Occupation\", \"HairColor\"],\n            \"rows\": []\n        }\n    }\n    for house in houses:\n        name = names[model[name_vars[house]].as_long()]\n        birthday = birthdays[model[birthday_vars[house]].as_long()]\n        mother = mothers[model[mother_vars[house]].as_long()]\n        occupation = occupations[model[occupation_vars[house]].as_long()]\n        hair_color = hair_colors[model[hair_color_vars[house]].as_long()]\n        solution[\"solution\"][\"rows\"].append([str(house), name, birthday, mother, occupation, hair_color])\n    import json\n    print(json.dumps(solution, indent=2))\nelse:\n    print(\"No solution found\")"
+}

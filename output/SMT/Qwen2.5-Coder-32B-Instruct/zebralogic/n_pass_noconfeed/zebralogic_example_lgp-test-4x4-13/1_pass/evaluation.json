@@ -1,0 +1,54 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "null",
+    "pred": [],
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Alice",
+            "Cigar": "prince",
+            "FavoriteSport": "soccer",
+            "Drink": "water"
+        },
+        {
+            "House": "2",
+            "Name": "Arnold",
+            "Cigar": "blue master",
+            "FavoriteSport": "tennis",
+            "Drink": "coffee"
+        },
+        {
+            "House": "3",
+            "Name": "Eric",
+            "Cigar": "dunhill",
+            "FavoriteSport": "basketball",
+            "Drink": "tea"
+        },
+        {
+            "House": "4",
+            "Name": "Peter",
+            "Cigar": "pall mall",
+            "FavoriteSport": "swimming",
+            "Drink": "milk"
+        }
+    ],
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "invalid_output": "No valid output structure found"
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 39.70937371253967,
+        "execution_time": 0.08426713943481445,
+        "constraint_eval_time": 2.86102294921875e-06,
+        "pred_extract_time": 1.0702836513519287,
+        "gold_extract_time": 1.33514404296875e-05,
+        "total_tokens": 3640,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\n\ndef solve_puzzle():\n    # Define the domains\n    houses = [1, 2, 3, 4]\n    names = [\"Alice\", \"Peter\", \"Arnold\", \"Eric\"]\n    cigars = [\"prince\", \"dunhill\", \"blue master\", \"pall mall\"]\n    sports = [\"swimming\", \"basketball\", \"soccer\", \"tennis\"]\n    drinks = [\"coffee\", \"water\", \"milk\", \"tea\"]\n\n    # Create dictionaries to map variables to Z3 variables\n    name_vars = {house: Int(f\"name_{house}\") for house in houses}\n    cigar_vars = {house: Int(f\"cigar_{house}\") for house in houses}\n    sport_vars = {house: Int(f\"sport_{house}\") for house in houses}\n    drink_vars = {house: Int(f\"drink_{house}\") for house in houses}\n\n    # Create a solver instance\n    solver = Solver()\n\n    # Add constraints for unique values per category\n    for var_dict, domain in [(name_vars, names), (cigar_vars, cigars), (sport_vars, sports), (drink_vars, drinks)]:\n        solver.add(Distinct([var_dict[house] for house in houses]))\n        for house in houses:\n            solver.add(var_dict[house] >= 0)\n            solver.add(var_dict[house] < len(domain))\n\n    # Add specific clues as constraints\n    # 1. Peter is in the fourth house.\n    solver.add(name_vars[4] == names.index(\"Peter\"))\n\n    # 2. The tea drinker is the person who loves basketball.\n    solver.add(And(drink_vars[i] == drinks.index(\"tea\"), sport_vars[i] == sports.index(\"basketball\")) for i in houses)\n\n    # 3. Arnold is the person who smokes Blue Master.\n    solver.add(And(name_vars[i] == names.index(\"Arnold\"), cigar_vars[i] == cigars.index(\"blue master\")) for i in houses)\n\n    # 4. The person who loves basketball is Eric.\n    solver.add(And(sport_vars[i] == sports.index(\"basketball\"), name_vars[i] == names.index(\"Eric\")) for i in houses)\n\n    # 5. The person who loves tennis is the person who smokes Blue Master.\n    solver.add(And(sport_vars[i] == sports.index(\"tennis\"), cigar_vars[i] == cigars.index(\"blue master\")) for i in houses)\n\n    # 6. There are two houses between the one who only drinks water and Peter.\n    solver.add(Abs(drink_vars[i] - drinks.index(\"water\")) == Abs(name_vars[j] - names.index(\"Peter\")) - 2 for i in houses for j in houses if i != j)\n\n    # 7. The coffee drinker is Arnold.\n    solver.add(And(drink_vars[i] == drinks.index(\"coffee\"), name_vars[i] == names.index(\"Arnold\")) for i in houses)\n\n    # 8. The person who loves basketball is in the third house.\n    solver.add(sport_vars[3] == sports.index(\"basketball\"))\n\n    # 9. The Prince smoker is the person who loves soccer.\n    solver.add(And(cigar_vars[i] == cigars.index(\"prince\"), sport_vars[i] == sports.index(\"soccer\")) for i in houses)\n\n    # 10. Peter is the person partial to Pall Mall.\n    solver.add(And(name_vars[i] == names.index(\"Peter\"), cigar_vars[i] == cigars.index(\"pall mall\")) for i in houses)\n\n    # Check if the constraints are satisfiable\n    if solver.check() == sat:\n        model = solver.model()\n        solution = {\n            \"solution\": {\n                \"header\": [\"House\", \"Name\", \"Cigar\", \"FavoriteSport\", \"Drink\"],\n                \"rows\": []\n            }\n        }\n        for house in houses:\n            name = names[model.evaluate(name_vars[house]).as_long()]\n            cigar = cigars[model.evaluate(cigar_vars[house]).as_long()]\n            sport = sports[model.evaluate(sport_vars[house]).as_long()]\n            drink = drinks[model.evaluate(drink_vars[house]).as_long()]\n            solution[\"solution\"][\"rows\"].append([str(house), name, cigar, sport, drink])\n        return solution\n    else:\n        return None\n\n# Solve the puzzle and print the solution as JSON\nimport json\nprint(json.dumps(solve_puzzle(), indent=2))"
+}

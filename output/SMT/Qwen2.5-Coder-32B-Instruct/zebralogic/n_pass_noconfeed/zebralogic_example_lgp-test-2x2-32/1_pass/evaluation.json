@@ -1,0 +1,45 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\"solution\": {\"header\": [\"House\", \"Name\", \"BookGenre\"], \"rows\": [[\"1\", \"Eric\", \"science fiction\"], [\"2\", \"Arnold\", \"mystery\"]]}}",
+    "pred": [
+        {
+            "House": "1",
+            "Name": "Eric",
+            "BookGenre": "science fiction"
+        },
+        {
+            "House": "2",
+            "Name": "Arnold",
+            "BookGenre": "mystery"
+        }
+    ],
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Eric",
+            "BookGenre": "science fiction"
+        },
+        {
+            "House": "2",
+            "Name": "Arnold",
+            "BookGenre": "mystery"
+        }
+    ],
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 16.049394130706787,
+        "execution_time": 0.06499028205871582,
+        "constraint_eval_time": 3.719329833984375e-05,
+        "pred_extract_time": 1.5045936107635498,
+        "gold_extract_time": 5.245208740234375e-06,
+        "total_tokens": 1488,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\nimport json\n\n# Define the variables\nhouse1_name = String('house1_name')\nhouse2_name = String('house2_name')\nhouse1_book_genre = String('house1_book_genre')\nhouse2_book_genre = String('house2_book_genre')\n\n# Create the solver\nsolver = Solver()\n\n# Define the domains for the variables\nnames = ['Eric', 'Arnold']\nbook_genres = ['science fiction', 'mystery']\n\n# Add constraints for unique names and book genres\nsolver.add(Distinct(house1_name, house2_name))\nsolver.add(Distinct(house1_book_genre, house2_book_genre))\n\n# Add constraints for the domain of each variable\nsolver.add(Or(house1_name == 'Eric', house1_name == 'Arnold'))\nsolver.add(Or(house2_name == 'Eric', house2_name == 'Arnold'))\nsolver.add(Or(house1_book_genre == 'science fiction', house1_book_genre == 'mystery'))\nsolver.add(Or(house2_book_genre == 'science fiction', house2_book_genre == 'mystery'))\n\n# Add the clue constraint\nsolver.add(And(house1_name == 'Eric', house2_book_genre == 'mystery'))\n\n# Check if the constraints are satisfiable\nif solver.check() == sat:\n    model = solver.model()\n    solution = {\n        \"solution\": {\n            \"header\": [\"House\", \"Name\", \"BookGenre\"],\n            \"rows\": [\n                [\"1\", model[house1_name].as_string(), model[house1_book_genre].as_string()],\n                [\"2\", model[house2_name].as_string(), model[house2_book_genre].as_string()]\n            ]\n        }\n    }\n    print(json.dumps(solution))\nelse:\n    print(\"No solution found\")"
+}

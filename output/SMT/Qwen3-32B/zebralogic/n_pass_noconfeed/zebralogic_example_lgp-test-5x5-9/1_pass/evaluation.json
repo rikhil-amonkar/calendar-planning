@@ -1,0 +1,66 @@
+{
+    "has_execution_error": true,
+    "has_no_plan": false,
+    "execution_output": null,
+    "pred": null,
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Eric",
+            "Drink": "root beer",
+            "Color": "yellow",
+            "Flower": "carnations",
+            "Hobby": "gardening"
+        },
+        {
+            "House": "2",
+            "Name": "Arnold",
+            "Drink": "tea",
+            "Color": "white",
+            "Flower": "roses",
+            "Hobby": "photography"
+        },
+        {
+            "House": "3",
+            "Name": "Peter",
+            "Drink": "water",
+            "Color": "red",
+            "Flower": "daffodils",
+            "Hobby": "knitting"
+        },
+        {
+            "House": "4",
+            "Name": "Bob",
+            "Drink": "milk",
+            "Color": "blue",
+            "Flower": "tulips",
+            "Hobby": "cooking"
+        },
+        {
+            "House": "5",
+            "Name": "Alice",
+            "Drink": "coffee",
+            "Color": "green",
+            "Flower": "lilies",
+            "Hobby": "painting"
+        }
+    ],
+    "status": "Error",
+    "violated_constraint": {
+        "invalid_output": "No valid output structure found"
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 582.2735104560852,
+        "execution_time": 0.08205080032348633,
+        "constraint_eval_time": 5.4836273193359375e-06,
+        "pred_extract_time": 1.0728836059570312e-05,
+        "gold_extract_time": 2.0742416381835938e-05,
+        "total_tokens": 39409,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import json\nfrom z3 import *\n\ndef solve_puzzle():\n    # Define EnumSorts\n    Name, (Bob, Arnold, Peter, Alice, Eric) = EnumSort('Name', ['Bob', 'Arnold', 'Peter', 'Alice', 'Eric'])\n    Drink, (milk, root_beer, coffee, tea, water) = EnumSort('Drink', ['milk', 'root beer', 'coffee', 'tea', 'water'])\n    Color, (blue, green, white, yellow, red) = EnumSort('Color', ['blue', 'green', 'white', 'yellow', 'red'])\n    Flower, (daffodils, roses, lilies, tulips, carnations) = EnumSort('Flower', ['daffodils', 'roses', 'lilies', 'tulips', 'carnations'])\n    Hobby, (painting, cooking, photography, gardening, knitting) = EnumSort('Hobby', ['painting', 'cooking', 'photography', 'gardening', 'knitting'])\n\n    houses = 5\n    name = [Const(f'name_{i}', Name) for i in range(houses)]\n    drink = [Const(f'drink_{i}', Drink) for i in range(houses)]\n    color = [Const(f'color_{i}', Color) for i in range(houses)]\n    flower = [Const(f'flower_{i}', Flower) for i in range(houses)]\n    hobby = [Const(f'hobby_{i}', Hobby) for i in range(houses)]\n\n    s = Solver()\n\n    # Add distinct constraints\n    s.add(Distinct(name))\n    s.add(Distinct(drink))\n    s.add(Distinct(color))\n    s.add(Distinct(flower))\n    s.add(Distinct(hobby))\n\n    # Clue 1: Alice is not in the fourth house (index 3)\n    s.add(name[3] != Alice)\n\n    # Clue 2: root beer lover is gardening\n    for i in range(houses):\n        s.add(Implies(drink[i] == root_beer, hobby[i] == gardening))\n\n    # Clue 3: green color implies coffee\n    for i in range(houses):\n        s.add(Implies(color[i] == green, drink[i] == coffee))\n\n    # Clue 4: green color implies lilies\n    for i in range(houses):\n        s.add(Implies(color[i] == green, flower[i] == lilies))\n\n    # Clue 5: blue is to the right of daffodils\n    daffodils_pos = Int('daffodils_pos')\n    blue_pos = Int('blue_pos')\n    s.add(And(0 <= daffodils_pos, daffodils_pos <= 4))\n    s.add(And(0 <= blue_pos, blue_pos <= 4))\n    for i in range(houses):\n        s.add(Implies(daffodils_pos == i, flower[i] == daffodils))\n        s.add(Implies(daffodils_pos != i, flower[i] != daffodils))\n        s.add(Implies(blue_pos == i, color[i] == blue))\n        s.add(Implies(blue_pos != i, color[i] != blue))\n    s.add(blue_pos > daffodils_pos)\n\n    # Clue 6: cooking is blue\n    cooking_pos = Int('cooking_pos')\n    s.add(And(0 <= cooking_pos, cooking_pos <= 4))\n    for i in range(houses):\n        s.add(Implies(cooking_pos == i, hobby[i] == cooking))\n        s.add(Implies(cooking_pos != i, hobby[i] != cooking))\n    s.add(cooking_pos == blue_pos)\n\n    # Clue 7: Eric is directly left of tea\n    eric_pos = Int('eric_pos')\n    s.add(And(0 <= eric_pos, eric_pos <= 3))\n    for i in range(houses):\n        s.add(Implies(eric_pos == i, name[i] == Eric))\n        s.add(Implies(eric_pos != i, name[i] != Eric))\n    s.add(drink[eric_pos + 1] == tea)\n\n    # Clue 8: Peter is water drinker\n    peter_pos = Int('peter_pos')\n    s.add(And(0 <= peter_pos, peter_pos <= 4))\n    for i in range(houses):\n        s.add(Implies(peter_pos == i, name[i] == Peter))\n        s.add(Implies(peter_pos != i, name[i] != Peter))\n    s.add(drink[peter_pos] == water)\n\n    # Clue 9: Arnold is photography\n    arnold_pos = Int('arnold_pos')\n    s.add(And(0 <= arnold_pos, arnold_pos <= 4))\n    for i in range(houses):\n        s.add(Implies(arnold_pos == i, name[i] == Arnold))\n        s.add(Implies(arnold_pos != i, name[i] != Arnold))\n    s.add(hobby[arnold_pos] == photography)\n\n    # Clue 10: white implies roses\n    white_pos = Int('white_pos')\n    s.add(And(0 <= white_pos, white_pos <= 4))\n    for i in range(houses):\n        s.add(Implies(white_pos == i, color[i] == white))\n        s.add(Implies(white_pos != i, color[i] != white))\n    s.add(flower[white_pos] == roses)\n\n    # Clue 13: water is in third house (index 2)\n    s.add(peter_pos == 2)\n\n    # Clue 15: white is in second house (index 1)\n    s.add(white_pos == 1)\n\n    # Clue 14: carnations implies root beer\n    carnations_pos = Int('carnations_pos')\n    s.add(And(0 <= carnations_pos, carnations_pos <= 4))\n    for i in range(houses):\n        s.add(Implies(carnations_pos == i, flower[i] == carnations))\n        s.add(Implies(carnations_pos != i, flower[i] != carnations))\n    s.add(drink[carnations_pos] == root_beer)\n\n    # Clue 11: one house between carnations and red\n    red_pos = Int('red_pos')\n    s.add(And(0 <= red_pos, red_pos <= 4))\n    for i in range(houses):\n        s.add(Implies(red_pos == i, color[i] == red))\n        s.add(Implies(red_pos != i, color[i] != red))\n    s.add(Or(carnations_pos == red_pos - 2, carnations_pos == red_pos + 2))\n\n    # Clue 12: cooking is left of painting\n    painting_pos = Int('painting_pos')\n    s.add(And(0 <= painting_pos, painting_pos <= 4))\n    for i in range(houses):\n        s.add(Implies(painting_pos == i, hobby[i] == painting))\n        s.add(Implies(painting_pos != i, hobby[i] != painting))\n    s.add(cooking_pos < painting_pos)\n\n    # Check if the constraints are satisfiable\n    if s.check() == sat:\n        model = s.model()\n        # Extract the solution\n        solution = []\n        for i in range(houses):\n            house_num = i + 1\n            name_val = model[name[i]].decl().name()\n            drink_val = model[drink[i]].decl().name()\n            color_val = model[color[i]].decl().name()\n            flower_val = model[flower[i]].decl().name()\n            hobby_val = model[hobby[i]].decl().name()\n            solution.append([str(house_num), name_val, drink_val, color_val, flower_val, hobby_val])\n        return {\n            \"solution\": {\n                \"header\": [\"House\", \"Name\", \"Drink\", \"Color\", \"Flower\", \"Hobby\"],\n                \"rows\": solution\n            }\n        }\n    else:\n        return None\n\nif __name__ == \"__main__\":\n    result = solve_puzzle()\n    print(json.dumps(result, indent=2))"
+}

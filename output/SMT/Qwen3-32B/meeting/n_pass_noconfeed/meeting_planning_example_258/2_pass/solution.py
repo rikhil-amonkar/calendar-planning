@@ -1,0 +1,1 @@
+solver.add(S[i] >= z3.If(arrival_time >= current_friend['available_start'], arrival_time, current_friend['available_start']))

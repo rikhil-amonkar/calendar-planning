@@ -1,0 +1,113 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"solution\": {\n    \"header\": [\n      \"House\",\n      \"Name\",\n      \"Hobby\",\n      \"Animal\",\n      \"BookGenre\",\n      \"Birthday\",\n      \"MusicGenre\"\n    ],\n    \"rows\": [\n      [\n        \"1\",\n        \"Alice\",\n        \"cooking\",\n        \"bird\",\n        \"romance\",\n        \"sept\",\n        \"jazz\"\n      ],\n      [\n        \"2\",\n        \"Peter\",\n        \"photography\",\n        \"fish\",\n        \"fantasy\",\n        \"feb\",\n        \"pop\"\n      ],\n      [\n        \"3\",\n        \"Arnold\",\n        \"gardening\",\n        \"horse\",\n        \"mystery\",\n        \"april\",\n        \"rock\"\n      ],\n      [\n        \"4\",\n        \"Eric\",\n        \"painting\",\n        \"cat\",\n        \"science fiction\",\n        \"jan\",\n        \"classical\"\n      ]\n    ]\n  }\n}",
+    "pred": [
+        {
+            "House": "1",
+            "Name": "Alice",
+            "Hobby": "cooking",
+            "Animal": "bird",
+            "BookGenre": "romance",
+            "Birthday": "sept",
+            "MusicGenre": "jazz"
+        },
+        {
+            "House": "2",
+            "Name": "Peter",
+            "Hobby": "photography",
+            "Animal": "fish",
+            "BookGenre": "fantasy",
+            "Birthday": "feb",
+            "MusicGenre": "pop"
+        },
+        {
+            "House": "3",
+            "Name": "Arnold",
+            "Hobby": "gardening",
+            "Animal": "horse",
+            "BookGenre": "mystery",
+            "Birthday": "april",
+            "MusicGenre": "rock"
+        },
+        {
+            "House": "4",
+            "Name": "Eric",
+            "Hobby": "painting",
+            "Animal": "cat",
+            "BookGenre": "science fiction",
+            "Birthday": "jan",
+            "MusicGenre": "classical"
+        }
+    ],
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Peter",
+            "Hobby": "painting",
+            "Animal": "fish",
+            "BookGenre": "fantasy",
+            "Birthday": "feb",
+            "MusicGenre": "pop"
+        },
+        {
+            "House": "2",
+            "Name": "Alice",
+            "Hobby": "cooking",
+            "Animal": "bird",
+            "BookGenre": "romance",
+            "Birthday": "sept",
+            "MusicGenre": "jazz"
+        },
+        {
+            "House": "3",
+            "Name": "Arnold",
+            "Hobby": "gardening",
+            "Animal": "horse",
+            "BookGenre": "mystery",
+            "Birthday": "april",
+            "MusicGenre": "rock"
+        },
+        {
+            "House": "4",
+            "Name": "Eric",
+            "Hobby": "photography",
+            "Animal": "cat",
+            "BookGenre": "science fiction",
+            "Birthday": "jan",
+            "MusicGenre": "classical"
+        }
+    ],
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "violations": [
+            "House 1 wrong Name: expected 'Peter', got 'Alice'",
+            "House 1 wrong Hobby: expected 'painting', got 'cooking'",
+            "House 1 wrong Animal: expected 'fish', got 'bird'",
+            "House 1 wrong BookGenre: expected 'fantasy', got 'romance'",
+            "House 1 wrong Birthday: expected 'feb', got 'sept'",
+            "House 1 wrong MusicGenre: expected 'pop', got 'jazz'",
+            "House 2 wrong Name: expected 'Alice', got 'Peter'",
+            "House 2 wrong Hobby: expected 'cooking', got 'photography'",
+            "House 2 wrong Animal: expected 'bird', got 'fish'",
+            "House 2 wrong BookGenre: expected 'romance', got 'fantasy'",
+            "House 2 wrong Birthday: expected 'sept', got 'feb'",
+            "House 2 wrong MusicGenre: expected 'jazz', got 'pop'",
+            "House 4 wrong Hobby: expected 'photography', got 'painting'"
+        ]
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 92.65064597129822,
+        "execution_time": 0.08771634101867676,
+        "constraint_eval_time": 0.0001556873321533203,
+        "pred_extract_time": 2.276714324951172,
+        "gold_extract_time": 3.24249267578125e-05,
+        "total_tokens": 1793,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import json\nfrom z3 import *\n\ndef main():\n    solver = Solver()\n    \n    n_houses = 4\n    houses = [1, 2, 3, 4]\n    \n    # Define all possible values for each category\n    names = ['Peter', 'Alice', 'Eric', 'Arnold']\n    hobbies = ['cooking', 'painting', 'gardening', 'photography']\n    animals = ['horse', 'fish', 'cat', 'bird']\n    book_genres = ['fantasy', 'mystery', 'romance', 'science fiction']\n    birthdays = ['april', 'jan', 'sept', 'feb']\n    music_genres = ['pop', 'rock', 'classical', 'jazz']\n    \n    # Create Z3 variables for each attribute in each house\n    name_vars = [Int(f'name_{i}') for i in houses]\n    hobby_vars = [Int(f'hobby_{i}') for i in houses]\n    animal_vars = [Int(f'animal_{i}') for i in houses]\n    book_vars = [Int(f'book_{i}') for i in houses]\n    birthday_vars = [Int(f'birthday_{i}') for i in houses]\n    music_vars = [Int(f'music_{i}') for i in houses]\n    \n    # Define domains for each variable\n    for i in houses:\n        solver.add(And(name_vars[i-1] >= 0, name_vars[i-1] < len(names)))\n        solver.add(And(hobby_vars[i-1] >= 0, hobby_vars[i-1] < len(hobbies)))\n        solver.add(And(animal_vars[i-1] >= 0, animal_vars[i-1] < len(animals)))\n        solver.add(And(book_vars[i-1] >= 0, book_vars[i-1] < len(book_genres)))\n        solver.add(And(birthday_vars[i-1] >= 0, birthday_vars[i-1] < len(birthdays)))\n        solver.add(And(music_vars[i-1] >= 0, music_vars[i-1] < len(music_genres)))\n    \n    # All attributes are distinct within their category\n    solver.add(Distinct(name_vars))\n    solver.add(Distinct(hobby_vars))\n    solver.add(Distinct(animal_vars))\n    solver.add(Distinct(book_vars))\n    solver.add(Distinct(birthday_vars))\n    solver.add(Distinct(music_vars))\n    \n    # Clue 1: The person who loves cooking is the person who loves romance books.\n    for i in houses:\n        solver.add(Implies(hobby_vars[i-1] == hobbies.index('cooking'), \n                          book_vars[i-1] == book_genres.index('romance')))\n    \n    # Clue 2: The person whose birthday is in February is the person who loves pop music.\n    for i in houses:\n        solver.add(Implies(birthday_vars[i-1] == birthdays.index('feb'), \n                          music_vars[i-1] == music_genres.index('pop')))\n    \n    # Clue 3: Eric is not in the second house.\n    solver.add(name_vars[1] != names.index('Eric'))\n    \n    # Clue 4: The person who loves romance books is not in the fourth house.\n    solver.add(book_vars[3] != book_genres.index('romance'))\n    \n    # Clue 5: The person whose birthday is in February is the fish enthusiast.\n    for i in houses:\n        solver.add(Implies(birthday_vars[i-1] == birthdays.index('feb'), \n                          animal_vars[i-1] == animals.index('fish')))\n    \n    # Clue 6: Alice is somewhere to the right of the person who loves fantasy books.\n    alice_pos = None\n    fantasy_pos = None\n    for i in houses:\n        for j in houses:\n            if i > j:  # i is right of j\n                solver.add(Implies(And(name_vars[i-1] == names.index('Alice'), \n                                      book_vars[j-1] == book_genres.index('fantasy')), True))\n    \n    # Clue 7: The person who keeps horses is the person who loves rock music.\n    for i in houses:\n        solver.add(Implies(animal_vars[i-1] == animals.index('horse'), \n                          music_vars[i-1] == music_genres.index('rock')))\n    \n    # Clue 8: The person who enjoys gardening is the person whose birthday is in April.\n    for i in houses:\n        solver.add(Implies(hobby_vars[i-1] == hobbies.index('gardening'), \n                          birthday_vars[i-1] == birthdays.index('april')))\n    \n    # Clue 9: The person who loves jazz music is the person who loves cooking.\n    for i in houses:\n        solver.add(Implies(music_vars[i-1] == music_genres.index('jazz'), \n                          hobby_vars[i-1] == hobbies.index('cooking')))\n    \n    # Clue 10: The person who loves rock music is the person who loves mystery books.\n    for i in houses:\n        solver.add(Implies(music_vars[i-1] == music_genres.index('rock'), \n                          book_vars[i-1] == book_genres.index('mystery')))\n    \n    # Clue 11: The person who paints as a hobby is directly left of the person who loves romance books.\n    for i in range(1, n_houses):\n        solver.add(Implies(hobby_vars[i-1] == hobbies.index('painting'), \n                          book_vars[i] == book_genres.index('romance')))\n    \n    # Clue 12: Peter is the person who loves pop music.\n    for i in houses:\n        solver.add(Implies(name_vars[i-1] == names.index('Peter'), \n                          music_vars[i-1] == music_genres.index('pop')))\n    \n    # Clue 13: The person who enjoys gardening is Arnold.\n    for i in houses:\n        solver.add(Implies(hobby_vars[i-1] == hobbies.index('gardening'), \n                          name_vars[i-1] == names.index('Arnold')))\n    \n    # Clue 14: The person who loves rock music is directly left of the person whose birthday is in January.\n    for i in range(1, n_houses):\n        solver.add(Implies(music_vars[i-1] == music_genres.index('rock'), \n                          birthday_vars[i] == birthdays.index('jan')))\n    \n    # Clue 15: The person who loves cooking is not in the third house.\n    solver.add(hobby_vars[2] != hobbies.index('cooking'))\n    \n    # Clue 16: The cat lover is somewhere to the right of the person who keeps horses.\n    for i in houses:\n        for j in houses:\n            if i > j:  # i is right of j\n                solver.add(Implies(And(animal_vars[i-1] == animals.index('cat'), \n                                      animal_vars[j-1] == animals.index('horse')), True))\n    \n    # Check if the problem is satisfiable\n    if solver.check() == sat:\n        model = solver.model()\n        \n        # Extract the solution\n        solution = []\n        for house in houses:\n            idx = house - 1\n            name_idx = model.evaluate(name_vars[idx]).as_long()\n            hobby_idx = model.evaluate(hobby_vars[idx]).as_long()\n            animal_idx = model.evaluate(animal_vars[idx]).as_long()\n            book_idx = model.evaluate(book_vars[idx]).as_long()\n            birthday_idx = model.evaluate(birthday_vars[idx]).as_long()\n            music_idx = model.evaluate(music_vars[idx]).as_long()\n            \n            row = [\n                str(house),\n                names[name_idx],\n                hobbies[hobby_idx],\n                animals[animal_idx],\n                book_genres[book_idx],\n                birthdays[birthday_idx],\n                music_genres[music_idx]\n            ]\n            solution.append(row)\n        \n        # Format the output as JSON\n        output = {\n            \"solution\": {\n                \"header\": [\"House\", \"Name\", \"Hobby\", \"Animal\", \"BookGenre\", \"Birthday\", \"MusicGenre\"],\n                \"rows\": solution\n            }\n        }\n        \n        print(json.dumps(output, indent=2))\n    else:\n        print('{\"error\": \"No solution found\"}')\n\nif __name__ == \"__main__\":\n    main()"
+}

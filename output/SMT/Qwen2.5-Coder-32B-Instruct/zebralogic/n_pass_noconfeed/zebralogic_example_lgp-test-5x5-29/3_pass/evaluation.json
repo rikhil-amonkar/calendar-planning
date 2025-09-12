@@ -1,0 +1,66 @@
+{
+    "has_execution_error": true,
+    "has_no_plan": false,
+    "execution_output": null,
+    "pred": null,
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Alice",
+            "Nationality": "german",
+            "Vacation": "beach",
+            "Education": "doctorate",
+            "Occupation": "doctor"
+        },
+        {
+            "House": "2",
+            "Name": "Arnold",
+            "Nationality": "norwegian",
+            "Vacation": "cruise",
+            "Education": "associate",
+            "Occupation": "lawyer"
+        },
+        {
+            "House": "3",
+            "Name": "Bob",
+            "Nationality": "dane",
+            "Vacation": "city",
+            "Education": "bachelor",
+            "Occupation": "engineer"
+        },
+        {
+            "House": "4",
+            "Name": "Eric",
+            "Nationality": "brit",
+            "Vacation": "camping",
+            "Education": "master",
+            "Occupation": "teacher"
+        },
+        {
+            "House": "5",
+            "Name": "Peter",
+            "Nationality": "swede",
+            "Vacation": "mountain",
+            "Education": "high school",
+            "Occupation": "artist"
+        }
+    ],
+    "status": "Error",
+    "violated_constraint": {
+        "invalid_output": "No valid output structure found"
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 3,
+    "timing": {
+        "api_call_time": 60.54317760467529,
+        "execution_time": 0.07807397842407227,
+        "constraint_eval_time": 8.106231689453125e-06,
+        "pred_extract_time": 1.71661376953125e-05,
+        "gold_extract_time": 3.266334533691406e-05,
+        "total_tokens": 6066,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\n\ndef solve_puzzle():\n    # Define the domain\n    houses = [1, 2, 3, 4, 5]\n    names = [\"Eric\", \"Peter\", \"Alice\", \"Bob\", \"Arnold\"]\n    nationalities = [\"norwegian\", \"brit\", \"swede\", \"dane\", \"german\"]\n    vacations = [\"cruise\", \"mountain\", \"camping\", \"beach\", \"city\"]\n    educations = [\"bachelor\", \"master\", \"associate\", \"doctorate\", \"high school\"]\n    occupations = [\"artist\", \"doctor\", \"engineer\", \"teacher\", \"lawyer\"]\n\n    # Create a solver instance\n    solver = Solver()\n\n    # Declare variables\n    name_vars = {house: Int(f\"name_{house}\") for house in houses}\n    nationality_vars = {house: Int(f\"nationality_{house}\") for house in houses}\n    vacation_vars = {house: Int(f\"vacation_{house}\") for house in houses}\n    education_vars = {house: Int(f\"education_{house}\") for house in houses}\n    occupation_vars = {house: Int(f\"occupation_{house}\") for house in houses}\n\n    # Add constraints for unique values in each category\n    for var_dict, domain in [(name_vars, names), (nationality_vars, nationalities),\n                             (vacation_vars, vacations), (education_vars, educations),\n                             (occupation_vars, occupations)]:\n        for house in houses:\n            solver.add(var_dict[house] >= 0)\n            solver.add(var_dict[house] < len(domain))\n        solver.add(Distinct([var_dict[house] for house in houses]))\n\n    # Helper function to find the house given a condition\n    def find_house(condition):\n        return next(house for house in houses if solver.model().evaluate(condition(house)))\n\n    # Add specific constraints\n    solver.add(find_house(lambda house: occupation_vars[house] == occupations.index(\"lawyer\")) == houses[vacations.index(\"cruise\")])\n    solver.add(name_vars[houses.index(\"Arnold\")] == names.index(\"Arnold\"))\n    solver.add(find_house(lambda house: name_vars[house] == names.index(\"Bob\")) == houses[educations.index(\"doctorate\")])\n    solver.add(find_house(lambda house: vacation_vars[house] == vacations.index(\"cruise\")) == houses[educations.index(\"associate\")])\n    solver.add(name_vars[1] != names.index(\"Peter\"))\n    solver.add(find_house(lambda house: name_vars[house] == names.index(\"Peter\")) == houses[occupations.index(\"artist\")])\n    solver.add(find_house(lambda house: vacation_vars[house] == vacations.index(\"camping\")) == houses[educations.index(\"master\")])\n    solver.add(find_house(lambda house: occupation_vars[house] == occupations.index(\"doctor\")) + 1 == houses[nationalities.index(\"dane\")])\n    solver.add(find_house(lambda house: education_vars[house] == educations.index(\"associate\")) + 1 == houses[occupations.index(\"engineer\")])\n    solver.add(find_house(lambda house: vacation_vars[house] == vacations.index(\"camping\")) == houses[nationalities.index(\"brit\")])\n    solver.add(Or(\n        And(nationality_vars[1] == nationalities.index(\"norwegian\"), education_vars[2] == educations.index(\"bachelor\")),\n        And(nationality_vars[2] == nationalities.index(\"norwegian\"), education_vars[1] == educations.index(\"bachelor\")),\n        And(nationality_vars[2] == nationalities.index(\"norwegian\"), education_vars[3] == educations.index(\"bachelor\")),\n        And(nationality_vars[3] == nationalities.index(\"norwegian\"), education_vars[2] == educations.index(\"bachelor\")),\n        And(nationality_vars[3] == nationalities.index(\"norwegian\"), education_vars[4] == educations.index(\"bachelor\")),\n        And(nationality_vars[4] == nationalities.index(\"norwegian\"), education_vars[3] == educations.index(\"bachelor\")),\n        And(nationality_vars[4] == nationalities.index(\"norwegian\"), education_vars[5] == educations.index(\"bachelor\")),\n        And(nationality_vars[5] == nationalities.index(\"norwegian\"), education_vars[4] == educations.index(\"bachelor\"))\n    ))\n    solver.add(find_house(lambda house: name_vars[house] == names.index(\"Eric\")) == houses[vacations.index(\"camping\")])\n    solver.add(find_house(lambda house: name_vars[house] == names.index(\"Alice\")) == houses[nationalities.index(\"german\")])\n    solver.add(vacation_vars[houses[vacations.index(\"beach\")]] < vacation_vars[houses[vacations.index(\"city\")]])\n    solver.add(vacation_vars[5] == vacations.index(\"mountain\"))\n    solver.add(vacation_vars[houses[vacations.index(\"cruise\")]] > vacation_vars[houses[vacations.index(\"beach\")]])\n    solver.add(education_vars[3] == educations.index(\"bachelor\"))\n\n    # Check if the model is satisfiable\n    if solver.check() == sat:\n        model = solver.model()\n        solution = []\n        for house in houses:\n            name = names[model[name_vars[house]].as_long()]\n            nationality = nationalities[model[nationality_vars[house]].as_long()]\n            vacation = vacations[model[vacation_vars[house]].as_long()]\n            education = educations[model[education_vars[house]].as_long()]\n            occupation = occupations[model[occupation_vars[house]].as_long()]\n            solution.append([str(house), name, nationality, vacation, education, occupation])\n        return {\n            \"solution\": {\n                \"header\": [\"House\", \"Name\", \"Nationality\", \"Vacation\", \"Education\", \"Occupation\"],\n                \"rows\": solution\n            }\n        }\n    else:\n        return None\n\nimport json\nprint(json.dumps(solve_puzzle(), indent=2))"
+}

@@ -1,0 +1,101 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"itinerary\": [\n    {\n      \"action\": \"meet\",\n      \"location\": \"Chinatown\",\n      \"person\": \"Robert\",\n      \"start_time\": \"12:23\",\n      \"end_time\": \"12:38\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Bayview\",\n      \"person\": \"Margaret\",\n      \"start_time\": \"13:00\",\n      \"end_time\": \"13:30\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Marina District\",\n      \"person\": \"Kimberly\",\n      \"start_time\": \"13:55\",\n      \"end_time\": \"14:10\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Financial District\",\n      \"person\": \"Rebecca\",\n      \"start_time\": \"14:27\",\n      \"end_time\": \"15:42\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Union Square\",\n      \"person\": \"Kenneth\",\n      \"start_time\": \"20:00\",\n      \"end_time\": \"21:15\"\n    }\n  ]\n}",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Chinatown",
+                "person": "Robert",
+                "start_time": "12:23",
+                "end_time": "12:38"
+            },
+            {
+                "action": "meet",
+                "location": "Bayview",
+                "person": "Margaret",
+                "start_time": "13:00",
+                "end_time": "13:30"
+            },
+            {
+                "action": "meet",
+                "location": "Marina District",
+                "person": "Kimberly",
+                "start_time": "13:55",
+                "end_time": "14:10"
+            },
+            {
+                "action": "meet",
+                "location": "Financial District",
+                "person": "Rebecca",
+                "start_time": "14:27",
+                "end_time": "15:42"
+            },
+            {
+                "action": "meet",
+                "location": "Union Square",
+                "person": "Kenneth",
+                "start_time": "20:00",
+                "end_time": "21:15"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Chinatown",
+                "person": "Robert",
+                "start_time": "12:15",
+                "end_time": "12:30"
+            },
+            {
+                "action": "meet",
+                "location": "Bayview",
+                "person": "Margaret",
+                "start_time": "12:52",
+                "end_time": "13:22"
+            },
+            {
+                "action": "meet",
+                "location": "Marina District",
+                "person": "Kimberly",
+                "start_time": "13:47",
+                "end_time": "14:02"
+            },
+            {
+                "action": "meet",
+                "location": "Financial District",
+                "person": "Rebecca",
+                "start_time": "14:19",
+                "end_time": "15:34"
+            },
+            {
+                "action": "meet",
+                "location": "Union Square",
+                "person": "Kenneth",
+                "start_time": "19:30",
+                "end_time": "20:45"
+            }
+        ]
+    },
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "constraints_satisfied_but_no_exact_match": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 754.476152420044,
+        "execution_time": 0.08641529083251953,
+        "constraint_eval_time": 0.00037217140197753906,
+        "pred_extract_time": 3.611248254776001,
+        "gold_extract_time": 7.343292236328125e-05,
+        "total_tokens": 51451,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import z3\nimport json\n\ndef main():\n    friends = [\n        {\n            'name': 'Kimberly',\n            'location': 'Marina District',\n            'available_start': 795,  # 1:15 PM\n            'available_end': 1005,    # 4:45 PM\n            'required_duration': 15\n        },\n        {\n            'name': 'Robert',\n            'location': 'Chinatown',\n            'available_start': 735,  # 12:15 PM\n            'available_end': 1215,    # 8:15 PM\n            'required_duration': 15\n        },\n        {\n            'name': 'Rebecca',\n            'location': 'Financial District',\n            'available_start': 795,  # 1:15 PM\n            'available_end': 1005,    # 4:45 PM\n            'required_duration': 75\n        },\n        {\n            'name': 'Margaret',\n            'location': 'Bayview',\n            'available_start': 570,  # 9:30 AM\n            'available_end': 810,    # 1:30 PM\n            'required_duration': 30\n        },\n        {\n            'name': 'Kenneth',\n            'location': 'Union Square',\n            'available_start': 1170, # 7:30 PM\n            'available_end': 1275,   # 9:15 PM\n            'required_duration': 75\n        }\n    ]\n\n    travel_times = {\n        ('Richmond District', 'Marina District'): 9,\n        ('Richmond District', 'Chinatown'): 20,\n        ('Richmond District', 'Financial District'): 22,\n        ('Richmond District', 'Bayview'): 26,\n        ('Richmond District', 'Union Square'): 21,\n        ('Marina District', 'Richmond District'): 11,\n        ('Marina District', 'Chinatown'): 16,\n        ('Marina District', 'Financial District'): 17,\n        ('Marina District', 'Bayview'): 27,\n        ('Marina District', 'Union Square'): 16,\n        ('Chinatown', 'Richmond District'): 20,\n        ('Chinatown', 'Marina District'): 12,\n        ('Chinatown', 'Financial District'): 5,\n        ('Chinatown', 'Bayview'): 22,\n        ('Chinatown', 'Union Square'): 7,\n        ('Financial District', 'Richmond District'): 21,\n        ('Financial District', 'Marina District'): 15,\n        ('Financial District', 'Chinatown'): 5,\n        ('Financial District', 'Bayview'): 19,\n        ('Financial District', 'Union Square'): 9,\n        ('Bayview', 'Richmond District'): 25,\n        ('Bayview', 'Marina District'): 25,\n        ('Bayview', 'Chinatown'): 18,\n        ('Bayview', 'Financial District'): 19,\n        ('Bayview', 'Union Square'): 17,\n        ('Union Square', 'Richmond District'): 20,\n        ('Union Square', 'Marina District'): 18,\n        ('Union Square', 'Chinatown'): 7,\n        ('Union Square', 'Financial District'): 9,\n        ('Union Square', 'Bayview'): 15,\n    }\n\n    solver = z3.Optimize()\n\n    meet_vars = {}\n    start_times = {}\n    end_times = {}\n\n    for friend in friends:\n        name = friend['name']\n        meet = z3.Bool(f'meet_{name}')\n        start = z3.Int(f'start_{name}')\n        end = z3.Int(f'end_{name}')\n        meet_vars[name] = meet\n        start_times[name] = start\n        end_times[name] = end\n\n        solver.add(z3.Implies(meet, start >= friend['available_start']))\n        solver.add(z3.Implies(meet, end <= friend['available_end']))\n        solver.add(z3.Implies(meet, end == start + friend['required_duration']))\n\n        from_richmond = travel_times.get(('Richmond District', friend['location']), 0)\n        solver.add(z3.Implies(meet, start >= 540 + from_richmond))\n\n    for i in range(len(friends)):\n        for j in range(i + 1, len(friends)):\n            friendA = friends[i]\n            friendB = friends[j]\n            nameA = friendA['name']\n            nameB = friendB['name']\n            meetA = meet_vars[nameA]\n            meetB = meet_vars[nameB]\n            locA = friendA['location']\n            locB = friendB['location']\n            travel_A_to_B = travel_times.get((locA, locB), 0)\n            travel_B_to_A = travel_times.get((locB, locA), 0)\n            startA = start_times[nameA]\n            endA = end_times[nameA]\n            startB = start_times[nameB]\n            endB = end_times[nameB]\n\n            constraint = z3.Implies(\n                z3.And(meetA, meetB),\n                z3.Or(\n                    endA + travel_A_to_B <= startB,\n                    endB + travel_B_to_A <= startA\n                )\n            )\n            solver.add(constraint)\n\n    objective = z3.Sum([z3.If(meet, 1, 0) for meet in meet_vars.values()])\n    solver.maximize(objective)\n\n    if solver.check() == z3.sat:\n        model = solver.model()\n        itinerary = []\n        for friend in friends:\n            name = friend['name']\n            meet = model.eval(meet_vars[name])\n            if meet:\n                start = model.eval(start_times[name]).as_long()\n                end = model.eval(end_times[name]).as_long()\n                def to_time_str(minutes):\n                    hours = minutes // 60\n                    mins = minutes % 60\n                    return f\"{hours}:{mins:02d}\"\n                itinerary.append({\n                    \"action\": \"meet\",\n                    \"location\": friend['location'],\n                    \"person\": name,\n                    \"start_time\": to_time_str(start),\n                    \"end_time\": to_time_str(end)\n                })\n        itinerary.sort(key=lambda x: int(x['start_time'].replace(':', '')))\n        print(json.dumps({\"itinerary\": itinerary}, indent=2))\n    else:\n        print(\"No solution found.\")\n\nif __name__ == \"__main__\":\n    main()"
+}

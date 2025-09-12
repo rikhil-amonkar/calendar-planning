@@ -1,0 +1,96 @@
+from z3 import *
+import json
+
+def main():
+    # Convert time to minutes from 9:00 AM
+    def time_to_minutes(time_str):
+        parts = time_str.split(':')
+        hour = int(parts[0])
+        minute = int(parts[1]) if len(parts) > 1 else 0
+        return (hour - 9) * 60 + minute
+
+    # Convert minutes back to time string
+    def minutes_to_time(minutes):
+        total_minutes = minutes
+        hour = 9 + total_minutes // 60
+        minute = total_minutes % 60
+        return f"{hour}:{minute:02d}"
+
+    # Define travel times dictionary
+    travel_times = {
+        "Embarcadero": {"Embarcadero": 0, "Bayview": 21, "Chinatown": 7, "Alamo Square": 19, "Nob Hill": 10, "Presidio": 20, "Union Square": 10, "The Castro": 25, "North Beach": 5, "Fisherman's Wharf": 6, "Marina District": 12},
+        "Bayview": {"Embarcadero": 19, "Bayview": 0, "Chinatown": 19, "Alamo Square": 16, "Nob Hill": 20, "Presidio": 32, "Union Square": 18, "The Castro": 19, "North Beach": 22, "Fisherman's Wharf": 25, "Marina District": 27},
+        "Chinatown": {"Embarcadero": 5, "Bayview": 20, "Chinatown": 0, "Alamo Square": 17, "Nob Hill": 9, "Presidio": 19, "Union Square": 7, "The Castro": 22, "North Beach": 3, "Fisherman's Wharf": 8, "Marina District": 12},
+        "Alamo Square": {"Embarcadero": 16, "Bayview": 16, "Chinatown": 15, "Alamo Square": 0, "Nob Hill": 11, "Presidio": 17, "Union Square": 14, "The Castro": 8, "North Beach": 15, "Fisherman's Wharf": 19, "Marina District": 15},
+        "Nob Hill": {"Embarcadero": 9, "Bayview": 19, "Chinatown": 6, "Alamo Square": 11, "Nob Hill": 0, "Presidio": 17, "Union Square": 7, "The Castro": 17, "North Beach": 8, "Fisherman's Wharf": 10, "Marina District": 11},
+        "Presidio": {"Embarcadero": 20, "Bayview": 31, "Chinatown": 21, "Alamo Square": 19, "Nob Hill": 18, "Presidio": 0, "Union Square": 22, "The Castro": 21, "North Beach": 18, "Fisherman's Wharf": 19, "Marina District": 11},
+        "Union Square": {"Embarcadero": 11, "Bayview": 15, "Chinatown": 7, "Alamo Square": 15, "Nob Hill": 9, "Presidio": 24, "Union Square": 0, "The Castro": 17, "North Beach": 10, "Fisherman's Wharf": 15, "Marina District": 18},
+        "The Castro": {"Embarcadero": 22, "Bayview": 19, "Chinatown": 22, "Alamo Square": 8, "Nob Hill": 16, "Presidio": 20, "Union Square": 19, "The Castro": 0, "North Beach": 20, "Fisherman's Wharf": 24, "Marina District": 21},
+        "North Beach": {"Embarcadero": 6, "Bayview": 25, "Chinatown": 6, "Alamo Square": 16, "Nob Hill": 7, "Presidio": 17, "Union Square": 7, "The Castro": 23, "North Beach": 0, "Fisherman's Wharf": 5, "Marina District": 9},
+        "Fisherman's Wharf": {"Embarcadero": 8, "Bayview": 26, "Chinatown": 12, "Alamo Square": 21, "Nob Hill": 11, "Presidio": 17, "Union Square": 13, "The Castro": 27, "North Beach": 6, "Fisherman's Wharf": 0, "Marina District": 9},
+        "Marina District": {"Embarcadero": 14, "Bayview": 27, "Chinatown": 15, "Alamo Square": 15, "Nob Hill": 12, "Presidio": 10, "Union Square": 16, "The Castro": 22, "North Beach": 11, "Fisherman's Wharf": 10, "Marina District": 0}
+    }
+
+    # Define friends data
+    friends = [
+        {"name": "Matthew", "location": "Bayview", "avail_start": time_to_minutes("19:15"), "avail_end": time_to_minutes("22:00"), "min_dur": 120},
+        {"name": "Karen", "location": "Chinatown", "avail_start": time_to_minutes("19:15"), "avail_end": time_to_minutes("21:15"), "min_dur": 90},
+        {"name": "Sarah", "location": "Alamo Square", "avail_start": time_to_minutes("20:00"), "avail_end": time_to_minutes("21:45"), "min_dur": 105},
+        {"name": "Jessica", "location": "Nob Hill", "avail_start": time_to_minutes("16:30"), "avail_end": time_to_minutes("18:45"), "min_dur": 120},
+        {"name": "Stephanie", "location": "Presidio", "avail_start": time_to_minutes("9:00"), "avail_end": time_to_minutes("10:15"), "min_dur": 60},
+        {"name": "Mary", "location": "Union Square", "avail_start": time_to_minutes("16:45"), "avail_end": time_to_minutes("21:30"), "min_dur": 60},
+        {"name": "Charles", "location": "The Castro", "avail_start": time_to_minutes("16:30"), "avail_end": time_to_minutes("22:00"), "min_dur": 105},
+        {"name": "Nancy", "location": "North Beach", "avail_start": time_to_minutes("14:45"), "avail_end": time_to_minutes("20:00"), "min_dur": 15},
+        {"name": "Thomas", "location": "Fisherman's Wharf", "avail_start": time_to_minutes("13:30"), "avail_end": time_to_minutes("19:00"), "min_dur": 30},
+        {"name": "Brian", "location": "Marina District", "avail_start": time_to_minutes("12:15"), "avail_end": time_to_minutes("18:00"), "min_dur": 60}
+    ]
+
+    # Initialize Z3 solver
+    opt = Optimize()
+    
+    # Create variables for each friend
+    meet_vars = [Bool(f"meet_{i}") for i in range(len(friends))]
+    start_vars = [Int(f"start_{i}") for i in range(len(friends))]
+    end_vars = [Int(f"end_{i}") for i in range(len(friends))]
+    
+    # Add constraints for each friend
+    for i, friend in enumerate(friends):
+        opt.add(Implies(meet_vars[i], start_vars[i] >= friend["avail_start"]))
+        opt.add(Implies(meet_vars[i], end_vars[i] <= friend["avail_end"]))
+        opt.add(Implies(meet_vars[i], end_vars[i] - start_vars[i] >= friend["min_dur"]))
+        opt.add(Implies(meet_vars[i], start_vars[i] >= travel_times["Embarcadero"][friend["location"]]))
+    
+    # Add constraints for overlapping meetings
+    for i in range(len(friends)):
+        for j in range(i+1, len(friends)):
+            opt.add(Implies(And(meet_vars[i], meet_vars[j]),
+                Or(
+                    start_vars[j] >= end_vars[i] + travel_times[friends[i]["location"]][friends[j]["location"]],
+                    start_vars[i] >= end_vars[j] + travel_times[friends[j]["location"]][friends[i]["location"]]
+                )))
+    
+    # Maximize the number of meetings
+    opt.maximize(Sum([If(meet_vars[i], 1, 0) for i in range(len(friends))]))
+    
+    # Solve the problem
+    if opt.check() == sat:
+        model = opt.model()
+        itinerary = []
+        for i, friend in enumerate(friends):
+            if model.eval(meet_vars[i]):
+                start_val = model.eval(start_vars[i]).as_long()
+                end_val = model.eval(end_vars[i]).as_long()
+                itinerary.append({
+                    "action": "meet",
+                    "location": friend["location"],
+                    "person": friend["name"],
+                    "start_time": minutes_to_time(start_val),
+                    "end_time": minutes_to_time(end_val)
+                })
+        itinerary.sort(key=lambda x: x["start_time"])
+        print(json.dumps({"itinerary": itinerary}, indent=2))
+    else:
+        print('{"itinerary": []}')
+
+if __name__ == "__main__":
+    main()

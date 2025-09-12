@@ -1,0 +1,89 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"solution\": {\n    \"header\": [\n      \"House\",\n      \"Name\",\n      \"HouseStyle\",\n      \"HairColor\",\n      \"Children\",\n      \"BookGenre\"\n    ],\n    \"rows\": [\n      [\n        \"1\",\n        \"Arnold\",\n        \"victorian\",\n        \"red\",\n        \"Meredith\",\n        \"science fiction\"\n      ],\n      [\n        \"2\",\n        \"Eric\",\n        \"ranch\",\n        \"black\",\n        \"Fred\",\n        \"mystery\"\n      ],\n      [\n        \"3\",\n        \"Peter\",\n        \"craftsman\",\n        \"blonde\",\n        \"Bella\",\n        \"fantasy\"\n      ],\n      [\n        \"4\",\n        \"Alice\",\n        \"colonial\",\n        \"brown\",\n        \"Samantha\",\n        \"romance\"\n      ]\n    ]\n  }\n}",
+    "pred": [
+        {
+            "House": "1",
+            "Name": "Arnold",
+            "HouseStyle": "victorian",
+            "HairColor": "red",
+            "Children": "Meredith",
+            "BookGenre": "science fiction"
+        },
+        {
+            "House": "2",
+            "Name": "Eric",
+            "HouseStyle": "ranch",
+            "HairColor": "black",
+            "Children": "Fred",
+            "BookGenre": "mystery"
+        },
+        {
+            "House": "3",
+            "Name": "Peter",
+            "HouseStyle": "craftsman",
+            "HairColor": "blonde",
+            "Children": "Bella",
+            "BookGenre": "fantasy"
+        },
+        {
+            "House": "4",
+            "Name": "Alice",
+            "HouseStyle": "colonial",
+            "HairColor": "brown",
+            "Children": "Samantha",
+            "BookGenre": "romance"
+        }
+    ],
+    "gold": [
+        {
+            "House": "1",
+            "Name": "Arnold",
+            "HouseStyle": "victorian",
+            "HairColor": "red",
+            "Children": "Meredith",
+            "BookGenre": "science fiction"
+        },
+        {
+            "House": "2",
+            "Name": "Eric",
+            "HouseStyle": "ranch",
+            "HairColor": "black",
+            "Children": "Fred",
+            "BookGenre": "mystery"
+        },
+        {
+            "House": "3",
+            "Name": "Peter",
+            "HouseStyle": "craftsman",
+            "HairColor": "blonde",
+            "Children": "Bella",
+            "BookGenre": "fantasy"
+        },
+        {
+            "House": "4",
+            "Name": "Alice",
+            "HouseStyle": "colonial",
+            "HairColor": "brown",
+            "Children": "Samantha",
+            "BookGenre": "romance"
+        }
+    ],
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 452.3812153339386,
+        "execution_time": 0.08514928817749023,
+        "constraint_eval_time": 8.535385131835938e-05,
+        "pred_extract_time": 2.3291451930999756,
+        "gold_extract_time": 1.3589859008789062e-05,
+        "total_tokens": 28961,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import json\nfrom z3 import *\n\ndef main():\n    # Define the possible values for each category as lists\n    names_list = [\"Arnold\", \"Peter\", \"Eric\", \"Alice\"]\n    styles_list = [\"craftsman\", \"colonial\", \"victorian\", \"ranch\"]\n    hair_list = [\"red\", \"blonde\", \"black\", \"brown\"]\n    children_list = [\"Bella\", \"Fred\", \"Meredith\", \"Samantha\"]\n    book_list = [\"mystery\", \"fantasy\", \"romance\", \"science fiction\"]\n\n    # Create Z3 variables for each house (1-4) and each attribute\n    # Houses are 1-4, but indexes 0-3 in the lists\n    name = [Int(f'name_{i+1}') for i in range(4)]\n    style = [Int(f'style_{i+1}') for i in range(4)]\n    hair = [Int(f'hair_{i+1}') for i in range(4)]\n    child = [Int(f'child_{i+1}') for i in range(4)]\n    book = [Int(f'book_{i+1}') for i in range(4)]\n\n    solver = Solver()\n\n    # Add constraints that each attribute is a permutation (all different and 0-3)\n    for attr in [name, style, hair, child, book]:\n        for var in attr:\n            solver.add(And(0 <= var, var <= 3))\n        solver.add(Distinct(attr))\n\n    # Add specific constraints from the clues\n    # Clue 1: Craftsman in house 3 (index 2)\n    solver.add(style[2] == 0)  # craftsman is 0\n\n    # Clue 3: house 4 (index 3) has brown hair (3)\n    solver.add(hair[3] == 3)\n\n    # Clue 4: house 4 (index 3) has child Samantha (3)\n    solver.add(child[3] == 3)\n\n    # Clue 9: house 2 (index 1) has black hair (2)\n    solver.add(hair[1] == 2)\n\n    # Clue 12: Eric is in house 2 (index 1)\n    solver.add(name[1] == 2)  # Eric is 2\n\n    # Clue 5: ranch (style 3) is to the right of red hair (hair 0)\n    red_house = Sum([If(hair[i] == 0, (i+1), 0) for i in range(4)])\n    ranch_house = Sum([If(style[i] == 3, (i+1), 0) for i in range(4)])\n    solver.add(ranch_house > red_house)\n\n    # Clue 2: Alice (3) has book romance (2)\n    for i in range(4):\n        solver.add(Implies(name[i] == 3, book[i] == 2))\n\n    # Clue 6: Peter (1) has child Bella (0)\n    for i in range(4):\n        solver.add(Implies(name[i] == 1, child[i] == 0))\n\n    # Clue 7: Arnold (0) has hair red (0)\n    for i in range(4):\n        solver.add(Implies(name[i] == 0, hair[i] == 0))\n\n    # Clue 8: Alice (3) has style colonial (1)\n    for i in range(4):\n        solver.add(Implies(name[i] == 3, style[i] == 1))\n\n    # Clue 10: Peter (1) has book fantasy (1)\n    for i in range(4):\n        solver.add(Implies(name[i] == 1, book[i] == 1))\n\n    # Clue 11: Arnold (0) has child Meredith (2)\n    for i in range(4):\n        solver.add(Implies(name[i] == 0, child[i] == 2))\n\n    # Clue 13: Arnold (0) has book science fiction (3)\n    for i in range(4):\n        solver.add(Implies(name[i] == 0, book[i] == 3))\n\n    # Clue 12: Eric (2) has hair black (2)\n    for i in range(4):\n        solver.add(Implies(name[i] == 2, hair[i] == 2))\n\n    # Check if the constraints are satisfiable\n    if solver.check() == sat:\n        model = solver.model()\n\n        # Extract the solution for each house\n        solution_rows = []\n        for i in range(4):\n            house_num = i + 1\n            name_val = model[name[i]].as_long()\n            style_val = model[style[i]].as_long()\n            hair_val = model[hair[i]].as_long()\n            child_val = model[child[i]].as_long()\n            book_val = model[book[i]].as_long()\n\n            # Convert to strings\n            solution_row = [\n                str(house_num),\n                names_list[name_val],\n                styles_list[style_val],\n                hair_list[hair_val],\n                children_list[child_val],\n                book_list[book_val]\n            ]\n            solution_rows.append(solution_row)\n\n        # Prepare the JSON output\n        output = {\n            \"solution\": {\n                \"header\": [\"House\", \"Name\", \"HouseStyle\", \"HairColor\", \"Children\", \"BookGenre\"],\n                \"rows\": solution_rows\n            }\n        }\n\n        print(json.dumps(output, indent=2))\n    else:\n        print(\"No solution found.\")\n\nif __name__ == \"__main__\":\n    main()"
+}

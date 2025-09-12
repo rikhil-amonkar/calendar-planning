@@ -1,0 +1,348 @@
+We are going to use the Z3 SMT solver to solve this puzzle.
+ We have 6 houses, each with 6 attributes: name, phone model, cigar, flower, color, favorite sport.
+ We will define 6 lists of Z3 constants, each list for one attribute, and each constant can take an integer value from 1 to 6 (the house number).
+
+ However, note: the problem is to assign each attribute to a house, so we can model by having for each house, the value of each attribute.
+
+ Alternatively, we can model by having for each attribute type, a function from house number to the value of that attribute.
+
+ But note: the clues relate attributes to each other and to house positions.
+
+ We will model by having:
+   For each attribute, we have an integer variable for the house number that has that attribute.
+
+ However, there are 6 names, 6 phone models, etc. So we have 6*6 = 36 variables, each representing the house number for a particular attribute value.
+
+ But note: each attribute set must be a permutation of houses 1-6.
+
+ Alternatively, we can model by having for each house, and for each attribute, a variable that represents which value (from a fixed set of possibilities) that house has.
+
+ Since the attributes are categorical, we can assign an integer for each possible value and then use Z3 to assign these integers to houses.
+
+ We'll create:
+   Let houses be 1..6.
+
+   We'll create 6 arrays (for the 6 attributes) of Z3 Ints, each of size 6 (for the 6 houses). But note: the problem says each house has one value for each attribute.
+
+ Alternatively, we can create for each attribute type, an array of 6 Z3 Ints, where the index is the house number (from 1 to 6) and the value is an integer representing the specific value of that attribute.
+
+ However, the clues often refer to the house numbers and relative positions.
+
+ Another common approach is to have for each attribute value, a variable that is the house number where that attribute value occurs.
+
+ Let's define:
+
+   Let the names be: Peter, Carol, Eric, Alice, Bob, Arnold -> we assign each a number, but we don't care about the number, we care about the house.
+
+   We can define:
+      name_house = [Int('name_Peter'), Int('name_Carol'), ...]
+
+   Similarly for the others.
+
+   But note: we have to ensure that each of these variables are between 1 and 6 and distinct.
+
+   Also, we have to model the clues.
+
+   However, some clues are about the relative positions (left, right, next to, etc.) so it's easier to work with house numbers.
+
+   Example clue: "The person who uses a OnePlus 9 is in the second house." -> phone_OnePlus9 = 2
+
+   Another: "The person who uses a Xiaomi Mi 11 is somewhere to the left of the person who uses a Huawei P50." -> phone_XiaomiMi11 < phone_HuaweiP50
+
+   So we can model by having for each attribute value, a variable for the house number.
+
+   Steps:
+
+   Let's define:
+
+      names = ['Peter', 'Carol', 'Eric', 'Alice', 'Bob', 'Arnold']
+      phones = ['huawei p50', 'google pixel 6', 'xiaomi mi 11', 'iphone 13', 'samsung galaxy s21', 'oneplus 9']
+      cigars = ['dunhill', 'pall mall', 'blends', 'blue master', 'prince', 'yellow monster']
+      flowers = ['daffodils', 'carnations', 'roses', 'tulips', 'lilies', 'iris']
+      colors = ['yellow', 'red', 'green', 'blue', 'white', 'purple']
+      sports = ['soccer', 'tennis', 'basketball', 'volleyball', 'swimming', 'baseball']
+
+   Then for each name, we create an Int variable for the house number, and similarly for the others.
+
+   We then add constraints that for each category (names, phones, etc.), the house numbers are distinct and between 1 and 6.
+
+   Then we encode each clue.
+
+   Finally, we solve and then for each house, we want to output the attributes.
+
+   How to output per house? We will have to for each house, find which attribute values are assigned to that house.
+
+   Alternatively, we can create inverse functions: for each house i and each category, we can create a variable that tells the value, but that would be more complicated.
+
+   Since we are going to output by house, we can instead model by having for each house, and for each category, a variable that is the value of that category for that house.
+
+   But note: the clues are expressed in terms of the house numbers of the attribute values, so it might be easier to have variables for the house of each attribute value.
+
+   However, we can do both: we can define for each category, a function from house number to the value (as an integer index) and then also have variables for the house of each attribute value.
+
+   Alternatively, we can avoid having too many variables by only having the house for each attribute value, and then when we need to relate two attributes, we use the house numbers.
+
+   Let me choose the method of having for each attribute value, a variable for its house.
+
+   We'll have:
+
+      house_of_name = { name: Int(f'house_{name}') for name in names }
+      similarly for phones, cigars, etc.
+
+   Then we have constraints that for each category, the values of the variables are distinct and in [1,6].
+
+   Then we encode the clues.
+
+   Example clue 1: house_of_phone['oneplus 9'] == 2
+
+   Clue 2: house_of_phone['xiaomi mi 11'] < house_of_phone['huawei p50']
+
+   Clue 3: house_of_name['Carol'] == house_of_flower['carnations']
+
+   Clue 4: house_of_color['purple'] + 1 == house_of_cigar['pall mall']
+
+   Clue 5: house_of_color['green'] == house_of_cigar['blue master']
+
+   Clue 6: Abs(house_of_color['yellow'] - house_of_color['blue']) == 1
+
+   Clue 7: house_of_name['Eric'] > house_of_phone['samsung galaxy s21']
+
+   Clue 8: Abs(house_of_name['Carol'] - house_of_flower['daffodils']) == 2
+
+   Clue 9: house_of_cigar['prince'] == house_of_sport['basketball']
+
+   Clue 10: house_of_cigar['dunhill'] == house_of_sport['volleyball']
+
+   Clue 11: house_of_sport['swimming'] == house_of_phone['google pixel 6']
+
+   Clue 12: house_of_phone['huawei p50'] + 1 == house_of_color['white']
+
+   Clue 13: Abs(house_of_phone['oneplus 9'] - house_of_flower['roses']) == 1
+
+   Clue 14: house_of_flower['iris'] < house_of_name['Eric']
+
+   Clue 15: house_of_cigar['dunhill'] == house_of_name['Peter']
+
+   Clue 16: house_of_color['blue'] == house_of_name['Peter']
+
+   Clue 17: house_of_flower['tulips'] == house_of_name['Bob']
+
+   Clue 18: house_of_name['Alice'] == 1
+
+   Clue 19: house_of_sport['baseball'] + 1 == house_of_cigar['blue master']
+
+   Clue 20: house_of_phone['google pixel 6'] > house_of_cigar['blends']
+
+   Clue 21: house_of_sport['soccer'] == house_of_name['Carol']
+
+   Clue 22: house_of_flower['carnations'] + 1 == house_of_cigar['blends']
+
+   Clue 23: house_of_cigar['blends'] == house_of_name['Eric']
+
+   Clue 24: house_of_sport['volleyball'] == house_of_phone['iphone 13']
+
+   Now, note: we have defined house_of_name, house_of_phone, etc. for each attribute value.
+
+   But wait, in clue 23, we have house_of_cigar['blends'] and house_of_name['Eric'] must be equal.
+
+   We have to be cautious: some attribute values might have the same house, but that's allowed if they are of different categories.
+
+   However, note that each house has one value for each category, so if two attributes from different categories are in the same house, that's the same person.
+
+   Now, we have to also ensure that for each category, the houses are distinct and in 1..6.
+
+   Let's code accordingly.
+
+   Steps in code:
+
+   Initialize the solver.
+
+   Define the lists of attributes.
+
+   Define the variables for the house of each attribute value in each category.
+
+   Add constraints that for each category, the house numbers are distinct and in [1,6].
+
+   Add each clue as a constraint.
+
+   Check satisfaction and get the model.
+
+   Then, we want to output for each house (1 to 6) the name, phone, cigar, flower, color, sport.
+
+   How do we get that? We have the house for each attribute value, but we need the inverse: for a given house, what are the attribute values.
+
+   We can create a list for each house and for each category, and then for each attribute value, we set the house of that attribute value to the house number, then for house i, we can find which attribute value in a category has house i.
+
+   Alternatively, we can create a mapping from house number to the attribute value for each category by iterating over the model.
+
+   We'll do:
+
+      For house i in [1,6]:
+          For the name: find which name n has house_of_name[n] == i in the model.
+          Similarly for the others.
+
+   We can create a list of dictionaries for each house, but we have to be careful because we have to output in the order of the houses.
+
+   Let's code accordingly.
+
+   Note: We must be cautious because the model returns Z3 expressions, so we have to use model.evaluate(var) to get the value.
+
+   We'll create a list of the variables we defined, and then after solving, we can get the value of each variable.
+
+   Alternatively, we can create a list of all the variables and then for each house, for each category, we check which variable in that category has value i.
+
+   Since the number of variables is small, we can do:
+
+      result = []
+      for i in range(1,7):
+          row = [str(i)]
+          for category in [names, phones, cigars, flowers, colors, sports]:
+              for value in category:
+                  var = house_of[category][value]  # We need to store the variables in a dictionary of dictionaries
+                  if model.evaluate(var).as_long() == i:
+                      row.append(value)
+          result.append(row)
+
+   But note: we have to be careful because the categories are fixed and we have to output in the order: Name, PhoneModel, Cigar, Flower, Color, FavoriteSport.
+
+   So we can define the categories in the order we want to output, but note the header order.
+
+   Alternatively, we can create a list of the categories in the output order, and then for each category, we have a dictionary of variables.
+
+   Let me define:
+
+      attributes = {
+          'Name': names,
+          'PhoneModel': phones,
+          'Cigar': cigars,
+          'Flower': flowers,
+          'Color': colors,
+          'FavoriteSport': sports
+      }
+
+   Then we can create a dictionary of variables for each attribute type.
+
+   Steps:
+
+      variables = {}
+      for attr, values in attributes.items():
+          variables[attr] = {}
+          for v in values:
+              variables[attr][v] = Int(f'house_{attr}_{v}')
+
+   Then we add constraints for each attribute type: distinct list of variables[attr].values() and each in [1,6].
+
+   Then we add the clues.
+
+   Now, let's code the clues using these variables.
+
+   Example:
+
+      Clue 1: variables['PhoneModel']['oneplus 9'] == 2
+
+   Clue 2: variables['PhoneModel']['xiaomi mi 11'] < variables['PhoneModel']['huawei p50']
+
+   Clue 3: variables['Name']['Carol'] == variables['Flower']['carnations']
+
+   Clue 4: variables['Color']['purple'] + 1 == variables['Cigar']['pall mall']
+
+   Clue 5: variables['Color']['green'] == variables['Cigar']['blue master']
+
+   Clue 6: Abs(variables['Color']['yellow'] - variables['Color']['blue']) == 1
+
+   Clue 7: variables['Name']['Eric'] > variables['PhoneModel']['samsung galaxy s21']
+
+   Clue 8: Abs(variables['Name']['Carol'] - variables['Flower']['daffodils']) == 2
+
+   Clue 9: variables['Cigar']['prince'] == variables['FavoriteSport']['basketball']
+
+   Clue 10: variables['Cigar']['dunhill'] == variables['FavoriteSport']['volleyball']
+
+   Clue 11: variables['FavoriteSport']['swimming'] == variables['PhoneModel']['google pixel 6']
+
+   Clue 12: variables['PhoneModel']['huawei p50'] + 1 == variables['Color']['white']
+
+   Clue 13: Abs(variables['PhoneModel']['oneplus 9'] - variables['Flower']['roses']) == 1
+
+   Clue 14: variables['Flower']['iris'] < variables['Name']['Eric']
+
+   Clue 15: variables['Cigar']['dunhill'] == variables['Name']['Peter']
+
+   Clue 16: variables['Color']['blue'] == variables['Name']['Peter']
+
+   Clue 17: variables['Flower']['tulips'] == variables['Name']['Bob']
+
+   Clue 18: variables['Name']['Alice'] == 1
+
+   Clue 19: variables['FavoriteSport']['baseball'] + 1 == variables['Cigar']['blue master']
+
+   Clue 20: variables['PhoneModel']['google pixel 6'] > variables['Cigar']['blends']
+
+   Clue 21: variables['FavoriteSport']['soccer'] == variables['Name']['Carol']
+
+   Clue 22: variables['Flower']['carnations'] + 1 == variables['Cigar']['blends']
+
+   Clue 23: variables['Cigar']['blends'] == variables['Name']['Eric']
+
+   Clue 24: variables['FavoriteSport']['volleyball'] == variables['PhoneModel']['iphone 13']
+
+   Now, note: some of these clues are redundant? But we'll add them all.
+
+   Let's code accordingly.
+
+   We'll use z3.
+
+   We have to be cautious with absolute value. We can define a helper function for absolute difference.
+
+   Define:
+
+      def abs_diff(a, b):
+          return If(a > b, a - b, b - a)
+
+   But note: we are comparing integers, so we can also use:
+
+      Or(And(a - b == 2), And(b - a == 2))
+
+   But for clarity, we'll define a function for absolute value.
+
+   Alternatively, for clue 6 and 8 and 13, we can use:
+
+      Or( (a - b == 1), (b - a == 1) )   for adjacent (next to each other) -> but note: clue 6 says next to each other, so absolute difference 1.
+
+      Similarly, clue 8: two houses between -> absolute difference 3? Wait, no: if there are two houses between, then the difference in house numbers is 3.
+
+      Example: house 1 and house 4 have two houses between (2 and 3). So |a-b| = 3.
+
+   So clue 8: |house_Carol - house_daffodils| = 3.
+
+   Similarly, clue 13: next to each other -> |house_oneplus9 - house_roses| = 1.
+
+   Let me correct:
+
+      Clue 6: |yellow_color - blue_color| = 1
+      Clue 8: |Carol_name - daffodils_flower| = 3   [because two houses between means difference of 3]
+      Clue 13: |oneplus9_phone - roses_flower| = 1
+
+   But wait, the clue says: "There are two houses between Carol and the person who loves a bouquet of daffodils."
+
+      So if Carol is in house i, daffodils in house j, then |i - j| = 3.
+
+   Similarly, clue 13: next to each other -> |i - j| = 1.
+
+   So we'll define a function for absolute value.
+
+   Alternatively, we can use:
+
+      For clue 8: Or( Carol_house + 3 == daffodils_house, Carol_house - 3 == daffodils_house )
+
+   But note: the houses are 1 to 6, so we have to make sure that the arithmetic doesn't go out of bounds, but Z3 will handle that.
+
+   Let's code accordingly.
+
+   Implementation:
+
+   We'll create a solver, add the constraints, and then check.
+
+   We'll use a list of all variables to ensure we distinct per category.
+
+   Let's code.

@@ -1,0 +1,56 @@
+We are going to use the Z3 SMT solver to solve this puzzle.
+ We have 5 houses, each with 6 attributes: name, food, car model, phone model, occupation, drink.
+ We'll assign each attribute a number for each house (1 to 5).
+
+ Steps:
+ 1. Define the attributes and their possible values.
+ 2. Create Z3 variables for each attribute for each house.
+ 3. Add constraints that each attribute value is unique per house.
+ 4. Add constraints from the clues.
+
+ We'll use integers to represent the possible values for each attribute.
+ We'll create a mapping from the string names to integers and back for output.
+
+ However, note: The problem requires output in string form, so we'll have to map back.
+
+ Alternatively, we can use Z3's EnumSort for each attribute type, but that might be more complex.
+ Instead, we can use integers and then map.
+
+ Let's define:
+  Names: Eric, Peter, Arnold, Alice, Bob -> 0,1,2,3,4
+  Food: stir fry, spaghetti, stew, grilled cheese, pizza -> 0,1,2,3,4
+  CarModel: ford f150, tesla model 3, bmw 3 series, toyota camry, honda civic -> 0,1,2,3,4
+  PhoneModel: iphone 13, google pixel 6, samsung galaxy s21, oneplus 9, huawei p50 -> 0,1,2,3,4
+  Occupation: teacher, lawyer, doctor, artist, engineer -> 0,1,2,3,4
+  Drink: tea, milk, water, root beer, coffee -> 0,1,2,3,4
+
+ But note: We have 5 houses, so we'll create variables for each house and each attribute.
+
+ We'll create a list for each attribute type for the 5 houses.
+
+ Example: 
+   name = [Int('name_%d' % i) for i in range(1,6)]
+   but then we have to set the domain for each variable to be between 0 and 4.
+
+ Alternatively, we can use IntVector for each attribute, but we have 6 attributes.
+
+ Let's create a matrix of variables, but it might be easier to have separate arrays for each attribute.
+
+ We'll do:
+   houses = range(1,6)
+   names = [Int('name_%d' % i) for i in houses]
+   foods = [Int('food_%d' % i) for i in houses]
+   cars = [Int('car_%d' % i) for i in houses]
+   phones = [Int('phone_%d' % i) for i in houses]
+   occupations = [Int('occupation_%d' % i) for i in houses]
+   drinks = [Int('drink_%d' % i) for i in houses]
+
+ Then we add constraints that for each list, the values are distinct and in [0,4].
+
+ Then we add the constraints from the clues.
+
+ After solving, we map the integer values back to the strings.
+
+ We'll create inverse mappings for each attribute.
+
+ Let's code accordingly.
