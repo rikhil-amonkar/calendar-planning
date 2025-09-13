@@ -1,0 +1,77 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\"itinerary\": [{\"day_range\": \"Day 1-2\", \"place\": \"Reykjavik\"}, {\"day_range\": \"Day 2-3\", \"place\": \"Vienna\"}, {\"day_range\": \"Day 3-5\", \"place\": \"Helsinki\"}, {\"day_range\": \"Day 5-7\", \"place\": \"Riga\"}, {\"day_range\": \"Day 7-11\", \"place\": \"Tallinn\"}, {\"day_range\": \"Day 11-15\", \"place\": \"Dublin\"}]}",
+    "pred": {
+        "itinerary": [
+            {
+                "day_range": "Day 1-2",
+                "place": "Reykjavik"
+            },
+            {
+                "day_range": "Day 2-3",
+                "place": "Vienna"
+            },
+            {
+                "day_range": "Day 3-5",
+                "place": "Helsinki"
+            },
+            {
+                "day_range": "Day 5-7",
+                "place": "Riga"
+            },
+            {
+                "day_range": "Day 7-11",
+                "place": "Tallinn"
+            },
+            {
+                "day_range": "Day 11-15",
+                "place": "Dublin"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "day_range": "Day 1-2",
+                "place": "Reykjavik"
+            },
+            {
+                "day_range": "Day 2-3",
+                "place": "Vienna"
+            },
+            {
+                "day_range": "Day 3-5",
+                "place": "Helsinki"
+            },
+            {
+                "day_range": "Day 5-7",
+                "place": "Riga"
+            },
+            {
+                "day_range": "Day 7-11",
+                "place": "Tallinn"
+            },
+            {
+                "day_range": "Day 11-15",
+                "place": "Dublin"
+            }
+        ]
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 2,
+    "timing": {
+        "api_call_time": 144.51819157600403,
+        "execution_time": 0.11632251739501953,
+        "constraint_eval_time": 7.82012939453125e-05,
+        "pred_extract_time": 1.821376085281372,
+        "gold_extract_time": 0.0001461505889892578,
+        "total_tokens": 9648,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import z3\nimport json\n\ndef main():\n    cities = ['Reykjavik', 'Vienna', 'Helsinki', 'Riga', 'Tallinn', 'Dublin']\n    durations_values = [2, 2, 3, 3, 5, 5]  # durations for each city in order\n\n    direct_flights = [\n        [False, True, True, False, False, True],  # Reykjavik\n        [True, False, True, True, False, True],   # Vienna\n        [True, True, False, True, True, True],    # Helsinki\n        [False, True, True, False, True, True],   # Riga\n        [False, False, True, True, False, True],  # Tallinn\n        [True, True, True, True, True, False],    # Dublin\n    ]\n\n    s = z3.Solver()\n\n    # Order variables: order[0] to order[5], each is 0-5 (city index)\n    order = [z3.Int('order_{}'.format(i)) for i in range(6)]\n    for i in range(6):\n        s.add(z3.And(order[i] >= 0, order[i] <= 5))\n\n    # All cities must be distinct\n    s.add(z3.Distinct(order))\n\n    # Start positions for each city in the order\n    start_pos = [z3.Int('start_pos_{}'.format(i)) for i in range(6)]\n\n    # Create a Z3 array for durations to allow symbolic indexing\n    durations = z3.Array('durations', z3.IntSort(), z3.IntSort())\n    for i in range(6):\n        durations = z3.Store(durations, i, durations_values[i])\n\n    # Constraints for start_pos based on order\n    for i in range(5):\n        s.add(start_pos[i+1] == start_pos[i] + durations[order[i]] - 1)\n\n    # End day of last city is 15\n    s.add(start_pos[5] + durations[order[5]] - 1 == 15)\n\n    # Constraints for specific cities' start days\n    vienna_idx = 1\n    helsinki_idx = 2\n    tallinn_idx = 4\n    for i in range(6):\n        s.add(z3.Implies(order[i] == vienna_idx, start_pos[i] == 2))\n        s.add(z3.Implies(order[i] == helsinki_idx, start_pos[i] == 3))\n        s.add(z3.Implies(order[i] == tallinn_idx, start_pos[i] == 7))\n\n    # Direct flight constraints between consecutive cities\n    for i in range(5):\n        allowed = []\n        for a in range(6):\n            for b in range(6):\n                if direct_flights[a][b]:\n                    allowed.append(z3.And(order[i] == a, order[i+1] == b))\n        s.add(z3.Or(allowed))\n\n    # Check if the constraints are satisfiable\n    if s.check() == z3.sat:\n        model = s.model()\n        order_values = [model[order[i]].as_long() for i in range(6)]\n        start_pos_values = [model[start_pos[i]].as_long() for i in range(6)]\n        itinerary = []\n        for i in range(6):\n            city_idx = order_values[i]\n            city_name = cities[city_idx]\n            start_day = start_pos_values[i]\n            duration = durations_values[city_idx]\n            end_day = start_day + duration - 1\n            day_range = f\"Day {start_day}-{end_day}\"\n            itinerary.append({\"day_range\": day_range, \"place\": city_name})\n        print(json.dumps({\"itinerary\": itinerary}))\n    else:\n        print(\"No solution found.\")\n\nif __name__ == \"__main__\":\n    main()"
+}

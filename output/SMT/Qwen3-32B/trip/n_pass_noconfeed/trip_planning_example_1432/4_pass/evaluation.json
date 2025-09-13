@@ -1,0 +1,68 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": true,
+    "execution_output": "{\"error\": \"No solution found\"}",
+    "pred": null,
+    "gold": {
+        "itinerary": [
+            {
+                "day_range": "Day 1-3",
+                "place": "Stockholm"
+            },
+            {
+                "day_range": "Day 3-5",
+                "place": "Amsterdam"
+            },
+            {
+                "day_range": "Day 5-6",
+                "place": "Valencia"
+            },
+            {
+                "day_range": "Day 6-10",
+                "place": "Vienna"
+            },
+            {
+                "day_range": "Day 10-14",
+                "place": "Reykjavik"
+            },
+            {
+                "day_range": "Day 14-18",
+                "place": "Athens"
+            },
+            {
+                "day_range": "Day 18-20",
+                "place": "Riga"
+            },
+            {
+                "day_range": "Day 20-22",
+                "place": "Bucharest"
+            },
+            {
+                "day_range": "Day 22-25",
+                "place": "Frankfurt"
+            },
+            {
+                "day_range": "Day 25-29",
+                "place": "Salzburg"
+            }
+        ]
+    },
+    "status": "No plan generated",
+    "violated_constraint": {
+        "missing_itinerary": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 4,
+    "timing": {
+        "api_call_time": 563.5069653987885,
+        "execution_time": 0.221144437789917,
+        "constraint_eval_time": 5.9604644775390625e-06,
+        "pred_extract_time": 0.9173228740692139,
+        "gold_extract_time": 0.00011181831359863281,
+        "total_tokens": 36130,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\nimport json\n\ndef main():\n    cities = ['Frankfurt', 'Salzburg', 'Athens', 'Reykjavik', 'Bucharest', 'Valencia', 'Vienna', 'Amsterdam', 'Stockholm', 'Riga']\n    durations = [4, 5, 3, 5, 3, 2, 5, 3, 3, 3]\n    city_indices = {city: idx for idx, city in enumerate(cities)}\n\n    # Define all valid direct flight pairs\n    direct_flights_pairs = [\n        (0, 1), (1, 0),  # Frankfurt - Salzburg\n        (0, 6), (6, 0),  # Frankfurt - Vienna\n        (0, 7), (7, 0),  # Frankfurt - Amsterdam\n        (1, 6), (6, 1),  # Salzburg - Vienna\n        (6, 9), (9, 6),  # Vienna - Riga\n        (9, 8), (8, 9),  # Riga - Stockholm\n        (8, 7), (7, 8),  # Stockholm - Amsterdam\n        (7, 5), (5, 7),  # Amsterdam - Valencia\n        (5, 2), (2, 5),  # Valencia - Athens\n        (2, 4), (4, 2),  # Athens - Bucharest\n        (4, 3), (3, 4),  # Bucharest - Reykjavik\n        (5, 0), (0, 5),  # Valencia - Frankfurt\n    ]\n\n    s = Solver()\n\n    # Define order variables\n    order = [Int(f'order_{i}') for i in range(10)]\n    s.add(Distinct(order))\n    for i in range(10):\n        s.add(And(0 <= order[i], order[i] <= 9))\n\n    # Create a Z3 array for durations\n    duration_array = Array('duration_array', IntSort(), IntSort())\n    for c in range(10):\n        s.add(duration_array[c] == durations[c])\n\n    # Define sum_dur variables\n    sum_dur = [Int(f'sum_dur_{i}') for i in range(11)]  # sum_dur[0] to sum_dur[10]\n    s.add(sum_dur[0] == 0)\n    for i in range(1, 11):\n        s.add(sum_dur[i] == sum_dur[i-1] + duration_array[order[i-1]])\n\n    # Define pos variables for each city\n    pos = [Int(f'pos_{c}') for c in range(10)]\n    for c in range(10):\n        for i in range(10):\n            s.add((order[i] == c) == (pos[c] == i))\n\n    # Add direct flight constraints for consecutive cities\n    for i in range(9):\n        current = order[i]\n        next_city = order[i+1]\n        constraints = []\n        for a, b in direct_flights_pairs:\n            constraints.append(And(current == a, next_city == b))\n        s.add(Or(constraints))\n\n    # Event constraints\n    events = [\n        (2, 14, 18),  # Athens: workshop between 14-18\n        (5, 5, 6),    # Valencia: show between 5-6\n        (6, 6, 10),   # Vienna: wedding between 6-10\n        (8, 1, 3),    # Stockholm: friend between 1-3\n        (9, 18, 20),  # Riga: conference between 18-20\n    ]\n\n    for c, event_start, event_end in events:\n        def build_s_c_expr(c):\n            expr = 0\n            for i in range(10):\n                condition = (pos[c] == i)\n                value = 1 + sum_dur[i]\n                if i == 0:\n                    expr = If(condition, value, 0)\n                else:\n                    expr = If(condition, value, expr)\n            return expr\n        s_c_expr = build_s_c_expr(c)\n        e_c_expr = s_c_expr + durations[c] - 1\n        overlap = And(s_c_expr <= event_end, e_c_expr >= event_start)\n        s.add(overlap)\n\n    # Check if the problem is satisfiable\n    if s.check() == sat:\n        model = s.model()\n        order_vals = [model.evaluate(order[i]).as_long() for i in range(10)]\n        sum_dur_vals = [0] * 11\n        for i in range(1, 11):\n            sum_dur_vals[i] = sum_dur_vals[i-1] + durations[order_vals[i-1]]\n        itinerary = []\n        for i in range(10):\n            start_day = 1 + sum_dur_vals[i]\n            duration = durations[order_vals[i]]\n            end_day = start_day + duration - 1\n            city = cities[order_vals[i]]\n            day_range = f\"Day {start_day}-{end_day}\"\n            itinerary.append({\"day_range\": day_range, \"place\": city})\n        print(json.dumps({\"itinerary\": itinerary}))\n    else:\n        print(json.dumps({\"error\": \"No solution found\"}))\n\nif __name__ == \"__main__\":\n    main()"
+}

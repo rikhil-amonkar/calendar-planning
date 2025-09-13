@@ -1,0 +1,91 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\"itinerary\": [{\"day_range\": \"Day 1-2\", \"place\": \"Brussels\"}, {\"day_range\": \"Day 2-4\", \"place\": \"London\"}, {\"day_range\": \"Day 4-6\", \"place\": \"Venice\"}, {\"day_range\": \"Day 6-8\", \"place\": \"Santorini\"}, {\"day_range\": \"Day 8-12\", \"place\": \"Madrid\"}, {\"day_range\": \"Day 12-15\", \"place\": \"Lisbon\"}, {\"day_range\": \"Day 15-17\", \"place\": \"Reykjavik\"}]}",
+    "pred": {
+        "itinerary": [
+            {
+                "day_range": "Day 1-2",
+                "place": "Brussels"
+            },
+            {
+                "day_range": "Day 2-4",
+                "place": "London"
+            },
+            {
+                "day_range": "Day 4-6",
+                "place": "Venice"
+            },
+            {
+                "day_range": "Day 6-8",
+                "place": "Santorini"
+            },
+            {
+                "day_range": "Day 8-12",
+                "place": "Madrid"
+            },
+            {
+                "day_range": "Day 12-15",
+                "place": "Lisbon"
+            },
+            {
+                "day_range": "Day 15-17",
+                "place": "Reykjavik"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "day_range": "Day 1-2",
+                "place": "Brussels"
+            },
+            {
+                "day_range": "Day 2-5",
+                "place": "Lisbon"
+            },
+            {
+                "day_range": "Day 5-7",
+                "place": "Venice"
+            },
+            {
+                "day_range": "Day 7-11",
+                "place": "Madrid"
+            },
+            {
+                "day_range": "Day 11-13",
+                "place": "Santorini"
+            },
+            {
+                "day_range": "Day 13-15",
+                "place": "London"
+            },
+            {
+                "day_range": "Day 15-17",
+                "place": "Reykjavik"
+            }
+        ]
+    },
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "event_range": {
+            "city": "Venice",
+            "start": 5,
+            "end": 7
+        }
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 942.4445099830627,
+        "execution_time": 0.10985112190246582,
+        "constraint_eval_time": 9.799003601074219e-05,
+        "pred_extract_time": 2.059311628341675,
+        "gold_extract_time": 0.000156402587890625,
+        "total_tokens": 64238,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\n\ndef main():\n    cities = ['Brussels', 'Venice', 'London', 'Lisbon', 'Reykjavik', 'Santorini', 'Madrid']\n    city_code = {city: idx for idx, city in enumerate(cities)}\n\n    allowed_flights = set()\n    allowed_flights.add((city_code['Venice'], city_code['Madrid']))\n    allowed_flights.add((city_code['Madrid'], city_code['Venice']))\n    allowed_flights.add((city_code['Lisbon'], city_code['Reykjavik']))\n    allowed_flights.add((city_code['Reykjavik'], city_code['Lisbon']))\n    allowed_flights.add((city_code['Brussels'], city_code['Venice']))\n    allowed_flights.add((city_code['Venice'], city_code['Brussels']))\n    allowed_flights.add((city_code['Venice'], city_code['Santorini']))\n    allowed_flights.add((city_code['Santorini'], city_code['Venice']))\n    allowed_flights.add((city_code['Lisbon'], city_code['Venice']))\n    allowed_flights.add((city_code['Venice'], city_code['Lisbon']))\n    allowed_flights.add((city_code['Reykjavik'], city_code['Madrid']))\n    allowed_flights.add((city_code['Brussels'], city_code['London']))\n    allowed_flights.add((city_code['London'], city_code['Brussels']))\n    allowed_flights.add((city_code['Madrid'], city_code['London']))\n    allowed_flights.add((city_code['London'], city_code['Madrid']))\n    allowed_flights.add((city_code['Santorini'], city_code['London']))\n    allowed_flights.add((city_code['London'], city_code['Santorini']))\n    allowed_flights.add((city_code['London'], city_code['Reykjavik']))\n    allowed_flights.add((city_code['Reykjavik'], city_code['London']))\n    allowed_flights.add((city_code['Brussels'], city_code['Lisbon']))\n    allowed_flights.add((city_code['Lisbon'], city_code['Brussels']))\n    allowed_flights.add((city_code['Lisbon'], city_code['London']))\n    allowed_flights.add((city_code['London'], city_code['Lisbon']))\n    allowed_flights.add((city_code['Lisbon'], city_code['Madrid']))\n    allowed_flights.add((city_code['Madrid'], city_code['Lisbon']))\n    allowed_flights.add((city_code['Madrid'], city_code['Santorini']))\n    allowed_flights.add((city_code['Santorini'], city_code['Madrid']))\n    allowed_flights.add((city_code['Brussels'], city_code['Reykjavik']))\n    allowed_flights.add((city_code['Reykjavik'], city_code['Brussels']))\n    allowed_flights.add((city_code['Brussels'], city_code['Madrid']))\n    allowed_flights.add((city_code['Madrid'], city_code['Brussels']))\n    allowed_flights.add((city_code['Venice'], city_code['London']))\n    allowed_flights.add((city_code['London'], city_code['Venice']))\n\n    s = Solver()\n\n    pos = [Int(f'pos_{i}') for i in range(1, 7)]\n    s.add(And([And(1 <= pos[i], pos[i] <= 6) for i in range(6)]))\n    s.add(Distinct(pos))\n\n    sequence = [0] + pos\n\n    for i in range(6):\n        current = sequence[i]\n        next_city = sequence[i + 1]\n        constraints = []\n        for (fr, to) in allowed_flights:\n            constraints.append(And(current == fr, next_city == to))\n        s.add(Or(constraints))\n\n    start = [Int(f'start_{i}') for i in range(7)]\n    end = [Int(f'end_{i}') for i in range(7)]\n\n    durations = [2, 3, 3, 4, 3, 3, 5]\n\n    s.add(start[0] == 1)\n    s.add(end[0] == start[0] + durations[0] - 1)\n\n    for i in range(1, 7):\n        city_code_i = pos[i - 1]\n        duration_i = If(city_code_i == 1, 3,\n                        If(city_code_i == 2, 3,\n                           If(city_code_i == 3, 4,\n                              If(city_code_i == 4, 3,\n                                 If(city_code_i == 5, 3,\n                                    If(city_code_i == 6, 5, 0))))))\n        s.add(start[i] == end[i - 1])\n        s.add(end[i] == start[i] + duration_i - 1)\n\n    s.add(end[6] == 17)\n\n    for i in range(1, 7):\n        city_code_i = sequence[i]\n        s.add(Implies(city_code_i == 1, Or(\n            And(start[i] <= 5, 5 <= end[i]),\n            And(start[i] <= 6, 6 <= end[i]),\n            And(start[i] <= 7, 7 <= end[i])\n        )))\n\n    for i in range(1, 7):\n        city_code_i = sequence[i]\n        s.add(Implies(city_code_i == 6, Or(\n            And(start[i] <= 7, 7 <= end[i]),\n            And(start[i] <= 8, 8 <= end[i]),\n            And(start[i] <= 9, 9 <= end[i]),\n            And(start[i] <= 10, 10 <= end[i]),\n            And(start[i] <= 11, 11 <= end[i])\n        )))\n\n    if s.check() == sat:\n        m = s.model()\n        order = [0] + [m.evaluate(pos[i]).as_long() for i in range(6)]\n        itinerary = []\n        for i in range(7):\n            city_code_i = order[i]\n            city_name = cities[city_code_i]\n            s_day = m.evaluate(start[i]).as_long()\n            e_day = m.evaluate(end[i]).as_long()\n            day_range = f\"Day {s_day}-{e_day}\"\n            itinerary.append({\"day_range\": day_range, \"place\": city_name})\n        import json\n        print(json.dumps({\"itinerary\": itinerary}))\n    else:\n        print(\"No solution found.\")\n\nif __name__ == \"__main__\":\n    main()"
+}

@@ -1,0 +1,1 @@
+City, (H, D, L, He, M, R) = z3.EnumSort('City', ['H', 'D', 'L', 'He', 'M', 'R'])

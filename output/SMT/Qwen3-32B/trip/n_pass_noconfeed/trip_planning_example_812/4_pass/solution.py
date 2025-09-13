@@ -1,0 +1,1 @@
+s.add(And([And(0 <= order[i], order[i] < 7) for i in range(7)]))

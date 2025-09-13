@@ -1,0 +1,52 @@
+{
+    "has_execution_error": true,
+    "has_no_plan": false,
+    "execution_output": null,
+    "pred": null,
+    "gold": {
+        "itinerary": [
+            {
+                "day_range": "Day 1-2",
+                "place": "Hamburg"
+            },
+            {
+                "day_range": "Day 2-6",
+                "place": "Dublin"
+            },
+            {
+                "day_range": "Day 6-9",
+                "place": "Helsinki"
+            },
+            {
+                "day_range": "Day 9-10",
+                "place": "Reykjavik"
+            },
+            {
+                "day_range": "Day 10-14",
+                "place": "London"
+            },
+            {
+                "day_range": "Day 14-16",
+                "place": "Mykonos"
+            }
+        ]
+    },
+    "status": "Error",
+    "violated_constraint": {
+        "missing_itinerary": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 2,
+    "timing": {
+        "api_call_time": 385.80672121047974,
+        "execution_time": 0.10344552993774414,
+        "constraint_eval_time": 6.4373016357421875e-06,
+        "pred_extract_time": 1.33514404296875e-05,
+        "gold_extract_time": 0.00011372566223144531,
+        "total_tokens": 26144,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import z3\n\n# Define cities as an EnumSort\nCity = z3.DeclareSort('City')\nH, D, L, He, M, R = z3.Consts('H D L He M R', City)\n\n# Define the sequence of cities\nseq = [z3.Const(f'seq_{i}', City) for i in range(6)]\n\n# Add constraint that all cities are distinct\nsolver = z3.Solver()\nsolver.add(z3.Distinct(seq))\n\n# Define S as a function from City to Int\nS_func = z3.Function('S', City, z3.IntSort())\n\n# Add fixed start days\nsolver.add(S_func(H) == 1)\nsolver.add(S_func(D) == 2)\nsolver.add(S_func(R) == 9)\n\n# Define durations for each city (used in itinerary generation)\nduration = {\n    H: 2,\n    D: 5,\n    L: 5,\n    He: 4,\n    M: 3,\n    R: 2,\n}\n\n# Define allowed direct flights\nallowed_flights = [\n    (H, D), (D, H),\n    (H, L), (L, H),\n    (D, He), (He, D),\n    (He, R), (R, He),\n    (D, L), (L, D),\n    (D, R), (R, D),\n    (R, L), (L, R),\n    (L, M), (M, L),\n    (H, He), (He, H),\n    (He, L), (L, He),\n]\n\n# For each consecutive pair in the sequence, add constraints\nfor i in range(5):\n    prev = seq[i]\n    next_city = seq[i+1]\n    # Add constraint that the transition is allowed\n    allowed = z3.Or([z3.And(prev == p, next_city == n) for p, n in allowed_flights])\n    solver.add(allowed)\n    # Compute duration_prev based on prev\n    duration_prev = z3.If(prev == H, 2,\n                   z3.If(prev == D, 5,\n                   z3.If(prev == L, 5,\n                   z3.If(prev == He, 4,\n                   z3.If(prev == M, 3,\n                         2)))))\n    # Add constraint on start days\n    solver.add(S_func(next_city) == S_func(prev) + duration_prev - 1)\n\n# Check if the constraints are satisfiable\nif solver.check() == z3.sat:\n    model = solver.model()\n    # Extract the sequence\n    sequence = [model.evaluate(seq[i]) for i in range(6)]\n    # Extract the start days\n    start_days = {city: model.evaluate(S_func(city)).as_long() for city in [H, D, L, He, M, R]}\n    # Generate the itinerary\n    itinerary = []\n    for city in sequence:\n        start = start_days[city]\n        end = start + duration[city] - 1\n        day_range = f\"Day {start}-Day {end}\"\n        itinerary.append({\"day_range\": day_range, \"place\": str(city)})\n    # Convert city names to the actual city names\n    city_name_map = {\n        'H': \"Hamburg\",\n        'D': \"Dublin\",\n        'L': \"London\",\n        'He': \"Helsinki\",\n        'M': \"Mykonos\",\n        'R': \"Reykjavik\",\n    }\n    for item in itinerary:\n        city_code = item[\"place\"]\n        item[\"place\"] = city_name_map[city_code]\n    # Output as JSON\n    import json\n    print(json.dumps({\"itinerary\": itinerary}, indent=2))\nelse:\n    print(\"No solution found.\")"
+}

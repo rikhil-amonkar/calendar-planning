@@ -1,0 +1,67 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "Solution found:\n[0, 0, 0, 0, 0, 0, 0]",
+    "pred": {
+        "itinerary": [
+            {
+                "day_range": "Day 1-1",
+                "place": "Reykjavik"
+            },
+            {
+                "day_range": "Day 2-2",
+                "place": "Stockholm"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "day_range": "Day 1-3",
+                "place": "Porto"
+            },
+            {
+                "day_range": "Day 3-7",
+                "place": "Paris"
+            },
+            {
+                "day_range": "Day 7-9",
+                "place": "Florence"
+            },
+            {
+                "day_range": "Day 9-13",
+                "place": "Munich"
+            },
+            {
+                "day_range": "Day 13-15",
+                "place": "Warsaw"
+            },
+            {
+                "day_range": "Day 15-19",
+                "place": "Nice"
+            },
+            {
+                "day_range": "Day 19-20",
+                "place": "Vienna"
+            }
+        ]
+    },
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "total_days": 20
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 5,
+    "timing": {
+        "api_call_time": 37.12392020225525,
+        "execution_time": 0.07888627052307129,
+        "constraint_eval_time": 2.4557113647460938e-05,
+        "pred_extract_time": 1.1919231414794922,
+        "gold_extract_time": 0.0001685619354248047,
+        "total_tokens": 2958,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\n\n# Initialize the Z3 solver\ns = Solver()\n\n# Declare order as an array of 7 integer variables\norder = [Int(f'x{i}') for i in range(7)]\n\n# Add constraints to ensure each value is between 0 and 6 (inclusive)\ns.add(And([And(0 <= order[i], order[i] < 7) for i in range(7)]))\n\n# Example additional constraint (optional)\n# s.add(Distinct(order))  # Uncomment if values must be unique\n\n# Check for solution\nif s.check() == sat:\n    model = s.model()\n    print(\"Solution found:\")\n    print([model[order[i]] for i in range(7)])\nelse:\n    print(\"No solution\")"
+}

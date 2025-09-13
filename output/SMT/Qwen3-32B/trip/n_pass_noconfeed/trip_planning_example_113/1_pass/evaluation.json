@@ -1,0 +1,53 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\"itinerary\": [{\"day_range\": \"Day 1-3\", \"place\": \"Naples\"}, {\"day_range\": \"Day 3-9\", \"place\": \"Milan\"}, {\"day_range\": \"Day 9-12\", \"place\": \"Seville\"}]}",
+    "pred": {
+        "itinerary": [
+            {
+                "day_range": "Day 1-3",
+                "place": "Naples"
+            },
+            {
+                "day_range": "Day 3-9",
+                "place": "Milan"
+            },
+            {
+                "day_range": "Day 9-12",
+                "place": "Seville"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "day_range": "Day 1-3",
+                "place": "Naples"
+            },
+            {
+                "day_range": "Day 3-9",
+                "place": "Milan"
+            },
+            {
+                "day_range": "Day 9-12",
+                "place": "Seville"
+            }
+        ]
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 469.18864130973816,
+        "execution_time": 0.08085322380065918,
+        "constraint_eval_time": 2.7418136596679688e-05,
+        "pred_extract_time": 1.5412421226501465,
+        "gold_extract_time": 5.1975250244140625e-05,
+        "total_tokens": 30260,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\nimport json\n\ndef main():\n    solver = Solver()\n\n    # Define cities as integers: 0=Naples, 1=Seville, 2=Milan\n    city0 = Int('city0')\n    city1 = Int('city1')\n    city2 = Int('city2')\n\n    # Constraints for cities\n    solver.add(Distinct(city0, city1, city2))\n    solver.add(city2 == 1)  # Third segment must be Seville\n\n    # Allowed transitions between cities\n    def is_allowed_transition(prev, curr):\n        return Or(\n            And(prev == 0, curr == 2),  # Naples -> Milan\n            And(prev == 2, curr == 0),  # Milan -> Naples\n            And(prev == 2, curr == 1),  # Milan -> Seville\n            And(prev == 1, curr == 2)   # Seville -> Milan\n        )\n\n    solver.add(is_allowed_transition(city0, city1))\n    solver.add(is_allowed_transition(city1, city2))\n\n    # Compute durations based on city\n    d0 = If(city0 == 0, 3, If(city0 == 1, 4, 7))\n    d1 = If(city1 == 0, 3, If(city1 == 1, 4, 7))\n    d2 = 4  # Seville's duration is fixed\n\n    # Compute end days\n    e0 = 1 + d0 - 1\n    s1 = e0\n    e1 = s1 + d1 - 1\n    s2 = e1\n    e2 = s2 + d2 - 1\n\n    # The last day must be 12\n    solver.add(e2 == 12)\n\n    if solver.check() == sat:\n        model = solver.model()\n        c0 = model[city0].as_long()\n        c1 = model[city1].as_long()\n        c2 = model[city2].as_long()\n\n        # Compute durations for each segment\n        durations = [\n            3 if c == 0 else 7 if c == 2 else 4 for c in [c0, c1, c2]\n        ]\n\n        # Compute start and end days for each segment\n        segments = []\n        start = 1\n        for dur in durations:\n            end = start + dur - 1\n            segments.append((start, end))\n            start = end\n\n        # Prepare the itinerary\n        city_names = {0: \"Naples\", 1: \"Seville\", 2: \"Milan\"}\n        itinerary = []\n        for (s, e), c in zip(segments, [c0, c1, c2]):\n            day_range = f\"Day {s}-{e}\"\n            itinerary.append({\"day_range\": day_range, \"place\": city_names[c]})\n\n        print(json.dumps({\"itinerary\": itinerary}))\n    else:\n        print(json.dumps({\"error\": \"No solution found\"}))\n\nif __name__ == \"__main__\":\n    main()"
+}

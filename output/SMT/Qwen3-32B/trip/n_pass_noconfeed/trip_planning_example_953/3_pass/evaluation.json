@@ -1,0 +1,56 @@
+{
+    "has_execution_error": true,
+    "has_no_plan": false,
+    "execution_output": null,
+    "pred": null,
+    "gold": {
+        "itinerary": [
+            {
+                "day_range": "Day 1-5",
+                "place": "Venice"
+            },
+            {
+                "day_range": "Day 5-7",
+                "place": "Stuttgart"
+            },
+            {
+                "day_range": "Day 7-8",
+                "place": "Stockholm"
+            },
+            {
+                "day_range": "Day 8-9",
+                "place": "Barcelona"
+            },
+            {
+                "day_range": "Day 9-12",
+                "place": "Florence"
+            },
+            {
+                "day_range": "Day 12-15",
+                "place": "Frankfurt"
+            },
+            {
+                "day_range": "Day 15-18",
+                "place": "Salzburg"
+            }
+        ]
+    },
+    "status": "Error",
+    "violated_constraint": {
+        "missing_itinerary": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 3,
+    "timing": {
+        "api_call_time": 733.2474958896637,
+        "execution_time": 0.07046842575073242,
+        "constraint_eval_time": 1.6689300537109375e-05,
+        "pred_extract_time": 2.1696090698242188e-05,
+        "gold_extract_time": 0.0001533031463623047,
+        "total_tokens": 50650,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import z3\nimport json\n\ncities = [\"Venice\", \"Salzburg\", \"Stockholm\", \"Frankfurt\", \"Florence\", \"Barcelona\", \"Stuttgart\"]\ndurations = {\n    \"Venice\": 5,\n    \"Salzburg\": 4,\n    \"Stockholm\": 2,\n    \"Frankfurt\": 4,\n    \"Florence\": 4,\n    \"Barcelona\": 2,\n    \"Stuttgart\": 3\n}\n\ndirect_flights = {\n    (\"Barcelona\", \"Frankfurt\"),\n    (\"Frankfurt\", \"Barcelona\"),\n    (\"Florence\", \"Frankfurt\"),\n    (\"Frankfurt\", \"Florence\"),\n    (\"Stockholm\", \"Barcelona\"),\n    (\"Barcelona\", \"Stockholm\"),\n    (\"Venice\", \"Barcelona\"),\n    (\"Barcelona\", \"Venice\"),\n    (\"Stuttgart\", \"Barcelona\"),\n    (\"Barcelona\", \"Stuttgart\"),\n    (\"Frankfurt\", \"Salzburg\"),\n    (\"Salzburg\", \"Frankfurt\"),\n    (\"Stockholm\", \"Frankfurt\"),\n    (\"Frankfurt\", \"Stockholm\"),\n    (\"Stuttgart\", \"Stockholm\"),\n    (\"Stockholm\", \"Stuttgart\"),\n    (\"Stuttgart\", \"Frankfurt\"),\n    (\"Frankfurt\", \"Stuttgart\"),\n    (\"Venice\", \"Stuttgart\"),\n    (\"Stuttgart\", \"Venice\"),\n    (\"Venice\", \"Frankfurt\"),\n    (\"Frankfurt\", \"Venice\"),\n}\n\n# Precompute allowed matrix\nallowed = [[False for _ in range(7)] for _ in range(7)]\nfor (a, b) in direct_flights:\n    idx_a = cities.index(a)\n    idx_b = cities.index(b)\n    allowed[idx_a][idx_b] = True\n\n# Create Z3 solver\ns = z3.Solver()\n\n# Variables for order of cities\norder = [z3.Int(f\"order_{i}\") for i in range(7)]\n\n# Constraints for order to be a permutation of 0-6\ns.add([z3.And(order[i] >= 0, order[i] < 7) for i in range(7)])\ns.add(z3.Distinct(order))\n\n# Venice must be the first city\nvenice_idx = cities.index(\"Venice\")\ns.add(order[0] == venice_idx)\n\n# Durations array\ndurations_by_index = [durations[cities[i]] for i in range(7)]\n\n# Start days for each city in the itinerary\nstart_days = [z3.Int(f\"start_{i}\") for i in range(7)]\ns.add(start_days[0] == 1)  # Venice starts on day 1\n\n# Start day of each city is previous start + duration\nfor i in range(1, 7):\n    prev_duration = durations_by_index[order[i - 1]]\n    s.add(start_days[i] == start_days[i - 1] + prev_duration)\n\n# End day of the last city must be 24\nlast_duration = durations_by_index[order[6]]\ns.add(start_days[6] + last_duration - 1 == 24)\n\n# Direct flight constraints using a Z3 array\nallowed_z3 = z3.Array('allowed', z3.IntSort(), z3.IntSort(), z3.BoolSort())\nfor i in range(7):\n    for j in range(7):\n        s.add(allowed_z3[i][j] == allowed[i][j])\n\nfor i in range(6):\n    curr = order[i]\n    next_c = order[i + 1]\n    s.add(allowed_z3[curr][next_c])\n\n# Solve and print the itinerary\nif s.check() == z3.sat:\n    model = s.model()\n    order_values = [model.eval(order[i]).as_long() for i in range(7)]\n    start_days_values = [model.eval(start_days[i]).as_long() for i in range(7)]\n\n    itinerary = []\n    for i in range(7):\n        city_idx = order_values[i]\n        city_name = cities[city_idx]\n        start_day = start_days_values[i]\n        duration = durations_by_index[city_idx]\n        end_day = start_day + duration - 1\n        day_range = f\"Day {start_day}-{end_day}\"\n        itinerary.append({\"day_range\": day_range, \"place\": city_name})\n\n    print(json.dumps({\"itinerary\": itinerary}))\nelse:\n    print(\"No solution found.\")"
+}
