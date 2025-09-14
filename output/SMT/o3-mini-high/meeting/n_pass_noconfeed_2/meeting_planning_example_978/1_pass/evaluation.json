@@ -1,0 +1,91 @@
+{
+    "has_execution_error": true,
+    "has_no_plan": false,
+    "execution_output": null,
+    "pred": null,
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Financial District",
+                "person": "Lisa",
+                "start_time": "10:45",
+                "end_time": "11:00"
+            },
+            {
+                "action": "meet",
+                "location": "Haight-Ashbury",
+                "person": "Joshua",
+                "start_time": "11:19",
+                "end_time": "11:34"
+            },
+            {
+                "action": "meet",
+                "location": "Presidio",
+                "person": "Joseph",
+                "start_time": "11:49",
+                "end_time": "12:34"
+            },
+            {
+                "action": "meet",
+                "location": "Marina District",
+                "person": "Betty",
+                "start_time": "12:45",
+                "end_time": "13:45"
+            },
+            {
+                "action": "meet",
+                "location": "The Castro",
+                "person": "John",
+                "start_time": "14:07",
+                "end_time": "14:52"
+            },
+            {
+                "action": "meet",
+                "location": "Fisherman's Wharf",
+                "person": "Stephanie",
+                "start_time": "15:30",
+                "end_time": "16:00"
+            },
+            {
+                "action": "meet",
+                "location": "Russian Hill",
+                "person": "Melissa",
+                "start_time": "17:00",
+                "end_time": "19:00"
+            },
+            {
+                "action": "meet",
+                "location": "Pacific Heights",
+                "person": "Daniel",
+                "start_time": "19:07",
+                "end_time": "20:07"
+            },
+            {
+                "action": "meet",
+                "location": "Nob Hill",
+                "person": "Andrew",
+                "start_time": "20:15",
+                "end_time": "22:00"
+            }
+        ]
+    },
+    "status": "Error",
+    "violated_constraint": {
+        "missing_itinerary": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 204.77773761749268,
+        "execution_time": 0.10308527946472168,
+        "constraint_eval_time": 1.9073486328125e-06,
+        "pred_extract_time": 2.86102294921875e-06,
+        "gold_extract_time": 0.00013303756713867188,
+        "total_tokens": 10624,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\nimport json\n\ndef minutes_to_time_str(m):\n    h = m // 60\n    minute = m % 60\n    return f\"{h}:{minute:02d}\"\n\ndef main():\n    # Define friend meeting constraints\n    # Times are in minutes after midnight.\n    # 9:00 AM = 540, etc.\n    friends = [\n        {\"name\": \"Stephanie\", \"location\": \"Fisherman's Wharf\", \"a_start\": 930, \"a_end\": 1320, \"min_dur\": 30},\n        {\"name\": \"Lisa\", \"location\": \"Financial District\", \"a_start\": 645, \"a_end\": 1035, \"min_dur\": 15},\n        {\"name\": \"Melissa\", \"location\": \"Russian Hill\", \"a_start\": 1020, \"a_end\": 1305, \"min_dur\": 120},\n        {\"name\": \"Betty\", \"location\": \"Marina District\", \"a_start\": 645, \"a_end\": 855, \"min_dur\": 60},\n        {\"name\": \"Sarah\", \"location\": \"Richmond District\", \"a_start\": 975, \"a_end\": 1170, \"min_dur\": 105},\n        {\"name\": \"Daniel\", \"location\": \"Pacific Heights\", \"a_start\": 1110, \"a_end\": 1305, \"min_dur\": 60},\n        {\"name\": \"Joshua\", \"location\": \"Haight-Ashbury\", \"a_start\": 540, \"a_end\": 930, \"min_dur\": 15},\n        {\"name\": \"Joseph\", \"location\": \"Presidio\", \"a_start\": 420, \"a_end\": 780, \"min_dur\": 45},\n        {\"name\": \"Andrew\", \"location\": \"Nob Hill\", \"a_start\": 1185, \"a_end\": 1320, \"min_dur\": 105},\n        {\"name\": \"John\", \"location\": \"The Castro\", \"a_start\": 795, \"a_end\": 1185, \"min_dur\": 45}\n    ]\n    \n    # Define travel times (in minutes) as provided.\n    # Note: travel times are directional.\n    travel = {\n        (\"Embarcadero\", \"Fisherman's Wharf\"): 6,\n        (\"Embarcadero\", \"Financial District\"): 5,\n        (\"Embarcadero\", \"Russian Hill\"): 8,\n        (\"Embarcadero\", \"Marina District\"): 12,\n        (\"Embarcadero\", \"Richmond District\"): 21,\n        (\"Embarcadero\", \"Pacific Heights\"): 11,\n        (\"Embarcadero\", \"Haight-Ashbury\"): 21,\n        (\"Embarcadero\", \"Presidio\"): 20,\n        (\"Embarcadero\", \"Nob Hill\"): 10,\n        (\"Embarcadero\", \"The Castro\"): 25,\n        \n        (\"Fisherman's Wharf\", \"Embarcadero\"): 8,\n        (\"Fisherman's Wharf\", \"Financial District\"): 11,\n        (\"Fisherman's Wharf\", \"Russian Hill\"): 7,\n        (\"Fisherman's Wharf\", \"Marina District\"): 9,\n        (\"Fisherman's Wharf\", \"Richmond District\"): 18,\n        (\"Fisherman's Wharf\", \"Pacific Heights\"): 12,\n        (\"Fisherman's Wharf\", \"Haight-Ashbury\"): 22,\n        (\"Fisherman's Wharf\", \"Presidio\"): 17,\n        (\"Fisherman's Wharf\", \"Nob Hill\"): 11,\n        (\"Fisherman's Wharf\", \"The Castro\"): 27,\n        \n        (\"Financial District\", \"Embarcadero\"): 4,\n        (\"Financial District\", \"Fisherman's Wharf\"): 10,\n        (\"Financial District\", \"Russian Hill\"): 11,\n        (\"Financial District\", \"Marina District\"): 15,\n        (\"Financial District\", \"Richmond District\"): 21,\n        (\"Financial District\", \"Pacific Heights\"): 13,\n        (\"Financial District\", \"Haight-Ashbury\"): 19,\n        (\"Financial District\", \"Presidio\"): 22,\n        (\"Financial District\", \"Nob Hill\"): 8,\n        (\"Financial District\", \"The Castro\"): 20,\n        \n        (\"Russian Hill\", \"Embarcadero\"): 8,\n        (\"Russian Hill\", \"Fisherman's Wharf\"): 7,\n        (\"Russian Hill\", \"Financial District\"): 11,\n        (\"Russian Hill\", \"Marina District\"): 7,\n        (\"Russian Hill\", \"Richmond District\"): 14,\n        (\"Russian Hill\", \"Pacific Heights\"): 7,\n        (\"Russian Hill\", \"Haight-Ashbury\"): 17,\n        (\"Russian Hill\", \"Presidio\"): 14,\n        (\"Russian Hill\", \"Nob Hill\"): 5,\n        (\"Russian Hill\", \"The Castro\"): 21,\n        \n        (\"Marina District\", \"Embarcadero\"): 14,\n        (\"Marina District\", \"Fisherman's Wharf\"): 10,\n        (\"Marina District\", \"Financial District\"): 17,\n        (\"Marina District\", \"Russian Hill\"): 8,\n        (\"Marina District\", \"Richmond District\"): 11,\n        (\"Marina District\", \"Pacific Heights\"): 7,\n        (\"Marina District\", \"Haight-Ashbury\"): 16,\n        (\"Marina District\", \"Presidio\"): 10,\n        (\"Marina District\", \"Nob Hill\"): 12,\n        (\"Marina District\", \"The Castro\"): 22,\n        \n        (\"Richmond District\", \"Embarcadero\"): 19,\n        (\"Richmond District\", \"Fisherman's Wharf\"): 18,\n        (\"Richmond District\", \"Financial District\"): 22,\n        (\"Richmond District\", \"Russian Hill\"): 13,\n        (\"Richmond District\", \"Marina District\"): 9,\n        (\"Richmond District\", \"Pacific Heights\"): 10,\n        (\"Richmond District\", \"Haight-Ashbury\"): 10,\n        (\"Richmond District\", \"Presidio\"): 7,\n        (\"Richmond District\", \"Nob Hill\"): 17,\n        (\"Richmond District\", \"The Castro\"): 16,\n        \n        (\"Pacific Heights\", \"Embarcadero\"): 10,\n        (\"Pacific Heights\", \"Fisherman's Wharf\"): 13,\n        (\"Pacific Heights\", \"Financial District\"): 13,\n        (\"Pacific Heights\", \"Russian Hill\"): 7,\n        (\"Pacific Heights\", \"Marina District\"): 6,\n        (\"Pacific Heights\", \"Richmond District\"): 12,\n        (\"Pacific Heights\", \"Haight-Ashbury\"): 11,\n        (\"Pacific Heights\", \"Presidio\"): 11,\n        (\"Pacific Heights\", \"Nob Hill\"): 8,\n        (\"Pacific Heights\", \"The Castro\"): 16,\n        \n        (\"Haight-Ashbury\", \"Embarcadero\"): 20,\n        (\"Haight-Ashbury\", \"Fisherman's Wharf\"): 23,\n        (\"Haight-Ashbury\", \"Financial District\"): 21,\n        (\"Haight-Ashbury\", \"Russian Hill\"): 17,\n        (\"Haight-Ashbury\", \"Marina District\"): 17,\n        (\"Haight-Ashbury\", \"Richmond District\"): 10,\n        (\"Haight-Ashbury\", \"Pacific Heights\"): 12,\n        (\"Haight-Ashbury\", \"Presidio\"): 15,\n        (\"Haight-Ashbury\", \"Nob Hill\"): 15,\n        (\"Haight-Ashbury\", \"The Castro\"): 6,\n        \n        (\"Presidio\", \"Embarcadero\"): 20,\n        (\"Presidio\", \"Fisherman's Wharf\"): 19,\n        (\"Presidio\", \"Financial District\"): 23,\n        (\"Presidio\", \"Russian Hill\"): 14,\n        (\"Presidio\", \"Marina District\"): 11,\n        (\"Presidio\", \"Richmond District\"): 7,\n        (\"Presidio\", \"Pacific Heights\"): 11,\n        (\"Presidio\", \"Haight-Ashbury\"): 15,\n        (\"Presidio\", \"Nob Hill\"): 18,\n        (\"Presidio\", \"The Castro\"): 21,\n        \n        (\"Nob Hill\", \"Embarcadero\"): 9,\n        (\"Nob Hill\", \"Fisherman's Wharf\"): 10,\n        (\"Nob Hill\", \"Financial District\"): 9,\n        (\"Nob Hill\", \"Russian Hill\"): 5,\n        (\"Nob Hill\", \"Marina District\"): 11,\n        (\"Nob Hill\", \"Richmond District\"): 14,\n        (\"Nob Hill\", \"Pacific Heights\"): 8,\n        (\"Nob Hill\", \"Haight-Ashbury\"): 13,\n        (\"Nob Hill\", \"Presidio\"): 17,\n        (\"Nob Hill\", \"The Castro\"): 17,\n        \n        (\"The Castro\", \"Embarcadero\"): 22,\n        (\"The Castro\", \"Fisherman's Wharf\"): 24,\n        (\"The Castro\", \"Financial District\"): 21,\n        (\"The Castro\", \"Russian Hill\"): 18,\n        (\"The Castro\", \"Marina District\"): 21,\n        (\"The Castro\", \"Richmond District\"): 16,\n        (\"The Castro\", \"Pacific Heights\"): 16,\n        (\"The Castro\", \"Haight-Ashbury\"): 6,\n        (\"The Castro\", \"Presidio\"): 20,\n        (\"The Castro\", \"Nob Hill\"): 16\n    }\n    \n    # Create an optimizer instance\n    opt = Optimize()\n    N = len(friends)\n    \n    # For each friend, create SMT variables:\n    # scheduled: whether to meet this friend\n    # start, end: meeting start and end times (in minutes after midnight)\n    # order: position in the sequence (1 = first meeting, etc. 0 when not scheduled)\n    scheduled = [Bool(f\"scheduled_{i}\") for i in range(N)]\n    start_vars = [Int(f\"start_{i}\") for i in range(N)]\n    end_vars = [Int(f\"end_{i}\") for i in range(N)]\n    order_vars = [Int(f\"order_{i}\") for i in range(N)]\n    \n    # Domain constraints for order: if scheduled then order in [1, N], else order is 0.\n    for i in range(N):\n        opt.add(If(scheduled[i], And(order_vars[i] >= 1, order_vars[i] <= N), order_vars[i] == 0))\n    \n    # Ensure that scheduled meetings have unique order values.\n    for i in range(N):\n        for j in range(i+1, N):\n            opt.add(Implies(And(scheduled[i], scheduled[j]), order_vars[i] != order_vars[j]))\n    \n    # Meeting availability and duration constraints\n    for i in range(N):\n        f = friends[i]\n        opt.add(Implies(scheduled[i], start_vars[i] >= f[\"a_start\"]))\n        opt.add(Implies(scheduled[i], end_vars[i] <= f[\"a_end\"]))\n        opt.add(Implies(scheduled[i], end_vars[i] - start_vars[i] >= f[\"min_dur\"]))\n        opt.add(Implies(scheduled[i], end_vars[i] >= start_vars[i]))\n        # Ensure times are within a valid day (0 to 1440 minutes)\n        opt.add(start_vars[i] >= 0, start_vars[i] <= 1440)\n        opt.add(end_vars[i] >= 0, end_vars[i] <= 1440)\n    \n    # For the first scheduled meeting (order == 1), enforce travel from starting point.\n    # You arrive at Embarcadero at 9:00 (540).\n    for i in range(N):\n        opt.add(Implies(And(scheduled[i], order_vars[i] == 1),\n                        start_vars[i] >= 540 + travel[(\"Embarcadero\", friends[i][\"location\"])]))\n    \n    # For meetings with order > 1, enforce that each such meeting is reached from\n    # the immediately preceding meeting.\n    for i in range(N):\n        for j in range(N):\n            opt.add(Implies(And(scheduled[i], scheduled[j], order_vars[i] == order_vars[j] + 1),\n                            start_vars[i] >= end_vars[j] + travel[(friends[j][\"location\"], friends[i][\"location\"])]))\n    \n    # Enforce that meeting order implies increasing start times.\n    for i in range(N):\n        for j in range(N):\n            opt.add(Implies(And(scheduled[i], scheduled[j], order_vars[i] < order_vars[j]),\n                            start_vars[i] < start_vars[j]))\n    \n    # Objective: maximize the number of meetings scheduled.\n    total_meetings = Sum([If(scheduled[i], 1, 0) for i in range(N)])\n    opt.maximize(total_meetings)\n    \n    if opt.check() == sat:\n        model = opt.model()\n        scheduled_meetings = []\n        for i in range(N):\n            if is_true(model.evaluate(scheduled[i])):\n                order_val = model.evaluate(order_vars[i]).as_long()\n                s_time = model.evaluate(start_vars[i]).as_long()\n                e_time = model.evaluate(end_vars[i]).as_long()\n                scheduled_meetings.append((order_val, s_time, e_time, friends[i][\"location\"], friends[i][\"name\"]))\n        scheduled_meetings.sort(key=lambda x: x[0])\n        itinerary = []\n        for om in scheduled_meetings:\n            _, s, e, location, person = om\n            itinerary.append({\n                \"action\": \"meet\",\n                \"location\": location,\n                \"person\": person,\n                \"start_time\": minutes_to_time_str(s),\n                \"end_time\": minutes_to_time_str(e)\n            })\n        result = {\"itinerary\": itinerary}\n        print(json.dumps(result, indent=2))\n    else:\n        print(json.dumps({\"itinerary\": []}))\n    \nif __name__ == \"__main__\":\n    main()"
+}

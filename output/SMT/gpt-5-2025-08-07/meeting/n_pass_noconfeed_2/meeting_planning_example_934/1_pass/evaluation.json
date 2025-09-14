@@ -1,0 +1,129 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\"itinerary\": [{\"action\": \"meet\", \"location\": \"Union Square\", \"person\": \"Sarah\", \"start_time\": \"12:59\", \"end_time\": \"14:29\"}, {\"action\": \"meet\", \"location\": \"Russian Hill\", \"person\": \"Karen\", \"start_time\": \"14:42\", \"end_time\": \"16:42\"}, {\"action\": \"meet\", \"location\": \"The Castro\", \"person\": \"Kenneth\", \"start_time\": \"17:03\", \"end_time\": \"17:33\"}, {\"action\": \"meet\", \"location\": \"Pacific Heights\", \"person\": \"Daniel\", \"start_time\": \"17:49\", \"end_time\": \"18:04\"}, {\"action\": \"meet\", \"location\": \"Chinatown\", \"person\": \"Richard\", \"start_time\": \"18:15\", \"end_time\": \"18:45\"}, {\"action\": \"meet\", \"location\": \"North Beach\", \"person\": \"Thomas\", \"start_time\": \"19:15\", \"end_time\": \"19:30\"}, {\"action\": \"meet\", \"location\": \"Marina District\", \"person\": \"David\", \"start_time\": \"20:00\", \"end_time\": \"21:00\"}]}",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Union Square",
+                "person": "Sarah",
+                "start_time": "12:59",
+                "end_time": "14:29"
+            },
+            {
+                "action": "meet",
+                "location": "Russian Hill",
+                "person": "Karen",
+                "start_time": "14:42",
+                "end_time": "16:42"
+            },
+            {
+                "action": "meet",
+                "location": "The Castro",
+                "person": "Kenneth",
+                "start_time": "17:03",
+                "end_time": "17:33"
+            },
+            {
+                "action": "meet",
+                "location": "Pacific Heights",
+                "person": "Daniel",
+                "start_time": "17:49",
+                "end_time": "18:04"
+            },
+            {
+                "action": "meet",
+                "location": "Chinatown",
+                "person": "Richard",
+                "start_time": "18:15",
+                "end_time": "18:45"
+            },
+            {
+                "action": "meet",
+                "location": "North Beach",
+                "person": "Thomas",
+                "start_time": "19:15",
+                "end_time": "19:30"
+            },
+            {
+                "action": "meet",
+                "location": "Marina District",
+                "person": "David",
+                "start_time": "20:00",
+                "end_time": "21:00"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "The Castro",
+                "person": "Kenneth",
+                "start_time": "11:15",
+                "end_time": "11:45"
+            },
+            {
+                "action": "meet",
+                "location": "Union Square",
+                "person": "Sarah",
+                "start_time": "12:04",
+                "end_time": "13:34"
+            },
+            {
+                "action": "meet",
+                "location": "Pacific Heights",
+                "person": "Daniel",
+                "start_time": "13:49",
+                "end_time": "14:04"
+            },
+            {
+                "action": "meet",
+                "location": "Chinatown",
+                "person": "Richard",
+                "start_time": "14:15",
+                "end_time": "14:45"
+            },
+            {
+                "action": "meet",
+                "location": "Russian Hill",
+                "person": "Karen",
+                "start_time": "14:52",
+                "end_time": "16:52"
+            },
+            {
+                "action": "meet",
+                "location": "North Beach",
+                "person": "Thomas",
+                "start_time": "19:15",
+                "end_time": "19:30"
+            },
+            {
+                "action": "meet",
+                "location": "Embarcadero",
+                "person": "Mary",
+                "start_time": "20:00",
+                "end_time": "21:15"
+            }
+        ]
+    },
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "constraints_satisfied_but_no_exact_match": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 113.90762305259705,
+        "execution_time": 0.10107636451721191,
+        "constraint_eval_time": 0.00023412704467773438,
+        "pred_extract_time": 4.832693099975586,
+        "gold_extract_time": 3.8623809814453125e-05,
+        "total_tokens": 8328,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "# SOLUTION:\nfrom z3 import *\nimport json\n\ndef minutes(h, m):\n    return h * 60 + m\n\ndef format_time(t):\n    h = t // 60\n    m = t % 60\n    return f\"{h}:{m:02d}\"\n\n# Travel times (directed, in minutes)\ntravel = {\n    \"Nob Hill\": {\n        \"Embarcadero\": 9,\n        \"The Castro\": 17,\n        \"Haight-Ashbury\": 13,\n        \"Union Square\": 7,\n        \"North Beach\": 8,\n        \"Pacific Heights\": 8,\n        \"Chinatown\": 6,\n        \"Golden Gate Park\": 17,\n        \"Marina District\": 11,\n        \"Russian Hill\": 5,\n    },\n    \"Embarcadero\": {\n        \"Nob Hill\": 10,\n        \"The Castro\": 25,\n        \"Haight-Ashbury\": 21,\n        \"Union Square\": 10,\n        \"North Beach\": 5,\n        \"Pacific Heights\": 11,\n        \"Chinatown\": 7,\n        \"Golden Gate Park\": 25,\n        \"Marina District\": 12,\n        \"Russian Hill\": 8,\n    },\n    \"The Castro\": {\n        \"Nob Hill\": 16,\n        \"Embarcadero\": 22,\n        \"Haight-Ashbury\": 6,\n        \"Union Square\": 19,\n        \"North Beach\": 20,\n        \"Pacific Heights\": 16,\n        \"Chinatown\": 22,\n        \"Golden Gate Park\": 11,\n        \"Marina District\": 21,\n        \"Russian Hill\": 18,\n    },\n    \"Haight-Ashbury\": {\n        \"Nob Hill\": 15,\n        \"Embarcadero\": 20,\n        \"The Castro\": 6,\n        \"Union Square\": 19,\n        \"North Beach\": 19,\n        \"Pacific Heights\": 12,\n        \"Chinatown\": 19,\n        \"Golden Gate Park\": 7,\n        \"Marina District\": 17,\n        \"Russian Hill\": 17,\n    },\n    \"Union Square\": {\n        \"Nob Hill\": 9,\n        \"Embarcadero\": 11,\n        \"The Castro\": 17,\n        \"Haight-Ashbury\": 18,\n        \"North Beach\": 10,\n        \"Pacific Heights\": 15,\n        \"Chinatown\": 7,\n        \"Golden Gate Park\": 22,\n        \"Marina District\": 18,\n        \"Russian Hill\": 13,\n    },\n    \"North Beach\": {\n        \"Nob Hill\": 7,\n        \"Embarcadero\": 6,\n        \"The Castro\": 23,\n        \"Haight-Ashbury\": 18,\n        \"Union Square\": 7,\n        \"Pacific Heights\": 8,\n        \"Chinatown\": 6,\n        \"Golden Gate Park\": 22,\n        \"Marina District\": 9,\n        \"Russian Hill\": 4,\n    },\n    \"Pacific Heights\": {\n        \"Nob Hill\": 8,\n        \"Embarcadero\": 10,\n        \"The Castro\": 16,\n        \"Haight-Ashbury\": 11,\n        \"Union Square\": 12,\n        \"North Beach\": 9,\n        \"Chinatown\": 11,\n        \"Golden Gate Park\": 15,\n        \"Marina District\": 6,\n        \"Russian Hill\": 7,\n    },\n    \"Chinatown\": {\n        \"Nob Hill\": 9,\n        \"Embarcadero\": 5,\n        \"The Castro\": 22,\n        \"Haight-Ashbury\": 19,\n        \"Union Square\": 7,\n        \"North Beach\": 3,\n        \"Pacific Heights\": 10,\n        \"Golden Gate Park\": 23,\n        \"Marina District\": 12,\n        \"Russian Hill\": 7,\n    },\n    \"Golden Gate Park\": {\n        \"Nob Hill\": 20,\n        \"Embarcadero\": 25,\n        \"The Castro\": 13,\n        \"Haight-Ashbury\": 7,\n        \"Union Square\": 22,\n        \"North Beach\": 23,\n        \"Pacific Heights\": 16,\n        \"Chinatown\": 23,\n        \"Marina District\": 16,\n        \"Russian Hill\": 19,\n    },\n    \"Marina District\": {\n        \"Nob Hill\": 12,\n        \"Embarcadero\": 14,\n        \"The Castro\": 22,\n        \"Haight-Ashbury\": 16,\n        \"Union Square\": 16,\n        \"North Beach\": 11,\n        \"Pacific Heights\": 7,\n        \"Chinatown\": 15,\n        \"Golden Gate Park\": 18,\n        \"Russian Hill\": 8,\n    },\n    \"Russian Hill\": {\n        \"Nob Hill\": 5,\n        \"Embarcadero\": 8,\n        \"The Castro\": 21,\n        \"Haight-Ashbury\": 17,\n        \"Union Square\": 10,\n        \"North Beach\": 5,\n        \"Pacific Heights\": 7,\n        \"Chinatown\": 9,\n        \"Golden Gate Park\": 21,\n        \"Marina District\": 7,\n    },\n}\n\n# Participants: name, location, (start, end) in minutes, minimum duration in minutes\nparticipants = {\n    \"Mary\": {\n        \"location\": \"Embarcadero\",\n        \"window\": (minutes(20, 0), minutes(21, 15)),\n        \"min_duration\": 75,\n    },\n    \"Kenneth\": {\n        \"location\": \"The Castro\",\n        \"window\": (minutes(11, 15), minutes(19, 15)),\n        \"min_duration\": 30,\n    },\n    \"Joseph\": {\n        \"location\": \"Haight-Ashbury\",\n        \"window\": (minutes(20, 0), minutes(22, 0)),\n        \"min_duration\": 120,\n    },\n    \"Sarah\": {\n        \"location\": \"Union Square\",\n        \"window\": (minutes(11, 45), minutes(14, 30)),\n        \"min_duration\": 90,\n    },\n    \"Thomas\": {\n        \"location\": \"North Beach\",\n        \"window\": (minutes(19, 15), minutes(19, 45)),\n        \"min_duration\": 15,\n    },\n    \"Daniel\": {\n        \"location\": \"Pacific Heights\",\n        \"window\": (minutes(13, 45), minutes(20, 30)),\n        \"min_duration\": 15,\n    },\n    \"Richard\": {\n        \"location\": \"Chinatown\",\n        \"window\": (minutes(8, 0), minutes(18, 45)),\n        \"min_duration\": 30,\n    },\n    \"Mark\": {\n        \"location\": \"Golden Gate Park\",\n        \"window\": (minutes(17, 30), minutes(21, 30)),\n        \"min_duration\": 120,\n    },\n    \"David\": {\n        \"location\": \"Marina District\",\n        \"window\": (minutes(20, 0), minutes(21, 0)),\n        \"min_duration\": 60,\n    },\n    \"Karen\": {\n        \"location\": \"Russian Hill\",\n        \"window\": (minutes(13, 15), minutes(18, 30)),\n        \"min_duration\": 120,\n    },\n}\n\nstart_location = \"Nob Hill\"\nstart_time = minutes(9, 0)\n\n# Setup Z3 Optimize\nopt = Optimize()\n\n# Variables\nstart_vars = {}  # start time of meeting\ndur_vars = {}    # duration of meeting\nmeet_vars = {}   # whether we meet this person\n\nHORIZON = minutes(23, 59)\n\nfor name, info in participants.items():\n    s = Int(f\"s_{name}\")\n    d = Int(f\"d_{name}\")\n    m = Bool(f\"meet_{name}\")\n    start_vars[name] = s\n    dur_vars[name] = d\n    meet_vars[name] = m\n\n    w_start, w_end = info[\"window\"]\n    min_d = info[\"min_duration\"]\n\n    # General bounds\n    opt.add(And(s >= 0, s <= HORIZON))\n    opt.add(And(d >= 0, d <= HORIZON))\n\n    # If meeting, enforce window and minimums\n    opt.add(Implies(m, s >= w_start))\n    opt.add(Implies(m, s + d <= w_end))\n    opt.add(Implies(m, d >= min_d))\n    opt.add(Implies(m, d <= (w_end - w_start)))\n\n    # Optional: If not meeting, zero duration\n    opt.add(Implies(Not(m), d == 0))\n\n    # Reachability from start location at day start (safe lower bound)\n    loc = info[\"location\"]\n    # Some locations might not exist in travel dict from start; but we have all\n    t_from_start = travel[start_location][loc]\n    opt.add(Implies(m, s >= start_time + t_from_start))\n\n# Pairwise non-overlap with travel times\nnames = list(participants.keys())\nfor i in range(len(names)):\n    for j in range(i + 1, len(names)):\n        ni = names[i]\n        nj = names[j]\n        loc_i = participants[ni][\"location\"]\n        loc_j = participants[nj][\"location\"]\n        travel_ij = travel[loc_i][loc_j]\n        travel_ji = travel[loc_j][loc_i]\n        si = start_vars[ni]\n        sj = start_vars[nj]\n        di = dur_vars[ni]\n        dj = dur_vars[nj]\n        mi = meet_vars[ni]\n        mj = meet_vars[nj]\n        # If meeting both, they must be sequenced with travel buffer\n        opt.add(Implies(And(mi, mj),\n                        Or(si + di + travel_ij <= sj,\n                           sj + dj + travel_ji <= si)))\n\n# Last end time for secondary objective\nlast_end = Int(\"last_end\")\nopt.add(last_end >= start_time)\nfor name in names:\n    opt.add(Implies(meet_vars[name], last_end >= start_vars[name] + dur_vars[name]))\n\n# Objective: maximize number of meetings, then minimize last end time\ntotal_meetings = Sum([If(meet_vars[name], IntVal(1), IntVal(0)) for name in names])\nh1 = opt.maximize(total_meetings)\nh2 = opt.minimize(last_end)\n\n# Solve\nif opt.check() != sat:\n    # Fallback: no feasible schedule\n    print(json.dumps({\"itinerary\": []}))\n    exit(0)\n\nmodel = opt.model()\n\n# Collect chosen meetings\nchosen = []\nfor name in names:\n    if is_true(model.evaluate(meet_vars[name])):\n        s_val = model.evaluate(start_vars[name]).as_long()\n        d_val = model.evaluate(dur_vars[name]).as_long()\n        e_val = s_val + d_val\n        chosen.append({\n            \"action\": \"meet\",\n            \"location\": participants[name][\"location\"],\n            \"person\": name,\n            \"start_time\": format_time(s_val),\n            \"end_time\": format_time(e_val),\n            \"_start\": s_val  # for sorting\n        })\n\n# Sort by start time\nchosen.sort(key=lambda x: x[\"_start\"])\nfor item in chosen:\n    item.pop(\"_start\", None)\n\n# Output JSON\nprint(json.dumps({\"itinerary\": chosen}, ensure_ascii=False))"
+}

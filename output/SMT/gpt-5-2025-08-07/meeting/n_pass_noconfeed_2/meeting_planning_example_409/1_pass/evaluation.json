@@ -1,0 +1,101 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\"itinerary\": [{\"action\": \"meet\", \"location\": \"Nob Hill\", \"person\": \"Laura\", \"start_time\": \"9:11\", \"end_time\": \"15:11\"}, {\"action\": \"meet\", \"location\": \"Bayview\", \"person\": \"Thomas\", \"start_time\": \"15:30\", \"end_time\": \"18:30\"}, {\"action\": \"meet\", \"location\": \"Golden Gate Park\", \"person\": \"Stephanie\", \"start_time\": \"18:52\", \"end_time\": \"19:37\"}, {\"action\": \"meet\", \"location\": \"Marina District\", \"person\": \"Betty\", \"start_time\": \"19:53\", \"end_time\": \"21:01\"}, {\"action\": \"meet\", \"location\": \"Embarcadero\", \"person\": \"Patricia\", \"start_time\": \"21:15\", \"end_time\": \"22:00\"}]}",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Nob Hill",
+                "person": "Laura",
+                "start_time": "9:11",
+                "end_time": "15:11"
+            },
+            {
+                "action": "meet",
+                "location": "Bayview",
+                "person": "Thomas",
+                "start_time": "15:30",
+                "end_time": "18:30"
+            },
+            {
+                "action": "meet",
+                "location": "Golden Gate Park",
+                "person": "Stephanie",
+                "start_time": "18:52",
+                "end_time": "19:37"
+            },
+            {
+                "action": "meet",
+                "location": "Marina District",
+                "person": "Betty",
+                "start_time": "19:53",
+                "end_time": "21:01"
+            },
+            {
+                "action": "meet",
+                "location": "Embarcadero",
+                "person": "Patricia",
+                "start_time": "21:15",
+                "end_time": "22:00"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Nob Hill",
+                "person": "Laura",
+                "start_time": "9:11",
+                "end_time": "9:41"
+            },
+            {
+                "action": "meet",
+                "location": "Bayview",
+                "person": "Thomas",
+                "start_time": "15:30",
+                "end_time": "17:30"
+            },
+            {
+                "action": "meet",
+                "location": "Golden Gate Park",
+                "person": "Stephanie",
+                "start_time": "18:30",
+                "end_time": "19:00"
+            },
+            {
+                "action": "meet",
+                "location": "Marina District",
+                "person": "Betty",
+                "start_time": "19:16",
+                "end_time": "20:01"
+            },
+            {
+                "action": "meet",
+                "location": "Embarcadero",
+                "person": "Patricia",
+                "start_time": "20:15",
+                "end_time": "21:00"
+            }
+        ]
+    },
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "constraints_satisfied_but_no_exact_match": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 169.9427740573883,
+        "execution_time": 0.13494086265563965,
+        "constraint_eval_time": 0.000308990478515625,
+        "pred_extract_time": 1.8098664283752441,
+        "gold_extract_time": 5.316734313964844e-05,
+        "total_tokens": 6977,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import json\nfrom z3 import *\n\n# Define locations\nlocations = [\n    \"Fisherman's Wharf\",\n    \"Bayview\",\n    \"Golden Gate Park\",\n    \"Nob Hill\",\n    \"Marina District\",\n    \"Embarcadero\"\n]\nloc_index = {name: i for i, name in enumerate(locations)}\n\n# Travel times (minutes)\nT = {name: {} for name in locations}\ndef set_t(a, b, m):\n    T[a][b] = m\n\n# Fill travel matrix from the provided data\nset_t(\"Fisherman's Wharf\", \"Bayview\", 26)\nset_t(\"Fisherman's Wharf\", \"Golden Gate Park\", 25)\nset_t(\"Fisherman's Wharf\", \"Nob Hill\", 11)\nset_t(\"Fisherman's Wharf\", \"Marina District\", 9)\nset_t(\"Fisherman's Wharf\", \"Embarcadero\", 8)\n\nset_t(\"Bayview\", \"Fisherman's Wharf\", 25)\nset_t(\"Bayview\", \"Golden Gate Park\", 22)\nset_t(\"Bayview\", \"Nob Hill\", 20)\nset_t(\"Bayview\", \"Marina District\", 25)\nset_t(\"Bayview\", \"Embarcadero\", 19)\n\nset_t(\"Golden Gate Park\", \"Fisherman's Wharf\", 24)\nset_t(\"Golden Gate Park\", \"Bayview\", 23)\nset_t(\"Golden Gate Park\", \"Nob Hill\", 20)\nset_t(\"Golden Gate Park\", \"Marina District\", 16)\nset_t(\"Golden Gate Park\", \"Embarcadero\", 25)\n\nset_t(\"Nob Hill\", \"Fisherman's Wharf\", 11)\nset_t(\"Nob Hill\", \"Bayview\", 19)\nset_t(\"Nob Hill\", \"Golden Gate Park\", 17)\nset_t(\"Nob Hill\", \"Marina District\", 11)\nset_t(\"Nob Hill\", \"Embarcadero\", 9)\n\nset_t(\"Marina District\", \"Fisherman's Wharf\", 10)\nset_t(\"Marina District\", \"Bayview\", 27)\nset_t(\"Marina District\", \"Golden Gate Park\", 18)\nset_t(\"Marina District\", \"Nob Hill\", 12)\nset_t(\"Marina District\", \"Embarcadero\", 14)\n\nset_t(\"Embarcadero\", \"Fisherman's Wharf\", 6)\nset_t(\"Embarcadero\", \"Bayview\", 21)\nset_t(\"Embarcadero\", \"Golden Gate Park\", 25)\nset_t(\"Embarcadero\", \"Nob Hill\", 10)\nset_t(\"Embarcadero\", \"Marina District\", 12)\n\n# Add zero travel for same-location moves\nfor a in locations:\n    T[a][a] = 0\n\n# Friends and constraints\n# Times are minutes from midnight\ndef hm(h, m): return h*60 + m\n\nfriends = [\n    {\n        \"name\": \"Thomas\",\n        \"location\": \"Bayview\",\n        \"loc_idx\": loc_index[\"Bayview\"],\n        \"avail_start\": hm(15, 30),\n        \"avail_end\": hm(18, 30),\n        \"min_meet\": 120\n    },\n    {\n        \"name\": \"Stephanie\",\n        \"location\": \"Golden Gate Park\",\n        \"loc_idx\": loc_index[\"Golden Gate Park\"],\n        \"avail_start\": hm(18, 30),\n        \"avail_end\": hm(21, 45),\n        \"min_meet\": 30\n    },\n    {\n        \"name\": \"Laura\",\n        \"location\": \"Nob Hill\",\n        \"loc_idx\": loc_index[\"Nob Hill\"],\n        \"avail_start\": hm(8, 45),\n        \"avail_end\": hm(16, 15),\n        \"min_meet\": 30\n    },\n    {\n        \"name\": \"Betty\",\n        \"location\": \"Marina District\",\n        \"loc_idx\": loc_index[\"Marina District\"],\n        \"avail_start\": hm(18, 45),\n        \"avail_end\": hm(21, 45),\n        \"min_meet\": 45\n    },\n    {\n        \"name\": \"Patricia\",\n        \"location\": \"Embarcadero\",\n        \"loc_idx\": loc_index[\"Embarcadero\"],\n        \"avail_start\": hm(17, 30),\n        \"avail_end\": hm(22, 0),\n        \"min_meet\": 45\n    }\n]\n\nN = len(friends)\nK = N  # maximum number of meeting slots\nSTART_LOC = \"Fisherman's Wharf\"\nARRIVAL_TIME = hm(9, 0)\n\n# Precompute travel from start to each friend's location\nstart_to_friend = [T[START_LOC][friends[i][\"location\"]] for i in range(N)]\n\n# Precompute inter-friend travel matrix by indices\nfriend_to_friend = [[0]*N for _ in range(N)]\nfor i in range(N):\n    for j in range(N):\n        li = friends[i][\"location\"]\n        lj = friends[j][\"location\"]\n        friend_to_friend[i][j] = T[li][lj]\n\n# Z3 model\nopt = Optimize()\nopt.set(priority='lex')\n\n# Variables per slot\nslotUsed = [Bool(f\"slotUsed_{s}\") for s in range(K)]\nslotFriend = [Int(f\"slotFriend_{s}\") for s in range(K)]\nstart_time = [Int(f\"start_{s}\") for s in range(K)]\nend_time = [Int(f\"end_{s}\") for s in range(K)]\n\n# Bounds and domain\nfor s in range(K):\n    # time bounds\n    opt.add(start_time[s] >= 0, start_time[s] <= 24*60)\n    opt.add(end_time[s] >= 0, end_time[s] <= 24*60)\n    # friend domain control\n    opt.add(Implies(slotUsed[s], And(slotFriend[s] >= 0, slotFriend[s] < N)))\n    opt.add(Implies(Not(slotUsed[s]), slotFriend[s] == -1))\n    # meeting duration non-negative when used\n    opt.add(Implies(slotUsed[s], end_time[s] >= start_time[s]))\n\n# Used slots are a prefix (no gaps)\nfor s in range(1, K):\n    opt.add(Implies(slotUsed[s], slotUsed[s-1]))\n\n# Distinctness of friends across used slots\nfor s in range(K):\n    for t in range(s+1, K):\n        opt.add(Implies(And(slotUsed[s], slotUsed[t]), slotFriend[s] != slotFriend[t]))\n\n# Meeting window and min duration constraints per slot based on selected friend\nfor s in range(K):\n    for i in range(N):\n        fs = friends[i]\n        opt.add(\n            Implies(\n                And(slotUsed[s], slotFriend[s] == i),\n                And(\n                    start_time[s] >= fs[\"avail_start\"],\n                    end_time[s] <= fs[\"avail_end\"],\n                    end_time[s] - start_time[s] >= fs[\"min_meet\"]\n                )\n            )\n        )\n\n# Travel constraints: from start to first used slot\nif K > 0:\n    s = 0\n    for i in range(N):\n        opt.add(\n            Implies(\n                And(slotUsed[s], slotFriend[s] == i),\n                start_time[s] >= ARRIVAL_TIME + start_to_friend[i]\n            )\n        )\n\n# Travel constraints between consecutive used slots\nfor s in range(1, K):\n    for i in range(N):\n        for j in range(N):\n            opt.add(\n                Implies(\n                    And(slotUsed[s-1], slotFriend[s-1] == i, slotUsed[s], slotFriend[s] == j),\n                    start_time[s] >= end_time[s-1] + friend_to_friend[i][j]\n                )\n            )\n\n# Derive which friends are met\nfriendMet = [Bool(f\"friendMet_{i}\") for i in range(N)]\nfor i in range(N):\n    occurrences = []\n    for s in range(K):\n        occurrences.append(And(slotUsed[s], slotFriend[s] == i))\n    opt.add(friendMet[i] == Or(occurrences) if occurrences else False)\n\n# Objectives: maximize number of friends met, then maximize total meeting time\ntotalMet = Sum([If(friendMet[i], 1, 0) for i in range(N)])\ntotalMinutes = Sum([If(slotUsed[s], end_time[s] - start_time[s], 0) for s in range(K)])\nopt.maximize(totalMet)\nopt.maximize(totalMinutes)\n\n# Solve\nif opt.check() != sat:\n    # If unsat, output empty itinerary\n    result = {\"itinerary\": []}\n    print(json.dumps(result))\n    exit(0)\n\nmodel = opt.model()\n\n# Build itinerary in order of slots\ndef fmt_time(m):\n    h = m // 60\n    mi = m % 60\n    return f\"{h}:{mi:02d}\"\n\nitinerary = []\nfor s in range(K):\n    if is_true(model.evaluate(slotUsed[s])):\n        fi = model.evaluate(slotFriend[s]).as_long()\n        st = model.evaluate(start_time[s]).as_long()\n        en = model.evaluate(end_time[s]).as_long()\n        entry = {\n            \"action\": \"meet\",\n            \"location\": friends[fi][\"location\"],\n            \"person\": friends[fi][\"name\"],\n            \"start_time\": fmt_time(st),\n            \"end_time\": fmt_time(en)\n        }\n        itinerary.append(entry)\n\nprint(json.dumps({\"itinerary\": itinerary}, ensure_ascii=False))"
+}

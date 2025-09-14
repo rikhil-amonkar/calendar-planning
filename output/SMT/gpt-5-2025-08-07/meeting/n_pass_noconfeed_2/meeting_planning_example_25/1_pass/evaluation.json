@@ -1,0 +1,45 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\"itinerary\": [{\"action\": \"meet\", \"location\": \"Chinatown\", \"person\": \"David\", \"start_time\": \"16:00\", \"end_time\": \"21:45\"}]}",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Chinatown",
+                "person": "David",
+                "start_time": "16:00",
+                "end_time": "21:45"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Chinatown",
+                "person": "David",
+                "start_time": "16:00",
+                "end_time": "17:45"
+            }
+        ]
+    },
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "constraints_satisfied_but_no_exact_match": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 66.12544012069702,
+        "execution_time": 0.08420443534851074,
+        "constraint_eval_time": 5.745887756347656e-05,
+        "pred_extract_time": 0.7275474071502686,
+        "gold_extract_time": 2.384185791015625e-05,
+        "total_tokens": 3449,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import json\nfrom z3 import Optimize, Int, Bool, And, If, Implies, Sum, sat\n\ndef parse_time_24h(s):\n    # expects 'H:MM' in 24-hour format\n    h, m = s.split(':')\n    return int(h) * 60 + int(m)\n\ndef fmt_time(minutes):\n    h = minutes // 60\n    m = minutes % 60\n    return f\"{h}:{m:02d}\"\n\ndef main():\n    # Input parameters (24-hour format as required)\n    config = {\n        \"start_location\": \"Golden Gate Park\",\n        \"arrival_time\": \"9:00\",\n        \"people\": [\n            {\n                \"name\": \"David\",\n                \"location\": \"Chinatown\",\n                \"available_start\": \"16:00\",\n                \"available_end\": \"21:45\",\n                \"min_meet_minutes\": 105\n            }\n        ],\n        \"travel_minutes\": {\n            (\"Golden Gate Park\", \"Chinatown\"): 23,\n            (\"Chinatown\", \"Golden Gate Park\"): 23\n        }\n    }\n\n    # Convert times to minutes\n    arrival_time_min = parse_time_24h(config[\"arrival_time\"])\n\n    # Z3 model\n    opt = Optimize()\n\n    meet_vars = []\n    for person in config[\"people\"]:\n        name = person[\"name\"]\n        loc = person[\"location\"]\n        avail_start = parse_time_24h(person[\"available_start\"])\n        avail_end = parse_time_24h(person[\"available_end\"])\n        min_meet = person[\"min_meet_minutes\"]\n\n        s = Int(f\"{name}_start\")\n        e = Int(f\"{name}_end\")\n        meet = Bool(f\"meet_{name}\")\n\n        # Travel from start location to person's location\n        travel_from_start = config[\"travel_minutes\"].get((config[\"start_location\"], loc), None)\n        if travel_from_start is None:\n            # If no travel time is provided, disallow meeting\n            opt.add(meet == False)\n            travel_from_start = 0  # dummy to avoid None uses\n\n        # Basic domain constraints\n        opt.add(Implies(meet, And(\n            s >= 0, e >= 0, s < 24 * 60, e <= 24 * 60,\n            s >= avail_start,\n            e <= avail_end,\n            e > s,\n            (e - s) >= min_meet,\n            s >= arrival_time_min + travel_from_start\n        )))\n        # If not meeting, set a safe default for s/e (not required, but keeps model tidy)\n        opt.add(Implies(And(meet == False), And(s == 0, e == 0)))\n\n        meet_vars.append({\n            \"name\": name,\n            \"location\": loc,\n            \"meet\": meet,\n            \"start\": s,\n            \"end\": e\n        })\n\n    # Objectives:\n    # 1) Maximize number of friends met\n    num_met = Sum([If(v[\"meet\"], 1, 0) for v in meet_vars])\n    opt.maximize(num_met)\n\n    # 2) Maximize total meeting duration\n    total_duration = Sum([If(v[\"meet\"], v[\"end\"] - v[\"start\"], 0) for v in meet_vars])\n    opt.maximize(total_duration)\n\n    # Solve\n    if opt.check() != sat:\n        print(json.dumps({\"itinerary\": []}))\n        return\n\n    model = opt.model()\n\n    # Build itinerary JSON\n    itinerary = []\n    for v in meet_vars:\n        if model.evaluate(v[\"meet\"], model_completion=True):\n            s_val = model.evaluate(v[\"start\"], model_completion=True).as_long()\n            e_val = model.evaluate(v[\"end\"], model_completion=True).as_long()\n            itinerary.append({\n                \"action\": \"meet\",\n                \"location\": v[\"location\"],\n                \"person\": v[\"name\"],\n                \"start_time\": fmt_time(s_val),\n                \"end_time\": fmt_time(e_val)\n            })\n\n    print(json.dumps({\"itinerary\": itinerary}, ensure_ascii=False))\n\nif __name__ == \"__main__\":\n    main()"
+}

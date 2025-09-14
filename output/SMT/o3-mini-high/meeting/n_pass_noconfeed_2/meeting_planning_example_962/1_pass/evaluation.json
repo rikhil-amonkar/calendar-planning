@@ -1,0 +1,115 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"itinerary\": [\n    {\n      \"action\": \"meet\",\n      \"location\": \"Presidio\",\n      \"person\": \"Joshua\",\n      \"start_time\": \"9:55\",\n      \"end_time\": \"11:40\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Embarcadero\",\n      \"person\": \"David\",\n      \"start_time\": \"12:00\",\n      \"end_time\": \"12:30\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Alamo Square\",\n      \"person\": \"Stephanie\",\n      \"start_time\": \"15:30\",\n      \"end_time\": \"16:00\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Haight-Ashbury\",\n      \"person\": \"Kimberly\",\n      \"start_time\": \"17:02\",\n      \"end_time\": \"18:17\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Sunset District\",\n      \"person\": \"Laura\",\n      \"start_time\": \"18:32\",\n      \"end_time\": \"20:02\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Golden Gate Park\",\n      \"person\": \"Lisa\",\n      \"start_time\": \"20:13\",\n      \"end_time\": \"20:58\"\n    }\n  ]\n}",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Presidio",
+                "person": "Joshua",
+                "start_time": "9:55",
+                "end_time": "11:40"
+            },
+            {
+                "action": "meet",
+                "location": "Embarcadero",
+                "person": "David",
+                "start_time": "12:00",
+                "end_time": "12:30"
+            },
+            {
+                "action": "meet",
+                "location": "Alamo Square",
+                "person": "Stephanie",
+                "start_time": "15:30",
+                "end_time": "16:00"
+            },
+            {
+                "action": "meet",
+                "location": "Haight-Ashbury",
+                "person": "Kimberly",
+                "start_time": "17:02",
+                "end_time": "18:17"
+            },
+            {
+                "action": "meet",
+                "location": "Sunset District",
+                "person": "Laura",
+                "start_time": "18:32",
+                "end_time": "20:02"
+            },
+            {
+                "action": "meet",
+                "location": "Golden Gate Park",
+                "person": "Lisa",
+                "start_time": "20:13",
+                "end_time": "20:58"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Presidio",
+                "person": "Joshua",
+                "start_time": "9:20",
+                "end_time": "11:05"
+            },
+            {
+                "action": "meet",
+                "location": "Embarcadero",
+                "person": "David",
+                "start_time": "11:25",
+                "end_time": "11:55"
+            },
+            {
+                "action": "meet",
+                "location": "Alamo Square",
+                "person": "Stephanie",
+                "start_time": "15:30",
+                "end_time": "16:00"
+            },
+            {
+                "action": "meet",
+                "location": "Haight-Ashbury",
+                "person": "Kimberly",
+                "start_time": "16:45",
+                "end_time": "18:00"
+            },
+            {
+                "action": "meet",
+                "location": "Golden Gate Park",
+                "person": "Lisa",
+                "start_time": "18:07",
+                "end_time": "18:52"
+            },
+            {
+                "action": "meet",
+                "location": "North Beach",
+                "person": "Timothy",
+                "start_time": "19:45",
+                "end_time": "21:15"
+            }
+        ]
+    },
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "constraints_satisfied_but_no_exact_match": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 134.54626393318176,
+        "execution_time": 0.09407329559326172,
+        "constraint_eval_time": 0.0005505084991455078,
+        "pred_extract_time": 4.030810117721558,
+        "gold_extract_time": 9.632110595703125e-05,
+        "total_tokens": 9760,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import json\nfrom z3 import Optimize, If, Int, Bool, And, Or, Implies, sat\n\ndef minutes_to_time(minutes):\n    h = minutes // 60\n    m = minutes % 60\n    return f\"{h}:{m:02d}\"\n\ndef main():\n    # Define friends with their meeting constraints\n    friends = [\n        {\"name\": \"Elizabeth\", \"location\": \"Marina District\", \"avail_start\": 1140, \"avail_end\": 1245, \"min_dur\": 105},\n        {\"name\": \"Joshua\", \"location\": \"Presidio\", \"avail_start\": 510, \"avail_end\": 795, \"min_dur\": 105},\n        {\"name\": \"Timothy\", \"location\": \"North Beach\", \"avail_start\": 1185, \"avail_end\": 1320, \"min_dur\": 90},\n        {\"name\": \"David\", \"location\": \"Embarcadero\", \"avail_start\": 645, \"avail_end\": 750, \"min_dur\": 30},\n        {\"name\": \"Kimberly\", \"location\": \"Haight-Ashbury\", \"avail_start\": 1005, \"avail_end\": 1290, \"min_dur\": 75},\n        {\"name\": \"Lisa\", \"location\": \"Golden Gate Park\", \"avail_start\": 1050, \"avail_end\": 1305, \"min_dur\": 45},\n        {\"name\": \"Ronald\", \"location\": \"Richmond District\", \"avail_start\": 480, \"avail_end\": 570, \"min_dur\": 90},\n        {\"name\": \"Stephanie\", \"location\": \"Alamo Square\", \"avail_start\": 930, \"avail_end\": 990, \"min_dur\": 30},\n        {\"name\": \"Helen\", \"location\": \"Financial District\", \"avail_start\": 1050, \"avail_end\": 1110, \"min_dur\": 45},\n        {\"name\": \"Laura\", \"location\": \"Sunset District\", \"avail_start\": 1065, \"avail_end\": 1275, \"min_dur\": 90},\n    ]\n    \n    # Define travel times (in minutes) between locations including the starting point \"The Castro\"\n    travel = {\n        (\"The Castro\", \"Marina District\"): 21,\n        (\"The Castro\", \"Presidio\"): 20,\n        (\"The Castro\", \"North Beach\"): 20,\n        (\"The Castro\", \"Embarcadero\"): 22,\n        (\"The Castro\", \"Haight-Ashbury\"): 6,\n        (\"The Castro\", \"Golden Gate Park\"): 11,\n        (\"The Castro\", \"Richmond District\"): 16,\n        (\"The Castro\", \"Alamo Square\"): 8,\n        (\"The Castro\", \"Financial District\"): 21,\n        (\"The Castro\", \"Sunset District\"): 17,\n\n        (\"Marina District\", \"The Castro\"): 22,\n        (\"Marina District\", \"Presidio\"): 10,\n        (\"Marina District\", \"North Beach\"): 11,\n        (\"Marina District\", \"Embarcadero\"): 14,\n        (\"Marina District\", \"Haight-Ashbury\"): 16,\n        (\"Marina District\", \"Golden Gate Park\"): 18,\n        (\"Marina District\", \"Richmond District\"): 11,\n        (\"Marina District\", \"Alamo Square\"): 15,\n        (\"Marina District\", \"Financial District\"): 17,\n        (\"Marina District\", \"Sunset District\"): 19,\n\n        (\"Presidio\", \"The Castro\"): 21,\n        (\"Presidio\", \"Marina District\"): 11,\n        (\"Presidio\", \"North Beach\"): 18,\n        (\"Presidio\", \"Embarcadero\"): 20,\n        (\"Presidio\", \"Haight-Ashbury\"): 15,\n        (\"Presidio\", \"Golden Gate Park\"): 12,\n        (\"Presidio\", \"Richmond District\"): 7,\n        (\"Presidio\", \"Alamo Square\"): 19,\n        (\"Presidio\", \"Financial District\"): 23,\n        (\"Presidio\", \"Sunset District\"): 15,\n\n        (\"North Beach\", \"The Castro\"): 23,\n        (\"North Beach\", \"Marina District\"): 9,\n        (\"North Beach\", \"Presidio\"): 17,\n        (\"North Beach\", \"Embarcadero\"): 6,\n        (\"North Beach\", \"Haight-Ashbury\"): 18,\n        (\"North Beach\", \"Golden Gate Park\"): 22,\n        (\"North Beach\", \"Richmond District\"): 18,\n        (\"North Beach\", \"Alamo Square\"): 16,\n        (\"North Beach\", \"Financial District\"): 8,\n        (\"North Beach\", \"Sunset District\"): 27,\n\n        (\"Embarcadero\", \"The Castro\"): 25,\n        (\"Embarcadero\", \"Marina District\"): 12,\n        (\"Embarcadero\", \"Presidio\"): 20,\n        (\"Embarcadero\", \"North Beach\"): 5,\n        (\"Embarcadero\", \"Haight-Ashbury\"): 21,\n        (\"Embarcadero\", \"Golden Gate Park\"): 25,\n        (\"Embarcadero\", \"Richmond District\"): 21,\n        (\"Embarcadero\", \"Alamo Square\"): 19,\n        (\"Embarcadero\", \"Financial District\"): 5,\n        (\"Embarcadero\", \"Sunset District\"): 30,\n\n        (\"Haight-Ashbury\", \"The Castro\"): 6,\n        (\"Haight-Ashbury\", \"Marina District\"): 17,\n        (\"Haight-Ashbury\", \"Presidio\"): 15,\n        (\"Haight-Ashbury\", \"North Beach\"): 19,\n        (\"Haight-Ashbury\", \"Embarcadero\"): 20,\n        (\"Haight-Ashbury\", \"Golden Gate Park\"): 7,\n        (\"Haight-Ashbury\", \"Richmond District\"): 10,\n        (\"Haight-Ashbury\", \"Alamo Square\"): 5,\n        (\"Haight-Ashbury\", \"Financial District\"): 21,\n        (\"Haight-Ashbury\", \"Sunset District\"): 15,\n\n        (\"Golden Gate Park\", \"The Castro\"): 13,\n        (\"Golden Gate Park\", \"Marina District\"): 16,\n        (\"Golden Gate Park\", \"Presidio\"): 11,\n        (\"Golden Gate Park\", \"North Beach\"): 23,\n        (\"Golden Gate Park\", \"Embarcadero\"): 25,\n        (\"Golden Gate Park\", \"Haight-Ashbury\"): 7,\n        (\"Golden Gate Park\", \"Richmond District\"): 7,\n        (\"Golden Gate Park\", \"Alamo Square\"): 9,\n        (\"Golden Gate Park\", \"Financial District\"): 26,\n        (\"Golden Gate Park\", \"Sunset District\"): 10,\n\n        (\"Richmond District\", \"The Castro\"): 16,\n        (\"Richmond District\", \"Marina District\"): 9,\n        (\"Richmond District\", \"Presidio\"): 7,\n        (\"Richmond District\", \"North Beach\"): 17,\n        (\"Richmond District\", \"Embarcadero\"): 19,\n        (\"Richmond District\", \"Haight-Ashbury\"): 10,\n        (\"Richmond District\", \"Golden Gate Park\"): 9,\n        (\"Richmond District\", \"Alamo Square\"): 13,\n        (\"Richmond District\", \"Financial District\"): 22,\n        (\"Richmond District\", \"Sunset District\"): 11,\n\n        (\"Alamo Square\", \"The Castro\"): 8,\n        (\"Alamo Square\", \"Marina District\"): 15,\n        (\"Alamo Square\", \"Presidio\"): 17,\n        (\"Alamo Square\", \"North Beach\"): 15,\n        (\"Alamo Square\", \"Embarcadero\"): 16,\n        (\"Alamo Square\", \"Haight-Ashbury\"): 5,\n        (\"Alamo Square\", \"Golden Gate Park\"): 9,\n        (\"Alamo Square\", \"Richmond District\"): 11,\n        (\"Alamo Square\", \"Financial District\"): 17,\n        (\"Alamo Square\", \"Sunset District\"): 16,\n\n        (\"Financial District\", \"The Castro\"): 20,\n        (\"Financial District\", \"Marina District\"): 15,\n        (\"Financial District\", \"Presidio\"): 22,\n        (\"Financial District\", \"North Beach\"): 7,\n        (\"Financial District\", \"Embarcadero\"): 4,\n        (\"Financial District\", \"Haight-Ashbury\"): 19,\n        (\"Financial District\", \"Golden Gate Park\"): 23,\n        (\"Financial District\", \"Richmond District\"): 21,\n        (\"Financial District\", \"Alamo Square\"): 17,\n        (\"Financial District\", \"Sunset District\"): 30,\n\n        (\"Sunset District\", \"The Castro\"): 17,\n        (\"Sunset District\", \"Marina District\"): 21,\n        (\"Sunset District\", \"Presidio\"): 16,\n        (\"Sunset District\", \"North Beach\"): 28,\n        (\"Sunset District\", \"Embarcadero\"): 30,\n        (\"Sunset District\", \"Haight-Ashbury\"): 15,\n        (\"Sunset District\", \"Golden Gate Park\"): 11,\n        (\"Sunset District\", \"Richmond District\"): 12,\n        (\"Sunset District\", \"Alamo Square\"): 17,\n        (\"Sunset District\", \"Financial District\"): 30,\n    }\n    \n    # Create the Z3 optimizer instance\n    opt = Optimize()\n    \n    n = len(friends)\n    # Define decision variables: start times (in minutes from midnight) and a Boolean for scheduling each meeting.\n    starts = [Int(f\"start_{i}\") for i in range(n)]\n    scheduled = [Bool(f\"scheduled_{i}\") for i in range(n)]\n    \n    # For each meeting, if scheduled then enforce availability and initial travel constraints.\n    for i, friend in enumerate(friends):\n        # Meeting must occur within the friend's available window.\n        opt.add(If(scheduled[i],\n                   And(starts[i] >= friend[\"avail_start\"],\n                       starts[i] <= friend[\"avail_end\"] - friend[\"min_dur\"]),\n                   True))\n        # The meeting cannot start before you can get there from \"The Castro\" (arrival at 9:00AM = 540 minutes).\n        opt.add(If(scheduled[i],\n                   starts[i] >= 540 + travel[(\"The Castro\", friend[\"location\"])],\n                   True))\n    \n    # To avoid schedule overlap, for any two scheduled meetings, enforce that one finishes (plus travel time)\n    # before the other starts.\n    for i in range(n):\n        for j in range(i + 1, n):\n            travel_ij = travel[(friends[i][\"location\"], friends[j][\"location\"])]\n            travel_ji = travel[(friends[j][\"location\"], friends[i][\"location\"])]\n            opt.add(Implies(And(scheduled[i], scheduled[j]),\n                            Or(starts[i] + friends[i][\"min_dur\"] + travel_ij <= starts[j],\n                               starts[j] + friends[j][\"min_dur\"] + travel_ji <= starts[i])))\n    \n    # Our objective is to maximize the number of meetings scheduled.\n    opt.maximize(sum([If(scheduled[i], 1, 0) for i in range(n)]))\n    \n    if opt.check() == sat:\n        model = opt.model()\n        scheduled_meetings = []\n        for i, friend in enumerate(friends):\n            if model.evaluate(scheduled[i]):\n                start_time = model.evaluate(starts[i]).as_long()\n                end_time = start_time + friend[\"min_dur\"]\n                scheduled_meetings.append({\n                    \"person\": friend[\"name\"],\n                    \"location\": friend[\"location\"],\n                    \"start\": start_time,\n                    \"end\": end_time\n                })\n        # Sort the meetings by start time\n        scheduled_meetings.sort(key=lambda x: x[\"start\"])\n        itinerary = []\n        for meet in scheduled_meetings:\n            itinerary.append({\n                \"action\": \"meet\",\n                \"location\": meet[\"location\"],\n                \"person\": meet[\"person\"],\n                \"start_time\": minutes_to_time(meet[\"start\"]),\n                \"end_time\": minutes_to_time(meet[\"end\"])\n            })\n        output = {\"itinerary\": itinerary}\n    else:\n        output = {\"itinerary\": []}\n    \n    print(json.dumps(output, indent=2))\n\nif __name__ == \"__main__\":\n    main()"
+}

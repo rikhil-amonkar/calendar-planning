@@ -1,0 +1,115 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\"itinerary\": [{\"action\": \"meet\", \"location\": \"Nob Hill\", \"person\": \"Sandra\", \"start_time\": \"9:07\", \"end_time\": \"13:01\"}, {\"action\": \"meet\", \"location\": \"Union Square\", \"person\": \"Jeffrey\", \"start_time\": \"13:08\", \"end_time\": \"15:08\"}, {\"action\": \"meet\", \"location\": \"Chinatown\", \"person\": \"Robert\", \"start_time\": \"15:15\", \"end_time\": \"16:45\"}, {\"action\": \"meet\", \"location\": \"Golden Gate Park\", \"person\": \"Mark\", \"start_time\": \"17:08\", \"end_time\": \"17:45\"}, {\"action\": \"meet\", \"location\": \"Mission District\", \"person\": \"Carol\", \"start_time\": \"18:15\", \"end_time\": \"19:44\"}, {\"action\": \"meet\", \"location\": \"Pacific Heights\", \"person\": \"James\", \"start_time\": \"20:00\", \"end_time\": \"22:00\"}]}",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Nob Hill",
+                "person": "Sandra",
+                "start_time": "9:07",
+                "end_time": "13:01"
+            },
+            {
+                "action": "meet",
+                "location": "Union Square",
+                "person": "Jeffrey",
+                "start_time": "13:08",
+                "end_time": "15:08"
+            },
+            {
+                "action": "meet",
+                "location": "Chinatown",
+                "person": "Robert",
+                "start_time": "15:15",
+                "end_time": "16:45"
+            },
+            {
+                "action": "meet",
+                "location": "Golden Gate Park",
+                "person": "Mark",
+                "start_time": "17:08",
+                "end_time": "17:45"
+            },
+            {
+                "action": "meet",
+                "location": "Mission District",
+                "person": "Carol",
+                "start_time": "18:15",
+                "end_time": "19:44"
+            },
+            {
+                "action": "meet",
+                "location": "Pacific Heights",
+                "person": "James",
+                "start_time": "20:00",
+                "end_time": "22:00"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Union Square",
+                "person": "Jeffrey",
+                "start_time": "9:30",
+                "end_time": "11:30"
+            },
+            {
+                "action": "meet",
+                "location": "Chinatown",
+                "person": "Robert",
+                "start_time": "12:15",
+                "end_time": "13:45"
+            },
+            {
+                "action": "meet",
+                "location": "Golden Gate Park",
+                "person": "Mark",
+                "start_time": "14:08",
+                "end_time": "14:23"
+            },
+            {
+                "action": "meet",
+                "location": "Nob Hill",
+                "person": "Sandra",
+                "start_time": "14:43",
+                "end_time": "14:58"
+            },
+            {
+                "action": "meet",
+                "location": "Mission District",
+                "person": "Carol",
+                "start_time": "18:15",
+                "end_time": "18:30"
+            },
+            {
+                "action": "meet",
+                "location": "Pacific Heights",
+                "person": "James",
+                "start_time": "20:00",
+                "end_time": "22:00"
+            }
+        ]
+    },
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "constraints_satisfied_but_no_exact_match": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 82.89169573783875,
+        "execution_time": 0.11309623718261719,
+        "constraint_eval_time": 0.00017833709716796875,
+        "pred_extract_time": 5.172449827194214,
+        "gold_extract_time": 4.029273986816406e-05,
+        "total_tokens": 6630,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "# SOLUTION:\n# This program computes an optimal meeting schedule using the Z3 SMT solver\n# to maximize the number of friends met given travel and availability constraints.\n# It outputs a JSON itinerary.\n\nfrom z3 import *\nimport json\n\ndef minutes(h, m):\n    return h * 60 + m\n\ndef fmt_time(t):\n    h = t // 60\n    m = t % 60\n    return f\"{h}:{m:02d}\"\n\n# Locations\nlocations = [\n    \"North Beach\",\n    \"Pacific Heights\",\n    \"Chinatown\",\n    \"Union Square\",\n    \"Mission District\",\n    \"Golden Gate Park\",\n    \"Nob Hill\",\n]\n\n# Travel times in minutes (asymmetric)\nT = {\n    (\"North Beach\",\"Pacific Heights\"): 8,\n    (\"North Beach\",\"Chinatown\"): 6,\n    (\"North Beach\",\"Union Square\"): 7,\n    (\"North Beach\",\"Mission District\"): 18,\n    (\"North Beach\",\"Golden Gate Park\"): 22,\n    (\"North Beach\",\"Nob Hill\"): 7,\n\n    (\"Pacific Heights\",\"North Beach\"): 9,\n    (\"Pacific Heights\",\"Chinatown\"): 11,\n    (\"Pacific Heights\",\"Union Square\"): 12,\n    (\"Pacific Heights\",\"Mission District\"): 15,\n    (\"Pacific Heights\",\"Golden Gate Park\"): 15,\n    (\"Pacific Heights\",\"Nob Hill\"): 8,\n\n    (\"Chinatown\",\"North Beach\"): 3,\n    (\"Chinatown\",\"Pacific Heights\"): 10,\n    (\"Chinatown\",\"Union Square\"): 7,\n    (\"Chinatown\",\"Mission District\"): 18,\n    (\"Chinatown\",\"Golden Gate Park\"): 23,\n    (\"Chinatown\",\"Nob Hill\"): 8,\n\n    (\"Union Square\",\"North Beach\"): 10,\n    (\"Union Square\",\"Pacific Heights\"): 15,\n    (\"Union Square\",\"Chinatown\"): 7,\n    (\"Union Square\",\"Mission District\"): 14,\n    (\"Union Square\",\"Golden Gate Park\"): 22,\n    (\"Union Square\",\"Nob Hill\"): 9,\n\n    (\"Mission District\",\"North Beach\"): 17,\n    (\"Mission District\",\"Pacific Heights\"): 16,\n    (\"Mission District\",\"Chinatown\"): 16,\n    (\"Mission District\",\"Union Square\"): 15,\n    (\"Mission District\",\"Golden Gate Park\"): 17,\n    (\"Mission District\",\"Nob Hill\"): 12,\n\n    (\"Golden Gate Park\",\"North Beach\"): 24,\n    (\"Golden Gate Park\",\"Pacific Heights\"): 16,\n    (\"Golden Gate Park\",\"Chinatown\"): 23,\n    (\"Golden Gate Park\",\"Union Square\"): 22,\n    (\"Golden Gate Park\",\"Mission District\"): 17,\n    (\"Golden Gate Park\",\"Nob Hill\"): 20,\n\n    (\"Nob Hill\",\"North Beach\"): 8,\n    (\"Nob Hill\",\"Pacific Heights\"): 8,\n    (\"Nob Hill\",\"Chinatown\"): 6,\n    (\"Nob Hill\",\"Union Square\"): 7,\n    (\"Nob Hill\",\"Mission District\"): 13,\n    (\"Nob Hill\",\"Golden Gate Park\"): 17,\n}\n\ndef travel(a, b):\n    if a == b:\n        return 0\n    return T[(a, b)]\n\n# People, locations, availability windows, minimum meeting durations\nfriends = [\n    {\n        \"name\": \"James\",\n        \"location\": \"Pacific Heights\",\n        \"start\": minutes(20, 0),   # 20:00\n        \"end\": minutes(22, 0),     # 22:00\n        \"min_duration\": 120,\n    },\n    {\n        \"name\": \"Robert\",\n        \"location\": \"Chinatown\",\n        \"start\": minutes(12, 15),  # 12:15\n        \"end\": minutes(16, 45),    # 16:45\n        \"min_duration\": 90,\n    },\n    {\n        \"name\": \"Jeffrey\",\n        \"location\": \"Union Square\",\n        \"start\": minutes(9, 30),   # 9:30\n        \"end\": minutes(15, 30),    # 15:30\n        \"min_duration\": 120,\n    },\n    {\n        \"name\": \"Carol\",\n        \"location\": \"Mission District\",\n        \"start\": minutes(18, 15),  # 18:15\n        \"end\": minutes(21, 15),    # 21:15\n        \"min_duration\": 15,\n    },\n    {\n        \"name\": \"Mark\",\n        \"location\": \"Golden Gate Park\",\n        \"start\": minutes(11, 30),  # 11:30\n        \"end\": minutes(17, 45),    # 17:45\n        \"min_duration\": 15,\n    },\n    {\n        \"name\": \"Sandra\",\n        \"location\": \"Nob Hill\",\n        \"start\": minutes(8, 0),    # 8:00\n        \"end\": minutes(15, 30),    # 15:30\n        \"min_duration\": 15,\n    },\n]\n\nstart_location = \"North Beach\"\narrival_time = minutes(9, 0)  # 9:00\n\nn = len(friends)\n\n# Z3 variables\nopt = Optimize()\n\nmeet = [Bool(f\"meet_{i}\") for i in range(n)]\nsvar = [Int(f\"start_{i}\") for i in range(n)]\nevar = [Int(f\"end_{i}\") for i in range(n)]\ndvar = [Int(f\"dur_{i}\") for i in range(n)]\n\n# Bounds for times\nfor i in range(n):\n    opt.add(svar[i] >= 0, svar[i] <= 24*60)\n    opt.add(evar[i] >= 0, evar[i] <= 24*60)\n    opt.add(dvar[i] >= 0, dvar[i] <= 24*60)\n\n# Availability and duration constraints\nfor i, f in enumerate(friends):\n    wlen = f[\"end\"] - f[\"start\"]\n    opt.add(Implies(meet[i], And(\n        svar[i] >= f[\"start\"],\n        evar[i] <= f[\"end\"],\n        dvar[i] == evar[i] - svar[i],\n        dvar[i] >= f[\"min_duration\"],\n        dvar[i] <= wlen\n    )))\n    # If not meeting, zero times\n    opt.add(Implies(Not(meet[i]), And(\n        dvar[i] == 0,\n        svar[i] == 0,\n        evar[i] == 0\n    )))\n    # Must be reachable from initial location at arrival time (loose lower bound)\n    # This does not force being first; it's simply a global lower bound.\n    opt.add(Implies(meet[i], svar[i] >= arrival_time + travel(start_location, f[\"location\"])))\n\n# Pairwise sequencing with travel times\nbefore_bools = {}\nfor i in range(n):\n    for j in range(i+1, n):\n        b = Bool(f\"before_{i}_{j}\")  # True: i before j; False: j before i\n        before_bools[(i, j)] = b\n        ti_j = travel(friends[i][\"location\"], friends[j][\"location\"])\n        tj_i = travel(friends[j][\"location\"], friends[i][\"location\"])\n        opt.add(Implies(And(meet[i], meet[j], b), evar[i] + ti_j <= svar[j]))\n        opt.add(Implies(And(meet[i], meet[j], Not(b)), evar[j] + tj_i <= svar[i]))\n        # If either not meeting, no constraint needed; guarded already\n\n# Objective: maximize number of meetings\nnum_met = Sum([If(meet[i], 1, 0) for i in range(n)])\nopt.maximize(num_met)\n\n# Secondary: maximize total duration across meetings\ntotal_duration = Sum([dvar[i] for i in range(n)])\nopt.maximize(total_duration)\n\n# Tertiary: minimize makespan (end time of last meeting)\nmakespan = Int(\"makespan\")\nopt.add(makespan >= 0, makespan <= 24*60)\nfor i in range(n):\n    opt.add(makespan >= evar[i])  # evar[i] == 0 if not meeting\nopt.minimize(makespan)\n\n# Solve\nif opt.check() != sat:\n    # Fallback: output empty itinerary\n    result = {\"itinerary\": []}\n    print(json.dumps(result))\n    exit(0)\n\nm = opt.model()\n\n# Extract meetings\nitinerary = []\nfor i, f in enumerate(friends):\n    if is_true(m.evaluate(meet[i])):\n        s = m.evaluate(svar[i]).as_long()\n        e = m.evaluate(evar[i]).as_long()\n        itinerary.append({\n            \"action\": \"meet\",\n            \"location\": f[\"location\"],\n            \"person\": f[\"name\"],\n            \"start_time\": fmt_time(s),\n            \"end_time\": fmt_time(e)\n        })\n\n# Sort by start time\nitinerary.sort(key=lambda x: (int(x[\"start_time\"].split(\":\")[0])*60 + int(x[\"start_time\"].split(\":\")[1])))\n\n# Output JSON\noutput = {\"itinerary\": itinerary}\nprint(json.dumps(output))"
+}

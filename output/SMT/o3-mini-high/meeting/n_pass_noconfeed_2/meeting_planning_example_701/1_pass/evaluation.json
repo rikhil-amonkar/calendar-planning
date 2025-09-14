@@ -1,0 +1,119 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\"itinerary\": [{\"action\": \"meet\", \"location\": \"Nob Hill\", \"person\": \"Daniel\", \"start_time\": \"8:15\", \"end_time\": \"8:30\"}, {\"action\": \"meet\", \"location\": \"Chinatown\", \"person\": \"Kevin\", \"start_time\": \"12:00\", \"end_time\": \"12:30\"}, {\"action\": \"meet\", \"location\": \"Richmond District\", \"person\": \"Betty\", \"start_time\": \"15:15\", \"end_time\": \"15:45\"}, {\"action\": \"meet\", \"location\": \"Pacific Heights\", \"person\": \"Timothy\", \"start_time\": \"16:30\", \"end_time\": \"18:00\"}, {\"action\": \"meet\", \"location\": \"Marina District\", \"person\": \"Steven\", \"start_time\": \"18:57\", \"end_time\": \"20:27\"}, {\"action\": \"meet\", \"location\": \"Golden Gate Park\", \"person\": \"Ashley\", \"start_time\": \"20:45\", \"end_time\": \"21:45\"}]}",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Nob Hill",
+                "person": "Daniel",
+                "start_time": "8:15",
+                "end_time": "8:30"
+            },
+            {
+                "action": "meet",
+                "location": "Chinatown",
+                "person": "Kevin",
+                "start_time": "12:00",
+                "end_time": "12:30"
+            },
+            {
+                "action": "meet",
+                "location": "Richmond District",
+                "person": "Betty",
+                "start_time": "15:15",
+                "end_time": "15:45"
+            },
+            {
+                "action": "meet",
+                "location": "Pacific Heights",
+                "person": "Timothy",
+                "start_time": "16:30",
+                "end_time": "18:00"
+            },
+            {
+                "action": "meet",
+                "location": "Marina District",
+                "person": "Steven",
+                "start_time": "18:57",
+                "end_time": "20:27"
+            },
+            {
+                "action": "meet",
+                "location": "Golden Gate Park",
+                "person": "Ashley",
+                "start_time": "20:45",
+                "end_time": "21:45"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Nob Hill",
+                "person": "Daniel",
+                "start_time": "9:12",
+                "end_time": "9:27"
+            },
+            {
+                "action": "meet",
+                "location": "Pacific Heights",
+                "person": "Timothy",
+                "start_time": "12:00",
+                "end_time": "13:30"
+            },
+            {
+                "action": "meet",
+                "location": "Chinatown",
+                "person": "Kevin",
+                "start_time": "13:41",
+                "end_time": "14:11"
+            },
+            {
+                "action": "meet",
+                "location": "Richmond District",
+                "person": "Betty",
+                "start_time": "14:31",
+                "end_time": "15:01"
+            },
+            {
+                "action": "meet",
+                "location": "Marina District",
+                "person": "Steven",
+                "start_time": "16:30",
+                "end_time": "18:00"
+            },
+            {
+                "action": "meet",
+                "location": "The Castro",
+                "person": "Lisa",
+                "start_time": "19:15",
+                "end_time": "21:15"
+            }
+        ]
+    },
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "travel_start": {
+            "to_person": "Daniel",
+            "to_location": "Nob Hill",
+            "travel_time": 12
+        }
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 276.9958801269531,
+        "execution_time": 0.09569001197814941,
+        "constraint_eval_time": 0.0004546642303466797,
+        "pred_extract_time": 2.9148054122924805,
+        "gold_extract_time": 7.414817810058594e-05,
+        "total_tokens": 7526,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\nimport json\n\ndef minutes_to_time(m):\n    hour = m // 60\n    minute = m % 60\n    return f\"{hour}:{minute:02d}\"\n\ndef main():\n    # Travel times (in minutes) between locations.\n    travel_times = {\n        \"Mission District\": {\n            \"The Castro\": 7,\n            \"Nob Hill\": 12,\n            \"Presidio\": 25,\n            \"Marina District\": 19,\n            \"Pacific Heights\": 16,\n            \"Golden Gate Park\": 17,\n            \"Chinatown\": 16,\n            \"Richmond District\": 20\n        },\n        \"The Castro\": {\n            \"Mission District\": 7,\n            \"Nob Hill\": 16,\n            \"Presidio\": 20,\n            \"Marina District\": 21,\n            \"Pacific Heights\": 16,\n            \"Golden Gate Park\": 11,\n            \"Chinatown\": 22,\n            \"Richmond District\": 16\n        },\n        \"Nob Hill\": {\n            \"Mission District\": 13,\n            \"The Castro\": 17,\n            \"Presidio\": 17,\n            \"Marina District\": 11,\n            \"Pacific Heights\": 8,\n            \"Golden Gate Park\": 17,\n            \"Chinatown\": 6,\n            \"Richmond District\": 14\n        },\n        \"Presidio\": {\n            \"Mission District\": 26,\n            \"The Castro\": 21,\n            \"Nob Hill\": 18,\n            \"Marina District\": 11,\n            \"Pacific Heights\": 11,\n            \"Golden Gate Park\": 12,\n            \"Chinatown\": 21,\n            \"Richmond District\": 7\n        },\n        \"Marina District\": {\n            \"Mission District\": 20,\n            \"The Castro\": 22,\n            \"Nob Hill\": 12,\n            \"Presidio\": 10,\n            \"Pacific Heights\": 7,\n            \"Golden Gate Park\": 18,\n            \"Chinatown\": 15,\n            \"Richmond District\": 11\n        },\n        \"Pacific Heights\": {\n            \"Mission District\": 15,\n            \"The Castro\": 16,\n            \"Nob Hill\": 8,\n            \"Presidio\": 11,\n            \"Marina District\": 6,\n            \"Golden Gate Park\": 15,\n            \"Chinatown\": 11,\n            \"Richmond District\": 12\n        },\n        \"Golden Gate Park\": {\n            \"Mission District\": 17,\n            \"The Castro\": 13,\n            \"Nob Hill\": 20,\n            \"Presidio\": 11,\n            \"Marina District\": 16,\n            \"Pacific Heights\": 16,\n            \"Chinatown\": 23,\n            \"Richmond District\": 7\n        },\n        \"Chinatown\": {\n            \"Mission District\": 17,\n            \"The Castro\": 22,\n            \"Nob Hill\": 9,\n            \"Presidio\": 19,\n            \"Marina District\": 12,\n            \"Pacific Heights\": 10,\n            \"Golden Gate Park\": 23,\n            \"Richmond District\": 20\n        },\n        \"Richmond District\": {\n            \"Mission District\": 20,\n            \"The Castro\": 16,\n            \"Nob Hill\": 17,\n            \"Presidio\": 7,\n            \"Marina District\": 9,\n            \"Pacific Heights\": 10,\n            \"Golden Gate Park\": 9,\n            \"Chinatown\": 20\n        }\n    }\n\n    # Friend meeting details: each friend has a meeting location, an availability window (in minutes from midnight)\n    # and a minimum meeting duration.\n    # Times are converted as follows:\n    # 9:00 AM = 540, 7:15 PM = 19*60+15 = 1155, 9:15 PM = 1275, 10:15 PM = 1335, etc.\n    friends = [\n        {\"name\": \"Lisa\", \"location\": \"The Castro\", \"avail_start\": 1155, \"avail_end\": 1275, \"min_duration\": 120},\n        {\"name\": \"Daniel\", \"location\": \"Nob Hill\", \"avail_start\": 495, \"avail_end\": 660, \"min_duration\": 15},\n        {\"name\": \"Elizabeth\", \"location\": \"Presidio\", \"avail_start\": 1275, \"avail_end\": 1335, \"min_duration\": 45},\n        {\"name\": \"Steven\", \"location\": \"Marina District\", \"avail_start\": 990, \"avail_end\": 1245, \"min_duration\": 90},\n        {\"name\": \"Timothy\", \"location\": \"Pacific Heights\", \"avail_start\": 720, \"avail_end\": 1080, \"min_duration\": 90},\n        {\"name\": \"Ashley\", \"location\": \"Golden Gate Park\", \"avail_start\": 1245, \"avail_end\": 1305, \"min_duration\": 60},\n        {\"name\": \"Kevin\", \"location\": \"Chinatown\", \"avail_start\": 720, \"avail_end\": 1140, \"min_duration\": 30},\n        {\"name\": \"Betty\", \"location\": \"Richmond District\", \"avail_start\": 795, \"avail_end\": 945, \"min_duration\": 30}\n    ]\n\n    n = len(friends)\n    opt = Optimize()\n\n    # Decision variables for each friend meeting.\n    # x[i] indicates whether we meet friend i.\n    x = [Bool(f\"x_{i}\") for i in range(n)]\n    start_vars = [Int(f\"start_{i}\") for i in range(n)]\n    end_vars = [Int(f\"end_{i}\") for i in range(n)]\n    order_vars = [Int(f\"order_{i}\") for i in range(n)]\n    \n    # For each friend meeting, if chosen, meeting time must be within the available window and last at least the minimum duration.\n    for i, friend in enumerate(friends):\n        avail_start = friend[\"avail_start\"]\n        avail_end = friend[\"avail_end\"]\n        min_dur = friend[\"min_duration\"]\n        opt.add(Implies(x[i], start_vars[i] >= avail_start))\n        opt.add(Implies(x[i], end_vars[i] <= avail_end))\n        opt.add(Implies(x[i], end_vars[i] - start_vars[i] >= min_dur))\n        # If not scheduled, fix the order to n (which is outside the range for scheduled meetings).\n        opt.add(Implies(Not(x[i]), order_vars[i] == n))\n        # If scheduled, order must be in the range 0...n-1.\n        opt.add(Implies(x[i], And(order_vars[i] >= 0, order_vars[i] < n)))\n    \n    # Ensure that scheduled meetings get distinct order values.\n    for i in range(n):\n        for j in range(i+1, n):\n            opt.add(Implies(And(x[i], x[j]), order_vars[i] != order_vars[j]))\n    \n    # Add travel constraints: if meeting i is scheduled before meeting j,\n    # then the start time of meeting j must be at least the end time of meeting i plus the travel time.\n    for i in range(n):\n        for j in range(n):\n            if i != j:\n                loc_i = friends[i][\"location\"]\n                loc_j = friends[j][\"location\"]\n                t_time = travel_times[loc_i][loc_j]\n                opt.add(Implies(And(x[i], x[j], order_vars[i] < order_vars[j]),\n                                start_vars[j] >= end_vars[i] + t_time))\n    \n    # The first meeting (i.e. order==0) must be reachable from Mission District,\n    # where you arrive at 9:00 (540 minutes).\n    for i in range(n):\n        loc = friends[i][\"location\"]\n        t_time = travel_times[\"Mission District\"][loc]\n        opt.add(Implies(And(x[i], order_vars[i] == 0),\n                        start_vars[i] >= 540 + t_time))\n    \n    # Objective: maximize the number of meetings scheduled.\n    opt.maximize(Sum([If(x[i], 1, 0) for i in range(n)]))\n    \n    if opt.check() == sat:\n        model = opt.model()\n        scheduled = []\n        for i in range(n):\n            if is_true(model.evaluate(x[i])):\n                ord_val = model.evaluate(order_vars[i]).as_long()\n                s_time = model.evaluate(start_vars[i]).as_long()\n                e_time = model.evaluate(end_vars[i]).as_long()\n                scheduled.append((ord_val, i, s_time, e_time))\n        # Sort the scheduled meetings by their order.\n        scheduled.sort(key=lambda tup: tup[0])\n        itinerary = []\n        for _, i, s_time, e_time in scheduled:\n            itinerary.append({\n                \"action\": \"meet\",\n                \"location\": friends[i][\"location\"],\n                \"person\": friends[i][\"name\"],\n                \"start_time\": minutes_to_time(s_time),\n                \"end_time\": minutes_to_time(e_time)\n            })\n        result = {\"itinerary\": itinerary}\n        print(json.dumps(result))\n    else:\n        print(json.dumps({\"itinerary\": []}))\n\nif __name__ == \"__main__\":\n    main()"
+}

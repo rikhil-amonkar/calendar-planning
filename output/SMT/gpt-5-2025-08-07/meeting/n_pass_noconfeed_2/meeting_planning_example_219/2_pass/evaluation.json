@@ -1,0 +1,59 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\"itinerary\": [{\"action\": \"meet\", \"location\": \"Alamo Square\", \"person\": \"Emily\", \"start_time\": \"11:45\", \"end_time\": \"15:15\"}, {\"action\": \"meet\", \"location\": \"Chinatown\", \"person\": \"William\", \"start_time\": \"17:15\", \"end_time\": \"19:00\"}]}",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Alamo Square",
+                "person": "Emily",
+                "start_time": "11:45",
+                "end_time": "15:15"
+            },
+            {
+                "action": "meet",
+                "location": "Chinatown",
+                "person": "William",
+                "start_time": "17:15",
+                "end_time": "19:00"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Alamo Square",
+                "person": "Emily",
+                "start_time": "11:45",
+                "end_time": "13:30"
+            },
+            {
+                "action": "meet",
+                "location": "Union Square",
+                "person": "Barbara",
+                "start_time": "16:45",
+                "end_time": "17:45"
+            }
+        ]
+    },
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "constraints_satisfied_but_no_exact_match": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 2,
+    "timing": {
+        "api_call_time": 42.20981574058533,
+        "execution_time": 0.08054900169372559,
+        "constraint_eval_time": 0.00018453598022460938,
+        "pred_extract_time": 1.1061232089996338,
+        "gold_extract_time": 4.172325134277344e-05,
+        "total_tokens": 4687,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import json\nfrom z3 import Optimize, Int, Bool, If, And, Or, Not, Sum, sat, is_true\n\ndef minutes_to_str(m):\n    h = m // 60\n    mm = m % 60\n    return f\"{h}:{mm:02d}\"\n\ndef main():\n    # Input parameters\n    day_start_location = \"The Castro\"\n    day_start_time = 9 * 60  # 9:00 AM in minutes\n\n    # Travel times (minutes)\n    travel = {\n        \"The Castro\": {\"Alamo Square\": 8, \"Union Square\": 19, \"Chinatown\": 20},\n        \"Alamo Square\": {\"The Castro\": 8, \"Union Square\": 14, \"Chinatown\": 16},\n        \"Union Square\": {\"The Castro\": 19, \"Alamo Square\": 15, \"Chinatown\": 7},\n        \"Chinatown\": {\"The Castro\": 22, \"Alamo Square\": 17, \"Union Square\": 7},\n    }\n\n    # Friends constraints\n    friends = {\n        \"Emily\": {\n            \"location\": \"Alamo Square\",\n            \"window_start\": 11 * 60 + 45,  # 11:45\n            \"window_end\": 15 * 60 + 15,    # 15:15\n            \"min_duration\": 105,           # 1h45m\n        },\n        \"Barbara\": {\n            \"location\": \"Union Square\",\n            \"window_start\": 16 * 60 + 45,  # 16:45\n            \"window_end\": 18 * 60 + 15,    # 18:15\n            \"min_duration\": 60,            # 1h\n        },\n        \"William\": {\n            \"location\": \"Chinatown\",\n            \"window_start\": 17 * 60 + 15,  # 17:15\n            \"window_end\": 19 * 60,         # 19:00\n            \"min_duration\": 105,           # 1h45m\n        },\n    }\n\n    # Z3 setup\n    opt = Optimize()\n    opt.set(priority='lex')  # Lexicographic optimization: max #met, then max total meeting time\n\n    people = list(friends.keys())\n\n    meet = {p: Bool(f\"meet_{p}\") for p in people}\n    start = {p: Int(f\"start_{p}\") for p in people}\n    end = {p: Int(f\"end_{p}\") for p in people}\n    dur = {p: Int(f\"dur_{p}\") for p in people}\n\n    # General bounds and per-person constraints\n    for p in people:\n        loc = friends[p][\"location\"]\n        ws = friends[p][\"window_start\"]\n        we = friends[p][\"window_end\"]\n        md = friends[p][\"min_duration\"]\n\n        # Bounds\n        opt.add(And(start[p] >= 0, start[p] <= 24 * 60))\n        opt.add(And(end[p] >= 0, end[p] <= 24 * 60))\n        opt.add(dur[p] == end[p] - start[p])\n\n        # If meeting, enforce within window, min duration, and feasible from day start (travel from The Castro)\n        # If not meeting, force zero-length and zero times for determinism\n        opt.add(\n            If(\n                meet[p],\n                And(\n                    start[p] >= ws,\n                    end[p] <= we,\n                    dur[p] >= md,\n                    start[p] >= day_start_time + travel[day_start_location][loc]\n                ),\n                And(start[p] == 0, end[p] == 0, dur[p] == 0)\n            )\n        )\n\n    # Non-overlap with travel time between meetings\n    for i in range(len(people)):\n        for j in range(i + 1, len(people)):\n            pi, pj = people[i], people[j]\n            li, lj = friends[pi][\"location\"], friends[pj][\"location\"]\n            tij = travel[li][lj]\n            tji = travel[lj][li]\n\n            # If both meetings happen, enforce ordering with travel time.\n            # Otherwise, no constraint.\n            opt.add(\n                Or(\n                    Not(And(meet[pi], meet[pj])),\n                    And(meet[pi], meet[pj], end[pi] + tij <= start[pj]),\n                    And(meet[pi], meet[pj], end[pj] + tji <= start[pi])\n                )\n            )\n\n    # Objectives\n    total_met = Sum([If(meet[p], 1, 0) for p in people])\n    total_meeting_time = Sum([dur[p] for p in people])\n\n    opt.maximize(total_met)\n    opt.maximize(total_meeting_time)\n\n    if opt.check() != sat:\n        print(json.dumps({\"itinerary\": []}))\n        return\n\n    model = opt.model()\n\n    # Build itinerary\n    entries = []\n    for p in people:\n        if is_true(model.evaluate(meet[p])):\n            s = model.evaluate(start[p]).as_long()\n            e = model.evaluate(end[p]).as_long()\n            entries.append({\n                \"action\": \"meet\",\n                \"location\": friends[p][\"location\"],\n                \"person\": p,\n                \"start_time\": minutes_to_str(s),\n                \"end_time\": minutes_to_str(e),\n            })\n\n    # Sort by start time\n    entries.sort(key=lambda x: (int(x[\"start_time\"].split(\":\")[0]) * 60 + int(x[\"start_time\"].split(\":\")[1])))\n\n    output = {\"itinerary\": entries}\n    print(json.dumps(output, ensure_ascii=False))\n\nif __name__ == \"__main__\":\n    main()"
+}

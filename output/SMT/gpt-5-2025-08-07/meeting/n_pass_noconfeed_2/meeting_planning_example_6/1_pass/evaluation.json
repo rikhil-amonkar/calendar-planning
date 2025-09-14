@@ -1,0 +1,35 @@
+{
+    "has_execution_error": true,
+    "has_no_plan": false,
+    "execution_output": null,
+    "pred": null,
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Nob Hill",
+                "person": "Kenneth",
+                "start_time": "14:15",
+                "end_time": "15:45"
+            }
+        ]
+    },
+    "status": "Error",
+    "violated_constraint": {
+        "missing_itinerary": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 49.676604986190796,
+        "execution_time": 0.08990693092346191,
+        "constraint_eval_time": 2.1457672119140625e-06,
+        "pred_extract_time": 3.337860107421875e-06,
+        "gold_extract_time": 5.3882598876953125e-05,
+        "total_tokens": 4183,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import json\nfrom z3 import Int, Bool, Optimize, If, And, Or, Not, Sum\n\ndef time_to_minutes(tstr):\n    # tstr like \"9:00\" or \"14:15\"\n    parts = tstr.strip().split(\":\")\n    h = int(parts[0])\n    m = int(parts[1])\n    return h * 60 + m\n\ndef minutes_to_time(m):\n    h = m // 60\n    mm = m % 60\n    return f\"{h}:{mm:02d}\"\n\ndef main():\n    # Input parameters (as variables)\n    locations = [\"Fisherman's Wharf\", \"Nob Hill\"]\n    travel_minutes = {\n        (\"Fisherman's Wharf\", \"Nob Hill\"): 11,\n        (\"Nob Hill\", \"Fisherman's Wharf\"): 11,\n    }\n    arrival_location = \"Fisherman's Wharf\"\n    arrival_time_str = \"9:00\"\n\n    friends = [\n        {\n            \"name\": \"Kenneth\",\n            \"location\": \"Nob Hill\",\n            \"available_start\": \"14:15\",\n            \"available_end\": \"19:45\",\n            \"min_duration\": 90\n        }\n    ]\n\n    # Prepare constants\n    DAY_START = 0\n    DAY_END = 24 * 60\n\n    arrival_time = time_to_minutes(arrival_time_str)\n\n    # Z3 model\n    opt = Optimize()\n\n    friend_vars = []\n    total_meet_count_terms = []\n    total_meeting_minutes_terms = []\n\n    for f in friends:\n        name = f[\"name\"]\n        loc = f[\"location\"]\n        avail_s = time_to_minutes(f[\"available_start\"])\n        avail_e = time_to_minutes(f[\"available_end\"])\n        min_dur = f[\"min_duration\"]\n\n        # Decision variables\n        s = Int(f\"s_{name}\")\n        e = Int(f\"e_{name}\")\n        meet = Bool(f\"meet_{name}\")\n\n        # Bounds\n        opt.add(And(s >= DAY_START, s <= DAY_END))\n        opt.add(And(e >= DAY_START, e <= DAY_END))\n\n        # Travel feasibility from arrival\n        travel_to_meet = travel_minutes.get((arrival_location, loc), 0)\n        earliest_reachable = arrival_time + travel_to_meet\n\n        # If meeting, enforce timing constraints\n        opt.add(\n            If(\n                meet,\n                And(\n                    s >= avail_s,\n                    s >= earliest_reachable,\n                    e <= avail_e,\n                    e - s >= min_dur\n                ),\n                And(\n                    # If not meeting, keep s,e within day; no additional constraints\n                    s >= DAY_START,\n                    e >= s,  # ensure non-negative interval\n                    e <= DAY_END\n                )\n            )\n        )\n\n        meet_int = If(meet, 1, 0)\n        dur_int = If(meet, e - s, 0)\n        total_meet_count_terms.append(meet_int)\n        total_meeting_minutes_terms.append(dur_int)\n\n        friend_vars.append({\n            \"friend\": f,\n            \"vars\": {\"s\": s, \"e\": e, \"meet\": meet},\n            \"derived\": {\"earliest_reachable\": earliest_reachable}\n        })\n\n    # Objectives:\n    # 1) Maximize number of friends met\n    # 2) Maximize total meeting time\n    total_meet_count = Sum(total_meet_count_terms) if total_meet_count_terms else Int(\"zero_meets\")\n    if not total_meet_count_terms:\n        opt.add(total_meet_count == 0)\n    total_meeting_minutes = Sum(total_meeting_minutes_terms) if total_meeting_minutes_terms else Int(\"zero_minutes\")\n    if not total_meeting_minutes_terms:\n        opt.add(total_meeting_minutes == 0)\n\n    h1 = opt.maximize(total_meet_count)\n    h2 = opt.maximize(total_meeting_minutes)\n\n    if opt.check() != sat:\n        # No feasible schedule\n        result = {\"itinerary\": []}\n        print(json.dumps(result, ensure_ascii=False))\n        return\n\n    model = opt.model()\n\n    itinerary = []\n    for fv in friend_vars:\n        f = fv[\"friend\"]\n        v = fv[\"vars\"]\n        meet_val = model.eval(v[\"meet\"])\n        if str(meet_val) == \"True\":\n            s_min = model.eval(v[\"s\"]).as_long()\n            e_min = model.eval(v[\"e\"]).as_long()\n            itinerary.append({\n                \"action\": \"meet\",\n                \"location\": f[\"location\"],\n                \"person\": f[\"name\"],\n                \"start_time\": minutes_to_time(s_min),\n                \"end_time\": minutes_to_time(e_min)\n            })\n\n    # Sort itinerary by start_time\n    itinerary.sort(key=lambda x: time_to_minutes(x[\"start_time\"]))\n\n    output = {\"itinerary\": itinerary}\n    print(json.dumps(output, ensure_ascii=False))\n\nif __name__ == \"__main__\":\n    main()"
+}

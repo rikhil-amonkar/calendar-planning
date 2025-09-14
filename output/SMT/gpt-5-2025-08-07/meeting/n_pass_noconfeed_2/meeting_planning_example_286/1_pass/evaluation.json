@@ -1,0 +1,73 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\"itinerary\": [{\"action\": \"meet\", \"location\": \"Sunset District\", \"person\": \"Carol\", \"start_time\": \"10:15\", \"end_time\": \"11:45\"}, {\"action\": \"meet\", \"location\": \"Bayview\", \"person\": \"Karen\", \"start_time\": \"12:45\", \"end_time\": \"14:45\"}, {\"action\": \"meet\", \"location\": \"Mission District\", \"person\": \"Rebecca\", \"start_time\": \"14:58\", \"end_time\": \"20:15\"}]}",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Sunset District",
+                "person": "Carol",
+                "start_time": "10:15",
+                "end_time": "11:45"
+            },
+            {
+                "action": "meet",
+                "location": "Bayview",
+                "person": "Karen",
+                "start_time": "12:45",
+                "end_time": "14:45"
+            },
+            {
+                "action": "meet",
+                "location": "Mission District",
+                "person": "Rebecca",
+                "start_time": "14:58",
+                "end_time": "20:15"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Sunset District",
+                "person": "Carol",
+                "start_time": "10:15",
+                "end_time": "10:45"
+            },
+            {
+                "action": "meet",
+                "location": "Bayview",
+                "person": "Karen",
+                "start_time": "12:45",
+                "end_time": "14:45"
+            },
+            {
+                "action": "meet",
+                "location": "Mission District",
+                "person": "Rebecca",
+                "start_time": "14:58",
+                "end_time": "16:58"
+            }
+        ]
+    },
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "constraints_satisfied_but_no_exact_match": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 81.84955334663391,
+        "execution_time": 0.08863329887390137,
+        "constraint_eval_time": 0.0002295970916748047,
+        "pred_extract_time": 1.8701856136322021,
+        "gold_extract_time": 5.125999450683594e-05,
+        "total_tokens": 4468,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import json\nfrom itertools import combinations, permutations\nfrom z3 import Int, Optimize, Sum, sat\n\ndef minutes(h, m):\n    return h * 60 + m\n\ndef fmt_time(t):\n    h = t // 60\n    m = t % 60\n    return f\"{h}:{m:02d}\"\n\ndef build_travel():\n    # Directed travel times in minutes\n    return {\n        (\"Union Square\", \"Mission District\"): 14,\n        (\"Union Square\", \"Bayview\"): 15,\n        (\"Union Square\", \"Sunset District\"): 26,\n        (\"Mission District\", \"Union Square\"): 15,\n        (\"Mission District\", \"Bayview\"): 15,\n        (\"Mission District\", \"Sunset District\"): 24,\n        (\"Bayview\", \"Union Square\"): 17,\n        (\"Bayview\", \"Mission District\"): 13,\n        (\"Bayview\", \"Sunset District\"): 23,\n        (\"Sunset District\", \"Union Square\"): 30,\n        (\"Sunset District\", \"Mission District\"): 24,\n        (\"Sunset District\", \"Bayview\"): 22,\n    }\n\ndef main():\n    start_location = \"Union Square\"\n    arrival_time = minutes(9, 0)\n\n    travel = build_travel()\n\n    people = [\n        {\n            \"name\": \"Rebecca\",\n            \"location\": \"Mission District\",\n            \"avail_start\": minutes(11, 30),\n            \"avail_end\": minutes(20, 15),\n            \"min_duration\": 120\n        },\n        {\n            \"name\": \"Karen\",\n            \"location\": \"Bayview\",\n            \"avail_start\": minutes(12, 45),\n            \"avail_end\": minutes(15, 0),\n            \"min_duration\": 120\n        },\n        {\n            \"name\": \"Carol\",\n            \"location\": \"Sunset District\",\n            \"avail_start\": minutes(10, 15),\n            \"avail_end\": minutes(11, 45),\n            \"min_duration\": 30\n        }\n    ]\n\n    def solve_for_order(order_indices):\n        s = Optimize()\n        n = len(order_indices)\n        starts = []\n        ends = []\n        # Create variables and constraints per person in this order\n        for idx_pos, p_idx in enumerate(order_indices):\n            p = people[p_idx]\n            st = Int(f\"start_{p['name']}\")\n            en = Int(f\"end_{p['name']}\")\n            starts.append(st)\n            ends.append(en)\n            # Availability window and minimum duration\n            s.add(st >= p[\"avail_start\"])\n            s.add(en <= p[\"avail_end\"])\n            s.add(en - st >= p[\"min_duration\"])\n        # Travel constraints from initial location\n        if n > 0:\n            first = people[order_indices[0]]\n            s.add(starts[0] >= arrival_time + travel[(start_location, first[\"location\"])])\n            # Sequential travel constraints between meetings\n            for k in range(1, n):\n                prev = people[order_indices[k-1]]\n                cur = people[order_indices[k]]\n                s.add(starts[k] >= ends[k-1] + travel[(prev[\"location\"], cur[\"location\"])])\n        # Objective: maximize total meeting time\n        total_meeting_time = Sum([ends[i] - starts[i] for i in range(n)]) if n > 0 else Int(\"zero\")\n        if n > 0:\n            s.maximize(total_meeting_time)\n        if s.check() != sat:\n            return None\n        m = s.model()\n        itinerary = []\n        total_time_val = 0\n        for k, p_idx in enumerate(order_indices):\n            p = people[p_idx]\n            st_val = m.eval(starts[k]).as_long()\n            en_val = m.eval(ends[k]).as_long()\n            total_time_val += en_val - st_val\n            itinerary.append({\n                \"action\": \"meet\",\n                \"location\": p[\"location\"],\n                \"person\": p[\"name\"],\n                \"start_time\": fmt_time(st_val),\n                \"end_time\": fmt_time(en_val)\n            })\n        return {\"itinerary\": itinerary, \"total_meeting_time\": total_time_val, \"count\": len(itinerary)}\n\n    best_plan = None\n\n    indices = list(range(len(people)))\n    # Try to maximize number of meetings first\n    for size in range(len(people), 0, -1):\n        candidate_plans = []\n        for subset in combinations(indices, size):\n            for order in permutations(subset):\n                result = solve_for_order(order)\n                if result is not None:\n                    candidate_plans.append(result)\n        if candidate_plans:\n            # Choose the plan with maximum total meeting time as tie-breaker\n            best_plan = max(candidate_plans, key=lambda r: (r[\"count\"], r[\"total_meeting_time\"]))\n            break\n\n    output = {\"itinerary\": []}\n    if best_plan:\n        output[\"itinerary\"] = best_plan[\"itinerary\"]\n\n    print(json.dumps(output))\n\nif __name__ == \"__main__\":\n    main()"
+}

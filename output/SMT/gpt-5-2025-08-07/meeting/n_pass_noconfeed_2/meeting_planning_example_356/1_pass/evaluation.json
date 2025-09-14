@@ -1,0 +1,87 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\"itinerary\": [{\"action\": \"meet\", \"location\": \"Union Square\", \"person\": \"Kimberly\", \"start_time\": \"13:51\", \"end_time\": \"14:21\"}, {\"action\": \"meet\", \"location\": \"Presidio\", \"person\": \"Margaret\", \"start_time\": \"14:45\", \"end_time\": \"15:15\"}, {\"action\": \"meet\", \"location\": \"North Beach\", \"person\": \"Barbara\", \"start_time\": \"15:33\", \"end_time\": \"16:33\"}, {\"action\": \"meet\", \"location\": \"Haight-Ashbury\", \"person\": \"Kevin\", \"start_time\": \"20:00\", \"end_time\": \"20:30\"}]}",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Union Square",
+                "person": "Kimberly",
+                "start_time": "13:51",
+                "end_time": "14:21"
+            },
+            {
+                "action": "meet",
+                "location": "Presidio",
+                "person": "Margaret",
+                "start_time": "14:45",
+                "end_time": "15:15"
+            },
+            {
+                "action": "meet",
+                "location": "North Beach",
+                "person": "Barbara",
+                "start_time": "15:33",
+                "end_time": "16:33"
+            },
+            {
+                "action": "meet",
+                "location": "Haight-Ashbury",
+                "person": "Kevin",
+                "start_time": "20:00",
+                "end_time": "20:30"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Presidio",
+                "person": "Margaret",
+                "start_time": "10:15",
+                "end_time": "10:45"
+            },
+            {
+                "action": "meet",
+                "location": "North Beach",
+                "person": "Barbara",
+                "start_time": "13:45",
+                "end_time": "14:45"
+            },
+            {
+                "action": "meet",
+                "location": "Union Square",
+                "person": "Kimberly",
+                "start_time": "14:52",
+                "end_time": "15:22"
+            },
+            {
+                "action": "meet",
+                "location": "Haight-Ashbury",
+                "person": "Kevin",
+                "start_time": "20:00",
+                "end_time": "20:30"
+            }
+        ]
+    },
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "constraints_satisfied_but_no_exact_match": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 107.9895429611206,
+        "execution_time": 0.0923910140991211,
+        "constraint_eval_time": 0.0003790855407714844,
+        "pred_extract_time": 1.8119497299194336,
+        "gold_extract_time": 0.00010156631469726562,
+        "total_tokens": 5829,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "# SOLUTION:\nimport json\nfrom z3 import *\n\ndef parse_time(t):\n    h, m = t.split(\":\")\n    return int(h) * 60 + int(m)\n\ndef to_hhmm(m):\n    h = m // 60\n    mm = m % 60\n    return f\"{h}:{mm:02d}\"\n\n# Input data\nstart_location = \"Bayview\"\nstart_time = parse_time(\"9:00\")\n\n# Travel times (minutes)\ntravel = {\n    (\"Bayview\", \"North Beach\"): 21,\n    (\"Bayview\", \"Presidio\"): 31,\n    (\"Bayview\", \"Haight-Ashbury\"): 19,\n    (\"Bayview\", \"Union Square\"): 17,\n\n    (\"North Beach\", \"Bayview\"): 22,\n    (\"North Beach\", \"Presidio\"): 17,\n    (\"North Beach\", \"Haight-Ashbury\"): 18,\n    (\"North Beach\", \"Union Square\"): 7,\n\n    (\"Presidio\", \"Bayview\"): 31,\n    (\"Presidio\", \"North Beach\"): 18,\n    (\"Presidio\", \"Haight-Ashbury\"): 15,\n    (\"Presidio\", \"Union Square\"): 22,\n\n    (\"Haight-Ashbury\", \"Bayview\"): 18,\n    (\"Haight-Ashbury\", \"North Beach\"): 19,\n    (\"Haight-Ashbury\", \"Presidio\"): 15,\n    (\"Haight-Ashbury\", \"Union Square\"): 17,\n\n    (\"Union Square\", \"Bayview\"): 15,\n    (\"Union Square\", \"North Beach\"): 10,\n    (\"Union Square\", \"Presidio\"): 24,\n    (\"Union Square\", \"Haight-Ashbury\"): 18,\n}\n\n# People and their constraints\npeople = [\n    {\n        \"name\": \"Barbara\",\n        \"location\": \"North Beach\",\n        \"avail_start\": parse_time(\"13:45\"),\n        \"avail_end\": parse_time(\"20:15\"),\n        \"min_dur\": 60\n    },\n    {\n        \"name\": \"Margaret\",\n        \"location\": \"Presidio\",\n        \"avail_start\": parse_time(\"10:15\"),\n        \"avail_end\": parse_time(\"15:15\"),\n        \"min_dur\": 30\n    },\n    {\n        \"name\": \"Kevin\",\n        \"location\": \"Haight-Ashbury\",\n        \"avail_start\": parse_time(\"20:00\"),\n        \"avail_end\": parse_time(\"20:45\"),\n        \"min_dur\": 30\n    },\n    {\n        \"name\": \"Kimberly\",\n        \"location\": \"Union Square\",\n        \"avail_start\": parse_time(\"7:45\"),\n        \"avail_end\": parse_time(\"16:45\"),\n        \"min_dur\": 30\n    },\n]\n\nn = len(people)\n\n# Z3 model\nopt = Optimize()\nopt.set(priority='lex')\n\n# Variables\nsel = {}\nfirst = {}\nstart = {}\nend = {}\ndur = {}\nbefore = {}\n\nfor i, p in enumerate(people):\n    sel[i] = Bool(f\"sel_{i}_{p['name']}\")\n    first[i] = Bool(f\"first_{i}_{p['name']}\")\n    start[i] = Int(f\"start_{i}_{p['name']}\")\n    end[i] = Int(f\"end_{i}_{p['name']}\")\n    dur[i] = Int(f\"dur_{i}_{p['name']}\")\n    for j, q in enumerate(people):\n        if i != j:\n            before[(i, j)] = Bool(f\"before_{i}_{j}\")\n\n# Basic bounds and meeting constraints\nfor i, p in enumerate(people):\n    # If selected: adhere to availability, duration, and end = start + dur\n    opt.add(Implies(sel[i], And(\n        start[i] >= p[\"avail_start\"],\n        end[i] <= p[\"avail_end\"],\n        end[i] == start[i] + dur[i],\n        dur[i] >= p[\"min_dur\"],\n        dur[i] <= p[\"avail_end\"] - p[\"avail_start\"]\n    )))\n    # If not selected: pin times to 0 and not first\n    opt.add(Implies(Not(sel[i]), And(\n        start[i] == 0,\n        end[i] == 0,\n        dur[i] == 0,\n        Not(first[i])\n    )))\n    # Non-negativity (redundant when not selected but safe)\n    opt.add(start[i] >= 0, end[i] >= 0, dur[i] >= 0)\n\n# Precedence constraints and non-overlap when both are selected\nfor i in range(n):\n    for j in range(i+1, n):\n        li = people[i][\"location\"]\n        lj = people[j][\"location\"]\n        tij = travel[(li, lj)]\n        tji = travel[(lj, li)]\n        # If i before j then timing with travel\n        opt.add(Implies(before[(i, j)], And(sel[i], sel[j], end[i] + tij <= start[j])))\n        opt.add(Implies(before[(j, i)], And(sel[i], sel[j], end[j] + tji <= start[i])))\n        # If both selected, one must be before the other\n        opt.add(Implies(And(sel[i], sel[j]), Or(before[(i, j)], before[(j, i)])))\n        # Can't be both ways\n        opt.add(Not(And(before[(i, j)], before[(j, i)])))\n\n# First meeting constraints\nfor i, p in enumerate(people):\n    # Being first implies selected\n    opt.add(Implies(first[i], sel[i]))\n    # No one precedes the first\n    for j in range(n):\n        if i != j:\n            opt.add(Implies(first[i], Not(before[(j, i)])))\n    # Earliest feasible arrival from starting point to the first meeting\n    opt.add(Implies(first[i], start[i] >= start_time + travel[(start_location, p[\"location\"])]))\n    # Every selected meeting is either first or has some predecessor\n    predecessors = [before[(j, i)] for j in range(n) if j != i]\n    if predecessors:\n        opt.add(Implies(sel[i], Or(first[i], Or(predecessors))))\n    else:\n        opt.add(Implies(sel[i], first[i]))\n\n# Exactly one first if at least one meeting is selected\ntotal_sel = Sum([If(sel[i], 1, 0) for i in range(n)])\ntotal_first = Sum([If(first[i], 1, 0) for i in range(n)])\nopt.add(total_first == If(total_sel == 0, 0, 1))\n\n# Objectives:\n# 1) Maximize number of meetings\nopt.maximize(total_sel)\n\n# 2) Minimize end time of the last meeting (tie-breaker)\nlast_end = Int(\"last_end\")\nopt.add(last_end >= 0)\nfor i in range(n):\n    opt.add(last_end >= end[i])\nopt.minimize(last_end)\n\n# Solve\nif opt.check() != sat:\n    output = {\"itinerary\": []}\n    print(json.dumps(output))\nelse:\n    m = opt.model()\n    chosen = []\n    for i, p in enumerate(people):\n        if is_true(m.eval(sel[i])):\n            s_min = m.eval(start[i]).as_long()\n            e_min = m.eval(end[i]).as_long()\n            chosen.append({\n                \"person\": p[\"name\"],\n                \"location\": p[\"location\"],\n                \"start_min\": s_min,\n                \"end_min\": e_min\n            })\n    # Sort by start time\n    chosen.sort(key=lambda x: x[\"start_min\"])\n    itinerary = []\n    for item in chosen:\n        itinerary.append({\n            \"action\": \"meet\",\n            \"location\": item[\"location\"],\n            \"person\": item[\"person\"],\n            \"start_time\": to_hhmm(item[\"start_min\"]),\n            \"end_time\": to_hhmm(item[\"end_min\"])\n        })\n    print(json.dumps({\"itinerary\": itinerary}))"
+}

@@ -1,0 +1,101 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"itinerary\": [\n    {\n      \"action\": \"meet\",\n      \"location\": \"Golden Gate Park\",\n      \"person\": \"Steven\",\n      \"start_time\": \"9:07\",\n      \"end_time\": \"10:22\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Alamo Square\",\n      \"person\": \"Anthony\",\n      \"start_time\": \"10:32\",\n      \"end_time\": \"14:35\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Pacific Heights\",\n      \"person\": \"Sandra\",\n      \"start_time\": \"14:45\",\n      \"end_time\": \"19:53\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Russian Hill\",\n      \"person\": \"Stephanie\",\n      \"start_time\": \"20:00\",\n      \"end_time\": \"20:15\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Fisherman's Wharf\",\n      \"person\": \"Kevin\",\n      \"start_time\": \"20:22\",\n      \"end_time\": \"21:45\"\n    }\n  ]\n}",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Golden Gate Park",
+                "person": "Steven",
+                "start_time": "9:07",
+                "end_time": "10:22"
+            },
+            {
+                "action": "meet",
+                "location": "Alamo Square",
+                "person": "Anthony",
+                "start_time": "10:32",
+                "end_time": "14:35"
+            },
+            {
+                "action": "meet",
+                "location": "Pacific Heights",
+                "person": "Sandra",
+                "start_time": "14:45",
+                "end_time": "19:53"
+            },
+            {
+                "action": "meet",
+                "location": "Russian Hill",
+                "person": "Stephanie",
+                "start_time": "20:00",
+                "end_time": "20:15"
+            },
+            {
+                "action": "meet",
+                "location": "Fisherman's Wharf",
+                "person": "Kevin",
+                "start_time": "20:22",
+                "end_time": "21:45"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Golden Gate Park",
+                "person": "Steven",
+                "start_time": "9:07",
+                "end_time": "10:22"
+            },
+            {
+                "action": "meet",
+                "location": "Alamo Square",
+                "person": "Anthony",
+                "start_time": "10:32",
+                "end_time": "10:47"
+            },
+            {
+                "action": "meet",
+                "location": "Pacific Heights",
+                "person": "Sandra",
+                "start_time": "14:45",
+                "end_time": "15:30"
+            },
+            {
+                "action": "meet",
+                "location": "Russian Hill",
+                "person": "Stephanie",
+                "start_time": "20:00",
+                "end_time": "20:15"
+            },
+            {
+                "action": "meet",
+                "location": "Fisherman's Wharf",
+                "person": "Kevin",
+                "start_time": "20:22",
+                "end_time": "21:37"
+            }
+        ]
+    },
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "constraints_satisfied_but_no_exact_match": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 2,
+    "timing": {
+        "api_call_time": 29.409539937973022,
+        "execution_time": 0.27002739906311035,
+        "constraint_eval_time": 0.00035262107849121094,
+        "pred_extract_time": 1.956376314163208,
+        "gold_extract_time": 6.818771362304688e-05,
+        "total_tokens": 6044,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import json\nfrom z3 import *\n\ndef minutes(h, m):\n    return h * 60 + m\n\ndef min_to_str(t):\n    h = t // 60\n    m = t % 60\n    return f\"{h}:{m:02d}\"\n\ndef main():\n    # Locations\n    HA = \"Haight-Ashbury\"\n    RH = \"Russian Hill\"\n    FW = \"Fisherman's Wharf\"\n    NH = \"Nob Hill\"\n    GGP = \"Golden Gate Park\"\n    AS = \"Alamo Square\"\n    PH = \"Pacific Heights\"\n\n    # People: id -> (name, location, (avail_start, avail_end), min_duration)\n    people = {\n        1: (\"Stephanie\", RH, (minutes(20,0), minutes(20,45)), 15),\n        2: (\"Kevin\", FW, (minutes(19,15), minutes(21,45)), 75),\n        3: (\"Robert\", NH, (minutes(7,45), minutes(10,30)), 90),\n        4: (\"Steven\", GGP, (minutes(8,30), minutes(17,0)), 75),\n        5: (\"Anthony\", AS, (minutes(7,45), minutes(19,45)), 15),\n        6: (\"Sandra\", PH, (minutes(14,45), minutes(21,45)), 45),\n    }\n\n    # Travel times in minutes (asymmetric where given)\n    travel = {\n        (HA, RH): 17, (HA, FW): 23, (HA, NH): 15, (HA, GGP): 7, (HA, AS): 5, (HA, PH): 12,\n        (RH, HA): 17, (RH, FW): 7, (RH, NH): 5, (RH, GGP): 21, (RH, AS): 15, (RH, PH): 7,\n        (FW, HA): 22, (FW, RH): 7, (FW, NH): 11, (FW, GGP): 25, (FW, AS): 20, (FW, PH): 12,\n        (NH, HA): 13, (NH, RH): 5, (NH, FW): 11, (NH, GGP): 17, (NH, AS): 11, (NH, PH): 8,\n        (GGP, HA): 7, (GGP, RH): 19, (GGP, FW): 24, (GGP, NH): 20, (GGP, AS): 10, (GGP, PH): 16,\n        (AS, HA): 5, (AS, RH): 13, (AS, FW): 19, (AS, NH): 11, (AS, GGP): 9, (AS, PH): 10,\n        (PH, HA): 11, (PH, RH): 7, (PH, FW): 13, (PH, NH): 8, (PH, GGP): 15, (PH, AS): 10,\n    }\n\n    def ttime(loc_a, loc_b):\n        # 0 minutes if staying in the same location\n        if loc_a == loc_b:\n            return 0\n        # Direct lookup\n        if (loc_a, loc_b) in travel:\n            return travel[(loc_a, loc_b)]\n        # Conservative fallback: if one direction missing, assume symmetry\n        if (loc_b, loc_a) in travel:\n            return travel[(loc_b, loc_a)]\n        # If truly undefined, raise a clear error\n        raise KeyError(f\"No travel time defined between {loc_a} and {loc_b}\")\n\n    start_time_at_HA = minutes(9, 0)\n    start_location = HA\n\n    n_people = len(people)\n    slots = n_people  # up to one slot per person\n\n    # Z3 variables\n    opt = Optimize()\n\n    slot_person = [Int(f\"slot_person_{i}\") for i in range(slots)]\n    start = [Int(f\"start_{i}\") for i in range(slots)]\n    end = [Int(f\"end_{i}\") for i in range(slots)]\n    selected = {p: Bool(f\"selected_{p}\") for p in people.keys()}\n\n    # Domains\n    for i in range(slots):\n        opt.add(And(slot_person[i] >= 0, slot_person[i] <= n_people))\n        opt.add(And(start[i] >= 0, start[i] <= 24*60))\n        opt.add(And(end[i] >= 0, end[i] <= 24*60))\n        opt.add(end[i] >= start[i])\n\n    # Once a zero slot appears, all subsequent must be zero (pack meetings at the front)\n    for i in range(slots-1):\n        opt.add(Implies(slot_person[i] == 0, slot_person[i+1] == 0))\n\n    # If a slot is unused, set times to end of day (no effect)\n    for i in range(slots):\n        opt.add(Implies(slot_person[i] == 0, And(start[i] == 24*60, end[i] == 24*60)))\n\n    # Each person appears at most once; link to selected\n    for p in people.keys():\n        count_p = Sum([If(slot_person[i] == p, 1, 0) for i in range(slots)])\n        opt.add(Or(selected[p] == True, selected[p] == False))\n        opt.add(count_p == If(selected[p], 1, 0))\n\n    # Meeting constraints per slot based on assigned person\n    for i in range(slots):\n        for p, pdata in people.items():\n            name, loc, (avail_s, avail_e), min_dur = pdata\n            opt.add(Implies(slot_person[i] == p, And(\n                start[i] >= avail_s,\n                end[i] <= avail_e,\n                end[i] - start[i] >= min_dur\n            )))\n\n    # Travel constraints between consecutive used slots\n    for i in range(1, slots):\n        for p_prev, pdata_prev in people.items():\n            loc_prev = pdata_prev[1]\n            for p_curr, pdata_curr in people.items():\n                loc_curr = pdata_curr[1]\n                opt.add(Implies(\n                    And(slot_person[i-1] == p_prev, slot_person[i] == p_curr),\n                    start[i] >= end[i-1] + ttime(loc_prev, loc_curr)\n                ))\n\n    # Travel from start (HA at 9:00) to first used slot\n    for p, pdata in people.items():\n        loc = pdata[1]\n        opt.add(Implies(slot_person[0] == p, start[0] >= start_time_at_HA + ttime(start_location, loc)))\n\n    # Objective 1: maximize number of people met\n    total_met = Sum([If(selected[p], 1, 0) for p in people.keys()])\n    opt.maximize(total_met)\n\n    # Objective 2: maximize total meeting time\n    total_meeting_time = Sum([If(slot_person[i] == 0, 0, end[i] - start[i]) for i in range(slots)])\n    opt.maximize(total_meeting_time)\n\n    # Tie-break: minimize sum of start times (encourages earlier starts / less idle)\n    sum_starts = Sum([If(slot_person[i] == 0, 0, start[i]) for i in range(slots)])\n    opt.minimize(sum_starts)\n\n    if opt.check() != sat:\n        print(json.dumps({\"itinerary\": []}, indent=2))\n        return\n\n    model = opt.model()\n\n    # Build itinerary\n    itinerary = []\n    for i in range(slots):\n        pval = model[slot_person[i]].as_long()\n        if pval == 0:\n            break\n        name, loc, _, _ = people[pval]\n        s = model[start[i]].as_long()\n        e = model[end[i]].as_long()\n        itinerary.append({\n            \"action\": \"meet\",\n            \"location\": loc,\n            \"person\": name,\n            \"start_time\": min_to_str(s),\n            \"end_time\": min_to_str(e)\n        })\n\n    print(json.dumps({\"itinerary\": itinerary}, indent=2))\n\nif __name__ == \"__main__\":\n    main()"
+}

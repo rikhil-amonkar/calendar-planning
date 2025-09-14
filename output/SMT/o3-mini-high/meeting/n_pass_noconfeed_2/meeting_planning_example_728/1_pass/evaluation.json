@@ -1,0 +1,141 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"itinerary\": [\n    {\n      \"action\": \"meet\",\n      \"location\": \"Financial District\",\n      \"person\": \"Elizabeth\",\n      \"start_time\": \"10:00\",\n      \"end_time\": \"11:15\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Union Square\",\n      \"person\": \"Joseph\",\n      \"start_time\": \"11:45\",\n      \"end_time\": \"13:45\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Fisherman's Wharf\",\n      \"person\": \"Richard\",\n      \"start_time\": \"14:30\",\n      \"end_time\": \"15:00\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Haight-Ashbury\",\n      \"person\": \"Kimberly\",\n      \"start_time\": \"15:22\",\n      \"end_time\": \"17:07\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Mission District\",\n      \"person\": \"Karen\",\n      \"start_time\": \"17:18\",\n      \"end_time\": \"17:48\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Sunset District\",\n      \"person\": \"Helen\",\n      \"start_time\": \"18:12\",\n      \"end_time\": \"19:57\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Russian Hill\",\n      \"person\": \"Ashley\",\n      \"start_time\": \"20:21\",\n      \"end_time\": \"21:06\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Presidio\",\n      \"person\": \"Robert\",\n      \"start_time\": \"21:45\",\n      \"end_time\": \"22:45\"\n    }\n  ]\n}",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Financial District",
+                "person": "Elizabeth",
+                "start_time": "10:00",
+                "end_time": "11:15"
+            },
+            {
+                "action": "meet",
+                "location": "Union Square",
+                "person": "Joseph",
+                "start_time": "11:45",
+                "end_time": "13:45"
+            },
+            {
+                "action": "meet",
+                "location": "Fisherman's Wharf",
+                "person": "Richard",
+                "start_time": "14:30",
+                "end_time": "15:00"
+            },
+            {
+                "action": "meet",
+                "location": "Haight-Ashbury",
+                "person": "Kimberly",
+                "start_time": "15:22",
+                "end_time": "17:07"
+            },
+            {
+                "action": "meet",
+                "location": "Mission District",
+                "person": "Karen",
+                "start_time": "17:18",
+                "end_time": "17:48"
+            },
+            {
+                "action": "meet",
+                "location": "Sunset District",
+                "person": "Helen",
+                "start_time": "18:12",
+                "end_time": "19:57"
+            },
+            {
+                "action": "meet",
+                "location": "Russian Hill",
+                "person": "Ashley",
+                "start_time": "20:21",
+                "end_time": "21:06"
+            },
+            {
+                "action": "meet",
+                "location": "Presidio",
+                "person": "Robert",
+                "start_time": "21:45",
+                "end_time": "22:45"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Financial District",
+                "person": "Elizabeth",
+                "start_time": "10:00",
+                "end_time": "11:15"
+            },
+            {
+                "action": "meet",
+                "location": "Union Square",
+                "person": "Joseph",
+                "start_time": "11:45",
+                "end_time": "13:45"
+            },
+            {
+                "action": "meet",
+                "location": "Fisherman's Wharf",
+                "person": "Richard",
+                "start_time": "14:30",
+                "end_time": "15:00"
+            },
+            {
+                "action": "meet",
+                "location": "Haight-Ashbury",
+                "person": "Kimberly",
+                "start_time": "15:22",
+                "end_time": "17:07"
+            },
+            {
+                "action": "meet",
+                "location": "Mission District",
+                "person": "Karen",
+                "start_time": "17:18",
+                "end_time": "17:48"
+            },
+            {
+                "action": "meet",
+                "location": "Sunset District",
+                "person": "Helen",
+                "start_time": "18:12",
+                "end_time": "19:57"
+            },
+            {
+                "action": "meet",
+                "location": "Russian Hill",
+                "person": "Ashley",
+                "start_time": "20:21",
+                "end_time": "21:06"
+            },
+            {
+                "action": "meet",
+                "location": "Presidio",
+                "person": "Robert",
+                "start_time": "21:45",
+                "end_time": "22:45"
+            }
+        ]
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 119.97160720825195,
+        "execution_time": 0.10389065742492676,
+        "constraint_eval_time": 8.630752563476562e-05,
+        "pred_extract_time": 3.6948282718658447,
+        "gold_extract_time": 0.0001277923583984375,
+        "total_tokens": 7102,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import Optimize, Int, Bool, If, Or, And, Sum, sat\nimport json\n\ndef minutes_to_time(m):\n    # m is minutes since 9:00 AM; add 9*60 to get minutes from midnight.\n    total = m + 9 * 60\n    hour = total // 60\n    minute = total % 60\n    return f\"{hour}:{minute:02d}\"\n\ndef main():\n    # Travel times in minutes (non-symmetric)\n    travel = {\n        \"Marina District\": {\n            \"Mission District\": 20,\n            \"Fisherman's Wharf\": 10,\n            \"Presidio\": 10,\n            \"Union Square\": 16,\n            \"Sunset District\": 19,\n            \"Financial District\": 17,\n            \"Haight-Ashbury\": 16,\n            \"Russian Hill\": 8\n        },\n        \"Mission District\": {\n            \"Marina District\": 19,\n            \"Fisherman's Wharf\": 22,\n            \"Presidio\": 25,\n            \"Union Square\": 15,\n            \"Sunset District\": 24,\n            \"Financial District\": 15,\n            \"Haight-Ashbury\": 12,\n            \"Russian Hill\": 15\n        },\n        \"Fisherman's Wharf\": {\n            \"Marina District\": 9,\n            \"Mission District\": 22,\n            \"Presidio\": 17,\n            \"Union Square\": 13,\n            \"Sunset District\": 27,\n            \"Financial District\": 11,\n            \"Haight-Ashbury\": 22,\n            \"Russian Hill\": 7\n        },\n        \"Presidio\": {\n            \"Marina District\": 11,\n            \"Mission District\": 26,\n            \"Fisherman's Wharf\": 19,\n            \"Union Square\": 22,\n            \"Sunset District\": 16,\n            \"Financial District\": 23,\n            \"Haight-Ashbury\": 15,\n            \"Russian Hill\": 14\n        },\n        \"Union Square\": {\n            \"Marina District\": 18,\n            \"Mission District\": 14,\n            \"Fisherman's Wharf\": 15,\n            \"Presidio\": 24,\n            \"Sunset District\": 27,\n            \"Financial District\": 9,\n            \"Haight-Ashbury\": 18,\n            \"Russian Hill\": 13\n        },\n        \"Sunset District\": {\n            \"Marina District\": 21,\n            \"Mission District\": 25,\n            \"Fisherman's Wharf\": 29,\n            \"Presidio\": 16,\n            \"Union Square\": 30,\n            \"Financial District\": 30,\n            \"Haight-Ashbury\": 15,\n            \"Russian Hill\": 24\n        },\n        \"Financial District\": {\n            \"Marina District\": 15,\n            \"Mission District\": 17,\n            \"Fisherman's Wharf\": 10,\n            \"Presidio\": 22,\n            \"Union Square\": 9,\n            \"Sunset District\": 30,\n            \"Haight-Ashbury\": 19,\n            \"Russian Hill\": 11\n        },\n        \"Haight-Ashbury\": {\n            \"Marina District\": 17,\n            \"Mission District\": 11,\n            \"Fisherman's Wharf\": 23,\n            \"Presidio\": 15,\n            \"Union Square\": 19,\n            \"Sunset District\": 15,\n            \"Financial District\": 21,\n            \"Russian Hill\": 17\n        },\n        \"Russian Hill\": {\n            \"Marina District\": 7,\n            \"Mission District\": 16,\n            \"Fisherman's Wharf\": 7,\n            \"Presidio\": 14,\n            \"Union Square\": 10,\n            \"Sunset District\": 23,\n            \"Financial District\": 11,\n            \"Haight-Ashbury\": 17\n        }\n    }\n\n    # Friend meeting constraints with time windows given in minutes from 9:00 AM.\n    # For example, 2:15PM is 14:15, which is 315 minutes after 9:00.\n    friends = [\n        {\"name\": \"Karen\", \"location\": \"Mission District\", \"avail_start\": 315, \"avail_end\": 780, \"min_duration\": 30},\n        {\"name\": \"Richard\", \"location\": \"Fisherman's Wharf\", \"avail_start\": 330, \"avail_end\": 510, \"min_duration\": 30},\n        {\"name\": \"Robert\", \"location\": \"Presidio\", \"avail_start\": 765, \"avail_end\": 825, \"min_duration\": 60},\n        {\"name\": \"Joseph\", \"location\": \"Union Square\", \"avail_start\": 165, \"avail_end\": 345, \"min_duration\": 120},\n        {\"name\": \"Helen\", \"location\": \"Sunset District\", \"avail_start\": 345, \"avail_end\": 705, \"min_duration\": 105},\n        {\"name\": \"Elizabeth\", \"location\": \"Financial District\", \"avail_start\": 60, \"avail_end\": 225, \"min_duration\": 75},\n        {\"name\": \"Kimberly\", \"location\": \"Haight-Ashbury\", \"avail_start\": 315, \"avail_end\": 510, \"min_duration\": 105},\n        {\"name\": \"Ashley\", \"location\": \"Russian Hill\", \"avail_start\": 150, \"avail_end\": 750, \"min_duration\": 45},\n    ]\n\n    opt = Optimize()\n    n = len(friends)\n\n    # Create variables for each meeting:\n    # attend[i]: Boolean whether to meet friend i.\n    # s[i]: start time (minutes from 9:00) of meeting i.\n    # e[i]: end time of meeting i.\n    attend = [Bool(f\"attend_{i}\") for i in range(n)]\n    s = [Int(f\"s_{i}\") for i in range(n)]\n    e = [Int(f\"e_{i}\") for i in range(n)]\n\n    # Each meeting has to be scheduled within the friend\u2019s available time window if attended,\n    # with a minimum meeting duration, and if it is held its start must respect the travel time from Marina.\n    for i, friend in enumerate(friends):\n        opt.add(\n            If(\n                attend[i],\n                And(\n                    s[i] >= friend[\"avail_start\"],\n                    e[i] <= friend[\"avail_end\"],\n                    e[i] - s[i] >= friend[\"min_duration\"],\n                    s[i] >= travel[\"Marina District\"][friend[\"location\"]]\n                ),\n                And(s[i] == 0, e[i] == 0)\n            )\n        )\n\n    # For every pair of meetings, if both are attended then they must not overlap.\n    # That is, one meeting must finish (plus travel time from its location to the next)\n    # before the other begins.\n    for i in range(n):\n        for j in range(i + 1, n):\n            loc_i = friends[i][\"location\"]\n            loc_j = friends[j][\"location\"]\n            opt.add(\n                # Only enforce the constraint if both meetings are attended.\n                # Either meeting i then j, or meeting j then i must hold.\n                If(\n                    And(attend[i], attend[j]),\n                    Or(\n                        e[i] + travel[loc_i][loc_j] <= s[j],\n                        e[j] + travel[loc_j][loc_i] <= s[i]\n                    ),\n                    True\n                )\n            )\n\n    # Maximize the number of meetings attended.\n    opt.maximize(Sum([If(attend[i], 1, 0) for i in range(n)]))\n\n    if opt.check() == sat:\n        model = opt.model()\n        meetings = []\n        for i, friend in enumerate(friends):\n            if model.evaluate(attend[i]):\n                start_val = model.evaluate(s[i]).as_long()\n                end_val = model.evaluate(e[i]).as_long()\n                meetings.append((start_val, {\n                    \"action\": \"meet\",\n                    \"location\": friend[\"location\"],\n                    \"person\": friend[\"name\"],\n                    \"start_time\": minutes_to_time(start_val),\n                    \"end_time\": minutes_to_time(end_val)\n                }))\n        # Sort meetings by start time\n        meetings.sort(key=lambda x: x[0])\n        itinerary = [m[1] for m in meetings]\n        result = {\"itinerary\": itinerary}\n        print(json.dumps(result, indent=2))\n    else:\n        print(json.dumps({\"itinerary\": []}))\n\nif __name__ == \"__main__\":\n    main()"
+}

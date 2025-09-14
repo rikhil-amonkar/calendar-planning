@@ -1,0 +1,143 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\"itinerary\": [{\"action\": \"meet\", \"location\": \"Chinatown\", \"person\": \"Joseph\", \"start_time\": \"9:15\", \"end_time\": \"10:40\"}, {\"action\": \"meet\", \"location\": \"Financial District\", \"person\": \"Carol\", \"start_time\": \"10:45\", \"end_time\": \"11:00\"}, {\"action\": \"meet\", \"location\": \"Embarcadero\", \"person\": \"Joshua\", \"start_time\": \"11:04\", \"end_time\": \"12:49\"}, {\"action\": \"meet\", \"location\": \"Union Square\", \"person\": \"Charles\", \"start_time\": \"12:59\", \"end_time\": \"14:59\"}, {\"action\": \"meet\", \"location\": \"Bayview\", \"person\": \"Jeffrey\", \"start_time\": \"15:14\", \"end_time\": \"16:29\"}, {\"action\": \"meet\", \"location\": \"Golden Gate Park\", \"person\": \"Matthew\", \"start_time\": \"16:51\", \"end_time\": \"19:30\"}, {\"action\": \"meet\", \"location\": \"Haight-Ashbury\", \"person\": \"Paul\", \"start_time\": \"19:37\", \"end_time\": \"19:52\"}, {\"action\": \"meet\", \"location\": \"Mission District\", \"person\": \"Rebecca\", \"start_time\": \"20:03\", \"end_time\": \"21:45\"}]}",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Chinatown",
+                "person": "Joseph",
+                "start_time": "9:15",
+                "end_time": "10:40"
+            },
+            {
+                "action": "meet",
+                "location": "Financial District",
+                "person": "Carol",
+                "start_time": "10:45",
+                "end_time": "11:00"
+            },
+            {
+                "action": "meet",
+                "location": "Embarcadero",
+                "person": "Joshua",
+                "start_time": "11:04",
+                "end_time": "12:49"
+            },
+            {
+                "action": "meet",
+                "location": "Union Square",
+                "person": "Charles",
+                "start_time": "12:59",
+                "end_time": "14:59"
+            },
+            {
+                "action": "meet",
+                "location": "Bayview",
+                "person": "Jeffrey",
+                "start_time": "15:14",
+                "end_time": "16:29"
+            },
+            {
+                "action": "meet",
+                "location": "Golden Gate Park",
+                "person": "Matthew",
+                "start_time": "16:51",
+                "end_time": "19:30"
+            },
+            {
+                "action": "meet",
+                "location": "Haight-Ashbury",
+                "person": "Paul",
+                "start_time": "19:37",
+                "end_time": "19:52"
+            },
+            {
+                "action": "meet",
+                "location": "Mission District",
+                "person": "Rebecca",
+                "start_time": "20:03",
+                "end_time": "21:45"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Chinatown",
+                "person": "Joseph",
+                "start_time": "9:15",
+                "end_time": "10:15"
+            },
+            {
+                "action": "meet",
+                "location": "Financial District",
+                "person": "Carol",
+                "start_time": "10:45",
+                "end_time": "11:00"
+            },
+            {
+                "action": "meet",
+                "location": "Embarcadero",
+                "person": "Joshua",
+                "start_time": "11:04",
+                "end_time": "12:49"
+            },
+            {
+                "action": "meet",
+                "location": "Bayview",
+                "person": "Jeffrey",
+                "start_time": "13:10",
+                "end_time": "14:25"
+            },
+            {
+                "action": "meet",
+                "location": "Union Square",
+                "person": "Charles",
+                "start_time": "14:43",
+                "end_time": "16:43"
+            },
+            {
+                "action": "meet",
+                "location": "Golden Gate Park",
+                "person": "Matthew",
+                "start_time": "17:05",
+                "end_time": "17:50"
+            },
+            {
+                "action": "meet",
+                "location": "Haight-Ashbury",
+                "person": "Paul",
+                "start_time": "19:15",
+                "end_time": "19:30"
+            },
+            {
+                "action": "meet",
+                "location": "Mission District",
+                "person": "Rebecca",
+                "start_time": "19:41",
+                "end_time": "20:26"
+            }
+        ]
+    },
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "constraints_satisfied_but_no_exact_match": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 100.15350389480591,
+        "execution_time": 0.17679452896118164,
+        "constraint_eval_time": 0.0005271434783935547,
+        "pred_extract_time": 2.5029492378234863,
+        "gold_extract_time": 9.322166442871094e-05,
+        "total_tokens": 6562,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "# SOLUTION:\nimport json\nfrom z3 import Int, Bool, Optimize, If, And, Or, Not, Implies, Sum, sat\n\ndef minutes_to_str(m):\n    h = m // 60\n    mm = m % 60\n    return f\"{h}:{mm:02d}\"\n\n# Travel times (minutes) between locations\ntravel = {\n    \"Marina District\": {\n        \"Embarcadero\": 14, \"Bayview\": 27, \"Union Square\": 16, \"Chinatown\": 15,\n        \"Sunset District\": 19, \"Golden Gate Park\": 18, \"Financial District\": 17,\n        \"Haight-Ashbury\": 16, \"Mission District\": 20\n    },\n    \"Embarcadero\": {\n        \"Marina District\": 12, \"Bayview\": 21, \"Union Square\": 10, \"Chinatown\": 7,\n        \"Sunset District\": 30, \"Golden Gate Park\": 25, \"Financial District\": 5,\n        \"Haight-Ashbury\": 21, \"Mission District\": 20\n    },\n    \"Bayview\": {\n        \"Marina District\": 27, \"Embarcadero\": 19, \"Union Square\": 18, \"Chinatown\": 19,\n        \"Sunset District\": 23, \"Golden Gate Park\": 22, \"Financial District\": 19,\n        \"Haight-Ashbury\": 19, \"Mission District\": 13\n    },\n    \"Union Square\": {\n        \"Marina District\": 18, \"Embarcadero\": 11, \"Bayview\": 15, \"Chinatown\": 7,\n        \"Sunset District\": 27, \"Golden Gate Park\": 22, \"Financial District\": 9,\n        \"Haight-Ashbury\": 18, \"Mission District\": 14\n    },\n    \"Chinatown\": {\n        \"Marina District\": 12, \"Embarcadero\": 5, \"Bayview\": 20, \"Union Square\": 7,\n        \"Sunset District\": 29, \"Golden Gate Park\": 23, \"Financial District\": 5,\n        \"Haight-Ashbury\": 19, \"Mission District\": 17\n    },\n    \"Sunset District\": {\n        \"Marina District\": 21, \"Embarcadero\": 30, \"Bayview\": 22, \"Union Square\": 30,\n        \"Chinatown\": 30, \"Golden Gate Park\": 11, \"Financial District\": 30,\n        \"Haight-Ashbury\": 15, \"Mission District\": 25\n    },\n    \"Golden Gate Park\": {\n        \"Marina District\": 16, \"Embarcadero\": 25, \"Bayview\": 23, \"Union Square\": 22,\n        \"Chinatown\": 23, \"Sunset District\": 10, \"Financial District\": 26,\n        \"Haight-Ashbury\": 7, \"Mission District\": 17\n    },\n    \"Financial District\": {\n        \"Marina District\": 15, \"Embarcadero\": 4, \"Bayview\": 19, \"Union Square\": 9,\n        \"Chinatown\": 5, \"Sunset District\": 30, \"Golden Gate Park\": 23,\n        \"Haight-Ashbury\": 19, \"Mission District\": 17\n    },\n    \"Haight-Ashbury\": {\n        \"Marina District\": 17, \"Embarcadero\": 20, \"Bayview\": 18, \"Union Square\": 19,\n        \"Chinatown\": 19, \"Sunset District\": 15, \"Golden Gate Park\": 7,\n        \"Financial District\": 21, \"Mission District\": 11\n    },\n    \"Mission District\": {\n        \"Marina District\": 19, \"Embarcadero\": 19, \"Bayview\": 14, \"Union Square\": 15,\n        \"Chinatown\": 16, \"Sunset District\": 24, \"Golden Gate Park\": 17,\n        \"Financial District\": 15, \"Haight-Ashbury\": 12\n    }\n}\n\n# People and their availability/minimum meeting duration\npeople = {\n    \"Joshua\":   {\"location\": \"Embarcadero\",       \"start\": 585,  \"end\": 1080, \"min\": 105},\n    \"Jeffrey\":  {\"location\": \"Bayview\",           \"start\": 585,  \"end\": 1215, \"min\": 75},\n    \"Charles\":  {\"location\": \"Union Square\",      \"start\": 645,  \"end\": 1215, \"min\": 120},\n    \"Joseph\":   {\"location\": \"Chinatown\",         \"start\": 420,  \"end\": 930,  \"min\": 60},\n    \"Elizabeth\":{\"location\": \"Sunset District\",   \"start\": 540,  \"end\": 585,  \"min\": 45},\n    \"Matthew\":  {\"location\": \"Golden Gate Park\",  \"start\": 660,  \"end\": 1170, \"min\": 45},\n    \"Carol\":    {\"location\": \"Financial District\",\"start\": 645,  \"end\": 675,  \"min\": 15},\n    \"Paul\":     {\"location\": \"Haight-Ashbury\",    \"start\": 1155, \"end\": 1230, \"min\": 15},\n    \"Rebecca\":  {\"location\": \"Mission District\",  \"start\": 1020, \"end\": 1305, \"min\": 45},\n}\n\nstart_location = \"Marina District\"\narrival_time = 540  # 9:00\n\n# Z3 variables\nopt = Optimize()\nopt.set(priority='lex')\n\nstart_vars = {}\nend_vars = {}\ndur_vars = {}\nattend_vars = {}\n\nfor p, info in people.items():\n    s = Int(f\"{p}_start\")\n    e = Int(f\"{p}_end\")\n    d = Int(f\"{p}_dur\")\n    a = Bool(f\"{p}_attend\")\n    start_vars[p] = s\n    end_vars[p] = e\n    dur_vars[p] = d\n    attend_vars[p] = a\n\n    # Domains\n    opt.add(s >= 0, s <= 24*60)\n    opt.add(e >= 0, e <= 24*60)\n    opt.add(d >= 0)\n\n    # If attending, ensure within availability, durations, and sequence validity\n    avail_start = people[p][\"start\"]\n    avail_end = people[p][\"end\"]\n    min_dur = people[p][\"min\"]\n    loc = people[p][\"location\"]\n\n    # Arrival feasibility from start location at 9:00\n    travel_from_start = travel[start_location][loc]\n    opt.add(Implies(a, s >= arrival_time + travel_from_start))\n\n    # Availability and duration constraints\n    opt.add(Implies(a, And(s >= avail_start, e <= avail_end, e >= s + min_dur, d == e - s)))\n    # If not attending, zero duration and align start=end (free to be any time)\n    opt.add(Implies(Not(a), And(d == 0, e == s)))\n\n# Pairwise non-overlap with travel times for attended meetings\nnames = list(people.keys())\norder_vars = {}\nfor i in range(len(names)):\n    for j in range(i+1, len(names)):\n        pi = names[i]\n        pj = names[j]\n        order = Bool(f\"order_{pi}_before_{pj}\")\n        order_vars[(pi, pj)] = order\n        li = people[pi][\"location\"]\n        lj = people[pj][\"location\"]\n        tij = travel[li][lj]\n        tji = travel[lj][li]\n        # If both attended, enforce one ordering with travel times\n        opt.add(Implies(And(attend_vars[pi], attend_vars[pj], order),\n                        end_vars[pi] + tij <= start_vars[pj]))\n        opt.add(Implies(And(attend_vars[pi], attend_vars[pj], Not(order)),\n                        end_vars[pj] + tji <= start_vars[pi]))\n\n\n# Objectives\ncount_attended = Sum([If(attend_vars[p], 1, 0) for p in names])\ntotal_meeting_minutes = Sum([dur_vars[p] for p in names])\nopt.maximize(count_attended)\nopt.maximize(total_meeting_minutes)\n\n# Solve\nif opt.check() != sat:\n    print(json.dumps({\"itinerary\": []}))\n    exit(0)\n\nm = opt.model()\n\n# Build itinerary sorted by start time\nitinerary = []\nfor p in names:\n    if m.eval(attend_vars[p], model_completion=True):\n        s = m.eval(start_vars[p], model_completion=True).as_long()\n        e = m.eval(end_vars[p], model_completion=True).as_long()\n        itinerary.append({\n            \"action\": \"meet\",\n            \"location\": people[p][\"location\"],\n            \"person\": p,\n            \"start_time\": minutes_to_str(s),\n            \"end_time\": minutes_to_str(e)\n        })\n\n# Sort by start_time (convert back to minutes for sorting)\ndef str_to_minutes(t):\n    parts = t.split(\":\")\n    return int(parts[0]) * 60 + int(parts[1])\n\nitinerary.sort(key=lambda x: str_to_minutes(x[\"start_time\"]))\n\nprint(json.dumps({\"itinerary\": itinerary}, ensure_ascii=False))"
+}

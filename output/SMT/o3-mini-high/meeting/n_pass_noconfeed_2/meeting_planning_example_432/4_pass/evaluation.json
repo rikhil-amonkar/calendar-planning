@@ -1,0 +1,56 @@
+{
+    "has_execution_error": true,
+    "has_no_plan": false,
+    "execution_output": null,
+    "pred": null,
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Fisherman's Wharf",
+                "person": "Joseph",
+                "start_time": "9:24",
+                "end_time": "10:54"
+            },
+            {
+                "action": "meet",
+                "location": "Mission District",
+                "person": "Kevin",
+                "start_time": "11:16",
+                "end_time": "11:46"
+            },
+            {
+                "action": "meet",
+                "location": "Financial District",
+                "person": "Barbara",
+                "start_time": "12:03",
+                "end_time": "12:18"
+            },
+            {
+                "action": "meet",
+                "location": "Bayview",
+                "person": "Jeffrey",
+                "start_time": "17:30",
+                "end_time": "18:30"
+            }
+        ]
+    },
+    "status": "Error",
+    "violated_constraint": {
+        "missing_itinerary": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 4,
+    "timing": {
+        "api_call_time": 107.15151977539062,
+        "execution_time": 0.019326448440551758,
+        "constraint_eval_time": 2.384185791015625e-06,
+        "pred_extract_time": 3.337860107421875e-06,
+        "gold_extract_time": 8.535385131835938e-05,
+        "total_tokens": 6983,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "#!/usr/bin/env python3\nfrom z3 import *\nimport json\n\ndef travel_time_from_start(p):\n    return If(p == 0, 24,\n           If(p == 1, 23,\n           If(p == 2, 17,\n           If(p == 3, 25,\n           If(p == 4, 26, 0)))))  \n\ndef get_travel_time(prev, curr):\n    return If(prev == 0,\n              If(curr == 0, 0,\n                  If(curr == 1, 26,\n                      If(curr == 2, 22,\n                          If(curr == 3, 8,\n                              If(curr == 4, 11, 0)\n                          )\n                      )\n                  )\n              ),\n              If(prev == 1,\n                  If(curr == 0, 25,\n                      If(curr == 1, 0,\n                          If(curr == 2, 13,\n                              If(curr == 3, 19,\n                                  If(curr == 4, 19, 0)\n                              )\n                          )\n                      )\n                  ),\n                  If(prev == 2,\n                      If(curr == 0, 22,\n                          If(curr == 1, 15,\n                              If(curr == 2, 0,\n                                  If(curr == 3, 19,\n                                      If(curr == 4, 17, 0)\n                                  )\n                              )\n                          )\n                      ),\n                      If(prev == 3,\n                          If(curr == 0, 6,\n                              If(curr == 1, 21,\n                                  If(curr == 2, 20,\n                                      If(curr == 3, 0,\n                                          If(curr == 4, 5, 0)\n                                      )\n                                  )\n                              )\n                          ),\n                          If(prev == 4,\n                              If(curr == 0, 10,\n                                  If(curr == 1, 19,\n                                      If(curr == 2, 17,\n                                          If(curr == 3, 4,\n                                              If(curr == 4, 0, 0)\n                                          )\n                                      )\n                                  )\n                              ),\n                              0\n                          )\n                      )\n                  )\n              )\n\nfriend_data = [\n    {\"name\": \"Joseph\", \"location\": \"Fisherman's Wharf\", \"avail_start\": 480, \"avail_end\": 1050, \"min_dur\": 90},\n    {\"name\": \"Jeffrey\", \"location\": \"Bayview\",            \"avail_start\": 1050, \"avail_end\": 1290, \"min_dur\": 60},\n    {\"name\": \"Kevin\",   \"location\": \"Mission District\",   \"avail_start\": 675, \"avail_end\": 915,  \"min_dur\": 30},\n    {\"name\": \"David\",   \"location\": \"Embarcadero\",        \"avail_start\": 495, \"avail_end\": 540,  \"min_dur\": 30},\n    {\"name\": \"Barbara\", \"location\": \"Financial District\", \"avail_start\": 630, \"avail_end\": 990,  \"min_dur\": 15}\n]\n\navail_start = [f[\"avail_start\"] for f in friend_data]\navail_end   = [f[\"avail_end\"]   for f in friend_data]\nmin_dur     = [f[\"min_dur\"]     for f in friend_data]\nnames       = [f[\"name\"]        for f in friend_data]\nlocations   = [f[\"location\"]    for f in friend_data]\n\nnum_slots = 5\n\nopt = Optimize()\n\nused = [Bool(f\"used_{r}\") for r in range(num_slots)]\nperson = [Int(f\"person_{r}\") for r in range(num_slots)]\nstart_time = [Int(f\"start_{r}\") for r in range(num_slots)]\nend_time = [Int(f\"end_{r}\") for r in range(num_slots)]\n\nfor r in range(num_slots):\n    opt.add(person[r] >= 0, person[r] <= 4)\n    opt.add(Implies(used[r],\n        And(\n            If(person[r] == 0, start_time[r] >= avail_start[0], True),\n            If(person[r] == 0, end_time[r] <= avail_end[0], True),\n            If(person[r] == 0, end_time[r] - start_time[r] >= min_dur[0], True),\n            If(person[r] == 1, start_time[r] >= avail_start[1], True),\n            If(person[r] == 1, end_time[r] <= avail_end[1], True),\n            If(person[r] == 1, end_time[r] - start_time[r] >= min_dur[1], True),\n            If(person[r] == 2, start_time[r] >= avail_start[2], True),\n            If(person[r] == 2, end_time[r] <= avail_end[2], True),\n            If(person[r] == 2, end_time[r] - start_time[r] >= min_dur[2], True),\n            If(person[r] == 3, start_time[r] >= avail_start[3], True),\n            If(person[r] == 3, end_time[r] <= avail_end[3], True),\n            If(person[r] == 3, end_time[r] - start_time[r] >= min_dur[3], True),\n            If(person[r] == 4, start_time[r] >= avail_start[4], True),\n            If(person[r] == 4, end_time[r] <= avail_end[4], True),\n            If(person[r] == 4, end_time[r] - start_time[r] >= min_dur[4], True)\n        )\n    ))\n    opt.add(Implies(used[r], end_time[r] >= start_time[r]))\n\nopt.add(Implies(used[0],\n    start_time[0] >= 540 + travel_time_from_start(person[0])\n))\n\nfor r in range(1, num_slots):\n    opt.add(Implies(used[r],\n        start_time[r] >= end_time[r-1] + get_travel_time(person[r-1], person[r])\n    ))\n    opt.add(Implies(used[r], used[r-1]))\n\nfor i in range(num_slots):\n    for j in range(i+1, num_slots):\n        opt.add(Implies(And(used[i], used[j]), person[i] != person[j]))\n\nnum_meetings = Sum([If(used[r], 1, 0) for r in range(num_slots)])\nopt.maximize(num_meetings)\n\nif opt.check() == sat:\n    m = opt.model()\n    \n    def format_time(t):\n        hour = t // 60\n        minute = t % 60\n        return f\"{hour}:{minute:02d}\"\n    \n    itinerary = []\n    for r in range(num_slots):\n        if m.eval(used[r]):\n            p = m.eval(person[r]).as_long()\n            st = m.eval(start_time[r]).as_long()\n            et = m.eval(end_time[r]).as_long()\n            meeting = {\n                \"action\": \"meet\",\n                \"location\": locations[p],\n                \"person\": names[p],\n                \"start_time\": format_time(st),\n                \"end_time\": format_time(et)\n            }\n            itinerary.append(meeting)\n    \n    result = {\"itinerary\": itinerary}\n    print(json.dumps(result, indent=2))\nelse:\n    print(json.dumps({\"itinerary\": []}, indent=2))"
+}

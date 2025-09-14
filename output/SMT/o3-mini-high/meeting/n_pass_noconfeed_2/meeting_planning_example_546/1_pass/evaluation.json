@@ -1,0 +1,115 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"itinerary\": [\n    {\n      \"action\": \"meet\",\n      \"location\": \"Pacific Heights\",\n      \"person\": \"Nancy\",\n      \"start_time\": \"10:00\",\n      \"end_time\": \"11:30\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Union Square\",\n      \"person\": \"Lisa\",\n      \"start_time\": \"11:42\",\n      \"end_time\": \"12:27\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Financial District\",\n      \"person\": \"Joshua\",\n      \"start_time\": \"12:36\",\n      \"end_time\": \"12:51\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Bayview\",\n      \"person\": \"John\",\n      \"start_time\": \"16:45\",\n      \"end_time\": \"18:00\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Nob Hill\",\n      \"person\": \"Andrew\",\n      \"start_time\": \"19:15\",\n      \"end_time\": \"20:15\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Richmond District\",\n      \"person\": \"Kenneth\",\n      \"start_time\": \"21:15\",\n      \"end_time\": \"21:45\"\n    }\n  ]\n}",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Pacific Heights",
+                "person": "Nancy",
+                "start_time": "10:00",
+                "end_time": "11:30"
+            },
+            {
+                "action": "meet",
+                "location": "Union Square",
+                "person": "Lisa",
+                "start_time": "11:42",
+                "end_time": "12:27"
+            },
+            {
+                "action": "meet",
+                "location": "Financial District",
+                "person": "Joshua",
+                "start_time": "12:36",
+                "end_time": "12:51"
+            },
+            {
+                "action": "meet",
+                "location": "Bayview",
+                "person": "John",
+                "start_time": "16:45",
+                "end_time": "18:00"
+            },
+            {
+                "action": "meet",
+                "location": "Nob Hill",
+                "person": "Andrew",
+                "start_time": "19:15",
+                "end_time": "20:15"
+            },
+            {
+                "action": "meet",
+                "location": "Richmond District",
+                "person": "Kenneth",
+                "start_time": "21:15",
+                "end_time": "21:45"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Pacific Heights",
+                "person": "Nancy",
+                "start_time": "9:11",
+                "end_time": "10:41"
+            },
+            {
+                "action": "meet",
+                "location": "Union Square",
+                "person": "Lisa",
+                "start_time": "10:53",
+                "end_time": "11:38"
+            },
+            {
+                "action": "meet",
+                "location": "Financial District",
+                "person": "Joshua",
+                "start_time": "12:00",
+                "end_time": "12:15"
+            },
+            {
+                "action": "meet",
+                "location": "Nob Hill",
+                "person": "Andrew",
+                "start_time": "12:23",
+                "end_time": "13:23"
+            },
+            {
+                "action": "meet",
+                "location": "Bayview",
+                "person": "John",
+                "start_time": "16:45",
+                "end_time": "18:00"
+            },
+            {
+                "action": "meet",
+                "location": "Richmond District",
+                "person": "Kenneth",
+                "start_time": "21:15",
+                "end_time": "21:45"
+            }
+        ]
+    },
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "constraints_satisfied_but_no_exact_match": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 98.67962574958801,
+        "execution_time": 0.11856651306152344,
+        "constraint_eval_time": 0.0004899501800537109,
+        "pred_extract_time": 4.515599489212036,
+        "gold_extract_time": 0.00011181831359863281,
+        "total_tokens": 6536,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\nimport json\n\ndef minutes_to_time(m):\n    hour = m // 60\n    minute = m % 60\n    return f\"{hour}:{minute:02d}\"\n\ndef main():\n    # Define friend meeting parameters\n    # Times are in minutes after midnight.\n    # Kenneth: 21:15-22:00, 30 min meeting, at Richmond District.\n    # Lisa: 9:00-16:30, 45 min meeting, at Union Square.\n    # Joshua: 12:00-15:15, 15 min meeting, at Financial District.\n    # Nancy: 8:00-11:30, 90 min meeting, at Pacific Heights.\n    # Andrew: 11:30-20:15, 60 min meeting, at Nob Hill.\n    # John: 16:45-21:30, 75 min meeting, at Bayview.\n    friends = [\n        {\"name\": \"Kenneth\", \"location\": \"Richmond District\", \"avail_start\": 21*60+15, \"avail_end\": 22*60, \"duration\": 30},\n        {\"name\": \"Lisa\", \"location\": \"Union Square\", \"avail_start\": 9*60, \"avail_end\": 16*60+30, \"duration\": 45},\n        {\"name\": \"Joshua\", \"location\": \"Financial District\", \"avail_start\": 12*60, \"avail_end\": 15*60+15, \"duration\": 15},\n        {\"name\": \"Nancy\", \"location\": \"Pacific Heights\", \"avail_start\": 8*60, \"avail_end\": 11*60+30, \"duration\": 90},\n        {\"name\": \"Andrew\", \"location\": \"Nob Hill\", \"avail_start\": 11*60+30, \"avail_end\": 20*60+15, \"duration\": 60},\n        {\"name\": \"John\", \"location\": \"Bayview\", \"avail_start\": 16*60+45, \"avail_end\": 21*60+30, \"duration\": 75}\n    ]\n    N = len(friends)\n    \n    # Define travel times in minutes between locations (as given)\n    travel = {\n        (\"Embarcadero\", \"Richmond District\"): 21,\n        (\"Embarcadero\", \"Union Square\"): 10,\n        (\"Embarcadero\", \"Financial District\"): 5,\n        (\"Embarcadero\", \"Pacific Heights\"): 11,\n        (\"Embarcadero\", \"Nob Hill\"): 10,\n        (\"Embarcadero\", \"Bayview\"): 21,\n        (\"Richmond District\", \"Embarcadero\"): 19,\n        (\"Richmond District\", \"Union Square\"): 21,\n        (\"Richmond District\", \"Financial District\"): 22,\n        (\"Richmond District\", \"Pacific Heights\"): 10,\n        (\"Richmond District\", \"Nob Hill\"): 17,\n        (\"Richmond District\", \"Bayview\"): 26,\n        (\"Union Square\", \"Embarcadero\"): 11,\n        (\"Union Square\", \"Richmond District\"): 20,\n        (\"Union Square\", \"Financial District\"): 9,\n        (\"Union Square\", \"Pacific Heights\"): 15,\n        (\"Union Square\", \"Nob Hill\"): 9,\n        (\"Union Square\", \"Bayview\"): 15,\n        (\"Financial District\", \"Embarcadero\"): 4,\n        (\"Financial District\", \"Richmond District\"): 21,\n        (\"Financial District\", \"Union Square\"): 9,\n        (\"Financial District\", \"Pacific Heights\"): 13,\n        (\"Financial District\", \"Nob Hill\"): 8,\n        (\"Financial District\", \"Bayview\"): 19,\n        (\"Pacific Heights\", \"Embarcadero\"): 10,\n        (\"Pacific Heights\", \"Richmond District\"): 12,\n        (\"Pacific Heights\", \"Union Square\"): 12,\n        (\"Pacific Heights\", \"Financial District\"): 13,\n        (\"Pacific Heights\", \"Nob Hill\"): 8,\n        (\"Pacific Heights\", \"Bayview\"): 22,\n        (\"Nob Hill\", \"Embarcadero\"): 9,\n        (\"Nob Hill\", \"Richmond District\"): 14,\n        (\"Nob Hill\", \"Union Square\"): 7,\n        (\"Nob Hill\", \"Financial District\"): 9,\n        (\"Nob Hill\", \"Pacific Heights\"): 8,\n        (\"Nob Hill\", \"Bayview\"): 19,\n        (\"Bayview\", \"Embarcadero\"): 19,\n        (\"Bayview\", \"Richmond District\"): 25,\n        (\"Bayview\", \"Union Square\"): 17,\n        (\"Bayview\", \"Financial District\"): 19,\n        (\"Bayview\", \"Pacific Heights\"): 23,\n        (\"Bayview\", \"Nob Hill\"): 20,\n    }\n    \n    # Create an Optimize object from Z3\n    opt = Optimize()\n    \n    # Define decision variables:\n    # s[i] = start time of meeting i (in minutes after midnight)\n    # order[i] = order (position) in the itinerary (0 means first)\n    s = [Int(f\"s_{i}\") for i in range(N)]\n    order_vars = [Int(f\"order_{i}\") for i in range(N)]\n    # t_end represents the overall finish time of all meetings.\n    t_end = Int(\"t_end\")\n    \n    # Add constraints for each meeting's availability and meeting duration\n    for i in range(N):\n        # Meeting must start no earlier than the friend's available start.\n        opt.add(s[i] >= friends[i][\"avail_start\"])\n        # Meeting must finish before the friend's available end.\n        opt.add(s[i] + friends[i][\"duration\"] <= friends[i][\"avail_end\"])\n        # Order variable must be between 0 and N-1.\n        opt.add(order_vars[i] >= 0, order_vars[i] < N)\n    \n    # Ensure a proper permutation of meeting order.\n    opt.add(Distinct(order_vars))\n    \n    # For the meeting that is first in the order, account for travel from Embarcadero (arrival at 9:00 -> 540 minutes)\n    for i in range(N):\n        loc = friends[i][\"location\"]\n        travel_time = travel[(\"Embarcadero\", loc)]\n        opt.add(Implies(order_vars[i] == 0, s[i] >= 540 + travel_time))\n    \n    # For every pair of different meetings, if meeting i comes before meeting j then\n    # meeting j must start after meeting i ends plus the travel time from i's location to j's.\n    for i in range(N):\n        for j in range(N):\n            if i != j:\n                loc_i = friends[i][\"location\"]\n                loc_j = friends[j][\"location\"]\n                travel_time = travel[(loc_i, loc_j)]\n                opt.add(Implies(order_vars[i] < order_vars[j],\n                                s[j] >= s[i] + friends[i][\"duration\"] + travel_time))\n    \n    # Define overall finish time as at least every meeting's finish time.\n    for i in range(N):\n        opt.add(t_end >= s[i] + friends[i][\"duration\"])\n    \n    # Objective: minimize the overall finishing time to get the earliest schedule.\n    opt.minimize(t_end)\n    \n    # Solve the constraints\n    if opt.check() == sat:\n        model = opt.model()\n        meetings = []\n        schedule = []\n        for i in range(N):\n            order_val = model.evaluate(order_vars[i]).as_long()\n            start_val = model.evaluate(s[i]).as_long()\n            end_val = start_val + friends[i][\"duration\"]\n            schedule.append((order_val, friends[i][\"name\"], friends[i][\"location\"], start_val, end_val))\n        # Sort meetings by the order (ascending)\n        schedule.sort(key=lambda x: x[0])\n        for _, name, loc, start, end in schedule:\n            meetings.append({\n                \"action\": \"meet\",\n                \"location\": loc,\n                \"person\": name,\n                \"start_time\": minutes_to_time(start),\n                \"end_time\": minutes_to_time(end)\n            })\n        itinerary = {\"itinerary\": meetings}\n        print(json.dumps(itinerary, indent=2))\n    else:\n        print(json.dumps({\"itinerary\": []}))\n\nif __name__ == \"__main__\":\n    main()"
+}

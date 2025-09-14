@@ -1,0 +1,59 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"itinerary\": [\n    {\n      \"action\": \"meet\",\n      \"location\": \"Union Square\",\n      \"person\": \"Jeffrey\",\n      \"start_time\": \"15:00\",\n      \"end_time\": \"16:15\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"North Beach\",\n      \"person\": \"Sarah\",\n      \"start_time\": \"16:25\",\n      \"end_time\": \"17:25\"\n    }\n  ]\n}",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Union Square",
+                "person": "Jeffrey",
+                "start_time": "15:00",
+                "end_time": "16:15"
+            },
+            {
+                "action": "meet",
+                "location": "North Beach",
+                "person": "Sarah",
+                "start_time": "16:25",
+                "end_time": "17:25"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "North Beach",
+                "person": "Sarah",
+                "start_time": "16:00",
+                "end_time": "17:00"
+            },
+            {
+                "action": "meet",
+                "location": "Union Square",
+                "person": "Jeffrey",
+                "start_time": "17:07",
+                "end_time": "18:22"
+            }
+        ]
+    },
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "constraints_satisfied_but_no_exact_match": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 204.16126561164856,
+        "execution_time": 0.10998964309692383,
+        "constraint_eval_time": 0.0002090930938720703,
+        "pred_extract_time": 2.8315670490264893,
+        "gold_extract_time": 4.553794860839844e-05,
+        "total_tokens": 5687,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\nimport json\n\ndef minutes_to_time(minutes):\n    hours = minutes // 60\n    mins = minutes % 60\n    return f\"{hours}:{mins:02d}\"\n\ndef main():\n    # Create an Optimize object\n    opt = Optimize()\n    \n    # Decision variables for meeting start times (in minutes after midnight)\n    s_S = Int(\"s_S\")  # Sarah's meeting start time\n    s_J = Int(\"s_J\")  # Jeffrey's meeting start time\n    s_B = Int(\"s_B\")  # Brian's meeting start time\n\n    # Decision variables for meeting end times\n    e_S = Int(\"e_S\")\n    e_J = Int(\"e_J\")\n    e_B = Int(\"e_B\")\n\n    # Boolean variables for whether we attend the meeting with each friend\n    attend_S = Bool(\"attend_S\")\n    attend_J = Bool(\"attend_J\")\n    attend_B = Bool(\"attend_B\")\n    \n    # Availability windows and minimum durations:\n    # Times are in minutes from midnight.\n    # You arrive at Sunset District at 9:00 (540) but each friend\u2019s window is later.\n    # Sarah is at North Beach from 16:00 (960) to 18:15 (1095) with min 60 minutes.\n    # Jeffrey is at Union Square from 15:00 (900) to 22:00 (1320) with min 75 minutes.\n    # Brian is at Alamo Square from 16:00 (960) to 17:30 (1050) with min 75 minutes.\n    \n    # If a meeting is scheduled, its start must lie in the allowed window.\n    # If not scheduled, force the start time to 0.\n    opt.add(If(attend_S, And(s_S >= 960, s_S <= 1035), s_S == 0))\n    opt.add(If(attend_J, And(s_J >= 900, s_J <= 1245), s_J == 0))\n    opt.add(If(attend_B, And(s_B >= 960, s_B <= 975), s_B == 0))\n    \n    # Define meeting end times: if attended, the meeting lasts exactly the minimum duration.\n    # (We meet the minimum requirement; extra slack isn\u2019t needed for the purpose of scheduling.)\n    opt.add(If(attend_S, e_S == s_S + 60, e_S == 0))\n    opt.add(If(attend_J, e_J == s_J + 75, e_J == 0))\n    opt.add(If(attend_B, e_B == s_B + 75, e_B == 0))\n    \n    # Travel times in minutes between locations:\n    # Locations: Sunset District, North Beach (Sarah), Union Square (Jeffrey), Alamo Square (Brian)\n    # Given travel times:\n    #   Sunset -> North Beach: 29, Sunset -> Union Square: 30, Sunset -> Alamo Square: 17\n    #   North Beach -> Union Square: 7, North Beach -> Alamo Square: 16\n    #   Union Square -> North Beach: 10, Union Square -> Alamo Square: 15\n    #   Alamo Square -> North Beach: 15, Alamo Square -> Union Square: 14\n    #\n    # When scheduling back-to-back meetings, we must add the travel time from one location to the next.\n    #\n    # For any two meetings that are both scheduled, one must come before the other.\n    # We model this by a disjunction for each pair.\n    \n    # Sarah (North Beach) and Jeffrey (Union Square):\n    # Either Sarah comes before Jeffrey: Sarah meeting ends then plus travel time (7 minutes) <= Jeffrey start,\n    # or Jeffrey comes before Sarah: Jeffrey meeting ends then plus travel time (10 minutes) <= Sarah start.\n    opt.add(Implies(And(attend_S, attend_J),\n                     Or(s_S + 60 + 7 <= s_J, s_J + 75 + 10 <= s_S)))\n    \n    # Sarah (North Beach) and Brian (Alamo Square):\n    # Either Sarah then Brian: s_S + 60 + 16 <= s_B,\n    # or Brian then Sarah: s_B + 75 + 15 <= s_S.\n    opt.add(Implies(And(attend_S, attend_B),\n                     Or(s_S + 60 + 16 <= s_B, s_B + 75 + 15 <= s_S)))\n    \n    # Jeffrey (Union Square) and Brian (Alamo Square):\n    # Either Jeffrey then Brian: s_J + 75 + 15 <= s_B,\n    # or Brian then Jeffrey: s_B + 75 + 14 <= s_J.\n    opt.add(Implies(And(attend_J, attend_B),\n                     Or(s_J + 75 + 15 <= s_B, s_B + 75 + 14 <= s_J)))\n    \n    # Our primary objective is to maximize the number of friends we meet.\n    num_meetings = If(attend_S, 1, 0) + If(attend_J, 1, 0) + If(attend_B, 1, 0)\n    h1 = opt.maximize(num_meetings)\n    \n    # Secondary objective: minimize the total finishing time of attended meetings,\n    # encouraging an itinerary that ends as early as possible.\n    total_end = If(attend_S, e_S, 0) + If(attend_J, e_J, 0) + If(attend_B, e_B, 0)\n    h2 = opt.minimize(total_end)\n    \n    # Check for a solution\n    if opt.check() == sat:\n        model = opt.model()\n    else:\n        print(json.dumps({\"itinerary\": []}))\n        return\n\n    # Build the itinerary by collecting the meetings that are scheduled.\n    itinerary = []\n    if is_true(model.eval(attend_S)):\n        start = model.eval(s_S).as_long()\n        end = model.eval(e_S).as_long()\n        itinerary.append({\n            \"action\": \"meet\",\n            \"location\": \"North Beach\",\n            \"person\": \"Sarah\",\n            \"start_time\": minutes_to_time(start),\n            \"end_time\": minutes_to_time(end)\n        })\n        \n    if is_true(model.eval(attend_J)):\n        start = model.eval(s_J).as_long()\n        end = model.eval(e_J).as_long()\n        itinerary.append({\n            \"action\": \"meet\",\n            \"location\": \"Union Square\",\n            \"person\": \"Jeffrey\",\n            \"start_time\": minutes_to_time(start),\n            \"end_time\": minutes_to_time(end)\n        })\n        \n    if is_true(model.eval(attend_B)):\n        start = model.eval(s_B).as_long()\n        end = model.eval(e_B).as_long()\n        itinerary.append({\n            \"action\": \"meet\",\n            \"location\": \"Alamo Square\",\n            \"person\": \"Brian\",\n            \"start_time\": minutes_to_time(start),\n            \"end_time\": minutes_to_time(end)\n        })\n\n    # Sort the itinerary by start time\n    def sort_key(meeting):\n        t = meeting[\"start_time\"]\n        parts = t.split(\":\")\n        return int(parts[0]) * 60 + int(parts[1])\n    itinerary.sort(key=sort_key)\n\n    result = {\"itinerary\": itinerary}\n    print(json.dumps(result, indent=2))\n\nif __name__ == '__main__':\n    main()"
+}

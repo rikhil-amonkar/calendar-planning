@@ -1,0 +1,87 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\"itinerary\": [{\"action\": \"meet\", \"location\": \"North Beach\", \"person\": \"Laura\", \"start_time\": \"12:30\", \"end_time\": \"12:45\"}, {\"action\": \"meet\", \"location\": \"Russian Hill\", \"person\": \"Ronald\", \"start_time\": \"13:45\", \"end_time\": \"17:09\"}, {\"action\": \"meet\", \"location\": \"The Castro\", \"person\": \"Emily\", \"start_time\": \"17:30\", \"end_time\": \"18:30\"}, {\"action\": \"meet\", \"location\": \"Sunset District\", \"person\": \"Patricia\", \"start_time\": \"18:47\", \"end_time\": \"22:00\"}]}",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "North Beach",
+                "person": "Laura",
+                "start_time": "12:30",
+                "end_time": "12:45"
+            },
+            {
+                "action": "meet",
+                "location": "Russian Hill",
+                "person": "Ronald",
+                "start_time": "13:45",
+                "end_time": "17:09"
+            },
+            {
+                "action": "meet",
+                "location": "The Castro",
+                "person": "Emily",
+                "start_time": "17:30",
+                "end_time": "18:30"
+            },
+            {
+                "action": "meet",
+                "location": "Sunset District",
+                "person": "Patricia",
+                "start_time": "18:47",
+                "end_time": "22:00"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Sunset District",
+                "person": "Patricia",
+                "start_time": "9:31",
+                "end_time": "10:31"
+            },
+            {
+                "action": "meet",
+                "location": "North Beach",
+                "person": "Laura",
+                "start_time": "12:30",
+                "end_time": "12:45"
+            },
+            {
+                "action": "meet",
+                "location": "Russian Hill",
+                "person": "Ronald",
+                "start_time": "13:45",
+                "end_time": "15:30"
+            },
+            {
+                "action": "meet",
+                "location": "The Castro",
+                "person": "Emily",
+                "start_time": "16:15",
+                "end_time": "17:15"
+            }
+        ]
+    },
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "constraints_satisfied_but_no_exact_match": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 2,
+    "timing": {
+        "api_call_time": 72.00479030609131,
+        "execution_time": 0.11035275459289551,
+        "constraint_eval_time": 0.00025391578674316406,
+        "pred_extract_time": 1.8917689323425293,
+        "gold_extract_time": 4.7206878662109375e-05,
+        "total_tokens": 5711,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import json\nfrom z3 import Optimize, Int, Bool, If, And, Or, Implies, Sum, is_true, sat\n\n# Helper functions\ndef time_to_minutes(h, m):\n    return h * 60 + m\n\ndef minutes_to_str(t):\n    h = t // 60\n    m = t % 60\n    return f\"{h}:{m:02d}\"\n\n# Locations\nFD = \"Financial District\"\nRH = \"Russian Hill\"\nSD = \"Sunset District\"\nNB = \"North Beach\"\nCA = \"The Castro\"\nGGP = \"Golden Gate Park\"\n\n# Travel times in minutes (directed)\nTT = {\n    (FD, RH): 10, (FD, SD): 31, (FD, NB): 7,  (FD, CA): 23, (FD, GGP): 23,\n    (RH, FD): 11, (RH, SD): 23, (RH, NB): 5,  (RH, CA): 21, (RH, GGP): 21,\n    (SD, FD): 30, (SD, RH): 24, (SD, NB): 29, (SD, CA): 17, (SD, GGP): 11,\n    (NB, FD): 8,  (NB, RH): 4,  (NB, SD): 27, (NB, CA): 22, (NB, GGP): 22,\n    (CA, FD): 20, (CA, RH): 18, (CA, SD): 17, (CA, NB): 20, (CA, GGP): 11,\n    (GGP, FD): 26, (GGP, RH): 19, (GGP, SD): 10, (GGP, NB): 24, (GGP, CA): 13,\n}\n\ndef tt(l1, l2):\n    return TT[(l1, l2)]\n\n# Day bounds\nDAY_START = time_to_minutes(9, 0)    # 9:00\nDAY_END   = time_to_minutes(22, 0)   # 22:00\n\n# People and constraints\npeople = [\n    # name, location, (avail_start, avail_end), min_duration\n    (\"Patricia\", SD,  (time_to_minutes(9, 15),  time_to_minutes(22, 0)), 60),\n    (\"Laura\",    NB,  (time_to_minutes(12, 30), time_to_minutes(12, 45)), 15),\n    (\"Ronald\",   RH,  (time_to_minutes(13, 45), time_to_minutes(17, 15)), 105),\n    (\"Mary\",     GGP, (time_to_minutes(15, 0),  time_to_minutes(16, 30)), 60),\n    (\"Emily\",    CA,  (time_to_minutes(16, 15), time_to_minutes(18, 30)), 60),\n]\n\n# Add a dummy \"Start\" node to encode initial location and start time\nstart_node = (\"Start\", FD, (DAY_START, DAY_START), 0)\n\n# Combined list for variable allocation (Start is not a real meeting in output)\nall_nodes = [start_node] + people\n\n# Build Z3 optimizer\nopt = Optimize()\nopt.set(priority='lex')  # maximize K first, then total duration\n\n# Z3 variables per node\nmeet = {}\nstart = {}\nend = {}\ndur = {}\npos = {}\n\n# Create variables\nfor i, (name, loc, (a_start, a_end), min_dur) in enumerate(all_nodes):\n    meet[name] = Bool(f\"meet_{name}\")\n    start[name] = Int(f\"start_{name}\")\n    end[name] = Int(f\"end_{name}\")\n    dur[name] = Int(f\"dur_{name}\")\n    pos[name] = Int(f\"pos_{name}\")\n\n# Constraints for Start node: always \"met\" (used as anchor), fixed time at Financial District, pos=0\nname, loc, (a_start, a_end), min_dur = start_node\nopt.add(meet[name] == True)\nopt.add(start[name] == a_start)\nopt.add(end[name] == a_end)\nopt.add(dur[name] == 0)\nopt.add(pos[name] == 0)\n\n# Constraints for real people\nN = len(people)\nfor name, loc, (a_start, a_end), min_dur in people:\n    # If met, respect availability, durations, and bounds; else set pos=0 and dur=0\n    opt.add(Implies(meet[name],\n                    And(start[name] >= a_start,\n                        end[name] <= a_end,\n                        start[name] >= DAY_START,\n                        end[name] <= DAY_END,\n                        dur[name] >= min_dur,\n                        dur[name] <= (a_end - a_start),\n                        end[name] == start[name] + dur[name],\n                        pos[name] >= 1, pos[name] <= N)))\n    opt.add(Implies(~meet[name], And(dur[name] == 0, pos[name] == 0)))\n    # Also basic sanity bounds (optional when not met)\n    opt.add(start[name] >= DAY_START)\n    opt.add(end[name] <= DAY_END)\n\n# Uniqueness of positions among met people\nfor i in range(len(people)):\n    for j in range(i+1, len(people)):\n        pi = people[i][0]\n        pj = people[j][0]\n        opt.add(Implies(And(meet[pi], meet[pj]), pos[pi] != pos[pj]))\n\n# Number of meetings K (excluding Start)\nK = Int(\"K\")\nopt.add(K == Sum([If(meet[p[0]], 1, 0) for p in people]))\nopt.add(K >= 0, K <= N)\n\n# Ensure positions are contiguous from 1..K (no gaps)\nfor k in range(1, N+1):\n    occupants = [And(meet[p[0]], pos[p[0]] == k) for p in people]\n    opt.add(Implies(k <= K, Or(occupants) if occupants else False))\n\n# Adjacency travel constraints between consecutive positions\nlocations = {name: loc for (name, loc, _, _) in all_nodes}\nnames = [n for (n, _, _, _) in all_nodes]\nfor i in range(len(names)):\n    for j in range(len(names)):\n        if i == j:\n            continue\n        pi = names[i]\n        pj = names[j]\n        if (locations[pi], locations[pj]) not in TT:\n            continue\n        opt.add(Implies(And(meet[pi], meet[pj], pos[pj] == pos[pi] + 1),\n                        end[pi] + tt(locations[pi], locations[pj]) <= start[pj]))\n\n# Objective 1: maximize number of meetings (excluding Start)\nopt.maximize(K)\n\n# Objective 2: maximize total meeting time (excluding Start)\nopt.maximize(Sum([dur[p[0]] for p in people]))\n\n# Solve\nres = opt.check()\nif res != sat:\n    result = {\"itinerary\": []}\n    print(json.dumps(result))\nelse:\n    m = opt.model()\n\n    # Build itinerary from met people sorted by start time\n    itinerary = []\n    for name, loc, (a_start, a_end), min_dur in people:\n        if is_true(m[meet[name]]):\n            st = m[start[name]].as_long()\n            en = m[end[name]].as_long()\n            itinerary.append({\n                \"action\": \"meet\",\n                \"location\": loc,\n                \"person\": name,\n                \"start_time\": minutes_to_str(st),\n                \"end_time\": minutes_to_str(en),\n            })\n\n    # Sort by actual start time\n    itinerary.sort(key=lambda x: (int(x[\"start_time\"].split(\":\")[0]) * 60 + int(x[\"start_time\"].split(\":\")[1])))\n\n    print(json.dumps({\"itinerary\": itinerary}))"
+}

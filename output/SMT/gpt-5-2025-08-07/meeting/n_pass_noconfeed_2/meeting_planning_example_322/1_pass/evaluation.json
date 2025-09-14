@@ -1,0 +1,87 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\"itinerary\": [{\"action\": \"meet\", \"location\": \"Chinatown\", \"person\": \"Michelle\", \"start_time\": \"9:30\", \"end_time\": \"9:45\"}, {\"action\": \"meet\", \"location\": \"Fisherman's Wharf\", \"person\": \"Robert\", \"start_time\": \"9:53\", \"end_time\": \"10:23\"}, {\"action\": \"meet\", \"location\": \"Presidio\", \"person\": \"George\", \"start_time\": \"10:40\", \"end_time\": \"18:16\"}, {\"action\": \"meet\", \"location\": \"Russian Hill\", \"person\": \"William\", \"start_time\": \"18:30\", \"end_time\": \"20:45\"}]}",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Chinatown",
+                "person": "Michelle",
+                "start_time": "9:30",
+                "end_time": "9:45"
+            },
+            {
+                "action": "meet",
+                "location": "Fisherman's Wharf",
+                "person": "Robert",
+                "start_time": "9:53",
+                "end_time": "10:23"
+            },
+            {
+                "action": "meet",
+                "location": "Presidio",
+                "person": "George",
+                "start_time": "10:40",
+                "end_time": "18:16"
+            },
+            {
+                "action": "meet",
+                "location": "Russian Hill",
+                "person": "William",
+                "start_time": "18:30",
+                "end_time": "20:45"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Chinatown",
+                "person": "Michelle",
+                "start_time": "9:30",
+                "end_time": "9:45"
+            },
+            {
+                "action": "meet",
+                "location": "Presidio",
+                "person": "George",
+                "start_time": "10:30",
+                "end_time": "11:00"
+            },
+            {
+                "action": "meet",
+                "location": "Fisherman's Wharf",
+                "person": "Robert",
+                "start_time": "11:19",
+                "end_time": "11:49"
+            },
+            {
+                "action": "meet",
+                "location": "Russian Hill",
+                "person": "William",
+                "start_time": "18:30",
+                "end_time": "20:15"
+            }
+        ]
+    },
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "constraints_satisfied_but_no_exact_match": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 81.3173155784607,
+        "execution_time": 0.09642696380615234,
+        "constraint_eval_time": 0.000171661376953125,
+        "pred_extract_time": 2.6597001552581787,
+        "gold_extract_time": 4.1961669921875e-05,
+        "total_tokens": 4738,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import json\nfrom z3 import Optimize, Int, Bool, If, And, Or, Implies, Sum, sat\n\ndef m2str(m):\n    h = m // 60\n    mm = m % 60\n    return f\"{h}:{mm:02d}\"\n\ndef main():\n    # Locations\n    SUNSET = \"Sunset District\"\n    RUSSIAN = \"Russian Hill\"\n    CHINATOWN = \"Chinatown\"\n    PRESIDIO = \"Presidio\"\n    WHARF = \"Fisherman's Wharf\"\n\n    # Travel times (minutes), directional as given\n    travel = {\n        (SUNSET, RUSSIAN): 24,\n        (SUNSET, CHINATOWN): 30,\n        (SUNSET, PRESIDIO): 16,\n        (SUNSET, WHARF): 29,\n\n        (RUSSIAN, SUNSET): 23,\n        (RUSSIAN, CHINATOWN): 9,\n        (RUSSIAN, PRESIDIO): 14,\n        (RUSSIAN, WHARF): 7,\n\n        (CHINATOWN, SUNSET): 29,\n        (CHINATOWN, RUSSIAN): 7,\n        (CHINATOWN, PRESIDIO): 19,\n        (CHINATOWN, WHARF): 8,\n\n        (PRESIDIO, SUNSET): 15,\n        (PRESIDIO, RUSSIAN): 14,\n        (PRESIDIO, CHINATOWN): 21,\n        (PRESIDIO, WHARF): 19,\n\n        (WHARF, SUNSET): 27,\n        (WHARF, RUSSIAN): 7,\n        (WHARF, CHINATOWN): 12,\n        (WHARF, PRESIDIO): 17,\n    }\n\n    def t(frm, to):\n        if frm == to:\n            return 0\n        return travel[(frm, to)]\n\n    # Minutes since midnight for key times\n    def hhmm(h, m):\n        return h * 60 + m\n\n    ARRIVAL_START = hhmm(9, 0)  # 9:00 at Sunset District\n\n    # Friends and constraints\n    friends = [\n        {\n            \"name\": \"William\",\n            \"location\": RUSSIAN,\n            \"window_start\": hhmm(18, 30),\n            \"window_end\": hhmm(20, 45),\n            \"min_duration\": 105\n        },\n        {\n            \"name\": \"Michelle\",\n            \"location\": CHINATOWN,\n            \"window_start\": hhmm(8, 15),\n            \"window_end\": hhmm(14, 0),\n            \"min_duration\": 15\n        },\n        {\n            \"name\": \"George\",\n            \"location\": PRESIDIO,\n            \"window_start\": hhmm(10, 30),\n            \"window_end\": hhmm(18, 45),\n            \"min_duration\": 30\n        },\n        {\n            \"name\": \"Robert\",\n            \"location\": WHARF,\n            \"window_start\": hhmm(9, 0),\n            \"window_end\": hhmm(13, 45),\n            \"min_duration\": 30\n        },\n    ]\n\n    n = len(friends)\n\n    # Z3 variables\n    meet = [Bool(f\"meet_{i}\") for i in range(n)]\n    start = [Int(f\"start_{i}\") for i in range(n)]\n    end = [Int(f\"end_{i}\") for i in range(n)]\n    dur = [Int(f\"dur_{i}\") for i in range(n)]\n\n    o = Optimize()\n    o.set(priority='lex')\n\n    DAY_MAX = hhmm(23, 59)\n\n    for i, f in enumerate(friends):\n        ws = f[\"window_start\"]\n        we = f[\"window_end\"]\n        mind = f[\"min_duration\"]\n        # Domain bounds\n        o.add(start[i] >= 0, start[i] <= DAY_MAX + 1)\n        o.add(end[i] >= 0, end[i] <= DAY_MAX + 1)\n        o.add(dur[i] >= 0)\n\n        # Meeting implies window and duration constraints\n        o.add(Implies(meet[i], And(\n            start[i] >= ws,\n            end[i] <= we,\n            dur[i] >= mind,\n            end[i] == start[i] + dur[i],\n            # Reachability from initial location at 9:00\n            start[i] >= ARRIVAL_START + t(SUNSET, f[\"location\"])\n        )))\n        # If not meeting, set zero-duration dummy times (to keep model tight)\n        o.add(Implies(Or(meet[i] == False), And(\n            dur[i] == 0,\n            start[i] == ws,\n            end[i] == ws\n        )))\n\n    # Non-overlap with travel: if both meetings occur, enforce ordering with travel times\n    for i in range(n):\n        for j in range(i + 1, n):\n            li = friends[i][\"location\"]\n            lj = friends[j][\"location\"]\n            o.add(Implies(And(meet[i], meet[j]),\n                          Or(end[i] + t(li, lj) <= start[j],\n                             end[j] + t(lj, li) <= start[i])))\n\n    # Objectives:\n    meet_count = Sum([If(meet[i], 1, 0) for i in range(n)])\n    total_meet_time = Sum([dur[i] for i in range(n)])\n\n    o.maximize(meet_count)\n    o.maximize(total_meet_time)\n\n    if o.check() != sat:\n        result = {\"itinerary\": []}\n        print(json.dumps(result))\n        return\n\n    m = o.model()\n\n    itinerary = []\n    for i, f in enumerate(friends):\n        if m.evaluate(meet[i], model_completion=True):\n            s = m.evaluate(start[i], model_completion=True).as_long()\n            e = m.evaluate(end[i], model_completion=True).as_long()\n            itinerary.append({\n                \"action\": \"meet\",\n                \"location\": f[\"location\"],\n                \"person\": f[\"name\"],\n                \"start_time\": m2str(s),\n                \"end_time\": m2str(e)\n            })\n\n    # Sort by start time\n    itinerary.sort(key=lambda x: (int(x[\"start_time\"].split(\":\")[0]) * 60 + int(x[\"start_time\"].split(\":\")[1])))\n\n    print(json.dumps({\"itinerary\": itinerary}))\n\nif __name__ == \"__main__\":\n    main()"
+}

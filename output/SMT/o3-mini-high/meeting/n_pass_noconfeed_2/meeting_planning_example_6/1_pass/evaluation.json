@@ -1,0 +1,45 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"itinerary\": [\n    {\n      \"action\": \"meet\",\n      \"location\": \"Nob Hill\",\n      \"person\": \"Kenneth\",\n      \"start_time\": \"14:15\",\n      \"end_time\": \"19:45\"\n    }\n  ]\n}",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Nob Hill",
+                "person": "Kenneth",
+                "start_time": "14:15",
+                "end_time": "19:45"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Nob Hill",
+                "person": "Kenneth",
+                "start_time": "14:15",
+                "end_time": "15:45"
+            }
+        ]
+    },
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "constraints_satisfied_but_no_exact_match": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 103.83973002433777,
+        "execution_time": 0.07688140869140625,
+        "constraint_eval_time": 0.0001380443572998047,
+        "pred_extract_time": 3.3963751792907715,
+        "gold_extract_time": 3.0040740966796875e-05,
+        "total_tokens": 2235,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\nimport json\n\ndef format_time(minutes):\n    hour = minutes // 60\n    minute = minutes % 60\n    return f\"{hour}:{minute:02d}\"\n\ndef main():\n    # Input parameters in minutes since midnight\n    arrival_fw = 9 * 60             # 9:00 AM => 540 minutes\n    kenneth_start = 14 * 60 + 15      # 14:15 => 855 minutes\n    kenneth_end = 19 * 60 + 45        # 19:45 => 1185 minutes\n    travel_fw_to_nh = 11            # 11 minutes travel time\n\n    opt = Optimize()\n\n    # Decision variable: departure time from Fisherman's Wharf\n    depart = Int('depart')\n    # Decision variable: meeting end time with Kenneth (at Nob Hill)\n    meet_end = Int('meet_end')\n    # Meeting start time is defined by travel constraint and Kenneth's availability.\n    # If we arrive (depart + travel) before Kenneth arrives then we wait until he is available.\n    meet_start = If(depart + travel_fw_to_nh < kenneth_start, kenneth_start, depart + travel_fw_to_nh)\n\n    # Add constraints:\n    opt.add(depart >= arrival_fw)  # Can't depart before arriving at Fisherman's Wharf\n    opt.add(meet_end <= kenneth_end)  # Must finish meeting before Kenneth departs\n    opt.add(meet_end >= meet_start + 90)  # Meeting duration must be at least 90 minutes\n\n    # Objective: maximize meeting duration with Kenneth.\n    duration = meet_end - meet_start\n    h1 = opt.maximize(duration)\n    # Secondary objective: maximize departure time so that we leave as late as possible\n    # (thus minimizing downtime waiting at Nob Hill).\n    h2 = opt.maximize(depart)\n\n    opt.check()\n    model = opt.model()\n\n    depart_val = model[depart].as_long()\n    meet_end_val = model[meet_end].as_long()\n    # Calculate meeting start based on the model and the if-expression.\n    if depart_val + travel_fw_to_nh < kenneth_start:\n        meet_start_val = kenneth_start\n    else:\n        meet_start_val = depart_val + travel_fw_to_nh\n\n    itinerary = [{\n        \"action\": \"meet\",\n        \"location\": \"Nob Hill\",\n        \"person\": \"Kenneth\",\n        \"start_time\": format_time(meet_start_val),\n        \"end_time\": format_time(meet_end_val)\n    }]\n\n    output = {\"itinerary\": itinerary}\n    print(json.dumps(output, indent=2))\n\nif __name__ == '__main__':\n    main()"
+}

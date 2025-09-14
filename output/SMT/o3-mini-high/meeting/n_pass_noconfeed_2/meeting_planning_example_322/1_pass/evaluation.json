@@ -1,0 +1,87 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"itinerary\": [\n    {\n      \"action\": \"meet\",\n      \"location\": \"Chinatown\",\n      \"person\": \"Michelle\",\n      \"start_time\": \"12:52\",\n      \"end_time\": \"13:07\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Fisherman's Wharf\",\n      \"person\": \"Robert\",\n      \"start_time\": \"13:15\",\n      \"end_time\": \"13:45\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Presidio\",\n      \"person\": \"George\",\n      \"start_time\": \"17:46\",\n      \"end_time\": \"18:16\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Russian Hill\",\n      \"person\": \"William\",\n      \"start_time\": \"18:30\",\n      \"end_time\": \"20:15\"\n    }\n  ]\n}",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Chinatown",
+                "person": "Michelle",
+                "start_time": "12:52",
+                "end_time": "13:07"
+            },
+            {
+                "action": "meet",
+                "location": "Fisherman's Wharf",
+                "person": "Robert",
+                "start_time": "13:15",
+                "end_time": "13:45"
+            },
+            {
+                "action": "meet",
+                "location": "Presidio",
+                "person": "George",
+                "start_time": "17:46",
+                "end_time": "18:16"
+            },
+            {
+                "action": "meet",
+                "location": "Russian Hill",
+                "person": "William",
+                "start_time": "18:30",
+                "end_time": "20:15"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Chinatown",
+                "person": "Michelle",
+                "start_time": "9:30",
+                "end_time": "9:45"
+            },
+            {
+                "action": "meet",
+                "location": "Presidio",
+                "person": "George",
+                "start_time": "10:30",
+                "end_time": "11:00"
+            },
+            {
+                "action": "meet",
+                "location": "Fisherman's Wharf",
+                "person": "Robert",
+                "start_time": "11:19",
+                "end_time": "11:49"
+            },
+            {
+                "action": "meet",
+                "location": "Russian Hill",
+                "person": "William",
+                "start_time": "18:30",
+                "end_time": "20:15"
+            }
+        ]
+    },
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "constraints_satisfied_but_no_exact_match": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 98.04015970230103,
+        "execution_time": 0.10862278938293457,
+        "constraint_eval_time": 0.00018095970153808594,
+        "pred_extract_time": 3.0842387676239014,
+        "gold_extract_time": 3.719329833984375e-05,
+        "total_tokens": 6175,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\nimport json\n\ndef minutes_to_time(mins):\n    hours = mins // 60\n    minutes = mins % 60\n    return f\"{hours}:{minutes:02d}\"\n\ndef main():\n    # Define travel times (in minutes) for each pair (origin, destination)\n    travel = {\n        (\"Sunset District\", \"Russian Hill\"): 24,\n        (\"Sunset District\", \"Chinatown\"): 30,\n        (\"Sunset District\", \"Presidio\"): 16,\n        (\"Sunset District\", \"Fisherman's Wharf\"): 29,\n        \n        (\"Russian Hill\", \"Sunset District\"): 23,\n        (\"Russian Hill\", \"Chinatown\"): 9,\n        (\"Russian Hill\", \"Presidio\"): 14,\n        (\"Russian Hill\", \"Fisherman's Wharf\"): 7,\n        \n        (\"Chinatown\", \"Sunset District\"): 29,\n        (\"Chinatown\", \"Russian Hill\"): 7,\n        (\"Chinatown\", \"Presidio\"): 19,\n        (\"Chinatown\", \"Fisherman's Wharf\"): 8,\n        \n        (\"Presidio\", \"Sunset District\"): 15,\n        (\"Presidio\", \"Russian Hill\"): 14,\n        (\"Presidio\", \"Chinatown\"): 21,\n        (\"Presidio\", \"Fisherman's Wharf\"): 19,\n        \n        (\"Fisherman's Wharf\", \"Sunset District\"): 27,\n        (\"Fisherman's Wharf\", \"Russian Hill\"): 7,\n        (\"Fisherman's Wharf\", \"Chinatown\"): 12,\n        (\"Fisherman's Wharf\", \"Presidio\"): 17,\n    }\n    \n    # Define friends with meeting location, availability window (in minutes after midnight),\n    # and the minimum meeting duration (in minutes)\n    friends = {\n        \"William\": {\n            \"location\": \"Russian Hill\",\n            \"avail_start\": 18 * 60 + 30,  # 18:30 -> 1110\n            \"avail_end\": 20 * 60 + 45,    # 20:45 -> 1245\n            \"duration\": 105\n        },\n        \"Michelle\": {\n            \"location\": \"Chinatown\",\n            \"avail_start\": 8 * 60 + 15,   # 08:15 -> 495\n            \"avail_end\": 14 * 60,         # 14:00 -> 840\n            \"duration\": 15\n        },\n        \"George\": {\n            \"location\": \"Presidio\",\n            \"avail_start\": 10 * 60 + 30,  # 10:30 -> 630\n            \"avail_end\": 18 * 60 + 45,    # 18:45 -> 1125\n            \"duration\": 30\n        },\n        \"Robert\": {\n            \"location\": \"Fisherman's Wharf\",\n            \"avail_start\": 9 * 60,        # 09:00 -> 540\n            \"avail_end\": 13 * 60 + 45,      # 13:45 -> 825\n            \"duration\": 30\n        }\n    }\n    \n    # Starting point and time: You arrive at Sunset District at 9:00 (540 minutes)\n    start_location = \"Sunset District\"\n    start_time_location = 9 * 60  # 540\n    \n    opt = Optimize()\n\n    # Create Z3 variables for each friend: meeting start time and order number.\n    # The order variable represents the sequence in which meetings are scheduled (1...4).\n    S = {}      # Start times\n    order = {}  # Order in the schedule\n    for f in friends:\n        S[f] = Int(f\"start_{f}\")\n        order[f] = Int(f\"order_{f}\")\n        # Each meeting must be scheduled within its availability window.\n        opt.add(S[f] >= friends[f][\"avail_start\"])\n        opt.add(S[f] + friends[f][\"duration\"] <= friends[f][\"avail_end\"])\n        # Order numbers: from 1 to number of friends.\n        opt.add(order[f] >= 1, order[f] <= len(friends))\n    \n    # Ensure that all order variables are distinct (i.e. form a permutation).\n    opt.add(Distinct([order[f] for f in friends]))\n    \n    # For any two friends, enforce that if one is scheduled before the other then their meeting start times are ordered.\n    friend_list = list(friends.keys())\n    for i in range(len(friend_list)):\n        for j in range(len(friend_list)):\n            if i != j:\n                f_i = friend_list[i]\n                f_j = friend_list[j]\n                opt.add(Implies(order[f_i] < order[f_j], S[f_i] < S[f_j]))\n    \n    # For the first meeting in the itinerary, ensure you account for travel time from the Sunset District.\n    for f, props in friends.items():\n        loc = props[\"location\"]\n        travel_time_from_start = travel.get((start_location, loc), 999)\n        opt.add(Implies(order[f] == 1, S[f] >= start_time_location + travel_time_from_start))\n    \n    # Add travel constraints between consecutive meetings.\n    # If friend f_i and friend f_j are scheduled consecutively (i.e. order difference is 1),\n    # then the start time of f_j must be at least the end time of f_i plus travel time.\n    for i in range(len(friend_list)):\n        for j in range(len(friend_list)):\n            if i != j:\n                f_i = friend_list[i]\n                f_j = friend_list[j]\n                loc_i = friends[f_i][\"location\"]\n                loc_j = friends[f_j][\"location\"]\n                travel_time_between = travel.get((loc_i, loc_j), 999)\n                opt.add(Implies(order[f_i] + 1 == order[f_j],\n                                S[f_i] + friends[f_i][\"duration\"] + travel_time_between <= S[f_j]))\n    \n    # Define a variable representing the overall finish time (end of the last meeting)\n    finish = Int(\"finish\")\n    for f in friends:\n        opt.add(finish >= S[f] + friends[f][\"duration\"])\n    \n    # Optimize the schedule by minimizing the finish time.\n    opt.minimize(finish)\n    \n    # Check and extract the model.\n    if opt.check() == sat:\n        m = opt.model()\n        # Build the schedule as a list of tuples: (order, start_time, end_time, location, friend)\n        schedule = []\n        for f in friends:\n            s_time = m[S[f]].as_long()\n            e_time = s_time + friends[f][\"duration\"]\n            schedule.append((m[order[f]].as_long(), s_time, e_time, friends[f][\"location\"], f))\n        # Sort the schedule based on the order number.\n        schedule.sort(key=lambda x: x[0])\n        \n        itinerary = []\n        for (_, s_time, e_time, loc, friend_name) in schedule:\n            itinerary.append({\n                \"action\": \"meet\",\n                \"location\": loc,\n                \"person\": friend_name,\n                \"start_time\": minutes_to_time(s_time),\n                \"end_time\": minutes_to_time(e_time)\n            })\n        \n        result = {\"itinerary\": itinerary}\n        print(json.dumps(result, indent=2))\n    else:\n        # If no feasible schedule is found, output an empty itinerary.\n        print(json.dumps({\"itinerary\": []}, indent=2))\n\nif __name__ == \"__main__\":\n    main()"
+}

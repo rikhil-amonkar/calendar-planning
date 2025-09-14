@@ -1,0 +1,59 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\"itinerary\": [{\"action\": \"meet\", \"location\": \"Golden Gate Park\", \"person\": \"Barbara\", \"start_time\": \"10:52\", \"end_time\": \"11:37\"}, {\"action\": \"meet\", \"location\": \"Chinatown\", \"person\": \"Kenneth\", \"start_time\": \"12:00\", \"end_time\": \"13:30\"}]}",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Golden Gate Park",
+                "person": "Barbara",
+                "start_time": "10:52",
+                "end_time": "11:37"
+            },
+            {
+                "action": "meet",
+                "location": "Chinatown",
+                "person": "Kenneth",
+                "start_time": "12:00",
+                "end_time": "13:30"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Chinatown",
+                "person": "Kenneth",
+                "start_time": "12:00",
+                "end_time": "13:30"
+            },
+            {
+                "action": "meet",
+                "location": "Golden Gate Park",
+                "person": "Barbara",
+                "start_time": "13:53",
+                "end_time": "14:38"
+            }
+        ]
+    },
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "constraints_satisfied_but_no_exact_match": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 56.03074526786804,
+        "execution_time": 0.0753171443939209,
+        "constraint_eval_time": 0.0001876354217529297,
+        "pred_extract_time": 1.3022844791412354,
+        "gold_extract_time": 4.076957702636719e-05,
+        "total_tokens": 4705,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "# SOLUTION:\nimport json\nfrom z3 import Int, Bool, Optimize, Implies, And, Not, If, sat\n\ndef minutes_to_str(m):\n    h = m // 60\n    mi = m % 60\n    return f\"{h}:{mi:02d}\"\n\ndef main():\n    # Locations\n    FD = \"Financial District\"\n    CT = \"Chinatown\"\n    GGP = \"Golden Gate Park\"\n\n    # Travel times in minutes\n    travel = {\n        (FD, CT): 5,\n        (CT, FD): 5,\n        (FD, GGP): 23,\n        (GGP, FD): 26,\n        (CT, GGP): 23,\n        (GGP, CT): 23,\n    }\n\n    # Arrival at FD at 9:00 (in minutes from midnight)\n    start_time_fd = 9 * 60  # 540\n\n    # People and constraints\n    people = {\n        \"Kenneth\": {\n            \"location\": CT,\n            \"window_start\": 12 * 60,   # 12:00 -> 720\n            \"window_end\": 15 * 60,     # 15:00 -> 900\n            \"min_duration\": 90\n        },\n        \"Barbara\": {\n            \"location\": GGP,\n            \"window_start\": 8 * 60 + 15,  # 8:15 -> 495\n            \"window_end\": 19 * 60,        # 19:00 -> 1140\n            \"min_duration\": 45\n        }\n    }\n\n    # Z3 variables\n    s_K = Int('s_K')  # start time Kenneth\n    s_B = Int('s_B')  # start time Barbara\n\n    meet_K = Bool('meet_K')\n    meet_B = Bool('meet_B')\n\n    order_B_before_K = Bool('order_B_before_K')  # only relevant if both meet\n\n    # Create optimizer\n    o = Optimize()\n\n    # Domain bounds (reasonable day bounds)\n    o.add(s_K >= 0, s_K <= 24 * 60)\n    o.add(s_B >= 0, s_B <= 24 * 60)\n\n    # Meeting windows constraints (only apply if meeting that person)\n    o.add(Implies(\n        meet_K,\n        And(\n            s_K >= people[\"Kenneth\"][\"window_start\"],\n            s_K + people[\"Kenneth\"][\"min_duration\"] <= people[\"Kenneth\"][\"window_end\"]\n        )\n    ))\n    o.add(Implies(\n        meet_B,\n        And(\n            s_B >= people[\"Barbara\"][\"window_start\"],\n            s_B + people[\"Barbara\"][\"min_duration\"] <= people[\"Barbara\"][\"window_end\"]\n        )\n    ))\n\n    # Start from FD travel constraints\n    # If meeting only one person\n    o.add(Implies(\n        And(meet_B, Not(meet_K)),\n        s_B >= start_time_fd + travel[(FD, GGP)]\n    ))\n    o.add(Implies(\n        And(meet_K, Not(meet_B)),\n        s_K >= start_time_fd + travel[(FD, CT)]\n    ))\n\n    # If meeting both, enforce one of the orders using the order boolean\n    # Order: Barbara first then Kenneth\n    o.add(Implies(\n        And(meet_B, meet_K, order_B_before_K),\n        And(\n            s_B >= start_time_fd + travel[(FD, GGP)],\n            s_K >= s_B + people[\"Barbara\"][\"min_duration\"] + travel[(GGP, CT)]\n        )\n    ))\n    # Order: Kenneth first then Barbara\n    o.add(Implies(\n        And(meet_B, meet_K, Not(order_B_before_K)),\n        And(\n            s_K >= start_time_fd + travel[(FD, CT)],\n            s_B >= s_K + people[\"Kenneth\"][\"min_duration\"] + travel[(CT, GGP)]\n        )\n    ))\n\n    # Objective: maximize number of friends met\n    total_meetings = If(meet_B, 1, 0) + If(meet_K, 1, 0)\n    o.maximize(total_meetings)\n\n    # Optional tie-breaker: minimize overall finish time if meeting both\n    # Define end times for potential tie-breaking (not required, but helps pick earlier itinerary)\n    e_K = s_K + people[\"Kenneth\"][\"min_duration\"]\n    e_B = s_B + people[\"Barbara\"][\"min_duration\"]\n    # Minimize the maximum end time among meetings that occur\n    latest_end = Int('latest_end')\n    o.add(latest_end >= 0)\n    # latest_end >= each end if that meeting happens\n    o.add(Implies(meet_K, latest_end >= e_K))\n    o.add(Implies(meet_B, latest_end >= e_B))\n    # If neither meeting happens, bound latest_end to 0\n    o.add(Implies(And(Not(meet_K), Not(meet_B)), latest_end == 0))\n    o.minimize(latest_end)\n\n    # Solve\n    if o.check() != sat:\n        # In case of infeasible model (should not occur with given data)\n        print(json.dumps({\"itinerary\": []}))\n        return\n\n    m = o.model()\n\n    itinerary = []\n\n    def add_event(person_key, start_var):\n        person = people[person_key]\n        start = m[start_var].as_long()\n        end = start + person[\"min_duration\"]\n        itinerary.append({\n            \"action\": \"meet\",\n            \"location\": person[\"location\"],\n            \"person\": person_key,\n            \"start_time\": minutes_to_str(start),\n            \"end_time\": minutes_to_str(end)\n        })\n\n    if m[meet_B] and str(m[meet_B]) == \"True\":\n        add_event(\"Barbara\", s_B)\n    if m[meet_K] and str(m[meet_K]) == \"True\":\n        add_event(\"Kenneth\", s_K)\n\n    # Sort itinerary chronologically\n    def time_key(item):\n        h, mi = map(int, item[\"start_time\"].split(\":\"))\n        return h * 60 + mi\n\n    itinerary.sort(key=time_key)\n\n    print(json.dumps({\"itinerary\": itinerary}, ensure_ascii=False))\n\nif __name__ == \"__main__\":\n    main()"
+}

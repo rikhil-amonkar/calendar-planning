@@ -1,0 +1,35 @@
+{
+    "has_execution_error": true,
+    "has_no_plan": false,
+    "execution_output": null,
+    "pred": null,
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Golden Gate Park",
+                "person": "Joshua",
+                "start_time": "20:45",
+                "end_time": "21:00"
+            }
+        ]
+    },
+    "status": "Error",
+    "violated_constraint": {
+        "missing_itinerary": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 57.41987633705139,
+        "execution_time": 0.08499670028686523,
+        "constraint_eval_time": 1.6689300537109375e-06,
+        "pred_extract_time": 2.6226043701171875e-06,
+        "gold_extract_time": 3.62396240234375e-05,
+        "total_tokens": 4324,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import json\nfrom z3 import Optimize, Int, Bool, If, Implies, And, Or, Not, Sum, sat\n\ndef time_str(minutes):\n    h = minutes // 60\n    m = minutes % 60\n    return f\"{h}:{m:02d}\"\n\ndef main():\n    # Input parameters\n    start_location = \"Sunset District\"\n    arrival_at_start_location = 9 * 60  # 9:00 in minutes\n    travel_times = {\n        (\"Sunset District\", \"Golden Gate Park\"): 11,\n        (\"Golden Gate Park\", \"Sunset District\"): 10\n    }\n\n    friends = [\n        {\n            \"name\": \"Joshua\",\n            \"location\": \"Golden Gate Park\",\n            \"avail_start\": 20 * 60 + 45,  # 20:45\n            \"avail_end\": 21 * 60 + 45,    # 21:45\n            \"min_meeting\": 15\n        }\n    ]\n\n    # Z3 optimization model\n    opt = Optimize()\n    opt.set(priority='lex')\n\n    # Variables per friend\n    friend_vars = []\n    for i, f in enumerate(friends):\n        meet = Bool(f\"meet_{i}\")\n        depart = Int(f\"depart_{i}\")   # departure time from start location (minutes)\n        arrive = Int(f\"arrive_{i}\")   # arrival time at friend's location\n        start = Int(f\"start_{i}\")     # meeting start\n        end = Int(f\"end_{i}\")         # meeting end\n        duration = Int(f\"duration_{i}\")\n        wait = Int(f\"wait_{i}\")       # waiting time at location before meeting start\n\n        # General bounds\n        day_end = 24 * 60\n        for var in [depart, arrive, start, end, duration, wait]:\n            opt.add(var >= 0, var <= day_end)\n\n        # Travel time from start location to friend's location\n        tkey = (start_location, f[\"location\"])\n        if tkey not in travel_times:\n            # If no travel time defined, meeting is impossible\n            opt.add(meet == False)\n            travel_time = 0\n        else:\n            travel_time = travel_times[tkey]\n\n        # Constraints if we decide to meet this friend\n        opt.add(Implies(meet, depart >= arrival_at_start_location))\n        opt.add(Implies(meet, arrive == depart + travel_time))\n        opt.add(Implies(meet, start >= arrive))\n        opt.add(Implies(meet, start >= f[\"avail_start\"]))\n        opt.add(Implies(meet, end <= f[\"avail_end\"]))\n        opt.add(Implies(meet, end > start))\n        opt.add(Implies(meet, duration == end - start))\n        opt.add(Implies(meet, duration >= f[\"min_meeting\"]))\n        opt.add(Implies(meet, wait == start - arrive))\n        # Non-negativity for wait and duration already ensured by bounds; tighten under meet:\n        opt.add(Implies(meet, And(wait >= 0, duration >= 0)))\n\n        # If not meeting, set duration and wait to 0 to keep model tight (optional)\n        opt.add(Implies(Not(meet), And(duration == 0, wait == 0)))\n\n        friend_vars.append({\n            \"meet\": meet, \"depart\": depart, \"arrive\": arrive,\n            \"start\": start, \"end\": end, \"duration\": duration, \"wait\": wait,\n            \"data\": f\n        })\n\n    # Objective 1: Maximize number of friends met\n    meet_count = Sum([If(v[\"meet\"], 1, 0) for v in friend_vars])\n    opt.maximize(meet_count)\n\n    # Objective 2: Maximize total meeting duration\n    total_duration = Sum([If(v[\"meet\"], v[\"duration\"], 0) for v in friend_vars])\n    opt.maximize(total_duration)\n\n    # Objective 3: Minimize total waiting time at locations before meetings (prefer just-in-time arrival)\n    total_wait = Sum([If(v[\"meet\"], v[\"wait\"], 0) for v in friend_vars])\n    opt.minimize(total_wait)\n\n    # Solve\n    if opt.check() != sat:\n        result = {\"itinerary\": []}\n        print(json.dumps(result, indent=2))\n        return\n\n    model = opt.model()\n\n    # Build itinerary\n    itinerary = []\n    for v in friend_vars:\n        if model.eval(v[\"meet\"]).is_true():\n            start_m = model.eval(v[\"start\"]).as_long()\n            end_m = model.eval(v[\"end\"]).as_long()\n            entry = {\n                \"action\": \"meet\",\n                \"location\": v[\"data\"][\"location\"],\n                \"person\": v[\"data\"][\"name\"],\n                \"start_time\": time_str(start_m),\n                \"end_time\": time_str(end_m)\n            }\n            itinerary.append(entry)\n\n    # Sort itinerary by start_time\n    itinerary.sort(key=lambda e: int(e[\"start_time\"].split(\":\")[0]) * 60 + int(e[\"start_time\"].split(\":\")[1]))\n\n    output = {\"itinerary\": itinerary}\n    print(json.dumps(output, indent=2))\n\nif __name__ == \"__main__\":\n    main()"
+}

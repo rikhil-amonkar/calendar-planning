@@ -1,0 +1,57 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"itinerary\": [\n    {\n      \"action\": \"meet\",\n      \"location\": \"Mission District\",\n      \"person\": \"Laura\",\n      \"start_time\": \"12:15\",\n      \"end_time\": \"13:30\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Financial District\",\n      \"person\": \"Anthony\",\n      \"start_time\": \"13:47\",\n      \"end_time\": \"14:17\"\n    }\n  ]\n}",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Mission District",
+                "person": "Laura",
+                "start_time": "12:15",
+                "end_time": "13:30"
+            },
+            {
+                "action": "meet",
+                "location": "Financial District",
+                "person": "Anthony",
+                "start_time": "13:47",
+                "end_time": "14:17"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Mission District",
+                "person": "Laura",
+                "start_time": "12:15",
+                "end_time": "13:30"
+            },
+            {
+                "action": "meet",
+                "location": "Financial District",
+                "person": "Anthony",
+                "start_time": "13:47",
+                "end_time": "14:17"
+            }
+        ]
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 2,
+    "timing": {
+        "api_call_time": 55.16348218917847,
+        "execution_time": 0.11102080345153809,
+        "constraint_eval_time": 1.4066696166992188e-05,
+        "pred_extract_time": 1.8721859455108643,
+        "gold_extract_time": 2.574920654296875e-05,
+        "total_tokens": 5674,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "#!/usr/bin/env python3\nimport json\nfrom z3 import Optimize, Int, Bool, If, Not, Implies, is_true, sat\n\ndef format_time(minutes):\n    hour = minutes // 60\n    minute = minutes % 60\n    return f\"{hour}:{minute:02d}\"\n\ndef main():\n    # Create an optimizer instance\n    opt = Optimize()\n\n    # Define time variables (in minutes from midnight)\n    # Arrival at The Castro is 9:00 AM, i.e., 540 minutes after midnight.\n    arrival = 540\n\n    # Meeting with Laura (in Mission District)\n    L_start = Int(\"L_start\")  # start time for meeting with Laura\n    L_end = Int(\"L_end\")      # end time for meeting with Laura\n\n    # Meeting with Anthony (in Financial District)\n    A_start = Int(\"A_start\")  # start time for meeting with Anthony\n    A_end = Int(\"A_end\")      # end time for meeting with Anthony\n\n    # Boolean decision: if True, then meet Laura first then Anthony; if False, vice versa.\n    laura_first = Bool(\"laura_first\")\n\n    # --- Constraints for available schedules and travel times  ---\n\n    # When meeting Laura first:\n    # * Laura is available from 12:15 (735) to 19:45 (1185) and must be met for at least 75 minutes.\n    opt.add(Implies(laura_first, L_start >= 735))\n    opt.add(Implies(laura_first, L_end >= L_start + 75))\n    opt.add(Implies(laura_first, L_end <= 1185))\n    # * After her meeting, travel from Mission District to Financial District takes 17 minutes.\n    opt.add(Implies(laura_first, A_start >= L_end + 17))\n    # * Anthony\u2019s available from 12:30 (750) to 14:45 (885) and must be met for at least 30 minutes.\n    opt.add(Implies(laura_first, A_start >= 750))\n    opt.add(Implies(laura_first, A_end >= A_start + 30))\n    opt.add(Implies(laura_first, A_end <= 885))\n    # * Also, from The Castro, travel to Mission District takes 7 minutes.\n    opt.add(Implies(laura_first, L_start >= arrival + 7))\n\n    # When meeting Anthony first:\n    opt.add(Implies(Not(laura_first), A_start >= 750))\n    opt.add(Implies(Not(laura_first), A_end >= A_start + 30))\n    opt.add(Implies(Not(laura_first), A_end <= 885))\n    # * Then travel from Financial District to Mission District takes 17 minutes.\n    opt.add(Implies(Not(laura_first), L_start >= A_end + 17))\n    # * And Laura is available from 12:15 (735) to 19:45 (1185) for at least 75 minutes.\n    opt.add(Implies(Not(laura_first), L_start >= 735))\n    opt.add(Implies(Not(laura_first), L_end >= L_start + 75))\n    opt.add(Implies(Not(laura_first), L_end <= 1185))\n    # * From The Castro, travel to Financial District takes 20 minutes.\n    opt.add(Implies(Not(laura_first), A_start >= arrival + 20))\n\n    # Define the overall finish time (if Laura is met first then finish is when Anthony ends, otherwise when Laura ends)\n    finish_time = If(laura_first, A_end, L_end)\n    opt.minimize(finish_time)\n\n    # --- Solve the optimization problem ---\n    result = opt.check()\n    if result == sat:\n        m = opt.model()\n        laura_first_val = m.evaluate(laura_first)\n        L_start_val = m.evaluate(L_start).as_long()\n        L_end_val = m.evaluate(L_end).as_long()\n        A_start_val = m.evaluate(A_start).as_long()\n        A_end_val = m.evaluate(A_end).as_long()\n\n        itinerary = []\n        if is_true(laura_first_val):\n            itinerary.append({\n                \"action\": \"meet\",\n                \"location\": \"Mission District\",\n                \"person\": \"Laura\",\n                \"start_time\": format_time(L_start_val),\n                \"end_time\": format_time(L_end_val)\n            })\n            itinerary.append({\n                \"action\": \"meet\",\n                \"location\": \"Financial District\",\n                \"person\": \"Anthony\",\n                \"start_time\": format_time(A_start_val),\n                \"end_time\": format_time(A_end_val)\n            })\n        else:\n            itinerary.append({\n                \"action\": \"meet\",\n                \"location\": \"Financial District\",\n                \"person\": \"Anthony\",\n                \"start_time\": format_time(A_start_val),\n                \"end_time\": format_time(A_end_val)\n            })\n            itinerary.append({\n                \"action\": \"meet\",\n                \"location\": \"Mission District\",\n                \"person\": \"Laura\",\n                \"start_time\": format_time(L_start_val),\n                \"end_time\": format_time(L_end_val)\n            })\n\n        print(json.dumps({\"itinerary\": itinerary}, indent=2))\n    else:\n        print(json.dumps({\"itinerary\": []}))\n\nif __name__ == \"__main__\":\n    main()"
+}

@@ -1,0 +1,87 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\"itinerary\": [{\"action\": \"meet\", \"location\": \"Nob Hill\", \"person\": \"Ronald\", \"start_time\": \"10:00\", \"end_time\": \"11:45\"}, {\"action\": \"meet\", \"location\": \"Haight-Ashbury\", \"person\": \"Margaret\", \"start_time\": \"11:58\", \"end_time\": \"12:58\"}, {\"action\": \"meet\", \"location\": \"The Castro\", \"person\": \"Helen\", \"start_time\": \"13:30\", \"end_time\": \"15:30\"}, {\"action\": \"meet\", \"location\": \"Sunset District\", \"person\": \"Joshua\", \"start_time\": \"15:47\", \"end_time\": \"17:17\"}]}",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Nob Hill",
+                "person": "Ronald",
+                "start_time": "10:00",
+                "end_time": "11:45"
+            },
+            {
+                "action": "meet",
+                "location": "Haight-Ashbury",
+                "person": "Margaret",
+                "start_time": "11:58",
+                "end_time": "12:58"
+            },
+            {
+                "action": "meet",
+                "location": "The Castro",
+                "person": "Helen",
+                "start_time": "13:30",
+                "end_time": "15:30"
+            },
+            {
+                "action": "meet",
+                "location": "Sunset District",
+                "person": "Joshua",
+                "start_time": "15:47",
+                "end_time": "17:17"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Nob Hill",
+                "person": "Ronald",
+                "start_time": "10:00",
+                "end_time": "11:45"
+            },
+            {
+                "action": "meet",
+                "location": "The Castro",
+                "person": "Helen",
+                "start_time": "13:30",
+                "end_time": "15:30"
+            },
+            {
+                "action": "meet",
+                "location": "Sunset District",
+                "person": "Joshua",
+                "start_time": "15:47",
+                "end_time": "17:17"
+            },
+            {
+                "action": "meet",
+                "location": "Haight-Ashbury",
+                "person": "Margaret",
+                "start_time": "17:32",
+                "end_time": "18:32"
+            }
+        ]
+    },
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "constraints_satisfied_but_no_exact_match": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 117.10100483894348,
+        "execution_time": 0.09357452392578125,
+        "constraint_eval_time": 0.0003275871276855469,
+        "pred_extract_time": 2.5608315467834473,
+        "gold_extract_time": 6.246566772460938e-05,
+        "total_tokens": 6462,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import json\nfrom z3 import *\n\ndef minutes(h, m):\n    return h*60 + m\n\ndef minutes_to_str(m):\n    h = m // 60\n    mm = m % 60\n    return f\"{h}:{mm:02d}\"\n\ndef main():\n    # Locations\n    locations = [\n        \"Pacific Heights\",\n        \"Nob Hill\",\n        \"Russian Hill\",\n        \"The Castro\",\n        \"Sunset District\",\n        \"Haight-Ashbury\",\n    ]\n\n    start_location = \"Pacific Heights\"\n    arrival_time = minutes(9, 0)  # 9:00\n\n    # Directed travel times (in minutes)\n    t = {\n        \"Pacific Heights\": {\n            \"Nob Hill\": 8,\n            \"Russian Hill\": 7,\n            \"The Castro\": 16,\n            \"Sunset District\": 21,\n            \"Haight-Ashbury\": 11,\n        },\n        \"Nob Hill\": {\n            \"Pacific Heights\": 8,\n            \"Russian Hill\": 5,\n            \"The Castro\": 17,\n            \"Sunset District\": 25,\n            \"Haight-Ashbury\": 13,\n        },\n        \"Russian Hill\": {\n            \"Pacific Heights\": 7,\n            \"Nob Hill\": 5,\n            \"The Castro\": 21,\n            \"Sunset District\": 23,\n            \"Haight-Ashbury\": 17,\n        },\n        \"The Castro\": {\n            \"Pacific Heights\": 16,\n            \"Nob Hill\": 16,\n            \"Russian Hill\": 18,\n            \"Sunset District\": 17,\n            \"Haight-Ashbury\": 6,\n        },\n        \"Sunset District\": {\n            \"Pacific Heights\": 21,\n            \"Nob Hill\": 27,\n            \"Russian Hill\": 24,\n            \"The Castro\": 17,\n            \"Haight-Ashbury\": 15,\n        },\n        \"Haight-Ashbury\": {\n            \"Pacific Heights\": 12,\n            \"Nob Hill\": 15,\n            \"Russian Hill\": 17,\n            \"The Castro\": 6,\n            \"Sunset District\": 15,\n        },\n    }\n\n    # Ensure self-travel is 0\n    for a in locations:\n        if a not in t:\n            t[a] = {}\n        t[a][a] = 0\n\n    # Participants: name -> dict with location, window_start, window_end, min_duration\n    friends = {\n        \"Ronald\": {\n            \"location\": \"Nob Hill\",\n            \"window_start\": minutes(10, 0),\n            \"window_end\": minutes(17, 0),\n            \"min_duration\": 105,\n        },\n        \"Sarah\": {\n            \"location\": \"Russian Hill\",\n            \"window_start\": minutes(7, 15),\n            \"window_end\": minutes(9, 30),\n            \"min_duration\": 45,\n        },\n        \"Helen\": {\n            \"location\": \"The Castro\",\n            \"window_start\": minutes(13, 30),\n            \"window_end\": minutes(17, 0),\n            \"min_duration\": 120,\n        },\n        \"Joshua\": {\n            \"location\": \"Sunset District\",\n            \"window_start\": minutes(14, 15),\n            \"window_end\": minutes(19, 30),\n            \"min_duration\": 90,\n        },\n        \"Margaret\": {\n            \"location\": \"Haight-Ashbury\",\n            \"window_start\": minutes(10, 15),\n            \"window_end\": minutes(22, 0),\n            \"min_duration\": 60,\n        },\n    }\n\n    people = list(friends.keys())\n    n = len(people)\n\n    # Z3 variables\n    sel = {p: Bool(f\"{p}_sel\") for p in people}\n    start = {p: Int(f\"{p}_start\") for p in people}\n    end = {p: Int(f\"{p}_end\") for p in people}\n    pos = {p: Int(f\"{p}_pos\") for p in people}\n\n    opt = Optimize()\n\n    # Domains and basic constraints\n    for p in people:\n        w_start = friends[p][\"window_start\"]\n        w_end = friends[p][\"window_end\"]\n        min_dur = friends[p][\"min_duration\"]\n\n        opt.add(start[p] >= 0, start[p] <= 24*60)\n        opt.add(end[p] >= 0, end[p] <= 24*60)\n        opt.add(end[p] >= start[p])\n\n        # Selection implies window and min duration\n        opt.add(Implies(sel[p], And(start[p] >= w_start,\n                                    end[p] <= w_end,\n                                    end[p] - start[p] >= min_dur)))\n\n        # If not selected, collapse interval and pos = 0\n        opt.add(Implies(Not(sel[p]), And(end[p] == start[p], pos[p] == 0)))\n\n        # Pos domain: 0..n; if selected, 1..n\n        opt.add(pos[p] >= 0, pos[p] <= n)\n        opt.add(Implies(sel[p], And(pos[p] >= 1, pos[p] <= n)))\n\n    # Unique positions among selected\n    for i in range(n):\n        for j in range(i+1, n):\n            pi, pj = people[i], people[j]\n            opt.add(Implies(And(sel[pi], sel[pj]), pos[pi] != pos[pj]))\n\n    # Ordering and travel-time separation using positions\n    for i in range(n):\n        for j in range(n):\n            if i == j:\n                continue\n            pi, pj = people[i], people[j]\n            li = friends[pi][\"location\"]\n            lj = friends[pj][\"location\"]\n            travel_ij = t[li][lj]\n            opt.add(Implies(And(sel[pi], sel[pj], pos[pi] < pos[pj]),\n                            end[pi] + travel_ij <= start[pj]))\n\n    # Anchor: first scheduled meeting (pos == 1) must be reachable from start location at arrival_time\n    for p in people:\n        loc = friends[p][\"location\"]\n        travel_from_start = t[start_location][loc]\n        opt.add(Implies(And(sel[p], pos[p] == 1),\n                        start[p] >= arrival_time + travel_from_start))\n\n    # Ensure exactly one \"first\" if any selected\n    first_flags = [If(And(sel[p], pos[p] == 1), 1, 0) for p in people]\n    sum_sel = Sum([If(sel[p], 1, 0) for p in people])\n    opt.add(Sum(first_flags) == If(sum_sel == 0, 0, 1))\n\n    # Secondary objective: minimize last end time to prefer earlier finish\n    last_end = Int(\"last_end\")\n    opt.add(last_end >= arrival_time)\n    for p in people:\n        opt.add(last_end >= end[p])\n\n    # Objectives\n    h1 = opt.maximize(sum_sel)\n    h2 = opt.minimize(last_end)\n\n    if opt.check() != sat:\n        print(json.dumps({\"itinerary\": []}))\n        return\n\n    m = opt.model()\n\n    # Build itinerary, ordered by position\n    selected_entries = []\n    for p in people:\n        if m.evaluate(sel[p], model_completion=True):\n            p_pos = m.evaluate(pos[p], model_completion=True).as_long()\n            s = m.evaluate(start[p], model_completion=True).as_long()\n            e = m.evaluate(end[p], model_completion=True).as_long()\n            selected_entries.append((p_pos, {\n                \"action\": \"meet\",\n                \"location\": friends[p][\"location\"],\n                \"person\": p,\n                \"start_time\": minutes_to_str(s),\n                \"end_time\": minutes_to_str(e),\n            }))\n\n    selected_entries.sort(key=lambda x: x[0])\n    itinerary = [entry for _, entry in selected_entries]\n\n    print(json.dumps({\"itinerary\": itinerary}, ensure_ascii=False))\n\nif __name__ == \"__main__\":\n    main()"
+}

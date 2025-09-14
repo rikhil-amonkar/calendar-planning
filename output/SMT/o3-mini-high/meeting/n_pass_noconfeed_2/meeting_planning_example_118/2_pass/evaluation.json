@@ -1,0 +1,35 @@
+{
+    "has_execution_error": true,
+    "has_no_plan": false,
+    "execution_output": null,
+    "pred": null,
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Union Square",
+                "person": "Richard",
+                "start_time": "9:17",
+                "end_time": "11:17"
+            }
+        ]
+    },
+    "status": "Error",
+    "violated_constraint": {
+        "missing_itinerary": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 2,
+    "timing": {
+        "api_call_time": 20.156129121780396,
+        "execution_time": 0.07695937156677246,
+        "constraint_eval_time": 1.430511474609375e-06,
+        "pred_extract_time": 2.1457672119140625e-06,
+        "gold_extract_time": 2.5510787963867188e-05,
+        "total_tokens": 7042,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\nimport json\n\ndef minutes_to_time(m):\n    h = m // 60\n    mins = m % 60\n    return f\"{h}:{mins:02d}\"\n\nbayview_arrival = 9 * 60           \nunion_travel_from_bayview = 17     \npresidio_travel_from_bayview = 31  \nunion_to_presidio = 24             \npresidio_to_union = 22             \nmeeting_min = 120                  \n\nrichard_avail_start = 8 * 60 + 45  \nrichard_avail_end = 13 * 60        \n\ncharles_avail_start = 9 * 60 + 45  \ncharles_avail_end = 13 * 60        \n\nopt = Optimize()\n\nR_start = Int('R_start')  \nR_end = Int('R_end')      \nC_start = Int('C_start')  \nC_end = Int('C_end')      \n\nattend_R = Bool('attend_R')\nattend_C = Bool('attend_C')\n\norder_R_first = Bool('order_R_first')\n\nopt.add(Implies(Not(attend_R), And(R_start == 0, R_end == 0)))\nopt.add(Implies(Not(attend_C), And(C_start == 0, C_end == 0)))\n\nopt.add(Implies(attend_R, R_end - R_start >= meeting_min))\nopt.add(Implies(attend_R, R_end <= richard_avail_end))\nopt.add(Implies(attend_R,\n    And(\n        R_start >= If(Or(Not(attend_C), order_R_first), bayview_arrival + union_travel_from_bayview, C_end + presidio_to_union),\n        R_start >= richard_avail_start  \n    )\n))\n\nopt.add(Implies(attend_C, C_end - C_start >= meeting_min))\nopt.add(Implies(attend_C, C_end <= charles_avail_end))\nopt.add(Implies(attend_C,\n    And(\n        C_start >= If(Or(Not(attend_R), Not(order_R_first)),\n                      Max(bayview_arrival + presidio_travel_from_bayview, charles_avail_start),\n                      R_end + union_to_presidio),\n        C_start >= charles_avail_start  \n    )\n))\n\nopt.add(Implies(And(attend_R, attend_C, order_R_first),\n    And(\n        R_start >= bayview_arrival + union_travel_from_bayview,\n        C_start >= R_end + union_to_presidio\n    )\n))\nopt.add(Implies(And(attend_R, attend_C, Not(order_R_first)),\n    And(\n        C_start >= Max(bayview_arrival + presidio_travel_from_bayview, charles_avail_start),\n        R_start >= C_end + presidio_to_union\n    )\n))\n\nmeetings_count = If(attend_R, 1, 0) + If(attend_C, 1, 0)\ntotal_duration = If(attend_R, R_end - R_start, 0) + If(attend_C, C_end - C_start, 0)\nh1 = opt.maximize(meetings_count)\nh2 = opt.maximize(total_duration)\n\nif opt.check() == sat:\n    model = opt.model()\n    itinerary = []\n    has_R = is_true(model.evaluate(attend_R))\n    has_C = is_true(model.evaluate(attend_C))\n    if has_R and has_C:\n        if is_true(model.evaluate(order_R_first)):\n            itinerary.append({\n                \"action\": \"meet\",\n                \"location\": \"Union Square\",\n                \"person\": \"Richard\",\n                \"start_time\": minutes_to_time(model.evaluate(R_start).as_long()),\n                \"end_time\": minutes_to_time(model.evaluate(R_end).as_long())\n            })\n            itinerary.append({\n                \"action\": \"meet\",\n                \"location\": \"Presidio\",\n                \"person\": \"Charles\",\n                \"start_time\": minutes_to_time(model.evaluate(C_start).as_long()),\n                \"end_time\": minutes_to_time(model.evaluate(C_end).as_long())\n            })\n        else:\n            itinerary.append({\n                \"action\": \"meet\",\n                \"location\": \"Presidio\",\n                \"person\": \"Charles\",\n                \"start_time\": minutes_to_time(model.evaluate(C_start).as_long()),\n                \"end_time\": minutes_to_time(model.evaluate(C_end).as_long())\n            })\n            itinerary.append({\n                \"action\": \"meet\",\n                \"location\": \"Union Square\",\n                \"person\": \"Richard\",\n                \"start_time\": minutes_to_time(model.evaluate(R_start).as_long()),\n                \"end_time\": minutes_to_time(model.evaluate(R_end).as_long())\n            })\n    elif has_R:\n        itinerary.append({\n            \"action\": \"meet\",\n            \"location\": \"Union Square\",\n            \"person\": \"Richard\",\n            \"start_time\": minutes_to_time(model.evaluate(R_start).as_long()),\n            \"end_time\": minutes_to_time(model.evaluate(R_end).as_long())\n        })\n    elif has_C:\n        itinerary.append({\n            \"action\": \"meet\",\n            \"location\": \"Presidio\",\n            \"person\": \"Charles\",\n            \"start_time\": minutes_to_time(model.evaluate(C_start).as_long()),\n            \"end_time\": minutes_to_time(model.evaluate(C_end).as_long())\n        })\n    result = {\"itinerary\": itinerary}\n    print(json.dumps(result))\nelse:\n    print(json.dumps({\"itinerary\": []}))"
+}

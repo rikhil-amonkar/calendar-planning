@@ -1,0 +1,37 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": true,
+    "execution_output": "{\"itinerary\": []}",
+    "pred": {
+        "itinerary": []
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Presidio",
+                "person": "Robert",
+                "start_time": "11:15",
+                "end_time": "13:15"
+            }
+        ]
+    },
+    "status": "No plan generated",
+    "violated_constraint": {
+        "no_valid_meetings": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 49.44727420806885,
+        "execution_time": 0.08607602119445801,
+        "constraint_eval_time": 1.52587890625e-05,
+        "pred_extract_time": 0.4308750629425049,
+        "gold_extract_time": 2.86102294921875e-05,
+        "total_tokens": 3470,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import json\nfrom z3 import Optimize, Int\n\ndef minutes(h, m):\n    return h * 60 + m\n\ndef fmt_time(total_min):\n    h = total_min // 60\n    m = total_min % 60\n    return f\"{h}:{m:02d}\"\n\ndef plan_schedule():\n    # Input parameters (can be adjusted as needed)\n    params = {\n        \"start_location\": \"Nob Hill\",\n        \"start_time\": minutes(9, 0),  # 9:00\n        \"people\": [\n            {\n                \"name\": \"Robert\",\n                \"location\": \"Presidio\",\n                \"avail_start\": minutes(11, 15),  # 11:15\n                \"avail_end\": minutes(17, 45),    # 17:45\n                \"min_meet\": 120\n            }\n        ],\n        \"travel_minutes\": {\n            (\"Nob Hill\", \"Presidio\"): 17,\n            (\"Presidio\", \"Nob Hill\"): 18\n        }\n    }\n\n    # Extract parameters for Robert (single friend scenario)\n    start_loc = params[\"start_location\"]\n    day_start_time = params[\"start_time\"]\n    robert = params[\"people\"][0]\n    robert_loc = robert[\"location\"]\n    robert_name = robert[\"name\"]\n    r_start = robert[\"avail_start\"]\n    r_end = robert[\"avail_end\"]\n    min_meet = robert[\"min_meet\"]\n    travel_np = params[\"travel_minutes\"][(start_loc, robert_loc)]\n\n    # Z3 variables\n    dep = Int(\"depart_NobHill_to_Presidio\")          # departure time from Nob Hill\n    arr = Int(\"arrive_Presidio\")                     # arrival time at Presidio\n    meet_start = Int(\"meet_start_Robert_Presidio\")   # meeting start at Presidio\n    meet_end = Int(\"meet_end_Robert_Presidio\")       # meeting end at Presidio\n    wait = Int(\"wait_before_meeting\")                # waiting time at Presidio before meeting\n\n    opt = Optimize()\n\n    # Domain constraints: times within a day\n    for v in [dep, arr, meet_start, meet_end, wait]:\n        opt.add(v >= 0, v <= 24 * 60)\n\n    # Travel and meeting feasibility constraints\n    opt.add(dep >= day_start_time)                   # can't depart before arriving at Nob Hill at 9:00\n    opt.add(arr == dep + travel_np)                  # arrival respects travel time\n    opt.add(meet_start >= arr)                       # can't start meeting before arrival\n    opt.add(meet_start >= r_start)                   # can't start before Robert is available\n    opt.add(meet_end <= r_end)                       # can't end after Robert leaves\n    opt.add(meet_end > meet_start)                   # positive meeting duration\n    opt.add(meet_end - meet_start >= min_meet)       # minimum desired meeting time\n    opt.add(wait == meet_start - arr)                # define waiting time\n    opt.add(wait >= 0)                               # can't have negative wait\n\n    # Objectives:\n    # 1) Maximize meeting duration\n    opt.maximize(meet_end - meet_start)\n    # 2) Minimize waiting time (arrive just in time if possible)\n    opt.minimize(wait)\n    # 3) Among ties, maximize the end time (push as late as possible)\n    opt.maximize(meet_end)\n\n    if opt.check() != 1:  # not sat or unknown\n        result = {\"itinerary\": []}\n        print(json.dumps(result))\n        return\n\n    model = opt.model()\n    ms = model[meet_start].as_long()\n    me = model[meet_end].as_long()\n\n    itinerary = [\n        {\n            \"action\": \"meet\",\n            \"location\": robert_loc,\n            \"person\": robert_name,\n            \"start_time\": fmt_time(ms),\n            \"end_time\": fmt_time(me)\n        }\n    ]\n\n    print(json.dumps({\"itinerary\": itinerary}, ensure_ascii=False))\n\nif __name__ == \"__main__\":\n    plan_schedule()"
+}

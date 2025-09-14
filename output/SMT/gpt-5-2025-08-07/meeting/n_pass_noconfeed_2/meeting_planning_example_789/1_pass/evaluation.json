@@ -1,0 +1,115 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"itinerary\": [\n    {\n      \"action\": \"meet\",\n      \"location\": \"Bayview\",\n      \"person\": \"James\",\n      \"start_time\": \"9:23\",\n      \"end_time\": \"10:53\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Russian Hill\",\n      \"person\": \"Betty\",\n      \"start_time\": \"11:16\",\n      \"end_time\": \"13:01\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Presidio\",\n      \"person\": \"Timothy\",\n      \"start_time\": \"13:15\",\n      \"end_time\": \"14:45\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Alamo Square\",\n      \"person\": \"Melissa\",\n      \"start_time\": \"15:04\",\n      \"end_time\": \"16:49\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Haight-Ashbury\",\n      \"person\": \"Joshua\",\n      \"start_time\": \"16:54\",\n      \"end_time\": \"18:24\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Sunset District\",\n      \"person\": \"Emily\",\n      \"start_time\": \"19:30\",\n      \"end_time\": \"21:30\"\n    }\n  ]\n}",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Bayview",
+                "person": "James",
+                "start_time": "9:23",
+                "end_time": "10:53"
+            },
+            {
+                "action": "meet",
+                "location": "Russian Hill",
+                "person": "Betty",
+                "start_time": "11:16",
+                "end_time": "13:01"
+            },
+            {
+                "action": "meet",
+                "location": "Presidio",
+                "person": "Timothy",
+                "start_time": "13:15",
+                "end_time": "14:45"
+            },
+            {
+                "action": "meet",
+                "location": "Alamo Square",
+                "person": "Melissa",
+                "start_time": "15:04",
+                "end_time": "16:49"
+            },
+            {
+                "action": "meet",
+                "location": "Haight-Ashbury",
+                "person": "Joshua",
+                "start_time": "16:54",
+                "end_time": "18:24"
+            },
+            {
+                "action": "meet",
+                "location": "Sunset District",
+                "person": "Emily",
+                "start_time": "19:30",
+                "end_time": "21:30"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Russian Hill",
+                "person": "Betty",
+                "start_time": "9:13",
+                "end_time": "10:58"
+            },
+            {
+                "action": "meet",
+                "location": "Alamo Square",
+                "person": "Melissa",
+                "start_time": "11:13",
+                "end_time": "12:58"
+            },
+            {
+                "action": "meet",
+                "location": "Haight-Ashbury",
+                "person": "Joshua",
+                "start_time": "13:03",
+                "end_time": "14:33"
+            },
+            {
+                "action": "meet",
+                "location": "Marina District",
+                "person": "Jeffrey",
+                "start_time": "14:50",
+                "end_time": "15:35"
+            },
+            {
+                "action": "meet",
+                "location": "Bayview",
+                "person": "James",
+                "start_time": "16:02",
+                "end_time": "17:32"
+            },
+            {
+                "action": "meet",
+                "location": "Sunset District",
+                "person": "Emily",
+                "start_time": "19:30",
+                "end_time": "21:30"
+            }
+        ]
+    },
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "constraints_satisfied_but_no_exact_match": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 68.01906251907349,
+        "execution_time": 0.12140703201293945,
+        "constraint_eval_time": 0.00017952919006347656,
+        "pred_extract_time": 3.0297510623931885,
+        "gold_extract_time": 3.552436828613281e-05,
+        "total_tokens": 5657,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import json\nfrom z3 import *\n\ndef minutes(h, m):\n    return h * 60 + m\n\ndef fmt_time(t):\n    h = t // 60\n    m = t % 60\n    return f\"{h}:{m:02d}\"\n\n# Travel times (directed, minutes)\ntravel = {\n    \"Union Square\": {\n        \"Russian Hill\": 13, \"Alamo Square\": 15, \"Haight-Ashbury\": 18, \"Marina District\": 18,\n        \"Bayview\": 15, \"Chinatown\": 7, \"Presidio\": 24, \"Sunset District\": 27\n    },\n    \"Russian Hill\": {\n        \"Union Square\": 10, \"Alamo Square\": 15, \"Haight-Ashbury\": 17, \"Marina District\": 7,\n        \"Bayview\": 23, \"Chinatown\": 9, \"Presidio\": 14, \"Sunset District\": 23\n    },\n    \"Alamo Square\": {\n        \"Union Square\": 14, \"Russian Hill\": 13, \"Haight-Ashbury\": 5, \"Marina District\": 15,\n        \"Bayview\": 16, \"Chinatown\": 15, \"Presidio\": 17, \"Sunset District\": 16\n    },\n    \"Haight-Ashbury\": {\n        \"Union Square\": 19, \"Russian Hill\": 17, \"Alamo Square\": 5, \"Marina District\": 17,\n        \"Bayview\": 18, \"Chinatown\": 19, \"Presidio\": 15, \"Sunset District\": 15\n    },\n    \"Marina District\": {\n        \"Union Square\": 16, \"Russian Hill\": 8, \"Alamo Square\": 15, \"Haight-Ashbury\": 16,\n        \"Bayview\": 27, \"Chinatown\": 15, \"Presidio\": 10, \"Sunset District\": 19\n    },\n    \"Bayview\": {\n        \"Union Square\": 18, \"Russian Hill\": 23, \"Alamo Square\": 16, \"Haight-Ashbury\": 19,\n        \"Marina District\": 27, \"Chinatown\": 19, \"Presidio\": 32, \"Sunset District\": 23\n    },\n    \"Chinatown\": {\n        \"Union Square\": 7, \"Russian Hill\": 7, \"Alamo Square\": 17, \"Haight-Ashbury\": 19,\n        \"Marina District\": 12, \"Bayview\": 20, \"Presidio\": 19, \"Sunset District\": 29\n    },\n    \"Presidio\": {\n        \"Union Square\": 22, \"Russian Hill\": 14, \"Alamo Square\": 19, \"Haight-Ashbury\": 15,\n        \"Marina District\": 11, \"Bayview\": 31, \"Chinatown\": 21, \"Sunset District\": 15\n    },\n    \"Sunset District\": {\n        \"Union Square\": 30, \"Russian Hill\": 24, \"Alamo Square\": 17, \"Haight-Ashbury\": 15,\n        \"Marina District\": 21, \"Bayview\": 22, \"Chinatown\": 30, \"Presidio\": 16\n    }\n}\n\n# People, locations, availability windows, and minimum meeting durations (minutes)\npeople = {\n    \"Betty\":    {\"location\": \"Russian Hill\",   \"start\": minutes(7,0),   \"end\": minutes(16,45), \"min_duration\": 105},\n    \"Melissa\":  {\"location\": \"Alamo Square\",   \"start\": minutes(9,30),  \"end\": minutes(17,15), \"min_duration\": 105},\n    \"Joshua\":   {\"location\": \"Haight-Ashbury\", \"start\": minutes(12,15), \"end\": minutes(19,0),  \"min_duration\": 90},\n    \"Jeffrey\":  {\"location\": \"Marina District\",\"start\": minutes(12,15), \"end\": minutes(18,0),  \"min_duration\": 45},\n    \"James\":    {\"location\": \"Bayview\",        \"start\": minutes(7,30),  \"end\": minutes(20,0),  \"min_duration\": 90},\n    \"Anthony\":  {\"location\": \"Chinatown\",      \"start\": minutes(11,45), \"end\": minutes(13,30), \"min_duration\": 75},\n    \"Timothy\":  {\"location\": \"Presidio\",       \"start\": minutes(12,30), \"end\": minutes(14,45), \"min_duration\": 90},\n    \"Emily\":    {\"location\": \"Sunset District\",\"start\": minutes(19,30), \"end\": minutes(21,30), \"min_duration\": 120}\n}\n\nstart_location = \"Union Square\"\nday_start = minutes(9,0)  # 9:00\n\n# Z3 model\nopt = Optimize()\n\n# Variables for each person\ns_vars = {}   # start times\ne_vars = {}   # end times\nmet_vars = {} # whether we meet them\n\nfor name, info in people.items():\n    s = Int(f\"s_{name}\")\n    e = Int(f\"e_{name}\")\n    met = Bool(f\"met_{name}\")\n    s_vars[name] = s\n    e_vars[name] = e\n    met_vars[name] = met\n\n    # Meeting duration fixed to minimum required if met, else e == s (no meeting)\n    duration = info[\"min_duration\"]\n    # Availability constraints only if met\n    opt.add(Implies(met, And(\n        s >= info[\"start\"],\n        e <= info[\"end\"],\n        e == s + duration,\n        s >= day_start + travel[start_location][info[\"location\"]]\n    )))\n    # If not met, ensure zero duration (e == s) to keep times bounded and harmless\n    opt.add(Implies(Not(met), e == s))\n\n# Pairwise sequencing with travel time if both are met\nnames = list(people.keys())\nfor i in range(len(names)):\n    for j in range(i+1, len(names)):\n        ni = names[i]; nj = names[j]\n        li = people[ni][\"location\"]; lj = people[nj][\"location\"]\n        ti_to_j = travel[li][lj]\n        tj_to_i = travel[lj][li]\n        si = s_vars[ni]; ei = e_vars[ni]\n        sj = s_vars[nj]; ej = e_vars[nj]\n        mi = met_vars[ni]; mj = met_vars[nj]\n        opt.add(Implies(And(mi, mj),\n                        Or(ei + ti_to_j <= sj,\n                           ej + tj_to_i <= si)))\n\n# Objective: maximize number of friends met\ntotal_met = Sum([If(met_vars[n], 1, 0) for n in names])\nopt.maximize(total_met)\n\n# Tie-breaker: maximize total minutes met (prefers longer meetings if equal count)\ntotal_minutes = Sum([If(met_vars[n], people[n][\"min_duration\"], 0) for n in names])\nopt.maximize(total_minutes)\n\n# Solve\nif opt.check() != sat:\n    result = {\"itinerary\": []}\n    print(json.dumps(result, ensure_ascii=False, indent=2))\nelse:\n    model = opt.model()\n    # Build itinerary from met friends\n    itinerary = []\n    for name in names:\n        if is_true(model.eval(met_vars[name])):\n            s = model.eval(s_vars[name]).as_long()\n            e = model.eval(e_vars[name]).as_long()\n            itinerary.append({\n                \"action\": \"meet\",\n                \"location\": people[name][\"location\"],\n                \"person\": name,\n                \"start_time\": fmt_time(s),\n                \"end_time\": fmt_time(e)\n            })\n    # Sort by start time\n    itinerary.sort(key=lambda x: (int(x[\"start_time\"].split(\":\")[0])*60 + int(x[\"start_time\"].split(\":\")[1])))\n    result = {\"itinerary\": itinerary}\n    print(json.dumps(result, ensure_ascii=False, indent=2))"
+}

@@ -1,0 +1,71 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\"itinerary\": [{\"action\": \"meet\", \"location\": \"Fisherman's Wharf\", \"person\": \"Jason\", \"start_time\": \"16:00\", \"end_time\": \"16:30\"}, {\"action\": \"meet\", \"location\": \"Embarcadero\", \"person\": \"Jessica\", \"start_time\": \"16:45\", \"end_time\": \"17:15\"}, {\"action\": \"meet\", \"location\": \"Richmond District\", \"person\": \"Sandra\", \"start_time\": \"18:30\", \"end_time\": \"20:30\"}]}",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Fisherman's Wharf",
+                "person": "Jason",
+                "start_time": "16:00",
+                "end_time": "16:30"
+            },
+            {
+                "action": "meet",
+                "location": "Embarcadero",
+                "person": "Jessica",
+                "start_time": "16:45",
+                "end_time": "17:15"
+            },
+            {
+                "action": "meet",
+                "location": "Richmond District",
+                "person": "Sandra",
+                "start_time": "18:30",
+                "end_time": "20:30"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Fisherman's Wharf",
+                "person": "Jason",
+                "start_time": "16:00",
+                "end_time": "16:30"
+            },
+            {
+                "action": "meet",
+                "location": "Embarcadero",
+                "person": "Jessica",
+                "start_time": "16:45",
+                "end_time": "17:15"
+            },
+            {
+                "action": "meet",
+                "location": "Richmond District",
+                "person": "Sandra",
+                "start_time": "18:30",
+                "end_time": "20:30"
+            }
+        ]
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 98.05842232704163,
+        "execution_time": 0.08003759384155273,
+        "constraint_eval_time": 4.601478576660156e-05,
+        "pred_extract_time": 1.3284399509429932,
+        "gold_extract_time": 6.4849853515625e-05,
+        "total_tokens": 5540,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import json\nfrom z3 import *\n\ndef format_time(t):\n    # t is an integer representing minutes from midnight.\n    h = t // 60\n    m = t % 60\n    return f\"{h}:{m:02d}\"\n\ndef main():\n    # Create an Optimize solver instance.\n    opt = Optimize()\n\n    # Define the starting time (arrival at Bayview at 9:00AM = 9*60 = 540 minutes).\n    start_time = 540\n\n    # Travel times (in minutes)\n    # These will be used depending on which meeting was last.\n    travel_Bayview_Fisher = 25\n    travel_Bayview_Embar = 19\n    travel_Bayview_Richmond = 25\n    travel_Fisher_Embar = 8\n    travel_Fisher_Richmond = 18\n    travel_Embar_Richmond = 21\n\n    # Define meeting time variables for each friend, in minutes from midnight.\n    s_jason = Int('s_jason')     # start time for Jason meeting at Fisherman's Wharf\n    e_jason = Int('e_jason')     # end time for Jason meeting\n\n    s_jessica = Int('s_jessica') # start time for Jessica meeting at Embarcadero\n    e_jessica = Int('e_jessica') # end time for Jessica meeting\n\n    s_sandra = Int('s_sandra')   # start time for Sandra meeting at Richmond District\n    e_sandra = Int('e_sandra')   # end time for Sandra meeting\n\n    # Define Boolean flags indicating whether to schedule a meeting with each friend.\n    meet_jason   = Bool('meet_jason')\n    meet_jessica = Bool('meet_jessica')\n    meet_sandra  = Bool('meet_sandra')\n\n    # Availability and minimum meeting duration constraints.\n    # Jason is available from 16:00 (960) to 16:45 (1005), need at least 30 minutes.\n    opt.add(Implies(meet_jason, s_jason >= 960))\n    opt.add(Implies(meet_jason, e_jason <= 1005))\n    opt.add(Implies(meet_jason, e_jason - s_jason >= 30))\n    opt.add(Implies(meet_jason, s_jason >= start_time + travel_Bayview_Fisher))  # Travel from Bayview\n\n    # Jessica is available from 16:45 (1005) to 19:00 (1140), need at least 30 minutes.\n    opt.add(Implies(meet_jessica, s_jessica >= 1005))\n    opt.add(Implies(meet_jessica, e_jessica <= 1140))\n    opt.add(Implies(meet_jessica, e_jessica - s_jessica >= 30))\n    # Travel to Jessica: if Jason met then from Fisherman's Wharf, else from Bayview.\n    opt.add(Implies(meet_jessica,\n                    s_jessica >= If(meet_jason, e_jason + travel_Fisher_Embar, start_time + travel_Bayview_Embar)))\n\n    # Sandra is available from 18:30 (1110) to 21:45 (1305), need at least 120 minutes.\n    opt.add(Implies(meet_sandra, s_sandra >= 1110))\n    opt.add(Implies(meet_sandra, e_sandra <= 1305))\n    opt.add(Implies(meet_sandra, e_sandra - s_sandra >= 120))\n    # Travel to Sandra: if Jessica met then from Embarcadero,\n    # else if Jason met then from Fisherman's Wharf,\n    # else from Bayview.\n    opt.add(Implies(meet_sandra,\n                    s_sandra >= If(meet_jessica, e_jessica + travel_Embar_Richmond,\n                                   If(meet_jason, e_jason + travel_Fisher_Richmond, start_time + travel_Bayview_Richmond))))\n\n    # If a meeting is not scheduled, fix its start and end times to 0.\n    opt.add(Implies(Not(meet_jason), And(s_jason == 0, e_jason == 0)))\n    opt.add(Implies(Not(meet_jessica), And(s_jessica == 0, e_jessica == 0)))\n    opt.add(Implies(Not(meet_sandra), And(s_sandra == 0, e_sandra == 0)))\n\n    # Basic sanity: if meeting is scheduled, start time must be before end time.\n    opt.add(Implies(meet_jason, s_jason < e_jason))\n    opt.add(Implies(meet_jessica, s_jessica < e_jessica))\n    opt.add(Implies(meet_sandra, s_sandra < e_sandra))\n\n    # Objective: maximize the number of meetings.\n    num_meetings = If(meet_jason, 1, 0) + If(meet_jessica, 1, 0) + If(meet_sandra, 1, 0)\n    opt.maximize(num_meetings)\n\n    # Check if a solution exists and extract it.\n    if opt.check() == sat:\n        m = opt.model()\n\n        itinerary = []\n\n        # Build a list of scheduled meetings with their computed times and locations.\n        meetings = []\n        if m.evaluate(meet_jason):\n            start_val = m.evaluate(s_jason).as_long()\n            end_val = m.evaluate(e_jason).as_long()\n            meetings.append((start_val, {\n                \"action\": \"meet\",\n                \"location\": \"Fisherman's Wharf\",\n                \"person\": \"Jason\",\n                \"start_time\": format_time(start_val),\n                \"end_time\": format_time(end_val)\n            }))\n        if m.evaluate(meet_jessica):\n            start_val = m.evaluate(s_jessica).as_long()\n            end_val = m.evaluate(e_jessica).as_long()\n            meetings.append((start_val, {\n                \"action\": \"meet\",\n                \"location\": \"Embarcadero\",\n                \"person\": \"Jessica\",\n                \"start_time\": format_time(start_val),\n                \"end_time\": format_time(end_val)\n            }))\n        if m.evaluate(meet_sandra):\n            start_val = m.evaluate(s_sandra).as_long()\n            end_val = m.evaluate(e_sandra).as_long()\n            meetings.append((start_val, {\n                \"action\": \"meet\",\n                \"location\": \"Richmond District\",\n                \"person\": \"Sandra\",\n                \"start_time\": format_time(start_val),\n                \"end_time\": format_time(end_val)\n            }))\n\n        # Sort the meetings by start time.\n        meetings.sort(key=lambda x: x[0])\n        itinerary = [entry for _, entry in meetings]\n\n        # Prepare the output JSON.\n        result = {\"itinerary\": itinerary}\n        print(json.dumps(result))\n    else:\n        # If no schedule is feasible, output an empty itinerary.\n        print(json.dumps({\"itinerary\": []}))\n\nif __name__ == \"__main__\":\n    main()"
+}

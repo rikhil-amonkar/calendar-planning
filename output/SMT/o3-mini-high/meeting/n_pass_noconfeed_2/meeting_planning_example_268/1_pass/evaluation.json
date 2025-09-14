@@ -1,0 +1,73 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\"itinerary\": [{\"action\": \"meet\", \"location\": \"Alamo Square\", \"person\": \"Timothy\", \"start_time\": \"14:30\", \"end_time\": \"16:15\"}, {\"action\": \"meet\", \"location\": \"Russian Hill\", \"person\": \"Joseph\", \"start_time\": \"17:31\", \"end_time\": \"18:31\"}, {\"action\": \"meet\", \"location\": \"Presidio\", \"person\": \"Mark\", \"start_time\": \"18:45\", \"end_time\": \"19:45\"}]}",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Alamo Square",
+                "person": "Timothy",
+                "start_time": "14:30",
+                "end_time": "16:15"
+            },
+            {
+                "action": "meet",
+                "location": "Russian Hill",
+                "person": "Joseph",
+                "start_time": "17:31",
+                "end_time": "18:31"
+            },
+            {
+                "action": "meet",
+                "location": "Presidio",
+                "person": "Mark",
+                "start_time": "18:45",
+                "end_time": "19:45"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Alamo Square",
+                "person": "Timothy",
+                "start_time": "12:00",
+                "end_time": "13:45"
+            },
+            {
+                "action": "meet",
+                "location": "Presidio",
+                "person": "Mark",
+                "start_time": "18:45",
+                "end_time": "19:45"
+            },
+            {
+                "action": "meet",
+                "location": "Russian Hill",
+                "person": "Joseph",
+                "start_time": "19:59",
+                "end_time": "20:59"
+            }
+        ]
+    },
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "constraints_satisfied_but_no_exact_match": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 111.39184498786926,
+        "execution_time": 0.09466719627380371,
+        "constraint_eval_time": 0.0001347064971923828,
+        "pred_extract_time": 3.7885348796844482,
+        "gold_extract_time": 3.0040740966796875e-05,
+        "total_tokens": 4931,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import json\nfrom z3 import *\n\ndef minutes_to_time(m):\n    h = m // 60\n    mi = m % 60\n    return f\"{h}:{mi:02d}\"\n\ndef main():\n    # Create an Optimize object.\n    opt = Optimize()\n\n    # Define friend information.\n    # Times are in minutes from midnight.\n    # Golden Gate Park arrival time: 9:00 AM = 540.\n    # Timothy: available 12:00 (720) to 16:15 (975), min meeting 105 minutes, location \"Alamo Square\"\n    # Mark: available 18:45 (1125) to 21:00 (1260), min meeting 60 minutes, location \"Presidio\"\n    # Joseph: available 16:45 (1005) to 21:30 (1290), min meeting 60 minutes, location \"Russian Hill\"\n    friends = [\n        {\"name\": \"Timothy\", \"location\": \"Alamo Square\", \"avail_start\": 720, \"avail_end\": 975, \"min_dur\": 105},\n        {\"name\": \"Mark\",    \"location\": \"Presidio\",      \"avail_start\": 1125, \"avail_end\": 1260, \"min_dur\": 60},\n        {\"name\": \"Joseph\",  \"location\": \"Russian Hill\",  \"avail_start\": 1005, \"avail_end\": 1290, \"min_dur\": 60}\n    ]\n    \n    # Travel time from Golden Gate Park to each friend's location.\n    # Index 0: Alamo Square, 1: Presidio, 2: Russian Hill.\n    ggp_to = [10, 11, 19]\n    \n    # Matrix of travel times (in minutes) between the friends' locations.\n    # Order in friends list: 0 -> Alamo Square, 1 -> Presidio, 2 -> Russian Hill.\n    # For example, travel[0][1] is travel time from Alamo Square to Presidio.\n    travel = [\n        [0, 18, 13],  # From Alamo Square to Presidio: 18, to Russian Hill: 13.\n        [18, 0, 14],  # From Presidio to Alamo Square: 18, to Russian Hill: 14.\n        [15, 14, 0]   # From Russian Hill to Alamo Square: 15, to Presidio: 14.\n    ]\n    \n    # Decision variables for the ordering of meetings.\n    # We embed the order as three integer variables which represent indices in {0,1,2}.\n    pos1 = Int('pos1')\n    pos2 = Int('pos2')\n    pos3 = Int('pos3')\n    opt.add(And(pos1 >= 0, pos1 < 3))\n    opt.add(And(pos2 >= 0, pos2 < 3))\n    opt.add(And(pos3 >= 0, pos3 < 3))\n    opt.add(Distinct(pos1, pos2, pos3))\n    \n    # Meeting start and end time variables for each friend (in minutes from midnight).\n    S = [Int(f\"S_{i}\") for i in range(3)]\n    E = [Int(f\"E_{i}\") for i in range(3)]\n    \n    # Add constraints for each friend's meeting availability and minimum duration.\n    for i, f in enumerate(friends):\n        # Meeting must start no earlier than the friend's available start.\n        opt.add(S[i] >= f[\"avail_start\"])\n        # Meeting must end no later than the friend's available end.\n        opt.add(E[i] <= f[\"avail_end\"])\n        # Meeting duration must be at least the minimum required.\n        opt.add(E[i] - S[i] >= f[\"min_dur\"])\n    \n    # Constraint for the first meeting: must account for travel from Golden Gate Park.\n    # We require: if friend i is scheduled first (pos1 == i) then S[i] >= arrival time + travel time.\n    for i in range(3):\n        opt.add(Implies(pos1 == i, S[i] >= 540 + ggp_to[i]))\n    \n    # Constraint for ordering between the first and second meeting.\n    # If friend i is first and friend j is second, then meeting j must start after finishing i plus travel time.\n    for i in range(3):\n        for j in range(3):\n            if i != j:\n                opt.add(Implies(And(pos1 == i, pos2 == j),\n                                  S[j] >= E[i] + travel[i][j]))\n                \n    # Constraint for ordering between the second and third meeting.\n    for i in range(3):\n        for j in range(3):\n            if i != j:\n                opt.add(Implies(And(pos2 == i, pos3 == j),\n                                  S[j] >= E[i] + travel[i][j]))\n    \n    # Define finish_time as the end time of the meeting that is scheduled last (at pos3).\n    finish_time = Int('finish_time')\n    finish_time_expr = If(pos3 == 0, E[0], If(pos3 == 1, E[1], E[2]))\n    opt.add(finish_time == finish_time_expr)\n    \n    # Set objective: minimize the finish time of the itinerary.\n    opt.minimize(finish_time)\n    \n    # Check for satisfiability and get the optimal model.\n    if opt.check() == sat:\n        m = opt.model()\n        itinerary = []\n        # Retrieve the itinerary order: pos1, pos2, pos3.\n        order_vars = [pos1, pos2, pos3]\n        for pos_var in order_vars:\n            friend_index = m.eval(pos_var).as_long()\n            start_time = m.eval(S[friend_index]).as_long()\n            end_time = m.eval(E[friend_index]).as_long()\n            itinerary.append({\n                \"action\": \"meet\",\n                \"location\": friends[friend_index][\"location\"],\n                \"person\": friends[friend_index][\"name\"],\n                \"start_time\": minutes_to_time(start_time),\n                \"end_time\": minutes_to_time(end_time)\n            })\n        result = {\"itinerary\": itinerary}\n        print(json.dumps(result))\n    else:\n        # If no valid schedule is found, output an empty itinerary.\n        print(json.dumps({\"itinerary\": []}))\n\nif __name__ == \"__main__\":\n    main()"
+}

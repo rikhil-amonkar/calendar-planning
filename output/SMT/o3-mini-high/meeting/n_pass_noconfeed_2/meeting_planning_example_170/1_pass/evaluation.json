@@ -1,0 +1,59 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\"itinerary\": [{\"action\": \"meet\", \"location\": \"Union Square\", \"person\": \"Emily\", \"start_time\": \"16:00\", \"end_time\": \"17:15\"}, {\"action\": \"meet\", \"location\": \"Russian Hill\", \"person\": \"Margaret\", \"start_time\": \"19:00\", \"end_time\": \"21:00\"}]}",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Union Square",
+                "person": "Emily",
+                "start_time": "16:00",
+                "end_time": "17:15"
+            },
+            {
+                "action": "meet",
+                "location": "Russian Hill",
+                "person": "Margaret",
+                "start_time": "19:00",
+                "end_time": "21:00"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Union Square",
+                "person": "Emily",
+                "start_time": "16:00",
+                "end_time": "16:45"
+            },
+            {
+                "action": "meet",
+                "location": "Russian Hill",
+                "person": "Margaret",
+                "start_time": "19:00",
+                "end_time": "21:00"
+            }
+        ]
+    },
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "constraints_satisfied_but_no_exact_match": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 50.69756245613098,
+        "execution_time": 0.0881032943725586,
+        "constraint_eval_time": 0.00021004676818847656,
+        "pred_extract_time": 1.0385222434997559,
+        "gold_extract_time": 4.57763671875e-05,
+        "total_tokens": 2262,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import json\nfrom z3 import Optimize, Int, sat\n\ndef minutes_to_time(m):\n    hour = m // 60\n    minute = m % 60\n    return f\"{hour}:{minute:02d}\"\n\ndef main():\n    opt = Optimize()\n    \n    # Define decision variables for Emily's meeting start and end times (in minutes from midnight)\n    # 9:00 AM is 540, 16:00 is 960, 17:15 is 1035, 19:00 is 1140, 21:00 is 1260.\n    e_start = Int('e_start')\n    e_end = Int('e_end')\n    \n    # Fixed times for Margaret's meeting at Russian Hill.\n    m_start = 1140  # 19:00\n    m_end = 1260    # 21:00\n    \n    # Add constraints for Emily's meeting at Union Square.\n    # Emily is available from 16:00 (960) to 17:15 (1035) and meeting must be at least 45 minutes.\n    opt.add(e_start >= 960)\n    opt.add(e_end <= 1035)\n    opt.add(e_end - e_start >= 45)\n    opt.add(e_start < e_end)\n    \n    # Travel constraints:\n    # You arrive at North Beach at 9:00 AM (540) and must travel to Union Square (7 minutes) for Emily.\n    opt.add(540 + 7 <= e_start)\n    \n    # After meeting Emily at Union Square, travel from Union Square to Russian Hill takes 13 minutes.\n    # This travel must be completed before Margaret's meeting starts at 19:00 (1140).\n    opt.add(e_end + 13 <= m_start)\n    \n    # Objective: maximize the meeting duration with Emily (and therefore get the most meeting time overall).\n    opt.maximize(e_end - e_start)\n    \n    if opt.check() == sat:\n        model = opt.model()\n        emily_start = model[e_start].as_long()\n        emily_end = model[e_end].as_long()\n        \n        itinerary = [\n            {\n                \"action\": \"meet\",\n                \"location\": \"Union Square\",\n                \"person\": \"Emily\",\n                \"start_time\": minutes_to_time(emily_start),\n                \"end_time\": minutes_to_time(emily_end)\n            },\n            {\n                \"action\": \"meet\",\n                \"location\": \"Russian Hill\",\n                \"person\": \"Margaret\",\n                \"start_time\": minutes_to_time(m_start),\n                \"end_time\": minutes_to_time(m_end)\n            }\n        ]\n        \n        result = {\"itinerary\": itinerary}\n        print(json.dumps(result))\n    else:\n        print(json.dumps({\"itinerary\": []}))\n\nif __name__ == '__main__':\n    main()"
+}

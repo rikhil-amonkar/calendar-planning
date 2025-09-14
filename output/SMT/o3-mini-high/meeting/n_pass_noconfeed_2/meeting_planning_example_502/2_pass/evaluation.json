@@ -1,0 +1,101 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"itinerary\": [\n    {\n      \"action\": \"meet\",\n      \"location\": \"Fisherman's Wharf\",\n      \"person\": \"Rebecca\",\n      \"start_time\": \"9:10\",\n      \"end_time\": \"11:15\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Golden Gate Park\",\n      \"person\": \"Stephanie\",\n      \"start_time\": \"11:40\",\n      \"end_time\": \"14:15\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Chinatown\",\n      \"person\": \"Karen\",\n      \"start_time\": \"14:38\",\n      \"end_time\": \"14:53\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Union Square\",\n      \"person\": \"Brian\",\n      \"start_time\": \"15:00\",\n      \"end_time\": \"15:30\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"North Beach\",\n      \"person\": \"Steven\",\n      \"start_time\": \"15:40\",\n      \"end_time\": \"20:45\"\n    }\n  ]\n}",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Fisherman's Wharf",
+                "person": "Rebecca",
+                "start_time": "9:10",
+                "end_time": "11:15"
+            },
+            {
+                "action": "meet",
+                "location": "Golden Gate Park",
+                "person": "Stephanie",
+                "start_time": "11:40",
+                "end_time": "14:15"
+            },
+            {
+                "action": "meet",
+                "location": "Chinatown",
+                "person": "Karen",
+                "start_time": "14:38",
+                "end_time": "14:53"
+            },
+            {
+                "action": "meet",
+                "location": "Union Square",
+                "person": "Brian",
+                "start_time": "15:00",
+                "end_time": "15:30"
+            },
+            {
+                "action": "meet",
+                "location": "North Beach",
+                "person": "Steven",
+                "start_time": "15:40",
+                "end_time": "20:45"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Fisherman's Wharf",
+                "person": "Rebecca",
+                "start_time": "9:10",
+                "end_time": "9:40"
+            },
+            {
+                "action": "meet",
+                "location": "Golden Gate Park",
+                "person": "Stephanie",
+                "start_time": "11:00",
+                "end_time": "12:45"
+            },
+            {
+                "action": "meet",
+                "location": "Chinatown",
+                "person": "Karen",
+                "start_time": "13:45",
+                "end_time": "14:00"
+            },
+            {
+                "action": "meet",
+                "location": "Union Square",
+                "person": "Brian",
+                "start_time": "15:00",
+                "end_time": "15:30"
+            },
+            {
+                "action": "meet",
+                "location": "North Beach",
+                "person": "Steven",
+                "start_time": "15:40",
+                "end_time": "17:40"
+            }
+        ]
+    },
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "constraints_satisfied_but_no_exact_match": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 2,
+    "timing": {
+        "api_call_time": 27.261317253112793,
+        "execution_time": 0.11864805221557617,
+        "constraint_eval_time": 0.00025343894958496094,
+        "pred_extract_time": 2.3360865116119385,
+        "gold_extract_time": 5.8650970458984375e-05,
+        "total_tokens": 7061,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "#!/usr/bin/env python3\nfrom z3 import Int, Bool, Optimize, If, And, Or, Not, Implies, sat, Sum\nimport json\n\ndef format_time(minutes):\n    h = minutes // 60\n    m = minutes % 60\n    return f\"{h}:{m:02d}\"\n\ndef main():\n    travel_times = {\n        (\"Financial District\", \"Golden Gate Park\"): 23,\n        (\"Financial District\", \"Chinatown\"): 5,\n        (\"Financial District\", \"Union Square\"): 9,\n        (\"Financial District\", \"Fisherman's Wharf\"): 10,\n        (\"Financial District\", \"Pacific Heights\"): 13,\n        (\"Financial District\", \"North Beach\"): 7,\n        (\"Golden Gate Park\", \"Financial District\"): 26,\n        (\"Golden Gate Park\", \"Chinatown\"): 23,\n        (\"Golden Gate Park\", \"Union Square\"): 22,\n        (\"Golden Gate Park\", \"Fisherman's Wharf\"): 24,\n        (\"Golden Gate Park\", \"Pacific Heights\"): 16,\n        (\"Golden Gate Park\", \"North Beach\"): 24,\n        (\"Chinatown\", \"Financial District\"): 5,\n        (\"Chinatown\", \"Golden Gate Park\"): 23,\n        (\"Chinatown\", \"Union Square\"): 7,\n        (\"Chinatown\", \"Fisherman's Wharf\"): 8,\n        (\"Chinatown\", \"Pacific Heights\"): 10,\n        (\"Chinatown\", \"North Beach\"): 3,\n        (\"Union Square\", \"Financial District\"): 9,\n        (\"Union Square\", \"Golden Gate Park\"): 22,\n        (\"Union Square\", \"Chinatown\"): 7,\n        (\"Union Square\", \"Fisherman's Wharf\"): 15,\n        (\"Union Square\", \"Pacific Heights\"): 15,\n        (\"Union Square\", \"North Beach\"): 10,\n        (\"Fisherman's Wharf\", \"Financial District\"): 11,\n        (\"Fisherman's Wharf\", \"Golden Gate Park\"): 25,\n        (\"Fisherman's Wharf\", \"Chinatown\"): 12,\n        (\"Fisherman's Wharf\", \"Union Square\"): 13,\n        (\"Fisherman's Wharf\", \"Pacific Heights\"): 12,\n        (\"Fisherman's Wharf\", \"North Beach\"): 6,\n        (\"Pacific Heights\", \"Financial District\"): 13,\n        (\"Pacific Heights\", \"Golden Gate Park\"): 15,\n        (\"Pacific Heights\", \"Chinatown\"): 11,\n        (\"Pacific Heights\", \"Union Square\"): 12,\n        (\"Pacific Heights\", \"Fisherman's Wharf\"): 13,\n        (\"Pacific Heights\", \"North Beach\"): 9,\n        (\"North Beach\", \"Financial District\"): 8,\n        (\"North Beach\", \"Golden Gate Park\"): 22,\n        (\"North Beach\", \"Chinatown\"): 6,\n        (\"North Beach\", \"Union Square\"): 7,\n        (\"North Beach\", \"Fisherman's Wharf\"): 5,\n        (\"North Beach\", \"Pacific Heights\"): 8,\n    }\n    \n    friends = [\n        { \"name\": \"Stephanie\", \"location\": \"Golden Gate Park\", \"avail_start\": 660, \"avail_end\": 900, \"min_meet\": 105 },\n        { \"name\": \"Karen\",     \"location\": \"Chinatown\",        \"avail_start\": 825, \"avail_end\": 990, \"min_meet\": 15  },\n        { \"name\": \"Brian\",     \"location\": \"Union Square\",     \"avail_start\": 900, \"avail_end\": 1035, \"min_meet\": 30 },\n        { \"name\": \"Rebecca\",   \"location\": \"Fisherman's Wharf\",\"avail_start\": 480, \"avail_end\": 675, \"min_meet\": 30 },\n        { \"name\": \"Joseph\",    \"location\": \"Pacific Heights\",  \"avail_start\": 495, \"avail_end\": 570, \"min_meet\": 60 },\n        { \"name\": \"Steven\",    \"location\": \"North Beach\",      \"avail_start\": 870, \"avail_end\": 1245, \"min_meet\": 120 },\n    ]\n    \n    n = len(friends)\n    opt = Optimize()\n    \n    r = [ Bool(f\"r_{i}\") for i in range(n) ]\n    s = [ Int(f\"s_{i}\") for i in range(n) ]\n    e = [ Int(f\"e_{i}\") for i in range(n) ]\n    \n    for i, friend in enumerate(friends):\n        opt.add( Implies(r[i], s[i] >= friend[\"avail_start\"]) )\n        opt.add( Implies(r[i], s[i] >= 540 + travel_times[(\"Financial District\", friend[\"location\"])]) )\n        opt.add( Implies(r[i], e[i] <= friend[\"avail_end\"]) )\n        opt.add( Implies(r[i], e[i] - s[i] >= friend[\"min_meet\"]) )\n        opt.add( Implies(r[i], s[i] >= 0) )\n        opt.add( Implies(r[i], e[i] <= 1440) )\n    \n    for i in range(n):\n        for j in range(i + 1, n):\n            opt.add( Implies( And(r[i], r[j]),\n                Or(\n                    e[i] + travel_times[(friends[i][\"location\"], friends[j][\"location\"])] <= s[j],\n                    e[j] + travel_times[(friends[j][\"location\"], friends[i][\"location\"])] <= s[i]\n                )\n            ))\n    \n    total_meetings = Sum([ If(r[i], 1, 0) for i in range(n) ])\n    opt.maximize(total_meetings)\n    \n    if opt.check() == sat:\n        model = opt.model()\n        schedule = []\n        for i, friend in enumerate(friends):\n            if model.evaluate(r[i]):\n                start_time = model.evaluate(s[i]).as_long()\n                end_time = model.evaluate(e[i]).as_long()\n                schedule.append({\n                    \"person\": friend[\"name\"],\n                    \"location\": friend[\"location\"],\n                    \"start\": start_time,\n                    \"end\": end_time\n                })\n        schedule.sort(key=lambda x: x[\"start\"])\n        \n        itinerary = []\n        for item in schedule:\n            itinerary.append({\n                \"action\": \"meet\",\n                \"location\": item[\"location\"],\n                \"person\": item[\"person\"],\n                \"start_time\": format_time(item[\"start\"]),\n                \"end_time\": format_time(item[\"end\"])\n            })\n        \n        output = { \"itinerary\": itinerary }\n        print(json.dumps(output, indent=2))\n    else:\n        print(json.dumps({\"itinerary\": []}, indent=2))\n\nif __name__ == \"__main__\":\n    main()"
+}

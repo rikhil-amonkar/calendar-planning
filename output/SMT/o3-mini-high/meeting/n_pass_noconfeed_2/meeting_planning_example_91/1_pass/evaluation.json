@@ -1,0 +1,52 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"itinerary\": [\n    {\n      \"action\": \"meet\",\n      \"location\": \"Russian Hill\",\n      \"person\": \"Alice\",\n      \"start_time\": \"9:00\",\n      \"end_time\": \"18:46\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Richmond District\",\n      \"person\": \"Daniel\",\n      \"start_time\": \"19:00\",\n      \"end_time\": \"20:15\"\n    }\n  ]\n}",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Russian Hill",
+                "person": "Alice",
+                "start_time": "9:00",
+                "end_time": "18:46"
+            },
+            {
+                "action": "meet",
+                "location": "Richmond District",
+                "person": "Daniel",
+                "start_time": "19:00",
+                "end_time": "20:15"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Richmond District",
+                "person": "Daniel",
+                "start_time": "19:00",
+                "end_time": "20:15"
+            }
+        ]
+    },
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "constraints_satisfied_but_no_exact_match": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 92.24640345573425,
+        "execution_time": 0.08935189247131348,
+        "constraint_eval_time": 0.00016021728515625,
+        "pred_extract_time": 1.781883955001831,
+        "gold_extract_time": 4.1961669921875e-05,
+        "total_tokens": 3800,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import json\nfrom z3 import Int, Solver, sat\n\ndef minutes_to_time(m):\n    \"\"\"Convert minutes since midnight to a string in H:MM 24-hour format.\"\"\"\n    h = m // 60\n    r = m % 60\n    return f\"{h}:{r:02d}\"\n\ndef main():\n    # We model the day in minutes since midnight.\n    # 9:00 AM  -> 9 * 60 = 540 minutes\n    # 19:00   -> 19 * 60 = 1140 minutes\n    # 20:15   -> 20 * 60 + 15 = 1215 minutes\n    # Travel times:\n    #   Russian Hill -> Richmond District: 14 minutes\n    \n    # Decision variables:\n    # Meeting with our \"local friend\" at Russian Hill.\n    alice_start = Int('alice_start')      # Start time (must be 9:00)\n    alice_end   = Int('alice_end')        # End time (when we depart from Russian Hill)\n    \n    # Our departure time from Russian Hill. (This will be set by the constraints.)\n    departure = Int('departure')\n    \n    # Meeting with Daniel (at Richmond District).\n    daniel_start = Int('daniel_start')    # Time we start meeting Daniel\n    daniel_end   = Int('daniel_end')      # End time of meeting Daniel\n    meeting_duration = Int('meeting_duration')  # Duration of meeting with Daniel\n    \n    # Create the SMT solver and add constraints.\n    s = Solver()\n\n    # We arrive at Russian Hill at 9:00.\n    s.add(alice_start == 9 * 60)  # 540 minutes\n    # We can meet our local friend (Alice) from arrival until we leave.\n    s.add(alice_end == departure)\n    s.add(departure >= alice_start)\n\n    # To meet Daniel, we must travel from Russian Hill to Richmond District.\n    # Travel time is 14 minutes.\n    s.add(daniel_start == departure + 14)\n    \n    # Daniel is at Richmond District from 19:00 (1140 minutes) to 20:15 (1215 minutes).\n    s.add(daniel_start >= 19 * 60)           # Must arrive no earlier than 19:00\n    s.add(daniel_end <= 20 * 60 + 15)          # Meeting must end by 20:15\n\n    # Daniel meeting must last at least 75 minutes.\n    s.add(meeting_duration >= 75)\n    s.add(daniel_end == daniel_start + meeting_duration)\n    \n    # Ensure that the meeting with Daniel fits inside his available window.\n    s.add(meeting_duration <= (20 * 60 + 15) - (departure + 14))\n    \n    # The constraints force a unique departure time:\n    # To start Daniel's meeting no earlier than 19:00 we need: departure + 14 >= 1140  => departure >= 1126.\n    # And to get a full 75-minute meeting, we need: meeting_duration <= 1215 - (departure+14)\n    #   i.e. 75 <= 1215 - (departure+14)  => departure <= 1126.\n    # So departure must be exactly 1126 (i.e. 18:46).\n    s.add(departure == 1126)\n\n    # Solve the constraints.\n    if s.check() == sat:\n        m = s.model()\n        alice_start_val = m[alice_start].as_long()\n        alice_end_val   = m[alice_end].as_long()\n        daniel_start_val = m[daniel_start].as_long()\n        daniel_end_val   = m[daniel_end].as_long()\n        \n        # Build the itinerary.\n        # We'll assume that while waiting at Russian Hill you meet a friend named Alice,\n        # and then you travel and meet Daniel at Richmond District.\n        itinerary = [\n            {\n                \"action\": \"meet\",\n                \"location\": \"Russian Hill\",\n                \"person\": \"Alice\",\n                \"start_time\": minutes_to_time(alice_start_val),\n                \"end_time\": minutes_to_time(alice_end_val)\n            },\n            {\n                \"action\": \"meet\",\n                \"location\": \"Richmond District\",\n                \"person\": \"Daniel\",\n                \"start_time\": minutes_to_time(daniel_start_val),\n                \"end_time\": minutes_to_time(daniel_end_val)\n            }\n        ]\n        \n        result = {\"itinerary\": itinerary}\n        print(json.dumps(result, indent=2))\n    else:\n        print(json.dumps({\"error\": \"No valid meeting schedule found.\"}))\n\nif __name__ == \"__main__\":\n    main()"
+}

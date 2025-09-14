@@ -1,0 +1,71 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"itinerary\": [\n    {\n      \"action\": \"meet\",\n      \"location\": \"North Beach\",\n      \"person\": \"Helen\",\n      \"start_time\": \"9:08\",\n      \"end_time\": \"11:08\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Fisherman's Wharf\",\n      \"person\": \"Kimberly\",\n      \"start_time\": \"16:30\",\n      \"end_time\": \"17:15\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Bayview\",\n      \"person\": \"Patricia\",\n      \"start_time\": \"18:00\",\n      \"end_time\": \"20:00\"\n    }\n  ]\n}",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "North Beach",
+                "person": "Helen",
+                "start_time": "9:08",
+                "end_time": "11:08"
+            },
+            {
+                "action": "meet",
+                "location": "Fisherman's Wharf",
+                "person": "Kimberly",
+                "start_time": "16:30",
+                "end_time": "17:15"
+            },
+            {
+                "action": "meet",
+                "location": "Bayview",
+                "person": "Patricia",
+                "start_time": "18:00",
+                "end_time": "20:00"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "North Beach",
+                "person": "Helen",
+                "start_time": "9:08",
+                "end_time": "11:08"
+            },
+            {
+                "action": "meet",
+                "location": "Fisherman's Wharf",
+                "person": "Kimberly",
+                "start_time": "16:30",
+                "end_time": "17:15"
+            },
+            {
+                "action": "meet",
+                "location": "Bayview",
+                "person": "Patricia",
+                "start_time": "18:00",
+                "end_time": "20:00"
+            }
+        ]
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 111.99487590789795,
+        "execution_time": 0.08817839622497559,
+        "constraint_eval_time": 1.4543533325195312e-05,
+        "pred_extract_time": 1.8311660289764404,
+        "gold_extract_time": 2.47955322265625e-05,
+        "total_tokens": 5081,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\nimport json\n\ndef minutes_to_str(m):\n    hour = m // 60\n    minute = m % 60\n    return f\"{hour}:{minute:02d}\"\n\ndef main():\n    # Create an Optimize object from Z3\n    opt = Optimize()\n    \n    # Define integer variables for the start and end times (in minutes from midnight)\n    h_start = Int(\"h_start\")  # Helen meeting start time (North Beach)\n    h_end   = Int(\"h_end\")    # Helen meeting end time\n    k_start = Int(\"k_start\")  # Kimberly meeting start time (Fisherman's Wharf)\n    k_end   = Int(\"k_end\")    # Kimberly meeting end time\n    p_start = Int(\"p_start\")  # Patricia meeting start time (Bayview)\n    p_end   = Int(\"p_end\")    # Patricia meeting end time\n    finish  = Int(\"finish\")   # Overall finish time (max among meeting end times)\n\n    # Meeting duration constraints\n    opt.add(h_end - h_start >= 120)  # Helen: minimum 120 minutes\n    opt.add(k_end - k_start >= 45)   # Kimberly: minimum 45 minutes\n    opt.add(p_end - p_start >= 120)  # Patricia: minimum 120 minutes\n\n    # Availability windows and travel from starting point (Nob Hill at 9:00 AM => 540 minutes)\n    # For Helen: Meeting at North Beach with travel time 8 minutes from Nob Hill. \n    # Helen is available 7:00 (420 minutes) to 16:45 (1005 minutes).\n    opt.add(h_start >= 540 + 8)  # Must arrive at North Beach no earlier than 548 minutes.\n    opt.add(h_end <= 1005)\n    \n    # For Kimberly: Meeting at Fisherman's Wharf with travel time 11 minutes from Nob Hill.\n    # Kimberly is available from 16:30 (990 minutes) to 21:00 (1260 minutes).\n    opt.add(k_start >= max(540 + 11, 990))  # This forces k_start >= 990.\n    opt.add(k_end <= 1260)\n    \n    # For Patricia: Meeting at Bayview with travel time 19 minutes from Nob Hill.\n    # Patricia is available from 18:00 (1080 minutes) to 21:15 (1275 minutes).\n    opt.add(p_start >= max(540 + 19, 1080))  # p_start >= 1080.\n    opt.add(p_end <= 1275)\n    \n    # Non-overlapping meeting constraints with travel times between meeting locations.\n    # Travel times (in minutes):\n    #   Nob Hill -> North Beach: 8, Nob Hill -> Fisherman's Wharf: 11, Nob Hill -> Bayview: 19.\n    #   North Beach -> Fisherman's Wharf: 5, North Beach -> Bayview: 22.\n    #   Fisherman's Wharf -> North Beach: 6, Fisherman's Wharf -> Bayview: 26.\n    #   Bayview -> North Beach: 21, Bayview -> Fisherman's Wharf: 25.\n    \n    # For each pair of meetings, enforce that one occurs before the other with sufficient travel time.\n    # Helen (North Beach) and Kimberly (Fisherman's Wharf):\n    opt.add(Or(\n        h_end + 5 <= k_start,  # Helen then Kimberly (travel North Beach -> Fisherman's Wharf: 5 min)\n        k_end + 6 <= h_start   # Kimberly then Helen (travel Fisherman's Wharf -> North Beach: 6 min)\n    ))\n    \n    # Helen (North Beach) and Patricia (Bayview):\n    opt.add(Or(\n        h_end + 22 <= p_start,  # Helen then Patricia (travel North Beach -> Bayview: 22 min)\n        p_end + 21 <= h_start   # Patricia then Helen (travel Bayview -> North Beach: 21 min)\n    ))\n    \n    # Kimberly (Fisherman's Wharf) and Patricia (Bayview):\n    opt.add(Or(\n        k_end + 26 <= p_start,  # Kimberly then Patricia (travel Fisherman's Wharf -> Bayview: 26 min)\n        p_end + 25 <= k_start   # Patricia then Kimberly (travel Bayview -> Fisherman's Wharf: 25 min)\n    ))\n    \n    # Define the overall finish time as at least the end of every meeting\n    opt.add(finish >= h_end, finish >= k_end, finish >= p_end)\n    \n    # Objective: minimize the overall finish time for an optimal itinerary\n    opt.minimize(finish)\n    \n    # Solve the scheduling problem\n    if opt.check() == sat:\n        m = opt.model()\n        # Extract the meeting times from the model\n        h_s = m[h_start].as_long()\n        h_e = m[h_end].as_long()\n        k_s = m[k_start].as_long()\n        k_e = m[k_end].as_long()\n        p_s = m[p_start].as_long()\n        p_e = m[p_end].as_long()\n        \n        # Create a list of meetings with their details\n        events = [\n            {\"person\": \"Helen\",    \"location\": \"North Beach\",       \"start\": h_s, \"end\": h_e},\n            {\"person\": \"Kimberly\", \"location\": \"Fisherman's Wharf\", \"start\": k_s, \"end\": k_e},\n            {\"person\": \"Patricia\", \"location\": \"Bayview\",           \"start\": p_s, \"end\": p_e},\n        ]\n        \n        # Sort events in chronological order by start time\n        events.sort(key=lambda evt: evt[\"start\"])\n        \n        # Construct the itinerary with formatted time strings\n        itinerary = []\n        for evt in events:\n            itinerary.append({\n                \"action\": \"meet\",\n                \"location\": evt[\"location\"],\n                \"person\": evt[\"person\"],\n                \"start_time\": minutes_to_str(evt[\"start\"]),\n                \"end_time\": minutes_to_str(evt[\"end\"])\n            })\n        \n        # Output the result as a JSON-formatted dictionary\n        output = {\"itinerary\": itinerary}\n        print(json.dumps(output, indent=2))\n    else:\n        print(json.dumps({\"error\": \"No valid schedule found\"}))\n\nif __name__ == \"__main__\":\n    main()"
+}

@@ -1,0 +1,91 @@
+{
+    "has_execution_error": true,
+    "has_no_plan": false,
+    "execution_output": null,
+    "pred": null,
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Pacific Heights",
+                "person": "Sandra",
+                "start_time": "9:12",
+                "end_time": "11:12"
+            },
+            {
+                "action": "meet",
+                "location": "Fisherman's Wharf",
+                "person": "Robert",
+                "start_time": "11:25",
+                "end_time": "11:40"
+            },
+            {
+                "action": "meet",
+                "location": "Marina District",
+                "person": "Kenneth",
+                "start_time": "11:49",
+                "end_time": "12:34"
+            },
+            {
+                "action": "meet",
+                "location": "Mission District",
+                "person": "Elizabeth",
+                "start_time": "12:54",
+                "end_time": "14:24"
+            },
+            {
+                "action": "meet",
+                "location": "Union Square",
+                "person": "David",
+                "start_time": "15:15",
+                "end_time": "16:00"
+            },
+            {
+                "action": "meet",
+                "location": "Sunset District",
+                "person": "Kimberly",
+                "start_time": "16:27",
+                "end_time": "18:12"
+            },
+            {
+                "action": "meet",
+                "location": "Golden Gate Park",
+                "person": "Amanda",
+                "start_time": "18:23",
+                "end_time": "18:38"
+            },
+            {
+                "action": "meet",
+                "location": "Richmond District",
+                "person": "Melissa",
+                "start_time": "18:45",
+                "end_time": "19:00"
+            },
+            {
+                "action": "meet",
+                "location": "Bayview",
+                "person": "Thomas",
+                "start_time": "19:30",
+                "end_time": "20:00"
+            }
+        ]
+    },
+    "status": "Error",
+    "violated_constraint": {
+        "missing_itinerary": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 186.19718265533447,
+        "execution_time": 0.10546612739562988,
+        "constraint_eval_time": 1.430511474609375e-06,
+        "pred_extract_time": 2.1457672119140625e-06,
+        "gold_extract_time": 6.341934204101562e-05,
+        "total_tokens": 10065,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import json\nfrom z3 import *\n\ndef minutes(h, m):\n    return h * 60 + m\n\ndef time_to_str(t):\n    h = t // 60\n    m = t % 60\n    return f\"{h}:{m:02d}\"\n\ndef build_piecewise_int(index_var, values):\n    # values: list of ints indexed by person id\n    expr = IntVal(0)\n    for i, v in enumerate(values):\n        expr = If(index_var == i, IntVal(v), expr)\n    return expr\n\ndef build_travel_from_start_expr(order_k, persons, distances, start_loc):\n    expr = IntVal(0)\n    for i, p in enumerate(persons):\n        key = (start_loc, p[\"location\"])\n        expr = If(order_k == i, IntVal(distances[key]), expr)\n    return expr\n\ndef build_travel_between_expr(order_prev, order_cur, persons, distances):\n    expr = IntVal(0)\n    for i, pi in enumerate(persons):\n        for j, pj in enumerate(persons):\n            key = (pi[\"location\"], pj[\"location\"])\n            expr = If(And(order_prev == i, order_cur == j), IntVal(distances[key]), expr)\n    return expr\n\ndef main():\n    # Locations and travel times (minutes)\n    locations = [\n        \"Haight-Ashbury\",\n        \"Mission District\",\n        \"Union Square\",\n        \"Pacific Heights\",\n        \"Bayview\",\n        \"Fisherman's Wharf\",\n        \"Marina District\",\n        \"Richmond District\",\n        \"Sunset District\",\n        \"Golden Gate Park\",\n    ]\n\n    # Distances dictionary\n    d = {}\n    # Haight-Ashbury\n    d[(\"Haight-Ashbury\",\"Mission District\")] = 11\n    d[(\"Haight-Ashbury\",\"Union Square\")] = 19\n    d[(\"Haight-Ashbury\",\"Pacific Heights\")] = 12\n    d[(\"Haight-Ashbury\",\"Bayview\")] = 18\n    d[(\"Haight-Ashbury\",\"Fisherman's Wharf\")] = 23\n    d[(\"Haight-Ashbury\",\"Marina District\")] = 17\n    d[(\"Haight-Ashbury\",\"Richmond District\")] = 10\n    d[(\"Haight-Ashbury\",\"Sunset District\")] = 15\n    d[(\"Haight-Ashbury\",\"Golden Gate Park\")] = 7\n    # Mission District\n    d[(\"Mission District\",\"Haight-Ashbury\")] = 12\n    d[(\"Mission District\",\"Union Square\")] = 15\n    d[(\"Mission District\",\"Pacific Heights\")] = 16\n    d[(\"Mission District\",\"Bayview\")] = 14\n    d[(\"Mission District\",\"Fisherman's Wharf\")] = 22\n    d[(\"Mission District\",\"Marina District\")] = 19\n    d[(\"Mission District\",\"Richmond District\")] = 20\n    d[(\"Mission District\",\"Sunset District\")] = 24\n    d[(\"Mission District\",\"Golden Gate Park\")] = 17\n    # Union Square\n    d[(\"Union Square\",\"Haight-Ashbury\")] = 18\n    d[(\"Union Square\",\"Mission District\")] = 14\n    d[(\"Union Square\",\"Pacific Heights\")] = 15\n    d[(\"Union Square\",\"Bayview\")] = 15\n    d[(\"Union Square\",\"Fisherman's Wharf\")] = 15\n    d[(\"Union Square\",\"Marina District\")] = 18\n    d[(\"Union Square\",\"Richmond District\")] = 20\n    d[(\"Union Square\",\"Sunset District\")] = 27\n    d[(\"Union Square\",\"Golden Gate Park\")] = 22\n    # Pacific Heights\n    d[(\"Pacific Heights\",\"Haight-Ashbury\")] = 11\n    d[(\"Pacific Heights\",\"Mission District\")] = 15\n    d[(\"Pacific Heights\",\"Union Square\")] = 12\n    d[(\"Pacific Heights\",\"Bayview\")] = 22\n    d[(\"Pacific Heights\",\"Fisherman's Wharf\")] = 13\n    d[(\"Pacific Heights\",\"Marina District\")] = 6\n    d[(\"Pacific Heights\",\"Richmond District\")] = 12\n    d[(\"Pacific Heights\",\"Sunset District\")] = 21\n    d[(\"Pacific Heights\",\"Golden Gate Park\")] = 15\n    # Bayview\n    d[(\"Bayview\",\"Haight-Ashbury\")] = 19\n    d[(\"Bayview\",\"Mission District\")] = 13\n    d[(\"Bayview\",\"Union Square\")] = 18\n    d[(\"Bayview\",\"Pacific Heights\")] = 23\n    d[(\"Bayview\",\"Fisherman's Wharf\")] = 25\n    d[(\"Bayview\",\"Marina District\")] = 27\n    d[(\"Bayview\",\"Richmond District\")] = 25\n    d[(\"Bayview\",\"Sunset District\")] = 23\n    d[(\"Bayview\",\"Golden Gate Park\")] = 22\n    # Fisherman's Wharf\n    d[(\"Fisherman's Wharf\",\"Haight-Ashbury\")] = 22\n    d[(\"Fisherman's Wharf\",\"Mission District\")] = 22\n    d[(\"Fisherman's Wharf\",\"Union Square\")] = 13\n    d[(\"Fisherman's Wharf\",\"Pacific Heights\")] = 12\n    d[(\"Fisherman's Wharf\",\"Bayview\")] = 26\n    d[(\"Fisherman's Wharf\",\"Marina District\")] = 9\n    d[(\"Fisherman's Wharf\",\"Richmond District\")] = 18\n    d[(\"Fisherman's Wharf\",\"Sunset District\")] = 27\n    d[(\"Fisherman's Wharf\",\"Golden Gate Park\")] = 25\n    # Marina District\n    d[(\"Marina District\",\"Haight-Ashbury\")] = 16\n    d[(\"Marina District\",\"Mission District\")] = 20\n    d[(\"Marina District\",\"Union Square\")] = 16\n    d[(\"Marina District\",\"Pacific Heights\")] = 7\n    d[(\"Marina District\",\"Bayview\")] = 27\n    d[(\"Marina District\",\"Fisherman's Wharf\")] = 10\n    d[(\"Marina District\",\"Richmond District\")] = 11\n    d[(\"Marina District\",\"Sunset District\")] = 19\n    d[(\"Marina District\",\"Golden Gate Park\")] = 18\n    # Richmond District\n    d[(\"Richmond District\",\"Haight-Ashbury\")] = 10\n    d[(\"Richmond District\",\"Mission District\")] = 20\n    d[(\"Richmond District\",\"Union Square\")] = 21\n    d[(\"Richmond District\",\"Pacific Heights\")] = 10\n    d[(\"Richmond District\",\"Bayview\")] = 27\n    d[(\"Richmond District\",\"Fisherman's Wharf\")] = 18\n    d[(\"Richmond District\",\"Marina District\")] = 9\n    d[(\"Richmond District\",\"Sunset District\")] = 11\n    d[(\"Richmond District\",\"Golden Gate Park\")] = 9\n    # Sunset District\n    d[(\"Sunset District\",\"Haight-Ashbury\")] = 15\n    d[(\"Sunset District\",\"Mission District\")] = 25\n    d[(\"Sunset District\",\"Union Square\")] = 30\n    d[(\"Sunset District\",\"Pacific Heights\")] = 21\n    d[(\"Sunset District\",\"Bayview\")] = 22\n    d[(\"Sunset District\",\"Fisherman's Wharf\")] = 29\n    d[(\"Sunset District\",\"Marina District\")] = 21\n    d[(\"Sunset District\",\"Richmond District\")] = 12\n    d[(\"Sunset District\",\"Golden Gate Park\")] = 11\n    # Golden Gate Park\n    d[(\"Golden Gate Park\",\"Haight-Ashbury\")] = 7\n    d[(\"Golden Gate Park\",\"Mission District\")] = 17\n    d[(\"Golden Gate Park\",\"Union Square\")] = 22\n    d[(\"Golden Gate Park\",\"Pacific Heights\")] = 16\n    d[(\"Golden Gate Park\",\"Bayview\")] = 23\n    d[(\"Golden Gate Park\",\"Fisherman's Wharf\")] = 24\n    d[(\"Golden Gate Park\",\"Marina District\")] = 16\n    d[(\"Golden Gate Park\",\"Richmond District\")] = 7\n    d[(\"Golden Gate Park\",\"Sunset District\")] = 10\n\n    # People with constraints\n    persons = [\n        {\"name\": \"Elizabeth\", \"location\": \"Mission District\", \"start\": minutes(10,30), \"end\": minutes(20,0), \"min_duration\": 90},\n        {\"name\": \"David\", \"location\": \"Union Square\", \"start\": minutes(15,15), \"end\": minutes(19,0), \"min_duration\": 45},\n        {\"name\": \"Sandra\", \"location\": \"Pacific Heights\", \"start\": minutes(7,0), \"end\": minutes(20,0), \"min_duration\": 120},\n        {\"name\": \"Thomas\", \"location\": \"Bayview\", \"start\": minutes(19,30), \"end\": minutes(20,30), \"min_duration\": 30},\n        {\"name\": \"Robert\", \"location\": \"Fisherman's Wharf\", \"start\": minutes(10,0), \"end\": minutes(15,0), \"min_duration\": 15},\n        {\"name\": \"Kenneth\", \"location\": \"Marina District\", \"start\": minutes(10,45), \"end\": minutes(13,0), \"min_duration\": 45},\n        {\"name\": \"Melissa\", \"location\": \"Richmond District\", \"start\": minutes(18,15), \"end\": minutes(20,0), \"min_duration\": 15},\n        {\"name\": \"Kimberly\", \"location\": \"Sunset District\", \"start\": minutes(10,15), \"end\": minutes(18,15), \"min_duration\": 105},\n        {\"name\": \"Amanda\", \"location\": \"Golden Gate Park\", \"start\": minutes(7,45), \"end\": minutes(18,45), \"min_duration\": 15},\n    ]\n\n    P = len(persons)\n    start_location = \"Haight-Ashbury\"\n    arrival_time_at_start = minutes(9, 0)\n\n    opt = Optimize()\n    opt.set(priority='lex')\n\n    order = [Int(f\"order_{k}\") for k in range(P)]\n    use = [Bool(f\"use_{k}\") for k in range(P)]\n    start = [Int(f\"start_{k}\") for k in range(P)]\n    end = [Int(f\"end_{k}\") for k in range(P)]\n\n    # Domain constraints\n    for k in range(P):\n        opt.add(And(order[k] >= 0, order[k] < P))\n        opt.add(Implies(use[k], And(start[k] >= 0, end[k] >= 0)))\n    # All persons appear uniquely in order (permutation)\n    opt.add(Distinct(order))\n\n    # Monotonic use: used slots form an initial segment\n    for k in range(1, P):\n        opt.add(Implies(use[k], use[k-1]))\n\n    # Piecewise data arrays\n    durations = [p[\"min_duration\"] for p in persons]\n    avail_starts = [p[\"start\"] for p in persons]\n    avail_ends = [p[\"end\"] for p in persons]\n\n    # Meeting constraints per slot\n    for k in range(P):\n        dur_k = build_piecewise_int(order[k], durations)\n        avs_k = build_piecewise_int(order[k], avail_starts)\n        ave_k = build_piecewise_int(order[k], avail_ends)\n\n        opt.add(Implies(use[k], end[k] == start[k] + dur_k))\n        opt.add(Implies(use[k], start[k] >= avs_k))\n        opt.add(Implies(use[k], end[k] <= ave_k))\n\n    # Travel constraints from start to first meeting\n    t0 = build_travel_from_start_expr(order[0], persons, d, start_location)\n    opt.add(Implies(use[0], start[0] >= arrival_time_at_start + t0))\n\n    # Travel constraints between consecutive used slots\n    for k in range(1, P):\n        t_between = build_travel_between_expr(order[k-1], order[k], persons, d)\n        opt.add(Implies(And(use[k-1], use[k]), start[k] >= end[k-1] + t_between))\n\n    # Objectives\n    num_meetings = Sum([If(use[k], IntVal(1), IntVal(0)) for k in range(P)])\n    last_end_terms = []\n    for k in range(P):\n        if k == P - 1:\n            cond = use[k]\n        else:\n            cond = And(use[k], Not(use[k+1]))\n        last_end_terms.append(If(cond, end[k], IntVal(0)))\n    last_end = Sum(last_end_terms)\n\n    h1 = opt.maximize(num_meetings)\n    h2 = opt.minimize(last_end)\n\n    if opt.check() != sat:\n        print(json.dumps({\"itinerary\": []}))\n        return\n\n    model = opt.model()\n\n    # Build itinerary\n    result = {\"itinerary\": []}\n    for k in range(P):\n        if is_true(model.evaluate(use[k])):\n            pid = model.evaluate(order[k]).as_long()\n            person = persons[pid]\n            s = model.evaluate(start[k]).as_long()\n            e = model.evaluate(end[k]).as_long()\n            result[\"itinerary\"].append({\n                \"action\": \"meet\",\n                \"location\": person[\"location\"],\n                \"person\": person[\"name\"],\n                \"start_time\": time_to_str(s),\n                \"end_time\": time_to_str(e)\n            })\n\n    print(json.dumps(result, indent=2))\n\nif __name__ == \"__main__\":\n    main()"
+}

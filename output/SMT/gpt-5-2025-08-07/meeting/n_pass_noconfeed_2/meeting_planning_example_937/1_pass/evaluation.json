@@ -1,0 +1,141 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"itinerary\": [\n    {\n      \"action\": \"meet\",\n      \"location\": \"Sunset District\",\n      \"person\": \"David\",\n      \"start_time\": \"9:23\",\n      \"end_time\": \"9:38\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Presidio\",\n      \"person\": \"William\",\n      \"start_time\": \"9:54\",\n      \"end_time\": \"10:54\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Alamo Square\",\n      \"person\": \"Kimberly\",\n      \"start_time\": \"11:13\",\n      \"end_time\": \"12:58\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Marina District\",\n      \"person\": \"Mary\",\n      \"start_time\": \"14:45\",\n      \"end_time\": \"15:30\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Nob Hill\",\n      \"person\": \"Patricia\",\n      \"start_time\": \"15:42\",\n      \"end_time\": \"17:42\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Richmond District\",\n      \"person\": \"Charles\",\n      \"start_time\": \"17:56\",\n      \"end_time\": \"18:11\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Embarcadero\",\n      \"person\": \"Ronald\",\n      \"start_time\": \"18:30\",\n      \"end_time\": \"19:00\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Union Square\",\n      \"person\": \"Kenneth\",\n      \"start_time\": \"21:15\",\n      \"end_time\": \"21:30\"\n    }\n  ]\n}",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Sunset District",
+                "person": "David",
+                "start_time": "9:23",
+                "end_time": "9:38"
+            },
+            {
+                "action": "meet",
+                "location": "Presidio",
+                "person": "William",
+                "start_time": "9:54",
+                "end_time": "10:54"
+            },
+            {
+                "action": "meet",
+                "location": "Alamo Square",
+                "person": "Kimberly",
+                "start_time": "11:13",
+                "end_time": "12:58"
+            },
+            {
+                "action": "meet",
+                "location": "Marina District",
+                "person": "Mary",
+                "start_time": "14:45",
+                "end_time": "15:30"
+            },
+            {
+                "action": "meet",
+                "location": "Nob Hill",
+                "person": "Patricia",
+                "start_time": "15:42",
+                "end_time": "17:42"
+            },
+            {
+                "action": "meet",
+                "location": "Richmond District",
+                "person": "Charles",
+                "start_time": "17:56",
+                "end_time": "18:11"
+            },
+            {
+                "action": "meet",
+                "location": "Embarcadero",
+                "person": "Ronald",
+                "start_time": "18:30",
+                "end_time": "19:00"
+            },
+            {
+                "action": "meet",
+                "location": "Union Square",
+                "person": "Kenneth",
+                "start_time": "21:15",
+                "end_time": "21:30"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Sunset District",
+                "person": "David",
+                "start_time": "9:23",
+                "end_time": "9:38"
+            },
+            {
+                "action": "meet",
+                "location": "Presidio",
+                "person": "William",
+                "start_time": "9:54",
+                "end_time": "10:54"
+            },
+            {
+                "action": "meet",
+                "location": "Alamo Square",
+                "person": "Kimberly",
+                "start_time": "11:13",
+                "end_time": "12:58"
+            },
+            {
+                "action": "meet",
+                "location": "Marina District",
+                "person": "Mary",
+                "start_time": "14:45",
+                "end_time": "15:30"
+            },
+            {
+                "action": "meet",
+                "location": "Nob Hill",
+                "person": "Patricia",
+                "start_time": "15:42",
+                "end_time": "17:42"
+            },
+            {
+                "action": "meet",
+                "location": "Richmond District",
+                "person": "Charles",
+                "start_time": "17:56",
+                "end_time": "18:11"
+            },
+            {
+                "action": "meet",
+                "location": "Embarcadero",
+                "person": "Ronald",
+                "start_time": "18:30",
+                "end_time": "19:00"
+            },
+            {
+                "action": "meet",
+                "location": "Union Square",
+                "person": "Kenneth",
+                "start_time": "21:15",
+                "end_time": "21:30"
+            }
+        ]
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 113.99325728416443,
+        "execution_time": 0.18603086471557617,
+        "constraint_eval_time": 7.486343383789062e-05,
+        "pred_extract_time": 4.808587551116943,
+        "gold_extract_time": 9.1552734375e-05,
+        "total_tokens": 8169,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "# SOLUTION:\n# Compute an optimal meeting schedule using Z3 SMT solver\n# The script builds an SMT model with travel and availability constraints,\n# maximizes the number of friends met, and outputs a JSON itinerary.\n\nfrom z3 import *\nimport json\n\ndef time_to_min(tstr):\n    # Not used; times are embedded as minutes directly\n    return 0\n\ndef min_to_str(m):\n    h = m // 60\n    mi = m % 60\n    return f\"{h}:{mi:02d}\"\n\n# Locations\nRH = \"Russian Hill\"\nlocations = [\n    \"Russian Hill\", \"Sunset District\", \"Union Square\", \"Nob Hill\", \"Marina District\",\n    \"Richmond District\", \"Financial District\", \"Embarcadero\", \"The Castro\",\n    \"Alamo Square\", \"Presidio\"\n]\n\n# Travel times in minutes (asymmetric), as provided\nT = {\n    \"Russian Hill\": {\n        \"Sunset District\": 23, \"Union Square\": 10, \"Nob Hill\": 5, \"Marina District\": 7,\n        \"Richmond District\": 14, \"Financial District\": 11, \"Embarcadero\": 8,\n        \"The Castro\": 21, \"Alamo Square\": 15, \"Presidio\": 14\n    },\n    \"Sunset District\": {\n        \"Russian Hill\": 24, \"Union Square\": 30, \"Nob Hill\": 27, \"Marina District\": 21,\n        \"Richmond District\": 12, \"Financial District\": 30, \"Embarcadero\": 30,\n        \"The Castro\": 17, \"Alamo Square\": 17, \"Presidio\": 16\n    },\n    \"Union Square\": {\n        \"Russian Hill\": 13, \"Sunset District\": 27, \"Nob Hill\": 9, \"Marina District\": 18,\n        \"Richmond District\": 20, \"Financial District\": 9, \"Embarcadero\": 11,\n        \"The Castro\": 17, \"Alamo Square\": 15, \"Presidio\": 24\n    },\n    \"Nob Hill\": {\n        \"Russian Hill\": 5, \"Sunset District\": 24, \"Union Square\": 7, \"Marina District\": 11,\n        \"Richmond District\": 14, \"Financial District\": 9, \"Embarcadero\": 9,\n        \"The Castro\": 17, \"Alamo Square\": 11, \"Presidio\": 17\n    },\n    \"Marina District\": {\n        \"Russian Hill\": 8, \"Sunset District\": 19, \"Union Square\": 16, \"Nob Hill\": 12,\n        \"Richmond District\": 11, \"Financial District\": 17, \"Embarcadero\": 14,\n        \"The Castro\": 22, \"Alamo Square\": 15, \"Presidio\": 10\n    },\n    \"Richmond District\": {\n        \"Russian Hill\": 13, \"Sunset District\": 11, \"Union Square\": 21, \"Nob Hill\": 17,\n        \"Marina District\": 9, \"Financial District\": 22, \"Embarcadero\": 19,\n        \"The Castro\": 16, \"Alamo Square\": 13, \"Presidio\": 7\n    },\n    \"Financial District\": {\n        \"Russian Hill\": 11, \"Sunset District\": 30, \"Union Square\": 9, \"Nob Hill\": 8,\n        \"Marina District\": 15, \"Richmond District\": 21, \"Embarcadero\": 4,\n        \"The Castro\": 20, \"Alamo Square\": 17, \"Presidio\": 22\n    },\n    \"Embarcadero\": {\n        \"Russian Hill\": 8, \"Sunset District\": 30, \"Union Square\": 10, \"Nob Hill\": 10,\n        \"Marina District\": 12, \"Richmond District\": 21, \"Financial District\": 5,\n        \"The Castro\": 25, \"Alamo Square\": 19, \"Presidio\": 20\n    },\n    \"The Castro\": {\n        \"Russian Hill\": 18, \"Sunset District\": 17, \"Union Square\": 19, \"Nob Hill\": 16,\n        \"Marina District\": 21, \"Richmond District\": 16, \"Financial District\": 21,\n        \"Embarcadero\": 22, \"Alamo Square\": 8, \"Presidio\": 20\n    },\n    \"Alamo Square\": {\n        \"Russian Hill\": 13, \"Sunset District\": 16, \"Union Square\": 14, \"Nob Hill\": 11,\n        \"Marina District\": 15, \"Richmond District\": 11, \"Financial District\": 17,\n        \"Embarcadero\": 16, \"The Castro\": 8, \"Presidio\": 17\n    },\n    \"Presidio\": {\n        \"Russian Hill\": 14, \"Sunset District\": 15, \"Union Square\": 22, \"Nob Hill\": 18,\n        \"Marina District\": 11, \"Richmond District\": 7, \"Financial District\": 23,\n        \"Embarcadero\": 20, \"The Castro\": 21, \"Alamo Square\": 19\n    }\n}\n\n# Friends data: location, availability window [start, end], minimum duration\n# Times in minutes from midnight\ndef hm(h, m): return h*60 + m\n\nfriends = {\n    \"David\":    {\"location\": \"Sunset District\",     \"start\": hm(9,15),  \"end\": hm(22,0),  \"dur\": 15},\n    \"Kenneth\":  {\"location\": \"Union Square\",        \"start\": hm(21,15), \"end\": hm(21,45), \"dur\": 15},\n    \"Patricia\": {\"location\": \"Nob Hill\",            \"start\": hm(15,0),  \"end\": hm(19,15), \"dur\": 120},\n    \"Mary\":     {\"location\": \"Marina District\",     \"start\": hm(14,45), \"end\": hm(16,45), \"dur\": 45},\n    \"Charles\":  {\"location\": \"Richmond District\",   \"start\": hm(17,15), \"end\": hm(21,0),  \"dur\": 15},\n    \"Joshua\":   {\"location\": \"Financial District\",  \"start\": hm(14,30), \"end\": hm(17,15), \"dur\": 90},\n    \"Ronald\":   {\"location\": \"Embarcadero\",         \"start\": hm(18,15), \"end\": hm(20,45), \"dur\": 30},\n    \"George\":   {\"location\": \"The Castro\",          \"start\": hm(14,15), \"end\": hm(19,0),  \"dur\": 105},\n    \"Kimberly\": {\"location\": \"Alamo Square\",        \"start\": hm(9,0),   \"end\": hm(14,30), \"dur\": 105},\n    \"William\":  {\"location\": \"Presidio\",            \"start\": hm(7,0),   \"end\": hm(12,45), \"dur\": 60},\n}\n\npeople = list(friends.keys())\n\n# SMT variables\nmeet = {p: Bool(f\"meet_{p}\") for p in people}\nstart = {p: Int(f\"start_{p}\") for p in people}\nend = {p: Int(f\"end_{p}\") for p in people}\n\n# Ordering variables between every pair\norder = {}\nfor i in range(len(people)):\n    for j in range(len(people)):\n        if i == j: continue\n        pi, pj = people[i], people[j]\n        order[(pi,pj)] = Bool(f\"ord_{pi}_{pj}\")\n\n# Start-from-origin (Russian Hill at 9:00) precedence flags\nstart_from_origin = {p: Bool(f\"from_start_{p}\") for p in people}\n\nopt = Optimize()\n\n# Helper: Bool to Int\ndef b2i(b):\n    return If(b, 1, 0)\n\n# Domain constraints\nfor p in people:\n    # Non-negativity and within a reasonable day window\n    opt.add(start[p] >= 0, end[p] >= 0, end[p] == start[p] + friends[p][\"dur\"])\n    # Availability if meeting\n    s = friends[p][\"start\"]\n    e = friends[p][\"end\"]\n    opt.add(Implies(meet[p], And(start[p] >= s, end[p] <= e)))\n    # If not meeting, start/end can be anything; but keep end >= start\n    opt.add(Implies(Not(meet[p]), start[p] <= end[p]))\n\n# Pairwise non-overlap with travel and total order if both met\nfor i in range(len(people)):\n    for j in range(i+1, len(people)):\n        pi, pj = people[i], people[j]\n        li = friends[pi][\"location\"]\n        lj = friends[pj][\"location\"]\n        # Create both direction order variables\n        oij = order[(pi,pj)]\n        oji = order[(pj,pi)]\n        # If we set an order, both meetings must occur\n        opt.add(Implies(oij, And(meet[pi], meet[pj])))\n        opt.add(Implies(oji, And(meet[pi], meet[pj])))\n        # Travel feasibility\n        tij = T[li][lj]\n        tji = T[lj][li]\n        opt.add(Implies(oij, end[pi] + tij <= start[pj]))\n        opt.add(Implies(oji, end[pj] + tji <= start[pi]))\n        # At least one order must hold if both meetings occur\n        opt.add(b2i(oij) + b2i(oji) >= b2i(meet[pi]) + b2i(meet[pj]) - 1)\n        # Can't have both directions simultaneously\n        opt.add(Not(And(oij, oji)))\n\n# Start from Russian Hill at 9:00\nday_start = hm(9,0)\nfor p in people:\n    loc = friends[p][\"location\"]\n    # If we choose this as directly after origin, must respect travel from origin\n    opt.add(Implies(start_from_origin[p], meet[p]))\n    opt.add(Implies(start_from_origin[p], day_start + T[RH][loc] <= start[p]))\n    # Every met meeting must either be after the origin or after another meeting\n    preds = [order[(q,p)] for q in people if q != p]\n    opt.add(Implies(meet[p], Or(start_from_origin[p], Or(preds) if preds else False)))\n\n# Objective: maximize number of friends met\nopt.maximize(Sum([b2i(meet[p]) for p in people]))\n\n# Secondary objective: among equal counts, minimize total start times (prefer earlier schedule)\nopt.minimize(Sum([If(meet[p], start[p], 0) for p in people]))\n\n# Solve\nif opt.check() != sat:\n    print(json.dumps({\"itinerary\": []}))\n    exit(0)\n\nm = opt.model()\n\n# Build itinerary\nevents = []\nfor p in people:\n    if is_true(m.eval(meet[p])):\n        st = m.eval(start[p]).as_long()\n        en = m.eval(end[p]).as_long()\n        events.append({\n            \"action\": \"meet\",\n            \"location\": friends[p][\"location\"],\n            \"person\": p,\n            \"start_time\": min_to_str(st),\n            \"end_time\": min_to_str(en)\n        })\n\n# Sort by start_time\nevents.sort(key=lambda x: int(x[\"start_time\"].split(\":\")[0])*60 + int(x[\"start_time\"].split(\":\")[1]))\n\nprint(json.dumps({\"itinerary\": events}, indent=2))"
+}

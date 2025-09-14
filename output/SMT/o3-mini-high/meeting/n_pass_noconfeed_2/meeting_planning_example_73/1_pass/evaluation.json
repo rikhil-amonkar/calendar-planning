@@ -1,0 +1,45 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"itinerary\": [\n    {\n      \"action\": \"meet\",\n      \"location\": \"Pacific Heights\",\n      \"person\": \"Barbara\",\n      \"start_time\": \"9:07\",\n      \"end_time\": \"22:00\"\n    }\n  ]\n}",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Pacific Heights",
+                "person": "Barbara",
+                "start_time": "9:07",
+                "end_time": "22:00"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Pacific Heights",
+                "person": "Barbara",
+                "start_time": "9:07",
+                "end_time": "10:07"
+            }
+        ]
+    },
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "constraints_satisfied_but_no_exact_match": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 79.61867904663086,
+        "execution_time": 0.08449149131774902,
+        "constraint_eval_time": 0.00010728836059570312,
+        "pred_extract_time": 0.6613588333129883,
+        "gold_extract_time": 4.029273986816406e-05,
+        "total_tokens": 2715,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import Optimize, Int, sat\nimport json\n\ndef format_time(minutes):\n    hour = minutes // 60\n    minute = minutes % 60\n    return f\"{hour}:{minute:02d}\"\n\ndef main():\n    # Define schedule parameters in minutes from midnight\n    # Arrival at Russian Hill: 9:00 -> 9*60 = 540\n    arrival_russian_hill = 9 * 60  # 540 minutes\n    # Travel times (in minutes)\n    travel_RH_to_PH = 7\n    travel_PH_to_RH = 7  # (if needed for further scheduling)\n    \n    # Barbara's availability at Pacific Heights:\n    # 7:15 AM -> 7*60 + 15 = 435 minutes, 10:00 PM -> 22*60 = 1320 minutes\n    barbara_avail_start = 7 * 60 + 15  # 435\n    barbara_avail_end = 22 * 60          # 1320\n\n    # Earliest we can start meeting Barbara is when we can be at Pacific Heights\n    # Minimum departure is at arrival at Russian Hill (9:00) plus travel time\n    earliest_meet_time = arrival_russian_hill + travel_RH_to_PH  # 540 + 7 = 547 minutes (9:07)\n\n    # Define SMT variables for meeting start and end times (in minutes)\n    meeting_start = Int('meeting_start')\n    meeting_end   = Int('meeting_end')\n\n    # Create an optimizer\n    opt = Optimize()\n\n    # Add constraints:\n    # 1. Meeting must start no earlier than when we can arrive at Pacific Heights.\n    opt.add(meeting_start >= earliest_meet_time)\n    # 2. Meeting must also be within Barbara's availability window.\n    opt.add(meeting_start >= barbara_avail_start)\n    opt.add(meeting_end <= barbara_avail_end)\n    # 3. The meeting duration must be at least 60 minutes.\n    opt.add(meeting_end - meeting_start >= 60)\n    # 4. The meeting's start occurs before its end.\n    opt.add(meeting_start < meeting_end)\n    # Extra variable bounds (optional, to keep values within a day's schedule)\n    opt.add(meeting_start >= 0, meeting_start <= 24 * 60)\n    opt.add(meeting_end >= 0, meeting_end <= 24 * 60)\n\n    # Define the objective: maximize the meeting duration (i.e., meet Barbara as long as possible).\n    meeting_duration = meeting_end - meeting_start\n    opt.maximize(meeting_duration)\n\n    # Check and solve the optimization problem.\n    if opt.check() == sat:\n        model = opt.model()\n        start = model[meeting_start].as_long()\n        end = model[meeting_end].as_long()\n        \n        itinerary = [\n            {\n                \"action\": \"meet\",\n                \"location\": \"Pacific Heights\",\n                \"person\": \"Barbara\",\n                \"start_time\": format_time(start),\n                \"end_time\": format_time(end)\n            }\n        ]\n        output = {\"itinerary\": itinerary}\n        print(json.dumps(output, indent=2))\n    else:\n        print(json.dumps({\"error\": \"No solution found.\"}))\n\nif __name__ == \"__main__\":\n    main()"
+}

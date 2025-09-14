@@ -1,0 +1,73 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\"itinerary\": [{\"action\": \"meet\", \"location\": \"Fisherman's Wharf\", \"person\": \"Karen\", \"start_time\": \"9:25\", \"end_time\": \"9:55\"}, {\"action\": \"meet\", \"location\": \"Financial District\", \"person\": \"Anthony\", \"start_time\": \"10:06\", \"end_time\": \"19:41\"}, {\"action\": \"meet\", \"location\": \"Embarcadero\", \"person\": \"Betty\", \"start_time\": \"19:45\", \"end_time\": \"21:45\"}]}",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Fisherman's Wharf",
+                "person": "Karen",
+                "start_time": "9:25",
+                "end_time": "9:55"
+            },
+            {
+                "action": "meet",
+                "location": "Financial District",
+                "person": "Anthony",
+                "start_time": "10:06",
+                "end_time": "19:41"
+            },
+            {
+                "action": "meet",
+                "location": "Embarcadero",
+                "person": "Betty",
+                "start_time": "19:45",
+                "end_time": "21:45"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Fisherman's Wharf",
+                "person": "Karen",
+                "start_time": "9:25",
+                "end_time": "9:55"
+            },
+            {
+                "action": "meet",
+                "location": "Financial District",
+                "person": "Anthony",
+                "start_time": "10:06",
+                "end_time": "11:51"
+            },
+            {
+                "action": "meet",
+                "location": "Embarcadero",
+                "person": "Betty",
+                "start_time": "19:45",
+                "end_time": "20:00"
+            }
+        ]
+    },
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "constraints_satisfied_but_no_exact_match": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 97.92471957206726,
+        "execution_time": 0.08657956123352051,
+        "constraint_eval_time": 0.00025534629821777344,
+        "pred_extract_time": 1.8624839782714844,
+        "gold_extract_time": 5.1975250244140625e-05,
+        "total_tokens": 5109,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import json\nfrom z3 import *\n\ndef minutes(h, m):\n    return h * 60 + m\n\ndef fmt_time(t):\n    h = t // 60\n    m = t % 60\n    return f\"{h}:{m:02d}\"\n\ndef main():\n    # Locations\n    locations = [\"Bayview\", \"Embarcadero\", \"Fisherman's Wharf\", \"Financial District\"]\n\n    # Travel times (in minutes)\n    travel = {\n        \"Bayview\": {\n            \"Embarcadero\": 19,\n            \"Fisherman's Wharf\": 25,\n            \"Financial District\": 19,\n        },\n        \"Embarcadero\": {\n            \"Bayview\": 21,\n            \"Fisherman's Wharf\": 6,\n            \"Financial District\": 5,\n        },\n        \"Fisherman's Wharf\": {\n            \"Bayview\": 26,\n            \"Embarcadero\": 8,\n            \"Financial District\": 11,\n        },\n        \"Financial District\": {\n            \"Bayview\": 19,\n            \"Embarcadero\": 4,\n            \"Fisherman's Wharf\": 10,\n        }\n    }\n\n    # People, locations, availability windows, and minimum meeting durations\n    people = {\n        \"Betty\": {\n            \"location\": \"Embarcadero\",\n            \"avail_start\": minutes(19, 45),  # 7:45 PM\n            \"avail_end\": minutes(21, 45),    # 9:45 PM\n            \"min_duration\": 15\n        },\n        \"Karen\": {\n            \"location\": \"Fisherman's Wharf\",\n            \"avail_start\": minutes(8, 45),   # 8:45 AM\n            \"avail_end\": minutes(15, 0),     # 3:00 PM\n            \"min_duration\": 30\n        },\n        \"Anthony\": {\n            \"location\": \"Financial District\",\n            \"avail_start\": minutes(9, 15),   # 9:15 AM\n            \"avail_end\": minutes(21, 30),    # 9:30 PM\n            \"min_duration\": 105\n        }\n    }\n\n    start_location = \"Bayview\"\n    arrival_time_start = minutes(9, 0)  # 9:00 AM\n\n    # Z3 variables\n    opt = Optimize()\n    opt.set(priority='lex')\n\n    s = {}\n    e = {}\n    met = {}\n    order = {}\n\n    for person in people:\n        s[person] = Int(f\"s_{person}\")\n        e[person] = Int(f\"e_{person}\")\n        met[person] = Bool(f\"met_{person}\")\n        order[person] = Int(f\"order_{person}\")\n\n        # Time bounds within a day\n        opt.add(s[person] >= 0, s[person] <= 24*60)\n        opt.add(e[person] >= 0, e[person] <= 24*60)\n\n        # If meeting, must respect availability and minimum duration\n        opt.add(Implies(met[person],\n                        And(s[person] >= people[person][\"avail_start\"],\n                            e[person] <= people[person][\"avail_end\"],\n                            e[person] - s[person] >= people[person][\"min_duration\"])))\n\n        # Order encoding with nMet will constrain order further\n        opt.add(Implies(Not(met[person]), order[person] == 0))\n\n    # Number of meetings\n    nMet = Int(\"nMet\")\n    opt.add(nMet >= 0, nMet <= len(people))\n    opt.add(nMet == Sum([If(met[p], 1, 0) for p in people]))\n\n    # Orders must be 1..nMet and consecutive without gaps\n    for p in people:\n        opt.add(Implies(met[p], And(order[p] >= 1, order[p] <= nMet)))\n\n    # Ensure that for each k, exactly one person has order k if k <= nMet, else none\n    for k in range(1, len(people) + 1):\n        opt.add(Sum([If(order[p] == k, 1, 0) for p in people]) == If(k <= nMet, 1, 0))\n\n    # Travel constraints:\n    # If first meeting, leave from start location at arrival_time_start and travel accordingly\n    for p in people:\n        loc_p = people[p][\"location\"]\n        opt.add(Implies(order[p] == 1, s[p] >= arrival_time_start + travel[start_location][loc_p]))\n\n    # For consecutive meetings, ensure travel time between locations is respected\n    plist = list(people.keys())\n    for i in range(len(plist)):\n        p_i = plist[i]\n        loc_i = people[p_i][\"location\"]\n        for j in range(len(plist)):\n            if i == j:\n                continue\n            p_j = plist[j]\n            loc_j = people[p_j][\"location\"]\n            tij = travel[loc_j][loc_i]\n            opt.add(Implies(order[p_i] == order[p_j] + 1, s[p_i] >= e[p_j] + tij))\n\n    # Objectives: maximize number of meetings, then total meeting duration\n    total_duration = Sum([If(met[p], e[p] - s[p], 0) for p in people])\n    opt.maximize(nMet)\n    opt.maximize(total_duration)\n\n    # Solve\n    if opt.check() != sat:\n        # No feasible plan; output empty itinerary\n        result = {\"itinerary\": []}\n        print(json.dumps(result))\n        return\n\n    m = opt.model()\n\n    # Extract meetings and sort by order\n    meetings = []\n    for p in people:\n        if m.evaluate(met[p], model_completion=True):\n            start = m.evaluate(s[p], model_completion=True).as_long()\n            end = m.evaluate(e[p], model_completion=True).as_long()\n            ord_val = m.evaluate(order[p], model_completion=True).as_long()\n            meetings.append((ord_val, {\n                \"action\": \"meet\",\n                \"location\": people[p][\"location\"],\n                \"person\": p,\n                \"start_time\": fmt_time(start),\n                \"end_time\": fmt_time(end)\n            }))\n\n    meetings.sort(key=lambda x: x[0])\n\n    itinerary = [item for _, item in meetings]\n\n    print(json.dumps({\"itinerary\": itinerary}, ensure_ascii=False))\n\nif __name__ == \"__main__\":\n    main()"
+}

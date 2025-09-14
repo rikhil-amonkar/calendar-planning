@@ -1,0 +1,129 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"itinerary\": [\n    {\n      \"action\": \"meet\",\n      \"location\": \"Chinatown\",\n      \"person\": \"Richard\",\n      \"start_time\": \"9:52\",\n      \"end_time\": \"10:07\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Fisherman's Wharf\",\n      \"person\": \"Jeffrey\",\n      \"start_time\": \"10:15\",\n      \"end_time\": \"11:45\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Alamo Square\",\n      \"person\": \"Ronald\",\n      \"start_time\": \"12:06\",\n      \"end_time\": \"14:06\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Richmond District\",\n      \"person\": \"Laura\",\n      \"start_time\": \"14:34\",\n      \"end_time\": \"15:34\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Sunset District\",\n      \"person\": \"Elizabeth\",\n      \"start_time\": \"15:45\",\n      \"end_time\": \"17:30\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Union Square\",\n      \"person\": \"Melissa\",\n      \"start_time\": \"18:00\",\n      \"end_time\": \"18:15\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Golden Gate Park\",\n      \"person\": \"George\",\n      \"start_time\": \"19:00\",\n      \"end_time\": \"20:15\"\n    }\n  ]\n}",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Chinatown",
+                "person": "Richard",
+                "start_time": "9:52",
+                "end_time": "10:07"
+            },
+            {
+                "action": "meet",
+                "location": "Fisherman's Wharf",
+                "person": "Jeffrey",
+                "start_time": "10:15",
+                "end_time": "11:45"
+            },
+            {
+                "action": "meet",
+                "location": "Alamo Square",
+                "person": "Ronald",
+                "start_time": "12:06",
+                "end_time": "14:06"
+            },
+            {
+                "action": "meet",
+                "location": "Richmond District",
+                "person": "Laura",
+                "start_time": "14:34",
+                "end_time": "15:34"
+            },
+            {
+                "action": "meet",
+                "location": "Sunset District",
+                "person": "Elizabeth",
+                "start_time": "15:45",
+                "end_time": "17:30"
+            },
+            {
+                "action": "meet",
+                "location": "Union Square",
+                "person": "Melissa",
+                "start_time": "18:00",
+                "end_time": "18:15"
+            },
+            {
+                "action": "meet",
+                "location": "Golden Gate Park",
+                "person": "George",
+                "start_time": "19:00",
+                "end_time": "20:15"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Fisherman's Wharf",
+                "person": "Jeffrey",
+                "start_time": "10:15",
+                "end_time": "11:45"
+            },
+            {
+                "action": "meet",
+                "location": "Alamo Square",
+                "person": "Ronald",
+                "start_time": "12:06",
+                "end_time": "14:06"
+            },
+            {
+                "action": "meet",
+                "location": "Embarcadero",
+                "person": "Margaret",
+                "start_time": "14:22",
+                "end_time": "15:52"
+            },
+            {
+                "action": "meet",
+                "location": "Chinatown",
+                "person": "Richard",
+                "start_time": "15:59",
+                "end_time": "16:14"
+            },
+            {
+                "action": "meet",
+                "location": "Richmond District",
+                "person": "Laura",
+                "start_time": "16:34",
+                "end_time": "17:34"
+            },
+            {
+                "action": "meet",
+                "location": "Union Square",
+                "person": "Melissa",
+                "start_time": "17:55",
+                "end_time": "18:10"
+            },
+            {
+                "action": "meet",
+                "location": "Golden Gate Park",
+                "person": "George",
+                "start_time": "19:00",
+                "end_time": "20:15"
+            }
+        ]
+    },
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "constraints_satisfied_but_no_exact_match": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 129.79833936691284,
+        "execution_time": 0.20955562591552734,
+        "constraint_eval_time": 0.00039958953857421875,
+        "pred_extract_time": 3.036332845687866,
+        "gold_extract_time": 7.152557373046875e-05,
+        "total_tokens": 9139,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import json\nfrom z3 import *\n\n# Helper functions\ndef time_to_minutes(t):\n    # t like '10:15' or '9:00' 24-hour\n    h, m = map(int, t.split(':'))\n    return h * 60 + m\n\ndef minutes_to_str(m):\n    h = m // 60\n    mm = m % 60\n    return f\"{h}:{mm:02d}\"\n\n# Travel time matrix (minutes)\ndist = {\n    \"Presidio\": {\n        \"Fisherman's Wharf\": 19,\n        \"Alamo Square\": 19,\n        \"Financial District\": 23,\n        \"Union Square\": 22,\n        \"Sunset District\": 15,\n        \"Embarcadero\": 20,\n        \"Golden Gate Park\": 12,\n        \"Chinatown\": 21,\n        \"Richmond District\": 7,\n    },\n    \"Fisherman's Wharf\": {\n        \"Presidio\": 17,\n        \"Alamo Square\": 21,\n        \"Financial District\": 11,\n        \"Union Square\": 13,\n        \"Sunset District\": 27,\n        \"Embarcadero\": 8,\n        \"Golden Gate Park\": 25,\n        \"Chinatown\": 12,\n        \"Richmond District\": 18,\n    },\n    \"Alamo Square\": {\n        \"Presidio\": 17,\n        \"Fisherman's Wharf\": 19,\n        \"Financial District\": 17,\n        \"Union Square\": 14,\n        \"Sunset District\": 16,\n        \"Embarcadero\": 16,\n        \"Golden Gate Park\": 9,\n        \"Chinatown\": 15,\n        \"Richmond District\": 11,\n    },\n    \"Financial District\": {\n        \"Presidio\": 22,\n        \"Fisherman's Wharf\": 10,\n        \"Alamo Square\": 17,\n        \"Union Square\": 9,\n        \"Sunset District\": 30,\n        \"Embarcadero\": 4,\n        \"Golden Gate Park\": 23,\n        \"Chinatown\": 5,\n        \"Richmond District\": 21,\n    },\n    \"Union Square\": {\n        \"Presidio\": 24,\n        \"Fisherman's Wharf\": 15,\n        \"Alamo Square\": 15,\n        \"Financial District\": 9,\n        \"Sunset District\": 27,\n        \"Embarcadero\": 11,\n        \"Golden Gate Park\": 22,\n        \"Chinatown\": 7,\n        \"Richmond District\": 20,\n    },\n    \"Sunset District\": {\n        \"Presidio\": 16,\n        \"Fisherman's Wharf\": 29,\n        \"Alamo Square\": 17,\n        \"Financial District\": 30,\n        \"Union Square\": 30,\n        \"Embarcadero\": 30,\n        \"Golden Gate Park\": 11,\n        \"Chinatown\": 30,\n        \"Richmond District\": 12,\n    },\n    \"Embarcadero\": {\n        \"Presidio\": 20,\n        \"Fisherman's Wharf\": 6,\n        \"Alamo Square\": 19,\n        \"Financial District\": 5,\n        \"Union Square\": 10,\n        \"Sunset District\": 30,\n        \"Golden Gate Park\": 25,\n        \"Chinatown\": 7,\n        \"Richmond District\": 21,\n    },\n    \"Golden Gate Park\": {\n        \"Presidio\": 11,\n        \"Fisherman's Wharf\": 24,\n        \"Alamo Square\": 9,\n        \"Financial District\": 26,\n        \"Union Square\": 22,\n        \"Sunset District\": 10,\n        \"Embarcadero\": 25,\n        \"Chinatown\": 23,\n        \"Richmond District\": 7,\n    },\n    \"Chinatown\": {\n        \"Presidio\": 19,\n        \"Fisherman's Wharf\": 8,\n        \"Alamo Square\": 17,\n        \"Financial District\": 5,\n        \"Union Square\": 7,\n        \"Sunset District\": 29,\n        \"Embarcadero\": 5,\n        \"Golden Gate Park\": 23,\n        \"Richmond District\": 20,\n    },\n    \"Richmond District\": {\n        \"Presidio\": 7,\n        \"Fisherman's Wharf\": 18,\n        \"Alamo Square\": 13,\n        \"Financial District\": 22,\n        \"Union Square\": 21,\n        \"Sunset District\": 11,\n        \"Embarcadero\": 19,\n        \"Golden Gate Park\": 9,\n        \"Chinatown\": 20,\n    },\n}\n\n# Participants with constraints\npeople = [\n    {\"name\": \"Jeffrey\",   \"location\": \"Fisherman's Wharf\", \"start\": \"10:15\", \"end\": \"13:00\", \"min_dur\": 90},\n    {\"name\": \"Ronald\",    \"location\": \"Alamo Square\",      \"start\": \"7:45\",  \"end\": \"14:45\", \"min_dur\": 120},\n    {\"name\": \"Jason\",     \"location\": \"Financial District\", \"start\": \"10:45\",\"end\": \"16:00\", \"min_dur\": 105},\n    {\"name\": \"Melissa\",   \"location\": \"Union Square\",      \"start\": \"17:45\", \"end\": \"18:15\", \"min_dur\": 15},\n    {\"name\": \"Elizabeth\", \"location\": \"Sunset District\",    \"start\": \"14:45\",\"end\": \"17:30\", \"min_dur\": 105},\n    {\"name\": \"Margaret\",  \"location\": \"Embarcadero\",       \"start\": \"13:15\", \"end\": \"19:00\", \"min_dur\": 90},\n    {\"name\": \"George\",    \"location\": \"Golden Gate Park\",  \"start\": \"19:00\", \"end\": \"22:00\", \"min_dur\": 75},\n    {\"name\": \"Richard\",   \"location\": \"Chinatown\",         \"start\": \"9:30\",  \"end\": \"21:00\", \"min_dur\": 15},\n    {\"name\": \"Laura\",     \"location\": \"Richmond District\", \"start\": \"9:45\",  \"end\": \"18:00\", \"min_dur\": 60},\n]\n\n# Preprocess times\nfor p in people:\n    p[\"start_min\"] = time_to_minutes(p[\"start\"])\n    p[\"end_min\"] = time_to_minutes(p[\"end\"])\n\n# Start location/time\nSTART_LOC = \"Presidio\"\nSTART_TIME = time_to_minutes(\"9:00\")\n\nN = len(people)\n\n# Z3 variables\nopt = Optimize()\n\nattend = [Bool(f\"attend_{i}\") for i in range(N)]\nt = [Int(f\"start_{i}\") for i in range(N)]\ndur = [IntVal(people[i][\"min_dur\"]) for i in range(N)]\n\n# y[i][j] = True if meeting i is immediately followed by j in the route\ny = [[Bool(f\"y_{i}_{j}\") if i != j else BoolVal(False) for j in range(N)] for i in range(N)]\n# s[i] = True if the route starts at meeting i\ns = [Bool(f\"s_{i}\") for i in range(N)]\n\n# Constraints\nfor i in range(N):\n    # Time window if attended\n    a_i = people[i][\"start_min\"]\n    b_i = people[i][\"end_min\"]\n    d_i = people[i][\"min_dur\"]\n    opt.add(Implies(attend[i], And(t[i] >= a_i, t[i] + d_i <= b_i)))\n    # If start edge chosen, must attend\n    opt.add(Implies(s[i], attend[i]))\n\n# For all edges y[i][j], if chosen then both meetings are attended\nfor i in range(N):\n    for j in range(N):\n        if i == j:\n            continue\n        opt.add(Implies(y[i][j], And(attend[i], attend[j])))\n\n# Predecessor constraints: each attended meeting has exactly one predecessor (either START or another meeting)\nfor i in range(N):\n    incoming_sum = Sum([If(s[i], 1, 0)] + [If(y[j][i], 1, 0) for j in range(N) if j != i])\n    opt.add(incoming_sum == If(attend[i], 1, 0))\n\n# Outgoing constraints: each attended meeting has at most one outgoing\noutgoing_sums = []\nfor i in range(N):\n    out_i = Sum([If(y[i][j], 1, 0) for j in range(N) if j != i])\n    outgoing_sums.append(out_i)\n    opt.add(out_i <= If(attend[i], 1, 0))\n\n# Count of attended meetings\nn_attended = Int(\"n_attended\")\nopt.add(n_attended == Sum([If(attend[i], 1, 0) for i in range(N)]))\n\n# Exactly one start arc if there is at least one meeting, else none\nS_out = Sum([If(s[i], 1, 0) for i in range(N)])\nopt.add(If(n_attended == 0, S_out == 0, S_out == 1))\n\n# Total number of internal edges equals n_attended - 1 if any attended, else 0\ntotal_internal_edges = Sum([If(y[i][j], 1, 0) for i in range(N) for j in range(N) if i != j])\nopt.add(total_internal_edges == If(n_attended == 0, 0, n_attended - 1))\n\n# Time feasibility constraints along edges\n# From START to first\nfor i in range(N):\n    travel_si = dist[START_LOC][people[i][\"location\"]]\n    opt.add(Implies(s[i], t[i] >= START_TIME + travel_si))\n\n# Between meetings along an edge\nfor i in range(N):\n    for j in range(N):\n        if i == j: \n            continue\n        travel_ij = dist[people[i][\"location\"]][people[j][\"location\"]]\n        d_i = people[i][\"min_dur\"]\n        opt.add(Implies(y[i][j], t[j] >= t[i] + d_i + travel_ij))\n\n# \"Last\" meeting detection and finish time (to break ties by earliest finish)\nM = 2000\nlast = [Bool(f\"last_{i}\") for i in range(N)]\nfor i in range(N):\n    out_i = outgoing_sums[i]\n    # last_i <-> (attend_i and out_i == 0)\n    opt.add(Implies(last[i], And(attend[i], out_i == 0)))\n    opt.add(Implies(And(attend[i], out_i == 0), last[i]))\n\nsum_last = Sum([If(last[i], 1, 0) for i in range(N)])\nopt.add(If(n_attended == 0, sum_last == 0, sum_last == 1))\n\nfinish = Int(\"finish\")\nopt.add(finish >= 0, finish <= 24 * 60)\nfor i in range(N):\n    d_i = people[i][\"min_dur\"]\n    bi = If(last[i], 1, 0)\n    opt.add(finish >= t[i] + d_i - M * (1 - bi))\n    opt.add(finish <= t[i] + d_i + M * (1 - bi))\n\n# Objective: maximize number of meetings; tie-breaker minimize finish time\nopt.maximize(n_attended)\nopt.minimize(finish)\n\n# Solve\nres = opt.check()\nitinerary = []\n\nif res == sat:\n    model = opt.model()\n    # Reconstruct route\n    # Find the start meeting\n    idx_start = None\n    for i in range(N):\n        if is_true(model.evaluate(s[i])):\n            idx_start = i\n            break\n\n    order = []\n    if idx_start is not None:\n        curr = idx_start\n        visited = set()\n        while curr is not None and curr not in visited:\n            visited.add(curr)\n            if is_true(model.evaluate(attend[curr])):\n                start_min = model.evaluate(t[curr]).as_long()\n                end_min = start_min + people[curr][\"min_dur\"]\n                itinerary.append({\n                    \"action\": \"meet\",\n                    \"location\": people[curr][\"location\"],\n                    \"person\": people[curr][\"name\"],\n                    \"start_time\": minutes_to_str(start_min),\n                    \"end_time\": minutes_to_str(end_min)\n                })\n            # Move to next via y[curr][j]\n            next_idx = None\n            for j in range(N):\n                if curr != j and is_true(model.evaluate(y[curr][j])):\n                    next_idx = j\n                    break\n            curr = next_idx\n\n# Output JSON\noutput = {\n    \"itinerary\": itinerary\n}\n\nprint(json.dumps(output, ensure_ascii=False, indent=2))"
+}

@@ -1,0 +1,129 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"itinerary\": [\n    {\n      \"action\": \"meet\",\n      \"location\": \"North Beach\",\n      \"person\": \"Kimberly\",\n      \"start_time\": \"9:10\",\n      \"end_time\": \"10:30\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Fisherman's Wharf\",\n      \"person\": \"Brian\",\n      \"start_time\": \"10:35\",\n      \"end_time\": \"15:19\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Nob Hill\",\n      \"person\": \"Kenneth\",\n      \"start_time\": \"15:30\",\n      \"end_time\": \"17:15\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Embarcadero\",\n      \"person\": \"Joseph\",\n      \"start_time\": \"17:24\",\n      \"end_time\": \"18:39\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Haight-Ashbury\",\n      \"person\": \"Betty\",\n      \"start_time\": \"19:00\",\n      \"end_time\": \"20:30\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"The Castro\",\n      \"person\": \"Melissa\",\n      \"start_time\": \"20:36\",\n      \"end_time\": \"21:06\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Alamo Square\",\n      \"person\": \"Barbara\",\n      \"start_time\": \"21:14\",\n      \"end_time\": \"21:45\"\n    }\n  ]\n}",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "North Beach",
+                "person": "Kimberly",
+                "start_time": "9:10",
+                "end_time": "10:30"
+            },
+            {
+                "action": "meet",
+                "location": "Fisherman's Wharf",
+                "person": "Brian",
+                "start_time": "10:35",
+                "end_time": "15:19"
+            },
+            {
+                "action": "meet",
+                "location": "Nob Hill",
+                "person": "Kenneth",
+                "start_time": "15:30",
+                "end_time": "17:15"
+            },
+            {
+                "action": "meet",
+                "location": "Embarcadero",
+                "person": "Joseph",
+                "start_time": "17:24",
+                "end_time": "18:39"
+            },
+            {
+                "action": "meet",
+                "location": "Haight-Ashbury",
+                "person": "Betty",
+                "start_time": "19:00",
+                "end_time": "20:30"
+            },
+            {
+                "action": "meet",
+                "location": "The Castro",
+                "person": "Melissa",
+                "start_time": "20:36",
+                "end_time": "21:06"
+            },
+            {
+                "action": "meet",
+                "location": "Alamo Square",
+                "person": "Barbara",
+                "start_time": "21:14",
+                "end_time": "21:45"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "North Beach",
+                "person": "Kimberly",
+                "start_time": "9:10",
+                "end_time": "9:25"
+            },
+            {
+                "action": "meet",
+                "location": "Nob Hill",
+                "person": "Kenneth",
+                "start_time": "12:15",
+                "end_time": "14:00"
+            },
+            {
+                "action": "meet",
+                "location": "Fisherman's Wharf",
+                "person": "Brian",
+                "start_time": "14:10",
+                "end_time": "14:55"
+            },
+            {
+                "action": "meet",
+                "location": "Embarcadero",
+                "person": "Joseph",
+                "start_time": "15:30",
+                "end_time": "16:45"
+            },
+            {
+                "action": "meet",
+                "location": "Haight-Ashbury",
+                "person": "Betty",
+                "start_time": "19:00",
+                "end_time": "20:30"
+            },
+            {
+                "action": "meet",
+                "location": "The Castro",
+                "person": "Melissa",
+                "start_time": "20:36",
+                "end_time": "21:06"
+            },
+            {
+                "action": "meet",
+                "location": "Alamo Square",
+                "person": "Barbara",
+                "start_time": "21:14",
+                "end_time": "21:29"
+            }
+        ]
+    },
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "constraints_satisfied_but_no_exact_match": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 107.78214693069458,
+        "execution_time": 0.11715269088745117,
+        "constraint_eval_time": 0.0005452632904052734,
+        "pred_extract_time": 3.4118027687072754,
+        "gold_extract_time": 8.678436279296875e-05,
+        "total_tokens": 8357,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import json\nfrom z3 import *\n\ndef minutes(h, m):\n    return h * 60 + m\n\ndef parse_time_str(t):\n    h, m = map(int, t.split(\":\"))\n    return minutes(h, m)\n\ndef minutes_to_str(t):\n    h = t // 60\n    m = t % 60\n    return f\"{h}:{m:02d}\"\n\n# Locations\nlocations = [\n    \"Union Square\",\n    \"The Castro\",\n    \"North Beach\",\n    \"Embarcadero\",\n    \"Alamo Square\",\n    \"Nob Hill\",\n    \"Presidio\",\n    \"Fisherman's Wharf\",\n    \"Mission District\",\n    \"Haight-Ashbury\",\n]\n\n# Travel times (minutes) directional\nT = {\n    \"Union Square\": {\n        \"The Castro\": 17,\n        \"North Beach\": 10,\n        \"Embarcadero\": 11,\n        \"Alamo Square\": 15,\n        \"Nob Hill\": 9,\n        \"Presidio\": 24,\n        \"Fisherman's Wharf\": 15,\n        \"Mission District\": 14,\n        \"Haight-Ashbury\": 18,\n    },\n    \"The Castro\": {\n        \"Union Square\": 19,\n        \"North Beach\": 20,\n        \"Embarcadero\": 22,\n        \"Alamo Square\": 8,\n        \"Nob Hill\": 16,\n        \"Presidio\": 20,\n        \"Fisherman's Wharf\": 24,\n        \"Mission District\": 7,\n        \"Haight-Ashbury\": 6,\n    },\n    \"North Beach\": {\n        \"Union Square\": 7,\n        \"The Castro\": 23,\n        \"Embarcadero\": 6,\n        \"Alamo Square\": 16,\n        \"Nob Hill\": 7,\n        \"Presidio\": 17,\n        \"Fisherman's Wharf\": 5,\n        \"Mission District\": 18,\n        \"Haight-Ashbury\": 18,\n    },\n    \"Embarcadero\": {\n        \"Union Square\": 10,\n        \"The Castro\": 25,\n        \"North Beach\": 5,\n        \"Alamo Square\": 19,\n        \"Nob Hill\": 10,\n        \"Presidio\": 20,\n        \"Fisherman's Wharf\": 6,\n        \"Mission District\": 20,\n        \"Haight-Ashbury\": 21,\n    },\n    \"Alamo Square\": {\n        \"Union Square\": 14,\n        \"The Castro\": 8,\n        \"North Beach\": 15,\n        \"Embarcadero\": 16,\n        \"Nob Hill\": 11,\n        \"Presidio\": 17,\n        \"Fisherman's Wharf\": 19,\n        \"Mission District\": 10,\n        \"Haight-Ashbury\": 5,\n    },\n    \"Nob Hill\": {\n        \"Union Square\": 7,\n        \"The Castro\": 17,\n        \"North Beach\": 8,\n        \"Embarcadero\": 9,\n        \"Alamo Square\": 11,\n        \"Presidio\": 17,\n        \"Fisherman's Wharf\": 10,\n        \"Mission District\": 13,\n        \"Haight-Ashbury\": 13,\n    },\n    \"Presidio\": {\n        \"Union Square\": 22,\n        \"The Castro\": 21,\n        \"North Beach\": 18,\n        \"Embarcadero\": 20,\n        \"Alamo Square\": 19,\n        \"Nob Hill\": 18,\n        \"Fisherman's Wharf\": 19,\n        \"Mission District\": 26,\n        \"Haight-Ashbury\": 15,\n    },\n    \"Fisherman's Wharf\": {\n        \"Union Square\": 13,\n        \"The Castro\": 27,\n        \"North Beach\": 6,\n        \"Embarcadero\": 8,\n        \"Alamo Square\": 21,\n        \"Nob Hill\": 11,\n        \"Presidio\": 17,\n        \"Mission District\": 22,\n        \"Haight-Ashbury\": 22,\n    },\n    \"Mission District\": {\n        \"Union Square\": 15,\n        \"The Castro\": 7,\n        \"North Beach\": 17,\n        \"Embarcadero\": 19,\n        \"Alamo Square\": 11,\n        \"Nob Hill\": 12,\n        \"Presidio\": 25,\n        \"Fisherman's Wharf\": 22,\n        \"Haight-Ashbury\": 12,\n    },\n    \"Haight-Ashbury\": {\n        \"Union Square\": 19,\n        \"The Castro\": 6,\n        \"North Beach\": 19,\n        \"Embarcadero\": 20,\n        \"Alamo Square\": 5,\n        \"Nob Hill\": 15,\n        \"Presidio\": 15,\n        \"Fisherman's Wharf\": 23,\n        \"Mission District\": 11,\n    },\n}\n\n# People constraints\npeople = [\n    {\"name\": \"Melissa\", \"location\": \"The Castro\", \"start\": minutes(20,15), \"end\": minutes(21,15), \"min_dur\": 30},\n    {\"name\": \"Kimberly\", \"location\": \"North Beach\", \"start\": minutes(7,0), \"end\": minutes(10,30), \"min_dur\": 15},\n    {\"name\": \"Joseph\", \"location\": \"Embarcadero\", \"start\": minutes(15,30), \"end\": minutes(19,30), \"min_dur\": 75},\n    {\"name\": \"Barbara\", \"location\": \"Alamo Square\", \"start\": minutes(20,45), \"end\": minutes(21,45), \"min_dur\": 15},\n    {\"name\": \"Kenneth\", \"location\": \"Nob Hill\", \"start\": minutes(12,15), \"end\": minutes(17,15), \"min_dur\": 105},\n    {\"name\": \"Joshua\", \"location\": \"Presidio\", \"start\": minutes(16,30), \"end\": minutes(18,15), \"min_dur\": 105},\n    {\"name\": \"Brian\", \"location\": \"Fisherman's Wharf\", \"start\": minutes(9,30), \"end\": minutes(15,30), \"min_dur\": 45},\n    {\"name\": \"Steven\", \"location\": \"Mission District\", \"start\": minutes(19,30), \"end\": minutes(21,0), \"min_dur\": 90},\n    {\"name\": \"Betty\", \"location\": \"Haight-Ashbury\", \"start\": minutes(19,0), \"end\": minutes(20,30), \"min_dur\": 90},\n]\n\nstart_at_loc = \"Union Square\"\narrive_time = minutes(9, 0)\n\n# Z3 variables\nopt = Optimize()\n\nmeet = {}\nfrom_start = {}\nstart_time = {}\nend_time = {}\nduration = {}\n\nfor p in people:\n    n = p[\"name\"]\n    meet[n] = Bool(f\"meet_{n}\")\n    from_start[n] = Bool(f\"from_start_{n}\")\n    start_time[n] = Int(f\"start_{n}\")\n    end_time[n] = Int(f\"end_{n}\")\n    duration[n] = Int(f\"dur_{n}\")\n\n    # Domains\n    opt.add(start_time[n] >= 0, start_time[n] <= 24*60)\n    opt.add(end_time[n] >= 0, end_time[n] <= 24*60)\n    opt.add(duration[n] >= 0)\n\n    # Meeting feasibility within availability\n    avail_start = p[\"start\"]\n    avail_end = p[\"end\"]\n    min_d = p[\"min_dur\"]\n    max_d = avail_end - avail_start\n\n    opt.add(Implies(meet[n],\n                    And(start_time[n] >= avail_start,\n                        end_time[n] <= avail_end,\n                        end_time[n] == start_time[n] + duration[n],\n                        duration[n] >= min_d,\n                        duration[n] <= max_d)))\n\n    # If not meeting, zero duration and times set to 0 for cleanliness\n    opt.add(Implies(Not(meet[n]),\n                    And(duration[n] == 0, start_time[n] == 0, end_time[n] == 0)))\n\n    # from_start implies being met and respecting travel from initial location\n    travel_from_start = T[start_at_loc][p[\"location\"]]\n    opt.add(Implies(from_start[n],\n                    And(meet[n],\n                        start_time[n] >= arrive_time + travel_from_start)))\n\n# Pairwise non-overlap with travel times\nfor i in range(len(people)):\n    for j in range(i+1, len(people)):\n        pi = people[i]\n        pj = people[j]\n        ni = pi[\"name\"]\n        nj = pj[\"name\"]\n        ti_to_j = T[pi[\"location\"]][pj[\"location\"]]\n        tj_to_i = T[pj[\"location\"]][pi[\"location\"]]\n        opt.add(Implies(And(meet[ni], meet[nj]),\n                        Or(start_time[nj] >= end_time[ni] + ti_to_j,\n                           start_time[ni] >= end_time[nj] + tj_to_i)))\n\n# Connectivity: each met meeting must have a predecessor or be from_start\nfor p in people:\n    n = p[\"name\"]\n    preds = []\n    for q in people:\n        m = q[\"name\"]\n        if m == n:\n            continue\n        t_q_to_p = T[q[\"location\"]][p[\"location\"]]\n        preds.append(And(meet[m], start_time[n] >= end_time[m] + t_q_to_p))\n    # Or over predecessors plus from_start\n    if preds:\n        opt.add(Implies(meet[n], Or(from_start[n], Or(*preds))))\n    else:\n        opt.add(Implies(meet[n], from_start[n]))\n\n# Exactly one start if any meetings; else none\nany_meet = Or(*[meet[p[\"name\"]] for p in people]) if people else False\nsum_from_start = Sum([If(from_start[p[\"name\"]], 1, 0) for p in people])\nopt.add(Implies(any_meet, sum_from_start == 1))\nopt.add(Implies(Not(any_meet), sum_from_start == 0))\n\n# Objectives: maximize number of meetings, then total meeting minutes\ntotal_met = Sum([If(meet[p[\"name\"]], 1, 0) for p in people])\ntotal_minutes = Sum([duration[p[\"name\"]] for p in people])\nopt.maximize(total_met)\nopt.maximize(total_minutes)\n\nresult = opt.check()\nitinerary = []\nif result == sat:\n    model = opt.model()\n    # Collect met meetings\n    items = []\n    for p in people:\n        n = p[\"name\"]\n        if is_true(model.evaluate(meet[n])):\n            st = model.evaluate(start_time[n]).as_long()\n            en = model.evaluate(end_time[n]).as_long()\n            items.append({\n                \"action\": \"meet\",\n                \"location\": p[\"location\"],\n                \"person\": n,\n                \"start\": st,\n                \"end\": en\n            })\n    # Sort by start time\n    items.sort(key=lambda x: x[\"start\"])\n    # Format times\n    for it in items:\n        itinerary.append({\n            \"action\": \"meet\",\n            \"location\": it[\"location\"],\n            \"person\": it[\"person\"],\n            \"start_time\": minutes_to_str(it[\"start\"]),\n            \"end_time\": minutes_to_str(it[\"end\"])\n        })\n\noutput = {\"itinerary\": itinerary}\nprint(json.dumps(output, ensure_ascii=False, indent=2))"
+}

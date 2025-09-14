@@ -1,0 +1,45 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"itinerary\": [\n    {\n      \"action\": \"meet\",\n      \"location\": \"Richmond District\",\n      \"person\": \"Barbara\",\n      \"start_time\": \"13:15\",\n      \"end_time\": \"18:15\"\n    }\n  ]\n}",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Richmond District",
+                "person": "Barbara",
+                "start_time": "13:15",
+                "end_time": "18:15"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Richmond District",
+                "person": "Barbara",
+                "start_time": "13:15",
+                "end_time": "14:00"
+            }
+        ]
+    },
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "constraints_satisfied_but_no_exact_match": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 31.795273303985596,
+        "execution_time": 0.07968688011169434,
+        "constraint_eval_time": 0.00014710426330566406,
+        "pred_extract_time": 1.0939981937408447,
+        "gold_extract_time": 3.838539123535156e-05,
+        "total_tokens": 2620,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import json\nfrom z3 import Optimize, Int, And\n\ndef time_to_str(minutes):\n    h = minutes // 60\n    m = minutes % 60\n    return f\"{h}:{m:02d}\"\n\ndef main():\n    # Input parameters (can be adjusted as needed)\n    arrive_location = \"Russian Hill\"\n    arrive_time = 9 * 60  # 9:00 => 540 minutes\n\n    # Travel times (minutes)\n    travel_RH_to_RD = 14\n    travel_RD_to_RH = 13  # defined for completeness; not needed for this optimization\n\n    # Barbara's availability at Richmond District (in minutes from midnight)\n    barbara_location = \"Richmond District\"\n    barbara_name = \"Barbara\"\n    barbara_start = 13 * 60 + 15  # 13:15 => 795\n    barbara_end = 18 * 60 + 15    # 18:15 => 1095\n    barbara_min_meet = 45         # minutes\n\n    # Z3 variables\n    depart_RH_to_RD = Int(\"depart_RH_to_RD\")\n    arrive_RD = Int(\"arrive_RD\")\n    meet_start = Int(\"meet_start\")\n    meet_end = Int(\"meet_end\")\n    duration = Int(\"duration\")\n\n    opt = Optimize()\n\n    # Core constraints\n    opt.add(depart_RH_to_RD >= arrive_time)                          # Can't depart before arrival at Russian Hill\n    opt.add(arrive_RD == depart_RH_to_RD + travel_RH_to_RD)          # Travel time to Richmond District\n    opt.add(meet_start >= arrive_RD)                                 # Can't start meeting before arriving\n    opt.add(meet_start >= barbara_start)                             # Can't start before Barbara is available\n    opt.add(meet_end <= barbara_end)                                 # Must finish before Barbara leaves\n    opt.add(duration == meet_end - meet_start)                       # Duration definition\n    opt.add(duration >= barbara_min_meet)                            # Meet at least minimum duration\n    opt.add(meet_end > meet_start)                                   # Positive meeting duration\n    opt.add(meet_start >= 0, meet_end <= 24*60)                      # Bounds within the day\n\n    # Optimization goals: maximize total meeting time, then start as early as possible\n    opt.maximize(duration)\n    opt.minimize(meet_start)\n\n    result = opt.check()\n    itinerary = []\n\n    if str(result) == \"sat\":\n        model = opt.model()\n        ms = int(model[meet_start].as_long())\n        me = int(model[meet_end].as_long())\n\n        itinerary.append({\n            \"action\": \"meet\",\n            \"location\": barbara_location,\n            \"person\": barbara_name,\n            \"start_time\": time_to_str(ms),\n            \"end_time\": time_to_str(me)\n        })\n\n    output = {\"itinerary\": itinerary}\n    print(json.dumps(output, ensure_ascii=False, indent=2))\n\nif __name__ == \"__main__\":\n    main()"
+}

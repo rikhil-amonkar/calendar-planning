@@ -1,0 +1,59 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\"itinerary\": [{\"action\": \"meet\", \"location\": \"Mission District\", \"person\": \"James\", \"start_time\": \"12:45\", \"end_time\": \"14:00\"}, {\"action\": \"meet\", \"location\": \"The Castro\", \"person\": \"Robert\", \"start_time\": \"14:07\", \"end_time\": \"15:15\"}]}",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Mission District",
+                "person": "James",
+                "start_time": "12:45",
+                "end_time": "14:00"
+            },
+            {
+                "action": "meet",
+                "location": "The Castro",
+                "person": "Robert",
+                "start_time": "14:07",
+                "end_time": "15:15"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Mission District",
+                "person": "James",
+                "start_time": "12:45",
+                "end_time": "14:00"
+            },
+            {
+                "action": "meet",
+                "location": "The Castro",
+                "person": "Robert",
+                "start_time": "14:07",
+                "end_time": "14:37"
+            }
+        ]
+    },
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "constraints_satisfied_but_no_exact_match": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 54.354634046554565,
+        "execution_time": 0.09813475608825684,
+        "constraint_eval_time": 0.0002295970916748047,
+        "pred_extract_time": 1.6213047504425049,
+        "gold_extract_time": 4.8160552978515625e-05,
+        "total_tokens": 4769,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import json\nfrom z3 import Optimize, Int, Bool, If, And, Or, Not, Implies, is_true, sat\n\ndef minutes_to_str(m):\n    h = m // 60\n    mi = m % 60\n    return f\"{h}:{mi:02d}\"\n\ndef main():\n    # Input parameters\n    arrive_location = \"North Beach\"\n    arrive_time = 9 * 60  # 9:00 -> 540\n\n    # Travel times in minutes\n    travel = {\n        (\"North Beach\", \"Mission District\"): 18,\n        (\"North Beach\", \"The Castro\"): 22,\n        (\"Mission District\", \"North Beach\"): 17,\n        (\"Mission District\", \"The Castro\"): 7,\n        (\"The Castro\", \"North Beach\"): 20,\n        (\"The Castro\", \"Mission District\"): 7,\n    }\n\n    # Friends' availability and required meeting durations\n    # Times in minutes from midnight\n    friends = {\n        \"James\": {\n            \"location\": \"Mission District\",\n            \"avail_start\": 12 * 60 + 45,  # 12:45 -> 765\n            \"avail_end\": 14 * 60,         # 14:00 -> 840\n            \"min_duration\": 75\n        },\n        \"Robert\": {\n            \"location\": \"The Castro\",\n            \"avail_start\": 12 * 60 + 45,  # 12:45 -> 765\n            \"avail_end\": 15 * 60 + 15,    # 15:15 -> 915\n            \"min_duration\": 30\n        }\n    }\n\n    def T(a, b):\n        return travel[(a, b)]\n\n    # Z3 variables\n    s_j, e_j = Int('s_j'), Int('e_j')  # James start, end\n    s_r, e_r = Int('s_r'), Int('e_r')  # Robert start, end\n    meet_j, meet_r = Bool('meet_j'), Bool('meet_r')\n    j_before_r = Bool('j_before_r')  # order boolean when meeting both\n\n    opt = Optimize()\n    opt.set(priority='lex')\n\n    # Domains for time variables\n    max_day = 24 * 60\n    for v in [s_j, e_j, s_r, e_r]:\n        opt.add(v >= 0, v <= max_day)\n\n    # Meeting constraints for James\n    j_loc = friends[\"James\"][\"location\"]\n    j_av_s = friends[\"James\"][\"avail_start\"]\n    j_av_e = friends[\"James\"][\"avail_end\"]\n    j_min = friends[\"James\"][\"min_duration\"]\n\n    opt.add(Implies(meet_j, And(\n        s_j >= j_av_s,\n        e_j <= j_av_e,\n        e_j - s_j >= j_min,\n        s_j < e_j\n    )))\n\n    # Meeting constraints for Robert\n    r_loc = friends[\"Robert\"][\"location\"]\n    r_av_s = friends[\"Robert\"][\"avail_start\"]\n    r_av_e = friends[\"Robert\"][\"avail_end\"]\n    r_min = friends[\"Robert\"][\"min_duration\"]\n\n    opt.add(Implies(meet_r, And(\n        s_r >= r_av_s,\n        e_r <= r_av_e,\n        e_r - s_r >= r_min,\n        s_r < e_r\n    )))\n\n    # Travel feasibility from arrival to the first meeting\n    opt.add(Implies(And(meet_j, Not(meet_r)),\n                    arrive_time + T(arrive_location, j_loc) <= s_j))\n    opt.add(Implies(And(meet_r, Not(meet_j)),\n                    arrive_time + T(arrive_location, r_loc) <= s_r))\n    opt.add(Implies(And(meet_j, meet_r, j_before_r),\n                    arrive_time + T(arrive_location, j_loc) <= s_j))\n    opt.add(Implies(And(meet_j, meet_r, Not(j_before_r)),\n                    arrive_time + T(arrive_location, r_loc) <= s_r))\n\n    # Inter-meeting travel feasibility if meeting both\n    opt.add(Implies(And(meet_j, meet_r, j_before_r),\n                    e_j + T(j_loc, r_loc) <= s_r))\n    opt.add(Implies(And(meet_j, meet_r, Not(j_before_r)),\n                    e_r + T(r_loc, j_loc) <= s_j))\n\n    # Objective 1: Maximize number of friends met\n    num_met = If(meet_j, 1, 0) + If(meet_r, 1, 0)\n    opt.maximize(num_met)\n\n    # Objective 2: Maximize total meeting time\n    total_meet_time = If(meet_j, e_j - s_j, 0) + If(meet_r, e_r - s_r, 0)\n    opt.maximize(total_meet_time)\n\n    # Objective 3: Minimize finishing time (earlier end is better in tie)\n    last_end = If(And(meet_j, meet_r),\n                  If(j_before_r, e_r, e_j),\n                  If(meet_j, e_j, If(meet_r, e_r, arrive_time)))\n    opt.minimize(last_end)\n\n    if opt.check() != sat:\n        result = {\"itinerary\": []}\n        print(json.dumps(result))\n        return\n\n    m = opt.model()\n\n    itinerary = []\n\n    if is_true(m.evaluate(meet_j)):\n        sj = m.evaluate(s_j).as_long()\n        ej = m.evaluate(e_j).as_long()\n        itinerary.append({\n            \"action\": \"meet\",\n            \"location\": j_loc,\n            \"person\": \"James\",\n            \"start_time\": minutes_to_str(sj),\n            \"end_time\": minutes_to_str(ej)\n        })\n\n    if is_true(m.evaluate(meet_r)):\n        sr = m.evaluate(s_r).as_long()\n        er = m.evaluate(e_r).as_long()\n        itinerary.append({\n            \"action\": \"meet\",\n            \"location\": r_loc,\n            \"person\": \"Robert\",\n            \"start_time\": minutes_to_str(sr),\n            \"end_time\": minutes_to_str(er)\n        })\n\n    # Sort itinerary by start time\n    itinerary.sort(key=lambda x: (int(x[\"start_time\"].split(\":\")[0]) * 60 + int(x[\"start_time\"].split(\":\")[1])))\n\n    print(json.dumps({\"itinerary\": itinerary}))\n\nif __name__ == \"__main__\":\n    main()"
+}

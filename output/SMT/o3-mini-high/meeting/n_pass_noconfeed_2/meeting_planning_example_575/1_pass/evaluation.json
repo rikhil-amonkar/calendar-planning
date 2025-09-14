@@ -1,0 +1,115 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"itinerary\": [\n    {\n      \"action\": \"meet\",\n      \"location\": \"Russian Hill\",\n      \"person\": \"Mark\",\n      \"start_time\": \"12:59\",\n      \"end_time\": \"14:14\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Golden Gate Park\",\n      \"person\": \"Robert\",\n      \"start_time\": \"14:35\",\n      \"end_time\": \"15:20\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Sunset District\",\n      \"person\": \"Linda\",\n      \"start_time\": \"15:30\",\n      \"end_time\": \"16:00\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Mission District\",\n      \"person\": \"William\",\n      \"start_time\": \"16:24\",\n      \"end_time\": \"16:54\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Haight-Ashbury\",\n      \"person\": \"Elizabeth\",\n      \"start_time\": \"17:15\",\n      \"end_time\": \"19:00\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Presidio\",\n      \"person\": \"Rebecca\",\n      \"start_time\": \"19:45\",\n      \"end_time\": \"20:45\"\n    }\n  ]\n}",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Russian Hill",
+                "person": "Mark",
+                "start_time": "12:59",
+                "end_time": "14:14"
+            },
+            {
+                "action": "meet",
+                "location": "Golden Gate Park",
+                "person": "Robert",
+                "start_time": "14:35",
+                "end_time": "15:20"
+            },
+            {
+                "action": "meet",
+                "location": "Sunset District",
+                "person": "Linda",
+                "start_time": "15:30",
+                "end_time": "16:00"
+            },
+            {
+                "action": "meet",
+                "location": "Mission District",
+                "person": "William",
+                "start_time": "16:24",
+                "end_time": "16:54"
+            },
+            {
+                "action": "meet",
+                "location": "Haight-Ashbury",
+                "person": "Elizabeth",
+                "start_time": "17:15",
+                "end_time": "19:00"
+            },
+            {
+                "action": "meet",
+                "location": "Presidio",
+                "person": "Rebecca",
+                "start_time": "19:45",
+                "end_time": "20:45"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Mission District",
+                "person": "William",
+                "start_time": "13:15",
+                "end_time": "13:45"
+            },
+            {
+                "action": "meet",
+                "location": "Golden Gate Park",
+                "person": "Robert",
+                "start_time": "14:15",
+                "end_time": "15:00"
+            },
+            {
+                "action": "meet",
+                "location": "Russian Hill",
+                "person": "Mark",
+                "start_time": "15:19",
+                "end_time": "16:34"
+            },
+            {
+                "action": "meet",
+                "location": "Sunset District",
+                "person": "Linda",
+                "start_time": "16:57",
+                "end_time": "17:27"
+            },
+            {
+                "action": "meet",
+                "location": "Haight-Ashbury",
+                "person": "Elizabeth",
+                "start_time": "17:42",
+                "end_time": "19:27"
+            },
+            {
+                "action": "meet",
+                "location": "Presidio",
+                "person": "Rebecca",
+                "start_time": "19:42",
+                "end_time": "20:42"
+            }
+        ]
+    },
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "constraints_satisfied_but_no_exact_match": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 90.42733716964722,
+        "execution_time": 0.08265185356140137,
+        "constraint_eval_time": 0.0004572868347167969,
+        "pred_extract_time": 3.196192502975464,
+        "gold_extract_time": 8.487701416015625e-05,
+        "total_tokens": 6568,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import json\nfrom z3 import *\n\ndef minutes_to_str(m):\n    # Convert minutes (integer) to H:MM 24-hour format (no leading zeros)\n    h = m // 60\n    mi = m % 60\n    return f\"{h}:{mi:02d}\"\n\ndef main():\n    # Travel times in minutes for every pair of locations\n    travel = {\n        \"The Castro\": {\n            \"Presidio\": 20,\n            \"Sunset District\": 17,\n            \"Haight-Ashbury\": 6,\n            \"Mission District\": 7,\n            \"Golden Gate Park\": 11,\n            \"Russian Hill\": 18\n        },\n        \"Presidio\": {\n            \"The Castro\": 21,\n            \"Sunset District\": 15,\n            \"Haight-Ashbury\": 15,\n            \"Mission District\": 26,\n            \"Golden Gate Park\": 12,\n            \"Russian Hill\": 14\n        },\n        \"Sunset District\": {\n            \"The Castro\": 17,\n            \"Presidio\": 16,\n            \"Haight-Ashbury\": 15,\n            \"Mission District\": 24,\n            \"Golden Gate Park\": 11,\n            \"Russian Hill\": 24\n        },\n        \"Haight-Ashbury\": {\n            \"The Castro\": 6,\n            \"Presidio\": 15,\n            \"Sunset District\": 15,\n            \"Mission District\": 11,\n            \"Golden Gate Park\": 7,\n            \"Russian Hill\": 17\n        },\n        \"Mission District\": {\n            \"The Castro\": 7,\n            \"Presidio\": 25,\n            \"Sunset District\": 24,\n            \"Haight-Ashbury\": 12,\n            \"Golden Gate Park\": 17,\n            \"Russian Hill\": 15\n        },\n        \"Golden Gate Park\": {\n            \"The Castro\": 13,\n            \"Presidio\": 11,\n            \"Sunset District\": 10,\n            \"Haight-Ashbury\": 7,\n            \"Mission District\": 17,\n            \"Russian Hill\": 19\n        },\n        \"Russian Hill\": {\n            \"The Castro\": 21,\n            \"Presidio\": 14,\n            \"Sunset District\": 23,\n            \"Haight-Ashbury\": 17,\n            \"Mission District\": 16,\n            \"Golden Gate Park\": 21\n        }\n    }\n    \n    # Friend meeting data: name, location, availability window (in minutes from midnight) and minimum meeting duration\n    friends = [\n        {\"name\": \"Rebecca\", \"location\": \"Presidio\", \"avail_start\": 18 * 60 + 15, \"avail_end\": 20 * 60 + 45, \"min_dur\": 60},\n        {\"name\": \"Linda\", \"location\": \"Sunset District\", \"avail_start\": 15 * 60 + 30, \"avail_end\": 19 * 60 + 45, \"min_dur\": 30},\n        {\"name\": \"Elizabeth\", \"location\": \"Haight-Ashbury\", \"avail_start\": 17 * 60 + 15, \"avail_end\": 19 * 60 + 30, \"min_dur\": 105},\n        {\"name\": \"William\", \"location\": \"Mission District\", \"avail_start\": 13 * 60 + 15, \"avail_end\": 19 * 60 + 30, \"min_dur\": 30},\n        {\"name\": \"Robert\", \"location\": \"Golden Gate Park\", \"avail_start\": 14 * 60 + 15, \"avail_end\": 21 * 60 + 30, \"min_dur\": 45},\n        {\"name\": \"Mark\", \"location\": \"Russian Hill\", \"avail_start\": 10 * 60, \"avail_end\": 21 * 60 + 15, \"min_dur\": 75},\n    ]\n    \n    # Starting point: you arrive at The Castro at 9:00AM (540 minutes)\n    start_location = \"The Castro\"\n    start_time = 9 * 60  # 9:00 in minutes\n\n    # Create an Optimize object from Z3\n    opt = Optimize()\n\n    # Create variables for each friend:\n    # s_vars: meeting start time, e_vars: meeting end time, meet_vars: Boolean decision if meeting is scheduled.\n    s_vars = {}\n    e_vars = {}\n    meet_vars = {}\n    for friend in friends:\n        name = friend[\"name\"]\n        s_vars[name] = Int(\"s_\" + name)\n        e_vars[name] = Int(\"e_\" + name)\n        meet_vars[name] = Bool(\"meet_\" + name)\n    \n    # Add individual constraints for each meeting if it is scheduled.\n    for friend in friends:\n        name = friend[\"name\"]\n        avail_start = friend[\"avail_start\"]\n        avail_end = friend[\"avail_end\"]\n        min_dur = friend[\"min_dur\"]\n        # If meeting is scheduled, meeting must start no earlier than the friend's availability,\n        # end no later than the friend's availability, and last at least the minimum duration.\n        opt.add(Implies(meet_vars[name], s_vars[name] >= avail_start))\n        opt.add(Implies(meet_vars[name], e_vars[name] <= avail_end))\n        opt.add(Implies(meet_vars[name], e_vars[name] - s_vars[name] >= min_dur))\n        # Also, if scheduled, the meeting start time must be after you can reach the location\n        travel_from_start = travel[start_location][friend[\"location\"]]\n        opt.add(Implies(meet_vars[name], s_vars[name] >= start_time + travel_from_start))\n    \n    # Add pairwise non-overlap constraints (including travel time between meeting locations)\n    # For any two scheduled meetings, one must occur before the other (accounting for travel).\n    n = len(friends)\n    for i in range(n):\n        for j in range(i + 1, n):\n            name_i = friends[i][\"name\"]\n            name_j = friends[j][\"name\"]\n            loc_i = friends[i][\"location\"]\n            loc_j = friends[j][\"location\"]\n            travel_ij = travel[loc_i][loc_j]\n            travel_ji = travel[loc_j][loc_i]\n            opt.add(Implies(And(meet_vars[name_i], meet_vars[name_j]),\n                            Or(e_vars[name_i] + travel_ij <= s_vars[name_j],\n                               e_vars[name_j] + travel_ji <= s_vars[name_i])))\n    \n    # Objective: maximize the number of meetings scheduled.\n    total_meetings = Sum([If(meet_vars[friend[\"name\"]], 1, 0) for friend in friends])\n    opt.maximize(total_meetings)\n    \n    # Solve the scheduling problem.\n    if opt.check() == sat:\n        model = opt.model()\n    else:\n        print(json.dumps({\"itinerary\": []}))\n        return\n\n    # Extract scheduled meetings from the model and sort them by start time.\n    itinerary_meetings = []\n    for friend in friends:\n        name = friend[\"name\"]\n        if is_true(model.evaluate(meet_vars[name])):\n            s_val = model.evaluate(s_vars[name]).as_long()\n            e_val = model.evaluate(e_vars[name]).as_long()\n            itinerary_meetings.append({\n                \"name\": name,\n                \"location\": friend[\"location\"],\n                \"s\": s_val,\n                \"e\": e_val\n            })\n    itinerary_meetings.sort(key=lambda m: m[\"s\"])\n\n    # Build the final itinerary following the required JSON structure.\n    itinerary = []\n    for meeting in itinerary_meetings:\n        itinerary.append({\n            \"action\": \"meet\",\n            \"location\": meeting[\"location\"],\n            \"person\": meeting[\"name\"],\n            \"start_time\": minutes_to_str(meeting[\"s\"]),\n            \"end_time\": minutes_to_str(meeting[\"e\"])\n        })\n    \n    result = {\"itinerary\": itinerary}\n    print(json.dumps(result, indent=2))\n\nif __name__ == \"__main__\":\n    main()"
+}

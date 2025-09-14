@@ -1,0 +1,115 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"itinerary\": [\n    {\n      \"action\": \"meet\",\n      \"location\": \"Alamo Square\",\n      \"person\": \"Kenneth\",\n      \"start_time\": \"14:00\",\n      \"end_time\": \"16:00\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Golden Gate Park\",\n      \"person\": \"Deborah\",\n      \"start_time\": \"16:09\",\n      \"end_time\": \"17:39\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Sunset District\",\n      \"person\": \"Karen\",\n      \"start_time\": \"17:49\",\n      \"end_time\": \"18:04\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Pacific Heights\",\n      \"person\": \"John\",\n      \"start_time\": \"18:25\",\n      \"end_time\": \"18:40\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Mission District\",\n      \"person\": \"David\",\n      \"start_time\": \"18:55\",\n      \"end_time\": \"19:40\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Union Square\",\n      \"person\": \"Charles\",\n      \"start_time\": \"21:45\",\n      \"end_time\": \"22:45\"\n    }\n  ]\n}",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Alamo Square",
+                "person": "Kenneth",
+                "start_time": "14:00",
+                "end_time": "16:00"
+            },
+            {
+                "action": "meet",
+                "location": "Golden Gate Park",
+                "person": "Deborah",
+                "start_time": "16:09",
+                "end_time": "17:39"
+            },
+            {
+                "action": "meet",
+                "location": "Sunset District",
+                "person": "Karen",
+                "start_time": "17:49",
+                "end_time": "18:04"
+            },
+            {
+                "action": "meet",
+                "location": "Pacific Heights",
+                "person": "John",
+                "start_time": "18:25",
+                "end_time": "18:40"
+            },
+            {
+                "action": "meet",
+                "location": "Mission District",
+                "person": "David",
+                "start_time": "18:55",
+                "end_time": "19:40"
+            },
+            {
+                "action": "meet",
+                "location": "Union Square",
+                "person": "Charles",
+                "start_time": "21:45",
+                "end_time": "22:45"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Mission District",
+                "person": "David",
+                "start_time": "9:18",
+                "end_time": "10:03"
+            },
+            {
+                "action": "meet",
+                "location": "Alamo Square",
+                "person": "Kenneth",
+                "start_time": "14:00",
+                "end_time": "16:00"
+            },
+            {
+                "action": "meet",
+                "location": "Golden Gate Park",
+                "person": "Deborah",
+                "start_time": "16:09",
+                "end_time": "17:39"
+            },
+            {
+                "action": "meet",
+                "location": "Pacific Heights",
+                "person": "John",
+                "start_time": "17:55",
+                "end_time": "18:10"
+            },
+            {
+                "action": "meet",
+                "location": "Sunset District",
+                "person": "Karen",
+                "start_time": "18:31",
+                "end_time": "18:46"
+            },
+            {
+                "action": "meet",
+                "location": "Union Square",
+                "person": "Charles",
+                "start_time": "21:45",
+                "end_time": "22:45"
+            }
+        ]
+    },
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "constraints_satisfied_but_no_exact_match": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 124.43276476860046,
+        "execution_time": 0.12061214447021484,
+        "constraint_eval_time": 0.00018739700317382812,
+        "pred_extract_time": 3.787015199661255,
+        "gold_extract_time": 4.267692565917969e-05,
+        "total_tokens": 8804,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import Optimize, Int, Bool, If, And, Or, Implies, Not, sat\nimport json\n\ndef main():\n    # Define travel times (in minutes) as given\n    travel = {\n        (\"Chinatown\", \"Mission District\"): 18,\n        (\"Chinatown\", \"Alamo Square\"): 17,\n        (\"Chinatown\", \"Pacific Heights\"): 10,\n        (\"Chinatown\", \"Union Square\"): 7,\n        (\"Chinatown\", \"Golden Gate Park\"): 23,\n        (\"Chinatown\", \"Sunset District\"): 29,\n        (\"Chinatown\", \"Presidio\"): 19,\n        \n        (\"Mission District\", \"Chinatown\"): 16,\n        (\"Mission District\", \"Alamo Square\"): 11,\n        (\"Mission District\", \"Pacific Heights\"): 16,\n        (\"Mission District\", \"Union Square\"): 15,\n        (\"Mission District\", \"Golden Gate Park\"): 17,\n        (\"Mission District\", \"Sunset District\"): 24,\n        (\"Mission District\", \"Presidio\"): 25,\n        \n        (\"Alamo Square\", \"Chinatown\"): 16,\n        (\"Alamo Square\", \"Mission District\"): 10,\n        (\"Alamo Square\", \"Pacific Heights\"): 10,\n        (\"Alamo Square\", \"Union Square\"): 14,\n        (\"Alamo Square\", \"Golden Gate Park\"): 9,\n        (\"Alamo Square\", \"Sunset District\"): 16,\n        (\"Alamo Square\", \"Presidio\"): 18,\n        \n        (\"Pacific Heights\", \"Chinatown\"): 11,\n        (\"Pacific Heights\", \"Mission District\"): 15,\n        (\"Pacific Heights\", \"Alamo Square\"): 10,\n        (\"Pacific Heights\", \"Union Square\"): 12,\n        (\"Pacific Heights\", \"Golden Gate Park\"): 15,\n        (\"Pacific Heights\", \"Sunset District\"): 21,\n        (\"Pacific Heights\", \"Presidio\"): 11,\n        \n        (\"Union Square\", \"Chinatown\"): 7,\n        (\"Union Square\", \"Mission District\"): 14,\n        (\"Union Square\", \"Alamo Square\"): 15,\n        (\"Union Square\", \"Pacific Heights\"): 15,\n        (\"Union Square\", \"Golden Gate Park\"): 22,\n        (\"Union Square\", \"Sunset District\"): 26,\n        (\"Union Square\", \"Presidio\"): 24,\n        \n        (\"Golden Gate Park\", \"Chinatown\"): 23,\n        (\"Golden Gate Park\", \"Mission District\"): 17,\n        (\"Golden Gate Park\", \"Alamo Square\"): 10,\n        (\"Golden Gate Park\", \"Pacific Heights\"): 16,\n        (\"Golden Gate Park\", \"Union Square\"): 22,\n        (\"Golden Gate Park\", \"Sunset District\"): 10,\n        (\"Golden Gate Park\", \"Presidio\"): 11,\n        \n        (\"Sunset District\", \"Chinatown\"): 30,\n        (\"Sunset District\", \"Mission District\"): 24,\n        (\"Sunset District\", \"Alamo Square\"): 17,\n        (\"Sunset District\", \"Pacific Heights\"): 21,\n        (\"Sunset District\", \"Union Square\"): 30,\n        (\"Sunset District\", \"Golden Gate Park\"): 11,\n        (\"Sunset District\", \"Presidio\"): 16,\n        \n        (\"Presidio\", \"Chinatown\"): 21,\n        (\"Presidio\", \"Mission District\"): 26,\n        (\"Presidio\", \"Alamo Square\"): 18,\n        (\"Presidio\", \"Pacific Heights\"): 11,\n        (\"Presidio\", \"Union Square\"): 22,\n        (\"Presidio\", \"Golden Gate Park\"): 12,\n        (\"Presidio\", \"Sunset District\"): 15\n    }\n\n    # Friend meeting data: availability times in minutes since midnight\n    # Times: 9:00 AM is 540.\n    # David: 8:00 (480) to 19:45 (1185), min meeting 45\n    # Kenneth: 14:00 (840) to 19:45 (1185), min meeting 120\n    # John: 17:00 (1020) to 20:00 (1200), min meeting 15\n    # Charles: 21:45 (1305) to 22:45 (1365), min meeting 60\n    # Deborah: 7:00 (420) to 18:15 (1095), min meeting 90\n    # Karen: 17:45 (1065) to 21:15 (1275), min meeting 15\n    # Carol: 8:15 (495) to 9:15 (555), min meeting 30\n    friends = [\n        {\"name\": \"David\", \"location\": \"Mission District\", \"avail_start\": 480, \"avail_end\": 1185, \"min_dur\": 45},\n        {\"name\": \"Kenneth\", \"location\": \"Alamo Square\", \"avail_start\": 840, \"avail_end\": 1185, \"min_dur\": 120},\n        {\"name\": \"John\", \"location\": \"Pacific Heights\", \"avail_start\": 1020, \"avail_end\": 1200, \"min_dur\": 15},\n        {\"name\": \"Charles\", \"location\": \"Union Square\", \"avail_start\": 1305, \"avail_end\": 1365, \"min_dur\": 60},\n        {\"name\": \"Deborah\", \"location\": \"Golden Gate Park\", \"avail_start\": 420, \"avail_end\": 1095, \"min_dur\": 90},\n        {\"name\": \"Karen\", \"location\": \"Sunset District\", \"avail_start\": 1065, \"avail_end\": 1275, \"min_dur\": 15},\n        {\"name\": \"Carol\", \"location\": \"Presidio\", \"avail_start\": 495, \"avail_end\": 555, \"min_dur\": 30}\n    ]\n    num_friends = len(friends)\n    \n    # Starting parameters\n    start_location = \"Chinatown\"\n    start_time = 540  # 9:00 AM\n\n    opt = Optimize()\n\n    # Create decision variables for each friend meeting.\n    meets = []       # Boolean: whether to meet the friend\n    s_vars = []      # Start time of the meeting (in minutes)\n    order_vars = []  # Order of the meeting in the itinerary (0 if not scheduled)\n    \n    for i in range(num_friends):\n        meet_i = Bool(f\"meet_{i}\")\n        s_i = Int(f\"s_{i}\")\n        order_i = Int(f\"order_{i}\")\n        meets.append(meet_i)\n        s_vars.append(s_i)\n        order_vars.append(order_i)\n        \n        # Domain for meeting start time, say within the day.\n        opt.add(s_i >= 0, s_i <= 1440)\n        \n        # If not meeting, force s_i and order_i to 0.\n        opt.add(Implies(Not(meet_i), s_i == 0))\n        opt.add(Implies(Not(meet_i), order_i == 0))\n        \n        # If meeting is scheduled, order must be between 1 and num_friends.\n        opt.add(Implies(meet_i, And(order_i >= 1, order_i <= num_friends)))\n        \n        # Meeting must be within friend availability and last long enough.\n        friend = friends[i]\n        opt.add(Implies(meet_i,\n                        And(\n                            s_i >= friend[\"avail_start\"],\n                            s_i + friend[\"min_dur\"] <= friend[\"avail_end\"]\n                        )))\n    \n    # Ensure that if two meetings are scheduled, they have unique order numbers.\n    for i in range(num_friends):\n        for j in range(i+1, num_friends):\n            opt.add(Implies(And(meets[i], meets[j]), order_vars[i] != order_vars[j]))\n    \n    # Chain constraints:\n    # For the first scheduled meeting (order == 1), ensure we can get there from the start location.\n    for i in range(num_friends):\n        friend = friends[i]\n        # Travel time from start_location to the friend's meeting location.\n        ttime = travel[(start_location, friend[\"location\"])]\n        opt.add(Implies(And(meets[i], order_vars[i] == 1), s_vars[i] >= start_time + ttime))\n    \n    # For every meeting with order k > 1, ensure there is a predecessor meeting with order (k - 1)\n    # such that the travel from the predecessor's location plus its meeting duration fits.\n    for i in range(num_friends):\n        friend_i = friends[i]\n        for k in range(2, num_friends + 1):\n            # For meeting i with order k, there must be some meeting j (j != i) with order (k-1)\n            # such that s_i is at least s_j + min_dur_j + travel_time from friend j's location to friend i's location.\n            pred_options = []\n            for j in range(num_friends):\n                if j == i:\n                    continue\n                friend_j = friends[j]\n                ttime = travel[(friend_j[\"location\"], friend_i[\"location\"])]\n                pred_options.append(And(meets[j], order_vars[j] == k - 1, s_vars[i] >= s_vars[j] + friend_j[\"min_dur\"] + ttime))\n            if pred_options:\n                opt.add(Implies(And(meets[i], order_vars[i] == k), Or(pred_options)))\n    \n    # Objective: maximize the number of meetings scheduled.\n    total_meetings = sum([If(meet, 1, 0) for meet in meets])\n    opt.maximize(total_meetings)\n    \n    if opt.check() == sat:\n        model = opt.model()\n        # Collect scheduled meetings with their order and start time.\n        scheduled = []\n        for i in range(num_friends):\n            if model.evaluate(meets[i]):\n                order_val = model.evaluate(order_vars[i]).as_long()\n                s_val = model.evaluate(s_vars[i]).as_long()\n                scheduled.append((order_val, i, s_val))\n        # Sort by the order in the itinerary.\n        scheduled.sort(key=lambda x: x[0])\n        \n        itinerary = []\n        for order_val, i, s_val in scheduled:\n            friend = friends[i]\n            start_meet = s_val\n            end_meet = s_val + friend[\"min_dur\"]\n            # Format times in H:MM (24-hour), no leading zero for hours.\n            start_str = f\"{start_meet // 60}:{start_meet % 60:02d}\"\n            end_str = f\"{end_meet // 60}:{end_meet % 60:02d}\"\n            itinerary.append({\n                \"action\": \"meet\",\n                \"location\": friend[\"location\"],\n                \"person\": friend[\"name\"],\n                \"start_time\": start_str,\n                \"end_time\": end_str\n            })\n        \n        output = {\"itinerary\": itinerary}\n        print(json.dumps(output, indent=2))\n    else:\n        print(json.dumps({\"itinerary\": []}, indent=2))\n\nif __name__ == \"__main__\":\n    main()"
+}

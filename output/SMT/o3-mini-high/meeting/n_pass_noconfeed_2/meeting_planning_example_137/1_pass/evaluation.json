@@ -1,0 +1,59 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"itinerary\": [\n    {\n      \"action\": \"meet\",\n      \"location\": \"Golden Gate Park\",\n      \"person\": \"Barbara\",\n      \"start_time\": \"10:52\",\n      \"end_time\": \"11:37\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Chinatown\",\n      \"person\": \"Kenneth\",\n      \"start_time\": \"12:00\",\n      \"end_time\": \"13:30\"\n    }\n  ]\n}",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Golden Gate Park",
+                "person": "Barbara",
+                "start_time": "10:52",
+                "end_time": "11:37"
+            },
+            {
+                "action": "meet",
+                "location": "Chinatown",
+                "person": "Kenneth",
+                "start_time": "12:00",
+                "end_time": "13:30"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Chinatown",
+                "person": "Kenneth",
+                "start_time": "12:00",
+                "end_time": "13:30"
+            },
+            {
+                "action": "meet",
+                "location": "Golden Gate Park",
+                "person": "Barbara",
+                "start_time": "13:53",
+                "end_time": "14:38"
+            }
+        ]
+    },
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "constraints_satisfied_but_no_exact_match": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 140.28211045265198,
+        "execution_time": 0.08242344856262207,
+        "constraint_eval_time": 0.00022482872009277344,
+        "pred_extract_time": 1.6570255756378174,
+        "gold_extract_time": 6.961822509765625e-05,
+        "total_tokens": 4254,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\nimport json\n\ndef format_time(t):\n    # Convert integer minutes from midnight to \"H:MM\" string.\n    hour = t // 60\n    minute = t % 60\n    return f\"{hour}:{minute:02d}\"\n\ndef main():\n    # Time constants (in minutes from midnight)\n    fd_arrival = 9 * 60         # 9:00 AM = 540\n    k_avail_start = 12 * 60     # 12:00 PM = 720\n    k_avail_end = 15 * 60       # 15:00 PM = 900\n    b_avail_start = 8 * 60 + 15 # 8:15 AM = 495\n    b_avail_end = 19 * 60       # 19:00 = 1140\n\n    # Travel times (in minutes)\n    fd_to_chinatown = 5\n    fd_to_golden = 23\n    chin_to_golden = 23\n    golden_to_chinatown = 23\n\n    # Meeting durations (in minutes)\n    k_dur = 90   # Kenneth: at least 90 minutes\n    b_dur = 45   # Barbara: at least 45 minutes\n\n    # Create an optimizer\n    opt = Optimize()\n\n    # Decision variables:\n    # order_b_first == True means visit Barbara (Golden Gate Park) first then Kenneth (Chinatown)\n    order_b_first = Bool('order_b_first')\n    B_start = Int('B_start')  # Start time for meeting Barbara\n    K_start = Int('K_start')  # Start time for meeting Kenneth\n\n    # Define finish_time objective depending on order:\n    finish_time = If(order_b_first, K_start + k_dur, B_start + b_dur)\n\n    # Sequence A: Meet Barbara first then Kenneth.\n    cond_A = And(\n        # Travel from FD to Golden Gate Park\n        B_start >= fd_arrival + fd_to_golden,\n        B_start >= b_avail_start,\n        B_start + b_dur <= b_avail_end,\n        # Kenneth's availability and meeting duration constraints\n        K_start >= k_avail_start,\n        K_start + k_dur <= k_avail_end,\n        # Travel from Golden Gate Park to Chinatown\n        K_start >= B_start + b_dur + golden_to_chinatown\n    )\n\n    # Sequence B: Meet Kenneth first then Barbara.\n    cond_B = And(\n        # Travel from FD to Chinatown\n        K_start >= fd_arrival + fd_to_chinatown,\n        K_start >= k_avail_start,\n        K_start + k_dur <= k_avail_end,\n        # Barbara's availability and meeting duration constraints\n        B_start >= b_avail_start,\n        B_start + b_dur <= b_avail_end,\n        # Travel from Chinatown to Golden Gate Park\n        B_start >= K_start + k_dur + chin_to_golden\n    )\n\n    # Enforce that one of the two scheduling orders is chosen.\n    opt.add(Or(And(order_b_first, cond_A), And(Not(order_b_first), cond_B)))\n\n    # Set objective: minimize the finish time of the last meeting.\n    opt.minimize(finish_time)\n\n    if opt.check() == sat:\n        model = opt.model()\n        # Extract variable values\n        order_val = is_true(model[order_b_first])\n        B_time = model[B_start].as_long() if model[B_start] is not None else None\n        K_time = model[K_start].as_long() if model[K_start] is not None else None\n\n        itinerary = []\n        if order_val:\n            # Schedule: Meet Barbara first at Golden Gate Park, then Kenneth at Chinatown.\n            itinerary.append({\n                \"action\": \"meet\",\n                \"location\": \"Golden Gate Park\",\n                \"person\": \"Barbara\",\n                \"start_time\": format_time(B_time),\n                \"end_time\": format_time(B_time + b_dur)\n            })\n            itinerary.append({\n                \"action\": \"meet\",\n                \"location\": \"Chinatown\",\n                \"person\": \"Kenneth\",\n                \"start_time\": format_time(K_time),\n                \"end_time\": format_time(K_time + k_dur)\n            })\n        else:\n            # Schedule: Meet Kenneth first at Chinatown, then Barbara at Golden Gate Park.\n            itinerary.append({\n                \"action\": \"meet\",\n                \"location\": \"Chinatown\",\n                \"person\": \"Kenneth\",\n                \"start_time\": format_time(K_time),\n                \"end_time\": format_time(K_time + k_dur)\n            })\n            itinerary.append({\n                \"action\": \"meet\",\n                \"location\": \"Golden Gate Park\",\n                \"person\": \"Barbara\",\n                \"start_time\": format_time(B_time),\n                \"end_time\": format_time(B_time + b_dur)\n            })\n\n        result = {\"itinerary\": itinerary}\n        print(json.dumps(result, indent=2))\n    else:\n        print(json.dumps({\"itinerary\": []}))\n\nif __name__ == '__main__':\n    main()"
+}

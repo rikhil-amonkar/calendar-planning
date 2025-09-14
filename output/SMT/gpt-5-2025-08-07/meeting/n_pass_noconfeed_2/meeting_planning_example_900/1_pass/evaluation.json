@@ -1,0 +1,143 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\"itinerary\": [{\"action\": \"meet\", \"location\": \"Pacific Heights\", \"person\": \"Emily\", \"start_time\": \"11:15\", \"end_time\": \"12:08\"}, {\"action\": \"meet\", \"location\": \"Haight-Ashbury\", \"person\": \"Karen\", \"start_time\": \"12:19\", \"end_time\": \"12:49\"}, {\"action\": \"meet\", \"location\": \"Mission District\", \"person\": \"Stephanie\", \"start_time\": \"13:00\", \"end_time\": \"14:15\"}, {\"action\": \"meet\", \"location\": \"Chinatown\", \"person\": \"James\", \"start_time\": \"14:31\", \"end_time\": \"16:31\"}, {\"action\": \"meet\", \"location\": \"Russian Hill\", \"person\": \"Steven\", \"start_time\": \"16:38\", \"end_time\": \"17:08\"}, {\"action\": \"meet\", \"location\": \"Nob Hill\", \"person\": \"Rebecca\", \"start_time\": \"17:13\", \"end_time\": \"18:58\"}, {\"action\": \"meet\", \"location\": \"The Castro\", \"person\": \"Matthew\", \"start_time\": \"19:15\", \"end_time\": \"20:00\"}, {\"action\": \"meet\", \"location\": \"Marina District\", \"person\": \"Brian\", \"start_time\": \"20:21\", \"end_time\": \"22:00\"}]}",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Pacific Heights",
+                "person": "Emily",
+                "start_time": "11:15",
+                "end_time": "12:08"
+            },
+            {
+                "action": "meet",
+                "location": "Haight-Ashbury",
+                "person": "Karen",
+                "start_time": "12:19",
+                "end_time": "12:49"
+            },
+            {
+                "action": "meet",
+                "location": "Mission District",
+                "person": "Stephanie",
+                "start_time": "13:00",
+                "end_time": "14:15"
+            },
+            {
+                "action": "meet",
+                "location": "Chinatown",
+                "person": "James",
+                "start_time": "14:31",
+                "end_time": "16:31"
+            },
+            {
+                "action": "meet",
+                "location": "Russian Hill",
+                "person": "Steven",
+                "start_time": "16:38",
+                "end_time": "17:08"
+            },
+            {
+                "action": "meet",
+                "location": "Nob Hill",
+                "person": "Rebecca",
+                "start_time": "17:13",
+                "end_time": "18:58"
+            },
+            {
+                "action": "meet",
+                "location": "The Castro",
+                "person": "Matthew",
+                "start_time": "19:15",
+                "end_time": "20:00"
+            },
+            {
+                "action": "meet",
+                "location": "Marina District",
+                "person": "Brian",
+                "start_time": "20:21",
+                "end_time": "22:00"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Pacific Heights",
+                "person": "Emily",
+                "start_time": "11:15",
+                "end_time": "11:30"
+            },
+            {
+                "action": "meet",
+                "location": "Haight-Ashbury",
+                "person": "Karen",
+                "start_time": "11:45",
+                "end_time": "12:15"
+            },
+            {
+                "action": "meet",
+                "location": "Mission District",
+                "person": "Stephanie",
+                "start_time": "13:00",
+                "end_time": "14:15"
+            },
+            {
+                "action": "meet",
+                "location": "Chinatown",
+                "person": "James",
+                "start_time": "14:31",
+                "end_time": "16:31"
+            },
+            {
+                "action": "meet",
+                "location": "Russian Hill",
+                "person": "Steven",
+                "start_time": "16:38",
+                "end_time": "17:08"
+            },
+            {
+                "action": "meet",
+                "location": "The Castro",
+                "person": "Matthew",
+                "start_time": "17:29",
+                "end_time": "18:14"
+            },
+            {
+                "action": "meet",
+                "location": "Bayview",
+                "person": "William",
+                "start_time": "18:33",
+                "end_time": "20:03"
+            },
+            {
+                "action": "meet",
+                "location": "Marina District",
+                "person": "Brian",
+                "start_time": "20:30",
+                "end_time": "21:00"
+            }
+        ]
+    },
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "constraints_satisfied_but_no_exact_match": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 128.4849615097046,
+        "execution_time": 0.16508889198303223,
+        "constraint_eval_time": 0.0005979537963867188,
+        "pred_extract_time": 5.239023208618164,
+        "gold_extract_time": 0.0001049041748046875,
+        "total_tokens": 9475,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import json\nfrom z3 import *\n\ndef t(h, m):\n    return h * 60 + m\n\ndef minutes_to_str(m):\n    h = m // 60\n    mm = m % 60\n    return f\"{h}:{mm:02d}\"\n\n# Locations\nlocations = [\n    \"Richmond District\", \"The Castro\", \"Nob Hill\", \"Marina District\", \"Pacific Heights\",\n    \"Haight-Ashbury\", \"Mission District\", \"Chinatown\", \"Russian Hill\", \"Alamo Square\", \"Bayview\"\n]\n\n# Travel times (minutes)\ntravel = {loc: {} for loc in locations}\ndef set_travel(a, b, minutes):\n    travel[a][b] = minutes\n\n# Populate travel times\nset_travel(\"Richmond District\", \"The Castro\", 16)\nset_travel(\"Richmond District\", \"Nob Hill\", 17)\nset_travel(\"Richmond District\", \"Marina District\", 9)\nset_travel(\"Richmond District\", \"Pacific Heights\", 10)\nset_travel(\"Richmond District\", \"Haight-Ashbury\", 10)\nset_travel(\"Richmond District\", \"Mission District\", 20)\nset_travel(\"Richmond District\", \"Chinatown\", 20)\nset_travel(\"Richmond District\", \"Russian Hill\", 13)\nset_travel(\"Richmond District\", \"Alamo Square\", 13)\nset_travel(\"Richmond District\", \"Bayview\", 27)\n\nset_travel(\"The Castro\", \"Richmond District\", 16)\nset_travel(\"The Castro\", \"Nob Hill\", 16)\nset_travel(\"The Castro\", \"Marina District\", 21)\nset_travel(\"The Castro\", \"Pacific Heights\", 16)\nset_travel(\"The Castro\", \"Haight-Ashbury\", 6)\nset_travel(\"The Castro\", \"Mission District\", 7)\nset_travel(\"The Castro\", \"Chinatown\", 22)\nset_travel(\"The Castro\", \"Russian Hill\", 18)\nset_travel(\"The Castro\", \"Alamo Square\", 8)\nset_travel(\"The Castro\", \"Bayview\", 19)\n\nset_travel(\"Nob Hill\", \"Richmond District\", 14)\nset_travel(\"Nob Hill\", \"The Castro\", 17)\nset_travel(\"Nob Hill\", \"Marina District\", 11)\nset_travel(\"Nob Hill\", \"Pacific Heights\", 8)\nset_travel(\"Nob Hill\", \"Haight-Ashbury\", 13)\nset_travel(\"Nob Hill\", \"Mission District\", 13)\nset_travel(\"Nob Hill\", \"Chinatown\", 6)\nset_travel(\"Nob Hill\", \"Russian Hill\", 5)\nset_travel(\"Nob Hill\", \"Alamo Square\", 11)\nset_travel(\"Nob Hill\", \"Bayview\", 19)\n\nset_travel(\"Marina District\", \"Richmond District\", 11)\nset_travel(\"Marina District\", \"The Castro\", 22)\nset_travel(\"Marina District\", \"Nob Hill\", 12)\nset_travel(\"Marina District\", \"Pacific Heights\", 7)\nset_travel(\"Marina District\", \"Haight-Ashbury\", 16)\nset_travel(\"Marina District\", \"Mission District\", 20)\nset_travel(\"Marina District\", \"Chinatown\", 15)\nset_travel(\"Marina District\", \"Russian Hill\", 8)\nset_travel(\"Marina District\", \"Alamo Square\", 15)\nset_travel(\"Marina District\", \"Bayview\", 27)\n\nset_travel(\"Pacific Heights\", \"Richmond District\", 12)\nset_travel(\"Pacific Heights\", \"The Castro\", 16)\nset_travel(\"Pacific Heights\", \"Nob Hill\", 8)\nset_travel(\"Pacific Heights\", \"Marina District\", 6)\nset_travel(\"Pacific Heights\", \"Haight-Ashbury\", 11)\nset_travel(\"Pacific Heights\", \"Mission District\", 15)\nset_travel(\"Pacific Heights\", \"Chinatown\", 11)\nset_travel(\"Pacific Heights\", \"Russian Hill\", 7)\nset_travel(\"Pacific Heights\", \"Alamo Square\", 10)\nset_travel(\"Pacific Heights\", \"Bayview\", 22)\n\nset_travel(\"Haight-Ashbury\", \"Richmond District\", 10)\nset_travel(\"Haight-Ashbury\", \"The Castro\", 6)\nset_travel(\"Haight-Ashbury\", \"Nob Hill\", 15)\nset_travel(\"Haight-Ashbury\", \"Marina District\", 17)\nset_travel(\"Haight-Ashbury\", \"Pacific Heights\", 12)\nset_travel(\"Haight-Ashbury\", \"Mission District\", 11)\nset_travel(\"Haight-Ashbury\", \"Chinatown\", 19)\nset_travel(\"Haight-Ashbury\", \"Russian Hill\", 17)\nset_travel(\"Haight-Ashbury\", \"Alamo Square\", 5)\nset_travel(\"Haight-Ashbury\", \"Bayview\", 18)\n\nset_travel(\"Mission District\", \"Richmond District\", 20)\nset_travel(\"Mission District\", \"The Castro\", 7)\nset_travel(\"Mission District\", \"Nob Hill\", 12)\nset_travel(\"Mission District\", \"Marina District\", 19)\nset_travel(\"Mission District\", \"Pacific Heights\", 16)\nset_travel(\"Mission District\", \"Haight-Ashbury\", 12)\nset_travel(\"Mission District\", \"Chinatown\", 16)\nset_travel(\"Mission District\", \"Russian Hill\", 15)\nset_travel(\"Mission District\", \"Alamo Square\", 11)\nset_travel(\"Mission District\", \"Bayview\", 14)\n\nset_travel(\"Chinatown\", \"Richmond District\", 20)\nset_travel(\"Chinatown\", \"The Castro\", 22)\nset_travel(\"Chinatown\", \"Nob Hill\", 9)\nset_travel(\"Chinatown\", \"Marina District\", 12)\nset_travel(\"Chinatown\", \"Pacific Heights\", 10)\nset_travel(\"Chinatown\", \"Haight-Ashbury\", 19)\nset_travel(\"Chinatown\", \"Mission District\", 17)\nset_travel(\"Chinatown\", \"Russian Hill\", 7)\nset_travel(\"Chinatown\", \"Alamo Square\", 17)\nset_travel(\"Chinatown\", \"Bayview\", 20)\n\nset_travel(\"Russian Hill\", \"Richmond District\", 14)\nset_travel(\"Russian Hill\", \"The Castro\", 21)\nset_travel(\"Russian Hill\", \"Nob Hill\", 5)\nset_travel(\"Russian Hill\", \"Marina District\", 7)\nset_travel(\"Russian Hill\", \"Pacific Heights\", 7)\nset_travel(\"Russian Hill\", \"Haight-Ashbury\", 17)\nset_travel(\"Russian Hill\", \"Mission District\", 16)\nset_travel(\"Russian Hill\", \"Chinatown\", 9)\nset_travel(\"Russian Hill\", \"Alamo Square\", 15)\nset_travel(\"Russian Hill\", \"Bayview\", 23)\n\nset_travel(\"Alamo Square\", \"Richmond District\", 11)\nset_travel(\"Alamo Square\", \"The Castro\", 8)\nset_travel(\"Alamo Square\", \"Nob Hill\", 11)\nset_travel(\"Alamo Square\", \"Marina District\", 15)\nset_travel(\"Alamo Square\", \"Pacific Heights\", 10)\nset_travel(\"Alamo Square\", \"Haight-Ashbury\", 5)\nset_travel(\"Alamo Square\", \"Mission District\", 10)\nset_travel(\"Alamo Square\", \"Chinatown\", 15)\nset_travel(\"Alamo Square\", \"Russian Hill\", 13)\nset_travel(\"Alamo Square\", \"Bayview\", 16)\n\nset_travel(\"Bayview\", \"Richmond District\", 25)\nset_travel(\"Bayview\", \"The Castro\", 19)\nset_travel(\"Bayview\", \"Nob Hill\", 20)\nset_travel(\"Bayview\", \"Marina District\", 27)\nset_travel(\"Bayview\", \"Pacific Heights\", 23)\nset_travel(\"Bayview\", \"Haight-Ashbury\", 19)\nset_travel(\"Bayview\", \"Mission District\", 13)\nset_travel(\"Bayview\", \"Chinatown\", 19)\nset_travel(\"Bayview\", \"Russian Hill\", 23)\nset_travel(\"Bayview\", \"Alamo Square\", 16)\n\n# Ensure travel within same location is zero\nfor a in locations:\n    travel[a][a] = 0\n\ndef travel_time(a, b):\n    return travel[a][b]\n\n# People data: name, location, availability start/end, minimum duration\npeople = [\n    {\"name\": \"Matthew\", \"loc\": \"The Castro\", \"start\": t(16,30), \"end\": t(20,0), \"min_dur\": 45},\n    {\"name\": \"Rebecca\", \"loc\": \"Nob Hill\", \"start\": t(15,15), \"end\": t(19,15), \"min_dur\": 105},\n    {\"name\": \"Brian\", \"loc\": \"Marina District\", \"start\": t(14,15), \"end\": t(22,0), \"min_dur\": 30},\n    {\"name\": \"Emily\", \"loc\": \"Pacific Heights\", \"start\": t(11,15), \"end\": t(19,45), \"min_dur\": 15},\n    {\"name\": \"Karen\", \"loc\": \"Haight-Ashbury\", \"start\": t(11,45), \"end\": t(17,30), \"min_dur\": 30},\n    {\"name\": \"Stephanie\", \"loc\": \"Mission District\", \"start\": t(13,0), \"end\": t(15,45), \"min_dur\": 75},\n    {\"name\": \"James\", \"loc\": \"Chinatown\", \"start\": t(14,30), \"end\": t(19,0), \"min_dur\": 120},\n    {\"name\": \"Steven\", \"loc\": \"Russian Hill\", \"start\": t(14,0), \"end\": t(20,0), \"min_dur\": 30},\n    {\"name\": \"Elizabeth\", \"loc\": \"Alamo Square\", \"start\": t(13,0), \"end\": t(17,15), \"min_dur\": 120},\n    {\"name\": \"William\", \"loc\": \"Bayview\", \"start\": t(18,15), \"end\": t(20,15), \"min_dur\": 90},\n]\n\n# Start location/time\nstart_location = \"Richmond District\"\narrival_time = t(9, 0)\n\n# Z3 variables\nopt = Optimize()\nopt.set(priority='lex')\n\ns_vars = {}\ne_vars = {}\nmeet_vars = {}\n\nfor p in people:\n    var_base = p[\"name\"].replace(\" \", \"_\")\n    s = Int(f\"{var_base}_start\")\n    e = Int(f\"{var_base}_end\")\n    meet = Bool(f\"{var_base}_meet\")\n    s_vars[p[\"name\"]] = s\n    e_vars[p[\"name\"]] = e\n    meet_vars[p[\"name\"]] = meet\n\n    # Bounds\n    opt.add(s >= 0, s <= 24*60, e >= 0, e <= 24*60)\n\n    # If meeting, times within availability; else zeroed\n    opt.add(If(meet, s >= p[\"start\"], s == 0))\n    opt.add(If(meet, e <= p[\"end\"], e == 0))\n    opt.add(If(meet, e - s >= p[\"min_dur\"], e == s))\n\n    # Must be reachable from start location at 9:00\n    opt.add(Or(Not(meet), arrival_time + travel_time(start_location, p[\"loc\"]) <= s))\n\n# Non-overlap with travel between all meetings\nn = len(people)\nfor i in range(n):\n    for j in range(i+1, n):\n        pi = people[i]\n        pj = people[j]\n        si, ei, mi = s_vars[pi[\"name\"]], e_vars[pi[\"name\"]], meet_vars[pi[\"name\"]]\n        sj, ej, mj = s_vars[pj[\"name\"]], e_vars[pj[\"name\"]], meet_vars[pj[\"name\"]]\n        ti_to_j = travel_time(pi[\"loc\"], pj[\"loc\"])\n        tj_to_i = travel_time(pj[\"loc\"], pi[\"loc\"])\n        # If both meetings happen, enforce disjunctive ordering with travel\n        opt.add(Or(Not(And(mi, mj)),\n                   ei + ti_to_j <= sj,\n                   ej + tj_to_i <= si))\n\n# Objective: maximize number of meetings, then maximize total meeting time\ntotal_meets = Sum([If(meet_vars[p[\"name\"]], 1, 0) for p in people])\ntotal_minutes = Sum([If(meet_vars[p[\"name\"]], e_vars[p[\"name\"]] - s_vars[p[\"name\"]], 0) for p in people])\nopt.maximize(total_meets)\nopt.maximize(total_minutes)\n\nif opt.check() != sat:\n    print(json.dumps({\"itinerary\": []}))\nelse:\n    m = opt.model()\n    itinerary = []\n    for p in people:\n        if is_true(m.evaluate(meet_vars[p[\"name\"]])):\n            s_val = m.evaluate(s_vars[p[\"name\"]]).as_long()\n            e_val = m.evaluate(e_vars[p[\"name\"]]).as_long()\n            itinerary.append({\n                \"action\": \"meet\",\n                \"location\": p[\"loc\"],\n                \"person\": p[\"name\"],\n                \"start_time\": minutes_to_str(s_val),\n                \"end_time\": minutes_to_str(e_val)\n            })\n    # Sort by start_time\n    itinerary.sort(key=lambda x: int(x[\"start_time\"].split(\":\")[0]) * 60 + int(x[\"start_time\"].split(\":\")[1]))\n    print(json.dumps({\"itinerary\": itinerary}, ensure_ascii=False))"
+}

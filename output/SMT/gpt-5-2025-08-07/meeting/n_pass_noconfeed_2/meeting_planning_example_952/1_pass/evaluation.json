@@ -1,0 +1,143 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "SOLUTION:\n{\"itinerary\": [{\"action\": \"meet\", \"location\": \"Fisherman's Wharf\", \"person\": \"Richard\", \"start_time\": \"11:00\", \"end_time\": \"12:18\"}, {\"action\": \"meet\", \"location\": \"Nob Hill\", \"person\": \"Elizabeth\", \"start_time\": \"12:29\", \"end_time\": \"13:44\"}, {\"action\": \"meet\", \"location\": \"North Beach\", \"person\": \"Brian\", \"start_time\": \"13:52\", \"end_time\": \"15:22\"}, {\"action\": \"meet\", \"location\": \"Pacific Heights\", \"person\": \"Anthony\", \"start_time\": \"15:30\", \"end_time\": \"16:00\"}, {\"action\": \"meet\", \"location\": \"Chinatown\", \"person\": \"Kenneth\", \"start_time\": \"16:11\", \"end_time\": \"18:02\"}, {\"action\": \"meet\", \"location\": \"Haight-Ashbury\", \"person\": \"Ashley\", \"start_time\": \"18:21\", \"end_time\": \"19:56\"}, {\"action\": \"meet\", \"location\": \"Alamo Square\", \"person\": \"Kimberly\", \"start_time\": \"20:01\", \"end_time\": \"20:46\"}, {\"action\": \"meet\", \"location\": \"Union Square\", \"person\": \"Deborah\", \"start_time\": \"21:00\", \"end_time\": \"22:00\"}]}",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Fisherman's Wharf",
+                "person": "Richard",
+                "start_time": "11:00",
+                "end_time": "12:18"
+            },
+            {
+                "action": "meet",
+                "location": "Nob Hill",
+                "person": "Elizabeth",
+                "start_time": "12:29",
+                "end_time": "13:44"
+            },
+            {
+                "action": "meet",
+                "location": "North Beach",
+                "person": "Brian",
+                "start_time": "13:52",
+                "end_time": "15:22"
+            },
+            {
+                "action": "meet",
+                "location": "Pacific Heights",
+                "person": "Anthony",
+                "start_time": "15:30",
+                "end_time": "16:00"
+            },
+            {
+                "action": "meet",
+                "location": "Chinatown",
+                "person": "Kenneth",
+                "start_time": "16:11",
+                "end_time": "18:02"
+            },
+            {
+                "action": "meet",
+                "location": "Haight-Ashbury",
+                "person": "Ashley",
+                "start_time": "18:21",
+                "end_time": "19:56"
+            },
+            {
+                "action": "meet",
+                "location": "Alamo Square",
+                "person": "Kimberly",
+                "start_time": "20:01",
+                "end_time": "20:46"
+            },
+            {
+                "action": "meet",
+                "location": "Union Square",
+                "person": "Deborah",
+                "start_time": "21:00",
+                "end_time": "22:00"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Fisherman's Wharf",
+                "person": "Richard",
+                "start_time": "11:00",
+                "end_time": "12:00"
+            },
+            {
+                "action": "meet",
+                "location": "Nob Hill",
+                "person": "Elizabeth",
+                "start_time": "12:11",
+                "end_time": "13:26"
+            },
+            {
+                "action": "meet",
+                "location": "North Beach",
+                "person": "Brian",
+                "start_time": "13:34",
+                "end_time": "15:04"
+            },
+            {
+                "action": "meet",
+                "location": "Pacific Heights",
+                "person": "Anthony",
+                "start_time": "15:12",
+                "end_time": "15:42"
+            },
+            {
+                "action": "meet",
+                "location": "Haight-Ashbury",
+                "person": "Ashley",
+                "start_time": "15:53",
+                "end_time": "17:23"
+            },
+            {
+                "action": "meet",
+                "location": "Union Square",
+                "person": "Deborah",
+                "start_time": "17:42",
+                "end_time": "18:42"
+            },
+            {
+                "action": "meet",
+                "location": "Alamo Square",
+                "person": "Kimberly",
+                "start_time": "18:57",
+                "end_time": "19:42"
+            },
+            {
+                "action": "meet",
+                "location": "Golden Gate Park",
+                "person": "Jessica",
+                "start_time": "20:00",
+                "end_time": "21:45"
+            }
+        ]
+    },
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "constraints_satisfied_but_no_exact_match": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 210.95156860351562,
+        "execution_time": 0.17195510864257812,
+        "constraint_eval_time": 0.00033092498779296875,
+        "pred_extract_time": 3.7871546745300293,
+        "gold_extract_time": 5.0067901611328125e-05,
+        "total_tokens": 10159,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import json\nfrom z3 import *\n\ndef minutes(h, m):\n    return h * 60 + m\n\ndef fmt_time(t):\n    h = t // 60\n    m = t % 60\n    return f\"{h}:{m:02d}\"\n\ndef main():\n    # Locations\n    locations = [\n        \"Bayview\",\n        \"North Beach\",\n        \"Fisherman's Wharf\",\n        \"Haight-Ashbury\",\n        \"Nob Hill\",\n        \"Golden Gate Park\",\n        \"Union Square\",\n        \"Alamo Square\",\n        \"Presidio\",\n        \"Chinatown\",\n        \"Pacific Heights\",\n    ]\n\n    # Travel times (minutes), directed\n    T = {loc: {} for loc in locations}\n    def add(a, b, t):\n        T[a][b] = t\n\n    # Bayview\n    add(\"Bayview\", \"North Beach\", 22)\n    add(\"Bayview\", \"Fisherman's Wharf\", 25)\n    add(\"Bayview\", \"Haight-Ashbury\", 19)\n    add(\"Bayview\", \"Nob Hill\", 20)\n    add(\"Bayview\", \"Golden Gate Park\", 22)\n    add(\"Bayview\", \"Union Square\", 18)\n    add(\"Bayview\", \"Alamo Square\", 16)\n    add(\"Bayview\", \"Presidio\", 32)\n    add(\"Bayview\", \"Chinatown\", 19)\n    add(\"Bayview\", \"Pacific Heights\", 23)\n    # North Beach\n    add(\"North Beach\", \"Bayview\", 25)\n    add(\"North Beach\", \"Fisherman's Wharf\", 5)\n    add(\"North Beach\", \"Haight-Ashbury\", 18)\n    add(\"North Beach\", \"Nob Hill\", 7)\n    add(\"North Beach\", \"Golden Gate Park\", 22)\n    add(\"North Beach\", \"Union Square\", 7)\n    add(\"North Beach\", \"Alamo Square\", 16)\n    add(\"North Beach\", \"Presidio\", 17)\n    add(\"North Beach\", \"Chinatown\", 6)\n    add(\"North Beach\", \"Pacific Heights\", 8)\n    # Fisherman's Wharf\n    add(\"Fisherman's Wharf\", \"Bayview\", 26)\n    add(\"Fisherman's Wharf\", \"North Beach\", 6)\n    add(\"Fisherman's Wharf\", \"Haight-Ashbury\", 22)\n    add(\"Fisherman's Wharf\", \"Nob Hill\", 11)\n    add(\"Fisherman's Wharf\", \"Golden Gate Park\", 25)\n    add(\"Fisherman's Wharf\", \"Union Square\", 13)\n    add(\"Fisherman's Wharf\", \"Alamo Square\", 21)\n    add(\"Fisherman's Wharf\", \"Presidio\", 17)\n    add(\"Fisherman's Wharf\", \"Chinatown\", 12)\n    add(\"Fisherman's Wharf\", \"Pacific Heights\", 12)\n    # Haight-Ashbury\n    add(\"Haight-Ashbury\", \"Bayview\", 18)\n    add(\"Haight-Ashbury\", \"North Beach\", 19)\n    add(\"Haight-Ashbury\", \"Fisherman's Wharf\", 23)\n    add(\"Haight-Ashbury\", \"Nob Hill\", 15)\n    add(\"Haight-Ashbury\", \"Golden Gate Park\", 7)\n    add(\"Haight-Ashbury\", \"Union Square\", 19)\n    add(\"Haight-Ashbury\", \"Alamo Square\", 5)\n    add(\"Haight-Ashbury\", \"Presidio\", 15)\n    add(\"Haight-Ashbury\", \"Chinatown\", 19)\n    add(\"Haight-Ashbury\", \"Pacific Heights\", 12)\n    # Nob Hill\n    add(\"Nob Hill\", \"Bayview\", 19)\n    add(\"Nob Hill\", \"North Beach\", 8)\n    add(\"Nob Hill\", \"Fisherman's Wharf\", 10)\n    add(\"Nob Hill\", \"Haight-Ashbury\", 13)\n    add(\"Nob Hill\", \"Golden Gate Park\", 17)\n    add(\"Nob Hill\", \"Union Square\", 7)\n    add(\"Nob Hill\", \"Alamo Square\", 11)\n    add(\"Nob Hill\", \"Presidio\", 17)\n    add(\"Nob Hill\", \"Chinatown\", 6)\n    add(\"Nob Hill\", \"Pacific Heights\", 8)\n    # Golden Gate Park\n    add(\"Golden Gate Park\", \"Bayview\", 23)\n    add(\"Golden Gate Park\", \"North Beach\", 23)\n    add(\"Golden Gate Park\", \"Fisherman's Wharf\", 24)\n    add(\"Golden Gate Park\", \"Haight-Ashbury\", 7)\n    add(\"Golden Gate Park\", \"Nob Hill\", 20)\n    add(\"Golden Gate Park\", \"Union Square\", 22)\n    add(\"Golden Gate Park\", \"Alamo Square\", 9)\n    add(\"Golden Gate Park\", \"Presidio\", 11)\n    add(\"Golden Gate Park\", \"Chinatown\", 23)\n    add(\"Golden Gate Park\", \"Pacific Heights\", 16)\n    # Union Square\n    add(\"Union Square\", \"Bayview\", 15)\n    add(\"Union Square\", \"North Beach\", 10)\n    add(\"Union Square\", \"Fisherman's Wharf\", 15)\n    add(\"Union Square\", \"Haight-Ashbury\", 18)\n    add(\"Union Square\", \"Nob Hill\", 9)\n    add(\"Union Square\", \"Golden Gate Park\", 22)\n    add(\"Union Square\", \"Alamo Square\", 15)\n    add(\"Union Square\", \"Presidio\", 24)\n    add(\"Union Square\", \"Chinatown\", 7)\n    add(\"Union Square\", \"Pacific Heights\", 15)\n    # Alamo Square\n    add(\"Alamo Square\", \"Bayview\", 16)\n    add(\"Alamo Square\", \"North Beach\", 15)\n    add(\"Alamo Square\", \"Fisherman's Wharf\", 19)\n    add(\"Alamo Square\", \"Haight-Ashbury\", 5)\n    add(\"Alamo Square\", \"Nob Hill\", 11)\n    add(\"Alamo Square\", \"Golden Gate Park\", 9)\n    add(\"Alamo Square\", \"Union Square\", 14)\n    add(\"Alamo Square\", \"Presidio\", 17)\n    add(\"Alamo Square\", \"Chinatown\", 15)\n    add(\"Alamo Square\", \"Pacific Heights\", 10)\n    # Presidio\n    add(\"Presidio\", \"Bayview\", 31)\n    add(\"Presidio\", \"North Beach\", 18)\n    add(\"Presidio\", \"Fisherman's Wharf\", 19)\n    add(\"Presidio\", \"Haight-Ashbury\", 15)\n    add(\"Presidio\", \"Nob Hill\", 18)\n    add(\"Presidio\", \"Golden Gate Park\", 12)\n    add(\"Presidio\", \"Union Square\", 22)\n    add(\"Presidio\", \"Alamo Square\", 19)\n    add(\"Presidio\", \"Chinatown\", 21)\n    add(\"Presidio\", \"Pacific Heights\", 11)\n    # Chinatown\n    add(\"Chinatown\", \"Bayview\", 20)\n    add(\"Chinatown\", \"North Beach\", 3)\n    add(\"Chinatown\", \"Fisherman's Wharf\", 8)\n    add(\"Chinatown\", \"Haight-Ashbury\", 19)\n    add(\"Chinatown\", \"Nob Hill\", 9)\n    add(\"Chinatown\", \"Golden Gate Park\", 23)\n    add(\"Chinatown\", \"Union Square\", 7)\n    add(\"Chinatown\", \"Alamo Square\", 17)\n    add(\"Chinatown\", \"Presidio\", 19)\n    add(\"Chinatown\", \"Pacific Heights\", 10)\n    # Pacific Heights\n    add(\"Pacific Heights\", \"Bayview\", 22)\n    add(\"Pacific Heights\", \"North Beach\", 9)\n    add(\"Pacific Heights\", \"Fisherman's Wharf\", 13)\n    add(\"Pacific Heights\", \"Haight-Ashbury\", 11)\n    add(\"Pacific Heights\", \"Nob Hill\", 8)\n    add(\"Pacific Heights\", \"Golden Gate Park\", 15)\n    add(\"Pacific Heights\", \"Union Square\", 12)\n    add(\"Pacific Heights\", \"Alamo Square\", 10)\n    add(\"Pacific Heights\", \"Presidio\", 11)\n    add(\"Pacific Heights\", \"Chinatown\", 11)\n\n    # People and constraints\n    people = [\n        # name, location, availability start, availability end, minimum duration\n        (\"Brian\", \"North Beach\", minutes(13,0), minutes(19,0), 90),\n        (\"Richard\", \"Fisherman's Wharf\", minutes(11,0), minutes(12,45), 60),\n        (\"Ashley\", \"Haight-Ashbury\", minutes(15,0), minutes(20,30), 90),\n        (\"Elizabeth\", \"Nob Hill\", minutes(11,45), minutes(18,30), 75),\n        (\"Jessica\", \"Golden Gate Park\", minutes(20,0), minutes(21,45), 105),\n        (\"Deborah\", \"Union Square\", minutes(17,30), minutes(22,0), 60),\n        (\"Kimberly\", \"Alamo Square\", minutes(17,30), minutes(21,15), 45),\n        (\"Matthew\", \"Presidio\", minutes(8,15), minutes(9,0), 15),\n        (\"Kenneth\", \"Chinatown\", minutes(13,45), minutes(19,30), 105),\n        (\"Anthony\", \"Pacific Heights\", minutes(14,15), minutes(16,0), 30),\n    ]\n\n    n = len(people)\n    start_loc = \"Bayview\"\n    start_time = minutes(9, 0)\n\n    opt = Optimize()\n\n    # Decision variables\n    s_vars = []\n    e_vars = []\n    m_vars = []\n    f_vars = []\n\n    for i in range(n):\n        s = Int(f\"s_{i}\")\n        e = Int(f\"e_{i}\")\n        m = Bool(f\"m_{i}\")\n        f = Bool(f\"first_{i}\")\n        s_vars.append(s)\n        e_vars.append(e)\n        m_vars.append(m)\n        f_vars.append(f)\n\n        # Basic bounds\n        opt.add(s >= 0, e >= 0, s <= 24*60, e <= 24*60)\n        # If meeting, enforce within availability and min duration\n        avail_s, avail_e = people[i][2], people[i][3]\n        min_dur = people[i][4]\n        opt.add(Implies(m, And(s >= avail_s, e <= avail_e, e - s >= min_dur)))\n        # If not meeting, zero times and not first\n        opt.add(Implies(Not(m), And(s == 0, e == 0, Not(f))))\n        # First implies meeting\n        opt.add(Implies(f, m))\n\n    # Pairwise ordering and travel constraints\n    o_vars = {}  # (i,j) with i<j => Bool means i before j\n    for i in range(n):\n        for j in range(i+1, n):\n            o = Bool(f\"o_{i}_{j}\")\n            o_vars[(i, j)] = o\n            loc_i = people[i][1]\n            loc_j = people[j][1]\n            t_ij = T[loc_i][loc_j]\n            t_ji = T[loc_j][loc_i]\n            # Only relevant if both meetings occur\n            both = And(m_vars[i], m_vars[j])\n            opt.add(Implies(both, Or(\n                And(o, e_vars[i] + t_ij <= s_vars[j]),\n                And(Not(o), e_vars[j] + t_ji <= s_vars[i])\n            )))\n            # If not both, ordering var is irrelevant; no constraint needed.\n\n    # Helper to express \"i before j\"\n    def before_expr(i, j):\n        if i < j:\n            return o_vars[(i, j)]\n        else:\n            return Not(o_vars[(j, i)])\n\n    # Exactly one \"first\" among those met (if any)\n    sum_meet = Sum([If(m_vars[i], 1, 0) for i in range(n)])\n    sum_first = Sum([If(f_vars[i], 1, 0) for i in range(n)])\n    opt.add(sum_first <= sum_meet)\n    opt.add(Or(sum_meet == 0, sum_first == 1))\n\n    # First event must be reachable from start\n    for i in range(n):\n        loc_i = people[i][1]\n        opt.add(Implies(f_vars[i], s_vars[i] >= start_time + T[start_loc][loc_i]))\n        # If i is first and j is also met (j != i), i must be before j\n        for j in range(n):\n            if i == j:\n                continue\n            opt.add(Implies(And(f_vars[i], m_vars[j]), before_expr(i, j)))\n\n    # Objectives: maximize number of meetings, then maximize total meeting time\n    total_minutes = Sum([If(m_vars[i], e_vars[i] - s_vars[i], 0) for i in range(n)])\n    opt.maximize(sum_meet)\n    opt.maximize(total_minutes)\n\n    if opt.check() != sat:\n        print(json.dumps({\"itinerary\": []}))\n        return\n\n    model = opt.model()\n\n    # Extract chosen meetings\n    meetings = []\n    for i in range(n):\n        if is_true(model[m_vars[i]]):\n            s_val = model[s_vars[i]].as_long()\n            e_val = model[e_vars[i]].as_long()\n            meetings.append({\n                \"idx\": i,\n                \"person\": people[i][0],\n                \"location\": people[i][1],\n                \"start\": s_val,\n                \"end\": e_val\n            })\n\n    # Sort by start time\n    meetings.sort(key=lambda x: x[\"start\"])\n\n    itinerary = []\n    for mt in meetings:\n        itinerary.append({\n            \"action\": \"meet\",\n            \"location\": mt[\"location\"],\n            \"person\": mt[\"person\"],\n            \"start_time\": fmt_time(mt[\"start\"]),\n            \"end_time\": fmt_time(mt[\"end\"]),\n        })\n\n    print(json.dumps({\"itinerary\": itinerary}, ensure_ascii=False))\n\nif __name__ == \"__main__\":\n    # The output must start with 'SOLUTION:' per instructions\n    print(\"SOLUTION:\")\n    main()"
+}

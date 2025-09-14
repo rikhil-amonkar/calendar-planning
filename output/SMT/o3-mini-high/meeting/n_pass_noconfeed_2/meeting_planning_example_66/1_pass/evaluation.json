@@ -1,0 +1,45 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"itinerary\": [\n    {\n      \"action\": \"travel\",\n      \"location\": \"Presidio\",\n      \"person\": \"\",\n      \"start_time\": \"10:58\",\n      \"end_time\": \"11:15\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Presidio\",\n      \"person\": \"Robert\",\n      \"start_time\": \"11:15\",\n      \"end_time\": \"17:45\"\n    },\n    {\n      \"action\": \"travel\",\n      \"location\": \"Nob Hill\",\n      \"person\": \"\",\n      \"start_time\": \"17:45\",\n      \"end_time\": \"18:03\"\n    }\n  ]\n}",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Presidio",
+                "person": "Robert",
+                "start_time": "11:15",
+                "end_time": "17:45"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Presidio",
+                "person": "Robert",
+                "start_time": "11:15",
+                "end_time": "13:15"
+            }
+        ]
+    },
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "constraints_satisfied_but_no_exact_match": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 90.6320686340332,
+        "execution_time": 0.07745075225830078,
+        "constraint_eval_time": 0.00012540817260742188,
+        "pred_extract_time": 1.4799137115478516,
+        "gold_extract_time": 3.0279159545898438e-05,
+        "total_tokens": 4217,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "#!/usr/bin/env python3\nimport json\nfrom z3 import Optimize, Int, If, sat\n\n# Function to convert minutes-since-midnight into 24-hour time format (e.g., \"9:00\" or \"13:30\")\ndef minutes_to_time(m):\n    hour = m // 60\n    minute = m % 60\n    return f\"{hour}:{minute:02d}\"\n\ndef main():\n    # ----------------------------\n    # Input Parameters / Constants\n    # ----------------------------\n    # Arrival at Nob Hill: 9:00 AM -> 9*60 = 540 minutes since midnight\n    arrival_nobhill = 9 * 60  # 540\n\n    # Robert's availability at Presidio: 11:15 AM to 5:45 PM\n    robert_start = 11 * 60 + 15  # 675 minutes\n    robert_end   = 17 * 60 + 45  # 1065 minutes\n\n    # Travel times (in minutes)\n    travel_nobhill_to_presidio = 17\n    travel_presidio_to_nobhill = 18\n\n    # Minimum required meeting duration with Robert (in minutes)\n    required_meeting_duration = 120\n\n    # ----------------------------\n    # Create the SMT optimizer instance\n    # ----------------------------\n    opt = Optimize()\n\n    # Decision variables (in minutes from midnight)\n    # d is the departure time from Nob Hill.\n    d = Int('depart_time')\n    # meeting_end is the time when the meeting with Robert ends.\n    meeting_end = Int('meeting_end')\n\n    # We define meeting_start as the later of the arrival time at Presidio and Robert's available start.\n    # Arrival time at Presidio is d + travel_nobhill_to_presidio.\n    meeting_start = If(d + travel_nobhill_to_presidio < robert_start, robert_start, d + travel_nobhill_to_presidio)\n\n    # ----------------------------\n    # Add constraints\n    # ----------------------------\n    # 1. You cannot depart before your arrival to Nob Hill.\n    opt.add(d >= arrival_nobhill)\n    # 2. The meeting must end no later than Robert's available end time.\n    opt.add(meeting_end <= robert_end)\n    # 3. You want at least the minimum meeting duration.\n    opt.add(meeting_end >= meeting_start + required_meeting_duration)\n\n    # ----------------------------\n    # Optimization objectives\n    # ----------------------------\n    # Our primary goal is to maximize the meeting duration.\n    meeting_duration = meeting_end - meeting_start\n    h1 = opt.maximize(meeting_duration)\n    # Secondary goal: maximize the departure time from Nob Hill to minimize idle waiting time.\n    h2 = opt.maximize(d)\n\n    # ----------------------------\n    # Solve the optimization problem\n    # ----------------------------\n    if opt.check() == sat:\n        model = opt.model()\n    else:\n        print(json.dumps({\"error\": \"No valid schedule could be found.\"}))\n        return\n\n    # Extract the computed times\n    depart_val = model[d].as_long()\n    # meeting_start is an expression; evaluate it from the model.\n    meeting_start_val = model.evaluate(meeting_start).as_long()\n    meeting_end_val = model[meeting_end].as_long()\n    travel_arrival_val = depart_val + travel_nobhill_to_presidio  # Actual arrival at Presidio\n    return_arrival_val = meeting_end_val + travel_presidio_to_nobhill  # Arrival back at Nob Hill\n\n    # ----------------------------\n    # Build the itinerary (accounting for travel and meeting)\n    # ----------------------------\n    itinerary = []\n    # Travel from Nob Hill to Presidio\n    itinerary.append({\n        \"action\": \"travel\",\n        \"location\": \"Presidio\",\n        \"person\": \"\",\n        \"start_time\": minutes_to_time(depart_val),\n        \"end_time\": minutes_to_time(travel_arrival_val)\n    })\n    # Meeting with Robert at Presidio\n    itinerary.append({\n        \"action\": \"meet\",\n        \"location\": \"Presidio\",\n        \"person\": \"Robert\",\n        \"start_time\": minutes_to_time(meeting_start_val),\n        \"end_time\": minutes_to_time(meeting_end_val)\n    })\n    # Travel back from Presidio to Nob Hill\n    itinerary.append({\n        \"action\": \"travel\",\n        \"location\": \"Nob Hill\",\n        \"person\": \"\",\n        \"start_time\": minutes_to_time(meeting_end_val),\n        \"end_time\": minutes_to_time(return_arrival_val)\n    })\n\n    # ----------------------------\n    # Output the result as a JSON-formatted dictionary\n    # ----------------------------\n    output = {\"itinerary\": itinerary}\n    print(json.dumps(output, indent=2))\n\nif __name__ == \"__main__\":\n    main()"
+}

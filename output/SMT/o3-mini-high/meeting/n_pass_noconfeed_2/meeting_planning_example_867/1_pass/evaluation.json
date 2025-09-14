@@ -1,0 +1,91 @@
+{
+    "has_execution_error": true,
+    "has_no_plan": false,
+    "execution_output": null,
+    "pred": null,
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Pacific Heights",
+                "person": "Sandra",
+                "start_time": "9:12",
+                "end_time": "11:12"
+            },
+            {
+                "action": "meet",
+                "location": "Fisherman's Wharf",
+                "person": "Robert",
+                "start_time": "11:25",
+                "end_time": "11:40"
+            },
+            {
+                "action": "meet",
+                "location": "Marina District",
+                "person": "Kenneth",
+                "start_time": "11:49",
+                "end_time": "12:34"
+            },
+            {
+                "action": "meet",
+                "location": "Mission District",
+                "person": "Elizabeth",
+                "start_time": "12:54",
+                "end_time": "14:24"
+            },
+            {
+                "action": "meet",
+                "location": "Union Square",
+                "person": "David",
+                "start_time": "15:15",
+                "end_time": "16:00"
+            },
+            {
+                "action": "meet",
+                "location": "Sunset District",
+                "person": "Kimberly",
+                "start_time": "16:27",
+                "end_time": "18:12"
+            },
+            {
+                "action": "meet",
+                "location": "Golden Gate Park",
+                "person": "Amanda",
+                "start_time": "18:23",
+                "end_time": "18:38"
+            },
+            {
+                "action": "meet",
+                "location": "Richmond District",
+                "person": "Melissa",
+                "start_time": "18:45",
+                "end_time": "19:00"
+            },
+            {
+                "action": "meet",
+                "location": "Bayview",
+                "person": "Thomas",
+                "start_time": "19:30",
+                "end_time": "20:00"
+            }
+        ]
+    },
+    "status": "Error",
+    "violated_constraint": {
+        "missing_itinerary": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 105.08557891845703,
+        "execution_time": 0.09781861305236816,
+        "constraint_eval_time": 2.384185791015625e-06,
+        "pred_extract_time": 4.0531158447265625e-06,
+        "gold_extract_time": 0.00012874603271484375,
+        "total_tokens": 9552,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\nimport json\n\ndef minutes_to_time(m):\n    hours = m // 60\n    minutes = m % 60\n    return f\"{hours}:{minutes:02d}\"\n\ndef main():\n    # Friend meeting data: available time windows in minutes from midnight and minimum meeting duration\n    # Times: 9:00 = 540, etc.\n    # Data: name, location, avail_start, avail_end, duration (minutes)\n    friends = [\n        {\"name\": \"Elizabeth\", \"location\": \"Mission District\", \"avail_start\": 630, \"avail_end\": 1200, \"duration\": 90},\n        {\"name\": \"David\", \"location\": \"Union Square\", \"avail_start\": 915, \"avail_end\": 1140, \"duration\": 45},\n        {\"name\": \"Sandra\", \"location\": \"Pacific Heights\", \"avail_start\": 420, \"avail_end\": 1200, \"duration\": 120},\n        {\"name\": \"Thomas\", \"location\": \"Bayview\", \"avail_start\": 1170, \"avail_end\": 1230, \"duration\": 30},\n        {\"name\": \"Robert\", \"location\": \"Fisherman's Wharf\", \"avail_start\": 600, \"avail_end\": 900, \"duration\": 15},\n        {\"name\": \"Kenneth\", \"location\": \"Marina District\", \"avail_start\": 645, \"avail_end\": 780, \"duration\": 45},\n        {\"name\": \"Melissa\", \"location\": \"Richmond District\", \"avail_start\": 1095, \"avail_end\": 1200, \"duration\": 15},\n        {\"name\": \"Kimberly\", \"location\": \"Sunset District\", \"avail_start\": 615, \"avail_end\": 1095, \"duration\": 105},\n        {\"name\": \"Amanda\", \"location\": \"Golden Gate Park\", \"avail_start\": 465, \"avail_end\": 1125, \"duration\": 15}\n    ]\n    n_friends = len(friends)  # 9 friends\n\n    # Travel times (in minutes) between locations\n    travel = {\n        (\"Haight-Ashbury\", \"Mission District\"): 11,\n        (\"Haight-Ashbury\", \"Union Square\"): 19,\n        (\"Haight-Ashbury\", \"Pacific Heights\"): 12,\n        (\"Haight-Ashbury\", \"Bayview\"): 18,\n        (\"Haight-Ashbury\", \"Fisherman's Wharf\"): 23,\n        (\"Haight-Ashbury\", \"Marina District\"): 17,\n        (\"Haight-Ashbury\", \"Richmond District\"): 10,\n        (\"Haight-Ashbury\", \"Sunset District\"): 15,\n        (\"Haight-Ashbury\", \"Golden Gate Park\"): 7,\n        (\"Mission District\", \"Haight-Ashbury\"): 12,\n        (\"Mission District\", \"Union Square\"): 15,\n        (\"Mission District\", \"Pacific Heights\"): 16,\n        (\"Mission District\", \"Bayview\"): 14,\n        (\"Mission District\", \"Fisherman's Wharf\"): 22,\n        (\"Mission District\", \"Marina District\"): 19,\n        (\"Mission District\", \"Richmond District\"): 20,\n        (\"Mission District\", \"Sunset District\"): 24,\n        (\"Mission District\", \"Golden Gate Park\"): 17,\n        (\"Union Square\", \"Haight-Ashbury\"): 18,\n        (\"Union Square\", \"Mission District\"): 14,\n        (\"Union Square\", \"Pacific Heights\"): 15,\n        (\"Union Square\", \"Bayview\"): 15,\n        (\"Union Square\", \"Fisherman's Wharf\"): 15,\n        (\"Union Square\", \"Marina District\"): 18,\n        (\"Union Square\", \"Richmond District\"): 20,\n        (\"Union Square\", \"Sunset District\"): 27,\n        (\"Union Square\", \"Golden Gate Park\"): 22,\n        (\"Pacific Heights\", \"Haight-Ashbury\"): 11,\n        (\"Pacific Heights\", \"Mission District\"): 15,\n        (\"Pacific Heights\", \"Union Square\"): 12,\n        (\"Pacific Heights\", \"Bayview\"): 22,\n        (\"Pacific Heights\", \"Fisherman's Wharf\"): 13,\n        (\"Pacific Heights\", \"Marina District\"): 6,\n        (\"Pacific Heights\", \"Richmond District\"): 12,\n        (\"Pacific Heights\", \"Sunset District\"): 21,\n        (\"Pacific Heights\", \"Golden Gate Park\"): 15,\n        (\"Bayview\", \"Haight-Ashbury\"): 19,\n        (\"Bayview\", \"Mission District\"): 13,\n        (\"Bayview\", \"Union Square\"): 18,\n        (\"Bayview\", \"Pacific Heights\"): 23,\n        (\"Bayview\", \"Fisherman's Wharf\"): 25,\n        (\"Bayview\", \"Marina District\"): 27,\n        (\"Bayview\", \"Richmond District\"): 25,\n        (\"Bayview\", \"Sunset District\"): 23,\n        (\"Bayview\", \"Golden Gate Park\"): 22,\n        (\"Fisherman's Wharf\", \"Haight-Ashbury\"): 22,\n        (\"Fisherman's Wharf\", \"Mission District\"): 22,\n        (\"Fisherman's Wharf\", \"Union Square\"): 13,\n        (\"Fisherman's Wharf\", \"Pacific Heights\"): 12,\n        (\"Fisherman's Wharf\", \"Bayview\"): 26,\n        (\"Fisherman's Wharf\", \"Marina District\"): 9,\n        (\"Fisherman's Wharf\", \"Richmond District\"): 18,\n        (\"Fisherman's Wharf\", \"Sunset District\"): 27,\n        (\"Fisherman's Wharf\", \"Golden Gate Park\"): 25,\n        (\"Marina District\", \"Haight-Ashbury\"): 16,\n        (\"Marina District\", \"Mission District\"): 20,\n        (\"Marina District\", \"Union Square\"): 16,\n        (\"Marina District\", \"Pacific Heights\"): 7,\n        (\"Marina District\", \"Bayview\"): 27,\n        (\"Marina District\", \"Fisherman's Wharf\"): 10,\n        (\"Marina District\", \"Richmond District\"): 11,\n        (\"Marina District\", \"Sunset District\"): 19,\n        (\"Marina District\", \"Golden Gate Park\"): 18,\n        (\"Richmond District\", \"Haight-Ashbury\"): 10,\n        (\"Richmond District\", \"Mission District\"): 20,\n        (\"Richmond District\", \"Union Square\"): 21,\n        (\"Richmond District\", \"Pacific Heights\"): 10,\n        (\"Richmond District\", \"Bayview\"): 27,\n        (\"Richmond District\", \"Fisherman's Wharf\"): 18,\n        (\"Richmond District\", \"Marina District\"): 9,\n        (\"Richmond District\", \"Sunset District\"): 11,\n        (\"Richmond District\", \"Golden Gate Park\"): 9,\n        (\"Sunset District\", \"Haight-Ashbury\"): 15,\n        (\"Sunset District\", \"Mission District\"): 25,\n        (\"Sunset District\", \"Union Square\"): 30,\n        (\"Sunset District\", \"Pacific Heights\"): 21,\n        (\"Sunset District\", \"Bayview\"): 22,\n        (\"Sunset District\", \"Fisherman's Wharf\"): 29,\n        (\"Sunset District\", \"Marina District\"): 21,\n        (\"Sunset District\", \"Richmond District\"): 12,\n        (\"Sunset District\", \"Golden Gate Park\"): 11,\n        (\"Golden Gate Park\", \"Haight-Ashbury\"): 7,\n        (\"Golden Gate Park\", \"Mission District\"): 17,\n        (\"Golden Gate Park\", \"Union Square\"): 22,\n        (\"Golden Gate Park\", \"Pacific Heights\"): 16,\n        (\"Golden Gate Park\", \"Bayview\"): 23,\n        (\"Golden Gate Park\", \"Fisherman's Wharf\"): 24,\n        (\"Golden Gate Park\", \"Marina District\"): 16,\n        (\"Golden Gate Park\", \"Richmond District\"): 7,\n        (\"Golden Gate Park\", \"Sunset District\"): 10\n    }\n\n    max_slots = n_friends  # maximum possible meetings\n\n    opt = Optimize()\n\n    # Create decision variables: for each slot, we decide which meeting (friend index) is scheduled.\n    # -1 means the slot is not used.\n    meetings = [Int(f\"meeting_{i}\") for i in range(max_slots)]\n    starts = [Int(f\"start_{i}\") for i in range(max_slots)]\n\n    # Each meeting slot decision variable must be in the domain [-1, n_friends-1]\n    for i in range(max_slots):\n        opt.add(meetings[i] >= -1, meetings[i] <= n_friends - 1)\n        opt.add(starts[i] >= 0, starts[i] <= 1440)\n\n    # Enforce contiguous assignment of meetings: once a slot is empty (-1), all subsequent slots must be empty.\n    for i in range(max_slots - 1):\n        opt.add(Implies(meetings[i] == -1, meetings[i+1] == -1))\n\n    # Enforce that if two slots are scheduled, they refer to distinct friends.\n    for i in range(max_slots):\n        for j in range(i+1, max_slots):\n            opt.add(Implies(And(meetings[i] != -1, meetings[j] != -1), meetings[i] != meetings[j]))\n\n    # Add constraints for each slot based on the selected friend.\n    for i in range(max_slots):\n        for j in range(n_friends):\n            # If slot i is assigned friend j, the meeting must occur within the friend's available time\n            opt.add(Implies(meetings[i] == j, starts[i] >= friends[j][\"avail_start\"]))\n            opt.add(Implies(meetings[i] == j, starts[i] + friends[j][\"duration\"] <= friends[j][\"avail_end\"]))\n            # For the first meeting, ensure arrival from starting location \"Haight-Ashbury\" at 9:00 (540 minutes)\n            if i == 0:\n                travel_time = travel[(\"Haight-Ashbury\", friends[j][\"location\"])]\n                opt.add(Implies(meetings[0] == j, starts[0] >= 540 + travel_time))\n\n    # Add travel constraints between consecutive scheduled meetings.\n    for i in range(1, max_slots):\n        for prev in range(n_friends):\n            for curr in range(n_friends):\n                travel_time = travel[(friends[prev][\"location\"], friends[curr][\"location\"])]\n                # If slot i-1 is friend 'prev' and slot i is friend 'curr', then the meeting in slot i must start\n                # after the previous meeting ends plus travel time.\n                opt.add(Implies(And(meetings[i-1] == prev, meetings[i] == curr),\n                                starts[i] >= starts[i-1] + friends[prev][\"duration\"] + travel_time))\n\n    # Define the objective: maximize the number of scheduled meetings.\n    scheduled_count = Sum([If(meetings[i] != -1, 1, 0) for i in range(max_slots)])\n    opt.maximize(scheduled_count)\n\n    if opt.check() == sat:\n        model = opt.model()\n        itinerary = []\n        for i in range(max_slots):\n            meeting_val = model.evaluate(meetings[i]).as_long()\n            if meeting_val == -1:\n                break\n            friend = friends[meeting_val]\n            start_time = model.evaluate(starts[i]).as_long()\n            end_time = start_time + friend[\"duration\"]\n            itinerary.append({\n                \"action\": \"meet\",\n                \"location\": friend[\"location\"],\n                \"person\": friend[\"name\"],\n                \"start_time\": minutes_to_time(start_time),\n                \"end_time\": minutes_to_time(end_time)\n            })\n        output = {\"itinerary\": itinerary}\n        print(json.dumps(output, indent=2))\n    else:\n        print(json.dumps({\"itinerary\": []}, indent=2))\n\nif __name__ == \"__main__\":\n    main()"
+}

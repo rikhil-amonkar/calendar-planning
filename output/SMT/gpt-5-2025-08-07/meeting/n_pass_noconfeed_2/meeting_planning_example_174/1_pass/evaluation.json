@@ -1,0 +1,59 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\"itinerary\": [{\"action\": \"meet\", \"location\": \"Mission District\", \"person\": \"Kenneth\", \"start_time\": \"12:00\", \"end_time\": \"15:14\"}, {\"action\": \"meet\", \"location\": \"Pacific Heights\", \"person\": \"Thomas\", \"start_time\": \"15:30\", \"end_time\": \"19:15\"}]}",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Mission District",
+                "person": "Kenneth",
+                "start_time": "12:00",
+                "end_time": "15:14"
+            },
+            {
+                "action": "meet",
+                "location": "Pacific Heights",
+                "person": "Thomas",
+                "start_time": "15:30",
+                "end_time": "19:15"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Mission District",
+                "person": "Kenneth",
+                "start_time": "12:00",
+                "end_time": "12:45"
+            },
+            {
+                "action": "meet",
+                "location": "Pacific Heights",
+                "person": "Thomas",
+                "start_time": "15:30",
+                "end_time": "16:45"
+            }
+        ]
+    },
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "constraints_satisfied_but_no_exact_match": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 139.91149139404297,
+        "execution_time": 0.08574724197387695,
+        "constraint_eval_time": 0.00014400482177734375,
+        "pred_extract_time": 1.261462688446045,
+        "gold_extract_time": 3.504753112792969e-05,
+        "total_tokens": 3966,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import json\nfrom z3 import *\n\ndef fmt_time(m):\n    h = m // 60\n    mm = m % 60\n    return f\"{h}:{mm:02d}\"\n\ndef main():\n    # Time constants (minutes since midnight)\n    NINE_AM = 9 * 60\n    START_LOC = \"Nob Hill\"\n\n    # Travel times (minutes)\n    travel = {\n        (\"Nob Hill\", \"Pacific Heights\"): 8,\n        (\"Nob Hill\", \"Mission District\"): 13,\n        (\"Pacific Heights\", \"Nob Hill\"): 8,\n        (\"Pacific Heights\", \"Mission District\"): 15,\n        (\"Mission District\", \"Nob Hill\"): 12,\n        (\"Mission District\", \"Pacific Heights\"): 16\n    }\n\n    # Availabilities and minimums\n    # Kenneth at Mission District\n    K_location = \"Mission District\"\n    K_name = \"Kenneth\"\n    K_start = 12 * 60        # 12:00\n    K_end = 15 * 60 + 45     # 15:45\n    K_min = 45\n\n    # Thomas at Pacific Heights\n    T_location = \"Pacific Heights\"\n    T_name = \"Thomas\"\n    T_start = 15 * 60 + 30   # 15:30\n    T_end = 19 * 60 + 15     # 19:15\n    T_min = 75\n\n    # Create optimizer\n    opt = Optimize()\n\n    # Variables\n    sK = Int(\"sK\")  # start Kenneth\n    eK = Int(\"eK\")  # end Kenneth\n    sT = Int(\"sT\")  # start Thomas\n    eT = Int(\"eT\")  # end Thomas\n\n    mK = Int(\"mK\")  # 0/1 meet Kenneth\n    mT = Int(\"mT\")  # 0/1 meet Thomas\n\n    ordKT = Int(\"ordKT\")  # 0 = K before T, 1 = T before K\n\n    # Domains\n    for v in [sK, eK, sT, eT]:\n        opt.add(v >= 0, v <= 24 * 60)\n    opt.add(mK >= 0, mK <= 1)\n    opt.add(mT >= 0, mT <= 1)\n    opt.add(ordKT >= 0, ordKT <= 1)\n\n    # Meeting window constraints\n    opt.add(Implies(mK == 1, And(sK >= K_start, eK <= K_end, eK - sK >= K_min, sK < eK)))\n    opt.add(Implies(mT == 1, And(sT >= T_start, eT <= T_end, eT - sT >= T_min, sT < eT)))\n\n    # From starting location at 9:00 at Nob Hill\n    # Single meeting cases\n    opt.add(Implies(And(mK == 1, mT == 0), sK >= NINE_AM + travel[(START_LOC, K_location)]))\n    opt.add(Implies(And(mT == 1, mK == 0), sT >= NINE_AM + travel[(START_LOC, T_location)]))\n\n    # Both meetings: order and travel constraints\n    # K then T\n    opt.add(Implies(And(mK == 1, mT == 1, ordKT == 0),\n                    And(sK >= NINE_AM + travel[(START_LOC, K_location)],\n                        sT >= eK + travel[(K_location, T_location)])))\n    # T then K\n    opt.add(Implies(And(mK == 1, mT == 1, ordKT == 1),\n                    And(sT >= NINE_AM + travel[(START_LOC, T_location)],\n                        sK >= eT + travel[(T_location, K_location)])))\n\n    # Objective 1: maximize number of meetings\n    h1 = opt.maximize(mK + mT)\n\n    # Objective 2: maximize total meeting time\n    durK = eK - sK\n    durT = eT - sT\n    total_dur = If(mK == 1, durK, 0) + If(mT == 1, durT, 0)\n    h2 = opt.maximize(total_dur)\n\n    # Objective 3: tie-breaker, minimize Thomas start time if meeting him (prefers earlier T start)\n    h3 = opt.minimize(If(mT == 1, sT, 24 * 60))\n\n    # Solve\n    if opt.check() != sat:\n        print(json.dumps({\"itinerary\": []}))\n        return\n\n    model = opt.model()\n\n    meet_K = model.eval(mK).as_long()\n    meet_T = model.eval(mT).as_long()\n\n    itinerary = []\n\n    if meet_K == 1:\n        sK_val = model.eval(sK).as_long()\n        eK_val = model.eval(eK).as_long()\n        itinerary.append({\n            \"action\": \"meet\",\n            \"location\": K_location,\n            \"person\": K_name,\n            \"start_time\": fmt_time(sK_val),\n            \"end_time\": fmt_time(eK_val)\n        })\n\n    if meet_T == 1:\n        sT_val = model.eval(sT).as_long()\n        eT_val = model.eval(eT).as_long()\n        itinerary.append({\n            \"action\": \"meet\",\n            \"location\": T_location,\n            \"person\": T_name,\n            \"start_time\": fmt_time(sT_val),\n            \"end_time\": fmt_time(eT_val)\n        })\n\n    # Sort itinerary by start_time\n    itinerary.sort(key=lambda x: (int(x[\"start_time\"].split(\":\")[0]) * 60 + int(x[\"start_time\"].split(\":\")[1])))\n\n    print(json.dumps({\"itinerary\": itinerary}, ensure_ascii=False))\n\nif __name__ == \"__main__\":\n    main()"
+}

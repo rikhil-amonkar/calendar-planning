@@ -1,0 +1,73 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"itinerary\": [\n    {\n      \"action\": \"meet\",\n      \"location\": \"Sunset District\",\n      \"person\": \"Carol\",\n      \"start_time\": \"11:15\",\n      \"end_time\": \"11:45\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Bayview\",\n      \"person\": \"Karen\",\n      \"start_time\": \"12:45\",\n      \"end_time\": \"14:45\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Mission District\",\n      \"person\": \"Rebecca\",\n      \"start_time\": \"14:58\",\n      \"end_time\": \"16:58\"\n    }\n  ]\n}",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Sunset District",
+                "person": "Carol",
+                "start_time": "11:15",
+                "end_time": "11:45"
+            },
+            {
+                "action": "meet",
+                "location": "Bayview",
+                "person": "Karen",
+                "start_time": "12:45",
+                "end_time": "14:45"
+            },
+            {
+                "action": "meet",
+                "location": "Mission District",
+                "person": "Rebecca",
+                "start_time": "14:58",
+                "end_time": "16:58"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Sunset District",
+                "person": "Carol",
+                "start_time": "10:15",
+                "end_time": "10:45"
+            },
+            {
+                "action": "meet",
+                "location": "Bayview",
+                "person": "Karen",
+                "start_time": "12:45",
+                "end_time": "14:45"
+            },
+            {
+                "action": "meet",
+                "location": "Mission District",
+                "person": "Rebecca",
+                "start_time": "14:58",
+                "end_time": "16:58"
+            }
+        ]
+    },
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "constraints_satisfied_but_no_exact_match": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 95.916175365448,
+        "execution_time": 0.08740973472595215,
+        "constraint_eval_time": 0.00023603439331054688,
+        "pred_extract_time": 1.7794740200042725,
+        "gold_extract_time": 4.839897155761719e-05,
+        "total_tokens": 6031,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\nimport json\n\ndef minutes_to_time(m):\n    h = m // 60\n    minute = m % 60\n    return f\"{h}:{minute:02d}\"\n\n# Create an Optimize instance\nopt = Optimize()\n\n# Define variables for meeting start and end times (minutes from midnight)\nS_R = Int('S_R')  # Rebecca start\nE_R = Int('E_R')  # Rebecca end\nS_K = Int('S_K')  # Karen start\nE_K = Int('E_K')  # Karen end\nS_C = Int('S_C')  # Carol start\nE_C = Int('E_C')  # Carol end\n\n# Ordering variables (each meeting gets an order 1,2,3)\norder_R = Int('order_R')\norder_K = Int('order_K')\norder_C = Int('order_C')\n\n# A variable for the finish time of the last meeting (to minimize overall finish time)\nfinish_time = Int('finish_time')\n\n# Define constant times in minutes from midnight\narrival = 9 * 60  # 9:00 AM -> 540\n\n# Availabilities and minimum meeting durations\navail_R_start = 11 * 60 + 30  # Rebecca: 11:30 AM -> 690\navail_R_end   = 20 * 60 + 15  # Rebecca: 8:15 PM -> 1215\navail_K_start = 12 * 60 + 45  # Karen: 12:45 PM -> 765\navail_K_end   = 15 * 60       # Karen: 15:00 -> 900\navail_C_start = 10 * 60 + 15  # Carol: 10:15 AM -> 615\navail_C_end   = 11 * 60 + 45  # Carol: 11:45 AM -> 705\n\nmin_R = 120\nmin_K = 120\nmin_C = 30\n\n# Travel times (in minutes)\ntravel_times = {\n    (\"Union Square\", \"Mission District\"): 14,\n    (\"Union Square\", \"Bayview\"): 15,\n    (\"Union Square\", \"Sunset District\"): 26,\n    (\"Mission District\", \"Union Square\"): 15,\n    (\"Mission District\", \"Bayview\"): 15,\n    (\"Mission District\", \"Sunset District\"): 24,\n    (\"Bayview\", \"Union Square\"): 17,\n    (\"Bayview\", \"Mission District\"): 13,\n    (\"Bayview\", \"Sunset District\"): 23,\n    (\"Sunset District\", \"Union Square\"): 30,\n    (\"Sunset District\", \"Mission District\"): 24,\n    (\"Sunset District\", \"Bayview\"): 22\n}\n\n# Meeting locations for each friend\nlocation_R = \"Mission District\"  # Rebecca\nlocation_K = \"Bayview\"           # Karen\nlocation_C = \"Sunset District\"   # Carol\n\n# Add availability constraints and minimum duration for meetings\nopt.add(S_R >= avail_R_start, E_R <= avail_R_end, E_R - S_R >= min_R)\nopt.add(S_K >= avail_K_start, E_K <= avail_K_end, E_K - S_K >= min_K)\nopt.add(S_C >= avail_C_start, E_C <= avail_C_end, E_C - S_C >= min_C)\n\n# Ordering variables constraints (each order is in {1,2,3} and they must be distinct)\nopt.add(And(order_R >= 1, order_R <= 3))\nopt.add(And(order_K >= 1, order_K <= 3))\nopt.add(And(order_C >= 1, order_C <= 3))\nopt.add(Distinct(order_R, order_K, order_C))\n\n# For the first meeting in the itinerary, account for travel from Union Square\nopt.add(Implies(order_R == 1, S_R >= arrival + travel_times[(\"Union Square\", location_R)]))\nopt.add(Implies(order_K == 1, S_K >= arrival + travel_times[(\"Union Square\", location_K)]))\nopt.add(Implies(order_C == 1, S_C >= arrival + travel_times[(\"Union Square\", location_C)]))\n\n# Helper function to map friend labels to travel times between their meeting locations\ndef get_travel_time(from_friend, to_friend):\n    if from_friend == \"R\" and to_friend == \"K\":\n        return travel_times[(location_R, location_K)]  # Mission District -> Bayview = 15\n    if from_friend == \"R\" and to_friend == \"C\":\n        return travel_times[(location_R, location_C)]  # Mission District -> Sunset District = 24\n    if from_friend == \"K\" and to_friend == \"R\":\n        return travel_times[(location_K, location_R)]  # Bayview -> Mission District = 13\n    if from_friend == \"K\" and to_friend == \"C\":\n        return travel_times[(location_K, location_C)]  # Bayview -> Sunset District = 23\n    if from_friend == \"C\" and to_friend == \"R\":\n        return travel_times[(location_C, location_R)]  # Sunset District -> Mission District = 24\n    if from_friend == \"C\" and to_friend == \"K\":\n        return travel_times[(location_C, location_K)]  # Sunset District -> Bayview = 22\n    return 0\n\n# Add travel constraints for consecutive meetings.\n# When meeting i immediately precedes meeting j, enforce that S_j >= E_i + travel_time(i->j).\nopt.add(Implies(order_R + 1 == order_K, S_K >= E_R + get_travel_time(\"R\", \"K\")))\nopt.add(Implies(order_R + 1 == order_C, S_C >= E_R + get_travel_time(\"R\", \"C\")))\nopt.add(Implies(order_K + 1 == order_R, S_R >= E_K + get_travel_time(\"K\", \"R\")))\nopt.add(Implies(order_K + 1 == order_C, S_C >= E_K + get_travel_time(\"K\", \"C\")))\nopt.add(Implies(order_C + 1 == order_R, S_R >= E_C + get_travel_time(\"C\", \"R\")))\nopt.add(Implies(order_C + 1 == order_K, S_K >= E_C + get_travel_time(\"C\", \"K\")))\n\n# Define finish_time as the end time of the meeting scheduled in position 3.\nopt.add(finish_time == If(order_R == 3, E_R, If(order_K == 3, E_K, E_C)))\n\n# Set objective: finish as early as possible\nopt.minimize(finish_time)\n\n# Check satisfiability and compute the model\nif opt.check() == sat:\n    m = opt.model()\n    \n    # Create a schedule list with meeting details including order, start, end and location.\n    schedule = []\n    schedule.append({\n        \"person\": \"Rebecca\",\n        \"order\": m[order_R].as_long(),\n        \"start\": m[S_R].as_long(),\n        \"end\": m[E_R].as_long(),\n        \"location\": location_R\n    })\n    schedule.append({\n        \"person\": \"Karen\",\n        \"order\": m[order_K].as_long(),\n        \"start\": m[S_K].as_long(),\n        \"end\": m[E_K].as_long(),\n        \"location\": location_K\n    })\n    schedule.append({\n        \"person\": \"Carol\",\n        \"order\": m[order_C].as_long(),\n        \"start\": m[S_C].as_long(),\n        \"end\": m[E_C].as_long(),\n        \"location\": location_C\n    })\n    \n    # Sort meetings by their scheduled order\n    schedule_sorted = sorted(schedule, key=lambda x: x[\"order\"])\n    \n    itinerary = []\n    for meeting in schedule_sorted:\n        itinerary.append({\n            \"action\": \"meet\",\n            \"location\": meeting[\"location\"],\n            \"person\": meeting[\"person\"],\n            \"start_time\": minutes_to_time(meeting[\"start\"]),\n            \"end_time\": minutes_to_time(meeting[\"end\"])\n        })\n    \n    result = {\"itinerary\": itinerary}\n    print(json.dumps(result, indent=2))\nelse:\n    print(json.dumps({\"itinerary\": []}))"
+}

@@ -1,0 +1,73 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\"itinerary\": [{\"action\": \"meet\", \"location\": \"Richmond District\", \"person\": \"Emily\", \"start_time\": \"16:45\", \"end_time\": \"18:45\"}, {\"action\": \"meet\", \"location\": \"Golden Gate Park\", \"person\": \"Melissa\", \"start_time\": \"18:54\", \"end_time\": \"19:09\"}, {\"action\": \"meet\", \"location\": \"Presidio\", \"person\": \"Nancy\", \"start_time\": \"19:45\", \"end_time\": \"21:30\"}]}",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Richmond District",
+                "person": "Emily",
+                "start_time": "16:45",
+                "end_time": "18:45"
+            },
+            {
+                "action": "meet",
+                "location": "Golden Gate Park",
+                "person": "Melissa",
+                "start_time": "18:54",
+                "end_time": "19:09"
+            },
+            {
+                "action": "meet",
+                "location": "Presidio",
+                "person": "Nancy",
+                "start_time": "19:45",
+                "end_time": "21:30"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Golden Gate Park",
+                "person": "Melissa",
+                "start_time": "9:25",
+                "end_time": "9:40"
+            },
+            {
+                "action": "meet",
+                "location": "Richmond District",
+                "person": "Emily",
+                "start_time": "16:45",
+                "end_time": "18:45"
+            },
+            {
+                "action": "meet",
+                "location": "Presidio",
+                "person": "Nancy",
+                "start_time": "19:45",
+                "end_time": "21:30"
+            }
+        ]
+    },
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "constraints_satisfied_but_no_exact_match": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 118.81485676765442,
+        "execution_time": 0.12132930755615234,
+        "constraint_eval_time": 0.0002620220184326172,
+        "pred_extract_time": 1.5259208679199219,
+        "gold_extract_time": 6.580352783203125e-05,
+        "total_tokens": 6325,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\nimport json\n\ndef minutes(h, m):\n    return h*60 + m\n\ndef fmt_time(total_minutes):\n    h = total_minutes // 60\n    m = total_minutes % 60\n    return f\"{h}:{m:02d}\"\n\n# Data\nstart_location = \"Fisherman's Wharf\"\nstart_time = minutes(9, 0)  # 9:00\n\npersons = {\n    1: \"Melissa\",\n    2: \"Nancy\",\n    3: \"Emily\"\n}\n\nperson_location = {\n    1: \"Golden Gate Park\",\n    2: \"Presidio\",\n    3: \"Richmond District\"\n}\n\n# Availability windows (start, end) in minutes\navailability = {\n    1: (minutes(8, 30), minutes(20, 0)),   # Melissa\n    2: (minutes(19, 45), minutes(22, 0)),  # Nancy\n    3: (minutes(16, 45), minutes(22, 0))   # Emily\n}\n\n# Minimum meeting durations\nmin_duration = {\n    1: 15,    # Melissa\n    2: 105,   # Nancy\n    3: 120    # Emily\n}\n\n# Travel times (directed) in minutes\ntravel = {\n    (\"Fisherman's Wharf\", \"Golden Gate Park\"): 25,\n    (\"Fisherman's Wharf\", \"Presidio\"): 17,\n    (\"Fisherman's Wharf\", \"Richmond District\"): 18,\n\n    (\"Golden Gate Park\", \"Fisherman's Wharf\"): 24,\n    (\"Golden Gate Park\", \"Presidio\"): 11,\n    (\"Golden Gate Park\", \"Richmond District\"): 7,\n\n    (\"Presidio\", \"Fisherman's Wharf\"): 19,\n    (\"Presidio\", \"Golden Gate Park\"): 12,\n    (\"Presidio\", \"Richmond District\"): 7,\n\n    (\"Richmond District\", \"Fisherman's Wharf\"): 18,\n    (\"Richmond District\", \"Golden Gate Park\"): 9,\n    (\"Richmond District\", \"Presidio\"): 7,\n}\n\n# Helper to select integer by person Int var\ndef select_by_person(pvar, mapping, default=0):\n    expr = IntVal(default)\n    for pid in sorted(mapping.keys()):\n        expr = If(pvar == pid, IntVal(mapping[pid]), expr)\n    return expr\n\n# Helper to select travel from starting location to person\ndef travel_start_to_person(pvar):\n    m = {\n        1: travel[(start_location, person_location[1])],\n        2: travel[(start_location, person_location[2])],\n        3: travel[(start_location, person_location[3])]\n    }\n    return select_by_person(pvar, m, default=0)\n\n# Helper to select travel between two person locations\ndef travel_between_persons(pprev, pcur):\n    expr = IntVal(0)\n    pairs = [\n        (1, 2, travel[(person_location[1], person_location[2])]),\n        (1, 3, travel[(person_location[1], person_location[3])]),\n        (2, 1, travel[(person_location[2], person_location[1])]),\n        (2, 3, travel[(person_location[2], person_location[3])]),\n        (3, 1, travel[(person_location[3], person_location[1])]),\n        (3, 2, travel[(person_location[3], person_location[2])]),\n    ]\n    for a, b, val in pairs:\n        expr = If(And(pprev == a, pcur == b), IntVal(val), expr)\n    return expr\n\n# Build SMT model\nopt = Optimize()\n\nnum_slots = 3  # up to number of friends\nperson_slot = [Int(f\"person_{i}\") for i in range(num_slots)]\nused = [Bool(f\"used_{i}\") for i in range(num_slots)]\nstart_vars = [Int(f\"start_{i}\") for i in range(num_slots)]\nend_vars = [Int(f\"end_{i}\") for i in range(num_slots)]\n\n# Domains\nfor i in range(num_slots):\n    opt.add(person_slot[i] >= 0, person_slot[i] <= 3)\n    opt.add(used[i] == (person_slot[i] != 0))\n    opt.add(start_vars[i] >= 0, start_vars[i] <= 24*60)\n    opt.add(end_vars[i] >= 0, end_vars[i] <= 24*60)\n    opt.add(end_vars[i] >= start_vars[i])\n\n# Nonincreasing used: if slot i is used, then slot i-1 is used\nfor i in range(1, num_slots):\n    opt.add(Or(Not(used[i]), used[i-1]))\n\n# No duplicate persons across slots (ignoring zeros)\nfor i in range(num_slots):\n    for j in range(i+1, num_slots):\n        opt.add(Or(person_slot[i] == 0, person_slot[j] == 0, person_slot[i] != person_slot[j]))\n\n# Availability and minimum duration constraints\nfor i in range(num_slots):\n    avail_start_expr = If(\n        person_slot[i] == 1, IntVal(availability[1][0]),\n        If(person_slot[i] == 2, IntVal(availability[2][0]),\n           If(person_slot[i] == 3, IntVal(availability[3][0]), IntVal(0)))\n    )\n    avail_end_expr = If(\n        person_slot[i] == 1, IntVal(availability[1][1]),\n        If(person_slot[i] == 2, IntVal(availability[2][1]),\n           If(person_slot[i] == 3, IntVal(availability[3][1]), IntVal(24*60)))\n    )\n    req_expr = If(\n        person_slot[i] == 1, IntVal(min_duration[1]),\n        If(person_slot[i] == 2, IntVal(min_duration[2]),\n           If(person_slot[i] == 3, IntVal(min_duration[3]), IntVal(0)))\n    )\n\n    opt.add(Or(Not(used[i]), start_vars[i] >= avail_start_expr))\n    opt.add(Or(Not(used[i]), end_vars[i] <= avail_end_expr))\n    opt.add(Or(Not(used[i]), end_vars[i] - start_vars[i] >= req_expr))\n\n# Travel time sequencing constraints\n# From start to first used slot\nopt.add(Or(Not(used[0]), start_vars[0] >= start_time + travel_start_to_person(person_slot[0])))\n\n# Between consecutive used slots\nfor i in range(1, num_slots):\n    travel_expr = travel_between_persons(person_slot[i-1], person_slot[i])\n    opt.add(Or(Not(used[i]), start_vars[i] >= end_vars[i-1] + travel_expr))\n\n# Objective: maximize number of meetings, then minimize finish time, then minimize total travel\nmeet_count = Sum([If(used[i], IntVal(1), IntVal(0)) for i in range(num_slots)])\n\nfinish_time = If(used[2], end_vars[2],\n                 If(used[1], end_vars[1],\n                    If(used[0], end_vars[0], IntVal(start_time))))\n\nt0 = If(used[0], travel_start_to_person(person_slot[0]), IntVal(0))\nt1 = If(And(used[0], used[1]), travel_between_persons(person_slot[0], person_slot[1]), IntVal(0))\nt2 = If(And(used[1], used[2]), travel_between_persons(person_slot[1], person_slot[2]), IntVal(0))\ntotal_travel = t0 + t1 + t2\n\nopt.maximize(meet_count)\nopt.minimize(finish_time)\nopt.minimize(total_travel)\n\nif opt.check() != sat:\n    # If unsat, output empty itinerary\n    print(json.dumps({\"itinerary\": []}, ensure_ascii=False))\nelse:\n    model = opt.model()\n    itinerary = []\n    for i in range(num_slots):\n        if is_true(model.evaluate(used[i])):\n            pid = model.evaluate(person_slot[i]).as_long()\n            st = model.evaluate(start_vars[i]).as_long()\n            en = model.evaluate(end_vars[i]).as_long()\n            entry = {\n                \"action\": \"meet\",\n                \"location\": person_location[pid],\n                \"person\": persons[pid],\n                \"start_time\": fmt_time(st),\n                \"end_time\": fmt_time(en)\n            }\n            itinerary.append(entry)\n    print(json.dumps({\"itinerary\": itinerary}, ensure_ascii=False))"
+}

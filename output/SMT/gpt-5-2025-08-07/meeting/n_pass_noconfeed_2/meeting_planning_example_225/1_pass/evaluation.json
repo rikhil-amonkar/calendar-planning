@@ -1,0 +1,59 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "SOLUTION:\n{\n  \"itinerary\": [\n    {\n      \"action\": \"meet\",\n      \"location\": \"Union Square\",\n      \"person\": \"Jeffrey\",\n      \"start_time\": \"15:00\",\n      \"end_time\": \"16:15\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"North Beach\",\n      \"person\": \"Sarah\",\n      \"start_time\": \"16:25\",\n      \"end_time\": \"17:25\"\n    }\n  ]\n}",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Union Square",
+                "person": "Jeffrey",
+                "start_time": "15:00",
+                "end_time": "16:15"
+            },
+            {
+                "action": "meet",
+                "location": "North Beach",
+                "person": "Sarah",
+                "start_time": "16:25",
+                "end_time": "17:25"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "North Beach",
+                "person": "Sarah",
+                "start_time": "16:00",
+                "end_time": "17:00"
+            },
+            {
+                "action": "meet",
+                "location": "Union Square",
+                "person": "Jeffrey",
+                "start_time": "17:07",
+                "end_time": "18:22"
+            }
+        ]
+    },
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "constraints_satisfied_but_no_exact_match": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 73.03442931175232,
+        "execution_time": 0.1258835792541504,
+        "constraint_eval_time": 0.00010967254638671875,
+        "pred_extract_time": 1.4888277053833008,
+        "gold_extract_time": 2.6226043701171875e-05,
+        "total_tokens": 4223,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import json\nfrom z3 import *\n\ndef minutes_to_str(m):\n    h = m // 60\n    mm = m % 60\n    return f\"{h}:{mm:02d}\"\n\ndef main():\n    # Constants\n    DAY_START = 9 * 60  # 9:00\n    START_LOC = \"Sunset District\"\n\n    # People and their availability/requirements\n    people = [\n        {\"name\": \"Sarah\",   \"loc\": \"North Beach\",  \"avail_start\": 16*60, \"avail_end\": 18*60+15, \"min_duration\": 60},\n        {\"name\": \"Jeffrey\", \"loc\": \"Union Square\", \"avail_start\": 15*60, \"avail_end\": 22*60,    \"min_duration\": 75},\n        {\"name\": \"Brian\",   \"loc\": \"Alamo Square\", \"avail_start\": 16*60, \"avail_end\": 17*60+30, \"min_duration\": 75},\n    ]\n\n    # Travel times (in minutes)\n    travel = {\n        (\"Sunset District\", \"North Beach\"): 29,\n        (\"Sunset District\", \"Union Square\"): 30,\n        (\"Sunset District\", \"Alamo Square\"): 17,\n        (\"North Beach\", \"Sunset District\"): 27,\n        (\"North Beach\", \"Union Square\"): 7,\n        (\"North Beach\", \"Alamo Square\"): 16,\n        (\"Union Square\", \"Sunset District\"): 26,\n        (\"Union Square\", \"North Beach\"): 10,\n        (\"Union Square\", \"Alamo Square\"): 15,\n        (\"Alamo Square\", \"Sunset District\"): 16,\n        (\"Alamo Square\", \"North Beach\"): 15,\n        (\"Alamo Square\", \"Union Square\"): 14,\n    }\n\n    def tt(frm, to):\n        return travel[(frm, to)]\n\n    opt = Optimize()\n    opt.set(priority='lex')\n\n    n = len(people)\n\n    # Variables per person\n    meet = [Bool(f\"meet_{i}\") for i in range(n)]\n    start = [Int(f\"start_{i}\") for i in range(n)]\n    end = [Int(f\"end_{i}\") for i in range(n)]\n    dur = [Int(f\"dur_{i}\") for i in range(n)]\n\n    # Basic domains\n    for i, p in enumerate(people):\n        opt.add(start[i] >= 0, end[i] >= 0, dur[i] >= 0)\n\n        # If meeting, respect availability and minimum duration\n        opt.add(Implies(meet[i],\n                        And(\n                            start[i] >= p[\"avail_start\"],\n                            end[i]   <= p[\"avail_end\"],\n                            end[i]   == start[i] + dur[i],\n                            dur[i]   >= p[\"min_duration\"]\n                        )))\n        # If not meeting, collapse variables to 0 to avoid accidental ordering influences\n        opt.add(Implies(Not(meet[i]), And(start[i] == 0, end[i] == 0, dur[i] == 0)))\n\n        # Must be reachable from starting location at 9:00\n        opt.add(Implies(meet[i], start[i] >= DAY_START + tt(START_LOC, p[\"loc\"])))\n\n    # Disjunctive scheduling with travel/setup times between meetings\n    for i in range(n):\n        for j in range(i+1, n):\n            li = people[i][\"loc\"]\n            lj = people[j][\"loc\"]\n            opt.add(Implies(And(meet[i], meet[j]),\n                            Or(start[i] >= end[j] + tt(lj, li),\n                               start[j] >= end[i] + tt(li, lj))))\n\n    # Last end time (to minimize makespan as tie-breaker)\n    last_end = Int(\"last_end\")\n    opt.add(last_end >= DAY_START)\n    # last_end must be at least every met end\n    for i in range(n):\n        opt.add(Implies(meet[i], last_end >= end[i]))\n\n    # Objectives:\n    # 1) Maximize number of friends met\n    total_met = Sum([If(meet[i], 1, 0) for i in range(n)])\n    opt.maximize(total_met)\n    # 2) Minimize the end time of the day\n    opt.minimize(last_end)\n\n    # Solve\n    if opt.check() != sat:\n        print(json.dumps({\"itinerary\": []}, indent=2))\n        return\n    m = opt.model()\n\n    # Build itinerary (only meetings actually scheduled), sorted by start time\n    meetings = []\n    for i, p in enumerate(people):\n        if is_true(m.evaluate(meet[i])):\n            st = m.evaluate(start[i]).as_long()\n            en = m.evaluate(end[i]).as_long()\n            meetings.append({\n                \"action\": \"meet\",\n                \"location\": p[\"loc\"],\n                \"person\": p[\"name\"],\n                \"start_time\": minutes_to_str(st),\n                \"end_time\": minutes_to_str(en)\n            })\n\n    meetings.sort(key=lambda x: (int(x[\"start_time\"].split(':')[0])*60 + int(x[\"start_time\"].split(':')[1])))\n\n    result = {\"itinerary\": meetings}\n    print(json.dumps(result, indent=2))\n\nif __name__ == \"__main__\":\n    # The script must start with 'SOLUTION:' as per instructions\n    print(\"SOLUTION:\")\n    main()"
+}

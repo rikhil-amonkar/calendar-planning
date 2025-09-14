@@ -1,0 +1,44 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": true,
+    "execution_output": "{\"itinerary\": []}",
+    "pred": {
+        "itinerary": []
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Marina District",
+                "person": "Carol",
+                "start_time": "11:30",
+                "end_time": "12:30"
+            },
+            {
+                "action": "meet",
+                "location": "Pacific Heights",
+                "person": "Jessica",
+                "start_time": "15:30",
+                "end_time": "16:15"
+            }
+        ]
+    },
+    "status": "No plan generated",
+    "violated_constraint": {
+        "no_valid_meetings": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 84.23372292518616,
+        "execution_time": 0.07815003395080566,
+        "constraint_eval_time": 3.1948089599609375e-05,
+        "pred_extract_time": 0.43746328353881836,
+        "gold_extract_time": 4.696846008300781e-05,
+        "total_tokens": 5168,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import json\nfrom z3 import Optimize, Int, Bool, If, And, Or, Implies, Not, Sum\n\ndef minutes(h, m):\n    return h * 60 + m\n\ndef fmt_time(total_minutes):\n    h = total_minutes // 60\n    m = total_minutes % 60\n    return f\"{h}:{m:02d}\"\n\ndef main():\n    # Locations\n    RD, PH, MD = 0, 1, 2\n    location_names = {RD: \"Richmond District\", PH: \"Pacific Heights\", MD: \"Marina District\"}\n\n    # Travel times (minutes), directional\n    travel = {\n        (RD, PH): 10,\n        (RD, MD): 9,\n        (PH, RD): 12,\n        (PH, MD): 6,\n        (MD, RD): 11,\n        (MD, PH): 7,\n    }\n\n    # Start of the day\n    day_start = minutes(9, 0)  # 9:00\n\n    # Friends' constraints\n    friends = {\n        \"Jessica\": {\n            \"location\": PH,\n            \"avail_start\": minutes(15, 30),\n            \"avail_end\": minutes(16, 45),\n            \"min_duration\": 45\n        },\n        \"Carol\": {\n            \"location\": MD,\n            \"avail_start\": minutes(11, 30),\n            \"avail_end\": minutes(15, 0),\n            \"min_duration\": 60\n        }\n    }\n\n    # Z3 variables\n    start_J = Int(\"start_J\")\n    end_J = Int(\"end_J\")\n    meet_J = Bool(\"meet_J\")\n\n    start_C = Int(\"start_C\")\n    end_C = Int(\"end_C\")\n    meet_C = Bool(\"meet_C\")\n\n    j_before_c = Bool(\"j_before_c\")  # if both met, determines the order\n\n    opt = Optimize()\n    opt.set(priority='lex')\n\n    # Helper to constrain a meeting against availability and minimum duration\n    def meeting_constraints(meet_var, start_var, end_var, avail_s, avail_e, min_dur):\n        return Implies(\n            meet_var,\n            And(\n                start_var >= avail_s,\n                end_var <= avail_e,\n                end_var - start_var >= min_dur\n            )\n        )\n\n    # Apply basic constraints\n    opt.add(meeting_constraints(meet_J, start_J, end_J,\n                                friends[\"Jessica\"][\"avail_start\"],\n                                friends[\"Jessica\"][\"avail_end\"],\n                                friends[\"Jessica\"][\"min_duration\"]))\n    opt.add(meeting_constraints(meet_C, start_C, end_C,\n                                friends[\"Carol\"][\"avail_start\"],\n                                friends[\"Carol\"][\"avail_end\"],\n                                friends[\"Carol\"][\"min_duration\"]))\n\n    # Non-negativity and ordering within each meeting (only when meeting)\n    opt.add(Implies(meet_J, And(start_J >= 0, end_J >= 0, end_J >= start_J)))\n    opt.add(Implies(meet_C, And(start_C >= 0, end_C >= 0, end_C >= start_C)))\n\n    # Travel feasibility constraints\n    # If both are met, enforce an order and respective travel times from day start and between meetings\n    opt.add(Implies(And(meet_J, meet_C, j_before_c),\n                    And(\n                        start_J >= day_start + travel[(RD, friends[\"Jessica\"][\"location\"])],\n                        start_C >= end_J + travel[(friends[\"Jessica\"][\"location\"], friends[\"Carol\"][\"location\"])]\n                    )))\n    opt.add(Implies(And(meet_J, meet_C, Not(j_before_c)),\n                    And(\n                        start_C >= day_start + travel[(RD, friends[\"Carol\"][\"location\"])],\n                        start_J >= end_C + travel[(friends[\"Carol\"][\"location\"], friends[\"Jessica\"][\"location\"])]\n                    )))\n\n    # If only one meeting is met, ensure travel from start location (Richmond District) is accounted\n    opt.add(Implies(And(meet_J, Not(meet_C)),\n                    start_J >= day_start + travel[(RD, friends[\"Jessica\"][\"location\"])]))\n    opt.add(Implies(And(meet_C, Not(meet_J)),\n                    start_C >= day_start + travel[(RD, friends[\"Carol\"][\"location\"])]))\n\n    # Objective: maximize the number of friends met\n    meet_count = Sum(If(meet_J, 1, 0), If(meet_C, 1, 0))\n    opt.maximize(meet_count)\n\n    # Secondary objective: minimize the total end times (encourages earlier and shorter feasible meetings)\n    total_end = If(meet_J, end_J, 0) + If(meet_C, end_C, 0)\n    opt.minimize(total_end)\n\n    if opt.check() != 1:  # sat\n        print(json.dumps({\"itinerary\": []}))\n        return\n\n    model = opt.model()\n\n    itinerary = []\n\n    def add_meeting_if_scheduled(name, start_var, end_var):\n        met = model.eval(meet_J if name == \"Jessica\" else meet_C, model_completion=True)\n        if met is not None and met is True:\n            start_val = model.eval(start_var, model_completion=True).as_long()\n            end_val = model.eval(end_var, model_completion=True).as_long()\n            itinerary.append({\n                \"action\": \"meet\",\n                \"location\": location_names[friends[name][\"location\"]],\n                \"person\": name,\n                \"start_time\": fmt_time(start_val),\n                \"end_time\": fmt_time(end_val)\n            })\n\n    add_meeting_if_scheduled(\"Jessica\", start_J, end_J)\n    add_meeting_if_scheduled(\"Carol\", start_C, end_C)\n\n    # Sort by start time\n    def parse_time_str(t):\n        h, m = t.split(\":\")\n        return int(h) * 60 + int(m)\n\n    itinerary.sort(key=lambda x: parse_time_str(x[\"start_time\"]))\n\n    result = {\"itinerary\": itinerary}\n    print(json.dumps(result, ensure_ascii=False))\n\nif __name__ == \"__main__\":\n    main()"
+}

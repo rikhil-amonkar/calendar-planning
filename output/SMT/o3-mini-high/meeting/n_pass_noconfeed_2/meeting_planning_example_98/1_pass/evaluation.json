@@ -1,0 +1,43 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"itinerary\": [\n    {\n      \"action\": \"meet\",\n      \"location\": \"Richmond District\",\n      \"person\": \"Timothy\",\n      \"start_time\": \"20:45\",\n      \"end_time\": \"21:30\"\n    }\n  ]\n}",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Richmond District",
+                "person": "Timothy",
+                "start_time": "20:45",
+                "end_time": "21:30"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Richmond District",
+                "person": "Timothy",
+                "start_time": "20:45",
+                "end_time": "21:30"
+            }
+        ]
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 64.81838655471802,
+        "execution_time": 0.07431197166442871,
+        "constraint_eval_time": 1.8835067749023438e-05,
+        "pred_extract_time": 0.7390542030334473,
+        "gold_extract_time": 3.5762786865234375e-05,
+        "total_tokens": 3040,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import json\nfrom z3 import Optimize, Int, If, sat\n\ndef minutes_to_time(m):\n    hour = m // 60\n    minute = m % 60\n    return f\"{hour}:{minute:02d}\"\n\ndef main():\n    # Constants (all times are in minutes after midnight)\n    arrival_alamo = 9 * 60              # 9:00 AM = 540 minutes\n    travel_alamo_to_richmond = 12       # minutes from Alamo Square to Richmond District\n    timothy_avail_start = 20 * 60 + 45    # 20:45 = 1245 minutes\n    timothy_avail_end = 21 * 60 + 30      # 21:30 = 1290 minutes\n    required_meeting_duration = 45      # minimum meeting duration in minutes\n\n    # Create an optimizer instance\n    opt = Optimize()\n\n    # Decision variables\n    departure = Int(\"departure\")        # time to leave Alamo Square (in minutes)\n    meeting_start = Int(\"meeting_start\")  # meeting start time with Timothy (in minutes)\n    meeting_end = Int(\"meeting_end\")      # meeting end time (in minutes)\n\n    # Constraint 1: We cannot leave Alamo Square before arriving (9:00 AM)\n    opt.add(departure >= arrival_alamo)\n\n    # Constraint 2: The meeting can only start when Timothy is available.\n    # If you arrive at Richmond District before Timothy is available, you must wait.\n    opt.add(meeting_start == If(departure + travel_alamo_to_richmond < timothy_avail_start,\n                                timothy_avail_start,\n                                departure + travel_alamo_to_richmond))\n    \n    # Constraint 3: Meeting must last at least the required duration.\n    opt.add(meeting_end == meeting_start + required_meeting_duration)\n    \n    # Constraint 4: The meeting must end by the end of Timothy's availability.\n    opt.add(meeting_end <= timothy_avail_end)\n\n    # Constraint 5: If you arrive after Timothy is available,\n    # then you must still be able to meet him for the required duration.\n    # That is, (departure + travel time) + required duration must be within his availability.\n    opt.add(If(departure + travel_alamo_to_richmond >= timothy_avail_start,\n               departure <= timothy_avail_end - required_meeting_duration - travel_alamo_to_richmond,\n               True))\n    \n    # Objective: maximize departure time from Alamo Square.\n    # This gives you maximum free time in the morning while still being on time for a full meeting.\n    opt.maximize(departure)\n\n    if opt.check() == sat:\n        model = opt.model()\n        dep_val = model[departure].as_long()\n        meet_start_val = model[meeting_start].as_long()\n        meet_end_val = model[meeting_end].as_long()\n        \n        itinerary = [\n            {\n                \"action\": \"meet\",\n                \"location\": \"Richmond District\",\n                \"person\": \"Timothy\",\n                \"start_time\": minutes_to_time(meet_start_val),\n                \"end_time\": minutes_to_time(meet_end_val)\n            }\n        ]\n        result = {\"itinerary\": itinerary}\n        print(json.dumps(result, indent=2))\n    else:\n        print(json.dumps({\"error\": \"No valid schedule found.\"}))\n\nif __name__ == '__main__':\n    main()"
+}

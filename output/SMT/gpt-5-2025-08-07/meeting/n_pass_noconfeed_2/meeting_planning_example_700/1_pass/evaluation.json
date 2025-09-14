@@ -1,0 +1,101 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"itinerary\": [\n    {\n      \"action\": \"meet\",\n      \"location\": \"North Beach\",\n      \"person\": \"Helen\",\n      \"start_time\": \"11:00\",\n      \"end_time\": \"12:15\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Fisherman's Wharf\",\n      \"person\": \"Emily\",\n      \"start_time\": \"16:15\",\n      \"end_time\": \"17:19\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Nob Hill\",\n      \"person\": \"Mary\",\n      \"start_time\": \"17:30\",\n      \"end_time\": \"18:15\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Marina District\",\n      \"person\": \"Mark\",\n      \"start_time\": \"18:26\",\n      \"end_time\": \"19:41\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Sunset District\",\n      \"person\": \"Laura\",\n      \"start_time\": \"20:00\",\n      \"end_time\": \"21:15\"\n    }\n  ]\n}",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "North Beach",
+                "person": "Helen",
+                "start_time": "11:00",
+                "end_time": "12:15"
+            },
+            {
+                "action": "meet",
+                "location": "Fisherman's Wharf",
+                "person": "Emily",
+                "start_time": "16:15",
+                "end_time": "17:19"
+            },
+            {
+                "action": "meet",
+                "location": "Nob Hill",
+                "person": "Mary",
+                "start_time": "17:30",
+                "end_time": "18:15"
+            },
+            {
+                "action": "meet",
+                "location": "Marina District",
+                "person": "Mark",
+                "start_time": "18:26",
+                "end_time": "19:41"
+            },
+            {
+                "action": "meet",
+                "location": "Sunset District",
+                "person": "Laura",
+                "start_time": "20:00",
+                "end_time": "21:15"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "North Beach",
+                "person": "Helen",
+                "start_time": "11:00",
+                "end_time": "11:45"
+            },
+            {
+                "action": "meet",
+                "location": "Fisherman's Wharf",
+                "person": "Emily",
+                "start_time": "16:15",
+                "end_time": "16:45"
+            },
+            {
+                "action": "meet",
+                "location": "Nob Hill",
+                "person": "Mary",
+                "start_time": "17:30",
+                "end_time": "18:15"
+            },
+            {
+                "action": "meet",
+                "location": "Marina District",
+                "person": "Mark",
+                "start_time": "18:26",
+                "end_time": "19:41"
+            },
+            {
+                "action": "meet",
+                "location": "Golden Gate Park",
+                "person": "Michelle",
+                "start_time": "20:00",
+                "end_time": "20:15"
+            }
+        ]
+    },
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "constraints_satisfied_but_no_exact_match": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 174.70390939712524,
+        "execution_time": 0.10460758209228516,
+        "constraint_eval_time": 0.0004303455352783203,
+        "pred_extract_time": 1.985579252243042,
+        "gold_extract_time": 6.771087646484375e-05,
+        "total_tokens": 7564,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import json\nfrom z3 import *\n\ndef time_to_minutes(t):\n    # t like \"H:MM\" or \"HH:MM\"\n    h, m = t.split(\":\")\n    return int(h) * 60 + int(m)\n\ndef minutes_to_time(m):\n    h = m // 60\n    mm = m % 60\n    return f\"{h}:{mm:02d}\"\n\n# Locations\nlocations = [\n    \"Presidio\",\n    \"Pacific Heights\",\n    \"Golden Gate Park\",\n    \"Fisherman's Wharf\",\n    \"Marina District\",\n    \"Alamo Square\",\n    \"Sunset District\",\n    \"Nob Hill\",\n    \"North Beach\",\n]\n\n# Travel times (minutes) as given (directional)\ntravel_times = {\n    (\"Presidio\", \"Pacific Heights\"): 11,\n    (\"Presidio\", \"Golden Gate Park\"): 12,\n    (\"Presidio\", \"Fisherman's Wharf\"): 19,\n    (\"Presidio\", \"Marina District\"): 11,\n    (\"Presidio\", \"Alamo Square\"): 19,\n    (\"Presidio\", \"Sunset District\"): 15,\n    (\"Presidio\", \"Nob Hill\"): 18,\n    (\"Presidio\", \"North Beach\"): 18,\n\n    (\"Pacific Heights\", \"Presidio\"): 11,\n    (\"Pacific Heights\", \"Golden Gate Park\"): 15,\n    (\"Pacific Heights\", \"Fisherman's Wharf\"): 13,\n    (\"Pacific Heights\", \"Marina District\"): 6,\n    (\"Pacific Heights\", \"Alamo Square\"): 10,\n    (\"Pacific Heights\", \"Sunset District\"): 21,\n    (\"Pacific Heights\", \"Nob Hill\"): 8,\n    (\"Pacific Heights\", \"North Beach\"): 9,\n\n    (\"Golden Gate Park\", \"Presidio\"): 11,\n    (\"Golden Gate Park\", \"Pacific Heights\"): 16,\n    (\"Golden Gate Park\", \"Fisherman's Wharf\"): 24,\n    (\"Golden Gate Park\", \"Marina District\"): 16,\n    (\"Golden Gate Park\", \"Alamo Square\"): 9,\n    (\"Golden Gate Park\", \"Sunset District\"): 10,\n    (\"Golden Gate Park\", \"Nob Hill\"): 20,\n    (\"Golden Gate Park\", \"North Beach\"): 23,\n\n    (\"Fisherman's Wharf\", \"Presidio\"): 17,\n    (\"Fisherman's Wharf\", \"Pacific Heights\"): 12,\n    (\"Fisherman's Wharf\", \"Golden Gate Park\"): 25,\n    (\"Fisherman's Wharf\", \"Marina District\"): 9,\n    (\"Fisherman's Wharf\", \"Alamo Square\"): 21,\n    (\"Fisherman's Wharf\", \"Sunset District\"): 27,\n    (\"Fisherman's Wharf\", \"Nob Hill\"): 11,\n    (\"Fisherman's Wharf\", \"North Beach\"): 6,\n\n    (\"Marina District\", \"Presidio\"): 10,\n    (\"Marina District\", \"Pacific Heights\"): 7,\n    (\"Marina District\", \"Golden Gate Park\"): 18,\n    (\"Marina District\", \"Fisherman's Wharf\"): 10,\n    (\"Marina District\", \"Alamo Square\"): 15,\n    (\"Marina District\", \"Sunset District\"): 19,\n    (\"Marina District\", \"Nob Hill\"): 12,\n    (\"Marina District\", \"North Beach\"): 11,\n\n    (\"Alamo Square\", \"Presidio\"): 17,\n    (\"Alamo Square\", \"Pacific Heights\"): 10,\n    (\"Alamo Square\", \"Golden Gate Park\"): 9,\n    (\"Alamo Square\", \"Fisherman's Wharf\"): 19,\n    (\"Alamo Square\", \"Marina District\"): 15,\n    (\"Alamo Square\", \"Sunset District\"): 16,\n    (\"Alamo Square\", \"Nob Hill\"): 11,\n    (\"Alamo Square\", \"North Beach\"): 15,\n\n    (\"Sunset District\", \"Presidio\"): 16,\n    (\"Sunset District\", \"Pacific Heights\"): 21,\n    (\"Sunset District\", \"Golden Gate Park\"): 11,\n    (\"Sunset District\", \"Fisherman's Wharf\"): 29,\n    (\"Sunset District\", \"Marina District\"): 21,\n    (\"Sunset District\", \"Alamo Square\"): 17,\n    (\"Sunset District\", \"Nob Hill\"): 27,\n    (\"Sunset District\", \"North Beach\"): 28,\n\n    (\"Nob Hill\", \"Presidio\"): 17,\n    (\"Nob Hill\", \"Pacific Heights\"): 8,\n    (\"Nob Hill\", \"Golden Gate Park\"): 17,\n    (\"Nob Hill\", \"Fisherman's Wharf\"): 10,\n    (\"Nob Hill\", \"Marina District\"): 11,\n    (\"Nob Hill\", \"Alamo Square\"): 11,\n    (\"Nob Hill\", \"Sunset District\"): 24,\n    (\"Nob Hill\", \"North Beach\"): 8,\n\n    (\"North Beach\", \"Presidio\"): 17,\n    (\"North Beach\", \"Pacific Heights\"): 8,\n    (\"North Beach\", \"Golden Gate Park\"): 22,\n    (\"North Beach\", \"Fisherman's Wharf\"): 5,\n    (\"North Beach\", \"Marina District\"): 9,\n    (\"North Beach\", \"Alamo Square\"): 16,\n    (\"North Beach\", \"Sunset District\"): 27,\n    (\"North Beach\", \"Nob Hill\"): 7,\n}\n\ndef travel(a, b):\n    return travel_times[(a, b)]\n\n# People constraints\npeople = [\n    {\"name\": \"Kevin\", \"location\": \"Pacific Heights\", \"avail_start\": time_to_minutes(\"7:15\"), \"avail_end\": time_to_minutes(\"8:45\"), \"min_dur\": 90},\n    {\"name\": \"Michelle\", \"location\": \"Golden Gate Park\", \"avail_start\": time_to_minutes(\"20:00\"), \"avail_end\": time_to_minutes(\"21:00\"), \"min_dur\": 15},\n    {\"name\": \"Emily\", \"location\": \"Fisherman's Wharf\", \"avail_start\": time_to_minutes(\"16:15\"), \"avail_end\": time_to_minutes(\"19:00\"), \"min_dur\": 30},\n    {\"name\": \"Mark\", \"location\": \"Marina District\", \"avail_start\": time_to_minutes(\"18:15\"), \"avail_end\": time_to_minutes(\"19:45\"), \"min_dur\": 75},\n    {\"name\": \"Barbara\", \"location\": \"Alamo Square\", \"avail_start\": time_to_minutes(\"17:00\"), \"avail_end\": time_to_minutes(\"19:00\"), \"min_dur\": 120},\n    {\"name\": \"Laura\", \"location\": \"Sunset District\", \"avail_start\": time_to_minutes(\"19:00\"), \"avail_end\": time_to_minutes(\"21:15\"), \"min_dur\": 75},\n    {\"name\": \"Mary\", \"location\": \"Nob Hill\", \"avail_start\": time_to_minutes(\"17:30\"), \"avail_end\": time_to_minutes(\"19:00\"), \"min_dur\": 45},\n    {\"name\": \"Helen\", \"location\": \"North Beach\", \"avail_start\": time_to_minutes(\"11:00\"), \"avail_end\": time_to_minutes(\"12:15\"), \"min_dur\": 45},\n]\n\n# Day start and starting location\nday_start = time_to_minutes(\"9:00\")\nstart_location = \"Presidio\"\n\nopt = Optimize()\nopt.set(\"opt.priority\", \"lex\")\n\n# Variables\nstarts = {}\nends = {}\nmeets = {}\ndurs = {}\n\nmax_time = 24 * 60\n\nfor p in people:\n    name = p[\"name\"]\n    s = Int(f\"start_{name}\")\n    e = Int(f\"end_{name}\")\n    m = Int(f\"meet_{name}\")  # 0 or 1\n    d = Int(f\"dur_{name}\")\n\n    starts[name] = s\n    ends[name] = e\n    meets[name] = m\n    durs[name] = d\n\n    # Domains\n    opt.add(m >= 0, m <= 1)\n    opt.add(s >= 0, s <= max_time)\n    opt.add(e >= 0, e <= max_time)\n    opt.add(d >= 0)\n\n    # Within availability\n    opt.add(s >= p[\"avail_start\"])\n    opt.add(e <= p[\"avail_end\"])\n\n    # Duration definition and gating by meet\n    opt.add(d == e - s)\n    opt.add(d >= p[\"min_dur\"] * m)\n    # If not meeting, duration must be 0; if meeting, duration <= full window\n    opt.add(d <= (p[\"avail_end\"] - p[\"avail_start\"]) * m)\n\n    # Reachability from starting point if meeting\n    opt.add(Implies(m == 1, s >= day_start + travel(start_location, p[\"location\"])))\n\n# Pairwise non-overlap with travel time if both are met\nfor i in range(len(people)):\n    for j in range(i + 1, len(people)):\n        pi = people[i]\n        pj = people[j]\n        ni = pi[\"name\"]\n        nj = pj[\"name\"]\n        ti_j = travel(pi[\"location\"], pj[\"location\"])\n        tj_i = travel(pj[\"location\"], pi[\"location\"])\n        # If both meetings occur, enforce travel-time separated order\n        opt.add(Implies(And(meets[ni] == 1, meets[nj] == 1),\n                        Or(ends[ni] + ti_j <= starts[nj],\n                           ends[nj] + tj_i <= starts[ni])))\n\n# Objective: maximize number of people met, then maximize total meeting time\ntotal_met = Sum([meets[p[\"name\"]] for p in people])\ntotal_minutes = Sum([durs[p[\"name\"]] for p in people])\n\nopt.maximize(total_met)\nopt.maximize(total_minutes)\n\nif opt.check() == sat:\n    model = opt.model()\n    itinerary = []\n    for p in people:\n        name = p[\"name\"]\n        if model[meets[name]].as_long() == 1:\n            s = model[starts[name]].as_long()\n            e = model[ends[name]].as_long()\n            itinerary.append({\n                \"action\": \"meet\",\n                \"location\": p[\"location\"],\n                \"person\": name,\n                \"start_time\": minutes_to_time(s),\n                \"end_time\": minutes_to_time(e)\n            })\n    # Sort itinerary by start time\n    itinerary.sort(key=lambda x: time_to_minutes(x[\"start_time\"]))\n    output = {\"itinerary\": itinerary}\nelse:\n    output = {\"itinerary\": []}\n\nprint(json.dumps(output, indent=2))"
+}

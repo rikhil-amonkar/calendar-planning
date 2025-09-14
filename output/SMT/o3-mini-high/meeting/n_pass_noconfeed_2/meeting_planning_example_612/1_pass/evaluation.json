@@ -1,0 +1,115 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"itinerary\": [\n    {\n      \"action\": \"meet\",\n      \"location\": \"The Castro\",\n      \"person\": \"George\",\n      \"start_time\": \"9:08\",\n      \"end_time\": \"10:08\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Russian Hill\",\n      \"person\": \"Emily\",\n      \"start_time\": \"12:15\",\n      \"end_time\": \"14:00\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Chinatown\",\n      \"person\": \"Deborah\",\n      \"start_time\": \"14:09\",\n      \"end_time\": \"14:54\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Presidio\",\n      \"person\": \"Mark\",\n      \"start_time\": \"15:13\",\n      \"end_time\": \"16:13\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Golden Gate Park\",\n      \"person\": \"Steven\",\n      \"start_time\": \"16:25\",\n      \"end_time\": \"18:10\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Embarcadero\",\n      \"person\": \"Andrew\",\n      \"start_time\": \"20:15\",\n      \"end_time\": \"21:30\"\n    }\n  ]\n}",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "The Castro",
+                "person": "George",
+                "start_time": "9:08",
+                "end_time": "10:08"
+            },
+            {
+                "action": "meet",
+                "location": "Russian Hill",
+                "person": "Emily",
+                "start_time": "12:15",
+                "end_time": "14:00"
+            },
+            {
+                "action": "meet",
+                "location": "Chinatown",
+                "person": "Deborah",
+                "start_time": "14:09",
+                "end_time": "14:54"
+            },
+            {
+                "action": "meet",
+                "location": "Presidio",
+                "person": "Mark",
+                "start_time": "15:13",
+                "end_time": "16:13"
+            },
+            {
+                "action": "meet",
+                "location": "Golden Gate Park",
+                "person": "Steven",
+                "start_time": "16:25",
+                "end_time": "18:10"
+            },
+            {
+                "action": "meet",
+                "location": "Embarcadero",
+                "person": "Andrew",
+                "start_time": "20:15",
+                "end_time": "21:30"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Chinatown",
+                "person": "Deborah",
+                "start_time": "9:16",
+                "end_time": "10:01"
+            },
+            {
+                "action": "meet",
+                "location": "The Castro",
+                "person": "George",
+                "start_time": "10:23",
+                "end_time": "11:23"
+            },
+            {
+                "action": "meet",
+                "location": "Russian Hill",
+                "person": "Emily",
+                "start_time": "12:15",
+                "end_time": "14:00"
+            },
+            {
+                "action": "meet",
+                "location": "Presidio",
+                "person": "Mark",
+                "start_time": "14:45",
+                "end_time": "15:45"
+            },
+            {
+                "action": "meet",
+                "location": "Golden Gate Park",
+                "person": "Steven",
+                "start_time": "15:57",
+                "end_time": "17:42"
+            },
+            {
+                "action": "meet",
+                "location": "Sunset District",
+                "person": "Margaret",
+                "start_time": "21:30",
+                "end_time": "22:30"
+            }
+        ]
+    },
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "constraints_satisfied_but_no_exact_match": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 153.66259717941284,
+        "execution_time": 0.10824084281921387,
+        "constraint_eval_time": 0.0004956722259521484,
+        "pred_extract_time": 2.3973851203918457,
+        "gold_extract_time": 8.177757263183594e-05,
+        "total_tokens": 7305,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\nimport json\n\ndef main():\n    # Define the meeting details for each friend.\n    # Times are in minutes from midnight.\n    friends = [\n        {\"name\": \"Emily\", \"location\": \"Russian Hill\", \"avail_start\": 735, \"avail_end\": 855, \"min_duration\": 105},\n        {\"name\": \"Mark\", \"location\": \"Presidio\", \"avail_start\": 885, \"avail_end\": 1170, \"min_duration\": 60},\n        {\"name\": \"Deborah\", \"location\": \"Chinatown\", \"avail_start\": 450, \"avail_end\": 930, \"min_duration\": 45},\n        {\"name\": \"Margaret\", \"location\": \"Sunset District\", \"avail_start\": 1290, \"avail_end\": 1350, \"min_duration\": 60},\n        {\"name\": \"George\", \"location\": \"The Castro\", \"avail_start\": 450, \"avail_end\": 855, \"min_duration\": 60},\n        {\"name\": \"Andrew\", \"location\": \"Embarcadero\", \"avail_start\": 1215, \"avail_end\": 1320, \"min_duration\": 75},\n        {\"name\": \"Steven\", \"location\": \"Golden Gate Park\", \"avail_start\": 675, \"avail_end\": 1275, \"min_duration\": 105}\n    ]\n    \n    # Travel times in minutes between locations.\n    travel_times = {\n        (\"Alamo Square\", \"Russian Hill\"): 13,\n        (\"Alamo Square\", \"Presidio\"): 18,\n        (\"Alamo Square\", \"Chinatown\"): 16,\n        (\"Alamo Square\", \"Sunset District\"): 16,\n        (\"Alamo Square\", \"The Castro\"): 8,\n        (\"Alamo Square\", \"Embarcadero\"): 17,\n        (\"Alamo Square\", \"Golden Gate Park\"): 9,\n        (\"Russian Hill\", \"Alamo Square\"): 15,\n        (\"Russian Hill\", \"Presidio\"): 14,\n        (\"Russian Hill\", \"Chinatown\"): 9,\n        (\"Russian Hill\", \"Sunset District\"): 23,\n        (\"Russian Hill\", \"The Castro\"): 21,\n        (\"Russian Hill\", \"Embarcadero\"): 8,\n        (\"Russian Hill\", \"Golden Gate Park\"): 21,\n        (\"Presidio\", \"Alamo Square\"): 18,\n        (\"Presidio\", \"Russian Hill\"): 14,\n        (\"Presidio\", \"Chinatown\"): 21,\n        (\"Presidio\", \"Sunset District\"): 15,\n        (\"Presidio\", \"The Castro\"): 21,\n        (\"Presidio\", \"Embarcadero\"): 20,\n        (\"Presidio\", \"Golden Gate Park\"): 12,\n        (\"Chinatown\", \"Alamo Square\"): 17,\n        (\"Chinatown\", \"Russian Hill\"): 7,\n        (\"Chinatown\", \"Presidio\"): 19,\n        (\"Chinatown\", \"Sunset District\"): 29,\n        (\"Chinatown\", \"The Castro\"): 22,\n        (\"Chinatown\", \"Embarcadero\"): 5,\n        (\"Chinatown\", \"Golden Gate Park\"): 23,\n        (\"Sunset District\", \"Alamo Square\"): 17,\n        (\"Sunset District\", \"Russian Hill\"): 24,\n        (\"Sunset District\", \"Presidio\"): 16,\n        (\"Sunset District\", \"Chinatown\"): 30,\n        (\"Sunset District\", \"The Castro\"): 17,\n        (\"Sunset District\", \"Embarcadero\"): 31,\n        (\"Sunset District\", \"Golden Gate Park\"): 11,\n        (\"The Castro\", \"Alamo Square\"): 8,\n        (\"The Castro\", \"Russian Hill\"): 18,\n        (\"The Castro\", \"Presidio\"): 20,\n        (\"The Castro\", \"Chinatown\"): 20,\n        (\"The Castro\", \"Sunset District\"): 17,\n        (\"The Castro\", \"Embarcadero\"): 22,\n        (\"The Castro\", \"Golden Gate Park\"): 11,\n        (\"Embarcadero\", \"Alamo Square\"): 19,\n        (\"Embarcadero\", \"Russian Hill\"): 8,\n        (\"Embarcadero\", \"Presidio\"): 20,\n        (\"Embarcadero\", \"Chinatown\"): 7,\n        (\"Embarcadero\", \"Sunset District\"): 30,\n        (\"Embarcadero\", \"The Castro\"): 25,\n        (\"Embarcadero\", \"Golden Gate Park\"): 25,\n        (\"Golden Gate Park\", \"Alamo Square\"): 10,\n        (\"Golden Gate Park\", \"Russian Hill\"): 19,\n        (\"Golden Gate Park\", \"Presidio\"): 11,\n        (\"Golden Gate Park\", \"Chinatown\"): 23,\n        (\"Golden Gate Park\", \"Sunset District\"): 10,\n        (\"Golden Gate Park\", \"The Castro\"): 13,\n        (\"Golden Gate Park\", \"Embarcadero\"): 25\n    }\n    \n    # You arrive at Alamo Square at 9:00 AM (540 minutes).\n    arrival_time = 540\n\n    num_friends = len(friends)\n    opt = Optimize()\n\n    # Decision variables:\n    # For each friend i, s_i is the start time of the meeting, e_i is the end time, \n    # o_i is the order (position in the schedule, 0 if not attended), and attend_i is a boolean\n    s = [Int(f\"s_{i}\") for i in range(num_friends)]\n    e = [Int(f\"e_{i}\") for i in range(num_friends)]\n    o = [Int(f\"o_{i}\") for i in range(num_friends)]\n    attend = [Bool(f\"attend_{i}\") for i in range(num_friends)]\n\n    # For each friend, add constraints if the meeting is attended.\n    for i, friend in enumerate(friends):\n        opt.add(\n            If(\n                attend[i],\n                And(\n                    s[i] >= friend[\"avail_start\"],\n                    s[i] <= friend[\"avail_end\"] - friend[\"min_duration\"],\n                    e[i] <= friend[\"avail_end\"],\n                    e[i] >= friend[\"avail_start\"] + friend[\"min_duration\"],\n                    e[i] - s[i] >= friend[\"min_duration\"],\n                    o[i] >= 1, o[i] <= num_friends\n                ),\n                And(s[i] == 0, e[i] == 0, o[i] == 0)\n            )\n        )\n    \n    # Ensure that if two meetings are attended, they have distinct order values.\n    for i in range(num_friends):\n        for j in range(i+1, num_friends):\n            opt.add(Or(Not(And(attend[i], attend[j])), o[i] != o[j]))\n    \n    # The first meeting in the schedule must be reachable from Alamo Square.\n    for i, friend in enumerate(friends):\n        travel_from_start = travel_times.get((\"Alamo Square\", friend[\"location\"]), 0)\n        opt.add(\n            If(And(attend[i], o[i] == 1),\n               s[i] >= arrival_time + travel_from_start,\n               True)\n        )\n    \n    # For any two attended meetings, if meeting i comes before meeting j then\n    # the start time of j must be at least the end time of i plus travel time.\n    for i in range(num_friends):\n        for j in range(num_friends):\n            if i != j:\n                travel_time_ij = travel_times.get((friends[i][\"location\"], friends[j][\"location\"]), 0)\n                opt.add(\n                    If(And(attend[i], attend[j], o[i] < o[j]),\n                       s[j] >= e[i] + travel_time_ij,\n                       True)\n                )\n    \n    # Objective: maximize the number of meetings attended.\n    total_attended = Sum([If(attend[i], 1, 0) for i in range(num_friends)])\n    opt.maximize(total_attended)\n\n    # Check for a solution.\n    if opt.check() == sat:\n        model = opt.model()\n        schedule = []\n        for i, friend in enumerate(friends):\n            if is_true(model.evaluate(attend[i])):\n                order_val = model.evaluate(o[i]).as_long()\n                start_val = model.evaluate(s[i]).as_long()\n                end_val = model.evaluate(e[i]).as_long()\n                schedule.append((order_val, friend[\"name\"], friend[\"location\"], start_val, end_val))\n        schedule.sort(key=lambda x: x[0])\n        \n        def format_time(t):\n            hour = t // 60\n            minute = t % 60\n            return f\"{hour}:{minute:02d}\"\n        \n        itinerary = []\n        for order_val, name, location, start_val, end_val in schedule:\n            itinerary.append({\n                \"action\": \"meet\",\n                \"location\": location,\n                \"person\": name,\n                \"start_time\": format_time(start_val),\n                \"end_time\": format_time(end_val)\n            })\n        \n        result = {\"itinerary\": itinerary}\n        print(json.dumps(result, indent=2))\n    else:\n        print(json.dumps({\"itinerary\": []}))\n\nif __name__ == \"__main__\":\n    main()"
+}

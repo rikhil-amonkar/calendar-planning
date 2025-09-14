@@ -1,0 +1,73 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\"itinerary\": [{\"action\": \"meet\", \"location\": \"Fisherman's Wharf\", \"person\": \"Barbara\", \"start_time\": \"9:15\", \"end_time\": \"11:15\"}, {\"action\": \"meet\", \"location\": \"Presidio\", \"person\": \"Betty\", \"start_time\": \"11:32\", \"end_time\": \"12:17\"}, {\"action\": \"meet\", \"location\": \"Richmond District\", \"person\": \"David\", \"start_time\": \"13:00\", \"end_time\": \"14:30\"}]}",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Fisherman's Wharf",
+                "person": "Barbara",
+                "start_time": "9:15",
+                "end_time": "11:15"
+            },
+            {
+                "action": "meet",
+                "location": "Presidio",
+                "person": "Betty",
+                "start_time": "11:32",
+                "end_time": "12:17"
+            },
+            {
+                "action": "meet",
+                "location": "Richmond District",
+                "person": "David",
+                "start_time": "13:00",
+                "end_time": "14:30"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Presidio",
+                "person": "Betty",
+                "start_time": "10:15",
+                "end_time": "11:00"
+            },
+            {
+                "action": "meet",
+                "location": "Richmond District",
+                "person": "David",
+                "start_time": "13:00",
+                "end_time": "14:30"
+            },
+            {
+                "action": "meet",
+                "location": "Fisherman's Wharf",
+                "person": "Barbara",
+                "start_time": "14:48",
+                "end_time": "16:48"
+            }
+        ]
+    },
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "constraints_satisfied_but_no_exact_match": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 148.70714449882507,
+        "execution_time": 0.09056448936462402,
+        "constraint_eval_time": 0.00023651123046875,
+        "pred_extract_time": 1.946150779724121,
+        "gold_extract_time": 5.1021575927734375e-05,
+        "total_tokens": 6941,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import json\nfrom z3 import *\n\ndef minutes_to_time(m):\n    total = 9 * 60 + m  # offset from 9:00 AM\n    hour = total // 60\n    minute = total % 60\n    return f\"{hour}:{minute:02d}\"\n\ndef main():\n    opt = Optimize()\n\n    # Define Boolean decision variables for scheduling each meeting.\n    b_meet = Bool('b_meet')    # Meeting with Betty\n    d_meet = Bool('d_meet')    # Meeting with David\n    ba_meet = Bool('ba_meet')  # Meeting with Barbara\n\n    # Define integer variables for start and end times (in minutes after 9:00 AM) for each meeting.\n    b_start, b_end = Int('b_start'), Int('b_end')\n    d_start, d_end = Int('d_start'), Int('d_end')\n    ba_start, ba_end = Int('ba_start'), Int('ba_end')\n\n    # Define integer variables to represent the order of the meetings (if scheduled).\n    order_b = Int('order_b')\n    order_d = Int('order_d')\n    order_ba = Int('order_ba')\n\n    # Define travel times (in minutes) between locations.\n    # Locations: \"Embarcadero\", \"Presidio\", \"Richmond District\", \"Fisherman's Wharf\"\n    travel = {\n        (\"Embarcadero\", \"Presidio\"): 20,\n        (\"Embarcadero\", \"Richmond District\"): 21,\n        (\"Embarcadero\", \"Fisherman's Wharf\"): 6,\n        (\"Presidio\", \"Embarcadero\"): 20,\n        (\"Presidio\", \"Richmond District\"): 7,\n        (\"Presidio\", \"Fisherman's Wharf\"): 19,\n        (\"Richmond District\", \"Embarcadero\"): 19,\n        (\"Richmond District\", \"Presidio\"): 7,\n        (\"Richmond District\", \"Fisherman's Wharf\"): 18,\n        (\"Fisherman's Wharf\", \"Embarcadero\"): 8,\n        (\"Fisherman's Wharf\", \"Presidio\"): 17,\n        (\"Fisherman's Wharf\", \"Richmond District\"): 18\n    }\n\n    # Meeting constraints (availability windows and minimum meeting durations):\n    # Betty is at Presidio from 10:15 (75) to 21:30 (750) with a minimum meeting duration of 45 minutes.\n    opt.add(Implies(b_meet, b_start >= 75))\n    opt.add(Implies(b_meet, b_end <= 750))\n    opt.add(Implies(b_meet, b_end - b_start >= 45))\n    # David is at Richmond District from 13:00 (240) to 20:15 (675) with a minimum meeting duration of 90 minutes.\n    opt.add(Implies(d_meet, d_start >= 240))\n    opt.add(Implies(d_meet, d_end <= 675))\n    opt.add(Implies(d_meet, d_end - d_start >= 90))\n    # Barbara is at Fisherman's Wharf from 9:15 (15) to 20:15 (675) with a minimum meeting duration of 120 minutes.\n    opt.add(Implies(ba_meet, ba_start >= 15))\n    opt.add(Implies(ba_meet, ba_end <= 675))\n    opt.add(Implies(ba_meet, ba_end - ba_start >= 120))\n\n    # Order variable constraints.\n    # If a meeting is scheduled then its order must be between 1 and 3.\n    # If not scheduled, then we fix its order to 0.\n    opt.add(Implies(b_meet, And(order_b >= 1, order_b <= 3)))\n    opt.add(Implies(Not(b_meet), order_b == 0))\n    opt.add(Implies(d_meet, And(order_d >= 1, order_d <= 3)))\n    opt.add(Implies(Not(d_meet), order_d == 0))\n    opt.add(Implies(ba_meet, And(order_ba >= 1, order_ba <= 3)))\n    opt.add(Implies(Not(ba_meet), order_ba == 0))\n    # Ensure that at least one scheduled meeting is the first (order == 1).\n    opt.add(Or(And(b_meet, order_b == 1), And(d_meet, order_d == 1), And(ba_meet, order_ba == 1)))\n    # Ensure distinct orders for any two scheduled meetings.\n    opt.add(Implies(And(b_meet, d_meet), order_b != order_d))\n    opt.add(Implies(And(b_meet, ba_meet), order_b != order_ba))\n    opt.add(Implies(And(d_meet, ba_meet), order_d != order_ba))\n\n    # Travel constraints:\n    # For the first scheduled meeting, ensure arrival from Embarcadero is accounted for.\n    opt.add(Implies(And(b_meet, order_b == 1), b_start >= travel[(\"Embarcadero\", \"Presidio\")]))\n    opt.add(Implies(And(d_meet, order_d == 1), d_start >= travel[(\"Embarcadero\", \"Richmond District\")]))\n    opt.add(Implies(And(ba_meet, order_ba == 1), ba_start >= travel[(\"Embarcadero\", \"Fisherman's Wharf\")]))\n    \n    # For any two scheduled meetings, ensure that after one meeting ends and travel is done,\n    # the next meeting can start.\n    # Betty and David:\n    opt.add(Implies(And(b_meet, d_meet, order_b < order_d),\n                    b_end + travel[(\"Presidio\", \"Richmond District\")] <= d_start))\n    opt.add(Implies(And(b_meet, d_meet, order_d < order_b),\n                    d_end + travel[(\"Richmond District\", \"Presidio\")] <= b_start))\n    # Betty and Barbara:\n    opt.add(Implies(And(b_meet, ba_meet, order_b < order_ba),\n                    b_end + travel[(\"Presidio\", \"Fisherman's Wharf\")] <= ba_start))\n    opt.add(Implies(And(b_meet, ba_meet, order_ba < order_b),\n                    ba_end + travel[(\"Fisherman's Wharf\", \"Presidio\")] <= b_start))\n    # David and Barbara:\n    opt.add(Implies(And(d_meet, ba_meet, order_d < order_ba),\n                    d_end + travel[(\"Richmond District\", \"Fisherman's Wharf\")] <= ba_start))\n    opt.add(Implies(And(d_meet, ba_meet, order_ba < order_d),\n                    ba_end + travel[(\"Fisherman's Wharf\", \"Richmond District\")] <= d_start))\n\n    # Ensure meeting start and end times are non-negative.\n    opt.add(b_start >= 0, b_end >= 0, d_start >= 0, d_end >= 0, ba_start >= 0, ba_end >= 0)\n\n    # Set the primary objective: maximize the number of meetings scheduled.\n    objective = If(b_meet, 1, 0) + If(d_meet, 1, 0) + If(ba_meet, 1, 0)\n    opt.maximize(objective)\n    # Secondary objective: minimize the sum of start times for scheduled meetings (achieve an early schedule).\n    opt.minimize(If(b_meet, b_start, 0) + If(d_meet, d_start, 0) + If(ba_meet, ba_start, 0))\n\n    if opt.check() == sat:\n        model = opt.model()\n        itinerary = []\n        meetings = []\n        # For each meeting, if scheduled, record its order, person, location, start, and end times.\n        if is_true(model.evaluate(b_meet)):\n            meetings.append((model.evaluate(order_b).as_long(), \"Betty\", \"Presidio\",\n                             model.evaluate(b_start).as_long(), model.evaluate(b_end).as_long()))\n        if is_true(model.evaluate(d_meet)):\n            meetings.append((model.evaluate(order_d).as_long(), \"David\", \"Richmond District\",\n                             model.evaluate(d_start).as_long(), model.evaluate(d_end).as_long()))\n        if is_true(model.evaluate(ba_meet)):\n            meetings.append((model.evaluate(order_ba).as_long(), \"Barbara\", \"Fisherman's Wharf\",\n                             model.evaluate(ba_start).as_long(), model.evaluate(ba_end).as_long()))\n        # Sort meetings by their scheduled order.\n        meetings.sort(key=lambda x: x[0])\n        for order_val, person, location, start, end in meetings:\n            itinerary.append({\n                \"action\": \"meet\",\n                \"location\": location,\n                \"person\": person,\n                \"start_time\": minutes_to_time(start),\n                \"end_time\": minutes_to_time(end)\n            })\n        result = {\"itinerary\": itinerary}\n        print(json.dumps(result))\n    else:\n        print(json.dumps({\"itinerary\": []}))\n\nif __name__ == \"__main__\":\n    main()"
+}

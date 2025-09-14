@@ -1,0 +1,101 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\"itinerary\": [{\"action\": \"meet\", \"location\": \"Golden Gate Park\", \"person\": \"Mary\", \"start_time\": \"9:25\", \"end_time\": \"10:10\"}, {\"action\": \"meet\", \"location\": \"Haight-Ashbury\", \"person\": \"Kevin\", \"start_time\": \"10:17\", \"end_time\": \"11:47\"}, {\"action\": \"meet\", \"location\": \"Presidio\", \"person\": \"Stephanie\", \"start_time\": \"12:02\", \"end_time\": \"14:02\"}, {\"action\": \"meet\", \"location\": \"Financial District\", \"person\": \"Emily\", \"start_time\": \"14:25\", \"end_time\": \"16:10\"}, {\"action\": \"meet\", \"location\": \"Bayview\", \"person\": \"Deborah\", \"start_time\": \"16:29\", \"end_time\": \"18:29\"}]}",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Golden Gate Park",
+                "person": "Mary",
+                "start_time": "9:25",
+                "end_time": "10:10"
+            },
+            {
+                "action": "meet",
+                "location": "Haight-Ashbury",
+                "person": "Kevin",
+                "start_time": "10:17",
+                "end_time": "11:47"
+            },
+            {
+                "action": "meet",
+                "location": "Presidio",
+                "person": "Stephanie",
+                "start_time": "12:02",
+                "end_time": "14:02"
+            },
+            {
+                "action": "meet",
+                "location": "Financial District",
+                "person": "Emily",
+                "start_time": "14:25",
+                "end_time": "16:10"
+            },
+            {
+                "action": "meet",
+                "location": "Bayview",
+                "person": "Deborah",
+                "start_time": "16:29",
+                "end_time": "18:29"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Golden Gate Park",
+                "person": "Mary",
+                "start_time": "9:25",
+                "end_time": "10:10"
+            },
+            {
+                "action": "meet",
+                "location": "Haight-Ashbury",
+                "person": "Kevin",
+                "start_time": "10:17",
+                "end_time": "11:47"
+            },
+            {
+                "action": "meet",
+                "location": "Presidio",
+                "person": "Stephanie",
+                "start_time": "12:02",
+                "end_time": "14:02"
+            },
+            {
+                "action": "meet",
+                "location": "Bayview",
+                "person": "Deborah",
+                "start_time": "15:00",
+                "end_time": "17:00"
+            },
+            {
+                "action": "meet",
+                "location": "Financial District",
+                "person": "Emily",
+                "start_time": "17:19",
+                "end_time": "19:04"
+            }
+        ]
+    },
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "constraints_satisfied_but_no_exact_match": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 186.18762111663818,
+        "execution_time": 0.10889935493469238,
+        "constraint_eval_time": 0.00026345252990722656,
+        "pred_extract_time": 3.4481797218322754,
+        "gold_extract_time": 6.079673767089844e-05,
+        "total_tokens": 6404,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import json\nfrom z3 import *\n\ndef minutes_to_str(m):\n    h = m // 60\n    mm = m % 60\n    return f\"{h}:{mm:02d}\"\n\ndef main():\n    # Locations\n    E = \"Embarcadero\"\n    locations = [\n        \"Embarcadero\",\n        \"Golden Gate Park\",\n        \"Haight-Ashbury\",\n        \"Bayview\",\n        \"Presidio\",\n        \"Financial District\",\n    ]\n\n    # Travel times in minutes (directed)\n    travel = {\n        \"Embarcadero\": {\n            \"Embarcadero\": 0,\n            \"Golden Gate Park\": 25,\n            \"Haight-Ashbury\": 21,\n            \"Bayview\": 21,\n            \"Presidio\": 20,\n            \"Financial District\": 5,\n        },\n        \"Golden Gate Park\": {\n            \"Embarcadero\": 25,\n            \"Golden Gate Park\": 0,\n            \"Haight-Ashbury\": 7,\n            \"Bayview\": 23,\n            \"Presidio\": 11,\n            \"Financial District\": 26,\n        },\n        \"Haight-Ashbury\": {\n            \"Embarcadero\": 20,\n            \"Golden Gate Park\": 7,\n            \"Haight-Ashbury\": 0,\n            \"Bayview\": 18,\n            \"Presidio\": 15,\n            \"Financial District\": 21,\n        },\n        \"Bayview\": {\n            \"Embarcadero\": 19,\n            \"Golden Gate Park\": 22,\n            \"Haight-Ashbury\": 19,\n            \"Bayview\": 0,\n            \"Presidio\": 31,\n            \"Financial District\": 19,\n        },\n        \"Presidio\": {\n            \"Embarcadero\": 20,\n            \"Golden Gate Park\": 12,\n            \"Haight-Ashbury\": 15,\n            \"Bayview\": 31,\n            \"Presidio\": 0,\n            \"Financial District\": 23,\n        },\n        \"Financial District\": {\n            \"Embarcadero\": 4,\n            \"Golden Gate Park\": 23,\n            \"Haight-Ashbury\": 19,\n            \"Bayview\": 19,\n            \"Presidio\": 22,\n            \"Financial District\": 0,\n        },\n    }\n\n    # People and constraints\n    people = [\n        {\"name\": \"Mary\", \"location\": \"Golden Gate Park\", \"avail_start\": 8*60+45, \"avail_end\": 11*60+45, \"min_duration\": 45},\n        {\"name\": \"Kevin\", \"location\": \"Haight-Ashbury\", \"avail_start\": 10*60+15, \"avail_end\": 16*60+15, \"min_duration\": 90},\n        {\"name\": \"Deborah\", \"location\": \"Bayview\", \"avail_start\": 15*60, \"avail_end\": 19*60+15, \"min_duration\": 120},\n        {\"name\": \"Stephanie\", \"location\": \"Presidio\", \"avail_start\": 10*60, \"avail_end\": 17*60+15, \"min_duration\": 120},\n        {\"name\": \"Emily\", \"location\": \"Financial District\", \"avail_start\": 11*60+30, \"avail_end\": 21*60+45, \"min_duration\": 105},\n    ]\n\n    n = len(people)\n    # Z3 variables\n    attend = [Bool(f\"attend_{i}\") for i in range(n)]\n    start = [Int(f\"start_{i}\") for i in range(n)]\n    dur = [Int(f\"dur_{i}\") for i in range(n)]\n    end = [Int(f\"end_{i}\") for i in range(n)]\n\n    # Precedence booleans for all ordered pairs\n    precedes = {}\n    for i in range(n):\n        for j in range(n):\n            if i != j:\n                precedes[(i, j)] = Bool(f\"precedes_{i}_{j}\")\n\n    o = Optimize()\n    o.set(priority='lex')\n\n    # General constraints\n    for i, p in enumerate(people):\n        s_av, e_av, min_d = p[\"avail_start\"], p[\"avail_end\"], p[\"min_duration\"]\n\n        o.add(start[i] >= s_av)\n        o.add(start[i] <= e_av)  # bound start to window for well-posedness\n        o.add(dur[i] >= 0)\n        o.add(end[i] == start[i] + dur[i])\n        o.add(end[i] <= e_av)\n\n        # If attending, ensure minimum duration; if not, duration is 0\n        o.add(Implies(attend[i], dur[i] >= min_d))\n        o.add(Implies(Not(attend[i]), dur[i] == 0))\n\n    # Non-overlap and travel-time feasibility via pairwise precedence\n    for i in range(n):\n        for j in range(i + 1, n):\n            pij = precedes[(i, j)]\n            pji = precedes[(j, i)]\n            li = people[i][\"location\"]\n            lj = people[j][\"location\"]\n            t_ij = travel[li][lj]\n            t_ji = travel[lj][li]\n\n            # If both attended, exactly one precedes the other; otherwise, neither precedence is active.\n            both_attend = And(attend[i], attend[j])\n            o.add(Implies(both_attend, Xor(pij, pji)))\n            o.add(Implies(Not(both_attend), And(Not(pij), Not(pji))))\n\n            # If i precedes j, ensure enough time for travel and no overlap\n            o.add(Implies(pij, end[i] + t_ij <= start[j]))\n            o.add(Implies(pji, end[j] + t_ji <= start[i]))\n\n    # Reachability from starting location (Embarcadero at 9:00)\n    day_start = 9 * 60  # 540\n    for i, p in enumerate(people):\n        conds = []\n        # First in chain possibility: reachable from Embarcadero at day_start\n        conds.append(start[i] >= day_start + travel[E][p[\"location\"]])\n        # Or has a predecessor who precedes i\n        for j in range(n):\n            if j != i:\n                conds.append(And(attend[j], precedes[(j, i)]))\n        o.add(Implies(attend[i], Or(conds)))\n\n    # Objective 1: maximize number of attended meetings\n    total_attended = Sum([If(attend[i], 1, 0) for i in range(n)])\n    o.maximize(total_attended)\n\n    # Objective 2: minimize end time of the last meeting to avoid unnecessary waiting/extension\n    last_end = Int(\"last_end\")\n    o.add(last_end >= 0)\n    for i in range(n):\n        o.add(Implies(attend[i], last_end >= end[i]))\n    o.minimize(last_end)\n\n    # Solve\n    result = o.check()\n    itinerary = []\n    if result == sat or result == unknown:\n        m = o.model()\n        schedule = []\n        for i, p in enumerate(people):\n            if is_true(m.eval(attend[i], model_completion=True)):\n                s = m.eval(start[i], model_completion=True).as_long()\n                e = m.eval(end[i], model_completion=True).as_long()\n                schedule.append({\n                    \"person\": p[\"name\"],\n                    \"location\": p[\"location\"],\n                    \"start\": s,\n                    \"end\": e\n                })\n        # Sort by start time\n        schedule.sort(key=lambda x: x[\"start\"])\n        for item in schedule:\n            itinerary.append({\n                \"action\": \"meet\",\n                \"location\": item[\"location\"],\n                \"person\": item[\"person\"],\n                \"start_time\": minutes_to_str(item[\"start\"]),\n                \"end_time\": minutes_to_str(item[\"end\"])\n            })\n    else:\n        # Unsat: return empty itinerary (should not happen with given data)\n        itinerary = []\n\n    print(json.dumps({\"itinerary\": itinerary}, ensure_ascii=False))\n\nif __name__ == \"__main__\":\n    main()"
+}

@@ -1,0 +1,57 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\"itinerary\": [{\"action\": \"meet\", \"location\": \"Embarcadero\", \"person\": \"Mark\", \"start_time\": \"13:00\", \"end_time\": \"15:00\"}, {\"action\": \"meet\", \"location\": \"Pacific Heights\", \"person\": \"Karen\", \"start_time\": \"18:45\", \"end_time\": \"20:15\"}]}",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Embarcadero",
+                "person": "Mark",
+                "start_time": "13:00",
+                "end_time": "15:00"
+            },
+            {
+                "action": "meet",
+                "location": "Pacific Heights",
+                "person": "Karen",
+                "start_time": "18:45",
+                "end_time": "20:15"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Embarcadero",
+                "person": "Mark",
+                "start_time": "13:00",
+                "end_time": "15:00"
+            },
+            {
+                "action": "meet",
+                "location": "Pacific Heights",
+                "person": "Karen",
+                "start_time": "18:45",
+                "end_time": "20:15"
+            }
+        ]
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 83.01454019546509,
+        "execution_time": 0.07670903205871582,
+        "constraint_eval_time": 2.6464462280273438e-05,
+        "pred_extract_time": 1.0705797672271729,
+        "gold_extract_time": 4.124641418457031e-05,
+        "total_tokens": 4165,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\nimport json\n\ndef minutes_to_time(minutes):\n    hour = minutes // 60\n    minute = minutes % 60\n    return f\"{hour}:{minute:02d}\"\n\ndef main():\n    # Base times (in minutes from midnight)\n    NB_arrival = 9 * 60  # 9:00 AM => 540\n\n    # Friends' availability windows (in minutes from midnight)\n    # Mark is available at Embarcadero from 13:00 (780) to 17:45 (1065)\n    mark_start_avail = 13 * 60      # 780 minutes\n    mark_end_avail = 17 * 60 + 45     # 1065 minutes\n    mark_min_meeting = 120          # Minimum meeting duration in minutes\n\n    # Karen is available at Pacific Heights from 18:45 (1125) to 20:15 (1215)\n    karen_start_avail = 18 * 60 + 45  # 1125 minutes\n    karen_end_avail = 20 * 60 + 15    # 1215 minutes\n    karen_min_meeting = 90          # Minimum meeting duration in minutes\n\n    # Travel times (in minutes)\n    travel_NB_to_PH = 8     # North Beach -> Pacific Heights\n    travel_NB_to_EB = 6     # North Beach -> Embarcadero\n    travel_PH_to_NB = 9     # Pacific Heights -> North Beach\n    travel_PH_to_EB = 10    # Pacific Heights -> Embarcadero\n    travel_EB_to_NB = 5     # Embarcadero -> North Beach\n    travel_EB_to_PH = 11    # Embarcadero -> Pacific Heights\n\n    # Create an Optimize() solver instance\n    opt = Optimize()\n\n    # Decision booleans: whether to schedule a meeting with each friend.\n    markScheduled = Bool('markScheduled')\n    karenScheduled = Bool('karenScheduled')\n\n    # Variables for meeting times (minutes from midnight)\n    m_start = Int('m_start')\n    m_end = Int('m_end')\n    k_start = Int('k_start')\n    k_end = Int('k_end')\n\n    # Constraints for meeting Mark (at Embarcadero) if scheduled.\n    opt.add(Implies(markScheduled, m_start >= mark_start_avail))\n    opt.add(Implies(markScheduled, m_end <= mark_end_avail))\n    opt.add(Implies(markScheduled, m_end - m_start >= mark_min_meeting))\n    # Ensure you have traveled from North Beach to Embarcadero.\n    opt.add(Implies(markScheduled, m_start >= NB_arrival + travel_NB_to_EB))\n\n    # Constraints for meeting Karen (at Pacific Heights) if scheduled.\n    opt.add(Implies(karenScheduled, k_start == karen_start_avail))\n    opt.add(Implies(karenScheduled, k_end == karen_end_avail))\n    opt.add(Implies(karenScheduled, k_end - k_start >= karen_min_meeting))\n    # Ensure travel from North Beach to Pacific Heights is feasible.\n    opt.add(Implies(karenScheduled, k_start >= NB_arrival + travel_NB_to_PH))\n\n    # If both meetings are scheduled, enforce travel from Embarcadero to Pacific Heights.\n    opt.add(Implies(And(markScheduled, karenScheduled), m_end + travel_EB_to_PH <= k_start))\n\n    # Our primary goal is to maximize the number of meetings.\n    friend_count = If(markScheduled, 1, 0) + If(karenScheduled, 1, 0)\n    opt.maximize(friend_count)\n\n    # Secondary objectives: if meeting Mark, start as early as possible and use the minimum duration.\n    opt.minimize(If(markScheduled, m_start, 0))\n    opt.minimize(If(markScheduled, m_end - m_start, 0))\n    \n    # Check for an optimal schedule.\n    if opt.check() == sat:\n        model = opt.model()\n        itinerary = []\n        \n        if model.evaluate(markScheduled):\n            m_start_val = model.evaluate(m_start).as_long()\n            m_end_val = model.evaluate(m_end).as_long()\n            itinerary.append({\n                \"action\": \"meet\",\n                \"location\": \"Embarcadero\",\n                \"person\": \"Mark\",\n                \"start_time\": minutes_to_time(m_start_val),\n                \"end_time\": minutes_to_time(m_end_val)\n            })\n\n        if model.evaluate(karenScheduled):\n            k_start_val = model.evaluate(k_start).as_long()\n            k_end_val = model.evaluate(k_end).as_long()\n            itinerary.append({\n                \"action\": \"meet\",\n                \"location\": \"Pacific Heights\",\n                \"person\": \"Karen\",\n                \"start_time\": minutes_to_time(k_start_val),\n                \"end_time\": minutes_to_time(k_end_val)\n            })\n\n        output = {\"itinerary\": itinerary}\n        print(json.dumps(output))\n    else:\n        print(json.dumps({\"itinerary\": []}))\n\nif __name__ == \"__main__\":\n    main()"
+}

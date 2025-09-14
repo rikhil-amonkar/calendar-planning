@@ -1,0 +1,101 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"itinerary\": [\n    {\n      \"action\": \"meet\",\n      \"location\": \"Nob Hill\",\n      \"person\": \"Laura\",\n      \"start_time\": \"9:11\",\n      \"end_time\": \"15:11\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Bayview\",\n      \"person\": \"Thomas\",\n      \"start_time\": \"15:30\",\n      \"end_time\": \"18:20\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Marina District\",\n      \"person\": \"Betty\",\n      \"start_time\": \"18:45\",\n      \"end_time\": \"19:30\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Golden Gate Park\",\n      \"person\": \"Stephanie\",\n      \"start_time\": \"19:48\",\n      \"end_time\": \"20:18\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Embarcadero\",\n      \"person\": \"Patricia\",\n      \"start_time\": \"20:43\",\n      \"end_time\": \"22:00\"\n    }\n  ]\n}",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Nob Hill",
+                "person": "Laura",
+                "start_time": "9:11",
+                "end_time": "15:11"
+            },
+            {
+                "action": "meet",
+                "location": "Bayview",
+                "person": "Thomas",
+                "start_time": "15:30",
+                "end_time": "18:20"
+            },
+            {
+                "action": "meet",
+                "location": "Marina District",
+                "person": "Betty",
+                "start_time": "18:45",
+                "end_time": "19:30"
+            },
+            {
+                "action": "meet",
+                "location": "Golden Gate Park",
+                "person": "Stephanie",
+                "start_time": "19:48",
+                "end_time": "20:18"
+            },
+            {
+                "action": "meet",
+                "location": "Embarcadero",
+                "person": "Patricia",
+                "start_time": "20:43",
+                "end_time": "22:00"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Nob Hill",
+                "person": "Laura",
+                "start_time": "9:11",
+                "end_time": "9:41"
+            },
+            {
+                "action": "meet",
+                "location": "Bayview",
+                "person": "Thomas",
+                "start_time": "15:30",
+                "end_time": "17:30"
+            },
+            {
+                "action": "meet",
+                "location": "Golden Gate Park",
+                "person": "Stephanie",
+                "start_time": "18:30",
+                "end_time": "19:00"
+            },
+            {
+                "action": "meet",
+                "location": "Marina District",
+                "person": "Betty",
+                "start_time": "19:16",
+                "end_time": "20:01"
+            },
+            {
+                "action": "meet",
+                "location": "Embarcadero",
+                "person": "Patricia",
+                "start_time": "20:15",
+                "end_time": "21:00"
+            }
+        ]
+    },
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "constraints_satisfied_but_no_exact_match": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 151.86838746070862,
+        "execution_time": 0.08387970924377441,
+        "constraint_eval_time": 0.00040268898010253906,
+        "pred_extract_time": 2.809986114501953,
+        "gold_extract_time": 7.343292236328125e-05,
+        "total_tokens": 5860,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\nimport json\n\ndef minutes_to_time(m):\n    h = m // 60\n    mi = m % 60\n    return f\"{h}:{mi:02d}\"\n\ndef main():\n    # Friend meeting data:\n    # Times are in minutes since midnight.\n    # 9:00 AM is 540.\n    friends = [\n        {\"name\": \"Thomas\", \"location\": \"Bayview\", \"avail_start\": 15 * 60 + 30, \"avail_end\": 18 * 60 + 30, \"min_duration\": 120},\n        {\"name\": \"Stephanie\", \"location\": \"Golden Gate Park\", \"avail_start\": 18 * 60 + 30, \"avail_end\": 21 * 60 + 45, \"min_duration\": 30},\n        {\"name\": \"Laura\", \"location\": \"Nob Hill\", \"avail_start\": 8 * 60 + 45, \"avail_end\": 16 * 60 + 15, \"min_duration\": 30},\n        {\"name\": \"Betty\", \"location\": \"Marina District\", \"avail_start\": 18 * 60 + 45, \"avail_end\": 21 * 60 + 45, \"min_duration\": 45},\n        {\"name\": \"Patricia\", \"location\": \"Embarcadero\", \"avail_start\": 17 * 60 + 30, \"avail_end\": 22 * 60, \"min_duration\": 45}\n    ]\n    n = len(friends)\n\n    # Travel times from Fisherman's Wharf to each location (in minutes)\n    fw_travel = {\n        \"Bayview\": 26,\n        \"Golden Gate Park\": 25,\n        \"Nob Hill\": 11,\n        \"Marina District\": 9,\n        \"Embarcadero\": 8\n    }\n\n    # Travel times between locations (non-symmetric)\n    travel = {\n        \"Fisherman's Wharf\": {\"Bayview\": 26, \"Golden Gate Park\": 25, \"Nob Hill\": 11, \"Marina District\": 9, \"Embarcadero\": 8},\n        \"Bayview\": {\"Fisherman's Wharf\": 25, \"Golden Gate Park\": 22, \"Nob Hill\": 20, \"Marina District\": 25, \"Embarcadero\": 19},\n        \"Golden Gate Park\": {\"Fisherman's Wharf\": 24, \"Bayview\": 23, \"Nob Hill\": 20, \"Marina District\": 16, \"Embarcadero\": 25},\n        \"Nob Hill\": {\"Fisherman's Wharf\": 11, \"Bayview\": 19, \"Golden Gate Park\": 17, \"Marina District\": 11, \"Embarcadero\": 9},\n        \"Marina District\": {\"Fisherman's Wharf\": 10, \"Bayview\": 27, \"Golden Gate Park\": 18, \"Nob Hill\": 12, \"Embarcadero\": 14},\n        \"Embarcadero\": {\"Fisherman's Wharf\": 6, \"Bayview\": 21, \"Golden Gate Park\": 25, \"Nob Hill\": 10, \"Marina District\": 12}\n    }\n\n    # Starting time and location: arrive at Fisherman's Wharf at 9:00 (540 minutes)\n    start_time_fw = 540\n\n    # Create an Optimize object\n    opt = Optimize()\n\n    # Define decision variables for each friend:\n    # sel[i] is a Bool indicating if we meet friend i.\n    # order[i] is an integer representing the order position if friend i is met;\n    # if not met, we set order[i] = -1.\n    # start_vars and end_vars are meeting start and end times (in minutes since midnight).\n    sel_vars = [Bool(f\"sel_{i}\") for i in range(n)]\n    order_vars = [Int(f\"order_{i}\") for i in range(n)]\n    start_vars = [Int(f\"start_{i}\") for i in range(n)]\n    end_vars = [Int(f\"end_{i}\") for i in range(n)]\n\n    for i in range(n):\n        f = friends[i]\n        # If friend i is met, meeting start/end must be within availability and last at least the minimum duration.\n        opt.add(If(sel_vars[i],\n                   And(start_vars[i] >= f[\"avail_start\"],\n                       end_vars[i] <= f[\"avail_end\"],\n                       end_vars[i] - start_vars[i] >= f[\"min_duration\"],\n                       end_vars[i] >= start_vars[i]),\n                   True))\n        # Enforce order bounds: if selected, order is between 0 and n-1; if not, order is set to -1.\n        opt.add(If(sel_vars[i],\n                   And(order_vars[i] >= 0, order_vars[i] < n),\n                   order_vars[i] == -1))\n\n    # Constraint for the first meeting in the order:\n    # If friend i is selected and its order is 0, then we must be able to travel from Fisherman's Wharf.\n    for i in range(n):\n        f = friends[i]\n        opt.add(Implies(And(sel_vars[i], order_vars[i] == 0),\n                        start_vars[i] >= start_time_fw + fw_travel[f[\"location\"]]))\n\n    # For every pair of distinct friends, if both are met and friend i is scheduled before friend j,\n    # then friend j's meeting must start after friend i's meeting plus travel time between their locations.\n    for i in range(n):\n        for j in range(n):\n            if i != j:\n                fi = friends[i]\n                fj = friends[j]\n                travel_time = travel[fi[\"location\"]][fj[\"location\"]]\n                opt.add(Implies(And(sel_vars[i], sel_vars[j], order_vars[i] < order_vars[j]),\n                                start_vars[j] >= end_vars[i] + travel_time))\n\n    # Enforce that if two friends are met, their order numbers must be distinct.\n    for i in range(n):\n        for j in range(i + 1, n):\n            opt.add(Implies(And(sel_vars[i], sel_vars[j]), order_vars[i] != order_vars[j]))\n\n    # Our objective is to maximize the number of meetings (friends met)\n    opt.maximize(Sum([If(sel_vars[i], 1, 0) for i in range(n)]))\n\n    # Check for a solution and extract the model\n    if opt.check() == sat:\n        model = opt.model()\n        itinerary = []\n        meetings = []\n        for i in range(n):\n            if is_true(model[sel_vars[i]]):\n                order_val = model[order_vars[i]].as_long()\n                st = model[start_vars[i]].as_long()\n                en = model[end_vars[i]].as_long()\n                meetings.append((order_val, friends[i][\"name\"], friends[i][\"location\"], st, en))\n        # Sort meetings in order of their scheduled order.\n        meetings.sort(key=lambda x: x[0])\n        for meeting in meetings:\n            _, person, location, st, en = meeting\n            itinerary.append({\n                \"action\": \"meet\",\n                \"location\": location,\n                \"person\": person,\n                \"start_time\": minutes_to_time(st),\n                \"end_time\": minutes_to_time(en)\n            })\n        output = {\"itinerary\": itinerary}\n        print(json.dumps(output, indent=2))\n    else:\n        # If no schedule is found, output an empty itinerary.\n        print(json.dumps({\"itinerary\": []}))\n\nif __name__ == \"__main__\":\n    main()"
+}

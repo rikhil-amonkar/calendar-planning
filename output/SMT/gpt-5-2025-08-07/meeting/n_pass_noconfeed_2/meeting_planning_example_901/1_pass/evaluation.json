@@ -1,0 +1,77 @@
+{
+    "has_execution_error": true,
+    "has_no_plan": false,
+    "execution_output": null,
+    "pred": null,
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Pacific Heights",
+                "person": "Emily",
+                "start_time": "9:15",
+                "end_time": "11:15"
+            },
+            {
+                "action": "meet",
+                "location": "Haight-Ashbury",
+                "person": "Linda",
+                "start_time": "11:26",
+                "end_time": "11:41"
+            },
+            {
+                "action": "meet",
+                "location": "Mission District",
+                "person": "Anthony",
+                "start_time": "11:52",
+                "end_time": "13:37"
+            },
+            {
+                "action": "meet",
+                "location": "North Beach",
+                "person": "Helen",
+                "start_time": "13:54",
+                "end_time": "14:24"
+            },
+            {
+                "action": "meet",
+                "location": "Fisherman's Wharf",
+                "person": "Paul",
+                "start_time": "14:45",
+                "end_time": "16:15"
+            },
+            {
+                "action": "meet",
+                "location": "Bayview",
+                "person": "William",
+                "start_time": "17:30",
+                "end_time": "19:30"
+            },
+            {
+                "action": "meet",
+                "location": "Golden Gate Park",
+                "person": "Kimberly",
+                "start_time": "19:52",
+                "end_time": "21:07"
+            }
+        ]
+    },
+    "status": "Error",
+    "violated_constraint": {
+        "missing_itinerary": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 286.18968749046326,
+        "execution_time": 0.5692434310913086,
+        "constraint_eval_time": 1.9073486328125e-06,
+        "pred_extract_time": 2.86102294921875e-06,
+        "gold_extract_time": 9.369850158691406e-05,
+        "total_tokens": 9151,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import json\nfrom z3 import Int, Bool, Optimize, If, And, Or, Sum, sat\n\ndef fmt_time(m):\n    h = m // 60\n    mi = m % 60\n    return f\"{h}:{mi:02d}\"\n\n# Minutes for key times\nMIN = {\n    \"7:30\": 7*60+30,\n    \"8:00\": 8*60,\n    \"8:30\": 8*60+30,\n    \"9:00\": 9*60,\n    \"9:15\": 9*60+15,\n    \"10:30\": 10*60+30,\n    \"11:30\": 11*60+30,\n    \"13:45\": 13*60+45,\n    \"14:45\": 14*60+45,\n    \"15:15\": 15*60+15,\n    \"18:15\": 18*60+15,\n    \"18:45\": 18*60+45,\n    \"19:15\": 19*60+15,\n    \"21:15\": 21*60+15,\n    \"17:30\": 17*60+30,\n    \"20:30\": 20*60+30,\n}\n\nSTART_LOCATION = \"Russian Hill\"\nARRIVE_TIME = MIN[\"9:00\"]\n\n# Directed travel time in minutes between neighborhoods\nT = {}\ndef add(a,b,t):\n    T[(a,b)] = t\n\n# Populate travel times\nadd(\"Russian Hill\",\"Pacific Heights\",7)\nadd(\"Russian Hill\",\"North Beach\",5)\nadd(\"Russian Hill\",\"Golden Gate Park\",21)\nadd(\"Russian Hill\",\"Embarcadero\",8)\nadd(\"Russian Hill\",\"Haight-Ashbury\",17)\nadd(\"Russian Hill\",\"Fisherman's Wharf\",7)\nadd(\"Russian Hill\",\"Mission District\",16)\nadd(\"Russian Hill\",\"Alamo Square\",15)\nadd(\"Russian Hill\",\"Bayview\",23)\nadd(\"Russian Hill\",\"Richmond District\",14)\n\nadd(\"Pacific Heights\",\"Russian Hill\",7)\nadd(\"Pacific Heights\",\"North Beach\",9)\nadd(\"Pacific Heights\",\"Golden Gate Park\",15)\nadd(\"Pacific Heights\",\"Embarcadero\",10)\nadd(\"Pacific Heights\",\"Haight-Ashbury\",11)\nadd(\"Pacific Heights\",\"Fisherman's Wharf\",13)\nadd(\"Pacific Heights\",\"Mission District\",15)\nadd(\"Pacific Heights\",\"Alamo Square\",10)\nadd(\"Pacific Heights\",\"Bayview\",22)\nadd(\"Pacific Heights\",\"Richmond District\",12)\n\nadd(\"North Beach\",\"Russian Hill\",4)\nadd(\"North Beach\",\"Pacific Heights\",8)\nadd(\"North Beach\",\"Golden Gate Park\",22)\nadd(\"North Beach\",\"Embarcadero\",6)\nadd(\"North Beach\",\"Haight-Ashbury\",18)\nadd(\"North Beach\",\"Fisherman's Wharf\",5)\nadd(\"North Beach\",\"Mission District\",18)\nadd(\"North Beach\",\"Alamo Square\",16)\nadd(\"North Beach\",\"Bayview\",25)\nadd(\"North Beach\",\"Richmond District\",18)\n\nadd(\"Golden Gate Park\",\"Russian Hill\",19)\nadd(\"Golden Gate Park\",\"Pacific Heights\",16)\nadd(\"Golden Gate Park\",\"North Beach\",23)\nadd(\"Golden Gate Park\",\"Embarcadero\",25)\nadd(\"Golden Gate Park\",\"Haight-Ashbury\",7)\nadd(\"Golden Gate Park\",\"Fisherman's Wharf\",24)\nadd(\"Golden Gate Park\",\"Mission District\",17)\nadd(\"Golden Gate Park\",\"Alamo Square\",9)\nadd(\"Golden Gate Park\",\"Bayview\",23)\nadd(\"Golden Gate Park\",\"Richmond District\",7)\n\nadd(\"Embarcadero\",\"Russian Hill\",8)\nadd(\"Embarcadero\",\"Pacific Heights\",11)\nadd(\"Embarcadero\",\"North Beach\",5)\nadd(\"Embarcadero\",\"Golden Gate Park\",25)\nadd(\"Embarcadero\",\"Haight-Ashbury\",21)\nadd(\"Embarcadero\",\"Fisherman's Wharf\",6)\nadd(\"Embarcadero\",\"Mission District\",20)\nadd(\"Embarcadero\",\"Alamo Square\",19)\nadd(\"Embarcadero\",\"Bayview\",21)\nadd(\"Embarcadero\",\"Richmond District\",21)\n\nadd(\"Haight-Ashbury\",\"Russian Hill\",17)\nadd(\"Haight-Ashbury\",\"Pacific Heights\",12)\nadd(\"Haight-Ashbury\",\"North Beach\",19)\nadd(\"Haight-Ashbury\",\"Golden Gate Park\",7)\nadd(\"Haight-Ashbury\",\"Embarcadero\",20)\nadd(\"Haight-Ashbury\",\"Fisherman's Wharf\",23)\nadd(\"Haight-Ashbury\",\"Mission District\",11)\nadd(\"Haight-Ashbury\",\"Alamo Square\",5)\nadd(\"Haight-Ashbury\",\"Bayview\",18)\nadd(\"Haight-Ashbury\",\"Richmond District\",10)\n\nadd(\"Fisherman's Wharf\",\"Russian Hill\",7)\nadd(\"Fisherman's Wharf\",\"Pacific Heights\",12)\nadd(\"Fisherman's Wharf\",\"North Beach\",6)\nadd(\"Fisherman's Wharf\",\"Golden Gate Park\",25)\nadd(\"Fisherman's Wharf\",\"Embarcadero\",8)\nadd(\"Fisherman's Wharf\",\"Haight-Ashbury\",22)\nadd(\"Fisherman's Wharf\",\"Mission District\",22)\nadd(\"Fisherman's Wharf\",\"Alamo Square\",21)\nadd(\"Fisherman's Wharf\",\"Bayview\",26)\nadd(\"Fisherman's Wharf\",\"Richmond District\",18)\n\nadd(\"Mission District\",\"Russian Hill\",15)\nadd(\"Mission District\",\"Pacific Heights\",16)\nadd(\"Mission District\",\"North Beach\",17)\nadd(\"Mission District\",\"Golden Gate Park\",17)\nadd(\"Mission District\",\"Embarcadero\",19)\nadd(\"Mission District\",\"Haight-Ashbury\",12)\nadd(\"Mission District\",\"Fisherman's Wharf\",22)\nadd(\"Mission District\",\"Alamo Square\",11)\nadd(\"Mission District\",\"Bayview\",14)\nadd(\"Mission District\",\"Richmond District\",20)\n\nadd(\"Alamo Square\",\"Russian Hill\",13)\nadd(\"Alamo Square\",\"Pacific Heights\",10)\nadd(\"Alamo Square\",\"North Beach\",15)\nadd(\"Alamo Square\",\"Golden Gate Park\",9)\nadd(\"Alamo Square\",\"Embarcadero\",16)\nadd(\"Alamo Square\",\"Haight-Ashbury\",5)\nadd(\"Alamo Square\",\"Fisherman's Wharf\",19)\nadd(\"Alamo Square\",\"Mission District\",10)\nadd(\"Alamo Square\",\"Bayview\",16)\nadd(\"Alamo Square\",\"Richmond District\",11)\n\nadd(\"Bayview\",\"Russian Hill\",23)\nadd(\"Bayview\",\"Pacific Heights\",23)\nadd(\"Bayview\",\"North Beach\",22)\nadd(\"Bayview\",\"Golden Gate Park\",22)\nadd(\"Bayview\",\"Embarcadero\",19)\nadd(\"Bayview\",\"Haight-Ashbury\",19)\nadd(\"Bayview\",\"Fisherman's Wharf\",25)\nadd(\"Bayview\",\"Mission District\",13)\nadd(\"Bayview\",\"Alamo Square\",16)\nadd(\"Bayview\",\"Richmond District\",25)\n\nadd(\"Richmond District\",\"Russian Hill\",13)\nadd(\"Richmond District\",\"Pacific Heights\",10)\nadd(\"Richmond District\",\"North Beach\",17)\nadd(\"Richmond District\",\"Golden Gate Park\",9)\nadd(\"Richmond District\",\"Embarcadero\",19)\nadd(\"Richmond District\",\"Haight-Ashbury\",10)\nadd(\"Richmond District\",\"Fisherman's Wharf\",18)\nadd(\"Richmond District\",\"Mission District\",20)\nadd(\"Richmond District\",\"Alamo Square\",13)\nadd(\"Richmond District\",\"Bayview\",27)\n\n# People and constraints\npeople = [\n    # name, location, avail_start, avail_end, min_minutes\n    (\"Emily\", \"Pacific Heights\", MIN[\"9:15\"], MIN[\"13:45\"], 120),\n    (\"Helen\", \"North Beach\", MIN[\"13:45\"], MIN[\"18:45\"], 30),\n    (\"Kimberly\", \"Golden Gate Park\", MIN[\"18:45\"], MIN[\"21:15\"], 75),\n    (\"James\", \"Embarcadero\", MIN[\"10:30\"], MIN[\"11:30\"], 30),\n    (\"Linda\", \"Haight-Ashbury\", MIN[\"7:30\"], MIN[\"19:15\"], 15),\n    (\"Paul\", \"Fisherman's Wharf\", MIN[\"14:45\"], MIN[\"18:45\"], 90),\n    (\"Anthony\", \"Mission District\", MIN[\"8:00\"], MIN[\"14:45\"], 105),\n    (\"Nancy\", \"Alamo Square\", MIN[\"8:30\"], MIN[\"13:45\"], 120),\n    (\"William\", \"Bayview\", MIN[\"17:30\"], MIN[\"20:30\"], 120),\n    (\"Margaret\", \"Richmond District\", MIN[\"15:15\"], MIN[\"18:15\"], 45),\n]\n\nidx = {p[0]: i for i,p in enumerate(people)}\nloc_of = {p[0]: p[1] for p in people}\navail = {p[0]: (p[2], p[3]) for p in people}\nmin_dur = {p[0]: p[4] for p in people}\n\nn = len(people)\n\nopt = Optimize()\n\nmeet = [Bool(f\"meet_{i}\") for i in range(n)]\ns = [Int(f\"s_{i}\") for i in range(n)]\ne = [Int(f\"e_{i}\") for i in range(n)]\n\n# Bounds on times\nfor i in range(n):\n    opt.add(s[i] >= 0, s[i] <= 24*60)\n    opt.add(e[i] >= 0, e[i] <= 24*60)\n    opt.add(e[i] >= s[i])\n    # If not meeting, collapse interval\n    opt.add(Or(meet[i] == False, And(s[i] >= avail[people[i][0]][0], e[i] <= avail[people[i][0]][1], e[i] - s[i] >= min_dur[people[i][0]])))\n    opt.add(Or(meet[i] == True, e[i] == s[i]))\n\n# Pairwise non-overlap with travel feasibility\nfor i in range(n):\n    for j in range(i+1, n):\n        li = people[i][1]\n        lj = people[j][1]\n        tij = T[(li, lj)]\n        tji = T[(lj, li)]\n        opt.add(\n            Or(\n                meet[i] == False,\n                meet[j] == False,\n                e[i] + tij <= s[j],  # i before j\n                e[j] + tji <= s[i],  # j before i\n            )\n        )\n\n# Origin anchoring or predecessor travel feasibility for each meeting\nanchors = []\nfor i in range(n):\n    li = people[i][1]\n    origin_travel = T[(START_LOCATION, li)]\n    pred_options = []\n    for j in range(n):\n        if i == j:\n            continue\n        lj = people[j][1]\n        pred_options.append(And(meet[j], e[j] + T[(lj, li)] <= s[i]))\n    # Either anchored to origin or has some predecessor that can reach in time\n    opt.add(\n        Or(\n            meet[i] == False,\n            s[i] >= ARRIVE_TIME + origin_travel,\n            Or(pred_options) if pred_options else False\n        )\n    )\n    anchors.append(And(meet[i], s[i] >= ARRIVE_TIME + origin_travel))\n\n# Ensure at least one scheduled meeting (optional). We'll allow zero to be feasible but objective will avoid it.\n# Also ensure that if there is at least one meeting, at least one is anchored from origin.\ntotal_meet = Sum([If(meet[i], 1, 0) for i in range(n)])\nopt.add(Or(total_meet == 0, Or(anchors)))\n\n# Objectives: maximize number of people met, then maximize total minutes\ntotal_minutes = Sum([If(meet[i], e[i] - s[i], 0) for i in range(n)])\nopt.maximize(total_meet)\nopt.maximize(total_minutes)\n\nres = opt.check()\nitinerary = []\nif res == sat:\n    m = opt.model()\n    entries = []\n    for i in range(n):\n        if m.evaluate(meet[i]).is_true():\n            si = m.evaluate(s[i]).as_long()\n            ei = m.evaluate(e[i]).as_long()\n            person = people[i][0]\n            loc = people[i][1]\n            entries.append({\n                \"person\": person,\n                \"location\": loc,\n                \"start\": si,\n                \"end\": ei\n            })\n    # Sort by start time\n    entries.sort(key=lambda x: x[\"start\"])\n    for ent in entries:\n        itinerary.append({\n            \"action\": \"meet\",\n            \"location\": ent[\"location\"],\n            \"person\": ent[\"person\"],\n            \"start_time\": fmt_time(ent[\"start\"]),\n            \"end_time\": fmt_time(ent[\"end\"])\n        })\n\noutput = {\"itinerary\": itinerary}\nprint(json.dumps(output, ensure_ascii=False))"
+}

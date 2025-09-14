@@ -1,0 +1,129 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\"itinerary\": [{\"action\": \"meet\", \"location\": \"Richmond District\", \"person\": \"Sandra\", \"start_time\": \"9:20\", \"end_time\": \"10:08\"}, {\"action\": \"meet\", \"location\": \"Presidio\", \"person\": \"Brian\", \"start_time\": \"10:15\", \"end_time\": \"10:45\"}, {\"action\": \"meet\", \"location\": \"Marina District\", \"person\": \"Elizabeth\", \"start_time\": \"10:56\", \"end_time\": \"12:50\"}, {\"action\": \"meet\", \"location\": \"North Beach\", \"person\": \"Stephanie\", \"start_time\": \"13:01\", \"end_time\": \"14:30\"}, {\"action\": \"meet\", \"location\": \"Alamo Square\", \"person\": \"Laura\", \"start_time\": \"14:46\", \"end_time\": \"16:15\"}, {\"action\": \"meet\", \"location\": \"Embarcadero\", \"person\": \"Mary\", \"start_time\": \"16:45\", \"end_time\": \"18:45\"}, {\"action\": \"meet\", \"location\": \"Golden Gate Park\", \"person\": \"Helen\", \"start_time\": \"19:10\", \"end_time\": \"21:45\"}]}",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Richmond District",
+                "person": "Sandra",
+                "start_time": "9:20",
+                "end_time": "10:08"
+            },
+            {
+                "action": "meet",
+                "location": "Presidio",
+                "person": "Brian",
+                "start_time": "10:15",
+                "end_time": "10:45"
+            },
+            {
+                "action": "meet",
+                "location": "Marina District",
+                "person": "Elizabeth",
+                "start_time": "10:56",
+                "end_time": "12:50"
+            },
+            {
+                "action": "meet",
+                "location": "North Beach",
+                "person": "Stephanie",
+                "start_time": "13:01",
+                "end_time": "14:30"
+            },
+            {
+                "action": "meet",
+                "location": "Alamo Square",
+                "person": "Laura",
+                "start_time": "14:46",
+                "end_time": "16:15"
+            },
+            {
+                "action": "meet",
+                "location": "Embarcadero",
+                "person": "Mary",
+                "start_time": "16:45",
+                "end_time": "18:45"
+            },
+            {
+                "action": "meet",
+                "location": "Golden Gate Park",
+                "person": "Helen",
+                "start_time": "19:10",
+                "end_time": "21:45"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Richmond District",
+                "person": "Sandra",
+                "start_time": "9:20",
+                "end_time": "9:50"
+            },
+            {
+                "action": "meet",
+                "location": "Presidio",
+                "person": "Brian",
+                "start_time": "10:15",
+                "end_time": "10:45"
+            },
+            {
+                "action": "meet",
+                "location": "North Beach",
+                "person": "Stephanie",
+                "start_time": "11:03",
+                "end_time": "12:18"
+            },
+            {
+                "action": "meet",
+                "location": "Golden Gate Park",
+                "person": "Helen",
+                "start_time": "12:40",
+                "end_time": "14:40"
+            },
+            {
+                "action": "meet",
+                "location": "Alamo Square",
+                "person": "Laura",
+                "start_time": "14:49",
+                "end_time": "16:04"
+            },
+            {
+                "action": "meet",
+                "location": "Embarcadero",
+                "person": "Mary",
+                "start_time": "16:45",
+                "end_time": "18:45"
+            },
+            {
+                "action": "meet",
+                "location": "Financial District",
+                "person": "Deborah",
+                "start_time": "19:00",
+                "end_time": "20:45"
+            }
+        ]
+    },
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "constraints_satisfied_but_no_exact_match": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 206.09375405311584,
+        "execution_time": 1.0083723068237305,
+        "constraint_eval_time": 0.0005588531494140625,
+        "pred_extract_time": 5.176465749740601,
+        "gold_extract_time": 9.72747802734375e-05,
+        "total_tokens": 9802,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import json\nfrom z3 import Optimize, Int, And, Or, If, Sum, Implies\n\ndef time_to_min(s):\n    s = s.strip().upper()\n    if s.endswith(\"AM\"):\n        ampm = \"AM\"\n    elif s.endswith(\"PM\"):\n        ampm = \"PM\"\n    else:\n        raise ValueError(\"Time must end with AM or PM\")\n    s_time = s[:-2]\n    h, m = map(int, s_time.split(\":\"))\n    if h == 12:\n        h = 0\n    total = h * 60 + m\n    if ampm == \"PM\":\n        total += 12 * 60\n    return total\n\ndef min_to_time(m):\n    h = m // 60\n    mi = m % 60\n    return f\"{h}:{mi:02d}\"\n\n# Locations\nlocations = [\n    \"Mission District\",\n    \"Alamo Square\",\n    \"Presidio\",\n    \"Russian Hill\",\n    \"North Beach\",\n    \"Golden Gate Park\",\n    \"Richmond District\",\n    \"Embarcadero\",\n    \"Financial District\",\n    \"Marina District\",\n]\n\n# Travel times (minutes) as per problem statement\ntravel = {loc: {} for loc in locations}\n\n# Fill in the travel times exactly as provided\n# Mission District to ...\ntravel[\"Mission District\"][\"Alamo Square\"] = 11\ntravel[\"Mission District\"][\"Presidio\"] = 25\ntravel[\"Mission District\"][\"Russian Hill\"] = 15\ntravel[\"Mission District\"][\"North Beach\"] = 17\ntravel[\"Mission District\"][\"Golden Gate Park\"] = 17\ntravel[\"Mission District\"][\"Richmond District\"] = 20\ntravel[\"Mission District\"][\"Embarcadero\"] = 19\ntravel[\"Mission District\"][\"Financial District\"] = 15\ntravel[\"Mission District\"][\"Marina District\"] = 19\n\n# Alamo Square to ...\ntravel[\"Alamo Square\"][\"Mission District\"] = 10\ntravel[\"Alamo Square\"][\"Presidio\"] = 17\ntravel[\"Alamo Square\"][\"Russian Hill\"] = 13\ntravel[\"Alamo Square\"][\"North Beach\"] = 15\ntravel[\"Alamo Square\"][\"Golden Gate Park\"] = 9\ntravel[\"Alamo Square\"][\"Richmond District\"] = 11\ntravel[\"Alamo Square\"][\"Embarcadero\"] = 16\ntravel[\"Alamo Square\"][\"Financial District\"] = 17\ntravel[\"Alamo Square\"][\"Marina District\"] = 15\n\n# Presidio to ...\ntravel[\"Presidio\"][\"Mission District\"] = 26\ntravel[\"Presidio\"][\"Alamo Square\"] = 19\ntravel[\"Presidio\"][\"Russian Hill\"] = 14\ntravel[\"Presidio\"][\"North Beach\"] = 18\ntravel[\"Presidio\"][\"Golden Gate Park\"] = 12\ntravel[\"Presidio\"][\"Richmond District\"] = 7\ntravel[\"Presidio\"][\"Embarcadero\"] = 20\ntravel[\"Presidio\"][\"Financial District\"] = 23\ntravel[\"Presidio\"][\"Marina District\"] = 11\n\n# Russian Hill to ...\ntravel[\"Russian Hill\"][\"Mission District\"] = 16\ntravel[\"Russian Hill\"][\"Alamo Square\"] = 15\ntravel[\"Russian Hill\"][\"Presidio\"] = 14\ntravel[\"Russian Hill\"][\"North Beach\"] = 5\ntravel[\"Russian Hill\"][\"Golden Gate Park\"] = 21\ntravel[\"Russian Hill\"][\"Richmond District\"] = 14\ntravel[\"Russian Hill\"][\"Embarcadero\"] = 8\ntravel[\"Russian Hill\"][\"Financial District\"] = 11\ntravel[\"Russian Hill\"][\"Marina District\"] = 7\n\n# North Beach to ...\ntravel[\"North Beach\"][\"Mission District\"] = 18\ntravel[\"North Beach\"][\"Alamo Square\"] = 16\ntravel[\"North Beach\"][\"Presidio\"] = 17\ntravel[\"North Beach\"][\"Russian Hill\"] = 4\ntravel[\"North Beach\"][\"Golden Gate Park\"] = 22\ntravel[\"North Beach\"][\"Richmond District\"] = 18\ntravel[\"North Beach\"][\"Embarcadero\"] = 6\ntravel[\"North Beach\"][\"Financial District\"] = 8\ntravel[\"North Beach\"][\"Marina District\"] = 9\n\n# Golden Gate Park to ...\ntravel[\"Golden Gate Park\"][\"Mission District\"] = 17\ntravel[\"Golden Gate Park\"][\"Alamo Square\"] = 9\ntravel[\"Golden Gate Park\"][\"Presidio\"] = 11\ntravel[\"Golden Gate Park\"][\"Russian Hill\"] = 19\ntravel[\"Golden Gate Park\"][\"North Beach\"] = 23\ntravel[\"Golden Gate Park\"][\"Richmond District\"] = 7\ntravel[\"Golden Gate Park\"][\"Embarcadero\"] = 25\ntravel[\"Golden Gate Park\"][\"Financial District\"] = 26\ntravel[\"Golden Gate Park\"][\"Marina District\"] = 16\n\n# Richmond District to ...\ntravel[\"Richmond District\"][\"Mission District\"] = 20\ntravel[\"Richmond District\"][\"Alamo Square\"] = 13\ntravel[\"Richmond District\"][\"Presidio\"] = 7\ntravel[\"Richmond District\"][\"Russian Hill\"] = 13\ntravel[\"Richmond District\"][\"North Beach\"] = 17\ntravel[\"Richmond District\"][\"Golden Gate Park\"] = 9\ntravel[\"Richmond District\"][\"Embarcadero\"] = 19\ntravel[\"Richmond District\"][\"Financial District\"] = 22\ntravel[\"Richmond District\"][\"Marina District\"] = 9\n\n# Embarcadero to ...\ntravel[\"Embarcadero\"][\"Mission District\"] = 20\ntravel[\"Embarcadero\"][\"Alamo Square\"] = 19\ntravel[\"Embarcadero\"][\"Presidio\"] = 20\ntravel[\"Embarcadero\"][\"Russian Hill\"] = 8\ntravel[\"Embarcadero\"][\"North Beach\"] = 5\ntravel[\"Embarcadero\"][\"Golden Gate Park\"] = 25\ntravel[\"Embarcadero\"][\"Richmond District\"] = 21\ntravel[\"Embarcadero\"][\"Financial District\"] = 5\ntravel[\"Embarcadero\"][\"Marina District\"] = 12\n\n# Financial District to ...\ntravel[\"Financial District\"][\"Mission District\"] = 17\ntravel[\"Financial District\"][\"Alamo Square\"] = 17\ntravel[\"Financial District\"][\"Presidio\"] = 22\ntravel[\"Financial District\"][\"Russian Hill\"] = 11\ntravel[\"Financial District\"][\"North Beach\"] = 7\ntravel[\"Financial District\"][\"Golden Gate Park\"] = 23\ntravel[\"Financial District\"][\"Richmond District\"] = 21\ntravel[\"Financial District\"][\"Embarcadero\"] = 4\ntravel[\"Financial District\"][\"Marina District\"] = 15\n\n# Marina District to ...\ntravel[\"Marina District\"][\"Mission District\"] = 20\ntravel[\"Marina District\"][\"Alamo Square\"] = 15\ntravel[\"Marina District\"][\"Presidio\"] = 10\ntravel[\"Marina District\"][\"Russian Hill\"] = 8\ntravel[\"Marina District\"][\"North Beach\"] = 11\ntravel[\"Marina District\"][\"Golden Gate Park\"] = 18\ntravel[\"Marina District\"][\"Richmond District\"] = 11\ntravel[\"Marina District\"][\"Embarcadero\"] = 14\ntravel[\"Marina District\"][\"Financial District\"] = 17\n\n# People: name, location, availability start, availability end, minimum duration\npeople = [\n    (\"Laura\", \"Alamo Square\", \"2:30PM\", \"4:15PM\", 75),\n    (\"Brian\", \"Presidio\", \"10:15AM\", \"5:00PM\", 30),\n    (\"Karen\", \"Russian Hill\", \"6:00PM\", \"8:15PM\", 90),\n    (\"Stephanie\", \"North Beach\", \"10:15AM\", \"4:00PM\", 75),\n    (\"Helen\", \"Golden Gate Park\", \"11:30AM\", \"9:45PM\", 120),\n    (\"Sandra\", \"Richmond District\", \"8:00AM\", \"3:15PM\", 30),\n    (\"Mary\", \"Embarcadero\", \"4:45PM\", \"6:45PM\", 120),\n    (\"Deborah\", \"Financial District\", \"7:00PM\", \"8:45PM\", 105),\n    (\"Elizabeth\", \"Marina District\", \"8:30AM\", \"1:15PM\", 105),\n]\n\n# Convert to index-based arrays\nn = len(people)\nnames = [p[0] for p in people]\nlocs = [p[1] for p in people]\navail_start = [time_to_min(p[2]) for p in people]\navail_end = [time_to_min(p[3]) for p in people]\nmin_dur = [p[4] for p in people]\n\n# Sanity: ensure travel dictionary contains all needed pairs\nfor l in locations:\n    if l not in travel:\n        travel[l] = {}\nfor a in locations:\n    for b in locations:\n        if a == b:\n            if b not in travel[a]:\n                travel[a][b] = 0\n        else:\n            if b not in travel[a]:\n                raise RuntimeError(f\"Missing travel time from {a} to {b}\")\n\n# Model with ordered slots\nS = n  # maximum number of meetings possible\nopt = Optimize()\nopt.set(priority='lex')\n\npid = [Int(f\"pid_{k}\") for k in range(S)]  # -1 means empty, else index 0..n-1\nstart = [Int(f\"start_{k}\") for k in range(S)]\nend = [Int(f\"end_{k}\") for k in range(S)]\ndur = [Int(f\"dur_{k}\") for k in range(S)]\n\n# Domain and basic constraints\nfor k in range(S):\n    # Domain for pid\n    opt.add(Or(pid[k] == -1, And(pid[k] >= 0, pid[k] < n)))\n    # Time bounds\n    opt.add(start[k] >= 0, end[k] >= 0, dur[k] >= 0)\n    opt.add(start[k] <= 24 * 60, end[k] <= 24 * 60)\n\n# Contiguity of non-empty slots: once empty, all following are empty\nfor k in range(1, S):\n    opt.add(Implies(pid[k-1] == -1, pid[k] == -1))\n\n# No duplicate persons across slots\nfor i in range(S):\n    for j in range(i+1, S):\n        opt.add(Or(pid[i] == -1, pid[j] == -1, pid[i] != pid[j]))\n\n# Slot-specific constraints: availability and duration\nfor k in range(S):\n    # If empty, zero times; else align with a specific person's availability and minimum duration\n    cases = []\n    for i in range(n):\n        cases.append(And(\n            pid[k] == i,\n            end[k] == start[k] + dur[k],\n            start[k] >= avail_start[i],\n            end[k] <= avail_end[i],\n            dur[k] >= min_dur[i]\n        ))\n    opt.add(If(pid[k] == -1,\n               And(start[k] == 0, end[k] == 0, dur[k] == 0),\n               Or(cases)))\n\n# Travel/time continuity\n# Start of day: at Mission District at 9:00AM\nstart_of_day_loc = \"Mission District\"\nstart_of_day_time = time_to_min(\"9:00AM\")\n\nif S > 0:\n    first_cases = []\n    for i in range(n):\n        first_cases.append(And(\n            pid[0] == i,\n            start[0] >= start_of_day_time + travel[start_of_day_loc][locs[i]]\n        ))\n    opt.add(Or(pid[0] == -1, Or(first_cases)))\n\nfor k in range(1, S):\n    # If both slots are non-empty, enforce travel time between them\n    pair_cases = []\n    for i in range(n):\n        for j in range(n):\n            if i == j:\n                continue\n            pair_cases.append(And(\n                pid[k-1] == i,\n                pid[k] == j,\n                start[k] >= end[k-1] + travel[locs[i]][locs[j]]\n            ))\n    opt.add(Or(pid[k] == -1, pid[k-1] == -1, Or(pair_cases)))\n\n# Objective: maximize number of meetings, then total meeting time\nmeet_count = Sum([If(pid[k] == -1, 0, 1) for k in range(S)])\ntotal_minutes = Sum(dur)\nopt.maximize(meet_count)\nopt.maximize(total_minutes)\n\n# Solve\nif opt.check() != None and opt.check().r == 1:\n    model = opt.model()\n    itinerary = []\n    for k in range(S):\n        pid_val = model[pid[k]].as_long()\n        if pid_val >= 0:\n            name = names[pid_val]\n            loc = locs[pid_val]\n            st = model[start[k]].as_long()\n            en = model[end[k]].as_long()\n            itinerary.append({\n                \"action\": \"meet\",\n                \"location\": loc,\n                \"person\": name,\n                \"start_time\": min_to_time(st),\n                \"end_time\": min_to_time(en)\n            })\n    result = {\"itinerary\": itinerary}\nelse:\n    result = {\"itinerary\": []}\n\nprint(json.dumps(result, ensure_ascii=False))"
+}

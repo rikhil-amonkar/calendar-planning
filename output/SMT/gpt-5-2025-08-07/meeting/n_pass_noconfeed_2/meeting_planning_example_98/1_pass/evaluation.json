@@ -1,0 +1,43 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\"itinerary\": [{\"action\": \"meet\", \"location\": \"Richmond District\", \"person\": \"Timothy\", \"start_time\": \"20:45\", \"end_time\": \"21:30\"}]}",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Richmond District",
+                "person": "Timothy",
+                "start_time": "20:45",
+                "end_time": "21:30"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Richmond District",
+                "person": "Timothy",
+                "start_time": "20:45",
+                "end_time": "21:30"
+            }
+        ]
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 83.56148672103882,
+        "execution_time": 0.07837867736816406,
+        "constraint_eval_time": 2.0742416381835938e-05,
+        "pred_extract_time": 0.9711577892303467,
+        "gold_extract_time": 3.409385681152344e-05,
+        "total_tokens": 3142,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import json\nfrom z3 import *\n\ndef minutes_to_str(m):\n    h = m // 60\n    mm = m % 60\n    return f\"{h}:{mm:02d}\"\n\ndef compute_schedule():\n    # Input parameters as variables\n    # Locations\n    ALAMO_SQUARE = \"Alamo Square\"\n    RICHMOND_DISTRICT = \"Richmond District\"\n\n    # Travel times (minutes)\n    travel_as_to_rd = 12\n    travel_rd_to_as = 13  # Unused in this simple example but defined per input\n\n    # Arrival time at Alamo Square\n    arrive_as_time = 9 * 60  # 9:00\n\n    # Timothy's availability at Richmond District\n    timothy_name = \"Timothy\"\n    timothy_location = RICHMOND_DISTRICT\n    timothy_start = 20 * 60 + 45  # 20:45\n    timothy_end = 21 * 60 + 30    # 21:30\n\n    # Desired minimum meeting duration\n    min_meet_duration = 45\n\n    # SMT model\n    opt = Optimize()\n\n    # Decision variables\n    depart_as_to_rd = Int('depart_as_to_rd')  # minute of day leaving Alamo Square\n    arrive_rd = Int('arrive_rd')              # arrival time to Richmond District\n    meet_tim = Bool('meet_tim')               # whether we meet Timothy\n    meet_start_tim = Int('meet_start_tim')    # meeting start time with Timothy\n    meet_end_tim = Int('meet_end_tim')        # meeting end time with Timothy\n    meet_duration_tim = Int('meet_duration_tim')\n    wait_before_meet_tim = Int('wait_before_meet_tim')\n\n    # Base travel constraint\n    opt.add(depart_as_to_rd >= arrive_as_time)\n    opt.add(arrive_rd == depart_as_to_rd + travel_as_to_rd)\n\n    # Meeting constraints conditional on actually meeting Timothy\n    opt.add(Implies(meet_tim, And(\n        meet_start_tim >= timothy_start,\n        meet_start_tim >= arrive_rd,          # must have arrived before meeting starts\n        meet_end_tim <= timothy_end,\n        meet_end_tim > meet_start_tim,\n        meet_end_tim - meet_start_tim >= min_meet_duration\n    )))\n\n    # Define duration and waiting\n    opt.add(meet_duration_tim == If(meet_tim, meet_end_tim - meet_start_tim, 0))\n    opt.add(wait_before_meet_tim == If(meet_tim, meet_start_tim - arrive_rd, 0))\n    opt.add(wait_before_meet_tim >= 0)  # never negative\n\n    # Objectives:\n    # 1) Maximize number of friends met (only Timothy here)\n    opt.maximize(If(meet_tim, 1, 0))\n    # 2) Maximize meeting duration\n    opt.maximize(meet_duration_tim)\n    # 3) Minimize waiting time before the meeting\n    opt.minimize(wait_before_meet_tim)\n\n    # Solve\n    if opt.check() != sat:\n        # No feasible schedule\n        result = {\"itinerary\": []}\n        print(json.dumps(result))\n        return\n\n    model = opt.model()\n\n    itinerary = []\n\n    if is_true(model.eval(meet_tim, model_completion=True)):\n        start = model.eval(meet_start_tim, model_completion=True).as_long()\n        end = model.eval(meet_end_tim, model_completion=True).as_long()\n        itinerary.append({\n            \"action\": \"meet\",\n            \"location\": timothy_location,\n            \"person\": timothy_name,\n            \"start_time\": minutes_to_str(start),\n            \"end_time\": minutes_to_str(end)\n        })\n\n    result = {\"itinerary\": itinerary}\n    print(json.dumps(result))\n\nif __name__ == \"__main__\":\n    compute_schedule()"
+}

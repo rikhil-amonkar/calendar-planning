@@ -1,0 +1,87 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"itinerary\": [\n    {\n      \"action\": \"meet\",\n      \"location\": \"Fisherman's Wharf\",\n      \"person\": \"Joseph\",\n      \"start_time\": \"9:24\",\n      \"end_time\": \"14:23\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Mission District\",\n      \"person\": \"Kevin\",\n      \"start_time\": \"14:45\",\n      \"end_time\": \"15:15\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Financial District\",\n      \"person\": \"Barbara\",\n      \"start_time\": \"15:32\",\n      \"end_time\": \"16:30\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Bayview\",\n      \"person\": \"Jeffrey\",\n      \"start_time\": \"17:30\",\n      \"end_time\": \"21:30\"\n    }\n  ]\n}",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Fisherman's Wharf",
+                "person": "Joseph",
+                "start_time": "9:24",
+                "end_time": "14:23"
+            },
+            {
+                "action": "meet",
+                "location": "Mission District",
+                "person": "Kevin",
+                "start_time": "14:45",
+                "end_time": "15:15"
+            },
+            {
+                "action": "meet",
+                "location": "Financial District",
+                "person": "Barbara",
+                "start_time": "15:32",
+                "end_time": "16:30"
+            },
+            {
+                "action": "meet",
+                "location": "Bayview",
+                "person": "Jeffrey",
+                "start_time": "17:30",
+                "end_time": "21:30"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Fisherman's Wharf",
+                "person": "Joseph",
+                "start_time": "9:24",
+                "end_time": "10:54"
+            },
+            {
+                "action": "meet",
+                "location": "Mission District",
+                "person": "Kevin",
+                "start_time": "11:16",
+                "end_time": "11:46"
+            },
+            {
+                "action": "meet",
+                "location": "Financial District",
+                "person": "Barbara",
+                "start_time": "12:03",
+                "end_time": "12:18"
+            },
+            {
+                "action": "meet",
+                "location": "Bayview",
+                "person": "Jeffrey",
+                "start_time": "17:30",
+                "end_time": "18:30"
+            }
+        ]
+    },
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "constraints_satisfied_but_no_exact_match": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 130.17700934410095,
+        "execution_time": 0.11885213851928711,
+        "constraint_eval_time": 0.000148773193359375,
+        "pred_extract_time": 2.5560734272003174,
+        "gold_extract_time": 2.8848648071289062e-05,
+        "total_tokens": 5122,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import json\nfrom z3 import Optimize, Int, Bool, If, And, Or, Implies, Sum, is_true, sat\n\ndef minutes_to_hm(m):\n    h = m // 60\n    mi = m % 60\n    return f\"{h}:{mi:02d}\"\n\ndef main():\n    # Locations\n    GGP = \"Golden Gate Park\"\n    FW = \"Fisherman's Wharf\"\n    BV = \"Bayview\"\n    MD = \"Mission District\"\n    EM = \"Embarcadero\"\n    FD = \"Financial District\"\n\n    # Travel times (in minutes), as provided\n    travel = {\n        (GGP, FW): 24,\n        (GGP, BV): 23,\n        (GGP, MD): 17,\n        (GGP, EM): 25,\n        (GGP, FD): 26,\n        (FW, GGP): 25,\n        (FW, BV): 26,\n        (FW, MD): 22,\n        (FW, EM): 8,\n        (FW, FD): 11,\n        (BV, GGP): 22,\n        (BV, FW): 25,\n        (BV, MD): 13,\n        (BV, EM): 19,\n        (BV, FD): 19,\n        (MD, GGP): 17,\n        (MD, FW): 22,\n        (MD, BV): 15,\n        (MD, EM): 19,\n        (MD, FD): 17,\n        (EM, GGP): 25,\n        (EM, FW): 6,\n        (EM, BV): 21,\n        (EM, MD): 20,\n        (EM, FD): 5,\n        (FD, GGP): 23,\n        (FD, FW): 10,\n        (FD, BV): 19,\n        (FD, MD): 17,\n        (FD, EM): 4,\n    }\n\n    # Input parameters and constraints\n    start_location = GGP\n    start_time = 9 * 60  # 9:00\n\n    persons = [\n        {\n            \"name\": \"Joseph\",\n            \"location\": FW,\n            \"avail_start\": 8 * 60,           # 8:00\n            \"avail_end\": 17 * 60 + 30,       # 17:30\n            \"min_duration\": 90,\n        },\n        {\n            \"name\": \"Jeffrey\",\n            \"location\": BV,\n            \"avail_start\": 17 * 60 + 30,     # 17:30\n            \"avail_end\": 21 * 60 + 30,       # 21:30\n            \"min_duration\": 60,\n        },\n        {\n            \"name\": \"Kevin\",\n            \"location\": MD,\n            \"avail_start\": 11 * 60 + 15,     # 11:15\n            \"avail_end\": 15 * 60 + 15,       # 15:15\n            \"min_duration\": 30,\n        },\n        {\n            \"name\": \"David\",\n            \"location\": EM,\n            \"avail_start\": 8 * 60 + 15,      # 8:15\n            \"avail_end\": 9 * 60,             # 9:00\n            \"min_duration\": 30,\n        },\n        {\n            \"name\": \"Barbara\",\n            \"location\": FD,\n            \"avail_start\": 10 * 60 + 30,     # 10:30\n            \"avail_end\": 16 * 60 + 30,       # 16:30\n            \"min_duration\": 15,\n        },\n    ]\n\n    # Z3 optimization model\n    opt = Optimize()\n    opt.set(priority='lex')  # Lexicographic optimization\n\n    # Variables per person\n    vars_by_person = {}\n    for p in persons:\n        s = Int(f\"s_{p['name']}\")\n        e = Int(f\"e_{p['name']}\")\n        m = Bool(f\"m_{p['name']}\")\n        vars_by_person[p['name']] = (s, e, m)\n\n        # General bounds for times\n        opt.add(s >= 0, s <= 24 * 60)\n        opt.add(e >= 0, e <= 24 * 60)\n\n        # Meeting feasibility when chosen to meet\n        origin_travel = travel[(start_location, p[\"location\"])]\n        opt.add(Implies(m, And(\n            s >= p[\"avail_start\"],\n            e <= p[\"avail_end\"],\n            e - s >= p[\"min_duration\"],\n            s >= start_time + origin_travel\n        )))\n\n    # Pairwise non-overlap with travel time between meetings\n    n = len(persons)\n    for i in range(n):\n        for j in range(i + 1, n):\n            pi = persons[i]\n            pj = persons[j]\n            si, ei, mi = vars_by_person[pi[\"name\"]]\n            sj, ej, mj = vars_by_person[pj[\"name\"]]\n            tij = travel[(pi[\"location\"], pj[\"location\"])]\n            tji = travel[(pj[\"location\"], pi[\"location\"])]\n            opt.add(Implies(And(mi, mj), Or(\n                ei + tij <= sj,\n                ej + tji <= si\n            )))\n\n    # Objectives:\n    meet_flags = [vars_by_person[p[\"name\"]][2] for p in persons]\n    meet_count = Sum([If(m, 1, 0) for m in meet_flags])\n\n    durations_sum = Sum([If(m, vars_by_person[p[\"name\"]][1] - vars_by_person[p[\"name\"]][0], 0) for p in persons])\n\n    # Last end time (for tie-breaking to prefer earlier finish)\n    last_end = Int(\"last_end\")\n    opt.add(last_end >= 0, last_end <= 24 * 60)\n    for p in persons:\n        s, e, m = vars_by_person[p[\"name\"]]\n        opt.add(Implies(m, e <= last_end))\n\n    opt.maximize(meet_count)\n    opt.maximize(durations_sum)\n    opt.minimize(last_end)\n\n    result = {\"itinerary\": []}\n\n    if opt.check() == sat:\n        model = opt.model()\n        meetings = []\n        for p in persons:\n            s, e, m = vars_by_person[p[\"name\"]]\n            if is_true(model.evaluate(m)):\n                start_val = model.evaluate(s).as_long()\n                end_val = model.evaluate(e).as_long()\n                meetings.append({\n                    \"action\": \"meet\",\n                    \"location\": p[\"location\"],\n                    \"person\": p[\"name\"],\n                    \"start_time\": minutes_to_hm(start_val),\n                    \"end_time\": minutes_to_hm(end_val)\n                })\n        # Sort meetings by start time\n        meetings.sort(key=lambda x: (int(x[\"start_time\"].split(\":\")[0]) * 60 + int(x[\"start_time\"].split(\":\")[1])))\n        result[\"itinerary\"] = meetings\n\n    print(json.dumps(result, ensure_ascii=False, indent=2))\n\nif __name__ == \"__main__\":\n    main()"
+}

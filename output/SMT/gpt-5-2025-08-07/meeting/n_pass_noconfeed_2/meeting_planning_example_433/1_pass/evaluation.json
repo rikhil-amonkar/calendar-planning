@@ -1,0 +1,101 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\"itinerary\": [{\"action\": \"meet\", \"location\": \"Golden Gate Park\", \"person\": \"Jeffrey\", \"start_time\": \"11:15\", \"end_time\": \"14:30\"}, {\"action\": \"meet\", \"location\": \"The Castro\", \"person\": \"Deborah\", \"start_time\": \"14:43\", \"end_time\": \"16:13\"}, {\"action\": \"meet\", \"location\": \"Financial District\", \"person\": \"Margaret\", \"start_time\": \"16:33\", \"end_time\": \"18:23\"}, {\"action\": \"meet\", \"location\": \"North Beach\", \"person\": \"Ronald\", \"start_time\": \"18:30\", \"end_time\": \"19:15\"}, {\"action\": \"meet\", \"location\": \"Richmond District\", \"person\": \"Emily\", \"start_time\": \"19:33\", \"end_time\": \"21:00\"}]}",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Golden Gate Park",
+                "person": "Jeffrey",
+                "start_time": "11:15",
+                "end_time": "14:30"
+            },
+            {
+                "action": "meet",
+                "location": "The Castro",
+                "person": "Deborah",
+                "start_time": "14:43",
+                "end_time": "16:13"
+            },
+            {
+                "action": "meet",
+                "location": "Financial District",
+                "person": "Margaret",
+                "start_time": "16:33",
+                "end_time": "18:23"
+            },
+            {
+                "action": "meet",
+                "location": "North Beach",
+                "person": "Ronald",
+                "start_time": "18:30",
+                "end_time": "19:15"
+            },
+            {
+                "action": "meet",
+                "location": "Richmond District",
+                "person": "Emily",
+                "start_time": "19:33",
+                "end_time": "21:00"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Golden Gate Park",
+                "person": "Jeffrey",
+                "start_time": "11:15",
+                "end_time": "13:15"
+            },
+            {
+                "action": "meet",
+                "location": "The Castro",
+                "person": "Deborah",
+                "start_time": "13:45",
+                "end_time": "15:15"
+            },
+            {
+                "action": "meet",
+                "location": "Financial District",
+                "person": "Margaret",
+                "start_time": "16:30",
+                "end_time": "17:45"
+            },
+            {
+                "action": "meet",
+                "location": "North Beach",
+                "person": "Ronald",
+                "start_time": "18:30",
+                "end_time": "19:15"
+            },
+            {
+                "action": "meet",
+                "location": "Richmond District",
+                "person": "Emily",
+                "start_time": "19:33",
+                "end_time": "19:48"
+            }
+        ]
+    },
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "constraints_satisfied_but_no_exact_match": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 76.92121696472168,
+        "execution_time": 0.10839200019836426,
+        "constraint_eval_time": 0.0002224445343017578,
+        "pred_extract_time": 2.2649009227752686,
+        "gold_extract_time": 4.9591064453125e-05,
+        "total_tokens": 5491,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import json\nfrom z3 import *\n\ndef time_to_min(t):\n    h, m = t.split(':')\n    return int(h) * 60 + int(m)\n\ndef min_to_time(m):\n    h = m // 60\n    mm = m % 60\n    return f\"{h}:{mm:02d}\"\n\n# Locations\nlocations = [\n    \"Nob Hill\",\n    \"Richmond District\",\n    \"Financial District\",\n    \"North Beach\",\n    \"The Castro\",\n    \"Golden Gate Park\",\n]\n\n# Travel times in minutes (directed)\ntravel = {\n    \"Nob Hill\": {\n        \"Richmond District\": 14,\n        \"Financial District\": 9,\n        \"North Beach\": 8,\n        \"The Castro\": 17,\n        \"Golden Gate Park\": 17,\n    },\n    \"Richmond District\": {\n        \"Nob Hill\": 17,\n        \"Financial District\": 22,\n        \"North Beach\": 17,\n        \"The Castro\": 16,\n        \"Golden Gate Park\": 9,\n    },\n    \"Financial District\": {\n        \"Nob Hill\": 8,\n        \"Richmond District\": 21,\n        \"North Beach\": 7,\n        \"The Castro\": 23,\n        \"Golden Gate Park\": 23,\n    },\n    \"North Beach\": {\n        \"Nob Hill\": 7,\n        \"Richmond District\": 18,\n        \"Financial District\": 8,\n        \"The Castro\": 22,\n        \"Golden Gate Park\": 22,\n    },\n    \"The Castro\": {\n        \"Nob Hill\": 16,\n        \"Richmond District\": 16,\n        \"Financial District\": 20,\n        \"North Beach\": 20,\n        \"Golden Gate Park\": 11,\n    },\n    \"Golden Gate Park\": {\n        \"Nob Hill\": 20,\n        \"Richmond District\": 7,\n        \"Financial District\": 26,\n        \"North Beach\": 24,\n        \"The Castro\": 13,\n    },\n}\n\ndef t(from_loc, to_loc):\n    return travel[from_loc][to_loc]\n\n# Start info\nstart_location = \"Nob Hill\"\nstart_time = time_to_min(\"9:00\")\n\n# People data\npeople = {\n    \"Emily\": {\n        \"location\": \"Richmond District\",\n        \"avail_start\": time_to_min(\"19:00\"),\n        \"avail_end\": time_to_min(\"21:00\"),\n        \"min_dur\": 15,\n    },\n    \"Margaret\": {\n        \"location\": \"Financial District\",\n        \"avail_start\": time_to_min(\"16:30\"),\n        \"avail_end\": time_to_min(\"20:15\"),\n        \"min_dur\": 75,\n    },\n    \"Ronald\": {\n        \"location\": \"North Beach\",\n        \"avail_start\": time_to_min(\"18:30\"),\n        \"avail_end\": time_to_min(\"19:30\"),\n        \"min_dur\": 45,\n    },\n    \"Deborah\": {\n        \"location\": \"The Castro\",\n        \"avail_start\": time_to_min(\"13:45\"),\n        \"avail_end\": time_to_min(\"21:15\"),\n        \"min_dur\": 90,\n    },\n    \"Jeffrey\": {\n        \"location\": \"Golden Gate Park\",\n        \"avail_start\": time_to_min(\"11:15\"),\n        \"avail_end\": time_to_min(\"14:30\"),\n        \"min_dur\": 120,\n    },\n}\n\n# Z3 model\nopt = Optimize()\n\nmeet = {}\nstart_vars = {}\nend_vars = {}\n\nfor person in people:\n    meet[person] = Bool(f\"meet_{person}\")\n    start_vars[person] = Int(f\"start_{person}\")\n    end_vars[person] = Int(f\"end_{person}\")\n\n    # General bounds\n    opt.add(start_vars[person] >= 0, end_vars[person] >= 0, end_vars[person] >= start_vars[person])\n\n    # If meeting, enforce availability and minimum durations\n    ps = people[person]\n    loc = ps[\"location\"]\n\n    opt.add(Implies(meet[person], start_vars[person] >= ps[\"avail_start\"]))\n    opt.add(Implies(meet[person], end_vars[person] <= ps[\"avail_end\"]))\n    opt.add(Implies(meet[person], end_vars[person] - start_vars[person] >= ps[\"min_dur\"]))\n\n    # If not meeting, pin times to 0 to avoid spurious times\n    opt.add(Implies(Not(meet[person]), start_vars[person] == 0))\n    opt.add(Implies(Not(meet[person]), end_vars[person] == 0))\n\n    # Feasible from the day's start location/time\n    # You cannot start earlier than arriving directly from the start location\n    opt.add(Implies(meet[person], start_vars[person] >= start_time + t(start_location, loc)))\n\n# Pairwise non-overlap with travel-time disjunctions\npersons = list(people.keys())\nfor i in range(len(persons)):\n    for j in range(i + 1, len(persons)):\n        a = persons[i]\n        b = persons[j]\n        la = people[a][\"location\"]\n        lb = people[b][\"location\"]\n        # If both meetings occur, either A before B with travel or B before A with travel\n        opt.add(Implies(And(meet[a], meet[b]),\n                        Or(end_vars[a] + t(la, lb) <= start_vars[b],\n                           end_vars[b] + t(lb, la) <= start_vars[a])))\n\n# Objectives:\n# 1) Maximize number of people met\nsum_meets = Sum([If(meet[p], 1, 0) for p in persons])\nh1 = opt.maximize(sum_meets)\n\n# 2) Maximize total meeting minutes\ntotal_meeting_minutes = Sum([If(meet[p], end_vars[p] - start_vars[p], 0) for p in persons])\nh2 = opt.maximize(total_meeting_minutes)\n\n# 3) Minimize latest end time (tie-breaker)\nlatest_end = Int(\"latest_end\")\nopt.add(latest_end >= 0)\nfor p in persons:\n    opt.add(latest_end >= end_vars[p])\nh3 = opt.minimize(latest_end)\n\n# Solve\nif opt.check() != sat:\n    print(json.dumps({\"itinerary\": []}))\nelse:\n    model = opt.model()\n\n    # Collect chosen meetings\n    meetings = []\n    for p in persons:\n        if is_true(model.eval(meet[p])):\n            s = model.eval(start_vars[p]).as_long()\n            e = model.eval(end_vars[p]).as_long()\n            meetings.append({\n                \"action\": \"meet\",\n                \"location\": people[p][\"location\"],\n                \"person\": p,\n                \"start_time\": min_to_time(s),\n                \"end_time\": min_to_time(e),\n                \"start_min\": s  # for sorting then removed\n            })\n\n    # Sort by start time\n    meetings.sort(key=lambda x: x[\"start_min\"])\n    for m in meetings:\n        del m[\"start_min\"]\n\n    result = {\"itinerary\": meetings}\n    print(json.dumps(result, ensure_ascii=False))"
+}

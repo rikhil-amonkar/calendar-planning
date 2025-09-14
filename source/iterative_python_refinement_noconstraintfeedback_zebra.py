@@ -1479,7 +1479,7 @@ Examples:
         
         # Scan all evaluation files to collect token data
         for task in ["calendar", "meeting", "trip", "zebralogic"]:
-            task_dir = f"../output/Python/Qwen3-32B/{task}/n_pass_noconfeed"
+            task_dir = f"../output/Python/Qwen3-32B/{task}/n_pass_noconfeed_2"
             if not os.path.exists(task_dir):
                 continue
                 

@@ -1,0 +1,87 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\"itinerary\": [{\"action\": \"meet\", \"location\": \"Mission District\", \"person\": \"Stephanie\", \"start_time\": \"9:11\", \"end_time\": \"12:00\"}, {\"action\": \"meet\", \"location\": \"Russian Hill\", \"person\": \"Brian\", \"start_time\": \"12:15\", \"end_time\": \"16:00\"}, {\"action\": \"meet\", \"location\": \"Fisherman's Wharf\", \"person\": \"Jason\", \"start_time\": \"16:07\", \"end_time\": \"17:07\"}, {\"action\": \"meet\", \"location\": \"Bayview\", \"person\": \"Sandra\", \"start_time\": \"17:33\", \"end_time\": \"19:30\"}]}",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Mission District",
+                "person": "Stephanie",
+                "start_time": "9:11",
+                "end_time": "12:00"
+            },
+            {
+                "action": "meet",
+                "location": "Russian Hill",
+                "person": "Brian",
+                "start_time": "12:15",
+                "end_time": "16:00"
+            },
+            {
+                "action": "meet",
+                "location": "Fisherman's Wharf",
+                "person": "Jason",
+                "start_time": "16:07",
+                "end_time": "17:07"
+            },
+            {
+                "action": "meet",
+                "location": "Bayview",
+                "person": "Sandra",
+                "start_time": "17:33",
+                "end_time": "19:30"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Mission District",
+                "person": "Stephanie",
+                "start_time": "9:11",
+                "end_time": "10:41"
+            },
+            {
+                "action": "meet",
+                "location": "Bayview",
+                "person": "Sandra",
+                "start_time": "13:00",
+                "end_time": "13:15"
+            },
+            {
+                "action": "meet",
+                "location": "Russian Hill",
+                "person": "Brian",
+                "start_time": "13:38",
+                "end_time": "15:38"
+            },
+            {
+                "action": "meet",
+                "location": "Fisherman's Wharf",
+                "person": "Jason",
+                "start_time": "15:45",
+                "end_time": "16:45"
+            }
+        ]
+    },
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "constraints_satisfied_but_no_exact_match": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 105.14254236221313,
+        "execution_time": 0.12430310249328613,
+        "constraint_eval_time": 0.0002353191375732422,
+        "pred_extract_time": 2.540889263153076,
+        "gold_extract_time": 4.4345855712890625e-05,
+        "total_tokens": 4945,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "# SOLUTION:\nimport json\nfrom z3 import *\n\ndef minutes(h, m):\n    return h * 60 + m\n\ndef fmt_time(t):\n    h = t // 60\n    m = t % 60\n    return f\"{h}:{m:02d}\"\n\n# Locations\nlocations = [\n    \"Haight-Ashbury\",\n    \"Mission District\",\n    \"Bayview\",\n    \"Pacific Heights\",\n    \"Russian Hill\",\n    \"Fisherman's Wharf\",\n]\n\n# Travel times (in minutes)\ntravel = {\n    \"Haight-Ashbury\": {\n        \"Mission District\": 11,\n        \"Bayview\": 18,\n        \"Pacific Heights\": 12,\n        \"Russian Hill\": 17,\n        \"Fisherman's Wharf\": 23,\n    },\n    \"Mission District\": {\n        \"Haight-Ashbury\": 12,\n        \"Bayview\": 15,\n        \"Pacific Heights\": 16,\n        \"Russian Hill\": 15,\n        \"Fisherman's Wharf\": 22,\n    },\n    \"Bayview\": {\n        \"Haight-Ashbury\": 19,\n        \"Mission District\": 13,\n        \"Pacific Heights\": 23,\n        \"Russian Hill\": 23,\n        \"Fisherman's Wharf\": 25,\n    },\n    \"Pacific Heights\": {\n        \"Haight-Ashbury\": 11,\n        \"Mission District\": 15,\n        \"Bayview\": 22,\n        \"Russian Hill\": 7,\n        \"Fisherman's Wharf\": 13,\n    },\n    \"Russian Hill\": {\n        \"Haight-Ashbury\": 17,\n        \"Mission District\": 16,\n        \"Bayview\": 23,\n        \"Pacific Heights\": 7,\n        \"Fisherman's Wharf\": 7,\n    },\n    \"Fisherman's Wharf\": {\n        \"Haight-Ashbury\": 22,\n        \"Mission District\": 22,\n        \"Bayview\": 26,\n        \"Pacific Heights\": 12,\n        \"Russian Hill\": 7,\n    },\n}\n\n# Zero travel for same-location moves\nfor a in locations:\n    travel[a][a] = 0\n\n# Start info\nstart_location = \"Haight-Ashbury\"\nstart_time = minutes(9, 0)\n\n# People constraints\npeople = [\n    {\n        \"name\": \"Stephanie\",\n        \"location\": \"Mission District\",\n        \"avail_start\": minutes(8, 15),\n        \"avail_end\": minutes(13, 45),\n        \"min_duration\": 90,\n    },\n    {\n        \"name\": \"Sandra\",\n        \"location\": \"Bayview\",\n        \"avail_start\": minutes(13, 0),\n        \"avail_end\": minutes(19, 30),\n        \"min_duration\": 15,\n    },\n    {\n        \"name\": \"Richard\",\n        \"location\": \"Pacific Heights\",\n        \"avail_start\": minutes(7, 15),\n        \"avail_end\": minutes(10, 15),\n        \"min_duration\": 75,\n    },\n    {\n        \"name\": \"Brian\",\n        \"location\": \"Russian Hill\",\n        \"avail_start\": minutes(12, 15),\n        \"avail_end\": minutes(16, 0),\n        \"min_duration\": 120,\n    },\n    {\n        \"name\": \"Jason\",\n        \"location\": \"Fisherman's Wharf\",\n        \"avail_start\": minutes(8, 30),\n        \"avail_end\": minutes(17, 45),\n        \"min_duration\": 60,\n    },\n]\n\nn = len(people)\n\n# Z3 variables\nopt = Optimize()\n\nstarts = [Int(f\"start_{i}\") for i in range(n)]\nends = [Int(f\"end_{i}\") for i in range(n)]\nmeets = [Bool(f\"meet_{i}\") for i in range(n)]\n\n# Domain constraints\nfor i in range(n):\n    opt.add(starts[i] >= 0, ends[i] >= 0, starts[i] <= 24*60, ends[i] <= 24*60, ends[i] >= starts[i])\n\n# Meeting constraints\nfor i, p in enumerate(people):\n    s, e, m = starts[i], ends[i], meets[i]\n    opt.add(Implies(m, s >= p[\"avail_start\"]))\n    opt.add(Implies(m, e <= p[\"avail_end\"]))\n    opt.add(Implies(m, e - s >= p[\"min_duration\"]))\n\n# Pairwise non-overlap with travel time (if both meetings are chosen)\ndef ttime(loc_a, loc_b):\n    return travel[loc_a][loc_b]\n\nfor i in range(n):\n    for j in range(i + 1, n):\n        li = people[i][\"location\"]\n        lj = people[j][\"location\"]\n        opt.add(Implies(And(meets[i], meets[j]),\n                        Or(ends[i] + ttime(li, lj) <= starts[j],\n                           ends[j] + ttime(lj, li) <= starts[i])))\n\n# Reachability from start (every met meeting must be reachable either from start or from a previous meeting)\nfor i in range(n):\n    li = people[i][\"location\"]\n    preds = [starts[i] >= start_time + ttime(start_location, li)]\n    for j in range(n):\n        if j == i:\n            continue\n        lj = people[j][\"location\"]\n        preds.append(And(meets[j], ends[j] + ttime(lj, li) <= starts[i]))\n    opt.add(Implies(meets[i], Or(preds)))\n\n# Objective: maximize number of people met, then maximize total meeting time\nsum_met = Sum([If(meets[i], 1, 0) for i in range(n)])\nsum_minutes = Sum([If(meets[i], ends[i] - starts[i], 0) for i in range(n)])\n\nopt.maximize(sum_met)\nopt.maximize(sum_minutes)\n\nresult = {\"itinerary\": []}\n\nif opt.check() == sat:\n    model = opt.model()\n    chosen = []\n    for i, p in enumerate(people):\n        if is_true(model.eval(meets[i])):\n            s_val = model.eval(starts[i]).as_long()\n            e_val = model.eval(ends[i]).as_long()\n            chosen.append((s_val, e_val, p[\"location\"], p[\"name\"]))\n    # Sort by start time\n    chosen.sort(key=lambda x: x[0])\n    for s_val, e_val, loc, person in chosen:\n        result[\"itinerary\"].append({\n            \"action\": \"meet\",\n            \"location\": loc,\n            \"person\": person,\n            \"start_time\": fmt_time(s_val),\n            \"end_time\": fmt_time(e_val),\n        })\n\nprint(json.dumps(result, ensure_ascii=False))"
+}

@@ -1,0 +1,91 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\"itinerary\": [{\"action\": \"meet\", \"location\": \"Russian Hill\", \"person\": \"Sarah\", \"start_time\": \"8:45\", \"end_time\": \"9:30\"}, {\"action\": \"meet\", \"location\": \"The Castro\", \"person\": \"Helen\", \"start_time\": \"14:39\", \"end_time\": \"16:39\"}, {\"action\": \"meet\", \"location\": \"Haight-Ashbury\", \"person\": \"Margaret\", \"start_time\": \"16:45\", \"end_time\": \"17:45\"}, {\"action\": \"meet\", \"location\": \"Sunset District\", \"person\": \"Joshua\", \"start_time\": \"18:00\", \"end_time\": \"19:30\"}]}",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Russian Hill",
+                "person": "Sarah",
+                "start_time": "8:45",
+                "end_time": "9:30"
+            },
+            {
+                "action": "meet",
+                "location": "The Castro",
+                "person": "Helen",
+                "start_time": "14:39",
+                "end_time": "16:39"
+            },
+            {
+                "action": "meet",
+                "location": "Haight-Ashbury",
+                "person": "Margaret",
+                "start_time": "16:45",
+                "end_time": "17:45"
+            },
+            {
+                "action": "meet",
+                "location": "Sunset District",
+                "person": "Joshua",
+                "start_time": "18:00",
+                "end_time": "19:30"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Nob Hill",
+                "person": "Ronald",
+                "start_time": "10:00",
+                "end_time": "11:45"
+            },
+            {
+                "action": "meet",
+                "location": "The Castro",
+                "person": "Helen",
+                "start_time": "13:30",
+                "end_time": "15:30"
+            },
+            {
+                "action": "meet",
+                "location": "Sunset District",
+                "person": "Joshua",
+                "start_time": "15:47",
+                "end_time": "17:17"
+            },
+            {
+                "action": "meet",
+                "location": "Haight-Ashbury",
+                "person": "Margaret",
+                "start_time": "17:32",
+                "end_time": "18:32"
+            }
+        ]
+    },
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "travel_start": {
+            "to_person": "Sarah",
+            "to_location": "Russian Hill",
+            "travel_time": 7
+        }
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 113.33249688148499,
+        "execution_time": 0.08516550064086914,
+        "constraint_eval_time": 0.00012993812561035156,
+        "pred_extract_time": 1.8417432308197021,
+        "gold_extract_time": 2.765655517578125e-05,
+        "total_tokens": 5741,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\nimport json\n\ndef minutes_to_time(m):\n    # Convert minutes (from midnight) to a string in \"H:MM\" format.\n    h = m // 60\n    mins = m % 60\n    return f\"{h}:{mins:02d}\"\n\ndef main():\n    # Travel times (in minutes) between locations.\n    travel = {\n        \"Pacific Heights\": {\"Nob Hill\": 8, \"Russian Hill\": 7, \"The Castro\": 16, \"Sunset District\": 21, \"Haight-Ashbury\": 11},\n        \"Nob Hill\": {\"Pacific Heights\": 8, \"Russian Hill\": 5, \"The Castro\": 17, \"Sunset District\": 25, \"Haight-Ashbury\": 13},\n        \"Russian Hill\": {\"Pacific Heights\": 7, \"Nob Hill\": 5, \"The Castro\": 21, \"Sunset District\": 23, \"Haight-Ashbury\": 17},\n        \"The Castro\": {\"Pacific Heights\": 16, \"Nob Hill\": 17, \"Russian Hill\": 18, \"Sunset District\": 17, \"Haight-Ashbury\": 6},\n        \"Sunset District\": {\"Pacific Heights\": 21, \"Nob Hill\": 27, \"Russian Hill\": 24, \"The Castro\": 17, \"Haight-Ashbury\": 15},\n        \"Haight-Ashbury\": {\"Pacific Heights\": 12, \"Nob Hill\": 15, \"Russian Hill\": 17, \"The Castro\": 6, \"Sunset District\": 15},\n    }\n    \n    # Meeting candidate information.\n    # Times are represented as minutes from midnight.\n    # 9:00 AM is 540, 10:00 AM is 600, etc.\n    meetings = [\n        {\"name\": \"Ronald\",   \"location\": \"Nob Hill\",       \"avail_start\": 600,  \"avail_end\": 1020, \"min_duration\": 105},  # 10:00-17:00\n        {\"name\": \"Sarah\",    \"location\": \"Russian Hill\",   \"avail_start\": 435,  \"avail_end\": 570,  \"min_duration\": 45},   # 7:15-9:30\n        {\"name\": \"Helen\",    \"location\": \"The Castro\",     \"avail_start\": 810,  \"avail_end\": 1020, \"min_duration\": 120},  # 13:30-17:00\n        {\"name\": \"Joshua\",   \"location\": \"Sunset District\",\"avail_start\": 855,  \"avail_end\": 1170, \"min_duration\": 90},   # 14:15-19:30\n        {\"name\": \"Margaret\", \"location\": \"Haight-Ashbury\", \"avail_start\": 615,  \"avail_end\": 1320, \"min_duration\": 60},   # 10:15-22:00\n    ]\n    \n    num_meetings = len(meetings)\n    # Arrival at Pacific Heights at 9:00 AM (540 minutes)\n    arrival_time = 540\n    start_loc = \"Pacific Heights\"\n    \n    opt = Optimize()\n    \n    # Create decision variables for each meeting: scheduled flag, meeting start time, and order in the day.\n    scheduled = [Bool(f\"scheduled_{i}\") for i in range(num_meetings)]\n    start_vars = [Int(f\"start_{i}\") for i in range(num_meetings)]\n    order_vars = [Int(f\"order_{i}\") for i in range(num_meetings)]\n    \n    # For each meeting, add constraints based on availability and required meeting duration.\n    for i, meet in enumerate(meetings):\n        # If the meeting is scheduled, then the meeting must start within the available window.\n        opt.add(Implies(scheduled[i], start_vars[i] >= meet[\"avail_start\"]))\n        opt.add(Implies(scheduled[i], start_vars[i] + meet[\"min_duration\"] <= meet[\"avail_end\"]))\n        \n        # If the meeting is scheduled and it is the first meeting (order == 1), then you must travel from Pacific Heights.\n        opt.add(Implies(And(scheduled[i], order_vars[i] == 1),\n                        start_vars[i] >= arrival_time + travel[start_loc][meet[\"location\"]]))\n        \n        # If not scheduled, fix order to 0.\n        opt.add(Implies(Not(scheduled[i]), order_vars[i] == 0))\n        # If scheduled, enforce order to be between 1 and num_meetings.\n        opt.add(Implies(scheduled[i], And(order_vars[i] >= 1, order_vars[i] <= num_meetings)))\n    \n    # Ensure that for any two scheduled meetings, the order numbers are distinct.\n    for i in range(num_meetings):\n        for j in range(i+1, num_meetings):\n            opt.add(Implies(And(scheduled[i], scheduled[j]), order_vars[i] != order_vars[j]))\n    \n    # Add travel constraints between meetings.\n    # For any two meetings i and j: if both are scheduled and meeting i comes before j (order_i < order_j),\n    # then the end time of meeting i plus travel time from its location to meeting j's location must be <= start time of j.\n    for i in range(num_meetings):\n        for j in range(num_meetings):\n            if i == j:\n                continue\n            travel_time_ij = travel[meetings[i][\"location\"]][meetings[j][\"location\"]]\n            opt.add(Implies(And(scheduled[i], scheduled[j], order_vars[i] < order_vars[j]),\n                        start_vars[i] + meetings[i][\"min_duration\"] + travel_time_ij <= start_vars[j]))\n    \n    # Objective: maximize the total number of meetings scheduled.\n    total_meetings = Sum([If(scheduled[i], 1, 0) for i in range(num_meetings)])\n    opt.maximize(total_meetings)\n    \n    if opt.check() == sat:\n        mod = opt.model()\n        scheduled_list = []\n        # Collect scheduled meetings with computed order and times.\n        for i, meet in enumerate(meetings):\n            if is_true(mod.evaluate(scheduled[i])):\n                order_val = mod.evaluate(order_vars[i]).as_long()\n                start_val = mod.evaluate(start_vars[i]).as_long()\n                end_val = start_val + meet[\"min_duration\"]\n                scheduled_list.append((order_val, meet[\"name\"], meet[\"location\"], start_val, end_val))\n        # Sort the scheduled meetings by their order.\n        scheduled_list.sort(key=lambda x: x[0])\n        itinerary = []\n        for order_val, person, location, start_val, end_val in scheduled_list:\n            itinerary.append({\n                \"action\": \"meet\",\n                \"location\": location,\n                \"person\": person,\n                \"start_time\": minutes_to_time(start_val),\n                \"end_time\": minutes_to_time(end_val)\n            })\n        result = {\"itinerary\": itinerary}\n        print(json.dumps(result))\n    else:\n        # If no schedule is found, return an empty itinerary.\n        print(json.dumps({\"itinerary\": []}))\n\nif __name__ == '__main__':\n    main()"
+}

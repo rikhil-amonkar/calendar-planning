@@ -1,0 +1,52 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\"itinerary\": [{\"action\": \"meet\", \"location\": \"Golden Gate Park\", \"person\": \"Alice\", \"start_time\": \"9:00\", \"end_time\": \"15:37\"}, {\"action\": \"meet\", \"location\": \"Chinatown\", \"person\": \"David\", \"start_time\": \"16:00\", \"end_time\": \"21:45\"}]}",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Golden Gate Park",
+                "person": "Alice",
+                "start_time": "9:00",
+                "end_time": "15:37"
+            },
+            {
+                "action": "meet",
+                "location": "Chinatown",
+                "person": "David",
+                "start_time": "16:00",
+                "end_time": "21:45"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Chinatown",
+                "person": "David",
+                "start_time": "16:00",
+                "end_time": "17:45"
+            }
+        ]
+    },
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "constraints_satisfied_but_no_exact_match": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 90.85700154304504,
+        "execution_time": 0.0774986743927002,
+        "constraint_eval_time": 0.0001704692840576172,
+        "pred_extract_time": 1.1970160007476807,
+        "gold_extract_time": 5.269050598144531e-05,
+        "total_tokens": 3218,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import json\nfrom z3 import *\n\ndef minutes_to_time(m):\n    hour = m // 60\n    minute = m % 60\n    return f\"{hour}:{minute:02d}\"\n\ndef main():\n    # Time constants in minutes after midnight\n    start_GGP = 9 * 60           # 9:00 AM -> 540 minutes\n    David_start = 16 * 60        # 16:00 -> 960 minutes\n    David_end = 21 * 60 + 45     # 21:45 -> 1305 minutes\n    travel_GGP_to_CT = 23        # minutes from Golden Gate Park to Chinatown\n\n    # Z3 integer variables (all times in minutes after midnight)\n    t_dep = Int('t_dep')         # Departure time from Golden Gate Park\n    t_meet_end = Int('t_meet_end')  # End time of meeting with David in Chinatown\n\n    # meeting_start is defined as the later of arrival time at Chinatown (t_dep+travel)\n    # and David's available start time.\n    meeting_start = If(t_dep + travel_GGP_to_CT >= David_start, t_dep + travel_GGP_to_CT, David_start)\n    meeting_duration = t_meet_end - meeting_start\n\n    # Create an optimizer instance.\n    opt = Optimize()\n\n    # Constraints:\n    # 1. You arrive at Golden Gate Park at 9:00 AM so you cannot depart before that.\n    opt.add(t_dep >= start_GGP)\n    # 2. David is available until 21:45.\n    opt.add(t_meet_end <= David_end)\n    # 3. You want to meet David for at least 105 minutes.\n    opt.add(meeting_duration >= 105)\n    # 4. Meeting must end after it starts.\n    opt.add(t_meet_end >= meeting_start)\n\n    # Objectives:\n    # Primary: Maximize the meeting duration with David.\n    # (This will push t_meet_end to its maximum allowable value and meeting_start as early as possible.)\n    h1 = opt.maximize(meeting_duration)\n    # Secondary: Maximize the departure time from Golden Gate Park to leave as late as possible,\n    # so you can meet other friends at Golden Gate Park before heading to Chinatown.\n    h2 = opt.maximize(t_dep)\n\n    if opt.check() == sat:\n        m = opt.model()\n        dep_val = m[t_dep].as_long()             # Optimal departure from Golden Gate Park\n        # Arrival time in Chinatown = departure time + travel time:\n        arr_time = dep_val + travel_GGP_to_CT\n        # meeting_start is the maximum of arrival and David's start time\n        meet_start_val = arr_time if arr_time >= David_start else David_start\n        meet_end_val = m[t_meet_end].as_long()     # Meeting end time in Chinatown\n\n        # Build itinerary:\n        # Event 1: While at Golden Gate Park, meet a friend (e.g., Alice) until you leave.\n        # Event 2: Meet David in Chinatown.\n        itinerary = [\n            {\n                \"action\": \"meet\",\n                \"location\": \"Golden Gate Park\",\n                \"person\": \"Alice\",\n                \"start_time\": minutes_to_time(start_GGP),\n                \"end_time\": minutes_to_time(dep_val)\n            },\n            {\n                \"action\": \"meet\",\n                \"location\": \"Chinatown\",\n                \"person\": \"David\",\n                \"start_time\": minutes_to_time(meet_start_val),\n                \"end_time\": minutes_to_time(meet_end_val)\n            }\n        ]\n\n        result = {\"itinerary\": itinerary}\n        print(json.dumps(result))\n    else:\n        print(json.dumps({\"itinerary\": []}))\n\nif __name__ == '__main__':\n    main()"
+}

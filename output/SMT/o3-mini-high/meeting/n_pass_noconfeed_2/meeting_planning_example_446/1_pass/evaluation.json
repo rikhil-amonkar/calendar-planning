@@ -1,0 +1,99 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"itinerary\": [\n    {\n      \"action\": \"meet\",\n      \"location\": \"Chinatown\",\n      \"person\": \"Robert\",\n      \"start_time\": \"12:15\",\n      \"end_time\": \"12:30\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Bayview\",\n      \"person\": \"Margaret\",\n      \"start_time\": \"12:52\",\n      \"end_time\": \"13:22\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Marina District\",\n      \"person\": \"Kimberly\",\n      \"start_time\": \"13:47\",\n      \"end_time\": \"14:02\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Financial District\",\n      \"person\": \"Rebecca\",\n      \"start_time\": \"14:19\",\n      \"end_time\": \"15:34\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Union Square\",\n      \"person\": \"Kenneth\",\n      \"start_time\": \"19:30\",\n      \"end_time\": \"20:45\"\n    }\n  ]\n}",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Chinatown",
+                "person": "Robert",
+                "start_time": "12:15",
+                "end_time": "12:30"
+            },
+            {
+                "action": "meet",
+                "location": "Bayview",
+                "person": "Margaret",
+                "start_time": "12:52",
+                "end_time": "13:22"
+            },
+            {
+                "action": "meet",
+                "location": "Marina District",
+                "person": "Kimberly",
+                "start_time": "13:47",
+                "end_time": "14:02"
+            },
+            {
+                "action": "meet",
+                "location": "Financial District",
+                "person": "Rebecca",
+                "start_time": "14:19",
+                "end_time": "15:34"
+            },
+            {
+                "action": "meet",
+                "location": "Union Square",
+                "person": "Kenneth",
+                "start_time": "19:30",
+                "end_time": "20:45"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Chinatown",
+                "person": "Robert",
+                "start_time": "12:15",
+                "end_time": "12:30"
+            },
+            {
+                "action": "meet",
+                "location": "Bayview",
+                "person": "Margaret",
+                "start_time": "12:52",
+                "end_time": "13:22"
+            },
+            {
+                "action": "meet",
+                "location": "Marina District",
+                "person": "Kimberly",
+                "start_time": "13:47",
+                "end_time": "14:02"
+            },
+            {
+                "action": "meet",
+                "location": "Financial District",
+                "person": "Rebecca",
+                "start_time": "14:19",
+                "end_time": "15:34"
+            },
+            {
+                "action": "meet",
+                "location": "Union Square",
+                "person": "Kenneth",
+                "start_time": "19:30",
+                "end_time": "20:45"
+            }
+        ]
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 96.22075176239014,
+        "execution_time": 0.1154470443725586,
+        "constraint_eval_time": 5.888938903808594e-05,
+        "pred_extract_time": 2.883991003036499,
+        "gold_extract_time": 0.0005438327789306641,
+        "total_tokens": 6260,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\nimport json\n\ndef main():\n    # Create an Optimize object to maximize the number of meetings scheduled\n    opt = Optimize()\n\n    # Define the friends and their constraints\n    # Times are measured in minutes after 9:00\n    friends = [\"Kimberly\", \"Robert\", \"Rebecca\", \"Margaret\", \"Kenneth\"]\n    avail_start = {\n        \"Kimberly\": 255,  # 13:15 (9:00 + 255 = 13:15)\n        \"Robert\": 195,    # 12:15\n        \"Rebecca\": 255,   # 13:15\n        \"Margaret\": 30,   # 9:30\n        \"Kenneth\": 630    # 19:30\n    }\n    avail_end = {\n        \"Kimberly\": 525,  # 16:45\n        \"Robert\": 675,    # 20:15\n        \"Rebecca\": 525,   # 16:45\n        \"Margaret\": 270,  # 13:30\n        \"Kenneth\": 735    # 21:15\n    }\n    min_duration = {\n        \"Kimberly\": 15,\n        \"Robert\": 15,\n        \"Rebecca\": 75,\n        \"Margaret\": 30,\n        \"Kenneth\": 75\n    }\n    locations = {\n        \"Kimberly\": \"Marina District\",\n        \"Robert\": \"Chinatown\",\n        \"Rebecca\": \"Financial District\",\n        \"Margaret\": \"Bayview\",\n        \"Kenneth\": \"Union Square\"\n    }\n\n    # Starting point and time\n    start_location = \"Richmond District\"\n    start_time = 0  # 9:00 is time 0\n\n    # Travel times in minutes (as given, they are not necessarily symmetric)\n    travel = {\n        (\"Richmond District\", \"Marina District\"): 9,\n        (\"Richmond District\", \"Chinatown\"): 20,\n        (\"Richmond District\", \"Financial District\"): 22,\n        (\"Richmond District\", \"Bayview\"): 26,\n        (\"Richmond District\", \"Union Square\"): 21,\n\n        (\"Marina District\", \"Richmond District\"): 11,\n        (\"Marina District\", \"Chinatown\"): 16,\n        (\"Marina District\", \"Financial District\"): 17,\n        (\"Marina District\", \"Bayview\"): 27,\n        (\"Marina District\", \"Union Square\"): 16,\n\n        (\"Chinatown\", \"Richmond District\"): 20,\n        (\"Chinatown\", \"Marina District\"): 12,\n        (\"Chinatown\", \"Financial District\"): 5,\n        (\"Chinatown\", \"Bayview\"): 22,\n        (\"Chinatown\", \"Union Square\"): 7,\n\n        (\"Financial District\", \"Richmond District\"): 21,\n        (\"Financial District\", \"Marina District\"): 15,\n        (\"Financial District\", \"Chinatown\"): 5,\n        (\"Financial District\", \"Bayview\"): 19,\n        (\"Financial District\", \"Union Square\"): 9,\n\n        (\"Bayview\", \"Richmond District\"): 25,\n        (\"Bayview\", \"Marina District\"): 25,\n        (\"Bayview\", \"Chinatown\"): 18,\n        (\"Bayview\", \"Financial District\"): 19,\n        (\"Bayview\", \"Union Square\"): 17,\n\n        (\"Union Square\", \"Richmond District\"): 20,\n        (\"Union Square\", \"Marina District\"): 18,\n        (\"Union Square\", \"Chinatown\"): 7,\n        (\"Union Square\", \"Financial District\"): 9,\n        (\"Union Square\", \"Bayview\"): 15,\n    }\n\n    n = len(friends)\n    # s[i]: start time (minutes after 9:00) for meeting i\n    s = [Int(f\"s_{i}\") for i in range(n)]\n    # chosen[i]: whether we decide to hold the meeting with friend i\n    chosen = [Bool(f\"chosen_{i}\") for i in range(n)]\n\n    # Add constraints for each meeting if it is scheduled\n    for i in range(n):\n        friend = friends[i]\n        loc = locations[friend]\n        req = min_duration[friend]\n        # If meeting is scheduled, its start time must be within the friend's availability window\n        opt.add(Implies(chosen[i], s[i] >= avail_start[friend]))\n        opt.add(Implies(chosen[i], s[i] + req <= avail_end[friend]))\n        # Also require that the meeting starts after we can reach that location from the starting point.\n        travel_from_start = travel[(start_location, loc)]\n        opt.add(Implies(chosen[i], s[i] >= start_time + travel_from_start))\n        # Ensure non-negative start times if scheduled.\n        opt.add(Implies(chosen[i], s[i] >= 0))\n\n    # For any two meetings that are scheduled, ensure they do not overlap and account for travel time.\n    # For meetings i and j (i < j), either meeting i finishes, we travel from its location to j, and then meeting j can start,\n    # OR meeting j finishes, we travel from its location to i, and then meeting i can start.\n    for i in range(n):\n        for j in range(i+1, n):\n            friend_i = friends[i]\n            friend_j = friends[j]\n            loc_i = locations[friend_i]\n            loc_j = locations[friend_j]\n            req_i = min_duration[friend_i]\n            req_j = min_duration[friend_j]\n            # travel times for i->j and j->i\n            travel_ij = travel[(loc_i, loc_j)]\n            travel_ji = travel[(loc_j, loc_i)]\n            opt.add(\n                Implies(\n                    And(chosen[i], chosen[j]),\n                    Or(s[i] + req_i + travel_ij <= s[j],\n                       s[j] + req_j + travel_ji <= s[i])\n                )\n            )\n\n    # Objective: maximize the total number of meetings scheduled\n    total_meetings = Sum([If(chosen[i], 1, 0) for i in range(n)])\n    opt.maximize(total_meetings)\n\n    # Check for a solution and extract the model\n    if opt.check() == sat:\n        model = opt.model()\n        scheduled = []\n        # Gather scheduled meetings along with their times and locations\n        for i in range(n):\n            if is_true(model.evaluate(chosen[i])):\n                friend = friends[i]\n                start_val = model.evaluate(s[i]).as_long()\n                end_val = start_val + min_duration[friend]\n                scheduled.append((start_val, end_val, friend, locations[friend]))\n        # Sort the meetings in chronological order by start time\n        scheduled.sort(key=lambda x: x[0])\n\n        # Helper function: convert minutes (offset from 9:00) to \"H:MM\" 24-hour format\n        def format_time(m):\n            total = 9 * 60 + m\n            hours = total // 60\n            minutes = total % 60\n            return f\"{hours}:{minutes:02d}\"\n\n        itinerary = []\n        for start_val, end_val, friend, loc in scheduled:\n            itinerary.append({\n                \"action\": \"meet\",\n                \"location\": loc,\n                \"person\": friend,\n                \"start_time\": format_time(start_val),\n                \"end_time\": format_time(end_val)\n            })\n\n        result = {\"itinerary\": itinerary}\n        print(json.dumps(result, indent=2))\n    else:\n        print(json.dumps({\"itinerary\": []}))\n\nif __name__ == \"__main__\":\n    main()"
+}

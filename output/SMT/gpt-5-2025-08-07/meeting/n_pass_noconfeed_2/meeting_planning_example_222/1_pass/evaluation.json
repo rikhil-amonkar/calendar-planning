@@ -1,0 +1,73 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\"itinerary\": [{\"action\": \"meet\", \"location\": \"North Beach\", \"person\": \"Helen\", \"start_time\": \"14:45\", \"end_time\": \"16:45\"}, {\"action\": \"meet\", \"location\": \"Fisherman's Wharf\", \"person\": \"Kimberly\", \"start_time\": \"16:50\", \"end_time\": \"17:35\"}, {\"action\": \"meet\", \"location\": \"Bayview\", \"person\": \"Patricia\", \"start_time\": \"18:01\", \"end_time\": \"20:01\"}]}",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "North Beach",
+                "person": "Helen",
+                "start_time": "14:45",
+                "end_time": "16:45"
+            },
+            {
+                "action": "meet",
+                "location": "Fisherman's Wharf",
+                "person": "Kimberly",
+                "start_time": "16:50",
+                "end_time": "17:35"
+            },
+            {
+                "action": "meet",
+                "location": "Bayview",
+                "person": "Patricia",
+                "start_time": "18:01",
+                "end_time": "20:01"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "North Beach",
+                "person": "Helen",
+                "start_time": "9:08",
+                "end_time": "11:08"
+            },
+            {
+                "action": "meet",
+                "location": "Fisherman's Wharf",
+                "person": "Kimberly",
+                "start_time": "16:30",
+                "end_time": "17:15"
+            },
+            {
+                "action": "meet",
+                "location": "Bayview",
+                "person": "Patricia",
+                "start_time": "18:00",
+                "end_time": "20:00"
+            }
+        ]
+    },
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "constraints_satisfied_but_no_exact_match": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 176.1821973323822,
+        "execution_time": 0.08396744728088379,
+        "constraint_eval_time": 0.00027179718017578125,
+        "pred_extract_time": 2.0217909812927246,
+        "gold_extract_time": 7.462501525878906e-05,
+        "total_tokens": 5242,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import json\nfrom z3 import *\n\ndef minutes_to_str(m):\n    h = m // 60\n    mi = m % 60\n    return f\"{h}:{mi:02d}\"\n\ndef build_travel_times():\n    # Directed travel times in minutes\n    return {\n        (\"Nob Hill\", \"North Beach\"): 8,\n        (\"Nob Hill\", \"Fisherman's Wharf\"): 11,\n        (\"Nob Hill\", \"Bayview\"): 19,\n        (\"North Beach\", \"Nob Hill\"): 7,\n        (\"North Beach\", \"Fisherman's Wharf\"): 5,\n        (\"North Beach\", \"Bayview\"): 22,\n        (\"Fisherman's Wharf\", \"Nob Hill\"): 11,\n        (\"Fisherman's Wharf\", \"North Beach\"): 6,\n        (\"Fisherman's Wharf\", \"Bayview\"): 26,\n        (\"Bayview\", \"Nob Hill\"): 20,\n        (\"Bayview\", \"North Beach\"): 21,\n        (\"Bayview\", \"Fisherman's Wharf\"): 25,\n    }\n\ndef main():\n    # Constants\n    start_location = \"Nob Hill\"\n    day_start = 9 * 60  # 9:00 AM in minutes since midnight\n\n    # People and constraints\n    people = [\n        {\n            \"name\": \"Helen\",\n            \"location\": \"North Beach\",\n            \"avail_start\": 7 * 60,        # 7:00\n            \"avail_end\": 16 * 60 + 45,    # 16:45\n            \"min_meet\": 120\n        },\n        {\n            \"name\": \"Kimberly\",\n            \"location\": \"Fisherman's Wharf\",\n            \"avail_start\": 16 * 60 + 30,  # 16:30\n            \"avail_end\": 21 * 60,         # 21:00\n            \"min_meet\": 45\n        },\n        {\n            \"name\": \"Patricia\",\n            \"location\": \"Bayview\",\n            \"avail_start\": 18 * 60,       # 18:00\n            \"avail_end\": 21 * 60 + 15,    # 21:15\n            \"min_meet\": 120\n        }\n    ]\n\n    # Index mapping to ensure distinctness with ord=0 allowed\n    idx_map = {p[\"name\"]: i+1 for i, p in enumerate(people)}  # 1..3\n\n    travel = build_travel_times()\n\n    def ttime(a, b):\n        return travel[(a, b)]\n\n    # Z3 variables\n    s_vars = {p[\"name\"]: Int(f\"s_{p['name']}\") for p in people}\n    e_vars = {p[\"name\"]: Int(f\"e_{p['name']}\") for p in people}\n    ord_vars = {p[\"name\"]: Int(f\"ord_{p['name']}\") for p in people}\n\n    solver = Optimize()\n\n    # Bounds and basic constraints\n    for p in people:\n        name = p[\"name\"]\n        s = s_vars[name]\n        e = e_vars[name]\n        ordv = ord_vars[name]\n\n        # Time bounds\n        solver.add(s >= 0, s <= 24*60)\n        solver.add(e >= 0, e <= 24*60)\n        solver.add(e >= s)\n\n        # Order bounds: 0 means not meeting; 1..3 are sequence positions\n        solver.add(ordv >= 0, ordv <= 3)\n\n        # If meeting (ord>0), enforce availability and minimum duration\n        solver.add(Implies(ordv > 0, s >= p[\"avail_start\"]))\n        solver.add(Implies(ordv > 0, e <= p[\"avail_end\"]))\n        solver.add(Implies(ordv > 0, e - s >= p[\"min_meet\"]))\n\n        # If not meeting, collapse interval to a single point (e.g., 0)\n        solver.add(Implies(ordv == 0, s == 0))\n        solver.add(Implies(ordv == 0, e == 0))\n\n    # Distinctness of orders for meetings; allow multiple zeros by mapping zeros to unique negatives\n    mapped_orders = []\n    for p in people:\n        name = p[\"name\"]\n        ordv = ord_vars[name]\n        mapped_orders.append(If(ordv == 0, IntVal(-idx_map[name]), ordv))\n    solver.add(Distinct(mapped_orders))\n\n    # Number of meetings to maximize\n    n_meet = Sum([If(ord_vars[p[\"name\"]] > 0, IntVal(1), IntVal(0)) for p in people])\n    solver.maximize(n_meet)\n\n    # Ensure orders are contiguous 1..n_meet (no gaps)\n    for p in people:\n        name = p[\"name\"]\n        ordv = ord_vars[name]\n        solver.add(Implies(ordv > 0, ordv <= n_meet))\n\n    # Travel chain constraints: link each meeting to its predecessor (or start)\n    for p in people:\n        name = p[\"name\"]\n        loc = p[\"location\"]\n        s = s_vars[name]\n        ordv = ord_vars[name]\n\n        # If this is the first meeting, leave from start location at day_start\n        solver.add(Implies(ordv == 1, s >= day_start + ttime(start_location, loc)))\n\n        # If this is not the first, it must start after the previous in the sequence plus travel time\n        for q in people:\n            if q[\"name\"] == name:\n                continue\n            prev_ord = ord_vars[q[\"name\"]]\n            e_prev = e_vars[q[\"name\"]]\n            solver.add(Implies(And(ordv > 1, prev_ord == ordv - 1),\n                               s >= e_prev + ttime(q[\"location\"], loc)))\n\n    # Solve\n    if solver.check() != sat:\n        # No feasible schedule\n        result = {\"itinerary\": []}\n        print(json.dumps(result))\n        return\n\n    model = solver.model()\n\n    # Build itinerary sorted by order\n    meetings = []\n    for p in people:\n        name = p[\"name\"]\n        loc = p[\"location\"]\n        ord_val = model.eval(ord_vars[name]).as_long()\n        if ord_val > 0:\n            s_val = model.eval(s_vars[name]).as_long()\n            e_val = model.eval(e_vars[name]).as_long()\n            meetings.append((ord_val, {\n                \"action\": \"meet\",\n                \"location\": loc,\n                \"person\": name,\n                \"start_time\": minutes_to_str(s_val),\n                \"end_time\": minutes_to_str(e_val)\n            }))\n\n    meetings.sort(key=lambda x: x[0])\n    itinerary = [m[1] for m in meetings]\n\n    print(json.dumps({\"itinerary\": itinerary}, ensure_ascii=False))\n\nif __name__ == \"__main__\":\n    main()"
+}

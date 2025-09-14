@@ -193,7 +193,7 @@ Examples:
                     self.engines[model_name] = OpenAIEngine(
                         api_key=self.keys.get("openai"), 
                         model=model_name,
-                        reasoning_effort="high"  # for o3-mini-high
+                        # reasoning_effort="high"  # for o3-mini-high
                     )
                 else:
                     # HuggingFace model
@@ -1057,7 +1057,7 @@ Examples:
 
     def save_output_files(self, task, example_id, pass_num, conversation, code, output, evaluation):
         """Save all output files for a given pass"""
-        output_dir = f"../output/Python/o3-mini-high/{task}/n_pass_noconfeed/{example_id}/{pass_num}_pass"
+        output_dir = f"../output/Python/Qwen3-32B/{task}/n_pass_noconfeed_2/{example_id}/{pass_num}_pass"
         os.makedirs(output_dir, exist_ok=True)
         
         # Save conversation

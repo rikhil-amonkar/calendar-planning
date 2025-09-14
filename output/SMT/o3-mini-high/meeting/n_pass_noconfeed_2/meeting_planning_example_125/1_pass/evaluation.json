@@ -1,0 +1,57 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\"itinerary\": [{\"action\": \"meet\", \"location\": \"Financial District\", \"person\": \"Stephanie\", \"start_time\": \"9:05\", \"end_time\": \"10:35\"}, {\"action\": \"meet\", \"location\": \"Alamo Square\", \"person\": \"John\", \"start_time\": \"10:52\", \"end_time\": \"11:22\"}]}",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Financial District",
+                "person": "Stephanie",
+                "start_time": "9:05",
+                "end_time": "10:35"
+            },
+            {
+                "action": "meet",
+                "location": "Alamo Square",
+                "person": "John",
+                "start_time": "10:52",
+                "end_time": "11:22"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Financial District",
+                "person": "Stephanie",
+                "start_time": "9:05",
+                "end_time": "10:35"
+            },
+            {
+                "action": "meet",
+                "location": "Alamo Square",
+                "person": "John",
+                "start_time": "10:52",
+                "end_time": "11:22"
+            }
+        ]
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 45.048338413238525,
+        "execution_time": 0.08794546127319336,
+        "constraint_eval_time": 1.5735626220703125e-05,
+        "pred_extract_time": 1.6484708786010742,
+        "gold_extract_time": 2.8848648071289062e-05,
+        "total_tokens": 3586,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\nimport json\n\ndef minutes_to_time_str(minutes):\n    hour = minutes // 60\n    minute = minutes % 60\n    return f\"{hour}:{minute:02d}\"\n\ndef main():\n    # Create an Optimize object for optimization.\n    opt = Optimize()\n\n    # Define variables for meeting times (in minutes after midnight)\n    s_start = Int(\"s_start\")  # Stephanie meeting start time at Financial District\n    s_end = Int(\"s_end\")      # Stephanie meeting end time at Financial District\n    j_start = Int(\"j_start\")  # John meeting start time at Alamo Square\n    j_end = Int(\"j_end\")      # John meeting end time at Alamo Square\n\n    # Constants based on the problem description\n    # Arrival and travel times\n    arrival_time = 9 * 60         # 9:00 AM -> 540 minutes\n    travel_E_to_F = 5             # Embarcadero to Financial District: 5 minutes\n    travel_F_to_A = 17            # Financial District to Alamo Square: 17 minutes\n\n    # Friends' availabilities (in minutes after midnight)\n    stephanie_avail_start = 8 * 60 + 15  # Stephanie available from 8:15 AM -> 495 minutes\n    stephanie_avail_end = 11 * 60 + 30     # Stephanie available until 11:30 AM -> 690 minutes\n    john_avail_start = 10 * 60 + 15        # John available from 10:15 AM -> 615 minutes\n    john_avail_end = 20 * 60 + 45          # John available until 8:45 PM -> 1245 minutes\n\n    # Minimum meeting durations\n    min_duration_stephanie = 90  # minutes\n    min_duration_john = 30       # minutes\n\n    # Constraints for meeting with Stephanie at the Financial District:\n    # You arrive at Embarcadero at 9:00 and need 5 minutes to travel to the FD.\n    opt.add(s_start >= arrival_time + travel_E_to_F)\n    # Meeting must also respect her availability window.\n    opt.add(s_start >= stephanie_avail_start)\n    opt.add(s_end <= stephanie_avail_end)\n    # Minimum meeting duration for Stephanie.\n    opt.add(s_end - s_start >= min_duration_stephanie)\n\n    # Constraints for meeting with John at Alamo Square:\n    # After finishing with Stephanie, travel from FD to Alamo Square takes 17 minutes.\n    opt.add(j_start >= s_end + travel_F_to_A)\n    # John's meeting must start after he becomes available.\n    opt.add(j_start >= john_avail_start)\n    # John's meeting must finish before his availability ends.\n    opt.add(j_end <= john_avail_end)\n    # Minimum meeting duration for John.\n    opt.add(j_end - j_start >= min_duration_john)\n\n    # Objective: minimize the end time of John's meeting to finish the day as early as possible.\n    opt.minimize(j_end)\n\n    # Check for feasibility and extract the model.\n    if opt.check() == sat:\n        model = opt.model()\n        s_start_val = model[s_start].as_long()\n        s_end_val = model[s_end].as_long()\n        j_start_val = model[j_start].as_long()\n        j_end_val = model[j_end].as_long()\n\n        itinerary = [\n            {\n                \"action\": \"meet\",\n                \"location\": \"Financial District\",\n                \"person\": \"Stephanie\",\n                \"start_time\": minutes_to_time_str(s_start_val),\n                \"end_time\": minutes_to_time_str(s_end_val)\n            },\n            {\n                \"action\": \"meet\",\n                \"location\": \"Alamo Square\",\n                \"person\": \"John\",\n                \"start_time\": minutes_to_time_str(j_start_val),\n                \"end_time\": minutes_to_time_str(j_end_val)\n            }\n        ]\n        result = {\"itinerary\": itinerary}\n        print(json.dumps(result))\n    else:\n        print(json.dumps({\"error\": \"No feasible schedule found\"}))\n\nif __name__ == \"__main__\":\n    main()"
+}

@@ -1,0 +1,87 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"itinerary\": [\n    {\n      \"action\": \"meet\",\n      \"location\": \"Golden Gate Park\",\n      \"person\": \"Daniel\",\n      \"start_time\": \"9:11\",\n      \"end_time\": \"9:26\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Russian Hill\",\n      \"person\": \"Margaret\",\n      \"start_time\": \"9:45\",\n      \"end_time\": \"10:15\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Alamo Square\",\n      \"person\": \"Charles\",\n      \"start_time\": \"18:00\",\n      \"end_time\": \"19:30\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Mission District\",\n      \"person\": \"Stephanie\",\n      \"start_time\": \"20:30\",\n      \"end_time\": \"22:00\"\n    }\n  ]\n}",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Golden Gate Park",
+                "person": "Daniel",
+                "start_time": "9:11",
+                "end_time": "9:26"
+            },
+            {
+                "action": "meet",
+                "location": "Russian Hill",
+                "person": "Margaret",
+                "start_time": "9:45",
+                "end_time": "10:15"
+            },
+            {
+                "action": "meet",
+                "location": "Alamo Square",
+                "person": "Charles",
+                "start_time": "18:00",
+                "end_time": "19:30"
+            },
+            {
+                "action": "meet",
+                "location": "Mission District",
+                "person": "Stephanie",
+                "start_time": "20:30",
+                "end_time": "22:00"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Russian Hill",
+                "person": "Margaret",
+                "start_time": "9:24",
+                "end_time": "9:54"
+            },
+            {
+                "action": "meet",
+                "location": "Golden Gate Park",
+                "person": "Daniel",
+                "start_time": "10:15",
+                "end_time": "10:30"
+            },
+            {
+                "action": "meet",
+                "location": "Alamo Square",
+                "person": "Charles",
+                "start_time": "18:00",
+                "end_time": "19:30"
+            },
+            {
+                "action": "meet",
+                "location": "Mission District",
+                "person": "Stephanie",
+                "start_time": "20:30",
+                "end_time": "22:00"
+            }
+        ]
+    },
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "constraints_satisfied_but_no_exact_match": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 2,
+    "timing": {
+        "api_call_time": 54.53141951560974,
+        "execution_time": 0.09473109245300293,
+        "constraint_eval_time": 0.0002117156982421875,
+        "pred_extract_time": 2.993612051010132,
+        "gold_extract_time": 3.9577484130859375e-05,
+        "total_tokens": 5841,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import json\nfrom z3 import Int, Bool, If, Optimize, Or, And, Sum, sat, is_true\n\ndef minutes(h, m=0):\n    return h * 60 + m\n\ndef fmt_time(total_minutes):\n    h = total_minutes // 60\n    m = total_minutes % 60\n    return f\"{h}:{m:02d}\"\n\ndef main():\n    # Locations\n    locations = [\n        \"Sunset District\",\n        \"Alamo Square\",\n        \"Russian Hill\",\n        \"Golden Gate Park\",\n        \"Mission District\",\n    ]\n\n    # Travel times in minutes (directed)\n    travel = {\n        \"Sunset District\": {\n            \"Alamo Square\": 17,\n            \"Russian Hill\": 24,\n            \"Golden Gate Park\": 11,\n            \"Mission District\": 24,\n        },\n        \"Alamo Square\": {\n            \"Sunset District\": 16,\n            \"Russian Hill\": 13,\n            \"Golden Gate Park\": 9,\n            \"Mission District\": 10,\n        },\n        \"Russian Hill\": {\n            \"Sunset District\": 23,\n            \"Alamo Square\": 15,\n            \"Golden Gate Park\": 21,\n            \"Mission District\": 16,\n        },\n        \"Golden Gate Park\": {\n            \"Sunset District\": 10,\n            \"Alamo Square\": 10,\n            \"Russian Hill\": 19,\n            \"Mission District\": 17,\n        },\n        \"Mission District\": {\n            \"Sunset District\": 24,\n            \"Alamo Square\": 11,\n            \"Russian Hill\": 15,\n            \"Golden Gate Park\": 17,\n        },\n    }\n\n    # Friends constraints\n    friends = {\n        \"Charles\": {\n            \"location\": \"Alamo Square\",\n            \"window_start\": minutes(18, 0),\n            \"window_end\": minutes(20, 45),\n            \"min_duration\": 90,\n        },\n        \"Margaret\": {\n            \"location\": \"Russian Hill\",\n            \"window_start\": minutes(9, 0),\n            \"window_end\": minutes(16, 0),\n            \"min_duration\": 30,\n        },\n        \"Daniel\": {\n            \"location\": \"Golden Gate Park\",\n            \"window_start\": minutes(8, 0),\n            \"window_end\": minutes(13, 30),\n            \"min_duration\": 15,\n        },\n        \"Stephanie\": {\n            \"location\": \"Mission District\",\n            \"window_start\": minutes(20, 30),\n            \"window_end\": minutes(22, 0),\n            \"min_duration\": 90,\n        },\n    }\n\n    start_location = \"Sunset District\"\n    arrival_time = minutes(9, 0)\n\n    opt = Optimize()\n    opt.set(priority='lex')\n\n    # Variables per friend\n    s = {}        # start time in minutes\n    dur = {}      # duration in minutes\n    meet = {}     # whether to meet\n    end_eff = {}  # effective end time (0 if not meeting)\n\n    # Create variables and constraints\n    for person, info in friends.items():\n        s[person] = Int(f\"s_{person}\")\n        dur[person] = Int(f\"dur_{person}\")\n        meet[person] = Bool(f\"meet_{person}\")\n        end_eff[person] = Int(f\"end_eff_{person}\")\n\n        w_start = info[\"window_start\"]\n        w_end = info[\"window_end\"]\n        min_d = info[\"min_duration\"]\n\n        # Duration constraints\n        opt.add(dur[person] >= If(meet[person], min_d, 0))\n        opt.add(dur[person] >= 0)\n        opt.add(dur[person] <= w_end - w_start)\n\n        # Start within window and finish within window\n        opt.add(s[person] >= w_start)\n        opt.add(s[person] + dur[person] <= w_end)\n\n        # Must be reachable from start location by arrival time\n        travel_from_start = travel[start_location][info[\"location\"]]\n        opt.add(If(meet[person], s[person] >= arrival_time + travel_from_start, True))\n\n        # Effective end time for makespan objective\n        opt.add(end_eff[person] == If(meet[person], s[person] + dur[person], 0))\n\n    # Disjunctive no-overlap with travel times between any two meetings\n    people = list(friends.keys())\n    for i in range(len(people)):\n        for j in range(i + 1, len(people)):\n            pi = people[i]\n            pj = people[j]\n            li = friends[pi][\"location\"]\n            lj = friends[pj][\"location\"]\n            tij = travel[li][lj]\n            tji = travel[lj][li]\n\n            # If both meetings occur, enforce separation including travel time\n            sep_ij = Or(\n                s[pj] >= s[pi] + dur[pi] + tij,\n                s[pi] >= s[pj] + dur[pj] + tji\n            )\n            opt.add(If(And(meet[pi], meet[pj]), sep_ij, True))\n\n    # Objective: maximize number of friends met\n    total_met = Sum([If(meet[p], 1, 0) for p in people])\n    opt.maximize(total_met)\n\n    # Secondary objective: minimize makespan (latest end among selected meetings)\n    makespan = Int(\"makespan\")\n    opt.add(makespan >= 0)\n    for p in people:\n        opt.add(makespan >= end_eff[p])\n    opt.minimize(makespan)\n\n    # Solve\n    res = opt.check()\n    if res != sat:\n        print(json.dumps({\"itinerary\": []}, indent=2))\n        return\n\n    model = opt.model()\n\n    itinerary = []\n    for person in people:\n        if is_true(model.evaluate(meet[person], model_completion=True)):\n            start_t = model.evaluate(s[person]).as_long()\n            end_t = model.evaluate(s[person] + dur[person]).as_long()\n            itinerary.append({\n                \"action\": \"meet\",\n                \"location\": friends[person][\"location\"],\n                \"person\": person,\n                \"start_time\": fmt_time(start_t),\n                \"end_time\": fmt_time(end_t),\n            })\n\n    # Sort by start time\n    def to_minutes(tstr):\n        hh, mm = tstr.split(\":\")\n        return int(hh) * 60 + int(mm)\n\n    itinerary.sort(key=lambda x: to_minutes(x[\"start_time\"]))\n\n    print(json.dumps({\"itinerary\": itinerary}, indent=2))\n\nif __name__ == \"__main__\":\n    main()"
+}

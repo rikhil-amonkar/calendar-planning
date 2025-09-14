@@ -1,0 +1,141 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\"itinerary\": [{\"action\": \"meet\", \"location\": \"Nob Hill\", \"person\": \"Nancy\", \"start_time\": \"9:16\", \"end_time\": \"10:46\"}, {\"action\": \"meet\", \"location\": \"Haight-Ashbury\", \"person\": \"Stephanie\", \"start_time\": \"10:59\", \"end_time\": \"12:14\"}, {\"action\": \"meet\", \"location\": \"Union Square\", \"person\": \"Elizabeth\", \"start_time\": \"12:33\", \"end_time\": \"13:33\"}, {\"action\": \"meet\", \"location\": \"Financial District\", \"person\": \"Robert\", \"start_time\": \"13:42\", \"end_time\": \"14:27\"}, {\"action\": \"meet\", \"location\": \"Richmond District\", \"person\": \"Melissa\", \"start_time\": \"14:48\", \"end_time\": \"15:18\"}, {\"action\": \"meet\", \"location\": \"Presidio\", \"person\": \"James\", \"start_time\": \"15:25\", \"end_time\": \"17:25\"}, {\"action\": \"meet\", \"location\": \"Golden Gate Park\", \"person\": \"Sarah\", \"start_time\": \"17:37\", \"end_time\": \"18:52\"}, {\"action\": \"meet\", \"location\": \"North Beach\", \"person\": \"Steven\", \"start_time\": \"19:15\", \"end_time\": \"19:30\"}]}",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Nob Hill",
+                "person": "Nancy",
+                "start_time": "9:16",
+                "end_time": "10:46"
+            },
+            {
+                "action": "meet",
+                "location": "Haight-Ashbury",
+                "person": "Stephanie",
+                "start_time": "10:59",
+                "end_time": "12:14"
+            },
+            {
+                "action": "meet",
+                "location": "Union Square",
+                "person": "Elizabeth",
+                "start_time": "12:33",
+                "end_time": "13:33"
+            },
+            {
+                "action": "meet",
+                "location": "Financial District",
+                "person": "Robert",
+                "start_time": "13:42",
+                "end_time": "14:27"
+            },
+            {
+                "action": "meet",
+                "location": "Richmond District",
+                "person": "Melissa",
+                "start_time": "14:48",
+                "end_time": "15:18"
+            },
+            {
+                "action": "meet",
+                "location": "Presidio",
+                "person": "James",
+                "start_time": "15:25",
+                "end_time": "17:25"
+            },
+            {
+                "action": "meet",
+                "location": "Golden Gate Park",
+                "person": "Sarah",
+                "start_time": "17:37",
+                "end_time": "18:52"
+            },
+            {
+                "action": "meet",
+                "location": "North Beach",
+                "person": "Steven",
+                "start_time": "19:15",
+                "end_time": "19:30"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Nob Hill",
+                "person": "Nancy",
+                "start_time": "9:16",
+                "end_time": "10:46"
+            },
+            {
+                "action": "meet",
+                "location": "Haight-Ashbury",
+                "person": "Stephanie",
+                "start_time": "10:59",
+                "end_time": "12:14"
+            },
+            {
+                "action": "meet",
+                "location": "Union Square",
+                "person": "Elizabeth",
+                "start_time": "12:33",
+                "end_time": "13:33"
+            },
+            {
+                "action": "meet",
+                "location": "Financial District",
+                "person": "Robert",
+                "start_time": "13:42",
+                "end_time": "14:27"
+            },
+            {
+                "action": "meet",
+                "location": "Richmond District",
+                "person": "Melissa",
+                "start_time": "14:48",
+                "end_time": "15:18"
+            },
+            {
+                "action": "meet",
+                "location": "Presidio",
+                "person": "James",
+                "start_time": "15:25",
+                "end_time": "17:25"
+            },
+            {
+                "action": "meet",
+                "location": "Golden Gate Park",
+                "person": "Sarah",
+                "start_time": "17:37",
+                "end_time": "18:52"
+            },
+            {
+                "action": "meet",
+                "location": "North Beach",
+                "person": "Steven",
+                "start_time": "19:15",
+                "end_time": "19:30"
+            }
+        ]
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 78.35435342788696,
+        "execution_time": 0.10953545570373535,
+        "constraint_eval_time": 8.034706115722656e-05,
+        "pred_extract_time": 3.4721386432647705,
+        "gold_extract_time": 0.00010156631469726562,
+        "total_tokens": 8011,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import json\nfrom z3 import *\n\ndef minutes_to_str(m):\n    h = m // 60\n    mm = m % 60\n    return f\"{h}:{mm:02d}\"\n\ndef main():\n    # Time horizon\n    START_DAY = 9 * 60  # 9:00 -> 540\n    END_DAY = 21 * 60   # 21:00 -> 1260\n\n    # Locations\n    locs = [\n        \"The Castro\", \"North Beach\", \"Golden Gate Park\", \"Embarcadero\",\n        \"Haight-Ashbury\", \"Richmond District\", \"Nob Hill\", \"Marina District\",\n        \"Presidio\", \"Union Square\", \"Financial District\"\n    ]\n\n    # Travel times (minutes)\n    T = {\n        \"The Castro\": {\n            \"North Beach\": 20, \"Golden Gate Park\": 11, \"Embarcadero\": 22, \"Haight-Ashbury\": 6,\n            \"Richmond District\": 16, \"Nob Hill\": 16, \"Marina District\": 21, \"Presidio\": 20,\n            \"Union Square\": 19, \"Financial District\": 21\n        },\n        \"North Beach\": {\n            \"The Castro\": 23, \"Golden Gate Park\": 22, \"Embarcadero\": 6, \"Haight-Ashbury\": 18,\n            \"Richmond District\": 18, \"Nob Hill\": 7, \"Marina District\": 9, \"Presidio\": 17,\n            \"Union Square\": 7, \"Financial District\": 8\n        },\n        \"Golden Gate Park\": {\n            \"The Castro\": 13, \"North Beach\": 23, \"Embarcadero\": 25, \"Haight-Ashbury\": 7,\n            \"Richmond District\": 7, \"Nob Hill\": 20, \"Marina District\": 16, \"Presidio\": 11,\n            \"Union Square\": 22, \"Financial District\": 26\n        },\n        \"Embarcadero\": {\n            \"The Castro\": 25, \"North Beach\": 5, \"Golden Gate Park\": 25, \"Haight-Ashbury\": 21,\n            \"Richmond District\": 21, \"Nob Hill\": 10, \"Marina District\": 12, \"Presidio\": 20,\n            \"Union Square\": 10, \"Financial District\": 5\n        },\n        \"Haight-Ashbury\": {\n            \"The Castro\": 6, \"North Beach\": 19, \"Golden Gate Park\": 7, \"Embarcadero\": 20,\n            \"Richmond District\": 10, \"Nob Hill\": 15, \"Marina District\": 17, \"Presidio\": 15,\n            \"Union Square\": 19, \"Financial District\": 21\n        },\n        \"Richmond District\": {\n            \"The Castro\": 16, \"North Beach\": 17, \"Golden Gate Park\": 9, \"Embarcadero\": 19,\n            \"Haight-Ashbury\": 10, \"Nob Hill\": 17, \"Marina District\": 9, \"Presidio\": 7,\n            \"Union Square\": 21, \"Financial District\": 22\n        },\n        \"Nob Hill\": {\n            \"The Castro\": 17, \"North Beach\": 8, \"Golden Gate Park\": 17, \"Embarcadero\": 9,\n            \"Haight-Ashbury\": 13, \"Richmond District\": 14, \"Marina District\": 11, \"Presidio\": 17,\n            \"Union Square\": 7, \"Financial District\": 9\n        },\n        \"Marina District\": {\n            \"The Castro\": 22, \"North Beach\": 11, \"Golden Gate Park\": 18, \"Embarcadero\": 14,\n            \"Haight-Ashbury\": 16, \"Richmond District\": 11, \"Nob Hill\": 12, \"Presidio\": 10,\n            \"Union Square\": 16, \"Financial District\": 17\n        },\n        \"Presidio\": {\n            \"The Castro\": 21, \"North Beach\": 18, \"Golden Gate Park\": 12, \"Embarcadero\": 20,\n            \"Haight-Ashbury\": 15, \"Richmond District\": 7, \"Nob Hill\": 18, \"Marina District\": 11,\n            \"Union Square\": 22, \"Financial District\": 23\n        },\n        \"Union Square\": {\n            \"The Castro\": 17, \"North Beach\": 10, \"Golden Gate Park\": 22, \"Embarcadero\": 11,\n            \"Haight-Ashbury\": 18, \"Richmond District\": 20, \"Nob Hill\": 9, \"Marina District\": 18,\n            \"Presidio\": 24, \"Financial District\": 9\n        },\n        \"Financial District\": {\n            \"The Castro\": 20, \"North Beach\": 7, \"Golden Gate Park\": 23, \"Embarcadero\": 4,\n            \"Haight-Ashbury\": 19, \"Richmond District\": 21, \"Nob Hill\": 8, \"Marina District\": 15,\n            \"Presidio\": 22, \"Union Square\": 9\n        }\n    }\n    # Ensure self-travel is zero\n    for a in locs:\n        if a not in T:\n            T[a] = {}\n        T[a][a] = 0\n\n    def travel(a, b):\n        return T[a][b]\n\n    # People, locations, availability windows (in minutes), and minimum meet durations\n    people = [\n        dict(person=\"Steven\", location=\"North Beach\", start=17*60+30, end=20*60+30, min_dur=15),\n        dict(person=\"Sarah\", location=\"Golden Gate Park\", start=17*60, end=19*60+15, min_dur=75),\n        dict(person=\"Brian\", location=\"Embarcadero\", start=14*60+15, end=16*60, min_dur=105),\n        dict(person=\"Stephanie\", location=\"Haight-Ashbury\", start=10*60+15, end=12*60+15, min_dur=75),\n        dict(person=\"Melissa\", location=\"Richmond District\", start=14*60, end=19*60+30, min_dur=30),\n        dict(person=\"Nancy\", location=\"Nob Hill\", start=8*60+15, end=12*60+45, min_dur=90),\n        dict(person=\"David\", location=\"Marina District\", start=11*60+15, end=13*60+15, min_dur=120),\n        dict(person=\"James\", location=\"Presidio\", start=15*60, end=18*60+15, min_dur=120),\n        dict(person=\"Elizabeth\", location=\"Union Square\", start=11*60+30, end=21*60, min_dur=60),\n        dict(person=\"Robert\", location=\"Financial District\", start=13*60+15, end=15*60+15, min_dur=45),\n    ]\n\n    n = len(people)\n    names = [p[\"person\"] for p in people]\n\n    # Z3 variables\n    meet = {p[\"person\"]: Bool(f\"meet_{p['person']}\") for p in people}\n    s = {p[\"person\"]: Int(f\"s_{p['person']}\") for p in people}\n    e = {p[\"person\"]: Int(f\"e_{p['person']}\") for p in people}\n\n    # Pairwise order variables\n    order = {}\n    for i in range(n):\n        for j in range(i+1, n):\n            key = (people[i][\"person\"], people[j][\"person\"])\n            order[key] = Bool(f\"order_{people[i]['person']}_before_{people[j]['person']}\")\n\n    opt = Optimize()\n\n    # Constraints per person\n    for p in people:\n        name = p[\"person\"]\n        loc = p[\"location\"]\n        avail_start = p[\"start\"]\n        avail_end = p[\"end\"]\n        min_dur = p[\"min_dur\"]\n\n        # If meeting, start within availability and horizon, fixed duration = min_dur\n        opt.add(Implies(meet[name], And(\n            s[name] >= avail_start,\n            s[name] >= START_DAY + travel(\"The Castro\", loc),\n            e[name] == s[name] + min_dur,\n            e[name] <= avail_end,\n            s[name] >= START_DAY,\n            e[name] <= END_DAY\n        )))\n        # If not meeting, set times to 0\n        opt.add(Implies(Not(meet[name]), And(s[name] == 0, e[name] == 0)))\n\n    # Disjunctive travel-time constraints between meetings\n    for i in range(n):\n        for j in range(i+1, n):\n            pi = people[i]\n            pj = people[j]\n            ni, nj = pi[\"person\"], pj[\"person\"]\n            li, lj = pi[\"location\"], pj[\"location\"]\n            tij = travel(li, lj)\n            tji = travel(lj, li)\n            oij = order[(ni, nj)]\n            # If both meetings occur and i before j\n            opt.add(Implies(And(meet[ni], meet[nj], oij), s[nj] >= e[ni] + tij))\n            # If both meetings occur and j before i\n            opt.add(Implies(And(meet[ni], meet[nj], Not(oij)), s[ni] >= e[nj] + tji))\n\n    # Objective: maximize number of meetings\n    total_meetings = Sum([If(meet[p[\"person\"]], 1, 0) for p in people])\n    opt.maximize(total_meetings)\n\n    # Secondary (tie-breaker): minimize latest end time among held meetings\n    latest_end = Int(\"latest_end\")\n    opt.add(latest_end >= START_DAY)\n    for p in people:\n        name = p[\"person\"]\n        opt.add(Implies(meet[name], latest_end >= e[name]))\n    opt.minimize(latest_end)\n\n    # Solve\n    if opt.check() != sat:\n        print(json.dumps({\"itinerary\": []}))\n        return\n\n    m = opt.model()\n\n    # Build itinerary\n    itinerary = []\n    for p in people:\n        name = p[\"person\"]\n        loc = p[\"location\"]\n        if is_true(m[meet[name]]):\n            start = m[s[name]].as_long()\n            end = m[e[name]].as_long()\n            itinerary.append({\n                \"action\": \"meet\",\n                \"location\": loc,\n                \"person\": name,\n                \"start_time\": minutes_to_str(start),\n                \"end_time\": minutes_to_str(end)\n            })\n\n    # Sort by start time\n    itinerary.sort(key=lambda x: (int(x[\"start_time\"].split(\":\")[0]) * 60 + int(x[\"start_time\"].split(\":\")[1])))\n\n    print(json.dumps({\"itinerary\": itinerary}, ensure_ascii=False))\n\nif __name__ == \"__main__\":\n    main()"
+}

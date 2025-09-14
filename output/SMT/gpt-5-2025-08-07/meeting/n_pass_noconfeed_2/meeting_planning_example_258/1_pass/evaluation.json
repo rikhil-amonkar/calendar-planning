@@ -1,0 +1,73 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\"itinerary\": [{\"action\": \"meet\", \"location\": \"Fisherman's Wharf\", \"person\": \"Barbara\", \"start_time\": \"9:15\", \"end_time\": \"12:42\"}, {\"action\": \"meet\", \"location\": \"Richmond District\", \"person\": \"David\", \"start_time\": \"13:00\", \"end_time\": \"14:30\"}, {\"action\": \"meet\", \"location\": \"Presidio\", \"person\": \"Betty\", \"start_time\": \"14:37\", \"end_time\": \"21:30\"}]}",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Fisherman's Wharf",
+                "person": "Barbara",
+                "start_time": "9:15",
+                "end_time": "12:42"
+            },
+            {
+                "action": "meet",
+                "location": "Richmond District",
+                "person": "David",
+                "start_time": "13:00",
+                "end_time": "14:30"
+            },
+            {
+                "action": "meet",
+                "location": "Presidio",
+                "person": "Betty",
+                "start_time": "14:37",
+                "end_time": "21:30"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Presidio",
+                "person": "Betty",
+                "start_time": "10:15",
+                "end_time": "11:00"
+            },
+            {
+                "action": "meet",
+                "location": "Richmond District",
+                "person": "David",
+                "start_time": "13:00",
+                "end_time": "14:30"
+            },
+            {
+                "action": "meet",
+                "location": "Fisherman's Wharf",
+                "person": "Barbara",
+                "start_time": "14:48",
+                "end_time": "16:48"
+            }
+        ]
+    },
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "constraints_satisfied_but_no_exact_match": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 202.82866716384888,
+        "execution_time": 0.1119236946105957,
+        "constraint_eval_time": 0.00023412704467773438,
+        "pred_extract_time": 2.177842855453491,
+        "gold_extract_time": 5.14984130859375e-05,
+        "total_tokens": 4848,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "\"\"\"SOLUTION:\"\"\"\nimport json\nimport itertools\nfrom z3 import Optimize, Int, Sum, If, sat\n\ndef minutes(h, m):\n    return h * 60 + m\n\ndef m2str(m):\n    h = m // 60\n    mm = m % 60\n    return f\"{h}:{mm:02d}\"\n\ndef solve_order(order, people, travel, start_location, start_time):\n    k = len(order)\n    opt = Optimize()\n    starts = [Int(f\"start_{i}\") for i in range(k)]\n    ends = [Int(f\"end_{i}\") for i in range(k)]\n\n    for i in range(k):\n        p = people[order[i]]\n        opt.add(starts[i] >= 0, ends[i] >= 0)\n        # Meeting within availability\n        opt.add(starts[i] >= p['start'])\n        opt.add(ends[i] <= p['end'])\n        opt.add(ends[i] - starts[i] >= p['min'])\n\n    # Travel and initial arrival constraints\n    waits = []\n    if k > 0:\n        first_loc = people[order[0]]['location']\n        initial_arrival = start_time + travel[start_location][first_loc]\n        opt.add(starts[0] >= initial_arrival)\n        # Waiting before first meeting\n        max0 = max(initial_arrival, people[order[0]]['start'])\n        waits.append(starts[0] - max0)\n\n    for i in range(k - 1):\n        loc_i = people[order[i]]['location']\n        loc_j = people[order[i + 1]]['location']\n        travel_ij = travel[loc_i][loc_j]\n        # Next meeting cannot start before travel completion and next availability\n        # start_{i+1} >= end_i + travel_ij\n        opt.add(starts[i + 1] >= ends[i] + travel_ij)\n        # Waiting between meetings:\n        # wait = start_{i+1} - max(end_i + travel_ij, avail_start_{i+1})\n        next_avail = people[order[i + 1]]['start']\n        waits.append(starts[i + 1] - If(ends[i] + travel_ij >= next_avail, ends[i] + travel_ij, next_avail))\n\n    # Objective: maximize total meeting time, then minimize total waiting time\n    total_meeting = Sum([ends[i] - starts[i] for i in range(k)]) if k > 0 else Int(\"zero_meeting\")\n    if k == 0:\n        opt.add(total_meeting == 0)\n    total_wait = Sum(waits) if waits else Int(\"zero_wait\")\n    if not waits:\n        opt.add(total_wait == 0)\n\n    opt.maximize(total_meeting)\n    opt.minimize(total_wait)\n\n    if opt.check() != sat:\n        return None\n\n    model = opt.model()\n    itinerary = []\n    for i in range(k):\n        p = people[order[i]]\n        s = model.eval(starts[i]).as_long()\n        e = model.eval(ends[i]).as_long()\n        itinerary.append({\n            \"action\": \"meet\",\n            \"location\": p['location'],\n            \"person\": p['name'],\n            \"start_time\": m2str(s),\n            \"end_time\": m2str(e)\n        })\n    sum_dur = sum([model.eval(ends[i]).as_long() - model.eval(starts[i]).as_long() for i in range(k)]) if k > 0 else 0\n    last_end = model.eval(ends[-1]).as_long() if k > 0 else start_time\n    return {\"itinerary\": itinerary, \"sum_dur\": sum_dur, \"last_end\": last_end, \"count\": k}\n\ndef main():\n    # Locations and directed travel times (in minutes)\n    travel = {\n        \"Embarcadero\": {\n            \"Presidio\": 20,\n            \"Richmond District\": 21,\n            \"Fisherman's Wharf\": 6\n        },\n        \"Presidio\": {\n            \"Embarcadero\": 20,\n            \"Richmond District\": 7,\n            \"Fisherman's Wharf\": 19\n        },\n        \"Richmond District\": {\n            \"Embarcadero\": 19,\n            \"Presidio\": 7,\n            \"Fisherman's Wharf\": 18\n        },\n        \"Fisherman's Wharf\": {\n            \"Embarcadero\": 8,\n            \"Presidio\": 17,\n            \"Richmond District\": 18\n        }\n    }\n\n    # People with availability and minimum meeting durations\n    people = [\n        {\n            \"name\": \"Betty\",\n            \"location\": \"Presidio\",\n            \"start\": minutes(10, 15),\n            \"end\": minutes(21, 30),\n            \"min\": 45\n        },\n        {\n            \"name\": \"David\",\n            \"location\": \"Richmond District\",\n            \"start\": minutes(13, 0),\n            \"end\": minutes(20, 15),\n            \"min\": 90\n        },\n        {\n            \"name\": \"Barbara\",\n            \"location\": \"Fisherman's Wharf\",\n            \"start\": minutes(9, 15),\n            \"end\": minutes(20, 15),\n            \"min\": 120\n        }\n    ]\n\n    start_location = \"Embarcadero\"\n    start_time = minutes(9, 0)\n\n    best = None\n    best_metrics = None\n\n    indices = list(range(len(people)))\n    for r in range(1, len(people) + 1):\n        for perm in itertools.permutations(indices, r):\n            res = solve_order(perm, people, travel, start_location, start_time)\n            if res is None:\n                continue\n            metrics = (res[\"count\"], res[\"sum_dur\"], -res[\"last_end\"])\n            if best is None or metrics > best_metrics:\n                best = res\n                best_metrics = metrics\n\n    output = {\"itinerary\": []}\n    if best is not None:\n        output[\"itinerary\"] = best[\"itinerary\"]\n\n    print(json.dumps(output, ensure_ascii=False))\n\nif __name__ == \"__main__\":\n    main()"
+}

@@ -1,0 +1,87 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\"itinerary\": [{\"action\": \"meet\", \"location\": \"Russian Hill\", \"person\": \"Joseph\", \"start_time\": \"9:23\", \"end_time\": \"13:17\"}, {\"action\": \"meet\", \"location\": \"Financial District\", \"person\": \"Jeffrey\", \"start_time\": \"13:28\", \"end_time\": \"14:13\"}, {\"action\": \"meet\", \"location\": \"Alamo Square\", \"person\": \"Nancy\", \"start_time\": \"14:30\", \"end_time\": \"16:00\"}, {\"action\": \"meet\", \"location\": \"North Beach\", \"person\": \"Jason\", \"start_time\": \"16:45\", \"end_time\": \"21:45\"}]}",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Russian Hill",
+                "person": "Joseph",
+                "start_time": "9:23",
+                "end_time": "13:17"
+            },
+            {
+                "action": "meet",
+                "location": "Financial District",
+                "person": "Jeffrey",
+                "start_time": "13:28",
+                "end_time": "14:13"
+            },
+            {
+                "action": "meet",
+                "location": "Alamo Square",
+                "person": "Nancy",
+                "start_time": "14:30",
+                "end_time": "16:00"
+            },
+            {
+                "action": "meet",
+                "location": "North Beach",
+                "person": "Jason",
+                "start_time": "16:45",
+                "end_time": "21:45"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Russian Hill",
+                "person": "Joseph",
+                "start_time": "9:23",
+                "end_time": "10:23"
+            },
+            {
+                "action": "meet",
+                "location": "Alamo Square",
+                "person": "Nancy",
+                "start_time": "11:00",
+                "end_time": "12:30"
+            },
+            {
+                "action": "meet",
+                "location": "Financial District",
+                "person": "Jeffrey",
+                "start_time": "12:47",
+                "end_time": "13:32"
+            },
+            {
+                "action": "meet",
+                "location": "North Beach",
+                "person": "Jason",
+                "start_time": "16:45",
+                "end_time": "17:00"
+            }
+        ]
+    },
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "constraints_satisfied_but_no_exact_match": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 87.11507368087769,
+        "execution_time": 0.09930777549743652,
+        "constraint_eval_time": 0.00031948089599609375,
+        "pred_extract_time": 2.144998550415039,
+        "gold_extract_time": 7.43865966796875e-05,
+        "total_tokens": 6256,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import json\nfrom z3 import Optimize, Int, Bool, And, Or, If, Xor, Sum, Implies, sat\n\ndef minutes(h, m):\n    return h * 60 + m\n\ndef fmt_time(t):\n    h = t // 60\n    m = t % 60\n    return f\"{h}:{m:02d}\"\n\ndef main():\n    # Locations\n    Bayview = \"Bayview\"\n    RussianHill = \"Russian Hill\"\n    AlamoSquare = \"Alamo Square\"\n    NorthBeach = \"North Beach\"\n    FinancialDistrict = \"Financial District\"\n\n    # Travel times (minutes)\n    travel = {\n        Bayview: {\n            RussianHill: 23,\n            AlamoSquare: 16,\n            NorthBeach: 21,\n            FinancialDistrict: 19,\n        },\n        RussianHill: {\n            Bayview: 23,\n            AlamoSquare: 15,\n            NorthBeach: 5,\n            FinancialDistrict: 11,\n        },\n        AlamoSquare: {\n            Bayview: 16,\n            RussianHill: 13,\n            NorthBeach: 15,\n            FinancialDistrict: 17,\n        },\n        NorthBeach: {\n            Bayview: 22,\n            RussianHill: 4,\n            AlamoSquare: 16,\n            FinancialDistrict: 8,\n        },\n        FinancialDistrict: {\n            Bayview: 19,\n            RussianHill: 10,\n            AlamoSquare: 17,\n            NorthBeach: 7,\n        },\n    }\n\n    def ttime(a, b):\n        if a == b:\n            return 0\n        return travel[a][b]\n\n    # People constraints\n    people = {\n        \"Joseph\": {\n            \"location\": RussianHill,\n            \"avail_start\": minutes(8, 30),   # 8:30\n            \"avail_end\": minutes(19, 15),    # 19:15\n            \"min_duration\": 60,\n        },\n        \"Nancy\": {\n            \"location\": AlamoSquare,\n            \"avail_start\": minutes(11, 0),   # 11:00\n            \"avail_end\": minutes(16, 0),     # 16:00\n            \"min_duration\": 90,\n        },\n        \"Jason\": {\n            \"location\": NorthBeach,\n            \"avail_start\": minutes(16, 45),  # 16:45\n            \"avail_end\": minutes(21, 45),    # 21:45\n            \"min_duration\": 15,\n        },\n        \"Jeffrey\": {\n            \"location\": FinancialDistrict,\n            \"avail_start\": minutes(10, 30),  # 10:30\n            \"avail_end\": minutes(15, 45),    # 15:45\n            \"min_duration\": 45,\n        },\n    }\n\n    # Day start\n    day_start = minutes(9, 0)  # 9:00 at Bayview\n    day_end_bound = minutes(24, 0)  # Bound horizon\n\n    # Z3 variables\n    s = Optimize()\n    start_vars = {}\n    end_vars = {}\n    attend_vars = {}\n    before = {}  # before[p][q] means p before q (if both attended)\n\n    # Create variables\n    for p in people:\n        sp = Int(p.replace(\" \", \"_\") + \"_start\")\n        ep = Int(p.replace(\" \", \"_\") + \"_end\")\n        ap = Bool(p.replace(\" \", \"_\") + \"_attend\")\n        start_vars[p] = sp\n        end_vars[p] = ep\n        attend_vars[p] = ap\n        s.add(sp >= 0, sp <= day_end_bound)\n        s.add(ep >= 0, ep <= day_end_bound)\n        s.add(ep >= sp)\n\n    # Attendance constraints, availability, durations, start bounds from Bayview\n    for p, info in people.items():\n        sp = start_vars[p]\n        ep = end_vars[p]\n        ap = attend_vars[p]\n        loc = info[\"location\"]\n        avail_s = info[\"avail_start\"]\n        avail_e = info[\"avail_end\"]\n        min_d = info[\"min_duration\"]\n\n        # If attending, stay within availability and satisfy duration\n        s.add(Implies(ap, And(\n            sp >= avail_s,\n            ep <= avail_e,\n            ep - sp >= min_d,\n            sp >= day_start + ttime(Bayview, loc)  # can always wait after arriving\n        )))\n        # If not attending, times are zero (to avoid irrelevant values)\n        s.add(Implies(~ap, And(sp == 0, ep == 0)))\n\n    # Pairwise ordering and travel time constraints\n    persons = list(people.keys())\n    for i in range(len(persons)):\n        p = persons[i]\n        before[p] = {}\n        for j in range(len(persons)):\n            if i == j:\n                continue\n            q = persons[j]\n            bvar = Bool(p.replace(\" \", \"_\") + \"_before_\" + q.replace(\" \", \"_\"))\n            before[p][q] = bvar\n\n    for i in range(len(persons)):\n        for j in range(i + 1, len(persons)):\n            p = persons[i]\n            q = persons[j]\n            ap = attend_vars[p]\n            aq = attend_vars[q]\n            bpq = before[p][q]\n            bqp = before[q][p]\n            sp = start_vars[p]\n            ep = end_vars[p]\n            sq = start_vars[q]\n            eq = end_vars[q]\n            lp = people[p][\"location\"]\n            lq = people[q][\"location\"]\n\n            # If both attended, one must be before the other (no overlap) and enforce travel times\n            s.add(Implies(And(ap, aq), Xor(bpq, bqp)))\n            s.add(Implies(And(ap, aq, bpq), ep + ttime(lp, lq) <= sq))\n            s.add(Implies(And(ap, aq, bqp), eq + ttime(lq, lp) <= sp))\n\n    # Objectives:\n    # 1) Maximize number of friends met\n    num_met = Sum([If(attend_vars[p], 1, 0) for p in persons])\n    s.maximize(num_met)\n\n    # 2) Maximize total meeting time\n    total_meet_time = Sum([If(attend_vars[p], end_vars[p] - start_vars[p], 0) for p in persons])\n    s.maximize(total_meet_time)\n\n    # 3) Minimize end of day (latest meeting end)\n    last_end = Int(\"last_end\")\n    s.add(last_end >= 0)\n    for p in persons:\n        s.add(last_end >= end_vars[p])\n    s.minimize(last_end)\n\n    # Solve\n    if s.check() != sat:\n        output = {\"itinerary\": []}\n        print(json.dumps(output))\n        return\n\n    m = s.model()\n\n    # Build itinerary sorted by start time\n    entries = []\n    for p in persons:\n        if m.eval(attend_vars[p], model_completion=True):\n            st = m.eval(start_vars[p], model_completion=True).as_long()\n            et = m.eval(end_vars[p], model_completion=True).as_long()\n            entries.append({\n                \"action\": \"meet\",\n                \"location\": people[p][\"location\"],\n                \"person\": p,\n                \"start_time\": fmt_time(st),\n                \"end_time\": fmt_time(et),\n            })\n\n    # Sort by start_time (convert back to minutes for sorting)\n    def time_to_minutes(tstr):\n        h, mnt = tstr.split(\":\")\n        return int(h) * 60 + int(mnt)\n\n    entries.sort(key=lambda e: time_to_minutes(e[\"start_time\"]))\n\n    output = {\"itinerary\": entries}\n    print(json.dumps(output))\n\nif __name__ == \"__main__\":\n    main()"
+}

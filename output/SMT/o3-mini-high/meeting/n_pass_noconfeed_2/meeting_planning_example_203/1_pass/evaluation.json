@@ -1,0 +1,73 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"itinerary\": [\n    {\n      \"action\": \"meet\",\n      \"location\": \"Pacific Heights\",\n      \"person\": \"Timothy\",\n      \"start_time\": \"10:10\",\n      \"end_time\": \"11:25\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Fisherman's Wharf\",\n      \"person\": \"David\",\n      \"start_time\": \"11:38\",\n      \"end_time\": \"11:53\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Mission District\",\n      \"person\": \"Robert\",\n      \"start_time\": \"12:15\",\n      \"end_time\": \"13:45\"\n    }\n  ]\n}",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Pacific Heights",
+                "person": "Timothy",
+                "start_time": "10:10",
+                "end_time": "11:25"
+            },
+            {
+                "action": "meet",
+                "location": "Fisherman's Wharf",
+                "person": "David",
+                "start_time": "11:38",
+                "end_time": "11:53"
+            },
+            {
+                "action": "meet",
+                "location": "Mission District",
+                "person": "Robert",
+                "start_time": "12:15",
+                "end_time": "13:45"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Fisherman's Wharf",
+                "person": "David",
+                "start_time": "10:45",
+                "end_time": "11:00"
+            },
+            {
+                "action": "meet",
+                "location": "Pacific Heights",
+                "person": "Timothy",
+                "start_time": "11:12",
+                "end_time": "12:27"
+            },
+            {
+                "action": "meet",
+                "location": "Mission District",
+                "person": "Robert",
+                "start_time": "12:42",
+                "end_time": "14:12"
+            }
+        ]
+    },
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "constraints_satisfied_but_no_exact_match": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 97.92201161384583,
+        "execution_time": 0.0809175968170166,
+        "constraint_eval_time": 0.00020575523376464844,
+        "pred_extract_time": 1.3183696269989014,
+        "gold_extract_time": 4.0531158447265625e-05,
+        "total_tokens": 4829,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import json\nfrom z3 import Optimize, Int, And, Distinct, Implies, sat\n\ndef main():\n    # Create an optimizer instance\n    opt = Optimize()\n\n    # Meeting start time variables (minutes after 9:00)\n    t_T = Int('t_T')  # Timothy at Pacific Heights\n    t_D = Int('t_D')  # David at Fisherman's Wharf\n    t_R = Int('t_R')  # Robert at Mission District\n\n    # Order variables: 1 for the first meeting, 2 for second, 3 for third.\n    order_T = Int('order_T')\n    order_D = Int('order_D')\n    order_R = Int('order_R')\n\n    # Meeting durations in minutes\n    dur_T = 75  # Timothy\n    dur_D = 15  # David\n    dur_R = 90  # Robert\n\n    # Availability windows (relative to 9:00 AM)\n    # Timothy: available from 9:00 (0) to 15:30 (390); \n    # David: available from 10:45 (105) to 15:30 (390);\n    # Robert: available from 12:15 (195) to 19:45 (645).\n    opt.add(t_T >= 0, t_T + dur_T <= 390)\n    opt.add(t_D >= 105, t_D + dur_D <= 390)\n    opt.add(t_R >= 195, t_R + dur_R <= 645)\n\n    # Order variables must be 1, 2, or 3 and all different.\n    opt.add(And(order_T >= 1, order_T <= 3))\n    opt.add(And(order_D >= 1, order_D <= 3))\n    opt.add(And(order_R >= 1, order_R <= 3))\n    opt.add(Distinct(order_T, order_D, order_R))\n\n    # Travel times from the starting point (Financial District) in minutes:\n    # FD -> Pacific Heights = 13, FD -> Fisherman's Wharf = 10, FD -> Mission District = 17.\n    # If a meeting is the first one (order == 1) then arrival cannot occur before travel time.\n    opt.add(Implies(order_T == 1, t_T >= 13))\n    opt.add(Implies(order_D == 1, t_D >= 10))\n    opt.add(Implies(order_R == 1, t_R >= 17))\n\n    # Travel times between meeting locations:\n    # Pacific Heights to Fisherman's Wharf = 13;   Fisherman's Wharf to Pacific Heights = 13.\n    # Pacific Heights to Mission District = 15;      Mission District to Pacific Heights = 16.\n    # Fisherman's Wharf to Mission District = 22;     Mission District to Fisherman's Wharf = 22.\n    #\n    # Ordering constraints: If meeting f comes before meeting g then:\n    # (start_f + duration_f + travel_time(f, g)) <= start_g.\n    #\n    # Timothy (Pacific Heights) and David (Fisherman's Wharf)\n    opt.add(Implies(order_T < order_D, t_T + dur_T + 13 <= t_D))\n    opt.add(Implies(order_D < order_T, t_D + dur_D + 13 <= t_T))\n    # Timothy (Pacific Heights) and Robert (Mission District)\n    opt.add(Implies(order_T < order_R, t_T + dur_T + 15 <= t_R))\n    opt.add(Implies(order_R < order_T, t_R + dur_R + 16 <= t_T))\n    # David (Fisherman's Wharf) and Robert (Mission District)\n    opt.add(Implies(order_D < order_R, t_D + dur_D + 22 <= t_R))\n    opt.add(Implies(order_R < order_D, t_R + dur_R + 22 <= t_D))\n\n    # Define a makespan variable (end time of the last meeting)\n    m = Int('m')\n    opt.add(m >= t_T + dur_T, m >= t_D + dur_D, m >= t_R + dur_R)\n    # Objective: minimize the overall finish time.\n    opt.minimize(m)\n\n    if opt.check() == sat:\n        model = opt.model()\n\n        # Retrieve start times and order values from the model.\n        t_T_val = model[t_T].as_long()\n        t_D_val = model[t_D].as_long()\n        t_R_val = model[t_R].as_long()\n        order_T_val = model[order_T].as_long()\n        order_D_val = model[order_D].as_long()\n        order_R_val = model[order_R].as_long()\n\n        f_T_val = t_T_val + dur_T\n        f_D_val = t_D_val + dur_D\n        f_R_val = t_R_val + dur_R\n\n        # Helper function to convert minutes offset (from 9:00) to 24-hour \"H:MM\" format.\n        def format_time(offset):\n            total_minutes = 9 * 60 + offset\n            hour = total_minutes // 60\n            minute = total_minutes % 60\n            return f\"{hour}:{minute:02d}\"\n\n        # Prepare meeting details.\n        meetings = [\n            {\"order\": order_T_val, \"person\": \"Timothy\", \"location\": \"Pacific Heights\",\n             \"start\": t_T_val, \"end\": f_T_val},\n            {\"order\": order_D_val, \"person\": \"David\", \"location\": \"Fisherman's Wharf\",\n             \"start\": t_D_val, \"end\": f_D_val},\n            {\"order\": order_R_val, \"person\": \"Robert\", \"location\": \"Mission District\",\n             \"start\": t_R_val, \"end\": f_R_val}\n        ]\n        # Sort meetings by their scheduled order.\n        meetings.sort(key=lambda x: x[\"order\"])\n\n        itinerary = []\n        for item in meetings:\n            itinerary.append({\n                \"action\": \"meet\",\n                \"location\": item[\"location\"],\n                \"person\": item[\"person\"],\n                \"start_time\": format_time(item[\"start\"]),\n                \"end_time\": format_time(item[\"end\"])\n            })\n\n        result = {\"itinerary\": itinerary}\n        print(json.dumps(result, indent=2))\n    else:\n        # In case no schedule is feasible, output an empty itinerary.\n        print(json.dumps({\"itinerary\": []}))\n\nif __name__ == \"__main__\":\n    main()"
+}

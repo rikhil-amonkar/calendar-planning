@@ -1,0 +1,59 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\"itinerary\": [{\"action\": \"meet\", \"location\": \"Presidio\", \"person\": \"Jason\", \"start_time\": \"10:00\", \"end_time\": \"15:20\"}, {\"action\": \"meet\", \"location\": \"Marina District\", \"person\": \"Kenneth\", \"start_time\": \"15:30\", \"end_time\": \"16:45\"}]}",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Presidio",
+                "person": "Jason",
+                "start_time": "10:00",
+                "end_time": "15:20"
+            },
+            {
+                "action": "meet",
+                "location": "Marina District",
+                "person": "Kenneth",
+                "start_time": "15:30",
+                "end_time": "16:45"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Presidio",
+                "person": "Jason",
+                "start_time": "10:00",
+                "end_time": "11:30"
+            },
+            {
+                "action": "meet",
+                "location": "Marina District",
+                "person": "Kenneth",
+                "start_time": "15:30",
+                "end_time": "16:15"
+            }
+        ]
+    },
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "constraints_satisfied_but_no_exact_match": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 2,
+    "timing": {
+        "api_call_time": 44.271600008010864,
+        "execution_time": 0.08280754089355469,
+        "constraint_eval_time": 0.00018715858459472656,
+        "pred_extract_time": 1.2327640056610107,
+        "gold_extract_time": 4.482269287109375e-05,
+        "total_tokens": 5442,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import json\nfrom z3 import Optimize, Int, Bool, If, And, Or, Not, Implies, Sum, is_true, sat\n\ndef fmt_time(m):\n    h = m // 60\n    mi = m % 60\n    return f\"{h}:{mi:02d}\"\n\ndef main():\n    # Locations\n    PACIFIC_HEIGHTS = \"Pacific Heights\"\n    PRESIDIO = \"Presidio\"\n    MARINA = \"Marina District\"\n\n    # Travel times (minutes)\n    travel = {\n        (PACIFIC_HEIGHTS, PRESIDIO): 11,\n        (PACIFIC_HEIGHTS, MARINA): 6,\n        (PRESIDIO, PACIFIC_HEIGHTS): 11,\n        (PRESIDIO, MARINA): 10,\n        (MARINA, PACIFIC_HEIGHTS): 7,\n        (MARINA, PRESIDIO): 10,\n    }\n\n    # Arrival\n    arrival_loc = PACIFIC_HEIGHTS\n    arrival_time = 9 * 60  # 9:00\n\n    # Friends and availability (minutes from midnight)\n    # Jason at Presidio 10:00 - 16:15, min 90\n    J_loc = PRESIDIO\n    J_start_avail = 10 * 60\n    J_end_avail = 16 * 60 + 15\n    J_min_dur = 90\n\n    # Kenneth at Marina District 15:30 - 16:45, min 45\n    K_loc = MARINA\n    K_start_avail = 15 * 60 + 30\n    K_end_avail = 16 * 60 + 45\n    K_min_dur = 45\n\n    DAY_END = 24 * 60\n\n    # SMT variables\n    s = Optimize()\n    s.set(priority='lex')\n\n    # Meeting times and selection flags\n    J_start = Int(\"J_start\")\n    J_end = Int(\"J_end\")\n    K_start = Int(\"K_start\")\n    K_end = Int(\"K_end\")\n\n    meet_J = Bool(\"meet_J\")\n    meet_K = Bool(\"meet_K\")\n    J_before_K = Bool(\"J_before_K\")  # relevant only if both meet\n\n    # Domains\n    s.add(J_start >= 0, J_start <= DAY_END, J_end >= 0, J_end <= DAY_END)\n    s.add(K_start >= 0, K_start <= DAY_END, K_end >= 0, K_end <= DAY_END)\n\n    # If not meeting, force zero interval\n    s.add(Implies(Not(meet_J), And(J_start == 0, J_end == 0)))\n    s.add(Implies(Not(meet_K), And(K_start == 0, K_end == 0)))\n\n    # Meeting window and duration constraints\n    s.add(Implies(meet_J, And(\n        J_start >= J_start_avail,\n        J_end <= J_end_avail,\n        J_end - J_start >= J_min_dur,\n        J_end >= J_start\n    )))\n    s.add(Implies(meet_K, And(\n        K_start >= K_start_avail,\n        K_end <= K_end_avail,\n        K_end - K_start >= K_min_dur,\n        K_end >= K_start\n    )))\n\n    # Travel feasibility from arrival\n    s.add(Implies(meet_J, J_start >= arrival_time + travel[(arrival_loc, J_loc)]))\n    s.add(Implies(meet_K, K_start >= arrival_time + travel[(arrival_loc, K_loc)]))\n\n    # If both meetings are scheduled, enforce order with travel times and no overlap\n    s.add(Implies(And(meet_J, meet_K),\n                  Or(\n                      K_start >= J_end + travel[(J_loc, K_loc)],\n                      J_start >= K_end + travel[(K_loc, J_loc)]\n                  )))\n    # Tie order boolean to implications (not strict equivalence to keep flexibility)\n    s.add(Implies(And(meet_J, meet_K, J_before_K), K_start >= J_end + travel[(J_loc, K_loc)]))\n    s.add(Implies(And(meet_J, meet_K, Not(J_before_K)), J_start >= K_end + travel[(K_loc, J_loc)]))\n\n    # Objectives\n    num_met = If(meet_J, 1, 0) + If(meet_K, 1, 0)\n    total_duration = If(meet_J, J_end - J_start, 0) + If(meet_K, K_end - K_start, 0)\n\n    # Idle time (waiting) minimization\n    initial_slack = If(And(meet_J, meet_K, J_before_K),\n                       J_start - (arrival_time + travel[(arrival_loc, J_loc)]),\n                       If(And(meet_J, meet_K, Not(J_before_K)),\n                          K_start - (arrival_time + travel[(arrival_loc, K_loc)]),\n                          If(And(meet_J, Not(meet_K)),\n                             J_start - (arrival_time + travel[(arrival_loc, J_loc)]),\n                             If(And(meet_K, Not(meet_J)),\n                                K_start - (arrival_time + travel[(arrival_loc, K_loc)]),\n                                0))))\n    between_slack = If(And(meet_J, meet_K, J_before_K),\n                       K_start - (J_end + travel[(J_loc, K_loc)]),\n                       If(And(meet_J, meet_K, Not(J_before_K)),\n                          J_start - (K_end + travel[(K_loc, J_loc)]),\n                          0))\n    # Ensure non-negative (should be by constraints)\n    idle_time = If(initial_slack >= 0, initial_slack, 0) + If(between_slack >= 0, between_slack, 0)\n\n    s.maximize(num_met)\n    s.maximize(total_duration)\n    s.minimize(idle_time)\n\n    if s.check() != sat:  # correct satisfiability check\n        output = {\"itinerary\": []}\n        print(json.dumps(output))\n        return\n\n    m = s.model()\n\n    itinerary = []\n\n    if is_true(m.evaluate(meet_J)):\n        js = m.evaluate(J_start).as_long()\n        je = m.evaluate(J_end).as_long()\n        itinerary.append({\n            \"action\": \"meet\",\n            \"location\": J_loc,\n            \"person\": \"Jason\",\n            \"start_time\": fmt_time(js),\n            \"end_time\": fmt_time(je)\n        })\n\n    if is_true(m.evaluate(meet_K)):\n        ks = m.evaluate(K_start).as_long()\n        ke = m.evaluate(K_end).as_long()\n        itinerary.append({\n            \"action\": \"meet\",\n            \"location\": K_loc,\n            \"person\": \"Kenneth\",\n            \"start_time\": fmt_time(ks),\n            \"end_time\": fmt_time(ke)\n        })\n\n    # Sort by start times\n    itinerary.sort(key=lambda x: int(x[\"start_time\"].split(\":\")[0]) * 60 + int(x[\"start_time\"].split(\":\")[1]))\n\n    print(json.dumps({\"itinerary\": itinerary}))\n\nif __name__ == \"__main__\":\n    main()"
+}

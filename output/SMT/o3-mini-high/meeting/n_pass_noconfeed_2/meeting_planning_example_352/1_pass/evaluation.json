@@ -1,0 +1,87 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"itinerary\": [\n    {\n      \"action\": \"meet\",\n      \"location\": \"Chinatown\",\n      \"person\": \"Sandra\",\n      \"start_time\": \"9:07\",\n      \"end_time\": \"10:22\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Marina District\",\n      \"person\": \"Nancy\",\n      \"start_time\": \"11:00\",\n      \"end_time\": \"12:45\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Haight-Ashbury\",\n      \"person\": \"Joseph\",\n      \"start_time\": \"13:01\",\n      \"end_time\": \"14:31\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Nob Hill\",\n      \"person\": \"Karen\",\n      \"start_time\": \"21:15\",\n      \"end_time\": \"21:45\"\n    }\n  ]\n}",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Chinatown",
+                "person": "Sandra",
+                "start_time": "9:07",
+                "end_time": "10:22"
+            },
+            {
+                "action": "meet",
+                "location": "Marina District",
+                "person": "Nancy",
+                "start_time": "11:00",
+                "end_time": "12:45"
+            },
+            {
+                "action": "meet",
+                "location": "Haight-Ashbury",
+                "person": "Joseph",
+                "start_time": "13:01",
+                "end_time": "14:31"
+            },
+            {
+                "action": "meet",
+                "location": "Nob Hill",
+                "person": "Karen",
+                "start_time": "21:15",
+                "end_time": "21:45"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Haight-Ashbury",
+                "person": "Joseph",
+                "start_time": "12:30",
+                "end_time": "14:00"
+            },
+            {
+                "action": "meet",
+                "location": "Chinatown",
+                "person": "Sandra",
+                "start_time": "14:19",
+                "end_time": "15:34"
+            },
+            {
+                "action": "meet",
+                "location": "Marina District",
+                "person": "Nancy",
+                "start_time": "15:46",
+                "end_time": "17:31"
+            },
+            {
+                "action": "meet",
+                "location": "Nob Hill",
+                "person": "Karen",
+                "start_time": "21:15",
+                "end_time": "21:45"
+            }
+        ]
+    },
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "constraints_satisfied_but_no_exact_match": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 117.57368540763855,
+        "execution_time": 0.08681797981262207,
+        "constraint_eval_time": 0.00040030479431152344,
+        "pred_extract_time": 1.676417350769043,
+        "gold_extract_time": 0.0001049041748046875,
+        "total_tokens": 7008,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\nimport json\n\ndef main():\n    # Define meeting parameters (times in minutes from midnight)\n    # 9:00 AM = 540 minutes\n    persons = [\n        {\n            \"name\": \"Karen\",\n            \"location\": \"Nob Hill\",\n            \"avail_start\": 21 * 60 + 15,  # 21:15 -> 1275\n            \"avail_end\": 21 * 60 + 45,    # 21:45 -> 1305\n            \"min_dur\": 30\n        },\n        {\n            \"name\": \"Joseph\",\n            \"location\": \"Haight-Ashbury\",\n            \"avail_start\": 12 * 60 + 30,  # 12:30 -> 750\n            \"avail_end\": 19 * 60 + 45,    # 19:45 -> 1185\n            \"min_dur\": 90\n        },\n        {\n            \"name\": \"Sandra\",\n            \"location\": \"Chinatown\",\n            \"avail_start\": 7 * 60 + 15,   # 7:15 -> 435\n            \"avail_end\": 19 * 60 + 15,    # 19:15 -> 1155\n            \"min_dur\": 75\n        },\n        {\n            \"name\": \"Nancy\",\n            \"location\": \"Marina District\",\n            \"avail_start\": 11 * 60,       # 11:00 -> 660\n            \"avail_end\": 20 * 60 + 15,    # 20:15 -> 1215\n            \"min_dur\": 105\n        }\n    ]\n    \n    # Travel times (in minutes)\n    travel_times = {\n        \"Union Square\": {\n            \"Nob Hill\": 9,\n            \"Haight-Ashbury\": 18,\n            \"Chinatown\": 7,\n            \"Marina District\": 18\n        },\n        \"Nob Hill\": {\n            \"Union Square\": 7,\n            \"Haight-Ashbury\": 13,\n            \"Chinatown\": 6,\n            \"Marina District\": 11\n        },\n        \"Haight-Ashbury\": {\n            \"Union Square\": 17,\n            \"Nob Hill\": 15,\n            \"Chinatown\": 19,\n            \"Marina District\": 17\n        },\n        \"Chinatown\": {\n            \"Union Square\": 7,\n            \"Nob Hill\": 8,\n            \"Haight-Ashbury\": 19,\n            \"Marina District\": 12\n        },\n        \"Marina District\": {\n            \"Union Square\": 16,\n            \"Nob Hill\": 12,\n            \"Haight-Ashbury\": 16,\n            \"Chinatown\": 16\n        }\n    }\n    \n    opt = Optimize()\n    \n    # Create decision variables for each meeting\n    decisions = {}\n    for person in persons:\n        name = person[\"name\"]\n        s = Int('s_' + name)      # start time of the meeting\n        order_var = Int('order_' + name)  # order of the meeting in the itinerary (0 if not attended)\n        attend = Bool('attend_' + name)   # whether to attend this meeting\n        decisions[name] = {\n            \"s\": s,\n            \"order\": order_var,\n            \"attend\": attend,\n            \"location\": person[\"location\"],\n            \"avail_start\": person[\"avail_start\"],\n            \"avail_end\": person[\"avail_end\"],\n            \"min_dur\": person[\"min_dur\"]\n        }\n        # If meeting is attended, its start time must be no earlier than the availability start\n        opt.add(Implies(attend, s >= person[\"avail_start\"]))\n        # Meeting must finish (s + min_dur) by availability end\n        opt.add(Implies(attend, s + person[\"min_dur\"] <= person[\"avail_end\"]))\n        # For attended meetings, order must be between 1 and the total number of meetings; if not attended, order is 0.\n        opt.add(Implies(attend, And(order_var >= 1, order_var <= len(persons))))\n        opt.add(Implies(Not(attend), order_var == 0))\n        # Ensure start times are non-negative.\n        opt.add(s >= 0)\n    \n    # Define overall finish time of the itinerary; it should be at least the end time of any attended meeting.\n    T_last = Int('T_last')\n    opt.add(T_last >= 540)  # cannot be before start of day (9:00 AM)\n    for p in persons:\n        name = p[\"name\"]\n        min_dur = p[\"min_dur\"]\n        opt.add(Implies(decisions[name][\"attend\"], T_last >= decisions[name][\"s\"] + min_dur))\n    \n    names = [p[\"name\"] for p in persons]\n    \n    # Ensure that if two meetings are attended, they have distinct positions in the order.\n    for i in range(len(names)):\n        for j in range(i+1, len(names)):\n            pi = decisions[names[i]]\n            pj = decisions[names[j]]\n            opt.add(Implies(And(pi[\"attend\"], pj[\"attend\"]), pi[\"order\"] != pj[\"order\"]))\n    \n    # For the first meeting in the schedule, incorporate the travel time from Union Square (which is the starting location at 9:00).\n    for name in names:\n        d = decisions[name]\n        travel_from_start = travel_times[\"Union Square\"][d[\"location\"]]\n        opt.add(Implies(And(d[\"attend\"], d[\"order\"] == 1), d[\"s\"] >= 540 + travel_from_start))\n    \n    # For consecutive meetings, enforce that the start time of the later meeting is after the earlier meeting's end time plus travel time.\n    for name_i in names:\n        for name_j in names:\n            if name_i != name_j:\n                d_i = decisions[name_i]\n                d_j = decisions[name_j]\n                t_time = travel_times[d_i[\"location\"]][d_j[\"location\"]]\n                # If meeting j immediately follows meeting i then:\n                opt.add(Implies(And(d_i[\"attend\"], d_j[\"attend\"], d_j[\"order\"] == d_i[\"order\"] + 1),\n                                d_j[\"s\"] >= d_i[\"s\"] + d_i[\"min_dur\"] + t_time))\n    \n    # Enforce ordering consistency: if a meeting is assigned an order > 1, then some meeting must have the (order - 1).\n    for k in range(2, len(persons) + 1):\n        for name in names:\n            d = decisions[name]\n            opt.add(Implies(And(d[\"attend\"], d[\"order\"] == k),\n                            Or([And(decisions[other][\"attend\"], decisions[other][\"order\"] == k - 1)\n                                for other in names if other != name])))\n    \n    # Objective: maximize the number of meetings attended\n    total_meetings = Sum([If(decisions[name][\"attend\"], 1, 0) for name in names])\n    h1 = opt.maximize(total_meetings)\n    # Secondary objective: minimize the finish time of the itinerary (T_last)\n    h2 = opt.minimize(T_last)\n    \n    if opt.check() == sat:\n        model = opt.model()\n        itinerary = []\n        attended_meetings = []\n        for name in names:\n            d = decisions[name]\n            if is_true(model[d[\"attend\"]]):\n                order_val = model[d[\"order\"]].as_long()\n                start_time = model[d[\"s\"]].as_long()\n                end_time = start_time + d[\"min_dur\"]\n                attended_meetings.append((order_val, name, d[\"location\"], start_time, end_time))\n        attended_meetings.sort(key=lambda x: x[0])\n        \n        def format_time(minutes):\n            h = minutes // 60\n            m = minutes % 60\n            return f\"{h}:{m:02d}\"\n        \n        itinerary_json = {\"itinerary\": []}\n        for order_val, name, location, s_time, e_time in attended_meetings:\n            itinerary_json[\"itinerary\"].append({\n                \"action\": \"meet\",\n                \"location\": location,\n                \"person\": name,\n                \"start_time\": format_time(s_time),\n                \"end_time\": format_time(e_time)\n            })\n        print(json.dumps(itinerary_json, indent=2))\n    else:\n        print(json.dumps({\"itinerary\": []}))\n        \nif __name__ == '__main__':\n    main()"
+}

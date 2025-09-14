@@ -1,0 +1,57 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\"itinerary\": [{\"action\": \"meet\", \"location\": \"Mission District\", \"person\": \"James\", \"start_time\": \"12:45\", \"end_time\": \"14:00\"}, {\"action\": \"meet\", \"location\": \"The Castro\", \"person\": \"Robert\", \"start_time\": \"14:07\", \"end_time\": \"14:37\"}]}",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Mission District",
+                "person": "James",
+                "start_time": "12:45",
+                "end_time": "14:00"
+            },
+            {
+                "action": "meet",
+                "location": "The Castro",
+                "person": "Robert",
+                "start_time": "14:07",
+                "end_time": "14:37"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Mission District",
+                "person": "James",
+                "start_time": "12:45",
+                "end_time": "14:00"
+            },
+            {
+                "action": "meet",
+                "location": "The Castro",
+                "person": "Robert",
+                "start_time": "14:07",
+                "end_time": "14:37"
+            }
+        ]
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 107.13756012916565,
+        "execution_time": 0.07420802116394043,
+        "constraint_eval_time": 1.8835067749023438e-05,
+        "pred_extract_time": 1.188032627105713,
+        "gold_extract_time": 3.814697265625e-05,
+        "total_tokens": 3403,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import json\nfrom z3 import Optimize, Int, And, If, sat\n\ndef minutes_to_time(m):\n    # Convert minutes since midnight to \"H:MM\" format (24-hour, no leading zero for hour)\n    hour = m // 60\n    minute = m % 60\n    return f\"{hour}:{minute:02d}\"\n\ndef main():\n    opt = Optimize()\n    \n    # Define time variables in minutes since midnight.\n    # t_depart_NB: when you depart from North Beach (arrival at NB is 9:00 = 540 minutes)\n    t_depart_NB = Int('t_depart_NB')\n    # James meeting times at Mission District\n    J_start = Int('J_start')\n    J_end = Int('J_end')\n    # Robert meeting times at The Castro\n    R_start = Int('R_start')\n    R_end = Int('R_end')\n    \n    # Constants for times (in minutes)\n    start_NB = 9 * 60  # 9:00 AM => 540\n    # James is available at Mission District from 12:45 (765) to 14:00 (840)\n    J_avail_start = 12 * 60 + 45  # 765\n    J_avail_end = 14 * 60         # 840\n    # Robert is available at The Castro from 12:45 (765) to 15:15 (915)\n    R_avail_start = 12 * 60 + 45  # 765\n    R_avail_end = 15 * 60 + 15    # 915\n    \n    # Travel times (in minutes)\n    NB_to_Mission = 18\n    Mission_to_Castro = 7\n\n    # Constraints for departure from North Beach:\n    opt.add(t_depart_NB >= start_NB)\n    # You must have enough time to travel from North Beach to Mission District before starting the meeting with James.\n    opt.add(t_depart_NB + NB_to_Mission <= J_start)\n    \n    # Constraints for James meeting at Mission District:\n    opt.add(J_start >= J_avail_start)\n    opt.add(J_end <= J_avail_end)\n    opt.add(J_end - J_start >= 75)\n    \n    # After finishing James meeting, travel from Mission District to The Castro.\n    # Robert meeting can only start after you arrive at The Castro.\n    opt.add(R_start >= J_end + Mission_to_Castro)\n    \n    # Constraints for Robert meeting at The Castro:\n    opt.add(R_start >= R_avail_start)\n    opt.add(R_end <= R_avail_end)\n    opt.add(R_end - R_start >= 30)\n    \n    # Optional: Minimize waiting time before meetings. Define slack variables.\n    slack_J = Int('slack_J')\n    slack_R = Int('slack_R')\n    opt.add(slack_J == J_start - J_avail_start)\n    opt.add(slack_R == R_start - (J_end + Mission_to_Castro))\n    opt.minimize(slack_J + slack_R)\n    \n    # Check for a solution that meets all constraints\n    if opt.check() == sat:\n        model = opt.model()\n        itinerary = []\n        \n        # Extract computed times for James meeting\n        j_start_val = model[J_start].as_long()\n        j_end_val   = model[J_end].as_long()\n        itinerary.append({\n            \"action\": \"meet\",\n            \"location\": \"Mission District\",\n            \"person\": \"James\",\n            \"start_time\": minutes_to_time(j_start_val),\n            \"end_time\": minutes_to_time(j_end_val)\n        })\n        \n        # Extract computed times for Robert meeting\n        r_start_val = model[R_start].as_long()\n        r_end_val   = model[R_end].as_long()\n        itinerary.append({\n            \"action\": \"meet\",\n            \"location\": \"The Castro\",\n            \"person\": \"Robert\",\n            \"start_time\": minutes_to_time(r_start_val),\n            \"end_time\": minutes_to_time(r_end_val)\n        })\n        \n        print(json.dumps({\"itinerary\": itinerary}))\n    else:\n        # In case no feasible schedule is found, output an empty itinerary.\n        print(json.dumps({\"itinerary\": []}))\n\nif __name__ == \"__main__\":\n    main()"
+}

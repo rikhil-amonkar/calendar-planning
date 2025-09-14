@@ -1,0 +1,73 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"itinerary\": [\n    {\n      \"action\": \"meet\",\n      \"location\": \"Pacific Heights\",\n      \"person\": \"John\",\n      \"start_time\": \"9:08\",\n      \"end_time\": \"13:30\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Fisherman's Wharf\",\n      \"person\": \"Barbara\",\n      \"start_time\": \"18:00\",\n      \"end_time\": \"18:30\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"North Beach\",\n      \"person\": \"Steven\",\n      \"start_time\": \"18:36\",\n      \"end_time\": \"22:00\"\n    }\n  ]\n}",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Pacific Heights",
+                "person": "John",
+                "start_time": "9:08",
+                "end_time": "13:30"
+            },
+            {
+                "action": "meet",
+                "location": "Fisherman's Wharf",
+                "person": "Barbara",
+                "start_time": "18:00",
+                "end_time": "18:30"
+            },
+            {
+                "action": "meet",
+                "location": "North Beach",
+                "person": "Steven",
+                "start_time": "18:36",
+                "end_time": "22:00"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Pacific Heights",
+                "person": "John",
+                "start_time": "9:08",
+                "end_time": "9:23"
+            },
+            {
+                "action": "meet",
+                "location": "North Beach",
+                "person": "Steven",
+                "start_time": "13:30",
+                "end_time": "14:15"
+            },
+            {
+                "action": "meet",
+                "location": "Fisherman's Wharf",
+                "person": "Barbara",
+                "start_time": "18:00",
+                "end_time": "18:30"
+            }
+        ]
+    },
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "constraints_satisfied_but_no_exact_match": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 113.23881030082703,
+        "execution_time": 0.09120774269104004,
+        "constraint_eval_time": 0.00016021728515625,
+        "pred_extract_time": 1.5571956634521484,
+        "gold_extract_time": 3.075599670410156e-05,
+        "total_tokens": 5975,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import Optimize, Int, Bool, If, And, Or, Implies, Not, Sum\nimport json\n\ndef format_time(t):\n    # t is in minutes from midnight, return string in H:MM 24-hour format\n    hours = t // 60\n    minutes = t % 60\n    return f\"{hours}:{minutes:02d}\"\n\ndef main():\n    # Define meeting data for each friend\n    # Times are in minutes from midnight.\n    # 8:00 = 480, 9:00 = 540, 10:00 = 600, 13:30 = 810, 18:00 = 1080, 21:30 = 1290, 22:00 = 1320.\n    meetings = [\n        { \"person\": \"Jeffrey\", \"location\": \"Presidio\",           \"avail_start\": 480,  \"avail_end\": 600,  \"min_duration\": 105 },\n        { \"person\": \"Steven\",  \"location\": \"North Beach\",        \"avail_start\": 810,  \"avail_end\": 1320, \"min_duration\": 45  },\n        { \"person\": \"Barbara\", \"location\": \"Fisherman's Wharf\",  \"avail_start\": 1080, \"avail_end\": 1290, \"min_duration\": 30  },\n        { \"person\": \"John\",    \"location\": \"Pacific Heights\",    \"avail_start\": 540,  \"avail_end\": 810,  \"min_duration\": 15  }\n    ]\n    N = len(meetings)\n    \n    # Define travel times as given (in minutes)\n    travel = {\n        (\"Nob Hill\", \"Presidio\"): 17,\n        (\"Nob Hill\", \"North Beach\"): 8,\n        (\"Nob Hill\", \"Fisherman's Wharf\"): 11,\n        (\"Nob Hill\", \"Pacific Heights\"): 8,\n        (\"Presidio\", \"Nob Hill\"): 18,\n        (\"Presidio\", \"North Beach\"): 18,\n        (\"Presidio\", \"Fisherman's Wharf\"): 19,\n        (\"Presidio\", \"Pacific Heights\"): 11,\n        (\"North Beach\", \"Nob Hill\"): 7,\n        (\"North Beach\", \"Presidio\"): 17,\n        (\"North Beach\", \"Fisherman's Wharf\"): 5,\n        (\"North Beach\", \"Pacific Heights\"): 8,\n        (\"Fisherman's Wharf\", \"Nob Hill\"): 11,\n        (\"Fisherman's Wharf\", \"Presidio\"): 17,\n        (\"Fisherman's Wharf\", \"North Beach\"): 6,\n        (\"Fisherman's Wharf\", \"Pacific Heights\"): 12,\n        (\"Pacific Heights\", \"Nob Hill\"): 8,\n        (\"Pacific Heights\", \"Presidio\"): 11,\n        (\"Pacific Heights\", \"North Beach\"): 9,\n        (\"Pacific Heights\", \"Fisherman's Wharf\"): 13,\n    }\n    \n    # Arrival time: You arrive at Nob Hill at 9:00 (540)\n    arrival_time = 540\n\n    opt = Optimize()\n\n    # Decision variables for each meeting\n    x = [Bool(f\"x{i}\") for i in range(N)]         # Whether meeting i is scheduled\n    start = [Int(f\"start{i}\") for i in range(N)]    # Meeting start time\n    end = [Int(f\"end{i}\") for i in range(N)]        # Meeting end time\n    order = [Int(f\"order{i}\") for i in range(N)]    # Order in which meeting i is visited; if unscheduled, set to -1\n\n    for i in range(N):\n        m = meetings[i]\n        # If meeting i is scheduled then:\n        # - Meeting must start no earlier than the friend\u2019s available start.\n        # - Meeting must finish no later than the friend\u2019s available end.\n        # - Meeting must be at least the minimum duration.\n        opt.add(Implies(x[i], start[i] >= m[\"avail_start\"]))\n        opt.add(Implies(x[i], end[i] <= m[\"avail_end\"]))\n        opt.add(Implies(x[i], end[i] - start[i] >= m[\"min_duration\"]))\n        opt.add(Implies(x[i], start[i] < end[i]))\n        # Ordering variables: If scheduled, order is between 0 and N-1; if not, it is -1.\n        opt.add(Implies(x[i], And(order[i] >= 0, order[i] < N)))\n        opt.add(Implies(Not(x[i]), order[i] == -1))\n        # For meetings that are chosen as the first meeting (order == 0),\n        # account for travel time from Nob Hill.\n        opt.add(Implies(And(x[i], order[i] == 0),\n                        start[i] >= arrival_time + travel[(\"Nob Hill\", m[\"location\"])]))\n    \n    # Enforce that if two meetings are scheduled, their order variables must be distinct.\n    for i in range(N):\n        for j in range(i+1, N):\n            opt.add(Implies(And(x[i], x[j]), order[i] != order[j]))\n    \n    # Enforce consecutive ordering: For any meeting with order > 0, there must exist a meeting with order one less.\n    for i in range(N):\n        # Only add if meeting i is scheduled and its order is > 0.\n        opt.add(Implies(And(x[i], order[i] > 0),\n                        Or([And(x[j], order[j] == order[i] - 1) for j in range(N) if j != i] or [False])))\n    \n    # Enforce travel time constraints between consecutive meetings.\n    # For any two meetings i and j, if both are scheduled and j is immediately after i (i.e. order[j] == order[i] + 1),\n    # then meeting j must start after meeting i ends plus travel time from meeting i's location to meeting j's location.\n    for i in range(N):\n        for j in range(N):\n            if i != j:\n                loc_i = meetings[i][\"location\"]\n                loc_j = meetings[j][\"location\"]\n                # Only add if the key exists in travel dictionary.\n                if (loc_i, loc_j) in travel:\n                    opt.add(Implies(And(x[i], x[j], order[j] == order[i] + 1),\n                                    start[j] >= end[i] + travel[(loc_i, loc_j)]))\n    \n    # Objective: maximize the number of meetings scheduled.\n    obj = opt.maximize(Sum([If(x[i], 1, 0) for i in range(N)]))\n    \n    if opt.check() == 'sat' or opt.check() is not None:\n        model = opt.model()\n        \n        # Collect scheduled meetings and sort them by their order value.\n        scheduled = []\n        for i in range(N):\n            if model.evaluate(x[i]):\n                s = model.evaluate(start[i]).as_long()\n                e = model.evaluate(end[i]).as_long()\n                o = model.evaluate(order[i]).as_long()\n                scheduled.append((o, {\n                    \"action\": \"meet\",\n                    \"location\": meetings[i][\"location\"],\n                    \"person\": meetings[i][\"person\"],\n                    \"start_time\": format_time(s),\n                    \"end_time\": format_time(e)\n                }))\n        scheduled.sort(key=lambda x: x[0])\n        itinerary = [item[1] for item in scheduled]\n        output = {\"itinerary\": itinerary}\n        print(json.dumps(output, indent=2))\n    else:\n        print(json.dumps({\"itinerary\": []}))\n\nif __name__ == \"__main__\":\n    main()"
+}

@@ -1,0 +1,59 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"itinerary\": [\n    {\n      \"action\": \"meet\",\n      \"location\": \"Presidio\",\n      \"person\": \"Jason\",\n      \"start_time\": \"10:00\",\n      \"end_time\": \"15:20\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Marina District\",\n      \"person\": \"Kenneth\",\n      \"start_time\": \"15:30\",\n      \"end_time\": \"16:15\"\n    }\n  ]\n}",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Presidio",
+                "person": "Jason",
+                "start_time": "10:00",
+                "end_time": "15:20"
+            },
+            {
+                "action": "meet",
+                "location": "Marina District",
+                "person": "Kenneth",
+                "start_time": "15:30",
+                "end_time": "16:15"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Presidio",
+                "person": "Jason",
+                "start_time": "10:00",
+                "end_time": "11:30"
+            },
+            {
+                "action": "meet",
+                "location": "Marina District",
+                "person": "Kenneth",
+                "start_time": "15:30",
+                "end_time": "16:15"
+            }
+        ]
+    },
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "constraints_satisfied_but_no_exact_match": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 92.84562373161316,
+        "execution_time": 0.07721877098083496,
+        "constraint_eval_time": 0.00010275840759277344,
+        "pred_extract_time": 1.3238747119903564,
+        "gold_extract_time": 3.504753112792969e-05,
+        "total_tokens": 4230,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import Optimize, Int, sat\nimport json\n\ndef minutes_to_time_str(offset):\n    # our time variables are in minutes after 9:00.\n    total_minutes = 9 * 60 + offset\n    hour = total_minutes // 60\n    minute = total_minutes % 60\n    return f\"{hour}:{minute:02d}\"\n\ndef main():\n    # Travel times in minutes\n    ph_to_presidio = 11         # Pacific Heights -> Presidio\n    ph_to_marina = 6            # Pacific Heights -> Marina District (not used in this schedule)\n    presidio_to_ph = 11         # Presidio -> Pacific Heights\n    presidio_to_marina = 10     # Presidio -> Marina District\n    marina_to_ph = 7            # Marina District -> Pacific Heights\n    marina_to_presidio = 10     # Marina District -> Presidio\n\n    # Time reference: minutes after 9:00 AM.\n    # 9:00 AM -> 0 minutes offset.\n    # Jason is available at Presidio from 10:00AM (60) to 4:15PM (435),\n    # and the meeting must be at least 90 minutes.\n    # Kenneth is available at Marina District from 3:30PM (390) to 4:45PM (465),\n    # and the meeting must be at least 45 minutes.\n\n    opt = Optimize()\n\n    # Define meeting time variables (in minutes offset from 9:00)\n    jason_start = Int(\"jason_start\")\n    jason_end = Int(\"jason_end\")\n    kenneth_start = Int(\"kenneth_start\")\n    kenneth_end = Int(\"kenneth_end\")\n\n    # Jason's meeting constraints: Must occur when Jason is available.\n    opt.add(jason_start >= 60)         # Jason's availability starts at 10:00\n    opt.add(jason_end <= 435)            # Jason's availability ends at 16:15\n    opt.add(jason_end - jason_start >= 90)  # Minimum meeting duration: 90 minutes\n\n    # Also, you travel from Pacific Heights to Presidio.\n    # You arrive at PH at 9:00, travel time is 11 minutes.\n    # So realistically, you cannot start meeting earlier than 9:00+11 = 11 minutes, \n    # but Jason's availability already forces jason_start >= 60.\n    opt.add(jason_start >= ph_to_presidio)\n\n    # Kenneth's meeting constraints: Must occur when Kenneth is available.\n    opt.add(kenneth_start >= 390)       # Kenneth available from 15:30 (390 minutes from 9:00)\n    opt.add(kenneth_end <= 465)          # Kenneth available until 16:45 (465 minutes from 9:00)\n    opt.add(kenneth_end - kenneth_start >= 45)  # Minimum meeting duration: 45 minutes\n\n    # Travel constraint between meetings:\n    # After finishing the meeting with Jason at Presidio, you travel to Marina District.\n    # Travel time is presidio_to_marina = 10 minutes.\n    opt.add(jason_end + presidio_to_marina <= kenneth_start)\n\n    # To pick an \"optimal\" schedule (minimizing idle waiting time), we add an objective.\n    # Idle waiting at Presidio: waiting from earliest possible meeting start (10:00, offset 60)\n    # to the actual start of the meeting with Jason.\n    wait_at_presidio = jason_start - 60\n    # Idle waiting between meetings: waiting from when you can leave Presidio\n    # (jason_end + travel time) until Kenneth's meeting starts.\n    wait_between = kenneth_start - (jason_end + presidio_to_marina)\n    total_wait = wait_at_presidio + wait_between\n    opt.minimize(total_wait)\n\n    # Check for solution\n    if opt.check() == sat:\n        model = opt.model()\n        jason_start_val = model[jason_start].as_long()\n        jason_end_val = model[jason_end].as_long()\n        kenneth_start_val = model[kenneth_start].as_long()\n        kenneth_end_val = model[kenneth_end].as_long()\n\n        itinerary = {\n            \"itinerary\": [\n                {\n                    \"action\": \"meet\",\n                    \"location\": \"Presidio\",\n                    \"person\": \"Jason\",\n                    \"start_time\": minutes_to_time_str(jason_start_val),\n                    \"end_time\": minutes_to_time_str(jason_end_val)\n                },\n                {\n                    \"action\": \"meet\",\n                    \"location\": \"Marina District\",\n                    \"person\": \"Kenneth\",\n                    \"start_time\": minutes_to_time_str(kenneth_start_val),\n                    \"end_time\": minutes_to_time_str(kenneth_end_val)\n                }\n            ]\n        }\n        print(json.dumps(itinerary, indent=2))\n    else:\n        print(json.dumps({\"itinerary\": []}))\n\nif __name__ == \"__main__\":\n    main()"
+}

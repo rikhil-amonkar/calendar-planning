@@ -1,0 +1,101 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\"itinerary\": [{\"action\": \"meet\", \"location\": \"Bayview\", \"person\": \"Rebecca\", \"start_time\": \"9:19\", \"end_time\": \"10:49\"}, {\"action\": \"meet\", \"location\": \"Fisherman's Wharf\", \"person\": \"Sarah\", \"start_time\": \"11:14\", \"end_time\": \"12:44\"}, {\"action\": \"meet\", \"location\": \"Alamo Square\", \"person\": \"James\", \"start_time\": \"15:03\", \"end_time\": \"16:33\"}, {\"action\": \"meet\", \"location\": \"Golden Gate Park\", \"person\": \"Melissa\", \"start_time\": \"16:42\", \"end_time\": \"18:12\"}, {\"action\": \"meet\", \"location\": \"Pacific Heights\", \"person\": \"Amanda\", \"start_time\": \"18:30\", \"end_time\": \"20:00\"}]}",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Bayview",
+                "person": "Rebecca",
+                "start_time": "9:19",
+                "end_time": "10:49"
+            },
+            {
+                "action": "meet",
+                "location": "Fisherman's Wharf",
+                "person": "Sarah",
+                "start_time": "11:14",
+                "end_time": "12:44"
+            },
+            {
+                "action": "meet",
+                "location": "Alamo Square",
+                "person": "James",
+                "start_time": "15:03",
+                "end_time": "16:33"
+            },
+            {
+                "action": "meet",
+                "location": "Golden Gate Park",
+                "person": "Melissa",
+                "start_time": "16:42",
+                "end_time": "18:12"
+            },
+            {
+                "action": "meet",
+                "location": "Pacific Heights",
+                "person": "Amanda",
+                "start_time": "18:30",
+                "end_time": "20:00"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Bayview",
+                "person": "Rebecca",
+                "start_time": "9:19",
+                "end_time": "10:49"
+            },
+            {
+                "action": "meet",
+                "location": "Alamo Square",
+                "person": "James",
+                "start_time": "11:05",
+                "end_time": "12:35"
+            },
+            {
+                "action": "meet",
+                "location": "Fisherman's Wharf",
+                "person": "Sarah",
+                "start_time": "12:54",
+                "end_time": "14:24"
+            },
+            {
+                "action": "meet",
+                "location": "Golden Gate Park",
+                "person": "Melissa",
+                "start_time": "14:49",
+                "end_time": "16:19"
+            },
+            {
+                "action": "meet",
+                "location": "Pacific Heights",
+                "person": "Amanda",
+                "start_time": "18:30",
+                "end_time": "20:00"
+            }
+        ]
+    },
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "constraints_satisfied_but_no_exact_match": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 168.80466842651367,
+        "execution_time": 0.10536384582519531,
+        "constraint_eval_time": 0.00036144256591796875,
+        "pred_extract_time": 3.150883436203003,
+        "gold_extract_time": 7.581710815429688e-05,
+        "total_tokens": 7178,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\nimport json\n\n# Convert minutes since midnight to a string in H:MM 24-hour format.\ndef minutes_to_time_str(minutes):\n    hour = minutes // 60\n    minute = minutes % 60\n    return f\"{hour}:{minute:02d}\"\n\ndef main():\n    # Friend meeting data.\n    # Each friend is met at a specific location with an available interval (in minutes) and a minimum meeting duration of 90 minutes.\n    # Times are in minutes since midnight.\n    # 9:00 AM => 540, 12:45 PM => 765, 9:45 PM => 1305, etc.\n    friends = [\n        {\"name\": \"Rebecca\", \"location\": \"Bayview\", \"avail_start\": 540, \"avail_end\": 765},\n        {\"name\": \"Amanda\", \"location\": \"Pacific Heights\", \"avail_start\": 1110, \"avail_end\": 1305},\n        {\"name\": \"James\", \"location\": \"Alamo Square\", \"avail_start\": 585, \"avail_end\": 1275},\n        {\"name\": \"Sarah\", \"location\": \"Fisherman's Wharf\", \"avail_start\": 480, \"avail_end\": 1290},\n        {\"name\": \"Melissa\", \"location\": \"Golden Gate Park\", \"avail_start\": 540, \"avail_end\": 1125}\n    ]\n    n_friends = len(friends)\n    meeting_duration = 90\n\n    # Travel times (in minutes) given from one location to another.\n    # The matrix M[i][j] gives the travel time from friends[i]'s location to friends[j]'s location.\n    # Friend indices correspond to:\n    # 0: Rebecca at Bayview\n    # 1: Amanda at Pacific Heights\n    # 2: James at Alamo Square\n    # 3: Sarah at Fisherman's Wharf\n    # 4: Melissa at Golden Gate Park\n    M = [\n        [0, 23, 16, 25, 22],   # From Bayview\n        [22, 0, 10, 13, 15],    # From Pacific Heights\n        [16, 10, 0, 19, 9],      # From Alamo Square\n        [26, 12, 20, 0, 25],     # From Fisherman's Wharf\n        [23, 16, 10, 24, 0]      # From Golden Gate Park\n    ]\n    # Travel times from starting location \"The Castro\" (arrival at 9:00 AM i.e. 540) to each friend location.\n    castro_travel = [\n        19,  # The Castro -> Bayview (Rebecca)\n        16,  # The Castro -> Pacific Heights (Amanda)\n        8,   # The Castro -> Alamo Square (James)\n        24,  # The Castro -> Fisherman's Wharf (Sarah)\n        11   # The Castro -> Golden Gate Park (Melissa)\n    ]\n    \n    # We use a slot-based formulation.\n    # We have 5 available slots (the maximum possible meetings).\n    # Each slot will either hold a friend's meeting (indicated by an integer in 0..4)\n    # or be empty (indicated by -1). The slots must appear in contiguous order.\n    max_slots = n_friends\n    opt = Optimize()\n\n    slot_vars = [Int(f\"slot_{i}\") for i in range(max_slots)]\n    t_vars = [Int(f\"t_{i}\") for i in range(max_slots)]  # Start time (in minutes) for the meeting in slot i\n\n    # For each slot, add domain constraints.\n    for i in range(max_slots):\n        # slot value is either -1 (empty) or one of 0, 1, 2, 3, 4.\n        opt.add(Or(slot_vars[i] == -1, And(slot_vars[i] >= 0, slot_vars[i] < n_friends)))\n        # Meeting start time must be within the day (0 to 1440 minutes).\n        opt.add(t_vars[i] >= 0, t_vars[i] <= 1440)\n        \n        # If this slot is filled, then the meeting must occur within the friend's available window.\n        # We use nested If's to choose the correct constraints.\n        avail_constraint = If(slot_vars[i] == 0,\n                              And(t_vars[i] >= friends[0][\"avail_start\"], t_vars[i] + meeting_duration <= friends[0][\"avail_end\"]),\n                         If(slot_vars[i] == 1,\n                              And(t_vars[i] >= friends[1][\"avail_start\"], t_vars[i] + meeting_duration <= friends[1][\"avail_end\"]),\n                         If(slot_vars[i] == 2,\n                              And(t_vars[i] >= friends[2][\"avail_start\"], t_vars[i] + meeting_duration <= friends[2][\"avail_end\"]),\n                         If(slot_vars[i] == 3,\n                              And(t_vars[i] >= friends[3][\"avail_start\"], t_vars[i] + meeting_duration <= friends[3][\"avail_end\"]),\n                         If(slot_vars[i] == 4,\n                              And(t_vars[i] >= friends[4][\"avail_start\"], t_vars[i] + meeting_duration <= friends[4][\"avail_end\"]),\n                              True)))))\n        opt.add(Implies(slot_vars[i] != -1, avail_constraint))\n        \n        # For the first slot, add constraint to account for travel from The Castro.\n        if i == 0:\n            castro_constraint = If(slot_vars[0] == 0,\n                                   t_vars[0] >= 540 + castro_travel[0],\n                              If(slot_vars[0] == 1,\n                                   t_vars[0] >= 540 + castro_travel[1],\n                              If(slot_vars[0] == 2,\n                                   t_vars[0] >= 540 + castro_travel[2],\n                              If(slot_vars[0] == 3,\n                                   t_vars[0] >= 540 + castro_travel[3],\n                              If(slot_vars[0] == 4,\n                                   t_vars[0] >= 540 + castro_travel[4],\n                                   True)))))\n            opt.add(Implies(slot_vars[0] != -1, castro_constraint))\n        \n        # Enforce contiguity: if a slot is empty, every later slot must be empty.\n        if i > 0:\n            opt.add(Implies(slot_vars[i-1] == -1, slot_vars[i] == -1))\n    \n    # Ensure that if two slots are filled then the same friend is not scheduled twice.\n    for i in range(max_slots):\n        for j in range(i + 1, max_slots):\n            opt.add(Implies(And(slot_vars[i] != -1, slot_vars[j] != -1),\n                            slot_vars[i] != slot_vars[j]))\n    \n    # For consecutive filled slots, add travel constraints.\n    # If slot i-1 holds friend k and slot i holds friend l,\n    # then the meeting in slot i must start at least (meeting_duration + travel_time from friend k to friend l) minutes after the meeting in slot i-1.\n    for i in range(1, max_slots):\n        for k in range(n_friends):\n            for l in range(n_friends):\n                opt.add(Implies(And(slot_vars[i-1] == k, slot_vars[i] == l),\n                                t_vars[i-1] + meeting_duration + M[k][l] <= t_vars[i]))\n    \n    # The objective is to maximize the number of meetings scheduled.\n    num_meetings = Sum([If(slot_vars[i] != -1, 1, 0) for i in range(max_slots)])\n    h = opt.maximize(num_meetings)\n    \n    # Solve the optimization problem.\n    if opt.check() == sat:\n        model = opt.model()\n        itinerary = []\n        # Process slots in order.\n        for i in range(max_slots):\n            slot_val = model.evaluate(slot_vars[i]).as_long()\n            if slot_val == -1:\n                break  # No more meetings in later slots.\n            start_time = model.evaluate(t_vars[i]).as_long()\n            end_time = start_time + meeting_duration\n            meeting = {\n                \"action\": \"meet\",\n                \"location\": friends[slot_val][\"location\"],\n                \"person\": friends[slot_val][\"name\"],\n                \"start_time\": minutes_to_time_str(start_time),\n                \"end_time\": minutes_to_time_str(end_time)\n            }\n            itinerary.append(meeting)\n        result = {\"itinerary\": itinerary}\n        print(json.dumps(result))\n    else:\n        print(json.dumps({\"itinerary\": []}))\n\nif __name__ == \"__main__\":\n    main()"
+}

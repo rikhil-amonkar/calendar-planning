@@ -1,0 +1,73 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\"itinerary\": [{\"action\": \"meet\", \"location\": \"Alamo Square\", \"person\": \"Mary\", \"start_time\": \"9:17\", \"end_time\": \"10:32\"}, {\"action\": \"meet\", \"location\": \"Chinatown\", \"person\": \"Nancy\", \"start_time\": \"10:48\", \"end_time\": \"12:18\"}, {\"action\": \"meet\", \"location\": \"Bayview\", \"person\": \"Jessica\", \"start_time\": \"12:48\", \"end_time\": \"13:33\"}]}",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Alamo Square",
+                "person": "Mary",
+                "start_time": "9:17",
+                "end_time": "10:32"
+            },
+            {
+                "action": "meet",
+                "location": "Chinatown",
+                "person": "Nancy",
+                "start_time": "10:48",
+                "end_time": "12:18"
+            },
+            {
+                "action": "meet",
+                "location": "Bayview",
+                "person": "Jessica",
+                "start_time": "12:48",
+                "end_time": "13:33"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Chinatown",
+                "person": "Nancy",
+                "start_time": "9:30",
+                "end_time": "11:00"
+            },
+            {
+                "action": "meet",
+                "location": "Alamo Square",
+                "person": "Mary",
+                "start_time": "11:17",
+                "end_time": "12:32"
+            },
+            {
+                "action": "meet",
+                "location": "Bayview",
+                "person": "Jessica",
+                "start_time": "12:48",
+                "end_time": "13:33"
+            }
+        ]
+    },
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "constraints_satisfied_but_no_exact_match": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 103.22526741027832,
+        "execution_time": 0.08388686180114746,
+        "constraint_eval_time": 0.0002574920654296875,
+        "pred_extract_time": 1.7153699398040771,
+        "gold_extract_time": 5.1021575927734375e-05,
+        "total_tokens": 6453,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import Optimize, Int, Bool, If, And, Or, Implies, Not, sat\nimport json\n\ndef minutes_to_time_str(m):\n    h = m // 60\n    mm = m % 60\n    return f\"{h}:{mm:02d}\"\n\ndef main():\n    # Friend availability and location data\n    friends = [\"Nancy\", \"Mary\", \"Jessica\", \"Rebecca\"]\n    friend_data = {\n        \"Nancy\": {\"location\": \"Chinatown\", \"avail_start\": 570, \"avail_end\": 810, \"min_meeting\": 90},         # 9:30-13:30, 90 minutes\n        \"Mary\": {\"location\": \"Alamo Square\", \"avail_start\": 420, \"avail_end\": 1260, \"min_meeting\": 75},      # 7:00-21:00, 75 minutes\n        \"Jessica\": {\"location\": \"Bayview\", \"avail_start\": 675, \"avail_end\": 825, \"min_meeting\": 45},           # 11:15-13:45, 45 minutes\n        \"Rebecca\": {\"location\": \"Fisherman's Wharf\", \"avail_start\": 420, \"avail_end\": 510, \"min_meeting\": 45}  # 7:00-8:30, 45 minutes\n    }\n    \n    # Travel times (in minutes)\n    travel_times = {\n        (\"Financial District\", \"Chinatown\"): 5,\n        (\"Financial District\", \"Alamo Square\"): 17,\n        (\"Financial District\", \"Bayview\"): 19,\n        (\"Financial District\", \"Fisherman's Wharf\"): 10,\n        (\"Chinatown\", \"Financial District\"): 5,\n        (\"Chinatown\", \"Alamo Square\"): 17,\n        (\"Chinatown\", \"Bayview\"): 22,\n        (\"Chinatown\", \"Fisherman's Wharf\"): 8,\n        (\"Alamo Square\", \"Financial District\"): 17,\n        (\"Alamo Square\", \"Chinatown\"): 16,\n        (\"Alamo Square\", \"Bayview\"): 16,\n        (\"Alamo Square\", \"Fisherman's Wharf\"): 19,\n        (\"Bayview\", \"Financial District\"): 19,\n        (\"Bayview\", \"Chinatown\"): 18,\n        (\"Bayview\", \"Alamo Square\"): 16,\n        (\"Bayview\", \"Fisherman's Wharf\"): 25,\n        (\"Fisherman's Wharf\", \"Financial District\"): 11,\n        (\"Fisherman's Wharf\", \"Chinatown\"): 12,\n        (\"Fisherman's Wharf\", \"Alamo Square\"): 20,\n        (\"Fisherman's Wharf\", \"Bayview\"): 26\n    }\n    \n    # You start at Financial District at 9:00 AM (540 minutes)\n    fd_location = \"Financial District\"\n    start_fd = 540\n\n    # Create the optimizer and decision variables\n    opt = Optimize()\n\n    # For each friend, create variables for whether to meet, meeting start and end times, and ordering\n    meeting_vars = {}\n    for f in friends:\n        meet = Bool(f\"meet_{f}\")\n        start_time = Int(f\"start_{f}\")\n        end_time = Int(f\"end_{f}\")\n        order = Int(f\"order_{f}\")\n        meeting_vars[f] = {\"meet\": meet, \"start\": start_time, \"end\": end_time, \"order\": order}\n        \n        # If not meeting, we force start and end to 0 for consistency.\n        opt.add(Or(meet, start_time == 0))\n        opt.add(Or(meet, end_time == 0))\n        \n        # If meeting is scheduled, enforce available time window and minimum meeting duration.\n        opt.add(Implies(meet, start_time >= friend_data[f][\"avail_start\"]))\n        opt.add(Implies(meet, end_time <= friend_data[f][\"avail_end\"]))\n        opt.add(Implies(meet, end_time - start_time >= friend_data[f][\"min_meeting\"]))\n        # If meeting, restrict order to a plausible range.\n        opt.add(Implies(meet, And(order >= 0, order <= len(friends) - 1)))\n    \n    # For any two meetings that are both scheduled, ensure they are ordered and separated by travel time.\n    for i in range(len(friends)):\n        for j in range(i + 1, len(friends)):\n            f_i = friends[i]\n            f_j = friends[j]\n            vars_i = meeting_vars[f_i]\n            vars_j = meeting_vars[f_j]\n            \n            # If both meetings are scheduled, orders must be different.\n            opt.add(Implies(And(vars_i[\"meet\"], vars_j[\"meet\"]), vars_i[\"order\"] != vars_j[\"order\"]))\n            \n            # Compute required travel times between the two friend locations.\n            travel_i_j = travel_times[(friend_data[f_i][\"location\"], friend_data[f_j][\"location\"])]\n            travel_j_i = travel_times[(friend_data[f_j][\"location\"], friend_data[f_i][\"location\"])]\n            \n            # Enforce disjunctive ordering with travel time separation.\n            opt.add(Implies(\n                And(vars_i[\"meet\"], vars_j[\"meet\"]),\n                Or(\n                    And(vars_i[\"order\"] < vars_j[\"order\"],\n                        vars_j[\"start\"] >= vars_i[\"end\"] + travel_i_j),\n                    And(vars_j[\"order\"] < vars_i[\"order\"],\n                        vars_i[\"start\"] >= vars_j[\"end\"] + travel_j_i)\n                )\n            ))\n    \n    # For the first meeting in the itinerary, ensure that you can travel from the Financial District.\n    for f in friends:\n        # f is the first meeting if for every other friend g that is scheduled, order_f <= order_g.\n        first_condition = And([Or(Not(meeting_vars[g][\"meet\"]), meeting_vars[f][\"order\"] <= meeting_vars[g][\"order\"]) \n                               for g in friends if g != f])\n        travel_from_fd = travel_times[(fd_location, friend_data[f][\"location\"])]\n        opt.add(Implies(\n            And(meeting_vars[f][\"meet\"], first_condition),\n            meeting_vars[f][\"start\"] >= start_fd + travel_from_fd\n        ))\n    \n    # Objective: maximize the number of meetings scheduled.\n    total_meetings = sum([If(meeting_vars[f][\"meet\"], 1, 0) for f in friends])\n    opt.maximize(total_meetings)\n    \n    # Check for a solution and extract the itinerary.\n    if opt.check() == sat:\n        model = opt.model()\n        scheduled_meetings = []\n        for f in friends:\n            if model.evaluate(meeting_vars[f][\"meet\"]):\n                order_val = model.evaluate(meeting_vars[f][\"order\"]).as_long()\n                start_val = model.evaluate(meeting_vars[f][\"start\"]).as_long()\n                end_val = model.evaluate(meeting_vars[f][\"end\"]).as_long()\n                scheduled_meetings.append((order_val, f, friend_data[f][\"location\"], start_val, end_val))\n        # Sort the scheduled meetings by their order.\n        scheduled_meetings.sort(key=lambda x: x[0])\n        itinerary = []\n        for _, person, location, start_val, end_val in scheduled_meetings:\n            itinerary.append({\n                \"action\": \"meet\",\n                \"location\": location,\n                \"person\": person,\n                \"start_time\": minutes_to_time_str(start_val),\n                \"end_time\": minutes_to_time_str(end_val)\n            })\n        output = {\"itinerary\": itinerary}\n        print(json.dumps(output))\n    else:\n        # No feasible itinerary found.\n        print(json.dumps({\"itinerary\": []}))\n\nif __name__ == \"__main__\":\n    main()"
+}

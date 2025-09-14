@@ -1,0 +1,91 @@
+{
+    "has_execution_error": true,
+    "has_no_plan": false,
+    "execution_output": null,
+    "pred": null,
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Chinatown",
+                "person": "Jason",
+                "start_time": "9:21",
+                "end_time": "10:36"
+            },
+            {
+                "action": "meet",
+                "location": "North Beach",
+                "person": "Kenneth",
+                "start_time": "10:39",
+                "end_time": "11:09"
+            },
+            {
+                "action": "meet",
+                "location": "Marina District",
+                "person": "Mark",
+                "start_time": "11:18",
+                "end_time": "12:33"
+            },
+            {
+                "action": "meet",
+                "location": "Embarcadero",
+                "person": "Kimberly",
+                "start_time": "12:47",
+                "end_time": "14:02"
+            },
+            {
+                "action": "meet",
+                "location": "Nob Hill",
+                "person": "Jessica",
+                "start_time": "14:12",
+                "end_time": "15:42"
+            },
+            {
+                "action": "meet",
+                "location": "Russian Hill",
+                "person": "Brian",
+                "start_time": "15:47",
+                "end_time": "16:47"
+            },
+            {
+                "action": "meet",
+                "location": "Union Square",
+                "person": "Stephanie",
+                "start_time": "16:57",
+                "end_time": "18:42"
+            },
+            {
+                "action": "meet",
+                "location": "Financial District",
+                "person": "Steven",
+                "start_time": "18:51",
+                "end_time": "19:51"
+            },
+            {
+                "action": "meet",
+                "location": "Haight-Ashbury",
+                "person": "Karen",
+                "start_time": "21:00",
+                "end_time": "21:45"
+            }
+        ]
+    },
+    "status": "Error",
+    "violated_constraint": {
+        "missing_itinerary": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 5,
+    "timing": {
+        "api_call_time": 73.41745114326477,
+        "execution_time": 0.019009828567504883,
+        "constraint_eval_time": 4.5299530029296875e-06,
+        "pred_extract_time": 2.384185791015625e-06,
+        "gold_extract_time": 0.00012350082397460938,
+        "total_tokens": 8788,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "#!/usr/bin/env python3\nfrom z3 import *\nimport json\n\n# -----------------------------\n# Helper: Convert minutes (since midnight) into \"H:MM\" format.\ndef minutes_to_time(t):\n    hours = t // 60\n    minutes = t % 60\n    return f\"{hours}:{minutes:02d}\"\n\n# -----------------------------\n# Travel times (in minutes) as given.\ntravel_times = {\n    \"Presidio\": {\n        \"Haight-Ashbury\": 15,\n        \"Nob Hill\": 18,\n        \"Russian Hill\": 14,\n        \"North Beach\": 18,\n        \"Chinatown\": 21,\n        \"Union Square\": 22,\n        \"Embarcadero\": 20,\n        \"Financial District\": 23,\n        \"Marina District\": 11\n    },\n    \"Haight-Ashbury\": {\n        \"Presidio\": 15,\n        \"Nob Hill\": 15,\n        \"Russian Hill\": 17,\n        \"North Beach\": 19,\n        \"Chinatown\": 19,\n        \"Union Square\": 19,\n        \"Embarcadero\": 20,\n        \"Financial District\": 21,\n        \"Marina District\": 17\n    },\n    \"Nob Hill\": {\n        \"Presidio\": 17,\n        \"Haight-Ashbury\": 13,\n        \"Russian Hill\": 5,\n        \"North Beach\": 8,\n        \"Chinatown\": 6,\n        \"Union Square\": 7,\n        \"Embarcadero\": 9,\n        \"Financial District\": 9,\n        \"Marina District\": 11\n    },\n    \"Russian Hill\": {\n        \"Presidio\": 14,\n        \"Haight-Ashbury\": 17,\n        \"Nob Hill\": 5,\n        \"North Beach\": 5,\n        \"Chinatown\": 9,\n        \"Union Square\": 10,\n        \"Embarcadero\": 8,\n        \"Financial District\": 11,\n        \"Marina District\": 7\n    },\n    \"North Beach\": {\n        \"Presidio\": 17,\n        \"Haight-Ashbury\": 18,\n        \"Nob Hill\": 7,\n        \"Russian Hill\": 4,\n        \"Chinatown\": 6,\n        \"Union Square\": 7,\n        \"Embarcadero\": 6,\n        \"Financial District\": 8,\n        \"Marina District\": 9\n    },\n    \"Chinatown\": {\n        \"Presidio\": 19,\n        \"Haight-Ashbury\": 19,\n        \"Nob Hill\": 9,\n        \"Russian Hill\": 7,\n        \"North Beach\": 3,\n        \"Union Square\": 7,\n        \"Embarcadero\": 5,\n        \"Financial District\": 5,\n        \"Marina District\": 12\n    },\n    \"Union Square\": {\n        \"Presidio\": 24,\n        \"Haight-Ashbury\": 18,\n        \"Nob Hill\": 9,\n        \"Russian Hill\": 13,\n        \"North Beach\": 10,\n        \"Chinatown\": 7,\n        \"Embarcadero\": 11,\n        \"Financial District\": 9,\n        \"Marina District\": 18\n    },\n    \"Embarcadero\": {\n        \"Presidio\": 20,\n        \"Haight-Ashbury\": 21,\n        \"Nob Hill\": 10,\n        \"Russian Hill\": 8,\n        \"North Beach\": 5,\n        \"Chinatown\": 7,\n        \"Union Square\": 10,\n        \"Financial District\": 5,\n        \"Marina District\": 12\n    },\n    \"Financial District\": {\n        \"Presidio\": 22,\n        \"Haight-Ashbury\": 19,\n        \"Nob Hill\": 8,\n        \"Russian Hill\": 11,\n        \"North Beach\": 7,\n        \"Chinatown\": 5,\n        \"Union Square\": 9,\n        \"Embarcadero\": 4,\n        \"Marina District\": 15\n    },\n    \"Marina District\": {\n        \"Presidio\": 10,\n        \"Haight-Ashbury\": 16,\n        \"Nob Hill\": 12,\n        \"Russian Hill\": 8,\n        \"North Beach\": 11,\n        \"Chinatown\": 15,\n        \"Union Square\": 16,\n        \"Embarcadero\": 14,\n        \"Financial District\": 17\n    }\n}\n\n# -----------------------------\n# Friend meeting data.\nfriends = [\n    {\"name\": \"Karen\",      \"location\": \"Haight-Ashbury\",     \"avail_start\": 1260, \"avail_end\": 1305, \"min_duration\": 45},\n    {\"name\": \"Jessica\",    \"location\": \"Nob Hill\",           \"avail_start\": 825,  \"avail_end\": 1260, \"min_duration\": 90},\n    {\"name\": \"Brian\",      \"location\": \"Russian Hill\",       \"avail_start\": 930,  \"avail_end\": 1305, \"min_duration\": 60},\n    {\"name\": \"Kenneth\",    \"location\": \"North Beach\",        \"avail_start\": 585,  \"avail_end\": 1260, \"min_duration\": 30},\n    {\"name\": \"Jason\",      \"location\": \"Chinatown\",          \"avail_start\": 495,  \"avail_end\": 705,  \"min_duration\": 75},\n    {\"name\": \"Stephanie\",  \"location\": \"Union Square\",       \"avail_start\": 885,  \"avail_end\": 1125, \"min_duration\": 105},\n    {\"name\": \"Kimberly\",   \"location\": \"Embarcadero\",        \"avail_start\": 585,  \"avail_end\": 1170, \"min_duration\": 75},\n    {\"name\": \"Steven\",     \"location\": \"Financial District\", \"avail_start\": 435,  \"avail_end\": 1275, \"min_duration\": 60},\n    {\"name\": \"Mark\",       \"location\": \"Marina District\",    \"avail_start\": 615,  \"avail_end\": 780,  \"min_duration\": 75}\n]\n\nnum_friends = len(friends)\n\n# Precompute travel times from Presidio to each friend's location.\npres_to_friend = []\nfor i in range(num_friends):\n    loc = friends[i][\"location\"]\n    t = travel_times[\"Presidio\"][loc]\n    pres_to_friend.append(t)\n\n# Precompute travel times between friends.\ntravel_friend = [[None for _ in range(num_friends)] for _ in range(num_friends)]\nfor i in range(num_friends):\n    loc_i = friends[i][\"location\"]\n    for j in range(num_friends):\n        loc_j = friends[j][\"location\"]\n        if loc_i == loc_j:\n            travel_friend[i][j] = 0\n        else:\n            travel_friend[i][j] = travel_times[loc_i][loc_j]\n\n# -----------------------------\n# We will allow at most one meeting per friend (total slots equals num_friends).\nnum_slots = num_friends\n\n# Create decision variables:\n# X_vars[k] holds the friend index (or -1 if slot is left blank)\n# T_vars[k] holds the start time of the meeting in slot k (in minutes since midnight)\nX_vars = [Int(f\"X_{k}\") for k in range(num_slots)]\nT_vars = [Int(f\"T_{k}\") for k in range(num_slots)]\n\n# Create the optimizer.\nopt = Optimize()\n\n# Domain Constraints for each slot:\nfor k in range(num_slots):\n    # Either the slot is unused (== -1) or it contains a valid friend index.\n    opt.add(Or(X_vars[k] == -1, And(X_vars[k] >= 0, X_vars[k] < num_friends)))\n    \n    # If a friend is assigned to slot k, enforce that meeting time is within availability.\n    for i in range(num_friends):\n        opt.add(Implies(X_vars[k] == i, T_vars[k] >= friends[i][\"avail_start\"]))\n        opt.add(Implies(X_vars[k] == i, T_vars[k] + friends[i][\"min_duration\"] <= friends[i][\"avail_end\"]))\n    \n    # If any meeting is scheduled here, the meeting must begin at some time during the day.\n    opt.add(Implies(X_vars[k] != -1, And(T_vars[k] >= 0, T_vars[k] <= 1440)))\n\n# Special constraint for the first slot: travel from Presidio.\nfor i in range(num_friends):\n    opt.add(Implies(X_vars[0] == i, T_vars[0] >= 540 + pres_to_friend[i]))  # 540 corresponds to 9:00 AM\n\n# For subsequent slots: enforce chain consistency (if one meeting follows another,\n# include the travel time between friend locations along with the previous meeting's duration).\nfor k in range(1, num_slots):\n    # If slot k is scheduled then slot k-1 must be scheduled.\n    opt.add(Implies(X_vars[k] != -1, X_vars[k-1] != -1))\n    \n    for i in range(num_friends):\n        for j in range(num_friends):\n            travel_time_ij = travel_friend[i][j]\n            opt.add(\n                Implies(\n                    And(X_vars[k-1] =="
+}

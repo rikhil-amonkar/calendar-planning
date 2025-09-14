@@ -1,0 +1,101 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"itinerary\": [\n    {\n      \"action\": \"meet\",\n      \"location\": \"Golden Gate Park\",\n      \"person\": \"Mary\",\n      \"start_time\": \"9:54\",\n      \"end_time\": \"10:39\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Haight-Ashbury\",\n      \"person\": \"Kevin\",\n      \"start_time\": \"10:46\",\n      \"end_time\": \"12:16\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Financial District\",\n      \"person\": \"Emily\",\n      \"start_time\": \"12:37\",\n      \"end_time\": \"14:22\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Presidio\",\n      \"person\": \"Stephanie\",\n      \"start_time\": \"14:44\",\n      \"end_time\": \"16:44\"\n    },\n    {\n      \"action\": \"meet\",\n      \"location\": \"Bayview\",\n      \"person\": \"Deborah\",\n      \"start_time\": \"17:15\",\n      \"end_time\": \"19:15\"\n    }\n  ]\n}",
+    "pred": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Golden Gate Park",
+                "person": "Mary",
+                "start_time": "9:54",
+                "end_time": "10:39"
+            },
+            {
+                "action": "meet",
+                "location": "Haight-Ashbury",
+                "person": "Kevin",
+                "start_time": "10:46",
+                "end_time": "12:16"
+            },
+            {
+                "action": "meet",
+                "location": "Financial District",
+                "person": "Emily",
+                "start_time": "12:37",
+                "end_time": "14:22"
+            },
+            {
+                "action": "meet",
+                "location": "Presidio",
+                "person": "Stephanie",
+                "start_time": "14:44",
+                "end_time": "16:44"
+            },
+            {
+                "action": "meet",
+                "location": "Bayview",
+                "person": "Deborah",
+                "start_time": "17:15",
+                "end_time": "19:15"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Golden Gate Park",
+                "person": "Mary",
+                "start_time": "9:25",
+                "end_time": "10:10"
+            },
+            {
+                "action": "meet",
+                "location": "Haight-Ashbury",
+                "person": "Kevin",
+                "start_time": "10:17",
+                "end_time": "11:47"
+            },
+            {
+                "action": "meet",
+                "location": "Presidio",
+                "person": "Stephanie",
+                "start_time": "12:02",
+                "end_time": "14:02"
+            },
+            {
+                "action": "meet",
+                "location": "Bayview",
+                "person": "Deborah",
+                "start_time": "15:00",
+                "end_time": "17:00"
+            },
+            {
+                "action": "meet",
+                "location": "Financial District",
+                "person": "Emily",
+                "start_time": "17:19",
+                "end_time": "19:04"
+            }
+        ]
+    },
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "constraints_satisfied_but_no_exact_match": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 130.30894780158997,
+        "execution_time": 0.10048460960388184,
+        "constraint_eval_time": 0.00026226043701171875,
+        "pred_extract_time": 4.1120078563690186,
+        "gold_extract_time": 5.125999450683594e-05,
+        "total_tokens": 6465,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import json\nfrom z3 import *\n\n# Travel times in minutes\ntravel_times = {\n    (\"Embarcadero\", \"Golden Gate Park\"): 25,\n    (\"Embarcadero\", \"Haight-Ashbury\"): 21,\n    (\"Embarcadero\", \"Bayview\"): 21,\n    (\"Embarcadero\", \"Presidio\"): 20,\n    (\"Embarcadero\", \"Financial District\"): 5,\n    \n    (\"Golden Gate Park\", \"Embarcadero\"): 25,\n    (\"Golden Gate Park\", \"Haight-Ashbury\"): 7,\n    (\"Golden Gate Park\", \"Bayview\"): 23,\n    (\"Golden Gate Park\", \"Presidio\"): 11,\n    (\"Golden Gate Park\", \"Financial District\"): 26,\n    \n    (\"Haight-Ashbury\", \"Embarcadero\"): 20,\n    (\"Haight-Ashbury\", \"Golden Gate Park\"): 7,\n    (\"Haight-Ashbury\", \"Bayview\"): 18,\n    (\"Haight-Ashbury\", \"Presidio\"): 15,\n    (\"Haight-Ashbury\", \"Financial District\"): 21,\n    \n    (\"Bayview\", \"Embarcadero\"): 19,\n    (\"Bayview\", \"Golden Gate Park\"): 22,\n    (\"Bayview\", \"Haight-Ashbury\"): 19,\n    (\"Bayview\", \"Presidio\"): 31,\n    (\"Bayview\", \"Financial District\"): 19,\n    \n    (\"Presidio\", \"Embarcadero\"): 20,\n    (\"Presidio\", \"Golden Gate Park\"): 12,\n    (\"Presidio\", \"Haight-Ashbury\"): 15,\n    (\"Presidio\", \"Bayview\"): 31,\n    (\"Presidio\", \"Financial District\"): 23,\n    \n    (\"Financial District\", \"Embarcadero\"): 4,\n    (\"Financial District\", \"Golden Gate Park\"): 23,\n    (\"Financial District\", \"Haight-Ashbury\"): 19,\n    (\"Financial District\", \"Bayview\"): 19,\n    (\"Financial District\", \"Presidio\"): 22\n}\n\ndef get_travel_time(fr, to):\n    return travel_times[(fr, to)]\n\n# Friend meeting definitions\n# Times are in minutes from midnight.\n# Embarcadero arrival is at 9:00 -> 540 minutes.\n# Mary is available 8:45 (525) to 11:45 (705), minimum 45 min.\n# Kevin is available 10:15 (615) to 16:15 (975), minimum 90 min.\n# Deborah is available 15:00 (900) to 19:15 (1155), minimum 120 min.\n# Stephanie is available 10:00 (600) to 17:15 (1035), minimum 120 min.\n# Emily is available 11:30 (690) to 21:45 (1305), minimum 105 min.\nfriends = [\n    {\n        \"name\": \"Mary\",\n        \"location\": \"Golden Gate Park\",\n        \"avail_start\": 525,\n        \"avail_end\": 705,\n        \"min_duration\": 45\n    },\n    {\n        \"name\": \"Kevin\",\n        \"location\": \"Haight-Ashbury\",\n        \"avail_start\": 615,\n        \"avail_end\": 975,\n        \"min_duration\": 90\n    },\n    {\n        \"name\": \"Deborah\",\n        \"location\": \"Bayview\",\n        \"avail_start\": 900,\n        \"avail_end\": 1155,\n        \"min_duration\": 120\n    },\n    {\n        \"name\": \"Stephanie\",\n        \"location\": \"Presidio\",\n        \"avail_start\": 600,\n        \"avail_end\": 1035,\n        \"min_duration\": 120\n    },\n    {\n        \"name\": \"Emily\",\n        \"location\": \"Financial District\",\n        \"avail_start\": 690,\n        \"avail_end\": 1305,\n        \"min_duration\": 105\n    }\n]\n\nn_friends = len(friends)\nopt = Optimize()\n\n# Create decision variables for each meeting:\n# x: whether friend is met, s: start time of meeting, pos: order position in the itinerary.\nx_vars = [Bool(f\"x_{i}\") for i in range(n_friends)]\ns_vars = [Int(f\"s_{i}\") for i in range(n_friends)]\npos_vars = [Int(f\"pos_{i}\") for i in range(n_friends)]\n\n# Constraints for each friend meeting\nfor i, friend in enumerate(friends):\n    # If meeting is scheduled, start time must be within the friend's available window.\n    opt.add(Implies(x_vars[i], s_vars[i] >= friend[\"avail_start\"]))\n    opt.add(Implies(x_vars[i], s_vars[i] + friend[\"min_duration\"] <= friend[\"avail_end\"]))\n    # If meeting is scheduled, its order position must be between 0 and n_friends-1.\n    opt.add(Implies(x_vars[i], And(pos_vars[i] >= 0, pos_vars[i] < n_friends)))\n    # If this meeting is the first one (position 0), ensure travel from Embarcadero is accounted for.\n    travel_from_origin = get_travel_time(\"Embarcadero\", friend[\"location\"])\n    opt.add(Implies(And(x_vars[i], pos_vars[i] == 0), s_vars[i] >= 540 + travel_from_origin))\n\n# Ordering constraints between any two scheduled meetings\nfor i in range(n_friends):\n    for j in range(i+1, n_friends):\n        # If both meetings are scheduled, their order positions must be different.\n        opt.add(Implies(And(x_vars[i], x_vars[j]), pos_vars[i] != pos_vars[j]))\n        # Define travel times and durations.\n        t_ij = get_travel_time(friends[i][\"location\"], friends[j][\"location\"])\n        t_ji = get_travel_time(friends[j][\"location\"], friends[i][\"location\"])\n        d_i = friends[i][\"min_duration\"]\n        d_j = friends[j][\"min_duration\"]\n        # If both meetings are scheduled, then one must come before the other.\n        # If friend i is before friend j, then s_i + d_i + travel(i->j) <= s_j.\n        # Else, if friend j is before friend i, then s_j + d_j + travel(j->i) <= s_i.\n        opt.add(Implies(And(x_vars[i], x_vars[j]),\n                        Or(\n                            And(pos_vars[i] < pos_vars[j], s_vars[i] + d_i + t_ij <= s_vars[j]),\n                            And(pos_vars[j] < pos_vars[i], s_vars[j] + d_j + t_ji <= s_vars[i])\n                        )\n                       )\n               )\n\n# Ensure that if any meeting is scheduled, exactly one meeting is the first (pos == 0)\nfirst_meeting_count = Sum([If(And(x_vars[i], pos_vars[i] == 0), 1, 0) for i in range(n_friends)])\ntotal_scheduled = Sum([If(x_vars[i], 1, 0) for i in range(n_friends)])\nopt.add(Or(total_scheduled == 0, first_meeting_count == 1))\n\n# Objective: maximize the total number of meetings scheduled.\nopt.maximize(total_scheduled)\n\n# Solve the SMT optimization\nif opt.check() == sat:\n    model = opt.model()\n    scheduled = []\n    for i, friend in enumerate(friends):\n        if is_true(model.evaluate(x_vars[i])):\n            start_time = model.evaluate(s_vars[i]).as_long()\n            end_time = start_time + friend[\"min_duration\"]\n            pos_val = model.evaluate(pos_vars[i]).as_long()\n            scheduled.append((pos_val, friend, start_time, end_time))\n    # Sort meetings by their position in the itinerary.\n    scheduled.sort(key=lambda item: item[0])\n    \n    def format_time(minutes):\n        hr = minutes // 60\n        mn = minutes % 60\n        return f\"{hr}:{mn:02d}\"\n    \n    itinerary = []\n    for order, friend, start, end in scheduled:\n        itinerary.append({\n            \"action\": \"meet\",\n            \"location\": friend[\"location\"],\n            \"person\": friend[\"name\"],\n            \"start_time\": format_time(start),\n            \"end_time\": format_time(end)\n        })\n    \n    output = {\"itinerary\": itinerary}\n    print(json.dumps(output, indent=2))\nelse:\n    print(json.dumps({\"itinerary\": []}))"
+}

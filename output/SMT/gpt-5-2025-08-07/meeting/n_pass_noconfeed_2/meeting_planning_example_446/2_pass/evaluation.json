@@ -1,0 +1,63 @@
+{
+    "has_execution_error": true,
+    "has_no_plan": false,
+    "execution_output": null,
+    "pred": null,
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Chinatown",
+                "person": "Robert",
+                "start_time": "12:15",
+                "end_time": "12:30"
+            },
+            {
+                "action": "meet",
+                "location": "Bayview",
+                "person": "Margaret",
+                "start_time": "12:52",
+                "end_time": "13:22"
+            },
+            {
+                "action": "meet",
+                "location": "Marina District",
+                "person": "Kimberly",
+                "start_time": "13:47",
+                "end_time": "14:02"
+            },
+            {
+                "action": "meet",
+                "location": "Financial District",
+                "person": "Rebecca",
+                "start_time": "14:19",
+                "end_time": "15:34"
+            },
+            {
+                "action": "meet",
+                "location": "Union Square",
+                "person": "Kenneth",
+                "start_time": "19:30",
+                "end_time": "20:45"
+            }
+        ]
+    },
+    "status": "Error",
+    "violated_constraint": {
+        "missing_itinerary": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 2,
+    "timing": {
+        "api_call_time": 62.65942668914795,
+        "execution_time": 0.08033585548400879,
+        "constraint_eval_time": 2.86102294921875e-06,
+        "pred_extract_time": 2.86102294921875e-06,
+        "gold_extract_time": 8.463859558105469e-05,
+        "total_tokens": 4916,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import json\nfrom z3 import *\n\ndef to_minutes(h, m):\n    return h * 60 + m\n\ndef fmt_time(t):\n    h = t // 60\n    m = t % 60\n    return f\"{h}:{m:02d}\"\n\ndef solve_itinerary():\n    # Locations\n    RICHMOND = \"Richmond District\"\n    MARINA = \"Marina District\"\n    CHINATOWN = \"Chinatown\"\n    FINANCIAL = \"Financial District\"\n    BAYVIEW = \"Bayview\"\n    UNION_SQ = \"Union Square\"\n\n    # Travel times (directed, in minutes)\n    travel = {\n        RICHMOND: {MARINA: 9, CHINATOWN: 20, FINANCIAL: 22, BAYVIEW: 26, UNION_SQ: 21},\n        MARINA: {RICHMOND: 11, CHINATOWN: 16, FINANCIAL: 17, BAYVIEW: 27, UNION_SQ: 16},\n        CHINATOWN: {RICHMOND: 20, MARINA: 12, FINANCIAL: 5, BAYVIEW: 22, UNION_SQ: 7},\n        FINANCIAL: {RICHMOND: 21, MARINA: 15, CHINATOWN: 5, BAYVIEW: 19, UNION_SQ: 9},\n        BAYVIEW: {RICHMOND: 25, MARINA: 25, CHINATOWN: 18, FINANCIAL: 19, UNION_SQ: 17},\n        UNION_SQ: {RICHMOND: 20, MARINA: 18, CHINATOWN: 7, FINANCIAL: 9, BAYVIEW: 15},\n    }\n\n    # Friends data\n    # 0: Kimberly (Marina) [13:15-16:45], min 15\n    # 1: Robert (Chinatown) [12:15-20:15], min 15\n    # 2: Rebecca (Financial) [13:15-16:45], min 75\n    # 3: Margaret (Bayview) [9:30-13:30], min 30\n    # 4: Kenneth (Union Square) [19:30-21:15], min 75\n    friends = [\n        {\"name\": \"Kimberly\", \"location\": MARINA, \"start\": to_minutes(13, 15), \"end\": to_minutes(16, 45), \"min_dur\": 15},\n        {\"name\": \"Robert\", \"location\": CHINATOWN, \"start\": to_minutes(12, 15), \"end\": to_minutes(20, 15), \"min_dur\": 15},\n        {\"name\": \"Rebecca\", \"location\": FINANCIAL, \"start\": to_minutes(13, 15), \"end\": to_minutes(16, 45), \"min_dur\": 75},\n        {\"name\": \"Margaret\", \"location\": BAYVIEW, \"start\": to_minutes(9, 30), \"end\": to_minutes(13, 30), \"min_dur\": 30},\n        {\"name\": \"Kenneth\", \"location\": UNION_SQ, \"start\": to_minutes(19, 30), \"end\": to_minutes(21, 15), \"min_dur\": 75},\n    ]\n\n    n = len(friends)\n    NONE = n  # sentinel for unused order positions\n\n    # Z3 variables\n    o = Optimize()\n\n    order = [Int(f\"order_{k}\") for k in range(n)]\n    start = [Int(f\"start_{i}\") for i in range(n)]\n    end = [Int(f\"end_{i}\") for i in range(n)]\n    meet = [Bool(f\"meet_{i}\") for i in range(n)]\n\n    # Domain constraints\n    for k in range(n):\n        o.add(order[k] >= 0, order[k] <= NONE)\n    for i in range(n):\n        o.add(start[i] >= 0, start[i] <= 24 * 60)\n        o.add(end[i] >= 0, end[i] <= 24 * 60)\n\n    # Once NONE appears in the order, all subsequent must be NONE\n    for k in range(1, n):\n        o.add(Implies(order[k - 1] == NONE, order[k] == NONE))\n\n    # Distinctness among non-NONE order entries\n    for i in range(n):\n        for j in range(i + 1, n):\n            o.add(Implies(And(order[i] != NONE, order[j] != NONE), order[i] != order[j]))\n\n    # Meet equivalence: meet[i] <-> appears in order\n    for i in range(n):\n        o.add(meet[i] == Or(*[order[k] == i for k in range(n)]))\n\n    # Availability and duration constraints when meeting\n    for i, f in enumerate(friends):\n        o.add(Implies(meet[i], And(\n            start[i] >= f[\"start\"],\n            end[i] <= f[\"end\"],\n            end[i] - start[i] >= f[\"min_dur\"]\n        )))\n\n    # Start location and time\n    arrive_richmond = to_minutes(9, 0)\n\n    # Travel constraints based on order positions\n    # For first meeting: from Richmond at 9:00 with travel time\n    for i, f in enumerate(friends):\n        o.add(Implies(order[0] == i, start[i] >= arrive_richmond + travel[RICHMOND][f[\"location\"]]))\n\n    # For subsequent meetings: ensure travel time between consecutive meetings\n    for k in range(1, n):\n        for i in range(n):\n            for j in range(n):\n                loc_i = friends[i][\"location\"]\n                loc_j = friends[j][\"location\"]\n                o.add(Implies(And(order[k] == i, order[k - 1] == j),\n                              end[j] + travel[loc_j][loc_i] <= start[i]))\n\n    # Objective: maximize number of meetings\n    total_meetings = Sum([If(meet[i], 1, 0) for i in range(n)])\n    o.maximize(total_meetings)\n\n    # Secondary objective: minimize total end time (encourages tighter/earlier schedule)\n    total_end = Sum([If(meet[i], end[i], 0) for i in range(n)])\n    o.minimize(total_end)\n\n    # Solve\n    if o.check() != sat:\n        return []\n\n    m = o.model()\n\n    # Build itinerary in order\n    itinerary = []\n    for k in range(n):\n        idx = m.eval(order[k]).as_long()\n        if idx == NONE:\n            break\n        s = m.eval(start[idx]).as_long()\n        e = m.eval(end[idx]).as_long()\n        itinerary.append({\n            \"action\": \"meet\",\n            \"location\": friends[idx][\"location\"],\n            \"person\": friends[idx][\"name\"],\n            \"start_time\": fmt_time(s),\n            \"end_time\": fmt_time(e),\n        })\n\n    return itinerary\n\nif __name__ == \"__main__\":\n    itinerary = solve_itinerary()\n    print(\"SOLUTION:\" + json.dumps({\"itinerary\": itinerary}, ensure_ascii=False))"
+}

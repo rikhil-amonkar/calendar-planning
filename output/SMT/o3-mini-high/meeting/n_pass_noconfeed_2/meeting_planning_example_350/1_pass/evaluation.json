@@ -1,0 +1,58 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": true,
+    "execution_output": "{\n  \"itinerary\": []\n}",
+    "pred": {
+        "itinerary": []
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "action": "meet",
+                "location": "Pacific Heights",
+                "person": "Mary",
+                "start_time": "10:00",
+                "end_time": "10:45"
+            },
+            {
+                "action": "meet",
+                "location": "Haight-Ashbury",
+                "person": "Betty",
+                "start_time": "10:56",
+                "end_time": "12:26"
+            },
+            {
+                "action": "meet",
+                "location": "Financial District",
+                "person": "Charles",
+                "start_time": "12:47",
+                "end_time": "14:47"
+            },
+            {
+                "action": "meet",
+                "location": "Mission District",
+                "person": "Lisa",
+                "start_time": "20:30",
+                "end_time": "21:45"
+            }
+        ]
+    },
+    "status": "No plan generated",
+    "violated_constraint": {
+        "no_valid_meetings": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 99.38556790351868,
+        "execution_time": 0.08909177780151367,
+        "constraint_eval_time": 4.887580871582031e-05,
+        "pred_extract_time": 0.8072965145111084,
+        "gold_extract_time": 6.961822509765625e-05,
+        "total_tokens": 5976,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import Int, Bool, Optimize, If, And, Or, Implies, Not\nimport json\n\ndef format_time(total_minutes):\n    hour = total_minutes // 60\n    minute = total_minutes % 60\n    return f\"{hour}:{minute:02d}\"\n\ndef main():\n    opt = Optimize()\n    \n    # Base arrival: You arrive at Bayview at 9:00 (9*60 = 540 minutes)\n    base_time = 540\n    base_location = \"Bayview\"\n    \n    # Friend meeting data with availability windows (in minutes) and min meeting durations.\n    # Times are minutes after midnight.\n    friends = [\n        {\n            \"name\": \"Mary\",\n            \"location\": \"Pacific Heights\",\n            \"avail_start\": 600,   # 10:00\n            \"avail_end\": 1140,    # 19:00\n            \"duration\": 45\n        },\n        {\n            \"name\": \"Lisa\",\n            \"location\": \"Mission District\",\n            \"avail_start\": 1230,  # 20:30\n            \"avail_end\": 1320,    # 22:00\n            \"duration\": 75\n        },\n        {\n            \"name\": \"Betty\",\n            \"location\": \"Haight-Ashbury\",\n            \"avail_start\": 435,   # 7:15\n            \"avail_end\": 1035,    # 17:15\n            \"duration\": 90\n        },\n        {\n            \"name\": \"Charles\",\n            \"location\": \"Financial District\",\n            \"avail_start\": 675,   # 11:15\n            \"avail_end\": 900,     # 15:00\n            \"duration\": 120\n        }\n    ]\n    num_friends = len(friends)\n    \n    # Travel times (in minutes) between locations\n    travel = {\n        ( \"Bayview\", \"Pacific Heights\" ): 23,\n        ( \"Bayview\", \"Mission District\" ): 13,\n        ( \"Bayview\", \"Haight-Ashbury\" ): 19,\n        ( \"Bayview\", \"Financial District\" ): 19,\n        ( \"Pacific Heights\", \"Bayview\" ): 22,\n        ( \"Pacific Heights\", \"Mission District\" ): 15,\n        ( \"Pacific Heights\", \"Haight-Ashbury\" ): 11,\n        ( \"Pacific Heights\", \"Financial District\" ): 13,\n        ( \"Mission District\", \"Bayview\" ): 15,\n        ( \"Mission District\", \"Pacific Heights\" ): 16,\n        ( \"Mission District\", \"Haight-Ashbury\" ): 12,\n        ( \"Mission District\", \"Financial District\" ): 17,\n        ( \"Haight-Ashbury\", \"Bayview\" ): 18,\n        ( \"Haight-Ashbury\", \"Pacific Heights\" ): 12,\n        ( \"Haight-Ashbury\", \"Mission District\" ): 11,\n        ( \"Haight-Ashbury\", \"Financial District\" ): 21,\n        ( \"Financial District\", \"Bayview\" ): 19,\n        ( \"Financial District\", \"Pacific Heights\" ): 13,\n        ( \"Financial District\", \"Mission District\" ): 17,\n        ( \"Financial District\", \"Haight-Ashbury\" ): 19\n    }\n    \n    # Decision variables:\n    # scheduled[i] is True if meeting with friend i is scheduled.\n    scheduled = [Bool(f\"scheduled_{i}\") for i in range(num_friends)]\n    # start_vars[i] and end_vars[i] mark start and end times (in minutes) for each meeting.\n    start_vars = [Int(f\"start_{i}\") for i in range(num_friends)]\n    end_vars = [Int(f\"end_{i}\") for i in range(num_friends)]\n    \n    # Add constraints for each friend meeting if it is scheduled.\n    for i in range(num_friends):\n        friend = friends[i]\n        # When meeting is scheduled, meeting must:\n        # - Start no earlier than friend available time and after you travel from Bayview.\n        # - End no later than friend available end.\n        # - Last at least the required duration.\n        opt.add(Implies(scheduled[i],\n                        And(\n                            start_vars[i] >= friend[\"avail_start\"],\n                            start_vars[i] >= base_time + travel[(base_location, friend[\"location\"])],\n                            end_vars[i] <= friend[\"avail_end\"],\n                            end_vars[i] - start_vars[i] >= friend[\"duration\"]\n                        )))\n        # If not scheduled, fix times to 0 (so they don't interfere with ordering constraints).\n        opt.add(Implies(Not(scheduled[i]), start_vars[i] == 0))\n        opt.add(Implies(Not(scheduled[i]), end_vars[i] == 0))\n    \n    # Add ordering constraints for any two scheduled meetings.\n    # If both meeting i and meeting j are scheduled, then one must follow the other while accounting for travel time.\n    for i in range(num_friends):\n        for j in range(i+1, num_friends):\n            friend_i = friends[i]\n            friend_j = friends[j]\n            travel_ij = travel[(friend_i[\"location\"], friend_j[\"location\"])]\n            travel_ji = travel[(friend_j[\"location\"], friend_i[\"location\"])]\n            opt.add(Implies(And(scheduled[i], scheduled[j]),\n                        Or(\n                            start_vars[j] >= end_vars[i] + travel_ij,\n                            start_vars[i] >= end_vars[j] + travel_ji\n                        )))\n    \n    # Objective: maximize the number of scheduled meetings.\n    total_meetings = sum([If(scheduled[i], 1, 0) for i in range(num_friends)])\n    opt.maximize(total_meetings)\n    \n    if opt.check() == 'sat':\n        model = opt.model()\n        \n        # Gather scheduled meetings and sort by start time.\n        meetings = []\n        for i in range(num_friends):\n            if model.evaluate(scheduled[i]):\n                s_val = model.evaluate(start_vars[i]).as_long()\n                e_val = model.evaluate(end_vars[i]).as_long()\n                meetings.append({\n                    \"start\": s_val,\n                    \"end\": e_val,\n                    \"location\": friends[i][\"location\"],\n                    \"person\": friends[i][\"name\"]\n                })\n        meetings.sort(key=lambda x: x[\"start\"])\n        \n        itinerary = []\n        for m in meetings:\n            itinerary.append({\n                \"action\": \"meet\",\n                \"location\": m[\"location\"],\n                \"person\": m[\"person\"],\n                \"start_time\": format_time(m[\"start\"]),\n                \"end_time\": format_time(m[\"end\"])\n            })\n        \n        output = {\"itinerary\": itinerary}\n        print(json.dumps(output, indent=2))\n    else:\n        print(json.dumps({\"itinerary\": []}, indent=2))\n\nif __name__ == '__main__':\n    main()"
+}
