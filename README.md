@@ -6,7 +6,7 @@ Real-life textual planning tasks such as meeting scheduling have posed much chal
 
 ![Constraint Satisfaction Planning](images/thumbnail.png)
 
-We evaluate on the [Natural Plan](https://github.com/google-deepmind/natural-plan) benchmark on three tasks: calendar scheduling, trip planning, and meeting planning. We use LLMs with three types of output: plans, Python code, and [Z3](https://github.com/Z3Prover/z3) code. 
+We evaluate on the [Natural Plan](https://github.com/google-deepmind/natural-plan) benchmark on three tasks: calendar scheduling, trip planning, and meeting planning. We also use the ZebraLogic dataset. We use LLMs with three types of output: plans, Python code, and [Z3](https://github.com/Z3Prover/z3) code. 
 
 ## Data
 
@@ -15,67 +15,79 @@ The downsampled 100-example-per-task datasets are in [data/](data/)`*_100.json` 
 ## Evaluation
 
 ### Plan
-For plan generation on HuggingFace models, go to [source/](source/) and run
-> python force_json_[TASK]_text.py --model MODEL
+For plan generation with iterative refinement and constraint feedback, go to [source/](source/) and run:
 
-where `TASK` is one of *calendar*, *trip*, *meeting* tasks; `MODEL` is a model name supported HuggingFace
+> python iterative_plan_refinement_feedback_zebra.py --task TASK --model MODEL
 
-For plan generation on OpenAI models, go to [source/](source/) and run
-> python openai_force_json_[TASK]_text.py --model MODEL
+This version supports up to 5 refinement passes and includes the *zebralogic* task.
 
-where `TASK` is one of *calendar*, *trip*, *meeting* tasks; `MODEL` is a model name supported OpenAI API
+Other available versions:  
+- `iterative_plan_refinement_together_feedback.py` — same as above, before *zebralogic* task was added.  
+- `iterative_plan_refinement_together_limitedFeedback.py` — refinement without *zebralogic* task and limited feedback.  
 
-For plan generation with reasoning on DeepSeek models, go to [source/](source/) and run
-> python deepseek_opai_[TASK]_text_reason.py --model MODEL
+Now evaluate the output plan with:
 
-where `TASK` is one of *calendar*, *trip*, *meeting* tasks; `MODEL` is a model name supported DeepSeek API
-
-Now evaluate the output plan with
 > python evaluate_by_constraint.py --task TASK --model MODEL --output OUTPUT
 
-where `TASK` is one of *calendar*, *trip*, *meeting*, or all.; `MODEL` is a model name supported HuggingFace, OpenAI API, or DeepSeek API; `OUTPUT` is either *plan* or *python*
+Where `TASK` is one of *calendar*, *trip*, *meeting*, or *zebralogic*; `MODEL` is any supported model; `OUTPUT` is either *plan* or *python*.  
 
-This creates corresponding files and a readable report in [output/Plan/](output/Plan/)`MODEL/TASK/report.json`. 
+This generates corresponding files and a readable report in `[output/Plan/](output/Plan/)MODEL/TASK/report.json`.  
+
+---
 
 ### Python
-For Python code generation, go to [source/](source/) and run
-> python [TASK]_plan_code_gen.py --model MODEL
+For Python code generation with iterative refinement, go to [source/](source/) and run:
 
-where `TASK` is one of *calendar*, *trip*, *meeting* tasks; `MODEL` is a model name supported HuggingFace
+> python iterative_python_refinement_noconstraintfeedback_zebra.py --task TASK --model MODEL
 
-For Python code generation on OpenAI models, go to [source/](source/) and run
-> python openai_[TASK]_plan_code_gen.py --model MODEL
+This version includes the *zebralogic* task and only uses feedback for errors or no plan.
 
-where `TASK` is one of *calendar*, *trip*, *meeting* tasks; `MODEL` is a model name supported OpenAI API
+Other available versions:  
+- `iterative_python_refinement_noconstraintfeedback.py` — same as above, before *zebralogic* task was added.  
+- `iterative_python_refinement_updated_zebra.py` — full feedback version with *zebralogic* task.  
 
-For Python code generation with reasoning on DeepSeek models, go to [source/](source/) and run
-> python deepseek_opai_[TASK]_code_reason.py --model MODEL
+Now evaluate the output Python-generated plan with:
 
-where `TASK` is one of *calendar*, *trip*, *meeting* tasks; `MODEL` is a model name supported DeepSeek API
-
-Now evaluate the output plan from the Python generated outputs with
 > python evaluate_by_constraint.py --task TASK --model MODEL --output OUTPUT
 
-where `TASK` is one of *calendar*, *trip*, *meeting*, or all.; `MODEL` is a model name supported HuggingFace, OpenAI API, or DeepSeek API; `OUTPUT` is either *plan* or *python*
+Where `TASK` is one of *calendar*, *trip*, *meeting*, or *zebralogic*; `MODEL` is any supported model; `OUTPUT` is either *plan* or *python*.  
 
-This creates corresponding files and a readable report in [output/Python/](output/Python/)`MODEL/TASK/report.json`. 
+This generates corresponding files and a readable report in `[output/Python/](output/Python/)MODEL/TASK/report.json`.  
 
-### Z3 
-For Z3 code generation, go to [source/](source/) and run
-> python generate_smt_input.py --model MODEL --data DATA
+---
 
-where `MODEL` is a model name supported HuggingFace, OpenAI API, or DeepSeek API; `DATA` is one of *calendar*, *trip*, *meeting*, or all. 
+### Z3  
+For Z3 (SMT) code generation with iterative refinement, go to [source/](source/) and run:
 
-Execute the generated code:
-> python execute_smt.py --model MODEL --data DATA
+> python iterative_smt_refinement_feedback_enhanced_zebra.py --task TASK --model MODEL
 
-Convert the output into a unified format:
-> python convert_smt_output_format.py --model MODEL --data DATA
+This version supports full feedback and includes the *zebralogic* task.
 
-Evaluate against constraints:
-> python evaluate_by_constraint.py --output z3 --model MODEL --data DATA
+Other available versions:  
+- `iterative_smt_refinement_feedback_enhanced.py` — same as above, before *zebralogic* task was added.  
+- `iterative_smt_refinement_limitedFeedback_enhanced.py` — limited feedback, no *zebralogic* task.  
+- `iterative_smt_refinement_noconstraintfeedback_token.py` — counts tokens for DeepSeek reasoner models (not for accuracy).  
+- `iterative_smt_refinement_noconstraintfeedback_zebra.py` — no feedback except for errors or no plan, includes *zebralogic* task.  
+- `iterative_smt_refinement.py` — base refinement template without *zebralogic*.  
 
-This creates corresponding files and a readable report in [output/SMT/](output/SMT/)`MODEL/TASK/report.json`. 
+General workflow:  
+1. Generate SMT input:
+
+> python iterative_smt_refinement_XXX.py --task TASK --model MODEL
+
+2. Execute generated code:
+
+> python execute_smt.py --model MODEL --data TASK
+
+3. Convert output into unified format:
+
+> python convert_smt_output_format.py --model MODEL --data TASK
+
+4. Evaluate against constraints:
+
+> python evaluate_by_constraint.py --output z3 --model MODEL --data TASK
+
+This generates corresponding files and a readable report in `[output/SMT/](output/SMT/)MODEL/TASK/report.json`.  
 
 # Iterative SMT Refinement Pipeline
 
@@ -83,13 +95,13 @@ This document describes the pipeline implemented in `iterative_smt_refinement_pa
 
 ## Pipeline Overview
 
-The pipeline processes scheduling tasks (calendar, trip, and meeting) through multiple passes, where each pass attempts to solve the task using a language model to generate Z3 solver code. The process continues until a valid solution is found or the maximum number of passes is reached.
+The pipeline processes scheduling tasks (calendar, trip, and meeting, zebralogic) through multiple passes, where each pass attempts to solve the task using a language model to generate Z3 solver code. The process continues until a valid solution is found or the maximum number of passes is reached.
 
 ## Pipeline Steps
 
 ### 1. Task Loading and Initialization
 **Input:**
-- Task type: "calendar", "trip", or "meeting"
+- Task type: "calendar", "trip", "meeting", or "zebralogic"
 - Model name (e.g., "DeepSeek-R1")
 - Maximum number of passes (default: 5)
 - Number of parallel workers (default: 10)
@@ -343,7 +355,7 @@ python source/iterative_smt_refinement_parallel.py --task calendar --model DeepS
 ```
 
 ### Command Line Arguments
-- `--task`: Task type to run ("calendar", "trip", or "meeting")
+- `--task`: Task type to run ("calendar", "trip", "meeting", or "zebralogic")
 - `--model`: Model to use (e.g., "DeepSeek-R1", "DeepSeek-V3")
 - `--max_passes`: Maximum number of refinement passes (default: 5)
 - `--max_concurrent`: Maximum number of concurrent examples to process (default: 10)
