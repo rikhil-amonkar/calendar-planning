@@ -1,0 +1,122 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\"itinerary\": [{\"day_range\": \"Day 1-2\", \"place\": \"Lisbon\"}, {\"day_range\": \"Day 3\", \"place\": \"Valencia\"}, {\"day_range\": \"Day 4-7\", \"place\": \"Seville\"}, {\"day_range\": \"Day 8-10\", \"place\": \"Paris\"}, {\"day_range\": \"Day 11\", \"place\": \"Tallinn\"}, {\"day_range\": \"Day 12-13\", \"place\": \"Prague\"}, {\"day_range\": \"Day 14-15\", \"place\": \"Oslo\"}, {\"day_range\": \"Day 16-18\", \"place\": \"Lyon\"}, {\"day_range\": \"Day 19-21\", \"place\": \"Nice\"}, {\"day_range\": \"Day 22-25\", \"place\": \"Mykonos\"}]}",
+    "pred": {
+        "itinerary": [
+            {
+                "day_range": "Day 1-2",
+                "place": "Lisbon"
+            },
+            {
+                "day_range": "Day 3",
+                "place": "Valencia"
+            },
+            {
+                "day_range": "Day 4-7",
+                "place": "Seville"
+            },
+            {
+                "day_range": "Day 8-10",
+                "place": "Paris"
+            },
+            {
+                "day_range": "Day 11",
+                "place": "Tallinn"
+            },
+            {
+                "day_range": "Day 12-13",
+                "place": "Prague"
+            },
+            {
+                "day_range": "Day 14-15",
+                "place": "Oslo"
+            },
+            {
+                "day_range": "Day 16-18",
+                "place": "Lyon"
+            },
+            {
+                "day_range": "Day 19-21",
+                "place": "Nice"
+            },
+            {
+                "day_range": "Day 22-25",
+                "place": "Mykonos"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "day_range": "Day 1-3",
+                "place": "Prague"
+            },
+            {
+                "day_range": "Day 3-4",
+                "place": "Valencia"
+            },
+            {
+                "day_range": "Day 4-5",
+                "place": "Lisbon"
+            },
+            {
+                "day_range": "Day 5-9",
+                "place": "Seville"
+            },
+            {
+                "day_range": "Day 9-12",
+                "place": "Paris"
+            },
+            {
+                "day_range": "Day 12-13",
+                "place": "Tallinn"
+            },
+            {
+                "day_range": "Day 13-15",
+                "place": "Oslo"
+            },
+            {
+                "day_range": "Day 15-18",
+                "place": "Lyon"
+            },
+            {
+                "day_range": "Day 18-21",
+                "place": "Nice"
+            },
+            {
+                "day_range": "Day 21-25",
+                "place": "Mykonos"
+            }
+        ]
+    },
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "gap/overlap": [
+            {
+                "place": "Lisbon",
+                "start": 1,
+                "end": 2
+            },
+            {
+                "place": "Valencia",
+                "start": 3,
+                "end": 3
+            }
+        ]
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 570.8779213428497,
+        "execution_time": 19.850991249084473,
+        "constraint_eval_time": 1.430511474609375e-05,
+        "pred_extract_time": 3.3856067657470703,
+        "gold_extract_time": 6.29425048828125e-05,
+        "total_tokens": 1373,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\nimport json\n\ndef main():\n    # Define cities and their indices\n    cities = ['Valencia', 'Oslo', 'Lyon', 'Prague', 'Paris', 'Nice', 'Seville', 'Tallinn', 'Mykonos', 'Lisbon']\n    city_index = {city: idx for idx, city in enumerate(cities)}\n    \n    # Required days for each city\n    req_days = [2, 3, 4, 3, 4, 4, 5, 2, 5, 2]\n    \n    # Direct flights set (as city index pairs)\n    direct_flights_pairs = [\n        ('Lisbon','Paris'), ('Lyon','Nice'), ('Tallinn','Oslo'), ('Prague','Lyon'), ('Paris','Oslo'),\n        ('Lisbon','Seville'), ('Prague','Lisbon'), ('Oslo','Nice'), ('Valencia','Paris'), ('Valencia','Lisbon'),\n        ('Paris','Nice'), ('Nice','Mykonos'), ('Paris','Lyon'), ('Valencia','Lyon'), ('Prague','Oslo'),\n        ('Prague','Paris'), ('Seville','Paris'), ('Oslo','Lyon'), ('Prague','Valencia'), ('Lisbon','Nice'),\n        ('Lisbon','Oslo'), ('Valencia','Seville'), ('Lisbon','Lyon'), ('Paris','Tallinn'), ('Prague','Tallinn')\n    ]\n    direct_flights_set = set()\n    for a, b in direct_flights_pairs:\n        i1 = city_index[a]\n        i2 = city_index[b]\n        direct_flights_set.add((i1, i2))\n        direct_flights_set.add((i2, i1))\n    \n    # Create Z3 solver\n    s = Solver()\n    \n    # Sleep city array for nights 0 to 25\n    sleep = IntVector('s', 26)\n    for i in range(26):\n        s.add(sleep[i] >= 0, sleep[i] < len(cities))\n    \n    # Constraints for required days per city\n    for c_idx in range(len(cities)):\n        non_travel = 0\n        depart = 0\n        arrive = 0\n        for i in range(1, 26):\n            # Non-travel days: same city on consecutive nights\n            non_travel += If(And(sleep[i-1] == c_idx, sleep[i] == c_idx), 1, 0)\n            # Departure travel days: leave from city c_idx\n            depart += If(And(sleep[i-1] == c_idx, sleep[i] != c_idx), 1, 0)\n            # Arrival travel days: arrive to city c_idx\n            arrive += If(And(sleep[i-1] != c_idx, sleep[i] == c_idx), 1, 0)\n        total_days = non_travel + depart + arrive\n        s.add(total_days == req_days[c_idx])\n    \n    # Meeting constraints\n    # Valencia between day 3 and 4: must be in Valencia on day 3 or day 4\n    s.add(Or(sleep[2] == city_index['Valencia'], sleep[3] == city_index['Valencia'], sleep[4] == city_index['Valencia']))\n    # Oslo between day 13 and 15: must be in Oslo on day 13, 14, or 15\n    s.add(Or(sleep[12] == city_index['Oslo'], sleep[13] == city_index['Oslo'], sleep[14] == city_index['Oslo'], sleep[15] == city_index['Oslo']))\n    # Seville from day 5 to 9: must be in Seville on at least one of these days\n    seville_constraints = []\n    for i in range(4, 10):\n        seville_constraints.append(sleep[i] == city_index['Seville'])\n    s.add(Or(seville_constraints))\n    # Mykonos between day 21 and 25: must be in Mykonos on at least one of these days\n    mykonos_constraints = []\n    for i in range(20, 26):\n        mykonos_constraints.append(sleep[i] == city_index['Mykonos'])\n    s.add(Or(mykonos_constraints))\n    \n    # Direct flight constraints\n    for i in range(1, 26):\n        city_prev = sleep[i-1]\n        city_curr = sleep[i]\n        # If travel occurs, ensure there is a direct flight\n        travel_condition = (city_prev != city_curr)\n        allowed_flights = []\n        for (c1, c2) in direct_flights_set:\n            allowed_flights.append(And(city_prev == c1, city_curr == c2))\n        s.add(Implies(travel_condition, Or(allowed_flights)))\n    \n    # Check and get model\n    if s.check() == sat:\n        model = s.model()\n        sleep_values = [model.evaluate(sleep[i]).as_long() for i in range(26)]\n        \n        # Generate itinerary stays\n        itinerary = []\n        current_city = sleep_values[0]\n        start_night = 0\n        for night in range(1, 26):\n            if sleep_values[night] != current_city:\n                end_night = night - 1\n                start_day = start_night + 1\n                end_day = end_night + 1\n                if end_day > 25:\n                    end_day = 25\n                if start_day == end_day:\n                    day_range_str = f\"Day {start_day}\"\n                else:\n                    day_range_str = f\"Day {start_day}-{end_day}\"\n                itinerary.append({\"day_range\": day_range_str, \"place\": cities[current_city]})\n                current_city = sleep_values[night]\n                start_night = night\n        # Add the last stay\n        start_day = start_night + 1\n        end_day = 25\n        if start_day == end_day:\n            day_range_str = f\"Day {start_day}\"\n        else:\n            day_range_str = f\"Day {start_day}-{end_day}\"\n        itinerary.append({\"day_range\": day_range_str, \"place\": cities[current_city]})\n        \n        # Output as JSON\n        print(json.dumps({\"itinerary\": itinerary}))\n    else:\n        print('No solution found')\n\nif __name__ == '__main__':\n    main()"
+}

@@ -1,0 +1,62 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": true,
+    "execution_output": "{\"itinerary\": []}",
+    "pred": {
+        "itinerary": []
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "day_range": "Day 1-2",
+                "place": "Paris"
+            },
+            {
+                "day_range": "Day 2-4",
+                "place": "Krakow"
+            },
+            {
+                "day_range": "Day 4-7",
+                "place": "Vienna"
+            },
+            {
+                "day_range": "Day 7-10",
+                "place": "Riga"
+            },
+            {
+                "day_range": "Day 10-11",
+                "place": "Hamburg"
+            },
+            {
+                "day_range": "Day 11-12",
+                "place": "Barcelona"
+            },
+            {
+                "day_range": "Day 12-15",
+                "place": "Edinburgh"
+            },
+            {
+                "day_range": "Day 15-16",
+                "place": "Stockholm"
+            }
+        ]
+    },
+    "status": "No plan generated",
+    "violated_constraint": {
+        "total_days": 16
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 370.3987383842468,
+        "execution_time": 0.14188098907470703,
+        "constraint_eval_time": 5.14984130859375e-05,
+        "pred_extract_time": 0.4230642318725586,
+        "gold_extract_time": 0.00013184547424316406,
+        "total_tokens": 1127,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\nimport json\n\ndef main():\n    # City indices\n    cities = [\"Barcelona\", \"Edinburgh\", \"Hamburg\", \"Krakow\", \"Paris\", \"Riga\", \"Stockholm\", \"Vienna\"]\n    n_days = 16\n    n_cities = 8\n    \n    # Direct flights as set of tuples (min, max)\n    direct_flights_list = [\n        (2,6), (7,6), (4,1), (5,0), (4,5), (3,0), (1,6), (4,3), (3,6), (5,1),\n        (0,6), (4,6), (3,1), (7,2), (4,2), (5,6), (2,0), (7,0), (3,7), (5,2),\n        (0,1), (4,0), (2,1), (4,7), (7,5)\n    ]\n    direct_flights_set = set()\n    for (c1, c2) in direct_flights_list:\n        if c1 < c2:\n            direct_flights_set.add((c1, c2))\n        else:\n            direct_flights_set.add((c2, c1))\n    \n    # Initialize solver\n    s = Solver()\n    \n    # stay[0] to stay[16]\n    stay = [Int(f\"stay_{i}\") for i in range(17)]\n    \n    # City constraints\n    for i in range(17):\n        s.add(stay[i] >= 0, stay[i] < n_cities)\n    \n    # Fixed constraints\n    s.add(stay[0] == 4)  # Paris before day1\n    s.add(stay[1] == 4)  # Paris on day1\n    s.add(stay[2] == 4)  # Paris on day2\n    s.add(stay[9] == 2)  # Hamburg on day10\n    s.add(stay[10] == 2) # Hamburg on day11\n    s.add(stay[11] == 2) # Hamburg on day11 (night)\n    s.add(stay[15] == 6) # Stockholm on day16\n    s.add(stay[16] == 6) # Stockholm on day16 (night)\n    \n    # Direct flight constraints\n    for i in range(1, 17):\n        condition = (stay[i-1] != stay[i])\n        c1 = stay[i-1]\n        c2 = stay[i]\n        min_c = If(c1 < c2, c1, c2)\n        max_c = If(c1 < c2, c2, c1)\n        flight_options = []\n        for flight in direct_flights_set:\n            flight_options.append(And(min_c == flight[0], max_c == flight[1]))\n        s.add(If(condition, Or(flight_options), True))\n    \n    # Define presence in city each day\n    in_city = [[None] * n_cities for _ in range(n_days+1)]\n    for i in range(1, 17):\n        for c in range(n_cities):\n            in_city[i][c] = Or(stay[i] == c, And(stay[i-1] != stay[i], stay[i-1] == c))\n    \n    # Total days constraints\n    required_days = [2, 4, 2, 3, 2, 4, 2, 4]\n    for c in range(n_cities):\n        total_days = Sum([If(in_city[i][c], 1, 0) for i in range(1, 17)])\n        s.add(total_days == required_days[c])\n    \n    # Specific day constraints\n    s.add(in_city[1][4])  # Paris day1\n    s.add(in_city[2][4])  # Paris day2\n    s.add(in_city[10][2]) # Hamburg day10\n    s.add(in_city[11][2]) # Hamburg day11\n    s.add(Or([in_city[i][1] for i in range(12, 16)])) # Edinburgh between day12-15\n    s.add(in_city[15][6]) # Stockholm day15\n    s.add(in_city[16][6]) # Stockholm day16\n    \n    # Solve\n    if s.check() == sat:\n        m = s.model()\n        stay_values = [m.evaluate(stay[i]).as_long() for i in range(17)]\n        itinerary = []\n        start = 1\n        current_city = stay_values[1]\n        for day in range(2, 17):\n            if stay_values[day] == current_city:\n                continue\n            else:\n                itinerary.append({\n                    \"day_range\": f\"Day {start}-{day-1}\",\n                    \"place\": cities[current_city]\n                })\n                start = day\n                current_city = stay_values[day]\n        itinerary.append({\n            \"day_range\": f\"Day {start}-16\",\n            \"place\": cities[current_city]\n        })\n        print(json.dumps({\"itinerary\": itinerary}))\n    else:\n        print('{\"itinerary\": []}')\n\nif __name__ == \"__main__\":\n    main()"
+}

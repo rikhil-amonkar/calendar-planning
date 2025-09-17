@@ -1,0 +1,13 @@
+To solve this problem, we need to generate a travel itinerary that visits five cities in a specific order, ensuring that each city is visited for the required number of full days, all travel occurs via direct flights between consecutive cities, and the trip starts on day 1 and ends on day 18. Additionally, Dubrovnik must be visited such that its stay covers days 5 to 9 inclusive.
+
+### Approach
+1. **Modeling the Itinerary**: The itinerary is modeled using arrival and departure days for each city. The arrival day at a city is the same as the departure day from the previous city due to same-day flights. The departure day from a city is calculated as the arrival day plus the required full days plus one (accounting for arrival and departure days).
+2. **City Order**: The order of cities is represented as a permutation where Oslo must be the last city.
+3. **Constraints**:
+   - The trip starts on day 1 and ends on day 18.
+   - Each city must be visited for the required number of full days.
+   - Direct flights must exist between consecutive cities.
+   - Dubrovnik's stay must cover days 5 to 9, meaning its arrival day must be on or before day 5 and its departure day on or after day 10.
+4. **Z3 Solver**: The Z3 theorem prover is used to solve these constraints, ensuring all conditions are met simultaneously.
+
+### Solution Code

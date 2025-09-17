@@ -1,0 +1,109 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\"itinerary\": [{\"day_range\": \"Day 1-3\", \"place\": \"Prague\"}, {\"day_range\": \"Day 3-5\", \"place\": \"London\"}, {\"day_range\": \"Day 5-9\", \"place\": \"Lisbon\"}, {\"day_range\": \"Day 9-11\", \"place\": \"Athens\"}, {\"day_range\": \"Day 11-13\", \"place\": \"Dubrovnik\"}, {\"day_range\": \"Day 13-15\", \"place\": \"Dublin\"}, {\"day_range\": \"Day 15-16\", \"place\": \"Seville\"}, {\"day_range\": \"Day 16-20\", \"place\": \"Porto\"}, {\"day_range\": \"Day 20-23\", \"place\": \"Warsaw\"}, {\"day_range\": \"Day 23-26\", \"place\": \"Vilnius\"}]}",
+    "pred": {
+        "itinerary": [
+            {
+                "day_range": "Day 1-3",
+                "place": "Prague"
+            },
+            {
+                "day_range": "Day 3-5",
+                "place": "London"
+            },
+            {
+                "day_range": "Day 5-9",
+                "place": "Lisbon"
+            },
+            {
+                "day_range": "Day 9-11",
+                "place": "Athens"
+            },
+            {
+                "day_range": "Day 11-13",
+                "place": "Dubrovnik"
+            },
+            {
+                "day_range": "Day 13-15",
+                "place": "Dublin"
+            },
+            {
+                "day_range": "Day 15-16",
+                "place": "Seville"
+            },
+            {
+                "day_range": "Day 16-20",
+                "place": "Porto"
+            },
+            {
+                "day_range": "Day 20-23",
+                "place": "Warsaw"
+            },
+            {
+                "day_range": "Day 23-26",
+                "place": "Vilnius"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "day_range": "Day 1-3",
+                "place": "Prague"
+            },
+            {
+                "day_range": "Day 3-5",
+                "place": "London"
+            },
+            {
+                "day_range": "Day 5-9",
+                "place": "Lisbon"
+            },
+            {
+                "day_range": "Day 9-11",
+                "place": "Athens"
+            },
+            {
+                "day_range": "Day 11-13",
+                "place": "Dubrovnik"
+            },
+            {
+                "day_range": "Day 13-15",
+                "place": "Dublin"
+            },
+            {
+                "day_range": "Day 15-16",
+                "place": "Seville"
+            },
+            {
+                "day_range": "Day 16-20",
+                "place": "Porto"
+            },
+            {
+                "day_range": "Day 20-23",
+                "place": "Warsaw"
+            },
+            {
+                "day_range": "Day 23-26",
+                "place": "Vilnius"
+            }
+        ]
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 483.44591093063354,
+        "execution_time": 0.24614405632019043,
+        "constraint_eval_time": 6.628036499023438e-05,
+        "pred_extract_time": 2.914289712905884,
+        "gold_extract_time": 6.628036499023438e-05,
+        "total_tokens": 1453,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import z3\nimport json\n\ndef main():\n    cities = [\"Prague\", \"Warsaw\", \"Dublin\", \"Athens\", \"Vilnius\", \"Porto\", \"London\", \"Seville\", \"Lisbon\", \"Dubrovnik\"]\n    n_cities = len(cities)\n    n_days = 26\n    \n    direct_flights = [\n        (1,4), (0,3), (6,8), (8,5), (0,8), (6,2), (3,4), (3,2), (0,6), (6,1),\n        (2,7), (7,5), (8,3), (2,5), (3,1), (8,1), (5,1), (0,1), (0,2), (3,9),\n        (8,2), (9,2), (8,7), (6,3)\n    ]\n    direct_flights_set = set(direct_flights)\n    \n    s = z3.Solver()\n    \n    start_city = [z3.Int(f\"start_city_{i}\") for i in range(1, n_days+1)]\n    end_city = [z3.Int(f\"end_city_{i}\") for i in range(1, n_days+1)]\n    \n    for i in range(n_days):\n        s.add(z3.And(start_city[i] >= 0, start_city[i] < n_cities))\n        s.add(z3.And(end_city[i] >= 0, end_city[i] < n_cities))\n    \n    for i in range(n_days-1):\n        s.add(end_city[i] == start_city[i+1])\n    \n    for i in range(n_days):\n        city_start = start_city[i]\n        city_end = end_city[i]\n        flight_taken = (city_start != city_end)\n        allowed_flight = z3.BoolVal(False)\n        for (a, b) in direct_flights_set:\n            allowed_flight = z3.Or(allowed_flight,\n                                   z3.And(city_start == a, city_end == b),\n                                   z3.And(city_start == b, city_end == a))\n        s.add(z3.Implies(flight_taken, allowed_flight))\n    \n    s.add(z3.Or(start_city[0] == 0, end_city[0] == 0))\n    s.add(z3.Or(start_city[1] == 0, end_city[1] == 0))\n    s.add(z3.Or(start_city[2] == 0, end_city[2] == 0))\n    s.add(z3.Or(start_city[2] == 6, end_city[2] == 6))\n    s.add(z3.Or(start_city[3] == 6, end_city[3] == 6))\n    s.add(z3.Or(start_city[4] == 6, end_city[4] == 6))\n    s.add(z3.Or(start_city[4] == 8, end_city[4] == 8))\n    s.add(z3.Or(start_city[5] == 8, end_city[5] == 8))\n    s.add(z3.Or(start_city[6] == 8, end_city[6] == 8))\n    s.add(z3.Or(start_city[7] == 8, end_city[7] == 8))\n    s.add(z3.Or(start_city[8] == 8, end_city[8] == 8))\n    s.add(z3.Or(start_city[15] == 5, end_city[15] == 5))\n    s.add(z3.Or(start_city[16] == 5, end_city[16] == 5))\n    s.add(z3.Or(start_city[17] == 5, end_city[17] == 5))\n    s.add(z3.Or(start_city[18] == 5, end_city[18] == 5))\n    s.add(z3.Or(start_city[19] == 5, end_city[19] == 5))\n    s.add(z3.Or(start_city[19] == 1, end_city[19] == 1))\n    s.add(z3.Or(start_city[20] == 1, end_city[20] == 1))\n    s.add(z3.Or(start_city[21] == 1, end_city[21] == 1))\n    s.add(z3.Or(start_city[22] == 1, end_city[22] == 1))\n    \n    required_days_list = [3, 4, 3, 3, 4, 5, 3, 2, 5, 3]\n    for c in range(n_cities):\n        total_days = 0\n        for i in range(n_days):\n            present = z3.Or(start_city[i] == c, end_city[i] == c)\n            total_days += z3.If(present, 1, 0)\n        s.add(total_days == required_days_list[c])\n    \n    if s.check() == z3.sat:\n        m = s.model()\n        days_per_city = [[] for _ in range(n_cities)]\n        for i in range(n_days):\n            day_num = i + 1\n            start_val = m.evaluate(start_city[i]).as_long()\n            end_val = m.evaluate(end_city[i]).as_long()\n            days_per_city[start_val].append(day_num)\n            if start_val != end_val:\n                days_per_city[end_val].append(day_num)\n        \n        itinerary_list = []\n        for c in range(n_cities):\n            days = sorted(days_per_city[c])\n            if not days:\n                continue\n            current_start = days[0]\n            current_end = days[0]\n            for j in range(1, len(days)):\n                if days[j] == current_end + 1:\n                    current_end = days[j]\n                else:\n                    if current_start == current_end:\n                        day_range = f\"Day {current_start}\"\n                    else:\n                        day_range = f\"Day {current_start}-{current_end}\"\n                    itinerary_list.append({\"day_range\": day_range, \"place\": cities[c]})\n                    current_start = days[j]\n                    current_end = days[j]\n            if current_start == current_end:\n                day_range = f\"Day {current_start}\"\n            else:\n                day_range = f\"Day {current_start}-{current_end}\"\n            itinerary_list.append({\"day_range\": day_range, \"place\": cities[c]})\n        \n        def get_first_day(entry):\n            parts = entry['day_range'].replace('Day ', '').split('-')\n            return int(parts[0])\n        \n        itinerary_list.sort(key=get_first_day)\n        result = {\"itinerary\": itinerary_list}\n        print(json.dumps(result))\n    else:\n        print('{\"itinerary\": []}')\n\nif __name__ == \"__main__\":\n    main()"
+}

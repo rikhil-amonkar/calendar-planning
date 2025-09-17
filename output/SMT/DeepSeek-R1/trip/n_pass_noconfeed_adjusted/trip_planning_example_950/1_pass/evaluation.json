@@ -1,0 +1,58 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": true,
+    "execution_output": "{\"itinerary\": []}",
+    "pred": {
+        "itinerary": []
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "day_range": "Day 1-4",
+                "place": "Rome"
+            },
+            {
+                "day_range": "Day 4-6",
+                "place": "Mykonos"
+            },
+            {
+                "day_range": "Day 6-8",
+                "place": "Nice"
+            },
+            {
+                "day_range": "Day 8-10",
+                "place": "Riga"
+            },
+            {
+                "day_range": "Day 10-13",
+                "place": "Bucharest"
+            },
+            {
+                "day_range": "Day 13-16",
+                "place": "Munich"
+            },
+            {
+                "day_range": "Day 16-17",
+                "place": "Krakow"
+            }
+        ]
+    },
+    "status": "No plan generated",
+    "violated_constraint": {
+        "total_days": 17
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 403.7059772014618,
+        "execution_time": 0.16365694999694824,
+        "constraint_eval_time": 3.337860107421875e-06,
+        "pred_extract_time": 0.4356260299682617,
+        "gold_extract_time": 0.00011587142944335938,
+        "total_tokens": 892,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\nimport json\n\ndef main():\n    # Cities and their indices\n    cities = ['Mykonos', 'Riga', 'Munich', 'Bucharest', 'Rome', 'Nice', 'Krakow']\n    city_index = {city: idx for idx, city in enumerate(cities)}\n    \n    # Required days per city\n    required_days = [3, 3, 4, 4, 4, 3, 2]\n    \n    # Direct flights (undirected)\n    edges = [\n        (city_index['Nice'], city_index['Riga']),\n        (city_index['Bucharest'], city_index['Munich']),\n        (city_index['Mykonos'], city_index['Munich']),\n        (city_index['Riga'], city_index['Bucharest']),\n        (city_index['Rome'], city_index['Nice']),\n        (city_index['Rome'], city_index['Munich']),\n        (city_index['Mykonos'], city_index['Nice']),\n        (city_index['Rome'], city_index['Mykonos']),\n        (city_index['Munich'], city_index['Krakow']),\n        (city_index['Rome'], city_index['Bucharest']),\n        (city_index['Nice'], city_index['Munich']),\n        (city_index['Riga'], city_index['Munich'])\n    ]\n    \n    # Create solver\n    s = Solver()\n    \n    # Day variables for 17 days (indexed 0 to 16 for days 1 to 17)\n    days = [Int(f'day_{i}') for i in range(17)]\n    \n    # Each day must be between 0 and 6\n    for d in days:\n        s.add(And(d >= 0, d <= 6))\n    \n    # Count of days per city must match required days\n    for c in range(len(cities)):\n        s.add(Sum([If(d == c, 1, 0) for d in days]) == required_days[c])\n    \n    # Specific day constraints\n    # Day 1 must be Rome (index 4)\n    s.add(days[0] == city_index['Rome'])\n    # Day 4 must be Rome (index 4)\n    s.add(days[3] == city_index['Rome'])\n    # Days 16 and 17 must be Krakow (index 6)\n    s.add(days[15] == city_index['Krakow'])\n    s.add(days[16] == city_index['Krakow'])\n    \n    # Wedding in Mykonos between day 4 and day 6: must be in Mykonos on day 5 or 6\n    s.add(Or(days[4] == city_index['Mykonos'], days[5] == city_index['Mykonos']))\n    \n    # Flight constraints: consecutive days must be the same city or have a direct flight\n    for i in range(16):\n        city_current = days[i]\n        city_next = days[i+1]\n        # If cities are different, ensure there is a direct flight\n        s.add(If(city_current != city_next,\n                 Or([Or(And(city_current == a, city_next == b), And(city_current == b, city_next == a)) for a, b in edges]),\n                 True))\n    \n    # Check for a solution\n    if s.check() == sat:\n        m = s.model()\n        assignment = [m.evaluate(d).as_long() for d in days]\n        \n        # Convert to itinerary ranges\n        itinerary = []\n        current_city = assignment[0]\n        start_day = 1\n        for i in range(1, 17):\n            if assignment[i] != current_city:\n                end_day = i\n                itinerary.append({\n                    'day_range': f'Day {start_day}-{end_day}',\n                    'place': cities[current_city]\n                })\n                start_day = i + 1\n                current_city = assignment[i]\n        itinerary.append({\n            'day_range': f'Day {start_day}-17',\n            'place': cities[current_city]\n        })\n        \n        print(json.dumps({'itinerary': itinerary}))\n    else:\n        print('{\"itinerary\": []}')\n\nif __name__ == '__main__':\n    main()"
+}

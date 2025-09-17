@@ -1,0 +1,69 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\"itinerary\": [{\"day_range\": \"Day 1-3\", \"place\": \"Manchester\"}, {\"day_range\": \"Day 3-9\", \"place\": \"Venice\"}, {\"day_range\": \"Day 9-10\", \"place\": \"Lyon\"}, {\"day_range\": \"Day 10-16\", \"place\": \"Istanbul\"}, {\"day_range\": \"Day 16-21\", \"place\": \"Krakow\"}]}",
+    "pred": {
+        "itinerary": [
+            {
+                "day_range": "Day 1-3",
+                "place": "Manchester"
+            },
+            {
+                "day_range": "Day 3-9",
+                "place": "Venice"
+            },
+            {
+                "day_range": "Day 9-10",
+                "place": "Lyon"
+            },
+            {
+                "day_range": "Day 10-16",
+                "place": "Istanbul"
+            },
+            {
+                "day_range": "Day 16-21",
+                "place": "Krakow"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "day_range": "Day 1-3",
+                "place": "Manchester"
+            },
+            {
+                "day_range": "Day 3-9",
+                "place": "Venice"
+            },
+            {
+                "day_range": "Day 9-10",
+                "place": "Lyon"
+            },
+            {
+                "day_range": "Day 10-16",
+                "place": "Istanbul"
+            },
+            {
+                "day_range": "Day 16-21",
+                "place": "Krakow"
+            }
+        ]
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 379.8599019050598,
+        "execution_time": 0.14942049980163574,
+        "constraint_eval_time": 3.838539123535156e-05,
+        "pred_extract_time": 4.344336032867432,
+        "gold_extract_time": 0.00012373924255371094,
+        "total_tokens": 735,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\nimport json\n\ndef main():\n    s = Solver()\n    \n    cities = ['Manchester', 'Istanbul', 'Venice', 'Krakow', 'Lyon']\n    n = len(cities)\n    city_index = {city: i for i, city in enumerate(cities)}\n    \n    starts = [Int(f'start_{city}') for city in cities]\n    ends = [Int(f'end_{city}') for city in cities]\n    \n    durations = [3, 7, 7, 6, 2]\n    for i in range(n):\n        s.add(ends[i] - starts[i] + 1 == durations[i])\n        s.add(starts[i] >= 1, ends[i] <= 21)\n    \n    s.add(starts[0] <= 3)\n    s.add(And(starts[2] <= 9, ends[2] >= 3))\n    \n    pos = [Int(f'pos_{city}') for city in cities]\n    for p in pos:\n        s.add(p >= 0, p < n)\n    s.add(Distinct(pos))\n    \n    flights = [(0,2), (0,1), (2,1), (1,3), (2,4), (4,1), (0,3)]\n    flight_set = set()\n    for (i, j) in flights:\n        flight_set.add((i, j))\n        flight_set.add((j, i))\n    \n    def connected(i, j):\n        options = []\n        for (a, b) in flight_set:\n            options.append(And(i == a, j == b))\n        return Or(options)\n    \n    for k in range(n-1):\n        for i in range(n):\n            for j in range(n):\n                if i != j:\n                    cond = And(pos[i] == k, pos[j] == k+1)\n                    s.add(Implies(cond, connected(i, j)))\n    \n    for k in range(n-1):\n        for i in range(n):\n            for j in range(n):\n                if i != j:\n                    cond = And(pos[i] == k, pos[j] == k+1)\n                    s.add(Implies(cond, ends[i] == starts[j]))\n    \n    for i in range(n):\n        s.add(Implies(pos[i] == 0, starts[i] == 1))\n    \n    for i in range(n):\n        s.add(Implies(pos[i] == n-1, ends[i] == 21))\n    \n    if s.check() == sat:\n        model = s.model()\n        city_starts = [model.evaluate(starts[i]) for i in range(n)]\n        city_ends = [model.evaluate(ends[i]) for i in range(n)]\n        city_positions = [model.evaluate(pos[i]) for i in range(n)]\n        \n        order = [None] * n\n        for i in range(n):\n            p = city_positions[i].as_long()\n            order[p] = cities[i]\n        \n        itinerary = []\n        for city in order:\n            idx = city_index[city]\n            s_val = city_starts[idx].as_long()\n            e_val = city_ends[idx].as_long()\n            itinerary.append({\"day_range\": f\"Day {s_val}-{e_val}\", \"place\": city})\n        \n        print(json.dumps({\"itinerary\": itinerary}))\n    else:\n        print('No solution found')\n\nif __name__ == '__main__':\n    main()"
+}

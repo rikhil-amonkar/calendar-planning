@@ -1,0 +1,125 @@
+import json
+from z3 import *
+
+def main():
+    # Define cities and their integer mapping
+    cities = ['Helsinki', 'Warsaw', 'Madrid', 'Split', 'Reykjavik', 'Budapest']
+    city_dict = {c: i for i, c in enumerate(cities)}
+    n_days = 14
+    n_cities = len(cities)
+    
+    # Define direct flights as edges (undirected)
+    edges = [
+        (city_dict['Helsinki'], city_dict['Reykjavik']),
+        (city_dict['Budapest'], city_dict['Warsaw']),
+        (city_dict['Madrid'], city_dict['Split']),
+        (city_dict['Helsinki'], city_dict['Split']),
+        (city_dict['Helsinki'], city_dict['Madrid']),
+        (city_dict['Helsinki'], city_dict['Budapest']),
+        (city_dict['Reykjavik'], city_dict['Warsaw']),
+        (city_dict['Helsinki'], city_dict['Warsaw']),
+        (city_dict['Madrid'], city_dict['Budapest']),
+        (city_dict['Budapest'], city_dict['Reykjavik']),
+        (city_dict['Madrid'], city_dict['Warsaw']),
+        (city_dict['Warsaw'], city_dict['Split']),
+        (city_dict['Reykjavik'], city_dict['Madrid'])
+    ]
+    edge_set = set((min(u, v), max(u, v)) for u, v in edges)
+    
+    # Initialize Z3 solver
+    solver = Solver()
+    
+    # Morning and afternoon city for each day (0-indexed days 0..13)
+    morning = [Int('morning_%d' % d) for d in range(n_days)]
+    afternoon = [Int('afternoon_%d' % d) for d in range(n_days)]
+    
+    # Constraint: cities must be between 0 and 5
+    for d in range(n_days):
+        solver.add(And(morning[d] >= 0, morning[d] < n_cities))
+        solver.add(And(afternoon[d] >= 0, afternoon[d] < n_cities))
+    
+    # Continuity constraint: morning city of day d is afternoon city of day d-1 for d>=1
+    for d in range(1, n_days):
+        solver.add(morning[d] == afternoon[d-1])
+    
+    # Flight constraint: if morning and afternoon cities are different, must be connected by direct flight
+    for d in range(n_days):
+        u = morning[d]
+        v = afternoon[d]
+        solver.add(If(u != v, 
+                      Or([And(Min(u, v) == min_edge, Max(u, v) == max_edge) for min_edge, max_edge in edge_set]),
+                      True))
+    
+    # Total days per city constraint
+    total_days = [0] * n_cities
+    for c in range(n_cities):
+        total_days[c] = Sum([If(Or(morning[d] == c, afternoon[d] == c), 1, 0) for d in range(n_days)])
+    solver.add(total_days[city_dict['Helsinki']] == 2)
+    solver.add(total_days[city_dict['Warsaw']] == 3)
+    solver.add(total_days[city_dict['Madrid']] == 4)
+    solver.add(total_days[city_dict['Split']] == 4)
+    solver.add(total_days[city_dict['Reykjavik']] == 2)
+    solver.add(total_days[city_dict['Budapest']] == 4)
+    
+    # Specific event constraints
+    # Helsinki workshop between day1 and day2 (days 0 and 1 in 0-indexing)
+    solver.add(Or(morning[0] == city_dict['Helsinki'], afternoon[0] == city_dict['Helsinki'],
+                  morning[1] == city_dict['Helsinki'], afternoon[1] == city_dict['Helsinki']))
+    # Warsaw relatives between day9 and day11 (days 8,9,10 in 0-indexing)
+    solver.add(Or([Or(morning[d] == city_dict['Warsaw'], afternoon[d] == city_dict['Warsaw']) 
+                  for d in [8,9,10]]))
+    # Reykjavik friend between day8 and day9 (days 7 and 8 in 0-indexing)
+    solver.add(Or(morning[7] == city_dict['Reykjavik'], afternoon[7] == city_dict['Reykjavik'],
+                  morning[8] == city_dict['Reykjavik'], afternoon[8] == city_dict['Reykjavik']))
+    
+    # Check feasibility
+    if solver.check() != sat:
+        print('{"itinerary": []}')
+        return
+        
+    model = solver.model()
+    
+    # Extract the morning and afternoon cities from the model
+    morning_val = [model.evaluate(morning[d]).as_long() for d in range(n_days)]
+    afternoon_val = [model.evaluate(afternoon[d]).as_long() for d in range(n_days)]
+    
+    # For each city, determine the days of visit
+    city_days = [[] for _ in range(n_cities)]
+    for d in range(n_days):
+        day_index = d + 1  # 1-indexed day number
+        for c in range(n_cities):
+            if morning_val[d] == c or afternoon_val[d] == c:
+                city_days[c].append(day_index)
+    
+    # Group consecutive days for each city
+ itinerary = []
+    for c in range(n_cities):
+        days = city_days[c]
+        if not days:
+            continue
+        days.sort()
+        ranges = []
+        start = days[0]
+        end = days[0]
+        for i in range(1, len(days)):
+            if days[i] == end + 1:
+                end = days[i]
+            else:
+                if start == end:
+                    ranges.append(f"Day {start}")
+                else:
+                    ranges.append(f"Day {start}-{end}")
+                start = days[i]
+                end = days[i]
+        if start == end:
+            ranges.append(f"Day {start}")
+        else:
+            ranges.append(f"Day {start}-{end}")
+        for r in ranges:
+            itinerary.append({"day_range": r, "place": cities[c]})
+    
+    # Output as JSON
+    print(json.dumps({"itinerary": itinerary}))
+
+if __name__ == '__main__':
+    main()

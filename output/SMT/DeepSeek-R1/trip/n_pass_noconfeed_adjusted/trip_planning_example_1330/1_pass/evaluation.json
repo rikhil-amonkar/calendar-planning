@@ -1,0 +1,107 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\"itinerary\": [{\"day_range\": \"Day 1-2\", \"place\": \"Salzburg\"}, {\"day_range\": \"Day 2-5\", \"place\": \"Hamburg\"}, {\"day_range\": \"Day 5-9\", \"place\": \"Venice\"}, {\"day_range\": \"Day 9-11\", \"place\": \"Nice\"}, {\"day_range\": \"Day 11-15\", \"place\": \"Zurich\"}, {\"day_range\": \"Day 15-18\", \"place\": \"Copenhagen\"}, {\"day_range\": \"Day 18-21\", \"place\": \"Bucharest\"}, {\"day_range\": \"Day 21-22\", \"place\": \"Brussels\"}, {\"day_range\": \"Day 22-25\", \"place\": \"Naples\"}]}",
+    "pred": {
+        "itinerary": [
+            {
+                "day_range": "Day 1-2",
+                "place": "Salzburg"
+            },
+            {
+                "day_range": "Day 2-5",
+                "place": "Hamburg"
+            },
+            {
+                "day_range": "Day 5-9",
+                "place": "Venice"
+            },
+            {
+                "day_range": "Day 9-11",
+                "place": "Nice"
+            },
+            {
+                "day_range": "Day 11-15",
+                "place": "Zurich"
+            },
+            {
+                "day_range": "Day 15-18",
+                "place": "Copenhagen"
+            },
+            {
+                "day_range": "Day 18-21",
+                "place": "Bucharest"
+            },
+            {
+                "day_range": "Day 21-22",
+                "place": "Brussels"
+            },
+            {
+                "day_range": "Day 22-25",
+                "place": "Naples"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "day_range": "Day 1-2",
+                "place": "Salzburg"
+            },
+            {
+                "day_range": "Day 2-5",
+                "place": "Hamburg"
+            },
+            {
+                "day_range": "Day 5-9",
+                "place": "Venice"
+            },
+            {
+                "day_range": "Day 9-11",
+                "place": "Nice"
+            },
+            {
+                "day_range": "Day 11-15",
+                "place": "Zurich"
+            },
+            {
+                "day_range": "Day 15-18",
+                "place": "Bucharest"
+            },
+            {
+                "day_range": "Day 18-21",
+                "place": "Copenhagen"
+            },
+            {
+                "day_range": "Day 21-22",
+                "place": "Brussels"
+            },
+            {
+                "day_range": "Day 22-25",
+                "place": "Naples"
+            }
+        ]
+    },
+    "status": "Wrong plan",
+    "violated_constraint": {
+        "event_range": {
+            "city": "Copenhagen",
+            "start": 18,
+            "end": 21
+        }
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 358.92223286628723,
+        "execution_time": 0.6071743965148926,
+        "constraint_eval_time": 7.724761962890625e-05,
+        "pred_extract_time": 2.4223999977111816,
+        "gold_extract_time": 0.00018095970153808594,
+        "total_tokens": 1228,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\nimport json\n\ndef main():\n    # Define cities and required days\n    cities = [\"Salzburg\", \"Venice\", \"Bucharest\", \"Brussels\", \"Hamburg\", \"Copenhagen\", \"Nice\", \"Zurich\", \"Naples\"]\n    required_days = {\n        \"Salzburg\": 2,\n        \"Venice\": 5,\n        \"Bucharest\": 4,\n        \"Brussels\": 2,\n        \"Hamburg\": 4,\n        \"Copenhagen\": 4,\n        \"Nice\": 3,\n        \"Zurich\": 5,\n        \"Naples\": 4\n    }\n    \n    # Define direct flights\n    direct_flights_str = \"Zurich and Brussels, Bucharest and Copenhagen, Venice and Brussels, Nice and Zurich, Hamburg and Nice, Zurich and Naples, Hamburg and Bucharest, Zurich and Copenhagen, Bucharest and Brussels, Hamburg and Brussels, Venice and Naples, Venice and Copenhagen, Bucharest and Naples, Hamburg and Copenhagen, Venice and Zurich, Nice and Brussels, Hamburg and Venice, Copenhagen and Naples, Nice and Naples, Hamburg and Zurich, Salzburg and Hamburg, Zurich and Bucharest, Brussels and Naples, Copenhagen and Brussels, Venice and Nice, Nice and Copenhagen\"\n    flights = direct_flights_str.split(\", \")\n    direct_flights = []\n    for f in flights:\n        parts = f.split(\" and \")\n        if len(parts) == 2:\n            direct_flights.append((parts[0], parts[1]))\n    \n    # Create set of connected city pairs (both directions)\n    connected = set()\n    for (c1, c2) in direct_flights:\n        connected.add((c1, c2))\n        connected.add((c2, c1))\n    \n    # Initialize Z3 solver and variables\n    solver = Solver()\n    in_city = {}  # Dictionary: key (day, city) -> Z3 Bool\n    for day in range(1, 26):\n        for city in cities:\n            in_city[(day, city)] = Bool(f\"day{day}_{city}\")\n    \n    # Constraints for each day\n    for day in range(1, 26):\n        day_vars = [in_city[(day, c)] for c in cities]\n        # At least one city per day\n        solver.add(Or(day_vars))\n        # At most two cities per day\n        solver.add(Sum([If(var, 1, 0) for var in day_vars]) <= 2)\n        # If two cities, they must be connected\n        for i in range(len(cities)):\n            for j in range(i+1, len(cities)):\n                c1 = cities[i]\n                c2 = cities[j]\n                if (c1, c2) not in connected:\n                    solver.add(Not(And(in_city[(day, c1)], in_city[(day, c2)])))\n    \n    # Consecutive days must share at least one city\n    for day in range(1, 25):\n        solver.add(Or([And(in_city[(day, c)], in_city[(day+1, c)]) for c in cities]))\n    \n    # Total days per city\n    for city in cities:\n        total = Sum([If(in_city[(d, city)], 1, 0) for d in range(1, 26)])\n        solver.add(total == required_days[city])\n    \n    # Specific constraints\n    # Brussels on days 21 and 22\n    solver.add(in_city[(21, \"Brussels\")])\n    solver.add(in_city[(22, \"Brussels\")])\n    # Copenhagen between days 18-21 (inclusive)\n    solver.add(Or([in_city[(d, \"Copenhagen\")] for d in range(18, 22)]))\n    # Nice between days 9-11 (inclusive)\n    solver.add(Or([in_city[(d, \"Nice\")] for d in range(9, 12)]))\n    # Naples between days 22-25 (inclusive)\n    solver.add(Or([in_city[(d, \"Naples\")] for d in range(22, 26)]))\n    \n    # Check and get model\n    if solver.check() == sat:\n        model = solver.model()\n        # Extract city presence for each day\n        presence = {}\n        for day in range(1, 26):\n            for city in cities:\n                if is_true(model.eval(in_city[(day, city)])):\n                    if day not in presence:\n                        presence[day] = []\n                    presence[day].append(city)\n        \n        # Create intervals for each city\n        city_intervals = {city: [] for city in cities}\n        for city in cities:\n            start = None\n            for day in range(1, 26):\n                if day in presence and city in presence[day]:\n                    if start is None:\n                        start = day\n                else:\n                    if start is not None:\n                        city_intervals[city].append((start, day-1))\n                        start = None\n            if start is not None:\n                city_intervals[city].append((start, 25))\n        \n        # Generate itinerary list\n        itinerary = []\n        for city in cities:\n            for (start, end) in city_intervals[city]:\n                if start == end:\n                    day_range = f\"Day {start}\"\n                else:\n                    day_range = f\"Day {start}-{end}\"\n                itinerary.append({\"day_range\": day_range, \"place\": city})\n        \n        # Sort itinerary by start day\n        itinerary.sort(key=lambda x: int(x['day_range'].split(' ')[1].split('-')[0]))\n        \n        # Output as JSON\n        print(json.dumps({\"itinerary\": itinerary}))\n    else:\n        print('{\"itinerary\": []}')\n\nif __name__ == \"__main__\":\n    main()"
+}

@@ -1,0 +1,93 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\n  \"itinerary\": [\n    {\n      \"day_range\": \"Day 1-4\",\n      \"place\": \"Reykjavik\"\n    },\n    {\n      \"day_range\": \"Day 4-8\",\n      \"place\": \"Stuttgart\"\n    },\n    {\n      \"day_range\": \"Day 8-12\",\n      \"place\": \"Manchester\"\n    },\n    {\n      \"day_range\": \"Day 12-13\",\n      \"place\": \"Istanbul\"\n    },\n    {\n      \"day_range\": \"Day 13-16\",\n      \"place\": \"Riga\"\n    },\n    {\n      \"day_range\": \"Day 16-19\",\n      \"place\": \"Bucharest\"\n    },\n    {\n      \"day_range\": \"Day 19-20\",\n      \"place\": \"Vienna\"\n    },\n    {\n      \"day_range\": \"Day 20-23\",\n      \"place\": \"Florence\"\n    }\n  ]\n}",
+    "pred": {
+        "itinerary": [
+            {
+                "day_range": "Day 1-4",
+                "place": "Reykjavik"
+            },
+            {
+                "day_range": "Day 4-8",
+                "place": "Stuttgart"
+            },
+            {
+                "day_range": "Day 8-12",
+                "place": "Manchester"
+            },
+            {
+                "day_range": "Day 12-13",
+                "place": "Istanbul"
+            },
+            {
+                "day_range": "Day 13-16",
+                "place": "Riga"
+            },
+            {
+                "day_range": "Day 16-19",
+                "place": "Bucharest"
+            },
+            {
+                "day_range": "Day 19-20",
+                "place": "Vienna"
+            },
+            {
+                "day_range": "Day 20-23",
+                "place": "Florence"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "day_range": "Day 1-4",
+                "place": "Reykjavik"
+            },
+            {
+                "day_range": "Day 4-8",
+                "place": "Stuttgart"
+            },
+            {
+                "day_range": "Day 8-12",
+                "place": "Manchester"
+            },
+            {
+                "day_range": "Day 12-13",
+                "place": "Istanbul"
+            },
+            {
+                "day_range": "Day 13-16",
+                "place": "Riga"
+            },
+            {
+                "day_range": "Day 16-19",
+                "place": "Bucharest"
+            },
+            {
+                "day_range": "Day 19-20",
+                "place": "Vienna"
+            },
+            {
+                "day_range": "Day 20-23",
+                "place": "Florence"
+            }
+        ]
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 301.63468408584595,
+        "execution_time": 0.2164313793182373,
+        "constraint_eval_time": 8.797645568847656e-05,
+        "pred_extract_time": 3.331587314605713,
+        "gold_extract_time": 0.0001690387725830078,
+        "total_tokens": 1377,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import json\nfrom z3 import *\n\ndef main():\n    # Define cities and their indices\n    cities = [\"Riga\", \"Manchester\", \"Bucharest\", \"Florence\", \"Vienna\", \"Istanbul\", \"Reykjavik\", \"Stuttgart\"]\n    n_days = 23\n    n_cities = len(cities)\n    \n    # Direct flights (bidirectional)\n    direct_flights = [\n        (cities.index(\"Bucharest\"), cities.index(\"Vienna\")),\n        (cities.index(\"Reykjavik\"), cities.index(\"Vienna\")),\n        (cities.index(\"Manchester\"), cities.index(\"Vienna\")),\n        (cities.index(\"Manchester\"), cities.index(\"Riga\")),\n        (cities.index(\"Riga\"), cities.index(\"Vienna\")),\n        (cities.index(\"Istanbul\"), cities.index(\"Vienna\")),\n        (cities.index(\"Vienna\"), cities.index(\"Florence\")),\n        (cities.index(\"Stuttgart\"), cities.index(\"Vienna\")),\n        (cities.index(\"Riga\"), cities.index(\"Bucharest\")),\n        (cities.index(\"Istanbul\"), cities.index(\"Riga\")),\n        (cities.index(\"Stuttgart\"), cities.index(\"Istanbul\")),\n        (cities.index(\"Reykjavik\"), cities.index(\"Stuttgart\")),\n        (cities.index(\"Istanbul\"), cities.index(\"Bucharest\")),\n        (cities.index(\"Manchester\"), cities.index(\"Istanbul\")),\n        (cities.index(\"Manchester\"), cities.index(\"Bucharest\")),\n        (cities.index(\"Stuttgart\"), cities.index(\"Manchester\"))\n    ]\n    \n    # Create allowed pairs set (including self-loops for non-travel)\n    allowed_pairs = set()\n    for i in range(n_cities):\n        allowed_pairs.add((i, i))\n    for (c1, c2) in direct_flights:\n        allowed_pairs.add((c1, c2))\n        allowed_pairs.add((c2, c1))\n    \n    # Initialize solver\n    solver = Solver()\n    \n    # Create variables for each day: city1 and city2\n    city1 = [Int(f\"city1_{i}\") for i in range(n_days)]\n    city2 = [Int(f\"city2_{i}\") for i in range(n_days)]\n    \n    # Add constraints for each day: city1 and city2 must be in allowed_pairs\n    for i in range(n_days):\n        solver.add(Or([And(city1[i] == c1, city2[i] == c2) for (c1, c2) in allowed_pairs]))\n    \n    # Continuity constraint: city2[i] must equal city1[i+1] for i in 0..n_days-2\n    for i in range(n_days - 1):\n        solver.add(city2[i] == city1[i+1])\n    \n    # Event constraints\n    # Istanbul must be visited on day 12 (index 11) and day 13 (index 12)\n    solver.add(Or(city1[11] == cities.index(\"Istanbul\"), city2[11] == cities.index(\"Istanbul\")))\n    solver.add(Or(city1[12] == cities.index(\"Istanbul\"), city2[12] == cities.index(\"Istanbul\")))\n    \n    # Bucharest must be visited on days 16 to 19 (indices 15 to 18)\n    for i in range(15, 19):\n        solver.add(Or(city1[i] == cities.index(\"Bucharest\"), city2[i] == cities.index(\"Bucharest\")))\n    \n    # Total days constraints for each city\n    total_days = [0] * n_cities\n    for c in range(n_cities):\n        total_days[c] = Sum([If(Or(city1[i] == c, city2[i] == c), 1, 0) for i in range(n_days)])\n    \n    solver.add(total_days[cities.index(\"Riga\")] == 4)\n    solver.add(total_days[cities.index(\"Manchester\")] == 5)\n    solver.add(total_days[cities.index(\"Bucharest\")] == 4)\n    solver.add(total_days[cities.index(\"Florence\")] == 4)\n    solver.add(total_days[cities.index(\"Vienna\")] == 2)\n    solver.add(total_days[cities.index(\"Istanbul\")] == 2)\n    solver.add(total_days[cities.index(\"Reykjavik\")] == 4)\n    solver.add(total_days[cities.index(\"Stuttgart\")] == 5)\n    \n    # Check satisfiability\n    if solver.check() == sat:\n        model = solver.model()\n        \n        # Extract the planned cities for each day\n        planned_city1 = [model.evaluate(city1[i]).as_long() for i in range(n_days)]\n        planned_city2 = [model.evaluate(city2[i]).as_long() for i in range(n_days)]\n        \n        # Create a dictionary to store days for each city\n        city_days = {city: [] for city in range(n_cities)}\n        for day_idx in range(n_days):\n            day_num = day_idx + 1\n            c1 = planned_city1[day_idx]\n            c2 = planned_city2[day_idx]\n            city_days[c1].append(day_num)\n            if c1 != c2:\n                city_days[c2].append(day_num)\n        \n        # Group consecutive days for each city\n        itinerary_list = []\n        for city_idx, days_list in city_days.items():\n            if not days_list:\n                continue\n            days_list.sort()\n            groups = []\n            start = days_list[0]\n            end = days_list[0]\n            for day in days_list[1:]:\n                if day == end + 1:\n                    end = day\n                else:\n                    groups.append((start, end))\n                    start = day\n                    end = day\n            groups.append((start, end))\n            \n            for (s, e) in groups:\n                if s == e:\n                    day_range_str = f\"Day {s}\"\n                else:\n                    day_range_str = f\"Day {s}-{e}\"\n                itinerary_list.append({\n                    \"day_range\": day_range_str,\n                    \"place\": cities[city_idx]\n                })\n        \n        # Sort itinerary by start day\n        itinerary_list.sort(key=lambda x: int(x['day_range'].split(' ')[1].split('-')[0]))\n        \n        # Output as JSON\n        result = {\"itinerary\": itinerary_list}\n        print(json.dumps(result, indent=2))\n    else:\n        print('{\"error\": \"No valid itinerary found\"}')\n\nif __name__ == \"__main__\":\n    main()"
+}

@@ -1,0 +1,85 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\"itinerary\": [{\"day_range\": \"Day 1-5\", \"place\": \"Berlin\"}, {\"day_range\": \"Day 5-7\", \"place\": \"Split\"}, {\"day_range\": \"Day 7-11\", \"place\": \"Lyon\"}, {\"day_range\": \"Day 11-13\", \"place\": \"Lisbon\"}, {\"day_range\": \"Day 13-15\", \"place\": \"Bucharest\"}, {\"day_range\": \"Day 15-19\", \"place\": \"Riga\"}, {\"day_range\": \"Day 19-22\", \"place\": \"Tallinn\"}]}",
+    "pred": {
+        "itinerary": [
+            {
+                "day_range": "Day 1-5",
+                "place": "Berlin"
+            },
+            {
+                "day_range": "Day 5-7",
+                "place": "Split"
+            },
+            {
+                "day_range": "Day 7-11",
+                "place": "Lyon"
+            },
+            {
+                "day_range": "Day 11-13",
+                "place": "Lisbon"
+            },
+            {
+                "day_range": "Day 13-15",
+                "place": "Bucharest"
+            },
+            {
+                "day_range": "Day 15-19",
+                "place": "Riga"
+            },
+            {
+                "day_range": "Day 19-22",
+                "place": "Tallinn"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "day_range": "Day 1-5",
+                "place": "Berlin"
+            },
+            {
+                "day_range": "Day 5-7",
+                "place": "Split"
+            },
+            {
+                "day_range": "Day 7-11",
+                "place": "Lyon"
+            },
+            {
+                "day_range": "Day 11-13",
+                "place": "Lisbon"
+            },
+            {
+                "day_range": "Day 13-15",
+                "place": "Bucharest"
+            },
+            {
+                "day_range": "Day 15-19",
+                "place": "Riga"
+            },
+            {
+                "day_range": "Day 19-22",
+                "place": "Tallinn"
+            }
+        ]
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 423.2749590873718,
+        "execution_time": 0.10118341445922852,
+        "constraint_eval_time": 4.5299530029296875e-05,
+        "pred_extract_time": 1.7929191589355469,
+        "gold_extract_time": 0.00012540817260742188,
+        "total_tokens": 1010,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import json\nfrom z3 import *\n\ndef main():\n    # Define cities and their indices\n    cities = [\"Berlin\", \"Split\", \"Bucharest\", \"Riga\", \"Lisbon\", \"Tallinn\", \"Lyon\"]\n    n = len(cities)\n    c_index = {c: i for i, c in enumerate(cities)}\n    \n    # Define direct flight connections (undirected)\n    connections = [\n        (c_index['Lisbon'], c_index['Bucharest']),\n        (c_index['Berlin'], c_index['Lisbon']),\n        (c_index['Bucharest'], c_index['Riga']),\n        (c_index['Berlin'], c_index['Riga']),\n        (c_index['Split'], c_index['Lyon']),\n        (c_index['Lisbon'], c_index['Riga']),\n        (c_index['Riga'], c_index['Tallinn']),\n        (c_index['Berlin'], c_index['Split']),\n        (c_index['Lyon'], c_index['Lisbon']),\n        (c_index['Berlin'], c_index['Tallinn']),\n        (c_index['Lyon'], c_index['Bucharest'])\n    ]\n    \n    # Create connection matrix\n    connected = [[False] * n for _ in range(n)]\n    for i, j in connections:\n        connected[i][j] = True\n        connected[j][i] = True\n    \n    # Initialize solver\n    s = Solver()\n    \n    # Define variables for start and end days of each city\n    start = [Int(f'start_{i}') for i in range(n)]\n    end = [Int(f'end_{i}') for i in range(n)]\n    \n    # Fixed constraints for Berlin\n    berlin = c_index['Berlin']\n    s.add(start[berlin] == 1)\n    s.add(end[berlin] == 5)\n    \n    # Fixed constraints for Lyon\n    lyon = c_index['Lyon']\n    s.add(start[lyon] == 7)\n    s.add(end[lyon] == 11)\n    \n    # Fixed constraints for Bucharest\n    bucharest = c_index['Bucharest']\n    s.add(start[bucharest] == 13)\n    s.add(end[bucharest] == 15)\n    \n    # Duration constraints for other cities\n    split = c_index['Split']\n    s.add(end[split] - start[split] + 1 == 3)\n    \n    riga = c_index['Riga']\n    s.add(end[riga] - start[riga] + 1 == 5)\n    \n    lisbon = c_index['Lisbon']\n    s.add(end[lisbon] - start[lisbon] + 1 == 3)\n    \n    tallinn = c_index['Tallinn']\n    s.add(end[tallinn] - start[tallinn] + 1 == 4)\n    \n    # General constraints: valid day ranges\n    for i in range(n):\n        s.add(start[i] >= 1)\n        s.add(end[i] <= 22)\n        s.add(start[i] <= end[i])\n    \n    # Coverage constraint: every day must be covered by at least one city\n    for d in range(1, 23):\n        cover_constraints = []\n        for i in range(n):\n            cover_constraints.append(And(start[i] <= d, d <= end[i]))\n        s.add(Or(cover_constraints))\n    \n    # Disjointness constraint: city stays can only overlap at boundaries\n    for i in range(n):\n        for j in range(i + 1, n):\n            s.add(Or(\n                end[i] < start[j],\n                end[j] < start[i],\n                end[i] == start[j],\n                end[j] == start[i]\n            ))\n    \n    # Flight connection constraint for adjacent cities\n    for i in range(n):\n        for j in range(n):\n            if i != j:\n                s.add(Implies(Or(end[i] == start[j], end[j] == start[i]), connected[i][j]))\n    \n    # Solve and output\n    if s.check() == sat:\n        m = s.model()\n        itinerary_list = []\n        for i in range(n):\n            s_val = m.evaluate(start[i]).as_long()\n            e_val = m.evaluate(end[i]).as_long()\n            itinerary_list.append((s_val, e_val, cities[i]))\n        itinerary_list.sort(key=lambda x: x[0])\n        result = {\"itinerary\": []}\n        for s_val, e_val, city in itinerary_list:\n            result[\"itinerary\"].append({\"day_range\": f\"Day {s_val}-{e_val}\", \"place\": city})\n        print(json.dumps(result))\n    else:\n        print('{\"itinerary\": []}')\n\nif __name__ == \"__main__\":\n    main()"
+}

@@ -85,7 +85,7 @@ def analyze_task_results(task_dir_path, output_dir="../output"):
         if not os.path.isdir(example_path):
             continue
             
-        # Count number of passes (subdirectories)
+        # Count number of passes (subdirectories) - THIS IS THE KEY DIFFERENCE
         pass_dirs = [d for d in os.listdir(example_path) 
                     if os.path.isdir(os.path.join(example_path, d)) and d.endswith('_pass')]
         num_passes = len(pass_dirs)
@@ -100,7 +100,7 @@ def analyze_task_results(task_dir_path, output_dir="../output"):
         for pass_dir in sorted(pass_dirs, key=lambda x: int(x.split('_')[0])):
             eval_path = os.path.join(example_path, pass_dir, 'evaluation.json')
             
-            # Default data for passes without evaluation.json
+            # Default data for passes without evaluation.json - THIS IS THE NULL PASS COUNTING
             pass_data = {
                 'Example Name': example_dir,
                 'Pass Number': pass_dir.split('_')[0],
@@ -117,7 +117,7 @@ def analyze_task_results(task_dir_path, output_dir="../output"):
                     with open(eval_path, 'r') as f:
                         eval_data = json.load(f)
                         
-                    # Extract relevant fields
+                    # Extract relevant fields - MATCHING THE SECOND SCRIPT'S LABELING
                     pass_data = {
                         'Example Name': example_dir,
                         'Pass Number': eval_data.get('pass_number', pass_dir.split('_')[0]),
@@ -169,7 +169,7 @@ def main():
     excel_dir = os.path.join(output_dir, approach, model_name)
     os.makedirs(excel_dir, exist_ok=True)
     
-    # Create Excel writer with approach in filename
+    # Create Excel writer with approach in filename - MATCHING THE SECOND SCRIPT'S NAMING
     output_file = os.path.join(excel_dir, f"task_analysis_results_nofeed_FIXED_{approach}_{model_name}_{task_name}.xlsx")
     
     logging.info(f"Analyzing results for {task_name} from {args.task_dir}")
@@ -179,11 +179,11 @@ def main():
     
     if summary_df is not None and not summary_df.empty:
         with pd.ExcelWriter(output_file, engine='openpyxl') as writer:
-            # Write summary sheet
+            # Write summary sheet - MATCHING THE SECOND SCRIPT'S SHEET NAMING
             sheet_name = f"{task_name}_{approach}_{model_name}_summary"
             summary_df.to_excel(writer, sheet_name=sheet_name, index=False)
             
-            # Write detailed sheet
+            # Write detailed sheet - MATCHING THE SECOND SCRIPT'S SHEET NAMING
             sheet_name = f"{task_name}_{approach}_{model_name}_detailed"
             detailed_df.to_excel(writer, sheet_name=sheet_name, index=False)
             

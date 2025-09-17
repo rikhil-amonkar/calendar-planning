@@ -1,0 +1,8 @@
+To fix the error, we need to properly handle Z3 expressions when indexing lists. The issue arises because `seq[0]` is a Z3 expression (ArithRef), not an integer, and cannot be used directly to index Python lists. Instead, we should use Z3's array structures to map indices to values.
+
+Changes made:
+1. Replaced list indexing with Z3 array lookups for arrival and departure times
+2. Maintained all constraints using Z3-compatible expressions
+3. Ensured proper handling of sequence variables with array accesses
+
+Here's the corrected code:

@@ -1,0 +1,68 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": true,
+    "execution_output": "{\"error\": \"No solution found\"}",
+    "pred": null,
+    "gold": {
+        "itinerary": [
+            {
+                "day_range": "Day 1-5",
+                "place": "Edinburgh"
+            },
+            {
+                "day_range": "Day 5-9",
+                "place": "Barcelona"
+            },
+            {
+                "day_range": "Day 9-13",
+                "place": "Budapest"
+            },
+            {
+                "day_range": "Day 13-17",
+                "place": "Vienna"
+            },
+            {
+                "day_range": "Day 17-18",
+                "place": "Stockholm"
+            },
+            {
+                "day_range": "Day 18-20",
+                "place": "Munich"
+            },
+            {
+                "day_range": "Day 20-21",
+                "place": "Bucharest"
+            },
+            {
+                "day_range": "Day 21-25",
+                "place": "Riga"
+            },
+            {
+                "day_range": "Day 25-29",
+                "place": "Warsaw"
+            },
+            {
+                "day_range": "Day 29-32",
+                "place": "Krakow"
+            }
+        ]
+    },
+    "status": "No plan generated",
+    "violated_constraint": {
+        "missing_itinerary": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 665.693815946579,
+        "execution_time": 0.2949199676513672,
+        "constraint_eval_time": 1.9073486328125e-06,
+        "pred_extract_time": 0.43732452392578125,
+        "gold_extract_time": 0.0001537799835205078,
+        "total_tokens": 1233,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import json\nfrom z3 import *\n\ndef main():\n    # City mapping\n    cities_list = [\n        \"Budapest\", \"Bucharest\", \"Krakow\", \"Munich\", \"Barcelona\",\n        \"Warsaw\", \"Stockholm\", \"Riga\", \"Edinburgh\", \"Vienna\"\n    ]\n    \n    # Create solver\n    solver = Solver()\n    \n    # Define variables for each night (32 days)\n    c = [Int(f\"c_{i}\") for i in range(32)]\n    \n    # Each night city must be between 0 and 9\n    for i in range(32):\n        solver.add(And(0 <= c[i], c[i] <= 9))\n    \n    # Event constraints\n    # Budapest show: days 9 to 13 -> c[7] to c[12] must be 0\n    for i in range(7, 13):\n        solver.add(c[i] == 0)\n    \n    # Munich workshop: days 18 to 20 -> c[16] to c[19] must be 3\n    for i in range(16, 20):\n        solver.add(c[i] == 3)\n    \n    # Warsaw conference: days 25 to 29 -> c[23] to c[28] must be 5\n    for i in range(23, 29):\n        solver.add(c[i] == 5)\n    \n    # Stockholm friends: days 17-18 -> at least one of c[16], c[17], c[18] is 6\n    solver.add(Or(c[16] == 6, c[17] == 6, c[18] == 6))\n    \n    # Edinburgh friend: days 1-5 -> at least one of c[0] to c[4] is 8\n    solver.add(Or([c[i] == 8 for i in range(0, 5)]))\n    \n    # Total days per city\n    total_days = [0] * 10\n    for city_idx in range(10):\n        conditions = []\n        for day in range(1, 33):\n            if day == 1:\n                conditions.append(Or(c[0] == city_idx))\n            else:\n                conditions.append(Or(c[day-2] == city_idx, c[day-1] == city_idx))\n        total_days[city_idx] = Sum([If(cond, 1, 0) for cond in conditions])\n    \n    solver.add(total_days[0] == 5)  # Budapest\n    solver.add(total_days[1] == 2)  # Bucharest\n    solver.add(total_days[2] == 4)  # Krakow\n    solver.add(total_days[3] == 3)  # Munich\n    solver.add(total_days[4] == 5)  # Barcelona\n    solver.add(total_days[5] == 5)  # Warsaw\n    solver.add(total_days[6] == 2)  # Stockholm\n    solver.add(total_days[7] == 5)  # Riga\n    solver.add(total_days[8] == 5)  # Edinburgh\n    solver.add(total_days[9] == 5)  # Vienna\n    \n    # Direct flights data\n    raw_flights = [\n        (0,3), (1,7), (3,2), (3,5), (3,1), (8,6), (4,5), (8,2), (4,3), (6,2),\n        (0,9), (4,6), (6,3), (8,0), (4,7), (8,4), (9,7), (4,0), (1,5), (9,2),\n        (8,3), (4,1), (8,7), (9,6), (5,2), (4,2), (7,3), (9,1), (0,5), (9,5),\n        (4,9), (0,1), (9,3), (7,5), (6,7), (6,5)\n    ]\n    \n    allowed_pairs = []\n    for (a, b) in raw_flights:\n        allowed_pairs.append((a, b))\n        allowed_pairs.append((b, a))\n    \n    # Travel constraints: consecutive nights must be connected by a direct flight if different\n    for i in range(31):\n        city_i = c[i]\n        city_i1 = c[i+1]\n        cond = Or([And(city_i == a, city_i1 == b) for (a, b) in allowed_pairs])\n        solver.add(If(city_i != city_i1, cond, True))\n    \n    # Check and get model\n    if solver.check() == sat:\n        model = solver.model()\n        itinerary = [model.evaluate(c[i]).as_long() for i in range(32)]\n        \n        # Group consecutive stays\n        itinerary_json = {\"itinerary\": []}\n        current_city = itinerary[0]\n        start_day = 1\n        for day in range(1, 32):\n            if itinerary[day] != current_city:\n                end_day = day\n                itinerary_json[\"itinerary\"].append({\n                    \"day_range\": f\"Day {start_day}-{end_day}\",\n                    \"place\": cities_list[current_city]\n                })\n                start_day = day + 1\n                current_city = itinerary[day]\n        itinerary_json[\"itinerary\"].append({\n            \"day_range\": f\"Day {start_day}-32\",\n            \"place\": cities_list[current_city]\n        })\n        \n        print(json.dumps(itinerary_json))\n    else:\n        print('{\"error\": \"No solution found\"}')\n\nif __name__ == \"__main__\":\n    main()"
+}

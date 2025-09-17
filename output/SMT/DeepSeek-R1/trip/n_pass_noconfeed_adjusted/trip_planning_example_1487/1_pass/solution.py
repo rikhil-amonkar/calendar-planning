@@ -1,0 +1,71 @@
+from z3 import *
+import json
+
+def main():
+    cities = [
+        'Copenhagen', 
+        'Geneva', 
+        'Mykonos', 
+        'Naples', 
+        'Prague', 
+        'Dubrovnik', 
+        'Athens', 
+        'Santorini', 
+        'Brussels', 
+        'Munich'
+    ]
+    
+    required_days = [5, 3, 2, 4, 2, 3, 4, 5, 4, 5]
+    
+    edges = [
+        (0, 5), (8, 0), (4, 1), (6, 1), (3, 5), (6, 5), (1, 2), (3, 2), (3, 0), (9, 2),
+        (3, 6), (4, 6), (7, 1), (6, 7), (3, 9), (4, 0), (8, 3), (6, 2), (6, 0), (3, 1),
+        (5, 9), (8, 9), (4, 8), (8, 6), (6, 9), (1, 9), (0, 9), (8, 1), (0, 1), (4, 9),
+        (0, 7), (3, 7), (1, 5)
+    ]
+    
+    solver = Solver()
+    
+    order = [Int('order_%d' % i) for i in range(10)]
+    start_day = [Int('start_day_%d' % i) for i in range(10)]
+    
+    solver.add(Distinct(order))
+    for i in range(10):
+        solver.add(order[i] >= 0, order[i] < 10)
+    
+    solver.add(start_day[0] == 1)
+    for i in range(1, 10):
+        solver.add(start_day[i] == start_day[i-1] + required_days[order[i-1]] - 1)
+    solver.add(start_day[9] + required_days[order[9]] - 1 == 28)
+    
+    for i in range(10):
+        city_idx = order[i]
+        solver.add(If(city_idx == 0, And(start_day[i] <= 15, start_day[i] + 4 >= 11), True))
+        solver.add(If(city_idx == 2, start_day[i] == 27, True))
+        solver.add(If(city_idx == 3, And(start_day[i] <= 8, start_day[i] + 3 >= 5), True))
+        solver.add(If(city_idx == 6, And(start_day[i] <= 11, start_day[i] + 3 >= 8), True))
+    
+    for i in range(9):
+ conds = []
+ for a, b in edges:
+     conds.append(And(order[i] == a, order[i+1] == b))
+     conds.append(And(order[i] == b, order[i+1] == a))
+ solver.add(Or(conds))
+    
+    if solver.check() == sat:
+        m = solver.model()
+        itinerary_list = []
+        for i in range(10):
+            city_index = m.eval(order[i]).as_long()
+            s = m.eval(start_day[i]).as_long()
+            e = s + required_days[city_index] - 1
+            itinerary_list.append({
+                "day_range": f"Day {s}-{e}",
+                "place": cities[city_index]
+            })
+        print(json.dumps({"itinerary": itinerary_list}))
+    else:
+        print('{"itinerary": []}')
+
+if __name__ == "__main__":
+    main()

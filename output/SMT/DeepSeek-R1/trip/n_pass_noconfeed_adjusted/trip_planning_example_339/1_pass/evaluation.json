@@ -1,0 +1,44 @@
+{
+    "has_execution_error": true,
+    "has_no_plan": false,
+    "execution_output": null,
+    "pred": null,
+    "gold": {
+        "itinerary": [
+            {
+                "day_range": "Day 1-2",
+                "place": "Warsaw"
+            },
+            {
+                "day_range": "Day 2-8",
+                "place": "Budapest"
+            },
+            {
+                "day_range": "Day 8-11",
+                "place": "Paris"
+            },
+            {
+                "day_range": "Day 11-17",
+                "place": "Riga"
+            }
+        ]
+    },
+    "status": "Error",
+    "violated_constraint": {
+        "missing_itinerary": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 384.3436155319214,
+        "execution_time": 0.07456827163696289,
+        "constraint_eval_time": 2.384185791015625e-06,
+        "pred_extract_time": 3.5762786865234375e-06,
+        "gold_extract_time": 0.00011301040649414062,
+        "total_tokens": 1054,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import json\nfrom z3 import *\n\ndef main():\n    # Required days for each city\n    req_days = {\n        'Warsaw': 2,\n        'Budapest': 7,\n        'Paris': 4,\n        'Riga': 7\n    }\n    \n    # City mapping\n    cities = ['Warsaw', 'Budapest', 'Paris', 'Riga']\n    city_dict = {c: i for i, c in enumerate(cities)}\n    \n    # Direct flights: graph represented as adjacency list\n    direct_flights = {\n        0: [1, 2, 3],  # Warsaw\n        1: [0, 2],      # Budapest\n        2: [0, 1, 3],   # Paris\n        3: [0, 2]       # Riga\n    }\n    \n    # Create solver\n    s = Solver()\n    \n    # Flight days: a, b, c\n    a = Int('a')\n    b = Int('b')\n    c = Int('c')\n    \n    # Segment cities\n    s2 = Int('s2')\n    s3 = Int('s3')\n    s4 = Int('s4')\n    \n    # Constraints on flight days\n    s.add(a == 2)  # Warsaw must have 2 days\n    s.add(a >= 1, a <= 16)\n    s.add(b > a, b <= 16)\n    s.add(c > b, c <= 16)\n    \n    # All segments are distinct and not Warsaw (0)\n    s.add(Distinct(s2, s3, s4))\n    s.add(s2 >= 1, s2 <= 3)\n    s.add(s3 >= 1, s3 <= 3)\n    s.add(s4 >= 1, s4 <= 3)\n    \n    # Direct flight constraints\n    s.add(Or([s2 == city for city in direct_flights[0]]))\n    s.add(Or([s3 == city for city in direct_flights[s2]]))\n    s.add(Or([s4 == city for city in direct_flights[s3]]))\n    \n    # Duration constraints for segments\n    s.add(If(s2 == city_dict['Budapest'], b - a + 1 == req_days['Budapest'],\n          If(s2 == city_dict['Paris'], b - a + 1 == req_days['Paris'],\n          If(s2 == city_dict['Riga'], b - a + 1 == req_days['Riga'], False))))\n    \n    s.add(If(s3 == city_dict['Budapest'], c - b + 1 == req_days['Budapest'],\n          If(s3 == city_dict['Paris'], c - b + 1 == req_days['Paris'],\n          If(s3 == city_dict['Riga'], c - b + 1 == req_days['Riga'], False))))\n    \n    s.add(If(s4 == city_dict['Budapest'], 17 - c + 1 == req_days['Budapest'],\n          If(s4 == city_dict['Paris'], 17 - c + 1 == req_days['Paris'],\n          If(s4 == city_dict['Riga'], 17 - c + 1 == req_days['Riga'], False))))\n    \n    # Wedding constraint: must be in Riga between day 11 and 17\n    s.add(Or(\n        And(s2 == city_dict['Riga'], b >= 11),\n        And(s3 == city_dict['Riga'], b <= 11, c >= 11),\n        And(s4 == city_dict['Riga'], c <= 11)\n    ))\n    \n    # Check and get model\n    if s.check() == sat:\n        m = s.model()\n        a_val = m[a].as_long()\n        b_val = m[b].as_long()\n        c_val = m[c].as_long()\n        s2_val = m[s2].as_long()\n        s3_val = m[s3].as_long()\n        s4_val = m[s4].as_long()\n        \n        # Map segment indices to city names\n        seg1_city = cities[0]\n        seg2_city = cities[s2_val]\n        seg3_city = cities[s3_val]\n        seg4_city = cities[s4_val]\n        \n        # Create itinerary segments\n        itinerary = [\n            {\"day_range\": f\"Day 1-{a_val}\", \"place\": seg1_city},\n            {\"day_range\": f\"Day {a_val}-{b_val}\", \"place\": seg2_city},\n            {\"day_range\": f\"Day {b_val}-{c_val}\", \"place\": seg3_city},\n            {\"day_range\": f\"Day {c_val}-17\", \"place\": seg4_city}\n        ]\n        \n        # Output as JSON\n        print(json.dumps({\"itinerary\": itinerary}))\n    else:\n        print('No solution found')\n\nif __name__ == '__main__':\n    main()"
+}

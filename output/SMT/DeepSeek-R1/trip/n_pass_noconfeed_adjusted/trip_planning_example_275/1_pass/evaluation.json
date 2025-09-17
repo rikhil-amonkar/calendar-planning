@@ -1,0 +1,61 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\"itinerary\": [{\"day_range\": \"Day 1-4\", \"place\": \"Vilnius\"}, {\"day_range\": \"Day 4-8\", \"place\": \"Split\"}, {\"day_range\": \"Day 8-13\", \"place\": \"Madrid\"}, {\"day_range\": \"Day 13-14\", \"place\": \"Santorini\"}]}",
+    "pred": {
+        "itinerary": [
+            {
+                "day_range": "Day 1-4",
+                "place": "Vilnius"
+            },
+            {
+                "day_range": "Day 4-8",
+                "place": "Split"
+            },
+            {
+                "day_range": "Day 8-13",
+                "place": "Madrid"
+            },
+            {
+                "day_range": "Day 13-14",
+                "place": "Santorini"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "day_range": "Day 1-4",
+                "place": "Vilnius"
+            },
+            {
+                "day_range": "Day 4-8",
+                "place": "Split"
+            },
+            {
+                "day_range": "Day 8-13",
+                "place": "Madrid"
+            },
+            {
+                "day_range": "Day 13-14",
+                "place": "Santorini"
+            }
+        ]
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 256.10276079177856,
+        "execution_time": 0.07663273811340332,
+        "constraint_eval_time": 7.009506225585938e-05,
+        "pred_extract_time": 1.1255135536193848,
+        "gold_extract_time": 7.772445678710938e-05,
+        "total_tokens": 345,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\nimport json\n\ndef main():\n    # Define the variables for travel days\n    x0, x1, x2 = Ints('x0 x1 x2')\n    s = Solver()\n    \n    # Add constraints based on the required days in each city\n    s.add(x0 == 4)\n    s.add(x1 - x0 + 1 == 5)\n    s.add(x2 - x1 + 1 == 6)\n    s.add(14 - x2 + 1 == 2)\n    s.add(1 <= x0, x0 < x1, x1 < x2, x2 <= 14)\n    \n    # Check for a solution\n    if s.check() == sat:\n        m = s.model()\n        x0_val = m[x0].as_long()\n        x1_val = m[x1].as_long()\n        x2_val = m[x2].as_long()\n        \n        # Build the itinerary\n        itinerary = [\n            {\"day_range\": f\"Day 1-{x0_val}\", \"place\": \"Vilnius\"},\n            {\"day_range\": f\"Day {x0_val}-{x1_val}\", \"place\": \"Split\"},\n            {\"day_range\": f\"Day {x1_val}-{x2_val}\", \"place\": \"Madrid\"},\n            {\"day_range\": f\"Day {x2_val}-14\", \"place\": \"Santorini\"}\n        ]\n        \n        # Output as JSON\n        print(json.dumps({\"itinerary\": itinerary}))\n    else:\n        print('{\"itinerary\": []}')\n\nif __name__ == \"__main__\":\n    main()"
+}

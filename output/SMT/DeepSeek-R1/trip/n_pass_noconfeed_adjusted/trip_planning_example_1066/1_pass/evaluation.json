@@ -1,0 +1,93 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\"itinerary\": [{\"day_range\": \"Day 1-4\", \"place\": \"Stuttgart\"}, {\"day_range\": \"Day 4-6\", \"place\": \"Split\"}, {\"day_range\": \"Day 6-10\", \"place\": \"Helsinki\"}, {\"day_range\": \"Day 10-13\", \"place\": \"Brussels\"}, {\"day_range\": \"Day 13-15\", \"place\": \"Bucharest\"}, {\"day_range\": \"Day 15-19\", \"place\": \"London\"}, {\"day_range\": \"Day 19-20\", \"place\": \"Mykonos\"}, {\"day_range\": \"Day 20-21\", \"place\": \"Madrid\"}]}",
+    "pred": {
+        "itinerary": [
+            {
+                "day_range": "Day 1-4",
+                "place": "Stuttgart"
+            },
+            {
+                "day_range": "Day 4-6",
+                "place": "Split"
+            },
+            {
+                "day_range": "Day 6-10",
+                "place": "Helsinki"
+            },
+            {
+                "day_range": "Day 10-13",
+                "place": "Brussels"
+            },
+            {
+                "day_range": "Day 13-15",
+                "place": "Bucharest"
+            },
+            {
+                "day_range": "Day 15-19",
+                "place": "London"
+            },
+            {
+                "day_range": "Day 19-20",
+                "place": "Mykonos"
+            },
+            {
+                "day_range": "Day 20-21",
+                "place": "Madrid"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "day_range": "Day 1-4",
+                "place": "Stuttgart"
+            },
+            {
+                "day_range": "Day 4-6",
+                "place": "Split"
+            },
+            {
+                "day_range": "Day 6-10",
+                "place": "Helsinki"
+            },
+            {
+                "day_range": "Day 10-13",
+                "place": "Brussels"
+            },
+            {
+                "day_range": "Day 13-15",
+                "place": "Bucharest"
+            },
+            {
+                "day_range": "Day 15-19",
+                "place": "London"
+            },
+            {
+                "day_range": "Day 19-20",
+                "place": "Mykonos"
+            },
+            {
+                "day_range": "Day 20-21",
+                "place": "Madrid"
+            }
+        ]
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 587.4042422771454,
+        "execution_time": 1.1799652576446533,
+        "constraint_eval_time": 5.984306335449219e-05,
+        "pred_extract_time": 2.438070774078369,
+        "gold_extract_time": 0.00014257431030273438,
+        "total_tokens": 1249,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import json\nfrom z3 import *\n\ndef main():\n    # City mapping\n    cities = {\n        'Brussels': 0,\n        'Bucharest': 1,\n        'Stuttgart': 2,\n        'Mykonos': 3,\n        'Madrid': 4,\n        'Helsinki': 5,\n        'Split': 6,\n        'London': 7\n    }\n    city_names = {v: k for k, v in cities.items()}\n    \n    # Required days per city\n    required_days = {\n        cities['Brussels']: 4,\n        cities['Bucharest']: 3,\n        cities['Stuttgart']: 4,\n        cities['Mykonos']: 2,\n        cities['Madrid']: 2,\n        cities['Helsinki']: 5,\n        cities['Split']: 3,\n        cities['London']: 5\n    }\n    \n    # Direct flights (undirected)\n    flights = [\n        (cities['Helsinki'], cities['London']),\n        (cities['Split'], cities['Madrid']),\n        (cities['Helsinki'], cities['Madrid']),\n        (cities['London'], cities['Madrid']),\n        (cities['Brussels'], cities['London']),\n        (cities['Bucharest'], cities['London']),\n        (cities['Brussels'], cities['Bucharest']),\n        (cities['Bucharest'], cities['Madrid']),\n        (cities['Split'], cities['Helsinki']),\n        (cities['Mykonos'], cities['Madrid']),\n        (cities['Stuttgart'], cities['London']),\n        (cities['Helsinki'], cities['Brussels']),\n        (cities['Brussels'], cities['Madrid']),\n        (cities['Split'], cities['London']),\n        (cities['Stuttgart'], cities['Split']),\n        (cities['London'], cities['Mykonos'])\n    ]\n    \n    # Create solver\n    s = Solver()\n    \n    # Evening city for days 0 to 21\n    e = IntVector('e', 22)\n    \n    # Constrain each e[i] to be between 0 and 7\n    for i in range(22):\n        s.add(And(e[i] >= 0, e[i] <= 7))\n    \n    # Constrain direct flights for transitions\n    for i in range(1, 22):\n        # If evening city changes, ensure there's a direct flight\n        s.add(If(e[i-1] != e[i], \n                 Or([And(e[i-1] == a, e[i] == b) for a, b in flights] + \n                    [And(e[i-1] == b, e[i] == a) for a, b in flights]),\n                 True))\n    \n    # Function to compute total days for a city\n    def total_days(city):\n        return Sum([If(Or(e[i-1] == city, e[i] == city), 1, 0) for i in range(1, 22)])\n    \n    # Add constraints for required days per city\n    for city, days in required_days.items():\n        s.add(total_days(city) == days)\n    \n    # Constraint: Stuttgart between day 1 and 4\n    stuttgart_constraint = Or([Or(e[i-1] == cities['Stuttgart'], e[i] == cities['Stuttgart']) for i in range(1, 5)])\n    s.add(stuttgart_constraint)\n    \n    # Madrid constraints: must be in Madrid on evening of day 20 and 21\n    s.add(e[20] == cities['Madrid'])\n    s.add(e[21] == cities['Madrid'])\n    # Ensure not in Madrid on other days (since total days must be 2)\n    # Already handled by total_days constraint\n    \n    # Check satisfaction\n    if s.check() == sat:\n        m = s.model()\n        eval_e = [m.eval(e[i]).as_long() for i in range(22)]\n        \n        # Generate events\n        events = []\n        # Day 1\n        if eval_e[0] != eval_e[1]:\n            events.append(('1', '1', city_names[eval_e[0]]))  # Morning\n            events.append(('1', '1', city_names[eval_e[1]]))  # Evening\n        else:\n            events.append(('1', '1', city_names[eval_e[1]]))  # Whole day\n        \n        # Days 2 to 21\n        for day in range(2, 22):\n            if eval_e[day-1] != eval_e[day]:\n                events.append((str(day), str(day), city_names[eval_e[day-1]]))  # Morning\n                events.append((str(day), str(day), city_names[eval_e[day]]))    # Evening\n            else:\n                events.append((str(day), str(day), city_names[eval_e[day]]))    # Whole day\n        \n        # Group events into continuous stays\n        itinerary = []\n        i = 0\n        while i < len(events):\n            start_day, end_day, city = events[i]\n            j = i + 1\n            # Group consecutive whole-day events for the same city\n            while j < len(events) and events[j][2] == city and events[j][0] == events[j][1] and events[j][0] == str(int(end_day) + 1):\n                end_day = events[j][1]\n                j += 1\n            if start_day == end_day:\n                day_range = f\"Day {start_day}\"\n            else:\n                day_range = f\"Day {start_day}-{end_day}\"\n            itinerary.append({\"day_range\": day_range, \"place\": city})\n            i = j\n        \n        # Output as JSON\n        print(json.dumps({\"itinerary\": itinerary}))\n    else:\n        print('{\"itinerary\": []}')\n\nif __name__ == '__main__':\n    main()"
+}

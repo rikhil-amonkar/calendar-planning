@@ -1,0 +1,114 @@
+import json
+from z3 import *
+
+def main():
+    # Cities
+    cities = ['Vienna', 'Lyon', 'Santorini', 'Amsterdam']
+    city_vars = {city: [Bool(f"day_{day}_{city}") for day in range(1, 15)] for city in cities}
+    
+    # Direct flights
+    direct_flights = [('Vienna', 'Lyon'), ('Vienna', 'Santorini'), ('Vienna', 'Amsterdam'), 
+                     ('Amsterdam', 'Santorini'), ('Lyon', 'Amsterdam')]
+    connected = {}
+    for c1 in cities:
+        for c2 in cities:
+            if c1 == c2:
+                connected[(c1, c2)] = True
+            else:
+                connected[(c1, c2)] = any((c1, c2) in direct_flights or (c2, c1) in direct_flights for _ in [1])
+    
+    s = Solver()
+    
+    # Constraint: Each day has at least one city and at most two cities
+    for day in range(1, 15):
+        in_cities = [city_vars[city][day-1] for city in cities]
+        s.add(Or(in_cities))
+        s.add(AtMost(*in_cities, 2))
+    
+    # Constraint: Total days per city
+    s.add(Sum([If(city_vars['Amsterdam'][d], 1, 0) for d in range(14)]) == 3)
+    s.add(Sum([If(city_vars['Vienna'][d], 1, 0) for d in range(14)]) == 7)
+    s.add(Sum([If(city_vars['Santorini'][d], 1, 0) for d in range(14)]) == 4)
+    s.add(Sum([If(city_vars['Lyon'][d], 1, 0) for d in range(14)]) == 3)
+    
+    # Constraint: Workshop in Amsterdam between day 9-11
+    s.add(Or([city_vars['Amsterdam'][d] for d in [8, 9, 10]]))
+    
+    # Constraint: Wedding in Lyon between day 7-9
+    s.add(Or([city_vars['Lyon'][d] for d in [6, 7, 8]]))
+    
+    # Constraint: Consecutive days must share at least one city
+    for day in range(1, 14):
+        common_cities = []
+        for city in cities:
+            common_cities.append(And(city_vars[city][day-1], city_vars[city][day]))
+        s.add(Or(common_cities))
+    
+    # Constraint: For days with two cities, they must be connected
+    for day in range(1, 15):
+        for c1 in cities:
+            for c2 in cities:
+                if c1 != c2:
+                    s.add(Implies(And(city_vars[c1][day-1], city_vars[c2][day-1]), connected[(c1, c2)]))
+    
+    # Solve the model
+    if s.check() == sat:
+        m = s.model()
+        assignment = {}
+        for day in range(1, 15):
+            day_cities = []
+            for city in cities:
+                if is_true(m.evaluate(city_vars[city][day-1])):
+                    day_cities.append(city)
+            assignment[day] = day_cities
+    else:
+        print("No solution found")
+        return
+    
+    # Assign one city per day for output
+    output_assignment = {}
+    for day in range(1, 15):
+        cities_day = assignment[day]
+        if len(cities_day) == 1:
+            output_assignment[day] = cities_day[0]
+        else:
+            if day < 14:
+                next_cities = assignment[day+1]
+                common = set(cities_day) & set(next_cities)
+                if common:
+                    output_assignment[day] = next(iter(common))
+                else:
+                    output_assignment[day] = cities_day[0]
+            else:
+                prev_cities = assignment[day-1]
+                common = set(cities_day) & set(prev_cities)
+                if common:
+                    output_assignment[day] = next(iter(common))
+                else:
+                    output_assignment[day] = cities_day[0]
+    
+    # Group consecutive days with the same city
+    itinerary = []
+    start_day = 1
+    current_city = output_assignment[1]
+    for day in range(2, 15):
+        if output_assignment[day] != current_city:
+            end_day = day - 1
+            if start_day == end_day:
+                day_range = f"Day {start_day}"
+            else:
+                day_range = f"Day {start_day}-{end_day}"
+            itinerary.append({"day_range": day_range, "place": current_city})
+            start_day = day
+            current_city = output_assignment[day]
+    end_day = 14
+    if start_day == end_day:
+        day_range = f"Day {start_day}"
+    else:
+        day_range = f"Day {start_day}-{end_day}"
+    itinerary.append({"day_range": day_range, "place": current_city})
+    
+    print(json.dumps({"itinerary": itinerary}))
+
+if __name__ == "__main__":
+    main()

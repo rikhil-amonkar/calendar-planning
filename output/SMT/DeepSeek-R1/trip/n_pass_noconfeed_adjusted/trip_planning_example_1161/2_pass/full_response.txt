@@ -1,0 +1,97 @@
+```python
+import json
+from z3 import *
+
+def main():
+    # City indices
+    cities = ['Mykonos', 'Krakow', 'Vilnius', 'Helsinki', 'Dubrovnik', 'Oslo', 'Madrid', 'Paris']
+    city_index = {city: idx for idx, city in enumerate(cities)}
+    
+    # Required days per city
+    required_days = [4, 5, 2, 2, 3, 2, 5, 2]
+    
+    # Direct flights (bidirectional)
+    flights = [
+        (5, 1), (5, 7), (7, 6), (3, 2), (5, 6), (5, 3), (3, 1),
+        (4, 3), (4, 6), (5, 4), (1, 7), (6, 0), (5, 2), (1, 2),
+        (3, 7), (2, 7), (3, 6)
+    ]
+    flight_set = set(flights) | set((b, a) for (a, b) in flights)
+    
+    # Initialize solver
+    solver = Solver()
+    
+    # Create variables for mornings and evenings
+    m = [Int('m_%d' % d) for d in range(1, 19)]
+    e = [Int('e_%d' % d) for d in range(1, 19)]
+    
+    # Constraint: valid city indices
+    for d in range(18):
+        solver.add(m[d] >= 0, m[d] < 8)
+        solver.add(e[d] >= 0, e[d] < 8)
+    
+    # Constraint: evening of day d equals morning of day d+1
+    for d in range(17):
+        solver.add(e[d] == m[d+1])
+    
+    # Constraint: exactly 7 travel days
+    travel_days = [If(m[d] != e[d], 1, 0) for d in range(18)]
+    solver.add(sum(travel_days) == 7)
+    
+    # Constraint: direct flights for travel days
+    for d in range(18):
+        solver.add(If(m[d] != e[d], Or([And(m[d] == a, e[d] == b) for (a, b) in flight_set])), True))
+    
+    # Constraint: total days per city
+    for c in range(8):
+        M_c = sum([If(m[d] == c, 1, 0) for d in range(18)])
+        E_c = sum([If(e[d] == c, 1, 0) for d in range(18)])
+        N_c = sum([If(And(m[d] == c, e[d] == c), 1, 0) for d in range(18)])
+        solver.add(M_c + E_c - N_c == required_days[c])
+    
+    # Constraint: Mykonos between day 15-18
+    mykonos_constraint = Or([Or(m[d] == 0, e[d] == 0) for d in range(14, 18)])
+    solver.add(mykonos_constraint)
+    
+    # Constraint: Dubrovnik on days 2-4
+    for d in range(1, 4):
+        solver.add(Or(m[d] == 4, e[d] == 4))
+    
+    # Constraint: Oslo on days 1-2
+    oslo_constraint = Or([Or(m[d] == 5, e[d] == 5) for d in range(0, 2)])
+    solver.add(oslo_constraint)
+    
+    # Check and get model
+    if solver.check() == sat:
+        model = solver.model()
+        evening_cities = []
+        for d in range(18):
+            evening_val = model.evaluate(e[d]).as_long()
+            evening_cities.append(cities[evening_val])
+        
+        # Group consecutive days with same evening city
+        itinerary = []
+        current_city = evening_cities[0]
+        start_day = 1
+        for day in range(1, 18):
+            if evening_cities[day] != current_city:
+                end_day = day
+                itinerary.append({
+                    "day_range": f"Day {start_day}-{end_day}",
+                    "place": current_city
+                })
+                current_city = evening_cities[day]
+                start_day = day + 1
+        itinerary.append({
+            "day_range": f"Day {start_day}-18",
+            "place": current_city
+        })
+        
+        # Output as JSON
+        print(json.dumps({"itinerary": itinerary}))
+    else:
+        print('{"itinerary": []}')
+
+if __name__ == "__main__":
+    main()
+```

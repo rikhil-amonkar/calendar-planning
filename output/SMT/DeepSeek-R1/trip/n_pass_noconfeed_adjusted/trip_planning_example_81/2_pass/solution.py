@@ -1,0 +1,92 @@
+from z3 import *
+import json
+
+def main():
+    # Cities: Mykonos (0), Budapest (1), Hamburg (2)
+    city_names = {0: 'Mykonos', 1: 'Budapest', 2: 'Hamburg'}
+    direct_flights = [(0, 1), (1, 0), (1, 2), (2, 1)]
+    days = list(range(1, 10))
+    n_days = len(days)
+    cities = [0, 1, 2]
+    
+    # Create Z3 variables for each day and city
+    in_city = [[Bool(f"day_{i}_city_{c}") for c in cities] for i in days]
+    
+    s = Solver()
+    
+    # Constraints for each day: must be in at least one city and at most two cities
+    for i in days:
+        s.add(Or(in_city[i-1]))
+        s.add(Not(And(in_city[i-1][0], in_city[i-1][1], in_city[i-1][2])))
+    
+    # Constraints for travel days: if two cities on same day, must have direct flight
+    for i in days:
+        d0, d1, d2 = in_city[i-1]
+        # Count the number of cities visited on this day
+        count = If(d0, 1, 0) + If(d1, 1, 0) + If(d2, 1, 0)
+        # Forbid Hamburg and Mykonos together (no direct flight)
+        s.add(Not(And(d0, d2)))
+        # Allow only valid direct flight combinations when exactly two cities are visited
+        valid_combinations = [
+            And(d0, d1, Not(d2)),  # Mykonos and Budapest
+            And(Not(d0), d1, d2),   # Budapest and Hamburg
+        ]
+        s.add(Implies(count == 2, Or(valid_combinations)))
+    
+    # Total days constraints
+    total_mykonos = Sum([If(in_city[i-1][0], 1, 0) for i in days])
+    total_budapest = Sum([If(in_city[i-1][1], 1, 0) for i in days])
+    total_hamburg = Sum([If(in_city[i-1][2], 1, 0) for i in days])
+    s.add(total_mykonos == 6)
+    s.add(total_budapest == 3)
+    s.add(total_hamburg == 2)
+    
+    # Specific day constraints
+    s.add(in_city[3][0])  # Day 4 (index 3)
+    s.add(in_city[8][0])  # Day 9 (index 8)
+    
+    if s.check() == sat:
+        m = s.model()
+        # Determine which cities are visited each day
+        daily_places = []
+        for i in days:
+            day_cities = []
+            for c in cities:
+                if is_true(m.evaluate(in_city[i-1][c])):
+                    day_cities.append(c)
+            daily_places.append(day_cities)
+        
+        # Create segments for output
+        segments = []
+        for c in cities:
+            active_days = [i for i in days if c in daily_places[i-1]]
+            if not active_days:
+                continue
+            active_days.sort()
+            start = active_days[0]
+            current = start
+            for i in range(1, len(active_days)):
+                if active_days[i] == current + 1:
+                    current = active_days[i]
+                else:
+                    segments.append((start, current, c))
+                    start = active_days[i]
+                    current = active_days[i]
+            segments.append((start, current, c))
+        
+        # Format segments into itinerary
+        itinerary = []
+        for seg in segments:
+            start, end, city = seg
+            if start == end:
+                day_range = f"Day {start}"
+            else:
+                day_range = f"Day {start}-{end}"
+            itinerary.append({"day_range": day_range, "place": city_names[city]})
+        
+        print(json.dumps({"itinerary": itinerary}))
+    else:
+        print('{"itinerary": []}')
+
+if __name__ == "__main__":
+    main()

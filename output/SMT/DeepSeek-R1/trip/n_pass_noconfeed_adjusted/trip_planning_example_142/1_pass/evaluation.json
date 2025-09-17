@@ -1,0 +1,53 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\"itinerary\": [{\"day_range\": \"Day 1-4\", \"place\": \"Madrid\"}, {\"day_range\": \"Day 4-6\", \"place\": \"Dublin\"}, {\"day_range\": \"Day 6-7\", \"place\": \"Tallinn\"}]}",
+    "pred": {
+        "itinerary": [
+            {
+                "day_range": "Day 1-4",
+                "place": "Madrid"
+            },
+            {
+                "day_range": "Day 4-6",
+                "place": "Dublin"
+            },
+            {
+                "day_range": "Day 6-7",
+                "place": "Tallinn"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "day_range": "Day 1-4",
+                "place": "Madrid"
+            },
+            {
+                "day_range": "Day 4-6",
+                "place": "Dublin"
+            },
+            {
+                "day_range": "Day 6-7",
+                "place": "Tallinn"
+            }
+        ]
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 448.83961963653564,
+        "execution_time": 0.07621955871582031,
+        "constraint_eval_time": 2.6941299438476562e-05,
+        "pred_extract_time": 1.2087221145629883,
+        "gold_extract_time": 7.200241088867188e-05,
+        "total_tokens": 700,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\nimport json\n\ndef main():\n    s = Solver()\n    \n    cities = ['Madrid', 'Dublin', 'Tallinn']\n    Madrid, Dublin, Tallinn = 0, 1, 2\n    \n    morning = [Int('morning_%d' % i) for i in range(1, 8)]\n    evening = [Int('evening_%d' % i) for i in range(1, 8)]\n    \n    for i in range(7):\n        s.add(And(morning[i] >= 0, morning[i] <= 2))\n        s.add(And(evening[i] >= 0, evening[i] <= 2))\n    \n    for i in range(6):\n        s.add(evening[i] == morning[i+1])\n    \n    for i in range(7):\n        cond = (morning[i] != evening[i])\n        s.add(Implies(cond, \n                      Or(And(morning[i] == Madrid, evening[i] == Dublin),\n                         And(morning[i] == Dublin, evening[i] == Madrid),\n                         And(morning[i] == Dublin, evening[i] == Tallinn),\n                         And(morning[i] == Tallinn, evening[i] == Dublin))))\n    \n    madrid_days = []\n    dublin_days = []\n    tallinn_days = []\n    for i in range(7):\n        madrid_days.append(Or(morning[i] == Madrid, evening[i] == Madrid))\n        dublin_days.append(Or(morning[i] == Dublin, evening[i] == Dublin))\n        tallinn_days.append(Or(morning[i] == Tallinn, evening[i] == Tallinn))\n    \n    s.add(Sum([If(b, 1, 0) for b in madrid_days]) == 4)\n    s.add(Sum([If(b, 1, 0) for b in dublin_days]) == 3)\n    s.add(Sum([If(b, 1, 0) for b in tallinn_days]) == 2)\n    \n    s.add(tallinn_days[5])\n    s.add(tallinn_days[6])\n    \n    if s.check() == sat:\n        m = s.model()\n        morning_vals = [m.evaluate(morning[i]).as_long() for i in range(7)]\n        evening_vals = [m.evaluate(evening[i]).as_long() for i in range(7)]\n        \n        city_days = {0: set(), 1: set(), 2: set()}\n        for day_index in range(7):\n            day_num = day_index + 1\n            city_days[morning_vals[day_index]].add(day_num)\n            city_days[evening_vals[day_index]].add(day_num)\n        \n        segments = []\n        for city_code, days in city_days.items():\n            if days:\n                min_day = min(days)\n                max_day = max(days)\n                segments.append((min_day, max_day, cities[city_code]))\n        \n        segments.sort(key=lambda x: x[0])\n        itinerary_list = [{\"day_range\": f\"Day {start}-{end}\", \"place\": city} for start, end, city in segments]\n        \n        print(json.dumps({\"itinerary\": itinerary_list}))\n    else:\n        print('{\"itinerary\": []}')\n\nif __name__ == \"__main__\":\n    main()"
+}

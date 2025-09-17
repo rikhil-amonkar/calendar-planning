@@ -1,0 +1,64 @@
+{
+    "has_execution_error": true,
+    "has_no_plan": false,
+    "execution_output": null,
+    "pred": null,
+    "gold": {
+        "itinerary": [
+            {
+                "day_range": "Day 1-4",
+                "place": "Lyon"
+            },
+            {
+                "day_range": "Day 4-7",
+                "place": "Venice"
+            },
+            {
+                "day_range": "Day 7-10",
+                "place": "Copenhagen"
+            },
+            {
+                "day_range": "Day 10-12",
+                "place": "Barcelona"
+            },
+            {
+                "day_range": "Day 12-15",
+                "place": "Reykjavik"
+            },
+            {
+                "day_range": "Day 15-16",
+                "place": "Athens"
+            },
+            {
+                "day_range": "Day 16-20",
+                "place": "Dubrovnik"
+            },
+            {
+                "day_range": "Day 20-22",
+                "place": "Munich"
+            },
+            {
+                "day_range": "Day 22-26",
+                "place": "Tallinn"
+            }
+        ]
+    },
+    "status": "Error",
+    "violated_constraint": {
+        "missing_itinerary": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 286.03976678848267,
+        "execution_time": 0.07589077949523926,
+        "constraint_eval_time": 1.9073486328125e-06,
+        "pred_extract_time": 3.337860107421875e-06,
+        "gold_extract_time": 0.0001850128173828125,
+        "total_tokens": 826,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import json\nfrom z3 import *\n\ndef main():\n    # City indices\n    V, B, C, L, R, D, A, T, M = 0, 1, 2, 3, 4, 5, 6, 7, 8\n    durs = [4, 3, 4, 4, 4, 5, 2, 5, 3]\n    city_names = {\n        V: \"Venice\",\n        B: \"Barcelona\",\n        C: \"Copenhagen\",\n        L: \"Lyon\",\n        R: \"Reykjavik\",\n        D: \"Dubrovnik\",\n        A: \"Athens\",\n        T: \"Tallinn\",\n        M: \"Munich\"\n    }\n    \n    direct_flights = [\n        (C, A), (C, D), (M, T), (C, M), (V, M), (R, A), (A, D), (V, A), (L, B), (C, R),\n        (R, M), (A, M), (L, M), (B, R), (B, D), (B, A), (C, B), (V, C), (V, B), (B, M),\n        (B, T), (C, T)\n    ]\n    direct_flights_set = set()\n    for (x, y) in direct_flights:\n        direct_flights_set.add((x, y))\n        direct_flights_set.add((y, x))\n    \n    s = Solver()\n    \n    order = [Int('order_%d' % i) for i in range(9)]\n    for i in range(9):\n        s.add(And(order[i] >= 0, order[i] < 9))\n    s.add(Distinct(order))\n    \n    arrival = [Int('arrival_%d' % i) for i in range(9)]\n    \n    s.add(arrival[order[0]] == 1)\n    \n    for i in range(1, 9):\n        prev_city = order[i-1]\n        curr_city = order[i]\n        s.add(arrival[curr_city] == arrival[prev_city] + durs[prev_city] - 1)\n    \n    last_city = order[8]\n    s.add(arrival[last_city] + durs[last_city] - 1 == 26)\n    \n    s.add(arrival[B] >= 9, arrival[B] <= 12)\n    s.add(arrival[C] >= 4, arrival[C] <= 10)\n    s.add(arrival[D] >= 12, arrival[D] <= 20)\n    \n    for i in range(1, 9):\n        city_i = order[i-1]\n        city_j = order[i]\n        constraints = []\n        for (x, y) in direct_flights_set:\n            constraints.append(And(city_i == x, city_j == y))\n        s.add(Or(constraints))\n    \n    if s.check() == sat:\n        m = s.model()\n        order_val = [m.evaluate(order[i]).as_long() for i in range(9)]\n        arrival_val = [m.evaluate(arrival[i]).as_long() for i in range(9)]\n        \n        segments = []\n        for i in range(9):\n            city_index = order_val[i]\n            start = arrival_val[city_index]\n            end = start + durs[city_index] - 1\n            segments.append((start, end, city_names[city_index]))\n        \n        itinerary = []\n        for start, end, city in segments:\n            itinerary.append({\n                \"day_range\": f\"Day {start}-{end}\",\n                \"place\": city\n            })\n        \n        print(json.dumps({\"itinerary\": itinerary}))\n    else:\n        print('{\"itinerary\": []}')\n\nif __name__ == \"__main__\":\n    main()"
+}

@@ -1,0 +1,53 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\"itinerary\": [{\"day_range\": \"Day 1-7\", \"place\": \"Dubrovnik\"}, {\"day_range\": \"Day 7-9\", \"place\": \"Frankfurt\"}, {\"day_range\": \"Day 9-10\", \"place\": \"Krakow\"}]}",
+    "pred": {
+        "itinerary": [
+            {
+                "day_range": "Day 1-7",
+                "place": "Dubrovnik"
+            },
+            {
+                "day_range": "Day 7-9",
+                "place": "Frankfurt"
+            },
+            {
+                "day_range": "Day 9-10",
+                "place": "Krakow"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "day_range": "Day 1-7",
+                "place": "Dubrovnik"
+            },
+            {
+                "day_range": "Day 7-9",
+                "place": "Frankfurt"
+            },
+            {
+                "day_range": "Day 9-10",
+                "place": "Krakow"
+            }
+        ]
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 316.3429639339447,
+        "execution_time": 0.06603670120239258,
+        "constraint_eval_time": 4.076957702636719e-05,
+        "pred_extract_time": 1.130208969116211,
+        "gold_extract_time": 6.175041198730469e-05,
+        "total_tokens": 349,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "import json\nfrom z3 import *\n\ndef main():\n    # Define the variables for flight days\n    T1 = Int('T1')  # First flight day (from Dubrovnik to Frankfurt)\n    T2 = Int('T2')  # Second flight day (from Frankfurt to Krakow)\n    \n    s = Solver()\n    # Constraints: T1 and T2 must be between 1 and 10, and T1 < T2\n    s.add(T1 >= 1, T1 <= 10)\n    s.add(T2 >= 1, T2 <= 10)\n    s.add(T1 < T2)\n    \n    # City day constraints\n    s.add(T1 == 7)  # Days in Dubrovnik\n    s.add(T2 - T1 + 1 == 3)  # Days in Frankfurt\n    s.add(10 - T2 + 1 == 2)  # Days in Krakow\n    \n    if s.check() == sat:\n        m = s.model()\n        t1_val = m[T1].as_long()\n        t2_val = m[T2].as_long()\n        \n        itinerary = [\n            {\"day_range\": f\"Day 1-{t1_val}\", \"place\": \"Dubrovnik\"},\n            {\"day_range\": f\"Day {t1_val}-{t2_val}\", \"place\": \"Frankfurt\"},\n            {\"day_range\": f\"Day {t2_val}-10\", \"place\": \"Krakow\"}\n        ]\n        print(json.dumps({\"itinerary\": itinerary}))\n    else:\n        print('No valid itinerary found')\n\nif __name__ == '__main__':\n    main()"
+}

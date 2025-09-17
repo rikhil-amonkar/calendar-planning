@@ -1,0 +1,60 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": true,
+    "execution_output": "No solution found",
+    "pred": null,
+    "gold": {
+        "itinerary": [
+            {
+                "day_range": "Day 1-4",
+                "place": "Reykjavik"
+            },
+            {
+                "day_range": "Day 4-7",
+                "place": "Stuttgart"
+            },
+            {
+                "day_range": "Day 7-11",
+                "place": "Valencia"
+            },
+            {
+                "day_range": "Day 11-13",
+                "place": "Seville"
+            },
+            {
+                "day_range": "Day 13-15",
+                "place": "Munich"
+            },
+            {
+                "day_range": "Day 15-19",
+                "place": "Geneva"
+            },
+            {
+                "day_range": "Day 19-22",
+                "place": "Istanbul"
+            },
+            {
+                "day_range": "Day 22-25",
+                "place": "Vilnius"
+            }
+        ]
+    },
+    "status": "No plan generated",
+    "violated_constraint": {
+        "missing_itinerary": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 472.43253207206726,
+        "execution_time": 0.2635021209716797,
+        "constraint_eval_time": 2.6226043701171875e-06,
+        "pred_extract_time": 0.3782658576965332,
+        "gold_extract_time": 0.00013184547424316406,
+        "total_tokens": 1580,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\nimport json\n\ndef main():\n    # Define cities and required days\n    cities = ['Reykjavik', 'Stuttgart', 'Munich', 'Istanbul', 'Vilnius', 'Seville', 'Geneva', 'Valencia']\n    req_days = {\n        'Reykjavik': 4,\n        'Stuttgart': 4,\n        'Munich': 3,\n        'Istanbul': 4,\n        'Vilnius': 4,\n        'Seville': 3,\n        'Geneva': 5,\n        'Valencia': 5\n    }\n    \n    n_days = 25\n    n_cities = len(cities)\n    c_index = {city: idx for idx, city in enumerate(cities)}\n    \n    # Direct flights (undirected)\n    direct_flights = [\n        ('Geneva', 'Istanbul'),\n        ('Reykjavik', 'Munich'),\n        ('Stuttgart', 'Valencia'),\n        ('Reykjavik', 'Stuttgart'),\n        ('Stuttgart', 'Istanbul'),\n        ('Munich', 'Geneva'),\n        ('Istanbul', 'Vilnius'),\n        ('Valencia', 'Seville'),\n        ('Valencia', 'Istanbul'),\n        ('Vilnius', 'Munich'),\n        ('Seville', 'Munich'),\n        ('Munich', 'Istanbul'),\n        ('Valencia', 'Geneva'),\n        ('Valencia', 'Munich')\n    ]\n    \n    # Create direct flight matrix\n    direct_flight_matrix = [[False] * n_cities for _ in range(n_cities)]\n    for (a, b) in direct_flights:\n        i, j = c_index[a], c_index[b]\n        direct_flight_matrix[i][j] = True\n        direct_flight_matrix[j][i] = True\n    \n    # Initialize solver\n    s = Solver()\n    \n    # in_city[i][d] means we are in city i on day d (1-indexed days, 0-indexed in array)\n    in_city = [[Bool(f\"in_city_{i}_{d}\") for d in range(n_days)] for i in range(n_cities)]\n    \n    # Constraint 1: Each day has 1 or 2 cities\n    for d in range(n_days):\n        cities_on_d = [in_city[i][d] for i in range(n_cities)]\n        s.add(Or(Sum([If(c, 1, 0) for c in cities_on_d]) == 1, Sum([If(c, 1, 0) for c in cities_on_d]) == 2))\n    \n    # Constraint 2: Total days per city\n    for i, city in enumerate(cities):\n        total = Sum([If(in_city[i][d], 1, 0) for d in range(n_days)])\n        s.add(total == req_days[city])\n    \n    # Constraint 3: Fixed days\n    # Reykjavik on days 1-4 (index 0-3)\n    for d in range(4):\n        s.add(in_city[c_index['Reykjavik']][d])\n    # Istanbul on days 19-22 (index 18-21)\n    for d in range(18, 22):\n        s.add(in_city[c_index['Istanbul']][d])\n    # Munich on days 13-15 (index 12-14)\n    for d in range(12, 15):\n        s.add(in_city[c_index['Munich']][d])\n    # Stuttgart on day 4 and day 7 (index 3 and 6)\n    s.add(in_city[c_index['Stuttgart']][3])\n    s.add(in_city[c_index['Stuttgart']][6])\n    \n    # Constraint 4: Day transitions\n    for d in range(1, n_days):\n        prev = [in_city[i][d-1] for i in range(n_cities)]\n        curr = [in_city[i][d] for i in range(n_cities)]\n        count_prev = Sum([If(p, 1, 0) for p in prev])\n        count_curr = Sum([If(c, 1, 0) for c in curr])\n        \n        # Case 1: Previous day has one city\n        # Then current day must have one same city or two cities (one same and one new connected by direct flight)\n        prev_city = None\n        for i in range(n_cities):\n            # The city that was present on previous day\n            prev_city = prev[i]\n            break\n        \n        # There exists exactly one city in previous day\n        one_prev = And([Or([Not(prev[i]) for i in range(n_cities)]), \n                        Or([And(prev[i], *[Not(prev[j]) for j in range(n_cities) if j != i]) for i in range(n_cities)])])\n        \n        # Current day has same city and one new city with direct flight\n        same_city = And([Implies(prev[i], curr[i]) for i in range(n_cities)])\n        new_city = Or([And(curr[j], Not(prev[j]), Or([And(prev[i], direct_flight_matrix[i][j]) for i in range(n_cities)])) for j in range(n_cities)])\n        case1 = And(one_prev, Or(And(count_curr == 1, same_city), \n                                 And(count_curr == 2, same_city, new_city)))\n        \n        # Case 2: Previous day has two cities\n        # Then current day must have one of them\n        two_prev = And(count_prev == 2)\n        one_curr = And(count_curr == 1, Or([And(curr[i], Or([prev[i] for i in range(n_cities)]))]))\n        case2 = And(two_prev, one_curr)\n        \n        s.add(Or(case1, case2))\n    \n    # Check and get model\n    if s.check() == sat:\n        m = s.model()\n        assignment = [[m.evaluate(in_city[i][d]) for d in range(n_days)] for i in range(n_cities)]\n        \n        # Convert assignment to list of days per city\n        city_days = {}\n        for i, city in enumerate(cities):\n            days = [d+1 for d in range(n_days) if is_true(assignment[i][d])]\n            city_days[city] = days\n        \n        # Create itinerary segments\n        itinerary = []\n        for city, days in city_days.items():\n            days.sort()\n            segments = []\n            start = days[0]\n            for i in range(1, len(days)):\n                if days[i] != days[i-1] + 1:\n                    segments.append((start, days[i-1]))\n                    start = days[i]\n            segments.append((start, days[-1]))\n            \n            for seg in segments:\n                start_day, end_day = seg\n                if start_day == end_day:\n                    day_range = f\"Day {start_day}\"\n                else:\n                    day_range = f\"Day {start_day}-{end_day}\"\n                itinerary.append((start_day, end_day, city, day_range))\n        \n        # Sort segments by start day\n        itinerary.sort(key=lambda x: x[0])\n        result = [{\"day_range\": seg[3], \"place\": seg[2]} for seg in itinerary]\n        \n        print(json.dumps({\"itinerary\": result}))\n    else:\n        print('No solution found')\n\nif __name__ == '__main__':\n    main()"
+}

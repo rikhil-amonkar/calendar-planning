@@ -1,0 +1,53 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\"itinerary\": [{\"day_range\": \"Day 1-2\", \"place\": \"Brussels\"}, {\"day_range\": \"Day 2-8\", \"place\": \"Barcelona\"}, {\"day_range\": \"Day 8-12\", \"place\": \"Split\"}]}",
+    "pred": {
+        "itinerary": [
+            {
+                "day_range": "Day 1-2",
+                "place": "Brussels"
+            },
+            {
+                "day_range": "Day 2-8",
+                "place": "Barcelona"
+            },
+            {
+                "day_range": "Day 8-12",
+                "place": "Split"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "day_range": "Day 1-2",
+                "place": "Brussels"
+            },
+            {
+                "day_range": "Day 2-8",
+                "place": "Barcelona"
+            },
+            {
+                "day_range": "Day 8-12",
+                "place": "Split"
+            }
+        ]
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 235.59467816352844,
+        "execution_time": 0.07604670524597168,
+        "constraint_eval_time": 3.504753112792969e-05,
+        "pred_extract_time": 1.7124412059783936,
+        "gold_extract_time": 2.9802322387695312e-05,
+        "total_tokens": 427,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\n\ndef main():\n    # Initialize solver\n    s = Solver()\n    \n    # Define variables for end days of stays\n    e_brussels = Int('e_brussels')\n    e_barcelona = Int('e_barcelona')\n    \n    # Fixed start and end days\n    s_brussels = 1\n    s_split = e_barcelona\n    e_split = 12\n    \n    # Constraints\n    s.add(e_brussels >= s_brussels + 1)  # At least 2 days in Brussels\n    s.add(e_brussels - s_brussels + 1 == 2)  # Exactly 2 days in Brussels\n    s.add(e_barcelona - e_brussels + 1 == 7)  # 7 days in Barcelona including travel\n    s.add(e_split - s_split + 1 == 5)  # 5 days in Split including travel\n    s.add(e_brussels <= e_barcelona)  # Order constraints\n    s.add(e_barcelona <= e_split)\n    s.add(e_brussels >= 1, e_brussels <= 12)\n    s.add(e_barcelona >= 1, e_barcelona <= 12)\n    \n    # Check feasibility\n    if s.check() == sat:\n        m = s.model()\n        e_brussels_val = m[e_brussels].as_long()\n        e_barcelona_val = m[e_barcelona].as_long()\n        \n        # Construct itinerary\n        itinerary = [\n            {\"day_range\": f\"Day 1-{e_brussels_val}\", \"place\": \"Brussels\"},\n            {\"day_range\": f\"Day {e_brussels_val}-{e_barcelona_val}\", \"place\": \"Barcelona\"},\n            {\"day_range\": f\"Day {e_barcelona_val}-12\", \"place\": \"Split\"}\n        ]\n        \n        # Output as JSON\n        import json\n        print(json.dumps({\"itinerary\": itinerary}))\n    else:\n        print('{\"itinerary\": []}')\n\nif __name__ == \"__main__\":\n    main()"
+}

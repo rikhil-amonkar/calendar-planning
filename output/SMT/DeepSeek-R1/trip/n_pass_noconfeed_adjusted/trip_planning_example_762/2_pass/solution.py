@@ -1,0 +1,133 @@
+import json
+from z3 import *
+
+def main():
+    # Define cities
+    cities = ["Dublin", "Madrid", "Oslo", "London", "Vilnius", "Berlin"]
+    city_to_int = {city: idx for idx, city in enumerate(cities)}
+    
+    # Direct flights (undirected), stored as sorted tuples
+    direct_flights = [
+        ("London", "Madrid"),
+        ("Oslo", "Vilnius"),
+        ("Berlin", "Vilnius"),
+        ("Madrid", "Oslo"),
+        ("Madrid", "Dublin"),
+        ("London", "Oslo"),
+        ("Madrid", "Berlin"),
+        ("Berlin", "Oslo"),
+        ("Dublin", "Oslo"),
+        ("London", "Dublin"),
+        ("London", "Berlin"),
+        ("Berlin", "Dublin")
+    ]
+    # Convert to integer pairs and create directed flights (both directions)
+    direct_flights_int = set()
+    for a, b in direct_flights:
+        a_idx = city_to_int[a]
+        b_idx = city_to_int[b]
+        direct_flights_int.add((a_idx, b_idx))
+        direct_flights_int.add((b_idx, a_idx))
+    
+    # Create solver
+    solver = Solver()
+    
+    # Variables for start of day 1 and end of each day (days 1 to 13)
+    s0 = Int('s0')
+    e = [Int(f'e_{i}') for i in range(13)]  # e[0] is end of day1, ..., e[12] is end of day13
+    
+    # All variables are between 0 and 5
+    solver.add(s0 >= 0, s0 <= 5)
+    for i in range(13):
+        solver.add(e[i] >= 0, e[i] <= 5)
+    
+    # start_days[i] is the start city of day i+1
+    start_days = [s0] + e[:-1]  # start_days[0] = s0 (day1 start), start_days[1] = e[0] (day2 start), ... start_days[12] = e[11] (day13 start)
+    
+    # Flight constraints for each day
+    for i in range(13):
+        start_city = start_days[i]
+        end_city = e[i]
+        # If start and end are different, there must be a direct flight
+        solver.add(If(start_city != end_city, 
+                      Or([And(start_city == a, end_city == b) for (a, b) in direct_flights_int]),
+                      True))
+    
+    # Total days calculation for each city
+    total_days = [0] * 6
+    for c in range(6):
+        # Count starts equal to c
+        starts_count = Sum([If(start_days[i] == c, 1, 0) for i in range(13)])
+        # Count ends equal to c where start is not c
+        ends_count = Sum([If(And(e[i] == c, start_days[i] != c), 1, 0) for i in range(13)])
+        total_days[c] = starts_count + ends_count
+    
+    # Add constraints for total days in each city
+    solver.add(total_days[city_to_int["Dublin"]] == 3)
+    solver.add(total_days[city_to_int["Madrid"]] == 2)
+    solver.add(total_days[city_to_int["Oslo"]] == 3)
+    solver.add(total_days[city_to_int["London"]] == 2)
+    solver.add(total_days[city_to_int["Vilnius"]] == 3)
+    solver.add(total_days[city_to_int["Berlin"]] == 5)
+    
+    # Specific day constraints
+    # Dublin between day 7 and 9 (inclusive) -> days 6,7,8 in zero-indexed start_days and e arrays (which correspond to day7,8,9)
+    dublin_constraint = Or(
+        Or(start_days[6] == city_to_int["Dublin"], e[6] == city_to_int["Dublin"]),
+        Or(start_days[7] == city_to_int["Dublin"], e[7] == city_to_int["Dublin"]),
+        Or(start_days[8] == city_to_int["Dublin"], e[8] == city_to_int["Dublin"])
+    )
+    solver.add(dublin_constraint)
+    
+    # Madrid between day 2 and 3 -> days 1 and 2 in arrays (day2 and day3)
+    madrid_constraint = Or(
+        Or(start_days[1] == city_to_int["Madrid"], e[1] == city_to_int["Madrid"]),
+        Or(start_days[2] == city_to_int["Madrid"], e[2] == city_to_int["Madrid"])
+    )
+    solver.add(madrid_constraint)
+    
+    # Berlin between day 3 and 7 -> days 2 to 6 in arrays (day3 to day7)
+    berlin_constraint = Or(
+        Or(start_days[2] == city_to_int["Berlin"], e[2] == city_to_int["Berlin"]),
+        Or(start_days[3] == city_to_int["Berlin"], e[3] == city_to_int["Berlin"]),
+        Or(start_days[4] == city_to_int["Berlin"], e[4] == city_to_int["Berlin"]),
+        Or(start_days[5] == city_to_int["Berlin"], e[5] == city_to_int["Berlin"]),
+        Or(start_days[6] == city_to_int["Berlin"], e[6] == city_to_int["Berlin"])
+    )
+    solver.add(berlin_constraint)
+    
+    # Check satisfiability
+    if solver.check() == sat:
+        model = solver.model()
+        # Get values for start and end cities
+        s0_val = model[s0].as_long()
+        e_vals = [model[ev].as_long() for ev in e]
+        
+        # Build daily cities list (start city for each day)
+        daily_cities = [s0_val] + e_vals[:-1]  # Day 1 to Day 13 start cities
+        
+        # Group consecutive same cities for itinerary
+        itinerary = []
+        current_city = daily_cities[0]
+        start_day = 1
+        for i in range(1, 13):
+            if daily_cities[i] != current_city:
+                end_day = i
+                itinerary.append({
+                    "day_range": f"Day {start_day}-{end_day}",
+                    "place": cities[current_city]
+                })
+                start_day = i + 1
+                current_city = daily_cities[i]
+        itinerary.append({
+            "day_range": f"Day {start_day}-13",
+            "place": cities[current_city]
+        })
+        
+        # Output as JSON
+        print(json.dumps({"itinerary": itinerary}))
+    else:
+        print('{"itinerary": []}')
+
+if __name__ == "__main__":
+    main()

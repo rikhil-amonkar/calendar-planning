@@ -1,0 +1,142 @@
+from z3 import *
+import json
+
+def main():
+    # Define cities and their required days
+    cities = [
+        'Santorini', 
+        'Valencia', 
+        'Madrid', 
+        'Seville', 
+        'Bucharest', 
+        'Vienna', 
+        'Riga', 
+        'Tallinn', 
+        'Krakow', 
+        'Frankfurt'
+    ]
+    required_days = [3, 4, 2, 2, 3, 4, 4, 5, 5, 4]
+    
+    # Map city names to indices
+    city_index = {city: idx for idx, city in enumerate(cities)}
+    
+    # Fixed constraints for certain cities
+    fixed_constraints = {
+        'Vienna': (3, 6),
+        'Madrid': (6, 7),
+        'Riga': (20, 23),
+        'Tallinn': (23, 27),
+        'Krakow': (11, 15)
+    }
+    
+    # Direct flights list (as city names)
+    direct_flights_list = [
+        ('Vienna', 'Bucharest'),
+        ('Santorini', 'Madrid'),
+        ('Seville', 'Valencia'),
+        ('Vienna', 'Seville'),
+        ('Madrid', 'Valencia'),
+        ('Bucharest', 'Riga'),
+        ('Valencia', 'Bucharest'),
+        ('Santorini', 'Bucharest'),
+        ('Vienna', 'Valencia'),
+        ('Vienna', 'Madrid'),
+        ('Valencia', 'Krakow'),
+        ('Valencia', 'Frankfurt'),
+        ('Krakow', 'Frankfurt'),
+        ('Riga', 'Tallinn'),
+        ('Vienna', 'Krakow'),
+        ('Vienna', 'Frankfurt'),
+        ('Madrid', 'Seville'),
+        ('Santorini', 'Vienna'),
+        ('Vienna', 'Riga'),
+        ('Frankfurt', 'Tallinn'),
+        ('Frankfurt', 'Bucharest'),
+        ('Madrid', 'Bucharest'),
+        ('Frankfurt', 'Riga'),
+        ('Madrid', 'Frankfurt')
+    ]
+    
+    # Convert direct flights to index pairs (undirected)
+    direct_flights_set = set()
+    for a, b in direct_flights_list:
+        i = city_index[a]
+        j = city_index[b]
+        if i < j:
+            direct_flights_set.add((i, j))
+        else:
+            direct_flights_set.add((j, i))
+    
+    # Create Z3 arrays for arrival and departure times
+    arrival_array = Array('arrival_array', IntSort(), IntSort())
+    departure_array = Array('departure_array', IntSort(), IntSort())
+    
+    # Create sequence variables
+    seq = [Int(f'seq_{i}') for i in range(len(cities))]
+    
+    solver = Solver()
+    
+    # Fixed constraints
+    fixed_indices = [city_index[city] for city in fixed_constraints]
+    for city, (a, d) in fixed_constraints.items():
+        idx = city_index[city]
+        solver.add(arrival_array[idx] == a)
+        solver.add(departure_array[idx] == d)
+    
+    # Required days constraints
+    for i in range(len(cities)):
+        solver.add(departure_array[i] - arrival_array[i] + 1 == required_days[i])
+        solver.add(arrival_array[i] >= 1)
+        solver.add(departure_array[i] <= 27)
+        solver.add(departure_array[i] >= arrival_array[i])
+    
+    # Sequence constraints
+    solver.add(Distinct(seq))
+    for i in range(len(cities)):
+        solver.add(seq[i] >= 0, seq[i] < len(cities))
+    
+    # First city arrives on day 1
+    solver.add(arrival_array[seq[0]] == 1)
+    # Last city departs on day 27
+    solver.add(departure_array[seq[9]] == 27)
+    
+    # Consecutive cities have matching departure and arrival
+    for i in range(9):
+        solver.add(departure_array[seq[i]] == arrival_array[seq[i+1]])
+    
+    # Direct flight constraints
+    for i in range(9):
+        city_i = seq[i]
+        city_j = seq[i+1]
+        constraints = []
+        for edge in direct_flights_set:
+            a, b = edge
+            constraints.append(And(city_i == a, city_j == b))
+            constraints.append(And(city_i == b, city_j == a))
+        solver.add(Or(constraints))
+    
+    # Check satisfaction
+    if solver.check() == sat:
+        model = solver.model()
+        # Extract sequence order
+        order = []
+        for i in range(len(cities)):
+            seq_val = model.evaluate(seq[i]).as_long()
+            order.append(seq_val)
+        
+        # Build itinerary
+        itinerary = []
+        for idx in order:
+            city_name = cities[idx]
+            a = model.evaluate(arrival_array[idx]).as_long()
+            d = model.evaluate(departure_array[idx]).as_long()
+            day_range = f"Day {a}-{d}"
+            itinerary.append({"day_range": day_range, "place": city_name})
+        
+        # Output as JSON
+        print(json.dumps({"itinerary": itinerary}))
+    else:
+        print('{"itinerary": []}')
+
+if __name__ == '__main__':
+    main()

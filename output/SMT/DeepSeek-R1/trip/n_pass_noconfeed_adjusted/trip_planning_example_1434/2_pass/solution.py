@@ -1,0 +1,121 @@
+import z3
+import json
+
+def main():
+    # Define the cities
+    cities_str = ['Rome', 'Mykonos', 'Lisbon', 'Frankfurt', 'Nice', 'Stuttgart', 'Venice', 'Dublin', 'Bucharest', 'Seville']
+    
+    # Create a City datatype
+    City = z3.Datatype('City')
+    for city in cities_str:
+        City.declare(city)
+    City = City.create()
+    
+    # Create a mapping from string to City variant
+    city_map = {name: getattr(City, name) for name in cities_str}
+    
+    # Required days per city
+    required_days = {
+        city_map['Rome']: 3,
+        city_map['Mykonos']: 2,
+        city_map['Lisbon']: 2,
+        city_map['Frankfurt']: 5,
+        city_map['Nice']: 3,
+        city_map['Stuttgart']: 4,
+        city_map['Venice']: 4,
+        city_map['Dublin']: 2,
+        city_map['Bucharest']: 2,
+        city_map['Seville']: 5
+    }
+    
+    # Direct flights (as strings)
+    flight_strs = [
+        ('Rome', 'Stuttgart'), ('Venice', 'Rome'), ('Dublin', 'Bucharest'), ('Mykonos', 'Rome'),
+        ('Seville', 'Lisbon'), ('Frankfurt', 'Venice'), ('Venice', 'Stuttgart'), ('Bucharest', 'Lisbon'),
+        ('Nice', 'Mykonos'), ('Venice', 'Lisbon'), ('Dublin', 'Lisbon'), ('Venice', 'Nice'),
+        ('Rome', 'Seville'), ('Frankfurt', 'Rome'), ('Nice', 'Dublin'), ('Rome', 'Bucharest'),
+        ('Frankfurt', 'Dublin'), ('Rome', 'Dublin'), ('Venice', 'Dublin'), ('Rome', 'Lisbon'),
+        ('Frankfurt', 'Lisbon'), ('Nice', 'Rome'), ('Frankfurt', 'Nice'), ('Frankfurt', 'Stuttgart'),
+        ('Frankfurt', 'Bucharest'), ('Lisbon', 'Stuttgart'), ('Nice', 'Lisbon'), ('Seville', 'Dublin')
+    ]
+    
+    # Convert to Z3 city pairs using city_map
+    allowed_pairs = []
+    for a, b in flight_strs:
+        allowed_pairs.append((city_map[a], city_map[b]))
+        allowed_pairs.append((city_map[b], city_map[a]))  # symmetric
+    
+    # Create solver
+    solver = z3.Solver()
+    
+    # Morning and evening cities for 23 days (index 0 to 22)
+    morning = [z3.Const(f'morning_{i}', City) for i in range(23)]
+    evening = [z3.Const(f'evening_{i}', City) for i in range(23)]
+    
+    # Continuity constraint: evening[i] == morning[i+1] for i in 0..21
+    for i in range(22):
+        solver.add(evening[i] == morning[i+1])
+    
+    # Flight constraints: if morning[i] != evening[i], then (morning[i], evening[i]) must be in allowed_pairs
+    for i in range(23):
+        cond = (morning[i] != evening[i])
+        allowed_flight = z3.Or([z3.And(morning[i] == c1, evening[i] == c2) for c1, c2 in allowed_pairs])
+        solver.add(z3.Implies(cond, allowed_flight))
+    
+    # Constraints for total days per city
+    for city_name in cities_str:
+        c = city_map[city_name]
+        in_city = [z3.Or(morning[i] == c, evening[i] == c) for i in range(23)]
+        total = z3.Sum([z3.If(in_city[i], 1, 0) for i in range(23)])
+        solver.add(total == required_days[c])
+    
+    # Event constraints
+    # Frankfurt: at least one day between 1 and 5 (indices 0 to 4) must be in Frankfurt
+    in_frankfurt = [z3.Or(morning[i] == city_map['Frankfurt'], evening[i] == city_map['Frankfurt']) for i in range(5)]
+    solver.add(z3.Or(in_frankfurt))
+    
+    # Seville: must be in Seville every day between 13 and 17 (indices 12 to 16)
+    for i in range(12, 17):
+        solver.add(z3.Or(morning[i] == city_map['Seville'], evening[i] == city_map['Seville']))
+    
+    # Mykonos: at least one day between 10 and 11 (indices 9 and 10) must be in Mykonos
+    in_mykonos = [z3.Or(morning[i] == city_map['Mykonos'], evening[i] == city_map['Mykonos']) for i in [9, 10]]
+    solver.add(z3.Or(in_mykonos))
+    
+    # Check satisfaction
+    if solver.check() == z3.sat:
+        model = solver.model()
+        # Extract the evening city for each day
+        evening_assignments = []
+        for i in range(23):
+            evening_val = model.eval(evening[i])
+            evening_assignments.append(str(evening_val))
+        
+        # Group consecutive days with the same evening city
+        itinerary = []
+        start_index = 0
+        current_city = evening_assignments[0]
+        for i in range(1, 23):
+            if evening_assignments[i] != current_city:
+                # Add the segment from start_index to i-1
+                if start_index == i-1:
+                    day_range = f"Day {start_index+1}"
+                else:
+                    day_range = f"Day {start_index+1}-{i}"
+                itinerary.append({"day_range": day_range, "place": current_city})
+                start_index = i
+                current_city = evening_assignments[i]
+        # Add the last segment
+        if start_index == 22:
+            day_range = f"Day {start_index+1}"
+        else:
+            day_range = f"Day {start_index+1}-23"
+        itinerary.append({"day_range": day_range, "place": current_city})
+        
+        # Output as JSON
+        print(json.dumps({"itinerary": itinerary}))
+    else:
+        print('No solution found')
+
+if __name__ == '__main__':
+    main()

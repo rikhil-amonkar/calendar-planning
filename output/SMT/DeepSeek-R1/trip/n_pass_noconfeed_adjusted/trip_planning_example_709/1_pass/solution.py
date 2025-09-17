@@ -1,0 +1,89 @@
+from z3 import *
+import json
+
+def main():
+    # City indices and durations
+    cities = ['Helsinki', 'Valencia', 'Dubrovnik', 'Porto', 'Reykjavik', 'Prague']
+    durations = [4, 5, 4, 3, 4, 3]
+    city_dict = {c: i for i, c in enumerate(cities)}
+    
+    # Direct flights (undirected)
+    direct_flights = [
+        ('Helsinki', 'Prague'),
+        ('Prague', 'Valencia'),
+        ('Valencia', 'Porto'),
+        ('Helsinki', 'Reykjavik'),
+        ('Dubrovnik', 'Helsinki'),
+        ('Reykjavik', 'Prague')
+    ]
+    
+    # Convert to city indices
+    flight_pairs = []
+    for a, b in direct_flights:
+        flight_pairs.append((city_dict[a], city_dict[b]))
+        flight_pairs.append((city_dict[b], city_dict[a]))
+    
+    s = Solver()
+    
+    # City order (6 segments)
+    order = [Int(f'order_{i}') for i in range(6)]
+    for o in order:
+        s.add(o >= 0, o < 6)
+    s.add(Distinct(order))
+    
+    # Start and end days for each segment
+    starts = [Int(f'start_{i}') for i in range(6)]
+    ends = [Int(f'end_{i}') for i in range(6)]
+    
+    # First segment starts at day 1, last ends at day 18
+    s.add(starts[0] == 1)
+    s.add(ends[5] == 18)
+    
+    # Duration constraints
+    for i in range(6):
+        city_idx = order[i]
+        dur = durations[city_idx]
+        s.add(ends[i] - starts[i] + 1 == dur)
+        s.add(ends[i] >= starts[i])
+    
+    # Consecutive segments connect on same day
+    for i in range(5):
+        s.add(ends[i] == starts[i+1])
+    
+    # Flight constraints between consecutive segments
+    for i in range(5):
+        city_i = order[i]
+        city_j = order[i+1]
+        s.add(Or([And(city_i == a, city_j == b) for a, b in flight_pairs]))
+    
+    # Porto must include days between 16 and 18
+    porto_idx = city_dict['Porto']
+    for i in range(6):
+        s.add(If(order[i] == porto_idx, 
+                 And(starts[i] <= 18, ends[i] >= 16), 
+                 True))
+    
+    # Ensure days are within 1-18
+    for i in range(6):
+        s.add(starts[i] >= 1, starts[i] <= 18)
+        s.add(ends[i] >= 1, ends[i] <= 18)
+    
+    if s.check() == sat:
+        m = s.model()
+        itinerary = []
+        for i in range(6):
+            city_index = m.evaluate(order[i]).as_long()
+            city = cities[city_index]
+            start = m.evaluate(starts[i]).as_long()
+            end = m.evaluate(ends[i]).as_long()
+            if start == end:
+                day_range = f"Day {start}"
+            else:
+                day_range = f"Day {start}-{end}"
+            itinerary.append({"day_range": day_range, "place": city})
+        print(json.dumps({"itinerary": itinerary}))
+    else:
+        print('{"itinerary": []}')
+
+if __name__ == "__main__":
+    main()

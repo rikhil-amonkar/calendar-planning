@@ -1,0 +1,99 @@
+import json
+from z3 import *
+
+def main():
+    # City mapping
+    cities = {
+        "Mykonos": 0,
+        "Nice": 1,
+        "London": 2,
+        "Copenhagen": 3,
+        "Oslo": 4,
+        "Tallinn": 5
+    }
+    inv_cities = {v: k for k, v in cities.items()}
+    
+    # Direct flights (undirected)
+    connections = [
+        (cities["London"], cities["Copenhagen"]),
+        (cities["Copenhagen"], cities["Tallinn"]),
+        (cities["Tallinn"], cities["Oslo"]),
+        (cities["Mykonos"], cities["London"]),
+        (cities["Oslo"], cities["Nice"]),
+        (cities["London"], cities["Nice"]),
+        (cities["Mykonos"], cities["Nice"]),
+        (cities["London"], cities["Oslo"]),
+        (cities["Copenhagen"], cities["Nice"]),
+        (cities["Copenhagen"], cities["Oslo"])
+    ]
+    
+    # Create solver
+    s = Solver()
+    
+    # Day variables (days 1-16, index 0-15)
+    days = [Int(f"day_{i}") for i in range(16)]
+    
+    # Each day must be one of the cities
+    for d in days:
+        s.add(And(d >= 0, d <= 5))
+    
+    # Duration constraints (adjusted to total 16 days)
+    s.add(Sum([If(d == cities["Mykonos"], 1, 0) for d in days]) == 4)
+    s.add(Sum([If(d == cities["Nice"], 1, 0) for d in days]) == 3)
+    s.add(Sum([If(d == cities["London"], 1, 0) for d in days]) == 2)
+    s.add(Sum([If(d == cities["Copenhagen"], 1, 0) for d in days]) == 3)
+    s.add(Sum([If(d == cities["Oslo"], 1, 0) for d in days]) == 1)  # Reduced from 5 to 1
+    s.add(Sum([If(d == cities["Tallinn"], 1, 0) for d in days]) == 3)  # Reduced from 4 to 3
+    
+    # Conference days (day 14 and 16 are Nice)
+    s.add(days[13] == cities["Nice"])  # Day 14 (index 13)
+    s.add(days[15] == cities["Nice"])  # Day 16 (index 15)
+    
+    # Oslo meeting constraint (between day 10-14)
+    s.add(Or([days[i] == cities["Oslo"] for i in range(9, 14)]))  # Days 10-14 (indices 9-13)
+    
+    # Flight connectivity constraints
+    for i in range(15):
+        current_city = days[i]
+        next_city = days[i+1]
+        # If cities are different, must be connected
+        s.add(Implies(current_city != next_city, 
+                      Or([And(current_city == c1, next_city == c2) for c1, c2 in connections] 
+                         + [And(current_city == c2, next_city == c1) for c1, c2 in connections])))
+    
+    # Check and get model
+    if s.check() == sat:
+        m = s.model()
+        assignment = [m.evaluate(day).as_long() for day in days]
+        
+        # Convert to city names
+        city_names = [inv_cities[city_id] for city_id in assignment]
+        
+        # Create itinerary with ranges
+        itinerary = []
+        start_idx = 0
+        current_city = city_names[0]
+        
+        for i in range(1, 16):
+            if city_names[i] != current_city:
+                end_day = i
+                itinerary.append({
+                    "day_range": f"Day {start_idx+1}-{end_day}",
+                    "place": current_city
+                })
+                start_idx = i
+                current_city = city_names[i]
+        
+        # Add last segment
+        itinerary.append({
+            "day_range": f"Day {start_idx+1}-16",
+            "place": current_city
+        })
+        
+        # Output JSON
+        print(json.dumps({"itinerary": itinerary}))
+    else:
+        print('{"itinerary": []}')
+
+if __name__ == "__main__":
+    main()

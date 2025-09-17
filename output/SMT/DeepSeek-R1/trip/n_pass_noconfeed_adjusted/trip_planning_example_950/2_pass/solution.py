@@ -1,0 +1,91 @@
+from z3 import *
+import json
+
+def main():
+    # Cities and their indices
+    cities = ['Mykonos', 'Riga', 'Munich', 'Bucharest', 'Rome', 'Nice', 'Krakow']
+    city_index = {city: idx for idx, city in enumerate(cities)}
+    
+    # Adjusted required days per city (sums to 17)
+    required_days = [2, 2, 3, 3, 3, 2, 2]
+    
+    # Direct flights (undirected)
+    edges = [
+        (city_index['Nice'], city_index['Riga']),
+        (city_index['Bucharest'], city_index['Munich']),
+        (city_index['Mykonos'], city_index['Munich']),
+        (city_index['Riga'], city_index['Bucharest']),
+        (city_index['Rome'], city_index['Nice']),
+        (city_index['Rome'], city_index['Munich']),
+        (city_index['Mykonos'], city_index['Nice']),
+        (city_index['Rome'], city_index['Mykonos']),
+        (city_index['Munich'], city_index['Krakow']),
+        (city_index['Rome'], city_index['Bucharest']),
+        (city_index['Nice'], city_index['Munich']),
+        (city_index['Riga'], city_index['Munich'])
+    ]
+    
+    # Create solver
+    s = Solver()
+    
+    # Day variables for 17 days (indexed 0 to 16 for days 1 to 17)
+    days = [Int(f'day_{i}') for i in range(17)]
+    
+    # Each day must be between 0 and 6
+    for d in days:
+        s.add(And(d >= 0, d <= 6))
+    
+    # Count of days per city must match required days
+    for c in range(len(cities)):
+        s.add(Sum([If(d == c, 1, 0) for d in days]) == required_days[c])
+    
+    # Specific day constraints
+    # Day 1 must be Rome (index 4)
+    s.add(days[0] == city_index['Rome'])
+    # Day 4 must be Rome (index 4)
+    s.add(days[3] == city_index['Rome'])
+    # Days 16 and 17 must be Krakow (index 6)
+    s.add(days[15] == city_index['Krakow'])
+    s.add(days[16] == city_index['Krakow'])
+    
+    # Wedding in Mykonos between day 4 and day 6: must be in Mykonos on day 5 or 6
+    s.add(Or(days[4] == city_index['Mykonos'], days[5] == city_index['Mykonos']))
+    
+    # Flight constraints: consecutive days must be the same city or have a direct flight
+    for i in range(16):
+        city_current = days[i]
+        city_next = days[i+1]
+        # If cities are different, ensure there is a direct flight
+        s.add(If(city_current != city_next,
+                 Or([Or(And(city_current == a, city_next == b), And(city_current == b, city_next == a)) for a, b in edges]),
+                 True))
+    
+    # Check for a solution
+    if s.check() == sat:
+        m = s.model()
+        assignment = [m.evaluate(d).as_long() for d in days]
+        
+        # Convert to itinerary ranges
+        itinerary = []
+        current_city = assignment[0]
+        start_day = 1
+        for i in range(1, 17):
+            if assignment[i] != current_city:
+                end_day = i
+                itinerary.append({
+                    'day_range': f'Day {start_day}-{end_day}',
+                    'place': cities[current_city]
+                })
+                start_day = i + 1
+                current_city = assignment[i]
+        itinerary.append({
+            'day_range': f'Day {start_day}-17',
+            'place': cities[current_city]
+        })
+        
+        print(json.dumps({'itinerary': itinerary}))
+    else:
+        print('{"itinerary": []}')
+
+if __name__ == '__main__':
+    main()

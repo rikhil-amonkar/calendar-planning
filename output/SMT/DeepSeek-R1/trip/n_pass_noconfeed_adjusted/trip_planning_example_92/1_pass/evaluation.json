@@ -1,0 +1,53 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\"itinerary\": [{\"day_range\": \"Day 1-2\", \"place\": \"Dublin\"}, {\"day_range\": \"Day 2-6\", \"place\": \"Riga\"}, {\"day_range\": \"Day 6-12\", \"place\": \"Vilnius\"}]}",
+    "pred": {
+        "itinerary": [
+            {
+                "day_range": "Day 1-2",
+                "place": "Dublin"
+            },
+            {
+                "day_range": "Day 2-6",
+                "place": "Riga"
+            },
+            {
+                "day_range": "Day 6-12",
+                "place": "Vilnius"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "day_range": "Day 1-2",
+                "place": "Dublin"
+            },
+            {
+                "day_range": "Day 2-6",
+                "place": "Riga"
+            },
+            {
+                "day_range": "Day 6-12",
+                "place": "Vilnius"
+            }
+        ]
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 386.7916567325592,
+        "execution_time": 0.07941317558288574,
+        "constraint_eval_time": 7.534027099609375e-05,
+        "pred_extract_time": 1.5898492336273193,
+        "gold_extract_time": 0.00010752677917480469,
+        "total_tokens": 794,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\nimport json\n\ndef main():\n    # Define city enum\n    City = Datatype('City')\n    City.declare('Dublin')\n    City.declare('Riga')\n    City.declare('Vilnius')\n    City = City.create()\n    \n    s = Solver()\n    \n    # City visit order variables\n    city1 = Const('city1', City)\n    city2 = Const('city2', City)\n    city3 = Const('city3', City)\n    \n    # Duration variables for each stay\n    d1 = Int('d1')\n    d2 = Int('d2')\n    d3 = Int('d3')\n    \n    # Constraints\n    s.add(d1 >= 1, d2 >= 1, d3 >= 1)\n    s.add(d1 + d2 + d3 - 2 == 12)  # Account for 2 travel days\n    \n    # Required days per city\n    s.add(If(city1 == City.Dublin, d1 == 2, True))\n    s.add(If(city1 == City.Riga, d1 == 5, True))\n    s.add(If(city1 == City.Vilnius, d1 == 7, True))\n    \n    s.add(If(city2 == City.Dublin, d2 == 2, True))\n    s.add(If(city2 == City.Riga, d2 == 5, True))\n    s.add(If(city2 == City.Vilnius, d2 == 7, True))\n    \n    s.add(If(city3 == City.Dublin, d3 == 2, True))\n    s.add(If(city3 == City.Riga, d3 == 5, True))\n    s.add(If(city3 == City.Vilnius, d3 == 7, True))\n    \n    s.add(Distinct(city1, city2, city3))\n    \n    # Flight connections\n    allowed_flights = [\n        (City.Dublin, City.Riga),\n        (City.Riga, City.Dublin),\n        (City.Riga, City.Vilnius)\n    ]\n    \n    s.add(Or([And(city1 == c1, city2 == c2) for (c1, c2) in allowed_flights]))\n    s.add(Or([And(city2 == c1, city3 == c2) for (c1, c2) in allowed_flights]))\n    \n    if s.check() == sat:\n        m = s.model()\n        c1 = m[city1]\n        c2 = m[city2]\n        c3 = m[city3]\n        dur1 = m[d1].as_long()\n        dur2 = m[d2].as_long()\n        dur3 = m[d3].as_long()\n        \n        # Calculate day ranges\n        start1 = 1\n        end1 = dur1\n        start2 = end1\n        end2 = start2 + dur2 - 1\n        start3 = end2\n        end3 = start3 + dur3 - 1\n        \n        city_names = {\n            City.Dublin: \"Dublin\",\n            City.Riga: \"Riga\",\n            City.Vilnius: \"Vilnius\"\n        }\n        \n        itinerary = [\n            {\"day_range\": f\"Day {start1}-{end1}\", \"place\": city_names[c1]},\n            {\"day_range\": f\"Day {start2}-{end2}\", \"place\": city_names[c2]},\n            {\"day_range\": f\"Day {start3}-{end3}\", \"place\": city_names[c3]}\n        ]\n        \n        print(json.dumps({\"itinerary\": itinerary}))\n    else:\n        print('{\"itinerary\": []}')\n\nif __name__ == \"__main__\":\n    main()"
+}

@@ -1,0 +1,52 @@
+{
+    "has_execution_error": true,
+    "has_no_plan": false,
+    "execution_output": null,
+    "pred": null,
+    "gold": {
+        "itinerary": [
+            {
+                "day_range": "Day 1-4",
+                "place": "Dubrovnik"
+            },
+            {
+                "day_range": "Day 4-7",
+                "place": "Helsinki"
+            },
+            {
+                "day_range": "Day 7-10",
+                "place": "Reykjavik"
+            },
+            {
+                "day_range": "Day 10-12",
+                "place": "Prague"
+            },
+            {
+                "day_range": "Day 12-16",
+                "place": "Valencia"
+            },
+            {
+                "day_range": "Day 16-18",
+                "place": "Porto"
+            }
+        ]
+    },
+    "status": "Error",
+    "violated_constraint": {
+        "missing_itinerary": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 236.4243552684784,
+        "execution_time": 0.0761566162109375,
+        "constraint_eval_time": 7.152557373046875e-06,
+        "pred_extract_time": 3.0994415283203125e-06,
+        "gold_extract_time": 0.00011587142944335938,
+        "total_tokens": 788,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\nimport json\n\ndef main():\n    # City indices and durations\n    cities = ['Helsinki', 'Valencia', 'Dubrovnik', 'Porto', 'Reykjavik', 'Prague']\n    durations = [4, 5, 4, 3, 4, 3]\n    city_dict = {c: i for i, c in enumerate(cities)}\n    \n    # Direct flights (undirected)\n    direct_flights = [\n        ('Helsinki', 'Prague'),\n        ('Prague', 'Valencia'),\n        ('Valencia', 'Porto'),\n        ('Helsinki', 'Reykjavik'),\n        ('Dubrovnik', 'Helsinki'),\n        ('Reykjavik', 'Prague')\n    ]\n    \n    # Convert to city indices\n    flight_pairs = []\n    for a, b in direct_flights:\n        flight_pairs.append((city_dict[a], city_dict[b]))\n        flight_pairs.append((city_dict[b], city_dict[a]))\n    \n    s = Solver()\n    \n    # City order (6 segments)\n    order = [Int(f'order_{i}') for i in range(6)]\n    for o in order:\n        s.add(o >= 0, o < 6)\n    s.add(Distinct(order))\n    \n    # Start and end days for each segment\n    starts = [Int(f'start_{i}') for i in range(6)]\n    ends = [Int(f'end_{i}') for i in range(6)]\n    \n    # First segment starts at day 1, last ends at day 18\n    s.add(starts[0] == 1)\n    s.add(ends[5] == 18)\n    \n    # Duration constraints\n    for i in range(6):\n        city_idx = order[i]\n        dur = durations[city_idx]\n        s.add(ends[i] - starts[i] + 1 == dur)\n        s.add(ends[i] >= starts[i])\n    \n    # Consecutive segments connect on same day\n    for i in range(5):\n        s.add(ends[i] == starts[i+1])\n    \n    # Flight constraints between consecutive segments\n    for i in range(5):\n        city_i = order[i]\n        city_j = order[i+1]\n        s.add(Or([And(city_i == a, city_j == b) for a, b in flight_pairs]))\n    \n    # Porto must include days between 16 and 18\n    porto_idx = city_dict['Porto']\n    for i in range(6):\n        s.add(If(order[i] == porto_idx, \n                 And(starts[i] <= 18, ends[i] >= 16), \n                 True))\n    \n    # Ensure days are within 1-18\n    for i in range(6):\n        s.add(starts[i] >= 1, starts[i] <= 18)\n        s.add(ends[i] >= 1, ends[i] <= 18)\n    \n    if s.check() == sat:\n        m = s.model()\n        itinerary = []\n        for i in range(6):\n            city_index = m.evaluate(order[i]).as_long()\n            city = cities[city_index]\n            start = m.evaluate(starts[i]).as_long()\n            end = m.evaluate(ends[i]).as_long()\n            if start == end:\n                day_range = f\"Day {start}\"\n            else:\n                day_range = f\"Day {start}-{end}\"\n            itinerary.append({\"day_range\": day_range, \"place\": city})\n        print(json.dumps({\"itinerary\": itinerary}))\n    else:\n        print('{\"itinerary\": []}')\n\nif __name__ == \"__main__\":\n    main()"
+}

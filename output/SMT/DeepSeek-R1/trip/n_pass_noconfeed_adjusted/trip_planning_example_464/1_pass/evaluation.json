@@ -1,0 +1,48 @@
+{
+    "has_execution_error": true,
+    "has_no_plan": false,
+    "execution_output": null,
+    "pred": null,
+    "gold": {
+        "itinerary": [
+            {
+                "day_range": "Day 1-5",
+                "place": "Naples"
+            },
+            {
+                "day_range": "Day 5-9",
+                "place": "Dubrovnik"
+            },
+            {
+                "day_range": "Day 9-12",
+                "place": "Frankfurt"
+            },
+            {
+                "day_range": "Day 12-16",
+                "place": "Krakow"
+            },
+            {
+                "day_range": "Day 16-18",
+                "place": "Oslo"
+            }
+        ]
+    },
+    "status": "Error",
+    "violated_constraint": {
+        "missing_itinerary": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 407.0888192653656,
+        "execution_time": 0.0734703540802002,
+        "constraint_eval_time": 2.1457672119140625e-06,
+        "pred_extract_time": 3.5762786865234375e-06,
+        "gold_extract_time": 0.00010418891906738281,
+        "total_tokens": 885,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\n\ndef main():\n    # Cities: Naples=0, Krakow=1, Frankfurt=2, Dubrovnik=3, Oslo=4\n    cities = [\"Naples\", \"Krakow\", \"Frankfurt\", \"Dubrovnik\", \"Oslo\"]\n    required_days = [5, 5, 4, 5, 3]\n    \n    # Direct flights (symmetric)\n    flights = [(3,4), (2,1), (2,4), (3,2), (1,4), (0,4), (0,3), (0,2)]\n    \n    s = Solver()\n    \n    # Order of cities (permutation)\n    order = [Int(f\"order_{i}\") for i in range(5)]\n    for i in range(5):\n        s.add(And(order[i] >= 0, order[i] <= 4))\n    s.add(Distinct(order))\n    s.add(order[4] == 4)  # Oslo is last\n    \n    # Start days for each city's full stay\n    start = [Int(f\"start_{i}\") for i in range(5)]\n    # Duration of full days for each city\n    S = [Int(f\"S_{i}\") for i in range(5)]\n    \n    # Constraints for first city\n    s.add(start[0] == 1)\n    s.add(required_days[order[0]] == S[0] + 1)\n    \n    # Constraints for middle cities\n    for i in range(1, 4):\n        s.add(required_days[order[i]] == S[i] + 2)\n        s.add(start[i] == start[i-1] + S[i-1] + 1)\n    \n    # Constraints for last city\n    s.add(required_days[order[4]] == S[4] + 1)\n    s.add(start[4] == start[3] + S[3] + 1)\n    s.add(start[4] + S[4] - 1 == 18)  # Last day is 18\n    \n    # Dubrovnik must cover days 5-9\n    dubrovnik_index = None\n    for i in range(5):\n        # Check if city i is Dubrovnik\n        condition = And(order[i] == 3, start[i] - 1 <= 5, start[i] + S[i] >= 9)\n        s.add(If(order[i] == 3, condition, True))\n    \n    # Flight connections between consecutive cities\n    for i in range(4):\n        city_i = order[i]\n        city_j = order[i+1]\n        # Check if there is a direct flight between city_i and city_j\n        flight_exists = Or(\n            *[Or(And(city_i == a, city_j == b), And(city_i == b, city_j == a)) for (a,b) in flights]\n        )\n        s.add(flight_exists)\n    \n    # Check if the model is satisfiable\n    if s.check() == sat:\n        m = s.model()\n        order_val = [m.evaluate(order[i]).as_long() for i in range(5)]\n        start_val = [m.evaluate(start[i]).as_long() for i in range(5)]\n        S_val = [m.evaluate(S[i]).as_long() for i in range(5)]\n        \n        # Generate itinerary\n        itinerary = []\n        for i in range(5):\n            city_index = order_val[i]\n            city_name = cities[city_index]\n            begin_day = start_val[i] if i == 0 else start_val[i] - 1\n            if i < 4:\n                end_day = start_val[i] + S_val[i]\n            else:\n                end_day = start_val[i] + S_val[i] - 1\n            day_range = f\"Day {begin_day}-{end_day}\"\n            itinerary.append({\"day_range\": day_range, \"place\": city_name})\n        \n        # Output as JSON\n        import json\n        print(json.dumps({\"itinerary\": itinerary}))\n    else:\n        print(\"No solution found\")\n\nif __name__ == \"__main__\":\n    main()"
+}

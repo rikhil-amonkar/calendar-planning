@@ -1,0 +1,116 @@
+import json
+from z3 import *
+
+def main():
+    # City indices
+    AMS, EDI, BRU, VIE, BER, REK = 0, 1, 2, 3, 4, 5
+    city_names = {
+        AMS: "Amsterdam",
+        EDI: "Edinburgh",
+        BRU: "Brussels",
+        VIE: "Vienna",
+        BER: "Berlin",
+        REK: "Reykjavik"
+    }
+    
+    # Fixed constraints
+    fixed_constraints = {
+        AMS: (5, 8),
+        BER: (16, 19),
+        REK: (12, 16)
+    }
+    
+    # Duration constraints
+    durations = {
+        AMS: 4,
+        EDI: 5,
+        BRU: 5,
+        VIE: 5,
+        BER: 4,
+        REK: 5
+    }
+    
+    # Direct flights (undirected)
+    edges = [
+        (EDI, BER), (AMS, BER), (EDI, AMS), (VIE, BER),
+        (BER, BRU), (VIE, REK), (EDI, BRU), (VIE, BRU),
+        (AMS, REK), (REK, BRU), (AMS, VIE), (REK, BER)
+    ]
+    
+    # Create solver
+    s = Solver()
+    
+    # Variables for start and end days for each city
+    start = [Int(f"start_{i}") for i in range(6)]
+    end = [Int(f"end_{i}") for i in range(6)]
+    
+    # Order of cities (permutation)
+    order = [Int(f"order_{i}") for i in range(6)]
+    
+    # Constraints for order: distinct and between 0 and 5
+    s.add(Distinct(order))
+    for i in range(6):
+        s.add(And(order[i] >= 0, order[i] <= 5))
+    
+    # Fixed start and end constraints
+    for city, (s_val, e_val) in fixed_constraints.items():
+        s.add(start[city] == s_val)
+        s.add(end[city] == e_val)
+    
+    # Duration constraints
+    for i in range(6):
+        if i in fixed_constraints:
+            continue
+        s.add(end[i] == start[i] + durations[i] - 1)
+    
+    # Timeline constraints
+    s.add(start[order[0]] == 1)
+    s.add(end[order[5]] == 23)
+    for i in range(5):
+        s.add(end[order[i]] == start[order[i+1]])
+    
+    # Consistency of start and end days
+    for i in range(6):
+        s.add(start[i] >= 1)
+        s.add(end[i] <= 23)
+        s.add(start[i] <= end[i])
+    
+    # Direct flight constraints for consecutive cities
+    graph = set()
+    for (a, b) in edges:
+        graph.add((a, b))
+        graph.add((b, a))
+    
+    for i in range(5):
+        city_i = order[i]
+        city_j = order[i+1]
+        s.add(Or(
+            *[And(city_i == a, city_j == b) for (a, b) in graph if a <= b]
+        ))
+    
+    # Check satisfaction
+    if s.check() == sat:
+        model = s.model()
+        order_val = [model.evaluate(order[i]).as_long() for i in range(6)]
+        start_val = [model.evaluate(start[i]).as_long() for i in range(6)]
+        end_val = [model.evaluate(end[i]).as_long() for i in range(6)]
+        
+        # Build itinerary
+        itinerary = []
+        for idx in order_val:
+            city_idx = idx
+            s_day = start_val[city_idx]
+            e_day = end_val[city_idx]
+            day_range = f"Day {s_day}-{e_day}"
+            itinerary.append({
+                "day_range": day_range,
+                "place": city_names[city_idx]
+            })
+        
+        # Output as JSON
+        print(json.dumps({"itinerary": itinerary}))
+    else:
+        print('{"itinerary": []}')
+
+if __name__ == "__main__":
+    main()

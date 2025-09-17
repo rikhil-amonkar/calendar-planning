@@ -1,0 +1,53 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "{\"itinerary\": [{\"day_range\": \"Day 1-5\", \"place\": \"Krakow\"}, {\"day_range\": \"Day 5-6\", \"place\": \"Paris\"}, {\"day_range\": \"Day 6-11\", \"place\": \"Seville\"}]}",
+    "pred": {
+        "itinerary": [
+            {
+                "day_range": "Day 1-5",
+                "place": "Krakow"
+            },
+            {
+                "day_range": "Day 5-6",
+                "place": "Paris"
+            },
+            {
+                "day_range": "Day 6-11",
+                "place": "Seville"
+            }
+        ]
+    },
+    "gold": {
+        "itinerary": [
+            {
+                "day_range": "Day 1-5",
+                "place": "Krakow"
+            },
+            {
+                "day_range": "Day 5-6",
+                "place": "Paris"
+            },
+            {
+                "day_range": "Day 6-11",
+                "place": "Seville"
+            }
+        ]
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 207.63872385025024,
+        "execution_time": 0.0823972225189209,
+        "constraint_eval_time": 3.838539123535156e-05,
+        "pred_extract_time": 1.2063980102539062,
+        "gold_extract_time": 8.034706115722656e-05,
+        "total_tokens": 513,
+        "reasoning_tokens": 0
+    },
+    "reasoning_content": "",
+    "generated_code": "from z3 import *\n\ndef main():\n    # Initialize solver\n    solver = Solver()\n    \n    # Define variables\n    a = Int('a')\n    b = Int('b')\n    order = Int('order')  # 0 for Krakow->Paris->Seville, 1 for Seville->Paris->Krakow\n    \n    # Constraints on variables\n    solver.add(1 <= a, a < b, b <= 10)\n    solver.add(Or(order == 0, order == 1))\n    \n    # City day constraints\n    krakow_days = If(order == 0, a + 1, 11 - b)\n    paris_days = (b - a) + 1\n    seville_days = If(order == 0, 11 - b, a + 1)\n    \n    solver.add(krakow_days == 5)\n    solver.add(paris_days == 2)\n    solver.add(seville_days == 6)\n    \n    # Workshop constraint: Krakow must include at least one day between 1-5\n    solver.add(If(order == 1, b + 1 <= 5, True))\n    \n    # Check satisfiability\n    if solver.check() == sat:\n        model = solver.model()\n        a_val = model[a].as_long()\n        b_val = model[b].as_long()\n        order_val = model[order].as_long()\n        \n        if order_val == 0:\n            itinerary = [\n                {\"day_range\": f\"Day 1-{a_val+1}\", \"place\": \"Krakow\"},\n                {\"day_range\": f\"Day {a_val+1}-{b_val+1}\", \"place\": \"Paris\"},\n                {\"day_range\": f\"Day {b_val+1}-11\", \"place\": \"Seville\"}\n            ]\n        else:\n            itinerary = [\n                {\"day_range\": f\"Day 1-{a_val+1}\", \"place\": \"Seville\"},\n                {\"day_range\": f\"Day {a_val+1}-{b_val+1}\", \"place\": \"Paris\"},\n                {\"day_range\": f\"Day {b_val+1}-11\", \"place\": \"Krakow\"}\n            ]\n        \n        # Output as JSON\n        import json\n        print(json.dumps({\"itinerary\": itinerary}))\n    else:\n        print('{\"itinerary\": []}')\n\nif __name__ == \"__main__\":\n    main()"
+}

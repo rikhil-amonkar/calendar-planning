@@ -1,0 +1,12 @@
+To solve this problem, we need to generate a 25-day travel itinerary that meets specific requirements, including consecutive stays in each city, flight connections between cities on travel days, and fixed dates for certain cities. The initial approach using a Boolean matrix for daily city assignments was inefficient and timed out. The revised approach uses integer variables to represent the start and end days for each city's stay, ensuring consecutiveness and meeting all constraints efficiently.
+
+### Approach
+1. **Problem Analysis**: The problem requires scheduling a 25-day trip across 8 cities with specified consecutive stay durations. The itinerary must include travel days where two connected cities are visited, and certain cities must be visited on specific days.
+2. **Key Insight**: Each city's stay must be consecutive. We represent each city's stay with start and end day variables, ensuring the duration matches the required days.
+3. **Constraints Handling**: 
+   - **Non-overlapping for Non-connected Cities**: For cities without direct flights, their stay periods must not overlap.
+   - **Day Cardinality**: Each day must have exactly one or two cities present, with the first and last days having exactly one city.
+   - **Fixed Dates**: Edinburgh must be visited from day 5 to day 8, and Split must be visited between days 19 and 23.
+4. **Efficiency**: Using integer variables for start and end days reduces the problem complexity compared to the initial Boolean matrix approach, making it feasible for Z3 to solve within reasonable time.
+
+### Solution Code
