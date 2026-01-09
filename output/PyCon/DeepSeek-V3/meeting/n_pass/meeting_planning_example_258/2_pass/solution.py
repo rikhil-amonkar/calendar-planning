@@ -1,0 +1,1 @@
+problem.addVariable(f'dur_{order[0]}', [getattr(locals(), [f'{name}_min' for name in ['betty', 'david', 'barbara']][order[0]])])
