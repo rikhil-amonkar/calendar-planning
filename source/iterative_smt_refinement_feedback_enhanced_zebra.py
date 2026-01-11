@@ -40,6 +40,7 @@ from typing import List, Dict, Any
 import logging
 import shutil
 from openai import OpenAI
+import tiktoken
 
 import torch
 torch.cuda.empty_cache()  # Clear cache
@@ -57,7 +58,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Run enhanced iterative SMT refinement with smart extraction")
     parser.add_argument("--model", type=str, required=True, help="Model to use (e.g., 'DeepSeek-R1')")
     parser.add_argument("--task", type=str, required=True, choices=["calendar", "trip", "meeting", "zebralogic"], help="Task type")
-    parser.add_argument("--max_passes", type=int, default=5, help="Maximum number of refinement passes")
+    parser.add_argument("--max_passes", type=int, default=1, help="Maximum number of refinement passes")
     parser.add_argument("--max_concurrent", type=int, default=10, help="Maximum number of concurrent examples to process")
     parser.add_argument("--rate_limit", type=int, default=60, help="Rate limit (requests per minute)")
     parser.add_argument("--start", type=int, help="Start example number (inclusive)")
@@ -77,7 +78,7 @@ def parse_args():
     return args
 
 try:
-    with open("../../openai_research/deepseek_api_key.json") as f:
+    with open("../keys/deepseek_api_key.json") as f:
         keys = json.load(f)
 except FileNotFoundError:
     print("Error: openai_research/deepseek_api_key.json not found. Please create this file with your API keys.")
@@ -106,7 +107,7 @@ def initialize_model(model_name, keys):
 def get_openai_client():
     """Get OpenAI client for GPT-based extraction"""
     try:
-        with open("../../openai_research/deepseek_api_key.json") as f:
+        with open("../keys/deepseek_api_key.json") as f:
             key = json.load(f)["openai"]
         return OpenAI(api_key=key)
     except (FileNotFoundError, KeyError):
@@ -221,7 +222,7 @@ def extract_answer_basic(answer_str, task):
     from openai import OpenAI
     
     try:
-        with open("../../openai_research/deepseek_api_key.json") as f:
+        with open("../keys/deepseek_api_key.json") as f:
             key = json.load(f)["openai"]
         client = OpenAI(api_key=key)
     except (FileNotFoundError, KeyError):
@@ -800,6 +801,148 @@ async def run_model_with_rate_limit(ai, prompt, rate_limiter):
     response = await ai.chat_round_str(prompt)
     return response 
 
+def count_tokens(text):
+    """Count tokens in text with fallback to character count if tiktoken fails"""
+    try:
+        # Define the model (e.g., "gpt-3.5-turbo" or "gpt-4")
+        model_name = "gpt-4o"  # this doesn't matter for DeepSeek models
+        # Initialize the encoder for the specific model
+        encoding = tiktoken.encoding_for_model(model_name)
+        # Document to be tokenized
+        document = f"{text}"
+        # Count the tokens
+        tokens = encoding.encode(document)
+        token_count = len(tokens)
+        return token_count
+    except Exception as e:
+        logging.warning(f"Token counting failed, using fallback method: {str(e)}")
+        return len(text)
+
+def extract_reasoning(response, model_name):
+    """Extract reasoning content from model response for HuggingFace models (like Qwen2.5)"""
+    reasoning_content = ""
+    reasoning_tokens = 0
+    
+    # For HuggingFace models (like Qwen2.5), extract reasoning from response text
+    # Qwen2.5 reasoning models may output reasoning in <reasoning> tags or before code blocks
+    if response:
+        # First, try to extract from <reasoning> tags (Qwen2.5 reasoning format)
+        reasoning_match = re.search(r'<reasoning>(.*?)</reasoning>', response, re.DOTALL | re.IGNORECASE)
+        if reasoning_match:
+            reasoning_content = reasoning_match.group(1).strip()
+            logging.info(f"Extracted reasoning from <reasoning> tags: {len(reasoning_content)} chars")
+        else:
+            # Fallback: Try <think> tags (matching test_qwen25_reasoning.py)
+            think_match = re.search(r'<think>(.*?)</think>', response, re.DOTALL | re.IGNORECASE)
+            if think_match:
+                reasoning_content = think_match.group(1).strip()
+                logging.info(f"Extracted reasoning from <think> tags: {len(reasoning_content)} chars")
+            else:
+                # Fallback: Extract reasoning from text before code blocks
+                code_start = response.find("```")
+                if code_start > 50:  # If there's substantial text before code
+                    potential_reasoning = response[:code_start].strip()
+                    # Check if it looks like reasoning (contains analysis keywords or is substantial)
+                    reasoning_keywords = ["think", "analyze", "consider", "reason", "approach", "strategy", 
+                                         "understand", "need", "must", "should", "constraint", "solution",
+                                         "first", "then", "because", "therefore", "step", "problem",
+                                         "given", "calculate", "determine", "find", "solve"]
+                    # If it's substantial text (more than 50 chars) and contains reasoning keywords
+                    if len(potential_reasoning) > 50 and any(keyword in potential_reasoning.lower() for keyword in reasoning_keywords):
+                        reasoning_content = potential_reasoning
+                        logging.info(f"Extracted reasoning from response text before code: {len(reasoning_content)} chars")
+                    elif len(potential_reasoning) > 200:  # Very substantial text is likely reasoning
+                        reasoning_content = potential_reasoning
+                        logging.info(f"Extracted reasoning from substantial pre-code text: {len(reasoning_content)} chars")
+    
+    # Count reasoning tokens
+    if reasoning_content:
+        reasoning_tokens = count_tokens(reasoning_content)
+        logging.info(f"Extracted {reasoning_tokens} reasoning tokens from {model_name} response")
+    else:
+        reasoning_tokens = 0
+        logging.warning(f"No reasoning content found in {model_name} response (response length: {len(response) if response else 0} chars)")
+    
+    return reasoning_content, reasoning_tokens
+
+def check_example_complete(task, example_id, model_name):
+    """Check if an example has been fully completed by verifying output files exist and are valid."""
+    output_base = f"../output/SMT/{model_name}/{task}/token_pass/{example_id}"
+    # Resolve to absolute path to avoid issues with relative paths
+    output_base = os.path.abspath(output_base)
+    if not os.path.exists(output_base):
+        logging.debug(f"Output folder does not exist: {output_base}")
+        return False
+    
+    logging.debug(f"Checking completeness for {output_base}")
+    
+    # Check all pass directories
+    try:
+        pass_dirs = [d for d in os.listdir(output_base) if d.endswith("_pass") and os.path.isdir(os.path.join(output_base, d))]
+    except Exception as e:
+        logging.warning(f"Error listing pass directories in {output_base}: {e}")
+        return False
+    
+    if not pass_dirs:
+        return False
+    
+    # Check each pass has required files and is complete
+    required_files = ["evaluation.json", "conversation.json", "solution.py"]
+    for pass_dir in sorted(pass_dirs):  # Process in order
+        pass_path = os.path.join(output_base, pass_dir)
+        eval_file = os.path.join(pass_path, "evaluation.json")
+        
+        # Check if evaluation.json exists and is valid
+        if not os.path.exists(eval_file):
+            logging.debug(f"Missing evaluation.json in {pass_path} - example incomplete")
+            return False
+        
+        try:
+            with open(eval_file, 'r') as f:
+                eval_data = json.load(f)
+            # Check required fields exist
+            if "status" not in eval_data or "pass_number" not in eval_data:
+                logging.debug(f"Invalid evaluation.json structure in {pass_path} - missing required fields")
+                return False
+            # Check if it's a valid completion (not an error state that needs retry)
+            # Note: We allow all statuses as long as the pass completed (file saved)
+        except (json.JSONDecodeError, Exception) as e:
+            logging.debug(f"Invalid or corrupted evaluation.json in {pass_path}: {e}")
+            return False
+        
+        # Check other required files exist
+        for req_file in required_files:
+            req_path = os.path.join(pass_path, req_file)
+            if not os.path.exists(req_path):
+                logging.debug(f"Missing required file {req_file} in {pass_path} - example incomplete")
+                return False
+            # For solution.py, check it's not empty (was actually generated)
+            if req_file == "solution.py":
+                try:
+                    if os.path.getsize(req_path) == 0:
+                        logging.debug(f"Empty solution.py in {pass_path} - example incomplete")
+                        return False
+                except Exception:
+                    pass
+    
+    # All passes have required files - example is complete
+    logging.debug(f"Example {example_id} has complete output files in {output_base} ({len(pass_dirs)} pass(es))")
+    return True
+
+def clear_incomplete_example(task, example_id, model_name):
+    """Clear output folder for an incomplete example."""
+    output_base = f"../output/SMT/{model_name}/{task}/token_pass/{example_id}"
+    output_base = os.path.abspath(output_base)  # Use absolute path for consistency
+    if os.path.exists(output_base):
+        try:
+            shutil.rmtree(output_base)
+            logging.info(f"Cleared incomplete output folder: {output_base}")
+            return True
+        except Exception as e:
+            logging.error(f"Failed to clear incomplete folder {output_base}: {e}")
+            return False
+    return False
+
 async def process_single_example(
     example_id,
     example,
@@ -831,7 +974,21 @@ async def process_single_example(
                 logging.warning(f"Example ID {example_id} does not match expected format for task {task}, skipping")
                 return
             
-            output_dir = f"../output/SMT/{model}/{task}/single_pass/{example_id}"
+            output_dir = f"../output/SMT/{model}/{task}/token_pass/{example_id}"
+            
+            # CRITICAL: Double-check if this example is already complete before making any API calls
+            # This prevents duplicate requests if tasks were queued before output files were created
+            if not args.fresh:
+                output_path = os.path.abspath(output_dir)
+                if check_example_complete(task, example_id, model):
+                    logging.info(f"[SKIP] {task}/{example_id} already has complete output files at {output_path} - skipping to avoid duplicate API calls")
+                    return
+                # Additional safety check: verify output folder doesn't exist or is empty
+                if os.path.exists(output_path):
+                    # Folder exists but check_example_complete returned False - something is incomplete
+                    logging.warning(f"[REDO] {task}/{example_id} has incomplete output at {output_path} - should have been cleared in main(), clearing now...")
+                    clear_incomplete_example(task, example_id, model)
+            
             os.makedirs(output_dir, exist_ok=True)
             
             logging.info(f"[{example_id}] Starting processing with model {model}")
@@ -839,7 +996,7 @@ async def process_single_example(
             
             # Initialize AI model
             try:
-                with open("../../openai_research/deepseek_api_key.json") as f:
+                with open("../keys/deepseek_api_key.json") as f:
                     keys = json.load(f)
                 ai = initialize_model(model, keys)
                 logging.info(f"[{example_id}] Model initialized successfully")
@@ -910,6 +1067,32 @@ async def process_single_example(
                 initial_prompt += "- The output must be valid JSON that can be parsed by Python's json module\n"
             
             initial_prompt += "Write a Python program that solves it using the Z3 solver. Always surround your final code with ```python\nYOUR_CODE\n```.\n"
+            
+            # For Qwen2.5 models, add explicit reasoning instructions to match Python token pass format
+            if "qwen" in model.lower() and ("2.5" in model.lower() or "reasoning" in model.lower()):
+                # Add reasoning instructions before the final code instruction
+                reasoning_instruction = (
+                    "\n\nPlease reason step by step about how to solve this problem. "
+                    "Enclose your reasoning process within <reasoning> and </reasoning> tags, then provide your solution code. "
+                    "Use this format:\n\n<reasoning>\nYour step-by-step reasoning here...\n</reasoning>\n\nThen provide your code solution.\n\n"
+                )
+                # Insert before "Write a Python program" or "Always surround" - whichever comes first
+                if "Write a Python program" in initial_prompt:
+                    initial_prompt = initial_prompt.replace(
+                        "Write a Python program",
+                        reasoning_instruction + "Write a Python program",
+                        1
+                    )
+                elif "Always surround your final code" in initial_prompt:
+                    initial_prompt = initial_prompt.replace(
+                        "Always surround your final code",
+                        reasoning_instruction + "Always surround your final code",
+                        1
+                    )
+                else:
+                    # Fallback: append at the end
+                    initial_prompt = initial_prompt.rstrip() + reasoning_instruction
+                logging.info(f"[{example_id}] Added reasoning instructions for {model}")
             
             current_prompt = initial_prompt
             prompt_prep_time = time.time() - prompt_prep_start
@@ -998,9 +1181,27 @@ async def process_single_example(
                 api_call_time = time.time() - api_call_start
                 logging.info(f"[{example_id}] Pass {pass_num} API call completed - {api_call_time:.2f}s")
                 
-                # Add to conversation history
+                # Extract reasoning content and tokens for Qwen models (and other HuggingFace models)
+                reasoning_content = ""
+                reasoning_tokens = 0
+                if "qwen" in model.lower() or "huggingface" in str(type(ai)).lower():
+                    reasoning_content, reasoning_tokens = extract_reasoning(response_txt, model)
+                    logging.info(f"[{example_id}] Pass {pass_num} reasoning content extracted: {len(reasoning_content)} characters")
+                    if reasoning_content:
+                        logging.info(f"[{example_id}] Pass {pass_num} first 200 chars of reasoning: {reasoning_content[:200]}...")
+                
+                # Count total tokens (approximate)
+                total_tokens = count_tokens(response_txt) if response_txt else 0
+                
+                # Add to conversation history (matching Python token pass format)
                 conversation_history.append({"role": "user", "content": current_prompt})
-                conversation_history.append({"role": "assistant", "content": response_txt})
+                conversation_history.append({
+                    "role": "assistant",
+                    "content": response_txt,
+                    "reasoning_content": reasoning_content,
+                    "reasoning_tokens": reasoning_tokens,
+                    "total_tokens": total_tokens
+                })
                 
                 # Save conversation
                 save_start = time.time()
@@ -1012,7 +1213,7 @@ async def process_single_example(
                 generated_code = smart_extract_code(response_txt)
                 if not generated_code:
                     logging.error(f"[{example_id}] No code found in model response")
-                    # Save error evaluation result
+                    # Save error evaluation result (with reasoning fields)
                     error_eval_result = {
                         "has_execution_error": True,
                         "execution_output": "No code found in model response",
@@ -1022,12 +1223,45 @@ async def process_single_example(
                         "violated_constraint": {},
                         "is_exact_match": False,
                         "constraints_satisfied": False,
-                        "pass_number": pass_num
+                        "pass_number": pass_num,
+                        "timing": {
+                            "api_call_time": api_call_time,
+                            "execution_time": 0,
+                            "total_tokens": total_tokens,
+                            "reasoning_tokens": reasoning_tokens
+                        },
+                        "reasoning_content": reasoning_content
                     }
                     with open(f"{pass_output_dir}/evaluation.json", "w") as f:
                         json.dump(error_eval_result, f, indent=4)
-                    # Prepare feedback for next iteration
-                    current_prompt = f"Code extraction from the previous response failed. Please provide a complete Python solution using the Z3 solver. Make sure to surround your final code with ```python\nYOUR_CODE\n```.\n\nOriginal problem:\n{example['prompt_0shot']}"
+                    
+                    # Also save reasoning content separately if it exists
+                    if reasoning_content:
+                        with open(f"{pass_output_dir}/reasoning.txt", "w") as f:
+                            f.write(reasoning_content)
+                    
+                    # Save the full raw response
+                    if response_txt:
+                        with open(f"{pass_output_dir}/full_response.txt", "w") as f:
+                            f.write(response_txt)
+                    
+                    # Prepare feedback for next iteration (include reasoning instructions for Qwen)
+                    feedback_prompt = f"Code extraction from the previous response failed. Please provide a complete Python solution using the Z3 solver. Make sure to surround your final code with ```python\nYOUR_CODE\n```.\n\nOriginal problem:\n{example['prompt_0shot']}"
+                    
+                    # Add reasoning instructions for Qwen models in feedback prompts too
+                    if "qwen" in model.lower() and ("2.5" in model.lower() or "reasoning" in model.lower()):
+                        reasoning_instruction = (
+                            "\n\nPlease reason step by step about how to solve this problem. "
+                            "Enclose your reasoning process within <reasoning> and </reasoning> tags, then provide your solution code. "
+                            "Use this format:\n\n<reasoning>\nYour step-by-step reasoning here...\n</reasoning>\n\nThen provide your code solution.\n\n"
+                        )
+                        feedback_prompt = feedback_prompt.replace(
+                            "Make sure to surround your final code",
+                            reasoning_instruction + "Make sure to surround your final code",
+                            1
+                        )
+                    
+                    current_prompt = feedback_prompt
                     continue
                     
                 code_path = f"{pass_output_dir}/solution.py"
@@ -1088,7 +1322,7 @@ async def process_single_example(
                     eval_func = eval_functions[task]
                     constraints_satisfied, violated_constraints = eval_func(constraints, pred_formatted)
 
-                # Save evaluation result
+                # Save evaluation result (with reasoning fields matching Python token pass format)
                 eval_result = {
                     "has_execution_error": bool(execution_error),
                     "execution_output": execution_output,
@@ -1098,10 +1332,27 @@ async def process_single_example(
                     "violated_constraint": violated_constraints,
                     "is_exact_match": is_exact_match,
                     "constraints_satisfied": constraints_satisfied,
-                    "pass_number": pass_num
+                    "pass_number": pass_num,
+                    "timing": {
+                        "api_call_time": api_call_time,
+                        "execution_time": execution_time,
+                        "total_tokens": total_tokens,
+                        "reasoning_tokens": reasoning_tokens
+                    },
+                    "reasoning_content": reasoning_content
                 }
                 with open(f"{pass_output_dir}/evaluation.json", "w") as f:
                     json.dump(eval_result, f, indent=4)
+                
+                # Also save reasoning content separately if it exists (matching Python token pass format)
+                if reasoning_content:
+                    with open(f"{pass_output_dir}/reasoning.txt", "w") as f:
+                        f.write(reasoning_content)
+                
+                # Save the full raw response (matching Python token pass format)
+                if response_txt:
+                    with open(f"{pass_output_dir}/full_response.txt", "w") as f:
+                        f.write(response_txt)
                 
                 # Check for success conditions
                 if constraints_satisfied:
@@ -1127,6 +1378,23 @@ async def process_single_example(
                     feedback_func = feedback_functions[task]
                     constraint_feedback = feedback_func(violated_constraints)
                     current_prompt = f"The previous solution produced the following plan:\n{plan_summary}\n\n{constraint_feedback}\n\nPlease revise your Z3 program to find a valid solution that satisfies all constraints.\n\nMake sure to surround your final code with ```python\nYOUR_CODE\n```."
+                
+                # Add reasoning instructions for Qwen models in feedback prompts too
+                if "qwen" in model.lower() and ("2.5" in model.lower() or "reasoning" in model.lower()):
+                    reasoning_instruction = (
+                        "\n\nPlease reason step by step about how to solve this problem. "
+                        "Enclose your reasoning process within <reasoning> and </reasoning> tags, then provide your solution code. "
+                        "Use this format:\n\n<reasoning>\nYour step-by-step reasoning here...\n</reasoning>\n\nThen provide your code solution.\n\n"
+                    )
+                    if "Make sure to surround your final code" in current_prompt:
+                        current_prompt = current_prompt.replace(
+                            "Make sure to surround your final code",
+                            reasoning_instruction + "Make sure to surround your final code",
+                            1
+                        )
+                    else:
+                        # Fallback: append at the end
+                        current_prompt = current_prompt.rstrip() + reasoning_instruction
             
             logging.warning(f"[{example_id}] FAILED to solve within {max_passes} passes")
             
@@ -1144,6 +1412,13 @@ async def process_single_example(
                 else:
                     final_status = "Failed to solve within max passes"
                 
+                # Get reasoning and timing info from last pass (if available)
+                last_reasoning_content = reasoning_content if 'reasoning_content' in locals() else ""
+                last_reasoning_tokens = reasoning_tokens if 'reasoning_tokens' in locals() else 0
+                last_total_tokens = total_tokens if 'total_tokens' in locals() else 0
+                last_execution_time = execution_time if 'execution_time' in locals() else 0
+                last_api_call_time = api_call_time if 'api_call_time' in locals() else 0
+                
                 final_eval_result = {
                     "has_execution_error": bool(execution_error),
                     "execution_output": execution_output,
@@ -1153,10 +1428,28 @@ async def process_single_example(
                     "violated_constraint": violated_constraints,
                     "is_exact_match": is_exact_match,
                     "constraints_satisfied": constraints_satisfied,
-                    "pass_number": pass_num
+                    "pass_number": pass_num,
+                    "timing": {
+                        "api_call_time": last_api_call_time,
+                        "execution_time": last_execution_time,
+                        "total_tokens": last_total_tokens,
+                        "reasoning_tokens": last_reasoning_tokens
+                    },
+                    "reasoning_content": last_reasoning_content
                 }
                 with open(f"{pass_output_dir}/evaluation.json", "w") as f:
                     json.dump(final_eval_result, f, indent=4)
+                
+                # Also save reasoning content separately if it exists
+                if last_reasoning_content:
+                    with open(f"{pass_output_dir}/reasoning.txt", "w") as f:
+                        f.write(last_reasoning_content)
+                
+                # Save the full raw response if available
+                if 'response_txt' in locals() and response_txt:
+                    with open(f"{pass_output_dir}/full_response.txt", "w") as f:
+                        f.write(response_txt)
+                
                 logging.info(f"[{example_id}] Saved final evaluation result from pass {pass_num} with status: {final_status}")
             
             return
@@ -1262,7 +1555,7 @@ async def main():
     
     # Clear output directories if fresh flag is set
     if args.fresh:
-        output_base = f"../output/SMT/{args.model}/{args.task}/1_pass"
+        output_base = f"../output/SMT/{args.model}/{args.task}/token_pass"
         if os.path.exists(output_base):
             shutil.rmtree(output_base)
             logging.info(f"Cleared output directory: {output_base}")
@@ -1276,6 +1569,20 @@ async def main():
     tasks = []
     
     for example_id, example in examples_to_process:
+        # Check if example should be skipped or needs to be redone (output files are source of truth)
+        if not args.fresh:
+            # PRIMARY CHECK: Check if output files exist and are complete
+            if check_example_complete(args.task, example_id, args.model):
+                logging.info(f"[SKIP] {args.task} example {example_id} - already has complete output files, skipping")
+                continue
+            
+            # SECONDARY CHECK: If output folder exists but is incomplete, clear it
+            output_path = os.path.abspath(f"../output/SMT/{args.model}/{args.task}/token_pass/{example_id}")
+            if os.path.exists(output_path):
+                # Folder exists but check_example_complete returned False - it's incomplete
+                logging.info(f"[CLEAR] Detected incomplete/interrupted output for {args.task} example {example_id} at {output_path}, clearing folder and restarting...")
+                clear_incomplete_example(args.task, example_id, args.model)
+        
         constraints = constraints_data.get(example_id, {}).get("constraints", {})
         task = asyncio.create_task(
             process_single_example(

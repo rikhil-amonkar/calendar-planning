@@ -7,9 +7,8 @@ Only spurious classifications are saved to output directory.
 
 import os
 import json
-import re
 from pathlib import Path
-from typing import Optional, Dict, Tuple
+from typing import Optional, Tuple
 from openai import OpenAI
 
 # ============================================================================
@@ -17,10 +16,10 @@ from openai import OpenAI
 # ============================================================================
 
 # JSON output content identification variables
-MODEL_NAME = "Qwen3-32B"
+MODEL_NAME = "Qwen2.5-Coder-32B-Instruct"
 METHOD_TYPE = "SMT"
 TASK_NAME = "zebralogic"
-INPUT_END_FOLDER = "single_pass"
+INPUT_END_FOLDER = "token_pass"
 
 # Toggle for conversation.json format:
 #   True:  Expect separate "reasoning_content" and "content" fields in assistant message
@@ -34,7 +33,7 @@ INPUT_FOLDER = f"../output/{METHOD_TYPE}/{MODEL_NAME}/{TASK_NAME}/{INPUT_END_FOL
 OUTPUT_FOLDER = f"./{METHOD_TYPE}/{MODEL_NAME}/{TASK_NAME}"
 
 # Path to OpenAI API key file (or set API_KEY directly)
-API_KEY_PATH = "../../openai_research/ai2_openai_key.json"
+API_KEY_PATH = ".../keys/openai_api_key.json"
 
 # Classification prompt to send to OpenAI (will be combined with reasoning, code, and original prompt)
 CLASSIFICATION_PROMPT = """
@@ -54,11 +53,23 @@ OPENAI_MODEL = "gpt-4o"  # Change if needed
 # ============================================================================
 
 def load_api_key() -> str:
-    """Load OpenAI API key from file or use direct key."""
+    """Load OpenAI API key from environment variable, file, or direct key."""
+    # First check environment variable (standard OpenAI env var)
+    api_key = os.getenv("OPENAI_API_KEY")
+    if api_key:
+        return api_key
+    
+    # Check for API_KEY environment variable
+    api_key = os.getenv("API_KEY")
+    if api_key:
+        return api_key
+    
+    # Check for API_KEY as a global Python variable
     if "API_KEY" in globals() and globals()["API_KEY"] != "your-api-key-here":
         return globals()["API_KEY"]
     
-    if API_KEY_PATH and os.path.exists(API_KEY_PATH):
+    # Check for API key file (skip placeholder path)
+    if API_KEY_PATH and API_KEY_PATH != ".../keys/openai_api_key.json" and os.path.exists(API_KEY_PATH):
         with open(API_KEY_PATH, 'r') as f:
             content = f.read().strip()
             
@@ -74,7 +85,7 @@ def load_api_key() -> str:
                 # If it's not JSON, treat it as plain text
                 return content
     
-    raise ValueError("API key not found. Set API_KEY_PATH or API_KEY variable.")
+    raise ValueError("API key not found. Set OPENAI_API_KEY environment variable, API_KEY_PATH, or API_KEY variable.")
 
 def find_conversation_json(example_folder: Path) -> Optional[Path]:
     """
