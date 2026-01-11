@@ -1,0 +1,190 @@
+import json
+from itertools import permutations
+
+def direct_flight(c1, c2):
+    flights = {
+        ("Split", "Munich"), ("Munich", "Split"),
+        ("Munich", "Manchester"), ("Manchester", "Munich"),
+        ("Hamburg", "Manchester"), ("Manchester", "Hamburg"),
+        ("Hamburg", "Munich"), ("Munich", "Hamburg"),
+        ("Split", "Lyon"), ("Lyon", "Split"),
+        ("Lyon", "Munich"), ("Munich", "Lyon"),
+        ("Hamburg", "Split"), ("Split", "Hamburg"),
+        ("Manchester", "Split"), ("Split", "Manchester")  # assuming bidirectional
+    }
+    return (c1, c2) in flights
+
+def days_in_city(itinerary):
+    # itinerary: list of (city, start_day, end_day)
+    days_spent = {city: 0 for city in ["Hamburg", "Munich", "Manchester", "Lyon", "Split"]}
+    for city, start, end in itinerary:
+        days_spent[city] += (end - start + 1)
+    return days_spent
+
+def check_itinerary(itinerary):
+    # 1. Total days = 20
+    total_days = itinerary[-1][2]  # last end day
+    if total_days != 20:
+        return False
+    
+    # 2. City days match requirements
+    required = {"Hamburg": 7, "Munich": 6, "Manchester": 2, "Lyon": 2, "Split": 7}
+    spent = days_in_city(itinerary)
+    if spent != required:
+        return False
+    
+    # 3. Manchester on days 19-20
+    man = False
+    for city, start, end in itinerary:
+        if city == "Manchester":
+            if start != 19 or end != 20:
+                return False
+            man = True
+    if not man:
+        return False
+    
+    # 4. Lyon on days 13-14
+    lyon = False
+    for city, start, end in itinerary:
+        if city == "Lyon":
+            if start != 13 or end != 14:
+                return False
+            lyon = True
+    if not lyon:
+        return False
+    
+    # 5. Direct flights between consecutive cities
+    for i in range(len(itinerary) - 1):
+        c1 = itinerary[i][0]
+        c2 = itinerary[i + 1][0]
+        if not direct_flight(c1, c2):
+            return False
+    
+    return True
+
+def generate_itinerary():
+    cities = ["Hamburg", "Munich", "Manchester", "Lyon", "Split"]
+    
+    for perm in permutations(cities):
+        if perm[-1] != "Manchester":
+            continue  # Manchester must be last
+        
+        # We'll try to assign start/end days
+        # We know Manchester: 19-20, Lyon: 13-14
+        # So other cities fill around these
+        
+        # Let's brute force start days for others
+        # We have 5 slots: city1, city2, city3, city4, city5
+        # city5 = Manchester, city4 = Lyon or earlier?
+        # Actually Lyon could be any of first 4 positions except last.
+        
+        # We'll just brute force by trying to place Lyon in positions 1..4
+        # and Manchester in position 5.
+        # Then assign days to match required lengths.
+        
+        # Simpler: brute force over possible start days for first 4 cities
+        # with constraints: start1=1, end5=20, Lyon start=13, end=14, Manchester start=19, end=20.
+        
+        # Let's do exhaustive search over possible start days for each city in sequence.
+        # This is small enough.
+        
+        # We'll generate all possible start days for the 5 cities in this permutation
+        # with permutation fixed, we try start days s1..s5, end days e1..e5 = s_i + dur_i - 1
+        # where dur_i from required dict.
+        
+        required = {"Hamburg": 7, "Munich": 6, "Manchester": 2, "Lyon": 2, "Split": 7}
+        durs = [required[city] for city in perm]
+        
+        # s1 = 1
+        # s2 = e1 + 1? No, because travel day counts for both, so s2 = e1? Wait, if travel on day e1, you are in city1 in morning, city2 in evening, so day e1 counts for both.
+        # So end1 = start2 - 1? Let's check: If you leave city1 on day X, you spend day X in city1 (morning) and city2 (evening), so day X is counted in both.
+        # So if you are in city1 from s1 to e1, and city2 from s2 to e2, then s2 = e1.
+        # Because on day e1 you are in both.
+        # So consecutive cities: end_k = start_{k+1} - 1? No: end_k = start_{k+1}? Let's test:
+        # City1: days 1-3, City2: days 3-5. Then day 3 is in both. So end1=3, start2=3. Yes.
+        # So rule: start_{i+1} = end_i.
+        
+        # Then total days = end_last - start_first + 1? Wait, but each day counted once in calendar.
+        # Calendar days = end_last because start_first=1.
+        # So end_last = 20.
+        
+        # So we have: start1=1, start2=end1, start3=end2, start4=end3, start5=end4, end5=20.
+        # And end_i = start_i + dur_i - 1.
+        
+        # So start2 = start1 + dur1 - 1
+        # start3 = start2 + dur2 - 1
+        # start4 = start3 + dur3 - 1
+        # start5 = start4 + dur4 - 1
+        # end5 = start5 + dur5 - 1 = 20.
+        
+        # So start5 = 21 - dur5.
+        # Manchester dur=2, so start5=19. Good.
+        
+        # Now we can compute backwards:
+        # start4 = start5 - dur4 + 1
+        # But start5 = 19, so start4 = 20 - dur4.
+        # dur4 is duration of city4 in permutation.
+        
+        # We also know Lyon start=13, Manchester start=19.
+        # So Lyon could be city4 if dur4=2, then start4=18? That would be Lyon 18-19, but we need Lyon 13-14. So Lyon cannot be city4 unless dur4=2 and start4=13, but start4=20-dur4=18 if dur4=2. Contradiction.
+        # So Lyon cannot be city4 if Manchester is city5. So Lyon must be city1,2, or 3.
+        
+        # Let's just brute force start1 from 1..20 and compute all.
+        
+        for start1 in range(1, 21):
+            s = [0]*5
+            s[0] = start1
+            valid = True
+            for i in range(1, 5):
+                s[i] = s[i-1] + durs[i-1] - 1
+                if s[i] > 20:
+                    valid = False
+                    break
+            if not valid:
+                continue
+            # Check end5
+            end5 = s[4] + durs[4] - 1
+            if end5 != 20:
+                continue
+            # Check Lyon and Manchester constraints
+            lyon_index = perm.index("Lyon")
+            man_index = perm.index("Manchester")
+            if s[lyon_index] != 13 or s[lyon_index] + durs[lyon_index] - 1 != 14:
+                continue
+            if s[man_index] != 19 or s[man_index] + durs[man_index] - 1 != 20:
+                continue
+            # Check direct flights
+            direct_ok = True
+            for i in range(4):
+                if not direct_flight(perm[i], perm[i+1]):
+                    direct_ok = False
+                    break
+            if not direct_ok:
+                continue
+            # Build itinerary
+            itinerary = []
+            for i in range(5):
+                itinerary.append((perm[i], s[i], s[i] + durs[i] - 1))
+            if check_itinerary(itinerary):
+                return itinerary
+    return None
+
+def main():
+    itinerary = generate_itinerary()
+    if itinerary is None:
+        print(json.dumps({"error": "No valid itinerary found"}))
+        return
+    
+    # Convert to required output format
+    result = {"itinerary": []}
+    for city, start, end in itinerary:
+        if start == end:
+            day_range = f"Day {start}"
+        else:
+            day_range = f"Day {start}-{end}"
+        result["itinerary"].append({"day_range": day_range, "place": city})
+    
+    print(json.dumps(result, indent=2))
+
+if __name__ == "__main__":
+    main()

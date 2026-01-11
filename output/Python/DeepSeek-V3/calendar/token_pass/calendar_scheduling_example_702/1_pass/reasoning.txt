@@ -1,0 +1,27 @@
+Let’s break this down step by step before writing the code.
+
+**Step 1 – Understanding constraints**  
+- Meeting duration: 30 minutes (0.5 hours)  
+- Work hours: 9:00–17:00 each day  
+- Days considered: Monday, Tuesday, Wednesday  
+- Robert’s preference: avoid more meetings on Monday if possible  
+- Goal: earliest availability  
+
+**Step 2 – Represent busy times**  
+We’ll convert times to minutes from 9:00 (so 9:00 = 0, 17:00 = 480).  
+Each day is independent.
+
+**Step 3 – Find free slots**  
+We’ll find free intervals within work hours for each person on each day, then intersect them, then pick earliest slot (preferring Tuesday over Monday if possible due to Robert’s preference).
+
+**Step 4 – Implementation plan**  
+1. Parse busy times into (start_minute, end_minute) for each person per day.  
+2. Compute free slots for each person per day within 9:00–17:00.  
+3. Intersect free slots between Robert and Ralph per day.  
+4. Filter for slots of at least 30 minutes.  
+5. Sort days: Tuesday, Wednesday, Monday (because Robert prefers not Monday, so Monday last in priority for earliest availability).  
+6. Pick earliest slot in that day order.
+
+---
+
+Here’s the Python script:

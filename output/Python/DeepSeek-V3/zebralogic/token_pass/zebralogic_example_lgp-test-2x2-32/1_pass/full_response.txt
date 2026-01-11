@@ -1,0 +1,66 @@
+```python
+import json
+from itertools import permutations
+
+def solve_puzzle():
+    # Define the attributes
+    names = ["Eric", "Arnold"]
+    genres = ["science fiction", "mystery"]
+    houses = [1, 2]
+    
+    # Generate all possible permutations of names and genres for the houses
+    all_solutions = []
+    
+    # Try all possible assignments of names to houses
+    for name_perm in permutations(names, 2):
+        # Try all possible assignments of genres to houses
+        for genre_perm in permutations(genres, 2):
+            # Create assignment
+            assignment = {}
+            for i, house in enumerate(houses):
+                assignment[house] = {
+                    "Name": name_perm[i],
+                    "BookGenre": genre_perm[i]
+                }
+            
+            # Check clue 1: Eric is directly left of the person who loves mystery books
+            # Since houses are numbered 1 to 2 from left to right
+            clue_satisfied = False
+            for house in houses:
+                if house == 1:  # Only house 1 can be directly left of house 2
+                    if (assignment[house]["Name"] == "Eric" and 
+                        assignment[house+1]["BookGenre"] == "mystery"):
+                        clue_satisfied = True
+                        break
+            
+            if clue_satisfied:
+                all_solutions.append(assignment)
+    
+    # There should be exactly one solution
+    if len(all_solutions) == 1:
+        solution = all_solutions[0]
+        
+        # Format the output as required
+        rows = []
+        for house in sorted(solution.keys()):
+            rows.append([
+                str(house),
+                solution[house]["Name"],
+                solution[house]["BookGenre"]
+            ])
+        
+        result = {
+            "solution": {
+                "header": ["House", "Name", "BookGenre"],
+                "rows": rows
+            }
+        }
+        
+        return json.dumps(result, indent=2)
+    else:
+        # Fallback in case of multiple or no solutions (shouldn't happen with this puzzle)
+        return json.dumps({"error": "No unique solution found"}, indent=2)
+
+if __name__ == "__main__":
+    print(solve_puzzle())
+```

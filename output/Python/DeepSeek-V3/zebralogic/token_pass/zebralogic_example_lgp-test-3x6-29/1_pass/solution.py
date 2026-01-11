@@ -1,0 +1,129 @@
+import json
+from itertools import permutations
+
+def solve_puzzle():
+    # Define all possible values
+    names = ["Arnold", "Peter", "Eric"]
+    animals = ["bird", "horse", "cat"]
+    birthdays = ["jan", "sept", "april"]
+    hobbies = ["photography", "cooking", "gardening"]
+    drinks = ["milk", "water", "tea"]
+    hair_colors = ["black", "brown", "blonde"]
+    
+    houses = [1, 2, 3]
+    
+    # Generate all permutations for each attribute
+    all_permutations = []
+    for name_perm in permutations(names, 3):
+        for animal_perm in permutations(animals, 3):
+            for birthday_perm in permutations(birthdays, 3):
+                for hobby_perm in permutations(hobbies, 3):
+                    for drink_perm in permutations(drinks, 3):
+                        for hair_perm in permutations(hair_colors, 3):
+                            # Create assignment for all houses
+                            assignment = []
+                            for i in range(3):
+                                assignment.append({
+                                    "House": i + 1,
+                                    "Name": name_perm[i],
+                                    "Animal": animal_perm[i],
+                                    "Birthday": birthday_perm[i],
+                                    "Hobby": hobby_perm[i],
+                                    "Drink": drink_perm[i],
+                                    "HairColor": hair_perm[i]
+                                })
+                            all_permutations.append(assignment)
+    
+    # Apply constraints
+    solutions = []
+    for assignment in all_permutations:
+        # Helper to find person by attribute
+        def find_by(attr, value):
+            for person in assignment:
+                if person[attr] == value:
+                    return person
+            return None
+        
+        # 1. Brown hair person loves cooking
+        brown_hair = find_by("HairColor", "brown")
+        if not brown_hair or brown_hair["Hobby"] != "cooking":
+            continue
+        
+        # 2. April birthday is in third house
+        april_person = find_by("Birthday", "april")
+        if not april_person or april_person["House"] != 3:
+            continue
+        
+        # 3. Eric is not in first house
+        eric = find_by("Name", "Eric")
+        if not eric or eric["House"] == 1:
+            continue
+        
+        # 4. Cat lover is in second house
+        cat_lover = find_by("Animal", "cat")
+        if not cat_lover or cat_lover["House"] != 2:
+            continue
+        
+        # 5. Blonde hair is somewhere to the left of milk drinker
+        blonde = find_by("HairColor", "blonde")
+        milk_drinker = find_by("Drink", "milk")
+        if not blonde or not milk_drinker or blonde["House"] >= milk_drinker["House"]:
+            continue
+        
+        # 6. Gardening person likes milk
+        gardener = find_by("Hobby", "gardening")
+        if not gardener or gardener["Drink"] != "milk":
+            continue
+        
+        # 7. Cat lover has brown hair
+        if cat_lover["HairColor"] != "brown":
+            continue
+        
+        # 8. Arnold is the bird keeper
+        arnold = find_by("Name", "Arnold")
+        if not arnold or arnold["Animal"] != "bird":
+            continue
+        
+        # 9. Water drinker is photography enthusiast
+        water_drinker = find_by("Drink", "water")
+        if not water_drinker or water_drinker["Hobby"] != "photography":
+            continue
+        
+        # 10. September birthday is directly left of Arnold
+        sept_person = find_by("Birthday", "sept")
+        if not sept_person or sept_person["House"] + 1 != arnold["House"]:
+            continue
+        
+        # All constraints satisfied
+        solutions.append(assignment)
+    
+    if not solutions:
+        return {"solution": {"header": [], "rows": []}}
+    
+    # Take first solution (should be unique)
+    solution = solutions[0]
+    
+    # Format output
+    header = ["House", "Name", "Animal", "Birthday", "Hobby", "Drink", "HairColor"]
+    rows = []
+    for person in sorted(solution, key=lambda x: x["House"]):
+        rows.append([
+            str(person["House"]),
+            person["Name"],
+            person["Animal"],
+            person["Birthday"],
+            person["Hobby"],
+            person["Drink"],
+            person["HairColor"]
+        ])
+    
+    return {
+        "solution": {
+            "header": header,
+            "rows": rows
+        }
+    }
+
+if __name__ == "__main__":
+    result = solve_puzzle()
+    print(json.dumps(result, indent=2))

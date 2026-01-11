@@ -1,0 +1,27 @@
+{
+    "has_execution_error": true,
+    "has_no_plan": false,
+    "execution_output": "Traceback (most recent call last):\n  File \"/home/nvidia/projects/llm-csp/source/generated_code_calendar_2026-01-10 05:46:06.py\", line 80, in <module>\n    main()\n    ~~~~^^\n  File \"/home/nvidia/projects/llm-csp/source/generated_code_calendar_2026-01-10 05:46:06.py\", line 58, in main\n    terry_busy[day] = parse_busy_times(busy.strip())\n                      ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^\n  File \"/home/nvidia/projects/llm-csp/source/generated_code_calendar_2026-01-10 05:46:06.py\", line 4, in parse_busy_times\n    return [tuple(map(int, t.split(':'))) for t in busy_times]\n            ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^\nValueError: invalid literal for int() with base 10: '30 to 11'",
+    "pred": null,
+    "gold": {
+        "day": "Monday",
+        "time_range": "{9:00:9:30}"
+    },
+    "status": "Error",
+    "violated_constraint": {
+        "missing_fields": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 97.1106903553009,
+        "execution_time": 0.02982807159423828,
+        "constraint_eval_time": 3.814697265625e-06,
+        "pred_extract_time": 1.049041748046875e-05,
+        "gold_extract_time": 2.7179718017578125e-05,
+        "total_tokens": 1579,
+        "reasoning_tokens": 332
+    },
+    "reasoning_content": "To solve this problem, we need to identify available time slots during the workweek when both Terry and Frances are free and the meeting does not conflict with any of their existing commitments. We will follow these steps:\n\n1. Define the work hours and meeting duration.\n2. Parse the busy times for both Terry and Frances.\n3. Identify all possible free time slots for each participant.\n4. Find overlapping free time slots between Terry and Frances.\n5. Prioritize the slots based on the preference to avoid Tuesday.\n6. Select the earliest available slot that satisfies all conditions.\n7. Format the output as required.\n\nLet's go through each step in detail:\n\n1. **Define the work hours and meeting duration**:\n   - Work hours: 9:00 to 17:00\n   - Meeting duration: 30 minutes\n\n2. **Parse the busy times**:\n   - Convert busy times into a list of tuples for each participant, where each tuple represents a start and end time.\n\n3. **Identify all possible free time slots**:\n   - For each day, iterate through the work hours and subtract the busy times to get the free slots.\n\n4. **Find overlapping free time slots**:\n   - Compare the free slots of Terry and Frances to find common slots.\n\n5. **Prioritize the slots based on the preference to avoid Tuesday**:\n   - Sort the slots so that Tuesday slots are last in consideration.\n\n6. **Select the earliest available slot**:\n   - Pick the first slot from the sorted list of overlapping free slots.\n\n7. **Format the output**:\n   - Output the day and time in the specified format."
+}

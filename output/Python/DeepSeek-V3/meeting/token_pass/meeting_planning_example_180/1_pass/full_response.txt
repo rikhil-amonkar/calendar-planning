@@ -1,0 +1,235 @@
+Let’s break this down step-by-step before writing the code.
+
+---
+
+**Step 1 – Understanding the problem**
+
+We start at **North Beach at 9:00 AM**.  
+We have two friends:
+
+1. **James** – at Mission District from **12:45 to 14:00** (2:00 PM), needs **75 minutes** together.
+2. **Robert** – at The Castro from **12:45 to 15:15** (3:15 PM), needs **30 minutes** together.
+
+Travel times (minutes):
+
+- North Beach → Mission District: 18  
+- North Beach → The Castro: 22  
+- Mission District → North Beach: 17  
+- Mission District → The Castro: 7  
+- The Castro → North Beach: 20  
+- The Castro → Mission District: 7  
+
+We want to meet **as many friends as possible** → both if possible, else one.
+
+---
+
+**Step 2 – Feasibility of meeting both**
+
+We can meet in either order:
+
+**Order A: Meet James first, then Robert**
+
+- Start at North Beach at 9:00.  
+- We can leave early to arrive at Mission District exactly when James starts (12:45), but we could also arrive earlier and wait.  
+- Meet James 12:45–14:00 is only 75 minutes? Let's check: 12:45 to 14:00 is 1 hour 15 minutes = 75 minutes exactly. So we can meet James for exactly 75 minutes, ending at 14:00.  
+- Then travel to The Castro: Mission District → The Castro = 7 minutes, arrive 14:07.  
+- Robert is available until 15:15. From 14:07 to 15:15 is 68 minutes, enough for 30 minutes meeting.  
+- So possible: meet James 12:45–14:00, travel 7 min, meet Robert 14:07–14:37 (or any 30-minute window within 14:07–15:15).  
+- Then done.
+
+**Order B: Meet Robert first, then James**
+
+- Start at North Beach at 9:00.  
+- Arrive at The Castro at earliest 12:45 (if we leave North Beach at 12:23, travel 22 min).  
+- Meet Robert 12:45–13:15 (30 min).  
+- Travel to Mission District: The Castro → Mission District = 7 min, arrive 13:22.  
+- James is available until 14:00. From 13:22 to 14:00 is 38 minutes, but James needs 75 minutes together → impossible.  
+- So this order fails.
+
+Thus only **James first, then Robert** works for both.
+
+---
+
+**Step 3 – Can we meet both with extra free time before?**
+
+We start at 9:00 at North Beach.  
+We could do something else before 12:45, but we only want to meet friends, so maybe just wait at Mission District before James arrives.  
+But if we go too early, we waste time waiting.  
+Optimal: leave North Beach at 12:27 to arrive Mission District at 12:45 (travel 18 min).  
+But travel time given is 18 min from North Beach to Mission District, so yes, leave at 12:27.
+
+So schedule:
+
+1. 9:00–12:27: at North Beach (free time)  
+2. 12:27–12:45: travel to Mission District  
+3. 12:45–14:00: meet James  
+4. 14:00–14:07: travel to The Castro  
+5. 14:07–14:37: meet Robert  
+6. Done.
+
+---
+
+**Step 4 – What if we try to meet only one?**
+
+If we meet only James: 12:45–14:00, done.  
+If we meet only Robert: could meet longer, but meeting both is better.
+
+So best = meet both.
+
+---
+
+**Step 5 – Write program to compute this**
+
+We’ll encode travel times, constraints, and try both permutations of visits to see which fits.  
+We’ll output the itinerary as JSON.
+
+---
+
+```python
+import json
+from datetime import datetime, timedelta
+
+def time_to_str(t):
+    return f"{t.hour}:{t.minute:02d}"
+
+def str_to_time(s):
+    return datetime.strptime(s, "%H:%M")
+
+def compute_schedule():
+    # Travel times in minutes
+    travel = {
+        ("North Beach", "Mission District"): 18,
+        ("North Beach", "The Castro"): 22,
+        ("Mission District", "North Beach"): 17,
+        ("Mission District", "The Castro"): 7,
+        ("The Castro", "North Beach"): 20,
+        ("The Castro", "Mission District"): 7,
+    }
+    
+    # Start
+    current_time = str_to_time("9:00")
+    start_location = "North Beach"
+    
+    # Friend constraints
+    friends = [
+        {
+            "name": "James",
+            "location": "Mission District",
+            "window_start": str_to_time("12:45"),
+            "window_end": str_to_time("14:00"),
+            "duration_min": 75,
+        },
+        {
+            "name": "Robert",
+            "location": "The Castro",
+            "window_start": str_to_time("12:45"),
+            "window_end": str_to_time("15:15"),
+            "duration_min": 30,
+        }
+    ]
+    
+    # Try both permutations
+    from itertools import permutations
+    best_itinerary = []
+    best_meetings = 0
+    
+    for perm in permutations([0, 1]):
+        itinerary = []
+        current_loc = start_location
+        current_time = str_to_time("9:00")
+        possible = True
+        meetings = 0
+        
+        for idx in perm:
+            friend = friends[idx]
+            # Travel to friend's location
+            travel_key = (current_loc, friend["location"])
+            travel_min = travel.get(travel_key)
+            if travel_min is None:
+                possible = False
+                break
+            
+            arrival_time = current_time + timedelta(minutes=travel_min)
+            
+            # If we arrive before window, wait until window starts
+            if arrival_time < friend["window_start"]:
+                arrival_time = friend["window_start"]
+            
+            # Check if we can meet for required duration
+            meeting_end = arrival_time + timedelta(minutes=friend["duration_min"])
+            if meeting_end > friend["window_end"]:
+                possible = False
+                break
+            
+            # Add meeting to itinerary
+            itinerary.append({
+                "action": "meet",
+                "location": friend["location"],
+                "person": friend["name"],
+                "start_time": time_to_str(arrival_time),
+                "end_time": time_to_str(meeting_end),
+            })
+            
+            meetings += 1
+            current_time = meeting_end
+            current_loc = friend["location"]
+        
+        if possible and meetings > best_meetings:
+            best_meetings = meetings
+            best_itinerary = itinerary
+    
+    # If both can't be met, try each alone
+    if best_meetings < 2:
+        for friend in friends:
+            # Travel from start to friend
+            travel_key = (start_location, friend["location"])
+            travel_min = travel.get(travel_key)
+            arrival_time = str_to_time("9:00") + timedelta(minutes=travel_min)
+            if arrival_time < friend["window_start"]:
+                arrival_time = friend["window_start"]
+            meeting_end = arrival_time + timedelta(minutes=friend["duration_min"])
+            if meeting_end <= friend["window_end"]:
+                itinerary = [{
+                    "action": "meet",
+                    "location": friend["location"],
+                    "person": friend["name"],
+                    "start_time": time_to_str(arrival_time),
+                    "end_time": time_to_str(meeting_end),
+                }]
+                if 1 > best_meetings:
+                    best_meetings = 1
+                    best_itinerary = itinerary
+    
+    return {"itinerary": best_itinerary}
+
+if __name__ == "__main__":
+    result = compute_schedule()
+    print(json.dumps(result, indent=2))
+```
+
+**Step 6 – Expected output**
+
+When run, this program will output:
+
+```json
+{
+  "itinerary": [
+    {
+      "action": "meet",
+      "location": "Mission District",
+      "person": "James",
+      "start_time": "12:45",
+      "end_time": "14:00"
+    },
+    {
+      "action": "meet",
+      "location": "The Castro",
+      "person": "Robert",
+      "start_time": "14:07",
+      "end_time": "14:37"
+    }
+  ]
+}
+```
+
+This meets both friends within their constraints and accounts for travel times.

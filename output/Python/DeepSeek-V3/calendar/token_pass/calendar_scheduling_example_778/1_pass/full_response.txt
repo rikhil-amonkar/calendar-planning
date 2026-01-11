@@ -1,0 +1,163 @@
+Let’s break this down step by step before writing the code.
+
+**Step 1 – Understand the constraints**  
+- Meeting duration: **30 minutes**  
+- Work hours: **9:00–17:00** each day  
+- Days considered: Monday, Tuesday, Wednesday  
+- Susan’s blocked times:  
+  - Monday: 12:30–13:00, 13:30–14:00  
+  - Tuesday: 11:30–12:00  
+  - Wednesday: 9:30–10:30, 14:00–14:30, 15:30–16:30  
+- Sandra’s meetings:  
+  - Monday: 9:00–13:00, 14:00–15:00, 16:00–16:30  
+  - Tuesday: 9:00–9:30, 10:30–12:00, 12:30–13:30, 14:00–14:30, 16:00–17:00  
+  - Wednesday: 9:00–11:30, 12:00–12:30, 13:00–17:00  
+- Susan would rather not meet on Tuesday (but it’s not impossible, just a preference; we can prioritize other days).  
+- Sandra cannot meet on Monday after 16:00 (but her schedule already blocks 16:00–16:30, so effectively nothing after 16:00 is free anyway).  
+
+**Step 2 – Find free slots for each day**  
+We need a 30-minute slot where both are free within 9:00–17:00.
+
+**Monday:**  
+Susan free except 12:30–13:00, 13:30–14:00.  
+Sandra free except 9:00–13:00, 14:00–15:00, 16:00–16:30.  
+
+So Sandra’s free on Monday: 13:00–14:00, 15:00–16:00, 16:30–17:00.  
+Susan’s free on Monday: 9:00–12:30, 13:00–13:30, 14:00–17:00 (but check overlaps with Sandra’s free times):  
+
+Overlap free times Monday:  
+- 13:00–13:30 (Susan free, Sandra free 13:00–14:00) → 30 min slot possible: 13:00–13:30.  
+- 15:00–16:00 (Susan free, Sandra free 15:00–16:00) → possible 15:00–15:30 or 15:30–16:00.  
+- 16:30–17:00 (Susan free, Sandra free 16:30–17:00) → possible 16:30–17:00.  
+
+So Monday has several slots.
+
+**Tuesday:**  
+Susan free except 11:30–12:00.  
+Sandra free except 9:00–9:30, 10:30–12:00, 12:30–13:30, 14:00–14:30, 16:00–17:00.  
+
+Sandra’s free Tuesday: 9:30–10:30, 12:00–12:30, 13:30–14:00, 14:30–16:00.  
+
+Overlap free times Tuesday:  
+- 9:30–10:30 (both free) → possible 9:30–10:00 or 10:00–10:30.  
+- 12:00–12:30 (both free) → possible 12:00–12:30.  
+- 13:30–14:00 (both free) → possible 13:30–14:00.  
+- 14:30–16:00 (both free) → possible 14:30–15:00, etc.  
+
+But Susan prefers not Tuesday, so avoid if possible.
+
+**Wednesday:**  
+Susan free except 9:30–10:30, 14:00–14:30, 15:30–16:30.  
+Sandra free except 9:00–11:30, 12:00–12:30, 13:00–17:00.  
+
+Sandra’s free Wednesday: 11:30–12:00, 12:30–13:00.  
+
+Overlap free times Wednesday:  
+- 11:30–12:00: Susan free? Yes (Susan free 9:00–9:30? Wait, Susan’s Wednesday blocked: 9:30–10:30, 14:00–14:30, 15:30–16:30. So 11:30–12:00 is free for Susan). Sandra free 11:30–12:00. Overlap = 11:30–12:00 → 30 min possible.  
+- 12:30–13:00: Susan free? Yes. Sandra free 12:30–13:00. Overlap = 12:30–13:00 → 30 min possible.  
+
+So Wednesday has two slots.
+
+**Step 3 – Choose earliest possible slot respecting preference**  
+Preference: Not Tuesday → so pick Monday or Wednesday.  
+Earliest in week: Monday 13:00–13:30 works.
+
+**Step 4 – Write code to find and output**  
+We’ll write a script that finds all free slots, then picks the first non-Tuesday slot.
+
+```python
+from datetime import datetime, timedelta
+
+def parse_time(t_str):
+    return datetime.strptime(t_str, "%H:%M")
+
+def time_range(start, end):
+    # yields every 30-minute slot within start to end
+    current = start
+    while current + timedelta(minutes=30) <= end:
+        yield (current, current + timedelta(minutes=30))
+        current += timedelta(minutes=30)
+
+def blocked_to_free(blocked, day_start, day_end):
+    # blocked: list of (start, end)
+    # sort blocked times
+    blocked = sorted(blocked, key=lambda x: x[0])
+    free = []
+    current = day_start
+    for (b_start, b_end) in blocked:
+        if current < b_start:
+            free.append((current, b_start))
+        current = max(current, b_end)
+    if current < day_end:
+        free.append((current, day_end))
+    return free
+
+def main():
+    day_start = parse_time("09:00")
+    day_end = parse_time("17:00")
+    duration = timedelta(minutes=30)
+    
+    # Susan's blocked times per day
+    susan_blocked = {
+        "Monday": [("12:30", "13:00"), ("13:30", "14:00")],
+        "Tuesday": [("11:30", "12:00")],
+        "Wednesday": [("9:30", "10:30"), ("14:00", "14:30"), ("15:30", "16:30")],
+    }
+    
+    # Sandra's blocked times per day
+    sandra_blocked = {
+        "Monday": [("9:00", "13:00"), ("14:00", "15:00"), ("16:00", "16:30")],
+        "Tuesday": [("9:00", "9:30"), ("10:30", "12:00"), ("12:30", "13:30"), ("14:00", "14:30"), ("16:00", "17:00")],
+        "Wednesday": [("9:00", "11:30"), ("12:00", "12:30"), ("13:00", "17:00")],
+    }
+    
+    days = ["Monday", "Tuesday", "Wednesday"]
+    
+    # Find all free slots
+    possible_slots = []
+    
+    for day in days:
+        # Convert blocked times to datetime objects
+        susan_b = [(parse_time(s), parse_time(e)) for s, e in susan_blocked.get(day, [])]
+        sandra_b = [(parse_time(s), parse_time(e)) for s, e in sandra_blocked.get(day, [])]
+        
+        susan_free = blocked_to_free(susan_b, day_start, day_end)
+        sandra_free = blocked_to_free(sandra_b, day_start, day_end)
+        
+        # Find overlapping free periods
+        for fs, fe in susan_free:
+            for ss, se in sandra_free:
+                overlap_start = max(fs, ss)
+                overlap_end = min(fe, se)
+                if overlap_start + duration <= overlap_end:
+                    # Generate 30-minute slots within this overlap
+                    slot_start = overlap_start
+                    while slot_start + duration <= overlap_end:
+                        possible_slots.append((day, slot_start, slot_start + duration))
+                        slot_start += timedelta(minutes=30)
+    
+    # Sort slots by day order and time
+    day_order = {day: i for i, day in enumerate(days)}
+    possible_slots.sort(key=lambda x: (day_order[x[0]], x[1]))
+    
+    # Pick first non-Tuesday slot (Susan's preference)
+    chosen = None
+    for slot in possible_slots:
+        if slot[0] != "Tuesday":
+            chosen = slot
+            break
+    
+    # If all are Tuesday, pick first Tuesday slot
+    if chosen is None and possible_slots:
+        chosen = possible_slots[0]
+    
+    if chosen:
+        day, start, end = chosen
+        print(f"{day}")
+        print(f"{start.strftime('%H:%M')}:{end.strftime('%H:%M')}")
+    else:
+        print("No suitable slot found")
+
+if __name__ == "__main__":
+    main()
+```

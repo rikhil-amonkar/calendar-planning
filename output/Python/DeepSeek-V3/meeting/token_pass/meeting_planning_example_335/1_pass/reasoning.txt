@@ -1,0 +1,134 @@
+Let’s break this down step by step before writing the code.
+
+**Step 1 – Understanding the problem**  
+We start at **Pacific Heights at 9:00 AM**.  
+We have 4 friends with availability windows:  
+
+1. **Helen** – North Beach, 9:00–17:00, min 15 min.  
+2. **Kevin** – Mission District, 10:45–14:45, min 45 min.  
+3. **Amanda** – Alamo Square, 19:45–21:00, min 60 min.  
+4. **Betty** – Financial District, 19:00–21:45, min 90 min.  
+
+Travel times between each pair of locations are given.
+
+**Step 2 – Observations on timing**  
+- Helen is available all day, so she’s flexible.  
+- Kevin is only available midday.  
+- Amanda and Betty are both available in the evening, but their windows overlap and are close in time.  
+- Evening meetings: Betty’s window is 19:00–21:45 (2h45m), Amanda’s is 19:45–21:00 (1h15m).  
+- Since we need 90 min with Betty and 60 min with Amanda, and accounting for travel, we must decide order.
+
+**Step 3 – Possible logical sequence**  
+We start at Pacific Heights at 9:00.  
+We can meet Helen first (short meeting), then go to Kevin, then possibly meet Helen again later if time allows, but evening meetings are tight.
+
+Evening scenario:  
+If we meet Betty first at 19:00 for 90 min, she ends at 20:30. Travel to Alamo Square takes 17 min (Financial District → Alamo Square), arriving 20:47, but Amanda’s window ends at 21:00, so only 13 min left — not enough for 60 min.  
+So that order fails.
+
+If we meet Amanda first:  
+We must be at Alamo Square by 19:45 at latest to get 60 min, ending 20:45. Travel to Financial District (Alamo Square → Financial District) is 17 min, arriving 21:02. Betty’s window ends 21:45, so from 21:02 to 21:45 is 43 min, not enough for 90 min.  
+So we can’t do both evening meetings fully.
+
+Thus, **we must choose only one evening meeting** if we want to meet Kevin and Helen earlier.
+
+**Step 4 – Try to fit three meetings**  
+Morning:  
+Start 9:00 at Pacific Heights.  
+Meet Helen at North Beach: travel 9 min, arrive 9:09, meet 15 min until 9:24.  
+Travel to Mission District for Kevin: North Beach → Mission District is 18 min, arrive 9:42. Kevin available at 10:45, so we must wait until 10:45. That’s a long wait (over 1 hour). Maybe not optimal.
+
+Better:  
+Go to Kevin first? But Kevin is available only from 10:45. We start at 9:00 at Pacific Heights. Travel to Mission District is 15 min, arrive 9:15, wait until 10:45 (90 min wait). That’s worse.
+
+Maybe:  
+Meet Helen later, go to Kevin first? But Kevin’s window starts 10:45, so earliest we can finish with Kevin is 11:30 (45 min meeting). Then we could meet Helen after.
+
+Let’s check:  
+Start 9:00 Pacific Heights → Mission District: 15 min, arrive 9:15, wait until 10:45 (90 min idle). Meet Kevin 10:45–11:30. Travel to North Beach: Mission District → North Beach is 17 min, arrive 11:47. Meet Helen 11:47–12:02 (15 min). Then free until evening. Then we could do one evening meeting.
+
+Evening:  
+We can choose Betty (90 min) or Amanda (60 min). Betty’s window starts 19:00. From North Beach after Helen, we have lots of time. We can go to Financial District early.  
+But maybe we can also meet Helen twice? Not necessary.
+
+**Step 5 – Try to maximize meetings**  
+We can’t do all 4 due to evening overlap.  
+We can do 3: Kevin, Helen, and one of Betty/Amanda.
+
+Which evening meeting fits better after Kevin+Helen?  
+After Helen at North Beach ends 12:02, we can go to Financial District early for Betty (but Betty starts only at 19:00). That’s a long idle time. Or we can go to Alamo Square early for Amanda (starts 19:45). Also long idle.
+
+Maybe we can meet Helen in the morning briefly, then Kevin, then Helen again in afternoon, then one evening. But Helen’s window ends 17:00, so afternoon Helen must end by 17:00.
+
+Let’s test:  
+Start 9:00 Pacific Heights → North Beach (9 min), meet Helen 9:09–9:24.  
+Travel to Mission District (18 min), arrive 9:42, wait until 10:45, meet Kevin 10:45–11:30.  
+Travel to North Beach (17 min), arrive 11:47, meet Helen 11:47–12:02 (again).  
+Now it’s 12:02, we have until 17:00 to meet Helen more if wanted, but min 15 min already satisfied twice.  
+Evening: Choose Betty: from North Beach to Financial District (8 min), but Betty starts 19:00, so we must wait. We could leave North Beach at 18:52 to arrive 19:00. Meet Betty 19:00–20:30.  
+That works: 3 meetings (Helen, Kevin, Betty).  
+
+But we met Helen twice — is that allowed? Yes, we just want to meet as many friends as possible, but Helen is one friend, meeting her twice doesn’t increase friend count. So that’s still 3 friends.
+
+What if we do Helen once, Kevin, and Amanda?  
+After Kevin ends 11:30, go to North Beach (17 min), meet Helen 11:47–12:02. Then later go to Alamo Square for Amanda: from North Beach to Alamo Square 16 min, but Amanda starts 19:45, so wait. Meet Amanda 19:45–20:45. That’s also 3 friends.
+
+So maximum friends possible = 3 (because evening two conflict).  
+
+**Step 6 – Choose best 3**  
+We can try: Helen (morning), Kevin, Betty.  
+Or: Helen (morning), Kevin, Amanda.  
+Both give 3 friends.
+
+We should pick the one that maximizes total meeting time or minimizes idle time.  
+Betty needs 90 min, Amanda 60 min. If we meet Betty, we get longer meeting, maybe better.  
+Also, Betty’s window ends 21:45, Amanda’s ends 21:00, so Betty allows later finish.
+
+Let’s choose: Helen (15 min), Kevin (45 min), Betty (90 min).  
+Schedule:  
+1. Start 9:00 Pacific Heights → North Beach (9 min), arrive 9:09, meet Helen 9:09–9:24.  
+2. Travel to Mission District (18 min), arrive 9:42, wait until 10:45, meet Kevin 10:45–11:30.  
+3. Travel to Financial District (17 min), arrive 11:47.  
+But Betty starts at 19:00, so we wait from 11:47 to 19:00 (over 7 hours idle). That’s terrible.
+
+Better: After Kevin, go somewhere else (like Alamo Square or Pacific Heights) and come back later. But no other friend available afternoon. So idle time is unavoidable if we want Betty.
+
+What if after Kevin we go to North Beach to meet Helen again (or just stay there), then leave for Financial District later. Still idle.
+
+Maybe we can meet Helen after Kevin, then go to Financial District much later. Idle time is in one block.
+
+Let’s compute:  
+Kevin ends 11:30, travel to North Beach 17 min, arrive 11:47, meet Helen 11:47–12:02.  
+Now 12:02, we can leave for Financial District at 18:52 (to arrive 19:00). That’s 6h50m idle. Not great but possible.
+
+Alternatively, if we choose Amanda:  
+Kevin ends 11:30, travel to North Beach 17 min, arrive 11:47, meet Helen 11:47–12:02.  
+Then from North Beach to Alamo Square 16 min, but Amanda starts 19:45, so leave at 19:29, arrive 19:45. That’s also long idle.
+
+So idle is unavoidable. We’ll pick Betty for longer meeting.
+
+**Step 7 – Final schedule**  
+- 9:00–9:09: Travel to North Beach  
+- 9:09–9:24: Meet Helen  
+- 9:24–9:42: Travel to Mission District  
+- 9:42–10:45: Wait  
+- 10:45–11:30: Meet Kevin  
+- 11:30–11:47: Travel to North Beach  
+- 11:47–12:02: Meet Helen (again, but optional — could just wait somewhere)  
+- 12:02–18:52: Idle (we could stay in North Beach or go to Financial District early and wait)  
+- 18:52–19:00: Travel to Financial District (if we leave North Beach at 18:52)  
+- 19:00–20:30: Meet Betty  
+
+But to simplify, let’s skip second Helen meeting and just wait in Financial District early?  
+After Kevin, go directly to Financial District:  
+11:30–11:47 travel to Financial District (17 min), arrive 11:47, wait until 19:00 (7h13m idle), meet Betty 19:00–20:30.  
+That’s simpler and same number of friends.
+
+We’ll choose that.
+
+**Step 8 – Write program**  
+We’ll encode travel times, constraints, and try permutations of meetings to maximize friend count, then maximize total meeting time.
+
+We’ll brute-force sequences of the 4 friends (order permutations) respecting time windows and travel, and pick best.
+
+---

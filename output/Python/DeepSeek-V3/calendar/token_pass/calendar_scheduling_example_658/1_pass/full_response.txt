@@ -1,0 +1,176 @@
+Let’s break this down step-by-step before writing the code.
+
+**Constraints recap:**
+- Meeting duration: 30 minutes.
+- Work hours: 9:00–17:00 (inclusive start, exclusive end for slots).
+- Days considered: Monday, Tuesday.
+- Shirley’s busy times:
+  - Monday: 10:30–11:00, 12:00–12:30, 16:00–16:30
+  - Tuesday: 9:30–10:00
+- Albert’s busy times:
+  - Monday: 9:00–17:00 (entire day busy)
+  - Tuesday: 9:30–11:00, 11:30–12:30, 13:00–16:00, 16:30–17:00
+- Shirley’s preference: Avoid Tuesday after 10:30 if possible.
+
+**Step 1 – Check Monday**
+Albert is busy all Monday (9:00–17:00), so Monday is impossible.
+
+**Step 2 – Check Tuesday**
+Work hours: 9:00–17:00.
+
+Albert’s busy on Tuesday:
+1. 9:30–11:00
+2. 11:30–12:30
+3. 13:00–16:00
+4. 16:30–17:00
+
+Shirley’s busy on Tuesday:
+1. 9:30–10:00
+
+Shirley’s preference: Avoid Tuesday after 10:30, but if necessary, we can still schedule after 10:30 if no earlier slot exists.
+
+**Step 3 – Find free 30-minute slots on Tuesday**
+Convert times to minutes from 9:00 for easier calculation:
+- 9:00 = 0 min
+- 17:00 = 480 min
+
+Albert’s busy in minutes from 9:00:
+1. 9:30–11:00 → 30–120
+2. 11:30–12:30 → 150–210
+3. 13:00–16:00 → 240–420
+4. 16:30–17:00 → 450–480
+
+Shirley’s busy:
+1. 9:30–10:00 → 30–60
+
+**Step 4 – Find overlap of free times**
+We want times when both are free for 30 min within 0–480.
+
+Albert’s free intervals on Tuesday:
+- 0–30
+- 120–150
+- 210–240
+- 420–450
+- (450–480 is busy for Albert, so last 30 min not free)
+
+Shirley’s free intervals on Tuesday (ignoring preference for now):
+- 0–30
+- 60–480 (since only busy 30–60)
+
+Intersect:
+1. Albert 0–30 & Shirley 0–30 → 0–30 ✅ (9:00–9:30)
+2. Albert 120–150 & Shirley 60–480 → 120–150 ✅ (11:00–11:30)
+3. Albert 210–240 & Shirley 60–480 → 210–240 ✅ (12:30–13:00)
+4. Albert 420–450 & Shirley 60–480 → 420–450 ✅ (16:00–16:30)
+
+**Step 5 – Apply Shirley’s preference**
+She’d rather not meet Tuesday after 10:30.
+- Slot 1 (9:00–9:30): ends before 10:30, so perfect.
+- Slot 2 (11:00–11:30): after 10:30, so less preferred.
+- Slot 3 (12:30–13:00): after 10:30.
+- Slot 4 (16:00–16:30): after 10:30.
+
+Best choice: **9:00–9:30 Tuesday**.
+
+**Step 6 – Verify**
+- Shirley free 9:00–9:30? Yes (only busy 9:30–10:00).
+- Albert free 9:00–9:30? Yes (busy starts 9:30).
+- Within work hours 9:00–17:00? Yes.
+- Duration 30 minutes? Yes.
+
+**Step 7 – Write code to output this**
+We’ll write a script that finds the earliest preferred slot.
+
+```python
+from datetime import datetime, timedelta
+
+def time_to_minutes(t):
+    """Convert 'HH:MM' to minutes from 00:00."""
+    hours, minutes = map(int, t.split(':'))
+    return hours * 60 + minutes
+
+def minutes_to_time(m):
+    """Convert minutes from 00:00 to 'HH:MM'."""
+    hours = m // 60
+    minutes = m % 60
+    return f"{hours:02d}:{minutes:02d}"
+
+def find_meeting_slot():
+    work_start = time_to_minutes("09:00")
+    work_end = time_to_minutes("17:00")
+    duration = 30
+    
+    # Busy times in minutes from 00:00
+    shirley_busy = [
+        ("Monday", "10:30", "11:00"),
+        ("Monday", "12:00", "12:30"),
+        ("Monday", "16:00", "16:30"),
+        ("Tuesday", "09:30", "10:00")
+    ]
+    
+    albert_busy = [
+        ("Monday", "09:00", "17:00"),
+        ("Tuesday", "09:30", "11:00"),
+        ("Tuesday", "11:30", "12:30"),
+        ("Tuesday", "13:00", "16:00"),
+        ("Tuesday", "16:30", "17:00")
+    ]
+    
+    days = ["Monday", "Tuesday"]
+    
+    for day in days:
+        # Collect busy intervals for this day
+        shirley_intervals = []
+        albert_intervals = []
+        
+        for d, start, end in shirley_busy:
+            if d == day:
+                shirley_intervals.append((time_to_minutes(start), time_to_minutes(end)))
+        
+        for d, start, end in albert_busy:
+            if d == day:
+                albert_intervals.append((time_to_minutes(start), time_to_minutes(end)))
+        
+        # Generate free intervals for each person within work hours
+        def free_intervals(busy_intervals, day_start, day_end):
+            busy_intervals.sort()
+            free = []
+            current_start = day_start
+            
+            for start_busy, end_busy in busy_intervals:
+                if current_start < start_busy:
+                    free.append((current_start, start_busy))
+                current_start = max(current_start, end_busy)
+            
+            if current_start < day_end:
+                free.append((current_start, day_end))
+            return free
+        
+        shirley_free = free_intervals(shirley_intervals, work_start, work_end)
+        albert_free = free_intervals(albert_intervals, work_start, work_end)
+        
+        # Find overlapping free slots of at least 'duration' minutes
+        for s_start, s_end in shirley_free:
+            for a_start, a_end in albert_free:
+                overlap_start = max(s_start, a_start)
+                overlap_end = min(s_end, a_end)
+                if overlap_end - overlap_start >= duration:
+                    # Found a slot
+                    if day == "Tuesday" and overlap_start >= time_to_minutes("10:30"):
+                        # Less preferred, but still valid. We'll take earliest possible.
+                        # For now, continue to find earliest overall.
+                        pass
+                    # Return earliest possible slot
+                    slot_end = overlap_start + duration
+                    time_str = f"{minutes_to_time(overlap_start)}:{minutes_to_time(slot_end)}"
+                    return day, time_str
+    
+    return None, None
+
+day, time_range = find_meeting_slot()
+if day and time_range:
+    start_time, end_time = time_range.split(':')
+    print(f"{day} {start_time}:{end_time}")
+else:
+    print("No suitable slot found")
+```

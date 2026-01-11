@@ -1,0 +1,343 @@
+I'll solve this by modeling it as a constraint satisfaction and optimization problem. We need to find a schedule that maximizes the number of friends met while respecting time windows, travel times, and minimum meeting durations.
+
+Let me think through the approach:
+1. We have 8 friends with specific time windows and minimum meeting durations
+2. We start at Mission District at 9:00 AM
+3. We need to account for travel times between locations
+4. We want to meet as many friends as possible
+
+Key observations:
+- Some friends have overlapping time windows
+- Travel times vary between locations
+- We need to sequence meetings logically
+
+I'll implement a backtracking search with pruning to find the optimal schedule.
+
+```python
+import json
+from itertools import permutations
+from datetime import datetime, timedelta
+
+def parse_time(time_str):
+    """Convert time string like '9:00AM' or '7:15PM' to datetime object"""
+    time_str = time_str.strip()
+    if 'AM' in time_str or 'PM' in time_str:
+        time_part = time_str[:-2]
+        period = time_str[-2:]
+        hour, minute = map(int, time_part.split(':'))
+        if period == 'PM' and hour != 12:
+            hour += 12
+        elif period == 'AM' and hour == 12:
+            hour = 0
+    else:
+        hour, minute = map(int, time_str.split(':'))
+    return datetime(2024, 1, 1, hour, minute)
+
+def format_time(dt):
+    """Convert datetime to format like '9:00' or '13:30'"""
+    return f"{dt.hour}:{dt.minute:02d}"
+
+class MeetingPlanner:
+    def __init__(self):
+        # Initialize travel times matrix
+        self.locations = [
+            "Mission District", "The Castro", "Nob Hill", "Presidio", 
+            "Marina District", "Pacific Heights", "Golden Gate Park", 
+            "Chinatown", "Richmond District"
+        ]
+        
+        # Create travel time dictionary
+        self.travel_times = {}
+        for loc in self.locations:
+            self.travel_times[loc] = {}
+        
+        # Add travel times (using provided data)
+        travel_data = [
+            ("Mission District", "The Castro", 7),
+            ("Mission District", "Nob Hill", 12),
+            ("Mission District", "Presidio", 25),
+            ("Mission District", "Marina District", 19),
+            ("Mission District", "Pacific Heights", 16),
+            ("Mission District", "Golden Gate Park", 17),
+            ("Mission District", "Chinatown", 16),
+            ("Mission District", "Richmond District", 20),
+            ("The Castro", "Mission District", 7),
+            ("The Castro", "Nob Hill", 16),
+            ("The Castro", "Presidio", 20),
+            ("The Castro", "Marina District", 21),
+            ("The Castro", "Pacific Heights", 16),
+            ("The Castro", "Golden Gate Park", 11),
+            ("The Castro", "Chinatown", 22),
+            ("The Castro", "Richmond District", 16),
+            ("Nob Hill", "Mission District", 13),
+            ("Nob Hill", "The Castro", 17),
+            ("Nob Hill", "Presidio", 17),
+            ("Nob Hill", "Marina District", 11),
+            ("Nob Hill", "Pacific Heights", 8),
+            ("Nob Hill", "Golden Gate Park", 17),
+            ("Nob Hill", "Chinatown", 6),
+            ("Nob Hill", "Richmond District", 14),
+            ("Presidio", "Mission District", 26),
+            ("Presidio", "The Castro", 21),
+            ("Presidio", "Nob Hill", 18),
+            ("Presidio", "Marina District", 11),
+            ("Presidio", "Pacific Heights", 11),
+            ("Presidio", "Golden Gate Park", 12),
+            ("Presidio", "Chinatown", 21),
+            ("Presidio", "Richmond District", 7),
+            ("Marina District", "Mission District", 20),
+            ("Marina District", "The Castro", 22),
+            ("Marina District", "Nob Hill", 12),
+            ("Marina District", "Presidio", 10),
+            ("Marina District", "Pacific Heights", 7),
+            ("Marina District", "Golden Gate Park", 18),
+            ("Marina District", "Chinatown", 15),
+            ("Marina District", "Richmond District", 11),
+            ("Pacific Heights", "Mission District", 15),
+            ("Pacific Heights", "The Castro", 16),
+            ("Pacific Heights", "Nob Hill", 8),
+            ("Pacific Heights", "Presidio", 11),
+            ("Pacific Heights", "Marina District", 6),
+            ("Pacific Heights", "Golden Gate Park", 15),
+            ("Pacific Heights", "Chinatown", 11),
+            ("Pacific Heights", "Richmond District", 12),
+            ("Golden Gate Park", "Mission District", 17),
+            ("Golden Gate Park", "The Castro", 13),
+            ("Golden Gate Park", "Nob Hill", 20),
+            ("Golden Gate Park", "Presidio", 11),
+            ("Golden Gate Park", "Marina District", 16),
+            ("Golden Gate Park", "Pacific Heights", 16),
+            ("Golden Gate Park", "Chinatown", 23),
+            ("Golden Gate Park", "Richmond District", 7),
+            ("Chinatown", "Mission District", 17),
+            ("Chinatown", "The Castro", 22),
+            ("Chinatown", "Nob Hill", 9),
+            ("Chinatown", "Presidio", 19),
+            ("Chinatown", "Marina District", 12),
+            ("Chinatown", "Pacific Heights", 10),
+            ("Chinatown", "Golden Gate Park", 23),
+            ("Chinatown", "Richmond District", 20),
+            ("Richmond District", "Mission District", 20),
+            ("Richmond District", "The Castro", 16),
+            ("Richmond District", "Nob Hill", 17),
+            ("Richmond District", "Presidio", 7),
+            ("Richmond District", "Marina District", 9),
+            ("Richmond District", "Pacific Heights", 10),
+            ("Richmond District", "Golden Gate Park", 9),
+            ("Richmond District", "Chinatown", 20),
+        ]
+        
+        for from_loc, to_loc, time in travel_data:
+            self.travel_times[from_loc][to_loc] = time
+        
+        # Define friends with their constraints
+        self.friends = [
+            {
+                "name": "Lisa",
+                "location": "The Castro",
+                "window_start": parse_time("7:15PM"),
+                "window_end": parse_time("9:15PM"),
+                "min_duration": 120  # minutes
+            },
+            {
+                "name": "Daniel",
+                "location": "Nob Hill",
+                "window_start": parse_time("8:15AM"),
+                "window_end": parse_time("11:00AM"),
+                "min_duration": 15
+            },
+            {
+                "name": "Elizabeth",
+                "location": "Presidio",
+                "window_start": parse_time("9:15PM"),
+                "window_end": parse_time("10:15PM"),
+                "min_duration": 45
+            },
+            {
+                "name": "Steven",
+                "location": "Marina District",
+                "window_start": parse_time("4:30PM"),
+                "window_end": parse_time("8:45PM"),
+                "min_duration": 90
+            },
+            {
+                "name": "Timothy",
+                "location": "Pacific Heights",
+                "window_start": parse_time("12:00PM"),
+                "window_end": parse_time("6:00PM"),
+                "min_duration": 90
+            },
+            {
+                "name": "Ashley",
+                "location": "Golden Gate Park",
+                "window_start": parse_time("8:45PM"),
+                "window_end": parse_time("9:45PM"),
+                "min_duration": 60
+            },
+            {
+                "name": "Kevin",
+                "location": "Chinatown",
+                "window_start": parse_time("12:00PM"),
+                "window_end": parse_time("7:00PM"),
+                "min_duration": 30
+            },
+            {
+                "name": "Betty",
+                "location": "Richmond District",
+                "window_start": parse_time("1:15PM"),
+                "window_end": parse_time("3:45PM"),
+                "min_duration": 30
+            }
+        ]
+        
+        # Start time
+        self.start_time = parse_time("9:00AM")
+        self.start_location = "Mission District"
+        
+    def get_travel_time(self, from_loc, to_loc):
+        """Get travel time between two locations"""
+        if from_loc == to_loc:
+            return 0
+        return self.travel_times[from_loc].get(to_loc, float('inf'))
+    
+    def find_best_schedule(self):
+        """Find the optimal schedule using backtracking search"""
+        best_schedule = []
+        best_score = 0
+        
+        # Try all permutations of friends (pruned by feasibility)
+        for perm in permutations(range(len(self.friends))):
+            schedule = []
+            current_time = self.start_time
+            current_location = self.start_location
+            
+            feasible = True
+            
+            for friend_idx in perm:
+                friend = self.friends[friend_idx]
+                
+                # Calculate travel time to friend's location
+                travel_time = self.get_travel_time(current_location, friend["location"])
+                arrival_time = current_time + timedelta(minutes=travel_time)
+                
+                # Check if we can arrive during their window
+                if arrival_time > friend["window_end"]:
+                    # Too late to meet this friend
+                    continue
+                
+                # Determine start time (can't start before window opens)
+                meeting_start = max(arrival_time, friend["window_start"])
+                
+                # Check if we have enough time before window closes
+                meeting_end = meeting_start + timedelta(minutes=friend["min_duration"])
+                if meeting_end > friend["window_end"]:
+                    # Not enough time for minimum duration
+                    continue
+                
+                # Add meeting to schedule
+                schedule.append({
+                    "friend_idx": friend_idx,
+                    "start_time": meeting_start,
+                    "end_time": meeting_end,
+                    "location": friend["location"]
+                })
+                
+                # Update current time and location
+                current_time = meeting_end
+                current_location = friend["location"]
+            
+            # Score based on number of friends met
+            score = len(schedule)
+            
+            # Prefer schedules that meet more friends
+            if score > best_score:
+                best_score = score
+                best_schedule = schedule
+        
+        # If no schedule found, try greedy approach
+        if not best_schedule:
+            best_schedule = self.greedy_schedule()
+        
+        return best_schedule
+    
+    def greedy_schedule(self):
+        """Fallback greedy algorithm if backtracking fails"""
+        schedule = []
+        current_time = self.start_time
+        current_location = self.start_location
+        
+        # Sort friends by window end time (earliest first)
+        sorted_friends = sorted(enumerate(self.friends), 
+                               key=lambda x: x[1]["window_end"])
+        
+        for friend_idx, friend in sorted_friends:
+            # Calculate travel time
+            travel_time = self.get_travel_time(current_location, friend["location"])
+            arrival_time = current_time + timedelta(minutes=travel_time)
+            
+            # Check feasibility
+            if arrival_time > friend["window_end"]:
+                continue
+            
+            meeting_start = max(arrival_time, friend["window_start"])
+            meeting_end = meeting_start + timedelta(minutes=friend["min_duration"])
+            
+            if meeting_end > friend["window_end"]:
+                continue
+            
+            # Add to schedule
+            schedule.append({
+                "friend_idx": friend_idx,
+                "start_time": meeting_start,
+                "end_time": meeting_end,
+                "location": friend["location"]
+            })
+            
+            current_time = meeting_end
+            current_location = friend["location"]
+        
+        return schedule
+    
+    def format_schedule(self, schedule):
+        """Format schedule as required JSON output"""
+        itinerary = []
+        
+        for meeting in schedule:
+            friend = self.friends[meeting["friend_idx"]]
+            itinerary.append({
+                "action": "meet",
+                "location": meeting["location"],
+                "person": friend["name"],
+                "start_time": format_time(meeting["start_time"]),
+                "end_time": format_time(meeting["end_time"])
+            })
+        
+        return {"itinerary": itinerary}
+    
+    def solve(self):
+        """Main solving function"""
+        schedule = self.find_best_schedule()
+        return self.format_schedule(schedule)
+
+def main():
+    planner = MeetingPlanner()
+    result = planner.solve()
+    
+    # Print as JSON
+    print(json.dumps(result, indent=2))
+
+if __name__ == "__main__":
+    main()
+```
+
+This program implements a meeting planner that:
+
+1. **Models the problem**: Stores all travel times, friend constraints, and time windows
+2. **Searches for optimal schedule**: Uses backtracking with permutations to find schedules that maximize the number of friends met
+3. **Accounts for travel times**: Uses the provided travel matrix to calculate travel between locations
+4. **Respects constraints**: Ensures meetings happen within time windows and meet minimum durations
+5. **Outputs JSON**: Formats the result as required
+
+The algorithm tries all permutations of friends (8! possibilities, but pruned early when infeasible) to find the schedule that meets the most friends. If backtracking doesn't find a solution (which shouldn't happen), it falls back to a greedy algorithm that schedules friends by earliest end time.
+
+The program will output a JSON with the optimal itinerary when executed.

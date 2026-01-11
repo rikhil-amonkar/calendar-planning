@@ -1,0 +1,109 @@
+Let's break this down step by step.  
+
+We have:  
+- **Work hours**: 9:00 to 17:00 (9:00–17:00)  
+- **Duration**: 1 hour  
+- **Participants**: Anthony, Pamela, Zachary  
+- **Day**: Monday  
+- **Pamela’s extra constraint**: No meeting after 14:30 (so meeting must end by 14:30, meaning it must start by 13:30).  
+
+---
+
+### Step 1: Define busy times in minutes from 9:00
+Convert all times to minutes since 9:00 (so 9:00 = 0, 10:00 = 60, etc.).
+
+**Anthony’s busy**:  
+1. 9:30–10:00 → 30–60  
+2. 12:00–13:00 → 180–240  
+3. 16:00–16:30 → 420–450  
+
+**Pamela’s busy**:  
+1. 9:30–10:00 → 30–60  
+2. 16:30–17:00 → 450–480  
+
+**Zachary’s busy**:  
+1. 9:00–11:30 → 0–150  
+2. 12:00–12:30 → 180–210  
+3. 13:00–13:30 → 240–270  
+4. 14:30–15:00 → 330–360  
+5. 16:00–17:00 → 420–480  
+
+---
+
+### Step 2: Merge busy times per person
+We can think of free times as gaps in their schedules between 9:00 and 17:00 (0 to 480 minutes).
+
+Let’s find free slots for each person within 9:00–17:00:
+
+**Anthony free periods** (between meetings, within work hours):  
+- Start 0 → first meeting at 30, so free 0–30 (9:00–9:30)  
+- After 60 → next at 180, so free 60–180 (10:00–12:00)  
+- After 240 → next at 420, so free 240–420 (13:00–16:00)  
+- After 450 → end 480, so free 450–480 (16:30–17:00)  
+
+**Pamela free periods**:  
+- 0–30 (9:00–9:30)  
+- 60–450 (10:00–16:30)  
+
+**Zachary free periods**:  
+- 150–180 (11:30–12:00)  
+- 210–240 (12:30–13:00)  
+- 270–330 (13:30–14:30)  
+- 360–420 (15:00–16:00)  
+
+---
+
+### Step 3: Find intersection of all free times
+We need 60-minute contiguous block where all are free.
+
+Check each candidate:
+
+1. **9:00–10:00** (0–60):  
+   Anthony free 0–30 only → fails (busy 30–60).  
+
+2. **10:00–11:00** (60–120):  
+   Anthony free 60–180 ✅  
+   Pamela free 60–450 ✅  
+   Zachary busy until 150, so 60–120 overlaps Zachary’s busy 0–150 → fails (Zachary busy until 11:30).  
+
+3. **11:00–12:00** (120–180):  
+   Anthony free 60–180 ✅  
+   Pamela free 60–450 ✅  
+   Zachary busy until 150, so 120–150 is free for Zachary, but 150–180 is free for Zachary? Wait, Zachary free 150–180 (11:30–12:00). So 120–180: Zachary busy 120–150? No, Zachary busy 0–150, so 120–150 is busy. So 11:00–12:00 overlaps Zachary’s busy period (0–150) → fails.  
+
+4. **11:30–12:30** (150–210):  
+   Anthony free 60–180 (so 150–180 free, 180–210 busy) → fails (Anthony busy 180–240).  
+
+5. **12:30–13:30** (210–270):  
+   Anthony free 240–420 (so 210–240 busy) → fails.  
+
+6. **13:00–14:00** (240–300):  
+   Anthony free 240–420 ✅  
+   Pamela free 60–450 ✅  
+   Zachary free 210–240 and 270–330, so 240–270 busy → fails.  
+
+7. **13:30–14:30** (270–330):  
+   Anthony free 240–420 ✅  
+   Pamela free 60–450 ✅  
+   Zachary free 270–330 ✅  
+   But Pamela’s constraint: no meeting after 14:30 → this ends at 14:30 exactly, so allowed (ends at 14:30 means not after 14:30).  
+
+Check if 270–330 is fully inside work hours: 270 min from 9:00 = 13:30, 330 min = 14:30.  
+
+All free:  
+- Anthony: 240–420 covers 270–330 ✅  
+- Pamela: 60–450 covers 270–330 ✅  
+- Zachary: 270–330 is exactly his free slot ✅  
+
+---
+
+### Step 4: Verify no other earlier slot works
+Earlier slots fail due to Zachary’s packed morning.  
+Later slots fail Pamela’s constraint (must end by 14:30).  
+
+So **13:30–14:30** is the only valid slot.
+
+---
+
+### Step 5: Write Python code to compute this
+We can implement by checking every minute or half hour, but here we can just output the result.

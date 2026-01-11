@@ -1,0 +1,85 @@
+Let's break this down step-by-step before writing the code.
+
+**Constraints:**
+- Total days: 16
+- Cities & required stays:
+  - Porto: 5 days
+  - Prague: 4 days
+  - Reykjavik: 4 days (wedding between day 4–7)
+  - Santorini: 2 days
+  - Amsterdam: 2 days (conference day 14–15)
+  - Munich: 4 days (friend visit between day 7–10)
+
+**Direct flights** (undirected edges):
+1. Porto – Amsterdam
+2. Munich – Amsterdam
+3. Reykjavik – Amsterdam
+4. Munich – Porto
+5. Prague – Reykjavik
+6. Reykjavik – Munich
+7. Amsterdam – Santorini
+8. Prague – Amsterdam
+9. Prague – Munich
+
+**Key fixed events:**
+- Reykjavik wedding: day 4–7 → Reykjavik must include days 4,5,6,7 (4 days total).
+- Amsterdam conference: day 14–15 → Amsterdam must include days 14,15.
+- Munich friend visit: day 7–10 → Munich must include at least one day in 7,8,9,10.
+
+**Approach:**
+We can treat this as a scheduling + graph path problem. Since the total days sum is 5+4+4+2+2+4 = 21, but we only have 16 days, that means some days are double-counted (travel days count for both cities).  
+Let’s denote travel days as days where you are in two cities.
+
+Let’s try to place the fixed events first, then fill the rest ensuring direct flights between consecutive cities.
+
+---
+
+**Step 1 – Place fixed blocks:**
+- Reykjavik: days 4–7 (4 days)
+- Amsterdam: days 14–15 (2 days)
+- Munich friend visit: choose days 8–10 (3 days) to connect with Reykjavik ending day 7.
+
+But Munich needs 4 days total, so maybe Munich includes day 7 as well (travel from Reykjavik to Munich on day 7).
+
+---
+
+**Step 2 – Connect with direct flights:**
+From Reykjavik (day 7) to Munich: direct flight exists (yes, Reykjavik–Munich).
+From Munich to Amsterdam: direct flight exists (yes, Munich–Amsterdam).
+But Amsterdam is only days 14–15, so maybe Munich stays until day 13, travel to Amsterdam on day 14 morning? That would mean Amsterdam days 14–15, then leave.
+
+We also need Porto (5 days), Prague (4 days), Santorini (2 days).
+
+---
+
+**Step 3 – Sequence cities:**
+We have 16 days total. Let’s try a possible route:
+
+1. Start in Porto (5 days): days 1–5.
+2. Fly Porto → Prague (direct? No, not in list). So can’t go directly.  
+   Check: Porto–Munich direct exists, Porto–Amsterdam direct exists.  
+   So from Porto, can go to Munich or Amsterdam.  
+   But Munich is later (day 7 onward). So maybe start in Porto days 1–5, then fly to Amsterdam (direct), then Amsterdam to Prague (direct exists), but Prague needs 4 days and must connect to Reykjavik for wedding day 4–7? That’s impossible because wedding is fixed.
+
+This means Prague must be either before or after Reykjavik wedding, with direct flight to/from Reykjavik.
+
+Given Prague–Reykjavik direct exists, possible:  
+Prague → Reykjavik (before wedding) or Reykjavik → Prague (after wedding).
+
+But wedding is days 4–7 in Reykjavik, so if Prague is before, it must be days 1–4, then fly to Reykjavik on day 4 (counts for both). That works: Prague days 1–4, Reykjavik days 4–7.
+
+Then from Reykjavik day 7 to Munich (direct), Munich days 7–11 (5 days? Too many, need only 4 total). Adjust: Munich days 7–10 (4 days), then Munich to Porto (direct) for Porto days 11–15 (5 days), but Amsterdam conference days 14–15 conflict with Porto. So impossible.
+
+So Amsterdam conference must be in Amsterdam, so days 14–15 in Amsterdam.  
+Thus: Munich must end by day 13, travel to Amsterdam day 14.
+
+---
+
+Given complexity, let’s solve by brute-force search over permutations of cities with durations, ensuring:
+- Fixed day ranges for events
+- Direct flights between consecutive cities
+- Total days = 16 with travel days double-counted.
+
+---
+
+Here’s the Python program that searches for a valid itinerary:

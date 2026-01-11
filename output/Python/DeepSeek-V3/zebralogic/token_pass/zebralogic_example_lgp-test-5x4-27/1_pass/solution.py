@@ -1,0 +1,152 @@
+import json
+from itertools import permutations
+
+def solve():
+    # Define all possible values
+    names = ["Peter", "Alice", "Eric", "Bob", "Arnold"]
+    birthdays = ["april", "feb", "mar", "jan", "sept"]
+    cigars = ["pall mall", "prince", "dunhill", "blends", "blue master"]
+    drinks = ["water", "coffee", "tea", "milk", "root beer"]
+    houses = [1, 2, 3, 4, 5]
+    
+    # Generate all permutations for each attribute across 5 houses
+    for name_perm in permutations(names, 5):
+        for bd_perm in permutations(birthdays, 5):
+            for cigar_perm in permutations(cigars, 5):
+                for drink_perm in permutations(drinks, 5):
+                    # Create assignment dictionaries
+                    assignment = {}
+                    for i in range(5):
+                        assignment[houses[i]] = {
+                            'name': name_perm[i],
+                            'birthday': bd_perm[i],
+                            'cigar': cigar_perm[i],
+                            'drink': drink_perm[i]
+                        }
+                    
+                    # Check all clues
+                    # 1. The root beer lover is Eric.
+                    root_beer_house = None
+                    for h in houses:
+                        if assignment[h]['drink'] == 'root beer' and assignment[h]['name'] == 'Eric':
+                            root_beer_house = h
+                            break
+                    if root_beer_house is None:
+                        continue
+                    
+                    # 2. The person partial to Pall Mall is in the third house.
+                    if assignment[3]['cigar'] != 'pall mall':
+                        continue
+                    
+                    # 3. The person whose birthday is in April is Bob.
+                    april_house = None
+                    for h in houses:
+                        if assignment[h]['birthday'] == 'april' and assignment[h]['name'] == 'Bob':
+                            april_house = h
+                            break
+                    if april_house is None:
+                        continue
+                    
+                    # 4. The Dunhill smoker is the person whose birthday is in March.
+                    dunhill_house = None
+                    for h in houses:
+                        if assignment[h]['cigar'] == 'dunhill' and assignment[h]['birthday'] == 'mar':
+                            dunhill_house = h
+                            break
+                    if dunhill_house is None:
+                        continue
+                    
+                    # 5. Peter is somewhere to the right of the root beer lover.
+                    peter_house = None
+                    for h in houses:
+                        if assignment[h]['name'] == 'Peter':
+                            peter_house = h
+                            break
+                    if peter_house <= root_beer_house:
+                        continue
+                    
+                    # 6. There is one house between the person whose birthday is in January and Peter.
+                    jan_house = None
+                    for h in houses:
+                        if assignment[h]['birthday'] == 'jan':
+                            jan_house = h
+                            break
+                    if jan_house is None or abs(jan_house - peter_house) != 2:
+                        continue
+                    
+                    # 7. The person who smokes many unique blends is the person whose birthday is in February.
+                    blends_house = None
+                    for h in houses:
+                        if assignment[h]['cigar'] == 'blends' and assignment[h]['birthday'] == 'feb':
+                            blends_house = h
+                            break
+                    if blends_house is None:
+                        continue
+                    
+                    # 8. The person whose birthday is in February is in the second house.
+                    if assignment[2]['birthday'] != 'feb':
+                        continue
+                    
+                    # 9. Arnold is directly left of Peter.
+                    arnold_house = None
+                    for h in houses:
+                        if assignment[h]['name'] == 'Arnold':
+                            arnold_house = h
+                            break
+                    if arnold_house is None or arnold_house + 1 != peter_house:
+                        continue
+                    
+                    # 10. The person who likes milk is not in the fifth house.
+                    if assignment[5]['drink'] == 'milk':
+                        continue
+                    
+                    # 11. The person who smokes Blue Master is the coffee drinker.
+                    blue_master_house = None
+                    for h in houses:
+                        if assignment[h]['cigar'] == 'blue master' and assignment[h]['drink'] == 'coffee':
+                            blue_master_house = h
+                            break
+                    if blue_master_house is None:
+                        continue
+                    
+                    # 12. There is one house between the tea drinker and the coffee drinker.
+                    tea_house = None
+                    for h in houses:
+                        if assignment[h]['drink'] == 'tea':
+                            tea_house = h
+                            break
+                    if tea_house is None or abs(tea_house - blue_master_house) != 2:
+                        continue
+                    
+                    # 13. Eric is in the third house.
+                    if assignment[3]['name'] != 'Eric':
+                        continue
+                    
+                    # All constraints satisfied - found solution
+                    result = {
+                        "solution": {
+                            "header": ["House", "Name", "Birthday", "Cigar", "Drink"],
+                            "rows": []
+                        }
+                    }
+                    
+                    for h in houses:
+                        row = [
+                            str(h),
+                            assignment[h]['name'],
+                            assignment[h]['birthday'],
+                            assignment[h]['cigar'],
+                            assignment[h]['drink']
+                        ]
+                        result["solution"]["rows"].append(row)
+                    
+                    return result
+    
+    return None
+
+if __name__ == "__main__":
+    solution = solve()
+    if solution:
+        print(json.dumps(solution, indent=2))
+    else:
+        print(json.dumps({"error": "No solution found"}, indent=2))

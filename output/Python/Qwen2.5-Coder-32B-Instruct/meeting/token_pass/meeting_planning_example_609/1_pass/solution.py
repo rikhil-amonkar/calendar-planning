@@ -1,0 +1,86 @@
+import json
+from heapq import heappush, heappop
+from datetime import datetime, timedelta
+
+# Define travel times as a graph
+travel_times = {
+    'Chinatown': {'Mission District': 18, 'Alamo Square': 17, 'Pacific Heights': 10, 'Union Square': 7, 'Golden Gate Park': 23, 'Sunset District': 29, 'Presidio': 19},
+    'Mission District': {'Chinatown': 16, 'Alamo Square': 11, 'Pacific Heights': 16, 'Union Square': 15, 'Golden Gate Park': 17, 'Sunset District': 24, 'Presidio': 25},
+    'Alamo Square': {'Chinatown': 16, 'Mission District': 10, 'Pacific Heights': 10, 'Union Square': 14, 'Golden Gate Park': 9, 'Sunset District': 16, 'Presidio': 18},
+    'Pacific Heights': {'Chinatown': 11, 'Mission District': 15, 'Alamo Square': 10, 'Union Square': 12, 'Golden Gate Park': 15, 'Sunset District': 21, 'Presidio': 11},
+    'Union Square': {'Chinatown': 7, 'Mission District': 14, 'Alamo Square': 15, 'Pacific Heights': 15, 'Golden Gate Park': 22, 'Sunset District': 26, 'Presidio': 24},
+    'Golden Gate Park': {'Chinatown': 23, 'Mission District': 17, 'Alamo Square': 9, 'Pacific Heights': 16, 'Union Square': 22, 'Sunset District': 10, 'Presidio': 11},
+    'Sunset District': {'Chinatown': 30, 'Mission District': 24, 'Alamo Square': 17, 'Pacific Heights': 21, 'Union Square': 26, 'Golden Gate Park': 11, 'Presidio': 16},
+    'Presidio': {'Chinatown': 21, 'Mission District': 26, 'Alamo Square': 18, 'Pacific Heights': 11, 'Union Square': 22, 'Golden Gate Park': 12, 'Sunset District': 15}
+}
+
+# Define constraints as tuples (location, start_time, end_time, min_duration)
+constraints = [
+    ('Mission District', '8:00', '19:45', 45),  # David
+    ('Alamo Square', '14:00', '19:45', 120),  # Kenneth
+    ('Pacific Heights', '17:00', '20:00', 15),  # John
+    ('Union Square', '21:45', '22:45', 60),  # Charles
+    ('Golden Gate Park', '7:00', '18:15', 90),  # Deborah
+    ('Sunset District', '17:45', '21:15', 15),  # Karen
+    ('Presidio', '8:15', '9:15', 30)  # Carol
+]
+
+def parse_time(time_str):
+    return datetime.strptime(time_str, '%H:%M')
+
+def add_minutes_to_time(time_obj, minutes):
+    return time_obj + timedelta(minutes=minutes)
+
+def time_to_str(time_obj):
+    return time_obj.strftime('%H:%M')
+
+def get_feasible_meetings(current_location, current_time, constraints):
+    feasible_meetings = []
+    for loc, start, end, min_duration in constraints:
+        start_time = parse_time(start)
+        end_time = parse_time(end)
+        if current_time <= start_time:
+            travel_time = travel_times[current_location][loc]
+            arrival_time = add_minutes_to_time(current_time, travel_time)
+            if arrival_time <= start_time:
+                meeting_start = start_time
+            elif arrival_time <= end_time - timedelta(minutes=min_duration):
+                meeting_start = arrival_time
+            else:
+                continue
+            meeting_end = add_minutes_to_time(meeting_start, min_duration)
+            if meeting_end <= end_time:
+                feasible_meetings.append((loc, meeting_start, meeting_end))
+    return feasible_meetings
+
+def find_optimal_schedule():
+    start_time = parse_time('9:00')
+    initial_state = ('Chinatown', start_time, [])
+    pq = [(0, initial_state)]
+    visited = set()
+    
+    while pq:
+        _, (current_location, current_time, itinerary) = heappop(pq)
+        
+        if (current_location, time_to_str(current_time)) in visited:
+            continue
+        visited.add((current_location, time_to_str(current_time)))
+        
+        feasible_meetings = get_feasible_meetings(current_location, current_time, constraints)
+        for loc, meeting_start, meeting_end in feasible_meetings:
+            new_itinerary = itinerary + [{
+                'action': 'meet',
+                'location': loc,
+                'person': [c[0] for c in constraints if c[:2] == (loc, time_to_str(meeting_start))][0],
+                'start_time': time_to_str(meeting_start),
+                'end_time': time_to_str(meeting_end)
+            }]
+            next_location = loc
+            next_time = meeting_end
+            heappush(pq, (-len(new_itinerary), (next_location, next_time, new_itinerary)))
+    
+    return max(itinerary for _, (_, _, itinerary) in pq, key=len)
+
+optimal_itinerary = find_optimal_schedule()
+result = {'itinerary': optimal_itinerary}
+print(json.dumps(result, indent=2))

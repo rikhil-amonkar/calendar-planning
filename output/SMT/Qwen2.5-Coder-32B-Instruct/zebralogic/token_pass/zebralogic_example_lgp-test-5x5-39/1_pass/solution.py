@@ -1,0 +1,117 @@
+from z3 import *
+
+# Define the domain for each variable
+houses = [1, 2, 3, 4, 5]
+names = ["Alice", "Eric", "Bob", "Peter", "Arnold"]
+birthdays = ["mar", "april", "sept", "feb", "jan"]
+mothers = ["Holly", "Janelle", "Kailyn", "Penny", "Aniya"]
+occupations = ["engineer", "doctor", "lawyer", "artist", "teacher"]
+hair_colors = ["red", "blonde", "black", "gray", "brown"]
+
+# Create symbolic variables for each characteristic in each house
+house_vars = {}
+for house in houses:
+    house_vars[house] = {
+        "name": Int(f"name_{house}"),
+        "birthday": Int(f"birthday_{house}"),
+        "mother": Int(f"mother_{house}"),
+        "occupation": Int(f"occupation_{house}"),
+        "hair_color": Int(f"hair_color_{house}")
+    }
+
+# Create mappings for each characteristic to integers
+name_map = {name: i for i, name in enumerate(names)}
+birthday_map = {birthday: i for i, birthday in enumerate(birthdays)}
+mother_map = {mother: i for i, mother in enumerate(mothers)}
+occupation_map = {occupation: i for i, occupation in enumerate(occupations)}
+hair_color_map = {hair_color: i for i, hair_color in enumerate(hair_colors)}
+
+# Create reverse mappings for output
+reverse_name_map = {i: name for name, i in name_map.items()}
+reverse_birthday_map = {i: birthday for birthday, i in birthday_map.items()}
+reverse_mother_map = {i: mother for mother, i in mother_map.items()}
+reverse_occupation_map = {i: occupation for occupation, i in occupation_map.items()}
+reverse_hair_color_map = {i: hair_color for hair_color, i in hair_color_map.items()}
+
+# Initialize the solver
+solver = Solver()
+
+# Add constraints for each clue
+# Clue 1: The person whose birthday is in March is in the fifth house.
+solver.add(house_vars[5]["birthday"] == birthday_map["mar"])
+
+# Clue 2: The person whose birthday is in February is in the first house.
+solver.add(house_vars[1]["birthday"] == birthday_map["feb"])
+
+# Clue 3: The person who is a doctor is Eric.
+solver.add(house_vars[house]["name"] == name_map["Eric"] if house_vars[house]["occupation"] == occupation_map["doctor"] else True for house in houses)
+
+# Clue 4: The person whose mother's name is Janelle is in the third house.
+solver.add(house_vars[3]["mother"] == mother_map["Janelle"])
+
+# Clue 5: The person who is an artist is the person who has brown hair.
+solver.add(house_vars[house]["occupation"] == occupation_map["artist"] if house_vars[house]["hair_color"] == hair_color_map["brown"] else True for house in houses)
+
+# Clue 6: The person who is an artist is in the fourth house.
+solver.add(house_vars[4]["occupation"] == occupation_map["artist"])
+
+# Clue 7: The person whose mother's name is Penny is somewhere to the left of the person who has black hair.
+solver.add(Or([house_vars[i]["mother"] == mother_map["Penny"] for i in range(1, 5)] + [house_vars[j]["hair_color"] == hair_color_map["black"] for j in range(2, 6)]))
+
+# Clue 8: Peter is the person who has black hair.
+solver.add(house_vars[house]["name"] == name_map["Peter"] if house_vars[house]["hair_color"] == hair_color_map["black"] else True for house in houses)
+
+# Clue 9: The person who has gray hair is the person who is a teacher.
+solver.add(house_vars[house]["hair_color"] == hair_color_map["gray"] if house_vars[house]["occupation"] == occupation_map["teacher"] else True for house in houses)
+
+# Clue 10: Alice is The person whose mother's name is Kailyn.
+solver.add(house_vars[house]["name"] == name_map["Alice"] if house_vars[house]["mother"] == mother_map["Kailyn"] else True for house in houses)
+
+# Clue 11: Arnold is somewhere to the right of the person whose birthday is in September.
+solver.add(Or([house_vars[i]["name"] == name_map["Arnold"] for i in range(2, 6)] + [house_vars[j]["birthday"] == birthday_map["sept"] for j in range(1, 5)]))
+
+# Clue 12: The person who has brown hair is the person whose birthday is in January.
+solver.add(house_vars[house]["hair_color"] == hair_color_map["brown"] if house_vars[house]["birthday"] == birthday_map["jan"] else True for house in houses)
+
+# Clue 13: Arnold is the person who has blonde hair.
+solver.add(house_vars[house]["name"] == name_map["Arnold"] if house_vars[house]["hair_color"] == hair_color_map["blonde"] else True for house in houses)
+
+# Clue 14: The person whose mother's name is Holly is the person who has black hair.
+solver.add(house_vars[house]["mother"] == mother_map["Holly"] if house_vars[house]["hair_color"] == hair_color_map["black"] else True for house in houses)
+
+# Clue 15: Peter is the person who is a lawyer.
+solver.add(house_vars[house]["name"] == name_map["Peter"] if house_vars[house]["occupation"] == occupation_map["lawyer"] else True for house in houses)
+
+# Clue 16: The person whose birthday is in September is somewhere to the left of The person whose mother's name is Kailyn.
+solver.add(Or([house_vars[i]["birthday"] == birthday_map["sept"] for i in range(1, 5)] + [house_vars[j]["mother"] == mother_map["Kailyn"] for j in range(2, 6)]))
+
+# Clue 17: Alice is the person who has gray hair.
+solver.add(house_vars[house]["name"] == name_map["Alice"] if house_vars[house]["hair_color"] == hair_color_map["gray"] else True for house in houses)
+
+# Ensure all variables are distinct within their categories
+solver.add(Distinct([house_vars[house]["name"] for house in houses]))
+solver.add(Distinct([house_vars[house]["birthday"] for house in houses]))
+solver.add(Distinct([house_vars[house]["mother"] for house in houses]))
+solver.add(Distinct([house_vars[house]["occupation"] for house in houses]))
+solver.add(Distinct([house_vars[house]["hair_color"] for house in houses]))
+
+# Solve the problem
+if solver.check() == sat:
+    model = solver.model()
+    solution = []
+    for house in houses:
+        name = reverse_name_map[model[house_vars[house]["name"]].as_long()]
+        birthday = reverse_birthday_map[model[house_vars[house]["birthday"]].as_long()]
+        mother = reverse_mother_map[model[house_vars[house]["mother"]].as_long()]
+        occupation = reverse_occupation_map[model[house_vars[house]["occupation"]].as_long()]
+        hair_color = reverse_hair_color_map[model[house_vars[house]["hair_color"]].as_long()]
+        solution.append([str(house), name, birthday, mother, occupation, hair_color])
+    
+    print({
+        "solution": {
+            "header": ["House", "Name", "Birthday", "Mother", "Occupation", "HairColor"],
+            "rows": solution
+        }
+    })
+else:
+    print("No solution found")

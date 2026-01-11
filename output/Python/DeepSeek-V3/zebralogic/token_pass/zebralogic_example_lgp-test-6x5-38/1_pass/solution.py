@@ -1,0 +1,178 @@
+import json
+from itertools import permutations
+
+def solve():
+    # Define all possible values for each category
+    names = ["Arnold", "Carol", "Eric", "Bob", "Alice", "Peter"]
+    birthdays = ["feb", "mar", "sept", "jan", "may", "april"]
+    foods = ["stew", "soup", "grilled cheese", "stir fry", "spaghetti", "pizza"]
+    heights = ["very short", "average", "super tall", "short", "very tall", "tall"]
+    cars = ["chevrolet silverado", "ford f150", "bmw 3 series", "tesla model 3", "toyota camry", "honda civic"]
+    
+    houses = [1, 2, 3, 4, 5, 6]
+    
+    # Helper function to find index of a value in assignment list
+    def find_idx(assignment, category, value):
+        for i in range(6):
+            if assignment[category][i] == value:
+                return i + 1  # house numbers start at 1
+        return None
+    
+    # Generate all permutations for each category
+    for name_perm in permutations(names):
+        for bday_perm in permutations(birthdays):
+            for food_perm in permutations(foods):
+                for height_perm in permutations(heights):
+                    for car_perm in permutations(cars):
+                        # Create assignment dictionaries
+                        assignment = {
+                            "Name": list(name_perm),
+                            "Birthday": list(bday_perm),
+                            "Food": list(food_perm),
+                            "Height": list(height_perm),
+                            "CarModel": list(car_perm)
+                        }
+                        
+                        # Check all clues
+                        # 1. Honda Civic owner is short
+                        honda_house = find_idx(assignment, "CarModel", "honda civic")
+                        short_house = find_idx(assignment, "Height", "short")
+                        if honda_house != short_house:
+                            continue
+                        
+                        # 2. Ford F-150 is in house 5
+                        if assignment["CarModel"][4] != "ford f150":
+                            continue
+                        
+                        # 3. Stir fry is somewhere to the left of Eric
+                        stir_fry_house = find_idx(assignment, "Food", "stir fry")
+                        eric_house = find_idx(assignment, "Name", "Eric")
+                        if not (stir_fry_house < eric_house):
+                            continue
+                        
+                        # 4. May birthday is left of Carol
+                        may_house = find_idx(assignment, "Birthday", "may")
+                        carol_house = find_idx(assignment, "Name", "Carol")
+                        if not (may_house < carol_house):
+                            continue
+                        
+                        # 5. Very short is left of April birthday
+                        very_short_house = find_idx(assignment, "Height", "very short")
+                        april_house = find_idx(assignment, "Birthday", "april")
+                        if not (very_short_house < april_house):
+                            continue
+                        
+                        # 6. BMW 3 Series not in house 3
+                        if assignment["CarModel"][2] == "bmw 3 series":
+                            continue
+                        
+                        # 7. Two houses between stir fry and pizza
+                        pizza_house = find_idx(assignment, "Food", "pizza")
+                        if abs(stir_fry_house - pizza_house) != 3:
+                            continue
+                        
+                        # 8. Soup is directly left of Eric
+                        soup_house = find_idx(assignment, "Food", "soup")
+                        if soup_house != eric_house - 1:
+                            continue
+                        
+                        # 9. Spaghetti eater and May birthday are next to each other
+                        spaghetti_house = find_idx(assignment, "Food", "spaghetti")
+                        if abs(spaghetti_house - may_house) != 1:
+                            continue
+                        
+                        # 10. Alice is directly left of BMW 3 Series owner
+                        alice_house = find_idx(assignment, "Name", "Alice")
+                        bmw_house = find_idx(assignment, "CarModel", "bmw 3 series")
+                        if alice_house != bmw_house - 1:
+                            continue
+                        
+                        # 11. Tesla Model 3 is left of tall person
+                        tesla_house = find_idx(assignment, "CarModel", "tesla model 3")
+                        tall_house = find_idx(assignment, "Height", "tall")
+                        if not (tesla_house < tall_house):
+                            continue
+                        
+                        # 12. Very tall person owns Toyota Camry
+                        very_tall_house = find_idx(assignment, "Height", "very tall")
+                        camry_house = find_idx(assignment, "CarModel", "toyota camry")
+                        if very_tall_house != camry_house:
+                            continue
+                        
+                        # 13. Peter is directly left of pizza lover
+                        peter_house = find_idx(assignment, "Name", "Peter")
+                        if peter_house != pizza_house - 1:
+                            continue
+                        
+                        # 14. Stew not in house 3
+                        if assignment["Food"][2] == "stew":
+                            continue
+                        
+                        # 15. One house between September birthday and very short
+                        sept_house = find_idx(assignment, "Birthday", "sept")
+                        if abs(sept_house - very_short_house) != 2:
+                            continue
+                        
+                        # 16. One house between March birthday and super tall
+                        mar_house = find_idx(assignment, "Birthday", "mar")
+                        super_tall_house = find_idx(assignment, "Height", "super tall")
+                        if abs(mar_house - super_tall_house) != 2:
+                            continue
+                        
+                        # 17. Tall person is Bob
+                        bob_house = find_idx(assignment, "Name", "Bob")
+                        if tall_house != bob_house:
+                            continue
+                        
+                        # 18. May birthday is right of Alice
+                        if not (may_house > alice_house):
+                            continue
+                        
+                        # 19. Very short is in house 4
+                        if very_short_house != 4:
+                            continue
+                        
+                        # 20. March birthday is short person
+                        if mar_house != short_house:
+                            continue
+                        
+                        # 21. Carol owns Tesla Model 3
+                        if carol_house != tesla_house:
+                            continue
+                        
+                        # 22. Eric's birthday is January
+                        if assignment["Birthday"][eric_house - 1] != "jan":
+                            continue
+                        
+                        # All constraints satisfied - found solution
+                        # Build result
+                        rows = []
+                        for i in range(6):
+                            rows.append([
+                                str(i + 1),
+                                assignment["Name"][i],
+                                assignment["Birthday"][i],
+                                assignment["Food"][i],
+                                assignment["Height"][i],
+                                assignment["CarModel"][i]
+                            ])
+                        
+                        result = {
+                            "solution": {
+                                "header": ["House", "Name", "Birthday", "Food", "Height", "CarModel"],
+                                "rows": rows
+                            }
+                        }
+                        return result
+    
+    return None
+
+def main():
+    solution = solve()
+    if solution:
+        print(json.dumps(solution, indent=2))
+    else:
+        print(json.dumps({"error": "No solution found"}, indent=2))
+
+if __name__ == "__main__":
+    main()

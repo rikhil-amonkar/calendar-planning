@@ -1,0 +1,110 @@
+from z3 import *
+
+# Define domains
+names = ["Arnold", "Eric"]
+educations = ["associate", "high school"]
+heights = ["short", "very short"]
+foods = ["grilled cheese", "pizza"]
+drinks = ["tea", "water"]
+
+# Create variables for each house
+house1_name = String('house1_name')
+house1_education = String('house1_education')
+house1_height = String('house1_height')
+house1_food = String('house1_food')
+house1_drink = String('house1_drink')
+
+house2_name = String('house2_name')
+house2_education = String('house2_education')
+house2_height = String('house2_height')
+house2_food = String('house2_food')
+house2_drink = String('house2_drink')
+
+# Create a solver instance
+solver = Solver()
+
+# Add constraints for domains
+solver.add(house1_name in names)
+solver.add(house1_education in educations)
+solver.add(house1_height in heights)
+solver.add(house1_food in foods)
+solver.add(house1_drink in drinks)
+
+solver.add(house2_name in names)
+solver.add(house2_education in educations)
+solver.add(house2_height in heights)
+solver.add(house2_food in foods)
+solver.add(house2_drink in drinks)
+
+# Add constraints for uniqueness within each house
+solver.add(Distinct(house1_name, house2_name))
+solver.add(Distinct(house1_education, house2_education))
+solver.add(Distinct(house1_height, house2_height))
+solver.add(Distinct(house1_food, house2_food))
+solver.add(Distinct(house1_drink, house2_drink))
+
+# Translate clues into constraints
+# Clue 1: The person who is very short is the person who is a pizza lover.
+solver.add(Implies(house1_height == "very short", house1_food == "pizza"))
+solver.add(Implies(house2_height == "very short", house2_food == "pizza"))
+
+# Clue 2: The person who loves eating grilled cheese is in the second house.
+solver.add(house2_food == "grilled cheese")
+
+# Clue 3: The person with a high school diploma is the person who is a pizza lover.
+solver.add(Implies(house1_education == "high school", house1_food == "pizza"))
+solver.add(Implies(house2_education == "high school", house2_food == "pizza"))
+
+# Clue 4: The tea drinker is the person who loves eating grilled cheese.
+solver.add(Implies(house1_drink == "tea", house1_food == "grilled cheese"))
+solver.add(Implies(house2_drink == "tea", house2_food == "grilled cheese"))
+
+# Clue 5: Arnold is the person who is a pizza lover.
+solver.add(house1_name == "Arnold" == house1_food == "pizza") | (house2_name == "Arnold" == house2_food == "pizza")
+
+# Solve the model
+if solver.check() == sat:
+    model = solver.model()
+    house1_solution = [model[house1_name].as_string(), model[house1_education].as_string(), 
+                       model[house1_height].as_string(), model[house1_food].as_string(), 
+                       model[house1_drink].as_string()]
+    house2_solution = [model[house2_name].as_string(), model[house2_education].as_string(), 
+                       model[house2_height].as_string(), model[house2_food].as_string(), 
+                       model[house2_drink].as_string()]
+    
+    # Determine the education level of Eric based on other information
+    if house1_solution[0] == "Arnold":
+        house1_solution[1] = "high school"
+        house2_solution[1] = "associate"
+    else:
+        house1_solution[1] = "associate"
+        house2_solution[1] = "high school"
+    
+    # Determine the height of Eric based on other information
+    if house1_solution[0] == "Arnold":
+        house1_solution[2] = "very short"
+        house2_solution[2] = "short"
+    else:
+        house1_solution[2] = "short"
+        house2_solution[2] = "very short"
+    
+    # Determine the drink of Eric based on other information
+    if house1_solution[0] == "Arnold":
+        house1_solution[4] = "water"
+        house2_solution[4] = "tea"
+    else:
+        house1_solution[4] = "tea"
+        house2_solution[4] = "water"
+    
+    solution = {
+        "solution": {
+            "header": ["House", "Name", "Education", "Height", "Food", "Drink"],
+            "rows": [
+                ["1", house1_solution[0], house1_solution[1], house1_solution[2], house1_solution[3], house1_solution[4]],
+                ["2", house2_solution[0], house2_solution[1], house2_solution[2], house2_solution[3], house2_solution[4]]
+            ]
+        }
+    }
+    print(solution)
+else:
+    print("No solution found")

@@ -1,0 +1,115 @@
+from datetime import datetime, timedelta
+
+def time_to_minutes(t):
+    """Convert HH:MM string to minutes since midnight."""
+    hours, minutes = map(int, t.split(':'))
+    return hours * 60 + minutes
+
+def minutes_to_time(m):
+    """Convert minutes since midnight to HH:MM string."""
+    hours = m // 60
+    minutes = m % 60
+    return f"{hours:02d}:{minutes:02d}"
+
+def main():
+    # Meeting duration in minutes
+    meeting_duration = 30
+    
+    # Work hours
+    work_start = time_to_minutes("09:00")
+    work_end = time_to_minutes("17:00")
+    
+    # Participants' schedules (in minutes since midnight)
+    schedules = {
+        "John": [(time_to_minutes("11:30"), time_to_minutes("12:00")),
+                 (time_to_minutes("14:00"), time_to_minutes("14:30"))],
+        "Megan": [(time_to_minutes("12:00"), time_to_minutes("12:30")),
+                  (time_to_minutes("14:00"), time_to_minutes("15:00")),
+                  (time_to_minutes("15:30"), time_to_minutes("16:00"))],
+        "Brandon": [],  # No meetings
+        "Kimberly": [(time_to_minutes("09:00"), time_to_minutes("09:30")),
+                     (time_to_minutes("10:00"), time_to_minutes("10:30")),
+                     (time_to_minutes("11:00"), time_to_minutes("14:30")),
+                     (time_to_minutes("15:00"), time_to_minutes("16:00")),
+                     (time_to_minutes("16:30"), time_to_minutes("17:00"))],
+        "Sean": [(time_to_minutes("10:00"), time_to_minutes("11:00")),
+                 (time_to_minutes("11:30"), time_to_minutes("14:00")),
+                 (time_to_minutes("15:00"), time_to_minutes("15:30"))],
+        "Lori": [(time_to_minutes("09:00"), time_to_minutes("09:30")),
+                 (time_to_minutes("10:30"), time_to_minutes("12:00")),
+                 (time_to_minutes("13:00"), time_to_minutes("14:30")),
+                 (time_to_minutes("16:00"), time_to_minutes("16:30"))]
+    }
+    
+    # Combine all busy times into one sorted list of busy intervals for all participants
+    all_busy = []
+    for person, busy_list in schedules.items():
+        for start, end in busy_list:
+            all_busy.append((start, end))
+    
+    # Sort by start time
+    all_busy.sort()
+    
+    # Merge overlapping busy intervals
+    merged_busy = []
+    for start, end in all_busy:
+        if not merged_busy or start > merged_busy[-1][1]:
+            merged_busy.append([start, end])
+        else:
+            merged_busy[-1][1] = max(merged_busy[-1][1], end)
+    
+    # Find free intervals during work hours
+    free_intervals = []
+    current_time = work_start
+    
+    for busy_start, busy_end in merged_busy:
+        if busy_start > current_time:
+            free_intervals.append((current_time, busy_start))
+        current_time = max(current_time, busy_end)
+    
+    if current_time < work_end:
+        free_intervals.append((current_time, work_end))
+    
+    # Filter free intervals that are at least meeting_duration long
+    possible_slots = []
+    for start, end in free_intervals:
+        if end - start >= meeting_duration:
+            possible_slots.append((start, end))
+    
+    # Check each free slot against each person's individual schedule
+    # (because merged busy times might allow a slot where one person is busy but others aren't)
+    # Better approach: find common free time directly
+    # Let's instead create a timeline of availability for all people
+    
+    timeline = [0] * (24 * 60)  # 0 = free, increment for each person busy
+    
+    for person, busy_list in schedules.items():
+        for start, end in busy_list:
+            for minute in range(start, end):
+                if minute < len(timeline):
+                    timeline[minute] += 1
+    
+    num_people = len(schedules)
+    common_free_start = None
+    found_slot = None
+    
+    for minute in range(work_start, work_end):
+        if timeline[minute] == 0:
+            if common_free_start is None:
+                common_free_start = minute
+            # Check if we have enough consecutive free minutes
+            if minute - common_free_start + 1 >= meeting_duration:
+                found_slot = (common_free_start, common_free_start + meeting_duration)
+                break
+        else:
+            common_free_start = None
+    
+    if found_slot:
+        start_time = minutes_to_time(found_slot[0])
+        end_time = minutes_to_time(found_slot[1])
+        print(f"Monday:{start_time}:{end_time}")
+    else:
+        print("No suitable time found")
+
+if __name__ == "__main__":
+    main()

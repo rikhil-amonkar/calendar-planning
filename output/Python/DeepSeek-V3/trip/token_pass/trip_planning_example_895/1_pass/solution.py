@@ -1,0 +1,1 @@
+Check if there's a direct flight between two cities

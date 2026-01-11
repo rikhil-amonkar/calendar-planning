@@ -1,0 +1,97 @@
+```python
+import json
+from itertools import permutations
+
+def solve_puzzle():
+    # Define all possible values
+    names = ["Alice", "Arnold", "Peter", "Eric"]
+    hair_colors = ["black", "blonde", "brown", "red"]
+    houses = [1, 2, 3, 4]
+    
+    # Generate all possible permutations of names and hair colors for 4 houses
+    all_name_perms = list(permutations(names, 4))
+    all_hair_perms = list(permutations(hair_colors, 4))
+    
+    solutions = []
+    
+    # Try all combinations of name and hair color assignments
+    for name_perm in all_name_perms:
+        for hair_perm in all_hair_perms:
+            # Create assignment dictionaries
+            assignment = {}
+            for i in range(4):
+                house = houses[i]
+                assignment[house] = {
+                    'name': name_perm[i],
+                    'hair': hair_perm[i]
+                }
+            
+            # Check clue 5: Alice is in the first house
+            if assignment[1]['name'] != 'Alice':
+                continue
+            
+            # Check clue 4: The person who has black hair is not in the first house
+            if assignment[1]['hair'] == 'black':
+                continue
+            
+            # Check clue 3: Eric is the person who has brown hair
+            eric_house = None
+            for house in houses:
+                if assignment[house]['name'] == 'Eric':
+                    eric_house = house
+                    break
+            
+            if eric_house is None:
+                continue
+            
+            if assignment[eric_house]['hair'] != 'brown':
+                continue
+            
+            # Check clue 1: Eric is directly left of the person who has blonde hair
+            if eric_house == 4:  # Eric can't be directly left of anyone if in house 4
+                continue
+            
+            if assignment[eric_house + 1]['hair'] != 'blonde':
+                continue
+            
+            # Check clue 2: Alice and Arnold are next to each other
+            alice_house = 1  # From clue 5
+            arnold_house = None
+            for house in houses:
+                if assignment[house]['name'] == 'Arnold':
+                    arnold_house = house
+                    break
+            
+            if arnold_house is None:
+                continue
+            
+            if abs(alice_house - arnold_house) != 1:
+                continue
+            
+            # All clues satisfied, add to solutions
+            solutions.append(assignment)
+    
+    # Convert solution to required format
+    if solutions:
+        solution = solutions[0]  # Should be exactly one solution
+        rows = []
+        for house in sorted(solution.keys()):
+            rows.append([
+                str(house),
+                solution[house]['name'],
+                solution[house]['hair']
+            ])
+        
+        result = {
+            "solution": {
+                "header": ["House", "Name", "HairColor"],
+                "rows": rows
+            }
+        }
+        return json.dumps(result, indent=2)
+    else:
+        return json.dumps({"error": "No solution found"}, indent=2)
+
+if __name__ == "__main__":
+    print(solve_puzzle())
+```

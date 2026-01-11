@@ -1,0 +1,142 @@
+Let’s break this down step-by-step before writing the code.  
+
+We have:  
+- **Meeting duration**: 30 minutes  
+- **Work hours**: 9:00 to 17:00  
+- **Day**: Monday  
+- **Participants**: Ronald, Stephen, Brittany, Dorothy, Rebecca, Jordan  
+- Each person’s blocked times are given.  
+
+We need to find a 30-minute slot where **all 6 people are free** within 9:00–17:00.  
+
+---
+
+### Step 1: Interpret blocked times
+Blocked times mean they are busy in those intervals.  
+We can convert each person’s schedule into a list of busy intervals in minutes from 9:00 as 0.
+
+Example:  
+- 9:00 → 0 minutes  
+- 9:30 → 30 minutes  
+- 10:00 → 60 minutes  
+- 17:00 → 480 minutes (8 hours from 9:00)  
+
+---
+
+### Step 2: Combine busy times
+We can merge busy intervals for each person, then find the union of all people’s busy times.  
+A time is free for everyone if it’s not in **any** person’s busy interval.
+
+---
+
+### Step 3: Find free slots
+After combining all busy intervals, find gaps of at least 30 minutes.
+
+---
+
+### Step 4: Choose earliest slot
+The problem says there exists a solution, so we pick the earliest.
+
+---
+
+Here’s the Python script:
+
+```python
+from datetime import datetime, timedelta
+
+def time_to_minutes(t):
+    """Convert HH:MM to minutes from 9:00."""
+    h, m = map(int, t.split(':'))
+    return (h - 9) * 60 + m
+
+def minutes_to_time(m):
+    """Convert minutes from 9:00 back to HH:MM."""
+    total_minutes = 9 * 60 + m
+    h = total_minutes // 60
+    m = total_minutes % 60
+    return f"{h:02d}:{m:02d}"
+
+def main():
+    # Work hours in minutes from 9:00
+    work_start = 0  # 9:00
+    work_end = 8 * 60  # 17:00 is 8 hours after 9:00 = 480 minutes
+    
+    # Each person's busy intervals in minutes from 9:00
+    # Format: list of (start_minute, end_minute)
+    
+    # Ronald: wide open → no busy intervals
+    ronald = []
+    
+    # Stephen: 10:00-10:30, 12:00-12:30
+    stephen = [(time_to_minutes('10:00'), time_to_minutes('10:30')),
+               (time_to_minutes('12:00'), time_to_minutes('12:30'))]
+    
+    # Brittany: 11:00-11:30, 13:30-14:00, 15:30-16:00, 16:30-17:00
+    brittany = [(time_to_minutes('11:00'), time_to_minutes('11:30')),
+                (time_to_minutes('13:30'), time_to_minutes('14:00')),
+                (time_to_minutes('15:30'), time_to_minutes('16:00')),
+                (time_to_minutes('16:30'), time_to_minutes('17:00'))]
+    
+    # Dorothy: 9:00-9:30, 10:00-10:30, 11:00-12:30, 13:00-15:00, 15:30-17:00
+    dorothy = [(time_to_minutes('9:00'), time_to_minutes('9:30')),
+               (time_to_minutes('10:00'), time_to_minutes('10:30')),
+               (time_to_minutes('11:00'), time_to_minutes('12:30')),
+               (time_to_minutes('13:00'), time_to_minutes('15:00')),
+               (time_to_minutes('15:30'), time_to_minutes('17:00'))]
+    
+    # Rebecca: 9:30-10:30, 11:00-11:30, 12:00-12:30, 13:00-17:00
+    rebecca = [(time_to_minutes('9:30'), time_to_minutes('10:30')),
+               (time_to_minutes('11:00'), time_to_minutes('11:30')),
+               (time_to_minutes('12:00'), time_to_minutes('12:30')),
+               (time_to_minutes('13:00'), time_to_minutes('17:00'))]
+    
+    # Jordan: 9:00-9:30, 10:00-11:00, 11:30-12:00, 13:00-15:00, 15:30-16:30
+    jordan = [(time_to_minutes('9:00'), time_to_minutes('9:30')),
+              (time_to_minutes('10:00'), time_to_minutes('11:00')),
+              (time_to_minutes('11:30'), time_to_minutes('12:00')),
+              (time_to_minutes('13:00'), time_to_minutes('15:00')),
+              (time_to_minutes('15:30'), time_to_minutes('16:30'))]
+    
+    # Combine all busy intervals
+    all_busy = ronald + stephen + brittany + dorothy + rebecca + jordan
+    
+    # Sort by start time
+    all_busy.sort()
+    
+    # Merge intervals
+    merged = []
+    for start, end in all_busy:
+        if not merged or merged[-1][1] < start:
+            merged.append([start, end])
+        else:
+            merged[-1][1] = max(merged[-1][1], end)
+    
+    # Find free slots within work hours
+    free_slots = []
+    prev_end = work_start
+    for start, end in merged:
+        if start > prev_end:
+            free_slots.append((prev_end, start))
+        prev_end = max(prev_end, end)
+    if prev_end < work_end:
+        free_slots.append((prev_end, work_end))
+    
+    # Filter slots with at least 30 minutes
+    meeting_duration = 30
+    suitable_slots = []
+    for start, end in free_slots:
+        if end - start >= meeting_duration:
+            suitable_slots.append((start, end))
+    
+    # Pick earliest slot
+    if suitable_slots:
+        start_min, end_min = suitable_slots[0]
+        meeting_start = minutes_to_time(start_min)
+        meeting_end = minutes_to_time(start_min + meeting_duration)
+        print(f"Monday:{meeting_start}:{meeting_end}")
+    else:
+        print("No suitable slot found")
+
+if __name__ == "__main__":
+    main()
+```

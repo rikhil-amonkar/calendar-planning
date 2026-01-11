@@ -1,0 +1,104 @@
+<reasoning>
+To solve this Zebra logic puzzle programmatically, we need to represent the constraints and systematically eliminate possibilities until we find a consistent solution. Here’s a step-by-step approach:
+
+1. **Define Data Structures**: We will use lists to represent the five houses and dictionaries to map each characteristic to its possible values.
+
+2. **Initialize Constraints**: Encode the given clues into logical constraints that can be applied iteratively.
+
+3. **Elimination Process**: Use the constraints to eliminate impossible combinations. For example, if we know someone is in a specific house, we can remove that person from other houses.
+
+4. **Iterative Solving**: Apply constraints repeatedly until all positions are uniquely determined.
+
+5. **Output the Solution**: Once the solution is found, format it as a JSON object according to the specified structure.
+
+Let’s break down the constraints and see how they can be encoded:
+
+- **Clue 1**: Eric drinks root beer.
+- **Clue 2**: Pall Mall is smoked in the third house.
+- **Clue 3**: Bob’s birthday is in April.
+- **Clue 4**: Dunhill is smoked by the person whose birthday is in March.
+- **Clue 5**: Peter is to the right of the root beer lover.
+- **Clue 6**: There is one house between the person whose birthday is in January and Peter.
+- **Clue 7**: Blends are smoked by the person whose birthday is in February.
+- **Clue 8**: The person whose birthday is in February is in the second house.
+- **Clue 9**: Arnold is directly left of Peter.
+- **Clue 10**: The milk drinker is not in the fifth house.
+- **Clue 11**: The Blue Master smoker drinks coffee.
+- **Clue 12**: There is one house between the tea drinker and the coffee drinker.
+- **Clue 13**: Eric is in the third house.
+
+We will implement these constraints in our program.
+</reasoning>
+
+```python
+import itertools
+import json
+
+# Define the characteristics and their possible values
+names = ["Peter", "Alice", "Eric", "Bob", "Arnold"]
+birthdays = ["april", "feb", "mar", "jan", "sept"]
+cigars = ["pall mall", "prince", "dunhill", "blends", "blue master"]
+drinks = ["water", "coffee", "tea", "milk", "root beer"]
+
+# Generate all possible permutations for the houses
+permutations = list(itertools.permutations(range(5)))
+
+# Function to check if a permutation satisfies all the clues
+def is_valid_solution(house_names, house_birthdays, house_cigars, house_drinks):
+    # Create mappings for easier checking
+    name_to_house = {name: i for i, name in enumerate(house_names)}
+    birthday_to_house = {birthday: i for i, birthday in enumerate(house_birthdays)}
+    cigar_to_house = {cigar: i for i, cigar in enumerate(house_cigars)}
+    drink_to_house = {drink: i for i, drink in enumerate(house_drinks)}
+
+    # Check each clue
+    if name_to_house["Eric"] != drink_to_house["root beer"]:
+        return False
+    if cigar_to_house["pall mall"] != 2:
+        return False
+    if name_to_house["Bob"] != birthday_to_house["april"]:
+        return False
+    if cigar_to_house["dunhill"] != birthday_to_house["mar"]:
+        return False
+    if name_to_house["Peter"] <= name_to_house["Eric"]:
+        return False
+    if abs(name_to_house["Peter"] - birthday_to_house["jan"]) != 1:
+        return False
+    if cigar_to_house["blends"] != birthday_to_house["feb"]:
+        return False
+    if birthday_to_house["feb"] != 1:
+        return False
+    if name_to_house["Arnold"] + 1 != name_to_house["Peter"]:
+        return False
+    if drink_to_house["milk"] == 4:
+        return False
+    if cigar_to_house["blue master"] != drink_to_house["coffee"]:
+        return False
+    if abs(drink_to_house["tea"] - drink_to_house["coffee"]) != 1:
+        return False
+    if name_to_house["Eric"] != 2:
+        return False
+    
+    return True
+
+# Iterate through all permutations to find a valid solution
+for house_names in permutations:
+    for house_birthdays in permutations:
+        for house_cigars in permutations:
+            for house_drinks in permutations:
+                if is_valid_solution(house_names, house_birthdays, house_cigars, house_drinks):
+                    # Format the solution as JSON
+                    solution = {
+                        "solution": {
+                            "header": ["House", "Name", "Birthday", "Cigar", "Drink"],
+                            "rows": [
+                                [str(i+1), house_names[i], house_birthdays[i], house_cigars[i], house_drinks[i]]
+                                for i in range(5)
+                            ]
+                        }
+                    }
+                    print(json.dumps(solution, indent=2))
+                    exit()
+```
+
+This program generates all possible permutations of the characteristics for the five houses and checks each permutation against the given clues. When it finds a valid solution, it formats it as JSON and prints it. The `exit()` call ensures that only the first valid solution is printed.

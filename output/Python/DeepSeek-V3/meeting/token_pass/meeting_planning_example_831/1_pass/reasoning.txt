@@ -1,0 +1,58 @@
+Let’s break this down step-by-step before writing the code.
+
+**Step 1 – Understanding the problem**  
+We start at Presidio at 9:00 AM.  
+We have 9 friends, each with:
+- A location
+- An availability window (start–end)
+- A minimum desired meeting duration
+- Travel times between all locations (including Presidio)
+
+Goal: Maximize the number of friends met, respecting:
+1. Travel time between meetings
+2. Each friend’s availability window
+3. Minimum meeting duration for each friend
+4. Time of day constraints (can’t meet outside their window)
+
+**Step 2 – Observations**  
+- Some friends have very short windows (Melissa: 5:45–6:15 PM, only 30 min, needs 15 min).
+- Some have long windows (Richard: 9:30 AM–9:00 PM, needs only 15 min).
+- Travel times are asymmetric (e.g., Presidio to Fisherman’s Wharf ≠ return).
+- We can meet friends in any order, but must start from Presidio at 9:00.
+
+**Step 3 – Approach**  
+We can treat this as a **search problem**:
+- State: current location, current time, set of friends already met.
+- At each step, try to meet a friend not yet met:
+  1. Travel from current location to friend’s location.
+  2. Arrive at friend’s location at `arrival_time`.
+  3. Adjust start of meeting to earliest possible:  
+     `max(arrival_time, friend_window_start)`.
+  4. If that start time + min_duration ≤ friend_window_end, meeting is possible.
+  5. New time after meeting = start + min_duration.
+  6. Add friend to met list, update location.
+- Since number of friends is small (9), we can brute-force permutations (9! is large but we can prune early by time constraints).
+- We want to maximize **number met**, not total duration.
+- If tie in number met, maybe maximize total time with friends or minimize idle time — but problem says “meet as many friends as possible” so count is primary.
+
+**Step 4 – Simplifying for computation**  
+We can:
+1. Convert all times to minutes since midnight.
+2. Precompute travel time matrix (location name → index).
+3. Use recursive backtracking to try all permutations, pruning when remaining friends can’t fit.
+4. Keep track of best solution (most friends met, then maybe earliest finish).
+
+**Step 5 – Constraints check**  
+Some friends have very tight schedules relative to travel. We must ensure we don’t double-book time.
+
+**Step 6 – Implementation plan**  
+- Represent each friend as dict with name, location, window_start, window_end, min_duration.
+- Start state: location = "Presidio", time = 9:00 (540 minutes).
+- Try all permutations of friends (or search with branch and bound).
+- Output itinerary in required JSON format.
+
+Given the complexity, I’ll implement a depth-first search with pruning.
+
+---
+
+Here’s the Python program:

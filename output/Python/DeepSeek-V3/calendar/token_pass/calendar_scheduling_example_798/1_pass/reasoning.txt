@@ -1,0 +1,93 @@
+Let’s break this down step by step before writing the code.  
+
+We have:  
+
+**Participants:** Nancy and Jose  
+**Meeting duration:** 30 minutes  
+**Work hours:** 9:00–17:00 each day  
+**Days considered:** Monday, Tuesday, Wednesday  
+**Goal:** Earliest available slot  
+
+---
+
+### Step 1 – Understanding busy times
+We’ll convert each person’s busy blocks into a list of (start, end) times in minutes from 9:00 = 0.  
+Work hours: 9:00–17:00 → 0 to 480 minutes.
+
+---
+
+### Step 2 – Nancy’s busy times (in minutes from 9:00)
+**Monday:**  
+- 10:00–10:30 → 60–90  
+- 11:30–12:30 → 150–210  
+- 13:30–14:00 → 270–300  
+- 14:30–15:30 → 330–390  
+- 16:00–17:00 → 420–480  
+
+**Tuesday:**  
+- 9:30–10:30 → 30–90  
+- 11:00–11:30 → 120–150  
+- 12:00–12:30 → 180–210  
+- 13:00–13:30 → 240–270  
+- 15:30–16:00 → 390–420  
+
+**Wednesday:**  
+- 10:00–11:30 → 60–150  
+- 13:30–16:00 → 270–420  
+
+---
+
+### Step 3 – Jose’s busy times
+**Monday:**  
+- 9:00–17:00 → 0–480 (entire day busy)  
+
+**Tuesday:**  
+- 9:00–17:00 → 0–480 (entire day busy)  
+
+**Wednesday:**  
+- 9:00–9:30 → 0–30  
+- 10:00–12:30 → 60–210  
+- 13:30–14:30 → 270–330  
+- 15:00–17:00 → 360–480  
+
+---
+
+### Step 4 – Finding free slots
+Since Monday and Tuesday are completely busy for Jose, the only possible day is Wednesday.
+
+**Wednesday free intervals (intersection of both free times):**  
+Nancy busy: (60–150), (270–420)  
+Jose busy: (0–30), (60–210), (270–330), (360–480)  
+
+Combine busy times for Wednesday:  
+(0–30), (60–150), (150–210) — note: 150 is end of Nancy’s first block and start of Jose’s second block? Wait, check:  
+Nancy: 60–150, Jose: 60–210 → so 60–210 is busy for both (union).  
+Then Nancy: 270–420, Jose: 270–330 and 360–480 → union: 270–480.  
+
+So total busy for both on Wednesday:  
+(0–30), (60–210), (270–480)  
+
+---
+
+### Step 5 – Free slots on Wednesday
+Work day: 0–480  
+Busy: (0–30), (60–210), (270–480)  
+
+Free:  
+1. 30–60 (9:30–10:00) → 30 minutes → fits meeting (30 min)  
+2. 210–270 (13:30–16:00? Wait no, 210 minutes from 9:00 = 12:30, 270 minutes = 13:30) → so 12:30–13:30 → 60 minutes free.  
+
+Earliest is 9:30–10:00.  
+
+---
+
+### Step 6 – Check if any earlier on Monday/Tuesday
+Monday: Jose busy all day → no.  
+Tuesday: Jose busy all day → no.  
+
+So earliest is Wednesday 9:30–10:00.  
+
+---
+
+### Step 7 – Write Python code to compute this
+We’ll write a general approach to verify.

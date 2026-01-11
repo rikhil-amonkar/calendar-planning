@@ -1,0 +1,23 @@
+Let's break this down step-by-step before writing the code.
+
+**Step 1 — Understand constraints**  
+- Meeting duration: 1 hour  
+- Work hours: 9:00–17:00 (so earliest start 9:00, latest end 17:00)  
+- Days considered: Mon, Tue, Wed, Thu  
+- Carl’s preference: Avoid more meetings on Thursday if possible (so try Mon–Wed first).  
+
+**Step 2 — Parse busy times**  
+We’ll convert each busy block into (day, start_minute, end_minute) format, where minutes from 0 = 9:00 (i.e., 9:00 = 0, 10:00 = 60, etc., up to 17:00 = 480 minutes from 9:00).  
+
+**Step 3 — Find free slots**  
+For each day, for each participant, mark busy times. Then intersect free times for both participants. Find a 60-minute slot within work hours.  
+
+**Step 4 — Respect preference**  
+Try Mon, Tue, Wed first; only try Thu if no earlier slot exists.  
+
+**Step 5 — Output format**  
+Day of week and time range as HH:MM:HH:MM (e.g., 14:30:15:30).  
+
+---
+
+Here’s the Python implementation:

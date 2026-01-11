@@ -1,0 +1,104 @@
+Let's break this down step by step.  
+
+We have:  
+- **Participants**: Daniel, Kathleen, Carolyn, Roger, Cheryl, Virginia, Angela  
+- **Day**: Monday  
+- **Work hours**: 9:00–17:00  
+- **Meeting duration**: 30 minutes  
+- **Roger’s preference**: Not before 12:30  
+- **Given busy times** (in HH:MM format, Monday only):  
+
+1. Daniel → free all day  
+2. Kathleen → 14:30–15:30  
+3. Carolyn → 12:00–12:30, 13:00–13:30  
+4. Roger → free all day (but prefers not before 12:30)  
+5. Cheryl → 9:00–9:30, 10:00–11:30, 12:30–13:30, 14:00–17:00  
+6. Virginia → 9:30–11:30, 12:00–12:30, 13:00–13:30, 14:30–15:30, 16:00–17:00  
+7. Angela → 9:30–10:00, 10:30–11:30, 12:00–12:30, 13:00–13:30, 14:00–16:30  
+
+---
+
+We need to find a **30-minute slot** between 9:00–17:00 where **all 7 are free** and **Roger’s preference** is satisfied (start ≥ 12:30).  
+
+---
+
+### Step 1 – Convert times to minutes from 9:00
+Let’s define 9:00 as minute 0, 17:00 as minute 480.  
+
+Busy times in minutes from 9:00:  
+
+- Kathleen: 14:30–15:30 → (330, 390)  
+- Carolyn: 12:00–12:30 → (180, 210), 13:00–13:30 → (240, 270)  
+- Cheryl:  
+  9:00–9:30 → (0, 30)  
+  10:00–11:30 → (60, 150)  
+  12:30–13:30 → (210, 270)  
+  14:00–17:00 → (300, 480)  
+
+- Virginia:  
+  9:30–11:30 → (30, 150)  
+  12:00–12:30 → (180, 210)  
+  13:00–13:30 → (240, 270)  
+  14:30–15:30 → (330, 390)  
+  16:00–17:00 → (420, 480)  
+
+- Angela:  
+  9:30–10:00 → (30, 60)  
+  10:30–11:30 → (90, 150)  
+  12:00–12:30 → (180, 210)  
+  13:00–13:30 → (240, 270)  
+  14:00–16:30 → (300, 450)  
+
+---
+
+### Step 2 – Find free intervals for each person
+We can instead find **busy union** for all, then invert within 0–480.  
+
+But easier: check candidate slots starting every 30 minutes from 12:30 onward (due to Roger’s preference).  
+
+Candidates: 12:30, 13:00, 13:30, 14:00, 14:30, 15:00, 15:30, 16:00, 16:30 (end by 17:00).  
+
+---
+
+**Check 12:30–13:00** (210–240):  
+- Carolyn free? Yes (busy 180–210, 240–270) → OK  
+- Cheryl busy 210–270 → NO.  
+
+**Check 13:30–14:00** (270–300):  
+- Carolyn free? Yes (busy ends 270) → OK  
+- Cheryl busy until 300? Yes (210–270 busy, then 300–480 busy, but 270–300 free? Wait, Cheryl’s busy: 210–270 and 300–480, so 270–300 free) → OK  
+- Virginia free? Busy 240–270, 330–390, so 270–330 free → OK  
+- Angela free? Busy 240–270, 300–450, so 270–300 free → OK  
+- Kathleen free? Busy 330–390, so 270–330 free → OK  
+- Roger free all day, Daniel free all day.  
+
+So **13:30–14:00** works for everyone.  
+
+---
+
+### Step 3 – Verify no conflicts
+Let’s list each person’s busy at that time (270–300):  
+
+- Daniel: none  
+- Kathleen: none  
+- Carolyn: none  
+- Roger: none  
+- Cheryl: none (busy 210–270 ends at 270, next busy 300)  
+- Virginia: none  
+- Angela: none (busy 240–270 ends at 270, next busy 300)  
+
+All free.  
+
+---
+
+### Step 4 – Convert back to HH:MM
+Start = 270 minutes after 9:00 = 9:00 + 4h30 = 13:30  
+End = 13:30 + 0:30 = 14:00  
+
+---
+
+**Final slot**: Monday 13:30–14:00  
+
+---
+
+Here’s the Python script to compute this:

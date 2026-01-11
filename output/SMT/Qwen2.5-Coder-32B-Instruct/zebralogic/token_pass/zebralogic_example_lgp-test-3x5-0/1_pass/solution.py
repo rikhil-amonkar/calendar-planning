@@ -1,0 +1,84 @@
+from z3 import *
+
+# Define variables for each characteristic for each house
+names = [String(f"name_{i}") for i in range(1, 4)]
+book_genres = [String(f"book_genre_{i}") for i in range(1, 4)]
+smoothies = [String(f"smoothie_{i}") for i in range(1, 4)]
+birthdays = [String(f"birthday_{i}") for i in range(1, 4)]
+heights = [String(f"height_{i}") for i in range(1, 4)]
+
+# Define domains
+people = ["Peter", "Arnold", "Eric"]
+genres = ["science fiction", "mystery", "romance"]
+smoothie_options = ["watermelon", "desert", "cherry"]
+birthday_months = ["april", "jan", "sept"]
+height_options = ["average", "very short", "short"]
+
+# Create solver instance
+solver = Solver()
+
+# Add domain constraints
+for i in range(3):
+    solver.add(names[i] == Or(*[StringVal(person) for person in people]))
+    solver.add(book_genres[i] == Or(*[StringVal(genre) for genre in genres]))
+    solver.add(smoothies[i] == Or(*[StringVal(smoothie) for smoothie in smoothie_options]))
+    solver.add(birthdays[i] == Or(*[StringVal(month) for month in birthday_months]))
+    solver.add(heights[i] == Or(*[StringVal(height) for height in height_options]))
+
+# Uniqueness constraints
+solver.add(Distinct(names))
+solver.add(Distinct(book_genres))
+solver.add(Distinct(smoothies))
+solver.add(Distinct(birthdays))
+solver.add(Distinct(heights))
+
+# Apply clues as constraints
+# Clue 1: Cherry smoothie not in the second house.
+solver.add(smoothies[1] != StringVal("cherry"))
+
+# Clue 2: Arnold is the person who loves mystery books.
+solver.add(And(names[i] == StringVal("Arnold"), book_genres[i] == StringVal("mystery")) for i in range(3))
+
+# Clue 3: The person whose birthday is in January is not in the first house.
+solver.add(birthdays[0] != StringVal("jan"))
+
+# Clue 4: The person who is very short is the person who loves romance books.
+solver.add(And(heights[i] == StringVal("very short"), book_genres[i] == StringVal("romance")) for i in range(3))
+
+# Clue 5: The person who loves mystery books is the person whose birthday is in September.
+solver.add(And(book_genres[i] == StringVal("mystery"), birthdays[i] == StringVal("sept")) for i in range(3))
+
+# Clue 6: The person who has an average height is the Desert smoothie lover.
+solver.add(And(heights[i] == StringVal("average"), smoothies[i] == StringVal("desert")) for i in range(3))
+
+# Clue 7: Eric is in the first house.
+solver.add(names[0] == StringVal("Eric"))
+
+# Clue 8: The Watermelon smoothie lover is the person who is short.
+solver.add(And(smoothies[i] == StringVal("watermelon"), heights[i] == StringVal("short")) for i in range(3))
+
+# Clue 9: The Watermelon smoothie lover is Eric.
+solver.add(And(smoothies[i] == StringVal("watermelon"), names[i] == StringVal("Eric")) for i in range(3))
+
+# Solve the problem
+if solver.check() == sat:
+    model = solver.model()
+    solution = {
+        "solution": {
+            "header": ["House", "Name", "BookGenre", "Smoothie", "Birthday", "Height"],
+            "rows": []
+        }
+    }
+    for i in range(3):
+        house_info = [
+            str(i + 1),
+            model[names[i]].as_string(),
+            model[book_genres[i]].as_string(),
+            model[smoothies[i]].as_string(),
+            model[birthdays[i]].as_string(),
+            model[heights[i]].as_string()
+        ]
+        solution["solution"]["rows"].append(house_info)
+    print(solution)
+else:
+    print("No solution found")

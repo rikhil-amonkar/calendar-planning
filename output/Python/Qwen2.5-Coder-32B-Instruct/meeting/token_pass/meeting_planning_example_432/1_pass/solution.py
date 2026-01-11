@@ -1,0 +1,106 @@
+import heapq
+from datetime import datetime, timedelta
+
+# Define travel times
+travel_times = {
+    ('Golden Gate Park', 'Fisherman\'s Wharf'): 24,
+    ('Golden Gate Park', 'Bayview'): 23,
+    ('Golden Gate Park', 'Mission District'): 17,
+    ('Golden Gate Park', 'Embarcadero'): 25,
+    ('Golden Gate Park', 'Financial District'): 26,
+    ('Fisherman\'s Wharf', 'Golden Gate Park'): 25,
+    ('Fisherman\'s Wharf', 'Bayview'): 26,
+    ('Fisherman\'s Wharf', 'Mission District'): 22,
+    ('Fisherman\'s Wharf', 'Embarcadero'): 8,
+    ('Fisherman\'s Wharf', 'Financial District'): 11,
+    ('Bayview', 'Golden Gate Park'): 22,
+    ('Bayview', 'Fisherman\'s Wharf'): 25,
+    ('Bayview', 'Mission District'): 13,
+    ('Bayview', 'Embarcadero'): 19,
+    ('Bayview', 'Financial District'): 19,
+    ('Mission District', 'Golden Gate Park'): 17,
+    ('Mission District', 'Fisherman\'s Wharf'): 22,
+    ('Mission District', 'Bayview'): 15,
+    ('Mission District', 'Embarcadero'): 19,
+    ('Mission District', 'Financial District'): 17,
+    ('Embarcadero', 'Golden Gate Park'): 25,
+    ('Embarcadero', 'Fisherman\'s Wharf'): 6,
+    ('Embarcadero', 'Bayview'): 21,
+    ('Embarcadero', 'Mission District'): 20,
+    ('Embarcadero', 'Financial District'): 5,
+    ('Financial District', 'Golden Gate Park'): 23,
+    ('Financial District', 'Fisherman\'s Wharf'): 10,
+    ('Financial District', 'Bayview'): 19,
+    ('Financial District', 'Mission District'): 17,
+    ('Financial District', 'Embarcadero'): 4,
+}
+
+# Define meetings and their constraints
+meetings = {
+    'Joseph': {'location': 'Fisherman\'s Wharf', 'start': '8:00', 'end': '17:30', 'duration': 90},
+    'Jeffrey': {'location': 'Bayview', 'start': '17:30', 'end': '21:30', 'duration': 60},
+    'Kevin': {'location': 'Mission District', 'start': '11:15', 'end': '15:15', 'duration': 30},
+    'David': {'location': 'Embarcadero', 'start': '8:15', 'end': '9:00', 'duration': 30},
+    'Barbara': {'location': 'Financial District', 'start': '10:30', 'end': '16:30', 'duration': 15},
+}
+
+def parse_time(time_str):
+    return datetime.strptime(time_str, '%H:%M')
+
+def time_to_minutes(time):
+    return time.hour * 60 + time.minute
+
+def minutes_to_time(minutes):
+    hours = minutes // 60
+    minutes = minutes % 60
+    return f"{hours}:{minutes}"
+
+def find_optimal_schedule():
+    start_time = parse_time('9:00')
+    current_time = start_time
+    current_location = 'Golden Gate Park'
+    itinerary = []
+
+    # Priority queue to store potential schedules
+    pq = []
+    heapq.heappush(pq, (-0, current_time, current_location, itinerary))
+
+    while pq:
+        _, current_time, current_location, itinerary = heapq.heappop(pq)
+        
+        # Check if we can meet anyone
+        for person, details in meetings.items():
+            if any(person == m['person'] for m in itinerary):  # Skip if already met
+                continue
+            
+            meeting_start = parse_time(details['start'])
+            meeting_end = parse_time(details['end'])
+            required_duration = details['duration']
+            meeting_location = details['location']
+            
+            # Calculate travel time
+            travel_time = travel_times.get((current_location, meeting_location), float('inf'))
+            
+            # Calculate meeting start and end times
+            proposed_meeting_start = max(current_time + timedelta(minutes=travel_time), meeting_start)
+            proposed_meeting_end = proposed_meeting_start + timedelta(minutes=required_duration)
+            
+            # Check if meeting fits within constraints
+            if proposed_meeting_end <= meeting_end:
+                new_itinerary = itinerary + [{
+                    'action': 'meet',
+                    'location': meeting_location,
+                    'person': person,
+                    'start_time': minutes_to_time(time_to_minutes(proposed_meeting_start)),
+                    'end_time': minutes_to_time(time_to_minutes(proposed_meeting_end))
+                }]
+                
+                # Push new schedule to the priority queue
+                heapq.heappush(pq, (-len(new_itinerary), proposed_meeting_end, meeting_location, new_itinerary))
+    
+    # Return the best itinerary found
+    return {"itinerary": itinerary}
+
+# Find and print the optimal schedule
+optimal_schedule = find_optimal_schedule()
+print(optimal_schedule)

@@ -1,0 +1,103 @@
+import json
+from itertools import permutations
+
+def solve():
+    # Define all possible values
+    names = ["Arnold", "Peter", "Eric", "Alice", "Bob"]
+    hobbies = ["painting", "cooking", "knitting", "gardening", "photography"]
+    heights = ["very tall", "tall", "very short", "average", "short"]
+    foods = ["stew", "grilled cheese", "stir fry", "spaghetti", "pizza"]
+    
+    houses = [1, 2, 3, 4, 5]
+    
+    # Generate all permutations for each category
+    for name_perm in permutations(names, 5):
+        # Clue 3: Peter is not in the second house
+        if name_perm[1] == "Peter":
+            continue
+        # Clue 8: Eric is not in the fifth house
+        if name_perm[4] == "Eric":
+            continue
+        
+        for hobby_perm in permutations(hobbies, 5):
+            # Clue 1: Bob is the photography enthusiast
+            bob_index = name_perm.index("Bob")
+            if hobby_perm[bob_index] != "photography":
+                continue
+            
+            for height_perm in permutations(heights, 5):
+                # Clue 12: The person who is very short is in the fifth house
+                if height_perm[4] != "very short":
+                    continue
+                # Clue 13: The person who is tall is in the third house
+                if height_perm[2] != "tall":
+                    continue
+                # Clue 9: The person who is short is Peter
+                peter_index = name_perm.index("Peter")
+                if height_perm[peter_index] != "short":
+                    continue
+                # Clue 5: The person who loves cooking is the person who has an average height
+                cooking_index = hobby_perm.index("cooking")
+                if height_perm[cooking_index] != "average":
+                    continue
+                
+                for food_perm in permutations(foods, 5):
+                    # Clue 2: The person who loves eating grilled cheese is the person who is tall
+                    grilled_cheese_index = food_perm.index("grilled cheese")
+                    if height_perm[grilled_cheese_index] != "tall":
+                        continue
+                    
+                    # Clue 4: The person who is tall is directly left of the person who loves stir fry
+                    tall_index = height_perm.index("tall")
+                    if tall_index == 4 or food_perm[tall_index + 1] != "stir fry":
+                        continue
+                    
+                    # Clue 6: Alice is directly left of the person who is a pizza lover
+                    alice_index = name_perm.index("Alice")
+                    if alice_index == 4 or food_perm[alice_index + 1] != "pizza":
+                        continue
+                    
+                    # Clue 7: The person who loves the spaghetti eater is not in the second house
+                    spaghetti_index = food_perm.index("spaghetti")
+                    if spaghetti_index == 1:
+                        continue
+                    
+                    # Clue 10: The person who has an average height and the person who enjoys gardening are next to each other
+                    average_index = height_perm.index("average")
+                    gardening_index = hobby_perm.index("gardening")
+                    if abs(average_index - gardening_index) != 1:
+                        continue
+                    
+                    # Clue 11: The person who paints as a hobby is directly left of the person who loves eating grilled cheese
+                    painting_index = hobby_perm.index("painting")
+                    if painting_index == 4 or food_perm[painting_index + 1] != "grilled cheese":
+                        continue
+                    
+                    # Clue 14: Alice is somewhere to the right of the photography enthusiast
+                    photography_index = hobby_perm.index("photography")
+                    if alice_index <= photography_index:
+                        continue
+                    
+                    # All constraints satisfied - build solution
+                    solution_rows = []
+                    for i in range(5):
+                        solution_rows.append([
+                            str(i + 1),
+                            name_perm[i],
+                            hobby_perm[i],
+                            height_perm[i],
+                            food_perm[i]
+                        ])
+                    
+                    return {
+                        "solution": {
+                            "header": ["House", "Name", "Hobby", "Height", "Food"],
+                            "rows": solution_rows
+                        }
+                    }
+    
+    return {"solution": {"header": [], "rows": []}}
+
+if __name__ == "__main__":
+    result = solve()
+    print(json.dumps(result, indent=2))

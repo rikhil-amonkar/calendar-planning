@@ -1,0 +1,92 @@
+Let’s break this down step by step before writing the code.  
+
+We have:  
+
+**Participants:** Nicole and Ruth  
+**Meeting duration:** 30 minutes  
+**Work hours:** 9:00–17:00 each day  
+**Days considered:** Monday, Tuesday, Wednesday  
+
+**Constraints:**  
+- Nicole’s busy times:  
+  - Monday: 9:00–9:30, 13:00–13:30, 14:30–15:30  
+  - Tuesday: 9:00–9:30, 11:30–13:30, 14:30–15:30  
+  - Wednesday: 10:00–11:00, 12:30–15:00, 16:00–17:00  
+
+- Ruth’s busy times:  
+  - Monday: 9:00–17:00 (entire day) → no availability Monday  
+  - Tuesday: 9:00–17:00 (entire day) → no availability Tuesday  
+  - Wednesday: 9:00–10:30, 11:00–11:30, 12:00–12:30, 13:30–15:30, 16:00–16:30  
+
+- Ruth does **not** want to meet on Wednesday after 13:30.  
+  That means Ruth’s availability on Wednesday ends at 13:30 (but also must respect her busy slots).  
+
+---
+
+### Step 1 – Interpret Ruth’s “do not want to meet after 13:30”
+This means any meeting on Wednesday must **end by 13:30** (or start early enough to finish by 13:30).  
+So on Wednesday, the latest possible start time is 13:00 (for a 30-minute meeting ending at 13:30).  
+
+---
+
+### Step 2 – Check Wednesday availability
+Work hours: 9:00–17:00, but Ruth’s constraint cuts it to 9:00–13:30 for meeting end.  
+
+Let’s find free slots for each on Wednesday:  
+
+**Nicole’s busy Wednesday:**  
+10:00–11:00, 12:30–15:00, 16:00–17:00  
+
+So Nicole’s free periods within 9:00–17:00:  
+1. 9:00–10:00  
+2. 11:00–12:30  
+3. 15:00–16:00  
+4. (after 17:00 not considered)  
+
+But meeting must end by 13:30 for Ruth, so Nicole’s free slots ending by 13:30:  
+- 9:00–10:00 (ok, ends before 13:30)  
+- 11:00–12:30 (ok, ends before 13:30)  
+
+**Ruth’s busy Wednesday:**  
+9:00–10:30, 11:00–11:30, 12:00–12:30, 13:30–15:30, 16:00–16:30  
+
+Ruth’s free within 9:00–13:30 (end limit):  
+1. 10:30–11:00 (30 minutes exactly)  
+2. 11:30–12:00 (30 minutes exactly)  
+3. 12:30–13:30 (1 hour)  
+
+---
+
+### Step 3 – Find overlap
+Nicole’s free (before 13:30 end constraint):  
+A: 9:00–10:00  
+B: 11:00–12:30  
+
+Ruth’s free (before 13:30 end constraint):  
+1: 10:30–11:00  
+2: 11:30–12:00  
+3: 12:30–13:30  
+
+Overlaps:  
+- Nicole’s A (9:00–10:00) with Ruth’s 1 (10:30–11:00) → no overlap.  
+- Nicole’s B (11:00–12:30) with Ruth’s 1 (10:30–11:00) → overlap 11:00–11:00? No, 10:30–11:00 ends at 11:00, so at 11:00 Ruth is free until 11:00? Wait, careful:  
+  Ruth’s slot 1 is 10:30–11:00, so at 11:00 exactly she becomes busy (11:00–11:30 busy). So overlap with Nicole’s 11:00 start is zero minutes. So no.  
+
+- Nicole’s B (11:00–12:30) with Ruth’s 2 (11:30–12:00) → overlap 11:30–12:00 → 30 minutes exactly. This works!  
+  Check: Nicole free 11:00–12:30, so 11:30–12:00 is inside. Ruth free 11:30–12:00. Meeting ends at 12:00, which is before 13:30.  
+
+- Nicole’s B (11:00–12:30) with Ruth’s 3 (12:30–13:30) → overlap at 12:30 exactly? 12:30 is end of Nicole’s free, start of Ruth’s free. So 12:30–13:00 is 30 minutes? Wait, Nicole is busy starting 12:30 (12:30–15:00 busy), so at 12:30 she is not free. So no overlap.  
+
+So only overlap: **11:30–12:00 on Wednesday**.  
+
+---
+
+### Step 4 – Verify no other days possible
+Monday: Ruth busy all day → no.  
+Tuesday: Ruth busy all day → no.  
+So only Wednesday works.  
+
+---
+
+### Step 5 – Write Python code to find this
+We’ll encode busy times as (start, end) in minutes from 9:00, work 9:00–17:00 (480 minutes), check each day, apply Ruth’s “no meet after 13:30” on Wednesday.

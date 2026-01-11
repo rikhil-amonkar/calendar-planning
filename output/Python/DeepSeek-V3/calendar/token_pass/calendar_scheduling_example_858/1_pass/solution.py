@@ -1,0 +1,89 @@
+from datetime import datetime, timedelta
+
+def time_to_minutes(t):
+    """Convert HH:MM to minutes from 00:00"""
+    h, m = map(int, t.split(':'))
+    return h * 60 + m
+
+def minutes_to_time(m):
+    """Convert minutes from 00:00 to HH:MM"""
+    return f"{m // 60:02d}:{m % 60:02d}"
+
+def schedule_meeting():
+    work_start = time_to_minutes("09:00")
+    work_end = time_to_minutes("17:00")
+    meeting_duration = 60  # minutes
+    
+    # Busy times in HH:MM format, converted to minutes from 00:00
+    # We'll store them per day per person, then adjust to minutes from 9:00 later if needed,
+    # but easier to keep absolute minutes for comparison.
+    
+    # Day index: 0=Mon, 1=Tue, 2=Wed, 3=Thu
+    busy = {
+        'Carl': {
+            0: [("11:00", "11:30")],
+            1: [("14:30", "15:00")],
+            2: [("10:00", "11:30"), ("13:00", "13:30")],
+            3: [("13:30", "14:00"), ("16:00", "16:30")]
+        },
+        'Margaret': {
+            0: [("09:00", "10:30"), ("11:00", "17:00")],
+            1: [("09:30", "12:00"), ("13:30", "14:00"), ("15:30", "17:00")],
+            2: [("09:30", "12:00"), ("12:30", "13:00"), ("13:30", "14:30"), ("15:00", "17:00")],
+            3: [("10:00", "12:00"), ("12:30", "14:00"), ("14:30", "17:00")]
+        }
+    }
+    
+    # Convert to minutes from 00:00
+    busy_minutes = {}
+    for person, days in busy.items():
+        busy_minutes[person] = {}
+        for day, blocks in days.items():
+            busy_minutes[person][day] = [(time_to_minutes(s), time_to_minutes(e)) for s, e in blocks]
+    
+    days_order = [0, 1, 2, 3]  # Try Thu last
+    days_name = ["Monday", "Tuesday", "Wednesday", "Thursday"]
+    
+    # Try Mon-Wed first (Carl prefers not Thursday)
+    for day in [0, 1, 2, 3]:
+        # Get busy intervals for both people on this day
+        carl_busy = busy_minutes['Carl'].get(day, [])
+        margaret_busy = busy_minutes['Margaret'].get(day, [])
+        
+        # Merge and sort busy intervals
+        all_busy = sorted(carl_busy + margaret_busy)
+        
+        # Find free slots within work hours
+        free_slots = []
+        current_start = work_start
+        
+        for start_busy, end_busy in all_busy:
+            if current_start < start_busy:
+                free_slots.append((current_start, start_busy))
+            if end_busy > current_start:
+                current_start = end_busy
+        if current_start < work_end:
+            free_slots.append((current_start, work_end))
+        
+        # Check each free slot for enough length
+        for slot_start, slot_end in free_slots:
+            if slot_end - slot_start >= meeting_duration:
+                # Found a slot
+                meeting_start = slot_start
+                meeting_end = meeting_start + meeting_duration
+                # Convert back to HH:MM
+                start_str = minutes_to_time(meeting_start)
+                end_str = minutes_to_time(meeting_end)
+                return days_name[day], f"{start_str}:{end_str}"
+    
+    return None, None
+
+def main():
+    day, time_range = schedule_meeting()
+    if day:
+        print(f"{day} {time_range}")
+    else:
+        print("No suitable slot found")
+
+if __name__ == "__main__":
+    main()

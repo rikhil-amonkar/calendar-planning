@@ -1,0 +1,1 @@
+Ensure all flight connections are bidirectional

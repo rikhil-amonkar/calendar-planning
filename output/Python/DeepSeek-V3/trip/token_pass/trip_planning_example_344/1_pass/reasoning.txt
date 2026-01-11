@@ -1,0 +1,89 @@
+Let's break this down step-by-step before writing the code.
+
+**Constraints:**
+- Total days: 20
+- Cities: Valencia (V), Athens (A), Naples (N), Zurich (Z)
+- Days in each city:  
+  - Valencia = 6 days  
+  - Athens = 6 days  
+  - Naples = 5 days  
+  - Zurich = 6 days  
+  Sum = 6+6+5+6 = 23 days → overlap needed because travel days count for both cities.
+- Direct flights:  
+  V ↔ N  
+  V ↔ A  
+  A ↔ N  
+  Z ↔ N  
+  A ↔ Z  
+  Z ↔ V  
+  (So all cities are connected except V↔Z is direct, A↔Z direct, etc. Actually Z↔V is direct, so fully connected graph.)
+- Special constraints:  
+  1. Relatives in Athens between day 1 and day 6 → Athens must include days 1–6.  
+  2. Wedding in Naples between day 16 and day 20 → Naples must include days 16–20.
+- Travel rule: If you fly from X to Y on day D, you are in both X and Y on day D.
+
+**Implication:**
+- Athens: days 1–6 (6 days total for Athens, so Athens days = {1,2,3,4,5,6})
+- Naples: days 16–20 (5 days total for Naples, so Naples days = {16,17,18,19,20})
+- Remaining cities: Valencia (6 days), Zurich (6 days), total days left to assign = 20 days total, but we already have Athens (6 days) + Naples (5 days) = 11 days fixed.
+- We need Valencia 6 days, Zurich 6 days, but total city-days counting overlaps = 23, so overlaps = 3 days (because 23 − 20 = 3 overlaps).
+- Overlap means travel days where you are in two cities.
+
+**Possible overlaps:**
+- Athens fixed days 1–6, Naples fixed days 16–20. No overlap between those two sets.
+- Overlaps must happen on travel days between other cities.
+
+Let’s try to schedule:
+
+We start in Athens days 1–6.  
+We need Valencia 6 days, Zurich 6 days, Naples 5 days (already fixed 16–20).  
+We must visit Naples also possibly outside 16–20? No, Naples total is exactly 5 days, all in 16–20, so Naples only those days.
+
+So sequence:  
+Athens (1–6) → somewhere → Naples (16–20).  
+Between day 6 and day 16 there are 10 days: days 7–15 (9 days) plus day 16 is Naples start, but day 16 is also possibly arrival from previous city.
+
+We need to fit Valencia 6 days and Zurich 6 days in days 7–20, but Naples is already 16–20 (5 days), so Valencia and Zurich must be in 7–15 and possibly overlapping with Naples start/end.
+
+Let’s assign:  
+Valencia 6 days, Zurich 6 days, total 12 days, but only 9 days 7–15 available. So we need overlaps:  
+Overlap 1: day 16 could be both Zurich/Valencia and Naples if we fly that day.  
+Overlap 2: day 6 could be both Athens and next city if we fly day 6.  
+Overlap 3: another overlap somewhere.
+
+Let’s check direct flights:  
+From Athens (day 6) we can fly to Valencia or Zurich (both direct).  
+To Naples (day 16) we can fly from Valencia or Zurich (both direct).
+
+Let’s try:  
+Athens days 1–6 (6 days)  
+Travel day 6: fly to Zurich evening, so day 6 counts for Athens and Zurich → Zurich gets day 6.  
+Zurich days 6–?  
+We need Zurich total 6 days. If day 6 is first Zurich day, need 5 more Zurich days.  
+Valencia needs 6 days.
+
+Let’s schedule Zurich days 6–11 (6 days: 6,7,8,9,10,11)  
+Travel day 11: fly to Valencia (direct), so day 11 counts for Zurich and Valencia.  
+Valencia days 11–16 (6 days: 11,12,13,14,15,16)  
+Travel day 16: fly to Naples (direct), so day 16 counts for Valencia and Naples.  
+Naples days 16–20 (5 days: 16,17,18,19,20).
+
+Check totals:  
+Athens: 1,2,3,4,5,6 → 6 days ✅  
+Zurich: 6,7,8,9,10,11 → 6 days ✅  
+Valencia: 11,12,13,14,15,16 → 6 days ✅  
+Naples: 16,17,18,19,20 → 5 days ✅  
+
+Total distinct days: 1–20 = 20 days ✅  
+Overlaps: day 6 (Athens+Zurich), day 11 (Zurich+Valencia), day 16 (Valencia+Naples) → 3 overlaps ✅  
+
+All direct flights exist:  
+Athens → Zurich ✓  
+Zurich → Valencia ✓  
+Valencia → Naples ✓  
+
+All constraints satisfied.
+
+Now write Python code to compute this logically (not hardcoded, but algorithmically from constraints).
+
+---

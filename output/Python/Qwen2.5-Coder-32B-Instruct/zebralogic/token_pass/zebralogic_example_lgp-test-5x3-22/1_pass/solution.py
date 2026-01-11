@@ -1,0 +1,130 @@
+import itertools
+import json
+
+# Initialize the houses with all possible attributes
+houses = [
+    {"name": ["Arnold", "Eric", "Bob", "Peter", "Alice"],
+     "smoothie": ["desert", "watermelon", "lime", "cherry", "dragonfruit"],
+     "nationality": ["german", "swede", "norwegian", "dane", "brit"]},
+    {"name": ["Arnold", "Eric", "Bob", "Peter", "Alice"],
+     "smoothie": ["desert", "watermelon", "lime", "cherry", "dragonfruit"],
+     "nationality": ["german", "swede", "norwegian", "dane", "brit"]},
+    {"name": ["Arnold", "Eric", "Bob", "Peter", "Alice"],
+     "smoothie": ["desert", "watermelon", "lime", "cherry", "dragonfruit"],
+     "nationality": ["german", "swede", "norwegian", "dane", "brit"]},
+    {"name": ["Arnold", "Eric", "Bob", "Peter", "Alice"],
+     "smoothie": ["desert", "watermelon", "lime", "cherry", "dragonfruit"],
+     "nationality": ["german", "swede", "norwegian", "dane", "brit"]},
+    {"name": ["Arnold", "Eric", "Bob", "Peter", "Alice"],
+     "smoothie": ["desert", "watermelon", "lime", "cherry", "dragonfruit"],
+     "nationality": ["german", "swede", "norwegian", "dane", "brit"]}
+]
+
+# Direct assignments based on clues
+houses[1]["smoothie"] = ["dragonfruit"]  # Clue 2
+houses[2]["name"] = ["Alice"]            # Clue 10
+houses[2]["smoothie"] = ["watermelon"]   # Clue 11
+
+# Eliminate Alice from other houses
+for i in range(len(houses)):
+    if i != 2:
+        houses[i]["name"].remove("Alice")
+
+# Bob is the Dane (Clue 8)
+for i in range(len(houses)):
+    if "Bob" in houses[i]["name"]:
+        houses[i]["nationality"] = ["dane"]
+
+# Eliminate Dane from other houses
+for i in range(len(houses)):
+    if i != 2 or "dane" not in houses[i]["nationality"]:  # Bob is Dane in house 3
+        houses[i]["nationality"] = [n for n in houses[i]["nationality"] if n != "dane"]
+
+# The Norwegian is in the third house (Clue 9)
+houses[2]["nationality"] = ["norwegian"]
+
+# Eliminate Norwegian from other houses
+for i in range(len(houses)):
+    if i != 2:
+        houses[i]["nationality"] = [n for n in houses[i]["nationality"] if n != "norwegian"]
+
+# The Desert smoothie lover is not in the fifth house (Clue 5)
+houses[4]["smoothie"] = [s for s in houses[4]["smoothie"] if s != "desert"]
+
+# The Swedish person is somewhere to the left of the Dragonfruit smoothie lover (Clue 6)
+# Since Dragonfruit is in house 2, Swedish cannot be in house 2 or 3 or 4 or 5
+houses[0]["nationality"] = [n for n in houses[0]["nationality"] if n == "swede"]
+
+# Eliminate Swede from other houses
+for i in range(1, len(houses)):
+    houses[i]["nationality"] = [n for n in houses[i]["nationality"] if n != "swede"]
+
+# The Dane and the British person are next to each other (Clue 4)
+# Since Bob (Dane) is in house 3, British must be in house 2 or 4
+if "brit" in houses[1]["nationality"]:
+    houses[1]["nationality"] = ["brit"]
+elif "brit" in houses[3]["nationality"]:
+    houses[3]["nationality"] = ["brit"]
+
+# Eliminate Brit from other houses
+for i in range(len(houses)):
+    if i != 1 and i != 3:
+        houses[i]["nationality"] = [n for n in houses[i]["nationality"] if n != "brit"]
+
+# There are two houses between the person who drinks Lime smoothies and the Dane (Clue 7)
+# Since Dane is in house 3, Lime must be in house 1
+houses[0]["smoothie"] = ["lime"]
+
+# Eliminate Lime from other houses
+for i in range(1, len(houses)):
+    houses[i]["smoothie"] = [s for s in houses[i]["smoothie"] if s != "lime"]
+
+# Peter is not in the first house (Clue 3)
+houses[0]["name"] = [n for n in houses[0]["name"] if n != "Peter"]
+
+# The Dragonfruit smoothie lover is somewhere to the left of Eric (Clue 1)
+# Since Dragonfruit is in house 2, Eric cannot be in house 1 or 2
+houses[3]["name"] = ["Eric"] if "Eric" in houses[3]["name"] else houses[3]["name"]
+houses[4]["name"] = ["Eric"] if "Eric" in houses[4]["name"] else houses[4]["name"]
+
+# Eliminate Eric from other houses
+for i in range(len(houses)):
+    if i != 3 and i != 4:
+        houses[i]["name"] = [n for n in houses[i]["name"] if n != "Eric"]
+
+# Fill in remaining names
+remaining_names = set(["Arnold", "Eric", "Bob", "Peter", "Alice"]) - {house["name"][0] for house in houses}
+for i in range(len(houses)):
+    if len(houses[i]["name"]) > 1:
+        houses[i]["name"] = list(remaining_names)
+
+# Fill in remaining smoothies
+remaining_smoothies = set(["desert", "watermelon", "lime", "cherry", "dragonfruit"]) - {house["smoothie"][0] for house in houses}
+for i in range(len(houses)):
+    if len(houses[i]["smoothie"]) > 1:
+        houses[i]["smoothie"] = list(remaining_smoothies)
+
+# Fill in remaining nationalities
+remaining_nationalities = set(["german", "swede", "norwegian", "dane", "brit"]) - {house["nationality"][0] for house in houses}
+for i in range(len(houses)):
+    if len(houses[i]["nationality"]) > 1:
+        houses[i]["nationality"] = list(remaining_nationalities)
+
+# Prepare the solution in JSON format
+solution = {
+    "solution": {
+        "header": ["House", "Name", "Smoothie", "Nationality"],
+        "rows": []
+    }
+}
+
+for i, house in enumerate(houses):
+    solution["solution"]["rows"].append([
+        str(i + 1),
+        house["name"][0],
+        house["smoothie"][0],
+        house["nationality"][0]
+    ])
+
+# Output the solution as JSON
+print(json.dumps(solution, indent=2))

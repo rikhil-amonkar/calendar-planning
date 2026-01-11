@@ -1,0 +1,197 @@
+Let's break this down step by step.  
+
+We have:  
+
+- **Work hours**: 9:00–17:00  
+- **Duration**: 30 minutes  
+- **Participants**: Raymond, Billy, Donald  
+- **Day**: Monday  
+- **Constraints**:  
+  1. Each person’s existing meetings are blocked.  
+  2. Billy prefers no meetings after 15:00 (so ideally before 15:00).  
+
+---
+
+### Step 1: Represent blocked times in minutes from 9:00
+Let’s convert all times to minutes since 9:00 (so 9:00 = 0, 17:00 = 480).  
+
+**Raymond blocked**:  
+- 9:00–9:30 → 0–30  
+- 11:30–12:00 → 150–180  
+- 13:00–13:30 → 240–270  
+- 15:00–15:30 → 360–390  
+
+**Billy blocked**:  
+- 10:00–10:30 → 60–90  
+- 12:00–13:00 → 180–240  
+- 16:30–17:00 → 450–480  
+
+**Donald blocked**:  
+- 9:00–9:30 → 0–30  
+- 10:00–11:00 → 60–120  
+- 12:00–13:00 → 180–240  
+- 14:00–14:30 → 300–330  
+- 16:00–17:00 → 420–480  
+
+---
+
+### Step 2: Combine busy times for all
+We need times when **all three are free** for 30 minutes, within 0–480 (9:00–17:00).  
+
+Let’s check free intervals:  
+
+From 0 to 480, subtract each person’s busy times.  
+
+Better approach: Check every possible start time from 0 to 450 (since duration 30 min, last start at 450 for end at 480).  
+
+But let’s think logically:  
+
+**Common busy times** (union of all three busy times):  
+
+Raymond busy: [0,30], [150,180], [240,270], [360,390]  
+Billy busy: [60,90], [180,240], [450,480]  
+Donald busy: [0,30], [60,120], [180,240], [300,330], [420,480]  
+
+Merge all:  
+0–30, 60–90, 150–180, 180–240, 240–270, 300–330, 360–390, 420–480  
+Also 60–120 from Donald overlaps Billy’s 60–90, so actually 60–120 is busy (Donald+Billy).  
+
+Let’s list sorted:  
+
+1. 0–30 (Raymond+Donald)  
+2. 60–120 (Donald 60–120, Billy 60–90)  
+3. 150–180 (Raymond)  
+4. 180–240 (Billy+Donald, Raymond free but others busy)  
+5. 240–270 (Raymond)  
+6. 300–330 (Donald)  
+7. 360–390 (Raymond)  
+8. 420–480 (Donald+Billy)  
+
+So busy for at least one person:  
+[0,30], [60,120], [150,180], [180,240], [240,270], [300,330], [360,390], [420,480]  
+
+---
+
+### Step 3: Find gaps of at least 30 minutes
+Gaps between busy periods:  
+
+End of 30 to start of 60 → 30–60 (30 min gap) → exactly 30 min free from 9:30–10:00.  
+
+End of 120 to start of 150 → 120–150 (30 min gap) → 11:00–11:30.  
+
+End of 270 to start of 300 → 270–300 (30 min gap) → 13:30–14:00.  
+
+End of 330 to start of 360 → 330–360 (30 min gap) → 14:30–15:00.  
+
+End of 390 to start of 420 → 390–420 (30 min gap) → 15:30–16:00.  
+
+---
+
+### Step 4: Apply Billy’s preference (avoid after 15:00)
+Billy prefers no meetings after 15:00, so start time must be < 15:00 (i.e., < 360 minutes from 9:00).  
+
+Possible slots before 15:00:  
+1. 30–60 (9:30–10:00)  
+2. 120–150 (11:00–11:30)  
+3. 270–300 (13:30–14:00)  
+4. 330–360 (14:30–15:00)  
+
+Check each for all three free:  
+
+- 9:30–10:00: Raymond free? Yes (busy 0–30, 150–…). Billy free? Yes (busy 60–90). Donald free? No (busy 60–120, so 9:30–10:00 is free for Donald? Wait, Donald busy 60–120, so 9:30–10:00 is 30–60, Donald free 30–60? Yes, Donald busy 0–30 and 60–120, so 30–60 free). So all free. ✅  
+
+So 9:30–10:00 works and satisfies Billy’s preference.  
+
+---
+
+### Step 5: Choose earliest suitable slot
+Earliest is 9:30–10:00.  
+
+Convert back to HH:MM:  
+Start = 9:30, End = 10:00.  
+
+---
+
+### Step 6: Write Python script
+We can automate this by checking every 30-minute slot in work hours and verifying against all schedules and Billy’s preference.
+
+```python
+def time_to_minutes(t):
+    h, m = map(int, t.split(':'))
+    return h * 60 + m
+
+def minutes_to_time(m):
+    h = m // 60
+    m = m % 60
+    return f"{h:02d}:{m:02d}"
+
+def main():
+    work_start = time_to_minutes("9:00")
+    work_end = time_to_minutes("17:00")
+    duration = 30
+    
+    # Blocked times in minutes from 0:00, we'll adjust to work_start offset
+    # Actually easier: work from 9:00 as 0 offset
+    # So convert given times to minutes since 9:00
+    def since9(t):
+        return time_to_minutes(t) - work_start
+    
+    raymond_blocked = [
+        (since9("9:00"), since9("9:30")),
+        (since9("11:30"), since9("12:00")),
+        (since9("13:00"), since9("13:30")),
+        (since9("15:00"), since9("15:30"))
+    ]
+    billy_blocked = [
+        (since9("10:00"), since9("10:30")),
+        (since9("12:00"), since9("13:00")),
+        (since9("16:30"), since9("17:00"))
+    ]
+    donald_blocked = [
+        (since9("9:00"), since9("9:30")),
+        (since9("10:00"), since9("11:00")),
+        (since9("12:00"), since9("13:00")),
+        (since9("14:00"), since9("14:30")),
+        (since9("16:00"), since9("17:00"))
+    ]
+    
+    # Billy's preference: avoid after 15:00 means start < since9("15:00") = 360
+    pref_max_start = since9("15:00")
+    
+    # Check every possible start from work_start to work_end - duration
+    for start in range(0, work_end - work_start - duration + 1):
+        end = start + duration
+        # Check if slot overlaps with any blocked time for any person
+        conflict = False
+        for b_start, b_end in raymond_blocked:
+            if not (end <= b_start or start >= b_end):
+                conflict = True
+                break
+        if conflict:
+            continue
+        for b_start, b_end in billy_blocked:
+            if not (end <= b_start or start >= b_end):
+                conflict = True
+                break
+        if conflict:
+            continue
+        for b_start, b_end in donald_blocked:
+            if not (end <= b_start or start >= b_end):
+                conflict = True
+                break
+        if conflict:
+            continue
+        # Check Billy's preference
+        if start >= pref_max_start:
+            continue
+        # Found a slot
+        start_abs = work_start + start
+        end_abs = start_abs + duration
+        print(f"Monday {minutes_to_time(start_abs)}:{minutes_to_time(end_abs)}")
+        return
+    
+    print("No suitable slot found")
+
+if __name__ == "__main__":
+    main()
+```

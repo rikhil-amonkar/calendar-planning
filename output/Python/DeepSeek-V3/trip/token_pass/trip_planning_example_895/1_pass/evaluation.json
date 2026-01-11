@@ -1,0 +1,55 @@
+{
+    "has_execution_error": true,
+    "has_no_plan": false,
+    "execution_output": "File \"/home/nvidia/projects/llm-csp/source/generated_code_trip_2026-01-10 19:48:53.py\", line 1\n    Check if there's a direct flight between two cities\n                  ^\nSyntaxError: unterminated string literal (detected at line 1)",
+    "pred": null,
+    "gold": {
+        "itinerary": [
+            {
+                "day_range": "Day 1-2",
+                "place": "Brussels"
+            },
+            {
+                "day_range": "Day 2-5",
+                "place": "Lisbon"
+            },
+            {
+                "day_range": "Day 5-7",
+                "place": "Venice"
+            },
+            {
+                "day_range": "Day 7-11",
+                "place": "Madrid"
+            },
+            {
+                "day_range": "Day 11-13",
+                "place": "Santorini"
+            },
+            {
+                "day_range": "Day 13-15",
+                "place": "London"
+            },
+            {
+                "day_range": "Day 15-17",
+                "place": "Reykjavik"
+            }
+        ]
+    },
+    "status": "Error",
+    "violated_constraint": {
+        "missing_itinerary": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 116.08187079429626,
+        "execution_time": 0.023504257202148438,
+        "constraint_eval_time": 5.7220458984375e-06,
+        "pred_extract_time": 2.1457672119140625e-06,
+        "gold_extract_time": 8.034706115722656e-05,
+        "total_tokens": 2745,
+        "reasoning_tokens": 286
+    },
+    "reasoning_content": "Looking at this problem, I need to create a trip planner that satisfies all constraints while respecting flight connections. Let me break down the requirements:\n\n**Fixed constraints:**\n1. Total days: 17\n2. Cities and required days:\n   - Venice: 3 days (must include days 5-7)\n   - London: 3 days\n   - Lisbon: 4 days\n   - Brussels: 2 days (must be days 1-2)\n   - Reykjavik: 3 days\n   - Santorini: 3 days\n   - Madrid: 5 days (must include days 7-11)\n\n**Flight connections:**\n- Venice \u2194 Madrid\n- Lisbon \u2194 Reykjavik\n- Brussels \u2194 Venice\n- Venice \u2194 Santorini\n- Lisbon \u2194 Venice\n- Reykjavik \u2192 Madrid\n- Brussels \u2194 London\n- Madrid \u2194 London\n- Santorini \u2194 London\n- London \u2194 Reykjavik\n- Brussels \u2194 Lisbon\n- Lisbon \u2194 London\n- Lisbon \u2194 Madrid\n- Madrid \u2194 Santorini\n- Brussels \u2194 Reykjavik\n- Brussels \u2194 Madrid\n- Venice \u2194 London\n\n**Approach:**\n1. Start with Brussels (days 1-2)\n2. Work through the fixed date constraints\n3. Ensure all city durations are met\n4. Check flight connectivity between consecutive cities"
+}

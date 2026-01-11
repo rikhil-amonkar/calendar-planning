@@ -1,0 +1,60 @@
+Let's break down the problem first.
+
+**Constraints:**
+- Total days: 7
+- Days in Madrid: 4
+- Days in Dublin: 3
+- Days in Tallinn: 2
+- Must be in Tallinn on day 6 and day 7 (workshop days)
+- Direct flights only: Madrid ↔ Dublin, Dublin ↔ Tallinn (no Madrid ↔ Tallinn direct)
+- If you fly on day X, you are in both cities on day X (counts toward both totals)
+
+**Key observations:**
+- Tallinn days must include day 6 and 7 → so Tallinn days are consecutive days 6–7 (2 days).
+- Since Tallinn connects only to Dublin, you must be in Dublin before Tallinn.
+- Madrid connects only to Dublin, so to go Madrid ↔ Tallinn, you must go through Dublin.
+
+**Possible sequence logic:**
+We need 4 Madrid days, 3 Dublin days, 2 Tallinn days = total 9 city-days, but only 7 calendar days → overlaps happen on travel days.
+
+If you travel from A to B on day X, that day counts for both A and B totals. So we can "double-count" some days to fit 9 city-days into 7 calendar days.
+
+Let’s denote:
+- M = Madrid
+- D = Dublin
+- T = Tallinn
+
+We know T is days 6–7. So day 6: travel from D to T (counts for D and T), day 7: in T only.
+
+We need 4 M days, 3 D days, 2 T days.
+
+Let’s try to build from start:
+
+Day 1: Start somewhere. Likely Madrid (since most days there).
+We need to end in Tallinn on day 6–7.
+
+Let’s test a schedule:
+
+Day 1: M  
+Day 2: M  
+Day 3: M  
+Day 4: M → D (travel day: counts for M and D)  
+Day 5: D  
+Day 6: D → T (travel day: counts for D and T)  
+Day 7: T  
+
+Count days:  
+M: days 1,2,3,4 = 4 ✅  
+D: days 4,5,6 = 3 ✅  
+T: days 6,7 = 2 ✅  
+Total calendar days: 7 ✅  
+Tallinn on days 6–7 ✅  
+Direct flights: M–D on day 4, D–T on day 6 ✅  
+
+This works.
+
+Now, we need to write a program that computes this given the constraints.
+
+---
+
+Here’s the Python program:

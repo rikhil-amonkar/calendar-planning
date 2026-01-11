@@ -1,0 +1,94 @@
+<reasoning>
+To solve this Zebra logic puzzle programmatically, we need to follow a systematic approach to apply all the given constraints and deduce the correct arrangement of people and their pets in the four houses. Here’s a step-by-step breakdown of our approach:
+
+1. **Representation**: We will represent the state of the puzzle using a list of dictionaries where each dictionary represents a house and contains keys for the name of the occupant and the type of pet they own.
+
+2. **Initial State**: Start with an initial state where each house can potentially have any person and any pet.
+
+3. **Apply Constraints**:
+   - Constraint 1: The person who owns a dog is somewhere to the right of Alice.
+     - This means if Alice is in house i, the person with a dog must be in house j where j > i.
+   - Constraint 2: Eric is not in the first house.
+     - This eliminates Eric from house 1.
+   - Constraint 3: Eric is the person who keeps a pet bird.
+     - This fixes Eric in a house and assigns him the bird.
+   - Constraint 4: There is one house between the person with an aquarium of fish and Peter.
+     - If Peter is in house i, the person with fish must be in house i-2 or i+2.
+   - Constraint 5: Alice is not in the first house.
+     - This eliminates Alice from house 1.
+   - Constraint 6: Arnold is the person with an aquarium of fish.
+     - This fixes Arnold in a house and assigns him the fish.
+
+4. **Backtracking Approach**: Use a backtracking algorithm to try different combinations of people and pets in the houses, applying constraints at each step to prune invalid possibilities.
+
+5. **Solution Verification**: Once a combination satisfies all constraints, it is considered a valid solution.
+
+6. **Output**: Format the solution as specified in the requirements and convert it to JSON.
+</reasoning>
+
+```python
+import itertools
+import json
+
+def solve_puzzle():
+    # Define the possible values for each attribute
+    names = ["Peter", "Arnold", "Eric", "Alice"]
+    pets = ["bird", "fish", "dog", "cat"]
+
+    # Generate all possible permutations of names and pets
+    all_permutations = list(itertools.permutations(names))
+    pet_permutations = list(itertools.permutations(pets))
+
+    # Function to check if a configuration satisfies all constraints
+    def is_valid(config):
+        name_to_house = {config[i][0]: i + 1 for i in range(4)}
+        pet_to_house = {config[i][1]: i + 1 for i in range(4)}
+
+        # Constraint 1: Dog owner is to the right of Alice
+        if name_to_house["Alice"] >= name_to_house.get("Peter", 0) or name_to_house["Alice"] >= pet_to_house.get("dog", 0):
+            return False
+
+        # Constraint 2: Eric is not in the first house
+        if name_to_house.get("Eric", 0) == 1:
+            return False
+
+        # Constraint 3: Eric keeps a bird
+        if name_to_house.get("Eric", 0) != pet_to_house.get("bird", 0):
+            return False
+
+        # Constraint 4: One house between fish owner and Peter
+        if abs(name_to_house.get("Peter", 0) - pet_to_house.get("fish", 0)) != 2:
+            return False
+
+        # Constraint 5: Alice is not in the first house
+        if name_to_house.get("Alice", 0) == 1:
+            return False
+
+        # Constraint 6: Arnold keeps fish
+        if name_to_house.get("Arnold", 0) != pet_to_house.get("fish", 0):
+            return False
+
+        return True
+
+    # Iterate through all permutations to find a valid solution
+    for name_perm in all_permutations:
+        for pet_perm in pet_permutations:
+            config = list(zip(name_perm, pet_perm))
+            if is_valid(config):
+                # Format the solution as required
+                solution = {
+                    "solution": {
+                        "header": ["House", "Name", "Pet"],
+                        "rows": [["1", config[0][0], config[0][1]],
+                                 ["2", config[1][0], config[1][1]],
+                                 ["3", config[2][0], config[2][1]],
+                                 ["4", config[3][0], config[3][1]]]
+                    }
+                }
+                return json.dumps(solution, indent=2)
+
+# Solve the puzzle and print the result
+print(solve_puzzle())
+```
+
+This code generates all possible permutations of names and pets, checks each permutation against the constraints, and outputs the valid solution in the specified JSON format.

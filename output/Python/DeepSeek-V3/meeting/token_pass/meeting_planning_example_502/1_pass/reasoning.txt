@@ -1,0 +1,62 @@
+Let’s break this down step by step before writing the code.
+
+**Step 1 – Understanding the problem**  
+We have:  
+- 6 friends, each in a fixed location, with fixed availability windows.  
+- Minimum meeting durations for each.  
+- Travel times between all locations (including starting point: Financial District at 9:00).  
+- Goal: Maximize number of friends met, given time constraints.  
+- If meeting count ties, maximize total meeting time.
+
+**Step 2 – Observations**  
+We can’t meet everyone because:  
+- Joseph is only available 8:15–9:30, we start at 9:00 in Financial District, travel to Pacific Heights is 13 minutes, so earliest arrival is 9:13, leaving only 17 minutes until 9:30, but we need 60 minutes with Joseph → impossible. So Joseph is out.
+
+Now we have 5 friends left.
+
+**Step 3 – Travel matrix**  
+We’ll store travel times in a dict: `travel[from][to]` in minutes.
+
+**Step 4 – Time windows**  
+Convert all times to minutes since midnight for easier arithmetic.
+
+Rebecca: Fisherman’s Wharf, 8:00–11:15 (480–675 min).  
+We start at Financial District at 9:00 (540 min). Travel to Fisherman’s Wharf is 10 minutes, so earliest arrival 9:10 (550 min).  
+We need 30 min with Rebecca, so must start by 11:15 – 30 = 10:45 (645 min).  
+So possible meeting window with Rebecca: 550–645 start, duration 30 min.  
+If we meet Rebecca first, we’d finish at 550+30=580 min (9:40), then travel to next.
+
+Stephanie: Golden Gate Park, 11:00–15:00 (660–900 min), need 105 min.  
+So must start by 900–105=795 min (13:15).  
+Travel from Fisherman’s Wharf to Golden Gate Park is 25 min.  
+If we finish Rebecca at 580, travel 25 min → arrive 605, but Stephanie starts at 660, so we wait until 660 to start.  
+Then meet 105 min → end at 765 min (12:45). Then travel to next.
+
+Karen: Chinatown, 13:45–16:30 (825–990 min), need 15 min.  
+Must start by 990–15=975 min.  
+Travel from Golden Gate Park to Chinatown is 23 min.  
+If we finish Stephanie at 765, travel 23 → arrive 788 (13:08), but Karen starts at 825, wait until 825, meet 15 min → end 840 (14:00).
+
+Brian: Union Square, 15:00–17:15 (900–1035 min), need 30 min.  
+Must start by 1035–30=1005 min.  
+Travel from Chinatown to Union Square is 7 min.  
+If we finish Karen at 840, travel 7 → arrive 847, but Brian starts at 900, wait until 900, meet 30 min → end 930 (15:30).
+
+Steven: North Beach, 14:30–20:45 (870–1245 min), need 120 min.  
+Must start by 1245–120=1125 min.  
+Travel from Union Square to North Beach is 10 min.  
+If we finish Brian at 930, travel 10 → arrive 940 (15:40), meet 120 min → end 1060 (17:40), which is within Steven’s window.
+
+So this sequence works: Rebecca → Stephanie → Karen → Brian → Steven.  
+All 5 friends met.
+
+**Step 5 – Check if any alternative order meets more friends**  
+We already excluded Joseph. Can we meet all 5 in a different order? Possibly, but 5 is max.  
+We must ensure no travel time conflicts.
+
+Let’s verify with code to be sure.
+
+**Step 6 – Write the program**  
+We’ll brute-force permutations of the 5 friends to see if any sequence fits, then pick one that maximizes meeting count, then total meeting time.
+
+---

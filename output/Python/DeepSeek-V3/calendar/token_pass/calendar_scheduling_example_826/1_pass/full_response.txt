@@ -1,0 +1,114 @@
+Looking at the problem, I need to find the earliest available 30-minute slot between 9:00 and 17:00 on Monday–Thursday that works for both Cheryl and James, while respecting Cheryl's preference to avoid Wednesday and Thursday if possible.
+
+Here's my approach:
+1. Convert times to minutes from 9:00 for easier comparison
+2. Check each day in order: Monday, Tuesday, Wednesday, Thursday
+3. For each day, find James's busy times (since Cheryl is free all day)
+4. Look for the earliest 30-minute gap in James's schedule that falls within 9:00–17:00
+5. Prioritize Monday and Tuesday over Wednesday and Thursday
+
+```python
+def time_to_minutes(time_str):
+    """Convert HH:MM to minutes since midnight"""
+    hours, minutes = map(int, time_str.split(':'))
+    return hours * 60 + minutes
+
+def minutes_to_time(minutes):
+    """Convert minutes since midnight to HH:MM format"""
+    hours = minutes // 60
+    mins = minutes % 60
+    return f"{hours:02d}:{mins:02d}"
+
+def find_meeting_slot():
+    # Work hours: 9:00 to 17:00
+    work_start = time_to_minutes("9:00")
+    work_end = time_to_minutes("17:00")
+    
+    # James's schedule (busy times in minutes since midnight)
+    james_schedule = {
+        "Monday": [
+            ("9:00", "9:30"),
+            ("10:30", "11:00"),
+            ("12:30", "13:00"),
+            ("14:30", "15:30"),
+            ("16:30", "17:00")
+        ],
+        "Tuesday": [
+            ("9:00", "11:00"),
+            ("11:30", "12:00"),
+            ("12:30", "15:30"),
+            ("16:00", "17:00")
+        ],
+        "Wednesday": [
+            ("10:00", "11:00"),
+            ("12:00", "13:00"),
+            ("13:30", "16:00")
+        ],
+        "Thursday": [
+            ("9:30", "11:30"),
+            ("12:00", "12:30"),
+            ("13:00", "13:30"),
+            ("14:00", "14:30"),
+            ("16:30", "17:00")
+        ]
+    }
+    
+    # Cheryl prefers not Wednesday/Thursday, so check in preferred order
+    days_to_check = ["Monday", "Tuesday", "Wednesday", "Thursday"]
+    
+    for day in days_to_check:
+        # Convert James's busy times to minutes
+        busy_periods = []
+        for start_str, end_str in james_schedule[day]:
+            start_min = time_to_minutes(start_str)
+            end_min = time_to_minutes(end_str)
+            busy_periods.append((start_min, end_min))
+        
+        # Sort busy periods by start time
+        busy_periods.sort()
+        
+        # Check for available slots
+        current_time = work_start
+        
+        for busy_start, busy_end in busy_periods:
+            # If there's a gap before this busy period
+            if current_time + 30 <= busy_start:
+                # Found a slot
+                return day, current_time, current_time + 30
+            
+            # Move current_time to after this busy period if needed
+            if busy_end > current_time:
+                current_time = busy_end
+        
+        # Check after the last busy period
+        if current_time + 30 <= work_end:
+            return day, current_time, current_time + 30
+    
+    return None, None, None
+
+def main():
+    day, start_min, end_min = find_meeting_slot()
+    
+    if day is not None:
+        start_time = minutes_to_time(start_min)
+        end_time = minutes_to_time(end_min)
+        print(f"{day}")
+        print(f"{start_time}:{end_time}")
+    else:
+        print("No suitable time found")
+
+if __name__ == "__main__":
+    main()
+```
+
+This script will output:
+```
+Monday
+09:30:10:00
+```
+
+The earliest available 30-minute slot is on Monday from 9:30 to 10:00. This works because:
+- Cheryl is free all day
+- James has a meeting from 9:00-9:30 and his next meeting starts at 10:30
+- The slot is within work hours (9:00-17:00)
+- Monday is preferred over Wednesday/Thursday according to Cheryl's preference

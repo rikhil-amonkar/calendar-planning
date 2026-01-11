@@ -1,0 +1,111 @@
+<reasoning>
+To solve this problem, we need to follow these steps:
+
+1. Define the available time slots for each participant based on their schedules and the work hours (9:00 to 17:00) from Monday to Thursday.
+2. Identify the common free time slots between all participants.
+3. Find the earliest common free slot that fits the meeting duration of 30 minutes.
+4. Output the day and the time range in the specified format.
+
+We'll start by creating dictionaries to store the busy times for each participant. Then, we'll iterate over each day to check for common free slots. We'll use a helper function to determine if two time slots overlap and another to find the gaps between busy times. Finally, we'll look for the first gap that is at least 30 minutes long and output the result.
+</reasoning>
+
+```python
+from datetime import datetime, timedelta
+
+def parse_time(time_str):
+    return datetime.strptime(time_str, '%H:%M')
+
+def time_to_str(time_obj):
+    return time_obj.strftime('%H:%M')
+
+def find_free_slots(busy_times, start_time, end_time):
+    current = start_time
+    free_slots = []
+    
+    for busy_start, busy_end in sorted(busy_times):
+        if current < busy_start:
+            free_slots.append((current, busy_start))
+        current = max(current, busy_end)
+    
+    if current < end_time:
+        free_slots.append((current, end_time))
+    
+    return free_slots
+
+def find_common_free_slot(free_slots_list):
+    if not free_slots_list:
+        return None
+    
+    common_free_slots = free_slots_list[0]
+    
+    for free_slots in free_slots_list[1:]:
+        new_common_free_slots = []
+        for start1, end1 in common_free_slots:
+            for start2, end2 in free_slots:
+                common_start = max(start1, start2)
+                common_end = min(end1, end2)
+                if common_start < common_end:
+                    new_common_free_slots.append((common_start, common_end))
+        common_free_slots = new_common_free_slots
+    
+    return common_free_slots
+
+def find_meeting_time(participants, meeting_duration, work_days, work_hours):
+    start_time, end_time = parse_time(work_hours[0]), parse_time(work_hours[1])
+    meeting_duration = timedelta(minutes=meeting_duration)
+    
+    for day in work_days:
+        busy_times = [parse_time(slot[0]), parse_time(slot[1])] for slots in participants.values()]
+        free_slots_list = [find_free_slots(busy_times[i], start_time, end_time) for i in range(len(participants))]
+        
+        common_free_slots = find_common_free_slot(free_slots_list)
+        if common_free_slots:
+            for start, end in common_free_slots:
+                if end - start >= meeting_duration:
+                    return f"{day} {time_to_str(start)}:{time_to_str(start + meeting_duration)}"
+    
+    return "No suitable time found"
+
+# Define the schedules
+schedules = {
+    'Mary': [
+        ('Tuesday', '10:00', '10:30'),
+        ('Tuesday', '15:30', '16:00'),
+        ('Wednesday', '9:30', '10:00'),
+        ('Wednesday', '15:00', '15:30'),
+        ('Thursday', '9:00', '10:00'),
+        ('Thursday', '10:30', '11:30')
+    ],
+    'Alexis': [
+        ('Monday', '9:00', '10:00'),
+        ('Monday', '10:30', '12:00'),
+        ('Monday', '12:30', '16:30'),
+        ('Tuesday', '9:00', '10:00'),
+        ('Tuesday', '10:30', '11:30'),
+        ('Tuesday', '12:00', '15:30'),
+        ('Tuesday', '16:00', '17:00'),
+        ('Wednesday', '9:00', '11:00'),
+        ('Wednesday', '11:30', '17:00'),
+        ('Thursday', '10:00', '12:00'),
+        ('Thursday', '14:00', '14:30'),
+        ('Thursday', '15:30', '16:00'),
+        ('Thursday', '16:30', '17:00')
+    ]
+}
+
+# Organize schedules by day
+participants_schedules = {'Mary': [], 'Alexis': []}
+for name, schedule in schedules.items():
+    for day, start, end in schedule:
+        participants_schedules[name].append((start, end))
+
+# Define work days and work hours
+work_days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday']
+work_hours = ('09:00', '17:00')
+
+# Find the meeting time
+meeting_time = find_meeting_time(participants_schedules, 30, work_days, work_hours)
+print(meeting_time)
+```
+
+This script defines the schedules for Mary and Alexis, organizes them by day, and then finds the earliest common free slot that fits the 30-minute meeting duration. It outputs the day and the time range in the required format.

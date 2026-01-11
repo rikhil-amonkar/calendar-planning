@@ -1,0 +1,124 @@
+Let’s break this down step-by-step before writing the code.
+
+**Step 1 — Understand the constraints**  
+- Work hours: 9:00–17:00  
+- Meeting duration: 30 minutes  
+- Participants: Natalie, David, Douglas, Ralph, Jordan  
+- Day: Monday  
+- David does **not** want to meet before 14:00.  
+- We have each person’s busy times in half-hour blocks.
+
+**Step 2 — Convert to easier logic**  
+We can think of the day in 30-minute slots:  
+9:00–9:30, 9:30–10:00, …, 16:30–17:00.
+
+A slot is **free** if **all** participants are free in that slot.
+
+**Step 3 — List busy times in half-hour format**  
+I’ll write each person’s busy slots (start–end) in terms of 30-minute intervals:
+
+- Natalie: free all day → no busy slots.
+- David: busy 11:30–12:00, 14:30–15:00. Also, before 14:00 not allowed (preference, not a busy slot, but must be enforced).
+- Douglas: busy 9:30–10:00, 11:30–12:00, 13:00–13:30, 14:30–15:00.
+- Ralph: busy 9:00–9:30, 10:00–11:00, 11:30–12:30, 13:30–15:00, 15:30–16:00, 16:30–17:00.
+- Jordan: busy 9:00–10:00, 12:00–12:30, 13:00–13:30, 14:30–15:00, 15:30–17:00.
+
+**Step 4 — Find free slots for everyone**  
+We can check each 30-minute slot from 9:00 to 16:30 (since meeting is 30 min, last start time is 16:30).
+
+Let’s check manually for logic verification:
+
+- 9:00–9:30: Ralph busy, Jordan busy → no.
+- 9:30–10:00: Douglas busy, Ralph busy (10:00–11:00 but 9:30–10:00 Ralph free? Wait, Ralph busy 10:00–11:00, so 9:30–10:00 Ralph is free? Actually Ralph busy 9:00–9:30 only, so 9:30–10:00 Ralph free. But Douglas busy 9:30–10:00, Jordan busy 9:00–10:00 → Jordan busy → no.
+- 10:00–10:30: Ralph busy 10:00–11:00 → no.
+- 10:30–11:00: Ralph busy 10:00–11:00 → no.
+- 11:00–11:30: Ralph free? Ralph busy 10:00–11:00, so 11:00–11:30 free. But David free, Douglas free, Jordan free. Natalie free. But David’s preference: before 14:00 not allowed → so even though technically free, David says no → so skip all before 14:00.
+- So start checking from 14:00 onward.
+
+From 14:00:
+- 14:00–14:30:  
+  David: free (busy 14:30–15:00 only, preference satisfied after 14:00)  
+  Douglas: free (busy 14:30–15:00 only)  
+  Ralph: busy 13:30–15:00 → yes, Ralph busy → no.
+
+- 14:30–15:00:  
+  David busy, Douglas busy, Ralph busy, Jordan busy → no.
+
+- 15:00–15:30:  
+  David free, Douglas free, Ralph free? Ralph busy 13:30–15:00, so 15:00–15:30 free. Jordan free? Jordan busy 15:30–17:00, so 15:00–15:30 free.  
+  All free? Let’s check:  
+  Natalie free, David free, Douglas free, Ralph free, Jordan free.  
+  David’s preference: after 14:00 satisfied.  
+  ✅ Works.
+
+So earliest possible slot after considering David’s preference is **15:00–15:30**.
+
+**Step 5 — Write Python code to compute this**  
+We’ll represent busy times as (start_hour, start_minute, end_hour, end_minute) and check in 30-minute increments.
+
+```python
+def time_to_minutes(hour, minute):
+    return hour * 60 + minute
+
+def minutes_to_time(m):
+    hour = m // 60
+    minute = m % 60
+    return f"{hour:02d}:{minute:02d}"
+
+def main():
+    # Work hours
+    work_start = time_to_minutes(9, 0)
+    work_end = time_to_minutes(17, 0)
+    duration = 30  # minutes
+    
+    # Busy times for each person (in minutes since midnight)
+    # Format: (start_minute, end_minute)
+    busy = {
+        "Natalie": [],
+        "David": [(time_to_minutes(11, 30), time_to_minutes(12, 0)),
+                  (time_to_minutes(14, 30), time_to_minutes(15, 0))],
+        "Douglas": [(time_to_minutes(9, 30), time_to_minutes(10, 0)),
+                    (time_to_minutes(11, 30), time_to_minutes(12, 0)),
+                    (time_to_minutes(13, 0), time_to_minutes(13, 30)),
+                    (time_to_minutes(14, 30), time_to_minutes(15, 0))],
+        "Ralph": [(time_to_minutes(9, 0), time_to_minutes(9, 30)),
+                  (time_to_minutes(10, 0), time_to_minutes(11, 0)),
+                  (time_to_minutes(11, 30), time_to_minutes(12, 30)),
+                  (time_to_minutes(13, 30), time_to_minutes(15, 0)),
+                  (time_to_minutes(15, 30), time_to_minutes(16, 0)),
+                  (time_to_minutes(16, 30), time_to_minutes(17, 0))],
+        "Jordan": [(time_to_minutes(9, 0), time_to_minutes(10, 0)),
+                   (time_to_minutes(12, 0), time_to_minutes(12, 30)),
+                   (time_to_minutes(13, 0), time_to_minutes(13, 30)),
+                   (time_to_minutes(14, 30), time_to_minutes(15, 0)),
+                   (time_to_minutes(15, 30), time_to_minutes(17, 0))]
+    }
+    
+    # David's preference: not before 14:00
+    david_pref_start = time_to_minutes(14, 0)
+    
+    # Check every possible start time in work hours
+    for start in range(work_start, work_end - duration + 1, 30):
+        end = start + duration
+        # Check David's preference
+        if start < david_pref_start:
+            continue
+        # Check if all are free
+        ok = True
+        for person, busy_slots in busy.items():
+            for bs, be in busy_slots:
+                if not (end <= bs or start >= be):
+                    # Overlap with busy time
+                    ok = False
+                    break
+            if not ok:
+                break
+        if ok:
+            print(f"Monday {minutes_to_time(start)}:{minutes_to_time(end)}")
+            return
+    
+    print("No suitable time found")
+
+if __name__ == "__main__":
+    main()
+```

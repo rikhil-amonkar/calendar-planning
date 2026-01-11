@@ -1,0 +1,51 @@
+Let’s break this down step-by-step before jumping into the code.
+
+**Understanding the problem:**
+We have 8 cities to visit in 17 days, with specific constraints on certain cities and days.  
+We must use only direct flights between cities.  
+A travel day counts as a day in both cities.
+
+**Cities and required stays:**
+- Reykjavik: 2 days (must include day 3–4)
+- Stockholm: 2 days (must include day 4–5)
+- Porto: 5 days (must include day 13–17)
+- Nice: 3 days
+- Venice: 4 days
+- Vienna: 3 days (must include day 11–13)
+- Split: 3 days
+- Copenhagen: 2 days
+
+**Direct flights list** (undirected edges):
+1. Copenhagen – Vienna  
+2. Nice – Stockholm  
+3. Split – Copenhagen  
+4. Nice – Reykjavik  
+5. Nice – Porto  
+6. Reykjavik – Vienna  
+7. Stockholm – Copenhagen  
+8. Nice – Venice  
+9. Nice – Vienna  
+10. Reykjavik – Copenhagen  
+11. Nice – Copenhagen  
+12. Stockholm – Vienna  
+13. Venice – Vienna  
+14. Copenhagen – Porto  
+15. Reykjavik – Stockholm  
+16. Stockholm – Split  
+17. Split – Vienna  
+18. Copenhagen – Venice  
+19. Vienna – Porto  
+
+**Approach:**
+We can treat this as a **constraint satisfaction problem** with a timeline of 17 days.  
+We need to assign each day to a city, respecting:
+1. Total days per city
+2. Fixed date constraints
+3. Travel possible only if direct flight exists between consecutive cities
+4. Travel day counts for both cities
+
+We’ll solve by **backtracking search** over days 1–17, trying to assign cities while checking constraints.
+
+---
+
+Here’s the Python program implementing this:

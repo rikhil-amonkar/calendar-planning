@@ -1,0 +1,88 @@
+<reasoning>
+To solve this scheduling problem, we need to follow these steps:
+
+1. **Parse the Input Data**: Convert the times and constraints into a structured format that can be easily manipulated and compared.
+2. **Identify Available Time Slots**: For each participant, identify the time slots during which they are available.
+3. **Find Common Availability**: Determine the time slots that all participants are available for the meeting duration.
+4. **Apply Constraints**: Filter out any time slots that violate the given constraints (e.g., Bobby prefers not to have meetings after 15:00).
+5. **Select a Suitable Time Slot**: Choose one of the valid time slots as the meeting time.
+6. **Output the Result**: Print the selected time slot and the day of the week in the specified format.
+
+Let's break down the implementation details:
+
+- **Time Representation**: We'll represent times as integers (e.g., 9:00 AM as 900, 10:30 AM as 1030) to make comparison and arithmetic operations easier.
+- **Available Slots Calculation**: For each participant, calculate the gaps between their scheduled meetings as potential available slots.
+- **Common Slots Identification**: Use set intersection to find common slots across all participants.
+- **Constraint Handling**: After identifying common slots, filter them based on specific constraints (e.g., Bobby's preference to avoid meetings after 15:00).
+- **Output Formatting**: Format the selected time slot in the required HH:MM:HH:MM format and print it along with the day of the week.
+
+This approach ensures that we efficiently find a suitable meeting time that respects all participants' schedules and preferences.
+</reasoning>
+
+```python
+def find_meeting_time(participants, meeting_duration, day_of_week):
+    # Helper function to convert time from "HH:MM" format to integer
+    def time_to_int(time_str):
+        return int(time_str.replace(":", ""))
+
+    # Helper function to convert time from integer back to "HH:MM" format
+    def int_to_time(time_int):
+        return f"{time_int // 100:02}:{time_int % 100:02}"
+
+    # Define work hours in integer format
+    start_work = time_to_int("09:00")
+    end_work = time_to_int("17:00")
+
+    # Calculate available slots for each participant
+    available_slots = {}
+    for name, schedule in participants.items():
+        slots = []
+        current_start = start_work
+        for meeting in sorted(schedule):
+            meeting_start, meeting_end = map(time_to_int, meeting.split("-"))
+            if current_start < meeting_start:
+                slots.append((current_start, meeting_start))
+            current_start = max(current_start, meeting_end)
+        if current_start < end_work:
+            slots.append((current_start, end_work))
+        available_slots[name] = slots
+
+    # Find common available slots
+    common_slots = available_slots[list(available_slots.keys())[0]]
+    for slots in list(available_slots.values())[1:]:
+        common_slots = [(max(s1[0], s2[0]), min(s1[1], s2[1])) for s1 in common_slots for s2 in slots if max(s1[0], s2[0]) < min(s1[1], s2[1])]
+
+    # Filter slots based on constraints
+    filtered_slots = []
+    for slot in common_slots:
+        slot_start, slot_end = slot
+        if slot_end - slot_start >= meeting_duration:
+            # Check Bobby's constraint
+            if 'Bobby' in participants and slot_start >= time_to_int("15:00"):
+                continue
+            filtered_slots.append(slot)
+
+    # Select the first valid slot
+    if filtered_slots:
+        best_slot = filtered_slots[0]
+        best_slot_start = int_to_time(best_slot[0])
+        best_slot_end = int_to_time(best_slot[1] - meeting_duration + 60)
+        return f"{best_slot_start}:{best_slot_end} {day_of_week}"
+    else:
+        return "No suitable time found"
+
+# Participants' schedules
+participants = {
+    "Lisa": ["09:00-10:00", "10:30-11:30", "12:30-13:00", "16:00-16:30"],
+    "Bobby": ["09:00-09:30", "10:00-10:30", "11:30-12:00", "15:00-15:30"],
+    "Randy": ["09:30-10:00", "10:30-11:00", "11:30-12:30", "13:00-13:30", "14:30-15:30", "16:00-16:30"]
+}
+
+meeting_duration = 30  # Meeting duration in minutes
+day_of_week = "Monday"
+
+# Find and print the meeting time
+print(find_meeting_time(participants, meeting_duration, day_of_week))
+```
+
+This script will output the earliest suitable time slot for the meeting that respects all participants' schedules and constraints, formatted as requested.

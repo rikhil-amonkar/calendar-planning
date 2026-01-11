@@ -1,0 +1,133 @@
+```python
+import json
+from itertools import permutations
+
+def solve_puzzle():
+    # Define all possible values for each category
+    names = ["Alice", "Peter", "Arnold", "Eric"]
+    mothers = ["Holly", "Kailyn", "Janelle", "Aniya"]
+    flowers = ["carnations", "roses", "lilies", "daffodils"]
+    houses = [1, 2, 3, 4]
+    
+    # Generate all possible permutations for each category
+    name_perms = list(permutations(names, 4))
+    mother_perms = list(permutations(mothers, 4))
+    flower_perms = list(permutations(flowers, 4))
+    
+    solutions = []
+    
+    # Try all combinations
+    for name_assignment in name_perms:
+        for mother_assignment in mother_perms:
+            for flower_assignment in flower_perms:
+                # Create assignment dictionaries for easy lookup
+                assignment = {}
+                for i in range(4):
+                    house = i + 1
+                    assignment[house] = {
+                        'name': name_assignment[i],
+                        'mother': mother_assignment[i],
+                        'flower': flower_assignment[i]
+                    }
+                
+                # Check clue 8: Alice is in the third house
+                if assignment[3]['name'] != 'Alice':
+                    continue
+                
+                # Check clue 1: Alice is the person whose mother's name is Kailyn
+                if assignment[3]['mother'] != 'Kailyn':
+                    continue
+                
+                # Check clue 4: Eric is the person who loves a bouquet of daffodils
+                eric_house = None
+                for house in houses:
+                    if assignment[house]['name'] == 'Eric':
+                        eric_house = house
+                        break
+                if eric_house is None or assignment[eric_house]['flower'] != 'daffodils':
+                    continue
+                
+                # Check clue 5: Arnold is The person whose mother's name is Holly
+                arnold_house = None
+                for house in houses:
+                    if assignment[house]['name'] == 'Arnold':
+                        arnold_house = house
+                        break
+                if arnold_house is None or assignment[arnold_house]['mother'] != 'Holly':
+                    continue
+                
+                # Check clue 2: The person whose mother's name is Janelle is somewhere to the right of Arnold
+                janelle_house = None
+                for house in houses:
+                    if assignment[house]['mother'] == 'Janelle':
+                        janelle_house = house
+                        break
+                if janelle_house is None or janelle_house <= arnold_house:
+                    continue
+                
+                # Check clue 3: Peter is somewhere to the right of the person who loves a carnations arrangement
+                peter_house = None
+                carnations_house = None
+                for house in houses:
+                    if assignment[house]['name'] == 'Peter':
+                        peter_house = house
+                    if assignment[house]['flower'] == 'carnations':
+                        carnations_house = house
+                if peter_house is None or carnations_house is None or peter_house <= carnations_house:
+                    continue
+                
+                # Check clue 6: The person who loves a carnations arrangement is somewhere to the right of The person whose mother's name is Holly
+                holly_house = None
+                for house in houses:
+                    if assignment[house]['mother'] == 'Holly':
+                        holly_house = house
+                        break
+                if holly_house is None or carnations_house <= holly_house:
+                    continue
+                
+                # Check clue 7: The person who loves the bouquet of lilies is directly left of Alice
+                lilies_house = None
+                for house in houses:
+                    if assignment[house]['flower'] == 'lilies':
+                        lilies_house = house
+                        break
+                if lilies_house is None or lilies_house != 2:  # Alice is in house 3, so directly left is house 2
+                    continue
+                
+                # All clues satisfied - found a solution
+                solutions.append(assignment)
+    
+    if not solutions:
+        return None
+    
+    # Convert solution to required format
+    solution = solutions[0]  # There should be exactly one solution
+    
+    result = {
+        "solution": {
+            "header": ["House", "Name", "Mother", "Flower"],
+            "rows": []
+        }
+    }
+    
+    for house in sorted(solution.keys()):
+        row = [
+            str(house),
+            solution[house]['name'],
+            solution[house]['mother'],
+            solution[house]['flower']
+        ]
+        result["solution"]["rows"].append(row)
+    
+    return result
+
+def main():
+    solution = solve_puzzle()
+    if solution:
+        print(json.dumps(solution, indent=2))
+    else:
+        print(json.dumps({"error": "No solution found"}, indent=2))
+
+if __name__ == "__main__":
+    main()
+```

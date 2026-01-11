@@ -1,0 +1,147 @@
+import itertools
+import json
+
+# Define the attributes
+names = ["Peter", "Alice", "Eric", "Arnold"]
+mothers = ["Janelle", "Holly", "Aniya", "Kailyn"]
+smoothies = ["watermelon", "dragonfruit", "desert", "cherry"]
+heights = ["tall", "average", "short", "very short"]
+educations = ["high school", "associate", "master", "bachelor"]
+
+# Define the constraints
+def constraint1(state):
+    for house in state:
+        if house['Mother'] == "Janelle" and house['House'] != 3:
+            return False
+    return True
+
+def constraint2(state):
+    for house in state:
+        if house['Smoothie'] == "desert" and house['Education'] != "master":
+            return False
+    return True
+
+def constraint3(state):
+    for house in state:
+        if house['Smoothie'] == "desert" and house['House'] == 1:
+            return False
+    return True
+
+def constraint4(state):
+    very_short_house = None
+    high_school_house = None
+    for house in state:
+        if house['Height'] == "very short":
+            very_short_house = house['House']
+        if house['Education'] == "high school":
+            high_school_house = house['House']
+    if very_short_house is not None and high_school_house is not None:
+        if very_short_house >= high_school_house:
+            return False
+    return True
+
+def constraint5(state):
+    eric_house = None
+    cherry_house = None
+    for house in state:
+        if house['Name'] == "Eric":
+            eric_house = house['House']
+        if house['Smoothie'] == "cherry":
+            cherry_house = house['House']
+    if eric_house is not None and cherry_house is not None:
+        if abs(eric_house - cherry_house) != 1:
+            return False
+    return True
+
+def constraint6(state):
+    for house in state:
+        if house['Education'] == "high school" and house['House'] == 3:
+            return False
+    return True
+
+def constraint7(state):
+    for house in state:
+        if house['Mother'] == "Kailyn" and house['Education'] != "associate":
+            return False
+    return True
+
+def constraint8(state):
+    for house in state:
+        if house['Smoothie'] == "cherry" and house['Mother'] != "Aniya":
+            return False
+    return True
+
+def constraint9(state):
+    for house in state:
+        if house['Mother'] == "Janelle" and house['Height'] != "tall":
+            return False
+    return True
+
+def constraint10(state):
+    arnold_house = None
+    average_house = None
+    for house in state:
+        if house['Name'] == "Arnold":
+            arnold_house = house['House']
+        if house['Height'] == "average":
+            average_house = house['House']
+    if arnold_house is not None and average_house is not None:
+        if arnold_house <= average_house:
+            return False
+    return True
+
+def constraint11(state):
+    dragonfruit_house = None
+    short_house = None
+    for house in state:
+        if house['Smoothie'] == "dragonfruit":
+            dragonfruit_house = house['House']
+        if house['Height'] == "short":
+            short_house = house['House']
+    if dragonfruit_house is not None and short_house is not None:
+        if dragonfruit_house + 1 != short_house:
+            return False
+    return True
+
+def constraint12(state):
+    for house in state:
+        if house['Name'] == "Alice" and house['Height'] != "tall":
+            return False
+    return True
+
+# Check all constraints
+def check_constraints(state):
+    constraints = [constraint1, constraint2, constraint3, constraint4, constraint5,
+                   constraint6, constraint7, constraint8, constraint9, constraint10,
+                   constraint11, constraint12]
+    return all(constraint(state) for constraint in constraints)
+
+# Generate all possible states and check each one
+def solve_puzzle():
+    for name_perm in itertools.permutations(names):
+        for mother_perm in itertools.permutations(mothers):
+            for smoothie_perm in itertools.permutations(smoothies):
+                for height_perm in itertools.permutations(heights):
+                    for education_perm in itertools.permutations(educations):
+                        state = [
+                            {"House": 1, "Name": name_perm[0], "Mother": mother_perm[0], "Smoothie": smoothie_perm[0], "Height": height_perm[0], "Education": education_perm[0]},
+                            {"House": 2, "Name": name_perm[1], "Mother": mother_perm[1], "Smoothie": smoothie_perm[1], "Height": height_perm[1], "Education": education_perm[1]},
+                            {"House": 3, "Name": name_perm[2], "Mother": mother_perm[2], "Smoothie": smoothie_perm[2], "Height": height_perm[2], "Education": education_perm[2]},
+                            {"House": 4, "Name": name_perm[3], "Mother": mother_perm[3], "Smoothie": smoothie_perm[3], "Height": height_perm[3], "Education": education_perm[3]}
+                        ]
+                        if check_constraints(state):
+                            return state
+    return None
+
+# Solve the puzzle and format the solution as JSON
+solution = solve_puzzle()
+if solution:
+    formatted_solution = {
+        "solution": {
+            "header": ["House", "Name", "Mother", "Smoothie", "Height", "Education"],
+            "rows": [[str(house["House"]), house["Name"], house["Mother"], house["Smoothie"], house["Height"], house["Education"]] for house in solution]
+        }
+    }
+    print(json.dumps(formatted_solution, indent=2))
+else:
+    print("No solution found")

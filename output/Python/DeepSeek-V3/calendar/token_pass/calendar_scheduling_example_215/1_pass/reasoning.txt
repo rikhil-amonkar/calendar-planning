@@ -1,0 +1,104 @@
+Let's break this down step by step.  
+
+We have:  
+- **Participants**: Steven, Roy, Cynthia, Lauren, Robert  
+- **Work hours**: 9:00–17:00  
+- **Meeting duration**: 30 minutes  
+- **Day**: Monday  
+- **Goal**: Earliest available slot  
+
+---
+
+### Step 1 — Interpret busy times  
+We can represent each person’s busy times in minutes from 9:00 as start time.  
+
+**Cynthia**:  
+- 9:30–10:30 → 30–90 min from 9:00  
+- 11:30–12:00 → 150–180 min  
+- 13:00–13:30 → 240–270 min  
+- 15:00–16:00 → 360–420 min  
+
+**Lauren**:  
+- 9:00–9:30 → 0–30 min  
+- 10:30–11:00 → 90–120 min  
+- 11:30–12:00 → 150–180 min  
+- 13:00–13:30 → 240–270 min  
+- 14:00–14:30 → 300–330 min  
+- 15:00–15:30 → 360–390 min  
+- 16:00–17:00 → 420–480 min  
+
+**Robert**:  
+- 10:30–11:00 → 90–120 min  
+- 11:30–12:00 → 150–180 min  
+- 12:30–13:30 → 210–270 min  
+- 14:00–16:00 → 300–420 min  
+
+Steven and Roy are free all day.
+
+---
+
+### Step 2 — Combine busy intervals  
+We can merge all busy intervals from Cynthia, Lauren, Robert (Steven & Roy free).  
+
+Let’s list all busy intervals in minutes from 9:00:  
+
+From Cynthia:  
+(30, 90), (150, 180), (240, 270), (360, 420)  
+
+From Lauren:  
+(0, 30), (90, 120), (150, 180), (240, 270), (300, 330), (360, 390), (420, 480)  
+
+From Robert:  
+(90, 120), (150, 180), (210, 270), (300, 420)  
+
+Merge all:  
+
+1. Sort all intervals:  
+(0,30), (30,90), (90,120), (90,120), (150,180), (150,180), (150,180), (210,270), (240,270), (240,270), (300,330), (300,420), (360,390), (360,420), (420,480)  
+
+2. Merge overlapping:  
+- Start with (0,30)  
+- (0,30) + (30,90) → (0,90)  
+- (0,90) + (90,120) → (0,120)  
+- (0,120) + (150,180) no overlap → keep both → busy: (0,120), (150,180)  
+- (150,180) + (210,270) no overlap → busy: (0,120), (150,180), (210,270)  
+- (210,270) + (240,270) overlap → (210,270)  
+- (210,270) + (300,330) no overlap → busy: (0,120), (150,180), (210,270), (300,330)  
+- (300,330) + (300,420) overlap → (300,420)  
+- (300,420) + (360,390) overlap → (300,420)  
+- (300,420) + (360,420) overlap → (300,420)  
+- (300,420) + (420,480) adjacent/overlap? 420 matches exactly, so merge → (300,480)  
+
+Final merged busy:  
+(0,120), (150,180), (210,270), (300,480)  
+
+---
+
+### Step 3 — Find free slots within 9:00–17:00 (0–480 min)  
+Free = complement of busy within [0,480]:  
+
+1. Before first busy: start 0 → busy from 0, so no free before.  
+2. Between (120,150) → free 120–150 (30 min exactly) → candidate.  
+3. Between (180,210) → free 180–210 (30 min exactly) → candidate.  
+4. Between (270,300) → free 270–300 (30 min exactly) → candidate.  
+5. After last busy: 480 end, but work ends at 480 (17:00), so no free after.  
+
+Earliest free slot of 30 min: 120–150 min from 9:00 →  
+120 min = 2 hours → 11:00  
+150 min = 2.5 hours → 11:30  
+
+So 11:00–11:30.  
+
+Check everyone:  
+- Steven: free  
+- Roy: free  
+- Cynthia: busy 11:30–12:00, but meeting ends at 11:30, so okay (not overlapping)  
+- Lauren: busy 11:30–12:00, same as above, okay  
+- Robert: busy 11:30–12:00, okay  
+
+Yes, 11:00–11:30 works.
+
+---
+
+### Step 4 — Write Python script  
+We’ll implement merging of intervals and finding the earliest gap.

@@ -1,0 +1,60 @@
+Let’s break this down step by step before writing the code.
+
+**Step 1 – Understanding the problem**  
+We start at Golden Gate Park at 9:00 AM.  
+We have 5 friends with availability windows and minimum meeting durations.  
+We must travel between locations, and travel times are given in minutes.  
+We want to meet as many friends as possible, but the problem doesn’t explicitly say whether meeting all is possible — so we must check feasibility.
+
+**Step 2 – Data representation**  
+We’ll store:  
+- Locations as strings.  
+- Travel times in a nested dictionary: `travel[from][to]`.  
+- Each friend: name, location, available start, available end, min_duration (minutes).  
+- All times in minutes since midnight for easier arithmetic.
+
+**Step 3 – Strategy**  
+We can brute-force permutations of meeting orders because there are only 5 friends.  
+For each permutation, we simulate starting at Golden Gate Park at 9:00 AM (540 minutes since midnight), traveling to the first friend’s location, meeting for at least their minimum duration (but possibly more if time allows before their window ends or before we need to leave for next friend), then travel to next, etc.  
+We must respect each friend’s availability window:  
+Meeting must start ≥ their window start, and end ≤ their window end.  
+Also, meeting duration ≥ their minimum.
+
+We’ll try to maximize the number of friends met. If multiple schedules meet the same number, we can pick one that maximizes total meeting time or minimizes idle time — but the problem says “meet as many friends as possible” so count is priority.
+
+**Step 4 – Feasibility check for each friend individually from start**  
+- David at Embarcadero 8:15–9:00, min 30 min: impossible because we start at Golden Gate Park at 9:00, travel to Embarcadero takes 25 min, so earliest arrival 9:25, but David leaves at 9:00. So David is impossible to meet.  
+Thus maximum possible friends to meet is 4.
+
+**Step 5 – Let’s see if we can meet all 4 others**  
+Order: Joseph (Fisherman’s Wharf), Jeffrey (Bayview), Kevin (Mission District), Barbara (Financial District).  
+We must check time windows.
+
+We’ll implement a search over permutations of the 4 possible friends.
+
+**Step 6 – Implementation plan**  
+1. Convert all times to minutes past midnight.  
+2. Define travel matrix.  
+3. For each permutation of the 4 friends:  
+   - Start at Golden Gate Park at 9:00 (540).  
+   - For each friend in order:  
+     - Travel to friend’s location (add travel time).  
+     - Start meeting at max(arrival_time, friend_window_start).  
+     - If start_time + min_duration > friend_window_end → impossible for this order.  
+     - If possible, meet for min_duration (or more if slack before next friend’s window or travel). We’ll meet exactly min_duration to keep it simple and safe.  
+     - End meeting = start + min_duration.  
+     - Update current time to end meeting.  
+   - If all friends in this order are feasible, record schedule.  
+4. Pick a feasible permutation (any).  
+5. Convert times back to “H:MM” format.  
+6. Output JSON.
+
+**Step 7 – Edge cases**  
+- Travel times are not symmetric (given as separate entries).  
+- We must ensure we don’t exceed friend’s window end.  
+- We can meet friend exactly at their window start if we arrive earlier (waiting allowed).  
+- We cannot meet friend if arrival_time > window_end - min_duration.
+
+---
+
+Let’s write the code.

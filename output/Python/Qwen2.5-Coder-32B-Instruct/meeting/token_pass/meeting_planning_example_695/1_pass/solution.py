@@ -1,0 +1,99 @@
+import heapq
+from datetime import datetime, timedelta
+
+# Define the travel times as a graph
+travel_times = {
+    'Bayview': {'Nob Hill': 20, 'Union Square': 17, 'Chinatown': 18, 'The Castro': 20, 'Presidio': 31, 'Pacific Heights': 23, 'Russian Hill': 23},
+    'Nob Hill': {'Bayview': 19, 'Union Square': 7, 'Chinatown': 6, 'The Castro': 17, 'Presidio': 17, 'Pacific Heights': 8, 'Russian Hill': 5},
+    'Union Square': {'Bayview': 15, 'Nob Hill': 9, 'Chinatown': 7, 'The Castro': 19, 'Presidio': 24, 'Pacific Heights': 15, 'Russian Hill': 13},
+    'Chinatown': {'Bayview': 22, 'Nob Hill': 8, 'Union Square': 7, 'The Castro': 22, 'Presidio': 19, 'Pacific Heights': 10, 'Russian Hill': 7},
+    'The Castro': {'Bayview': 19, 'Nob Hill': 16, 'Union Square': 19, 'Chinatown': 20, 'Presidio': 20, 'Pacific Heights': 16, 'Russian Hill': 18},
+    'Presidio': {'Bayview': 31, 'Nob Hill': 18, 'Union Square': 22, 'Chinatown': 21, 'The Castro': 21, 'Pacific Heights': 11, 'Russian Hill': 14},
+    'Pacific Heights': {'Bayview': 22, 'Nob Hill': 8, 'Union Square': 12, 'Chinatown': 11, 'The Castro': 16, 'Presidio': 11, 'Russian Hill': 7},
+    'Russian Hill': {'Bayview': 23, 'Nob Hill': 5, 'Union Square': 11, 'Chinatown': 9, 'The Castro': 21, 'Presidio': 14, 'Pacific Heights': 7}
+}
+
+# Define the friends' availability and meeting durations
+friends = {
+    'Paul': {'location': 'Nob Hill', 'start': 16.25, 'end': 21.25, 'duration': 1},  # 4:15PM to 9:15PM, 60 minutes
+    'Carol': {'location': 'Union Square', 'start': 18.0, 'end': 20.25, 'duration': 2},  # 6:00PM to 8:15PM, 120 minutes
+    'Patricia': {'location': 'Chinatown', 'start': 20.0, 'end': 21.5, 'duration': 1.25},  # 8:00PM to 9:30PM, 75 minutes
+    'Karen': {'location': 'The Castro', 'start': 17.0, 'end': 19.0, 'duration': 0.75},  # 5:00PM to 7:00PM, 45 minutes
+    'Nancy': {'location': 'Presidio', 'start': 11.75, 'end': 22.0, 'duration': 0.5},  # 11:45AM to 10:00PM, 30 minutes
+    'Jeffrey': {'location': 'Pacific Heights', 'start': 20.0, 'end': 20.75, 'duration': 0.75},  # 8:00PM to 8:45PM, 45 minutes
+    'Matthew': {'location': 'Russian Hill', 'start': 15.75, 'end': 21.75, 'duration': 1.25}  # 3:45PM to 9:45PM, 75 minutes
+}
+
+def time_to_minutes(time):
+    """Convert time in H.MM format to minutes since start of the day."""
+    hours, minutes = map(int, str(time).split('.'))
+    return hours * 60 + minutes
+
+def minutes_to_time(minutes):
+    """Convert minutes since start of the day to H.MM format."""
+    hours = minutes // 60
+    minutes = minutes % 60
+    return f"{hours}:{minutes:02d}"
+
+def find_optimal_schedule():
+    start_location = 'Bayview'
+    start_time = 9.0  # 9:00 AM
+    current_time = time_to_minutes(start_time)
+    current_location = start_location
+    itinerary = []
+
+    # Priority queue to store potential meeting slots
+    pq = []
+    
+    # Add initial travel times to the priority queue
+    for location, time in travel_times[current_location].items():
+        heapq.heappush(pq, (current_time + time, location))
+    
+    # Process the priority queue
+    while pq:
+        arrival_time, location = heapq.heappop(pq)
+        
+        # Check if there's a friend available at this location
+        for friend, details in friends.items():
+            if details['location'] == location:
+                friend_start = time_to_minutes(details['start'])
+                friend_end = time_to_minutes(details['end'])
+                meeting_duration = time_to_minutes(details['duration'])
+                
+                # Calculate the latest possible start time for the meeting
+                latest_start = min(arrival_time, friend_end - meeting_duration)
+                
+                # Calculate the earliest possible end time for the meeting
+                earliest_end = max(arrival_time + meeting_duration, friend_start)
+                
+                # If a valid meeting slot is found
+                if earliest_end <= friend_end:
+                    meeting_start = max(arrival_time, friend_start)
+                    meeting_end = meeting_start + meeting_duration
+                    
+                    # Add the meeting to the itinerary
+                    itinerary.append({
+                        "action": "meet",
+                        "location": location,
+                        "person": friend,
+                        "start_time": minutes_to_time(meeting_start),
+                        "end_time": minutes_to_time(meeting_end)
+                    })
+                    
+                    # Update current time and location
+                    current_time = meeting_end
+                    current_location = location
+                    
+                    # Re-add travel times to the priority queue from the new location
+                    for next_location, time in travel_times[current_location].items():
+                        heapq.heappush(pq, (current_time + time, next_location))
+                    
+                    # Remove the friend from the list as they have been met
+                    del friends[friend]
+                    break
+    
+    return {"itinerary": itinerary}
+
+# Find and print the optimal schedule
+optimal_schedule = find_optimal_schedule()
+print(optimal_schedule)

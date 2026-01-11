@@ -1,0 +1,215 @@
+import json
+from itertools import permutations
+
+def solve():
+    # Define all possible values for each category
+    names = ["Eric", "Peter", "Arnold", "Alice", "Bob"]
+    foods = ["stir fry", "spaghetti", "stew", "grilled cheese", "pizza"]
+    cars = ["ford f150", "tesla model 3", "bmw 3 series", "toyota camry", "honda civic"]
+    phones = ["iphone 13", "google pixel 6", "samsung galaxy s21", "oneplus 9", "huawei p50"]
+    occupations = ["teacher", "lawyer", "doctor", "artist", "engineer"]
+    drinks = ["tea", "milk", "water", "root beer", "coffee"]
+    
+    houses = [1, 2, 3, 4, 5]
+    
+    # Generate all permutations for each category
+    for name_perm in permutations(names, 5):
+        # Clue 17: Eric is in the fourth house
+        if name_perm[3] != "Eric":
+            continue
+            
+        for food_perm in permutations(foods, 5):
+            # Clue 4: Alice loves stir fry
+            alice_index = name_perm.index("Alice")
+            if food_perm[alice_index] != "stir fry":
+                continue
+                
+            for car_perm in permutations(cars, 5):
+                # Clue 16: Arnold owns Toyota Camry
+                arnold_index = name_perm.index("Arnold")
+                if car_perm[arnold_index] != "toyota camry":
+                    continue
+                    
+                for phone_perm in permutations(phones, 5):
+                    # Clue 3: Alice uses Samsung Galaxy S21
+                    if phone_perm[alice_index] != "samsung galaxy s21":
+                        continue
+                        
+                    for occ_perm in permutations(occupations, 5):
+                        # Clue 7: Arnold is the doctor
+                        if occ_perm[arnold_index] != "doctor":
+                            continue
+                        # Clue 14: Alice is the artist
+                        if occ_perm[alice_index] != "artist":
+                            continue
+                            
+                        for drink_perm in permutations(drinks, 5):
+                            # Clue 5: Tea drinker is not in the fifth house
+                            if drink_perm[4] == "tea":
+                                continue
+                                
+                            # Create house assignments
+                            assignment = {}
+                            for i in range(5):
+                                assignment[i] = {
+                                    "house": i+1,
+                                    "name": name_perm[i],
+                                    "food": food_perm[i],
+                                    "car": car_perm[i],
+                                    "phone": phone_perm[i],
+                                    "occupation": occ_perm[i],
+                                    "drink": drink_perm[i]
+                                }
+                            
+                            # Check all clues
+                            valid = True
+                            
+                            # Clue 1: Root beer lover owns Honda Civic
+                            for i in range(5):
+                                if assignment[i]["drink"] == "root beer" and assignment[i]["car"] != "honda civic":
+                                    valid = False
+                                    break
+                                if assignment[i]["car"] == "honda civic" and assignment[i]["drink"] != "root beer":
+                                    valid = False
+                                    break
+                            if not valid:
+                                continue
+                            
+                            # Clue 2: Milk drinker is directly left of grilled cheese eater
+                            milk_left = False
+                            for i in range(4):
+                                if assignment[i]["drink"] == "milk" and assignment[i+1]["food"] == "grilled cheese":
+                                    milk_left = True
+                                    break
+                            if not milk_left:
+                                continue
+                            
+                            # Clue 6: BMW 3 Series is somewhere left of tea drinker
+                            bmw_index = None
+                            tea_index = None
+                            for i in range(5):
+                                if assignment[i]["car"] == "bmw 3 series":
+                                    bmw_index = i
+                                if assignment[i]["drink"] == "tea":
+                                    tea_index = i
+                            if bmw_index is None or tea_index is None or bmw_index >= tea_index:
+                                continue
+                            
+                            # Clue 8: iPhone 13 user is coffee drinker
+                            for i in range(5):
+                                if assignment[i]["phone"] == "iphone 13" and assignment[i]["drink"] != "coffee":
+                                    valid = False
+                                    break
+                                if assignment[i]["drink"] == "coffee" and assignment[i]["phone"] != "iphone 13":
+                                    valid = False
+                                    break
+                            if not valid:
+                                continue
+                            
+                            # Clue 9: Engineer owns BMW 3 Series
+                            for i in range(5):
+                                if assignment[i]["occupation"] == "engineer" and assignment[i]["car"] != "bmw 3 series":
+                                    valid = False
+                                    break
+                                if assignment[i]["car"] == "bmw 3 series" and assignment[i]["occupation"] != "engineer":
+                                    valid = False
+                                    break
+                            if not valid:
+                                continue
+                            
+                            # Clue 10: Stew eater uses iPhone 13
+                            for i in range(5):
+                                if assignment[i]["food"] == "stew" and assignment[i]["phone"] != "iphone 13":
+                                    valid = False
+                                    break
+                                if assignment[i]["phone"] == "iphone 13" and assignment[i]["food"] != "stew":
+                                    valid = False
+                                    break
+                            if not valid:
+                                continue
+                            
+                            # Clue 11: Doctor is directly left of OnePlus 9 user
+                            doctor_left = False
+                            for i in range(4):
+                                if assignment[i]["occupation"] == "doctor" and assignment[i+1]["phone"] == "oneplus 9":
+                                    doctor_left = True
+                                    break
+                            if not doctor_left:
+                                continue
+                            
+                            # Clue 12: Honda Civic is directly left of spaghetti eater
+                            honda_left = False
+                            for i in range(4):
+                                if assignment[i]["car"] == "honda civic" and assignment[i+1]["food"] == "spaghetti":
+                                    honda_left = True
+                                    break
+                            if not honda_left:
+                                continue
+                            
+                            # Clue 13: Google Pixel 6 user is tea drinker
+                            for i in range(5):
+                                if assignment[i]["phone"] == "google pixel 6" and assignment[i]["drink"] != "tea":
+                                    valid = False
+                                    break
+                                if assignment[i]["drink"] == "tea" and assignment[i]["phone"] != "google pixel 6":
+                                    valid = False
+                                    break
+                            if not valid:
+                                continue
+                            
+                            # Clue 15: One house between Alice and Ford F-150 owner
+                            alice_house = alice_index + 1
+                            ford_house = None
+                            for i in range(5):
+                                if assignment[i]["car"] == "ford f150":
+                                    ford_house = i + 1
+                                    break
+                            if ford_house is None or abs(alice_house - ford_house) != 2:
+                                continue
+                            
+                            # Clue 18: OnePlus 9 user is lawyer
+                            for i in range(5):
+                                if assignment[i]["phone"] == "oneplus 9" and assignment[i]["occupation"] != "lawyer":
+                                    valid = False
+                                    break
+                                if assignment[i]["occupation"] == "lawyer" and assignment[i]["phone"] != "oneplus 9":
+                                    valid = False
+                                    break
+                            if not valid:
+                                continue
+                            
+                            # Clue 19: Grilled cheese eater is Peter
+                            peter_index = name_perm.index("Peter")
+                            if food_perm[peter_index] != "grilled cheese":
+                                continue
+                            
+                            # All clues satisfied - found solution
+                            result = {
+                                "solution": {
+                                    "header": ["House", "Name", "Food", "CarModel", "PhoneModel", "Occupation", "Drink"],
+                                    "rows": []
+                                }
+                            }
+                            
+                            for i in range(5):
+                                row = [
+                                    str(i+1),
+                                    assignment[i]["name"],
+                                    assignment[i]["food"],
+                                    assignment[i]["car"],
+                                    assignment[i]["phone"],
+                                    assignment[i]["occupation"],
+                                    assignment[i]["drink"]
+                                ]
+                                result["solution"]["rows"].append(row)
+                            
+                            return result
+    
+    return None
+
+if __name__ == "__main__":
+    solution = solve()
+    if solution:
+        print(json.dumps(solution, indent=2))
+    else:
+        print(json.dumps({"error": "No solution found"}, indent=2))

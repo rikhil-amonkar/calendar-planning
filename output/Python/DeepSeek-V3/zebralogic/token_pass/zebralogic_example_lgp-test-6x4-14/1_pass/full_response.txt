@@ -1,0 +1,137 @@
+```python
+import json
+from itertools import permutations
+
+def solve():
+    houses = [1, 2, 3, 4, 5, 6]
+    
+    # All possible values for each category
+    names = ["Eric", "Bob", "Peter", "Alice", "Arnold", "Carol"]
+    cars = ["ford f150", "honda civic", "toyota camry", "tesla model 3", "chevrolet silverado", "bmw 3 series"]
+    mothers = ["Sarah", "Penny", "Holly", "Aniya", "Kailyn", "Janelle"]
+    hobbies = ["photography", "cooking", "knitting", "gardening", "woodworking", "painting"]
+    
+    # Generate all permutations for each category
+    for name_perm in permutations(names, 6):
+        # Clue 6: BMW 3 Series is Bob
+        if name_perm.index("Bob") != -1:
+            # We'll check car assignment later
+            pass
+        
+        for car_perm in permutations(cars, 6):
+            # Clue 1: Toyota Camry is in house 6
+            if car_perm[5] != "toyota camry":
+                continue
+                
+            # Clue 6: BMW 3 Series is Bob
+            bob_pos = name_perm.index("Bob")
+            if car_perm[bob_pos] != "bmw 3 series":
+                continue
+                
+            # Clue 16: Honda Civic is Arnold
+            arnold_pos = name_perm.index("Arnold")
+            if car_perm[arnold_pos] != "honda civic":
+                continue
+                
+            for mother_perm in permutations(mothers, 6):
+                # Clue 7: Mother Kailyn is in house 6
+                if mother_perm[5] != "Kailyn":
+                    continue
+                    
+                # Clue 3: Chevrolet Silverado owner has mother Aniya
+                # Find Chevrolet Silverado position
+                try:
+                    chevy_pos = car_perm.index("chevrolet silverado")
+                except ValueError:
+                    continue
+                if mother_perm[chevy_pos] != "Aniya":
+                    continue
+                    
+                # Clue 4: Chevrolet Silverado is not in house 2
+                if chevy_pos == 1:  # house 2 is index 1
+                    continue
+                    
+                # Clue 5: Ford F-150 owner has mother Sarah
+                try:
+                    ford_pos = car_perm.index("ford f150")
+                except ValueError:
+                    continue
+                if mother_perm[ford_pos] != "Sarah":
+                    continue
+                    
+                for hobby_perm in permutations(hobbies, 6):
+                    # Clue 2: Carol is photography enthusiast
+                    carol_pos = name_perm.index("Carol")
+                    if hobby_perm[carol_pos] != "photography":
+                        continue
+                        
+                    # Clue 13: Eric enjoys gardening
+                    eric_pos = name_perm.index("Eric")
+                    if hobby_perm[eric_pos] != "gardening":
+                        continue
+                        
+                    # Clue 8: Eric is directly left of knitting enthusiast
+                    if eric_pos >= 5 or hobby_perm[eric_pos + 1] != "knitting":
+                        continue
+                        
+                    # Clue 9: One house between Sarah mother and Toyota Camry
+                    sarah_pos = mother_perm.index("Sarah")
+                    toyota_pos = car_perm.index("toyota camry")
+                    if abs(sarah_pos - toyota_pos) != 2:
+                        continue
+                        
+                    # Clue 10: Penny mother is somewhere to the right of knitting
+                    knitting_pos = hobby_perm.index("knitting")
+                    penny_pos = mother_perm.index("Penny")
+                    if penny_pos <= knitting_pos:
+                        continue
+                        
+                    # Clue 11: Aniya mother is somewhere to the right of Honda Civic
+                    honda_pos = car_perm.index("honda civic")
+                    aniya_pos = mother_perm.index("Aniya")
+                    if aniya_pos <= honda_pos:
+                        continue
+                        
+                    # Clue 12: Alice is somewhere to the right of Ford F-150
+                    alice_pos = name_perm.index("Alice")
+                    if alice_pos <= ford_pos:
+                        continue
+                        
+                    # Clue 14: Woodworking is somewhere to the left of knitting
+                    woodworking_pos = hobby_perm.index("woodworking")
+                    if woodworking_pos >= knitting_pos:
+                        continue
+                        
+                    # Clue 15: One house between Sarah mother and cooking hobby
+                    cooking_pos = hobby_perm.index("cooking")
+                    if abs(sarah_pos - cooking_pos) != 2:
+                        continue
+                        
+                    # Clue 17: Holly mother is directly left of knitting enthusiast
+                    if knitting_pos == 0 or mother_perm[knitting_pos - 1] != "Holly":
+                        continue
+                    
+                    # All constraints satisfied
+                    solution = []
+                    for i in range(6):
+                        solution.append([
+                            str(i + 1),
+                            name_perm[i],
+                            car_perm[i],
+                            mother_perm[i],
+                            hobby_perm[i]
+                        ])
+                    
+                    return {
+                        "solution": {
+                            "header": ["House", "Name", "CarModel", "Mother", "Hobby"],
+                            "rows": solution
+                        }
+                    }
+    
+    return {"solution": {"header": [], "rows": []}}
+
+if __name__ == "__main__":
+    result = solve()
+    print(json.dumps(result, indent=2))
+```

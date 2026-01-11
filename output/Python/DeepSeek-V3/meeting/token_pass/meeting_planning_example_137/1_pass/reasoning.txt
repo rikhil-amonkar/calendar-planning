@@ -1,0 +1,71 @@
+Let’s break this down step by step before writing the code.
+
+**Step 1 – Understanding the problem**  
+We start at Financial District at 9:00.  
+We have two friends:  
+- Kenneth: Chinatown, 12:00–15:00, needs 90 minutes together.  
+- Barbara: Golden Gate Park, 8:15–19:00, needs 45 minutes together.  
+
+Travel times are given.  
+We want to meet as many friends as possible (here, both if possible) while respecting time windows and travel.
+
+**Step 2 – Feasibility check**  
+We can meet both if we can fit travel between meetings and still meet minimum durations.
+
+Possible order:  
+1. Start at Financial District at 9:00.  
+2. Go to Barbara first (Golden Gate Park) or Kenneth first (Chinatown).  
+
+Kenneth’s window is fixed 12–15, so meeting him must be inside that, and for 90 minutes means either 12:00–13:30 or 13:30–15:00.  
+
+Barbara’s window is large, so she’s flexible.
+
+**Step 3 – Try meeting Barbara first**  
+Leave Financial District at 9:00 → travel 23 min → arrive Golden Gate Park at 9:23.  
+Meet Barbara from 9:23 to 10:08 (45 min).  
+Leave at 10:08 → travel to Chinatown: 23 min → arrive 10:31.  
+But Kenneth is only available from 12:00, so we’d wait 1h29m. That’s fine, but we could adjust to meet Kenneth exactly at 12:00 for 90 min, then go back to Barbara? But Barbara’s window ends at 19:00, so after Kenneth we could go back to Barbara again if time allows.
+
+Actually, meeting both doesn’t require meeting Barbara twice. We can meet Barbara once, Kenneth once.
+
+Better: Meet Kenneth at 12:00–13:30, then go to Barbara after.
+
+**Step 4 – Meet Kenneth first**  
+We start at Financial District at 9:00.  
+To meet Kenneth at 12:00 in Chinatown, we could leave Financial District at 11:55 (travel 5 min), but that leaves 9–11:55 free. Could meet Barbara in that gap?  
+
+Let’s check:  
+Leave Financial District at 9:00 → 23 min → arrive Golden Gate Park 9:23.  
+Meet Barbara 9:23–10:08 (45 min).  
+Leave 10:08 → travel to Chinatown: 23 min → arrive 10:31.  
+Wait until 12:00 (1h29m wait).  
+Meet Kenneth 12:00–13:30.  
+Then after 13:30, we could go back to Barbara again if we want, but not needed to meet her twice.
+
+That works: we meet both, no time conflict.
+
+**Step 5 – Check travel times consistency**  
+Golden Gate Park to Chinatown: 23 min (given). Yes, we used that.
+
+**Step 6 – Verify no constraint violation**  
+Barbara’s window: 8:15–19:00, our meet 9:23–10:08 is inside.  
+Kenneth’s window: 12:00–15:00, our meet 12:00–13:30 is inside and ≥90 min.
+
+**Step 7 – Could we meet longer with Barbara?**  
+We only need 45 min, we did exactly that. Could extend if we want, but then might risk Kenneth if traffic? But travel times fixed.  
+If we extend Barbara to 11:00, then travel 23 min → arrive Chinatown 11:23, still before 12:00, so okay. But then wait longer. Let’s keep it tight to be safe.
+
+**Step 8 – Build schedule**  
+1. Travel: Financial District → Golden Gate Park (9:00–9:23)  
+2. Meet Barbara: 9:23–10:08  
+3. Travel: Golden Gate Park → Chinatown (10:08–10:31)  
+4. Wait: 10:31–12:00  
+5. Meet Kenneth: 12:00–13:30  
+
+We’re done at 13:30, rest of day free.
+
+**Step 9 – Write program to compute this**  
+We’ll encode constraints and try both permutations of meetings to maximize number met. Here, both possible, so pick one optimal (maybe minimize waiting time or maximize total meeting time).  
+We’ll implement a search over possible start times for each meeting given travel.
+
+---

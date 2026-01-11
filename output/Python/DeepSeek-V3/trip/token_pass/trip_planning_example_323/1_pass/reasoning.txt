@@ -1,0 +1,94 @@
+Let’s break down the problem before writing the code.
+
+**Given constraints:**
+- Total days: 16
+- Cities to visit: Split (5 days), Oslo (2 days), London (7 days), Porto (5 days)
+- Direct flights exist between:
+  - London ↔ Oslo
+  - Split ↔ Oslo
+  - Oslo ↔ Porto
+  - London ↔ Split
+- Must attend a show in Split from day 7 to day 11 (inclusive).
+- Must visit relatives in London between day 1 and day 7 (inclusive).
+- Travel days count toward days in both cities (if you fly on day X, you spend part of day X in origin and part in destination).
+
+**Step 1 – Understanding overlapping constraints**
+- Split show: days 7–11 → Split must include those 5 days.
+- London relatives: days 1–7 → London must include some days in that range.
+- Total days per city:  
+  Split = 5 days total (already fixed as days 7–11 if we take it literally, but could be longer if we include travel days overlapping with those).  
+  London = 7 days total.  
+  Oslo = 2 days total.  
+  Porto = 5 days total.  
+  Sum = 5 + 7 + 2 + 5 = 19 days, but we only have 16 days total → means some days are double-counted due to travel.
+
+**Step 2 – Travel double-counting**
+If you fly on day X, that day counts for both cities. So total "city-days" = 19, but calendar days = 16, so we need 3 travel days (each travel day reduces unique calendar days by 1 because it’s counted twice).
+
+We need exactly 3 travel days to make 19 city-days fit into 16 calendar days.
+
+**Step 3 – Sequence planning**
+We must start in London (day 1–7 constraint).  
+We must be in Split on day 7–11.  
+So:  
+- Start in London for some days including day 1.  
+- Travel to Split by day 7 at latest.  
+- After Split, go to Oslo or Porto.  
+- End somewhere.
+
+**Step 4 – Direct flights constraint**
+Possible direct connections:  
+London ↔ Split  
+London ↔ Oslo  
+Split ↔ Oslo  
+Oslo ↔ Porto  
+
+No direct London–Porto or Split–Porto, so to reach Porto, must go via Oslo.
+
+**Step 5 – Build schedule**
+Let’s try:  
+1. Start London (day 1–6) → 6 days in London.  
+2. Day 7: travel London → Split (counts as day 7 in both London and Split).  
+   Now London total = 7 days (days 1–7).  
+   Split starts day 7.  
+3. Split days 7–11 → that’s days 7,8,9,10,11 in Split = 5 Split days total.  
+4. Day 12: travel Split → Oslo (counts as day 12 in both Split and Oslo).  
+   Now Split total = 6 days (too many! We only want 5).  
+   So we can’t travel on day 12 from Split, because that adds an extra Split day.  
+   Instead, we must leave Split on day 11 (but day 11 is last show day, okay).  
+   So:  
+   Day 11: travel Split → Oslo (counts as day 11 in both Split and Oslo).  
+   Now Split days = days 7,8,9,10,11 = 5 total. Good.  
+   Oslo starts day 11.  
+5. Oslo: need 2 days total. Days 11 and 12 in Oslo = 2 days.  
+6. Day 13: travel Oslo → Porto (counts as day 13 in both Oslo and Porto).  
+   Now Oslo total = 3 days (too many! We only want 2).  
+   So we must leave Oslo earlier:  
+   Actually, Oslo needs exactly 2 days. If we arrive Oslo day 11, leave day 12, that’s 2 days (day 11 and 12 in Oslo).  
+   Day 12: travel Oslo → Porto (counts as day 12 in both Oslo and Porto).  
+   Now Oslo total = 2 days (good).  
+7. Porto: need 5 days total. Arrive day 12, stay days 12,13,14,15,16 = 5 days.  
+   End day 16 in Porto.
+
+**Step 6 – Check totals**
+- London: days 1–7 (day 7 travel) = 7 days.  
+- Split: days 7–11 (day 11 travel) = 5 days.  
+- Oslo: days 11–12 (day 12 travel) = 2 days.  
+- Porto: days 12–16 = 5 days.  
+
+Travel days: day 7 (L→S), day 11 (S→O), day 12 (O→P) = 3 travel days.  
+Total city-days = 7 + 5 + 2 + 5 = 19.  
+Calendar days = 16.  
+Difference = 3 travel days, correct.
+
+**Step 7 – Verify constraints**
+- London between day 1–7: yes.  
+- Split show day 7–11: yes (in Split all those days).  
+- Direct flights:  
+  London–Split ✓  
+  Split–Oslo ✓  
+  Oslo–Porto ✓  
+
+All good.
+
+Now, let’s write the Python program to compute this algorithmically (though here we’ve designed it manually, the code will encode the logic to derive it).

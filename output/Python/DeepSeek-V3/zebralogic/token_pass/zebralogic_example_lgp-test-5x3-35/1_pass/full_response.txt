@@ -1,0 +1,114 @@
+```python
+import json
+from itertools import permutations
+
+def solve_puzzle():
+    # Define all possible values
+    names = ["Eric", "Peter", "Arnold", "Alice", "Bob"]
+    mothers = ["Kailyn", "Janelle", "Aniya", "Penny", "Holly"]
+    heights = ["average", "very short", "short", "very tall", "tall"]
+    houses = [1, 2, 3, 4, 5]
+    
+    # Generate all permutations for each category
+    name_perms = permutations(names, 5)
+    mother_perms = permutations(mothers, 5)
+    height_perms = permutations(heights, 5)
+    
+    solutions = []
+    
+    # Brute force search through all combinations
+    for name_assign in name_perms:
+        # Check clue 4: Peter is not in the second house
+        if name_assign[1] == "Peter":
+            continue
+            
+        # Check clue 8: Eric is not in the fifth house
+        if name_assign[4] == "Eric":
+            continue
+            
+        for mother_assign in mother_perms:
+            # Check clue 1: Alice is the person whose mother's name is Aniya
+            alice_index = name_assign.index("Alice")
+            if mother_assign[alice_index] != "Aniya":
+                continue
+                
+            # Check clue 3: The person whose mother's name is Janelle is Bob
+            janelle_index = mother_assign.index("Janelle")
+            if name_assign[janelle_index] != "Bob":
+                continue
+                
+            # Check clue 10: Eric is the person whose mother's name is Kailyn
+            eric_index = name_assign.index("Eric")
+            if mother_assign[eric_index] != "Kailyn":
+                continue
+                
+            for height_assign in height_perms:
+                # Check clue 11: The person who is very short is in the fifth house
+                if height_assign[4] != "very short":
+                    continue
+                    
+                # Check clue 6: The person who is very tall is Arnold
+                arnold_index = name_assign.index("Arnold")
+                if height_assign[arnold_index] != "very tall":
+                    continue
+                    
+                # Check clue 5: The person who is short is directly left of Arnold
+                if arnold_index == 0:  # Arnold can't be in first house if someone is left of him
+                    continue
+                if height_assign[arnold_index - 1] != "short":
+                    continue
+                    
+                # Check clue 7: Bob is directly left of the person who has an average height
+                bob_index = name_assign.index("Bob")
+                if bob_index == 4:  # Bob can't be in last house if someone is right of him
+                    continue
+                if height_assign[bob_index + 1] != "average":
+                    continue
+                    
+                # Check clue 2: The person who has an average height is somewhere to the left of 
+                # The person whose mother's name is Penny
+                avg_height_index = height_assign.index("average")
+                penny_mother_index = mother_assign.index("Penny")
+                if not (avg_height_index < penny_mother_index):
+                    continue
+                    
+                # Check clue 9: The person who is very tall is somewhere to the right of 
+                # The person whose mother's name is Holly
+                very_tall_index = height_assign.index("very tall")
+                holly_mother_index = mother_assign.index("Holly")
+                if not (very_tall_index > holly_mother_index):
+                    continue
+                    
+                # All constraints satisfied - found a solution
+                solution = []
+                for i in range(5):
+                    solution.append([
+                        str(i + 1),
+                        name_assign[i],
+                        mother_assign[i],
+                        height_assign[i]
+                    ])
+                solutions.append(solution)
+    
+    # We should have exactly one solution
+    if len(solutions) == 1:
+        return solutions[0]
+    else:
+        raise ValueError(f"Expected 1 solution, found {len(solutions)}")
+
+def main():
+    solution_rows = solve_puzzle()
+    
+    # Prepare the output in the required JSON format
+    output = {
+        "solution": {
+            "header": ["House", "Name", "Mother", "Height"],
+            "rows": solution_rows
+        }
+    }
+    
+    print(json.dumps(output, indent=2))
+
+if __name__ == "__main__":
+    main()
+```

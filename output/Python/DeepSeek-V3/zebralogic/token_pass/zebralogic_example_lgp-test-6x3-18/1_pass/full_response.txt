@@ -1,0 +1,97 @@
+```python
+import json
+from itertools import permutations
+
+def solve():
+    houses = [1, 2, 3, 4, 5, 6]
+    names = ["Arnold", "Eric", "Bob", "Alice", "Carol", "Peter"]
+    mothers = ["Sarah", "Holly", "Janelle", "Aniya", "Penny", "Kailyn"]
+    pets = ["hamster", "dog", "bird", "cat", "fish", "rabbit"]
+
+    # Generate all permutations for each category
+    for name_perm in permutations(names, 6):
+        # Clue 1: Bob is not in the second house.
+        if name_perm[1] == "Bob":
+            continue
+
+        # Clue 8: Alice is directly left of Carol.
+        try:
+            alice_idx = name_perm.index("Alice")
+            carol_idx = name_perm.index("Carol")
+            if carol_idx != alice_idx + 1:
+                continue
+        except ValueError:
+            continue
+
+        for mother_perm in permutations(mothers, 6):
+            # Clue 9: Carol is The person whose mother's name is Aniya.
+            if mother_perm[carol_idx] != "Aniya":
+                continue
+
+            for pet_perm in permutations(pets, 6):
+                # Clue 2: There are two houses between the person who has a cat and the person who owns a rabbit.
+                cat_idx = pet_perm.index("cat")
+                rabbit_idx = pet_perm.index("rabbit")
+                if abs(cat_idx - rabbit_idx) != 3:
+                    continue
+
+                # Clue 3: The person who has a cat is directly left of The person whose mother's name is Holly.
+                if cat_idx + 1 != rabbit_idx - 2:  # Wait, clue says cat directly left of Holly mother
+                    # Let's check directly: cat house + 1 = Holly mother house
+                    if cat_idx + 1 >= 6:
+                        continue
+                    if mother_perm[cat_idx + 1] != "Holly":
+                        continue
+
+                # Clue 4: The person who has a pet hamster is directly left of the person who owns a rabbit.
+                hamster_idx = pet_perm.index("hamster")
+                if hamster_idx + 1 != rabbit_idx:
+                    continue
+
+                # Clue 5: The person who owns a rabbit is Eric.
+                if name_perm[rabbit_idx] != "Eric":
+                    continue
+
+                # Clue 6: There is one house between the person who owns a dog and the person who has a cat.
+                dog_idx = pet_perm.index("dog")
+                if abs(dog_idx - cat_idx) != 2:
+                    continue
+
+                # Clue 7: The person who has a cat is The person whose mother's name is Janelle.
+                if mother_perm[cat_idx] != "Janelle":
+                    continue
+
+                # Clue 10: Arnold is the person who has a cat.
+                if name_perm[cat_idx] != "Arnold":
+                    continue
+
+                # Clue 11: The person whose mother's name is Kailyn is the person who owns a rabbit.
+                if mother_perm[rabbit_idx] != "Kailyn":
+                    continue
+
+                # Clue 12: The person with an aquarium of fish is The person whose mother's name is Sarah.
+                fish_idx = pet_perm.index("fish")
+                if mother_perm[fish_idx] != "Sarah":
+                    continue
+
+                # All constraints satisfied
+                solution = []
+                for i in range(6):
+                    solution.append([str(i+1), name_perm[i], mother_perm[i], pet_perm[i]])
+
+                return {
+                    "solution": {
+                        "header": ["House", "Name", "Mother", "Pet"],
+                        "rows": solution
+                    }
+                }
+
+    return None
+
+if __name__ == "__main__":
+    result = solve()
+    if result:
+        print(json.dumps(result, indent=2))
+    else:
+        print(json.dumps({"error": "No solution found"}, indent=2))
+```

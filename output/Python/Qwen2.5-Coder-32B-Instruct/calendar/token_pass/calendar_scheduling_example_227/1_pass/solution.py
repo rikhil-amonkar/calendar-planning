@@ -1,0 +1,54 @@
+from datetime import datetime, timedelta
+
+def find_meeting_time():
+    # Define work hours and convert them into 30-minute slots
+    start_time = datetime.strptime("09:00", "%H:%M")
+    end_time = datetime.strptime("17:00", "%H:%M")
+    time_slots = []
+    current_time = start_time
+    
+    while current_time < end_time:
+        time_slots.append(current_time)
+        current_time += timedelta(minutes=30)
+    
+    # Initialize availability dictionaries for each participant
+    availability = {
+        "Natalie": [True] * len(time_slots),
+        "David": [True] * len(time_slots),
+        "Douglas": [True] * len(time_slots),
+        "Ralph": [True] * len(time_slots),
+        "Jordan": [True] * len(time_slots)
+    }
+    
+    # Mark unavailable slots for each participant
+    def mark_unavailable(name, busy_times):
+        for start_busy, end_busy in busy_times:
+            start_busy_dt = datetime.strptime(start_busy, "%H:%M")
+            end_busy_dt = datetime.strptime(end_busy, "%H:%M")
+            
+            for i, slot in enumerate(time_slots):
+                if slot >= start_busy_dt and slot < end_busy_dt:
+                    availability[name][i] = False
+    
+    mark_unavailable("David", [("11:30", "12:00"), ("14:30", "15:00")])
+    mark_unavailable("Douglas", [("09:30", "10:00"), ("11:30", "12:00"), ("13:00", "13:30"), ("14:30", "15:00")])
+    mark_unavailable("Ralph", [("09:00", "09:30"), ("10:00", "11:00"), ("11:30", "12:30"), ("13:30", "15:00"), ("15:30", "16:00"), ("16:30", "17:00")])
+    mark_unavailable("Jordan", [("09:00", "10:00"), ("12:00", "12:30"), ("13:00", "13:30"), ("14:30", "15:00"), ("15:30", "17:00")])
+    
+    # Apply David's additional constraint
+    david_constraint_start = datetime.strptime("14:00", "%H:%M")
+    for i, slot in enumerate(time_slots):
+        if slot < david_constraint_start:
+            availability["David"][i] = False
+    
+    # Find a common available slot
+    for i in range(len(time_slots) - 1):
+        if all(availability[name][i] for name in availability) and all(availability[name][i + 1] for name in availability):
+            start_meeting = time_slots[i].strftime("%H:%M")
+            end_meeting = time_slots[i + 1].strftime("%H:%M")
+            print(f"{start_meeting}:{end_meeting}:Monday")
+            return
+    
+    print("No suitable time found")
+
+find_meeting_time()

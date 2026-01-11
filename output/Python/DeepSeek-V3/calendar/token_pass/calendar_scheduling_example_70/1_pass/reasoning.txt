@@ -1,0 +1,91 @@
+Let's break this down step-by-step before writing the code.  
+
+We have:  
+
+- **Participants**: Denise, Angela, Natalie  
+- **Duration**: 30 minutes  
+- **Work hours**: 9:00 to 17:00  
+- **Day**: Monday  
+- **Constraints**:  
+  - Denise busy: 12:00–12:30, 15:30–16:00  
+  - Angela busy: none  
+  - Natalie busy: 9:00–11:30, 12:00–13:00, 14:00–14:30, 15:00–17:00  
+
+We need the **earliest** available slot for all three.  
+
+---
+
+### Step 1: Convert times to minutes from 9:00
+Let’s work in minutes from 9:00 (so 9:00 = 0, 17:00 = 480 minutes).  
+
+Denise busy in minutes from 9:00:  
+- 12:00–12:30 → 180–210  
+- 15:30–16:00 → 390–420  
+
+Angela busy: none.  
+
+Natalie busy:  
+- 9:00–11:30 → 0–150  
+- 12:00–13:00 → 180–240  
+- 14:00–14:30 → 300–330  
+- 15:00–17:00 → 360–480  
+
+---
+
+### Step 2: Merge busy intervals for each person
+Denise: [(180, 210), (390, 420)]  
+Angela: []  
+Natalie: [(0, 150), (180, 240), (300, 330), (360, 480)]  
+
+---
+
+### Step 3: Find free intervals for each person within 9:00–17:00
+Denise free:  
+From start: 0–180, 210–390, 420–480  
+
+Angela free: 0–480  
+
+Natalie free:  
+150–180, 240–300, 330–360  
+
+---
+
+### Step 4: Intersect all free intervals
+We intersect Denise free, Angela free, Natalie free.  
+
+Let’s list them as ranges:  
+
+Denise free ranges:  
+1. (0, 180)  
+2. (210, 390)  
+3. (420, 480)  
+
+Angela free: (0, 480)  
+
+Natalie free:  
+1. (150, 180)  
+2. (240, 300)  
+3. (330, 360)  
+
+Intersect Denise 1 (0,180) with Natalie 1 (150,180) → (150, 180)  
+Check duration 30 min: 150 to 180 → length 30 → works.  
+
+So earliest slot is 150 minutes after 9:00 → 11:30, until 180 minutes after 9:00 → 12:00.  
+
+Wait — but 12:00 is end time exclusive? Let's check:  
+150 min from 9:00 = 11:30  
+180 min from 9:00 = 12:00  
+
+So slot is 11:30–12:00.  
+
+Check conflicts:  
+Denise busy 12:00–12:30 — not overlapping (ends exactly at 12:00, so fine if meeting ends at 12:00).  
+Natalie busy 12:00–13:00 — not overlapping.  
+Angela free.  
+
+Yes, this works.  
+
+---
+
+### Step 5: Write Python code to compute this
+We can automate the intersection of free times.

@@ -1,0 +1,251 @@
+```python
+import json
+from itertools import permutations
+
+def solve():
+    # Define all possible values for each category
+    names = ["Alice", "Peter", "Eric", "Bob", "Arnold", "Carol"]
+    cigars = ["pall mall", "yellow monster", "dunhill", "blue master", "prince", "blends"]
+    music = ["hip hop", "jazz", "country", "pop", "classical", "rock"]
+    drinks = ["water", "milk", "boba tea", "tea", "root beer", "coffee"]
+    mothers = ["Kailyn", "Penny", "Janelle", "Holly", "Sarah", "Aniya"]
+    foods = ["soup", "pizza", "spaghetti", "stir fry", "stew", "grilled cheese"]
+    
+    houses = [1, 2, 3, 4, 5, 6]
+    
+    # Try all permutations (brute force with pruning)
+    for name_perm in permutations(names):
+        for cigar_perm in permutations(cigars):
+            for music_perm in permutations(music):
+                for drink_perm in permutations(drinks):
+                    for mother_perm in permutations(mothers):
+                        for food_perm in permutations(foods):
+                            # Create assignment dictionaries
+                            assignment = {}
+                            for i in range(6):
+                                assignment[houses[i]] = {
+                                    'Name': name_perm[i],
+                                    'Cigar': cigar_perm[i],
+                                    'Music': music_perm[i],
+                                    'Drink': drink_perm[i],
+                                    'Mother': mother_perm[i],
+                                    'Food': food_perm[i]
+                                }
+                            
+                            # Check all clues
+                            valid = True
+                            
+                            # 1. Carol is directly left of the person who loves eating grilled cheese.
+                            carol_house = None
+                            grilled_cheese_house = None
+                            for h in houses:
+                                if assignment[h]['Name'] == 'Carol':
+                                    carol_house = h
+                                if assignment[h]['Food'] == 'grilled cheese':
+                                    grilled_cheese_house = h
+                            if not (carol_house is not None and grilled_cheese_house is not None and grilled_cheese_house == carol_house + 1):
+                                valid = False
+                            
+                            # 2. Eric is not in the second house.
+                            for h in houses:
+                                if assignment[h]['Name'] == 'Eric' and h == 2:
+                                    valid = False
+                            
+                            # 3. The person whose mother's name is Holly is somewhere to the right of Carol.
+                            holly_house = None
+                            for h in houses:
+                                if assignment[h]['Mother'] == 'Holly':
+                                    holly_house = h
+                            if not (holly_house is not None and holly_house > carol_house):
+                                valid = False
+                            
+                            # 4. The person who loves eating grilled cheese is somewhere to the right of the person who loves rock music.
+                            rock_house = None
+                            for h in houses:
+                                if assignment[h]['Music'] == 'rock':
+                                    rock_house = h
+                            if not (rock_house is not None and grilled_cheese_house > rock_house):
+                                valid = False
+                            
+                            # 5. Eric is directly left of Carol.
+                            eric_house = None
+                            for h in houses:
+                                if assignment[h]['Name'] == 'Eric':
+                                    eric_house = h
+                            if not (eric_house is not None and eric_house == carol_house - 1):
+                                valid = False
+                            
+                            # 6. The person who loves pop music is not in the third house.
+                            for h in houses:
+                                if assignment[h]['Music'] == 'pop' and h == 3:
+                                    valid = False
+                            
+                            # 7. Eric is the person who loves country music.
+                            if not (assignment[eric_house]['Music'] == 'country'):
+                                valid = False
+                            
+                            # 8. The person who loves classical music is in the sixth house.
+                            if not (assignment[6]['Music'] == 'classical'):
+                                valid = False
+                            
+                            # 9. The coffee drinker is Bob.
+                            bob_house = None
+                            for h in houses:
+                                if assignment[h]['Name'] == 'Bob':
+                                    bob_house = h
+                            if not (assignment[bob_house]['Drink'] == 'coffee'):
+                                valid = False
+                            
+                            # 10. The person who smokes many unique blends is Peter.
+                            peter_house = None
+                            for h in houses:
+                                if assignment[h]['Name'] == 'Peter':
+                                    peter_house = h
+                            if not (assignment[peter_house]['Cigar'] == 'blends'):
+                                valid = False
+                            
+                            # 11. The person who loves the stew is not in the fifth house.
+                            stew_house = None
+                            for h in houses:
+                                if assignment[h]['Food'] == 'stew':
+                                    stew_house = h
+                            if stew_house == 5:
+                                valid = False
+                            
+                            # 12. The root beer lover is directly left of The person whose mother's name is Janelle.
+                            root_beer_house = None
+                            janelle_house = None
+                            for h in houses:
+                                if assignment[h]['Drink'] == 'root beer':
+                                    root_beer_house = h
+                                if assignment[h]['Mother'] == 'Janelle':
+                                    janelle_house = h
+                            if not (root_beer_house is not None and janelle_house is not None and janelle_house == root_beer_house + 1):
+                                valid = False
+                            
+                            # 13. There are two houses between The person whose mother's name is Sarah and the person who smokes Yellow Monster.
+                            sarah_house = None
+                            yellow_monster_house = None
+                            for h in houses:
+                                if assignment[h]['Mother'] == 'Sarah':
+                                    sarah_house = h
+                                if assignment[h]['Cigar'] == 'yellow monster':
+                                    yellow_monster_house = h
+                            if not (sarah_house is not None and yellow_monster_house is not None and abs(sarah_house - yellow_monster_house) == 3):
+                                valid = False
+                            
+                            # 14. Eric is the tea drinker.
+                            if not (assignment[eric_house]['Drink'] == 'tea'):
+                                valid = False
+                            
+                            # 15. The person partial to Pall Mall is somewhere to the right of the person who loves stir fry.
+                            pall_mall_house = None
+                            stir_fry_house = None
+                            for h in houses:
+                                if assignment[h]['Cigar'] == 'pall mall':
+                                    pall_mall_house = h
+                                if assignment[h]['Food'] == 'stir fry':
+                                    stir_fry_house = h
+                            if not (pall_mall_house is not None and stir_fry_house is not None and pall_mall_house > stir_fry_house):
+                                valid = False
+                            
+                            # 16. The person who loves the soup is Bob.
+                            if not (assignment[bob_house]['Food'] == 'soup'):
+                                valid = False
+                            
+                            # 17. The person who loves hip-hop music is directly left of The person whose mother's name is Kailyn.
+                            hiphop_house = None
+                            kailyn_house = None
+                            for h in houses:
+                                if assignment[h]['Music'] == 'hip hop':
+                                    hiphop_house = h
+                                if assignment[h]['Mother'] == 'Kailyn':
+                                    kailyn_house = h
+                            if not (hiphop_house is not None and kailyn_house is not None and kailyn_house == hiphop_house + 1):
+                                valid = False
+                            
+                            # 18. Arnold is somewhere to the right of The person whose mother's name is Kailyn.
+                            arnold_house = None
+                            for h in houses:
+                                if assignment[h]['Name'] == 'Arnold':
+                                    arnold_house = h
+                            if not (arnold_house > kailyn_house):
+                                valid = False
+                            
+                            # 19. The one who only drinks water is directly left of the person who smokes Blue Master.
+                            water_house = None
+                            blue_master_house = None
+                            for h in houses:
+                                if assignment[h]['Drink'] == 'water':
+                                    water_house = h
+                                if assignment[h]['Cigar'] == 'blue master':
+                                    blue_master_house = h
+                            if not (water_house is not None and blue_master_house is not None and blue_master_house == water_house + 1):
+                                valid = False
+                            
+                            # 20. The person who loves the spaghetti eater is somewhere to the left of the person who smokes many unique blends.
+                            spaghetti_house = None
+                            for h in houses:
+                                if assignment[h]['Food'] == 'spaghetti':
+                                    spaghetti_house = h
+                            if not (spaghetti_house < peter_house):
+                                valid = False
+                            
+                            # 21. The person whose mother's name is Sarah is directly left of the person who loves jazz music.
+                            jazz_house = None
+                            for h in houses:
+                                if assignment[h]['Music'] == 'jazz':
+                                    jazz_house = h
+                            if not (sarah_house is not None and jazz_house is not None and jazz_house == sarah_house + 1):
+                                valid = False
+                            
+                            # 22. The person who loves hip-hop music is directly left of the root beer lover.
+                            if not (hiphop_house is not None and root_beer_house is not None and root_beer_house == hiphop_house + 1):
+                                valid = False
+                            
+                            # 23. The one who only drinks water is the person who loves the stew.
+                            if not (water_house == stew_house):
+                                valid = False
+                            
+                            # 24. The Dunhill smoker is not in the second house.
+                            for h in houses:
+                                if assignment[h]['Cigar'] == 'dunhill' and h == 2:
+                                    valid = False
+                            
+                            # 25. The person who likes milk is The person whose mother's name is Janelle.
+                            if not (assignment[janelle_house]['Drink'] == 'milk'):
+                                valid = False
+                            
+                            # 26. Eric is The person whose mother's name is Aniya.
+                            if not (assignment[eric_house]['Mother'] == 'Aniya'):
+                                valid = False
+                            
+                            if valid:
+                                # Found solution
+                                result = {
+                                    "solution": {
+                                        "header": ["House", "Name", "Cigar", "MusicGenre", "Drink", "Mother", "Food"],
+                                        "rows": []
+                                    }
+                                }
+                                for h in houses:
+                                    row = [
+                                        str(h),
+                                        assignment[h]['Name'],
+                                        assignment[h]['Cigar'],
+                                        assignment[h]['Music'],
+                                        assignment[h]['Drink'],
+                                        assignment[h]['Mother'],
+                                        assignment[h]['Food']
+                                    ]
+                                    result["solution"]["rows"].append(row)
+                                return result
+    return None
+
+if __name__ == "__main__":
+    solution = solve()
+    if solution:
+        print(json.dumps(solution, indent=2))
+    else:
+        print(json.dumps({"error": "No solution found"}, indent=2))
+```

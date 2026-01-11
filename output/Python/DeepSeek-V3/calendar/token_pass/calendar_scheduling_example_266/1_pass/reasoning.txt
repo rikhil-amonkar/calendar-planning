@@ -1,0 +1,110 @@
+Let's break this down step by step.  
+
+We need to find a **30-minute slot** between **9:00 and 17:00** on **Monday** that fits all 5 participants.  
+
+---
+
+### Step 1 – Understanding blocked times
+Work hours: 9:00–17:00 (8 hours total, 9:00 inclusive start, 17:00 exclusive end for slots).  
+Meeting duration: 30 minutes.
+
+Blocked times (inclusive start, exclusive end for simplicity):
+
+1. **Joe**  
+   9:30–10:00  
+   10:30–11:00  
+
+2. **Keith**  
+   11:30–12:00  
+   15:00–15:30  
+
+3. **Patricia**  
+   9:00–9:30  
+   13:00–13:30  
+
+4. **Nancy**  
+   9:00–11:00  
+   11:30–16:30  
+
+5. **Pamela**  
+   9:00–10:00  
+   10:30–11:00  
+   11:30–12:30  
+   13:00–14:00  
+   14:30–15:00  
+   15:30–16:00  
+   16:30–17:00  
+
+---
+
+### Step 2 – Combine busy times
+We can think in 30-minute intervals starting at HH:00 or HH:30.  
+Let’s list all busy intervals for each person, then find a free slot for all.
+
+Better approach:  
+Let’s convert times to minutes since 9:00 for easier overlap checking.  
+9:00 = 0 min, 17:00 = 480 min.  
+Blocked intervals in minutes:
+
+**Joe**:  
+9:30–10:00 → 30–60  
+10:30–11:00 → 90–120  
+
+**Keith**:  
+11:30–12:00 → 150–180  
+15:00–15:30 → 360–390  
+
+**Patricia**:  
+9:00–9:30 → 0–30  
+13:00–13:30 → 240–270  
+
+**Nancy**:  
+9:00–11:00 → 0–120  
+11:30–16:30 → 150–450  
+
+**Pamela**:  
+9:00–10:00 → 0–60  
+10:30–11:00 → 90–120  
+11:30–12:30 → 150–210  
+13:00–14:00 → 240–300  
+14:30–15:00 → 330–360  
+15:30–16:00 → 390–420  
+16:30–17:00 → 450–480  
+
+---
+
+### Step 3 – Find free slot
+We can check each 30-minute slot start time from 9:00 to 16:30 (since meeting duration 30 min, last start at 16:30).
+
+Let’s check manually for a quick candidate:
+
+- **9:00–9:30**: Patricia busy (0–30), Nancy busy (0–120), Pamela busy (0–60) → No  
+- **9:30–10:00**: Joe busy (30–60), Nancy busy (0–120), Pamela busy (0–60) → No  
+- **10:00–10:30**: Joe free? 10:00–10:30 = 60–90 → Joe free (busy 30–60, 90–120), Keith free, Patricia free, Nancy busy (0–120) → Nancy busy until 11:00 → No  
+- **11:00–11:30**: 120–150 → Joe free (last busy 90–120), Keith free, Patricia free, Nancy busy? Nancy busy 0–120 and 150–450 → 120–150 is free for Nancy! Pamela busy? Pamela busy 90–120, next 150–210 → 120–150 free for Pamela!  
+   So **11:00–11:30** works for everyone? Let’s verify each:  
+   Joe: free (last meeting ends 11:00, next 10:30–11:00 done, so 11:00 free)  
+   Keith: free until 11:30  
+   Patricia: free  
+   Nancy: free (gap between 11:00–11:30)  
+   Pamela: free (gap between 11:00–11:30)  
+
+Yes! That’s a valid slot.
+
+---
+
+### Step 4 – Confirm no conflicts
+Double-check in original given schedules:
+
+- Joe: meetings 9:30–10:00, 10:30–11:00 → free at 11:00–11:30 ✅  
+- Keith: 11:30–12:00, 15:00–15:30 → free at 11:00–11:30 ✅  
+- Patricia: 9:00–9:30, 13:00–13:30 → free at 11:00–11:30 ✅  
+- Nancy: 9:00–11:00, 11:30–16:30 → 11:00–11:30 is free ✅  
+- Pamela: 9:00–10:00, 10:30–11:00, 11:30–12:30, … → 11:00–11:30 is free ✅  
+
+Perfect.
+
+---
+
+### Step 5 – Write Python code to find it
+We’ll code a general solution that finds the first free 30-minute slot.

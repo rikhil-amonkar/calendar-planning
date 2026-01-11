@@ -1,0 +1,53 @@
+Let's break this down step-by-step before writing the code.
+
+**Constraints summary:**
+- Total days: 21
+- City stays:
+  - Brussels: 4 days
+  - Bucharest: 3 days
+  - Stuttgart: 4 days
+  - Mykonos: 2 days
+  - Madrid: 2 days (must be days 20–21)
+  - Helsinki: 5 days
+  - Split: 3 days
+  - London: 5 days
+- Stuttgart visit must be between day 1 and day 4 (inclusive).
+- Madrid days fixed: days 20–21.
+- Direct flights are given as pairs.
+
+**Approach:**
+We need to arrange visits so that each consecutive city pair has a direct flight, and all day constraints are satisfied.
+
+**Flight graph:**
+Let’s list direct flights clearly:
+
+1. Helsinki – London  
+2. Split – Madrid  
+3. Helsinki – Madrid  
+4. London – Madrid  
+5. Brussels – London  
+6. Bucharest – London  
+7. Brussels – Bucharest  
+8. Bucharest – Madrid  
+9. Split – Helsinki  
+10. Mykonos – Madrid  
+11. Stuttgart – London  
+12. Helsinki – Brussels  
+13. Brussels – Madrid  
+14. Split – London  
+15. Stuttgart – Split  
+16. London – Mykonos  
+
+**Strategy:**
+We can treat this as a scheduling + Hamiltonian path problem over cities with fixed durations, but here order matters for adjacency.
+
+We’ll brute-force search over permutations of the 8 cities, checking:
+1. Total days sum to 21.
+2. Madrid is last (days 20–21).
+3. Stuttgart is within days 1–4.
+4. Consecutive cities in permutation have a direct flight.
+5. Day ranges are contiguous.
+
+---
+
+Here’s the Python program:

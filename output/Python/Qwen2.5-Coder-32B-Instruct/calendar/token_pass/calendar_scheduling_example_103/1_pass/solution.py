@@ -1,0 +1,69 @@
+from datetime import datetime, timedelta
+
+def parse_schedule(schedule_str):
+    """Parses a schedule string and returns a list of blocked time intervals."""
+    blocked_times = []
+    for block in schedule_str.split(';'):
+        start, end = block.strip().split(' to ')
+        blocked_times.append((datetime.strptime(start, '%H:%M'), datetime.strptime(end, '%H:%M')))
+    return blocked_times
+
+def get_free_slots(blocked_times, work_start, work_end):
+    """Returns a list of free time slots given blocked times and work hours."""
+    free_slots = []
+    current_time = work_start
+    
+    for start, end in sorted(blocked_times):
+        if current_time < start:
+            free_slots.append((current_time, start))
+        current_time = max(current_time, end)
+    
+    if current_time < work_end:
+        free_slots.append((current_time, work_end))
+    
+    return free_slots
+
+def find_common_free_slot(free_slots_list, meeting_duration):
+    """Finds a common free slot across all participants that fits the meeting duration."""
+    if not free_slots_list:
+        return None
+    
+    common_slots = free_slots_list[0]
+    for slots in free_slots_list[1:]:
+        new_common_slots = []
+        for start1, end1 in common_slots:
+            for start2, end2 in slots:
+                overlap_start = max(start1, start2)
+                overlap_end = min(end1, end2)
+                if overlap_end - overlap_start >= meeting_duration:
+                    new_common_slots.append((overlap_start, overlap_end))
+        common_slots = new_common_slots
+    
+    return common_slots[0] if common_slots else None
+
+# Define work hours and meeting duration
+work_start = datetime.strptime('09:00', '%H:%M')
+work_end = datetime.strptime('17:00', '%H:%M')
+meeting_duration = timedelta(minutes=30)
+
+# Parse schedules
+diane_blocked = parse_schedule("9:30 to 10:00; 14:30 to 15:00")
+jack_blocked = parse_schedule("13:30 to 14:00; 14:30 to 15:00")
+eugene_blocked = parse_schedule("9:00 to 10:00; 10:30 to 11:30; 12:00 to 14:30; 15:00 to 16:30")
+patricia_blocked = parse_schedule("9:30 to 10:30; 11:00 to 12:00; 12:30 to 14:00; 15:00 to 16:30")
+
+# Get free slots for each participant
+diane_free = get_free_slots(diane_blocked, work_start, work_end)
+jack_free = get_free_slots(jack_blocked, work_start, work_end)
+eugene_free = get_free_slots(eugene_blocked, work_start, work_end)
+patricia_free = get_free_slots(patricia_blocked, work_start, work_end)
+
+# Find common free slot
+common_slot = find_common_free_slot([diane_free, jack_free, eugene_free, patricia_free], meeting_duration)
+
+# Output the result
+if common_slot:
+    start_time, end_time = common_slot
+    print(f"{start_time.strftime('%H:%M')}:{end_time.strftime('%H:%M')}, Monday")
+else:
+    print("No common free slot found.")

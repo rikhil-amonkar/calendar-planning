@@ -1,0 +1,299 @@
+Let’s break this down step by step before writing the code.
+
+**Step 1 — Understanding the problem**  
+We start at Presidio at 9:00 AM.  
+We have 8 friends, each with:
+- A location
+- An availability window (start–end)
+- A minimum meeting duration we’d like to meet them for
+- Travel times between all locations (symmetric? Not exactly, but given in both directions)
+
+Goal: Maximize number of friends met, respecting:
+1. Travel time between locations
+2. Their availability windows
+3. Our start time and sequential schedule
+
+**Step 2 — Observations on constraints**  
+- Kevin is available 7:15–8:45 AM, but we start at 9:00 AM, so Kevin is impossible to meet (we can’t time-travel).  
+- Michelle at Golden Gate Park from 8:00–9:00 PM, minimum 15 minutes — possible if we can get there by 8:00 PM and leave by 8:15 PM.  
+- Emily at Fisherman’s Wharf 4:15–7:00 PM, minimum 30 minutes.  
+- Mark at Marina District 6:15–7:45 PM, minimum 75 minutes.  
+- Barbara at Alamo Square 5:00–7:00 PM, minimum 120 minutes — impossible because her window is only 2 hours, so we can’t meet for 120 minutes unless we arrive exactly at 5:00 and leave at 7:00, but travel before/after may conflict. Actually, 5:00–7:00 is exactly 120 minutes, so we could meet the full window, but then we can’t meet anyone else overlapping that time.  
+- Laura at Sunset District 7:00–9:15 PM, minimum 75 minutes.  
+- Mary at Nob Hill 5:30–7:00 PM, minimum 45 minutes.  
+- Helen at North Beach 11:00 AM–12:15 PM, minimum 45 minutes.
+
+**Step 3 — Travel time matrix**  
+We’ll store it as a dict: `travel[(from, to)] = minutes`.
+
+**Step 4 — Approach**  
+We can brute-force search over permutations of meetable friends (excluding Kevin, possibly excluding Barbara if her 120-minute requirement makes others impossible).  
+But since the number of friends is small, we can try a heuristic:  
+We start at Presidio at 9:00, we can meet Helen first (North Beach 11:00–12:15, need 45 min).  
+We must arrive by 11:00, leave by 12:15. Travel from Presidio to North Beach is 18 minutes, so we can leave Presidio at 10:42, arrive 11:00, meet until 11:45, leave.
+
+Then from North Beach, we can go to another friend available later in the day.
+
+We must check feasibility sequentially:  
+For each candidate friend after current time + travel, they must have enough time left in their window for the minimum duration.
+
+**Step 5 — Which friends are possible in theory given windows and travel?**  
+Let’s list friends in order of their window start times after Helen:
+1. Helen: 11:00–12:15, 45 min
+2. Barbara: 5:00–7:00, 120 min
+3. Mary: 5:30–7:00, 45 min
+4. Emily: 4:15–7:00, 30 min
+5. Mark: 6:15–7:45, 75 min
+6. Laura: 7:00–9:15, 75 min
+7. Michelle: 8:00–9:00, 15 min
+
+We can’t meet Barbara for 120 min if we want to meet anyone else during 5–7 PM, so maybe skip Barbara to meet more people.
+
+**Step 6 — Try a greedy schedule**  
+Start: Presidio 9:00  
+1. Helen at North Beach:  
+   Travel 18 min, so leave 10:42 → arrive 11:00, meet 11:00–11:45.  
+   Leave North Beach 11:45.
+
+Next: Who can we meet after 11:45?  
+All others are late afternoon/evening, so we have a big gap. We can go to a location and wait until their window opens.
+
+We should minimize travel, so maybe go to a central location and wait.
+
+But let’s think: after Helen, we could go to Fisherman’s Wharf (Emily 4:15–7:00) but that’s too early. We could instead go to Golden Gate Park (Michelle 8:00–9:00 PM) but that’s very far in future.
+
+Better: after Helen, go to Alamo Square (Barbara 5:00–7:00) but we don’t want to meet Barbara for 2 hours because it blocks others. Maybe meet Emily first (4:15), then Mary (5:30), then Mark (6:15), then Laura (7:00), then Michelle (8:00). Let’s check travel feasibility.
+
+**Step 7 — Attempt a feasible sequence**  
+From North Beach (leave 11:45) to Fisherman’s Wharf (Emily 4:15–7:00):  
+Travel North Beach → Fisherman’s Wharf = 5 min, so arrive 11:50 — but Emily not available until 4:15, so we’d wait 4+ hours. Not optimal but possible.
+
+But maybe better: from North Beach to Marina District (Mark 6:15–7:45) or Nob Hill (Mary 5:30–7:00).  
+Travel times:  
+North Beach → Marina District: 11 min → arrive 11:56, wait until 6:15 — too long.  
+So instead, go somewhere to kill time, but we want to meet multiple people.
+
+Let’s try:  
+After Helen (11:45 leave North Beach), go to Golden Gate Park (Michelle 8:00 PM), but that’s too long to wait. Not good.
+
+Maybe: Helen → Alamo Square (Barbara) but we skip meeting Barbara, just go there to be closer to others? But we can meet Barbara if we want 2 hours, but then we miss everyone else.
+
+Let’s try maximizing count:  
+We can meet Helen, Emily, Mary, Mark, Laura, Michelle.  
+Check if travel times allow:
+
+Helen: North Beach 11:00–11:45.  
+Leave 11:45, travel to Fisherman’s Wharf (5 min) → 11:50, wait until 4:15 (long wait) — okay.  
+Meet Emily 4:15–4:45 (30 min).  
+Leave 4:45, travel to Nob Hill (Mary 5:30–7:00):  
+Fisherman’s Wharf → Nob Hill = 11 min → arrive 4:56, wait until 5:30.  
+Meet Mary 5:30–6:15 (45 min).  
+Leave 6:15, travel to Marina District (Mark 6:15–7:45):  
+Nob Hill → Marina District = 11 min → arrive 6:26.  
+Mark’s window starts 6:15, we arrive 6:26, meet 6:26–7:41 (75 min) → end 7:41.  
+Leave 7:41, travel to Sunset District (Laura 7:00–9:15):  
+Marina District → Sunset District = 19 min → arrive 8:00.  
+Laura’s window starts 7:00, we arrive 8:00, meet 8:00–9:15 (75 min) → end 9:15.  
+Leave 9:15, travel to Golden Gate Park (Michelle 8:00–9:00):  
+Sunset District → Golden Gate Park = 11 min → arrive 9:26 — too late, Michelle’s window ends 9:00. So Michelle impossible if we meet Laura.
+
+So maybe swap: after Mark, go to Michelle first, then Laura?  
+Mark ends 7:41, travel to Golden Gate Park (Michelle 8:00–9:00):  
+Marina District → Golden Gate Park = 18 min → arrive 7:59, meet 8:00–8:15 (15 min).  
+Leave 8:15, travel to Sunset District (Laura 7:00–9:15):  
+Golden Gate Park → Sunset District = 10 min → arrive 8:25, meet 8:25–9:15 (50 min) — but Laura’s minimum is 75 minutes, so we fail.
+
+So Laura not possible if we meet Michelle.
+
+Maybe skip Laura, do Mark → Michelle:  
+Mark 6:26–7:41, leave 7:41, travel to Golden Gate Park 18 min → 7:59, meet Michelle 8:00–8:15, done.
+
+So feasible set: Helen, Emily, Mary, Mark, Michelle = 5 people.
+
+Check if we can add Barbara? No, overlaps with Emily/Mary/Mark.  
+Can we add Laura? No, overlaps with Michelle.
+
+So 5 seems max.
+
+**Step 8 — Verify travel times**  
+Let’s compute precisely in code.
+
+We’ll write a program that tries all permutations of meetable friends (excluding Kevin, Barbara) and checks feasibility.
+
+---
+
+Here’s the Python program:
+
+```python
+import json
+from itertools import permutations
+
+def time_to_minutes(t):
+    """Convert 'H:MM' string to minutes since midnight."""
+    if isinstance(t, str):
+        h, m = map(int, t.split(':'))
+        return h * 60 + m
+    return t
+
+def minutes_to_time(m):
+    """Convert minutes since midnight to 'H:MM' string."""
+    h = m // 60
+    m = m % 60
+    return f"{h}:{m:02d}"
+
+# Travel times matrix
+travel = {
+    ('Presidio', 'Pacific Heights'): 11,
+    ('Presidio', 'Golden Gate Park'): 12,
+    ('Presidio', 'Fisherman\'s Wharf'): 19,
+    ('Presidio', 'Marina District'): 11,
+    ('Presidio', 'Alamo Square'): 19,
+    ('Presidio', 'Sunset District'): 15,
+    ('Presidio', 'Nob Hill'): 18,
+    ('Presidio', 'North Beach'): 18,
+    ('Pacific Heights', 'Presidio'): 11,
+    ('Pacific Heights', 'Golden Gate Park'): 15,
+    ('Pacific Heights', 'Fisherman\'s Wharf'): 13,
+    ('Pacific Heights', 'Marina District'): 6,
+    ('Pacific Heights', 'Alamo Square'): 10,
+    ('Pacific Heights', 'Sunset District'): 21,
+    ('Pacific Heights', 'Nob Hill'): 8,
+    ('Pacific Heights', 'North Beach'): 9,
+    ('Golden Gate Park', 'Presidio'): 11,
+    ('Golden Gate Park', 'Pacific Heights'): 16,
+    ('Golden Gate Park', 'Fisherman\'s Wharf'): 24,
+    ('Golden Gate Park', 'Marina District'): 16,
+    ('Golden Gate Park', 'Alamo Square'): 9,
+    ('Golden Gate Park', 'Sunset District'): 10,
+    ('Golden Gate Park', 'Nob Hill'): 20,
+    ('Golden Gate Park', 'North Beach'): 23,
+    ('Fisherman\'s Wharf', 'Presidio'): 17,
+    ('Fisherman\'s Wharf', 'Pacific Heights'): 12,
+    ('Fisherman\'s Wharf', 'Golden Gate Park'): 25,
+    ('Fisherman\'s Wharf', 'Marina District'): 9,
+    ('Fisherman\'s Wharf', 'Alamo Square'): 21,
+    ('Fisherman\'s Wharf', 'Sunset District'): 27,
+    ('Fisherman\'s Wharf', 'Nob Hill'): 11,
+    ('Fisherman\'s Wharf', 'North Beach'): 6,
+    ('Marina District', 'Presidio'): 10,
+    ('Marina District', 'Pacific Heights'): 7,
+    ('Marina District', 'Golden Gate Park'): 18,
+    ('Marina District', 'Fisherman\'s Wharf'): 10,
+    ('Marina District', 'Alamo Square'): 15,
+    ('Marina District', 'Sunset District'): 19,
+    ('Marina District', 'Nob Hill'): 12,
+    ('Marina District', 'North Beach'): 11,
+    ('Alamo Square', 'Presidio'): 17,
+    ('Alamo Square', 'Pacific Heights'): 10,
+    ('Alamo Square', 'Golden Gate Park'): 9,
+    ('Alamo Square', 'Fisherman\'s Wharf'): 19,
+    ('Alamo Square', 'Marina District'): 15,
+    ('Alamo Square', 'Sunset District'): 16,
+    ('Alamo Square', 'Nob Hill'): 11,
+    ('Alamo Square', 'North Beach'): 15,
+    ('Sunset District', 'Presidio'): 16,
+    ('Sunset District', 'Pacific Heights'): 21,
+    ('Sunset District', 'Golden Gate Park'): 11,
+    ('Sunset District', 'Fisherman\'s Wharf'): 29,
+    ('Sunset District', 'Marina District'): 21,
+    ('Sunset District', 'Alamo Square'): 17,
+    ('Sunset District', 'Nob Hill'): 27,
+    ('Sunset District', 'North Beach'): 28,
+    ('Nob Hill', 'Presidio'): 17,
+    ('Nob Hill', 'Pacific Heights'): 8,
+    ('Nob Hill', 'Golden Gate Park'): 17,
+    ('Nob Hill', 'Fisherman\'s Wharf'): 10,
+    ('Nob Hill', 'Marina District'): 11,
+    ('Nob Hill', 'Alamo Square'): 11,
+    ('Nob Hill', 'Sunset District'): 24,
+    ('Nob Hill', 'North Beach'): 8,
+    ('North Beach', 'Presidio'): 17,
+    ('North Beach', 'Pacific Heights'): 8,
+    ('North Beach', 'Golden Gate Park'): 22,
+    ('North Beach', 'Fisherman\'s Wharf'): 5,
+    ('North Beach', 'Marina District'): 9,
+    ('North Beach', 'Alamo Square'): 16,
+    ('North Beach', 'Sunset District'): 27,
+    ('North Beach', 'Nob Hill'): 7,
+}
+
+# Friends data: name -> (location, window_start, window_end, min_duration)
+friends = {
+    'Kevin': ('Pacific Heights', time_to_minutes('7:15'), time_to_minutes('8:45'), 90),
+    'Michelle': ('Golden Gate Park', time_to_minutes('20:00'), time_to_minutes('21:00'), 15),
+    'Emily': ('Fisherman\'s Wharf', time_to_minutes('16:15'), time_to_minutes('19:00'), 30),
+    'Mark': ('Marina District', time_to_minutes('18:15'), time_to_minutes('19:45'), 75),
+    'Barbara': ('Alamo Square', time_to_minutes('17:00'), time_to_minutes('19:00'), 120),
+    'Laura': ('Sunset District', time_to_minutes('19:00'), time_to_minutes('21:15'), 75),
+    'Mary': ('Nob Hill', time_to_minutes('17:30'), time_to_minutes('19:00'), 45),
+    'Helen': ('North Beach', time_to_minutes('11:00'), time_to_minutes('12:15'), 45),
+}
+
+# Remove Kevin (impossible due to time)
+del friends['Kevin']
+
+# Remove Barbara? Let's try with and without in permutations
+# But Barbara's 120 min blocks others, so likely not in optimal for max count.
+# We'll brute force all subsets up to size 6 (since 7 friends left).
+
+def schedule_meeting_order(order, start_location='Presidio', start_time=time_to_minutes('9:00')):
+    """Check if given order of friends is feasible, return itinerary or None."""
+    current_location = start_location
+    current_time = start_time
+    itinerary = []
+    
+    for name in order:
+        loc, win_start, win_end, min_dur = friends[name]
+        # Travel to loc
+        travel_time = travel.get((current_location, loc))
+        if travel_time is None:
+            # Try reversing location names
+            travel_time = travel.get((loc, current_location))
+        if travel_time is None:
+            return None
+        
+        arrival = current_time + travel_time
+        # If we arrive before window start, wait
+        start_meeting = max(arrival, win_start)
+        end_meeting = start_meeting + min_dur
+        # Check if we can meet min duration within window
+        if end_meeting > win_end:
+            return None
+        # Add to itinerary
+        itinerary.append({
+            'action': 'meet',
+            'location': loc,
+            'person': name,
+            'start_time': minutes_to_time(start_meeting),
+            'end_time': minutes_to_time(end_meeting)
+        })
+        # Update current time and location
+        current_time = end_meeting
+        current_location = loc
+    
+    return itinerary
+
+# Try all permutations of all subsets to maximize count
+best_count = 0
+best_itinerary = None
+
+# Generate all subsets of friends (excluding Barbara for now to reduce combos)
+# But let's just brute force all permutations of all friends (max 7! = 5040)
+all_friends = list(friends.keys())
+
+# Since Barbara likely not in optimal, try without her first
+friends_no_barbara = [f for f in all_friends if f != 'Barbara']
+
+for r in range(len(friends_no_barbara), 0, -1):  # from largest subset to smallest
+    from itertools import permutations, combinations
+    found = False
+    for subset in combinations(friends_no_barbara, r):
+        for perm in permutations(subset):
+            itinerary = schedule_meeting_order(perm)
+            if itinerary:
+                # Found feasible with r friends
+                best_count = r
+                best_itinerary = itinerary
+                found = True
+                break
+       

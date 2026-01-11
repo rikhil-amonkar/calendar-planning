@@ -1,0 +1,102 @@
+import json
+from itertools import permutations
+
+def solve():
+    # Define all possible values
+    names = ["Alice", "Peter", "Arnold", "Eric"]
+    cigars = ["prince", "dunhill", "blue master", "pall mall"]
+    sports = ["swimming", "basketball", "soccer", "tennis"]
+    drinks = ["coffee", "water", "milk", "tea"]
+    
+    houses = [1, 2, 3, 4]
+    
+    # Generate all permutations for each category
+    for name_perm in permutations(names, 4):
+        # Clue 1: Peter is in the fourth house
+        if name_perm[3] != "Peter":
+            continue
+            
+        for cigar_perm in permutations(cigars, 4):
+            # Clue 3: Arnold is the person who smokes Blue Master
+            # Find Arnold's house index
+            try:
+                arnold_idx = name_perm.index("Arnold")
+            except ValueError:
+                continue
+            if cigar_perm[arnold_idx] != "blue master":
+                continue
+                
+            for sport_perm in permutations(sports, 4):
+                # Clue 8: The person who loves basketball is in the third house
+                if sport_perm[2] != "basketball":
+                    continue
+                    
+                # Clue 2: The tea drinker is the person who loves basketball
+                # So basketball player (house 3) drinks tea
+                # We'll check this with drink permutations
+                
+                # Clue 4: The person who loves basketball is Eric
+                if name_perm[2] != "Eric":
+                    continue
+                    
+                # Clue 5: The person who loves tennis is the person who smokes Blue Master
+                # Arnold smokes blue master (from clue 3), so Arnold loves tennis
+                if sport_perm[arnold_idx] != "tennis":
+                    continue
+                    
+                for drink_perm in permutations(drinks, 4):
+                    # Clue 2: The tea drinker is the person who loves basketball
+                    if drink_perm[2] != "tea":
+                        continue
+                        
+                    # Clue 6: There are two houses between the one who only drinks water and Peter
+                    # Peter is in house 4, so water drinker must be in house 1
+                    if drink_perm[0] != "water":
+                        continue
+                        
+                    # Clue 7: The coffee drinker is Arnold
+                    if drink_perm[arnold_idx] != "coffee":
+                        continue
+                        
+                    # Clue 9: The Prince smoker is the person who loves soccer
+                    # Find prince smoker's house
+                    prince_idx = cigar_perm.index("prince")
+                    if sport_perm[prince_idx] != "soccer":
+                        continue
+                        
+                    # Clue 10: Peter is the person partial to Pall Mall
+                    peter_idx = name_perm.index("Peter")
+                    if cigar_perm[peter_idx] != "pall mall":
+                        continue
+                    
+                    # All constraints satisfied, build solution
+                    solution = {
+                        "solution": {
+                            "header": ["House", "Name", "Cigar", "FavoriteSport", "Drink"],
+                            "rows": []
+                        }
+                    }
+                    
+                    for i in range(4):
+                        row = [
+                            str(i + 1),
+                            name_perm[i],
+                            cigar_perm[i],
+                            sport_perm[i],
+                            drink_perm[i]
+                        ]
+                        solution["solution"]["rows"].append(row)
+                    
+                    return solution
+    
+    return None
+
+def main():
+    result = solve()
+    if result:
+        print(json.dumps(result, indent=2))
+    else:
+        print(json.dumps({"error": "No solution found"}, indent=2))
+
+if __name__ == "__main__":
+    main()

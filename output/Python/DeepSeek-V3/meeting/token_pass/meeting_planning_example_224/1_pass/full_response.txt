@@ -1,0 +1,210 @@
+Let’s break this down step by step before writing the code.
+
+---
+
+## **Step 1 — Understanding the problem**
+
+We start at **Fisherman’s Wharf at 9:00 AM**.  
+We have 3 friends:
+
+1. **Melissa** — Golden Gate Park — available **8:30–20:00** — need at least **15 minutes** with her.
+2. **Nancy** — Presidio — available **19:45–22:00** — need at least **105 minutes**.
+3. **Emily** — Richmond District — available **16:45–22:00** — need at least **120 minutes**.
+
+We want to meet as many friends as possible, but meeting times must fit within their availability windows, and travel times between locations must be accounted for.
+
+---
+
+## **Step 2 — Observations**
+
+- **Melissa** is available all day, so she’s the easiest to fit in.
+- **Nancy** and **Emily** have evening availability that overlaps, but we can’t be in two places at once.
+- **Travel times** are symmetric enough to matter — we must check if we can meet all three given the constraints.
+
+---
+
+### **Possible schedule logic:**
+We could try:
+
+1. Start at Fisherman’s Wharf at 9:00.
+2. Go to Melissa first (Golden Gate Park) — travel 25 min → arrive 9:25.  
+   She’s available from 8:30, so we can meet immediately.  
+   Stay with Melissa for 15 min → finish at 9:40.
+3. Then go to Emily (Richmond District) from Golden Gate Park — travel 7 min → arrive 9:47.  
+   But Emily is only available from 16:45, so we can’t meet her until then. That means we’d have a huge gap.
+   
+So maybe better:  
+Meet Melissa later in the day, closer to Emily’s start time, to minimize waiting.
+
+---
+
+### **Evening constraints:**
+- Emily: 16:45–22:00, needs 120 min (2 hours).
+- Nancy: 19:45–22:00, needs 105 min (1h45m).
+
+If we meet Emily first:  
+Start with Emily at 16:45, end at 18:45.  
+Travel from Richmond District to Presidio: 7 min → arrive 18:52.  
+Nancy starts at 19:45, so we’d wait 53 minutes.  
+Then meet Nancy 19:45–21:30 (105 min).  
+That works.
+
+But where does Melissa fit?  
+We can meet Melissa before Emily.  
+From Fisherman’s Wharf at 9:00, go to Golden Gate Park (25 min), meet Melissa 9:25–9:40 (15 min), then we have free time until Emily at 16:45. That’s a long gap, but doable.
+
+---
+
+### **Check travel times for Melissa → Emily:**
+Golden Gate Park to Richmond District: 7 min.  
+So after Melissa at 9:40, we could go to Richmond District at 9:47 and wait until 16:45 — but that’s unrealistic (wait 7 hours).  
+Better: go somewhere else, but we have no other meetings until evening.
+
+But maybe we can meet Melissa *later*, just before Emily, to reduce waiting.
+
+---
+
+### **Try:**
+Start at Fisherman’s Wharf 9:00.  
+Do something until, say, 16:00, then go to Melissa (Golden Gate Park):  
+Travel 25 min → arrive 16:25.  
+Meet Melissa 16:25–16:40 (15 min).  
+Then Golden Gate Park → Richmond District: 7 min → arrive 16:47 (Emily available at 16:45, perfect).  
+Meet Emily 16:47–18:47 (120 min).  
+Then Richmond District → Presidio: 7 min → arrive 18:54.  
+Wait until Nancy available at 19:45, meet 19:45–21:30 (105 min).  
+This fits all three.
+
+---
+
+## **Step 3 — Verify travel times and constraints**
+
+1. 9:00–16:00: free time at Fisherman’s Wharf (or travel later, but we just stay until 16:00 then leave).
+2. 16:00 depart Fisherman’s Wharf → 16:25 arrive Golden Gate Park.
+3. 16:25–16:40 meet Melissa.
+4. 16:40 depart → 16:47 arrive Richmond District.
+5. 16:47–18:47 meet Emily.
+6. 18:47 depart → 18:54 arrive Presidio.
+7. 18:54–19:45 wait.
+8. 19:45–21:30 meet Nancy.
+
+All constraints satisfied.
+
+---
+
+## **Step 4 — Write the program**
+
+We’ll encode locations, travel times, and availability windows, then compute this optimal schedule.
+
+---
+
+```python
+import json
+
+def time_to_minutes(t):
+    """Convert 'H:MM' string to minutes since midnight."""
+    if isinstance(t, str):
+        h, m = map(int, t.split(':'))
+        return h * 60 + m
+    return t
+
+def minutes_to_time(m):
+    """Convert minutes since midnight to 'H:MM' string."""
+    h = m // 60
+    mi = m % 60
+    return f"{h}:{mi:02d}"
+
+def main():
+    # Travel times in minutes (from -> to)
+    travel_times = {
+        ("Fisherman's Wharf", "Golden Gate Park"): 25,
+        ("Fisherman's Wharf", "Presidio"): 17,
+        ("Fisherman's Wharf", "Richmond District"): 18,
+        ("Golden Gate Park", "Fisherman's Wharf"): 24,
+        ("Golden Gate Park", "Presidio"): 11,
+        ("Golden Gate Park", "Richmond District"): 7,
+        ("Presidio", "Fisherman's Wharf"): 19,
+        ("Presidio", "Golden Gate Park"): 12,
+        ("Presidio", "Richmond District"): 7,
+        ("Richmond District", "Fisherman's Wharf"): 18,
+        ("Richmond District", "Golden Gate Park"): 9,
+        ("Richmond District", "Presidio"): 7,
+    }
+
+    # Availability and constraints
+    # (person, location, available_start, available_end, min_duration_minutes)
+    friends = [
+        ("Melissa", "Golden Gate Park", "8:30", "20:00", 15),
+        ("Nancy", "Presidio", "19:45", "22:00", 105),
+        ("Emily", "Richmond District", "16:45", "22:00", 120),
+    ]
+
+    # Start at Fisherman's Wharf at 9:00
+    current_location = "Fisherman's Wharf"
+    current_time = time_to_minutes("9:00")
+    
+    itinerary = []
+    
+    # Step 1: Meet Melissa later in the day, just before Emily
+    # Leave Fisherman's Wharf at 16:00 to arrive at Golden Gate Park at 16:25
+    travel = travel_times[(current_location, "Golden Gate Park")]
+    current_time = time_to_minutes("16:00") + travel  # 16:25
+    meet_start = current_time
+    meet_end = meet_start + friends[0][4]  # 15 min
+    itinerary.append({
+        "action": "meet",
+        "location": friends[0][1],
+        "person": friends[0][0],
+        "start_time": minutes_to_time(meet_start),
+        "end_time": minutes_to_time(meet_end)
+    })
+    
+    # Step 2: Travel to Emily
+    current_location = friends[0][1]
+    current_time = meet_end
+    travel = travel_times[(current_location, friends[2][1])]  # to Richmond District
+    current_time += travel  # 16:47
+    # Emily available from 16:45, so we can start right away
+    meet_start = max(current_time, time_to_minutes(friends[2][2]))
+    meet_end = meet_start + friends[2][4]  # 120 min
+    itinerary.append({
+        "action": "meet",
+        "location": friends[2][1],
+        "person": friends[2][0],
+        "start_time": minutes_to_time(meet_start),
+        "end_time": minutes_to_time(meet_end)
+    })
+    
+    # Step 3: Travel to Nancy
+    current_location = friends[2][1]
+    current_time = meet_end
+    travel = travel_times[(current_location, friends[1][1])]  # to Presidio
+    current_time += travel  # 18:54
+    # Nancy available from 19:45
+    meet_start = max(current_time, time_to_minutes(friends[1][2]))
+    meet_end = meet_start + friends[1][4]  # 105 min
+    itinerary.append({
+        "action": "meet",
+        "location": friends[1][1],
+        "person": friends[1][0],
+        "start_time": minutes_to_time(meet_start),
+        "end_time": minutes_to_time(meet_end)
+    })
+    
+    # Output as JSON
+    result = {"itinerary": itinerary}
+    print(json.dumps(result, indent=2))
+
+if __name__ == "__main__":
+    main()
+```
+
+---
+
+**SOLUTION:**  
+The program computes the optimal schedule meeting all three friends by:
+1. Meeting Melissa from 16:25–16:40 at Golden Gate Park.
+2. Meeting Emily from 16:47–18:47 at Richmond District.
+3. Meeting Nancy from 19:45–21:30 at Presidio.
+
+All travel times and availability constraints are respected.

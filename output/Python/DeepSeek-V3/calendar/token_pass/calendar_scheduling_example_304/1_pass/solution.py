@@ -1,0 +1,149 @@
+def find_meeting_time():
+    # Work hours
+    work_start = 9 * 60  # 9:00 in minutes
+    work_end = 17 * 60   # 17:00 in minutes
+    
+    # Convert all busy times to minutes since midnight
+    # Christine
+    christine_busy = [
+        (9*60 + 30, 10*60 + 30),  # 9:30-10:30
+        (12*60, 12*60 + 30),      # 12:00-12:30
+        (13*60, 13*60 + 30),      # 13:00-13:30
+        (14*60 + 30, 15*60),      # 14:30-15:00
+        (16*60, 16*60 + 30)       # 16:00-16:30
+    ]
+    
+    # Janice - wide open
+    janice_busy = []
+    
+    # Bobby
+    bobby_busy = [
+        (12*60, 12*60 + 30),      # 12:00-12:30
+        (14*60 + 30, 15*60)       # 14:30-15:00
+    ]
+    
+    # Elizabeth
+    elizabeth_busy = [
+        (9*60, 9*60 + 30),        # 9:00-9:30
+        (11*60 + 30, 13*60),      # 11:30-13:00
+        (13*60 + 30, 14*60),      # 13:30-14:00
+        (15*60, 15*60 + 30),      # 15:00-15:30
+        (16*60, 17*60)            # 16:00-17:00
+    ]
+    
+    # Tyler
+    tyler_busy = [
+        (9*60, 11*60),            # 9:00-11:00
+        (12*60, 12*60 + 30),      # 12:00-12:30
+        (13*60, 13*60 + 30),      # 13:00-13:30
+        (15*60 + 30, 16*60),      # 15:30-16:00
+        (16*60 + 30, 17*60)       # 16:30-17:00
+    ]
+    
+    # Edward
+    edward_busy = [
+        (9*60, 9*60 + 30),        # 9:00-9:30
+        (10*60, 11*60),           # 10:00-11:00
+        (11*60 + 30, 14*60),      # 11:30-14:00
+        (14*60 + 30, 15*60 + 30), # 14:30-15:30
+        (16*60, 17*60)            # 16:00-17:00
+    ]
+    
+    # Combine all busy times
+    all_busy = christine_busy + janice_busy + bobby_busy + elizabeth_busy + tyler_busy + edward_busy
+    
+    # Sort busy times
+    all_busy.sort()
+    
+    # Find free slots
+    free_slots = []
+    current_time = work_start
+    
+    for start, end in all_busy:
+        if start > current_time:
+            free_slots.append((current_time, start))
+        current_time = max(current_time, end)
+    
+    if current_time < work_end:
+        free_slots.append((current_time, work_end))
+    
+    # Filter for slots that are at least 30 minutes
+    available_slots = []
+    for start, end in free_slots:
+        if end - start >= 30:
+            # Generate all possible 30-minute slots within this free period
+            slot_start = start
+            while slot_start + 30 <= end:
+                available_slots.append((slot_start, slot_start + 30))
+                slot_start += 30
+    
+    # Now check each participant's availability for each slot
+    def is_slot_available(slot_start, slot_end, busy_times):
+        for busy_start, busy_end in busy_times:
+            if not (slot_end <= busy_start or slot_start >= busy_end):
+                return False
+        return True
+    
+    valid_slots = []
+    for slot_start, slot_end in available_slots:
+        # Check Christine
+        if not is_slot_available(slot_start, slot_end, christine_busy):
+            continue
+        
+        # Check Janice (always available, but we check anyway)
+        if not is_slot_available(slot_start, slot_end, janice_busy):
+            continue
+        
+        # Check Bobby
+        if not is_slot_available(slot_start, slot_end, bobby_busy):
+            continue
+        
+        # Check Elizabeth
+        if not is_slot_available(slot_start, slot_end, elizabeth_busy):
+            continue
+        
+        # Check Tyler
+        if not is_slot_available(slot_start, slot_end, tyler_busy):
+            continue
+        
+        # Check Edward
+        if not is_slot_available(slot_start, slot_end, edward_busy):
+            continue
+        
+        valid_slots.append((slot_start, slot_end))
+    
+    # Prioritize slots before 13:00 (Janice's preference)
+    preferred_cutoff = 13 * 60
+    preferred_slots = [slot for slot in valid_slots if slot[1] <= preferred_cutoff]
+    
+    if preferred_slots:
+        # Use the first preferred slot
+        chosen_slot = preferred_slots[0]
+    elif valid_slots:
+        # Use the first available slot if no preferred slots
+        chosen_slot = valid_slots[0]
+    else:
+        return None
+    
+    # Convert minutes back to HH:MM format
+    def minutes_to_time(minutes):
+        hours = minutes // 60
+        mins = minutes % 60
+        return f"{hours:02d}:{mins:02d}"
+    
+    start_time = minutes_to_time(chosen_slot[0])
+    end_time = minutes_to_time(chosen_slot[1])
+    
+    return "Monday", f"{start_time}:{end_time}"
+
+# Run the function
+result = find_meeting_time()
+
+if result:
+    day, time_range = result
+    # Format output as HH:MM:HH:MM
+    time_parts = time_range.split(":")
+    output_format = f"{time_parts[0]}:{time_parts[1]}:{time_parts[2]}:{time_parts[3]}"
+    print(f"{day}: {output_format}")
+else:
+    print("No suitable time found")

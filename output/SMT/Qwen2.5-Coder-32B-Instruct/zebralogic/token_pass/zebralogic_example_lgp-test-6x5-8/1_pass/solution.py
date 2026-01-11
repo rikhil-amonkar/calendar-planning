@@ -1,0 +1,136 @@
+from z3 import *
+
+# Define the domain for each variable
+names = ["Arnold", "Peter", "Bob", "Eric", "Carol", "Alice"]
+animals = ["horse", "rabbit", "fish", "cat", "bird", "dog"]
+occupations = ["engineer", "nurse", "lawyer", "teacher", "artist", "doctor"]
+favorite_sports = ["basketball", "volleyball", "soccer", "tennis", "baseball", "swimming"]
+heights = ["average", "tall", "short", "very short", "very tall", "super tall"]
+
+# Create variables for each characteristic for each house
+house_vars = [None] * 6
+for i in range(6):
+    house_vars[i] = {
+        "name": Int(f"name_{i+1}"),
+        "animal": Int(f"animal_{i+1}"),
+        "occupation": Int(f"occupation_{i+1}"),
+        "favorite_sport": Int(f"favorite_sport_{i+1}"),
+        "height": Int(f"height_{i+1}")
+    }
+
+# Create a solver instance
+solver = Solver()
+
+# Add constraints for unique values in each category
+for category in ["name", "animal", "occupation", "favorite_sport", "height"]:
+    solver.add(Distinct([house_vars[i][category] for i in range(6)]))
+
+# Map values to integers for each category
+name_map = {name: i for i, name in enumerate(names)}
+animal_map = {animal: i for i, animal in enumerate(animals)}
+occupation_map = {occupation: i for i, occupation in enumerate(occupations)}
+favorite_sport_map = {sport: i for i, sport in enumerate(favorite_sports)}
+height_map = {height: i for i, height in enumerate(heights)}
+
+# Translate clues into constraints
+# Clue 1: The person who is an engineer is the dog owner.
+solver.add(house_vars[i]["occupation"] == occupation_map["engineer"] ==>
+           house_vars[i]["animal"] == animal_map["dog"] for i in range(6))
+
+# Clue 2: The person who has an average height is somewhere to the left of the person who is short.
+solver.add(Or([And(house_vars[i]["height"] == height_map["average"], house_vars[j]["height"] == height_map["short"])
+               for i in range(5) for j in range(i+1, 6)]))
+
+# Clue 3: The person who has an average height is directly left of the rabbit owner.
+solver.add(Or([And(house_vars[i]["height"] == height_map["average"], house_vars[i+1]["animal"] == animal_map["rabbit"])
+               for i in range(5)]))
+
+# Clue 4: The person who is tall is somewhere to the left of the person who is very short.
+solver.add(Or([And(house_vars[i]["height"] == height_map["tall"], house_vars[j]["height"] == height_map["very short"])
+               for i in range(5) for j in range(i+1, 6)]))
+
+# Clue 5: Arnold is the cat lover.
+solver.add(house_vars[i]["name"] == name_map["Arnold"] ==>
+           house_vars[i]["animal"] == animal_map["cat"] for i in range(6))
+
+# Clue 6: The person who keeps horses is the person who is a teacher.
+solver.add(house_vars[i]["animal"] == animal_map["horse"] ==>
+           house_vars[i]["occupation"] == occupation_map["teacher"] for i in range(6))
+
+# Clue 7: Carol is the person who loves soccer.
+solver.add(house_vars[i]["name"] == name_map["Carol"] ==>
+           house_vars[i]["favorite_sport"] == favorite_sport_map["soccer"] for i in range(6))
+
+# Clue 8: The person who is tall is the person who loves volleyball.
+solver.add(house_vars[i]["height"] == height_map["tall"] ==>
+           house_vars[i]["favorite_sport"] == favorite_sport_map["volleyball"] for i in range(6))
+
+# Clue 9: The person who is a lawyer is in the fifth house.
+solver.add(house_vars[4]["occupation"] == occupation_map["lawyer"])
+
+# Clue 10: The person who loves tennis is the person who is a teacher.
+solver.add(house_vars[i]["favorite_sport"] == favorite_sport_map["tennis"] ==>
+           house_vars[i]["occupation"] == occupation_map["teacher"] for i in range(6))
+
+# Clue 11: The person who has an average height is the person who loves swimming.
+solver.add(house_vars[i]["height"] == height_map["average"] ==>
+           house_vars[i]["favorite_sport"] == favorite_sport_map["swimming"] for i in range(6))
+
+# Clue 12: The person who loves baseball is directly left of the person who is an engineer.
+solver.add(Or([And(house_vars[i]["favorite_sport"] == favorite_sport_map["baseball"], house_vars[i+1]["occupation"] == occupation_map["engineer"])
+               for i in range(5)]))
+
+# Clue 13: Peter is the person who is a nurse.
+solver.add(house_vars[i]["name"] == name_map["Peter"] ==>
+           house_vars[i]["occupation"] == occupation_map["nurse"] for i in range(6))
+
+# Clue 14: Bob is somewhere to the right of the person who is an artist.
+solver.add(Or([And(house_vars[i]["name"] == name_map["Bob"], house_vars[j]["occupation"] == occupation_map["artist"])
+               for i in range(1, 6) for j in range(i)]))
+
+# Clue 15: The person who is a teacher is directly left of the person who loves soccer.
+solver.add(Or([And(house_vars[i]["occupation"] == occupation_map["teacher"], house_vars[i+1]["favorite_sport"] == favorite_sport_map["soccer"])
+               for i in range(5)]))
+
+# Clue 16: The rabbit owner is Alice.
+solver.add(house_vars[i]["name"] == name_map["Alice"] ==>
+           house_vars[i]["animal"] == animal_map["rabbit"] for i in range(6))
+
+# Clue 17: The fish enthusiast is Carol.
+solver.add(house_vars[i]["name"] == name_map["Carol"] ==>
+           house_vars[i]["animal"] == animal_map["fish"] for i in range(6))
+
+# Clue 18: The person who loves baseball is in the first house.
+solver.add(house_vars[0]["favorite_sport"] == favorite_sport_map["baseball"])
+
+# Clue 19: The cat lover is somewhere to the right of the person who is very short.
+solver.add(Or([And(house_vars[i]["animal"] == animal_map["cat"], house_vars[j]["height"] == height_map["very short"])
+               for i in range(1, 6) for j in range(i)]))
+
+# Clue 20: The person who is super tall is in the fifth house.
+solver.add(house_vars[4]["height"] == height_map["super tall"])
+
+# Solve the problem
+if solver.check() == sat:
+    model = solver.model()
+    solution = []
+    for i in range(6):
+        house_solution = [
+            str(i + 1),
+            names[model.evaluate(house_vars[i]["name"])],
+            animals[model.evaluate(house_vars[i]["animal"])],
+            occupations[model.evaluate(house_vars[i]["occupation"])],
+            favorite_sports[model.evaluate(house_vars[i]["favorite_sport"])],
+            heights[model.evaluate(house_vars[i]["height"])]
+        ]
+        solution.append(house_solution)
+    
+    result = {
+        "solution": {
+            "header": ["House", "Name", "Animal", "Occupation", "FavoriteSport", "Height"],
+            "rows": solution
+        }
+    }
+    print(result)
+else:
+    print("No solution found")

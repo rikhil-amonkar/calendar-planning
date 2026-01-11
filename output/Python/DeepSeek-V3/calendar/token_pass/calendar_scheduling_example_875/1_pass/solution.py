@@ -1,0 +1,98 @@
+def time_to_minutes(t):
+    """Convert HH:MM to minutes from 9:00."""
+    h, m = map(int, t.split(':'))
+    return (h - 9) * 60 + m
+
+def minutes_to_time(m):
+    """Convert minutes from 9:00 back to HH:MM."""
+    h = 9 + m // 60
+    mm = m % 60
+    return f"{h:02d}:{mm:02d}"
+
+def parse_busy(busy_str):
+    """Parse busy string into list of (start_min, end_min) for a day."""
+    intervals = []
+    parts = busy_str.split(', ')
+    for part in parts:
+        if 'during' in part:
+            # e.g., "Monday during 9:00 to 9:30"
+            time_part = part.split(' during ')[1]
+        else:
+            time_part = part
+        start_str, end_str = time_part.split(' to ')
+        start_min = time_to_minutes(start_str)
+        end_min = time_to_minutes(end_str)
+        intervals.append((start_min, end_min))
+    return intervals
+
+def find_free_intervals(busy_intervals, day_start=0, day_end=480):
+    """Given busy intervals in minutes, return free intervals."""
+    busy_sorted = sorted(busy_intervals, key=lambda x: x[0])
+    free = []
+    last_end = day_start
+    for start, end in busy_sorted:
+        if start > last_end:
+            free.append((last_end, start))
+        last_end = max(last_end, end)
+    if last_end < day_end:
+        free.append((last_end, day_end))
+    return free
+
+def intersect_intervals(free1, free2):
+    """Intersect two lists of free intervals."""
+    i, j = 0, 0
+    result = []
+    while i < len(free1) and j < len(free2):
+        start = max(free1[i][0], free2[j][0])
+        end = min(free1[i][1], free2[j][1])
+        if start < end:
+            result.append((start, end))
+        if free1[i][1] < free2[j][1]:
+            i += 1
+        else:
+            j += 1
+    return result
+
+def main():
+    days = ["Monday", "Tuesday", "Wednesday", "Thursday"]
+    
+    # Natalie's busy times
+    natalie_busy = {
+        "Monday": "9:00 to 9:30, 10:00 to 12:00, 12:30 to 13:00, 14:00 to 14:30, 15:00 to 16:30",
+        "Tuesday": "9:00 to 9:30, 10:00 to 10:30, 12:30 to 14:00, 16:00 to 17:00",
+        "Wednesday": "11:00 to 11:30, 16:00 to 16:30",
+        "Thursday": "10:00 to 11:00, 11:30 to 15:00, 15:30 to 16:00, 16:30 to 17:00"
+    }
+    
+    # William's busy times
+    william_busy = {
+        "Monday": "9:30 to 11:00, 11:30 to 17:00",
+        "Tuesday": "9:00 to 13:00, 13:30 to 16:00",
+        "Wednesday": "9:00 to 12:30, 13:00 to 14:30, 15:30 to 16:00, 16:30 to 17:00",
+        "Thursday": "9:00 to 10:30, 11:00 to 11:30, 12:00 to 12:30, 13:00 to 14:00, 15:00 to 17:00"
+    }
+    
+    meeting_duration = 60  # minutes
+    
+    for day in days:
+        natalie_intervals = parse_busy(natalie_busy[day])
+        william_intervals = parse_busy(william_busy[day])
+        
+        natalie_free = find_free_intervals(natalie_intervals)
+        william_free = find_free_intervals(william_intervals)
+        
+        common_free = intersect_intervals(natalie_free, william_free)
+        
+        for start_min, end_min in common_free:
+            if end_min - start_min >= meeting_duration:
+                # Found a slot
+                start_time = minutes_to_time(start_min)
+                end_time = minutes_to_time(start_min + meeting_duration)
+                print(f"{day}")
+                print(f"{start_time}:{end_time}")
+                return
+    
+    print("No suitable slot found.")
+
+if __name__ == "__main__":
+    main()

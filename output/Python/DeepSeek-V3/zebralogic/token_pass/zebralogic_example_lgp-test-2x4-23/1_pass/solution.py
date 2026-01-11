@@ -1,0 +1,88 @@
+import json
+from itertools import permutations
+
+def solve_puzzle():
+    # Define all possible values for each attribute
+    names = ["Eric", "Arnold"]
+    mothers = ["Aniya", "Holly"]
+    cars = ["ford f150", "tesla model 3"]
+    heights = ["short", "very short"]
+    houses = [1, 2]
+    
+    # Generate all possible permutations for each attribute across houses
+    # Since there are 2 houses, each permutation will be a 2-element tuple
+    name_perms = list(permutations(names, 2))
+    mother_perms = list(permutations(mothers, 2))
+    car_perms = list(permutations(cars, 2))
+    height_perms = list(permutations(heights, 2))
+    
+    solutions = []
+    
+    # Brute-force search through all possible combinations
+    for name_assign in name_perms:
+        for mother_assign in mother_perms:
+            for car_assign in car_perms:
+                for height_assign in height_perms:
+                    # Create assignment dictionary
+                    assignment = {}
+                    for i, house in enumerate(houses):
+                        assignment[house] = {
+                            "Name": name_assign[i],
+                            "Mother": mother_assign[i],
+                            "CarModel": car_assign[i],
+                            "Height": height_assign[i]
+                        }
+                    
+                    # Check clue 1: Tesla Model 3 is somewhere to the right of Arnold
+                    # Find Arnold's house
+                    arnold_house = None
+                    tesla_house = None
+                    for house in houses:
+                        if assignment[house]["Name"] == "Arnold":
+                            arnold_house = house
+                        if assignment[house]["CarModel"] == "tesla model 3":
+                            tesla_house = house
+                    
+                    # If Arnold exists and Tesla exists, check relative position
+                    if arnold_house is not None and tesla_house is not None:
+                        if not tesla_house > arnold_house:
+                            continue
+                    
+                    # Check clue 2: Arnold is short
+                    for house in houses:
+                        if assignment[house]["Name"] == "Arnold" and assignment[house]["Height"] != "short":
+                            break
+                    else:
+                        # Check clue 3: Mother Holly is in house 2
+                        if assignment[2]["Mother"] != "Holly":
+                            continue
+                        
+                        # All clues satisfied, add to solutions
+                        solutions.append(assignment)
+    
+    # Convert solution to required format
+    if solutions:
+        solution = solutions[0]  # Take first valid solution
+        rows = []
+        for house in sorted(solution.keys()):
+            row = [
+                str(house),
+                solution[house]["Name"],
+                solution[house]["Mother"],
+                solution[house]["CarModel"],
+                solution[house]["Height"]
+            ]
+            rows.append(row)
+        
+        result = {
+            "solution": {
+                "header": ["House", "Name", "Mother", "CarModel", "Height"],
+                "rows": rows
+            }
+        }
+        return json.dumps(result, indent=2)
+    else:
+        return json.dumps({"error": "No solution found"}, indent=2)
+
+if __name__ == "__main__":
+    print(solve_puzzle())

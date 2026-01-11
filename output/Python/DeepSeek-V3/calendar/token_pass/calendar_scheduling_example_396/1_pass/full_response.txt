@@ -1,0 +1,220 @@
+Let's break this down step-by-step before writing the code.  
+
+We have:  
+- **Meeting duration**: 30 minutes  
+- **Work hours**: 9:00 to 17:00 (so earliest start is 9:00, latest end is 17:00)  
+- **Participants**: Andrea, Jack, Madison, Rachel, Douglas, Ryan  
+- **Day**: Monday  
+
+We need to find a 30-minute slot where **all** are free.  
+
+---
+
+### Step 1: Represent busy times in minutes from 9:00
+Let’s convert all times to minutes from 0 (where 0 = 9:00, 60 = 10:00, etc.).  
+Work hours: 9:00–17:00 → 0 to 480 minutes.
+
+---
+
+**Jack**:  
+- 9:00–9:30 → 0–30  
+- 14:00–14:30 → 300–330  
+
+**Madison**:  
+- 9:30–10:30 → 30–90  
+- 13:00–14:00 → 240–300  
+- 15:00–15:30 → 360–390  
+- 16:30–17:00 → 450–480  
+
+**Rachel**:  
+- 9:30–10:30 → 30–90  
+- 11:00–11:30 → 120–150  
+- 12:00–13:30 → 180–270  
+- 14:30–15:30 → 330–390  
+- 16:00–17:00 → 420–480  
+
+**Douglas**:  
+- 9:00–11:30 → 0–150  
+- 12:00–16:30 → 180–450  
+
+**Ryan**:  
+- 9:00–9:30 → 0–30  
+- 13:00–14:00 → 240–300  
+- 14:30–17:00 → 330–480  
+
+**Andrea**: free all day.
+
+---
+
+### Step 2: Combine all busy intervals
+We can merge all busy intervals for all people, then look for gaps of at least 30 minutes.
+
+Let’s list all busy intervals (start, end) in minutes from 9:00:
+
+Jack: (0,30), (300,330)  
+Madison: (30,90), (240,300), (360,390), (450,480)  
+Rachel: (30,90), (120,150), (180,270), (330,390), (420,480)  
+Douglas: (0,150), (180,450)  
+Ryan: (0,30), (240,300), (330,480)  
+
+Combine all:  
+(0,30), (0,150), (30,90), (120,150), (180,270), (180,450), (240,300), (300,330), (330,390), (330,480), (360,390), (420,480), (450,480)  
+
+Let’s sort and merge:
+
+Sorted by start:  
+(0,30), (0,150), (30,90), (120,150), (180,270), (180,450), (240,300), (300,330), (330,390), (330,480), (360,390), (420,480), (450,480)  
+
+Merging:  
+1. (0,150) — covers (0,30), (0,150), (30,90), (120,150)  
+2. (180,450) — covers (180,270), (180,450), (240,300), (300,330), (330,390), (330,480), (360,390), (420,480)? Wait, (330,480) goes to 480, so (180,450) doesn’t cover 450–480. Let’s merge carefully.
+
+Better to do algorithmic merge:  
+
+Sorted unique intervals:  
+(0,30), (0,150), (30,90), (120,150), (180,270), (180,450), (240,300), (300,330), (330,390), (330,480), (360,390), (420,480), (450,480)  
+
+Merge step-by-step:  
+Start with (0,30), next (0,150) → merge to (0,150)  
+Next (30,90) inside (0,150) → still (0,150)  
+Next (120,150) inside (0,150) → still (0,150)  
+Next (180,270) → new interval (180,270)  
+Next (180,450) → merge with (180,270) → (180,450)  
+Next (240,300) inside (180,450) → still (180,450)  
+Next (300,330) inside (180,450) → still (180,450)  
+Next (330,390) inside (180,450) → still (180,450)  
+Next (330,480) → extends (180,450) to (180,480) because 480 > 450  
+Next (360,390) inside (180,480)  
+Next (420,480) inside (180,480)  
+Next (450,480) inside (180,480)  
+
+So merged busy times:  
+(0,150) and (180,480)  
+
+That means free time is:  
+(150,180) → 30 minutes exactly.  
+
+---
+
+### Step 3: Convert back to time
+150 minutes from 9:00 = 9:00 + 150 min = 11:30  
+180 minutes from 9:00 = 12:00  
+
+So free slot: 11:30–12:00 (30 minutes).  
+
+Check everyone:  
+Andrea: free  
+Jack: free 11:30–12:00? Yes, busy 9–9:30 and 14–14:30 only.  
+Madison: free 11:30–12:00? Yes, busy 9:30–10:30, 13–14, 15–15:30, 16:30–17.  
+Rachel: free 11:30–12:00? Yes, busy 9:30–10:30, 11–11:30, 12–13:30 → 11:30–12 is free.  
+Douglas: busy 9–11:30 and 12–16:30 → 11:30–12 is free exactly.  
+Ryan: busy 9–9:30, 13–14, 14:30–17 → free 11:30–12.  
+
+Perfect.
+
+---
+
+### Step 4: Write Python code
+We’ll write a script that merges intervals and finds the first gap of at least 30 minutes.
+
+```python
+def time_to_minutes(t):
+    """Convert 'HH:MM' to minutes from 00:00."""
+    h, m = map(int, t.split(':'))
+    return h * 60 + m
+
+def minutes_to_time(m):
+    """Convert minutes from 00:00 to 'HH:MM'."""
+    h = m // 60
+    m = m % 60
+    return f"{h:02d}:{m:02d}"
+
+def find_meeting_slot(busy_intervals, work_start, work_end, duration):
+    """
+    busy_intervals: list of (start, end) in minutes from 00:00
+    work_start, work_end: minutes from 00:00
+    duration: minutes
+    Returns (start, end) in minutes from 00:00 or None
+    """
+    # Merge busy intervals
+    if not busy_intervals:
+        return (work_start, work_start + duration)
+    
+    busy_intervals.sort()
+    merged = []
+    current_start, current_end = busy_intervals[0]
+    
+    for start, end in busy_intervals[1:]:
+        if start <= current_end:
+            current_end = max(current_end, end)
+        else:
+            merged.append((current_start, current_end))
+            current_start, current_end = start, end
+    merged.append((current_start, current_end))
+    
+    # Look for gaps within work hours
+    prev_end = work_start
+    for start, end in merged:
+        if start > prev_end and start - prev_end >= duration:
+            return (prev_end, prev_end + duration)
+        prev_end = max(prev_end, end)
+    
+    if work_end - prev_end >= duration:
+        return (prev_end, prev_end + duration)
+    
+    return None
+
+def main():
+    # Work hours 9:00 to 17:00
+    work_start = time_to_minutes("09:00")
+    work_end = time_to_minutes("17:00")
+    duration = 30  # minutes
+    
+    # Busy times in HH:MM format (converted to minutes from 00:00)
+    # Andrea: free all day → no busy intervals
+    # Jack: 9:00-9:30, 14:00-14:30
+    # Madison: 9:30-10:30, 13:00-14:00, 15:00-15:30, 16:30-17:00
+    # Rachel: 9:30-10:30, 11:00-11:30, 12:00-13:30, 14:30-15:30, 16:00-17:00
+    # Douglas: 9:00-11:30, 12:00-16:30
+    # Ryan: 9:00-9:30, 13:00-14:00, 14:30-17:00
+    
+    busy_times = [
+        # Jack
+        ("09:00", "09:30"),
+        ("14:00", "14:30"),
+        # Madison
+        ("09:30", "10:30"),
+        ("13:00", "14:00"),
+        ("15:00", "15:30"),
+        ("16:30", "17:00"),
+        # Rachel
+        ("09:30", "10:30"),
+        ("11:00", "11:30"),
+        ("12:00", "13:30"),
+        ("14:30", "15:30"),
+        ("16:00", "17:00"),
+        # Douglas
+        ("09:00", "11:30"),
+        ("12:00", "16:30"),
+        # Ryan
+        ("09:00", "09:30"),
+        ("13:00", "14:00"),
+        ("14:30", "17:00"),
+    ]
+    
+    # Convert to minutes from 00:00
+    busy_intervals = [(time_to_minutes(s), time_to_minutes(e)) for s, e in busy_times]
+    
+    slot = find_meeting_slot(busy_intervals, work_start, work_end, duration)
+    
+    if slot:
+        start_min, end_min = slot
+        start_time = minutes_to_time(start_min)
+        end_time = minutes_to_time(end_min)
+        print(f"Monday\n{start_time}:{end_time}")
+    else:
+        print("No suitable slot found")
+
+if __name__ == "__main__":
+    main()
+```

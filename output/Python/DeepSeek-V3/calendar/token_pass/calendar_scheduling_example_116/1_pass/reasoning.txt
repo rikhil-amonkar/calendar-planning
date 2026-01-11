@@ -1,0 +1,86 @@
+Let's break this down step by step.  
+
+We have:  
+- **Participants**: Adam, John, Stephanie, Anna  
+- **Day**: Monday  
+- **Work hours**: 9:00–17:00  
+- **Meeting duration**: 30 minutes  
+- **Anna prefers not before 14:30**  
+- Each person’s busy times are given.  
+
+We need to find a 30-minute slot between 9:00–17:00 on Monday when all are free, respecting Anna’s preference.  
+
+---
+
+### Step 1: Convert times to minutes from 9:00
+Let’s set 9:00 = 0 minutes, so 17:00 = 8 hours = 480 minutes.  
+
+**Adam busy**:  
+14:00–15:00 → 14:00 = 5h from 9:00 = 300 min, 15:00 = 360 min → [300, 360]  
+
+**John busy**:  
+13:00–13:30 → 13:00 = 4h = 240 min, 13:30 = 270 min → [240, 270]  
+14:00–14:30 → [300, 330]  
+15:30–16:00 → [390, 420]  
+16:30–17:00 → [450, 480]  
+
+**Stephanie busy**:  
+9:30–10:00 → [30, 60]  
+10:30–11:00 → [90, 120]  
+11:30–16:00 → [150, 420]  
+16:30–17:00 → [450, 480]  
+
+**Anna busy**:  
+9:30–10:00 → [30, 60]  
+12:00–12:30 → [180, 210]  
+13:00–15:30 → [240, 390]  
+16:30–17:00 → [450, 480]  
+
+---
+
+### Step 2: Combine busy intervals for all
+We can merge all busy intervals for each person, then find free slots for all by intersecting free times.
+
+But easier:  
+We can check every 30-minute slot starting at 9:00, 9:30, 10:00, … up to 16:30 (since 30 min meeting must end by 17:00).
+
+---
+
+### Step 3: Check slots manually with Anna’s preference (not before 14:30)
+Anna’s preference means start time ≥ 14:30.
+
+Possible start times from 14:30 onward:  
+14:30, 15:00, 15:30, 16:00, 16:30.
+
+**Check 14:30–15:00**:  
+Adam free? 14:00–15:00 busy → overlaps 14:30–15:00 → NO.  
+
+**Check 15:00–15:30**:  
+Adam free? 14:00–15:00 ends at 15:00, so 15:00–15:30 free for Adam.  
+John free? 15:30–16:00 busy, so 15:00–15:30 free for John.  
+Stephanie free? 11:30–16:00 busy → overlaps 15:00–15:30 → NO.  
+
+**Check 15:30–16:00**:  
+Stephanie busy until 16:00 → NO.  
+
+**Check 16:00–16:30**:  
+Stephanie free? 11:30–16:00 ends at 16:00, so 16:00–16:30 free for Stephanie.  
+Adam free? Yes (no conflict).  
+John free? 15:30–16:00 ends at 16:00, so 16:00–16:30 free for John.  
+Anna free? 13:00–15:30 ends at 15:30, so 16:00–16:30 free for Anna.  
+Also Anna’s preference satisfied (after 14:30).  
+
+All free!  
+
+---
+
+### Step 4: Verify no conflicts
+Adam: no meeting 16:00–16:30 ✓  
+John: no meeting 16:00–16:30 ✓  
+Stephanie: no meeting 16:00–16:30 ✓  
+Anna: no meeting 16:00–16:30 ✓  
+
+---
+
+### Step 5: Write Python script to compute this
+We can implement by checking all 30-minute slots in work hours.

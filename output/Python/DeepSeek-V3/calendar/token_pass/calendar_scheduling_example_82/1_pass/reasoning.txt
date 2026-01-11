@@ -1,0 +1,92 @@
+Let’s break this down step-by-step before writing the code.  
+
+We have:  
+
+- **Work hours**: 9:00 to 17:00 (i.e., 9:00–17:00 is the possible window).  
+- **Meeting duration**: 30 minutes.  
+- **Participants**: Michael, Eric, Arthur.  
+- **Day**: Monday.  
+
+**Michael’s busy times (Monday)**:  
+1. 9:30–10:30  
+2. 15:00–15:30  
+3. 16:00–16:30  
+
+**Arthur’s busy times (Monday)**:  
+1. 9:00–12:00  
+2. 13:00–15:00  
+3. 15:30–16:00  
+4. 16:30–17:00  
+
+**Eric**: free all day within work hours.  
+
+---
+
+### Step 1: Merge busy times for all participants  
+We can combine Michael’s and Arthur’s busy times (Eric has none), then find gaps of at least 30 minutes within 9:00–17:00.
+
+---
+
+### Step 2: Convert times to minutes from 0:00 for easier calculation  
+- 9:00 → 540 minutes  
+- 17:00 → 1020 minutes  
+
+Michael’s busy in minutes:  
+1. 9:30–10:30 → 570–630  
+2. 15:00–15:30 → 900–930  
+3. 16:00–16:30 → 960–990  
+
+Arthur’s busy in minutes:  
+1. 9:00–12:00 → 540–720  
+2. 13:00–15:00 → 780–900  
+3. 15:30–16:00 → 930–960  
+4. 16:30–17:00 → 990–1020  
+
+---
+
+### Step 3: Combine and sort intervals  
+All busy intervals:  
+(540, 720), (570, 630), (780, 900), (900, 930), (930, 960), (960, 990), (990, 1020)  
+
+Merge overlapping intervals:  
+1. Sort by start time:  
+(540, 720), (570, 630), (780, 900), (900, 930), (930, 960), (960, 990), (990, 1020)  
+
+2. Merge:  
+- (540, 720) and (570, 630) → (540, 720)  
+- Next (780, 900) no overlap with 720 → keep separate  
+- (900, 930) overlaps with (780, 900)? No, 900 equals 900, so they are adjacent. Merging adjacent is optional; for free time calculation, adjacent means no gap between. Let’s merge if touching:  
+(780, 900) and (900, 930) → (780, 930)  
+- (930, 960) touches (780, 930)? Yes, 930 equals 930 → merge to (780, 960)  
+- (960, 990) touches (780, 960)? Yes, 960 equals 960 → merge to (780, 990)  
+- (990, 1020) touches (780, 990)? Yes, 990 equals 990 → merge to (780, 1020)  
+
+So merged busy intervals:  
+(540, 720) and (780, 1020)  
+
+---
+
+### Step 4: Find free slots within 9:00–17:00 (540 to 1020)  
+Free between:  
+Start at 540 → first busy ends at 720 → free from 720 to 780 (but 720 is 12:00, 780 is 13:00). That’s 1 hour free.  
+
+Then next free after 1020? That’s after work hours, so ignore.  
+
+So only free slot: 12:00–13:00 (720–780 minutes).  
+
+Duration needed: 30 minutes → 12:00–12:30 fits, or 12:30–13:00 fits.  
+
+---
+
+### Step 5: Check against original schedules  
+12:00–12:30:  
+- Michael free? Yes.  
+- Arthur free? Arthur busy 9:00–12:00, so at 12:00 exactly end, meeting starts at 12:00, so 12:00–12:30 is fine (not overlapping with 9:00–12:00).  
+- Eric free.  
+
+So 12:00–12:30 works.  
+
+---
+
+### Step 6: Write Python code to compute this  
+We’ll write a general approach: combine busy times, merge, find gaps ≥ 30 min.

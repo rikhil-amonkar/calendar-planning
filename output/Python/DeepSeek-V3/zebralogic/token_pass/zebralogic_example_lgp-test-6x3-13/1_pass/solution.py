@@ -1,0 +1,136 @@
+import json
+from itertools import permutations
+
+def solve_puzzle():
+    # Define all possible values
+    names = ["Bob", "Arnold", "Carol", "Alice", "Peter", "Eric"]
+    genres = ["romance", "historical fiction", "biography", "mystery", "fantasy", "science fiction"]
+    occupations = ["artist", "doctor", "nurse", "engineer", "teacher", "lawyer"]
+    houses = [1, 2, 3, 4, 5, 6]
+    
+    # We'll generate all permutations and check constraints
+    # Since 6! is 720 for each category, we need a smarter approach
+    # We'll iterate through all possible assignments
+    
+    # Precompute all permutations for names, genres, occupations
+    all_name_perms = list(permutations(names, 6))
+    all_genre_perms = list(permutations(genres, 6))
+    all_occupation_perms = list(permutations(occupations, 6))
+    
+    solution_found = None
+    
+    # Try all combinations
+    for name_perm in all_name_perms:
+        # Constraint 5: Bob is not in the fifth house
+        if name_perm[4] == "Bob":  # index 4 is house 5 (0-based)
+            continue
+            
+        # Constraint 12: Eric is in the third house
+        if name_perm[2] != "Eric":  # index 2 is house 3
+            continue
+            
+        for genre_perm in all_genre_perms:
+            # Constraint 1: Alice is the person who loves fantasy books
+            # Find Alice's house index
+            try:
+                alice_house = name_perm.index("Alice")
+            except ValueError:
+                continue
+            if genre_perm[alice_house] != "fantasy":
+                continue
+                
+            # Constraint 3: Carol is the person who loves mystery books
+            try:
+                carol_house = name_perm.index("Carol")
+            except ValueError:
+                continue
+            if genre_perm[carol_house] != "mystery":
+                continue
+                
+            # Constraint 13: The person who loves mystery books is not in the fifth house
+            mystery_house = genre_perm.index("mystery")
+            if mystery_house == 4:  # house 5
+                continue
+                
+            # Constraint 2: The person who loves mystery books and Bob are next to each other
+            bob_house = name_perm.index("Bob")
+            if abs(mystery_house - bob_house) != 1:
+                continue
+                
+            for occupation_perm in all_occupation_perms:
+                # Constraint 4: The person who is a lawyer is the person who loves fantasy books
+                fantasy_house = genre_perm.index("fantasy")
+                if occupation_perm[fantasy_house] != "lawyer":
+                    continue
+                    
+                # Constraint 6: Arnold is somewhere to the left of the person who is an engineer
+                try:
+                    arnold_house = name_perm.index("Arnold")
+                    engineer_house = occupation_perm.index("engineer")
+                except ValueError:
+                    continue
+                if not (arnold_house < engineer_house):
+                    continue
+                    
+                # Constraint 7: The person who is a nurse is directly left of Alice
+                nurse_house = occupation_perm.index("nurse")
+                if nurse_house + 1 != alice_house:
+                    continue
+                    
+                # Constraint 8: The person who loves biography books is the person who is a teacher
+                biography_house = genre_perm.index("biography")
+                if occupation_perm[biography_house] != "teacher":
+                    continue
+                    
+                # Constraint 9: The person who loves historical fiction books is somewhere to the left of the person who is a teacher
+                historical_house = genre_perm.index("historical fiction")
+                teacher_house = occupation_perm.index("teacher")
+                if not (historical_house < teacher_house):
+                    continue
+                    
+                # Constraint 10: The person who is a doctor is in the first house
+                if occupation_perm[0] != "doctor":
+                    continue
+                    
+                # Constraint 11: The person who loves science fiction books is the person who is an artist
+                scifi_house = genre_perm.index("science fiction")
+                if occupation_perm[scifi_house] != "artist":
+                    continue
+                    
+                # All constraints satisfied!
+                solution_found = (name_perm, genre_perm, occupation_perm)
+                break
+            if solution_found:
+                break
+        if solution_found:
+            break
+    
+    if solution_found:
+        name_perm, genre_perm, occupation_perm = solution_found
+        
+        # Build the solution in the required format
+        rows = []
+        for i in range(6):
+            rows.append([
+                str(i + 1),           # House number
+                name_perm[i],         # Name
+                genre_perm[i],        # BookGenre
+                occupation_perm[i]    # Occupation
+            ])
+        
+        result = {
+            "solution": {
+                "header": ["House", "Name", "BookGenre", "Occupation"],
+                "rows": rows
+            }
+        }
+        return result
+    else:
+        return {"solution": {"header": ["House", "Name", "BookGenre", "Occupation"], "rows": []}}
+
+def main():
+    solution = solve_puzzle()
+    print(json.dumps(solution, indent=2))
+
+if __name__ == "__main__":
+    main()

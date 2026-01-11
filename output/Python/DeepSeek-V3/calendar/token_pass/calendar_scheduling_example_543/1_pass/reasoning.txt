@@ -1,0 +1,81 @@
+Let’s break this down step by step before writing the code.  
+
+We have:  
+- **Work hours**: 9:00–17:00  
+- **Duration**: 1 hour  
+- **Day**: Monday  
+- **James busy**: 11:30–12:00, 14:30–15:00  
+- **John busy**: 9:30–11:00, 11:30–12:00, 12:30–13:30, 14:30–16:30  
+
+We need to find a 1-hour slot where neither is busy, within 9:00–17:00.  
+
+---
+
+### Step 1 – Combine busy times
+We can merge busy intervals for each person, then find gaps where both are free.  
+
+**James busy intervals**:  
+1. 11:30–12:00  
+2. 14:30–15:00  
+
+**John busy intervals**:  
+1. 9:30–11:00  
+2. 11:30–12:00  
+3. 12:30–13:30  
+4. 14:30–16:30  
+
+---
+
+### Step 2 – Find common free times
+We can convert times to minutes from 9:00 for easier calculation:  
+- 9:00 = 0 min  
+- 17:00 = 480 min (8 hours later)  
+
+**James busy in minutes**:  
+1. 11:30–12:00 → 150–180 min from 9:00  
+2. 14:30–15:00 → 330–360 min from 9:00  
+
+**John busy in minutes**:  
+1. 9:30–11:00 → 30–120 min  
+2. 11:30–12:00 → 150–180 min  
+3. 12:30–13:30 → 210–270 min  
+4. 14:30–16:30 → 330–450 min  
+
+---
+
+### Step 3 – Merge and find gaps
+We can find free slots for each person, then intersect them.  
+
+**James free**:  
+- 0–150  
+- 180–330  
+- 360–480  
+
+**John free**:  
+- 0–30  
+- 120–150  
+- 180–210  
+- 270–330  
+- (Note: 330–450 busy, 450–480 free)  
+
+Intersect:  
+1. 0–30 (both free) → 9:00–9:30 (30 min, too short for 1 hour)  
+2. 120–150 (both free) → 11:00–11:30 (30 min, too short)  
+3. 180–210 (both free) → 12:00–12:30 (30 min, too short)  
+4. 270–330 (both free) → 13:30–14:30 (60 min, works!)  
+5. 450–480 (both free) → 16:30–17:00 (30 min, too short)  
+
+So the only 1-hour slot is **13:30–14:30**.  
+
+---
+
+### Step 4 – Check against original schedules
+- James: free 13:30–14:30 (yes, only busy 14:30–15:00 starts exactly at 14:30, so 13:30–14:30 is fine)  
+- John: free 13:30–14:30 (yes, busy 12:30–13:30 ends at 13:30, and next busy starts 14:30)  
+
+Perfect.  
+
+---
+
+### Step 5 – Write Python code
+We’ll write a script that finds this slot programmatically.

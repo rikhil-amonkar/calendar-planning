@@ -1,0 +1,49 @@
+Let’s break this down step-by-step before writing the code.
+
+**Step 1 — Understanding the problem**  
+We start at The Castro at 9:00 AM.  
+We have 10 friends, each with:
+- A location
+- A time window they are available
+- A minimum meeting duration we’d like to spend with them
+- Travel times between all locations (including The Castro as starting point)
+
+Goal: Maximize the number of friends met, respecting time windows, travel times, and meeting durations.
+
+**Step 2 — Observations**  
+- Some friends’ windows overlap or are far apart in time.
+- Travel times are symmetric (given both directions in the list).
+- We can’t meet someone outside their window.
+- We can arrive early and wait until their window starts, but must leave by their window end.
+- We can meet for longer than the minimum if time allows, but the goal is to meet as many as possible, so we should try to meet minimums and move on.
+
+**Step 3 — Approach**  
+We can treat this as a **scheduling optimization problem** with travel constraints.  
+We can brute-force search over permutations of friends (since 10 friends → 10! is huge, but we can prune by time feasibility).  
+Better: treat as a **path-finding problem through time** with states (current location, current time, set of friends met).  
+But to keep it simple and runnable, we can:
+1. Enumerate all permutations of friends (or use heuristic ordering).
+2. For each permutation, try to schedule meetings in that order, starting from 9:00 at The Castro.
+3. For each friend in order:
+   - Travel from previous location to friend’s location.
+   - Arrive at `arrival_time`.
+   - If arrival_time is before friend’s window start, wait until window start.
+   - If arrival_time is after friend’s window end → impossible for this permutation.
+   - Schedule meeting from `max(arrival_time, window_start)` to `max(arrival_time, window_start) + min_duration`, but not exceeding window end.
+   - If meeting can’t fit min_duration → impossible.
+4. Count how many friends met in that permutation.
+5. Pick permutation with most meetings; if tie, maybe earlier finish time.
+
+**Step 4 — Data structures**  
+- Store travel times in a dict: `travel[(loc1, loc2)] = minutes`.
+- Store friends as list of dicts with name, location, window_start, window_end (in minutes from midnight), min_duration.
+
+**Step 5 — Implementation plan**  
+We’ll brute-force permutations but limit to reasonable orders (e.g., sort by window start first to prune).  
+We’ll also add a heuristic: try friends in order of their window start, but also try variations.
+
+Given the time constraints, I’ll implement a search over all permutations but with early pruning to keep runtime manageable.
+
+---
+
+Here’s the Python program:

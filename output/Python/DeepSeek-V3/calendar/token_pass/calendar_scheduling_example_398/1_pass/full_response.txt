@@ -1,0 +1,97 @@
+Let’s break this down step by step before writing the code.
+
+**Step 1 – Understanding the problem**  
+We need a **30-minute meeting** between **9:00 and 17:00** on **Monday**.  
+We have 6 participants with blocked times.  
+We must find a 30-minute slot where **nobody has a blocked event**.
+
+**Step 2 – Represent blocked times**  
+We can treat the day as minutes from 0 (9:00) to 480 (17:00).  
+Each blocked interval is converted to minutes from start of 9:00.
+
+Example:  
+- 9:00 to 11:00 → 0 to 120 minutes.  
+- 13:30 to 14:00 → (13:30 - 9:00) = 4.5 hours = 270 minutes to 300 minutes.
+
+**Step 3 – Find free slot**  
+We can mark busy minutes for each person, then find a 30-minute window where total busy count = 0.
+
+**Step 4 – Implementation plan**  
+1. Parse each person’s blocked intervals into (start_minute, end_minute).  
+2. Create an array `busy_count` of length 480 (one per minute from 9:00 to 17:00).  
+3. For each blocked interval, increment busy_count for each minute in that interval for that person.  
+4. After all, find the first 30 consecutive minutes where busy_count == 0.  
+5. Convert back to HH:MM format and output.
+
+---
+
+Here’s the Python code:
+
+```python
+def time_to_minutes(t):
+    """Convert HH:MM to minutes from 00:00"""
+    h, m = map(int, t.split(':'))
+    return h * 60 + m
+
+def minutes_to_time(m):
+    """Convert minutes from 00:00 to HH:MM"""
+    h = m // 60
+    m = m % 60
+    return f"{h:02d}:{m:02d}"
+
+def main():
+    # Work hours
+    work_start = time_to_minutes("9:00")
+    work_end = time_to_minutes("17:00")
+    day_length = work_end - work_start  # 480 minutes
+    
+    # Busy count per minute from 9:00 (index 0 = 9:00, index 479 = 16:59)
+    busy_count = [0] * day_length
+    
+    # Blocked intervals for each person (in HH:MM format, relative to real clock)
+    blocked_intervals = [
+        # Doris
+        [("9:00", "11:00"), ("13:30", "14:00"), ("16:00", "16:30")],
+        # Theresa
+        [("10:00", "12:00")],
+        # Christian (none)
+        [],
+        # Terry
+        [("9:30", "10:00"), ("11:30", "12:00"), ("12:30", "13:00"),
+         ("13:30", "14:00"), ("14:30", "15:00"), ("15:30", "17:00")],
+        # Carolyn
+        [("9:00", "10:30"), ("11:00", "11:30"), ("12:00", "13:00"),
+         ("13:30", "14:30"), ("15:00", "17:00")],
+        # Kyle
+        [("9:00", "9:30"), ("11:30", "12:00"), ("12:30", "13:00"),
+         ("14:30", "17:00")]
+    ]
+    
+    # Mark busy minutes
+    for person_blocks in blocked_intervals:
+        for start_str, end_str in person_blocks:
+            start = time_to_minutes(start_str) - work_start
+            end = time_to_minutes(end_str) - work_start
+            # Clamp to work hours
+            start = max(start, 0)
+            end = min(end, day_length)
+            for minute in range(start, end):
+                if 0 <= minute < day_length:
+                    busy_count[minute] += 1
+    
+    # Find first 30 consecutive minutes with busy_count == 0
+    meeting_duration = 30
+    for start_minute in range(day_length - meeting_duration + 1):
+        if all(busy_count[start_minute + i] == 0 for i in range(meeting_duration)):
+            # Found slot
+            meeting_start_abs = work_start + start_minute
+            meeting_end_abs = meeting_start_abs + meeting_duration
+            print(f"{minutes_to_time(meeting_start_abs)}:{minutes_to_time(meeting_end_abs)}")
+            print("Monday")
+            return
+    
+    print("No slot found")
+
+if __name__ == "__main__":
+    main()
+```

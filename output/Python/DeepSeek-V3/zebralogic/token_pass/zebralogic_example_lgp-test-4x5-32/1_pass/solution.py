@@ -1,0 +1,161 @@
+import json
+from itertools import permutations
+
+def solve():
+    # Define all possible values
+    names = ["Arnold", "Alice", "Eric", "Peter"]
+    hobbies = ["cooking", "painting", "photography", "gardening"]
+    birthdays = ["april", "jan", "sept", "feb"]
+    educations = ["master", "bachelor", "associate", "high school"]
+    smoothies = ["cherry", "watermelon", "desert", "dragonfruit"]
+    
+    houses = [1, 2, 3, 4]
+    
+    # Generate all permutations for each attribute across 4 houses
+    for name_perm in permutations(names, 4):
+        for hobby_perm in permutations(hobbies, 4):
+            for birth_perm in permutations(birthdays, 4):
+                for edu_perm in permutations(educations, 4):
+                    for smooth_perm in permutations(smoothies, 4):
+                        # Create assignment dictionaries
+                        assignment = {}
+                        for i in range(4):
+                            house = i + 1
+                            assignment[house] = {
+                                "name": name_perm[i],
+                                "hobby": hobby_perm[i],
+                                "birthday": birth_perm[i],
+                                "education": edu_perm[i],
+                                "smoothie": smooth_perm[i]
+                            }
+                        
+                        # Check all clues
+                        # Clue 1: Desert smoothie lover has birthday in January
+                        desert_house = None
+                        jan_house = None
+                        for house in houses:
+                            if assignment[house]["smoothie"] == "desert":
+                                desert_house = house
+                            if assignment[house]["birthday"] == "jan":
+                                jan_house = house
+                        if desert_house != jan_house:
+                            continue
+                        
+                        # Clue 2: Eric has bachelor's degree
+                        eric_house = None
+                        bachelor_house = None
+                        for house in houses:
+                            if assignment[house]["name"] == "Eric":
+                                eric_house = house
+                            if assignment[house]["education"] == "bachelor":
+                                bachelor_house = house
+                        if eric_house != bachelor_house:
+                            continue
+                        
+                        # Clue 3: January birthday has bachelor's degree (already implied by 1 and 2, but check)
+                        if jan_house != bachelor_house:
+                            continue
+                        
+                        # Clue 4: High school diploma is in house 3
+                        if assignment[3]["education"] != "high school":
+                            continue
+                        
+                        # Clue 5: Watermelon smoothie lover is not in house 3
+                        if assignment[3]["smoothie"] == "watermelon":
+                            continue
+                        
+                        # Clue 6: Associate's degree is Arnold
+                        arnold_house = None
+                        associate_house = None
+                        for house in houses:
+                            if assignment[house]["name"] == "Arnold":
+                                arnold_house = house
+                            if assignment[house]["education"] == "associate":
+                                associate_house = house
+                        if arnold_house != associate_house:
+                            continue
+                        
+                        # Clue 7: Master's degree is the person who paints
+                        master_house = None
+                        painting_house = None
+                        for house in houses:
+                            if assignment[house]["education"] == "master":
+                                master_house = house
+                            if assignment[house]["hobby"] == "painting":
+                                painting_house = house
+                        if master_house != painting_house:
+                            continue
+                        
+                        # Clue 8: One house between Dragonfruit lover and September birthday
+                        dragonfruit_house = None
+                        sept_house = None
+                        for house in houses:
+                            if assignment[house]["smoothie"] == "dragonfruit":
+                                dragonfruit_house = house
+                            if assignment[house]["birthday"] == "sept":
+                                sept_house = house
+                        if abs(dragonfruit_house - sept_house) != 2:
+                            continue
+                        
+                        # Clue 9: High school diploma (house 3) has September birthday
+                        if assignment[3]["birthday"] != "sept":
+                            continue
+                        
+                        # Clue 10: Cooking hobby is Alice
+                        cooking_house = None
+                        alice_house = None
+                        for house in houses:
+                            if assignment[house]["hobby"] == "cooking":
+                                cooking_house = house
+                            if assignment[house]["name"] == "Alice":
+                                alice_house = house
+                        if cooking_house != alice_house:
+                            continue
+                        
+                        # Clue 11: April birthday and gardening hobby are next to each other
+                        april_house = None
+                        gardening_house = None
+                        for house in houses:
+                            if assignment[house]["birthday"] == "april":
+                                april_house = house
+                            if assignment[house]["hobby"] == "gardening":
+                                gardening_house = house
+                        if abs(april_house - gardening_house) != 1:
+                            continue
+                        
+                        # Clue 12: Painting hobby has February birthday
+                        if assignment[painting_house]["birthday"] != "feb":
+                            continue
+                        
+                        # All clues satisfied - found solution
+                        # Prepare output
+                        rows = []
+                        for house in houses:
+                            rows.append([
+                                str(house),
+                                assignment[house]["name"],
+                                assignment[house]["hobby"],
+                                assignment[house]["birthday"],
+                                assignment[house]["education"],
+                                assignment[house]["smoothie"]
+                            ])
+                        
+                        result = {
+                            "solution": {
+                                "header": ["House", "Name", "Hobby", "Birthday", "Education", "Smoothie"],
+                                "rows": rows
+                            }
+                        }
+                        return result
+    
+    return None
+
+def main():
+    solution = solve()
+    if solution:
+        print(json.dumps(solution, indent=2))
+    else:
+        print(json.dumps({"error": "No solution found"}, indent=2))
+
+if __name__ == "__main__":
+    main()

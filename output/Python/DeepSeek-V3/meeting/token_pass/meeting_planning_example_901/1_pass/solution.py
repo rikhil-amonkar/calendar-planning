@@ -1,0 +1,158 @@
+import json
+from itertools import permutations
+
+def time_to_minutes(t):
+    """Convert 'H:MMAM/PM' to minutes since midnight."""
+    if isinstance(t, str):
+        if 'AM' in t or 'PM' in t:
+            time_part = t.split()[0]
+            h, m = map(int, time_part.split(':'))
+            if 'PM' in t and h != 12:
+                h += 12
+            if 'AM' in t and h == 12:
+                h = 0
+            return h * 60 + m
+        else:
+            # Already in H:MM 24h format
+            h, m = map(int, t.split(':'))
+            return h * 60 + m
+    return t
+
+def minutes_to_time(m):
+    """Convert minutes since midnight to 'H:MM' 24h format."""
+    h = m // 60
+    mm = m % 60
+    return f"{h}:{mm:02d}"
+
+# Travel times in minutes
+travel = {
+    'Russian Hill': {
+        'Russian Hill': 0, 'Pacific Heights': 7, 'North Beach': 5, 'Golden Gate Park': 21,
+        'Embarcadero': 8, 'Haight-Ashbury': 17, 'Fisherman\'s Wharf': 7, 'Mission District': 16,
+        'Alamo Square': 15, 'Bayview': 23, 'Richmond District': 14
+    },
+    'Pacific Heights': {
+        'Russian Hill': 7, 'Pacific Heights': 0, 'North Beach': 9, 'Golden Gate Park': 15,
+        'Embarcadero': 10, 'Haight-Ashbury': 11, 'Fisherman\'s Wharf': 13, 'Mission District': 15,
+        'Alamo Square': 10, 'Bayview': 22, 'Richmond District': 12
+    },
+    'North Beach': {
+        'Russian Hill': 4, 'Pacific Heights': 8, 'North Beach': 0, 'Golden Gate Park': 22,
+        'Embarcadero': 6, 'Haight-Ashbury': 18, 'Fisherman\'s Wharf': 5, 'Mission District': 18,
+        'Alamo Square': 16, 'Bayview': 25, 'Richmond District': 18
+    },
+    'Golden Gate Park': {
+        'Russian Hill': 19, 'Pacific Heights': 16, 'North Beach': 23, 'Golden Gate Park': 0,
+        'Embarcadero': 25, 'Haight-Ashbury': 7, 'Fisherman\'s Wharf': 24, 'Mission District': 17,
+        'Alamo Square': 9, 'Bayview': 23, 'Richmond District': 7
+    },
+    'Embarcadero': {
+        'Russian Hill': 8, 'Pacific Heights': 11, 'North Beach': 5, 'Golden Gate Park': 25,
+        'Embarcadero': 0, 'Haight-Ashbury': 21, 'Fisherman\'s Wharf': 6, 'Mission District': 20,
+        'Alamo Square': 19, 'Bayview': 21, 'Richmond District': 21
+    },
+    'Haight-Ashbury': {
+        'Russian Hill': 17, 'Pacific Heights': 12, 'North Beach': 19, 'Golden Gate Park': 7,
+        'Embarcadero': 20, 'Haight-Ashbury': 0, 'Fisherman\'s Wharf': 23, 'Mission District': 11,
+        'Alamo Square': 5, 'Bayview': 18, 'Richmond District': 10
+    },
+    'Fisherman\'s Wharf': {
+        'Russian Hill': 7, 'Pacific Heights': 12, 'North Beach': 6, 'Golden Gate Park': 25,
+        'Embarcadero': 8, 'Haight-Ashbury': 22, 'Fisherman\'s Wharf': 0, 'Mission District': 22,
+        'Alamo Square': 21, 'Bayview': 26, 'Richmond District': 18
+    },
+    'Mission District': {
+        'Russian Hill': 15, 'Pacific Heights': 16, 'North Beach': 17, 'Golden Gate Park': 17,
+        'Embarcadero': 19, 'Haight-Ashbury': 12, 'Fisherman\'s Wharf': 22, 'Mission District': 0,
+        'Alamo Square': 11, 'Bayview': 14, 'Richmond District': 20
+    },
+    'Alamo Square': {
+        'Russian Hill': 13, 'Pacific Heights': 10, 'North Beach': 15, 'Golden Gate Park': 9,
+        'Embarcadero': 16, 'Haight-Ashbury': 5, 'Fisherman\'s Wharf': 19, 'Mission District': 10,
+        'Alamo Square': 0, 'Bayview': 16, 'Richmond District': 11
+    },
+    'Bayview': {
+        'Russian Hill': 23, 'Pacific Heights': 23, 'North Beach': 22, 'Golden Gate Park': 22,
+        'Embarcadero': 19, 'Haight-Ashbury': 19, 'Fisherman\'s Wharf': 25, 'Mission District': 13,
+        'Alamo Square': 16, 'Bayview': 0, 'Richmond District': 25
+    },
+    'Richmond District': {
+        'Russian Hill': 13, 'Pacific Heights': 10, 'North Beach': 17, 'Golden Gate Park': 9,
+        'Embarcadero': 19, 'Haight-Ashbury': 10, 'Fisherman\'s Wharf': 18, 'Mission District': 20,
+        'Alamo Square': 13, 'Bayview': 27, 'Richmond District': 0
+    }
+}
+
+# Friends data: name, location, window start, window end, min_duration (minutes)
+friends = [
+    ('Emily', 'Pacific Heights', '9:15 AM', '1:45 PM', 120),
+    ('Helen', 'North Beach', '1:45 PM', '6:45 PM', 30),
+    ('Kimberly', 'Golden Gate Park', '6:45 PM', '9:15 PM', 75),
+    ('James', 'Embarcadero', '10:30 AM', '11:30 AM', 30),
+    ('Linda', 'Haight-Ashbury', '7:30 AM', '7:15 PM', 15),
+    ('Paul', 'Fisherman\'s Wharf', '2:45 PM', '6:45 PM', 90),
+    ('Anthony', 'Mission District', '8:00 AM', '2:45 PM', 105),
+    ('Nancy', 'Alamo Square', '8:30 AM', '1:45 PM', 120),
+    ('William', 'Bayview', '5:30 PM', '8:30 PM', 120),
+    ('Margaret', 'Richmond District', '3:15 PM', '6:15 PM', 45)
+]
+
+# Convert to minutes
+friends_min = []
+for name, loc, start, end, dur in friends:
+    friends_min.append({
+        'name': name,
+        'location': loc,
+        'start': time_to_minutes(start),
+        'end': time_to_minutes(end),
+        'duration': dur
+    })
+
+# Start at Russian Hill at 9:00 AM
+start_time = time_to_minutes('9:00 AM')
+start_loc = 'Russian Hill'
+
+best_itinerary = []
+best_count = 0
+best_total_meeting = 0
+
+def dfs(current_loc, current_time, met, itinerary, total_meeting):
+    global best_itinerary, best_count, best_total_meeting
+    
+    # Try to add any unvisited friend
+    for i, friend in enumerate(friends_min):
+        if i in met:
+            continue
+        
+        travel_time = travel[current_loc][friend['location']]
+        arrival = current_time + travel_time
+        
+        if arrival > friend['end']:
+            continue
+        
+        start_meeting = max(arrival, friend['start'])
+        if start_meeting + friend['duration'] <= friend['end']:
+            new_time = start_meeting + friend['duration']
+            new_itinerary = itinerary + [{
+                'action': 'meet',
+                'location': friend['location'],
+                'person': friend['name'],
+                'start_time': minutes_to_time(start_meeting),
+                'end_time': minutes_to_time(new_time)
+            }]
+            dfs(friend['location'], new_time, met | {i}, new_itinerary, total_meeting + friend['duration'])
+    
+    # No more friends can be added
+    if len(itinerary) > best_count or (len(itinerary) == best_count and total_meeting > best_total_meeting):
+        best_count = len(itinerary)
+        best_total_meeting = total_meeting
+        best_itinerary = itinerary
+
+# Start search
+dfs(start_loc, start_time, set(), [], 0)
+
+# Output result
+result = {
+    "itinerary": best_itinerary
+}
+print(json.dumps(result, indent=2))

@@ -1,0 +1,67 @@
+{
+    "has_execution_error": true,
+    "has_no_plan": false,
+    "execution_output": "File \"/home/nvidia/projects/llm-csp/source/generated_code_trip_2026-01-10 18:51:49.py\", line 1\n    Create adjacency list for direct flights between cities.\n           ^^^^^^^^^\nSyntaxError: invalid syntax",
+    "pred": null,
+    "gold": {
+        "itinerary": [
+            {
+                "day_range": "Day 1-5",
+                "place": "Edinburgh"
+            },
+            {
+                "day_range": "Day 5-9",
+                "place": "Barcelona"
+            },
+            {
+                "day_range": "Day 9-13",
+                "place": "Budapest"
+            },
+            {
+                "day_range": "Day 13-17",
+                "place": "Vienna"
+            },
+            {
+                "day_range": "Day 17-18",
+                "place": "Stockholm"
+            },
+            {
+                "day_range": "Day 18-20",
+                "place": "Munich"
+            },
+            {
+                "day_range": "Day 20-21",
+                "place": "Bucharest"
+            },
+            {
+                "day_range": "Day 21-25",
+                "place": "Riga"
+            },
+            {
+                "day_range": "Day 25-29",
+                "place": "Warsaw"
+            },
+            {
+                "day_range": "Day 29-32",
+                "place": "Krakow"
+            }
+        ]
+    },
+    "status": "Error",
+    "violated_constraint": {
+        "missing_itinerary": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 99.82457971572876,
+        "execution_time": 0.023873567581176758,
+        "constraint_eval_time": 1.1920928955078125e-06,
+        "pred_extract_time": 2.1457672119140625e-06,
+        "gold_extract_time": 0.00010943412780761719,
+        "total_tokens": 4006,
+        "reasoning_tokens": 469
+    },
+    "reasoning_content": "Looking at this problem, I need to create a trip planner that satisfies all constraints while ensuring travel is only between cities with direct flights. Let me break down the requirements:\n\n**Cities and required days:**\n- Bucharest: 2 days\n- Krakow: 4 days  \n- Munich: 3 days (with workshop on days 18-20)\n- Barcelona: 5 days\n- Warsaw: 5 days (with conference on days 25-29)\n- Budapest: 5 days (with show on days 9-13)\n- Stockholm: 2 days (with friends on days 17-18)\n- Riga: 5 days\n- Edinburgh: 5 days (with friend on days 1-5)\n- Vienna: 5 days\n\n**Total days: 32**\n\n**Direct flights graph** (bidirectional based on description):\n- Budapest \u2194 Munich\n- Bucharest \u2194 Riga\n- Munich \u2194 Krakow\n- Munich \u2194 Warsaw\n- Munich \u2194 Bucharest\n- Edinburgh \u2194 Stockholm\n- Barcelona \u2194 Warsaw\n- Edinburgh \u2194 Krakow\n- Barcelona \u2194 Munich\n- Stockholm \u2194 Krakow\n- Budapest \u2194 Vienna\n- Barcelona \u2194 Stockholm\n- Stockholm \u2194 Munich\n- Edinburgh \u2194 Budapest\n- Barcelona \u2194 Riga\n- Edinburgh \u2194 Barcelona\n- Vienna \u2194 Riga\n- Barcelona \u2194 Budapest\n- Bucharest \u2194 Warsaw\n- Vienna \u2194 Krakow\n- Edinburgh \u2194 Munich\n- Barcelona \u2194 Bucharest\n- Edinburgh \u2194 Riga\n- Vienna \u2194 Stockholm\n- Warsaw \u2194 Krakow\n- Barcelona \u2194 Krakow\n- Riga \u2194 Munich\n- Vienna \u2194 Bucharest\n- Budapest \u2194 Warsaw\n- Vienna \u2194 Warsaw\n- Barcelona \u2194 Vienna\n- Budapest \u2194 Bucharest\n- Vienna \u2194 Munich\n- Riga \u2194 Warsaw\n- Stockholm \u2194 Riga\n- Stockholm \u2194 Warsaw\n\n**Key constraints:**\n1. Fixed date requirements must be met\n2. Travel only between cities with direct flights\n3. Day of travel counts for both cities\n\nHere's my approach:\n1. Start with fixed date constraints as anchors\n2. Fill in remaining cities around them\n3. Ensure connectivity between consecutive cities"
+}

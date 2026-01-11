@@ -1,0 +1,187 @@
+```python
+import json
+from itertools import permutations
+
+def solve_puzzle():
+    # Define all possible values
+    names = ["Eric", "Peter", "Alice", "Arnold"]
+    cars = ["tesla model 3", "honda civic", "toyota camry", "ford f150"]
+    birthdays = ["jan", "april", "sept", "feb"]
+    hobbies = ["painting", "cooking", "gardening", "photography"]
+    houses = [1, 2, 3, 4]
+    
+    # Generate all permutations for each attribute across 4 houses
+    all_name_perms = list(permutations(names, 4))
+    all_car_perms = list(permutations(cars, 4))
+    all_birthday_perms = list(permutations(birthdays, 4))
+    all_hobby_perms = list(permutations(hobbies, 4))
+    
+    solutions = []
+    
+    # Brute force search through all combinations
+    for name_perm in all_name_perms:
+        for car_perm in all_car_perms:
+            for birthday_perm in all_birthday_perms:
+                for hobby_perm in all_hobby_perms:
+                    # Create assignment dictionaries
+                    assignment = {}
+                    for i in range(4):
+                        house = i + 1
+                        assignment[house] = {
+                            'Name': name_perm[i],
+                            'CarModel': car_perm[i],
+                            'Birthday': birthday_perm[i],
+                            'Hobby': hobby_perm[i]
+                        }
+                    
+                    # Check all constraints
+                    valid = True
+                    
+                    # 1. January birthday is not in house 2
+                    jan_house = None
+                    for house in houses:
+                        if assignment[house]['Birthday'] == 'jan':
+                            jan_house = house
+                            break
+                    if jan_house == 2:
+                        valid = False
+                    
+                    # 2. Photography enthusiast is left of Eric
+                    if valid:
+                        photo_house = None
+                        eric_house = None
+                        for house in houses:
+                            if assignment[house]['Hobby'] == 'photography':
+                                photo_house = house
+                            if assignment[house]['Name'] == 'Eric':
+                                eric_house = house
+                        if photo_house is None or eric_house is None or photo_house >= eric_house:
+                            valid = False
+                    
+                    # 3. Photography enthusiast is left of Peter
+                    if valid:
+                        peter_house = None
+                        for house in houses:
+                            if assignment[house]['Name'] == 'Peter':
+                                peter_house = house
+                                break
+                        if photo_house >= peter_house:
+                            valid = False
+                    
+                    # 4. Honda Civic directly left of Tesla Model 3
+                    if valid:
+                        honda_house = None
+                        tesla_house = None
+                        for house in houses:
+                            if assignment[house]['CarModel'] == 'honda civic':
+                                honda_house = house
+                            if assignment[house]['CarModel'] == 'tesla model 3':
+                                tesla_house = house
+                        if honda_house is None or tesla_house is None or honda_house + 1 != tesla_house:
+                            valid = False
+                    
+                    # 5. One house between Tesla and gardening enthusiast
+                    if valid:
+                        gardening_house = None
+                        for house in houses:
+                            if assignment[house]['Hobby'] == 'gardening':
+                                gardening_house = house
+                                break
+                        if abs(tesla_house - gardening_house) != 2:
+                            valid = False
+                    
+                    # 6. Tesla owner is Arnold
+                    if valid:
+                        arnold_house = None
+                        for house in houses:
+                            if assignment[house]['Name'] == 'Arnold':
+                                arnold_house = house
+                                break
+                        if arnold_house != tesla_house:
+                            valid = False
+                    
+                    # 7. February birthday is cooking enthusiast
+                    if valid:
+                        feb_house = None
+                        cooking_house = None
+                        for house in houses:
+                            if assignment[house]['Birthday'] == 'feb':
+                                feb_house = house
+                            if assignment[house]['Hobby'] == 'cooking':
+                                cooking_house = house
+                        if feb_house != cooking_house:
+                            valid = False
+                    
+                    # 8. Toyota Camry owner is Peter
+                    if valid:
+                        toyota_house = None
+                        for house in houses:
+                            if assignment[house]['CarModel'] == 'toyota camry':
+                                toyota_house = house
+                                break
+                        if toyota_house != peter_house:
+                            valid = False
+                    
+                    # 9. April birthday is Arnold
+                    if valid:
+                        april_house = None
+                        for house in houses:
+                            if assignment[house]['Birthday'] == 'april':
+                                april_house = house
+                                break
+                        if april_house != arnold_house:
+                            valid = False
+                    
+                    # 10. Alice is photography enthusiast
+                    if valid:
+                        alice_house = None
+                        for house in houses:
+                            if assignment[house]['Name'] == 'Alice':
+                                alice_house = house
+                                break
+                        if alice_house != photo_house:
+                            valid = False
+                    
+                    # 11. Peter's birthday is January
+                    if valid:
+                        if assignment[peter_house]['Birthday'] != 'jan':
+                            valid = False
+                    
+                    if valid:
+                        solutions.append(assignment)
+    
+    if not solutions:
+        return None
+    
+    # Format the solution
+    solution = solutions[0]  # Take first valid solution
+    rows = []
+    for house in sorted(solution.keys()):
+        row = [
+            str(house),
+            solution[house]['Name'],
+            solution[house]['CarModel'],
+            solution[house]['Birthday'],
+            solution[house]['Hobby']
+        ]
+        rows.append(row)
+    
+    result = {
+        "solution": {
+            "header": ["House", "Name", "CarModel", "Birthday", "Hobby"],
+            "rows": rows
+        }
+    }
+    
+    return result
+
+def main():
+    solution = solve_puzzle()
+    if solution:
+        print(json.dumps(solution, indent=2))
+    else:
+        print(json.dumps({"error": "No solution found"}, indent=2))
+
+if __name__ == "__main__":
+    main()
+```

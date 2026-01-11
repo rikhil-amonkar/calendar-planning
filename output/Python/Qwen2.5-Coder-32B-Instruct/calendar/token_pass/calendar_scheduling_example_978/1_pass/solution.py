@@ -1,0 +1,64 @@
+def parse_schedule(schedule_str):
+    """Convert a string of busy times into a list of tuples."""
+    busy_times = []
+    for period in schedule_str.split(','):
+        start, end = period.split(' to ')
+        s_hour, s_minute = map(int, start.split(':'))
+        e_hour, e_minute = map(int, end.split(':'))
+        busy_times.append(((s_hour, s_minute), (e_hour, e_minute)))
+    return busy_times
+
+def is_free(time, busy_times):
+    """Check if a given time is free in the provided busy times."""
+    for start, end in busy_times:
+        if not (time[1] <= start or time[0] >= end):
+            return False
+    return True
+
+def find_meeting_time(brian_schedule, julia_schedule, preferred_start_day):
+    """Find a suitable meeting time for Brian and Julia."""
+    days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
+    work_start = (9, 0)
+    work_end = (17, 0)
+    meeting_duration = 60  # one hour in minutes
+    
+    for day_index in range(days.index(preferred_start_day) + 1, len(days)):
+        day = days[day_index]
+        brian_busy = parse_schedule(brian_schedule[day])
+        julia_busy = parse_schedule(julia_schedule[day])
+        
+        current_time = work_start
+        while current_time < (work_end[0] - 1, work_end[1]):
+            next_hour, next_minute = current_time
+            next_hour += 1
+            next_time = (next_hour, next_minute)
+            
+            if is_free((current_time, next_time), brian_busy) and is_free((current_time, next_time), julia_busy):
+                start_time_str = f"{current_time[0]:02}:{current_time[1]:02}"
+                end_time_str = f"{next_time[0]:02}:{next_time[1]:02}"
+                return f"{start_time_str}:{end_time_str} {day}"
+            
+            current_time = next_time
+            
+    return None
+
+# Schedules
+brian_schedule = {
+    "Monday": "9:30 to 10:00, 12:30 to 14:30, 15:30 to 16:00",
+    "Tuesday": "9:00 to 9:30",
+    "Wednesday": "12:30 to 14:00, 16:30 to 17:00",
+    "Thursday": "11:00 to 11:30, 13:00 to 13:30, 16:30 to 17:00",
+    "Friday": "9:30 to 10:00, 10:30 to 11:00, 13:00 to 13:30, 15:00 to 16:00, 16:30 to 17:00"
+}
+
+julia_schedule = {
+    "Monday": "9:00 to 10:00, 11:00 to 11:30, 12:30 to 13:00, 15:30 to 16:00",
+    "Tuesday": "13:00 to 14:00, 16:00 to 16:30",
+    "Wednesday": "9:00 to 11:30, 12:00 to 12:30, 13:00 to 17:00",
+    "Thursday": "9:00 to 10:30, 11:00 to 17:00",
+    "Friday": "9:00 to 10:00, 10:30 to 11:30, 12:30 to 14:00, 14:30 to 15:00, 15:30 to 16:00"
+}
+
+# Find the meeting time
+meeting_time = find_meeting_time(brian_schedule, julia_schedule, "Monday")
+print(meeting_time)

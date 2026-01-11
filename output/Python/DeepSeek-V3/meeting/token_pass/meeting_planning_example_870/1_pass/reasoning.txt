@@ -1,0 +1,57 @@
+Let’s break this down step-by-step before writing the code.
+
+**Step 1 – Understanding the problem**  
+We have:
+- Start location: Pacific Heights at 9:00 AM.
+- 9 friends, each in a fixed location, with fixed availability windows and minimum meeting durations.
+- Travel times between all locations are given.
+- Goal: Maximize the number of friends met (or maximize total meeting time, but the problem says “meet as many friends as possible”).
+- We must account for travel time between meetings.
+
+**Step 2 – Observations**  
+- Some friends have very narrow windows (Paul: 9:00–9:30 PM, only 30 minutes total, needs 15 min meeting).
+- Some have long windows but large minimum durations (Brian: 75 min, Karen: 75 min).
+- Travel times are asymmetric (e.g., A→B ≠ B→A).
+- We can’t meet everyone because of time conflicts and travel times.
+- We must decide order and meeting start/end times.
+
+**Step 3 – Strategy**  
+We can treat this as a **search problem**:
+- State: current location, current time, set of friends already met.
+- At each step, choose a friend not yet met, see if we can travel to them and meet for at least their minimum duration within their window, then update time.
+- Since there are only 9 friends, we can brute-force all permutations (9! = 362880) which is feasible.
+- For each permutation, simulate travel and meetings, checking constraints, and count how many we meet.
+- Pick the permutation that meets the most friends; if tie, maybe maximize total meeting time.
+
+**Step 4 – Constraints in simulation**  
+- Travel from current location to friend’s location takes given time.
+- Arrival time = current time + travel.
+- Meeting must start ≥ friend’s window start, and end ≤ friend’s window end.
+- Meeting duration ≥ friend’s minimum.
+- We can start meeting as soon as we arrive if within window, or wait until window starts if we arrive early.
+- We can leave early (after minimum duration) to go to next friend.
+
+**Step 5 – Implementation plan**  
+1. Convert all times to minutes since midnight for easier arithmetic.
+2. Store travel times in a dict: `travel[from][to]` in minutes.
+3. Store friends’ data: location, window_start, window_end, min_duration.
+4. Generate all permutations of friends.
+5. For each permutation, simulate starting at Pacific Heights at 9:00 (540 minutes).
+6. Keep track of meetings scheduled.
+7. Count how many friends met in this permutation.
+8. Choose best permutation (max friends met, then max total meeting time).
+9. Convert back to HH:MM format for output.
+
+**Step 6 – Edge cases**  
+- If arrival is after friend’s window ends → can’t meet.
+- If arrival is before window starts → wait until window starts.
+- Meeting must end by window end, so start time = max(arrival, window_start), and we need start + min_duration ≤ window_end.
+- If not possible → skip that friend in this permutation (but since permutation forces order, maybe we should allow skipping? The problem says “meet as many friends as possible” — so in a given order, we can skip a friend if impossible and try next). But permutations fix order, so skipping within a permutation changes the plan. Better: allow skipping in simulation, but then permutations don’t correspond to fixed length. Simpler: just try all subsets and orderings? That’s too large (9! * 2^9).  
+  Instead, in permutation simulation, if a friend can’t be met, we just skip them and go to next in permutation (so we meet a subset in that order). This works.
+
+**Step 7 – Tie-breaking**  
+If two schedules meet same number of friends, choose one with greater total meeting time.
+
+---
+
+Now, the Python program:

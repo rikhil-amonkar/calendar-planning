@@ -1,0 +1,148 @@
+Looking at the constraints, I need to find a 1-hour slot between 9:00 and 17:00 on Monday, Tuesday, or Wednesday that works for both Judith and Timothy, while also respecting Judith's preferences to avoid more meetings on Monday and before 12:00 on Wednesday.
+
+Let's break this down:
+
+1. **Work hours**: 9:00–17:00 each day.
+2. **Duration**: 1 hour.
+3. **Days considered**: Monday, Tuesday, Wednesday.
+4. **Judith's blocked times**:
+   - Monday: 12:00–12:30
+   - Wednesday: 11:30–12:00
+5. **Timothy's blocked times**:
+   - Monday: 9:30–10:00, 10:30–11:30, 12:30–14:00, 15:30–17:00
+   - Tuesday: 9:30–13:00, 13:30–14:00, 14:30–17:00
+   - Wednesday: 9:00–9:30, 10:30–11:00, 13:30–14:30, 15:00–15:30, 16:00–16:30
+6. **Judith's preferences**:
+   - Avoid more meetings on Monday.
+   - Avoid Wednesday before 12:00.
+
+Since Judith prefers to avoid Monday, I'll check Tuesday and Wednesday first.
+
+**Tuesday**:
+- Judith has no blocks on Tuesday.
+- Timothy's blocks: 9:30–13:00, 13:30–14:00, 14:30–17:00.
+- Available slots in work hours:
+  - 9:00–9:30 (only 30 minutes, not enough)
+  - 13:00–13:30 (30 minutes, not enough)
+  - 14:00–14:30 (30 minutes, not enough)
+- No 1-hour slot available on Tuesday.
+
+**Wednesday**:
+- Judith's block: 11:30–12:00.
+- Judith's preference: avoid before 12:00 → so only consider 12:00 onwards.
+- Timothy's blocks: 9:00–9:30, 10:30–11:00, 13:30–14:30, 15:00–15:30, 16:00–16:30.
+- Available slots after 12:00:
+  - 12:00–13:30 (but Judith free from 12:00, Timothy free from 11:00–13:30 except 10:30–11:00, so 12:00–13:30 is free for both)
+    - 12:00–13:00 works (1 hour).
+  - 14:30–15:00 (30 minutes, not enough)
+  - 15:30–16:00 (30 minutes, not enough)
+  - 16:30–17:00 (30 minutes, not enough)
+- So Wednesday 12:00–13:00 works.
+
+Since Wednesday 12:00–13:00 fits all constraints and preferences, that's the solution.
+
+Here’s the Python script to compute this:
+
+```python
+def find_meeting_time():
+    days = ["Monday", "Tuesday", "Wednesday"]
+    work_start = 9 * 60  # 9:00 in minutes
+    work_end = 17 * 60   # 17:00 in minutes
+    duration = 60        # 1 hour in minutes
+
+    # Blocks in minutes since midnight
+    blocks = {
+        "Judith": {
+            "Monday": [(12 * 60, 12 * 60 + 30)],
+            "Wednesday": [(11 * 60 + 30, 12 * 60)],
+        },
+        "Timothy": {
+            "Monday": [
+                (9 * 60 + 30, 10 * 60),
+                (10 * 60 + 30, 11 * 60 + 30),
+                (12 * 60 + 30, 14 * 60),
+                (15 * 60 + 30, 17 * 60)
+            ],
+            "Tuesday": [
+                (9 * 60 + 30, 13 * 60),
+                (13 * 60 + 30, 14 * 60),
+                (14 * 60 + 30, 17 * 60)
+            ],
+            "Wednesday": [
+                (9 * 60, 9 * 60 + 30),
+                (10 * 60 + 30, 11 * 60),
+                (13 * 60 + 30, 14 * 60 + 30),
+                (15 * 60, 15 * 60 + 30),
+                (16 * 60, 16 * 60 + 30)
+            ]
+        }
+    }
+
+    # Preferences: Judith wants to avoid Monday and Wednesday before 12:00
+    preferred_days = ["Tuesday", "Wednesday"]
+    avoid_wed_before_12 = True
+
+    for day in preferred_days:
+        # Skip Monday due to preference
+        if day == "Monday":
+            continue
+
+        # Generate all possible start times in work hours
+        for start in range(work_start, work_end - duration + 1, 15):  # check every 15 minutes
+            end = start + duration
+
+            # Check Judith's preference for Wednesday before 12:00
+            if day == "Wednesday" and avoid_wed_before_12 and end <= 12 * 60:
+                continue
+
+            # Check if slot is free for both
+            conflict = False
+            for person in ["Judith", "Timothy"]:
+                person_blocks = blocks[person].get(day, [])
+                for block_start, block_end in person_blocks:
+                    if not (end <= block_start or start >= block_end):
+                        conflict = True
+                        break
+                if conflict:
+                    break
+
+            if not conflict:
+                # Found a slot
+                start_str = f"{start // 60:02d}:{start % 60:02d}"
+                end_str = f"{end // 60:02d}:{end % 60:02d}"
+                return day, start_str, end_str
+
+    # Fallback to Monday if no other day works (though not preferred)
+    for start in range(work_start, work_end - duration + 1, 15):
+        end = start + duration
+        conflict = False
+        for person in ["Judith", "Timothy"]:
+            person_blocks = blocks[person].get("Monday", [])
+            for block_start, block_end in person_blocks:
+                if not (end <= block_start or start >= block_end):
+                    conflict = True
+                    break
+            if conflict:
+                break
+        if not conflict:
+            start_str = f"{start // 60:02d}:{start % 60:02d}"
+            end_str = f"{end // 60:02d}:{end % 60:02d}"
+            return "Monday", start_str, end_str
+
+    return None, None, None
+
+def main():
+    day, start_str, end_str = find_meeting_time()
+    if day and start_str and end_str:
+        print(f"{day}:{start_str}:{end_str}")
+    else:
+        print("No suitable time found.")
+
+if __name__ == "__main__":
+    main()
+```
+
+This script outputs:
+```
+Wednesday:12:00:13:00
+```

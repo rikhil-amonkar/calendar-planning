@@ -1,0 +1,113 @@
+import json
+from itertools import permutations
+
+def solve():
+    houses = [1, 2, 3, 4, 5, 6]
+    names = ["Eric", "Alice", "Arnold", "Carol", "Peter", "Bob"]
+    styles = ["mediterranean", "modern", "craftsman", "ranch", "colonial", "victorian"]
+    genres = ["country", "hip hop", "pop", "jazz", "classical", "rock"]
+    hobbies = ["cooking", "painting", "photography", "woodworking", "gardening", "knitting"]
+
+    # Try all permutations for each category
+    for name_perm in permutations(names, 6):
+        # Clue 15: Bob is in the third house.
+        if name_perm[2] != "Bob":
+            continue
+        
+        for style_perm in permutations(styles, 6):
+            # Clue 8: The person in a Craftsman-style house is Arnold.
+            arnold_index = name_perm.index("Arnold")
+            if style_perm[arnold_index] != "craftsman":
+                continue
+            
+            # Clue 9: The person in a ranch-style home is Eric.
+            eric_index = name_perm.index("Eric")
+            if style_perm[eric_index] != "ranch":
+                continue
+            
+            for genre_perm in permutations(genres, 6):
+                # Clue 1: The person who loves rock music is in the fifth house.
+                if genre_perm[4] != "rock":
+                    continue
+                
+                # Clue 11: The person who loves country music is in the first house.
+                if genre_perm[0] != "country":
+                    continue
+                
+                # Clue 3 & 7: Mediterranean-style villa person loves hip-hop music, and that person is Carol.
+                # First find Carol's index
+                carol_index = name_perm.index("Carol")
+                if style_perm[carol_index] != "mediterranean" or genre_perm[carol_index] != "hip hop":
+                    continue
+                
+                # Clue 5: The person who loves jazz music is directly left of Eric.
+                eric_index = name_perm.index("Eric")
+                if eric_index == 0 or genre_perm[eric_index - 1] != "jazz":
+                    continue
+                
+                # Clue 6: Hip-hop person is somewhere left of knitting hobbyist (will check with hobbies)
+                # We'll check this later when we have hobbies
+                
+                for hobby_perm in permutations(hobbies, 6):
+                    # Clue 13: Alice is the photography enthusiast.
+                    alice_index = name_perm.index("Alice")
+                    if hobby_perm[alice_index] != "photography":
+                        continue
+                    
+                    # Clue 14: The person who enjoys gardening is Eric.
+                    if hobby_perm[eric_index] != "gardening":
+                        continue
+                    
+                    # Clue 10: The woodworking hobbyist is the person residing in a Victorian house.
+                    for i in range(6):
+                        if hobby_perm[i] == "woodworking" and style_perm[i] != "victorian":
+                            break
+                        if style_perm[i] == "victorian" and hobby_perm[i] != "woodworking":
+                            break
+                    else:
+                        # Check clue 2: Classical music and woodworking hobbyist are next to each other.
+                        woodworking_index = hobby_perm.index("woodworking")
+                        classical_index = genre_perm.index("classical")
+                        if abs(woodworking_index - classical_index) != 1:
+                            continue
+                        
+                        # Check clue 4: Two houses between Arnold and Victorian house.
+                        victorian_index = style_perm.index("victorian")
+                        if abs(arnold_index - victorian_index) != 3:  # 3 positions apart means 2 houses between
+                            continue
+                        
+                        # Check clue 6: Hip-hop person left of knitting hobbyist
+                        hiphop_index = genre_perm.index("hip hop")
+                        knitting_index = hobby_perm.index("knitting")
+                        if hiphop_index >= knitting_index:
+                            continue
+                        
+                        # Check clue 12: One house between painting hobby and colonial-style house.
+                        painting_index = hobby_perm.index("painting")
+                        colonial_index = style_perm.index("colonial")
+                        if abs(painting_index - colonial_index) != 2:  # 2 positions apart means 1 house between
+                            continue
+                        
+                        # All constraints satisfied - build solution
+                        solution = []
+                        for i in range(6):
+                            solution.append([
+                                str(i + 1),
+                                name_perm[i],
+                                style_perm[i],
+                                genre_perm[i],
+                                hobby_perm[i]
+                            ])
+                        
+                        return {
+                            "solution": {
+                                "header": ["House", "Name", "HouseStyle", "MusicGenre", "Hobby"],
+                                "rows": solution
+                            }
+                        }
+    
+    return {"solution": {"header": [], "rows": []}}
+
+if __name__ == "__main__":
+    result = solve()
+    print(json.dumps(result, indent=2))

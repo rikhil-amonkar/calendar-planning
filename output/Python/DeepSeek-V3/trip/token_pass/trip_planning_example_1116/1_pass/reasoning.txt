@@ -1,0 +1,44 @@
+Let's break this down step-by-step before jumping into the code.
+
+**Step 1 – Understanding the constraints**  
+We have 8 cities:  
+- Oslo (2 days total, with a required visit on days 16–17)  
+- Reykjavik (5 days total, with a required visit between days 9–13)  
+- Stockholm (4 days total)  
+- Munich (4 days total, with a required visit between days 13–16)  
+- Frankfurt (4 days total, with a required visit between days 17–20)  
+- Barcelona (3 days total)  
+- Bucharest (2 days total)  
+- Split (3 days total)  
+
+Total days = 2+5+4+4+4+3+2+3 = 27 days, but we only have 20 days.  
+That means some stays overlap because travel days count for both cities.
+
+**Step 2 – Overlap logic**  
+If you fly from A to B on day X, you spend day X in both A and B.  
+So a 20-day itinerary can "cover" 27 city-days if there are 7 travel days where you are in two cities.
+
+**Step 3 – Fixed date constraints**  
+- Days 16–17: Oslo (2 days)  
+- Days 17–20: Frankfurt (4 days, starting day 17, so day 17 is in both Oslo and Frankfurt)  
+- Days 13–16: Munich (4 days, so days 13,14,15,16 in Munich, but day 16 also in Oslo — possible if you fly Munich→Oslo on day 16 morning or late day 15)  
+- Days 9–13: Reykjavik (5 days, so days 9,10,11,12,13 in Reykjavik, but day 13 also in Munich — possible if you fly Reykjavik→Munich on day 13)
+
+**Step 4 – Building a day-by-day plan**  
+We need to arrange visits so that travel days align with direct flights.
+
+Let’s start from the fixed points and work backward/forward.
+
+**Step 5 – Direct flights graph**  
+We’ll encode the graph in Python and search for a feasible sequence.
+
+---
+
+Given the complexity, I’ll write a **constraint satisfaction search** that:
+1. Uses the fixed date constraints as anchors.
+2. Fills other cities around them ensuring direct flights between consecutive cities.
+3. Respects total days per city.
+
+---
+
+Here’s the Python program:

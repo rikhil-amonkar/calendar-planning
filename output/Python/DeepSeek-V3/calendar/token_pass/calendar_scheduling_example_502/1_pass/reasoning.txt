@@ -1,0 +1,78 @@
+Let’s break this down step by step before writing the code.
+
+**Step 1 – Understanding constraints**  
+- Work hours: 9:00 to 17:00 (so 9:00–17:00 is the total possible range).  
+- Meeting duration: 30 minutes (0.5 hours).  
+- Jack’s busy times (Monday):  
+  9:30–10:30  
+  11:00–11:30  
+  12:30–13:00  
+  14:00–14:30  
+  16:00–16:30  
+
+- Charlotte’s busy times (Monday):  
+  9:30–10:00  
+  10:30–12:00  
+  12:30–13:30  
+  14:00–16:00  
+
+- Jack’s preference: Avoid more meetings after 12:30 (but this is a preference, not a hard constraint, since the problem says there exists a solution that works with everyone’s schedule — so maybe we can schedule before 12:30 if possible, but if not, we can schedule after 12:30).  
+
+**Step 2 – Convert times to minutes from 9:00**  
+Let’s set 9:00 as minute 0, 17:00 as minute 480 (8 hours later).  
+
+Jack’s busy in minutes from 9:00:  
+- 9:30–10:30 → 30–90  
+- 11:00–11:30 → 120–150  
+- 12:30–13:00 → 210–240  
+- 14:00–14:30 → 300–330  
+- 16:00–16:30 → 420–450  
+
+Charlotte’s busy in minutes from 9:00:  
+- 9:30–10:00 → 30–60  
+- 10:30–12:00 → 90–180  
+- 12:30–13:30 → 210–270  
+- 14:00–16:00 → 300–420  
+
+**Step 3 – Find free slots for each**  
+
+Jack’s free intervals (within 9:00–17:00):  
+[0,30], [90,120], [150,210], [240,300], [330,420], [450,480]  
+
+Charlotte’s free intervals:  
+[0,30], [60,90], [180,210], [270,300], [420,480]  
+
+**Step 4 – Intersect free intervals**  
+
+Intersect [0,30] with [0,30] → [0,30] (30 min slot)  
+Intersect [90,120] with [60,90] → [90,90] (0 min)  
+Intersect [90,120] with [180,210] → no overlap  
+Intersect [150,210] with [60,90] → no  
+Intersect [150,210] with [180,210] → [180,210] (30 min slot)  
+Intersect [240,300] with [180,210] → no  
+Intersect [240,300] with [270,300] → [270,300] (30 min slot)  
+Intersect [330,420] with [270,300] → no  
+Intersect [330,420] with [420,480] → [420,420] (0 min)  
+Intersect [450,480] with [420,480] → [450,480] (30 min slot)  
+
+So possible 30-minute slots (start, end in minutes from 9:00):  
+1. 0–30 → 9:00–9:30  
+2. 180–210 → 12:00–12:30  
+3. 270–300 → 13:30–14:00  
+4. 450–480 → 16:30–17:00  
+
+**Step 5 – Apply Jack’s preference**  
+Jack prefers to avoid after 12:30.  
+That means slots starting at or before 12:30 are preferred.  
+
+From the list:  
+- 9:00–9:30 (before 12:30) ✅  
+- 12:00–12:30 (before 12:30) ✅  
+- 13:30–14:00 (after 12:30) ❌  
+- 16:30–17:00 (after 12:30) ❌  
+
+So the earliest slot that fits both schedules and respects Jack’s preference is **9:00–9:30**.  
+
+**Step 6 – Write Python code**  
+
+We’ll write a script that finds the earliest 30-minute slot within work hours that fits both schedules, preferring slots before 12:30 if possible, but if none exist, then take the earliest after 12:30 (though here we already have before 12:30 slots).

@@ -1,0 +1,87 @@
+Let's break this down step-by-step before writing the code.
+
+**Step 1 – Understanding constraints**  
+- Meeting duration: 1 hour  
+- Work hours: 9:00–17:00 (so earliest start 9:00, latest end 17:00)  
+- Days considered: Mon, Tue, Wed, Thu, Fri  
+- Bryan: avoid more meetings on Tuesday (so only if absolutely necessary, but problem says there is a solution that works with everyone’s schedule, so we can avoid Tuesday if possible)  
+- Nicholas: would rather not meet on Monday, Thursday (preference, not a hard constraint, but we should respect if possible)  
+
+**Step 2 – Existing meetings**  
+We’ll convert schedules into blocked times per day for each person.
+
+**Bryan’s meetings:**  
+- Thu: 9:30–10:00, 12:30–13:00  
+- Fri: 10:30–11:00, 14:00–14:30  
+
+**Nicholas’s meetings:**  
+- Mon: 11:30–12:00, 13:00–15:30  
+- Tue: 9:00–9:30, 11:00–13:30, 14:00–16:30  
+- Wed: 9:00–9:30, 10:00–11:00, 11:30–13:30, 14:00–14:30, 15:00–16:30  
+- Thu: 10:30–11:30, 12:00–12:30, 15:00–15:30, 16:30–17:00  
+- Fri: 9:00–10:30, 11:00–12:00, 12:30–14:30, 15:30–16:00, 16:30–17:00  
+
+**Step 3 – Find free slots**  
+We need a 1-hour slot where both are free within 9–17, respecting preferences:  
+- Avoid Bryan on Tuesday if possible  
+- Avoid Nicholas on Monday, Thursday if possible  
+
+Let’s check each day:
+
+**Monday:**  
+Nicholas prefers not Monday, but let’s check:  
+Nicholas free: 9:00–11:30, 12:00–13:00, 15:30–17:00  
+Bryan free all day Monday (no meetings).  
+Overlap free:  
+- 9:00–11:30 → Bryan free all, so 9:00–10:00 works (1 hr)  
+But Nicholas prefers not Monday, so try other days first.
+
+**Tuesday:**  
+Bryan prefers avoid more meetings, so try last.  
+Nicholas free: 9:30–11:00, 13:30–14:00, 16:30–17:00  
+Bryan free all day Tuesday (no meetings).  
+Overlap:  
+- 9:30–11:00 → 9:30–10:30 works (1 hr)  
+But Bryan prefers avoid Tuesday, so skip if possible.
+
+**Wednesday:**  
+Nicholas free: 9:30–10:00, 11:00–11:30, 13:30–14:00, 14:30–15:00  
+Bryan free all day Wednesday (no meetings).  
+Overlap:  
+- 9:30–10:00 (30 min, too short)  
+- 11:00–11:30 (30 min, too short)  
+- 13:30–14:00 (30 min)  
+- 14:30–15:00 (30 min)  
+No 1-hour slot.
+
+**Thursday:**  
+Nicholas prefers not Thursday.  
+Bryan meetings: 9:30–10:00, 12:30–13:00  
+Nicholas meetings: 10:30–11:30, 12:00–12:30, 15:00–15:30, 16:30–17:00  
+Free periods for each:  
+Bryan free: 9:00–9:30, 10:00–12:30, 13:00–17:00  
+Nicholas free: 9:00–10:30, 11:30–12:00, 12:30–15:00, 15:30–16:30  
+Overlap:  
+- 9:00–9:30 (30 min)  
+- 10:00–10:30 (30 min)  
+- 11:30–12:00 (30 min)  
+- 12:30–13:00 (30 min)  
+- 13:00–15:00 (2 hrs) → e.g., 13:00–14:00 works  
+But Nicholas prefers not Thursday, so try Friday first.
+
+**Friday:**  
+Bryan meetings: 10:30–11:00, 14:00–14:30  
+Nicholas meetings: 9:00–10:30, 11:00–12:00, 12:30–14:30, 15:30–16:00, 16:30–17:00  
+Bryan free: 9:00–10:30, 11:00–14:00, 14:30–17:00  
+Nicholas free: 10:30–11:00, 12:00–12:30, 14:30–15:30, 16:00–16:30  
+Overlap:  
+- 10:30–11:00 (30 min)  
+- 12:00–12:30 (30 min)  
+- 14:30–15:30 (1 hr) → works!  
+No preference violation for either.
+
+**Step 4 – Choose best**  
+Friday 14:30–15:30 works perfectly, respects all preferences (not Tuesday, not Monday/Thursday for Nicholas).
+
+**Step 5 – Write code**  
+We’ll write a script that finds this slot programmatically.

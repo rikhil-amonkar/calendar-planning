@@ -1,0 +1,140 @@
+import json
+from itertools import permutations
+
+def solve_puzzle():
+    # Define all possible values for each category
+    names = ["Arnold", "Peter", "Eric", "Alice"]
+    styles = ["craftsman", "colonial", "victorian", "ranch"]
+    hair = ["red", "blonde", "black", "brown"]
+    children = ["Bella", "Fred", "Meredith", "Samantha"]
+    genres = ["mystery", "fantasy", "romance", "science fiction"]
+    
+    houses = [1, 2, 3, 4]
+    
+    # Generate all permutations for each category
+    for name_perm in permutations(names, 4):
+        for style_perm in permutations(styles, 4):
+            for hair_perm in permutations(hair, 4):
+                for child_perm in permutations(children, 4):
+                    for genre_perm in permutations(genres, 4):
+                        # Create assignment dictionaries
+                        assignment = {}
+                        for i in range(4):
+                            house = i + 1
+                            assignment[house] = {
+                                "Name": name_perm[i],
+                                "HouseStyle": style_perm[i],
+                                "HairColor": hair_perm[i],
+                                "Children": child_perm[i],
+                                "BookGenre": genre_perm[i]
+                            }
+                        
+                        # Check all clues
+                        # 1. Craftsman-style house is in the third house
+                        if assignment[3]["HouseStyle"] != "craftsman":
+                            continue
+                        
+                        # 2. Alice loves romance books
+                        alice_house = None
+                        for h in houses:
+                            if assignment[h]["Name"] == "Alice":
+                                alice_house = h
+                                break
+                        if alice_house is None or assignment[alice_house]["BookGenre"] != "romance":
+                            continue
+                        
+                        # 3. Brown hair is in the fourth house
+                        if assignment[4]["HairColor"] != "brown":
+                            continue
+                        
+                        # 4. Child Samantha is in the fourth house
+                        if assignment[4]["Children"] != "Samantha":
+                            continue
+                        
+                        # 5. Ranch-style home is somewhere to the right of red hair
+                        ranch_house = None
+                        red_hair_house = None
+                        for h in houses:
+                            if assignment[h]["HouseStyle"] == "ranch":
+                                ranch_house = h
+                            if assignment[h]["HairColor"] == "red":
+                                red_hair_house = h
+                        if ranch_house is None or red_hair_house is None or ranch_house <= red_hair_house:
+                            continue
+                        
+                        # 6. Peter's child is Bella
+                        peter_house = None
+                        for h in houses:
+                            if assignment[h]["Name"] == "Peter":
+                                peter_house = h
+                                break
+                        if peter_house is None or assignment[peter_house]["Children"] != "Bella":
+                            continue
+                        
+                        # 7. Arnold has red hair
+                        arnold_house = None
+                        for h in houses:
+                            if assignment[h]["Name"] == "Arnold":
+                                arnold_house = h
+                                break
+                        if arnold_house is None or assignment[arnold_house]["HairColor"] != "red":
+                            continue
+                        
+                        # 8. Alice lives in colonial-style house
+                        if assignment[alice_house]["HouseStyle"] != "colonial":
+                            continue
+                        
+                        # 9. Black hair is in the second house
+                        if assignment[2]["HairColor"] != "black":
+                            continue
+                        
+                        # 10. Peter loves fantasy books
+                        if assignment[peter_house]["BookGenre"] != "fantasy":
+                            continue
+                        
+                        # 11. Arnold's child is Meredith
+                        if assignment[arnold_house]["Children"] != "Meredith":
+                            continue
+                        
+                        # 12. Black hair is Eric
+                        eric_house = None
+                        for h in houses:
+                            if assignment[h]["Name"] == "Eric":
+                                eric_house = h
+                                break
+                        if eric_house is None or assignment[eric_house]["HairColor"] != "black":
+                            continue
+                        
+                        # 13. Arnold loves science fiction books
+                        if assignment[arnold_house]["BookGenre"] != "science fiction":
+                            continue
+                        
+                        # All constraints satisfied - found solution
+                        result = {
+                            "solution": {
+                                "header": ["House", "Name", "HouseStyle", "HairColor", "Children", "BookGenre"],
+                                "rows": []
+                            }
+                        }
+                        
+                        for house in houses:
+                            row = [
+                                str(house),
+                                assignment[house]["Name"],
+                                assignment[house]["HouseStyle"],
+                                assignment[house]["HairColor"],
+                                assignment[house]["Children"],
+                                assignment[house]["BookGenre"]
+                            ]
+                            result["solution"]["rows"].append(row)
+                        
+                        return result
+    
+    return None
+
+if __name__ == "__main__":
+    solution = solve_puzzle()
+    if solution:
+        print(json.dumps(solution, indent=2))
+    else:
+        print(json.dumps({"error": "No solution found"}, indent=2))

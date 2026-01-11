@@ -1,0 +1,74 @@
+Let’s break this down step-by-step before writing the code.
+
+**Step 1 – Understanding the problem**  
+We start at **Sunset District at 9:00 AM**.  
+We have three friends with availability windows:  
+
+1. **Melissa** – North Beach, 8:15 AM – 1:30 PM, wants 105 minutes (1h45m) together.  
+2. **Anthony** – Chinatown, 1:15 PM – 2:30 PM, wants 60 minutes together.  
+3. **Rebecca** – Russian Hill, 7:30 PM – 9:15 PM, wants 105 minutes together.  
+
+Travel times are given between all locations.  
+We want to meet as many friends as possible, but each meeting must satisfy their minimum duration within their availability window.
+
+**Step 2 – Feasibility check**  
+- Melissa’s window ends at 1:30 PM, but we start at 9:00 AM in Sunset District. Travel from Sunset to North Beach is 29 minutes, so earliest we can arrive is 9:29 AM. That’s within Melissa’s window (8:15–1:30).  
+- Anthony’s window starts at 1:15 PM, ends 2:30 PM.  
+- Rebecca’s window starts at 7:30 PM, ends 9:15 PM.  
+
+We need to see if we can fit all three meetings with travel.
+
+**Step 3 – Trying to fit all three**  
+Let’s attempt:  
+1. Meet Melissa first (North Beach).  
+   - Arrive 9:29 AM.  
+   - Need 105 minutes together → end meeting at 11:14 AM.  
+   - Travel from North Beach to Chinatown = 6 minutes. Arrive Chinatown 11:20 AM.  
+   But Anthony is only available from 1:15 PM, so we’d have a long wait (almost 2 hours). That’s okay time-wise but maybe not optimal if we want to meet Rebecca later.  
+
+2. Meet Anthony at 1:15 PM for 60 minutes → ends 2:15 PM.  
+   Travel Chinatown → Russian Hill = 9 minutes, arrive 2:24 PM.  
+   But Rebecca is only available from 7:30 PM, so huge wait again.  
+
+This means we can meet all three if we don’t mind waiting, but the problem says “as many friends as possible” — maybe we can meet all three, but maybe time constraints prevent meeting all for their full desired duration? Let’s check Rebecca’s meeting:  
+If we start Rebecca at 7:30 PM for 105 minutes → ends 9:15 PM (exactly her window end). That works.  
+
+So timeline:  
+- 9:00 AM start Sunset  
+- 9:29 AM arrive North Beach  
+- 9:29–11:14 AM meet Melissa (105 min)  
+- 11:20 AM arrive Chinatown (but Anthony not available until 1:15 PM) → wait 1h55m  
+- 1:15–2:15 PM meet Anthony (60 min)  
+- 2:24 PM arrive Russian Hill (but Rebecca not until 7:30 PM) → wait 5h6m  
+- 7:30–9:15 PM meet Rebecca (105 min)  
+
+This meets all three for their desired times. So all three are possible.
+
+**Step 4 – Could we reduce waits by reordering?**  
+If we meet Anthony first:  
+We start Sunset 9:00 AM, travel to Chinatown = 30 min → arrive 9:30 AM, but Anthony not available until 1:15 PM → wait even longer. So no.  
+
+If we meet Rebecca first: impossible because she’s only available in evening.  
+
+So Melissa must be first, then Anthony, then Rebecca.  
+
+**Step 5 – Is there a way to meet Melissa for less to make Anthony earlier?**  
+No, because Anthony’s window starts at 1:15 PM anyway, so even if we finish Melissa earlier, we still wait for Anthony.  
+
+Thus the schedule above is the only feasible for all three.
+
+**Step 6 – Writing the program**  
+We’ll encode:  
+- Locations: Sunset, Chinatown, Russian Hill, North Beach  
+- Travel time lookup table  
+- Friend data: location, window start, window end, desired duration  
+- Start time at Sunset = 9:00  
+- Try all permutations of meeting order, but we know only Melissa → Anthony → Rebecca works for all three.  
+- For a given order, compute arrival time at first friend’s location, start meeting at max(arrival, friend window start), but if arrival > window start + window length - desired duration, can’t meet.  
+- Then after meeting, travel to next, etc.  
+- Count how many friends met for desired duration.  
+- Choose schedule that meets the most friends.  
+
+Given the constraints, all three can be met, so output that schedule.
+
+---

@@ -1,0 +1,175 @@
+Let’s break this down step-by-step before writing the code.
+
+**Step 1 – Understanding the problem**  
+We have:  
+- Start at Richmond District at 9:00 AM.  
+- Four friends with availability windows and minimum meeting durations.  
+- Travel times between districts (not symmetric in all cases).  
+- Goal: meet as many friends as possible, respecting time windows and travel times.
+
+**Step 2 – Observations**  
+We can’t meet everyone because:  
+1. Michelle is only available after 6:15 PM.  
+2. Others are available earlier.  
+3. Travel times eat into the schedule.  
+We need to check if we can fit all four meetings in one day.
+
+**Step 3 – Trying a feasible order**  
+Let’s start from Richmond at 9:00.  
+First, we can travel somewhere to meet the first friend.  
+The earliest available friend is Elizabeth (Mission, 11:00), but travel from Richmond to Mission is 20 minutes, so we could arrive at 9:20, but she’s not there until 11:00 — too much waiting.  
+Better: go to Sarah (Sunset, 10:45), travel 11 minutes → arrive 9:11, but she’s not there until 10:45 — still wait.  
+Go to Richard (Haight, 11:45), travel 10 minutes → arrive 9:10, wait until 11:45 — long wait.  
+Go to Michelle? Not available until evening.  
+So maybe start with Sarah, since she’s earliest (10:45), and Richmond → Sunset is 11 minutes, so leave Richmond at 10:34 to arrive at 10:45.
+
+But we could also start with Elizabeth at 11:00, but need to travel from Richmond to Mission (20 min), so leave at 10:40 to arrive at 11:00.
+
+Let’s test a possible sequence:  
+1. Richmond → Sunset (11 min) → meet Sarah 30 min → end 11:15.  
+2. Sunset → Haight (15 min) → arrive 11:30, but Richard starts at 11:45, wait 15 min → meet Richard 90 min → end 13:15.  
+3. Haight → Mission (11 min) → arrive 13:26 → meet Elizabeth 120 min → end 15:26.  
+4. Mission → Golden Gate Park (17 min) → arrive 15:43, but Michelle starts at 18:15 — wait 2.5 hours — then meet 90 min → end 19:45 (7:45 PM), which is within Michelle’s window (until 8:45 PM).  
+
+This fits all four! But let’s verify travel times carefully with given matrix.
+
+**Step 4 – Check travel times from given matrix**  
+From Sunset to Haight-Ashbury: 15 minutes (given).  
+From Haight-Ashbury to Mission District: 11 minutes.  
+From Mission District to Golden Gate Park: 17 minutes.  
+
+Yes, matches.
+
+**Step 5 – Check time windows**  
+Sarah: 10:45–19:00, we meet 10:45–11:15 ✅  
+Richard: 11:45–15:45, we meet 11:45–13:15 ✅  
+Elizabeth: 11:00–17:15, we meet 13:26–15:26 ✅  
+Michelle: 18:15–20:45, we meet 18:15–19:45 ✅  
+
+All good.
+
+**Step 6 – Implementation approach**  
+We’ll encode:  
+- Locations as indices.  
+- Travel time lookup table.  
+- Friend data: location, window start/end (in minutes from midnight), min duration.  
+- Start at Richmond at 9:00 (540 minutes).  
+- Try this greedy sequence (since it works), but we could also make the program check permutations if we want robustness.  
+- Output itinerary in required JSON format.
+
+Given the complexity, I’ll implement a search over permutations of friends to find a feasible schedule meeting all, but since we already found one, the code will find it.
+
+---
+
+Here’s the Python program:
+
+```python
+import json
+from itertools import permutations
+
+def time_to_minutes(t):
+    """Convert 'H:MM' string to minutes since midnight."""
+    hours, minutes = map(int, t.split(':'))
+    return hours * 60 + minutes
+
+def minutes_to_time(m):
+    """Convert minutes since midnight to 'H:MM' string."""
+    hours = m // 60
+    minutes = m % 60
+    return f"{hours}:{minutes:02d}"
+
+def main():
+    # Travel times matrix: from_index to to_index in minutes
+    # Indices: 0=Richmond, 1=Sunset, 2=Haight-Ashbury, 3=Mission, 4=Golden Gate Park
+    travel_times = [
+        [0, 11, 10, 20, 9],   # from Richmond
+        [12, 0, 15, 24, 11],  # from Sunset
+        [10, 15, 0, 11, 7],   # from Haight-Ashbury
+        [20, 24, 12, 0, 17],  # from Mission
+        [7, 10, 7, 17, 0]     # from Golden Gate Park
+    ]
+    
+    location_names = ["Richmond District", "Sunset District", "Haight-Ashbury", "Mission District", "Golden Gate Park"]
+    
+    # Friend data: name, location index, window start, window end, min duration (minutes)
+    friends = [
+        ("Sarah", 1, time_to_minutes("10:45"), time_to_minutes("19:00"), 30),
+        ("Richard", 2, time_to_minutes("11:45"), time_to_minutes("15:45"), 90),
+        ("Elizabeth", 3, time_to_minutes("11:00"), time_to_minutes("17:15"), 120),
+        ("Michelle", 4, time_to_minutes("18:15"), time_to_minutes("20:45"), 90)
+    ]
+    
+    start_location = 0  # Richmond
+    start_time = time_to_minutes("9:00")
+    
+    best_schedule = []
+    max_meetings = 0
+    
+    # Try all permutations of friends to find feasible schedule
+    for perm in permutations(range(len(friends))):
+        current_location = start_location
+        current_time = start_time
+        schedule = []
+        
+        for idx in perm:
+            name, loc, win_start, win_end, min_dur = friends[idx]
+            
+            # Travel to friend's location
+            travel = travel_times[current_location][loc]
+            arrival = current_time + travel
+            
+            # If we arrive before window start, wait
+            if arrival < win_start:
+                arrival = win_start
+            
+            # Check if we can meet before window ends
+            if arrival + min_dur > win_end:
+                break  # cannot meet this friend in this permutation
+            
+            # Schedule meeting
+            meeting_end = arrival + min_dur
+            schedule.append((name, loc, arrival, meeting_end))
+            
+            # Update current location and time
+            current_location = loc
+            current_time = meeting_end
+        
+        # If we scheduled all 4 friends, that's optimal
+        if len(schedule) == 4:
+            best_schedule = schedule
+            break
+        elif len(schedule) > max_meetings:
+            max_meetings = len(schedule)
+            best_schedule = schedule
+    
+    # Build itinerary in required format
+    itinerary = []
+    for name, loc, start_m, end_m in best_schedule:
+        itinerary.append({
+            "action": "meet",
+            "location": location_names[loc],
+            "person": name,
+            "start_time": minutes_to_time(start_m),
+            "end_time": minutes_to_time(end_m)
+        })
+    
+    result = {"itinerary": itinerary}
+    print(json.dumps(result, indent=2))
+
+if __name__ == "__main__":
+    main()
+```
+
+**Explanation of code logic:**
+1. Converts time strings to minutes for easier arithmetic.
+2. Uses a travel time matrix for lookups.
+3. Tries all permutations of meeting orders to find one that fits all four friends (breaks early if finds all four).
+4. For each friend in the order:  
+   - Adds travel time from current location.  
+   - Waits if arriving before their window starts.  
+   - Checks if minimum duration fits before their window ends.  
+   - If not, breaks and tries next permutation.
+5. Outputs the first schedule that fits all four (which exists as we found manually).
+6. Converts back to `H:MM` format and prints JSON.
+
+When run, this will output the optimal schedule meeting all four friends.

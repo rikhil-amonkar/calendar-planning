@@ -1,0 +1,385 @@
+Looking at the constraints, I need to create an itinerary that satisfies:
+- Total days: 18
+- Split: 6 days
+- Santorini: 7 days (with conferences on days 12 and 18)
+- London: 7 days
+- Direct flights only exist between: London-Santorini and Split-London
+- When flying on day X, you're counted in both cities on that day
+
+This creates a constraint satisfaction problem. Let me reason through it:
+
+1. We must start and end in Santorini (conference on day 18, and we need to be there on day 12 too)
+2. We need to visit all 3 cities
+3. The only way to reach Split is through London (since only Split-London and London-Santorini flights exist)
+4. So the sequence must be: Santorini ↔ London ↔ Split
+
+Here's my Python solution:
+
+```python
+import json
+from typing import List, Dict, Tuple
+
+def calculate_itinerary() -> Dict:
+    """Calculate the optimal itinerary based on given constraints."""
+    
+    # Given constraints
+    total_days = 18
+    split_days_needed = 6
+    santorini_days_needed = 7
+    london_days_needed = 7
+    conference_days = [12, 18]
+    
+    # Direct flight connections
+    connections = {
+        'London': ['Santorini', 'Split'],
+        'Santorini': ['London'],
+        'Split': ['London']
+    }
+    
+    # We must be in Santorini on conference days
+    # Day 18 must be in Santorini (end of trip)
+    # Day 12 must be in Santorini
+    
+    # Since we need to visit all 3 cities and flights are limited,
+    # the only possible sequence is: Santorini -> London -> Split -> London -> Santorini
+    # or Santorini -> London -> Split -> London -> Santorini with variations in durations
+    
+    # Let's work backwards from constraints:
+    # 1. Day 18: Santorini
+    # 2. Day 12: Santorini
+    # 3. We need 7 Santorini days total
+    
+    # Try different allocations
+    # Since we have conferences on days 12 and 18, we should have Santorini segments
+    # that include these days
+    
+    # Let me try this allocation:
+    # Segment 1: Santorini for some days (must include day 12)
+    # Segment 2: London for some days  
+    # Segment 3: Split for 6 days
+    # Segment 4: London for remaining days
+    # Segment 5: Santorini for remaining days (must include day 18)
+    
+    # The key insight: When you fly on a day, you count that day for BOTH cities
+    # So travel days help satisfy multiple city requirements
+    
+    # Let's try to construct day by day:
+    days = [None] * total_days  # 0-indexed for days 1-18
+    
+    # We know day 18 (index 17) is Santorini
+    days[17] = 'Santorini'
+    
+    # We know day 12 (index 11) is Santorini
+    days[11] = 'Santorini'
+    
+    # We need 7 Santorini days total, so we need 5 more Santorini days
+    # Let's put Santorini at the end for a continuous block including day 18
+    # Days 14-18 would be 5 days (14,15,16,17,18) but day 17 is index 16
+    # Actually indices: day14=13, day15=14, day16=15, day17=16, day18=17 = 5 days
+    
+    # Fill Santorini for days 14-18 (indices 13-17)
+    for i in range(13, 18):
+        days[i] = 'Santorini'
+    
+    # Now we have Santorini for 5 days at the end + day 12 = 6 days
+    # We need 1 more Santorini day
+    
+    # Let's put Santorini at the beginning
+    # Day 1 (index 0) as Santorini
+    days[0] = 'Santorini'
+    
+    # Now we have 7 Santorini days total
+    
+    # We need 6 Split days
+    # Split can only be reached from London, so we need London before and after Split
+    # Let's put Split in the middle
+    
+    # Find a continuous block of 6 days for Split
+    # Check available slots
+    available_slots = []
+    current_slot = []
+    for i in range(total_days):
+        if days[i] is None:
+            current_slot.append(i)
+        elif current_slot:
+            available_slots.append(current_slot)
+            current_slot = []
+    if current_slot:
+        available_slots.append(current_slot)
+    
+    # We need a slot of at least 6 days
+    split_slot = None
+    for slot in available_slots:
+        if len(slot) >= 6:
+            split_slot = slot
+            break
+    
+    if split_slot is None:
+        # Try a different approach - maybe Split days include travel days
+        # Actually, we can have Split for less than 6 consecutive days if we count travel days
+        # But let me check the math again
+        
+        # Re-examining: We have days 0: Santorini, 11: Santorini, 13-17: Santorini
+        # That leaves days 1-10 and 12 as available (day 12 is Santorini already)
+        # Actually day 12 is index 11 which is Santorini
+        
+        # Days available: indices 1-10 (10 days) and index 12 (1 day) = 11 days total
+        # We need to allocate 6 Split days and 7 London days in these 11 days
+        # But remember: travel days count for both cities!
+        
+        # Let me try this sequence:
+        # Day 1: Santorini (already set)
+        # Day 2: Fly to London (counts as Santorini morning, London evening)
+        # But wait, we already counted Day 1 as full Santorini
+        # Actually the problem says: "if one flies from city A to city B on day X, 
+        # then they are in both cities A and B on day X"
+        
+        # This means travel days are double-counted!
+        # So we need to account for this in our totals
+        
+        # Let me reconstruct with this understanding:
+        santorini_count = 0
+        london_count = 0
+        split_count = 0
+        
+        # We'll build itinerary with travel days
+        itinerary = []
+        
+        # Start in Santorini (Day 1)
+        itinerary.append(('Santorini', 1, 1))  # city, start_day, end_day
+        santorini_count += 1
+        
+        # We need to get to Split eventually, but only via London
+        # And we need to be in Santorini on day 12
+        
+        # Option: Santorini -> London -> Split -> London -> Santorini
+        
+        # Let's calculate:
+        # Santorini: start with 1 day
+        # Travel Santorini to London: +1 London, +0 Santorini (already counted departure day)
+        # Actually careful: When traveling FROM Santorini TO London on day X:
+        # - Day X counts for Santorini (morning) AND London (evening)
+        # So if we're already counting day X for Santorini, we add London for same day
+        
+        # Let me try a concrete allocation:
+        # Days 1-2: Santorini (2 days)
+        # Day 3: Travel to London (counts as Santorini morning + London evening)
+        # But wait, if day 3 is travel, we need to decide: is morning in Santorini or London?
+        # Actually, if you TRAVEL on day 3 FROM Santorini TO London, then:
+        # - You're in Santorini in the morning
+        # - You're in London in the evening
+        # So day 3 counts for BOTH cities
+        
+        # Revised approach: Let's track city for each day
+        # We'll use a greedy algorithm
+        
+        # Reset days array
+        days = [''] * total_days
+        city_counts = {'Santorini': 0, 'London': 0, 'Split': 0}
+        
+        # Must be in Santorini on days 12 and 18 (indices 11 and 17)
+        days[11] = 'Santorini'
+        days[17] = 'Santorini'
+        city_counts['Santorini'] += 2
+        
+        # We need 5 more Santorini days (total 7)
+        # Add Santorini at the beginning
+        days[0] = 'Santorini'  # Day 1
+        city_counts['Santorini'] += 1
+        
+        # Add more Santorini at the end
+        # Days 14-17 (indices 13-16) would be 4 days
+        for i in range(13, 17):
+            days[i] = 'Santorini'
+            city_counts['Santorini'] += 1
+        
+        # Now we have 1 + 4 + 2 = 7 Santorini days
+        
+        # Now allocate Split days - need 6
+        # Find a continuous block
+        # Best place is between Santorini segments
+        # Days 4-9 (indices 3-8) = 6 days
+        for i in range(3, 9):
+            days[i] = 'Split'
+            city_counts['Split'] += 1
+        
+        # Now allocate London days - need 7
+        # Remaining empty days: indices 1-2, 9-10, 12
+        # That's 2 + 2 + 1 = 5 days
+        # But we need 7 London days
+        # Ah! Travel days! When we travel between cities, those days count for both
+        
+        # Let's trace the actual movement:
+        # Day 1: Santorini (set)
+        # Day 2: Still in Santorini? Or travel to London?
+        # We need to get to Split by day 4 (index 3)
+        # Sequence: Santorini -> London -> Split
+        
+        # Day 2: Travel Santorini to London (counts for both)
+        days[1] = 'London'  # Evening of day 2 in London
+        # But morning was in Santorini - so day 2 should count for Santorini too
+        # Actually we already counted day 2 as Santorini? No, day 2 index 1 is empty
+        
+        # Let me rebuild more systematically
+        
+        # Actually, I think I need a different representation
+        # Let me create day-by-day itinerary with travel
+        
+        return brute_force_solution()
+    
+    # If we found a slot, fill it with Split
+    if split_slot:
+        # Use first 6 days of the slot
+        for i in range(6):
+            days[split_slot[i]] = 'Split'
+    
+    # Fill remaining with London
+    for i in range(total_days):
+        if days[i] is None:
+            days[i] = 'London'
+    
+    # Convert to itinerary format
+    return format_itinerary(days)
+
+def brute_force_solution() -> Dict:
+    """Brute force search for valid itinerary."""
+    
+    cities = ['Santorini', 'London', 'Split']
+    
+    # We need to find a sequence that satisfies:
+    # 1. Total days: 18
+    # 2. Santorini: 7 days (including days 12 and 18)
+    # 3. London: 7 days
+    # 4. Split: 6 days
+    # 5. Valid transitions: Santorini<->London, London<->Split only
+    # 6. When traveling on day X, day X counts for both origin and destination
+    
+    # Let's brute force with backtracking
+    def is_valid_transition(from_city, to_city):
+        if from_city == to_city:
+            return True
+        if from_city == 'Santorini' and to_city == 'London':
+            return True
+        if from_city == 'London' and to_city == 'Santorini':
+            return True
+        if from_city == 'London' and to_city == 'Split':
+            return True
+        if from_city == 'Split' and to_city == 'London':
+            return True
+        return False
+    
+    def backtrack(day, current_city, counts, daily_cities, travel_days):
+        if day == 18:  # 0-indexed, so day 18 means we've assigned all 18 days
+            # Check all constraints
+            if (counts['Santorini'] == 7 and counts['London'] == 7 and 
+                counts['Split'] == 6 and daily_cities[11] == 'Santorini' and 
+                daily_cities[17] == 'Santorini'):
+                return daily_cities[:]
+            return None
+        
+        # Try staying in current city
+        new_counts = counts.copy()
+        new_counts[current_city] += 1
+        new_daily = daily_cities[:]
+        new_daily[day] = current_city
+        
+        result = backtrack(day + 1, current_city, new_counts, new_daily, travel_days)
+        if result:
+            return result
+        
+        # Try traveling to other valid cities
+        for next_city in cities:
+            if next_city != current_city and is_valid_transition(current_city, next_city):
+                # Travel on this day counts for both cities
+                new_counts = counts.copy()
+                new_counts[current_city] += 1  # Morning in current city
+                new_counts[next_city] += 1     # Evening in next city
+                new_daily = daily_cities[:]
+                new_daily[day] = f"{current_city}/{next_city}"  # Travel day
+                new_travel_days = travel_days + [day]
+                
+                # Continue with next city for next day
+                result = backtrack(day + 1, next_city, new_counts, new_daily, new_travel_days)
+                if result:
+                    return result
+        
+        return None
+    
+    # Start in Santorini on day 1
+    initial_counts = {'Santorini': 0, 'London': 0, 'Split': 0}
+    daily_cities = [''] * 18
+    travel_days = []
+    
+    # Day 1 starts in Santorini
+    initial_counts['Santorini'] = 1
+    daily_cities[0] = 'Santorini'
+    
+    solution = backtrack(1, 'Santorini', initial_counts, daily_cities, travel_days)
+    
+    if solution:
+        return format_itinerary_from_solution(solution)
+    else:
+        # Fallback to a constructed solution based on logical reasoning
+        return construct_fallback_solution()
+
+def construct_fallback_solution() -> Dict:
+    """Construct a solution based on logical reasoning when brute force fails."""
+    
+    # Based on the constraints and flight connections, the only feasible sequence is:
+    # Santorini -> London -> Split -> London -> Santorini
+    
+    # Let's allocate:
+    # Days 1-3: Santorini (3 days, includes day 1 already counted)
+    # Day 4: Travel Santorini to London (counts for both)
+    # Days 5-7: London (3 days)
+    # Day 8: Travel London to Split (counts for both)
+    # Days 9-14: Split (6 days)
+    # Day 15: Travel Split to London (counts for both)
+    # Days 16-17: London (2 days)
+    # Day 18: Santorini (conference, already counted)
+    
+    # Count totals:
+    # Santorini: Days 1-3 (3 days) + Day 4 travel (1) + Day 18 (1) = 5 days
+    # Need 2 more Santorini days
+    
+    # Revised plan:
+    # Days 1-2: Santorini (2 days)
+    # Day 3: Travel Santorini to London (counts for both)
+    # Days 4-5: London (2 days)
+    # Day 6: Travel London to Split (counts for both)
+    # Days 7-12: Split (6 days) - includes day 12 which should be Santorini! Problem!
+    
+    # Need to be in Santorini on day 12
+    # So we need to adjust
+    
+    # Final workable plan:
+    # Days 1-2: Santorini (2 days)
+    # Day 3: Travel Santorini to London (Santorini morning, London evening)
+    # Days 4-6: London (3 days)
+    # Day 7: Travel London to Split (London morning, Split evening)
+    # Days 8-11: Split (4 days)
+    # Day 12: Travel Split to London (Split morning, London evening) - but need Santorini!
+    # Actually need to be in Santorini on day 12, so:
+    
+    # Alternative:
+    # Days 1-2: Santorini (2)
+    # Day 3: Travel Santorini to London (both)
+    # Days 4-5: London (2)
+    # Day 6: Travel London to Split (both)
+    # Days 7-11: Split (5)
+    # Day 12: Santorini (1) - but how? Need to travel from Split to Santorini, no direct flight!
+    
+    # This is impossible! Split only connects to London
+    # So to get from Split to Santorini, must go through London
+    # Day 12: Travel Split to London (Split morning, London evening) - NOT Santorini!
+    
+    # Therefore, we MUST be in Santorini BEFORE day 12 and stay through day 12
+    # OR be in Santorini starting on day 12
+    
+    # Let me try:
+    # Days 1-5: Santorini (5 days)
+    # Day 6: Travel Santorini to London (both)
+    # Days 7-8: London (2 days)
+    # Day 9: Travel London to Split (both)
+    # Days 10-15: Split (6 days)
+    # Day

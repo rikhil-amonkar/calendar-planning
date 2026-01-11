@@ -1,0 +1,104 @@
+Let’s break this down step by step before writing the code.
+
+---
+
+## **Step 1 — Understanding the problem**
+
+We have:
+
+- **Start location**: Pacific Heights at 9:00 AM.
+- **9 friends** at different locations with fixed availability windows.
+- Each friend has a **minimum meeting duration**.
+- Travel times between all locations are given.
+- Goal: Maximize the number of friends met (or maximize total meeting time? The problem says "meet as many friends as possible").
+- We must account for travel time between meetings.
+
+---
+
+## **Step 2 — Observations**
+
+1. **Time constraints** are tight for some friends because their availability windows are short and/or far apart.
+2. Some friends’ windows overlap in time but are far apart geographically, so we can’t meet both if travel time exceeds the gap.
+3. We must decide:  
+   - Which friends to meet.  
+   - In what order.  
+   - How long to stay with each (at least their minimum duration, possibly longer if time allows).
+4. Since the goal is to maximize the *number* of friends met, we might prioritize meeting more friends even if it means shorter stays (but must meet minimum duration).
+
+---
+
+## **Step 3 — Feasibility check for each friend**
+
+Let’s list friends in chronological order of their availability start times:
+
+1. **Deborah** (Bayview): 8:30–12:00, min 30 min.  
+   We start at Pacific Heights at 9:00, travel to Bayview = 22 min → arrive 9:22.  
+   Latest we can leave Bayview to go somewhere else: 12:00.  
+   So we can meet Deborah from 9:22–9:52 (30 min) or longer if we want.
+
+2. **Helen** (Golden Gate Park): 9:30–12:15, min 45 min.  
+   From Pacific Heights at 9:00 → travel 15 min → arrive 9:15 (too early, she’s not there until 9:30).  
+   So earliest start with Helen is 9:30, end by 12:15.
+
+3. **Matthew** (Marina District): 9:15–14:15, min 45 min.  
+   From Pacific Heights at 9:00 → travel 6 min → arrive 9:06 (too early, he’s there at 9:15).  
+   Earliest start 9:15, end by 14:15.
+
+4. **Rebecca** (Financial District): 14:45–16:15, min 30 min.  
+   Very tight window.
+
+5. **Joseph** (Union Square): 14:15–18:45, min 120 min.  
+   Long meeting, big window.
+
+6. **Ronald** (Sunset District): 16:00–20:45, min 60 min.
+
+7. **Robert** (Alamo Square): 18:30–21:15, min 120 min.
+
+8. **Elizabeth** (Mission District): 18:30–21:00, min 120 min.
+
+9. **Steven** (The Castro): 20:15–22:00, min 105 min.
+
+---
+
+## **Step 4 — Thinking about scheduling approach**
+
+We can treat this as a **search problem**:
+
+- State: current location, current time, set of friends already met.
+- At each step, choose a friend not yet met whose window is still available after travel.
+- Stay with them for exactly their minimum duration (to save time for more friends) or longer if it doesn’t block others.
+- Since the number of friends is small (9), we can brute-force permutations of meeting order, checking feasibility with travel times.
+
+But 9! is huge (~362k), but we can prune early:  
+We can generate permutations of subsets in order of decreasing size (try to meet 9, then 8, etc.) and stop when we find a feasible schedule.
+
+---
+
+## **Step 5 — Writing the algorithm**
+
+We’ll:
+
+1. Convert all times to minutes since midnight for easier arithmetic.
+2. Build travel time matrix.
+3. Define each friend as an object with location, window start, window end, min duration.
+4. Start at Pacific Heights at 9:00 (540 minutes).
+5. Search recursively:
+   - From current location and time, pick an unmet friend where:
+     - travel_time(current_loc, friend_loc) + current_time ≤ friend_window_end − min_duration
+     - Also, we can start at max(current_time + travel_time, friend_window_start).
+   - Stay for exactly min_duration (to maximize chance of meeting more friends).
+   - Mark friend as met, update location and time, repeat.
+6. Try all permutations of friends for a given subset size, starting from largest subset size down to smallest.
+7. Output the first feasible schedule for the largest subset.
+
+---
+
+## **Step 6 — Implementation plan**
+
+We’ll implement a DFS with backtracking, trying friends in order of their window start times for pruning, but also permute to ensure we check all possibilities.
+
+Because the search space is manageable (9 friends), we’ll do a full permutation check for each subset size from 9 down to 1, stop when we find a feasible schedule.
+
+---
+
+## **Step 7 — Writing the code**

@@ -1,0 +1,50 @@
+def find_meeting_time():
+    # Work hours
+    work_start = 9 * 60  # 9:00 in minutes
+    work_end = 17 * 60   # 17:00 in minutes
+
+    # Albert's blocked times in minutes since midnight
+    blocked = [(9 * 60, 10 * 60), (10 * 60 + 30, 12 * 60), (15 * 60, 16 * 60 + 30)]
+    
+    # Additional constraint: Albert cannot meet after 11:00
+    latest_meeting_start = 11 * 60 - 30  # meeting must end by 11:00, so start by 10:30
+    
+    meeting_duration = 30
+    
+    # Combine work hours and latest meeting start
+    effective_end = min(work_end, latest_meeting_start + meeting_duration)
+    
+    # Check possible slots starting from work_start
+    current_time = work_start
+    
+    for block_start, block_end in blocked:
+        if current_time + meeting_duration <= min(block_start, effective_end):
+            # Slot found before this block and before latest allowed time
+            return "Monday", current_time, current_time + meeting_duration
+        # Move current_time to after this block
+        if current_time < block_end:
+            current_time = block_end
+    
+    # Check after last block
+    if current_time + meeting_duration <= effective_end:
+        return "Monday", current_time, current_time + meeting_duration
+    
+    return None
+
+def to_time_str(minutes):
+    hours = minutes // 60
+    mins = minutes % 60
+    return f"{hours:02d}:{mins:02d}"
+
+def main():
+    result = find_meeting_time()
+    if result:
+        day, start_min, end_min = result
+        start_str = to_time_str(start_min)
+        end_str = to_time_str(end_min)
+        print(f"{day}:{start_str}:{end_str}")
+    else:
+        print("No suitable time found.")
+
+if __name__ == "__main__":
+    main()

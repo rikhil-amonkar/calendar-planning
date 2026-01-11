@@ -1,0 +1,95 @@
+<reasoning>
+To solve this problem, we need to identify a 30-minute time slot during the work hours (9:00 to 17:00) on Monday when all participants are available. We'll represent each participant's availability as a list of time slots they are free. Then, we'll find the intersection of these free time slots to determine a common available time for everyone.
+
+1. **Define the Work Hours**: Set the start and end times for the workday.
+2. **Represent Each Participant's Availability**: For each participant, create a list of time slots they are free.
+3. **Identify Common Free Slots**: Find overlapping time slots among all participants.
+4. **Select a Suitable Time Slot**: Choose a 30-minute slot from the common free slots.
+5. **Output the Result**: Print the selected time slot in the required format.
+
+Let's break down the steps in detail:
+
+- **Work Hours**: 9:00 to 17:00.
+- **Participants' Schedules**:
+    - Tyler: Entire day is free.
+    - Kelly: Entire day is free.
+    - Stephanie: Busy from 11:00 to 11:30, 14:30 to 15:00.
+    - Hannah: Entire day is free.
+    - Joe: Busy from 9:00 to 9:30, 10:00 to 12:00, 12:30 to 13:00, 14:00 to 17:00.
+    - Diana: Busy from 9:00 to 10:30, 11:30 to 12:00, 13:00 to 14:00, 14:30 to 15:30, 16:00 to 17:00.
+    - Deborah: Busy from 9:00 to 10:00, 10:30 to 12:00, 12:30 to 13:00, 13:30 to 14:00, 14:30 to 15:30, 16:00 to 16:30.
+
+We will iterate through each minute of the workday and check if all participants are free at that minute. If we find a 30-minute window where all are free, we will select that as our meeting time.
+</reasoning>
+
+```python
+from datetime import datetime, timedelta
+
+def find_common_free_slot(participants, meeting_duration, work_start, work_end):
+    # Convert work hours to minutes from start of the day
+    work_start_minutes = (work_start.hour * 60) + work_start.minute
+    work_end_minutes = (work_end.hour * 60) + work_end.minute
+    
+    # Initialize a list to keep track of free minutes for each participant
+    free_minutes = {name: [True] * (work_end_minutes - work_start_minutes) for name in participants}
+    
+    # Mark busy times for each participant
+    for name, busy_times in participants.items():
+        for busy_start, busy_end in busy_times:
+            busy_start_minutes = (busy_start.hour * 60) + busy_start.minute - work_start_minutes
+            busy_end_minutes = (busy_end.hour * 60) + busy_end.minute - work_start_minutes
+            for i in range(busy_start_minutes, busy_end_minutes):
+                free_minutes[name][i] = False
+    
+    # Find a common free slot of the required duration
+    for minute in range(work_end_minutes - work_start_minutes - meeting_duration + 1):
+        if all(free_minutes[name][minute] for name in participants):
+            start_time_minutes = minute + work_start_minutes
+            start_time = work_start + timedelta(minutes=start_time_minutes)
+            end_time = start_time + timedelta(minutes=meeting_duration)
+            return f"{start_time.strftime('%H:%M')}:{end_time.strftime('%H:%M')}"
+    
+    return None
+
+# Define work hours
+work_start = datetime.strptime("09:00", "%H:%M")
+work_end = datetime.strptime("17:00", "%H:%M")
+
+# Define participants and their busy times
+participants = {
+    "Tyler": [],
+    "Kelly": [],
+    "Stephanie": [(datetime.strptime("11:00", "%H:%M"), datetime.strptime("11:30", "%H:%M")),
+                  (datetime.strptime("14:30", "%H:%M"), datetime.strptime("15:00", "%H:%M"))],
+    "Hannah": [],
+    "Joe": [(datetime.strptime("09:00", "%H:%M"), datetime.strptime("09:30", "%H:%M")),
+            (datetime.strptime("10:00", "%H:%M"), datetime.strptime("12:00", "%H:%M")),
+            (datetime.strptime("12:30", "%H:%M"), datetime.strptime("13:00", "%H:%M")),
+            (datetime.strptime("14:00", "%H:%M"), datetime.strptime("17:00", "%H:%M"))],
+    "Diana": [(datetime.strptime("09:00", "%H:%M"), datetime.strptime("10:30", "%H:%M")),
+              (datetime.strptime("11:30", "%H:%M"), datetime.strptime("12:00", "%H:%M")),
+              (datetime.strptime("13:00", "%H:%M"), datetime.strptime("14:00", "%H:%M")),
+              (datetime.strptime("14:30", "%H:%M"), datetime.strptime("15:30", "%H:%M")),
+              (datetime.strptime("16:00", "%H:%M"), datetime.strptime("17:00", "%H:%M"))],
+    "Deborah": [(datetime.strptime("09:00", "%H:%M"), datetime.strptime("10:00", "%H:%M")),
+                (datetime.strptime("10:30", "%H:%M"), datetime.strptime("12:00", "%H:%M")),
+                (datetime.strptime("12:30", "%H:%M"), datetime.strptime("13:00", "%H:%M")),
+                (datetime.strptime("13:30", "%H:%M"), datetime.strptime("14:00", "%H:%M")),
+                (datetime.strptime("14:30", "%H:%M"), datetime.strptime("15:30", "%H:%M")),
+                (datetime.strptime("16:00", "%H:%M"), datetime.strptime("16:30", "%H:%M"))]
+}
+
+# Meeting duration in minutes
+meeting_duration = 30
+
+# Find the common free slot
+common_slot = find_common_free_slot(participants, meeting_duration, work_start, work_end)
+
+# Output the result
+if common_slot:
+    print(f"Meeting time: {common_slot} on Monday")
+else:
+    print("No common free slot found.")
+```
+
+This script defines the work hours and busy times for each participant, then checks for a common 30-minute slot where all participants are available. It outputs the time slot in the specified format along with the day of the week (Monday).

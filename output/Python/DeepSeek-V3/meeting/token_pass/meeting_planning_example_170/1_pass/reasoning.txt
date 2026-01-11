@@ -1,0 +1,89 @@
+Let’s break this down step by step before writing the code.
+
+**Step 1 – Understanding the problem**  
+We start at **North Beach at 9:00 AM**.  
+We have two friends to meet:  
+
+1. **Emily** at **Union Square** from **16:00 to 17:15** (4:00 PM to 5:15 PM), needs at least **45 minutes** together.  
+2. **Margaret** at **Russian Hill** from **19:00 to 21:00** (7:00 PM to 9:00 PM), needs at least **120 minutes** together.  
+
+Travel times are given between locations.  
+We want to meet **as many friends as possible**, but meeting both might be impossible given travel and time constraints.  
+
+**Step 2 – Checking feasibility of meeting both**  
+
+Let’s try a possible schedule:  
+
+- Start at North Beach at 9:00. We have free time until Emily’s window starts at 16:00.  
+- We must travel to Union Square before 16:00 to meet Emily.  
+- Travel from North Beach to Union Square = 7 minutes.  
+- So we could arrive at Union Square at 9:07 if we leave immediately, but Emily isn’t there until 16:00. So we can do other things in between, but only other location is Russian Hill (Margaret not there until 19:00). So we can’t meet Margaret earlier.  
+
+Thus, the only meaningful constraint is: can we meet Emily for 45 minutes and still meet Margaret for 120 minutes given travel times?  
+
+**Step 3 – Try meeting Emily first, then Margaret**  
+
+Meet Emily: earliest start 16:00, end at 16:45 (45 minutes).  
+Travel from Union Square to Russian Hill = 13 minutes.  
+Arrive Russian Hill at 16:45 + 13 min = 16:58.  
+Margaret is available from 19:00 to 21:00. We arrive too early (16:58), but she’s not there until 19:00, so we wait.  
+We can meet Margaret from 19:00 to 21:00 = 120 minutes exactly.  
+This works:  
+- Emily: 16:00–16:45  
+- Travel: 16:45–16:58  
+- Wait: 16:58–19:00  
+- Margaret: 19:00–21:00  
+
+**Step 4 – Try meeting Margaret first, then Emily**  
+
+Margaret is available 19:00–21:00, needs 120 minutes, so must meet 19:00–21:00 exactly.  
+After 21:00, Emily’s window (16:00–17:15) is already over, so impossible.  
+Thus, Margaret-first schedule fails for Emily.  
+
+**Step 5 – Can we meet both in reverse time?**  
+
+No, because Emily’s window ends 17:15, Margaret starts 19:00, and travel from Union Square to Russian Hill is 13 minutes, so we could finish with Emily at 17:15, travel 13 min, arrive 17:28, but Margaret isn’t there until 19:00, so we wait, then meet Margaret 19:00–21:00.  
+But does Emily get 45 minutes? If we meet Emily 16:30–17:15 = 45 minutes, that works.  
+So another valid schedule:  
+- Emily: 16:30–17:15  
+- Travel: 17:15–17:28  
+- Wait: 17:28–19:00  
+- Margaret: 19:00–21:00  
+
+This also works.  
+
+**Step 6 – Can we meet only one?**  
+
+If we meet only Margaret: 19:00–21:00, we have free time all day until then, but we could meet Emily too, so not optimal.  
+If we meet only Emily: 16:00–16:45, then free time, but we could also meet Margaret, so not optimal.  
+So meeting both is possible.  
+
+**Step 7 – Choose the optimal**  
+
+“Optimal” means as many friends as possible → both.  
+We need to pick exact times.  
+Let’s maximize time with Emily? She only needs 45 minutes, so any 45-minute block within 16:00–17:15 works.  
+Let’s pick earliest possible: 16:00–16:45, so we have more buffer before Margaret.  
+
+**Step 8 – Build schedule**  
+
+Start at North Beach 9:00.  
+We have free time until we need to go to Union Square.  
+Travel to Union Square = 7 minutes.  
+To arrive by 16:00, we must leave North Beach by 15:53.  
+We can leave earlier if we want, but no benefit.  
+So:  
+
+1. 9:00–15:53: free time at North Beach (or travel earlier and wait at Union Square).  
+2. 15:53–16:00: travel to Union Square.  
+3. 16:00–16:45: meet Emily.  
+4. 16:45–16:58: travel to Russian Hill.  
+5. 16:58–19:00: wait at Russian Hill.  
+6. 19:00–21:00: meet Margaret.  
+
+**Step 9 – Write program to compute this**  
+
+We’ll encode travel times, constraints, and compute the schedule.  
+We’ll output JSON as specified.  
+
+Here’s the Python program:

@@ -1,0 +1,104 @@
+Looking at the schedules, I need to find a 30-minute slot between 9:00 and 17:00 on Monday when all four participants are free.
+
+Let's break down the busy times and find gaps:
+
+**Bradley busy:**
+- 9:30–10:00
+- 12:30–13:00
+- 13:30–14:00
+- 15:30–16:00
+
+**Teresa busy:**
+- 10:30–11:00
+- 12:00–12:30
+- 13:00–13:30
+- 14:30–15:00
+
+**Elizabeth busy:**
+- 9:00–9:30
+- 10:30–11:30
+- 13:00–13:30
+- 14:30–15:00
+- 15:30–17:00
+
+**Christian busy:**
+- 9:00–9:30
+- 10:30–17:00
+
+Christian is busy from 10:30 to 17:00, so the only possible time must be before 10:30.  
+Looking before 10:30:
+
+- 9:00–9:30: Christian and Elizabeth are busy.
+- 9:30–10:00: Bradley is busy.
+- 10:00–10:30: Everyone is free? Let's check:
+  - Bradley: free (busy 9:30–10:00, next at 12:30)
+  - Teresa: free (first meeting 10:30)
+  - Elizabeth: free (busy until 9:30, next at 10:30)
+  - Christian: free (busy until 9:30, next at 10:30)
+
+Yes, 10:00–10:30 works for all.
+
+Here’s the Python script to find it:
+
+```python
+def find_meeting_time():
+    # Work hours
+    work_start = 9 * 60  # 9:00 in minutes
+    work_end = 17 * 60   # 17:00 in minutes
+    duration = 30        # minutes
+
+    # Busy times in minutes since midnight
+    # Format: (start_minute, end_minute)
+    bradley_busy = [(9*60+30, 10*60), (12*60+30, 13*60), (13*60+30, 14*60), (15*60+30, 16*60)]
+    teresa_busy = [(10*60+30, 11*60), (12*60, 12*60+30), (13*60, 13*60+30), (14*60+30, 15*60)]
+    elizabeth_busy = [(9*60, 9*60+30), (10*60+30, 11*60+30), (13*60, 13*60+30), (14*60+30, 15*60), (15*60+30, 17*60)]
+    christian_busy = [(9*60, 9*60+30), (10*60+30, 17*60)]
+
+    # Combine all busy times
+    all_busy = []
+    for busy_list in [bradley_busy, teresa_busy, elizabeth_busy, christian_busy]:
+        all_busy.extend(busy_list)
+
+    # Sort by start time
+    all_busy.sort(key=lambda x: x[0])
+
+    # Merge overlapping intervals
+    merged_busy = []
+    for start, end in all_busy:
+        if not merged_busy or merged_busy[-1][1] < start:
+            merged_busy.append([start, end])
+        else:
+            merged_busy[-1][1] = max(merged_busy[-1][1], end)
+
+    # Find free slots within work hours
+    free_slots = []
+    current_time = work_start
+
+    for busy_start, busy_end in merged_busy:
+        if busy_start > current_time:
+            free_slots.append((current_time, busy_start))
+        current_time = max(current_time, busy_end)
+    if current_time < work_end:
+        free_slots.append((current_time, work_end))
+
+    # Find first slot that fits duration
+    for slot_start, slot_end in free_slots:
+        if slot_end - slot_start >= duration:
+            meeting_start = slot_start
+            meeting_end = meeting_start + duration
+            # Convert back to HH:MM format
+            def to_time_str(minutes):
+                h = minutes // 60
+                m = minutes % 60
+                return f"{h:02d}:{m:02d}"
+            return "Monday", to_time_str(meeting_start), to_time_str(meeting_end)
+
+    return None, None, None
+
+if __name__ == "__main__":
+    day, start, end = find_meeting_time()
+    if day and start and end:
+        print(f"{day} {start}:{end}")
+    else:
+        print("No suitable time found")
+```

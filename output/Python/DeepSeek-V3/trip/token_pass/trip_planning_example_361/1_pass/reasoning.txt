@@ -1,0 +1,35 @@
+Looking at the constraints, we need to allocate 15 days across 4 cities with specific requirements:
+
+1. Total days: 15
+2. Paris: 6 days
+3. Madrid: 7 days (with days 1-7 having an annual show)
+4. Bucharest: 2 days (between day 14-15)
+5. Seville: 3 days
+6. Direct flights exist between: Paris-Bucharest, Seville-Paris, Madrid-Bucharest, Madrid-Paris, Madrid-Seville
+
+Let's reason through this:
+- Madrid must include days 1-7 (7 days total)
+- Bucharest must include days 14-15 (2 days total)
+- That leaves days 8-13 (6 days) for Paris and Seville
+- Paris needs 6 days total, Seville needs 3 days total
+
+Since Madrid is days 1-7, and Bucharest is days 14-15, we need to fit Paris (6 days) and Seville (3 days) in days 8-13 (only 6 days). This means there must be overlap - some days must count toward both cities.
+
+The key insight: When you travel between cities on the same day, that day counts for both cities. So we can use travel days to satisfy multiple city requirements simultaneously.
+
+Here's a possible itinerary:
+1. Days 1-7: Madrid (7 days)
+2. Day 8: Travel from Madrid to Seville (counts as Madrid and Seville)
+3. Days 9-10: Seville (2 more days, total 3 with travel day)
+4. Day 11: Travel from Seville to Paris (counts as Seville and Paris)
+5. Days 12-13: Paris (2 more days)
+6. Day 14: Travel from Paris to Bucharest (counts as Paris and Bucharest)
+7. Day 15: Bucharest (1 more day)
+
+Let's verify:
+- Madrid: days 1-8 = 8 days? Wait, day 8 is travel to Seville, so Madrid gets days 1-7 (7 days) ✓
+- Seville: days 8-11 = 4 days? Actually day 8 (arrive), days 9-10 (stay), day 11 (depart) = 4 days total, but we only need 3. We can adjust.
+- Paris: days 11-14 = 4 days? Day 11 (arrive), days 12-13 (stay), day 14 (depart) = 4 days, but we need 6.
+- Bucharest: days 14-15 = 2 days ✓
+
+We need to optimize better. Let me write a program to find a valid itinerary:

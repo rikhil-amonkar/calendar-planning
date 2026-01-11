@@ -1,0 +1,64 @@
+Let’s break this down step by step before writing the code.
+
+**Step 1 – Understand constraints**  
+- Work hours: 9:00–17:00 (9:00 to 17:00 inclusive start times, but meeting must end by 17:00).  
+- Duration: 30 minutes.  
+- Eric’s busy on Monday: 12:00–13:00, 14:00–15:00.  
+- Henry’s busy on Monday: 9:30–10:00, 10:30–11:00, 11:30–12:30, 13:00–13:30, 14:30–15:00, 16:00–17:00.  
+- Henry’s preference: Rather not meet after 10:00 (but it’s a preference, not a hard constraint).  
+- There exists a solution that works with everyone’s schedule.
+
+**Step 2 – Find all free slots for each person within 9:00–17:00**  
+
+Eric’s free periods on Monday (after subtracting his busy times from 9:00–17:00):  
+1. 9:00–12:00  
+2. 13:00–14:00  
+3. 15:00–17:00  
+
+Henry’s free periods on Monday:  
+From 9:00–17:00, subtract:  
+- 9:30–10:00 → free 9:00–9:30  
+- 10:30–11:00 → free 10:00–10:30  
+- 11:30–12:30 → free 11:00–11:30  
+- 13:00–13:30 → free 12:30–13:00  
+- 14:30–15:00 → free 13:30–14:30  
+- 16:00–17:00 → free 15:00–16:00  
+
+So Henry’s free slots:  
+1. 9:00–9:30  
+2. 10:00–10:30  
+3. 11:00–11:30  
+4. 12:30–13:00  
+5. 13:30–14:30  
+6. 15:00–16:00  
+
+**Step 3 – Find overlaps of at least 30 minutes**  
+
+Check each:  
+- Overlap of Eric’s 9:00–12:00 with Henry’s slots:  
+  - With Henry’s 9:00–9:30 → 30 min → valid slot 9:00–9:30 (exactly 30 min).  
+  - With Henry’s 10:00–10:30 → 30 min → valid slot 10:00–10:30.  
+  - With Henry’s 11:00–11:30 → 30 min → valid slot 11:00–11:30.  
+  - With Henry’s 12:30–13:00 → overlap with Eric’s 9:00–12:00? No, Eric free ends at 12:00, so no overlap.  
+
+- Overlap of Eric’s 13:00–14:00 with Henry’s slots:  
+  - With Henry’s 12:30–13:00 → no overlap (Henry ends at 13:00, Eric starts at 13:00 → zero duration).  
+  - With Henry’s 13:30–14:30 → overlap 13:30–14:00 → 30 min → valid slot 13:30–14:00.  
+
+- Overlap of Eric’s 15:00–17:00 with Henry’s slots:  
+  - With Henry’s 15:00–16:00 → 1 hour → valid slot e.g. 15:00–15:30.  
+
+**Step 4 – Apply Henry’s preference (rather not meet after 10:00)**  
+That means slots before or at 10:00 are preferred.  
+
+Available slots before or at 10:00:  
+- 9:00–9:30 (both free)  
+- 10:00–10:30 starts at 10:00, which is “after 10:00”? “After 10:00” means start time > 10:00. So 10:00 exactly might be borderline, but “rather not meet after 10:00” suggests 10:00 is okay? Usually means start time ≥ 10:00 is less preferred. Let’s interpret strictly: “after 10:00” means start time > 10:00, so 10:00 is allowed and preferred over later times.  
+
+But 9:00–9:30 is clearly before 10:00, so it’s the most preferred.  
+
+**Step 5 – Choose earliest preferred slot**  
+Earliest slot that fits: 9:00–9:30.  
+
+**Step 6 – Write code to compute this**  
+We’ll write a script that finds all overlaps of at least 30 minutes, then picks the earliest one that starts before or at 10:00 if possible, otherwise earliest any.

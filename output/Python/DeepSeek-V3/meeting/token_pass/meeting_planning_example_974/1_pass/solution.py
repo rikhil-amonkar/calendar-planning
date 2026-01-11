@@ -1,0 +1,218 @@
+import itertools
+import json
+from datetime import datetime, timedelta
+
+def parse_time(t_str):
+    """Convert '9:00AM' or '1:15PM' to datetime today."""
+    t_str = t_str.strip().upper()
+    if ":" in t_str:
+        time_part, ampm = t_str[:-2], t_str[-2:]
+        hour, minute = map(int, time_part.split(":"))
+        if ampm == "PM" and hour != 12:
+            hour += 12
+        if ampm == "AM" and hour == 12:
+            hour = 0
+    else:
+        hour = int(t_str[:-2])
+        minute = 0
+        ampm = t_str[-2:]
+        if ampm == "PM" and hour != 12:
+            hour += 12
+        if ampm == "AM" and hour == 12:
+            hour = 0
+    # Use arbitrary date, e.g., today
+    return datetime(2025, 1, 1, hour, minute)
+
+def format_time(dt):
+    """Format datetime as 'H:MM' 24-hour without leading zero on hour."""
+    return f"{dt.hour}:{dt.minute:02d}"
+
+# Travel times dictionary
+travel_times = {
+    ("Sunset District", "Presidio"): 16,
+    ("Sunset District", "Nob Hill"): 27,
+    ("Sunset District", "Pacific Heights"): 21,
+    ("Sunset District", "Mission District"): 25,
+    ("Sunset District", "Marina District"): 21,
+    ("Sunset District", "North Beach"): 28,
+    ("Sunset District", "Russian Hill"): 24,
+    ("Sunset District", "Richmond District"): 12,
+    ("Sunset District", "Embarcadero"): 30,
+    ("Sunset District", "Alamo Square"): 17,
+    ("Presidio", "Sunset District"): 15,
+    ("Presidio", "Nob Hill"): 18,
+    ("Presidio", "Pacific Heights"): 11,
+    ("Presidio", "Mission District"): 26,
+    ("Presidio", "Marina District"): 11,
+    ("Presidio", "North Beach"): 18,
+    ("Presidio", "Russian Hill"): 14,
+    ("Presidio", "Richmond District"): 7,
+    ("Presidio", "Embarcadero"): 20,
+    ("Presidio", "Alamo Square"): 19,
+    ("Nob Hill", "Sunset District"): 24,
+    ("Nob Hill", "Presidio"): 17,
+    ("Nob Hill", "Pacific Heights"): 8,
+    ("Nob Hill", "Mission District"): 13,
+    ("Nob Hill", "Marina District"): 11,
+    ("Nob Hill", "North Beach"): 8,
+    ("Nob Hill", "Russian Hill"): 5,
+    ("Nob Hill", "Richmond District"): 14,
+    ("Nob Hill", "Embarcadero"): 9,
+    ("Nob Hill", "Alamo Square"): 11,
+    ("Pacific Heights", "Sunset District"): 21,
+    ("Pacific Heights", "Presidio"): 11,
+    ("Pacific Heights", "Nob Hill"): 8,
+    ("Pacific Heights", "Mission District"): 15,
+    ("Pacific Heights", "Marina District"): 6,
+    ("Pacific Heights", "North Beach"): 9,
+    ("Pacific Heights", "Russian Hill"): 7,
+    ("Pacific Heights", "Richmond District"): 12,
+    ("Pacific Heights", "Embarcadero"): 10,
+    ("Pacific Heights", "Alamo Square"): 10,
+    ("Mission District", "Sunset District"): 24,
+    ("Mission District", "Presidio"): 25,
+    ("Mission District", "Nob Hill"): 12,
+    ("Mission District", "Pacific Heights"): 16,
+    ("Mission District", "Marina District"): 19,
+    ("Mission District", "North Beach"): 17,
+    ("Mission District", "Russian Hill"): 15,
+    ("Mission District", "Richmond District"): 20,
+    ("Mission District", "Embarcadero"): 19,
+    ("Mission District", "Alamo Square"): 11,
+    ("Marina District", "Sunset District"): 19,
+    ("Marina District", "Presidio"): 10,
+    ("Marina District", "Nob Hill"): 12,
+    ("Marina District", "Pacific Heights"): 7,
+    ("Marina District", "Mission District"): 20,
+    ("Marina District", "North Beach"): 11,
+    ("Marina District", "Russian Hill"): 8,
+    ("Marina District", "Richmond District"): 11,
+    ("Marina District", "Embarcadero"): 14,
+    ("Marina District", "Alamo Square"): 15,
+    ("North Beach", "Sunset District"): 27,
+    ("North Beach", "Presidio"): 17,
+    ("North Beach", "Nob Hill"): 7,
+    ("North Beach", "Pacific Heights"): 8,
+    ("North Beach", "Mission District"): 18,
+    ("North Beach", "Marina District"): 9,
+    ("North Beach", "Russian Hill"): 4,
+    ("North Beach", "Richmond District"): 18,
+    ("North Beach", "Embarcadero"): 6,
+    ("North Beach", "Alamo Square"): 16,
+    ("Russian Hill", "Sunset District"): 23,
+    ("Russian Hill", "Presidio"): 14,
+    ("Russian Hill", "Nob Hill"): 5,
+    ("Russian Hill", "Pacific Heights"): 7,
+    ("Russian Hill", "Mission District"): 16,
+    ("Russian Hill", "Marina District"): 7,
+    ("Russian Hill", "North Beach"): 5,
+    ("Russian Hill", "Richmond District"): 14,
+    ("Russian Hill", "Embarcadero"): 8,
+    ("Russian Hill", "Alamo Square"): 15,
+    ("Richmond District", "Sunset District"): 11,
+    ("Richmond District", "Presidio"): 7,
+    ("Richmond District", "Nob Hill"): 17,
+    ("Richmond District", "Pacific Heights"): 10,
+    ("Richmond District", "Mission District"): 20,
+    ("Richmond District", "Marina District"): 9,
+    ("Richmond District", "North Beach"): 17,
+    ("Richmond District", "Russian Hill"): 13,
+    ("Richmond District", "Embarcadero"): 19,
+    ("Richmond District", "Alamo Square"): 13,
+    ("Embarcadero", "Sunset District"): 30,
+    ("Embarcadero", "Presidio"): 20,
+    ("Embarcadero", "Nob Hill"): 10,
+    ("Embarcadero", "Pacific Heights"): 11,
+    ("Embarcadero", "Mission District"): 20,
+    ("Embarcadero", "Marina District"): 12,
+    ("Embarcadero", "North Beach"): 5,
+    ("Embarcadero", "Russian Hill"): 8,
+    ("Embarcadero", "Richmond District"): 21,
+    ("Embarcadero", "Alamo Square"): 19,
+    ("Alamo Square", "Sunset District"): 16,
+    ("Alamo Square", "Presidio"): 17,
+    ("Alamo Square", "Nob Hill"): 11,
+    ("Alamo Square", "Pacific Heights"): 10,
+    ("Alamo Square", "Mission District"): 10,
+    ("Alamo Square", "Marina District"): 15,
+    ("Alamo Square", "North Beach"): 15,
+    ("Alamo Square", "Russian Hill"): 13,
+    ("Alamo Square", "Richmond District"): 11,
+    ("Alamo Square", "Embarcadero"): 16,
+}
+
+# Friend data: name -> (location, window_start, window_end, min_duration_minutes)
+friends = {
+    "Charles": ("Presidio", parse_time("1:15PM"), parse_time("3:00PM"), 105),
+    "Robert": ("Nob Hill", parse_time("1:15PM"), parse_time("5:30PM"), 90),
+    "Nancy": ("Pacific Heights", parse_time("2:45PM"), parse_time("10:00PM"), 105),
+    "Brian": ("Mission District", parse_time("3:30PM"), parse_time("10:00PM"), 60),
+    "Kimberly": ("Marina District", parse_time("5:00PM"), parse_time("7:45PM"), 75),
+    "David": ("North Beach", parse_time("2:45PM"), parse_time("4:30PM"), 75),
+    "William": ("Russian Hill", parse_time("12:30PM"), parse_time("7:15PM"), 120),
+    "Jeffrey": ("Richmond District", parse_time("12:00PM"), parse_time("7:15PM"), 45),
+    "Karen": ("Embarcadero", parse_time("2:15PM"), parse_time("8:45PM"), 60),
+    "Joshua": ("Alamo Square", parse_time("6:45PM"), parse_time("10:00PM"), 60),
+}
+
+def get_travel_time(from_loc, to_loc):
+    return timedelta(minutes=travel_times.get((from_loc, to_loc), 60))  # fallback large
+
+def schedule_meeting_sequence(sequence, start_time):
+    """Try to schedule given sequence of friend names, return (success, itinerary, total_met, total_minutes)."""
+    current_time = start_time
+    current_location = "Sunset District"
+    itinerary = []
+    total_minutes = 0
+    total_met = 0
+    
+    for friend in sequence:
+        loc, win_start, win_end, min_dur = friends[friend]
+        # Travel to loc
+        travel = get_travel_time(current_location, loc)
+        arrive_time = current_time + travel
+        # If arrive after window ends, cannot meet
+        if arrive_time >= win_end:
+            return False, [], 0, 0
+        # Start meeting at max(arrive_time, win_start)
+        meet_start = max(arrive_time, win_start)
+        if meet_start + timedelta(minutes=min_dur) > win_end:
+            # Cannot meet minimum
+            return False, [], 0, 0
+        # Meet for minimum duration
+        meet_end = meet_start + timedelta(minutes=min_dur)
+        itinerary.append({
+            "action": "meet",
+            "location": loc,
+            "person": friend,
+            "start_time": format_time(meet_start),
+            "end_time": format_time(meet_end)
+        })
+        total_minutes += min_dur
+        total_met += 1
+        current_time = meet_end
+        current_location = loc
+    return True, itinerary, total_met, total_minutes
+
+def main():
+    start_time = parse_time("9:00AM")
+    best_itinerary = []
+    best_score = (-1, -1)  # (total_met, total_minutes)
+    
+    # Try all subsets of friends (size 1 to 10) in all permutations
+    friend_names = list(friends.keys())
+    for r in range(1, len(friend_names) + 1):
+        for perm in itertools.permutations(friend_names, r):
+            success, itinerary, total_met, total_minutes = schedule_meeting_sequence(perm, start_time)
+            if success:
+                score = (total_met, total_minutes)
+                if score > best_score:
+                    best_score = score
+                    best_itinerary = itinerary
+    
+    # Output as JSON
+    result = {"itinerary": best_itinerary}
+    print(json.dumps(result, indent=2))
+
+if __name__ == "__main__":
+    main()

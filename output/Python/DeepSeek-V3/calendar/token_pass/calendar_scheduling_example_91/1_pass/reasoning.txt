@@ -1,0 +1,41 @@
+Let's break this down step-by-step before writing the code.
+
+**Step 1 – Understanding the problem**  
+We have:
+- Work hours: 9:00–17:00 (8 hours total).
+- Meeting duration: 1 hour.
+- Participants: Danielle, Bruce, Eric.
+- Their busy times (inclusive–exclusive style, e.g., 9:00–10:00 means busy from 9:00 to 9:59:59).
+
+**Step 2 – Convert schedules to busy blocks**  
+We can represent each person’s busy times in minutes from 9:00 as start.
+
+Example:  
+9:00 → minute 0  
+10:00 → minute 60  
+17:00 → minute 480 (8 hours after 9:00).
+
+Danielle busy:  
+(0, 60), (90, 120), (330, 360), (390, 420), (450, 480)
+
+Bruce busy:  
+(120, 150), (210, 240), (300, 330), (390, 420)
+
+Eric busy:  
+(0, 30), (60, 120), (150, 240), (330, 420)
+
+**Step 3 – Merge busy times per person**  
+We can merge overlapping intervals for each person to simplify.
+
+**Step 4 – Find free slots for each person**  
+Subtract busy intervals from [0, 480] to get free intervals for each.
+
+**Step 5 – Intersect free intervals of all three**  
+Find common free intervals of length ≥ 60 minutes.
+
+**Step 6 – Choose first available slot**  
+Return in HH:MM–HH:MM format.
+
+---
+
+Here’s the Python script:

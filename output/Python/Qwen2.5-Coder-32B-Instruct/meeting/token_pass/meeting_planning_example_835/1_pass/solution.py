@@ -1,0 +1,93 @@
+import json
+from datetime import datetime, timedelta
+
+# Travel times between locations in minutes
+travel_times = {
+    'Pacific Heights': {'Golden Gate Park': 15, 'The Castro': 16, 'Bayview': 22, 'Marina District': 6, 'Union Square': 12, 'Sunset District': 21, 'Alamo Square': 10, 'Financial District': 13, 'Mission District': 15},
+    'Golden Gate Park': {'Pacific Heights': 16, 'The Castro': 13, 'Bayview': 23, 'Marina District': 16, 'Union Square': 22, 'Sunset District': 10, 'Alamo Square': 9, 'Financial District': 26, 'Mission District': 17},
+    'The Castro': {'Pacific Heights': 16, 'Golden Gate Park': 11, 'Bayview': 19, 'Marina District': 21, 'Union Square': 19, 'Sunset District': 17, 'Alamo Square': 8, 'Financial District': 21, 'Mission District': 7},
+    'Bayview': {'Pacific Heights': 23, 'Golden Gate Park': 22, 'The Castro': 19, 'Marina District': 27, 'Union Square': 18, 'Sunset District': 23, 'Alamo Square': 16, 'Financial District': 19, 'Mission District': 13},
+    'Marina District': {'Pacific Heights': 7, 'Golden Gate Park': 18, 'The Castro': 22, 'Bayview': 27, 'Union Square': 16, 'Sunset District': 19, 'Alamo Square': 15, 'Financial District': 17, 'Mission District': 20},
+    'Union Square': {'Pacific Heights': 15, 'Golden Gate Park': 22, 'The Castro': 17, 'Bayview': 15, 'Marina District': 18, 'Sunset District': 27, 'Alamo Square': 14, 'Financial District': 9, 'Mission District': 14},
+    'Sunset District': {'Pacific Heights': 21, 'Golden Gate Park': 10, 'The Castro': 17, 'Bayview': 22, 'Marina District': 19, 'Union Square': 30, 'Alamo Square': 16, 'Financial District': 30, 'Mission District': 25},
+    'Alamo Square': {'Pacific Heights': 10, 'Golden Gate Park': 9, 'The Castro': 8, 'Bayview': 16, 'Marina District': 15, 'Union Square': 14, 'Sunset District': 16, 'Financial District': 17, 'Mission District': 10},
+    'Financial District': {'Pacific Heights': 13, 'Golden Gate Park': 23, 'The Castro': 20, 'Bayview': 19, 'Marina District': 15, 'Union Square': 9, 'Sunset District': 30, 'Alamo Square': 17, 'Mission District': 17},
+    'Mission District': {'Pacific Heights': 16, 'Golden Gate Park': 17, 'The Castro': 7, 'Bayview': 14, 'Marina District': 19, 'Union Square': 15, 'Sunset District': 24, 'Alamo Square': 11, 'Financial District': 15}
+}
+
+# Meeting constraints
+meetings = [
+    ('Golden Gate Park', 'Helen', '9:30', '12:15', 45),
+    ('The Castro', 'Steven', '20:15', '22:00', 105),
+    ('Bayview', 'Deborah', '8:30', '12:00', 30),
+    ('Marina District', 'Matthew', '9:15', '14:15', 45),
+    ('Union Square', 'Joseph', '14:15', '18:45', 120),
+    ('Sunset District', 'Ronald', '16:00', '20:45', 60),
+    ('Alamo Square', 'Robert', '18:30', '21:15', 120),
+    ('Financial District', 'Rebecca', '14:45', '16:15', 30),
+    ('Mission District', 'Elizabeth', '18:30', '21:00', 120)
+]
+
+def time_to_minutes(time_str):
+    """Convert time in 'H:MM' format to minutes since midnight."""
+    h, m = map(int, time_str.split(':'))
+    return h * 60 + m
+
+def minutes_to_time(minutes):
+    """Convert minutes since midnight to 'H:MM' format."""
+    h, m = divmod(minutes, 60)
+    return f'{h}:{m:02}'
+
+def can_meet(current_location, current_time, meeting):
+    """Check if a meeting can be attended."""
+    location, person, start_str, end_str, required_duration = meeting
+    start_time = time_to_minutes(start_str)
+    end_time = time_to_minutes(end_str)
+    
+    # Calculate travel time
+    travel_time = travel_times[current_location][location]
+    
+    # Check if we can reach the meeting location on time
+    arrival_time = current_time + travel_time
+    if arrival_time > start_time:
+        return False
+    
+    # Check if we have enough time for the meeting
+    meeting_end_time = arrival_time + required_duration
+    if meeting_end_time > end_time:
+        return False
+    
+    return True
+
+def find_optimal_schedule(meetings):
+    """Find the optimal meeting schedule."""
+    meetings.sort(key=lambda x: time_to_minutes(x[2]))  # Sort by start time
+    itinerary = []
+    current_location = 'Pacific Heights'
+    current_time = time_to_minutes('9:00')
+    
+    for meeting in meetings:
+        if can_meet(current_location, current_time, meeting):
+            location, person, start_str, end_str, required_duration = meeting
+            start_time = time_to_minutes(start_str)
+            # Calculate actual meeting end time
+            travel_time = travel_times[current_location][location]
+            meeting_start_time = max(current_time + travel_time, start_time)
+            meeting_end_time = meeting_start_time + required_duration
+            
+            itinerary.append({
+                "action": "meet",
+                "location": location,
+                "person": person,
+                "start_time": minutes_to_time(meeting_start_time),
+                "end_time": minutes_to_time(meeting_end_time)
+            })
+            
+            current_location = location
+            current_time = meeting_end_time
+    
+    return itinerary
+
+optimal_itinerary = find_optimal_schedule(meetings)
+result = {"itinerary": optimal_itinerary}
+print(json.dumps(result, indent=2))

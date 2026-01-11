@@ -1,0 +1,116 @@
+import json
+from itertools import permutations
+
+def solve_puzzle():
+    # Define all possible values for each attribute
+    names = ["Eric", "Arnold"]
+    hobbies = ["gardening", "photography"]
+    pets = ["cat", "dog"]
+    heights = ["short", "very short"]
+    
+    houses = [1, 2]
+    
+    # Generate all possible permutations for each attribute across houses
+    # Since there are 2 houses, each permutation will assign values to house 1 and house 2
+    all_name_perms = list(permutations(names, 2))
+    all_hobby_perms = list(permutations(hobbies, 2))
+    all_pet_perms = list(permutations(pets, 2))
+    all_height_perms = list(permutations(heights, 2))
+    
+    solutions = []
+    
+    # Brute force search through all combinations
+    for name_perm in all_name_perms:
+        for hobby_perm in all_hobby_perms:
+            for pet_perm in all_pet_perms:
+                for height_perm in all_height_perms:
+                    # Build assignment for each house
+                    assignment = {}
+                    valid = True
+                    
+                    for i, house in enumerate(houses):
+                        assignment[house] = {
+                            "Name": name_perm[i],
+                            "Hobby": hobby_perm[i],
+                            "Pet": pet_perm[i],
+                            "Height": height_perm[i]
+                        }
+                    
+                    # Check clue 1: The person who is very short is the photography enthusiast
+                    for house in houses:
+                        if assignment[house]["Height"] == "very short":
+                            if assignment[house]["Hobby"] != "photography":
+                                valid = False
+                                break
+                    if not valid:
+                        continue
+                    
+                    # Check clue 2: Eric is the person who is very short
+                    for house in houses:
+                        if assignment[house]["Name"] == "Eric":
+                            if assignment[house]["Height"] != "very short":
+                                valid = False
+                                break
+                    if not valid:
+                        continue
+                    
+                    # Also ensure that if someone is very short, they must be Eric
+                    for house in houses:
+                        if assignment[house]["Height"] == "very short":
+                            if assignment[house]["Name"] != "Eric":
+                                valid = False
+                                break
+                    if not valid:
+                        continue
+                    
+                    # Check clue 3: The person who has a cat is somewhere to the right of the person who is very short
+                    # Find house of very short person
+                    very_short_house = None
+                    cat_house = None
+                    
+                    for house in houses:
+                        if assignment[house]["Height"] == "very short":
+                            very_short_house = house
+                        if assignment[house]["Pet"] == "cat":
+                            cat_house = house
+                    
+                    # Check if cat is to the right of very short person
+                    if cat_house is not None and very_short_house is not None:
+                        if cat_house <= very_short_house:
+                            valid = False
+                    
+                    if not valid:
+                        continue
+                    
+                    # All clues satisfied, add to solutions
+                    solutions.append(assignment)
+    
+    # Convert solution to required format
+    if solutions:
+        # Take the first valid solution
+        solution = solutions[0]
+        
+        rows = []
+        for house in sorted(solution.keys()):
+            row = [
+                str(house),
+                solution[house]["Name"],
+                solution[house]["Hobby"],
+                solution[house]["Pet"],
+                solution[house]["Height"]
+            ]
+            rows.append(row)
+        
+        result = {
+            "solution": {
+                "header": ["House", "Name", "Hobby", "Pet", "Height"],
+                "rows": rows
+            }
+        }
+        
+        return json.dumps(result, indent=2)
+    else:
+        return json.dumps({"error": "No solution found"}, indent=2)
+
+if __name__ == "__main__":
+    print(solve_puzzle())

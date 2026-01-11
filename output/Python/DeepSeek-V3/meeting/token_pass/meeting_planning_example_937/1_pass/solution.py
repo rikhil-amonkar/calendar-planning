@@ -1,0 +1,1 @@
+Convert minutes since midnight to 'H:MM' format

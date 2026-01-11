@@ -1,0 +1,107 @@
+def time_to_minutes(t):
+    """Convert HH:MM to minutes since midnight."""
+    hours, minutes = map(int, t.split(':'))
+    return hours * 60 + minutes
+
+def minutes_to_time(m):
+    """Convert minutes since midnight to HH:MM."""
+    hours = m // 60
+    minutes = m % 60
+    return f"{hours:02d}:{minutes:02d}"
+
+def parse_schedule(schedule_str):
+    """
+    Parse schedule string into a list of (day, start_min, end_min) tuples.
+    Example: "Monday during 13:00 to 13:30" -> ("Monday", 780, 810)
+    """
+    schedule = []
+    lines = schedule_str.strip().split(';')
+    for line in lines:
+        if not line.strip():
+            continue
+        parts = line.strip().split()
+        day = parts[0]  # Monday, Tuesday, etc.
+        start_time = parts[3]  # HH:MM
+        end_time = parts[5]   # HH:MM
+        schedule.append((day, time_to_minutes(start_time), time_to_minutes(end_time)))
+    return schedule
+
+def find_earliest_meeting(megan_busy, daniel_busy, days, work_start, work_end, duration):
+    """
+    Find earliest meeting slot.
+    megan_busy, daniel_busy: list of (day, start, end) for each person.
+    days: list of days to consider.
+    work_start, work_end: in minutes since midnight.
+    duration: meeting duration in minutes.
+    """
+    for day in days:
+        # Initialize free time for this day as all free
+        timeline = [True] * (work_end - work_start)
+        
+        # Mark Megan's busy times
+        for d, start, end in megan_busy:
+            if d == day:
+                for t in range(max(start, work_start) - work_start, min(end, work_end) - work_start):
+                    if 0 <= t < len(timeline):
+                        timeline[t] = False
+        
+        # Mark Daniel's busy times
+        for d, start, end in daniel_busy:
+            if d == day:
+                for t in range(max(start, work_start) - work_start, min(end, work_end) - work_start):
+                    if 0 <= t < len(timeline):
+                        timeline[t] = False
+        
+        # Find earliest free slot of duration minutes
+        consecutive_free = 0
+        for i in range(len(timeline)):
+            if timeline[i]:
+                consecutive_free += 1
+                if consecutive_free >= duration:
+                    start_minute = work_start + i - duration + 1
+                    end_minute = start_minute + duration
+                    return day, start_minute, end_minute
+            else:
+                consecutive_free = 0
+    return None, None, None
+
+def main():
+    # Meeting constraints
+    days = ["Monday", "Tuesday", "Wednesday", "Thursday"]
+    work_start = time_to_minutes("9:00")
+    work_end = time_to_minutes("17:00")
+    duration = 60  # minutes
+    
+    # Megan's schedule
+    megan_schedule_str = """
+    Monday during 13:00 to 13:30, 14:00 to 15:30, 
+    Tuesday during 9:00 to 9:30, 12:00 to 12:30, 16:00 to 17:00, 
+    Wednesday during 9:30 to 10:00, 10:30 to 11:30, 12:30 to 14:00, 16:00 to 16:30, 
+    Thursday during 13:30 to 14:30, 15:00 to 15:30
+    """
+    
+    # Daniel's schedule
+    daniel_schedule_str = """
+    Monday during 10:00 to 11:30, 12:30 to 15:00, 
+    Tuesday during 9:00 to 10:00, 10:30 to 17:00, 
+    Wednesday during 9:00 to 10:00, 10:30 to 11:30, 12:00 to 17:00, 
+    Thursday during 9:00 to 12:00, 12:30 to 14:30, 15:00 to 15:30, 16:00 to 17:00
+    """
+    
+    megan_busy = parse_schedule(megan_schedule_str)
+    daniel_busy = parse_schedule(daniel_schedule_str)
+    
+    day, start_min, end_min = find_earliest_meeting(
+        megan_busy, daniel_busy, days, work_start, work_end, duration
+    )
+    
+    if day:
+        start_time = minutes_to_time(start_min)
+        end_time = minutes_to_time(end_min)
+        print(f"{day}")
+        print(f"{start_time}:{end_time}")
+    else:
+        print("No suitable time found")
+
+if __name__ == "__main__":
+    main()

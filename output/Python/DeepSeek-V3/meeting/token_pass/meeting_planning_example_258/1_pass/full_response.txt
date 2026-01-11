@@ -1,0 +1,195 @@
+Let’s break this down step by step before writing the code.
+
+**Step 1 – Understanding the problem**  
+We start at Embarcadero at 9:00 AM.  
+We have three friends with availability windows and minimum meeting durations:  
+
+- Betty: Presidio, 10:15–21:30, min 45 min.  
+- David: Richmond District, 13:00–20:15, min 90 min.  
+- Barbara: Fisherman’s Wharf, 9:15–20:15, min 120 min.  
+
+Travel times between locations are given.  
+We want to maximize the number of friends met (or possibly maximize total meeting time within constraints).  
+The problem says “meet as many friends as possible” — so priority is number of friends, not total time.
+
+**Step 2 – Feasibility check**  
+We can try to meet all three.  
+Order matters because travel time eats into available windows.
+
+Possible orders:  
+1. Barbara → Betty → David  
+2. Barbara → David → Betty  
+3. Betty → Barbara → David  
+4. Betty → David → Barbara  
+5. David → Barbara → Betty  
+6. David → Betty → Barbara  
+
+We start at Embarcadero at 9:00.
+
+**Step 3 – Try meeting all three**  
+Let’s test order: Barbara (F) → Betty (P) → David (R).  
+
+- Start at E at 9:00. Travel to F: 6 min → arrive 9:06. Barbara available at 9:15, so wait until 9:15. Meet Barbara from 9:15 to 11:15 (120 min).  
+- Leave F at 11:15, travel to P: 17 min → arrive 11:32. Betty available from 10:15, so we can start meeting at 11:32. Need 45 min → meet until 12:17.  
+- Leave P at 12:17, travel to R: 7 min → arrive 12:24. David available at 13:00, so wait until 13:00. Meet David 90 min → 13:00 to 14:30.  
+All three met. Total day ends at 14:30, well before David’s end time. This works.
+
+Check if any other order also works and maybe finishes earlier or allows longer meetings.
+
+**Step 4 – Check another order**  
+Betty → Barbara → David:  
+- Start E 9:00, travel to P 20 min → arrive 9:20, Betty available at 10:15, wait until 10:15. Meet 45 min → until 11:00.  
+- Leave P at 11:00, travel to F 19 min → arrive 11:19. Barbara available, meet 120 min → until 13:19.  
+- Leave F at 13:19, travel to R 18 min → arrive 13:37. David available at 13:00, so start at 13:37, meet 90 min → until 15:07.  
+Also works, but starts later with Betty.
+
+**Step 5 – Choose optimal**  
+Both orders meet all three. Meeting all three is possible.  
+We should pick the one that maximizes total meeting time or minimizes idle time, but the problem says “as many friends as possible” — so meeting all three is the goal. Any schedule meeting all three is optimal in friend count. We can pick the first feasible one we found.
+
+We’ll implement a search over permutations to find a feasible schedule meeting all three, and if impossible, try meeting two.
+
+**Step 6 – Implementation plan**  
+- Represent time in minutes from midnight for easier arithmetic.  
+- Travel time lookup table.  
+- For each permutation of people, simulate schedule:  
+  1. Start at Embarcadero at 9:00.  
+  2. For each person in order:  
+     - Travel from current location to their location, add travel time to current time.  
+     - If arrival < person’s start window, wait until start time.  
+     - If arrival > person’s end window minus min duration → impossible for this order.  
+     - Schedule meeting: start = max(arrival, person_start), end = start + min_duration.  
+     - Update current location and time.  
+  3. If all scheduled, store itinerary.  
+- Pick first feasible all-three schedule, else try two-person combos.  
+
+**Step 7 – Writing the code**  
+
+```python
+import json
+import itertools
+
+def time_to_minutes(t):
+    """Convert 'H:MM' string to minutes since midnight."""
+    if isinstance(t, str):
+        h, m = map(int, t.split(':'))
+        return h * 60 + m
+    return t
+
+def minutes_to_time(m):
+    """Convert minutes since midnight to 'H:MM' string."""
+    h = m // 60
+    mi = m % 60
+    return f"{h}:{mi:02d}"
+
+def main():
+    # Travel times in minutes between locations
+    travel = {
+        ("Embarcadero", "Presidio"): 20,
+        ("Embarcadero", "Richmond District"): 21,
+        ("Embarcadero", "Fisherman's Wharf"): 6,
+        ("Presidio", "Embarcadero"): 20,
+        ("Presidio", "Richmond District"): 7,
+        ("Presidio", "Fisherman's Wharf"): 19,
+        ("Richmond District", "Embarcadero"): 19,
+        ("Richmond District", "Presidio"): 7,
+        ("Richmond District", "Fisherman's Wharf"): 18,
+        ("Fisherman's Wharf", "Embarcadero"): 8,
+        ("Fisherman's Wharf", "Presidio"): 17,
+        ("Fisherman's Wharf", "Richmond District"): 18,
+    }
+
+    # Friend data: name, location, start, end, min_duration
+    friends = [
+        ("Betty", "Presidio", "10:15", "21:30", 45),
+        ("David", "Richmond District", "13:00", "20:15", 90),
+        ("Barbara", "Fisherman's Wharf", "9:15", "20:15", 120),
+    ]
+
+    # Convert times to minutes
+    friends_min = []
+    for name, loc, start, end, dur in friends:
+        friends_min.append((name, loc, time_to_minutes(start), time_to_minutes(end), dur))
+
+    start_loc = "Embarcadero"
+    start_time = time_to_minutes("9:00")
+
+    best_itinerary = []
+    max_met = 0
+
+    # Try meeting all 3 first
+    for perm in itertools.permutations(range(3)):
+        current_loc = start_loc
+        current_time = start_time
+        itinerary = []
+        possible = True
+        for idx in perm:
+            name, loc, f_start, f_end, dur = friends_min[idx]
+            # Travel to friend's location
+            travel_time = travel[(current_loc, loc)]
+            arrive = current_time + travel_time
+            # Wait if early
+            start_meeting = max(arrive, f_start)
+            # Check if enough time before friend leaves
+            if start_meeting + dur > f_end:
+                possible = False
+                break
+            end_meeting = start_meeting + dur
+            itinerary.append((name, loc, start_meeting, end_meeting))
+            current_loc = loc
+            current_time = end_meeting
+        if possible:
+            if len(itinerary) > max_met:
+                max_met = len(itinerary)
+                best_itinerary = itinerary
+            # If we met all 3, we can stop searching permutations
+            if len(itinerary) == 3:
+                break
+
+    # If all 3 not possible, try subsets of size 2
+    if max_met < 3:
+        best_itinerary = []
+        max_met = 0
+        for perm in itertools.permutations(range(3), 2):
+            current_loc = start_loc
+            current_time = start_time
+            itinerary = []
+            possible = True
+            for idx in perm:
+                name, loc, f_start, f_end, dur = friends_min[idx]
+                travel_time = travel[(current_loc, loc)]
+                arrive = current_time + travel_time
+                start_meeting = max(arrive, f_start)
+                if start_meeting + dur > f_end:
+                    possible = False
+                    break
+                end_meeting = start_meeting + dur
+                itinerary.append((name, loc, start_meeting, end_meeting))
+                current_loc = loc
+                current_time = end_meeting
+            if possible and len(itinerary) > max_met:
+                max_met = len(itinerary)
+                best_itinerary = itinerary
+
+    # Format output
+    result = {"itinerary": []}
+    for name, loc, start_m, end_m in best_itinerary:
+        result["itinerary"].append({
+            "action": "meet",
+            "location": loc,
+            "person": name,
+            "start_time": minutes_to_time(start_m),
+            "end_time": minutes_to_time(end_m)
+        })
+
+    print(json.dumps(result, indent=2))
+
+if __name__ == "__main__":
+    main()
+```
+
+**Step 8 – Expected output**  
+Running this will output a feasible schedule meeting all three friends, likely the Barbara → Betty → David order we computed earlier.
+
+SOLUTION:  
+The program systematically searches permutations of meetings to maximize the number of friends met, accounting for travel times and time windows. It outputs the itinerary in the required JSON format.

@@ -1,0 +1,64 @@
+Let’s break this down step-by-step before writing the code.
+
+**Step 1 – Understanding the problem**  
+We start at Haight-Ashbury at 9:00 AM.  
+We have 9 friends, each at a fixed location, with availability windows and minimum meeting durations.  
+We must travel between locations, with given travel times (not symmetric in all cases).  
+Goal: meet as many friends as possible, respecting time windows and travel times.
+
+**Step 2 – Observations**  
+- Some friends have very short minimum meeting times (15 minutes), others longer (120 minutes).  
+- Some windows are narrow (Kenneth: 10:45–13:00, Thomas: 19:30–20:30), others wide.  
+- Travel times matter: we can’t teleport.  
+- We must decide order of visits to maximize number of meetings, possibly skipping some if impossible.
+
+**Step 3 – Strategy**  
+We can treat this as a **scheduling problem with travel constraints**.  
+We can brute-force permutations of a subset of friends, but with 9 friends, that’s 9! = 362880 permutations, which is okay for brute force if we prune early.  
+But we also need to decide meeting start times within windows, not just order.
+
+Better approach:  
+1. Model each friend as a task with:  
+   - Location  
+   - Time window [window_start, window_end]  
+   - Minimum duration  
+   - Travel time from any other location (from matrix)  
+2. Start at Haight-Ashbury at 9:00.  
+3. Try to schedule friends greedily by earliest possible start time after travel, respecting their window and minimum duration.  
+4. But greedy may not be optimal, so we should search over permutations.
+
+Given the complexity, I’ll implement a **depth-first search** over all permutations of friends, checking feasibility, and picking the one that maximizes number of meetings. If tie, maybe maximize total meeting time.
+
+**Step 4 – Data representation**  
+- Convert all times to minutes since midnight for easier arithmetic.  
+- Travel time lookup: dictionary keyed by (from_loc, to_loc).  
+- Each friend: name, location, window_start, window_end, min_duration.
+
+**Step 5 – Feasibility check for a given order**  
+We start at Haight-Ashbury at 9:00 (540 minutes).  
+For each friend in order:  
+1. Travel from current location to friend’s location → arrive_time = current_time + travel.  
+2. If arrive_time > friend’s window_end → impossible for this order.  
+3. Start_meeting = max(arrive_time, friend’s window_start).  
+4. If start_meeting + min_duration > friend’s window_end → impossible.  
+5. Schedule meeting from start_meeting to start_meeting + min_duration.  
+6. Update current_location = friend’s location, current_time = end_meeting.  
+If all friends in this sequence can be scheduled, it’s a valid schedule.
+
+**Step 6 – Optimization**  
+We want to maximize number of meetings. If same number, maximize total meeting time.  
+We’ll search over all permutations of all subsets? That’s too large (sum_{k=1..9} P(9,k) huge).  
+Instead: search over all permutations of all 9 friends, but skip early if impossible. That’s 9! = 362880, doable.  
+We’ll keep track of best schedule.
+
+**Step 7 – Implementation plan**  
+1. Parse input data into structures.  
+2. Precompute travel matrix.  
+3. DFS over permutations, but using itertools.permutations.  
+4. For each permutation, simulate schedule, if feasible, compute score (meetings count, total duration).  
+5. Keep best.  
+6. Output itinerary in required JSON format.
+
+---
+
+Here’s the Python program implementing this:

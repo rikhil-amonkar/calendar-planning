@@ -1,0 +1,75 @@
+<reasoning>
+To solve this Zebra logic puzzle programmatically, we need to follow these steps:
+
+1. **Define the Variables and Constraints:**
+   - We have two houses, numbered 1 and 2.
+   - Two people: Eric and Arnold.
+   - Two book genres: science fiction and mystery.
+   - The constraint is that Eric is directly left of the person who loves mystery books.
+
+2. **Represent Possible Assignments:**
+   - Since there are only two houses and two people, we can represent the possible assignments in a simple way.
+   - Each assignment will be a tuple of (house_number, person_name, book_genre).
+
+3. **Apply the Constraint:**
+   - We need to check which of the possible assignments satisfy the constraint: Eric is directly left of the person who loves mystery books.
+   - This means if Eric is in house 1, the person in house 2 must love mystery books.
+
+4. **Generate All Possible Combinations:**
+   - Generate all possible combinations of people and book genres for the two houses.
+   - Filter out the combinations that do not satisfy the given constraint.
+
+5. **Format the Output:**
+   - Once we find the valid combination, format it into the required JSON structure.
+
+6. **Output the Solution:**
+   - Print the solution in JSON format.
+</reasoning>
+
+```python
+import itertools
+import json
+
+def solve_puzzle():
+    # Define the constants
+    houses = ['1', '2']
+    people = ['Eric', 'Arnold']
+    book_genres = ['science fiction', 'mystery']
+
+    # Generate all possible permutations of people and book genres
+    all_permutations = list(itertools.permutations(people))
+    all_book_permutations = list(itertools.permutations(book_genres))
+
+    # Initialize the solution variable
+    solution = None
+
+    # Check each permutation to see if it satisfies the constraint
+    for people_order in all_permutations:
+        for book_order in all_book_permutations:
+            # Create a list of tuples (house, person, book_genre)
+            assignments = list(zip(houses, people_order, book_order))
+            
+            # Check the constraint: Eric is directly left of the person who loves mystery books
+            if assignments[0][1] == 'Eric' and assignments[1][2] == 'mystery':
+                solution = assignments
+                break
+        if solution:
+            break
+
+    # Format the solution into the required JSON structure
+    if solution:
+        result = {
+            "solution": {
+                "header": ["House", "Name", "BookGenre"],
+                "rows": [list(row) for row in solution]
+            }
+        }
+        return json.dumps(result, indent=2)
+    else:
+        return json.dumps({"solution": "No solution found"}, indent=2)
+
+# Solve the puzzle and print the result
+print(solve_puzzle())
+```
+
+This code generates all possible permutations of people and book genres for the two houses, checks each permutation against the given constraint, and formats the valid solution into the required JSON structure. When executed, it outputs the solution in the correct format.

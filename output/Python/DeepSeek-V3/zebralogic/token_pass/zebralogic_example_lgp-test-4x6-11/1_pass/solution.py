@@ -1,0 +1,146 @@
+import json
+from itertools import permutations
+
+def solve():
+    # Define all possible values
+    names = ["Peter", "Alice", "Eric", "Arnold"]
+    hobbies = ["cooking", "painting", "gardening", "photography"]
+    animals = ["horse", "fish", "cat", "bird"]
+    books = ["fantasy", "mystery", "romance", "science fiction"]
+    birthdays = ["april", "jan", "sept", "feb"]
+    music = ["pop", "rock", "classical", "jazz"]
+    
+    houses = [1, 2, 3, 4]
+    
+    # Try all permutations for each category
+    for name_perm in permutations(names, 4):
+        for hobby_perm in permutations(hobbies, 4):
+            for animal_perm in permutations(animals, 4):
+                for book_perm in permutations(books, 4):
+                    for birthday_perm in permutations(birthdays, 4):
+                        for music_perm in permutations(music, 4):
+                            # Create assignment dictionaries
+                            assignment = {}
+                            for i in range(4):
+                                assignment[houses[i]] = {
+                                    'name': name_perm[i],
+                                    'hobby': hobby_perm[i],
+                                    'animal': animal_perm[i],
+                                    'book': book_perm[i],
+                                    'birthday': birthday_perm[i],
+                                    'music': music_perm[i]
+                                }
+                            
+                            # Check all clues
+                            # 1. The person who loves cooking is the person who loves romance books.
+                            cooking_houses = [h for h in houses if assignment[h]['hobby'] == 'cooking']
+                            romance_houses = [h for h in houses if assignment[h]['book'] == 'romance']
+                            if cooking_houses != romance_houses:
+                                continue
+                            
+                            # 2. The person whose birthday is in February is the person who loves pop music.
+                            feb_houses = [h for h in houses if assignment[h]['birthday'] == 'feb']
+                            pop_houses = [h for h in houses if assignment[h]['music'] == 'pop']
+                            if feb_houses != pop_houses:
+                                continue
+                            
+                            # 3. Eric is not in the second house.
+                            if assignment[2]['name'] == 'Eric':
+                                continue
+                            
+                            # 4. The person who loves romance books is not in the fourth house.
+                            if assignment[4]['book'] == 'romance':
+                                continue
+                            
+                            # 5. The person whose birthday is in February is the fish enthusiast.
+                            fish_houses = [h for h in houses if assignment[h]['animal'] == 'fish']
+                            if feb_houses != fish_houses:
+                                continue
+                            
+                            # 6. Alice is somewhere to the right of the person who loves fantasy books.
+                            alice_house = [h for h in houses if assignment[h]['name'] == 'Alice'][0]
+                            fantasy_house = [h for h in houses if assignment[h]['book'] == 'fantasy'][0]
+                            if alice_house <= fantasy_house:
+                                continue
+                            
+                            # 7. The person who keeps horses is the person who loves rock music.
+                            horse_houses = [h for h in houses if assignment[h]['animal'] == 'horse']
+                            rock_houses = [h for h in houses if assignment[h]['music'] == 'rock']
+                            if horse_houses != rock_houses:
+                                continue
+                            
+                            # 8. The person who enjoys gardening is the person whose birthday is in April.
+                            garden_houses = [h for h in houses if assignment[h]['hobby'] == 'gardening']
+                            april_houses = [h for h in houses if assignment[h]['birthday'] == 'april']
+                            if garden_houses != april_houses:
+                                continue
+                            
+                            # 9. The person who loves jazz music is the person who loves cooking.
+                            jazz_houses = [h for h in houses if assignment[h]['music'] == 'jazz']
+                            if jazz_houses != cooking_houses:
+                                continue
+                            
+                            # 10. The person who loves rock music is the person who loves mystery books.
+                            mystery_houses = [h for h in houses if assignment[h]['book'] == 'mystery']
+                            if rock_houses != mystery_houses:
+                                continue
+                            
+                            # 11. The person who paints as a hobby is directly left of the person who loves romance books.
+                            painting_house = [h for h in houses if assignment[h]['hobby'] == 'painting'][0]
+                            romance_house = [h for h in houses if assignment[h]['book'] == 'romance'][0]
+                            if painting_house + 1 != romance_house:
+                                continue
+                            
+                            # 12. Peter is the person who loves pop music.
+                            peter_house = [h for h in houses if assignment[h]['name'] == 'Peter'][0]
+                            if peter_house != pop_houses[0]:
+                                continue
+                            
+                            # 13. The person who enjoys gardening is Arnold.
+                            if assignment[garden_houses[0]]['name'] != 'Arnold':
+                                continue
+                            
+                            # 14. The person who loves rock music is directly left of the person whose birthday is in January.
+                            jan_house = [h for h in houses if assignment[h]['birthday'] == 'jan'][0]
+                            if rock_houses[0] + 1 != jan_house:
+                                continue
+                            
+                            # 15. The person who loves cooking is not in the third house.
+                            if assignment[3]['hobby'] == 'cooking':
+                                continue
+                            
+                            # 16. The cat lover is somewhere to the right of the person who keeps horses.
+                            cat_house = [h for h in houses if assignment[h]['animal'] == 'cat'][0]
+                            if cat_house <= horse_houses[0]:
+                                continue
+                            
+                            # All constraints satisfied - found solution
+                            result = {
+                                "solution": {
+                                    "header": ["House", "Name", "Hobby", "Animal", "BookGenre", "Birthday", "MusicGenre"],
+                                    "rows": []
+                                }
+                            }
+                            
+                            for house in houses:
+                                row = [
+                                    str(house),
+                                    assignment[house]['name'],
+                                    assignment[house]['hobby'],
+                                    assignment[house]['animal'],
+                                    assignment[house]['book'],
+                                    assignment[house]['birthday'],
+                                    assignment[house]['music']
+                                ]
+                                result["solution"]["rows"].append(row)
+                            
+                            return result
+    
+    return None
+
+if __name__ == "__main__":
+    solution = solve()
+    if solution:
+        print(json.dumps(solution, indent=2))
+    else:
+        print(json.dumps({"error": "No solution found"}, indent=2))

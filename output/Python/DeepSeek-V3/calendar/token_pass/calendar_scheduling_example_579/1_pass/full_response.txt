@@ -1,0 +1,130 @@
+Let’s break this down step by step before writing the code.  
+
+**Constraints given:**  
+- Work hours: 9:00–17:00 Monday.  
+- Meeting duration: 30 minutes.  
+- **Christine’s Monday meetings:** 11:00–11:30, 15:00–15:30.  
+- **Helen’s Monday blocked times:** 9:30–10:30, 11:00–11:30, 12:00–12:30, 13:30–16:00, 16:30–17:00.  
+- **Helen cannot meet after 15:00** (so her availability ends at 15:00).  
+
+---
+
+**Step 1 – Interpret Helen’s availability**  
+Helen’s blocked times mean she is busy during those intervals.  
+But the note “Helen cannot meet after 15:00” means even if her calendar shows availability after 15:00, we cannot schedule after 15:00.  
+So her available slots within 9:00–15:00, excluding her blocked times, are:  
+
+From 9:00–9:30 (free)  
+From 10:30–11:00 (free)  
+From 11:30–12:00 (free)  
+From 12:30–13:30 (free)  
+From 13:30–16:00 is blocked, so no slot there.  
+But wait — 13:30–16:00 is blocked, so after 12:30 she is busy until 16:00 (but 15:00 is her cutoff anyway).  
+So actually:  
+- 12:30–13:30 is free? Let’s check: Helen’s blocked times: 12:00–12:30, then 13:30–16:00.  
+So between 12:30 and 13:30 she is free. Yes.  
+
+So Helen’s free slots within 9:00–15:00:  
+1. 9:00–9:30  
+2. 10:30–11:00  
+3. 11:30–12:00  
+4. 12:30–13:30  
+
+---
+
+**Step 2 – Christine’s availability within 9:00–15:00**  
+Christine’s meetings: 11:00–11:30, 15:00–15:30.  
+So Christine’s free slots within 9:00–15:00:  
+1. 9:00–11:00  
+2. 11:30–15:00  
+
+---
+
+**Step 3 – Find overlap of 30 minutes**  
+
+Let’s check each of Helen’s free slots against Christine’s free time:  
+
+1. **9:00–9:30** (Helen) vs Christine free 9:00–11:00 → overlap 9:00–9:30 → 30 minutes → works.  
+2. **10:30–11:00** (Helen) vs Christine free 9:00–11:00 → overlap 10:30–11:00 → 30 minutes → works.  
+3. **11:30–12:00** (Helen) vs Christine free 11:30–15:00 → overlap 11:30–12:00 → 30 minutes → works.  
+4. **12:30–13:30** (Helen) vs Christine free 11:30–15:00 → overlap 12:30–13:30 → 1 hour → can pick 12:30–13:00 or 13:00–13:30.  
+
+Any of these work. The earliest is 9:00–9:30.  
+
+---
+
+**Step 4 – Write Python code to find earliest slot**  
+
+We’ll represent times in minutes from 9:00 (540 minutes from midnight).  
+
+```python
+def time_to_min(t):
+    h, m = map(int, t.split(':'))
+    return h * 60 + m
+
+def min_to_time(m):
+    h = m // 60
+    mi = m % 60
+    return f"{h:02d}:{mi:02d}"
+
+# Work hours
+work_start = time_to_min("9:00")
+work_end = time_to_min("17:00")
+
+# Christine's meetings
+christine_meetings = [
+    (time_to_min("11:00"), time_to_min("11:30")),
+    (time_to_min("15:00"), time_to_min("15:30"))
+]
+
+# Helen's blocked times
+helen_blocked = [
+    (time_to_min("9:30"), time_to_min("10:30")),
+    (time_to_min("11:00"), time_to_min("11:30")),
+    (time_to_min("12:00"), time_to_min("12:30")),
+    (time_to_min("13:30"), time_to_min("16:00")),
+    (time_to_min("16:30"), time_to_min("17:00"))
+]
+
+# Helen cannot meet after 15:00
+helen_end_availability = time_to_min("15:00")
+
+# Generate free slots for Christine within work hours
+def get_free_slots(busy_slots, start, end):
+    free = []
+    current = start
+    for bs, be in sorted(busy_slots):
+        if current < bs:
+            free.append((current, bs))
+        current = max(current, be)
+    if current < end:
+        free.append((current, end))
+    return free
+
+christine_free = get_free_slots(christine_meetings, work_start, work_end)
+helen_free = get_free_slots(helen_blocked, work_start, work_end)
+
+# Apply Helen's "cannot meet after 15:00" constraint
+helen_free = [(s, min(e, helen_end_availability)) for s, e in helen_free if s < helen_end_availability]
+
+# Find overlapping 30-minute slots
+meeting_duration = 30
+possible_slots = []
+
+for c_start, c_end in christine_free:
+    for h_start, h_end in helen_free:
+        overlap_start = max(c_start, h_start)
+        overlap_end = min(c_end, h_end)
+        if overlap_end - overlap_start >= meeting_duration:
+            possible_slots.append((overlap_start, overlap_end))
+
+# Pick earliest slot
+if possible_slots:
+    # Sort by start time
+    possible_slots.sort(key=lambda x: x[0])
+    chosen_start = possible_slots[0][0]
+    chosen_end = chosen_start + meeting_duration
+    print(f"Monday {min_to_time(chosen_start)}:{min_to_time(chosen_end)}")
+else:
+    print("No slot found")
+```

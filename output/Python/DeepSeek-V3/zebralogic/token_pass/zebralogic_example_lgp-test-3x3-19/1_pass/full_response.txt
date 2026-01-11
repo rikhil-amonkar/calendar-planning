@@ -1,0 +1,80 @@
+```python
+import json
+from itertools import permutations
+
+def solve_puzzle():
+    # Define possible values
+    names = ["Eric", "Arnold", "Peter"]
+    smoothies = ["desert", "watermelon", "cherry"]
+    genres = ["science fiction", "romance", "mystery"]
+    houses = [1, 2, 3]
+    
+    # Generate all possible permutations
+    for name_perm in permutations(names, 3):
+        for smoothie_perm in permutations(smoothies, 3):
+            for genre_perm in permutations(genres, 3):
+                # Create assignment: house i gets name_perm[i-1], etc.
+                assignment = {}
+                valid = True
+                
+                # Check clue 5: Peter is in the first house
+                if name_perm[0] != "Peter":
+                    continue
+                
+                # Check clue 2: Arnold is the person who loves mystery books
+                # Find Arnold's house
+                arnold_house = None
+                mystery_house = None
+                for i in range(3):
+                    if name_perm[i] == "Arnold":
+                        arnold_house = i + 1
+                    if genre_perm[i] == "mystery":
+                        mystery_house = i + 1
+                if arnold_house != mystery_house:
+                    continue
+                
+                # Check clue 3: The person who loves science fiction books is not in the first house
+                if genre_perm[0] == "science fiction":
+                    continue
+                
+                # Check clue 4: The Desert smoothie lover is directly left of the person who loves mystery books
+                desert_house = None
+                for i in range(3):
+                    if smoothie_perm[i] == "desert":
+                        desert_house = i + 1
+                if desert_house is None or desert_house + 1 != mystery_house:
+                    continue
+                
+                # Check clue 1: The person who likes Cherry smoothies is somewhere to the left of the person who loves mystery books
+                cherry_house = None
+                for i in range(3):
+                    if smoothie_perm[i] == "cherry":
+                        cherry_house = i + 1
+                if cherry_house is None or cherry_house >= mystery_house:
+                    continue
+                
+                # All constraints satisfied - build solution
+                solution = []
+                for i in range(3):
+                    solution.append([
+                        str(i + 1),
+                        name_perm[i],
+                        smoothie_perm[i],
+                        genre_perm[i]
+                    ])
+                
+                # Return as JSON
+                result = {
+                    "solution": {
+                        "header": ["House", "Name", "Smoothie", "BookGenre"],
+                        "rows": solution
+                    }
+                }
+                return json.dumps(result, indent=2)
+    
+    # If no solution found (shouldn't happen with valid puzzle)
+    return json.dumps({"error": "No solution found"})
+
+if __name__ == "__main__":
+    print(solve_puzzle())
+```

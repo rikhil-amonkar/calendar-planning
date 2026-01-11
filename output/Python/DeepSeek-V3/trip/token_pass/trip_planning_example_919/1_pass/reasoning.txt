@@ -1,0 +1,48 @@
+Let's break this down step by step before jumping into the code.
+
+**Constraints recap:**
+- Total days: 15
+- Cities & required days:
+  - Vienna: 4 days (must include day 1 and day 4 for conference)
+  - Milan: 2 days
+  - Rome: 3 days
+  - Riga: 2 days
+  - Lisbon: 3 days (must be between day 11 and day 13 inclusive)
+  - Vilnius: 4 days
+  - Oslo: 3 days (must be between day 13 and day 15 inclusive)
+
+**Direct flights list** (interpreted as bidirectional except where "from X to Y" is specified — but here all seem bidirectional except one, but we'll treat as bidirectional for simplicity unless otherwise stated; the given "from Rome to Riga" likely means Rome→Riga exists, but we'll assume symmetry for planning unless impossible).
+
+**Approach:**
+We need to schedule 7 stays in 15 days, with fixed constraints on certain days for certain cities.  
+We can treat this as a **constraint satisfaction problem** with a sequence of cities, each stay lasting a certain number of days, flights possible between consecutive cities.
+
+We'll brute-force search over permutations of stays (each stay = city + duration) that match total days = 15, match required durations per city, match fixed day constraints, and have direct flights between consecutive cities.
+
+**Fixed day constraints mean:**
+- Day 1: Vienna
+- Day 4: Vienna
+- Days 11–13: Lisbon
+- Days 13–15: Oslo
+
+Wait — Days 13–15 Oslo and Days 11–13 Lisbon overlap on day 13. That means day 13 must be in both Lisbon and Oslo — impossible unless it's a travel day.  
+But the rule says: if you fly from A to B on day X, you are in both A and B on day X. So day 13 could be a travel day Lisbon → Oslo, satisfying both constraints (day 13 counts for Lisbon and Oslo). That’s allowed.
+
+Similarly, day 4 in Vienna means Vienna on day 4, but could be travel from/to Vienna on that day.
+
+**We'll implement:**
+1. Represent each stay as (city, start_day, end_day inclusive).
+2. Enforce fixed days:  
+   - Day 1 in Vienna → first stay must include day 1 and be Vienna.  
+   - Day 4 in Vienna → some stay includes day 4 and is Vienna.  
+   - Days 11–13 in Lisbon → some stay covers all days 11,12,13 and is Lisbon.  
+   - Days 13–15 in Oslo → some stay covers all days 13,14,15 and is Oslo.  
+   But day 13 appears in both Lisbon and Oslo stays → that’s only possible if Lisbon stay ends day 13 and Oslo starts day 13 (same day travel).
+3. So Lisbon stay: end_day = 13, start_day = 11 (3 days: 11,12,13).  
+   Oslo stay: start_day = 13, end_day = 15 (3 days: 13,14,15).  
+   So day 13 is travel Lisbon→Oslo.
+4. Vienna: must total 4 days, includes day 1 and day 4. Could be split into two stays? Possibly, but simpler to keep as one stay covering both day 1 and day 4.  
+   Minimal start day = 1, maximal end day = something >4, but must fit other cities before/after.
+5. We'll search over sequences of stays (order of cities) with given durations, flights allowed between consecutive.
+
+**Flight graph** (bidirectional):

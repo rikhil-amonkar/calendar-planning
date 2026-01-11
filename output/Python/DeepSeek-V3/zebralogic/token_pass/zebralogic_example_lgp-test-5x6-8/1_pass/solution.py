@@ -1,0 +1,272 @@
+import json
+from itertools import permutations
+
+def solve():
+    # Define all possible values for each category
+    names = ["Eric", "Peter", "Arnold", "Bob", "Alice"]
+    styles = ["modern", "craftsman", "ranch", "victorian", "colonial"]
+    mothers = ["Penny", "Kailyn", "Holly", "Janelle", "Aniya"]
+    phones = ["oneplus 9", "google pixel 6", "huawei p50", "iphone 13", "samsung galaxy s21"]
+    drinks = ["coffee", "water", "root beer", "tea", "milk"]
+    animals = ["fish", "dog", "horse", "bird", "cat"]
+    
+    houses = [1, 2, 3, 4, 5]
+    
+    # Generate all permutations for each category
+    for name_perm in permutations(names, 5):
+        for style_perm in permutations(styles, 5):
+            for mother_perm in permutations(mothers, 5):
+                for phone_perm in permutations(phones, 5):
+                    for drink_perm in permutations(drinks, 5):
+                        for animal_perm in permutations(animals, 5):
+                            # Create assignment dictionaries
+                            assignment = {}
+                            for i in range(5):
+                                assignment[i] = {
+                                    'house': i+1,
+                                    'name': name_perm[i],
+                                    'style': style_perm[i],
+                                    'mother': mother_perm[i],
+                                    'phone': phone_perm[i],
+                                    'drink': drink_perm[i],
+                                    'animal': animal_perm[i]
+                                }
+                            
+                            # Check all clues
+                            valid = True
+                            
+                            # 1. Google Pixel 6 not in first house
+                            if assignment[0]['phone'] == 'google pixel 6':
+                                valid = False
+                                continue
+                            
+                            # 2. Water drinker is Alice
+                            for i in range(5):
+                                if assignment[i]['drink'] == 'water' and assignment[i]['name'] != 'Alice':
+                                    valid = False
+                                    break
+                                if assignment[i]['name'] == 'Alice' and assignment[i]['drink'] != 'water':
+                                    valid = False
+                                    break
+                            if not valid:
+                                continue
+                            
+                            # 3. Colonial is somewhere to the right of Huawei P50
+                            huawei_house = None
+                            colonial_house = None
+                            for i in range(5):
+                                if assignment[i]['phone'] == 'huawei p50':
+                                    huawei_house = i+1
+                                if assignment[i]['style'] == 'colonial':
+                                    colonial_house = i+1
+                            if not (huawei_house and colonial_house and colonial_house > huawei_house):
+                                valid = False
+                                continue
+                            
+                            # 4. Horse keeper uses OnePlus 9
+                            for i in range(5):
+                                if assignment[i]['animal'] == 'horse' and assignment[i]['phone'] != 'oneplus 9':
+                                    valid = False
+                                    break
+                                if assignment[i]['phone'] == 'oneplus 9' and assignment[i]['animal'] != 'horse':
+                                    valid = False
+                                    break
+                            if not valid:
+                                continue
+                            
+                            # 5. Ranch style = mother Kailyn
+                            for i in range(5):
+                                if assignment[i]['style'] == 'ranch' and assignment[i]['mother'] != 'Kailyn':
+                                    valid = False
+                                    break
+                                if assignment[i]['mother'] == 'Kailyn' and assignment[i]['style'] != 'ranch':
+                                    valid = False
+                                    break
+                            if not valid:
+                                continue
+                            
+                            # 6. Root beer lover = cat lover
+                            for i in range(5):
+                                if assignment[i]['drink'] == 'root beer' and assignment[i]['animal'] != 'cat':
+                                    valid = False
+                                    break
+                                if assignment[i]['animal'] == 'cat' and assignment[i]['drink'] != 'root beer':
+                                    valid = False
+                                    break
+                            if not valid:
+                                continue
+                            
+                            # 7. Colonial not in fourth house
+                            if assignment[3]['style'] == 'colonial':
+                                valid = False
+                                continue
+                            
+                            # 8. Bird keeper in fourth house
+                            if assignment[3]['animal'] != 'bird':
+                                valid = False
+                                continue
+                            
+                            # 9. Tea drinker is Bob
+                            for i in range(5):
+                                if assignment[i]['drink'] == 'tea' and assignment[i]['name'] != 'Bob':
+                                    valid = False
+                                    break
+                                if assignment[i]['name'] == 'Bob' and assignment[i]['drink'] != 'tea':
+                                    valid = False
+                                    break
+                            if not valid:
+                                continue
+                            
+                            # 10. Tea drinker is somewhere to the right of mother Kailyn
+                            tea_house = None
+                            kailyn_house = None
+                            for i in range(5):
+                                if assignment[i]['drink'] == 'tea':
+                                    tea_house = i+1
+                                if assignment[i]['mother'] == 'Kailyn':
+                                    kailyn_house = i+1
+                            if not (tea_house and kailyn_house and tea_house > kailyn_house):
+                                valid = False
+                                continue
+                            
+                            # 11. Root beer lover is somewhere to the left of mother Kailyn
+                            root_beer_house = None
+                            for i in range(5):
+                                if assignment[i]['drink'] == 'root beer':
+                                    root_beer_house = i+1
+                                    break
+                            if not (root_beer_house and root_beer_house < kailyn_house):
+                                valid = False
+                                continue
+                            
+                            # 12. Horse keeper is in modern-style house
+                            for i in range(5):
+                                if assignment[i]['animal'] == 'horse' and assignment[i]['style'] != 'modern':
+                                    valid = False
+                                    break
+                                if assignment[i]['style'] == 'modern' and assignment[i]['animal'] != 'horse':
+                                    valid = False
+                                    break
+                            if not valid:
+                                continue
+                            
+                            # 13. iPhone 13 user likes milk
+                            for i in range(5):
+                                if assignment[i]['phone'] == 'iphone 13' and assignment[i]['drink'] != 'milk':
+                                    valid = False
+                                    break
+                                if assignment[i]['drink'] == 'milk' and assignment[i]['phone'] != 'iphone 13':
+                                    valid = False
+                                    break
+                            if not valid:
+                                continue
+                            
+                            # 14. Dog owner likes milk
+                            for i in range(5):
+                                if assignment[i]['animal'] == 'dog' and assignment[i]['drink'] != 'milk':
+                                    valid = False
+                                    break
+                                if assignment[i]['drink'] == 'milk' and assignment[i]['animal'] != 'dog':
+                                    valid = False
+                                    break
+                            if not valid:
+                                continue
+                            
+                            # 15. Google Pixel 6 user is in Craftsman-style house
+                            for i in range(5):
+                                if assignment[i]['phone'] == 'google pixel 6' and assignment[i]['style'] != 'craftsman':
+                                    valid = False
+                                    break
+                                if assignment[i]['style'] == 'craftsman' and assignment[i]['phone'] != 'google pixel 6':
+                                    valid = False
+                                    break
+                            if not valid:
+                                continue
+                            
+                            # 16. Eric is not in the second house
+                            if assignment[1]['name'] == 'Eric':
+                                valid = False
+                                continue
+                            
+                            # 17. Tea drinker is in the fourth house
+                            if assignment[3]['drink'] != 'tea':
+                                valid = False
+                                continue
+                            
+                            # 18. Horse keeper is in the third house
+                            if assignment[2]['animal'] != 'horse':
+                                valid = False
+                                continue
+                            
+                            # 19. Modern-style house = mother Penny
+                            for i in range(5):
+                                if assignment[i]['style'] == 'modern' and assignment[i]['mother'] != 'Penny':
+                                    valid = False
+                                    break
+                                if assignment[i]['mother'] == 'Penny' and assignment[i]['style'] != 'modern':
+                                    valid = False
+                                    break
+                            if not valid:
+                                continue
+                            
+                            # 20. Root beer lover is Peter
+                            for i in range(5):
+                                if assignment[i]['drink'] == 'root beer' and assignment[i]['name'] != 'Peter':
+                                    valid = False
+                                    break
+                                if assignment[i]['name'] == 'Peter' and assignment[i]['drink'] != 'root beer':
+                                    valid = False
+                                    break
+                            if not valid:
+                                continue
+                            
+                            # 21. Mother Aniya is not in the fourth house
+                            if assignment[3]['mother'] == 'Aniya':
+                                valid = False
+                                continue
+                            
+                            # 22. Mother Janelle is the water drinker
+                            for i in range(5):
+                                if assignment[i]['mother'] == 'Janelle' and assignment[i]['drink'] != 'water':
+                                    valid = False
+                                    break
+                                if assignment[i]['drink'] == 'water' and assignment[i]['mother'] != 'Janelle':
+                                    valid = False
+                                    break
+                            if not valid:
+                                continue
+                            
+                            # If we get here, all clues are satisfied
+                            # Prepare the solution in required format
+                            solution = {
+                                "solution": {
+                                    "header": ["House", "Name", "HouseStyle", "Mother", "PhoneModel", "Drink", "Animal"],
+                                    "rows": []
+                                }
+                            }
+                            
+                            for i in range(5):
+                                row = [
+                                    str(i+1),
+                                    assignment[i]['name'],
+                                    assignment[i]['style'],
+                                    assignment[i]['mother'],
+                                    assignment[i]['phone'],
+                                    assignment[i]['drink'],
+                                    assignment[i]['animal']
+                                ]
+                                solution["solution"]["rows"].append(row)
+                            
+                            return solution
+    
+    return None
+
+def main():
+    result = solve()
+    if result:
+        print(json.dumps(result, indent=2))
+    else:
+        print(json.dumps({"error": "No solution found"}, indent=2))
+
+if __name__ == "__main__":
+    main()

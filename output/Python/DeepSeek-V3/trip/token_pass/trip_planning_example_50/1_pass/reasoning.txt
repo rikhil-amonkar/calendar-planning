@@ -1,0 +1,34 @@
+Let’s break this down step by step before writing the code.
+
+**Given constraints:**
+- Total days: 12
+- Vilnius: 4 days
+- Munich: 3 days
+- Mykonos: 7 days
+- Direct flights exist between:
+  1. Munich ↔ Mykonos
+  2. Vilnius ↔ Munich
+- No direct flight Vilnius ↔ Mykonos.
+
+**Logical deductions:**
+1. We must start in one city and end in another (or same), but flights must be direct.
+2. Since Vilnius and Mykonos are not connected directly, any trip involving both must go through Munich.
+3. The only possible sequences with direct flights are:
+   - Vilnius → Munich → Mykonos
+   - Mykonos → Munich → Vilnius
+   (Because Vilnius only connects to Munich, and Munich connects to both.)
+
+**Day allocation:**
+We need exactly 4 days in Vilnius, 3 in Munich, 7 in Mykonos, total 14 days? Wait — that sums to 4+3+7 = 14, but total trip is 12 days.  
+This means overlap: travel days count toward both cities.
+
+If you fly from A to B on day X, you spend that day in both cities for counting purposes.  
+So total calendar days = 12, but sum of days per city > 12.
+
+Let’s define:
+- `d1` = days exclusively in Vilnius (not a travel day to/from Vilnius)
+- `d2` = days exclusively in Munich
+- `d3` = days exclusively in Mykonos
+- `t_AB` = 1 if travel from A to B on some day (that day counts for both A and B)
+
+We have:

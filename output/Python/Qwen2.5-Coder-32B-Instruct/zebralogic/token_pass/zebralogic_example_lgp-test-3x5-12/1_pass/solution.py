@@ -1,0 +1,79 @@
+import itertools
+import json
+
+# Define the attributes and their possible values
+names = ['Eric', 'Peter', 'Arnold']
+cigars = ['blue master', 'prince', 'pall mall']
+hobbies = ['photography', 'gardening', 'cooking']
+educations = ['high school', 'associate', 'bachelor']
+drinks = ['tea', 'milk', 'water']
+
+# Generate all possible permutations for each attribute
+name_permutations = list(itertools.permutations(names))
+cigar_permutations = list(itertools.permutations(cigars))
+hobby_permutations = list(itertools.permutations(hobbies))
+education_permutations = list(itertools.permutations(educations))
+drink_permutations = list(itertools.permutations(drinks))
+
+# Function to check if a configuration satisfies all constraints
+def is_valid_configuration(name_config, cigar_config, hobby_config, education_config, drink_config):
+    # Unpack the configurations
+    name1, name2, name3 = name_config
+    cigar1, cigar2, cigar3 = cigar_config
+    hobby1, hobby2, hobby3 = hobby_config
+    education1, education2, education3 = education_config
+    drink1, drink2, drink3 = drink_config
+    
+    # Check each constraint
+    if cigar2 != 'pall mall':  # Clue 1: Peter smokes Pall Mall
+        return False
+    if name2 != 'Peter':  # Clue 1: Peter smokes Pall Mall
+        return False
+    if drink2 != 'milk':  # Clue 2: Milk drinker is left of high school graduate
+        return False
+    if education3 != 'high school':  # Clue 2: Milk drinker is left of high school graduate
+        return False
+    if drink1 != 'tea':  # Clue 3: Eric drinks tea
+        return False
+    if name1 != 'Eric':  # Clue 3: Eric drinks tea
+        return False
+    if abs(name_config.index('Arnold') - cigar_config.index('prince')) != 1:  # Clue 4: Arnold and Prince smoker are neighbors
+        return False
+    if hobby1 != 'gardening' and hobby2 != 'gardening':  # Clue 5: Gardener is left of Prince smoker
+        return False
+    if hobby1 == 'gardening' and cigar_config.index('prince') == 0:
+        return False
+    if hobby2 == 'gardening' and cigar_config.index('prince') == 2:
+        return False
+    if drink2 != 'milk':  # Clue 6: Milk drinker has an associate's degree
+        return False
+    if education2 != 'associate':  # Clue 6: Milk drinker has an associate's degree
+        return False
+    if education1 != 'bachelor':  # Clue 7: Bachelor is left of photographer
+        return False
+    if hobby2 != 'photography':  # Clue 7: Bachelor is left of photographer
+        return False
+    
+    return True
+
+# Iterate through all combinations of permutations
+for name_config in name_permutations:
+    for cigar_config in cigar_permutations:
+        for hobby_config in hobby_permutations:
+            for education_config in education_permutations:
+                for drink_config in drink_permutations:
+                    if is_valid_configuration(name_config, cigar_config, hobby_config, education_config, drink_config):
+                        # Construct the solution in the required format
+                        solution = {
+                            "solution": {
+                                "header": ["House", "Name", "Cigar", "Hobby", "Education", "Drink"],
+                                "rows": [
+                                    ["1", name_config[0], cigar_config[0], hobby_config[0], education_config[0], drink_config[0]],
+                                    ["2", name_config[1], cigar_config[1], hobby_config[1], education_config[1], drink_config[1]],
+                                    ["3", name_config[2], cigar_config[2], hobby_config[2], education_config[2], drink_config[2]]
+                                ]
+                            }
+                        }
+                        # Print the solution as JSON
+                        print(json.dumps(solution, indent=2))
+                        exit()  # Exit after finding the first valid solution

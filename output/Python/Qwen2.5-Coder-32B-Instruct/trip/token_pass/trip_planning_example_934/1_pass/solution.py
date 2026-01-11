@@ -1,0 +1,111 @@
+import json
+
+def find_itinerary():
+    # Define the constraints
+    constraints = {
+        "Brussels": {"days": 5, "must_include": [7, 8, 9, 10, 11]},
+        "Rome": {"days": 2},
+        "Dubrovnik": {"days": 3},
+        "Geneva": {"days": 5},
+        "Budapest": {"days": 2, "must_include": [16, 17]},
+        "Riga": {"days": 4, "must_include": [4, 5, 6, 7]},
+        "Valencia": {"days": 2}
+    }
+    
+    # Direct flights available
+    direct_flights = {
+        ("Brussels", "Valencia"), ("Rome", "Valencia"), ("Brussels", "Geneva"),
+        ("Rome", "Geneva"), ("Dubrovnik", "Geneva"), ("Valencia", "Geneva"),
+        ("Rome", "Riga"), ("Geneva", "Budapest"), ("Riga", "Brussels"),
+        ("Rome", "Budapest"), ("Rome", "Brussels"), ("Brussels", "Budapest"),
+        ("Dubrovnik", "Rome")
+    }
+    
+    # Initialize the itinerary
+    itinerary = {day: None for day in range(1, 18)}
+    
+    # Place Riga days 4-7
+    for day in range(4, 8):
+        itinerary[day] = "Riga"
+    
+    # Place Brussels days 7-11
+    for day in range(7, 12):
+        itinerary[day] = "Brussels"
+    
+    # Place Budapest days 16-17
+    for day in range(16, 18):
+        itinerary[day] = "Budapest"
+    
+    # Remaining days to allocate: 1, 2, 3, 8, 12, 13, 14, 15
+    
+    # Place Valencia (2 days)
+    # Can place Valencia on days 1, 2 or 3
+    for day in range(1, 4):
+        if itinerary[day] is None:
+            itinerary[day] = "Valencia"
+            itinerary[day + 1] = "Valencia"
+            break
+    
+    # Place Rome (2 days)
+    # Can place Rome on days 8, 12, 13, 14, 15
+    for day in range(8, 16):
+        if itinerary[day] is None and itinerary[day + 1] is None:
+            itinerary[day] = "Rome"
+            itinerary[day + 1] = "Rome"
+            break
+    
+    # Place Dubrovnik (3 days)
+    # Can place Dubrovnik on days 8, 12, 13, 14, 15
+    for day in range(8, 15):
+        if itinerary[day] is None and itinerary[day + 1] is None and itinerary[day + 2] is None:
+            itinerary[day] = "Dubrovnik"
+            itinerary[day + 1] = "Dubrovnik"
+            itinerary[day + 2] = "Dubrovnik"
+            break
+    
+    # Place Geneva (5 days)
+    # Can place Geneva on days 12, 13, 14, 15
+    for day in range(12, 14):
+        if all(itinerary[d] is None for d in range(day, day + 5)):
+            for d in range(day, day + 5):
+                itinerary[d] = "Geneva"
+            break
+    
+    # Validate the itinerary
+    def validate_itinerary(itinerary, constraints, direct_flights):
+        # Check if all constraints are met
+        for city, details in constraints.items():
+            days_in_city = [day for day, place in itinerary.items() if place == city]
+            if len(days_in_city) != details["days"]:
+                return False
+            if "must_include" in details:
+                if not all(day in days_in_city for day in details["must_include"]):
+                    return False
+        
+        # Check flight connectivity
+        for day in range(1, 17):
+            if itinerary[day] != itinerary[day + 1]:
+                if (itinerary[day], itinerary[day + 1]) not in direct_flights and \
+                   (itinerary[day + 1], itinerary[day]) not in direct_flights:
+                    return False
+        
+        return True
+    
+    if not validate_itinerary(itinerary, constraints, direct_flights):
+        raise ValueError("Itinerary does not meet all constraints.")
+    
+    # Convert itinerary to the required JSON format
+    result = []
+    current_day = 1
+    while current_day <= 17:
+        place = itinerary[current_day]
+        start_day = current_day
+        while current_day <= 17 and itinerary[current_day] == place:
+            current_day += 1
+        end_day = current_day - 1
+        result.append({"day_range": f"Day {start_day}-{end_day}", "place": place})
+    
+    return {"itinerary": result}
+
+# Run the function and print the result
+print(json.dumps(find_itinerary(), indent=4))

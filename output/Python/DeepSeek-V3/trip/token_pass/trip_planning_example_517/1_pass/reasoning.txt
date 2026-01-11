@@ -1,0 +1,123 @@
+Let's break down the problem and then write the program.
+
+**Step 1 – Understanding constraints**  
+We have:  
+- Total days: 19  
+- Dubrovnik: 5 days  
+- Warsaw: 2 days  
+- Stuttgart: 7 days (must be there on day 7 and day 13)  
+- Bucharest: 6 days (wedding between day 1 and day 6, so must be in Bucharest from day 1 to day 6 inclusive)  
+- Copenhagen: 3 days  
+
+**Step 2 – Fixing known parts**  
+Wedding in Bucharest between day 1 and day 6 means:  
+Days 1–6 → Bucharest (6 days total for Bucharest, satisfied).  
+
+Stuttgart must be visited on day 7 and day 13.  
+Since day 7 is right after Bucharest, we can fly Bucharest → Stuttgart on day 7 morning (so day 7 counts for Stuttgart).  
+
+We need 7 days in Stuttgart total, with day 7 and day 13 included.  
+
+**Step 3 – Direct flights constraint**  
+Direct flights list:  
+1. Warsaw ↔ Copenhagen  
+2. Stuttgart ↔ Copenhagen  
+3. Warsaw ↔ Stuttgart  
+4. Bucharest ↔ Copenhagen  
+5. Bucharest ↔ Warsaw  
+6. Copenhagen ↔ Dubrovnik  
+
+So:  
+- Bucharest connects to Copenhagen and Warsaw.  
+- Stuttgart connects to Copenhagen and Warsaw.  
+- Dubrovnik only connects to Copenhagen.  
+
+**Step 4 – Sequencing**  
+We start in Bucharest (days 1–6).  
+Day 7: Fly to Stuttgart (Bucharest → Stuttgart is not a direct flight — oh! That’s a problem!).  
+
+Check: Bucharest connects to Copenhagen and Warsaw only. So to get to Stuttgart from Bucharest, we must go via Warsaw or Copenhagen.  
+
+But day 7 must be in Stuttgart. If we fly Bucharest → Warsaw on day 7 morning, day 7 counts for Warsaw, not Stuttgart. So impossible to be in Stuttgart on day 7 if we start day 7 in Bucharest.  
+
+Wait — maybe the wedding is between day 1 and day 6, meaning we can leave Bucharest on day 6 evening? Then day 6 is still in Bucharest, day 7 we wake up in Stuttgart.  
+
+But to get to Stuttgart from Bucharest, we need a direct flight — there isn’t one. So we must stop in Warsaw or Copenhagen on day 6 evening, then fly to Stuttgart on day 7 morning. That means day 7 morning flight arrives Stuttgart, so day 7 counts for Stuttgart. Day 6 evening flight: Bucharest → Warsaw (or Copenhagen), so day 6 counts for both Bucharest and Warsaw (or Copenhagen).  
+
+But day 6 is within wedding period (day 1–6), so must be in Bucharest for the wedding events. Evening flight after wedding events is fine.  
+
+So possible:  
+Day 1–6: Bucharest (6 days)  
+Day 6 evening: fly to Warsaw (day 6 counts for Warsaw too — but that’s okay, we just need 2 days in Warsaw total, we can adjust).  
+
+But then day 7: Warsaw → Stuttgart (direct exists). Day 7 in Stuttgart.  
+
+**Step 5 – Remaining stays**  
+We need:  
+- Stuttgart total 7 days (including day 7 and day 13)  
+- Warsaw total 2 days  
+- Copenhagen total 3 days  
+- Dubrovnik total 5 days  
+
+Let’s try to schedule:  
+
+Day 1–6: Bucharest (6 days)  
+Day 6 evening to Warsaw → Day 7 morning to Stuttgart.  
+
+So day 6: Bucharest + Warsaw (travel)  
+Day 7: Stuttgart  
+
+We need 7 days in Stuttgart. Let’s block day 7–13? That’s 7 days (7,8,9,10,11,12,13) — perfect, includes day 7 and day 13.  
+
+Then after day 13, we have days 14–19 left (6 days). We need:  
+Warsaw 2 days total (we have 0 so far, because day 6 evening arrival doesn’t count as full day? Actually in our counting, day 6 counts for Bucharest, but arrival in Warsaw on day 6 evening means day 6 counts for Warsaw too for sleeping there. But if we want 2 full days in Warsaw, we can schedule later.)  
+
+We also need Copenhagen 3 days, Dubrovnik 5 days.  
+
+Dubrovnik only connects to Copenhagen. So we must go Copenhagen → Dubrovnik.  
+
+Possible route after Stuttgart:  
+Day 14: Stuttgart → Warsaw (direct)  
+Day 14–15: Warsaw (2 days)  
+Day 16: Warsaw → Copenhagen (direct)  
+Day 16–18: Copenhagen (3 days)  
+Day 19: Copenhagen → Dubrovnik (direct) — but then only 1 day in Dubrovnik, need 5 days. Not enough days left.  
+
+So that fails — not enough days for Dubrovnik.  
+
+We must allocate more days earlier? But Stuttgart fixed day 7–13.  
+
+Maybe: After Stuttgart day 13, go to Copenhagen for 3 days, then Dubrovnik for 5 days, but then no time for Warsaw. But Warsaw is required 2 days.  
+
+So maybe: After Stuttgart, go to Warsaw for 2 days, then Copenhagen for 3 days, then Dubrovnik for 5 days. That’s 2+3+5=10 days, but we only have 6 days left (14–19). Impossible.  
+
+So something’s wrong — the numbers don’t add up.  
+
+Let’s sum required days:  
+Bucharest 6 + Stuttgart 7 + Warsaw 2 + Copenhagen 3 + Dubrovnik 5 = 23 days. But we have 19 days.  
+
+So we must double-count travel days. The problem says: if you fly from A to B on day X, you are in both cities on day X, which counts toward total days in each city. So we can overlap.  
+
+That means we can meet the 23 “day-presence” requirement in 19 calendar days by having travel days count for two cities.  
+
+Let’s solve this as a constraint satisfaction problem in code.
+
+---
+
+**Step 6 – Write program to solve**  
+We’ll brute-force search over permutations of cities after the fixed parts.
+
+Fixed:  
+Day 1–6: Bucharest  
+Day 7: Stuttgart (so travel day 6 evening to somewhere then to Stuttgart on day 7 morning, or direct if possible — but no direct Bucharest–Stuttgart, so day 6: Bucharest → Warsaw or Copenhagen, day 7: that city → Stuttgart).  
+
+We’ll let the program figure out the sequence that satisfies:  
+- Total 19 days  
+- Each city meets its required days counting travel overlaps  
+- Direct flights between consecutive cities in sequence  
+- Day 7 and 13 in Stuttgart  
+- Day 1–6 in Bucharest  
+
+---
+
+Here’s the Python program:

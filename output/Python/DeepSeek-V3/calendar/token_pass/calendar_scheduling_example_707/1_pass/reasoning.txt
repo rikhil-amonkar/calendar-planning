@@ -1,0 +1,44 @@
+Let’s break this down step by step before writing the code.  
+
+We have:  
+
+- **Participants**: Ryan and Adam  
+- **Meeting duration**: 30 minutes (0.5 hours)  
+- **Work hours**: 9:00 to 17:00 each day  
+- **Days considered**: Monday, Tuesday, Wednesday  
+- **Constraints**:  
+  1. Ryan cannot meet on Wednesday.  
+  2. Adam would like to avoid more meetings on Monday before 14:30.  
+  3. Tuesday is mentioned separately but no extra constraint beyond schedules.  
+
+We’ll interpret “Adam would like to avoid more meetings on Monday before 14:30” as: if possible, don’t schedule on Monday before 14:30, but if that’s the only slot, it’s still allowed (since the problem says there exists a solution that works with everyone’s schedule).  
+
+---
+
+### Step 1 – Parse busy times into intervals
+We’ll convert each person’s schedule into a list of busy intervals for each day, then find free slots in work hours, then intersect free slots between participants, then apply constraints.
+
+---
+
+### Step 2 – Convert time strings to minutes since 9:00
+Easier to work in minutes from 9:00 (so 9:00 = 0, 17:00 = 480 minutes).
+
+---
+
+### Step 3 – Find free slots
+For each day, for each person, compute free slots within 9:00–17:00, then find common free slots of length ≥ 30 minutes.
+
+---
+
+### Step 4 – Apply extra constraints
+1. Remove Wednesday for Ryan.  
+2. Prefer Monday after 14:30 if possible, but not required.
+
+---
+
+### Step 5 – Choose earliest feasible slot
+We’ll pick the first slot that fits.
+
+---
+
+Here’s the Python script:

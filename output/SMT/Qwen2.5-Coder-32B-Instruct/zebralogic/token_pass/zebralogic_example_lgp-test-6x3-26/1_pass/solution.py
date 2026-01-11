@@ -1,0 +1,101 @@
+from z3 import *
+
+# Define the domain for each variable
+names = ['Alice', 'Eric', 'Bob', 'Peter', 'Arnold', 'Carol']
+heights = ['very tall', 'tall', 'super tall', 'average', 'very short', 'short']
+phone_models = ['oneplus 9', 'google pixel 6', 'samsung galaxy s21', 'iphone 13', 'huawei p50', 'xiaomi mi 11']
+
+# Create a solver instance
+solver = Solver()
+
+# Define variables for each house
+houses = range(1, 7)
+name_vars = {house: Int(f'name_{house}') for house in houses}
+height_vars = {house: Int(f'height_{house}') for house in houses}
+phone_model_vars = {house: Int(f'phone_model_{house}') for house in houses}
+
+# Map each variable to its corresponding domain
+for house in houses:
+    solver.add(name_vars[house] >= 0)
+    solver.add(name_vars[house] < len(names))
+    solver.add(height_vars[house] >= 0)
+    solver.add(height_vars[house] < len(heights))
+    solver.add(phone_model_vars[house] >= 0)
+    solver.add(phone_model_vars[house] < len(phone_models))
+
+# All names, heights, and phone models must be unique
+solver.add(Distinct([name_vars[house] for house in houses]))
+solver.add(Distinct([height_vars[house] for house in houses]))
+solver.add(Distinct([phone_model_vars[house] for house in houses]))
+
+# Implement clues as constraints
+# Clue 1: Bob is directly left of the person who is tall.
+bob_index = names.index('Bob')
+tall_index = heights.index('tall')
+solver.add(Or([And(name_vars[i] == bob_index, height_vars[i + 1] == tall_index) for i in range(1, 6)]))
+
+# Clue 2: Peter is somewhere to the left of the person who uses an iPhone 13.
+peter_index = names.index('Peter')
+iphone_13_index = phone_models.index('iphone 13')
+solver.add(Or([And(name_vars[i] == peter_index, phone_model_vars[j] == iphone_13_index) for i in range(1, 6) for j in range(i + 1, 7)]))
+
+# Clue 3: The person who is very short is somewhere to the right of the person who uses a Google Pixel 6.
+very_short_index = heights.index('very short')
+google_pixel_6_index = phone_models.index('google pixel 6')
+solver.add(Or([And(height_vars[i] == very_short_index, phone_model_vars[j] == google_pixel_6_index) for i in range(2, 7) for j in range(1, i)]))
+
+# Clue 4: Carol is the person who is very tall.
+carol_index = names.index('Carol')
+very_tall_index = heights.index('very tall')
+solver.add(height_vars[carol_index + 1] == very_tall_index)
+
+# Clue 5: There is one house between the person who uses a Google Pixel 6 and the person who is short.
+short_index = heights.index('short')
+solver.add(Or([And(phone_model_vars[i] == google_pixel_6_index, height_vars[i + 2] == short_index) for i in range(1, 5)]))
+
+# Clue 6: The person who uses a Samsung Galaxy S21 is not in the first house.
+samsung_galaxy_s21_index = phone_models.index('samsung galaxy s21')
+solver.add(phone_model_vars[1] != samsung_galaxy_s21_index)
+
+# Clue 7: The person who uses a OnePlus 9 is directly left of the person who is short.
+oneplus_9_index = phone_models.index('oneplus 9')
+solver.add(Or([And(phone_model_vars[i] == oneplus_9_index, height_vars[i + 1] == short_index) for i in range(1, 6)]))
+
+# Clue 8: The person who is tall is Arnold.
+arnold_index = names.index('Arnold')
+solver.add(height_vars[arnold_index + 1] == tall_index)
+
+# Clue 9: The person who is super tall is in the first house.
+super_tall_index = heights.index('super tall')
+solver.add(height_vars[1] == super_tall_index)
+
+# Clue 10: The person who uses a Xiaomi Mi 11 is Carol.
+xiaomi_mi_11_index = phone_models.index('xiaomi mi 11')
+solver.add(phone_model_vars[carol_index + 1] == xiaomi_mi_11_index)
+
+# Clue 11: The person who uses a Google Pixel 6 is somewhere to the right of Eric.
+eric_index = names.index('Eric')
+solver.add(Or([And(phone_model_vars[i] == google_pixel_6_index, name_vars[j] == eric_index) for i in range(2, 7) for j in range(1, i)]))
+
+# Clue 12: The person who is short is in the sixth house.
+solver.add(height_vars[6] == short_index)
+
+# Solve the problem
+if solver.check() == sat:
+    model = solver.model()
+    solution = []
+    for house in houses:
+        name = names[model.evaluate(name_vars[house]).as_long()]
+        height = heights[model.evaluate(height_vars[house]).as_long()]
+        phone_model = phone_models[model.evaluate(phone_model_vars[house]).as_long()]
+        solution.append([str(house), name, height, phone_model])
+    
+    # Output the solution in JSON format
+    print('{' +
+          '"solution": {' +
+          '"header": ["House", "Name", "Height", "PhoneModel"],' +
+          f'"rows": {solution}' +
+          '}'
+          '}')
+else:
+    print("No solution found")

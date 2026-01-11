@@ -1,0 +1,27 @@
+{
+    "has_execution_error": true,
+    "has_no_plan": false,
+    "execution_output": "Traceback (most recent call last):\n  File \"/home/nvidia/projects/llm-csp/source/generated_code_calendar_2026-01-10 05:46:06.py\", line 73, in <module>\n    find_meeting_time(arthur_schedule, michael_schedule, meeting_duration, work_start, work_end, excluded_day)\n    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/nvidia/projects/llm-csp/source/generated_code_calendar_2026-01-10 05:46:06.py\", line 22, in find_meeting_time\n    arthur_busy_minutes.update(range(start * 60, end * 60))\n                               ~~~~~^^^^^^^^^^^^^^^^^^^^^^\nTypeError: 'float' object cannot be interpreted as an integer",
+    "pred": null,
+    "gold": {
+        "day": "Monday",
+        "time_range": "{12:00:12:30}"
+    },
+    "status": "Error",
+    "violated_constraint": {
+        "missing_fields": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 61.80022883415222,
+        "execution_time": 0.029169797897338867,
+        "constraint_eval_time": 2.384185791015625e-06,
+        "pred_extract_time": 1.0251998901367188e-05,
+        "gold_extract_time": 2.1457672119140625e-05,
+        "total_tokens": 1064,
+        "reasoning_tokens": 216
+    },
+    "reasoning_content": "To solve this problem, we need to follow these steps:\n\n1. **Define the available time slots**: We need to define the work hours and remove the slots that are already occupied by existing meetings for each participant.\n2. **Identify common free slots**: For each day, we will identify the time slots that are free for both participants.\n3. **Apply constraints**: We need to ensure that the meeting does not take place on Tuesday and that the meeting is the earliest possible.\n4. **Select the earliest possible slot**: From the common free slots, we select the earliest one that fits the meeting duration.\n5. **Output the result**: Finally, we output the day and the time range for the meeting in the specified format.\n\nLet's break down the implementation:\n\n- We'll use dictionaries to store the busy times for each participant.\n- We'll iterate over each day and check for overlapping free time slots.\n- We'll check if the slot is valid according to the constraints (i.e., not on Tuesday).\n- We'll keep track of the earliest valid slot found."
+}

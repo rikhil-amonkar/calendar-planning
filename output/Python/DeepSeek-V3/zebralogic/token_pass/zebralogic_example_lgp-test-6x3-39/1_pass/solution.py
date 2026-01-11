@@ -1,0 +1,215 @@
+import itertools
+import json
+
+def solve_puzzle():
+    # Define all possible values
+    names = ["Arnold", "Peter", "Carol", "Alice", "Bob", "Eric"]
+    children = ["Alice", "Timothy", "Bella", "Meredith", "Fred", "Samantha"]
+    smoothies = ["desert", "cherry", "watermelon", "blueberry", "lime", "dragonfruit"]
+    
+    houses = [1, 2, 3, 4, 5, 6]
+    
+    # Generate all possible permutations
+    for name_perm in itertools.permutations(names, 6):
+        for child_perm in itertools.permutations(children, 6):
+            for smoothie_perm in itertools.permutations(smoothies, 6):
+                # Create assignment dictionary
+                assignment = {}
+                for i in range(6):
+                    house = i + 1
+                    assignment[house] = {
+                        'name': name_perm[i],
+                        'child': child_perm[i],
+                        'smoothie': smoothie_perm[i]
+                    }
+                
+                # Check all constraints
+                valid = True
+                
+                # 1. Fred's child and Desert smoothie lover are next to each other
+                fred_house = None
+                desert_house = None
+                for house in houses:
+                    if assignment[house]['child'] == 'Fred':
+                        fred_house = house
+                    if assignment[house]['smoothie'] == 'desert':
+                        desert_house = house
+                
+                if fred_house is None or desert_house is None:
+                    valid = False
+                elif abs(fred_house - desert_house) != 1:
+                    valid = False
+                
+                if not valid:
+                    continue
+                
+                # 2. Blueberry smoothie is somewhere to the left of Fred's child
+                blueberry_house = None
+                for house in houses:
+                    if assignment[house]['smoothie'] == 'blueberry':
+                        blueberry_house = house
+                        break
+                
+                if blueberry_house is None or blueberry_house >= fred_house:
+                    valid = False
+                
+                if not valid:
+                    continue
+                
+                # 3. Alice is not in the fifth house
+                for house in houses:
+                    if assignment[house]['name'] == 'Alice' and house == 5:
+                        valid = False
+                        break
+                
+                if not valid:
+                    continue
+                
+                # 4. Samantha's child is not in the second house
+                for house in houses:
+                    if assignment[house]['child'] == 'Samantha' and house == 2:
+                        valid = False
+                        break
+                
+                if not valid:
+                    continue
+                
+                # 5. Watermelon smoothie lover is somewhere to the right of Cherry smoothie lover
+                cherry_house = None
+                watermelon_house = None
+                for house in houses:
+                    if assignment[house]['smoothie'] == 'cherry':
+                        cherry_house = house
+                    if assignment[house]['smoothie'] == 'watermelon':
+                        watermelon_house = house
+                
+                if cherry_house is None or watermelon_house is None or watermelon_house <= cherry_house:
+                    valid = False
+                
+                if not valid:
+                    continue
+                
+                # 6. Alice is the child named Alice
+                alice_name_house = None
+                alice_child_house = None
+                for house in houses:
+                    if assignment[house]['name'] == 'Alice':
+                        alice_name_house = house
+                    if assignment[house]['child'] == 'Alice':
+                        alice_child_house = house
+                
+                if alice_name_house is None or alice_child_house is None or alice_name_house != alice_child_house:
+                    valid = False
+                
+                if not valid:
+                    continue
+                
+                # 7. Alice is the Watermelon smoothie lover
+                if assignment[alice_name_house]['smoothie'] != 'watermelon':
+                    valid = False
+                
+                if not valid:
+                    continue
+                
+                # 8. Peter is somewhere to the right of Samantha's child
+                peter_house = None
+                samantha_house = None
+                for house in houses:
+                    if assignment[house]['name'] == 'Peter':
+                        peter_house = house
+                    if assignment[house]['child'] == 'Samantha':
+                        samantha_house = house
+                
+                if peter_house is None or samantha_house is None or peter_house <= samantha_house:
+                    valid = False
+                
+                if not valid:
+                    continue
+                
+                # 9. Arnold is not in the second house
+                for house in houses:
+                    if assignment[house]['name'] == 'Arnold' and house == 2:
+                        valid = False
+                        break
+                
+                if not valid:
+                    continue
+                
+                # 10. Bob is the mother of Timothy
+                bob_house = None
+                timothy_house = None
+                for house in houses:
+                    if assignment[house]['name'] == 'Bob':
+                        bob_house = house
+                    if assignment[house]['child'] == 'Timothy':
+                        timothy_house = house
+                
+                if bob_house is None or timothy_house is None or bob_house != timothy_house:
+                    valid = False
+                
+                if not valid:
+                    continue
+                
+                # 11. Arnold is directly left of Carol
+                arnold_house = None
+                carol_house = None
+                for house in houses:
+                    if assignment[house]['name'] == 'Arnold':
+                        arnold_house = house
+                    if assignment[house]['name'] == 'Carol':
+                        carol_house = house
+                
+                if arnold_house is None or carol_house is None or carol_house - arnold_house != 1:
+                    valid = False
+                
+                if not valid:
+                    continue
+                
+                # 12. Cherry smoothie lover is directly left of Samantha's child
+                if cherry_house is None or samantha_house is None or samantha_house - cherry_house != 1:
+                    valid = False
+                
+                if not valid:
+                    continue
+                
+                # 13. Meredith's child is in the sixth house
+                if assignment[6]['child'] != 'Meredith':
+                    valid = False
+                
+                if not valid:
+                    continue
+                
+                # 14. Dragonfruit smoothie lover is Meredith's child
+                if assignment[6]['smoothie'] != 'dragonfruit':
+                    valid = False
+                
+                if not valid:
+                    continue
+                
+                # If we get here, we found a valid solution
+                # Prepare the solution in the required format
+                rows = []
+                for house in sorted(assignment.keys()):
+                    row = [
+                        str(house),
+                        assignment[house]['name'],
+                        assignment[house]['child'],
+                        assignment[house]['smoothie']
+                    ]
+                    rows.append(row)
+                
+                result = {
+                    "solution": {
+                        "header": ["House", "Name", "Children", "Smoothie"],
+                        "rows": rows
+                    }
+                }
+                
+                return result
+    
+    # If no solution found
+    return {"solution": {"header": ["House", "Name", "Children", "Smoothie"], "rows": []}}
+
+if __name__ == "__main__":
+    solution = solve_puzzle()
+    print(json.dumps(solution, indent=2))

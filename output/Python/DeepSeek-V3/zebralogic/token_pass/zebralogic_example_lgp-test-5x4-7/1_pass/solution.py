@@ -1,0 +1,118 @@
+import json
+from itertools import permutations
+
+def solve():
+    # Define all possible values
+    names = ["Alice", "Peter", "Bob", "Eric", "Arnold"]
+    smoothies = ["lime", "dragonfruit", "desert", "watermelon", "cherry"]
+    animals = ["horse", "dog", "bird", "fish", "cat"]
+    nationalities = ["german", "swede", "norwegian", "brit", "dane"]
+    
+    houses = [1, 2, 3, 4, 5]
+    
+    # Generate all permutations for each category
+    for name_perm in permutations(names, 5):
+        for smoothie_perm in permutations(smoothies, 5):
+            for animal_perm in permutations(animals, 5):
+                for nationality_perm in permutations(nationalities, 5):
+                    # Build assignment dictionaries
+                    assignment = {}
+                    for i in range(5):
+                        assignment[i] = {
+                            'house': i+1,
+                            'name': name_perm[i],
+                            'smoothie': smoothie_perm[i],
+                            'animal': animal_perm[i],
+                            'nationality': nationality_perm[i]
+                        }
+                    
+                    # Check all constraints
+                    # 1. Swedish person is directly left of the dog owner
+                    swede_index = next((i for i in range(5) if assignment[i]['nationality'] == 'swede'), -1)
+                    dog_index = next((i for i in range(5) if assignment[i]['animal'] == 'dog'), -1)
+                    if swede_index == -1 or dog_index == -1 or swede_index + 1 != dog_index:
+                        continue
+                    
+                    # 2. Two houses between dog owner and British person
+                    brit_index = next((i for i in range(5) if assignment[i]['nationality'] == 'brit'), -1)
+                    if brit_index == -1 or abs(dog_index - brit_index) != 3:
+                        continue
+                    
+                    # 3. Dane is the person who keeps horses
+                    dane_index = next((i for i in range(5) if assignment[i]['nationality'] == 'dane'), -1)
+                    horse_index = next((i for i in range(5) if assignment[i]['animal'] == 'horse'), -1)
+                    if dane_index == -1 or horse_index == -1 or dane_index != horse_index:
+                        continue
+                    
+                    # 4. Bird keeper is somewhere to the right of the cat lover
+                    bird_index = next((i for i in range(5) if assignment[i]['animal'] == 'bird'), -1)
+                    cat_index = next((i for i in range(5) if assignment[i]['animal'] == 'cat'), -1)
+                    if bird_index == -1 or cat_index == -1 or bird_index <= cat_index:
+                        continue
+                    
+                    # 5. Dog owner is directly left of the person who drinks Lime smoothies
+                    lime_index = next((i for i in range(5) if assignment[i]['smoothie'] == 'lime'), -1)
+                    if lime_index == -1 or dog_index + 1 != lime_index:
+                        continue
+                    
+                    # 6. Eric is the cat lover
+                    eric_index = next((i for i in range(5) if assignment[i]['name'] == 'Eric'), -1)
+                    if eric_index == -1 or assignment[eric_index]['animal'] != 'cat':
+                        continue
+                    
+                    # 7. Bob is the bird keeper
+                    bob_index = next((i for i in range(5) if assignment[i]['name'] == 'Bob'), -1)
+                    if bob_index == -1 or assignment[bob_index]['animal'] != 'bird':
+                        continue
+                    
+                    # 8. Cherry smoothie lover is directly left of Peter
+                    cherry_index = next((i for i in range(5) if assignment[i]['smoothie'] == 'cherry'), -1)
+                    peter_index = next((i for i in range(5) if assignment[i]['name'] == 'Peter'), -1)
+                    if cherry_index == -1 or peter_index == -1 or cherry_index + 1 != peter_index:
+                        continue
+                    
+                    # 9. Bird keeper is the Watermelon smoothie lover
+                    if assignment[bird_index]['smoothie'] != 'watermelon':
+                        continue
+                    
+                    # 10. Desert smoothie lover is the dog owner
+                    if assignment[dog_index]['smoothie'] != 'desert':
+                        continue
+                    
+                    # 11. Horse keeper is in the third house
+                    if horse_index != 2:  # house 3 is index 2
+                        continue
+                    
+                    # 12. Norwegian is Alice
+                    alice_index = next((i for i in range(5) if assignment[i]['name'] == 'Alice'), -1)
+                    if alice_index == -1 or assignment[alice_index]['nationality'] != 'norwegian':
+                        continue
+                    
+                    # All constraints satisfied - found solution
+                    result = {
+                        "solution": {
+                            "header": ["House", "Name", "Smoothie", "Animal", "Nationality"],
+                            "rows": []
+                        }
+                    }
+                    
+                    for i in range(5):
+                        row = [
+                            str(i+1),
+                            assignment[i]['name'],
+                            assignment[i]['smoothie'],
+                            assignment[i]['animal'],
+                            assignment[i]['nationality']
+                        ]
+                        result["solution"]["rows"].append(row)
+                    
+                    return result
+    
+    return None
+
+if __name__ == "__main__":
+    solution = solve()
+    if solution:
+        print(json.dumps(solution, indent=2))
+    else:
+        print(json.dumps({"error": "No solution found"}, indent=2))

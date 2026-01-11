@@ -1,0 +1,67 @@
+We need to find a sequence of stays in 8 cities over 21 days, respecting:
+- Fixed stays: Oslo 5 days, Stuttgart 5 days, Reykjavik 2 days, Split 3 days, Geneva 2 days, Porto 3 days, Tallinn 5 days, Stockholm 3 days.
+- Day constraints:  
+  - Day 1–2: Reykjavik (conference)  
+  - Day 19–21: Porto (workshop)  
+  - Day 2–4: Stockholm (meet friend)  
+- Direct flights only between listed city pairs.
+- Travel days count toward both cities’ stay totals.
+
+---
+
+## Step 1 — Understanding the problem
+
+We have **total days = 21**.  
+Sum of required days per city:  
+Oslo 5 + Stuttgart 5 + Reykjavik 2 + Split 3 + Geneva 2 + Porto 3 + Tallinn 5 + Stockholm 3 = 28 days.
+
+But travel days are counted twice (once for departure city, once for arrival city).  
+If we have 7 inter-city flights (8 cities means 7 moves), those 7 days are counted twice, so total “city-day counts” = 21 + 7 = 28. That matches exactly.
+
+So each travel day is a day spent in two cities. We must arrange the sequence so that on travel days, the two cities are connected by a direct flight.
+
+---
+
+## Step 2 — Day-by-day constraints
+
+We know:
+- Day 1–2: Reykjavik (so Day 1 in Reykjavik, Day 2 in Reykjavik).
+- Day 2–4: Stockholm (so Day 2, 3, 4 must include Stockholm).  
+  But Day 2 is also in Reykjavik (from above), so Day 2 is a travel day from Reykjavik to Stockholm (must be direct flight — yes, Reykjavik–Stockholm exists).
+- Day 19–21: Porto (so Day 19, 20, 21 in Porto).
+
+We need to place all other stays around these fixed dates.
+
+---
+
+## Step 3 — Approach for the program
+
+We can treat this as a **constraint satisfaction problem**:
+- We have 21 slots (days 1..21), each day assigned to one city, but travel days are special: they belong to two cities.
+- We can model it as: itinerary is a sequence of *segments*, each segment is a stay in one city for some consecutive days, possibly with travel days overlapping between segments.
+
+Better: Let’s model as a sequence of (city, start_day, end_day) with end_day inclusive, and consecutive segments overlap by 1 day (the travel day).
+
+Example:  
+Segment 1: Reykjavik, day 1–2  
+Segment 2: Stockholm, day 2–4  
+Here day 2 is in both Reykjavik and Stockholm.
+
+---
+
+## Step 4 — Direct flights constraint
+
+Between two consecutive segments, the two cities must have a direct flight.
+
+We can solve by **backtracking search** over possible sequences of cities, ensuring:
+1. Total days in each city matches required days.
+2. Fixed date constraints are satisfied.
+3. Direct flight connections exist.
+
+---
+
+## Step 5 — Writing the program
+
+We’ll implement a depth-first search over possible city orderings, assigning durations to each stay, checking constraints.
+
+---

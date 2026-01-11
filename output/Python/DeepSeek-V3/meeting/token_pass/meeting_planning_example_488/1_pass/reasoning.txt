@@ -1,0 +1,60 @@
+Let’s break this down step by step before writing the code.
+
+**Step 1 – Understanding the problem**  
+We start at Pacific Heights at 9:00 AM.  
+We have 5 friends, each with:
+- A location
+- A time window they are available
+- A minimum meeting duration we want
+- Travel times between all locations
+
+We want to meet as many friends as possible, but since all can be met within their windows if we schedule well, the real challenge is fitting them all in given travel times and not overlapping meetings in time.
+
+**Step 2 – Observations on constraints**  
+- Sarah (Russian Hill) is only available early (7:15–9:30 AM), but we start at 9:00 AM at Pacific Heights. Travel from Pacific Heights to Russian Hill is 7 minutes, so earliest we can arrive is 9:07 AM. Sarah’s window ends at 9:30 AM, so we can meet her from 9:07–9:30 (23 minutes), but we need 45 minutes minimum → impossible.  
+  So Sarah cannot be met at all. We drop her.
+
+- Remaining: Ronald (Nob Hill), Helen (Castro), Joshua (Sunset), Margaret (Haight).
+
+**Step 3 – Time windows and travel**  
+We must start at Pacific Heights at 9:00 AM.
+
+Let’s list travel matrix as dict.
+
+**Step 4 – Possible sequence**  
+We can try to order them to minimize travel and fit all in.
+
+Margaret (Haight) available 10:15–22:00, needs 60 min.  
+Ronald (Nob Hill) available 10:00–17:00, needs 105 min.  
+Helen (Castro) available 13:30–17:00, needs 120 min.  
+Joshua (Sunset) available 14:15–19:30, needs 90 min.
+
+We need to check if all 4 can be done.
+
+**Step 5 – Try a feasible sequence**  
+1. Start at Pacific Heights 9:00 → travel to Nob Hill (8 min) → arrive 9:08, but Ronald starts at 10:00, so wait until 10:00, meet 10:00–11:45 (105 min).  
+2. Travel Nob Hill → Haight (13 min) → arrive 11:58. Margaret available at 10:15, so we can meet 11:58–12:58 (60 min).  
+3. Travel Haight → Castro (6 min) → arrive 13:04. Helen starts at 13:30, wait until 13:30, meet 13:30–15:30 (120 min).  
+4. Travel Castro → Sunset (17 min) → arrive 15:47. Joshua starts at 14:15, so he’s available, meet 15:47–17:17 (90 min).  
+All fit.
+
+Check no window violations:  
+- Ronald ends 11:45, OK (before 17:00).  
+- Margaret ends 12:58, OK (before 22:00).  
+- Helen ends 15:30, OK (before 17:00).  
+- Joshua ends 17:17, OK (before 19:30).
+
+Travel times:  
+Nob→Haight 13, Haight→Castro 6, Castro→Sunset 17. Total travel = 8 + 13 + 6 + 17 = 44 min.
+
+**Step 6 – Could we meet Sarah if we started earlier?**  
+We can’t, because we’re given fixed start at 9:00 AM at Pacific Heights. So Sarah impossible.
+
+Thus optimal is to meet 4 people.
+
+**Step 7 – Write program**  
+We’ll encode locations, travel times, friend data, then brute-force permutations of remaining 4 people to see if any sequence fits better (maybe less waiting). But our manual sequence already works. We’ll implement a search over permutations to be sure.
+
+---
+
+Here’s the Python program:

@@ -1,0 +1,82 @@
+Let’s break this down step-by-step before writing the code.
+
+**Constraints recap:**
+- Meeting duration: 30 minutes.
+- Work hours: 9:00–17:00 (inclusive start, exclusive end for slots).
+- Days considered: Monday, Tuesday.
+- Shirley’s busy times:
+  - Monday: 10:30–11:00, 12:00–12:30, 16:00–16:30
+  - Tuesday: 9:30–10:00
+- Albert’s busy times:
+  - Monday: 9:00–17:00 (entire day busy)
+  - Tuesday: 9:30–11:00, 11:30–12:30, 13:00–16:00, 16:30–17:00
+- Shirley’s preference: Avoid Tuesday after 10:30 if possible.
+
+**Step 1 – Check Monday**
+Albert is busy all Monday (9:00–17:00), so Monday is impossible.
+
+**Step 2 – Check Tuesday**
+Work hours: 9:00–17:00.
+
+Albert’s busy on Tuesday:
+1. 9:30–11:00
+2. 11:30–12:30
+3. 13:00–16:00
+4. 16:30–17:00
+
+Shirley’s busy on Tuesday:
+1. 9:30–10:00
+
+Shirley’s preference: Avoid Tuesday after 10:30, but if necessary, we can still schedule after 10:30 if no earlier slot exists.
+
+**Step 3 – Find free 30-minute slots on Tuesday**
+Convert times to minutes from 9:00 for easier calculation:
+- 9:00 = 0 min
+- 17:00 = 480 min
+
+Albert’s busy in minutes from 9:00:
+1. 9:30–11:00 → 30–120
+2. 11:30–12:30 → 150–210
+3. 13:00–16:00 → 240–420
+4. 16:30–17:00 → 450–480
+
+Shirley’s busy:
+1. 9:30–10:00 → 30–60
+
+**Step 4 – Find overlap of free times**
+We want times when both are free for 30 min within 0–480.
+
+Albert’s free intervals on Tuesday:
+- 0–30
+- 120–150
+- 210–240
+- 420–450
+- (450–480 is busy for Albert, so last 30 min not free)
+
+Shirley’s free intervals on Tuesday (ignoring preference for now):
+- 0–30
+- 60–480 (since only busy 30–60)
+
+Intersect:
+1. Albert 0–30 & Shirley 0–30 → 0–30 ✅ (9:00–9:30)
+2. Albert 120–150 & Shirley 60–480 → 120–150 ✅ (11:00–11:30)
+3. Albert 210–240 & Shirley 60–480 → 210–240 ✅ (12:30–13:00)
+4. Albert 420–450 & Shirley 60–480 → 420–450 ✅ (16:00–16:30)
+
+**Step 5 – Apply Shirley’s preference**
+She’d rather not meet Tuesday after 10:30.
+- Slot 1 (9:00–9:30): ends before 10:30, so perfect.
+- Slot 2 (11:00–11:30): after 10:30, so less preferred.
+- Slot 3 (12:30–13:00): after 10:30.
+- Slot 4 (16:00–16:30): after 10:30.
+
+Best choice: **9:00–9:30 Tuesday**.
+
+**Step 6 – Verify**
+- Shirley free 9:00–9:30? Yes (only busy 9:30–10:00).
+- Albert free 9:00–9:30? Yes (busy starts 9:30).
+- Within work hours 9:00–17:00? Yes.
+- Duration 30 minutes? Yes.
+
+**Step 7 – Write code to output this**
+We’ll write a script that finds the earliest preferred slot.

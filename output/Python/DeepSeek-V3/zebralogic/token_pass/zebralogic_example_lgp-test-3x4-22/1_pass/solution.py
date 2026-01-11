@@ -1,0 +1,110 @@
+import json
+from itertools import permutations
+
+def solve():
+    # Define all possible values
+    names = ["Arnold", "Eric", "Peter"]
+    music = ["pop", "rock", "classical"]
+    children = ["Fred", "Meredith", "Bella"]
+    books = ["mystery", "romance", "science fiction"]
+    
+    houses = [1, 2, 3]
+    
+    # Generate all permutations for each category
+    for name_perm in permutations(names, 3):
+        # Clue 2: Peter is in the first house
+        if name_perm[0] != "Peter":
+            continue
+            
+        for music_perm in permutations(music, 3):
+            for child_perm in permutations(children, 3):
+                for book_perm in permutations(books, 3):
+                    # Build assignment
+                    assignment = []
+                    for i in range(3):
+                        assignment.append({
+                            "house": i+1,
+                            "name": name_perm[i],
+                            "music": music_perm[i],
+                            "child": child_perm[i],
+                            "book": book_perm[i]
+                        })
+                    
+                    # Clue 1: Child Fred is directly left of mystery books
+                    fred_house = None
+                    mystery_house = None
+                    for a in assignment:
+                        if a["child"] == "Fred":
+                            fred_house = a["house"]
+                        if a["book"] == "mystery":
+                            mystery_house = a["house"]
+                    if not (fred_house is not None and mystery_house is not None):
+                        continue
+                    if mystery_house - fred_house != 1:
+                        continue
+                    
+                    # Clue 3: mystery books = classical music
+                    mystery_music = None
+                    for a in assignment:
+                        if a["book"] == "mystery":
+                            mystery_music = a["music"]
+                    if mystery_music != "classical":
+                        continue
+                    
+                    # Clue 4: science fiction books = child Meredith
+                    sf_house = None
+                    meredith_house = None
+                    for a in assignment:
+                        if a["book"] == "science fiction":
+                            sf_house = a["house"]
+                        if a["child"] == "Meredith":
+                            meredith_house = a["house"]
+                    if sf_house != meredith_house:
+                        continue
+                    
+                    # Clue 5: Eric is mystery books
+                    eric_house = None
+                    for a in assignment:
+                        if a["name"] == "Eric":
+                            eric_house = a["house"]
+                    if eric_house != mystery_house:
+                        continue
+                    
+                    # Clue 6: rock music is somewhere to the right of romance books
+                    rock_house = None
+                    romance_house = None
+                    for a in assignment:
+                        if a["music"] == "rock":
+                            rock_house = a["house"]
+                        if a["book"] == "romance":
+                            romance_house = a["house"]
+                    if not (rock_house > romance_house):
+                        continue
+                    
+                    # All clues satisfied - format output
+                    rows = []
+                    for a in sorted(assignment, key=lambda x: x["house"]):
+                        rows.append([
+                            str(a["house"]),
+                            a["name"],
+                            a["music"],
+                            a["child"],
+                            a["book"]
+                        ])
+                    
+                    result = {
+                        "solution": {
+                            "header": ["House", "Name", "MusicGenre", "Children", "BookGenre"],
+                            "rows": rows
+                        }
+                    }
+                    return result
+    
+    return None
+
+if __name__ == "__main__":
+    solution = solve()
+    if solution:
+        print(json.dumps(solution, indent=2))
+    else:
+        print(json.dumps({"error": "No solution found"}, indent=2))

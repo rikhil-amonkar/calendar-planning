@@ -1,0 +1,94 @@
+Let's break down the problem and then implement the solution.
+
+**Step 1 – Understanding constraints**  
+We have 5 cities:  
+- Paris (P): 6 days total  
+- Oslo (O): 5 days total, must be between day 19 and 23 inclusive  
+- Porto (Pt): 7 days total  
+- Geneva (G): 7 days total, must be days 1–7  
+- Reykjavik (R): 2 days total  
+
+Total days: 6 + 5 + 7 + 7 + 2 = 27, but we only have 23 days.  
+This means there is overlap: travel days count for both cities.
+
+**Step 2 – Overlap accounting**  
+If you fly on day X from A to B, day X counts for both A and B.  
+So total "city-days" = 27, but calendar days = 23, so overlap days = 27 − 23 = 4 overlap days.  
+That means exactly 4 days are double-counted (travel days).
+
+**Step 3 – Fixed blocks**  
+- Geneva: Days 1–7 (7 days)  
+- Oslo: Days 19–23 (5 days)  
+
+So:  
+Day 1–7: Geneva  
+Day 19–23: Oslo  
+
+We need to fit Paris (6 days), Porto (7 days), Reykjavik (2 days) in the remaining gaps, with travel overlaps.
+
+**Step 4 – Direct flights constraint**  
+Direct flights list:  
+P–O, G–O, Pt–P, G–P, G–Pt, P–R, R–O, Pt–O  
+
+This means we can travel directly between any pair except those not listed (e.g., no direct Geneva–Reykjavik).
+
+**Step 5 – Filling the middle**  
+We have:  
+Days 8–18 available (11 days) plus overlaps with fixed blocks at ends.  
+We also need to connect Geneva (ends day 7) to somewhere on day 8.  
+From Geneva, direct flights to: Oslo, Paris, Porto.  
+Oslo is far in future (day 19), so not now. So Paris or Porto.
+
+Similarly, after Oslo block (ends day 23), trip ends.
+
+We also must visit Reykjavik for 2 days somewhere.
+
+**Step 6 – Trial logical assignment**  
+Let’s try:  
+Day 1–7: Geneva (fixed)  
+Day 8: Travel Geneva → Paris (counts for Geneva and Paris) → Paris starts day 8.  
+We need 6 days Paris total. If day 8 counts as 1st Paris day, need 5 more pure Paris days or overlaps.
+
+But we also need Porto 7 days, Reykjavik 2 days.
+
+Let’s attempt:  
+Day 8–12: Paris (days 8,9,10,11,12 = 5 days Paris so far, plus day 8 overlap with Geneva = total 6 Paris days done).  
+Day 13: Travel Paris → Porto (counts for Paris and Porto) → Porto starts day 13.  
+We need 7 days Porto total.  
+Day 13–19: Porto (days 13,14,15,16,17,18,19 = 7 days Porto total).  
+But day 19 is also start of Oslo (overlap day).  
+So day 19: Porto → Oslo travel (counts for Porto and Oslo).  
+Then Oslo days: 19,20,21,22,23 = 5 days Oslo total.  
+
+We still need Reykjavik 2 days. Not visited yet.  
+We must insert Reykjavik somewhere with direct flights.  
+From Paris, Porto, Oslo, Geneva.  
+We can go Paris → Reykjavik → Oslo (both direct).  
+So adjust:  
+Instead of Paris → Porto directly, do Paris → Reykjavik → Oslo? But Oslo is day 19, too early? No, Oslo fixed day 19–23, can arrive earlier? No, Oslo must be between day 19 and 23, so can't be there before day 19. So Reykjavik must be before day 19 but after Paris.
+
+Try:  
+Day 8–12: Paris (5 days) + day 8 overlap = 6 Paris days done.  
+Day 13: Travel Paris → Reykjavik (counts Paris+Reykjavik) → Reykjavik starts day 13.  
+Need 2 days Reykjavik total.  
+Day 13,14: Reykjavik (2 days total done).  
+Day 15: Travel Reykjavik → Oslo? But Oslo not until day 19, so can't go yet (would break Oslo timing).  
+So instead Reykjavik → Porto (direct? No! Not in list). So not allowed.  
+So Reykjavik → Oslo is direct, but Oslo too early. So maybe Reykjavik → Paris again? Possible but wasteful.
+
+Better: Insert Reykjavik between Porto and Oslo:  
+Porto → Reykjavik? Not direct. So no.  
+Porto → Oslo direct yes.  
+So Reykjavik must connect to Paris or Oslo.  
+
+Given Oslo fixed late, maybe:  
+Paris → Reykjavik → Oslo (but Oslo too early). So maybe Paris → Reykjavik → Paris → Porto? Possible but weird.
+
+Let’s instead start with Geneva → Porto first, then Porto → Paris → Reykjavik → Oslo.
+
+**Step 7 – Systematic search via code**  
+We’ll brute-force possible sequences respecting direct flights and day counts.
+
+---
+
+Here’s the Python program that solves it by brute-force search over possible day schedules:

@@ -1,0 +1,33 @@
+# Define the unavailable times for each participant as tuples of (start_time, end_time)
+unavailable_times = {
+    "Daniel": [],
+    "Kathleen": [(14.5, 15.5)],
+    "Carolyn": [(12, 12.5), (13, 13.5)],
+    "Roger": [],
+    "Cheryl": [(9, 9.5), (10, 11.5), (12.5, 13.5), (14, 17)],
+    "Virginia": [(9.5, 11.5), (12, 12.5), (13, 13.5), (14.5, 15.5), (16, 17)],
+    "Angela": [(9.5, 10), (10.5, 11.5), (12, 12.5), (13, 13.5), (14, 16.5)]
+}
+
+# Function to check if a given time is available for all participants
+def is_available(time, unavailable_times):
+    for person, times in unavailable_times.items():
+        for start, end in times:
+            if start <= time < end or start < time + 0.5 <= end:
+                return False
+    return True
+
+# Iterate through possible start times from 12:30 to 16:30 (inclusive)
+for start_hour in range(12, 17):
+    for start_minute in [0, 30]:
+        start_time = start_hour + start_minute / 60
+        if is_available(start_time, unavailable_times):
+            # Found a suitable time
+            end_time = start_time + 0.5
+            start_time_formatted = f"{int(start_time):02}:{int((start_time % 1) * 60):02}"
+            end_time_formatted = f"{int(end_time):02}:{int((end_time % 1) * 60):02}"
+            print(f"Monday, {start_time_formatted}:{end_time_formatted}")
+            break
+    else:
+        continue
+    break

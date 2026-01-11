@@ -1,0 +1,134 @@
+import itertools
+import json
+
+def solve_puzzle():
+    # Define all possible values
+    names = ["Peter", "Arnold", "Eric"]
+    occupations = ["doctor", "teacher", "engineer"]
+    hobbies = ["cooking", "photography", "gardening"]
+    
+    houses = [1, 2, 3]
+    
+    # Generate all permutations of assignments
+    solutions = []
+    
+    # Try all possible assignments
+    for name_perm in itertools.permutations(names, 3):
+        for occ_perm in itertools.permutations(occupations, 3):
+            for hobby_perm in itertools.permutations(hobbies, 3):
+                # Create assignment for each house
+                assignment = {}
+                for i in range(3):
+                    assignment[i] = {
+                        'house': houses[i],
+                        'name': name_perm[i],
+                        'occupation': occ_perm[i],
+                        'hobby': hobby_perm[i]
+                    }
+                
+                # Check all clues
+                valid = True
+                
+                # Clue 1: The person who is a doctor and Eric are next to each other
+                doctor_house = None
+                eric_house = None
+                for i in range(3):
+                    if assignment[i]['occupation'] == 'doctor':
+                        doctor_house = i
+                    if assignment[i]['name'] == 'Eric':
+                        eric_house = i
+                
+                if doctor_house is None or eric_house is None:
+                    valid = False
+                elif abs(doctor_house - eric_house) != 1:
+                    valid = False
+                
+                if not valid:
+                    continue
+                
+                # Clue 2: The person who loves cooking is directly left of the person who is a teacher
+                cooking_house = None
+                teacher_house = None
+                for i in range(3):
+                    if assignment[i]['hobby'] == 'cooking':
+                        cooking_house = i
+                    if assignment[i]['occupation'] == 'teacher':
+                        teacher_house = i
+                
+                if cooking_house is None or teacher_house is None:
+                    valid = False
+                elif teacher_house - cooking_house != 1:
+                    valid = False
+                
+                if not valid:
+                    continue
+                
+                # Clue 3: The person who is a doctor is somewhere to the right of the person who enjoys gardening
+                gardening_house = None
+                for i in range(3):
+                    if assignment[i]['hobby'] == 'gardening':
+                        gardening_house = i
+                
+                if gardening_house is None:
+                    valid = False
+                elif doctor_house <= gardening_house:
+                    valid = False
+                
+                if not valid:
+                    continue
+                
+                # Clue 4: The photography enthusiast is the person who is a teacher
+                for i in range(3):
+                    if assignment[i]['hobby'] == 'photography' and assignment[i]['occupation'] != 'teacher':
+                        valid = False
+                        break
+                    if assignment[i]['occupation'] == 'teacher' and assignment[i]['hobby'] != 'photography':
+                        valid = False
+                        break
+                
+                if not valid:
+                    continue
+                
+                # Clue 5: The person who is an engineer is Peter
+                for i in range(3):
+                    if assignment[i]['occupation'] == 'engineer' and assignment[i]['name'] != 'Peter':
+                        valid = False
+                        break
+                    if assignment[i]['name'] == 'Peter' and assignment[i]['occupation'] != 'engineer':
+                        valid = False
+                        break
+                
+                if not valid:
+                    continue
+                
+                # All clues satisfied, add to solutions
+                solutions.append(assignment)
+    
+    # Convert solution to required format
+    if solutions:
+        solution = solutions[0]  # Should be only one solution
+        rows = []
+        for i in range(3):
+            rows.append([
+                str(solution[i]['house']),
+                solution[i]['name'],
+                solution[i]['occupation'],
+                solution[i]['hobby']
+            ])
+        
+        result = {
+            "solution": {
+                "header": ["House", "Name", "Occupation", "Hobby"],
+                "rows": rows
+            }
+        }
+        return result
+    else:
+        return {"solution": None}
+
+def main():
+    result = solve_puzzle()
+    print(json.dumps(result, indent=2))
+
+if __name__ == "__main__":
+    main()

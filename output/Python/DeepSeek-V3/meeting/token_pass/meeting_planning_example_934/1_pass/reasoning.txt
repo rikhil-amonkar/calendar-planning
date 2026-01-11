@@ -1,0 +1,84 @@
+Let’s break this down step-by-step before writing the code.
+
+---
+
+## **Step 1 — Understanding the problem**
+We have:
+- **Start location**: Nob Hill at 9:00 AM.
+- **10 friends**, each with:
+  - A location
+  - A time window they are available
+  - A minimum meeting duration we’d like
+- **Travel times** between all locations (in minutes).
+- **Goal**: Maximize the number of friends met (or total meeting time? The problem says “meet as many friends as possible” — so primary objective is count, then maybe total time if tie).
+- Constraints: Travel time between meetings must fit, meetings can’t exceed friend’s availability window, and we must meet at least the minimum desired time.
+
+---
+
+## **Step 2 — Observations**
+Some friends have very short or impossible windows:
+- **Thomas** (North Beach, 7:15 PM–7:45 PM, min 15 min) → very tight, but possible if we arrive by 7:15 PM and leave by 7:30 PM.
+- **David** (Marina District, 8:00 PM–9:00 PM, min 60 min) → requires the whole window.
+- **Mary** (Embarcadero, 8:00 PM–9:15 PM, min 75 min) → requires almost the whole window.
+- **Joseph** (Haight-Ashbury, 8:00 PM–10:00 PM, min 120 min) → requires the whole window.
+
+Clearly, **Joseph and Mary overlap in time** (both start 8:00 PM), so we can’t meet both fully. Also, David overlaps with them. So evening is a bottleneck.
+
+---
+
+## **Step 3 — Approach**
+We can brute-force search over possible orders of meeting friends, respecting:
+1. Travel time from previous location to next.
+2. Friend’s availability window.
+3. Minimum desired meeting duration.
+
+We’ll discretize time in minutes from 9:00 AM (time = 0 minutes) to 10:00 PM (end of Joseph’s window, 13 hours = 780 minutes).
+
+We’ll try to maximize **number of friends met**, and if tie, maximize **total meeting minutes**.
+
+---
+
+## **Step 4 — Data representation**
+We’ll store:
+- Locations list with indices.
+- Travel time matrix.
+- Friend data: name, location, window start/end in minutes from midnight, min desired minutes.
+
+---
+
+## **Step 5 — Algorithm outline**
+We can use **DFS/backtracking** to try all permutations of friends, pruning when impossible.
+
+Because 10! is huge, we can prune heavily:
+- If remaining time + travel to next friend exceeds their window end, skip.
+- If we can’t meet min duration, skip.
+
+We also need to consider we can meet for *longer* than min duration if time allows, up to friend’s window end.
+
+We’ll start at Nob Hill at 9:00 AM (540 minutes from midnight).
+
+---
+
+## **Step 6 — Implementation plan**
+1. Convert all times to minutes since midnight.
+2. Start with empty schedule, current time = 9:00 AM, current location = Nob Hill.
+3. Try to add each unvisited friend:
+   - Travel time from current location to friend’s location.
+   - Arrival time = current time + travel.
+   - Start meeting = max(arrival, friend’s window start).
+   - If start + min duration > friend’s window end → impossible.
+   - Else, we can meet from start to min(start + min duration, friend’s window end) — but we can choose to meet longer up to window end if it doesn’t break later meetings. We’ll need to decide duration greedily? Better to treat meeting duration as variable: we can meet for any duration between min and max possible (window end - start), but leaving later reduces time for others.
+
+   For simplicity in search, we’ll fix meeting duration = min desired (to maximize chance of fitting more friends). If extra time remains after all meetings, we can extend meetings later.
+
+4. Recursively search.
+5. Keep best schedule by:
+   - Primary: number of friends met.
+   - Secondary: total meeting minutes.
+
+---
+
+## **Step 7 — Writing the code**
+We’ll implement the search with pruning.
+
+---

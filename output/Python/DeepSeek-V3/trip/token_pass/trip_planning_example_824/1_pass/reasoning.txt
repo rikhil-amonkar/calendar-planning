@@ -1,0 +1,126 @@
+Let's break this down step by step before writing the code.
+
+**Constraints:**
+- Total days: 22
+- Cities & required stays:
+  1. Berlin: 5 days, must include days 1–5 (due to annual show).
+  2. Split: 3 days.
+  3. Bucharest: 3 days, must include days 13–15 (relatives).
+  4. Riga: 5 days.
+  5. Lisbon: 3 days.
+  6. Tallinn: 4 days.
+  7. Lyon: 5 days, must include days 7–11 (wedding).
+
+**Direct flights** (undirected unless specified; "from Riga to Tallinn" is directed? We'll treat as bidirectional except if one-way is stated; but here it's just listed as "from Riga to Tallinn" but likely bidirectional for trip planning, so we'll assume all are bidirectional for simplicity unless noted; but the problem says "from Riga to Tallinn" only, but that would be strange if no return flight; we'll assume symmetric flights except maybe they only listed one direction for some; but for planning we need both directions possible, so I'll treat all as bidirectional):
+
+List:
+1. Lisbon ↔ Bucharest
+2. Berlin ↔ Lisbon
+3. Bucharest ↔ Riga
+4. Berlin ↔ Riga
+5. Split ↔ Lyon
+6. Lisbon ↔ Riga
+7. Riga ↔ Tallinn
+8. Berlin ↔ Split
+9. Lyon ↔ Lisbon
+10. Berlin ↔ Tallinn
+11. Lyon ↔ Bucharest
+
+**Fixed blocks:**
+- Days 1–5: Berlin
+- Days 7–11: Lyon
+- Days 13–15: Bucharest
+
+**Remaining cities to place:**
+Split (3 days), Riga (5 days), Lisbon (3 days), Tallinn (4 days).
+
+**Total days accounted for:**
+Berlin 5 + Lyon 5 + Bucharest 3 = 13 days fixed.
+Remaining days to allocate: 22 - 13 = 9 days.
+But wait — Split (3) + Riga (5) + Lisbon (3) + Tallinn (4) = 15 days needed for the remaining cities. That’s more than 9 days left.  
+That means the fixed blocks overlap with some of these cities' required stays.  
+Yes — because Berlin, Lyon, Bucharest are already fixed, but those cities themselves are in the list of 7 cities. So the 5 days for Berlin count toward Berlin's required 5, the 5 days for Lyon count toward Lyon's required 5, the 3 days for Bucharest count toward Bucharest's required 3.  
+So the remaining cities are Split (3), Riga (5), Lisbon (3), Tallinn (4) — total 15 days, but we have 9 free days outside the fixed blocks? Let's check:
+
+Fixed days:
+Day 1–5: Berlin (5 days)
+Day 7–11: Lyon (5 days)
+Day 13–15: Bucharest (3 days)
+
+That’s 5+5+3=13 days fixed.  
+Total trip 22 days, so free days = 22-13 = 9 days.  
+But we need to fit Split 3, Riga 5, Lisbon 3, Tallinn 4 into these 9 days? That sums to 15 days, impossible.  
+So some of these must be during the fixed blocks? No — fixed blocks are specific cities already.  
+That means some of these "remaining" cities are actually the same as the fixed cities? Let's list all 7 cities: Berlin, Split, Bucharest, Riga, Lisbon, Tallinn, Lyon.  
+Yes — Berlin, Bucharest, Lyon are already fixed. Remaining: Split (3), Riga (5), Lisbon (3), Tallinn (4) = 15 days needed, but only 9 days free. Contradiction.
+
+So maybe the "plan to stay in Riga for 5 days" means total, not in addition? But then total days would be: Berlin 5 + Split 3 + Bucharest 3 + Riga 5 + Lisbon 3 + Tallinn 4 + Lyon 5 = 28 days, more than 22.  
+So indeed, some of these stays must overlap with the fixed days? But fixed days are in specific cities, so can't overlap with other cities.  
+Thus the only way: some of these "required stays" are satisfied during the fixed blocks.  
+But Berlin, Lyon, Bucharest are fixed, so their required days are satisfied.  
+So remaining required stays: Split 3, Riga 5, Lisbon 3, Tallinn 4 = 15 days needed in 9 free days — impossible.
+
+This suggests the problem might intend that the "plan to stay in Riga for 5 days" includes days that may be partly during fixed blocks? But that doesn't make sense because you can't be in two cities at once.
+
+Wait — maybe the fixed blocks are not all consecutive? Let's re-read:
+
+> You would like to visit Berlin for 5 days. From day 1 to day 5, there is a annual show you want to attend in Berlin.  
+So Berlin must be exactly days 1–5.
+
+> You plan to stay in Bucharest for 3 days. You plan to visit relatives in Bucharest between day 13 and day 15.  
+So Bucharest must include days 13–15, could be longer.
+
+> You plan to stay in Lyon for 5 days. You are going to attend a wedding in Lyon between day 7 and day 11.  
+So Lyon must include days 7–11, could be longer.
+
+So Berlin is exactly 5 days (1–5).  
+Lyon is at least 5 days, covering 7–11.  
+Bucharest is at least 3 days, covering 13–15.
+
+Now, the other cities' stays are total desired days, not necessarily consecutive.
+
+So total desired days:  
+Berlin 5, Split 3, Bucharest 3, Riga 5, Lisbon 3, Tallinn 4, Lyon 5 = 28 days.  
+But trip is 22 days, so we must double-count some days? But you can't be in two cities same day.  
+Unless travel days count for both cities: "if one flies from city A to city B on day X, then they are in both cities A and B on day X".  
+So a travel day counts toward stay in both cities. That reduces total days needed.
+
+We need to schedule so that travel days overlap with stays in two cities.
+
+We have 22 calendar days. Each day you're in at least one city. If you travel on a day, you're in two cities that day. So total "city-days" = sum of days in each city > 22 if there are travel days.
+
+Let’s denote:  
+Total city-days = 5+3+3+5+3+4+5 = 28.  
+We have 22 days on calendar. Each travel day adds +1 to city-days (because you're in two cities that day instead of one).  
+Let T = number of travel days (days where you take a flight). Then:  
+City-days = 22 + T.  
+We need 22 + T = 28 → T = 6 travel days.
+
+So we need exactly 6 days where you fly between cities (thus being in two cities that day). On other days, you're in one city.
+
+Now, fixed constraints:  
+Day 1–5: Berlin (no travel except possibly on day 5 if leaving evening? But day counts as in Berlin if you leave on day 5, and also in next city if you arrive day 5).  
+Day 7–11: Lyon.  
+Day 13–15: Bucharest.
+
+We need to place Split 3, Riga 5, Lisbon 3, Tallinn 4 around these, with travel days overlapping.
+
+We also must use direct flights.
+
+This becomes a scheduling problem with adjacency constraints.
+
+Given complexity, I’ll write a program that brute-force searches possible assignments of cities to days 1–22, with adjacency and flight constraints.
+
+But exhaustive search over 7^22 is impossible. We need a smarter search: treat as sequence of stays with travel days between.
+
+Let’s design:
+
+Each stay: city + duration (days in that city without travel). Travel days are at end of stay (except last stay). On travel day, you're in current city and next city.
+
+We need to assign stays to cover days 1–22, respecting fixed city on certain days, and total days in each city = required.
+
+We can do DFS: try to extend itinerary day by day, keeping track of current city, days spent in each city so far, and fixed constraints.
+
+---
+
+I’ll implement a backtracking search.

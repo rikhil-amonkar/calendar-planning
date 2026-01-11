@@ -1,0 +1,1 @@
+Check if an itinerary satisfies all constraints

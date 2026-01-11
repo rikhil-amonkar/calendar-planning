@@ -1,0 +1,152 @@
+```python
+import json
+from itertools import permutations
+
+def solve():
+    # Define all possible values
+    names = ["Alice", "Eric", "Arnold", "Bob", "Peter"]
+    flowers = ["tulips", "roses", "lilies", "daffodils", "carnations"]
+    animals = ["dog", "horse", "cat", "bird", "fish"]
+    houses = [1, 2, 3, 4, 5]
+
+    # Generate all permutations for names, flowers, animals across 5 houses
+    for name_perm in permutations(names, 5):
+        # Clue 1: Alice is in the second house
+        if name_perm[1] != "Alice":
+            continue
+
+        for flower_perm in permutations(flowers, 5):
+            # Clue 4: The fish enthusiast is the person who loves a bouquet of daffodils.
+            # We'll check this later when we have animal info
+
+            for animal_perm in permutations(animals, 5):
+                # Build mapping for easy access
+                assignment = {}
+                for i in range(5):
+                    assignment[i] = {
+                        'house': i+1,
+                        'name': name_perm[i],
+                        'flower': flower_perm[i],
+                        'animal': animal_perm[i]
+                    }
+
+                # Clue 2: The person who loves the bouquet of lilies is the bird keeper
+                lilies_bird = True
+                for i in range(5):
+                    if assignment[i]['flower'] == 'lilies' and assignment[i]['animal'] != 'bird':
+                        lilies_bird = False
+                        break
+                    if assignment[i]['animal'] == 'bird' and assignment[i]['flower'] != 'lilies':
+                        lilies_bird = False
+                        break
+                if not lilies_bird:
+                    continue
+
+                # Clue 3: Peter is somewhere to the right of the person who loves the vase of tulips
+                peter_index = None
+                tulips_index = None
+                for i in range(5):
+                    if assignment[i]['name'] == 'Peter':
+                        peter_index = i
+                    if assignment[i]['flower'] == 'tulips':
+                        tulips_index = i
+                if peter_index <= tulips_index:
+                    continue
+
+                # Clue 4: The fish enthusiast is the person who loves a bouquet of daffodils
+                fish_daffodils = True
+                for i in range(5):
+                    if assignment[i]['animal'] == 'fish' and assignment[i]['flower'] != 'daffodils':
+                        fish_daffodils = False
+                        break
+                    if assignment[i]['flower'] == 'daffodils' and assignment[i]['animal'] != 'fish':
+                        fish_daffodils = False
+                        break
+                if not fish_daffodils:
+                    continue
+
+                # Clue 5: The person who keeps horses is Eric
+                eric_horse = True
+                for i in range(5):
+                    if assignment[i]['name'] == 'Eric' and assignment[i]['animal'] != 'horse':
+                        eric_horse = False
+                        break
+                    if assignment[i]['animal'] == 'horse' and assignment[i]['name'] != 'Eric':
+                        eric_horse = False
+                        break
+                if not eric_horse:
+                    continue
+
+                # Clue 6: There are two houses between the dog owner and Bob
+                dog_index = None
+                bob_index = None
+                for i in range(5):
+                    if assignment[i]['animal'] == 'dog':
+                        dog_index = i
+                    if assignment[i]['name'] == 'Bob':
+                        bob_index = i
+                if abs(dog_index - bob_index) != 3:
+                    continue
+
+                # Clue 7: The fish enthusiast is directly left of Bob
+                fish_index = None
+                bob_index = None
+                for i in range(5):
+                    if assignment[i]['animal'] == 'fish':
+                        fish_index = i
+                    if assignment[i]['name'] == 'Bob':
+                        bob_index = i
+                if fish_index + 1 != bob_index:
+                    continue
+
+                # Clue 8: Alice is directly left of the person who keeps horses
+                alice_index = None
+                horse_index = None
+                for i in range(5):
+                    if assignment[i]['name'] == 'Alice':
+                        alice_index = i
+                    if assignment[i]['animal'] == 'horse':
+                        horse_index = i
+                if alice_index + 1 != horse_index:
+                    continue
+
+                # Clue 9: The person who loves a carnations arrangement is directly left of the person who loves the vase of tulips
+                carnations_index = None
+                tulips_index = None
+                for i in range(5):
+                    if assignment[i]['flower'] == 'carnations':
+                        carnations_index = i
+                    if assignment[i]['flower'] == 'tulips':
+                        tulips_index = i
+                if carnations_index + 1 != tulips_index:
+                    continue
+
+                # Clue 10: The cat lover is not in the first house
+                if assignment[0]['animal'] == 'cat':
+                    continue
+
+                # All constraints satisfied - found solution
+                result = {
+                    "solution": {
+                        "header": ["House", "Name", "Flower", "Animal"],
+                        "rows": []
+                    }
+                }
+                for i in range(5):
+                    result["solution"]["rows"].append([
+                        str(i+1),
+                        assignment[i]['name'],
+                        assignment[i]['flower'],
+                        assignment[i]['animal']
+                    ])
+                return result
+
+    return None
+
+if __name__ == "__main__":
+    solution = solve()
+    if solution:
+        print(json.dumps(solution, indent=2))
+    else:
+        print(json.dumps({"error": "No solution found"}, indent=2))
+```

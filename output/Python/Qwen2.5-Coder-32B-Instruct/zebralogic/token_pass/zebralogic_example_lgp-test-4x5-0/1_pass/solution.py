@@ -1,0 +1,163 @@
+import itertools
+import json
+
+def is_valid_assignment(houses):
+    # Unpack houses for easier access
+    h1, h2, h3, h4 = houses
+    
+    # Constraint 1: The Dragonfruit smoothie lover is Eric.
+    if h1['smoothie'] == 'dragonfruit' and h1['name'] != 'Eric':
+        return False
+    if h2['smoothie'] == 'dragonfruit' and h2['name'] != 'Eric':
+        return False
+    if h3['smoothie'] == 'dragonfruit' and h3['name'] != 'Eric':
+        return False
+    if h4['smoothie'] == 'dragonfruit' and h4['name'] != 'Eric':
+        return False
+    
+    # Constraint 2: The Dunhill smoker is the person who likes Cherry smoothies.
+    if h1['cigar'] == 'dunhill' and h1['smoothie'] != 'cherry':
+        return False
+    if h2['cigar'] == 'dunhill' and h2['smoothie'] != 'cherry':
+        return False
+    if h3['cigar'] == 'dunhill' and h3['smoothie'] != 'cherry':
+        return False
+    if h4['cigar'] == 'dunhill' and h4['smoothie'] != 'cherry':
+        return False
+    
+    # Constraint 3: The person who uses a Samsung Galaxy S21 is directly left of the person who uses an iPhone 13.
+    if h1['phone_model'] == 'samsung galaxy s21' and h2['phone_model'] != 'iphone 13':
+        return False
+    if h2['phone_model'] == 'samsung galaxy s21' and h3['phone_model'] != 'iphone 13':
+        return False
+    if h3['phone_model'] == 'samsung galaxy s21' and h4['phone_model'] != 'iphone 13':
+        return False
+    
+    # Constraint 4: The Dunhill smoker is somewhere to the right of the person who is very short.
+    if h1['cigar'] == 'dunhill' and (h1['height'] == 'very short' or h2['height'] == 'very short' or h3['height'] == 'very short' or h4['height'] == 'very short'):
+        return False
+    if h2['cigar'] == 'dunhill' and (h2['height'] == 'very short' or h3['height'] == 'very short' or h4['height'] == 'very short'):
+        return False
+    if h3['cigar'] == 'dunhill' and (h3['height'] == 'very short' or h4['height'] == 'very short'):
+        return False
+    if h4['cigar'] == 'dunhill' and h4['height'] == 'very short':
+        return False
+    
+    # Constraint 5: The Watermelon smoothie lover is somewhere to the right of the Desert smoothie lover.
+    if h1['smoothie'] == 'watermelon' and (h1['smoothie'] == 'desert' or h2['smoothie'] == 'desert' or h3['smoothie'] == 'desert' or h4['smoothie'] == 'desert'):
+        return False
+    if h2['smoothie'] == 'watermelon' and (h2['smoothie'] == 'desert' or h3['smoothie'] == 'desert' or h4['smoothie'] == 'desert'):
+        return False
+    if h3['smoothie'] == 'watermelon' and (h3['smoothie'] == 'desert' or h4['smoothie'] == 'desert'):
+        return False
+    if h4['smoothie'] == 'watermelon' and h4['smoothie'] == 'desert':
+        return False
+    
+    # Constraint 6: The Prince smoker is the person who uses a OnePlus 9.
+    if h1['cigar'] == 'prince' and h1['phone_model'] != 'oneplus 9':
+        return False
+    if h2['cigar'] == 'prince' and h2['phone_model'] != 'oneplus 9':
+        return False
+    if h3['cigar'] == 'prince' and h3['phone_model'] != 'oneplus 9':
+        return False
+    if h4['cigar'] == 'prince' and h4['phone_model'] != 'oneplus 9':
+        return False
+    
+    # Constraint 7: The person who is tall is in the third house.
+    if h3['height'] != 'tall':
+        return False
+    
+    # Constraint 8: The person who is very short is the person who uses an iPhone 13.
+    if h1['phone_model'] == 'iphone 13' and h1['height'] != 'very short':
+        return False
+    if h2['phone_model'] == 'iphone 13' and h2['height'] != 'very short':
+        return False
+    if h3['phone_model'] == 'iphone 13' and h3['height'] != 'very short':
+        return False
+    if h4['phone_model'] == 'iphone 13' and h4['height'] != 'very short':
+        return False
+    
+    # Constraint 9: The person who smokes Blue Master is not in the first house.
+    if h1['cigar'] == 'blue master':
+        return False
+    
+    # Constraint 10: The Dunhill smoker is the person who is short.
+    if h1['cigar'] == 'dunhill' and h1['height'] != 'short':
+        return False
+    if h2['cigar'] == 'dunhill' and h2['height'] != 'short':
+        return False
+    if h3['cigar'] == 'dunhill' and h3['height'] != 'short':
+        return False
+    if h4['cigar'] == 'dunhill' and h4['height'] != 'short':
+        return False
+    
+    # Constraint 11: Peter is not in the third house.
+    if h3['name'] == 'Peter':
+        return False
+    
+    # Constraint 12: Arnold is the person who uses a Google Pixel 6.
+    if h1['phone_model'] == 'google pixel 6' and h1['name'] != 'Arnold':
+        return False
+    if h2['phone_model'] == 'google pixel 6' and h2['name'] != 'Arnold':
+        return False
+    if h3['phone_model'] == 'google pixel 6' and h3['name'] != 'Arnold':
+        return False
+    if h4['phone_model'] == 'google pixel 6' and h4['name'] != 'Arnold':
+        return False
+    
+    # Constraint 13: The Dragonfruit smoothie lover is the person partial to Pall Mall.
+    if h1['smoothie'] == 'dragonfruit' and h1['cigar'] != 'pall mall':
+        return False
+    if h2['smoothie'] == 'dragonfruit' and h2['cigar'] != 'pall mall':
+        return False
+    if h3['smoothie'] == 'dragonfruit' and h3['cigar'] != 'pall mall':
+        return False
+    if h4['smoothie'] == 'dragonfruit' and h4['cigar'] != 'pall mall':
+        return False
+    
+    return True
+
+def solve_puzzle():
+    # Lists of possible values for each attribute
+    names = ['Eric', 'Peter', 'Arnold', 'Alice']
+    smoothies = ['dragonfruit', 'cherry', 'desert', 'watermelon']
+    cigars = ['blue master', 'pall mall', 'dunhill', 'prince']
+    heights = ['tall', 'average', 'short', 'very short']
+    phone_models = ['google pixel 6', 'samsung galaxy s21', 'iphone 13', 'oneplus 9']
+    
+    # Generate all possible permutations for each attribute
+    all_permutations = list(itertools.permutations(names)) * \
+                       list(itertools.permutations(smoothies)) * \
+                       list(itertools.permutations(cigars)) * \
+                       list(itertools.permutations(heights)) * \
+                       list(itertools.permutations(phone_models))
+    
+    # Iterate through all combinations of permutations
+    for names_perm in itertools.permutations(names):
+        for smoothies_perm in itertools.permutations(smoothies):
+            for cigars_perm in itertools.permutations(cigars):
+                for heights_perm in itertools.permutations(heights):
+                    for phone_models_perm in itertools.permutations(phone_models):
+                        houses = [
+                            {'name': names_perm[0], 'smoothie': smoothies_perm[0], 'cigar': cigars_perm[0], 'height': heights_perm[0], 'phone_model': phone_models_perm[0]},
+                            {'name': names_perm[1], 'smoothie': smoothies_perm[1], 'cigar': cigars_perm[1], 'height': heights_perm[1], 'phone_model': phone_models_perm[1]},
+                            {'name': names_perm[2], 'smoothie': smoothies_perm[2], 'cigar': cigars_perm[2], 'height': heights_perm[2], 'phone_model': phone_models_perm[2]},
+                            {'name': names_perm[3], 'smoothie': smoothies_perm[3], 'cigar': cigars_perm[3], 'height': heights_perm[3], 'phone_model': phone_models_perm[3]}
+                        ]
+                        
+                        if is_valid_assignment(houses):
+                            solution = {
+                                "solution": {
+                                    "header": ["House", "Name", "Smoothie", "Cigar", "Height", "PhoneModel"],
+                                    "rows": [
+                                        ["1", houses[0]['name'], houses[0]['smoothie'], houses[0]['cigar'], houses[0]['height'], houses[0]['phone_model']],
+                                        ["2", houses[1]['name'], houses[1]['smoothie'], houses[1]['cigar'], houses[1]['height'], houses[1]['phone_model']],
+                                        ["3", houses[2]['name'], houses[2]['smoothie'], houses[2]['cigar'], houses[2]['height'], houses[2]['phone_model']],
+                                        ["4", houses[3]['name'], houses[3]['smoothie'], houses[3]['cigar'], houses[3]['height'], houses[3]['phone_model']]
+                                    ]
+                                }
+                            }
+                            return json.dumps(solution, indent=2)
+
+# Solve the puzzle and print the solution
+print(solve_puzzle())

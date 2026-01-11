@@ -1,0 +1,115 @@
+def time_to_minutes(t):
+    """Convert HH:MM to minutes from 00:00."""
+    h, m = map(int, t.split(':'))
+    return h * 60 + m
+
+def minutes_to_time(m):
+    """Convert minutes from 00:00 to HH:MM."""
+    return f"{m // 60:02d}:{m % 60:02d}"
+
+def schedule_meeting():
+    work_start = time_to_minutes("09:00")
+    work_end = time_to_minutes("17:00")
+    duration = 60  # minutes
+
+    # Stephanie's meetings in minutes from 00:00
+    steph_busy = {
+        "Monday": [
+            ("09:30", "10:00"),
+            ("10:30", "11:00"),
+            ("11:30", "12:00"),
+            ("14:00", "14:30")
+        ],
+        "Tuesday": [
+            ("12:00", "13:00")
+        ],
+        "Wednesday": [
+            ("09:00", "10:00"),
+            ("13:00", "14:00")
+        ]
+    }
+
+    # Betty's meetings
+    betty_busy = {
+        "Monday": [
+            ("09:00", "10:00"),
+            ("11:00", "11:30"),
+            ("14:30", "15:00"),
+            ("15:30", "16:00")
+        ],
+        "Tuesday": [
+            ("09:00", "09:30"),
+            ("11:30", "12:00"),
+            ("12:30", "14:30"),
+            ("15:30", "16:00")
+        ],
+        "Wednesday": [
+            ("10:00", "11:30"),
+            ("12:00", "14:00"),
+            ("14:30", "17:00")
+        ]
+    }
+
+    # Convert to minutes from 00:00
+    steph_busy_min = {}
+    betty_busy_min = {}
+    days = ["Monday", "Tuesday", "Wednesday"]
+
+    for day in days:
+        steph_busy_min[day] = [(time_to_minutes(s), time_to_minutes(e)) for s, e in steph_busy[day]]
+        betty_busy_min[day] = [(time_to_minutes(s), time_to_minutes(e)) for s, e in betty_busy[day]]
+
+    # Betty's Tuesday after 12:30 restriction
+    # Actually, Betty cannot meet on Tuesday after 12:30, so any slot starting at or after 12:30 is invalid.
+    # We'll handle this by adding a fake busy block from 12:30 to 17:00 on Tuesday for Betty.
+    betty_busy_min["Tuesday"].append((time_to_minutes("12:30"), work_end))
+
+    # Find free slots for a person on a given day
+    def free_slots(busy_list, day_start, day_end):
+        busy_sorted = sorted(busy_list)
+        free = []
+        current = day_start
+        for start, end in busy_sorted:
+            if start > current:
+                free.append((current, start))
+            current = max(current, end)
+        if current < day_end:
+            free.append((current, day_end))
+        return free
+
+    possible_slots = []
+
+    for day in days:
+        steph_free = free_slots(steph_busy_min[day], work_start, work_end)
+        betty_free = free_slots(betty_busy_min[day], work_start, work_end)
+
+        # Find intersection of free slots
+        i = j = 0
+        while i < len(steph_free) and j < len(betty_free):
+            s1, e1 = steph_free[i]
+            s2, e2 = betty_free[j]
+
+            start = max(s1, s2)
+            end = min(e1, e2)
+            if start + duration <= end:
+                possible_slots.append((day, start, start + duration))
+            if e1 < e2:
+                i += 1
+            else:
+                j += 1
+
+    # Sort by preference: Wednesday, Tuesday, Monday
+    day_priority = {"Wednesday": 0, "Tuesday": 1, "Monday": 2}
+    possible_slots.sort(key=lambda x: (day_priority[x[0]], x[1]))
+
+    if possible_slots:
+        best_day, start_min, end_min = possible_slots[0]
+        start_str = minutes_to_time(start_min)
+        end_str = minutes_to_time(end_min)
+        print(f"{best_day}")
+        print(f"{start_str}:{end_str}")
+    else:
+        print("No suitable slot found")
+
+if __name__ == "__main__":
+    schedule_meeting()

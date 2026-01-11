@@ -1,0 +1,108 @@
+<reasoning>
+To solve this logic puzzle programmatically, we need to consider all possible arrangements of people, occupations, and hobbies across the three houses and then filter these arrangements based on the given clues. Here's a step-by-step approach:
+
+1. **Define the Domains**: We have three houses, three people (Peter, Arnold, Eric), three occupations (doctor, teacher, engineer), and three hobbies (cooking, photography, gardening).
+
+2. **Generate All Possible Permutations**: For each category (people, occupations, hobbies), generate all possible permutations of length 3. This will give us all possible ways to assign these categories to the three houses.
+
+3. **Apply the Clues**:
+   - **Clue 1**: The person who is a doctor and Eric are next to each other.
+     - If Eric is in house 1, the doctor must be in house 2.
+     - If Eric is in house 2, the doctor can be in either house 1 or 3.
+     - If Eric is in house 3, the doctor must be in house 2.
+   - **Clue 2**: The person who loves cooking is directly left of the person who is a teacher.
+     - If someone cooks in house 1, the teacher must be in house 2.
+     - If someone cooks in house 2, the teacher must be in house 3.
+   - **Clue 3**: The person who is a doctor is somewhere to the right of the person who enjoys gardening.
+     - The doctor cannot be in house 1 if someone gardens there.
+     - The doctor can be in house 2 if someone gardens in house 1.
+     - The doctor can be in house 3 if someone gardens in house 1 or 2.
+   - **Clue 4**: The photography enthusiast is the person who is a teacher.
+     - This means we can directly map the teacher to the photography hobby.
+   - **Clue 5**: The person who is an engineer is Peter.
+     - This means Peter is the engineer, and we can fix his position in our permutations.
+
+4. **Filter Permutations Based on Clues**: Iterate through all possible permutations and apply the clues to filter out invalid configurations.
+
+5. **Construct the Solution**: Once a valid configuration is found, construct the solution in the required JSON format.
+
+6. **Output the Solution**: Print the solution as a JSON string.
+
+This approach ensures that we systematically explore all possibilities and find the correct arrangement that satisfies all the given constraints.
+</reasoning>
+
+```python
+import itertools
+import json
+
+def solve_puzzle():
+    # Define the domains
+    people = ['Peter', 'Arnold', 'Eric']
+    occupations = ['doctor', 'teacher', 'engineer']
+    hobbies = ['cooking', 'photography', 'gardening']
+    
+    # Generate all possible permutations for people, occupations, and hobbies
+    people_perms = list(itertools.permutations(people))
+    occupations_perms = list(itertools.permutations(occupations))
+    hobbies_perms = list(itertools.permutations(hobbies))
+    
+    # Iterate over all permutations and check the constraints
+    for people_perm in people_perms:
+        for occupations_perm in occupations_perms:
+            for hobbies_perm in hobbies_perms:
+                # Create a mapping of house number to attributes
+                house_map = {
+                    1: {'name': people_perm[0], 'occupation': occupations_perm[0], 'hobby': hobbies_perm[0]},
+                    2: {'name': people_perm[1], 'occupation': occupations_perm[1], 'hobby': hobbies_perm[1]},
+                    3: {'name': people_perm[2], 'occupation': occupations_perm[2], 'hobby': hobbies_perm[2]}
+                }
+                
+                # Check Clue 5: The person who is an engineer is Peter.
+                if house_map[1]['name'] == 'Peter' and house_map[1]['occupation'] != 'engineer':
+                    continue
+                if house_map[2]['name'] == 'Peter' and house_map[2]['occupation'] != 'engineer':
+                    continue
+                if house_map[3]['name'] == 'Peter' and house_map[3]['occupation'] != 'engineer':
+                    continue
+                
+                # Check Clue 4: The photography enthusiast is the person who is a teacher.
+                if any(house['hobby'] == 'photography' and house['occupation'] != 'teacher' for house in house_map.values()):
+                    continue
+                if any(house['occupation'] == 'teacher' and house['hobby'] != 'photography' for house in house_map.values()):
+                    continue
+                
+                # Check Clue 3: The person who is a doctor is somewhere to the right of the person who enjoys gardening.
+                if (house_map[1]['occupation'] == 'doctor' and house_map[1]['hobby'] == 'gardening') or \
+                   (house_map[2]['occupation'] == 'doctor' and house_map[1]['hobby'] == 'gardening') or \
+                   (house_map[3]['occupation'] == 'doctor' and (house_map[1]['hobby'] == 'gardening' or house_map[2]['hobby'] == 'gardening')):
+                    continue
+                
+                # Check Clue 2: The person who loves cooking is directly left of the person who is a teacher.
+                if (house_map[1]['hobby'] == 'cooking' and house_map[2]['occupation'] != 'teacher') or \
+                   (house_map[2]['hobby'] == 'cooking' and house_map[3]['occupation'] != 'teacher'):
+                    continue
+                
+                # Check Clue 1: The person who is a doctor and Eric are next to each other.
+                if (house_map[1]['name'] == 'Eric' and house_map[2]['occupation'] != 'doctor') or \
+                   (house_map[2]['name'] == 'Eric' and (house_map[1]['occupation'] != 'doctor' and house_map[3]['occupation'] != 'doctor')) or \
+                   (house_map[3]['name'] == 'Eric' and house_map[2]['occupation'] != 'doctor'):
+                    continue
+                
+                # If all checks pass, we have found the solution
+                solution = {
+                    "solution": {
+                        "header": ["House", "Name", "Occupation", "Hobby"],
+                        "rows": [
+                            [str(house), house_map[house]['name'], house_map[house]['occupation'], house_map[house]['hobby']]
+                            for house in range(1, 4)
+                        ]
+                    }
+                }
+                
+                return json.dumps(solution, indent=2)
+
+# Solve the puzzle and print the solution
+print(solve_puzzle())
+```
+
+This Python program generates all possible permutations of people, occupations, and hobbies, applies the given constraints, and outputs the solution in the specified JSON format.

@@ -1,0 +1,225 @@
+Let’s break this down step by step before writing the code.
+
+---
+
+**Step 1 – Understanding the problem**
+
+We start at **Union Square at 9:00 AM**.  
+We have three friends:
+
+1. **Carol** – Sunset District, available 10:15–11:45, needs at least 30 minutes.
+2. **Rebecca** – Mission District, available 11:30–20:15, needs at least 120 minutes.
+3. **Karen** – Bayview, available 12:45–15:00, needs at least 120 minutes.
+
+Travel times are given between all locations.
+
+We want to meet as many friends as possible, respecting:
+- Travel time between meetings
+- Availability windows
+- Minimum meeting durations
+
+---
+
+**Step 2 – Logical constraints**
+
+If we try to meet all three:
+
+- Order could be: Carol → Rebecca → Karen, or Carol → Karen → Rebecca, etc.
+- But Karen’s window is short (12:45–15:00) and needs 120 minutes, so meeting her must be exactly 12:45–14:45 or similar.
+- Rebecca’s window is long, so she’s more flexible.
+- Carol’s window is early and short (10:15–11:45), so she must be met first if at all.
+
+---
+
+**Step 3 – Try meeting all three**
+
+Start at Union Square at 9:00.
+
+**Option A: Carol first**
+
+- Travel Union Square → Sunset District: 26 minutes.
+- Arrive Sunset District at 9:26, but Carol is available only at 10:15, so wait until 10:15.
+- Meet Carol 10:15–10:45 (30 minutes).
+- Travel Sunset District → next location.
+
+If next is Rebecca (Mission District):
+- Sunset to Mission: 24 minutes travel.
+- Arrive Mission at 11:09.
+- Rebecca available at 11:30, so wait until 11:30.
+- Meet Rebecca from 11:30–13:30 (120 minutes).
+- Travel Mission → Bayview: 15 minutes.
+- Arrive Bayview at 13:45.
+- Karen available until 15:00, so meet 13:45–15:00? That’s only 75 minutes, not enough (need 120).  
+  → Fails for Karen.
+
+So Carol → Rebecca → Karen doesn’t work because Karen’s time is too short after Rebecca.
+
+---
+
+**Option B: Carol → Karen → Rebecca**
+
+- After Carol (10:15–10:45), travel Sunset → Bayview: 22 minutes.
+- Arrive Bayview at 11:07.
+- Karen available at 12:45, so wait 1h38m until 12:45.
+- Meet Karen 12:45–14:45 (120 minutes).
+- Travel Bayview → Mission: 13 minutes.
+- Arrive Mission at 14:58.
+- Rebecca available until 20:15, so meet 14:58–16:58 (120 minutes) works fine.
+
+This meets all three! Let’s check times:
+
+1. Start Union Square 9:00 → travel 26 → Sunset 9:26, wait until 10:15.
+2. Carol 10:15–10:45.
+3. Travel 22 → Bayview 11:07, wait until 12:45.
+4. Karen 12:45–14:45.
+5. Travel 13 → Mission 14:58.
+6. Rebecca 14:58–16:58.
+
+All constraints satisfied.
+
+---
+
+**Step 4 – Is there a better schedule?**
+
+We could try to reduce waiting time, but the goal is to meet as many as possible, not minimize waiting.  
+Meeting all three is possible, so that’s optimal.
+
+---
+
+**Step 5 – Write the program**
+
+We’ll encode travel times, availability, and brute-force check permutations of visits to see if all three can be met.  
+But since we already found a valid order, we can implement a search over permutations and validate.
+
+---
+
+Here’s the Python program:
+
+```python
+import json
+from itertools import permutations
+
+def time_to_minutes(t):
+    """Convert 'H:MM' string to minutes since midnight."""
+    if isinstance(t, str):
+        h, m = map(int, t.split(':'))
+        return h * 60 + m
+    return t
+
+def minutes_to_time(m):
+    """Convert minutes since midnight to 'H:MM' string."""
+    h = m // 60
+    mi = m % 60
+    return f"{h}:{mi:02d}"
+
+# Travel times in minutes between locations
+travel_times = {
+    ('Union Square', 'Mission District'): 14,
+    ('Union Square', 'Bayview'): 15,
+    ('Union Square', 'Sunset District'): 26,
+    ('Mission District', 'Union Square'): 15,
+    ('Mission District', 'Bayview'): 15,
+    ('Mission District', 'Sunset District'): 24,
+    ('Bayview', 'Union Square'): 17,
+    ('Bayview', 'Mission District'): 13,
+    ('Bayview', 'Sunset District'): 22,
+    ('Sunset District', 'Union Square'): 30,
+    ('Sunset District', 'Mission District'): 24,
+    ('Sunset District', 'Bayview'): 22,
+}
+
+# People data: name, location, available start, available end, min_duration
+people = [
+    ('Rebecca', 'Mission District', time_to_minutes('11:30'), time_to_minutes('20:15'), 120),
+    ('Karen', 'Bayview', time_to_minutes('12:45'), time_to_minutes('15:00'), 120),
+    ('Carol', 'Sunset District', time_to_minutes('10:15'), time_to_minutes('11:45'), 30),
+]
+
+def schedule_meetings(order, start_location='Union Square', start_time=time_to_minutes('9:00')):
+    """Try to schedule meetings in given order, return itinerary if possible."""
+    current_location = start_location
+    current_time = start_time
+    itinerary = []
+    
+    for person_name, location, avail_start, avail_end, min_dur in order:
+        # Travel to location
+        travel = travel_times.get((current_location, location))
+        if travel is None:
+            return None  # Should not happen with our locations
+        current_time += travel
+        
+        # Wait if arrived before availability
+        if current_time < avail_start:
+            current_time = avail_start
+        
+        # Check if enough time to meet before they leave
+        if current_time + min_dur > avail_end:
+            return None  # Cannot meet this person
+        
+        # Schedule meeting
+        meeting_end = current_time + min_dur
+        itinerary.append({
+            'action': 'meet',
+            'location': location,
+            'person': person_name,
+            'start_time': minutes_to_time(current_time),
+            'end_time': minutes_to_time(meeting_end)
+        })
+        
+        current_time = meeting_end
+        current_location = location
+    
+    return itinerary
+
+def main():
+    best_itinerary = None
+    max_met = 0
+    
+    # Try all permutations of people (1, 2, or all 3)
+    for r in range(1, 4):
+        for perm in permutations(people, r):
+            itinerary = schedule_meetings(perm)
+            if itinerary and len(itinerary) > max_met:
+                max_met = len(itinerary)
+                best_itinerary = itinerary
+    
+    # Output result
+    result = {"itinerary": best_itinerary}
+    print(json.dumps(result, indent=2))
+
+if __name__ == "__main__":
+    main()
+```
+
+**Output when run:**
+```json
+{
+  "itinerary": [
+    {
+      "action": "meet",
+      "location": "Sunset District",
+      "person": "Carol",
+      "start_time": "10:15",
+      "end_time": "10:45"
+    },
+    {
+      "action": "meet",
+      "location": "Bayview",
+      "person": "Karen",
+      "start_time": "12:45",
+      "end_time": "14:45"
+    },
+    {
+      "action": "meet",
+      "location": "Mission District",
+      "person": "Rebecca",
+      "start_time": "14:58",
+      "end_time": "16:58"
+    }
+  ]
+}
+```
+
+---
+
+**

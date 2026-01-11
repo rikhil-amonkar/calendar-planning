@@ -1,0 +1,125 @@
+Let’s break this down step by step before writing the code.
+
+**Step 1 — Understanding the problem**  
+We start at Presidio at 9:00 AM.  
+We have 8 friends, each with:
+- A location
+- An availability window (start–end)
+- A minimum meeting duration we’d like to meet them for
+- Travel times between all locations (symmetric? Not exactly, but given in both directions)
+
+Goal: Maximize number of friends met, respecting:
+1. Travel time between locations
+2. Their availability windows
+3. Our start time and sequential schedule
+
+**Step 2 — Observations on constraints**  
+- Kevin is available 7:15–8:45 AM, but we start at 9:00 AM, so Kevin is impossible to meet (we can’t time-travel).  
+- Michelle at Golden Gate Park from 8:00–9:00 PM, minimum 15 minutes — possible if we can get there by 8:00 PM and leave by 8:15 PM.  
+- Emily at Fisherman’s Wharf 4:15–7:00 PM, minimum 30 minutes.  
+- Mark at Marina District 6:15–7:45 PM, minimum 75 minutes.  
+- Barbara at Alamo Square 5:00–7:00 PM, minimum 120 minutes — impossible because her window is only 2 hours, so we can’t meet for 120 minutes unless we arrive exactly at 5:00 and leave at 7:00, but travel before/after may conflict. Actually, 5:00–7:00 is exactly 120 minutes, so we could meet the full window, but then we can’t meet anyone else overlapping that time.  
+- Laura at Sunset District 7:00–9:15 PM, minimum 75 minutes.  
+- Mary at Nob Hill 5:30–7:00 PM, minimum 45 minutes.  
+- Helen at North Beach 11:00 AM–12:15 PM, minimum 45 minutes.
+
+**Step 3 — Travel time matrix**  
+We’ll store it as a dict: `travel[(from, to)] = minutes`.
+
+**Step 4 — Approach**  
+We can brute-force search over permutations of meetable friends (excluding Kevin, possibly excluding Barbara if her 120-minute requirement makes others impossible).  
+But since the number of friends is small, we can try a heuristic:  
+We start at Presidio at 9:00, we can meet Helen first (North Beach 11:00–12:15, need 45 min).  
+We must arrive by 11:00, leave by 12:15. Travel from Presidio to North Beach is 18 minutes, so we can leave Presidio at 10:42, arrive 11:00, meet until 11:45, leave.
+
+Then from North Beach, we can go to another friend available later in the day.
+
+We must check feasibility sequentially:  
+For each candidate friend after current time + travel, they must have enough time left in their window for the minimum duration.
+
+**Step 5 — Which friends are possible in theory given windows and travel?**  
+Let’s list friends in order of their window start times after Helen:
+1. Helen: 11:00–12:15, 45 min
+2. Barbara: 5:00–7:00, 120 min
+3. Mary: 5:30–7:00, 45 min
+4. Emily: 4:15–7:00, 30 min
+5. Mark: 6:15–7:45, 75 min
+6. Laura: 7:00–9:15, 75 min
+7. Michelle: 8:00–9:00, 15 min
+
+We can’t meet Barbara for 120 min if we want to meet anyone else during 5–7 PM, so maybe skip Barbara to meet more people.
+
+**Step 6 — Try a greedy schedule**  
+Start: Presidio 9:00  
+1. Helen at North Beach:  
+   Travel 18 min, so leave 10:42 → arrive 11:00, meet 11:00–11:45.  
+   Leave North Beach 11:45.
+
+Next: Who can we meet after 11:45?  
+All others are late afternoon/evening, so we have a big gap. We can go to a location and wait until their window opens.
+
+We should minimize travel, so maybe go to a central location and wait.
+
+But let’s think: after Helen, we could go to Fisherman’s Wharf (Emily 4:15–7:00) but that’s too early. We could instead go to Golden Gate Park (Michelle 8:00–9:00 PM) but that’s very far in future.
+
+Better: after Helen, go to Alamo Square (Barbara 5:00–7:00) but we don’t want to meet Barbara for 2 hours because it blocks others. Maybe meet Emily first (4:15), then Mary (5:30), then Mark (6:15), then Laura (7:00), then Michelle (8:00). Let’s check travel feasibility.
+
+**Step 7 — Attempt a feasible sequence**  
+From North Beach (leave 11:45) to Fisherman’s Wharf (Emily 4:15–7:00):  
+Travel North Beach → Fisherman’s Wharf = 5 min, so arrive 11:50 — but Emily not available until 4:15, so we’d wait 4+ hours. Not optimal but possible.
+
+But maybe better: from North Beach to Marina District (Mark 6:15–7:45) or Nob Hill (Mary 5:30–7:00).  
+Travel times:  
+North Beach → Marina District: 11 min → arrive 11:56, wait until 6:15 — too long.  
+So instead, go somewhere to kill time, but we want to meet multiple people.
+
+Let’s try:  
+After Helen (11:45 leave North Beach), go to Golden Gate Park (Michelle 8:00 PM), but that’s too long to wait. Not good.
+
+Maybe: Helen → Alamo Square (Barbara) but we skip meeting Barbara, just go there to be closer to others? But we can meet Barbara if we want 2 hours, but then we miss everyone else.
+
+Let’s try maximizing count:  
+We can meet Helen, Emily, Mary, Mark, Laura, Michelle.  
+Check if travel times allow:
+
+Helen: North Beach 11:00–11:45.  
+Leave 11:45, travel to Fisherman’s Wharf (5 min) → 11:50, wait until 4:15 (long wait) — okay.  
+Meet Emily 4:15–4:45 (30 min).  
+Leave 4:45, travel to Nob Hill (Mary 5:30–7:00):  
+Fisherman’s Wharf → Nob Hill = 11 min → arrive 4:56, wait until 5:30.  
+Meet Mary 5:30–6:15 (45 min).  
+Leave 6:15, travel to Marina District (Mark 6:15–7:45):  
+Nob Hill → Marina District = 11 min → arrive 6:26.  
+Mark’s window starts 6:15, we arrive 6:26, meet 6:26–7:41 (75 min) → end 7:41.  
+Leave 7:41, travel to Sunset District (Laura 7:00–9:15):  
+Marina District → Sunset District = 19 min → arrive 8:00.  
+Laura’s window starts 7:00, we arrive 8:00, meet 8:00–9:15 (75 min) → end 9:15.  
+Leave 9:15, travel to Golden Gate Park (Michelle 8:00–9:00):  
+Sunset District → Golden Gate Park = 11 min → arrive 9:26 — too late, Michelle’s window ends 9:00. So Michelle impossible if we meet Laura.
+
+So maybe swap: after Mark, go to Michelle first, then Laura?  
+Mark ends 7:41, travel to Golden Gate Park (Michelle 8:00–9:00):  
+Marina District → Golden Gate Park = 18 min → arrive 7:59, meet 8:00–8:15 (15 min).  
+Leave 8:15, travel to Sunset District (Laura 7:00–9:15):  
+Golden Gate Park → Sunset District = 10 min → arrive 8:25, meet 8:25–9:15 (50 min) — but Laura’s minimum is 75 minutes, so we fail.
+
+So Laura not possible if we meet Michelle.
+
+Maybe skip Laura, do Mark → Michelle:  
+Mark 6:26–7:41, leave 7:41, travel to Golden Gate Park 18 min → 7:59, meet Michelle 8:00–8:15, done.
+
+So feasible set: Helen, Emily, Mary, Mark, Michelle = 5 people.
+
+Check if we can add Barbara? No, overlaps with Emily/Mary/Mark.  
+Can we add Laura? No, overlaps with Michelle.
+
+So 5 seems max.
+
+**Step 8 — Verify travel times**  
+Let’s compute precisely in code.
+
+We’ll write a program that tries all permutations of meetable friends (excluding Kevin, Barbara) and checks feasibility.
+
+---
+
+Here’s the Python program:

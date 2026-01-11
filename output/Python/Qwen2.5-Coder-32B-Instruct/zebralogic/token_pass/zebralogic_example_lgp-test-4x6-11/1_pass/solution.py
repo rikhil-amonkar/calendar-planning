@@ -1,0 +1,205 @@
+import json
+
+def is_valid(state, constraints):
+    # Check all constraints
+    for constraint in constraints:
+        if not constraint(state):
+            return False
+    return True
+
+def constraint1(state):
+    # The person who loves cooking is the person who loves romance books.
+    for house in state:
+        if house['Hobby'] == 'cooking' and house['BookGenre'] != 'romance':
+            return False
+        if house['Hobby'] != 'cooking' and house['BookGenre'] == 'romance':
+            return False
+    return True
+
+def constraint2(state):
+    # The person whose birthday is in February is the person who loves pop music.
+    for house in state:
+        if house['Birthday'] == 'feb' and house['MusicGenre'] != 'pop':
+            return False
+        if house['Birthday'] != 'feb' and house['MusicGenre'] == 'pop':
+            return False
+    return True
+
+def constraint3(state):
+    # Eric is not in the second house.
+    return state[1]['Name'] != 'Eric'
+
+def constraint4(state):
+    # The person who loves romance books is not in the fourth house.
+    return state[3]['BookGenre'] != 'romance'
+
+def constraint5(state):
+    # The person whose birthday is in February is the fish enthusiast.
+    for house in state:
+        if house['Birthday'] == 'feb' and house['Animal'] != 'fish':
+            return False
+        if house['Birthday'] != 'feb' and house['Animal'] == 'fish':
+            return False
+    return True
+
+def constraint6(state):
+    # Alice is somewhere to the right of the person who loves fantasy books.
+    for i, house in enumerate(state):
+        if house['Name'] == 'Alice':
+            for j in range(i):
+                if state[j]['BookGenre'] == 'fantasy':
+                    return True
+    return False
+
+def constraint7(state):
+    # The person who keeps horses is the person who loves rock music.
+    for house in state:
+        if house['Animal'] == 'horse' and house['MusicGenre'] != 'rock':
+            return False
+        if house['Animal'] != 'horse' and house['MusicGenre'] == 'rock':
+            return False
+    return True
+
+def constraint8(state):
+    # The person who enjoys gardening is the person whose birthday is in April.
+    for house in state:
+        if house['Hobby'] == 'gardening' and house['Birthday'] != 'april':
+            return False
+        if house['Hobby'] != 'gardening' and house['Birthday'] == 'april':
+            return False
+    return True
+
+def constraint9(state):
+    # The person who loves jazz music is the person who loves cooking.
+    for house in state:
+        if house['MusicGenre'] == 'jazz' and house['Hobby'] != 'cooking':
+            return False
+        if house['MusicGenre'] != 'jazz' and house['Hobby'] == 'cooking':
+            return False
+    return True
+
+def constraint10(state):
+    # The person who loves rock music is the person who loves mystery books.
+    for house in state:
+        if house['MusicGenre'] == 'rock' and house['BookGenre'] != 'mystery':
+            return False
+        if house['MusicGenre'] != 'rock' and house['BookGenre'] == 'mystery':
+            return False
+    return True
+
+def constraint11(state):
+    # The person who paints as a hobby is directly left of the person who loves romance books.
+    for i in range(len(state) - 1):
+        if state[i]['Hobby'] == 'painting' and state[i + 1]['BookGenre'] != 'romance':
+            return False
+    return True
+
+def constraint12(state):
+    # Peter is the person who loves pop music.
+    for house in state:
+        if house['Name'] == 'Peter' and house['MusicGenre'] != 'pop':
+            return False
+        if house['Name'] != 'Peter' and house['MusicGenre'] == 'pop':
+            return False
+    return True
+
+def constraint13(state):
+    # The person who enjoys gardening is Arnold.
+    for house in state:
+        if house['Hobby'] == 'gardening' and house['Name'] != 'Arnold':
+            return False
+        if house['Hobby'] != 'gardening' and house['Name'] == 'Arnold':
+            return False
+    return True
+
+def constraint14(state):
+    # The person who loves rock music is directly left of the person whose birthday is in January.
+    for i in range(len(state) - 1):
+        if state[i]['MusicGenre'] == 'rock' and state[i + 1]['Birthday'] != 'jan':
+            return False
+    return True
+
+def constraint15(state):
+    # The person who loves cooking is not in the third house.
+    return state[2]['Hobby'] != 'cooking'
+
+def constraint16(state):
+    # The cat lover is somewhere to the right of the person who keeps horses.
+    horse_house = None
+    for i, house in enumerate(state):
+        if house['Animal'] == 'horse':
+            horse_house = i
+        if horse_house is not None and house['Animal'] == 'cat':
+            return i > horse_house
+    return True
+
+constraints = [
+    constraint1, constraint2, constraint3, constraint4, constraint5,
+    constraint6, constraint7, constraint8, constraint9, constraint10,
+    constraint11, constraint12, constraint13, constraint14, constraint15,
+    constraint16
+]
+
+def backtrack(state, index, attributes):
+    if index == len(state):
+        if is_valid(state, constraints):
+            return state
+        return None
+    
+    for name in attributes['Name']:
+        for hobby in attributes['Hobby']:
+            for animal in attributes['Animal']:
+                for book_genre in attributes['BookGenre']:
+                    for birthday in attributes['Birthday']:
+                        for music_genre in attributes['MusicGenre']:
+                            state[index] = {
+                                'Name': name,
+                                'Hobby': hobby,
+                                'Animal': animal,
+                                'BookGenre': book_genre,
+                                'Birthday': birthday,
+                                'MusicGenre': music_genre
+                            }
+                            if is_valid(state, constraints):
+                                remaining_attributes = {key: [val for val in attributes[key] if val != state[index][key]] for key in attributes}
+                                result = backtrack(state, index + 1, remaining_attributes)
+                                if result:
+                                    return result
+                            state[index] = {}
+    return None
+
+def solve_puzzle():
+    attributes = {
+        'Name': ['Peter', 'Alice', 'Eric', 'Arnold'],
+        'Hobby': ['cooking', 'painting', 'gardening', 'photography'],
+        'Animal': ['horse', 'fish', 'cat', 'bird'],
+        'BookGenre': ['fantasy', 'mystery', 'romance', 'science fiction'],
+        'Birthday': ['april', 'jan', 'sept', 'feb'],
+        'MusicGenre': ['pop', 'rock', 'classical', 'jazz']
+    }
+    
+    state = [{}, {}, {}, {}]
+    solution = backtrack(state, 0, attributes)
+    
+    if solution:
+        formatted_solution = {
+            "solution": {
+                "header": ["House", "Name", "Hobby", "Animal", "BookGenre", "Birthday", "MusicGenre"],
+                "rows": []
+            }
+        }
+        for i, house in enumerate(solution):
+            formatted_solution["solution"]["rows"].append([
+                str(i + 1),
+                house['Name'],
+                house['Hobby'],
+                house['Animal'],
+                house['BookGenre'],
+                house['Birthday'],
+                house['MusicGenre']
+            ])
+        return json.dumps(formatted_solution, indent=2)
+    else:
+        return "No solution found"
+
+print(solve_puzzle())

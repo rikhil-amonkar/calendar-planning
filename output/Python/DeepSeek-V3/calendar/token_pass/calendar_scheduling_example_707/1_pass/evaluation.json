@@ -1,0 +1,28 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "Monday\n16:00:16:30",
+    "pred": {
+        "day": "Monday",
+        "time_range": "{16:00:16:30}"
+    },
+    "gold": {
+        "day": "Monday",
+        "time_range": "{16:00:16:30}"
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 52.01584482192993,
+        "execution_time": 0.014656782150268555,
+        "constraint_eval_time": 1.2636184692382812e-05,
+        "pred_extract_time": 0.0001735687255859375,
+        "gold_extract_time": 6.4373016357421875e-06,
+        "total_tokens": 1960,
+        "reasoning_tokens": 389
+    },
+    "reasoning_content": "Let\u2019s break this down step by step before writing the code.  \n\nWe have:  \n\n- **Participants**: Ryan and Adam  \n- **Meeting duration**: 30 minutes (0.5 hours)  \n- **Work hours**: 9:00 to 17:00 each day  \n- **Days considered**: Monday, Tuesday, Wednesday  \n- **Constraints**:  \n  1. Ryan cannot meet on Wednesday.  \n  2. Adam would like to avoid more meetings on Monday before 14:30.  \n  3. Tuesday is mentioned separately but no extra constraint beyond schedules.  \n\nWe\u2019ll interpret \u201cAdam would like to avoid more meetings on Monday before 14:30\u201d as: if possible, don\u2019t schedule on Monday before 14:30, but if that\u2019s the only slot, it\u2019s still allowed (since the problem says there exists a solution that works with everyone\u2019s schedule).  \n\n---\n\n### Step 1 \u2013 Parse busy times into intervals\nWe\u2019ll convert each person\u2019s schedule into a list of busy intervals for each day, then find free slots in work hours, then intersect free slots between participants, then apply constraints.\n\n---\n\n### Step 2 \u2013 Convert time strings to minutes since 9:00\nEasier to work in minutes from 9:00 (so 9:00 = 0, 17:00 = 480 minutes).\n\n---\n\n### Step 3 \u2013 Find free slots\nFor each day, for each person, compute free slots within 9:00\u201317:00, then find common free slots of length \u2265 30 minutes.\n\n---\n\n### Step 4 \u2013 Apply extra constraints\n1. Remove Wednesday for Ryan.  \n2. Prefer Monday after 14:30 if possible, but not required.\n\n---\n\n### Step 5 \u2013 Choose earliest feasible slot\nWe\u2019ll pick the first slot that fits.\n\n---\n\nHere\u2019s the Python script:"
+}

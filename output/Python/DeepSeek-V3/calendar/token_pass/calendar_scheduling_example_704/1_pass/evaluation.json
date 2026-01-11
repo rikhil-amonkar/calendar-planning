@@ -1,0 +1,28 @@
+{
+    "has_execution_error": false,
+    "has_no_plan": false,
+    "execution_output": "Monday:09:00:09:30",
+    "pred": {
+        "day": "Monday",
+        "time_range": "{9:00:9:30}"
+    },
+    "gold": {
+        "day": "Monday",
+        "time_range": "{9:00:9:30}"
+    },
+    "status": "Correct plan",
+    "violated_constraint": {},
+    "is_exact_match": true,
+    "constraints_satisfied": true,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 41.05727028846741,
+        "execution_time": 0.014753580093383789,
+        "constraint_eval_time": 1.1205673217773438e-05,
+        "pred_extract_time": 0.00017309188842773438,
+        "gold_extract_time": 7.152557373046875e-06,
+        "total_tokens": 1937,
+        "reasoning_tokens": 565
+    },
+    "reasoning_content": "Let\u2019s break this down step-by-step before writing the code.  \n\nWe have:  \n\n**Participants:** Larry and Samuel  \n**Meeting duration:** 30 minutes (0.5 hours)  \n**Work hours:** 9:00 to 17:00 (9:00\u201317:00)  \n**Days considered:** Monday, Tuesday, Wednesday  \n**Constraints:**  \n- Larry: no meetings, but prefers not Wednesday.  \n- Samuel: has meetings as listed.  \n- Samuel prefers to avoid more meetings on Tuesday.  \n- Group wants earliest availability.  \n\n**Approach:**  \n1. Convert all times to minutes from start of day for easier comparison.  \n2. Define work hours as 9:00 (540 minutes) to 17:00 (1020 minutes).  \n3. Build busy intervals for Samuel for each day from the description.  \n4. Larry is free all work hours every day.  \n5. Find earliest 30-minute slot within work hours when Samuel is free, respecting day preferences (avoid Wednesday if possible, avoid Tuesday if possible, but still possible if needed).  \n6. Since they want earliest availability, check Monday first, then Tuesday, then Wednesday.  \n\n---\n\n**Samuel\u2019s busy times in minutes from start of day:**\n\n**Monday:**  \n- 10:30\u201311:00 \u2192 630\u2013660  \n- 12:00\u201312:30 \u2192 720\u2013750  \n- 13:00\u201315:00 \u2192 780\u2013900  \n- 15:30\u201316:30 \u2192 930\u2013990  \n\n**Tuesday:**  \n- 9:00\u201312:00 \u2192 540\u2013720  \n- 14:00\u201315:30 \u2192 840\u2013930  \n- 16:30\u201317:00 \u2192 990\u20131020  \n\n**Wednesday:**  \n- 10:30\u201311:00 \u2192 630\u2013660  \n- 11:30\u201312:00 \u2192 690\u2013720  \n- 12:30\u201313:00 \u2192 750\u2013780  \n- 14:00\u201314:30 \u2192 840\u2013870  \n- 15:00\u201316:00 \u2192 900\u2013960  \n\n---\n\n**Finding free slots:**\n\n**Monday:**  \nWork hours: 540\u20131020  \nBusy: [630\u2013660, 720\u2013750, 780\u2013900, 930\u2013990]  \nFree between work start and first busy: 540\u2013630 \u2192 90 minutes \u2192 slot 540\u2013570 (9:00\u20139:30) available.  \nThat\u2019s earliest possible overall.  \n\nSince Larry prefers not Wednesday and Samuel prefers to avoid Tuesday, Monday 9:00\u20139:30 works perfectly.  \n\n---\n\n**Code implementation:**"
+}

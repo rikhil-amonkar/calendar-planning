@@ -1,0 +1,147 @@
+```python
+import json
+from itertools import permutations
+
+def solve():
+    # Define all possible values
+    names = ["Peter", "Bob", "Carol", "Eric", "Alice", "Arnold"]
+    pets = ["bird", "dog", "cat", "rabbit", "fish", "hamster"]
+    styles = ["victorian", "ranch", "modern", "mediterranean", "colonial", "craftsman"]
+    months = ["mar", "sept", "may", "feb", "jan", "april"]
+    houses = [1, 2, 3, 4, 5, 6]
+    
+    # Try all permutations (brute force with pruning)
+    solutions = []
+    
+    # Generate all possible assignments
+    for name_perm in permutations(names, 6):
+        # Clue 5: Carol is in the third house
+        if name_perm[2] != "Carol":
+            continue
+            
+        # Clue 8: Eric is in the sixth house
+        if name_perm[5] != "Eric":
+            continue
+            
+        for pet_perm in permutations(pets, 6):
+            # Clue 13: The person with fish is not in the second house
+            if pet_perm[1] == "fish":
+                continue
+                
+            for style_perm in permutations(styles, 6):
+                # Clue 4: Colonial-style house is in the second house
+                if style_perm[1] != "colonial":
+                    continue
+                    
+                # Clue 6: Mediterranean-style is not in the sixth house
+                if style_perm[5] == "mediterranean":
+                    continue
+                    
+                # Clue 11: Craftsman-style house is Arnold
+                # We'll check this after we know name positions
+                
+                # Clue 14: Peter is in colonial-style house
+                # Find Peter's house index
+                peter_idx = name_perm.index("Peter")
+                if style_perm[peter_idx] != "colonial":
+                    continue
+                    
+                # Clue 18: Craftsman-style house is in the fourth house
+                if style_perm[3] != "craftsman":
+                    continue
+                    
+                for month_perm in permutations(months, 6):
+                    # Clue 3: May is in the second house
+                    if month_perm[1] != "may":
+                        continue
+                        
+                    # Clue 17: Carol is March
+                    if month_perm[2] != "mar":
+                        continue
+                        
+                    # Clue 15: January is directly left of April
+                    jan_idx = month_perm.index("jan")
+                    april_idx = month_perm.index("april")
+                    if april_idx != jan_idx + 1:
+                        continue
+                        
+                    # Clue 2: January is somewhere to the left of September
+                    sept_idx = month_perm.index("sept")
+                    if jan_idx >= sept_idx:
+                        continue
+                        
+                    # Clue 1: Hamster is somewhere to the right of March
+                    mar_idx = month_perm.index("mar")
+                    hamster_idx = pet_perm.index("hamster")
+                    if hamster_idx <= mar_idx:
+                        continue
+                        
+                    # Clue 7: Fish is somewhere to the right of Bob
+                    bob_idx = name_perm.index("Bob")
+                    fish_idx = pet_perm.index("fish")
+                    if fish_idx <= bob_idx:
+                        continue
+                        
+                    # Clue 9: One house between cat and Victorian house
+                    cat_idx = pet_perm.index("cat")
+                    victorian_idx = style_perm.index("victorian")
+                    if abs(cat_idx - victorian_idx) != 2:  # 2 positions apart means 1 house between
+                        continue
+                        
+                    # Clue 10: Two houses between Victorian house and hamster
+                    if abs(victorian_idx - hamster_idx) != 3:  # 3 positions apart means 2 houses between
+                        continue
+                        
+                    # Clue 12: Colonial is somewhere to the left of modern
+                    colonial_idx = style_perm.index("colonial")
+                    modern_idx = style_perm.index("modern")
+                    if colonial_idx >= modern_idx:
+                        continue
+                        
+                    # Clue 16: One house between bird and modern house
+                    bird_idx = pet_perm.index("bird")
+                    if abs(bird_idx - modern_idx) != 2:
+                        continue
+                        
+                    # Clue 11: Craftsman-style house is Arnold
+                    craftsman_idx = style_perm.index("craftsman")
+                    if name_perm[craftsman_idx] != "Arnold":
+                        continue
+                        
+                    # Clue 19: Dog is in the fourth house
+                    if pet_perm[3] != "dog":
+                        continue
+                        
+                    # All constraints satisfied, create solution
+                    solution = []
+                    for i in range(6):
+                        solution.append([
+                            str(i + 1),
+                            name_perm[i],
+                            pet_perm[i],
+                            style_perm[i],
+                            month_perm[i]
+                        ])
+                    
+                    # Check for uniqueness (should only be one solution)
+                    if solution not in solutions:
+                        solutions.append(solution)
+    
+    # Return the first (and should be only) solution
+    if solutions:
+        return {
+            "solution": {
+                "header": ["House", "Name", "Pet", "HouseStyle", "Birthday"],
+                "rows": solutions[0]
+            }
+        }
+    else:
+        return {"solution": None}
+
+def main():
+    result = solve()
+    print(json.dumps(result, indent=2))
+
+if __name__ == "__main__":
+    main()
+```

@@ -1,0 +1,95 @@
+Let’s break this down step by step before writing the code.
+
+**Step 1 – Understanding the problem**  
+We start at **Bayview at 9:00 AM**.  
+We have two friends:  
+- **Richard** at Union Square from 8:45 to 13:00 (1:00 PM), need at least 120 minutes with him.  
+- **Charles** at Presidio from 9:45 to 13:00, need at least 120 minutes with him.  
+
+Travel times are asymmetric:  
+- Bayview → Union Square: 17 min  
+- Bayview → Presidio: 31 min  
+- Union Square → Bayview: 15 min  
+- Union Square → Presidio: 24 min  
+- Presidio → Bayview: 31 min  
+- Presidio → Union Square: 22 min  
+
+We want to meet **as many friends as possible** — here that means both, if possible, given time constraints.
+
+**Step 2 – Feasibility check**  
+If we meet both, we have to travel between them, and each meeting must be ≥ 120 minutes.  
+Let’s try meeting Richard first, then Charles.
+
+**Option A: Richard first, then Charles**  
+Start at Bayview 9:00 → travel 17 min → arrive Union Square 9:17.  
+Richard is available from 8:45, so we can start at 9:17.  
+We need 120 min with Richard → end at 11:17.  
+Then travel Union Square → Presidio: 24 min → arrive Presidio 11:41.  
+Charles is available from 9:45 to 13:00.  
+We can meet Charles from 11:41 to 13:00 → that’s 79 minutes, not enough (need 120).  
+So this fails.
+
+**Option B: Charles first, then Richard**  
+Start at Bayview 9:00 → travel 31 min → arrive Presidio 9:31.  
+Charles available from 9:45, so earliest start with Charles is 9:45.  
+Meet Charles 120 min → end at 11:45.  
+Travel Presidio → Union Square: 22 min → arrive Union Square 12:07.  
+Richard available until 13:00.  
+Meet Richard from 12:07 to 13:00 → 53 minutes, not enough.  
+So fails.
+
+**Step 3 – Can we meet only one?**  
+Yes, but we want as many as possible — but both seems impossible given travel + 120 min each.  
+Let’s check if we can meet both with shorter meetings? No, constraint says minimum 120 each, so can’t shorten.
+
+**Step 4 – Check if overlapping stays allow meeting both with travel in middle**  
+We have from 9:00 to 13:00 total = 4 hours = 240 minutes.  
+If we meet both for 120 each, that’s 240 minutes of meeting, no travel time possible.  
+But we must travel between them, so impossible to meet both for full 120 each.
+
+Thus, maximum friends = 1.
+
+**Step 5 – Which one gives more feasible time?**  
+We can meet either Richard or Charles for 120 minutes easily.
+
+- Meet Richard:  
+Start Bayview 9:00 → arrive Union Square 9:17 → meet until 11:17 (exactly 120 min).  
+That works.
+
+- Meet Charles:  
+Start Bayview 9:00 → arrive Presidio 9:31 → wait until 9:45 → meet until 11:45 (120 min).  
+That also works.
+
+Both single meetings are possible. Which is better?  
+Maybe we can meet one and then meet the other for leftover time? Let’s check:
+
+If we meet Richard 9:17–11:17, then travel to Presidio (24 min) → arrive 11:41, meet Charles until 13:00 → 79 min (not enough for min 120).  
+If we meet Charles 9:45–11:45, then travel to Union Square (22 min) → arrive 12:07, meet Richard until 13:00 → 53 min (not enough).
+
+So indeed only one full meeting possible.
+
+**Step 6 – Choose the one that allows more total time with friends?**  
+We can’t meet both, so pick one.  
+Maybe we can meet one for longer than 120?  
+Richard available 8:45–13:00 (4h15min).  
+We arrive 9:17, could stay until 13:00 → 3h43min with Richard.  
+Charles available 9:45–13:00 (3h15min).  
+We arrive 9:31, wait until 9:45, could stay until 13:00 → 3h15min with Charles.  
+
+So Richard gives slightly more total time (3h43 vs 3h15).  
+But the problem says “like to meet for a minimum of 120 minutes” — that’s a requirement, not a “must maximize beyond 120”.  
+Since both satisfy minimum, maybe we just pick one.  
+But the goal is “meet as many friends as possible” — number of friends is same (1) either way.  
+So either is valid.
+
+I’ll pick Richard because less initial travel time (17 vs 31 min), so more free time after meeting?  
+But after meeting Richard, day ends at 13:00 anyway.  
+Actually, after meeting Richard from 9:17 to 13:00, that’s the whole available time.  
+After meeting Charles from 9:45 to 13:00, also whole available time.  
+So no difference.
+
+**Step 7 – Write program to compute this**  
+We’ll encode constraints, try both permutations of visits, see if both meetings possible.  
+If not, pick one meeting that satisfies.
+
+---

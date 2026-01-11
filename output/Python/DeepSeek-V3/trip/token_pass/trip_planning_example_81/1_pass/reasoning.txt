@@ -1,0 +1,38 @@
+Let's break down the problem first:
+
+**Constraints:**
+- Total days: 9
+- Cities: Mykonos (M), Budapest (B), Hamburg (H)
+- Direct flights: Budapest ↔ Mykonos, Hamburg ↔ Budapest
+- No direct flight between Hamburg and Mykonos.
+- Must be in Mykonos on **Day 4** and **Day 9** (conference days).
+- Want exactly: Mykonos = 6 days, Budapest = 3 days, Hamburg = 2 days.
+- Travel days count toward both cities.
+
+**Key observations:**
+1. Day 4 and Day 9 are fixed in Mykonos.
+2. Since Hamburg and Mykonos are not directly connected, to go between them you must pass through Budapest.
+3. Total days = 9, so sum of days in cities will be more than 9 if travel days double-count.
+
+---
+
+Let’s design the program to search for valid sequences.
+
+We’ll represent the itinerary as a list of (city, day_number) for each day’s location at the **start** of the day, with travel possibly happening during the day.
+
+But since travel days count for both cities, we can model it as:  
+If you travel on day X from A to B, then day X counts for both A and B in the totals.
+
+We need:
+- M total = 6
+- B total = 3
+- H total = 2
+- Day 4 in M
+- Day 9 in M
+- Direct flights respected.
+
+---
+
+We can brute-force search over possible sequences of stays.
+
+Here’s the Python program:

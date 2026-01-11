@@ -1,0 +1,44 @@
+Let's break this down step-by-step before writing the code.
+
+**Step 1 – Understanding the constraints**  
+We have 10 cities with required stays:  
+
+- Stockholm: 3 days  
+- Hamburg: 5 days  
+- Florence: 2 days  
+- Istanbul: 5 days (must include days 25–29)  
+- Oslo: 5 days  
+- Vilnius: 5 days  
+- Santorini: 2 days  
+- Munich: 5 days  
+- Frankfurt: 4 days  
+- Krakow: 5 days (must include days 5–9)  
+
+Total days: 3+5+2+5+5+5+2+5+4+5 = 41 days, but we only have 32 days.  
+That means some stays must overlap because travel days count for both cities.
+
+**Step 2 – Overlap rule**  
+If you fly from A to B on day X, day X counts for both A and B.  
+So if we sequence cities cleverly, we can meet the required days in fewer total calendar days.
+
+**Step 3 – Fixed constraints**  
+- Days 5–9: Krakow (fixed)  
+- Days 25–29: Istanbul (fixed)  
+
+**Step 4 – Direct flights constraint**  
+We can only move between cities if there’s a direct flight listed.
+
+**Step 5 – Approach**  
+We can treat this as a scheduling problem:  
+We have 32 calendar days (Day 1 to Day 32).  
+We need to assign each day to a city, respecting:  
+1. Fixed blocks (Krakow days 5–9, Istanbul days 25–29)  
+2. Total days per city requirement  
+3. Travel possible only between connected cities  
+4. Travel day counts for both cities.
+
+We can solve with backtracking search.
+
+---
+
+Here’s the Python program implementing this:

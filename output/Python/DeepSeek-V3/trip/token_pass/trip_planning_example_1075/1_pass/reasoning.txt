@@ -1,0 +1,35 @@
+Looking at the problem, I need to create a program that schedules visits to 8 cities over 25 days while respecting:
+1. Fixed date constraints (Edinburgh show days 5-8, Split wedding days 19-23)
+2. Required durations in each city
+3. Direct flight connections between cities
+
+Let me analyze the constraints first:
+
+**City durations:**
+- Vienna: 4 days
+- Lyon: 3 days  
+- Edinburgh: 4 days (with show days 5-8)
+- Reykjavik: 5 days
+- Stuttgart: 5 days
+- Manchester: 2 days
+- Split: 5 days (with wedding days 19-23)
+- Prague: 4 days
+
+**Total days:** 4+3+4+5+5+2+5+4 = 32 days, but we only have 25 days.
+This means there must be overlap - travel days count toward both cities.
+
+**Direct flights graph:**
+- Reykjavik: Stuttgart, Vienna, Prague
+- Stuttgart: Split, Vienna, Edinburgh, Manchester, Reykjavik
+- Prague: Manchester, Edinburgh, Vienna, Split, Lyon, Reykjavik
+- Edinburgh: Prague, Stuttgart
+- Manchester: Split, Prague, Vienna, Stuttgart
+- Vienna: Manchester, Lyon, Split, Prague, Reykjavik, Stuttgart
+- Split: Lyon, Manchester, Vienna, Prague, Stuttgart
+- Lyon: Vienna, Split, Prague
+
+**Fixed constraints:**
+- Edinburgh: Days 5-8 (4 days)
+- Split: Days 19-23 (5 days)
+
+I'll create a constraint satisfaction approach to find a valid itinerary.

@@ -1,0 +1,96 @@
+import json
+from itertools import permutations
+
+def solve_puzzle():
+    # Define the domains
+    names = ["Arnold", "Peter", "Eric", "Alice"]
+    styles = ["victorian", "ranch", "colonial", "craftsman"]
+    houses = [1, 2, 3, 4]
+    
+    # Generate all possible permutations of names and styles
+    name_perms = list(permutations(names, 4))
+    style_perms = list(permutations(styles, 4))
+    
+    solutions = []
+    
+    # Brute force search through all combinations
+    for name_assignment in name_perms:
+        for style_assignment in style_perms:
+            # Create assignment dictionaries
+            assignment = {}
+            for i in range(4):
+                house = houses[i]
+                assignment[house] = {
+                    'Name': name_assignment[i],
+                    'HouseStyle': style_assignment[i]
+                }
+            
+            # Check clue 1: Eric is in Craftsman-style house
+            eric_house = None
+            for house in houses:
+                if assignment[house]['Name'] == 'Eric':
+                    eric_house = house
+                    break
+            if eric_house is None:
+                continue
+            if assignment[eric_house]['HouseStyle'] != 'craftsman':
+                continue
+            
+            # Check clue 2: Ranch is directly left of Victorian
+            ranch_house = None
+            victorian_house = None
+            for house in houses:
+                if assignment[house]['HouseStyle'] == 'ranch':
+                    ranch_house = house
+                if assignment[house]['HouseStyle'] == 'victorian':
+                    victorian_house = house
+            
+            if ranch_house is None or victorian_house is None:
+                continue
+            if victorian_house - ranch_house != 1:
+                continue
+            
+            # Check clue 3: Eric is in the third house
+            if eric_house != 3:
+                continue
+            
+            # Check clue 4: Arnold is in the fourth house
+            if assignment[4]['Name'] != 'Arnold':
+                continue
+            
+            # Check clue 5: Victorian house is Alice
+            if assignment[victorian_house]['Name'] != 'Alice':
+                continue
+            
+            # All clues satisfied
+            solutions.append(assignment)
+    
+    if not solutions:
+        return {"error": "No solution found"}
+    
+    # Convert solution to required format
+    solution = solutions[0]  # There should be exactly one solution
+    
+    rows = []
+    for house in houses:
+        rows.append([
+            str(house),
+            solution[house]['Name'],
+            solution[house]['HouseStyle']
+        ])
+    
+    result = {
+        "solution": {
+            "header": ["House", "Name", "HouseStyle"],
+            "rows": rows
+        }
+    }
+    
+    return result
+
+def main():
+    solution = solve_puzzle()
+    print(json.dumps(solution, indent=2))
+
+if __name__ == "__main__":
+    main()

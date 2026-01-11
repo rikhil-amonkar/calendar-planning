@@ -1,0 +1,44 @@
+Let's break down the problem step-by-step before writing the code.
+
+**Constraints:**
+- Total days: 8
+- Cities & required stays:
+  - Prague: 4 days
+  - Stuttgart: 2 days
+  - Split: 2 days
+  - Krakow: 2 days
+  - Florence: 2 days
+- That sums to 12 days, but we only have 8 days → some stays must overlap because travel days count for both cities.
+- Direct flights list:
+  - Stuttgart ↔ Split
+  - Prague ↔ Florence
+  - Krakow ↔ Stuttgart
+  - Krakow ↔ Split
+  - Split ↔ Prague
+  - Krakow ↔ Prague
+
+**Special constraints:**
+1. Wedding in Stuttgart between day 2 and day 3 → Stuttgart must include day 2 or day 3 (or both).
+2. Meet friends in Split between day 3 and day 4 → Split must include day 3 or day 4 (or both).
+
+**Key observation:**  
+If you fly from A to B on day X, you are in A in the morning and B in the afternoon/evening (or vice versa), so day X counts for both cities. This allows us to satisfy multiple city-day requirements with fewer total days.
+
+We need to arrange the sequence so that:
+- Each city gets its required days (counting travel days as half-days in each city).
+- Direct flights exist between consecutive cities in the itinerary.
+- Special date constraints are met.
+
+---
+
+**Approach in code:**
+We can treat this as a search over permutations of the 5 cities with possible repeats, but respecting flight connections and day counts.
+
+But since the numbers are small, we can brute-force possible day-by-day assignments, checking:
+1. Travel connections are direct.
+2. Required city days are met.
+3. Date constraints for Stuttgart and Split are satisfied.
+
+---
+
+Here’s the Python program implementing this logic:

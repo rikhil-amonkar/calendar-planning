@@ -1,0 +1,283 @@
+Let’s break this down step by step before writing the code.
+
+---
+
+## **Step 1 – Understanding the problem**
+We start at **Russian Hill at 9:00 AM**.  
+We have three friends with availability:
+
+1. **Timothy** – Embarcadero, 9:45 AM – 5:45 PM, wants 120 minutes.
+2. **Patricia** – Nob Hill, 6:30 PM – 9:45 PM, wants 90 minutes.
+3. **Ashley** – Mission District, 8:30 PM – 9:15 PM, wants 45 minutes.
+
+Travel times are given between locations.
+
+We want to meet as many friends as possible, respecting:
+- Travel time between meetings
+- Minimum meeting durations
+- Time windows
+
+---
+
+## **Step 2 – Observations**
+- **Timothy** is available all day, so we can meet him first after arriving.
+- **Patricia** is only available in the evening.
+- **Ashley** is available for a short time in the evening, overlapping with Patricia’s window.
+- Travel times are symmetric-ish but not exactly equal.
+
+We need to decide the **order** of meetings to maximize number of friends met.
+
+Possible orders:
+1. Timothy → Patricia → Ashley  
+2. Timothy → Ashley → Patricia  
+3. Patricia → Timothy → Ashley (impossible, Timothy’s window ends before Patricia’s starts)  
+4. etc.
+
+But Ashley’s window is very late and short, so meeting Patricia first might make Ashley impossible if travel time is too long.
+
+---
+
+## **Step 3 – Time calculations**
+Let’s convert everything to **minutes since midnight** for easier computation.
+
+- Start: 9:00 AM = 540 minutes.
+- Timothy window: 9:45 AM (585) to 5:45 PM (1065).
+- Patricia window: 6:30 PM (1170) to 9:45 PM (1305).
+- Ashley window: 8:30 PM (1230) to 9:15 PM (1275).
+
+Travel matrix (in minutes):
+
+```
+From \ To      Russian  Nob  Mission  Embarcadero
+Russian Hill      0      5      16         8
+Nob Hill          5      0      13         9
+Mission District 15     12       0        19
+Embarcadero       8     10      20         0
+```
+
+---
+
+## **Step 4 – Feasibility check**
+We start at Russian Hill at 540.
+
+**Option: Meet Timothy first**
+- Travel Russian → Embarcadero: 8 min → arrive 548.
+- Timothy available at 585 earliest, so wait until 585.
+- Meet Timothy 120 min → end at 585+120 = 705 (11:45 AM).
+- Now at Embarcadero.
+
+From Embarcadero, next could be Patricia (Nob Hill) or Ashley (Mission).
+
+**Patricia next:**
+- Travel Embarcadero → Nob Hill: 10 min → arrive 715.
+- Patricia available at 1170 (6:30 PM), so huge gap — but we can fill with Ashley if possible.
+
+**Ashley next:**
+- Travel Embarcadero → Mission: 20 min → arrive 725.
+- Ashley available at 1230 (8:30 PM), also huge gap.
+
+So after Timothy, we have a long gap until evening meetings. We can stay somewhere, but no other meetings possible until evening.
+
+---
+
+**Evening scheduling:**
+We must be at Nob Hill for Patricia’s 90 min meeting starting between 1170 and 1305–90 = 1215.
+We must be at Mission for Ashley’s 45 min meeting starting between 1230 and 1275–45 = 1230.
+
+So Ashley’s meeting must start between 1230 and 1230? Actually 1230 exactly? Wait:  
+Ashley’s window: 1230 to 1275. Min duration 45, so latest start = 1275–45 = 1230.  
+So Ashley’s meeting must be exactly 1230–1275.
+
+Patricia’s meeting: start between 1170 and 1215, end by 1305.
+
+If we do Patricia first:
+- Start Patricia at 1170 (6:30 PM), end at 1260 (9:00 PM).
+- Travel Nob → Mission: 12 min → arrive 1272.
+- Ashley starts at 1230, ends 1275 — we’d be late. So impossible.
+
+If we do Ashley first:
+- Start Ashley at 1230, end 1275.
+- Travel Mission → Nob: 12 min → arrive 1287.
+- Patricia’s latest start is 1215, so too late. Impossible.
+
+So we cannot meet both Patricia and Ashley if we meet Timothy earlier? Wait — unless we adjust Timothy’s meeting to end later, so we’re closer in the evening.
+
+---
+
+## **Step 5 – Try meeting Timothy later in the day**
+We can meet Timothy just before evening, so we end at Embarcadero close to evening, then go to Mission or Nob.
+
+Example:
+- Start Timothy at 1065–120 = 945 (3:45 PM), end at 1065 (5:45 PM) — perfect, uses all his window.
+- At Embarcadero at 1065.
+- Travel to Mission: 20 min → 1085 (6:05 PM) — too early for Ashley (1230).
+- Travel to Nob: 10 min → 1075 (5:55 PM) — too early for Patricia (1170).
+
+We can wait, then:
+From Embarcadero to Nob at 1160 (10 min travel) → arrive 1170, start Patricia immediately 1170–1260.
+Then Nob to Mission 12 min → 1272, too late for Ashley (must start at 1230). So Ashley impossible.
+
+From Embarcadero to Mission at 1210 (20 min travel) → arrive 1230, start Ashley immediately 1230–1275.
+Then Mission to Nob 12 min → 1287, too late for Patricia (must start by 1215). So Patricia impossible.
+
+So we can’t meet all three.
+
+---
+
+## **Step 6 – Try without Timothy in the middle**
+What if we meet Timothy early, then have free time, then evening:  
+We saw earlier that evening two can’t be done together because:
+Patricia latest start 1215, Ashley earliest start 1230, travel between them 12 min, so:
+If start Patricia at 1215, end 1305, travel to Mission 12 min → arrive 1317, too late for Ashley.
+If start Ashley at 1230, end 1275, travel to Nob 12 min → arrive 1287, too late for Patricia.
+
+So **only one evening friend possible**.
+
+---
+
+## **Step 7 – Which evening friend gives more total friends?**
+If we meet Timothy + Patricia = 2 friends.  
+If we meet Timothy + Ashley = 2 friends.  
+If we meet Patricia + Ashley = 2 friends (but then miss Timothy).
+
+So maximum friends = 2.
+
+We want to maximize total meeting time? No, maximize number of friends. So any 2 is fine.
+
+But maybe we can meet Timothy + Patricia + Ashley if we adjust Timothy to be earlier and leave time for both evening? Already tried — impossible due to travel.
+
+Let’s check if we can do:
+Timothy early, then to Nob for Patricia, then to Mission for Ashley:
+Timothy end at 705 (11:45 AM) at Embarcadero.
+Travel to Nob: 10 min → 715.
+Patricia available at 1170, so wait 455 minutes — too long, but possible.
+Then Patricia 1170–1260, travel to Mission 12 min → 1272, too late for Ashley.
+
+So no.
+
+What if we go Timothy → Mission → Nob:
+Timothy end 705 at Embarcadero, travel to Mission 20 min → 725.
+Ashley available 1230, wait 505 minutes.
+Ashley 1230–1275, travel to Nob 12 min → 1287, too late for Patricia.
+
+So indeed only 2.
+
+---
+
+## **Step 8 – Choose best two**
+We can meet Timothy + Patricia easily:
+Start at Russian Hill 540, travel to Embarcadero 8 min → 548, wait until 585, meet Timothy 585–705.
+Then free time until 1160, travel Embarcadero → Nob 10 min → 1170, meet Patricia 1170–1260.
+
+That’s 2 friends.
+
+We can meet Timothy + Ashley:
+Timothy 585–705, free until 1210, travel Embarcadero → Mission 20 min → 1230, meet Ashley 1230–1275.
+
+Also 2 friends.
+
+Meeting Patricia + Ashley only (skip Timothy):
+Start Russian Hill 540, free until 1165, travel Russian → Nob 5 min → 1170, meet Patricia 1170–1260, travel Nob → Mission 12 min → 1272, too late for Ashley. So can’t do both without Timothy.
+
+So best is 2 friends, and we can choose either evening friend.
+
+---
+
+## **Step 9 – Pick one optimal schedule**
+Let’s pick **Timothy + Patricia** because Patricia’s minimum is 90 vs Ashley’s 45, so maybe more valuable in terms of time spent.
+
+Schedule:
+1. Travel Russian → Embarcadero (8 min), wait, meet Timothy 9:45–11:45.
+2. Free time.
+3. Travel Embarcadero → Nob Hill (10 min), meet Patricia 18:30–21:00.
+
+---
+
+## **Step 10 – Write the program**
+We’ll encode the logic to try all permutations of meetings, respecting constraints, and pick one that maximizes number of meetings.
+
+---
+
+```python
+import json
+from itertools import permutations
+
+def time_to_min(t):
+    """Convert 'H:MM' string to minutes since midnight."""
+    h, m = map(int, t.split(':'))
+    return h * 60 + m
+
+def min_to_time(m):
+    """Convert minutes since midnight to 'H:MM' string."""
+    h = m // 60
+    mi = m % 60
+    return f"{h}:{mi:02d}"
+
+def main():
+    # Travel times matrix
+    locations = ["Russian Hill", "Nob Hill", "Mission District", "Embarcadero"]
+    loc_index = {loc: i for i, loc in enumerate(locations)}
+    travel = [
+        [0, 5, 16, 8],
+        [5, 0, 13, 9],
+        [15, 12, 0, 19],
+        [8, 10, 20, 0]
+    ]
+    
+    # Friend data: name, location, window start, window end, min duration
+    friends = [
+        ("Patricia", "Nob Hill", time_to_min("18:30"), time_to_min("21:45"), 90),
+        ("Ashley", "Mission District", time_to_min("20:30"), time_to_min("21:15"), 45),
+        ("Timothy", "Embarcadero", time_to_min("9:45"), time_to_min("17:45"), 120)
+    ]
+    
+    start_loc = "Russian Hill"
+    start_time = time_to_min("9:00")
+    
+    best_schedule = []
+    best_count = 0
+    
+    # Try all permutations of friends
+    for perm in permutations(friends):
+        current_time = start_time
+        current_loc = start_loc
+        schedule = []
+        for person, loc, win_start, win_end, min_dur in perm:
+            # Travel to friend's location
+            travel_time = travel[loc_index[current_loc]][loc_index[loc]]
+            arrive_time = current_time + travel_time
+            
+            # Check if we can meet within window
+            # Start meeting at max(arrive_time, win_start)
+            meet_start = max(arrive_time, win_start)
+            if meet_start + min_dur > win_end:
+                break  # cannot meet this friend in this order
+            
+            meet_end = meet_start + min_dur
+            schedule.append((person, loc, meet_start, meet_end))
+            
+            # Update current time and location
+            current_time = meet_end
+            current_loc = loc
+        
+        if len(schedule) > best_count:
+            best_count = len(schedule)
+            best_schedule = schedule
+    
+    # Convert best schedule to output format
+    itinerary = []
+    for person, loc, meet_start, meet_end in best_schedule:
+        itinerary.append({
+            "action": "meet",
+            "location": loc,
+            "person": person,
+            "start_time": min_to_time(meet_start),
+            "end_time": min_to_time(meet_end)
+        })
+    
+    result = {"itinerary": itinerary}
+    print(json.dumps(result, indent=2))
+
+if __name__ == "__main__":
+    main()
+```

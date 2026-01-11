@@ -1,0 +1,148 @@
+Let’s break this down step-by-step before writing the code.
+
+**Given constraints:**
+- Total days: 21
+- City stays:
+  - Reykjavik: 7 days
+  - Riga: 2 days
+  - Warsaw: 3 days
+  - Istanbul: 6 days
+  - Krakow: 7 days
+- Direct flights (undirected graph):
+  - Istanbul ↔ Krakow
+  - Warsaw ↔ Reykjavik
+  - Istanbul ↔ Warsaw
+  - Riga ↔ Istanbul
+  - Krakow ↔ Warsaw
+  - Riga ↔ Warsaw
+- Special constraints:
+  - Meet friend in Riga between day 1 and day 2 → so Riga must include day 1 or day 2 (or both).
+  - Attend wedding in Istanbul between day 2 and day 7 → Istanbul must include some days in [day 2, day 3, …, day 7].
+- Travel rule: If you fly from A to B on day X, you are in both cities on day X (so day X counts toward both cities’ totals).
+
+---
+
+**Step 1 – Understanding the travel day counting**
+If we have 5 cities and 4 flights between them, each travel day is counted twice (once for each city).  
+So total “city-days” = sum of stays + travel days.  
+Let’s denote stays: Rvk=7, Riga=2, Warsaw=3, Istanbul=6, Krakow=7.  
+Sum = 25 days.  
+But we only have 21 calendar days.  
+Difference = 4 days → those are travel days counted twice.  
+So number of flights = 4 (because each flight adds 1 extra day to the total city-days count).
+
+We must take exactly 4 flights.
+
+---
+
+**Step 2 – Graph and possible route**
+We need to start somewhere, end somewhere, visit all cities, with exactly 4 flights (so 5 city visits in sequence, possibly revisiting? No, each city once except maybe transit? But we must spend exact days in each, so no city revisited because that would split its stay).
+
+So path: City1 → City2 → City3 → City4 → City5, with 4 flights, visiting all 5 cities exactly once.
+
+---
+
+**Step 3 – Order constraints**
+1. Riga includes day 1 or day 2.
+2. Istanbul includes some of days 2–7.
+
+Possible interpretation: If Istanbul is not first city, it must start no later than day 7. But wedding is between day 2 and day 7, so Istanbul must span some of those days.
+
+Also, if Riga is day 1–2, maybe Riga is first city (2 days), then fly to somewhere.
+
+---
+
+**Step 4 – Try to sequence**
+We must check direct flight connections.
+
+Let’s list adjacency:
+- Istanbul: Krakow, Warsaw, Riga
+- Krakow: Istanbul, Warsaw
+- Warsaw: Reykjavik, Istanbul, Krakow, Riga
+- Riga: Istanbul, Warsaw
+- Reykjavik: Warsaw only
+
+So Reykjavik is a leaf (only Warsaw). So in path, Reykjavik must be at one end, connected to Warsaw.
+
+Similarly, Riga connects to Istanbul and Warsaw.
+
+---
+
+**Step 5 – Build path**
+We need a Hamiltonian path visiting all 5 cities with given adjacency.
+
+Try: Start at Riga (day 1–2) → Istanbul (day 3–8) → Krakow (day 9–15) → Warsaw (day 16–18) → Reykjavik (day 19–21).
+
+Check connections:
+- Riga → Istanbul: direct ✓
+- Istanbul → Krakow: direct ✓
+- Krakow → Warsaw: direct ✓
+- Warsaw → Reykjavik: direct ✓
+
+Check days:
+- Riga: day 1–2 (2 days) ✓ includes day 1–2 ✓
+- Istanbul: day 3–8 (6 days) ✓ includes day 3–8 (within day 2–7? Day 3–8 overlaps day 2–7, so wedding constraint met) ✓
+- Krakow: day 9–15 (7 days) ✓
+- Warsaw: day 16–18 (3 days) ✓
+- Reykjavik: day 19–21 (3 days) ✗ but need 7 days for Reykjavik! Oops.
+
+So this fails because Reykjavik gets only 3 days, but needs 7.
+
+---
+
+**Step 6 – Adjust for Reykjavik 7 days**
+We must allocate 7 days to Reykjavik somewhere. If Reykjavik is at end, then days 15–21 = 7 days. So move earlier cities forward.
+
+Try: Riga (1–2), Istanbul (3–8), Warsaw (9–11), Krakow (12–18), Reykjavik (19–21) → Krakow too long (7 days), but then Reykjavik only 3 days. Not good.
+
+We need Reykjavik 7 days, so maybe Reykjavik in middle? But Reykjavik only connects to Warsaw, so sequence must be … → Warsaw → Reykjavik → Warsaw … but that revisits Warsaw, not allowed (Warsaw’s 3 days would be split). That’s possible? Yes, we can split a city’s stay if we leave and come back, but that adds extra flights. But we have exactly 4 flights for 5 cities in simple path. If we revisit, we need more flights, but then total city-days > 25, so not possible with 21 calendar days.
+
+So no revisiting. So Reykjavik must be at one end with 7 consecutive days.
+
+---
+
+**Step 7 – Fix days allocation**
+Let’s assign days from start:
+
+Let Riga = days 1–2 (2 days)
+Then Istanbul = days 3–8 (6 days)
+Then we have 13 days left for Warsaw (3), Krakow (7), Reykjavik (7) = total 17 days needed, but only 13 days left → impossible.
+
+So maybe Istanbul not right after Riga.
+
+Try: Start Reykjavik first? But then Riga not day 1–2. So Reykjavik cannot be first if Riga must be day 1–2.
+
+So Riga first (1–2), then maybe Warsaw (3–5), then Reykjavik (6–12), then Krakow (13–19), then Istanbul (20–25) → exceeds 21 days, and Istanbul not within day 2–7.
+
+This is getting tight.
+
+---
+
+**Step 8 – Use computational search**
+We’ll brute-force permutations of cities, check direct flights, assign days greedily to meet stay lengths, and check constraints.
+
+---
+
+**Step 9 – Write Python program**
+We’ll:
+1. List all permutations of the 5 cities.
+2. Check if consecutive cities have direct flights.
+3. For each valid path, try to assign days satisfying:
+   - Total days = 21
+   - Each city gets required days
+   - Travel days counted in both cities
+   - Special date constraints for Riga and Istanbul.
+
+But “travel day counted in both cities” means if we fly on day X from A to B, day X counts for both A and B totals. So when allocating, we must ensure the overlap.
+
+Simpler: We just treat travel as happening at the end of the day, so day X is fully in city A, day X+1 starts in city B. But problem says: “if one flies from city A to city B on day X, then they are in both cities A and B on day X”. That means travel day is double-counted.
+
+So in schedule: Start day 1 in first city, stay D1 days (including last day as travel day? No, travel day is separate). Actually, if we stay in city A for S days, then travel to B on day S+1, then day S+1 counts for both A and B. So each travel day adds 1 to total city-days.
+
+Thus: Itinerary: City1: days 1..a (a days), travel day a+1 to City2, City2: days a+1..b (b-a days), etc.
+
+We can encode this.
+
+---
+
+Here’s the Python program to solve it:

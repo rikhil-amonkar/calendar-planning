@@ -1,0 +1,60 @@
+Let’s break this down step-by-step before writing the code.
+
+**Step 1 – Understanding the problem**  
+We have:
+- Start location: Marina District at 9:00 AM.
+- 9 friends, each in a fixed location, with availability windows and minimum meeting durations.
+- Travel times between all locations (symmetric? Not exactly, but given in both directions).
+- Goal: Maximize number of meetings (not total time, but number of friends met).
+
+**Step 2 – Constraints and decisions**  
+We can’t meet everyone because:
+- Some windows overlap in time.
+- Travel takes time.
+- Minimum durations are substantial.
+
+We need to choose an order of visits that fits in the day, starting at Marina at 9:00, and ending after last meeting.
+
+**Step 3 – Approach**  
+We can treat this as a **search problem**:
+- State: current location, current time, set of friends already met.
+- At each step, from current location and time, consider each unvisited friend whose window is still available after travel.
+- Try to schedule them at earliest possible time respecting their availability and min duration.
+- Use depth-first search or brute-force over permutations (since only 9 friends, 9! is large but we can prune by time).
+
+Better: Since we want to maximize *count*, we can try all permutations of subsets, but that’s too big.  
+Instead, we can use **backtracking**:
+1. From current time and location, find all friends not yet met who can be visited next (travel + start meeting within their window, meet min duration, and leave before their window ends or before we need to travel to next).
+2. Choose one, schedule it, and recurse.
+3. Keep track of best solution (most meetings).
+
+But to keep it simple for code, we can brute-force over all permutations of all subsets up to size 9? That’s too large.  
+We’ll implement **backtracking with pruning**:
+- Sort friends by earliest possible start time? Not necessarily optimal.
+- We’ll just do DFS exploring possible sequences.
+
+**Step 4 – Time representation**  
+Use minutes since midnight for calculations.
+
+**Step 5 – Travel matrix**  
+Store as dictionary: `travel[(from, to)] = minutes`.
+
+**Step 6 – Algorithm outline**  
+1. Parse all friend data: location, window start, window end, min duration.
+2. Start state: time = 9:00 (540 minutes), location = "Marina District", met = [].
+3. DFS:
+   - For each unvisited friend:
+     - Travel time from current location to friend’s location.
+     - Arrival time = current time + travel.
+     - Start meeting = max(arrival, friend’s window start).
+     - If start + min_duration <= friend’s window end:
+       - Schedule from start to start + min_duration.
+       - New time = start + min_duration.
+       - New location = friend’s location.
+       - Recurse.
+4. Keep best sequence (most meetings). If tie, maybe earliest finish time.
+5. Convert best sequence to itinerary JSON.
+
+---
+
+Here’s the Python implementation:

@@ -1,0 +1,125 @@
+Let’s break this down step-by-step before writing the code.  
+
+We have:  
+
+**Work hours:** 9:00–17:00 (Monday)  
+**Meeting duration:** 30 minutes  
+**Participants:** Juan, Marilyn, Ronald  
+
+**Busy times (Monday):**  
+- Juan: 9:00–10:30, 15:30–16:00  
+- Marilyn: 11:00–11:30, 12:30–13:00  
+- Ronald: 9:00–10:30, 12:00–12:30, 13:00–13:30, 14:00–16:30  
+
+**Extra constraint:** Juan cannot meet after 16:00 (so his latest start time is 15:30 for a 30-minute meeting, but he’s busy 15:30–16:00, so his last possible start is actually 15:00).  
+
+We need to find a 30-minute slot between 9:00 and 17:00 where all three are free and Juan’s meeting ends by 16:00.  
+
+---
+
+### Step 1 – Find free slots for each person within 9:00–17:00
+Let’s convert times to minutes from 9:00 for easier calculation:  
+9:00 = 0 min, 17:00 = 480 min.  
+
+**Juan busy in minutes:**  
+- 9:00–10:30 → 0–90  
+- 15:30–16:00 → 390–420  
+
+So Juan’s free periods within 9:00–17:00:  
+[90, 390] and [420, 480]  
+But Juan cannot meet after 16:00 → 16:00 = 420 min, so any meeting must end by 420.  
+So Juan’s available for meetings that start at 90–390 and end by 420.  
+Actually, if meeting starts at 390, it ends at 420 (16:00) — that’s allowed (ends exactly at 16:00).  
+So Juan’s possible start times: 90 to 390 inclusive (if duration 30 min).  
+
+---
+
+**Marilyn busy in minutes:**  
+- 11:00–11:30 → 120–150  
+- 12:30–13:00 → 210–240  
+
+Marilyn’s free periods:  
+[0, 120], [150, 210], [240, 480]  
+
+---
+
+**Ronald busy in minutes:**  
+- 9:00–10:30 → 0–90  
+- 12:00–12:30 → 180–210  
+- 13:00–13:30 → 240–270  
+- 14:00–16:30 → 300–450  
+
+Ronald’s free periods:  
+[90, 180], [210, 240], [270, 300], [450, 480]  
+
+---
+
+### Step 2 – Intersect free times
+We need a 30-minute slot where all three are free.  
+
+Let’s check each of Ronald’s free intervals:  
+
+1. **90–180**  
+   Juan free: 90–390 ✅  
+   Marilyn free: 90–120 ✅ (until 120), then 150–180 ✅  
+   So within 90–180:  
+   - 90–120: Marilyn free ✅, Juan free ✅, Ronald free ✅ → slot 90–120 possible.  
+     Example: 90–120 means 10:30–12:00, but meeting is 30 min, so could start at 90 (10:30) end 120 (12:00) — but wait, 90–120 is 30 min? No, 90–120 is 30 min? 90 to 120 is 30 minutes? Actually 90 min = 10:30, 120 min = 11:00. So 90–120 is 30 minutes. Yes. So 10:30–11:00 works?  
+     Check conflicts:  
+     Juan free 10:30–11:00 ✅ (90–120)  
+     Marilyn free 10:30–11:00 ✅ (90–120)  
+     Ronald free 10:30–11:00 ✅ (90–120)  
+     All good.  
+
+   - 150–180: Marilyn free ✅, Juan free ✅, Ronald free ✅ → 150–180 is 30 min? 150=12:30, 180=13:00.  
+     But Marilyn busy 12:30–13:00 (210–240? Wait, 12:30=210 min? Let’s check: 9:00=0, 12:30=3h30min=210 min. Yes. So 150 min is 11:30, not 12:30. I made a mistake.  
+
+Let’s recalculate carefully:  
+
+**Minute conversion:**  
+9:00 = 0  
+10:30 = 90  
+11:00 = 120  
+11:30 = 150  
+12:00 = 180  
+12:30 = 210  
+13:00 = 240  
+13:30 = 270  
+14:00 = 300  
+15:30 = 390  
+16:00 = 420  
+16:30 = 450  
+17:00 = 480  
+
+---
+
+**Juan busy:** 0–90, 390–420  
+**Marilyn busy:** 120–150, 210–240  
+**Ronald busy:** 0–90, 180–210, 240–270, 300–450  
+
+---
+
+**Juan free:** [90, 390], [420, 480]  
+**Marilyn free:** [0, 120], [150, 210], [240, 480]  
+**Ronald free:** [90, 180], [210, 240], [270, 300], [450, 480]  
+
+---
+
+Intersect Juan & Marilyn:  
+Juan [90,390] & Marilyn [0,120] → [90,120]  
+Juan [90,390] & Marilyn [150,210] → [150,210]  
+Juan [90,390] & Marilyn [240,480] → [240,390]  
+
+Intersect with Ronald:  
+
+1. [90,120] & Ronald [90,180] → [90,120] ✅  
+   Slot length 30 min possible: e.g., start 90 (10:30) → end 120 (11:00).  
+
+2. [150,210] & Ronald [210,240] → no overlap (210 is endpoint only, Ronald free starts at 210, but our interval ends at 210, so no 30 min slot here unless we start at 180? But 180 not in [150,210]? Wait 180 is not in [150,210]? Yes 180 is in [150,210]. But Ronald free [90,180] ends at 180, so at 180 Ronald is free? Yes, 180 is included in [90,180]. So 180 is free for Ronald. So [150,210] includes 180–210, but Ronald is busy 180–210? No, Ronald busy 180–210? Let’s check: Ronald busy 180–210? Busy: 180–210 is 12:00–12:30, yes that’s busy. So Ronald’s free [90,180] means up to 180 inclusive, at 180 exactly he’s free? 180=12:00, busy from 180 to 210, so 180 is start of busy. So 180 not free. So [150,210] & Ronald’s free [90,180] → [150,180] but 180 not free, so [150,180). Length 30 min? 150 to 180 is 30 min, but 180 not free, so latest start 150, ends 180 (but 180 not free for Ronald). So if meeting 150–180, Ronald free 150–180? Ronald free 150–180? Yes, 150=11:30, 180=12:00, Ronald free 90–180, so 150–180 is free. Wait, but earlier I said 180 is start of busy, but [90,180] means 180 is included? Usually intervals are [start, end), but here I’ll treat as inclusive start, exclusive end for free times. Let’s define free as: not in busy intervals.  
+
+Better to just brute force in code.
+
+---
+
+### Step 3 – Write Python to find slot
+We’ll check every minute start from 9:00 to 16:30 (since must end by 17:00 and also Juan’s end by 16:00).

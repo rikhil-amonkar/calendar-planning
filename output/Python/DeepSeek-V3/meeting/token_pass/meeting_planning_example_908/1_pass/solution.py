@@ -1,0 +1,1 @@
+Convert 'H:MMAM/PM' to minutes since midnight.

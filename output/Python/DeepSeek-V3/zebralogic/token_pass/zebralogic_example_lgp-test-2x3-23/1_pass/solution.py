@@ -1,0 +1,97 @@
+import json
+from itertools import permutations
+
+def solve_puzzle():
+    # Define all possible values for each category
+    names = ["Eric", "Arnold"]
+    children = ["Bella", "Fred"]
+    foods = ["grilled cheese", "pizza"]
+    
+    houses = [1, 2]
+    
+    # Generate all possible permutations for each house
+    # We'll brute force all combinations since it's small (2! * 2! * 2! = 8)
+    solutions = []
+    
+    # Try all permutations of names, children, and foods
+    for name_perm in permutations(names, 2):
+        for child_perm in permutations(children, 2):
+            for food_perm in permutations(foods, 2):
+                # Create assignment for houses
+                assignment = []
+                for i in range(2):
+                    assignment.append({
+                        "house": i + 1,
+                        "name": name_perm[i],
+                        "child": child_perm[i],
+                        "food": food_perm[i]
+                    })
+                
+                # Check clue 1: The person who is a pizza lover is Arnold
+                clue1_ok = True
+                for house in assignment:
+                    if house["food"] == "pizza" and house["name"] != "Arnold":
+                        clue1_ok = False
+                        break
+                    if house["name"] == "Arnold" and house["food"] != "pizza":
+                        clue1_ok = False
+                        break
+                
+                if not clue1_ok:
+                    continue
+                
+                # Check clue 2: The person who loves eating grilled cheese is directly left 
+                # of the person's child is named Fred
+                clue2_ok = False
+                # Find house with grilled cheese
+                grilled_cheese_house = None
+                fred_child_house = None
+                
+                for house in assignment:
+                    if house["food"] == "grilled cheese":
+                        grilled_cheese_house = house["house"]
+                    if house["child"] == "Fred":
+                        fred_child_house = house["house"]
+                
+                # Check if grilled cheese house is directly left of Fred's child house
+                if (grilled_cheese_house is not None and 
+                    fred_child_house is not None and
+                    fred_child_house == grilled_cheese_house + 1):
+                    clue2_ok = True
+                
+                if not clue2_ok:
+                    continue
+                
+                # All clues satisfied, add to solutions
+                solutions.append(assignment)
+    
+    # Convert to required format
+    if solutions:
+        # Take first solution (should be only one)
+        solution = solutions[0]
+        
+        # Sort by house number
+        solution.sort(key=lambda x: x["house"])
+        
+        rows = []
+        for house in solution:
+            rows.append([
+                str(house["house"]),
+                house["name"],
+                house["child"],
+                house["food"]
+            ])
+        
+        result = {
+            "solution": {
+                "header": ["House", "Name", "Children", "Food"],
+                "rows": rows
+            }
+        }
+        
+        return json.dumps(result, indent=2)
+    else:
+        return json.dumps({"error": "No solution found"}, indent=2)
+
+if __name__ == "__main__":
+    print(solve_puzzle())

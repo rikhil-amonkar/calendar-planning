@@ -1,0 +1,85 @@
+import json
+from datetime import datetime, timedelta
+
+# Define travel times as a dictionary of dictionaries
+travel_times = {
+    "Bayview": {"North Beach": 21, "Presidio": 31, "Haight-Ashbury": 19, "Union Square": 17},
+    "North Beach": {"Bayview": 22, "Presidio": 17, "Haight-Ashbury": 18, "Union Square": 7},
+    "Presidio": {"Bayview": 31, "North Beach": 18, "Haight-Ashbury": 15, "Union Square": 22},
+    "Haight-Ashbury": {"Bayview": 18, "North Beach": 19, "Presidio": 15, "Union Square": 17},
+    "Union Square": {"Bayview": 15, "North Beach": 10, "Presidio": 24, "Haight-Ashbury": 18}
+}
+
+# Define constraints
+constraints = {
+    "Barbara": {"location": "North Beach", "start": "13:45", "end": "20:15", "min_duration": 60},
+    "Margaret": {"location": "Presidio", "start": "10:15", "end": "15:15", "min_duration": 30},
+    "Kevin": {"location": "Haight-Ashbury", "start": "20:00", "end": "20:45", "min_duration": 30},
+    "Kimberly": {"location": "Union Square", "start": "07:45", "end": "16:45", "min_duration": 30}
+}
+
+def time_to_minutes(time_str):
+    hours, minutes = map(int, time_str.split(':'))
+    return hours * 60 + minutes
+
+def minutes_to_time(minutes):
+    hours, minutes = divmod(minutes, 60)
+    return f"{hours}:{minutes:02}"
+
+def can_meet(start, end, min_duration, current_time):
+    return start <= current_time <= end - min_duration
+
+def dfs(current_location, current_time, visited, itinerary):
+    global best_itinerary
+    
+    # Check if we can meet any new people at the current location
+    for person, details in constraints.items():
+        if person not in visited and details["location"] == current_location:
+            start = time_to_minutes(details["start"])
+            end = time_to_minutes(details["end"])
+            min_duration = details["min_duration"]
+            
+            if can_meet(start, end, min_duration, current_time):
+                # Calculate the end time of the meeting
+                meeting_end = current_time + min_duration
+                
+                # Add the meeting to the itinerary
+                itinerary.append({
+                    "action": "meet",
+                    "location": current_location,
+                    "person": person,
+                    "start_time": minutes_to_time(current_time),
+                    "end_time": minutes_to_time(meeting_end)
+                })
+                
+                # Mark the person as visited
+                visited.add(person)
+                
+                # Recursively explore further meetings
+                dfs(current_location, meeting_end, visited, itinerary)
+                
+                # Backtrack: remove the meeting and unmark the person
+                itinerary.pop()
+                visited.remove(person)
+    
+    # Explore moving to other locations
+    for next_location, travel_time in travel_times[current_location].items():
+        next_time = current_time + travel_time
+        
+        # Only proceed if there's enough time left in the day
+        if next_time < time_to_minutes("24:00"):
+            dfs(next_location, next_time, visited, itinerary)
+    
+    # Update the best itinerary if this one is better
+    if len(itinerary) > len(best_itinerary):
+        best_itinerary = itinerary[:]
+
+# Initialize the best itinerary
+best_itinerary = []
+
+# Start the DFS from Bayview at 9:00 AM
+dfs("Bayview", time_to_minutes("9:00"), set(), [])
+
+# Output the best itinerary in JSON format
+output = {"itinerary": best_itinerary}
+print(json.dumps(output, indent=2))

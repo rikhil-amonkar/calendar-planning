@@ -1,0 +1,102 @@
+```python
+import json
+from itertools import permutations
+
+def solve_puzzle():
+    # Define all possible values for each category
+    names = ["Eric", "Arnold"]
+    house_styles = ["victorian", "colonial"]
+    smoothies = ["cherry", "desert"]
+    pets = ["dog", "cat"]
+    houses = [1, 2]
+    
+    # Generate all possible permutations for each house
+    all_solutions = []
+    
+    # We'll iterate through all possible assignments
+    # Since there are only 2 houses, we can brute force all combinations
+    for name_perm in permutations(names, 2):
+        for style_perm in permutations(house_styles, 2):
+            for smoothie_perm in permutations(smoothies, 2):
+                for pet_perm in permutations(pets, 2):
+                    # Create assignment for each house
+                    assignment = []
+                    valid = True
+                    
+                    for i in range(2):
+                        house_num = i + 1
+                        assignment.append({
+                            "House": house_num,
+                            "Name": name_perm[i],
+                            "HouseStyle": style_perm[i],
+                            "Smoothie": smoothie_perm[i],
+                            "Pet": pet_perm[i]
+                        })
+                    
+                    # Check clue 1: Cherry smoothie ↔ dog owner
+                    for house in assignment:
+                        if (house["Smoothie"] == "cherry") != (house["Pet"] == "dog"):
+                            valid = False
+                            break
+                    if not valid:
+                        continue
+                    
+                    # Check clue 2: Victorian house ↔ dog owner
+                    for house in assignment:
+                        if (house["HouseStyle"] == "victorian") != (house["Pet"] == "dog"):
+                            valid = False
+                            break
+                    if not valid:
+                        continue
+                    
+                    # Check clue 3: Victorian house is to the left of Eric
+                    # Find house with Victorian style
+                    victorian_house = None
+                    eric_house = None
+                    
+                    for house in assignment:
+                        if house["HouseStyle"] == "victorian":
+                            victorian_house = house["House"]
+                        if house["Name"] == "Eric":
+                            eric_house = house["House"]
+                    
+                    if victorian_house is None or eric_house is None:
+                        valid = False
+                    elif victorian_house >= eric_house:  # Not strictly to the left
+                        valid = False
+                    
+                    if valid:
+                        all_solutions.append(assignment)
+    
+    # Convert to required output format
+    if all_solutions:
+        # Take the first valid solution
+        solution = all_solutions[0]
+        
+        # Sort by house number
+        solution.sort(key=lambda x: x["House"])
+        
+        rows = []
+        for house in solution:
+            rows.append([
+                str(house["House"]),
+                house["Name"],
+                house["HouseStyle"],
+                house["Smoothie"],
+                house["Pet"]
+            ])
+        
+        result = {
+            "solution": {
+                "header": ["House", "Name", "HouseStyle", "Smoothie", "Pet"],
+                "rows": rows
+            }
+        }
+        
+        return json.dumps(result, indent=2)
+    else:
+        return json.dumps({"error": "No solution found"}, indent=2)
+
+if __name__ == "__main__":
+    print(solve_puzzle())
+```

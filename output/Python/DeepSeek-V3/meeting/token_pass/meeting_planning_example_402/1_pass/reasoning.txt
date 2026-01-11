@@ -1,0 +1,55 @@
+Let’s break this down step by step before writing the code.
+
+**Step 1 – Understanding the problem**  
+We start at Golden Gate Park at 9:00 AM.  
+We have 5 friends with availability windows and minimum meeting durations:  
+
+1. **Matthew** – Marina District, 9:15–12:00, min 15 min.  
+2. **Robert** – Union Square, 10:15–21:45, min 15 min.  
+3. **Joseph** – Financial District, 14:15–18:45, min 30 min.  
+4. **Patricia** – Sunset District, 17:00–19:45, min 45 min.  
+5. **Sarah** – Haight-Ashbury, 17:00–21:30, min 105 min.  
+
+Travel times are given between all locations (including start at Golden Gate Park).  
+
+We want to meet as many friends as possible, but we must respect:  
+- Travel time between meetings.  
+- Each friend’s availability window.  
+- Minimum meeting duration.  
+
+**Step 2 – Observations**  
+- Matthew’s window is early (9:15–12:00), so likely he’s first after starting at Golden Gate Park at 9:00.  
+- Sarah requires a long meeting (105 min = 1h45m), so she’ll take a big chunk of evening.  
+- Patricia’s window is short (17:00–19:45) and overlaps with Sarah’s start, so we must decide if we can meet both.  
+- Joseph is in Financial District 14:15–18:45, so he fits in the afternoon.  
+- Robert is available all day after 10:15, so flexible.  
+
+**Step 3 – Possible schedule logic**  
+We can brute-force permutations of meeting orders, but since there are only 5 friends, we can try all sequences that respect time windows and travel.  
+
+We’ll:  
+1. Represent time in minutes from midnight.  
+2. Start at Golden Gate Park at 9:00 (540 minutes).  
+3. For each permutation of friends, simulate:  
+   - Travel from current location to friend’s location.  
+   - Arrive at friend’s location at `arrival_time`.  
+   - Start meeting at `max(arrival_time, friend_window_start)`.  
+   - If that start time + min_duration > friend_window_end → impossible for this order.  
+   - Otherwise, meet for exactly min_duration (since we want to meet as many as possible, not maximize each meeting beyond min).  
+   - Update current location and time.  
+4. Count how many friends met in that order.  
+5. Pick order with most friends met; if tie, maybe earlier finish time.  
+
+**Step 4 – Constraints on meeting everyone**  
+Sarah’s 105 minutes in evening might conflict with Patricia’s 45 minutes if travel doesn’t allow both. Let’s check:  
+If we meet Patricia first at 17:00–17:45, then travel to Haight-Ashbury (Sunset to Haight = 15 min), arrive 18:00, meet Sarah 18:00–19:45 (105 min until 20:45) but Sarah’s window ends 21:30, so possible.  
+But Joseph until 18:45 in Financial District might conflict.  
+
+So maybe order: Matthew → Robert → Joseph → Patricia → Sarah.  
+
+We’ll let the program search.
+
+**Step 5 – Writing the program**  
+We’ll encode travel times in a dict, friends’ data in a list, and try all permutations.
+
+---

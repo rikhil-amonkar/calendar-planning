@@ -1,0 +1,62 @@
+from z3 import *
+
+# Define the domain for names and hair colors
+names = ['Alice', 'Arnold', 'Peter', 'Eric']
+hair_colors = ['black', 'blonde', 'brown', 'red']
+
+# Create symbolic variables for each house
+house_names = [String(f'name_{i}') for i in range(1, 5)]
+house_hair_colors = [String(f'hair_color_{i}') for i in range(1, 5)]
+
+# Create a solver instance
+solver = Solver()
+
+# Add constraints for unique names and hair colors
+solver.add(Distinct(house_names))
+solver.add(Distinct(house_hair_colors))
+
+# Encode the given clues as constraints
+# Constraint 1: Eric is directly left of the person who has blonde hair.
+solver.add(Or(
+    And(house_names[0] == 'Eric', house_hair_colors[1] == 'blonde'),
+    And(house_names[1] == 'Eric', house_hair_colors[2] == 'blonde'),
+    And(house_names[2] == 'Eric', house_hair_colors[3] == 'blonde')
+))
+
+# Constraint 2: Alice and Arnold are next to each other.
+solver.add(Or(
+    And(house_names[0] == 'Alice', house_names[1] == 'Arnold'),
+    And(house_names[1] == 'Alice', house_names[0] == 'Arnold'),
+    And(house_names[1] == 'Alice', house_names[2] == 'Arnold'),
+    And(house_names[2] == 'Alice', house_names[1] == 'Arnold'),
+    And(house_names[2] == 'Alice', house_names[3] == 'Arnold'),
+    And(house_names[3] == 'Alice', house_names[2] == 'Arnold')
+))
+
+# Constraint 3: Eric is the person who has brown hair.
+solver.add(Exists([i], And(house_names[i] == 'Eric', house_hair_colors[i] == 'brown')))
+
+# Constraint 4: The person who has black hair is not in the first house.
+solver.add(house_hair_colors[0] != 'black')
+
+# Constraint 5: Alice is in the first house.
+solver.add(house_names[0] == 'Alice')
+
+# Check if the constraints are satisfiable
+if solver.check() == sat:
+    model = solver.model()
+    solution = {
+        "solution": {
+            "header": ["House", "Name", "HairColor"],
+            "rows": []
+        }
+    }
+    for i in range(4):
+        house_number = str(i + 1)
+        name = model[house_names[i]].as_string()[1:-1]  # Remove quotes from string representation
+        hair_color = model[house_hair_colors[i]].as_string()[1:-1]  # Remove quotes from string representation
+        solution["solution"]["rows"].append([house_number, name, hair_color])
+    
+    print(solution)
+else:
+    print("No solution found")

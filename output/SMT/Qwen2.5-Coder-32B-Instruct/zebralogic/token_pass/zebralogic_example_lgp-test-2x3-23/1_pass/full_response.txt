@@ -1,0 +1,87 @@
+<reasoning>
+To solve this scheduling problem, we need to assign the given attributes (names, children, and food preferences) to two houses based on the provided clues.
+
+Let's break down the clues:
+1. The person who is a pizza lover is Arnold.
+2. The person who loves eating grilled cheese is directly left of the person whose child is named Fred.
+
+From clue 1, we know:
+- Arnold eats pizza.
+
+From clue 2, we know:
+- The person who eats grilled cheese is in house 1 (since there are only two houses and they must be next to each other).
+- The child in house 2 is named Fred.
+
+Since there are only two people (Eric and Arnold), and Arnold is in the house with pizza, Eric must be in the house with grilled cheese (house 1).
+
+Given that Eric is in house 1, his child must be Bella (the only remaining child). Therefore, Arnold must be in house 2 with his child Fred.
+
+Summarizing:
+- House 1: Eric, Bella, Grilled Cheese
+- House 2: Arnold, Fred, Pizza
+
+Now we can construct our solution in the required JSON format.
+</reasoning>
+
+```python
+from z3 import *
+
+# Define variables
+houses = [1, 2]
+names = ['Eric', 'Arnold']
+children = ['Bella', 'Fred']
+foods = ['grilled cheese', 'pizza']
+
+# Create Z3 solver
+solver = Solver()
+
+# Create variables for each attribute in each house
+house_name = {h: Int(f'house_{h}_name') for h in houses}
+house_child = {h: Int(f'house_{h}_child') for h in houses}
+house_food = {h: Int(f'house_{h}_food') for h in houses}
+
+# Map values to integers for Z3
+name_map = {name: i for i, name in enumerate(names)}
+child_map = {child: i for i, child in enumerate(children)}
+food_map = {food: i for i, food in enumerate(foods)}
+
+# Add constraints based on the clues
+# Clue 1: The person who is a pizza lover is Arnold.
+solver.add(house_food[2] == food_map['pizza'])
+solver.add(house_name[2] == name_map['Arnold'])
+
+# Clue 2: The person who loves eating grilled cheese is directly left of the person's child is named Fred.
+solver.add(house_food[1] == food_map['grilled cheese'])
+solver.add(house_child[2] == child_map['Fred'])
+
+# Each house has a unique name, child, and food
+solver.add(Distinct([house_name[h] for h in houses]))
+solver.add(Distinct([house_child[h] for h in houses]))
+solver.add(Distinct([house_food[h] for h in houses]))
+
+# Solve the constraints
+if solver.check() == sat:
+    model = solver.model()
+    # Extract the solution
+    house_1_name = names[model[house_name[1]].as_long()]
+    house_1_child = children[model[house_child[1]].as_long()]
+    house_1_food = foods[model[house_food[1]].as_long()]
+    
+    house_2_name = names[model[house_name[2]].as_long()]
+    house_2_child = children[model[house_child[2]].as_long()]
+    house_2_food = foods[model[house_food[2]].as_long()]
+    
+    # Construct the solution in JSON format
+    solution = {
+        "solution": {
+            "header": ["House", "Name", "Children", "Food"],
+            "rows": [
+                ["1", house_1_name, house_1_child, house_1_food],
+                ["2", house_2_name, house_2_child, house_2_food]
+            ]
+        }
+    }
+    print(solution)
+else:
+    print("No solution found")
+```

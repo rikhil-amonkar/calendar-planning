@@ -1,0 +1,78 @@
+Let’s break this down step by step before writing the code.
+
+---
+
+## **Step 1 – Understanding the problem**
+We have:
+
+- **Locations**:  
+Haight-Ashbury (HA), Russian Hill (RH), Fisherman's Wharf (FW), Nob Hill (NH), Golden Gate Park (GG), Alamo Square (AS), Pacific Heights (PH).
+
+- **Travel times**:  
+Given as a symmetric matrix (but not perfectly symmetric — some entries differ slightly, e.g., HA→FW is 23, FW→HA is 22). We’ll treat them as given.
+
+- **People & availability** (converted to minutes from midnight for easier computation):
+
+1. **Stephanie** (RH): 20:00–20:45 (1200–1245 min from midnight). Min meet: 15 min.
+2. **Kevin** (FW): 19:15–21:45 (1155–1305 min). Min meet: 75 min.
+3. **Robert** (NH): 7:45–10:30 (465–630 min). Min meet: 90 min.
+4. **Steven** (GG): 8:30–17:00 (510–1020 min). Min meet: 75 min.
+5. **Anthony** (AS): 7:45–19:45 (465–1185 min). Min meet: 15 min.
+6. **Sandra** (PH): 14:45–21:45 (885–1305 min). Min meet: 45 min.
+
+We start at **HA at 9:00** (540 min).
+
+We want to maximize the number of friends met (not total time with them), given travel and time constraints.
+
+---
+
+## **Step 2 – Observations**
+- Robert is only available early morning (7:45–10:30), so if we want to meet him, it must be soon after we start.
+- Steven is available all day until 5 PM, so he’s flexible.
+- Anthony is available all day until 7:45 PM, so also flexible.
+- Sandra is available afternoon/evening.
+- Stephanie is only available late (8–8:45 PM), so meeting her requires being at Russian Hill in that window.
+- Kevin is available evening (7:15–9:45 PM), needs 75 min, so must start by 8:30 PM at latest.
+
+We can’t meet everyone because of travel and time conflicts, especially with the long meetings (Robert 90 min, Steven 75 min, Kevin 75 min).
+
+---
+
+## **Step 3 – Strategy**
+We’ll brute-force search over permutations of people to meet, respecting:
+1. Travel times between locations.
+2. Availability windows.
+3. Minimum meeting durations.
+
+We start at HA at 9:00, choose an order of people to meet, and see if we can fit them in.
+
+We’ll try to maximize **count** of people met. If tie, maximize total social time.
+
+---
+
+## **Step 4 – Writing the program**
+We’ll:
+1. Encode travel times in a dict.
+2. Encode friend data.
+3. Search over permutations of subsets of friends.
+4. For each permutation, simulate schedule:  
+   - Start at HA at 9:00.  
+   - Travel to first friend’s location, arrive at `arrival_time`.  
+   - Schedule meeting within friend’s window:  
+     Start at max(arrival_time, friend_window_start),  
+     but must end by friend_window_end,  
+     and must have at least min_duration.  
+     If impossible, skip permutation.  
+   - After meeting, add travel to next friend.
+5. Keep track of best schedule.
+
+---
+
+## **Step 5 – Implementation details**
+We’ll use minutes since midnight for calculations, convert back to "H:MM" for output.
+
+We’ll try all subsets of the 6 friends (permutations of each subset) — that’s manageable (6! = 720 permutations max, times subsets = 1957 total permutations to check).
+
+---
+
+Here’s the Python program:

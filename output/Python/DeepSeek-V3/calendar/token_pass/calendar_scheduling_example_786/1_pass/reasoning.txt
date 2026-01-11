@@ -1,0 +1,54 @@
+Let’s break this down step by step before writing the code.  
+
+We have:  
+
+**Participants:** Amy, Pamela  
+**Meeting duration:** 30 minutes  
+**Work hours:** 9:00–17:00 each day  
+**Days considered:** Monday, Tuesday, Wednesday  
+
+**Constraints:**  
+- Amy’s busy times:  
+  - Wednesday: 11:00–11:30, 13:30–14:00  
+- Pamela’s busy times:  
+  - Monday: 9:00–10:30, 11:00–16:30  
+  - Tuesday: 9:00–9:30, 10:00–17:00  
+  - Wednesday: 9:00–9:30, 10:00–11:00, 11:30–13:30, 14:30–15:00, 16:00–16:30  
+- Pamela’s preference: Avoid more meetings on Monday, Tuesday, Wednesday *before* 16:00.  
+
+Since Pamela prefers to avoid meetings before 16:00, we should first check slots **at or after 16:00** that fit both schedules.  
+
+---
+
+### Step 1 – Check after 16:00  
+**Monday:**  
+- Pamela busy until 16:30, free from 16:30–17:00 (30 min slot).  
+- Amy has no Monday busy times given, so free 16:30–17:00.  
+→ Works: Monday 16:30–17:00.  
+
+**Tuesday:**  
+- Pamela busy until 17:00 (10:00–17:00 busy), so no slot after 16:00 except maybe 16:30–17:00? Wait, check: Tuesday Pamela busy 9:00–9:30, 10:00–17:00. So 9:30–10:00 free, but after 16:00 she’s busy until 17:00. So no 30 min slot after 16:00 on Tuesday.  
+
+**Wednesday:**  
+- Pamela busy 16:00–16:30, free 16:30–17:00.  
+- Amy’s Wednesday busy: 11:00–11:30, 13:30–14:00 → so 16:30–17:00 free for Amy.  
+→ Works: Wednesday 16:30–17:00.  
+
+Both Monday and Wednesday after 16:30 work.  
+
+---
+
+### Step 2 – Choose earliest day that fits preference  
+Pamela prefers to avoid before 16:00, so after-16:30 slots are perfect.  
+Monday is earlier in the week than Wednesday, so choose Monday.  
+
+---
+
+### Step 3 – Verify no earlier forced slot needed  
+The problem says there exists a solution that works with everyone’s schedule. We already found one that respects Pamela’s preference.  
+
+---
+
+**Final choice:** Monday 16:30–17:00.  
+
+Now, code to compute this systematically:

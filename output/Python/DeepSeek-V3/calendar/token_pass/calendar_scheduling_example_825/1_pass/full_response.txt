@@ -1,0 +1,282 @@
+Let’s break this down step by step before writing the code.  
+
+We have:  
+
+**Participants**: Laura and Philip  
+**Meeting duration**: 1 hour  
+**Work hours**: 9:00–17:00 each day  
+**Days considered**: Monday, Tuesday, Wednesday, Thursday  
+**Constraint**: Philip cannot meet on Wednesday (so Wednesday is out)  
+**Given schedules** in HH:MM format.  
+
+We need to find a **1-hour slot** between 9:00 and 17:00 on Monday, Tuesday, or Thursday (Wednesday excluded for Philip) where both are free.  
+
+---
+
+### Step 1 – Interpret busy times
+We can represent each day as a timeline from 9:00 to 17:00 in minutes (0 = 9:00, 480 = 17:00).  
+Busy times will be marked, and free times are the gaps.
+
+---
+
+### Step 2 – Approach
+1. Convert each person’s schedule into busy intervals in minutes from 9:00.
+2. Merge busy intervals for each person for each day.
+3. Find free intervals for each person for each day.
+4. Intersect free intervals for both people on each eligible day.
+5. Check for at least 60 minutes of continuous free time.
+6. Pick the first matching slot.
+
+---
+
+### Step 3 – Data entry
+Let’s encode the busy times:
+
+**Laura**:
+- Monday: 10:30–11:00 (90–120 min from 9:00), 12:30–13:00 (210–240), 14:30–15:30 (330–390), 16:00–17:00 (420–480)
+- Tuesday: 9:30–10:00 (30–60), 11:00–11:30 (120–150), 13:00–13:30 (240–270), 14:30–15:00 (330–360), 16:00–17:00 (420–480)
+- Wednesday: 11:30–12:00 (150–180), 12:30–13:00 (210–240), 15:30–16:30 (390–450)
+- Thursday: 10:30–11:00 (90–120), 12:00–13:30 (180–270), 15:00–15:30 (360–390), 16:00–16:30 (420–450)
+
+**Philip**:
+- Monday: 9:00–17:00 (0–480) → entire day busy
+- Tuesday: 9:00–11:00 (0–120), 11:30–12:00 (150–180), 13:00–13:30 (240–270), 14:00–14:30 (300–330), 15:00–16:30 (360–450)
+- Wednesday: 9:00–10:00 (0–60), 11:00–12:00 (120–180), 12:30–16:00 (210–420), 16:30–17:00 (450–480)  
+  But Philip cannot meet Wednesday anyway, so ignore Wednesday.
+- Thursday: 9:00–10:30 (0–90), 11:00–12:30 (120–210), 13:00–17:00 (240–480)
+
+---
+
+### Step 4 – Find free slots
+We check Tuesday and Thursday (Monday is fully busy for Philip, Wednesday excluded).
+
+**Tuesday**:
+Laura free intervals (from 9:00–17:00, removing her busy times):  
+Busy: (30–60), (120–150), (240–270), (330–360), (420–480)  
+Free: (0–30), (60–120), (150–240), (270–330), (360–420)
+
+Philip free intervals on Tuesday:  
+Busy: (0–120), (150–180), (240–270), (300–330), (360–450)  
+Free: (120–150), (180–240), (270–300), (330–360), (450–480)
+
+Intersect free intervals:
+- (0–30) ∩ any Philip free? No, Philip busy 0–120.
+- (60–120) ∩ any? No, Philip busy 0–120.
+- (150–240) ∩ (120–150) → (150–150) empty.
+- (150–240) ∩ (180–240) → (180–240) length 60 min → valid slot 180–240 = 12:00–13:00.
+Check Laura busy at 12:30–13:00 (210–240) → overlap? 180–240 vs 210–240 → free part 180–210 (30 min) only, not enough.
+So (180–240) not fully free for Laura because she has 210–240 busy. So no.
+
+- (270–330) ∩ (270–300) → (270–300) length 30 min, not enough.
+- (270–330) ∩ (330–360) → (330–330) empty.
+- (360–420) ∩ (450–480) no overlap.
+- (360–420) ∩ (330–360) → (360–360) empty.
+
+So Tuesday no 1-hour slot.
+
+---
+
+**Thursday**:
+Laura busy: (90–120), (180–270), (360–390), (420–450)  
+Laura free: (0–90), (120–180), (270–360), (390–420), (450–480)
+
+Philip busy: (0–90), (120–210), (240–480)  
+Philip free: (90–120), (210–240), (240–240 empty? Wait, 240 is start of busy, so actually Philip free is (90–120) and (210–240)? Let's check:  
+Busy intervals: 0–90, 120–210, 240–480.  
+So free: 90–120, 210–240. Yes.
+
+Intersect:
+1. Laura (0–90) ∩ Philip (90–120) → no.
+2. Laura (120–180) ∩ Philip (90–120) → (120–120) no.
+3. Laura (120–180) ∩ Philip (210–240) → no.
+4. Laura (270–360) ∩ Philip (90–120) → no.
+5. Laura (270–360) ∩ Philip (210–240) → (270–360) ∩ (210–240) = (270–240) empty.
+6. Laura (390–420) ∩ Philip (90–120) → no.
+7. Laura (390–420) ∩ Philip (210–240) → no.
+8. Laura (450–480) ∩ Philip (90–120) → no.
+9. Laura (450–480) ∩ Philip (210–240) → no.
+
+Hmm, that means no overlap on Thursday either? That can’t be right — the problem says a solution exists. Let’s recheck Philip’s Thursday schedule:
+
+Given: Thursday during 9:00 to 10:30, 11:00 to 12:30, 13:00 to 17:00.
+
+So busy in minutes from 9:00:
+9:00–10:30 → 0–90  
+11:00–12:30 → 120–210  
+13:00–17:00 → 240–480  
+
+Free: 90–120 (10:30–11:00), 210–240 (12:30–13:00).
+
+Yes, that’s correct.
+
+Now intersect with Laura’s Thursday free:
+Laura free: 0–90, 120–180, 270–360, 390–420, 450–480.
+
+Intersect with Philip free (90–120) and (210–240):
+- (90–120) ∩ Laura free:  
+  (90–120) ∩ (0–90) = (90–90) no.  
+  (90–120) ∩ (120–180) = (120–120) no.  
+  Others no. So no overlap.
+
+- (210–240) ∩ Laura free:  
+  (210–240) ∩ (270–360) no.  
+  (210–240) ∩ others no. Actually Laura busy 180–270, so 210–240 is inside Laura’s busy (180–270). So no.
+
+So Thursday no slot.
+
+---
+
+That means Tuesday must have a slot I missed. Let’s check Tuesday again carefully.
+
+Laura free on Tuesday:  
+From 9:00–17:00, busy: 9:30–10:00, 11:00–11:30, 13:00–13:30, 14:30–15:00, 16:00–17:00.
+
+So free blocks:  
+1. 9:00–9:30 (0–30)  
+2. 10:00–11:00 (60–120)  
+3. 11:30–13:00 (150–240)  
+4. 13:30–14:30 (270–330)  
+5. 15:00–16:00 (360–420)
+
+Philip free on Tuesday:  
+Busy: 9:00–11:00, 11:30–12:00, 13:00–13:30, 14:00–14:30, 15:00–16:30.  
+So free:  
+1. 11:00–11:30 (120–150)  
+2. 12:00–13:00 (180–240)  
+3. 13:30–14:00 (270–300)  
+4. 14:30–15:00 (330–360)  
+5. 16:30–17:00 (450–480)
+
+Intersect:
+- Laura’s 150–240 with Philip’s 180–240 → 180–240 (1 hour).  
+But Laura busy in 150–240? No, Laura is free 150–240 entirely. Wait, earlier I thought she had 12:30–13:00 busy, but that’s Wednesday, not Tuesday. Yes! My earlier mistake: I mixed Wednesday’s 12:30–13:00 into Tuesday for Laura. Let’s correct:
+
+Laura Tuesday busy:  
+9:30–10:00, 11:00–11:30, 13:00–13:30, 14:30–15:00, 16:00–17:00.  
+So free:  
+9:00–9:30, 10:00–11:00, 11:30–13:00, 13:30–14:30, 15:00–16:00.
+
+Yes, so 11:30–13:00 free for Laura.  
+Philip free 12:00–13:00.  
+Intersect: 12:00–13:00 (60 min). Both free.  
+
+That’s the slot: Tuesday 12:00–13:00.
+
+---
+
+### Step 5 – Write code to find this systematically
+
+```python
+def time_to_min(t):
+    # t is "HH:MM"
+    h, m = map(int, t.split(':'))
+    return h * 60 + m
+
+def min_to_time(m):
+    h = m // 60
+    mi = m % 60
+    return f"{h:02d}:{mi:02d}"
+
+def add_busy(day_schedule, start, end):
+    # start, end in "HH:MM"
+    s = time_to_min(start) - 9*60  # offset from 9:00
+    e = time_to_min(end) - 9*60
+    if s < 0: s = 0
+    if e > 480: e = 480
+    if s < e:
+        day_schedule.append((s, e))
+
+def merge_intervals(intervals):
+    if not intervals:
+        return []
+    sorted_intervals = sorted(intervals, key=lambda x: x[0])
+    merged = []
+    for start, end in sorted_intervals:
+        if not merged or merged[-1][1] < start:
+            merged.append([start, end])
+        else:
+            merged[-1][1] = max(merged[-1][1], end)
+    return merged
+
+def find_free_slots(busy_intervals, day_start_min, day_end_min):
+    # busy_intervals already in minutes from 9:00
+    merged = merge_intervals(busy_intervals)
+    free = []
+    prev_end = day_start_min
+    for start, end in merged:
+        if start > prev_end:
+            free.append((prev_end, start))
+        prev_end = max(prev_end, end)
+    if prev_end < day_end_min:
+        free.append((prev_end, day_end_min))
+    return free
+
+def intersect_slots(slots1, slots2, min_duration):
+    result = []
+    i = j = 0
+    while i < len(slots1) and j < len(slots2):
+        s1, e1 = slots1[i]
+        s2, e2 = slots2[j]
+        start = max(s1, s2)
+        end = min(e1, e2)
+        if start < end:
+            if end - start >= min_duration:
+                result.append((start, end))
+        if e1 < e2:
+            i += 1
+        else:
+            j += 1
+    return result
+
+def main():
+    days = ["Monday", "Tuesday", "Wednesday", "Thursday"]
+    work_start = 9 * 60
+    work_end = 17 * 60
+    duration = 60
+
+    # Laura's schedule
+    laura_busy = {
+        "Monday": [("10:30", "11:00"), ("12:30", "13:00"), ("14:30", "15:30"), ("16:00", "17:00")],
+        "Tuesday": [("9:30", "10:00"), ("11:00", "11:30"), ("13:00", "13:30"), ("14:30", "15:00"), ("16:00", "17:00")],
+        "Wednesday": [("11:30", "12:00"), ("12:30", "13:00"), ("15:30", "16:30")],
+        "Thursday": [("10:30", "11:00"), ("12:00", "13:30"), ("15:00", "15:30"), ("16:00", "16:30")]
+    }
+
+    # Philip's schedule
+    philip_busy = {
+        "Monday": [("9:00", "17:00")],
+        "Tuesday": [("9:00", "11:00"), ("11:30", "12:00"), ("13:00", "13:30"), ("14:00", "14:30"), ("15:00", "16:30")],
+        "Wednesday": [("9:00", "10:00"), ("11:00", "12:00"), ("12:30", "16:00"), ("16:30", "17:00")],
+        "Thursday": [("9:00", "10:30"), ("11:00", "12:30"), ("13:00", "17:00")]
+    }
+
+    # Philip cannot meet Wednesday
+    eligible_days = ["Monday", "Tuesday", "Thursday"]
+
+    for day in eligible_days:
+        # Convert busy times to minutes from 9:00
+        laura_busy_min = []
+        for s, e in laura_busy[day]:
+            add_busy(laura_busy_min, s, e)
+
+        philip_busy_min = []
+        for s, e in philip_busy[day]:
+            add_busy(philip_busy_min, s, e)
+
+        laura_free = find_free_slots(laura_busy_min, 0, work_end - work_start)
+        philip_free = find_free_slots(philip_busy_min, 0, work_end - work_start)
+
+        common = intersect_slots(laura_free, philip_free, duration)
+        if common:
+            start_min = common[0][0] + work_start
+            end_min = start_min + duration
+            start_time = min_to_time(start_min)
+            end_time = min_to_time(end_min)
+            print(f"{day}:{start_time}:{end_time}")
+            return
+
+    print("No suitable slot found")
+
+if __name__ == "__main__":
+    main()
+```

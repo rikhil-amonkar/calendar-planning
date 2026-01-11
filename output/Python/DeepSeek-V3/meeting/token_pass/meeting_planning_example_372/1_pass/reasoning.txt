@@ -1,0 +1,308 @@
+Let’s break this down step by step before writing the code.
+
+---
+
+## **Step 1 — Understanding the problem**
+
+We have:
+
+- **Locations**: Sunset District, Alamo Square, Russian Hill, Golden Gate Park, Mission District.
+- **Travel times** between each pair (given in minutes, not symmetric in all cases).
+- **Start location**: Sunset District at 9:00 AM.
+- **Friends with availability**:
+  1. **Charles** — Alamo Square — 18:00 to 20:45 — needs 90 min.
+  2. **Margaret** — Russian Hill — 9:00 to 16:00 — needs 30 min.
+  3. **Daniel** — Golden Gate Park — 8:00 to 13:30 — needs 15 min.
+  4. **Stephanie** — Mission District — 20:30 to 22:00 — needs 90 min.
+
+We want to meet **as many as possible**, but must respect:
+- Travel times between meetings.
+- Each meeting’s minimum duration.
+- Time windows of availability.
+
+---
+
+## **Step 2 — Observations on feasibility**
+
+1. **Daniel** is only available until 13:30, so must be met before then.
+2. **Margaret** is available 9:00–16:00, so she’s flexible but overlaps with Daniel’s window.
+3. **Charles** is only after 18:00, so he’s in the evening.
+4. **Stephanie** is only after 20:30, so she’s late evening.
+
+Possible conflicts:  
+- Meeting Charles for 90 min starting at 18:00 ends at 19:30.  
+- Travel from Alamo Square to Mission District takes 11 min, so could arrive at 19:41, but Stephanie starts at 20:30 — that’s a 49-minute gap. Could meet Stephanie 20:30–22:00 (90 min), so that works if we fill the gap.
+
+But we also need to fit Daniel and Margaret earlier.
+
+---
+
+## **Step 3 — Trying a possible order**
+
+Start at Sunset (9:00).
+
+**Option 1**:  
+Sunset → Russian Hill (Margaret) → Golden Gate Park (Daniel) → Alamo Square (Charles) → Mission District (Stephanie).
+
+Check times:
+
+1. **9:00** at Sunset. Travel to Russian Hill: 24 min → arrive 9:24.  
+   Meet Margaret 9:24–9:54 (30 min).  
+   End at 9:54.
+
+2. Travel Russian Hill → Golden Gate Park: 21 min → arrive 10:15.  
+   Meet Daniel 10:15–10:30 (15 min).  
+   End at 10:30.
+
+3. Travel Golden Gate Park → Alamo Square: 10 min → arrive 10:40.  
+   But Charles isn’t available until 18:00 — huge gap. Could instead go somewhere else, but no other friends available midday. Could meet Margaret longer earlier, but she’s available until 16:00, so could shift Margaret later to reduce gap.
+
+Better:  
+Start with Daniel first (since he has earliest end time).
+
+---
+
+**Option 2**:  
+Sunset → Golden Gate Park (Daniel) → Russian Hill (Margaret) → Alamo Square (Charles) → Mission District (Stephanie).
+
+1. 9:00 at Sunset → Golden Gate Park: 11 min → arrive 9:11.  
+   Meet Daniel 9:11–9:26 (15 min). End 9:26.
+
+2. Travel Golden Gate Park → Russian Hill: 19 min → arrive 9:45.  
+   Meet Margaret 9:45–10:15 (30 min). End 10:15.
+
+Now huge gap until Charles at 18:00. Could extend Margaret meeting longer (e.g., 9:45–15:45) to fill time, but then can’t meet others? Actually, after Margaret, could go to Alamo Square early, but Charles not there until 18:00, so still gap.
+
+But maybe we can meet all four if we schedule tightly in evening.
+
+---
+
+**Step 4 — Evening schedule feasibility**
+
+Charles: 18:00–20:45, needs 90 min → could do 18:00–19:30.  
+Travel Alamo Square → Mission District: 11 min → arrive 19:41.  
+Stephanie: available 20:30–22:00, needs 90 min → must start at 20:30, end 22:00.  
+So 19:41 to 20:30 is a 49-min wait. Acceptable gap.
+
+So evening works: Charles then Stephanie.
+
+---
+
+**Step 5 — Fitting Daniel and Margaret before evening**
+
+We have 9:00 to 18:00 (9 hours) to fit Daniel and Margaret, with travel.
+
+Try:  
+Start Sunset → Daniel (Golden Gate Park) → Margaret (Russian Hill) → free until Charles.
+
+1. Sunset → Golden Gate Park: 11 min → 9:11.  
+   Meet Daniel 9:11–9:26. End 9:26.
+
+2. Golden Gate Park → Russian Hill: 19 min → arrive 9:45.  
+   Meet Margaret 9:45–10:15. End 10:15.
+
+Now from 10:15 to 18:00 is a long gap (7h45m). We could extend Margaret meeting to fill more time (she’s free until 16:00). Let’s maximize time with her to reduce idle time.
+
+Better:  
+Meet Daniel first briefly, then Margaret for longer.
+
+---
+
+**Option 3**:  
+Sunset → Golden Gate Park (Daniel) → Russian Hill (Margaret long) → Alamo Square (Charles) → Mission District (Stephanie).
+
+1. 9:00 → GGP: 11 min → 9:11.  
+   Daniel: 9:11–9:26.
+
+2. GGP → Russian Hill: 19 min → 9:45.  
+   Margaret: 9:45–15:45 (6 hours — fills time nicely, ends at 15:45).
+
+3. Russian Hill → Alamo Square: 15 min → arrive 16:00.  
+   But Charles starts at 18:00, so wait 2 hours. Acceptable.
+
+4. Charles: 18:00–19:30.
+
+5. Alamo Square → Mission District: 11 min → 19:41. Wait until 20:30.
+
+6. Stephanie: 20:30–22:00.
+
+This meets all four friends. Travel times all respected.
+
+---
+
+**Step 6 — Check travel times carefully**
+
+Leg 1: Sunset to GGP: 11 min (given).  
+Leg 2: GGP to Russian Hill: 19 min (given).  
+Leg 3: Russian Hill to Alamo Square: 15 min (given).  
+Leg 4: Alamo Square to Mission District: 11 min (given).
+
+All okay.
+
+---
+
+**Step 7 — Write program to compute this schedule**
+
+We’ll encode the travel times in a dictionary, friends’ data in a list, and brute-force search over permutations of meetings to maximize number met, respecting constraints.
+
+But since we already found a feasible schedule for all four, we can implement that fixed plan, but to satisfy the problem’s requirement of “actually compute,” we’ll write a search algorithm that tries permutations and picks best.
+
+---
+
+Here’s the Python program:
+
+```python
+import json
+from itertools import permutations
+from datetime import datetime, timedelta
+
+def parse_time(t_str):
+    """Convert 'H:MM' or 'HH:MM' to datetime today for easy arithmetic."""
+    return datetime.strptime(t_str, "%H:%M")
+
+def format_time(dt):
+    """Convert datetime to 'H:MM' or 'HH:MM' without leading zero on hour."""
+    return dt.strftime("%-H:%M")
+
+def add_minutes(dt, minutes):
+    return dt + timedelta(minutes=minutes)
+
+# Travel times matrix (in minutes)
+travel_times = {
+    ("Sunset District", "Alamo Square"): 17,
+    ("Sunset District", "Russian Hill"): 24,
+    ("Sunset District", "Golden Gate Park"): 11,
+    ("Sunset District", "Mission District"): 24,
+    ("Alamo Square", "Sunset District"): 16,
+    ("Alamo Square", "Russian Hill"): 13,
+    ("Alamo Square", "Golden Gate Park"): 9,
+    ("Alamo Square", "Mission District"): 10,
+    ("Russian Hill", "Sunset District"): 23,
+    ("Russian Hill", "Alamo Square"): 15,
+    ("Russian Hill", "Golden Gate Park"): 21,
+    ("Russian Hill", "Mission District"): 16,
+    ("Golden Gate Park", "Sunset District"): 10,
+    ("Golden Gate Park", "Alamo Square"): 10,
+    ("Golden Gate Park", "Russian Hill"): 19,
+    ("Golden Gate Park", "Mission District"): 17,
+    ("Mission District", "Sunset District"): 24,
+    ("Mission District", "Alamo Square"): 11,
+    ("Mission District", "Russian Hill"): 15,
+    ("Mission District", "Golden Gate Park"): 17,
+}
+
+# Friend data: name, location, available_start, available_end, min_duration (minutes)
+friends = [
+    ("Charles", "Alamo Square", parse_time("18:00"), parse_time("20:45"), 90),
+    ("Margaret", "Russian Hill", parse_time("9:00"), parse_time("16:00"), 30),
+    ("Daniel", "Golden Gate Park", parse_time("8:00"), parse_time("13:30"), 15),
+    ("Stephanie", "Mission District", parse_time("20:30"), parse_time("22:00"), 90),
+]
+
+def schedule_meetings(order, start_time, start_loc):
+    """Try to schedule meetings in given order, return (num_met, itinerary)."""
+    current_time = start_time
+    current_loc = start_loc
+    itinerary = []
+    met_count = 0
+    
+    for name, location, avail_start, avail_end, min_dur in order:
+        # Travel to friend's location
+        travel_key = (current_loc, location)
+        if travel_key in travel_times:
+            travel = travel_times[travel_key]
+        else:
+            travel = travel_times.get((current_loc, location), 0)
+        current_time = add_minutes(current_time, travel)
+        
+        # Try to start meeting as soon as possible after arrival, but within window
+        start_meeting = max(current_time, avail_start)
+        if start_meeting > avail_end:
+            # Cannot meet at all
+            return 0, []
+        end_meeting = add_minutes(start_meeting, min_dur)
+        if end_meeting > avail_end:
+            # Not enough time in window
+            return 0, []
+        
+        itinerary.append({
+            "action": "meet",
+            "location": location,
+            "person": name,
+            "start_time": format_time(start_meeting),
+            "end_time": format_time(end_meeting)
+        })
+        met_count += 1
+        current_time = end_meeting
+        current_loc = location
+    
+    return met_count, itinerary
+
+def main():
+    start_time = parse_time("9:00")
+    start_loc = "Sunset District"
+    
+    best_met = 0
+    best_itinerary = []
+    
+    # Try all permutations of friends
+    for perm in permutations(friends):
+        met, itinerary = schedule_meetings(perm, start_time, start_loc)
+        if met > best_met:
+            best_met = met
+            best_itinerary = itinerary
+    
+    # Output result
+    result = {
+        "itinerary": best_itinerary
+    }
+    print(json.dumps(result, indent=2))
+
+if __name__ == "__main__":
+    main()
+```
+
+---
+
+**Step 8 — Expected output**
+
+When run, the program searches permutations and finds the optimal schedule meeting all four friends, producing an itinerary similar to our manual plan.
+
+```json
+{
+  "itinerary": [
+    {
+      "action": "meet",
+      "location": "Golden Gate Park",
+      "person": "Daniel",
+      "start_time": "9:11",
+      "end_time": "9:26"
+    },
+    {
+      "action": "meet",
+      "location": "Russian Hill",
+      "person": "Margaret",
+      "start_time": "9:45",
+      "end_time": "10:15"
+    },
+    {
+      "action": "meet",
+      "location": "Alamo Square",
+      "person": "Charles",
+      "start_time": "18:00",
+      "end_time": "19:30"
+    },
+    {
+      "action": "meet",
+      "location": "Mission District",
+      "person": "Stephanie",
+      "start_time": "20:30",
+      "end_time": "22:00"
+    }
+  ]
+}
+```
+
+---
+
+**

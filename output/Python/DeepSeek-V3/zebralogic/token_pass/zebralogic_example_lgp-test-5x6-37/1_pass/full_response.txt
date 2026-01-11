@@ -1,0 +1,253 @@
+```python
+import json
+from itertools import permutations
+
+def solve():
+    # Define all possible values for each category
+    names = ["Bob", "Arnold", "Alice", "Peter", "Eric"]
+    hobbies = ["cooking", "gardening", "painting", "photography", "knitting"]
+    sports = ["swimming", "tennis", "soccer", "baseball", "basketball"]
+    styles = ["ranch", "craftsman", "victorian", "modern", "colonial"]
+    children = ["Timothy", "Samantha", "Bella", "Meredith", "Fred"]
+    heights = ["average", "very tall", "very short", "short", "tall"]
+    
+    houses = [1, 2, 3, 4, 5]
+    
+    # Generate all permutations for each category
+    # We'll use brute force with pruning based on clues
+    solutions = []
+    
+    # We'll iterate through all possible assignments
+    # Since 5!^6 is huge, we'll use backtracking with constraints
+    
+    # Helper function to check if assignment is valid so far
+    def check_constraints(assignment):
+        # assignment is a dict with house numbers as keys
+        # and a dict of attributes for each house
+        
+        # Build reverse mappings for quick lookup
+        name_to_house = {}
+        hobby_to_house = {}
+        sport_to_house = {}
+        style_to_house = {}
+        child_to_house = {}
+        height_to_house = {}
+        
+        for house, attrs in assignment.items():
+            if 'name' in attrs:
+                name_to_house[attrs['name']] = house
+            if 'hobby' in attrs:
+                hobby_to_house[attrs['hobby']] = house
+            if 'sport' in attrs:
+                sport_to_house[attrs['sport']] = house
+            if 'style' in attrs:
+                style_to_house[attrs['style']] = house
+            if 'child' in attrs:
+                child_to_house[attrs['child']] = house
+            if 'height' in attrs:
+                height_to_house[attrs['height']] = house
+        
+        # Check each clue that can be verified with current partial assignment
+        
+        # 2. The person who is tall is in the second house.
+        if 'tall' in height_to_house and height_to_house['tall'] != 2:
+            return False
+        
+        # 3. Peter is directly left of the person residing in a Victorian house.
+        if 'Peter' in name_to_house and 'victorian' in style_to_house:
+            if name_to_house['Peter'] + 1 != style_to_house['victorian']:
+                return False
+        
+        # 4. Alice is the person who is tall.
+        if 'Alice' in name_to_house and 'tall' in height_to_house:
+            if name_to_house['Alice'] != height_to_house['tall']:
+                return False
+        # If Alice is assigned but tall is assigned elsewhere, invalid
+        if 'Alice' in name_to_house and 'tall' in height_to_house:
+            if name_to_house['Alice'] != height_to_house['tall']:
+                return False
+        # If tall is assigned but Alice is assigned elsewhere, invalid
+        if 'tall' in height_to_house and 'Alice' in name_to_house:
+            if height_to_house['tall'] != name_to_house['Alice']:
+                return False
+        
+        # 5. The person who loves baseball is the person who is very tall.
+        if 'baseball' in sport_to_house and 'very tall' in height_to_house:
+            if sport_to_house['baseball'] != height_to_house['very tall']:
+                return False
+        
+        # 6. The person's child is named Meredith and the person who is the mother of Timothy are next to each other.
+        if 'Meredith' in child_to_house and 'Timothy' in child_to_house:
+            if abs(child_to_house['Meredith'] - child_to_house['Timothy']) != 1:
+                return False
+        
+        # 7. Bob is the person who paints as a hobby.
+        if 'Bob' in name_to_house and 'painting' in hobby_to_house:
+            if name_to_house['Bob'] != hobby_to_house['painting']:
+                return False
+        
+        # 8. The person who enjoys gardening is in the second house.
+        if 'gardening' in hobby_to_house and hobby_to_house['gardening'] != 2:
+            return False
+        
+        # 9. The person who is very short is somewhere to the right of Eric.
+        if 'very short' in height_to_house and 'Eric' in name_to_house:
+            if height_to_house['very short'] <= name_to_house['Eric']:
+                return False
+        
+        # 10. The person who loves tennis is the person's child is named Samantha.
+        if 'tennis' in sport_to_house and 'Samantha' in child_to_house:
+            if sport_to_house['tennis'] != child_to_house['Samantha']:
+                return False
+        
+        # 11. The person who loves soccer is not in the first house.
+        if 'soccer' in sport_to_house and sport_to_house['soccer'] == 1:
+            return False
+        
+        # 12. The person's child is named Samantha is the person in a modern-style house.
+        if 'Samantha' in child_to_house and 'modern' in style_to_house:
+            if child_to_house['Samantha'] != style_to_house['modern']:
+                return False
+        
+        # 13. The person in a Craftsman-style house is the person who has an average height.
+        if 'craftsman' in style_to_house and 'average' in height_to_house:
+            if style_to_house['craftsman'] != height_to_house['average']:
+                return False
+        
+        # 14. The person's child is named Fred is the person residing in a Victorian house.
+        if 'Fred' in child_to_house and 'victorian' in style_to_house:
+            if child_to_house['Fred'] != style_to_house['victorian']:
+                return False
+        
+        # 15. The person who is short is the person who loves basketball.
+        if 'short' in height_to_house and 'basketball' in sport_to_house:
+            if height_to_house['short'] != sport_to_house['basketball']:
+                return False
+        
+        # 16. Peter is the person who is very tall.
+        if 'Peter' in name_to_house and 'very tall' in height_to_house:
+            if name_to_house['Peter'] != height_to_house['very tall']:
+                return False
+        
+        # 17. The person in a ranch-style home is somewhere to the left of the person who loves cooking.
+        if 'ranch' in style_to_house and 'cooking' in hobby_to_house:
+            if style_to_house['ranch'] >= hobby_to_house['cooking']:
+                return False
+        
+        # 18. The person who enjoys knitting and the person who enjoys gardening are next to each other.
+        if 'knitting' in hobby_to_house and 'gardening' in hobby_to_house:
+            if abs(hobby_to_house['knitting'] - hobby_to_house['gardening']) != 1:
+                return False
+        
+        # 19. The person in a modern-style house is the person who loves cooking.
+        if 'modern' in style_to_house and 'cooking' in hobby_to_house:
+            if style_to_house['modern'] != hobby_to_house['cooking']:
+                return False
+        
+        # 20. The person residing in a Victorian house is in the fifth house.
+        if 'victorian' in style_to_house and style_to_house['victorian'] != 5:
+            return False
+        
+        # 1. The person who has an average height is the person's child is named Meredith.
+        if 'average' in height_to_house and 'Meredith' in child_to_house:
+            if height_to_house['average'] != child_to_house['Meredith']:
+                return False
+        
+        return True
+    
+    # Backtracking search
+    def backtrack(house_idx, assignment, remaining):
+        if house_idx > 5:
+            # Check if all houses are fully assigned
+            for h in houses:
+                if len(assignment[h]) != 6:
+                    return []
+            
+            # All houses fully assigned, check all constraints
+            if check_constraints(assignment):
+                return [assignment.copy()]
+            return []
+        
+        solutions = []
+        
+        # Get remaining values for each category
+        remaining_names, remaining_hobbies, remaining_sports, remaining_styles, remaining_children, remaining_heights = remaining
+        
+        # Try all combinations for this house
+        for name in list(remaining_names):
+            for hobby in list(remaining_hobbies):
+                for sport in list(remaining_sports):
+                    for style in list(remaining_styles):
+                        for child in list(remaining_children):
+                            for height in list(remaining_heights):
+                                # Assign to current house
+                                assignment[house_idx] = {
+                                    'name': name,
+                                    'hobby': hobby,
+                                    'sport': sport,
+                                    'style': style,
+                                    'child': child,
+                                    'height': height
+                                }
+                                
+                                # Update remaining sets
+                                new_remaining = (
+                                    remaining_names - {name},
+                                    remaining_hobbies - {hobby},
+                                    remaining_sports - {sport},
+                                    remaining_styles - {style},
+                                    remaining_children - {child},
+                                    remaining_heights - {height}
+                                )
+                                
+                                # Check constraints
+                                if check_constraints(assignment):
+                                    # Recurse to next house
+                                    solutions.extend(backtrack(house_idx + 1, assignment, new_remaining))
+                                
+                                # Backtrack
+                                del assignment[house_idx]
+        
+        return solutions
+    
+    # Initial remaining sets
+    initial_remaining = (
+        set(names), set(hobbies), set(sports), set(styles), set(children), set(heights)
+    )
+    
+    # Start backtracking
+    all_solutions = backtrack(1, {}, initial_remaining)
+    
+    if not all_solutions:
+        return {"error": "No solution found"}
+    
+    # Take the first solution (should be unique)
+    solution = all_solutions[0]
+    
+    # Format the solution as required
+    rows = []
+    for house in sorted(solution.keys()):
+        attrs = solution[house]
+        rows.append([
+            str(house),
+            attrs['name'],
+            attrs['hobby'],
+            attrs['sport'],
+            attrs['style'],
+            attrs['child'],
+            attrs['height']
+        ])
+    
+    result = {
+        "solution": {
+            "header": ["House", "Name", "Hobby", "FavoriteSport", "HouseStyle", "Children", "Height"],
+            "rows": rows
+        }
+    }
+    
+    return result
+
+if __name__ == "__main__":
+    solution = solve()
+    print(json.dumps(solution, indent=2))
+```

@@ -1,0 +1,81 @@
+```python
+import json
+from itertools import permutations
+
+def solve():
+    # Define all possible values
+    names = ["Eric", "Alice", "Peter", "Arnold"]
+    hair_colors = ["blonde", "black", "red", "brown"]
+    sports = ["swimming", "soccer", "basketball", "tennis"]
+    houses = [1, 2, 3, 4]
+    
+    # Generate all permutations of assignments
+    for name_perm in permutations(names, 4):
+        for hair_perm in permutations(hair_colors, 4):
+            for sport_perm in permutations(sports, 4):
+                # Build assignment per house
+                assignment = []
+                for i in range(4):
+                    assignment.append({
+                        "house": houses[i],
+                        "name": name_perm[i],
+                        "hair": hair_perm[i],
+                        "sport": sport_perm[i]
+                    })
+                
+                # Check all clues
+                # Clue 1: The person who loves soccer is not in the second house.
+                soccer_house = next(a["house"] for a in assignment if a["sport"] == "soccer")
+                if soccer_house == 2:
+                    continue
+                
+                # Clue 2: Eric is the person who has blonde hair.
+                eric_entry = next((a for a in assignment if a["name"] == "Eric"), None)
+                if not eric_entry or eric_entry["hair"] != "blonde":
+                    continue
+                
+                # Clue 3: The person who has blonde hair is somewhere to the right of the person who loves basketball.
+                blonde_house = next(a["house"] for a in assignment if a["hair"] == "blonde")
+                basketball_house = next(a["house"] for a in assignment if a["sport"] == "basketball")
+                if not blonde_house > basketball_house:
+                    continue
+                
+                # Clue 4: The person who has black hair is the person who loves tennis.
+                black_hair_entry = next((a for a in assignment if a["hair"] == "black"), None)
+                if not black_hair_entry or black_hair_entry["sport"] != "tennis":
+                    continue
+                
+                # Clue 5: Arnold is somewhere to the left of the person who has red hair.
+                arnold_house = next(a["house"] for a in assignment if a["name"] == "Arnold")
+                red_hair_house = next(a["house"] for a in assignment if a["hair"] == "red")
+                if not arnold_house < red_hair_house:
+                    continue
+                
+                # Clue 6: Alice is the person who loves swimming.
+                alice_entry = next((a for a in assignment if a["name"] == "Alice"), None)
+                if not alice_entry or alice_entry["sport"] != "swimming":
+                    continue
+                
+                # Clue 7: The person who has red hair is directly left of the person who has black hair.
+                if red_hair_house + 1 != black_hair_entry["house"]:
+                    continue
+                
+                # All clues satisfied, format solution
+                rows = []
+                for a in sorted(assignment, key=lambda x: x["house"]):
+                    rows.append([str(a["house"]), a["name"], a["hair"], a["sport"]])
+                
+                result = {
+                    "solution": {
+                        "header": ["House", "Name", "HairColor", "FavoriteSport"],
+                        "rows": rows
+                    }
+                }
+                return result
+    
+    return {"solution": {"header": [], "rows": []}}
+
+if __name__ == "__main__":
+    solution = solve()
+    print(json.dumps(solution, indent=2))
+```

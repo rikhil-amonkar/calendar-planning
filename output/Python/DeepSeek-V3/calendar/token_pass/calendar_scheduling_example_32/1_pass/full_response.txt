@@ -1,0 +1,77 @@
+Let's break this down.  
+
+We have:  
+
+- **Participants**: Emily, Melissa, Frank  
+- **Day**: Monday  
+- **Work hours**: 9:00–17:00  
+- **Duration**: 30 minutes  
+- **Frank’s extra constraint**: Does not want to meet after 9:30 on Monday — but this seems contradictory because all work hours are after 9:30 except 9:00–9:30. Let’s check carefully.  
+
+Actually, reading again:  
+> Frank do not want to meet on Monday after 9:30.  
+
+That means Frank is only available **before or at 9:30** on Monday. But the meeting must be between 9:00 and 17:00. So the only possible time is **9:00–9:30** if that’s free for everyone.  
+
+Let’s check schedules:  
+
+**Emily’s Monday meetings**:  
+10:00–10:30, 11:30–12:30, 14:00–15:00, 16:00–16:30 → So 9:00–9:30 is free for Emily.  
+
+**Melissa’s Monday busy times**:  
+9:30–10:00, 14:30–15:00 → So 9:00–9:30 is free for Melissa.  
+
+**Frank’s Monday busy times**:  
+10:00–10:30, 11:00–11:30, 12:30–13:00, 13:30–14:30, 15:00–16:00, 16:30–17:00 → So 9:00–9:30 is free for Frank.  
+
+Thus, **9:00–9:30** works for everyone and satisfies Frank’s "not after 9:30" constraint.  
+
+Here’s the Python script to compute this:  
+
+```python
+def schedule_meeting():
+    work_start = 9 * 60  # 9:00 in minutes
+    work_end = 17 * 60   # 17:00 in minutes
+    duration = 30
+
+    # Busy times in minutes since midnight
+    emily_busy = [(10*60, 10*60+30), (11*60+30, 12*60+30), (14*60, 15*60), (16*60, 16*60+30)]
+    melissa_busy = [(9*60+30, 10*60), (14*60+30, 15*60)]
+    frank_busy = [(10*60, 10*60+30), (11*60, 11*60+30), (12*60+30, 13*60), (13*60+30, 14*60+30), (15*60, 16*60), (16*60+30, 17*60)]
+
+    # Frank's extra constraint: not after 9:30
+    frank_constraint_end = 9 * 60 + 30
+
+    # Combine constraints: meeting must end by min(work_end, frank_constraint_end)
+    latest_allowed_end = min(work_end, frank_constraint_end)
+
+    # Check each possible start time from work_start to latest_allowed_end - duration
+    for start in range(work_start, latest_allowed_end - duration + 1, 5):  # step 5 minutes for precision
+        end = start + duration
+
+        # Check Emily
+        emily_free = all(not (start < busy_end and end > busy_start) for busy_start, busy_end in emily_busy)
+        if not emily_free:
+            continue
+
+        # Check Melissa
+        melissa_free = all(not (start < busy_end and end > busy_start) for busy_start, busy_end in melissa_busy)
+        if not melissa_free:
+            continue
+
+        # Check Frank
+        frank_free = all(not (start < busy_end and end > busy_start) for busy_start, busy_end in frank_busy)
+        if not frank_free:
+            continue
+
+        # Format output
+        def fmt(m):
+            return f"{m//60:02d}:{m%60:02d}"
+        print(f"Monday {fmt(start)}:{fmt(end)}")
+        return
+
+    print("No suitable time found")
+
+if __name__ == "__main__":
+    schedule_meeting()
+```

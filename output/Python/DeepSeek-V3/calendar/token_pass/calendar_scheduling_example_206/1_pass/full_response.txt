@@ -1,0 +1,242 @@
+Let’s break this down step by step before writing the code.  
+
+We have:  
+
+- **Participants**: Shirley, Jacob, Stephen, Margaret, Mason  
+- **Day**: Monday  
+- **Work hours**: 9:00–17:00  
+- **Meeting duration**: 30 minutes  
+- **Margaret’s preference**: Not before 14:30  
+- **Given busy times** (in HH:MM format, within Monday):  
+
+1. Shirley:  
+   - 10:30–11:00  
+   - 12:00–12:30  
+
+2. Jacob:  
+   - 9:00–9:30  
+   - 10:00–10:30  
+   - 11:00–11:30  
+   - 12:30–13:30  
+   - 14:30–15:00  
+
+3. Stephen:  
+   - 11:30–12:00  
+   - 12:30–13:00  
+
+4. Margaret:  
+   - 9:00–9:30  
+   - 10:30–12:30  
+   - 13:00–13:30  
+   - 15:00–15:30  
+   - 16:30–17:00  
+   - **Preference**: not before 14:30  
+
+5. Mason:  
+   - 9:00–10:00  
+   - 10:30–11:00  
+   - 11:30–12:30  
+   - 13:00–13:30  
+   - 14:00–14:30  
+   - 16:30–17:00  
+
+---
+
+We need to find a **30-minute slot** between 9:00 and 17:00 where **all are free** and **Margaret’s preference** is satisfied (≥14:30 start).  
+
+---
+
+### Step 1: Convert times to minutes from 9:00
+Work hours: 9:00 = 0 min, 17:00 = 480 min.  
+Duration = 30 min.
+
+### Step 2: Mark busy intervals in minutes
+Let’s define a function `t(x)` where `t("HH:MM") = (H-9)*60 + M`.  
+
+Example:  
+- 10:30 → (10-9)*60 + 30 = 90 min from 9:00.  
+
+But easier: Let’s just work in minutes from 0 to 480.
+
+---
+
+**Shirley busy**:  
+10:30–11:00 → 90–120  
+12:00–12:30 → 180–210  
+
+**Jacob busy**:  
+9:00–9:30 → 0–30  
+10:00–10:30 → 60–90  
+11:00–11:30 → 120–150  
+12:30–13:30 → 210–270  
+14:30–15:00 → 330–360  
+
+**Stephen busy**:  
+11:30–12:00 → 150–180  
+12:30–13:00 → 210–240  
+
+**Margaret busy**:  
+9:00–9:30 → 0–30  
+10:30–12:30 → 90–210  
+13:00–13:30 → 240–270  
+15:00–15:30 → 360–390  
+16:30–17:00 → 450–480  
+Preference: start ≥ 14:30 → ≥ 330 minutes from 9:00.
+
+**Mason busy**:  
+9:00–10:00 → 0–60  
+10:30–11:00 → 90–120  
+11:30–12:30 → 150–210  
+13:00–13:30 → 240–270  
+14:00–14:30 → 300–330  
+16:30–17:00 → 450–480  
+
+---
+
+### Step 3: Find free slots for all
+We can check each 30-minute slot from 9:00 to 16:30 (since meeting lasts 30 min, last start time is 16:30).
+
+Let’s check from 14:30 onward due to Margaret’s preference:  
+
+**14:30–15:00** (330–360):  
+- Shirley free? Yes (no block 330–360).  
+- Jacob busy 330–360 → **No**.  
+
+**15:00–15:30** (360–390):  
+- Shirley free? Yes.  
+- Jacob free? Yes (busy 330–360, so 360–390 free).  
+- Stephen free? Yes.  
+- Margaret busy 360–390 → **No**.  
+
+**15:30–16:00** (390–420):  
+- Shirley free? Yes.  
+- Jacob free? Yes.  
+- Stephen free? Yes.  
+- Margaret free? Yes (busy 360–390, 450–480).  
+- Mason free? Yes (busy 450–480, 300–330, 240–270, etc. — 390–420 free).  
+→ **All free!**  
+
+Check if any conflict:  
+Shirley: no block.  
+Jacob: no block 390–420.  
+Stephen: no block.  
+Margaret: no block.  
+Mason: no block.  
+
+Yes, 15:30–16:00 works.
+
+---
+
+### Step 4: Convert back to HH:MM
+Start 390 minutes after 9:00:  
+390 min = 6h 30min after 9:00 → 15:30.  
+End 30 min later → 16:00.
+
+Day: Monday.
+
+---
+
+### Step 5: Write Python code to verify and output
+We’ll code a general check for all slots from 14:30 onward.
+
+```python
+def time_to_min(t_str):
+    # t_str format "HH:MM"
+    h, m = map(int, t_str.split(':'))
+    return h * 60 + m
+
+def min_to_time(m):
+    h = m // 60
+    mi = m % 60
+    return f"{h:02d}:{mi:02d}"
+
+# Work hours
+work_start = time_to_min("9:00")
+work_end = time_to_min("17:00")
+duration = 30
+
+# Busy intervals in minutes from midnight? No, from 0 as 9:00.
+# But easier: store as absolute minutes from 0:00, then subtract 9:00*60 later? 
+# Let's do all in minutes from 9:00 = 0.
+def convert_interval(start_str, end_str):
+    s = time_to_min(start_str) - 540  # 9:00 = 540 min from midnight
+    e = time_to_min(end_str) - 540
+    return (s, e)
+
+# Shirley
+shirley_busy = [
+    convert_interval("10:30", "11:00"),
+    convert_interval("12:00", "12:30")
+]
+
+# Jacob
+jacob_busy = [
+    convert_interval("9:00", "9:30"),
+    convert_interval("10:00", "10:30"),
+    convert_interval("11:00", "11:30"),
+    convert_interval("12:30", "13:30"),
+    convert_interval("14:30", "15:00")
+]
+
+# Stephen
+stephen_busy = [
+    convert_interval("11:30", "12:00"),
+    convert_interval("12:30", "13:00")
+]
+
+# Margaret
+margaret_busy = [
+    convert_interval("9:00", "9:30"),
+    convert_interval("10:30", "12:30"),
+    convert_interval("13:00", "13:30"),
+    convert_interval("15:00", "15:30"),
+    convert_interval("16:30", "17:00")
+]
+
+# Mason
+mason_busy = [
+    convert_interval("9:00", "10:00"),
+    convert_interval("10:30", "11:00"),
+    convert_interval("11:30", "12:30"),
+    convert_interval("13:00", "13:30"),
+    convert_interval("14:00", "14:30"),
+    convert_interval("16:30", "17:00")
+]
+
+def is_free(person_busy, start, end):
+    for bs, be in person_busy:
+        if not (end <= bs or start >= be):
+            return False
+    return True
+
+# Margaret's preference: not before 14:30
+pref_start_min = time_to_min("14:30") - 540  # 330
+
+# Search
+found = None
+for start in range(pref_start_min, work_end - work_start - duration + 1):
+    end = start + duration
+    if all([
+        is_free(shirley_busy, start, end),
+        is_free(jacob_busy, start, end),
+        is_free(stephen_busy, start, end),
+        is_free(margaret_busy, start, end),
+        is_free(mason_busy, start, end)
+    ]):
+        found = (start, end)
+        break
+
+if found:
+    start_abs = found[0] + 540  # back to minutes from midnight
+    end_abs = found[1] + 540
+    start_time = min_to_time(start_abs)
+    end_time = min_to_time(end_abs)
+    print(f"Monday {start_time}:{end_time}")
+else:
+    print("No suitable time found")
+```
+
+**Output**:
+```
+Monday 15:30:16:00
+```

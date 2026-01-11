@@ -1,0 +1,79 @@
+<reasoning>
+To solve this logic puzzle programmatically, we need to consider all possible arrangements of people and their attributes across the three houses, then filter out those that do not satisfy all the given constraints. Here’s a step-by-step breakdown of the approach:
+
+1. **Define the Attributes**: We have three houses, three names (`Eric`, `Arnold`, `Peter`), and three heights (`short`, `very short`, `average`).
+
+2. **List Possible Permutations**: Since each house must have a unique person and a unique height, we can generate all permutations of people and heights for the three houses. This gives us 6 possible permutations for each (3! = 6), leading to 36 combinations (6 * 6) if not constrained.
+
+3. **Apply Constraints**:
+   - **Constraint 1**: Eric is not in the first house.
+   - **Constraint 2**: The person who is very short is somewhere to the left of the person who is short.
+   - **Constraint 3**: The person who is very short is Eric.
+   - **Constraint 4**: Arnold is not in the first house.
+
+4. **Filter Permutations**: Using the constraints, we will filter out invalid permutations. For example, any permutation where Eric is in the first house is invalid according to Constraint 1.
+
+5. **Construct the Solution**: Once we find a valid combination, we format it into the required JSON structure.
+
+6. **Output the Result**: Finally, we output the result as a JSON string.
+</reasoning>
+
+```python
+import itertools
+import json
+
+# Define the attributes
+houses = [1, 2, 3]
+names = ['Eric', 'Arnold', 'Peter']
+heights = ['short', 'very short', 'average']
+
+# Generate all permutations of names and heights
+name_permutations = list(itertools.permutations(names))
+height_permutations = list(itertools.permutations(heights))
+
+# Function to check if a given arrangement satisfies all constraints
+def is_valid(arrangement):
+    name_arrangement, height_arrangement = arrangement
+    
+    # Constraint 1: Eric is not in the first house
+    if name_arrangement[0] == 'Eric':
+        return False
+    
+    # Constraint 4: Arnold is not in the first house
+    if name_arrangement[0] == 'Arnold':
+        return False
+    
+    # Constraint 3: The person who is very short is Eric
+    if height_arrangement[name_arrangement.index('Eric')] != 'very short':
+        return False
+    
+    # Constraint 2: The person who is very short is somewhere to the left of the person who is short
+    very_short_index = height_arrangement.index('very short')
+    short_index = height_arrangement.index('short')
+    if very_short_index >= short_index:
+        return False
+    
+    return True
+
+# Find the valid arrangement
+for name_perm in name_permutations:
+    for height_perm in height_permutations:
+        if is_valid((name_perm, height_perm)):
+            # Construct the solution
+            solution = {
+                "solution": {
+                    "header": ["House", "Name", "Height"],
+                    "rows": [
+                        [str(houses[0]), name_perm[0], height_perm[0]],
+                        [str(houses[1]), name_perm[1], height_perm[1]],
+                        [str(houses[2]), name_perm[2], height_perm[2]]
+                    ]
+                }
+            }
+            break
+
+# Output the solution as JSON
+print(json.dumps(solution, indent=2))
+```
+
+This program generates all possible permutations of names and heights, checks each against the constraints, and outputs the valid solution in the specified JSON format.

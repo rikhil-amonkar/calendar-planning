@@ -1,0 +1,94 @@
+import json
+from datetime import datetime, timedelta
+
+# Define travel times as a dictionary of dictionaries
+travel_times = {
+    'Embarcadero': {'Bayview': 21, 'Chinatown': 7, 'Alamo Square': 19, 'Nob Hill': 10, 'Presidio': 20, 'Union Square': 10, 'The Castro': 25, 'North Beach': 5, 'Fisherman\'s Wharf': 6, 'Marina District': 12},
+    'Bayview': {'Embarcadero': 19, 'Chinatown': 19, 'Alamo Square': 16, 'Nob Hill': 20, 'Presidio': 32, 'Union Square': 18, 'The Castro': 19, 'North Beach': 22, 'Fisherman\'s Wharf': 25, 'Marina District': 27},
+    'Chinatown': {'Embarcadero': 5, 'Bayview': 20, 'Alamo Square': 17, 'Nob Hill': 9, 'Presidio': 19, 'Union Square': 7, 'The Castro': 22, 'North Beach': 3, 'Fisherman\'s Wharf': 8, 'Marina District': 12},
+    'Alamo Square': {'Embarcadero': 16, 'Bayview': 16, 'Chinatown': 15, 'Nob Hill': 11, 'Presidio': 17, 'Union Square': 14, 'The Castro': 8, 'North Beach': 15, 'Fisherman\'s Wharf': 19, 'Marina District': 15},
+    'Nob Hill': {'Embarcadero': 9, 'Bayview': 19, 'Chinatown': 6, 'Alamo Square': 11, 'Presidio': 17, 'Union Square': 9, 'The Castro': 17, 'North Beach': 8, 'Fisherman\'s Wharf': 10, 'Marina District': 11},
+    'Presidio': {'Embarcadero': 20, 'Bayview': 31, 'Chinatown': 21, 'Alamo Square': 19, 'Nob Hill': 18, 'Union Square': 22, 'The Castro': 21, 'North Beach': 18, 'Fisherman\'s Wharf': 19, 'Marina District': 11},
+    'Union Square': {'Embarcadero': 11, 'Bayview': 15, 'Chinatown': 7, 'Alamo Square': 15, 'Nob Hill': 9, 'Presidio': 24, 'The Castro': 17, 'North Beach': 7, 'Fisherman\'s Wharf': 15, 'Marina District': 18},
+    'The Castro': {'Embarcadero': 22, 'Bayview': 19, 'Chinatown': 22, 'Alamo Square': 8, 'Nob Hill': 16, 'Presidio': 20, 'Union Square': 19, 'North Beach': 20, 'Fisherman\'s Wharf': 27, 'Marina District': 21},
+    'North Beach': {'Embarcadero': 6, 'Bayview': 25, 'Chinatown': 3, 'Alamo Square': 16, 'Nob Hill': 7, 'Presidio': 17, 'Union Square': 7, 'The Castro': 23, 'Fisherman\'s Wharf': 5, 'Marina District': 9},
+    'Fisherman\'s Wharf': {'Embarcadero': 8, 'Bayview': 26, 'Chinatown': 12, 'Alamo Square': 21, 'Nob Hill': 11, 'Presidio': 17, 'Union Square': 13, 'The Castro': 27, 'North Beach': 6, 'Marina District': 9},
+    'Marina District': {'Embarcadero': 14, 'Bayview': 27, 'Chinatown': 15, 'Alamo Square': 15, 'Nob Hill': 12, 'Presidio': 10, 'Union Square': 16, 'The Castro': 22, 'North Beach': 11, 'Fisherman\'s Wharf': 10}
+}
+
+# Define meeting constraints
+meetings = {
+    'Matthew': {'location': 'Bayview', 'start': '19:15', 'end': '22:00', 'duration': 120},
+    'Karen': {'location': 'Chinatown', 'start': '19:15', 'end': '21:15', 'duration': 90},
+    'Sarah': {'location': 'Alamo Square', 'start': '20:00', 'end': '21:45', 'duration': 105},
+    'Jessica': {'location': 'Nob Hill', 'start': '16:30', 'end': '18:45', 'duration': 120},
+    'Stephanie': {'location': 'Presidio', 'start': '07:30', 'end': '10:15', 'duration': 60},
+    'Mary': {'location': 'Union Square', 'start': '16:45', 'end': '21:30', 'duration': 60},
+    'Charles': {'location': 'The Castro', 'start': '16:30', 'end': '22:00', 'duration': 105},
+    'Nancy': {'location': 'North Beach', 'start': '14:45', 'end': '20:00', 'duration': 15},
+    'Thomas': {'location': 'Fisherman\'s Wharf', 'start': '13:30', 'end': '19:00', 'duration': 30},
+    'Brian': {'location': 'Marina District', 'start': '12:15', 'end': '18:00', 'duration': 60}
+}
+
+def time_to_minutes(time_str):
+    """Convert time in 'HH:MM' format to minutes since midnight."""
+    hours, minutes = map(int, time_str.split(':'))
+    return hours * 60 + minutes
+
+def minutes_to_time(minutes):
+    """Convert minutes since midnight to time in 'HH:MM' format."""
+    hours = minutes // 60
+    minutes = minutes % 60
+    return f"{hours}:{minutes}" if minutes >= 10 else f"{hours}:0{minutes}"
+
+def can_fit_meeting(current_time, travel_time, meeting_start, meeting_duration, meeting_end):
+    """Check if a meeting can fit given the current time, travel time, and meeting constraints."""
+    available_start = current_time + travel_time
+    meeting_start_minutes = time_to_minutes(meeting_start)
+    meeting_end_minutes = time_to_minutes(meeting_end)
+    meeting_duration_minutes = meeting_duration
+    
+    # Check if the meeting can start after traveling and still fit within the meeting's availability
+    if available_start <= meeting_start_minutes and available_start + meeting_duration_minutes <= meeting_end_minutes:
+        return True
+    return False
+
+def create_schedule(start_location, start_time):
+    """Create an optimal meeting schedule based on the given constraints and travel times."""
+    current_location = start_location
+    current_time = time_to_minutes(start_time)
+    itinerary = []
+    
+    # Sort meetings by their start time
+    sorted_meetings = sorted(meetings.items(), key=lambda x: time_to_minutes(x[1]['start']))
+    
+    for person, details in sorted_meetings:
+        location = details['location']
+        start = details['start']
+        end = details['end']
+        duration = details['duration']
+        
+        travel_time = travel_times[current_location][location]
+        if can_fit_meeting(current_time, travel_time, start, duration, end):
+            meeting_start_time = current_time + travel_time
+            meeting_end_time = meeting_start_time + duration
+            
+            itinerary.append({
+                "action": "meet",
+                "location": location,
+                "person": person,
+                "start_time": minutes_to_time(meeting_start_time),
+                "end_time": minutes_to_time(meeting_end_time)
+            })
+            
+            current_location = location
+            current_time = meeting_end_time
+    
+    return itinerary
+
+# Create the schedule starting from Embarcadero at 9:00 AM
+schedule = create_schedule('Embarcadero', '9:00')
+result = {"itinerary": schedule}
+
+# Output the result as JSON
+print(json.dumps(result, indent=2))

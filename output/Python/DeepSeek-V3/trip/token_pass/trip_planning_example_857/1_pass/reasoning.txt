@@ -1,0 +1,52 @@
+Let's break this down step-by-step before writing the code.
+
+**Constraints summary:**
+- Total days: 18
+- Cities & required days:
+  - Porto: 2 days
+  - Geneva: 3 days
+  - Mykonos: 3 days (must include day 10, 11, or 12 for meeting friend)
+  - Manchester: 4 days (must include day 15–18 for wedding)
+  - Hamburg: 5 days
+  - Naples: 5 days
+  - Frankfurt: 2 days (must include day 5 or 6 for annual show)
+
+**Direct flights** (undirected unless specified):
+1. Hamburg ↔ Frankfurt
+2. Naples ↔ Mykonos
+3. Hamburg ↔ Porto
+4. Hamburg ↔ Geneva
+5. Mykonos ↔ Geneva
+6. Frankfurt ↔ Geneva
+7. Frankfurt ↔ Porto
+8. Geneva ↔ Porto
+9. Geneva ↔ Manchester
+10. Naples ↔ Manchester
+11. Frankfurt ↔ Naples
+12. Frankfurt ↔ Manchester
+13. Naples ↔ Geneva
+14. Porto ↔ Manchester
+15. Hamburg ↔ Manchester
+
+**Key fixed constraints:**
+- Wedding in Manchester on days 15–18 → Manchester must be last city, days 15–18.
+- Annual show in Frankfurt on day 5 or 6 → Frankfurt must include day 5 or 6.
+- Friend in Mykonos on day 10–12 → Mykonos must include one of those days.
+
+**Approach:**
+We can treat this as a scheduling + graph path problem. Since the number of cities is small (7), we can brute-force search permutations of city visits that satisfy:
+1. Total days per city matches requirements.
+2. Direct flights exist between consecutive cities in itinerary.
+3. Special date constraints are satisfied.
+
+We'll search for a sequence of stays (city, start_day, end_day) that covers all cities exactly once in terms of visits (can revisit if needed, but constraints don't require revisits).
+
+**Implementation plan:**
+1. Represent direct flights as an adjacency set.
+2. Use backtracking to assign cities to day ranges.
+3. Check constraints during assignment.
+4. Output first valid itinerary.
+
+---
+
+Here’s the Python program:

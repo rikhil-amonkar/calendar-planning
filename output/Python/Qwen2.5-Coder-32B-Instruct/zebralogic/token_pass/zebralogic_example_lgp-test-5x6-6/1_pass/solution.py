@@ -1,0 +1,65 @@
+import json
+from itertools import permutations
+
+# Define the attributes and their possible values
+attributes = {
+    "Name": ["Arnold", "Eric", "Alice", "Bob", "Peter"],
+    "Vacation": ["mountain", "city", "cruise", "beach", "camping"],
+    "Education": ["doctorate", "high school", "bachelor", "associate", "master"],
+    "Color": ["blue", "red", "white", "yellow", "green"],
+    "PhoneModel": ["google pixel 6", "iphone 13", "oneplus 9", "huawei p50", "samsung galaxy s21"],
+    "Food": ["grilled cheese", "stir fry", "pizza", "spaghetti", "stew"]
+}
+
+# Define the clues
+clues = [
+    lambda h: h[0]['Food'] != 'stew',
+    lambda h: abs(h.index(next(x for x in h if x['Food'] == 'stir fry')) - h.index(next(x for x in h if x['Education'] == 'associate'))) == 2,
+    lambda h: next(x for x in h if x['Vacation'] == 'mountain')['Education'] == 'bachelor',
+    lambda h: h.index(next(x for x in h if x['Education'] == 'doctorate')) > h.index(next(x for x in h if x['Name'] == 'Bob')),
+    lambda h: h[2]['PhoneModel'] == 'samsung galaxy s21',
+    lambda h: next(x for x in h if x['Name'] == 'Eric')['Education'] == 'doctorate',
+    lambda h: h[2]['Education'] == 'doctorate',
+    lambda h: next(x for x in h if x['Food'] == 'stir fry')['Education'] == 'bachelor',
+    lambda h: next(x for x in h if x['Education'] == 'doctorate')['Food'] == 'pizza',
+    lambda h: h.index(next(x for x in h if x['Color'] == 'green')) > h.index(next(x for x in h if x['Name'] == 'Peter')),
+    lambda h: next(x for x in h if x['Vacation'] == 'camping')['PhoneModel'] == 'iphone 13',
+    lambda h: next(x for x in h if x['Vacation'] == 'cruise')['Name'] == 'Alice',
+    lambda h: abs(h.index(next(x for x in h if x['Education'] == 'high school')) - h.index(next(x for x in h if x['PhoneModel'] == 'samsung galaxy s21'))) == 1,
+    lambda h: next(x for x in h if x['PhoneModel'] == 'google pixel 6')['Name'] == 'Arnold',
+    lambda h: h.index(next(x for x in h if x['PhoneModel'] == 'oneplus 9')) > h.index(next(x for x in h if x['PhoneModel'] == 'huawei p50')),
+    lambda h: next(x for x in h if x['Food'] == 'grilled cheese')['Name'] == 'Arnold',
+    lambda h: h[3]['Food'] != 'grilled cheese',
+    lambda h: abs(h.index(next(x for x in h if x['Education'] == 'bachelor')) - h.index(next(x for x in h if x['Color'] == 'red'))) == 2,
+    lambda h: h.index(next(x for x in h if x['Vacation'] == 'beach')) > h.index(next(x for x in h if x['Vacation'] == 'city')),
+    lambda h: h[1]['Color'] != 'green',
+    lambda h: h.index(next(x for x in h if x['Color'] == 'blue')) > h.index(next(x for x in h if x['Name'] == 'Peter')),
+    lambda h: abs(h.index(next(x for x in h if x['Vacation'] == 'camping')) - h.index(next(x for x in h if x['Color'] == 'yellow'))) == 1
+]
+
+# Generate all permutations for each attribute
+all_permutations = permutations(attributes["Name"]), permutations(attributes["Vacation"]), permutations(attributes["Education"]), permutations(attributes["Color"]), permutations(attributes["PhoneModel"]), permutations(attributes["Food"])
+
+# Check each combination of permutations
+for name_perm in all_permutations[0]:
+    for vacation_perm in all_permutations[1]:
+        for education_perm in all_permutations[2]:
+            for color_perm in all_permutations[3]:
+                for phone_model_perm in all_permutations[4]:
+                    for food_perm in all_permutations[5]:
+                        # Create a list of houses with current permutation
+                        houses = [{'Name': name_perm[i], 'Vacation': vacation_perm[i], 'Education': education_perm[i], 'Color': color_perm[i], 'PhoneModel': phone_model_perm[i], 'Food': food_perm[i]} for i in range(5)]
+                        
+                        # Check if this configuration satisfies all clues
+                        if all(clue(houses) for clue in clues):
+                            # Format the solution as required
+                            solution = {
+                                "solution": {
+                                    "header": ["House", "Name", "Vacation", "Education", "Color", "PhoneModel", "Food"],
+                                    "rows": [[str(i+1), house['Name'], house['Vacation'], house['Education'], house['Color'], house['PhoneModel'], house['Food']] for i, house in enumerate(houses)]
+                                }
+                            }
+                            
+                            # Output the solution as JSON
+                            print(json.dumps(solution, indent=2))
+                            exit()

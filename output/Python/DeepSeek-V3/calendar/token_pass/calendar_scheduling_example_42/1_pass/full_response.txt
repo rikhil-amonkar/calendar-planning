@@ -1,0 +1,175 @@
+Let's break this down step-by-step before writing the code.
+
+**Step 1 – Understanding the constraints**  
+We have work hours: **9:00 to 17:00** on Monday.  
+Meeting duration: **1 hour**.  
+We need to find a 1-hour slot where all three people are free.
+
+**Step 2 – Represent busy times in minutes from 9:00**  
+Let’s convert all times to minutes since 9:00 (so 9:00 = 0, 10:00 = 60, 17:00 = 480).  
+Busy blocks (inclusive start, exclusive end in minutes from 9:00):
+
+**Julie**:  
+- 9:00–9:30 → 0–30  
+- 11:00–11:30 → 120–150  
+- 12:00–12:30 → 180–210  
+- 13:30–14:00 → 270–300  
+- 16:00–17:00 → 420–480  
+
+**Sean**:  
+- 9:00–9:30 → 0–30  
+- 13:00–13:30 → 240–270  
+- 15:00–15:30 → 360–390  
+- 16:00–16:30 → 420–450  
+
+**Lori**:  
+- 10:00–10:30 → 60–90  
+- 11:00–13:00 → 120–240  
+- 15:30–17:00 → 390–480  
+
+**Step 3 – Combine busy times for all**  
+We can mark busy if any person is busy.  
+But easier: find free slots for each, then intersect.
+
+**Step 4 – Find free intervals for each person within 9:00–17:00**  
+Work day: 0–480 minutes.
+
+**Julie free**:  
+From 0–480, remove Julie’s busy:  
+(0,30), (120,150), (180,210), (270,300), (420,480)  
+Free: (30,120), (150,180), (210,270), (300,420)  
+But careful: last one ends at 420, not 480 because she’s busy 420–480.
+
+**Sean free**:  
+Busy: (0,30), (240,270), (360,390), (420,450)  
+Free: (30,240), (270,360), (390,420), (450,480)
+
+**Lori free**:  
+Busy: (60,90), (120,240), (390,480)  
+Free: (0,60), (90,120), (240,390)
+
+**Step 5 – Intersect free times**  
+Intersect Julie’s free and Sean’s free:
+
+Julie: (30,120), (150,180), (210,270), (300,420)  
+Sean:  (30,240), (270,360), (390,420), (450,480)  
+
+Intersect:  
+- (30,120) ∩ (30,240) = (30,120)  
+- (150,180) ∩ (30,240) = (150,180)  
+- (210,270) ∩ (30,240) = (210,240)  
+- (210,270) ∩ (270,360) → empty (touch at 270 but 270 is busy for Sean)  
+- (300,420) ∩ (270,360) = (300,360)  
+- (300,420) ∩ (390,420) = (390,420)  
+- (300,420) ∩ (450,480) → empty  
+
+So Julie ∩ Sean free:  
+(30,120), (150,180), (210,240), (300,360), (390,420)
+
+Now intersect with Lori’s free: (0,60), (90,120), (240,390)
+
+Intersect:  
+1. (30,120) ∩ (0,60) = (30,60)  
+2. (30,120) ∩ (90,120) = (90,120)  
+3. (150,180) ∩ Lori’s free → no overlap  
+4. (210,240) ∩ Lori’s free → no overlap (Lori free starts at 240, so 210–240 is Lori busy)  
+5. (300,360) ∩ (240,390) = (300,360)  
+6. (390,420) ∩ (240,390) → empty (390 is start of Lori’s busy, so 390 is excluded)  
+
+So common free slots:  
+(30,60), (90,120), (300,360)
+
+**Step 6 – Check duration 60 minutes**  
+- (30,60) → length 30 minutes → too short  
+- (90,120) → length 30 minutes → too short  
+- (300,360) → length 60 minutes → perfect  
+
+300 minutes from 9:00 = 14:00.  
+360 minutes from 9:00 = 15:00.
+
+So 14:00–15:00 works.
+
+**Step 7 – Verify no one is busy**  
+Julie: free 13:30–14:00 ends exactly at 14:00, so 14:00 is free. Next busy at 16:00.  
+Sean: free from 13:30–15:00 (since busy 13:00–13:30, next at 15:00–15:30).  
+Lori: free from 13:00–15:30 (since busy 11:00–13:00, next at 15:30–17:00).  
+
+Yes, all free 14:00–15:00.
+
+**Step 8 – Write Python code**  
+We’ll implement a general intersection approach.
+
+```python
+def time_to_minutes(t):
+    """Convert HH:MM to minutes from midnight."""
+    h, m = map(int, t.split(':'))
+    return h * 60 + m
+
+def minutes_to_time(m):
+    """Convert minutes from midnight to HH:MM."""
+    h = m // 60
+    m = m % 60
+    return f"{h:02d}:{m:02d}"
+
+def schedule_meeting(work_start, work_end, busy_slots, duration_minutes):
+    """
+    work_start, work_end: 'HH:MM'
+    busy_slots: list of list of tuples for each person: [(start1, end1), ...] in 'HH:MM'
+    duration_minutes: int
+    returns (day, start_time, end_time) or None
+    """
+    work_start_min = time_to_minutes(work_start)
+    work_end_min = time_to_minutes(work_end)
+    
+    # Start with whole work range as free for common
+    common_free = [(work_start_min, work_end_min)]
+    
+    for person_busy in busy_slots:
+        # Convert person's busy slots to minutes
+        busy_min = [(time_to_minutes(s), time_to_minutes(e)) for s, e in person_busy]
+        busy_min.sort()
+        
+        # Subtract busy from current common_free
+        new_common_free = []
+        for free_start, free_end in common_free:
+            current_start = free_start
+            for bs, be in busy_min:
+                if be <= current_start:
+                    continue
+                if bs >= free_end:
+                    break
+                if bs > current_start:
+                    new_common_free.append((current_start, bs))
+                current_start = max(current_start, be)
+            if current_start < free_end:
+                new_common_free.append((current_start, free_end))
+        common_free = new_common_free
+    
+    # Find a slot of at least duration_minutes
+    for start, end in common_free:
+        if end - start >= duration_minutes:
+            return start, start + duration_minutes
+    return None
+
+# Define the problem
+work_start = "09:00"
+work_end = "17:00"
+duration = 60  # minutes
+
+# Busy slots for each person: list of (start, end) as strings
+julie_busy = [("09:00", "09:30"), ("11:00", "11:30"), ("12:00", "12:30"), ("13:30", "14:00"), ("16:00", "17:00")]
+sean_busy = [("09:00", "09:30"), ("13:00", "13:30"), ("15:00", "15:30"), ("16:00", "16:30")]
+lori_busy = [("10:00", "10:30"), ("11:00", "13:00"), ("15:30", "17:00")]
+
+busy_slots = [julie_busy, sean_busy, lori_busy]
+
+result = schedule_meeting(work_start, work_end, busy_slots, duration)
+
+if result:
+    start_min, end_min = result
+    start_time = minutes_to_time(start_min)
+    end_time = minutes_to_time(end_min)
+    print(f"Monday {start_time}:{end_time}")
+else:
+    print("No suitable slot found")
+```

@@ -1,0 +1,148 @@
+```python
+import json
+from itertools import permutations
+
+def solve():
+    # Define all possible values for each category
+    names = ["Eric", "Peter", "Alice", "Bob", "Arnold"]
+    nationalities = ["norwegian", "brit", "swede", "dane", "german"]
+    vacations = ["cruise", "mountain", "camping", "beach", "city"]
+    educations = ["bachelor", "master", "associate", "doctorate", "high school"]
+    occupations = ["artist", "doctor", "engineer", "teacher", "lawyer"]
+    
+    houses = [1, 2, 3, 4, 5]
+    
+    # Try all permutations (brute force with pruning)
+    solutions = []
+    
+    # Generate all possible assignments
+    for name_perm in permutations(names, 5):
+        # Constraint 5: Peter is not in the first house
+        if name_perm[0] == "Peter":
+            continue
+            
+        # Constraint 13: Bob is not in the fourth house
+        if name_perm[3] == "Bob":
+            continue
+            
+        for nat_perm in permutations(nationalities, 5):
+            # Constraint 15: Alice is the German
+            alice_index = name_perm.index("Alice")
+            if nat_perm[alice_index] != "german":
+                continue
+                
+            for vac_perm in permutations(vacations, 5):
+                # Constraint 17: Mountain retreats is in the fifth house
+                if vac_perm[4] != "mountain":
+                    continue
+                    
+                # Constraint 2: Beach is directly left of Arnold
+                beach_index = vac_perm.index("beach")
+                arnold_index = name_perm.index("Arnold")
+                if beach_index + 1 != arnold_index:
+                    continue
+                    
+                # Constraint 16: Beach is somewhere left of city
+                city_index = vac_perm.index("city")
+                if beach_index >= city_index:
+                    continue
+                    
+                # Constraint 18: Cruise is somewhere right of beach
+                cruise_index = vac_perm.index("cruise")
+                if cruise_index <= beach_index:
+                    continue
+                    
+                for edu_perm in permutations(educations, 5):
+                    # Constraint 19: Bachelor is in the third house
+                    if edu_perm[2] != "bachelor":
+                        continue
+                        
+                    # Constraint 3: Doctorate is somewhere left of Bob
+                    doctorate_index = edu_perm.index("doctorate")
+                    bob_index = name_perm.index("Bob")
+                    if doctorate_index >= bob_index:
+                        continue
+                        
+                    # Constraint 4: Associate's degree is the person who likes cruises
+                    if edu_perm[cruise_index] != "associate":
+                        continue
+                        
+                    # Constraint 7: Camping is the person with master's degree
+                    camping_index = vac_perm.index("camping")
+                    if edu_perm[camping_index] != "master":
+                        continue
+                        
+                    # Constraint 11: Norwegian and bachelor are next to each other
+                    norwegian_index = nat_perm.index("norwegian")
+                    bachelor_index = edu_perm.index("bachelor")
+                    if abs(norwegian_index - bachelor_index) != 1:
+                        continue
+                        
+                    for occ_perm in permutations(occupations, 5):
+                        # Constraint 1: Cruise lover is the lawyer
+                        if occ_perm[cruise_index] != "lawyer":
+                            continue
+                            
+                        # Constraint 6: Artist is Peter
+                        peter_index = name_perm.index("Peter")
+                        if occ_perm[peter_index] != "artist":
+                            continue
+                            
+                        # Constraint 8: Dane is somewhere right of the doctor
+                        dane_index = nat_perm.index("dane")
+                        doctor_index = occ_perm.index("doctor")
+                        if dane_index <= doctor_index:
+                            continue
+                            
+                        # Constraint 9: Associate's degree is directly left of engineer
+                        associate_index = edu_perm.index("associate")
+                        engineer_index = occ_perm.index("engineer")
+                        if associate_index + 1 != engineer_index:
+                            continue
+                            
+                        # Constraint 10: Camping is the British person
+                        if nat_perm[camping_index] != "brit":
+                            continue
+                            
+                        # Constraint 12: Artist is the Swedish person
+                        artist_index = occ_perm.index("artist")
+                        if nat_perm[artist_index] != "swede":
+                            continue
+                            
+                        # Constraint 14: Camping is Eric
+                        eric_index = name_perm.index("Eric")
+                        if vac_perm[eric_index] != "camping":
+                            continue
+                            
+                        # All constraints satisfied - found a solution
+                        solution = []
+                        for i in range(5):
+                            solution.append([
+                                str(i + 1),
+                                name_perm[i],
+                                nat_perm[i],
+                                vac_perm[i],
+                                edu_perm[i],
+                                occ_perm[i]
+                            ])
+                        solutions.append(solution)
+    
+    if not solutions:
+        return {"solution": {"header": [], "rows": []}}
+    
+    # Use the first solution found
+    solution_rows = solutions[0]
+    
+    result = {
+        "solution": {
+            "header": ["House", "Name", "Nationality", "Vacation", "Education", "Occupation"],
+            "rows": solution_rows
+        }
+    }
+    
+    return result
+
+if __name__ == "__main__":
+    solution = solve()
+    print(json.dumps(solution, indent=2))
+```

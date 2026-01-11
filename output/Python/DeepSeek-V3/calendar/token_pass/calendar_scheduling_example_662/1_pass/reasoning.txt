@@ -1,0 +1,138 @@
+Let’s break this down step-by-step before writing the code.  
+
+We need to schedule a **1-hour meeting** between **9:00 and 17:00** on **Monday or Tuesday** for **Gary and David**.  
+
+---
+
+### Step 1 – Interpret blocked times  
+Blocked times mean they are busy. We need to find **free intervals** for each person on each day, then intersect them.
+
+**Gary’s blocked times (Monday):**  
+- 9:30–10:00  
+- 11:00–13:00  
+- 14:00–14:30  
+- 16:30–17:00  
+
+**Gary’s free on Monday:**  
+From 9:00–17:00, remove blocked:  
+1. 9:00–9:30  
+2. 10:00–11:00  
+3. 13:00–14:00  
+4. 14:30–16:30  
+5. (16:30–17:00 blocked, so no free after 16:30)  
+
+Wait, check:  
+- 9:00–9:30 free  
+- 9:30–10:00 blocked  
+- 10:00–11:00 free  
+- 11:00–13:00 blocked  
+- 13:00–14:00 free  
+- 14:00–14:30 blocked  
+- 14:30–16:30 free  
+- 16:30–17:00 blocked  
+
+Yes, that’s correct.
+
+---
+
+**Gary’s blocked times (Tuesday):**  
+- 9:00–9:30  
+- 10:30–11:00  
+- 14:30–16:00  
+
+**Gary’s free on Tuesday:**  
+From 9:00–17:00:  
+1. 9:30–10:30  
+2. 11:00–14:30  
+3. 16:00–17:00  
+
+---
+
+**David’s blocked times (Monday):**  
+- 9:00–9:30  
+- 10:00–13:00  
+- 14:30–16:30  
+
+**David’s free on Monday:**  
+From 9:00–17:00:  
+1. 9:30–10:00  
+2. 13:00–14:30  
+3. 16:30–17:00  
+
+---
+
+**David’s blocked times (Tuesday):**  
+- 9:00–9:30  
+- 10:00–10:30  
+- 11:00–12:30  
+- 13:00–14:30  
+- 15:00–16:00  
+- 16:30–17:00  
+
+**David’s free on Tuesday:**  
+From 9:00–17:00:  
+1. 9:30–10:00  
+2. 10:30–11:00  
+3. 12:30–13:00  
+4. 14:30–15:00  
+5. 16:00–16:30  
+
+---
+
+### Step 2 – Intersect free times for each day  
+
+**Monday:**  
+Gary free:  
+- 9:00–9:30  
+- 10:00–11:00  
+- 13:00–14:00  
+- 14:30–16:30  
+
+David free:  
+- 9:30–10:00  
+- 13:00–14:30  
+- 16:30–17:00  
+
+Intersect:  
+1. 9:30–9:30? No duration (0 minutes)  
+2. 13:00–14:00 (Gary) and 13:00–14:30 (David) → 13:00–14:00 (1 hour exactly)  
+3. 14:30–16:30 (Gary) and 13:00–14:30 (David) → 14:30–14:30? No duration.  
+4. 16:30–17:00 David free, but Gary blocked at 16:30–17:00 → no overlap.  
+
+So Monday has **13:00–14:00** (1 hour) as a possible slot.
+
+---
+
+**Tuesday:**  
+Gary free:  
+- 9:30–10:30  
+- 11:00–14:30  
+- 16:00–17:00  
+
+David free:  
+- 9:30–10:00  
+- 10:30–11:00  
+- 12:30–13:00  
+- 14:30–15:00  
+- 16:00–16:30  
+
+Intersect:  
+1. 9:30–10:00 (1)  
+2. 10:30–11:00 (2)  
+3. 12:30–13:00 (3)  
+4. 16:00–16:30 (4)  
+
+Each is 30 minutes only — not enough for 1 hour meeting.  
+Check 11:00–14:30 Gary with David’s slots:  
+David’s 12:30–13:00 is inside Gary’s 11:00–14:30, but only 30 minutes.  
+No 1-hour overlap on Tuesday.
+
+---
+
+### Step 3 – Conclusion  
+Only Monday 13:00–14:00 works for 1 hour.
+
+---
+
+### Step 4 – Write Python code  
+We’ll write a script that finds this slot programmatically.

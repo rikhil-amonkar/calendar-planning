@@ -1,0 +1,102 @@
+from datetime import datetime, timedelta
+
+def parse_time(t_str):
+    return datetime.strptime(t_str, "%H:%M")
+
+def time_to_str(t):
+    return t.strftime("%H:%M")
+
+def find_meeting_slot(john_pref, jennifer_busy, work_start, work_end, duration_minutes):
+    duration = timedelta(minutes=duration_minutes)
+    
+    # Only Monday considered due to John's preference
+    day = "Monday"
+    work_start_time = parse_time(work_start)
+    work_end_time = parse_time(work_end)
+    
+    # John's available window on Monday
+    john_end_pref = parse_time(john_pref["Monday"]["end"])
+    john_start = work_start_time
+    john_end = min(work_end_time, john_end_pref)
+    
+    # Jennifer's busy times on Monday
+    busy_slots = []
+    for start_str, end_str in jennifer_busy["Monday"]:
+        busy_slots.append((parse_time(start_str), parse_time(end_str)))
+    
+    # Sort busy slots
+    busy_slots.sort()
+    
+    # Find free slots for Jennifer on Monday within work hours
+    free_slots = []
+    current = work_start_time
+    
+    for busy_start, busy_end in busy_slots:
+        if current < busy_start:
+            free_end = min(busy_start, work_end_time)
+            if free_end > current:
+                free_slots.append((current, free_end))
+        current = max(current, busy_end)
+        if current >= work_end_time:
+            break
+    if current < work_end_time:
+        free_slots.append((current, work_end_time))
+    
+    # Intersect with John's available time on Monday
+    possible_slots = []
+    for f_start, f_end in free_slots:
+        slot_start = max(f_start, john_start)
+        slot_end = min(f_end, john_end)
+        if slot_end - slot_start >= duration:
+            possible_slots.append((slot_start, slot_end))
+    
+    # Pick earliest slot that fits duration
+    for slot_start, slot_end in possible_slots:
+        if slot_end - slot_start >= duration:
+            meeting_end = slot_start + duration
+            return day, time_to_str(slot_start), time_to_str(meeting_end)
+    
+    return None, None, None
+
+def main():
+    work_start = "9:00"
+    work_end = "17:00"
+    duration_minutes = 30
+    
+    # John's preference: only Monday before 14:30
+    john_pref = {
+        "Monday": {"start": "9:00", "end": "14:30"},
+        "Tuesday": {"start": "9:00", "end": "9:00"},  # no time available
+        "Wednesday": {"start": "9:00", "end": "9:00"}
+    }
+    
+    # Jennifer's busy times
+    jennifer_busy = {
+        "Monday": [
+            ("9:00", "11:00"),
+            ("11:30", "13:00"),
+            ("13:30", "14:30"),
+            ("15:00", "17:00")
+        ],
+        "Tuesday": [
+            ("9:00", "11:30"),
+            ("12:00", "17:00")
+        ],
+        "Wednesday": [
+            ("9:00", "11:30"),
+            ("12:00", "12:30"),
+            ("13:00", "14:00"),
+            ("14:30", "16:00"),
+            ("16:30", "17:00")
+        ]
+    }
+    
+    day, start, end = find_meeting_slot(john_pref, jennifer_busy, work_start, work_end, duration_minutes)
+    
+    if day and start and end:
+        print(f"{day}:{start}:{end}")
+    else:
+        print("No suitable time found.")
+
+if __name__ == "__main__":
+    main()

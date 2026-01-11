@@ -1,0 +1,148 @@
+import heapq
+from datetime import datetime, timedelta
+
+# Define travel times
+travel_times = {
+    ('Alamo Square', 'Russian Hill'): 13,
+    ('Alamo Square', 'Presidio'): 18,
+    ('Alamo Square', 'Chinatown'): 16,
+    ('Alamo Square', 'Sunset District'): 16,
+    ('Alamo Square', 'The Castro'): 8,
+    ('Alamo Square', 'Embarcadero'): 17,
+    ('Alamo Square', 'Golden Gate Park'): 9,
+    ('Russian Hill', 'Alamo Square'): 15,
+    ('Russian Hill', 'Presidio'): 14,
+    ('Russian Hill', 'Chinatown'): 9,
+    ('Russian Hill', 'Sunset District'): 23,
+    ('Russian Hill', 'The Castro'): 21,
+    ('Russian Hill', 'Embarcadero'): 8,
+    ('Russian Hill', 'Golden Gate Park'): 21,
+    ('Presidio', 'Alamo Square'): 18,
+    ('Presidio', 'Russian Hill'): 14,
+    ('Presidio', 'Chinatown'): 21,
+    ('Presidio', 'Sunset District'): 15,
+    ('Presidio', 'The Castro'): 21,
+    ('Presidio', 'Embarcadero'): 20,
+    ('Presidio', 'Golden Gate Park'): 12,
+    ('Chinatown', 'Alamo Square'): 17,
+    ('Chinatown', 'Russian Hill'): 7,
+    ('Chinatown', 'Presidio'): 19,
+    ('Chinatown', 'Sunset District'): 29,
+    ('Chinatown', 'The Castro'): 22,
+    ('Chinatown', 'Embarcadero'): 5,
+    ('Chinatown', 'Golden Gate Park'): 23,
+    ('Sunset District', 'Alamo Square'): 17,
+    ('Sunset District', 'Russian Hill'): 24,
+    ('Sunset District', 'Presidio'): 16,
+    ('Sunset District', 'Chinatown'): 30,
+    ('Sunset District', 'The Castro'): 17,
+    ('Sunset District', 'Embarcadero'): 31,
+    ('Sunset District', 'Golden Gate Park'): 11,
+    ('The Castro', 'Alamo Square'): 8,
+    ('The Castro', 'Russian Hill'): 18,
+    ('The Castro', 'Presidio'): 20,
+    ('The Castro', 'Chinatown'): 20,
+    ('The Castro', 'Sunset District'): 17,
+    ('The Castro', 'Embarcadero'): 22,
+    ('The Castro', 'Golden Gate Park'): 11,
+    ('Embarcadero', 'Alamo Square'): 19,
+    ('Embarcadero', 'Russian Hill'): 8,
+    ('Embarcadero', 'Presidio'): 20,
+    ('Embarcadero', 'Chinatown'): 7,
+    ('Embarcadero', 'Sunset District'): 30,
+    ('Embarcadero', 'The Castro'): 25,
+    ('Embarcadero', 'Golden Gate Park'): 25,
+    ('Golden Gate Park', 'Alamo Square'): 10,
+    ('Golden Gate Park', 'Russian Hill'): 19,
+    ('Golden Gate Park', 'Presidio'): 11,
+    ('Golden Gate Park', 'Chinatown'): 23,
+    ('Golden Gate Park', 'Sunset District'): 10,
+    ('Golden Gate Park', 'The Castro'): 13,
+    ('Golden Gate Park', 'Embarcadero'): 25,
+}
+
+# Define people's availability and meeting requirements
+people_availability = [
+    {"name": "Emily", "location": "Russian Hill", "start": 12*60 + 15, "end": 2*60 + 15, "min_duration": 105},
+    {"name": "Mark", "location": "Presidio", "start": 2*60 + 45, "end": 7*60 + 30, "min_duration": 60},
+    {"name": "Deborah", "location": "Chinatown", "start": 7*60 + 30, "end": 3*60 + 30, "min_duration": 45},
+    {"name": "Margaret", "location": "Sunset District", "start": 21*60 + 30, "end": 22*60 + 30, "min_duration": 60},
+    {"name": "George", "location": "The Castro", "start": 7*60 + 30, "end": 2*60 + 15, "min_duration": 60},
+    {"name": "Andrew", "location": "Embarcadero", "start": 20*60 + 15, "end": 22*60, "min_duration": 75},
+    {"name": "Steven", "location": "Golden Gate Park", "start": 11*60 + 15, "end": 21*60 + 45, "min_duration": 105},
+]
+
+def time_to_minutes(time_str):
+    h, m = map(int, time_str.split(':'))
+    return h * 60 + m
+
+def minutes_to_time(minutes):
+    hours = minutes // 60
+    minutes = minutes % 60
+    return f"{hours}:{minutes}"
+
+def find_optimal_schedule(start_location, start_time):
+    current_location = start_location
+    current_time = start_time
+    itinerary = []
+    visited = set()
+
+    # Priority queue to store available meetings
+    pq = []
+
+    # Add all initial available meetings to the priority queue
+    for person in people_availability:
+        if person['location'] == start_location and person['start'] <= current_time + travel_times[(start_location, start_location)]:
+            heapq.heappush(pq, (person['start'], person))
+
+    while pq:
+        next_meeting_start, person = heapq.heappop(pq)
+
+        # Check if we can reach the person's location in time
+        travel_time = travel_times.get((current_location, person['location']), float('inf'))
+        if current_time + travel_time > next_meeting_start:
+            continue
+
+        # Calculate the meeting end time
+        meeting_end = max(current_time + travel_time + person['min_duration'], next_meeting_start + person['min_duration'])
+
+        # Check if the meeting end time is within the person's availability
+        if meeting_end > person['end']:
+            continue
+
+        # Add the meeting to the itinerary
+        itinerary.append({
+            "action": "meet",
+            "location": person['location'],
+            "person": person['name'],
+            "start_time": minutes_to_time(next_meeting_start),
+            "end_time": minutes_to_time(meeting_end)
+        })
+
+        # Update current location and time
+        current_location = person['location']
+        current_time = meeting_end
+
+        # Mark the person as visited
+        visited.add(person['name'])
+
+        # Add new available meetings to the priority queue
+        for new_person in people_availability:
+            if new_person['name'] not in visited:
+                travel_time = travel_times.get((current_location, new_person['location']), float('inf'))
+                if current_time + travel_time <= new_person['start']:
+                    heapq.heappush(pq, (new_person['start'], new_person))
+
+    return itinerary
+
+# Start location and time
+start_location = "Alamo Square"
+start_time = 9 * 60  # 9:00 AM
+
+# Find the optimal schedule
+optimal_itinerary = find_optimal_schedule(start_location, start_time)
+
+# Output the result as JSON
+import json
+result_json = json.dumps({"itinerary": optimal_itinerary}, indent=2)
+print(result_json)

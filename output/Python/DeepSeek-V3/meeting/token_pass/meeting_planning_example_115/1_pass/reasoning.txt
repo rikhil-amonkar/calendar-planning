@@ -1,0 +1,60 @@
+Let’s break this down step-by-step before writing the code.
+
+**Step 1 – Understanding the problem**  
+We start in Richmond District at 9:00 AM.  
+We have two friends with availability:  
+- Carol: Marina District, 11:30–15:00, needs 60 minutes together.  
+- Jessica: Pacific Heights, 15:30–16:45, needs 45 minutes together.  
+
+Travel times are given between districts.  
+We want to meet as many friends as possible (here, both if possible) while respecting travel times and meeting duration constraints.
+
+**Step 2 – Possible meeting orders**  
+We can meet Carol first, then Jessica, or Jessica first, then Carol.  
+But Jessica’s window is later in the day, so meeting Carol first makes more sense because Carol’s window ends at 15:00, and Jessica’s starts at 15:30.
+
+**Step 3 – Time calculations**  
+Let’s try meeting Carol first, then Jessica.
+
+1. Start at Richmond at 9:00.  
+   Travel to Marina: 9 minutes (given Richmond → Marina = 9).  
+   Arrive Marina at 9:09.  
+   Carol is available only from 11:30, so we wait until 11:30 to start meeting.  
+   Meet Carol for 60 minutes → end at 12:30.
+
+2. Travel from Marina to Pacific Heights: 7 minutes (given Marina → Pacific Heights = 7).  
+   Leave Marina at 12:30, arrive Pacific Heights at 12:37.  
+   Jessica is available only from 15:30, so we wait until 15:30 to start meeting.  
+   Meet Jessica for 45 minutes → end at 16:15 (within Jessica’s window 15:30–16:45).  
+
+This works and meets both friends.
+
+**Step 4 – Check if meeting Jessica first is possible**  
+Start Richmond at 9:00 → Pacific Heights: 10 minutes (Richmond → Pacific Heights = 10).  
+Arrive 9:10, but Jessica is only available from 15:30, so huge wait. Then after meeting Jessica 15:30–16:15, travel to Marina: Pacific Heights → Marina = 6 minutes, arrive 16:21, but Carol’s window ends at 15:00, so impossible.  
+So only Carol-first order works.
+
+**Step 5 – Verify no tighter scheduling possible**  
+We could try to shorten wait times by adjusting meeting start times, but Carol must start at or after 11:30, Jessica at or after 15:30, and travel times fixed.  
+Our schedule:  
+- 9:00–9:09 travel to Marina  
+- 9:09–11:30 wait  
+- 11:30–12:30 meet Carol  
+- 12:30–12:37 travel to Pacific Heights  
+- 12:37–15:30 wait  
+- 15:30–16:15 meet Jessica  
+
+This meets both friends, so optimal.
+
+**Step 6 – Write program**  
+We’ll encode travel times, constraints, then brute-force possible start times in discrete steps to find a schedule that meets both, but since we already reasoned it out, we can directly compute.
+
+But to make the program algorithmic, we can:
+1. Represent time in minutes from midnight.
+2. Try both orders.
+3. For each order, compute earliest arrival at first friend’s location, then schedule meeting as soon as possible within their window respecting duration, then travel to next, etc.
+4. Pick order that meets both.
+
+---
+
+Here’s the Python program:

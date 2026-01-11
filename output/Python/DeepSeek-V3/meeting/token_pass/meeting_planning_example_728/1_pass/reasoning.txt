@@ -1,0 +1,51 @@
+Let’s break this down step by step before writing the code.
+
+**Step 1 – Understanding the problem**  
+We have:
+- Start location: Marina District at 9:00.
+- 8 friends, each at a fixed location, with fixed availability windows and minimum meeting durations.
+- Travel times between all districts are given (not symmetric in all cases).
+- Goal: Maximize number of meetings (primary), and within that, maximize total meeting time (secondary), while respecting travel times and availability.
+
+**Step 2 – Observations**  
+- Meetings can be shorter than the “minimum desired” — but the problem says “You’d like to meet X for a minimum of Y minutes.” This is a *desire*, not a hard constraint? Usually in such problems, it’s a *requirement* for a valid meeting. I’ll treat it as a requirement: to meet someone, you must meet for at least their minimum time, within their availability window.
+- But if we can’t meet the minimum, we skip them.
+- We must account for travel time between meetings.
+
+**Step 3 – Approach**  
+We can treat this as a **search problem**:
+- State: current location, current time, set of friends already met.
+- At each step, try to schedule a meeting with a friend not yet met, whose window allows the minimum duration after travel.
+- Since the number of friends is small (8), we can brute-force all permutations of meeting order, but we must also decide start times within windows.
+
+Better:  
+We can brute-force permutations of the 8 friends, and for each permutation, greedily schedule:
+1. Start at Marina District at 9:00.
+2. For each friend in permutation order:
+   - Travel from current location to friend’s location (travel time).
+   - Find earliest possible start time at friend’s location that is ≥ current time + travel, and within friend’s availability, and allows at least minimum duration before friend’s window ends.
+   - If possible, schedule the meeting for exactly minimum duration (since maximizing number of meetings is primary goal, we take minimum required time to allow more meetings later).
+   - Update current location and time.
+3. Count how many friends met in this permutation.
+
+Pick the permutation that meets the most friends. If tie, pick the one with greatest total meeting time.
+
+**Step 4 – Data structures**  
+- Represent time in minutes since 9:00 (540 minutes at 9:00).
+- Store travel times in a dict: `travel[from][to]` in minutes.
+- Store friends as list of dicts with name, location, window_start, window_end (in minutes since 0:00), min_duration.
+
+**Step 5 – Constraints check**  
+- Must end day by midnight? Not specified, but Robert ends at 10:45 PM, so we can go late.
+- No limit on total day length except friend windows.
+
+**Step 6 – Implementation plan**  
+1. Parse all inputs into data.
+2. Generate all permutations of friends (8! = 40320, manageable).
+3. For each permutation, simulate schedule greedily (earliest possible meeting after travel).
+4. Track best (most meetings, then total meeting time).
+5. Output itinerary in required JSON format.
+
+---
+
+Here’s the Python program:

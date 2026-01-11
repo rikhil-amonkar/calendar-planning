@@ -1,0 +1,123 @@
+```python
+import json
+from itertools import permutations
+
+def solve_puzzle():
+    # Define all possible values
+    names = ["Eric", "Arnold", "Peter"]
+    phones = ["iphone 13", "samsung galaxy s21", "google pixel 6"]
+    heights = ["very short", "average", "short"]
+    styles = ["colonial", "ranch", "victorian"]
+    cars = ["tesla model 3", "toyota camry", "ford f150"]
+    
+    houses = [1, 2, 3]
+    
+    # Generate all permutations for each attribute across 3 houses
+    all_name_perms = list(permutations(names, 3))
+    all_phone_perms = list(permutations(phones, 3))
+    all_height_perms = list(permutations(heights, 3))
+    all_style_perms = list(permutations(styles, 3))
+    all_car_perms = list(permutations(cars, 3))
+    
+    solutions = []
+    
+    # Brute force search through all combinations
+    for name_perm in all_name_perms:
+        # Clue 7: Arnold is in the second house
+        if name_perm[1] != "Arnold":
+            continue
+            
+        for phone_perm in all_phone_perms:
+            # Clue 5: iPhone 13 is directly left of Google Pixel 6
+            try:
+                iphone_idx = phone_perm.index("iphone 13")
+                pixel_idx = phone_perm.index("google pixel 6")
+                if pixel_idx - iphone_idx != 1:
+                    continue
+            except ValueError:
+                continue
+                
+            for height_perm in all_height_perms:
+                # Clue 9: Average height is in the first house
+                if height_perm[0] != "average":
+                    continue
+                    
+                for style_perm in all_style_perms:
+                    # Clue 2: Colonial-style house is in the second house
+                    if style_perm[1] != "colonial":
+                        continue
+                    
+                    # Clue 6: Colonial is somewhere to the right of ranch
+                    try:
+                        colonial_idx = style_perm.index("colonial")
+                        ranch_idx = style_perm.index("ranch")
+                        if colonial_idx <= ranch_idx:
+                            continue
+                    except ValueError:
+                        continue
+                        
+                    for car_perm in all_car_perms:
+                        # Clue 3: Tesla Model 3 owner is very short
+                        try:
+                            tesla_idx = car_perm.index("tesla model 3")
+                            if height_perm[tesla_idx] != "very short":
+                                continue
+                        except ValueError:
+                            continue
+                        
+                        # Clue 4: Short is directly left of Samsung Galaxy S21
+                        try:
+                            short_idx = height_perm.index("short")
+                            samsung_idx = phone_perm.index("samsung galaxy s21")
+                            if samsung_idx - short_idx != 1:
+                                continue
+                        except ValueError:
+                            continue
+                        
+                        # Clue 1: Peter is somewhere to the right of Eric
+                        try:
+                            eric_idx = name_perm.index("Eric")
+                            peter_idx = name_perm.index("Peter")
+                            if peter_idx <= eric_idx:
+                                continue
+                        except ValueError:
+                            continue
+                        
+                        # Clue 8: Ford F-150 is somewhere to the right of Toyota Camry
+                        try:
+                            camry_idx = car_perm.index("toyota camry")
+                            ford_idx = car_perm.index("ford f150")
+                            if ford_idx <= camry_idx:
+                                continue
+                        except ValueError:
+                            continue
+                        
+                        # All constraints satisfied, store solution
+                        solution = []
+                        for i in range(3):
+                            solution.append([
+                                str(i + 1),
+                                name_perm[i],
+                                phone_perm[i],
+                                height_perm[i],
+                                style_perm[i],
+                                car_perm[i]
+                            ])
+                        solutions.append(solution)
+    
+    # Format the solution as required JSON
+    if solutions:
+        # There should be exactly one solution
+        result = {
+            "solution": {
+                "header": ["House", "Name", "PhoneModel", "Height", "HouseStyle", "CarModel"],
+                "rows": solutions[0]
+            }
+        }
+        return json.dumps(result, indent=2)
+    else:
+        return json.dumps({"error": "No solution found"})
+
+if __name__ == "__main__":
+    print(solve_puzzle())
+```

@@ -1,0 +1,120 @@
+```python
+import json
+from itertools import permutations
+
+def solve_puzzle():
+    # Define all possible values for each attribute
+    names = ["Arnold", "Eric"]
+    occupations = ["engineer", "doctor"]
+    birthdays = ["april", "sept"]
+    house_styles = ["victorian", "colonial"]
+    heights = ["very short", "short"]
+    cigars = ["pall mall", "prince"]
+    
+    houses = [1, 2]
+    
+    # Generate all possible permutations for each house
+    # Since there are only 2 houses, we can brute force all combinations
+    solutions = []
+    
+    # Generate all possible assignments for house 1
+    for name1 in names:
+        for occ1 in occupations:
+            for bd1 in birthdays:
+                for style1 in house_styles:
+                    for height1 in heights:
+                        for cigar1 in cigars:
+                            # House 2 gets whatever is left
+                            name2 = [n for n in names if n != name1][0]
+                            occ2 = [o for o in occupations if o != occ1][0]
+                            bd2 = [b for b in birthdays if b != bd1][0]
+                            style2 = [s for s in house_styles if s != style1][0]
+                            height2 = [h for h in heights if h != height1][0]
+                            cigar2 = [c for c in cigars if c != cigar1][0]
+                            
+                            # Create assignment
+                            assignment = [
+                                [1, name1, occ1, bd1, style1, height1, cigar1],
+                                [2, name2, occ2, bd2, style2, height2, cigar2]
+                            ]
+                            
+                            # Check all clues
+                            # Clue 1: The person who is an engineer is in the first house.
+                            if assignment[0][2] != "engineer":
+                                continue
+                            
+                            # Clue 2: The person whose birthday is in April and the person who is a doctor are next to each other.
+                            # Since there are only 2 houses, they must be in different houses
+                            april_house = None
+                            doctor_house = None
+                            for i in range(2):
+                                if assignment[i][3] == "april":
+                                    april_house = assignment[i][0]
+                                if assignment[i][2] == "doctor":
+                                    doctor_house = assignment[i][0]
+                            if abs(april_house - doctor_house) != 1:
+                                continue
+                            
+                            # Clue 3: The person living in a colonial-style house is the person who is an engineer.
+                            engineer_house = None
+                            colonial_house = None
+                            for i in range(2):
+                                if assignment[i][2] == "engineer":
+                                    engineer_house = assignment[i][0]
+                                if assignment[i][4] == "colonial":
+                                    colonial_house = assignment[i][0]
+                            if engineer_house != colonial_house:
+                                continue
+                            
+                            # Clue 4: The person who is very short is the person who is an engineer.
+                            very_short_house = None
+                            for i in range(2):
+                                if assignment[i][5] == "very short":
+                                    very_short_house = assignment[i][0]
+                            if engineer_house != very_short_house:
+                                continue
+                            
+                            # Clue 5: The person who is short is the person partial to Pall Mall.
+                            short_house = None
+                            pall_mall_house = None
+                            for i in range(2):
+                                if assignment[i][5] == "short":
+                                    short_house = assignment[i][0]
+                                if assignment[i][6] == "pall mall":
+                                    pall_mall_house = assignment[i][0]
+                            if short_house != pall_mall_house:
+                                continue
+                            
+                            # Clue 6: The person who is an engineer is Eric.
+                            for i in range(2):
+                                if assignment[i][2] == "engineer" and assignment[i][1] != "Eric":
+                                    continue
+                                if assignment[i][1] == "Eric" and assignment[i][2] != "engineer":
+                                    continue
+                            
+                            # All clues satisfied
+                            solutions.append(assignment)
+    
+    if not solutions:
+        return {"solution": {"header": [], "rows": []}}
+    
+    # Take the first valid solution
+    solution = solutions[0]
+    
+    # Format the output
+    result = {
+        "solution": {
+            "header": ["House", "Name", "Occupation", "Birthday", "HouseStyle", "Height", "Cigar"],
+            "rows": [
+                [str(row[0]), row[1], row[2], row[3], row[4], row[5], row[6]]
+                for row in solution
+            ]
+        }
+    }
+    
+    return result
+
+if __name__ == "__main__":
+    solution = solve_puzzle()
+    print(json.dumps(solution, indent=2))
+```

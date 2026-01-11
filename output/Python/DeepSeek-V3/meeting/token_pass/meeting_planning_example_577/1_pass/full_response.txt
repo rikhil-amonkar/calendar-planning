@@ -1,0 +1,236 @@
+Let’s break this down step by step before writing the code.
+
+---
+
+## **Step 1 – Understanding the problem**
+We have:
+
+- **Locations**:  
+Haight-Ashbury (HA), Russian Hill (RH), Fisherman's Wharf (FW), Nob Hill (NH), Golden Gate Park (GG), Alamo Square (AS), Pacific Heights (PH).
+
+- **Travel times**:  
+Given as a symmetric matrix (but not perfectly symmetric — some entries differ slightly, e.g., HA→FW is 23, FW→HA is 22). We’ll treat them as given.
+
+- **People & availability** (converted to minutes from midnight for easier computation):
+
+1. **Stephanie** (RH): 20:00–20:45 (1200–1245 min from midnight). Min meet: 15 min.
+2. **Kevin** (FW): 19:15–21:45 (1155–1305 min). Min meet: 75 min.
+3. **Robert** (NH): 7:45–10:30 (465–630 min). Min meet: 90 min.
+4. **Steven** (GG): 8:30–17:00 (510–1020 min). Min meet: 75 min.
+5. **Anthony** (AS): 7:45–19:45 (465–1185 min). Min meet: 15 min.
+6. **Sandra** (PH): 14:45–21:45 (885–1305 min). Min meet: 45 min.
+
+We start at **HA at 9:00** (540 min).
+
+We want to maximize the number of friends met (not total time with them), given travel and time constraints.
+
+---
+
+## **Step 2 – Observations**
+- Robert is only available early morning (7:45–10:30), so if we want to meet him, it must be soon after we start.
+- Steven is available all day until 5 PM, so he’s flexible.
+- Anthony is available all day until 7:45 PM, so also flexible.
+- Sandra is available afternoon/evening.
+- Stephanie is only available late (8–8:45 PM), so meeting her requires being at Russian Hill in that window.
+- Kevin is available evening (7:15–9:45 PM), needs 75 min, so must start by 8:30 PM at latest.
+
+We can’t meet everyone because of travel and time conflicts, especially with the long meetings (Robert 90 min, Steven 75 min, Kevin 75 min).
+
+---
+
+## **Step 3 – Strategy**
+We’ll brute-force search over permutations of people to meet, respecting:
+1. Travel times between locations.
+2. Availability windows.
+3. Minimum meeting durations.
+
+We start at HA at 9:00, choose an order of people to meet, and see if we can fit them in.
+
+We’ll try to maximize **count** of people met. If tie, maximize total social time.
+
+---
+
+## **Step 4 – Writing the program**
+We’ll:
+1. Encode travel times in a dict.
+2. Encode friend data.
+3. Search over permutations of subsets of friends.
+4. For each permutation, simulate schedule:  
+   - Start at HA at 9:00.  
+   - Travel to first friend’s location, arrive at `arrival_time`.  
+   - Schedule meeting within friend’s window:  
+     Start at max(arrival_time, friend_window_start),  
+     but must end by friend_window_end,  
+     and must have at least min_duration.  
+     If impossible, skip permutation.  
+   - After meeting, add travel to next friend.
+5. Keep track of best schedule.
+
+---
+
+## **Step 5 – Implementation details**
+We’ll use minutes since midnight for calculations, convert back to "H:MM" for output.
+
+We’ll try all subsets of the 6 friends (permutations of each subset) — that’s manageable (6! = 720 permutations max, times subsets = 1957 total permutations to check).
+
+---
+
+Here’s the Python program:
+
+```python
+import json
+import itertools
+from typing import List, Dict, Tuple, Optional
+
+def time_to_min(t: str) -> int:
+    """Convert 'H:MM' or 'HH:MM' to minutes since midnight."""
+    h, m = map(int, t.split(':'))
+    return h * 60 + m
+
+def min_to_time(m: int) -> str:
+    """Convert minutes since midnight to 'H:MM' (no leading zero on hour)."""
+    h = m // 60
+    mm = m % 60
+    return f"{h}:{mm:02d}"
+
+# Travel times matrix (in minutes)
+# Keys: (from, to)
+travel = {
+    ('Haight-Ashbury', 'Russian Hill'): 17,
+    ('Haight-Ashbury', 'Fisherman\'s Wharf'): 23,
+    ('Haight-Ashbury', 'Nob Hill'): 15,
+    ('Haight-Ashbury', 'Golden Gate Park'): 7,
+    ('Haight-Ashbury', 'Alamo Square'): 5,
+    ('Haight-Ashbury', 'Pacific Heights'): 12,
+    ('Russian Hill', 'Haight-Ashbury'): 17,
+    ('Russian Hill', 'Fisherman\'s Wharf'): 7,
+    ('Russian Hill', 'Nob Hill'): 5,
+    ('Russian Hill', 'Golden Gate Park'): 21,
+    ('Russian Hill', 'Alamo Square'): 15,
+    ('Russian Hill', 'Pacific Heights'): 7,
+    ('Fisherman\'s Wharf', 'Haight-Ashbury'): 22,
+    ('Fisherman\'s Wharf', 'Russian Hill'): 7,
+    ('Fisherman\'s Wharf', 'Nob Hill'): 11,
+    ('Fisherman\'s Wharf', 'Golden Gate Park'): 25,
+    ('Fisherman\'s Wharf', 'Alamo Square'): 20,
+    ('Fisherman\'s Wharf', 'Pacific Heights'): 12,
+    ('Nob Hill', 'Haight-Ashbury'): 13,
+    ('Nob Hill', 'Russian Hill'): 5,
+    ('Nob Hill', 'Fisherman\'s Wharf'): 11,
+    ('Nob Hill', 'Golden Gate Park'): 17,
+    ('Nob Hill', 'Alamo Square'): 11,
+    ('Nob Hill', 'Pacific Heights'): 8,
+    ('Golden Gate Park', 'Haight-Ashbury'): 7,
+    ('Golden Gate Park', 'Russian Hill'): 19,
+    ('Golden Gate Park', 'Fisherman\'s Wharf'): 24,
+    ('Golden Gate Park', 'Nob Hill'): 20,
+    ('Golden Gate Park', 'Alamo Square'): 10,
+    ('Golden Gate Park', 'Pacific Heights'): 16,
+    ('Alamo Square', 'Haight-Ashbury'): 5,
+    ('Alamo Square', 'Russian Hill'): 13,
+    ('Alamo Square', 'Fisherman\'s Wharf'): 19,
+    ('Alamo Square', 'Nob Hill'): 11,
+    ('Alamo Square', 'Golden Gate Park'): 9,
+    ('Alamo Square', 'Pacific Heights'): 10,
+    ('Pacific Heights', 'Haight-Ashbury'): 11,
+    ('Pacific Heights', 'Russian Hill'): 7,
+    ('Pacific Heights', 'Fisherman\'s Wharf'): 13,
+    ('Pacific Heights', 'Nob Hill'): 8,
+    ('Pacific Heights', 'Golden Gate Park'): 15,
+    ('Pacific Heights', 'Alamo Square'): 10,
+}
+
+# Friend data: name, location, window start, window end, min_duration (all in minutes)
+friends = [
+    ('Stephanie', 'Russian Hill', time_to_min('20:00'), time_to_min('20:45'), 15),
+    ('Kevin', 'Fisherman\'s Wharf', time_to_min('19:15'), time_to_min('21:45'), 75),
+    ('Robert', 'Nob Hill', time_to_min('7:45'), time_to_min('10:30'), 90),
+    ('Steven', 'Golden Gate Park', time_to_min('8:30'), time_to_min('17:00'), 75),
+    ('Anthony', 'Alamo Square', time_to_min('7:45'), time_to_min('19:45'), 15),
+    ('Sandra', 'Pacific Heights', time_to_min('14:45'), time_to_min('21:45'), 45),
+]
+
+# Start at Haight-Ashbury at 9:00
+start_time = time_to_min('9:00')
+start_loc = 'Haight-Ashbury'
+
+def schedule_meeting(current_time: int, current_loc: str, friend_info: Tuple) -> Optional[Tuple[int, int, str]]:
+    """Try to schedule meeting with friend.
+    Returns (meet_start, meet_end, friend_location) if possible, else None."""
+    name, loc, win_start, win_end, min_dur = friend_info
+    travel_time = travel.get((current_loc, loc))
+    if travel_time is None:
+        travel_time = 0  # same location
+    
+    arrive = current_time + travel_time
+    # Start meeting at max(arrive, win_start)
+    meet_start = max(arrive, win_start)
+    if meet_start + min_dur > win_end:
+        return None  # cannot meet
+    meet_end = meet_start + min_dur
+    return (meet_start, meet_end, loc)
+
+def evaluate_permutation(perm: List[Tuple]) -> Tuple[int, int, List[Tuple]]:
+    """Return (num_met, total_social_time, itinerary_entries) for this permutation."""
+    current_time = start_time
+    current_loc = start_loc
+    met = []
+    total_social = 0
+    itinerary = []
+    
+    for finfo in perm:
+        res = schedule_meeting(current_time, current_loc, finfo)
+        if res is None:
+            return 0, 0, []  # this permutation fails
+        meet_start, meet_end, loc = res
+        name = finfo[0]
+        itinerary.append(('meet', loc, name, meet_start, meet_end))
+        total_social += (meet_end - meet_start)
+        current_time = meet_end
+        current_loc = loc
+        met.append(finfo)
+    
+    return len(met), total_social, itinerary
+
+def main():
+    best_count = 0
+    best_social = 0
+    best_itinerary = []
+    
+    # Try all subsets (except empty) and all permutations
+    friend_indices = list(range(len(friends)))
+    for r in range(1, len(friends) + 1):
+        for subset in itertools.combinations(friend_indices, r):
+            for perm_indices in itertools.permutations(subset):
+                perm = [friends[i] for i in perm_indices]
+                count, social, itinerary = evaluate_permutation(perm)
+                if count > best_count or (count == best_count and social > best_social):
+                    best_count = count
+                    best_social = social
+                    best_itinerary = itinerary
+    
+    # Convert itinerary to required JSON format
+    result = {"itinerary": []}
+    for action, loc, person, start_min, end_min in best_itinerary:
+        result["itinerary"].append({
+            "action": "meet",
+            "location": loc,
+            "person": person,
+            "start_time": min_to_time(start_min),
+            "end_time": min_to_time(end_min)
+        })
+    
+    print(json.dumps(result, indent=2))
+
+if __name__ == "__main__":
+    main()
+```
+
+---
+
+**Explanation of output logic**:
+The program searches over all possible orders of meeting friends and picks the order that maximizes the number met.  
+Given the constraints, the optimal schedule likely meets **5 friends** (all except maybe one with tight windows).  
+The exact itinerary will depend on travel times and windows, but the code will compute it dynamically.
+
+When run, it outputs a JSON with the optimal meeting schedule.

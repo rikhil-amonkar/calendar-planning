@@ -1,0 +1,58 @@
+Let’s break this down step by step before writing the code.
+
+**Step 1 – Understanding the problem**  
+We start at **Fisherman’s Wharf at 9:00 AM**.  
+We have three friends, each available at a specific location during a time window, with a minimum meeting duration requirement:
+
+1. **Emily** – Presidio – 4:15 PM to 9:00 PM – min 105 minutes  
+2. **Joseph** – Richmond District – 5:15 PM to 10:00 PM – min 120 minutes  
+3. **Melissa** – Financial District – 3:45 PM to 9:45 PM – min 75 minutes  
+
+Travel times between locations are given in minutes.
+
+**Step 2 – Goal**  
+We want to meet as many friends as possible.  
+If we can meet all three, we should. If not, maximize the number met.  
+We must account for travel time between meetings.
+
+**Step 3 – Strategy**  
+We can treat this as a **scheduling problem with travel constraints**.  
+We can try permutations of visiting them in different orders, checking feasibility.
+
+**Step 4 – Time representation**  
+Easiest is to convert all times to **minutes since midnight** for calculations, then convert back to "H:MM" for output.
+
+**Step 5 – Feasibility check for a given order**  
+For a given order of meetings, we must:
+1. Start from Fisherman’s Wharf at 9:00 AM (540 minutes since midnight).
+2. Travel to first friend’s location (travel time from Fisherman’s Wharf to that location).
+3. Meet them for at least their minimum time, within their availability window.
+4. Travel to next friend, meet them, etc.
+
+We can try to meet each friend exactly at their minimum time to save time for others, but we can also meet longer if it doesn’t break other meetings.
+
+**Step 6 – Try all permutations**  
+There are 3! = 6 possible orders.  
+We’ll check each order to see if we can meet all three.  
+If none work, try meeting only two friends in different orders.
+
+**Step 7 – Travel time lookup**  
+We’ll store travel times in a nested dict.
+
+**Step 8 – Algorithm outline**  
+- Convert all time windows to minutes since midnight.
+- For each permutation of the three people:
+  - Start at current location = Fisherman’s Wharf, current time = 9:00 AM.
+  - For each person in order:
+    - Travel from current location to person’s location (add travel time).
+    - Determine feasible meeting start time: max(arrival time, person’s window start).
+    - If feasible start + min duration > person’s window end → impossible.
+    - Schedule meeting from feasible start to feasible start + min duration.
+    - Update current location to person’s location, current time to meeting end.
+  - If all three scheduled, that’s a valid full schedule.
+- If no full schedule, try subsets of two friends.
+- Choose schedule that meets the most friends; if tie, maybe choose one with earlier finish.
+
+---
+
+Let’s write the Python program accordingly.

@@ -1,0 +1,56 @@
+Let’s break this down step by step before writing the code.
+
+**Step 1 – Understanding the problem**  
+We have 10 friends, each in a fixed location, with fixed availability windows.  
+We start at Embarcadero at 9:00 AM.  
+We want to meet as many friends as possible, but each meeting has a minimum duration requirement.  
+Travel times between locations are given.  
+We must account for travel time between meetings.
+
+**Step 2 – Observations**  
+- This is a scheduling optimization problem with sequence-dependent travel times.  
+- Since the number of friends is small (10), we could try brute-force search over permutations of meetings to see which sequence fits in the day, but we must also choose start/end times within each friend’s window.  
+- We can’t meet everyone because some windows overlap and travel + minimum durations won’t allow it.  
+- We need to maximize *number of meetings* or *total meeting time*? The problem says “meet as many friends as possible,” so primary goal is count, but if tie, maybe maximize total time.  
+
+**Step 3 – Approach**  
+We’ll model time in minutes from 0 (midnight).  
+9:00 AM = 540 minutes.  
+We’ll try a greedy-like search:  
+1. Generate all permutations of subsets of friends (but 10! is huge, so we must prune).  
+2. For each permutation, simulate:  
+   - Start at Embarcadero at 9:00.  
+   - Travel to first friend’s location, arrive at `arrival_time`.  
+   - Schedule meeting within friend’s window:  
+     - Start time = max(arrival_time, friend_window_start)  
+     - End time = start_time + min_duration  
+     - If end_time > friend_window_end → impossible for this order.  
+   - Then travel to next friend, repeat.  
+3. Track which permutation yields most meetings; if tie, pick one with most total meeting minutes.
+
+**Step 4 – Optimization**  
+We can’t brute-force all permutations of 10 (3.6M), but we can do DFS with pruning:  
+- If current best meetings count is M, and remaining friends + current meetings ≤ M, prune.  
+- Also, some friends have very short windows (e.g., Betty 10:45–14:15) so they must be met early in day.
+
+Given complexity, I’ll implement a heuristic:  
+- Sort friends by window start time, try to schedule greedily with travel.  
+- If fails for a friend, skip them and try next.  
+- Then try small permutations around conflicts.
+
+But to guarantee optimal, I’ll do exhaustive search over subsets (2^10 = 1024) and for each subset, try all permutations (up to factorial of subset size) but break early if too large.  
+Given subset size ≤ 6, permutations are manageable.
+
+**Step 5 – Implementation plan**  
+1. Encode friends as dict with name, location, window_start, window_end, min_duration.  
+2. Encode travel times in nested dict.  
+3. DFS search:  
+   - State: current_time, current_location, meetings_done list, remaining_friends set.  
+   - Try each remaining friend, see if we can travel and meet min_duration in their window.  
+   - Keep best solution.
+
+Given runtime, I’ll implement iterative deepening on meeting count.
+
+---
+
+Here’s the Python program:

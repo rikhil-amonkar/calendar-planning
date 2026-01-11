@@ -1,0 +1,98 @@
+Looking at the constraints, I need to find a 30-minute meeting slot between 9:00 and 17:00 on Monday-Friday that works for both Daniel and Bradley, while respecting their preferences.
+
+Daniel prefers not to meet on Wednesday or Thursday.
+Bradley doesn't want to meet on Monday, Tuesday before 12:00, or Friday.
+
+Let me analyze the available days first:
+- Monday: Bradley doesn't want to meet
+- Tuesday: Bradley doesn't want to meet before 12:00
+- Wednesday: Daniel prefers not to meet
+- Thursday: Daniel prefers not to meet  
+- Friday: Bradley doesn't want to meet
+
+So the only viable day is Tuesday after 12:00 (since Daniel doesn't have a preference against Tuesday, and Bradley is OK with Tuesday after 12:00).
+
+Now I'll check their Tuesday schedules and find a 30-minute slot between 12:00-17:00.
+
+Here's the Python solution:
+
+```python
+def find_meeting_time():
+    # Define work hours
+    work_start = 9 * 60  # 9:00 in minutes
+    work_end = 17 * 60   # 17:00 in minutes
+    
+    # Tuesday schedules in minutes from midnight
+    # Daniel's Tuesday busy times
+    daniel_busy_tuesday = [
+        (11*60, 12*60),      # 11:00-12:00
+        (13*60, 13*60+30),   # 13:00-13:30
+        (15*60+30, 16*60),   # 15:30-16:00
+        (16*60+30, 17*60)    # 16:30-17:00
+    ]
+    
+    # Bradley's Tuesday busy times
+    bradley_busy_tuesday = [
+        (10*60+30, 11*60),   # 10:30-11:00
+        (12*60, 13*60),      # 12:00-13:00
+        (13*60+30, 14*60),   # 13:30-14:00
+        (15*60+30, 16*60+30) # 15:30-16:30
+    ]
+    
+    # Meeting duration in minutes
+    meeting_duration = 30
+    
+    # Bradley doesn't want to meet before 12:00 on Tuesday
+    # So we start checking from 12:00
+    start_check = 12 * 60
+    
+    # Check all possible start times from 12:00 to 16:30 (since meeting is 30 min)
+    for start_time in range(start_check, work_end - meeting_duration + 1, 15):  # Check every 15 minutes
+        end_time = start_time + meeting_duration
+        
+        # Check if this slot conflicts with Daniel's schedule
+        daniel_conflict = False
+        for busy_start, busy_end in daniel_busy_tuesday:
+            if not (end_time <= busy_start or start_time >= busy_end):
+                daniel_conflict = True
+                break
+        
+        if daniel_conflict:
+            continue
+        
+        # Check if this slot conflicts with Bradley's schedule
+        bradley_conflict = False
+        for busy_start, busy_end in bradley_busy_tuesday:
+            if not (end_time <= busy_start or start_time >= busy_end):
+                bradley_conflict = True
+                break
+        
+        if bradley_conflict:
+            continue
+        
+        # Found a valid slot
+        # Convert back to HH:MM format
+        start_hour = start_time // 60
+        start_minute = start_time % 60
+        end_hour = end_time // 60
+        end_minute = end_time % 60
+        
+        return "Tuesday", f"{start_hour:02d}:{start_minute:02d}:{end_hour:02d}:{end_minute:02d}"
+    
+    return None, None
+
+def main():
+    day, time_slot = find_meeting_time()
+    
+    if day and time_slot:
+        print(f"Meeting scheduled for {day} at {time_slot}")
+    else:
+        print("No suitable meeting time found")
+
+if __name__ == "__main__":
+    main()
+```
+
+This script finds a meeting time on Tuesday after 12:00 that works for both schedules. The output will be in the format `HH:MM:HH:MM` along with the day of the week.
+
+The solution checks Tuesday from 12:00 onward in 15-minute increments to find a 30-minute slot where neither participant is busy, respecting Bradley's preference not to meet before 12:00 on Tuesday and avoiding Daniel's preference against Wednesday and Thursday.

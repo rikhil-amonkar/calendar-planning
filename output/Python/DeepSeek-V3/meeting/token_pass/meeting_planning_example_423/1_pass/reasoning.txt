@@ -1,0 +1,74 @@
+Let’s break this down step-by-step before writing the code.
+
+**Step 1 – Understanding the problem**  
+We start at Presidio at 9:00 AM.  
+We have 5 friends, each at a fixed location, with availability windows and minimum meeting durations.  
+Travel times between all locations are given.  
+We want to meet as many friends as possible, but since all can be met if scheduled well, the real challenge is to fit them all in given travel and time constraints.
+
+**Step 2 – Convert times to minutes from 9:00 AM**  
+Let’s set 9:00 AM = 0 minutes.  
+- Jason (Richmond): 1:00 PM = 13:00 → 240 min from 9:00 AM, until 20:45 = 705 min from 9:00 AM.  
+- Melissa (North Beach): 18:45 = 585 min until 20:15 = 675 min.  
+- Brian (Financial District): 9:45 = 45 min until 21:45 = 765 min.  
+- Elizabeth (Golden Gate Park): 8:45 AM = -15 min (starts before 9:00, so earliest we can meet is 9:00) until 21:30 = 750 min.  
+- Laura (Union Square): 14:15 = 315 min until 19:30 = 630 min.
+
+**Step 3 – Meeting duration requirements in minutes**  
+- Jason: 90 min  
+- Melissa: 45 min  
+- Brian: 15 min  
+- Elizabeth: 105 min  
+- Laura: 75 min  
+
+**Step 4 – Travel matrix**  
+We’ll store travel times between each location (including Presidio as starting point).
+
+**Step 5 – Approach**  
+We need to find a path starting at Presidio at time 0, visiting some or all locations, staying for required duration, and leaving before friend’s window ends.  
+We can brute-force permutations of the 5 friends, check feasibility, and pick one that meets all.
+
+**Step 6 – Feasibility check for a given order**  
+For each permutation:  
+- Start at Presidio at time 0.  
+- For each friend in order:  
+  1. Travel from current location to friend’s location (add travel time).  
+  2. Arrival time must be ≤ friend’s window end − min duration (otherwise impossible).  
+  3. If arrival < friend’s window start, wait until window start.  
+  4. Start meeting at max(arrival, friend’s window start), end at start + duration.  
+  5. If end > friend’s window end → impossible.  
+  6. Update current location and time to end time.  
+- If all friends fit, it’s a valid schedule.
+
+**Step 7 – Optimization goal**  
+We want to meet all 5 if possible. If not, maximize number met.  
+We also want to minimize idle time, but meeting all is priority.
+
+**Step 8 – Implementation plan**  
+We’ll try all permutations of the 5 friends, check feasibility, and pick one that meets all. If none meet all, we try subsets in decreasing size.
+
+---
+
+Given the constraints, let’s test mentally:  
+Elizabeth needs 105 min, available all day.  
+Brian needs 15 min, available all day.  
+Jason needs 90 min, only after 1 PM.  
+Laura needs 75 min, 2:15–7:30 PM.  
+Melissa needs 45 min, 6:45–8:15 PM.  
+
+Travel times are short enough that with careful ordering we can fit all.
+
+A possible workable order:  
+Start at Presidio (9:00) → Golden Gate Park (Elizabeth) → Richmond (Jason) → Union Square (Laura) → North Beach (Melissa) → Financial District (Brian).  
+Let’s check quickly:  
+1. 9:00 → GGP: travel 12 min, arrive 9:12, Elizabeth available, meet 9:12–11:57 (105 min).  
+2. GGP → Richmond: travel 7 min, arrive 12:04, Jason starts at 13:00, wait, meet 13:00–14:30.  
+3. Richmond → Union Square: travel 21 min, arrive 14:51, Laura starts at 14:15 so she’s already available, meet 14:51–16:06 (75 min).  
+4. Union Square → North Beach: travel 10 min, arrive 16:16, Melissa not available until 18:45 → wait 2.5 hours (problem: long idle).  
+Better to reorder: maybe visit Brian between Laura and Melissa since Brian is flexible.  
+
+But let’s implement the brute force in code to find a valid sequence.
+
+---
+
+Here’s the Python program:

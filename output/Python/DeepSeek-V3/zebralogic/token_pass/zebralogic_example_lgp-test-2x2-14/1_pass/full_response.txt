@@ -1,0 +1,62 @@
+```python
+import json
+from itertools import permutations
+
+def solve_puzzle():
+    # Define all possible values for each attribute
+    names = ["Eric", "Arnold"]
+    foods = ["pizza", "grilled cheese"]
+    houses = [1, 2]
+    
+    # Generate all possible permutations for names and foods across houses
+    all_name_perms = list(permutations(names, len(houses)))
+    all_food_perms = list(permutations(foods, len(houses)))
+    
+    solutions = []
+    
+    # Brute-force search through all combinations
+    for name_perm in all_name_perms:
+        for food_perm in all_food_perms:
+            # Create assignment dictionaries
+            assignment = {}
+            for i, house in enumerate(houses):
+                assignment[house] = {
+                    "Name": name_perm[i],
+                    "Food": food_perm[i]
+                }
+            
+            # Check clue 1: The person who is a pizza lover is in the second house
+            if assignment[2]["Food"] != "pizza":
+                continue
+            
+            # Check clue 2: Arnold is not in the first house
+            if assignment[1]["Name"] == "Arnold":
+                continue
+            
+            # All clues satisfied, this is a valid solution
+            solutions.append(assignment)
+    
+    # We should have exactly one solution
+    if len(solutions) != 1:
+        raise ValueError(f"Expected exactly 1 solution, found {len(solutions)}")
+    
+    # Format the solution as required
+    solution = solutions[0]
+    rows = []
+    
+    for house in sorted(solution.keys()):
+        row = [str(house), solution[house]["Name"], solution[house]["Food"]]
+        rows.append(row)
+    
+    result = {
+        "solution": {
+            "header": ["House", "Name", "Food"],
+            "rows": rows
+        }
+    }
+    
+    return json.dumps(result, indent=2)
+
+if __name__ == "__main__":
+    print(solve_puzzle())
+```

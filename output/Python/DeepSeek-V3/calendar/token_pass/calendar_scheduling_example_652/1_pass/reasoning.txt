@@ -1,0 +1,107 @@
+Let’s break this down step-by-step before writing the code.  
+
+We have:  
+
+**Participants:** Jesse and Lawrence  
+**Meeting duration:** 30 minutes (0.5 hours)  
+**Work hours:** 9:00 to 17:00 (so earliest start 9:00, latest end 17:00)  
+**Days considered:** Monday or Tuesday  
+
+---
+
+### Jesse’s busy times:
+**Monday:**  
+- 13:30–14:00  
+- 14:30–15:00  
+
+**Tuesday:**  
+- 9:00–9:30  
+- 13:00–13:30  
+- 14:00–15:00  
+
+---
+
+### Lawrence’s busy times:
+**Monday:**  
+- 9:00–17:00 (entire workday busy) → So Monday is impossible for Lawrence.
+
+**Tuesday:**  
+- 9:30–10:30  
+- 11:30–12:30  
+- 13:00–13:30  
+- 14:30–15:00  
+- 15:30–16:30  
+
+Also: Lawrence cannot meet on Tuesday after 16:30 (so latest start time is 16:00 for a 30-minute meeting, to end by 16:30).  
+
+---
+
+### Step 1: Only Tuesday is possible (Monday Lawrence is fully busy).
+Work hours Tuesday: 9:00–17:00, but Lawrence’s constraint says end by 16:30 → so meeting must end by 16:30 → start by 16:00 at latest.
+
+---
+
+### Step 2: Combine busy times for Tuesday (Jesse + Lawrence):
+Jesse busy:  
+1. 9:00–9:30  
+2. 13:00–13:30  
+3. 14:00–15:00  
+
+Lawrence busy:  
+1. 9:30–10:30  
+2. 11:30–12:30  
+3. 13:00–13:30  
+4. 14:30–15:00  
+5. 15:30–16:30  
+
+Merge and sort:  
+- 9:00–9:30 (J)  
+- 9:30–10:30 (L)  
+- 11:30–12:30 (L)  
+- 13:00–13:30 (both)  
+- 14:00–15:00 (J)  
+- 14:30–15:00 (L, but inside J’s block)  
+- 15:30–16:30 (L)  
+
+Actually merging overlapping intervals:  
+1. 9:00–10:30 (J 9:00–9:30 + L 9:30–10:30 adjacent/overlap? They are adjacent, but since 9:30 is end of Jesse’s and start of Lawrence’s, no gap at 9:30) → so 9:00–10:30 blocked continuously.  
+2. 11:30–12:30  
+3. 13:00–13:30  
+4. 14:00–15:00 (covers 14:30–15:00 too)  
+5. 15:30–16:30  
+
+So final merged busy periods on Tuesday:  
+- 9:00–10:30  
+- 11:30–12:30  
+- 13:00–13:30  
+- 14:00–15:00  
+- 15:30–16:30  
+
+---
+
+### Step 3: Find gaps of at least 30 minutes within 9:00–16:00 (since must end by 16:30):
+Gaps between merged busy times (and work boundaries):  
+
+1. Start of day to first busy: 9:00–9:00? No, 9:00 is start of first busy block. So no gap before 9:00.  
+2. After 10:30 to 11:30: 10:30–11:30 → 1 hour free → possible.  
+3. After 12:30 to 13:00: 12:30–13:00 → 30 minutes free → possible (12:30–13:00 exactly 30 min).  
+4. After 13:30 to 14:00: 13:30–14:00 → 30 minutes free → possible.  
+5. After 15:00 to 15:30: 15:00–15:30 → 30 minutes free → possible.  
+6. After 16:30 to 17:00: but Lawrence cannot meet after 16:30, so 16:30–17:00 not allowed.  
+
+Also check: Lawrence’s last busy is 15:30–16:30, so after 16:30 is free but not allowed.  
+
+---
+
+### Step 4: Choose earliest possible slot.
+Earliest gap: 10:30–11:30 → 1 hour, so 10:30–11:00 works (30 min meeting).  
+Check both free:  
+- Jesse free 10:30–11:30? Yes (Jesse’s Tuesday busy: 9:00–9:30, 13:00–13:30, 14:00–15:00).  
+- Lawrence free 10:30–11:30? Lawrence busy 9:30–10:30, so at 10:30 he’s free until 11:30. Yes.  
+
+So **Tuesday 10:30–11:00** works.  
+
+---
+
+### Step 5: Write Python script to compute this.
+We’ll encode times in minutes from 0 for 9:00, and check gaps.

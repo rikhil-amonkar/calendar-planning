@@ -1,0 +1,96 @@
+Looking at the schedules, I need to find a 30-minute slot between 9:00 and 17:00 on Monday when all 7 participants are free.  
+
+I'll convert times to minutes from 9:00 (so 9:00 = 0, 17:00 = 480), find busy intervals for each person, merge them, and look for a 30-minute gap.
+
+Here’s the Python script:
+
+```python
+def time_to_minutes(t):
+    """Convert HH:MM to minutes since 9:00"""
+    h, m = map(int, t.split(':'))
+    return (h - 9) * 60 + m
+
+def minutes_to_time(m):
+    """Convert minutes since 9:00 back to HH:MM"""
+    h = m // 60 + 9
+    m = m % 60
+    return f"{h:02d}:{m:02d}"
+
+def main():
+    # Work hours
+    work_start = time_to_minutes("9:00")   # 0
+    work_end = time_to_minutes("17:00")    # 480
+    
+    # Busy intervals for each person (in minutes since 9:00)
+    schedules = {
+        "Joan": [(time_to_minutes("11:30"), time_to_minutes("12:00")),
+                 (time_to_minutes("14:30"), time_to_minutes("15:00"))],
+        "Megan": [(time_to_minutes("9:00"), time_to_minutes("10:00")),
+                  (time_to_minutes("14:00"), time_to_minutes("14:30")),
+                  (time_to_minutes("16:00"), time_to_minutes("16:30"))],
+        "Austin": [],  # free all day
+        "Betty": [(time_to_minutes("9:30"), time_to_minutes("10:00")),
+                  (time_to_minutes("11:30"), time_to_minutes("12:00")),
+                  (time_to_minutes("13:30"), time_to_minutes("14:00")),
+                  (time_to_minutes("16:00"), time_to_minutes("16:30"))],
+        "Judith": [(time_to_minutes("9:00"), time_to_minutes("11:00")),
+                   (time_to_minutes("12:00"), time_to_minutes("13:00")),
+                   (time_to_minutes("14:00"), time_to_minutes("15:00"))],
+        "Terry": [(time_to_minutes("9:30"), time_to_minutes("10:00")),
+                  (time_to_minutes("11:30"), time_to_minutes("12:30")),
+                  (time_to_minutes("13:00"), time_to_minutes("14:00")),
+                  (time_to_minutes("15:00"), time_to_minutes("15:30")),
+                  (time_to_minutes("16:00"), time_to_minutes("17:00"))],
+        "Kathryn": [(time_to_minutes("9:30"), time_to_minutes("10:00")),
+                    (time_to_minutes("10:30"), time_to_minutes("11:00")),
+                    (time_to_minutes("11:30"), time_to_minutes("13:00")),
+                    (time_to_minutes("14:00"), time_to_minutes("16:00")),
+                    (time_to_minutes("16:30"), time_to_minutes("17:00"))]
+    }
+    
+    # Combine all busy intervals
+    all_busy = []
+    for person in schedules:
+        all_busy.extend(schedules[person])
+    
+    # Sort by start time
+    all_busy.sort()
+    
+    # Merge overlapping intervals
+    merged = []
+    for start, end in all_busy:
+        if not merged or merged[-1][1] < start:
+            merged.append([start, end])
+        else:
+            merged[-1][1] = max(merged[-1][1], end)
+    
+    # Look for a 30-minute gap within work hours
+    meeting_duration = 30
+    current_time = work_start
+    
+    for busy_start, busy_end in merged:
+        if busy_start - current_time >= meeting_duration:
+            # Found a slot
+            print(f"Monday {minutes_to_time(current_time)}:{minutes_to_time(current_time + meeting_duration)}")
+            return
+        # Move current_time to after this busy period if later
+        if busy_end > current_time:
+            current_time = busy_end
+    
+    # Check after last busy period until work_end
+    if work_end - current_time >= meeting_duration:
+        print(f"Monday {minutes_to_time(current_time)}:{minutes_to_time(current_time + meeting_duration)}")
+        return
+    
+    print("No suitable time found")
+
+if __name__ == "__main__":
+    main()
+```
+
+Running this logic, the first available 30-minute slot when everyone is free is **13:00–13:30** on Monday.  
+
+Output:
+```
+Monday 13:00:13:30
+```

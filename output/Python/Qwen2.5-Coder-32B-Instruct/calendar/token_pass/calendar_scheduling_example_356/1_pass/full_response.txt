@@ -1,0 +1,61 @@
+<reasoning>
+To solve this scheduling problem, we will follow these steps:
+
+1. **Define the Time Slots**: We'll define the entire workday as a list of half-hour slots from 9:00 to 17:00.
+2. **Create Busy Slots for Each Participant**: Based on the provided information, we'll create a list of busy slots for each participant.
+3. **Exclude Angela's Preferred Time**: Since Angela prefers not to have meetings before 15:00, we'll mark all slots before 15:00 as unavailable for her.
+4. **Find Common Free Slots**: We'll iterate through the time slots to find a common free slot that fits all participants.
+5. **Output the Result**: Once we find a suitable slot, we'll output the time range in the required format along with the day of the week.
+
+Let's go through each step in detail:
+- **Step 1**: We'll create a list of all possible half-hour slots from 9:00 to 17:00.
+- **Step 2**: For each participant, we'll convert their busy times into these half-hour slots.
+- **Step 3**: For Angela, we'll manually mark all slots before 15:00 as busy.
+- **Step 4**: We'll check each slot to see if it's free for all participants. If we find such a slot, we'll select it.
+- **Step 5**: Finally, we'll format the selected slot as requested and print it.
+</reasoning>
+
+```python
+from datetime import datetime, timedelta
+
+def find_meeting_time():
+    # Define the workday slots (9:00 to 17:00 in 30-minute intervals)
+    start_time = datetime.strptime("09:00", "%H:%M")
+    end_time = datetime.strptime("17:00", "%H:%M")
+    current_time = start_time
+    slots = []
+    
+    while current_time < end_time:
+        slots.append(current_time.strftime("%H:%M"))
+        current_time += timedelta(minutes=30)
+    
+    # Define busy slots for each participant
+    busy_slots = {
+        "Katherine": ["12:00", "12:30", "13:00", "13:30", "14:00", "14:30"],
+        "Rebecca": [],
+        "Julie": ["09:00", "09:30", "10:30", "11:00", "13:30", "14:00", "15:00", "15:30"],
+        "Angela": ["09:00", "09:30", "10:00", "10:30", "11:00", "11:30", "12:00", "12:30", "13:00", "13:30", "14:00", "14:30", "15:00"],
+        "Nicholas": ["09:30", "10:00", "10:30", "11:00", "11:30", "12:00", "12:30", "13:00", "13:30", "14:00", "14:30", "15:00", "15:30", "16:00", "16:30"],
+        "Carl": ["09:00", "09:30", "10:00", "10:30", "11:00", "11:30", "12:00", "12:30", "13:00", "13:30", "14:00", "14:30", "15:00", "15:30", "16:00", "16:30"]
+    }
+    
+    # Convert Angela's preference to avoid meetings before 15:00
+    angela_avoid_before_15 = ["09:00", "09:30", "10:00", "10:30", "11:00", "11:30", "12:00", "12:30", "13:00", "13:30", "14:00", "14:30"]
+    busy_slots["Angela"].extend(angela_avoid_before_15)
+    busy_slots["Angela"] = list(set(busy_slots["Angela"]))  # Remove duplicates
+    
+    # Find a common free slot
+    for i in range(len(slots) - 1):
+        slot_start = slots[i]
+        slot_end = slots[i + 1]
+        
+        if all(slot_start not in busy_slots[person] and slot_end not in busy_slots[person] for person in busy_slots):
+            return f"{slot_start}:{slot_end} Monday"
+    
+    return "No available time slot found"
+
+# Output the result
+print(find_meeting_time())
+```
+
+This script defines the time slots, marks the busy times for each participant, and checks for a common free slot that satisfies all constraints. It outputs the first available slot in the specified format.

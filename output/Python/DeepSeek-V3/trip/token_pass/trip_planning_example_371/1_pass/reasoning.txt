@@ -1,0 +1,125 @@
+Let's break down the problem first.
+
+**Given constraints:**
+- Total days: 9
+- Cities: Nice (2 days), Stockholm (5 days), Split (3 days), Vienna (2 days)
+- That sums to 2+5+3+2 = 12 days, but we only have 9 days total → overlap because travel days count for both cities.
+- Day 7 and Day 9: conference in Split → must be in Split on those days.
+- Workshop in Vienna between day 1 and day 2 → must be in Vienna on day 1 or day 2 (or both).
+- Direct flights: Vienna–Stockholm, Vienna–Nice, Vienna–Split, Stockholm–Split, Nice–Stockholm.
+
+**Key insight:**  
+If you fly from A to B on day X, you spend day X in both cities for counting purposes.  
+So if we have 9 calendar days but need to satisfy 12 "city-days", we need 3 days where we are in two cities (travel days).
+
+**Approach:**
+We need to schedule stays so that:
+1. Split is visited on days 7 and 9 (and possibly more to reach 3 Split days).
+2. Vienna is visited on day 1 or 2 (or both) for the workshop.
+3. Total days in each city matches required days.
+4. Travel only between connected cities.
+
+Let's try to construct logically:
+
+We have 9 days labeled Day 1..Day 9.  
+Let’s assign cities to days, with travel possibly happening midday, so a day can have 2 cities.
+
+We need:
+- Split: 3 days (including day 7 and day 9)
+- Vienna: 2 days (including day 1 or 2)
+- Stockholm: 5 days
+- Nice: 2 days
+
+Let’s try a possible sequence:
+
+Day 1: Vienna (workshop requirement)  
+Day 2: Vienna → Stockholm (counts for Vienna and Stockholm)  
+Day 3: Stockholm  
+Day 4: Stockholm  
+Day 5: Stockholm  
+Day 6: Stockholm → Split (counts for Stockholm and Split)  
+Day 7: Split (conference)  
+Day 8: Split → Nice (counts for Split and Nice)  
+Day 9: Split (conference)  
+
+Count days:
+- Vienna: Day 1, Day 2 → 2 days ✅
+- Stockholm: Day 2, 3, 4, 5, 6 → 5 days ✅
+- Split: Day 6, 7, 8, 9 → 4 days ❌ (too many, need 3)
+
+So we need Split only 3 days, but here we have 4.  
+We can’t remove Day 6 because then Stockholm would have only 4 days.  
+We can’t remove Day 8 because then Nice would have 0 days.  
+We can’t remove Day 7 or 9 (conference).  
+
+So maybe we need to rearrange to reduce Split days.
+
+Let’s try another arrangement:
+
+We need 3 travel days (double-count days) to get 12 city-days in 9 calendar days.  
+Let’s denote travel days as T(A→B).
+
+We must have Split on day 7 and 9.  
+If Split is only 3 days, then the third Split day must be a travel day to or from Split.
+
+Let’s attempt:
+
+Day 1: Vienna  
+Day 2: Vienna → Stockholm (Vienna day 2, Stockholm day 2)  
+Day 3: Stockholm  
+Day 4: Stockholm  
+Day 5: Stockholm  
+Day 6: Stockholm → Split (Stockholm day 6, Split day 6)  
+Day 7: Split  
+Day 8: Split → Nice (Split day 8, Nice day 8)  
+Day 9: Split  
+
+Count:
+- Vienna: 1, 2 → 2 ✅
+- Stockholm: 2, 3, 4, 5, 6 → 5 ✅
+- Split: 6, 7, 8, 9 → 4 ❌ (still 4)
+
+We need to remove one Split day.  
+If we make Day 9 not Split, but conference requires Split on day 9 → impossible.  
+So maybe Day 8 not Split? But Day 8 is Split→Nice, so Split is counted.  
+We could make Day 6 not Split by traveling to Split on Day 7 morning from Stockholm, but then Day 6 is only Stockholm, Day 7 is Stockholm→Split (counts for Stockholm and Split). That would give Stockholm 6 days (too many).  
+
+We need to adjust: reduce Stockholm by 1, increase Nice by 1 maybe.
+
+Let’s try:
+
+Day 1: Vienna  
+Day 2: Vienna → Nice (Vienna day 2, Nice day 2)  
+Day 3: Nice  
+Day 4: Nice → Stockholm (Nice day 4, Stockholm day 4)  
+Day 5: Stockholm  
+Day 6: Stockholm  
+Day 7: Stockholm → Split (Stockholm day 7, Split day 7)  
+Day 8: Split  
+Day 9: Split  
+
+Count:
+- Vienna: 1, 2 → 2 ✅
+- Nice: 2, 3, 4 → 3 ❌ (need 2) → too many
+- Stockholm: 4, 5, 6, 7 → 4 ❌ (need 5) → too few
+- Split: 7, 8, 9 → 3 ✅
+
+So not good.
+
+We need exact: Nice 2, Stockholm 5, Split 3, Vienna 2.
+
+Let’s solve systematically with code.
+
+---
+
+**Program plan:**
+We can brute-force search over permutations of cities across 9 days, with constraints:
+- Day 7 = Split, Day 9 = Split
+- Day 1 or Day 2 = Vienna
+- Travel only between connected cities
+- Count days in each city = required days
+- Max 2 cities per day (travel day), otherwise 1 city per day.
+
+We’ll search for a valid sequence.
+
+Here’s the Python program:

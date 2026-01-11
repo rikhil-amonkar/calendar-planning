@@ -1,0 +1,115 @@
+import json
+from itertools import permutations
+
+def solve():
+    # Define domains
+    houses = [1, 2, 3, 4]
+    names = ["Eric", "Arnold", "Peter", "Alice"]
+    hair = ["blonde", "black", "brown", "red"]
+    music = ["pop", "jazz", "rock", "classical"]
+    
+    # Generate all possible permutations for each attribute
+    for name_perm in permutations(names, 4):
+        for hair_perm in permutations(hair, 4):
+            for music_perm in permutations(music, 4):
+                # Create assignment dictionaries
+                assignment = {}
+                for i in range(4):
+                    assignment[houses[i]] = {
+                        'Name': name_perm[i],
+                        'HairColor': hair_perm[i],
+                        'MusicGenre': music_perm[i]
+                    }
+                
+                # Check all constraints
+                # 1. Eric is the person who has red hair.
+                eric_house = None
+                red_hair_house = None
+                for h in houses:
+                    if assignment[h]['Name'] == 'Eric':
+                        eric_house = h
+                    if assignment[h]['HairColor'] == 'red':
+                        red_hair_house = h
+                if eric_house != red_hair_house:
+                    continue
+                
+                # 2. The person who loves classical music is directly left of the person who has blonde hair.
+                classical_house = None
+                blonde_house = None
+                for h in houses:
+                    if assignment[h]['MusicGenre'] == 'classical':
+                        classical_house = h
+                    if assignment[h]['HairColor'] == 'blonde':
+                        blonde_house = h
+                if classical_house is None or blonde_house is None:
+                    continue
+                if blonde_house - classical_house != 1:
+                    continue
+                
+                # 3. The person who has brown hair is not in the first house.
+                if assignment[1]['HairColor'] == 'brown':
+                    continue
+                
+                # 4. The person who loves pop music is not in the third house.
+                if assignment[3]['MusicGenre'] == 'pop':
+                    continue
+                
+                # 5. The person who loves classical music is in the first house.
+                if classical_house != 1:
+                    continue
+                
+                # 6. The person who loves jazz music is the person who has red hair.
+                jazz_house = None
+                for h in houses:
+                    if assignment[h]['MusicGenre'] == 'jazz':
+                        jazz_house = h
+                if jazz_house != red_hair_house:
+                    continue
+                
+                # 7. The person who loves rock music is Arnold.
+                rock_house = None
+                arnold_house = None
+                for h in houses:
+                    if assignment[h]['MusicGenre'] == 'rock':
+                        rock_house = h
+                    if assignment[h]['Name'] == 'Arnold':
+                        arnold_house = h
+                if rock_house != arnold_house:
+                    continue
+                
+                # 8. Peter is somewhere to the right of the person who loves rock music.
+                peter_house = None
+                for h in houses:
+                    if assignment[h]['Name'] == 'Peter':
+                        peter_house = h
+                if peter_house <= rock_house:
+                    continue
+                
+                # All constraints satisfied - build solution
+                rows = []
+                for h in sorted(houses):
+                    rows.append([
+                        str(h),
+                        assignment[h]['Name'],
+                        assignment[h]['HairColor'],
+                        assignment[h]['MusicGenre']
+                    ])
+                
+                return {
+                    "solution": {
+                        "header": ["House", "Name", "HairColor", "MusicGenre"],
+                        "rows": rows
+                    }
+                }
+    
+    return None
+
+def main():
+    result = solve()
+    if result:
+        print(json.dumps(result, indent=2))
+    else:
+        print(json.dumps({"error": "No solution found"}, indent=2))
+
+if __name__ == "__main__":
+    main()

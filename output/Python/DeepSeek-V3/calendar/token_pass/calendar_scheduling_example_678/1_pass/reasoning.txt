@@ -1,0 +1,51 @@
+Let’s break this down step by step before writing the code.  
+
+**Given:**  
+- Work hours: 9:00–17:00 (inclusive start, exclusive end for slots).  
+- Days considered: Monday, Tuesday.  
+- Meeting duration: 1 hour.  
+- Russell’s busy:  
+  - Monday: 10:30–11:00  
+  - Tuesday: 13:00–13:30  
+- Alexander’s busy:  
+  - Monday: 9:00–11:30, 12:00–14:30, 15:00–17:00  
+  - Tuesday: 9:00–10:00, 13:00–14:00, 15:00–15:30, 16:00–16:30  
+- Russell prefers not to meet on Tuesday before 13:30.  
+
+**Step 1 – Find free slots for each person on each day within work hours.**  
+We can represent time in minutes from 9:00 = 0, 17:00 = 480.  
+
+**Step 2 – Intersect free slots for both people on each day.**  
+
+**Step 3 – Apply Russell’s Tuesday preference (no meeting before 13:30 on Tuesday).**  
+
+**Step 4 – Find a 1-hour slot in the intersected free times.**  
+
+**Step 5 – Output day and time range in HH:MM:HH:MM format.**  
+
+---
+
+**Let’s compute manually first to verify there’s a solution:**  
+
+**Monday:**  
+Russell free: 9:00–10:30, 11:00–17:00  
+Alexander free: 11:30–12:00, 14:30–15:00  
+Intersection:  
+- 11:30–12:00 (30 min) → too short for 1 hour.  
+- 14:30–15:00 (30 min) → too short.  
+So Monday has no 1-hour slot.  
+
+**Tuesday:**  
+Russell free: 9:00–13:00, 13:30–17:00  
+Alexander free: 10:00–13:00, 14:00–15:00, 15:30–16:00, 16:30–17:00  
+Intersection:  
+- 10:00–13:00 (Russell free, Alexander free) → but Russell prefers not before 13:30 on Tuesday, so discard before 13:30.  
+  Actually, 10:00–13:00 is partly before 13:30, but the part 10:00–13:00 is entirely before 13:30, so Russell’s preference removes all of it.  
+- 14:00–15:00 (1 hour) → Russell free (13:30–17:00 includes this), Alexander free 14:00–15:00.  
+  This works: 14:00–15:00 Tuesday.  
+
+So solution: **Tuesday 14:00–15:00**.  
+
+---
+
+Now, the Python script to compute this:

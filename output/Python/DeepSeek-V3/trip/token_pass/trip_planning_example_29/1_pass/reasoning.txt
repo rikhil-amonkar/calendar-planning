@@ -1,0 +1,45 @@
+Let's break this down logically before jumping into code.
+
+**Given constraints:**
+- Total days: 10
+- Krakow: 2 days total, wedding between day 9 and day 10.
+- Dubrovnik: 7 days total
+- Frankfurt: 3 days total
+- Direct flights: Frankfurt ↔ Krakow, Dubrovnik ↔ Frankfurt (no direct Krakow–Dubrovnik)
+- Travel days count toward both cities on that day.
+
+**Step-by-step reasoning:**
+1. **Day totals:** 2 + 7 + 3 = 12 days, but we only have 10 days. This means there are 2 overlapping days due to travel (since a travel day counts for both cities).
+2. **Travel possibilities:**  
+   - Since Krakow and Dubrovnik are not directly connected, any trip between them must go through Frankfurt.
+   - So the sequence must be either:  
+     (a) Dubrovnik → Frankfurt → Krakow, or  
+     (b) Krakow → Frankfurt → Dubrovnik.
+3. **Wedding constraint:** Wedding in Krakow between day 9 and day 10 → Krakow must include day 9 or day 10 or both. Since Krakow is only 2 days total, those 2 days must include day 9 or 10.
+4. **Let’s test a feasible schedule:**
+   - Start in Dubrovnik (7 days).  
+   - Travel to Frankfurt (flight day counts for both Dubrovnik and Frankfurt).  
+   - Then travel to Krakow (flight day counts for both Frankfurt and Krakow).  
+   - End in Krakow for wedding.
+   
+   Let’s assign:
+   - Dubrovnik: Day 1–7 (7 days, no travel yet).
+   - Day 8: Travel Dubrovnik → Frankfurt → counts as 1 day in Frankfurt, 1 day in Dubrovnik? Wait, careful:  
+     If you fly on Day 8 from Dubrovnik to Frankfurt, you spend part of Day 8 in Dubrovnik and part in Frankfurt. That means Day 8 counts toward both cities. So Dubrovnik gets Day 1–8 (8 days total if we count Day 8), but we only want 7 days in Dubrovnik. So we need to adjust:  
+     Actually, if you leave Dubrovnik on Day 8, you still count that day for Dubrovnik (since you were there in the morning). So Dubrovnik days = days you wake up there. But the problem says: "if one flies from city A to city B on day X, then they are in both cities A and B on day X". That means Day 8 counts for both. So to get exactly 7 days in Dubrovnik, we should leave on Day 7 (so Day 7 counts for both Dubrovnik and Frankfurt). Let's check that.
+
+   Let’s try:
+   - Day 1–6: Dubrovnik (6 full days, waking up there Day 1–6).
+   - Day 7: Travel Dubrovnik → Frankfurt (counts for Dubrovnik day 7 and Frankfurt day 7).
+   - Day 8–9: Frankfurt (waking up there Day 8 and 9? Wait, Day 9 counts for Frankfurt, but we need to go to Krakow for wedding between day 9–10. So maybe travel to Krakow on Day 9, so Day 9 counts for both Frankfurt and Krakow).
+   - Day 10: Krakow (full day).
+
+   Count:
+   - Dubrovnik: Day 1–7 = 7 days (Day 7 is travel, but counts).
+   - Frankfurt: Day 7–9 = 3 days (Day 7 arrival, Day 8 full, Day 9 departure).
+   - Krakow: Day 9–10 = 2 days (Day 9 arrival, Day 10 full).
+   Wedding between day 9–10: satisfied.
+
+   Total days: Day 1 to Day 10 = 10 days. Works.
+
+**Now implement this algorithmically in Python:**

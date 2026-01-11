@@ -1,0 +1,70 @@
+<reasoning>
+To solve this problem, we need to identify a time slot that fits all participants' availability within the given constraints. Here’s a step-by-step approach to achieve this:
+
+1. **Define the Time Range**: The meeting can be scheduled between 9:00 and 17:00 on Monday.
+2. **Parse Each Participant's Schedule**: We will represent each participant's schedule as a list of tuples where each tuple represents a busy time period.
+3. **Create a Busy Schedule**: We will create a dictionary where keys are times from 9:00 to 17:00 in 30-minute increments, and values indicate whether that time slot is busy or not.
+4. **Mark Busy Slots**: For each participant, mark their busy slots in the dictionary.
+5. **Identify Free Slots**: Iterate through the dictionary to find a continuous 30-minute slot that is free for all participants.
+6. **Output the Solution**: Once a suitable slot is found, output the start and end time in the required format along with the day of the week.
+</reasoning>
+
+```python
+from datetime import datetime, timedelta
+
+# Define the day and time range
+day_of_week = "Monday"
+start_time = datetime.strptime("09:00", "%H:%M")
+end_time = datetime.strptime("17:00", "%H:%M")
+meeting_duration = timedelta(minutes=30)
+
+# Participants' schedules
+schedules = {
+    "Emily": [(datetime.strptime("10:00", "%H:%M"), datetime.strptime("10:30", "%H:%M")),
+              (datetime.strptime("16:00", "%H:%M"), datetime.strptime("16:30", "%H:%M"))],
+    "Mason": [],
+    "Maria": [(datetime.strptime("10:30", "%H:%M"), datetime.strptime("11:00", "%H:%M")),
+              (datetime.strptime("14:00", "%H:%M"), datetime.strptime("14:30", "%H:%M"))],
+    "Carl": [(datetime.strptime("09:30", "%H:%M"), datetime.strptime("10:00", "%H:%M")),
+             (datetime.strptime("10:30", "%H:%M"), datetime.strptime("12:30", "%H:%M")),
+             (datetime.strptime("13:30", "%H:%M"), datetime.strptime("14:00", "%H:%M")),
+             (datetime.strptime("14:30", "%H:%M"), datetime.strptime("15:30", "%H:%M")),
+             (datetime.strptime("16:00", "%H:%M"), datetime.strptime("17:00", "%H:%M"))],
+    "David": [(datetime.strptime("09:30", "%H:%M"), datetime.strptime("11:00", "%H:%M")),
+              (datetime.strptime("11:30", "%H:%M"), datetime.strptime("12:00", "%H:%M")),
+              (datetime.strptime("12:30", "%H:%M"), datetime.strptime("13:30", "%H:%M")),
+              (datetime.strptime("14:00", "%H:%M"), datetime.strptime("15:00", "%H:%M")),
+              (datetime.strptime("16:00", "%H:%M"), datetime.strptime("17:00", "%H:%M"))],
+    "Frank": [(datetime.strptime("09:30", "%H:%M"), datetime.strptime("10:30", "%H:%M")),
+              (datetime.strptime("11:00", "%H:%M"), datetime.strptime("11:30", "%H:%M")),
+              (datetime.strptime("12:30", "%H:%M"), datetime.strptime("13:30", "%H:%M")),
+              (datetime.strptime("14:30", "%H:%M"), datetime.strptime("17:00", "%H:%M"))]
+}
+
+# Create a time slot dictionary
+time_slots = {}
+current_time = start_time
+while current_time < end_time:
+    time_slots[current_time] = False
+    current_time += meeting_duration
+
+# Mark busy slots
+for person, schedule in schedules.items():
+    for busy_start, busy_end in schedule:
+        current_time = busy_start
+        while current_time < busy_end:
+            if current_time in time_slots:
+                time_slots[current_time] = True
+            current_time += meeting_duration
+
+# Find a free slot
+for start_time_slot, is_busy in time_slots.items():
+    if not is_busy:
+        end_time_slot = start_time_slot + meeting_duration
+        if end_time_slot in time_slots and not time_slots[end_time_slot]:
+            # Found a free slot
+            print(f"{start_time_slot.strftime('%H:%M')}:{end_time_slot.strftime('%H:%M')} {day_of_week}")
+            break
+```
+
+This script defines the participants' schedules, creates a time slot dictionary, marks the busy slots, and finally finds a suitable free slot for the meeting. It prints the time range and the day of the week in the required format.

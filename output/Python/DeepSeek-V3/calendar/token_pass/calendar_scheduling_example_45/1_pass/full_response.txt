@@ -1,0 +1,104 @@
+Let’s break this down step by step before writing the code.
+
+**Understanding the problem:**
+- Work hours: 9:00–17:00 (so meeting must be within this range).
+- Duration: 30 minutes.
+- Participants: Andrew (free all day), Grace (free all day), Samuel (busy in intervals: 9:00–10:30, 11:30–12:00, 13:00–13:30, 14:00–16:00, 16:30–17:00).
+- Earliest availability preferred.
+
+**Approach:**
+1. Convert all times to minutes from 9:00 for easier calculation.
+2. Work hours: 9:00 = 0 minutes, 17:00 = 480 minutes.
+3. Samuel’s busy times in minutes:
+   - 9:00–10:30 → 0 to 90
+   - 11:30–12:00 → 150 to 180
+   - 13:00–13:30 → 240 to 270
+   - 14:00–16:00 → 300 to 420
+   - 16:30–17:00 → 450 to 480
+4. Andrew and Grace have no meetings, so their free time is the whole work day.
+5. Find the earliest 30-minute slot where Samuel is free and within work hours.
+
+Samuel’s free intervals (within work hours):
+- 10:30–11:30 → 90 to 150
+- 12:00–13:00 → 180 to 240
+- 13:30–14:00 → 270 to 300
+- 16:00–16:30 → 420 to 450
+
+Check earliest slot of 30 minutes:
+- 10:30–11:00 → 90 to 120 (inside 90–150) ✅ works.
+
+So earliest is 10:30–11:00.
+
+**Output format:** `HH:MM:HH:MM` and day `Monday`.
+
+Here’s the Python script:
+
+```python
+def time_to_minutes(t):
+    """Convert HH:MM to minutes from 00:00."""
+    h, m = map(int, t.split(':'))
+    return h * 60 + m
+
+def minutes_to_time(m):
+    """Convert minutes from 00:00 to HH:MM."""
+    h = m // 60
+    m = m % 60
+    return f"{h:02d}:{m:02d}"
+
+def find_earliest_meeting(work_start, work_end, busy_slots, duration_minutes):
+    """Find earliest meeting time within work hours avoiding busy slots."""
+    # Convert work hours to minutes
+    work_start_min = time_to_minutes(work_start)
+    work_end_min = time_to_minutes(work_end)
+    
+    # Sort busy slots and merge if needed (not required here as they're disjoint)
+    free_slots = []
+    current = work_start_min
+    
+    for start, end in busy_slots:
+        start_min = time_to_minutes(start)
+        end_min = time_to_minutes(end)
+        if current < start_min:
+            free_slots.append((current, start_min))
+        current = max(current, end_min)
+    
+    if current < work_end_min:
+        free_slots.append((current, work_end_min))
+    
+    # Find earliest slot of required duration
+    for start, end in free_slots:
+        if end - start >= duration_minutes:
+            meeting_end = start + duration_minutes
+            return start, meeting_end
+    
+    return None, None
+
+def main():
+    # Given data
+    work_start = "09:00"
+    work_end = "17:00"
+    duration_minutes = 30
+    
+    # Samuel's busy times in HH:MM format
+    samuel_busy = [
+        ("09:00", "10:30"),
+        ("11:30", "12:00"),
+        ("13:00", "13:30"),
+        ("14:00", "16:00"),
+        ("16:30", "17:00")
+    ]
+    
+    # Find earliest meeting time
+    start_min, end_min = find_earliest_meeting(work_start, work_end, samuel_busy, duration_minutes)
+    
+    if start_min is None:
+        print("No suitable time found.")
+    else:
+        start_time = minutes_to_time(start_min)
+        end_time = minutes_to_time(end_min)
+        print(f"{start_time}:{end_time}")
+        print("Monday")
+
+if __name__ == "__main__":
+    main()
+```

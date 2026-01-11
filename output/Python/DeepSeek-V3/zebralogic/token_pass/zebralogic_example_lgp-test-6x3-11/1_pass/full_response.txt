@@ -1,0 +1,120 @@
+```python
+import json
+from itertools import permutations
+
+def solve():
+    houses = [1, 2, 3, 4, 5, 6]
+    names = ["Bob", "Peter", "Eric", "Alice", "Arnold", "Carol"]
+    hair_colors = ["auburn", "blonde", "brown", "black", "red", "gray"]
+    heights = ["very tall", "average", "very short", "tall", "super tall", "short"]
+
+    # Generate all permutations for names, hair colors, heights across 6 houses
+    for name_perm in permutations(names, 6):
+        # Clue 2: Alice is in the fourth house
+        if name_perm[3] != "Alice":
+            continue
+
+        for hair_perm in permutations(hair_colors, 6):
+            # Clue 5: The person who has black hair is not in the fourth house
+            if hair_perm[3] == "black":
+                continue
+
+            # Clue 6: The person who has red hair is Eric
+            # Find index of Eric in name_perm
+            try:
+                eric_idx = name_perm.index("Eric")
+            except ValueError:
+                continue
+            if hair_perm[eric_idx] != "red":
+                continue
+
+            # Clue 8: The person who has blonde hair is Carol
+            # Find index of Carol in name_perm
+            try:
+                carol_idx = name_perm.index("Carol")
+            except ValueError:
+                continue
+            if hair_perm[carol_idx] != "blonde":
+                continue
+
+            # Clue 11: Bob is the person who has brown hair
+            try:
+                bob_idx = name_perm.index("Bob")
+            except ValueError:
+                continue
+            if hair_perm[bob_idx] != "brown":
+                continue
+
+            # Clue 12: The person who has gray hair is in the third house
+            if hair_perm[2] != "gray":
+                continue
+
+            # Clue 9: There is one house between the person who has gray hair and the person who has red hair
+            gray_idx = hair_perm.index("gray")
+            red_idx = hair_perm.index("red")
+            if abs(gray_idx - red_idx) != 2:
+                continue
+
+            for height_perm in permutations(heights, 6):
+                # Clue 3: The person who is short is Arnold
+                try:
+                    arnold_idx = name_perm.index("Arnold")
+                except ValueError:
+                    continue
+                if height_perm[arnold_idx] != "short":
+                    continue
+
+                # Clue 4: The person who is tall is in the sixth house
+                if height_perm[5] != "tall":
+                    continue
+
+                # Clue 10: The person who is very short is in the fifth house
+                if height_perm[4] != "very short":
+                    continue
+
+                # Clue 13: The person who has blonde hair is the person who is very tall
+                if height_perm[carol_idx] != "very tall":
+                    continue
+
+                # Clue 1: The person who has blonde hair is directly left of Bob
+                if carol_idx + 1 != bob_idx:
+                    continue
+
+                # Clue 7: The person who is super tall is somewhere to the right of the person who has an average height
+                try:
+                    avg_idx = height_perm.index("average")
+                    super_tall_idx = height_perm.index("super tall")
+                except ValueError:
+                    continue
+                if super_tall_idx <= avg_idx:
+                    continue
+
+                # All clues satisfied, build solution
+                solution_rows = []
+                for i in range(6):
+                    solution_rows.append([
+                        str(i + 1),
+                        name_perm[i],
+                        hair_perm[i],
+                        height_perm[i]
+                    ])
+
+                return {
+                    "solution": {
+                        "header": ["House", "Name", "HairColor", "Height"],
+                        "rows": solution_rows
+                    }
+                }
+
+    return None
+
+def main():
+    result = solve()
+    if result:
+        print(json.dumps(result, indent=2))
+    else:
+        print(json.dumps({"error": "No solution found"}, indent=2))
+
+if __name__ == "__main__":
+    main()
+```

@@ -1,0 +1,1 @@
+Check if a city sequence can satisfy all constraints

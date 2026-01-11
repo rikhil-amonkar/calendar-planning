@@ -1,0 +1,114 @@
+import json
+from itertools import permutations
+
+def solve_puzzle():
+    # Define all possible values
+    names = ["Arnold", "Bob", "Alice", "Eric", "Peter"]
+    heights = ["very tall", "average", "tall", "very short", "short"]
+    foods = ["stew", "grilled cheese", "spaghetti", "pizza", "stir fry"]
+    houses = [1, 2, 3, 4, 5]
+    
+    # Generate all permutations for each category
+    name_perms = list(permutations(names, 5))
+    height_perms = list(permutations(heights, 5))
+    food_perms = list(permutations(foods, 5))
+    
+    solutions = []
+    
+    # Brute force search through all combinations
+    for name_assign in name_perms:
+        # Clue 5: Arnold loves stir fry
+        arnold_index = name_assign.index("Arnold")
+        
+        for height_assign in height_perms:
+            # Clue 1: Alice is short
+            alice_index = name_assign.index("Alice")
+            if height_assign[alice_index] != "short":
+                continue
+            
+            # Clue 2: Tall person is in house 3 (index 2)
+            if height_assign[2] != "tall":
+                continue
+            
+            # Clue 3: Average height not in house 2 (index 1)
+            if height_assign[1] == "average":
+                continue
+            
+            # Clue 7: Eric is tall
+            eric_index = name_assign.index("Eric")
+            if height_assign[eric_index] != "tall":
+                continue
+            
+            # Clue 7 also implies Eric is in house 3 (from clue 2)
+            if eric_index != 2:
+                continue
+            
+            for food_assign in food_perms:
+                # Clue 5: Arnold loves stir fry
+                if food_assign[arnold_index] != "stir fry":
+                    continue
+                
+                # Clue 6: Pizza lover is tall
+                pizza_index = food_assign.index("pizza")
+                if height_assign[pizza_index] != "tall":
+                    continue
+                
+                # Clue 6 also implies pizza lover is in house 3 (from clue 2)
+                if pizza_index != 2:
+                    continue
+                
+                # Clue 4: Average height is left of stew lover
+                avg_index = height_assign.index("average")
+                stew_index = food_assign.index("stew")
+                if not (avg_index < stew_index):
+                    continue
+                
+                # Clue 8: Bob is to the right of Arnold
+                bob_index = name_assign.index("Bob")
+                if not (arnold_index < bob_index):
+                    continue
+                
+                # Clue 9: Grilled cheese is to the right of Eric
+                grilled_index = food_assign.index("grilled cheese")
+                if not (eric_index < grilled_index):
+                    continue
+                
+                # Clue 10: Very short is left of Arnold
+                very_short_index = height_assign.index("very short")
+                if not (very_short_index < arnold_index):
+                    continue
+                
+                # All constraints satisfied, build solution
+                solution = []
+                for i in range(5):
+                    solution.append({
+                        "house": str(i + 1),
+                        "name": name_assign[i],
+                        "height": height_assign[i],
+                        "food": food_assign[i]
+                    })
+                solutions.append(solution)
+    
+    if not solutions:
+        return {"solution": {"header": ["House", "Name", "Height", "Food"], "rows": []}}
+    
+    # Take the first valid solution
+    solution = solutions[0]
+    
+    # Format as required JSON
+    rows = []
+    for item in solution:
+        rows.append([item["house"], item["name"], item["height"], item["food"]])
+    
+    result = {
+        "solution": {
+            "header": ["House", "Name", "Height", "Food"],
+            "rows": rows
+        }
+    }
+    
+    return result
+
+if __name__ == "__main__":
+    solution = solve_puzzle()
+    print(json.dumps(solution, indent=2))

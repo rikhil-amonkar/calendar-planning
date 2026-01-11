@@ -1,0 +1,165 @@
+Let’s break this down step-by-step before writing the code.
+
+**Step 1 – Understanding the constraints**  
+We have 7 cities:  
+- Paris (5 days)  
+- Florence (3 days)  
+- Vienna (2 days, must be on days 19–20)  
+- Porto (3 days, must be on days 1–3)  
+- Munich (5 days)  
+- Nice (5 days)  
+- Warsaw (3 days, must be on days 13–15)  
+
+Total days = 20.
+
+**Step 2 – Fixed blocks**  
+1. Porto: Day 1–3  
+2. Warsaw: Day 13–15  
+3. Vienna: Day 19–20  
+
+That leaves:  
+- Days 4–12 (9 days) for Paris, Florence, Munich, Nice (minus Vienna’s 2 days already fixed, but those are at the end, so not in this range)  
+Actually, Vienna is at the end, so days 4–18 are free except Warsaw in the middle. Let’s list:
+
+Day 1–3: Porto  
+Day 4–12: 9 days to allocate for Paris (5), Florence (3), Munich (5), Nice (5) → total needed = 18 days, but we only have 9 days here? Wait, that’s impossible. Let’s check total needed:
+
+Paris 5 + Florence 3 + Vienna 2 + Porto 3 + Munich 5 + Nice 5 + Warsaw 3 = 26 days.  
+But trip is only 20 days. So some cities’ days must overlap due to travel days counting for both cities.
+
+**Step 3 – Travel day double-counting**  
+Rule: If you fly from A to B on day X, you spend day X in both A and B for counting purposes.  
+So we can “share” a day between two cities to meet both cities’ day requirements while using fewer calendar days.
+
+We need to fit 26 “city-days” into 20 calendar days.  
+That means we need at least 6 travel days that are shared between two cities.
+
+**Step 4 – Build sequence with overlaps**  
+We start with fixed:  
+Day 1–3: Porto (3 days done)  
+Day 13–15: Warsaw (3 days done)  
+Day 19–20: Vienna (2 days done)  
+
+Now place others:  
+We must connect Porto to somewhere on Day 4 (flight day, so Day 4 counts for Porto and next city).  
+We must connect Warsaw to somewhere on Day 16 (flight day, so Day 16 counts for Warsaw and next city).  
+We must connect to Vienna on Day 19 from somewhere on Day 19 (flight day, so Day 19 counts for previous city and Vienna).
+
+Let’s try to allocate remaining city days:  
+Remaining needed days:  
+Paris 5, Florence 3, Munich 5, Nice 5. Total 18 days.  
+Remaining calendar days: Day 4–12 (9 days), Day 16–18 (3 days), Day 19 already counted for Vienna and previous city, Day 20 just Vienna.  
+So free days for those 4 cities: Day 4–12 (9 days), Day 16–18 (3 days) = 12 days.  
+We need 18 city-days in 12 calendar days → need 6 overlaps (travel days). That matches.
+
+So we must have exactly 6 travel days in the remaining period.
+
+**Step 5 – Build itinerary with direct flights**  
+We have direct flights list. Let’s design path:
+
+Porto (Day 1–3) → Day 4 fly to X (overlap day: Porto+X).  
+We need to end at Vienna on Day 19.  
+We need Warsaw on Day 13–15.  
+We need to visit Paris, Florence, Munich, Nice in between.
+
+Possible route:  
+Porto → Nice (direct exists)  
+Nice → Florence (direct? No, not listed. Check list: Nice to Vienna yes, Nice to Warsaw yes, Nice to Munich yes, Nice to Paris yes, but Nice to Florence no.) So can’t go directly Nice to Florence.
+
+Check from Porto direct: Porto to Vienna, Munich, Nice, Paris, Warsaw.  
+We want to go to Paris, Florence, Munich, Nice eventually.  
+From Paris to Florence direct exists.  
+From Munich to Florence direct exists.  
+From Vienna to Florence direct exists.
+
+Let’s try:  
+Day 1–3 Porto  
+Day 4 fly Porto → Paris (direct) (Day 4: Porto+Paris)  
+Stay Paris Day 5–8 (that’s 4 more days, total Paris days = Day4+5,6,7,8 = 5 days done)  
+Day 9 fly Paris → Florence (direct) (Day 9: Paris+Florence)  
+Stay Florence Day 10–11 (2 more days, total Florence = Day9,10,11 = 3 days done)  
+Day 12 fly Florence → Munich (direct) (Day 12: Florence+Munich)  
+Stay Munich Day 13–14 (but Day 13 is Warsaw! Conflict. So can’t.)
+
+We need Warsaw Day 13–15. So before Day 13 we must be in Warsaw or travel to Warsaw on Day 13.
+
+Better:  
+After Florence, go to Warsaw? Florence to Warsaw direct? No.  
+Florence to Vienna direct yes, but Vienna is last.  
+Florence to Munich direct yes, Munich to Warsaw direct yes.
+
+So:  
+Florence → Munich (Day X: overlap)  
+Munich → Warsaw (Day Y: overlap)  
+But Warsaw fixed Day 13–15, so Munich should overlap with Warsaw on Day 13.  
+So Day 13: Munich+Warsaw.  
+Thus Day 12 must be Munich only (or Munich+Florence if we fly Day 12 Florence→Munich).  
+Let’s try concrete schedule:
+
+Day 1–3: Porto  
+Day 4: Porto → Paris (Porto+Paris)  
+Day 5–8: Paris (total Paris: Day4,5,6,7,8 = 5 days)  
+Day 9: Paris → Florence (Paris+Florence)  
+Day 10–11: Florence (total Florence: Day9,10,11 = 3 days)  
+Day 12: Florence → Munich (Florence+Munich)  
+Day 13: Munich → Warsaw (Munich+Warsaw)  
+Day 14–15: Warsaw (total Warsaw: Day13,14,15 = 3 days)  
+Day 16: Warsaw → Nice (Warsaw+Nice)  
+Day 17–18: Nice (total Nice: Day16,17,18 = 3 days, need 5, so not enough)  
+We need 2 more Nice days.  
+Day 19: Nice → Vienna (Nice+Vienna)  
+Day 20: Vienna (total Vienna: Day19,20 = 2 days)  
+But Munich only has Day12,13 = 2 days, need 5 → fail.  
+So need more Munich days.
+
+We see the problem: Munich needs 5 days, we only have Day12,13. Need 3 more Munich days somewhere.  
+We can extend Munich before Warsaw:  
+Day 12: Florence → Munich  
+Day 13–16: Munich (that’s Day12,13,14,15,16 = 5 days Munich) but Day13–15 is Warsaw fixed! Conflict. So impossible to have Munich those days if Warsaw fixed.
+
+Thus Munich must be after Warsaw or before Florence.  
+Try Munich after Warsaw:  
+Day 16: Warsaw → Munich (Warsaw+Munich)  
+Day 17–20: Munich (but Day19,20 is Vienna fixed) → impossible.
+
+So Munich must be before Warsaw and overlap with Warsaw on Day13, and also have days before Day13.  
+So Munich days: Day X, X+1, …, Day13.  
+We need 5 Munich days, so start Munich on Day9? But Day9 is Paris→Florence.  
+So maybe Munich before Paris? But we start Porto→?  
+Porto→Munich direct exists.  
+So:  
+Day 1–3 Porto  
+Day 4 Porto→Munich (Porto+Munich)  
+Day 5–8 Munich (Munich days: Day4,5,6,7,8 = 5 days Munich done)  
+Day 9 Munich→Florence (Munich+Florence)  
+Day 10–11 Florence (Florence: Day9,10,11 = 3 days done)  
+Day 12 Florence→Paris (Florence+Paris)  
+Day 13 Paris→Warsaw (Paris+Warsaw)  
+Day 14–15 Warsaw (Warsaw: Day13,14,15 = 3 days done)  
+Day 16 Warsaw→Nice (Warsaw+Nice)  
+Day 17–18 Nice (Nice: Day16,17,18 = 3 days, need 2 more)  
+Day 19 Nice→Vienna (Nice+Vienna)  
+Day 20 Vienna (Vienna: Day19,20 = 2 days done)  
+
+Now Nice has only 3 days, need 5. So add more Nice days by extending before Vienna.  
+We have Day16–18 Nice (3 days), need 2 more.  
+We can’t extend because Day19 is Vienna fixed.  
+So maybe visit Nice twice? But not efficient.  
+Better: swap Nice with Paris? Paris needs 5 days.  
+We have Paris only Day12 (half), Day13 (half) = 1 day, need 4 more. Impossible.
+
+We see the constraints are tight. Let’s check if total city-days match:  
+Porto 3, Munich 5, Florence 3, Paris 2 (only Day12,13), Warsaw 3, Nice 3, Vienna 2 = 21 city-days, but we need Paris 5 and Nice 5 (so 10 more days) → total 31, impossible.  
+So we must have Paris and Nice visits longer.
+
+Given the complexity, let’s solve by brute force search in code.
+
+---
+
+I’ll write a program that searches for a valid sequence satisfying:
+- Direct flight connections
+- Day count per city matches required
+- Fixed date constraints
+- Travel days count for both cities.
+
+We’ll search over permutations of cities with start fixed.

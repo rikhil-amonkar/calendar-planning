@@ -1,0 +1,206 @@
+import json
+from itertools import permutations
+from collections import defaultdict
+
+def find_valid_itinerary():
+    # Cities and their required days
+    city_days = {
+        'Naples': 3,
+        'Valencia': 5,
+        'Stuttgart': 2,
+        'Split': 5,
+        'Venice': 5,
+        'Amsterdam': 4,
+        'Nice': 2,
+        'Barcelona': 2,
+        'Porto': 4
+    }
+    
+    # Direct flight connections
+    direct_flights = {
+        'Venice': ['Nice', 'Amsterdam', 'Stuttgart', 'Naples', 'Barcelona'],
+        'Naples': ['Amsterdam', 'Split', 'Nice', 'Valencia', 'Barcelona', 'Stuttgart', 'Venice'],
+        'Barcelona': ['Nice', 'Porto', 'Valencia', 'Naples', 'Venice', 'Stuttgart', 'Amsterdam', 'Split'],
+        'Nice': ['Venice', 'Barcelona', 'Amsterdam', 'Naples', 'Porto'],
+        'Amsterdam': ['Naples', 'Nice', 'Valencia', 'Venice', 'Split', 'Barcelona', 'Porto', 'Stuttgart'],
+        'Valencia': ['Stuttgart', 'Amsterdam', 'Naples', 'Barcelona', 'Porto'],
+        'Stuttgart': ['Valencia', 'Porto', 'Split', 'Amsterdam', 'Naples', 'Venice', 'Barcelona'],
+        'Split': ['Stuttgart', 'Naples', 'Amsterdam', 'Barcelona'],
+        'Porto': ['Stuttgart', 'Barcelona', 'Nice', 'Amsterdam', 'Valencia']
+    }
+    
+    # Time constraints
+    constraints = {
+        'Venice': {'min_day': 6, 'max_day': 10},  # Conference days 6-10
+        'Barcelona': {'min_day': 5, 'max_day': 6},  # Workshop days 5-6
+        'Naples': {'min_day': 18, 'max_day': 20},  # Meet friend days 18-20
+        'Nice': {'min_day': 23, 'max_day': 24}  # Tour with friends days 23-24
+    }
+    
+    # Try different permutations of cities
+    cities = list(city_days.keys())
+    
+    # We'll use backtracking to find a valid itinerary
+    def backtrack(current_itinerary, remaining_cities, current_day, used_days):
+        if current_day > 24:
+            return None
+        
+        if not remaining_cities and current_day == 25:  # All days used
+            return current_itinerary
+        
+        # If we've used all cities but not all days, fill with current city
+        if not remaining_cities and current_day <= 24:
+            last_city = current_itinerary[-1]['city']
+            remaining_days = 24 - current_day + 1
+            if remaining_days > 0:
+                new_itinerary = current_itinerary.copy()
+                new_itinerary[-1]['days'] += remaining_days
+                return new_itinerary if new_itinerary[-1]['days'] <= 7 else None
+            return current_itinerary
+        
+        for city in list(remaining_cities):
+            # Check if we can go to this city from current location
+            if current_itinerary:
+                last_city = current_itinerary[-1]['city']
+                if city not in direct_flights[last_city] and city != last_city:
+                    continue
+            
+            # Check if this city fits in the remaining timeline
+            required = city_days[city]
+            
+            # Check time constraints if they exist
+            if city in constraints:
+                const = constraints[city]
+                # City must be visited within the constraint range
+                # We need to check if we can fit it within the required days
+                earliest_start = const['min_day']
+                latest_start = const['max_day'] - required + 1
+                
+                if latest_start < current_day:
+                    continue  # Can't start late enough
+                
+                # Adjust start day if needed
+                start_day = max(current_day, earliest_start)
+                if start_day > latest_start:
+                    continue
+            else:
+                start_day = current_day
+            
+            # Check if we have enough days left
+            if start_day + required - 1 > 24:
+                continue
+            
+            # Create new itinerary entry
+            new_entry = {
+                'city': city,
+                'start_day': start_day,
+                'days': required
+            }
+            
+            new_itinerary = current_itinerary.copy()
+            new_itinerary.append(new_entry)
+            
+            new_remaining = remaining_cities.copy()
+            new_remaining.remove(city)
+            
+            result = backtrack(new_itinerary, new_remaining, start_day + required, used_days + required)
+            if result:
+                return result
+        
+        return None
+    
+    # Try different starting cities
+    for start_city in cities:
+        remaining = cities.copy()
+        remaining.remove(start_city)
+        
+        # Check if starting city has any constraints
+        start_day = 1
+        if start_city in constraints:
+            const = constraints[start_city]
+            if const['min_day'] > 1:
+                # Can't start with this city if it has later constraints
+                if start_city not in ['Venice', 'Barcelona']:  # These have early constraints
+                    continue
+                start_day = const['min_day']
+        
+        initial_itinerary = [{
+            'city': start_city,
+            'start_day': start_day,
+            'days': city_days[start_city]
+        }]
+        
+        result = backtrack(initial_itinerary, remaining, start_day + city_days[start_city], city_days[start_city])
+        if result:
+            return result
+    
+    return None
+
+def format_itinerary(itinerary_data):
+    """Convert itinerary data to the required JSON format"""
+    formatted = []
+    
+    for entry in itinerary_data:
+        start = entry['start_day']
+        end = entry['start_day'] + entry['days'] - 1
+        
+        if start == end:
+            day_range = f"Day {start}"
+        else:
+            day_range = f"Day {start}-{end}"
+        
+        formatted.append({
+            "day_range": day_range,
+            "place": entry['city']
+        })
+    
+    return {"itinerary": formatted}
+
+def main():
+    # Find a valid itinerary
+    itinerary = find_valid_itinerary()
+    
+    if itinerary:
+        # Verify all constraints are met
+        city_visits = defaultdict(int)
+        constraint_checks = {
+            'Venice': False,
+            'Barcelona': False,
+            'Naples': False,
+            'Nice': False
+        }
+        
+        for entry in itinerary:
+            city = entry['city']
+            start = entry['start_day']
+            end = start + entry['days'] - 1
+            city_visits[city] += entry['days']
+            
+            # Check specific constraints
+            if city == 'Venice':
+                if start <= 10 and end >= 6:  # Conference days 6-10
+                    constraint_checks['Venice'] = True
+            elif city == 'Barcelona':
+                if start <= 6 and end >= 5:  # Workshop days 5-6
+                    constraint_checks['Barcelona'] = True
+            elif city == 'Naples':
+                if start <= 20 and end >= 18:  # Meet friend days 18-20
+                    constraint_checks['Naples'] = True
+            elif city == 'Nice':
+                if start <= 24 and end >= 23:  # Tour with friends days 23-24
+                    constraint_checks['Nice'] = True
+        
+        # Verify all days are accounted for
+        total_days = sum(city_visits.values())
+        
+        if total_days == 24 and all(constraint_checks.values()):
+            # Format and output the itinerary
+            result = format_itinerary(itinerary)
+            print(json.dumps(result, indent=2))
+        else:
+            print(json.dumps({"error": "Could not find valid itinerary satisfying all constraints"}, indent=2))
+    else:
+        print(json.dumps({"error": "No valid itinerary found"}, indent=2))
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,145 @@
+Let’s break this down step by step before writing the code.
+
+**Understanding the problem:**
+- Work hours: 9:00–17:00 (8 hours total).
+- Meeting duration: 1 hour.
+- Day: Monday.
+- Kayla’s busy times: 10:00–10:30, 14:30–16:00.
+- Rebecca’s busy times: 9:00–13:00, 13:30–15:00, 15:30–16:00.
+- We need a 1-hour slot where both are free.
+
+**Approach:**
+1. Represent times in minutes from 9:00 (540 minutes) to 17:00 (1020 minutes).
+2. Merge busy intervals for each person, then combine to get times when at least one is busy.
+3. Find free intervals by inverting busy times within work hours.
+4. Pick the first free interval of length ≥ 60 minutes.
+5. Output in `HH:MM:HH:MM` format and the day.
+
+**Step-by-step reasoning:**
+- Kayla busy in minutes from 9:00:  
+  10:00–10:30 → 60–90 minutes from 9:00? Wait, careful:  
+  9:00 = 540 min in 24h format.  
+  10:00 = 600, 10:30 = 630.  
+  14:30 = 870, 16:00 = 960.
+- Rebecca busy:  
+  9:00–13:00 → 540–780  
+  13:30–15:00 → 810–900  
+  15:30–16:00 → 930–960
+
+Combine busy intervals for both:
+Union of:
+- Kayla: (600,630), (870,960)
+- Rebecca: (540,780), (810,900), (930,960)
+
+Merge overlapping:
+Sorted:  
+(540,780), (600,630) inside it, (810,900), (870,960) overlaps with (930,960) and (810,900)?  
+Let's merge properly:
+
+List all:
+1. (540,780)
+2. (600,630) inside 1
+3. (810,900)
+4. (870,960)
+5. (930,960) inside 4
+
+Merging:
+- Start with (540,780)
+- Next (810,900) starts after 780, so new interval.
+- Next (870,960) starts at 870 ≤ 900, so merge with (810,900) → (810,960)
+- Next (930,960) inside (810,960)
+
+Final merged busy: (540,780), (810,960)
+
+Free times within 540–1020:
+From 540 to 780 busy → free 780–810 (30 min, too short)
+From 810 to 960 busy → free 960–1020 (60 min exactly).
+
+So 16:00–17:00 works (960–1020 minutes from midnight, or 4pm–5pm in 24h time).
+
+Check:  
+Kayla free 16:00–17:00? Busy until 16:00, so yes free after.  
+Rebecca busy 15:30–16:00, free after 16:00, so yes.
+
+**Output:** 16:00–17:00 on Monday → `16:00:17:00` and Monday.
+
+Now, the Python code:
+
+```python
+def time_to_minutes(t):
+    """Convert HH:MM to minutes since midnight."""
+    h, m = map(int, t.split(':'))
+    return h * 60 + m
+
+def minutes_to_time(m):
+    """Convert minutes since midnight to HH:MM."""
+    return f"{m // 60:02d}:{m % 60:02d}"
+
+def merge_intervals(intervals):
+    """Merge overlapping intervals."""
+    if not intervals:
+        return []
+    intervals.sort(key=lambda x: x[0])
+    merged = [intervals[0]]
+    for start, end in intervals[1:]:
+        last_start, last_end = merged[-1]
+        if start <= last_end:
+            merged[-1] = (last_start, max(last_end, end))
+        else:
+            merged.append((start, end))
+    return merged
+
+def find_meeting_slot(busy1, busy2, work_start, work_end, duration):
+    """Find first free slot of given duration for two people."""
+    # Combine busy intervals
+    all_busy = busy1 + busy2
+    merged_busy = merge_intervals(all_busy)
+    
+    # Find free slots within work hours
+    free_slots = []
+    current_time = work_start
+    
+    for start, end in merged_busy:
+        if current_time < start:
+            free_slots.append((current_time, start))
+        current_time = max(current_time, end)
+    if current_time < work_end:
+        free_slots.append((current_time, work_end))
+    
+    # Find first slot with enough duration
+    for start, end in free_slots:
+        if end - start >= duration:
+            return start, start + duration
+    return None
+
+def main():
+    # Work hours 9:00 to 17:00
+    work_start = time_to_minutes("9:00")
+    work_end = time_to_minutes("17:00")
+    
+    # Busy times in minutes since midnight
+    kayla_busy = [
+        (time_to_minutes("10:00"), time_to_minutes("10:30")),
+        (time_to_minutes("14:30"), time_to_minutes("16:00"))
+    ]
+    
+    rebecca_busy = [
+        (time_to_minutes("9:00"), time_to_minutes("13:00")),
+        (time_to_minutes("13:30"), time_to_minutes("15:00")),
+        (time_to_minutes("15:30"), time_to_minutes("16:00"))
+    ]
+    
+    duration_minutes = 60  # 1 hour
+    
+    slot = find_meeting_slot(kayla_busy, rebecca_busy, work_start, work_end, duration_minutes)
+    
+    if slot:
+        start, end = slot
+        print(f"{minutes_to_time(start)}:{minutes_to_time(end)}")
+        print("Monday")
+    else:
+        print("No suitable slot found")
+
+if __name__ == "__main__":
+    main()
+```

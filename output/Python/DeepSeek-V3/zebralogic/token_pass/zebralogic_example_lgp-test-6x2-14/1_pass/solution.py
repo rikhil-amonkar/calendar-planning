@@ -1,0 +1,73 @@
+import json
+from itertools import permutations
+
+def solve():
+    houses = [1, 2, 3, 4, 5, 6]
+    names = ["Carol", "Peter", "Eric", "Arnold", "Alice", "Bob"]
+    cigars = ["blends", "yellow monster", "pall mall", "blue master", "dunhill", "prince"]
+    
+    # Generate all possible permutations for names and cigars
+    for name_perm in permutations(names, 6):
+        # Clue 8: Peter is in the first house
+        if name_perm[0] != "Peter":
+            continue
+        # Clue 6: Eric is in the sixth house
+        if name_perm[5] != "Eric":
+            continue
+        # Clue 9: Bob is in the third house
+        if name_perm[2] != "Bob":
+            continue
+        
+        for cigar_perm in permutations(cigars, 6):
+            # Clue 2: Blue Master is in the fifth house
+            if cigar_perm[4] != "blue master":
+                continue
+            # Clue 5: Pall Mall is in the third house
+            if cigar_perm[2] != "pall mall":
+                continue
+            
+            # Build mapping
+            name_to_house = {name_perm[i]: i+1 for i in range(6)}
+            cigar_to_house = {cigar_perm[i]: i+1 for i in range(6)}
+            house_to_name = {i+1: name_perm[i] for i in range(6)}
+            house_to_cigar = {i+1: cigar_perm[i] for i in range(6)}
+            
+            # Clue 1: Arnold is somewhere to the left of the person who smokes many unique blends
+            if name_to_house["Arnold"] >= cigar_to_house["blends"]:
+                continue
+            
+            # Clue 3: Arnold is somewhere to the left of the Prince smoker
+            if name_to_house["Arnold"] >= cigar_to_house["prince"]:
+                continue
+            
+            # Clue 4: One house between Yellow Monster and Blends
+            if abs(cigar_to_house["yellow monster"] - cigar_to_house["blends"]) != 2:
+                continue
+            
+            # Clue 7: Carol and Eric are next to each other
+            if abs(name_to_house["Carol"] - name_to_house["Eric"]) != 1:
+                continue
+            
+            # All constraints satisfied
+            result = {
+                "solution": {
+                    "header": ["House", "Name", "Cigar"],
+                    "rows": []
+                }
+            }
+            for house in houses:
+                result["solution"]["rows"].append([
+                    str(house),
+                    house_to_name[house],
+                    house_to_cigar[house]
+                ])
+            return result
+    
+    return None
+
+if __name__ == "__main__":
+    solution = solve()
+    if solution:
+        print(json.dumps(solution, indent=2))
+    else:
+        print(json.dumps({"error": "No solution found"}, indent=2))

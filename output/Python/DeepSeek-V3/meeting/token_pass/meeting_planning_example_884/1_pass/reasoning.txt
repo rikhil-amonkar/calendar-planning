@@ -1,0 +1,188 @@
+Let’s break this down step-by-step before writing the code.
+
+---
+
+## **Step 1 – Understanding the problem**
+
+We have:
+
+- **Start location**: Richmond District at 9:00 AM.
+- **Friends** with:
+  1. Location
+  2. Availability window
+  3. Minimum meeting duration
+- **Travel times** between all locations (including Richmond as starting point).
+- **Goal**: Maximize number of friends met, respecting:
+  - Travel time between meetings
+  - Friend’s availability window
+  - Minimum meeting duration
+  - Time of day constraints (can’t meet after their window ends).
+
+---
+
+## **Step 2 – Observations on constraints**
+
+1. **Time windows** are strict — can only meet inside them.
+2. **Travel times** are symmetric? Not exactly — checking a few:  
+   Richmond to Chinatown = 20, Chinatown to Richmond = 20 (same here, but not guaranteed for all).  
+   Actually, looking at data: some are different (Sunset to Richmond = 12, Richmond to Sunset = 11).  
+   So travel times are **not symmetric** — must use given matrix carefully.
+
+3. **Order matters** because travel times depend on origin/destination.
+
+4. **Some friends have very tight windows**:
+   - Deborah: 7:00 PM – 7:45 PM (45 min total) → must meet exactly 7:00–7:45 if we meet her.
+   - Mark: 3:15 PM – 5:00 PM (105 min total) → needs at least 45 min.
+   - Laura: 9:15 PM – 10:15 PM (60 min total) → needs at least 15 min.
+   - Karen: 7:30 PM – 10:00 PM (150 min total) → needs 120 min.
+
+5. **Long meetings** (Robert 120 min, Matthew 90 min, Karen 120 min) will block large parts of the day.
+
+---
+
+## **Step 3 – Strategy**
+
+We can’t brute force all permutations of 9 friends (9! huge), but we can prune:
+
+- Start at Richmond 9:00 AM.
+- Try to schedule meetings in **time order**, respecting travel.
+- Since we want to maximize *number* of friends met, maybe we should try to fit shorter meetings first?  
+  But long meetings (Robert, Matthew, Karen) might be required to meet their minimums, so they need big windows.
+
+Better approach:  
+Treat as a **search problem** — try to schedule friends in sequence, at each step pick a friend not yet met, see if we can fit them after previous meeting + travel, within their window, and still have time for others later.
+
+We can use **backtracking** with pruning.
+
+---
+
+## **Step 4 – Feasibility check for each friend from start**
+
+From Richmond at 9:00 AM:
+
+- **Robert** (Chinatown, 7:45–17:30, need 120 min):  
+  Travel 20 min → arrive 9:20 AM.  
+  Can meet 9:20–11:20 (within his window). Possible.
+
+- **Matthew** (Alamo Square, 8:45–13:45, need 90 min):  
+  Travel 13 min → arrive 9:13 AM.  
+  Can meet 9:13–10:43 (within window). Possible.
+
+- **Jessica** (Financial District, 9:30–18:45, need 45 min):  
+  Travel 22 min → arrive 9:22 AM (too early for her start 9:30). Wait until 9:30, meet 9:30–10:15. Possible.
+
+- **Melissa** (North Beach, 7:15–16:45, need 45 min):  
+  Travel 17 min → arrive 9:17 AM, meet 9:17–10:02. Possible.
+
+- **David** (Sunset, 12:30–19:45, need 45 min): Later possible.
+
+- **Mark** (Embarcadero, 15:15–17:00, need 45 min): Later.
+
+- **Deborah** (Presidio, 19:00–19:45, need 45 min): Evening.
+
+- **Karen** (Golden Gate Park, 19:30–22:00, need 120 min): Evening.
+
+- **Laura** (Bayview, 21:15–22:15, need 15 min): Very late.
+
+---
+
+## **Step 5 – Trying to build a feasible sequence**
+
+We must end by 10:15 PM (Laura’s end).  
+Let’s try a plausible order manually:
+
+1. Start Richmond 9:00 → Matthew (Alamo Square):  
+   Travel 13 → arrive 9:13, meet 9:13–10:43 (90 min).
+
+2. After Matthew → Robert (Chinatown):  
+   Travel Alamo to Chinatown = 15 min → arrive 10:58.  
+   Robert available until 17:30, need 120 min → meet 10:58–12:58.
+
+3. After Robert → David (Sunset):  
+   Travel Chinatown to Sunset = 29 min → arrive 13:27.  
+   David available 12:30–19:45, we arrive after 12:30, so can meet 13:27–14:12 (45 min).
+
+4. After David → Jessica (Financial District):  
+   Travel Sunset to Financial = 30 min → arrive 14:42.  
+   Jessica available until 18:45, meet 14:42–15:27 (45 min).
+
+5. After Jessica → Mark (Embarcadero):  
+   Travel Financial to Embarcadero = 4 min → arrive 15:31.  
+   Mark available 15:15–17:00, meet 15:31–16:16 (45 min).
+
+6. After Mark → Deborah (Presidio):  
+   Travel Embarcadero to Presidio = 20 min → arrive 16:36.  
+   Deborah available 19:00–19:45 — too early. We must wait 2h24m. That kills time for Karen (who needs 120 min starting 19:30).  
+   So maybe swap: after Mark, go to Karen first? But Karen starts at 19:30, too late if we go after Mark at 16:16.
+
+Let’s check:  
+Finish Mark 16:16 → Travel to Golden Gate Park (Embarcadero to GGP = 25 min) → arrive 16:41.  
+Karen not available until 19:30, wait 2h49m. Then meet 19:30–21:30 (120 min).  
+Then after Karen → Laura (Bayview):  
+Travel GGP to Bayview = 22 min → arrive 21:52.  
+Laura available 21:15–22:15, meet 21:52–22:07 (15 min). Works.
+
+But Deborah is missed (no time after Karen).  
+If we try Deborah after Mark:  
+Finish Mark 16:16 → Travel to Presidio = 20 min → arrive 16:36, wait until 19:00 (2h24m), meet 19:00–19:45.  
+Then after Deborah → Karen:  
+Travel Presidio to GGP = 12 min → arrive 19:57. Karen started at 19:30, we’re late, but she’s available until 22:00, so meet 19:57–21:57 (120 min).  
+Then after Karen → Laura:  
+Travel GGP to Bayview = 22 min → arrive 22:19 — too late (Laura ends 22:15). So Laura missed.
+
+Thus:  
+Option A: Miss Deborah, meet Karen and Laura.  
+Option B: Miss Laura, meet Deborah and Karen.
+
+We can’t meet all 9 because Deborah/Karen/Laura conflict in evening.
+
+---
+
+## **Step 6 – Maximizing count**
+
+We have so far in day:  
+Matthew, Robert, David, Jessica, Mark = 5 friends.  
+Plus evening:  
+We can add Karen (2h) + Laura (15 min) = 7 total.  
+Or Deborah + Karen = 7 total.  
+Or Karen alone = 6 total.
+
+Best is 7 friends.
+
+Let’s pick: Matthew, Robert, David, Jessica, Mark, Karen, Laura.  
+Check feasibility again with exact times.
+
+---
+
+## **Step 7 – Exact schedule**
+
+1. Start Richmond 9:00 → Matthew (Alamo):  
+   Travel 13 → 9:13. Meet 9:13–10:43.
+
+2. → Robert (Chinatown):  
+   Travel 15 → 10:58. Meet 10:58–12:58.
+
+3. → David (Sunset):  
+   Travel 29 → 13:27. Meet 13:27–14:12.
+
+4. → Jessica (Financial):  
+   Travel 30 → 14:42. Meet 14:42–15:27.
+
+5. → Mark (Embarcadero):  
+   Travel 4 → 15:31. Meet 15:31–16:16.
+
+6. → Karen (Golden Gate Park):  
+   Travel Embarcadero to GGP = 25 → 16:41. Wait until 19:30. Meet 19:30–21:30.
+
+7. → Laura (Bayview):  
+   Travel 22 → 21:52. Meet 21:52–22:07.
+
+All within windows.
+
+---
+
+## **Step 8 – Write program to compute this**
+
+We’ll implement a backtracking search to verify this is optimal.
+
+---

@@ -1,0 +1,98 @@
+```python
+import json
+from itertools import permutations
+
+def solve_puzzle():
+    # Define all possible values
+    names = ["Arnold", "Eric", "Bob", "Peter", "Alice"]
+    smoothies = ["desert", "watermelon", "lime", "cherry", "dragonfruit"]
+    nationalities = ["german", "swede", "norwegian", "dane", "brit"]
+    houses = [1, 2, 3, 4, 5]
+    
+    # Generate all permutations for names, smoothies, nationalities across 5 houses
+    for name_perm in permutations(names, 5):
+        # Clue 3: Peter is not in the first house
+        if name_perm[0] == "Peter":
+            continue
+        
+        # Clue 10: Alice is in the third house
+        if name_perm[2] != "Alice":
+            continue
+        
+        for smoothie_perm in permutations(smoothies, 5):
+            # Clue 2: Dragonfruit smoothie lover is in the second house
+            if smoothie_perm[1] != "dragonfruit":
+                continue
+            
+            # Clue 5: Desert smoothie lover is not in the fifth house
+            if smoothie_perm[4] == "desert":
+                continue
+            
+            # Clue 11: Watermelon smoothie lover is in the third house
+            if smoothie_perm[2] != "watermelon":
+                continue
+            
+            for nationality_perm in permutations(nationalities, 5):
+                # Clue 8: Bob is the Dane
+                for i in range(5):
+                    if name_perm[i] == "Bob" and nationality_perm[i] != "dane":
+                        break
+                    if nationality_perm[i] == "dane" and name_perm[i] != "Bob":
+                        break
+                else:
+                    # Clue 9: Alice is the Norwegian
+                    if not (name_perm[2] == "Alice" and nationality_perm[2] == "norwegian"):
+                        continue
+                    
+                    # Clue 1: Dragonfruit smoothie lover is somewhere to the left of Eric
+                    dragonfruit_house = smoothie_perm.index("dragonfruit") + 1
+                    eric_house = name_perm.index("Eric") + 1
+                    if not (dragonfruit_house < eric_house):
+                        continue
+                    
+                    # Clue 4: Dane and British person are next to each other
+                    dane_house = nationality_perm.index("dane") + 1
+                    brit_house = nationality_perm.index("brit") + 1
+                    if abs(dane_house - brit_house) != 1:
+                        continue
+                    
+                    # Clue 6: Swedish person is somewhere to the left of Dragonfruit smoothie lover
+                    swede_house = nationality_perm.index("swede") + 1
+                    if not (swede_house < dragonfruit_house):
+                        continue
+                    
+                    # Clue 7: Two houses between Lime smoothie lover and the Dane
+                    lime_house = smoothie_perm.index("lime") + 1
+                    if abs(lime_house - dane_house) != 3:
+                        continue
+                    
+                    # All constraints satisfied - construct solution
+                    solution = {
+                        "solution": {
+                            "header": ["House", "Name", "Smoothie", "Nationality"],
+                            "rows": []
+                        }
+                    }
+                    
+                    for i in range(5):
+                        solution["solution"]["rows"].append([
+                            str(i + 1),
+                            name_perm[i],
+                            smoothie_perm[i],
+                            nationality_perm[i]
+                        ])
+                    
+                    return solution
+    
+    return None
+
+def main():
+    solution = solve_puzzle()
+    if solution:
+        print(json.dumps(solution, indent=2))
+    else:
+        print(json.dumps({"error": "No solution found"}, indent=2))
+
+if __name__ == "__main__":
+    main()
+```

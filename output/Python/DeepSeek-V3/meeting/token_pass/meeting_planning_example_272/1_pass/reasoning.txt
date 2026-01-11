@@ -1,0 +1,48 @@
+Let’s break this down step by step before writing the code.
+
+---
+
+## **Step 1 – Understanding the problem**
+We start at **Russian Hill at 9:00 AM**.  
+We have three friends with availability:
+
+1. **Timothy** – Embarcadero, 9:45 AM – 5:45 PM, wants 120 minutes.
+2. **Patricia** – Nob Hill, 6:30 PM – 9:45 PM, wants 90 minutes.
+3. **Ashley** – Mission District, 8:30 PM – 9:15 PM, wants 45 minutes.
+
+Travel times are given between locations.
+
+We want to meet as many friends as possible, respecting:
+- Travel time between meetings
+- Minimum meeting durations
+- Time windows
+
+---
+
+## **Step 2 – Observations**
+- **Timothy** is available all day, so we can meet him first after arriving.
+- **Patricia** is only available in the evening.
+- **Ashley** is available for a short time in the evening, overlapping with Patricia’s window.
+- Travel times are symmetric-ish but not exactly equal.
+
+We need to decide the **order** of meetings to maximize number of friends met.
+
+Possible orders:
+1. Timothy → Patricia → Ashley  
+2. Timothy → Ashley → Patricia  
+3. Patricia → Timothy → Ashley (impossible, Timothy’s window ends before Patricia’s starts)  
+4. etc.
+
+But Ashley’s window is very late and short, so meeting Patricia first might make Ashley impossible if travel time is too long.
+
+---
+
+## **Step 3 – Time calculations**
+Let’s convert everything to **minutes since midnight** for easier computation.
+
+- Start: 9:00 AM = 540 minutes.
+- Timothy window: 9:45 AM (585) to 5:45 PM (1065).
+- Patricia window: 6:30 PM (1170) to 9:45 PM (1305).
+- Ashley window: 8:30 PM (1230) to 9:15 PM (1275).
+
+Travel matrix (in minutes):

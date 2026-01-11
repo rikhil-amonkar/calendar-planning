@@ -1,0 +1,56 @@
+Let’s break this down.  
+
+We need to find a **1-hour slot** between **9:00 and 17:00** on **Monday** when all four participants are free.  
+
+First, I’ll convert the schedule into busy intervals in minutes from 9:00 as the start of the day.  
+
+---
+
+**Step 1 – Convert times to minutes from 9:00**  
+- 9:00 → 0 minutes  
+- 17:00 → 8 hours after 9:00 = 480 minutes  
+- Each busy block is given in HH:MM format; we convert to minutes from 9:00.  
+
+---
+
+**Stephanie busy:**  
+10:00–10:30 → 60 to 90  
+16:00–16:30 → 420 to 450  
+
+**Cheryl busy:**  
+10:00–10:30 → 60 to 90  
+11:30–12:00 → 150 to 180  
+13:30–14:00 → 270 to 300  
+16:30–17:00 → 450 to 480  
+
+**Bradley busy:**  
+9:30–10:00 → 30 to 60  
+10:30–11:30 → 90 to 150  
+13:30–14:00 → 270 to 300  
+14:30–15:00 → 330 to 360  
+15:30–17:00 → 390 to 480  
+
+**Steven busy:**  
+9:00–12:00 → 0 to 180  
+13:00–13:30 → 240 to 270  
+14:30–17:00 → 330 to 480  
+
+---
+
+**Step 2 – Combine busy times for all people**  
+We need times when **all are free** = not busy for anyone.  
+Let’s find free slots by checking each person’s busy times and merging them into a combined busy list for the group.  
+
+Better approach:  
+We can mark busy in a boolean array for each person, then find times when all are free for 60 minutes straight.  
+
+---
+
+**Step 3 – Write Python code to solve**  
+
+We’ll create a timeline from 0 to 480 (9:00–17:00) in minute increments.  
+Mark busy if any person is busy at that minute (exclusive end times).  
+
+Then find free intervals of length ≥ 60 minutes.  
+
+---

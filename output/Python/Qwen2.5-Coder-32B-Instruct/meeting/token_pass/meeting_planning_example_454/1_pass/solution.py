@@ -1,0 +1,107 @@
+import json
+from datetime import datetime, timedelta
+
+# Travel times between locations
+travel_times = {
+    ('Presidio', 'Golden Gate Park'): 12,
+    ('Presidio', 'Bayview'): 31,
+    ('Presidio', 'Chinatown'): 21,
+    ('Presidio', 'North Beach'): 18,
+    ('Presidio', 'Mission District'): 26,
+    ('Golden Gate Park', 'Presidio'): 11,
+    ('Golden Gate Park', 'Bayview'): 23,
+    ('Golden Gate Park', 'Chinatown'): 23,
+    ('Golden Gate Park', 'North Beach'): 24,
+    ('Golden Gate Park', 'Mission District'): 17,
+    ('Bayview', 'Presidio'): 31,
+    ('Bayview', 'Golden Gate Park'): 22,
+    ('Bayview', 'Chinatown'): 18,
+    ('Bayview', 'North Beach'): 21,
+    ('Bayview', 'Mission District'): 13,
+    ('Chinatown', 'Presidio'): 19,
+    ('Chinatown', 'Golden Gate Park'): 23,
+    ('Chinatown', 'Bayview'): 22,
+    ('Chinatown', 'North Beach'): 3,
+    ('Chinatown', 'Mission District'): 18,
+    ('North Beach', 'Presidio'): 17,
+    ('North Beach', 'Golden Gate Park'): 22,
+    ('North Beach', 'Bayview'): 22,
+    ('North Beach', 'Chinatown'): 6,
+    ('North Beach', 'Mission District'): 18,
+    ('Mission District', 'Presidio'): 25,
+    ('Mission District', 'Golden Gate Park'): 17,
+    ('Mission District', 'Bayview'): 15,
+    ('Mission District', 'Chinatown'): 16,
+    ('Mission District', 'North Beach'): 17,
+}
+
+# Meeting constraints
+constraints = {
+    'Jessica': {'location': 'Golden Gate Park', 'start': '13:45', 'end': '15:00', 'min_duration': 30},
+    'Ashley': {'location': 'Bayview', 'start': '17:15', 'end': '20:00', 'min_duration': 105},
+    'Ronald': {'location': 'Chinatown', 'start': '07:15', 'end': '14:45', 'min_duration': 90},
+    'William': {'location': 'North Beach', 'start': '13:15', 'end': '20:15', 'min_duration': 15},
+    'Daniel': {'location': 'Mission District', 'start': '07:00', 'end': '11:15', 'min_duration': 105},
+}
+
+def parse_time(time_str):
+    return datetime.strptime(time_str, '%H:%M')
+
+def add_minutes_to_time(time, minutes):
+    return time + timedelta(minutes=minutes)
+
+def time_to_str(time):
+    return time.strftime('%H:%M')
+
+def can_meet(start_time, end_time, meeting_start, meeting_end, min_duration):
+    available_start = max(start_time, meeting_start)
+    available_end = min(end_time, meeting_end)
+    return (available_end - available_start).total_seconds() / 60 >= min_duration
+
+def find_best_schedule(current_location, current_time, visited, itinerary):
+    global best_itinerary
+    global best_score
+
+    score = len(itinerary)
+    if score > best_score:
+        best_score = score
+        best_itinerary = itinerary.copy()
+
+    for person, details in constraints.items():
+        if person not in visited:
+            location = details['location']
+            meeting_start = parse_time(details['start'])
+            meeting_end = parse_time(details['end'])
+            min_duration = details['min_duration']
+
+            travel_time = travel_times[(current_location, location)]
+            arrival_time = add_minutes_to_time(current_time, travel_time)
+
+            if arrival_time <= meeting_end:
+                meeting_start_time = max(arrival_time, meeting_start)
+                meeting_end_time = min(add_minutes_to_time(meeting_start_time, min_duration), meeting_end)
+
+                if meeting_end_time - meeting_start_time >= timedelta(minutes=min_duration):
+                    new_itinerary = itinerary.copy()
+                    new_itinerary.append({
+                        "action": "meet",
+                        "location": location,
+                        "person": person,
+                        "start_time": time_to_str(meeting_start_time),
+                        "end_time": time_to_str(meeting_end_time)
+                    })
+                    find_best_schedule(location, meeting_end_time, visited | {person}, new_itinerary)
+
+# Initialize variables
+best_itinerary = []
+best_score = 0
+start_location = 'Presidio'
+start_time = parse_time('09:00')
+visited = set()
+
+# Find the best schedule
+find_best_schedule(start_location, start_time, visited, [])
+
+# Output the result as JSON
+result = {"itinerary": best_itinerary}
+print(json.dumps(result, indent=2))

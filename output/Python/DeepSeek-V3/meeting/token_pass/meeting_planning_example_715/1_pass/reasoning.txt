@@ -1,0 +1,60 @@
+Let’s break this down step by step before writing the code.
+
+**Step 1 – Understanding the problem**  
+We have:
+- Start location: Presidio at 9:00 AM.
+- 8 friends, each in a fixed location, with fixed available time windows.
+- Each friend has a minimum meeting duration requirement.
+- Travel times between all locations are given.
+- Goal: Maximize the number of friends met (or total meeting time? The problem says “meet as many friends as possible” so primary objective is count, then maybe total time if tie).
+- Must account for travel time between meetings.
+
+**Step 2 – Constraints summary**  
+Times in minutes from midnight for easier computation:
+
+1. **Joseph** – Golden Gate Park – 8:30–21:15 (min 105 min)
+2. **Melissa** – The Castro – 9:30–17:00 (min 30 min)
+3. **Matthew** – Bayview – 10:15–13:15 (min 30 min)
+4. **Robert** – Alamo Square – 11:15–17:30 (min 120 min)
+5. **Jeffrey** – Fisherman’s Wharf – 12:45–18:45 (min 120 min)
+6. **Amanda** – Marina District – 14:45–19:30 (min 105 min)
+7. **Karen** – Mission District – 17:30–20:30 (min 105 min)
+8. **Nancy** – Pacific Heights – 17:00–21:30 (min 105 min)
+
+We start at Presidio at 9:00.
+
+**Step 3 – Feasibility check**  
+We can’t meet everyone because:
+- Some windows overlap (e.g., Amanda, Karen, Nancy all in evening).
+- Travel eats time.
+- Minimum durations are large (105 min for many).
+
+We need to pick a sequence that fits in the day.
+
+**Step 4 – Strategy**  
+We’ll brute-force search over permutations of friends (subset selection) because 8 friends → 2^8 = 256 subsets, each we can try to schedule greedily in order of time windows. But because windows are fixed, order is constrained by time feasibility.
+
+Better: treat as a **path planning problem** with time windows and durations. This is like a traveling salesman with time windows, maximizing number of visits.
+
+We can model as:  
+State = (current location, current time, set of visited friends).  
+Try to add another friend if:
+1. Travel from current location to friend’s location takes T minutes.
+2. Arrival time = current time + T.
+3. Arrival time must be ≤ friend’s window end – min_duration (so we can stay min_duration).
+4. Start meeting = max(arrival time, friend’s window start).
+5. End meeting = start + min_duration ≤ friend’s window end.
+6. Then new time = end meeting.
+
+We start at Presidio at 9:00, with no friends met.
+
+We can do DFS over possible next friends, keeping best solution (most friends met). If tie, maximize total meeting time.
+
+**Step 5 – Implementation plan**  
+- Convert all times to minutes since midnight.
+- Store travel times in a dict: `travel[(loc1, loc2)]`.
+- DFS with pruning: if remaining possible friends + current count ≤ best count, prune.
+- Output schedule in chronological order.
+
+**Step 6 – Writing the code**  
+We’ll implement the DFS with time windows.

@@ -1,0 +1,50 @@
+We need to arrange visits to 9 cities with given constraints, ensuring travel is only via direct flights and respecting day ranges for certain events.
+
+Let’s restate the problem clearly:
+
+**Cities and required days:**
+- Salzburg: 2 days
+- Venice: 5 days
+- Bucharest: 4 days
+- Brussels: 2 days (must include day 21–22 for meeting friends)
+- Hamburg: 4 days
+- Copenhagen: 4 days (must include day 18–21 for wedding)
+- Nice: 3 days (must include day 9–11 for relatives)
+- Zurich: 5 days
+- Naples: 4 days (must include day 22–25 for workshop)
+
+Total: 2+5+4+2+4+4+3+5+4 = 33 days, but we only have 25 days total.  
+That means some days overlap because travel days count for both cities.
+
+**Rule:** If you fly from A to B on day X, you spend day X in both A and B for counting purposes. So a travel day is counted toward the stay in both cities.
+
+We can think of it as:  
+We have 25 calendar days, but the sum of "days spent in each city" will be more than 25 because travel days double-count.
+
+Let’s denote:
+- `stay_days[c]` = required days in city c (including travel days that touch c).
+- We have 9 cities, so at least 8 travel days (since we start in one city and end in one city, each travel day connects two cities).
+- Each travel day adds 1 to the total "city-days" count beyond calendar days.
+
+Let `T` = number of travel days.  
+Total city-days = 25 + T.  
+But total city-days also = sum(stay_days) = 33.  
+So 25 + T = 33 → T = 8 travel days.
+
+That means we have exactly 8 days where we are in two cities, and 17 days where we are in only one city.
+
+We need to arrange the sequence of cities so that:
+1. Each city gets its required stay_days.
+2. Travel is only between cities with direct flights.
+3. Special date constraints are met.
+
+---
+
+We’ll solve this with a **backtracking search** over possible sequences of cities, assigning start and end days for each visit, ensuring:
+- Stay length = required days for that city.
+- Travel happens on the last day of a stay to the next city (so that day counts for both).
+- Date constraints are satisfied for Brussels, Copenhagen, Nice, Naples.
+
+---
+
+Here’s the Python program implementing this search:

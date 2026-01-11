@@ -1,0 +1,38 @@
+Let’s break this down step by step before writing the code.  
+
+**Step 1 — Understand the constraints**  
+- Meeting duration: 30 minutes (0.5 hours)  
+- Work hours: 9:00–17:00 (inclusive start, exclusive end for slots)  
+- Days considered: Monday or Tuesday  
+- Margaret’s blocked times:  
+  - Monday: 10:30–11:00, 11:30–12:00, 13:00–13:30, 15:00–17:00  
+  - Tuesday: 12:00–12:30  
+- Alexis’s meetings:  
+  - Monday: 9:30–11:30, 12:30–13:00, 14:00–17:00  
+  - Tuesday: 9:00–9:30, 10:00–10:30, 14:00–16:30  
+- Margaret’s preferences:  
+  1. Do not want to meet on Monday.  
+  2. Do not want to meet on Tuesday before 14:30.  
+
+So effectively, Margaret will only meet on Tuesday, and only from 14:30 onward.  
+
+**Step 2 — Combine constraints for Tuesday after 14:30**  
+- Work hours end at 17:00, so latest start time is 16:30 for a 30-minute meeting.  
+- Margaret’s Tuesday blocked: 12:00–12:30 (irrelevant here since we’re after 14:30).  
+- Alexis’s Tuesday blocked: 9:00–9:30, 10:00–10:30, 14:00–16:30.  
+
+So Alexis is busy until 16:30 on Tuesday.  
+That means the first free slot for Alexis on Tuesday after 14:30 is **16:30–17:00**.  
+
+**Step 3 — Check Margaret’s availability Tuesday 16:30–17:00**  
+Margaret’s Tuesday blocked times don’t include that slot, so she is free.  
+
+**Step 4 — Verify against Margaret’s preference**  
+She said “Tuesday before 14:30” is not wanted — we are after 14:30, so it’s fine.  
+
+**Step 5 — Final meeting slot**  
+Tuesday 16:30–17:00.  
+
+---
+
+Here’s the Python script that finds this slot systematically:

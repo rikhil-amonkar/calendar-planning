@@ -1,0 +1,72 @@
+from z3 import *
+
+# Define the solver
+solver = Solver()
+
+# Define variables for each house
+names = ['Alice', 'Eric', 'Arnold', 'Bob', 'Peter']
+flowers = ['tulips', 'roses', 'lilies', 'daffodils', 'carnations']
+animals = ['dog', 'horse', 'cat', 'bird', 'fish']
+
+# Create symbolic variables for each house
+house_names = [String(f'house_{i}_name') for i in range(1, 6)]
+house_flowers = [String(f'house_{i}_flower') for i in range(1, 6)]
+house_animals = [String(f'house_{i}_animal') for i in range(1, 6)]
+
+# Add constraints for unique values within each category
+solver.add(Distinct(house_names))
+solver.add(Distinct(house_flowers))
+solver.add(Distinct(house_animals))
+
+# Clue 1: Alice is in the second house.
+solver.add(house_names[1] == 'Alice')
+
+# Clue 2: The person who loves the bouquet of lilies is the bird keeper.
+solver.add(Implies(house_flowers[i] == 'lilies', house_animals[i] == 'bird') for i in range(5))
+
+# Clue 3: Peter is somewhere to the right of the person who loves the vase of tulips.
+solver.add(Or([And(house_names[j] == 'Peter', house_flowers[i] == 'tulips') for i in range(4) for j in range(i+1, 5)]))
+
+# Clue 4: The fish enthusiast is the person who loves a bouquet of daffodils.
+solver.add(Implies(house_animals[i] == 'fish', house_flowers[i] == 'daffodils') for i in range(5))
+
+# Clue 5: The person who keeps horses is Eric.
+solver.add(Implies(house_animals[i] == 'horse', house_names[i] == 'Eric') for i in range(5))
+
+# Clue 6: There are two houses between the dog owner and Bob.
+solver.add(Or([And(house_animals[i] == 'dog', house_names[i+3] == 'Bob') for i in range(2)] + 
+              [And(house_animals[i] == 'dog', house_names[i-3] == 'Bob') for i in range(3, 5)]))
+
+# Clue 7: The fish enthusiast is directly left of Bob.
+solver.add(Or([And(house_animals[i] == 'fish', house_names[i+1] == 'Bob') for i in range(4)]))
+
+# Clue 8: Alice is directly left of the person who keeps horses.
+solver.add(Or([And(house_names[i] == 'Alice', house_animals[i+1] == 'horse') for i in range(4)]))
+
+# Clue 9: The person who loves a carnation arrangement is directly left of the person who loves the vase of tulips.
+solver.add(Or([And(house_flowers[i] == 'carnations', house_flowers[i+1] == 'tulips') for i in range(4)]))
+
+# Clue 10: The cat lover is not in the first house.
+solver.add(house_animals[0] != 'cat')
+
+# Check if the constraints are satisfiable
+if solver.check() == sat:
+    model = solver.model()
+    solution = []
+    for i in range(5):
+        house_number = str(i + 1)
+        name = model[house_names[i]].as_string()[1:-1]
+        flower = model[house_flowers[i]].as_string()[1:-1]
+        animal = model[house_animals[i]].as_string()[1:-1]
+        solution.append([house_number, name, flower, animal])
+    
+    # Format the solution as JSON
+    result = {
+        "solution": {
+            "header": ["House", "Name", "Flower", "Animal"],
+            "rows": solution
+        }
+    }
+    print(result)
+else:
+    print("No solution found")

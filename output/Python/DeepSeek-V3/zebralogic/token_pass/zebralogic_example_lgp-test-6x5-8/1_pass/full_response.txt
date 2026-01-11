@@ -1,0 +1,226 @@
+```python
+import json
+from itertools import permutations
+
+def solve():
+    houses = [1, 2, 3, 4, 5, 6]
+    
+    # All possible values
+    names = ["Arnold", "Peter", "Bob", "Eric", "Carol", "Alice"]
+    animals = ["horse", "rabbit", "fish", "cat", "bird", "dog"]
+    occupations = ["engineer", "nurse", "lawyer", "teacher", "artist", "doctor"]
+    sports = ["basketball", "volleyball", "soccer", "tennis", "baseball", "swimming"]
+    heights = ["average", "tall", "short", "very short", "very tall", "super tall"]
+    
+    # Generate all permutations for each category
+    for name_perm in permutations(names, 6):
+        for animal_perm in permutations(animals, 6):
+            for occ_perm in permutations(occupations, 6):
+                for sport_perm in permutations(sports, 6):
+                    for height_perm in permutations(heights, 6):
+                        # Build assignment
+                        assignment = {}
+                        for i in range(6):
+                            assignment[i] = {
+                                'house': i+1,
+                                'name': name_perm[i],
+                                'animal': animal_perm[i],
+                                'occupation': occ_perm[i],
+                                'sport': sport_perm[i],
+                                'height': height_perm[i]
+                            }
+                        
+                        # Check all constraints
+                        valid = True
+                        
+                        # 1. engineer = dog owner
+                        engineer_house = None
+                        dog_house = None
+                        for i in range(6):
+                            if assignment[i]['occupation'] == 'engineer':
+                                engineer_house = i
+                            if assignment[i]['animal'] == 'dog':
+                                dog_house = i
+                        if engineer_house != dog_house:
+                            valid = False
+                        
+                        # 2. average height left of short
+                        avg_house = None
+                        short_house = None
+                        for i in range(6):
+                            if assignment[i]['height'] == 'average':
+                                avg_house = i
+                            if assignment[i]['height'] == 'short':
+                                short_house = i
+                        if avg_house is None or short_house is None or avg_house >= short_house:
+                            valid = False
+                        
+                        # 3. average height directly left of rabbit owner
+                        rabbit_house = None
+                        for i in range(6):
+                            if assignment[i]['animal'] == 'rabbit':
+                                rabbit_house = i
+                        if avg_house is None or rabbit_house is None or avg_house + 1 != rabbit_house:
+                            valid = False
+                        
+                        # 4. tall left of very short
+                        tall_house = None
+                        very_short_house = None
+                        for i in range(6):
+                            if assignment[i]['height'] == 'tall':
+                                tall_house = i
+                            if assignment[i]['height'] == 'very short':
+                                very_short_house = i
+                        if tall_house is None or very_short_house is None or tall_house >= very_short_house:
+                            valid = False
+                        
+                        # 5. Arnold = cat lover
+                        arnold_house = None
+                        cat_house = None
+                        for i in range(6):
+                            if assignment[i]['name'] == 'Arnold':
+                                arnold_house = i
+                            if assignment[i]['animal'] == 'cat':
+                                cat_house = i
+                        if arnold_house != cat_house:
+                            valid = False
+                        
+                        # 6. horse owner = teacher
+                        horse_house = None
+                        teacher_house = None
+                        for i in range(6):
+                            if assignment[i]['animal'] == 'horse':
+                                horse_house = i
+                            if assignment[i]['occupation'] == 'teacher':
+                                teacher_house = i
+                        if horse_house != teacher_house:
+                            valid = False
+                        
+                        # 7. Carol loves soccer
+                        carol_house = None
+                        soccer_house = None
+                        for i in range(6):
+                            if assignment[i]['name'] == 'Carol':
+                                carol_house = i
+                            if assignment[i]['sport'] == 'soccer':
+                                soccer_house = i
+                        if carol_house != soccer_house:
+                            valid = False
+                        
+                        # 8. tall = volleyball lover
+                        if tall_house is None:
+                            valid = False
+                        else:
+                            if assignment[tall_house]['sport'] != 'volleyball':
+                                valid = False
+                        
+                        # 9. lawyer in house 5 (index 4)
+                        if assignment[4]['occupation'] != 'lawyer':
+                            valid = False
+                        
+                        # 10. tennis lover = teacher
+                        tennis_house = None
+                        for i in range(6):
+                            if assignment[i]['sport'] == 'tennis':
+                                tennis_house = i
+                        if tennis_house != teacher_house:
+                            valid = False
+                        
+                        # 11. average height = swimming lover
+                        if avg_house is None:
+                            valid = False
+                        else:
+                            if assignment[avg_house]['sport'] != 'swimming':
+                                valid = False
+                        
+                        # 12. baseball directly left of engineer
+                        baseball_house = None
+                        for i in range(6):
+                            if assignment[i]['sport'] == 'baseball':
+                                baseball_house = i
+                        if baseball_house is None or engineer_house is None or baseball_house + 1 != engineer_house:
+                            valid = False
+                        
+                        # 13. Peter = nurse
+                        peter_house = None
+                        nurse_house = None
+                        for i in range(6):
+                            if assignment[i]['name'] == 'Peter':
+                                peter_house = i
+                            if assignment[i]['occupation'] == 'nurse':
+                                nurse_house = i
+                        if peter_house != nurse_house:
+                            valid = False
+                        
+                        # 14. Bob right of artist
+                        bob_house = None
+                        artist_house = None
+                        for i in range(6):
+                            if assignment[i]['name'] == 'Bob':
+                                bob_house = i
+                            if assignment[i]['occupation'] == 'artist':
+                                artist_house = i
+                        if bob_house is None or artist_house is None or bob_house <= artist_house:
+                            valid = False
+                        
+                        # 15. teacher directly left of soccer lover
+                        if teacher_house is None or soccer_house is None or teacher_house + 1 != soccer_house:
+                            valid = False
+                        
+                        # 16. rabbit owner = Alice
+                        if rabbit_house is None:
+                            valid = False
+                        else:
+                            if assignment[rabbit_house]['name'] != 'Alice':
+                                valid = False
+                        
+                        # 17. fish enthusiast = Carol
+                        fish_house = None
+                        for i in range(6):
+                            if assignment[i]['animal'] == 'fish':
+                                fish_house = i
+                        if fish_house != carol_house:
+                            valid = False
+                        
+                        # 18. baseball in house 1 (index 0)
+                        if baseball_house != 0:
+                            valid = False
+                        
+                        # 19. cat lover right of very short person
+                        if cat_house is None or very_short_house is None or cat_house <= very_short_house:
+                            valid = False
+                        
+                        # 20. super tall in house 5 (index 4)
+                        if assignment[4]['height'] != 'super tall':
+                            valid = False
+                        
+                        if valid:
+                            # Build result
+                            rows = []
+                            for i in range(6):
+                                rows.append([
+                                    str(i+1),
+                                    assignment[i]['name'],
+                                    assignment[i]['animal'],
+                                    assignment[i]['occupation'],
+                                    assignment[i]['sport'],
+                                    assignment[i]['height']
+                                ])
+                            
+                            result = {
+                                "solution": {
+                                    "header": ["House", "Name", "Animal", "Occupation", "FavoriteSport", "Height"],
+                                    "rows": rows
+                                }
+                            }
+                            return result
+    
+    return None
+
+if __name__ == "__main__":
+    solution = solve()
+    if solution:
+        print(json.dumps(solution, indent=2))
+    else:
+        print(json.dumps({"error": "No solution found"}, indent=2))
+```

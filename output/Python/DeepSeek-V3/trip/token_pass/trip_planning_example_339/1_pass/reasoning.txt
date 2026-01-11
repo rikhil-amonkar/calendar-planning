@@ -1,0 +1,121 @@
+Let's break this down step by step before writing the code.
+
+**Constraints:**
+- Total days: 17
+- Cities and required days:
+  - Riga: 7 days (must include days 11–17 for wedding)
+  - Budapest: 7 days
+  - Paris: 4 days
+  - Warsaw: 2 days
+- Direct flights exist between:
+  - Warsaw ↔ Budapest
+  - Warsaw ↔ Riga
+  - Budapest ↔ Paris
+  - Warsaw ↔ Paris
+  - Paris ↔ Riga
+- Day 1–2: Must be in Warsaw for an annual show.
+- Wedding in Riga between day 11 and day 17 (so Riga must cover all days 11–17).
+
+**Step 1 – Fix known parts:**
+- Days 1–2: Warsaw (2 days done for Warsaw)
+- Days 11–17: Riga (7 days done for Riga)
+
+**Step 2 – Remaining days to allocate:**
+Days 3–10 are free (8 days total) to distribute Budapest (7 days), Paris (4 days), Warsaw (0 more days needed), Riga (0 more days needed).
+
+But wait — Riga already has 7 days (days 11–17), so no extra Riga days needed.
+Warsaw already has 2 days (days 1–2), so no extra Warsaw days needed.
+So days 3–10 must cover Budapest (7 days) and Paris (4 days) → total 11 days needed, but we only have 8 days.  
+This means overlap: some days must count for both cities? No — a day in one city counts only for that city.  
+So there’s a conflict: 7 + 4 = 11 days needed, but only 8 days available.
+
+But maybe a day traveling counts for both cities? The problem says: "if one flies from city A to city B on day X, then they are in both cities A and B on day X".  
+That means travel days count toward totals for both cities. That helps reduce the total calendar days needed.
+
+**Step 3 – Use travel days to double-count:**
+We need to arrange the schedule so that travel days help meet the required days for both cities.
+
+Let’s denote:
+- Required: Riga 7 days (fixed days 11–17)
+- Required: Warsaw 2 days (fixed days 1–2)
+- Required: Budapest 7 days
+- Required: Paris 4 days
+
+We have 17 calendar days. Let’s subtract fixed:
+Days 1–2 Warsaw (2 days), Days 11–17 Riga (7 days) → that’s 9 days fixed, leaving days 3–10 free (8 days).
+
+In those 8 days, we must fit Budapest 7 days and Paris 4 days.  
+We can do this if some of those 8 days are travel days that count for both Budapest and Paris.
+
+Example: If we spend day 3 in Budapest, day 4 Budapest→Paris (counts for both), day 5 Paris, day 6 Paris, day 7 Paris, day 8 Paris→Budapest (counts for both), day 9 Budapest, day 10 Budapest.  
+Let’s count:
+- Budapest days: day 3, day 4 (travel from BUD to PAR), day 8 (travel from PAR to BUD), day 9, day 10 → that’s 5 days, but we need 7. We already have 0 from earlier fixed days, so short 2 days.
+- Paris days: day 4 (travel BUD→PAR), day 5, day 6, day 7, day 8 (travel PAR→BUD) → that’s 5 days, but we need 4, so okay.
+
+So Budapest is short. We need to start Budapest earlier or end later, but days 1–2 are Warsaw, days 11–17 are Riga.
+
+Maybe we can include Budapest on day 2 if we travel Warsaw→Budapest on day 2. But day 2 must be Warsaw for the show. If the show is all day, maybe we fly at night? The problem says "if one flies from city A to city B on day X, then they are in both cities A and B on day X". So if we fly Warsaw→Budapest on day 2 evening, day 2 counts for Warsaw and Budapest. That helps.
+
+Similarly, maybe we can have Budapest on day 11 if we travel Budapest→Riga on day 11, so day 11 counts for Budapest and Riga.
+
+Let’s try to construct stepwise.
+
+**Step 4 – Build schedule:**
+
+We need to check direct flight constraints:  
+We must move between cities with direct flights only.
+
+Possible sequence:  
+Warsaw (days 1–2) → Budapest → Paris → Riga (days 11–17)  
+But also need to fit all required days.
+
+Let’s allocate:
+
+1. Day 1: Warsaw (Warsaw 1/2)
+2. Day 2: Warsaw in day, fly to Budapest evening → counts Warsaw (2/2) and Budapest (1/7)
+3. Day 3: Budapest (2/7)
+4. Day 4: Budapest (3/7)
+5. Day 5: Budapest (4/7)
+6. Day 6: Budapest (5/7)
+7. Day 7: Budapest (6/7)
+8. Day 8: Budapest→Paris (travel) → counts Budapest (7/7 done) and Paris (1/4)
+9. Day 9: Paris (2/4)
+10. Day 10: Paris (3/4)
+11. Day 11: Paris→Riga (travel) → counts Paris (4/4 done) and Riga (1/7)
+12. Day 12: Riga (2/7)
+13. Day 13: Riga (3/7)
+14. Day 14: Riga (4/7)
+15. Day 15: Riga (5/7)
+16. Day 16: Riga (6/7)
+17. Day 17: Riga (7/7 done)
+
+Check direct flights:  
+Warsaw→Budapest: yes  
+Budapest→Paris: yes  
+Paris→Riga: yes  
+
+All requirements met.
+
+**Step 5 – Convert to day ranges for output:**
+We group consecutive days in same city:
+- Day 1–2: Warsaw
+- Day 2–7: Budapest (day 2 to day 7, but note day 2 is both Warsaw and Budapest, so we list Budapest starting day 2)
+Better to list by stay periods:
+  - Warsaw: Day 1-2
+  - Budapest: Day 2-7 (day 2 arrival, day 7 last full day)
+  - Paris: Day 8-10 (day 8 arrival, day 10 last full day)
+  - Riga: Day 11-17
+
+But careful: Day 8 is Budapest→Paris, so Budapest ends day 8 morning, Paris starts day 8.  
+Day 11 is Paris→Riga, so Paris ends day 11 morning, Riga starts day 11.
+
+So in terms of location at end of day:
+Day 1: Warsaw  
+Day 2: Budapest  
+Day 3–7: Budapest  
+Day 8–10: Paris  
+Day 11–17: Riga  
+
+We’ll output ranges accordingly.
+
+Now, let’s write the Python code that computes this logically (though here we derived manually, the code will encode the constraints and solve by brute force search over permutations).

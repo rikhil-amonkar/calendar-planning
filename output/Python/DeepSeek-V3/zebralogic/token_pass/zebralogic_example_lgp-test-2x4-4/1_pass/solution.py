@@ -1,0 +1,87 @@
+import json
+from itertools import permutations
+
+def solve_puzzle():
+    # Define all possible values for each category
+    names = ["Eric", "Arnold"]
+    house_styles = ["victorian", "colonial"]
+    heights = ["very short", "short"]
+    educations = ["associate", "high school"]
+    
+    houses = [1, 2]
+    
+    # Generate all possible permutations for each category
+    name_perms = list(permutations(names, 2))
+    style_perms = list(permutations(house_styles, 2))
+    height_perms = list(permutations(heights, 2))
+    education_perms = list(permutations(educations, 2))
+    
+    solutions = []
+    
+    # Try all possible combinations
+    for name_assignment in name_perms:
+        for style_assignment in style_perms:
+            for height_assignment in height_perms:
+                for education_assignment in education_perms:
+                    # Build the current assignment
+                    assignment = {}
+                    for i, house in enumerate(houses):
+                        assignment[house] = {
+                            "Name": name_assignment[i],
+                            "HouseStyle": style_assignment[i],
+                            "Height": height_assignment[i],
+                            "Education": education_assignment[i]
+                        }
+                    
+                    # Check clue 1: The person who is short is directly left of Eric
+                    # Since there are only 2 houses, "directly left" means house 1 is short and house 2 is Eric
+                    short_house = None
+                    eric_house = None
+                    for house in houses:
+                        if assignment[house]["Height"] == "short":
+                            short_house = house
+                        if assignment[house]["Name"] == "Eric":
+                            eric_house = house
+                    
+                    if not (short_house == 1 and eric_house == 2):
+                        continue
+                    
+                    # Check clue 2: The person residing in a Victorian house is in the first house
+                    if assignment[1]["HouseStyle"] != "victorian":
+                        continue
+                    
+                    # Check clue 3: The person who is short is the person with an associate's degree
+                    if assignment[short_house]["Education"] != "associate":
+                        continue
+                    
+                    # All clues satisfied, add to solutions
+                    solutions.append(assignment)
+    
+    # Convert solution to required format
+    if solutions:
+        solution = solutions[0]  # Should be exactly one solution
+        
+        rows = []
+        for house in sorted(solution.keys()):
+            row = [
+                str(house),
+                solution[house]["Name"],
+                solution[house]["HouseStyle"],
+                solution[house]["Height"],
+                solution[house]["Education"]
+            ]
+            rows.append(row)
+        
+        result = {
+            "solution": {
+                "header": ["House", "Name", "HouseStyle", "Height", "Education"],
+                "rows": rows
+            }
+        }
+        
+        return json.dumps(result, indent=2)
+    else:
+        return json.dumps({"error": "No solution found"}, indent=2)
+
+if __name__ == "__main__":
+    print(solve_puzzle())

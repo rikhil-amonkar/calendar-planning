@@ -1,0 +1,114 @@
+def time_to_minutes(t):
+    """Convert HH:MM string to minutes since midnight."""
+    h, m = map(int, t.split(':'))
+    return h * 60 + m
+
+def minutes_to_time(m):
+    """Convert minutes since midnight to HH:MM string."""
+    h = m // 60
+    m = m % 60
+    return f"{h:02d}:{m:02d}"
+
+def find_meeting_slot(busy_intervals, day_start, day_end, duration):
+    """
+    Find a meeting slot of given duration within day_start to day_end.
+    busy_intervals: list of (start_minute, end_minute) for each person.
+    """
+    # Merge all busy intervals into a single timeline
+    all_busy = []
+    for intervals in busy_intervals:
+        all_busy.extend(intervals)
+    
+    # Sort by start time
+    all_busy.sort(key=lambda x: x[0])
+    
+    # Merge overlapping busy intervals
+    merged = []
+    for start, end in all_busy:
+        if not merged or merged[-1][1] < start:
+            merged.append([start, end])
+        else:
+            merged[-1][1] = max(merged[-1][1], end)
+    
+    # Find free slots
+    free_slots = []
+    current_time = day_start
+    
+    for start, end in merged:
+        if current_time < start:
+            free_slots.append((current_time, start))
+        current_time = max(current_time, end)
+    
+    if current_time < day_end:
+        free_slots.append((current_time, day_end))
+    
+    # Find first slot that fits duration
+    for slot_start, slot_end in free_slots:
+        if slot_end - slot_start >= duration:
+            return slot_start, slot_start + duration
+    
+    return None
+
+def main():
+    # Day: Monday
+    day = "Monday"
+    work_start = time_to_minutes("9:00")
+    work_end = time_to_minutes("17:00")
+    meeting_duration = 30  # minutes
+    
+    # Define busy intervals for each person in minutes since midnight
+    # Tyler: free all day -> no busy intervals
+    # Kelly: free all day -> no busy intervals
+    # Stephanie: 11:00-11:30, 14:30-15:00
+    stephanie_busy = [
+        (time_to_minutes("11:00"), time_to_minutes("11:30")),
+        (time_to_minutes("14:30"), time_to_minutes("15:00"))
+    ]
+    
+    # Hannah: free all day -> no busy intervals
+    
+    # Joe: 9:00-9:30, 10:00-12:00, 12:30-13:00, 14:00-17:00
+    joe_busy = [
+        (time_to_minutes("9:00"), time_to_minutes("9:30")),
+        (time_to_minutes("10:00"), time_to_minutes("12:00")),
+        (time_to_minutes("12:30"), time_to_minutes("13:00")),
+        (time_to_minutes("14:00"), time_to_minutes("17:00"))
+    ]
+    
+    # Diana: 9:00-10:30, 11:30-12:00, 13:00-14:00, 14:30-15:30, 16:00-17:00
+    diana_busy = [
+        (time_to_minutes("9:00"), time_to_minutes("10:30")),
+        (time_to_minutes("11:30"), time_to_minutes("12:00")),
+        (time_to_minutes("13:00"), time_to_minutes("14:00")),
+        (time_to_minutes("14:30"), time_to_minutes("15:30")),
+        (time_to_minutes("16:00"), time_to_minutes("17:00"))
+    ]
+    
+    # Deborah: 9:00-10:00, 10:30-12:00, 12:30-13:00, 13:30-14:00, 14:30-15:30, 16:00-16:30
+    deborah_busy = [
+        (time_to_minutes("9:00"), time_to_minutes("10:00")),
+        (time_to_minutes("10:30"), time_to_minutes("12:00")),
+        (time_to_minutes("12:30"), time_to_minutes("13:00")),
+        (time_to_minutes("13:30"), time_to_minutes("14:00")),
+        (time_to_minutes("14:30"), time_to_minutes("15:30")),
+        (time_to_minutes("16:00"), time_to_minutes("16:30"))
+    ]
+    
+    # Combine all busy intervals
+    all_busy_intervals = [
+        stephanie_busy,
+        joe_busy,
+        diana_busy,
+        deborah_busy
+    ]
+    
+    slot = find_meeting_slot(all_busy_intervals, work_start, work_end, meeting_duration)
+    
+    if slot:
+        start_time, end_time = slot
+        print(f"{day}:{minutes_to_time(start_time)}:{minutes_to_time(end_time)}")
+    else:
+        print("No suitable time slot found.")
+
+if __name__ == "__main__":
+    main()

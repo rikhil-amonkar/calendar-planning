@@ -1,0 +1,71 @@
+import json
+from datetime import datetime, timedelta
+
+# Define travel times as a dictionary of dictionaries
+travel_times = {
+    "Nob Hill": {"Embarcadero": 9, "The Castro": 17, "Haight-Ashbury": 13, "Union Square": 7, "North Beach": 8, "Pacific Heights": 8, "Chinatown": 6, "Golden Gate Park": 17, "Marina District": 11, "Russian Hill": 5},
+    "Embarcadero": {"Nob Hill": 10, "The Castro": 25, "Haight-Ashbury": 21, "Union Square": 10, "North Beach": 5, "Pacific Heights": 11, "Chinatown": 7, "Golden Gate Park": 25, "Marina District": 12, "Russian Hill": 8},
+    "The Castro": {"Nob Hill": 16, "Embarcadero": 22, "Haight-Ashbury": 6, "Union Square": 19, "North Beach": 20, "Pacific Heights": 16, "Chinatown": 22, "Golden Gate Park": 11, "Marina District": 21, "Russian Hill": 18},
+    "Haight-Ashbury": {"Nob Hill": 15, "Embarcadero": 20, "The Castro": 6, "Union Square": 19, "North Beach": 19, "Pacific Heights": 12, "Chinatown": 19, "Golden Gate Park": 7, "Marina District": 17, "Russian Hill": 17},
+    "Union Square": {"Nob Hill": 9, "Embarcadero": 11, "The Castro": 17, "Haight-Ashbury": 18, "North Beach": 10, "Pacific Heights": 15, "Chinatown": 7, "Golden Gate Park": 22, "Marina District": 18, "Russian Hill": 13},
+    "North Beach": {"Nob Hill": 7, "Embarcadero": 6, "The Castro": 23, "Haight-Ashbury": 18, "Union Square": 7, "Pacific Heights": 8, "Chinatown": 6, "Golden Gate Park": 22, "Marina District": 9, "Russian Hill": 4},
+    "Pacific Heights": {"Nob Hill": 8, "Embarcadero": 10, "The Castro": 16, "Haight-Ashbury": 11, "Union Square": 12, "North Beach": 9, "Chinatown": 11, "Golden Gate Park": 15, "Marina District": 6, "Russian Hill": 7},
+    "Chinatown": {"Nob Hill": 9, "Embarcadero": 5, "The Castro": 22, "Haight-Ashbury": 19, "Union Square": 7, "North Beach": 6, "Pacific Heights": 10, "Golden Gate Park": 23, "Marina District": 12, "Russian Hill": 7},
+    "Golden Gate Park": {"Nob Hill": 20, "Embarcadero": 25, "The Castro": 13, "Haight-Ashbury": 7, "Union Square": 22, "North Beach": 23, "Pacific Heights": 16, "Chinatown": 23, "Marina District": 16, "Russian Hill": 19},
+    "Marina District": {"Nob Hill": 12, "Embarcadero": 14, "The Castro": 22, "Haight-Ashbury": 16, "Union Square": 16, "North Beach": 11, "Pacific Heights": 7, "Chinatown": 15, "Golden Gate Park": 18, "Russian Hill": 8},
+    "Russian Hill": {"Nob Hill": 5, "Embarcadero": 8, "The Castro": 21, "Haight-Ashbury": 17, "Union Square": 10, "North Beach": 5, "Pacific Heights": 7, "Chinatown": 9, "Golden Gate Park": 21, "Marina District": 7}
+}
+
+# Define friends' availability
+friends = {
+    "Mary": {"location": "Embarcadero", "start": 20*60, "end": 21*60 + 15, "duration": 75},
+    "Kenneth": {"location": "The Castro", "start": 11*60 + 15, "end": 19*60 + 15, "duration": 30},
+    "Joseph": {"location": "Haight-Ashbury", "start": 20*60, "end": 22*60, "duration": 120},
+    "Sarah": {"location": "Union Square", "start": 11*60 + 45, "end": 14*60 + 30, "duration": 90},
+    "Thomas": {"location": "North Beach", "start": 19*60 + 15, "end": 19*60 + 45, "duration": 15},
+    "Daniel": {"location": "Pacific Heights", "start": 13*60 + 45, "end": 20*60 + 30, "duration": 15},
+    "Richard": {"location": "Chinatown", "start": 8*60, "end": 18*60 + 45, "duration": 30},
+    "Mark": {"location": "Golden Gate Park", "start": 17*60 + 30, "end": 21*60 + 30, "duration": 120},
+    "David": {"location": "Marina District", "start": 20*60, "end": 21*60, "duration": 60},
+    "Karen": {"location": "Russian Hill", "start": 13*60 + 15, "end": 18*60 + 30, "duration": 120}
+}
+
+def time_to_str(minutes):
+    return str(datetime.strptime('00:00', '%H:%M') + timedelta(minutes=minutes)).split()[1]
+
+def main():
+    current_location = "Nob Hill"
+    current_time = 9 * 60  # 9:00 AM
+    itinerary = []
+
+    # Sort friends by their earliest available time
+    sorted_friends = sorted(friends.items(), key=lambda x: x[1]['start'])
+
+    for name, details in sorted_friends:
+        loc = details['location']
+        start = details['start']
+        end = details['end']
+        req_duration = details['duration']
+
+        # Calculate travel time
+        travel_time = travel_times[current_location][loc]
+        meeting_start_time = max(current_time + travel_time, start)
+        meeting_end_time = meeting_start_time + req_duration
+
+        # Check if the meeting can be scheduled
+        if meeting_end_time <= end:
+            itinerary.append({
+                "action": "meet",
+                "location": loc,
+                "person": name,
+                "start_time": time_to_str(meeting_start_time),
+                "end_time": time_to_str(meeting_end_time)
+            })
+            current_location = loc
+            current_time = meeting_end_time
+
+    # Output the itinerary as JSON
+    print(json.dumps({"itinerary": itinerary}, indent=2))
+
+if __name__ == "__main__":
+    main()

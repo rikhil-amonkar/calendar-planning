@@ -1,0 +1,159 @@
+import json
+from itertools import permutations
+
+def solve():
+    # Define all possible values
+    names = ["Peter", "Alice", "Eric", "Arnold"]
+    mothers = ["Janelle", "Holly", "Aniya", "Kailyn"]
+    smoothies = ["watermelon", "dragonfruit", "desert", "cherry"]
+    heights = ["tall", "average", "short", "very short"]
+    educations = ["high school", "associate", "master", "bachelor"]
+    
+    houses = [1, 2, 3, 4]
+    
+    # Generate all permutations for each category
+    for name_perm in permutations(names, 4):
+        for mother_perm in permutations(mothers, 4):
+            for smoothie_perm in permutations(smoothies, 4):
+                for height_perm in permutations(heights, 4):
+                    for edu_perm in permutations(educations, 4):
+                        
+                        # Create assignment dictionaries
+                        assignment = {}
+                        for i in range(4):
+                            assignment[i] = {
+                                'house': i+1,
+                                'name': name_perm[i],
+                                'mother': mother_perm[i],
+                                'smoothie': smoothie_perm[i],
+                                'height': height_perm[i],
+                                'education': edu_perm[i]
+                            }
+                        
+                        # Check all clues
+                        # 1. Janelle is in the third house
+                        if assignment[2]['mother'] != 'Janelle':
+                            continue
+                        
+                        # 2. Desert smoothie lover has master's degree
+                        desert_house = None
+                        master_house = None
+                        for i in range(4):
+                            if assignment[i]['smoothie'] == 'desert':
+                                desert_house = i
+                            if assignment[i]['education'] == 'master':
+                                master_house = i
+                        if desert_house != master_house:
+                            continue
+                        
+                        # 3. Desert smoothie lover is not in the first house
+                        if desert_house == 0:
+                            continue
+                        
+                        # 4. Very short is somewhere to the left of high school
+                        very_short_house = None
+                        high_school_house = None
+                        for i in range(4):
+                            if assignment[i]['height'] == 'very short':
+                                very_short_house = i
+                            if assignment[i]['education'] == 'high school':
+                                high_school_house = i
+                        if very_short_house is None or high_school_house is None:
+                            continue
+                        if not (very_short_house < high_school_house):
+                            continue
+                        
+                        # 5. Eric and Cherry smoothie are next to each other
+                        eric_house = None
+                        cherry_house = None
+                        for i in range(4):
+                            if assignment[i]['name'] == 'Eric':
+                                eric_house = i
+                            if assignment[i]['smoothie'] == 'cherry':
+                                cherry_house = i
+                        if abs(eric_house - cherry_house) != 1:
+                            continue
+                        
+                        # 6. High school diploma is not in the third house
+                        if assignment[2]['education'] == 'high school':
+                            continue
+                        
+                        # 7. Kailyn has associate's degree
+                        kailyn_house = None
+                        associate_house = None
+                        for i in range(4):
+                            if assignment[i]['mother'] == 'Kailyn':
+                                kailyn_house = i
+                            if assignment[i]['education'] == 'associate':
+                                associate_house = i
+                        if kailyn_house != associate_house:
+                            continue
+                        
+                        # 8. Cherry smoothie lover's mother is Aniya
+                        if assignment[cherry_house]['mother'] != 'Aniya':
+                            continue
+                        
+                        # 9. Tall person's mother is Janelle
+                        tall_house = None
+                        for i in range(4):
+                            if assignment[i]['height'] == 'tall':
+                                tall_house = i
+                                break
+                        if assignment[tall_house]['mother'] != 'Janelle':
+                            continue
+                        
+                        # 10. Arnold is somewhere to the right of average height
+                        arnold_house = None
+                        average_house = None
+                        for i in range(4):
+                            if assignment[i]['name'] == 'Arnold':
+                                arnold_house = i
+                            if assignment[i]['height'] == 'average':
+                                average_house = i
+                        if not (arnold_house > average_house):
+                            continue
+                        
+                        # 11. Dragonfruit lover is directly left of short person
+                        dragonfruit_house = None
+                        short_house = None
+                        for i in range(4):
+                            if assignment[i]['smoothie'] == 'dragonfruit':
+                                dragonfruit_house = i
+                            if assignment[i]['height'] == 'short':
+                                short_house = i
+                        if dragonfruit_house + 1 != short_house:
+                            continue
+                        
+                        # 12. Tall person is Alice
+                        if assignment[tall_house]['name'] != 'Alice':
+                            continue
+                        
+                        # All constraints satisfied - found solution
+                        result = {
+                            "solution": {
+                                "header": ["House", "Name", "Mother", "Smoothie", "Height", "Education"],
+                                "rows": []
+                            }
+                        }
+                        
+                        for i in range(4):
+                            row = [
+                                str(assignment[i]['house']),
+                                assignment[i]['name'],
+                                assignment[i]['mother'],
+                                assignment[i]['smoothie'],
+                                assignment[i]['height'],
+                                assignment[i]['education']
+                            ]
+                            result["solution"]["rows"].append(row)
+                        
+                        return result
+    
+    return None
+
+if __name__ == "__main__":
+    solution = solve()
+    if solution:
+        print(json.dumps(solution, indent=2))
+    else:
+        print(json.dumps({"error": "No solution found"}, indent=2))

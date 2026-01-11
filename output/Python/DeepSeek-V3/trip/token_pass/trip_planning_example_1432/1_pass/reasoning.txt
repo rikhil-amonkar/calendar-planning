@@ -1,0 +1,83 @@
+Let’s break this down step-by-step before writing the code.
+
+**Step 1 – Understanding constraints**  
+We have 10 cities:  
+Frankfurt (4 days), Salzburg (5), Athens (5), Reykjavik (5), Bucharest (3), Valencia (2), Vienna (5), Amsterdam (3), Stockholm (3), Riga (3).  
+Total days = 4+5+5+5+3+2+5+3+3+3 = 38 days, but trip is only 29 days total → contradiction?  
+Wait, the problem says “plan to visit 10 European cities for 29 days in total” but then lists stays summing to 38 days. That means some stays overlap due to travel days counting for both cities? Or maybe some stays are shorter than planned? Let’s re-read.
+
+Actually, the problem says:  
+> if one flies from city A to city B on day X, then they are in both cities A and B on day X, which contributes to the total number of days in each city.
+
+So travel days count toward both cities’ totals. That means the sum of intended days in each city can exceed 29. But we must schedule them so that overlaps on travel days reduce total trip length to 29.
+
+Also, there are fixed events:  
+- Stockholm: friend visit between day 1–3 (so must be in Stockholm at least 1 day within that range)  
+- Valencia: annual show day 5–6 (must be in Valencia on day 5 or 6)  
+- Vienna: wedding between day 6–10 (must be in Vienna at least 1 day within that range)  
+- Athens: workshop between day 14–18 (must be in Athens at least 1 day within that range)  
+- Riga: conference between day 18–20 (must be in Riga at least 1 day within that range)
+
+**Step 2 – Approach**  
+We can treat this as a scheduling/sequencing problem:  
+We need to order the cities in a sequence, assign start days, ensure direct flights between consecutive cities, satisfy event date constraints, and ensure each city gets its required days (counting travel days as half in each city? Actually, the rule says: if you fly from A to B on day X, you are in both A and B on day X. So that day counts fully for both cities’ totals. So a travel day is a full day in each of the two cities. That means each travel day adds 1 to each of the two cities’ counts, but only 1 to the trip day count.
+
+So if we have N cities in sequence, we have N-1 travel days, but each travel day is double-counted in city totals. Let’s denote:  
+- Stay days = days you are only in one city (no travel)  
+- Travel days = days you are in two cities.
+
+Let S = total stay days, T = total travel days.  
+Trip length = S + T = 29.  
+Sum of city days = S + 2T = 38 (from 4+5+5+5+3+2+5+3+3+3).  
+Solve: (S + 2T) - (S + T) = 38 - 29 → T = 9 travel days. Then S = 20 stay days.
+
+So we need exactly 9 travel days in the itinerary.
+
+**Step 3 – Sequencing**  
+We have 10 cities → 9 transitions (fits T=9). So we must visit each city exactly once in sequence, with direct flights between consecutive cities, and no extra travel.
+
+We must assign start days for each city’s block:  
+For city i, duration d_i = planned days. But travel days overlap:  
+If we go A→B, last day in A is also first day in B. So the day counts for cities:  
+Example: A 3 days, B 2 days, travel day between them:  
+Schedule: Day1 A, Day2 A, Day3 A+B, Day4 B. Total trip days=4, city days: A=3, B=2.
+
+So in our sequence, for city j (1-based in sequence), its start day = previous city’s start day + (duration of previous city) - 1. Because the last day of previous city is first day of this city.
+
+Let’s formalize:  
+Let durations = [d1, d2, …, d10].  
+Let start_day[1] = 1.  
+For i=2 to 10: start_day[i] = start_day[i-1] + d_{i-1} - 1.  
+Trip length = start_day[10] + d10 - 1.
+
+We need this trip length = 29.  
+Let’s check: sum(durations) = 38, with overlaps:  
+Trip length = sum(durations) - (number of overlaps) = 38 - (10-1) = 38 - 9 = 29. Yes, works automatically if we visit each city once in sequence with overlaps on travel days.
+
+So the only constraints are:  
+1. Direct flights between consecutive cities.  
+2. Event constraints: certain cities must have their date ranges intersect specific day intervals.
+
+**Step 4 – Solving via search**  
+We can brute-force permutations of 10 cities, check direct flights between consecutive, check event constraints.
+
+Event constraints:  
+- Stockholm: must have some day in [1,3] within its stay.  
+- Valencia: must have some day in [5,6] within its stay.  
+- Vienna: must have some day in [6,10] within its stay.  
+- Athens: must have some day in [14,18] within its stay.  
+- Riga: must have some day in [18,20] within its stay.
+
+Also, each city’s stay length is fixed.
+
+We can implement a DFS to find a valid sequence.
+
+**Step 5 – Implementation plan**  
+- Represent direct flights as adjacency set.  
+- DFS to build sequence of all cities, checking adjacency.  
+- Once sequence built, compute start days and check event constraints.  
+- Output itinerary as JSON.
+
+---
+
+Here’s the Python program:

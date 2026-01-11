@@ -1,0 +1,81 @@
+Let's break this down step by step before writing the code.  
+
+We have:  
+
+**Participants:** Jacqueline, Harold, Arthur, Kelly  
+**Meeting duration:** 30 minutes  
+**Work hours:** 9:00–17:00 on Monday  
+**Constraints:**  
+- Harold does not want to meet on Monday after 13:00.  
+- Each person’s busy times are given.  
+
+---
+
+### Step 1 – Interpret busy times
+We’ll convert times to minutes from 9:00 (i.e., 9:00 = 0 minutes, 17:00 = 480 minutes).  
+
+**Jacqueline busy:**  
+- 9:00–9:30 → 0–30  
+- 11:00–11:30 → 120–150  
+- 12:30–13:00 → 210–240  
+- 15:30–16:00 → 390–420  
+
+**Harold busy:**  
+- 10:00–10:30 → 60–90  
+- 13:00–13:30 → 240–270  
+- 15:00–17:00 → 360–480  
+
+**Arthur busy:**  
+- 9:00–9:30 → 0–30  
+- 10:00–12:30 → 60–210  
+- 14:30–15:00 → 330–360  
+- 15:30–17:00 → 390–480  
+
+**Kelly busy:**  
+- 9:00–9:30 → 0–30  
+- 10:00–11:00 → 60–120  
+- 11:30–12:30 → 150–210  
+- 14:00–15:00 → 300–360  
+- 15:30–16:00 → 390–420  
+
+---
+
+### Step 2 – Harold’s extra constraint
+Harold doesn’t want to meet after 13:00.  
+13:00 = 240 minutes from 9:00.  
+So meeting must **end** by 13:00 (240).  
+Since meeting is 30 minutes, it must **start** by 13:00 – 30 = 12:30 (210).  
+
+So candidate start times: 9:00 (0) to 12:30 (210) inclusive, but must finish by 13:00.  
+
+---
+
+### Step 3 – Find free slots for all
+We check each 30-minute slot starting at HH:00 or HH:30 from 9:00 up to 12:30 start.  
+
+**9:00–9:30** → Jacqueline busy, Arthur busy, Kelly busy → ❌  
+**9:30–10:00** → All free?  
+- Jacqueline: free 9:30–11:00 except? 9:30–10:00 is free.  
+- Harold: free 9:30–10:00 (busy starts 10:00)  
+- Arthur: busy until 12:30 except? Arthur busy 10:00–12:30, but 9:30–10:00 is free (only busy 9:00–9:30 before 10:00).  
+- Kelly: free 9:30–10:00 (busy starts 10:00)  
+✅ All free 9:30–10:00.  
+
+We found a slot: **9:30–10:00**.  
+
+---
+
+### Step 4 – Check if any earlier preference needed?  
+The problem says “find a time that works for everyone’s schedule and constraints” — no “as early as possible” requirement, but usually we pick first working slot.  
+
+9:30–10:00 works, ends before 13:00, all free.  
+
+---
+
+### Step 5 – Convert back to HH:MM format  
+9:30 → 10:00 is `09:30:10:00`.  
+
+---
+
+### Step 6 – Write Python code to compute this
+We’ll write a script that finds all free slots and picks the first one that satisfies Harold’s “not after 13:00” constraint.

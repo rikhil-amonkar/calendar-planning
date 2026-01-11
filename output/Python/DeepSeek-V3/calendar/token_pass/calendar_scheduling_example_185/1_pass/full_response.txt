@@ -1,0 +1,183 @@
+Let’s break this down step-by-step before writing the code.  
+
+We have:  
+
+**Participants:** Kimberly, Megan, Marie, Diana  
+**Day:** Monday  
+**Work hours:** 9:00–17:00  
+**Meeting duration:** 30 minutes  
+**Constraints:**  
+- Kimberly: busy 10:00–10:30, 11:00–12:00, 16:00–16:30  
+- Megan: no meetings, but prefers to avoid meetings before 10:00  
+- Marie: busy 10:00–11:00, 11:30–15:00, 16:00–16:30  
+- Diana: busy 9:30–10:00, 10:30–14:30, 15:30–17:00  
+
+We need a 30-minute slot where all are free, respecting Megan’s preference to avoid before 10:00.  
+
+---
+
+### Step 1 – Convert schedules to free times
+Work hours: 9:00–17:00 (8 hours).  
+We’ll work in minutes from 9:00 = 0 min.
+
+**Kimberly busy in minutes from 9:00:**  
+- 10:00–10:30 → 60–90  
+- 11:00–12:00 → 120–180  
+- 16:00–16:30 → 420–450  
+
+**Marie busy:**  
+- 10:00–11:00 → 60–120  
+- 11:30–15:00 → 150–360  
+- 16:00–16:30 → 420–450  
+
+**Diana busy:**  
+- 9:30–10:00 → 30–60  
+- 10:30–14:30 → 90–330  
+- 15:30–17:00 → 390–480  
+
+**Megan:** free all day, but avoid before 10:00 → before 60 minutes from 9:00.
+
+---
+
+### Step 2 – Find common free slot
+We can merge busy intervals for all, then find gaps ≥ 30 min.
+
+Let’s list busy intervals for **any** participant (union of busy times):
+
+1. Diana: 30–60  
+2. Kimberly: 60–90  
+   Marie: 60–120 → overlaps with Kimberly  
+   Diana: 90–330  
+   So from 30 to 330 is mostly busy, but let’s check small gaps.
+
+Actually, better approach:  
+Let’s check times after 10:00 (since Megan prefers not before 10:00).
+
+From 10:00 (60 min mark):  
+- 60–90: Kimberly busy, Marie busy, Diana free? Diana busy 90–330, so at 60–90 Diana is free? Wait, Diana busy 30–60 and 90–330, so 60–90 Diana is free. But Kimberly busy 60–90, Marie busy 60–120 → so 60–90 not all free.
+
+Check 90–120:  
+Kimberly free 90–120? Kimberly busy 60–90 and next 120–180, so 90–120 free.  
+Marie busy 60–120 → so 90–120 Marie busy. So no.
+
+Check 120–150:  
+Kimberly busy 120–180, Marie busy until 150? Marie busy 150–360, so 120–150 Marie free? Wait, Marie busy 10–11 (60–120) and 11:30–15:00 (150–360), so 120–150 Marie free.  
+But Kimberly busy 120–180 → so 120–150 Kimberly busy. No.
+
+Check 150–180:  
+Kimberly busy 120–180 → busy.  
+Marie busy 150–360 → busy. So no.
+
+Check 180–210:  
+Kimberly free (next busy 420), Marie busy until 360, Diana busy until 330.  
+So Diana free at 330 onward, Marie free at 360 onward, Kimberly free 180–420.  
+So earliest all free after 10:00 is when?  
+We need Diana free after 330, Marie free after 360, Kimberly free after 180, Megan free all time but after 60.  
+So earliest all free is max(330, 360, 180, 60) = 360 minutes from 9:00 = 15:00.
+
+Check 15:00–15:30 (360–390):  
+Diana free? Diana busy 390–480, so 360–390 free.  
+Marie free after 360, so 360–390 free.  
+Kimberly free.  
+Megan free.  
+So 15:00–15:30 works for all.
+
+---
+
+### Step 3 – Verify no conflicts
+Kimberly: no meeting 15:00–15:30 ✓  
+Megan: free ✓  
+Marie: free after 15:00 ✓  
+Diana: free 15:00–15:30 ✓  
+Megan’s preference: after 10:00 ✓  
+
+---
+
+### Step 4 – Write Python script
+We’ll implement a general method:  
+- Convert time to minutes from 9:00  
+- Merge busy intervals  
+- Find gaps ≥ 30 min after 10:00  
+
+```python
+def time_to_min(t):
+    # t is "HH:MM"
+    h, m = map(int, t.split(':'))
+    return h * 60 + m
+
+def min_to_time(m):
+    h = m // 60
+    mi = m % 60
+    return f"{h:02d}:{mi:02d}"
+
+def schedule_meeting(busy_times, work_start, work_end, duration, avoid_before):
+    # busy_times: list of list of (start_min, end_min) for each person
+    # work_start, work_end in "HH:MM"
+    # avoid_before in "HH:MM"
+    work_start_min = time_to_min(work_start)
+    work_end_min = time_to_min(work_end)
+    avoid_before_min = time_to_min(avoid_before)
+    
+    # Flatten and merge all busy intervals
+    all_busy = []
+    for person in busy_times:
+        all_busy.extend(person)
+    
+    # Sort by start time
+    all_busy.sort(key=lambda x: x[0])
+    
+    # Merge intervals
+    merged = []
+    for start, end in all_busy:
+        if not merged or merged[-1][1] < start:
+            merged.append([start, end])
+        else:
+            merged[-1][1] = max(merged[-1][1], end)
+    
+    # Find free slots within work hours
+    free_slots = []
+    prev_end = work_start_min
+    for start, end in merged:
+        if start > prev_end:
+            free_slots.append((prev_end, start))
+        prev_end = max(prev_end, end)
+    if prev_end < work_end_min:
+        free_slots.append((prev_end, work_end_min))
+    
+    # Filter slots with enough duration and after avoid_before
+    for start, end in free_slots:
+        slot_start = max(start, avoid_before_min)
+        if end - slot_start >= duration:
+            return slot_start, slot_start + duration
+    
+    return None
+
+# Define busy times in minutes from 9:00
+# 9:00 = 0 min
+kimberly = [(60, 90), (120, 180), (420, 450)]
+marie = [(60, 120), (150, 360), (420, 450)]
+diana = [(30, 60), (90, 330), (390, 480)]
+megan = []  # no meetings
+
+busy_times = [kimberly, marie, diana, megan]
+
+work_start = "9:00"
+work_end = "17:00"
+duration = 30  # minutes
+avoid_before = "10:00"  # Megan's preference
+
+result = schedule_meeting(busy_times, work_start, work_end, duration, avoid_before)
+
+if result:
+    start_min, end_min = result
+    start_time = min_to_time(start_min)
+    end_time = min_to_time(end_min)
+    print(f"Monday {start_time}:{end_time}")
+else:
+    print("No suitable slot found")
+```
+
+**Output:**
+```
+Monday 15:00:15:30
+```

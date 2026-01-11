@@ -1,0 +1,208 @@
+import json
+from itertools import permutations
+
+def solve():
+    # Define all possible values
+    names = ["Eric", "Alice", "Peter", "Arnold"]
+    smoothies = ["dragonfruit", "cherry", "desert", "watermelon"]
+    sports = ["soccer", "tennis", "basketball", "swimming"]
+    cars = ["tesla model 3", "toyota camry", "honda civic", "ford f150"]
+    flowers = ["daffodils", "roses", "lilies", "carnations"]
+    
+    houses = [1, 2, 3, 4]
+    
+    # Generate all permutations for each category
+    name_perms = list(permutations(names, 4))
+    smoothie_perms = list(permutations(smoothies, 4))
+    sport_perms = list(permutations(sports, 4))
+    car_perms = list(permutations(cars, 4))
+    flower_perms = list(permutations(flowers, 4))
+    
+    solutions = []
+    
+    # Brute force search through all combinations
+    for name_assignment in name_perms:
+        for smoothie_assignment in smoothie_perms:
+            for sport_assignment in sport_perms:
+                for car_assignment in car_perms:
+                    for flower_assignment in flower_perms:
+                        # Build house assignments
+                        assignment = {}
+                        valid = True
+                        
+                        for i in range(4):
+                            house = i + 1
+                            assignment[house] = {
+                                'Name': name_assignment[i],
+                                'Smoothie': smoothie_assignment[i],
+                                'FavoriteSport': sport_assignment[i],
+                                'CarModel': car_assignment[i],
+                                'Flower': flower_assignment[i]
+                            }
+                        
+                        # Clue 1: Tesla Model 3 owner loves roses
+                        for house in houses:
+                            if assignment[house]['CarModel'] == 'tesla model 3':
+                                if assignment[house]['Flower'] != 'roses':
+                                    valid = False
+                                break
+                        
+                        if not valid:
+                            continue
+                        
+                        # Clue 2: Peter is the Dragonfruit smoothie lover
+                        for house in houses:
+                            if assignment[house]['Name'] == 'Peter':
+                                if assignment[house]['Smoothie'] != 'dragonfruit':
+                                    valid = False
+                                break
+                        
+                        if not valid:
+                            continue
+                        
+                        # Clue 3: Desert smoothie lover owns Toyota Camry
+                        for house in houses:
+                            if assignment[house]['Smoothie'] == 'desert':
+                                if assignment[house]['CarModel'] != 'toyota camry':
+                                    valid = False
+                                break
+                        
+                        if not valid:
+                            continue
+                        
+                        # Clue 4: Tennis lover is in house 1
+                        if assignment[1]['FavoriteSport'] != 'tennis':
+                            valid = False
+                        
+                        if not valid:
+                            continue
+                        
+                        # Clue 5: Toyota Camry owner and basketball lover are next to each other
+                        camry_house = None
+                        basketball_house = None
+                        for house in houses:
+                            if assignment[house]['CarModel'] == 'toyota camry':
+                                camry_house = house
+                            if assignment[house]['FavoriteSport'] == 'basketball':
+                                basketball_house = house
+                        
+                        if abs(camry_house - basketball_house) != 1:
+                            valid = False
+                        
+                        if not valid:
+                            continue
+                        
+                        # Clue 6: Arnold loves basketball
+                        for house in houses:
+                            if assignment[house]['Name'] == 'Arnold':
+                                if assignment[house]['FavoriteSport'] != 'basketball':
+                                    valid = False
+                                break
+                        
+                        if not valid:
+                            continue
+                        
+                        # Clue 7: Honda Civic owner loves daffodils
+                        for house in houses:
+                            if assignment[house]['CarModel'] == 'honda civic':
+                                if assignment[house]['Flower'] != 'daffodils':
+                                    valid = False
+                                break
+                        
+                        if not valid:
+                            continue
+                        
+                        # Clue 8: Eric loves roses
+                        for house in houses:
+                            if assignment[house]['Name'] == 'Eric':
+                                if assignment[house]['Flower'] != 'roses':
+                                    valid = False
+                                break
+                        
+                        if not valid:
+                            continue
+                        
+                        # Clue 9: Watermelon smoothie lover is not in house 1
+                        if assignment[1]['Smoothie'] == 'watermelon':
+                            valid = False
+                        
+                        if not valid:
+                            continue
+                        
+                        # Clue 10: Honda Civic owner is to the right of Desert smoothie lover
+                        honda_house = None
+                        desert_house = None
+                        for house in houses:
+                            if assignment[house]['CarModel'] == 'honda civic':
+                                honda_house = house
+                            if assignment[house]['Smoothie'] == 'desert':
+                                desert_house = house
+                        
+                        if honda_house <= desert_house:
+                            valid = False
+                        
+                        if not valid:
+                            continue
+                        
+                        # Clue 11: Basketball lover loves lilies
+                        for house in houses:
+                            if assignment[house]['FavoriteSport'] == 'basketball':
+                                if assignment[house]['Flower'] != 'lilies':
+                                    valid = False
+                                break
+                        
+                        if not valid:
+                            continue
+                        
+                        # Clue 12: Tennis and soccer lovers are next to each other
+                        tennis_house = None
+                        soccer_house = None
+                        for house in houses:
+                            if assignment[house]['FavoriteSport'] == 'tennis':
+                                tennis_house = house
+                            if assignment[house]['FavoriteSport'] == 'soccer':
+                                soccer_house = house
+                        
+                        if abs(tennis_house - soccer_house) != 1:
+                            valid = False
+                        
+                        if not valid:
+                            continue
+                        
+                        # All clues satisfied, add to solutions
+                        solutions.append(assignment)
+    
+    if not solutions:
+        return None
+    
+    # Take the first solution (should be unique)
+    solution = solutions[0]
+    
+    # Format output
+    rows = []
+    for house in houses:
+        row = [
+            str(house),
+            solution[house]['Name'],
+            solution[house]['Smoothie'],
+            solution[house]['FavoriteSport'],
+            solution[house]['CarModel'],
+            solution[house]['Flower']
+        ]
+        rows.append(row)
+    
+    result = {
+        "solution": {
+            "header": ["House", "Name", "Smoothie", "FavoriteSport", "CarModel", "Flower"],
+            "rows": rows
+        }
+    }
+    
+    return result
+
+if __name__ == "__main__":
+    solution = solve()
+    if solution:
+        print(json.dumps(solution, indent=2))
+    else:
+        print(json.dumps({"error": "No solution found"}, indent=2))

@@ -1,0 +1,60 @@
+Let’s break this down step by step before writing the code.
+
+**Step 1 – Understanding the problem**  
+We start at Embarcadero at 9:00.  
+We have two friends:  
+- Stephanie: Financial District, available 8:15–11:30, needs 90 minutes with us.  
+- John: Alamo Square, available 10:15–20:45, needs 30 minutes with us.  
+
+Travel times are given in minutes between locations.
+
+**Step 2 – Constraints**  
+We can meet Stephanie only between 9:00 (when we arrive) and 11:30 (her end time), but we must account for travel from Embarcadero to Financial District (5 minutes).  
+So earliest we can start with Stephanie is 9:05 if we go directly there.  
+
+We can meet John only between 10:15 and 20:45, but we must travel to Alamo Square from wherever we are.
+
+**Step 3 – Possible schedules**  
+We want to meet *as many friends as possible* — here that’s both if possible.  
+We need to check if we can meet Stephanie for 90 minutes and still meet John for 30 minutes within his window, given travel times.
+
+Let’s test the two possible orders:
+
+**Order 1: Stephanie first, then John**  
+- Start at Embarcadero 9:00 → travel 5 min → Financial District at 9:05.  
+- Meet Stephanie 9:05–10:35 (90 minutes).  
+- Travel to Alamo Square: Financial District to Alamo Square = 17 minutes.  
+- Arrive Alamo Square at 10:35 + 17 min = 10:52.  
+- John available from 10:15, so 10:52 is fine.  
+- Meet John 10:52–11:22 (30 minutes).  
+- Done. Both met.
+
+**Order 2: John first, then Stephanie**  
+- Start at Embarcadero 9:00 → travel to Alamo Square = 19 minutes → arrive 9:19.  
+- John available at 10:15, so earliest we can meet John is 10:15.  
+- Wait from 9:19 to 10:15 (56 minutes idle).  
+- Meet John 10:15–10:45 (30 minutes).  
+- Travel to Financial District: Alamo Square to Financial District = 17 minutes → arrive 11:02.  
+- Stephanie available until 11:30, so from 11:02 to 11:30 is only 28 minutes, not enough for 90 minutes.  
+So impossible to meet Stephanie for 90 minutes if we meet John first.
+
+Thus only the first order works.
+
+**Step 4 – Verify travel times match given matrix**  
+We used:  
+Embarcadero → Financial District: 5  
+Financial District → Alamo Square: 17  
+That matches the table.
+
+**Step 5 – Build the schedule**  
+- 9:00–9:05: travel Embarcadero → Financial District  
+- 9:05–10:35: meet Stephanie  
+- 10:35–10:52: travel Financial District → Alamo Square  
+- 10:52–11:22: meet John  
+
+**Step 6 – Write the program**  
+We’ll encode the travel matrix, availability windows, and brute-force check possible start times for each meeting to confirm the optimal, but since we already reasoned, we can encode the logic to compute it.
+
+We’ll make the program general enough to handle changes in inputs.
+
+---

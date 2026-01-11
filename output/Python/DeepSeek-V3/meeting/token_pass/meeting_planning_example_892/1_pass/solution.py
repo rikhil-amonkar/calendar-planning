@@ -1,0 +1,183 @@
+import json
+from itertools import permutations
+
+def time_to_min(tstr):
+    """Convert 'H:MMAM/PM' to minutes since midnight."""
+    tstr = tstr.strip().upper()
+    if 'AM' in tstr:
+        hour_min = tstr.replace('AM', '').strip()
+        h, m = map(int, hour_min.split(':'))
+        if h == 12:
+            h = 0
+        return h * 60 + m
+    elif 'PM' in tstr:
+        hour_min = tstr.replace('PM', '').strip()
+        h, m = map(int, hour_min.split(':'))
+        if h != 12:
+            h += 12
+        return h * 60 + m
+    else:
+        # assume 24-hour format given in constraints
+        h, m = map(int, tstr.split(':'))
+        return h * 60 + m
+
+def min_to_time(m):
+    """Convert minutes since midnight to 'H:MM' 24-hour format."""
+    h = m // 60
+    mm = m % 60
+    return f"{h}:{mm:02d}"
+
+# Travel times dictionary
+travel = {
+    ('Marina District', 'Bayview'): 27,
+    ('Marina District', 'Sunset District'): 19,
+    ('Marina District', 'Richmond District'): 11,
+    ('Marina District', 'Nob Hill'): 12,
+    ('Marina District', 'Chinatown'): 15,
+    ('Marina District', 'Haight-Ashbury'): 16,
+    ('Marina District', 'North Beach'): 11,
+    ('Marina District', 'Russian Hill'): 8,
+    ('Marina District', 'Embarcadero'): 14,
+    ('Bayview', 'Marina District'): 27,
+    ('Bayview', 'Sunset District'): 23,
+    ('Bayview', 'Richmond District'): 25,
+    ('Bayview', 'Nob Hill'): 20,
+    ('Bayview', 'Chinatown'): 19,
+    ('Bayview', 'Haight-Ashbury'): 19,
+    ('Bayview', 'North Beach'): 22,
+    ('Bayview', 'Russian Hill'): 23,
+    ('Bayview', 'Embarcadero'): 19,
+    ('Sunset District', 'Marina District'): 21,
+    ('Sunset District', 'Bayview'): 22,
+    ('Sunset District', 'Richmond District'): 12,
+    ('Sunset District', 'Nob Hill'): 27,
+    ('Sunset District', 'Chinatown'): 30,
+    ('Sunset District', 'Haight-Ashbury'): 15,
+    ('Sunset District', 'North Beach'): 28,
+    ('Sunset District', 'Russian Hill'): 24,
+    ('Sunset District', 'Embarcadero'): 30,
+    ('Richmond District', 'Marina District'): 9,
+    ('Richmond District', 'Bayview'): 27,
+    ('Richmond District', 'Sunset District'): 11,
+    ('Richmond District', 'Nob Hill'): 17,
+    ('Richmond District', 'Chinatown'): 20,
+    ('Richmond District', 'Haight-Ashbury'): 10,
+    ('Richmond District', 'North Beach'): 17,
+    ('Richmond District', 'Russian Hill'): 13,
+    ('Richmond District', 'Embarcadero'): 19,
+    ('Nob Hill', 'Marina District'): 11,
+    ('Nob Hill', 'Bayview'): 19,
+    ('Nob Hill', 'Sunset District'): 24,
+    ('Nob Hill', 'Richmond District'): 14,
+    ('Nob Hill', 'Chinatown'): 6,
+    ('Nob Hill', 'Haight-Ashbury'): 13,
+    ('Nob Hill', 'North Beach'): 8,
+    ('Nob Hill', 'Russian Hill'): 5,
+    ('Nob Hill', 'Embarcadero'): 9,
+    ('Chinatown', 'Marina District'): 12,
+    ('Chinatown', 'Bayview'): 20,
+    ('Chinatown', 'Sunset District'): 29,
+    ('Chinatown', 'Richmond District'): 20,
+    ('Chinatown', 'Nob Hill'): 9,
+    ('Chinatown', 'Haight-Ashbury'): 19,
+    ('Chinatown', 'North Beach'): 3,
+    ('Chinatown', 'Russian Hill'): 7,
+    ('Chinatown', 'Embarcadero'): 5,
+    ('Haight-Ashbury', 'Marina District'): 17,
+    ('Haight-Ashbury', 'Bayview'): 18,
+    ('Haight-Ashbury', 'Sunset District'): 15,
+    ('Haight-Ashbury', 'Richmond District'): 10,
+    ('Haight-Ashbury', 'Nob Hill'): 15,
+    ('Haight-Ashbury', 'Chinatown'): 19,
+    ('Haight-Ashbury', 'North Beach'): 19,
+    ('Haight-Ashbury', 'Russian Hill'): 17,
+    ('Haight-Ashbury', 'Embarcadero'): 20,
+    ('North Beach', 'Marina District'): 9,
+    ('North Beach', 'Bayview'): 25,
+    ('North Beach', 'Sunset District'): 27,
+    ('North Beach', 'Richmond District'): 18,
+    ('North Beach', 'Nob Hill'): 7,
+    ('North Beach', 'Chinatown'): 6,
+    ('North Beach', 'Haight-Ashbury'): 18,
+    ('North Beach', 'Russian Hill'): 4,
+    ('North Beach', 'Embarcadero'): 6,
+    ('Russian Hill', 'Marina District'): 7,
+    ('Russian Hill', 'Bayview'): 23,
+    ('Russian Hill', 'Sunset District'): 23,
+    ('Russian Hill', 'Richmond District'): 14,
+    ('Russian Hill', 'Nob Hill'): 5,
+    ('Russian Hill', 'Chinatown'): 9,
+    ('Russian Hill', 'Haight-Ashbury'): 17,
+    ('Russian Hill', 'North Beach'): 5,
+    ('Russian Hill', 'Embarcadero'): 8,
+    ('Embarcadero', 'Marina District'): 12,
+    ('Embarcadero', 'Bayview'): 21,
+    ('Embarcadero', 'Sunset District'): 30,
+    ('Embarcadero', 'Richmond District'): 21,
+    ('Embarcadero', 'Nob Hill'): 10,
+    ('Embarcadero', 'Chinatown'): 7,
+    ('Embarcadero', 'Haight-Ashbury'): 21,
+    ('Embarcadero', 'North Beach'): 5,
+    ('Embarcadero', 'Russian Hill'): 8,
+}
+
+# Friend data: name, location, window_start, window_end, min_duration (minutes)
+friends = [
+    ("Charles", "Bayview", time_to_min("11:30AM"), time_to_min("2:30PM"), 45),
+    ("Robert", "Sunset District", time_to_min("4:45PM"), time_to_min("9:00PM"), 30),
+    ("Karen", "Richmond District", time_to_min("7:15PM"), time_to_min("9:30PM"), 60),
+    ("Rebecca", "Nob Hill", time_to_min("4:15PM"), time_to_min("8:30PM"), 90),
+    ("Margaret", "Chinatown", time_to_min("2:15PM"), time_to_min("7:45PM"), 120),
+    ("Patricia", "Haight-Ashbury", time_to_min("2:30PM"), time_to_min("8:30PM"), 45),
+    ("Mark", "North Beach", time_to_min("2:00PM"), time_to_min("6:30PM"), 105),
+    ("Melissa", "Russian Hill", time_to_min("1:00PM"), time_to_min("7:45PM"), 30),
+    ("Laura", "Embarcadero", time_to_min("7:45AM"), time_to_min("1:15PM"), 105),
+]
+
+# We'll brute-force over permutations of all subsets? Too big. Instead, greedy/backtracking.
+# Let's do DFS with pruning.
+
+best_schedule = []
+best_count = 0
+
+def dfs(current_loc, current_time, met, schedule):
+    global best_schedule, best_count
+    # Try to add any unvisited friend
+    improved = False
+    for i, (name, loc, start_win, end_win, dur) in enumerate(friends):
+        if i in met:
+            continue
+        travel_time = travel[(current_loc, loc)]
+        arrival = current_time + travel_time
+        start_meeting = max(arrival, start_win)
+        if start_meeting + dur <= end_win:
+            # Can meet
+            new_met = met + [i]
+            new_schedule = schedule + [(name, loc, start_meeting, start_meeting + dur)]
+            dfs(loc, start_meeting + dur, new_met, new_schedule)
+            improved = True
+    if not improved:
+        # No more friends can be added
+        if len(met) > best_count:
+            best_count = len(met)
+            best_schedule = schedule[:]
+
+# Start DFS
+start_loc = "Marina District"
+start_time = time_to_min("9:00AM")
+dfs(start_loc, start_time, [], [])
+
+# Convert best_schedule to itinerary
+itinerary = []
+for name, loc, start_m, end_m in best_schedule:
+    itinerary.append({
+        "action": "meet",
+        "location": loc,
+        "person": name,
+        "start_time": min_to_time(start_m),
+        "end_time": min_to_time(end_m)
+    })
+
+# Output as JSON
+result = {"itinerary": itinerary}
+print(json.dumps(result, indent=2))

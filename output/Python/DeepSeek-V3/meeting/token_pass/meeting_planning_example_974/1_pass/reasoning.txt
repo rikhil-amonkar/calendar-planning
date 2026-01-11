@@ -1,0 +1,14 @@
+I’ll write a program that treats this as a constraint satisfaction and optimization problem.  
+We’ll model it as a search over possible meeting orders, respecting time windows, travel times, and minimum meeting durations.
+
+**Approach:**
+1. Represent all locations, travel times, and friend constraints.
+2. Start at Sunset District at 9:00.
+3. Try sequences of meetings (permutations) that fit time windows and travel.
+4. For each sequence, schedule meetings greedily: arrive as early as possible, meet for the minimum duration (or until their window ends if we can’t stay the full minimum), then travel to next.
+5. Track total number of friends met and total meeting minutes as optimization criteria.
+6. Choose the best schedule.
+
+We’ll use `itertools.permutations` for small subsets (since meeting all 10 may be impossible, we’ll try subsets of up to all friends).
+
+Let’s code.

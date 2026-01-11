@@ -1,0 +1,27 @@
+{
+    "has_execution_error": true,
+    "has_no_plan": false,
+    "execution_output": "Traceback (most recent call last):\n  File \"/home/nvidia/projects/llm-csp/source/generated_code_calendar_2026-01-10 03:58:22.py\", line 98, in <module>\n    main()\n    ~~~~^^\n  File \"/home/nvidia/projects/llm-csp/source/generated_code_calendar_2026-01-10 03:58:22.py\", line 82, in main\n    robert_busy = parse_schedule(robert_schedule, day)\n  File \"/home/nvidia/projects/llm-csp/source/generated_code_calendar_2026-01-10 03:58:22.py\", line 30, in parse_schedule\n    end_min = time_to_minutes(end_str)\n  File \"/home/nvidia/projects/llm-csp/source/generated_code_calendar_2026-01-10 03:58:22.py\", line 5, in time_to_minutes\n    h, m = map(int, t.split(':'))\n    ^^^^\nValueError: invalid literal for int() with base 10: '00,\\n    Tuesday '",
+    "pred": null,
+    "gold": {
+        "day": "Tuesday",
+        "time_range": "{9:30:10:00}"
+    },
+    "status": "Error",
+    "violated_constraint": {
+        "missing_fields": true
+    },
+    "is_exact_match": false,
+    "constraints_satisfied": false,
+    "pass_number": 1,
+    "timing": {
+        "api_call_time": 42.07228922843933,
+        "execution_time": 0.029195308685302734,
+        "constraint_eval_time": 1.1920928955078125e-06,
+        "pred_extract_time": 1.1920928955078125e-06,
+        "gold_extract_time": 1.5020370483398438e-05,
+        "total_tokens": 2310,
+        "reasoning_tokens": 295
+    },
+    "reasoning_content": "Let\u2019s break this down step by step before writing the code.\n\n**Step 1 \u2013 Understanding constraints**  \n- Meeting duration: 30 minutes (0.5 hours)  \n- Work hours: 9:00\u201317:00 each day  \n- Days considered: Monday, Tuesday, Wednesday  \n- Robert\u2019s preference: avoid more meetings on Monday if possible  \n- Goal: earliest availability  \n\n**Step 2 \u2013 Represent busy times**  \nWe\u2019ll convert times to minutes from 9:00 (so 9:00 = 0, 17:00 = 480).  \nEach day is independent.\n\n**Step 3 \u2013 Find free slots**  \nWe\u2019ll find free intervals within work hours for each person on each day, then intersect them, then pick earliest slot (preferring Tuesday over Monday if possible due to Robert\u2019s preference).\n\n**Step 4 \u2013 Implementation plan**  \n1. Parse busy times into (start_minute, end_minute) for each person per day.  \n2. Compute free slots for each person per day within 9:00\u201317:00.  \n3. Intersect free slots between Robert and Ralph per day.  \n4. Filter for slots of at least 30 minutes.  \n5. Sort days: Tuesday, Wednesday, Monday (because Robert prefers not Monday, so Monday last in priority for earliest availability).  \n6. Pick earliest slot in that day order.\n\n---\n\nHere\u2019s the Python script:"
+}

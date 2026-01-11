@@ -1,0 +1,115 @@
+import json
+from itertools import permutations
+
+def solve_puzzle():
+    # Define all possible values
+    names = ["Arnold", "Eric", "Peter", "Alice", "Carol", "Bob"]
+    genres = ["jazz", "pop", "classical", "rock", "hip hop", "country"]
+    houses = [1, 2, 3, 4, 5, 6]
+    
+    # Generate all possible permutations of names and genres across 6 houses
+    for name_perm in permutations(names, 6):
+        for genre_perm in permutations(genres, 6):
+            # Create mappings
+            name_at = {house: name_perm[house-1] for house in houses}
+            genre_at = {house: genre_perm[house-1] for house in houses}
+            
+            # Clue 3: Carol is in the sixth house
+            if name_at[6] != "Carol":
+                continue
+            
+            # Clue 5: The person who loves country music is Carol
+            if genre_at[6] != "country":
+                continue
+            
+            # Clue 9: The person who loves hip-hop music is in the third house
+            if genre_at[3] != "hip hop":
+                continue
+            
+            # Clue 8: The person who loves pop music is Peter
+            # Find Peter's house
+            peter_house = None
+            for house in houses:
+                if name_at[house] == "Peter":
+                    peter_house = house
+                    break
+            if peter_house is None:
+                continue
+            if genre_at[peter_house] != "pop":
+                continue
+            
+            # Clue 1: Bob is directly left of the person who loves jazz music
+            bob_house = None
+            jazz_house = None
+            for house in houses:
+                if name_at[house] == "Bob":
+                    bob_house = house
+                if genre_at[house] == "jazz":
+                    jazz_house = house
+            if bob_house is None or jazz_house is None:
+                continue
+            if jazz_house != bob_house + 1:
+                continue
+            
+            # Clue 2: Eric is somewhere to the left of the person who loves hip-hop music
+            eric_house = None
+            for house in houses:
+                if name_at[house] == "Eric":
+                    eric_house = house
+                    break
+            if eric_house is None:
+                continue
+            if eric_house >= 3:  # hip-hop is at house 3
+                continue
+            
+            # Clue 4: Eric and the person who loves hip-hop music are next to each other
+            if abs(eric_house - 3) != 1:
+                continue
+            
+            # Clue 6: Arnold is not in the fifth house
+            arnold_house = None
+            for house in houses:
+                if name_at[house] == "Arnold":
+                    arnold_house = house
+                    break
+            if arnold_house is None:
+                continue
+            if arnold_house == 5:
+                continue
+            
+            # Clue 7: Arnold is somewhere to the right of the person who loves pop music
+            if arnold_house <= peter_house:
+                continue
+            
+            # Clue 10: There is one house between Peter and Bob
+            if abs(peter_house - bob_house) != 2:
+                continue
+            
+            # Clue 11: The person who loves rock music is not in the fifth house
+            rock_house = None
+            for house in houses:
+                if genre_at[house] == "rock":
+                    rock_house = house
+                    break
+            if rock_house is None:
+                continue
+            if rock_house == 5:
+                continue
+            
+            # All constraints satisfied - build solution
+            rows = []
+            for house in houses:
+                rows.append([str(house), name_at[house], genre_at[house]])
+            
+            return {
+                "solution": {
+                    "header": ["House", "Name", "MusicGenre"],
+                    "rows": rows
+                }
+            }
+    
+    return {"solution": {"header": ["House", "Name", "MusicGenre"], "rows": []}}
+
+if __name__ == "__main__":
+    result = solve_puzzle()
+    print(json.dumps(result, indent=2))

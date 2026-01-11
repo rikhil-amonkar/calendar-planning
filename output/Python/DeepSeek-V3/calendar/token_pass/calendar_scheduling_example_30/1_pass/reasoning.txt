@@ -1,0 +1,68 @@
+Let's break this down step by step.  
+
+We need to find a **30-minute slot** between **9:00 and 17:00** on **Monday** that works for Jeffrey, Virginia, and Melissa, given their busy times and Melissa’s preference to not meet after 14:00 if possible.  
+
+---
+
+### Step 1 – Understanding busy times in minutes from 9:00
+- Work hours: 9:00–17:00 → 0 to 480 minutes (where 0 = 9:00, 480 = 17:00).
+- Meeting duration: 30 minutes.
+
+**Jeffrey’s busy times (Monday):**
+1. 9:30–10:00 → 30–60 minutes
+2. 10:30–11:00 → 90–120 minutes
+
+**Virginia’s busy times (Monday):**
+1. 9:00–9:30 → 0–30 minutes
+2. 10:00–10:30 → 60–90 minutes
+3. 14:30–15:00 → 330–360 minutes
+4. 16:00–16:30 → 420–450 minutes
+
+**Melissa’s busy times (Monday):**
+1. 9:00–11:30 → 0–150 minutes
+2. 12:00–12:30 → 180–210 minutes
+3. 13:00–15:00 → 240–360 minutes
+4. 16:00–17:00 → 420–480 minutes
+
+Melissa prefers not after 14:00 (i.e., after 300 minutes from 9:00).
+
+---
+
+### Step 2 – Combine busy times for all
+We can find free slots by checking each 30-minute window starting at minute `t` where all three are free.
+
+Let’s check possible start times from 0 to 450 (since 450+30=480 is the last possible start).
+
+**Check early slots before 300 minutes (14:00):**
+
+- 11:30–12:00 (150–180):  
+  Jeffrey free? 150–180 not in [30–60, 90–120] → yes.  
+  Virginia free? 150–180 not in [0–30, 60–90, 330–360, 420–450] → yes.  
+  Melissa free? 150–180 not in [0–150, 180–210, 240–360, 420–480] → yes (150–180 is free between her 11:30 end and 12:00 start).  
+  ✅ Works for all, and before 14:00.
+
+So **11:30–12:00** is a valid slot.
+
+---
+
+### Step 3 – Check if there’s an earlier slot
+We should find the earliest possible slot that works.
+
+Check from 9:00 onward:
+
+- 9:00–9:30 (0–30): Virginia busy.
+- 9:30–10:00 (30–60): Jeffrey busy.
+- 10:00–10:30 (60–90): Virginia busy.
+- 10:30–11:00 (90–120): Jeffrey busy.
+- 11:00–11:30 (120–150): Melissa busy until 11:30.
+- 11:30–12:00 (150–180): All free → earliest.
+
+---
+
+### Step 4 – Verify no earlier than 11:30
+Yes, 11:30–12:00 is the earliest.
+
+---
+
+### Step 5 – Write Python code to compute this
+We’ll represent schedules as lists of (start_minute, end_minute) intervals, merge them, find gaps of at least 30 minutes, and pick the first before 14:00 if possible.

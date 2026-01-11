@@ -1,0 +1,156 @@
+import json
+from itertools import permutations
+
+def solve_itinerary():
+    # Cities and required days
+    cities = {
+        "Mykonos": 3,
+        "Reykjavik": 2,
+        "Dublin": 5,
+        "London": 5,
+        "Helsinki": 4,
+        "Hamburg": 2
+    }
+    
+    # Direct flights as undirected edges
+    direct_flights = [
+        ("Dublin", "London"),
+        ("Hamburg", "Dublin"),
+        ("Helsinki", "Reykjavik"),
+        ("Hamburg", "London"),
+        ("Dublin", "Helsinki"),
+        ("Reykjavik", "London"),
+        ("London", "Mykonos"),
+        ("Dublin", "Reykjavik"),
+        ("Hamburg", "Helsinki"),
+        ("Helsinki", "London")
+    ]
+    
+    # Convert to adjacency list for easier lookup
+    adjacency = {city: set() for city in cities}
+    for a, b in direct_flights:
+        adjacency[a].add(b)
+        adjacency[b].add(a)
+    
+    # Hard constraints
+    # 1. Wedding in Reykjavik between day 9 and day 10
+    #    Means Reykjavik must include day 9 or day 10 (or both)
+    # 2. Dublin show from day 2 to day 6 (inclusive)
+    #    Means Dublin must include days 2,3,4,5,6 (5 days total)
+    # 3. Meet friends in Hamburg between day 1 and day 2
+    #    Means Hamburg must include day 1 or day 2 (or both)
+    
+    total_days = 16
+    all_cities = list(cities.keys())
+    
+    # Generate all possible permutations of city visit order
+    best_itinerary = None
+    best_score = float('inf')  # lower is better
+    
+    for perm in permutations(all_cities):
+        # Check if direct flights exist between consecutive cities
+        valid_route = True
+        for i in range(len(perm) - 1):
+            if perm[i+1] not in adjacency[perm[i]]:
+                valid_route = False
+                break
+        if not valid_route:
+            continue
+        
+        # Try to allocate days to this route
+        # We need to distribute the required days across the cities in order
+        # This is essentially a partitioning problem
+        
+        # Generate all possible ways to split the 16 days into len(perm) segments
+        # Each segment must be at least 1 day (since we visit each city)
+        # And the segment for city i must be exactly cities[city] days
+        
+        # We'll use recursion to find valid allocations
+        def allocate_days(idx, remaining_days, current_allocation):
+            if idx == len(perm):
+                if remaining_days == 0:
+                    return [current_allocation.copy()]
+                return []
+            
+            city = perm[idx]
+            required = cities[city]
+            
+            # The city must get exactly required days
+            if required > remaining_days:
+                return []
+            
+            # Try to allocate required days to this city
+            current_allocation.append((city, required))
+            results = allocate_days(idx + 1, remaining_days - required, current_allocation)
+            current_allocation.pop()
+            
+            return results
+        
+        allocations = allocate_days(0, total_days, [])
+        
+        for allocation in allocations:
+            # Build day-by-day itinerary
+            day_assignments = []
+            current_day = 1
+            for city, days in allocation:
+                day_assignments.extend([city] * days)
+                current_day += days
+            
+            # Check hard constraints
+            # 1. Reykjavik wedding between day 9 and 10
+            reykjavik_days = [i+1 for i, city in enumerate(day_assignments) if city == "Reykjavik"]
+            wedding_ok = any(day in [9, 10] for day in reykjavik_days)
+            if not wedding_ok:
+                continue
+            
+            # 2. Dublin show from day 2 to day 6
+            dublin_days = [i+1 for i, city in enumerate(day_assignments) if city == "Dublin"]
+            show_ok = all(day in dublin_days for day in [2, 3, 4, 5, 6])
+            if not show_ok:
+                continue
+            
+            # 3. Hamburg friends between day 1 and 2
+            hamburg_days = [i+1 for i, city in enumerate(day_assignments) if city == "Hamburg"]
+            friends_ok = any(day in [1, 2] for day in hamburg_days)
+            if not friends_ok:
+                continue
+            
+            # All constraints satisfied
+            # Calculate score (prefer earlier Dublin and Hamburg for constraints)
+            score = 0
+            # Penalize if Dublin doesn't start exactly on day 2
+            if dublin_days and dublin_days[0] != 2:
+                score += abs(dublin_days[0] - 2)
+            # Penalize if Hamburg doesn't include day 1 or 2 optimally
+            if hamburg_days:
+                if 1 not in hamburg_days and 2 not in hamburg_days:
+                    score += 10
+                elif 1 not in hamburg_days:
+                    score += 1
+            
+            if score < best_score:
+                best_score = score
+                # Convert to itinerary format
+                itinerary = []
+                current_day = 1
+                for city, days in allocation:
+                    if days == 1:
+                        day_range = f"Day {current_day}"
+                    else:
+                        day_range = f"Day {current_day}-{current_day + days - 1}"
+                    itinerary.append({"day_range": day_range, "place": city})
+                    current_day += days
+                best_itinerary = itinerary
+    
+    return best_itinerary
+
+def main():
+    itinerary = solve_itinerary()
+    
+    if itinerary is None:
+        print(json.dumps({"error": "No valid itinerary found"}))
+    else:
+        print(json.dumps({"itinerary": itinerary}, indent=2))
+
+if __name__ == "__main__":
+    main()

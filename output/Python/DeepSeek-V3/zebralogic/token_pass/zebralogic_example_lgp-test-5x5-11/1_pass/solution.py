@@ -1,0 +1,195 @@
+import json
+from itertools import permutations
+
+def solve():
+    # Define all possible values for each category
+    names = ["Peter", "Arnold", "Eric", "Bob", "Alice"]
+    heights = ["average", "very tall", "very short", "short", "tall"]
+    cigars = ["prince", "dunhill", "blends", "pall mall", "blue master"]
+    smoothies = ["lime", "cherry", "dragonfruit", "watermelon", "desert"]
+    phones = ["oneplus 9", "samsung galaxy s21", "iphone 13", "huawei p50", "google pixel 6"]
+    
+    houses = [1, 2, 3, 4, 5]
+    
+    # Generate all permutations for each category
+    for name_perm in permutations(names, 5):
+        for height_perm in permutations(heights, 5):
+            for cigar_perm in permutations(cigars, 5):
+                for smoothie_perm in permutations(smoothies, 5):
+                    for phone_perm in permutations(phones, 5):
+                        # Create mapping of house -> attributes
+                        assignment = {}
+                        for i in range(5):
+                            assignment[i+1] = {
+                                'name': name_perm[i],
+                                'height': height_perm[i],
+                                'cigar': cigar_perm[i],
+                                'smoothie': smoothie_perm[i],
+                                'phone': phone_perm[i]
+                            }
+                        
+                        # Check all clues
+                        # 1. The Prince smoker is the Desert smoothie lover.
+                        prince_house = None
+                        desert_house = None
+                        for h in houses:
+                            if assignment[h]['cigar'] == 'prince':
+                                prince_house = h
+                            if assignment[h]['smoothie'] == 'desert':
+                                desert_house = h
+                        if prince_house != desert_house:
+                            continue
+                        
+                        # 2. There is one house between Eric and Alice.
+                        eric_house = None
+                        alice_house = None
+                        for h in houses:
+                            if assignment[h]['name'] == 'Eric':
+                                eric_house = h
+                            if assignment[h]['name'] == 'Alice':
+                                alice_house = h
+                        if abs(eric_house - alice_house) != 2:
+                            continue
+                        
+                        # 3. The person who is short is the person who smokes many unique blends.
+                        # (Assuming "smokes many unique blends" means 'blends' cigar)
+                        short_house = None
+                        blends_house = None
+                        for h in houses:
+                            if assignment[h]['height'] == 'short':
+                                short_house = h
+                            if assignment[h]['cigar'] == 'blends':
+                                blends_house = h
+                        if short_house != blends_house:
+                            continue
+                        
+                        # 4. The person who uses an iPhone 13 is directly left of the person who smokes Blue Master.
+                        iphone_house = None
+                        bluemaster_house = None
+                        for h in houses:
+                            if assignment[h]['phone'] == 'iphone 13':
+                                iphone_house = h
+                            if assignment[h]['cigar'] == 'blue master':
+                                bluemaster_house = h
+                        if iphone_house + 1 != bluemaster_house:
+                            continue
+                        
+                        # 5. The person who has an average height is the Dunhill smoker.
+                        average_house = None
+                        dunhill_house = None
+                        for h in houses:
+                            if assignment[h]['height'] == 'average':
+                                average_house = h
+                            if assignment[h]['cigar'] == 'dunhill':
+                                dunhill_house = h
+                        if average_house != dunhill_house:
+                            continue
+                        
+                        # 6. Eric is the person who is very tall.
+                        if assignment[eric_house]['height'] != 'very tall':
+                            continue
+                        
+                        # 7. Arnold is directly left of the person who uses a Huawei P50.
+                        arnold_house = None
+                        huawei_house = None
+                        for h in houses:
+                            if assignment[h]['name'] == 'Arnold':
+                                arnold_house = h
+                            if assignment[h]['phone'] == 'huawei p50':
+                                huawei_house = h
+                        if arnold_house + 1 != huawei_house:
+                            continue
+                        
+                        # 8. Bob is not in the fourth house.
+                        bob_house = None
+                        for h in houses:
+                            if assignment[h]['name'] == 'Bob':
+                                bob_house = h
+                        if bob_house == 4:
+                            continue
+                        
+                        # 9. Eric is directly left of the person who likes Cherry smoothies.
+                        cherry_house = None
+                        for h in houses:
+                            if assignment[h]['smoothie'] == 'cherry':
+                                cherry_house = h
+                        if eric_house + 1 != cherry_house:
+                            continue
+                        
+                        # 10. Bob is the Dunhill smoker.
+                        if assignment[bob_house]['cigar'] != 'dunhill':
+                            continue
+                        
+                        # 11. The Dragonfruit smoothie lover is Bob.
+                        if assignment[bob_house]['smoothie'] != 'dragonfruit':
+                            continue
+                        
+                        # 12. The person who uses an iPhone 13 and the person who uses a OnePlus 9 are next to each other.
+                        oneplus_house = None
+                        for h in houses:
+                            if assignment[h]['phone'] == 'oneplus 9':
+                                oneplus_house = h
+                        if abs(iphone_house - oneplus_house) != 1:
+                            continue
+                        
+                        # 13. The person who uses a Samsung Galaxy S21 is the person who is short.
+                        samsung_house = None
+                        for h in houses:
+                            if assignment[h]['phone'] == 'samsung galaxy s21':
+                                samsung_house = h
+                        if samsung_house != short_house:
+                            continue
+                        
+                        # 14. There are two houses between the person who is very tall and the Dragonfruit smoothie lover.
+                        if abs(eric_house - bob_house) != 3:  # Eric is very tall, Bob has dragonfruit
+                            continue
+                        
+                        # 15. The person who uses an iPhone 13 is Eric.
+                        if assignment[eric_house]['phone'] != 'iphone 13':
+                            continue
+                        
+                        # 16. The Desert smoothie lover is somewhere to the left of the person who drinks Lime smoothies.
+                        lime_house = None
+                        for h in houses:
+                            if assignment[h]['smoothie'] == 'lime':
+                                lime_house = h
+                        if desert_house >= lime_house:
+                            continue
+                        
+                        # 17. Arnold and the person who is very short are next to each other.
+                        veryshort_house = None
+                        for h in houses:
+                            if assignment[h]['height'] == 'very short':
+                                veryshort_house = h
+                        if abs(arnold_house - veryshort_house) != 1:
+                            continue
+                        
+                        # All constraints satisfied - found solution
+                        result = {
+                            "solution": {
+                                "header": ["House", "Name", "Height", "Cigar", "Smoothie", "PhoneModel"],
+                                "rows": []
+                            }
+                        }
+                        
+                        for h in houses:
+                            row = [
+                                str(h),
+                                assignment[h]['name'],
+                                assignment[h]['height'],
+                                assignment[h]['cigar'],
+                                assignment[h]['smoothie'],
+                                assignment[h]['phone']
+                            ]
+                            result["solution"]["rows"].append(row)
+                        
+                        return result
+    
+    return None
+
+if __name__ == "__main__":
+    solution = solve()
+    if solution:
+        print(json.dumps(solution, indent=2))
+    else:
+        print(json.dumps({"error": "No solution found"}, indent=2))

@@ -1,0 +1,30 @@
+To solve this logic puzzle programmatically, we need to consider all possible arrangements of people, occupations, and hobbies across the three houses and then filter these arrangements based on the given clues. Here's a step-by-step approach:
+
+1. **Define the Domains**: We have three houses, three people (Peter, Arnold, Eric), three occupations (doctor, teacher, engineer), and three hobbies (cooking, photography, gardening).
+
+2. **Generate All Possible Permutations**: For each category (people, occupations, hobbies), generate all possible permutations of length 3. This will give us all possible ways to assign these categories to the three houses.
+
+3. **Apply the Clues**:
+   - **Clue 1**: The person who is a doctor and Eric are next to each other.
+     - If Eric is in house 1, the doctor must be in house 2.
+     - If Eric is in house 2, the doctor can be in either house 1 or 3.
+     - If Eric is in house 3, the doctor must be in house 2.
+   - **Clue 2**: The person who loves cooking is directly left of the person who is a teacher.
+     - If someone cooks in house 1, the teacher must be in house 2.
+     - If someone cooks in house 2, the teacher must be in house 3.
+   - **Clue 3**: The person who is a doctor is somewhere to the right of the person who enjoys gardening.
+     - The doctor cannot be in house 1 if someone gardens there.
+     - The doctor can be in house 2 if someone gardens in house 1.
+     - The doctor can be in house 3 if someone gardens in house 1 or 2.
+   - **Clue 4**: The photography enthusiast is the person who is a teacher.
+     - This means we can directly map the teacher to the photography hobby.
+   - **Clue 5**: The person who is an engineer is Peter.
+     - This means Peter is the engineer, and we can fix his position in our permutations.
+
+4. **Filter Permutations Based on Clues**: Iterate through all possible permutations and apply the clues to filter out invalid configurations.
+
+5. **Construct the Solution**: Once a valid configuration is found, construct the solution in the required JSON format.
+
+6. **Output the Solution**: Print the solution as a JSON string.
+
+This approach ensures that we systematically explore all possibilities and find the correct arrangement that satisfies all the given constraints.

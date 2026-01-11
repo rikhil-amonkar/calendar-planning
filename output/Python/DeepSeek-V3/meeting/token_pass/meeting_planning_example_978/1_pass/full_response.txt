@@ -1,0 +1,288 @@
+Let’s break this down step by step before writing the code.
+
+**Step 1 – Understanding the problem**  
+We have 10 friends, each in a fixed location, with fixed availability windows.  
+We start at Embarcadero at 9:00 AM.  
+We want to meet as many friends as possible, but each meeting has a minimum duration requirement.  
+Travel times between locations are given.  
+We must account for travel time between meetings.
+
+**Step 2 – Observations**  
+- This is a scheduling optimization problem with sequence-dependent travel times.  
+- Since the number of friends is small (10), we could try brute-force search over permutations of meetings to see which sequence fits in the day, but we must also choose start/end times within each friend’s window.  
+- We can’t meet everyone because some windows overlap and travel + minimum durations won’t allow it.  
+- We need to maximize *number of meetings* or *total meeting time*? The problem says “meet as many friends as possible,” so primary goal is count, but if tie, maybe maximize total time.  
+
+**Step 3 – Approach**  
+We’ll model time in minutes from 0 (midnight).  
+9:00 AM = 540 minutes.  
+We’ll try a greedy-like search:  
+1. Generate all permutations of subsets of friends (but 10! is huge, so we must prune).  
+2. For each permutation, simulate:  
+   - Start at Embarcadero at 9:00.  
+   - Travel to first friend’s location, arrive at `arrival_time`.  
+   - Schedule meeting within friend’s window:  
+     - Start time = max(arrival_time, friend_window_start)  
+     - End time = start_time + min_duration  
+     - If end_time > friend_window_end → impossible for this order.  
+   - Then travel to next friend, repeat.  
+3. Track which permutation yields most meetings; if tie, pick one with most total meeting minutes.
+
+**Step 4 – Optimization**  
+We can’t brute-force all permutations of 10 (3.6M), but we can do DFS with pruning:  
+- If current best meetings count is M, and remaining friends + current meetings ≤ M, prune.  
+- Also, some friends have very short windows (e.g., Betty 10:45–14:15) so they must be met early in day.
+
+Given complexity, I’ll implement a heuristic:  
+- Sort friends by window start time, try to schedule greedily with travel.  
+- If fails for a friend, skip them and try next.  
+- Then try small permutations around conflicts.
+
+But to guarantee optimal, I’ll do exhaustive search over subsets (2^10 = 1024) and for each subset, try all permutations (up to factorial of subset size) but break early if too large.  
+Given subset size ≤ 6, permutations are manageable.
+
+**Step 5 – Implementation plan**  
+1. Encode friends as dict with name, location, window_start, window_end, min_duration.  
+2. Encode travel times in nested dict.  
+3. DFS search:  
+   - State: current_time, current_location, meetings_done list, remaining_friends set.  
+   - Try each remaining friend, see if we can travel and meet min_duration in their window.  
+   - Keep best solution.
+
+Given runtime, I’ll implement iterative deepening on meeting count.
+
+---
+
+Here’s the Python program:
+
+```python
+import itertools
+import json
+
+def time_to_minutes(t):
+    """Convert 'H:MM' string to minutes since midnight."""
+    if isinstance(t, str):
+        h, m = map(int, t.split(':'))
+        return h * 60 + m
+    return t
+
+def minutes_to_time(m):
+    """Convert minutes since midnight to 'H:MM' string."""
+    h = m // 60
+    mm = m % 60
+    return f"{h}:{mm:02d}"
+
+# Travel times matrix (in minutes)
+locations = [
+    "Embarcadero", "Fisherman's Wharf", "Financial District", "Russian Hill",
+    "Marina District", "Richmond District", "Pacific Heights", "Haight-Ashbury",
+    "Presidio", "Nob Hill", "The Castro"
+]
+# Map location name to index
+loc_index = {loc: i for i, loc in enumerate(locations)}
+
+# Travel times given as from->to matrix
+# We'll build it from the provided pairs
+travel_matrix = [[0] * len(locations) for _ in range(len(locations))]
+
+# Fill from given data (only needed ones, but for simplicity we'll fill all from a dict)
+travel_pairs = {
+    ("Embarcadero", "Fisherman's Wharf"): 6,
+    ("Embarcadero", "Financial District"): 5,
+    ("Embarcadero", "Russian Hill"): 8,
+    ("Embarcadero", "Marina District"): 12,
+    ("Embarcadero", "Richmond District"): 21,
+    ("Embarcadero", "Pacific Heights"): 11,
+    ("Embarcadero", "Haight-Ashbury"): 21,
+    ("Embarcadero", "Presidio"): 20,
+    ("Embarcadero", "Nob Hill"): 10,
+    ("Embarcadero", "The Castro"): 25,
+    ("Fisherman's Wharf", "Embarcadero"): 8,
+    ("Fisherman's Wharf", "Financial District"): 11,
+    ("Fisherman's Wharf", "Russian Hill"): 7,
+    ("Fisherman's Wharf", "Marina District"): 9,
+    ("Fisherman's Wharf", "Richmond District"): 18,
+    ("Fisherman's Wharf", "Pacific Heights"): 12,
+    ("Fisherman's Wharf", "Haight-Ashbury"): 22,
+    ("Fisherman's Wharf", "Presidio"): 17,
+    ("Fisherman's Wharf", "Nob Hill"): 11,
+    ("Fisherman's Wharf", "The Castro"): 27,
+    ("Financial District", "Embarcadero"): 4,
+    ("Financial District", "Fisherman's Wharf"): 10,
+    ("Financial District", "Russian Hill"): 11,
+    ("Financial District", "Marina District"): 15,
+    ("Financial District", "Richmond District"): 21,
+    ("Financial District", "Pacific Heights"): 13,
+    ("Financial District", "Haight-Ashbury"): 19,
+    ("Financial District", "Presidio"): 22,
+    ("Financial District", "Nob Hill"): 8,
+    ("Financial District", "The Castro"): 20,
+    ("Russian Hill", "Embarcadero"): 8,
+    ("Russian Hill", "Fisherman's Wharf"): 7,
+    ("Russian Hill", "Financial District"): 11,
+    ("Russian Hill", "Marina District"): 7,
+    ("Russian Hill", "Richmond District"): 14,
+    ("Russian Hill", "Pacific Heights"): 7,
+    ("Russian Hill", "Haight-Ashbury"): 17,
+    ("Russian Hill", "Presidio"): 14,
+    ("Russian Hill", "Nob Hill"): 5,
+    ("Russian Hill", "The Castro"): 21,
+    ("Marina District", "Embarcadero"): 14,
+    ("Marina District", "Fisherman's Wharf"): 10,
+    ("Marina District", "Financial District"): 17,
+    ("Marina District", "Russian Hill"): 8,
+    ("Marina District", "Richmond District"): 11,
+    ("Marina District", "Pacific Heights"): 7,
+    ("Marina District", "Haight-Ashbury"): 16,
+    ("Marina District", "Presidio"): 10,
+    ("Marina District", "Nob Hill"): 12,
+    ("Marina District", "The Castro"): 22,
+    ("Richmond District", "Embarcadero"): 19,
+    ("Richmond District", "Fisherman's Wharf"): 18,
+    ("Richmond District", "Financial District"): 22,
+    ("Richmond District", "Russian Hill"): 13,
+    ("Richmond District", "Marina District"): 9,
+    ("Richmond District", "Pacific Heights"): 10,
+    ("Richmond District", "Haight-Ashbury"): 10,
+    ("Richmond District", "Presidio"): 7,
+    ("Richmond District", "Nob Hill"): 17,
+    ("Richmond District", "The Castro"): 16,
+    ("Pacific Heights", "Embarcadero"): 10,
+    ("Pacific Heights", "Fisherman's Wharf"): 13,
+    ("Pacific Heights", "Financial District"): 13,
+    ("Pacific Heights", "Russian Hill"): 7,
+    ("Pacific Heights", "Marina District"): 6,
+    ("Pacific Heights", "Richmond District"): 12,
+    ("Pacific Heights", "Haight-Ashbury"): 11,
+    ("Pacific Heights", "Presidio"): 11,
+    ("Pacific Heights", "Nob Hill"): 8,
+    ("Pacific Heights", "The Castro"): 16,
+    ("Haight-Ashbury", "Embarcadero"): 20,
+    ("Haight-Ashbury", "Fisherman's Wharf"): 23,
+    ("Haight-Ashbury", "Financial District"): 21,
+    ("Haight-Ashbury", "Russian Hill"): 17,
+    ("Haight-Ashbury", "Marina District"): 17,
+    ("Haight-Ashbury", "Richmond District"): 10,
+    ("Haight-Ashbury", "Pacific Heights"): 12,
+    ("Haight-Ashbury", "Presidio"): 15,
+    ("Haight-Ashbury", "Nob Hill"): 15,
+    ("Haight-Ashbury", "The Castro"): 6,
+    ("Presidio", "Embarcadero"): 20,
+    ("Presidio", "Fisherman's Wharf"): 19,
+    ("Presidio", "Financial District"): 23,
+    ("Presidio", "Russian Hill"): 14,
+    ("Presidio", "Marina District"): 11,
+    ("Presidio", "Richmond District"): 7,
+    ("Presidio", "Pacific Heights"): 11,
+    ("Presidio", "Haight-Ashbury"): 15,
+    ("Presidio", "Nob Hill"): 18,
+    ("Presidio", "The Castro"): 21,
+    ("Nob Hill", "Embarcadero"): 9,
+    ("Nob Hill", "Fisherman's Wharf"): 10,
+    ("Nob Hill", "Financial District"): 9,
+    ("Nob Hill", "Russian Hill"): 5,
+    ("Nob Hill", "Marina District"): 11,
+    ("Nob Hill", "Richmond District"): 14,
+    ("Nob Hill", "Pacific Heights"): 8,
+    ("Nob Hill", "Haight-Ashbury"): 13,
+    ("Nob Hill", "Presidio"): 17,
+    ("Nob Hill", "The Castro"): 16,
+    ("The Castro", "Embarcadero"): 22,
+    ("The Castro", "Fisherman's Wharf"): 24,
+    ("The Castro", "Financial District"): 21,
+    ("The Castro", "Russian Hill"): 18,
+    ("The Castro", "Marina District"): 21,
+    ("The Castro", "Richmond District"): 16,
+    ("The Castro", "Pacific Heights"): 16,
+    ("The Castro", "Haight-Ashbury"): 6,
+    ("The Castro", "Presidio"): 20,
+    ("The Castro", "Nob Hill"): 16,
+}
+
+for (fr, to), val in travel_pairs.items():
+    travel_matrix[loc_index[fr]][loc_index[to]] = val
+
+def travel_time(from_loc, to_loc):
+    return travel_matrix[loc_index[from_loc]][loc_index[to_loc]]
+
+# Friends data: name, location, window start, window end, min_duration (minutes)
+friends = [
+    ("Stephanie", "Fisherman's Wharf", "15:30", "22:00", 30),
+    ("Lisa", "Financial District", "10:45", "17:15", 15),
+    ("Melissa", "Russian Hill", "17:00", "21:45", 120),
+    ("Betty", "Marina District", "10:45", "14:15", 60),
+    ("Sarah", "Richmond District", "16:15", "19:30", 105),
+    ("Daniel", "Pacific Heights", "18:30", "21:45", 60),
+    ("Joshua", "Haight-Ashbury", "9:00", "15:30", 15),
+    ("Joseph", "Presidio", "7:00", "13:00", 45),
+    ("Andrew", "Nob Hill", "19:45", "22:00", 105),
+    ("John", "The Castro", "13:15", "19:45", 45),
+]
+
+# Convert times to minutes
+friends = [
+    (name, loc, time_to_minutes(ws), time_to_minutes(we), dur)
+    for name, loc, ws, we, dur in friends
+]
+
+# Start at Embarcadero at 9:00
+start_time = time_to_minutes("9:00")
+start_loc = "Embarcadero"
+
+# Search for best schedule
+best_count = 0
+best_meetings = []
+best_total_duration = 0
+
+# Since 10! is huge, we'll do DFS with pruning
+def dfs(current_time, current_loc, meetings_done, remaining_indices):
+    global best_count, best_meetings, best_total_duration
+    # meetings_done is list of (name, loc, start, end)
+    
+    # Try to add each remaining friend
+    for idx in list(remaining_indices):
+        name, loc, ws, we, dur = friends[idx]
+        # Travel to this friend
+        travel = travel_time(current_loc, loc)
+        arrive = current_time + travel
+        # Start meeting at max(arrive, ws)
+        start_meeting = max(arrive, ws)
+        end_meeting = start_meeting + dur
+        if end_meeting <= we:
+            # Can meet
+            new_meetings = meetings_done + [(name, loc, start_meeting, end_meeting)]
+            new_remaining = remaining_indices - {idx}
+            dfs(end_meeting, loc, new_meetings, new_remaining)
+    
+    # No more friends can be added
+    if len(meetings_done) > best_count or (
+        len(meetings_done) == best_count and
+        sum(m[3] - m[2] for m in meetings_done) > best_total_duration
+    ):
+        best_count = len(meetings_done)
+        best_meetings = meetings_done
+        best_total_duration = sum(m[3] - m[2] for m in meetings_done)
+
+# Initial call
+all_indices = set(range(len(friends)))
+dfs(start_time, start_loc, [], all_indices)
+
+# Convert best_meetings to output format
+itinerary = []
+for name, loc, start_m, end_m in best_meetings:
+    itinerary.append({
+        "action": "meet",
+        "location": loc,
+        "person": name,
+        "start_time": minutes_to_time(start_m),
+        "end_time": minutes_to_time(end_m)
+    })
+
+# Output as JSON
+result = {"itinerary": itinerary}
+print(json.dumps(result, indent=2))
+```
+
+This program uses depth-first search to try all possible meeting sequences, respecting travel times and time windows, and picks the schedule with the most meetings (and longest total meeting time in case of ties).  
+
+When run, it will output the optimal meeting plan in the required JSON format.

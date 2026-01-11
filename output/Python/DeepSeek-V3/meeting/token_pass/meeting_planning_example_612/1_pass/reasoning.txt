@@ -1,0 +1,74 @@
+Let’s break this down step by step before writing the code.
+
+---
+
+## **Step 1 – Understanding the problem**
+We have:
+
+- **Start location**: Alamo Square at 9:00 AM.
+- **7 friends**, each at a fixed location, with fixed available time windows and minimum desired meeting durations.
+- **Travel times** between all locations (in minutes).
+- Goal: Maximize the number of friends met, respecting:
+  1. Time windows of each friend.
+  2. Travel time between locations.
+  3. Minimum meeting durations.
+  4. Logical ordering (can't be in two places at once).
+
+---
+
+## **Step 2 – Data representation**
+We’ll represent:
+
+- **Locations** as strings.
+- **Travel times** as a dictionary of dictionaries: `travel[from][to]`.
+- **Friends** as a list of dicts with: name, location, available start, available end, min_duration (minutes).
+
+---
+
+## **Step 3 – Approach**
+We can’t meet everyone because time windows overlap and travel takes time.  
+We need to try different permutations of visits and see which fits.
+
+But since there are only 7 friends, we can brute-force permutations of subsets (up to all 7) and check feasibility.
+
+Feasibility check for a given sequence:
+1. Start at Alamo Square at 9:00.
+2. For each friend in sequence:
+   - Travel from current location to friend’s location.
+   - Arrival time = previous end + travel time.
+   - Meeting start = max(arrival time, friend’s window start).
+   - If meeting start + min_duration > friend’s window end → infeasible.
+   - Meeting end = meeting start + min_duration.
+   - Update current location and time.
+
+---
+
+## **Step 4 – Constraints on ordering**
+Some friends have very narrow windows (e.g., Margaret 21:30–22:30, Andrew 20:15–22:00), so they must be late in the day.  
+Others are morning/afternoon only (George until 14:15, Deborah until 15:30).
+
+We must also consider that meeting longer than minimum might be possible, but here we only need to meet the minimum to count them.
+
+---
+
+## **Step 5 – Strategy**
+We’ll generate all permutations of all subsets of friends, filter by feasibility, pick the one with the most friends met.  
+If tie, maybe pick one with earlier finish time (but problem says “as many friends as possible” so count is first priority).
+
+---
+
+## **Step 6 – Time handling**
+We’ll convert all times to minutes since midnight for easier arithmetic.
+
+---
+
+## **Step 7 – Writing the code**
+We’ll implement:
+1. Data setup.
+2. Travel time matrix.
+3. Friend list with time windows in minutes.
+4. Search over permutations of subsets.
+5. Feasibility check with travel.
+6. Output best schedule as JSON.
+
+---

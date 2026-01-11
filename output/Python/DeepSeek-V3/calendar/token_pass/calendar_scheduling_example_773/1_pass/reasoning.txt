@@ -1,0 +1,86 @@
+Let's break this down step-by-step before writing the code.
+
+**Step 1 – Understanding constraints**
+- Meeting duration: 1 hour
+- Work hours: 9:00–17:00 each day
+- Days considered: Monday, Tuesday, Wednesday
+- Patrick: free all day every day (no constraints within work hours)
+- Roy: busy times given for each day
+- Earliest availability preferred
+
+**Step 2 – Roy’s busy times in each day**
+We can convert each busy block to (start_minute, end_minute) from 9:00 as reference.
+
+Let’s define day start = 9:00 = minute 0, day end = 17:00 = minute 480 (8 hours * 60).
+
+Roy’s busy times (in minutes from 9:00):
+
+**Monday:**
+- 10:00–11:30 → 60 to 150
+- 12:00–13:00 → 180 to 240
+- 14:00–14:30 → 300 to 330
+- 15:00–17:00 → 360 to 480
+
+**Tuesday:**
+- 10:30–11:30 → 90 to 150
+- 12:00–14:30 → 180 to 330
+- 15:00–15:30 → 360 to 390
+- 16:00–17:00 → 420 to 480
+
+**Wednesday:**
+- 9:30–11:30 → 30 to 150
+- 12:30–14:00 → 210 to 300
+- 14:30–15:30 → 330 to 390
+- 16:30–17:00 → 450 to 480
+
+**Step 3 – Find free slots for Roy each day**
+We look for gaps ≥ 60 minutes between busy blocks, within 9:00–17:00.
+
+**Monday busy blocks in minutes from 9:00:**
+(60,150), (180,240), (300,330), (360,480)
+Add boundaries: start of day (0) and end of day (480).
+
+Sorted busy intervals including boundaries:
+(0,0) (just start point), (60,150), (180,240), (300,330), (360,480), (480,480)
+
+Gaps:
+0→60 → length 60 (fits exactly 1 hour) → 9:00–10:00 ✓
+150→180 → length 30 → no
+240→300 → length 60 → 13:00–14:00 ✓
+330→360 → length 30 → no
+
+So Monday free 1-hour slots: 9:00–10:00, 13:00–14:00.
+
+**Tuesday busy blocks:**
+(90,150), (180,330), (360,390), (420,480)
+
+Gaps from boundaries:
+0→90 → length 90 → 9:00–10:30 ✓
+150→180 → length 30 → no
+330→360 → length 30 → no
+390→420 → length 30 → no
+
+So Tuesday free 1-hour slots: 9:00–10:30 contains 9:00–10:00.
+
+**Wednesday busy blocks:**
+(30,150), (210,300), (330,390), (450,480)
+
+Gaps:
+0→30 → length 30 → no
+150→210 → length 60 → 11:30–12:30 ✓
+300→330 → length 30 → no
+390→450 → length 60 → 15:30–16:30 ✓
+
+So Wednesday free 1-hour slots: 11:30–12:30, 15:30–16:30.
+
+**Step 4 – Choose earliest overall**
+Days order: Monday, Tuesday, Wednesday.
+
+Monday earliest: 9:00–10:00  
+Tuesday earliest: 9:00–10:00  
+Wednesday earliest: 11:30–12:30  
+
+Earliest overall: Monday 9:00–10:00.
+
+**Step 5 – Write Python code to compute this**
+We’ll parse the text input, compute free slots, pick earliest.

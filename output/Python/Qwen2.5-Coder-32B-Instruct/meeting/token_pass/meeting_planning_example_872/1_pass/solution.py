@@ -1,0 +1,78 @@
+import json
+from datetime import datetime, timedelta
+
+# Travel times in minutes
+travel_times = {
+    'Presidio': {'Haight-Ashbury': 15, 'Nob Hill': 18, 'Russian Hill': 14, 'North Beach': 18, 'Chinatown': 21, 'Union Square': 22, 'Embarcadero': 20, 'Financial District': 23, 'Marina District': 11},
+    'Haight-Ashbury': {'Presidio': 15, 'Nob Hill': 15, 'Russian Hill': 17, 'North Beach': 19, 'Chinatown': 19, 'Union Square': 19, 'Embarcadero': 20, 'Financial District': 21, 'Marina District': 17},
+    'Nob Hill': {'Presidio': 17, 'Haight-Ashbury': 13, 'Russian Hill': 5, 'North Beach': 8, 'Chinatown': 6, 'Union Square': 7, 'Embarcadero': 9, 'Financial District': 9, 'Marina District': 11},
+    'Russian Hill': {'Presidio': 14, 'Haight-Ashbury': 17, 'Nob Hill': 5, 'North Beach': 5, 'Chinatown': 9, 'Union Square': 10, 'Embarcadero': 8, 'Financial District': 11, 'Marina District': 7},
+    'North Beach': {'Presidio': 17, 'Haight-Ashbury': 18, 'Nob Hill': 7, 'Russian Hill': 4, 'Chinatown': 6, 'Union Square': 7, 'Embarcadero': 6, 'Financial District': 8, 'Marina District': 9},
+    'Chinatown': {'Presidio': 19, 'Haight-Ashbury': 19, 'Nob Hill': 9, 'Russian Hill': 7, 'North Beach': 3, 'Union Square': 7, 'Embarcadero': 5, 'Financial District': 5, 'Marina District': 12},
+    'Union Square': {'Presidio': 24, 'Haight-Ashbury': 18, 'Nob Hill': 9, 'Russian Hill': 13, 'North Beach': 10, 'Chinatown': 7, 'Embarcadero': 11, 'Financial District': 9, 'Marina District': 18},
+    'Embarcadero': {'Presidio': 20, 'Haight-Ashbury': 21, 'Nob Hill': 10, 'Russian Hill': 8, 'North Beach': 5, 'Chinatown': 7, 'Union Square': 10, 'Financial District': 5, 'Marina District': 12},
+    'Financial District': {'Presidio': 22, 'Haight-Ashbury': 19, 'Nob Hill': 8, 'Russian Hill': 11, 'North Beach': 7, 'Chinatown': 5, 'Union Square': 9, 'Embarcadero': 4, 'Marina District': 15},
+    'Marina District': {'Presidio': 10, 'Haight-Ashbury': 16, 'Nob Hill': 12, 'Russian Hill': 8, 'North Beach': 11, 'Chinatown': 15, 'Union Square': 16, 'Embarcadero': 14, 'Financial District': 17}
+}
+
+# Friends' availability and required meeting durations
+friends = {
+    'Karen': {'location': 'Haight-Ashbury', 'available': (21*60, 21*60+45), 'duration': 45},
+    'Jessica': {'location': 'Nob Hill', 'available': (13*60+45, 21*60), 'duration': 90},
+    'Brian': {'location': 'Russian Hill', 'available': (15*60+30, 21*60+45), 'duration': 60},
+    'Kenneth': {'location': 'North Beach', 'available': (9*60+45, 21*60), 'duration': 30},
+    'Jason': {'location': 'Chinatown', 'available': (8*60+15, 11*60+45), 'duration': 75},
+    'Stephanie': {'location': 'Union Square', 'available': (14*60+45, 18*60+45), 'duration': 105},
+    'Kimberly': {'location': 'Embarcadero', 'available': (9*60+45, 19*60+30), 'duration': 75},
+    'Steven': {'location': 'Financial District', 'available': (7*60+15, 21*60+15), 'duration': 60},
+    'Mark': {'location': 'Marina District', 'available': (10*60+15, 13*60), 'duration': 75}
+}
+
+def time_to_minutes(time_str):
+    """Converts HH:MM time string to minutes since midnight."""
+    return int(time_str.split(':')[0]) * 60 + int(time_str.split(':')[1])
+
+def minutes_to_time(minutes):
+    """Converts minutes since midnight to HH:MM time string."""
+    hours, mins = divmod(minutes, 60)
+    return f"{hours}:{mins:02}"
+
+def find_optimal_schedule():
+    current_time = 9 * 60  # Starting at 9:00 AM
+    current_location = 'Presidio'
+    itinerary = []
+
+    def can_meet(friend, current_time, current_location):
+        friend_info = friends[friend]
+        travel_time = travel_times[current_location][friend_info['location']]
+        start_time, end_time = friend_info['available']
+        meeting_start = max(current_time + travel_time, start_time)
+        meeting_end = meeting_start + friend_info['duration']
+        return meeting_end <= end_time
+
+    def add_meeting(friend, current_time, current_location):
+        friend_info = friends[friend]
+        travel_time = travel_times[current_location][friend_info['location']]
+        start_time = max(current_time + travel_time, friend_info['available'][0])
+        end_time = start_time + friend_info['duration']
+        itinerary.append({
+            "action": "meet",
+            "location": friend_info['location'],
+            "person": friend,
+            "start_time": minutes_to_time(start_time),
+            "end_time": minutes_to_time(end_time)
+        })
+        return end_time, friend_info['location']
+
+    # Sort friends by their required meeting duration in descending order
+    sorted_friends = sorted(friends.keys(), key=lambda x: friends[x]['duration'], reverse=True)
+
+    for friend in sorted_friends:
+        if can_meet(friend, current_time, current_location):
+            current_time, current_location = add_meeting(friend, current_time, current_location)
+
+    return itinerary
+
+optimal_itinerary = find_optimal_schedule()
+result = {"itinerary": optimal_itinerary}
+print(json.dumps(result, indent=2))

@@ -1,0 +1,154 @@
+import json
+from itertools import permutations
+
+def solve():
+    # Define all possible values
+    names = ["Carol", "Bob", "Alice", "Arnold", "Eric", "Peter"]
+    phones = ["samsung galaxy s21", "google pixel 6", "iphone 13", "huawei p50", "oneplus 9", "xiaomi mi 11"]
+    nationalities = ["swede", "chinese", "norwegian", "dane", "german", "brit"]
+    colors = ["blue", "red", "yellow", "green", "white", "purple"]
+    
+    houses = [1, 2, 3, 4, 5, 6]
+    
+    # Try all permutations (brute force with pruning)
+    solutions = []
+    
+    # Generate all possible assignments
+    for name_perm in permutations(names, 6):
+        # 1. Carol is not in the third house.
+        if name_perm[2] == "Carol":
+            continue
+            
+        # 4. Arnold is directly left of Alice.
+        try:
+            arnold_idx = name_perm.index("Arnold")
+            alice_idx = name_perm.index("Alice")
+        except ValueError:
+            continue
+        if alice_idx - arnold_idx != 1:
+            continue
+            
+        for phone_perm in permutations(phones, 6):
+            # 7. The person who uses a Huawei P50 is not in the third house.
+            if phone_perm[2] == "huawei p50":
+                continue
+                
+            # 8. The person who uses a Samsung Galaxy S21 is in the fifth house.
+            if phone_perm[4] != "samsung galaxy s21":
+                continue
+                
+            # 15. The person who uses a Samsung Galaxy S21 is directly left of the person who uses an iPhone 13.
+            samsung_idx = phone_perm.index("samsung galaxy s21")
+            iphone_idx = phone_perm.index("iphone 13")
+            if iphone_idx - samsung_idx != 1:
+                continue
+                
+            # 6. The person who uses a OnePlus 9 is the person who loves purple.
+            # This connects phones and colors, will check later
+            
+            # 10. The person who uses a Samsung Galaxy S21 is Bob.
+            # Find Bob's house
+            bob_idx = name_perm.index("Bob")
+            if phone_perm[bob_idx] != "samsung galaxy s21":
+                continue
+                
+            for nat_perm in permutations(nationalities, 6):
+                # 5. Alice is the German.
+                alice_idx = name_perm.index("Alice")
+                if nat_perm[alice_idx] != "german":
+                    continue
+                    
+                # 11. The Dane is the person who loves yellow.
+                # This connects nationality and color, will check later
+                
+                # 14. Peter is the British person.
+                peter_idx = name_perm.index("Peter")
+                if nat_perm[peter_idx] != "brit":
+                    continue
+                    
+                # 16. The Norwegian is the person who loves purple.
+                # This connects nationality and color, will check later
+                
+                # 17. The person who uses a Xiaomi Mi 11 is the Chinese.
+                try:
+                    xiaomi_idx = phone_perm.index("xiaomi mi 11")
+                except ValueError:
+                    continue
+                if nat_perm[xiaomi_idx] != "chinese":
+                    continue
+                    
+                # 2. There is one house between the Dane and the British person.
+                dane_idx = nat_perm.index("dane")
+                brit_idx = nat_perm.index("brit")
+                if abs(dane_idx - brit_idx) != 2:
+                    continue
+                    
+                for color_perm in permutations(colors, 6):
+                    # 3. Carol is the person whose favorite color is green.
+                    carol_idx = name_perm.index("Carol")
+                    if color_perm[carol_idx] != "green":
+                        continue
+                        
+                    # 6. The person who uses a OnePlus 9 is the person who loves purple.
+                    oneplus_idx = phone_perm.index("oneplus 9")
+                    if color_perm[oneplus_idx] != "purple":
+                        continue
+                        
+                    # 9. The person who loves white is somewhere to the right of the person whose favorite color is red.
+                    white_idx = color_perm.index("white")
+                    red_idx = color_perm.index("red")
+                    if white_idx <= red_idx:
+                        continue
+                        
+                    # 11. The Dane is the person who loves yellow.
+                    if color_perm[dane_idx] != "yellow":
+                        continue
+                        
+                    # 12. The person who uses a Samsung Galaxy S21 is somewhere to the left of Peter.
+                    if samsung_idx >= peter_idx:
+                        continue
+                        
+                    # 13. The person who loves blue is Peter.
+                    if color_perm[peter_idx] != "blue":
+                        continue
+                        
+                    # 16. The Norwegian is the person who loves purple.
+                    norwegian_idx = nat_perm.index("norwegian")
+                    if color_perm[norwegian_idx] != "purple":
+                        continue
+                        
+                    # All constraints satisfied
+                    solution = []
+                    for i in range(6):
+                        solution.append([
+                            str(i + 1),
+                            name_perm[i],
+                            phone_perm[i],
+                            nat_perm[i],
+                            color_perm[i]
+                        ])
+                    solutions.append(solution)
+                    
+                    # We only need one solution
+                    if solutions:
+                        break
+                if solutions:
+                    break
+            if solutions:
+                break
+        if solutions:
+            break
+    
+    # Prepare output
+    output = {
+        "solution": {
+            "header": ["House", "Name", "PhoneModel", "Nationality", "Color"],
+            "rows": solutions[0] if solutions else []
+        }
+    }
+    
+    return json.dumps(output, indent=2)
+
+if __name__ == "__main__":
+    result = solve()
+    print(result)

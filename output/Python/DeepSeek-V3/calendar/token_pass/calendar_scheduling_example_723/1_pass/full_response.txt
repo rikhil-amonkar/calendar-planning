@@ -1,0 +1,145 @@
+Let’s break this down step by step before writing the code.  
+
+**Constraints recap:**  
+- Meeting duration: **30 minutes**  
+- Work hours: **9:00 to 17:00**  
+- Days considered: Monday, Tuesday, Wednesday  
+- Arthur **cannot meet on Tuesday** (so only Monday and Wednesday for him)  
+- They want the **earliest availability**  
+
+**Step 1 – Interpret schedules**  
+We need to find 30-minute slots within 9:00–17:00 where both are free.  
+
+**Step 2 – Convert schedules to blocked times**  
+We can represent each day as a timeline from 9:00 to 17:00 in minutes since 9:00.  
+9:00 = minute 0, 17:00 = minute 480 (8 hours = 480 minutes).  
+
+**Arthur’s meetings:**  
+Monday: 11:00–11:30 (min 120–150), 13:30–14:00 (min 270–300), 15:00–15:30 (min 360–390)  
+Tuesday: irrelevant (can’t meet Tuesday anyway)  
+Wednesday: 10:00–10:30 (min 60–90), 11:00–11:30 (min 120–150), 12:00–12:30 (min 180–210), 14:00–14:30 (min 300–330), 16:00–16:30 (min 420–450)  
+
+**Michael’s meetings:**  
+Monday: 9:00–12:00 (min 0–180), 12:30–13:00 (min 210–240), 14:00–14:30 (min 300–330), 15:00–17:00 (min 360–480)  
+Tuesday: irrelevant  
+Wednesday: 10:00–12:30 (min 60–210), 13:00–13:30 (min 240–270)  
+
+**Step 3 – Find free slots**  
+We check Monday and Wednesday (since Tuesday excluded for Arthur).  
+
+**Monday:**  
+Arthur free periods (between meetings within 9–17):  
+- 9:00–11:00 (0–120)  
+- 11:30–13:30 (150–270)  
+- 14:00–15:00 (300–360)  
+- 15:30–17:00 (390–480)  
+
+Michael free periods Monday:  
+- 12:00–12:30 (180–210)  
+- 13:00–14:00 (240–300)  
+- (Also 14:30–15:00 (330–360))  
+
+Intersect Arthur’s and Michael’s free times on Monday:  
+1. Arthur 9:00–11:00 vs Michael free? Michael busy 9:00–12:00 → no overlap.  
+2. Arthur 11:30–13:30 vs Michael free:  
+   - Michael free 12:00–12:30 (180–210) → Arthur free 11:30–13:30 (150–270) → overlap: 12:00–12:30 (180–210) → length 30 minutes → **earliest possible slot**? Let’s check if any earlier.  
+   Wait, earlier than 12:00? Michael is busy until 12:00, Arthur is free from 11:30, but Michael is busy until 12:00, so earliest common free start is 12:00.  
+   So Monday 12:00–12:30 works.  
+
+But let’s check Wednesday first to see if earlier possible (since Monday 12:00 might not be earliest overall if Wednesday has earlier).  
+
+**Wednesday:**  
+Arthur free periods:  
+- 9:00–10:00 (0–60)  
+- 10:30–11:00 (90–120)  
+- 11:30–12:00 (150–180)  
+- 12:30–14:00 (210–300)  
+- 14:30–16:00 (330–420)  
+- 16:30–17:00 (450–480)  
+
+Michael free periods Wednesday:  
+- 9:00–10:00 (0–60)  
+- 12:30–13:00 (210–240)  
+- 13:30–17:00 (270–480) except Michael’s schedule says 13:00–13:30 busy, so free from 13:30 onward.  
+
+Intersect:  
+1. 9:00–10:00: both free (0–60) → length 60 minutes → earliest possible slot 9:00–9:30.  
+
+That’s earlier than Monday’s 12:00.  
+
+So earliest is **Wednesday 9:00–9:30**.  
+
+**Step 4 – Write Python code to compute this**  
+
+```python
+def time_to_minutes(t):
+    """Convert HH:MM to minutes since 9:00."""
+    h, m = map(int, t.split(':'))
+    return (h - 9) * 60 + m
+
+def minutes_to_time(m):
+    """Convert minutes since 9:00 to HH:MM."""
+    h = 9 + m // 60
+    mi = m % 60
+    return f"{h:02d}:{mi:02d}"
+
+def add_busy(busy, day, start, end):
+    busy[day].append((time_to_minutes(start), time_to_minutes(end)))
+
+def find_slot(busy1, busy2, day, duration=30, work_start=0, work_end=480):
+    """Find earliest slot of given duration on given day for two people."""
+    # Combine and sort busy intervals
+    busy = sorted(busy1[day] + busy2[day])
+    free_start = work_start
+    for start, end in busy:
+        if start > free_start and start - free_start >= duration:
+            return free_start, free_start + duration
+        free_start = max(free_start, end)
+    if work_end - free_start >= duration:
+        return free_start, free_start + duration
+    return None
+
+def main():
+    days = ["Monday", "Tuesday", "Wednesday"]
+    # Busy times stored as list of (start_min, end_min) for each day
+    arthur_busy = {day: [] for day in days}
+    michael_busy = {day: [] for day in days}
+
+    # Arthur's meetings
+    add_busy(arthur_busy, "Monday", "11:00", "11:30")
+    add_busy(arthur_busy, "Monday", "13:30", "14:00")
+    add_busy(arthur_busy, "Monday", "15:00", "15:30")
+    # Tuesday: Arthur cannot meet anyway, skip adding meetings
+    add_busy(arthur_busy, "Wednesday", "10:00", "10:30")
+    add_busy(arthur_busy, "Wednesday", "11:00", "11:30")
+    add_busy(arthur_busy, "Wednesday", "12:00", "12:30")
+    add_busy(arthur_busy, "Wednesday", "14:00", "14:30")
+    add_busy(arthur_busy, "Wednesday", "16:00", "16:30")
+
+    # Michael's meetings
+    add_busy(michael_busy, "Monday", "9:00", "12:00")
+    add_busy(michael_busy, "Monday", "12:30", "13:00")
+    add_busy(michael_busy, "Monday", "14:00", "14:30")
+    add_busy(michael_busy, "Monday", "15:00", "17:00")
+    # Tuesday irrelevant
+    add_busy(michael_busy, "Wednesday", "10:00", "12:30")
+    add_busy(michael_busy, "Wednesday", "13:00", "13:30")
+
+    # Arthur cannot meet Tuesday
+    days_to_check = ["Monday", "Wednesday"]
+    duration = 30
+    work_start = 0      # 9:00
+    work_end = 480      # 17:00
+
+    for day in days_to_check:
+        slot = find_slot(arthur_busy, michael_busy, day, duration, work_start, work_end)
+        if slot:
+            start_min, end_min = slot
+            start_time = minutes_to_time(start_min)
+            end_time = minutes_to_time(end_min)
+            print(f"{day}:{start_time}:{end_time}")
+            return
+
+if __name__ == "__main__":
+    main()
+```

@@ -1,0 +1,123 @@
+Let’s break this down step by step before writing the code.
+
+**Step 1 – Understanding the problem**  
+We start at Russian Hill at 9:00 AM.  
+Barbara is at Pacific Heights from 7:15 AM to 10:00 PM.  
+We must meet Barbara for at least 60 minutes.  
+Travel time between Russian Hill and Pacific Heights is 7 minutes each way.  
+We want to meet as many friends as possible, but only Barbara is mentioned — so the optimal schedule is simply meeting Barbara given the constraints.
+
+**Step 2 – Timeline reasoning**  
+We start at Russian Hill at 9:00.  
+To meet Barbara, we must travel to Pacific Heights (7 minutes).  
+Earliest we can arrive at Pacific Heights: 9:07.  
+Barbara is available from 7:15, so 9:07 is fine.  
+We must meet for at least 60 minutes, so earliest we could finish meeting: 10:07.  
+Then travel back to Russian Hill (7 minutes) arriving 10:14.  
+But no other meetings are specified, so the schedule is just one meeting.
+
+**Step 3 – Could we meet earlier?**  
+We can’t start before 9:07 because we start at Russian Hill at 9:00.  
+We could start later, but since we want to meet as many friends as possible, maybe we should meet Barbara as early as possible to free up the rest of the day for others — but no others are listed.  
+So the optimal is simply:  
+Travel 9:00–9:07 to Pacific Heights, meet 9:07–10:07, travel back 10:07–10:14 to Russian Hill.
+
+**Step 4 – Writing the program**  
+We’ll encode the constraints, compute the earliest possible meeting start and end, and output the itinerary in the required JSON format.
+
+Here’s the Python program:
+
+```python
+import json
+
+def time_to_minutes(t):
+    """Convert 'H:MM' string to minutes since midnight."""
+    if isinstance(t, str):
+        hours, minutes = map(int, t.split(':'))
+        return hours * 60 + minutes
+    return t
+
+def minutes_to_time(m):
+    """Convert minutes since midnight to 'H:MM' string."""
+    hours = m // 60
+    minutes = m % 60
+    return f"{hours}:{minutes:02d}"
+
+def main():
+    # Given data
+    start_location = "Russian Hill"
+    start_time_str = "9:00"
+    barbara_location = "Pacific Heights"
+    barbara_available_start_str = "7:15"
+    barbara_available_end_str = "22:00"  # 10:00 PM in 24-hour
+    travel_minutes = 7
+    min_meeting_minutes = 60
+
+    # Convert to minutes
+    start_time_min = time_to_minutes(start_time_str)
+    barbara_start_min = time_to_minutes(barbara_available_start_str)
+    barbara_end_min = time_to_minutes(barbara_available_end_str)
+
+    # Earliest we can arrive at Pacific Heights
+    arrival_at_pacific = start_time_min + travel_minutes
+
+    # Meeting must start no earlier than Barbara's start time and no earlier than our arrival
+    meeting_start = max(arrival_at_pacific, barbara_start_min)
+
+    # Meeting end time
+    meeting_end = meeting_start + min_meeting_minutes
+
+    # Check if meeting fits within Barbara's availability
+    if meeting_end > barbara_end_min:
+        # If not possible, adjust meeting start earlier if possible
+        meeting_start = barbara_end_min - min_meeting_minutes
+        if meeting_start < arrival_at_pacific:
+            # Not possible to meet for 60 minutes
+            meeting_start = None
+
+    if meeting_start is None:
+        itinerary = []
+    else:
+        # Build itinerary
+        itinerary = [
+            {
+                "action": "travel",
+                "location": barbara_location,
+                "person": "",
+                "start_time": minutes_to_time(start_time_min),
+                "end_time": minutes_to_time(arrival_at_pacific)
+            },
+            {
+                "action": "meet",
+                "location": barbara_location,
+                "person": "Barbara",
+                "start_time": minutes_to_time(meeting_start),
+                "end_time": minutes_to_time(meeting_end)
+            },
+            {
+                "action": "travel",
+                "location": start_location,
+                "person": "",
+                "start_time": minutes_to_time(meeting_end),
+                "end_time": minutes_to_time(meeting_end + travel_minutes)
+            }
+        ]
+
+    # Output as JSON
+    result = {"itinerary": itinerary}
+    print(json.dumps(result, indent=2))
+
+if __name__ == "__main__":
+    main()
+```
+
+**Step 5 – Explanation of the program**  
+- We convert all times to minutes since midnight for easier arithmetic.  
+- We compute the earliest arrival at Pacific Heights.  
+- We schedule the meeting immediately after arrival, ensuring Barbara is available.  
+- We include travel segments in the itinerary for completeness.  
+- The output matches the required JSON format.  
+
+When run, this program will compute and output the optimal meeting schedule based on the given constraints.
+
+SOLUTION: The optimal schedule is to travel immediately to Pacific Heights, meet Barbara from 9:07 to 10:07, and return to Russian Hill.

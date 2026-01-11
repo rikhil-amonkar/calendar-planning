@@ -1,0 +1,82 @@
+import json
+from itertools import permutations
+
+def solve():
+    names = ["Peter", "Alice", "Bob", "Eric", "Arnold"]
+    heights = ["very tall", "average", "tall", "very short", "short"]
+    houses = [1, 2, 3, 4, 5]
+    
+    # Generate all possible permutations of names and heights
+    for name_perm in permutations(names, 5):
+        for height_perm in permutations(heights, 5):
+            # Create assignment dictionaries
+            assignment = {}
+            for i in range(5):
+                assignment[name_perm[i]] = {
+                    'house': houses[i],
+                    'height': height_perm[i]
+                }
+            
+            # Clue 1: The person who is short is in the second house
+            short_person = [name for name in assignment if assignment[name]['height'] == 'short'][0]
+            if assignment[short_person]['house'] != 2:
+                continue
+            
+            # Clue 2: Peter is directly left of Bob
+            if assignment['Peter']['house'] + 1 != assignment['Bob']['house']:
+                continue
+            
+            # Clue 3: Eric is somewhere to the left of Peter
+            if assignment['Eric']['house'] >= assignment['Peter']['house']:
+                continue
+            
+            # Clue 4: The person who is very tall is directly left of Peter
+            very_tall_person = [name for name in assignment if assignment[name]['height'] == 'very tall'][0]
+            if assignment[very_tall_person]['house'] + 1 != assignment['Peter']['house']:
+                continue
+            
+            # Clue 5: Alice is directly left of the person who has an average height
+            if assignment['Alice']['house'] + 1 != assignment[[name for name in assignment if assignment[name]['height'] == 'average'][0]]['house']:
+                continue
+            
+            # Clue 6: The person who is short and the person who is very short are next to each other
+            very_short_person = [name for name in assignment if assignment[name]['height'] == 'very short'][0]
+            if abs(assignment[short_person]['house'] - assignment[very_short_person]['house']) != 1:
+                continue
+            
+            # Clue 7: The person who has an average height is in the fifth house
+            average_person = [name for name in assignment if assignment[name]['height'] == 'average'][0]
+            if assignment[average_person]['house'] != 5:
+                continue
+            
+            # If we reach here, all clues are satisfied
+            # Build the solution in house order
+            solution_rows = []
+            for house in houses:
+                # Find name for this house
+                name_for_house = [name for name in assignment if assignment[name]['house'] == house][0]
+                height_for_house = assignment[name_for_house]['height']
+                solution_rows.append([str(house), name_for_house, height_for_house])
+            
+            return solution_rows
+    
+    return None
+
+def main():
+    solution_rows = solve()
+    
+    if solution_rows is None:
+        print(json.dumps({"error": "No solution found"}))
+        return
+    
+    result = {
+        "solution": {
+            "header": ["House", "Name", "Height"],
+            "rows": solution_rows
+        }
+    }
+    
+    print(json.dumps(result, indent=2))
+
+if __name__ == "__main__":
+    main()

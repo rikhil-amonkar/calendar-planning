@@ -1,0 +1,87 @@
+Let’s break this down step-by-step before writing the code.
+
+**Step 1 — Understanding the problem**  
+We have 9 friends, each available at a specific location during a time window.  
+We start at Union Square at 9:00 AM.  
+We want to meet as many friends as possible, but each meeting has a minimum duration requirement.  
+Travel times between locations are given.  
+We must account for travel time between meetings.
+
+**Step 2 — Observations on constraints**  
+Some meetings have very long minimum durations (Kenneth: 105 min, Joshua: 105 min, Steven: 90 min, Betty: 90 min, Joseph: 75 min).  
+Some time windows are short (Kimberly: 7:00–10:30 AM, Brian: 9:30–3:30 PM, etc.).  
+We cannot be in two places at once, and we must travel between locations.
+
+**Step 3 — Checking feasibility of long meetings**  
+- Kenneth: 12:15–5:15 PM (5 hours), needs 105 min (1h45m). Possible.  
+- Joshua: 4:30–6:15 PM (1h45m), needs exactly 105 min — so must meet entire window.  
+- Steven: 7:30–9:00 PM (1h30m), needs 90 min — entire window.  
+- Betty: 7:00–8:30 PM (1h30m), needs 90 min — entire window.  
+- Joseph: 3:30–7:30 PM (4 hours), needs 75 min — possible.
+
+But Betty (7–8:30 PM) and Steven (7:30–9 PM) overlap and are in different locations (Haight-Ashbury vs Mission District). Travel time between them is 11 min (Mission District to Haight-Ashbury) or 12 min (Haight-Ashbury to Mission District).  
+If we meet Betty 7:00–8:30, we can’t meet Steven (starts 7:30, needs 90 min until 9:00).  
+If we meet Steven 7:30–9:00, we can’t meet Betty (ends 8:30, needs 90 min starting at 7:00).  
+So we can only meet one of Betty or Steven.
+
+**Step 4 — Trying to fit Joshua**  
+Joshua: 4:30–6:15 PM exactly 105 min.  
+If we meet Joshua, we can’t meet Kenneth after 4:30 unless Kenneth’s meeting ends before 4:30.  
+Kenneth’s window ends 5:15 PM, so if we meet Kenneth earlier, we must finish by 4:30 to travel to Joshua.  
+Travel from Nob Hill to Presidio is 17 min. So if we leave Nob Hill at 4:13, we arrive Presidio 4:30.  
+That means Kenneth meeting could be, say, 2:30–4:13 (103 min) — close but not enough (needs 105). So not possible to meet Kenneth for 105 min and then meet Joshua exactly 4:30–6:15.  
+So we must choose between Kenneth and Joshua.
+
+**Step 5 — Trying to fit Joseph**  
+Joseph: 3:30–7:30 PM, needs 75 min.  
+If we choose Joshua (4:30–6:15), then Joseph could be before or after.  
+Before: 3:30–4:30 is only 60 min, not enough.  
+After: 6:15–7:30 is 75 min exactly — works if travel time from Presidio to Embarcadero is 20 min (arrive 6:35, but Joseph ends 7:30, so only 55 min — not enough).  
+So Joshua and Joseph incompatible.
+
+If we choose Kenneth instead of Joshua, then Joseph possible after Kenneth?  
+Kenneth ends at 5:15 (if we meet whole window), travel Nob Hill to Embarcadero 9 min, arrive 5:24, Joseph until 7:30 — enough for 75 min meeting.
+
+**Step 6 — Morning meetings**  
+Start at Union Square 9:00 AM.  
+Kimberly (North Beach) 7:00–10:30 AM, needs 15 min.  
+Travel Union Square to North Beach 10 min, so earliest arrival 9:10, meet 9:10–9:25, then leave.  
+Brian (Fisherman’s Wharf) 9:30–3:30 PM, needs 45 min.  
+Travel North Beach to Fisherman’s Wharf 5 min, so arrive 9:30, meet 9:30–10:15.
+
+**Step 7 — Afternoon/Evening**  
+After Brian, we can go to Kenneth (Nob Hill) 12:15–5:15 PM.  
+Travel Fisherman’s Wharf to Nob Hill 11 min, so if we leave Brian at 10:15, we arrive Nob Hill 10:26 — but Kenneth not available until 12:15. So we have a gap.  
+We could meet others in gap, but only Melissa (The Castro) 8:15–9:15 PM, Barbara (Alamo Square) 8:45–9:45 PM, Steven, Betty, Joseph, Joshua — all later.  
+So maybe we meet Joseph in afternoon? But Joseph starts 3:30 PM.  
+If we meet Kenneth 12:15–2:00 (105 min), then travel to Joseph (Nob Hill to Embarcadero 9 min), arrive 2:09 — but Joseph starts 3:30, so gap again.  
+We could fill gap with something else? No other friends available then.  
+So maybe Kenneth 2:00–3:45 (105 min), then travel to Joseph 9 min, arrive 3:54, meet Joseph 3:54–5:09 (75 min).  
+Then after Joseph, maybe Betty or Steven?  
+Betty 7:00–8:30, travel Embarcadero to Haight-Ashbury 21 min, so if leave Joseph 5:09, arrive 5:30 — but Betty not until 7:00, gap again.  
+We could meet Melissa 8:15–9:15 (30 min) after Betty?  
+Betty 7:00–8:30, travel Haight-Ashbury to The Castro 6 min, arrive 8:36, Melissa ends 9:15, so meet 8:36–9:06 (30 min). Works.  
+Then Barbara 8:45–9:45 at Alamo Square, but we’d be with Melissa until 9:06, travel The Castro to Alamo Square 8 min, arrive 9:14, meet 9:14–9:29 (15 min). Barbara ends 9:45, so possible.
+
+**Step 8 — Checking total friends met**  
+1. Kimberly (15 min)  
+2. Brian (45 min)  
+3. Kenneth (105 min)  
+4. Joseph (75 min)  
+5. Betty (90 min)  
+6. Melissa (30 min)  
+7. Barbara (15 min)  
+
+That’s 7 friends.  
+We missed Joshua, Steven.  
+But is schedule feasible timewise?  
+Let’s compute times strictly.
+
+**Step 9 — Writing the program**  
+We’ll encode locations, travel times, availability, and try to schedule greedily with backtracking or brute force over permutations of friends, respecting time windows and travel.
+
+Given complexity, we’ll implement a search over possible meeting orders, checking feasibility.
+
+---
+
+Here’s the Python program:

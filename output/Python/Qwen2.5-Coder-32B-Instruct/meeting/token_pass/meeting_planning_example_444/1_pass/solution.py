@@ -1,0 +1,103 @@
+import heapq
+import json
+from datetime import datetime, timedelta
+
+# Travel times represented as a graph
+travel_times = {
+    'Financial District': {'Russian Hill': 10, 'Sunset District': 31, 'North Beach': 7, 'The Castro': 23, 'Golden Gate Park': 23},
+    'Russian Hill': {'Financial District': 11, 'Sunset District': 23, 'North Beach': 5, 'The Castro': 21, 'Golden Gate Park': 21},
+    'Sunset District': {'Financial District': 30, 'Russian Hill': 24, 'North Beach': 29, 'The Castro': 17, 'Golden Gate Park': 11},
+    'North Beach': {'Financial District': 8, 'Russian Hill': 4, 'Sunset District': 27, 'The Castro': 22, 'Golden Gate Park': 22},
+    'The Castro': {'Financial District': 20, 'Russian Hill': 18, 'Sunset District': 17, 'North Beach': 20, 'Golden Gate Park': 11},
+    'Golden Gate Park': {'Financial District': 26, 'Russian Hill': 19, 'Sunset District': 10, 'North Beach': 24, 'The Castro': 13}
+}
+
+# Meeting constraints
+constraints = {
+    'Ronald': {'location': 'Russian Hill', 'start': '13:45', 'end': '17:15', 'duration': 105},
+    'Patricia': {'location': 'Sunset District', 'start': '9:15', 'end': '22:00', 'duration': 60},
+    'Laura': {'location': 'North Beach', 'start': '12:30', 'end': '12:45', 'duration': 15},
+    'Emily': {'location': 'The Castro', 'start': '16:15', 'end': '18:30', 'duration': 60},
+    'Mary': {'location': 'Golden Gate Park', 'start': '15:00', 'end': '16:30', 'duration': 60}
+}
+
+def dijkstra(graph, start):
+    queue = [(0, start)]
+    distances = {node: float('inf') for node in graph}
+    distances[start] = 0
+    previous_nodes = {node: None for node in graph}
+    
+    while queue:
+        current_distance, current_node = heapq.heappop(queue)
+        
+        if current_distance > distances[current_node]:
+            continue
+        
+        for neighbor, weight in graph[current_node].items():
+            distance = current_distance + weight
+            
+            if distance < distances[neighbor]:
+                distances[neighbor] = distance
+                previous_nodes[neighbor] = current_node
+                heapq.heappush(queue, (distance, neighbor))
+    
+    return distances, previous_nodes
+
+def get_path(previous_nodes, start, end):
+    path = []
+    current_node = end
+    while current_node != start:
+        path.append(current_node)
+        current_node = previous_nodes[current_node]
+        if current_node is None:
+            return None
+    path.append(start)
+    return path[::-1]
+
+def time_to_minutes(time_str):
+    hours, minutes = map(int, time_str.split(':'))
+    return hours * 60 + minutes
+
+def minutes_to_time(minutes):
+    hours, minutes = divmod(minutes, 60)
+    return f"{hours}:{minutes:02}"
+
+def calculate_schedule(constraints, travel_times, start_location, start_time):
+    distances, _ = dijkstra(travel_times, start_location)
+    start_minutes = time_to_minutes(start_time)
+    schedule = []
+    
+    # Sort constraints by the latest possible start time to maximize meeting duration
+    sorted_constraints = sorted(constraints.items(), key=lambda x: time_to_minutes(x[1]['end']) - x[1]['duration'])
+    
+    for name, constraint in sorted_constraints:
+        location = constraint['location']
+        min_start_time = time_to_minutes(constraint['start'])
+        max_end_time = time_to_minutes(constraint['end'])
+        required_duration = constraint['duration']
+        
+        # Calculate the latest possible start time
+        latest_start_time = max_end_time - required_duration
+        travel_time = distances[location]
+        earliest_arrival = start_minutes + travel_time
+        
+        # Adjust start time if necessary
+        meeting_start_time = max(min_start_time, earliest_arrival)
+        meeting_end_time = meeting_start_time + required_duration
+        
+        # Check if the meeting fits within the constraints
+        if meeting_end_time <= max_end_time:
+            schedule.append({
+                'action': 'meet',
+                'location': location,
+                'person': name,
+                'start_time': minutes_to_time(meeting_start_time),
+                'end_time': minutes_to_time(meeting_end_time)
+            })
+            start_minutes = meeting_end_time
+    
+    return schedule
+
+schedule = calculate_schedule(constraints, travel_times, 'Financial District', '9:00')
+result = {"itinerary": schedule}
+print(json.dumps(result, indent=2))

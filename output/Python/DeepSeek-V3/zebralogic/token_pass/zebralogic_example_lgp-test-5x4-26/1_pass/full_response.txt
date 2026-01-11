@@ -1,0 +1,263 @@
+```python
+import json
+from itertools import permutations
+
+def solve():
+    # Define all possible values
+    names = ["Alice", "Peter", "Bob", "Eric", "Arnold"]
+    heights = ["very short", "short", "tall", "average", "very tall"]
+    mothers = ["Janelle", "Kailyn", "Penny", "Holly", "Aniya"]
+    hair_colors = ["blonde", "black", "gray", "red", "brown"]
+    houses = [1, 2, 3, 4, 5]
+
+    # Generate all permutations for each attribute across 5 houses
+    # This is computationally heavy but manageable for 5! each
+    # We'll use a search with pruning instead of full enumeration
+
+    # We'll store solutions as list of dicts
+    solutions = []
+
+    # Helper to check if all values in a list are unique (ignoring None)
+    def all_unique(lst):
+        filtered = [x for x in lst if x is not None]
+        return len(filtered) == len(set(filtered))
+
+    # Backtracking search
+    def backtrack(assignments, index):
+        if index == 5:  # All houses assigned
+            # Check global uniqueness across houses
+            assigned_names = [assignments[i]["name"] for i in range(5)]
+            assigned_heights = [assignments[i]["height"] for i in range(5)]
+            assigned_mothers = [assignments[i]["mother"] for i in range(5)]
+            assigned_hair = [assignments[i]["hair"] for i in range(5)]
+            
+            if (len(set(assigned_names)) == 5 and
+                len(set(assigned_heights)) == 5 and
+                len(set(assigned_mothers)) == 5 and
+                len(set(assigned_hair)) == 5):
+                solutions.append([dict(a) for a in assignments])
+            return
+
+        # Try all possible values for this house
+        for name in names:
+            if any(assignments[i]["name"] == name for i in range(index)):
+                continue
+            for height in heights:
+                if any(assignments[i]["height"] == height for i in range(index)):
+                    continue
+                for mother in mothers:
+                    if any(assignments[i]["mother"] == mother for i in range(index)):
+                        continue
+                    for hair in hair_colors:
+                        if any(assignments[i]["hair"] == hair for i in range(index)):
+                            continue
+
+                        # Assign
+                        assignments[index] = {
+                            "house": index + 1,
+                            "name": name,
+                            "height": height,
+                            "mother": mother,
+                            "hair": hair
+                        }
+
+                        # Check constraints that involve only houses up to current index
+                        # Some constraints require all houses, so we'll check partially
+                        ok = True
+
+                        # Constraint 2: two houses between average and short
+                        # Can only check if both are assigned
+                        avg_house = None
+                        short_house = None
+                        for i in range(index + 1):
+                            if assignments[i]["height"] == "average":
+                                avg_house = i + 1
+                            if assignments[i]["height"] == "short":
+                                short_house = i + 1
+                        if avg_house and short_house:
+                            if abs(avg_house - short_house) != 3:
+                                ok = False
+
+                        # Constraint 3: gray hair directly left of Janelle
+                        # Check if both are assigned and adjacent
+                        gray_house = None
+                        janelle_house = None
+                        for i in range(index + 1):
+                            if assignments[i]["hair"] == "gray":
+                                gray_house = i + 1
+                            if assignments[i]["mother"] == "Janelle":
+                                janelle_house = i + 1
+                        if gray_house and janelle_house:
+                            if gray_house + 1 != janelle_house:
+                                ok = False
+                        # Also check if Janelle is assigned but gray not left of it
+                        if janelle_house and not gray_house:
+                            # Janelle can't be in house 1 because gray must be left
+                            if janelle_house == 1:
+                                ok = False
+
+                        # Constraint 4: black hair not in fourth house
+                        for i in range(index + 1):
+                            if assignments[i]["hair"] == "black" and assignments[i]["house"] == 4:
+                                ok = False
+                                break
+
+                        # Constraint 5: Eric has black hair
+                        for i in range(index + 1):
+                            if assignments[i]["name"] == "Eric" and assignments[i]["hair"] != "black":
+                                ok = False
+                                break
+                            if assignments[i]["hair"] == "black" and assignments[i]["name"] != "Eric":
+                                ok = False
+                                break
+
+                        # Constraint 7: Eric and gray hair are next to each other
+                        eric_house = None
+                        gray_house = None
+                        for i in range(index + 1):
+                            if assignments[i]["name"] == "Eric":
+                                eric_house = i + 1
+                            if assignments[i]["hair"] == "gray":
+                                gray_house = i + 1
+                        if eric_house and gray_house:
+                            if abs(eric_house - gray_house) != 1:
+                                ok = False
+
+                        # Constraint 8: Bob in fifth house
+                        for i in range(index + 1):
+                            if assignments[i]["name"] == "Bob" and assignments[i]["house"] != 5:
+                                ok = False
+                                break
+                            if assignments[i]["house"] == 5 and assignments[i]["name"] != "Bob":
+                                ok = False
+                                break
+
+                        # Constraint 9: red hair is Peter
+                        for i in range(index + 1):
+                            if assignments[i]["hair"] == "red" and assignments[i]["name"] != "Peter":
+                                ok = False
+                                break
+                            if assignments[i]["name"] == "Peter" and assignments[i]["hair"] != "red":
+                                ok = False
+                                break
+
+                        # Constraint 10: Kailyn directly left of short
+                        kailyn_house = None
+                        short_house = None
+                        for i in range(index + 1):
+                            if assignments[i]["mother"] == "Kailyn":
+                                kailyn_house = i + 1
+                            if assignments[i]["height"] == "short":
+                                short_house = i + 1
+                        if kailyn_house and short_house:
+                            if kailyn_house + 1 != short_house:
+                                ok = False
+
+                        # Constraint 11: Arnold has brown hair
+                        for i in range(index + 1):
+                            if assignments[i]["name"] == "Arnold" and assignments[i]["hair"] != "brown":
+                                ok = False
+                                break
+                            if assignments[i]["hair"] == "brown" and assignments[i]["name"] != "Arnold":
+                                ok = False
+                                break
+
+                        # Constraint 12: brown hair left of Janelle
+                        brown_house = None
+                        janelle_house = None
+                        for i in range(index + 1):
+                            if assignments[i]["hair"] == "brown":
+                                brown_house = i + 1
+                            if assignments[i]["mother"] == "Janelle":
+                                janelle_house = i + 1
+                        if brown_house and janelle_house:
+                            if brown_house >= janelle_house:
+                                ok = False
+
+                        # Constraint 13: Aniya and very short are next to each other
+                        aniya_house = None
+                        very_short_house = None
+                        for i in range(index + 1):
+                            if assignments[i]["mother"] == "Aniya":
+                                aniya_house = i + 1
+                            if assignments[i]["height"] == "very short":
+                                very_short_house = i + 1
+                        if aniya_house and very_short_house:
+                            if abs(aniya_house - very_short_house) != 1:
+                                ok = False
+
+                        # Constraint 14: Kailyn is in third house
+                        for i in range(index + 1):
+                            if assignments[i]["mother"] == "Kailyn" and assignments[i]["house"] != 3:
+                                ok = False
+                                break
+                            if assignments[i]["house"] == 3 and assignments[i]["mother"] != "Kailyn":
+                                ok = False
+                                break
+
+                        if ok:
+                            backtrack(assignments, index + 1)
+
+    # Start backtracking
+    assignments = [None] * 5
+    backtrack(assignments, 0)
+
+    # Now apply constraints that require all houses
+    valid_solutions = []
+    for sol in solutions:
+        # Constraint 1: tall person has mother Holly
+        tall_person = None
+        holly_person = None
+        for h in sol:
+            if h["height"] == "tall":
+                tall_person = h
+            if h["mother"] == "Holly":
+                holly_person = h
+        if tall_person != holly_person:
+            continue
+
+        # Constraint 6: very short person has mother Penny
+        very_short_person = None
+        penny_person = None
+        for h in sol:
+            if h["height"] == "very short":
+                very_short_person = h
+            if h["mother"] == "Penny":
+                penny_person = h
+        if very_short_person != penny_person:
+            continue
+
+        # All constraints satisfied
+        valid_solutions.append(sol)
+
+    # We should have exactly one solution
+    if len(valid_solutions) != 1:
+        raise ValueError(f"Expected 1 solution, found {len(valid_solutions)}")
+
+    solution = valid_solutions[0]
+    # Sort by house number
+    solution.sort(key=lambda x: x["house"])
+
+    # Prepare output
+    rows = []
+    for h in solution:
+        rows.append([
+            str(h["house"]),
+            h["name"],
+            h["height"],
+            h["mother"],
+            h["hair"]
+        ])
+
+    result = {
+        "solution": {
+            "header": ["House", "Name", "Height", "Mother", "HairColor"],
+            "rows": rows
+        }
+    }
+
+    return json.dumps(result, indent=2)
+
+if __name__ == "__main__":
+    print(solve())
+```

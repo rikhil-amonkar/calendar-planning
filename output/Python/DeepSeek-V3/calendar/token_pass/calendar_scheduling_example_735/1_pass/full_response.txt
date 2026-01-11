@@ -1,0 +1,100 @@
+Let's break this down step by step.  
+
+We need to find the earliest 30-minute slot between 9:00 and 17:00 on Monday, Tuesday, or Wednesday when both Ronald and Amber are free.  
+
+I'll write a Python script that:  
+
+1. Converts time strings to minutes from 9:00 for easier calculations.  
+2. Builds free time slots for each person on each day by subtracting busy slots from 9:00–17:00.  
+3. Finds overlapping free slots of at least 30 minutes.  
+4. Picks the earliest one.  
+
+Here’s the solution:
+
+```python
+def time_to_minutes(t):
+    """Convert HH:MM to minutes from 00:00."""
+    h, m = map(int, t.split(':'))
+    return h * 60 + m
+
+def minutes_to_time(m):
+    """Convert minutes from 00:00 to HH:MM."""
+    return f"{m // 60:02d}:{m % 60:02d}"
+
+def parse_schedule(schedule_str, day):
+    """Parse schedule string for a given day into list of busy slots in minutes from 00:00."""
+    lines = schedule_str.split(';')
+    busy = []
+    for line in lines:
+        if day in line:
+            # Extract time ranges like "10:30 to 11:00"
+            import re
+            times = re.findall(r'(\d{1,2}:\d{2})', line)
+            for i in range(0, len(times), 2):
+                start = time_to_minutes(times[i])
+                end = time_to_minutes(times[i+1])
+                busy.append((start, end))
+    return busy
+
+def get_free_slots(busy, day_start_min, day_end_min):
+    """Get free slots given busy slots and work hours."""
+    free = []
+    busy_sorted = sorted(busy, key=lambda x: x[0])
+    current = day_start_min
+    for start, end in busy_sorted:
+        if start > current:
+            free.append((current, start))
+        current = max(current, end)
+    if current < day_end_min:
+        free.append((current, day_end_min))
+    return free
+
+def find_earliest_meeting_slot(r_free, a_free, duration_min):
+    """Find earliest overlapping free slot of given duration."""
+    for r_start, r_end in r_free:
+        for a_start, a_end in a_free:
+            overlap_start = max(r_start, a_start)
+            overlap_end = min(r_end, a_end)
+            if overlap_end - overlap_start >= duration_min:
+                return overlap_start, overlap_start + duration_min
+    return None
+
+def main():
+    # Work hours 9:00 to 17:00
+    work_start = time_to_minutes("9:00")
+    work_end = time_to_minutes("17:00")
+    meeting_duration = 30  # minutes
+    
+    # Schedules as given
+    ronald_schedule = (
+        "Monday during 10:30 to 11:00, 12:00 to 12:30, 15:30 to 16:00; "
+        "Tuesday during 9:00 to 9:30, 12:00 to 12:30, 15:30 to 16:30; "
+        "Wednesday during 9:30 to 10:30, 11:00 to 12:00, 12:30 to 13:00, 13:30 to 14:00, 16:30 to 17:00;"
+    )
+    
+    amber_schedule = (
+        "Monday during 9:00 to 9:30, 10:00 to 10:30, 11:30 to 12:00, 12:30 to 14:00, 14:30 to 15:00, 15:30 to 17:00; "
+        "Tuesday during 9:00 to 9:30, 10:00 to 11:30, 12:00 to 12:30, 13:30 to 15:30, 16:30 to 17:00; "
+        "Wednesday during 9:00 to 9:30, 10:00 to 10:30, 11:00 to 13:30, 15:00 to 15:30;"
+    )
+    
+    days = ["Monday", "Tuesday", "Wednesday"]
+    
+    for day in days:
+        r_busy = parse_schedule(ronald_schedule, day)
+        a_busy = parse_schedule(amber_schedule, day)
+        
+        r_free = get_free_slots(r_busy, work_start, work_end)
+        a_free = get_free_slots(a_busy, work_start, work_end)
+        
+        slot = find_earliest_meeting_slot(r_free, a_free, meeting_duration)
+        if slot:
+            start_min, end_min = slot
+            print(f"{day}:{minutes_to_time(start_min)}:{minutes_to_time(end_min)}")
+            return
+    
+    print("No suitable slot found")
+
+if __name__ == "__main__":
+    main()
+```

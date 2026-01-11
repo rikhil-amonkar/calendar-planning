@@ -1,0 +1,75 @@
+import json
+from itertools import permutations
+
+def solve_puzzle():
+    # Define the domains
+    names = ["Peter", "Arnold", "Alice", "Eric"]
+    colors = ["yellow", "green", "red", "white"]
+    houses = [1, 2, 3, 4]
+    
+    # Generate all possible permutations of names and colors across houses
+    for name_perm in permutations(names, 4):
+        for color_perm in permutations(colors, 4):
+            # Create assignment dictionaries
+            assignment = {}
+            for i in range(4):
+                assignment[houses[i]] = {
+                    "name": name_perm[i],
+                    "color": color_perm[i]
+                }
+            
+            # Check clue 1: green is in house 3
+            if assignment[3]["color"] != "green":
+                continue
+            
+            # Check clue 2: Peter is in house 1
+            if assignment[1]["name"] != "Peter":
+                continue
+            
+            # Check clue 3: one house between red and yellow
+            red_house = None
+            yellow_house = None
+            for house in houses:
+                if assignment[house]["color"] == "red":
+                    red_house = house
+                if assignment[house]["color"] == "yellow":
+                    yellow_house = house
+            if abs(red_house - yellow_house) != 2:  # exactly one house between
+                continue
+            
+            # Check clue 4: Arnold is directly left of Eric
+            arnold_house = None
+            eric_house = None
+            for house in houses:
+                if assignment[house]["name"] == "Arnold":
+                    arnold_house = house
+                if assignment[house]["name"] == "Eric":
+                    eric_house = house
+            if eric_house - arnold_house != 1:  # Eric is exactly one house to the right
+                continue
+            
+            # Check clue 5: Eric loves yellow
+            if assignment[eric_house]["color"] != "yellow":
+                continue
+            
+            # All clues satisfied, build solution
+            rows = []
+            for house in sorted(houses):
+                rows.append([
+                    str(house),
+                    assignment[house]["name"],
+                    assignment[house]["color"]
+                ])
+            
+            return {
+                "solution": {
+                    "header": ["House", "Name", "Color"],
+                    "rows": rows
+                }
+            }
+    
+    return {"solution": None}  # Should never reach here with valid puzzle
+
+if __name__ == "__main__":
+    solution = solve_puzzle()
+    print(json.dumps(solution, indent=2))

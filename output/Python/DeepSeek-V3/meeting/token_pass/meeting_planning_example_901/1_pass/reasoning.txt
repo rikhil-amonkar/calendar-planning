@@ -1,0 +1,47 @@
+Let’s break this down step-by-step before writing the code.
+
+**Step 1 – Understanding the problem**  
+We start at Russian Hill at 9:00 AM.  
+We have 10 friends, each with:
+- A location
+- A time window they are available
+- A minimum meeting duration we’d like to achieve
+- Travel times between all locations (symmetric? Not exactly, but given in both directions).
+
+Goal: Maximize number of friends met (or maximize total meeting time within constraints), but the problem statement says “meet as many friends as possible” — so primary objective is count, then maybe total meeting time as tie-breaker.
+
+**Step 2 – Observations on constraints**  
+Some time windows are very short (James: 10:30–11:30, only 1 hour, needs 30 min).  
+Some windows overlap (e.g., Emily, Nancy, Anthony overlap in morning).  
+We cannot be in two places at once, and travel takes time.
+
+**Step 3 – Approach**  
+We can treat this as a **scheduling problem with travel times**.  
+We can brute-force permutations of friends, but 10! is huge.  
+Better: Since the day is sequential, we can try a **greedy** approach with backtracking or a **DFS search** over possible sequences, respecting time windows and travel.
+
+But because the number is small (10), we can do **DFS with pruning**:
+- State: current location, current time, set of friends already met, current itinerary.
+- At each step, try to schedule each unvisited friend:
+  1. Travel from current location to friend’s location (travel time).
+  2. Arrive at friend’s location at `current_time + travel`.
+  3. If arrival is before friend’s window end:
+     - Start meeting at `max(arrival, friend’s window start)`.
+     - If `start + min_duration <= friend’s window end`, we can meet.
+     - New time = start + min_duration.
+  4. Recurse.
+- Keep track of best solution (most friends met, then longest total meeting time).
+
+**Step 4 – Time representation**  
+Use minutes since midnight for calculations, convert to "H:MM" for output.
+
+**Step 5 – Data structures**  
+Store friends as list of dicts with name, location, window_start, window_end, min_duration.  
+Travel times as nested dict: `travel[from][to]` in minutes.
+
+**Step 6 – Optimization**  
+We can’t try all permutations (10! too big), but with pruning (time constraints), search space will be smaller. We’ll also order friends by earliest window start to prune early.
+
+---
+
+Here’s the Python program implementing this approach:

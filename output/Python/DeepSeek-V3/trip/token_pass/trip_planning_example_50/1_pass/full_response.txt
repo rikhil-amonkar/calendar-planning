@@ -1,0 +1,187 @@
+Let’s break this down step by step before writing the code.
+
+**Given constraints:**
+- Total days: 12
+- Vilnius: 4 days
+- Munich: 3 days
+- Mykonos: 7 days
+- Direct flights exist between:
+  1. Munich ↔ Mykonos
+  2. Vilnius ↔ Munich
+- No direct flight Vilnius ↔ Mykonos.
+
+**Logical deductions:**
+1. We must start in one city and end in another (or same), but flights must be direct.
+2. Since Vilnius and Mykonos are not connected directly, any trip involving both must go through Munich.
+3. The only possible sequences with direct flights are:
+   - Vilnius → Munich → Mykonos
+   - Mykonos → Munich → Vilnius
+   (Because Vilnius only connects to Munich, and Munich connects to both.)
+
+**Day allocation:**
+We need exactly 4 days in Vilnius, 3 in Munich, 7 in Mykonos, total 14 days? Wait — that sums to 4+3+7 = 14, but total trip is 12 days.  
+This means overlap: travel days count toward both cities.
+
+If you fly from A to B on day X, you spend that day in both cities for counting purposes.  
+So total calendar days = 12, but sum of days per city > 12.
+
+Let’s define:
+- `d1` = days exclusively in Vilnius (not a travel day to/from Vilnius)
+- `d2` = days exclusively in Munich
+- `d3` = days exclusively in Mykonos
+- `t_AB` = 1 if travel from A to B on some day (that day counts for both A and B)
+
+We have:
+```
+d1 + d2 + d3 + t_AB + t_BC = 12  (calendar days)
+```
+But city days:
+Vilnius days = d1 + t_AB if A or B is Vilnius, etc.
+
+Let’s try to construct:
+
+We must start somewhere.  
+Possible start cities: Vilnius or Munich or Mykonos?  
+But if start in Mykonos, to get to Vilnius you must go Mykonos → Munich → Vilnius. That’s two travel days.  
+Similarly if start in Vilnius, to get to Mykonos: Vilnius → Munich → Mykonos.
+
+Let’s test start in Vilnius:
+Day 1: Vilnius (counts for Vilnius)
+We need 4 Vilnius days total, so need 3 more Vilnius days before leaving or after returning?  
+But to go to Mykonos, we must go Vilnius → Munich (travel day: counts for Vilnius and Munich), then Munich → Mykonos (travel day: counts for Munich and Mykonos).
+
+Let’s assign:
+
+Let’s denote:
+- `v` = Vilnius exclusive days (no travel)
+- `m` = Munich exclusive days
+- `k` = Mykonos exclusive days
+- `t_vm` = 1 if travel Vilnius ↔ Munich
+- `t_mk` = 1 if travel Munich ↔ Mykonos
+
+Total calendar days:  
+`v + m + k + t_vm + t_mk = 12`
+
+City counts:
+Vilnius days = v + t_vm = 4  
+Munich days = m + t_vm + t_mk = 3  
+Mykonos days = k + t_mk = 7
+
+We have:
+(1) v = 4 - t_vm  
+(2) m = 3 - t_vm - t_mk  
+(3) k = 7 - t_mk  
+(4) v + m + k + t_vm + t_mk = 12
+
+Substitute (1),(2),(3) into (4):  
+(4 - t_vm) + (3 - t_vm - t_mk) + (7 - t_mk) + t_vm + t_mk = 12  
+Simplify:  
+4 - t_vm + 3 - t_vm - t_mk + 7 - t_mk + t_vm + t_mk = 12  
+(4+3+7) + (-t_vm - t_vm + t_vm) + (-t_mk - t_mk + t_mk) = 12  
+14 - t_vm - t_mk = 12  
+So t_vm + t_mk = 2.
+
+Since t_vm and t_mk are either 0 or 1 (each travel leg happens at most once in each direction, but here we consider if travel occurs between them at all — actually, in a linear trip Vilnius → Munich → Mykonos, t_vm = 1 and t_mk = 1, so sum = 2), that works.
+
+So: t_vm = 1, t_mk = 1.
+
+Then:
+v = 4 - 1 = 3  
+m = 3 - 1 - 1 = 1  
+k = 7 - 1 = 6
+
+Check total calendar days: v + m + k + t_vm + t_mk = 3 + 1 + 6 + 1 + 1 = 12. Good.
+
+**Itinerary structure:**
+Start in Vilnius:  
+Days 1–3: Vilnius (exclusive) → 3 Vilnius days.  
+Day 4: Travel Vilnius → Munich → counts as Vilnius day 4 and Munich day 1.  
+Days 5: Munich exclusive (Munich day 2).  
+Day 6: Travel Munich → Mykonos (Munich day 3 and Mykonos day 1).  
+Days 7–12: Mykonos exclusive (Mykonos days 2–7).
+
+Check counts:
+Vilnius: days 1,2,3,4 = 4 days.  
+Munich: days 4,5,6 = 3 days.  
+Mykonos: days 6,7,8,9,10,11,12 = 7 days.  
+Total calendar: day 1 to day 12 = 12 days.
+
+Flights: Vilnius → Munich (direct exists), Munich → Mykonos (direct exists). Works.
+
+Now, write the Python program to compute this.
+
+```python
+import json
+
+def plan_trip():
+    total_days = 12
+    vilnius_days_needed = 4
+    munich_days_needed = 3
+    mykonos_days_needed = 7
+    
+    # Direct flights: Munich-Mykonos, Vilnius-Munich
+    # So only possible route: Vilnius -> Munich -> Mykonos
+    # or reverse. We'll pick one.
+    
+    # Using earlier deduction:
+    t_vm = 1  # travel Vilnius-Munich
+    t_mk = 1  # travel Munich-Mykonos
+    
+    v_excl = vilnius_days_needed - t_vm
+    m_excl = munich_days_needed - t_vm - t_mk
+    k_excl = mykonos_days_needed - t_mk
+    
+    # Build itinerary
+    itinerary = []
+    day_counter = 1
+    
+    # Vilnius exclusive days
+    if v_excl > 0:
+        itinerary.append({
+            "day_range": f"Day {day_counter}-{day_counter + v_excl - 1}",
+            "place": "Vilnius"
+        })
+        day_counter += v_excl
+    
+    # Travel Vilnius -> Munich
+    itinerary.append({
+        "day_range": f"Day {day_counter}",
+        "place": "Vilnius -> Munich (travel day)"
+    })
+    # This day counts for both Vilnius and Munich
+    day_counter += 1
+    
+    # Munich exclusive days
+    if m_excl > 0:
+        itinerary.append({
+            "day_range": f"Day {day_counter}-{day_counter + m_excl - 1}",
+            "place": "Munich"
+        })
+        day_counter += m_excl
+    
+    # Travel Munich -> Mykonos
+    itinerary.append({
+        "day_range": f"Day {day_counter}",
+        "place": "Munich -> Mykonos (travel day)"
+    })
+    day_counter += 1
+    
+    # Mykonos exclusive days
+    if k_excl > 0:
+        itinerary.append({
+            "day_range": f"Day {day_counter}-{day_counter + k_excl - 1}",
+            "place": "Mykonos"
+        })
+        day_counter += k_excl
+    
+    # Verify total days
+    if day_counter - 1 != total_days:
+        raise ValueError("Itinerary day count mismatch")
+    
+    # Return as JSON
+    result = {"itinerary": itinerary}
+    return json.dumps(result, indent=2)
+
+if __name__ == "__main__":
+    print(plan_trip())
+```

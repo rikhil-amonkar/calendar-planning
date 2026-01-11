@@ -1,0 +1,154 @@
+We need to arrange visits to 9 cities with given constraints, ensuring travel is only via direct flights, and total days = 25.  
+Let’s restate the problem clearly:
+
+**Cities and required days:**
+- Oslo: 2 days (must include day 24–25)
+- Helsinki: 2 days
+- Edinburgh: 3 days
+- Riga: 2 days
+- Tallinn: 5 days (must include day 4–8)
+- Budapest: 5 days
+- Vilnius: 5 days
+- Porto: 5 days
+- Geneva: 4 days
+
+Total = 2+2+3+2+5+5+5+5+4 = 33 days → Wait, that’s more than 25.  
+That means some constraints are *maximums* or *desired*, but we must fit 25 days total.  
+The problem says: “You plan to visit 9 European cities for 25 days in total” and then lists “You want to spend …” for each.  
+But if we sum them, it’s 33, so we must reduce some stays to fit 25 days.
+
+But the text says: “You would like to visit Tallinn for 5 days” and “You are going to attend a wedding in Tallinn between day 4 and day 8” — so Tallinn is fixed at 5 days and fixed dates.  
+Similarly, Oslo fixed at 2 days with fixed last days.  
+Others might be flexible in length, but the problem doesn’t explicitly say we can shorten them.  
+However, mathematically, we can’t have all at those lengths in 25 days.  
+So likely, the “would like” ones are preferences, but we must choose actual stays summing to 25, respecting fixed constraints (Oslo last 2 days, Tallinn 5 days fixed dates).
+
+Let’s check:  
+Fixed: Tallinn 5 days (day 4–8), Oslo 2 days (day 24–25). That’s 7 days fixed.  
+Remaining 18 days for 7 other cities.  
+If we give each of the 7 remaining cities at least 1 day, that’s 7 days, leaving 11 days to distribute.  
+But some “would like” longer stays may be shortened.
+
+But maybe the intended interpretation: The numbers given are the *actual* stays, so total is 33 — but that’s impossible in 25 days.  
+So maybe the “25 days” is a mistake? Or maybe we double-count days when traveling?  
+The note says: “if one flies from city A to city B on day X, then they are in both cities A and B on day X, which contributes to the total number of days in each city.”  
+That means travel days count for both cities. So if we fly from Tallinn to Vilnius on day 9, day 9 counts for both Tallinn and Vilnius.  
+That reduces total trip length because overlaps.
+
+So we need to schedule such that travel days overlap to reduce total from 33 “city-days” to 25 calendar days.
+
+Let’s attempt to solve this as a scheduling + graph travel problem.
+
+---
+
+**Step 1 – Represent direct flights as graph edges**  
+From the list, edges are bidirectional unless noted “from X to Y” (which implies directed? But likely all are bidirectional for travel planning; but “from Riga to Tallinn” and “from Riga to Vilnius” might be directed. But in reality, flights are usually bidirectional. I’ll assume all are bidirectional for simplicity, otherwise unsolvable.)
+
+Cities: Porto, Oslo, Edinburgh, Budapest, Riga, Tallinn, Vilnius, Helsinki, Geneva.
+
+Edges (bidirectional):
+1. Porto–Oslo
+2. Edinburgh–Budapest
+3. Edinburgh–Geneva
+4. Riga–Tallinn
+5. Edinburgh–Porto
+6. Vilnius–Helsinki
+7. Tallinn–Vilnius
+8. Riga–Oslo
+9. Geneva–Oslo
+10. Edinburgh–Oslo
+11. Edinburgh–Helsinki
+12. Vilnius–Oslo
+13. Riga–Helsinki
+14. Budapest–Geneva
+15. Helsinki–Budapest
+16. Helsinki–Oslo
+17. Edinburgh–Riga
+18. Tallinn–Helsinki
+19. Geneva–Porto
+20. Budapest–Oslo
+21. Helsinki–Geneva
+22. Riga–Vilnius
+23. Tallinn–Oslo
+
+---
+
+**Step 2 – Fixed date constraints**  
+Tallinn: 5 days, days 4–8 inclusive (that’s day 4,5,6,7,8).  
+Oslo: 2 days, days 24–25 inclusive.
+
+So we know:  
+Day 4–8: in Tallinn.  
+Day 24–25: in Oslo.
+
+We need to arrange other cities around these.
+
+---
+
+**Step 3 – Approach**  
+We can treat this as a sequence of stays, each stay in one city for ≥1 days, travel only along edges, total days = 25, and each city’s total visited days (counting travel days in both cities) equals required days.
+
+Let’s denote required days per city:  
+`req = {“Oslo”:2, “Helsinki”:2, “Edinburgh”:3, “Riga”:2, “Tallinn”:5, “Budapest”:5, “Vilnius”:5, “Porto”:5, “Geneva”:4}`  
+Sum = 33.
+
+We have 25 calendar days. Each travel day is counted in two cities, so if we have T travel days, then:  
+Sum(req) = 33 = 25 + T, because each travel day adds 1 extra to the sum of days counted in cities.  
+So T = 8 travel days.
+
+Thus, in 25-day trip, we have 8 travel days (where we are in two cities), and 17 pure non-travel days (in one city only).
+
+---
+
+**Step 4 – Construct a possible route**  
+We start somewhere, end in Oslo last 2 days. Tallinn fixed in middle.
+
+Let’s try:  
+Day 1–3: Edinburgh (3 days)  
+Day 4–8: Tallinn (5 days)  
+We need to go from Edinburgh to Tallinn: Edinburgh–Helsinki–Tallinn is possible (Edinburgh–Helsinki direct, Helsinki–Tallinn direct). Travel day = day 4? But day 4 must be in Tallinn (fixed), so we must arrive in Tallinn by day 4. So leave Edinburgh on day 3, arrive Tallinn day 3 evening? Then day 3 counts for both Edinburgh and Tallinn. That means Edinburgh gets day 1,2,3 (3 days), Tallinn gets day 3,4,5,6,7,8 (6 days) → too many for Tallinn. So we can’t arrive earlier than day 4.
+
+We must be in Tallinn all day 4–8. So travel to Tallinn must be on day 4 from somewhere, so day 4 counts for both previous city and Tallinn. That adds 1 extra day to Tallinn’s count beyond the 5 fixed? Wait, careful:  
+If we are in Tallinn day 4–8, that’s 5 calendar days. But if we arrive on day 4 from another city, day 4 counts for both cities. So Tallinn’s total days = 5 (day 4–8), but one of them (day 4) is shared with previous city. That’s fine.
+
+Similarly, leaving Tallinn on day 9 to next city, day 9 counts for both Tallinn and next city, so Tallinn gets day 9 as well? No — if we leave Tallinn on day 9, we are in Tallinn morning and next city evening, so day 9 counts for both. But our fixed stay is day 4–8, so day 9 is extra for Tallinn? That would give Tallinn 6 days total (4,5,6,7,8,9). That exceeds 5. So we must leave Tallinn on day 8, so day 8 counts for Tallinn and next city. Then Tallinn has exactly 5 days: 4,5,6,7,8 (with day 8 shared).
+
+Yes, that works.
+
+So: Leave previous city on day 4, arrive Tallinn day 4 (shared). Leave Tallinn on day 8, arrive next city day 8 (shared).
+
+---
+
+**Step 5 – Build path**  
+Start: Day 1–3 somewhere.  
+From day 4–8 Tallinn.  
+Day 8 travel to next city.  
+Day 24–25 Oslo.
+
+We have 8 travel days total. Let’s sketch:
+
+Day 1–3: Edinburgh (3 days)  
+Day 4: travel Edinburgh → Helsinki (flight exists), day 4 counts for Edinburgh and Helsinki? Wait, but day 4 must be in Tallinn. So this fails. We need to be in Tallinn day 4. So we must be in a city adjacent to Tallinn on day 3, travel to Tallinn day 4.
+
+So: Day 1–3: Helsinki (3 days)  
+Day 4: travel Helsinki → Tallinn (direct), day 4 counts Helsinki and Tallinn.  
+Day 4–8: Tallinn (with day 4 shared).  
+Day 8: travel Tallinn → Vilnius (direct), day 8 counts Tallinn and Vilnius.  
+Day 8–12: Vilnius (5 days required, but we have day 8–12 = 5 days: 8,9,10,11,12, with day 8 shared, so Vilnius gets 5 days).  
+Day 12: travel Vilnius → Riga (direct), day 12 counts Vilnius and Riga.  
+Day 12–13: Riga (needs 2 days: day 12 shared, day 13 full) → total 2 days for Riga.  
+Day 13: travel Riga → Oslo (direct), day 13 counts Riga and Oslo.  
+But Oslo needs only 2 days at end (24–25), so arriving Oslo on day 13 too early. So maybe not.
+
+We see the complexity. Let’s solve by brute force search in code.
+
+---
+
+**Step 6 – Brute force search approach**  
+We search for sequence of stays (city, days) with travel constraints, matching required days per city, total calendar days = 25, travel days = 8.
+
+We’ll implement a DFS.
+
+---
+
+Here’s the Python program:

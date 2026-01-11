@@ -1,0 +1,66 @@
+Let’s break this down step by step before writing the code.  
+
+**Step 1 – Understanding the problem**  
+We start at **Pacific Heights at 9:00 AM**.  
+We have two friends:  
+
+1. **Jason** at Presidio from **10:00 to 16:15** (4:15 PM), needs **90 minutes** meeting.  
+2. **Kenneth** at Marina District from **15:30 to 16:45** (3:30 PM to 4:45 PM), needs **45 minutes** meeting.  
+
+Travel times are given in minutes between locations.  
+
+**Step 2 – Possible meeting orders**  
+We can meet Jason first, then Kenneth, or Kenneth first, then Jason, or only one of them.  
+But Kenneth’s window is late in the day, so meeting Jason first is more natural.  
+
+**Step 3 – Time constraints**  
+If we meet Jason first:  
+- Earliest we can start with Jason is 10:00 (when he arrives).  
+- We need 90 minutes with him, so earliest finish is 11:30.  
+- Then travel from Presidio to Marina District = 10 minutes.  
+- Arrive Marina District at earliest 11:40, but Kenneth isn’t there until 15:30, so we’d have a huge gap. That’s fine if we just wait, but maybe we can shift Jason later to reduce waiting.  
+
+If we meet Kenneth first:  
+- Kenneth available 15:30–16:45. Need 45 minutes with him.  
+- Earliest start with Kenneth: 15:30, finish 16:15.  
+- Travel Marina District → Presidio = 10 minutes → arrive Presidio 16:25, but Jason leaves at 16:15, so impossible to meet Jason after Kenneth.  
+- So meeting Kenneth first means we can’t meet Jason at all.  
+
+Thus, to meet both, we must meet Jason first, finish early enough to travel to Marina District before Kenneth’s window ends.  
+
+**Step 4 – Scheduling Jason first**  
+Let’s find latest possible Jason meeting end time that still allows us to meet Kenneth for 45 minutes.  
+
+Kenneth’s window ends 16:45.  
+We need 45 minutes with Kenneth, so latest start with Kenneth = 16:00 (because 16:00–16:45 = 45 min).  
+Travel from Presidio to Marina District = 10 minutes.  
+So we must leave Presidio by 15:50 to arrive Marina District by 16:00.  
+
+Thus, Jason meeting must end by 15:50.  
+Jason meeting duration = 90 minutes, so latest start with Jason = 14:20 (because 14:20–15:50 = 90 min).  
+Jason is available from 10:00 to 16:15, so 14:20 is fine.  
+
+But we also need to consider our start at Pacific Heights at 9:00.  
+Travel Pacific Heights → Presidio = 11 minutes.  
+So earliest we can arrive Presidio = 9:11.  
+But Jason arrives at 10:00, so we’d wait from 9:11 to 10:00 if we go early. That’s fine.  
+
+We can choose Jason meeting start time anywhere from 10:00 to 14:20.  
+If we start Jason at 10:00, end 11:30, we have a long wait for Kenneth (11:40 arrival at Marina District, wait until 15:30). That’s 3h50m wait.  
+
+If we start Jason later, say at 14:20, end 15:50, travel to Marina District by 16:00, meet Kenneth 16:00–16:45, that’s efficient (minimal wait).  
+
+**Step 5 – Check feasibility**  
+Jason: 14:20–15:50 at Presidio.  
+Travel 15:50–16:00 to Marina District.  
+Kenneth: 16:00–16:45 at Marina District.  
+
+All constraints satisfied:  
+- Jason gets 90 minutes.  
+- Kenneth gets 45 minutes.  
+- No time conflicts.  
+
+**Step 6 – Write the program**  
+We’ll encode the logic to check all possible start times for Jason (in increments of 5 minutes) and pick the one that minimizes total waiting time while meeting both.  
+
+Here’s the Python program:

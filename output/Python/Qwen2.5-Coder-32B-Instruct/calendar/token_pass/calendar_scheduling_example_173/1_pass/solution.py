@@ -1,0 +1,73 @@
+from datetime import datetime, timedelta
+
+def parse_time(time_str):
+    return datetime.strptime(time_str, '%H:%M')
+
+def get_free_slots(busy_times, start_time, end_time, meeting_duration):
+    current = start_time
+    free_slots = []
+    
+    while current + meeting_duration <= end_time:
+        if all(current >= bt[1] or current + meeting_duration <= bt[0] for bt in busy_times):
+            free_slots.append((current, current + meeting_duration))
+        current += timedelta(minutes=1)
+    
+    return free_slots
+
+def find_common_free_slot(free_slots_list, meeting_duration):
+    if not free_slots_list:
+        return None
+    
+    common_free_slots = free_slots_list[0]
+    
+    for free_slots in free_slots_list[1:]:
+        new_common_free_slots = []
+        for slot1 in common_free_slots:
+            for slot2 in free_slots:
+                overlap_start = max(slot1[0], slot2[0])
+                overlap_end = min(slot1[1], slot2[1])
+                if overlap_end - overlap_start >= meeting_duration:
+                    new_common_free_slots.append((overlap_start, overlap_end))
+        common_free_slots = new_common_free_slots
+        
+        if not common_free_slots:
+            return None
+    
+    return common_free_slots[0]
+
+def format_time(slot):
+    return f"{slot[0].strftime('%H:%M')}:{slot[1].strftime('%H:%M')}"
+
+# Define work hours
+work_start = parse_time('09:00')
+work_end = parse_time('17:00')
+
+# Define meeting duration
+meeting_duration = timedelta(minutes=30)
+
+# Define busy times for each participant
+busy_times = {
+    'Jacqueline': [parse_time(t) for t in ('09:00', '09:30'), (parse_time(t) for t in ('11:00', '11:30')),
+                   (parse_time(t) for t in ('12:30', '13:00')), (parse_time(t) for t in ('15:30', '16:00'))],
+    'Harold': [parse_time(t) for t in ('10:00', '10:30'), (parse_time(t) for t in ('13:00', '13:30')),
+               (parse_time(t) for t in ('15:00', '17:00'))],
+    'Arthur': [parse_time(t) for t in ('09:00', '09:30'), (parse_time(t) for t in ('10:00', '12:30')),
+               (parse_time(t) for t in ('14:30', '15:00')), (parse_time(t) for t in ('15:30', '17:00'))],
+    'Kelly': [parse_time(t) for t in ('09:00', '09:30'), (parse_time(t) for t in ('10:00', '11:00')),
+              (parse_time(t) for t in ('11:30', '12:30')), (parse_time(t) for t in ('14:00', '15:00')),
+              (parse_time(t) for t in ('15:30', '16:00'))]
+}
+
+# Apply Harold's constraint
+busy_times['Harold'] = [bt for bt in busy_times['Harold'] if bt[0] < parse_time('13:00')]
+
+# Get free slots for each participant
+free_slots_list = [get_free_slots(busy_times[name], work_start, work_end, meeting_duration) for name in busy_times]
+
+# Find a common free slot
+common_slot = find_common_free_slot(free_slots_list, meeting_duration)
+
+if common_slot:
+    print(f"Monday, {format_time(common_slot)}")
+else:
+    print("No common free slot found.")

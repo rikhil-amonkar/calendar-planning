@@ -1,0 +1,54 @@
+Let’s break this down step-by-step before writing the code.
+
+**Step 1 – Understanding the problem**  
+We have:  
+- Start location: The Castro at 9:00 AM.  
+- 6 friends, each at a fixed location, with availability windows and minimum desired meeting durations.  
+- Travel times between all locations (including same location = 0).  
+- Goal: Maximize number of friends met (primary), and within that, maximize total meeting time (secondary).  
+
+**Step 2 – Observations**  
+- Meeting durations are large (some >1 hour), and availability windows are tight.  
+- Travel times eat into schedule.  
+- We can meet friends in any order, but must be at their location during their availability window, stay for at least their minimum duration, and leave enough time to travel to next friend.  
+- We can leave earlier than the end of their availability window to travel to next person.  
+- We can arrive earlier than their window start and wait until they’re available.  
+
+**Step 3 – Strategy**  
+We can treat this as a **search problem** over permutations of friends, with time scheduling.  
+Because the number of friends is small (6), we can brute-force permutations (6! = 720) and for each permutation try to schedule meetings greedily:  
+- Start at Castro at 9:00.  
+- For each next friend in permutation:  
+  1. Travel from current location to friend’s location (travel time).  
+  2. Arrival time = previous meeting end + travel.  
+  3. If arrival time > friend’s window end → impossible for this permutation.  
+  4. Start meeting = max(arrival time, friend’s window start).  
+  5. If start time + min duration > friend’s window end → impossible.  
+  6. We can choose to meet longer than min duration if we want, but to maximize number of friends met, we should meet exactly min duration (to save time for others).  
+  7. End meeting = start + min duration.  
+  8. Update current location and time.  
+- Count how many friends met in this permutation.  
+- Keep track of best (max friends met, then max total meeting time).  
+
+**Step 4 – Constraints check**  
+Some friends have very long min durations relative to window length:  
+- Elizabeth: window 5:15 PM to 7:30 PM (2h15m), min 105 min = 1h45m. That leaves only 30 min slack in her window.  
+- Rebecca: window 6:15 PM to 8:45 PM (2h30m), min 60 min.  
+- Others have more slack.  
+
+Given travel times, meeting all 6 seems impossible because of tight windows and travel times. We’ll let the algorithm find the max feasible.
+
+**Step 5 – Implementation plan**  
+- Convert all times to minutes since midnight for easier arithmetic.  
+- Store travel times in a dict: `travel[from][to]`.  
+- For each permutation of friends:  
+  - Simulate schedule, meet exactly min duration.  
+  - If impossible at any step, stop that permutation.  
+- Track best schedule.  
+
+**Step 6 – Edge cases**  
+- Waiting is allowed (arrive early, wait until friend available).  
+- We must end day after last meeting (no constraint on end time).  
+- Travel times are given for all pairs, but not necessarily symmetric (check data: e.g., Castro to Presidio 20, Presidio to Castro 21 → not symmetric).  
+
+Let’s write the code.

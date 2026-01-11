@@ -1,0 +1,78 @@
+We need to arrange visits to 8 cities with given constraints, ensuring travel is only via direct flights, and respecting day ranges for events.  
+
+Let’s restate the problem in a structured way:
+
+**Cities and required days:**
+1. Lisbon — 2 days (workshop between day 4–5)
+2. Dubrovnik — 5 days
+3. Copenhagen — 5 days
+4. Prague — 3 days
+5. Tallinn — 2 days (friend between day 1–2)
+6. Stockholm — 4 days (wedding between day 13–16)
+7. Split — 3 days
+8. Lyon — 2 days (annual show day 18–19)
+
+**Direct flights** (undirected edges):
+- Dubrovnik ↔ Stockholm
+- Lisbon ↔ Copenhagen
+- Lisbon ↔ Lyon
+- Copenhagen ↔ Stockholm
+- Copenhagen ↔ Split
+- Prague ↔ Stockholm
+- Tallinn ↔ Stockholm
+- Prague ↔ Lyon
+- Lisbon ↔ Stockholm
+- Prague ↔ Lisbon
+- Stockholm ↔ Split
+- Prague ↔ Copenhagen
+- Split ↔ Lyon
+- Copenhagen ↔ Dubrovnik
+- Prague ↔ Split
+- Tallinn ↔ Copenhagen
+- Tallinn ↔ Prague
+
+**Total days:** 19 days exactly.
+
+---
+
+## Step 1 — Understanding constraints
+
+We have fixed events:
+- Tallinn: day 1–2 (so starts in Tallinn)
+- Lisbon: day 4–5 (so must be in Lisbon on day 4 and 5)
+- Stockholm: day 13–16 (must be in Stockholm on those days)
+- Lyon: day 18–19 (must be in Lyon on those days)
+
+We also have required total days per city, so we can’t split visits arbitrarily without checking connectivity.
+
+---
+
+## Step 2 — Approach
+
+We can treat this as a **constraint satisfaction problem**:
+- Days are numbered 1 to 19.
+- We assign a city to each day.
+- Travel between cities allowed only if direct flight exists.
+- Total days per city must match requirement.
+- Event days fixed.
+
+We can solve via **backtracking search** with pruning.
+
+---
+
+## Step 3 — Implementation plan
+
+We’ll:
+1. Represent the graph of direct flights.
+2. Start with fixed events in schedule.
+3. Fill remaining days via backtracking, ensuring:
+   - Adjacent days either same city or connected by flight.
+   - Total days per city matches requirement.
+   - No city visited in non-consecutive blocks unless necessary (but here, to simplify, we allow multiple visits if needed, but that might increase travel days; we’ll try to keep visits consecutive to save travel days).
+4. Output as JSON with day ranges.
+
+---
+
+## Step 4 — Writing the code
+
+We’ll implement backtracking with recursion.

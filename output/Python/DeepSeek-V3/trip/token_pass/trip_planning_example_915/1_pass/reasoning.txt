@@ -1,0 +1,103 @@
+Let’s break this down step by step before writing the code.
+
+**Step 1 – Understanding constraints**  
+We have 7 cities:  
+- Bucharest (3 days)  
+- Venice (5 days) — wedding between day 22–26  
+- Prague (4 days)  
+- Frankfurt (5 days) — annual show day 12–16  
+- Zurich (5 days)  
+- Florence (5 days)  
+- Tallinn (5 days) — meet friends day 8–12  
+
+Total days = 3 + 5 + 4 + 5 + 5 + 5 + 5 = 32 days, but we only have 26 days.  
+This means some city stays must overlap with travel days (since a travel day counts for both cities).  
+
+**Step 2 – Overlap logic**  
+If you fly from A to B on day X, you spend day X in both A and B for counting purposes.  
+So if we have 32 “city-days” but only 26 calendar days, we need 6 overlaps (32 - 26 = 6 overlaps).  
+Each travel day creates 1 overlap (day counted twice).  
+We have 7 cities → 6 travel days needed → exactly 1 day in each travel is double-counted.  
+
+**Step 3 – Fixed date constraints**  
+- Tallinn: day 8–12 (5 days)  
+- Frankfurt: day 12–16 (5 days)  
+- Venice: day 22–26 (5 days)  
+
+These are fixed in time.  
+
+**Step 4 – Sequencing with flights**  
+Direct flights list:  
+1. Prague – Tallinn  
+2. Prague – Zurich  
+3. Florence – Prague  
+4. Frankfurt – Bucharest  
+5. Frankfurt – Venice  
+6. Prague – Bucharest  
+7. Bucharest – Zurich  
+8. Tallinn – Frankfurt  
+9. Zurich – Florence  
+10. Frankfurt – Zurich  
+11. Zurich – Venice  
+12. Florence – Frankfurt  
+13. Prague – Frankfurt  
+14. Tallinn – Zurich  
+
+We must arrange cities so travel is possible between consecutive cities.  
+
+**Step 5 – Build timeline**  
+We start somewhere, end in Venice by day 22.  
+
+Let’s try:  
+1. Tallinn day 8–12 (fixed)  
+2. Frankfurt day 12–16 (fixed) → Tallinn–Frankfurt flight exists (good).  
+3. After Frankfurt (day 16), we have days 17–21 free before Venice starts day 22.  
+We need to place Bucharest (3), Prague (4), Zurich (5), Florence (5) in remaining days.  
+
+But we have 5+5+4+3 = 17 days needed for those 4 cities, but only days 1–7 and 17–21 available = 5 + 5 = 10 days.  
+So overlaps must happen here too.  
+
+Actually, let’s compute properly:  
+
+Total days needed = 26.  
+Fixed blocks:  
+- Tallinn: 5 days (8–12)  
+- Frankfurt: 5 days (12–16)  
+- Venice: 5 days (22–26)  
+That’s 15 days fixed. Remaining 11 days for Bucharest(3), Prague(4), Zurich(5), Florence(5) = 17 days needed.  
+So 6 overlaps from before must cover these 4 cities’ extra days.  
+
+We can place some cities before day 8 (days 1–7) and between day 16 and 22 (days 17–21).  
+
+**Step 6 – Construct feasible order**  
+We need a path through all 7 cities with direct flights between consecutive ones.  
+
+Possible route:  
+Start Bucharest (3 days) → Zurich (5) → Florence (5) → Prague (4) → Tallinn (5) → Frankfurt (5) → Venice (5).  
+Check flights:  
+- Bucharest–Zurich (yes)  
+- Zurich–Florence (yes)  
+- Florence–Prague (yes)  
+- Prague–Tallinn (yes)  
+- Tallinn–Frankfurt (yes)  
+- Frankfurt–Venice (yes)  
+All direct flights exist.  
+
+Now fit into dates:  
+We know Tallinn 8–12, Frankfurt 12–16, Venice 22–26.  
+
+So:  
+- Tallinn must be 8–12.  
+- Before Tallinn: Prague 4 days → days 4–7 (Prague), travel to Tallinn on day 8 (overlap: day 8 in Prague and Tallinn).  
+- Before Prague: Florence 5 days → but days 4–7 already Prague, so Florence must be before day 4. Days 1–3? That’s 3 days, need 5 days for Florence → impossible unless overlaps.  
+
+So maybe adjust:  
+We can overlap Florence with Prague if travel day between them counts for both.  
+
+Let’s try scheduling with overlaps counted:  
+
+We’ll write a program to search for a valid sequence.
+
+---
+
+Here’s the Python program that solves it by brute-force search over permutations, respecting flight connections and date constraints, and maximizing overlaps to fit 26 days.

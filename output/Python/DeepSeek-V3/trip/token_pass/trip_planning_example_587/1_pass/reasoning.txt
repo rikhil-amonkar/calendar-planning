@@ -1,0 +1,68 @@
+Let's break this down step by step before writing the code.
+
+**Understanding the constraints:**
+- Total days: 21
+- Cities and required stays:
+  - Manchester: 3 days (must be between day 1–3 for wedding)
+  - Venice: 7 days (must be between day 3–9 for workshop)
+  - Istanbul: 7 days
+  - Krakow: 6 days
+  - Lyon: 2 days
+- Direct flights graph:
+  - Manchester ↔ Venice
+  - Manchester ↔ Istanbul
+  - Venice ↔ Istanbul
+  - Istanbul ↔ Krakow
+  - Venice ↔ Lyon
+  - Lyon ↔ Istanbul
+  - Manchester ↔ Krakow
+
+**Key observations:**
+1. Manchester must be days 1–3 (since wedding is between day 1–3 and we need exactly 3 days there).
+2. Venice must be days 3–9 (workshop between day 3–9, and we need exactly 7 days there).  
+   That means Venice starts on day 3 and ends on day 9.
+3. But day 3 is in both Manchester and Venice (since we fly on day 3).  
+   So Manchester = days 1, 2, 3 (day 3 is also in Venice).
+4. Venice = days 3, 4, 5, 6, 7, 8, 9 (7 days total).
+5. Remaining cities: Istanbul (7), Krakow (6), Lyon (2) for days 10–21 (12 days total).  
+   Wait, 7 + 6 + 2 = 15 days, but we only have 12 days left (days 10–21).  
+   That’s impossible unless some overlap from travel days.
+
+**Overlap rule:**  
+If you fly from A to B on day X, you are in both A and B on day X.  
+So travel days count toward both cities’ totals.
+
+We need to assign cities to days 1–21 such that:
+- Manchester: 3 days (1, 2, 3)
+- Venice: 7 days (3–9)
+- Istanbul: 7 days total
+- Krakow: 6 days total
+- Lyon: 2 days total
+- All consecutive stays in a city must be connected by direct flights when switching.
+
+**Let’s try scheduling:**
+
+Days 1–3: Manchester (day 3 also Venice)  
+Days 3–9: Venice (day 9 also next city)  
+We have days 10–21 = 12 days for Istanbul (7), Krakow (6), Lyon (2) = 15 days needed, but we can double-count travel days.
+
+We need travel days to overlap to fit 15 days into 12 calendar days.  
+That means at least 3 travel days must be overlaps.
+
+Let’s attempt a path:  
+From Venice (day 9) → Istanbul (direct)  
+Stay Istanbul some days → Krakow (direct)  
+Stay Krakow some days → Lyon (direct from Istanbul, not from Krakow — check graph: Krakow only connects to Istanbul and Manchester, not Lyon).  
+So Krakow must go to Istanbul before Lyon.  
+Lyon connects to Istanbul and Venice.  
+Manchester connects to Krakow, Venice, Istanbul.
+
+Possible route after Venice:  
+Venice → Istanbul → Krakow → Istanbul → Lyon → (maybe Istanbul or Manchester to finish?)  
+But total days constraint must fit.
+
+Let’s solve by brute force search in code.
+
+---
+
+Here’s the Python program that solves it by searching over possible sequences and day allocations:

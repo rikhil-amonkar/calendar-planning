@@ -1,0 +1,91 @@
+<reasoning>
+To solve this problem, we need to find a common time slot within the work hours (9:00 to 17:00) on Monday, Tuesday, or Wednesday that fits all participants' schedules and preferences. We'll break down the solution into steps:
+
+1. **Define the Work Hours**: Establish the work hours as a range from 9:00 to 17:00.
+2. **Parse Existing Schedules**: Convert the blocked times for Susan and Sandra into a list of tuples representing busy periods.
+3. **Apply Constraints**: Incorporate the additional constraints such as Susan's preference against Tuesday and Sandra's unavailability after 16:00 on Monday.
+4. **Find Common Free Slots**: Identify the free slots within the work hours that do not overlap with any busy periods for both participants.
+5. **Check for Meeting Duration**: Ensure that the identified free slots can accommodate the meeting duration of 30 minutes.
+6. **Output the Result**: Print the first valid time slot found in the required format.
+
+Let's implement these steps in Python.
+</reasoning>
+
+```python
+from datetime import datetime, timedelta
+
+# Define work hours
+work_start = datetime.strptime("09:00", "%H:%M")
+work_end = datetime.strptime("17:00", "%H:%M")
+
+# Define schedules
+susan_schedule = {
+    'Monday': [(datetime.strptime("12:30", "%H:%M"), datetime.strptime("13:00", "%H:%M")),
+               (datetime.strptime("13:30", "%H:%M"), datetime.strptime("14:00", "%H:%M"))],
+    'Tuesday': [(datetime.strptime("11:30", "%H:%M"), datetime.strptime("12:00", "%H:%M"))],
+    'Wednesday': [(datetime.strptime("09:30", "%H:%M"), datetime.strptime("10:30", "%H:%M")),
+                  (datetime.strptime("14:00", "%H:%M"), datetime.strptime("14:30", "%H:%M")),
+                  (datetime.strptime("15:30", "%H:%M"), datetime.strptime("16:30", "%H:%M"))]
+}
+
+sandra_schedule = {
+    'Monday': [(datetime.strptime("09:00", "%H:%M"), datetime.strptime("13:00", "%H:%M")),
+               (datetime.strptime("14:00", "%H:%M"), datetime.strptime("15:00", "%H:%M")),
+               (datetime.strptime("16:00", "%H:%M"), datetime.strptime("16:30", "%H:%M"))],
+    'Tuesday': [(datetime.strptime("09:00", "%H:%M"), datetime.strptime("09:30", "%H:%M")),
+                (datetime.strptime("10:30", "%H:%M"), datetime.strptime("12:00", "%H:%M")),
+                (datetime.strptime("12:30", "%H:%M"), datetime.strptime("13:30", "%H:%M")),
+                (datetime.strptime("14:00", "%H:%M"), datetime.strptime("14:30", "%H:%M")),
+                (datetime.strptime("16:00", "%H:%M"), datetime.strptime("17:00", "%H:%M"))],
+    'Wednesday': [(datetime.strptime("09:00", "%H:%M"), datetime.strptime("11:30", "%H:%M")),
+                  (datetime.strptime("12:00", "%H:%M"), datetime.strptime("12:30", "%H:%M")),
+                  (datetime.strptime("13:00", "%H:%M"), datetime.strptime("17:00", "%H:%M"))]
+}
+
+# Meeting duration
+meeting_duration = timedelta(minutes=30)
+
+# Function to find free slots
+def find_free_slots(schedule, day):
+    busy_slots = schedule[day]
+    free_slots = []
+    current_time = work_start
+    
+    for start, end in busy_slots:
+        if current_time < start:
+            free_slots.append((current_time, start))
+        current_time = max(current_time, end)
+    
+    if current_time < work_end:
+        free_slots.append((current_time, work_end))
+    
+    return free_slots
+
+# Check each day
+for day in ['Monday', 'Tuesday', 'Wednesday']:
+    # Skip Tuesday due to Susan's preference
+    if day == 'Tuesday':
+        continue
+    
+    susan_free_slots = find_free_slots(susan_schedule, day)
+    sandra_free_slots = find_free_slots(sandra_schedule, day)
+    
+    # Apply Sandra's constraint for Monday
+    if day == 'Monday':
+        sandra_free_slots = [(start, end) for start, end in sandra_free_slots if end <= datetime.strptime("16:00", "%H:%M")]
+    
+    # Find common free slots
+    for susan_slot in susan_free_slots:
+        for sandra_slot in sandra_free_slots:
+            common_start = max(susan_slot[0], sandra_slot[0])
+            common_end = min(susan_slot[1], sandra_slot[1])
+            
+            if common_end - common_start >= meeting_duration:
+                # Found a valid slot
+                start_time_str = common_start.strftime("%H:%M")
+                end_time_str = (common_start + meeting_duration).strftime("%H:%M")
+                print(f"{start_time_str}:{end_time_str} {day}")
+                exit(0)
+```
+
+This code defines the schedules, applies constraints, and finds a suitable meeting time that satisfies all conditions. It prints the first available time slot that meets the criteria.

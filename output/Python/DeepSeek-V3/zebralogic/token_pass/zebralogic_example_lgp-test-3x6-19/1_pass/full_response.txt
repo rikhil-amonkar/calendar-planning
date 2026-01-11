@@ -1,0 +1,159 @@
+```python
+import json
+from itertools import permutations
+
+def solve_puzzle():
+    # Define all possible values for each category
+    names = ["Arnold", "Eric", "Peter"]
+    cigars = ["pall mall", "blue master", "prince"]
+    animals = ["horse", "cat", "bird"]
+    children = ["Bella", "Fred", "Meredith"]
+    books = ["science fiction", "romance", "mystery"]
+    phones = ["google pixel 6", "iphone 13", "samsung galaxy s21"]
+    
+    houses = [1, 2, 3]
+    
+    # Generate all permutations for each category
+    for name_perm in permutations(names, 3):
+        for cigar_perm in permutations(cigars, 3):
+            for animal_perm in permutations(animals, 3):
+                for child_perm in permutations(children, 3):
+                    for book_perm in permutations(books, 3):
+                        for phone_perm in permutations(phones, 3):
+                            # Create assignment dictionaries
+                            assignment = {}
+                            for i in range(3):
+                                assignment[i] = {
+                                    'house': i+1,
+                                    'name': name_perm[i],
+                                    'cigar': cigar_perm[i],
+                                    'animal': animal_perm[i],
+                                    'child': child_perm[i],
+                                    'book': book_perm[i],
+                                    'phone': phone_perm[i]
+                                }
+                            
+                            # Check all clues
+                            # Clue 1: The person who loves mystery books is the person's child is named Fred.
+                            mystery_house = None
+                            for i in range(3):
+                                if assignment[i]['book'] == 'mystery':
+                                    mystery_house = i
+                                    break
+                            if mystery_house is None or assignment[mystery_house]['child'] != 'Fred':
+                                continue
+                            
+                            # Clue 2: The cat lover is Eric.
+                            cat_house = None
+                            for i in range(3):
+                                if assignment[i]['animal'] == 'cat':
+                                    cat_house = i
+                                    break
+                            if cat_house is None or assignment[cat_house]['name'] != 'Eric':
+                                continue
+                            
+                            # Clue 3: The person partial to Pall Mall is in the second house.
+                            if assignment[1]['cigar'] != 'pall mall':
+                                continue
+                            
+                            # Clue 4: The person who keeps horses is the person's child is named Meredith.
+                            horse_house = None
+                            for i in range(3):
+                                if assignment[i]['animal'] == 'horse':
+                                    horse_house = i
+                                    break
+                            if horse_house is None or assignment[horse_house]['child'] != 'Meredith':
+                                continue
+                            
+                            # Clue 5: The person's child is named Bella is the Prince smoker.
+                            bella_house = None
+                            for i in range(3):
+                                if assignment[i]['child'] == 'Bella':
+                                    bella_house = i
+                                    break
+                            if bella_house is None or assignment[bella_house]['cigar'] != 'prince':
+                                continue
+                            
+                            # Clue 6: The person who uses an iPhone 13 is directly left of the person who uses a Samsung Galaxy S21.
+                            iphone_house = None
+                            samsung_house = None
+                            for i in range(3):
+                                if assignment[i]['phone'] == 'iphone 13':
+                                    iphone_house = i
+                                if assignment[i]['phone'] == 'samsung galaxy s21':
+                                    samsung_house = i
+                            if iphone_house is None or samsung_house is None or samsung_house - iphone_house != 1:
+                                continue
+                            
+                            # Clue 7: The person's child is named Fred is directly left of Arnold.
+                            fred_house = None
+                            arnold_house = None
+                            for i in range(3):
+                                if assignment[i]['child'] == 'Fred':
+                                    fred_house = i
+                                if assignment[i]['name'] == 'Arnold':
+                                    arnold_house = i
+                            if fred_house is None or arnold_house is None or arnold_house - fred_house != 1:
+                                continue
+                            
+                            # Clue 8: Peter is somewhere to the left of Eric.
+                            peter_house = None
+                            eric_house = None
+                            for i in range(3):
+                                if assignment[i]['name'] == 'Peter':
+                                    peter_house = i
+                                if assignment[i]['name'] == 'Eric':
+                                    eric_house = i
+                            if peter_house is None or eric_house is None or peter_house >= eric_house:
+                                continue
+                            
+                            # Clue 9: The person who loves science fiction books is the person who uses a Samsung Galaxy S21.
+                            sf_house = None
+                            for i in range(3):
+                                if assignment[i]['book'] == 'science fiction':
+                                    sf_house = i
+                                    break
+                            if sf_house is None or assignment[sf_house]['phone'] != 'samsung galaxy s21':
+                                continue
+                            
+                            # Clue 10: The person who loves science fiction books is in the third house.
+                            if sf_house != 2:
+                                continue
+                            
+                            # Clue 11: The person who loves mystery books is not in the second house.
+                            if mystery_house == 1:
+                                continue
+                            
+                            # All clues satisfied - found solution
+                            # Prepare output
+                            rows = []
+                            for i in range(3):
+                                rows.append([
+                                    str(assignment[i]['house']),
+                                    assignment[i]['name'],
+                                    assignment[i]['cigar'],
+                                    assignment[i]['animal'],
+                                    assignment[i]['child'],
+                                    assignment[i]['book'],
+                                    assignment[i]['phone']
+                                ])
+                            
+                            return {
+                                "solution": {
+                                    "header": ["House", "Name", "Cigar", "Animal", "Children", "BookGenre", "PhoneModel"],
+                                    "rows": rows
+                                }
+                            }
+    
+    return None
+
+def main():
+    solution = solve_puzzle()
+    if solution:
+        print(json.dumps(solution, indent=2))
+    else:
+        print(json.dumps({"error": "No solution found"}, indent=2))
+
+if __name__ == "__main__":
+    main()
+```

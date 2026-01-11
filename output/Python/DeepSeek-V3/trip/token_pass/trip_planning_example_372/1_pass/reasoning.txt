@@ -1,0 +1,41 @@
+Let’s break down the problem and then write the code.
+
+**Given constraints:**
+- Total days: 13
+- Seville: 2 days
+- Stuttgart: 7 days
+- Porto: 3 days
+- Madrid: 4 days
+- Conference in Stuttgart on day 7 and day 13
+- Visit relatives in Madrid between day 1 and day 4 (inclusive)
+- Direct flights exist only between:
+  1. Porto ↔ Stuttgart
+  2. Seville ↔ Porto
+  3. Madrid ↔ Porto
+  4. Madrid ↔ Seville
+- If you fly on day X, you count as being in both cities on day X.
+
+**Step-by-step reasoning:**
+1. **Madrid constraint**: Must be in Madrid on at least one of days 1–4, possibly more.
+2. **Stuttgart conference days**: Must be in Stuttgart on day 7 and day 13.
+3. **Stuttgart total**: 7 days total, so must fill other 5 days somewhere in schedule.
+4. **Porto total**: 3 days.
+5. **Seville total**: 2 days.
+6. **Madrid total**: 4 days.
+7. **Travel feasibility**: Must move only via direct flights.
+
+We can think of this as a scheduling + graph reachability problem.
+
+**Approach in code:**
+- Represent days 1–13.
+- Start with Madrid (due to relative visit constraint).
+- Use backtracking to assign cities to days, ensuring:
+  - Total days per city match.
+  - Conference days fixed in Stuttgart.
+  - Madrid visit within first 4 days.
+  - Travel between consecutive days must be direct flight or same city.
+- Output ranges of consecutive days in same city.
+
+---
+
+Here’s the Python program:

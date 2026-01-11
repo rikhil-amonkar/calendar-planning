@@ -1,0 +1,63 @@
+Let’s break this down step-by-step before writing the code.
+
+**Step 1 — Understand constraints**  
+- Meeting duration: 30 minutes  
+- Work hours: 9:00–17:00 (inclusive start, exclusive end for slots)  
+- Days considered: Monday, Tuesday, Wednesday  
+- Joshua’s busy times:  
+  - Monday: 15:00–15:30  
+  - Tuesday: 11:30–12:00, 13:00–13:30, 14:30–15:00  
+- Joyce’s busy times:  
+  - Monday: 9:00–9:30, 10:00–11:00, 11:30–12:30, 13:00–15:00, 15:30–17:00  
+  - Tuesday: 9:00–17:00 (entire day)  
+  - Wednesday: 9:00–9:30, 10:00–11:00, 12:30–15:30, 16:00–16:30  
+- Joyce’s preference: Not Monday before 12:00.  
+- There exists a solution.
+
+**Step 2 — Find free slots for each day**  
+We’ll check 30-minute slots within 9:00–17:00 for each day where both are free.
+
+**Monday**  
+Joshua free except 15:00–15:30.  
+Joyce free except: 9:00–9:30, 10:00–11:00, 11:30–12:30, 13:00–15:00, 15:30–17:00.  
+So Joyce’s free on Monday:  
+- 9:30–10:00 (but Joyce prefers not before 12:00 on Monday → exclude)  
+- 11:00–11:30 (but Joyce prefers not before 12:00 → exclude)  
+- 12:30–13:00 (after 12:00, allowed)  
+- 15:00–15:30 (Joyce busy 13:00–15:00, then free 15:00–15:30? Wait check: Joyce busy 13:00–15:00, so 15:00–15:30 is free for Joyce, but Joshua busy 15:00–15:30 → no)  
+- 15:30–17:00 Joyce busy.  
+
+So only candidate Monday: 12:30–13:00 (30 min). Both free?  
+Joshua: Monday busy only 15:00–15:30 → free at 12:30–13:00.  
+Joyce: Monday busy 11:30–12:30, then free 12:30–13:00. Yes.  
+So Monday 12:30–13:00 works.
+
+**Tuesday**  
+Joyce busy all day → no slot.
+
+**Wednesday**  
+Joshua: no meetings → free all day.  
+Joyce busy: 9:00–9:30, 10:00–11:00, 12:30–15:30, 16:00–16:30.  
+Joyce free periods:  
+- 9:30–10:00  
+- 11:00–12:30  
+- 15:30–16:00  
+- 16:30–17:00  
+
+Check 30-minute slots within work hours:  
+- 9:30–10:00: both free  
+- 11:00–11:30: both free  
+- 11:30–12:00: both free (Joyce free 11:00–12:30)  
+- 12:00–12:30: both free (Joyce free until 12:30)  
+- 15:30–16:00: both free  
+- 16:30–17:00: both free  
+
+Many options.
+
+**Step 3 — Choose earliest possible**  
+We can pick earliest in week that satisfies Joyce’s preference.  
+Monday 12:30–13:00 works and is earlier than Wednesday.  
+So final: Monday 12:30–13:00.
+
+**Step 4 — Write Python code**  
+We’ll encode busy times as (start, end) in minutes from 9:00, but easier: just brute-force check every 30-minute slot in allowed days and times.

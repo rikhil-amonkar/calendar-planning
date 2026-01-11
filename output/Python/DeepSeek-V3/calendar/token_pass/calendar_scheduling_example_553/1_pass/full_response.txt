@@ -1,0 +1,163 @@
+Let’s break this down step by step before writing the code.
+
+**Step 1 – Understand constraints**  
+- Work hours: 9:00–17:00 (9:00 to 17:00 inclusive start times, but meeting must end by 17:00).  
+- Duration: 30 minutes.  
+- Eric’s busy on Monday: 12:00–13:00, 14:00–15:00.  
+- Henry’s busy on Monday: 9:30–10:00, 10:30–11:00, 11:30–12:30, 13:00–13:30, 14:30–15:00, 16:00–17:00.  
+- Henry’s preference: Rather not meet after 10:00 (but it’s a preference, not a hard constraint).  
+- There exists a solution that works with everyone’s schedule.
+
+**Step 2 – Find all free slots for each person within 9:00–17:00**  
+
+Eric’s free periods on Monday (after subtracting his busy times from 9:00–17:00):  
+1. 9:00–12:00  
+2. 13:00–14:00  
+3. 15:00–17:00  
+
+Henry’s free periods on Monday:  
+From 9:00–17:00, subtract:  
+- 9:30–10:00 → free 9:00–9:30  
+- 10:30–11:00 → free 10:00–10:30  
+- 11:30–12:30 → free 11:00–11:30  
+- 13:00–13:30 → free 12:30–13:00  
+- 14:30–15:00 → free 13:30–14:30  
+- 16:00–17:00 → free 15:00–16:00  
+
+So Henry’s free slots:  
+1. 9:00–9:30  
+2. 10:00–10:30  
+3. 11:00–11:30  
+4. 12:30–13:00  
+5. 13:30–14:30  
+6. 15:00–16:00  
+
+**Step 3 – Find overlaps of at least 30 minutes**  
+
+Check each:  
+- Overlap of Eric’s 9:00–12:00 with Henry’s slots:  
+  - With Henry’s 9:00–9:30 → 30 min → valid slot 9:00–9:30 (exactly 30 min).  
+  - With Henry’s 10:00–10:30 → 30 min → valid slot 10:00–10:30.  
+  - With Henry’s 11:00–11:30 → 30 min → valid slot 11:00–11:30.  
+  - With Henry’s 12:30–13:00 → overlap with Eric’s 9:00–12:00? No, Eric free ends at 12:00, so no overlap.  
+
+- Overlap of Eric’s 13:00–14:00 with Henry’s slots:  
+  - With Henry’s 12:30–13:00 → no overlap (Henry ends at 13:00, Eric starts at 13:00 → zero duration).  
+  - With Henry’s 13:30–14:30 → overlap 13:30–14:00 → 30 min → valid slot 13:30–14:00.  
+
+- Overlap of Eric’s 15:00–17:00 with Henry’s slots:  
+  - With Henry’s 15:00–16:00 → 1 hour → valid slot e.g. 15:00–15:30.  
+
+**Step 4 – Apply Henry’s preference (rather not meet after 10:00)**  
+That means slots before or at 10:00 are preferred.  
+
+Available slots before or at 10:00:  
+- 9:00–9:30 (both free)  
+- 10:00–10:30 starts at 10:00, which is “after 10:00”? “After 10:00” means start time > 10:00. So 10:00 exactly might be borderline, but “rather not meet after 10:00” suggests 10:00 is okay? Usually means start time ≥ 10:00 is less preferred. Let’s interpret strictly: “after 10:00” means start time > 10:00, so 10:00 is allowed and preferred over later times.  
+
+But 9:00–9:30 is clearly before 10:00, so it’s the most preferred.  
+
+**Step 5 – Choose earliest preferred slot**  
+Earliest slot that fits: 9:00–9:30.  
+
+**Step 6 – Write code to compute this**  
+We’ll write a script that finds all overlaps of at least 30 minutes, then picks the earliest one that starts before or at 10:00 if possible, otherwise earliest any.
+
+```python
+from datetime import datetime, timedelta
+
+def time_to_minutes(t):
+    """Convert 'HH:MM' to minutes since midnight."""
+    return t.hour * 60 + t.minute
+
+def minutes_to_time(m):
+    """Convert minutes since midnight to 'HH:MM' string."""
+    h = m // 60
+    m = m % 60
+    return f"{h:02d}:{m:02d}"
+
+def find_meeting_time(eric_busy, henry_busy, work_start, work_end, duration, preference_cutoff=None):
+    # Convert work hours to minutes
+    work_start_min = time_to_minutes(work_start)
+    work_end_min = time_to_minutes(work_end)
+    
+    # Generate free slots for Eric
+    eric_free = []
+    current = work_start_min
+    for start, end in sorted(eric_busy):
+        s = time_to_minutes(start)
+        e = time_to_minutes(end)
+        if current < s:
+            eric_free.append((current, s))
+        current = max(current, e)
+    if current < work_end_min:
+        eric_free.append((current, work_end_min))
+    
+    # Generate free slots for Henry
+    henry_free = []
+    current = work_start_min
+    for start, end in sorted(henry_busy):
+        s = time_to_minutes(start)
+        e = time_to_minutes(end)
+        if current < s:
+            henry_free.append((current, s))
+        current = max(current, e)
+    if current < work_end_min:
+        henry_free.append((current, work_end_min))
+    
+    # Find overlaps of at least duration minutes
+    overlaps = []
+    for e_start, e_end in eric_free:
+        for h_start, h_end in henry_free:
+            overlap_start = max(e_start, h_start)
+            overlap_end = min(e_end, h_end)
+            if overlap_end - overlap_start >= duration:
+                overlaps.append((overlap_start, overlap_end))
+    
+    # Sort by start time
+    overlaps.sort(key=lambda x: x[0])
+    
+    # Apply preference: earliest slot that starts <= preference_cutoff if possible
+    chosen = None
+    if preference_cutoff is not None:
+        pref_cutoff_min = time_to_minutes(preference_cutoff)
+        for start, end in overlaps:
+            if start <= pref_cutoff_min:
+                chosen = (start, start + duration)
+                break
+    if chosen is None and overlaps:
+        chosen = (overlaps[0][0], overlaps[0][0] + duration)
+    
+    return chosen
+
+# Input data
+work_start = datetime.strptime("09:00", "%H:%M")
+work_end = datetime.strptime("17:00", "%H:%M")
+duration = 30  # minutes
+
+eric_busy = [
+    (datetime.strptime("12:00", "%H:%M"), datetime.strptime("13:00", "%H:%M")),
+    (datetime.strptime("14:00", "%H:%M"), datetime.strptime("15:00", "%H:%M"))
+]
+
+henry_busy = [
+    (datetime.strptime("09:30", "%H:%M"), datetime.strptime("10:00", "%H:%M")),
+    (datetime.strptime("10:30", "%H:%M"), datetime.strptime("11:00", "%H:%M")),
+    (datetime.strptime("11:30", "%H:%M"), datetime.strptime("12:30", "%H:%M")),
+    (datetime.strptime("13:00", "%H:%M"), datetime.strptime("13:30", "%H:%M")),
+    (datetime.strptime("14:30", "%H:%M"), datetime.strptime("15:00", "%H:%M")),
+    (datetime.strptime("16:00", "%H:%M"), datetime.strptime("17:00", "%H:%M"))
+]
+
+# Henry's preference: rather not meet after 10:00, so try to pick a slot starting <= 10:00
+preference_cutoff = datetime.strptime("10:00", "%H:%M")
+
+chosen_slot = find_meeting_time(eric_busy, henry_busy, work_start, work_end, duration, preference_cutoff)
+
+if chosen_slot:
+    start_time = minutes_to_time(chosen_slot[0])
+    end_time = minutes_to_time(chosen_slot[1])
+    print(f"Monday {start_time}:{end_time}")
+else:
+    print("No suitable time found.")
+```

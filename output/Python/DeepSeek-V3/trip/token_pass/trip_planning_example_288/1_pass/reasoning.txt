@@ -1,0 +1,117 @@
+Let's break down the problem and then write the program.
+
+**Step 1 – Understanding constraints**  
+We have:  
+- Total days: 15  
+- Stuttgart: 5 days total, workshop between day 11–15 (so Stuttgart must include some or all of days 11–15).  
+- Manchester: 7 days total, wedding between day 1–7 (so Manchester must include some or all of days 1–7).  
+- Madrid: 4 days total.  
+- Vienna: 2 days total.  
+
+Direct flights:  
+Vienna–Stuttgart  
+Manchester–Vienna  
+Madrid–Vienna  
+Manchester–Stuttgart  
+Manchester–Madrid  
+
+**Step 2 – Logical deduction**  
+We need to arrange stays so that:  
+1. Manchester (7 days) fits in days 1–7 at least partially.  
+2. Stuttgart (5 days) fits in days 11–15 at least partially.  
+3. Madrid (4) and Vienna (2) fit somewhere else.  
+4. Travel is only between connected cities.  
+
+Possible sequence:  
+- Start in Manchester (wedding), then go somewhere connected (Stuttgart, Madrid, or Vienna).  
+- Must end in Stuttgart for workshop.  
+
+Let’s try:  
+Days 1–7: Manchester (7 days) — satisfies wedding constraint fully.  
+But then we still need Stuttgart 5 days between 11–15, Madrid 4, Vienna 2. That’s 5+4+2 = 11 days after day 7, but we only have days 8–15 = 8 days left.  
+So Manchester can’t take all of days 1–7, because total days would exceed 15.  
+
+Let’s compute total needed days:  
+Manchester 7 + Stuttgart 5 + Madrid 4 + Vienna 2 = 18 days.  
+But we have only 15 days.  
+That means overlap: travel days count for both cities.  
+
+If you fly on day X from A to B, day X counts for both A and B totals.  
+So we can reduce total calendar days by overlapping travel days.  
+
+We need to find arrangement where sum of city days = 18, but calendar days = 15, so overlap days = 3.  
+That means 3 travel days where you are in two cities.  
+
+**Step 3 – Constructing a feasible itinerary**  
+Let’s try:  
+Start in Manchester (wedding days 1–7).  
+We can leave Manchester on day 4 to go to Vienna, so day 4 counts for both Manchester and Vienna.  
+Then Vienna 2 days total: maybe day 4 and day 5.  
+Then fly to Stuttgart (connected) on day 6, so day 6 counts for Vienna and Stuttgart.  
+But Stuttgart workshop is days 11–15, so maybe we go to Madrid first.  
+Wait, Madrid–Vienna direct, but we already left Vienna. Better: Manchester → Madrid → Vienna → Stuttgart.  
+
+Check connections:  
+Manchester–Madrid direct: yes.  
+Madrid–Vienna direct: yes.  
+Vienna–Stuttgart direct: yes.  
+
+Let’s allocate:  
+Manchester: 7 days total.  
+Madrid: 4 days total.  
+Vienna: 2 days total.  
+Stuttgart: 5 days total.  
+
+Calendar:  
+Day 1–4: Manchester (4 days)  
+Day 4: travel to Madrid (counts for Manchester and Madrid)  
+Day 4–7: Madrid (4 days total: day 4,5,6,7)  
+Day 7: travel to Vienna (counts for Madrid and Vienna)  
+Day 7–8: Vienna (2 days total: day 7,8)  
+Day 8: travel to Stuttgart (counts for Vienna and Stuttgart)  
+Day 8–12: Stuttgart (5 days total: day 8,9,10,11,12)  
+
+But workshop is days 11–15, so Stuttgart must include those. Our Stuttgart days 8–12 include 11,12 but not 13,14,15 — fails.  
+
+We need Stuttgart to cover at least 11–15. So shift:  
+Manchester days 1–5 (5 days)  
+Day 5: travel to Madrid (Manchester day 6th, Madrid day 1st)  
+Madrid days 5–8 (4 days total)  
+Day 8: travel to Vienna (Madrid 4th, Vienna 1st)  
+Vienna days 8–9 (2 days total)  
+Day 9: travel to Stuttgart (Vienna 2nd, Stuttgart 1st)  
+Stuttgart days 9–13 (5 days total)  
+
+But Stuttgart ends day 13, workshop is until day 15 — fails.  
+
+We need Stuttgart to end day 15. So:  
+Stuttgart days 11–15 (5 days).  
+So travel to Stuttgart on day 11 latest.  
+
+Let’s work backwards:  
+Stuttgart: days 11–15 (5 days).  
+Before that: Vienna 2 days, maybe days 9–10, travel to Stuttgart on day 11 (counts for Vienna and Stuttgart) — but then Vienna only 2 days: days 9,10.  
+Before Vienna: Madrid 4 days, maybe days 5–8, travel to Vienna on day 9 (counts for Madrid and Vienna).  
+Before Madrid: Manchester 7 days, days 1–5 (5 days), travel to Madrid on day 5 (counts for Manchester and Madrid).  
+
+Check totals:  
+Manchester: days 1–5 = 5 days, plus day 5 travel counted again? Wait, day 5 is Manchester (5th day) and Madrid (1st day). So Manchester total = 5 days. Need 7, so need 2 more Manchester days earlier or later — impossible if we leave on day 5.  
+
+So maybe start earlier:  
+Manchester days 1–7 (7 days), but then overlap with Madrid on day 7.  
+Then Madrid days 7–10 (4 days), overlap with Vienna on day 10.  
+Vienna days 10–11 (2 days), overlap with Stuttgart on day 11.  
+Stuttgart days 11–15 (5 days).  
+
+Check:  
+Manchester: 1–7 = 7 days.  
+Madrid: 7,8,9,10 = 4 days.  
+Vienna: 10,11 = 2 days.  
+Stuttgart: 11,12,13,14,15 = 5 days.  
+All connected: Manchester–Madrid, Madrid–Vienna, Vienna–Stuttgart.  
+Workshop in Stuttgart days 11–15 ✅  
+Wedding in Manchester days 1–7 ✅  
+Total calendar: 15 days.  
+
+**Step 4 – Write program to output this itinerary**  
+We’ll encode this as the solution.

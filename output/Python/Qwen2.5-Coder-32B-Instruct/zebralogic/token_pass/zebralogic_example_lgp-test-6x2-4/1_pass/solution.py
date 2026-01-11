@@ -1,0 +1,85 @@
+import itertools
+import json
+
+def solve_puzzle():
+    # Define the variables
+    houses = [1, 2, 3, 4, 5, 6]
+    names = ["Alice", "Arnold", "Carol", "Peter", "Bob", "Eric"]
+    phone_models = ["huawei p50", "iphone 13", "xiaomi mi 11", "oneplus 9", "samsung galaxy s21", "google pixel 6"]
+
+    # Generate all possible permutations of names and phone models
+    all_permutations = list(itertools.permutations(names))
+    all_phone_permutations = list(itertools.permutations(phone_models))
+
+    # Function to check if a permutation satisfies all constraints
+    def is_valid_solution(name_permutation, phone_permutation):
+        # Create a list of tuples (name, phone_model) for each house
+        solution = list(zip(name_permutation, phone_permutation))
+
+        # Constraint 1: Alice uses an iPhone 13
+        if solution[houses.index(1)][0] == "Alice" and solution[houses.index(1)][1] != "iphone 13":
+            return False
+        if solution[houses.index(1)][1] == "iphone 13" and solution[houses.index(1)][0] != "Alice":
+            return False
+
+        # Constraint 2: Huawei P50 is in the first house
+        if solution[houses.index(1)][1] != "huawei p50":
+            return False
+
+        # Constraint 3: OnePlus 9 is in the sixth house
+        if solution[houses.index(6)][1] != "oneplus 9":
+            return False
+
+        # Constraint 4: Google Pixel 6 is not in the second house
+        if solution[houses.index(2)][1] == "google pixel 6":
+            return False
+
+        # Constraint 5: iPhone 13 is not in the second house
+        if solution[houses.index(2)][1] == "iphone 13":
+            return False
+
+        # Constraint 6: One house between Bob and Carol
+        bob_index = solution.index(("Bob", solution[names.index("Bob")][1]))
+        carol_index = solution.index(("Carol", solution[names.index("Carol")][1]))
+        if abs(bob_index - carol_index) != 2:
+            return False
+
+        # Constraint 7: Eric uses Huawei P50
+        if solution[houses.index(1)][0] != "Eric":
+            return False
+
+        # Constraint 8: Xiaomi Mi 11 is in the third house
+        if solution[houses.index(3)][1] != "xiaomi mi 11":
+            return False
+
+        # Constraint 9: Alice is somewhere to the left of Carol
+        alice_index = solution.index(("Alice", solution[names.index("Alice")][1]))
+        carol_index = solution.index(("Carol", solution[names.index("Carol")][1]))
+        if alice_index >= carol_index:
+            return False
+
+        # Constraint 10: Arnold uses OnePlus 9
+        if solution[houses.index(6)][0] != "Arnold":
+            return False
+
+        return True
+
+    # Find the valid solution
+    for name_permutation in all_permutations:
+        for phone_permutation in all_phone_permutations:
+            if is_valid_solution(name_permutation, phone_permutation):
+                solution = list(zip(houses, name_permutation, phone_permutation))
+                break
+
+    # Format the solution as JSON
+    json_solution = {
+        "solution": {
+            "header": ["House", "Name", "PhoneModel"],
+            "rows": [[str(house), name, phone] for house, name, phone in solution]
+        }
+    }
+
+    return json.dumps(json_solution, indent=2)
+
+# Solve the puzzle and print the result
+print(solve_puzzle())

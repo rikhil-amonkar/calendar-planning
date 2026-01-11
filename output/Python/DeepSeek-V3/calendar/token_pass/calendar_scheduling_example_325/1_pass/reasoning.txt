@@ -1,0 +1,112 @@
+Let's break this down step by step.  
+
+We have:  
+
+- **Participants**: Jose, Keith, Logan, Megan, Gary, Bobby  
+- **Work hours**: 9:00–17:00  
+- **Meeting duration**: 30 minutes  
+- **Day**: Monday  
+- **Jose’s extra constraint**: Not after 15:30  
+- **Given busy times**:  
+
+1. **Jose**: 11:00–11:30, 12:30–13:00  
+2. **Keith**: 14:00–14:30, 15:00–15:30  
+3. **Logan**: 9:00–10:00, 12:00–12:30, 15:00–15:30  
+4. **Megan**: 9:00–10:30, 11:00–12:00, 13:00–13:30, 14:30–16:30  
+5. **Gary**: 9:00–9:30, 10:00–10:30, 11:30–13:00, 13:30–14:00, 14:30–16:30  
+6. **Bobby**: 11:00–11:30, 12:00–12:30, 13:00–16:00  
+
+---
+
+### Step 1 – Convert times to minutes from 9:00
+Let’s work in minutes from 9:00 (so 9:00 = 0, 17:00 = 480).  
+
+**Jose busy**:  
+- 11:00–11:30 → 120–150  
+- 12:30–13:00 → 210–240  
+
+**Keith busy**:  
+- 14:00–14:30 → 300–330  
+- 15:00–15:30 → 360–390  
+
+**Logan busy**:  
+- 9:00–10:00 → 0–60  
+- 12:00–12:30 → 180–210  
+- 15:00–15:30 → 360–390  
+
+**Megan busy**:  
+- 9:00–10:30 → 0–90  
+- 11:00–12:00 → 120–180  
+- 13:00–13:30 → 240–270  
+- 14:30–16:30 → 330–450  
+
+**Gary busy**:  
+- 9:00–9:30 → 0–30  
+- 10:00–10:30 → 60–90  
+- 11:30–13:00 → 150–240  
+- 13:30–14:00 → 270–300  
+- 14:30–16:30 → 330–450  
+
+**Bobby busy**:  
+- 11:00–11:30 → 120–150  
+- 12:00–12:30 → 180–210  
+- 13:00–16:00 → 240–420  
+
+---
+
+### Step 2 – Find free slots for all
+We need a 30-minute slot (duration = 30 minutes) where **all are free** and **end time ≤ 15:30** for Jose (15:30 = 390 minutes from 9:00).  
+
+Let’s check possible start times in 30-minute increments from 9:00 to 16:30 (since meeting length 30 min, last start time 16:30 = 450 minutes from 9:00).  
+
+But Jose’s constraint: meeting must end by 15:30 → start time ≤ 15:00 (360 minutes from 9:00).  
+
+So candidate start times: 0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330, 360 (in minutes from 9:00).  
+
+---
+
+**Check each**:  
+
+- **9:00–9:30** (0–30):  
+  Jose free? Yes.  
+  Keith free? Yes.  
+  Logan busy 0–60 → No.  
+
+- **9:30–10:00** (30–60):  
+  Logan busy 0–60 → No.  
+
+- **10:00–10:30** (60–90):  
+  Logan free? 60–90 free? Yes (Logan busy 0–60, next at 180).  
+  Megan busy 0–90 → No.  
+
+- **10:30–11:00** (90–120):  
+  Megan free? Yes (Megan busy 0–90, next at 120).  
+  Gary free? Gary busy 60–90, so 90–120 free? Yes.  
+  Bobby free? Bobby busy starts 120, so 90–120 free? Yes.  
+  Others? Let’s check all:  
+  Jose free (next busy 120).  
+  Keith free.  
+  Logan free.  
+  → All free 90–120.  
+
+But meeting ends at 120 = 11:00, which is fine for Jose (≤15:30).  
+
+So **10:30–11:00** works for all.  
+
+---
+
+We could stop here, but let’s verify no one is busy:  
+
+- Jose: 11:00 next, so 10:30–11:00 free.  
+- Keith: free all morning.  
+- Logan: free until 12:00.  
+- Megan: free 10:30–11:00.  
+- Gary: free 10:30–11:00 (last busy 10:00–10:30, next 11:30).  
+- Bobby: free 10:30–11:00 (next busy 11:00).  
+
+Yes, all free.  
+
+---
+
+### Step 3 – Write Python code to find and output this
+We’ll write code that finds the earliest such slot.

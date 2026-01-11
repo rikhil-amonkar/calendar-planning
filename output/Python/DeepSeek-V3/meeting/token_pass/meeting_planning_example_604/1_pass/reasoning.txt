@@ -1,0 +1,168 @@
+Let’s break this down step by step before writing the code.
+
+---
+
+## **Step 1 – Understanding the problem**
+
+We start at **Fisherman’s Wharf at 9:00 AM**.  
+We have 7 friends, each with:
+
+- A **location**
+- A **time window** when they are available
+- A **minimum meeting duration** we’d like to meet them for
+- **Travel times** between all locations (given in minutes)
+
+We want to **meet as many friends as possible**, respecting:
+1. Travel time between locations
+2. Their availability windows
+3. Minimum meeting durations
+4. Time order (can’t meet someone after their window ends)
+
+---
+
+## **Step 2 – Observations about constraints**
+
+Let’s list friends in order of their availability **start times**:
+
+1. **William** – Embarcadero – 7:00–9:00 AM – min 90 min  
+   → But we start at 9:00 AM at Fisherman’s Wharf, so William’s window ends exactly when we start.  
+   Travel from Fisherman’s Wharf to Embarcadero = 8 min.  
+   We’d arrive at 9:08 AM, but William leaves at 9:00 AM → **cannot meet William**.
+
+2. **Stephanie** – Nob Hill – 7:30–9:30 AM – min 45 min  
+   Start at Fisherman’s Wharf 9:00 AM → travel to Nob Hill = 11 min → arrive 9:11 AM.  
+   She’s available until 9:30 AM → max possible meeting = 9:30 – 9:11 = 19 min → less than 45 min required → **cannot meet Stephanie**.
+
+3. **Joseph** – Alamo Square – 11:30 AM – 12:45 PM – min 15 min  
+   Possible.
+
+4. **Karen** – Russian Hill – 2:30 PM – 7:45 PM – min 30 min  
+   Possible.
+
+5. **Kimberly** – North Beach – 3:45 PM – 7:15 PM – min 30 min  
+   Possible.
+
+6. **Laura** – The Castro – 7:45 PM – 9:30 PM – min 105 min  
+   Possible if enough time.
+
+7. **Daniel** – Golden Gate Park – 9:15 PM – 9:45 PM – min 15 min  
+   Possible if we finish Laura early enough to travel and meet him.
+
+---
+
+## **Step 3 – Travel time matrix**
+
+We’ll need to store travel times between all locations.
+
+---
+
+## **Step 4 – Approach**
+
+We can’t brute-force all permutations of 7 friends (5040) because some are impossible due to time windows, but we can try a **search over possible sequences** of the feasible friends.
+
+Feasible friends initially: Joseph, Karen, Kimberly, Laura, Daniel.  
+William and Stephanie are impossible from the start.
+
+We must start at Fisherman’s Wharf at 9:00 AM.
+
+We’ll try to schedule them in **time order** because backtracking might be needed if we can’t fit all.
+
+---
+
+## **Step 5 – Manual feasibility check**
+
+Let’s see if we can meet all 5 feasible friends:
+
+**Start 9:00 at Fisherman’s Wharf**  
+Go to Joseph at Alamo Square (travel 20 min) → arrive 9:20 AM.  
+But Joseph is only available from 11:30 AM → we’d wait 2h10m. That’s wasteful; maybe visit someone else first? But Karen and Kimberly are later in the day.  
+Actually, maybe we should start with Karen or Kimberly? No, they’re afternoon.  
+So maybe we just wait for Joseph? That kills the day.  
+Better: after 9:00, go somewhere else first? But only Joseph is morning, others are afternoon/evening.  
+So maybe we just wait somewhere (e.g., explore) until 11:30, then meet Joseph.
+
+Let’s try a schedule:
+
+1. 9:00–11:10: free time (could be anywhere, but we need to be at Alamo Square by 11:30).  
+   Travel to Alamo Square = 20 min from Fisherman’s Wharf, so leave Fisherman’s Wharf at 11:10 → arrive 11:30.
+
+2. Meet Joseph 11:30–11:45 (15 min minimum met).
+
+3. Travel to Karen at Russian Hill: Alamo Square → Russian Hill = 13 min → arrive 11:58.  
+   But Karen is available only from 2:30 PM → wait 2h32m. Not great.
+
+Maybe swap order: after Joseph, go to Kimberly (North Beach) first?  
+Alamo Square → North Beach = 15 min → arrive 12:00. Kimberly available 3:45 PM → wait 3h45m. Worse.
+
+So maybe after Joseph, go somewhere to kill time, then Karen at 2:30.
+
+Let’s try:
+
+11:45 leave Alamo Square → travel to Russian Hill (13 min) → arrive 11:58 → wait until 2:30 (2h32m wait).  
+Meet Karen 2:30–3:00 (30 min).
+
+3:00 leave Russian Hill → travel to North Beach (5 min) → arrive 3:05 → wait until 3:45 (40 min wait).  
+Meet Kimberly 3:45–4:15 (30 min).
+
+4:15 leave North Beach → travel to The Castro (22 min) → arrive 4:37 → Laura available at 7:45 PM → wait 3h8m. Too long.
+
+This is inefficient. Maybe we can meet Kimberly before Karen?  
+Kimberly available 3:45 PM, Karen available 2:30 PM → Karen first.
+
+But after Karen at 3:00, Kimberly at 3:45 works with 5 min travel, so that’s fine.
+
+Then after Kimberly, we have 4:15 → Laura at 7:45 PM is 3.5h gap. Could we fit Daniel in evening?  
+Laura 7:45–9:30, Daniel 9:15–9:45.  
+If we meet Laura 7:45–9:15 (90 min) → travel to Golden Gate Park (The Castro → Golden Gate Park = 11 min) → arrive 9:26 → meet Daniel 9:26–9:45 (19 min) → works.
+
+But Laura’s minimum is 105 min, so 90 min is not enough.  
+So we must meet Laura earlier:  
+Start Laura at 7:45, end at 9:30 → 105 min → that’s 7:45–9:30 exactly.  
+Then no time for Daniel (travel 11 min → arrive 9:41, Daniel ends 9:45 → only 4 min).  
+So can’t meet both Laura and Daniel fully.
+
+Thus choice: Laura (105 min) OR Daniel (15 min) + part of Laura?  
+Better to meet Laura fully because 105 min > 15 min, and Daniel’s window is tiny.
+
+So final sequence: Joseph → Karen → Kimberly → Laura.
+
+---
+
+## **Step 6 – Build precise schedule**
+
+Let’s compute times exactly:
+
+**Start**: Fisherman’s Wharf 9:00  
+Travel to Alamo Square: 20 min → arrive 9:20 → wait until 11:30 (2h10m wait).  
+Meet Joseph: 11:30–11:45 (15 min).
+
+Travel to Russian Hill: 13 min → arrive 11:58 → wait until 14:30 (2h32m wait).  
+Meet Karen: 14:30–15:00 (30 min).
+
+Travel to North Beach: 5 min → arrive 15:05 → wait until 15:45 (40 min wait).  
+Meet Kimberly: 15:45–16:15 (30 min).
+
+Travel to The Castro: 22 min → arrive 16:37 → wait until 19:45 (3h8m wait).  
+Meet Laura: 19:45–21:30 (105 min).
+
+---
+
+## **Step 7 – Can we reduce waits?**
+
+Maybe after Joseph, go to North Beach first (Alamo Square → North Beach = 15 min → arrive 12:00), wait until 15:45 (3h45m) → worse.
+
+After Joseph, go to Golden Gate Park? Not useful.
+
+So the above is optimal for meeting 4 people.
+
+---
+
+## **Step 8 – Write the program**
+
+We’ll encode the travel times, constraints, and try to maximize meetings by exploring permutations of feasible people.
+
+But since we already reasoned, we’ll implement a search over permutations of [Joseph, Karen, Kimberly, Laura, Daniel] and see if Daniel can be included.
+
+---
+
+Here’s the Python program:

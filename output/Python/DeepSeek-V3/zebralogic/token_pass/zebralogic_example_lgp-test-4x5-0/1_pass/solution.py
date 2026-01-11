@@ -1,0 +1,121 @@
+import itertools
+import json
+
+def solve():
+    # Define all possible values for each category
+    names = ["Eric", "Peter", "Arnold", "Alice"]
+    smoothies = ["dragonfruit", "cherry", "desert", "watermelon"]
+    cigars = ["blue master", "pall mall", "dunhill", "prince"]
+    heights = ["tall", "average", "short", "very short"]
+    phones = ["google pixel 6", "samsung galaxy s21", "iphone 13", "oneplus 9"]
+    
+    houses = [1, 2, 3, 4]
+    
+    # Generate all permutations of each category
+    name_perms = itertools.permutations(names, 4)
+    smoothie_perms = itertools.permutations(smoothies, 4)
+    cigar_perms = itertools.permutations(cigars, 4)
+    height_perms = itertools.permutations(heights, 4)
+    phone_perms = itertools.permutations(phones, 4)
+    
+    solutions = []
+    
+    # Try all combinations
+    for name_ass in name_perms:
+        for smoothie_ass in smoothie_perms:
+            # Clue 1: Dragonfruit smoothie lover is Eric
+            if smoothie_ass[names.index("Eric")] != "dragonfruit":
+                continue
+            
+            for cigar_ass in cigar_perms:
+                # Clue 2: Dunhill smoker likes Cherry smoothies
+                dunhill_index = cigar_ass.index("dunhill")
+                if smoothie_ass[dunhill_index] != "cherry":
+                    continue
+                
+                # Clue 13: Dragonfruit smoothie lover smokes Pall Mall
+                dragonfruit_index = smoothie_ass.index("dragonfruit")
+                if cigar_ass[dragonfruit_index] != "pall mall":
+                    continue
+                
+                for height_ass in height_perms:
+                    # Clue 7: Tall person is in house 3 (index 2)
+                    if height_ass[2] != "tall":
+                        continue
+                    
+                    # Clue 10: Dunhill smoker is short
+                    if height_ass[dunhill_index] != "short":
+                        continue
+                    
+                    for phone_ass in phone_perms:
+                        # Clue 3: Samsung Galaxy S21 directly left of iPhone 13
+                        samsung_index = phone_ass.index("samsung galaxy s21")
+                        iphone_index = phone_ass.index("iphone 13")
+                        if iphone_index - samsung_index != 1:
+                            continue
+                        
+                        # Clue 4: Dunhill smoker is somewhere to the right of very short person
+                        very_short_index = height_ass.index("very short")
+                        if dunhill_index <= very_short_index:
+                            continue
+                        
+                        # Clue 5: Watermelon smoothie lover is somewhere to the right of Desert smoothie lover
+                        watermelon_index = smoothie_ass.index("watermelon")
+                        desert_index = smoothie_ass.index("desert")
+                        if watermelon_index <= desert_index:
+                            continue
+                        
+                        # Clue 6: Prince smoker uses OnePlus 9
+                        prince_index = cigar_ass.index("prince")
+                        if phone_ass[prince_index] != "oneplus 9":
+                            continue
+                        
+                        # Clue 8: Very short person uses iPhone 13
+                        if phone_ass[very_short_index] != "iphone 13":
+                            continue
+                        
+                        # Clue 9: Blue Master smoker is not in house 1 (index 0)
+                        blue_master_index = cigar_ass.index("blue master")
+                        if blue_master_index == 0:
+                            continue
+                        
+                        # Clue 11: Peter is not in house 3 (index 2)
+                        peter_index = name_ass.index("Peter")
+                        if peter_index == 2:
+                            continue
+                        
+                        # Clue 12: Arnold uses Google Pixel 6
+                        arnold_index = name_ass.index("Arnold")
+                        if phone_ass[arnold_index] != "google pixel 6":
+                            continue
+                        
+                        # All constraints satisfied, store solution
+                        solution = []
+                        for i in range(4):
+                            solution.append([
+                                str(i + 1),
+                                name_ass[i],
+                                smoothie_ass[i],
+                                cigar_ass[i],
+                                height_ass[i],
+                                phone_ass[i]
+                            ])
+                        solutions.append(solution)
+    
+    if not solutions:
+        return {"solution": {"header": [], "rows": []}}
+    
+    # Take the first solution (should be unique)
+    solution_rows = solutions[0]
+    
+    result = {
+        "solution": {
+            "header": ["House", "Name", "Smoothie", "Cigar", "Height", "PhoneModel"],
+            "rows": solution_rows
+        }
+    }
+    return result
+
+if __name__ == "__main__":
+    solution = solve()
+    print(json.dumps(solution, indent=2))

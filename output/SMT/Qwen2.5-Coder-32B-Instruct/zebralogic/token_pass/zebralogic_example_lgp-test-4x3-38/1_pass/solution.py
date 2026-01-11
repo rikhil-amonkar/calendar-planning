@@ -1,0 +1,80 @@
+from z3 import *
+
+# Define the solver
+solver = Solver()
+
+# Define variables for each house
+names = [Int(f'name_{i}') for i in range(1, 5)]
+mothers = [Int(f'mother_{i}') for i in range(1, 5)]
+flowers = [Int(f'flower_{i}') for i in range(1, 5)]
+
+# Define domains for each variable
+people = ['Alice', 'Peter', 'Arnold', 'Eric']
+mothers_names = ['Holly', 'Kailyn', 'Janelle', 'Aniya']
+flowers_list = ['carnations', 'roses', 'lilies', 'daffodils']
+
+# Map names, mothers, and flowers to integers
+name_map = {name: i for i, name in enumerate(people)}
+mother_map = {mother: i for i, mother in enumerate(mothers_names)}
+flower_map = {flower: i for i, flower in enumerate(flowers_list)}
+
+# Add constraints for uniqueness
+solver.add(Distinct(names))
+solver.add(Distinct(mothers))
+solver.add(Distinct(flowers))
+
+# Constraint 1: Alice is in the third house and her mother's name is Kailyn.
+solver.add(names[2] == name_map['Alice'])
+solver.add(mothers[2] == mother_map['Kailyn'])
+
+# Constraint 2: The person whose mother's name is Janelle is to the right of Arnold.
+janelle_house = Int('janelle_house')
+arnold_house = Int('arnold_house')
+solver.add(Or([mothers[i] == mother_map['Janelle'] for i in range(3, 4)] + [mothers[i] == mother_map['Janelle'] for i in range(3, 4)]))
+solver.add(Or([names[i] == name_map['Arnold'] for i in range(0, 4)]))
+solver.add(janelle_house > arnold_house)
+solver.add(Or([And(mothers[i] == mother_map['Janelle'], janelle_house == i) for i in range(1, 5)]))
+solver.add(Or([And(names[i] == name_map['Arnold'], arnold_house == i) for i in range(1, 5)]))
+
+# Constraint 3: Peter is to the right of the person who loves carnations.
+peter_house = Int('peter_house')
+carnations_house = Int('carnations_house')
+solver.add(Or([names[i] == name_map['Peter'] for i in range(0, 4)]))
+solver.add(Or([flowers[i] == flower_map['carnations'] for i in range(0, 4)]))
+solver.add(peter_house > carnations_house)
+solver.add(Or([And(names[i] == name_map['Peter'], peter_house == i) for i in range(1, 5)]))
+solver.add(Or([And(flowers[i] == flower_map['carnations'], carnations_house == i) for i in range(1, 5)]))
+
+# Constraint 4: Eric loves daffodils.
+solver.add(flowers[3] == flower_map['daffodils'])  # Assuming Eric is in the fourth house for now
+
+# Constraint 5: Arnold's mother's name is Holly.
+solver.add(Or([And(names[i] == name_map['Arnold'], mothers[i] == mother_map['Holly']) for i in range(0, 4)]))
+
+# Constraint 6: The person who loves carnations is to the right of the person whose mother's name is Holly.
+holly_house = Int('holly_house')
+solver.add(holly_house < carnations_house)
+solver.add(Or([And(mothers[i] == mother_map['Holly'], holly_house == i) for i in range(1, 5)]))
+
+# Constraint 7: The person who loves lilies is directly to the left of Alice.
+lilies_house = Int('lilies_house')
+solver.add(lilies_house == 1)  # Since Alice is in the third house, lilies must be in the second house
+solver.add(flowers[lilies_house - 1] == flower_map['lilies'])
+
+# Check if the constraints are satisfiable
+if solver.check() == sat:
+    model = solver.model()
+    result = {
+        "solution": {
+            "header": ["House", "Name", "Mother", "Flower"],
+            "rows": []
+        }
+    }
+    for house in range(1, 5):
+        name = people[model.evaluate(names[house - 1]).as_long()]
+        mother = mothers_names[model.evaluate(mothers[house - 1]).as_long()]
+        flower = flowers_list[model.evaluate(flowers[house - 1]).as_long()]
+        result["solution"]["rows"].append([str(house), name, mother, flower])
+    print(result)
+else:
+    print("No solution found")

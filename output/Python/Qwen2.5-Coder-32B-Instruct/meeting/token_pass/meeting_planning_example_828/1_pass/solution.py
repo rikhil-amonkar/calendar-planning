@@ -1,0 +1,88 @@
+import json
+from datetime import datetime, timedelta
+
+# Define travel times as a dictionary of dictionaries
+travel_times = {
+    "Marina District": {"Richmond District": 11, "Union Square": 16, "Nob Hill": 12, "Fisherman's Wharf": 10, "Golden Gate Park": 18, "Embarcadero": 14, "Financial District": 17, "North Beach": 11, "Presidio": 10},
+    "Richmond District": {"Marina District": 9, "Union Square": 21, "Nob Hill": 17, "Fisherman's Wharf": 18, "Golden Gate Park": 9, "Embarcadero": 19, "Financial District": 22, "North Beach": 17, "Presidio": 7},
+    "Union Square": {"Marina District": 18, "Richmond District": 20, "Nob Hill": 9, "Fisherman's Wharf": 15, "Golden Gate Park": 22, "Embarcadero": 11, "Financial District": 9, "North Beach": 10, "Presidio": 24},
+    "Nob Hill": {"Marina District": 11, "Richmond District": 14, "Union Square": 7, "Fisherman's Wharf": 10, "Golden Gate Park": 17, "Embarcadero": 9, "Financial District": 9, "North Beach": 8, "Presidio": 17},
+    "Fisherman's Wharf": {"Marina District": 9, "Richmond District": 18, "Union Square": 13, "Nob Hill": 11, "Golden Gate Park": 25, "Embarcadero": 8, "Financial District": 11, "North Beach": 6, "Presidio": 17},
+    "Golden Gate Park": {"Marina District": 16, "Richmond District": 7, "Union Square": 22, "Nob Hill": 20, "Fisherman's Wharf": 24, "Embarcadero": 25, "Financial District": 26, "North Beach": 23, "Presidio": 11},
+    "Embarcadero": {"Marina District": 12, "Richmond District": 21, "Union Square": 10, "Nob Hill": 10, "Fisherman's Wharf": 6, "Golden Gate Park": 25, "Financial District": 5, "North Beach": 6, "Presidio": 20},
+    "Financial District": {"Marina District": 15, "Richmond District": 21, "Union Square": 9, "Nob Hill": 8, "Fisherman's Wharf": 10, "Golden Gate Park": 23, "Embarcadero": 4, "North Beach": 7, "Presidio": 22},
+    "North Beach": {"Marina District": 9, "Richmond District": 18, "Union Square": 7, "Nob Hill": 7, "Fisherman's Wharf": 5, "Golden Gate Park": 22, "Embarcadero": 6, "Financial District": 8, "Presidio": 17},
+    "Presidio": {"Marina District": 11, "Richmond District": 7, "Union Square": 22, "Nob Hill": 18, "Fisherman's Wharf": 19, "Golden Gate Park": 12, "Embarcadero": 20, "Financial District": 23, "North Beach": 18}
+}
+
+# Define friends' availability and meeting requirements
+friends = {
+    "Stephanie": {"location": "Richmond District", "available": (1635, 2130), "duration": 75},
+    "William": {"location": "Union Square", "available": (1045, 1730), "duration": 45},
+    "Elizabeth": {"location": "Nob Hill", "available": (1215, 1500), "duration": 105},
+    "Joseph": {"location": "Fisherman's Wharf", "available": (1245, 1400), "duration": 75},
+    "Anthony": {"location": "Golden Gate Park", "available": (1300, 2030), "duration": 75},
+    "Barbara": {"location": "Embarcadero", "available": (1915, 2030), "duration": 75},
+    "Carol": {"location": "Financial District", "available": (1145, 1635), "duration": 60},
+    "Sandra": {"location": "North Beach", "available": (600, 750), "duration": 15},
+    "Kenneth": {"location": "Presidio", "available": (2115, 2235), "duration": 45}
+}
+
+# Convert time strings to minutes since start of the day
+def time_to_minutes(time_str):
+    h, m = map(int, time_str.split(':'))
+    return h * 60 + m
+
+def minutes_to_time(minutes):
+    h, m = divmod(minutes, 60)
+    return f"{h}:{m:02}"
+
+# Check if a meeting can fit within a person's availability
+def can_meet(start_time, duration, person):
+    return start_time + duration <= friends[person]["available"][1] and start_time >= friends[person]["available"][0]
+
+# Backtracking function to find the optimal itinerary
+def backtrack(current_location, current_time, visited_friends, itinerary):
+    if len(visited_friends) == len(friends):
+        return itinerary
+    
+    best_itinerary = None
+    for friend, details in friends.items():
+        if friend not in visited_friends:
+            location = details["location"]
+            duration = details["duration"]
+            travel_time = travel_times[current_location][location]
+            new_start_time = current_time + travel_time
+            
+            if can_meet(new_start_time, duration, friend):
+                new_end_time = new_start_time + duration
+                new_itinerary = itinerary + [{
+                    "action": "meet",
+                    "location": location,
+                    "person": friend,
+                    "start_time": minutes_to_time(new_start_time),
+                    "end_time": minutes_to_time(new_end_time)
+                }]
+                
+                result = backtrack(location, new_end_time, visited_friends | {friend}, new_itinerary)
+                if result:
+                    if not best_itinerary or len(result) > len(best_itinerary):
+                        best_itinerary = result
+    
+    return best_itinerary
+
+# Initial parameters
+start_location = "Marina District"
+start_time = time_to_minutes("9:00")
+initial_itinerary = []
+
+# Find the optimal itinerary
+optimal_itinerary = backtrack(start_location, start_time, set(), initial_itinerary)
+
+# Output the result as JSON
+if optimal_itinerary:
+    result_json = json.dumps({"itinerary": optimal_itinerary}, indent=2)
+else:
+    result_json = json.dumps({"itinerary": []}, indent=2)
+
+print(result_json)

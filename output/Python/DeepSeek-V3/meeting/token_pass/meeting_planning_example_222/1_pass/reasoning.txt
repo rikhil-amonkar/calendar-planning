@@ -1,0 +1,85 @@
+Let’s break this down step by step before writing the code.
+
+**Step 1 – Understanding the problem**  
+We start at Nob Hill at 9:00 AM.  
+We have three friends with availability:  
+
+1. **Helen** – North Beach, 7:00–16:45, need ≥120 minutes with her.  
+2. **Kimberly** – Fisherman’s Wharf, 16:30–21:00, need ≥45 minutes.  
+3. **Patricia** – Bayview, 18:00–21:15, need ≥120 minutes.  
+
+Travel times are given between each location.  
+We want to meet as many as possible, but meetings must fit within their availability windows and include travel time between meetings.
+
+**Step 2 – Feasibility check**  
+If we try to meet all three, the day order could be:  
+Start at Nob Hill (9:00) → Helen (North Beach) → Kimberly (Fisherman’s Wharf) → Patricia (Bayview).  
+
+Let’s check times roughly:  
+- 9:00 to North Beach: travel 8 min → arrive 9:08.  
+- Meet Helen from 9:08 to 11:08 (120 min) → end 11:08.  
+- Travel to Kimberly: North Beach to Fisherman’s Wharf is 5 min → arrive 11:13.  
+But Kimberly is only available from 16:30, so we’d have a 5+ hour gap. That’s wasted time.  
+
+Maybe we can meet Helen later, closer to Kimberly’s start time, to reduce gaps.
+
+**Step 3 – Try to minimize gaps**  
+We must end Patricia by 21:15, need 120 min with her, so latest start with Patricia is 19:15.  
+Travel from Fisherman’s Wharf to Bayview is 26 min, so must leave Fisherman’s Wharf by 18:49 to arrive by 19:15.  
+Kimberly available 16:30–21:00, so we can meet Kimberly from 16:30 to 17:15 (45 min), leave at 17:15, travel 26 min → arrive Bayview 17:41.  
+Then meet Patricia 17:41–19:41 (120 min), done by 19:41 (within her 21:15 end).  
+
+Now, before Kimberly, we can meet Helen.  
+We start at Nob Hill 9:00.  
+Helen at North Beach until 16:45, need 120 min with her.  
+We can meet Helen, say, 14:00–16:00, then travel to Kimberly:  
+North Beach to Fisherman’s Wharf is 5 min → arrive 16:05, but Kimberly starts at 16:30, so 25 min wait. That’s fine.  
+
+But we must get to Helen from Nob Hill: travel 8 min.  
+If we leave Nob Hill at 13:52, arrive North Beach 14:00, meet until 16:00, leave, arrive Fisherman’s Wharf 16:05, wait until 16:30, meet Kimberly 16:30–17:15, leave, arrive Bayview 17:41, meet Patricia 17:41–19:41.  
+
+That works for all three.
+
+**Step 4 – Verify no constraint violations**  
+- Helen: 14:00–16:00 within 7:00–16:45, duration 120 min ✓  
+- Kimberly: 16:30–17:15 within 16:30–21:00, duration 45 min ✓  
+- Patricia: 17:41–19:41 within 18:00–21:15? Start 17:41 is before her window (18:00), so not allowed.  
+
+We must start Patricia at or after 18:00.  
+So adjust:  
+Meet Kimberly 16:30–17:15, travel 26 min → arrive Bayview 17:41, wait until 18:00, meet 18:00–20:00.  
+That works: Patricia 18:00–20:00 (120 min) within 18:00–21:15 ✓  
+
+Now check Helen:  
+If Helen ends at 16:00, travel to Fisherman’s Wharf 5 min → 16:05, wait until 16:30 (25 min), okay.  
+
+But can we meet Helen earlier to avoid a long idle before Kimberly?  
+We could shift Helen meeting earlier, but then we have idle time between Helen and Kimberly anyway.  
+We could also shift Helen later to reduce idle, but she ends at 16:45, so latest we can leave her is 16:45.  
+If we meet Helen 14:45–16:45, then travel 5 min → arrive Fisherman’s Wharf 16:50, but Kimberly starts at 16:30, so we’d be late. So that’s no good.  
+
+So Helen must end by 16:25 to arrive at Kimberly by 16:30.  
+That means Helen start at 14:25, meet 14:25–16:25, travel 5 min → arrive 16:30 exactly.  
+But Helen’s window ends 16:45, so 16:25 end is fine.  
+
+But wait, we start at Nob Hill 9:00. We can do anything before 14:25, like wait or explore, but no other meetings.  
+
+**Step 5 – Check travel from start to Helen**  
+Nob Hill to North Beach: 8 min.  
+To start Helen at 14:25, leave Nob Hill at 14:17.  
+So from 9:00 to 14:17 is free time.  
+
+**Step 6 – Final schedule**  
+1. Start Nob Hill 9:00  
+2. Travel to North Beach: 14:17–14:25 (8 min)  
+3. Meet Helen: 14:25–16:25  
+4. Travel to Fisherman’s Wharf: 16:25–16:30 (5 min)  
+5. Meet Kimberly: 16:30–17:15  
+6. Travel to Bayview: 17:15–17:41 (26 min)  
+7. Wait until 18:00  
+8. Meet Patricia: 18:00–20:00  
+
+All constraints satisfied, all three met.
+
+**Step 7 – Write the program**  
+We’ll encode travel times, compute feasible windows, and choose optimal start times to minimize idle while meeting all three.

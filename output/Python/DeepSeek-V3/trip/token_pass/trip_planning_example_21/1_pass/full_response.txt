@@ -1,0 +1,171 @@
+Let's break down the problem before writing the code.
+
+**Constraints:**
+- Total days: 10
+- Venice: 6 days total, with workshop between day 5 and day 10 (inclusive)
+- Mykonos: 2 days total
+- Vienna: 4 days total
+- Direct flights only: Mykonos ↔ Vienna, Vienna ↔ Venice
+- No direct flight between Mykonos and Venice, so must go through Vienna.
+
+**Key observations:**
+1. Days in each city must sum to 10: 6 + 2 + 4 = 12 → This exceeds 10, so there is overlap because travel days count for both cities.
+2. If you fly from A to B on day X, you spend that day in both cities, so it counts toward both totals.
+3. This means the sum of days spent in each city = 10 + (number of travel days), because each travel day is double-counted.
+
+Let’s denote:
+- \( Vn \) = Venice
+- \( Vi \) = Vienna
+- \( M \) = Mykonos
+
+Total days in cities = \( 6 + 4 + 2 = 12 \)
+So \( 12 = 10 + T \) where \( T \) = number of travel days.
+Thus \( T = 2 \) travel days.
+
+**Travel days:**
+We must start in one city and end in one city, visiting all three.
+Possible routes given flight network:
+- Option 1: M → Vi → Vn (or reverse)
+- Option 2: Vn → Vi → M (or reverse)
+
+Since Venice workshop is between day 5 and 10, Venice visit must include at least one of those days, possibly all.
+
+Let’s try to schedule:
+
+We have 2 travel days, so itinerary will be like:
+City1 → (travel) → City2 → (travel) → City3
+
+That means 3 stays in cities, with 2 travel days between them.
+
+Let’s assign stays:
+Stay1: City A for d1 days
+Travel day: from A to B (counts for both A and B)
+Stay2: City B for d2 days
+Travel day: from B to C (counts for both B and C)
+Stay3: City C for d3 days
+
+Total calendar days = d1 + d2 + d3 = 10.
+
+But total city-days = (d1) + (1 + d2) + (1 + d3) = d1 + d2 + d3 + 2 = 12.
+
+Wait, careful:  
+For city A: days = d1 + 1 if first travel is from A to B (since travel day counts for A and B).  
+For city B: days = 1 + d2 + 1 if second travel is from B to C.  
+For city C: days = 1 + d3.
+
+Let’s formalize:
+
+Let’s say:
+Stay in A: days a  
+Travel A→B: day t1  
+Stay in B: days b  
+Travel B→C: day t2  
+Stay in C: days c  
+
+Calendar days: a + b + c + 2 = 10 → a + b + c = 8.
+
+City A days = a + 1  
+City B days = 1 + b + 1 = b + 2  
+City C days = 1 + c
+
+Given:
+Venice = 6, Vienna = 4, Mykonos = 2.
+
+Try assigning cities to A, B, C.
+
+Case: A = Mykonos (2 days total)  
+a + 1 = 2 → a = 1  
+B = Vienna (4 days total)  
+b + 2 = 4 → b = 2  
+C = Venice (6 days total)  
+1 + c = 6 → c = 5
+
+Check a + b + c = 1 + 2 + 5 = 8 ✅
+
+Calendar:  
+Day 1: Mykonos (stay day 1)  
+Day 2: Travel Mykonos → Vienna (counts for both)  
+Day 3–4: Vienna (stay days 3,4)  
+Day 5: Travel Vienna → Venice (counts for both)  
+Day 6–10: Venice (stay days 6–10)
+
+Check Venice workshop between day 5–10: Venice days are 5–10, so yes, includes day 5 (travel day) and days 6–10.
+
+All constraints satisfied.
+
+So itinerary:
+Day 1: Mykonos  
+Day 2: Mykonos & Vienna (travel)  
+Day 3–4: Vienna  
+Day 5: Vienna & Venice (travel)  
+Day 6–10: Venice
+
+Now implement this in Python.
+
+```python
+import json
+
+def plan_trip():
+    total_days = 10
+    venice_days_needed = 6
+    mykonos_days_needed = 2
+    vienna_days_needed = 4
+    
+    # Direct flights: Mykonos <-> Vienna, Vienna <-> Venice
+    # So route must be Mykonos -> Vienna -> Venice or reverse
+    
+    # We found one feasible schedule:
+    # Day 1: Mykonos
+    # Day 2: Travel Mykonos -> Vienna (counts for both)
+    # Day 3-4: Vienna
+    # Day 5: Travel Vienna -> Venice (counts for both)
+    # Day 6-10: Venice
+    
+    itinerary = []
+    itinerary.append({"day_range": "Day 1", "place": "Mykonos"})
+    itinerary.append({"day_range": "Day 2", "place": "Mykonos → Vienna (travel)"})
+    itinerary.append({"day_range": "Day 3-4", "place": "Vienna"})
+    itinerary.append({"day_range": "Day 5", "place": "Vienna → Venice (travel)"})
+    itinerary.append({"day_range": "Day 6-10", "place": "Venice"})
+    
+    # Verification
+    days_count = {
+        "Venice": 0,
+        "Vienna": 0,
+        "Mykonos": 0
+    }
+    
+    # Simulate day by day
+    day_plan = [
+        ("Mykonos",),
+        ("Mykonos", "Vienna"),
+        ("Vienna",),
+        ("Vienna",),
+        ("Vienna", "Venice"),
+        ("Venice",),
+        ("Venice",),
+        ("Venice",),
+        ("Venice",),
+        ("Venice",)
+    ]
+    
+    for day in day_plan:
+        for city in day:
+            days_count[city] += 1
+    
+    # Check constraints
+    assert days_count["Venice"] == venice_days_needed, f"Venice days mismatch: {days_count['Venice']}"
+    assert days_count["Vienna"] == vienna_days_needed, f"Vienna days mismatch: {days_count['Vienna']}"
+    assert days_count["Mykonos"] == mykonos_days_needed, f"Mykonos days mismatch: {days_count['Mykonos']}"
+    assert sum(len(day) for day in day_plan) == total_days + 2  # 2 travel days double-counted
+    
+    # Workshop in Venice between day 5 and 10
+    venice_days_indices = [i+1 for i, day in enumerate(day_plan) if "Venice" in day]
+    assert any(5 <= d <= 10 for d in venice_days_indices), "Workshop constraint not met"
+    
+    return {"itinerary": itinerary}
+
+if __name__ == "__main__":
+    result = plan_trip()
+    print(json.dumps(result, indent=2))
+```

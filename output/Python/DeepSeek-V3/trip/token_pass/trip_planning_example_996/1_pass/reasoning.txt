@@ -1,0 +1,79 @@
+Let's break this down step-by-step before writing the code.
+
+**Constraints:**
+- Total days: 22
+- City stays:
+  - Valencia: 5 days
+  - Riga: 5 days
+  - Prague: 3 days (must include days 7–9)
+  - Mykonos: 3 days (must include days 1–3)
+  - Zurich: 5 days
+  - Bucharest: 5 days
+  - Nice: 2 days
+- Direct flights are given; we can only travel between cities if a direct flight exists.
+- Travel days count toward both cities' totals.
+
+**Approach:**
+We need to arrange the 7 cities in a sequence where:
+1. Each required consecutive block of days fits.
+2. Travel is only between directly connected cities.
+3. Day counts match exactly.
+
+We can treat this as a scheduling + graph path problem.
+
+**Graph of direct flights:**
+- Mykonos ↔ Nice
+- Mykonos ↔ Zurich
+- Prague ↔ Bucharest
+- Valencia ↔ Bucharest
+- Zurich ↔ Prague
+- Riga ↔ Nice
+- Zurich ↔ Riga
+- Zurich ↔ Bucharest
+- Zurich ↔ Valencia
+- Bucharest ↔ Riga
+- Prague ↔ Riga
+- Prague ↔ Valencia
+- Zurich ↔ Nice
+
+**Fixed events:**
+- Day 1–3: Mykonos
+- Day 7–9: Prague
+
+That means:
+- Mykonos block must start on Day 1 (3 days).
+- Prague block must include Day 7, 8, 9.
+
+We need to place the other cities around these fixed blocks, ensuring connectivity.
+
+**Let's try a feasible sequence:**
+1. Days 1–3: Mykonos (fixed)
+2. Travel to next city on Day 3 (still counts as Mykonos day 3).
+3. Need to connect from Mykonos to somewhere with direct flight: Nice or Zurich.
+4. If we go to Zurich next, we can later go to Prague for Day 7–9.
+5. But Zurich requires 5 days total. We can split Zurich before and after Prague if needed.
+6. Let's try:
+   - Day 1–3: Mykonos
+   - Day 4–6: Zurich (3 days so far for Zurich)
+   - Day 7–9: Prague (fixed)
+   - Day 10–11: Zurich (2 more days, total Zurich = 5)
+   - Day 12–16: Bucharest (5 days)
+   - Day 17–21: Riga (5 days)
+   - Day 22: Nice (1 day) → but Nice needs 2 days total, so this fails.
+
+We need to fit Nice 2 days, Valencia 5 days, Riga 5 days, Bucharest 5 days, Zurich 5 days, Prague 3 days, Mykonos 3 days. Total = 28 days if separate, but travel days overlap, so total days = 22.
+
+**Key insight:** Travel day is counted in both cities, so if we have N cities, we have N-1 travel days that are double-counted. Here: 7 cities → 6 travel days double-counted.  
+Total stay days if separate = 5+5+3+3+5+5+2 = 28.  
+But each travel reduces total by 1 (because travel day is counted in both cities, so total days = sum of stays - (number of travels)).  
+We have 6 travels → total days = 28 - 6 = 22. Good.
+
+So we just need to find a path visiting all cities exactly once (Hamiltonian path in the flight graph) respecting the fixed dates.
+
+**Let's search for Hamiltonian path starting at Mykonos, with Prague visited on days 7–9.**
+
+We'll brute-force search in code.
+
+---
+
+Here’s the Python program:

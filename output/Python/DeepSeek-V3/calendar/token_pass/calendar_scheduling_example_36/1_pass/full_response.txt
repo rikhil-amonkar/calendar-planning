@@ -1,0 +1,148 @@
+Let’s break this down step-by-step before writing the code.
+
+**Constraints:**
+- Work hours: 9:00–17:00 on Monday.
+- Duration: 1 hour.
+- Participants: Ryan, Ruth, Denise.
+- Ryan busy: 9:00–9:30, 12:30–13:00.
+- Ruth: free all day.
+- Denise busy: 9:30–10:30, 12:00–13:00, 14:30–16:30.
+- Denise does **not** want to meet after 12:30 (so her availability ends at 12:30).
+
+**Step 1 – Convert times to minutes from 9:00 for easier calculation.**
+- Work hours: 9:00 (0 min) to 17:00 (480 min).
+- Ryan busy: 0–30, 210–240.
+- Denise busy: 30–90, 180–240, 330–450.
+- Denise max end time: 12:30 = 210 min from 9:00.
+
+**Step 2 – Find free slots for each person within work hours.**
+- Ruth: free 0–480.
+- Ryan free: [30–210], [240–480] (but must check Denise’s constraints).
+- Denise free before 12:30: [90–180] (since 9:30–10:30 busy, 12:00–13:00 busy, but 12:30 is cutoff, so 12:00–12:30 is busy anyway).
+Wait, let’s list Denise’s busy in minutes:
+  1. 9:30–10:30 → 30–90
+  2. 12:00–13:00 → 180–240
+  3. 14:30–16:30 → 330–450
+
+Denise’s availability within 0–210 (12:30 cutoff):
+  - From 0 to 30? No, before work hours? Work starts 9:00, so 0 is 9:00.
+  - 0–30: free? Actually 9:00–9:30 is free for Denise (busy starts 9:30), but Ryan is busy 0–30, so not possible.
+  - 30–90: busy.
+  - 90–180: free.
+  - 180–210: busy (12:00–12:30 part of 12:00–13:00 block).
+So Denise free before 12:30: 90–180 only.
+
+**Step 3 – Intersect with Ryan’s free slots.**
+Ryan free: [30–210], [240–480].
+Intersect Denise free [90–180] with Ryan free [30–210] → [90–180].
+
+**Step 4 – Find 1-hour slot within [90–180].**
+Available: 90–180 is 90 minutes long.
+1 hour = 60 minutes.
+Possible slots: start at 90 → 90–150 (10:30–12:00), fits entirely in 90–180.
+Check no other constraints: Ruth free, Denise free, Ryan free (yes, Ryan free 90–150 is inside 30–210).
+
+**Step 5 – Convert back to HH:MM.**
+Start: 9:00 + 90 min = 10:30.
+End: 10:30 + 1 hour = 11:30.
+
+So meeting: Monday 10:30–11:30.
+
+Let’s verify:
+- Ryan busy 9:00–9:30 ✓, 12:30–13:00 ✓ → 10:30–11:30 free ✓.
+- Ruth free ✓.
+- Denise busy 9:30–10:30 ✓, 12:00–13:00 ✓, 14:30–16:30 ✓ → 10:30–11:30 free ✓.
+- Denise not after 12:30 ✓.
+
+Perfect.
+
+Now, the Python code:
+
+```python
+def time_to_minutes(t):
+    """Convert HH:MM to minutes since midnight."""
+    h, m = map(int, t.split(':'))
+    return h * 60 + m
+
+def minutes_to_time(m):
+    """Convert minutes since midnight to HH:MM."""
+    h = m // 60
+    m = m % 60
+    return f"{h:02d}:{m:02d}"
+
+def main():
+    work_start = time_to_minutes("9:00")
+    work_end = time_to_minutes("17:00")
+    duration = 60  # minutes
+
+    # Busy times in minutes since midnight
+    ryan_busy = [(time_to_minutes("9:00"), time_to_minutes("9:30")),
+                 (time_to_minutes("12:30"), time_to_minutes("13:00"))]
+    denise_busy = [(time_to_minutes("9:30"), time_to_minutes("10:30")),
+                   (time_to_minutes("12:00"), time_to_minutes("13:00")),
+                   (time_to_minutes("14:30"), time_to_minutes("16:30"))]
+    ruth_busy = []  # No meetings
+
+    # Denise's cutoff: not after 12:30
+    denise_cutoff = time_to_minutes("12:30")
+
+    # Generate free slots for each person within work hours
+    def free_slots(busy_list, work_start, work_end, extra_constraint_end=None):
+        busy_sorted = sorted(busy_list, key=lambda x: x[0])
+        free = []
+        current_start = work_start
+
+        for start_busy, end_busy in busy_sorted:
+            if start_busy > current_start:
+                free.append((current_start, min(start_busy, extra_constraint_end) if extra_constraint_end else start_busy))
+            current_start = max(current_start, end_busy)
+        if current_start < (extra_constraint_end if extra_constraint_end else work_end):
+            free.append((current_start, extra_constraint_end if extra_constraint_end else work_end))
+        # Filter out zero-length slots and adjust for extra_constraint_end
+        free = [(s, e) for s, e in free if e > s and s < (extra_constraint_end if extra_constraint_end else work_end)]
+        if extra_constraint_end:
+            free = [(s, min(e, extra_constraint_end)) for s, e in free]
+        return free
+
+    ryan_free = free_slots(ryan_busy, work_start, work_end)
+    ruth_free = free_slots(ruth_busy, work_start, work_end)
+    denise_free = free_slots(denise_busy, work_start, work_end, denise_cutoff)
+
+    # Intersect free slots
+    def intersect_slots(slots1, slots2):
+        i, j = 0, 0
+        intersections = []
+        while i < len(slots1) and j < len(slots2):
+            start1, end1 = slots1[i]
+            start2, end2 = slots2[j]
+            intersect_start = max(start1, start2)
+            intersect_end = min(end1, end2)
+            if intersect_start < intersect_end:
+                intersections.append((intersect_start, intersect_end))
+            if end1 < end2:
+                i += 1
+            else:
+                j += 1
+        return intersections
+
+    # Intersect all three
+    intersect_ry_ruth = intersect_slots(ryan_free, ruth_free)
+    intersect_all = intersect_slots(intersect_ry_ruth, denise_free)
+
+    # Find a slot of at least 'duration' minutes
+    meeting_slot = None
+    for start, end in intersect_all:
+        if end - start >= duration:
+            meeting_slot = (start, start + duration)
+            break
+
+    if meeting_slot:
+        start_time, end_time = meeting_slot
+        print(f"{minutes_to_time(start_time)}:{minutes_to_time(end_time)}")
+        print("Monday")
+    else:
+        print("No suitable slot found")
+
+if __name__ == "__main__":
+    main()
+```

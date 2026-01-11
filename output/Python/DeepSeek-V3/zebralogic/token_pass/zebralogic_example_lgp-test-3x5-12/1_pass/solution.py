@@ -1,0 +1,135 @@
+import json
+from itertools import permutations
+
+def solve_puzzle():
+    # Define all possible values
+    names = ["Eric", "Peter", "Arnold"]
+    cigars = ["blue master", "prince", "pall mall"]
+    hobbies = ["photography", "gardening", "cooking"]
+    educations = ["high school", "associate", "bachelor"]
+    drinks = ["tea", "milk", "water"]
+    
+    houses = [1, 2, 3]
+    
+    # Generate all permutations for each attribute across 3 houses
+    for name_perm in permutations(names, 3):
+        for cigar_perm in permutations(cigars, 3):
+            for hobby_perm in permutations(hobbies, 3):
+                for edu_perm in permutations(educations, 3):
+                    for drink_perm in permutations(drinks, 3):
+                        # Create assignment dictionaries
+                        assignment = {}
+                        for i in range(3):
+                            assignment[i] = {
+                                'house': i+1,
+                                'name': name_perm[i],
+                                'cigar': cigar_perm[i],
+                                'hobby': hobby_perm[i],
+                                'education': edu_perm[i],
+                                'drink': drink_perm[i]
+                            }
+                        
+                        # Check all constraints
+                        # 1. The person partial to Pall Mall is Peter.
+                        pall_mall_house = None
+                        peter_house = None
+                        for i in range(3):
+                            if assignment[i]['cigar'] == 'pall mall':
+                                pall_mall_house = i
+                            if assignment[i]['name'] == 'Peter':
+                                peter_house = i
+                        if pall_mall_house != peter_house:
+                            continue
+                        
+                        # 2. The person who likes milk is directly left of the person with a high school diploma.
+                        milk_house = None
+                        hs_house = None
+                        for i in range(3):
+                            if assignment[i]['drink'] == 'milk':
+                                milk_house = i
+                            if assignment[i]['education'] == 'high school':
+                                hs_house = i
+                        if milk_house is None or hs_house is None or milk_house + 1 != hs_house:
+                            continue
+                        
+                        # 3. Eric is the tea drinker.
+                        eric_house = None
+                        tea_house = None
+                        for i in range(3):
+                            if assignment[i]['name'] == 'Eric':
+                                eric_house = i
+                            if assignment[i]['drink'] == 'tea':
+                                tea_house = i
+                        if eric_house != tea_house:
+                            continue
+                        
+                        # 4. Arnold and the Prince smoker are next to each other.
+                        arnold_house = None
+                        prince_house = None
+                        for i in range(3):
+                            if assignment[i]['name'] == 'Arnold':
+                                arnold_house = i
+                            if assignment[i]['cigar'] == 'prince':
+                                prince_house = i
+                        if abs(arnold_house - prince_house) != 1:
+                            continue
+                        
+                        # 5. The person who enjoys gardening is somewhere to the left of the Prince smoker.
+                        gardening_house = None
+                        for i in range(3):
+                            if assignment[i]['hobby'] == 'gardening':
+                                gardening_house = i
+                                break
+                        if gardening_house is None or gardening_house >= prince_house:
+                            continue
+                        
+                        # 6. The person who likes milk is the person with an associate's degree.
+                        if assignment[milk_house]['education'] != 'associate':
+                            continue
+                        
+                        # 7. The person with a bachelor's degree is directly left of the photography enthusiast.
+                        bachelor_house = None
+                        photo_house = None
+                        for i in range(3):
+                            if assignment[i]['education'] == 'bachelor':
+                                bachelor_house = i
+                            if assignment[i]['hobby'] == 'photography':
+                                photo_house = i
+                        if bachelor_house is None or photo_house is None or bachelor_house + 1 != photo_house:
+                            continue
+                        
+                        # All constraints satisfied - found solution
+                        solution_rows = []
+                        for i in range(3):
+                            row = [
+                                str(assignment[i]['house']),
+                                assignment[i]['name'],
+                                assignment[i]['cigar'],
+                                assignment[i]['hobby'],
+                                assignment[i]['education'],
+                                assignment[i]['drink']
+                            ]
+                            solution_rows.append(row)
+                        
+                        # Sort by house number
+                        solution_rows.sort(key=lambda x: int(x[0]))
+                        
+                        result = {
+                            "solution": {
+                                "header": ["House", "Name", "Cigar", "Hobby", "Education", "Drink"],
+                                "rows": solution_rows
+                            }
+                        }
+                        return result
+    
+    return None
+
+def main():
+    solution = solve_puzzle()
+    if solution:
+        print(json.dumps(solution, indent=2))
+    else:
+        print(json.dumps({"error": "No solution found"}, indent=2))
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,46 @@
+Let’s break this down step by step before writing the code.
+
+**Step 1 – Understanding the problem**  
+We start at Presidio at 9:00 AM.  
+We have 9 friends, each with:
+- A location
+- A time window they are available
+- A minimum meeting duration we want
+- Travel times between all locations (including Presidio)
+
+Goal: Maximize the number of friends met (or total meeting time? The problem says “meet as many friends as possible,” so primary objective is count, not duration).
+
+**Step 2 – Constraints**  
+We cannot meet someone outside their window.  
+We must account for travel time between meetings.  
+We can meet them for *at least* the minimum duration, possibly more if time allows, but meeting longer reduces chance to meet others.
+
+**Step 3 – Approach**  
+This is like a scheduling problem with travel times.  
+We can brute-force search permutations of meeting order, but 9! is large (362880). We can prune by feasibility.  
+Better: treat as a search over time, choosing next meeting greedily? But greedy may not be optimal for count.  
+We’ll try a DFS with backtracking:  
+- State: current location, current time, set of people already met  
+- Try to schedule each unmet person if feasible:  
+  1. Travel from current location to their location (travel time)  
+  2. Start time = max(arrival time, their available start)  
+  3. If start time + min duration ≤ their available end, we can meet  
+  4. Choose to meet for exactly min duration (to save time for others)  
+- Keep track of best solution by number met, then by total meeting time.
+
+**Step 4 – Time representation**  
+Use minutes since midnight for calculations, convert to "H:MM" for output.
+
+**Step 5 – Travel matrix**  
+We’ll store travel times in a dict: `travel[(loc1, loc2)]`.
+
+**Step 6 – Implementation plan**  
+1. Parse all friend data into list of dicts.  
+2. DFS from start (Presidio, 9:00 AM).  
+3. At each step, try all unvisited friends, check feasibility, schedule, recurse.  
+4. Keep best itinerary (most people met, tie-break by total meeting time).  
+5. Output as JSON.
+
+---
+
+Here’s the Python program:

@@ -1,0 +1,47 @@
+Let’s break this down step by step before writing the code.
+
+**Step 1 – Understanding the problem**  
+We have 10 friends, each available in a specific location during a specific time window, with a minimum meeting duration requirement.  
+We start at Union Square at 9:00 AM.  
+We must travel between locations, and travel times are given in minutes.  
+We want to meet as many friends as possible, but the problem doesn’t explicitly state whether “as many” means maximizing the number of friends or total meeting time — but typically in such puzzles, it’s about fitting the maximum number of meetings.
+
+**Step 2 – Observations**  
+- Some friends’ windows overlap or are far apart in time, so we can’t meet everyone.  
+- Travel times are symmetric in the data given (e.g., Union Square to Mission District is 14, Mission District to Union Square is 15 — so not perfectly symmetric, but close). We’ll use the exact given times.  
+- We must respect: start time at Union Square 9:00, travel to first meeting location takes time, then meet for at least the minimum, then travel to next, etc.
+
+**Step 3 – Approach**  
+We can treat this as a **scheduling optimization problem** with travel constraints.  
+We can brute-force search over permutations of friends (since only 10, 10! is huge, but we can prune by time feasibility).  
+Better: use a **DFS search with pruning** — at each step, pick a friend not yet visited, check if we can travel from current location to their location and meet for the minimum duration within their window, then move to next.
+
+But because time windows are strict, we can also think greedily: sort by end times? But travel times depend on previous location, so greedy by time may fail.
+
+Given the complexity, I’ll implement a **backtracking search** that tries to maximize the number of meetings, and if tie, maximize total meeting time.
+
+**Step 4 – Data structures**  
+We’ll store:  
+- Friends: name, location, window start, window end (as minutes from midnight), min_duration.  
+- Travel times: nested dict location1 → location2 → minutes.  
+- State: current time, current location, visited friends, schedule list.
+
+**Step 5 – Search details**  
+We start at Union Square at 9:00 (540 minutes from midnight).  
+For each friend not yet met:  
+1. Travel from current location to friend’s location → arrive_time = current_time + travel.  
+2. Find meeting start time = max(arrive_time, friend_window_start).  
+3. If start_time + min_duration ≤ friend_window_end, we can meet.  
+4. New current_time = start_time + min_duration.  
+5. Continue recursively.  
+
+We keep track of best schedule (most meetings, then most total minutes).
+
+**Step 6 – Implementation plan**  
+- Parse all inputs into data.  
+- DFS over all permutations with pruning: if remaining friends + current_count ≤ best_count, prune.  
+- Output best schedule as JSON.
+
+---
+
+Here’s the Python program implementing this:

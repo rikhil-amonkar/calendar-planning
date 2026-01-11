@@ -1,0 +1,117 @@
+```python
+import json
+from itertools import permutations
+
+def solve_puzzle():
+    # Define all possible values for each attribute
+    names = ["Arnold", "Eric"]
+    sports = ["basketball", "soccer"]
+    hair_colors = ["brown", "black"]
+    heights = ["very short", "short"]
+    smoothies = ["desert", "cherry"]
+    flowers = ["daffodils", "carnations"]
+    
+    houses = [1, 2]
+    
+    # Generate all possible permutations for each attribute across houses
+    for name_perm in permutations(names, 2):
+        for sport_perm in permutations(sports, 2):
+            for hair_perm in permutations(hair_colors, 2):
+                for height_perm in permutations(heights, 2):
+                    for smoothie_perm in permutations(smoothies, 2):
+                        for flower_perm in permutations(flowers, 2):
+                            # Create assignment dictionary
+                            assignment = {}
+                            for i, house in enumerate(houses):
+                                assignment[house] = {
+                                    "Name": name_perm[i],
+                                    "FavoriteSport": sport_perm[i],
+                                    "HairColor": hair_perm[i],
+                                    "Height": height_perm[i],
+                                    "Smoothie": smoothie_perm[i],
+                                    "Flower": flower_perm[i]
+                                }
+                            
+                            # Check all clues
+                            # Clue 1: The person who loves soccer is not in the second house
+                            if assignment[2]["FavoriteSport"] == "soccer":
+                                continue
+                            
+                            # Clue 2: The Desert smoothie lover is directly left of the person who is very short
+                            # Since houses are numbered 1 and 2, house 1 must have desert smoothie and house 2 must be very short
+                            if not (assignment[1]["Smoothie"] == "desert" and assignment[2]["Height"] == "very short"):
+                                continue
+                            
+                            # Clue 3: The person who is very short is the person who has brown hair
+                            # Find the house with very short height
+                            very_short_house = None
+                            for house in houses:
+                                if assignment[house]["Height"] == "very short":
+                                    very_short_house = house
+                                    break
+                            if very_short_house is None:
+                                continue
+                            if assignment[very_short_house]["HairColor"] != "brown":
+                                continue
+                            
+                            # Clue 4: The person who loves a carnations arrangement is the Desert smoothie lover
+                            desert_smoothie_house = None
+                            for house in houses:
+                                if assignment[house]["Smoothie"] == "desert":
+                                    desert_smoothie_house = house
+                                    break
+                            if desert_smoothie_house is None:
+                                continue
+                            if assignment[desert_smoothie_house]["Flower"] != "carnations":
+                                continue
+                            
+                            # Clue 5: Eric and the person who has brown hair are next to each other
+                            # Find Eric's house
+                            eric_house = None
+                            brown_hair_house = None
+                            for house in houses:
+                                if assignment[house]["Name"] == "Eric":
+                                    eric_house = house
+                                if assignment[house]["HairColor"] == "brown":
+                                    brown_hair_house = house
+                            
+                            if eric_house is None or brown_hair_house is None:
+                                continue
+                            if abs(eric_house - brown_hair_house) != 1:
+                                continue
+                            
+                            # All clues satisfied - we found the solution
+                            # Prepare the output in the required format
+                            rows = []
+                            for house in sorted(houses):
+                                row = [
+                                    str(house),
+                                    assignment[house]["Name"],
+                                    assignment[house]["FavoriteSport"],
+                                    assignment[house]["HairColor"],
+                                    assignment[house]["Height"],
+                                    assignment[house]["Smoothie"],
+                                    assignment[house]["Flower"]
+                                ]
+                                rows.append(row)
+                            
+                            result = {
+                                "solution": {
+                                    "header": ["House", "Name", "FavoriteSport", "HairColor", "Height", "Smoothie", "Flower"],
+                                    "rows": rows
+                                }
+                            }
+                            return result
+    
+    return None
+
+def main():
+    solution = solve_puzzle()
+    if solution:
+        print(json.dumps(solution, indent=2))
+    else:
+        print(json.dumps({"error": "No solution found"}, indent=2))
+
+if __name__ == "__main__":
+    main()
+```
