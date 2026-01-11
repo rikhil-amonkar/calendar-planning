@@ -1,1 +1,0 @@
-SOLUTION: You can meet David from 300 minutes to 405 minutes after 9:00 AM.

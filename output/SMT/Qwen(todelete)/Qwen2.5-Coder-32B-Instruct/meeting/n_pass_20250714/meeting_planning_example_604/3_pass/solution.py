@@ -1,1 +1,0 @@
-print("No solution found.")

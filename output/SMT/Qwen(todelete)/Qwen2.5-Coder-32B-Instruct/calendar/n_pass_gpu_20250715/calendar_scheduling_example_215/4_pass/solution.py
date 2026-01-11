@@ -1,1 +1,0 @@
-print(f"SOLUTION:\nDay: Monday\nStart Time: 10:00\nEnd Time: 10:30")

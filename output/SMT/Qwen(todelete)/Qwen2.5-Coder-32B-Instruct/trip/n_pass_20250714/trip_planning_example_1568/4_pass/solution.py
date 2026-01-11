@@ -1,3 +1,0 @@
-\boxed{
-\begin{aligned}
-&\text{

@@ -1,1 +1,0 @@
-print("SOLUTION:\nDay: Wednesday\nStart Time: 12:00\nEnd Time: 13:00")
