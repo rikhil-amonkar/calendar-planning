@@ -1,0 +1,97 @@
+LLM JUDGE EVALUATION PROMPT
+============================
+
+This file contains the prompt used by the LLM judge to evaluate model-generated solutions.
+
+The judge model (default: GPT-5.2) receives this prompt with:
+- Temperature: 0.3 (for consistent judgments)
+- Delay: 1 second between calls (to avoid rate limits)
+
+================================================================================
+VERSION 1: WITH REFERENCE SOLUTION (default)
+================================================================================
+
+You are an expert evaluator for planning and scheduling problems.
+
+Your task: Determine if the MODEL SOLUTION correctly solves the given problem.
+
+A solution is CORRECT if:
+1. It satisfies all constraints (time windows, durations, travel times)
+2. It achieves the stated objective (e.g., meet required people)
+3. The logic and calculations are sound
+
+A solution can be correct even if it differs from the reference solution (e.g., different wait strategies, meeting durations beyond minimum).
+
+PROBLEM:
+{problem_text}
+
+MODEL SOLUTION:
+{model_output}
+
+REFERENCE SOLUTION (for comparison, but model doesn't have to match exactly):
+{golden_solution}
+
+EVALUATION INSTRUCTIONS:
+1. Check if the model solution satisfies all problem constraints
+2. Verify times, durations, and feasibility
+3. Compare key outcomes (who is met, when, for how long)
+4. Determine if it's correct even if approach differs from reference
+
+Respond in this exact format:
+VERDICT: [CORRECT or INCORRECT]
+REASONING: [1-2 sentence explanation]
+KEY_ISSUES: [list any constraint violations, or "none" if correct]
+
+
+================================================================================
+VERSION 2: WITHOUT REFERENCE SOLUTION (include_golden=False)
+================================================================================
+
+You are an expert evaluator for planning and scheduling problems.
+
+Your task: Determine if the given SOLUTION correctly solves the PROBLEM.
+
+A solution is CORRECT if:
+1. It satisfies all constraints (time windows, durations, travel times)
+2. It achieves the stated objective
+3. The logic and calculations are sound
+
+PROBLEM:
+{problem_text}
+
+SOLUTION:
+{model_output}
+
+EVALUATION INSTRUCTIONS:
+1. Check if the solution satisfies all problem constraints
+2. Verify times, durations, and feasibility
+3. Determine if the solution correctly solves the problem
+
+Respond in this exact format:
+VERDICT: [CORRECT or INCORRECT]
+REASONING: [1-2 sentence explanation]
+KEY_ISSUES: [list any constraint violations, or "none" if correct]
+
+
+================================================================================
+NOTES
+================================================================================
+
+1. The judge expects a structured response with three fields:
+   - VERDICT: Must be either "CORRECT" or "INCORRECT"
+   - REASONING: 1-2 sentence explanation
+   - KEY_ISSUES: List of constraint violations, or "none" if correct
+
+2. Special cases:
+   - If code execution failed (no output), verdict is automatically "INCORRECT"
+   - If judge API fails, verdict is "ERROR"
+
+3. The prompt emphasizes that:
+   - Multiple correct solutions can exist
+   - Model doesn't have to match reference solution exactly
+   - Different strategies (e.g., wait times, meeting durations) are acceptable
+   - Focus is on constraint satisfaction and achieving objectives
+
+4. Usage in llm_judge_evaluator.py:
+   python llm_judge_evaluator.py <results_file.json> [judge_model] [max_samples]
+

@@ -1,0 +1,157 @@
+================================================================================
+FOLDER CONTENTS SUMMARY
+================================================================================
+
+This folder contains a complete package for LLM evaluation on meeting planning
+tasks, including inference scripts, evaluation tools, and comprehensive results.
+
+================================================================================
+INFERENCE SCRIPTS (4 files)
+================================================================================
+
+1. code_generation_inference.py (14KB)
+   - Main inference script for OpenAI and Deepseek models
+   - Supports: GPT-4, GPT-5, O3, Deepseek-Reasoner, Deepseek-Chat
+   - Handles temperature parameter correctly for each model type
+
+2. local_model_inference.py (15KB)
+   - Local model inference for Qwen models
+   - Requires GPU with 24GB+ VRAM
+   - Supports: Qwen3-32B, Qwen2.5-32B-Instruct
+
+3. conversation_manager.py (9KB)
+   - Utility for managing LLM conversations
+   - Used by inference scripts
+
+4. interactive_chat.py (11KB)
+   - Interactive CLI for testing models
+   - Useful for debugging prompts
+
+================================================================================
+EVALUATION SCRIPTS (5 files)
+================================================================================
+
+1. llm_judge_evaluator.py (16KB)
+   - LLM-as-a-Judge evaluation using GPT-5.2
+   - Checks: constraints, optimality, text accuracy, formatting
+   - Stricter evaluation (catches suboptimal solutions)
+
+2. evaluate_structured_outputs.py (11KB)
+   - Constraint-based evaluation (programmatic)
+   - Checks: time windows, travel times, meeting durations
+   - More lenient (only checks feasibility)
+
+3. convert_to_structured_output.py (11KB)
+   - Converts text outputs to structured JSON format
+   - Parses meeting details and normalizes time formats
+
+4. extract_meeting_constraints.py (6KB)
+   - Extracts ground truth constraints from dataset
+   - Generates constraint files for evaluation
+
+5. compare_all_evaluations.py (6KB)
+   - Generates comprehensive comparison reports
+   - Compares LLM judge vs constraint-based accuracy
+   - Differentiates Python vs SMT strategies
+
+6. batch_evaluate_all.sh (2KB)
+   - Automation script for batch evaluation
+   - Processes all result files at once
+
+================================================================================
+DOCUMENTATION (8 files)
+================================================================================
+
+1. README.md (3KB)
+   - Main documentation and quick start guide
+   - Overview of all components
+
+2. PROMPTING_STRATEGIES.md (6KB)
+   - Detailed explanation of Python vs SMT prompting
+   - Performance comparison and recommendations
+   - Code examples for each strategy
+
+3. LLM_JUDGE_PROMPT.txt (4KB)
+   - Complete LLM judge evaluation prompt
+   - Shows exact criteria used for judging
+
+4. USAGE_EXAMPLES.md (1KB)
+   - Practical command-line examples
+   - Quick reference for common tasks
+
+5. EVALUATION_COMPARISON_REPORT.txt (3KB)
+   - Comprehensive results across all models
+   - LLM judge vs constraint-based comparison
+   - Python vs SMT performance breakdown
+
+6. GPT5_EVALUATION_DISAGREEMENT_ANALYSIS.txt (8KB)
+   - Deep dive into evaluator differences
+   - Analysis of 10 disagreement cases
+   - Insights on optimality vs feasibility
+
+7. DEEPSEEK_SETUP.md (6KB)
+   - Complete guide for Deepseek API integration
+   - Setup and troubleshooting
+
+8. LOCAL_MODEL_SETUP.md (7KB)
+   - Guide for setting up local Qwen models
+   - Hardware requirements and installation
+
+9. DEPENDENCIES.txt (2KB)
+   - Complete list of required packages
+   - Installation instructions
+
+10. FOLDER_CONTENTS.txt (this file)
+    - Summary of all files in the package
+
+================================================================================
+DATA FILES (2 items)
+================================================================================
+
+1. meeting_planning_100_constraints.json (772KB)
+   - Ground truth constraints for 100 meeting problems
+   - Used by constraint-based evaluator
+
+2. sample_results/ (directory)
+   - gpt5_python_inference.json (example inference output)
+   - gpt5_python_llm_judge_eval.json (example LLM judge evaluation)
+   - gpt5_python_constraint_eval.json (example constraint evaluation)
+
+================================================================================
+CONFIGURATION (1 file)
+================================================================================
+
+1. env_template.txt (232 bytes)
+   - Template for environment variables
+   - Copy to .env and add your API keys
+
+================================================================================
+KEY FINDINGS (from experiments)
+================================================================================
+
+✅ Python prompting >> SMT prompting for all models
+   - GPT-5: 95% (Python) vs 10% (SMT) = +85% improvement
+   - Best SMT: 11% vs Worst Python: 5%
+
+✅ Top 3 Models (Constraint-Based):
+   1. Deepseek-Reasoner-Python: 97%
+   2. GPT-5-Python: 95%
+   3. O3-mini-Python: 82%
+
+✅ Evaluation Insights:
+   - LLM judge is stricter (catches optimality issues)
+   - Constraint-based is more reliable (no hallucinations)
+   - ~10-30% gap between evaluators for most models
+
+✅ Recommendations:
+   - Use Python prompting for meeting planning tasks
+   - Use constraint-based evaluation for feasibility
+   - Use LLM judge for optimality checking
+   - Investigate disagreements manually
+
+================================================================================
+TOTAL SIZE: 2.7MB
+TOTAL FILES: 23 files
+================================================================================
+
+For questions or issues, refer to README.md or specific documentation files.

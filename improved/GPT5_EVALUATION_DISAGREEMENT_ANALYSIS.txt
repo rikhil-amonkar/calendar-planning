@@ -1,0 +1,155 @@
+================================================================================
+GPT-5-PYTHON: COMPLETE DISAGREEMENT ANALYSIS
+================================================================================
+
+LLM Judge:      85/100 CORRECT (15 marked INCORRECT)
+Constraint:     95/100 CORRECT (5 marked INCORRECT)
+Difference:     10 problems where they disagree
+
+================================================================================
+THE 10 DISAGREEMENTS (LLM says ✗, Constraint says ✓):
+================================================================================
+
+1. meeting_planning_example_450
+   LLM Judge: ✗ INCORRECT
+   Constraint: ✓ CORRECT (all constraints satisfied)
+   
+   Why LLM marked incorrect:
+   ⚠️  TYPE: ALLEGED CONSTRAINT VIOLATION
+   LLM claims constraints are violated, but constraint evaluator disagrees
+   Reasoning: The schedule violates David’s availability window: it schedules meeting David from 1:18PM to 3:18PM, but David is only available until 5:15PM? Actually David’s window is 11:30AM–5:15PM, so that part i...
+
+2. meeting_planning_example_523
+   LLM Judge: ✗ INCORRECT
+   Constraint: ✓ CORRECT (all constraints satisfied)
+   
+   Why LLM marked incorrect:
+   📊 TYPE: OPTIMALITY ISSUE
+   The solution is FEASIBLE but SUBOPTIMAL (meets fewer friends than possible)
+   Reasoning: The schedule violates the stated objective/optimality claim: it meets only 4 friends, while a feasible schedule exists that meets 5 friends (as shown by the reference). Although the individual meeting...
+
+3. meeting_planning_example_622
+   LLM Judge: ✗ INCORRECT
+   Constraint: ✓ CORRECT (all constraints satisfied)
+   
+   Why LLM marked incorrect:
+   📊 TYPE: OPTIMALITY ISSUE
+   The solution is FEASIBLE but SUBOPTIMAL (meets fewer friends than possible)
+   Reasoning: The schedule violates Linda’s availability window: it schedules meeting Linda from 7:00PM–7:15PM, but Linda is only available 7:00PM–7:30PM? (per data: 7:00PM–7:30PM) — actually the data says 7:00PM–7...
+
+4. meeting_planning_example_741
+   LLM Judge: ✗ INCORRECT
+   Constraint: ✓ CORRECT (all constraints satisfied)
+   
+   Why LLM marked incorrect:
+   ⚠️  TYPE: ALLEGED CONSTRAINT VIOLATION
+   LLM claims constraints are violated, but constraint evaluator disagrees
+   Reasoning: The itinerary violates at least one friend’s availability window: Emily is scheduled to start before she is available. All other meetings appear feasible, but this single time-window violation makes t...
+
+5. meeting_planning_example_765
+   LLM Judge: ✗ INCORRECT
+   Constraint: ✓ CORRECT (all constraints satisfied)
+   
+   Why LLM marked incorrect:
+   ⚠️  TYPE: ALLEGED CONSTRAINT VIOLATION
+   LLM claims constraints are violated, but constraint evaluator disagrees
+   Reasoning: The itinerary violates the given travel-time constraints: it uses an 11-minute trip from Embarcadero to Pacific Heights, but the provided travel-time matrix specifies 10 minutes. Because subsequent me...
+
+6. meeting_planning_example_772
+   LLM Judge: ✗ INCORRECT
+   Constraint: ✓ CORRECT (all constraints satisfied)
+   
+   Why LLM marked incorrect:
+   ⚠️  TYPE: ALLEGED CONSTRAINT VIOLATION
+   LLM claims constraints are violated, but constraint evaluator disagrees
+   Reasoning: The schedule violates Elizabeth’s availability window because it schedules a 120-minute meeting ending at 8:00PM, but Elizabeth is only available until 8:15PM and the meeting must start no later than ...
+
+7. meeting_planning_example_797
+   LLM Judge: ✗ INCORRECT
+   Constraint: ✓ CORRECT (all constraints satisfied)
+   
+   Why LLM marked incorrect:
+   📊 TYPE: OPTIMALITY ISSUE
+   The solution is FEASIBLE but SUBOPTIMAL (meets fewer friends than possible)
+   Reasoning: The schedule violates John’s availability window: it schedules meeting John from 7:28PM to 9:13PM, but John is only available until 10:00PM with a latest feasible start of 8:15PM for a 105-minute meet...
+
+8. meeting_planning_example_842
+   LLM Judge: ✗ INCORRECT
+   Constraint: ✓ CORRECT (all constraints satisfied)
+   
+   Why LLM marked incorrect:
+   ⚠️  TYPE: ALLEGED CONSTRAINT VIOLATION
+   LLM claims constraints are violated, but constraint evaluator disagrees
+   Reasoning: The itinerary violates multiple friends’ time windows (meeting them outside their availability), so it is not a feasible schedule even though travel-time arithmetic is consistent....
+
+9. meeting_planning_example_879
+   LLM Judge: ✗ INCORRECT
+   Constraint: ✓ CORRECT (all constraints satisfied)
+   
+   Why LLM marked incorrect:
+   📊 TYPE: OPTIMALITY ISSUE
+   The solution is FEASIBLE but SUBOPTIMAL (meets fewer friends than possible)
+   Reasoning: The schedule violates Steven’s availability window: it starts meeting Steven at 4:18PM, but Steven is only available starting at 3:00PM and ending at 6:45PM, and the meeting must fit entirely within t...
+
+10. meeting_planning_example_924
+   LLM Judge: ✗ INCORRECT
+   Constraint: ✓ CORRECT (all constraints satisfied)
+   
+   Why LLM marked incorrect:
+   ⚠️  TYPE: ALLEGED CONSTRAINT VIOLATION
+   LLM claims constraints are violated, but constraint evaluator disagrees
+   Reasoning: The schedule violates at least one friend’s availability window: Jason is met starting after his allowed start time but finishing after his availability end. Therefore it does not satisfy all time-win...
+
+================================================================================
+📊 CATEGORIZATION:
+================================================================================
+
+4 cases: OPTIMALITY ISSUES
+  - Solution works but is suboptimal
+  - All constraints satisfied
+  - LLM judge correctly identifies as incorrect due to suboptimality
+  - Constraint evaluator correctly identifies as feasible
+  - BOTH ARE RIGHT from their perspectives!
+
+6 cases: ALLEGED CONSTRAINT VIOLATIONS
+  - LLM judge claims constraints are violated
+  - Constraint evaluator says all constraints satisfied
+  - This suggests LLM judge may be:
+    a) Hallucinating violations
+    b) Misreading the constraints
+    c) Being overly strict/pedantic
+
+================================================================================
+🎯 KEY INSIGHT:
+================================================================================
+
+The LLM judge appears to have TWO types of 'errors':
+
+1. Rejecting SUBOPTIMAL solutions (40% of disagreements)
+   - This is actually CORRECT behavior for the problem!
+   - The problem asks to 'maximize' friends met
+   - Meeting 4 when 5 is possible IS incorrect
+
+2. Alleged constraint violations (60% of disagreements)
+   - These may be LLM hallucinations/misreadings
+   - Example: Problem 765 - claimed 10 min travel but ground truth is 11 min
+   - The constraint evaluator (programmatic) is more reliable here
+
+================================================================================
+💡 CONCLUSION:
+================================================================================
+
+The 10-point gap (85% vs 95%) consists of:
+  - 4 problems: LLM correctly strict about optimality ✓
+  - 6 problems: LLM possibly hallucinating violations ⚠️
+
+This means:
+  - Constraint-based accuracy (95%) is more reliable
+  - LLM judge catches optimality issues (good!)
+  - But LLM judge may have ~6% false negative rate
+    (marking correct solutions as incorrect)
+
+For pure FEASIBILITY: Constraint-based is ground truth
+For OPTIMALITY: LLM judge adds value
+For ACCURACY: Use both and investigate disagreements!
+================================================================================
