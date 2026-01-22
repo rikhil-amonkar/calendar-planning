@@ -2,17 +2,17 @@
 
 ## Meeting Planning Results (Iterative Pass - Final Iteration)
 
-| Model | Constraint-Based | | Iteration Statistics | |
-|-------|------------------|---------|---------------------|---------|
-| | Correct/Total | Accuracy | First Try Success | After Retries | Avg Iterations |
-| **GPT-5-Python** | 99/100 | 99.0% | 98/100 (98.0%) | 2/100 (2.0%) | 1.02 |
-| **O3-mini-Python** | 96/100 | 96.0% | 94/100 (94.0%) | 6/100 (6.0%) | 1.06 |
-| **Deepseek-Reasoner-Python** | 94/100 | 94.0% | 93/100 (93.0%) | 6/100 (6.0%) | 1.06 |
-| **Deepseek-Chat-Python** | 86/100 | 86.0% | 79/100 (79.0%) | 13/100 (13.0%) | 1.18 |
-| **O3-mini-SMT** | 99/100 | 99.0% | 56/100 (56.0%) | 44/100 (44.0%) | 1.73 |
-| **GPT-5-SMT** | 98/100 | 98.0% | 29/100 (29.0%) | 70/100 (70.0%) | 1.89 |
-| **Deepseek-Reasoner-SMT** | 85/100 | 85.0% | 78/100 (78.0%) | 22/100 (22.0%) | 1.26 |
-| **Deepseek-Chat-SMT** | 53/100 | 53.0% | 49/100 (49.0%) | 43/100 (43.0%) | 1.79 |
+| Model | Method | Task | Constraint-Based | | Iteration Statistics | |
+|-------|--------|------|------------------|---------|---------------------|---------|
+| | | | Correct/Total | Accuracy | First Try Success | After Retries | Avg Iterations |
+| **GPT-5** | Python | Meeting Planning | 99/100 | 99.0% | 98/100 (98.0%) | 2/100 (2.0%) | 1.02 |
+| **GPT-5** | SMT | Meeting Planning | 98/100 | 98.0% | 29/100 (29.0%) | 70/100 (70.0%) | 1.89 |
+| **O3-mini** | Python | Meeting Planning | 96/100 | 96.0% | 94/100 (94.0%) | 6/100 (6.0%) | 1.06 |
+| **O3-mini** | SMT | Meeting Planning | 99/100 | 99.0% | 56/100 (56.0%) | 44/100 (44.0%) | 1.73 |
+| **Deepseek-Reasoner** | Python | Meeting Planning | 94/100 | 94.0% | 93/100 (93.0%) | 6/100 (6.0%) | 1.06 |
+| **Deepseek-Reasoner** | SMT | Meeting Planning | 85/100 | 85.0% | 78/100 (78.0%) | 22/100 (22.0%) | 1.26 |
+| **Deepseek-Chat** | Python | Meeting Planning | 86/100 | 86.0% | 79/100 (79.0%) | 13/100 (13.0%) | 1.18 |
+| **Deepseek-Chat** | SMT | Meeting Planning | 53/100 | 53.0% | 49/100 (49.0%) | 43/100 (43.0%) | 1.79 |
 
 ---
 
@@ -66,23 +66,23 @@
 
 ### Python Strategy Improvement
 
-| Model | Single Pass | Iterative Pass | Improvement |
-|-------|------------|----------------|-------------|
-| **GPT-5-Python** | 95.0% | 99.0% | +4.0% |
-| **O3-mini-Python** | 82.0% | 96.0% | +14.0% |
-| **Deepseek-Reasoner-Python** | 97.0% | 94.0% | -3.0% |
-| **Deepseek-Chat-Python** | 82.0% | 86.0% | +4.0% |
+| Model | Method | Task | Single Pass | Iterative Pass | Improvement |
+|-------|--------|------|------------|----------------|-------------|
+| **GPT-5** | Python | Meeting Planning | 95.0% | 99.0% | +4.0% |
+| **O3-mini** | Python | Meeting Planning | 82.0% | 96.0% | +14.0% |
+| **Deepseek-Reasoner** | Python | Meeting Planning | 97.0% | 94.0% | -3.0% |
+| **Deepseek-Chat** | Python | Meeting Planning | 82.0% | 86.0% | +4.0% |
 
 **Python Average Improvement:** +4.75%
 
 ### SMT Strategy Improvement
 
-| Model | Single Pass | Iterative Pass | Improvement |
-|-------|------------|----------------|-------------|
-| **GPT-5-SMT** | 42.0% | 98.0% | **+56.0%** 🚀 |
-| **O3-mini-SMT** | 43.0% | 99.0% | **+56.0%** 🚀 |
-| **Deepseek-Reasoner-SMT** | 63.0% | 85.0% | +22.0% |
-| **Deepseek-Chat-SMT** | 41.0% | 53.0% | +12.0% |
+| Model | Method | Task | Single Pass | Iterative Pass | Improvement |
+|-------|--------|------|------------|----------------|-------------|
+| **GPT-5** | SMT | Meeting Planning | 42.0% | 98.0% | **+56.0%** 🚀 |
+| **O3-mini** | SMT | Meeting Planning | 43.0% | 99.0% | **+56.0%** 🚀 |
+| **Deepseek-Reasoner** | SMT | Meeting Planning | 63.0% | 85.0% | +22.0% |
+| **Deepseek-Chat** | SMT | Meeting Planning | 41.0% | 53.0% | +12.0% |
 
 **SMT Average Improvement:** +36.5%
 
