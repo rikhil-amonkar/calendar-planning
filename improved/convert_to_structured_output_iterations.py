@@ -1,13 +1,19 @@
 #!/usr/bin/env python3
 """
-Convert text-based itinerary outputs to structured JSON format with iteration information.
+Convert text-based itinerary outputs to structured JSON format (with iterations support).
 
-This version processes iterations and includes detailed information about each attempt.
+This version handles results from code_generation_inference_iterations.py which includes
+multiple iterations per problem. It converts all iterations and stores the final iteration
+as the main result.
 
-Output format includes:
-- Final structured output (from final successful iteration)
-- All iterations with their structured outputs
-- Iteration metadata (success, errors, etc.)
+Output format:
+{
+  "itinerary": [
+    {"action": "meet", "person": "<name>", "start_time": "HH:MM", "end_time": "HH:MM"}
+  ]
+}
+
+Times are in 24-hour format (HH:MM).
 """
 
 import json
@@ -123,17 +129,6 @@ def extract_meetings_from_text(text: str) -> List[Dict[str, str]]:
     """
     meetings = []
     
-    # Handle case where text is a list representation (string)
-    if isinstance(text, str) and text.startswith('[') and text.endswith(']'):
-        # Try to parse as Python list
-        try:
-            import ast
-            text_list = ast.literal_eval(text)
-            if isinstance(text_list, list):
-                text = '\n'.join(str(item) for item in text_list)
-        except:
-            pass
-    
     # Pattern 1: "You meet <person> for X minutes from <time> to <time>"
     pattern1 = r'[Yy]ou meet ([A-Z][a-z]+).*?from\s+([0-9:]+\s*(?:AM|PM)?)\s+to\s+([0-9:]+\s*(?:AM|PM)?)'
     matches1 = re.finditer(pattern1, text, re.IGNORECASE)
@@ -209,101 +204,33 @@ def extract_meetings_from_text(text: str) -> List[Dict[str, str]]:
     return meetings
 
 
-def convert_iteration_to_structured(iteration: Dict) -> Dict:
+def convert_result_to_structured(result: Dict) -> Dict:
     """
-    Convert a single iteration to structured format.
+    Convert a single result entry to structured format.
     
     Args:
-        iteration: Iteration dictionary with 'output' field
+        result: Result dictionary with 'output' field
     
     Returns:
-        Dictionary with structured output and metadata
+        Structured output with 'itinerary' key
     """
-    output_text = iteration.get('output', '')
+    output_text = result.get('output', '')
     
-    # Check if execution failed
     if not output_text or output_text.startswith('Traceback') or 'error' in output_text.lower()[:50]:
-        return {
-            "itinerary": [],
-            "execution_success": False,
-            "has_error": True
-        }
+        # Execution failed or error
+        return {"itinerary": []}
     
     meetings = extract_meetings_from_text(output_text)
     
-    return {
-        "itinerary": meetings,
-        "execution_success": iteration.get('execution_success', False),
-        "has_error": iteration.get('has_execution_error', False),
-        "has_no_plan": iteration.get('has_no_plan', False)
-    }
-
-
-def convert_result_to_structured_with_iterations(result: Dict) -> Dict:
-    """
-    Convert a result entry with iterations to structured format.
-    
-    Args:
-        result: Result dictionary with 'output' and 'iterations' fields
-    
-    Returns:
-        Structured output with final result and all iterations
-    """
-    iterations = result.get('iterations', [])
-    
-    # Process all iterations
-    structured_iterations = []
-    final_iteration_output = None
-    final_iteration_index = None
-    
-    for i, iteration in enumerate(iterations):
-        structured_iter = convert_iteration_to_structured(iteration)
-        
-        # Add iteration metadata
-        structured_iter['iteration_number'] = iteration.get('iteration', i + 1)
-        structured_iter['code'] = iteration.get('code', '')
-        structured_iter['model_response'] = iteration.get('model_response', '')
-        structured_iter['error_output'] = iteration.get('error_output', '')
-        structured_iter['will_retry'] = iteration.get('will_retry', False)
-        structured_iter['stopped_reason'] = iteration.get('stopped_reason')
-        
-        structured_iterations.append(structured_iter)
-        
-        # Track the final successful iteration (or last iteration if none succeeded)
-        if structured_iter['execution_success'] and structured_iter['itinerary']:
-            final_iteration_output = structured_iter['itinerary']
-            final_iteration_index = i
-        elif final_iteration_output is None:
-            # Keep track of last iteration even if it failed
-            final_iteration_output = structured_iter['itinerary']
-            final_iteration_index = i
-    
-    # If no iterations, fall back to top-level output
-    if not iterations:
-        output_text = result.get('output', '')
-        if output_text and not output_text.startswith('Traceback'):
-            final_iteration_output = extract_meetings_from_text(output_text)
-        else:
-            final_iteration_output = []
-    
-    return {
-        "final_itinerary": final_iteration_output or [],
-        "final_iteration_index": final_iteration_index,
-        "iterations": structured_iterations,
-        "num_iterations": len(iterations),
-        "has_successful_iteration": any(
-            iter_data.get('execution_success', False) and iter_data.get('itinerary', [])
-            for iter_data in structured_iterations
-        )
-    }
+    return {"itinerary": meetings}
 
 
 def process_results_file(input_file: str, output_file: Optional[str] = None) -> None:
     """
-    Process a results JSON file and convert all outputs to structured format with iterations.
+    Process a results JSON file with iterations and convert all outputs to structured format.
     
     Args:
-        input_file: Path to input JSON file
+        input_file: Path to input JSON file (from code_generation_inference_iterations.py)
         output_file: Path to output JSON file (optional)
     """
     input_path = Path(input_file)
@@ -321,22 +248,84 @@ def process_results_file(input_file: str, output_file: Optional[str] = None) -> 
     # Convert each result
     structured_results = []
     for result in results:
-        structured = convert_result_to_structured_with_iterations(result)
+        # Check if this result has iterations
+        iterations = result.get('iterations', [])
+        num_iterations = result.get('num_iterations', 0)
         
-        # Add metadata
-        structured_result = {
-            'problem_id': result.get('problem_id'),
-            'problem_index': result.get('problem_index'),
-            'task_type': result.get('task_type'),
-            'execution_success': result.get('execution_success', False),
-            'success': result.get('success', False),
-            'structured_output': {
-                'itinerary': structured['final_itinerary']
-            },
-            'iterations_data': structured,
-            'original_output': result.get('output', ''),
-            'golden_solution': result.get('golden_solution', '')
-        }
+        if iterations and num_iterations > 0:
+            # Process each iteration
+            structured_iterations = []
+            
+            for iter_data in iterations:
+                iter_output = iter_data.get('output', '')
+                iter_exec_success = iter_data.get('execution_success', False)
+                iter_has_error = iter_data.get('has_code_error', False)
+                iter_has_no_plan = iter_data.get('has_no_plan', False)
+                
+                # Convert this iteration's output to structured format
+                iter_structured = convert_result_to_structured({
+                    'output': iter_output,
+                    'execution_success': iter_exec_success
+                })
+                
+                structured_iterations.append({
+                    'iteration': iter_data.get('iteration'),
+                    'execution_success': iter_exec_success,
+                    'has_code_error': iter_has_error,
+                    'has_no_plan': iter_has_no_plan,
+                    'itinerary': iter_structured.get('itinerary', []),
+                    'original_output': iter_output
+                })
+            
+            # Get the final iteration (last one)
+            final_iteration = structured_iterations[-1] if structured_iterations else None
+            final_itinerary = final_iteration.get('itinerary', []) if final_iteration else []
+            
+            # Determine if there was a successful iteration (one with a plan)
+            has_successful_iteration = any(
+                iter_item.get('execution_success', False) and 
+                iter_item.get('itinerary', [])
+                for iter_item in structured_iterations
+            )
+            
+            structured_result = {
+                'problem_id': result.get('problem_id'),
+                'problem_index': result.get('problem_index'),
+                'task_type': result.get('task_type'),
+                'execution_success': result.get('execution_success', False),
+                'structured_output': {"itinerary": final_itinerary},  # Final iteration result
+                'original_output': result.get('output', ''),  # Final iteration output
+                'golden_solution': result.get('golden_solution', ''),
+                # Iterations data
+                'iterations_data': {
+                    'num_iterations': num_iterations,
+                    'iterations': structured_iterations,
+                    'final_itinerary': final_itinerary,
+                    'final_iteration_index': num_iterations,
+                    'has_successful_iteration': has_successful_iteration
+                }
+            }
+        else:
+            # No iterations data, treat as single iteration
+            structured = convert_result_to_structured(result)
+            
+            structured_result = {
+                'problem_id': result.get('problem_id'),
+                'problem_index': result.get('problem_index'),
+                'task_type': result.get('task_type'),
+                'execution_success': result.get('execution_success', False),
+                'structured_output': structured,
+                'original_output': result.get('output', ''),
+                'golden_solution': result.get('golden_solution', ''),
+                # No iterations data
+                'iterations_data': {
+                    'num_iterations': 0,
+                    'iterations': [],
+                    'final_itinerary': structured.get('itinerary', []),
+                    'final_iteration_index': None,
+                    'has_successful_iteration': False
+                }
+            }
         
         structured_results.append(structured_result)
     
@@ -344,14 +333,10 @@ def process_results_file(input_file: str, output_file: Optional[str] = None) -> 
     if output_file:
         output_path = Path(output_file)
     else:
-        # Save to structured_results folder (one level up from input file's directory)
-        # If input is in code_generation_results/, go up one level to improved/, then into structured_results/
-        structured_results_dir = input_path.parent.parent / "structured_results"
-        
-        # Create directory if it doesn't exist
-        structured_results_dir.mkdir(exist_ok=True)
-        
-        output_path = structured_results_dir / f"{input_path.stem}_structured_iterations.json"
+        # Save to new_results folder inside improved directory
+        output_dir = Path(__file__).parent / "new_results"
+        output_dir.mkdir(exist_ok=True)
+        output_path = output_dir / f"{input_path.stem}_structured_iterations.json"
     
     # Save
     with open(output_path, 'w') as f:
@@ -363,30 +348,30 @@ def process_results_file(input_file: str, output_file: Optional[str] = None) -> 
     # Print summary
     total_meetings = sum(len(r['structured_output']['itinerary']) for r in structured_results)
     non_empty = sum(1 for r in structured_results if r['structured_output']['itinerary'])
+    
+    # Iteration statistics
     total_iterations = sum(r['iterations_data']['num_iterations'] for r in structured_results)
-    successful_iterations = sum(
-        1 for r in structured_results 
-        if r['iterations_data']['has_successful_iteration']
-    )
+    problems_with_iterations = sum(1 for r in structured_results if r['iterations_data']['num_iterations'] > 0)
+    avg_iterations = total_iterations / len(structured_results) if structured_results else 0
     
     print(f"\nSummary:")
     print(f"  Total problems: {len(structured_results)}")
-    print(f"  Problems with meetings (final): {non_empty}")
-    print(f"  Total meetings extracted (final): {total_meetings}")
+    print(f"  Problems with meetings: {non_empty}")
+    print(f"  Total meetings extracted: {total_meetings}")
     print(f"  Average meetings per problem: {total_meetings/len(structured_results):.1f}")
-    print(f"  Total iterations across all problems: {total_iterations}")
-    print(f"  Problems with successful iterations: {successful_iterations}")
-    print(f"  Average iterations per problem: {total_iterations/len(structured_results):.1f}")
+    print(f"\nIteration Statistics:")
+    print(f"  Problems with iterations: {problems_with_iterations}")
+    print(f"  Total iterations: {total_iterations}")
+    print(f"  Average iterations per problem: {avg_iterations:.2f}")
     
     # Show sample
-    print(f"\nSample structured output:")
+    print(f"\nSample structured output (final iteration):")
     for i, result in enumerate(structured_results[:3]):
         if result['structured_output']['itinerary']:
-            print(f"\n  Problem {i}: {result['problem_id']}")
-            print(f"  Iterations: {result['iterations_data']['num_iterations']}")
-            print(f"  Final iteration index: {result['iterations_data']['final_iteration_index']}")
-            print(f"  Has successful iteration: {result['iterations_data']['has_successful_iteration']}")
-            print(f"  Final itinerary: {len(result['structured_output']['itinerary'])} meetings")
+            num_iterations = result['iterations_data']['num_iterations']
+            iter_info = f" ({num_iterations} iterations)" if num_iterations > 0 else ""
+            print(f"\n  Problem {i}: {result['problem_id']}{iter_info}")
+            print(f"  {json.dumps(result['structured_output'], indent=4)}")
             break
 
 
@@ -395,10 +380,10 @@ def main():
     if len(sys.argv) < 2:
         print("Usage: python convert_to_structured_output_iterations.py <results_file.json> [output_file.json]")
         print("\nArguments:")
-        print("  results_file  : Path to inference results JSON (with iterations)")
+        print("  results_file  : Path to inference results JSON (from code_generation_inference_iterations.py)")
         print("  output_file   : Path to output file (optional, defaults to <input>_structured_iterations.json)")
         print("\nExample:")
-        print("  python convert_to_structured_output_iterations.py code_generation_results/meeting_test_run.json")
+        print("  python convert_to_structured_output_iterations.py code_generation_results/meeting_test_iterations.json")
         print("  python convert_to_structured_output_iterations.py results.json structured_results.json")
         sys.exit(1)
     

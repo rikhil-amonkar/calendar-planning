@@ -9,7 +9,9 @@ from pathlib import Path
 from typing import Dict, List, Optional, Literal
 
 # Path to the Natural Plan dataset
-DATA_PATH = Path("../data/meeting_planning_100.json")
+# Default to the directory where this script is located (improved folder)
+SCRIPT_DIR = Path(__file__).parent
+DATA_PATH = SCRIPT_DIR
 
 TaskType = Literal["calendar", "meeting", "trip"]
 
@@ -38,10 +40,20 @@ class NaturalPlanDataset:
         if cache_key in self._cache:
             return self._cache[cache_key]
         
-        file_path = self.data_path / f"{task_type}_{split}.json"
+        # Try multiple file naming conventions
+        # 1. Try the examples file format: {task_type}_planning_100_examples.json
+        file_path = self.data_path / f"{task_type}_planning_100_examples.json"
+        
+        # 2. If that doesn't exist, try the standard format: {task_type}_{split}.json
+        if not file_path.exists():
+            file_path = self.data_path / f"{task_type}_{split}.json"
         
         if not file_path.exists():
-            raise FileNotFoundError(f"Data file not found: {file_path}")
+            raise FileNotFoundError(
+                f"Data file not found. Tried:\n"
+                f"  - {self.data_path / f'{task_type}_planning_100_examples.json'}\n"
+                f"  - {self.data_path / f'{task_type}_{split}.json'}"
+            )
         
         with open(file_path, 'r') as f:
             data = json.load(f)

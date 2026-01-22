@@ -2,10 +2,12 @@
 """
 Evaluate structured outputs with iterations using the constraint-based evaluator.
 
-This version evaluates the final iteration result (after all iterations) rather than
-just the first attempt. It also provides statistics about iterations.
+This script evaluates structured outputs from convert_to_structured_output_iterations.py.
+It evaluates ONLY the final iteration result (after all iterations), not the first attempt.
 
-This script works with outputs from convert_to_structured_output_iterations.py
+This ensures that if a model failed on the first attempt but succeeded on a later
+iteration, it counts as correct. This gives you the 'best possible' accuracy after
+allowing the model to refine its solution.
 """
 
 import json
@@ -125,7 +127,7 @@ def evaluate_structured_output_iterations(structured_file: str, constraints_file
     
     Args:
         structured_file: Path to structured output JSON (from convert_to_structured_output_iterations.py)
-        constraints_file: Path to constraints JSON
+        constraints_file: Path to constraints JSON (meeting_planning_100_constraints.json)
     """
     # Load data
     with open(structured_file, 'r') as f:
@@ -176,9 +178,10 @@ def evaluate_structured_output_iterations(structured_file: str, constraints_file
             # Check if first iteration succeeded
             iterations_list = iterations_data.get('iterations', [])
             if iterations_list and len(iterations_list) > 0:
+                first_iter = iterations_list[0]
                 first_iter_success = (
-                    iterations_list[0].get('execution_success', False) and 
-                    iterations_list[0].get('itinerary', [])
+                    first_iter.get('execution_success', False) and 
+                    len(first_iter.get('itinerary', [])) > 0
                 )
                 if first_iter_success:
                     iteration_stats['problems_successful_on_first'] += 1
@@ -220,12 +223,21 @@ def evaluate_structured_output_iterations(structured_file: str, constraints_file
         
         constraints = all_constraints[problem_id].get('constraints', {})
         
-        # Set num_people_to_meet from the people_to_meet array length
-        # This is required for the evaluate_meeting function to properly validate
-        # that all required people are met. The JSON structure has people_to_meet
-        # as an array, so we derive num_people_to_meet from its length.
-        if 'people_to_meet' in constraints and 'num_people_to_meet' not in constraints:
-            constraints['num_people_to_meet'] = len(constraints['people_to_meet'])
+        # Get the expected number of people to meet from golden solution
+        golden_solution = item.get('golden_solution', '')
+        if golden_solution:
+            # Parse golden solution to count meetings
+            try:
+                if isinstance(golden_solution, str):
+                    golden_list = eval(golden_solution)  # Convert string representation to list
+                else:
+                    golden_list = golden_solution
+                
+                # Count meetings in golden solution
+                num_people_to_meet = sum(1 for line in golden_list if 'You meet' in line)
+                constraints['num_people_to_meet'] = num_people_to_meet
+            except:
+                pass
         
         # Evaluate the FINAL iteration result
         pred_dict = {'itinerary': itinerary}
@@ -248,7 +260,8 @@ def evaluate_structured_output_iterations(structured_file: str, constraints_file
         
         # Print violations
         if not is_correct and violated_constraint:
-            print(f"\n✗ {problem_id}: {violated_constraint} (after {num_iterations} iterations)")
+            iter_info = f" (after {num_iterations} iterations)" if num_iterations > 0 else ""
+            print(f"\n✗ {problem_id}: {violated_constraint}{iter_info}")
     
     # Count problems with no plan
     no_plan_count = sum(1 for r in results if r['status'] == 'no_plan')
@@ -281,14 +294,10 @@ def evaluate_structured_output_iterations(structured_file: str, constraints_file
     if missing_constraints:
         print(f"Problems missing constraints: {missing_constraints[:5]}...")
     
-    # Save results to eval_results folder (one level up from structured_results)
-    # If input is in structured_results/, go up one level to improved/, then into eval_results/
-    eval_results_dir = Path(structured_file).parent.parent / "eval_results"
-    
-    # Create directory if it doesn't exist
-    eval_results_dir.mkdir(exist_ok=True)
-    
-    output_path = eval_results_dir / f"{Path(structured_file).stem}_constraint_eval.json"
+    # Save results to new_results folder inside improved directory
+    output_dir = Path(__file__).parent / "iterative_pass_results/final"
+    output_dir.mkdir(exist_ok=True)
+    output_path = output_dir / f"{Path(structured_file).stem}_constraint_eval.json"
     with open(output_path, 'w') as f:
         json.dump({
             'summary': {
@@ -327,7 +336,7 @@ def main():
         print("  constraints.json       : Path to constraints file (meeting_planning_100_constraints.json)")
         print("\nExample:")
         print("  python evaluate_structured_outputs_iterations.py \\")
-        print("    code_generation_results/meeting_test_structured_iterations.json \\")
+        print("    structured_results/meeting_test_structured_iterations.json \\")
         print("    meeting_planning_100_constraints.json")
         print("\nNote: This evaluates the FINAL iteration result (after all retries),")
         print("      not just the first attempt. This gives you the accuracy after")

@@ -148,8 +148,8 @@ def main(input_folder, output_folder, summary_file_path):
 if __name__ == "__main__":
     # Configuration - change these paths as needed
     INPUT_FOLDER = "constraint_satisfaction/meeting"  # Folder containing the JSON files
-    OUTPUT_FOLDER = "bucketed_constraints/bucketed_result_groups/meeting"  # Where to save the categorized files
-    SUMMARY_FILE = "bucketed_constraints/constraint_summary_meeting.txt"  # Path for the summary text file
+    OUTPUT_FOLDER = "output/Buckets/New"  # Where to save the categorized files (with percent folders)
+    SUMMARY_FILE = "output/Buckets/New/constraint_summary_meeting.txt"  # Path for the summary text file
     
     # Run the program
     main(INPUT_FOLDER, OUTPUT_FOLDER, SUMMARY_FILE)
