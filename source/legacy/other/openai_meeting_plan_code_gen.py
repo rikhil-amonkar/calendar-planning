@@ -14,7 +14,7 @@ from openai import OpenAI
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 # Read the API key from a file
-with open('/home/rma336/openai_research/openai_api_key.txt', 'r') as key_file:
+with open('<YOUR_API_KEY_PATH>', 'r') as key_file:
     api_key = key_file.read().strip()
 
 # Initialize the OpenAI client

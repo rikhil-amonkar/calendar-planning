@@ -4,7 +4,7 @@ import asyncio
 from openai import AsyncOpenAI
 
 # Read the API key and initialize client (same as before)
-with open('/home/rma336/openai_research/openai_api_key.txt', 'r') as key_file:
+with open('<YOUR_API_KEY_PATH>', 'r') as key_file:  # Replace with path to your OpenAI API key file
     api_key = key_file.read().strip()
 
 client = AsyncOpenAI(api_key=api_key)
@@ -42,7 +42,7 @@ def process_examples(examples_file, output_folder):
         Here is the corresponding output JSON:\n
 
         {{
-            "trip_planning_example_harry_crafted": {{
+            "trip_planning_example_personB_crafted": {{
                 "input_query": [
                     "You plan to visit 3 European cities for 14 days in total. You only take direct flights to commute between cities. You would like to visit Paris for 6 days. You want to meet a friend in Paris between day 9 and day 14. You would like to visit London for 5 days. You would like to visit Rome for 5 days.\n\nHere are the cities that have direct flights:\nLondon and Paris, Rome and London.\n\nFind a trip plan of visiting the cities for 14 days by taking direct flights to commute between them."
                 ],

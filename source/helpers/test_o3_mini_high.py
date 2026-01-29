@@ -2,7 +2,7 @@ import json
 from openai import OpenAI
 
 # Load the API key from a file anywhere on your system
-with open("/local-ssd/rma336/openai_research/deepseek_api_key.json") as f:
+with open("<YOUR_DEEPSEEK_API_KEY_PATH>") as f:
     keys = json.load(f)
 
 client = OpenAI(api_key=keys["openai"])

@@ -198,7 +198,7 @@ Examples:
                 logging.warning("Z3 solver not found. Will attempt to install when needed.")
 
         self.engines = {}
-        HF_CACHE_DIR = "/local-ssd/rma336/.cache/huggingface"
+        HF_CACHE_DIR = "<YOUR_HF_CACHE_DIR>"
 
         for model_name in self.args.model:
             try:
@@ -220,7 +220,7 @@ Examples:
                 else:
                     # ---- Hugging Face model (e.g., Qwen) ----
                     model_id = model_name
-                    HF_CACHE_DIR = "/local-ssd/rma336/.cache/huggingface"
+                    HF_CACHE_DIR = "<YOUR_HF_CACHE_DIR>"
 
                     tok = AutoTokenizer.from_pretrained(
                         model_id,

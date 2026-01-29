@@ -4,7 +4,7 @@ import asyncio
 from openai import AsyncOpenAI
 
 # Read the API key and initialize client (same as before)
-with open('/home/rma336/openai_research/openai_api_key.txt', 'r') as key_file:
+with open('<YOUR_API_KEY_PATH>', 'r') as key_file:  # Replace with path to your OpenAI API key file
     api_key = key_file.read().strip()
 
 client = AsyncOpenAI(api_key=api_key)
@@ -35,12 +35,12 @@ def process_examples(examples_file, output_folder):
         
         full_prompt = f"""
         Your job is to plan the meeting schedule to meet people at certain locations and times outputted in JSON format based on a description. Here's an example description:\n
-        TASK: You are visiting Philadelphia for the day and want to meet as many friends as possible. Solve the problem by considering various different schedules and picking the best one to optimize your goals.\n\nTravel distances (in minutes):\nDrexel University to 30th Street Station: 8.\nDrexel University to Market Street: 12.\n30th Street Station to Drexel University: 10.\n30th Street Station to Market Street: 7.\nMarket Street to Drexel University: 15.\nMarket Street to 30th Street Station: 9.\n\nCONSTRAINTS: You arrive at Drexel University at 9:00AM. Harry will be at 30th Street Station from 2:00PM to 3:30PM. You'd like to meet Harry for a minimum of 60 minutes. Ronan will be at Market Street from 12:00PM to 2:00PM. You'd like to meet Ronan for a minimum of 30 minutes.\n\nYour response should start with 'SOLUTION:'.\n
+        TASK: You are visiting Philadelphia for the day and want to meet as many friends as possible. Solve the problem by considering various different schedules and picking the best one to optimize your goals.\n\nTravel distances (in minutes):\nDrexel University to 30th Street Station: 8.\nDrexel University to Market Street: 12.\n30th Street Station to Drexel University: 10.\n30th Street Station to Market Street: 7.\nMarket Street to Drexel University: 15.\nMarket Street to 30th Street Station: 9.\n\nCONSTRAINTS: You arrive at Drexel University at 9:00AM. personB will be at 30th Street Station from 2:00PM to 3:30PM. You'd like to meet personB for a minimum of 60 minutes. Ronan will be at Market Street from 12:00PM to 2:00PM. You'd like to meet Ronan for a minimum of 30 minutes.\n\nYour response should start with 'SOLUTION:'.\n
         Here is the corresponding output JSON:\n
         {{
-            "meeting_planning_example_harry_crafted": {{
+            "meeting_planning_example_personB_crafted": {{
                 "input_query": [
-                    "You are visiting Philadelphia for the day and want to meet as many friends as possible. Solve the problem by considering various different schedules and picking the best one to optimize your goals.\n\nTravel distances (in minutes):\nDrexel University to 30th Street Station: 8.\nDrexel University to Market Street: 12.\n30th Street Station to Drexel University: 10.\n30th Street Station to Market Street: 7.\nMarket Street to Drexel University: 15.\nMarket Street to 30th Street Station: 9.\n\nCONSTRAINTS: You arrive at Drexel University at 9:00AM. Harry will be at 30th Street Station from 2:00PM to 3:30PM. You'd like to meet Harry for a minimum of 60 minutes. Ronan will be at Market Street from 12:00PM to 2:00PM. You'd like to meet Ronan for a minimum of 30 minutes.\n\nYour response should start with 'SOLUTION:'."
+                    "You are visiting Philadelphia for the day and want to meet as many friends as possible. Solve the problem by considering various different schedules and picking the best one to optimize your goals.\n\nTravel distances (in minutes):\nDrexel University to 30th Street Station: 8.\nDrexel University to Market Street: 12.\n30th Street Station to Drexel University: 10.\n30th Street Station to Market Street: 7.\nMarket Street to Drexel University: 15.\nMarket Street to 30th Street Station: 9.\n\nCONSTRAINTS: You arrive at Drexel University at 9:00AM. personB will be at 30th Street Station from 2:00PM to 3:30PM. You'd like to meet personB for a minimum of 60 minutes. Ronan will be at Market Street from 12:00PM to 2:00PM. You'd like to meet Ronan for a minimum of 30 minutes.\n\nYour response should start with 'SOLUTION:'."
                 ],
                 "travel_distances": [
                     {{
@@ -74,7 +74,7 @@ def process_examples(examples_file, output_folder):
                         "time_of_day": 9
                     }},
                     {{
-                        "person": "Harry",
+                        "person": "personB",
                         "location": "30th Street Station",
                         "duration": {{ "from": 14, "to": 15.5 }},
                         "min_meeting_duration": 60

@@ -10,7 +10,7 @@ from datetime import datetime
 from openai import OpenAI
 
 # Read the API key from a file
-with open('/home/rma336/openai_research/deepseek_api_key.txt', 'r') as key_file:
+with open('<YOUR_DEEPSEEK_API_KEY_PATH>', 'r') as key_file:
     api_key = key_file.read().strip()
 
 client = OpenAI(api_key=api_key, base_url="https://api.deepseek.com")

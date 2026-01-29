@@ -16,7 +16,7 @@ In the original repository's `data/` folder, there are two key JSON files for me
    - Golden solutions
    - Full problem specifications
 
-2. **`meeting_planning_100_constraints.json`** - Contains constraints extracted from the problems (created with Harry), but uses a different structure than your constraints file.
+2. **`meeting_planning_100_constraints.json`** - Contains constraints extracted from the problems (created with personB), but uses a different structure than your constraints file.
 
 ### Your Original Framework
 
